@@ -20,7 +20,8 @@ namespace Kor.Operations.EngineeringTools.ColumnDesign
     /// <param name="Nf">Axial. Negative is compression, as S-Concrete writes it.</param>
     public sealed record ColumnDemand(
         string Storey, string Mark, string Case, string Section, string Strength, double? EffectiveLength,
-        double Nf, double Tf, double Vfz, double Mfy, double Vfy, double Mfz)
+        double Nf, double Tf, double Vfz, double Mfy, double Vfy, double Mfz,
+        bool IdentityFromFilename = false)
     {
         public string Key => $"{Storey}|{Mark}|{Case}";
 
@@ -34,7 +35,7 @@ namespace Kor.Operations.EngineeringTools.ColumnDesign
         /// characters of noise, and kl falls off the end: on 30961-01 that is 225 of 1,665 demands
         /// whose effective length is not recorded anywhere in the file.
         /// </summary>
-        public bool IdentityTruncated => EffectiveLength is null;
+        public bool IdentityTruncated => EffectiveLength is null && !IdentityFromFilename;
     }
 
     /// <summary>A table inside an S-Concrete file, kept as read so a file can be round-tripped.</summary>
@@ -114,9 +115,21 @@ namespace Kor.Operations.EngineeringTools.ColumnDesign
         /// own generated alternates, "** Alt. LC # 1" — are skipped: they are the program's output,
         /// not the engineer's input.
         /// </summary>
-        public static IReadOnlyList<ColumnDemand> ReadDemands(IEnumerable<string> lines)
+        /// <param name="lines">The file's lines.</param>
+        /// <param name="memberFromFilename">
+        /// The file's own name, without extension. TWO CONVENTIONS EXIST AND BOTH ARE IN USE.
+        ///
+        /// On 30961-01 one file holds many columns and the Comment column carries each one's
+        /// identity. On 31021-01 — beams, six weeks ago — one file IS one member, every Comment is
+        /// literally "--", and the only identity anywhere is the filename: 31021-BEAM1-L2.SCO. A
+        /// reader that insists on the Comment returns nothing at all from 117 files, which is what
+        /// mine did until it was pointed at a project it had not been written against.
+        /// </param>
+        public static IReadOnlyList<ColumnDemand> ReadDemands(
+            IEnumerable<string> lines, string? memberFromFilename = null)
         {
             var result = new List<ColumnDemand>();
+            var (fileMark, fileStorey) = SplitFilename(memberFromFilename);
 
             foreach (var table in ReadTables(lines))
             {
@@ -129,24 +142,39 @@ namespace Kor.Operations.EngineeringTools.ColumnDesign
                 {
                     if (row.Length <= comment) continue;
 
-                    var id = Identity.Match(row[comment]);
-                    if (!id.Success) continue;
-
                     // Column order is fixed by the format: LC, Nf, Tf, Vfz, Mfy, Cmy, Vfy, Mfz, Cmz…
                     if (!(Num(row, 1) is double nf && Num(row, 2) is double tf && Num(row, 3) is double vfz
                           && Num(row, 4) is double mfy && Num(row, 6) is double vfy && Num(row, 7) is double mfz))
                         continue;
 
-                    var kl = EffectiveLengthIn.Match(row[comment]);
+                    var id = Identity.Match(row[comment]);
+
+                    if (id.Success)
+                    {
+                        var kl = EffectiveLengthIn.Match(row[comment]);
+                        result.Add(new ColumnDemand(
+                            id.Groups["storey"].Value,
+                            id.Groups["mark"].Value,
+                            id.Groups["case"].Value.Trim(),
+                            id.Groups["section"].Success ? id.Groups["section"].Value.Trim() : "",
+                            id.Groups["fc"].Success ? id.Groups["fc"].Value.Trim() : "",
+                            kl.Success ? double.Parse(kl.Groups["kl"].Value, CultureInfo.InvariantCulture) : null,
+                            nf, tf, vfz, mfy, vfy, mfz));
+                        continue;
+                    }
+
+                    // S-Concrete's own generated alternates are its output, not an applied demand.
+                    if (row[comment].TrimStart().StartsWith("**", StringComparison.Ordinal)) continue;
+
+                    // No identity in the file: the filename is the member, and the load case is the
+                    // row number, which is all the engineer recorded.
+                    if (fileMark is null) continue;
 
                     result.Add(new ColumnDemand(
-                        id.Groups["storey"].Value,
-                        id.Groups["mark"].Value,
-                        id.Groups["case"].Value.Trim(),
-                        id.Groups["section"].Success ? id.Groups["section"].Value.Trim() : "",
-                        id.Groups["fc"].Success ? id.Groups["fc"].Value.Trim() : "",
-                        kl.Success ? double.Parse(kl.Groups["kl"].Value, CultureInfo.InvariantCulture) : null,
-                        nf, tf, vfz, mfy, vfy, mfz));
+                        fileStorey ?? "", fileMark,
+                        $"LC{row[0].Trim()}", "", "", null,
+                        nf, tf, vfz, mfy, vfy, mfz,
+                        IdentityFromFilename: true));
                 }
             }
 
@@ -154,7 +182,24 @@ namespace Kor.Operations.EngineeringTools.ColumnDesign
         }
 
         public static IReadOnlyList<ColumnDemand> ReadDemands(string path) =>
-            ReadDemands(File.ReadAllLines(path, Encoding.Latin1));
+            ReadDemands(File.ReadAllLines(path, Encoding.Latin1), Path.GetFileNameWithoutExtension(path));
+
+        /// <summary>
+        /// The member and, if the name states one, the storey it is on. Names in use:
+        /// <c>31021-BEAM1-L2</c>, <c>31021-BeamBW2-L2</c>, <c>30961-01-12X30-L02TH</c>. The trailing
+        /// token is a level where it looks like one; everything before it is the member.
+        /// </summary>
+        private static (string? Mark, string? Storey) SplitFilename(string? stem)
+        {
+            if (string.IsNullOrWhiteSpace(stem)) return (null, null);
+
+            // The level token is not always last: "31021-12x30-L1-EQ" puts it in the middle, and
+            // "31021-18x30 to 12x24-Check Axial Loading" has none at all.
+            var m = Regex.Match(stem, @"(?<![A-Za-z0-9])(?<storey>(?:L|P)\d{1,2}(?:TH|MEZZ)?)(?![A-Za-z0-9])",
+                RegexOptions.IgnoreCase);
+
+            return (stem.Trim(), m.Success ? m.Groups["storey"].Value.ToUpperInvariant() : null);
+        }
 
         /// <summary>The identity line S-Concrete keeps in the Comment column, written the way the
         /// engineers write it — so a generated file is indistinguishable from a typed one.</summary>

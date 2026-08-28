@@ -1016,6 +1016,11 @@ if (args.Length >= 1 && args[0].Equals("sco-schedule", StringComparison.OrdinalI
         Console.WriteLine($"\n{scoReport.Truncated.Count} demand(s) have NO effective length recorded — S-Concrete truncates the "
             + "comment at about sixty characters, and a long section name pushes kl off the end.");
 
+    if (scoReport.FromFilenameOnly > 0)
+        Console.WriteLine($"\n{scoReport.FromFilenameOnly} demand(s) carry no identity inside the file at all — the comment is "
+            + "blank, so the member is taken from the FILENAME and the load case is its row number. "
+            + "Rename a file on this job and its design becomes untraceable.");
+
     if (scoReport.MaterialConflicts > 0)
     {
         Console.WriteLine($"\n{scoReport.MaterialConflicts} column/case demand(s) are stated DIFFERENTLY in two files by more than 1%"

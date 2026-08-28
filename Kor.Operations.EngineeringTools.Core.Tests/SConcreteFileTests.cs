@@ -91,6 +91,76 @@ public sealed class SConcreteFileTests
     }
 
     // ---------------------------------------------------------------------------------------
+    // The OTHER convention, found by running this against a project it was not written for.
+    // ---------------------------------------------------------------------------------------
+
+    /// <summary>On 31021-01 one file IS one member and every Comment is literally "--".</summary>
+    private static readonly string[] NoIdentityInFile =
+    {
+        "@Object@S-CONCRETE Sectional Loads@",
+        "@Table@14@",
+        "LC\tNf\tTf\tVfz\tMfy\tCmy\tVfy\tMfz\tCmz\tPdistr\tCheckLC\tLoad Type\tComment\tAutoGen",
+        " 1\t 43\t 0\t 329\t 318\t 1\t 0\t 0\t 1\t 0\t1\t 1\t--\t0",
+        " 2\t 53\t 0\t 410\t 387\t 1\t 0\t 0\t 1\t 0\t1\t 1\t--\t0",
+        "@EndTable@",
+    };
+
+    [Fact]
+    public void AFileThatRecordsNoIdentityStillYieldsItsDemands()
+    {
+        // Insisting on the Comment returned NOTHING from 117 files on 31021-01 — a job worked six
+        // weeks ago. A reader written against one project's convention is not a reader.
+        var demands = SConcreteFile.ReadDemands(NoIdentityInFile, "31021-BEAM1-L2");
+
+        Assert.Equal(2, demands.Count);
+        Assert.All(demands, d => Assert.True(d.IdentityFromFilename));
+        Assert.Equal("31021-BEAM1-L2", demands[0].Mark);
+        Assert.Equal("L2", demands[0].Storey);
+        Assert.Equal("LC1", demands[0].Case);
+        Assert.Equal(43, demands[0].Nf, 3);
+    }
+
+    [Fact]
+    public void WithNoFilenameToFallBackOnNothingIsInvented()
+    {
+        Assert.Empty(SConcreteFile.ReadDemands(NoIdentityInFile));
+    }
+
+    [Theory]
+    [InlineData("31021-BEAM1-L2", "L2")]                              // trailing
+    [InlineData("31021-12x30-L1-EQ", "L1")]                           // in the middle
+    [InlineData("30961-01-12X30-L02TH", "L02TH")]                     // with a suffix
+    [InlineData("12X30 (P1-L1)(C53 Conduit Check)", "P1")]            // inside brackets
+    [InlineData("31021-18x30 to 12x24-Check Axial Loading", null)]    // none at all
+    public void TheStoreyIsTakenFromWhereverTheFilenamePutsIt(string stem, string? expected)
+    {
+        var d = SConcreteFile.ReadDemands(NoIdentityInFile, stem);
+
+        Assert.Equal(expected ?? "", d[0].Storey);
+        Assert.Equal(stem, d[0].Mark);
+    }
+
+    [Fact]
+    public void AMissingEffectiveLengthIsOnlyCalledTruncationWhenTheCommentWasThere()
+    {
+        // Reporting 3,309 demands as "lost to the sixty-character limit" when their Comment is "--"
+        // is a false statement about someone's structural design.
+        var fromFilename = SConcreteFile.ReadDemands(NoIdentityInFile, "31021-BEAM1-L2");
+        Assert.All(fromFilename, d => Assert.False(d.IdentityTruncated));
+
+        var truncated = SConcreteFile.ReadDemands(new[]
+        {
+            "@Object@S-CONCRETE Sectional Loads@",
+            "@Table@14@",
+            "LC\tNf\tTf\tVfz\tMfy\tCmy\tVfy\tMfz\tCmz\tPdistr\tCheckLC\tLoad Type\tComment\tAutoGen",
+            "1\t-100\t0\t10\t100\t1\t5\t50\t1\t0\t1\t1\tL03  C68 -> Grav1, 15.9520846581496X15.9520846581496, 55Mpa,\t0",
+            "@EndTable@",
+        }, "30961-01-D18-L03");
+
+        Assert.True(Assert.Single(truncated).IdentityTruncated);
+    }
+
+    // ---------------------------------------------------------------------------------------
     // Writing. An existing file is the template; only the demands are replaced.
     // ---------------------------------------------------------------------------------------
 

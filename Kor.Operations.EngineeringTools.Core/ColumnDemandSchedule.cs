@@ -36,7 +36,8 @@ namespace Kor.Operations.EngineeringTools.ColumnDesign
         IReadOnlyList<ConflictingPair> ConflictingPairs,
         IReadOnlyList<ColumnDemand> Truncated,
         int FilesRead,
-        int DemandsRead)
+        int DemandsRead,
+        int FromFilenameOnly = 0)
     {
         /// <summary>Disagreements too small to be anything but rounding.</summary>
         public int TrivialConflicts => Conflicts.Count(c => c.Percent < 1.0);
@@ -128,7 +129,8 @@ namespace Kor.Operations.EngineeringTools.ColumnDesign
                 pairs,
                 all.Select(x => x.Demand).Where(d => d.IdentityTruncated).ToList(),
                 byFile.Count,
-                all.Count);
+                all.Count,
+                all.Count(x => x.Demand.IdentityFromFilename));
         }
 
         /// <summary>C9 before C10 — a column mark is a letter and a number, not a string.</summary>
