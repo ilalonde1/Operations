@@ -526,3 +526,96 @@ CCBG · Circle West · Upward Architects · PHNX Design · TRM · SeFDesign · E
 - Two captures are role-confusions to watch: **Kimley-Horn** (civil, appearing under architect on
   one case) and **Forrest Richardson, ASGCA** (a golf-course architect). Same class of error as
   Bass, Nixon & Kennedy in Raleigh — **always sanity-check a recovered firm against what it does.**
+
+---
+
+## Session 3 — the last two regions: Miami and Houston (28 August 2026)
+
+Both regions now have a proven, free design-team source. **All six regions are covered.**
+
+### ✅ MIAMI — City of Miami UDRB agenda packets
+
+The board is on IQM2 (Granicus): `miamifl.iqm2.com`, board **1096**. The calendar returns
+**37 UDRB meetings from Jan 2024 to Dec 2026, 28 of them with a published agenda packet.**
+
+| Document | URL shape | Size | Names the architect? |
+|---|---|---|---|
+| **Agenda packet** | `FileOpen.aspx?Type=1&ID=<n>` | 48 MB – 505 MB | ✅ **yes** — team block *and* full drawing set |
+| Bare agenda | `FileOpen.aspx?Type=14&ID=<n>` | ~330 KB | ⛔ no — project name, address and PZ number only |
+| Fact sheet | `FileOpen.aspx?Type=30&ID=<n>` | ~126 KB | ⛔ no |
+| Per-item submittal | `FileOpen.aspx?Type=4&ID=<n>` | ~78 MB | ✅ yes — one project, clean attribution |
+
+Item-level attachments are reachable via
+`Detail_LegiFile.aspx?Frame=&MeetingID=<m>&MediaPosition=&ID=<item>&CssClass=`.
+
+**Proven on 619 Brickell (PZ-25-20277, 15 July 2026 meeting).** The packet carries a complete
+design-team directory *with phone numbers* — richer than any other region's source:
+
+> DEVELOPER 13K-BP Brickell Owner, LLC · **ARCHITECTS Sieger Suarez Architects LLC + Foster +
+> Partners** · LANDSCAPE EGS2 Corp. · STRUCTURAL CHM Structural Engineers · MECHANICAL MG
+> Engineering · TRAFFIC David Plummer & Associates · CIVIL Langan
+
+It also carries the applicant's **letter of intent**, which names the architects in prose
+("as prepared by Foster + Partners and Sieger Suarez Architects LLC"). Two independent signals
+in one document.
+
+### ✅ HOUSTON — TDLR TABS, and it is the best source in the whole report
+
+Texas law requires **every commercial project over $50,000** to be registered with the Department
+of Licensing and Regulation for accessibility review, and the registration names the **design
+firm** — defined by TDLR as the architect or engineer *with overall responsibility for the
+project*. It is a mandatory legal registry, not a reported sample, and it is free and unauthenticated.
+
+- Search page `tdlr.texas.gov/tabs/search`; index endpoint **POST `/TABS/Search/SearchProjects`**
+  (DataTables; page size capped at 100 whatever you ask for).
+- Filters include `ArchitectName`, `OwnerName`, `LocationCity`, `LocationCounty`, cost and both
+  date ranges. `DataVersionId` 900001 = TABS, 900002 = the legacy EABPRJ data.
+- Index rows carry cost and work type, so the detail fetch can be aimed before it is spent.
+- Detail at **`/TABS/Search/Project/<ProjectNumber>`** gives OWNER and DESIGN FIRM (each with
+  address and phone), scope-of-work narrative, square footage, type of funds and status.
+
+**Harris County, 1 Jan 2024 – 28 Aug 2026: 11,790 registrations; 4,087 new construction; 358 at
+$10M or more.** Of those 358, **314 (88%) name a design firm** across **157 distinct firms**.
+
+| Slice | Projects w/ firm | Distinct firms | Top firm | Top 3 |
+|---|---|---|---|---|
+| All new construction ≥ $10M | 314 | 157 | Powers Brown 8% | 19% |
+| **Multifamily** | 28 | 20 | **Meeks + Partners 25%** | 39% |
+| **Industrial** | 93 | 31 | **Powers Brown 25%** | **52%** |
+| Office | 15 | 11 | RDLR 33% | 47% |
+
+⭐ **The Arizona pattern repeats in Houston, on unrelated data: industrial concentrates,
+multifamily disperses.** Two markets, two independent source types, the same shape.
+
+Sanity-checked before quoting: **Meeks + Partners** is a 40-year Houston multifamily practice
+(mid/high-rise, student, senior, mixed-use); **Powers Brown Architecture** is a Houston industrial
+and campus practice. Both are the right discipline in the right sector.
+
+⭐ TABS is **statewide** — Dallas, Austin and San Antonio are now available at zero extra cost.
+
+### ⛔ Traps found this session
+
+1. **`miami.gov` 403s both `urllib` and curl-with-a-browser-UA; it opens in Playwright Edge.**
+   The fourth false blocker of this project. `miamifl.iqm2.com` and `archive.miamigov.com`, by
+   contrast, open with plain curl. Posture is per-host — never generalise from one 403.
+   `tdhca.texas.gov` 403s *even in Playwright*, while `tdlr.texas.gov` opens with plain curl.
+2. **Range requests are honoured (206) and PyMuPDF opens a truncated prefix — but the text is not
+   there.** 12 MB of a 78 MB submittal gave 118 "readable" pages and 30 KB of text with no team
+   block, because truncation breaks the font resources. **A page count is not evidence of
+   extractable text.** Download the whole file.
+3. **The stacked PROJECT TEAM block is not universal.** Present in packet 3950, absent in 3844 and
+   3863, which lay the same information out differently. Miami needs multi-signal extraction
+   (role block, inline label, letter-of-intent prose, repeated title-block name) — not one regex.
+4. **TABS `City` is applicant-typed and wrong often enough to matter** — a record filed
+   City = Houston, County = Dallas, at a 75038 (Irving) address. **Filter on County.**
+5. **Houston project names are code names** — "Project Astro", "Cerberus", "Fairbanks D",
+   "The RO Parcel 4". Keyword-matching names found 74 residential projects in 4,087; classifying
+   from the *scope narrative* found 32 multifamily in the ≥$10M slice alone. **Never classify a
+   project by its name.**
+6. **TABS "design firm" legitimately admits engineers, landscape architects and interior
+   designers, and developers self-file.** Kittle Property Group, M Lanza Engineering, Doshi
+   Engineering & Surveying, Kimley-Horn, Nelson Byrd Woltz and Clay Development & Construction all
+   appear in the results. Same rule as Raleigh and Phoenix: **sanity-check every firm against what
+   it actually does before quoting it.**
+7. **Shell:** `cd dir && nohup cmd &` backgrounds the *whole list*, so every later line in the same
+   call runs in the original directory. Put the `cd` on its own line.
