@@ -49,6 +49,14 @@ for fn in sorted(os.listdir(OUT)):
     checks.append(("no stray '=' anywhere in the body", "=" not in text))
     checks.append(("subject is pure ASCII",
                    all(ord(c) < 128 for c in (msg["Subject"] or ""))))
+    # Every newline in a plain-text mail is a HARD break, so a body wrapped at
+    # 78 columns renders as a narrow column with a wide empty margin. If no
+    # line runs long, the paragraphs have been hard-wrapped again.
+    lines = [l for l in text.split("\n") if l.strip()]
+    checks.append(("paragraphs are unwrapped, not hard-wrapped at 78 cols",
+                   any(len(l) > 100 for l in lines)))
+    checks.append(("no line exceeds the RFC 5322 limit of 998",
+                   all(len(l) <= 998 for l in lines)))
     checks.append(("no internal-only document referenced",
                    INTERNAL not in text))
 

@@ -1,6 +1,15 @@
 #!/usr/bin/env python3
 """Build the two MVE follow-up emails as .eml drafts that open in Outlook.
 
+⛔ DO NOT HARD-WRAP THE PARAGRAPHS.
+
+    In a plain-text mail EVERY NEWLINE IS A HARD BREAK. A body wrapped at 78
+    columns therefore renders as a narrow column with a wide empty margin in
+    any window wider than that, which is what "squished" looked like on the
+    first send. Keep each paragraph on ONE line and let the reader's client
+    flow it to their window. Only the indented market list keeps its own
+    line breaks, and it is indented precisely so it survives as a block.
+
 ⛔ THE BODY MUST BE PURE ASCII. THIS IS NOT A STYLE PREFERENCE.
 
 A single em-dash makes Python encode the whole body as quoted-printable, where
@@ -42,49 +51,28 @@ IAN_BODY = """Dan,
 
 Good to meet. Here is the package I promised, produced by our Ops Brain.
 
-You asked for the Arizona submitted-projects search. It is in there: 373 open
-site-plan and rezoning cases out of Phoenix's own record, 280 of them filed
-since January 2025, and 41 residential. Each one is marked preliminary or
-final, so you can see how much of the design conversation is still open before
-you spend a call on it.
+You asked for the Arizona submitted-projects search. It is in there: 373 open site-plan and rezoning cases out of Phoenix's own record, 280 of them filed since January 2025, and 41 residential. Each one is marked preliminary or final, so you can see how much of the design conversation is still open before you spend a call on it.
 
 The list turned out to be the least interesting part.
 
-Counted properly, the Arizona multifamily projects that name an architect are
-spread across eleven different firms. One firm is on two of them. Nobody is on
-three. There is no incumbent to displace, because there isn't one.
+Counted properly, the Arizona multifamily projects that name an architect are spread across eleven different firms. One firm is on two of them. Nobody is on three. There is no incumbent to displace, because there isn't one.
 
-That is only worth saying if the same measurement can produce a different
-answer somewhere else, so we ran it on Raleigh. It does: a clear leader holding
-36% of the field, and fifteen months into an ownership change. Then we ran it
-on Houston and Miami as well. Ranked by how much of each market the leading
-firm holds:
+That is only worth saying if the same measurement can produce a different answer somewhere else, so we ran it on Raleigh. It does: a clear leader holding 36% of the field, and fifteen months into an ownership change. Then we ran it on Houston and Miami as well. Ranked by how much of each market the leading firm holds:
 
     Houston   10%
     Miami     17%
     Arizona   18%
     Raleigh   36%
 
-Three of your four measurable markets have no incumbent worth the name.
-Raleigh is the outlier, and it is the one where the leader has just changed
-hands.
+Three of your four measurable markets have no incumbent worth the name. Raleigh is the outlier, and it is the one where the leader has just changed hands.
 
-On the test you set us, what happens to a 40-storey project filed that
-morning: the honest answer is in the document rather than hidden in it. It is
-not in any public feed yet, and nobody's is. It surfaces in days. What we can
-defend is that nothing published gets missed, not that nothing unpublished is
-known.
+On the test you set us, what happens to a 40-storey project filed that morning: the honest answer is in the document rather than hidden in it. It is not in any public feed yet, and nobody's is. It surfaces in days. What we can defend is that nothing published gets missed, not that nothing unpublished is known.
 
-Every figure is drawn from public municipal records or from the published
-statements of the parties named, current to 28 August. The Houston record is
-current to the 27th. Where something could only be sourced to secondary
-reporting we left it out rather than hedge it, and there are a couple of places
-where we say plainly that a market cannot be measured yet.
+Every figure is drawn from public municipal records or from the published statements of the parties named, current to 28 August. The Houston record is current to the 27th. Where something could only be sourced to secondary reporting we left it out rather than hedge it, and there are a couple of places where we say plainly that a market cannot be measured yet.
 
 Happy to walk through any single number on a call.
 
-I will have the full lifecycle demo ready for the next one: opportunity through
-to proposal, rather than the tour we gave you.
+I will have the full lifecycle demo ready for the next one: opportunity through to proposal, rather than the tour we gave you.
 
 Ian
 
@@ -98,34 +86,21 @@ JIM_SUBJECT = "Following up, and getting the right people in the room"
 
 JIM_BODY = """Dan,
 
-Thanks for making the time, and for being as open as you were about how MVE
-actually picks a structural engineer. That was the most useful hour we have had
-with anyone this year.
+Thanks for making the time, and for being as open as you were about how MVE actually picks a structural engineer. That was the most useful hour we have had with anyone this year.
 
 What I took away:
 
-You have a full plate for the next eighteen months to two years, mostly wood
-frame, with concrete coming back on the luxury condo side. We are comfortable
-in both: Hartford Boulevard in LA, affordable housing in San Diego, La Jolla.
+You have a full plate for the next eighteen months to two years, mostly wood frame, with concrete coming back on the luxury condo side. We are comfortable in both: Hartford Boulevard in LA, affordable housing in San Diego, La Jolla.
 
-You have not done mass timber yet. We are building a mass-timber roof in San
-Diego right now, and I would like to show you that one.
+You have not done mass timber yet. We are building a mass-timber roof in San Diego right now, and I would like to show you that one.
 
-And the offices are Californian but the work is national: Arizona, Nevada,
-Hawaii, Houston, Charlotte, Miami. We are registered in all of them. Ian has
-sent you a package that shows what we can see in each.
+And the offices are Californian but the work is national: Arizona, Nevada, Hawaii, Houston, Charlotte, Miami. We are registered in all of them. Ian has sent you a package that shows what we can see in each.
 
 Two things.
 
-First, you mentioned pulling Matt, Mark and Ken together for a follow-up next
-month. If you copy them on this, we will work around whatever date suits them.
-Ian will bring the full lifecycle demo rather than the walk-through we gave
-you.
+First, you mentioned pulling Matt, Mark and Ken together for a follow-up next month. If you copy them on this, we will work around whatever date suits them. Ian will bring the full lifecycle demo rather than the walk-through we gave you.
 
-Second, I am down your way periodically and I would like to make the next trip
-count. I will give you and Matt a week to ten days' notice so you can get the
-people who decide on structural into the office. I would like to come to
-Irvine, and meet Chase in San Diego on the same trip.
+Second, I am down your way periodically and I would like to make the next trip count. I will give you and Matt a week to ten days' notice so you can get the people who decide on structural into the office. I would like to come to Irvine, and meet Chase in San Diego on the same trip.
 
 Jim
 
