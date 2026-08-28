@@ -274,3 +274,63 @@ Its "Committed Development Entitlement" dataset (richest schema found anywhere) 
 project name and no design team**. And the city's own rezoning documents return **HTTP 403**.
 The Raleigh chain would work the moment those documents are reachable. A Charlotte figure
 today would be invented.
+
+## ⭐⭐⭐ WHAT REPLACED THE DEAD FEEDS — 27 August 2026
+
+The feeds did not die because the cities stopped building. **They migrated systems.** Every
+"dead feed" verdict in the audit was really an un-followed migration, and the successors are
+live. Three of them are the SAME PLATFORM.
+
+| Jurisdiction | Old feed died | Replaced by | Reachable? |
+|---|---|---|---|
+| **Clark County** (the Strip) | Feb 2021 | **Accela Citizen Access** `aca-prod.accela.com/CLARKCO` | ✔ HTTP 200 |
+| **Dallas** (MVE is hiring here) | Mar 2020 | **DallasNow** — Accela, live 5 May 2025, replaced POSSE + ProjectDox | ✔ HTTP 200 |
+| **Charlotte** | May 2022 | **Accela Citizen Access** `aca-prod.accela.com/CHARLOTTE` | ✔ HTTP 200 |
+| Honolulu | Jul 2025 | **HNL Build** — Clariti on Salesforce, by Speridian, live 4 Aug 2025 | untested |
+| Scottsdale | Jan 2026 | Tyler EnerGov **SPUR** | OAuth-gated |
+
+⭐⭐ **THREE OF SIX ARE ACCELA. One integration opens Clark County, Dallas and Charlotte.**
+- Clark County = **the Las Vegas Strip**: Bally's, the Riviera site, Durango, Silverado.
+- Dallas = the market MVE advertised two roles in on 21 Aug with no Texas office.
+- Charlotte = currently our weakest region.
+
+⭐ **The Accela API is a DOOR, not a wall.** `apis.accela.com/v4/agencies` returns
+`{"status":400,"message":"App ID or access token is required."}` — that is a **registration**,
+not a block. Accela runs a self-service developer program. **Next action is human: register an
+App ID.**
+
+⭐ **And a route around the Charlotte 403.** `charlottenc.gov` returns 403 to us, but
+`aca-prod.accela.com/CHARLOTTE/Default.aspx` returns **200**. The city website blocks us; the
+city's permitting platform does not. ⚠ ACA is ASP.NET WebForms (`__VIEWSTATE`), so it needs a
+session + postback handler, not a plain GET.
+
+### Corrections to the feed audit produced by this pass
+
+- ⛔ **"Clark County — no bulk feed" was WRONG.** `maps.clarkcountynv.gov/arcgis/rest/services/
+  CompPlanning/Accela_DocRef` holds **876,120 application records** — 12,895 in 2019, 14,337 in
+  2020, 1,302 in 2021, **and zero from 2022 onward**. Not "no feed": a **dead** feed, stopping
+  Feb 2021, exactly when the county moved to ACA.
+- ⭐ **Miami is LIVE and was never tested.** City of Miami `Building_Permits_Since_2014`
+  (`services1.arcgis.com/CvuPhqcTQpZPT9qY`) — **230,545 permits, current to 25 Aug 2026**.
+  ⚠ `CompanyName` is the **contractor** (Power Design, electrical subs), not an architect.
+- ⛔ **Dallas open data still has no successor dataset.** `e7gq-4sah` advertises an update of
+  5 Jun 2026 and is the *same* 126,840 rows ending March 2020 — a metadata touch, not data.
+  **The live Dallas record exists only inside Accela.**
+- ⛔ **Phoenix does not publish reachable plan sets.** Its PDD project search is a JS app with
+  no forms, no document links. So Arizona's design teams still rest on a trade listicle while
+  Raleigh's come from primary records — the reverse of what you would expect.
+- Houston's `Planning_and_Development` MapServer is zoning overlays only — no projects.
+
+### The honest capability map, by region Dan named
+
+| Region | Project pipeline | Design teams | Grade |
+|---|---|---|---|
+| **Raleigh** | live | ⭐⭐ **primary record** (plan-set copyright block) | **A** |
+| Arizona | ⭐ Phoenix live, 373 open site plans | ⚠ trade listicle only, annual | B |
+| Hawaii | ⭐ HCDA monthly PDF | ⚠ hand-researched, 3 towers | C+ |
+| Miami | ⭐ live, 230k permits | ⚠ trade press only | C |
+| Nevada | ✔ LV + Henderson live; ⛔ Strip dead since 2021 | ⛔ none (NVBEX paywalled) | D |
+| Houston | ⛔ aggregate only | ⛔ trade press only | D |
+| Charlotte | ⛔ dead 2022 | ⛔ 403 on city site | F → **D via ACA** |
+
+**Only ONE of seven is at Dodge standard today.** The gap is not analysis, it is access.
