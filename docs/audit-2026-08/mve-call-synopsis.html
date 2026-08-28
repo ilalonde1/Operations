@@ -1,0 +1,440 @@
+<title>MVE Re-Connect — Call Synopsis, 27 August 2026</title>
+<style>
+  :root {
+    --ground: #FBFAF9;
+    --surface: #FFFFFF;
+    --surface-2: #F4F2F0;
+    --ink: #1C2530;
+    --ink-soft: #55636F;
+    --ink-faint: #8A97A2;
+    --line: #E5E4E1;
+    --line-strong: #D3D2CE;
+    --slate: #3F5364;
+    --slate-deep: #2C3A47;
+    --accent: #FF5B35;
+    --accent-ink: #C6360F;
+    --good: #1E7D3A;   --good-bg: #E7F3EB;
+    --warn: #A9741A;   --warn-bg: #FBF1DE;
+    --crit: #C0392B;   --crit-bg: #FBE9E7;
+    --blue: #3E7CB1;   --blue-bg: #E8F0F7;
+    --shadow: 0 1px 2px rgba(28,37,48,.06), 0 8px 24px rgba(28,37,48,.05);
+    --radius: 10px;
+    --maxread: 44rem;
+    --sans: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+    --mono: "Cascadia Code", Consolas, "SF Mono", ui-monospace, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground: #13171C;
+      --surface: #1A2027;
+      --surface-2: #212A33;
+      --ink: #E9ECEF;
+      --ink-soft: #A6B2BC;
+      --ink-faint: #6E7C87;
+      --line: #29323B;
+      --line-strong: #38434E;
+      --slate: #7E97AC;
+      --slate-deep: #C4D3DF;
+      --accent: #FF7150;
+      --accent-ink: #FF9276;
+      --good: #6BD08A;   --good-bg: #16281C;
+      --warn: #E3B25A;   --warn-bg: #2C2413;
+      --crit: #F0938A;   --crit-bg: #2E1815;
+      --blue: #7FB1D9;   --blue-bg: #14212C;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="light"] {
+    --ground: #FBFAF9; --surface: #FFFFFF; --surface-2: #F4F2F0;
+    --ink: #1C2530; --ink-soft: #55636F; --ink-faint: #8A97A2;
+    --line: #E5E4E1; --line-strong: #D3D2CE; --slate: #3F5364; --slate-deep: #2C3A47;
+    --accent: #FF5B35; --accent-ink: #C6360F;
+    --good: #1E7D3A; --good-bg: #E7F3EB; --warn: #A9741A; --warn-bg: #FBF1DE;
+    --crit: #C0392B; --crit-bg: #FBE9E7; --blue: #3E7CB1; --blue-bg: #E8F0F7;
+    --shadow: 0 1px 2px rgba(28,37,48,.06), 0 8px 24px rgba(28,37,48,.05);
+  }
+  :root[data-theme="dark"] {
+    --ground: #13171C; --surface: #1A2027; --surface-2: #212A33;
+    --ink: #E9ECEF; --ink-soft: #A6B2BC; --ink-faint: #6E7C87;
+    --line: #29323B; --line-strong: #38434E; --slate: #7E97AC; --slate-deep: #C4D3DF;
+    --accent: #FF7150; --accent-ink: #FF9276;
+    --good: #6BD08A; --good-bg: #16281C; --warn: #E3B25A; --warn-bg: #2C2413;
+    --crit: #F0938A; --crit-bg: #2E1815; --blue: #7FB1D9; --blue-bg: #14212C;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  body {
+    margin: 0; background: var(--ground); color: var(--ink);
+    font-family: var(--sans); font-size: 17px; line-height: 1.68;
+    -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+  }
+
+  /* ---------- Hero ---------- */
+  .hero {
+    background:
+      radial-gradient(120% 140% at 88% -20%, rgba(255,91,53,.20), transparent 55%),
+      linear-gradient(180deg, var(--slate-deep), var(--slate));
+    color: #EAF0F5; padding: clamp(2.4rem, 6vw, 4.2rem) 1.5rem clamp(2rem, 5vw, 3.4rem);
+    border-bottom: 3px solid var(--accent);
+  }
+  .hero__wrap { max-width: 62rem; margin: 0 auto; }
+  .hero__eyebrow {
+    font-family: var(--mono); font-size: .72rem; letter-spacing: .22em;
+    text-transform: uppercase; color: #FFB59F; margin: 0 0 .9rem;
+  }
+  .hero h1 {
+    font-size: clamp(2rem, 5.2vw, 3.35rem); line-height: 1.05; margin: 0 0 .8rem;
+    font-weight: 700; letter-spacing: -.02em; text-wrap: balance; color: #FFFFFF;
+  }
+  .hero__lede {
+    font-size: clamp(1.05rem, 2.2vw, 1.3rem); max-width: 34rem; margin: 0;
+    color: #CBD8E2; line-height: 1.5;
+  }
+  .hero__meta {
+    margin-top: 1.6rem; display: flex; flex-wrap: wrap; gap: .5rem .7rem;
+    font-family: var(--mono); font-size: .74rem; color: #9FB3C4;
+  }
+  .hero__meta span { background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.12);
+    padding: .28rem .6rem; border-radius: 999px; }
+
+  /* ---------- Shell ---------- */
+  .shell { max-width: 62rem; margin: 0 auto; padding: 0 1.5rem;
+    display: grid; grid-template-columns: 15rem minmax(0, 1fr); gap: 2.6rem; }
+  @media (max-width: 940px) { .shell { grid-template-columns: 1fr; gap: 0; } }
+
+  /* ---------- Table of contents ---------- */
+  .toc { position: sticky; top: 0; align-self: start; max-height: 100vh; overflow-y: auto;
+    padding: 2.2rem 0; }
+  @media (max-width: 940px) { .toc { position: static; max-height: none; padding: 1.4rem 0 0; } }
+  .toc__title { font-family: var(--mono); font-size: .68rem; letter-spacing: .2em;
+    text-transform: uppercase; color: var(--ink-faint); margin: 0 0 .8rem; }
+  .toc ol { list-style: none; margin: 0; padding: 0; counter-reset: toc; }
+  .toc li { margin: 0; }
+  .toc a { display: flex; gap: .6rem; align-items: baseline; text-decoration: none;
+    color: var(--ink-soft); padding: .32rem 0; font-size: .93rem; line-height: 1.3;
+    border-left: 2px solid transparent; padding-left: .7rem; transition: color .15s, border-color .15s; }
+  .toc a::before { counter-increment: toc; content: counter(toc, decimal-leading-zero);
+    font-family: var(--mono); font-size: .7rem; color: var(--ink-faint); }
+  .toc a:hover { color: var(--accent-ink); }
+  .toc a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 3px; }
+
+  /* ---------- Content ---------- */
+  main { padding: 2.2rem 0 5rem; min-width: 0; }
+  section { scroll-margin-top: 1.2rem; padding: 2.2rem 0; border-top: 1px solid var(--line); }
+  section:first-of-type { border-top: 0; padding-top: 1.4rem; }
+  .kicker { font-family: var(--mono); font-size: .72rem; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--accent-ink); margin: 0 0 .5rem; font-weight: 600; }
+  h2 { font-size: clamp(1.45rem, 3.4vw, 1.95rem); line-height: 1.15; margin: 0 0 .9rem;
+    letter-spacing: -.015em; font-weight: 700; text-wrap: balance; }
+  h3 { font-size: 1.14rem; margin: 1.8rem 0 .5rem; font-weight: 650; letter-spacing: -.01em; }
+  p { max-width: var(--maxread); margin: 0 0 1rem; }
+  .lede { font-size: 1.12rem; color: var(--ink-soft); max-width: var(--maxread); }
+  strong { font-weight: 650; color: var(--ink); }
+  a.inline { color: var(--accent-ink); text-decoration: underline; text-underline-offset: 2px;
+    text-decoration-thickness: 1px; }
+
+  ul.plain { max-width: var(--maxread); margin: 0 0 1rem; padding-left: 0; list-style: none; }
+  ul.plain li { position: relative; padding-left: 1.5rem; margin: 0 0 .55rem; }
+  ul.plain li::before { content: ""; position: absolute; left: .25rem; top: .62em;
+    width: .42rem; height: .42rem; border-radius: 2px; background: var(--accent); transform: rotate(45deg); }
+
+  /* keycap + click chips */
+  kbd { font-family: var(--mono); font-size: .82em; background: var(--surface);
+    border: 1px solid var(--line-strong); border-bottom-width: 2px; border-radius: 6px;
+    padding: .08em .5em; color: var(--ink); box-shadow: 0 1px 0 rgba(0,0,0,.04); white-space: nowrap; }
+  .btn { font-family: var(--mono); font-size: .82em; background: var(--slate); color: #fff;
+    border-radius: 6px; padding: .12em .55em; white-space: nowrap; }
+  :root[data-theme="dark"] .btn, .btn { }
+  @media (prefers-color-scheme: dark) { .btn { color: #0f141a; background: var(--slate); } }
+  :root[data-theme="dark"] .btn { color: #0f141a; }
+  :root[data-theme="light"] .btn { color: #fff; }
+  .path { font-family: var(--mono); font-size: .84em; color: var(--ink-soft); white-space: nowrap; }
+  .path b { color: var(--accent-ink); font-weight: 600; }
+
+  /* status pills that mirror the app */
+  .pill { display: inline-flex; align-items: center; gap: .35em; font-family: var(--mono);
+    font-size: .72rem; font-weight: 600; padding: .18em .6em; border-radius: 999px; color: #fff;
+    letter-spacing: .01em; vertical-align: middle; }
+  .pill--won { background: #228B22; } .pill--sub { background: #E5A800; }
+  .pill--draft { background: #609BD1; } .pill--lost { background: #808080; }
+  .pill--fresh { background: #228B22; } .pill--watch { background: #E5A800; } .pill--cold { background: #C11E1E; }
+  .pill--live { background: var(--slate); }
+
+  /* callout boxes */
+  .box { border-radius: var(--radius); padding: 1.05rem 1.15rem; margin: 1.2rem 0;
+    max-width: var(--maxread); border: 1px solid var(--line); background: var(--surface);
+    box-shadow: var(--shadow); }
+  .box__label { font-family: var(--mono); font-size: .68rem; letter-spacing: .14em;
+    text-transform: uppercase; margin: 0 0 .5rem; font-weight: 700; display: flex; align-items: center; gap: .45rem; }
+  .box p, .box ul.plain { margin-bottom: .5rem; }
+  .box p:last-child, .box ul.plain:last-child { margin-bottom: 0; }
+  .box--screen { border-left: 3px solid var(--slate); background: var(--surface-2); }
+  .box--screen .box__label { color: var(--slate); }
+  .box--tip { border-left: 3px solid var(--good); background: var(--good-bg); }
+  .box--tip .box__label { color: var(--good); }
+  .box--dont { border-left: 3px solid var(--crit); background: var(--crit-bg); }
+  .box--dont .box__label { color: var(--crit); }
+  .box--auto { border-left: 3px solid var(--accent); }
+  .box--auto .box__label { color: var(--accent-ink); }
+
+  /* lifecycle sequence */
+  .flow { display: grid; grid-template-columns: repeat(3, 1fr); gap: .8rem; margin: 1.4rem 0 .5rem;
+    max-width: var(--maxread); }
+  @media (max-width: 620px) { .flow { grid-template-columns: 1fr; } }
+  .flow__step { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 1rem; box-shadow: var(--shadow); }
+  .flow__n { font-family: var(--mono); font-size: .72rem; color: #fff; background: var(--accent);
+    width: 1.5rem; height: 1.5rem; border-radius: 6px; display: grid; place-items: center; font-weight: 700; }
+  .flow__step h4 { margin: .6rem 0 .3rem; font-size: 1rem; }
+  .flow__step p { font-size: .9rem; color: var(--ink-soft); margin: 0; }
+
+  /* map grid */
+  .map { display: grid; grid-template-columns: repeat(2, 1fr); gap: .55rem .9rem;
+    max-width: var(--maxread); margin: 1rem 0; }
+  @media (max-width: 620px) { .map { grid-template-columns: 1fr; } }
+  .map div { display: flex; gap: .6rem; align-items: baseline; padding: .5rem .2rem;
+    border-bottom: 1px solid var(--line); }
+  .map dt { font-family: var(--mono); font-size: .82rem; color: var(--accent-ink);
+    font-weight: 600; min-width: 6.6rem; }
+  .map dd { margin: 0; font-size: .92rem; color: var(--ink-soft); }
+
+  /* cheat table */
+  .table-wrap { max-width: var(--maxread); overflow-x: auto; margin: 1rem 0; }
+  table { border-collapse: collapse; width: 100%; font-size: .93rem; }
+  th, td { text-align: left; padding: .6rem .7rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-family: var(--mono); font-size: .68rem; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--ink-faint); font-weight: 600; }
+  td:first-child { font-weight: 600; white-space: nowrap; }
+
+  .chip-row { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1rem 0; }
+  footer { border-top: 1px solid var(--line); padding: 1.8rem 0 3rem; color: var(--ink-faint);
+    font-size: .86rem; max-width: var(--maxread); }
+  footer .path { font-size: .8em; }
+  .fade { opacity: 0; transform: translateY(8px); animation: rise .6s ease forwards; }
+  @keyframes rise { to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .fade { opacity: 1; transform: none; animation: none; } }
+
+  /* ---------- Print / PDF ---------- */
+  @page { size: Letter; margin: 15mm 16mm 16mm; }
+  @media print {
+    :root {
+      /* Force the light palette regardless of viewer theme. */
+      --ground:#FBFAF9; --surface:#FFFFFF; --surface-2:#F4F2F0;
+      --ink:#1C2530; --ink-soft:#55636F; --ink-faint:#8A97A2;
+      --line:#E5E4E1; --line-strong:#D3D2CE; --slate:#3F5364; --slate-deep:#2C3A47;
+      --accent:#FF5B35; --accent-ink:#C6360F;
+      --good:#1E7D3A; --good-bg:#E7F3EB; --warn:#A9741A; --warn-bg:#FBF1DE;
+      --crit:#C0392B; --crit-bg:#FBE9E7; --blue:#3E7CB1; --blue-bg:#E8F0F7;
+      --shadow: none;
+    }
+    html { font-size: 15px; }
+    body { background:#fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; color-scheme: light; }
+    .fade { opacity:1 !important; transform:none !important; animation:none !important; }
+
+    .hero { padding: 20mm 16mm 12mm; border-bottom-width: 2px; }
+    .hero h1 { font-size: 30pt; }
+    .hero__lede { font-size: 12.5pt; color:#D4E0EA; }
+    .hero__meta { display:none; }
+
+    /* Single reading column; contents becomes a printed page-1 index. */
+    .shell { display:block; max-width: none; padding: 0 16mm; }
+    .toc { position: static; max-height: none; padding: 8mm 0 2mm; break-after: page; }
+    .toc a { color: var(--ink-soft) !important; border-left-color: var(--line-strong); }
+    main { padding: 6mm 0 0; }
+    section:first-of-type { padding-top: 4mm; }
+
+    /* Keep blocks whole across page breaks. */
+    h2, h3, h4 { break-after: avoid; }
+    section { break-inside: auto; }
+    .box, .flow, .flow__step, .table-wrap, table, .chip-row, .map { break-inside: avoid; }
+    tr, li { break-inside: avoid; }
+    a.inline, .toc a { text-decoration: none; }
+    footer { break-inside: avoid; }
+  }
+</style>
+<style>
+  /* Page-specific print density only — no brand changes. This is a briefing
+     document read in one sitting, not a handbook, so it prints tighter than
+     the reference and keeps the hero key-figures the reference hides. */
+  @media print {
+    html { font-size: 12.4px; }
+    /* The reference sets body{font-size:17px} in absolute px, so its own
+       html{font-size:15px} print rule never reaches the body text. */
+    body { font-size: 10.4pt; line-height: 1.48; }
+    .hero { padding: 11mm 14mm 8mm; }
+    .hero h1 { font-size: 21pt; }
+    .hero__lede { font-size: 10.5pt; }
+    .hero__meta { display: flex; flex-wrap: wrap; gap: .5rem 1.4rem; font-size: 8.4pt; }
+    .shell { padding: 0 14mm; }
+    main { padding: 4mm 0 0; }
+    section { margin-bottom: 0; }
+    h2 { margin-top: 1.1rem; }
+    .box { padding: .7rem .9rem; margin: .7rem 0; }
+    .table-wrap { margin: .6rem 0; }
+    table { font-size: 8.6pt; }
+    th { font-size: 7.8pt; }
+    .flow__step p { font-size: 8.8pt; }
+    /* The reference keeps h2 with what follows but lets the kicker above it
+       orphan at a page foot. Bind the kicker to its heading. */
+    .kicker { break-after: avoid; }
+    footer { margin-top: 1rem; break-before: avoid; }
+  }
+</style>
+
+<header class="hero">
+  <div class="hero__wrap fade">
+    <p class="hero__eyebrow">KOR Structural &middot; Business Development &middot; Internal record</p>
+    <h1>MVE Re-Connect &mdash; what was said, and what it changes</h1>
+    <p class="hero__lede">Teams call, 27 August 2026, 1h 6m. Jim DesRoches, Ian Lalonde, Islam Shabana &mdash; and Dan Gura alone from MVE. Synopsis from the full transcript. Names silently corrected against MVE&rsquo;s leadership page where the transcript garbled them.</p>
+    <div class="hero__meta">
+      <span>Outcome: second call, with Matt, Mark and Ken</span>
+      <span>~100 staff, flat four years</span>
+      <span>Santa Clara Park is not theirs</span>
+    </div>
+  </div>
+</header>
+
+<div class="shell">
+  <main>
+
+    <section id="oneline">
+      <p class="kicker">In one line</p>
+      <h2>It worked, and it went somewhere nobody planned</h2>
+      <p>The relationship objective landed: Dan will convene <strong>Matt McLarand, Mark Kim and Ken Yahampath</strong> for a follow-up next month, and will coordinate the people who choose structural engineers for Jim&rsquo;s next San Diego trip. <strong>But the call was carried by the software, not by the pipeline.</strong> Dan drove that himself, and Jim had to say three separate times that KOR was not there to sell it.</p>
+      <div class="box box--tip">
+        <p class="box__label">▲ The single most valuable exchange</p>
+        <p>Dan, unprompted, explained exactly how MVE picks a structural engineer: <em>&ldquo;We get a project and we go, well, who&rsquo;s best suited structural, if the developer is not married to that engineer &mdash; and who does our team like to work with&hellip; the architect will get the project and then as the project is being designed and we&rsquo;re pulling in consultants, <strong>oftentimes we are influential in determining which trades come aboard</strong>.&rdquo;</em></p>
+        <p>And why KOR won work there before: <em>&ldquo;we gravitated to you because you were aggressive and what our clients wanted, you were aligned with, and you were able to work with us to get a more aggressive engineered project that <strong>maybe a local Southern California structural engineer couldn&rsquo;t do</strong>.&rdquo;</em> That is the positioning, in the client&rsquo;s own words.</p>
+      </div>
+    </section>
+
+    <section id="who">
+      <p class="kicker">The room</p>
+      <h2>Who actually came</h2>
+      <p><strong>Dan Gura, on his own.</strong> Ken Yahampath was on the invitation and did not attend; Matt McLarand was copied and did not attend. The prep sheet allowed for that and it cost nothing &mdash; but it means <strong>the technical conversation the email thread was set up for never happened.</strong> Dan said so himself: <em>&ldquo;I can&rsquo;t really do the evaluation&hellip; I don&rsquo;t utilise this day-to-day.&rdquo;</em></p>
+      <p>Dan on Yahampath, unprompted and matching the stack dossier almost word for word: <em>&ldquo;we hired a gentleman maybe a year ago, a bright young guy that&rsquo;s kind of helping us, Ian, with technology&hellip; his name is Ken. He&rsquo;s pretty savvy in terms of some of the software he&rsquo;s implementing.&rdquo;</em> Later, more usefully: <em>&ldquo;<strong>he&rsquo;s kind of our Ian of our company</strong>.&rdquo;</em></p>
+      <p>Jim introduced Islam as a highly credentialed structural engineer now running KOR&rsquo;s new Edmonton office, and Ian as IT plus business development.</p>
+    </section>
+
+    <section id="state">
+      <p class="kicker">Intelligence</p>
+      <h2>What Dan told us about MVE &mdash; including where it corrects our brief</h2>
+      <div class="box box--dont">
+        <p class="box__label">✕ The headcount claim in the intel brief is wrong</p>
+        <p>The brief reported <strong>~120 staff and +7.4% growth over six months, accelerating</strong>, from a commercial database. Dan&rsquo;s own words: <em>&ldquo;We&rsquo;ve managed to keep <strong>around 100 staff members the last four years</strong>&hellip; we haven&rsquo;t really tried to gain staff a whole lot since COVID.&rdquo;</em></p>
+        <p><strong>Flat for four years, not accelerating.</strong> Delete the growth curve; it was a modelled figure and the principal contradicts it. What is true is that they are <em>hiring now</em> &mdash; and Dan explained why: <em>&ldquo;we&rsquo;re very busy trying to hire because we have projects all over.&rdquo;</em></p>
+      </div>
+      <ul class="plain">
+        <li><strong>&ldquo;At least for the next 18 months, maybe two years, we have a full plate.&rdquo;</strong> And later, sharpening it: <em>&ldquo;we&rsquo;re busy in big jobs&hellip; not just a lot of little jobs, but we have big jobs, which is more efficient for us.&rdquo;</em></li>
+        <li><strong>The work is mostly wood frame</strong>, with concrete returning: <em>&ldquo;the majority are wood frame. But we&rsquo;re getting more, there&rsquo;s the possibility of more concrete work, because the luxury condo market is what some people are looking at.&rdquo;</em> Dan asked directly whether KOR does wood frame. Jim&rsquo;s answer &mdash; Hartford Boulevard in LA, affordable housing in San Diego, La Jolla &mdash; was the right one.</li>
+        <li>⭐ <strong>They are working far outside California, which explains the Dallas adverts.</strong> Dan listed live or near-live work in <strong>Arizona, Nevada (&ldquo;a massive project potentially&rdquo;), Hawaii, Houston, Charlotte and Miami.</strong> Jim: <em>&ldquo;we&rsquo;re registered in all those places, so keep us in mind.&rdquo;</em> ⚠ The brief&rsquo;s framing that MVE has &ldquo;no US office outside California&rdquo; is still true and now much less interesting &mdash; the offices are Californian, the projects are national.</li>
+        <li><strong>San Diego: &ldquo;close to 10 people there now.&rdquo;</strong> And the nuance the brief predicted: <em>&ldquo;We&rsquo;re very busy in San Diego. <strong>We&rsquo;re not necessarily busy with San Diego projects</strong>&hellip;&rdquo;</em> Chase Rong&eacute; was brought aboard <strong>a year and a half ago</strong>.</li>
+        <li><strong>Guadalajara confirmed</strong> when Jim raised it. Jim offered a Mexico-registered KOR associate for work there.</li>
+        <li><strong>Dan has been at MVE 13 years.</strong> He is an owner of the business, sees financials at a high level, and describes business development as &ldquo;my lane&rdquo; &mdash; explicitly <em>not</em> project management or trade selection.</li>
+        <li><strong>Mass timber: they have done none of it.</strong> <em>&ldquo;I think Gensler&rsquo;s done stuff. There&rsquo;s some groups that have done it. We haven&rsquo;t done any of it yet.&rdquo;</em> KOR is building a mass-timber roof in San Diego now &mdash; an open door.</li>
+      </ul>
+    </section>
+
+    <section id="pipeline">
+      <p class="kicker">The list, tested live</p>
+      <h2>Jim read the pipeline out and Dan marked it</h2>
+      <p>Jim put the brief&rsquo;s project list to Dan directly &mdash; <em>&ldquo;I&rsquo;m looking at the AI generated list of jobs, and I know that it&rsquo;s probably not all correct&rdquo;</em> &mdash; which is exactly the right way to use it. The result:</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Project</th><th>Brief said</th><th>Dan said</th><th>Verdict</th></tr></thead>
+          <tbody>
+            <tr><td><strong>5350 Wilshire</strong></td><td>Onni, 419 u, 46 st, Draft EIR 30 July, no engineer named &mdash; ranked the warmest lead</td><td><strong>Raised it himself, unprompted</strong>, as his example of a project the system should catch: <em>&ldquo;5350 Wilshire, an Onni project&hellip; it cleared EIR recently, like in the last month.&rdquo;</em> Cautioned <em>&ldquo;it might be too early&rdquo;</em>; in the pipeline a couple of years muscling through EIR</td><td>⭐ <strong>Confirmed, and the &ldquo;Ani&rdquo;→Onni reading was right</strong></td></tr>
+            <tr><td><strong>Legacy Park</strong></td><td>Mesa, Arizona &mdash; 2,500 u + 750 keys, entitlement ahead</td><td><em>&ldquo;Legacy Park is correct&hellip; in Utah.&rdquo;</em> Confirmed it is moving ahead</td><td>✓ Real and live. ⚠ <strong>He said Utah, the brief says Mesa AZ</strong> &mdash; resolve before quoting a location</td></tr>
+            <tr><td><strong>Santa Clara Park</strong></td><td><strong>Ranked #2 open seat</strong> &mdash; 1,792 units for The Irvine Company</td><td><em>&ldquo;Santa Clara Park &mdash; AO have that&hellip; Architects Orange, they&rsquo;re now called AO.&rdquo;</em> Jim: <em>&ldquo;so you guys don&rsquo;t have that&rdquo;</em></td><td>⛔ <strong>NOT MVE&rsquo;s. Remove it.</strong> The trade-press attribution was wrong or is out of date</td></tr>
+            <tr><td><strong>Discovery Park</strong>, <strong>6201 Residences</strong></td><td>Discovery Park already corrected to BDE; 6201 listed as shortest fuse</td><td>Named in passing, no verdict captured</td><td>Unresolved &mdash; ask next time</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p><strong>That is the document doing its job.</strong> One lead confirmed by the client before we could raise it, one corrected out, one flagged for a location check &mdash; in about ninety seconds of conversation.</p>
+      <div class="box box--tip">
+        <p class="box__label">▲ Onni &mdash; the relationship position is now clear, and it is not simple</p>
+        <p>Jim: <em>&ldquo;I&rsquo;m interested in this Onni project because it&rsquo;s not actually been on our radar until we started looking into what you guys had on your list&hellip; they haven&rsquo;t reached out to us, but doesn&rsquo;t mean I can&rsquo;t reach out to them.&rdquo;</em> And the honest part: <em>&ldquo;we have put in a number of proposals to Onni in the last couple of years on various jobs, but <strong>they&rsquo;ve kind of defaulted to our competition there in LA</strong>. We&rsquo;d like to break that trend.&rdquo;</em></p>
+        <p>So KOR is a repeat unsuccessful bidder to Onni in LA, and <strong>MVE has just succeeded with them where KOR has not</strong>. Dan confirmed he had been chasing Onni when Jim last spoke to him. The play is to go in <em>with</em> MVE rather than around them &mdash; which is precisely what Jim said: <em>&ldquo;maybe with you guys involved, our relationship might give us more of a leg up.&rdquo;</em></p>
+      </div>
+    </section>
+
+    <section id="unplanned">
+      <p class="kicker">What was not planned</p>
+      <h2>Three things happened that the prep had ruled out</h2>
+      <p>None of these went badly. All three are worth recording, because the prep call had explicitly decided against each.</p>
+      <ul class="plain">
+        <li><strong>Both dossiers were emailed to Dan during the call.</strong> The ~50-page company profile and the 12-page intel brief. The prep position was that the dossier was the <em>one possible</em> leave-behind; in the event Jim sent both, live, with the caveat <em>&ldquo;take it with a grain of salt&hellip; it gets some information wrong and we recognise that, but it gets a lot right.&rdquo;</em> ⚠ <strong>The intel brief contains the ranked open-seat table and the do-not-raise list.</strong></li>
+        <li><strong>Jim read the &ldquo;never say Glotman Simpson&rdquo; line aloud</strong>, as an illustration of how candid the tool is. Dan&rsquo;s reaction was relaxed &mdash; he moved straight to <em>&ldquo;this is something you can talk to Ken about.&rdquo;</em> No damage, but it is now known to MVE that KOR&rsquo;s system holds instructions about what not to say to them.</li>
+        <li><strong>The software was shown in depth, including the BD module.</strong> The prep said to omit it entirely and to keep off the workspace landing screen. In the event Ian showed the dashboard, PM capacity and risk, staff utilization, the opportunity pipeline and <strong>Competitor Watch with a named rival engineer on screen</strong>. Financials were deliberately held back &mdash; <em>&ldquo;I&rsquo;m not sure I want to show you our financials.&rdquo;</em></li>
+      </ul>
+      <p><strong>Dan asked the ownership question directly:</strong> <em>&ldquo;Is it a system that&rsquo;s proprietary to you guys?&rdquo;</em> and later floated it replacing HubSpot. Omar&rsquo;s concern from the prep call was not idle &mdash; it simply landed on a friendly audience. <strong>It still needs a deliberate KOR position before the next firm.</strong></p>
+    </section>
+
+    <section id="theirstack">
+      <p class="kicker">Their side</p>
+      <h2>What we learned about how MVE runs BD</h2>
+      <ul class="plain">
+        <li><strong>CoStar is Dan&rsquo;s toolbox</strong>, US-wide, and he got it as a condition of joining thirteen years ago. He and his BD staff use it to pull submitted, entitled and under-construction projects by state with developer contacts, then <em>&ldquo;download in Excel&hellip; and resort it to the way that I like it.&rdquo;</em> His own verdict: <em>&ldquo;that&rsquo;s probably an antiquated, 10 or 15 year old dated way of doing it&hellip; you wouldn&rsquo;t believe how expensive it is.&rdquo;</em></li>
+        <li><strong>HubSpot was adopted about eighteen months ago</strong> as the pipeline layer.</li>
+        <li><strong>His honest assessment of MVE&rsquo;s BD:</strong> <em>&ldquo;I wouldn&rsquo;t say our business development is automated. It&rsquo;s not. We use a software programme and then we do outreach, but it&rsquo;s not a 2026 latest-and-greatest programme&hellip; certainly something that I can imagine could get improved.&rdquo;</em></li>
+        <li><strong>The two things he wants</strong>, in his words: automated lead generation (<em>&ldquo;I want to learn more about this&rdquo;</em>), and a managed flow from opportunity through to close.</li>
+        <li><strong>Mosaic was raised by Ian and confirmed by Dan.</strong> Ian described it accurately as <em>&ldquo;a pretty narrow add-on&hellip; really focused on that capacity stuff&rdquo;</em> sitting on top of Deltek, and Dan agreed. <strong>The stack dossier held up under contact.</strong></li>
+      </ul>
+    </section>
+
+    <section id="actions">
+      <p class="kicker">What was committed</p>
+      <h2>Action items</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Owner</th><th>Commitment</th><th>Source</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Ian</strong></td><td><strong>Send Dan a package</strong> &mdash; a sample dossier plus the search he asked for: everything submitted in <strong>Arizona</strong>, of the kind he runs in CoStar. <em>&ldquo;I&rsquo;m gonna fire you a package of some of the stuff you asked for.&rdquo;</em></td><td>59:54</td></tr>
+            <tr><td><strong>Jim</strong></td><td><strong>Send Dan an email</strong> so Dan can copy in <strong>Ken, Mark and Matt</strong> and set a second call <strong>next month</strong>.</td><td>1:00:05</td></tr>
+            <tr><td><strong>Jim</strong></td><td>Give <strong>a week to ten days&rsquo; notice</strong> before the next San Diego trip, to Matt and Dan. Dan will <strong>coordinate the people who decide on structural engineers</strong> to be in the office. Visit Irvine head office; meet Chase in San Diego.</td><td>59:46 / 1:00:23</td></tr>
+            <tr><td><strong>Ian</strong></td><td>Prepare a <strong>full-lifecycle demo</strong> for the next call &mdash; opportunity through to proposal.</td><td>45:58</td></tr>
+            <tr><td><strong>Dan</strong></td><td>Talk to Matt, convene the follow-up.</td><td>59:19</td></tr>
+            <tr><td><strong>KOR, internal</strong></td><td>Decide what KOR does commercially with the suite. Jim: <em>&ldquo;we&rsquo;ll have to see what we do with all of this going forward. We probably should talk about that.&rdquo;</em></td><td>1:05:39</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>⚠ <strong>Two names to have ready for the follow-up.</strong> Dan twice singled out <strong>Mark Kim</strong> as <em>&ldquo;influential on selection&rdquo;</em> &mdash; not Pieter Berger, who the intel brief nominated. When Jim listed who he knows, Dan gave the full decision group: <strong>Mark Kim, Luis Arambula, Pieter Berger, Sherwin Pineda, Paul Kearney</strong> (<em>&ldquo;very active in San Diego&rdquo;</em>), <strong>Chase Rong&eacute;, Luis Estrada, Raymond Albanesi.</strong> Jim has history with most of them.</p>
+    </section>
+
+    <section id="scorecard">
+      <p class="kicker">Honest scorecard</p>
+      <h2>How the intel held up</h2>
+      <div class="box box--tip">
+        <p class="box__label">▲ Held under contact</p>
+        <ul class="plain">
+          <li><strong>Ken Yahampath</strong> &mdash; Dan described him almost exactly as the dossier did, down to &ldquo;our Ian.&rdquo;</li>
+          <li><strong>Onni / 5350 Wilshire</strong> &mdash; the warmest-lead call was right, and Dan raised it before we could.</li>
+          <li><strong>The stack</strong> &mdash; Deltek, Newforma, Mosaic and HubSpot all confirmed in conversation.</li>
+          <li><strong>Shared decision-making</strong>, and the decision group named almost exactly as listed.</li>
+          <li><strong>San Diego at ~10 people</strong>, and busy but not with San Diego projects.</li>
+          <li><strong>Legacy Park</strong> real and moving; <strong>Guadalajara</strong> confirmed.</li>
+        </ul>
+      </div>
+      <div class="box box--dont">
+        <p class="box__label">✕ Broke</p>
+        <ul class="plain">
+          <li>⛔ <strong>Santa Clara Park is Architects Orange&rsquo;s, not MVE&rsquo;s</strong> &mdash; and it was ranked the #2 open seat.</li>
+          <li>⛔ <strong>The headcount growth curve</strong> &mdash; ~100 flat for four years, not ~120 and accelerating.</li>
+          <li>⚠ <strong>Legacy Park location</strong> &mdash; Dan said Utah, the brief says Mesa, Arizona.</li>
+          <li>⚠ <strong>Pieter Berger</strong> was nominated as the structural-selection voice; Dan named <strong>Mark Kim</strong>.</li>
+          <li>⚠ <strong>Dallas</strong> never came up &mdash; and Dan&rsquo;s national project list is the better version of that story anyway.</li>
+        </ul>
+      </div>
+      <p><strong>The lesson worth keeping:</strong> the two failures were both <em>modelled</em> figures and <em>trade-press</em> attributions &mdash; a database headcount curve and a magazine&rsquo;s architect credit. Everything sourced from a filing, a city record or the firm&rsquo;s own site survived contact. That is a usable rule for the next dossier.</p>
+    </section>
+
+    <footer>
+      <p>KOR Structural &mdash; internal BD record. Synopsis of the MVE Re-Connect Teams call, 27 August 2026, 10:01, 1h 6m 43s. Prepared for Ian Lalonde. <strong>Not for external distribution.</strong></p>
+      <p class="path">Source: the meeting transcript (<code>KOR Structural MVE Re-connect.docx</code>, 495 turns) and recording. Speaker names corrected against MVE&rsquo;s leadership page where the transcript garbled them.</p>
+    </footer>
+
+  </main>
+</div>
