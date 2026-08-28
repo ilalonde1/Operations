@@ -1,0 +1,435 @@
+<title>CoStar Gap and Regional Pipeline — 27 August 2026</title>
+<style>
+  :root {
+    --ground: #FBFAF9;
+    --surface: #FFFFFF;
+    --surface-2: #F4F2F0;
+    --ink: #1C2530;
+    --ink-soft: #55636F;
+    --ink-faint: #8A97A2;
+    --line: #E5E4E1;
+    --line-strong: #D3D2CE;
+    --slate: #3F5364;
+    --slate-deep: #2C3A47;
+    --accent: #FF5B35;
+    --accent-ink: #C6360F;
+    --good: #1E7D3A;   --good-bg: #E7F3EB;
+    --warn: #A9741A;   --warn-bg: #FBF1DE;
+    --crit: #C0392B;   --crit-bg: #FBE9E7;
+    --blue: #3E7CB1;   --blue-bg: #E8F0F7;
+    --shadow: 0 1px 2px rgba(28,37,48,.06), 0 8px 24px rgba(28,37,48,.05);
+    --radius: 10px;
+    --maxread: 44rem;
+    --sans: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+    --mono: "Cascadia Code", Consolas, "SF Mono", ui-monospace, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground: #13171C;
+      --surface: #1A2027;
+      --surface-2: #212A33;
+      --ink: #E9ECEF;
+      --ink-soft: #A6B2BC;
+      --ink-faint: #6E7C87;
+      --line: #29323B;
+      --line-strong: #38434E;
+      --slate: #7E97AC;
+      --slate-deep: #C4D3DF;
+      --accent: #FF7150;
+      --accent-ink: #FF9276;
+      --good: #6BD08A;   --good-bg: #16281C;
+      --warn: #E3B25A;   --warn-bg: #2C2413;
+      --crit: #F0938A;   --crit-bg: #2E1815;
+      --blue: #7FB1D9;   --blue-bg: #14212C;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="light"] {
+    --ground: #FBFAF9; --surface: #FFFFFF; --surface-2: #F4F2F0;
+    --ink: #1C2530; --ink-soft: #55636F; --ink-faint: #8A97A2;
+    --line: #E5E4E1; --line-strong: #D3D2CE; --slate: #3F5364; --slate-deep: #2C3A47;
+    --accent: #FF5B35; --accent-ink: #C6360F;
+    --good: #1E7D3A; --good-bg: #E7F3EB; --warn: #A9741A; --warn-bg: #FBF1DE;
+    --crit: #C0392B; --crit-bg: #FBE9E7; --blue: #3E7CB1; --blue-bg: #E8F0F7;
+    --shadow: 0 1px 2px rgba(28,37,48,.06), 0 8px 24px rgba(28,37,48,.05);
+  }
+  :root[data-theme="dark"] {
+    --ground: #13171C; --surface: #1A2027; --surface-2: #212A33;
+    --ink: #E9ECEF; --ink-soft: #A6B2BC; --ink-faint: #6E7C87;
+    --line: #29323B; --line-strong: #38434E; --slate: #7E97AC; --slate-deep: #C4D3DF;
+    --accent: #FF7150; --accent-ink: #FF9276;
+    --good: #6BD08A; --good-bg: #16281C; --warn: #E3B25A; --warn-bg: #2C2413;
+    --crit: #F0938A; --crit-bg: #2E1815; --blue: #7FB1D9; --blue-bg: #14212C;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  body {
+    margin: 0; background: var(--ground); color: var(--ink);
+    font-family: var(--sans); font-size: 17px; line-height: 1.68;
+    -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+  }
+
+  /* ---------- Hero ---------- */
+  .hero {
+    background:
+      radial-gradient(120% 140% at 88% -20%, rgba(255,91,53,.20), transparent 55%),
+      linear-gradient(180deg, var(--slate-deep), var(--slate));
+    color: #EAF0F5; padding: clamp(2.4rem, 6vw, 4.2rem) 1.5rem clamp(2rem, 5vw, 3.4rem);
+    border-bottom: 3px solid var(--accent);
+  }
+  .hero__wrap { max-width: 62rem; margin: 0 auto; }
+  .hero__eyebrow {
+    font-family: var(--mono); font-size: .72rem; letter-spacing: .22em;
+    text-transform: uppercase; color: #FFB59F; margin: 0 0 .9rem;
+  }
+  .hero h1 {
+    font-size: clamp(2rem, 5.2vw, 3.35rem); line-height: 1.05; margin: 0 0 .8rem;
+    font-weight: 700; letter-spacing: -.02em; text-wrap: balance; color: #FFFFFF;
+  }
+  .hero__lede {
+    font-size: clamp(1.05rem, 2.2vw, 1.3rem); max-width: 34rem; margin: 0;
+    color: #CBD8E2; line-height: 1.5;
+  }
+  .hero__meta {
+    margin-top: 1.6rem; display: flex; flex-wrap: wrap; gap: .5rem .7rem;
+    font-family: var(--mono); font-size: .74rem; color: #9FB3C4;
+  }
+  .hero__meta span { background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.12);
+    padding: .28rem .6rem; border-radius: 999px; }
+
+  /* ---------- Shell ---------- */
+  .shell { max-width: 62rem; margin: 0 auto; padding: 0 1.5rem;
+    display: grid; grid-template-columns: 15rem minmax(0, 1fr); gap: 2.6rem; }
+  @media (max-width: 940px) { .shell { grid-template-columns: 1fr; gap: 0; } }
+
+  /* ---------- Table of contents ---------- */
+  .toc { position: sticky; top: 0; align-self: start; max-height: 100vh; overflow-y: auto;
+    padding: 2.2rem 0; }
+  @media (max-width: 940px) { .toc { position: static; max-height: none; padding: 1.4rem 0 0; } }
+  .toc__title { font-family: var(--mono); font-size: .68rem; letter-spacing: .2em;
+    text-transform: uppercase; color: var(--ink-faint); margin: 0 0 .8rem; }
+  .toc ol { list-style: none; margin: 0; padding: 0; counter-reset: toc; }
+  .toc li { margin: 0; }
+  .toc a { display: flex; gap: .6rem; align-items: baseline; text-decoration: none;
+    color: var(--ink-soft); padding: .32rem 0; font-size: .93rem; line-height: 1.3;
+    border-left: 2px solid transparent; padding-left: .7rem; transition: color .15s, border-color .15s; }
+  .toc a::before { counter-increment: toc; content: counter(toc, decimal-leading-zero);
+    font-family: var(--mono); font-size: .7rem; color: var(--ink-faint); }
+  .toc a:hover { color: var(--accent-ink); }
+  .toc a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 3px; }
+
+  /* ---------- Content ---------- */
+  main { padding: 2.2rem 0 5rem; min-width: 0; }
+  section { scroll-margin-top: 1.2rem; padding: 2.2rem 0; border-top: 1px solid var(--line); }
+  section:first-of-type { border-top: 0; padding-top: 1.4rem; }
+  .kicker { font-family: var(--mono); font-size: .72rem; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--accent-ink); margin: 0 0 .5rem; font-weight: 600; }
+  h2 { font-size: clamp(1.45rem, 3.4vw, 1.95rem); line-height: 1.15; margin: 0 0 .9rem;
+    letter-spacing: -.015em; font-weight: 700; text-wrap: balance; }
+  h3 { font-size: 1.14rem; margin: 1.8rem 0 .5rem; font-weight: 650; letter-spacing: -.01em; }
+  p { max-width: var(--maxread); margin: 0 0 1rem; }
+  .lede { font-size: 1.12rem; color: var(--ink-soft); max-width: var(--maxread); }
+  strong { font-weight: 650; color: var(--ink); }
+  a.inline { color: var(--accent-ink); text-decoration: underline; text-underline-offset: 2px;
+    text-decoration-thickness: 1px; }
+
+  ul.plain { max-width: var(--maxread); margin: 0 0 1rem; padding-left: 0; list-style: none; }
+  ul.plain li { position: relative; padding-left: 1.5rem; margin: 0 0 .55rem; }
+  ul.plain li::before { content: ""; position: absolute; left: .25rem; top: .62em;
+    width: .42rem; height: .42rem; border-radius: 2px; background: var(--accent); transform: rotate(45deg); }
+
+  /* keycap + click chips */
+  kbd { font-family: var(--mono); font-size: .82em; background: var(--surface);
+    border: 1px solid var(--line-strong); border-bottom-width: 2px; border-radius: 6px;
+    padding: .08em .5em; color: var(--ink); box-shadow: 0 1px 0 rgba(0,0,0,.04); white-space: nowrap; }
+  .btn { font-family: var(--mono); font-size: .82em; background: var(--slate); color: #fff;
+    border-radius: 6px; padding: .12em .55em; white-space: nowrap; }
+  :root[data-theme="dark"] .btn, .btn { }
+  @media (prefers-color-scheme: dark) { .btn { color: #0f141a; background: var(--slate); } }
+  :root[data-theme="dark"] .btn { color: #0f141a; }
+  :root[data-theme="light"] .btn { color: #fff; }
+  .path { font-family: var(--mono); font-size: .84em; color: var(--ink-soft); white-space: nowrap; }
+  .path b { color: var(--accent-ink); font-weight: 600; }
+
+  /* status pills that mirror the app */
+  .pill { display: inline-flex; align-items: center; gap: .35em; font-family: var(--mono);
+    font-size: .72rem; font-weight: 600; padding: .18em .6em; border-radius: 999px; color: #fff;
+    letter-spacing: .01em; vertical-align: middle; }
+  .pill--won { background: #228B22; } .pill--sub { background: #E5A800; }
+  .pill--draft { background: #609BD1; } .pill--lost { background: #808080; }
+  .pill--fresh { background: #228B22; } .pill--watch { background: #E5A800; } .pill--cold { background: #C11E1E; }
+  .pill--live { background: var(--slate); }
+
+  /* callout boxes */
+  .box { border-radius: var(--radius); padding: 1.05rem 1.15rem; margin: 1.2rem 0;
+    max-width: var(--maxread); border: 1px solid var(--line); background: var(--surface);
+    box-shadow: var(--shadow); }
+  .box__label { font-family: var(--mono); font-size: .68rem; letter-spacing: .14em;
+    text-transform: uppercase; margin: 0 0 .5rem; font-weight: 700; display: flex; align-items: center; gap: .45rem; }
+  .box p, .box ul.plain { margin-bottom: .5rem; }
+  .box p:last-child, .box ul.plain:last-child { margin-bottom: 0; }
+  .box--screen { border-left: 3px solid var(--slate); background: var(--surface-2); }
+  .box--screen .box__label { color: var(--slate); }
+  .box--tip { border-left: 3px solid var(--good); background: var(--good-bg); }
+  .box--tip .box__label { color: var(--good); }
+  .box--dont { border-left: 3px solid var(--crit); background: var(--crit-bg); }
+  .box--dont .box__label { color: var(--crit); }
+  .box--auto { border-left: 3px solid var(--accent); }
+  .box--auto .box__label { color: var(--accent-ink); }
+
+  /* lifecycle sequence */
+  .flow { display: grid; grid-template-columns: repeat(3, 1fr); gap: .8rem; margin: 1.4rem 0 .5rem;
+    max-width: var(--maxread); }
+  @media (max-width: 620px) { .flow { grid-template-columns: 1fr; } }
+  .flow__step { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 1rem; box-shadow: var(--shadow); }
+  .flow__n { font-family: var(--mono); font-size: .72rem; color: #fff; background: var(--accent);
+    width: 1.5rem; height: 1.5rem; border-radius: 6px; display: grid; place-items: center; font-weight: 700; }
+  .flow__step h4 { margin: .6rem 0 .3rem; font-size: 1rem; }
+  .flow__step p { font-size: .9rem; color: var(--ink-soft); margin: 0; }
+
+  /* map grid */
+  .map { display: grid; grid-template-columns: repeat(2, 1fr); gap: .55rem .9rem;
+    max-width: var(--maxread); margin: 1rem 0; }
+  @media (max-width: 620px) { .map { grid-template-columns: 1fr; } }
+  .map div { display: flex; gap: .6rem; align-items: baseline; padding: .5rem .2rem;
+    border-bottom: 1px solid var(--line); }
+  .map dt { font-family: var(--mono); font-size: .82rem; color: var(--accent-ink);
+    font-weight: 600; min-width: 6.6rem; }
+  .map dd { margin: 0; font-size: .92rem; color: var(--ink-soft); }
+
+  /* cheat table */
+  .table-wrap { max-width: var(--maxread); overflow-x: auto; margin: 1rem 0; }
+  table { border-collapse: collapse; width: 100%; font-size: .93rem; }
+  th, td { text-align: left; padding: .6rem .7rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-family: var(--mono); font-size: .68rem; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--ink-faint); font-weight: 600; }
+  td:first-child { font-weight: 600; white-space: nowrap; }
+
+  .chip-row { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1rem 0; }
+  footer { border-top: 1px solid var(--line); padding: 1.8rem 0 3rem; color: var(--ink-faint);
+    font-size: .86rem; max-width: var(--maxread); }
+  footer .path { font-size: .8em; }
+  .fade { opacity: 0; transform: translateY(8px); animation: rise .6s ease forwards; }
+  @keyframes rise { to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .fade { opacity: 1; transform: none; animation: none; } }
+
+  /* ---------- Print / PDF ---------- */
+  @page { size: Letter; margin: 15mm 16mm 16mm; }
+  @media print {
+    :root {
+      /* Force the light palette regardless of viewer theme. */
+      --ground:#FBFAF9; --surface:#FFFFFF; --surface-2:#F4F2F0;
+      --ink:#1C2530; --ink-soft:#55636F; --ink-faint:#8A97A2;
+      --line:#E5E4E1; --line-strong:#D3D2CE; --slate:#3F5364; --slate-deep:#2C3A47;
+      --accent:#FF5B35; --accent-ink:#C6360F;
+      --good:#1E7D3A; --good-bg:#E7F3EB; --warn:#A9741A; --warn-bg:#FBF1DE;
+      --crit:#C0392B; --crit-bg:#FBE9E7; --blue:#3E7CB1; --blue-bg:#E8F0F7;
+      --shadow: none;
+    }
+    html { font-size: 15px; }
+    body { background:#fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; color-scheme: light; }
+    .fade { opacity:1 !important; transform:none !important; animation:none !important; }
+
+    .hero { padding: 20mm 16mm 12mm; border-bottom-width: 2px; }
+    .hero h1 { font-size: 30pt; }
+    .hero__lede { font-size: 12.5pt; color:#D4E0EA; }
+    .hero__meta { display:none; }
+
+    /* Single reading column; contents becomes a printed page-1 index. */
+    .shell { display:block; max-width: none; padding: 0 16mm; }
+    .toc { position: static; max-height: none; padding: 8mm 0 2mm; break-after: page; }
+    .toc a { color: var(--ink-soft) !important; border-left-color: var(--line-strong); }
+    main { padding: 6mm 0 0; }
+    section:first-of-type { padding-top: 4mm; }
+
+    /* Keep blocks whole across page breaks. */
+    h2, h3, h4 { break-after: avoid; }
+    section { break-inside: auto; }
+    .box, .flow, .flow__step, .table-wrap, table, .chip-row, .map { break-inside: avoid; }
+    tr, li { break-inside: avoid; }
+    a.inline, .toc a { text-decoration: none; }
+    footer { break-inside: avoid; }
+  }
+</style>
+<style>
+  /* Page-specific print density only — no brand changes. This is a briefing
+     document read in one sitting, not a handbook, so it prints tighter than
+     the reference and keeps the hero key-figures the reference hides. */
+  @media print {
+    html { font-size: 12.4px; }
+    /* The reference sets body{font-size:17px} in absolute px, so its own
+       html{font-size:15px} print rule never reaches the body text. */
+    body { font-size: 10.4pt; line-height: 1.48; }
+    .hero { padding: 11mm 14mm 8mm; }
+    .hero h1 { font-size: 21pt; }
+    .hero__lede { font-size: 10.5pt; }
+    .hero__meta { display: flex; flex-wrap: wrap; gap: .5rem 1.4rem; font-size: 8.4pt; }
+    .shell { padding: 0 14mm; }
+    main { padding: 4mm 0 0; }
+    section { margin-bottom: 0; }
+    h2 { margin-top: 1.1rem; }
+    .box { padding: .7rem .9rem; margin: .7rem 0; }
+    .table-wrap { margin: .6rem 0; }
+    table { font-size: 8.6pt; }
+    th { font-size: 7.8pt; }
+    .flow__step p { font-size: 8.8pt; }
+    /* The reference keeps h2 with what follows but lets the kicker above it
+       orphan at a page foot. Bind the kicker to its heading. */
+    .kicker { break-after: avoid; }
+    footer { margin-top: 1rem; break-before: avoid; }
+  }
+</style>
+
+<header class="hero">
+  <div class="hero__wrap fade">
+    <p class="hero__eyebrow">KOR Structural &middot; Business Development &middot; Internal</p>
+    <h1>What CoStar gives Dan,<br>what it cannot, and what we can</h1>
+    <p class="hero__lede">Dan Gura runs CoStar across the entire United States and calls his own workflow &ldquo;antiquated.&rdquo; Before claiming to beat it, this characterises it &mdash; then shows the one column it structurally does not carry, with Arizona worked end to end as proof. 27 August 2026.</p>
+    <div class="hero__meta">
+      <span>CoStar avg $15,130/yr</span>
+      <span>50 AZ projects, 49 design teams</span>
+      <span>The design team is not a CoStar entity</span>
+    </div>
+  </div>
+</header>
+
+<div class="shell">
+  <main>
+
+    <section id="costar">
+      <p class="kicker">Ground truth</p>
+      <h2>What CoStar actually is, and what it costs</h2>
+      <p><strong>CoStar Suite</strong> is a commercial-property research and prospecting database covering the US, Canada, UK and France &mdash; over <strong>300,000 active users</strong> and forty years of history. It is the reference tool for brokers, lenders, appraisers and investment teams. Dan has it <strong>for the entire United States</strong>, got it as a condition of joining MVE thirteen years ago, and his BD staff use it under him.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Figure</th><th>Value</th><th>Source</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Average annual contract</strong></td><td><strong>$15,130</strong></td><td>Vendr internal transaction data</td></tr>
+            <tr><td>Observed range</td><td><strong>~$3,000 to ~$23,000 / yr</strong></td><td>Vendr, across their buyer base</td></tr>
+            <tr><td>Entry point</td><td>from ~$300 / month</td><td>Published guides</td></tr>
+            <tr><td>Pricing model</td><td colspan="2"><strong>Custom and opaque.</strong> It does not reduce to a per-seat number &mdash; the quote is driven by which markets you take, which modules, and how many users. National coverage sits at the top of the range.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="box box--dont">
+        <p class="box__label">✕ Do not conflate two different products</p>
+        <p><strong>CoStar Real Estate Manager</strong> is a separate lease-administration and accounting product, quoted at <strong>$75,000&ndash;$200,000/yr</strong> mid-market and <strong>$200,000&ndash;$500,000+</strong> enterprise. That is <em>not</em> what Dan is describing. Quoting those numbers at him would be wrong and he would know immediately.</p>
+      </div>
+      <p><strong>How CoStar models a project.</strong> Its development pipeline runs four phases &mdash; <strong>Unconfirmed → Planning → Final Planning → In Construction</strong> &mdash; tracked by construction status, expected delivery date and unit or room counts, sliceable by class, market, submarket and brand. CoStar research staff do talk to architects, developers and planning departments, but they do so <em>to firm up delivery dates</em>. That distinction is the whole opportunity.</p>
+    </section>
+
+    <section id="gap">
+      <p class="kicker">The gap</p>
+      <h2>The design team is not a CoStar entity</h2>
+      <p class="lede">CoStar&rsquo;s unit of analysis is the <em>asset</em> and its economics. Ours is the <em>project team</em>.</p>
+      <p>Everything CoStar is built to return describes a building and its money: who owns it, who leases it, what it sold for, what it will rent for, when it delivers. That is the correct design for its customers &mdash; brokers, lenders, appraisers, investors. <strong>None of them need to know who the architect is.</strong></p>
+      <p>So the fields that matter to a firm trying to get <em>hired onto</em> a project &mdash; architect, structural engineer, civil, landscape, general contractor, and above all <strong>whether a seat has been filled yet</strong> &mdash; are not what CoStar indexes. Dan can tell you a 400-unit project in Tucson was submitted and who the developer is. He cannot filter for <em>&ldquo;projects where no architect has been appointed.&rdquo;</em></p>
+      <div class="box box--tip">
+        <p class="box__label">▲ Which is the pitch, and it is not a software pitch</p>
+        <p>Dan does not need better developer contacts &mdash; that is where CoStar is strongest and where he is already good. <strong>What he cannot buy is the consultant layer:</strong> who is already on a project, who is not, and which developers habitually use which architects. For a BD director at an architecture firm that is a displacement map, and for KOR the same data with the structural row is a target list.</p>
+      </div>
+    </section>
+
+    <section id="sources">
+      <p class="kicker">Method</p>
+      <h2>Where the design-team data actually lives</h2>
+      <p>It is published &mdash; just not by CoStar, and not in one place. It sits in regional construction trade press and in planning submittals, and it has to be assembled region by region. The sources that carry full consultant rosters:</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Region</th><th>Source that names the design team</th><th>What it yields</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Arizona</strong></td><td><strong>AZBEX</strong> (Arizona Builder&rsquo;s Exchange) and <strong>AZ Big Media</strong></td><td>⭐ The best of the set. AZBEX routinely names developer, architect, landscape architect, civil engineer, traffic engineer and land-use counsel on a single case</td></tr>
+            <tr><td><strong>Nevada</strong></td><td><strong>NVBEX</strong> &mdash; the same publisher as AZBEX</td><td>Same format, same depth. Worth knowing the two are siblings</td></tr>
+            <tr><td><strong>Texas</strong></td><td>Houston Chronicle <em>residential development tracker</em>; Houston.org project round-ups</td><td>Developer, size, stage, timeline; architect intermittently</td></tr>
+            <tr><td><strong>Florida / N. Carolina</strong></td><td>Multi-Housing News, Multifamily Dive, local business journals</td><td>Developer and program reliably; design team on the larger towers</td></tr>
+            <tr><td><strong>California</strong></td><td>LA YIMBY, SF YIMBY, BuildSD, city plan sets</td><td>Already proven &mdash; the plan set carries the full directory</td></tr>
+            <tr><td><strong>Anywhere</strong></td><td><strong>The city entitlement plan set itself</strong></td><td>⭐ Definitive. The project-directory sheet lists every consultant. Slow, but it is the ground truth</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>⚠ <strong>Arizona has no equivalent of San Diego&rsquo;s permit feed.</strong> San Diego republishes its full development-approvals table daily &mdash; 834,000 rows with status, valuation, storeys and unit mix. Phoenix publishes <em>aggregate counts only</em>: 23 rows of yearly permit totals. Its proposed-zoning layer gives case numbers and acreage but <strong>no project name, developer or unit count</strong>. So Arizona cannot be extracted; it has to be researched. Worth knowing before promising a live feed.</p>
+    </section>
+
+    <section id="arizona">
+      <p class="kicker">Worked example</p>
+      <h2>Arizona &mdash; 50 projects, 49 design teams</h2>
+      <p>Assembled from AZ Big Media&rsquo;s 2026 projects feature and cross-checked against AZBEX. <strong>Fifty current Arizona projects with developer, general contractor and architect named on forty-nine of them.</strong> This is the artefact CoStar cannot produce.</p>
+      <p><strong>The Arizona architect league table</strong> &mdash; who is actually winning work, by project count in this set:</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Architect</th><th>Projects</th><th>Type</th></tr></thead>
+          <tbody>
+            <tr><td><strong>LGE Design Build</strong></td><td><strong>6</strong></td><td>Design-build</td></tr>
+            <tr><td><strong>Butler Design Group</strong></td><td><strong>5</strong></td><td>Design-build</td></tr>
+            <tr><td><strong>RSP Architects</strong></td><td><strong>4</strong></td><td>Hospitality, civic</td></tr>
+            <tr><td>triARC architecture &amp; design</td><td>3</td><td>Arizona</td></tr>
+            <tr><td>STG Design</td><td>3</td><td>Arizona</td></tr>
+            <tr><td>Gensler</td><td>2</td><td>National</td></tr>
+            <tr><td>DLR Group</td><td>2</td><td>National</td></tr>
+            <tr><td>Corgan</td><td>2</td><td>National</td></tr>
+            <tr><td><strong>KTGY</strong></td><td>1</td><td>⭐ National multifamily</td></tr>
+            <tr><td><strong>Niles Bolton Associates</strong></td><td>1</td><td>⭐ National multifamily</td></tr>
+            <tr><td>ESG Architecture &amp; Design</td><td>1</td><td>⭐ Multifamily</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Also present once each: Deutsch Architecture Group, ALINE Architecture Concepts, Phoenix Design One, Soaring Eight, Lamar Johnson Collaborative, Richard Kennedy Architects, Todd &amp; Associates, McCarthy Nordburg, Hamilton Architecture, Grace Design Studios and Athena Studio.</p>
+      <p><strong>Read that as a BD director would.</strong> <em>LGE Design Build</em> and <em>Butler Design Group</em> are design-build outfits taking six and five slots &mdash; that is the competitive pressure in Arizona, and it is a different threat from a design firm. <strong>KTGY and Niles Bolton</strong> appearing is more interesting to MVE: those are national multifamily competitors operating in a market MVE is entering.</p>
+      <p><strong>Representative entries</strong>, in the format the data actually supports:</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Project</th><th>Size</th><th>Developer</th><th>Architect</th><th>Contractor</th></tr></thead>
+          <tbody>
+            <tr><td>5550 E. Crown Place, Phoenix</td><td>160,000 sf, 240 keys</td><td>LaPour / Holualoa Companies JV</td><td><strong>RSP Architects</strong></td><td>Whiting-Turner</td></tr>
+            <tr><td>19360 N. 73rd St., Scottsdale</td><td>88 units, 1,570&ndash;3,015 sf each</td><td>Belgravia Group</td><td><strong>KTGY</strong></td><td>Maris Construction of Arizona</td></tr>
+            <tr><td>217 E. 7th St., Tempe</td><td>521,553 sf</td><td>AZ Tempe Holdings / Trinitas</td><td><strong>Niles Bolton Associates, Gensler</strong></td><td>Layton Construction</td></tr>
+            <tr><td>10050 N. Scottsdale Rd.</td><td>384,492 sf</td><td>High Street Residential</td><td><strong>ESG Architecture &amp; Design</strong></td><td>Wespac Residential</td></tr>
+            <tr><td>95 Arroyo Pinon Dr., Sedona</td><td>43,100 sf, 89 keys</td><td>Crystal Creek Capital</td><td><strong>RSP Architects</strong></td><td>Chanen Construction</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>⚠ <strong>Honest caveat on this set:</strong> it skews industrial, office and hospitality rather than multifamily &mdash; it is a general CRE round-up, not a housing list. As a <em>competitive map of who designs what in Arizona</em> it is strong. As a multifamily lead list it is thin, and building that properly means going to AZBEX case by case.</p>
+      <p><strong>The wider Arizona pipeline</strong>, from the same research: <strong>Arro</strong> (Empire Group / Aspirant &mdash; ~1.8M sf, twin towers at 541 ft and 425 ft, the future tallest in the state, 380 apartments plus 275 co-living, 250-key hotel); <strong>The Whitney</strong> (24 storeys, 328 units, Central &amp; McDowell); <strong>Revelry</strong> in Tempe (Aspirant, two towers, 533 units); <strong>Astria Tempe</strong> (27 storeys, 380 units); and a <strong>323-unit Dominium</strong> scheme in Tolleson still needing its rezoning.</p>
+    </section>
+
+    <section id="regions">
+      <p class="kicker">Dan&rsquo;s other regions</p>
+      <h2>Nevada, Texas, Carolina, Florida &mdash; state of play</h2>
+      <p>Dan named live or near-live MVE work in <strong>Arizona, Nevada, Hawaii, Houston, Charlotte and Miami</strong>. What is established so far, and what is not:</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Region</th><th>What we have</th><th>Depth</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Nevada</strong></td><td><strong>Bally&rsquo;s Las Vegas</strong> &mdash; three-phase mixed-use, <strong>Marnell Architecture</strong>, ~3,000 rooms, 2,500-seat theatre, 500k sf retail, construction stated for H1 2026. <strong>Riviera site</strong> &mdash; Brett Torino, 600-ft towers, 750-key hotel, 425 condos, 3,310-seat domed venue. <strong>Hylo Park</strong> &mdash; $300&ndash;400M on the old Texas Station site. KB Home 1,500-home scheme started early 2026</td><td>Good start. <strong>NVBEX</strong> is the source to work through for design teams</td></tr>
+            <tr><td><strong>Texas / Houston</strong></td><td>Southern Land twin-tower scheme &mdash; 38 and 10 storeys, 330 apartments plus 18 penthouses, groundbreaking slipped to Q1 2026, completion 2028. StreetLights Residential 20-storey, 134 units in Boulevard Oaks</td><td>Named projects, no design teams yet. Houston Chronicle runs a live residential development tracker</td></tr>
+            <tr><td><strong>Florida / Miami</strong></td><td><strong>PMG</strong> is the name to watch &mdash; <strong>Delano Residences Miami</strong> (their second downtown supertall) and the <strong>Waldorf Astoria</strong>, Miami&rsquo;s first supertall</td><td>Headline only. Supertall market, so the design teams are published &mdash; not yet gathered</td></tr>
+            <tr><td><strong>North Carolina / Charlotte</strong></td><td>Nothing verified yet</td><td>⚠ Not researched. Do not claim coverage</td></tr>
+            <tr><td><strong>Hawaii</strong></td><td>Nothing verified yet</td><td>⚠ Not researched. Dan said &ldquo;might&rdquo; have a project there</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p><strong>Stated plainly:</strong> Arizona is done to a usable standard, Nevada is half done, Texas and Florida are headlines, and Carolina and Hawaii are empty. Anything sent to Dan should say so &mdash; he will check, and being caught claiming national coverage we do not have would undo the credibility the dossiers just earned.</p>
+    </section>
+
+    <section id="send">
+      <p class="kicker">Recommendation</p>
+      <h2>What to send, and what to claim</h2>
+      <ul class="plain">
+        <li><strong>Lead with the corrections, not the volume.</strong> Dan told us Santa Clara Park is AO&rsquo;s and that our headcount figure was modelled. Sending those back fixed proves the &ldquo;it learns and it is never wrong again&rdquo; claim better than any new document. It costs nothing and it is the most credible thing we can do this week.</li>
+        <li><strong>Send Arizona as a <em>sample</em>, framed as the design-team layer.</strong> Fifty projects with forty-nine design teams, plus the architect league table. Say what it is: assembled from public trade sources, not a live feed, and skewed to commercial rather than multifamily.</li>
+        <li><strong>Say the honest thing about his 40-storey test.</strong> A filing made that same day is not in any public feed yet; it surfaces when the city posts it or the trade press picks it up, typically within days. <strong>The defensible claim is that nothing published gets missed &mdash; not that nothing unpublished is known.</strong> He is a professional; the honest answer will land better than a dodge.</li>
+        <li><strong>Do not offer a CoStar replacement.</strong> He pays for national coverage and forty years of comps. What we have is a different axis, not a cheaper version of his. The line is <em>&ldquo;this is the layer your CoStar does not carry&rdquo;</em> &mdash; and on that ground we are genuinely ahead.</li>
+      </ul>
+    </section>
+
+    <footer>
+      <p>KOR Structural &mdash; internal BD intelligence, 27 August 2026. <strong>Not for external distribution in this form.</strong> The Arizona section is the part fit to be adapted and sent.</p>
+      <p class="path">Sources: Vendr CoStar buyer guide and published pricing breakdowns; CoStar Group pipeline documentation; AZ Big Media 2026 projects feature (50 entries parsed, architect count verified against the source&rsquo;s own field labels); AZBEX; NVBEX; Colliers Phoenix CRE Brief; Houston Chronicle; Multi-Housing News. Phoenix open-data portal checked directly and found to publish aggregate counts only.</p>
+    </footer>
+
+  </main>
+</div>
