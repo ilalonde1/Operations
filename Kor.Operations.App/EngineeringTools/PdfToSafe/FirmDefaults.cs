@@ -100,7 +100,17 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         public string Sap2000ExePath { get; set; } = string.Empty;
 
         // ── File I/O ─────────────────────────────────────────────────────
-        public static string DefaultPath => Path.Combine(
+        /// <summary>
+        /// Where the defaults live. Tests point this at a temp folder of their own.
+        ///
+        /// This seam exists because a test that needed to prove Save() recreates a missing parent
+        /// directory was deleting the real one — <c>%APPDATA%\KorOperations</c> — recursively, taking
+        /// the running application's log file and everything else stored there with it. It failed
+        /// whenever the app was open, which is the only reason anyone noticed.
+        /// </summary>
+        internal static string? PathOverride { get; set; }
+
+        public static string DefaultPath => PathOverride ?? Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
             "KorOperations",
             "pdftosafe_defaults.json");

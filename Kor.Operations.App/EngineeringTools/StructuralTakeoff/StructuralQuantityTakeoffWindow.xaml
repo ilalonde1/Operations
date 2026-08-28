@@ -42,17 +42,37 @@
                     </Grid.RowDefinitions>
 
                     <TextBlock Grid.Row="0" Margin="0,0,0,10" Foreground="#595959" TextWrapping="Wrap"
-                               Text="Import a concrete schedule (CSV). Columns: Level, Element (Slab/Wall/Column/Foundation/Beam), Variant (e.g. parking, residential, roof, shear, 84in), ConcreteVolume, FormworkArea, Grade. Reinforcing = concrete volume × the standard density per element/variant — the firm's ratio method, calibratable on the Basis sheet."/>
+                               Text="Take the concrete off whichever of these you have. An ETABS model we generated already states every slab outline, wall thickness and column section on its storey, so it needs no measuring. Revit's own schedules are exact for the same reason — import them exactly as Revit exports them, all four at once. A prepared CSV needs: Level, Element, Variant, ConcreteVolume, FormworkArea, Grade. Reinforcing = concrete volume × the standard density per element/variant — the firm's ratio method, calibratable on the Basis sheet."/>
 
                     <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,8">
-                        <Button Content="Import concrete schedule (CSV)…" Padding="12,5" Click="ImportTakeoffCsv_Click"/>
-                        <TextBox x:Name="TakeoffIssueBox" Width="200" Margin="12,0,0,0" Text="IFC (2026-03-06)"/>
-                        <TextBlock x:Name="TakeoffCsvStatus" Text="(no schedule loaded)" VerticalAlignment="Center" Margin="12,0,0,0" Foreground="#777"/>
+                        <Button Content="From ETABS model (.e2k)…" Padding="12,5" FontWeight="SemiBold" Click="ImportTakeoffFromE2k_Click"/>
+                        <Button Content="From Revit schedules…" Padding="12,5" Margin="8,0,0,0" FontWeight="SemiBold" Click="ImportTakeoffFromRevit_Click"/>
+                        <Button Content="From prepared CSV…" Padding="12,5" Margin="8,0,0,0" Click="ImportTakeoffCsv_Click"/>
+                        <TextBox x:Name="TakeoffIssueBox" Width="180" Margin="12,0,0,0" Text="IFC (2026-03-06)"/>
+                        <TextBlock x:Name="TakeoffCsvStatus" Text="(nothing loaded)" VerticalAlignment="Center" Margin="12,0,0,0" Foreground="#777"/>
                     </StackPanel>
 
-                    <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,12">
-                        <Button x:Name="TakeoffGenerateBtn" Content="Generate Takeoff (.xlsx)" Padding="16,6" FontWeight="SemiBold" Click="GenerateTakeoff_Click"/>
-                        <TextBlock x:Name="TakeoffResultStatus" VerticalAlignment="Center" Margin="14,0,0,0" FontWeight="SemiBold"/>
+                    <StackPanel Grid.Row="2" Margin="0,0,0,12">
+                        <StackPanel Orientation="Horizontal">
+                            <Button x:Name="TakeoffGenerateBtn" Content="Generate Takeoff (.xlsx)" Padding="16,6" FontWeight="SemiBold" Click="GenerateTakeoff_Click"/>
+                            <TextBlock x:Name="TakeoffResultStatus" VerticalAlignment="Center" Margin="14,0,0,0" FontWeight="SemiBold"/>
+                        </StackPanel>
+
+                        <!-- Doctrine gate 3: what the numbers rest on has to reach the person reading
+                             them, not only the workbook they may never scroll to. -->
+                        <Border x:Name="TakeoffBasisPanel" Visibility="Collapsed" Margin="0,10,0,0"
+                                Background="#FDF3E7" BorderBrush="#E8B98A" BorderThickness="1" Padding="10,8" CornerRadius="3">
+                            <StackPanel>
+                                <TextBlock Text="What these numbers rest on" FontWeight="SemiBold" Foreground="#843C0C" Margin="0,0,0,4"/>
+                                <ItemsControl x:Name="TakeoffBasisList">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding}" TextWrapping="Wrap" Margin="0,2" Foreground="#5A3A1A"/>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
 
                     <DataGrid x:Name="TakeoffGrid" Grid.Row="3" AutoGenerateColumns="False" IsReadOnly="True" HeadersVisibility="Column">

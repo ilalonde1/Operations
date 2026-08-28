@@ -71,4 +71,47 @@ public sealed class StructuralTakeoffReportGeneratorTests
         Assert.True(StructuralTakeoffReportGenerator.BuildXlsx(SampleModel(UnitSystem.Metric)).Length > 1000);
         Assert.True(StructuralTakeoffReportGenerator.BuildXlsx(SampleModel(UnitSystem.Imperial)).Length > 1000);
     }
+
+    /// <summary>
+    /// What the numbers rest on has to be IN the workbook, because the estimator reads the workbook.
+    /// Checked by opening the file rather than by reading the writer: the flags printed to a console
+    /// nobody sees were, for one afternoon, the only place these lines existed.
+    /// </summary>
+    [Fact]
+    public void WhatTheNumbersRestOnIsWrittenIntoTheWorkbook()
+    {
+        var basic = SampleModel(UnitSystem.Imperial);
+        var model = basic with
+        {
+            ConcreteBasis = "Concrete volume is the ETABS model's own geometry.",
+            FoundationNote = "Footings are below the lowest modelled storey and are not in this model.",
+            Assumptions = new List<string>
+            {
+                "Walls and columns are priced over the full rise to the floor above.",
+                "Shear and non-shear walls are not distinguished.",
+            },
+        };
+
+        using var ms = new MemoryStream(StructuralTakeoffReportGenerator.BuildXlsx(model));
+        using var wb = new XLWorkbook(ms);
+        var sheet = wb.Worksheet("Basis & Density");
+
+        string all = string.Join("\n", sheet.CellsUsed().Select(c => c.GetString()));
+
+        Assert.Contains("What these numbers rest on", all);
+        Assert.Contains("full rise to the floor above", all);
+        Assert.Contains("not distinguished", all);
+        Assert.Contains("ETABS model's own geometry", all);
+        Assert.Contains("below the lowest modelled storey", all);
+    }
+
+    [Fact]
+    public void AWorkbookWithNothingToDeclareCarriesNoEmptyBasisBlock()
+    {
+        using var ms = new MemoryStream(StructuralTakeoffReportGenerator.BuildXlsx(SampleModel(UnitSystem.Imperial)));
+        using var wb = new XLWorkbook(ms);
+
+        string all = string.Join("\n", wb.Worksheet("Basis & Density").CellsUsed().Select(c => c.GetString()));
+        Assert.DoesNotContain("What these numbers rest on", all);
+    }
 }

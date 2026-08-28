@@ -25,21 +25,24 @@ namespace Kor.Operations.EngineeringTools.Tests.PdfToSafe
     [Collection(nameof(FirmDefaultsFileCollection))]
     public class FirmDefaultsEdgeCaseTests
     {
-        /// <summary>Backs up the real defaults file, runs <paramref name="action"/> with an isolated file state, restores on exit.</summary>
+        /// <summary>
+        /// Runs <paramref name="action"/> against a defaults file in a temp folder of this test's own.
+        ///
+        /// It used to move the REAL file aside and put it back — which meant every test in here
+        /// operated on %APPDATA%\KorOperations, and one of them deleted that folder recursively to
+        /// prove Save() recreates it. That folder holds the running application's log, so the test
+        /// failed whenever the app was open and destroyed real data whenever it succeeded. Tests do
+        /// not touch a live application's data directory.
+        /// </summary>
         private static void WithIsolatedDefaultsFile(Action action)
         {
-            string path = FirmDefaults.DefaultPath;
-            string? backup = null;
-            if (File.Exists(path))
-            {
-                backup = path + ".bak_" + Guid.NewGuid().ToString("N");
-                File.Move(path, backup);
-            }
+            string root = Path.Combine(Path.GetTempPath(), "KorOpsTests", Guid.NewGuid().ToString("N"));
+            FirmDefaults.PathOverride = Path.Combine(root, "KorOperations", "pdftosafe_defaults.json");
             try { action(); }
             finally
             {
-                if (File.Exists(path)) File.Delete(path);
-                if (backup is not null && File.Exists(backup)) File.Move(backup, path);
+                FirmDefaults.PathOverride = null;
+                try { if (Directory.Exists(root)) Directory.Delete(root, recursive: true); } catch { /* a temp folder */ }
             }
         }
 
