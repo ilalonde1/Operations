@@ -334,3 +334,46 @@ session + postback handler, not a plain GET.
 | Charlotte | ⛔ dead 2022 | ⛔ 403 on city site | F → **D via ACA** |
 
 **Only ONE of seven is at Dodge standard today.** The gap is not analysis, it is access.
+
+## ⭐⭐⭐ ALL THREE "DEAD" JURISDICTIONS ARE OPEN — and no registration was needed
+
+Asked to register an Accela App ID. **Registration would not have worked, and it was not
+required.**
+
+⛔ **Why registration fails.** An App ID gets a *sandbox* token. Production access to a given
+agency's records needs that agency to enable the developer in its own Admin portal — Accela's
+own docs: *"agencies must enable developers through the Admin portal for them to have access."*
+So Clark County, Dallas and Charlotte would each have had to authorise KOR separately. My
+"it's a registration, not a block" line the turn before was too optimistic; this corrects it.
+
+⭐ **What works instead — ACA's public search, no account at all.** It is the surface citizens
+use without logging in, it takes a plain GET, and it renders results **server-side** into an
+ASP.NET GridView that is present in the returned HTML:
+
+    https://aca-prod.accela.com/<AGENCY>/Cap/GlobalSearchResults.aspx?QueryText=<term>
+
+Columns: **Date · Record Number · Record Type · Module · Short Notes · Project Name · Status**
+
+| Agency | Verdict | Newest record |
+|---|---|---|
+| **CLARKCO** — the Las Vegas Strip | ⭐ LIVE | **27 Aug 2026 (same day)** |
+| **dallastx** — DallasNow | ⭐ LIVE | **27 Aug 2026 (same day)** |
+| **CHARLOTTE** | ⭐ LIVE | **20 Aug 2026** |
+
+⭐ **It resolves the projects that matter**, not just generic terms. `athletics ballpark` →
+**79 records**, including `BD26-34988` and `BD26-33952` *Commercial Grading — ATHLETICS LAS
+VEGAS BALLPARK* (Aug 2026), `BD26-30668` *Commercial Building New — PHASED PROJECT* (Jul),
+`BD26-26432` *Commercial Mechanical* (Jun). Permit-by-permit progress on the largest project
+on the Strip — the Thornton Tomasetti job. `tropicana` 96 · `riviera` 94 · `durango` 94 ·
+`silverado` and `ballys` 100+.
+
+⚠ **Known limits, so nobody overstates it.** The GET returns **page 1 only (10 rows)**; full
+sets need pagination or the page's own *"Download results"*, both `__doPostBack` on
+`gdvPermitList` — an ASP.NET postback needing session + `__VIEWSTATE`. And these are
+**permits, not design teams**: Record Type and Project Name, no architect.
+
+⭐ **Playwright is already in this repo** — .NET, `Kor.Opportunities.Data/Ingestion/Scraping/`
+(BcBid, Alberta Purchasing, APC scrapers) plus the headed `Kor.Opportunities.Capture` session
+harness. That is the browser-rendering capability named three times today as the top blocker.
+It would unlock ACA pagination/export, Phoenix's JS project search, Scottsdale SPUR and Austin.
+⚠ Adding a scraper to that production project is a real code change and has not been made.
