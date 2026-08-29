@@ -51,30 +51,19 @@ IAN_BODY = """Dan,
 
 Good to meet. Here is the package I promised, produced by our Ops Brain.
 
-You asked for the Arizona submitted-projects search. It is in there: 373 open site-plan and rezoning cases out of Phoenix's own record, and 280 of them filed since January 2025. Around forty of those read as residential from the project name, though that last step is a judgement on the name rather than a field in the record. The 373 and the 280 are exact, and I re-ran both against the live service this morning before sending. Each case is marked preliminary or final, so you can see how much of the design conversation is still open before you spend a call on it.
+The Arizona submitted-projects search you asked for is in there: 373 open site-plan and rezoning cases out of Phoenix's own record, 280 filed since January 2025, each marked preliminary or final. I re-ran those against the live service before sending.
 
-The list turned out to be the least interesting part.
+But the first page is the part I would look at, because it is the part you cannot easily get. Clark County logged sixteen multifamily PRE-APPLICATIONS in the last fourteen days, the newest dated 27 August. A pre-application is a developer sitting down with the county before they file anything binding, which means sixteen schemes in your Las Vegas market that do not yet have a drawing set.
 
-Counted properly, the Arizona multifamily projects that name an architect are spread across eleven different firms. One firm is on two of them. Nobody is on three. There is no incumbent to displace, because there isn't one.
+Alongside that: eighty-four rezoning petitions pending in Charlotte, thirty-six residential schemes in review in Raleigh, and three Phoenix developers who have retained land-use counsel and a civil engineer and named no architect anywhere on the file. Fifield Companies, Vintage Partners, and Elevation Living with Blueprint Capital, with the case numbers.
 
-That is only worth saying if the same measurement can produce a different answer somewhere else, so we ran it on Raleigh. It does: a clear leader holding 36% of the field, and fifteen months into an ownership change. Then we ran it on Houston and Miami as well. Ranked by how much of each market the leading firm holds:
+Being straight about the limits, because they matter more than the list: not on the public record is not the same as not appointed. And we threw away nine of twelve apparent Phoenix openings before printing three - two were working with architecture firms whose domain names give nothing away, one names its architect in the text but not its contact list, and one turned out to employ architects itself. The exclusions are why I would stand behind the three that are left.
 
-    Houston   10%
-    Miami     17%
-    Arizona   18%
-    Raleigh   36%
+Phoenix posts building permits next-day but runs about a quarter behind on entitlement cases. Raleigh had been updated the morning I ran this. We would rather tell you which city is which than quote you an average.
 
-Three of your four measurable markets have no incumbent worth the name. Raleigh is the outlier, and it is the one where the leader has just changed hands.
+There is a companion setting out how the design-team figures were arrived at and what each rests on. Say the word and I will send it.
 
-On the test you set us, what happens to a 40-storey project filed that morning: the answer is in the document rather than hidden in it, and it differs by city. Raleigh's development plans had been updated the morning I ran this. Phoenix posts its building permits next-day but runs about a quarter behind on its entitlement cases, so there it is months rather than days. We would rather tell you which city is which than quote you an average.
-
-Every figure is drawn from public municipal records or from the published statements of the parties named, current to 28 August. The Houston record is current to the 27th. Where something could only be sourced to secondary reporting we left it out rather than hedge it, and there are a couple of places where we say plainly that a market cannot be measured yet.
-
-Happy to walk through any single number on a call.
-
-There is a companion to it that I have not attached, because you do not need it to use the above: it sets out how each of those design-team figures was arrived at, what each one rests on, and which of your markets cannot be measured at all. Say the word and I will send it.
-
-I will have the full lifecycle demo ready for the next one: opportunity through to proposal, rather than the tour we gave you.
+This was a single sweep, run by hand. The useful version is the same thing running every week and telling you only what changed - a new pre-application, a developer who has just retained counsel, an architect appearing on a case that did not have one. That is what I will show you on the next call.
 
 Ian
 

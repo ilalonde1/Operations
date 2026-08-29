@@ -39,12 +39,12 @@ SEND_HERO = """
 <header class="hero">
   <div class="hero__wrap fade">
     <p class="hero__eyebrow">KOR Structural &nbsp;·&nbsp; prepared for MVE + Partners &nbsp;·&nbsp; 28 August 2026</p>
-    <h1>Three developers entitling land<br>in Phoenix, with no architect hired.</h1>
-    <p class="hero__lede">You asked what an early signal looks like. It is a developer who has filed to rezone land, retained a lawyer and a civil engineer, and named no architect. Three of those in Phoenix are named overleaf with the case numbers, alongside eighty-four pending petitions in Charlotte and thirty-six schemes in review in Raleigh. The Arizona submitted-projects search you asked for follows, with the currency of every source stated.</p>
+    <h1>Sixteen multifamily schemes filed<br>in Las Vegas in fourteen days.</h1>
+    <p class="hero__lede">Sixteen of them are pre-applications &mdash; a developer at the county before they file anything binding. The newest is dated yesterday. Overleaf: what has entered the record in each of your markets this fortnight, three Phoenix developers who have retained counsel and an engineer and named no architect, and the Arizona submitted-projects search you asked for.</p>
     <div class="hero__meta">
-      <span>3 verified open seats</span>
-      <span>84 pending Charlotte petitions</span>
-      <span>Newest filed 14 August</span>
+      <span>16 pre-applications in 14 days</span>
+      <span>3 Phoenix seats open</span>
+      <span>Newest record: 27 August</span>
     </div>
   </div>
 </header>
