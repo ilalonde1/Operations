@@ -19,21 +19,41 @@ text = subprocess.run(["pdftotext", "-q", PDF, "-"], capture_output=True,
                       text=True, encoding="utf-8", errors="replace").stdout
 flat = re.sub(r"\s+", " ", text)
 
+import gzip
 import os
 
-# The harvested files are large and live outside the repo. Pass the directory
-# holding harris.jsonl / harris_detail.jsonl as argv[1], or set TABS_DATA.
+# ⛔ THIS USED TO DEFAULT TO "." AND THE DATA LIVED IN A SESSION SCRATCHPAD.
+#    Run on 28 Aug 2026 it answered "Houston data not found" -- the extract
+#    behind 4,087 / 3,085 / 806 firms was in a temporary directory and had very
+#    nearly been lost. A claim that cannot be re-derived cannot be defended, so
+#    the archive now lives in the repo and is the default.
+#    See docs/audit-2026-08/mve-pipeline/source/README.md.
+REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ARCHIVE = os.path.join(REPO, "docs", "audit-2026-08", "mve-pipeline", "source")
 DATA = (sys.argv[1] if len(sys.argv) > 1
-        else os.environ.get("TABS_DATA", "."))
+        else os.environ.get("TABS_DATA", ARCHIVE))
+
+
+def _lines(directory, stem, archived):
+    """Read stem.jsonl, or the gzipped archive copy, whichever is present."""
+    plain = os.path.join(directory, stem)
+    if os.path.exists(plain):
+        return open(plain, encoding="utf-8")
+    gz = os.path.join(directory, archived)
+    if os.path.exists(gz):
+        return gzip.open(gz, "rt", encoding="utf-8")
+    raise FileNotFoundError(plain)
+
+
 try:
     rows = [json.loads(l) for l in
-            open(os.path.join(DATA, "harris_detail.jsonl"), encoding="utf-8")]
+            _lines(DATA, "harris_detail.jsonl",
+                   "houston-tdlr-harris-detail.jsonl.gz")]
     idx = [json.loads(l) for l in
-           open(os.path.join(DATA, "harris.jsonl"), encoding="utf-8")]
+           _lines(DATA, "harris.jsonl", "houston-tdlr-harris.jsonl.gz")]
 except FileNotFoundError:
     print("Houston data not found in %s.\n"
-          "Pass the directory holding harris.jsonl and harris_detail.jsonl:\n"
-          "    python verify_dossier_claims.py <dir>\n"
+          "The archive is docs/audit-2026-08/mve-pipeline/source/.\n"
           "Regenerate with tools/tabs_projects.py list/detail if it is gone."
           % os.path.abspath(DATA))
     raise SystemExit(2)
