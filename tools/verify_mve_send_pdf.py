@@ -43,9 +43,18 @@ REQUIRED = [
     "Howard Hughes", "Ward Village", "7,250", "Bridgeland", "26-101519",
     "David O", "Environmental Notice", "Mākena Mauka", "1,426",
     "LJA Engineering", "EX-21.1", "Teravalis",
+    # the nine verified openings
+    "Host Hotels", "Copper Residences", "Z-169-25-2", "Vintage Partners",
+    "Z-24-26-7", "Mid-America", "2026-050", "Crosland Southeast", "2026-027",
+    "Middleburg", "DreamKey", "Hoʻonani",
 ]
-# Must appear only inside the exclusions box.
-EXCLUDED_CONTEXT = ["Hines", "Vestar"]
+# ⛔ These are the leads that DIED verification. Each may appear ONLY inside an
+#    exclusions box. If one ever escapes into the body, the document is offering
+#    an architecture firm a job that already has an architect -- the single
+#    worst failure this work can produce.
+EXCLUDED_CONTEXT = ["Hines", "Vestar", "Fifield", "Elevation Living",
+                    "Kontexture", "Chipperfield", "MASON Architects",
+                    "Kittle", "Woods Associates"]
 
 
 def norm(s):
@@ -103,14 +112,23 @@ def main(path):
 
     print()
     print("EXCLUSION GATE  (must be in the exclusions box, never as a lead)")
-    box = ""
-    m = re.search(r"deliberately did not put in front of you(.{0,1400})",
-                  flat, re.S | re.I)
-    if m:
-        box = m.group(1)
-    else:
-        fails.append("the exclusions box is missing from the shipped PDF")
-        print("   exclusions box    MISSING")
+    # There is more than one exclusions box now: the client-list one on the
+    # facts page and the six-we-removed one on the openings page. Concatenate
+    # every one found, so a name is "inside the box" if it sits in ANY of them.
+    HEADINGS = [
+        r"deliberately did not put in front of you",
+        r"we removed, and where each one.{0,3}s architect was hiding",
+    ]
+    box, found_boxes = "", 0
+    for h in HEADINGS:
+        m = re.search(h + r"(.{0,1800})", flat, re.S | re.I)
+        if m:
+            box += " " + m.group(1)
+            found_boxes += 1
+    print("   exclusion boxes found: %d of %d" % (found_boxes, len(HEADINGS)))
+    if found_boxes < len(HEADINGS):
+        fails.append("only %d of %d exclusions boxes are in the shipped PDF"
+                     % (found_boxes, len(HEADINGS)))
     for name in EXCLUDED_CONTEXT:
         total = len(re.findall(re.escape(name), flat, re.I))
         inbox = len(re.findall(re.escape(name), box, re.I))

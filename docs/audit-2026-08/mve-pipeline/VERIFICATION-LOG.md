@@ -694,3 +694,66 @@ Fifield proves the point: its architect is in **no city record at all**. Every
 lead therefore needs **both** a file scan and a trade-press check before it goes
 in front of a client, and the wording stays "no architect appears on the public
 record".
+
+### The Charlotte wall came down — Playwright, not a limit
+
+The previous entry recorded Charlotte's petition pages as unverifiable: 403 to
+curl and to the fetcher, and a 1.7 KB "Powered and protected by" challenge to a
+full browser header set. **That was a tooling gap, not a fact about the world.**
+
+`tools/browser_fetch.py` drives the **Edge already on this machine**
+(`channel="msedge"`, same approach as the Phoenix PDD work) and all five
+petitions opened first try — **plus fifteen linked PDFs, including the site
+plans**, which is where the title block lives. Every one of those PDFs yielded
+real text (1,470–35,635 chars), so the negatives below are evidence rather than
+an extraction failure. That was checked before any of them was believed.
+
+⚠ **Assert on CONTENT, never on status.** The WAF answers 200 with a near-empty
+body, so `browser_fetch.py` has `--min-chars` and reports a short page as
+BLOCKED. A caller checking `resp.ok` would have recorded five successes and
+learned nothing.
+
+### Final verification result — 16 pursuits checked, 6 killed
+
+**Killed, with where the architect was hiding:**
+
+| Lead | Architect | Found in |
+|---|---|---|
+| Fifield Companies Z-41-25-2 | **Todd & Associates Architecture** | trade press only — **no city document names it** |
+| Elevation Living Z-82-25-5 | **Woods Associates Architects** | drawing title block |
+| J&K Luxury Group Z-51-26-3 | **Kontexture, LLC** | drawing title block |
+| Miami Design District SAP | **David Chipperfield** | trade press — 25-storey condo + 12-storey hotel |
+| Wailuku Mission Senior Housing | **MASON Architects** | the EA itself: *"EAH Housing is working with historic architect MASON Architects"* |
+| Kittle Property Group CLT 2026-051 | **its own staff** | own website — architect of record in every state |
+
+**Survived both tests — nine openings:**
+
+| Market | Who | What |
+|---|---|---|
+| Phoenix | Host Hotels & Resorts (NYSE: HST) | Copper Residences, 72 ac Westin Kierland golf course; 16.16 ac resort condo + condo-hotel. Greey\|Pickett site/landscape only |
+| Phoenix | Vintage Partners | 1,000 units, 63 ac, converted from a scrapped data centre |
+| Charlotte | Mid-America Apartments (MAA) | 3.65 ac SouthPark; Kimley-Horn drew the plan, no architect |
+| Charlotte | Crosland Southeast | 39.41 ac Wilkinson Blvd; **engineer seal block still blank** |
+| Charlotte | Middleburg | 20.15 ac; buildings drawn at 63 units, 4–5 storeys |
+| Charlotte | DreamKey Partners | 6.00 ac Beatties Ford; hearing held 17 Aug |
+| Hawaii | AREG AC Makena Propco | Mākena Mauka, 652 units, FEIS accepted 23 Aug |
+| Hawaii | Hoʻonani Development | Hoʻonani Village, Draft EIS — earliest of all |
+| Las Vegas | Howard Hughes | 26-101519; 354 units + 6,556 sf retail, Spruce Goose St |
+
+**Flagged, not listed:** Ovation Development (in-house design principal — a
+Kittle-shaped risk); Kīlauea Town Expansion and Mililani Teacher Workforce
+Housing (public bodies, so procured not appointed; Kīlauea breaks ground this
+quarter).
+
+### ⛔ Two false-positive traps in the detector itself
+
+1. **Case-insensitive matching reports an architect on EVERY case.** Rezoning
+   prose says "architectural treatment" and "four-sided architecture"
+   constantly. The first version flagged all seven Phoenix files. That kills
+   every lead — the same failure from the opposite end, and just as wrong.
+2. **A blank form field is not a name.** Mākena Mauka's FEIS contains
+   *"D. Name of Architect: Firm: Street Address:"* — an empty permit
+   application in an appendix. Hoʻonani's "INDIGENOUS ARCHITECTURE" is a
+   Community Plan policy heading. **Both needed the surrounding text read
+   before either was judged**, and both would otherwise have killed a good lead.
+

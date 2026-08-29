@@ -38,8 +38,12 @@ BODY = os.path.join(D, "mve-designteam-body.html")
 # the opposite end of the process and it belongs in front of the client.
 #
 # "hawaii" is new: it was one of Dan's six markets with no live source at all.
-SEND = ["signal", "facts", "hawaii", "arizona", "leads", "everywhere", "reach",
-        "markets", "closed"]
+# "openings" sits at position 2, straight after the Howard Hughes page: it is
+# the only section that is a list of work that has not been let, and every row
+# in it survived an individual architect check. Six that did not are named in
+# its own exclusions box.
+SEND = ["signal", "openings", "facts", "hawaii", "arizona", "leads",
+        "everywhere", "reach", "markets", "closed"]
 RESEARCH = ["finding", "raleigh-test", "houston-miami", "tempo",
             "designbuild", "crossmarket"]
 
