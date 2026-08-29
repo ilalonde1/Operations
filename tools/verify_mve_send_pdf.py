@@ -49,10 +49,13 @@ REQUIRED = [
     # not: "EX-21.1" is precision for a sceptic, and the date is enough to
     # check it.
     "19 February 2026",
-    # the nine verified openings
+    # the seven verified openings, with the unit counts that make them real.
+    # Crosland (staff recommended denial) and DreamKey (duplex/triplex by a
+    # nonprofit) came off the chart into the conditions box after a trade-press
+    # check that should have run before the first draft.
     "Host Hotels", "Copper Residences", "Z-169-25-2", "Vintage Partners",
-    "Z-24-26-7", "Mid-America", "2026-050", "Crosland Southeast", "2026-027",
-    "Middleburg", "DreamKey", "Hoʻonani",
+    "Z-24-26-7", "Mid-America", "2026-050", "Middleburg", "2026-023",
+    "Hoʻonani", "275 units", "364 units", "2,645",
 ]
 # ⛔ These are the leads that DIED verification, and the firms found on them.
 #    They must not appear in the client document AT ALL.
