@@ -39,12 +39,12 @@ SEND_HERO = """
 <header class="hero">
   <div class="hero__wrap fade">
     <p class="hero__eyebrow">KOR Structural &nbsp;·&nbsp; prepared for MVE + Partners &nbsp;·&nbsp; 28 August 2026</p>
-    <h1>Sixteen multifamily schemes filed<br>in Las Vegas in fourteen days.</h1>
-    <p class="hero__lede">Sixteen of them are pre-applications &mdash; a developer at the county before they file anything binding. The newest is dated yesterday. Overleaf: what has entered the record in each of your markets this fortnight, three Phoenix developers who have retained counsel and an engineer and named no architect, and the Arizona submitted-projects search you asked for.</p>
+    <h1>Howard Hughes filed a Las Vegas<br>multifamily pre-application yesterday.</h1>
+    <p class="hero__lede">Thirty-two multifamily pre-applications in Clark County in sixty days, sixteen in the last fortnight, and the county names who filed them. Alongside: three Phoenix developers who have retained counsel and a civil engineer and named no architect, five Charlotte petitioners worth a call out of eighty-four, and the Arizona submitted-projects search you asked for.</p>
     <div class="hero__meta">
-      <span>16 pre-applications in 14 days</span>
-      <span>3 Phoenix seats open</span>
-      <span>Newest record: 27 August</span>
+      <span>32 pre-applications in 60 days</span>
+      <span>Applicants named</span>
+      <span>Newest: 27 August</span>
     </div>
   </div>
 </header>
