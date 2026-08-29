@@ -27,10 +27,27 @@
     h1, h2, h3, .hero h1 { text-wrap: pretty; }
 
     /* The facts sheet is meant to be ONE page a reader can hold next to the
-       rest. Keep it whole and start the detail on a fresh page after it. */
-    #facts { break-after: page; }
-    #facts table { font-size: 8.8pt; }
-    #facts td, #facts th { padding: .34rem .5rem; }
+       rest. Keep it whole and start the detail on a fresh page after it.
+
+       ⚠ THIS IS SIZED TO THE ROW COUNT AND BREAKS WHEN A ROW IS ADDED.
+       At 8.8pt the table held five markets. Adding Hawaii as a sixth pushed the
+       Miami row alone onto the next page, leaving three-quarters of it blank —
+       the exact fault the break-inside rules below were written to cure,
+       reintroduced from the other end. If a seventh market is ever added, RENDER
+       THE PAGE AND LOOK at it; the counts will not tell you.
+
+       Keeping it whole also needs the table itself to resist breaking, because
+       the general rule further down deliberately lets long tables flow. */
+    /* break-inside on the SECTION is wrong here: the section now ends with the
+       exclusions box, and holding all of it together pushed the whole thing to
+       the next page and left the one before it three-quarters empty. Hold the
+       TABLE together, keep the closing note with it, and let the box flow. */
+    #facts { break-before: page; break-after: page; }
+    #facts table, #facts .table-wrap { break-inside: avoid; }
+    #facts > p:last-of-type { break-before: avoid; }
+    #facts table { font-size: 8.1pt; }
+    #facts td, #facts th { padding: .26rem .44rem; }
+    #facts .lede { font-size: 10.4pt; }
     #facts .box p { font-size: 9.6pt; }
 
     /* Let long tables flow across a page break.

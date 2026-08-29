@@ -1,0 +1,98 @@
+[
+ {
+  "slug": "hallasan",
+  "fields": {
+   "client": "Holland Partner Group"
+  },
+  "title": "Hallasan - Mixed-Use Development MVE Partners",
+  "lines": []
+ },
+ {
+  "slug": "johnson-kia-miami",
+  "fields": {},
+  "title": "Johnson Kia Miami - Commercial Architecture MVE Partners",
+  "lines": []
+ },
+ {
+  "slug": "legacy-park-planning",
+  "fields": {
+   "client": "Vestar"
+  },
+  "title": "Legacy Park - Master Plan MVE Partners",
+  "lines": []
+ },
+ {
+  "slug": "mandarin-oriental",
+  "fields": {
+   "client": "SHVO",
+   "type": "I"
+  },
+  "title": "Mandarin Oriental Residences MVE Partners",
+  "lines": []
+ },
+ {
+  "slug": "oc-vibe-residential",
+  "fields": {
+   "client": "H&S Ventures"
+  },
+  "title": "OC Vibe Residential - Mixed-Use Living MVE Partners",
+  "lines": []
+ },
+ {
+  "slug": "pali",
+  "fields": {
+   "client": "REDA"
+  },
+  "title": "Pali - Residential Architecture MVE Partners",
+  "lines": []
+ },
+ {
+  "slug": "post-district-residences",
+  "fields": {
+   "client": "Lowe Property Group Blaser Ventures"
+  },
+  "title": "Post District - Mixed-Use Development MVE Partners",
+  "lines": []
+ },
+ {
+  "slug": "rafferty",
+  "fields": {
+   "client": "Toll Brothers"
+  },
+  "title": "Rafferty - Mixed-Use Development MVE Partners",
+  "lines": []
+ },
+ {
+  "slug": "riverwalk",
+  "fields": {
+   "client": "Hines"
+  },
+  "title": "Riverwalk Master Plan MVE Partners",
+  "lines": []
+ },
+ {
+  "slug": "rosewood-residences",
+  "fields": {
+   "client": "NAHLA Capital",
+   "type": "I"
+  },
+  "title": "Rosewood Residences MVE Partners",
+  "lines": []
+ },
+ {
+  "slug": "sugar-alley",
+  "fields": {
+   "client": "Lowe Property Group"
+  },
+  "title": "The Residences at Sugar Alley MVE Partners",
+  "lines": []
+ },
+ {
+  "slug": "the-ritz-carlton-residences",
+  "fields": {
+   "client": "Lyon Living | Eagle Four Partners"
+  },
+  "title": "The Ritz-Carlton Residences MVE Partners",
+  "lines": []
+ }
+]

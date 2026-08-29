@@ -45,23 +45,23 @@ IAN = "Ian Lalonde <ilalonde@korstructural.com>"
 JIM = "Jim DesRoches <jdesroches@korstructural.com>"
 DAN = "Dan Gura <dgura@mve-architects.com>"
 
-IAN_SUBJECT = "Arizona submitted projects, and the same search in your other five markets"
+IAN_SUBJECT = "Your Ward Village client has opened 7,250 acres in three of your other markets"
 
 IAN_BODY = """Dan,
 
 Good to meet. Here is the package I promised, produced by our Ops Brain.
 
-The Arizona submitted-projects search you asked for is in there: 373 open site-plan and rezoning cases out of Phoenix's own record, 280 filed since January 2025, each marked preliminary or final. I re-ran those against the live service before sending.
+The Arizona submitted-projects search you asked for is in there, and it is the third page: 373 open site-plan and rezoning cases out of Phoenix's own record, 280 filed since January 2025, each marked preliminary or final. I re-ran it against the live service before sending.
 
-But page one is the part I would look at. Clark County publishes an "application prereview" - a developer at the county before they lodge anything binding, posted within a day, and the record names who filed it. Howard Hughes filed one for multifamily on 27 August. Alan Molasky of Ovation, who holds 13,000 units in Nevada, filed one in July. Thirty-two of them in sixty days, sixteen in the last fortnight, none with a drawing set.
+Page one is the part I would look at first, because it is about a company you already work for. Howard Hughes filed a Las Vegas multifamily pre-application on 27 August - the ownership disclosure names David O'Reilly, Jay Cross and Carlos Olea, so there is no doubt whose it is. In Houston the same group has filed thirty-nine subdivision plats since December, 7,250 acres, including a 3,905-acre general plan in February and a 2,037-acre one in June. And their own SEC subsidiaries exhibit puts them in the Phoenix west valley as well, at Teravalis. Four of your six markets, one owner, and no architect named on any of it.
 
-Alongside that: three Phoenix developers who have retained land-use counsel and a civil engineer and named no architect anywhere on the file - Fifield Companies, Vintage Partners, and Elevation Living with Blueprint Capital, with the case numbers. And of eighty-four pending Charlotte petitions, the five whose own business is building rental housing and who do not design it themselves.
+I want to be equally clear about what I took OUT. We crossed your published client list against every record in the pack. Two of your clients came up and both were dropped: Hines appears three times in the Arizona record, all completed office fit-outs with Phoenix Design One already named, and Vestar appears on a Phoenix rezoning that already names Butler Design Group. Neither is an opportunity. Ward Village, Kalae and Launiu are excluded on the same rule - they are your work, and they are in the document only as the reason the Howard Hughes thread is worth your time.
 
-Being straight about the limits, because they matter more than the list: not on the public record is not the same as not appointed. And we threw away nine of twelve apparent Phoenix openings before printing three - two were working with architecture firms whose domain names give nothing away, one names its architect in the text but not its contact list, and one turned out to employ architects itself. The exclusions are why I would stand behind the three that are left.
+The rest is the same treatment for the other five markets. Houston publishes the developer company, the filing consultancy and a named contact on 100% of 1,426 plat applications - which is the opposite of Houston's reputation. Hawaii turned out to have the best-structured record of the six: a statewide bulletin, twice a month, naming the applicant and the planning consultant on every project before design. Charlotte has eighty-four pending petitions, of which five are worth a call. Miami is genuinely thin and the document says why rather than padding it.
 
-Phoenix posts building permits next-day but runs about a quarter behind on entitlement cases. Raleigh had been updated the morning I ran this. We would rather tell you which city is which than quote you an average.
+The limits matter more than the list. Not on the public record is not the same as not appointed - if you are already engaged on something in here, what that tells you is how far the public record lags your own commissions. And we threw away nine of twelve apparent Phoenix openings before printing three.
 
-There is a companion setting out how the design-team figures were arrived at and what each rests on. Say the word and I will send it.
+There is a companion setting out how the design-team concentration figures were arrived at and what each rests on. Say the word and I will send it.
 
 This was a single sweep, run by hand. The useful version is the same thing running every week and telling you only what changed - a new pre-application, a developer who has just retained counsel, an architect appearing on a case that did not have one. That is what I will show you on the next call.
 

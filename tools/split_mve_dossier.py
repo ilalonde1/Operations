@@ -28,23 +28,31 @@ D = os.path.join(REPO, "docs", "audit-2026-08")
 BODY = os.path.join(D, "mve-designteam-body.html")
 
 # "signal" leads: it is the only section about work that has not been let.
-# "leads" moved to RESEARCH - a Houston TDLR registration names the design firm
-# because the design firm filed it, so that list is a record of who won, not a
-# list of what is winnable. It was presented as the latter and should not be.
-SEND = ["signal", "facts", "arizona", "everywhere", "reach", "markets", "closed"]
-RESEARCH = ["finding", "raleigh-test", "houston-miami", "leads", "tempo",
+#
+# "leads" is BACK IN SEND, and the reason matters. It was moved out when it was
+# built on Houston TDLR registrations -- those are filed BY THE DESIGN FIRM, so
+# that list recorded who had already won, while being presented as what was
+# winnable. It has since been rebuilt on the Planning Commission's own plat
+# spreadsheets, which are filed by the developer to divide land before any
+# building is designed, and which name the developer on 100% of rows. That is
+# the opposite end of the process and it belongs in front of the client.
+#
+# "hawaii" is new: it was one of Dan's six markets with no live source at all.
+SEND = ["signal", "facts", "hawaii", "arizona", "leads", "everywhere", "reach",
+        "markets", "closed"]
+RESEARCH = ["finding", "raleigh-test", "houston-miami", "tempo",
             "designbuild", "crossmarket"]
 
 SEND_HERO = """
 <header class="hero">
   <div class="hero__wrap fade">
     <p class="hero__eyebrow">KOR Structural &nbsp;·&nbsp; prepared for MVE + Partners &nbsp;·&nbsp; 28 August 2026</p>
-    <h1>Howard Hughes filed a Las Vegas<br>multifamily pre-application yesterday.</h1>
-    <p class="hero__lede">Thirty-two multifamily pre-applications in Clark County in sixty days, sixteen in the last fortnight, and the county names who filed them. Alongside: three Phoenix developers who have retained counsel and a civil engineer and named no architect, five Charlotte petitioners worth a call out of eighty-four, and the Arizona submitted-projects search you asked for.</p>
+    <h1>Your Ward Village client has opened<br>7,250 acres in three other markets.</h1>
+    <p class="hero__lede">Howard Hughes filed a Las Vegas multifamily pre-application yesterday, thirty-nine Houston land filings since December, and owns a master planned community in the Phoenix west valley. None of it names an architect. Alongside that: the Arizona submitted-projects search you asked for, Houston&rsquo;s own spreadsheet naming the developer on 1,426 filings, Hawaii&rsquo;s statewide pre-design bulletin, and five Charlotte petitioners worth a call out of eighty-four.</p>
     <div class="hero__meta">
-      <span>32 pre-applications in 60 days</span>
-      <span>Applicants named</span>
-      <span>Newest: 27 August</span>
+      <span>Six markets, all current</span>
+      <span>Newest filing: 27 August</span>
+      <span>Nothing you already design</span>
     </div>
   </div>
 </header>
