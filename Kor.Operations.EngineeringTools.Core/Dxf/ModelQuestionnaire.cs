@@ -550,6 +550,21 @@ public static class ModelQuestionnaire
             return m.Success && double.TryParse(m.Groups[1].Value.Replace(",", ""), out double v) ? v : 0;
         }
 
+        // "…a region of 1,298 sq ft at (3273, 2327) ft…" -> 1298, and the short form of the same.
+        static double AreaOf(string note)
+        {
+            var m = Regex.Match(note, @"a region of ([\d,]+) sq ft");
+            return m.Success && double.TryParse(m.Groups[1].Value.Replace(",", ""), out double v) ? v : 0;
+        }
+
+        static string Region(string note)
+        {
+            var m = Regex.Match(note, @"a region of ([\d,]+) sq ft at \((-?[\d.]+), (-?[\d.]+)\) ft");
+            return m.Success
+                ? $"{m.Groups[1].Value} sq ft at ({m.Groups[2].Value}, {m.Groups[3].Value})"
+                : note;
+        }
+
         string? oneBuilding = report.BuildingCut;
 
         // A floor whose plates reach well past the members standing on them. Computed by the run
@@ -582,6 +597,58 @@ public static class ModelQuestionnaire
                 "Closure tolerance was tested at 6, 12 and 18 inches on this job and the result did not " +
                 "change, so this is not a tolerance that can be widened into a floor.")
                 { RuleTopic = "storeys-with-no-drawn-floor", Decided = true };
+
+            // AND THE HALF OF THAT LIST SHE DID NOT RULE ON.
+            //
+            // J1 above is settled, and it is settled for a reason she gave: a storey whose slab edge
+            // will NOT CLOSE has nothing to model, so listing it is all anyone can do. Its own text
+            // says so — "their slab edges do not close on the drawing".
+            //
+            // A storey where the edge DOES close is not that storey. 31168's B-LEVEL 28 closed a
+            // 1,298 sq ft outline and was refused for one reason: no thickness is printed inside it,
+            // and its sheet is the only one in tower B between levels 27 and 40 that matched no
+            // stick-file page, so there was no field thickness to inherit either. Nothing on the
+            // drawing says the region is a floor. One word from her says it, and it is a floor.
+            //
+            // That went out as a storey with no diaphragm in the middle of an otherwise uniform
+            // tower — 16 walls and 24 columns like the storeys above and below it — and no question
+            // was asked, because the only question covering "members and no floor" had been switched
+            // off by a ruling that was never about this case. Two different refusals, one question,
+            // and the answerable half went silent with the other.
+            var closedButUnpriced = report.Sheets
+                .Where(sheet => sheet.Slabs == 0)
+                .SelectMany(sheet => sheet.Flags
+                    .Where(f => f.Contains("CANDIDATE NOT MODELLED", StringComparison.Ordinal)
+                             && f.Contains("nothing on the drawing says this region is a floor",
+                                           StringComparison.OrdinalIgnoreCase))
+                    .Select(f => (Storey: sheet.Stories.FirstOrDefault() ?? sheet.Label, Note: f)))
+                .GroupBy(x => x.Storey, StringComparer.OrdinalIgnoreCase)
+                .Select(g => (Storey: g.Key, Best: g.OrderByDescending(x => AreaOf(x.Note)).First().Note))
+                .Where(x => AreaOf(x.Best) > 0.0)
+                .OrderByDescending(x => AreaOf(x.Best))
+                .Take(6)
+                .ToList();
+
+            if (closedButUnpriced.Count > 0)
+            {
+                string named = string.Join("  ·  ", closedButUnpriced.Select(x =>
+                    $"{x.Storey}: {Region(x.Best)}"));
+
+                yield return new ModelQuestion("S7", "A floor that closed but nothing prices",
+                    "IS THIS A FLOOR, AND HOW THICK? On these storeys a slab outline DOES close, so the " +
+                    "shape is not in doubt — but no thickness is printed inside it and the sheet matched no " +
+                    "stick-file page to take a field thickness from, so nothing on the drawing says the " +
+                    $"region is a floor and none was modelled: {named}. A thickness in inches is enough, or " +
+                    "\"not a floor\" and it stops being offered.",
+                    "Left out. A shape we cannot price is not made into a floor on the strength of its " +
+                    "outline alone — a stair landing, a curb and a slab all close the same way.",
+                    "These storeys have no diaphragm. This is NOT the list you asked us to stop raising: " +
+                    "those are storeys whose slab edge will not close, where there is nothing to model. " +
+                    "Here the edge closes and the only thing missing is a number.",
+                    "Answer with a thickness, for example: 7 in. Banked against the storey, so the same " +
+                    "drawing is not asked about twice.")
+                    { RuleTopic = "a-floor-that-closed-but-carries-no-thickness" };
+            }
         }
 
         // HOW MANY SLABS ARE ON THIS SHEET? The one question the drawings cannot answer and she
@@ -613,9 +680,23 @@ public static class ModelQuestionnaire
             .Where(x => x.Parts.Length == 3 && job.Contains(x.Parts[1], StringComparison.OrdinalIgnoreCase))
             .ToDictionary(x => x.Parts[2], x => x.Value, StringComparer.OrdinalIgnoreCase);
 
+        // SHORT OF HER COUNT, NOT MERELY DIFFERENT FROM IT.
+        //
+        // This compared for inequality, and the moment the mezzanine's third slab was found the
+        // SITE model reported "you told us 3, this model has 4" and offered her two refused scraps
+        // with "is one of these it?" — regions to ADD to a storey that already had one more than
+        // she asked for. Nonsense to read and nothing to answer.
+        //
+        // And the 4 was right. Her count is scoped to a storey NAME, and on a model carrying the
+        // whole site that name spans three buildings: LEVEL 1 MEZZ holds the YMCA's three plus one
+        // for buildings A and B. A count she gave about her building cannot arithmetically hold
+        // across a model that is not just her building.
+        //
+        // Being SHORT is different. That means a floor the drawing shows is missing from a storey,
+        // whichever buildings share the name, and it is worth her sentence either way.
         var shortOfHerCount = expected
             .Where(x => report.PlatesByStorey.TryGetValue(x.Key, out int had)
-                        && x.Value.IsNumeric && had != (int)x.Value.Value)
+                        && x.Value.IsNumeric && had < (int)x.Value.Value)
             .Select(x => $"{x.Key}: you told us {x.Value.Value:0}, this model has " +
                          $"{report.PlatesByStorey[x.Key]}")
             .ToList();
