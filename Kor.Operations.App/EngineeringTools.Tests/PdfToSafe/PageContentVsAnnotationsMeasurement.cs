@@ -46,6 +46,15 @@ public sealed class PageContentVsAnnotationsMeasurement
         // The case this reader was actually built for: an engineer's own Bluebeam markup. If it
         // reads nothing here either, the tool has no working input at all.
         yield return new object[] { "engineer's Bluebeam markup", Path.Combine(Desktop, "AN-parking-markup.pdf") };
+
+        // AN ARCHITECT'S SHEET WITH AN ENGINEER'S RED OVER IT — the ask, in an engineer's words:
+        // "I would like to get a dxf for this pdf. The tower outline, the red markups I did and the
+        // balcony outline." Omar Alcazar, 28 August, on Parcel 11.
+        //
+        // It is the interesting case for exactly one reason: two of the three things he wants are
+        // the ARCHITECT'S page content, not his annotations, and the annotations-only filter throws
+        // those away. The other measurement sets are all one or the other.
+        yield return new object[] { "architect's sheet + engineer's red", Path.Combine(Desktop, "OAP-parcel11-arch-markup.pdf") };
     }
 
     [Theory]
@@ -132,6 +141,11 @@ public sealed class PageContentVsAnnotationsMeasurement
     /// possible change that answers the question, and the reason it is here rather than in the
     /// product: nothing ships until the numbers say it should.
     /// </summary>
+    /// <summary>The same reading, for the colour census beside this one. One implementation, so the
+    /// two measurements can never disagree about what the page holds.</summary>
+    internal static ExtractedGeometry ExtractWholePageForMeasurement(Stream pdf, int pageNumber, int scaleDenominator)
+        => ExtractWholePage(pdf, pageNumber, scaleDenominator);
+
     private static ExtractedGeometry ExtractWholePage(Stream pdf, int pageNumber, int scaleDenominator)
     {
         var result = new ExtractedGeometry { ScaleDenominator = scaleDenominator };
