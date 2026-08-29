@@ -36,7 +36,7 @@
 SET NOCOUNT ON;
 
 DECLARE @by nvarchar(100) = N'BrainDecompose-MVE-SixMarket-2026-08-28';
-DECLARE @src nvarchar(400) = N'KOR-MVE-Six-Market-Record-2026-08-28; docs/audit-2026-08/mve-pipeline/source/';
+DECLARE @src nvarchar(400) = N'KOR-MVE-Market-Snapshot-2026-08-28; docs/audit-2026-08/mve-pipeline/source/';
 DECLARE @obs datetimeoffset = '2026-08-28';
 
 DECLARE @f TABLE (OrgId bigint, FType nvarchar(30), Body nvarchar(max),

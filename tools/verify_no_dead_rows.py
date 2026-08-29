@@ -37,7 +37,7 @@ sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="repla
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DEFAULT = os.path.join(REPO, "docs",
-                       "KOR-MVE-Six-Market-Record-2026-08-28-web.pdf")
+                       "KOR-MVE-Market-Snapshot-2026-08-28-web.pdf")
 
 # Phrases that mean the design conversation is over.
 COMMITTED = [

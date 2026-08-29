@@ -1,6 +1,6 @@
 # Source data for the MVE six-market claims
 
-Every headline in `KOR-MVE-Six-Market-Record` and its companion re-derives from
+Every headline in `KOR-MVE-Market-Snapshot` and its companion re-derives from
 what is in this directory or its parent. **It is here because it was very nearly
 lost.**
 

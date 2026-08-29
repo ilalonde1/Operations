@@ -28,7 +28,7 @@ DECLARE @summary nvarchar(max) = N'Introductory call, Dan Gura (MVE + Partners).
   + N'Offices are Californian but the work is national: Arizona, Nevada, Hawaii, Houston, Charlotte, Miami - registered in all six. '
   + N'Dan asked for a package: a sample dossier plus everything submitted in Arizona, of the kind he runs in CoStar. '
   + N'Mark Kim is the selection voice; Dan undertook to pull Matt, Mark and Ken together for a follow-up next month. '
-  + N'Delivered 2026-08-28 as KOR-MVE-Six-Market-Record: seven verified openings across Phoenix, Charlotte, Maui and Las Vegas, '
+  + N'Delivered 2026-08-28 as KOR-MVE-Market-Snapshot: seven verified openings across Phoenix, Charlotte, Maui and Las Vegas, '
   + N'plus the Arizona record with a read on which layer of it is already spoken for.';
 
 DECLARE @nk char(40) = CONVERT(char(40), HASHBYTES('SHA1', CAST(

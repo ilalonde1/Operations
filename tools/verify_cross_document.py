@@ -34,9 +34,9 @@ import pypdf
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SEND = os.path.join(REPO, "docs", "KOR-MVE-Six-Market-Record-2026-08-28-web.pdf")
+SEND = os.path.join(REPO, "docs", "KOR-MVE-Market-Snapshot-2026-08-28-web.pdf")
 COMP = os.path.join(REPO, "docs",
-                    "KOR-MVE-Six-Market-Companion-2026-08-28-web.pdf")
+                    "KOR-MVE-Market-Companion-2026-08-28-web.pdf")
 
 # label -> regex capturing the number that must agree wherever it appears
 FIGURES = [

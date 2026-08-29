@@ -39,7 +39,7 @@ from email.message import EmailMessage
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(REPO, "docs", "audit-2026-08", "outbound")
-PDF = os.path.join(REPO, "docs", "KOR-MVE-Six-Market-Record-2026-08-28-web.pdf")
+PDF = os.path.join(REPO, "docs", "KOR-MVE-Market-Snapshot-2026-08-28-web.pdf")
 
 IAN = "Ian Lalonde <ilalonde@korstructural.com>"
 JIM = "Jim DesRoches <jdesroches@korstructural.com>"
