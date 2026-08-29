@@ -619,3 +619,78 @@ and campus practice. Both are the right discipline in the right sector.
    it actually does before quoting it.**
 7. **Shell:** `cd dir && nohup cmd &` backgrounds the *whole list*, so every later line in the same
    call runs in the original directory. Put the `cd` on its own line.
+
+---
+
+## Session 4 — every named pursuit verified individually (28 August 2026)
+
+Ian asked whether each project we were prepared to call an open seat should be
+researched individually, to confirm no architect exists and to pick up anything
+else on the record. **The answer was yes, and it changed the list.**
+
+### ⛔⛔ FOUR OF THE NAMED LEADS WERE WRONG. THE METHOD THAT PRODUCED THEM WAS TOO NARROW.
+
+`tools/resolve_project_entities.py` reads a Phoenix case's **contact list** and
+infers each party's role from their email domain. That is a real signal and it
+is **not sufficient on its own**. The architect is very often not in the contact
+list at all — it is in the **drawing title block**, or only in trade press.
+
+| Case / petition | Called | Actually |
+|---|---|---|
+| Z-41-25-2 Fifield Companies | open seat | **Todd & Associates Architecture** — design *and* landscape. Named by AZBEX 6 May 2025. **Appears in NO city document.** Project is "Residences at Scottsdale Crossing", 302 units |
+| Z-82-25-5 Elevation Living | open seat | **Woods Associates Architects, LLC** — in the drawing title block: `OWNER: ELEVATION LIVING, LLC   DESIGN: WOODS ASSOCIATES ARCHITECTS, LLC` |
+| Z-51-26-3 J&K Luxury Group | no architect found | **Kontexture, LLC** — title block reads `KONTEXTURE, LLC ARCHITECT`, 3334 N 20th St. (Kontexture was *already* identified as a Phoenix architecture practice earlier in this work) |
+| Charlotte 2026-051 Kittle Property Group | "worth the call" | **Kittle is its own architect.** Their site: *"in-house design team ... serves as the Architect of Record in all states"*. Same rule that excluded True Homes and Cullum Homes |
+
+**Two of the three Phoenix "open seats" we had printed were already let.** The
+Kittle miss is worse than the others: this very log already warned, at the end
+of session 3, to *"sanity-check every firm against what it actually does before
+quoting it"* — and named Kittle in that warning. The rule was written down and
+not applied.
+
+### ✅ What survived, and it is better than what it replaced
+
+| Case | Who | What | Why it stands |
+|---|---|---|---|
+| **Z-24-26-7** | **Vintage Partners** | 63 acres, **1,000 units**, single-family attached + multifamily, 22 acres commercial. Site was a **scrapped data centre** — Phoenix changed its data-centre policy and Vintage converted it | No architect in the case file; team block lists only RVi (land planning), Precision Civil (engineer). No architect in trade press either |
+| **Z-169-25-2** | **Host Hotels & Resorts** (NYSE: HST) | **Copper Residences** — 72 acres of the Westin Kierland's Mesquite golf course. DU1 (16.16 ac) resort condominium and **condo-hotel**; DU2 (55.64 ac) single-family, townhome, duplex | Greey \| Pickett on site design and landscape, Woodpatel civil, CivTech traffic. **No building architect named.** Third application; in review after the May 2026 submittal |
+
+Host Kierland is the better lead of the two for this client: condo and
+condo-hotel is squarely the product line, and the applicant is a listed REIT.
+⚠ Neighbourhood opposition is active and on the record — say so.
+
+**Dropped as mis-scoped:** Z-47-25-1 "Redland Holdings" is the **Howard's Ace
+Hardware PUD**, a retail centre modernisation. Not multifamily, not a lead.
+
+### ⚠ Could NOT be verified — Charlotte's WAF
+
+Charlotte petition pages
+(`charlottenc.gov/.../Rezoning/2026/2026-0NN`) return **403 to curl and to the
+fetcher**, and a browser-header set gets only the WAF challenge page. So for
+**MAA 2026-050, Middleburg 2026-023, Crosland Southeast 2026-027 and DreamKey
+2026-035** we have confirmed from the dataset that the petitions are *pending*
+with those petitioners — and we have **not** been able to open the petition
+documents to check whether an architect is named. **Do not present these four as
+verified open seats.** Either say plainly that Charlotte publishes petitioner
+only, or check them by hand in a browser first.
+
+### The gate this produced
+
+`tools/find_architect_in_case.py` — reads a whole case file for an architect,
+looking at the **drawings**, not the contact list.
+
+⚠ Its firm-name pattern is **case-sensitive on purpose**. A rezoning narrative
+says "architectural" on nearly every page ("four-sided architecture",
+"consistent architectural treatment"); a case-insensitive version reported an
+architect on *every* case, which would have killed every lead — the opposite
+failure, and just as bad. A real firm name in these files is either an ALL-CAPS
+title-block entry or title case **with a legal suffix**. Prose is neither.
+
+### ⛔ The standing rule, restated because it nearly failed
+
+**A negative is not an open seat.** Finding a name disqualifies a lead — act on
+it. Finding nothing means only that *the documents checked* do not name one.
+Fifield proves the point: its architect is in **no city record at all**. Every
+lead therefore needs **both** a file scan and a trade-press check before it goes
+in front of a client, and the wording stays "no architect appears on the public
+record".
