@@ -23,7 +23,7 @@ BODY = r"C:\VIsual Studio Projects\Operations\docs\audit-2026-08\mve-designteam-
 # n, developer, market, what, scale, stage, record, existing-client flag
 # ⚠ THE PROJECT NAME OR ADDRESS IS NOT OPTIONAL.
 #    The first version of this chart compressed the "what" column to a type
-#    ("Resort condominium & condo-hotel") and dropped the scheme name. A reader
+#    ("Resort condominium & condo-hotel") and dropped the project name. A reader
 #    cannot look up a type. Every row has to carry the name the filing is under,
 #    or failing that the location, or it is not actionable.
 ROWS = [
@@ -77,7 +77,7 @@ def rows_html():
 
 SECTION = """    <section id="openings">
       <p class="kicker">Phoenix &middot; Charlotte &middot; Maui &middot; Las Vegas &mdash; newest filing 27 August</p>
-      <h2>Nine schemes in your markets where nobody has been hired yet</h2>
+      <h2>Nine projects in your markets where nobody has been hired yet</h2>
       <p class="lede">All nine are at a stage before an architect is normally appointed &mdash; land being rezoned, a petition pending, an environmental assessment in review, or a pre-application lodged with the county. <strong>None names an architect on the public record.</strong></p>
       <div class="table-wrap">
         <table>
@@ -86,7 +86,7 @@ SECTION = """    <section id="openings">
 %s          </tbody>
         </table>
       </div>
-      <p><span class="muted">&#9733; Howard Hughes is your Ward Village client. The Las Vegas filing is a separate scheme in a market where you do not currently do their work.</span></p>
+      <p><span class="muted">&#9733; Howard Hughes is your Ward Village client. The Las Vegas filing is a separate project in a market where you do not currently do their work.</span></p>
       <div class="box box--dont">
         <p class="box__label">&#10005; Three that are moving but come with a condition</p>
         <p><strong>Ovation Development</strong> &mdash; Las Vegas, 13,000 units and 1,650 more due by 2028, filed a pre-application in July with no architect named. It carries an in-house design principal. <strong>K&#299;lauea Town Expansion</strong> (Kaua&#699;i, 310 affordable units) and <strong>Mililani Teacher Workforce Housing</strong> (O&#699;ahu) name none either, but the applicants are the County of Kaua&#699;i and the State School Facilities Authority &mdash; both will be procured rather than appointed, and K&#299;lauea breaks ground this quarter.</p>
@@ -104,7 +104,7 @@ def main():
         raise SystemExit("#openings not found")
     s = re.sub(pat, lambda m: SECTION % rows_html(), s, count=1, flags=re.S)
 
-    entry = ('<li><a href="#openings">Nine schemes where nobody has been '
+    entry = ('<li><a href="#openings">Nine projects where nobody has been '
              'hired yet</a></li>')
     s = re.sub(r'<li><a href="#openings">.*?</a></li>', lambda m: entry, s,
                count=1)

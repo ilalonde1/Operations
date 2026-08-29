@@ -59,7 +59,7 @@ SEND_HERO = """
 <header class="hero">
   <div class="hero__wrap fade">
     <p class="hero__eyebrow">KOR Structural &nbsp;·&nbsp; prepared for MVE + Partners &nbsp;·&nbsp; 28 August 2026</p>
-    <h1>Nine schemes in your markets<br>with no architect on the record.</h1>
+    <h1>Nine projects in your markets<br>with no architect on the record.</h1>
     <p class="hero__lede">Phoenix, Charlotte, Maui and Las Vegas &mdash; land being rezoned, petitions pending, an environmental assessment accepted five days ago, and a multifamily pre-application lodged yesterday. One of the nine is Howard Hughes, filing in a market where you do not currently do their work. The Arizona search you asked for is here too, with a straight read on which layer of that record is already spoken for.</p>
     <div class="hero__meta">
       <span>Four markets</span>

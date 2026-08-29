@@ -40,6 +40,9 @@ METHOD = [
     (r"trade.?press check", "our technique"),
     (r"\bour (method|process|check|test)", "explicit method"),
     (r"survived|survive it", "verification narrative"),
+    # Passive forms hide the same thing: "of thirty read in full" is still us
+    # describing our own reading. Catch the verb without needing the pronoun.
+    (r"read in full|checked against|re-?run on|cross-?checked", "passive method"),
 ]
 
 # Findings about the record that merely contain a flagged word.
