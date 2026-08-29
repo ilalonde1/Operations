@@ -134,13 +134,13 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 }
             }
 
-            var xText = new List<(string Text, double X, double Y)>();
-            foreach (var (text, x, y) in geometry.TextAnnotations)
+            var xText = new List<(string Text, double X, double Y, double HeightMm)>();
+            foreach (var annotation in geometry.TextAnnotations)
             {
-                string clean = TextForDxf(text);
-                double px = x - cx, py = y - cy;
+                string clean = TextForDxf(annotation.Text);
+                double px = annotation.LeftX - cx, py = annotation.BottomY - cy;
                 if (clean.Length > 0 && Ok(px, py))
-                    xText.Add((clean, px, py));
+                    xText.Add((clean, px, py, annotation.HeightMm));
             }
 
             double bMinX = double.MaxValue, bMinY = double.MaxValue;
@@ -315,17 +315,17 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     false);
             }
 
-            void WriteText(string text, double x, double y)
+            void WriteText(string text, double x, double y, double heightMm)
             {
                 G(0, "TEXT"); G(8, textLayer);
                 G(62, "7");
                 Num(10, x); Num(20, y); Num(30, 0);
-                Num(40, 250.0);
+                Num(40, heightMm > 0 ? heightMm : 250.0);
                 G(1, text);
             }
 
-            foreach (var (text, x, y) in xText)
-                WriteText(text, x, y);
+            foreach (var (text, x, y, heightMm) in xText)
+                WriteText(text, x, y, heightMm);
 
             G(0, "ENDSEC");
             G(0, "EOF");

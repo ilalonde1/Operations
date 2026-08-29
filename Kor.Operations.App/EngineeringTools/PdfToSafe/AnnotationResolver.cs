@@ -26,7 +26,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             if (geo is null) throw new System.ArgumentNullException(nameof(geo));
 
             var annotations = geo.TextAnnotations
-                ?? (IReadOnlyList<(string Text, double X, double Y)>)System.Array.Empty<(string, double, double)>();
+                .ConvertAll(a => (a.Text, a.X, a.Y));
 
             var slabThick = ThicknessAnnotationParser.AssignToSlabs(geo.Slabs, annotations);
             var colSec    = ColumnSectionParser.AssignToColumns(geo.Columns, annotations);

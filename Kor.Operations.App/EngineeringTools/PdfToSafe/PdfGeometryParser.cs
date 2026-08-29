@@ -140,9 +140,9 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             return denominator > 0 ? denominator : null;
         }
 
-        public static List<(string Text, double X, double Y)> ExtractTextAnnotations(Page page, double scale)
+        public static List<TextAnnotation> ExtractTextAnnotations(Page page, double scale)
         {
-            var result = new List<(string Text, double X, double Y)>();
+            var result = new List<TextAnnotation>();
             foreach (var word in page.GetWords())
             {
                 if (string.IsNullOrWhiteSpace(word.Text))
@@ -151,14 +151,17 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 var box = word.BoundingBox;
                 double xMm = ((box.BottomLeft.X + box.TopRight.X) / 2.0) * scale;
                 double yMm = ((box.BottomLeft.Y + box.TopRight.Y) / 2.0) * scale;
-                result.Add((word.Text, xMm, yMm));
+                double leftMm = box.BottomLeft.X * scale;
+                double bottomMm = box.BottomLeft.Y * scale;
+                double heightMm = (box.TopRight.Y - box.BottomLeft.Y) * scale;
+                result.Add(new TextAnnotation(word.Text, xMm, yMm, leftMm, bottomMm, heightMm));
             }
             return result;
         }
 
-        public static List<(string Text, double X, double Y)> ExtractMarkupTextAnnotations(Page page, double scale)
+        public static List<TextAnnotation> ExtractMarkupTextAnnotations(Page page, double scale)
         {
-            var result = new List<(string Text, double X, double Y)>();
+            var result = new List<TextAnnotation>();
             foreach (var ann in page.ExperimentalAccess.GetAnnotations())
             {
                 string text = ann.Content?.Trim() ?? string.Empty;
@@ -168,7 +171,10 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 var rect = ann.Rectangle;
                 double xMm = ((rect.BottomLeft.X + rect.TopRight.X) / 2.0) * scale;
                 double yMm = ((rect.BottomLeft.Y + rect.TopRight.Y) / 2.0) * scale;
-                result.Add((text, xMm, yMm));
+                double leftMm = rect.BottomLeft.X * scale;
+                double bottomMm = rect.BottomLeft.Y * scale;
+                double heightMm = (rect.TopRight.Y - rect.BottomLeft.Y) * scale;
+                result.Add(new TextAnnotation(text, xMm, yMm, leftMm, bottomMm, heightMm));
             }
             return result;
         }

@@ -7,6 +7,27 @@ using UglyToad.PdfPig.Annotations;
 
 namespace Kor.Operations.EngineeringTools.PdfToSafe
 {
+    internal readonly record struct TextAnnotation(
+        string Text,
+        double X,
+        double Y,
+        double LeftX,
+        double BottomY,
+        double HeightMm)
+    {
+        public TextAnnotation(string text, double x, double y)
+            : this(text, x, y, x, y, 0.0)
+        {
+        }
+
+        public void Deconstruct(out string text, out double x, out double y)
+        {
+            text = Text;
+            x = X;
+            y = Y;
+        }
+    }
+
     internal sealed class ExtractedGeometry
     {
         // Each slab: ordered list of (X,Y) in mm, ready for a closed polyline
@@ -58,7 +79,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         /// positions in the same mm coordinate space as Slabs/Lines/Columns.
         /// Populated during extraction when text parsing is enabled.
         /// </summary>
-        public List<(string Text, double X, double Y)> TextAnnotations { get; set; } = new();
+        public List<TextAnnotation> TextAnnotations { get; set; } = new();
     }
 
     internal sealed class SlabColorSettings
