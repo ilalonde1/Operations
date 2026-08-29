@@ -84,6 +84,10 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             var xSlabColours = new List<(byte R, byte G, byte B)>();
             var xLineColours = new List<(byte R, byte G, byte B)>();
             var xColumnColours = new List<(byte R, byte G, byte B)>();
+            // And whether each came from a markup annotation rather than the architect's page.
+            var xSlabMarkup = new List<bool>();
+            var xLineMarkup = new List<bool>();
+            var xColumnMarkup = new List<bool>();
             var black = ((byte)0, (byte)0, (byte)0);
 
             for (int i = 0; i < geometry.Slabs.Count; i++)
@@ -95,6 +99,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 {
                     xSlabs.Add(pts);
                     xSlabColours.Add(i < geometry.SlabColors.Count ? geometry.SlabColors[i] : black);
+                    xSlabMarkup.Add(i < geometry.SlabIsAnnotation.Count && geometry.SlabIsAnnotation[i]);
                 }
             }
             for (int i = 0; i < geometry.Lines.Count; i++)
@@ -107,6 +112,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     xLines.Add(pts);
                     xLineIsWall.Add(i < geometry.LineSectionHints.Count && geometry.LineSectionHints[i] is not null);
                     xLineColours.Add(i < geometry.LineColors.Count ? geometry.LineColors[i] : black);
+                    xLineMarkup.Add(i < geometry.LineIsAnnotation.Count && geometry.LineIsAnnotation[i]);
                 }
             }
             for (int i = 0; i < geometry.Columns.Count; i++)
@@ -120,6 +126,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     xColumns.Add((px, py));
                     xColumnSizes.Add(i < geometry.ColumnSizes.Count ? geometry.ColumnSizes[i] : (400.0, 400.0));
                     xColumnColours.Add(i < geometry.ColumnColors.Count ? geometry.ColumnColors[i] : black);
+                    xColumnMarkup.Add(i < geometry.ColumnIsAnnotation.Count && geometry.ColumnIsAnnotation[i]);
                 }
             }
 
@@ -153,7 +160,14 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             // A layer per source colour, or the four structural ones. Named PDF-RRGGBB so the layer
             // says which pen it came off, and given the nearest AutoCAD colour index so it still
             // LOOKS like the drawing when it opens.
-            static string ColourLayer((byte R, byte G, byte B) c) => $"PDF-{c.R:X2}{c.G:X2}{c.B:X2}";
+            //
+            // AND A SEPARATE LAYER WHERE THE SAME PEN WAS USED BY TWO PEOPLE. On Parcel 11 the
+            // engineer's shear walls and the architect's property line are both #F00000, so colour
+            // alone hands an engineer his own markup welded to a site boundary. Origin separates
+            // them exactly and without a guess — his are Bluebeam ANNOTATIONS, the boundary is page
+            // content — and on that sheet it splits 5 shapes and 37 wall segments from 488 lines.
+            static string ColourLayer((byte R, byte G, byte B) c, bool markup) =>
+                $"PDF-{c.R:X2}{c.G:X2}{c.B:X2}" + (markup ? "-MARKUP" : "");
 
             static int NearestAci((byte R, byte G, byte B) c)
             {
@@ -173,12 +187,17 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 return best;
             }
 
-            var colourLayers = new List<(byte R, byte G, byte B)>();
+            var colourLayers = new List<((byte R, byte G, byte B) Colour, bool Markup)>();
             if (layerByColour)
             {
-                var seen = new HashSet<(byte R, byte G, byte B)>();
-                foreach (var c in xSlabColours.Concat(xColumnColours).Concat(xLineColours))
-                    if (seen.Add(c)) colourLayers.Add(c);
+                var seen = new HashSet<string>(StringComparer.Ordinal);
+                void Note((byte R, byte G, byte B) c, bool m)
+                {
+                    if (seen.Add(ColourLayer(c, m))) colourLayers.Add((c, m));
+                }
+                for (int i = 0; i < xSlabColours.Count; i++) Note(xSlabColours[i], xSlabMarkup[i]);
+                for (int i = 0; i < xColumnColours.Count; i++) Note(xColumnColours[i], xColumnMarkup[i]);
+                for (int i = 0; i < xLineColours.Count; i++) Note(xLineColours[i], xLineMarkup[i]);
             }
 
             G(0, "TABLE"); G(2, "LAYER"); G(70, (layerByColour ? colourLayers.Count + 1 : 5).ToString(ic));
@@ -186,7 +205,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             WL("0", 7);
             if (layerByColour)
             {
-                foreach (var c in colourLayers) WL(ColourLayer(c), NearestAci(c));
+                foreach (var (c, markup) in colourLayers) WL(ColourLayer(c, markup), NearestAci(c));
             }
             else
             {
@@ -212,7 +231,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             }
 
             for (int i = 0; i < xSlabs.Count; i++)
-                WritePolyline(layerByColour ? ColourLayer(xSlabColours[i]) : "SLAB", xSlabs[i], true);
+                WritePolyline(layerByColour ? ColourLayer(xSlabColours[i], xSlabMarkup[i]) : "SLAB", xSlabs[i], true);
 
             // Columns: footprint rectangles from the parallel xColumnSizes list.
             for (int i = 0; i < xColumns.Count; i++)
@@ -225,14 +244,14 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     (px - hw, py - hd), (px + hw, py - hd),
                     (px + hw, py + hd), (px - hw, py + hd)
                 };
-                WritePolyline(layerByColour ? ColourLayer(xColumnColours[i]) : "COLUMN", rect, true);
+                WritePolyline(layerByColour ? ColourLayer(xColumnColours[i], xColumnMarkup[i]) : "COLUMN", rect, true);
             }
 
             // Lines: WALL or BEAM layer from the parallel xLineIsWall list.
             for (int i = 0; i < xLines.Count; i++)
             {
                 WritePolyline(
-                    layerByColour ? ColourLayer(xLineColours[i]) : (xLineIsWall[i] ? "WALL" : "BEAM"),
+                    layerByColour ? ColourLayer(xLineColours[i], xLineMarkup[i]) : (xLineIsWall[i] ? "WALL" : "BEAM"),
                     xLines[i], false);
             }
 

@@ -24,6 +24,20 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         /// </summary>
         public List<(double WidthMm, double DepthMm)> ColumnSizes { get; } = new();
         public List<(byte R, byte G, byte B)> LineColors   { get; } = new();
+
+        /// <summary>
+        /// Parallel to Slabs / Columns / Lines: did this shape come from a MARKUP ANNOTATION, or
+        /// from the page the architect drew?
+        ///
+        /// It is the only exact way to tell an engineer's red from an architect's red, and on
+        /// Parcel 11 they are the same red — #F00000 carries Omar's shear walls AND the property
+        /// line sweeping round the site. Colour cannot separate those; origin can, and the parser
+        /// already knew it and threw it away. Every one of that sheet's 5 red closed shapes and 37
+        /// red wall segments is an annotation; 488 of its 489 red lines are the boundary.
+        /// </summary>
+        public List<bool> SlabIsAnnotation   { get; } = new();
+        public List<bool> ColumnIsAnnotation { get; } = new();
+        public List<bool> LineIsAnnotation   { get; } = new();
         /// <summary>
         /// Optional cross-section hints parallel to <see cref="Lines"/>. Populated when a
         /// slab polygon is reclassified as a wall/beam and its intended beam section is

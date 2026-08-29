@@ -69,6 +69,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     {
                         result.Slabs.Add(pts);
                         result.SlabColors.Add(color);
+                        result.SlabIsAnnotation.Add(sub.IsAnnotation);
                         if (diag >= 300 && diag <= 2000)
                             result.DropPanelCandidates.Add(pts);
                     }
@@ -95,6 +96,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
                         result.Columns.Add(PolygonProcessor.Centroid(pts));
                         result.ColumnColors.Add(color);
+                        result.ColumnIsAnnotation.Add(sub.IsAnnotation);
                         result.ColumnSizes.Add((bboxW, bboxH));
                     }
                 }
@@ -106,6 +108,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         if (excludeGridLines && pts.Count == 2 && len > gridThreshMm)
                             continue;
                         result.Lines.Add(pts); result.LineColors.Add(color);
+                        result.LineIsAnnotation.Add(sub.IsAnnotation);
                     }
                 }
             }
