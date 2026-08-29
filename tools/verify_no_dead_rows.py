@@ -60,6 +60,12 @@ ALLOW = [
     "final one is a scheme committed",
     "42 are final",
     "are preliminary and",
+    # The "TO BE BID" disproof quotes the final-site-plan count as evidence:
+    # "appears on 59 of the 92 final site plans". That sentence is the reason
+    # the field is NOT used, so it must not trip the gate.
+    "59 of the 92 final site plans",
+    "92 final",
+    "281 preliminary and 92 final",
 ]
 
 STALE_MONTHS = 9

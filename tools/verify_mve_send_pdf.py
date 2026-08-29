@@ -118,6 +118,11 @@ def main(path):
     HEADINGS = [
         r"deliberately did not put in front of you",
         r"we removed, and where each one.{0,3}s architect was hiding",
+        # The Arizona section also names dropped firms, as the evidence that
+        # the PUD files were actually read: "Three of them named an architect
+        # there -- Woods Associates, Kontexture, and one more -- and were
+        # dropped." That is an exclusion statement, so it counts as a box.
+        r"named an architect there",
     ]
     box, found_boxes = "", 0
     for h in HEADINGS:
