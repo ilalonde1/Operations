@@ -45,29 +45,21 @@ IAN = "Ian Lalonde <ilalonde@korstructural.com>"
 JIM = "Jim DesRoches <jdesroches@korstructural.com>"
 DAN = "Dan Gura <dgura@mve-architects.com>"
 
-IAN_SUBJECT = "Your Ward Village client has opened 7,250 acres in three of your other markets"
+IAN_SUBJECT = "Seven projects in your markets with no architect on the record"
 
 IAN_BODY = """Dan,
 
-Good to meet. Here is the package I promised, produced by our Ops Brain.
+Good to meet. Here is the package, produced by our Ops Brain.
 
-The Arizona submitted-projects search you asked for is in there, and it is the third page: 373 open site-plan and rezoning cases out of Phoenix's own record, 280 filed since January 2025, each marked preliminary or final. I re-ran it against the live service before sending.
+The Arizona submitted-projects search you asked for is in it - 373 open cases out of Phoenix's own record - along with a straight read on which layer of that record already has a design team attached to it.
 
-Page one is the part I would look at first, because it is about a company you already work for. Howard Hughes filed a Las Vegas multifamily pre-application on 27 August - the ownership disclosure names David O'Reilly, Jay Cross and Carlos Olea, so there is no doubt whose it is. In Houston the same group has filed thirty-nine subdivision plats since December, 7,250 acres, including a 3,905-acre general plan in February and a 2,037-acre one in June. And their own SEC subsidiaries exhibit puts them in the Phoenix west valley as well, at Teravalis. Four of your six markets, one owner. I have been careful in the document to say which part of that is a commission and which is not: the Las Vegas filing is multifamily and there is work in it, while the Houston acreage is a land action feeding production homebuilders. That is capital placement, and worth knowing, but it is not a job.
+Page one is about a company you already work for. Howard Hughes filed a Las Vegas multifamily pre-application on 27 August, 354 apartments at Downtown Summerlin, and has 7,250 acres moving in Houston. Four of your six markets, one owner.
 
-Page two is seven projects where the public record names no architect. Host Hotels & Resorts is turning 72 acres of the Westin Kierland golf course into resort condominium and condo-hotel. Mid-America Apartments has a rezoning at Philips Place in SouthPark for 275 units and 15,000 square feet of retail in a single building. Middleburg is at 364 units on Wilkinson Boulevard. Makena Mauka on Maui is 652 units with its final EIS accepted five days ago. And Howard Hughes filed a Las Vegas multifamily pre-application on 27 August - 354 apartments at Downtown Summerlin.
+Page two is seven projects where the public record names no architect - Host Hotels at the Westin Kierland, Mid-America at Philips Place in SouthPark, and Makena Mauka on Maui at 652 units with its final EIS accepted five days ago.
 
-The part I would judge us on is what came OUT. Every project on that page was checked twice - the case file, environmental assessment or site plan read in full, and then a separate press check. Nine did not survive it and are not in the document. Two of them are worth you knowing about anyway, because they were on our own shortlist until the second check: a Phoenix scheme whose architect is named in the trade press and in no city record at all, and a Charlotte developer whose own website says its in-house team is the architect of record in every state it builds in.
+Nine more did not survive checking and are not in there. That is the part I would judge us on.
 
-We also crossed your published client list against the whole pack and dropped two of your own clients: Hines appears three times in the Arizona record, all completed office fit-outs with Phoenix Design One already named, and Vestar appears on a Phoenix rezoning that already names Butler Design Group. Ward Village, Kalae and Launiu come out on the same rule - they are your work, and they are in the document only as the reason the Howard Hughes thread is worth your time.
-
-The rest is the same treatment for the other five markets. Houston publishes the developer company, the filing consultancy and a named contact on 100% of 1,426 plat applications - which is the opposite of Houston's reputation. Hawaii turned out to have the best-structured record of the six: a statewide bulletin, twice a month, naming the applicant and the planning consultant on every project before design. Charlotte has eighty-four pending petitions, of which five are worth a call. Miami is genuinely thin and the document says why rather than padding it.
-
-The limits matter more than the list. Not on the public record is not the same as not appointed - if you are already engaged on something in here, what that tells you is how far the public record lags your own commissions.
-
-There is a companion setting out how the design-team concentration figures were arrived at and what each rests on. Say the word and I will send it.
-
-This was a single sweep, run by hand. The useful version is the same thing running every week and telling you only what changed - a new pre-application, a developer who has just retained counsel, an architect appearing on a case that did not have one. That is what I will show you on the next call.
+This was one sweep, run by hand. The version worth having runs every week and tells you only what changed. I will show you that on the next call.
 
 Ian
 
