@@ -1,0 +1,7 @@
+# Parcel 11 — the L08-15 typical floor, as one storey.
+# The sheet is a single plan serving levels 8 to 15 and states no elevations, so the
+# floor-to-floor below is an ASSUMPTION (10'-0" = 3048 mm), not something read off the drawing.
+# Change the number and re-run to get the real stack.
+Name,Elevation
+BASE,0
+LEVEL 8,3048
