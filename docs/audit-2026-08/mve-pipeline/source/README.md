@@ -62,3 +62,29 @@ in the packets (33) against a figure derived from the agendas (66). **Match the
 population before comparing a number.** Closing this properly means adding the
 case number to `udrb_teams.py`'s output; until then the figure rests on its
 original run and stays out of the client document.
+
+## Banked to the graph, 28 Aug 2026
+
+This research lives in `KorOpportunitiesDb` on `KOR-APP01\SQLEXPRESS`, not only
+in these files. Before it ran there were **zero OrgFacts** from any of this work.
+
+- `../decompose-to-brain.sql` — 20 typed facts across 15 orgs. Re-runnable;
+  NaturalKey upserts, so a second run stays at 20.
+- `../decompose-touchpoint.sql` — the 27 Aug call with Dan Gura as a
+  CrmTouchpoint. MVE now reads **Warm** in `vw_OrgWarmth`.
+
+Orgs were created through the dup-safe path (`BdResearchImport
+--ingest-canonical`, dry-run then live): **886811–886823**, thirteen creates,
+one match (Ovation to existing 54091), zero duplicate fuzzy keys introduced.
+
+The graph now answers these without opening a PDF:
+
+    -- who has an open seat
+    SELECT c.DisplayName FROM opportunities.OrgFact f
+      JOIN opportunities.CanonicalOrg c ON c.Id = f.CanonicalOrgId
+     WHERE f.Body LIKE 'OPEN SEAT%' AND f.RetiredAtUtc IS NULL;
+
+    -- who will never hire an outside architect
+    SELECT c.DisplayName FROM opportunities.OrgFact f
+      JOIN opportunities.CanonicalOrg c ON c.Id = f.CanonicalOrgId
+     WHERE f.Body LIKE 'WILL NOT HIRE%' AND f.RetiredAtUtc IS NULL;
