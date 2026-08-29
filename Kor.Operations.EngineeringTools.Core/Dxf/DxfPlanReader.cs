@@ -470,7 +470,7 @@ public static class DxfPlanReader
     {
         string layer = string.Empty;
         var chunks = new List<string>();
-        double x = 0, y = 0;
+        double x = 0, y = 0, height = 0;
         bool hasX = false, hasY = false;
 
         int next = ScanEntity(lines, start, (code, value) =>
@@ -482,6 +482,7 @@ public static class DxfPlanReader
                 case "3" when stripMTextFormatting: chunks.Add(value); break;
                 case "10": if (TryNumber(value, out x)) hasX = true; break;
                 case "20": if (TryNumber(value, out y)) hasY = true; break;
+                case "40": TryNumber(value, out height); break;
             }
         });
 
@@ -489,7 +490,7 @@ public static class DxfPlanReader
         if (raw.Length > 0 && hasX && hasY)
         {
             string text = stripMTextFormatting ? PlainMText(raw) : raw;
-            into.Add(new DxfPositionedTag(text, new DxfPoint(x, y), layer, raw));
+            into.Add(new DxfPositionedTag(text, new DxfPoint(x, y), layer, raw) { Height = height });
         }
 
         return next;

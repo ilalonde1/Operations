@@ -30,7 +30,16 @@ public sealed record DxfSegment(string Layer, DxfPoint Start, DxfPoint End)
 }
 
 /// <summary>Annotation read from the drawing at the point where the drafter placed it.</summary>
-public sealed record DxfPositionedTag(string Text, DxfPoint Point, string Layer, string RawText);
+public sealed record DxfPositionedTag(string Text, DxfPoint Point, string Layer, string RawText)
+{
+    /// <summary>Text height in drawing units — group code 40 — or 0 when the entity omits it.
+    ///
+    /// Init-only rather than a positional parameter, so the eleven places that build a tag from a
+    /// drawing that has no height stay as they are. Nothing that reads a tag for its WORDS needs
+    /// this; a renderer showing what a DXF will look like does, and without it the only honest
+    /// thing it can draw is a guess.</summary>
+    public double Height { get; init; }
+}
 
 /// <summary>A closed ring of points, in order. First point is not repeated at the end.</summary>
 public sealed class PlanLoop

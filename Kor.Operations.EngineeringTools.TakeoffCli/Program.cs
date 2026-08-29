@@ -135,6 +135,49 @@ if (args.Length >= 1 && args[0].Equals("dxf-render", StringComparison.OrdinalIgn
         }
     }
 
+    // --text draws every TEXT tag as the box it will occupy: its insertion point, its height, and
+    // roughly its width. Not the glyphs — the EXTENT, which is what tells you whether the labels
+    // are the right size and whether they collide.
+    //
+    // Twice now a DXF has gone out with unreadable text and been caught by a person opening it in
+    // CAD: once every word was drawn at a flat 250 mm from its centre instead of its baseline, and
+    // once every markup label took its height from the SHAPE it annotates, so "12" x 30"" was set
+    // 796 mm tall on a 796 mm wall. Both were invisible to a renderer that draws only geometry, and
+    // both were obvious the moment somebody looked.
+    if (args.Any(a => a.Equals("--text", StringComparison.OrdinalIgnoreCase)))
+    {
+        var tags = DxfPlanReader.ReadPositionedTags(args[1]);
+        int drawn = 0;
+        foreach (var tag in tags)
+        {
+            double h = tag.Height > 0 ? tag.Height : 240.0;
+            double w = Math.Max(1, tag.Text.Length) * h * 0.6;
+            var corners = new[]
+            {
+                (tag.Point.X, tag.Point.Y), (tag.Point.X + w, tag.Point.Y),
+                (tag.Point.X + w, tag.Point.Y + h), (tag.Point.X, tag.Point.Y + h),
+            };
+            for (int i = 0; i < 4; i++)
+            {
+                var (ax, ay) = Map(new DxfPoint(corners[i].Item1, corners[i].Item2));
+                var (bx, by) = Map(new DxfPoint(corners[(i + 1) % 4].Item1, corners[(i + 1) % 4].Item2));
+                int steps = (int)Math.Max(Math.Abs(bx - ax), Math.Abs(by - ay)) + 1;
+                for (int s = 0; s <= steps; s++)
+                {
+                    double f = steps == 0 ? 0 : (double)s / steps;
+                    Plot((int)Math.Round(ax + (bx - ax) * f), (int)Math.Round(ay + (by - ay) * f),
+                         new Rgba32(0, 150, 0), 0);
+                }
+            }
+            drawn++;
+        }
+        var heights = tags.Where(t => t.Height > 0).Select(t => t.Height).OrderBy(h => h).ToList();
+        Console.WriteLine(heights.Count == 0
+            ? $"  text extents drawn: {drawn} (no heights in the file; boxed at 240)"
+            : $"  text extents drawn: {drawn}  height {heights[0]:N0}-{heights[^1]:N0} mm "
+              + $"(median {heights[heights.Count / 2]:N0})");
+    }
+
     // Overlay what the classifier actually extracted, so anything in the drawing that the
     // model does not carry is visible as bare linework rather than having to be inferred.
     if (args.Any(a => a.Equals("--overlay", StringComparison.OrdinalIgnoreCase)))

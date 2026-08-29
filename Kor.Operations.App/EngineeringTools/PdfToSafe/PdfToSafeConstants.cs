@@ -27,5 +27,11 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         public const double DefaultMeshSizeMm = 500.0;
         public const double DefaultStripSpacingMm = 1800.0;
         public const string DefaultDesignCode = "CSA A23.3-19";
-    }
+    
+        /// <summary>How tall annotation text is drawn ON PAPER, before the drawing scale is applied.
+        /// 2.5 mm is the ordinary height a drawing is annotated at; at 1:96 that is 240 mm on the
+        /// model. Used for markup /Contents, which — unlike a page word — has no box of its own.</summary>
+        public const double PaperTextHeightMm = 2.5;
+
+}
 }
