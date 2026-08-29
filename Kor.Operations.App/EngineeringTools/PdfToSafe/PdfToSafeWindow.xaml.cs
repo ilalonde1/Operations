@@ -2216,13 +2216,14 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 }
                 await Task.Run(() =>
                 {
-                    DxfExporter.Export(
+                    PdfGeometryExtractor.ExportDxf(
                         reclassified,
                         outputPath,
                         _excl.Slabs.Count > 0 ? _excl.Slabs : null,
                         _excl.Lines.Count > 0 ? _excl.Lines : null,
                         _excl.Columns.Count > 0 ? _excl.Columns : null,
-                        _excl.Colors.Count > 0 ? _excl.Colors : null);
+                        _excl.Colors.Count > 0 ? _excl.Colors : null,
+                        layerByColour: true);
                 }).ConfigureAwait(true);
                 SetStatus(BuildExportStatus(outputPath, validation), "#E8F5E9", "#2E7D32");
                 return "";

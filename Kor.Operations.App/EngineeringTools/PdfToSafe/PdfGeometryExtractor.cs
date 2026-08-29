@@ -139,7 +139,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             result.PageWidthPts  = page.Width;
             result.PageHeightPts = page.Height;
             result.PageCount     = doc.NumberOfPages;
-            result.TextAnnotations = PdfGeometryParser.ExtractTextAnnotations(page, scale);
+            result.TextAnnotations = PdfGeometryParser.ExtractMarkupTextAnnotations(page, scale);
 
             var rawSubpaths = PdfGeometryParser.ParsePage(page, scale);
 
@@ -177,8 +177,9 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             HashSet<int>?     excludedSlabs   = null,
             HashSet<int>?     excludedLines   = null,
             HashSet<int>?     excludedColumns = null,
-            HashSet<(byte R, byte G, byte B)>? excludedColors = null)
-            => DxfExporter.Export(geometry, outputPath, excludedSlabs, excludedLines, excludedColumns, excludedColors);
+            HashSet<(byte R, byte G, byte B)>? excludedColors = null,
+            bool layerByColour = false)
+            => DxfExporter.Export(geometry, outputPath, excludedSlabs, excludedLines, excludedColumns, excludedColors, layerByColour);
 
         // ── F2K export (SAFE native ASCII format) ────────────────────────────
         // File → Import → SAFE v12.x in SAFE v23 reads this directly and creates
@@ -289,11 +290,13 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             void AddLine(
                 List<(double X, double Y)> pts,
                 (byte R, byte G, byte B) col,
-                (double WidthMm, double DepthMm)? hint)
+                (double WidthMm, double DepthMm)? hint,
+                bool isAnnotation)
             {
                 result.Lines.Add(pts);
                 result.LineColors.Add(col);
                 result.LineSectionHints.Add(hint);
+                result.LineIsAnnotation.Add(isAnnotation);
             }
 
             // ── Slabs ────────────────────────────────────────────────
@@ -301,6 +304,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             {
                 var color = i < original.SlabColors.Count
                     ? original.SlabColors[i] : ((byte)0, (byte)0, (byte)0);
+                bool isAnnotation = i < original.SlabIsAnnotation.Count && original.SlabIsAnnotation[i];
                 string type = TypeFor(i, "slab", color, "Slab");
 
                 if (string.Equals(type, "Column", StringComparison.OrdinalIgnoreCase))
@@ -325,26 +329,27 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
                     if (!columnSectionIsSane)
                     {
-                        AddLineFromWallReduction(pts, color, AddLine);
+                        AddLineFromWallReduction(pts, color, (line, col, hint) => AddLine(line, col, hint, isAnnotation));
                     }
                     else
                     {
                         result.Columns.Add(PolygonProcessor.Centroid(pts));
                         result.ColumnColors.Add(color);
                         result.ColumnSizes.Add((w, d));
+                        result.ColumnIsAnnotation.Add(isAnnotation);
                     }
                 }
                 else if (string.Equals(type, "Wall", StringComparison.OrdinalIgnoreCase))
                 {
                     // Explicit wall: reduce polygon to centerline + beam section
                     // from the minor bbox dim.
-                    AddLineFromWallReduction(original.Slabs[i], color, AddLine);
+                    AddLineFromWallReduction(original.Slabs[i], color, (line, col, hint) => AddLine(line, col, hint, isAnnotation));
                 }
                 else if (string.Equals(type, "Beam", StringComparison.OrdinalIgnoreCase))
                 {
                     // Plain beam: preserve the polygon as a polyline (no section
                     // hint — BeamSectionParser may still match a text callout).
-                    AddLine(original.Slabs[i], color, null);
+                    AddLine(original.Slabs[i], color, null, isAnnotation);
                 }
                 else if (string.Equals(type, "Opening", StringComparison.OrdinalIgnoreCase) ||
                          string.Equals(type, "Ignore",  StringComparison.OrdinalIgnoreCase))
@@ -355,18 +360,20 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 {
                     result.Slabs.Add(original.Slabs[i]);
                     result.SlabColors.Add(color);
+                    result.SlabIsAnnotation.Add(isAnnotation);
                 }
             }
 
             // ── Lines ────────────────────────────────────────────────
             // Collect slab-typed lines per color for chain assembly.
-            var slabLinesByColor = new Dictionary<(byte R, byte G, byte B),
+            var slabLinesByColor = new Dictionary<((byte R, byte G, byte B) Color, bool IsAnnotation),
                 List<List<(double X, double Y)>>>();
 
             for (int i = 0; i < original.Lines.Count; i++)
             {
                 var color = i < original.LineColors.Count
                     ? original.LineColors[i] : ((byte)0, (byte)0, (byte)0);
+                bool isAnnotation = i < original.LineIsAnnotation.Count && original.LineIsAnnotation[i];
                 string type = TypeFor(i, "line", color, "Beam");
 
                 if (string.Equals(type, "Column", StringComparison.OrdinalIgnoreCase))
@@ -378,13 +385,15 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     result.Columns.Add(midpoint);
                     result.ColumnColors.Add(color);
                     result.ColumnSizes.Add((estSize, estSize));
+                    result.ColumnIsAnnotation.Add(isAnnotation);
                 }
                 else if (string.Equals(type, "Slab", StringComparison.OrdinalIgnoreCase))
                 {
-                    if (!slabLinesByColor.TryGetValue(color, out var list))
+                    var key = (color, isAnnotation);
+                    if (!slabLinesByColor.TryGetValue(key, out var list))
                     {
                         list = new List<List<(double X, double Y)>>();
-                        slabLinesByColor[color] = list;
+                        slabLinesByColor[key] = list;
                     }
                     list.Add(original.Lines[i]);
                 }
@@ -400,18 +409,20 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     // from extraction don't either).
                     var hint = i < original.LineSectionHints.Count
                         ? original.LineSectionHints[i] : null;
-                    AddLine(original.Lines[i], color, hint);
+                    AddLine(original.Lines[i], color, hint, isAnnotation);
                 }
             }
 
             // Chain assembly: connect slab-typed line segments into closed polygons.
-            foreach (var (color, segments) in slabLinesByColor)
+            foreach (var (key, segments) in slabLinesByColor)
             {
+                var (color, isAnnotation) = key;
                 var (closedPolygons, orphanSegments) = ChainLinesIntoSlabs(segments);
                 foreach (var poly in closedPolygons)
                 {
                     result.Slabs.Add(poly);
                     result.SlabColors.Add(color);
+                    result.SlabIsAnnotation.Add(isAnnotation);
                 }
                 foreach (var seg in orphanSegments)
                 {
@@ -438,10 +449,11 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         }
                         result.Slabs.Add(seg);
                         result.SlabColors.Add(color);
+                        result.SlabIsAnnotation.Add(isAnnotation);
                     }
                     else
                     {
-                        AddLine(seg, color, null);
+                        AddLine(seg, color, null, isAnnotation);
                     }
                 }
             }
@@ -451,6 +463,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             {
                 var color = i < original.ColumnColors.Count
                     ? original.ColumnColors[i] : ((byte)0, (byte)0, (byte)0);
+                bool isAnnotation = i < original.ColumnIsAnnotation.Count && original.ColumnIsAnnotation[i];
                 string colType = TypeFor(i, "column", color, "Column");
                 if (string.Equals(colType, "Opening", StringComparison.OrdinalIgnoreCase) ||
                     string.Equals(colType, "Ignore",  StringComparison.OrdinalIgnoreCase))
@@ -460,6 +473,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 result.ColumnColors.Add(color);
                 result.ColumnSizes.Add(i < original.ColumnSizes.Count
                     ? original.ColumnSizes[i] : (0, 0));
+                result.ColumnIsAnnotation.Add(isAnnotation);
             }
 
             return result;
@@ -796,4 +810,3 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         }
     }
 }
-
