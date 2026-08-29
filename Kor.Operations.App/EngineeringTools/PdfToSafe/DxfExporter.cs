@@ -182,6 +182,9 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             static string ColourLayer((byte R, byte G, byte B) c, bool markup) =>
                 $"PDF-{c.R:X2}{c.G:X2}{c.B:X2}" + (markup ? "-MARKUP" : "");
 
+            static string StructuralLayer(string baseLayer, bool markup) =>
+                markup ? baseLayer + "-MARKUP" : baseLayer;
+
             static int NearestAci((byte R, byte G, byte B) c)
             {
                 (int Aci, byte R, byte G, byte B)[] basics =
@@ -215,7 +218,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
             bool hasText = xText.Count > 0;
             string textLayer = layerByColour ? "PDF-TEXT" : "TEXT";
-            int layerCount = (layerByColour ? colourLayers.Count + 1 : 5) + (hasText ? 1 : 0);
+            int layerCount = (layerByColour ? colourLayers.Count + 1 : 9) + (hasText ? 1 : 0);
 
             G(0, "TABLE"); G(2, "LAYER"); G(70, layerCount.ToString(ic));
             void WL(string n, int c) { G(0, "LAYER"); G(2, n); G(70, "0"); G(62, c.ToString()); G(6, "CONTINUOUS"); }
@@ -226,7 +229,10 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             }
             else
             {
-                WL("SLAB", 3); WL("BEAM", 4); WL("COLUMN", 2); WL("WALL", 1);
+                WL("SLAB", 3); WL("SLAB-MARKUP", 3);
+                WL("BEAM", 4); WL("BEAM-MARKUP", 4);
+                WL("COLUMN", 2); WL("COLUMN-MARKUP", 2);
+                WL("WALL", 1); WL("WALL-MARKUP", 1);
             }
             if (hasText) WL(textLayer, 7);
             G(0, "ENDTAB");
@@ -234,22 +240,29 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
             G(0, "SECTION"); G(2, "ENTITIES");
 
-            void WritePolyline(string layer, List<(double X, double Y)> pts, bool closed)
+            void WritePolyline(string layer, int aci, List<(double X, double Y)> pts, bool closed)
             {
                 G(0, "POLYLINE"); G(8, layer);
+                G(62, aci.ToString(ic));
                 G(66, "1");
                 G(70, closed ? "1" : "0");
                 Num(10, 0); Num(20, 0); Num(30, 0);
                 foreach (var (vx, vy) in pts)
                 {
                     G(0, "VERTEX"); G(8, layer);
+                    G(62, aci.ToString(ic));
                     Num(10, vx); Num(20, vy); Num(30, 0);
                 }
                 G(0, "SEQEND"); G(8, layer);
+                G(62, aci.ToString(ic));
             }
 
             for (int i = 0; i < xSlabs.Count; i++)
-                WritePolyline(layerByColour ? ColourLayer(xSlabColours[i], xSlabMarkup[i]) : "SLAB", xSlabs[i], true);
+                WritePolyline(
+                    layerByColour ? ColourLayer(xSlabColours[i], xSlabMarkup[i]) : StructuralLayer("SLAB", xSlabMarkup[i]),
+                    NearestAci(xSlabColours[i]),
+                    xSlabs[i],
+                    true);
 
             // Columns: footprint rectangles from the parallel xColumnSizes list.
             for (int i = 0; i < xColumns.Count; i++)
@@ -262,20 +275,28 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     (px - hw, py - hd), (px + hw, py - hd),
                     (px + hw, py + hd), (px - hw, py + hd)
                 };
-                WritePolyline(layerByColour ? ColourLayer(xColumnColours[i], xColumnMarkup[i]) : "COLUMN", rect, true);
+                WritePolyline(
+                    layerByColour ? ColourLayer(xColumnColours[i], xColumnMarkup[i]) : StructuralLayer("COLUMN", xColumnMarkup[i]),
+                    NearestAci(xColumnColours[i]),
+                    rect,
+                    true);
             }
 
             // Lines: WALL or BEAM layer from the parallel xLineIsWall list.
             for (int i = 0; i < xLines.Count; i++)
             {
+                string structuralLayer = StructuralLayer(xLineIsWall[i] ? "WALL" : "BEAM", xLineMarkup[i]);
                 WritePolyline(
-                    layerByColour ? ColourLayer(xLineColours[i], xLineMarkup[i]) : (xLineIsWall[i] ? "WALL" : "BEAM"),
-                    xLines[i], false);
+                    layerByColour ? ColourLayer(xLineColours[i], xLineMarkup[i]) : structuralLayer,
+                    NearestAci(xLineColours[i]),
+                    xLines[i],
+                    false);
             }
 
             void WriteText(string text, double x, double y)
             {
                 G(0, "TEXT"); G(8, textLayer);
+                G(62, "7");
                 Num(10, x); Num(20, y); Num(30, 0);
                 Num(40, 250.0);
                 G(1, text);

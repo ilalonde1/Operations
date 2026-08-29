@@ -2274,7 +2274,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         _excl.Lines.Count > 0 ? _excl.Lines : null,
                         _excl.Columns.Count > 0 ? _excl.Columns : null,
                         _excl.Colors.Count > 0 ? _excl.Colors : null,
-                        layerByColour: true);
+                        layerByColour: false);
                 }).ConfigureAwait(true);
                 SetStatus(BuildExportStatus(outputPath, validation), "#E8F5E9", "#2E7D32");
                 return "";

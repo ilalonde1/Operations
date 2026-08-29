@@ -124,16 +124,10 @@ public sealed class OmarsOutlinesDeliverable
                        "(the rest is title block and general notes, far from the plate)");
 
         string outPath = Path.Combine(Desktop, "OAP-parcel11-TOWER-AND-BALCONIES.dxf");
-        DxfExporter.Export(g, outPath, dropSlabs, dropLines, dropColumns, null, layerByColour: true);
-
-        var text = File.ReadAllLines(outPath);
-        int start = Array.FindIndex(text, l => l.Trim() == "ENTITIES");
-        var layers = new SortedSet<string>(StringComparer.Ordinal);
-        for (int i = Math.Max(start, 0); i < text.Length - 1; i++)
-            if (text[i].Trim() == "8") layers.Add(text[i + 1].Trim());
+        DxfExporter.Export(g, outPath, dropSlabs, dropLines, dropColumns);
 
         _out.WriteLine($"wrote {Path.GetFileName(outPath)} ({new FileInfo(outPath).Length / 1024.0:N0} KB)");
-        _out.WriteLine($"layers: {string.Join(", ", layers)}");
+        _out.WriteLine($"as read    : {DxfFacts.Describe(outPath)}");
 
         Assert.True(balconyLines > 0, "no linework outside the plate — the balconies are missing");
     }

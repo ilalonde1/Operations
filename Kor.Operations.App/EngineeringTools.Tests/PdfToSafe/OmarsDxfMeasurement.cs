@@ -53,28 +53,15 @@ public sealed class OmarsDxfMeasurement
                        $"{whole.Lines.Count} line(s), {whole.RawPathCount:N0} raw path(s)");
 
         string outPath = Path.Combine(Desktop, "OAP-parcel11-FROM-PDF.dxf");
-        DxfExporter.Export(whole, outPath, layerByColour: true);
+        DxfExporter.Export(whole, outPath);
 
         var info = new FileInfo(outPath);
         _out.WriteLine($"wrote {info.Name}  ({info.Length / 1024.0:N0} KB)");
 
-        // WHAT LANDED, read back out of the file rather than out of the writer. A DXF that lists
-        // entities the exporter believes it wrote is not evidence; the repo has been caught by that
-        // before, so the count comes from the artifact.
-        var text = File.ReadAllLines(outPath);
-        int polylines = text.Count(l => l.Trim() == "POLYLINE");
-        int vertices = text.Count(l => l.Trim() == "VERTEX");
-        
-        // Only inside ENTITIES. Group code 8 means "layer" there; in the LAYER table the same digit
-        // turns up as an AutoCAD colour VALUE — grey is 8 — and reading the whole file invented a
-        // layer called "6" out of the group code that followed it.
-        var layers = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        int start = Array.FindIndex(text, l => l.Trim() == "ENTITIES");
-        for (int i = Math.Max(start, 0); i < text.Length - 1; i++)
-            if (text[i].Trim() == "8") layers.Add(text[i + 1].Trim());
-
-        _out.WriteLine($"read back: {polylines:N0} POLYLINE, {vertices:N0} VERTEX");
-        _out.WriteLine($"layers ({layers.Count}): {string.Join(", ", layers.OrderBy(x => x))}");
+        // WHAT LANDED, read with the reader the ETABS side uses. A DXF verified by the code
+        // that wrote it proves only that the writer agrees with itself; this asks the consumer.
+        _out.WriteLine($"units      : {DxfFacts.UnitInInches(outPath)?.ToString("0.#####") ?? "NONE"} in per unit");
+        _out.WriteLine($"as read    : {DxfFacts.Describe(outPath)}");
 
         Assert.True(File.Exists(outPath));
     }
