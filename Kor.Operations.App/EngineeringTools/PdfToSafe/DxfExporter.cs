@@ -156,12 +156,24 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             if (bMinX > bMaxX) { bMinX = -1000; bMaxX = 1000; bMinY = -1000; bMaxY = 1000; }
 
             var ic = CultureInfo.InvariantCulture;
-            using var sw = new StreamWriter(outputPath, false, Encoding.ASCII);
+
+            // WINDOWS-1252, NOT ASCII, AND THE FILE SAYS SO.
+            //
+            // A drawing's words are not ASCII. Written as ASCII, every character above 127 becomes a
+            // question mark, so the architect's "ft²" and "m²" arrived as "ft?" and "m?" — 22 of
+            // them on Parcel 11's plan, in an area schedule where the unit is the point. Degrees,
+            // diameters, dashes and accented names go the same way.
+            //
+            // A DXF states its own code page in $DWGCODEPAGE, so this declares ANSI_1252 and writes
+            // to match, which is what AutoCAD has assumed by default since R12. ² is 0xB2 in it.
+            var codePage = Encoding.GetEncoding(1252);
+            using var sw = new StreamWriter(outputPath, false, codePage);
             void G(int code, string val) { sw.WriteLine(code); sw.WriteLine(val); }
             void Num(int code, double v) => G(code, v.ToString("F4", ic));
 
             G(0, "SECTION"); G(2, "HEADER");
             G(9, "$ACADVER"); G(1, "AC1009");
+            G(9, "$DWGCODEPAGE"); G(3, "ANSI_1252");
             G(9, "$INSUNITS"); G(70, "4");
             G(9, "$EXTMIN"); Num(10, bMinX); Num(20, bMinY); G(30, "0.0000");
             G(9, "$EXTMAX"); Num(10, bMaxX); Num(20, bMaxY); G(30, "0.0000");
