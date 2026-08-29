@@ -51,10 +51,10 @@ SEND_HERO = """
 <header class="hero">
   <div class="hero__wrap fade">
     <p class="hero__eyebrow">KOR Structural &nbsp;·&nbsp; prepared for MVE + Partners &nbsp;·&nbsp; 28 August 2026</p>
-    <h1>Your Ward Village client has opened<br>7,250 acres in three other markets.</h1>
-    <p class="hero__lede">Howard Hughes filed a Las Vegas multifamily pre-application yesterday, thirty-nine Houston land filings since December, and owns a master planned community in the Phoenix west valley. None of it names an architect. Alongside that: the Arizona submitted-projects search you asked for, Houston&rsquo;s own spreadsheet naming the developer on 1,426 filings, Hawaii&rsquo;s statewide pre-design bulletin, and five Charlotte petitioners worth a call out of eighty-four.</p>
+    <h1>Nine schemes in your six markets<br>where nobody has been hired yet.</h1>
+    <p class="hero__lede">Each one checked twice &mdash; the case file, environmental assessment or site plan read in full including the drawing title block, then a separate trade-press check. Six more did not survive that and are named inside. Alongside them: the Arizona search you asked for and an honest read on which layer of it is already spoken for, and where Howard Hughes &mdash; your Ward Village client &mdash; is putting money in three markets you do not serve them in.</p>
     <div class="hero__meta">
-      <span>Six markets, all current</span>
+      <span>Nine verified, six removed</span>
       <span>Newest filing: 27 August</span>
       <span>Nothing you already design</span>
     </div>
