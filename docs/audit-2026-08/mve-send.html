@@ -318,6 +318,23 @@
        `pretty` keeps the orphan protection and drops the equal-length rule. */
     h1, h2, h3, .hero h1 { text-wrap: pretty; }
 
+    /* The openings chart is the deliverable and it is SEVEN columns, so the
+       default even split wraps "Resort condominium & condo-hotel" onto three
+       lines and makes a clean chart look cramped. Set the widths explicitly,
+       give the wordy column the room, and stop the short factual columns from
+       breaking mid-value. */
+    #openings table { font-size: 8.6pt; table-layout: fixed; width: 100%; }
+    #openings td, #openings th { padding: .30rem .40rem; vertical-align: top; }
+    #openings th:nth-child(1), #openings td:nth-child(1) { width: 3%; }
+    #openings th:nth-child(2), #openings td:nth-child(2) { width: 21%; }
+    #openings th:nth-child(3), #openings td:nth-child(3) { width: 10%; }
+    #openings th:nth-child(4), #openings td:nth-child(4) { width: 24%; }
+    #openings th:nth-child(5), #openings td:nth-child(5) { width: 13%; }
+    #openings th:nth-child(6), #openings td:nth-child(6) { width: 15%; }
+    #openings th:nth-child(7), #openings td:nth-child(7) { width: 14%; }
+    #openings td:nth-child(5), #openings td:nth-child(6) { hyphens: none; }
+    #openings tbody tr { break-inside: avoid; }
+
     /* The facts sheet is meant to be ONE page a reader can hold next to the
        rest. Keep it whole and start the detail on a fresh page after it.
 
@@ -413,19 +430,45 @@
   <nav class="toc" aria-label="Contents">
     <p class="toc__title">On this page</p>
     <ol>
+      <li><a href="#openings">Nine schemes where nobody has been hired yet</a></li>
       <li><a href="#signal">Howard Hughes has 7,250 acres in motion, and filed for multifamily yesterday</a></li>
-      <li><a href="#openings">Nine schemes where the record names no architect</a></li>
       <li><a href="#facts">Six markets, and what is open in each one today</a></li>
       <li><a href="#hawaii">Hawaii publishes its pipeline before design</a></li>
       <li><a href="#arizona">Phoenix submitted projects &mdash; and which layer can be acted on</a></li>
       <li><a href="#leads">Houston names the developer on every filing &mdash; and most of it is land</a></li>
-      <li><a href="#everywhere">The same search, running in all six markets</a></li>
-      <li><a href="#reach">Three markets that looked closed are open</a></li>
-      <li><a href="#markets">What the layer holds in the rest of your markets</a></li>
       <li><a href="#closed">Four developers that will not hire an outside architect</a></li>
     </ol>
   </nav>
   <main>
+
+    <section id="openings">
+      <p class="kicker">Checked one at a time &mdash; six more did not survive it</p>
+      <h2>Nine schemes in your markets where nobody has been hired yet</h2>
+      <p class="lede">Each row passed four tests: the filing itself cannot require a drawing to exist, there has to be a real architectural commission in the scope, the case file or environmental assessment was read in full <strong>including the drawing title block</strong>, and then a separate trade-press check. Newest filing 27 August.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th></th><th>Developer</th><th>Market</th><th>What</th><th>Scale</th><th>Stage</th><th>Record</th></tr></thead>
+          <tbody>
+            <tr><td><span class="muted">1</span></td><td><strong>Host Hotels &amp; Resorts</strong><br><span class="muted">NYSE: HST</span></td><td>Phoenix</td><td><strong>Copper Residences</strong><br>resort condo &amp; condo-hotel, Westin Kierland</td><td><strong>72 acres</strong></td><td>Rezoning, in review</td><td><span class="muted">Z-169-25-2</span></td></tr>
+            <tr><td><span class="muted">2</span></td><td><strong>Vintage Partners</strong></td><td>Phoenix</td><td><strong>Lower Buckeye &amp; 63rd Ave</strong><br>mixed-use residential</td><td><strong>1,000 units &middot; 63 ac</strong></td><td>Rezoning filed</td><td><span class="muted">Z-24-26-7</span></td></tr>
+            <tr><td><span class="muted">3</span></td><td><strong>Mid-America Apartments</strong><br><span class="muted">NYSE: MAA</span></td><td>Charlotte</td><td><strong>Fairview Rd, SouthPark</strong><br>apartments</td><td><strong>3.65 acres</strong></td><td>Petition pending</td><td><span class="muted">2026-050</span></td></tr>
+            <tr><td><span class="muted">4</span></td><td><strong>Crosland Southeast</strong><br><span class="muted">C4 Investments</span></td><td>Charlotte</td><td><strong>Wilkinson Blvd at Little Rock Rd</strong><br>mixed-use</td><td><strong>39.41 acres</strong></td><td>Petition pending</td><td><span class="muted">2026-027</span></td></tr>
+            <tr><td><span class="muted">5</span></td><td><strong>Middleburg</strong></td><td>Charlotte</td><td><strong>Wilkinson Blvd, south side</strong><br>multifamily</td><td><strong>20.15 acres</strong></td><td>Petition pending</td><td><span class="muted">2026-023</span></td></tr>
+            <tr><td><span class="muted">6</span></td><td><strong>DreamKey Partners</strong></td><td>Charlotte</td><td><strong>Beatties Ford Rd</strong><br>affordable housing</td><td><strong>6.00 acres</strong></td><td>Heard 17 Aug</td><td><span class="muted">2026-035</span></td></tr>
+            <tr><td><span class="muted">7</span></td><td><strong>AREG AC Makena Propco</strong><br><span class="muted">Makena Golf &amp; Beach Club</span></td><td>Maui</td><td><strong>M&#257;kena Mauka</strong><br>master-planned residential</td><td><strong>652 units</strong></td><td>Final EIS accepted</td><td><span class="muted">23 Aug</span></td></tr>
+            <tr><td><span class="muted">8</span></td><td><strong>Ho&#699;onani Development</strong></td><td>Maui</td><td><strong>Ho&#699;onani Village</strong><br>mixed-use</td><td><strong>&mdash;</strong></td><td>Draft EIS</td><td><span class="muted">23 Mar</span></td></tr>
+            <tr><td><span class="muted">9</span></td><td>&#9733; <strong>Howard Hughes</strong><br><span class="muted">your Ward Village client</span></td><td>Las Vegas</td><td><strong>Spruce Goose St</strong><br>Downtown Summerlin, apartments &amp; retail</td><td><strong>354 units &middot; 4 ac</strong></td><td>Pre-application</td><td><span class="muted">26-101519</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p><span class="muted">&#9733; Howard Hughes is your Ward Village client. The Las Vegas filing is a separate scheme in a market where you do not currently do their work.</span></p>
+      <div class="box box--dont">
+        <p class="box__label">&#10005; Six we removed, and where each one&rsquo;s architect was hiding</p>
+        <p><strong>Fifield Companies</strong>, Phoenix &mdash; <strong>Todd &amp; Associates Architecture</strong>, named by the trade press and <strong>in no city document at all</strong>, which is why a file check alone cannot clear a lead. &middot; <strong>Elevation Living</strong> &mdash; <strong>Woods Associates Architects</strong>, in the drawing title block. &middot; <strong>J&amp;K Luxury Group</strong> &mdash; <strong>Kontexture</strong>, same place. &middot; <strong>Miami Design District</strong> &mdash; <strong>David Chipperfield</strong>, on the 25-storey condo and 12-storey hotel. &middot; <strong>Wailuku Mission Senior Housing</strong> &mdash; EAH Housing is already working with <strong>MASON Architects</strong> on the historic rehabilitation. &middot; <strong>Kittle Property Group</strong>, Charlotte &mdash; their own staff are the architect of record in every state they build in.</p>
+        <p><strong>And three flagged rather than listed.</strong> <strong>Ovation Development</strong> (Las Vegas, 13,000 units) names no architect but carries an in-house design principal. <strong>K&#299;lauea Town Expansion</strong> and <strong>Mililani Teacher Workforce Housing</strong> name none either, but both are public bodies &mdash; procured, not appointed &mdash; and K&#299;lauea breaks ground this quarter.</p>
+        <p><strong>Not on the public record is not the same as not appointed.</strong> If you are already engaged on one of the nine, what that tells you is how far the public record lags your own commissions.</p>
+      </div>
+    </section>
 
     <section id="signal">
       <p class="kicker">Where your own client is putting money, in markets you do not serve them in</p>
@@ -460,74 +503,6 @@
       <div class="box box--tip">
         <p class="box__label">&#9650; How we knew these were all the same company</p>
         <p>The Houston record names <em>Bridgeland Development, LP</em> and <em>The Woodlands Land Development Company, L.P.</em>, not Howard Hughes. Both appear verbatim in Howard Hughes Holdings&rsquo; subsidiaries exhibit &mdash; <span class="muted">EX-21.1, filed with the SEC 19 February 2026</span> &mdash; alongside Summerlin, Ward Village, and the <strong>Teravalis and Douglas Ranch</strong> entities. A primary document, not a press report, and it is what puts them in four of your six markets at once.</p>
-      </div>
-    </section>
-
-    <section id="openings">
-      <p class="kicker">Verified one at a time, and six did not survive it</p>
-      <h2>Nine schemes where the record names no architect</h2>
-      <p class="lede">Every project below was checked twice: the case file, the environmental assessment or the site plan read in full &mdash; <strong>including the drawing title block</strong>, which is where an architect usually appears &mdash; and then a separate trade-press check. Nine stood up. Six did not, and those are named at the foot of the page.</p>
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Market</th><th>Who</th><th>What, and how far along</th><th>Record</th></tr></thead>
-          <tbody>
-            <tr>
-              <td rowspan="2"><strong>Phoenix</strong></td>
-              <td><strong>Host Hotels &amp; Resorts</strong><br><span class="muted">NYSE: HST</span></td>
-              <td><strong>Copper Residences</strong> &mdash; 72 acres of the Westin Kierland&rsquo;s Mesquite golf course. <strong>16.16 acres of resort condominium and condo-hotel</strong>; 55.64 acres of single-family, townhome and duplex. Greey&thinsp;|&thinsp;Pickett on site design and landscape, Woodpatel civil, CivTech traffic &mdash; <strong>no building architect</strong>. Third application, in review after the May 2026 submittal. <span class="muted">Neighbourhood opposition is active and on the record</span></td>
-              <td>Z-169-25-2</td>
-            </tr>
-            <tr>
-              <td><strong>Vintage Partners</strong></td>
-              <td><strong>1,000 residential units</strong> and 22 acres of commercial on 63 acres. The site was earmarked for a data centre until Phoenix changed its data-centre policy and Vintage converted it. RVi on land planning, Precision Civil engineering</td>
-              <td>Z-24-26-7</td>
-            </tr>
-            <tr>
-              <td rowspan="4"><strong>Charlotte</strong></td>
-              <td><strong>Mid-America Apartments</strong><br><span class="muted">NYSE: MAA</span></td>
-              <td>3.65 acres in <strong>SouthPark</strong> &mdash; south of Fairview Road, east of Cameron Valley Parkway. MUDD-O&nbsp;SPA to RAC(CD). Kimley-Horn drew the rezoning plan; no architect on it</td>
-              <td>2026-050</td>
-            </tr>
-            <tr>
-              <td><strong>Crosland Southeast</strong><br><span class="muted">C4 Investments</span></td>
-              <td>39.41 acres north of Wilkinson Boulevard at Little Rock Road, RAC to CG(CD). Three community meetings held. <strong>The engineer&rsquo;s seal block on the site plan is still a blank placeholder</strong> &mdash; this is as early as a filing gets</td>
-              <td>2026-027</td>
-            </tr>
-            <tr>
-              <td><strong>Middleburg</strong></td>
-              <td>20.15 acres south of Wilkinson Boulevard, CG to N2-B(CD). The site plan already lays out buildings at <strong>63 units, four and five storeys</strong> &mdash; so the massing is settled and the architect is not named</td>
-              <td>2026-023</td>
-            </tr>
-            <tr>
-              <td><strong>DreamKey Partners</strong></td>
-              <td>6.00 acres east of Beatties Ford Road, N1-B to N2-A(CD). Public hearing already held, <strong>17 August 2026</strong></td>
-              <td>2026-035</td>
-            </tr>
-            <tr>
-              <td rowspan="2"><strong>Hawaii</strong></td>
-              <td><strong>AREG AC Makena Propco</strong><br><span class="muted">Makena Golf &amp; Beach Club</span></td>
-              <td><strong>M&#257;kena Mauka</strong>, Maui &mdash; <strong>652 units</strong> including 109 workforce, single-family and multi-family, plus <strong>135,000 sq ft of operational support buildings</strong>. Final EIS <strong>accepted 23 August</strong>, so entitlement is finished and the building work is next. Munekiyo Hiraga planned it; <span class="muted">the architect field in its own permit appendix is blank</span></td>
-              <td>FEIS<br>23 Aug</td>
-            </tr>
-            <tr>
-              <td><strong>Ho&#699;onani Development</strong></td>
-              <td><strong>Ho&#699;onani Village</strong>, Maui &mdash; mixed-use, at <strong>Draft EIS</strong> before the State Land Use Commission. The earliest stage of anything on this page. Pioneer Design Group&ndash;Hawai&#699;i on planning</td>
-              <td>DEIS<br>23 Mar</td>
-            </tr>
-            <tr>
-              <td><strong>Las Vegas</strong></td>
-              <td><strong>Howard Hughes</strong><br><span class="muted">your Ward Village client</span></td>
-              <td>Multifamily application prereview filed <strong>27 August</strong>. The scheme now before the county is <strong>354 apartments with 6,556 sq ft of commercial on four acres</strong> at Spruce Goose Street, Downtown Summerlin. No architect named</td>
-              <td>26-101519</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      <div class="box box--dont">
-        <p class="box__label">&#10005; Six we removed, and where each one&rsquo;s architect was hiding</p>
-        <p><strong>Fifield Companies</strong>, Phoenix &mdash; <strong>Todd &amp; Associates Architecture</strong>, on design and landscape. Named by the trade press and <strong>in no city document at all</strong>, which is why a file check alone is not enough. &middot; <strong>Elevation Living</strong> &mdash; <strong>Woods Associates Architects</strong>, in the drawing title block. &middot; <strong>J&amp;K Luxury Group</strong> &mdash; <strong>Kontexture</strong>, same place. &middot; <strong>Miami Design District</strong> &mdash; <strong>David Chipperfield</strong> on the 25-storey condo and 12-storey hotel. &middot; <strong>Wailuku Mission Senior Housing</strong> &mdash; EAH Housing is already working with <strong>MASON Architects</strong> on the historic rehabilitation. &middot; <strong>Kittle Property Group</strong>, Charlotte &mdash; their own staff are the architect of record in every state they build in.</p>
-        <p><strong>And three more we have flagged rather than listed.</strong> <strong>Ovation Development</strong> (Las Vegas, 13,000 units, 1,650 more due by 2028) filed a prereview in July and names no architect &mdash; but it carries an in-house design principal, so treat it as a question rather than an opening. <strong>K&#299;lauea Town Expansion</strong> (Kaua&#699;i, 310 affordable units) and <strong>Mililani Teacher Workforce Housing</strong> (O&#699;ahu) name none either, but both are public bodies &mdash; the County of Kaua&#699;i and the State School Facilities Authority &mdash; so they will be procured rather than appointed, and K&#299;lauea breaks ground this quarter.</p>
-        <p><strong>Not on the public record is not the same as not appointed.</strong> If you are already engaged on one of the nine above, what that tells you is how far the public record lags your own commissions &mdash; which is worth knowing on its own.</p>
       </div>
     </section>
 
@@ -693,86 +668,6 @@
       <div class="box box--dont">
         <p class="box__label">&#10005; Why the big acreages are not on this list</p>
         <p>It would be easy to hand you Brookfield&rsquo;s 591-acre Midline, Johnson Development&rsquo;s 696-acre Amira or Taylor Morrison&rsquo;s 262-acre Avalon at Cypress, and note that no architect is named on any of them. <strong>No architect is named because none is required.</strong> A Chapter 42 general plan divides land into streets, blocks and reserves; the homes that follow are production builders&rsquo; own designs. Those filings tell you where capital is going. They are not work.</p>
-      </div>
-    </section>
-
-    <section id="everywhere">
-      <p class="kicker">The actual question you asked</p>
-      <h2>The same search, running in all six markets</h2>
-      <p class="lede">You asked for Arizona. The fair test of whether that is worth anything to you is whether it runs everywhere you work &mdash; so here is the same search, in every market you named, with the date each record was last current.</p>
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Market</th><th>What the public record currently holds</th><th>Current to</th></tr></thead>
-          <tbody>
-            <tr><td><strong>Phoenix</strong></td><td><strong>373 open site-plan cases</strong>; 280 filed since Jan 2025. Separately, the <strong>rezoning case files</strong> &mdash; which is the layer that precedes a building architect</td><td>Cases to 27 May<br><span class="muted">permits to 27 Aug</span></td></tr>
-            <tr><td><strong>Houston</strong></td><td><strong>390 new-construction projects registered since 1 June 2026</strong> alone, running about 370 a month across 2026, each with its scope, cost and floor area</td><td><strong>27 Aug 2026</strong></td></tr>
-            <tr><td><strong>Miami</strong></td><td><strong>66 projects through the city&rsquo;s design review</strong> since Jan 2024, by address and case number</td><td>Jul 2026 sitting</td></tr>
-            <tr><td><strong>Las Vegas</strong> &middot; Clark County</td><td>Whole-project permits above $10M, plus the full permit sequence per scheme &mdash; <strong>79 records on the ballpark alone</strong></td><td>day queried</td></tr>
-            <tr><td><strong>Raleigh</strong></td><td>Large multifamily permits by year &mdash; 15 in 2025, tracking ~11 in 2026</td><td>Aug 2026</td></tr>
-            <tr><td><strong>Charlotte</strong></td><td><strong>86 pending rezoning petitions</strong> with petitioner and land &mdash; but no design team at this stage</td><td>Aug 2026</td></tr>
-          </tbody>
-        </table>
-      </div>
-      <p><strong>Six markets, one method, and it is current to yesterday in the largest of them.</strong> The Phoenix list is the one you asked to see, so it is printed in full above; the others are the same query pointed at a different city. Nothing here is a subscription feed or a purchased database &mdash; it is the public record of each jurisdiction, which is why it can be re-run on any Monday and be right.</p>
-      <div class="box box--tip">
-        <p class="box__label">▲ These are entitlement-stage records, which is earlier than an architectural appointment</p>
-        <p><strong>Not all entitlement records are equal, and the difference is whether a drawing had to exist.</strong> Charlotte&rsquo;s rezoning petitions name a petitioner and no design team, because at that stage one has often not been appointed. Phoenix&rsquo;s rezoning case files are the same layer. But Phoenix&rsquo;s <em>site-plan</em> cases and Miami&rsquo;s design-review submittals both require drawings to be filed &mdash; which means the design team already exists, whatever the record says. We count those, and we do not offer them to you as openings.</p>
-        <p><strong>That is the stage planning work is bought at, and it sits ahead of the architecture decision rather than after it.</strong> The Phoenix table above marks each case preliminary or final for exactly this reason &mdash; preliminary is a scheme still being shaped, final is one already committed, and the difference tells you how much of the conversation is still open.</p>
-      </div>
-    </section>
-
-    <section id="reach">
-      <p class="kicker">What this can reach</p>
-      <h2>Three markets that looked closed are open, and current to today</h2>
-      <p>Clark County, Dallas and Charlotte all publish nothing useful in their open-data feeds &mdash; each stopped in 2020, 2021 and 2022 respectively. They did not stop building. <strong>They changed permitting systems, and all three moved to the same platform.</strong> Their live records are public, and reachable without an account:</p>
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Jurisdiction</th><th>Old feed stopped</th><th>Live record, verified</th></tr></thead>
-          <tbody>
-            <tr><td><strong>Clark County</strong> &mdash; the Strip</td><td>Feb 2021</td><td><strong>Current to the day queried</strong></td></tr>
-            <tr><td><strong>Dallas</strong></td><td>Mar 2020</td><td><strong>Current to the day queried</strong></td></tr>
-            <tr><td><strong>Charlotte</strong></td><td>May 2022</td><td>Aug 2026</td></tr>
-          </tbody>
-        </table>
-      </div>
-      <p><strong>Worked example.</strong> The Athletics ballpark on the former Tropicana site returns <strong>79 county records</strong>, March 2025 to August 2026 &mdash; precast packages, electrical, fire apparatus access, grading, phased building permits. That is the construction sequence of the largest project on the Strip, permit by permit, from the public record.</p>
-      <div class="box box--tip">
-        <p class="box__label">▲ The earliest signal a city holds</p>
-        <p>Dallas has logged roughly <strong>197 pre-development meetings in 2026</strong> &mdash; the first formal contact a developer has with the city, <em>before</em> entitlement, before the design team is chosen, before any of it reaches the trade press. Eighty-nine are visible.</p>
-        <p>⚠ Being straight about it: those Dallas records carry a date, a number and a status, <strong>but no project name and no address</strong>. It is a measure of how busy the market is, not a list of leads. Clark County does name its projects and their status, so there the same query is genuinely actionable. <strong>The value differs by city and we will always say which.</strong></p>
-      </div>
-      <p><strong>Texas does not stop at Houston.</strong> <strong>Dallas, Fort Worth, Austin and San Antonio</strong> are held to the same depth, and that detail already exists &mdash; it is left out here for readability rather than because it is missing. Four more market tables would not have made this document better. Ask and it follows.</p>
-    </section>
-
-    <section id="markets">
-      <p class="kicker">The other five</p>
-      <h2>What the layer holds in the rest of your markets</h2>
-      <p>Same standard throughout: a firm appears against a project only where that firm&rsquo;s own page, the developer&rsquo;s own release, or the public record says so. Where the design team is incomplete the gap is shown rather than filled.</p>
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Market &amp; project</th><th>Developer</th><th>Architect</th><th>Contractor</th></tr></thead>
-          <tbody>
-            <tr><td><strong>NEVADA</strong> &middot; A&rsquo;s Ballpark, Las Vegas<br><span class="muted">33,000 seats, 2028</span></td><td>The Athletics</td><td>BIG + HNTB</td><td>Mortenson&ndash;McCarthy</td></tr>
-            <tr><td><strong>NEVADA</strong> &middot; Bally&rsquo;s Integrated Resort<br><span class="muted">26 ac, former Tropicana</span></td><td>Bally&rsquo;s Corp / JLL</td><td>Marnell Howryla</td><td>&mdash;</td></tr>
-            <tr><td><strong>NEVADA</strong> &middot; Silverado, Clark County<br><span class="muted">13.5 ac, heard 2 Sep 2026</span></td><td>Ochoa Development</td><td>Gensler + Yihong Liu</td><td>&mdash;</td></tr>
-            <tr><td><strong>HAWAII</strong> &middot; Kalae, Ward Village<br><span class="muted">330 homes</span></td><td>Howard Hughes / Victoria Ward</td><td>Solomon Cordwell Buenz</td><td>Layton</td></tr>
-            <tr><td><strong>HAWAII</strong> &middot; &Amacr;lia, Kaka&rsquo;ako<br><span class="muted">457 units, 39 storeys</span></td><td><strong>Kobayashi Group</strong></td><td>WRNS Studio</td><td>&mdash;</td></tr>
-            <tr><td><strong>HAWAII</strong> &middot; Launiu, Ward Village<br><span class="muted">486 homes, 40 storeys</span></td><td>Howard Hughes</td><td>Arquitectonica</td><td>&mdash;</td></tr>
-            <tr><td><strong>HOUSTON</strong> &middot; The Lily River Oaks<br><span class="muted">38 storeys, 331 units</span></td><td>Southern Land Co.</td><td>Solomon Cordwell Buenz</td><td>ANDRES</td></tr>
-            <tr><td><strong>HOUSTON</strong> &middot; The Langley<br><span class="muted">20 storeys, 134 units</span></td><td>StreetLights + Hunt</td><td>StreetLights Creative Studio</td><td>SLR</td></tr>
-            <tr><td><strong>DALLAS</strong> &middot; Lucille, Uptown<br><span class="muted">22 storeys, 265 units</span></td><td>Endeavor Real Estate</td><td>HKS</td><td>Rogers-O&rsquo;Brien</td></tr>
-            <tr><td><strong>MIAMI</strong> &middot; Waldorf Astoria<br><span class="muted">100 storeys, 360 residences</span></td><td><strong>PMG</strong></td><td>Sieger Suarez + Carlos Ott</td><td>&mdash;</td></tr>
-            <tr><td><strong>MIAMI</strong> &middot; Delano Residences<br><span class="muted">90 storeys</span></td><td><strong>PMG</strong></td><td>Carlos Ott · CUBE3 (AOR)</td><td>&mdash;</td></tr>
-            <tr><td><strong>CHARLOTTE</strong> &middot; Queensbridge Collective<br><span class="muted">755 units, $725M</span></td><td>Riverside + Woodfield + PGIM</td><td>Goettsch Partners</td><td>Clark</td></tr>
-            <tr><td><strong>RALEIGH</strong> &middot; Tributary, North Hills<br><span class="muted">332 units</span></td><td>Kane Realty</td><td>Hickok Cole</td><td>John Moriarty</td></tr>
-          </tbody>
-        </table>
-      </div>
-      <p>Every architect above was read off the developer&rsquo;s own release, the architect&rsquo;s own project page, or the city record &mdash; never inferred. A dash means no public record names that role yet, which is not the same as the role being unfilled, and we would not present it as one.</p>
-      <p><strong>Two developer names are worth isolating.</strong> <em>PMG</em> holds both Miami supertalls and used Carlos Ott on each, with CUBE3 carrying architect-of-record on the second &mdash; a developer running the same design relationship twice. <em>Kobayashi Group</em> is the counter-example: an independent Honolulu developer, sitting under Kamehameha Schools&rsquo; Kaia&rsquo;ulu &lsquo;o Kaka&rsquo;ako master plan, which means <strong>more towers behind it on the same landowner&rsquo;s ground</strong>.</p>
-      <div class="box box--tip">
-        <p class="box__label">▲ One pattern worth your attention</p>
-        <p><strong>SCB &mdash; formerly Solomon Cordwell Buenz &mdash; is in two of your six markets</strong> &mdash; Kalae in Honolulu and The Lily River Oaks in Houston &mdash; on residential towers of 330 and 331 units respectively. Both confirmed from the developers&rsquo; own releases. Whatever else the six markets have in common, one firm is already moving between them the way you are.</p>
       </div>
     </section>
 

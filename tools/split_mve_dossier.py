@@ -38,14 +38,22 @@ BODY = os.path.join(D, "mve-designteam-body.html")
 # the opposite end of the process and it belongs in front of the client.
 #
 # "hawaii" is new: it was one of Dan's six markets with no live source at all.
-# "openings" sits at position 2, straight after the Howard Hughes page: it is
-# the only section that is a list of work that has not been let, and every row
-# in it survived an individual architect check. Six that did not are named in
-# its own exclusions box.
-SEND = ["signal", "openings", "facts", "hawaii", "arizona", "leads",
-        "everywhere", "reach", "markets", "closed"]
+# "openings" is FIRST. It is the deliverable -- the only list of work that has
+# not been let, every row through four checks. Everything else exists to support
+# it or to answer the question that was asked. A reader who stops after page two
+# has had the whole point.
+SEND = ["openings", "signal", "facts", "hawaii", "arizona", "leads", "closed"]
+
+# Moved OUT of the send document, on the client's own instruction -- "not a
+# preachy diatribe on his markets, he KNOWS the markets", and "11 pages of who
+# cares from his perspective":
+#   everywhere  the same search in all six markets -- #facts already says this
+#   reach       markets that looked closed; it is method, and method stays ours
+#   markets     what the layer holds elsewhere -- a market explainer
+# "closed" STAYS in the send document: four developers who will not hire an
+# outside architect is where NOT to spend a call, which is actionable.
 RESEARCH = ["finding", "raleigh-test", "houston-miami", "tempo",
-            "designbuild", "crossmarket"]
+            "designbuild", "crossmarket", "everywhere", "reach", "markets"]
 
 SEND_HERO = """
 <header class="hero">

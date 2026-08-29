@@ -26,6 +26,23 @@
        `pretty` keeps the orphan protection and drops the equal-length rule. */
     h1, h2, h3, .hero h1 { text-wrap: pretty; }
 
+    /* The openings chart is the deliverable and it is SEVEN columns, so the
+       default even split wraps "Resort condominium & condo-hotel" onto three
+       lines and makes a clean chart look cramped. Set the widths explicitly,
+       give the wordy column the room, and stop the short factual columns from
+       breaking mid-value. */
+    #openings table { font-size: 8.6pt; table-layout: fixed; width: 100%; }
+    #openings td, #openings th { padding: .30rem .40rem; vertical-align: top; }
+    #openings th:nth-child(1), #openings td:nth-child(1) { width: 3%; }
+    #openings th:nth-child(2), #openings td:nth-child(2) { width: 21%; }
+    #openings th:nth-child(3), #openings td:nth-child(3) { width: 10%; }
+    #openings th:nth-child(4), #openings td:nth-child(4) { width: 24%; }
+    #openings th:nth-child(5), #openings td:nth-child(5) { width: 13%; }
+    #openings th:nth-child(6), #openings td:nth-child(6) { width: 15%; }
+    #openings th:nth-child(7), #openings td:nth-child(7) { width: 14%; }
+    #openings td:nth-child(5), #openings td:nth-child(6) { hyphens: none; }
+    #openings tbody tr { break-inside: avoid; }
+
     /* The facts sheet is meant to be ONE page a reader can hold next to the
        rest. Keep it whole and start the detail on a fresh page after it.
 
