@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using System.Globalization;
 using System.IO.Compression;
+using Kor.Operations.EngineeringTools.QuantityTakeoff;
 using UglyToad.PdfPig;
 using UglyToad.PdfPig.Annotations;
 using UglyToad.PdfPig.Content;
@@ -207,15 +208,15 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
         public static int? DetectScale(string filePath, int pageNumber = 1)
         {
-            var validScales = new HashSet<int> { 20, 25, 33, 50, 75, 100, 125, 150, 200, 250, 500, 1000 };
             try
             {
-                using var doc = PdfDocument.Open(filePath);
-                var page = doc.GetPage(pageNumber);
-                var text = string.Join(" ", page.GetWords().Select(w => w.Text));
-                foreach (Match m in Regex.Matches(text, @"1\s*[:/]\s*(\d{2,4})"))
-                    if (int.TryParse(m.Groups[1].Value, out int s) && validScales.Contains(s))
-                        return s;
+                string? note = SheetScaleReader.FromPage(VectorPageReader.ReadPage(filePath, pageNumber));
+                double? metresPerPoint = PlanGeometry.MetresPerPixel(note, renderDpi: 72);
+                if (metresPerPoint is not double mpp || mpp <= 0)
+                    return null;
+
+                int denominator = (int)Math.Round(mpp * 1000.0 / PdfToSafeConstants.PointsToMm);
+                return denominator > 0 ? denominator : null;
             }
             catch (Exception ex) { System.Diagnostics.Trace.TraceWarning("PdfGeometryParser: scale detection failed: " + ex.Message); }
             return null;

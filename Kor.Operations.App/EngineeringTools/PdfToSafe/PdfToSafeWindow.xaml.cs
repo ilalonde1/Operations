@@ -108,6 +108,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 SetStatus("Analysing PDF...", "#E8EAF6", "#3949AB");
 
                 int scale = 100;
+                bool scaleAssumed = false;
+                string fallbackScaleSource = "default";
                 var detectedScale = await Task.Run(
                     () => PdfGeometryExtractor.DetectScale(_loadedFilePath),
                     BeginOperation()).ConfigureAwait(true);
@@ -118,6 +120,12 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 else if (int.TryParse(ScaleInput.Text.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out int parsed) && parsed > 0)
                 {
                     scale = parsed;
+                    scaleAssumed = true;
+                    fallbackScaleSource = "entered";
+                }
+                else
+                {
+                    scaleAssumed = true;
                 }
 
                 ScaleInput.Text = scale.ToString(CultureInfo.InvariantCulture);
@@ -131,7 +139,15 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 _extractedGeometry = await ExtractGeometryAsync(_loadedFilePath, scale, 1).ConfigureAwait(true);
                 await RefreshFromGeometryAsync(_extractedGeometry, _loadedFilePath, 1, scale, true).ConfigureAwait(true);
 
-                SetStatus(DiagnoseLoad(_extractedGeometry, _markedPages, CurrentPageNumber), StatusFill(_extractedGeometry), StatusInk(_extractedGeometry));
+                string loadDiagnosis = DiagnoseLoad(_extractedGeometry, _markedPages, CurrentPageNumber);
+                if (scaleAssumed)
+                    loadDiagnosis += $" Scale not read from the title block; using {fallbackScaleSource} 1:{scale}.";
+                else
+                    loadDiagnosis += $" Scale read from the title block: 1:{scale}.";
+                SetStatus(
+                    loadDiagnosis,
+                    scaleAssumed ? "#FFF3E0" : StatusFill(_extractedGeometry),
+                    scaleAssumed ? "#E65100" : StatusInk(_extractedGeometry));
 
                 // Vision auto-classification. By default fire-and-forget so
                 // the user can continue reviewing the preview; Auto-Import
