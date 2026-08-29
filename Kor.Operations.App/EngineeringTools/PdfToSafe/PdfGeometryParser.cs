@@ -31,6 +31,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             ParsePage(Page page, double scale)
         {
             var rawSubpaths = new List<RawSubpath>();
+            var rawPageOrigin = ReadRawPageOrigin(page);
 
             foreach (var pdfPath in page.ExperimentalAccess.Paths)
             {
@@ -107,7 +108,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     // Bluebeam annotations are /Subtype/Polygon with /Vertices
                     // but PdfPig may classify them as Square, Circle, etc.
                     // Always check for /Vertices first regardless of type.
-                    var vertPts = ReadAnnotVertices(dict, scale);
+                    var vertPts = ReadAnnotVertices(dict, scale, rawPageOrigin);
                     if (vertPts.Count >= 3)
                     {
                         // Apply /Rotation if present (Bluebeam wall elements use Rotation=90).
@@ -186,13 +187,13 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         }
                         case AnnotationType.Line:
                         {
-                            var pts = ReadAnnotLine(dict, scale);
+                            var pts = ReadAnnotLine(dict, scale, rawPageOrigin);
                             if (pts.Count >= 2) rawSubpaths.Add(new RawSubpath(pts, false, annColor, IsFilled: false, IsStroked: true, LineWidth: 1, IsAnnotation: true));
                             break;
                         }
                         case AnnotationType.Ink:
                         {
-                            foreach (var ink in ReadAnnotInkList(dict, scale))
+                            foreach (var ink in ReadAnnotInkList(dict, scale, rawPageOrigin))
                                 if (ink.Count >= 2) rawSubpaths.Add(new RawSubpath(ink, false, annColor, IsFilled: false, IsStroked: true, LineWidth: 1, IsAnnotation: true));
                             break;
                         }
@@ -352,6 +353,37 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             return (0, 0, 0);
         }
 
+        internal readonly record struct RawPageOrigin(double X, double Y)
+        {
+            public (double X, double Y) ToPageSpace(double rawX, double rawY, double scale) =>
+                ((rawX - X) * scale, (rawY - Y) * scale);
+        }
+
+        private static RawPageOrigin ReadRawPageOrigin(Page page)
+        {
+            if (TryRawBoxOrigin(page.Dictionary, "MediaBox", out var origin) ||
+                TryRawBoxOrigin(page.Dictionary, "CropBox", out origin))
+            {
+                return origin;
+            }
+
+            return new RawPageOrigin(0, 0);
+        }
+
+        private static bool TryRawBoxOrigin(DictionaryToken dict, string key, out RawPageOrigin origin)
+        {
+            origin = default;
+            if (!dict.Data.TryGetValue(key, out var token) || token is not ArrayToken arr)
+                return false;
+
+            var ns = arr.Data.OfType<NumericToken>().Select(n => (double)n.Data).ToList();
+            if (ns.Count < 2)
+                return false;
+
+            origin = new RawPageOrigin(ns[0], ns[1]);
+            return true;
+        }
+
         /// <summary>
         /// Extracts the actual drawn geometry from the annotation's normal appearance
         /// stream (/AP /N). Parses the PDF content stream for drawing operators:
@@ -472,7 +504,10 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             return pts;
         }
 
-        internal static List<(double X, double Y)> ReadAnnotVertices(DictionaryToken dict, double scale)
+        internal static List<(double X, double Y)> ReadAnnotVertices(
+            DictionaryToken dict,
+            double scale,
+            RawPageOrigin rawPageOrigin = default)
         {
             var pts = new List<(double X, double Y)>();
             if (!dict.Data.TryGetValue("Vertices", out var token)) return pts;
@@ -500,27 +535,38 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             }
 
             for (int i = 0; i + 1 < numbers.Count; i += 2)
-                pts.Add((numbers[i] * scale, numbers[i + 1] * scale));
+                pts.Add(rawPageOrigin.ToPageSpace(numbers[i], numbers[i + 1], scale));
             return pts;
         }
 
-        internal static List<(double X, double Y)> ReadAnnotLine(DictionaryToken dict, double scale)
+        internal static List<(double X, double Y)> ReadAnnotLine(
+            DictionaryToken dict,
+            double scale,
+            RawPageOrigin rawPageOrigin = default)
         {
             var pts = new List<(double X, double Y)>();
             if (!dict.Data.TryGetValue("L", out var token) || !(token is ArrayToken arr)) return pts;
             var ns = arr.Data.OfType<NumericToken>().Select(n => (double)n.Data).ToList();
-            if (ns.Count >= 4) { pts.Add((ns[0] * scale, ns[1] * scale)); pts.Add((ns[2] * scale, ns[3] * scale)); }
+            if (ns.Count >= 4)
+            {
+                pts.Add(rawPageOrigin.ToPageSpace(ns[0], ns[1], scale));
+                pts.Add(rawPageOrigin.ToPageSpace(ns[2], ns[3], scale));
+            }
             return pts;
         }
 
-        internal static IEnumerable<List<(double X, double Y)>> ReadAnnotInkList(DictionaryToken dict, double scale)
+        internal static IEnumerable<List<(double X, double Y)>> ReadAnnotInkList(
+            DictionaryToken dict,
+            double scale,
+            RawPageOrigin rawPageOrigin = default)
         {
             if (!dict.Data.TryGetValue("InkList", out var token) || !(token is ArrayToken outer)) yield break;
             foreach (var inner in outer.Data.OfType<ArrayToken>())
             {
                 var pts = new List<(double X, double Y)>();
                 var ns = inner.Data.OfType<NumericToken>().Select(n => (double)n.Data).ToList();
-                for (int i = 0; i + 1 < ns.Count; i += 2) pts.Add((ns[i] * scale, ns[i + 1] * scale));
+                for (int i = 0; i + 1 < ns.Count; i += 2)
+                    pts.Add(rawPageOrigin.ToPageSpace(ns[i], ns[i + 1], scale));
                 if (pts.Count >= 2) yield return pts;
             }
         }
