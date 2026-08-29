@@ -76,9 +76,9 @@ def rows_html():
 
 
 SECTION = """    <section id="openings">
-      <p class="kicker">Checked one at a time &mdash; six more did not survive it</p>
+      <p class="kicker">Phoenix &middot; Charlotte &middot; Maui &middot; Las Vegas &mdash; newest filing 27 August</p>
       <h2>Nine schemes in your markets where nobody has been hired yet</h2>
-      <p class="lede">Each row passed four tests: the filing itself cannot require a drawing to exist, there has to be a real architectural commission in the scope, the case file or environmental assessment was read in full <strong>including the drawing title block</strong>, and then a separate trade-press check. Newest filing 27 August.</p>
+      <p class="lede">All nine are at a stage before an architect is normally appointed &mdash; land being rezoned, a petition pending, an environmental assessment in review, or a pre-application lodged with the county. <strong>None names an architect on the public record.</strong></p>
       <div class="table-wrap">
         <table>
           <thead><tr><th></th><th>Developer</th><th>Market</th><th>What</th><th>Scale</th><th>Stage</th><th>Record</th></tr></thead>
@@ -88,9 +88,8 @@ SECTION = """    <section id="openings">
       </div>
       <p><span class="muted">&#9733; Howard Hughes is your Ward Village client. The Las Vegas filing is a separate scheme in a market where you do not currently do their work.</span></p>
       <div class="box box--dont">
-        <p class="box__label">&#10005; Six we removed, and where each one&rsquo;s architect was hiding</p>
-        <p><strong>Fifield Companies</strong>, Phoenix &mdash; <strong>Todd &amp; Associates Architecture</strong>, named by the trade press and <strong>in no city document at all</strong>, which is why a file check alone cannot clear a lead. &middot; <strong>Elevation Living</strong> &mdash; <strong>Woods Associates Architects</strong>, in the drawing title block. &middot; <strong>J&amp;K Luxury Group</strong> &mdash; <strong>Kontexture</strong>, same place. &middot; <strong>Miami Design District</strong> &mdash; <strong>David Chipperfield</strong>, on the 25-storey condo and 12-storey hotel. &middot; <strong>Wailuku Mission Senior Housing</strong> &mdash; EAH Housing is already working with <strong>MASON Architects</strong> on the historic rehabilitation. &middot; <strong>Kittle Property Group</strong>, Charlotte &mdash; their own staff are the architect of record in every state they build in.</p>
-        <p><strong>And three flagged rather than listed.</strong> <strong>Ovation Development</strong> (Las Vegas, 13,000 units) names no architect but carries an in-house design principal. <strong>K&#299;lauea Town Expansion</strong> and <strong>Mililani Teacher Workforce Housing</strong> name none either, but both are public bodies &mdash; procured, not appointed &mdash; and K&#299;lauea breaks ground this quarter.</p>
+        <p class="box__label">&#10005; Three that are moving but come with a condition</p>
+        <p><strong>Ovation Development</strong> &mdash; Las Vegas, 13,000 units and 1,650 more due by 2028, filed a pre-application in July with no architect named. It carries an in-house design principal. <strong>K&#299;lauea Town Expansion</strong> (Kaua&#699;i, 310 affordable units) and <strong>Mililani Teacher Workforce Housing</strong> (O&#699;ahu) name none either, but the applicants are the County of Kaua&#699;i and the State School Facilities Authority &mdash; both will be procured rather than appointed, and K&#299;lauea breaks ground this quarter.</p>
         <p><strong>Not on the public record is not the same as not appointed.</strong> If you are already engaged on one of the nine, what that tells you is how far the public record lags your own commissions.</p>
       </div>
     </section>

@@ -318,6 +318,14 @@
        `pretty` keeps the orphan protection and drops the equal-length rule. */
     h1, h2, h3, .hero h1 { text-wrap: pretty; }
 
+    /* #facts starts on a fresh page, so whatever is left of the section before
+       it sits alone. Keep the closing paragraph and its citation with the
+       table above them rather than letting two lines orphan onto a page of
+       their own. Same fault, same cure, as the facts sheet's own last line. */
+    #signal > p:last-of-type,
+    #signal > p:nth-last-of-type(2) { break-before: avoid; }
+    #signal { break-after: avoid; }
+
     /* The openings chart is the deliverable and it is SEVEN columns, so the
        default even split wraps "Resort condominium & condo-hotel" onto three
        lines and makes a clean chart look cramped. Set the widths explicitly,
@@ -335,24 +343,18 @@
     #openings td:nth-child(5), #openings td:nth-child(6) { hyphens: none; }
     #openings tbody tr { break-inside: avoid; }
 
-    /* The facts sheet is meant to be ONE page a reader can hold next to the
-       rest. Keep it whole and start the detail on a fresh page after it.
+    /* ⛔ NO FORCED PAGE BREAKS IN THIS DOCUMENT. IT COST FOUR ROUNDS TO LEARN.
+       #facts was written as a one-page reference sheet: break-before AND
+       break-after, with the table held whole. Every variant stranded one or two
+       lines on a page of their own -- first Miami's row, then a closing note,
+       then the section before it, then the section after it. Trimming copy
+       three times moved the gap without closing it, because a forced break in a
+       flowing document always creates a gap somewhere.
 
-       ⚠ THIS IS SIZED TO THE ROW COUNT AND BREAKS WHEN A ROW IS ADDED.
-       At 8.8pt the table held five markets. Adding Hawaii as a sixth pushed the
-       Miami row alone onto the next page, leaving three-quarters of it blank —
-       the exact fault the break-inside rules below were written to cure,
-       reintroduced from the other end. If a seventh market is ever added, RENDER
-       THE PAGE AND LOOK at it; the counts will not tell you.
-
-       Keeping it whole also needs the table itself to resist breaking, because
-       the general rule further down deliberately lets long tables flow. */
-    /* break-inside on the SECTION is wrong here: the section now ends with the
-       exclusions box, and holding all of it together pushed the whole thing to
-       the next page and left the one before it three-quarters empty. Hold the
-       TABLE together, keep the closing note with it, and let the box flow. */
-    #facts { break-before: page; break-after: page; }
-    #facts table, #facts .table-wrap { break-inside: avoid; }
+       Only "avoid" rules remain. They pull content together; "page" rules push
+       it apart. Rows and boxes stay whole, headings keep their kicker, and the
+       document sets 9 pages with no sparse ones. */
+    #facts tbody tr { break-inside: avoid; }
     #facts > p:last-of-type { break-before: avoid; }
     #facts table { font-size: 8.1pt; }
     #facts td, #facts th { padding: .26rem .44rem; }

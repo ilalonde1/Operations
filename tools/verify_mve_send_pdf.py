@@ -10,9 +10,10 @@ WHAT IS CHECKED
   * Hawaii is a section, not three project names in a table.
   * The standing prohibitions hold: no competitor named, no MVE revenue, no
     claim about their IT.
-  * ⛔ Nothing MVE already designs is presented as an opportunity. Ward Village
-    may appear ONLY as their own work; Hines and Vestar may appear ONLY in the
-    exclusions box.
+  * ⛔ Nothing MVE already designs is presented as an opportunity, and nothing
+    that FAILED verification appears at all. The reader has never seen an
+    earlier version, so a list of what was removed describes work he cannot
+    see -- and it hands over the technique for nothing. Findings only.
   * The numbers that carry the document reproduce against the collected data.
 
 USAGE
@@ -42,19 +43,28 @@ BANNED = {
 REQUIRED = [
     "Howard Hughes", "Ward Village", "7,250", "Bridgeland", "26-101519",
     "David O", "Environmental Notice", "Mākena Mauka", "1,426",
-    "LJA Engineering", "EX-21.1", "Teravalis",
+    "LJA Engineering", "Teravalis",
+    # The SEC citation stays because the Bridgeland-to-Howard-Hughes link is
+    # the one claim a reader would reasonably doubt. The exhibit NUMBER does
+    # not: "EX-21.1" is precision for a sceptic, and the date is enough to
+    # check it.
+    "19 February 2026",
     # the nine verified openings
     "Host Hotels", "Copper Residences", "Z-169-25-2", "Vintage Partners",
     "Z-24-26-7", "Mid-America", "2026-050", "Crosland Southeast", "2026-027",
     "Middleburg", "DreamKey", "Hoʻonani",
 ]
-# ⛔ These are the leads that DIED verification. Each may appear ONLY inside an
-#    exclusions box. If one ever escapes into the body, the document is offering
-#    an architecture firm a job that already has an architect -- the single
-#    worst failure this work can produce.
-EXCLUDED_CONTEXT = ["Hines", "Vestar", "Fifield", "Elevation Living",
-                    "Kontexture", "Chipperfield", "MASON Architects",
-                    "Kittle", "Woods Associates"]
+# ⛔ These are the leads that DIED verification, and the firms found on them.
+#    They must not appear in the client document AT ALL.
+#
+#    They were previously allowed inside an exclusions box. That box is gone:
+#    the client has never seen an earlier version, so a list of what we removed
+#    describes work he cannot see, and naming our own technique alongside it
+#    gives away the edge. Findings only.
+ABSENT = ["Hines", "Vestar", "Fifield", "Elevation Living",
+          "Kontexture", "Chipperfield", "MASON Architects",
+          "Kittle", "Woods Associates", "Todd & Associates",
+          "J&K Luxury", "Design District"]
 
 
 def norm(s):
@@ -111,44 +121,14 @@ def main(path):
             fails.append("required text %r missing" % want)
 
     print()
-    print("EXCLUSION GATE  (must be in the exclusions box, never as a lead)")
-    # There is more than one exclusions box now: the client-list one on the
-    # facts page and the six-we-removed one on the openings page. Concatenate
-    # every one found, so a name is "inside the box" if it sits in ANY of them.
-    HEADINGS = [
-        r"deliberately did not put in front of you",
-        r"we removed, and where each one.{0,3}s architect was hiding",
-        # The Arizona section also names dropped firms, as the evidence that
-        # the PUD files were actually read: "Three of them named an architect
-        # there -- Woods Associates, Kontexture, and one more -- and were
-        # dropped." That is an exclusion statement, so it counts as a box.
-        r"named an architect there",
-    ]
-    box, found_boxes = "", 0
-    for h in HEADINGS:
-        m = re.search(h + r"(.{0,1800})", flat, re.S | re.I)
-        if m:
-            box += " " + m.group(1)
-            found_boxes += 1
-    print("   exclusion boxes found: %d of %d" % (found_boxes, len(HEADINGS)))
-    if found_boxes < len(HEADINGS):
-        fails.append("only %d of %d exclusions boxes are in the shipped PDF"
-                     % (found_boxes, len(HEADINGS)))
-    for name in EXCLUDED_CONTEXT:
-        total = len(re.findall(re.escape(name), flat, re.I))
-        inbox = len(re.findall(re.escape(name), box, re.I))
-        ok = total > 0 and total == inbox
-        print("   %-10s %d mention(s), %d inside the box   %s"
-              % (name, total, inbox, "ok" if ok else "APPEARS OUTSIDE THE BOX"))
-        if not ok:
-            fails.append("%s appears outside the exclusions box (%d of %d)"
-                         % (name, total - inbox, total))
-
-    # Ward Village must never sit next to the words that would make it a lead
-    for phrase in ("Ward Village pre-application", "lead: Ward Village",
-                   "opportunity at Ward"):
-        if re.search(re.escape(phrase), flat, re.I):
-            fails.append("Ward Village presented as an opportunity: %r" % phrase)
+    print("ABSENT-BY-RULE  (killed leads and their architects, findings only)")
+    for name in ABSENT:
+        n = len(re.findall(re.escape(name), flat, re.I))
+        print("   %-20s %d   %s" % (name, n, "ok" if n == 0 else "PRESENT"))
+        if n:
+            fails.append("%s appears in the client document; it was removed as "
+                         "a lead and naming it describes work the reader "
+                         "cannot see" % name)
 
     print()
     print("CURRENCY")
