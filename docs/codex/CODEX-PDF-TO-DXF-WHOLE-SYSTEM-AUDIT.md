@@ -132,11 +132,17 @@ Positions come from **five** different readers, each with its own assumption:
 Nothing reconciles them. Most of Omar's markup happened to come through a path that agreed with the
 page; five came through one that did not, and landed roughly 60 m away.
 
-⚠ **This is NOT yet solved, and three guesses at it failed on 29 August** — threading `/Rect` into
-the appearance mapping (spec-correct, stashed, changed nothing here), and offsetting by the MediaBox
-origin (this page's MediaBox is `[-1728 -1296.12 1728 1296.12]`, its origin the middle of the sheet
-— but PdfPig already normalises it, so the conversion was a no-op). **The next attempt must start by
-instrumenting which of the five paths each shape took**, not by guessing which one is wrong.
+✅ **SOLVED, prompt 1, 29 August.** Codex's audit placed the five strays on the `/Vertices` and `/L`
+readers, and a probe settled the mechanism: **PdfPig normalises everything it PARSES** — the boxes,
+the page paths, and `Annotation.Rectangle`, all reading 0..3456 on this sheet — while values read
+straight out of the annotation dictionary are left in the file's own space, which here starts at
+−1728. `ParsePage` now derives the raw page origin once, from `/MediaBox` falling back to `/CropBox`,
+and every raw reader subtracts it.
+
+Three guesses failed before that, and the third is the useful one to remember: offsetting by
+`page.MediaBox.Bounds` — which is right in substance and does nothing, because PdfPig reports 0
+there. The hypothesis was never tested, only the wrong source for it. ⛔Do not take a page origin
+from `Bounds`.
 
 ### 3c. Scale is an input nobody checks
 
@@ -328,6 +334,22 @@ size-based slab/column/beam classification on the default path, and PdfToSafe's 
 separate job. It is the INTAKE that converges, not the outputs.
 
 ---
+
+## ⚠ OWED TO OMAR, DEFERRED NOT DROPPED
+
+He asked for three things and has one. The red markup is delivered and correct. **The tower outline
+and the balcony outline are still owed**, and he confirmed on 29 August that he still wants them;
+they are held until the app work below is finished, on Ian's instruction, so a one-off request does
+not keep steering the architecture.
+
+What is already established about them, so nobody starts from nothing:
+
+- The **tower outline** is the outer edge of `PDF-F0C070` + `PDF-F0D080` + `PDF-F0D0A0` +
+  `PDF-F0E0F0`. Those four fills tile the floor plate exactly — rendered and confirmed. One
+  `BOUNDARY` click in AutoCAD. It needs the whole-page read, not the markup read.
+- The **balconies** are the unfilled black boxes projecting outside that edge, on `PDF-000000`.
+- ⛔A raster union algorithm was started for this and stopped: the fills already answer it. Do not
+  rebuild it.
 
 ## What is already true and worth keeping
 
