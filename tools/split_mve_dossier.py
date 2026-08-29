@@ -27,20 +27,24 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 D = os.path.join(REPO, "docs", "audit-2026-08")
 BODY = os.path.join(D, "mve-designteam-body.html")
 
-SEND = ["facts", "arizona", "everywhere", "reach", "leads", "markets", "closed"]
-RESEARCH = ["finding", "raleigh-test", "houston-miami", "tempo", "designbuild",
-            "crossmarket"]
+# "signal" leads: it is the only section about work that has not been let.
+# "leads" moved to RESEARCH - a Houston TDLR registration names the design firm
+# because the design firm filed it, so that list is a record of who won, not a
+# list of what is winnable. It was presented as the latter and should not be.
+SEND = ["signal", "facts", "arizona", "everywhere", "reach", "markets", "closed"]
+RESEARCH = ["finding", "raleigh-test", "houston-miami", "leads", "tempo",
+            "designbuild", "crossmarket"]
 
 SEND_HERO = """
 <header class="hero">
   <div class="hero__wrap fade">
     <p class="hero__eyebrow">KOR Structural &nbsp;·&nbsp; prepared for MVE + Partners &nbsp;·&nbsp; 28 August 2026</p>
-    <h1>Six markets. What each one's<br>public record holds today.</h1>
-    <p class="hero__lede">The Arizona submitted-projects search you asked for, and the same search pointed at Nevada, Hawaii, Houston, Charlotte and Miami. Checked against every source on 28 August: Raleigh had been updated that morning, Houston and Miami the day before. Where a record runs behind, it says so and by how much.</p>
+    <h1>Three developers entitling land<br>in Phoenix, with no architect hired.</h1>
+    <p class="hero__lede">You asked what an early signal looks like. It is a developer who has filed to rezone land, retained a lawyer and a civil engineer, and named no architect. Three of those in Phoenix are named overleaf with the case numbers, alongside eighty-four pending petitions in Charlotte and thirty-six schemes in review in Raleigh. The Arizona submitted-projects search you asked for follows, with the currency of every source stated.</p>
     <div class="hero__meta">
-      <span>373 open Phoenix cases</span>
-      <span>390 Houston projects since 1 June</span>
-      <span>Raleigh current to today</span>
+      <span>3 verified open seats</span>
+      <span>84 pending Charlotte petitions</span>
+      <span>Newest filed 14 August</span>
     </div>
   </div>
 </header>
