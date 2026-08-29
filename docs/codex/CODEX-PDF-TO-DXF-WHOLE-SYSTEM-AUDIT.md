@@ -203,6 +203,94 @@ failure rule 10 was written about.
 
 ---
 
+---
+
+## 6. IT IS NOT A NEW TOOL. IT IS THE MISSING FIRST LEG OF ONE WE HAVE.
+
+Added after Ian stopped the work a second time:
+
+> "This is PDF to DXF. I want to make sure we've converged all of these tools — I can't help but
+> think that's the way. The same we're doing with our Standard Details and Revit Tools — everything
+> is converging. So instead of building a PDF to DXF in isolation — look at the Revit to DXF bridge
+> we've already built and the rebar takeoff and PDF to CSI."
+
+### What is already built (searched: `Kor.Operations.EngineeringTools.Core/`, `Core/Dxf/`, `App/EngineeringTools/PdfToSafe/`, `KOR.Drafter/`)
+
+| tool | source | how it knows what a thing is | lives in |
+|---|---|---|---|
+| Revit → DXF bridge | Revit model | Revit category → layer | KOR.Drafter, `exportdxf`, setup `JBP_STANDARD CAD EXPORT` |
+| DXF → ETABS | DXF | **the layer**, and the patterns are RULES (`dxf.wall-layer-patterns`) | `Core/Dxf/` |
+| Slab takeoff | PDF | native vectors + the scale off the title block | `Core/VectorPageReader`, `Core/SheetScaleReader` |
+| Rebar takeoff | PDF | positioned text call-outs | `Core/RebarPdfReader` |
+| **PdfToSafe (PDF → CSI)** | PDF | **a size guess** | `App/EngineeringTools/PdfToSafe/` — its own everything |
+
+**Four of the five defer to something the source already states. One guesses. It is the one that
+keeps failing.**
+
+### The duplication, and it is not subtle
+
+1. **TWO PDF vector readers.** `Core/VectorPageReader` and `App/PdfToSafe/PdfGeometryParser`. The
+   split is deliberate and documented in VectorPageReader's own summary — *"PdfToSafe reads the
+   engineer's Bluebeam MARKUP annotations (it intentionally discards the base drawing); a takeoff
+   must read the native drawing itself"* — and **that premise expired on 28 August**, when PdfToSafe
+   started reading whole-page content to serve Omar. There is now no reason for two.
+
+2. **`SheetScaleReader` already exists, is tested, and handles this exact failure.** Its summary
+   names it: *"a metric set drawn 1:100 but measured at the imperial default 1/8"=1'-0" (1:96)
+   under-prices every area by ~8%."* That is the error I shipped to Omar and then hard-coded around.
+   The takeoff calls it. PdfToSafe re-typed the scale as a UI field and defaulted to 100.
+
+3. **The repo has already learned this lesson once and written it down.** `RebarPdfReader`:
+   *"Extracted from the overlay generator so the PDF markup and the change/weight report read the
+   drawings through ONE pipeline — two extraction paths had two sheet-ownership rules and two
+   tokenizers, and their reports disagreed on counts. The reports must tell one story."* It was
+   applied inside the rebar tool and never across tools.
+
+4. **PdfToSafe writes DXF; `Core/Dxf` reads DXF — with configurable layer patterns — and they never
+   meet.** Everything the PDF side is missing (a classifier driven by what the drawing says, a rules
+   table, a questionnaire, shipped-model invariants, a publish gate, 700-odd tests) exists on the
+   other side of a file format neither uses to talk to the other.
+
+### The convergence
+
+The DXF is already the meeting point. This is how 31168 is built today:
+
+```
+Revit ──exportdxf──> DXF (layers) ──> StructuralPlanClassifier ──> .e2k, questions, invariants
+```
+
+So the answer to "build a PDF-to-DXF tool" is that **there is nothing to build downstream of the
+DXF.** Point a second front-end at the same intake:
+
+```
+Revit ──exportdxf────┐
+                     ├──> DXF (layers) ──> the existing classifier, rules, questions, gate
+PDF  ──pdf2dxf───────┘
+  │
+  └──> VectorPageReader ──> slab & rebar takeoff        (text + geometry; no DXF in the way)
+```
+
+Two front-ends, one intake, one classifier, one rules table, one set of invariants.
+
+And the layer patterns are already rules, so pointing the classifier at a PDF-derived DXF is a row
+in `analysis.FormatConvention`, not a code change — `dxf.slab-layer-patterns` can name a colour
+layer as readily as it names `JBP_C_SLABEDG`.
+
+### What that makes of §5
+
+Unchanged, but smaller. §5.1 (one coordinate space) and §5.2 (scale off the sheet) are **not
+PdfToSafe work at all** — they are "use `VectorPageReader` and `SheetScaleReader`". §5.3 (emit the
+drawing's own separators as layers) is the whole of the new front-end, and `DxfExporter(layerByColour)`
+already does it. §5.4 (refuse and name) exists on the other side and comes free with the intake.
+
+**What gets deleted, not written:** `PdfGeometryParser`'s second reader, `GeometryFilterService`'s
+size-based slab/column/beam classification on the default path, and PdfToSafe's own scale field.
+
+**What stays:** PdfToSafe's SAFE/CSI writers. Reading a marked-up PDF into an .f2k is a real and
+separate job. It is the INTAKE that converges, not the outputs.
+
+---
+
 ## What is already true and worth keeping
 
 - `ColourIsTheSelectorMeasurement` — the colour census, and the evidence for §5.3.
