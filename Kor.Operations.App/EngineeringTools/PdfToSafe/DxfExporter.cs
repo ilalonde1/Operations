@@ -60,6 +60,9 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 !double.IsNaN(x) && !double.IsInfinity(x) &&
                 !double.IsNaN(y) && !double.IsInfinity(y);
 
+            static string TextForDxf(string text) =>
+                text.Replace('\r', ' ').Replace('\n', ' ').Trim();
+
             List<(double X, double Y)> FilterPts(List<(double X, double Y)> raw)
             {
                 var result = new List<(double X, double Y)>();
@@ -130,6 +133,15 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 }
             }
 
+            var xText = new List<(string Text, double X, double Y)>();
+            foreach (var (text, x, y) in geometry.TextAnnotations)
+            {
+                string clean = TextForDxf(text);
+                double px = x - cx, py = y - cy;
+                if (clean.Length > 0 && Ok(px, py))
+                    xText.Add((clean, px, py));
+            }
+
             double bMinX = double.MaxValue, bMinY = double.MaxValue;
             double bMaxX = double.MinValue, bMaxY = double.MinValue;
             void Expand(double ex, double ey)
@@ -149,6 +161,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
             G(0, "SECTION"); G(2, "HEADER");
             G(9, "$ACADVER"); G(1, "AC1009");
+            G(9, "$INSUNITS"); G(70, "4");
             G(9, "$EXTMIN"); Num(10, bMinX); Num(20, bMinY); G(30, "0.0000");
             G(9, "$EXTMAX"); Num(10, bMaxX); Num(20, bMaxY); G(30, "0.0000");
             G(0, "ENDSEC");
@@ -200,7 +213,11 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 for (int i = 0; i < xLineColours.Count; i++) Note(xLineColours[i], xLineMarkup[i]);
             }
 
-            G(0, "TABLE"); G(2, "LAYER"); G(70, (layerByColour ? colourLayers.Count + 1 : 5).ToString(ic));
+            bool hasText = xText.Count > 0;
+            string textLayer = layerByColour ? "PDF-TEXT" : "TEXT";
+            int layerCount = (layerByColour ? colourLayers.Count + 1 : 5) + (hasText ? 1 : 0);
+
+            G(0, "TABLE"); G(2, "LAYER"); G(70, layerCount.ToString(ic));
             void WL(string n, int c) { G(0, "LAYER"); G(2, n); G(70, "0"); G(62, c.ToString()); G(6, "CONTINUOUS"); }
             WL("0", 7);
             if (layerByColour)
@@ -211,6 +228,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             {
                 WL("SLAB", 3); WL("BEAM", 4); WL("COLUMN", 2); WL("WALL", 1);
             }
+            if (hasText) WL(textLayer, 7);
             G(0, "ENDTAB");
             G(0, "ENDSEC");
 
@@ -254,6 +272,17 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     layerByColour ? ColourLayer(xLineColours[i], xLineMarkup[i]) : (xLineIsWall[i] ? "WALL" : "BEAM"),
                     xLines[i], false);
             }
+
+            void WriteText(string text, double x, double y)
+            {
+                G(0, "TEXT"); G(8, textLayer);
+                Num(10, x); Num(20, y); Num(30, 0);
+                Num(40, 250.0);
+                G(1, text);
+            }
+
+            foreach (var (text, x, y) in xText)
+                WriteText(text, x, y);
 
             G(0, "ENDSEC");
             G(0, "EOF");
