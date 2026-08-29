@@ -35,12 +35,15 @@ public sealed class OmarsDxfMeasurement
         string path = Path.Combine(Desktop, "OAP-parcel11-arch-markup.pdf");
         if (!File.Exists(path)) { _out.WriteLine($"SKIPPED: not at {path}"); return; }
 
-        // 1:96, not the 100 anyone would type. The title block says SCALE: 1/8" = 1'-0", and
-        // TheScaleIsPrintedOnTheSheetMeasurement beside this one confirms it against the suite areas
-        // the architect printed: 1:96 reproduces seven of eight within 0.6%, 1:100 misses by 8%.
-        // Everything here is linear in that number, so getting it wrong is a DXF 4% oversize with
-        // nothing anywhere to say so.
-        const int scale = 96;
+        // READ, NOT HARD-CODED. This said `const int scale = 96` for a day, with a comment
+        // explaining that the title block says 1/8" = 1'-0" and the tool could not see it. The tool
+        // can see it now — that sheet leaves its title-block SCALE field empty and states the scale
+        // once under the viewport, and the load reads it and says where it came from.
+        var detected = PdfGeometryExtractor.DetectScaleForLoad(path, 1);
+        _out.WriteLine($"scale: 1:{detected.Denominator} from {detected.Source} (\"{detected.Note}\")");
+        Assert.True(detected.Denominator == 96,
+            "this sheet states 1/8\" = 1'-0\" and every coordinate below is linear in that number.");
+        int scale = detected.Denominator!.Value;
 
         ExtractedGeometry whole;
         using (var s = File.OpenRead(path))

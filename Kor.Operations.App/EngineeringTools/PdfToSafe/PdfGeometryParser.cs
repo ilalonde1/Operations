@@ -19,6 +19,22 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         double LineWidth,
         bool IsAnnotation);
 
+    internal enum PdfScaleSource
+    {
+        None,
+        TitleBlock,
+        SheetCaption,
+        ConflictingSheetNotes
+    }
+
+    internal sealed record PdfScaleDetection(
+        PdfScaleSource Source,
+        int? Denominator,
+        string? Note,
+        double? FractionX,
+        double? FractionY,
+        IReadOnlyList<string> Notes);
+
     internal static class PdfGeometryParser
     {
         public static List<RawSubpath>
@@ -51,19 +67,77 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         }
 
         public static int? DetectScale(string filePath, int pageNumber = 1)
+            => DetectScaleForLoad(filePath, pageNumber).Denominator;
+
+        public static PdfScaleDetection DetectScaleForLoad(string filePath, int pageNumber = 1)
         {
             try
             {
-                string? note = SheetScaleReader.FromPage(VectorPageReader.ReadPage(filePath, pageNumber));
-                double? metresPerPoint = PlanGeometry.MetresPerPixel(note, renderDpi: 72);
-                if (metresPerPoint is not double mpp || mpp <= 0)
-                    return null;
+                var page = VectorPageReader.ReadPage(filePath, pageNumber);
+                string? titleNote = SheetScaleReader.FromPage(page);
+                if (DenominatorFromScaleNote(titleNote) is int titleDenominator)
+                {
+                    return new PdfScaleDetection(
+                        PdfScaleSource.TitleBlock,
+                        titleDenominator,
+                        titleNote,
+                        null,
+                        null,
+                        Array.Empty<string>());
+                }
 
-                int denominator = (int)Math.Round(mpp * 1000.0 / PdfToSafeConstants.PointsToMm);
-                return denominator > 0 ? denominator : null;
+                var notes = SheetScaleReader.ScaleNotesAnywhere(page).ToList();
+                if (notes.Count == 1)
+                {
+                    var note = notes[0];
+                    // FROM THE NOTE, NOT FROM ScaleNote.MetresPerPixel.
+                    //
+                    // That field is computed at 96 DPI, because SheetScaleReader only ever used it
+                    // to compare notes against each other and says so — "DPI here is arbitrary;
+                    // only parseability and the relative factor matter". Read as metres per PDF
+                    // POINT it is out by 96/72, and Parcel 11 came back 1:72 against a sheet that
+                    // plainly states 1/8" = 1'-0". Right note, right place, wrong by a third, and
+                    // nothing about the number looks wrong.
+                    return new PdfScaleDetection(
+                        PdfScaleSource.SheetCaption,
+                        DenominatorFromScaleNote(note.Note),
+                        note.Note,
+                        note.FractionX,
+                        note.FractionY,
+                        new[] { note.Note });
+                }
+
+                if (notes.Count > 1)
+                {
+                    var namedNotes = notes
+                        .Select(n => DenominatorFromScaleNote(n.Note) is int d
+                            ? $"{n.Note.Trim()} (1:{d})"
+                            : n.Note.Trim())
+                        .ToList();
+                    return new PdfScaleDetection(
+                        PdfScaleSource.ConflictingSheetNotes,
+                        null,
+                        null,
+                        null,
+                        null,
+                        namedNotes);
+                }
             }
             catch (Exception ex) { System.Diagnostics.Trace.TraceWarning("PdfGeometryParser: scale detection failed: " + ex.Message); }
-            return null;
+            return new PdfScaleDetection(PdfScaleSource.None, null, null, null, null, Array.Empty<string>());
+        }
+
+        private static int? DenominatorFromScaleNote(string? note)
+        {
+            double? metresPerPoint = PlanGeometry.MetresPerPixel(note, renderDpi: 72);
+            return metresPerPoint is double mpp ? DenominatorFromMetresPerPoint(mpp) : null;
+        }
+
+        private static int? DenominatorFromMetresPerPoint(double metresPerPoint)
+        {
+            if (metresPerPoint <= 0) return null;
+            int denominator = (int)Math.Round(metresPerPoint * 1000.0 / PdfToSafeConstants.PointsToMm);
+            return denominator > 0 ? denominator : null;
         }
 
         public static List<(string Text, double X, double Y)> ExtractTextAnnotations(Page page, double scale)

@@ -164,6 +164,9 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         public static int? DetectScale(string f, int p = 1)
             => PdfGeometryParser.DetectScale(f, p);
 
+        public static PdfScaleDetection DetectScaleForLoad(string f, int p = 1)
+            => PdfGeometryParser.DetectScaleForLoad(f, p);
+
         public static Dictionary<(byte R, byte G, byte B), double> ExtractThicknessHints(
             string filePath,
             int    pageNumber,

@@ -110,22 +110,26 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 int scale = 100;
                 bool scaleAssumed = false;
                 string fallbackScaleSource = "default";
-                var detectedScale = await Task.Run(
-                    () => PdfGeometryExtractor.DetectScale(_loadedFilePath),
+                string scaleMessage;
+                var scaleDetection = await Task.Run(
+                    () => PdfGeometryExtractor.DetectScaleForLoad(_loadedFilePath),
                     BeginOperation()).ConfigureAwait(true);
-                if (detectedScale.HasValue && detectedScale.Value > 0)
+                if (scaleDetection.Denominator is int detectedScale && detectedScale > 0)
                 {
-                    scale = detectedScale.Value;
+                    scale = detectedScale;
+                    scaleMessage = ScaleReadMessage(scaleDetection, scale);
                 }
                 else if (int.TryParse(ScaleInput.Text.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out int parsed) && parsed > 0)
                 {
                     scale = parsed;
                     scaleAssumed = true;
                     fallbackScaleSource = "entered";
+                    scaleMessage = ScaleFallbackMessage(scaleDetection, fallbackScaleSource, scale);
                 }
                 else
                 {
                     scaleAssumed = true;
+                    scaleMessage = ScaleFallbackMessage(scaleDetection, fallbackScaleSource, scale);
                 }
 
                 ScaleInput.Text = scale.ToString(CultureInfo.InvariantCulture);
@@ -140,10 +144,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 await RefreshFromGeometryAsync(_extractedGeometry, _loadedFilePath, 1, scale, true).ConfigureAwait(true);
 
                 string loadDiagnosis = DiagnoseLoad(_extractedGeometry, _markedPages, CurrentPageNumber);
-                if (scaleAssumed)
-                    loadDiagnosis += $" Scale not read from the title block; using {fallbackScaleSource} 1:{scale}.";
-                else
-                    loadDiagnosis += $" Scale read from the title block: 1:{scale}.";
+                loadDiagnosis += " " + scaleMessage;
                 SetStatus(
                     loadDiagnosis,
                     scaleAssumed ? "#FFF3E0" : StatusFill(_extractedGeometry),
@@ -925,6 +926,40 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
         private int ParseScale()
             => int.TryParse(ScaleInput.Text, out var s) && s > 0 ? s : 100;
+
+        private static string ScaleReadMessage(PdfScaleDetection detection, int scale)
+        {
+            if (detection.Source == PdfScaleSource.SheetCaption)
+            {
+                string note = string.IsNullOrWhiteSpace(detection.Note) ? $"1:{scale}" : detection.Note.Trim();
+                return $"The title block states no scale. The sheet says {note} (1:{scale}) {ScaleNoteLocation(detection.FractionX, detection.FractionY)}; using that. Change the scale box if it is wrong.";
+            }
+
+            return $"Scale read from the title block: 1:{scale}.";
+        }
+
+        private static string ScaleFallbackMessage(PdfScaleDetection detection, string fallbackScaleSource, int scale)
+        {
+            if (detection.Source == PdfScaleSource.ConflictingSheetNotes && detection.Notes.Count > 0)
+            {
+                return $"The sheet states more than one scale ({string.Join(", ", detection.Notes)}); using {fallbackScaleSource} 1:{scale}. Set it if that is wrong.";
+            }
+
+            return $"Scale not read from the title block; using {fallbackScaleSource} 1:{scale}.";
+        }
+
+        private static string ScaleNoteLocation(double? fx, double? fy)
+        {
+            if (fx is not double x || fy is not double y)
+                return "on the sheet";
+
+            string horizontal = x < 0.33 ? "left" : x > 0.67 ? "right" : "centre";
+            string vertical = y < 0.33 ? "bottom" : y > 0.67 ? "top" : "middle";
+            if (horizontal == "left" && vertical == "bottom")
+                return "under the viewport at the bottom left";
+
+            return $"at the {vertical} {horizontal}";
+        }
 
         /// <summary>
         /// What this PDF actually gave us, said plainly.

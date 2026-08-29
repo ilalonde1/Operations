@@ -32,6 +32,12 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
         private const double ValueReachPt = 220.0;
         private const double BaselineTolPt = 6.0;
 
+        public readonly record struct ScaleNote(
+            string Note,
+            double MetresPerPixel,
+            double FractionX,
+            double FractionY);
+
         /// <summary>
         /// The scale note stated in the page's title block ("1 : 100", "1/8&quot; = 1'-0&quot;"), or null
         /// when the title block states none, states an unparseable one (AS NOTED), or states conflicting
@@ -85,6 +91,44 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             // Conflicting stated scales (two parseable SCALE fields disagreeing) → ambiguous, no guess.
             if (values.Any(v => Math.Abs(v - values[0]) / values[0] > 0.01)) return null;
             return note;
+        }
+
+        public static IReadOnlyList<ScaleNote> ScaleNotesAnywhere(VectorPageReader.PageContent? page)
+        {
+            if (page is null || page.WidthPts <= 0 || page.HeightPts <= 0 || page.Words.Count == 0)
+                return Array.Empty<ScaleNote>();
+
+            var notes = new List<ScaleNote>();
+            foreach (var label in page.Words)
+            {
+                if (!label.Text.TrimStart().StartsWith("SCALE", StringComparison.OrdinalIgnoreCase)) continue;
+
+                string inline = label.Text.TrimStart();
+                int cut = "SCALE".Length;
+                while (cut < inline.Length && (inline[cut] == ':' || char.IsWhiteSpace(inline[cut]))) cut++;
+                string tail = string.Join(" ", page.Words
+                    .Where(t => Math.Abs(t.Cy - label.Cy) <= BaselineTolPt
+                                && t.Cx > label.Cx + 1
+                                && t.MinX <= label.MaxX + ValueReachPt)
+                    .OrderBy(t => t.Cx)
+                    .Select(t => t.Text));
+                string candidate = (inline.Substring(cut) + " " + tail).Trim();
+                if (candidate.Length == 0) continue;
+                if (!char.IsDigit(candidate[0])) continue;
+
+                double? mpp = PlanGeometry.MetresPerPixel(candidate, 96);
+                if (mpp is not double v || v <= 0) continue;
+                if (notes.Any(n => Math.Abs(n.MetresPerPixel - v) / n.MetresPerPixel <= 0.01))
+                    continue;
+
+                notes.Add(new ScaleNote(
+                    candidate,
+                    v,
+                    label.Cx / page.WidthPts,
+                    label.Cy / page.HeightPts));
+            }
+
+            return notes;
         }
     }
 }
