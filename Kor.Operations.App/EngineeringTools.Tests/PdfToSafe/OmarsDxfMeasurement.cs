@@ -44,7 +44,7 @@ public sealed class OmarsDxfMeasurement
 
         ExtractedGeometry whole;
         using (var s = File.OpenRead(path))
-            whole = PageContentVsAnnotationsMeasurement.ExtractWholePageForMeasurement(s, 1, scale);
+            whole = PdfGeometryExtractor.Extract(s, scaleDenominator: scale, pageNumber: 1);
 
         _out.WriteLine($"page 1: {whole.Slabs.Count} slab(s), {whole.Columns.Count} column(s), " +
                        $"{whole.Lines.Count} line(s), {whole.RawPathCount:N0} raw path(s)");

@@ -33,6 +33,44 @@ cause.
 
 ---
 
+## 1b. ⚠ WHAT THIS TOOL IS FOR — narrower than the rest of this document assumed
+
+Ian, 29 August, after prompt 2 and before any more was built:
+
+> "These tools all do slightly different things. For instance, this one is probably the simplest.
+> It's just taking markups made on a Bluebeam file and being able to see just those — removing all
+> the architectural crap."
+
+**That is the job. Not "convert a PDF drawing to DXF" — "show me my markup without the drawing
+underneath."** Everything below still holds about how a PDF should be READ; this is about what this
+particular tool should hand back.
+
+And the original design already did it. `GeometryFilterService.Classify(annotationsOnly: true)` is
+the default, and its comment says so plainly: *"Bluebeam / PDF markup annotations ARE the structural
+model. Page content is the architect's base drawing — skip it entirely."* That was right.
+
+**I turned it off.** On 28 August, to serve the two architect items in Omar's sentence ("the tower
+outline… and the balcony outline"), I read whole pages and shipped him every bed, kitchen, door swing
+and title-block rule on the sheet. Then I answered the complaint with a README explaining which of
+twelve layers to switch off, which is a note apologising for the wrong default rather than the right
+one.
+
+**So: markup-only is the DEFAULT, and page content is an explicit per-request opt-in.** That is the
+same shape as everything else here — few foundational rules, flexibility per request, nothing banked.
+
+### And the tools converge at the READING, not at the job
+
+| tool | its job | what it hands back |
+|---|---|---|
+| Bluebeam markup → DXF | see the engineer's markup alone | the markup |
+| Slab takeoff | quantities off a native drawing | numbers |
+| Rebar takeoff | call-outs and a change report | a report |
+| DXF → ETABS | a structural model | an `.e2k` |
+
+What is shared is **how a page is read** — one coordinate space, one scale read off the title block,
+one geometry reader. Converging the readers is right. Converging the tools into one thing that emits
+everything and lets the engineer sort it out is what produced the complaint.
+
 ## 2. What the system IS
 
 A drawing PDF carries exactly four things:
