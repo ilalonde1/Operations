@@ -34,7 +34,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             HashSet<int>? excludedLines = null,
             HashSet<int>? excludedColumns = null,
             HashSet<(byte R, byte G, byte B)>? excludedColors = null,
-            bool layerByColour = false)
+            bool layerByColour = false,
+            IReadOnlyDictionary<(byte R, byte G, byte B), SlabColorSettings>? colorSettings = null)
         {
             double totalWeight = 0.0, sumX = 0.0, sumY = 0.0;
             foreach (var pts in geometry.Slabs)
@@ -185,6 +186,21 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             static string StructuralLayer(string baseLayer, bool markup) =>
                 markup ? baseLayer + "-MARKUP" : baseLayer;
 
+            string StructuralBaseLayer(string fallback, (byte R, byte G, byte B) colour)
+            {
+                if (colorSettings is null || !colorSettings.TryGetValue(colour, out var settings))
+                    return fallback;
+
+                return settings.ElementType.Trim().ToUpperInvariant() switch
+                {
+                    "SLAB" => "SLAB",
+                    "BEAM" => "BEAM",
+                    "COLUMN" => "COLUMN",
+                    "WALL" => "WALL",
+                    _ => fallback
+                };
+            }
+
             static int NearestAci((byte R, byte G, byte B) c)
             {
                 (int Aci, byte R, byte G, byte B)[] basics =
@@ -259,7 +275,9 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
             for (int i = 0; i < xSlabs.Count; i++)
                 WritePolyline(
-                    layerByColour ? ColourLayer(xSlabColours[i], xSlabMarkup[i]) : StructuralLayer("SLAB", xSlabMarkup[i]),
+                    layerByColour
+                        ? ColourLayer(xSlabColours[i], xSlabMarkup[i])
+                        : StructuralLayer(StructuralBaseLayer("SLAB", xSlabColours[i]), xSlabMarkup[i]),
                     NearestAci(xSlabColours[i]),
                     xSlabs[i],
                     true);
@@ -276,7 +294,9 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     (px + hw, py + hd), (px - hw, py + hd)
                 };
                 WritePolyline(
-                    layerByColour ? ColourLayer(xColumnColours[i], xColumnMarkup[i]) : StructuralLayer("COLUMN", xColumnMarkup[i]),
+                    layerByColour
+                        ? ColourLayer(xColumnColours[i], xColumnMarkup[i])
+                        : StructuralLayer(StructuralBaseLayer("COLUMN", xColumnColours[i]), xColumnMarkup[i]),
                     NearestAci(xColumnColours[i]),
                     rect,
                     true);
@@ -285,7 +305,9 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             // Lines: WALL or BEAM layer from the parallel xLineIsWall list.
             for (int i = 0; i < xLines.Count; i++)
             {
-                string structuralLayer = StructuralLayer(xLineIsWall[i] ? "WALL" : "BEAM", xLineMarkup[i]);
+                string structuralLayer = StructuralLayer(
+                    StructuralBaseLayer(xLineIsWall[i] ? "WALL" : "BEAM", xLineColours[i]),
+                    xLineMarkup[i]);
                 WritePolyline(
                     layerByColour ? ColourLayer(xLineColours[i], xLineMarkup[i]) : structuralLayer,
                     NearestAci(xLineColours[i]),

@@ -181,8 +181,9 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             HashSet<int>?     excludedLines   = null,
             HashSet<int>?     excludedColumns = null,
             HashSet<(byte R, byte G, byte B)>? excludedColors = null,
-            bool layerByColour = false)
-            => DxfExporter.Export(geometry, outputPath, excludedSlabs, excludedLines, excludedColumns, excludedColors, layerByColour);
+            bool layerByColour = false,
+            Dictionary<(byte R, byte G, byte B), SlabColorSettings>? colorSettings = null)
+            => DxfExporter.Export(geometry, outputPath, excludedSlabs, excludedLines, excludedColumns, excludedColors, layerByColour, colorSettings);
 
         // ── F2K export (SAFE native ASCII format) ────────────────────────────
         // File → Import → SAFE v12.x in SAFE v23 reads this directly and creates

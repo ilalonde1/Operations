@@ -48,12 +48,20 @@ public sealed class TheConvergenceProof
             [((byte)0xF0, (byte)0x00, (byte)0x00)] = new SlabColorSettings { ElementType = "Wall" },
         };
 
-        var assigned = PdfGeometryExtractor.ReclassifyByColor(geometry, his);
-        _out.WriteLine($"after he says red = Wall:  {assigned.Slabs.Count} slab(s), " +
-                       $"{assigned.Columns.Count} column(s), {assigned.Lines.Count} line(s)");
+        // EXPORTED AS DRAWN, WITH HIS ASSIGNMENT ON THE LAYER — not reclassified first.
+        //
+        // ReclassifyByColor turns his closed Bluebeam polygon into a CENTRELINE plus a section,
+        // which is right for SAFE and unreadable by the DXF intake: WallOutlineDecomposer wants a
+        // closed loop with two parallel faces. Exported that way, dxf-inspect showed WALL-MARKUP as
+        // five OPEN segments with gaps of two metres, and the intake said "no structural outlines
+        // found on the expected layers". A wall in a DRAWING is its two faces.
+        var reclassified = PdfGeometryExtractor.ReclassifyByColor(geometry, his);
+        _out.WriteLine($"for SAFE, reclassified : {reclassified.Slabs.Count} slab(s), " +
+                       $"{reclassified.Columns.Count} column(s), {reclassified.Lines.Count} line(s) " +
+                       "— a wall becomes a centreline plus a section");
 
         string dxf = Path.Combine(Path.GetTempPath(), "kor-convergence-markup-as-walls.dxf");
-        DxfExporter.Export(assigned, dxf);
+        DxfExporter.Export(geometry, dxf, colorSettings: his);
 
         // Read with the SHIPPED reader, not a hand-rolled scan of the group codes — the
         // question is whether the far side can use this file, so ask the far side's reader.
