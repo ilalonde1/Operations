@@ -82,9 +82,9 @@ STALE = re.compile(r"(?i)\b(\d{1,2}\s+)?(jan|feb|mar|apr|may|jun|jul|aug|sep|oct
 #    A gate that cries wolf gets switched off, so it has to know the difference.
 #    Flag a stale date only when nothing nearby explains why it is old.
 STALE_OK = re.compile(
-    r"(?i)(stopped|old feed|since|founded|established|acquired|developed|"
-    r"through|between|from|window|history|historic|prior|previous|"
-    r"replaced|migrated|dead)")
+    r"(?i)(stopp?e?d?\b|stops at|old feed|since|founded|established|acquired|"
+    r"developed|through|between|from|window|history|historic|prior|previous|"
+    r"replaced|migrated|dead|no longer|last updated|ends)")
 
 
 def main(path):

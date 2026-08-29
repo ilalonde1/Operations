@@ -83,10 +83,13 @@ RECORD_TYPES = [
 ]
 
 # Language that offers something as unlet work.
+# ⚠ "lead" alone is far too loose. It matched "Nobody LEADS it: Arquitectonica
+#    and Kobi Karp hold six apiece" -- a concentration measurement, which is the
+#    CORRECT use of a design-review record. Match the sales noun, not the verb.
 OPENING = re.compile(
     r"(?i)(open seat|no architect|architect is not|not yet (?:been )?"
     r"(?:engaged|appointed|hired)|unlet|has not been let|worth (?:a|the) call|"
-    r"opening|lead)")
+    r"\ban opening\b|\bopenings\b|\ba lead\b|\bleads worth\b)")
 
 # ⚠ A GATE THAT CANNOT TELL ASSERTION FROM EXPLANATION IS USELESS.
 #    The document has to be able to SAY "a site plan is a drawing, so none of
