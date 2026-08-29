@@ -18,6 +18,7 @@ namespace Kor.Operations.EngineeringTools.Core.Tests;
 /// BUILDING instead of BLDG, B for below grade instead of P — and asks for the same answers.
 /// Before the vocabulary became data, it could not have been written.
 /// </summary>
+[Collection(SheetNamingVocabularyCollection.Name)]
 public class AnotherOfficesWordsTests : IDisposable
 {
     private readonly ITestOutputHelper _out;

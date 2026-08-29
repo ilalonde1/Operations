@@ -136,21 +136,34 @@ that should have come on day one was finally written as
 - Rules live in `KorStandards` on `KOR-APP01\SQLEXPRESS`, schema `analysis`. A missing rule stops a
   production run by design; there is no fallback value.
 - Migrations live in `C:\VIsual Studio Projects\KOR.Drafter\db\`, not in this repo.
-- The full test suite takes 10–14 minutes because ~20 of its tests rebuild both reference buildings
-  from real drawings over SMB. Do not start one and then keep editing.
+- The full test suite takes about **7 minutes** because ~20 of its tests rebuild both reference
+  buildings from real drawings. Do not start one and then keep editing.
 
-  Those tests are tagged, so most edits do not need them:
+  Measured 2026-08-29, and it is faster than the 10–14 minutes this said before — the drawings are
+  mirrored locally now (`DrawingCache`) instead of being read over SMB every run:
 
-      dotnet test --filter "Speed!=Slow"    every edit — seconds
-      dotnet test                           geometry changes, and before any publish
+      dotnet test --filter "Speed!=Slow"    every edit           22 s   (678 tests)
+      dotnet test                           geometry + publish  6m56s   (731 tests)
+      …App/EngineeringTools.Tests           the WPF side         15 s   (443 tests)
+
+  So the iterate-and-check loop is under forty seconds for both suites, and the seven-minute run is
+  only owed on geometry changes and before a publish.
 
   **Geometry work always runs the full suite.** The coverage ratchets in `ModelCoverageTests` are
   the only thing that catches a member read on one build and lost on the next, and they may only
   come down.
 
-  A needless full run costs more than its ten minutes: it holds the build output lock, so the next
-  edit cannot compile. On 2026-08-24 roughly a third of the runs were for PowerShell and document
-  changes that no C# test touches, and one of them wedged a testhost.
+  A needless full run costs more than its seven minutes: it holds the build output lock, so the next
+  edit cannot compile — and nothing else can even be committed while it runs. On 2026-08-24 roughly
+  a third of the runs were for PowerShell and document changes that no C# test touches, and one of
+  them wedged a testhost.
+
+  ⚠ But the full run finds things the filter cannot, and not only geometry. On 2026-08-29 it failed
+  on `ATaggedSheetOnlyMatchesItsOwnBuilding`, which passes on its own: `PlanSheetNaming.Vocabulary`
+  is a public mutable STATIC, xUnit runs test classes in PARALLEL, and another class was setting it
+  to a different practice's words mid-test. It had failed twice before and been written off as
+  unexplained. **A test that passes alone and fails in the suite is shared state, not luck** — look
+  for a static before looking anywhere else.
 - `\\Kor-fs01\Projects\Projects` is `E:\Projects\Projects` on the server itself.
 - FS01 has no .NET runtime. A self-contained single-file publish
   (`-r win-x64 --self-contained -p:PublishSingleFile=true`) runs there without installing anything.

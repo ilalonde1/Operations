@@ -363,6 +363,7 @@ public class WallOutlineDecomposerTests
     }
 }
 
+[Collection(SheetNamingVocabularyCollection.Name)]
 public class PlanSheetNamingTests
 {
     [Theory]

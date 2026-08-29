@@ -108,6 +108,21 @@ public sealed class OmarsOutlinesDeliverable
                        $"{g.SlabIsAnnotation.Count(x => x) + g.ColumnIsAnnotation.Count(x => x)} markup shape(s)");
         _out.WriteLine($"dropped: {dropSlabs.Count} slab(s), {dropLines.Count} line(s), {dropColumns.Count} column(s)");
 
+        // TEXT GETS THE SAME RULE AS THE LINEWORK, or the title block rides along.
+        //
+        // This file needs the page's geometry, and a whole-page read carries every word on the
+        // sheet with it — so without this it arrives holding the architect's practice name and
+        // postal address, which is the complaint that started all of this. Words near the plate are
+        // the suite labels and room names and are worth having; words sixty metres away are the
+        // title block.
+        int wordsBefore = g.TextAnnotations.Count;
+        g.TextAnnotations = g.TextAnnotations
+            .Where(t => t.X > px0 - BalconyReachMm && t.X < px1 + BalconyReachMm
+                     && t.Y > py0 - BalconyReachMm && t.Y < py1 + BalconyReachMm)
+            .ToList();
+        _out.WriteLine($"text: {g.TextAnnotations.Count} kept of {wordsBefore} " +
+                       "(the rest is title block and general notes, far from the plate)");
+
         string outPath = Path.Combine(Desktop, "OAP-parcel11-TOWER-AND-BALCONIES.dxf");
         DxfExporter.Export(g, outPath, dropSlabs, dropLines, dropColumns, null, layerByColour: true);
 
