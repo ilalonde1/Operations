@@ -120,4 +120,26 @@
      under its name so the Structural column keeps its width. Uses the existing
      ink token; no new colour is introduced. */
   .muted { color: var(--ink-faint); font-size: 0.88em; }
+
+  /* ⛔ TEMPLATE DEFECT: BOLD TEXT DISAPPEARS INSIDE THE HERO.
+     The template sets `strong { color: var(--ink) }`, and --ink is #1C2530 —
+     a near-black navy chosen for dark type on a white page. The hero's
+     background is the SAME family: a gradient from --slate-deep #2C3A47 to
+     --slate #3F5364. So any <strong> in the hero renders navy on navy at
+     roughly 1.2:1 contrast and is effectively invisible; "2,645 residential
+     units across five of them" vanished out of the lede.
+
+     Outside the @media print block deliberately — the fault shows on screen
+     and in the PDF, so the fix has to cover both.
+
+     White rather than inherit: inheriting would match the lede exactly and
+     leave weight alone to carry the emphasis, which is too subtle at 12.5pt
+     reversed out. White reads as deliberate emphasis and is 12:1 against the
+     hero.
+
+     ⚠ This affects EVERY document built on this template, not just this one. */
+  .hero strong,
+  .hero h1 strong,
+  .hero__lede strong,
+  .hero__eyebrow strong { color: #FFFFFF; }
 </style>
