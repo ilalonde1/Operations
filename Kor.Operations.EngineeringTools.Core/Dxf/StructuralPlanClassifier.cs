@@ -176,6 +176,20 @@ public sealed record PlanClassificationOptions
     public double MinPlateArea { get; init; } = 57600.0;
 
     /// <summary>
+    /// How many separate slabs the ENGINEER says this sheet's storey carries, when she has said.
+    ///
+    /// It opens the flood fill on a sheet that would otherwise skip it. The fill normally runs only
+    /// where nothing closed, or where what closed came from joining a chain's ends — so a sheet that
+    /// closes two slabs cleanly never looks for a third. 31168's mezzanine is exactly that: two
+    /// clean rings, and a third slab of about 1,900 sq ft whose edge carries a 23 ft opening that no
+    /// join tolerance will ever bridge. The fill traces it; the gate stopped the fill from running.
+    ///
+    /// Her count is the only thing that can say a sheet is short, and it is a fact about her
+    /// building rather than a threshold. See `slab-count.&lt;job&gt;.&lt;storey&gt;`.
+    /// </summary>
+    public int? ExpectedSlabCount { get; init; }
+
+    /// <summary>
     /// How close two non-adjacent edges of one slab outline must come before the ring is treated
     /// as closing through itself and split into the plates it is drawing.
     /// See `dxf.outline-self-touch-tolerance`.
@@ -989,6 +1003,14 @@ public static class StructuralPlanClassifier
         // 58,229, and P1 from 34,458 to 1,359 against her 40,067. Both readings are reconstructions
         // of an outline the drawing leaves open; neither is authoritative, so the one that encloses
         // the ground wins, and a closed chain sitting inside it is a detail and becomes an opening.
+        //
+        // HER COUNT DOES NOT OPEN THIS GATE. Widening it to "or she says the sheet is short" was
+        // tried and is wrong: on 31168's mezzanine it let the fill's 2,330 sq ft raster reading
+        // swallow a 1,903 sq ft ring that had closed cleanly as vectors — replacing a plate the
+        // engineer has already accepted with a traced one. A count that says a floor is MISSING is
+        // not licence to re-read the floors that are there. What her count drives is additive and
+        // lives further down; see the "a storey the engineer has counted" block after the
+        // perimeter-wall fallback.
         if (result.Slabs.Count == 0 || chainClosedCount > 0)
         {
             // One LAYER at a time, not every slab layer rasterised together.
@@ -1201,6 +1223,10 @@ public static class StructuralPlanClassifier
         // unfound. The reasoning holds and the cost is worse: C-LEVEL 3 and the mezzanine were
         // handed a 75,832 sq ft outline -- the whole site, taken from a perimeter wall drawn on
         // their sheets -- on top of their own floors. A storey the drawing gives a slab has a slab.
+        // How many floors this sheet read from its own SLAB EDGES, before any fallback. Her count
+        // is checked against this and not against what a perimeter wall stood in for; see below.
+        int fromSlabEdges = result.Slabs.Count;
+
         if (options.FloorFromPerimeterWall
             && result.Slabs.Count == 0
             && result.EnclosedByWalls.Count > 0)
@@ -1235,6 +1261,172 @@ public static class StructuralPlanClassifier
                         "approximation offered because a storey with no plate has no diaphragm at all.");
                 }
             }
+        }
+
+        // A STOREY THE ENGINEER HAS COUNTED, AND THE SHEET IS STILL SHORT.
+        //
+        // Everything above reads the drawing on its own terms and is untouched by this. It runs
+        // last, adds only, and can neither remove a plate nor change one: her count says a floor is
+        // MISSING, which is not licence to re-read the floors that are there.
+        //
+        // 31168's LEVEL 1 MEZZ is the case. Andrea has said three slabs, three times. The sheet
+        // gives two, and the third is drawn — 45 x 16 ft north of the other two, about 790 sq ft.
+        // Its edge is interrupted by gaps wider than the banked 36 in bridge, so the fill leaks
+        // straight through it and no region ever forms; every reading below 96 in returns nothing
+        // there. That is not a threshold that was set too tight. The bridge is the size of the
+        // interruptions in a slab edge, and on THIS storey they are eight feet.
+        //
+        // So the bridge is widened here and only here, one step at a time, and stops at the FIRST
+        // width that reaches her count — the smallest bridge that closes it is the tightest honest
+        // reading of the linework. The width used is reported, because a plate recovered at 96 in
+        // is a weaker claim than one recovered at 36 and she is owed the difference.
+        //
+        // Nothing is admitted that overlaps a plate already found, in either direction, and nothing
+        // self-crossing: KF7 reached her screen as a 37-point ring ETABS refused to open, and it got
+        // there by being admitted on size alone.
+        // AND ONLY ON A SHEET THAT DREW SOME OF THEM.
+        //
+        // A count is about the STOREY; it is applied here per SHEET, and several sheets can serve
+        // one storey. 31168's LEVEL 1 MEZZ has three: the YMCA's (which draws the slabs), a whole-
+        // site plan that draws them again, and WEST (BLDG A & B), which is a different building and
+        // closes no slab edge at all — its only plate is the perimeter-wall fallback. Told that the
+        // storey carries three, that sheet went looking and produced a 424 sq ft region in buildings
+        // A and B at a bridge of nine feet. It was deduped downstream, which is luck rather than
+        // design.
+        //
+        // Her count says how many slabs a storey carries. It cannot tell a sheet that draws none
+        // that it is hiding some. Where two sheets DO draw the same slabs, both find them and the
+        // existing overlap dedup keeps one — which is how every other member on this job already
+        // works.
+        if (options.ExpectedSlabCount is int wanted && fromSlabEdges > 0 && result.Slabs.Count < wanted)
+        {
+            var slabSegments = prepared.Where(x => x.Role == RoleSlab).Select(x => x.Segment).ToList();
+            var sets = new List<(string What, List<DxfSegment> Segments)>();
+            var byLayer = slabSegments
+                .GroupBy(s => s.Layer, StringComparer.OrdinalIgnoreCase)
+                .Select(g => (What: g.Key, Segments: g.ToList()))
+                .ToList();
+            sets.AddRange(byLayer);
+            if (byLayer.Count > 1) sets.Add(("all slab layers together", slabSegments));
+
+            // EVERY CANDIDATE FIRST, THEN THE BIGGEST — NOT THE FIRST ONE THAT SURVIVES.
+            //
+            // Her count says HOW MANY floors the storey carries, never which or where, so a search
+            // that stops at the first region it can admit is deciding on layer order. On 31168 it
+            // did: a 430 sq ft scrap on JBP_C_SLABEDG-2 filled the quota at 90 in and the 889 sq ft
+            // bay the count was actually about, which only traces cleanly at 108, was never reached.
+            //
+            // A floor an engineer counts is the largest thing the drawing encloses that is not
+            // modelled yet. So every width is tried, everything that survives the gates is kept, and
+            // the largest wins — with the tightest bridge that produced each one, because widening
+            // the bridge inflates the outline and the smallest that works is the truest reading.
+            //
+            // Steps of the banked bridge rather than absolute inches, so a drawing counted in
+            // millimetres widens by the same LENGTH — see RulesTravelBetweenUnitsTests.
+            var candidates = new List<(PlanLoop Loop, string What, double Bridge, double Step)>();
+
+            // As far as 4x the banked width. 31168's third mezzanine slab is why the ladder does not
+            // stop at 3x: at 36, 54 and 72 in nothing encloses there at all; at 90 and 108 it comes
+            // back with a slot through it; at 126 — 3.5x — it comes back solid, 1,095 sq ft in eight
+            // corners. A ladder that stopped one step short found only scraps elsewhere on the sheet
+            // and reported the count as met.
+            foreach (double step in new[] { 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0 })
+            {
+                double bridge = options.FloodFillBridge * step;
+
+                foreach (var (what, edgeSegments) in sets)
+                foreach (var extra in DxfFloodFillPlateDetector.RecoverAll(
+                             edgeSegments, options with { FloodFillBridge = bridge }))
+                {
+                    // Overlapping a floor already found, either way round, is the same ground read
+                    // twice — one diaphragm counted as two.
+                    //
+                    // MEASURED ALONG THE OUTLINE, NOT AT THE CENTROID. A centroid test is the
+                    // weakest form of this: two rings can describe most of the same floor with
+                    // neither centre inside the other. This is the sampled containment the openings
+                    // above are already judged by.
+                    if (result.Slabs.Any(x => FractionInside(extra, x) >= 0.5
+                                           || FractionInside(x, extra) >= 0.5)) continue;
+                    if (result.Openings.Any(o =>
+                            LoopGeometry.PointInPolygon(extra.Centroid(), o.Points))) continue;
+                    if (LoopGeometry.SelfIntersects(extra.Points)) continue;
+
+                    // NOT A SLAB WITH A SLIT THROUGH IT.
+                    //
+                    // Where the drawn edge is interrupted, the exterior flood reaches in through
+                    // the gap and hollows the floor out from inside; the channel it entered by
+                    // survives as a slot in the outline. 31168's third mezzanine slab traces that
+                    // way at 90 in and again at 108 — right area, right position, and a diaphragm
+                    // cut nearly in two at the stair. Nothing else catches it: the ring does not
+                    // cross itself and its shortest edge is five feet. Two more steps of bridge
+                    // close the channel and the same floor comes back solid.
+                    if (LoopGeometry.HasNarrowNeck(extra.Points, options.FloodFillBridge)) continue;
+
+                    // Every reading is kept here; which of two describing the same ground survives is
+                    // settled below, by size. Discarding at this point on "the tighter bridge got
+                    // here first" was wrong and it cost the whole exercise: a 403 sq ft FRAGMENT of
+                    // the third mezzanine slab traces at 108 in, and the 1,095 sq ft whole of it at
+                    // 126 was then thrown away as a duplicate of its own corner.
+                    candidates.Add((extra, what, bridge, step));
+                }
+            }
+
+            // ONE READING PER PIECE OF GROUND, AND IT IS THE TIGHTEST WHOLE ONE.
+            //
+            // The same floor appears at several bridge widths, and the two obvious ways of choosing
+            // between them are both wrong. Widening the bridge thickens the strokes the fill traces
+            // between, so every step outward inflates the outline — 1,095 sq ft at 126 in, 1,147 at
+            // 144, 1,309 at 180, all of them the same bay — and simply taking the largest picks the
+            // most swollen reading there is. Taking the earliest instead picks a 403 sq ft corner of
+            // it that traced at 108 before the rest of the edge closed.
+            //
+            // So: group the readings that describe the same ground, throw away the ones that only
+            // caught part of it, and of what is left take the one from the narrowest bridge. Then
+            // the largest of THOSE, because a floor an engineer counts is a floor, not a fragment.
+            var grounds = new List<List<(PlanLoop Loop, string What, double Bridge, double Step)>>();
+            foreach (var c in candidates.OrderByDescending(c => c.Loop.Area))
+            {
+                var group = grounds.FirstOrDefault(g => FractionInside(c.Loop, g[0].Loop) >= 0.5
+                                                     || FractionInside(g[0].Loop, c.Loop) >= 0.5);
+                if (group is null) grounds.Add(new() { c });
+                else group.Add(c);
+            }
+
+            var best = grounds
+                .Select(g =>
+                {
+                    double whole = g.Max(x => x.Loop.Area) * 0.9;
+                    return g.Where(x => x.Loop.Area >= whole).OrderBy(x => x.Bridge).First();
+                })
+                .OrderByDescending(x => x.Loop.Area)
+                .ToList();
+
+            var taken = new List<PlanLoop>();
+            foreach (var c in best)
+            {
+                if (result.Slabs.Count >= wanted) break;
+                if (result.Slabs.Any(x => FractionInside(c.Loop, x) >= 0.5
+                                       || FractionInside(x, c.Loop) >= 0.5)) continue;
+                if (taken.Any(x => FractionInside(c.Loop, x) >= 0.5
+                                || FractionInside(x, c.Loop) >= 0.5)) continue;
+                taken.Add(c.Loop);
+
+                result.Slabs.Add(c.Loop);
+                result.Flags.Add(
+                    $"a further floor of {c.Loop.Area / 144:N0} sq ft in {c.Loop.Points.Count} corners was "
+                    + $"recovered from {c.What} by flood-filling the drawn slab edges at a bridge of "
+                    + $"{c.Bridge:0} in, {c.Step:0.#}x the {options.FloodFillBridge:0} in normally used. This "
+                    + $"storey is stated to carry {wanted} slab(s) and the drawing closed "
+                    + $"{result.Slabs.Count - 1}. Its edge does not close as vectors and the gaps in it are "
+                    + "wider than an ordinary drafting break, so this outline is traced from the linework "
+                    + "rather than read from it. Treat as recovered geometry and check it.");
+            }
+
+            if (result.Slabs.Count < wanted)
+                result.Flags.Add(
+                    $"this storey is stated to carry {wanted} slab(s) and only {result.Slabs.Count} could be read "
+                    + "from the drawing, at any bridge width tried. The missing floor's edge is either not on a "
+                    + "slab-edge layer or not drawn on this sheet.");
         }
 
         // Walls only carry force between them where they share a joint, so the centrelines are

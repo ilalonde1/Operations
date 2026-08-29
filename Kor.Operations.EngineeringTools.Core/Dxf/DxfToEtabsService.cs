@@ -783,7 +783,10 @@ public static class DxfToEtabsService
 
         var storeysOfSheet = files.ToDictionary(
             f => f,
+            // Renamed the same way the placement below renames them, or a fact banked against the
+            // storey's real name — slab-count.31168.LEVEL 1 MEZZ — matches nothing.
             f => (IReadOnlyList<string>)PlanSheetNaming.MatchStories(sheetInfoByFile[f], matchNames)
+                .Select(s => doc.StoreyRenames.TryGetValue(s, out string? now) ? now : s)
                 .Where(s => !cutStoreys.Contains(s))
                 .Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
             StringComparer.OrdinalIgnoreCase);
@@ -908,7 +911,13 @@ public static class DxfToEtabsService
             }
 
             readSheets.Add(segments);
-            var geometry = StructuralPlanClassifier.Classify(segments, classification, sheet, tags);
+            // Her count for this sheet's storey, so a sheet she says is short looks harder.
+            int? expected = null;
+            foreach (string storey in storeysOfSheet[file])
+                if (slabCounts.TryGetValue(storey, out int n)) { expected = n; break; }
+
+            var geometry = StructuralPlanClassifier.Classify(
+                segments, classification with { ExpectedSlabCount = expected }, sheet, tags);
 
             // WITHDRAWN. Admitting the largest region her count was short by looked right and was
             // wrong twice over.

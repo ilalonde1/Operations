@@ -44,10 +44,10 @@ if (args.Length >= 1 && args[0].Equals("pdf-readable", StringComparison.OrdinalI
 
 // RENDER a plan's structural layers to an image, so what the drawing contains can be seen
 // rather than inferred. Walls red, columns blue, slab edges grey.
-// Usage: takeoff dxf-render <plan.dxf> <out.png> [--size 1800]
+// Usage: takeoff dxf-render <plan.dxf> <out.png> [--size 1800] [--layers A,B] [--window x0,y0,x1,y1 (feet)]
 if (args.Length >= 1 && args[0].Equals("dxf-render", StringComparison.OrdinalIgnoreCase))
 {
-    if (args.Length < 3) { Console.Error.WriteLine("Usage: takeoff dxf-render <plan.dxf> <out.png> [--size 1800]"); return 1; }
+    if (args.Length < 3) { Console.Error.WriteLine("Usage: takeoff dxf-render <plan.dxf> <out.png> [--size 1800] [--layers A,B] [--window x0,y0,x1,y1 (feet)]"); return 1; }
     if (!File.Exists(args[1])) { Console.Error.WriteLine($"Not found '{args[1]}'."); return 2; }
 
     int size = 1800;
@@ -72,6 +72,27 @@ if (args.Length >= 1 && args[0].Equals("dxf-render", StringComparison.OrdinalIgn
         .ToList();
 
     if (renderSegments.Count == 0) { Console.Error.WriteLine("No structural layers in this drawing."); return 3; }
+
+    // --window x0,y0,x1,y1 IN FEET narrows the render to one part of the sheet. A storey drawn at
+    // 1,800 px across puts a 40 ft slab in 300 of them, and the question is usually about one
+    // region: whether a slab edge really is interrupted there, or what the fill traced.
+    for (int i = 3; i < args.Length - 1; i++)
+    {
+        if (!args[i].Equals("--window", StringComparison.OrdinalIgnoreCase)) continue;
+        var box = args[i + 1].Split(',', StringSplitOptions.RemoveEmptyEntries)
+            .Select(v => double.TryParse(v.Trim(), out double f) ? f * 12.0 : double.NaN)
+            .ToArray();
+        if (box.Length != 4 || box.Any(double.IsNaN))
+        {
+            Console.Error.WriteLine("--window wants x0,y0,x1,y1 in feet."); return 1;
+        }
+
+        renderSegments = renderSegments
+            .Where(s => Math.Max(s.Start.X, s.End.X) >= box[0] && Math.Min(s.Start.X, s.End.X) <= box[2]
+                     && Math.Max(s.Start.Y, s.End.Y) >= box[1] && Math.Min(s.Start.Y, s.End.Y) <= box[3])
+            .ToList();
+        if (renderSegments.Count == 0) { Console.Error.WriteLine("Nothing drawn in that window."); return 3; }
+    }
 
     double minX = renderSegments.Min(s => Math.Min(s.Start.X, s.End.X));
     double maxX = renderSegments.Max(s => Math.Max(s.Start.X, s.End.X));

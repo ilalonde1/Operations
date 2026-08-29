@@ -2,16 +2,44 @@ namespace Kor.Operations.EngineeringTools.Dxf;
 
 internal static class DxfFloodFillPlateDetector
 {
+    /// <summary>
+    /// The single biggest floor the drawn linework encloses. Unchanged behaviour: every existing
+    /// caller wants one plate and wants the largest.
+    /// </summary>
     public static bool TryRecover(
         IReadOnlyList<DxfSegment> slabSegments,
         PlanClassificationOptions options,
         out PlanLoop? plate,
         out string note)
     {
-        plate = null;
-        note = string.Empty;
+        var all = RecoverAll(slabSegments, options);
+        plate = all.Count > 0 ? all[0] : null;
+        note = plate is null
+            ? string.Empty
+            : $"Slab edges did not close as vectors, so one floor plate was recovered by flood-filling "
+              + $"the drawn slab-edge linework — {plate.Area / 144:N0} sq ft in {plate.Points.Count} "
+              + "corners. Treat as recovered geometry.";
+        return plate is not null;
+    }
 
-        if (slabSegments.Count < 12) return false;
+    /// <summary>
+    /// EVERY floor the linework encloses, biggest first.
+    ///
+    /// The fill has always walked every solid region and then thrown all but the largest away. A
+    /// sheet drawing three separate slabs therefore only ever yielded one, which is invisible while
+    /// the other two close as vectors — 31168's mezzanine closes two cleanly and leaves the third,
+    /// about 1,900 sq ft, with a 23 ft opening in its edge that no join tolerance should ever bridge.
+    /// The engineer has said three times that the storey carries three.
+    ///
+    /// Used only where her count says a sheet is short, so nothing that works today changes.
+    /// </summary>
+    public static IReadOnlyList<PlanLoop> RecoverAll(
+        IReadOnlyList<DxfSegment> slabSegments,
+        PlanClassificationOptions options)
+    {
+        var plates = new List<PlanLoop>();
+
+        if (slabSegments.Count < 12) return plates;
 
         double minX = slabSegments.Min(s => Math.Min(s.Start.X, s.End.X));
         double minY = slabSegments.Min(s => Math.Min(s.Start.Y, s.End.Y));
@@ -19,16 +47,16 @@ internal static class DxfFloodFillPlateDetector
         double maxY = slabSegments.Max(s => Math.Max(s.Start.Y, s.End.Y));
         double spanX = maxX - minX;
         double spanY = maxY - minY;
-        if (spanX <= 0 || spanY <= 0 || spanX * spanY < options.MinPlateArea) return false;
+        if (spanX <= 0 || spanY <= 0 || spanX * spanY < options.MinPlateArea) return plates;
 
         const int margin = 8;
         const int maxEdgePixels = 1800;
         double pixelSize = Math.Max(options.MinPanelOverlap / 2.0, Math.Max(spanX, spanY) / (maxEdgePixels - margin * 2.0));
-        if (pixelSize <= 0 || double.IsNaN(pixelSize) || double.IsInfinity(pixelSize)) return false;
+        if (pixelSize <= 0 || double.IsNaN(pixelSize) || double.IsInfinity(pixelSize)) return plates;
 
         int width = Math.Max(3, (int)Math.Ceiling(spanX / pixelSize) + margin * 2 + 1);
         int height = Math.Max(3, (int)Math.Ceiling(spanY / pixelSize) + margin * 2 + 1);
-        if ((long)width * height > 4_000_000) return false;
+        if ((long)width * height > 4_000_000) return plates;
 
         var dark = new bool[width * height];
         // The bridge is the size of the INTERRUPTIONS in a slab edge, not the size of a dash.
@@ -57,47 +85,49 @@ internal static class DxfFloodFillPlateDetector
         }
 
         var exterior = FloodExterior(dark, width, height);
-        var component = LargestSolidComponent(dark, exterior, width, height);
-        if (component.Count == 0) return false;
 
-        var loops = BoundaryLoops(component, width, height);
-        var pixelLoop = loops.OrderByDescending(AbsArea).FirstOrDefault();
-        if (pixelLoop is null || pixelLoop.Count < 4) return false;
-
-        var points = Simplify(pixelLoop
-            .Select(p => new DxfPoint(
-                minX + (p.X - margin) * pixelSize,
-                minY + (p.Y - margin) * pixelSize))
-            .ToList(), pixelSize * 1.5);
-
-        if (points.Count < 3) return false;
-
-        // A TRACE IS NOT AN OUTLINE UNTIL IT IS STRAIGHTENED.
-        //
-        // The collinear pass above removes a vertex only where it sits on the line between its two
-        // neighbours, and on a raster staircase none of them does. 31168's LEVEL 2 shipped as 1,942
-        // vertices and C-LEVEL 3 as 1,084, against perhaps forty in the drawing. ETABS is handed
-        // the staircase and meshes it, and no count in the report can see that.
-        //
-        // Straightened at the rule, then CHECKED: an outline that loses real area under it is not
-        // simplified, it is different, so the straightening is kept only where the area holds.
-        var straightened = LoopGeometry.Straighten(points, options.RecoveredOutlineTolerance);
-        if (straightened.Count >= 3)
+        // Every enclosed region, not only the biggest. Each is put through exactly the same
+        // straightening and the same two gates the single-plate path has always applied.
+        foreach (var component in SolidComponents(dark, exterior, width, height))
         {
-            double before = Math.Abs(new PlanLoop("t", points, false).SignedArea);
-            double after = Math.Abs(new PlanLoop("t", straightened, false).SignedArea);
-            if (before > 0 && Math.Abs(after - before) / before <= 0.01) points = straightened;
+            var loops = BoundaryLoops(component, width, height);
+            var pixelLoop = loops.OrderByDescending(AbsArea).FirstOrDefault();
+            if (pixelLoop is null || pixelLoop.Count < 4) continue;
+
+            var points = Simplify(pixelLoop
+                .Select(p => new DxfPoint(
+                    minX + (p.X - margin) * pixelSize,
+                    minY + (p.Y - margin) * pixelSize))
+                .ToList(), pixelSize * 1.5);
+
+            if (points.Count < 3) continue;
+
+            // A TRACE IS NOT AN OUTLINE UNTIL IT IS STRAIGHTENED.
+            //
+            // The collinear pass above removes a vertex only where it sits on the line between its
+            // two neighbours, and on a raster staircase none of them does. 31168's LEVEL 2 shipped
+            // as 1,942 vertices and C-LEVEL 3 as 1,084, against perhaps forty in the drawing. ETABS
+            // is handed the staircase and meshes it, and no count in the report can see that.
+            //
+            // Straightened at the rule, then CHECKED: an outline that loses real area under it is
+            // not simplified, it is different, so the straightening is kept only where area holds.
+            var straightened = LoopGeometry.Straighten(points, options.RecoveredOutlineTolerance);
+            if (straightened.Count >= 3)
+            {
+                double before = Math.Abs(new PlanLoop("t", points, false).SignedArea);
+                double after = Math.Abs(new PlanLoop("t", straightened, false).SignedArea);
+                if (before > 0 && Math.Abs(after - before) / before <= 0.01) points = straightened;
+            }
+
+            var recovered = new PlanLoop("slab-edge flood fill", points, closedExactly: false);
+            if (recovered.Area < options.MinPlateArea) continue;
+            if (BoundingFillRatio(recovered.Points, recovered.Area) < 0.80) continue;
+
+            plates.Add(recovered);
         }
 
-        var recovered = new PlanLoop("slab-edge flood fill", points, closedExactly: false);
-        if (recovered.Area < options.MinPlateArea) return false;
-        if (BoundingFillRatio(recovered.Points, recovered.Area) < 0.80) return false;
-
-        plate = recovered;
-        note = $"Slab edges did not close as vectors, so one floor plate was recovered by flood-filling " +
-               $"the drawn slab-edge linework — {recovered.Area / 144:N0} sq ft in {recovered.Points.Count} " +
-               "corners. Treat as recovered geometry.";
-        return true;
+        plates.Sort((a, b) => b.Area.CompareTo(a.Area));
+        return plates;
 
         void Plot(int x, int y)
         {
@@ -160,10 +190,12 @@ internal static class DxfFloodFillPlateDetector
         }
     }
 
-    private static HashSet<int> LargestSolidComponent(bool[] dark, bool[] exterior, int width, int height)
+    /// <summary>Every enclosed solid region, largest first. This walk always found them all; it
+    /// used to keep only the biggest.</summary>
+    private static List<HashSet<int>> SolidComponents(bool[] dark, bool[] exterior, int width, int height)
     {
         var visited = new bool[dark.Length];
-        var best = new HashSet<int>();
+        var found = new List<HashSet<int>>();
         var q = new Queue<int>();
 
         for (int start = 0; start < dark.Length; start++)
@@ -186,10 +218,11 @@ internal static class DxfFloodFillPlateDetector
                 Visit(x, y + 1);
             }
 
-            if (current.Count > best.Count) best = current;
+            found.Add(current);
         }
 
-        return best;
+        found.Sort((a, b) => b.Count.CompareTo(a.Count));
+        return found;
 
         void Visit(int x, int y)
         {

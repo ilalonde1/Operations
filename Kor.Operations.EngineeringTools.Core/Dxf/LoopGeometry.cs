@@ -416,4 +416,103 @@ public static class LoopGeometry
             || DistanceToSegment(b1, a1, a2) <= tolerance
             || DistanceToSegment(b2, a1, a2) <= tolerance;
     }
+
+    /// <summary>
+    /// Does this ring pinch to less than <paramref name="minWidth"/> somewhere along its length?
+    ///
+    /// A floor traced from linework the drawing leaves open can come back with a SLOT through it:
+    /// where the drawn edge is interrupted, the exterior flood reaches in through the gap and
+    /// hollows the plate out from inside, and the channel it came in by survives as a slit in the
+    /// outline. 31168's third mezzanine slab traced that way at 890 sq ft with an eighteen-inch
+    /// slot running nine feet into it — an area that is right, a position that is right, and a
+    /// diaphragm cut nearly in two at the stair. Every other test passes it: the ring does not
+    /// cross itself, has no coincident points, and its shortest edge is five feet.
+    ///
+    /// A SLOT IS TWO EDGES FACING EACH OTHER; A STEP IS TWO EDGES FACING THE SAME WAY. That is the
+    /// whole of it. Walking a staircase of small steps puts parallel edges close together too, and
+    /// those run in the SAME direction with slab between them. The two sides of a slit run in
+    /// OPPOSITE directions with nothing between them.
+    /// </summary>
+    public static bool HasNarrowNeck(IReadOnlyList<DxfPoint> ring, double minWidth)
+    {
+        int n = ring.Count;
+        if (n < 4 || minWidth <= 0) return false;
+
+        for (int i = 0; i < n; i++)
+        {
+            DxfPoint a1 = ring[i], a2 = ring[(i + 1) % n];
+            double ax = a2.X - a1.X, ay = a2.Y - a1.Y;
+            double alen = Math.Sqrt(ax * ax + ay * ay);
+            if (alen < 1e-9) continue;
+
+            for (int j = i + 2; j < n; j++)
+            {
+                if ((j + 1) % n == i) continue;             // adjacent round the back
+                DxfPoint b1 = ring[j], b2 = ring[(j + 1) % n];
+                double bx = b2.X - b1.X, by = b2.Y - b1.Y;
+                double blen = Math.Sqrt(bx * bx + by * by);
+                if (blen < 1e-9) continue;
+
+                // Facing each other: near-parallel and running opposite ways.
+                double dot = (ax * bx + ay * by) / (alen * blen);
+                if (dot > -0.9) continue;
+
+                if (SegmentDistance(a1, a2, b1, b2) < minWidth) return true;
+            }
+        }
+
+        return false;
+
+        static double SegmentDistance(DxfPoint a1, DxfPoint a2, DxfPoint b1, DxfPoint b2)
+            => Math.Min(
+                Math.Min(PointToSegment(a1, b1, b2), PointToSegment(a2, b1, b2)),
+                Math.Min(PointToSegment(b1, a1, a2), PointToSegment(b2, a1, a2)));
+
+        static double PointToSegment(DxfPoint p, DxfPoint a, DxfPoint b)
+        {
+            double dx = b.X - a.X, dy = b.Y - a.Y;
+            double lengthSquared = dx * dx + dy * dy;
+            if (lengthSquared < 1e-9) return p.DistanceTo(a);
+            double t = Math.Clamp(((p.X - a.X) * dx + (p.Y - a.Y) * dy) / lengthSquared, 0.0, 1.0);
+            return p.DistanceTo(new DxfPoint(a.X + t * dx, a.Y + t * dy));
+        }
+    }
+
+    /// <summary>
+    /// Does this ring cross itself? A polygon whose edges cross is not an outline of anything, and
+    /// ETABS will not open one: KOR's KF7 reached the engineer's screen as a 37-point self-crossing
+    /// ring and came back as "Area Object KF7 not correctly defined".
+    ///
+    /// The composer has always applied this to OPENINGS. It was never applied to floor plates,
+    /// which is how KF7 shipped, so it lives here now and both callers use the one implementation.
+    /// Adjacent edges share a vertex; touching there is not crossing.
+    /// </summary>
+    public static bool SelfIntersects(IReadOnlyList<DxfPoint> polygon)
+    {
+        int n = polygon.Count;
+        if (n < 4) return false;
+
+        for (int i = 0; i < n; i++)
+        {
+            DxfPoint a1 = polygon[i], a2 = polygon[(i + 1) % n];
+            for (int j = i + 1; j < n; j++)
+            {
+                if ((j + 1) % n == i || j == (i + 1) % n) continue;
+                if (Crosses(a1, a2, polygon[j], polygon[(j + 1) % n])) return true;
+            }
+        }
+
+        return false;
+
+        static bool Crosses(DxfPoint p1, DxfPoint p2, DxfPoint q1, DxfPoint q2)
+        {
+            double d1 = Side(q1, q2, p1), d2 = Side(q1, q2, p2);
+            double d3 = Side(p1, p2, q1), d4 = Side(p1, p2, q2);
+            return ((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0))
+                && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0));
+        }
+
+        static double Side(DxfPoint a, DxfPoint b, DxfPoint c)
+            => (b.X - a.X) * (c.Y - a.Y) - (b.Y - a.Y) * (c.X - a.X);
+    }
 }

@@ -1814,35 +1814,9 @@ public static class E2kGeometryComposer
     }
 
     /// <summary>Whether any two non-adjacent edges of the closed polygon cross.</summary>
+    // One implementation, in LoopGeometry, so a floor plate is held to the same test an opening is.
     private static bool SelfIntersects(IReadOnlyList<DxfPoint> polygon)
-    {
-        int n = polygon.Count;
-        if (n < 4) return false;
-
-        for (int i = 0; i < n; i++)
-        {
-            DxfPoint a1 = polygon[i], a2 = polygon[(i + 1) % n];
-            for (int j = i + 1; j < n; j++)
-            {
-                // Adjacent edges share a vertex; touching there is not crossing.
-                if ((j + 1) % n == i || j == (i + 1) % n) continue;
-                if (Crosses(a1, a2, polygon[j], polygon[(j + 1) % n])) return true;
-            }
-        }
-
-        return false;
-
-        static bool Crosses(DxfPoint p1, DxfPoint p2, DxfPoint q1, DxfPoint q2)
-        {
-            double d1 = Side(q1, q2, p1), d2 = Side(q1, q2, p2);
-            double d3 = Side(p1, p2, q1), d4 = Side(p1, p2, q2);
-            return ((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0))
-                && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0));
-        }
-
-        static double Side(DxfPoint a, DxfPoint b, DxfPoint c)
-            => (b.X - a.X) * (c.Y - a.Y) - (b.Y - a.Y) * (c.X - a.X);
-    }
+        => LoopGeometry.SelfIntersects(polygon);
 
     private static double SnapHalfInch(double value) => Math.Round(value * 2.0, MidpointRounding.AwayFromZero) / 2.0;
     private static double SnapInch(double value) => Math.Round(value, MidpointRounding.AwayFromZero);
