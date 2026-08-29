@@ -139,6 +139,11 @@ the draughtsman's and the reviewer's own layering. Proven on Parcel 11 on 28 Aug
 and Omar's red isolated to a single value with no classifier involved — 5 shapes and 37 wall
 segments, exactly his markup, separated from the architect's identical red by origin alone.
 
+**The half of that lesson that does NOT transfer is the banking.** See §5's warning: what persists on
+the ETABS side persists because the model is rebuilt, and nothing here is. The transferable half is
+narrower and it is the whole point — *read what the drawing already separated, instead of deciding
+for it*.
+
 ---
 
 ## 5. The simplification
@@ -151,14 +156,46 @@ Stop making it a modeller. Make it a faithful translator, in this order:
    (suite areas, a dimension string). Refuse rather than assume.
 3. **Emit the drawing's own separators as layers** — colour, and markup-vs-page. Delete the
    size-based slab/column/beam classification from the default path entirely.
-4. **The engineer names the layers once, and it is banked**, `pdf-layer.<job>.<colour>` in the same
-   table as the ETABS rules, in the same shape as `slab-count.<job>.<storey>`.
-5. **Refuse and name.** Everything not carried across is reported with position and reason, the way
+4. **Refuse and name.** Everything not carried across is reported with position and reason, the way
    `CANDIDATE NOT MODELLED` already does on the other side.
 
-Steps 3 and 5 are what Omar needed and what would have prevented both faults he found: he would have
+Steps 3 and 4 are what Omar needed and what would have prevented both faults he found: he would have
 opened three layers instead of a drawing, and nothing would have been placed by a reader that
 disagreed with the others.
+
+### ⚠ AND NOT A FIFTH STEP THAT BANKS ANYTHING
+
+The first draft of this list had one: *the engineer names the layers once and it is banked, as
+`pdf-layer.<job>.<colour>`, in the same table as the ETABS rules.* Ian struck it, and he was right:
+
+> "Didn't we move away from banking every decision and creating global rules? Didn't we pare that
+> back to do the opposite — implement foundational company rules but make it flexible enough that it
+> can take project specific questions and figure them out, as opposed to trying to shoehorn into a
+> rule that doesn't apply or fit?"
+
+**The ETABS pattern does not transfer, and copying it here is the same mistake in a new place.**
+What makes a banked scoped fact right on that side is that Andrea's model is REBUILT — dozens of
+times, and every regeneration would lose her answer if it were not written down. `slab-count.31168.
+LEVEL 1 MEZZ = 3` has to persist because the thing it describes gets remade tomorrow.
+
+A PDF conversion is not rebuilt. Omar asks once, opens the file, and the conversation is over. A
+rule banked from it would outlive its own purpose and start applying to drawings nobody was talking
+about — which is exactly how 73 prose rulings became global thresholds that fought each other.
+
+**And most of it should never be a question at all.** The scale is PRINTED on the sheet. The markup
+IS the annotation layer. The colours ARE the draughtsman's separation. Every one of those is
+something to read, not something to ask about and store an answer to. The tool's job is to figure
+out what the drawing already says.
+
+So the shape here is:
+
+- **Foundational, and few** — true of every drawing, no project needed: a page has one coordinate
+  space; the scale is on the sheet and is checkable against the sheet; colour and annotation-origin
+  are the separation the drawing was made with; nothing is invented that the drawing does not state.
+- **Per request, and not stored** — "give me the red and the plate": answered by turning layers off,
+  in the file, in the reply, or in the README beside it. Nothing about that belongs in a rules table.
+- **Asked only where the drawing genuinely cannot say** — and then asked in the reply, with the
+  answer applied to that request, not written into a table that will meet another job next month.
 
 **Nothing further should be patched onto the current path.** The four fixes of 28–29 August each
 repaired one symptom of §3a and §3b and left the mechanism intact, which is exactly the shape of
