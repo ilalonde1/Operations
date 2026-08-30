@@ -54569,6 +54569,2316 @@
       "Project": "Kor.Operations.EngineeringTools.TakeoffCli"
     }
   ],
+  "Duplicates": [
+    {
+      "Name": "Program",
+      "Projects": [
+        "AwardOllamaBackfill",
+        "BcMpiImporter",
+        "BdCanonicalDedup",
+        "BdDeltekLink",
+        "BdHeatGraph",
+        "BdIntelExtract",
+        "BdOpportunityPurge",
+        "BdOrphanOrgPurge",
+        "BdResearchImport",
+        "BdSeedImport",
+        "BulkTenantOnboarder",
+        "GovCanEngineeringImport",
+        "Kor.Operations.Mcp",
+        "Kor.Opportunities.ApcImport",
+        "Kor.Opportunities.Capture",
+        "Kor.Opportunities.Worker",
+        "PrimeRfpClassifierBackfill"
+      ],
+      "Files": [
+        "Kor.Operations.Mcp/Program.cs",
+        "Kor.Opportunities.ApcImport/Program.cs",
+        "Kor.Opportunities.Capture/Program.cs",
+        "Kor.Opportunities.Worker/Program.cs",
+        "tools/AwardOllamaBackfill/Program.cs",
+        "tools/BcMpiImporter/Program.cs",
+        "tools/BdCanonicalDedup/Program.cs",
+        "tools/BdDeltekLink/Program.cs",
+        "tools/BdHeatGraph/Program.cs",
+        "tools/BdIntelExtract/Program.cs",
+        "tools/BdOpportunityPurge/Program.cs",
+        "tools/BdOrphanOrgPurge/Program.cs",
+        "tools/BdResearchImport/Program.cs",
+        "tools/BdSeedImport/Program.cs",
+        "tools/BulkTenantOnboarder/Program.cs",
+        "tools/GovCanEngineeringImport/Program.cs",
+        "tools/PrimeRfpClassifierBackfill/Program.cs"
+      ]
+    },
+    {
+      "Name": "ImportOptions",
+      "Projects": [
+        "BdCanonicalDedup",
+        "BdIntelExtract",
+        "BdResearchImport",
+        "BdSeedImport",
+        "Kor.Operations.ImportTool"
+      ],
+      "Files": [
+        "Kor.Operations.ImportTool/ImportRunner.cs",
+        "tools/BdCanonicalDedup/Program.cs",
+        "tools/BdIntelExtract/Program.cs",
+        "tools/BdResearchImport/Program.cs",
+        "tools/BdSeedImport/Program.cs"
+      ]
+    },
+    {
+      "Name": "ImportStats",
+      "Projects": [
+        "BcMpiImporter",
+        "BdResearchImport",
+        "BdSeedImport",
+        "GovCanEngineeringImport",
+        "Kor.Opportunities.ApcImport"
+      ],
+      "Files": [
+        "Kor.Opportunities.ApcImport/Program.cs",
+        "tools/BcMpiImporter/Program.cs",
+        "tools/BdResearchImport/Program.cs",
+        "tools/BdSeedImport/Program.cs",
+        "tools/GovCanEngineeringImport/Program.cs"
+      ]
+    },
+    {
+      "Name": "DeltekClientCandidate",
+      "Projects": [
+        "BdDeltekLink",
+        "BdSeedImport",
+        "Kor.Operations.App",
+        "Kor.Opportunities.Worker"
+      ],
+      "Files": [
+        "Kor.Operations.App/Crm/IDeltekLookupService.cs",
+        "Kor.Opportunities.Worker/Services/BdDeltekLinkDryRunJob.cs",
+        "tools/BdDeltekLink/Program.cs",
+        "tools/BdSeedImport/Program.cs"
+      ]
+    },
+    {
+      "Name": "ImportConfig",
+      "Projects": [
+        "BdDeltekLink",
+        "BdOpportunityPurge",
+        "BdOrphanOrgPurge",
+        "BdSeedImport"
+      ],
+      "Files": [
+        "tools/BdDeltekLink/Program.cs",
+        "tools/BdOpportunityPurge/Program.cs",
+        "tools/BdOrphanOrgPurge/Program.cs",
+        "tools/BdSeedImport/Program.cs"
+      ]
+    },
+    {
+      "Name": "ToolOptions",
+      "Projects": [
+        "AwardOllamaBackfill",
+        "BcMpiImporter",
+        "GovCanEngineeringImport",
+        "PrimeRfpClassifierBackfill"
+      ],
+      "Files": [
+        "tools/AwardOllamaBackfill/Program.cs",
+        "tools/BcMpiImporter/Program.cs",
+        "tools/GovCanEngineeringImport/Program.cs",
+        "tools/PrimeRfpClassifierBackfill/Program.cs"
+      ]
+    },
+    {
+      "Name": "CompanyMatch",
+      "Projects": [
+        "BdDeltekLink",
+        "BdSeedImport",
+        "Kor.Opportunities.Worker"
+      ],
+      "Files": [
+        "Kor.Opportunities.Worker/Services/BdDeltekLinkDryRunJob.cs",
+        "tools/BdDeltekLink/Program.cs",
+        "tools/BdSeedImport/Program.cs"
+      ]
+    },
+    {
+      "Name": "DeltekFuzzyMatch",
+      "Projects": [
+        "BdDeltekLink",
+        "BdSeedImport",
+        "Kor.Opportunities.Worker"
+      ],
+      "Files": [
+        "Kor.Opportunities.Worker/Services/BdDeltekLinkDryRunJob.cs",
+        "tools/BdDeltekLink/Program.cs",
+        "tools/BdSeedImport/Program.cs"
+      ]
+    },
+    {
+      "Name": "Result",
+      "Projects": [
+        "Kor.Operations.App",
+        "Kor.Operations.EngineeringTools.Core",
+        "Kor.Operations.FileSync.Service"
+      ],
+      "Files": [
+        "Kor.Operations.App/Financials/DeliveryConfidenceCalculator.cs",
+        "Kor.Operations.EngineeringTools.Core/Dxf/PlanLoopBuilder.cs",
+        "Kor.Operations.FileSync.Service/Jobs/Watcher/BucketSyncOp.cs",
+        "Kor.Operations.FileSync.Service/Jobs/Watcher/ProjectCleanOp.cs"
+      ]
+    },
+    {
+      "Name": "ActivityRow",
+      "Projects": [
+        "Kor.Operations.App",
+        "Kor.Operations.Data"
+      ],
+      "Files": [
+        "Kor.Operations.App/DashboardWindow.xaml.cs",
+        "Kor.Operations.Data/SqlTransmittalsStore.cs"
+      ]
+    },
+    {
+      "Name": "AssemblyMarker",
+      "Projects": [
+        "Kor.Opportunities.Core",
+        "Kor.Opportunities.Data"
+      ],
+      "Files": [
+        "Kor.Opportunities.Core/AssemblyMarker.cs",
+        "Kor.Opportunities.Data/AssemblyMarker.cs"
+      ]
+    },
+    {
+      "Name": "Built",
+      "Projects": [
+        "Kor.Operations.EngineeringTools.Core",
+        "Kor.Operations.EngineeringTools.Core.Tests"
+      ],
+      "Files": [
+        "Kor.Operations.EngineeringTools.Core.Tests/GeneratedModel.cs",
+        "Kor.Operations.EngineeringTools.Core.Tests/ModelIntegrityTests.cs",
+        "Kor.Operations.EngineeringTools.Core/Dxf/JobPublisher.cs"
+      ]
+    },
+    {
+      "Name": "CanonicalOrgTarget",
+      "Projects": [
+        "BdDeltekLink",
+        "Kor.Opportunities.Worker"
+      ],
+      "Files": [
+        "Kor.Opportunities.Worker/Services/BdDeltekLinkDryRunJob.cs",
+        "tools/BdDeltekLink/Program.cs"
+      ]
+    },
+    {
+      "Name": "Contact",
+      "Projects": [
+        "BdApolloEnrich",
+        "Kor.Opportunities.Worker"
+      ],
+      "Files": [
+        "Kor.Opportunities.Worker/Services/Reporting/WeeklyAttackSheetJob.cs",
+        "tools/BdApolloEnrich/Program.cs"
+      ]
+    },
+    {
+      "Name": "CredentialPatterns",
+      "Projects": [
+        "Kor.Operations.App",
+        "Kor.Operations.FileSync.Service"
+      ],
+      "Files": [
+        "Kor.Operations.App/Logging/CredentialPatterns.cs",
+        "Kor.Operations.FileSync.Service/Logging/CredentialPatterns.cs"
+      ]
+    },
+    {
+      "Name": "CredentialRedactingEnricher",
+      "Projects": [
+        "Kor.Operations.App",
+        "Kor.Operations.FileSync.Service"
+      ],
+      "Files": [
+        "Kor.Operations.App/Logging/CredentialRedactingEnricher.cs",
+        "Kor.Operations.FileSync.Service/Logging/CredentialRedactingEnricher.cs"
+      ]
+    },
+    {
+      "Name": "CredentialRedactingPolicy",
+      "Projects": [
+        "Kor.Operations.App",
+        "Kor.Operations.FileSync.Service"
+      ],
+      "Files": [
+        "Kor.Operations.App/Logging/CredentialRedactingPolicy.cs",
+        "Kor.Operations.FileSync.Service/Logging/CredentialRedactingPolicy.cs"
+      ]
+    },
+    {
+      "Name": "DeadlineRow",
+      "Projects": [
+        "Kor.Operations.App",
+        "Kor.Operations.FileSync.Service"
+      ],
+      "Files": [
+        "Kor.Operations.App/BusinessDevelopment/Workspace/DashboardViewModel.cs",
+        "Kor.Operations.FileSync.Service/Jobs/WeeklyPmDeadlines/DeadlineRow.cs"
+      ]
+    },
+    {
+      "Name": "DedupCandidateRow",
+      "Projects": [
+        "BdDeltekLink",
+        "Kor.Opportunities.Worker"
+      ],
+      "Files": [
+        "Kor.Opportunities.Worker/Services/BdDeltekLinkDryRunJob.cs",
+        "tools/BdDeltekLink/Program.cs"
+      ]
+    },
+    {
+      "Name": "DeltekContactCandidate",
+      "Projects": [
+        "BdSeedImport",
+        "Kor.Operations.App"
+      ],
+      "Files": [
+        "Kor.Operations.App/Crm/IDeltekLookupService.cs",
+        "tools/BdSeedImport/Program.cs"
+      ]
+    },
+    {
+      "Name": "DeltekLookupCache",
+      "Projects": [
+        "BdDeltekLink",
+        "BdSeedImport"
+      ],
+      "Files": [
+        "tools/BdDeltekLink/Program.cs",
+        "tools/BdSeedImport/Program.cs"
+      ]
+    },
+    {
+      "Name": "DeltekProject",
+      "Projects": [
+        "(loose)",
+        "Kor.Operations.FileSync.Service"
+      ],
+      "Files": [
+        "Kor.Operations.FileSync.Service/Jobs/KorMapSync/KorMapSyncRunner.cs",
+        "docs/map-audit/KorMapSyncRunner.cs"
+      ]
+    },
+    {
+      "Name": "EnrichmentRow",
+      "Projects": [
+        "BdIntelExtract",
+        "Kor.Opportunities.Worker"
+      ],
+      "Files": [
+        "Kor.Opportunities.Worker/Jobs/IntelExtractionCatchUpJob.cs",
+        "tools/BdIntelExtract/Program.cs"
+      ]
+    },
+    {
+      "Name": "FakeCanonicalOrgStore",
+      "Projects": [
+        "Kor.Operations.App.Tests",
+        "Kor.Opportunities.Data.Tests"
+      ],
+      "Files": [
+        "Kor.Operations.App/Kor.Transmittals.App.Tests/BcBidUnverifiedBidResultsScraperTests.cs",
+        "Kor.Opportunities.Data.Tests/CanonicalOrgResolverTests.cs"
+      ]
+    },
+    {
+      "Name": "FavoriteProject",
+      "Projects": [
+        "EmailFilerv2",
+        "Kor.Operations.App"
+      ],
+      "Files": [
+        "EmailFiler/EmailFilerv2/SqlFavoritesRepository.cs",
+        "Kor.Operations.App/Preferences/PreferencesModels.cs"
+      ]
+    },
+    {
+      "Name": "HeartbeatRow",
+      "Projects": [
+        "Kor.Operations.App",
+        "Kor.Opportunities.Core"
+      ],
+      "Files": [
+        "Kor.Operations.App/FileSync/FileSyncRows.cs",
+        "Kor.Opportunities.Core/Models/HeartbeatRow.cs"
+      ]
+    },
+    {
+      "Name": "ImportResult",
+      "Projects": [
+        "Kor.Operations.App",
+        "Kor.Opportunities.Data"
+      ],
+      "Files": [
+        "Kor.Operations.App/Opportunities/CustomProposalImportService.cs",
+        "Kor.Opportunities.Data/Awards/BuildingPermitsImportService.cs"
+      ]
+    },
+    {
+      "Name": "IntelNarrativeRow",
+      "Projects": [
+        "Kor.Operations.App",
+        "Kor.Opportunities.Data"
+      ],
+      "Files": [
+        "Kor.Operations.App/Opportunities/OrgDossierViewModel.cs",
+        "Kor.Opportunities.Data/Intel/IntelReadModels.cs"
+      ]
+    },
+    {
+      "Name": "JobRunRow",
+      "Projects": [
+        "Kor.Operations.App",
+        "Kor.Opportunities.Data"
+      ],
+      "Files": [
+        "Kor.Operations.App/FileSync/FileSyncRows.cs",
+        "Kor.Opportunities.Data/Ingestion/JobRunRow.cs"
+      ]
+    },
+    {
+      "Name": "KorMapSyncRunner",
+      "Projects": [
+        "(loose)",
+        "Kor.Operations.FileSync.Service"
+      ],
+      "Files": [
+        "Kor.Operations.FileSync.Service/Jobs/KorMapSync/KorMapSyncRunner.cs",
+        "docs/map-audit/KorMapSyncRunner.cs"
+      ]
+    },
+    {
+      "Name": "LinkPlan",
+      "Projects": [
+        "BdDeltekLink",
+        "Kor.Opportunities.Worker"
+      ],
+      "Files": [
+        "Kor.Opportunities.Worker/Services/BdDeltekLinkDryRunJob.cs",
+        "tools/BdDeltekLink/Program.cs"
+      ]
+    },
+    {
+      "Name": "LinkPlanRow",
+      "Projects": [
+        "BdDeltekLink",
+        "Kor.Opportunities.Worker"
+      ],
+      "Files": [
+        "Kor.Opportunities.Worker/Services/BdDeltekLinkDryRunJob.cs",
+        "tools/BdDeltekLink/Program.cs"
+      ]
+    },
+    {
+      "Name": "MajorProjectRecord",
+      "Projects": [
+        "BdResearchImport",
+        "Kor.Opportunities.Data"
+      ],
+      "Files": [
+        "Kor.Opportunities.Data/Ingestion/Providers/AbMajorProjectsInventoryProvider.cs",
+        "Kor.Opportunities.Data/Ingestion/Providers/BcMajorProjectsInventoryProvider.cs",
+        "Kor.Opportunities.Data/Ingestion/Providers/CaSocrataMajorProjectsInventoryProvider.cs",
+        "Kor.Opportunities.Data/Ingestion/Providers/CeqanetMajorProjectsInventoryProvider.cs",
+        "tools/BdResearchImport/Program.cs"
+      ]
+    },
+    {
+      "Name": "Options",
+      "Projects": [
+        "ApcInterestBackfill",
+        "Kor.Opportunities.ApcImport"
+      ],
+      "Files": [
+        "Kor.Opportunities.ApcImport/Program.cs",
+        "tools/ApcInterestBackfill/Program.cs"
+      ]
+    },
+    {
+      "Name": "PageDump",
+      "Projects": [
+        "Kor.Opportunities.Data",
+        "MerxProbe"
+      ],
+      "Files": [
+        "Kor.Opportunities.Data/Ingestion/Scraping/BcBidLiveDetailExtractor.cs",
+        "tools/MerxProbe/PageDump.cs"
+      ]
+    },
+    {
+      "Name": "PipelineFunnel",
+      "Projects": [
+        "Kor.Operations.App",
+        "Kor.Opportunities.Data"
+      ],
+      "Files": [
+        "Kor.Operations.App/Opportunities/MajorProjectsInventoryViewModel.cs",
+        "Kor.Opportunities.Data/MajorProjects/IBdDashboardStore.cs"
+      ]
+    },
+    {
+      "Name": "ProjectEntry",
+      "Projects": [
+        "EmailFilerv2",
+        "Kor.Operations.App"
+      ],
+      "Files": [
+        "EmailFiler/EmailFilerv2/ItemsToFileProcessor.cs",
+        "Kor.Operations.App/Email/ProjectFolderCatalogService.cs",
+        "Kor.Operations.App/QuickTransferWindow.xaml.cs"
+      ]
+    },
+    {
+      "Name": "PurgeOptions",
+      "Projects": [
+        "BdOpportunityPurge",
+        "BdOrphanOrgPurge"
+      ],
+      "Files": [
+        "tools/BdOpportunityPurge/Program.cs",
+        "tools/BdOrphanOrgPurge/Program.cs"
+      ]
+    },
+    {
+      "Name": "ReviewRow",
+      "Projects": [
+        "BdDeltekLink",
+        "Kor.Opportunities.Worker"
+      ],
+      "Files": [
+        "Kor.Opportunities.Worker/Services/BdDeltekLinkDryRunJob.cs",
+        "tools/BdDeltekLink/Program.cs"
+      ]
+    },
+    {
+      "Name": "Row",
+      "Projects": [
+        "Kor.Operations.App",
+        "OpportunityEnrichmentBackfill"
+      ],
+      "Files": [
+        "Kor.Operations.App/Opportunities/OpportunityDuplicateDialog.xaml.cs",
+        "tools/OpportunityEnrichmentBackfill/Program.cs"
+      ]
+    },
+    {
+      "Name": "ScrapedSupplier",
+      "Projects": [
+        "ApcInterestBackfill",
+        "Kor.Opportunities.Data"
+      ],
+      "Files": [
+        "Kor.Opportunities.Data/Ingestion/Scraping/ApcInterestExtractor.cs",
+        "tools/ApcInterestBackfill/Program.cs"
+      ]
+    },
+    {
+      "Name": "SerilogBootstrap",
+      "Projects": [
+        "Kor.Operations.FileSync.Service",
+        "Kor.Opportunities.Worker"
+      ],
+      "Files": [
+        "Kor.Operations.FileSync.Service/Logging/SerilogBootstrap.cs",
+        "Kor.Opportunities.Worker/Logging/SerilogBootstrap.cs"
+      ]
+    },
+    {
+      "Name": "StructuralRelevanceGateTests",
+      "Projects": [
+        "Kor.Operations.App.Tests",
+        "Kor.Opportunities.Data.Tests"
+      ],
+      "Files": [
+        "Kor.Operations.App/Kor.Transmittals.App.Tests/StructuralRelevanceGateTests.cs",
+        "Kor.Opportunities.Data.Tests/StructuralRelevanceGateTests.cs"
+      ]
+    },
+    {
+      "Name": "TargetOpp",
+      "Projects": [
+        "ApcInterestBackfill",
+        "Kor.Opportunities.Worker"
+      ],
+      "Files": [
+        "Kor.Opportunities.Worker/Services/ApcInterestEnrichmentJob.cs",
+        "Kor.Opportunities.Worker/Services/BcBidPlanTakerEnrichmentJob.cs",
+        "tools/ApcInterestBackfill/Program.cs"
+      ]
+    },
+    {
+      "Name": "WpLocation",
+      "Projects": [
+        "(loose)",
+        "Kor.Operations.FileSync.Service"
+      ],
+      "Files": [
+        "Kor.Operations.FileSync.Service/Jobs/KorMapSync/KorMapSyncRunner.cs",
+        "docs/map-audit/KorMapSyncRunner.cs"
+      ]
+    }
+  ],
+  "Orphans": [
+    {
+      "Id": "(loose):Kor.Operations.FileSync.Service.Jobs.KorMapSync.KorMapSyncRunner.DeltekProject",
+      "Name": "DeltekProject",
+      "Kind": "record",
+      "Project": "(loose)",
+      "File": "docs/map-audit/KorMapSyncRunner.cs"
+    },
+    {
+      "Id": "(loose):Kor.Operations.FileSync.Service.Jobs.KorMapSync.KorMapSyncRunner",
+      "Name": "KorMapSyncRunner",
+      "Kind": "class",
+      "Project": "(loose)",
+      "File": "docs/map-audit/KorMapSyncRunner.cs"
+    },
+    {
+      "Id": "(loose):Kor.Operations.FileSync.Service.Jobs.KorMapSync.KorMapSyncRunner.WpLocation",
+      "Name": "WpLocation",
+      "Kind": "record",
+      "Project": "(loose)",
+      "File": "docs/map-audit/KorMapSyncRunner.cs"
+    },
+    {
+      "Id": "ApcInterestBackfill:Options",
+      "Name": "Options",
+      "Kind": "class",
+      "Project": "ApcInterestBackfill",
+      "File": "tools/ApcInterestBackfill/Program.cs"
+    },
+    {
+      "Id": "ApcInterestBackfill:ScrapedSupplier",
+      "Name": "ScrapedSupplier",
+      "Kind": "record",
+      "Project": "ApcInterestBackfill",
+      "File": "tools/ApcInterestBackfill/Program.cs"
+    },
+    {
+      "Id": "ApcInterestBackfill:TargetOpp",
+      "Name": "TargetOpp",
+      "Kind": "record",
+      "Project": "ApcInterestBackfill",
+      "File": "tools/ApcInterestBackfill/Program.cs"
+    },
+    {
+      "Id": "AwardOllamaBackfill:Kor.AwardOllamaBackfill.Program.ToolOptions",
+      "Name": "ToolOptions",
+      "Kind": "record",
+      "Project": "AwardOllamaBackfill",
+      "File": "tools/AwardOllamaBackfill/Program.cs"
+    },
+    {
+      "Id": "BcMpiImporter:Kor.BcMpiImporter.Program.ImportStats",
+      "Name": "ImportStats",
+      "Kind": "class",
+      "Project": "BcMpiImporter",
+      "File": "tools/BcMpiImporter/Program.cs"
+    },
+    {
+      "Id": "BcMpiImporter:Kor.BcMpiImporter.Program.ToolOptions",
+      "Name": "ToolOptions",
+      "Kind": "record",
+      "Project": "BcMpiImporter",
+      "File": "tools/BcMpiImporter/Program.cs"
+    },
+    {
+      "Id": "BdApolloEnrich:Contact",
+      "Name": "Contact",
+      "Kind": "record",
+      "Project": "BdApolloEnrich",
+      "File": "tools/BdApolloEnrich/Program.cs"
+    },
+    {
+      "Id": "BdCanonicalDedup:Kor.BdCanonicalDedup.Program.ImportOptions",
+      "Name": "ImportOptions",
+      "Kind": "record",
+      "Project": "BdCanonicalDedup",
+      "File": "tools/BdCanonicalDedup/Program.cs"
+    },
+    {
+      "Id": "BdContactEnrich:HunterResult",
+      "Name": "HunterResult",
+      "Kind": "record",
+      "Project": "BdContactEnrich",
+      "File": "tools/BdContactEnrich/Program.cs"
+    },
+    {
+      "Id": "BdDeltekLink:Kor.BdDeltekLink.CanonicalOrgTarget",
+      "Name": "CanonicalOrgTarget",
+      "Kind": "record",
+      "Project": "BdDeltekLink",
+      "File": "tools/BdDeltekLink/Program.cs"
+    },
+    {
+      "Id": "BdDeltekLink:Kor.BdDeltekLink.CompanyMatch",
+      "Name": "CompanyMatch",
+      "Kind": "record",
+      "Project": "BdDeltekLink",
+      "File": "tools/BdDeltekLink/Program.cs"
+    },
+    {
+      "Id": "BdDeltekLink:Kor.BdDeltekLink.DedupCandidateRow",
+      "Name": "DedupCandidateRow",
+      "Kind": "record",
+      "Project": "BdDeltekLink",
+      "File": "tools/BdDeltekLink/Program.cs"
+    },
+    {
+      "Id": "BdDeltekLink:Kor.BdDeltekLink.DeltekClientCandidate",
+      "Name": "DeltekClientCandidate",
+      "Kind": "record",
+      "Project": "BdDeltekLink",
+      "File": "tools/BdDeltekLink/Program.cs"
+    },
+    {
+      "Id": "BdDeltekLink:Kor.BdDeltekLink.DeltekFuzzyMatch",
+      "Name": "DeltekFuzzyMatch",
+      "Kind": "static class",
+      "Project": "BdDeltekLink",
+      "File": "tools/BdDeltekLink/Program.cs"
+    },
+    {
+      "Id": "BdDeltekLink:Kor.BdDeltekLink.DeltekLookupCache",
+      "Name": "DeltekLookupCache",
+      "Kind": "class",
+      "Project": "BdDeltekLink",
+      "File": "tools/BdDeltekLink/Program.cs"
+    },
+    {
+      "Id": "BdDeltekLink:Kor.BdDeltekLink.ImportConfig",
+      "Name": "ImportConfig",
+      "Kind": "record",
+      "Project": "BdDeltekLink",
+      "File": "tools/BdDeltekLink/Program.cs"
+    },
+    {
+      "Id": "BdDeltekLink:Kor.BdDeltekLink.LinkPlan",
+      "Name": "LinkPlan",
+      "Kind": "record",
+      "Project": "BdDeltekLink",
+      "File": "tools/BdDeltekLink/Program.cs"
+    },
+    {
+      "Id": "BdDeltekLink:Kor.BdDeltekLink.LinkPlanRow",
+      "Name": "LinkPlanRow",
+      "Kind": "record",
+      "Project": "BdDeltekLink",
+      "File": "tools/BdDeltekLink/Program.cs"
+    },
+    {
+      "Id": "BdDeltekLink:Kor.BdDeltekLink.ReviewRow",
+      "Name": "ReviewRow",
+      "Kind": "record",
+      "Project": "BdDeltekLink",
+      "File": "tools/BdDeltekLink/Program.cs"
+    },
+    {
+      "Id": "BdIntelExtract:Kor.BdIntelExtract.Program.EnrichmentRow",
+      "Name": "EnrichmentRow",
+      "Kind": "record",
+      "Project": "BdIntelExtract",
+      "File": "tools/BdIntelExtract/Program.cs"
+    },
+    {
+      "Id": "BdIntelExtract:Kor.BdIntelExtract.Program.ImportOptions",
+      "Name": "ImportOptions",
+      "Kind": "record",
+      "Project": "BdIntelExtract",
+      "File": "tools/BdIntelExtract/Program.cs"
+    },
+    {
+      "Id": "BdOpportunityPurge:Kor.BdOpportunityPurge.ImportConfig",
+      "Name": "ImportConfig",
+      "Kind": "record",
+      "Project": "BdOpportunityPurge",
+      "File": "tools/BdOpportunityPurge/Program.cs"
+    },
+    {
+      "Id": "BdOpportunityPurge:Kor.BdOpportunityPurge.PurgeOptions",
+      "Name": "PurgeOptions",
+      "Kind": "record",
+      "Project": "BdOpportunityPurge",
+      "File": "tools/BdOpportunityPurge/Program.cs"
+    },
+    {
+      "Id": "BdOrphanOrgPurge:Kor.BdOrphanOrgPurge.ImportConfig",
+      "Name": "ImportConfig",
+      "Kind": "record",
+      "Project": "BdOrphanOrgPurge",
+      "File": "tools/BdOrphanOrgPurge/Program.cs"
+    },
+    {
+      "Id": "BdOrphanOrgPurge:Kor.BdOrphanOrgPurge.PurgeOptions",
+      "Name": "PurgeOptions",
+      "Kind": "record",
+      "Project": "BdOrphanOrgPurge",
+      "File": "tools/BdOrphanOrgPurge/Program.cs"
+    },
+    {
+      "Id": "BdResearchImport:Kor.BdResearchImport.Program.ImportOptions",
+      "Name": "ImportOptions",
+      "Kind": "record",
+      "Project": "BdResearchImport",
+      "File": "tools/BdResearchImport/Program.cs"
+    },
+    {
+      "Id": "BdResearchImport:Kor.BdResearchImport.Program.ImportStats",
+      "Name": "ImportStats",
+      "Kind": "class",
+      "Project": "BdResearchImport",
+      "File": "tools/BdResearchImport/Program.cs"
+    },
+    {
+      "Id": "BdResearchImport:Kor.BdResearchImport.Program.MajorProjectRecord",
+      "Name": "MajorProjectRecord",
+      "Kind": "record",
+      "Project": "BdResearchImport",
+      "File": "tools/BdResearchImport/Program.cs"
+    },
+    {
+      "Id": "BdSeedImport:Kor.BdSeedImport.CompanyMatch",
+      "Name": "CompanyMatch",
+      "Kind": "record",
+      "Project": "BdSeedImport",
+      "File": "tools/BdSeedImport/Program.cs"
+    },
+    {
+      "Id": "BdSeedImport:Kor.BdSeedImport.DeltekClientCandidate",
+      "Name": "DeltekClientCandidate",
+      "Kind": "record",
+      "Project": "BdSeedImport",
+      "File": "tools/BdSeedImport/Program.cs"
+    },
+    {
+      "Id": "BdSeedImport:Kor.BdSeedImport.DeltekContactCandidate",
+      "Name": "DeltekContactCandidate",
+      "Kind": "record",
+      "Project": "BdSeedImport",
+      "File": "tools/BdSeedImport/Program.cs"
+    },
+    {
+      "Id": "BdSeedImport:Kor.BdSeedImport.DeltekFuzzyMatch",
+      "Name": "DeltekFuzzyMatch",
+      "Kind": "static class",
+      "Project": "BdSeedImport",
+      "File": "tools/BdSeedImport/Program.cs"
+    },
+    {
+      "Id": "BdSeedImport:Kor.BdSeedImport.DeltekLookupCache",
+      "Name": "DeltekLookupCache",
+      "Kind": "class",
+      "Project": "BdSeedImport",
+      "File": "tools/BdSeedImport/Program.cs"
+    },
+    {
+      "Id": "BdSeedImport:Kor.BdSeedImport.ImportConfig",
+      "Name": "ImportConfig",
+      "Kind": "record",
+      "Project": "BdSeedImport",
+      "File": "tools/BdSeedImport/Program.cs"
+    },
+    {
+      "Id": "BdSeedImport:Kor.BdSeedImport.ImportOptions",
+      "Name": "ImportOptions",
+      "Kind": "record",
+      "Project": "BdSeedImport",
+      "File": "tools/BdSeedImport/Program.cs"
+    },
+    {
+      "Id": "BdSeedImport:Kor.BdSeedImport.ImportStats",
+      "Name": "ImportStats",
+      "Kind": "class",
+      "Project": "BdSeedImport",
+      "File": "tools/BdSeedImport/Program.cs"
+    },
+    {
+      "Id": "BdSynthesisSmoke:SectorEmit",
+      "Name": "SectorEmit",
+      "Kind": "static class",
+      "Project": "BdSynthesisSmoke",
+      "File": "tools/BdSynthesisSmoke/SectorEmit.cs"
+    },
+    {
+      "Id": "BdSynthesisSmoke:SectorRun",
+      "Name": "SectorRun",
+      "Kind": "static class",
+      "Project": "BdSynthesisSmoke",
+      "File": "tools/BdSynthesisSmoke/SectorRun.cs"
+    },
+    {
+      "Id": "BidsAndTendersInterestProbe:PageSnapshot",
+      "Name": "PageSnapshot",
+      "Kind": "record",
+      "Project": "BidsAndTendersInterestProbe",
+      "File": "tools/BidsAndTendersInterestProbe/Program.cs"
+    },
+    {
+      "Id": "EmailFilerv2:EmailFilerv2.SqlFavoritesRepository.FavoriteProject",
+      "Name": "FavoriteProject",
+      "Kind": "class",
+      "Project": "EmailFilerv2",
+      "File": "EmailFiler/EmailFilerv2/SqlFavoritesRepository.cs"
+    },
+    {
+      "Id": "EmailFilerv2:EmailFilerv2.ItemsToFileProcessor.ProjectEntry",
+      "Name": "ProjectEntry",
+      "Kind": "class",
+      "Project": "EmailFilerv2",
+      "File": "EmailFiler/EmailFilerv2/ItemsToFileProcessor.cs"
+    },
+    {
+      "Id": "GovCanEngineeringImport:Kor.GovCanEngineeringImport.Program.ImportStats",
+      "Name": "ImportStats",
+      "Kind": "class",
+      "Project": "GovCanEngineeringImport",
+      "File": "tools/GovCanEngineeringImport/Program.cs"
+    },
+    {
+      "Id": "GovCanEngineeringImport:Kor.GovCanEngineeringImport.Program.ToolOptions",
+      "Name": "ToolOptions",
+      "Kind": "record",
+      "Project": "GovCanEngineeringImport",
+      "File": "tools/GovCanEngineeringImport/Program.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.ActivityRow",
+      "Name": "ActivityRow",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/DashboardWindow.xaml.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.Brochures.AddOneConverter",
+      "Name": "AddOneConverter",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/Brochures/AddOneConverter.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.Controls.AiQueryPanel",
+      "Name": "AiQueryPanel",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/Controls/AiQueryPanel.xaml.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.AppModule",
+      "Name": "AppModule",
+      "Kind": "static class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/CompositionModules/AppModule.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.App.BusinessDevelopment.Workspace.BarHeightConverter",
+      "Name": "BarHeightConverter",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/BusinessDevelopment/Workspace/BarHeightConverter.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.Financials.BoolToActualLabelConverter",
+      "Name": "BoolToActualLabelConverter",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/Financials/BoolToActualLabelConverter.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.App.Opportunities.BoolToCheckConverter",
+      "Name": "BoolToCheckConverter",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/Opportunities/BoolToCheckConverter.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.Converters.BoolToCollapsedConverter",
+      "Name": "BoolToCollapsedConverter",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/Converters/BoolToCollapsedConverter.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.App.FileSync.BoolToOnOffConverter",
+      "Name": "BoolToOnOffConverter",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/FileSync/FileSyncConverters.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.Brochures.BrochureContentStep",
+      "Name": "BrochureContentStep",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/Brochures/BrochureContentStep.xaml.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.Brochures.BrochureGenerateStep",
+      "Name": "BrochureGenerateStep",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/Brochures/BrochureGenerateStep.xaml.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.Brochures.BrochureSetupStep",
+      "Name": "BrochureSetupStep",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/Brochures/BrochureSetupStep.xaml.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.Brochures.BrochureStructureStep",
+      "Name": "BrochureStructureStep",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/Brochures/BrochureStructureStep.xaml.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.PMTools.BulkObservableCollection",
+      "Name": "BulkObservableCollection",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/PMTools/BulkObservableCollection.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.Controls.CenteredUniformGrid",
+      "Name": "CenteredUniformGrid",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/Controls/CenteredUniformGrid.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.App.Opportunities.CommaSplitConverter",
+      "Name": "CommaSplitConverter",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/Opportunities/DossierValueConverters.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.PMTools.ComparisonBrushConverter",
+      "Name": "ComparisonBrushConverter",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/PMTools/ComparisonBrushConverter.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.EngineeringTools.PdfToSafe.EtabsApiExporter.CompatibilityReport",
+      "Name": "CompatibilityReport",
+      "Kind": "record",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/EngineeringTools/PdfToSafe/EtabsApiExporter.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.EngineeringTools.PdfToSafe.SafeApiExporter.CompatibilityReport",
+      "Name": "CompatibilityReport",
+      "Kind": "record",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/EngineeringTools/PdfToSafe/SafeApiExporter.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.CompensationModule",
+      "Name": "CompensationModule",
+      "Kind": "static class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/CompositionModules/CompensationModule.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.ContextMenuExtensions",
+      "Name": "ContextMenuExtensions",
+      "Kind": "static class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/Preferences/ContextMenuExtensions.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.App.FileSync.CountToVisibilityConverter",
+      "Name": "CountToVisibilityConverter",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/FileSync/FileSyncConverters.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.Logging.CredentialPatterns",
+      "Name": "CredentialPatterns",
+      "Kind": "static class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/Logging/CredentialPatterns.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.Logging.CredentialRedactingEnricher",
+      "Name": "CredentialRedactingEnricher",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/Logging/CredentialRedactingEnricher.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.Logging.CredentialRedactingPolicy",
+      "Name": "CredentialRedactingPolicy",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/Logging/CredentialRedactingPolicy.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.App.FileSync.CronToHumanConverter",
+      "Name": "CronToHumanConverter",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/FileSync/FileSyncConverters.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.DataModule",
+      "Name": "DataModule",
+      "Kind": "static class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/CompositionModules/DataModule.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.App.BusinessDevelopment.Workspace.DashboardViewModel.DeadlineRow",
+      "Name": "DeadlineRow",
+      "Kind": "record",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/BusinessDevelopment/Workspace/DashboardViewModel.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.App.Crm.DeltekClientCandidate",
+      "Name": "DeltekClientCandidate",
+      "Kind": "record",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/Crm/IDeltekLookupService.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.App.Crm.DeltekContactCandidate",
+      "Name": "DeltekContactCandidate",
+      "Kind": "record",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/Crm/IDeltekLookupService.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.App.Opportunities.DossierValueKindConverter",
+      "Name": "DossierValueKindConverter",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/Opportunities/DossierValueConverters.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.Financials.BilledFinancialsPresenter.ExportRow",
+      "Name": "ExportRow",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/Financials/BilledFinancialsPresenter.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.Financials.GlProfitLossPresenter.ExportRow",
+      "Name": "ExportRow",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/Financials/GlProfitLossPresenter.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.Financials.BilledFinancialsPresenter.ExportSnapshot",
+      "Name": "ExportSnapshot",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/Financials/BilledFinancialsPresenter.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.Financials.GlProfitLossPresenter.ExportSnapshot",
+      "Name": "ExportSnapshot",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/Financials/GlProfitLossPresenter.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.App.Opportunities.FalseToVisibilityConverter",
+      "Name": "FalseToVisibilityConverter",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/Opportunities/OrgDossierView.xaml.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.FavoriteProject",
+      "Name": "FavoriteProject",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/Preferences/PreferencesModels.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.Brochures.FileNameFromPathConverter",
+      "Name": "FileNameFromPathConverter",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/Brochures/FileNameFromPathConverter.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.Financials.FinancialMetricTooltipExtension",
+      "Name": "FinancialMetricTooltipExtension",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/Financials/FinancialMetricTooltipExtension.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.FinancialsModule",
+      "Name": "FinancialsModule",
+      "Kind": "static class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/CompositionModules/FinancialsModule.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.EngineeringTools.PdfToSafe.GeometryExportOrchestrator",
+      "Name": "GeometryExportOrchestrator",
+      "Kind": "static class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/EngineeringTools/PdfToSafe/GeometryExportOrchestrator.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.GraphModule",
+      "Name": "GraphModule",
+      "Kind": "static class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/CompositionModules/GraphModule.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.PMTools.GreaterThanConverter",
+      "Name": "GreaterThanConverter",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/PMTools/ComparisonConverters.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.App.FileSync.HeartbeatHealthToBrushConverter",
+      "Name": "HeartbeatHealthToBrushConverter",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/FileSync/FileSyncConverters.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.App.FileSync.HeartbeatRow",
+      "Name": "HeartbeatRow",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/FileSync/FileSyncRows.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.Converters.HexToColorConverter",
+      "Name": "HexToColorConverter",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/Converters/HexToColorConverter.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.EngineeringTools.PdfToSafe.HtmlReportBuilder",
+      "Name": "HtmlReportBuilder",
+      "Kind": "static class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/EngineeringTools/PdfToSafe/HtmlReportBuilder.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.Brochures.ImagePathConverter",
+      "Name": "ImagePathConverter",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/Brochures/ImagePathConverter.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.App.Opportunities.CustomProposalImportService.ImportResult",
+      "Name": "ImportResult",
+      "Kind": "record",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/Opportunities/CustomProposalImportService.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.App.Opportunities.IntelNarrativeRow",
+      "Name": "IntelNarrativeRow",
+      "Kind": "record",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/Opportunities/OrgDossierViewModel.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.App.Opportunities.IntelTypeLabelConverter",
+      "Name": "IntelTypeLabelConverter",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/Opportunities/OrgDossierView.xaml.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.App.Opportunities.InvertBoolConverter",
+      "Name": "InvertBoolConverter",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/Opportunities/InvertBoolConverter.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.Converters.IsPositiveConverter",
+      "Name": "IsPositiveConverter",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/Converters/IsPositiveConverter.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.App.FileSync.JobRunRow",
+      "Name": "JobRunRow",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/FileSync/FileSyncRows.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.App.FileSync.JobStatusToBrushConverter",
+      "Name": "JobStatusToBrushConverter",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/FileSync/FileSyncConverters.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.App.FileSync.JobStatusToTextConverter",
+      "Name": "JobStatusToTextConverter",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/FileSync/FileSyncConverters.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.PMTools.LessThanConverter",
+      "Name": "LessThanConverter",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/PMTools/ComparisonConverters.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.Financials.BilledFinancialsPresenter.LineIndentConverter",
+      "Name": "LineIndentConverter",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/Financials/BilledFinancialsPresenter.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.Financials.GlProfitLossPresenter.LineIndentConverter",
+      "Name": "LineIndentConverter",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/Financials/GlProfitLossPresenter.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.App.FileSync.LogVolumeSparkline",
+      "Name": "LogVolumeSparkline",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/FileSync/LogVolumeSparkline.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.App.BusinessDevelopment.Workspace.MillionsCurrencyConverter",
+      "Name": "MillionsCurrencyConverter",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/BusinessDevelopment/Workspace/MillionsCurrencyConverter.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.App.Opportunities.NullOrEmptyStringToVisibilityConverter",
+      "Name": "NullOrEmptyStringToVisibilityConverter",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/Opportunities/NullOrEmptyStringToVisibilityConverter.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.App.Opportunities.NullToBoolConverter",
+      "Name": "NullToBoolConverter",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/Opportunities/NullToBoolConverter.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.App.Opportunities.NullableToAllConverter",
+      "Name": "NullableToAllConverter",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/Opportunities/NullableToAllConverter.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.Services.OdbcSettings",
+      "Name": "OdbcSettings",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/Services/OdbcSettings.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.OpportunitiesModule",
+      "Name": "OpportunitiesModule",
+      "Kind": "static class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/CompositionModules/OpportunitiesModule.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.App.BusinessDevelopment.Briefs.BriefGenerator.OrgEnrichment",
+      "Name": "OrgEnrichment",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/BusinessDevelopment/Briefs/BriefGenerator.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.App.BusinessDevelopment.Briefs.BriefPdfGenerator.OrgEnrichment",
+      "Name": "OrgEnrichment",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/BusinessDevelopment/Briefs/BriefPdfGenerator.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.App.Controls.OrgSearchTypeahead",
+      "Name": "OrgSearchTypeahead",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/Controls/OrgSearchTypeahead.xaml.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.Financials.PaginatedGrid",
+      "Name": "PaginatedGrid",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/Financials/PaginatedGrid.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.EngineeringTools.PdfToSafe.PdfDiagnostic",
+      "Name": "PdfDiagnostic",
+      "Kind": "static class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/EngineeringTools/PdfToSafe/PdfDiagnostic.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.Financials.PercentToStarGridLengthConverter",
+      "Name": "PercentToStarGridLengthConverter",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/Financials/PercentToStarGridLengthConverter.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.Financials.PercentToWidthConverter",
+      "Name": "PercentToWidthConverter",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/Financials/BillingManagerConverters.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.App.Controls.PersonSearchTypeahead",
+      "Name": "PersonSearchTypeahead",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/Controls/PersonSearchTypeahead.xaml.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.App.Opportunities.PipelineFunnel",
+      "Name": "PipelineFunnel",
+      "Kind": "enum",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/Opportunities/MajorProjectsInventoryViewModel.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.App.BusinessDevelopment.Workspace.PlaceholderBrushConverter",
+      "Name": "PlaceholderBrushConverter",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/BusinessDevelopment/Workspace/PlaceholderBrushConverter.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.App.Opportunities.PriorityToBrushConverter",
+      "Name": "PriorityToBrushConverter",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/Opportunities/DossierValueConverters.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.QuickTransferWindow.ProjectEntry",
+      "Name": "ProjectEntry",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/QuickTransferWindow.xaml.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.App.Email.ProjectEntry",
+      "Name": "ProjectEntry",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/Email/ProjectFolderCatalogService.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.ProjectItem",
+      "Name": "ProjectItem",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/ProjectIndex.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.App.FeeProposal.ProposalProjectPickerDialog.ProjectItem",
+      "Name": "ProjectItem",
+      "Kind": "record",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/FeeProposal/ProposalProjectPickerDialog.xaml.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.Brochures.ProjectPageBreakAfterConverter",
+      "Name": "ProjectPageBreakAfterConverter",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/Brochures/BrochureContentStep.xaml.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.App.Controls.ProjectSearchTypeahead",
+      "Name": "ProjectSearchTypeahead",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/Controls/ProjectSearchTypeahead.xaml.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.App.Converters.ProposalBlockTypeDisplayConverter",
+      "Name": "ProposalBlockTypeDisplayConverter",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/Converters/ProposalBlockTypeDisplayConverter.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.App.Controls.ProposalPreviewSidebar",
+      "Name": "ProposalPreviewSidebar",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/Controls/ProposalPreviewSidebar.xaml.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.Brochures.ProposalSummaryConverter",
+      "Name": "ProposalSummaryConverter",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/Brochures/BrochureProposalPickerWindow.xaml.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.Brochures.ReferenceEqualsMultiConverter",
+      "Name": "ReferenceEqualsMultiConverter",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/Brochures/BrochureContentStep.xaml.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.App.Crm.RegionEqualsConverter",
+      "Name": "RegionEqualsConverter",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/Crm/RegionEqualsConverter.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.Brochures.BrochureBuilderViewModel.RelayCommand",
+      "Name": "RelayCommand",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/Brochures/BrochureBuilderViewModel.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.App.Opportunities.CompetitionAwardsViewModel.RelayCommand",
+      "Name": "RelayCommand",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/Opportunities/CompetitionAwardsViewModel.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.App.Opportunities.CompetitionRfpsViewModel.RelayCommand",
+      "Name": "RelayCommand",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/Opportunities/CompetitionRfpsViewModel.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.App.Opportunities.HistoricalOpportunityDetailViewModel.RelayCommand",
+      "Name": "RelayCommand",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/Opportunities/HistoricalOpportunityDetailViewModel.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.App.Opportunities.OrgDossierViewModel.RelayCommand",
+      "Name": "RelayCommand",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/Opportunities/OrgDossierViewModel.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.App.BusinessDevelopment.Workspace.AdminViewModel.RelayCommand",
+      "Name": "RelayCommand",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/BusinessDevelopment/Workspace/AdminViewModel.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.RenderingModule",
+      "Name": "RenderingModule",
+      "Kind": "static class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/CompositionModules/RenderingModule.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.Financials.DeliveryConfidenceCalculator.Result",
+      "Name": "Result",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/Financials/DeliveryConfidenceCalculator.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.Financials.RevenueBarHeightConverter",
+      "Name": "RevenueBarHeightConverter",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/Financials/RevenueBarHeightConverter.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.App.Opportunities.OpportunityDuplicateDialog.Row",
+      "Name": "Row",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/Opportunities/OpportunityDuplicateDialog.xaml.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.App.FileSync.RunHistoryRibbon",
+      "Name": "RunHistoryRibbon",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/FileSync/RunHistoryRibbon.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.App.BusinessDevelopment.Workspace.SeatStatusBrushConverter",
+      "Name": "SeatStatusBrushConverter",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/BusinessDevelopment/Workspace/SeatStatusBrushConverter.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.EngineeringTools.RebarChange.RebarChangeWindow.SheetRow",
+      "Name": "SheetRow",
+      "Kind": "record",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/EngineeringTools/RebarChange/RebarChangeWindow.xaml.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.EngineeringTools.StructuralTakeoff.StructuralQuantityTakeoffWindow.SheetRow",
+      "Name": "SheetRow",
+      "Kind": "record",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/EngineeringTools/StructuralTakeoff/StructuralQuantityTakeoffWindow.xaml.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.Financials.BilledFinancialsPresenter.SignToBrushConverter",
+      "Name": "SignToBrushConverter",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/Financials/BilledFinancialsPresenter.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.Financials.GlProfitLossPresenter.SignToBrushConverter",
+      "Name": "SignToBrushConverter",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/Financials/GlProfitLossPresenter.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.Financials.SparklineConverter",
+      "Name": "SparklineConverter",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/Financials/BillingManagerConverters.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.Financials.StringExtensionsForFinancials",
+      "Name": "StringExtensionsForFinancials",
+      "Kind": "static class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/Financials/BilledFinancialsPresenter.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.Financials.StringToBrushConverter",
+      "Name": "StringToBrushConverter",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/Financials/BillingManagerConverters.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.TeamsPickerWindow.TeamMember",
+      "Name": "TeamMember",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/TeamsPickerWindow.xaml.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.TeamMember",
+      "Name": "TeamMember",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/Preferences/PreferencesModels.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.App.FileSync.TimeSpanToHumanConverter",
+      "Name": "TimeSpanToHumanConverter",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/FileSync/FileSyncConverters.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.Financials.UnpagedGrid",
+      "Name": "UnpagedGrid",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/Financials/PaginatedGrid.cs"
+    },
+    {
+      "Id": "Kor.Operations.App:Kor.Operations.App.Opportunities.UrlSplitConverter",
+      "Name": "UrlSplitConverter",
+      "Kind": "class",
+      "Project": "Kor.Operations.App",
+      "File": "Kor.Operations.App/Opportunities/DossierValueConverters.cs"
+    },
+    {
+      "Id": "Kor.Operations.Core:Kor.Operations.Core.Services.FeeProposalStore",
+      "Name": "FeeProposalStore",
+      "Kind": "class",
+      "Project": "Kor.Operations.Core",
+      "File": "Kor.Operations.Core/Services/FeeProposalStore.cs"
+    },
+    {
+      "Id": "Kor.Operations.Core:Kor.Operations.Core.Services.ProposalBlockLibraryStore",
+      "Name": "ProposalBlockLibraryStore",
+      "Kind": "class",
+      "Project": "Kor.Operations.Core",
+      "File": "Kor.Operations.Core/Services/ProposalBlockLibraryStore.cs"
+    },
+    {
+      "Id": "Kor.Operations.Core:Kor.Operations.Core.Services.ProposalStaffStore",
+      "Name": "ProposalStaffStore",
+      "Kind": "class",
+      "Project": "Kor.Operations.Core",
+      "File": "Kor.Operations.Core/Services/ProposalStaffStore.cs"
+    },
+    {
+      "Id": "Kor.Operations.Data:Kor.Operations.Data.ActivityRow",
+      "Name": "ActivityRow",
+      "Kind": "class",
+      "Project": "Kor.Operations.Data",
+      "File": "Kor.Operations.Data/SqlTransmittalsStore.cs"
+    },
+    {
+      "Id": "Kor.Operations.Data:Kor.Operations.Data.SqlDataReaderExtensions",
+      "Name": "SqlDataReaderExtensions",
+      "Kind": "static class",
+      "Project": "Kor.Operations.Data",
+      "File": "Kor.Operations.Data/SqlDataReaderExtensions.cs"
+    },
+    {
+      "Id": "Kor.Operations.Data:Kor.Operations.Data.SqlJsonStore",
+      "Name": "SqlJsonStore",
+      "Kind": "class",
+      "Project": "Kor.Operations.Data",
+      "File": "Kor.Operations.Data/SqlJsonStore.cs"
+    },
+    {
+      "Id": "Kor.Operations.Data:Kor.Operations.Data.SqlTakeoffSnapshotStore",
+      "Name": "SqlTakeoffSnapshotStore",
+      "Kind": "class",
+      "Project": "Kor.Operations.Data",
+      "File": "Kor.Operations.Data/SqlTakeoffSnapshotStore.cs"
+    },
+    {
+      "Id": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.Dxf.JobPublisher.Built",
+      "Name": "Built",
+      "Kind": "record",
+      "Project": "Kor.Operations.EngineeringTools.Core",
+      "File": "Kor.Operations.EngineeringTools.Core/Dxf/JobPublisher.cs"
+    },
+    {
+      "Id": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.Dxf.CorpusReaderCheck",
+      "Name": "CorpusReaderCheck",
+      "Kind": "static class",
+      "Project": "Kor.Operations.EngineeringTools.Core",
+      "File": "Kor.Operations.EngineeringTools.Core/Dxf/CorpusReaderCheck.cs"
+    },
+    {
+      "Id": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.Dxf.E2kGeometryAligner",
+      "Name": "E2kGeometryAligner",
+      "Kind": "static class",
+      "Project": "Kor.Operations.EngineeringTools.Core",
+      "File": "Kor.Operations.EngineeringTools.Core/Dxf/E2kGeometryReader.cs"
+    },
+    {
+      "Id": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.Dxf.E2kGeometryComparer",
+      "Name": "E2kGeometryComparer",
+      "Kind": "static class",
+      "Project": "Kor.Operations.EngineeringTools.Core",
+      "File": "Kor.Operations.EngineeringTools.Core/Dxf/E2kGeometryReader.cs"
+    },
+    {
+      "Id": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.RebarChange.RebarPlanCallout.Parsed",
+      "Name": "Parsed",
+      "Kind": "record",
+      "Project": "Kor.Operations.EngineeringTools.Core",
+      "File": "Kor.Operations.EngineeringTools.Core/RebarPlanCallout.cs"
+    },
+    {
+      "Id": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.QuantityTakeoff.SlabThicknessCallout.Parsed",
+      "Name": "Parsed",
+      "Kind": "record",
+      "Project": "Kor.Operations.EngineeringTools.Core",
+      "File": "Kor.Operations.EngineeringTools.Core/SlabThicknessCallout.cs"
+    },
+    {
+      "Id": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.Dxf.PlanLoopBuilder.Result",
+      "Name": "Result",
+      "Kind": "record",
+      "Project": "Kor.Operations.EngineeringTools.Core",
+      "File": "Kor.Operations.EngineeringTools.Core/Dxf/PlanLoopBuilder.cs"
+    },
+    {
+      "Id": "Kor.Operations.EngineeringTools.TakeoffCli:CliPlanRaster",
+      "Name": "CliPlanRaster",
+      "Kind": "class",
+      "Project": "Kor.Operations.EngineeringTools.TakeoffCli",
+      "File": "Kor.Operations.EngineeringTools.TakeoffCli/Program.cs"
+    },
+    {
+      "Id": "Kor.Operations.EngineeringTools.TakeoffCli:CliPlanVision",
+      "Name": "CliPlanVision",
+      "Kind": "class",
+      "Project": "Kor.Operations.EngineeringTools.TakeoffCli",
+      "File": "Kor.Operations.EngineeringTools.TakeoffCli/Program.cs"
+    },
+    {
+      "Id": "Kor.Operations.EngineeringTools.TakeoffCli:EstimateConfig",
+      "Name": "EstimateConfig",
+      "Kind": "class",
+      "Project": "Kor.Operations.EngineeringTools.TakeoffCli",
+      "File": "Kor.Operations.EngineeringTools.TakeoffCli/Program.cs"
+    },
+    {
+      "Id": "Kor.Operations.EngineeringTools.TakeoffCli:NoPlanVision",
+      "Name": "NoPlanVision",
+      "Kind": "class",
+      "Project": "Kor.Operations.EngineeringTools.TakeoffCli",
+      "File": "Kor.Operations.EngineeringTools.TakeoffCli/Program.cs"
+    },
+    {
+      "Id": "Kor.Operations.EngineeringTools.TakeoffCli:PendingSlab",
+      "Name": "PendingSlab",
+      "Kind": "record",
+      "Project": "Kor.Operations.EngineeringTools.TakeoffCli",
+      "File": "Kor.Operations.EngineeringTools.TakeoffCli/Program.cs"
+    },
+    {
+      "Id": "Kor.Operations.EngineeringTools.TakeoffCli:PlanPdfRenderer",
+      "Name": "PlanPdfRenderer",
+      "Kind": "static class",
+      "Project": "Kor.Operations.EngineeringTools.TakeoffCli",
+      "File": "Kor.Operations.EngineeringTools.TakeoffCli/PlanPdfRenderer.cs"
+    },
+    {
+      "Id": "Kor.Operations.EngineeringTools.TakeoffCli:VisionPagesConfig",
+      "Name": "VisionPagesConfig",
+      "Kind": "class",
+      "Project": "Kor.Operations.EngineeringTools.TakeoffCli",
+      "File": "Kor.Operations.EngineeringTools.TakeoffCli/Program.cs"
+    },
+    {
+      "Id": "Kor.Operations.FileSync.Service:Kor.Operations.FileSync.Service.Authentication.AppOnlyGraphAuthenticationProvider",
+      "Name": "AppOnlyGraphAuthenticationProvider",
+      "Kind": "class",
+      "Project": "Kor.Operations.FileSync.Service",
+      "File": "Kor.Operations.FileSync.Service/Authentication/AppOnlyGraphAuthenticationProvider.cs"
+    },
+    {
+      "Id": "Kor.Operations.FileSync.Service:Kor.Operations.FileSync.Service.Logging.CredentialPatterns",
+      "Name": "CredentialPatterns",
+      "Kind": "static class",
+      "Project": "Kor.Operations.FileSync.Service",
+      "File": "Kor.Operations.FileSync.Service/Logging/CredentialPatterns.cs"
+    },
+    {
+      "Id": "Kor.Operations.FileSync.Service:Kor.Operations.FileSync.Service.Logging.CredentialRedactingEnricher",
+      "Name": "CredentialRedactingEnricher",
+      "Kind": "class",
+      "Project": "Kor.Operations.FileSync.Service",
+      "File": "Kor.Operations.FileSync.Service/Logging/CredentialRedactingEnricher.cs"
+    },
+    {
+      "Id": "Kor.Operations.FileSync.Service:Kor.Operations.FileSync.Service.Logging.CredentialRedactingPolicy",
+      "Name": "CredentialRedactingPolicy",
+      "Kind": "class",
+      "Project": "Kor.Operations.FileSync.Service",
+      "File": "Kor.Operations.FileSync.Service/Logging/CredentialRedactingPolicy.cs"
+    },
+    {
+      "Id": "Kor.Operations.FileSync.Service:Kor.Operations.FileSync.Service.Jobs.WeeklyPmDeadlines.DeadlineRow",
+      "Name": "DeadlineRow",
+      "Kind": "record",
+      "Project": "Kor.Operations.FileSync.Service",
+      "File": "Kor.Operations.FileSync.Service/Jobs/WeeklyPmDeadlines/DeadlineRow.cs"
+    },
+    {
+      "Id": "Kor.Operations.FileSync.Service:Kor.Operations.FileSync.Service.Jobs.KorMapSync.KorMapSyncRunner.DeltekProject",
+      "Name": "DeltekProject",
+      "Kind": "record",
+      "Project": "Kor.Operations.FileSync.Service",
+      "File": "Kor.Operations.FileSync.Service/Jobs/KorMapSync/KorMapSyncRunner.cs"
+    },
+    {
+      "Id": "Kor.Operations.FileSync.Service:Kor.Operations.FileSync.Service.Jobs.MoveReportsToEor.EorMappingRow",
+      "Name": "EorMappingRow",
+      "Kind": "record",
+      "Project": "Kor.Operations.FileSync.Service",
+      "File": "Kor.Operations.FileSync.Service/Jobs/MoveReportsToEor/EorMappingRow.cs"
+    },
+    {
+      "Id": "Kor.Operations.FileSync.Service:Kor.Operations.FileSync.Service.Alerting.GraphMailAlertNotifier",
+      "Name": "GraphMailAlertNotifier",
+      "Kind": "class",
+      "Project": "Kor.Operations.FileSync.Service",
+      "File": "Kor.Operations.FileSync.Service/Alerting/GraphMailAlertNotifier.cs"
+    },
+    {
+      "Id": "Kor.Operations.FileSync.Service:Kor.Operations.FileSync.Service.Jobs.KorMapSync.KorMapSyncRunner",
+      "Name": "KorMapSyncRunner",
+      "Kind": "class",
+      "Project": "Kor.Operations.FileSync.Service",
+      "File": "Kor.Operations.FileSync.Service/Jobs/KorMapSync/KorMapSyncRunner.cs"
+    },
+    {
+      "Id": "Kor.Operations.FileSync.Service:Kor.Operations.FileSync.Service.Scheduling.QuartzInstaller",
+      "Name": "QuartzInstaller",
+      "Kind": "static class",
+      "Project": "Kor.Operations.FileSync.Service",
+      "File": "Kor.Operations.FileSync.Service/Scheduling/QuartzInstaller.cs"
+    },
+    {
+      "Id": "Kor.Operations.FileSync.Service:Kor.Operations.FileSync.Service.Jobs.Watcher.BucketSyncOp.Result",
+      "Name": "Result",
+      "Kind": "record",
+      "Project": "Kor.Operations.FileSync.Service",
+      "File": "Kor.Operations.FileSync.Service/Jobs/Watcher/BucketSyncOp.cs"
+    },
+    {
+      "Id": "Kor.Operations.FileSync.Service:Kor.Operations.FileSync.Service.Jobs.Watcher.ProjectCleanOp.Result",
+      "Name": "Result",
+      "Kind": "record",
+      "Project": "Kor.Operations.FileSync.Service",
+      "File": "Kor.Operations.FileSync.Service/Jobs/Watcher/ProjectCleanOp.cs"
+    },
+    {
+      "Id": "Kor.Operations.FileSync.Service:Kor.Operations.FileSync.Service.Logging.SerilogBootstrap",
+      "Name": "SerilogBootstrap",
+      "Kind": "static class",
+      "Project": "Kor.Operations.FileSync.Service",
+      "File": "Kor.Operations.FileSync.Service/Logging/SerilogBootstrap.cs"
+    },
+    {
+      "Id": "Kor.Operations.FileSync.Service:Kor.Operations.FileSync.Service.ControlPlane.SqlControlPlaneStore",
+      "Name": "SqlControlPlaneStore",
+      "Kind": "class",
+      "Project": "Kor.Operations.FileSync.Service",
+      "File": "Kor.Operations.FileSync.Service/ControlPlane/SqlControlPlaneStore.cs"
+    },
+    {
+      "Id": "Kor.Operations.FileSync.Service:Kor.Operations.FileSync.Service.Scheduling.TriggerPoller",
+      "Name": "TriggerPoller",
+      "Kind": "class",
+      "Project": "Kor.Operations.FileSync.Service",
+      "File": "Kor.Operations.FileSync.Service/Scheduling/TriggerPoller.cs"
+    },
+    {
+      "Id": "Kor.Operations.FileSync.Service:Kor.Operations.FileSync.Service.Jobs.Watcher.WatcherHostedService",
+      "Name": "WatcherHostedService",
+      "Kind": "class",
+      "Project": "Kor.Operations.FileSync.Service",
+      "File": "Kor.Operations.FileSync.Service/Jobs/Watcher/WatcherHostedService.cs"
+    },
+    {
+      "Id": "Kor.Operations.FileSync.Service:Kor.Operations.FileSync.Service.Jobs.Watcher.WatcherState",
+      "Name": "WatcherState",
+      "Kind": "class",
+      "Project": "Kor.Operations.FileSync.Service",
+      "File": "Kor.Operations.FileSync.Service/Jobs/Watcher/IWatcherState.cs"
+    },
+    {
+      "Id": "Kor.Operations.FileSync.Service:Kor.Operations.FileSync.Service.Jobs.KorMapSync.KorMapSyncRunner.WpLocation",
+      "Name": "WpLocation",
+      "Kind": "record",
+      "Project": "Kor.Operations.FileSync.Service",
+      "File": "Kor.Operations.FileSync.Service/Jobs/KorMapSync/KorMapSyncRunner.cs"
+    },
+    {
+      "Id": "Kor.Operations.ImportTool:ImportOptions",
+      "Name": "ImportOptions",
+      "Kind": "class",
+      "Project": "Kor.Operations.ImportTool",
+      "File": "Kor.Operations.ImportTool/ImportRunner.cs"
+    },
+    {
+      "Id": "Kor.Operations.ImportTool:ImportRunner",
+      "Name": "ImportRunner",
+      "Kind": "class",
+      "Project": "Kor.Operations.ImportTool",
+      "File": "Kor.Operations.ImportTool/ImportRunner.cs"
+    },
+    {
+      "Id": "Kor.Operations.Mcp:Kor.Operations.Mcp.Tools.ServerInfoTool",
+      "Name": "ServerInfoTool",
+      "Kind": "static class",
+      "Project": "Kor.Operations.Mcp",
+      "File": "Kor.Operations.Mcp/Tools/ServerInfoTool.cs"
+    },
+    {
+      "Id": "Kor.Operations.Mcp.Smoke:Kor.Operations.Mcp.Smoke.Assertions.AnswerNumberMatcher",
+      "Name": "AnswerNumberMatcher",
+      "Kind": "static class",
+      "Project": "Kor.Operations.Mcp.Smoke",
+      "File": "Kor.Operations.Mcp.Smoke/Assertions/AnswerNumberMatcher.cs"
+    },
+    {
+      "Id": "Kor.Operations.Mcp.Smoke:Kor.Operations.Mcp.Smoke.Http.AskClient",
+      "Name": "AskClient",
+      "Kind": "class",
+      "Project": "Kor.Operations.Mcp.Smoke",
+      "File": "Kor.Operations.Mcp.Smoke/Http/AskClient.cs"
+    },
+    {
+      "Id": "Kor.Operations.Mcp.Smoke:Kor.Operations.Mcp.Smoke.Audit.AuditQuery",
+      "Name": "AuditQuery",
+      "Kind": "class",
+      "Project": "Kor.Operations.Mcp.Smoke",
+      "File": "Kor.Operations.Mcp.Smoke/Audit/AuditQuery.cs"
+    },
+    {
+      "Id": "Kor.Operations.Mcp.Smoke:Kor.Operations.Mcp.Smoke.TestCases",
+      "Name": "TestCases",
+      "Kind": "static class",
+      "Project": "Kor.Operations.Mcp.Smoke",
+      "File": "Kor.Operations.Mcp.Smoke/TestCases.cs"
+    },
+    {
+      "Id": "Kor.Operations.Rendering:Kor.Operations.Rendering.Proposal.ProposalRenderHelpers",
+      "Name": "ProposalRenderHelpers",
+      "Kind": "static class",
+      "Project": "Kor.Operations.Rendering",
+      "File": "Kor.Operations.Rendering/Proposal/ProposalRenderHelpers.cs"
+    },
+    {
+      "Id": "Kor.Opportunities.ApcImport:Program.ImportStats",
+      "Name": "ImportStats",
+      "Kind": "class",
+      "Project": "Kor.Opportunities.ApcImport",
+      "File": "Kor.Opportunities.ApcImport/Program.cs"
+    },
+    {
+      "Id": "Kor.Opportunities.ApcImport:Program.Options",
+      "Name": "Options",
+      "Kind": "class",
+      "Project": "Kor.Opportunities.ApcImport",
+      "File": "Kor.Opportunities.ApcImport/Program.cs"
+    },
+    {
+      "Id": "Kor.Opportunities.Core:Kor.Opportunities.AssemblyMarker",
+      "Name": "AssemblyMarker",
+      "Kind": "static class",
+      "Project": "Kor.Opportunities.Core",
+      "File": "Kor.Opportunities.Core/AssemblyMarker.cs"
+    },
+    {
+      "Id": "Kor.Opportunities.Core:Kor.Opportunities.Core.Models.HeartbeatRow",
+      "Name": "HeartbeatRow",
+      "Kind": "record",
+      "Project": "Kor.Opportunities.Core",
+      "File": "Kor.Opportunities.Core/Models/HeartbeatRow.cs"
+    },
+    {
+      "Id": "Kor.Opportunities.Data:Kor.Opportunities.Data.AssemblyMarker",
+      "Name": "AssemblyMarker",
+      "Kind": "static class",
+      "Project": "Kor.Opportunities.Data",
+      "File": "Kor.Opportunities.Data/AssemblyMarker.cs"
+    },
+    {
+      "Id": "Kor.Opportunities.Data:Kor.Opportunities.Data.Awards.NewsMentionClassifier.BatchResult",
+      "Name": "BatchResult",
+      "Kind": "record",
+      "Project": "Kor.Opportunities.Data",
+      "File": "Kor.Opportunities.Data/Awards/NewsMentionClassifier.cs"
+    },
+    {
+      "Id": "Kor.Opportunities.Data:Kor.Opportunities.Data.Awards.VendorSiteCrawlService.BatchResult",
+      "Name": "BatchResult",
+      "Kind": "record",
+      "Project": "Kor.Opportunities.Data",
+      "File": "Kor.Opportunities.Data/Awards/VendorSiteCrawlService.cs"
+    },
+    {
+      "Id": "Kor.Opportunities.Data:Kor.Opportunities.Data.Awards.VendorSiteExtractionService.BatchResult",
+      "Name": "BatchResult",
+      "Kind": "record",
+      "Project": "Kor.Opportunities.Data",
+      "File": "Kor.Opportunities.Data/Awards/VendorSiteExtractionService.cs"
+    },
+    {
+      "Id": "Kor.Opportunities.Data:Kor.Opportunities.Data.Contacts.ContactEnrichmentService",
+      "Name": "ContactEnrichmentService",
+      "Kind": "class",
+      "Project": "Kor.Opportunities.Data",
+      "File": "Kor.Opportunities.Data/Contacts/ContactEnrichmentService.cs"
+    },
+    {
+      "Id": "Kor.Opportunities.Data:Kor.Opportunities.Data.Awards.EnrichmentDispatcher.DispatchResult",
+      "Name": "DispatchResult",
+      "Kind": "record",
+      "Project": "Kor.Opportunities.Data",
+      "File": "Kor.Opportunities.Data/Awards/EnrichmentDispatcher.cs"
+    },
+    {
+      "Id": "Kor.Opportunities.Data:Kor.Opportunities.Data.Ingestion.DispatchResult",
+      "Name": "DispatchResult",
+      "Kind": "record",
+      "Project": "Kor.Opportunities.Data",
+      "File": "Kor.Opportunities.Data/Ingestion/IIngestionDispatcher.cs"
+    },
+    {
+      "Id": "Kor.Opportunities.Data:Kor.Opportunities.Data.Awards.BuildingPermitsImportService.ImportResult",
+      "Name": "ImportResult",
+      "Kind": "record",
+      "Project": "Kor.Opportunities.Data",
+      "File": "Kor.Opportunities.Data/Awards/BuildingPermitsImportService.cs"
+    },
+    {
+      "Id": "Kor.Opportunities.Data:Kor.Opportunities.Data.Intel.IntelNarrativeRow",
+      "Name": "IntelNarrativeRow",
+      "Kind": "record",
+      "Project": "Kor.Opportunities.Data",
+      "File": "Kor.Opportunities.Data/Intel/IntelReadModels.cs"
+    },
+    {
+      "Id": "Kor.Opportunities.Data:Kor.Opportunities.Data.Ingestion.JobRunRow",
+      "Name": "JobRunRow",
+      "Kind": "record",
+      "Project": "Kor.Opportunities.Data",
+      "File": "Kor.Opportunities.Data/Ingestion/JobRunRow.cs"
+    },
+    {
+      "Id": "Kor.Opportunities.Data:Kor.Opportunities.Data.Ingestion.Providers.AbMajorProjectsInventoryProvider.MajorProjectRecord",
+      "Name": "MajorProjectRecord",
+      "Kind": "record",
+      "Project": "Kor.Opportunities.Data",
+      "File": "Kor.Opportunities.Data/Ingestion/Providers/AbMajorProjectsInventoryProvider.cs"
+    },
+    {
+      "Id": "Kor.Opportunities.Data:Kor.Opportunities.Data.Ingestion.Providers.BcMajorProjectsInventoryProvider.MajorProjectRecord",
+      "Name": "MajorProjectRecord",
+      "Kind": "record",
+      "Project": "Kor.Opportunities.Data",
+      "File": "Kor.Opportunities.Data/Ingestion/Providers/BcMajorProjectsInventoryProvider.cs"
+    },
+    {
+      "Id": "Kor.Opportunities.Data:Kor.Opportunities.Data.Ingestion.Providers.CaSocrataMajorProjectsInventoryProvider.MajorProjectRecord",
+      "Name": "MajorProjectRecord",
+      "Kind": "record",
+      "Project": "Kor.Opportunities.Data",
+      "File": "Kor.Opportunities.Data/Ingestion/Providers/CaSocrataMajorProjectsInventoryProvider.cs"
+    },
+    {
+      "Id": "Kor.Opportunities.Data:Kor.Opportunities.Data.Ingestion.Providers.CeqanetMajorProjectsInventoryProvider.MajorProjectRecord",
+      "Name": "MajorProjectRecord",
+      "Kind": "record",
+      "Project": "Kor.Opportunities.Data",
+      "File": "Kor.Opportunities.Data/Ingestion/Providers/CeqanetMajorProjectsInventoryProvider.cs"
+    },
+    {
+      "Id": "Kor.Opportunities.Data:Kor.Opportunities.Data.Ingestion.Scraping.BcBidLiveDetailExtractor.PageDump",
+      "Name": "PageDump",
+      "Kind": "record",
+      "Project": "Kor.Opportunities.Data",
+      "File": "Kor.Opportunities.Data/Ingestion/Scraping/BcBidLiveDetailExtractor.cs"
+    },
+    {
+      "Id": "Kor.Opportunities.Data:Kor.Opportunities.Data.MajorProjects.PipelineFunnel",
+      "Name": "PipelineFunnel",
+      "Kind": "record",
+      "Project": "Kor.Opportunities.Data",
+      "File": "Kor.Opportunities.Data/MajorProjects/IBdDashboardStore.cs"
+    },
+    {
+      "Id": "Kor.Opportunities.Data:Kor.Opportunities.Data.Ingestion.Scraping.PlaywrightScraperBase",
+      "Name": "PlaywrightScraperBase",
+      "Kind": "class",
+      "Project": "Kor.Opportunities.Data",
+      "File": "Kor.Opportunities.Data/Ingestion/Scraping/PlaywrightScraperBase.cs"
+    },
+    {
+      "Id": "Kor.Opportunities.Data:Kor.Opportunities.Data.Ingestion.Scraping.ScrapedSupplier",
+      "Name": "ScrapedSupplier",
+      "Kind": "record",
+      "Project": "Kor.Opportunities.Data",
+      "File": "Kor.Opportunities.Data/Ingestion/Scraping/ApcInterestExtractor.cs"
+    },
+    {
+      "Id": "Kor.Opportunities.Data:Kor.Opportunities.Data.BdReports.SectorIntelSignalRow",
+      "Name": "SectorIntelSignalRow",
+      "Kind": "record",
+      "Project": "Kor.Opportunities.Data",
+      "File": "Kor.Opportunities.Data/BdReports/BdReportModels.cs"
+    },
+    {
+      "Id": "Kor.Opportunities.Data:Kor.Opportunities.Data.Briefs.SectorIntelSignalRow",
+      "Name": "SectorIntelSignalRow",
+      "Kind": "record",
+      "Project": "Kor.Opportunities.Data",
+      "File": "Kor.Opportunities.Data/Briefs/BriefDataRecords.cs"
+    },
+    {
+      "Id": "Kor.Opportunities.Data:Kor.Opportunities.Data.Ingestion.Providers.AbMajorProjectsInventoryProvider.UpsertOutcome",
+      "Name": "UpsertOutcome",
+      "Kind": "enum",
+      "Project": "Kor.Opportunities.Data",
+      "File": "Kor.Opportunities.Data/Ingestion/Providers/AbMajorProjectsInventoryProvider.cs"
+    },
+    {
+      "Id": "Kor.Opportunities.Data:Kor.Opportunities.Data.Ingestion.Providers.BcMajorProjectsInventoryProvider.UpsertOutcome",
+      "Name": "UpsertOutcome",
+      "Kind": "enum",
+      "Project": "Kor.Opportunities.Data",
+      "File": "Kor.Opportunities.Data/Ingestion/Providers/BcMajorProjectsInventoryProvider.cs"
+    },
+    {
+      "Id": "Kor.Opportunities.Data:Kor.Opportunities.Data.Ingestion.Providers.CaSocrataMajorProjectsInventoryProvider.UpsertOutcome",
+      "Name": "UpsertOutcome",
+      "Kind": "enum",
+      "Project": "Kor.Opportunities.Data",
+      "File": "Kor.Opportunities.Data/Ingestion/Providers/CaSocrataMajorProjectsInventoryProvider.cs"
+    },
+    {
+      "Id": "Kor.Opportunities.Data:Kor.Opportunities.Data.Ingestion.Providers.CeqanetMajorProjectsInventoryProvider.UpsertOutcome",
+      "Name": "UpsertOutcome",
+      "Kind": "enum",
+      "Project": "Kor.Opportunities.Data",
+      "File": "Kor.Opportunities.Data/Ingestion/Providers/CeqanetMajorProjectsInventoryProvider.cs"
+    },
+    {
+      "Id": "Kor.Opportunities.Worker:Kor.Opportunities.Worker.Services.BdDeltekLinkDryRunJob.CanonicalOrgTarget",
+      "Name": "CanonicalOrgTarget",
+      "Kind": "record",
+      "Project": "Kor.Opportunities.Worker",
+      "File": "Kor.Opportunities.Worker/Services/BdDeltekLinkDryRunJob.cs"
+    },
+    {
+      "Id": "Kor.Opportunities.Worker:Kor.Opportunities.Worker.Services.BdDeltekLinkDryRunJob.CompanyMatch",
+      "Name": "CompanyMatch",
+      "Kind": "record",
+      "Project": "Kor.Opportunities.Worker",
+      "File": "Kor.Opportunities.Worker/Services/BdDeltekLinkDryRunJob.cs"
+    },
+    {
+      "Id": "Kor.Opportunities.Worker:Kor.Opportunities.Worker.Services.Reporting.WeeklyAttackSheetJob.Contact",
+      "Name": "Contact",
+      "Kind": "record",
+      "Project": "Kor.Opportunities.Worker",
+      "File": "Kor.Opportunities.Worker/Services/Reporting/WeeklyAttackSheetJob.cs"
+    },
+    {
+      "Id": "Kor.Opportunities.Worker:Kor.Opportunities.Worker.Services.BdDeltekLinkDryRunJob.DedupCandidateRow",
+      "Name": "DedupCandidateRow",
+      "Kind": "record",
+      "Project": "Kor.Opportunities.Worker",
+      "File": "Kor.Opportunities.Worker/Services/BdDeltekLinkDryRunJob.cs"
+    },
+    {
+      "Id": "Kor.Opportunities.Worker:Kor.Opportunities.Worker.Services.BdDeltekLinkDryRunJob.DeltekClientCandidate",
+      "Name": "DeltekClientCandidate",
+      "Kind": "record",
+      "Project": "Kor.Opportunities.Worker",
+      "File": "Kor.Opportunities.Worker/Services/BdDeltekLinkDryRunJob.cs"
+    },
+    {
+      "Id": "Kor.Opportunities.Worker:Kor.Opportunities.Worker.Services.BdDeltekLinkDryRunJob.DeltekFuzzyMatch",
+      "Name": "DeltekFuzzyMatch",
+      "Kind": "static class",
+      "Project": "Kor.Opportunities.Worker",
+      "File": "Kor.Opportunities.Worker/Services/BdDeltekLinkDryRunJob.cs"
+    },
+    {
+      "Id": "Kor.Opportunities.Worker:Kor.Opportunities.Worker.Jobs.IntelExtractionCatchUpJob.EnrichmentRow",
+      "Name": "EnrichmentRow",
+      "Kind": "record",
+      "Project": "Kor.Opportunities.Worker",
+      "File": "Kor.Opportunities.Worker/Jobs/IntelExtractionCatchUpJob.cs"
+    },
+    {
+      "Id": "Kor.Opportunities.Worker:Kor.Opportunities.Worker.Services.BdDeltekLinkDryRunJob.LinkPlan",
+      "Name": "LinkPlan",
+      "Kind": "record",
+      "Project": "Kor.Opportunities.Worker",
+      "File": "Kor.Opportunities.Worker/Services/BdDeltekLinkDryRunJob.cs"
+    },
+    {
+      "Id": "Kor.Opportunities.Worker:Kor.Opportunities.Worker.Services.BdDeltekLinkDryRunJob.LinkPlanRow",
+      "Name": "LinkPlanRow",
+      "Kind": "record",
+      "Project": "Kor.Opportunities.Worker",
+      "File": "Kor.Opportunities.Worker/Services/BdDeltekLinkDryRunJob.cs"
+    },
+    {
+      "Id": "Kor.Opportunities.Worker:Kor.Opportunities.Worker.Services.BdDeltekLinkDryRunJob.ReviewRow",
+      "Name": "ReviewRow",
+      "Kind": "record",
+      "Project": "Kor.Opportunities.Worker",
+      "File": "Kor.Opportunities.Worker/Services/BdDeltekLinkDryRunJob.cs"
+    },
+    {
+      "Id": "Kor.Opportunities.Worker:Kor.Opportunities.Worker.Logging.SerilogBootstrap",
+      "Name": "SerilogBootstrap",
+      "Kind": "static class",
+      "Project": "Kor.Opportunities.Worker",
+      "File": "Kor.Opportunities.Worker/Logging/SerilogBootstrap.cs"
+    },
+    {
+      "Id": "Kor.Opportunities.Worker:Kor.Opportunities.Worker.Services.ApcInterestEnrichmentJob.TargetOpp",
+      "Name": "TargetOpp",
+      "Kind": "record",
+      "Project": "Kor.Opportunities.Worker",
+      "File": "Kor.Opportunities.Worker/Services/ApcInterestEnrichmentJob.cs"
+    },
+    {
+      "Id": "Kor.Opportunities.Worker:Kor.Opportunities.Worker.Services.BcBidPlanTakerEnrichmentJob.TargetOpp",
+      "Name": "TargetOpp",
+      "Kind": "record",
+      "Project": "Kor.Opportunities.Worker",
+      "File": "Kor.Opportunities.Worker/Services/BcBidPlanTakerEnrichmentJob.cs"
+    },
+    {
+      "Id": "MerxProbe:PageDump",
+      "Name": "PageDump",
+      "Kind": "static class",
+      "Project": "MerxProbe",
+      "File": "tools/MerxProbe/PageDump.cs"
+    },
+    {
+      "Id": "OpportunityEnrichmentBackfill:Row",
+      "Name": "Row",
+      "Kind": "record",
+      "Project": "OpportunityEnrichmentBackfill",
+      "File": "tools/OpportunityEnrichmentBackfill/Program.cs"
+    },
+    {
+      "Id": "PrimeRfpClassifierBackfill:Kor.PrimeRfpClassifierBackfill.Program.ToolOptions",
+      "Name": "ToolOptions",
+      "Kind": "record",
+      "Project": "PrimeRfpClassifierBackfill",
+      "File": "tools/PrimeRfpClassifierBackfill/Program.cs"
+    }
+  ],
+  "Cycles": [],
   "Stats": {
     "Files": 1438,
     "Lines": 292714,

@@ -88,6 +88,9 @@ public sealed record ArchModel(
     IReadOnlyList<ArchFormat> Formats,
     IReadOnlyList<ArchExternal> Externals,
     IReadOnlyList<ArchVerb> Verbs,
+    IReadOnlyList<ArchDuplicate> Duplicates,
+    IReadOnlyList<ArchOrphan> Orphans,
+    IReadOnlyList<ArchCycle> Cycles,
     ArchStats Stats);
 
 public sealed record ArchProject(
@@ -120,6 +123,19 @@ public sealed record ArchExternal(string Name, string Kind, IReadOnlyList<string
 public sealed record ArchVerb(string Verb, string Project);
 
 public sealed record ArchStats(int Files, int Lines, int AmbiguousTypeNames);
+
+/// <summary>One type NAME declared in more than one project. The cheapest duplication signal there
+/// is: `DeltekClientCandidate` exists four times, `CompanyMatch` and `DeltekFuzzyMatch` three times
+/// each, all on the same Deltek-matching path.</summary>
+public sealed record ArchDuplicate(string Name, IReadOnlyList<string> Projects, IReadOnlyList<string> Files);
+
+/// <summary>A type no other type names. A CANDIDATE, not a verdict — a type reached only through
+/// XAML, DI, reflection or a generic parameter is invisible to a syntax-level read, and this counts
+/// it as unreferenced. Useful as a list to walk, never as an instruction to delete.</summary>
+public sealed record ArchOrphan(string Id, string Name, string Kind, string Project, string File);
+
+/// <summary>Projects that reference each other round a loop. There should be none.</summary>
+public sealed record ArchCycle(IReadOnlyList<string> Projects);
 
 // ---------------------------------------------------------------------------------------------
 
@@ -212,14 +228,18 @@ internal static class Extractor
             .ToDictionary(g => g.Key, g => g.Select(t => t.Id).Distinct(StringComparer.Ordinal).ToList(),
                           StringComparer.Ordinal);
 
-        var mentions = new SortedSet<string>(StringComparer.Ordinal);
+        // A PAIR, NOT A JOINED STRING. This was a SortedSet of "from<space>to" that got split back
+        // apart downstream, and the space in one of the two literals arrived as U+0000 — a legal
+        // char literal, so it compiled clean and threw IndexOutOfRange at runtime instead, in a
+        // place unrelated to the line that was wrong. Nothing to join means nothing to mis-join.
+        var mentions = new HashSet<(string From, string To)>();
         int ambiguous = 0;
         foreach (var (from, toName) in mentionsRaw)
         {
             if (!byName.TryGetValue(toName, out var candidates)) continue;
             if (candidates.Count > 1) { ambiguous++; continue; }   // honest: not guessed at
             if (candidates[0] == from) continue;
-            mentions.Add(from + " " + candidates[0]);
+            mentions.Add((from, candidates[0]));
         }
 
         var projectsOut = projects
@@ -239,8 +259,8 @@ internal static class Extractor
             Projects: projectsOut,
             Types: types.OrderBy(t => t.Id, StringComparer.Ordinal).ToList(),
             Mentions: mentions
-                .Select(s => s.Split(' '))
-                .Select(p => new ArchEdge(p[0], p[1]))
+                .OrderBy(m => m.From, StringComparer.Ordinal).ThenBy(m => m.To, StringComparer.Ordinal)
+                .Select(m => new ArchEdge(m.From, m.To))
                 .ToList(),
             Formats: formatsRaw
                 .Where(f => typeIds.Contains(f.TypeId))
@@ -260,6 +280,9 @@ internal static class Extractor
                 .DistinctBy(v => (v.Verb, v.Project))
                 .OrderBy(v => v.Project, StringComparer.Ordinal).ThenBy(v => v.Verb, StringComparer.Ordinal)
                 .ToList(),
+            Duplicates: Duplicates(types),
+            Orphans: Orphans(types, mentions),
+            Cycles: Cycles(projectsOut),
             Stats: new ArchStats(totalFiles, totalLines, ambiguous));
     }
 
@@ -377,6 +400,62 @@ internal static class Extractor
 
     private static string Rel(string root, string path)
         => Path.GetRelativePath(root, path).Replace('\\', '/');
+
+    /// <summary>One name, more than one project.</summary>
+    private static List<ArchDuplicate> Duplicates(List<ArchType> types)
+        => types
+            .GroupBy(t => t.Name, StringComparer.Ordinal)
+            .Where(g => g.Select(t => t.Project).Distinct(StringComparer.Ordinal).Count() > 1)
+            .Select(g => new ArchDuplicate(
+                g.Key,
+                g.Select(t => t.Project).Distinct(StringComparer.Ordinal).OrderBy(x => x, StringComparer.Ordinal).ToList(),
+                g.Select(t => t.File).Distinct(StringComparer.Ordinal).OrderBy(x => x, StringComparer.Ordinal).ToList()))
+            .OrderByDescending(d => d.Projects.Count)
+            .ThenBy(d => d.Name, StringComparer.Ordinal)
+            .ToList();
+
+    /// <summary>Types nothing else names. Tests are excluded because a test is meant to be the end
+    /// of a chain, and UI is excluded because XAML wires it up where a syntax read cannot see.</summary>
+    private static List<ArchOrphan> Orphans(List<ArchType> types, HashSet<(string From, string To)> mentions)
+    {
+        var referenced = mentions.Select(m => m.To).ToHashSet(StringComparer.Ordinal);
+
+        return types
+            .Where(t => !referenced.Contains(t.Id))
+            .Where(t => t.Role is not ("test" or "ui"))
+            .Where(t => t.Name is not ("Program" or "App" or "MainWindow"))
+            .OrderBy(t => t.Project, StringComparer.Ordinal).ThenBy(t => t.Name, StringComparer.Ordinal)
+            .Select(t => new ArchOrphan(t.Id, t.Name, t.Kind, t.Project, t.File))
+            .ToList();
+    }
+
+    /// <summary>Reference loops between projects, by depth-first search. There should be none, and
+    /// if there are, that is the finding.</summary>
+    private static List<ArchCycle> Cycles(List<ArchProject> projects)
+    {
+        var refs = projects.ToDictionary(p => p.Name, p => p.ProjectRefs, StringComparer.Ordinal);
+        var found = new List<ArchCycle>();
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+
+        void Walk(string node, List<string> path)
+        {
+            int at = path.IndexOf(node);
+            if (at >= 0)
+            {
+                var loop = path.Skip(at).Append(node).ToList();
+                string key = string.Join(">", loop.OrderBy(x => x, StringComparer.Ordinal));
+                if (seen.Add(key)) found.Add(new ArchCycle(loop));
+                return;
+            }
+            if (path.Count > 12 || !refs.TryGetValue(node, out var next)) return;
+            path.Add(node);
+            foreach (string n in next) Walk(n, path);
+            path.RemoveAt(path.Count - 1);
+        }
+
+        foreach (var p in projects) Walk(p.Name, new List<string>());
+        return found;
+    }
 }
 
 // ---------------------------------------------------------------------------------------------

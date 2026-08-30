@@ -305,6 +305,292 @@ try {
     # =========================================================================================
     # SAVE + LOOK AT IT
     # =========================================================================================
+    # =========================================================================================
+    # A SPARSE MATRIX. Only cells that carry a value are drawn.
+    #
+    # A full 28x28 grid is 784 COM round trips to say "mostly nothing". Row bands and column rules
+    # give the eye the grid; the filled cells are the content.
+    # =========================================================================================
+    function Short([string]$n) {
+        # 'Kor.Operations.EngineeringTools.Core' -> 'EngineeringTools.Core'. The shared prefix is
+        # the least informative part of every label on the page.
+        return ($n -replace '^Kor\.(Operations|Opportunities)\.', '' -replace '^Kor\.', '')
+    }
+
+    function New-MatrixPage($doc, [string]$name, [string]$title, [string]$subtitle,
+                            [string[]]$rows, [string[]]$cols, $cells, [string]$fill) {
+        $page = $doc.Pages.Add()
+        $rowW = 4.6; $colW = 1.30; $cellH = 0.42; $headH = 3.4
+        $w = $rowW + ($cols.Count * $colW) + 1.6
+        $h = $headH + ($rows.Count * $cellH) + 1.6
+        Set-PageSize $page ([Math]::Max($w, 12)) ([Math]::Max($h, 10)) $name
+
+        $top = $h - 1.1
+        New-Label $page 0.7 $top $title 18 $accent | Out-Null
+        New-Label $page 0.7 ($top - 0.45) $subtitle 10 $hairline | Out-Null
+
+        $gridTop = $top - 0.95
+        $x0 = 0.7 + $rowW
+
+        # Column headings, angled so a long project name does not need a two-inch column.
+        for ($c = 0; $c -lt $cols.Count; $c++) {
+            $lbl = $page.DrawRectangle(($x0 + $c * $colW), ($gridTop - 2.0), ($x0 + $c * $colW + 2.0), ($gridTop - 2.0 + 0.28))
+            $lbl.Text = Short $cols[$c]
+            $lbl.CellsU('LinePattern').FormulaU = '0'
+            $lbl.CellsU('FillPattern').FormulaU = '0'
+            $lbl.CellsU('Char.Size').FormulaU = '8 pt'
+            $lbl.CellsU('Char.Color').FormulaU = $ink
+            $lbl.CellsU('Para.HorzAlign').FormulaU = '0'
+            $lbl.CellsU('Angle').FormulaU = '60 deg'
+        }
+
+        $gridBottom = $gridTop - 2.15
+        for ($r = 0; $r -lt $rows.Count; $r++) {
+            $y = $gridBottom - (($r + 1) * $cellH)
+
+            # Row band, so the eye can run along a row without a full grid.
+            if ($r % 2 -eq 0) {
+                $band = $page.DrawRectangle(0.7, $y, ($x0 + $cols.Count * $colW), ($y + $cellH))
+                $band.CellsU('FillForegnd').FormulaU = 'RGB(246,248,250)'
+                $band.CellsU('LinePattern').FormulaU = '0'
+                $band.SendToBack()
+            }
+
+            $lbl = $page.DrawRectangle(0.7, $y, ($x0 - 0.1), ($y + $cellH))
+            $lbl.Text = Short $rows[$r]
+            $lbl.CellsU('LinePattern').FormulaU = '0'
+            $lbl.CellsU('FillPattern').FormulaU = '0'
+            $lbl.CellsU('Char.Size').FormulaU = '8.5 pt'
+            $lbl.CellsU('Char.Color').FormulaU = $ink
+            $lbl.CellsU('Para.HorzAlign').FormulaU = '2'
+            $lbl.CellsU('VerticalAlign').FormulaU = '1'
+
+            for ($c = 0; $c -lt $cols.Count; $c++) {
+                $key = "$($rows[$r])||$($cols[$c])"
+                if (-not $cells.ContainsKey($key)) { continue }
+                $cell = $page.DrawRectangle(($x0 + $c * $colW + 0.06), ($y + 0.03),
+                                            ($x0 + $c * $colW + $colW - 0.06), ($y + $cellH - 0.03))
+                $cell.Text = [string]$cells[$key]
+                $cell.CellsU('FillForegnd').FormulaU = $fill
+                $cell.CellsU('LineColor').FormulaU = $hairline
+                $cell.CellsU('LineWeight').FormulaU = '0.25 pt'
+                $cell.CellsU('Char.Size').FormulaU = '8 pt'
+                $cell.CellsU('Char.Color').FormulaU = $ink
+                $cell.CellsU('Para.HorzAlign').FormulaU = '1'
+                $cell.CellsU('VerticalAlign').FormulaU = '1'
+            }
+        }
+        return $page
+    }
+
+    # ---- MATRIX 1: which project depends on which -------------------------------------------
+    $realProjects = @($model.Projects | Where-Object { $_.Cluster -ne 'one-off tools' } |
+                      Sort-Object Cluster, Name | ForEach-Object { $_.Name })
+    $dsm = @{}
+    $dsmCount = 0
+    foreach ($p in $model.Projects) {
+        if ($realProjects -notcontains $p.Name) { continue }
+        foreach ($r in $p.ProjectRefs) {
+            if ($realProjects -notcontains $r) { continue }
+            $dsm["$($p.Name)||$r"] = '•'
+            $dsmCount++
+        }
+    }
+    New-MatrixPage $doc 'Matrix - dependencies' 'Which project depends on which' (
+        "read a ROW: this project references these. $dsmCount reference(s) across $($realProjects.Count) projects, " +
+        "$($model.Cycles.Count) cycle(s). The 34 one-off tools are left out."
+    ) $realProjects $realProjects $dsm 'RGB(210,228,244)' | Out-Null
+    Write-Host "  matrix: dependencies — $dsmCount cell(s)"
+
+    # ---- MATRIX 2: which project handles which file format -----------------------------------
+    # THE EFFICIENCY VIEW. One format handled in four projects is four answers to one question.
+    $fmtCells = @{}
+    $fmtRows = @($model.Formats | ForEach-Object { $_.Ext } | Sort-Object -Unique)
+    $fmtColsAll = @{}
+    foreach ($f in $model.Formats) {
+        $proj = $f.Type.Split(':')[0]
+        $key = "$($f.Ext)||$proj"
+        $fmtCells[$key] = [int]$fmtCells[$key] + 1
+        $fmtColsAll[$proj] = $true
+    }
+    $fmtCols = @($fmtColsAll.Keys | Sort-Object)
+    New-MatrixPage $doc 'Matrix - formats' 'Which project handles which file format' (
+        "the number is HOW MANY TYPES in that project touch that format. A format with several " +
+        "columns is the same question answered in several places — $($model.Formats.Count) format edges."
+    ) $fmtRows $fmtCols $fmtCells 'RGB(252,232,206)' | Out-Null
+    Write-Host "  matrix: formats — $($fmtCells.Count) cell(s)"
+
+    # =========================================================================================
+    # A LIST PAGE — for things that are a list, not a graph.
+    # =========================================================================================
+    function New-ListPage($doc, [string]$name, [string]$title, [string]$subtitle, [string[]]$lines,
+                          [string]$fill, [int]$perColumn = 40) {
+        $page = $doc.Pages.Add()
+        $colW = 9.4; $rowH = 0.34
+        $colCount = [Math]::Max(1, [Math]::Ceiling($lines.Count / $perColumn))
+        Set-PageSize $page ([Math]::Max(($colCount * $colW + 1.6), 12)) (($perColumn * $rowH) + 2.6) $name
+
+        $h = ($perColumn * $rowH) + 2.6
+        New-Label $page 0.7 ($h - 1.1) $title 18 $accent | Out-Null
+        New-Label $page 0.7 ($h - 1.55) $subtitle 10 $hairline | Out-Null
+
+        for ($i = 0; $i -lt $lines.Count; $i++) {
+            $col = [Math]::Floor($i / $perColumn)
+            $row = $i % $perColumn
+            $x = 0.7 + ($col * $colW)
+            $y = ($h - 2.2) - (($row + 1) * $rowH)
+            New-Box $page $x $y ($colW - 0.3) ($rowH - 0.05) $lines[$i] $fill 8.5 | Out-Null
+        }
+        return $page
+    }
+
+    # ---- CLI verbs ---------------------------------------------------------------------------
+    $verbLines = @($model.Verbs | ForEach-Object { "$($_.Verb)   ·   $(Short $_.Project)" })
+    New-ListPage $doc 'CLI verbs' 'Every command-line verb' (
+        "$($model.Verbs.Count) verb(s), read off `args[0].Equals(""…"")` rather than grepped for"
+    ) $verbLines 'RGB(226,240,226)' 24 | Out-Null
+    Write-Host "  list: $($model.Verbs.Count) CLI verb(s)"
+
+    # ---- Duplication ---------------------------------------------------------------------------
+    # Names every console tool is entitled to are excluded: seventeen Programs is not a finding.
+    $boilerplate = @('Program', 'ToolOptions', 'ImportOptions', 'ImportStats', 'ImportConfig', 'Options', 'Result')
+    $dupes = @($model.Duplicates | Where-Object { $boilerplate -notcontains $_.Name })
+    $dupLines = @($dupes | ForEach-Object {
+        "$($_.Name)  —  $($_.Projects.Count)x:  $(($_.Projects | ForEach-Object { Short $_ }) -join ', ')"
+    })
+    New-ListPage $doc 'Duplication' 'One name, more than one project' (
+        "$($dupes.Count) name(s) after excluding per-tool boilerplate ($($model.Duplicates.Count) before). " +
+        "Same name in two projects is not proof of duplicated CODE — it is where to look first."
+    ) $dupLines 'RGB(250,224,216)' 30 | Out-Null
+    Write-Host "  list: $($dupes.Count) duplicated name(s) of $($model.Duplicates.Count)"
+
+    # =========================================================================================
+    # THE MASTER SHEET — everything on one page, four blocks sharing one row axis.
+    #
+    # Every project in the repository is a row. Read ACROSS a row and you have that project's whole
+    # profile: what it depends on, what file formats it deals in, what it talks to outside the repo,
+    # and what kinds of type it is made of. Read DOWN a column and you have every project that
+    # touches one thing.
+    #
+    # Sharing the row axis is the point. Two rows with the same pattern are two projects doing the
+    # same job, and that is visible at a glance in a way no list of names is.
+    # =========================================================================================
+    $mRows = @($model.Projects | Sort-Object Cluster, Name)
+    $mNames = @($mRows | ForEach-Object { $_.Name })
+
+    # file path -> project, so an external system's evidence can be attributed
+    $dirOf = @{}
+    foreach ($p in $model.Projects) { $dirOf[$p.Name] = $p.Dir }
+    $byLongestDir = @($model.Projects | Sort-Object { -$_.Dir.Length })
+
+    $cDep = @{}; $cFmt = @{}; $cExt = @{}; $cRole = @{}
+    foreach ($p in $model.Projects) {
+        foreach ($r in $p.ProjectRefs) { if ($mNames -contains $r) { $cDep["$($p.Name)||$r"] = '•' } }
+    }
+    foreach ($f in $model.Formats) {
+        $k = "$($f.Type.Split(':')[0])||$($f.Ext)"
+        $cFmt[$k] = [int]$cFmt[$k] + 1
+    }
+    foreach ($e in $model.Externals) {
+        foreach ($ev in $e.Evidence) {
+            $owner = $byLongestDir | Where-Object { $ev.StartsWith($_.Dir + '/') } | Select-Object -First 1
+            if (-not $owner) { continue }
+            $k = "$($owner.Name)||$($e.Name)"
+            $cExt[$k] = [int]$cExt[$k] + 1
+        }
+    }
+    foreach ($t in $model.Types) {
+        $k = "$($t.Project)||$($t.Role)"
+        $cRole[$k] = [int]$cRole[$k] + 1
+    }
+
+    $blocks = @(
+        @{ Title = 'depends on';        Cols = $mNames;                                        Cells = $cDep;  Fill = 'RGB(210,228,244)'; ColW = 0.44; Short = $true }
+        @{ Title = 'file formats';      Cols = @($model.Formats | ForEach-Object { $_.Ext } | Sort-Object -Unique); Cells = $cFmt; Fill = 'RGB(252,232,206)'; ColW = 0.56; Short = $false }
+        @{ Title = 'outside the repo';  Cols = @($model.Externals | ForEach-Object { $_.Name }); Cells = $cExt; Fill = 'RGB(255,240,200)'; ColW = 0.62; Short = $false }
+        @{ Title = 'types by role';     Cols = @('read','compose','classify','write','service','ui','config','model','test'); Cells = $cRole; Fill = 'RGB(224,240,224)'; ColW = 0.62; Short = $false }
+    )
+
+    $rowH = 0.34; $labelW = 4.4; $blockGap = 0.85
+    $gridW = $labelW
+    foreach ($b in $blocks) { $gridW += ($b.Cols.Count * $b.ColW) + $blockGap }
+    $sheetH = ($mRows.Count * $rowH) + 5.2
+    $sheetW = $gridW + 1.4
+
+    $master = $doc.Pages.Add()
+    Set-PageSize $master $sheetW $sheetH 'Master matrix'
+
+    New-Label $master 0.7 ($sheetH - 1.0) 'KOR Operations — master matrix' 22 $accent | Out-Null
+    New-Label $master 0.7 ($sheetH - 1.5) (
+        "every project in the repository is a row. read ACROSS for one project's whole profile, DOWN for everyone who touches one thing.   ·   " +
+        "$($model.Projects.Count) projects · $('{0:N0}' -f $model.Stats.Lines) lines · $($model.Types.Count) types · " +
+        "$($model.Verbs.Count) CLI verbs · $($model.Cycles.Count) dependency cycles"
+    ) 10 $hairline | Out-Null
+
+    $gridTop = $sheetH - 4.0
+    $masterCells = 0
+
+    # block headings and column labels
+    $bx = 0.7 + $labelW
+    foreach ($b in $blocks) {
+        New-Label $master $bx ($gridTop + 1.55) $b.Title 12 $accent | Out-Null
+        for ($c = 0; $c -lt $b.Cols.Count; $c++) {
+            $lbl = $master.DrawRectangle(($bx + $c * $b.ColW), $gridTop, ($bx + $c * $b.ColW + 1.5), ($gridTop + 0.26))
+            $lbl.Text = $(if ($b.Short) { Short $b.Cols[$c] } else { $b.Cols[$c] })
+            $lbl.CellsU('LinePattern').FormulaU = '0'
+            $lbl.CellsU('FillPattern').FormulaU = '0'
+            $lbl.CellsU('Char.Size').FormulaU = '7.5 pt'
+            $lbl.CellsU('Char.Color').FormulaU = $ink
+            $lbl.CellsU('Para.HorzAlign').FormulaU = '0'
+            $lbl.CellsU('Angle').FormulaU = '60 deg'
+        }
+        $bx += ($b.Cols.Count * $b.ColW) + $blockGap
+    }
+
+    for ($r = 0; $r -lt $mRows.Count; $r++) {
+        $proj = $mRows[$r]
+        $y = $gridTop - (($r + 1) * $rowH)
+
+        # the row band is the project's CLUSTER colour, so the sheet groups itself
+        $band = $master.DrawRectangle(0.7, $y, ($gridW + 0.7 - $blockGap), ($y + $rowH))
+        $band.CellsU('FillForegnd').FormulaU = $clusterFill[$proj.Cluster]
+        $band.CellsU('FillPattern').FormulaU = $(if ($r % 2 -eq 0) { '1' } else { '0' })
+        $band.CellsU('LinePattern').FormulaU = '0'
+        $band.SendToBack()
+
+        $lbl = $master.DrawRectangle(0.7, $y, (0.7 + $labelW - 0.12), ($y + $rowH))
+        $lbl.Text = "$(Short $proj.Name)   ·   $('{0:N0}' -f $proj.Lines)"
+        $lbl.CellsU('LinePattern').FormulaU = '0'
+        $lbl.CellsU('FillPattern').FormulaU = '0'
+        $lbl.CellsU('Char.Size').FormulaU = '8 pt'
+        $lbl.CellsU('Char.Color').FormulaU = $ink
+        $lbl.CellsU('Para.HorzAlign').FormulaU = '2'
+        $lbl.CellsU('VerticalAlign').FormulaU = '1'
+
+        $bx = 0.7 + $labelW
+        foreach ($b in $blocks) {
+            for ($c = 0; $c -lt $b.Cols.Count; $c++) {
+                $key = "$($proj.Name)||$($b.Cols[$c])"
+                if (-not $b.Cells.ContainsKey($key)) { continue }
+                $cell = $master.DrawRectangle(($bx + $c * $b.ColW + 0.04), ($y + 0.035),
+                                              ($bx + $c * $b.ColW + $b.ColW - 0.04), ($y + $rowH - 0.035))
+                $cell.Text = [string]$b.Cells[$key]
+                $cell.CellsU('FillForegnd').FormulaU = $b.Fill
+                $cell.CellsU('LineColor').FormulaU = $hairline
+                $cell.CellsU('LineWeight').FormulaU = '0.25 pt'
+                $cell.CellsU('Char.Size').FormulaU = '7.5 pt'
+                $cell.CellsU('Char.Color').FormulaU = $ink
+                $cell.CellsU('Para.HorzAlign').FormulaU = '1'
+                $cell.CellsU('VerticalAlign').FormulaU = '1'
+                $masterCells++
+            }
+            $bx += ($b.Cols.Count * $b.ColW) + $blockGap
+        }
+    }
+    Write-Host ("  MASTER: {0} rows x {1} columns, {2} filled cell(s), {3:N0} x {4:N0} in" -f
+                $mRows.Count, (($blocks | ForEach-Object { $_.Cols.Count }) | Measure-Object -Sum).Sum,
+                $masterCells, $sheetW, $sheetH)
+
     foreach ($p in $doc.Pages) { $p.ResizeToFitContents() }
 
     if (Test-Path $vsdxPath) { Remove-Item $vsdxPath -Force }
