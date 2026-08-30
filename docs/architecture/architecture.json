@@ -56879,6 +56879,2213 @@
     }
   ],
   "Cycles": [],
+  "Graphs": [
+    {
+      "Name": "Relationships",
+      "Title": "Everything, and what it is tied to",
+      "Subtitle": "72 nodes, 155 ties. Grey = one project references another. Yellow = it talks to something outside the repo. RED = the two hold types of the same name, and the number is how many. Position is force-directed: what pulls together sits together. The 11 along the bottom are tied to NOTHING — they reference no project and reach nothing outside the repo.",
+      "Nodes": [
+        {
+          "Id": "Kor.Operations.Mcp",
+          "Label": "Mcp",
+          "Detail": "7,952 lines",
+          "Group": "AI / MCP",
+          "Weight": 0.2939,
+          "X": 0.6025,
+          "Y": 0.5164
+        },
+        {
+          "Id": "Kor.Operations.Mcp.Smoke",
+          "Label": "Mcp.Smoke",
+          "Detail": "1,466 lines",
+          "Group": "AI / MCP",
+          "Weight": 0.1262,
+          "X": 0.5877,
+          "Y": 0.3676
+        },
+        {
+          "Id": "Kor.Operations.Mcp.Tests",
+          "Label": "Mcp.Tests",
+          "Detail": "844 lines",
+          "Group": "AI / MCP",
+          "Weight": 0.0958,
+          "X": 0.5291,
+          "Y": 0.3704
+        },
+        {
+          "Id": "Kor.Opportunities.ApcImport",
+          "Label": "ApcImport",
+          "Detail": "479 lines",
+          "Group": "BD platform",
+          "Weight": 0.0721,
+          "X": 0.03,
+          "Y": 0.075
+        },
+        {
+          "Id": "Kor.Opportunities.Capture",
+          "Label": "Capture",
+          "Detail": "178 lines",
+          "Group": "BD platform",
+          "Weight": 0.044,
+          "X": 0.5552,
+          "Y": 0.2286
+        },
+        {
+          "Id": "Kor.Opportunities.Core",
+          "Label": "Core",
+          "Detail": "3,738 lines",
+          "Group": "BD platform",
+          "Weight": 0.2015,
+          "X": 0.4427,
+          "Y": 0.6289
+        },
+        {
+          "Id": "Kor.Opportunities.Data",
+          "Label": "Data",
+          "Detail": "50,139 lines",
+          "Group": "BD platform",
+          "Weight": 0.738,
+          "X": 0.4686,
+          "Y": 0.6504
+        },
+        {
+          "Id": "Kor.Opportunities.Data.Tests",
+          "Label": "Data.Tests",
+          "Detail": "1,774 lines",
+          "Group": "BD platform",
+          "Weight": 0.1388,
+          "X": 0.5248,
+          "Y": 0.6951
+        },
+        {
+          "Id": "Kor.Opportunities.Worker",
+          "Label": "Worker",
+          "Detail": "13,268 lines",
+          "Group": "BD platform",
+          "Weight": 0.3796,
+          "X": 0.4199,
+          "Y": 0.451
+        },
+        {
+          "Id": "Kor.Operations.App",
+          "Label": "App",
+          "Detail": "92,054 lines",
+          "Group": "desktop app",
+          "Weight": 1,
+          "X": 0.6554,
+          "Y": 0.5624
+        },
+        {
+          "Id": "Kor.Operations.App.Tests",
+          "Label": "App.Tests",
+          "Detail": "11,844 lines",
+          "Group": "desktop app",
+          "Weight": 0.3587,
+          "X": 0.5682,
+          "Y": 0.541
+        },
+        {
+          "Id": "Kor.Operations.EngineeringTools.Core",
+          "Label": "EngineeringTools.Core",
+          "Detail": "28,259 lines",
+          "Group": "drawing intake",
+          "Weight": 0.5541,
+          "X": 0.9246,
+          "Y": 0.5722
+        },
+        {
+          "Id": "Kor.Operations.EngineeringTools.Core.Tests",
+          "Label": "EngineeringTools.Core.Tests",
+          "Detail": "16,508 lines",
+          "Group": "drawing intake",
+          "Weight": 0.4235,
+          "X": 1,
+          "Y": 0.5618
+        },
+        {
+          "Id": "Kor.Operations.EngineeringTools.TakeoffCli",
+          "Label": "EngineeringTools.TakeoffCli",
+          "Detail": "4,357 lines",
+          "Group": "drawing intake",
+          "Weight": 0.2176,
+          "X": 0.937,
+          "Y": 0.6539
+        },
+        {
+          "Id": "Kor.Operations.EngineeringTools.Tests",
+          "Label": "EngineeringTools.Tests",
+          "Detail": "8,678 lines",
+          "Group": "drawing intake",
+          "Weight": 0.307,
+          "X": 0.7821,
+          "Y": 0.7453
+        },
+        {
+          "Id": "Kor.Operations.Rendering",
+          "Label": "Rendering",
+          "Detail": "6,350 lines",
+          "Group": "drawing intake",
+          "Weight": 0.2626,
+          "X": 0.7575,
+          "Y": 0.3863
+        },
+        {
+          "Id": "EmailFilerv2",
+          "Label": "EmailFilerv2",
+          "Detail": "2,439 lines",
+          "Group": "email + transmittals",
+          "Weight": 0.1628,
+          "X": 0.7919,
+          "Y": 0.4192
+        },
+        {
+          "Id": "ApcInterestBackfill",
+          "Label": "ApcInterestBackfill",
+          "Detail": "267 lines",
+          "Group": "one-off tools",
+          "Weight": 0.0539,
+          "X": 0.3764,
+          "Y": 0.5811
+        },
+        {
+          "Id": "ApcInterestProbe",
+          "Label": "ApcInterestProbe",
+          "Detail": "264 lines",
+          "Group": "one-off tools",
+          "Weight": 0.0536,
+          "X": 0.218,
+          "Y": 0.075
+        },
+        {
+          "Id": "AwardOllamaBackfill",
+          "Label": "AwardOllamaBackfill",
+          "Detail": "659 lines",
+          "Group": "one-off tools",
+          "Weight": 0.0846,
+          "X": 0.3778,
+          "Y": 0.8252
+        },
+        {
+          "Id": "BcBidDetailProbe",
+          "Label": "BcBidDetailProbe",
+          "Detail": "74 lines",
+          "Group": "one-off tools",
+          "Weight": 0.0284,
+          "X": 0.4597,
+          "Y": 0.7666
+        },
+        {
+          "Id": "BcBidInterestProbe",
+          "Label": "BcBidInterestProbe",
+          "Detail": "168 lines",
+          "Group": "one-off tools",
+          "Weight": 0.0427,
+          "X": 0.406,
+          "Y": 0.075
+        },
+        {
+          "Id": "BcMpiImporter",
+          "Label": "BcMpiImporter",
+          "Detail": "862 lines",
+          "Group": "one-off tools",
+          "Weight": 0.0968,
+          "X": 0.4005,
+          "Y": 0.7633
+        },
+        {
+          "Id": "BdApolloEnrich",
+          "Label": "BdApolloEnrich",
+          "Detail": "317 lines",
+          "Group": "one-off tools",
+          "Weight": 0.0587,
+          "X": 0.2125,
+          "Y": 0.2767
+        },
+        {
+          "Id": "BdBriefSmoke",
+          "Label": "BdBriefSmoke",
+          "Detail": "116 lines",
+          "Group": "one-off tools",
+          "Weight": 0.0355,
+          "X": 0.6245,
+          "Y": 0.718
+        },
+        {
+          "Id": "BdCanonicalDedup",
+          "Label": "BdCanonicalDedup",
+          "Detail": "1,766 lines",
+          "Group": "one-off tools",
+          "Weight": 0.1385,
+          "X": 0.523,
+          "Y": 0.632
+        },
+        {
+          "Id": "BdContactEnrich",
+          "Label": "BdContactEnrich",
+          "Detail": "238 lines",
+          "Group": "one-off tools",
+          "Weight": 0.0508,
+          "X": 0.5179,
+          "Y": 0.8457
+        },
+        {
+          "Id": "BdDeltekLink",
+          "Label": "BdDeltekLink",
+          "Detail": "847 lines",
+          "Group": "one-off tools",
+          "Weight": 0.0959,
+          "X": 0.4699,
+          "Y": 0.548
+        },
+        {
+          "Id": "BdHeatGraph",
+          "Label": "BdHeatGraph",
+          "Detail": "205 lines",
+          "Group": "one-off tools",
+          "Weight": 0.0472,
+          "X": 0.594,
+          "Y": 0.075
+        },
+        {
+          "Id": "BdHoningIntelBackfill",
+          "Label": "BdHoningIntelBackfill",
+          "Detail": "103 lines",
+          "Group": "one-off tools",
+          "Weight": 0.0335,
+          "X": 0.2241,
+          "Y": 0.412
+        },
+        {
+          "Id": "BdIntegrityCheck",
+          "Label": "BdIntegrityCheck",
+          "Detail": "201 lines",
+          "Group": "one-off tools",
+          "Weight": 0.0467,
+          "X": 0.782,
+          "Y": 0.075
+        },
+        {
+          "Id": "BdIntelExtract",
+          "Label": "BdIntelExtract",
+          "Detail": "404 lines",
+          "Group": "one-off tools",
+          "Weight": 0.0662,
+          "X": 0.3401,
+          "Y": 0.5542
+        },
+        {
+          "Id": "BdOpportunityPurge",
+          "Label": "BdOpportunityPurge",
+          "Detail": "289 lines",
+          "Group": "one-off tools",
+          "Weight": 0.056,
+          "X": 0.1749,
+          "Y": 0.7094
+        },
+        {
+          "Id": "BdOrphanOrgPurge",
+          "Label": "BdOrphanOrgPurge",
+          "Detail": "597 lines",
+          "Group": "one-off tools",
+          "Weight": 0.0805,
+          "X": 0,
+          "Y": 0.7695
+        },
+        {
+          "Id": "BdPersonResearchExecutorSmoke",
+          "Label": "BdPersonResearchExecutorSmoke",
+          "Detail": "103 lines",
+          "Group": "one-off tools",
+          "Weight": 0.0335,
+          "X": 0.2481,
+          "Y": 0.364
+        },
+        {
+          "Id": "BdProjectResearchExecutorSmoke",
+          "Label": "BdProjectResearchExecutorSmoke",
+          "Detail": "155 lines",
+          "Group": "one-off tools",
+          "Weight": 0.041,
+          "X": 0.2871,
+          "Y": 0.3215
+        },
+        {
+          "Id": "BdQueueDrainIngest",
+          "Label": "BdQueueDrainIngest",
+          "Detail": "1,169 lines",
+          "Group": "one-off tools",
+          "Weight": 0.1127,
+          "X": 0.4397,
+          "Y": 0.3164
+        },
+        {
+          "Id": "BdResearchExecutorSmoke",
+          "Label": "BdResearchExecutorSmoke",
+          "Detail": "103 lines",
+          "Group": "one-off tools",
+          "Weight": 0.0335,
+          "X": 0.3317,
+          "Y": 0.2819
+        },
+        {
+          "Id": "BdResearchImport",
+          "Label": "BdResearchImport",
+          "Detail": "8,651 lines",
+          "Group": "one-off tools",
+          "Weight": 0.3066,
+          "X": 0.388,
+          "Y": 0.717
+        },
+        {
+          "Id": "BdSectorSmoke",
+          "Label": "BdSectorSmoke",
+          "Detail": "119 lines",
+          "Group": "one-off tools",
+          "Weight": 0.036,
+          "X": 0.453,
+          "Y": 0.8539
+        },
+        {
+          "Id": "BdSeedImport",
+          "Label": "BdSeedImport",
+          "Detail": "728 lines",
+          "Group": "one-off tools",
+          "Weight": 0.0889,
+          "X": 0.4968,
+          "Y": 0.5638
+        },
+        {
+          "Id": "BdSynthesisSmoke",
+          "Label": "BdSynthesisSmoke",
+          "Detail": "221 lines",
+          "Group": "one-off tools",
+          "Weight": 0.049,
+          "X": 0.3281,
+          "Y": 0.8167
+        },
+        {
+          "Id": "BdVerdictBackfill",
+          "Label": "BdVerdictBackfill",
+          "Detail": "163 lines",
+          "Group": "one-off tools",
+          "Weight": 0.0421,
+          "X": 0.97,
+          "Y": 0.075
+        },
+        {
+          "Id": "BidsAndTendersInterestProbe",
+          "Label": "BidsAndTendersInterestProbe",
+          "Detail": "207 lines",
+          "Group": "one-off tools",
+          "Weight": 0.0474,
+          "X": 0.03,
+          "Y": 0.015
+        },
+        {
+          "Id": "BulkTenantOnboarder",
+          "Label": "BulkTenantOnboarder",
+          "Detail": "253 lines",
+          "Group": "one-off tools",
+          "Weight": 0.0524,
+          "X": 0.218,
+          "Y": 0.015
+        },
+        {
+          "Id": "DetailPageProbe",
+          "Label": "DetailPageProbe",
+          "Detail": "89 lines",
+          "Group": "one-off tools",
+          "Weight": 0.0311,
+          "X": 0.406,
+          "Y": 0.015
+        },
+        {
+          "Id": "GovCanEngineeringImport",
+          "Label": "GovCanEngineeringImport",
+          "Detail": "310 lines",
+          "Group": "one-off tools",
+          "Weight": 0.058,
+          "X": 0.3048,
+          "Y": 0.6364
+        },
+        {
+          "Id": "MerxProbe",
+          "Label": "MerxProbe",
+          "Detail": "128 lines",
+          "Group": "one-off tools",
+          "Weight": 0.0373,
+          "X": 0.284,
+          "Y": 0.7677
+        },
+        {
+          "Id": "OpportunityEnrichmentBackfill",
+          "Label": "OpportunityEnrichmentBackfill",
+          "Detail": "218 lines",
+          "Group": "one-off tools",
+          "Weight": 0.0487,
+          "X": 0.5923,
+          "Y": 0.6864
+        },
+        {
+          "Id": "PrimeRfpClassifierBackfill",
+          "Label": "PrimeRfpClassifierBackfill",
+          "Detail": "206 lines",
+          "Group": "one-off tools",
+          "Weight": 0.0473,
+          "X": 0.333,
+          "Y": 0.7142
+        },
+        {
+          "Id": "ScraperProbe",
+          "Label": "ScraperProbe",
+          "Detail": "204 lines",
+          "Group": "one-off tools",
+          "Weight": 0.0471,
+          "X": 0.3133,
+          "Y": 0.6764
+        },
+        {
+          "Id": "Kor.EmailCommon",
+          "Label": "EmailCommon",
+          "Detail": "134 lines",
+          "Group": "shared",
+          "Weight": 0.0382,
+          "X": 0.8183,
+          "Y": 0.6444
+        },
+        {
+          "Id": "Kor.EmailSearch.Core",
+          "Label": "EmailSearch.Core",
+          "Detail": "397 lines",
+          "Group": "shared",
+          "Weight": 0.0657,
+          "X": 0.7494,
+          "Y": 0.5168
+        },
+        {
+          "Id": "Kor.Operations.Business",
+          "Label": "Business",
+          "Detail": "6,089 lines",
+          "Group": "shared",
+          "Weight": 0.2572,
+          "X": 0.63,
+          "Y": 0.4485
+        },
+        {
+          "Id": "Kor.Operations.Core",
+          "Label": "Core",
+          "Detail": "1,543 lines",
+          "Group": "shared",
+          "Weight": 0.1295,
+          "X": 0.6612,
+          "Y": 0.4387
+        },
+        {
+          "Id": "Kor.Operations.Data",
+          "Label": "Data",
+          "Detail": "3,640 lines",
+          "Group": "shared",
+          "Weight": 0.1989,
+          "X": 0.5761,
+          "Y": 0.4699
+        },
+        {
+          "Id": "Kor.Operations.FileSync.Service",
+          "Label": "FileSync.Service",
+          "Detail": "7,093 lines",
+          "Group": "shared",
+          "Weight": 0.2776,
+          "X": 0.6319,
+          "Y": 0.4054
+        },
+        {
+          "Id": "Kor.Operations.FileSync.Service.Tests",
+          "Label": "FileSync.Service.Tests",
+          "Detail": "57 lines",
+          "Group": "shared",
+          "Weight": 0.0249,
+          "X": 0.7045,
+          "Y": 0.2208
+        },
+        {
+          "Id": "Kor.Operations.Graph",
+          "Label": "Graph",
+          "Detail": "1,270 lines",
+          "Group": "shared",
+          "Weight": 0.1175,
+          "X": 0.7052,
+          "Y": 0.4752
+        },
+        {
+          "Id": "Kor.Operations.ImportTool",
+          "Label": "ImportTool",
+          "Detail": "964 lines",
+          "Group": "shared",
+          "Weight": 0.1023,
+          "X": 0.6967,
+          "Y": 0.3314
+        },
+        {
+          "Id": "_SmokeRun",
+          "Label": "_SmokeRun",
+          "Detail": "225 lines",
+          "Group": "shared",
+          "Weight": 0.0494,
+          "X": 0.594,
+          "Y": 0.015
+        },
+        {
+          "Id": "_SmokeVerify",
+          "Label": "_SmokeVerify",
+          "Detail": "64 lines",
+          "Group": "shared",
+          "Weight": 0.0264,
+          "X": 0.782,
+          "Y": 0.015
+        },
+        {
+          "Id": "ext:Anthropic API",
+          "Label": "Anthropic API",
+          "Detail": "api",
+          "Group": "external",
+          "Weight": 0.2275,
+          "X": 0.7092,
+          "Y": 0.6424
+        },
+        {
+          "Id": "ext:Apollo.io",
+          "Label": "Apollo.io",
+          "Detail": "api",
+          "Group": "external",
+          "Weight": 0.1825,
+          "X": 0.0738,
+          "Y": 0.16
+        },
+        {
+          "Id": "ext:Deltek Vision (ODBC)",
+          "Label": "Deltek Vision (ODBC)",
+          "Detail": "database",
+          "Group": "external",
+          "Weight": 0.46,
+          "X": 0.5368,
+          "Y": 0.5002
+        },
+        {
+          "Id": "ext:ETABS / SAFE",
+          "Label": "ETABS / SAFE",
+          "Detail": "desktop",
+          "Group": "external",
+          "Weight": 0.1989,
+          "X": 0.8151,
+          "Y": 0.7065
+        },
+        {
+          "Id": "ext:KOR-APP01\\SQLEXPRESS",
+          "Label": "KOR-APP01\\SQLEXPRESS",
+          "Detail": "database",
+          "Group": "external",
+          "Weight": 0.2606,
+          "X": 0.5627,
+          "Y": 0.4271
+        },
+        {
+          "Id": "ext:KOR-FS01 project share",
+          "Label": "KOR-FS01 project share",
+          "Detail": "file share",
+          "Group": "external",
+          "Weight": 0.2527,
+          "X": 0.8333,
+          "Y": 0.4796
+        },
+        {
+          "Id": "ext:KorStandards (SQL)",
+          "Label": "KorStandards (SQL)",
+          "Detail": "database",
+          "Group": "external",
+          "Weight": 0.2499,
+          "X": 0.8896,
+          "Y": 0.6029
+        },
+        {
+          "Id": "ext:Microsoft Graph",
+          "Label": "Microsoft Graph",
+          "Detail": "api",
+          "Group": "external",
+          "Weight": 0.205,
+          "X": 0.4789,
+          "Y": 0.4805
+        },
+        {
+          "Id": "ext:Ollama",
+          "Label": "Ollama",
+          "Detail": "api",
+          "Group": "external",
+          "Weight": 0.1989,
+          "X": 0.2942,
+          "Y": 1
+        },
+        {
+          "Id": "ext:Outlook (COM)",
+          "Label": "Outlook (COM)",
+          "Detail": "desktop",
+          "Group": "external",
+          "Weight": 0.1989,
+          "X": 0.9629,
+          "Y": 0.3049
+        }
+      ],
+      "Edges": [
+        {
+          "From": "ApcInterestBackfill",
+          "To": "Kor.Opportunities.Core",
+          "Kind": "references"
+        },
+        {
+          "From": "ApcInterestBackfill",
+          "To": "Kor.Opportunities.Data",
+          "Kind": "references"
+        },
+        {
+          "From": "ApcInterestBackfill",
+          "To": "Kor.Opportunities.Data",
+          "Kind": "duplicates:1"
+        },
+        {
+          "From": "ApcInterestBackfill",
+          "To": "Kor.Opportunities.Worker",
+          "Kind": "duplicates:1"
+        },
+        {
+          "From": "AwardOllamaBackfill",
+          "To": "Kor.Opportunities.Core",
+          "Kind": "references"
+        },
+        {
+          "From": "AwardOllamaBackfill",
+          "To": "Kor.Opportunities.Data",
+          "Kind": "references"
+        },
+        {
+          "From": "AwardOllamaBackfill",
+          "To": "ext:Ollama",
+          "Kind": "talks to"
+        },
+        {
+          "From": "BcBidDetailProbe",
+          "To": "Kor.Opportunities.Core",
+          "Kind": "references"
+        },
+        {
+          "From": "BcBidDetailProbe",
+          "To": "Kor.Opportunities.Data",
+          "Kind": "references"
+        },
+        {
+          "From": "BcMpiImporter",
+          "To": "Kor.Opportunities.Core",
+          "Kind": "references"
+        },
+        {
+          "From": "BcMpiImporter",
+          "To": "Kor.Opportunities.Data",
+          "Kind": "references"
+        },
+        {
+          "From": "BdApolloEnrich",
+          "To": "Kor.Opportunities.Worker",
+          "Kind": "duplicates:1"
+        },
+        {
+          "From": "BdApolloEnrich",
+          "To": "ext:Apollo.io",
+          "Kind": "talks to"
+        },
+        {
+          "From": "BdBriefSmoke",
+          "To": "Kor.Operations.App",
+          "Kind": "references"
+        },
+        {
+          "From": "BdBriefSmoke",
+          "To": "Kor.Opportunities.Data",
+          "Kind": "references"
+        },
+        {
+          "From": "BdCanonicalDedup",
+          "To": "Kor.Opportunities.Core",
+          "Kind": "references"
+        },
+        {
+          "From": "BdCanonicalDedup",
+          "To": "Kor.Opportunities.Data",
+          "Kind": "references"
+        },
+        {
+          "From": "BdCanonicalDedup",
+          "To": "ext:Deltek Vision (ODBC)",
+          "Kind": "talks to"
+        },
+        {
+          "From": "BdContactEnrich",
+          "To": "Kor.Opportunities.Data",
+          "Kind": "references"
+        },
+        {
+          "From": "BdDeltekLink",
+          "To": "BdSeedImport",
+          "Kind": "duplicates:4"
+        },
+        {
+          "From": "BdDeltekLink",
+          "To": "Kor.Operations.App",
+          "Kind": "duplicates:1"
+        },
+        {
+          "From": "BdDeltekLink",
+          "To": "Kor.Opportunities.Core",
+          "Kind": "references"
+        },
+        {
+          "From": "BdDeltekLink",
+          "To": "Kor.Opportunities.Data",
+          "Kind": "references"
+        },
+        {
+          "From": "BdDeltekLink",
+          "To": "Kor.Opportunities.Worker",
+          "Kind": "duplicates:8"
+        },
+        {
+          "From": "BdDeltekLink",
+          "To": "ext:Deltek Vision (ODBC)",
+          "Kind": "talks to"
+        },
+        {
+          "From": "BdHoningIntelBackfill",
+          "To": "Kor.Opportunities.Worker",
+          "Kind": "references"
+        },
+        {
+          "From": "BdIntelExtract",
+          "To": "Kor.Opportunities.Core",
+          "Kind": "references"
+        },
+        {
+          "From": "BdIntelExtract",
+          "To": "Kor.Opportunities.Data",
+          "Kind": "references"
+        },
+        {
+          "From": "BdIntelExtract",
+          "To": "Kor.Opportunities.Worker",
+          "Kind": "duplicates:1"
+        },
+        {
+          "From": "BdOpportunityPurge",
+          "To": "BdOrphanOrgPurge",
+          "Kind": "duplicates:1"
+        },
+        {
+          "From": "BdOpportunityPurge",
+          "To": "Kor.Opportunities.Core",
+          "Kind": "references"
+        },
+        {
+          "From": "BdPersonResearchExecutorSmoke",
+          "To": "Kor.Opportunities.Worker",
+          "Kind": "references"
+        },
+        {
+          "From": "BdProjectResearchExecutorSmoke",
+          "To": "Kor.Opportunities.Worker",
+          "Kind": "references"
+        },
+        {
+          "From": "BdQueueDrainIngest",
+          "To": "Kor.Opportunities.Worker",
+          "Kind": "references"
+        },
+        {
+          "From": "BdQueueDrainIngest",
+          "To": "ext:KOR-APP01\\SQLEXPRESS",
+          "Kind": "talks to"
+        },
+        {
+          "From": "BdResearchExecutorSmoke",
+          "To": "Kor.Opportunities.Worker",
+          "Kind": "references"
+        },
+        {
+          "From": "BdResearchImport",
+          "To": "Kor.Opportunities.Core",
+          "Kind": "references"
+        },
+        {
+          "From": "BdResearchImport",
+          "To": "Kor.Opportunities.Data",
+          "Kind": "references"
+        },
+        {
+          "From": "BdResearchImport",
+          "To": "Kor.Opportunities.Data",
+          "Kind": "duplicates:1"
+        },
+        {
+          "From": "BdSectorSmoke",
+          "To": "Kor.Opportunities.Data",
+          "Kind": "references"
+        },
+        {
+          "From": "BdSeedImport",
+          "To": "Kor.Operations.App",
+          "Kind": "duplicates:2"
+        },
+        {
+          "From": "BdSeedImport",
+          "To": "Kor.Opportunities.Core",
+          "Kind": "references"
+        },
+        {
+          "From": "BdSeedImport",
+          "To": "Kor.Opportunities.Data",
+          "Kind": "references"
+        },
+        {
+          "From": "BdSeedImport",
+          "To": "Kor.Opportunities.Worker",
+          "Kind": "duplicates:3"
+        },
+        {
+          "From": "BdSeedImport",
+          "To": "ext:Deltek Vision (ODBC)",
+          "Kind": "talks to"
+        },
+        {
+          "From": "BdSynthesisSmoke",
+          "To": "Kor.Opportunities.Data",
+          "Kind": "references"
+        },
+        {
+          "From": "EmailFilerv2",
+          "To": "Kor.EmailSearch.Core",
+          "Kind": "references"
+        },
+        {
+          "From": "EmailFilerv2",
+          "To": "Kor.Operations.App",
+          "Kind": "duplicates:2"
+        },
+        {
+          "From": "EmailFilerv2",
+          "To": "ext:KOR-APP01\\SQLEXPRESS",
+          "Kind": "talks to"
+        },
+        {
+          "From": "EmailFilerv2",
+          "To": "ext:KOR-FS01 project share",
+          "Kind": "talks to"
+        },
+        {
+          "From": "EmailFilerv2",
+          "To": "ext:Outlook (COM)",
+          "Kind": "talks to"
+        },
+        {
+          "From": "GovCanEngineeringImport",
+          "To": "Kor.Opportunities.Core",
+          "Kind": "references"
+        },
+        {
+          "From": "GovCanEngineeringImport",
+          "To": "Kor.Opportunities.Data",
+          "Kind": "references"
+        },
+        {
+          "From": "Kor.Operations.App",
+          "To": "Kor.EmailCommon",
+          "Kind": "references"
+        },
+        {
+          "From": "Kor.Operations.App",
+          "To": "Kor.EmailSearch.Core",
+          "Kind": "references"
+        },
+        {
+          "From": "Kor.Operations.App",
+          "To": "Kor.Operations.Business",
+          "Kind": "references"
+        },
+        {
+          "From": "Kor.Operations.App",
+          "To": "Kor.Operations.Core",
+          "Kind": "references"
+        },
+        {
+          "From": "Kor.Operations.App",
+          "To": "Kor.Operations.Data",
+          "Kind": "references"
+        },
+        {
+          "From": "Kor.Operations.App",
+          "To": "Kor.Operations.Data",
+          "Kind": "duplicates:1"
+        },
+        {
+          "From": "Kor.Operations.App",
+          "To": "Kor.Operations.EngineeringTools.Core",
+          "Kind": "references"
+        },
+        {
+          "From": "Kor.Operations.App",
+          "To": "Kor.Operations.FileSync.Service",
+          "Kind": "duplicates:4"
+        },
+        {
+          "From": "Kor.Operations.App",
+          "To": "Kor.Operations.Graph",
+          "Kind": "references"
+        },
+        {
+          "From": "Kor.Operations.App",
+          "To": "Kor.Operations.Rendering",
+          "Kind": "references"
+        },
+        {
+          "From": "Kor.Operations.App",
+          "To": "Kor.Opportunities.Core",
+          "Kind": "references"
+        },
+        {
+          "From": "Kor.Operations.App",
+          "To": "Kor.Opportunities.Core",
+          "Kind": "duplicates:1"
+        },
+        {
+          "From": "Kor.Operations.App",
+          "To": "Kor.Opportunities.Data",
+          "Kind": "references"
+        },
+        {
+          "From": "Kor.Operations.App",
+          "To": "Kor.Opportunities.Data",
+          "Kind": "duplicates:4"
+        },
+        {
+          "From": "Kor.Operations.App",
+          "To": "Kor.Opportunities.Worker",
+          "Kind": "duplicates:1"
+        },
+        {
+          "From": "Kor.Operations.App",
+          "To": "OpportunityEnrichmentBackfill",
+          "Kind": "duplicates:1"
+        },
+        {
+          "From": "Kor.Operations.App",
+          "To": "ext:Anthropic API",
+          "Kind": "talks to"
+        },
+        {
+          "From": "Kor.Operations.App",
+          "To": "ext:Deltek Vision (ODBC)",
+          "Kind": "talks to"
+        },
+        {
+          "From": "Kor.Operations.App",
+          "To": "ext:ETABS / SAFE",
+          "Kind": "talks to"
+        },
+        {
+          "From": "Kor.Operations.App",
+          "To": "ext:KOR-APP01\\SQLEXPRESS",
+          "Kind": "talks to"
+        },
+        {
+          "From": "Kor.Operations.App",
+          "To": "ext:KOR-FS01 project share",
+          "Kind": "talks to"
+        },
+        {
+          "From": "Kor.Operations.App",
+          "To": "ext:KorStandards (SQL)",
+          "Kind": "talks to"
+        },
+        {
+          "From": "Kor.Operations.App.Tests",
+          "To": "Kor.EmailSearch.Core",
+          "Kind": "references"
+        },
+        {
+          "From": "Kor.Operations.App.Tests",
+          "To": "Kor.Operations.App",
+          "Kind": "references"
+        },
+        {
+          "From": "Kor.Operations.App.Tests",
+          "To": "Kor.Operations.Core",
+          "Kind": "references"
+        },
+        {
+          "From": "Kor.Operations.App.Tests",
+          "To": "Kor.Operations.Data",
+          "Kind": "references"
+        },
+        {
+          "From": "Kor.Operations.App.Tests",
+          "To": "Kor.Operations.Graph",
+          "Kind": "references"
+        },
+        {
+          "From": "Kor.Operations.App.Tests",
+          "To": "Kor.Operations.Mcp",
+          "Kind": "references"
+        },
+        {
+          "From": "Kor.Operations.App.Tests",
+          "To": "Kor.Opportunities.Core",
+          "Kind": "references"
+        },
+        {
+          "From": "Kor.Operations.App.Tests",
+          "To": "Kor.Opportunities.Data",
+          "Kind": "references"
+        },
+        {
+          "From": "Kor.Operations.App.Tests",
+          "To": "Kor.Opportunities.Data.Tests",
+          "Kind": "duplicates:2"
+        },
+        {
+          "From": "Kor.Operations.App.Tests",
+          "To": "Kor.Opportunities.Worker",
+          "Kind": "references"
+        },
+        {
+          "From": "Kor.Operations.App.Tests",
+          "To": "ext:Deltek Vision (ODBC)",
+          "Kind": "talks to"
+        },
+        {
+          "From": "Kor.Operations.App.Tests",
+          "To": "ext:KOR-APP01\\SQLEXPRESS",
+          "Kind": "talks to"
+        },
+        {
+          "From": "Kor.Operations.App.Tests",
+          "To": "ext:Microsoft Graph",
+          "Kind": "talks to"
+        },
+        {
+          "From": "Kor.Operations.Business",
+          "To": "Kor.Operations.Core",
+          "Kind": "references"
+        },
+        {
+          "From": "Kor.Operations.Business",
+          "To": "Kor.Operations.Data",
+          "Kind": "references"
+        },
+        {
+          "From": "Kor.Operations.Business",
+          "To": "ext:Deltek Vision (ODBC)",
+          "Kind": "talks to"
+        },
+        {
+          "From": "Kor.Operations.Core",
+          "To": "ext:Deltek Vision (ODBC)",
+          "Kind": "talks to"
+        },
+        {
+          "From": "Kor.Operations.Data",
+          "To": "Kor.Operations.Core",
+          "Kind": "references"
+        },
+        {
+          "From": "Kor.Operations.Data",
+          "To": "Kor.Opportunities.Core",
+          "Kind": "references"
+        },
+        {
+          "From": "Kor.Operations.Data",
+          "To": "ext:Deltek Vision (ODBC)",
+          "Kind": "talks to"
+        },
+        {
+          "From": "Kor.Operations.EngineeringTools.Core",
+          "To": "Kor.Operations.EngineeringTools.Core.Tests",
+          "Kind": "duplicates:1"
+        },
+        {
+          "From": "Kor.Operations.EngineeringTools.Core",
+          "To": "ext:KorStandards (SQL)",
+          "Kind": "talks to"
+        },
+        {
+          "From": "Kor.Operations.EngineeringTools.Core.Tests",
+          "To": "Kor.Operations.EngineeringTools.Core",
+          "Kind": "references"
+        },
+        {
+          "From": "Kor.Operations.EngineeringTools.Core.Tests",
+          "To": "Kor.Operations.EngineeringTools.TakeoffCli",
+          "Kind": "references"
+        },
+        {
+          "From": "Kor.Operations.EngineeringTools.Core.Tests",
+          "To": "ext:KOR-FS01 project share",
+          "Kind": "talks to"
+        },
+        {
+          "From": "Kor.Operations.EngineeringTools.Core.Tests",
+          "To": "ext:KorStandards (SQL)",
+          "Kind": "talks to"
+        },
+        {
+          "From": "Kor.Operations.EngineeringTools.TakeoffCli",
+          "To": "Kor.Operations.EngineeringTools.Core",
+          "Kind": "references"
+        },
+        {
+          "From": "Kor.Operations.EngineeringTools.TakeoffCli",
+          "To": "ext:Anthropic API",
+          "Kind": "talks to"
+        },
+        {
+          "From": "Kor.Operations.EngineeringTools.TakeoffCli",
+          "To": "ext:KorStandards (SQL)",
+          "Kind": "talks to"
+        },
+        {
+          "From": "Kor.Operations.EngineeringTools.Tests",
+          "To": "Kor.Operations.App",
+          "Kind": "references"
+        },
+        {
+          "From": "Kor.Operations.EngineeringTools.Tests",
+          "To": "ext:ETABS / SAFE",
+          "Kind": "talks to"
+        },
+        {
+          "From": "Kor.Operations.FileSync.Service",
+          "To": "Kor.Operations.Core",
+          "Kind": "references"
+        },
+        {
+          "From": "Kor.Operations.FileSync.Service",
+          "To": "Kor.Operations.Graph",
+          "Kind": "references"
+        },
+        {
+          "From": "Kor.Operations.FileSync.Service",
+          "To": "Kor.Opportunities.Worker",
+          "Kind": "duplicates:1"
+        },
+        {
+          "From": "Kor.Operations.FileSync.Service",
+          "To": "ext:Deltek Vision (ODBC)",
+          "Kind": "talks to"
+        },
+        {
+          "From": "Kor.Operations.FileSync.Service",
+          "To": "ext:KOR-APP01\\SQLEXPRESS",
+          "Kind": "talks to"
+        },
+        {
+          "From": "Kor.Operations.FileSync.Service",
+          "To": "ext:KOR-FS01 project share",
+          "Kind": "talks to"
+        },
+        {
+          "From": "Kor.Operations.FileSync.Service",
+          "To": "ext:Microsoft Graph",
+          "Kind": "talks to"
+        },
+        {
+          "From": "Kor.Operations.FileSync.Service.Tests",
+          "To": "Kor.Operations.FileSync.Service",
+          "Kind": "references"
+        },
+        {
+          "From": "Kor.Operations.Graph",
+          "To": "Kor.Operations.Core",
+          "Kind": "references"
+        },
+        {
+          "From": "Kor.Operations.ImportTool",
+          "To": "Kor.Operations.Core",
+          "Kind": "references"
+        },
+        {
+          "From": "Kor.Operations.ImportTool",
+          "To": "Kor.Operations.Data",
+          "Kind": "references"
+        },
+        {
+          "From": "Kor.Operations.ImportTool",
+          "To": "Kor.Operations.Rendering",
+          "Kind": "references"
+        },
+        {
+          "From": "Kor.Operations.Mcp",
+          "To": "Kor.Operations.Business",
+          "Kind": "references"
+        },
+        {
+          "From": "Kor.Operations.Mcp",
+          "To": "Kor.Operations.Core",
+          "Kind": "references"
+        },
+        {
+          "From": "Kor.Operations.Mcp",
+          "To": "Kor.Opportunities.Data",
+          "Kind": "references"
+        },
+        {
+          "From": "Kor.Operations.Mcp",
+          "To": "ext:Anthropic API",
+          "Kind": "talks to"
+        },
+        {
+          "From": "Kor.Operations.Mcp",
+          "To": "ext:Deltek Vision (ODBC)",
+          "Kind": "talks to"
+        },
+        {
+          "From": "Kor.Operations.Mcp",
+          "To": "ext:KOR-APP01\\SQLEXPRESS",
+          "Kind": "talks to"
+        },
+        {
+          "From": "Kor.Operations.Mcp.Smoke",
+          "To": "Kor.Operations.Business",
+          "Kind": "references"
+        },
+        {
+          "From": "Kor.Operations.Mcp.Smoke",
+          "To": "Kor.Operations.Core",
+          "Kind": "references"
+        },
+        {
+          "From": "Kor.Operations.Mcp.Smoke",
+          "To": "Kor.Operations.Data",
+          "Kind": "references"
+        },
+        {
+          "From": "Kor.Operations.Mcp.Smoke",
+          "To": "ext:Deltek Vision (ODBC)",
+          "Kind": "talks to"
+        },
+        {
+          "From": "Kor.Operations.Mcp.Smoke",
+          "To": "ext:KOR-APP01\\SQLEXPRESS",
+          "Kind": "talks to"
+        },
+        {
+          "From": "Kor.Operations.Mcp.Tests",
+          "To": "Kor.Operations.Mcp",
+          "Kind": "references"
+        },
+        {
+          "From": "Kor.Operations.Mcp.Tests",
+          "To": "Kor.Operations.Mcp.Smoke",
+          "Kind": "references"
+        },
+        {
+          "From": "Kor.Operations.Mcp.Tests",
+          "To": "ext:Deltek Vision (ODBC)",
+          "Kind": "talks to"
+        },
+        {
+          "From": "Kor.Operations.Rendering",
+          "To": "Kor.Operations.Core",
+          "Kind": "references"
+        },
+        {
+          "From": "Kor.Opportunities.Capture",
+          "To": "ext:KOR-APP01\\SQLEXPRESS",
+          "Kind": "talks to"
+        },
+        {
+          "From": "Kor.Opportunities.Core",
+          "To": "Kor.Opportunities.Data",
+          "Kind": "duplicates:1"
+        },
+        {
+          "From": "Kor.Opportunities.Core",
+          "To": "ext:Deltek Vision (ODBC)",
+          "Kind": "talks to"
+        },
+        {
+          "From": "Kor.Opportunities.Data",
+          "To": "Kor.Opportunities.Core",
+          "Kind": "references"
+        },
+        {
+          "From": "Kor.Opportunities.Data",
+          "To": "MerxProbe",
+          "Kind": "duplicates:1"
+        },
+        {
+          "From": "Kor.Opportunities.Data",
+          "To": "ext:Anthropic API",
+          "Kind": "talks to"
+        },
+        {
+          "From": "Kor.Opportunities.Data",
+          "To": "ext:Deltek Vision (ODBC)",
+          "Kind": "talks to"
+        },
+        {
+          "From": "Kor.Opportunities.Data",
+          "To": "ext:KOR-APP01\\SQLEXPRESS",
+          "Kind": "talks to"
+        },
+        {
+          "From": "Kor.Opportunities.Data",
+          "To": "ext:Microsoft Graph",
+          "Kind": "talks to"
+        },
+        {
+          "From": "Kor.Opportunities.Data.Tests",
+          "To": "Kor.Opportunities.Core",
+          "Kind": "references"
+        },
+        {
+          "From": "Kor.Opportunities.Data.Tests",
+          "To": "Kor.Opportunities.Data",
+          "Kind": "references"
+        },
+        {
+          "From": "Kor.Opportunities.Worker",
+          "To": "Kor.Operations.Data",
+          "Kind": "references"
+        },
+        {
+          "From": "Kor.Opportunities.Worker",
+          "To": "Kor.Opportunities.Core",
+          "Kind": "references"
+        },
+        {
+          "From": "Kor.Opportunities.Worker",
+          "To": "Kor.Opportunities.Data",
+          "Kind": "references"
+        },
+        {
+          "From": "Kor.Opportunities.Worker",
+          "To": "ext:Deltek Vision (ODBC)",
+          "Kind": "talks to"
+        },
+        {
+          "From": "Kor.Opportunities.Worker",
+          "To": "ext:KOR-APP01\\SQLEXPRESS",
+          "Kind": "talks to"
+        },
+        {
+          "From": "Kor.Opportunities.Worker",
+          "To": "ext:Microsoft Graph",
+          "Kind": "talks to"
+        },
+        {
+          "From": "OpportunityEnrichmentBackfill",
+          "To": "Kor.Opportunities.Core",
+          "Kind": "references"
+        },
+        {
+          "From": "PrimeRfpClassifierBackfill",
+          "To": "Kor.Opportunities.Core",
+          "Kind": "references"
+        },
+        {
+          "From": "PrimeRfpClassifierBackfill",
+          "To": "Kor.Opportunities.Data",
+          "Kind": "references"
+        },
+        {
+          "From": "ScraperProbe",
+          "To": "Kor.Opportunities.Core",
+          "Kind": "references"
+        },
+        {
+          "From": "ScraperProbe",
+          "To": "Kor.Opportunities.Data",
+          "Kind": "references"
+        }
+      ]
+    },
+    {
+      "Name": "Recipes",
+      "Title": "What a drawing turns into",
+      "Subtitle": "56 steps, 52 arrows. Rectangles are ARTEFACTS — a file you can hold. Diamonds are OPERATIONS. Read left to right: what arrives, what reads it, what holds it, what writes it, what ships. Ordered to cross as little as possible, not by name.",
+      "Nodes": [
+        {
+          "Id": "in:.csv",
+          "Label": ".csv",
+          "Detail": "arrives as",
+          "Group": "artefact",
+          "Weight": 1,
+          "X": 0,
+          "Y": 0.6
+        },
+        {
+          "Id": "in:.dxf",
+          "Label": ".dxf",
+          "Detail": "arrives as",
+          "Group": "artefact",
+          "Weight": 1,
+          "X": 0,
+          "Y": 0.8
+        },
+        {
+          "Id": "in:.e2k",
+          "Label": ".e2k",
+          "Detail": "arrives as",
+          "Group": "artefact",
+          "Weight": 1,
+          "X": 0,
+          "Y": 0
+        },
+        {
+          "Id": "in:.ifc",
+          "Label": ".ifc",
+          "Detail": "arrives as",
+          "Group": "artefact",
+          "Weight": 1,
+          "X": 0,
+          "Y": 0.2
+        },
+        {
+          "Id": "in:.pdf",
+          "Label": ".pdf",
+          "Detail": "arrives as",
+          "Group": "artefact",
+          "Weight": 1,
+          "X": 0,
+          "Y": 1
+        },
+        {
+          "Id": "in:.rvt",
+          "Label": ".rvt",
+          "Detail": "arrives as",
+          "Group": "artefact",
+          "Weight": 1,
+          "X": 0,
+          "Y": 0.4
+        },
+        {
+          "Id": "Kor.Operations.App:Kor.Operations.EngineeringTools.PdfToSafe.BeamSectionParser",
+          "Label": "BeamSectionParser",
+          "Detail": "reads",
+          "Group": "read",
+          "Weight": 1,
+          "X": 0.25,
+          "Y": 0.381
+        },
+        {
+          "Id": "Kor.Operations.App:Kor.Operations.EngineeringTools.PdfToSafe.ColumnSectionParser",
+          "Label": "ColumnSectionParser",
+          "Detail": "reads",
+          "Group": "read",
+          "Weight": 1,
+          "X": 0.25,
+          "Y": 0.4286
+        },
+        {
+          "Id": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.Dxf.DxfPlanReader",
+          "Label": "DxfPlanReader",
+          "Detail": "reads",
+          "Group": "read",
+          "Weight": 1,
+          "X": 0.25,
+          "Y": 0.1429
+        },
+        {
+          "Id": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.Dxf.E2kGeometryReader",
+          "Label": "E2kGeometryReader",
+          "Detail": "reads",
+          "Group": "read",
+          "Weight": 1,
+          "X": 0.25,
+          "Y": 0
+        },
+        {
+          "Id": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.QuantityTakeoff.FootingScheduleReader",
+          "Label": "FootingScheduleReader",
+          "Detail": "reads",
+          "Group": "read",
+          "Weight": 1,
+          "X": 0.25,
+          "Y": 0.8095
+        },
+        {
+          "Id": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.QuantityTakeoff.IfcStepReader",
+          "Label": "IfcStepReader",
+          "Detail": "reads",
+          "Group": "read",
+          "Weight": 1,
+          "X": 0.25,
+          "Y": 0.0476
+        },
+        {
+          "Id": "Kor.Operations.App:Kor.Operations.EngineeringTools.PdfToSafe.PdfGeometryParser",
+          "Label": "PdfGeometryParser",
+          "Detail": "reads",
+          "Group": "read",
+          "Weight": 1,
+          "X": 0.25,
+          "Y": 0.619
+        },
+        {
+          "Id": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.RebarChange.PdfPageTextReader",
+          "Label": "PdfPageTextReader",
+          "Detail": "reads",
+          "Group": "read",
+          "Weight": 1,
+          "X": 0.25,
+          "Y": 0.2857
+        },
+        {
+          "Id": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.QuantityTakeoff.PlanVisionParser",
+          "Label": "PlanVisionParser",
+          "Detail": "reads",
+          "Group": "read",
+          "Weight": 1,
+          "X": 0.25,
+          "Y": 0.6667
+        },
+        {
+          "Id": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.RebarChange.RebarPdfReader",
+          "Label": "RebarPdfReader",
+          "Detail": "reads",
+          "Group": "read",
+          "Weight": 1,
+          "X": 0.25,
+          "Y": 0.3333
+        },
+        {
+          "Id": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.QuantityTakeoff.RevitScheduleImporter",
+          "Label": "RevitScheduleImporter",
+          "Detail": "reads",
+          "Group": "read",
+          "Weight": 1,
+          "X": 0.25,
+          "Y": 0.0952
+        },
+        {
+          "Id": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.QuantityTakeoff.ScheduleConcreteReader",
+          "Label": "ScheduleConcreteReader",
+          "Detail": "reads",
+          "Group": "read",
+          "Weight": 1,
+          "X": 0.25,
+          "Y": 1
+        },
+        {
+          "Id": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.QuantityTakeoff.ScheduleGridReader",
+          "Label": "ScheduleGridReader",
+          "Detail": "reads",
+          "Group": "read",
+          "Weight": 1,
+          "X": 0.25,
+          "Y": 0.9524
+        },
+        {
+          "Id": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.QuantityTakeoff.SheetScaleReader",
+          "Label": "SheetScaleReader",
+          "Detail": "reads",
+          "Group": "read",
+          "Weight": 1,
+          "X": 0.25,
+          "Y": 0.7143
+        },
+        {
+          "Id": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.QuantityTakeoff.SheetTitleReader",
+          "Label": "SheetTitleReader",
+          "Detail": "reads",
+          "Group": "read",
+          "Weight": 1,
+          "X": 0.25,
+          "Y": 0.7619
+        },
+        {
+          "Id": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.QuantityTakeoff.SlabThicknessReader",
+          "Label": "SlabThicknessReader",
+          "Detail": "reads",
+          "Group": "read",
+          "Weight": 1,
+          "X": 0.25,
+          "Y": 0.5714
+        },
+        {
+          "Id": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.Dxf.StickFileSlabThicknessReader",
+          "Label": "StickFileSlabThicknessReader",
+          "Detail": "reads",
+          "Group": "read",
+          "Weight": 1,
+          "X": 0.25,
+          "Y": 0.5238
+        },
+        {
+          "Id": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.QuantityTakeoff.StructuralGridReader",
+          "Label": "StructuralGridReader",
+          "Detail": "reads",
+          "Group": "read",
+          "Weight": 1,
+          "X": 0.25,
+          "Y": 0.8571
+        },
+        {
+          "Id": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.QuantityTakeoff.StructuralTakeoffCsvImporter",
+          "Label": "StructuralTakeoffCsvImporter",
+          "Detail": "reads",
+          "Group": "read",
+          "Weight": 1,
+          "X": 0.25,
+          "Y": 0.1905
+        },
+        {
+          "Id": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.QuantityTakeoff.TakeoffCsvImporter",
+          "Label": "TakeoffCsvImporter",
+          "Detail": "reads",
+          "Group": "read",
+          "Weight": 1,
+          "X": 0.25,
+          "Y": 0.2381
+        },
+        {
+          "Id": "Kor.Operations.App:Kor.Operations.EngineeringTools.PdfToSafe.ThicknessAnnotationParser",
+          "Label": "ThicknessAnnotationParser",
+          "Detail": "reads",
+          "Group": "read",
+          "Weight": 1,
+          "X": 0.25,
+          "Y": 0.4762
+        },
+        {
+          "Id": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.QuantityTakeoff.VectorPageReader",
+          "Label": "VectorPageReader",
+          "Detail": "reads",
+          "Group": "read",
+          "Weight": 1,
+          "X": 0.25,
+          "Y": 0.9048
+        },
+        {
+          "Id": "Kor.Operations.App:Kor.Operations.EngineeringTools.PdfToSafe.AnnotationResolver",
+          "Label": "AnnotationResolver",
+          "Detail": "classify",
+          "Group": "classify",
+          "Weight": 1,
+          "X": 0.5,
+          "Y": 0.6875
+        },
+        {
+          "Id": "Kor.Operations.App:Kor.Operations.EngineeringTools.PdfToSafe.DesignStripGenerator",
+          "Label": "DesignStripGenerator",
+          "Detail": "compose",
+          "Group": "compose",
+          "Weight": 1,
+          "X": 0.5,
+          "Y": 0.0625
+        },
+        {
+          "Id": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.QuantityTakeoff.DrawingDigestBuilder",
+          "Label": "DrawingDigestBuilder",
+          "Detail": "compose",
+          "Group": "compose",
+          "Weight": 1,
+          "X": 0.5,
+          "Y": 1
+        },
+        {
+          "Id": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.Dxf.DxfFloodFillPlateDetector",
+          "Label": "DxfFloodFillPlateDetector",
+          "Detail": "classify",
+          "Group": "classify",
+          "Weight": 1,
+          "X": 0.5,
+          "Y": 0.1875
+        },
+        {
+          "Id": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.Dxf.E2kGeometryComposer",
+          "Label": "E2kGeometryComposer",
+          "Detail": "compose",
+          "Group": "compose",
+          "Weight": 1,
+          "X": 0.5,
+          "Y": 0
+        },
+        {
+          "Id": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.Dxf.E2kShellBuilder",
+          "Label": "E2kShellBuilder",
+          "Detail": "compose",
+          "Group": "compose",
+          "Weight": 1,
+          "X": 0.5,
+          "Y": 0.125
+        },
+        {
+          "Id": "Kor.Operations.App:Kor.Operations.EngineeringTools.PdfToSafe.ExportValidator",
+          "Label": "ExportValidator",
+          "Detail": "classify",
+          "Group": "classify",
+          "Weight": 1,
+          "X": 0.5,
+          "Y": 0.375
+        },
+        {
+          "Id": "Kor.Operations.App:Kor.Operations.EngineeringTools.PdfToSafe.F2kModelPrep",
+          "Label": "F2kModelPrep",
+          "Detail": "compose",
+          "Group": "compose",
+          "Weight": 1,
+          "X": 0.5,
+          "Y": 0.5625
+        },
+        {
+          "Id": "Kor.Operations.App:Kor.Operations.EngineeringTools.PdfToSafe.HtmlReportBuilder",
+          "Label": "HtmlReportBuilder",
+          "Detail": "compose",
+          "Group": "compose",
+          "Weight": 1,
+          "X": 0.5,
+          "Y": 0.75
+        },
+        {
+          "Id": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.Dxf.PlanLoopBuilder",
+          "Label": "PlanLoopBuilder",
+          "Detail": "compose",
+          "Group": "compose",
+          "Weight": 1,
+          "X": 0.5,
+          "Y": 0.25
+        },
+        {
+          "Id": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.RebarChange.RebarChangeReportGenerator",
+          "Label": "RebarChangeReportGenerator",
+          "Detail": "compose",
+          "Group": "compose",
+          "Weight": 1,
+          "X": 0.5,
+          "Y": 0.8125
+        },
+        {
+          "Id": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.RebarChange.RebarOverlayGenerator",
+          "Label": "RebarOverlayGenerator",
+          "Detail": "compose",
+          "Group": "compose",
+          "Weight": 1,
+          "X": 0.5,
+          "Y": 0.5
+        },
+        {
+          "Id": "Kor.Operations.App:Kor.Operations.EngineeringTools.PdfToSafe.StructuralGridGenerator",
+          "Label": "StructuralGridGenerator",
+          "Detail": "compose",
+          "Group": "compose",
+          "Weight": 1,
+          "X": 0.5,
+          "Y": 0.3125
+        },
+        {
+          "Id": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.Dxf.StructuralPlanClassifier",
+          "Label": "StructuralPlanClassifier",
+          "Detail": "classify",
+          "Group": "classify",
+          "Weight": 1,
+          "X": 0.5,
+          "Y": 0.625
+        },
+        {
+          "Id": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.QuantityTakeoff.StructuralTakeoffReportGenerator",
+          "Label": "StructuralTakeoffReportGenerator",
+          "Detail": "compose",
+          "Group": "compose",
+          "Weight": 1,
+          "X": 0.5,
+          "Y": 0.875
+        },
+        {
+          "Id": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.QuantityTakeoff.TakeoffReportGenerator",
+          "Label": "TakeoffReportGenerator",
+          "Detail": "compose",
+          "Group": "compose",
+          "Weight": 1,
+          "X": 0.5,
+          "Y": 0.9375
+        },
+        {
+          "Id": "Kor.Operations.App:Kor.Operations.EngineeringTools.PdfToSafe.WallOpeningDetector",
+          "Label": "WallOpeningDetector",
+          "Detail": "classify",
+          "Group": "classify",
+          "Weight": 1,
+          "X": 0.5,
+          "Y": 0.4375
+        },
+        {
+          "Id": "Kor.Operations.App:Kor.Operations.EngineeringTools.PdfToSafe.DxfExporter",
+          "Label": "DxfExporter",
+          "Detail": "writes",
+          "Group": "write",
+          "Weight": 1,
+          "X": 0.75,
+          "Y": 0
+        },
+        {
+          "Id": "Kor.Operations.App:Kor.Operations.EngineeringTools.PdfToSafe.EtabsApiExporter",
+          "Label": "EtabsApiExporter",
+          "Detail": "writes",
+          "Group": "write",
+          "Weight": 1,
+          "X": 0.75,
+          "Y": 0.5714
+        },
+        {
+          "Id": "Kor.Operations.App:Kor.Operations.EngineeringTools.PdfToSafe.EtabsE2kExporter",
+          "Label": "EtabsE2kExporter",
+          "Detail": "writes",
+          "Group": "write",
+          "Weight": 1,
+          "X": 0.75,
+          "Y": 0.7143
+        },
+        {
+          "Id": "Kor.Operations.App:Kor.Operations.EngineeringTools.PdfToSafe.F2kWriter",
+          "Label": "F2kWriter",
+          "Detail": "writes",
+          "Group": "write",
+          "Weight": 1,
+          "X": 0.75,
+          "Y": 0.2857
+        },
+        {
+          "Id": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.Dxf.JobPublisher",
+          "Label": "JobPublisher",
+          "Detail": "writes",
+          "Group": "write",
+          "Weight": 1,
+          "X": 0.75,
+          "Y": 0.1429
+        },
+        {
+          "Id": "Kor.Operations.App:Kor.Operations.EngineeringTools.PdfToSafe.SafeApiExporter",
+          "Label": "SafeApiExporter",
+          "Detail": "writes",
+          "Group": "write",
+          "Weight": 1,
+          "X": 0.75,
+          "Y": 1
+        },
+        {
+          "Id": "Kor.Operations.App:Kor.Operations.EngineeringTools.PdfToSafe.SafeF2kExporter",
+          "Label": "SafeF2kExporter",
+          "Detail": "writes",
+          "Group": "write",
+          "Weight": 1,
+          "X": 0.75,
+          "Y": 0.4286
+        },
+        {
+          "Id": "Kor.Operations.App:Kor.Operations.EngineeringTools.PdfToSafe.Sap2000ApiExporter",
+          "Label": "Sap2000ApiExporter",
+          "Detail": "writes",
+          "Group": "write",
+          "Weight": 1,
+          "X": 0.75,
+          "Y": 0.8571
+        },
+        {
+          "Id": "out:.dxf",
+          "Label": ".dxf",
+          "Detail": "ships as",
+          "Group": "artefact",
+          "Weight": 1,
+          "X": 1,
+          "Y": 0
+        },
+        {
+          "Id": "out:.e2k",
+          "Label": ".e2k",
+          "Detail": "ships as",
+          "Group": "artefact",
+          "Weight": 1,
+          "X": 1,
+          "Y": 0.5
+        },
+        {
+          "Id": "out:.f2k",
+          "Label": ".f2k",
+          "Detail": "ships as",
+          "Group": "artefact",
+          "Weight": 1,
+          "X": 1,
+          "Y": 1
+        }
+      ],
+      "Edges": [
+        {
+          "From": "Kor.Operations.App:Kor.Operations.EngineeringTools.PdfToSafe.BeamSectionParser",
+          "To": "Kor.Operations.App:Kor.Operations.EngineeringTools.PdfToSafe.AnnotationResolver",
+          "Kind": "feeds"
+        },
+        {
+          "From": "Kor.Operations.App:Kor.Operations.EngineeringTools.PdfToSafe.BeamSectionParser",
+          "To": "Kor.Operations.App:Kor.Operations.EngineeringTools.PdfToSafe.EtabsE2kExporter",
+          "Kind": "feeds"
+        },
+        {
+          "From": "Kor.Operations.App:Kor.Operations.EngineeringTools.PdfToSafe.BeamSectionParser",
+          "To": "Kor.Operations.App:Kor.Operations.EngineeringTools.PdfToSafe.F2kModelPrep",
+          "Kind": "feeds"
+        },
+        {
+          "From": "Kor.Operations.App:Kor.Operations.EngineeringTools.PdfToSafe.ColumnSectionParser",
+          "To": "Kor.Operations.App:Kor.Operations.EngineeringTools.PdfToSafe.AnnotationResolver",
+          "Kind": "feeds"
+        },
+        {
+          "From": "Kor.Operations.App:Kor.Operations.EngineeringTools.PdfToSafe.ColumnSectionParser",
+          "To": "Kor.Operations.App:Kor.Operations.EngineeringTools.PdfToSafe.F2kModelPrep",
+          "Kind": "feeds"
+        },
+        {
+          "From": "Kor.Operations.App:Kor.Operations.EngineeringTools.PdfToSafe.DesignStripGenerator",
+          "To": "Kor.Operations.App:Kor.Operations.EngineeringTools.PdfToSafe.F2kWriter",
+          "Kind": "feeds"
+        },
+        {
+          "From": "Kor.Operations.App:Kor.Operations.EngineeringTools.PdfToSafe.DxfExporter",
+          "To": "out:.dxf",
+          "Kind": "into"
+        },
+        {
+          "From": "Kor.Operations.App:Kor.Operations.EngineeringTools.PdfToSafe.EtabsApiExporter",
+          "To": "Kor.Operations.App:Kor.Operations.EngineeringTools.PdfToSafe.SafeApiExporter",
+          "Kind": "same rank"
+        },
+        {
+          "From": "Kor.Operations.App:Kor.Operations.EngineeringTools.PdfToSafe.EtabsE2kExporter",
+          "To": "out:.e2k",
+          "Kind": "into"
+        },
+        {
+          "From": "Kor.Operations.App:Kor.Operations.EngineeringTools.PdfToSafe.F2kModelPrep",
+          "To": "Kor.Operations.App:Kor.Operations.EngineeringTools.PdfToSafe.EtabsE2kExporter",
+          "Kind": "feeds"
+        },
+        {
+          "From": "Kor.Operations.App:Kor.Operations.EngineeringTools.PdfToSafe.F2kModelPrep",
+          "To": "Kor.Operations.App:Kor.Operations.EngineeringTools.PdfToSafe.SafeF2kExporter",
+          "Kind": "feeds"
+        },
+        {
+          "From": "Kor.Operations.App:Kor.Operations.EngineeringTools.PdfToSafe.F2kModelPrep",
+          "To": "Kor.Operations.App:Kor.Operations.EngineeringTools.PdfToSafe.WallOpeningDetector",
+          "Kind": "same rank"
+        },
+        {
+          "From": "Kor.Operations.App:Kor.Operations.EngineeringTools.PdfToSafe.F2kWriter",
+          "To": "out:.f2k",
+          "Kind": "into"
+        },
+        {
+          "From": "Kor.Operations.App:Kor.Operations.EngineeringTools.PdfToSafe.PdfGeometryParser",
+          "To": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.QuantityTakeoff.SheetScaleReader",
+          "Kind": "same rank"
+        },
+        {
+          "From": "Kor.Operations.App:Kor.Operations.EngineeringTools.PdfToSafe.PdfGeometryParser",
+          "To": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.QuantityTakeoff.VectorPageReader",
+          "Kind": "same rank"
+        },
+        {
+          "From": "Kor.Operations.App:Kor.Operations.EngineeringTools.PdfToSafe.SafeF2kExporter",
+          "To": "Kor.Operations.App:Kor.Operations.EngineeringTools.PdfToSafe.F2kWriter",
+          "Kind": "same rank"
+        },
+        {
+          "From": "Kor.Operations.App:Kor.Operations.EngineeringTools.PdfToSafe.SafeF2kExporter",
+          "To": "out:.f2k",
+          "Kind": "into"
+        },
+        {
+          "From": "Kor.Operations.App:Kor.Operations.EngineeringTools.PdfToSafe.Sap2000ApiExporter",
+          "To": "Kor.Operations.App:Kor.Operations.EngineeringTools.PdfToSafe.SafeApiExporter",
+          "Kind": "same rank"
+        },
+        {
+          "From": "Kor.Operations.App:Kor.Operations.EngineeringTools.PdfToSafe.StructuralGridGenerator",
+          "To": "Kor.Operations.App:Kor.Operations.EngineeringTools.PdfToSafe.SafeF2kExporter",
+          "Kind": "feeds"
+        },
+        {
+          "From": "Kor.Operations.App:Kor.Operations.EngineeringTools.PdfToSafe.ThicknessAnnotationParser",
+          "To": "Kor.Operations.App:Kor.Operations.EngineeringTools.PdfToSafe.AnnotationResolver",
+          "Kind": "feeds"
+        },
+        {
+          "From": "Kor.Operations.App:Kor.Operations.EngineeringTools.PdfToSafe.ThicknessAnnotationParser",
+          "To": "Kor.Operations.App:Kor.Operations.EngineeringTools.PdfToSafe.F2kModelPrep",
+          "Kind": "feeds"
+        },
+        {
+          "From": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.Dxf.DxfPlanReader",
+          "To": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.Dxf.JobPublisher",
+          "Kind": "feeds"
+        },
+        {
+          "From": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.Dxf.E2kGeometryReader",
+          "To": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.Dxf.E2kGeometryComposer",
+          "Kind": "feeds"
+        },
+        {
+          "From": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.Dxf.JobPublisher",
+          "To": "out:.dxf",
+          "Kind": "into"
+        },
+        {
+          "From": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.Dxf.JobPublisher",
+          "To": "out:.e2k",
+          "Kind": "into"
+        },
+        {
+          "From": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.Dxf.StickFileSlabThicknessReader",
+          "To": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.QuantityTakeoff.SheetTitleReader",
+          "Kind": "same rank"
+        },
+        {
+          "From": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.Dxf.StickFileSlabThicknessReader",
+          "To": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.QuantityTakeoff.SlabThicknessReader",
+          "Kind": "same rank"
+        },
+        {
+          "From": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.Dxf.StickFileSlabThicknessReader",
+          "To": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.QuantityTakeoff.VectorPageReader",
+          "Kind": "same rank"
+        },
+        {
+          "From": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.Dxf.StructuralPlanClassifier",
+          "To": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.Dxf.DxfFloodFillPlateDetector",
+          "Kind": "same rank"
+        },
+        {
+          "From": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.Dxf.StructuralPlanClassifier",
+          "To": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.Dxf.JobPublisher",
+          "Kind": "feeds"
+        },
+        {
+          "From": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.Dxf.StructuralPlanClassifier",
+          "To": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.Dxf.PlanLoopBuilder",
+          "Kind": "same rank"
+        },
+        {
+          "From": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.QuantityTakeoff.FootingScheduleReader",
+          "To": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.QuantityTakeoff.VectorPageReader",
+          "Kind": "same rank"
+        },
+        {
+          "From": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.QuantityTakeoff.ScheduleGridReader",
+          "To": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.QuantityTakeoff.DrawingDigestBuilder",
+          "Kind": "feeds"
+        },
+        {
+          "From": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.QuantityTakeoff.ScheduleGridReader",
+          "To": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.QuantityTakeoff.VectorPageReader",
+          "Kind": "same rank"
+        },
+        {
+          "From": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.QuantityTakeoff.SheetScaleReader",
+          "To": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.QuantityTakeoff.VectorPageReader",
+          "Kind": "same rank"
+        },
+        {
+          "From": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.QuantityTakeoff.SheetTitleReader",
+          "To": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.QuantityTakeoff.DrawingDigestBuilder",
+          "Kind": "feeds"
+        },
+        {
+          "From": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.QuantityTakeoff.SheetTitleReader",
+          "To": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.QuantityTakeoff.VectorPageReader",
+          "Kind": "same rank"
+        },
+        {
+          "From": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.QuantityTakeoff.StructuralGridReader",
+          "To": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.QuantityTakeoff.VectorPageReader",
+          "Kind": "same rank"
+        },
+        {
+          "From": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.QuantityTakeoff.VectorPageReader",
+          "To": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.QuantityTakeoff.DrawingDigestBuilder",
+          "Kind": "feeds"
+        },
+        {
+          "From": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.RebarChange.RebarPdfReader",
+          "To": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.RebarChange.RebarOverlayGenerator",
+          "Kind": "feeds"
+        },
+        {
+          "From": "in:.csv",
+          "To": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.QuantityTakeoff.StructuralTakeoffCsvImporter",
+          "Kind": "into"
+        },
+        {
+          "From": "in:.csv",
+          "To": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.QuantityTakeoff.TakeoffCsvImporter",
+          "Kind": "into"
+        },
+        {
+          "From": "in:.dxf",
+          "To": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.Dxf.DxfPlanReader",
+          "Kind": "into"
+        },
+        {
+          "From": "in:.dxf",
+          "To": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.Dxf.StickFileSlabThicknessReader",
+          "Kind": "into"
+        },
+        {
+          "From": "in:.e2k",
+          "To": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.Dxf.E2kGeometryReader",
+          "Kind": "into"
+        },
+        {
+          "From": "in:.ifc",
+          "To": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.QuantityTakeoff.IfcStepReader",
+          "Kind": "into"
+        },
+        {
+          "From": "in:.pdf",
+          "To": "Kor.Operations.App:Kor.Operations.EngineeringTools.PdfToSafe.PdfGeometryParser",
+          "Kind": "into"
+        },
+        {
+          "From": "in:.pdf",
+          "To": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.Dxf.StickFileSlabThicknessReader",
+          "Kind": "into"
+        },
+        {
+          "From": "in:.pdf",
+          "To": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.QuantityTakeoff.VectorPageReader",
+          "Kind": "into"
+        },
+        {
+          "From": "in:.pdf",
+          "To": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.RebarChange.PdfPageTextReader",
+          "Kind": "into"
+        },
+        {
+          "From": "in:.pdf",
+          "To": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.RebarChange.RebarPdfReader",
+          "Kind": "into"
+        },
+        {
+          "From": "in:.rvt",
+          "To": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.QuantityTakeoff.RevitScheduleImporter",
+          "Kind": "into"
+        }
+      ]
+    }
+  ],
   "Stats": {
     "Files": 1438,
     "Lines": 292714,

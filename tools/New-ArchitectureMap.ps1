@@ -591,6 +591,125 @@ try {
                 $mRows.Count, (($blocks | ForEach-Object { $_.Cols.Count }) | Measure-Object -Sum).Sum,
                 $masterCells, $sheetW, $sheetH)
 
+    # =========================================================================================
+    # THE GRAPH PAGES — nodes where the layout put them, ties drawn straight.
+    #
+    # Straight lines, not Visio's routed connectors. A routed connector is right when a diagram is
+    # boxes in rows; on a force-directed graph it fights the layout, adds elbows the layout did not
+    # ask for and takes a COM round trip each. Straight edges are what a graph of this kind is.
+    # =========================================================================================
+    $graphFill = @{
+        'drawing intake'       = 'RGB(120,170,215)'
+        'desktop app'          = 'RGB(130,190,130)'
+        'BD platform'          = 'RGB(240,170,100)'
+        'AI / MCP'             = 'RGB(180,150,215)'
+        'email + transmittals' = 'RGB(225,190,120)'
+        'shared'               = 'RGB(170,180,190)'
+        'one-off tools'        = 'RGB(215,220,225)'
+        'external'             = 'RGB(250,215,90)'
+        'artefact'             = 'RGB(255,244,214)'
+        'read'                 = 'RGB(150,195,235)'
+        'compose'              = 'RGB(150,205,150)'
+        'classify'             = 'RGB(215,175,235)'
+        'write'                = 'RGB(245,175,120)'
+    }
+
+    function New-GraphPage($doc, $graph, [double]$w, [double]$h, [switch]$Recipe) {
+        $page = $doc.Pages.Add()
+        Set-PageSize $page $w $h $graph.Name
+
+        New-Label $page 0.8 ($h - 1.1) $graph.Title 22 $accent | Out-Null
+        New-Label $page 0.8 ($h - 1.6) $graph.Subtitle 10.5 $hairline | Out-Null
+
+        $m = 1.6                                   # margin
+        $plotW = $w - (2 * $m); $plotH = $h - $m - 2.6
+        $at = @{}
+        foreach ($n in $graph.Nodes) {
+            $at[$n.Id] = @{
+                X = $m + ($n.X * $plotW)
+                Y = $m + ($n.Y * $plotH)
+            }
+        }
+
+        # EDGES FIRST, so nodes sit on top of them rather than under.
+        foreach ($e in $graph.Edges) {
+            if (-not $at.ContainsKey($e.From) -or -not $at.ContainsKey($e.To)) { continue }
+            $a = $at[$e.From]; $b = $at[$e.To]
+            $line = $page.DrawLine($a.X, $a.Y, $b.X, $b.Y)
+            $kind = $e.Kind.Split(':')[0]
+            switch ($kind) {
+                'duplicates' {
+                    $line.CellsU('LineColor').FormulaU = 'RGB(205,60,45)'
+                    $line.CellsU('LineWeight').FormulaU = ("{0} pt" -f [Math]::Min(4.0, 0.8 * [int]$e.Kind.Split(':')[1]))
+                    $line.CellsU('LinePattern').FormulaU = '1'
+                }
+                'talks to' {
+                    $line.CellsU('LineColor').FormulaU = 'RGB(215,175,60)'
+                    $line.CellsU('LineWeight').FormulaU = '0.5 pt'
+                }
+                'same rank' {
+                    $line.CellsU('LineColor').FormulaU = 'RGB(205,60,45)'
+                    $line.CellsU('LineWeight').FormulaU = '1.0 pt'
+                    $line.CellsU('EndArrow').FormulaU = '4'
+                }
+                default {
+                    $line.CellsU('LineColor').FormulaU = 'RGB(120,132,145)'
+                    $line.CellsU('LineWeight').FormulaU = '0.6 pt'
+                    if ($Recipe) { $line.CellsU('EndArrow').FormulaU = '4' }
+                }
+            }
+        }
+
+        foreach ($n in $graph.Nodes) {
+            $c = $at[$n.Id]
+            $fill = $(if ($graphFill.ContainsKey($n.Group)) { $graphFill[$n.Group] } else { 'RGB(200,205,210)' })
+
+            if ($Recipe) {
+                # An ARTEFACT is a thing you can hold, so it is a rectangle. An OPERATION is
+                # something that happens to it, so it is a diamond. That is the whole legend.
+                $hw = 1.55; $hh = 0.30
+                if ($n.Group -eq 'artefact') {
+                    $s = $page.DrawRectangle(($c.X - $hw), ($c.Y - $hh), ($c.X + $hw), ($c.Y + $hh))
+                    $s.CellsU('Rounding').FormulaU = '0.05 in'
+                } else {
+                    # A typed double[] — Visio wants a SAFEARRAY of doubles, and PowerShell's
+                    # untyped @() arrives as Object[] and will not marshal.
+                    [double[]] $pts = @(
+                        ($c.X - $hw), $c.Y, $c.X, ($c.Y + $hh),
+                        ($c.X + $hw), $c.Y, $c.X, ($c.Y - $hh),
+                        ($c.X - $hw), $c.Y)
+                    $s = $page.DrawPolyline($pts, 0)
+                }
+                $s.Text = $n.Label
+                $s.CellsU('Char.Size').FormulaU = '8 pt'
+            } else {
+                # Area in proportion to size, so a 92,000-line project reads as bigger without
+                # being ninety-two times wider than a 1,000-line one.
+                $r = 0.16 + (1.05 * [double]$n.Weight)
+                $s = $page.DrawOval(($c.X - $r), ($c.Y - $r), ($c.X + $r), ($c.Y + $r))
+                $s.Text = $n.Label
+                $s.CellsU('Char.Size').FormulaU = ("{0} pt" -f [Math]::Max(6.5, [Math]::Min(11, 5 + ($r * 5))))
+            }
+
+            $s.CellsU('FillForegnd').FormulaU = $fill
+            $s.CellsU('LineColor').FormulaU = 'RGB(70,80,92)'
+            $s.CellsU('LineWeight').FormulaU = '0.5 pt'
+            $s.CellsU('Char.Color').FormulaU = $ink
+            $s.CellsU('Para.HorzAlign').FormulaU = '1'
+            $s.CellsU('VerticalAlign').FormulaU = '1'
+        }
+        return $page
+    }
+
+    foreach ($g in $model.Graphs) {
+        if ($g.Name -eq 'Recipes') {
+            New-GraphPage $doc $g 40 26 -Recipe | Out-Null
+        } else {
+            New-GraphPage $doc $g 44 40 | Out-Null
+        }
+        Write-Host "  graph: $($g.Name) — $($g.Nodes.Count) node(s), $($g.Edges.Count) tie(s)"
+    }
+
     foreach ($p in $doc.Pages) { $p.ResizeToFitContents() }
 
     if (Test-Path $vsdxPath) { Remove-Item $vsdxPath -Force }

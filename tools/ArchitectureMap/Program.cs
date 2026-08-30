@@ -91,6 +91,7 @@ public sealed record ArchModel(
     IReadOnlyList<ArchDuplicate> Duplicates,
     IReadOnlyList<ArchOrphan> Orphans,
     IReadOnlyList<ArchCycle> Cycles,
+    IReadOnlyList<ArchGraph> Graphs,
     ArchStats Stats);
 
 public sealed record ArchProject(
@@ -136,6 +137,21 @@ public sealed record ArchOrphan(string Id, string Name, string Kind, string Proj
 
 /// <summary>Projects that reference each other round a loop. There should be none.</summary>
 public sealed record ArchCycle(IReadOnlyList<string> Projects);
+
+/// <summary>A node-link view: everything and what it is connected to, laid out so that things which
+/// pull on each other end up near each other. Positions are computed HERE and not in the renderer,
+/// because Visio has no force-directed layout and a graph drawn in rows is not a graph.</summary>
+public sealed record ArchGraph(
+    string Name,
+    string Title,
+    string Subtitle,
+    IReadOnlyList<ArchNode> Nodes,
+    IReadOnlyList<ArchGraphEdge> Edges);
+
+public sealed record ArchNode(
+    string Id, string Label, string Detail, string Group, double Weight, double X, double Y);
+
+public sealed record ArchGraphEdge(string From, string To, string Kind);
 
 // ---------------------------------------------------------------------------------------------
 
@@ -283,6 +299,21 @@ internal static class Extractor
             Duplicates: Duplicates(types),
             Orphans: Orphans(types, mentions),
             Cycles: Cycles(projectsOut),
+            Graphs: GraphBuilder.Build(
+                projectsOut,
+                types,
+                mentions,
+                formatsRaw
+                    .Where(f => typeIds.Contains(f.TypeId))
+                    .Select(f => new ArchFormat(f.TypeId, f.Ext,
+                        Roles.DirectionFor(types.First(t => t.Id == f.TypeId).Role), f.Source))
+                    .DistinctBy(f => (f.Type, f.Ext))
+                    .ToList(),
+                externalHits
+                    .Select(kv => new ArchExternal(kv.Key, ExternalSystems.KindOf(kv.Key), kv.Value.ToList()))
+                    .OrderBy(e => e.Name, StringComparer.Ordinal)
+                    .ToList(),
+                Duplicates(types)),
             Stats: new ArchStats(totalFiles, totalLines, ambiguous));
     }
 
