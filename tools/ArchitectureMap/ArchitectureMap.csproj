@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>archmap</AssemblyName>
+    <RootNamespace>Kor.Operations.ArchitectureMap</RootNamespace>
+    <!-- Not part of any solution build; run on demand by tools/New-ArchitectureMap.ps1. -->
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- 4.5.0 because that is what is already in the local NuGet cache; this must run without a
+         restore over the network. Syntax trees only — no MSBuildWorkspace, no Build.Locator, so
+         nothing here depends on the solution compiling. -->
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.5.0" />
+  </ItemGroup>
+
+</Project>
