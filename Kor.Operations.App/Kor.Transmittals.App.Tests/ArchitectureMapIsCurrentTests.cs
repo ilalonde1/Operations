@@ -12,8 +12,8 @@ namespace Kor.Operations.App.Tests;
 /// <summary>
 /// THE MAP GOES STALE OR IT IS NOT A REFERENCE.
 ///
-/// `docs/architecture/architecture.json` is extracted from the source by `tools/ArchitectureMap`,
-/// and `docs/architecture/KOR-Application-Map.vsdx` is drawn from it. The whole reason it is derived
+/// `docs/architecture/architecture.json` is extracted from the source by `Kor.Operations.Architecture`,
+/// which then draws `KOR-Application-Map.vsdx` from it. The whole reason it is derived
 /// rather than drawn is that a hand-made architecture diagram is wrong the week after it is made —
 /// and a confidently wrong map is worse than no map. So something has to notice when the code moves
 /// out from under it, and that something is this.

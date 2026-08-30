@@ -58,8 +58,58 @@ public static class Program
         Console.WriteLine($"  {model.Scripts.Count} script(s) outside any project, " +
                           $"{model.Scripts.Count(s => s.ReferencedBy == 0)} referenced by nothing");
         Console.WriteLine($"wrote {outPath}");
+
+        if (Flag(rawArgs, "--model-only")) return 0;
+
+        // ---- DRAW IT ------------------------------------------------------------------------
+        string outDir = Path.GetDirectoryName(outPath)!;
+        Console.WriteLine();
+        Console.WriteLine("rendering…");
+
+        RenderResult render;
+        try
+        {
+            render = VisioRenderer.Render(model, outDir, keepVisioOpen: Flag(rawArgs, "--keep-open"));
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or System.Runtime.InteropServices.COMException)
+        {
+            // The model is the durable artefact and it is already written. Failing to draw is worth
+            // a non-zero exit, but not worth throwing away the extraction that succeeded.
+            Console.Error.WriteLine($"could not render: {ex.Message}");
+            return 3;
+        }
+
+        foreach (string note in render.Notes) Console.WriteLine("  " + note);
+
+        // ---- ONE COMMAND MEASURES EVERY DELIVERABLE -------------------------------------------
+        Console.WriteLine();
+        Console.WriteLine("wrote:");
+        var produced = new List<string> { outPath, render.VsdxPath };
+        produced.AddRange(render.PngPaths);
+
+        var bad = new List<string>();
+        foreach (string f in produced)
+        {
+            if (!File.Exists(f)) { bad.Add($"missing: {Path.GetFileName(f)}"); Console.WriteLine($"  {Path.GetFileName(f),-52} MISSING"); continue; }
+            long size = new FileInfo(f).Length;
+            Console.WriteLine($"  {Path.GetFileName(f),-52} {size,9:N0} bytes");
+            if (size < 4096) bad.Add($"suspiciously small: {Path.GetFileName(f)}");
+        }
+
+        if (!Flag(rawArgs, "--verify")) return 0;
+
+        if (render.PngPaths.Count < 2) bad.Add($"only {render.PngPaths.Count} page(s) exported; expected at least 2");
+        if (bad.Count > 0)
+        {
+            foreach (string b in bad) Console.Error.WriteLine("  FAIL " + b);
+            return 1;
+        }
+        Console.WriteLine($"verify: {render.PngPaths.Count} page(s) and both outputs present");
         return 0;
     }
+
+    private static bool Flag(string[] args, string name)
+        => args.Any(a => a.Equals(name, StringComparison.OrdinalIgnoreCase));
 
     internal static readonly JsonSerializerOptions JsonOptions = new()
     {

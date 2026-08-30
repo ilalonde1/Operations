@@ -2,12 +2,16 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net8.0</TargetFramework>
+    <!-- net8.0-WINDOWS because the renderer drives Visio over COM. Visio has no managed API worth
+         the name, so every call goes through IDispatch on `dynamic`, and Type.GetTypeFromProgID is
+         Windows-only. The extraction half has no such dependency and does not care. -->
+    <TargetFramework>net8.0-windows</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>archmap</AssemblyName>
     <RootNamespace>Kor.Operations.Architecture</RootNamespace>
-    <!-- A first-class project in the solution. It lived under tools/ for one afternoon, which is exactly the pattern its own findings page names: a prototype that never graduates. -->
+    <!-- A first-class project in the solution. It lived under tools/ for one afternoon, which is
+         exactly the pattern its own findings page names: a prototype that never graduates. -->
     <IsPackable>false</IsPackable>
   </PropertyGroup>
 

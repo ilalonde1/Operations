@@ -34,6 +34,9 @@ public sealed class ExtractorTests
         }
     }
 
+    /// <summary>Shared with the renderer tests, which need the same tree.</summary>
+    internal static string RepoRootForTests() => RepoRoot();
+
     private static string RepoRoot()
     {
         var dir = new DirectoryInfo(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!);

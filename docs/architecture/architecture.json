@@ -873,7 +873,7 @@
       "Name": "Kor.Operations.Architecture.Tests",
       "Dir": "Kor.Operations.Architecture.Tests",
       "Cluster": "shared",
-      "Frameworks": "net8.0",
+      "Frameworks": "net8.0-windows",
       "ProjectRefs": [
         "Kor.Operations.Architecture"
       ],
