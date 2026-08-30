@@ -27,7 +27,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
-namespace Kor.Operations.ArchitectureMap;
+namespace Kor.Operations.Architecture;
 
 public static class Program
 {
@@ -55,6 +55,8 @@ public static class Program
                           $"{model.Externals.Count} external(s), {model.Verbs.Count} CLI verb(s)");
         Console.WriteLine($"  {model.Stats.Files:N0} files, {model.Stats.Lines:N0} lines, " +
                           $"{model.Stats.AmbiguousTypeNames} ambiguous type name(s) not linked");
+        Console.WriteLine($"  {model.Scripts.Count} script(s) outside any project, " +
+                          $"{model.Scripts.Count(s => s.ReferencedBy == 0)} referenced by nothing");
         Console.WriteLine($"wrote {outPath}");
         return 0;
     }
@@ -92,6 +94,7 @@ public sealed record ArchModel(
     IReadOnlyList<ArchOrphan> Orphans,
     IReadOnlyList<ArchCycle> Cycles,
     IReadOnlyList<ArchGraph> Graphs,
+    IReadOnlyList<ArchScript> Scripts,
     ArchStats Stats);
 
 public sealed record ArchProject(
@@ -125,10 +128,21 @@ public sealed record ArchVerb(string Verb, string Project);
 
 public sealed record ArchStats(int Files, int Lines, int AmbiguousTypeNames);
 
-/// <summary>One type NAME declared in more than one project. The cheapest duplication signal there
-/// is: `DeltekClientCandidate` exists four times, `CompanyMatch` and `DeltekFuzzyMatch` three times
-/// each, all on the same Deltek-matching path.</summary>
-public sealed record ArchDuplicate(string Name, IReadOnlyList<string> Projects, IReadOnlyList<string> Files);
+/// <summary>One type NAME declared in more than one project.
+///
+/// A shared name is where to LOOK, not a finding — two unrelated `Contact` records prove nothing. So
+/// <paramref name="Similarity"/> is the real measure: the declarations are pulled out of their files
+/// and compared as text, and this is the closest pair, 0 to 1. On this repo 20 of 38 come out above
+/// 0.9 and 10 share nothing but the name, which is the difference between a list and a finding.
+///
+/// <paramref name="Lines"/> is the larger declaration's length, so the cost is visible: a 93-line
+/// type at 0.85 is worth more attention than a 1-line record at 0.97.</summary>
+public sealed record ArchDuplicate(
+    string Name,
+    IReadOnlyList<string> Projects,
+    IReadOnlyList<string> Files,
+    double Similarity,
+    int Lines);
 
 /// <summary>A type no other type names. A CANDIDATE, not a verdict — a type reached only through
 /// XAML, DI, reflection or a generic parameter is invisible to a syntax-level read, and this counts
@@ -155,7 +169,7 @@ public sealed record ArchGraphEdge(string From, string To, string Kind);
 
 // ---------------------------------------------------------------------------------------------
 
-internal static class Extractor
+public static class Extractor
 {
     public static ArchModel Extract(string root)
     {
@@ -169,6 +183,9 @@ internal static class Extractor
         var formatsRaw = new List<(string TypeId, string Ext, string Source)>();
         var verbs = new List<ArchVerb>();
         var externalHits = new Dictionary<string, SortedSet<string>>(StringComparer.OrdinalIgnoreCase);
+        // Kept in memory only, never serialised: this is 292k lines of source and the point of it is
+        // the single similarity number it produces, not the text.
+        var declarations = new Dictionary<string, List<string>>(StringComparer.Ordinal);
         var fileCounts = new Dictionary<string, (int Files, int Lines)>(StringComparer.OrdinalIgnoreCase);
         int totalFiles = 0, totalLines = 0;
 
@@ -225,6 +242,7 @@ internal static class Extractor
                 };
 
                 types.Add(new ArchType(id, name, kind, ns, projectName, rel, Roles.For(name, rel)));
+                declarations[id] = NormaliseDeclaration(decl.ToString());
 
                 foreach (string ident in decl.DescendantNodes()
                              .OfType<IdentifierNameSyntax>()
@@ -296,7 +314,7 @@ internal static class Extractor
                 .DistinctBy(v => (v.Verb, v.Project))
                 .OrderBy(v => v.Project, StringComparer.Ordinal).ThenBy(v => v.Verb, StringComparer.Ordinal)
                 .ToList(),
-            Duplicates: Duplicates(types),
+            Duplicates: Duplicates(types, declarations),
             Orphans: Orphans(types, mentions),
             Cycles: Cycles(projectsOut),
             Graphs: GraphBuilder.Build(
@@ -313,7 +331,8 @@ internal static class Extractor
                     .Select(kv => new ArchExternal(kv.Key, ExternalSystems.KindOf(kv.Key), kv.Value.ToList()))
                     .OrderBy(e => e.Name, StringComparer.Ordinal)
                     .ToList(),
-                Duplicates(types)),
+                Duplicates(types, declarations)),
+            Scripts: ScriptInventory.Collect(root),
             Stats: new ArchStats(totalFiles, totalLines, ambiguous));
     }
 
@@ -331,7 +350,7 @@ internal static class Extractor
             // source and the diagram grows four external systems this repo does not talk to — Visio,
             // Excel and Revit appeared as dependencies whose only evidence was this file listing
             // their names.
-            if (rel.StartsWith("tools/ArchitectureMap/", StringComparison.OrdinalIgnoreCase)) continue;
+            if (rel.StartsWith("Kor.Operations.Architecture/", StringComparison.OrdinalIgnoreCase)) continue;
 
             if (rel.Contains("/bin/", StringComparison.OrdinalIgnoreCase) ||
                 rel.Contains("/obj/", StringComparison.OrdinalIgnoreCase) ||
@@ -350,7 +369,7 @@ internal static class Extractor
         foreach (string path in Directory.EnumerateFiles(root, "*.csproj", SearchOption.AllDirectories))
         {
             string rel = Rel(root, path);
-            if (rel.StartsWith("tools/ArchitectureMap/", StringComparison.OrdinalIgnoreCase) ||
+            if (rel.StartsWith("Kor.Operations.Architecture/", StringComparison.OrdinalIgnoreCase) ||
                 rel.Contains("/bin/", StringComparison.OrdinalIgnoreCase) ||
                 rel.Contains("/obj/", StringComparison.OrdinalIgnoreCase))
                 continue;
@@ -432,18 +451,103 @@ internal static class Extractor
     private static string Rel(string root, string path)
         => Path.GetRelativePath(root, path).Replace('\\', '/');
 
-    /// <summary>One name, more than one project.</summary>
-    private static List<ArchDuplicate> Duplicates(List<ArchType> types)
+    /// <summary>One name, more than one project — and how alike the declarations actually are.</summary>
+    private static List<ArchDuplicate> Duplicates(
+        List<ArchType> types, Dictionary<string, List<string>> declarations)
         => types
             .GroupBy(t => t.Name, StringComparer.Ordinal)
             .Where(g => g.Select(t => t.Project).Distinct(StringComparer.Ordinal).Count() > 1)
-            .Select(g => new ArchDuplicate(
-                g.Key,
-                g.Select(t => t.Project).Distinct(StringComparer.Ordinal).OrderBy(x => x, StringComparer.Ordinal).ToList(),
-                g.Select(t => t.File).Distinct(StringComparer.Ordinal).OrderBy(x => x, StringComparer.Ordinal).ToList()))
-            .OrderByDescending(d => d.Projects.Count)
+            .Select(g =>
+            {
+                var bodies = g.Select(t => t.Id)
+                    .Where(declarations.ContainsKey)
+                    .Select(id => declarations[id])
+                    .ToList();
+
+                double best = 0;
+                for (int i = 0; i < bodies.Count; i++)
+                    for (int j = i + 1; j < bodies.Count; j++)
+                        best = Math.Max(best, Similarity(bodies[i], bodies[j]));
+
+                return new ArchDuplicate(
+                    g.Key,
+                    g.Select(t => t.Project).Distinct(StringComparer.Ordinal).OrderBy(x => x, StringComparer.Ordinal).ToList(),
+                    g.Select(t => t.File).Distinct(StringComparer.Ordinal).OrderBy(x => x, StringComparer.Ordinal).ToList(),
+                    Math.Round(best, 3, MidpointRounding.AwayFromZero),
+                    bodies.Count == 0 ? 0 : bodies.Max(b => b.Count));
+            })
+            .OrderByDescending(d => d.Similarity)
+            .ThenByDescending(d => d.Lines)
             .ThenBy(d => d.Name, StringComparer.Ordinal)
             .ToList();
+
+    /// <summary>How alike two declarations are, 0 to 1, by longest common subsequence OF TOKENS.
+    ///
+    /// TOKENS, not lines, and not characters. Lines were tried first and are wrong at both ends: a
+    /// one-line record whose single line differs by a field name scores ZERO, when any person would
+    /// call it near-identical, and it disagreed with a character-level check on ten of thirty-eight
+    /// types. Characters are right but quadratic on 15,000 of them, and a 371-line duplicate is
+    /// exactly the case that matters most.
+    ///
+    /// A token sequence behaves like the character measure while being five times shorter. Capped at
+    /// 20,000 tokens a side so the table cannot run away.</summary>
+    private static double Similarity(List<string> a, List<string> b)
+    {
+        var ta = Tokenise(a);
+        var tb = Tokenise(b);
+        if (ta.Count == 0 || tb.Count == 0) return 0;
+        if (ta.Count > 20000 || tb.Count > 20000)
+            return ta.SequenceEqual(tb, StringComparer.Ordinal) ? 1 : 0;
+
+        var prev = new int[tb.Count + 1];
+        var cur = new int[tb.Count + 1];
+        for (int i = 1; i <= ta.Count; i++)
+        {
+            for (int j = 1; j <= tb.Count; j++)
+                cur[j] = string.Equals(ta[i - 1], tb[j - 1], StringComparison.Ordinal)
+                    ? prev[j - 1] + 1
+                    : Math.Max(prev[j], cur[j - 1]);
+            (prev, cur) = (cur, prev);
+            Array.Clear(cur);
+        }
+        return 2.0 * prev[tb.Count] / (ta.Count + tb.Count);
+    }
+
+    private static List<string> Tokenise(List<string> lines)
+    {
+        var tokens = new List<string>();
+        foreach (string line in lines)
+        {
+            int i = 0;
+            while (i < line.Length)
+            {
+                char c = line[i];
+                if (char.IsWhiteSpace(c)) { i++; continue; }
+                if (char.IsLetterOrDigit(c) || c == '_')
+                {
+                    int start = i;
+                    while (i < line.Length && (char.IsLetterOrDigit(line[i]) || line[i] == '_')) i++;
+                    tokens.Add(line[start..i]);
+                }
+                else { tokens.Add(c.ToString()); i++; }
+            }
+        }
+        return tokens;
+    }
+
+    /// <summary>A declaration's lines with comments and blanks removed — the comparison is about
+    /// code, and one copy having kept a doc comment is not a difference worth counting.</summary>
+    private static List<string> NormaliseDeclaration(string text)
+    {
+        var lines = new List<string>();
+        foreach (string raw in text.Split('\n'))
+        {
+            string line = raw.Trim();
+            if (line.Length == 0 || line.StartsWith("//", StringComparison.Ordinal)) continue;
+            lines.Add(line);
+        }
+        return lines;
+    }
 
     /// <summary>Types nothing else names. Tests are excluded because a test is meant to be the end
     /// of a chain, and UI is excluded because XAML wires it up where a syntax read cannot see.</summary>
@@ -493,7 +597,7 @@ internal static class Extractor
 
 /// <summary>What a type DOES, from what it is called. Mechanical and checkable — the repo names
 /// its parts consistently, and where it does not the role comes out "model", which is honest.</summary>
-internal static class Roles
+public static class Roles
 {
     public static string For(string name, string relPath)
     {
@@ -527,7 +631,7 @@ internal static class Roles
 
 /// <summary>Which part of the business a project belongs to. Declared, because no naming rule
 /// recovers it: `Kor.Opportunities.*` is BD, `Kor.Operations.EngineeringTools.*` is drawings.</summary>
-internal static class Clusters
+public static class Clusters
 {
     public static string For(string name, string dir)
     {
@@ -557,7 +661,7 @@ internal static class Clusters
 ///   using    a file that pulls in UglyToad.PdfPig reads PDF whatever it calls itself.
 ///   literal  an extension written out in the source.
 /// </summary>
-internal static class FileFormats
+public static class FileFormats
 {
     private static readonly Regex Extension = new(
         @"\.(?:dxf|dwg|e2k|f2k|edb|pdf|ifc|rvt|xlsx|xls|sco|csv|json|docx|msg|zip)\b",
@@ -605,7 +709,7 @@ internal static class FileFormats
 
 /// <summary>Systems outside this repository that the code talks to. Declared with the marker that
 /// proves it, so every entry on the diagram can be traced back to a line of code.</summary>
-internal static class ExternalSystems
+public static class ExternalSystems
 {
     private static readonly (string Name, string Kind, string Marker)[] Known =
     {

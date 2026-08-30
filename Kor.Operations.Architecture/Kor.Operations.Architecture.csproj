@@ -6,8 +6,8 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>archmap</AssemblyName>
-    <RootNamespace>Kor.Operations.ArchitectureMap</RootNamespace>
-    <!-- Not part of any solution build; run on demand by tools/New-ArchitectureMap.ps1. -->
+    <RootNamespace>Kor.Operations.Architecture</RootNamespace>
+    <!-- A first-class project in the solution. It lived under tools/ for one afternoon, which is exactly the pattern its own findings page names: a prototype that never graduates. -->
     <IsPackable>false</IsPackable>
   </PropertyGroup>
 

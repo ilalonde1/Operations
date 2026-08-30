@@ -20,9 +20,9 @@
 
 using System.Globalization;
 
-namespace Kor.Operations.ArchitectureMap;
+namespace Kor.Operations.Architecture;
 
-internal static class GraphBuilder
+public static class GraphBuilder
 {
     public static List<ArchGraph> Build(
         List<ArchProject> projects,

@@ -44,11 +44,11 @@ $vsdxPath = Join-Path $outDir 'KOR-Application-Map.vsdx'
 # ---------------------------------------------------------------------------------------------
 
 if (-not $SkipExtract) {
-    $proj = Join-Path $Root 'tools/ArchitectureMap/ArchitectureMap.csproj'
+    $proj = Join-Path $Root 'Kor.Operations.Architecture/Kor.Operations.Architecture.csproj'
     Write-Host 'extracting…' -ForegroundColor Cyan
     & dotnet build $proj -v q --nologo | Out-Null
     if ($LASTEXITCODE -ne 0) { throw "archmap build failed" }
-    $exe = Join-Path $Root 'tools/ArchitectureMap/bin/Debug/net8.0/archmap.exe'
+    $exe = Join-Path $Root 'Kor.Operations.Architecture/bin/Debug/net8.0/archmap.exe'
     & $exe --root $Root --out $modelPath
     if ($LASTEXITCODE -ne 0) { throw "archmap failed" }
 }
@@ -700,6 +700,25 @@ try {
         }
         return $page
     }
+
+    # ---- THE NOOKS AND CRANNIES --------------------------------------------------------------
+    # A map built only from .csproj and .cs claims this system is 62 projects of C#. It is not:
+    # PowerShell deploys it, Python checks its shipped PDFs, SQL migrates its database. None of that
+    # appeared anywhere until now, so none of it could be reviewed, retired, or even counted.
+    $scripts = @($model.Scripts | Where-Object { $_.Kind -ne 'SQL migration' })
+    $orphanScripts = @($scripts | Where-Object { $_.ReferencedBy -eq 0 } | Sort-Object { -$_.Lines })
+    $migrations = @($model.Scripts | Where-Object { $_.Kind -eq 'SQL migration' })
+
+    $scriptLines = @($orphanScripts | ForEach-Object {
+        "{0,5} lines  {1,-12} {2}" -f $_.Lines, $_.Kind, $_.Path
+    })
+    New-ListPage $doc 'Nooks and crannies' 'Scripts nothing references' (
+        "$($scripts.Count) script(s) live outside every project — $(($scripts | Where-Object Kind -eq 'PowerShell').Count) PowerShell, " +
+        "$(($scripts | Where-Object Kind -eq 'Python').Count) Python, $(($scripts | Where-Object Kind -eq 'SQL').Count) SQL. " +
+        "These $($orphanScripts.Count) are named by NO other file in the repository: dead, or run by a person from memory. " +
+        "The $($migrations.Count) numbered SQL migrations are excluded — a runner applies those in order and nothing names them."
+    ) $scriptLines 'RGB(238,232,244)' 46 | Out-Null
+    Write-Host "  list: $($orphanScripts.Count) unreferenced script(s) of $($scripts.Count) (+ $($migrations.Count) migrations)"
 
     foreach ($g in $model.Graphs) {
         if ($g.Name -eq 'Recipes') {

@@ -64,6 +64,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Kor.Operations.EngineeringT
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Kor.Operations.EngineeringTools.Core.Tests", "..\Kor.Operations.EngineeringTools.Core.Tests\Kor.Operations.EngineeringTools.Core.Tests.csproj", "{51BA11BA-C2B1-4DE6-908A-8150EC060AC4}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Kor.Operations.Architecture", "..\Kor.Operations.Architecture\Kor.Operations.Architecture.csproj", "{59D0B1E0-2C31-4164-8685-004461AB3208}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Kor.Operations.Architecture.Tests", "..\Kor.Operations.Architecture.Tests\Kor.Operations.Architecture.Tests.csproj", "{7FCF194E-0F83-4897-9C50-3C6411B1E7CD}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -186,6 +190,14 @@ Global
 		{51BA11BA-C2B1-4DE6-908A-8150EC060AC4}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{51BA11BA-C2B1-4DE6-908A-8150EC060AC4}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{51BA11BA-C2B1-4DE6-908A-8150EC060AC4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{59D0B1E0-2C31-4164-8685-004461AB3208}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{59D0B1E0-2C31-4164-8685-004461AB3208}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{59D0B1E0-2C31-4164-8685-004461AB3208}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{59D0B1E0-2C31-4164-8685-004461AB3208}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7FCF194E-0F83-4897-9C50-3C6411B1E7CD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7FCF194E-0F83-4897-9C50-3C6411B1E7CD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7FCF194E-0F83-4897-9C50-3C6411B1E7CD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7FCF194E-0F83-4897-9C50-3C6411B1E7CD}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

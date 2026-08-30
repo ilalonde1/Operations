@@ -97,7 +97,7 @@ public sealed class ArchitectureMapIsCurrentTests
 
             // The mapper does not map itself: its marker table would otherwise register as evidence
             // of external systems this repo does not talk to.
-            if (rel.StartsWith("tools/ArchitectureMap/", StringComparison.OrdinalIgnoreCase)) continue;
+            if (rel.StartsWith("Kor.Operations.Architecture/", StringComparison.OrdinalIgnoreCase)) continue;
 
             XDocument doc;
             try { doc = XDocument.Load(path); }

@@ -870,6 +870,22 @@
       "Lines": 397
     },
     {
+      "Name": "Kor.Operations.Architecture.Tests",
+      "Dir": "Kor.Operations.Architecture.Tests",
+      "Cluster": "shared",
+      "Frameworks": "net8.0",
+      "ProjectRefs": [
+        "Kor.Operations.Architecture"
+      ],
+      "Packages": [
+        "Microsoft.NET.Test.Sdk",
+        "xunit",
+        "xunit.runner.visualstudio"
+      ],
+      "Files": 1,
+      "Lines": 148
+    },
+    {
       "Name": "Kor.Operations.Business",
       "Dir": "Kor.Operations.Business",
       "Cluster": "shared",
@@ -9615,6 +9631,15 @@
       "Project": "Kor.Operations.App",
       "File": "Kor.Operations.App/TeamsPickerWindow.xaml.cs",
       "Role": "ui"
+    },
+    {
+      "Id": "Kor.Operations.Architecture.Tests:Kor.Operations.Architecture.Tests.ExtractorTests",
+      "Name": "ExtractorTests",
+      "Kind": "class",
+      "Namespace": "Kor.Operations.Architecture.Tests",
+      "Project": "Kor.Operations.Architecture.Tests",
+      "File": "Kor.Operations.Architecture.Tests/ExtractorTests.cs",
+      "Role": "test"
     },
     {
       "Id": "Kor.Operations.Business:Kor.Operations.App.Options.DeltekOdbcOptions",
@@ -35463,6 +35488,10 @@
       "To": "Kor.Operations.EngineeringTools.Core.Tests:Kor.Operations.EngineeringTools.Core.Tests.EngineerModelBenchmarkTests.Members"
     },
     {
+      "From": "Kor.Operations.Architecture.Tests:Kor.Operations.Architecture.Tests.ExtractorTests",
+      "To": "Kor.Operations.EngineeringTools.Core:Kor.Operations.EngineeringTools.Dxf.PublishPlan.Model"
+    },
+    {
       "From": "Kor.Operations.Business:Kor.Operations.Financials.ArFinancialsResult",
       "To": "Kor.Operations.Business:Kor.Operations.Financials.ArInvoiceOutstandingRow"
     },
@@ -54190,6 +54219,7 @@
         "Kor.Operations.App/Views/CollectionsCaseViewModel.cs",
         "Kor.Operations.App/Views/CollectionsViewModel.cs",
         "Kor.Operations.App/Views/CollectionsWindow.xaml.cs",
+        "Kor.Operations.Architecture.Tests/ExtractorTests.cs",
         "Kor.Operations.Business/Analytics/AnalyticsModels.cs",
         "Kor.Operations.Business/Analytics/EmployeeAnalyticsService.cs",
         "Kor.Operations.Business/Analytics/FirmAnalyticsService.cs",
@@ -54571,6 +54601,469 @@
   ],
   "Duplicates": [
     {
+      "Name": "KorMapSyncRunner",
+      "Projects": [
+        "(loose)",
+        "Kor.Operations.FileSync.Service"
+      ],
+      "Files": [
+        "Kor.Operations.FileSync.Service/Jobs/KorMapSync/KorMapSyncRunner.cs",
+        "docs/map-audit/KorMapSyncRunner.cs"
+      ],
+      "Similarity": 1,
+      "Lines": 371
+    },
+    {
+      "Name": "MajorProjectRecord",
+      "Projects": [
+        "BdResearchImport",
+        "Kor.Opportunities.Data"
+      ],
+      "Files": [
+        "Kor.Opportunities.Data/Ingestion/Providers/AbMajorProjectsInventoryProvider.cs",
+        "Kor.Opportunities.Data/Ingestion/Providers/BcMajorProjectsInventoryProvider.cs",
+        "Kor.Opportunities.Data/Ingestion/Providers/CaSocrataMajorProjectsInventoryProvider.cs",
+        "Kor.Opportunities.Data/Ingestion/Providers/CeqanetMajorProjectsInventoryProvider.cs",
+        "tools/BdResearchImport/Program.cs"
+      ],
+      "Similarity": 1,
+      "Lines": 49
+    },
+    {
+      "Name": "ImportConfig",
+      "Projects": [
+        "BdDeltekLink",
+        "BdOpportunityPurge",
+        "BdOrphanOrgPurge",
+        "BdSeedImport"
+      ],
+      "Files": [
+        "tools/BdDeltekLink/Program.cs",
+        "tools/BdOpportunityPurge/Program.cs",
+        "tools/BdOrphanOrgPurge/Program.cs",
+        "tools/BdSeedImport/Program.cs"
+      ],
+      "Similarity": 1,
+      "Lines": 39
+    },
+    {
+      "Name": "CredentialRedactingPolicy",
+      "Projects": [
+        "Kor.Operations.App",
+        "Kor.Operations.FileSync.Service"
+      ],
+      "Files": [
+        "Kor.Operations.App/Logging/CredentialRedactingPolicy.cs",
+        "Kor.Operations.FileSync.Service/Logging/CredentialRedactingPolicy.cs"
+      ],
+      "Similarity": 1,
+      "Lines": 17
+    },
+    {
+      "Name": "CredentialRedactingEnricher",
+      "Projects": [
+        "Kor.Operations.App",
+        "Kor.Operations.FileSync.Service"
+      ],
+      "Files": [
+        "Kor.Operations.App/Logging/CredentialRedactingEnricher.cs",
+        "Kor.Operations.FileSync.Service/Logging/CredentialRedactingEnricher.cs"
+      ],
+      "Similarity": 1,
+      "Lines": 14
+    },
+    {
+      "Name": "DeltekProject",
+      "Projects": [
+        "(loose)",
+        "Kor.Operations.FileSync.Service"
+      ],
+      "Files": [
+        "Kor.Operations.FileSync.Service/Jobs/KorMapSync/KorMapSyncRunner.cs",
+        "docs/map-audit/KorMapSyncRunner.cs"
+      ],
+      "Similarity": 1,
+      "Lines": 10
+    },
+    {
+      "Name": "WpLocation",
+      "Projects": [
+        "(loose)",
+        "Kor.Operations.FileSync.Service"
+      ],
+      "Files": [
+        "Kor.Operations.FileSync.Service/Jobs/KorMapSync/KorMapSyncRunner.cs",
+        "docs/map-audit/KorMapSyncRunner.cs"
+      ],
+      "Similarity": 1,
+      "Lines": 9
+    },
+    {
+      "Name": "CredentialPatterns",
+      "Projects": [
+        "Kor.Operations.App",
+        "Kor.Operations.FileSync.Service"
+      ],
+      "Files": [
+        "Kor.Operations.App/Logging/CredentialPatterns.cs",
+        "Kor.Operations.FileSync.Service/Logging/CredentialPatterns.cs"
+      ],
+      "Similarity": 1,
+      "Lines": 6
+    },
+    {
+      "Name": "EnrichmentRow",
+      "Projects": [
+        "BdIntelExtract",
+        "Kor.Opportunities.Worker"
+      ],
+      "Files": [
+        "Kor.Opportunities.Worker/Jobs/IntelExtractionCatchUpJob.cs",
+        "tools/BdIntelExtract/Program.cs"
+      ],
+      "Similarity": 1,
+      "Lines": 6
+    },
+    {
+      "Name": "DeltekClientCandidate",
+      "Projects": [
+        "BdDeltekLink",
+        "BdSeedImport",
+        "Kor.Operations.App",
+        "Kor.Opportunities.Worker"
+      ],
+      "Files": [
+        "Kor.Operations.App/Crm/IDeltekLookupService.cs",
+        "Kor.Opportunities.Worker/Services/BdDeltekLinkDryRunJob.cs",
+        "tools/BdDeltekLink/Program.cs",
+        "tools/BdSeedImport/Program.cs"
+      ],
+      "Similarity": 1,
+      "Lines": 5
+    },
+    {
+      "Name": "CompanyMatch",
+      "Projects": [
+        "BdDeltekLink",
+        "BdSeedImport",
+        "Kor.Opportunities.Worker"
+      ],
+      "Files": [
+        "Kor.Opportunities.Worker/Services/BdDeltekLinkDryRunJob.cs",
+        "tools/BdDeltekLink/Program.cs",
+        "tools/BdSeedImport/Program.cs"
+      ],
+      "Similarity": 1,
+      "Lines": 4
+    },
+    {
+      "Name": "AssemblyMarker",
+      "Projects": [
+        "Kor.Opportunities.Core",
+        "Kor.Opportunities.Data"
+      ],
+      "Files": [
+        "Kor.Opportunities.Core/AssemblyMarker.cs",
+        "Kor.Opportunities.Data/AssemblyMarker.cs"
+      ],
+      "Similarity": 1,
+      "Lines": 3
+    },
+    {
+      "Name": "ScrapedSupplier",
+      "Projects": [
+        "ApcInterestBackfill",
+        "Kor.Opportunities.Data"
+      ],
+      "Files": [
+        "Kor.Opportunities.Data/Ingestion/Scraping/ApcInterestExtractor.cs",
+        "tools/ApcInterestBackfill/Program.cs"
+      ],
+      "Similarity": 0.968,
+      "Lines": 1
+    },
+    {
+      "Name": "TargetOpp",
+      "Projects": [
+        "ApcInterestBackfill",
+        "Kor.Opportunities.Worker"
+      ],
+      "Files": [
+        "Kor.Opportunities.Worker/Services/ApcInterestEnrichmentJob.cs",
+        "Kor.Opportunities.Worker/Services/BcBidPlanTakerEnrichmentJob.cs",
+        "tools/ApcInterestBackfill/Program.cs"
+      ],
+      "Similarity": 0.966,
+      "Lines": 1
+    },
+    {
+      "Name": "LinkPlan",
+      "Projects": [
+        "BdDeltekLink",
+        "Kor.Opportunities.Worker"
+      ],
+      "Files": [
+        "Kor.Opportunities.Worker/Services/BdDeltekLinkDryRunJob.cs",
+        "tools/BdDeltekLink/Program.cs"
+      ],
+      "Similarity": 0.963,
+      "Lines": 5
+    },
+    {
+      "Name": "DeltekContactCandidate",
+      "Projects": [
+        "BdSeedImport",
+        "Kor.Operations.App"
+      ],
+      "Files": [
+        "Kor.Operations.App/Crm/IDeltekLookupService.cs",
+        "tools/BdSeedImport/Program.cs"
+      ],
+      "Similarity": 0.962,
+      "Lines": 7
+    },
+    {
+      "Name": "LinkPlanRow",
+      "Projects": [
+        "BdDeltekLink",
+        "Kor.Opportunities.Worker"
+      ],
+      "Files": [
+        "Kor.Opportunities.Worker/Services/BdDeltekLinkDryRunJob.cs",
+        "tools/BdDeltekLink/Program.cs"
+      ],
+      "Similarity": 0.958,
+      "Lines": 1
+    },
+    {
+      "Name": "ReviewRow",
+      "Projects": [
+        "BdDeltekLink",
+        "Kor.Opportunities.Worker"
+      ],
+      "Files": [
+        "Kor.Opportunities.Worker/Services/BdDeltekLinkDryRunJob.cs",
+        "tools/BdDeltekLink/Program.cs"
+      ],
+      "Similarity": 0.958,
+      "Lines": 1
+    },
+    {
+      "Name": "DedupCandidateRow",
+      "Projects": [
+        "BdDeltekLink",
+        "Kor.Opportunities.Worker"
+      ],
+      "Files": [
+        "Kor.Opportunities.Worker/Services/BdDeltekLinkDryRunJob.cs",
+        "tools/BdDeltekLink/Program.cs"
+      ],
+      "Similarity": 0.952,
+      "Lines": 1
+    },
+    {
+      "Name": "CanonicalOrgTarget",
+      "Projects": [
+        "BdDeltekLink",
+        "Kor.Opportunities.Worker"
+      ],
+      "Files": [
+        "Kor.Opportunities.Worker/Services/BdDeltekLinkDryRunJob.cs",
+        "tools/BdDeltekLink/Program.cs"
+      ],
+      "Similarity": 0.933,
+      "Lines": 1
+    },
+    {
+      "Name": "Built",
+      "Projects": [
+        "Kor.Operations.EngineeringTools.Core",
+        "Kor.Operations.EngineeringTools.Core.Tests"
+      ],
+      "Files": [
+        "Kor.Operations.EngineeringTools.Core.Tests/GeneratedModel.cs",
+        "Kor.Operations.EngineeringTools.Core.Tests/ModelIntegrityTests.cs",
+        "Kor.Operations.EngineeringTools.Core/Dxf/JobPublisher.cs"
+      ],
+      "Similarity": 0.929,
+      "Lines": 10
+    },
+    {
+      "Name": "SerilogBootstrap",
+      "Projects": [
+        "Kor.Operations.FileSync.Service",
+        "Kor.Opportunities.Worker"
+      ],
+      "Files": [
+        "Kor.Operations.FileSync.Service/Logging/SerilogBootstrap.cs",
+        "Kor.Opportunities.Worker/Logging/SerilogBootstrap.cs"
+      ],
+      "Similarity": 0.909,
+      "Lines": 25
+    },
+    {
+      "Name": "DeltekFuzzyMatch",
+      "Projects": [
+        "BdDeltekLink",
+        "BdSeedImport",
+        "Kor.Opportunities.Worker"
+      ],
+      "Files": [
+        "Kor.Opportunities.Worker/Services/BdDeltekLinkDryRunJob.cs",
+        "tools/BdDeltekLink/Program.cs",
+        "tools/BdSeedImport/Program.cs"
+      ],
+      "Similarity": 0.895,
+      "Lines": 93
+    },
+    {
+      "Name": "ToolOptions",
+      "Projects": [
+        "AwardOllamaBackfill",
+        "BcMpiImporter",
+        "GovCanEngineeringImport",
+        "PrimeRfpClassifierBackfill"
+      ],
+      "Files": [
+        "tools/AwardOllamaBackfill/Program.cs",
+        "tools/BcMpiImporter/Program.cs",
+        "tools/GovCanEngineeringImport/Program.cs",
+        "tools/PrimeRfpClassifierBackfill/Program.cs"
+      ],
+      "Similarity": 0.843,
+      "Lines": 96
+    },
+    {
+      "Name": "ImportStats",
+      "Projects": [
+        "BcMpiImporter",
+        "BdResearchImport",
+        "BdSeedImport",
+        "GovCanEngineeringImport",
+        "Kor.Opportunities.ApcImport"
+      ],
+      "Files": [
+        "Kor.Opportunities.ApcImport/Program.cs",
+        "tools/BcMpiImporter/Program.cs",
+        "tools/BdResearchImport/Program.cs",
+        "tools/BdSeedImport/Program.cs",
+        "tools/GovCanEngineeringImport/Program.cs"
+      ],
+      "Similarity": 0.816,
+      "Lines": 18
+    },
+    {
+      "Name": "ProjectEntry",
+      "Projects": [
+        "EmailFilerv2",
+        "Kor.Operations.App"
+      ],
+      "Files": [
+        "EmailFiler/EmailFilerv2/ItemsToFileProcessor.cs",
+        "Kor.Operations.App/Email/ProjectFolderCatalogService.cs",
+        "Kor.Operations.App/QuickTransferWindow.xaml.cs"
+      ],
+      "Similarity": 0.8,
+      "Lines": 6
+    },
+    {
+      "Name": "PurgeOptions",
+      "Projects": [
+        "BdOpportunityPurge",
+        "BdOrphanOrgPurge"
+      ],
+      "Files": [
+        "tools/BdOpportunityPurge/Program.cs",
+        "tools/BdOrphanOrgPurge/Program.cs"
+      ],
+      "Similarity": 0.795,
+      "Lines": 43
+    },
+    {
+      "Name": "ImportOptions",
+      "Projects": [
+        "BdCanonicalDedup",
+        "BdIntelExtract",
+        "BdResearchImport",
+        "BdSeedImport",
+        "Kor.Operations.ImportTool"
+      ],
+      "Files": [
+        "Kor.Operations.ImportTool/ImportRunner.cs",
+        "tools/BdCanonicalDedup/Program.cs",
+        "tools/BdIntelExtract/Program.cs",
+        "tools/BdResearchImport/Program.cs",
+        "tools/BdSeedImport/Program.cs"
+      ],
+      "Similarity": 0.776,
+      "Lines": 105
+    },
+    {
+      "Name": "ImportResult",
+      "Projects": [
+        "Kor.Operations.App",
+        "Kor.Opportunities.Data"
+      ],
+      "Files": [
+        "Kor.Operations.App/Opportunities/CustomProposalImportService.cs",
+        "Kor.Opportunities.Data/Awards/BuildingPermitsImportService.cs"
+      ],
+      "Similarity": 0.762,
+      "Lines": 6
+    },
+    {
+      "Name": "FavoriteProject",
+      "Projects": [
+        "EmailFilerv2",
+        "Kor.Operations.App"
+      ],
+      "Files": [
+        "EmailFiler/EmailFilerv2/SqlFavoritesRepository.cs",
+        "Kor.Operations.App/Preferences/PreferencesModels.cs"
+      ],
+      "Similarity": 0.754,
+      "Lines": 5
+    },
+    {
+      "Name": "ActivityRow",
+      "Projects": [
+        "Kor.Operations.App",
+        "Kor.Operations.Data"
+      ],
+      "Files": [
+        "Kor.Operations.App/DashboardWindow.xaml.cs",
+        "Kor.Operations.Data/SqlTransmittalsStore.cs"
+      ],
+      "Similarity": 0.737,
+      "Lines": 9
+    },
+    {
+      "Name": "Contact",
+      "Projects": [
+        "BdApolloEnrich",
+        "Kor.Opportunities.Worker"
+      ],
+      "Files": [
+        "Kor.Opportunities.Worker/Services/Reporting/WeeklyAttackSheetJob.cs",
+        "tools/BdApolloEnrich/Program.cs"
+      ],
+      "Similarity": 0.708,
+      "Lines": 1
+    },
+    {
+      "Name": "DeltekLookupCache",
+      "Projects": [
+        "BdDeltekLink",
+        "BdSeedImport"
+      ],
+      "Files": [
+        "tools/BdDeltekLink/Program.cs",
+        "tools/BdSeedImport/Program.cs"
+      ],
+      "Similarity": 0.559,
+      "Lines": 72
+    },
+    {
       "Name": "Program",
       "Projects": [
         "AwardOllamaBackfill",
@@ -54609,112 +55102,35 @@
         "tools/BulkTenantOnboarder/Program.cs",
         "tools/GovCanEngineeringImport/Program.cs",
         "tools/PrimeRfpClassifierBackfill/Program.cs"
-      ]
-    },
-    {
-      "Name": "ImportOptions",
-      "Projects": [
-        "BdCanonicalDedup",
-        "BdIntelExtract",
-        "BdResearchImport",
-        "BdSeedImport",
-        "Kor.Operations.ImportTool"
       ],
-      "Files": [
-        "Kor.Operations.ImportTool/ImportRunner.cs",
-        "tools/BdCanonicalDedup/Program.cs",
-        "tools/BdIntelExtract/Program.cs",
-        "tools/BdResearchImport/Program.cs",
-        "tools/BdSeedImport/Program.cs"
-      ]
+      "Similarity": 0.552,
+      "Lines": 7721
     },
     {
-      "Name": "ImportStats",
+      "Name": "DeadlineRow",
       "Projects": [
-        "BcMpiImporter",
-        "BdResearchImport",
-        "BdSeedImport",
-        "GovCanEngineeringImport",
-        "Kor.Opportunities.ApcImport"
-      ],
-      "Files": [
-        "Kor.Opportunities.ApcImport/Program.cs",
-        "tools/BcMpiImporter/Program.cs",
-        "tools/BdResearchImport/Program.cs",
-        "tools/BdSeedImport/Program.cs",
-        "tools/GovCanEngineeringImport/Program.cs"
-      ]
-    },
-    {
-      "Name": "DeltekClientCandidate",
-      "Projects": [
-        "BdDeltekLink",
-        "BdSeedImport",
         "Kor.Operations.App",
-        "Kor.Opportunities.Worker"
+        "Kor.Operations.FileSync.Service"
       ],
       "Files": [
-        "Kor.Operations.App/Crm/IDeltekLookupService.cs",
-        "Kor.Opportunities.Worker/Services/BdDeltekLinkDryRunJob.cs",
-        "tools/BdDeltekLink/Program.cs",
-        "tools/BdSeedImport/Program.cs"
-      ]
+        "Kor.Operations.App/BusinessDevelopment/Workspace/DashboardViewModel.cs",
+        "Kor.Operations.FileSync.Service/Jobs/WeeklyPmDeadlines/DeadlineRow.cs"
+      ],
+      "Similarity": 0.545,
+      "Lines": 6
     },
     {
-      "Name": "ImportConfig",
+      "Name": "IntelNarrativeRow",
       "Projects": [
-        "BdDeltekLink",
-        "BdOpportunityPurge",
-        "BdOrphanOrgPurge",
-        "BdSeedImport"
+        "Kor.Operations.App",
+        "Kor.Opportunities.Data"
       ],
       "Files": [
-        "tools/BdDeltekLink/Program.cs",
-        "tools/BdOpportunityPurge/Program.cs",
-        "tools/BdOrphanOrgPurge/Program.cs",
-        "tools/BdSeedImport/Program.cs"
-      ]
-    },
-    {
-      "Name": "ToolOptions",
-      "Projects": [
-        "AwardOllamaBackfill",
-        "BcMpiImporter",
-        "GovCanEngineeringImport",
-        "PrimeRfpClassifierBackfill"
+        "Kor.Operations.App/Opportunities/OrgDossierViewModel.cs",
+        "Kor.Opportunities.Data/Intel/IntelReadModels.cs"
       ],
-      "Files": [
-        "tools/AwardOllamaBackfill/Program.cs",
-        "tools/BcMpiImporter/Program.cs",
-        "tools/GovCanEngineeringImport/Program.cs",
-        "tools/PrimeRfpClassifierBackfill/Program.cs"
-      ]
-    },
-    {
-      "Name": "CompanyMatch",
-      "Projects": [
-        "BdDeltekLink",
-        "BdSeedImport",
-        "Kor.Opportunities.Worker"
-      ],
-      "Files": [
-        "Kor.Opportunities.Worker/Services/BdDeltekLinkDryRunJob.cs",
-        "tools/BdDeltekLink/Program.cs",
-        "tools/BdSeedImport/Program.cs"
-      ]
-    },
-    {
-      "Name": "DeltekFuzzyMatch",
-      "Projects": [
-        "BdDeltekLink",
-        "BdSeedImport",
-        "Kor.Opportunities.Worker"
-      ],
-      "Files": [
-        "Kor.Opportunities.Worker/Services/BdDeltekLinkDryRunJob.cs",
-        "tools/BdDeltekLink/Program.cs",
-        "tools/BdSeedImport/Program.cs"
-      ]
+      "Similarity": 0.513,
+      "Lines": 4
     },
     {
       "Name": "Result",
@@ -54728,162 +55144,9 @@
         "Kor.Operations.EngineeringTools.Core/Dxf/PlanLoopBuilder.cs",
         "Kor.Operations.FileSync.Service/Jobs/Watcher/BucketSyncOp.cs",
         "Kor.Operations.FileSync.Service/Jobs/Watcher/ProjectCleanOp.cs"
-      ]
-    },
-    {
-      "Name": "ActivityRow",
-      "Projects": [
-        "Kor.Operations.App",
-        "Kor.Operations.Data"
       ],
-      "Files": [
-        "Kor.Operations.App/DashboardWindow.xaml.cs",
-        "Kor.Operations.Data/SqlTransmittalsStore.cs"
-      ]
-    },
-    {
-      "Name": "AssemblyMarker",
-      "Projects": [
-        "Kor.Opportunities.Core",
-        "Kor.Opportunities.Data"
-      ],
-      "Files": [
-        "Kor.Opportunities.Core/AssemblyMarker.cs",
-        "Kor.Opportunities.Data/AssemblyMarker.cs"
-      ]
-    },
-    {
-      "Name": "Built",
-      "Projects": [
-        "Kor.Operations.EngineeringTools.Core",
-        "Kor.Operations.EngineeringTools.Core.Tests"
-      ],
-      "Files": [
-        "Kor.Operations.EngineeringTools.Core.Tests/GeneratedModel.cs",
-        "Kor.Operations.EngineeringTools.Core.Tests/ModelIntegrityTests.cs",
-        "Kor.Operations.EngineeringTools.Core/Dxf/JobPublisher.cs"
-      ]
-    },
-    {
-      "Name": "CanonicalOrgTarget",
-      "Projects": [
-        "BdDeltekLink",
-        "Kor.Opportunities.Worker"
-      ],
-      "Files": [
-        "Kor.Opportunities.Worker/Services/BdDeltekLinkDryRunJob.cs",
-        "tools/BdDeltekLink/Program.cs"
-      ]
-    },
-    {
-      "Name": "Contact",
-      "Projects": [
-        "BdApolloEnrich",
-        "Kor.Opportunities.Worker"
-      ],
-      "Files": [
-        "Kor.Opportunities.Worker/Services/Reporting/WeeklyAttackSheetJob.cs",
-        "tools/BdApolloEnrich/Program.cs"
-      ]
-    },
-    {
-      "Name": "CredentialPatterns",
-      "Projects": [
-        "Kor.Operations.App",
-        "Kor.Operations.FileSync.Service"
-      ],
-      "Files": [
-        "Kor.Operations.App/Logging/CredentialPatterns.cs",
-        "Kor.Operations.FileSync.Service/Logging/CredentialPatterns.cs"
-      ]
-    },
-    {
-      "Name": "CredentialRedactingEnricher",
-      "Projects": [
-        "Kor.Operations.App",
-        "Kor.Operations.FileSync.Service"
-      ],
-      "Files": [
-        "Kor.Operations.App/Logging/CredentialRedactingEnricher.cs",
-        "Kor.Operations.FileSync.Service/Logging/CredentialRedactingEnricher.cs"
-      ]
-    },
-    {
-      "Name": "CredentialRedactingPolicy",
-      "Projects": [
-        "Kor.Operations.App",
-        "Kor.Operations.FileSync.Service"
-      ],
-      "Files": [
-        "Kor.Operations.App/Logging/CredentialRedactingPolicy.cs",
-        "Kor.Operations.FileSync.Service/Logging/CredentialRedactingPolicy.cs"
-      ]
-    },
-    {
-      "Name": "DeadlineRow",
-      "Projects": [
-        "Kor.Operations.App",
-        "Kor.Operations.FileSync.Service"
-      ],
-      "Files": [
-        "Kor.Operations.App/BusinessDevelopment/Workspace/DashboardViewModel.cs",
-        "Kor.Operations.FileSync.Service/Jobs/WeeklyPmDeadlines/DeadlineRow.cs"
-      ]
-    },
-    {
-      "Name": "DedupCandidateRow",
-      "Projects": [
-        "BdDeltekLink",
-        "Kor.Opportunities.Worker"
-      ],
-      "Files": [
-        "Kor.Opportunities.Worker/Services/BdDeltekLinkDryRunJob.cs",
-        "tools/BdDeltekLink/Program.cs"
-      ]
-    },
-    {
-      "Name": "DeltekContactCandidate",
-      "Projects": [
-        "BdSeedImport",
-        "Kor.Operations.App"
-      ],
-      "Files": [
-        "Kor.Operations.App/Crm/IDeltekLookupService.cs",
-        "tools/BdSeedImport/Program.cs"
-      ]
-    },
-    {
-      "Name": "DeltekLookupCache",
-      "Projects": [
-        "BdDeltekLink",
-        "BdSeedImport"
-      ],
-      "Files": [
-        "tools/BdDeltekLink/Program.cs",
-        "tools/BdSeedImport/Program.cs"
-      ]
-    },
-    {
-      "Name": "DeltekProject",
-      "Projects": [
-        "(loose)",
-        "Kor.Operations.FileSync.Service"
-      ],
-      "Files": [
-        "Kor.Operations.FileSync.Service/Jobs/KorMapSync/KorMapSyncRunner.cs",
-        "docs/map-audit/KorMapSyncRunner.cs"
-      ]
-    },
-    {
-      "Name": "EnrichmentRow",
-      "Projects": [
-        "BdIntelExtract",
-        "Kor.Opportunities.Worker"
-      ],
-      "Files": [
-        "Kor.Opportunities.Worker/Jobs/IntelExtractionCatchUpJob.cs",
-        "tools/BdIntelExtract/Program.cs"
-      ]
+      "Similarity": 0.44,
+      "Lines": 7
     },
     {
       "Name": "FakeCanonicalOrgStore",
@@ -54894,109 +55157,9 @@
       "Files": [
         "Kor.Operations.App/Kor.Transmittals.App.Tests/BcBidUnverifiedBidResultsScraperTests.cs",
         "Kor.Opportunities.Data.Tests/CanonicalOrgResolverTests.cs"
-      ]
-    },
-    {
-      "Name": "FavoriteProject",
-      "Projects": [
-        "EmailFilerv2",
-        "Kor.Operations.App"
       ],
-      "Files": [
-        "EmailFiler/EmailFilerv2/SqlFavoritesRepository.cs",
-        "Kor.Operations.App/Preferences/PreferencesModels.cs"
-      ]
-    },
-    {
-      "Name": "HeartbeatRow",
-      "Projects": [
-        "Kor.Operations.App",
-        "Kor.Opportunities.Core"
-      ],
-      "Files": [
-        "Kor.Operations.App/FileSync/FileSyncRows.cs",
-        "Kor.Opportunities.Core/Models/HeartbeatRow.cs"
-      ]
-    },
-    {
-      "Name": "ImportResult",
-      "Projects": [
-        "Kor.Operations.App",
-        "Kor.Opportunities.Data"
-      ],
-      "Files": [
-        "Kor.Operations.App/Opportunities/CustomProposalImportService.cs",
-        "Kor.Opportunities.Data/Awards/BuildingPermitsImportService.cs"
-      ]
-    },
-    {
-      "Name": "IntelNarrativeRow",
-      "Projects": [
-        "Kor.Operations.App",
-        "Kor.Opportunities.Data"
-      ],
-      "Files": [
-        "Kor.Operations.App/Opportunities/OrgDossierViewModel.cs",
-        "Kor.Opportunities.Data/Intel/IntelReadModels.cs"
-      ]
-    },
-    {
-      "Name": "JobRunRow",
-      "Projects": [
-        "Kor.Operations.App",
-        "Kor.Opportunities.Data"
-      ],
-      "Files": [
-        "Kor.Operations.App/FileSync/FileSyncRows.cs",
-        "Kor.Opportunities.Data/Ingestion/JobRunRow.cs"
-      ]
-    },
-    {
-      "Name": "KorMapSyncRunner",
-      "Projects": [
-        "(loose)",
-        "Kor.Operations.FileSync.Service"
-      ],
-      "Files": [
-        "Kor.Operations.FileSync.Service/Jobs/KorMapSync/KorMapSyncRunner.cs",
-        "docs/map-audit/KorMapSyncRunner.cs"
-      ]
-    },
-    {
-      "Name": "LinkPlan",
-      "Projects": [
-        "BdDeltekLink",
-        "Kor.Opportunities.Worker"
-      ],
-      "Files": [
-        "Kor.Opportunities.Worker/Services/BdDeltekLinkDryRunJob.cs",
-        "tools/BdDeltekLink/Program.cs"
-      ]
-    },
-    {
-      "Name": "LinkPlanRow",
-      "Projects": [
-        "BdDeltekLink",
-        "Kor.Opportunities.Worker"
-      ],
-      "Files": [
-        "Kor.Opportunities.Worker/Services/BdDeltekLinkDryRunJob.cs",
-        "tools/BdDeltekLink/Program.cs"
-      ]
-    },
-    {
-      "Name": "MajorProjectRecord",
-      "Projects": [
-        "BdResearchImport",
-        "Kor.Opportunities.Data"
-      ],
-      "Files": [
-        "Kor.Opportunities.Data/Ingestion/Providers/AbMajorProjectsInventoryProvider.cs",
-        "Kor.Opportunities.Data/Ingestion/Providers/BcMajorProjectsInventoryProvider.cs",
-        "Kor.Opportunities.Data/Ingestion/Providers/CaSocrataMajorProjectsInventoryProvider.cs",
-        "Kor.Opportunities.Data/Ingestion/Providers/CeqanetMajorProjectsInventoryProvider.cs",
-        "tools/BdResearchImport/Program.cs"
-      ]
+      "Similarity": 0.41,
+      "Lines": 244
     },
     {
       "Name": "Options",
@@ -55007,18 +55170,9 @@
       "Files": [
         "Kor.Opportunities.ApcImport/Program.cs",
         "tools/ApcInterestBackfill/Program.cs"
-      ]
-    },
-    {
-      "Name": "PageDump",
-      "Projects": [
-        "Kor.Opportunities.Data",
-        "MerxProbe"
       ],
-      "Files": [
-        "Kor.Opportunities.Data/Ingestion/Scraping/BcBidLiveDetailExtractor.cs",
-        "tools/MerxProbe/PageDump.cs"
-      ]
+      "Similarity": 0.4,
+      "Lines": 7
     },
     {
       "Name": "PipelineFunnel",
@@ -55029,74 +55183,9 @@
       "Files": [
         "Kor.Operations.App/Opportunities/MajorProjectsInventoryViewModel.cs",
         "Kor.Opportunities.Data/MajorProjects/IBdDashboardStore.cs"
-      ]
-    },
-    {
-      "Name": "ProjectEntry",
-      "Projects": [
-        "EmailFilerv2",
-        "Kor.Operations.App"
       ],
-      "Files": [
-        "EmailFiler/EmailFilerv2/ItemsToFileProcessor.cs",
-        "Kor.Operations.App/Email/ProjectFolderCatalogService.cs",
-        "Kor.Operations.App/QuickTransferWindow.xaml.cs"
-      ]
-    },
-    {
-      "Name": "PurgeOptions",
-      "Projects": [
-        "BdOpportunityPurge",
-        "BdOrphanOrgPurge"
-      ],
-      "Files": [
-        "tools/BdOpportunityPurge/Program.cs",
-        "tools/BdOrphanOrgPurge/Program.cs"
-      ]
-    },
-    {
-      "Name": "ReviewRow",
-      "Projects": [
-        "BdDeltekLink",
-        "Kor.Opportunities.Worker"
-      ],
-      "Files": [
-        "Kor.Opportunities.Worker/Services/BdDeltekLinkDryRunJob.cs",
-        "tools/BdDeltekLink/Program.cs"
-      ]
-    },
-    {
-      "Name": "Row",
-      "Projects": [
-        "Kor.Operations.App",
-        "OpportunityEnrichmentBackfill"
-      ],
-      "Files": [
-        "Kor.Operations.App/Opportunities/OpportunityDuplicateDialog.xaml.cs",
-        "tools/OpportunityEnrichmentBackfill/Program.cs"
-      ]
-    },
-    {
-      "Name": "ScrapedSupplier",
-      "Projects": [
-        "ApcInterestBackfill",
-        "Kor.Opportunities.Data"
-      ],
-      "Files": [
-        "Kor.Opportunities.Data/Ingestion/Scraping/ApcInterestExtractor.cs",
-        "tools/ApcInterestBackfill/Program.cs"
-      ]
-    },
-    {
-      "Name": "SerilogBootstrap",
-      "Projects": [
-        "Kor.Operations.FileSync.Service",
-        "Kor.Opportunities.Worker"
-      ],
-      "Files": [
-        "Kor.Operations.FileSync.Service/Logging/SerilogBootstrap.cs",
-        "Kor.Opportunities.Worker/Logging/SerilogBootstrap.cs"
-      ]
+      "Similarity": 0.267,
+      "Lines": 7
     },
     {
       "Name": "StructuralRelevanceGateTests",
@@ -55107,30 +55196,61 @@
       "Files": [
         "Kor.Operations.App/Kor.Transmittals.App.Tests/StructuralRelevanceGateTests.cs",
         "Kor.Opportunities.Data.Tests/StructuralRelevanceGateTests.cs"
-      ]
+      ],
+      "Similarity": 0.241,
+      "Lines": 108
     },
     {
-      "Name": "TargetOpp",
+      "Name": "Row",
       "Projects": [
-        "ApcInterestBackfill",
-        "Kor.Opportunities.Worker"
+        "Kor.Operations.App",
+        "OpportunityEnrichmentBackfill"
       ],
       "Files": [
-        "Kor.Opportunities.Worker/Services/ApcInterestEnrichmentJob.cs",
-        "Kor.Opportunities.Worker/Services/BcBidPlanTakerEnrichmentJob.cs",
-        "tools/ApcInterestBackfill/Program.cs"
-      ]
+        "Kor.Operations.App/Opportunities/OpportunityDuplicateDialog.xaml.cs",
+        "tools/OpportunityEnrichmentBackfill/Program.cs"
+      ],
+      "Similarity": 0.136,
+      "Lines": 22
     },
     {
-      "Name": "WpLocation",
+      "Name": "JobRunRow",
       "Projects": [
-        "(loose)",
-        "Kor.Operations.FileSync.Service"
+        "Kor.Operations.App",
+        "Kor.Opportunities.Data"
       ],
       "Files": [
-        "Kor.Operations.FileSync.Service/Jobs/KorMapSync/KorMapSyncRunner.cs",
-        "docs/map-audit/KorMapSyncRunner.cs"
-      ]
+        "Kor.Operations.App/FileSync/FileSyncRows.cs",
+        "Kor.Opportunities.Data/Ingestion/JobRunRow.cs"
+      ],
+      "Similarity": 0.112,
+      "Lines": 29
+    },
+    {
+      "Name": "HeartbeatRow",
+      "Projects": [
+        "Kor.Operations.App",
+        "Kor.Opportunities.Core"
+      ],
+      "Files": [
+        "Kor.Operations.App/FileSync/FileSyncRows.cs",
+        "Kor.Opportunities.Core/Models/HeartbeatRow.cs"
+      ],
+      "Similarity": 0.077,
+      "Lines": 29
+    },
+    {
+      "Name": "PageDump",
+      "Projects": [
+        "Kor.Opportunities.Data",
+        "MerxProbe"
+      ],
+      "Files": [
+        "Kor.Opportunities.Data/Ingestion/Scraping/BcBidLiveDetailExtractor.cs",
+        "tools/MerxProbe/PageDump.cs"
+      ],
+      "Similarity": 0.07,
+      "Lines": 43
     }
   ],
   "Orphans": [
@@ -56883,7 +57003,7 @@
     {
       "Name": "Relationships",
       "Title": "Everything, and what it is tied to",
-      "Subtitle": "72 nodes, 155 ties. Grey = one project references another. Yellow = it talks to something outside the repo. RED = the two hold types of the same name, and the number is how many. Position is force-directed: what pulls together sits together. The 11 along the bottom are tied to NOTHING — they reference no project and reach nothing outside the repo.",
+      "Subtitle": "73 nodes, 156 ties. Grey = one project references another. Yellow = it talks to something outside the repo. RED = the two hold types of the same name, and the number is how many. Position is force-directed: what pulls together sits together. The 11 along the bottom are tied to NOTHING — they reference no project and reach nothing outside the repo.",
       "Nodes": [
         {
           "Id": "Kor.Operations.Mcp",
@@ -56891,8 +57011,8 @@
           "Detail": "7,952 lines",
           "Group": "AI / MCP",
           "Weight": 0.2939,
-          "X": 0.6025,
-          "Y": 0.5164
+          "X": 0.6058,
+          "Y": 0.4629
         },
         {
           "Id": "Kor.Operations.Mcp.Smoke",
@@ -56900,8 +57020,8 @@
           "Detail": "1,466 lines",
           "Group": "AI / MCP",
           "Weight": 0.1262,
-          "X": 0.5877,
-          "Y": 0.3676
+          "X": 0.5613,
+          "Y": 0.319
         },
         {
           "Id": "Kor.Operations.Mcp.Tests",
@@ -56909,8 +57029,8 @@
           "Detail": "844 lines",
           "Group": "AI / MCP",
           "Weight": 0.0958,
-          "X": 0.5291,
-          "Y": 0.3704
+          "X": 0.5065,
+          "Y": 0.3251
         },
         {
           "Id": "Kor.Opportunities.ApcImport",
@@ -56927,8 +57047,8 @@
           "Detail": "178 lines",
           "Group": "BD platform",
           "Weight": 0.044,
-          "X": 0.5552,
-          "Y": 0.2286
+          "X": 0.5107,
+          "Y": 0.1921
         },
         {
           "Id": "Kor.Opportunities.Core",
@@ -56936,8 +57056,8 @@
           "Detail": "3,738 lines",
           "Group": "BD platform",
           "Weight": 0.2015,
-          "X": 0.4427,
-          "Y": 0.6289
+          "X": 0.485,
+          "Y": 0.6087
         },
         {
           "Id": "Kor.Opportunities.Data",
@@ -56945,8 +57065,8 @@
           "Detail": "50,139 lines",
           "Group": "BD platform",
           "Weight": 0.738,
-          "X": 0.4686,
-          "Y": 0.6504
+          "X": 0.5168,
+          "Y": 0.6234
         },
         {
           "Id": "Kor.Opportunities.Data.Tests",
@@ -56954,8 +57074,8 @@
           "Detail": "1,774 lines",
           "Group": "BD platform",
           "Weight": 0.1388,
-          "X": 0.5248,
-          "Y": 0.6951
+          "X": 0.5806,
+          "Y": 0.6421
         },
         {
           "Id": "Kor.Opportunities.Worker",
@@ -56963,8 +57083,8 @@
           "Detail": "13,268 lines",
           "Group": "BD platform",
           "Weight": 0.3796,
-          "X": 0.4199,
-          "Y": 0.451
+          "X": 0.4154,
+          "Y": 0.449
         },
         {
           "Id": "Kor.Operations.App",
@@ -56972,8 +57092,8 @@
           "Detail": "92,054 lines",
           "Group": "desktop app",
           "Weight": 1,
-          "X": 0.6554,
-          "Y": 0.5624
+          "X": 0.6705,
+          "Y": 0.5001
         },
         {
           "Id": "Kor.Operations.App.Tests",
@@ -56981,8 +57101,8 @@
           "Detail": "11,844 lines",
           "Group": "desktop app",
           "Weight": 0.3587,
-          "X": 0.5682,
-          "Y": 0.541
+          "X": 0.5808,
+          "Y": 0.4952
         },
         {
           "Id": "Kor.Operations.EngineeringTools.Core",
@@ -56990,8 +57110,8 @@
           "Detail": "28,259 lines",
           "Group": "drawing intake",
           "Weight": 0.5541,
-          "X": 0.9246,
-          "Y": 0.5722
+          "X": 0.9301,
+          "Y": 0.4566
         },
         {
           "Id": "Kor.Operations.EngineeringTools.Core.Tests",
@@ -57000,7 +57120,7 @@
           "Group": "drawing intake",
           "Weight": 0.4235,
           "X": 1,
-          "Y": 0.5618
+          "Y": 0.432
         },
         {
           "Id": "Kor.Operations.EngineeringTools.TakeoffCli",
@@ -57008,8 +57128,8 @@
           "Detail": "4,357 lines",
           "Group": "drawing intake",
           "Weight": 0.2176,
-          "X": 0.937,
-          "Y": 0.6539
+          "X": 0.9613,
+          "Y": 0.5328
         },
         {
           "Id": "Kor.Operations.EngineeringTools.Tests",
@@ -57017,8 +57137,8 @@
           "Detail": "8,678 lines",
           "Group": "drawing intake",
           "Weight": 0.307,
-          "X": 0.7821,
-          "Y": 0.7453
+          "X": 0.8341,
+          "Y": 0.6507
         },
         {
           "Id": "Kor.Operations.Rendering",
@@ -57026,8 +57146,8 @@
           "Detail": "6,350 lines",
           "Group": "drawing intake",
           "Weight": 0.2626,
-          "X": 0.7575,
-          "Y": 0.3863
+          "X": 0.7315,
+          "Y": 0.3115
         },
         {
           "Id": "EmailFilerv2",
@@ -57035,8 +57155,8 @@
           "Detail": "2,439 lines",
           "Group": "email + transmittals",
           "Weight": 0.1628,
-          "X": 0.7919,
-          "Y": 0.4192
+          "X": 0.7701,
+          "Y": 0.3367
         },
         {
           "Id": "ApcInterestBackfill",
@@ -57044,8 +57164,8 @@
           "Detail": "267 lines",
           "Group": "one-off tools",
           "Weight": 0.0539,
-          "X": 0.3764,
-          "Y": 0.5811
+          "X": 0.4098,
+          "Y": 0.5914
         },
         {
           "Id": "ApcInterestProbe",
@@ -57062,8 +57182,8 @@
           "Detail": "659 lines",
           "Group": "one-off tools",
           "Weight": 0.0846,
-          "X": 0.3778,
-          "Y": 0.8252
+          "X": 0.4847,
+          "Y": 0.8112
         },
         {
           "Id": "BcBidDetailProbe",
@@ -57071,8 +57191,8 @@
           "Detail": "74 lines",
           "Group": "one-off tools",
           "Weight": 0.0284,
-          "X": 0.4597,
-          "Y": 0.7666
+          "X": 0.5477,
+          "Y": 0.7373
         },
         {
           "Id": "BcBidInterestProbe",
@@ -57089,8 +57209,8 @@
           "Detail": "862 lines",
           "Group": "one-off tools",
           "Weight": 0.0968,
-          "X": 0.4005,
-          "Y": 0.7633
+          "X": 0.4039,
+          "Y": 0.7208
         },
         {
           "Id": "BdApolloEnrich",
@@ -57098,8 +57218,8 @@
           "Detail": "317 lines",
           "Group": "one-off tools",
           "Weight": 0.0587,
-          "X": 0.2125,
-          "Y": 0.2767
+          "X": 0.1663,
+          "Y": 0.337
         },
         {
           "Id": "BdBriefSmoke",
@@ -57107,8 +57227,8 @@
           "Detail": "116 lines",
           "Group": "one-off tools",
           "Weight": 0.0355,
-          "X": 0.6245,
-          "Y": 0.718
+          "X": 0.6788,
+          "Y": 0.6542
         },
         {
           "Id": "BdCanonicalDedup",
@@ -57116,8 +57236,8 @@
           "Detail": "1,766 lines",
           "Group": "one-off tools",
           "Weight": 0.1385,
-          "X": 0.523,
-          "Y": 0.632
+          "X": 0.4188,
+          "Y": 0.5417
         },
         {
           "Id": "BdContactEnrich",
@@ -57125,8 +57245,8 @@
           "Detail": "238 lines",
           "Group": "one-off tools",
           "Weight": 0.0508,
-          "X": 0.5179,
-          "Y": 0.8457
+          "X": 0.5605,
+          "Y": 0.8235
         },
         {
           "Id": "BdDeltekLink",
@@ -57134,8 +57254,8 @@
           "Detail": "847 lines",
           "Group": "one-off tools",
           "Weight": 0.0959,
-          "X": 0.4699,
-          "Y": 0.548
+          "X": 0.5277,
+          "Y": 0.5356
         },
         {
           "Id": "BdHeatGraph",
@@ -57152,8 +57272,8 @@
           "Detail": "103 lines",
           "Group": "one-off tools",
           "Weight": 0.0335,
-          "X": 0.2241,
-          "Y": 0.412
+          "X": 0.2181,
+          "Y": 0.4628
         },
         {
           "Id": "BdIntegrityCheck",
@@ -57170,8 +57290,8 @@
           "Detail": "404 lines",
           "Group": "one-off tools",
           "Weight": 0.0662,
-          "X": 0.3401,
-          "Y": 0.5542
+          "X": 0.3644,
+          "Y": 0.5706
         },
         {
           "Id": "BdOpportunityPurge",
@@ -57179,8 +57299,8 @@
           "Detail": "289 lines",
           "Group": "one-off tools",
           "Weight": 0.056,
-          "X": 0.1749,
-          "Y": 0.7094
+          "X": 0.2573,
+          "Y": 0.7557
         },
         {
           "Id": "BdOrphanOrgPurge",
@@ -57188,8 +57308,8 @@
           "Detail": "597 lines",
           "Group": "one-off tools",
           "Weight": 0.0805,
-          "X": 0,
-          "Y": 0.7695
+          "X": 0.1102,
+          "Y": 0.858
         },
         {
           "Id": "BdPersonResearchExecutorSmoke",
@@ -57197,8 +57317,8 @@
           "Detail": "103 lines",
           "Group": "one-off tools",
           "Weight": 0.0335,
-          "X": 0.2481,
-          "Y": 0.364
+          "X": 0.226,
+          "Y": 0.4113
         },
         {
           "Id": "BdProjectResearchExecutorSmoke",
@@ -57206,8 +57326,8 @@
           "Detail": "155 lines",
           "Group": "one-off tools",
           "Weight": 0.041,
-          "X": 0.2871,
-          "Y": 0.3215
+          "X": 0.2493,
+          "Y": 0.3615
         },
         {
           "Id": "BdQueueDrainIngest",
@@ -57215,8 +57335,8 @@
           "Detail": "1,169 lines",
           "Group": "one-off tools",
           "Weight": 0.1127,
-          "X": 0.4397,
-          "Y": 0.3164
+          "X": 0.395,
+          "Y": 0.3242
         },
         {
           "Id": "BdResearchExecutorSmoke",
@@ -57224,8 +57344,8 @@
           "Detail": "103 lines",
           "Group": "one-off tools",
           "Weight": 0.0335,
-          "X": 0.3317,
-          "Y": 0.2819
+          "X": 0.2781,
+          "Y": 0.3122
         },
         {
           "Id": "BdResearchImport",
@@ -57233,8 +57353,8 @@
           "Detail": "8,651 lines",
           "Group": "one-off tools",
           "Weight": 0.3066,
-          "X": 0.388,
-          "Y": 0.717
+          "X": 0.4997,
+          "Y": 0.7214
         },
         {
           "Id": "BdSectorSmoke",
@@ -57242,8 +57362,8 @@
           "Detail": "119 lines",
           "Group": "one-off tools",
           "Weight": 0.036,
-          "X": 0.453,
-          "Y": 0.8539
+          "X": 0.618,
+          "Y": 0.7971
         },
         {
           "Id": "BdSeedImport",
@@ -57251,8 +57371,8 @@
           "Detail": "728 lines",
           "Group": "one-off tools",
           "Weight": 0.0889,
-          "X": 0.4968,
-          "Y": 0.5638
+          "X": 0.4994,
+          "Y": 0.526
         },
         {
           "Id": "BdSynthesisSmoke",
@@ -57260,8 +57380,8 @@
           "Detail": "221 lines",
           "Group": "one-off tools",
           "Weight": 0.049,
-          "X": 0.3281,
-          "Y": 0.8167
+          "X": 0.4405,
+          "Y": 0.8216
         },
         {
           "Id": "BdVerdictBackfill",
@@ -57305,8 +57425,8 @@
           "Detail": "310 lines",
           "Group": "one-off tools",
           "Weight": 0.058,
-          "X": 0.3048,
-          "Y": 0.6364
+          "X": 0.4491,
+          "Y": 0.7339
         },
         {
           "Id": "MerxProbe",
@@ -57314,8 +57434,8 @@
           "Detail": "128 lines",
           "Group": "one-off tools",
           "Weight": 0.0373,
-          "X": 0.284,
-          "Y": 0.7677
+          "X": 0.3828,
+          "Y": 0.788
         },
         {
           "Id": "OpportunityEnrichmentBackfill",
@@ -57323,8 +57443,8 @@
           "Detail": "218 lines",
           "Group": "one-off tools",
           "Weight": 0.0487,
-          "X": 0.5923,
-          "Y": 0.6864
+          "X": 0.6393,
+          "Y": 0.6301
         },
         {
           "Id": "PrimeRfpClassifierBackfill",
@@ -57332,8 +57452,8 @@
           "Detail": "206 lines",
           "Group": "one-off tools",
           "Weight": 0.0473,
-          "X": 0.333,
-          "Y": 0.7142
+          "X": 0.386,
+          "Y": 0.6867
         },
         {
           "Id": "ScraperProbe",
@@ -57341,8 +57461,8 @@
           "Detail": "204 lines",
           "Group": "one-off tools",
           "Weight": 0.0471,
-          "X": 0.3133,
-          "Y": 0.6764
+          "X": 0.358,
+          "Y": 0.6587
         },
         {
           "Id": "Kor.EmailCommon",
@@ -57350,8 +57470,8 @@
           "Detail": "134 lines",
           "Group": "shared",
           "Weight": 0.0382,
-          "X": 0.8183,
-          "Y": 0.6444
+          "X": 0.8443,
+          "Y": 0.5463
         },
         {
           "Id": "Kor.EmailSearch.Core",
@@ -57359,8 +57479,17 @@
           "Detail": "397 lines",
           "Group": "shared",
           "Weight": 0.0657,
-          "X": 0.7494,
-          "Y": 0.5168
+          "X": 0.7491,
+          "Y": 0.4385
+        },
+        {
+          "Id": "Kor.Operations.Architecture.Tests",
+          "Label": "Architecture.Tests",
+          "Detail": "148 lines",
+          "Group": "shared",
+          "Weight": 0.0401,
+          "X": 0.4227,
+          "Y": 0.2636
         },
         {
           "Id": "Kor.Operations.Business",
@@ -57368,8 +57497,8 @@
           "Detail": "6,089 lines",
           "Group": "shared",
           "Weight": 0.2572,
-          "X": 0.63,
-          "Y": 0.4485
+          "X": 0.615,
+          "Y": 0.3899
         },
         {
           "Id": "Kor.Operations.Core",
@@ -57377,8 +57506,8 @@
           "Detail": "1,543 lines",
           "Group": "shared",
           "Weight": 0.1295,
-          "X": 0.6612,
-          "Y": 0.4387
+          "X": 0.646,
+          "Y": 0.3779
         },
         {
           "Id": "Kor.Operations.Data",
@@ -57386,8 +57515,8 @@
           "Detail": "3,640 lines",
           "Group": "shared",
           "Weight": 0.1989,
-          "X": 0.5761,
-          "Y": 0.4699
+          "X": 0.5742,
+          "Y": 0.4285
         },
         {
           "Id": "Kor.Operations.FileSync.Service",
@@ -57395,8 +57524,8 @@
           "Detail": "7,093 lines",
           "Group": "shared",
           "Weight": 0.2776,
-          "X": 0.6319,
-          "Y": 0.4054
+          "X": 0.61,
+          "Y": 0.3535
         },
         {
           "Id": "Kor.Operations.FileSync.Service.Tests",
@@ -57404,8 +57533,8 @@
           "Detail": "57 lines",
           "Group": "shared",
           "Weight": 0.0249,
-          "X": 0.7045,
-          "Y": 0.2208
+          "X": 0.6437,
+          "Y": 0.16
         },
         {
           "Id": "Kor.Operations.Graph",
@@ -57413,8 +57542,8 @@
           "Detail": "1,270 lines",
           "Group": "shared",
           "Weight": 0.1175,
-          "X": 0.7052,
-          "Y": 0.4752
+          "X": 0.6963,
+          "Y": 0.4067
         },
         {
           "Id": "Kor.Operations.ImportTool",
@@ -57422,8 +57551,8 @@
           "Detail": "964 lines",
           "Group": "shared",
           "Weight": 0.1023,
-          "X": 0.6967,
-          "Y": 0.3314
+          "X": 0.6632,
+          "Y": 0.2708
         },
         {
           "Id": "_SmokeRun",
@@ -57448,18 +57577,18 @@
           "Label": "Anthropic API",
           "Detail": "api",
           "Group": "external",
-          "Weight": 0.2275,
-          "X": 0.7092,
-          "Y": 0.6424
+          "Weight": 0.2273,
+          "X": 0.7406,
+          "Y": 0.565
         },
         {
           "Id": "ext:Apollo.io",
           "Label": "Apollo.io",
           "Detail": "api",
           "Group": "external",
-          "Weight": 0.1825,
-          "X": 0.0738,
-          "Y": 0.16
+          "Weight": 0.1824,
+          "X": 0,
+          "Y": 0.2618
         },
         {
           "Id": "ext:Deltek Vision (ODBC)",
@@ -57467,61 +57596,61 @@
           "Detail": "database",
           "Group": "external",
           "Weight": 0.46,
-          "X": 0.5368,
-          "Y": 0.5002
+          "X": 0.5219,
+          "Y": 0.4412
         },
         {
           "Id": "ext:ETABS / SAFE",
           "Label": "ETABS / SAFE",
           "Detail": "desktop",
           "Group": "external",
-          "Weight": 0.1989,
-          "X": 0.8151,
-          "Y": 0.7065
+          "Weight": 0.1988,
+          "X": 0.8563,
+          "Y": 0.6066
         },
         {
           "Id": "ext:KOR-APP01\\SQLEXPRESS",
           "Label": "KOR-APP01\\SQLEXPRESS",
           "Detail": "database",
           "Group": "external",
-          "Weight": 0.2606,
-          "X": 0.5627,
-          "Y": 0.4271
+          "Weight": 0.2603,
+          "X": 0.5515,
+          "Y": 0.3885
         },
         {
           "Id": "ext:KOR-FS01 project share",
           "Label": "KOR-FS01 project share",
           "Detail": "file share",
           "Group": "external",
-          "Weight": 0.2527,
-          "X": 0.8333,
-          "Y": 0.4796
+          "Weight": 0.2525,
+          "X": 0.8213,
+          "Y": 0.3864
         },
         {
           "Id": "ext:KorStandards (SQL)",
           "Label": "KorStandards (SQL)",
           "Detail": "database",
           "Group": "external",
-          "Weight": 0.2499,
-          "X": 0.8896,
-          "Y": 0.6029
+          "Weight": 0.2497,
+          "X": 0.9037,
+          "Y": 0.4931
         },
         {
           "Id": "ext:Microsoft Graph",
           "Label": "Microsoft Graph",
           "Detail": "api",
           "Group": "external",
-          "Weight": 0.205,
-          "X": 0.4789,
-          "Y": 0.4805
+          "Weight": 0.2048,
+          "X": 0.4838,
+          "Y": 0.4653
         },
         {
           "Id": "ext:Ollama",
           "Label": "Ollama",
           "Detail": "api",
           "Group": "external",
-          "Weight": 0.1989,
-          "X": 0.2942,
+          "Weight": 0.1988,
+          "X": 0.4573,
           "Y": 1
         },
         {
@@ -57529,9 +57658,9 @@
           "Label": "Outlook (COM)",
           "Detail": "desktop",
           "Group": "external",
-          "Weight": 0.1989,
-          "X": 0.9629,
-          "Y": 0.3049
+          "Weight": 0.1988,
+          "X": 0.9106,
+          "Y": 0.194
         }
       ],
       "Edges": [
@@ -57973,6 +58102,11 @@
         {
           "From": "Kor.Operations.App.Tests",
           "To": "ext:Microsoft Graph",
+          "Kind": "talks to"
+        },
+        {
+          "From": "Kor.Operations.Architecture.Tests",
+          "To": "ext:Deltek Vision (ODBC)",
           "Kind": "talks to"
         },
         {
@@ -59086,9 +59220,5046 @@
       ]
     }
   ],
+  "Scripts": [
+    {
+      "Path": "tools/BdIntelGraphAudit.sql",
+      "Kind": "SQL",
+      "Lines": 463,
+      "Bytes": 21633,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/134_VerifyFlagsSweep.sql",
+      "Kind": "SQL migration",
+      "Lines": 433,
+      "Bytes": 29213,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/29_SchemaVerifier.sql",
+      "Kind": "SQL migration",
+      "Lines": 415,
+      "Bytes": 19579,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "tools/extract_a233_14_equations.py",
+      "Kind": "Python",
+      "Lines": 363,
+      "Bytes": 12673,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/119_RetiredOrgLinkBackfillAndGrahamCompletion.sql",
+      "Kind": "SQL migration",
+      "Lines": 351,
+      "Bytes": 21961,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/277_ResolveIntelPersonResurrect.sql",
+      "Kind": "SQL migration",
+      "Lines": 344,
+      "Bytes": 16129,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/64_IntelEntities.sql",
+      "Kind": "SQL migration",
+      "Lines": 305,
+      "Bytes": 14484,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "tools/BdCanonicalDedup/Generate-FamilyPlan.ps1",
+      "Kind": "PowerShell",
+      "Lines": 278,
+      "Bytes": 15923,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "docs/audit-2026-08/build_mve_v3_sections.py",
+      "Kind": "Python",
+      "Lines": 275,
+      "Bytes": 20499,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/116_M98PlusNameFalsePositiveUnretire.sql",
+      "Kind": "SQL migration",
+      "Lines": 267,
+      "Bytes": 16313,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/77_CategoryBackfillFromKeywords.sql",
+      "Kind": "SQL migration",
+      "Lines": 250,
+      "Bytes": 12892,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/66_IntelProjectEntities.sql",
+      "Kind": "SQL migration",
+      "Lines": 247,
+      "Bytes": 11758,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/265_ResolveIntelPersonProc.sql",
+      "Kind": "SQL migration",
+      "Lines": 246,
+      "Bytes": 10377,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "tools/houston_plat_reports.py",
+      "Kind": "Python",
+      "Lines": 245,
+      "Bytes": 9257,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "tools/hawaii_environmental_notice.py",
+      "Kind": "Python",
+      "Lines": 243,
+      "Bytes": 9828,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/255_IntelPersonIdentityAnchorNaturalKey.sql",
+      "Kind": "SQL migration",
+      "Lines": 242,
+      "Bytes": 8378,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/71_R95final_DataHygieneCloseout.sql",
+      "Kind": "SQL migration",
+      "Lines": 223,
+      "Bytes": 8433,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/115_RepairStrandedIntelOnRetiredMpis.sql",
+      "Kind": "SQL migration",
+      "Lines": 221,
+      "Bytes": 13540,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/136_DossierCompleteness.sql",
+      "Kind": "SQL migration",
+      "Lines": 221,
+      "Bytes": 12367,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/75_SchoolDistrictDedup.sql",
+      "Kind": "SQL migration",
+      "Lines": 217,
+      "Bytes": 12462,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "tools/gen-islander-gwaii-dossiers.ps1",
+      "Kind": "PowerShell",
+      "Lines": 214,
+      "Bytes": 19782,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/109_DefenseHoningCleanupPlusEllisDon.sql",
+      "Kind": "SQL migration",
+      "Lines": 208,
+      "Bytes": 14063,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/10_HistoricalOpportunities.sql",
+      "Kind": "SQL migration",
+      "Lines": 208,
+      "Bytes": 10925,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "tools/BdPrimesRecovery/recover.ps1",
+      "Kind": "PowerShell",
+      "Lines": 207,
+      "Bytes": 9301,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/124_HoningRound2DuplicatesAndDead.sql",
+      "Kind": "SQL migration",
+      "Lines": 206,
+      "Bytes": 13052,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "tools/BdReportBuilders/build-defense-report.ps1",
+      "Kind": "PowerShell",
+      "Lines": 204,
+      "Bytes": 11856,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "tools/miami_pzab_agendas.py",
+      "Kind": "Python",
+      "Lines": 202,
+      "Bytes": 8001,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/102_DedupSweep4.sql",
+      "Kind": "SQL migration",
+      "Lines": 198,
+      "Bytes": 14717,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/267_PursuitLifecycleFoundation.sql",
+      "Kind": "SQL migration",
+      "Lines": 198,
+      "Bytes": 6237,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/97_TopArchitectDedup.sql",
+      "Kind": "SQL migration",
+      "Lines": 196,
+      "Bytes": 14492,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/117_ActiveMpiDuplicateConsolidation.sql",
+      "Kind": "SQL migration",
+      "Lines": 195,
+      "Bytes": 12817,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/150_BackfillMpiRegionFromMunicipality.sql",
+      "Kind": "SQL migration",
+      "Lines": 193,
+      "Bytes": 14194,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "tools/OpportunityBidsBackfillBidder.ps1",
+      "Kind": "PowerShell",
+      "Lines": 193,
+      "Bytes": 5478,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/70_R95d_OrgKindReclassify.sql",
+      "Kind": "SQL migration",
+      "Lines": 190,
+      "Bytes": 6059,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "tools/build_csa_a233_equation_review_workbook.py",
+      "Kind": "Python",
+      "Lines": 189,
+      "Bytes": 6672,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "tools/gen-bd-spend-2025-docx.ps1",
+      "Kind": "PowerShell",
+      "Lines": 189,
+      "Bytes": 11100,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/234_OvernightEnrichmentIngest.sql",
+      "Kind": "SQL migration",
+      "Lines": 187,
+      "Bytes": 45105,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/105_RefinementDedupFromNarratives.sql",
+      "Kind": "SQL migration",
+      "Lines": 183,
+      "Bytes": 12670,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "tools/extract_csa_a233_form_blocks.py",
+      "Kind": "Python",
+      "Lines": 182,
+      "Bytes": 6010,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/130_VerdictStampSweep.sql",
+      "Kind": "SQL migration",
+      "Lines": 179,
+      "Bytes": 12034,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "tools/gen-bd-spend-docx.ps1",
+      "Kind": "PowerShell",
+      "Lines": 177,
+      "Bytes": 10845,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/74_MpiDuplicateProjectMerge.sql",
+      "Kind": "SQL migration",
+      "Lines": 176,
+      "Bytes": 8147,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "tools/gen-euro-chambers-brief.ps1",
+      "Kind": "PowerShell",
+      "Lines": 176,
+      "Bytes": 13869,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/87_TopGcDedup.sql",
+      "Kind": "SQL migration",
+      "Lines": 172,
+      "Bytes": 13003,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "tools/gen-pinnacle-dossier-docx.ps1",
+      "Kind": "PowerShell",
+      "Lines": 172,
+      "Bytes": 11075,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/108_GrahamConsolidationPlusContacts.sql",
+      "Kind": "SQL migration",
+      "Lines": 169,
+      "Bytes": 9566,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/122_UsDuplicateConsolidation.sql",
+      "Kind": "SQL migration",
+      "Lines": 167,
+      "Bytes": 10441,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "tools/gen-california-dossier-docx.ps1",
+      "Kind": "PowerShell",
+      "Lines": 167,
+      "Bytes": 10576,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/262_IntelWorkPortfolioSurfaces.sql",
+      "Kind": "SQL migration",
+      "Lines": 165,
+      "Bytes": 8243,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "tools/houston_plat_applications.py",
+      "Kind": "Python",
+      "Lines": 164,
+      "Bytes": 6383,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "tools/verify_record_premise.py",
+      "Kind": "Python",
+      "Lines": 164,
+      "Bytes": 7539,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/95_BigNameCompetitorDedupSweep.sql",
+      "Kind": "SQL migration",
+      "Lines": 163,
+      "Bytes": 11878,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "tools/gen-bd-roi-docx.ps1",
+      "Kind": "PowerShell",
+      "Lines": 163,
+      "Bytes": 11153,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "tools/mve_client_crossmatch.py",
+      "Kind": "Python",
+      "Lines": 161,
+      "Bytes": 6221,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/221_JvStringRenames.sql",
+      "Kind": "SQL migration",
+      "Lines": 160,
+      "Bytes": 26089,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/199_CaExtractEmbeddedContacts.sql",
+      "Kind": "SQL migration",
+      "Lines": 159,
+      "Bytes": 8404,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "_Scripts Rebuild/FileSync/Maint/_DELETE_SharepointFolders.ps1",
+      "Kind": "PowerShell",
+      "Lines": 156,
+      "Bytes": 6060,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "tools/verify_mve_send_pdf.py",
+      "Kind": "Python",
+      "Lines": 155,
+      "Bytes": 6336,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/88_StructuralCompetitorDedup.sql",
+      "Kind": "SQL migration",
+      "Lines": 154,
+      "Bytes": 11683,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "tools/gen-maple-ridge-dossier-docx.ps1",
+      "Kind": "PowerShell",
+      "Lines": 153,
+      "Bytes": 10205,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/123_NacicSfuConsolidationPlusAbProvince.sql",
+      "Kind": "SQL migration",
+      "Lines": 152,
+      "Bytes": 9676,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "tools/Watch-OpportunitiesHeartbeat.ps1",
+      "Kind": "PowerShell",
+      "Lines": 150,
+      "Bytes": 7258,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "tools/live_early_projects.py",
+      "Kind": "Python",
+      "Lines": 150,
+      "Bytes": 7037,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/65_BdResearchTriggers.sql",
+      "Kind": "SQL migration",
+      "Lines": 149,
+      "Bytes": 5950,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "tools/verify_raleigh_claim.py",
+      "Kind": "Python",
+      "Lines": 149,
+      "Bytes": 6155,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "tools/audit_every_claim.py",
+      "Kind": "Python",
+      "Lines": 148,
+      "Bytes": 6251,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "docs/audit-2026-08/strip_method.py",
+      "Kind": "Python",
+      "Lines": 147,
+      "Bytes": 6855,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "tools/gen-itc-dossier-docx.ps1",
+      "Kind": "PowerShell",
+      "Lines": 146,
+      "Bytes": 9280,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "tools/verify_no_dead_rows.py",
+      "Kind": "Python",
+      "Lines": 146,
+      "Bytes": 5773,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/79_MoreSchoolDistrictDedup.sql",
+      "Kind": "SQL migration",
+      "Lines": 145,
+      "Bytes": 11940,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/89_TopDeveloperDedup.sql",
+      "Kind": "SQL migration",
+      "Lines": 145,
+      "Bytes": 10795,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/93_AjHannaTjNolanStantecDedup.sql",
+      "Kind": "SQL migration",
+      "Lines": 142,
+      "Bytes": 11164,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/264_DossierPlaysOrgActions.sql",
+      "Kind": "SQL migration",
+      "Lines": 141,
+      "Bytes": 8330,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/90_FirstNationDedup.sql",
+      "Kind": "SQL migration",
+      "Lines": 141,
+      "Bytes": 11056,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "tools/BdReportBuilders/build-graham-brief.ps1",
+      "Kind": "PowerShell",
+      "Lines": 141,
+      "Bytes": 9922,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "tools/build_mve_followup_emails.py",
+      "Kind": "Python",
+      "Lines": 141,
+      "Bytes": 6395,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/247_ThinClientEnrichmentWave2.sql",
+      "Kind": "SQL migration",
+      "Lines": 139,
+      "Bytes": 30430,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "docs/audit-2026-08/rebuild_houston_and_signal.py",
+      "Kind": "Python",
+      "Lines": 139,
+      "Bytes": 10354,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "tools/gen-ca-vs-us-docx.ps1",
+      "Kind": "PowerShell",
+      "Lines": 138,
+      "Bytes": 8393,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "tools/Convert-KorHeic.ps1",
+      "Kind": "PowerShell",
+      "Lines": 137,
+      "Bytes": 5462,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "tools/split_mve_dossier.py",
+      "Kind": "Python",
+      "Lines": 137,
+      "Bytes": 6762,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/191_IngestCaEcosystemContacts.sql",
+      "Kind": "SQL migration",
+      "Lines": 135,
+      "Bytes": 18595,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/263_DossierFreshnessPriority.sql",
+      "Kind": "SQL migration",
+      "Lines": 135,
+      "Bytes": 8061,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "tools/gen-linkedin-setup-checklist-docx.ps1",
+      "Kind": "PowerShell",
+      "Lines": 135,
+      "Bytes": 8361,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/80_HealthAuthorityDedup.sql",
+      "Kind": "SQL migration",
+      "Lines": 134,
+      "Bytes": 10512,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "_Scripts Rebuild/FileSync/Maint/_DELETE.ps1",
+      "Kind": "PowerShell",
+      "Lines": 134,
+      "Bytes": 5140,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/73_PlaceholderOrgCleanup.sql",
+      "Kind": "SQL migration",
+      "Lines": 133,
+      "Bytes": 6595,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/82_ProvincialUniversityDedup.sql",
+      "Kind": "SQL migration",
+      "Lines": 131,
+      "Bytes": 10103,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "tools/clark_county_applicants.py",
+      "Kind": "Python",
+      "Lines": 131,
+      "Bytes": 4961,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/104_OrgsTripDrainDedup.sql",
+      "Kind": "SQL migration",
+      "Lines": 129,
+      "Bytes": 10895,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/48_CrmEngagementBdTracking.sql",
+      "Kind": "SQL migration",
+      "Lines": 129,
+      "Bytes": 5639,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "publish-opportunities.ps1",
+      "Kind": "PowerShell",
+      "Lines": 129,
+      "Bytes": 5578,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "docs/audit-2026-08/build_openings_section.py",
+      "Kind": "Python",
+      "Lines": 127,
+      "Bytes": 9177,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/22_OpportunityCanonicalLinks.sql",
+      "Kind": "SQL migration",
+      "Lines": 124,
+      "Bytes": 4697,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/81_MunicipalDedup.sql",
+      "Kind": "SQL migration",
+      "Lines": 124,
+      "Bytes": 9982,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/135_GcKindHygieneAndHousekeeping.sql",
+      "Kind": "SQL migration",
+      "Lines": 123,
+      "Bytes": 6905,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/202_CaDeveloperDecisionMakers.sql",
+      "Kind": "SQL migration",
+      "Lines": 122,
+      "Bytes": 6686,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/288_IntelPersonRelation.sql",
+      "Kind": "SQL migration",
+      "Lines": 122,
+      "Bytes": 8433,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/162_IngestApolloBuyerContacts.sql",
+      "Kind": "SQL migration",
+      "Lines": 120,
+      "Bytes": 7489,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/34_NewIngestionSources_FNHA_CoV_GovCanada.sql",
+      "Kind": "SQL migration",
+      "Lines": 119,
+      "Bytes": 5918,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "tools/verify_cross_document.py",
+      "Kind": "Python",
+      "Lines": 119,
+      "Bytes": 5001,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/118_DeadVerdictRetireAndSeatOpeningWiden.sql",
+      "Kind": "SQL migration",
+      "Lines": 118,
+      "Bytes": 5937,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/33_KorCanonicalAndBmzAliases.sql",
+      "Kind": "SQL migration",
+      "Lines": 118,
+      "Bytes": 6313,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "docs/audit-2026-08/build_openings_chart.py",
+      "Kind": "Python",
+      "Lines": 117,
+      "Bytes": 6910,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "tools/HoningInputs/regenerate.ps1",
+      "Kind": "PowerShell",
+      "Lines": 117,
+      "Bytes": 4962,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/25_NewsAggregator.sql",
+      "Kind": "SQL migration",
+      "Lines": 116,
+      "Bytes": 5567,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/99_BosaDevelopmentMerge.sql",
+      "Kind": "SQL migration",
+      "Lines": 116,
+      "Bytes": 9816,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/184_IngestCaSynthesisSeats.sql",
+      "Kind": "SQL migration",
+      "Lines": 114,
+      "Bytes": 8327,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/289_OrgFact.sql",
+      "Kind": "SQL migration",
+      "Lines": 114,
+      "Bytes": 9555,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/39_MajorProjectsInventory_BcColumns.sql",
+      "Kind": "SQL migration",
+      "Lines": 114,
+      "Bytes": 6444,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/212_CaArchitectSeDecisionContacts.sql",
+      "Kind": "SQL migration",
+      "Lines": 113,
+      "Bytes": 8594,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/206_CaArchitectContactsAndLindley.sql",
+      "Kind": "SQL migration",
+      "Lines": 112,
+      "Bytes": 7172,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/03_Crm.sql",
+      "Kind": "SQL migration",
+      "Lines": 111,
+      "Bytes": 5766,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/246_ThinClientEnrichment.sql",
+      "Kind": "SQL migration",
+      "Lines": 110,
+      "Bytes": 25218,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/11_HistoricalEnrichment.sql",
+      "Kind": "SQL migration",
+      "Lines": 109,
+      "Bytes": 5661,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "tools/verify_arizona_pud_claim.py",
+      "Kind": "Python",
+      "Lines": 109,
+      "Bytes": 4564,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/251_BdTrackingCrmEngagementDedup.sql",
+      "Kind": "SQL migration",
+      "Lines": 108,
+      "Bytes": 4088,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/72_BackfillJunkNamesFromFk.sql",
+      "Kind": "SQL migration",
+      "Lines": 108,
+      "Bytes": 4486,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/275_PursuitFiles.sql",
+      "Kind": "SQL migration",
+      "Lines": 107,
+      "Bytes": 4365,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "docs/audit-2026-08/rebuild_arizona_section.py",
+      "Kind": "Python",
+      "Lines": 107,
+      "Bytes": 7076,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/284_PursuitLifecycle.sql",
+      "Kind": "SQL migration",
+      "Lines": 106,
+      "Bytes": 5788,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "_Scripts Rebuild/FileSync/Maint/simple move.ps1",
+      "Kind": "PowerShell",
+      "Lines": 106,
+      "Bytes": 4762,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/188_IngestJimTrackingContacts.sql",
+      "Kind": "SQL migration",
+      "Lines": 102,
+      "Bytes": 9779,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/209_OnniSeSeatsAndContacts.sql",
+      "Kind": "SQL migration",
+      "Lines": 102,
+      "Bytes": 6876,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/78_FixWrongProponentFks.sql",
+      "Kind": "SQL migration",
+      "Lines": 102,
+      "Bytes": 4981,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "_Scripts Rebuild/FileSync/Maint/_MOVE2.ps1",
+      "Kind": "PowerShell",
+      "Lines": 102,
+      "Bytes": 4448,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "docs/audit-2026-08/fix_arizona_table.py",
+      "Kind": "Python",
+      "Lines": 100,
+      "Bytes": 5007,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "docs/audit-2026-08/mve-pipeline/merge-mve-duplicate-people.sql",
+      "Kind": "SQL",
+      "Lines": 100,
+      "Bytes": 5185,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "tools/WorkstationOps/Tests/Test-KorWorkstationOps.ps1",
+      "Kind": "PowerShell",
+      "Lines": 100,
+      "Bytes": 5183,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "tools/verify_us_register.py",
+      "Kind": "Python",
+      "Lines": 100,
+      "Bytes": 3558,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/26_BuildingPermits.sql",
+      "Kind": "SQL migration",
+      "Lines": 99,
+      "Bytes": 5054,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "tools/BdPersonBriefRepair/repair.ps1",
+      "Kind": "PowerShell",
+      "Lines": 98,
+      "Bytes": 4983,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "tools/verify_arizona_claim.py",
+      "Kind": "Python",
+      "Lines": 98,
+      "Bytes": 4080,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/113_PostSecondaryHoningCorrections.sql",
+      "Kind": "SQL migration",
+      "Lines": 97,
+      "Bytes": 4250,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/68_R95b_StageTaxonomyCollapse.sql",
+      "Kind": "SQL migration",
+      "Lines": 97,
+      "Bytes": 3458,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/98_OrgPollutionPass2.sql",
+      "Kind": "SQL migration",
+      "Lines": 97,
+      "Bytes": 4546,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/225_PersonRowDecomposition.sql",
+      "Kind": "SQL migration",
+      "Lines": 96,
+      "Bytes": 6480,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/114_NewtonBritanniaConsolidation.sql",
+      "Kind": "SQL migration",
+      "Lines": 95,
+      "Bytes": 4381,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/152_RehomeWrongFirmContacts.sql",
+      "Kind": "SQL migration",
+      "Lines": 95,
+      "Bytes": 5505,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/229_MapleRidgeRecEnrichment.sql",
+      "Kind": "SQL migration",
+      "Lines": 95,
+      "Bytes": 7425,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/295_IndustryEventSources.sql",
+      "Kind": "SQL migration",
+      "Lines": 95,
+      "Bytes": 3572,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/200_CaClassifyFunnelOrgKinds.sql",
+      "Kind": "SQL migration",
+      "Lines": 94,
+      "Bytes": 4072,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/67_R95a_JunkPersonNamePurge.sql",
+      "Kind": "SQL migration",
+      "Lines": 94,
+      "Bytes": 3656,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "tools/verify_plain_english.py",
+      "Kind": "Python",
+      "Lines": 94,
+      "Bytes": 3777,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/158_BdLeverageViews.sql",
+      "Kind": "SQL migration",
+      "Lines": 93,
+      "Bytes": 5342,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "tools/gen-overnight-enrichment-migration.ps1",
+      "Kind": "PowerShell",
+      "Lines": 93,
+      "Bytes": 7542,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "tools/verify_no_method.py",
+      "Kind": "Python",
+      "Lines": 93,
+      "Bytes": 3588,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/270_WidenStaffIdToUpn.sql",
+      "Kind": "SQL migration",
+      "Lines": 92,
+      "Bytes": 5415,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/290_CrmTouchpoint.sql",
+      "Kind": "SQL migration",
+      "Lines": 92,
+      "Bytes": 6000,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "_Scripts Rebuild/FileSync/Maint/insert_controlfile.ps1",
+      "Kind": "PowerShell",
+      "Lines": 91,
+      "Bytes": 4833,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "docs/audit-2026-08/rebuild_closed_section.py",
+      "Kind": "Python",
+      "Lines": 91,
+      "Bytes": 4525,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/222_PinnacleEnrichment.sql",
+      "Kind": "SQL migration",
+      "Lines": 90,
+      "Bytes": 6169,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "tools/assemble_mve_docs.py",
+      "Kind": "Python",
+      "Lines": 90,
+      "Bytes": 3119,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/110_UHNBCConsolidationPlusEnrichment.sql",
+      "Kind": "SQL migration",
+      "Lines": 89,
+      "Bytes": 4420,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/28_SchemaHardening.sql",
+      "Kind": "SQL migration",
+      "Lines": 89,
+      "Bytes": 3283,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "_Scripts Rebuild/FileSync/Maint/Count_SSI_PDFs_Sharepoint.ps1",
+      "Kind": "PowerShell",
+      "Lines": 89,
+      "Bytes": 3314,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "_Scripts Rebuild/FileSync/Maint/_MOVE.ps1",
+      "Kind": "PowerShell",
+      "Lines": 89,
+      "Bytes": 3804,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "tools/phoenix_open_architect_seats.py",
+      "Kind": "Python",
+      "Lines": 89,
+      "Bytes": 4006,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/192_IngestCaEcosystemProjects.sql",
+      "Kind": "SQL migration",
+      "Lines": 88,
+      "Bytes": 23668,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/253_ReanchorTwoAffiliationEnrichments.sql",
+      "Kind": "SQL migration",
+      "Lines": 88,
+      "Bytes": 2725,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "tools/source_currency_check.py",
+      "Kind": "Python",
+      "Lines": 88,
+      "Bytes": 3854,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/02_IngestionTriggers.sql",
+      "Kind": "SQL migration",
+      "Lines": 87,
+      "Bytes": 3650,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/196_CaMajorProjectsInventorySources.sql",
+      "Kind": "SQL migration",
+      "Lines": 87,
+      "Bytes": 4349,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/296_EventMarketRegion.sql",
+      "Kind": "SQL migration",
+      "Lines": 87,
+      "Bytes": 3266,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/38_MajorProjectsInventory.sql",
+      "Kind": "SQL migration",
+      "Lines": 87,
+      "Bytes": 3893,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/40_CanonicalKindReconciliation.sql",
+      "Kind": "SQL migration",
+      "Lines": 87,
+      "Bytes": 3760,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/83_OrphanCanonicalOrgCull.sql",
+      "Kind": "SQL migration",
+      "Lines": 87,
+      "Bytes": 5964,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/214_CaMarketOrgsAndContacts.sql",
+      "Kind": "SQL migration",
+      "Lines": 86,
+      "Bytes": 6967,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/125_PersonBriefQuarantine.sql",
+      "Kind": "SQL migration",
+      "Lines": 84,
+      "Bytes": 4221,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/185_IngestCaDecisionMakers.sql",
+      "Kind": "SQL migration",
+      "Lines": 83,
+      "Bytes": 6569,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/257_CaSfSameAddressPermitDedup.sql",
+      "Kind": "SQL migration",
+      "Lines": 83,
+      "Bytes": 2855,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/50_StaleOppExpiry.sql",
+      "Kind": "SQL migration",
+      "Lines": 83,
+      "Bytes": 4242,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/142_DifferentiatorViews.sql",
+      "Kind": "SQL migration",
+      "Lines": 81,
+      "Bytes": 4529,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "tools/classify_domain_role.py",
+      "Kind": "Python",
+      "Lines": 81,
+      "Bytes": 3256,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "_Scripts Rebuild/FileSync/Maint/counter.ps1",
+      "Kind": "PowerShell",
+      "Lines": 80,
+      "Bytes": 3446,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "tools/gen-thinclient-enrich-migration.ps1",
+      "Kind": "PowerShell",
+      "Lines": 79,
+      "Bytes": 8079,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/126_OrgEnrichmentSuppression.sql",
+      "Kind": "SQL migration",
+      "Lines": 78,
+      "Bytes": 3866,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/228_RepointArchivedJvStringMpi.sql",
+      "Kind": "SQL migration",
+      "Lines": 78,
+      "Bytes": 4408,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/41_GovCanada_PacedReEnable.sql",
+      "Kind": "SQL migration",
+      "Lines": 77,
+      "Bytes": 2805,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/47_PrimePipelineView.sql",
+      "Kind": "SQL migration",
+      "Lines": 77,
+      "Bytes": 4014,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/223_PurposeDrivenEnrichment.sql",
+      "Kind": "SQL migration",
+      "Lines": 76,
+      "Bytes": 5404,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/211_WarmDeveloperSeSeats.sql",
+      "Kind": "SQL migration",
+      "Lines": 75,
+      "Bytes": 5627,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/85_DrainCreatedOrgKindReclassify.sql",
+      "Kind": "SQL migration",
+      "Lines": 75,
+      "Bytes": 3770,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "docs/audit-2026-08/mve-pipeline/merge-berger-duplicate.sql",
+      "Kind": "SQL",
+      "Lines": 75,
+      "Bytes": 3409,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/94_KindReclassificationSweep.sql",
+      "Kind": "SQL migration",
+      "Lines": 74,
+      "Bytes": 3279,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/156_MergeDarshanPolygonIntoKorClient.sql",
+      "Kind": "SQL migration",
+      "Lines": 73,
+      "Bytes": 4305,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/165_RetireNonPersonContacts.sql",
+      "Kind": "SQL migration",
+      "Lines": 73,
+      "Bytes": 5541,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/220_ItcCollaborationContacts.sql",
+      "Kind": "SQL migration",
+      "Lines": 73,
+      "Bytes": 5553,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/276_BdStaffDirectory.sql",
+      "Kind": "SQL migration",
+      "Lines": 73,
+      "Bytes": 3450,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "tools/charlotte_pending_petitions.py",
+      "Kind": "Python",
+      "Lines": 73,
+      "Bytes": 2902,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "tools/phoenix_open_seats.py",
+      "Kind": "Python",
+      "Lines": 73,
+      "Bytes": 3150,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/146_MergeMislabeledKorRowsIntoAnchor.sql",
+      "Kind": "SQL migration",
+      "Lines": 72,
+      "Bytes": 3739,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/250_DeltekContactCorrections.sql",
+      "Kind": "SQL migration",
+      "Lines": 72,
+      "Bytes": 4295,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/53_DataRetirement.sql",
+      "Kind": "SQL migration",
+      "Lines": 72,
+      "Bytes": 3539,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/127_OrgRelevanceCull.sql",
+      "Kind": "SQL migration",
+      "Lines": 71,
+      "Bytes": 3783,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/148_CleanAwardLetterContaminatedOrgNames.sql",
+      "Kind": "SQL migration",
+      "Lines": 71,
+      "Bytes": 3321,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/84_CanonicalOrgRetiredAtUtc.sql",
+      "Kind": "SQL migration",
+      "Lines": 70,
+      "Bytes": 3267,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/96_PlaceholderAndPollutedRetire.sql",
+      "Kind": "SQL migration",
+      "Lines": 70,
+      "Bytes": 3055,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/101_OrgPollutionPass3.sql",
+      "Kind": "SQL migration",
+      "Lines": 69,
+      "Bytes": 3664,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/139_FrozenAnchorGuardTrigger.sql",
+      "Kind": "SQL migration",
+      "Lines": 69,
+      "Bytes": 2973,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/91_IntelPersonDedup.sql",
+      "Kind": "SQL migration",
+      "Lines": 68,
+      "Bytes": 3395,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/37_OllamaBackfill_QueueFilter.sql",
+      "Kind": "SQL migration",
+      "Lines": 67,
+      "Bytes": 2762,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/76_OrphanPlaceholderOrgPurge.sql",
+      "Kind": "SQL migration",
+      "Lines": 67,
+      "Bytes": 3718,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/168_IngestApolloPhonesAndJcc.sql",
+      "Kind": "SQL migration",
+      "Lines": 66,
+      "Bytes": 4507,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/230_HcmaPrincipalsBackfill.sql",
+      "Kind": "SQL migration",
+      "Lines": 66,
+      "Bytes": 4451,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "output/trigger-awards-job.ps1",
+      "Kind": "PowerShell",
+      "Lines": 66,
+      "Bytes": 3975,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": ".github/workflows/ci.yml",
+      "Kind": "config",
+      "Lines": 65,
+      "Bytes": 2691,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/04_OpportunityClientContact.sql",
+      "Kind": "SQL migration",
+      "Lines": 65,
+      "Bytes": 1861,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/203_CaExecApolloEnrichment.sql",
+      "Kind": "SQL migration",
+      "Lines": 65,
+      "Bytes": 3608,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/60_OpportunityInterestedFirms.sql",
+      "Kind": "SQL migration",
+      "Lines": 65,
+      "Bytes": 3375,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "output/org-value-segmentation.ps1",
+      "Kind": "PowerShell",
+      "Lines": 65,
+      "Bytes": 4623,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/151_FixUsRowsMisTaggedAsBc.sql",
+      "Kind": "SQL migration",
+      "Lines": 64,
+      "Bytes": 3212,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/187_CreateJimTrackingOrgs.sql",
+      "Kind": "SQL migration",
+      "Lines": 64,
+      "Bytes": 5495,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/195_DedupCaPeople.sql",
+      "Kind": "SQL migration",
+      "Lines": 64,
+      "Bytes": 3595,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/268_WinHistoryBackfill.sql",
+      "Kind": "SQL migration",
+      "Lines": 64,
+      "Bytes": 3348,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/43_PrimeConsultantClassification.sql",
+      "Kind": "SQL migration",
+      "Lines": 64,
+      "Bytes": 1804,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/172_DecomposeDedupeBcMpiOrgs.sql",
+      "Kind": "SQL migration",
+      "Lines": 62,
+      "Bytes": 3459,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/19_CanonicalOrg.sql",
+      "Kind": "SQL migration",
+      "Lines": 62,
+      "Bytes": 2870,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/215_CaBatchEmailEnrichment.sql",
+      "Kind": "SQL migration",
+      "Lines": 61,
+      "Bytes": 3066,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/226_DeCotiisAndOrphanCleanup.sql",
+      "Kind": "SQL migration",
+      "Lines": 61,
+      "Bytes": 3241,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/164_ReportCallSheetView.sql",
+      "Kind": "SQL migration",
+      "Lines": 60,
+      "Bytes": 3040,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "output/enrich-criteria-scan.ps1",
+      "Kind": "PowerShell",
+      "Lines": 60,
+      "Bytes": 5465,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/08_OpportunityAwards.sql",
+      "Kind": "SQL migration",
+      "Lines": 59,
+      "Bytes": 2860,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/141_NormalizeMpiRegionName.sql",
+      "Kind": "SQL migration",
+      "Lines": 59,
+      "Bytes": 3312,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/201_CaApolloContactEnrichment.sql",
+      "Kind": "SQL migration",
+      "Lines": 59,
+      "Bytes": 3321,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/36_GovCanada_SqlFilter.sql",
+      "Kind": "SQL migration",
+      "Lines": 59,
+      "Bytes": 2456,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/44_LACity_RAMP_OpenBids.sql",
+      "Kind": "SQL migration",
+      "Lines": 59,
+      "Bytes": 3082,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "_Scripts Rebuild/FileSync/Maint/listfoldersonsharepoint.ps1",
+      "Kind": "PowerShell",
+      "Lines": 59,
+      "Bytes": 2143,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/166_IngestApolloEvGapContacts.sql",
+      "Kind": "SQL migration",
+      "Lines": 58,
+      "Bytes": 3935,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/204_CaExecHunterEnrichment.sql",
+      "Kind": "SQL migration",
+      "Lines": 58,
+      "Bytes": 3090,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/207_CaArchitectEmailEnrichment.sql",
+      "Kind": "SQL migration",
+      "Lines": 58,
+      "Bytes": 2608,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "_Scripts Rebuild/FileSync/Maint/CopyNewformaEmails.ps1",
+      "Kind": "PowerShell",
+      "Lines": 58,
+      "Bytes": 2160,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "docs/etabs-handoff/pick_plans.py",
+      "Kind": "Python",
+      "Lines": 58,
+      "Bytes": 2734,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "output/meeting-verify-data.ps1",
+      "Kind": "PowerShell",
+      "Lines": 58,
+      "Bytes": 2957,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/140_RetireStrandedIntelOnRetiredOrgs.sql",
+      "Kind": "SQL migration",
+      "Lines": 57,
+      "Bytes": 2849,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/177_DedupMpiProjectRows.sql",
+      "Kind": "SQL migration",
+      "Lines": 57,
+      "Bytes": 3278,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/231_AddBidsAndTendersSources.sql",
+      "Kind": "SQL migration",
+      "Lines": 57,
+      "Bytes": 3247,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/238_PmThinDeveloperContacts.sql",
+      "Kind": "SQL migration",
+      "Lines": 57,
+      "Bytes": 9752,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/274_CrmEnrichment.sql",
+      "Kind": "SQL migration",
+      "Lines": 57,
+      "Bytes": 2504,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/69_R95c_ProvinceJunkFix.sql",
+      "Kind": "SQL migration",
+      "Lines": 57,
+      "Bytes": 1597,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "output/deploy-worker-258.ps1",
+      "Kind": "PowerShell",
+      "Lines": 57,
+      "Bytes": 3253,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "output/deploy-worker-lowvalue.ps1",
+      "Kind": "PowerShell",
+      "Lines": 57,
+      "Bytes": 3264,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/111_VernonJubileePsychConsolidation.sql",
+      "Kind": "SQL migration",
+      "Lines": 56,
+      "Bytes": 2252,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/169_IngestResearchDecisionMakers.sql",
+      "Kind": "SQL migration",
+      "Lines": 56,
+      "Bytes": 3985,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/194_FixDedupOrphansAnd300First.sql",
+      "Kind": "SQL migration",
+      "Lines": 56,
+      "Bytes": 3589,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/252_CrmEngagementBdRelationshipUniqueIndex.sql",
+      "Kind": "SQL migration",
+      "Lines": 56,
+      "Bytes": 1607,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/86_RetireGenericDeadEndMpi.sql",
+      "Kind": "SQL migration",
+      "Lines": 56,
+      "Bytes": 2170,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "docs/email-signatures/Push-CloudSignatures.ps1",
+      "Kind": "PowerShell",
+      "Lines": 56,
+      "Bytes": 2418,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "output/kind-role-fix-apply.ps1",
+      "Kind": "PowerShell",
+      "Lines": 56,
+      "Bytes": 3888,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/153_DecomposeCompositeOrgRows.sql",
+      "Kind": "SQL migration",
+      "Lines": 55,
+      "Bytes": 3619,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/49_CrmEngagementProjectLink.sql",
+      "Kind": "SQL migration",
+      "Lines": 55,
+      "Bytes": 2863,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "_Scripts Rebuild/FileSync/Maint/folder list.ps1",
+      "Kind": "PowerShell",
+      "Lines": 55,
+      "Bytes": 2149,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "output/graft-zip-verify.ps1",
+      "Kind": "PowerShell",
+      "Lines": 55,
+      "Bytes": 3252,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/213_CaOpenSeatPursuitPipeline.sql",
+      "Kind": "SQL migration",
+      "Lines": 54,
+      "Bytes": 8716,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/256_CaPermitPostSelectionStageFilters.sql",
+      "Kind": "SQL migration",
+      "Lines": 54,
+      "Bytes": 2411,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "output/deploy-worker-crm.ps1",
+      "Kind": "PowerShell",
+      "Lines": 54,
+      "Bytes": 3100,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "tools/gen-pm-thindev-migration.ps1",
+      "Kind": "PowerShell",
+      "Lines": 54,
+      "Bytes": 6411,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "tools/verify_phoenix_claim.py",
+      "Kind": "Python",
+      "Lines": 54,
+      "Bytes": 2352,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/163_FixContactDataQuality.sql",
+      "Kind": "SQL migration",
+      "Lines": 53,
+      "Bytes": 2701,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/20_KorPursuits.sql",
+      "Kind": "SQL migration",
+      "Lines": 53,
+      "Bytes": 3655,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/35_GovCanada_SwitchToJsonApi.sql",
+      "Kind": "SQL migration",
+      "Lines": 53,
+      "Bytes": 2583,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "output/graft-and-rezip.ps1",
+      "Kind": "PowerShell",
+      "Lines": 53,
+      "Bytes": 2967,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/183_CreateCaSynthesisOrgs.sql",
+      "Kind": "SQL migration",
+      "Lines": 52,
+      "Bytes": 4737,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/248_DeltekResolvedClients.sql",
+      "Kind": "SQL migration",
+      "Lines": 52,
+      "Bytes": 8026,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/273_RelevanceGateRejects.sql",
+      "Kind": "SQL migration",
+      "Lines": 52,
+      "Bytes": 2176,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "output/enrich-archive-junk.ps1",
+      "Kind": "PowerShell",
+      "Lines": 52,
+      "Bytes": 5019,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/120_LoblawParentRemint.sql",
+      "Kind": "SQL migration",
+      "Lines": 51,
+      "Bytes": 2394,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/131_PersonBriefQuarantineRound2.sql",
+      "Kind": "SQL migration",
+      "Lines": 50,
+      "Bytes": 2734,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/92_IntelPersonDedupRound2.sql",
+      "Kind": "SQL migration",
+      "Lines": 50,
+      "Bytes": 2295,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "_Scripts Rebuild/FileSync/Maint/delete_to_fileserver.ps1",
+      "Kind": "PowerShell",
+      "Lines": 50,
+      "Bytes": 3458,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "tools/gen_houston_lead_table.py",
+      "Kind": "Python",
+      "Lines": 50,
+      "Bytes": 1798,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/18_VendorSiteCrawl.sql",
+      "Kind": "SQL migration",
+      "Lines": 49,
+      "Bytes": 2600,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/217_BcClientCaPipeline.sql",
+      "Kind": "SQL migration",
+      "Lines": 49,
+      "Bytes": 3619,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/282_OpportunityDocuments.sql",
+      "Kind": "SQL migration",
+      "Lines": 49,
+      "Bytes": 2225,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "_Scripts Rebuild/nssm-2.24/src/version.cmd",
+      "Kind": "batch",
+      "Lines": 49,
+      "Bytes": 1734,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "output/brain-ingest-2026-06-19/load-crm.ps1",
+      "Kind": "PowerShell",
+      "Lines": 49,
+      "Bytes": 5957,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/161_DedupeMpiProjects.sql",
+      "Kind": "SQL migration",
+      "Lines": 48,
+      "Bytes": 2847,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/170_ReverifyVerifiedCorrections.sql",
+      "Kind": "SQL migration",
+      "Lines": 48,
+      "Bytes": 2923,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/205_CaDeCotiisPatternFixAndJarvisFlag.sql",
+      "Kind": "SQL migration",
+      "Lines": 48,
+      "Bytes": 2428,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/208_CaJvStringDecomposition.sql",
+      "Kind": "SQL migration",
+      "Lines": 48,
+      "Bytes": 2953,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/258_AwardProgramCatalog.sql",
+      "Kind": "SQL migration",
+      "Lines": 48,
+      "Bytes": 2125,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/56_IndustryEvents.sql",
+      "Kind": "SQL migration",
+      "Lines": 48,
+      "Bytes": 1573,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "output/apply-reclassify.ps1",
+      "Kind": "PowerShell",
+      "Lines": 48,
+      "Bytes": 3975,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "output/enrich-universe-score.ps1",
+      "Kind": "PowerShell",
+      "Lines": 48,
+      "Bytes": 4047,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "output/name-integrity-triage.ps1",
+      "Kind": "PowerShell",
+      "Lines": 48,
+      "Bytes": 3509,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "_Scripts Rebuild/FileSync/Maint/_cleanup.ps1",
+      "Kind": "PowerShell",
+      "Lines": 47,
+      "Bytes": 1908,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "output/arch-enrich-discovery2.ps1",
+      "Kind": "PowerShell",
+      "Lines": 47,
+      "Bytes": 2938,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "output/archive-apply.ps1",
+      "Kind": "PowerShell",
+      "Lines": 47,
+      "Bytes": 3880,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/133_SummaryFlagsSweep.sql",
+      "Kind": "SQL migration",
+      "Lines": 46,
+      "Bytes": 2527,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/143_CleanPersonEmailField.sql",
+      "Kind": "SQL migration",
+      "Lines": 46,
+      "Bytes": 2421,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/189_IngestJimTrackingPursuits.sql",
+      "Kind": "SQL migration",
+      "Lines": 46,
+      "Bytes": 4145,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "output/backfill-mpi-se-gc-round2.ps1",
+      "Kind": "PowerShell",
+      "Lines": 46,
+      "Bytes": 3662,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "output/decotiis-signals-2026-06-20.ps1",
+      "Kind": "PowerShell",
+      "Lines": 46,
+      "Bytes": 4873,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "output/ha-finalize.ps1",
+      "Kind": "PowerShell",
+      "Lines": 46,
+      "Bytes": 3339,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/235_SmpReclassAndUcbRfq.sql",
+      "Kind": "SQL migration",
+      "Lines": 45,
+      "Bytes": 2489,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/254_CaPermitSourceStatusFilters.sql",
+      "Kind": "SQL migration",
+      "Lines": 45,
+      "Bytes": 1977,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/45_CoV_ProvinceFix.sql",
+      "Kind": "SQL migration",
+      "Lines": 45,
+      "Bytes": 1891,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "output/arch-warm-tiers.ps1",
+      "Kind": "PowerShell",
+      "Lines": 45,
+      "Bytes": 3320,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "output/kind-role-fix-preview.ps1",
+      "Kind": "PowerShell",
+      "Lines": 45,
+      "Bytes": 3252,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/09_OpportunityBids.sql",
+      "Kind": "SQL migration",
+      "Lines": 44,
+      "Bytes": 2022,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/100_AbMpiProvinceFix.sql",
+      "Kind": "SQL migration",
+      "Lines": 44,
+      "Bytes": 1617,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/193_CleanCaSeatsRehone.sql",
+      "Kind": "SQL migration",
+      "Lines": 44,
+      "Bytes": 2719,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/261_BdPersonResearchTriggers.sql",
+      "Kind": "SQL migration",
+      "Lines": 44,
+      "Bytes": 2170,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/61_OpportunityBidsBidderCanonical.sql",
+      "Kind": "SQL migration",
+      "Lines": 44,
+      "Bytes": 1455,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "output/backfill-mpi-se-gc-fk.ps1",
+      "Kind": "PowerShell",
+      "Lines": 44,
+      "Bytes": 3297,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "output/refresh-awards-prompt.ps1",
+      "Kind": "PowerShell",
+      "Lines": 44,
+      "Bytes": 2458,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "output/kind-fix-analysis.ps1",
+      "Kind": "PowerShell",
+      "Lines": 43,
+      "Bytes": 2222,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/149_NullFabricatedEmailsOnNonPersonRecords.sql",
+      "Kind": "SQL migration",
+      "Lines": 42,
+      "Bytes": 2538,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/167_PriceUncostedLmSeats.sql",
+      "Kind": "SQL migration",
+      "Lines": 42,
+      "Bytes": 3062,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/216_KorCaliforniaPortfolio.sql",
+      "Kind": "SQL migration",
+      "Lines": 42,
+      "Bytes": 3870,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/224_JvStringRenames.sql",
+      "Kind": "SQL migration",
+      "Lines": 42,
+      "Bytes": 2470,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/218_FixSfProjectNames.sql",
+      "Kind": "SQL migration",
+      "Lines": 41,
+      "Bytes": 1534,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/42_GovCanada_SortNewestFirst.sql",
+      "Kind": "SQL migration",
+      "Lines": 41,
+      "Bytes": 1328,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/59_ArchitectDisplacementBriefs.sql",
+      "Kind": "SQL migration",
+      "Lines": 41,
+      "Bytes": 1882,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "output/audit-3-geo.ps1",
+      "Kind": "PowerShell",
+      "Lines": 41,
+      "Bytes": 3951,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/07_CrmEngagementStage_Constraint.sql",
+      "Kind": "SQL migration",
+      "Lines": 40,
+      "Bytes": 1180,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/12_AwardAgentEnrichment.sql",
+      "Kind": "SQL migration",
+      "Lines": 40,
+      "Bytes": 1922,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/147_DedupReportCriticalOrgClusters.sql",
+      "Kind": "SQL migration",
+      "Lines": 40,
+      "Bytes": 1888,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/186_EnrichCaContactsApollo.sql",
+      "Kind": "SQL migration",
+      "Lines": 40,
+      "Bytes": 2250,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "output/backfill-mpi-se-gc-round3.ps1",
+      "Kind": "PowerShell",
+      "Lines": 40,
+      "Bytes": 3498,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "tools/kill-list-review.sql",
+      "Kind": "SQL",
+      "Lines": 40,
+      "Bytes": 2248,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/154_FixPaulFastTomClarkContacts.sql",
+      "Kind": "SQL migration",
+      "Lines": 39,
+      "Bytes": 2061,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/179_DossierEnrichmentActions.sql",
+      "Kind": "SQL migration",
+      "Lines": 39,
+      "Bytes": 2392,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/51_HoningKindCleanup.sql",
+      "Kind": "SQL migration",
+      "Lines": 39,
+      "Bytes": 2148,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/57_AdminControl.sql",
+      "Kind": "SQL migration",
+      "Lines": 39,
+      "Bytes": 1783,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "output/health-authority-split-preview.ps1",
+      "Kind": "PowerShell",
+      "Lines": 39,
+      "Bytes": 2567,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/175_NormalizeInteriorRegionTaxonomy.sql",
+      "Kind": "SQL migration",
+      "Lines": 38,
+      "Bytes": 2015,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/182_NormalizeCaSectorTaxonomy.sql",
+      "Kind": "SQL migration",
+      "Lines": 38,
+      "Bytes": 2994,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/190_CreateCaEcosystemOrgs.sql",
+      "Kind": "SQL migration",
+      "Lines": 38,
+      "Bytes": 3381,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/249_DeltekResolveAnnotations.sql",
+      "Kind": "SQL migration",
+      "Lines": 38,
+      "Bytes": 2054,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/48_BcBidMaxPagesLift.sql",
+      "Kind": "SQL migration",
+      "Lines": 38,
+      "Bytes": 1987,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "output/archive-resurrect-signal.ps1",
+      "Kind": "PowerShell",
+      "Lines": 38,
+      "Bytes": 2428,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "output/reconcile-5-engagements.ps1",
+      "Kind": "PowerShell",
+      "Lines": 38,
+      "Bytes": 2640,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/06_CrmStageCollapse.sql",
+      "Kind": "SQL migration",
+      "Lines": 37,
+      "Bytes": 1502,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/232_PruneDeadBidsAndTendersSources.sql",
+      "Kind": "SQL migration",
+      "Lines": 37,
+      "Bytes": 1990,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/280_HistoricalOpportunitiesCanonical.sql",
+      "Kind": "SQL migration",
+      "Lines": 37,
+      "Bytes": 1917,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/283_DetailEnrichmentMarker.sql",
+      "Kind": "SQL migration",
+      "Lines": 37,
+      "Bytes": 1358,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/49_BcBidFrequencyAndGridDump.sql",
+      "Kind": "SQL migration",
+      "Lines": 37,
+      "Bytes": 1823,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "output/ha-cluster-full.ps1",
+      "Kind": "PowerShell",
+      "Lines": 37,
+      "Bytes": 2796,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/138_RestoreKorStructuralAnchor.sql",
+      "Kind": "SQL migration",
+      "Lines": 36,
+      "Bytes": 1639,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/210_OnniContactEmails.sql",
+      "Kind": "SQL migration",
+      "Lines": 36,
+      "Bytes": 1431,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/23_CanonicalOrgEnrichment.sql",
+      "Kind": "SQL migration",
+      "Lines": 36,
+      "Bytes": 1799,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "output/repair-mpi-orphans.ps1",
+      "Kind": "PowerShell",
+      "Lines": 36,
+      "Bytes": 3263,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "output/rescope-enrich-queue.ps1",
+      "Kind": "PowerShell",
+      "Lines": 36,
+      "Bytes": 2803,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "output/rescue-institutions-scoped.ps1",
+      "Kind": "PowerShell",
+      "Lines": 36,
+      "Bytes": 3035,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/103_AbMpiProvinceFixPass2.sql",
+      "Kind": "SQL migration",
+      "Lines": 35,
+      "Bytes": 1249,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/137_JvArtifactRetireAndPlaceholderSuppress.sql",
+      "Kind": "SQL migration",
+      "Lines": 35,
+      "Bytes": 4052,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/145_NullMisPropagatedPatternEmails.sql",
+      "Kind": "SQL migration",
+      "Lines": 35,
+      "Bytes": 1926,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/181_PurgeResidualIndustrialOutOfLane.sql",
+      "Kind": "SQL migration",
+      "Lines": 35,
+      "Bytes": 1711,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/269_WinBackfillProjectNames.sql",
+      "Kind": "SQL migration",
+      "Lines": 35,
+      "Bytes": 1335,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/27_BackfillOpportunityBuyerCanonical.sql",
+      "Kind": "SQL migration",
+      "Lines": 35,
+      "Bytes": 1338,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/287_CrmEngagementContact.sql",
+      "Kind": "SQL migration",
+      "Lines": 35,
+      "Bytes": 1443,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/46_MpiTeamColumns.sql",
+      "Kind": "SQL migration",
+      "Lines": 35,
+      "Bytes": 1980,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "output/audit-1-overview.ps1",
+      "Kind": "PowerShell",
+      "Lines": 35,
+      "Bytes": 2006,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "output/block5-seed-create.ps1",
+      "Kind": "PowerShell",
+      "Lines": 35,
+      "Bytes": 2030,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/05_OpportunityStatusCollapse.sql",
+      "Kind": "SQL migration",
+      "Lines": 34,
+      "Bytes": 1549,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/155_StandardizeSchoolDistrictNames.sql",
+      "Kind": "SQL migration",
+      "Lines": 34,
+      "Bytes": 3596,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/240_Tier1WarmPursuits.sql",
+      "Kind": "SQL migration",
+      "Lines": 34,
+      "Bytes": 5199,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/24_CanonicalOrg_BcRegistry.sql",
+      "Kind": "SQL migration",
+      "Lines": 34,
+      "Bytes": 1530,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "output/add-events.ps1",
+      "Kind": "PowerShell",
+      "Lines": 34,
+      "Bytes": 3472,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "output/archive-dryrun.ps1",
+      "Kind": "PowerShell",
+      "Lines": 34,
+      "Bytes": 2462,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "output/block5-northern-reclassify.ps1",
+      "Kind": "PowerShell",
+      "Lines": 34,
+      "Bytes": 1903,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "output/trim-queue-to-barren.ps1",
+      "Kind": "PowerShell",
+      "Lines": 34,
+      "Bytes": 2585,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/106_UsProjectsStageBackfill.sql",
+      "Kind": "SQL migration",
+      "Lines": 33,
+      "Bytes": 1226,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/144_PersonEmailProvenance.sql",
+      "Kind": "SQL migration",
+      "Lines": 33,
+      "Bytes": 1817,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/47_MpiStructuralGcIndexes.sql",
+      "Kind": "SQL migration",
+      "Lines": 33,
+      "Bytes": 1442,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "output/archive-warmlead-audit.ps1",
+      "Kind": "PowerShell",
+      "Lines": 33,
+      "Bytes": 2396,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "output/block5-seed-preflight.ps1",
+      "Kind": "PowerShell",
+      "Lines": 33,
+      "Bytes": 2266,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "output/drain-rate.ps1",
+      "Kind": "PowerShell",
+      "Lines": 33,
+      "Bytes": 1971,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "output/gen-andamp-pairs.ps1",
+      "Kind": "PowerShell",
+      "Lines": 33,
+      "Bytes": 2627,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "output/verify-gap-analysis.ps1",
+      "Kind": "PowerShell",
+      "Lines": 33,
+      "Bytes": 3415,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "tools/Invoke-KorWorkstationAudit.ps1",
+      "Kind": "PowerShell",
+      "Lines": 33,
+      "Bytes": 1773,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Operations.Mcp/Sql/CreateCollectionsCaseTable.sql",
+      "Kind": "SQL",
+      "Lines": 32,
+      "Bytes": 1437,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/180_PurgeOutOfLaneIndustrial.sql",
+      "Kind": "SQL migration",
+      "Lines": 32,
+      "Bytes": 2138,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/242_SfRichNaming.sql",
+      "Kind": "SQL migration",
+      "Lines": 32,
+      "Bytes": 1672,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/291_CrmOwnerDirectoryView.sql",
+      "Kind": "SQL migration",
+      "Lines": 32,
+      "Bytes": 1504,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/54_JobRuns.sql",
+      "Kind": "SQL migration",
+      "Lines": 32,
+      "Bytes": 860,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "_Scripts Rebuild/FileSync/Maint/insert_folder_to_fileserver.ps1",
+      "Kind": "PowerShell",
+      "Lines": 32,
+      "Bytes": 1553,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "output/ha-postaudit.ps1",
+      "Kind": "PowerShell",
+      "Lines": 32,
+      "Bytes": 2537,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "output/prioritize-vip-queue.ps1",
+      "Kind": "PowerShell",
+      "Lines": 32,
+      "Bytes": 2275,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/107_AbProjectsStageBackfill.sql",
+      "Kind": "SQL migration",
+      "Lines": 31,
+      "Bytes": 1127,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/173_BackfillBcStageFromStatus.sql",
+      "Kind": "SQL migration",
+      "Lines": 31,
+      "Bytes": 1725,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/243_SanJoseAddressNaming.sql",
+      "Kind": "SQL migration",
+      "Lines": 31,
+      "Bytes": 1528,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "output/apply-bdfix-migrations-2026-06-20.ps1",
+      "Kind": "PowerShell",
+      "Lines": 31,
+      "Bytes": 1512,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "output/apply-closeout-migrations-2026-06-20.ps1",
+      "Kind": "PowerShell",
+      "Lines": 31,
+      "Bytes": 1468,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "output/apply-mig-259.ps1",
+      "Kind": "PowerShell",
+      "Lines": 31,
+      "Bytes": 1827,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "output/compare-zips.ps1",
+      "Kind": "PowerShell",
+      "Lines": 31,
+      "Bytes": 1551,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/259_MpiSeGcForeignKeys.sql",
+      "Kind": "SQL migration",
+      "Lines": 30,
+      "Bytes": 1553,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/266_CanonicalOrgMerge.sql",
+      "Kind": "SQL migration",
+      "Lines": 30,
+      "Bytes": 1411,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "_Scripts Rebuild/FileSync/Maint/delete_folder_to_fileserver.ps1",
+      "Kind": "PowerShell",
+      "Lines": 30,
+      "Bytes": 1308,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "output/check-front-cohort.ps1",
+      "Kind": "PowerShell",
+      "Lines": 30,
+      "Bytes": 1723,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "output/reclassify-preview.ps1",
+      "Kind": "PowerShell",
+      "Lines": 30,
+      "Bytes": 2321,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "output/rollback-project-teams.ps1",
+      "Kind": "PowerShell",
+      "Lines": 30,
+      "Bytes": 2139,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/160_DedupeAffiliations.sql",
+      "Kind": "SQL migration",
+      "Lines": 29,
+      "Bytes": 1304,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/281_SourceQuartzManaged.sql",
+      "Kind": "SQL migration",
+      "Lines": 29,
+      "Bytes": 1543,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/292_RetirePerishableIntelActions.sql",
+      "Kind": "SQL migration",
+      "Lines": 29,
+      "Bytes": 1481,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/31_CanonicalOrgKorProjectSignal.sql",
+      "Kind": "SQL migration",
+      "Lines": 29,
+      "Bytes": 986,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "output/ca-deadstage-retire-2026-06-19.ps1",
+      "Kind": "PowerShell",
+      "Lines": 29,
+      "Bytes": 1938,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "output/check-missing.ps1",
+      "Kind": "PowerShell",
+      "Lines": 29,
+      "Bytes": 1731,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "output/size-breakdown.ps1",
+      "Kind": "PowerShell",
+      "Lines": 29,
+      "Bytes": 2084,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Operations.Mcp/Sql/CreateAlertTable.sql",
+      "Kind": "SQL",
+      "Lines": 28,
+      "Bytes": 1223,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/129_ProponentUnresolvable.sql",
+      "Kind": "SQL migration",
+      "Lines": 28,
+      "Bytes": 1431,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/278_SeatStatusVocabularyBackfill.sql",
+      "Kind": "SQL migration",
+      "Lines": 28,
+      "Bytes": 1470,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/285_SeatWindow.sql",
+      "Kind": "SQL migration",
+      "Lines": 28,
+      "Bytes": 1636,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "_Scripts Rebuild/FileSync/Maint/Count_SSI_PDFs_Local.ps1",
+      "Kind": "PowerShell",
+      "Lines": 28,
+      "Bytes": 987,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "output/decotiis-ingest-2026-06-20.ps1",
+      "Kind": "PowerShell",
+      "Lines": 28,
+      "Bytes": 3390,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Operations.Mcp/Sql/CreateCollectionsCaseInvoiceTable.sql",
+      "Kind": "SQL",
+      "Lines": 27,
+      "Bytes": 1227,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/159_LinkMajorGcCanonical.sql",
+      "Kind": "SQL migration",
+      "Lines": 27,
+      "Bytes": 1554,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/21_KorPursuits_ExternalSource.sql",
+      "Kind": "SQL migration",
+      "Lines": 27,
+      "Bytes": 1057,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/271_CanonicalOrgWebsiteDomain.sql",
+      "Kind": "SQL migration",
+      "Lines": 27,
+      "Bytes": 905,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "output/archive-warm-inspect.ps1",
+      "Kind": "PowerShell",
+      "Lines": 27,
+      "Bytes": 2694,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "output/fix-bdoutreach-loop.ps1",
+      "Kind": "PowerShell",
+      "Lines": 27,
+      "Bytes": 1902,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/198_CaSanDiegoNameAndCeqaCleanup.sql",
+      "Kind": "SQL migration",
+      "Lines": 26,
+      "Bytes": 1399,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/241_SfStuckNameBackfill.sql",
+      "Kind": "SQL migration",
+      "Lines": 26,
+      "Bytes": 1361,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/245_RetireGenericPlaceholderOrgs.sql",
+      "Kind": "SQL migration",
+      "Lines": 26,
+      "Bytes": 1759,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/272_StageHistoryByStaffIdWiden.sql",
+      "Kind": "SQL migration",
+      "Lines": 26,
+      "Bytes": 1096,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "_Scripts Rebuild/FileSync/Maint/foldersize.ps1",
+      "Kind": "PowerShell",
+      "Lines": 26,
+      "Bytes": 830,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "output/copy-to-share.ps1",
+      "Kind": "PowerShell",
+      "Lines": 26,
+      "Bytes": 1251,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/219_SfConfigAddressNaming.sql",
+      "Kind": "SQL migration",
+      "Lines": 25,
+      "Bytes": 1041,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/239_BcHousingSeatEnrichment.sql",
+      "Kind": "SQL migration",
+      "Lines": 25,
+      "Bytes": 3768,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "output/decotiis-ingest2-2026-06-20.ps1",
+      "Kind": "PowerShell",
+      "Lines": 25,
+      "Bytes": 2549,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "output/restore-firmnarrative-queue.ps1",
+      "Kind": "PowerShell",
+      "Lines": 25,
+      "Bytes": 1605,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "output/se-reconcile.ps1",
+      "Kind": "PowerShell",
+      "Lines": 25,
+      "Bytes": 2522,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Operations.Mcp/Sql/CreateCooCardItem.sql",
+      "Kind": "SQL",
+      "Lines": 24,
+      "Bytes": 1193,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/121_BdReportAuditLog.sql",
+      "Kind": "SQL migration",
+      "Lines": 24,
+      "Bytes": 1245,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/128_QueueRefreshReport.sql",
+      "Kind": "SQL migration",
+      "Lines": 24,
+      "Bytes": 1221,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/233_AddNorthCowichanBonfire.sql",
+      "Kind": "SQL migration",
+      "Lines": 24,
+      "Bytes": 1043,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "output/apply-mig-258.ps1",
+      "Kind": "PowerShell",
+      "Lines": 24,
+      "Bytes": 1568,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Operations.Mcp/Sql/CreateCooBriefTable.sql",
+      "Kind": "SQL",
+      "Lines": 23,
+      "Bytes": 1002,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/171_BcMajorProjectsInventorySource.sql",
+      "Kind": "SQL migration",
+      "Lines": 23,
+      "Bytes": 735,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/260_CanonicalOrgFuzzyKey.sql",
+      "Kind": "SQL migration",
+      "Lines": 23,
+      "Bytes": 876,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "output/enqueue-presynth-enrich.ps1",
+      "Kind": "PowerShell",
+      "Lines": 23,
+      "Bytes": 1858,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "output/park-firmnarrative-queue.ps1",
+      "Kind": "PowerShell",
+      "Lines": 23,
+      "Bytes": 1905,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/132_CompetitorKindHygiene.sql",
+      "Kind": "SQL migration",
+      "Lines": 22,
+      "Bytes": 1962,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/157_SetVerifiedPrincipalEmails.sql",
+      "Kind": "SQL migration",
+      "Lines": 22,
+      "Bytes": 969,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/174_FixUrlArchitect.sql",
+      "Kind": "SQL migration",
+      "Lines": 22,
+      "Bytes": 1146,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/279_CanonicalOrgLiveNameUniqueIndex.sql",
+      "Kind": "SQL migration",
+      "Lines": 22,
+      "Bytes": 1223,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/286_SeatWindowCheckedAt.sql",
+      "Kind": "SQL migration",
+      "Lines": 22,
+      "Bytes": 1121,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "_Scripts Rebuild/FileSync/Maint/insert_to_fileserver.ps1",
+      "Kind": "PowerShell",
+      "Lines": 22,
+      "Bytes": 1019,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "output/deploy-v13-zip.ps1",
+      "Kind": "PowerShell",
+      "Lines": 22,
+      "Bytes": 1124,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/13_AwardAgentVendorDetails.sql",
+      "Kind": "SQL migration",
+      "Lines": 21,
+      "Bytes": 903,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "output/rot-sweep.ps1",
+      "Kind": "PowerShell",
+      "Lines": 21,
+      "Bytes": 2012,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/227_FamilyDedupSurvivorRenames.sql",
+      "Kind": "SQL migration",
+      "Lines": 20,
+      "Bytes": 800,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/63_BcBidEngineeringSource.sql",
+      "Kind": "SQL migration",
+      "Lines": 20,
+      "Bytes": 697,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/178_RetireCalgaryHighstreetArtifact.sql",
+      "Kind": "SQL migration",
+      "Lines": 19,
+      "Bytes": 1018,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/30_IngestionTriggerClaimToken.sql",
+      "Kind": "SQL migration",
+      "Lines": 19,
+      "Bytes": 608,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/236_ApolloPhoneEmailHoning.sql",
+      "Kind": "SQL migration",
+      "Lines": 18,
+      "Bytes": 2015,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/244_SfRichNameConfig.sql",
+      "Kind": "SQL migration",
+      "Lines": 17,
+      "Bytes": 783,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/55_JobSchedules.sql",
+      "Kind": "SQL migration",
+      "Lines": 17,
+      "Bytes": 527,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "output/arch-enrich-discovery.ps1",
+      "Kind": "PowerShell",
+      "Lines": 17,
+      "Bytes": 1575,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/14_AwardAgentOwnership.sql",
+      "Kind": "SQL migration",
+      "Lines": 16,
+      "Bytes": 619,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/15_AwardAgentLocationsCerts.sql",
+      "Kind": "SQL migration",
+      "Lines": 16,
+      "Bytes": 673,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/16_AwardAgentNewsLinkedIn.sql",
+      "Kind": "SQL migration",
+      "Lines": 16,
+      "Bytes": 598,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/17_AwardAgentScoreAndType.sql",
+      "Kind": "SQL migration",
+      "Lines": 16,
+      "Bytes": 665,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/237_AnneliseDedup.sql",
+      "Kind": "SQL migration",
+      "Lines": 16,
+      "Bytes": 853,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "output/meeting-verify-schema.ps1",
+      "Kind": "PowerShell",
+      "Lines": 16,
+      "Bytes": 866,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/52_MpiSeatStatus.sql",
+      "Kind": "SQL migration",
+      "Lines": 15,
+      "Bytes": 680,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "output/cull-playwright.ps1",
+      "Kind": "PowerShell",
+      "Lines": 15,
+      "Bytes": 878,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/197_EnableCaSanDiegoCsv.sql",
+      "Kind": "SQL migration",
+      "Lines": 14,
+      "Bytes": 887,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/32_KorPursuits_Deltek_Sync.sql",
+      "Kind": "SQL migration",
+      "Lines": 13,
+      "Bytes": 634,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/62_OpportunitySourcesConfigJson.sql",
+      "Kind": "SQL migration",
+      "Lines": 9,
+      "Bytes": 267,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Opportunities.Data/Schema/58_JobScheduleNextFire.sql",
+      "Kind": "SQL migration",
+      "Lines": 8,
+      "Bytes": 368,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "tools/BdReportBuilders/pull/fix-schools.ps1",
+      "Kind": "PowerShell",
+      "Lines": 8,
+      "Bytes": 526,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "output/audit-2-cols.ps1",
+      "Kind": "PowerShell",
+      "Lines": 7,
+      "Bytes": 784,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Operations.Mcp/Sql/AddLienExpiryDate.sql",
+      "Kind": "SQL",
+      "Lines": 6,
+      "Bytes": 159,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "Kor.Operations.App/Scripts/20260221_add_emailfingerprint_to_emails.sql",
+      "Kind": "SQL",
+      "Lines": 4,
+      "Bytes": 133,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "tools/BdReportBuilders/build-bchousing-report.ps1",
+      "Kind": "PowerShell",
+      "Lines": 3,
+      "Bytes": 239,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "tools/BdReportBuilders/build-commercial-report.ps1",
+      "Kind": "PowerShell",
+      "Lines": 3,
+      "Bytes": 239,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "tools/BdReportBuilders/build-indigenous-report.ps1",
+      "Kind": "PowerShell",
+      "Lines": 3,
+      "Bytes": 239,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "tools/BdReportBuilders/build-postsec-report.ps1",
+      "Kind": "PowerShell",
+      "Lines": 3,
+      "Bytes": 247,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "tools/BdReportBuilders/build-recreational-report.ps1",
+      "Kind": "PowerShell",
+      "Lines": 3,
+      "Bytes": 243,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "tools/BdReportBuilders/build-residential-report.ps1",
+      "Kind": "PowerShell",
+      "Lines": 3,
+      "Bytes": 241,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "tools/BdCanonicalDedup/output/brandow-johnston-upsert.sql",
+      "Kind": "SQL",
+      "Lines": 1,
+      "Bytes": 5938,
+      "ReferencedBy": 0,
+      "ReferencedIn": []
+    },
+    {
+      "Path": "tools/WorkstationOps/Kor.WorkstationOps.psm1",
+      "Kind": "PowerShell module",
+      "Lines": 1070,
+      "Bytes": 56594,
+      "ReferencedBy": 1,
+      "ReferencedIn": [
+        "docs/KOR-SPARE100-Gaming-Rebuild-Build-Sheet-2026-08-13.md"
+      ]
+    },
+    {
+      "Path": "tools/New-ArchitectureMap.ps1",
+      "Kind": "PowerShell",
+      "Lines": 776,
+      "Bytes": 39614,
+      "ReferencedBy": 1,
+      "ReferencedIn": [
+        "Kor.Operations.App/Kor.Transmittals.App.Tests/ArchitectureMapIsCurrentTests.cs"
+      ]
+    },
+    {
+      "Path": "_Scripts Rebuild/FileSync/Production/watcher_old.ps1",
+      "Kind": "PowerShell",
+      "Lines": 487,
+      "Bytes": 19574,
+      "ReferencedBy": 1,
+      "ReferencedIn": [
+        "_Scripts Rebuild/_HANDOFF_FOR_KOR_OPS_PORT.md"
+      ]
+    },
+    {
+      "Path": "Kor.Operations.App/Scripts/20260502_opportunities_schema.sql",
+      "Kind": "SQL",
+      "Lines": 391,
+      "Bytes": 22673,
+      "ReferencedBy": 1,
+      "ReferencedIn": [
+        "docs/CRM-World-Class-Plan-2026-07-06.md"
+      ]
+    },
+    {
+      "Path": "Kor.Operations.App/Scripts/20260501_filesync_control_plane.sql",
+      "Kind": "SQL",
+      "Lines": 318,
+      "Bytes": 17993,
+      "ReferencedBy": 1,
+      "ReferencedIn": [
+        "docs/audit-2026-08/modules/03-filesync.md"
+      ]
+    },
+    {
+      "Path": "tools/BdGatherIntel/Step2-DeepDive.ps1",
+      "Kind": "PowerShell",
+      "Lines": 307,
+      "Bytes": 14334,
+      "ReferencedBy": 1,
+      "ReferencedIn": [
+        "tools/BdGatherIntel/README.md"
+      ]
+    },
+    {
+      "Path": "_Scripts Rebuild/FileSync/Production/watcher_working.ps1",
+      "Kind": "PowerShell",
+      "Lines": 288,
+      "Bytes": 12359,
+      "ReferencedBy": 1,
+      "ReferencedIn": [
+        "_Scripts Rebuild/_HANDOFF_FOR_KOR_OPS_PORT.md"
+      ]
+    },
+    {
+      "Path": "tools/BdReportBuilders/build-exec-summary.ps1",
+      "Kind": "PowerShell",
+      "Lines": 261,
+      "Bytes": 20347,
+      "ReferencedBy": 1,
+      "ReferencedIn": [
+        "Kor.Opportunities.Data/BdReports/Generators/ExecSummaryReportGenerator.cs"
+      ]
+    },
+    {
+      "Path": "_Scripts Rebuild/FileSync/Production/_SYNC_Stickfiles.ps1",
+      "Kind": "PowerShell",
+      "Lines": 234,
+      "Bytes": 9053,
+      "ReferencedBy": 1,
+      "ReferencedIn": [
+        "_Scripts Rebuild/_HANDOFF_FOR_KOR_OPS_PORT.md"
+      ]
+    },
+    {
+      "Path": "tools/BdReportBuilders/build-prime-consultant-report.ps1",
+      "Kind": "PowerShell",
+      "Lines": 191,
+      "Bytes": 12480,
+      "ReferencedBy": 1,
+      "ReferencedIn": [
+        "Kor.Opportunities.Data/BdReports/Generators/PrimeConsultantReportGenerator.cs"
+      ]
+    },
+    {
+      "Path": "tools/BdReportBuilders/build-architect-freq-report.ps1",
+      "Kind": "PowerShell",
+      "Lines": 184,
+      "Bytes": 11596,
+      "ReferencedBy": 1,
+      "ReferencedIn": [
+        "Kor.Opportunities.Data/BdReports/Generators/ArchitectFrequencyReportGenerator.cs"
+      ]
+    },
+    {
+      "Path": "install-opportunities-service.ps1",
+      "Kind": "PowerShell",
+      "Lines": 164,
+      "Bytes": 7223,
+      "ReferencedBy": 1,
+      "ReferencedIn": [
+        "publish-opportunities.ps1"
+      ]
+    },
+    {
+      "Path": "tools/BdReportBuilders/build-competitor-intel.ps1",
+      "Kind": "PowerShell",
+      "Lines": 159,
+      "Bytes": 10448,
+      "ReferencedBy": 1,
+      "ReferencedIn": [
+        "Kor.Opportunities.Data/BdReports/Generators/CompetitorIntelReportGenerator.cs"
+      ]
+    },
+    {
+      "Path": "_Scripts Rebuild/FileSync/Production/RenameReportsUploads_working.ps1",
+      "Kind": "PowerShell",
+      "Lines": 149,
+      "Bytes": 6060,
+      "ReferencedBy": 1,
+      "ReferencedIn": [
+        "_Scripts Rebuild/_HANDOFF_FOR_KOR_OPS_PORT.md"
+      ]
+    },
+    {
+      "Path": "tools/browser_fetch.py",
+      "Kind": "Python",
+      "Lines": 148,
+      "Bytes": 5882,
+      "ReferencedBy": 1,
+      "ReferencedIn": [
+        "docs/audit-2026-08/mve-pipeline/VERIFICATION-LOG.md"
+      ]
+    },
+    {
+      "Path": "docs/audit-2026-08/mve-pipeline/decompose-to-brain.sql",
+      "Kind": "SQL",
+      "Lines": 146,
+      "Bytes": 11619,
+      "ReferencedBy": 1,
+      "ReferencedIn": [
+        "docs/audit-2026-08/mve-pipeline/source/README.md"
+      ]
+    },
+    {
+      "Path": "tools/deploy-newerforma-app.ps1",
+      "Kind": "PowerShell",
+      "Lines": 144,
+      "Bytes": 7779,
+      "ReferencedBy": 1,
+      "ReferencedIn": [
+        "docs/runbooks/Newerforma.App.deploy.md"
+      ]
+    },
+    {
+      "Path": "tools/verify_dossier_claims.py",
+      "Kind": "Python",
+      "Lines": 142,
+      "Bytes": 6348,
+      "ReferencedBy": 1,
+      "ReferencedIn": [
+        "docs/audit-2026-08/mve-pipeline/source/README.md"
+      ]
+    },
+    {
+      "Path": "_Scripts Rebuild/FileSync/Production/RenameReportsDate.ps1",
+      "Kind": "PowerShell",
+      "Lines": 138,
+      "Bytes": 5928,
+      "ReferencedBy": 1,
+      "ReferencedIn": [
+        "_Scripts Rebuild/_HANDOFF_FOR_KOR_OPS_PORT.md"
+      ]
+    },
+    {
+      "Path": "docs/map-audit/builders/mapfilter.py",
+      "Kind": "Python",
+      "Lines": 136,
+      "Bytes": 5672,
+      "ReferencedBy": 1,
+      "ReferencedIn": [
+        "docs/codex/CODEX-map-audit.md"
+      ]
+    },
+    {
+      "Path": "tools/verify_miami_concentration.py",
+      "Kind": "Python",
+      "Lines": 123,
+      "Bytes": 5592,
+      "ReferencedBy": 1,
+      "ReferencedIn": [
+        "docs/audit-2026-08/mve-pipeline/source/README.md"
+      ]
+    },
+    {
+      "Path": "tools/xlsx_rows.py",
+      "Kind": "Python",
+      "Lines": 120,
+      "Bytes": 4524,
+      "ReferencedBy": 1,
+      "ReferencedIn": [
+        "tools/houston_plat_reports.py"
+      ]
+    },
+    {
+      "Path": "tools/phoenix_preliminary_residential.py",
+      "Kind": "Python",
+      "Lines": 114,
+      "Bytes": 5153,
+      "ReferencedBy": 1,
+      "ReferencedIn": [
+        "docs/audit-2026-08/fix_arizona_table.py"
+      ]
+    },
+    {
+      "Path": "tools/claude_bash_guard.py",
+      "Kind": "Python",
+      "Lines": 97,
+      "Bytes": 4053,
+      "ReferencedBy": 1,
+      "ReferencedIn": [
+        ".claude/settings.json"
+      ]
+    },
+    {
+      "Path": "docs/email-signatures/Collect-RemoteSignatures.ps1",
+      "Kind": "PowerShell",
+      "Lines": 93,
+      "Bytes": 4194,
+      "ReferencedBy": 1,
+      "ReferencedIn": [
+        "docs/email-signatures/README.md"
+      ]
+    },
+    {
+      "Path": "tools/verify_outbound_emails.py",
+      "Kind": "Python",
+      "Lines": 83,
+      "Bytes": 3937,
+      "ReferencedBy": 1,
+      "ReferencedIn": [
+        "tools/build_mve_followup_emails.py"
+      ]
+    },
+    {
+      "Path": "docs/etabs-handoff/orphan_openings.py",
+      "Kind": "Python",
+      "Lines": 68,
+      "Bytes": 2518,
+      "ReferencedBy": 1,
+      "ReferencedIn": [
+        "docs/etabs-handoff/README.md"
+      ]
+    },
+    {
+      "Path": "docs/etabs-handoff/compare_shared.py",
+      "Kind": "Python",
+      "Lines": 60,
+      "Bytes": 2585,
+      "ReferencedBy": 1,
+      "ReferencedIn": [
+        "docs/etabs-handoff/README.md"
+      ]
+    },
+    {
+      "Path": "output/brain-ingest-2026-06-20/load-crm-duncan.ps1",
+      "Kind": "PowerShell",
+      "Lines": 57,
+      "Bytes": 4413,
+      "ReferencedBy": 1,
+      "ReferencedIn": [
+        "output/brain-ingest-2026-06-20/README.md"
+      ]
+    },
+    {
+      "Path": "output/deploy-worker-permitfix.ps1",
+      "Kind": "PowerShell",
+      "Lines": 57,
+      "Bytes": 3289,
+      "ReferencedBy": 1,
+      "ReferencedIn": [
+        "output/deploy-worker-crm.ps1"
+      ]
+    },
+    {
+      "Path": "docs/etabs-handoff/read_questions.py",
+      "Kind": "Python",
+      "Lines": 56,
+      "Bytes": 2093,
+      "ReferencedBy": 1,
+      "ReferencedIn": [
+        "docs/etabs-handoff/README.md"
+      ]
+    },
+    {
+      "Path": "docs/etabs-handoff/Run-Migration.ps1",
+      "Kind": "PowerShell",
+      "Lines": 54,
+      "Bytes": 2220,
+      "ReferencedBy": 1,
+      "ReferencedIn": [
+        "docs/etabs-handoff/README.md"
+      ]
+    },
+    {
+      "Path": "tools/ReportIntegrityCheck.sql",
+      "Kind": "SQL",
+      "Lines": 54,
+      "Bytes": 4423,
+      "ReferencedBy": 1,
+      "ReferencedIn": [
+        "docs/vancouver-lower-mainland-playbook-2026-06-16.md"
+      ]
+    },
+    {
+      "Path": "output/brain-ingest-2026-06-20/load-crm-evantra.ps1",
+      "Kind": "PowerShell",
+      "Lines": 50,
+      "Bytes": 3855,
+      "ReferencedBy": 1,
+      "ReferencedIn": [
+        "output/brain-ingest-2026-06-20/README.md"
+      ]
+    },
+    {
+      "Path": "docs/audit-2026-08/mve-pipeline/decompose-touchpoint.sql",
+      "Kind": "SQL",
+      "Lines": 49,
+      "Bytes": 2635,
+      "ReferencedBy": 1,
+      "ReferencedIn": [
+        "docs/audit-2026-08/mve-pipeline/source/README.md"
+      ]
+    },
+    {
+      "Path": "output/reprioritize-warm-selectors.ps1",
+      "Kind": "PowerShell",
+      "Lines": 46,
+      "Bytes": 2998,
+      "ReferencedBy": 1,
+      "ReferencedIn": [
+        "docs/BD-Architect-SE-Edge-Enrichment-2026-06-21.md"
+      ]
+    },
+    {
+      "Path": "docs/etabs-handoff/selfcross.py",
+      "Kind": "Python",
+      "Lines": 44,
+      "Bytes": 1742,
+      "ReferencedBy": 1,
+      "ReferencedIn": [
+        "docs/etabs-handoff/README.md"
+      ]
+    },
+    {
+      "Path": "docs/etabs-handoff/members_by_storey.py",
+      "Kind": "Python",
+      "Lines": 41,
+      "Bytes": 1962,
+      "ReferencedBy": 1,
+      "ReferencedIn": [
+        "docs/etabs-handoff/README.md"
+      ]
+    },
+    {
+      "Path": "monitor-drains.ps1",
+      "Kind": "PowerShell",
+      "Lines": 40,
+      "Bytes": 1817,
+      "ReferencedBy": 1,
+      "ReferencedIn": [
+        "docs/audit-2026-08/modules/03-filesync.md"
+      ]
+    },
+    {
+      "Path": "uninstall-opportunities-service.ps1",
+      "Kind": "PowerShell",
+      "Lines": 40,
+      "Bytes": 1410,
+      "ReferencedBy": 1,
+      "ReferencedIn": [
+        "publish-opportunities.ps1"
+      ]
+    },
+    {
+      "Path": "docs/etabs-handoff/Send-Bridge.ps1",
+      "Kind": "PowerShell",
+      "Lines": 39,
+      "Bytes": 1427,
+      "ReferencedBy": 1,
+      "ReferencedIn": [
+        "docs/etabs-handoff/README.md"
+      ]
+    },
+    {
+      "Path": "docs/audit-2026-08/mve-pipeline/tools/scan_avb.py",
+      "Kind": "Python",
+      "Lines": 35,
+      "Bytes": 1023,
+      "ReferencedBy": 1,
+      "ReferencedIn": [
+        "docs/audit-2026-08/mve-pipeline/tools/README.md"
+      ]
+    },
+    {
+      "Path": "output/brain-ingest-2026-06-20/applied-notes.sql",
+      "Kind": "SQL",
+      "Lines": 33,
+      "Bytes": 2586,
+      "ReferencedBy": 1,
+      "ReferencedIn": [
+        "output/brain-ingest-2026-06-20/README.md"
+      ]
+    },
+    {
+      "Path": "docs/etabs-handoff/plate_areas.py",
+      "Kind": "Python",
+      "Lines": 31,
+      "Bytes": 1215,
+      "ReferencedBy": 1,
+      "ReferencedIn": [
+        "docs/etabs-handoff/README.md"
+      ]
+    },
+    {
+      "Path": "docs/audit-2026-08/mve-pipeline/tools/flat.py",
+      "Kind": "Python",
+      "Lines": 30,
+      "Bytes": 930,
+      "ReferencedBy": 1,
+      "ReferencedIn": [
+        "docs/audit-2026-08/mve-pipeline/tools/README.md"
+      ]
+    },
+    {
+      "Path": "output/preflight-org-resolution.ps1",
+      "Kind": "PowerShell",
+      "Lines": 29,
+      "Bytes": 2409,
+      "ReferencedBy": 1,
+      "ReferencedIn": [
+        "docs/BD-Module-Remediation-Roadmap-2026-06-21.md"
+      ]
+    },
+    {
+      "Path": "Kor.Operations.App/PMTools/SQL/EmployeeScoreSnapshots.sql",
+      "Kind": "SQL",
+      "Lines": 27,
+      "Bytes": 1176,
+      "ReferencedBy": 1,
+      "ReferencedIn": [
+        "docs/audit-2026-08/modules/06-pmtools-analytics.md"
+      ]
+    },
+    {
+      "Path": "output/check-northern-seeds.ps1",
+      "Kind": "PowerShell",
+      "Lines": 27,
+      "Bytes": 1952,
+      "ReferencedBy": 1,
+      "ReferencedIn": [
+        "docs/BD-Overnight-Briefing-2026-06-21.md"
+      ]
+    },
+    {
+      "Path": "output/check-north2-seeds.ps1",
+      "Kind": "PowerShell",
+      "Lines": 23,
+      "Bytes": 1964,
+      "ReferencedBy": 1,
+      "ReferencedIn": [
+        "docs/BD-Overnight-Briefing-2026-06-21.md"
+      ]
+    },
+    {
+      "Path": "output/brain-ingest-2026-06-19/reclassify.sql",
+      "Kind": "SQL",
+      "Lines": 19,
+      "Bytes": 973,
+      "ReferencedBy": 1,
+      "ReferencedIn": [
+        "output/brain-ingest-2026-06-19/README.md"
+      ]
+    },
+    {
+      "Path": "output/brain-ingest-2026-06-20/link-and-wire.sql",
+      "Kind": "SQL",
+      "Lines": 10,
+      "Bytes": 649,
+      "ReferencedBy": 1,
+      "ReferencedIn": [
+        "output/brain-ingest-2026-06-20/README.md"
+      ]
+    },
+    {
+      "Path": "tools/BdReportBuilders/pull/fix-hospitals.ps1",
+      "Kind": "PowerShell",
+      "Lines": 7,
+      "Bytes": 444,
+      "ReferencedBy": 1,
+      "ReferencedIn": [
+        "docs/BD-Audit-2026-06-09.md"
+      ]
+    },
+    {
+      "Path": "tools/BdReportBuilders/build-hospitals-report.ps1",
+      "Kind": "PowerShell",
+      "Lines": 3,
+      "Bytes": 237,
+      "ReferencedBy": 1,
+      "ReferencedIn": [
+        "tools/BdReportBuilders/pull/fix-hospitals.ps1"
+      ]
+    },
+    {
+      "Path": "docs/map-audit/builders/build_proposal.py",
+      "Kind": "Python",
+      "Lines": 371,
+      "Bytes": 16007,
+      "ReferencedBy": 2,
+      "ReferencedIn": [
+        "docs/codex/CODEX-map-audit.md",
+        "docs/map-audit/README.md"
+      ]
+    },
+    {
+      "Path": "docs/map-audit/builders/dedupe_rule.py",
+      "Kind": "Python",
+      "Lines": 286,
+      "Bytes": 11664,
+      "ReferencedBy": 2,
+      "ReferencedIn": [
+        "docs/codex/CODEX-map-audit.md",
+        "docs/map-audit/builders/mapfilter.py"
+      ]
+    },
+    {
+      "Path": "tools/resolve_project_entities.py",
+      "Kind": "Python",
+      "Lines": 207,
+      "Bytes": 9030,
+      "ReferencedBy": 2,
+      "ReferencedIn": [
+        "docs/audit-2026-08/mve-pipeline/VERIFICATION-LOG.md",
+        "tools/find_architect_in_case.py"
+      ]
+    },
+    {
+      "Path": "tools/Format-BdDocx.ps1",
+      "Kind": "PowerShell",
+      "Lines": 205,
+      "Bytes": 9661,
+      "ReferencedBy": 2,
+      "ReferencedIn": [
+        "docs/dossiers/KOR-Dossier-LA-Market-2026-06-26.md",
+        "docs/dossiers/_LA-market-intel-2026-06-26.md"
+      ]
+    },
+    {
+      "Path": "tools/udrb_agendas.py",
+      "Kind": "Python",
+      "Lines": 169,
+      "Bytes": 7264,
+      "ReferencedBy": 2,
+      "ReferencedIn": [
+        "docs/audit-2026-08/mve-pipeline/source/README.md",
+        "tools/miami_pzab_agendas.py"
+      ]
+    },
+    {
+      "Path": "docs/map-audit/builders/build_map.py",
+      "Kind": "Python",
+      "Lines": 151,
+      "Bytes": 7822,
+      "ReferencedBy": 2,
+      "ReferencedIn": [
+        "docs/codex/CODEX-map-audit.md",
+        "docs/map-audit/README.md"
+      ]
+    },
+    {
+      "Path": "docs/map-audit/builders/jim_list.py",
+      "Kind": "Python",
+      "Lines": 128,
+      "Bytes": 5194,
+      "ReferencedBy": 2,
+      "ReferencedIn": [
+        "docs/codex/CODEX-map-audit.md",
+        "docs/map-audit/README.md"
+      ]
+    },
+    {
+      "Path": "docs/email-signatures/Deploy-RemoteSignatures.ps1",
+      "Kind": "PowerShell",
+      "Lines": 126,
+      "Bytes": 6463,
+      "ReferencedBy": 2,
+      "ReferencedIn": [
+        "docs/email-signatures/Push-CloudSignatures.ps1",
+        "docs/email-signatures/README.md"
+      ]
+    },
+    {
+      "Path": "docs/email-signatures/Generate-Signatures.ps1",
+      "Kind": "PowerShell",
+      "Lines": 108,
+      "Bytes": 4932,
+      "ReferencedBy": 2,
+      "ReferencedIn": [
+        "docs/email-signatures/Build-RosterDraft.ps1",
+        "docs/email-signatures/README.md"
+      ]
+    },
+    {
+      "Path": "tools/BdGatherIntel/Step3-MarkDrops.ps1",
+      "Kind": "PowerShell",
+      "Lines": 58,
+      "Bytes": 2141,
+      "ReferencedBy": 2,
+      "ReferencedIn": [
+        "tools/BdGatherIntel/README.md",
+        "tools/BdGatherIntel/Step2-DeepDive.ps1"
+      ]
+    },
+    {
+      "Path": "Kor.Operations.Mcp/Vocabulary/extract_candidates.ps1",
+      "Kind": "PowerShell",
+      "Lines": 57,
+      "Bytes": 2437,
+      "ReferencedBy": 2,
+      "ReferencedIn": [
+        "docs/audit-2026-08/modules/05-ai-virtual-cfo.md",
+        "Kor.Operations.Mcp/Vocabulary/candidates.md"
+      ]
+    },
+    {
+      "Path": "docs/audit-2026-08/mve-pipeline/tools/buildsd_meta.py",
+      "Kind": "Python",
+      "Lines": 45,
+      "Bytes": 1567,
+      "ReferencedBy": 2,
+      "ReferencedIn": [
+        "docs/audit-2026-08/mve-pipeline/P4-session2-resolutions.md",
+        "docs/audit-2026-08/mve-pipeline/tools/README.md"
+      ]
+    },
+    {
+      "Path": "output/brain-ingest-2026-06-20/lookup.sql",
+      "Kind": "SQL",
+      "Lines": 44,
+      "Bytes": 2503,
+      "ReferencedBy": 2,
+      "ReferencedIn": [
+        "output/brain-ingest-2026-06-20/load-crm-duncan.ps1",
+        "output/brain-ingest-2026-06-20/README.md"
+      ]
+    },
+    {
+      "Path": "docs/audit-2026-08/mve-pipeline/tools/sdq.py",
+      "Kind": "Python",
+      "Lines": 38,
+      "Bytes": 1494,
+      "ReferencedBy": 2,
+      "ReferencedIn": [
+        "docs/audit-2026-08/mve-pipeline/P4-session2-resolutions.md",
+        "docs/audit-2026-08/mve-pipeline/tools/README.md"
+      ]
+    },
+    {
+      "Path": "docs/audit-2026-08/mve-pipeline/tools/titleblocks.py",
+      "Kind": "Python",
+      "Lines": 37,
+      "Bytes": 1235,
+      "ReferencedBy": 2,
+      "ReferencedIn": [
+        "docs/audit-2026-08/mve-pipeline/P4-session2-resolutions.md",
+        "docs/audit-2026-08/mve-pipeline/tools/README.md"
+      ]
+    },
+    {
+      "Path": "Kor.Operations.Mcp/Sql/CreateAuditLog.sql",
+      "Kind": "SQL",
+      "Lines": 35,
+      "Bytes": 1297,
+      "ReferencedBy": 2,
+      "ReferencedIn": [
+        "docs/runbooks/Kor.Operations.Mcp.deploy.md",
+        "Kor.Operations.Mcp/install.ps1"
+      ]
+    },
+    {
+      "Path": "set-filesync-env-server.ps1",
+      "Kind": "PowerShell",
+      "Lines": 9,
+      "Bytes": 1162,
+      "ReferencedBy": 2,
+      "ReferencedIn": [
+        "docs/audit-2026-08/modules/03-filesync.md",
+        "docs/BD-Audit-2026-07-01.md"
+      ]
+    },
+    {
+      "Path": "set-filesync-env.ps1",
+      "Kind": "PowerShell",
+      "Lines": 9,
+      "Bytes": 1135,
+      "ReferencedBy": 2,
+      "ReferencedIn": [
+        "docs/audit-2026-08/modules/03-filesync.md",
+        "docs/BD-Audit-2026-07-01.md"
+      ]
+    },
+    {
+      "Path": "tools/tabs_projects.py",
+      "Kind": "Python",
+      "Lines": 318,
+      "Bytes": 13867,
+      "ReferencedBy": 3,
+      "ReferencedIn": [
+        "docs/audit-2026-08/mve-pipeline/START-HERE-NEXT-SESSION.md",
+        "tools/source_currency_check.py",
+        "tools/verify_dossier_claims.py"
+      ]
+    },
+    {
+      "Path": "tools/aca_permit_probe.py",
+      "Kind": "Python",
+      "Lines": 272,
+      "Bytes": 11678,
+      "ReferencedBy": 3,
+      "ReferencedIn": [
+        "docs/audit-2026-08/mve-pipeline/START-HERE-NEXT-SESSION.md",
+        "docs/audit-2026-08/mve-pipeline/VERIFICATION-LOG.md",
+        "tools/source_currency_check.py"
+      ]
+    },
+    {
+      "Path": "_Scripts Rebuild/FileSync/Production/Move_Reports_To_ToSend.ps1",
+      "Kind": "PowerShell",
+      "Lines": 246,
+      "Bytes": 10124,
+      "ReferencedBy": 3,
+      "ReferencedIn": [
+        "Kor.Operations.FileSync.Service/Jobs/MoveReportsToToSend/MoveReportsToToSendOptions.cs",
+        "Kor.Operations.FileSync.Service/Jobs/MoveReportsToToSend/MoveReportsToToSendRunner.cs",
+        "_Scripts Rebuild/_HANDOFF_FOR_KOR_OPS_PORT.md"
+      ]
+    },
+    {
+      "Path": "tools/BdReportBuilders/build-callsheet.ps1",
+      "Kind": "PowerShell",
+      "Lines": 190,
+      "Bytes": 13038,
+      "ReferencedBy": 3,
+      "ReferencedIn": [
+        "docs/BD-Audit-2026-06-09.md",
+        "docs/BD-Audit-2026-06-19.md",
+        "Kor.Opportunities.Data/BdReports/Generators/CallSheetReportGenerator.cs"
+      ]
+    },
+    {
+      "Path": "tools/BdQueueDrainBatchGenerate/Nightly-Refresh.ps1",
+      "Kind": "PowerShell",
+      "Lines": 186,
+      "Bytes": 9643,
+      "ReferencedBy": 3,
+      "ReferencedIn": [
+        "Kor.Opportunities.Worker/Kor.Opportunities.Worker.csproj",
+        "Kor.Opportunities.Worker/Options/OpportunitiesWorkerOptions.cs",
+        "Kor.Opportunities.Worker/Services/BdResearchQueueBuilderJob.cs"
+      ]
+    },
+    {
+      "Path": "tools/phx_pud_teams.py",
+      "Kind": "Python",
+      "Lines": 186,
+      "Bytes": 7809,
+      "ReferencedBy": 3,
+      "ReferencedIn": [
+        "docs/audit-2026-08/mve-pipeline/START-HERE-NEXT-SESSION.md",
+        "docs/audit-2026-08/mve-pipeline/VERIFICATION-LOG.md",
+        "tools/verify_arizona_claim.py"
+      ]
+    },
+    {
+      "Path": "_Scripts Rebuild/FileSync/Production/RenameReportsUploads.ps1",
+      "Kind": "PowerShell",
+      "Lines": 182,
+      "Bytes": 7963,
+      "ReferencedBy": 3,
+      "ReferencedIn": [
+        "Kor.Operations.FileSync.Service/Jobs/RenameReportsUploads/RenameReportsUploadsOptions.cs",
+        "Kor.Operations.FileSync.Service/Jobs/RenameReportsUploads/RenameReportsUploadsRunner.cs",
+        "_Scripts Rebuild/_HANDOFF_FOR_KOR_OPS_PORT.md"
+      ]
+    },
+    {
+      "Path": "docs/etabs-handoff/plan_sheet.py",
+      "Kind": "Python",
+      "Lines": 110,
+      "Bytes": 5749,
+      "ReferencedBy": 3,
+      "ReferencedIn": [
+        "CLAUDE.md",
+        "docs/codex/CODEX-DXF-TO-ETABS-WHOLE-SYSTEM-AUDIT.md",
+        "docs/etabs-handoff/README.md"
+      ]
+    },
+    {
+      "Path": "docs/email-signatures/Build-RosterDraft.ps1",
+      "Kind": "PowerShell",
+      "Lines": 87,
+      "Bytes": 4460,
+      "ReferencedBy": 3,
+      "ReferencedIn": [
+        "docs/email-signatures/Collect-RemoteSignatures.ps1",
+        "docs/email-signatures/Generate-Signatures.ps1",
+        "docs/email-signatures/README.md"
+      ]
+    },
+    {
+      "Path": "Kor.Operations.Mcp/install.ps1",
+      "Kind": "PowerShell",
+      "Lines": 75,
+      "Bytes": 3526,
+      "ReferencedBy": 3,
+      "ReferencedIn": [
+        "docs/runbooks/Kor.Operations.Mcp.deploy.md",
+        "Kor.Operations.Mcp/Kor.Operations.Mcp.csproj",
+        "tools/Invoke-KorWorkstationAudit.ps1"
+      ]
+    },
+    {
+      "Path": "docs/email-signatures/Set-LocalOutlookSignature.ps1",
+      "Kind": "PowerShell",
+      "Lines": 52,
+      "Bytes": 2797,
+      "ReferencedBy": 3,
+      "ReferencedIn": [
+        "docs/email-signatures/Collect-LocalSignatures.ps1",
+        "docs/email-signatures/Generate-Signatures.ps1",
+        "docs/email-signatures/README.md"
+      ]
+    },
+    {
+      "Path": "docs/email-signatures/Collect-LocalSignatures.ps1",
+      "Kind": "PowerShell",
+      "Lines": 51,
+      "Bytes": 2452,
+      "ReferencedBy": 3,
+      "ReferencedIn": [
+        "docs/email-signatures/Build-RosterDraft.ps1",
+        "docs/email-signatures/Collect-RemoteSignatures.ps1",
+        "docs/email-signatures/README.md"
+      ]
+    },
+    {
+      "Path": "tools/BdReportBuilders/build-schools-report.ps1",
+      "Kind": "PowerShell",
+      "Lines": 3,
+      "Bytes": 233,
+      "ReferencedBy": 3,
+      "ReferencedIn": [
+        "docs/BD-Audit-2026-06-09.md",
+        "docs/BD-Audit-2026-06-19.md",
+        "tools/BdReportBuilders/pull/fix-schools.ps1"
+      ]
+    },
+    {
+      "Path": "_Scripts Rebuild/Concrete Test Reports/File-ConcreteTestReports.ps1",
+      "Kind": "PowerShell",
+      "Lines": 608,
+      "Bytes": 22788,
+      "ReferencedBy": 4,
+      "ReferencedIn": [
+        "Kor.Operations.FileSync.Service/Jobs/ConcreteTestReports/ConcreteTestReportsOptions.cs",
+        "Kor.Operations.FileSync.Service/Jobs/ConcreteTestReports/ConcreteTestReportsRunner.cs",
+        "Kor.Operations.FileSync.Service/Jobs/ConcreteTestReports/MappingRow.cs",
+        "Kor.Operations.FileSync.Service/Jobs/Shared/PmDirectory.cs"
+      ]
+    },
+    {
+      "Path": "_Scripts Rebuild/FileSync/Production/_SYNC_Photos.ps1",
+      "Kind": "PowerShell",
+      "Lines": 413,
+      "Bytes": 14687,
+      "ReferencedBy": 4,
+      "ReferencedIn": [
+        "_Scripts Rebuild/FileSync/Production/watcher.ps1",
+        "_Scripts Rebuild/FileSync/Production/watcher_old.ps1",
+        "_Scripts Rebuild/FileSync/Production/watcher_working.ps1",
+        "_Scripts Rebuild/_HANDOFF_FOR_KOR_OPS_PORT.md"
+      ]
+    },
+    {
+      "Path": "_Scripts Rebuild/FileSync/Production/_SYNC_RFI.ps1",
+      "Kind": "PowerShell",
+      "Lines": 404,
+      "Bytes": 14390,
+      "ReferencedBy": 4,
+      "ReferencedIn": [
+        "_Scripts Rebuild/FileSync/Production/watcher.ps1",
+        "_Scripts Rebuild/FileSync/Production/watcher_old.ps1",
+        "_Scripts Rebuild/FileSync/Production/watcher_working.ps1",
+        "_Scripts Rebuild/_HANDOFF_FOR_KOR_OPS_PORT.md"
+      ]
+    },
+    {
+      "Path": "tools/udrb_teams.py",
+      "Kind": "Python",
+      "Lines": 359,
+      "Bytes": 16078,
+      "ReferencedBy": 4,
+      "ReferencedIn": [
+        "docs/audit-2026-08/mve-pipeline/source/README.md",
+        "docs/audit-2026-08/mve-pipeline/START-HERE-NEXT-SESSION.md",
+        "tools/udrb_agendas.py",
+        "tools/verify_miami_concentration.py"
+      ]
+    },
+    {
+      "Path": "_Scripts Rebuild/FileSync/Production/SINGLE_SYNC_Photos.ps1",
+      "Kind": "PowerShell",
+      "Lines": 295,
+      "Bytes": 11845,
+      "ReferencedBy": 4,
+      "ReferencedIn": [
+        "_Scripts Rebuild/FileSync/Production/watcher.ps1",
+        "_Scripts Rebuild/FileSync/Production/watcher_old.ps1",
+        "_Scripts Rebuild/FileSync/Production/watcher_working.ps1",
+        "_Scripts Rebuild/_HANDOFF_FOR_KOR_OPS_PORT.md"
+      ]
+    },
+    {
+      "Path": "tools/BdReportBuilders/build-strategic-relationships.ps1",
+      "Kind": "PowerShell",
+      "Lines": 282,
+      "Bytes": 19353,
+      "ReferencedBy": 4,
+      "ReferencedIn": [
+        "docs/BD-Audit-2026-06-09.md",
+        "Kor.Opportunities.Data/BdReports/Generators/StrategicRelationshipsReportGenerator.cs",
+        "Kor.Opportunities.Data/BdReports/Generators/StrategicTargetCatalog.cs",
+        "Kor.Opportunities.Data/BdReports/Generators/StrategicTargetDefinition.cs"
+      ]
+    },
+    {
+      "Path": "_Scripts Rebuild/FileSync/Production/SINGLE_SYNC_SSI.ps1",
+      "Kind": "PowerShell",
+      "Lines": 242,
+      "Bytes": 8923,
+      "ReferencedBy": 4,
+      "ReferencedIn": [
+        "_Scripts Rebuild/FileSync/Production/watcher.ps1",
+        "_Scripts Rebuild/FileSync/Production/watcher_old.ps1",
+        "_Scripts Rebuild/FileSync/Production/watcher_working.ps1",
+        "_Scripts Rebuild/_HANDOFF_FOR_KOR_OPS_PORT.md"
+      ]
+    },
+    {
+      "Path": "_Scripts Rebuild/FileSync/Production/SINGLE_SYNC_RFI.ps1",
+      "Kind": "PowerShell",
+      "Lines": 234,
+      "Bytes": 8564,
+      "ReferencedBy": 4,
+      "ReferencedIn": [
+        "_Scripts Rebuild/FileSync/Production/watcher.ps1",
+        "_Scripts Rebuild/FileSync/Production/watcher_old.ps1",
+        "_Scripts Rebuild/FileSync/Production/watcher_working.ps1",
+        "_Scripts Rebuild/_HANDOFF_FOR_KOR_OPS_PORT.md"
+      ]
+    },
+    {
+      "Path": "tools/Measure-EtabsCorpusRules.ps1",
+      "Kind": "PowerShell",
+      "Lines": 202,
+      "Bytes": 10199,
+      "ReferencedBy": 4,
+      "ReferencedIn": [
+        "CLAUDE.md",
+        "docs/audit-2026-08/04-TODO-REGISTER.md",
+        "docs/audit-2026-08/modules/10-dxf-to-etabs.md",
+        "docs/KOR-DxfToEtabs-Changes-2026-08-21.md"
+      ]
+    },
+    {
+      "Path": "Kor.Operations.App/Scripts/20260807_filesync_kormapsync.sql",
+      "Kind": "SQL",
+      "Lines": 58,
+      "Bytes": 3863,
+      "ReferencedBy": 4,
+      "ReferencedIn": [
+        "docs/audit-2026-08/04-TODO-REGISTER.md",
+        "docs/audit-2026-08/05-MASTER-AUDIT.md",
+        "docs/audit-2026-08/modules/03-filesync.md",
+        "docs/audit-2026-08/modules/04-financials-deltek.md"
+      ]
+    },
+    {
+      "Path": "uninstall-service.ps1",
+      "Kind": "PowerShell",
+      "Lines": 29,
+      "Bytes": 902,
+      "ReferencedBy": 4,
+      "ReferencedIn": [
+        "docs/audit-2026-08/modules/03-filesync.md",
+        "docs/audit-2026-08/WORKLOG.md",
+        "publish.ps1",
+        "uninstall-opportunities-service.ps1"
+      ]
+    },
+    {
+      "Path": "_Scripts Rebuild/FileSync/Production/_SYNC_SSI.ps1",
+      "Kind": "PowerShell",
+      "Lines": 414,
+      "Bytes": 14724,
+      "ReferencedBy": 5,
+      "ReferencedIn": [
+        "_Scripts Rebuild/FileSync/Production/watcher.ps1",
+        "_Scripts Rebuild/FileSync/Production/watcher_old.ps1",
+        "_Scripts Rebuild/FileSync/Production/watcher_working.ps1",
+        "_Scripts Rebuild/FileSync/Production/_SYNC_Photos.ps1",
+        "_Scripts Rebuild/_HANDOFF_FOR_KOR_OPS_PORT.md"
+      ]
+    },
+    {
+      "Path": "_Scripts Rebuild/FileSync/Production/Move_Reports_To_EOR.ps1",
+      "Kind": "PowerShell",
+      "Lines": 327,
+      "Bytes": 14078,
+      "ReferencedBy": 5,
+      "ReferencedIn": [
+        "Kor.Operations.FileSync.Service/Jobs/MoveReportsToEor/EorMappingRow.cs",
+        "Kor.Operations.FileSync.Service/Jobs/MoveReportsToEor/MoveReportsToEorOptions.cs",
+        "Kor.Operations.FileSync.Service/Jobs/MoveReportsToEor/MoveReportsToEorRunner.cs",
+        "Kor.Operations.FileSync.Service/Jobs/Shared/EorDirectory.cs",
+        "_Scripts Rebuild/_HANDOFF_FOR_KOR_OPS_PORT.md"
+      ]
+    },
+    {
+      "Path": "_Scripts Rebuild/FileSync/Production/SINGLE_SYNC_Stickfile.ps1",
+      "Kind": "PowerShell",
+      "Lines": 323,
+      "Bytes": 13036,
+      "ReferencedBy": 5,
+      "ReferencedIn": [
+        "Kor.Operations.FileSync.Service/Jobs/Watcher/BucketSyncOp.cs",
+        "_Scripts Rebuild/FileSync/Production/watcher.ps1",
+        "_Scripts Rebuild/FileSync/Production/watcher_old.ps1",
+        "_Scripts Rebuild/FileSync/Production/watcher_working.ps1",
+        "_Scripts Rebuild/_HANDOFF_FOR_KOR_OPS_PORT.md"
+      ]
+    },
+    {
+      "Path": "_Scripts Rebuild/FileSync/Production/Send-Weekly-PM-Deadlines.ps1",
+      "Kind": "PowerShell",
+      "Lines": 253,
+      "Bytes": 10593,
+      "ReferencedBy": 5,
+      "ReferencedIn": [
+        "docs/audit-2026-08/02-CROSS-CUTTING-SCAN.md",
+        "Kor.Operations.FileSync.Service/Jobs/Shared/PmDirectory.cs",
+        "Kor.Operations.FileSync.Service/Jobs/WeeklyPmDeadlines/WeeklyPmDeadlinesOptions.cs",
+        "Kor.Operations.FileSync.Service/Jobs/WeeklyPmDeadlines/WeeklyPmDeadlinesRunner.cs",
+        "_Scripts Rebuild/_HANDOFF_FOR_KOR_OPS_PORT.md"
+      ]
+    },
+    {
+      "Path": "_Scripts Rebuild/FileSync/Production/SINGLE_CLEAN_Projects.ps1",
+      "Kind": "PowerShell",
+      "Lines": 222,
+      "Bytes": 8192,
+      "ReferencedBy": 5,
+      "ReferencedIn": [
+        "Kor.Operations.FileSync.Service/Jobs/Watcher/ProjectCleanOp.cs",
+        "_Scripts Rebuild/FileSync/Production/watcher.ps1",
+        "_Scripts Rebuild/FileSync/Production/watcher_old.ps1",
+        "_Scripts Rebuild/FileSync/Production/watcher_working.ps1",
+        "_Scripts Rebuild/_HANDOFF_FOR_KOR_OPS_PORT.md"
+      ]
+    },
+    {
+      "Path": "tools/Render-E2kModel.ps1",
+      "Kind": "PowerShell",
+      "Lines": 216,
+      "Bytes": 11687,
+      "ReferencedBy": 5,
+      "ReferencedIn": [
+        "docs/audit-2026-08/03-COMPETITIVE-BATTLECARD.md",
+        "docs/audit-2026-08/06-DEMO-RUN-SHEET.md",
+        "docs/audit-2026-08/modules/10-dxf-to-etabs.md",
+        "docs/DxfToEtabs.md",
+        "docs/KOR-DxfToEtabs-Handoff-2026-08-24.md"
+      ]
+    },
+    {
+      "Path": "install-service.ps1",
+      "Kind": "PowerShell",
+      "Lines": 134,
+      "Bytes": 5689,
+      "ReferencedBy": 5,
+      "ReferencedIn": [
+        "docs/audit-2026-08/modules/03-filesync.md",
+        "docs/audit-2026-08/WORKLOG.md",
+        "install-opportunities-service.ps1",
+        "publish.ps1",
+        "uninstall-opportunities-service.ps1"
+      ]
+    },
+    {
+      "Path": "tools/find_architect_in_case.py",
+      "Kind": "Python",
+      "Lines": 132,
+      "Bytes": 5523,
+      "ReferencedBy": 5,
+      "ReferencedIn": [
+        "docs/audit-2026-08/build_openings_section.py",
+        "docs/audit-2026-08/mve-pipeline/VERIFICATION-LOG.md",
+        "tools/audit_every_claim.py",
+        "tools/phoenix_preliminary_residential.py",
+        "tools/verify_record_premise.py"
+      ]
+    },
+    {
+      "Path": "publish.ps1",
+      "Kind": "PowerShell",
+      "Lines": 90,
+      "Bytes": 3264,
+      "ReferencedBy": 5,
+      "ReferencedIn": [
+        "docs/audit-2026-08/04-TODO-REGISTER.md",
+        "docs/audit-2026-08/05-MASTER-AUDIT.md",
+        "docs/audit-2026-08/modules/03-filesync.md",
+        "docs/audit-2026-08/WORKLOG.md",
+        "publish-opportunities.ps1"
+      ]
+    },
+    {
+      "Path": "tools/BdTrackingImport/extract.py",
+      "Kind": "Python",
+      "Lines": 157,
+      "Bytes": 6585,
+      "ReferencedBy": 6,
+      "ReferencedIn": [
+        "BD-AUDIT-20260530-R2.md",
+        "BD-PM-AUDIT-20260530-R3.md",
+        "BD-PM-AUDIT-20260530-R4.md",
+        "BD-PM-AUDIT-20260530-R5.md",
+        "BD-PM-AUDIT-20260530-R6.md",
+        "tools/BdResearchImport/Program.cs"
+      ]
+    },
+    {
+      "Path": "tools/BdQueueDrainBatchGenerate/Generate-Batch.ps1",
+      "Kind": "PowerShell",
+      "Lines": 1095,
+      "Bytes": 63062,
+      "ReferencedBy": 7,
+      "ReferencedIn": [
+        "docs/BD-Audit-2026-06-09.md",
+        "docs/BD-Data-Integrity-Hardening-2026-06-26.md",
+        "docs/codex/CODEX-honing-orgs-batch-generator.md",
+        "Kor.Opportunities.Worker/Kor.Opportunities.Worker.csproj",
+        "output/enrich-universe-score.ps1",
+        "tools/BdQueueDrainBatchGenerate/Nightly-Refresh.ps1",
+        "tools/BdQueueDrainBatchGenerate/README.md"
+      ]
+    },
+    {
+      "Path": "tools/Publish-EtabsModel.ps1",
+      "Kind": "PowerShell",
+      "Lines": 845,
+      "Bytes": 49303,
+      "ReferencedBy": 7,
+      "ReferencedIn": [
+        "docs/audit-2026-08/04-TODO-REGISTER.md",
+        "docs/audit-2026-08/modules/10-dxf-to-etabs.md",
+        "docs/audit-2026-08/WORKLOG.md",
+        "docs/DxfToEtabs.md",
+        "docs/KOR-DxfToEtabs-Changes-2026-08-21.md",
+        "docs/KOR-DxfToEtabs-Handoff-2026-08-24.md",
+        "docs/KOR-DxfToEtabs-PLAN-AND-GAPS.md"
+      ]
+    },
+    {
+      "Path": "_Scripts Rebuild/FileSync/Production/watcher.ps1",
+      "Kind": "PowerShell",
+      "Lines": 549,
+      "Bytes": 21203,
+      "ReferencedBy": 8,
+      "ReferencedIn": [
+        "Kor.Operations.FileSync.Service/Jobs/Watcher/ControlFileGuard.cs",
+        "Kor.Operations.FileSync.Service/Jobs/Watcher/InFlightDebouncer.cs",
+        "Kor.Operations.FileSync.Service/Jobs/Watcher/LockRegistry.cs",
+        "Kor.Operations.FileSync.Service/Jobs/Watcher/SyncBucket.cs",
+        "Kor.Operations.FileSync.Service/Jobs/Watcher/SyncBucketRouter.cs",
+        "Kor.Operations.FileSync.Service/Jobs/Watcher/WatcherHostedService.cs",
+        "Kor.Operations.FileSync.Service/Jobs/Watcher/WatcherOptions.cs",
+        "_Scripts Rebuild/_HANDOFF_FOR_KOR_OPS_PORT.md"
+      ]
+    },
+    {
+      "Path": "tools/BdReportBuilders/build-sector-report.ps1",
+      "Kind": "PowerShell",
+      "Lines": 208,
+      "Bytes": 11939,
+      "ReferencedBy": 8,
+      "ReferencedIn": [
+        "tools/BdReportBuilders/build-bchousing-report.ps1",
+        "tools/BdReportBuilders/build-commercial-report.ps1",
+        "tools/BdReportBuilders/build-hospitals-report.ps1",
+        "tools/BdReportBuilders/build-indigenous-report.ps1",
+        "tools/BdReportBuilders/build-postsec-report.ps1",
+        "tools/BdReportBuilders/build-recreational-report.ps1",
+        "tools/BdReportBuilders/build-residential-report.ps1",
+        "tools/BdReportBuilders/build-schools-report.ps1"
+      ]
+    },
+    {
+      "Path": "tools/Format-BdWebPdf.ps1",
+      "Kind": "PowerShell",
+      "Lines": 61,
+      "Bytes": 2878,
+      "ReferencedBy": 8,
+      "ReferencedIn": [
+        "docs/audit-2026-08/mve-pipeline/VERIFICATION-LOG.md",
+        "docs/audit-2026-08/WORKLOG.md",
+        "docs/KOR-DxfToEtabs-Changes-2026-08-21.md",
+        "tools/BdDocTemplate/README.md",
+        "tools/BdReportBuilders/build-defense-report.ps1",
+        "tools/BdReportBuilders/build-sector-report.ps1",
+        "tools/browser_fetch.py",
+        "tools/Publish-EtabsModel.ps1"
+      ]
+    }
+  ],
   "Stats": {
-    "Files": 1438,
-    "Lines": 292714,
+    "Files": 1439,
+    "Lines": 292862,
     "AmbiguousTypeNames": 351
   }
 }
