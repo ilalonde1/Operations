@@ -578,20 +578,11 @@ public static class Extractor
         }
     }
 
-    private static bool SkipSource(string rel)
-        => rel.Contains("/bin/", StringComparison.OrdinalIgnoreCase) ||
-           rel.Contains("/obj/", StringComparison.OrdinalIgnoreCase) ||
-           rel.Contains("/node_modules/", StringComparison.OrdinalIgnoreCase) ||
-           rel.EndsWith(".g.cs", StringComparison.OrdinalIgnoreCase) ||
-           rel.EndsWith(".g.i.cs", StringComparison.OrdinalIgnoreCase) ||
-           rel.EndsWith(".designer.cs", StringComparison.OrdinalIgnoreCase);
+    private static bool SkipSource(string rel) => SourceConventions.SkipSource(rel);
 
-    public static bool IsArchitectureToolPath(string rel)
-    {
-        int slash = rel.IndexOf('/');
-        string first = slash < 0 ? rel : rel[..slash];
-        return first.StartsWith("Kor.Operations.Architecture", StringComparison.OrdinalIgnoreCase);
-    }
+    // Shared with the staleness gate via SourceConventions — see that file.
+    private static bool IsArchitectureToolPath(string rel)
+        => SourceConventions.IsArchitectureToolPath(rel);
 
     /// <summary>Reads `args[0]` comparisons from syntax rather than grepping string literals.</summary>
     private static IEnumerable<string> CliVerbs(SyntaxNode root)
@@ -832,10 +823,26 @@ public static class TextFiles
 {
     private static readonly UTF8Encoding StrictUtf8 = new(false, true);
 
-    /// <summary>Repository text is UTF-8 unless it proves otherwise; Latin-1 fallback is stable and explicit.</summary>
+    /// <summary>Repository text is UTF-8 unless it proves otherwise; Latin-1 fallback is stable and explicit.
+    ///
+    /// A BYTE-ORDER MARK IS CHECKED FIRST, because the C# compiler reads UTF-16 source happily and
+    /// this did not: strict UTF-8 rejects it, Latin-1 turns it into gibberish with a NUL between
+    /// every character, and Roslyn parses that as no types at all. A real compiled class disappeared
+    /// from the map with no error and nothing to notice. There is no UTF-16 source in this
+    /// repository today — which is exactly why it would have been found the hard way.</summary>
     public static string ReadAllText(string path)
     {
         byte[] bytes = File.ReadAllBytes(path);
+
+        if (bytes.Length >= 4 && bytes[0] == 0xFF && bytes[1] == 0xFE && bytes[2] == 0 && bytes[3] == 0)
+            return Encoding.UTF32.GetString(bytes, 4, bytes.Length - 4);
+        if (bytes.Length >= 2 && bytes[0] == 0xFF && bytes[1] == 0xFE)
+            return Encoding.Unicode.GetString(bytes, 2, bytes.Length - 2);
+        if (bytes.Length >= 2 && bytes[0] == 0xFE && bytes[1] == 0xFF)
+            return Encoding.BigEndianUnicode.GetString(bytes, 2, bytes.Length - 2);
+        if (bytes.Length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF)
+            bytes = bytes[3..];
+
         try { return StrictUtf8.GetString(bytes); }
         catch (DecoderFallbackException) { return Encoding.Latin1.GetString(bytes); }
     }

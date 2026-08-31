@@ -247,7 +247,7 @@
         "xunit.runner.visualstudio"
       ],
       "Files": 89,
-      "Lines": 11958
+      "Lines": 11950
     },
     {
       "Name": "Kor.Operations.EngineeringTools.Core",
@@ -56680,8 +56680,8 @@
           "Detail": "7,952 lines",
           "Group": "AI / MCP",
           "Weight": 0.2939,
-          "X": 0.5933,
-          "Y": 0.4896
+          "X": 0.591,
+          "Y": 0.4715
         },
         {
           "Id": "Kor.Operations.Mcp.Smoke",
@@ -56689,8 +56689,8 @@
           "Detail": "1,466 lines",
           "Group": "AI / MCP",
           "Weight": 0.1262,
-          "X": 0.5675,
-          "Y": 0.3396
+          "X": 0.5529,
+          "Y": 0.3235
         },
         {
           "Id": "Kor.Operations.Mcp.Tests",
@@ -56698,8 +56698,8 @@
           "Detail": "844 lines",
           "Group": "AI / MCP",
           "Weight": 0.0957,
-          "X": 0.5082,
-          "Y": 0.346
+          "X": 0.4939,
+          "Y": 0.3341
         },
         {
           "Id": "Kor.Opportunities.ApcImport",
@@ -56716,8 +56716,8 @@
           "Detail": "178 lines",
           "Group": "BD platform",
           "Weight": 0.044,
-          "X": 0.5243,
-          "Y": 0.2006
+          "X": 0.4983,
+          "Y": 0.1876
         },
         {
           "Id": "Kor.Opportunities.Core",
@@ -56725,8 +56725,8 @@
           "Detail": "3,738 lines",
           "Group": "BD platform",
           "Weight": 0.2015,
-          "X": 0.4392,
-          "Y": 0.6139
+          "X": 0.4465,
+          "Y": 0.6062
         },
         {
           "Id": "Kor.Opportunities.Data",
@@ -56734,8 +56734,8 @@
           "Detail": "50,139 lines",
           "Group": "BD platform",
           "Weight": 0.738,
-          "X": 0.4671,
-          "Y": 0.6341
+          "X": 0.4761,
+          "Y": 0.6244
         },
         {
           "Id": "Kor.Opportunities.Data.Tests",
@@ -56743,8 +56743,8 @@
           "Detail": "1,774 lines",
           "Group": "BD platform",
           "Weight": 0.1388,
-          "X": 0.5273,
-          "Y": 0.676
+          "X": 0.5402,
+          "Y": 0.6623
         },
         {
           "Id": "Kor.Opportunities.Worker",
@@ -56752,8 +56752,8 @@
           "Detail": "13,268 lines",
           "Group": "BD platform",
           "Weight": 0.3796,
-          "X": 0.4031,
-          "Y": 0.4347
+          "X": 0.3959,
+          "Y": 0.4299
         },
         {
           "Id": "Kor.Operations.App",
@@ -56761,17 +56761,17 @@
           "Detail": "92,066 lines",
           "Group": "desktop app",
           "Weight": 1,
-          "X": 0.6504,
-          "Y": 0.5332
+          "X": 0.6517,
+          "Y": 0.5111
         },
         {
           "Id": "Kor.Operations.App.Tests",
           "Label": "App.Tests",
-          "Detail": "11,958 lines",
+          "Detail": "11,950 lines",
           "Group": "desktop app",
-          "Weight": 0.3604,
-          "X": 0.5603,
-          "Y": 0.5169
+          "Weight": 0.3603,
+          "X": 0.5601,
+          "Y": 0.501
         },
         {
           "Id": "Kor.Operations.EngineeringTools.Core",
@@ -56779,8 +56779,8 @@
           "Detail": "28,259 lines",
           "Group": "drawing intake",
           "Weight": 0.554,
-          "X": 0.9241,
-          "Y": 0.5259
+          "X": 0.9252,
+          "Y": 0.4848
         },
         {
           "Id": "Kor.Operations.EngineeringTools.Core.Tests",
@@ -56789,7 +56789,7 @@
           "Group": "drawing intake",
           "Weight": 0.4234,
           "X": 1,
-          "Y": 0.5104
+          "Y": 0.464
         },
         {
           "Id": "Kor.Operations.EngineeringTools.TakeoffCli",
@@ -56797,8 +56797,8 @@
           "Detail": "4,357 lines",
           "Group": "drawing intake",
           "Weight": 0.2175,
-          "X": 0.9432,
-          "Y": 0.6074
+          "X": 0.9509,
+          "Y": 0.5648
         },
         {
           "Id": "Kor.Operations.EngineeringTools.Tests",
@@ -56806,8 +56806,8 @@
           "Detail": "8,678 lines",
           "Group": "drawing intake",
           "Weight": 0.307,
-          "X": 0.8323,
-          "Y": 0.6797
+          "X": 0.8457,
+          "Y": 0.6448
         },
         {
           "Id": "Kor.Operations.Rendering",
@@ -56815,8 +56815,8 @@
           "Detail": "6,350 lines",
           "Group": "drawing intake",
           "Weight": 0.2626,
-          "X": 0.7414,
-          "Y": 0.3481
+          "X": 0.7277,
+          "Y": 0.32
         },
         {
           "Id": "EmailFilerv2",
@@ -56824,8 +56824,8 @@
           "Detail": "2,439 lines",
           "Group": "email + transmittals",
           "Weight": 0.1628,
-          "X": 0.7786,
-          "Y": 0.3794
+          "X": 0.7675,
+          "Y": 0.3485
         },
         {
           "Id": "ApcInterestBackfill",
@@ -56833,8 +56833,8 @@
           "Detail": "267 lines",
           "Group": "one-off tools",
           "Weight": 0.0539,
-          "X": 0.3684,
-          "Y": 0.5694
+          "X": 0.3723,
+          "Y": 0.567
         },
         {
           "Id": "ApcInterestProbe",
@@ -56851,8 +56851,8 @@
           "Detail": "659 lines",
           "Group": "one-off tools",
           "Weight": 0.0846,
-          "X": 0.3876,
-          "Y": 0.8171
+          "X": 0.4117,
+          "Y": 0.8129
         },
         {
           "Id": "BcBidDetailProbe",
@@ -56860,8 +56860,8 @@
           "Detail": "74 lines",
           "Group": "one-off tools",
           "Weight": 0.0284,
-          "X": 0.4664,
-          "Y": 0.7527
+          "X": 0.4852,
+          "Y": 0.743
         },
         {
           "Id": "BcBidInterestProbe",
@@ -56878,8 +56878,8 @@
           "Detail": "862 lines",
           "Group": "one-off tools",
           "Weight": 0.0968,
-          "X": 0.4062,
-          "Y": 0.7531
+          "X": 0.4248,
+          "Y": 0.7474
         },
         {
           "Id": "BdApolloEnrich",
@@ -56887,8 +56887,8 @@
           "Detail": "317 lines",
           "Group": "one-off tools",
           "Weight": 0.0587,
-          "X": 0.18,
-          "Y": 0.2702
+          "X": 0.1586,
+          "Y": 0.2819
         },
         {
           "Id": "BdBriefSmoke",
@@ -56896,8 +56896,8 @@
           "Detail": "116 lines",
           "Group": "one-off tools",
           "Weight": 0.0355,
-          "X": 0.6301,
-          "Y": 0.693
+          "X": 0.6445,
+          "Y": 0.6721
         },
         {
           "Id": "BdCanonicalDedup",
@@ -56905,8 +56905,8 @@
           "Detail": "1,766 lines",
           "Group": "one-off tools",
           "Weight": 0.1385,
-          "X": 0.5209,
-          "Y": 0.6121
+          "X": 0.5283,
+          "Y": 0.5986
         },
         {
           "Id": "BdContactEnrich",
@@ -56914,8 +56914,8 @@
           "Detail": "238 lines",
           "Group": "one-off tools",
           "Weight": 0.0508,
-          "X": 0.5313,
-          "Y": 0.8294
+          "X": 0.5567,
+          "Y": 0.8151
         },
         {
           "Id": "BdDeltekLink",
@@ -56923,8 +56923,8 @@
           "Detail": "847 lines",
           "Group": "one-off tools",
           "Weight": 0.0959,
-          "X": 0.4893,
-          "Y": 0.5445
+          "X": 0.4912,
+          "Y": 0.5335
         },
         {
           "Id": "BdHeatGraph",
@@ -56941,8 +56941,8 @@
           "Detail": "103 lines",
           "Group": "one-off tools",
           "Weight": 0.0334,
-          "X": 0.2015,
-          "Y": 0.4073
+          "X": 0.1918,
+          "Y": 0.4165
         },
         {
           "Id": "BdIntegrityCheck",
@@ -56959,8 +56959,8 @@
           "Detail": "404 lines",
           "Group": "one-off tools",
           "Weight": 0.0662,
-          "X": 0.3295,
-          "Y": 0.5445
+          "X": 0.3312,
+          "Y": 0.5447
         },
         {
           "Id": "BdOpportunityPurge",
@@ -56968,8 +56968,8 @@
           "Detail": "289 lines",
           "Group": "one-off tools",
           "Weight": 0.056,
-          "X": 0.1731,
-          "Y": 0.7126
+          "X": 0.1879,
+          "Y": 0.7228
         },
         {
           "Id": "BdOrphanOrgPurge",
@@ -56977,8 +56977,8 @@
           "Detail": "597 lines",
           "Group": "one-off tools",
           "Weight": 0.0805,
-          "X": 0,
-          "Y": 0.7846
+          "X": 0.0199,
+          "Y": 0.806
         },
         {
           "Id": "BdPersonResearchExecutorSmoke",
@@ -56986,8 +56986,8 @@
           "Detail": "103 lines",
           "Group": "one-off tools",
           "Weight": 0.0334,
-          "X": 0.2222,
-          "Y": 0.3571
+          "X": 0.2087,
+          "Y": 0.3649
         },
         {
           "Id": "BdProjectResearchExecutorSmoke",
@@ -56995,8 +56995,8 @@
           "Detail": "155 lines",
           "Group": "one-off tools",
           "Weight": 0.041,
-          "X": 0.2587,
-          "Y": 0.3116
+          "X": 0.2414,
+          "Y": 0.3168
         },
         {
           "Id": "BdQueueDrainIngest",
@@ -57004,8 +57004,8 @@
           "Detail": "1,169 lines",
           "Group": "one-off tools",
           "Weight": 0.1127,
-          "X": 0.4133,
-          "Y": 0.2968
+          "X": 0.395,
+          "Y": 0.2915
         },
         {
           "Id": "BdResearchExecutorSmoke",
@@ -57013,8 +57013,8 @@
           "Detail": "103 lines",
           "Group": "one-off tools",
           "Weight": 0.0334,
-          "X": 0.3011,
-          "Y": 0.2686
+          "X": 0.2803,
+          "Y": 0.271
         },
         {
           "Id": "BdResearchImport",
@@ -57022,8 +57022,8 @@
           "Detail": "8,651 lines",
           "Group": "one-off tools",
           "Weight": 0.3065,
-          "X": 0.3898,
-          "Y": 0.7068
+          "X": 0.4046,
+          "Y": 0.7024
         },
         {
           "Id": "BdSectorSmoke",
@@ -57031,8 +57031,8 @@
           "Detail": "119 lines",
           "Group": "one-off tools",
           "Weight": 0.036,
-          "X": 0.4661,
-          "Y": 0.8417
+          "X": 0.4923,
+          "Y": 0.8319
         },
         {
           "Id": "BdSeedImport",
@@ -57040,8 +57040,8 @@
           "Detail": "728 lines",
           "Group": "one-off tools",
           "Weight": 0.0889,
-          "X": 0.4611,
-          "Y": 0.5301
+          "X": 0.4619,
+          "Y": 0.5212
         },
         {
           "Id": "BdSynthesisSmoke",
@@ -57049,8 +57049,8 @@
           "Detail": "221 lines",
           "Group": "one-off tools",
           "Weight": 0.049,
-          "X": 0.3364,
-          "Y": 0.8118
+          "X": 0.3601,
+          "Y": 0.8112
         },
         {
           "Id": "BdVerdictBackfill",
@@ -57094,8 +57094,8 @@
           "Detail": "310 lines",
           "Group": "one-off tools",
           "Weight": 0.058,
-          "X": 0.2997,
-          "Y": 0.6301
+          "X": 0.321,
+          "Y": 0.6719
         },
         {
           "Id": "MerxProbe",
@@ -57103,8 +57103,8 @@
           "Detail": "128 lines",
           "Group": "one-off tools",
           "Weight": 0.0373,
-          "X": 0.2882,
-          "Y": 0.7648
+          "X": 0.3079,
+          "Y": 0.7675
         },
         {
           "Id": "OpportunityEnrichmentBackfill",
@@ -57112,8 +57112,8 @@
           "Detail": "218 lines",
           "Group": "one-off tools",
           "Weight": 0.0487,
-          "X": 0.5953,
-          "Y": 0.6631
+          "X": 0.6071,
+          "Y": 0.6446
         },
         {
           "Id": "PrimeRfpClassifierBackfill",
@@ -57121,8 +57121,8 @@
           "Detail": "206 lines",
           "Group": "one-off tools",
           "Weight": 0.0473,
-          "X": 0.3111,
-          "Y": 0.6701
+          "X": 0.349,
+          "Y": 0.7065
         },
         {
           "Id": "ScraperProbe",
@@ -57130,8 +57130,8 @@
           "Detail": "204 lines",
           "Group": "one-off tools",
           "Weight": 0.0471,
-          "X": 0.3339,
-          "Y": 0.7074
+          "X": 0.31,
+          "Y": 0.6317
         },
         {
           "Id": "Kor.EmailCommon",
@@ -57139,8 +57139,8 @@
           "Detail": "134 lines",
           "Group": "shared",
           "Weight": 0.0382,
-          "X": 0.8208,
-          "Y": 0.6103
+          "X": 0.8285,
+          "Y": 0.5762
         },
         {
           "Id": "Kor.EmailSearch.Core",
@@ -57148,8 +57148,8 @@
           "Detail": "409 lines",
           "Group": "shared",
           "Weight": 0.0667,
-          "X": 0.7427,
-          "Y": 0.4813
+          "X": 0.7398,
+          "Y": 0.4528
         },
         {
           "Id": "Kor.Operations.Business",
@@ -57157,8 +57157,8 @@
           "Detail": "6,101 lines",
           "Group": "shared",
           "Weight": 0.2574,
-          "X": 0.6164,
-          "Y": 0.419
+          "X": 0.6083,
+          "Y": 0.3994
         },
         {
           "Id": "Kor.Operations.Core",
@@ -57166,8 +57166,8 @@
           "Detail": "1,543 lines",
           "Group": "shared",
           "Weight": 0.1295,
-          "X": 0.6474,
-          "Y": 0.4072
+          "X": 0.6384,
+          "Y": 0.3854
         },
         {
           "Id": "Kor.Operations.Data",
@@ -57175,8 +57175,8 @@
           "Detail": "3,702 lines",
           "Group": "shared",
           "Weight": 0.2005,
-          "X": 0.5631,
-          "Y": 0.4443
+          "X": 0.557,
+          "Y": 0.4283
         },
         {
           "Id": "Kor.Operations.FileSync.Service",
@@ -57184,8 +57184,8 @@
           "Detail": "7,093 lines",
           "Group": "shared",
           "Weight": 0.2776,
-          "X": 0.6151,
-          "Y": 0.3753
+          "X": 0.6035,
+          "Y": 0.3558
         },
         {
           "Id": "Kor.Operations.FileSync.Service.Tests",
@@ -57193,8 +57193,8 @@
           "Detail": "57 lines",
           "Group": "shared",
           "Weight": 0.0249,
-          "X": 0.6753,
-          "Y": 0.1834
+          "X": 0.648,
+          "Y": 0.16
         },
         {
           "Id": "Kor.Operations.Graph",
@@ -57202,8 +57202,8 @@
           "Detail": "1,270 lines",
           "Group": "shared",
           "Weight": 0.1174,
-          "X": 0.6947,
-          "Y": 0.4417
+          "X": 0.6885,
+          "Y": 0.4165
         },
         {
           "Id": "Kor.Operations.ImportTool",
@@ -57211,8 +57211,8 @@
           "Detail": "964 lines",
           "Group": "shared",
           "Weight": 0.1023,
-          "X": 0.6756,
-          "Y": 0.2962
+          "X": 0.6576,
+          "Y": 0.2726
         },
         {
           "Id": "_SmokeRun",
@@ -57238,8 +57238,8 @@
           "Detail": "api",
           "Group": "external",
           "Weight": 0.2275,
-          "X": 0.7111,
-          "Y": 0.6104
+          "X": 0.7187,
+          "Y": 0.5839
         },
         {
           "Id": "ext:Apollo.io",
@@ -57247,8 +57247,8 @@
           "Detail": "api",
           "Group": "external",
           "Weight": 0.1825,
-          "X": 0.031,
-          "Y": 0.16
+          "X": 0,
+          "Y": 0.1828
         },
         {
           "Id": "ext:Deltek Vision (ODBC)",
@@ -57256,8 +57256,8 @@
           "Detail": "database",
           "Group": "external",
           "Weight": 0.46,
-          "X": 0.5254,
-          "Y": 0.4774
+          "X": 0.5221,
+          "Y": 0.464
         },
         {
           "Id": "ext:ETABS / SAFE",
@@ -57265,8 +57265,8 @@
           "Detail": "desktop",
           "Group": "external",
           "Weight": 0.1989,
-          "X": 0.7827,
-          "Y": 0.7025
+          "X": 0.7979,
+          "Y": 0.6709
         },
         {
           "Id": "ext:KOR-APP01\\SQLEXPRESS",
@@ -57274,8 +57274,8 @@
           "Detail": "database",
           "Group": "external",
           "Weight": 0.2606,
-          "X": 0.5464,
-          "Y": 0.4015
+          "X": 0.5369,
+          "Y": 0.3868
         },
         {
           "Id": "ext:KOR-FS01 project share",
@@ -57283,8 +57283,8 @@
           "Detail": "file share",
           "Group": "external",
           "Weight": 0.2527,
-          "X": 0.8249,
-          "Y": 0.4378
+          "X": 0.8187,
+          "Y": 0.4038
         },
         {
           "Id": "ext:KorStandards (SQL)",
@@ -57292,8 +57292,8 @@
           "Detail": "database",
           "Group": "external",
           "Weight": 0.2499,
-          "X": 0.8907,
-          "Y": 0.5591
+          "X": 0.8944,
+          "Y": 0.5203
         },
         {
           "Id": "ext:Microsoft Graph",
@@ -57301,8 +57301,8 @@
           "Detail": "api",
           "Group": "external",
           "Weight": 0.205,
-          "X": 0.4651,
-          "Y": 0.461
+          "X": 0.4603,
+          "Y": 0.4517
         },
         {
           "Id": "ext:Ollama",
@@ -57310,7 +57310,7 @@
           "Detail": "api",
           "Group": "external",
           "Weight": 0.1989,
-          "X": 0.3156,
+          "X": 0.354,
           "Y": 1
         },
         {
@@ -57319,8 +57319,8 @@
           "Detail": "desktop",
           "Group": "external",
           "Weight": 0.1989,
-          "X": 0.9441,
-          "Y": 0.2527
+          "X": 0.9227,
+          "Y": 0.2105
         }
       ],
       "Edges": [
@@ -63915,7 +63915,7 @@
   ],
   "Stats": {
     "Files": 1438,
-    "Lines": 292828,
+    "Lines": 292820,
     "AmbiguousTypeNames": 410
   }
 }

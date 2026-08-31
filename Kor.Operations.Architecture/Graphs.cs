@@ -93,7 +93,13 @@ public static class GraphBuilder
         // 178 files — the biggest thing on the page, which says only that a connection string is
         // mentioned a lot. A project's size means lines of code; an external's means how much of the
         // repo touches it, and the two are not the same quantity.
-        double maxProject = Math.Max(1, nodes.Where(n => n.Group != "external").Max(n => n.Weight));
+        //
+        // Both need DefaultIfEmpty. The external line had it and the project line did not, one line
+        // apart, and a repository with no projects at all — an empty tree, or one holding only loose
+        // .cs files — threw here and took the entire extraction down. The two empty-sequence crashes
+        // fixed in Layered and Normalise were patched where the failing tests pointed instead of
+        // being swept for as a class, which is the whole reason rule 10 exists.
+        double maxProject = Math.Max(1, nodes.Where(n => n.Group != "external").Select(n => n.Weight).DefaultIfEmpty(1).Max());
         double maxExternal = Math.Max(1, nodes.Where(n => n.Group == "external").Select(n => n.Weight).DefaultIfEmpty(1).Max());
 
         var sized = nodes.Select(n => n.Group == "external"

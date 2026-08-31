@@ -165,7 +165,7 @@ public static class ScriptInventory
         => rel.StartsWith("docs/architecture/", StringComparison.OrdinalIgnoreCase);
 
     private static bool Skip(string rel)
-        => Extractor.IsArchitectureToolPath(rel)
+        => SourceConventions.IsArchitectureToolPath(rel)
         || Vendored(rel)
         || Generated(rel)
         || rel.Contains("/bin/", StringComparison.OrdinalIgnoreCase)

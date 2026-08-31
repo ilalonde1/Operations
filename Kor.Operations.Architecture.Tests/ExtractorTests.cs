@@ -72,12 +72,12 @@ public sealed class ExtractorTests
         // those words as systems this repository talks to, with the mapper itself as evidence.
         foreach (var e in Model.Externals)
             Assert.DoesNotContain(e.Evidence, f =>
-                Extractor.IsArchitectureToolPath(f));
+                SourceConventions.IsArchitectureToolPath(f));
 
         Assert.DoesNotContain(Model.Projects, p =>
             p.Name.StartsWith("Kor.Operations.Architecture", StringComparison.OrdinalIgnoreCase));
         foreach (var s in Model.Scripts)
-            Assert.DoesNotContain(s.ReferencedIn, f => Extractor.IsArchitectureToolPath(f));
+            Assert.DoesNotContain(s.ReferencedIn, f => SourceConventions.IsArchitectureToolPath(f));
     }
 
     [Fact]
@@ -214,6 +214,46 @@ public sealed class ExtractorTests
         Assert.Contains(model.Types, t => t.Id == "App:Demo.SharedThing");
         Assert.Equal(1, model.Projects.Single(p => p.Name == "Data").Files);
         Assert.Equal(1, model.Projects.Single(p => p.Name == "App").Files);
+    }
+
+    /// <summary>THE INPUTS NOBODY GIVES IT.
+    ///
+    /// Three separate empty-sequence crashes have been found in this component — `Layered`,
+    /// `Normalise`, and `Relationships` — and each was fixed where a failing test happened to point
+    /// rather than swept for as a class. All three had the same trigger: a repository that is not
+    /// this one. Extraction must survive a tree with nothing in it, a tree with source but no
+    /// project, and a project with no source, because those are what every OTHER repository looks
+    /// like on the way to looking like this one.</summary>
+    [Theory]
+    [InlineData("nothing at all")]
+    [InlineData("loose source, no project")]
+    [InlineData("project, no source")]
+    public void ExtractionSurvivesARepositoryThatIsNotThisOne(string shape)
+    {
+        using var repo = TestRepo.Create();
+        switch (shape)
+        {
+            case "loose source, no project":
+                repo.File("Loose.cs", "public sealed class Loose { }");
+                break;
+            case "project, no source":
+                repo.Project("Empty");
+                break;
+        }
+
+        var model = Extractor.Extract(repo.Root);
+
+        // Not "it does not throw" — every graph must still be WELL FORMED, because the renderer
+        // walks them straight afterwards and a half-built graph fails somewhere less obvious.
+        Assert.NotNull(model.Graphs);
+        foreach (var g in model.Graphs)
+        {
+            Assert.All(g.Nodes, n => Assert.False(double.IsNaN(n.X) || double.IsNaN(n.Y),
+                $"{g.Name}/{n.Id} has a NaN coordinate"));
+            var ids = g.Nodes.Select(n => n.Id).ToHashSet(StringComparer.Ordinal);
+            Assert.All(g.Edges, e => Assert.True(ids.Contains(e.From) && ids.Contains(e.To),
+                $"{g.Name} has an edge to a node that is not on it"));
+        }
     }
 
     [Fact]

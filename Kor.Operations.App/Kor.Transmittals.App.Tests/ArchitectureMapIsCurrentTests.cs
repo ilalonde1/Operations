@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Xml.Linq;
+using Kor.Operations.Architecture;   // SourceConventions, shared by Compile Include — see that file
 using Xunit;
 
 namespace Kor.Operations.App.Tests;
@@ -228,20 +229,11 @@ public sealed class ArchitectureMapIsCurrentTests
                 !d.Contains("/bin/", StringComparison.OrdinalIgnoreCase) &&
                 !d.Contains("/obj/", StringComparison.OrdinalIgnoreCase));
 
-    private static bool SkipSource(string rel)
-        => rel.Contains("/bin/", StringComparison.OrdinalIgnoreCase) ||
-           rel.Contains("/obj/", StringComparison.OrdinalIgnoreCase) ||
-           rel.Contains("/node_modules/", StringComparison.OrdinalIgnoreCase) ||
-           rel.EndsWith(".g.cs", StringComparison.OrdinalIgnoreCase) ||
-           rel.EndsWith(".g.i.cs", StringComparison.OrdinalIgnoreCase) ||
-           rel.EndsWith(".designer.cs", StringComparison.OrdinalIgnoreCase);
+    private static bool SkipSource(string rel) => SourceConventions.SkipSource(rel);
 
+    // Shared with the staleness gate via SourceConventions — see that file.
     private static bool IsArchitectureToolPath(string rel)
-    {
-        int slash = rel.IndexOf('/');
-        string first = slash < 0 ? rel : rel[..slash];
-        return first.StartsWith("Kor.Operations.Architecture", StringComparison.OrdinalIgnoreCase);
-    }
+        => SourceConventions.IsArchitectureToolPath(rel);
 
     private static string Rel(string root, string path)
         => Path.GetRelativePath(root, path).Replace('\\', '/');
