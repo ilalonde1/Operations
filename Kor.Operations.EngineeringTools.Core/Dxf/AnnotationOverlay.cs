@@ -42,9 +42,28 @@ public static class AnnotationOverlay
     {
         public DxfPoint Apply(DxfPoint p)
         {
-            double r = RotationDegrees * System.Math.PI / 180.0;
-            double c = System.Math.Cos(r), s = System.Math.Sin(r);
+            // A QUARTER TURN IS EXACT, AND HAS TO BE. Math.Cos(PI/2) is 6.1e-17, not zero, so a
+            // line the drafter drew vertical comes back a hair off vertical. The error is far below
+            // any tolerance in this tool -- and it is still enough to change which rings close,
+            // because closure is decided on exact endpoint identity before any tolerance applies.
+            // Turning 31168 by a computed 90 degrees lost the 2,754 sq ft mezzanine slab, which is
+            // the one the engineer has corrected us on twice.
+            var (c, s) = ((RotationDegrees % 360 + 360) % 360) switch
+            {
+                0 => (1.0, 0.0),
+                90 => (0.0, 1.0),
+                180 => (-1.0, 0.0),
+                270 => (0.0, -1.0),
+                _ => Trig(RotationDegrees),
+            };
+
             return new DxfPoint(p.X * c - p.Y * s + OffsetX, p.X * s + p.Y * c + OffsetY);
+
+            static (double C, double S) Trig(double degrees)
+            {
+                double r = degrees * System.Math.PI / 180.0;
+                return (System.Math.Cos(r), System.Math.Sin(r));
+            }
         }
     }
 

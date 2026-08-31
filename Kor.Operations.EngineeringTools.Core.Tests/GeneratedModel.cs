@@ -97,7 +97,12 @@ internal static class GeneratedModel
     /// <summary>Re-reads and classifies one sheet, the same way the service does.</summary>
     internal static PlanGeometrySet? Classify(Project project, string fileName)
     {
-        string path = Path.Combine(project.DxfFolder, fileName);
+        // FROM THE MIRROR, like BuildOrSkip twenty lines up. This read the share directly, once per
+        // placed sheet -- 76 sheets on 31168 alone -- while the identical files sat on local disk
+        // from the build step. The comment on the other path already said "thirteen minutes of this
+        // suite is SMB, and it holds the build lock while it spends them"; the fix went in there
+        // and not here.
+        string path = Path.Combine(DrawingCache.Local(project.DxfFolder), fileName);
         lock (Classified)
         {
             if (Classified.TryGetValue(path, out var cached)) return cached;

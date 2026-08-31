@@ -157,6 +157,30 @@ public static class LoopGeometry
     }
 
     /// <summary>
+    /// Distance from a point to a SEGMENT, clamped to its ends.
+    ///
+    /// NOT <see cref="PerpendicularDistance"/>, which measures to the infinite LINE through the two
+    /// points. That is right for its own caller -- the Ramer-Douglas-Peucker reduction, where the
+    /// point lies between the ends by construction -- and wrong for anything asking "is this point
+    /// near that edge". Asked of a rectangular floor plate, the infinite-line reading answers yes
+    /// for every point on the EXTENSION of any of its four edges: two horizontal lines and two
+    /// vertical ones running the width of the site. Columns hundreds of feet outside a plate read
+    /// as standing on it, and the floor-gap warnings that depend on it went quiet.
+    ///
+    /// Three private copies of this already existed -- here inside SegmentsMeet, in
+    /// E2kGeometryComposer and in StructuralPlanClassifier -- so the codebase knew the right
+    /// answer in three places while the floor-gap check reached for the wrong helper.
+    /// </summary>
+    public static double DistanceToSegment(DxfPoint p, DxfPoint a, DxfPoint b)
+    {
+        double dx = b.X - a.X, dy = b.Y - a.Y;
+        double lengthSquared = dx * dx + dy * dy;
+        if (lengthSquared < 1e-9) return p.DistanceTo(a);
+        double t = Math.Clamp(((p.X - a.X) * dx + (p.Y - a.Y) * dy) / lengthSquared, 0.0, 1.0);
+        return p.DistanceTo(new DxfPoint(a.X + t * dx, a.Y + t * dy));
+    }
+
+    /// <summary>
     /// Removes vertices where an outline doubles back along itself.
     ///
     /// ETABS refuses these outright — "Area Object KF54 not correctly defined", followed by

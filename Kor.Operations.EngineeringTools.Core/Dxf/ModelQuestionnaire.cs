@@ -75,10 +75,11 @@ public static class ModelQuestionnaire
         PlanClassificationOptions options, ComposeOptions compose, DxfToEtabsReport? report = null)
     {
         // Whatever this project's own run found, rather than a number typed in once.
-        string plateless = report?.Summary.Flags
+        string? platelessStoreys = report?.Summary.Flags
             .FirstOrDefault(f => f.Contains("carry walls or columns and no floor plate", StringComparison.OrdinalIgnoreCase)) is { } f2
             ? f2[(f2.IndexOf(':') + 1)..].Split('.')[0].Trim()
-            : "the storeys named in the report";
+            : null;
+        string plateless = platelessStoreys ?? "the storeys named in the report";
 
         string perimeterFloors = report?.Summary.Flags
             .Any(f => f.Contains("perimeter wall", StringComparison.OrdinalIgnoreCase)) == true
@@ -173,9 +174,9 @@ public static class ModelQuestionnaire
         new ModelQuestion("F2", "Storeys still with no floor",
             $"OUR DECISION — these are left without a plate rather than given an invented one: {plateless}. They " +
             $"need a slab edge drawn. Tell us here if something else on those drawings should be read as the floor.",
-            "Nothing is invented from where the columns happen to sit. There is no closed outline on any slab " +
-            "layer of these storeys and no perimeter wall to fall back on either, so F1's fallback has nothing " +
-            "to work from.",
+            "Nothing is invented from where the columns happen to sit. In the finished file, no floor plate " +
+            "reaches the walls or columns on these storeys, so they are named rather than hidden behind a " +
+            "borrowed or guessed plate.",
             "Those storeys have no diaphragm, and the report says so rather than hiding it behind a guessed plate.",
             "Small closed rings do exist on some of them, but every one is shaft-sized — far below a floor. A " +
             "convex hull of the members standing there would close the gap and would be a fabrication: it would " +
@@ -513,6 +514,9 @@ public static class ModelQuestionnaire
             "The tool can still split a tower out on request; nothing about that is lost.")
             { Decided = true },
         }
+        .Where(q => report is null
+                    || !q.Code.Equals("F2", StringComparison.OrdinalIgnoreCase)
+                    || !string.IsNullOrWhiteSpace(platelessStoreys))
         .Concat(ThisJobsQuestions(report))
         .ToList();
     }
@@ -587,15 +591,15 @@ public static class ModelQuestionnaire
             yield return new ModelQuestion("J1", "Storeys with no floor plate",
                 $"FOR YOUR LIST, NOT A QUESTION — you said you would take these on yourself. These " +
                 $"storeys carry walls and columns and no slab, so they have no diaphragm until you " +
-                $"add one: {storeys}. Their slab edges do not close on the drawing and nothing was " +
-                "invented in their place.",
-                "Nothing was invented in their place. The perimeter-wall fallback needs an enclosing wall " +
-                "ring and these storeys have none, so they were left without a plate and named here.",
+                $"add one: {storeys}. The finished file has no floor plate assigned on those storeys and " +
+                "nothing was invented in their place.",
+                "Nothing was invented in their place. This row is raised only for storeys that carry " +
+                "members and no plate at all in the finished file.",
                 "Listed so you know which storeys they are, not so you can tell us what to do about them. " +
                 "Banked as diaphragms-are-the-engineers: loads, diaphragms, stiffness modifiers and " +
                 "section properties are yours, and the tool assigns none of them.",
-                "Closure tolerance was tested at 6, 12 and 18 inches on this job and the result did not " +
-                "change, so this is not a tolerance that can be widened into a floor.")
+                "Measured from the finished file after cuts. Storeys with a partial plate are reported " +
+                "separately and do not enter this no-plate list.")
                 { RuleTopic = "storeys-with-no-drawn-floor", Decided = true };
 
             // AND THE HALF OF THAT LIST SHE DID NOT RULE ON.
@@ -615,13 +619,25 @@ public static class ModelQuestionnaire
             // was asked, because the only question covering "members and no floor" had been switched
             // off by a ruling that was never about this case. Two different refusals, one question,
             // and the answerable half went silent with the other.
+            var savedStoreys = new HashSet<string>(report.SavedModel.Storeys, StringComparer.OrdinalIgnoreCase);
             var closedButUnpriced = report.Sheets
-                .Where(sheet => sheet.Slabs == 0)
+                .Where(sheet => sheet.Stories.Count > 0 && sheet.Slabs == 0)
                 .SelectMany(sheet => sheet.Flags
                     .Where(f => f.Contains("CANDIDATE NOT MODELLED", StringComparison.Ordinal)
                              && f.Contains("nothing on the drawing says this region is a floor",
                                            StringComparison.OrdinalIgnoreCase))
-                    .Select(f => (Storey: sheet.Stories.FirstOrDefault() ?? sheet.Label, Note: f)))
+                    // THE STOREY THE SHEET DRAWS, not the one its columns rise to. She ruled on
+                    // 24 Aug that the N->N+1 shift is for walls and columns and that "the slab
+                    // stays at level N"; SheetOutcome.Stories holds where the surviving OBJECTS
+                    // landed, so asking it named B-LEVEL 29 for a region drawn on the LEVEL 28
+                    // sheet. NamedStories is what the title claims, which is what a slab question
+                    // is about.
+                    .Select(f => (Storey: sheet.NamedStories.FirstOrDefault(s => savedStoreys.Contains(s))
+                                          ?? sheet.NamedStories.FirstOrDefault()
+                                          ?? sheet.Stories.FirstOrDefault(s => savedStoreys.Contains(s))
+                                          ?? sheet.Label,
+                                  Note: f)))
+                .Where(x => savedStoreys.Count == 0 || savedStoreys.Contains(x.Storey))
                 .GroupBy(x => x.Storey, StringComparer.OrdinalIgnoreCase)
                 .Select(g => (Storey: g.Key, Best: g.OrderByDescending(x => AreaOf(x.Note)).First().Note))
                 .Where(x => AreaOf(x.Best) > 0.0)
@@ -993,9 +1009,12 @@ public static class ModelQuestionnaire
         // question offers are not open: we know which it is, and putting it to her again is how a
         // workbook stops being read. It is stated as a defect instead, and only storeys with no
         // such flag are still a question.
-        if (Flag("Floor does not reach the structure") is { } shortFloor)
+        if ((Flag("Floor does not reach the structure") ?? Flag("have floor plate(s), but most")) is { } shortFloor)
         {
-            string storeys = shortFloor[(shortFloor.IndexOf(':') + 1)..].Split(". Those")[0].Trim();
+            string storeys = shortFloor[(shortFloor.IndexOf(':') + 1)..]
+                .Split(". Those")[0]
+                .Split(". This")[0]
+                .Trim();
 
             bool edgeKnownOpen = report.Summary.Flags.Any(f =>
                 f.Contains("would not close", StringComparison.OrdinalIgnoreCase) ||
@@ -1075,7 +1094,7 @@ public static class ModelQuestionnaire
                 "These are missing walls rather than misplaced ones, and no count in the model will show " +
                 "them to you — the totals look healthy without them.",
                 "Sizes are width by depth in inches, measured off the linework on the sheet named.")
-                { RuleTopic = "outlines-that-would-not-resolve" };
+            { RuleTopic = "outlines-that-would-not-resolve" };
         }
     }
 
@@ -1092,6 +1111,26 @@ public static class ModelQuestionnaire
 
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
         workbook.SaveAs(path);
+    }
+
+    /// <summary>Plain text from a generated questions workbook, for publish invariants.</summary>
+    public static IReadOnlyList<string> TextLines(string path)
+    {
+        if (!File.Exists(path)) return Array.Empty<string>();
+
+        using var workbook = new XLWorkbook(path);
+        var lines = new List<string>();
+
+        foreach (var sheet in workbook.Worksheets)
+        foreach (var row in sheet.RowsUsed())
+        {
+            string text = string.Join(" | ", row.CellsUsed()
+                .Select(c => c.GetString())
+                .Where(s => !string.IsNullOrWhiteSpace(s)));
+            if (!string.IsNullOrWhiteSpace(text)) lines.Add(text);
+        }
+
+        return lines;
     }
 
     /// <summary>
@@ -1498,4 +1537,3 @@ public static class ModelQuestionnaire
         sheet.SheetView.FreezeRows(1);
     }
 }
-

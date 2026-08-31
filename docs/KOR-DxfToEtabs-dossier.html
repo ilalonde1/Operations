@@ -78,6 +78,25 @@ had already rebuilt that building's walls by hand.</p>
 
 <h2>What changed after your two calls</h2>
 <p>Everything below came from your feedback on 7 August and is already in the files.</p>
+<p><strong>From your review of 31 August, both already in:</strong> the model now arrives turned the
+way your drawings are. It was built north&ndash;south while every sheet and DXF of the job runs
+east&ndash;west, so the DXF could not be laid over it without rotating and moving it by hand first.
+The drawings carry their own grid lines and your model carries yours, and the spacings between them
+are a fingerprint &mdash; on this job 93.4, 141.2, 326, 326, 326, 287, 39, 175&nbsp;in and so on.
+That sequence appears in the drawings exactly once, and in reverse, which gives the quarter turn,
+its direction and the offset together. All 19 grid lines on your X and both on your Y now match. It
+is measured, not assumed: where a set does not carry enough grid to be certain, nothing is turned
+and the report says so.</p>
+<p><strong>And <em>C&#8209;LEVEL&nbsp;3</em> is now the outer edge of the slab, 22,663&nbsp;sq&nbsp;ft
+against the 12,862 you were sent.</strong> You said it was &ldquo;only grabbing this, which is just a
+step&rdquo; and that the outer edge &ldquo;is also a continuous line&rdquo;. You were right that it is
+continuous: the outer ring closes exactly, but two of its segments &mdash; the chamfer at the
+north&#8209;west corner and its short return &mdash; are drawn on <code>JBP_C_B_STRUCT</code>, a layer
+this tool is told is not structure. So the ring never closed on one layer, and the fill found only the
+step inside it. An outline that closes exactly through linework on another layer is now closed, and
+the report names every plate that needed it. Nothing is bridged and no gap is spanned; where the
+drawing really is open, it stays open and is reported. The step itself is not cut out as a hole
+&mdash; it is a change of thickness, and the thickness is yours.</p>
 <p><strong>From your notes of 12 August, already in:</strong> 31138 now goes to <code>P5</code>. Your
 model stopped at <code>P3</code> while drafting issues <em>LEVEL P4</em> and <em>LEVEL P5</em>, so two
 whole parkade floors were being read and placed nowhere. Both storeys are added below P3 at the height

@@ -257,6 +257,8 @@ if ($PerBuilding -and -not $Variant) {
 }
 
 Write-Host "generating $Project..." -ForegroundColor DarkGray
+$reportPath = Join-Path $stage "$label-FROM-DRAWINGS-report.txt"
+$questionsPath = Join-Path $stage "$label-QUESTIONS.xlsx"
 $cutArgs = @()
 if ($TopStorey) { $cutArgs += @('--top-storey', $TopStorey) }
 if ($DropStoreys) { $cutArgs += @('--drop-storeys', ($DropStoreys -join ',')) }
@@ -268,8 +270,8 @@ if ($config.AnnotatedDxf) { $cutArgs += @('--annotated-dxf', $config.AnnotatedDx
 & $cli dxf-to-etabs $config.Dxf (Join-Path $folder $config.Reference) $out `
     @cutArgs `
     --rules-db $RulesDb `
-    --report (Join-Path $stage "$label-FROM-DRAWINGS-report.txt") `
-    --questions (Join-Path $stage "$label-QUESTIONS.xlsx") |
+    --report $reportPath `
+    --questions $questionsPath |
     Select-String -Pattern 'Storeys built|^Walls|^Columns|^Floors'
 if ($LASTEXITCODE -ne 0) { throw 'generation failed.' }
 
@@ -283,6 +285,8 @@ if ($DropStoreys) { $verifyArgs += @('--dropped', ($DropStoreys -join ',')) }
 # engineer's own model is carried through into the output, and hers is not ours to refuse:
 # 31138 failed 514 checks, every one of them her work.
 $verifyArgs += @('--reference', (Join-Path $folder $config.Reference))
+$verifyArgs += @('--report', $reportPath)
+$verifyArgs += @('--questions', $questionsPath)
 & $cli verify-e2k $out @verifyArgs
 if ($LASTEXITCODE -ne 0) {
     Write-Host ''
@@ -300,7 +304,6 @@ if ($LASTEXITCODE -ne 0) {
 # what was built and what was not, in the job's own numbers, so it cannot be wrong about a
 # building it is not describing.
 # ---------------------------------------------------------------------------------------------
-$reportPath = Join-Path $stage "$label-FROM-DRAWINGS-report.txt"
 $model      = Get-Content -LiteralPath $out
 $counts = [ordered]@{
     # Storeys the building has, not rows in the list: the base carries an elevation, not a height.

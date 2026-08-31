@@ -220,16 +220,22 @@ if (args.Length >= 1 && args[0].Equals("dxf-render", StringComparison.OrdinalIgn
 // this REFUSES, which does not.
 if (args.Length >= 1 && args[0].Equals("verify-e2k", StringComparison.OrdinalIgnoreCase))
 {
-    if (args.Length < 2) { Console.Error.WriteLine("Usage: takeoff verify-e2k <model.e2k> [--joint-tolerance <in>] [--dropped <a,b,c>] [--reference <ref.e2k>]"); return 1; }
+    if (args.Length < 2) { Console.Error.WriteLine("Usage: takeoff verify-e2k <model.e2k> [--joint-tolerance <in>] [--dropped <a,b,c>] [--reference <ref.e2k>] [--report report.txt] [--questions questions.xlsx]"); return 1; }
     if (!File.Exists(args[1])) { Console.Error.WriteLine($"Not found '{args[1]}'."); return 2; }
 
     double jointTolerance = 0.05;
     var droppedNames = new List<string>();
     string? referencePath = null;
+    string? reportPath = null;
+    string? questionsPath = null;
     for (int i = 2; i < args.Length - 1; i++)
     {
         if (args[i].Equals("--reference", StringComparison.OrdinalIgnoreCase))
             referencePath = args[i + 1];
+        if (args[i].Equals("--report", StringComparison.OrdinalIgnoreCase))
+            reportPath = args[i + 1];
+        if (args[i].Equals("--questions", StringComparison.OrdinalIgnoreCase))
+            questionsPath = args[i + 1];
         if (args[i].Equals("--joint-tolerance", StringComparison.OrdinalIgnoreCase))
             double.TryParse(args[i + 1], System.Globalization.NumberStyles.Float,
                 System.Globalization.CultureInfo.InvariantCulture, out jointTolerance);
@@ -240,10 +246,16 @@ if (args.Length >= 1 && args[0].Equals("verify-e2k", StringComparison.OrdinalIgn
 
     if (referencePath is not null && !File.Exists(referencePath))
     { Console.Error.WriteLine($"Reference not found '{referencePath}'."); return 2; }
+    if (reportPath is not null && !File.Exists(reportPath))
+    { Console.Error.WriteLine($"Report not found '{reportPath}'."); return 2; }
+    if (questionsPath is not null && !File.Exists(questionsPath))
+    { Console.Error.WriteLine($"Questions workbook not found '{questionsPath}'."); return 2; }
 
     var breaches = ShippedModelInvariants.Check(
         File.ReadLines(args[1]), jointTolerance, droppedNames,
-        referencePath is null ? null : File.ReadLines(referencePath));
+        referencePath is null ? null : File.ReadLines(referencePath),
+        reportLines: reportPath is null ? null : File.ReadLines(reportPath),
+        workbookText: questionsPath is null ? null : ModelQuestionnaire.TextLines(questionsPath));
     var blockers = breaches.Where(b => b.BlocksPublishing).ToList();
     var advisory = breaches.Where(b => !b.BlocksPublishing).ToList();
     if (blockers.Count == 0)
@@ -727,7 +739,7 @@ if (args.Length >= 2 && args[0].Equals("corpus-read", StringComparison.OrdinalIg
     return 0;
 }
 
-// Usage: takeoff dxf-to-etabs <dxfFolder> <reference.e2k> <out.e2k> [--rules-db <connection>] [--bldg B] [--offset x,y] [--no-floors] [--report file.txt]
+// Usage: takeoff dxf-to-etabs <dxfFolder> <reference.e2k> <out.e2k> [--rules-db <connection>] [--bldg B] [--offset x,y] [--no-floors] [--report file.txt] [--questions questions.xlsx]
 if (args.Length >= 1 && args[0].Equals("dxf-to-etabs", StringComparison.OrdinalIgnoreCase))
 {
     if (args.Length < 4)
@@ -3699,7 +3711,7 @@ public static class TakeoffCliHelp
         new("dxf-import-rules", "takeoff dxf-import-rules <questions.xlsx> --engineer <name> [--rules-db <connection>]", "Import per-job DXF rule answers."),
         new("corpus-read", "takeoff corpus-read <projectsRoot> [out.txt] [--limit N]", "Extract readable project corpus text."),
         new("dxf-to-etabs", "takeoff dxf-to-etabs <dxfFolder> <reference.e2k> <out.e2k> [options]", "Build an ETABS model from DXF plans."),
-        new("verify-e2k", "takeoff verify-e2k <model.e2k> [--joint-tolerance <in>] [--dropped <a,b,c>] [--reference <ref.e2k>]", "Refuse a finished model that breaks a structural invariant."),
+        new("verify-e2k", "takeoff verify-e2k <model.e2k> [--joint-tolerance <in>] [--dropped <a,b,c>] [--reference <ref.e2k>] [--report report.txt] [--questions questions.xlsx]", "Refuse a finished model that breaks a structural invariant."),
         new("ifc-takeoff", "takeoff ifc-takeoff <model.ifc> <out.xlsx>", "Generate a quantity takeoff from an IFC model."),
         new("e2k-takeoff", "takeoff e2k-takeoff <model.e2k> <out.xlsx> [--metric]", "Price the concrete in a generated ETABS model."),
         new("revit-takeoff", "takeoff revit-takeoff <folder|schedule.csv> [more.csv ...] <out.xlsx>", "Price the concrete straight off Revit schedule exports."),

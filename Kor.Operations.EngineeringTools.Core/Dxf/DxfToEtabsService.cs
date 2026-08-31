@@ -159,6 +159,21 @@ public sealed record SheetOutcome(
     public int? DrawingSlabThicknessInches { get; init; }
     public int? DrawingSlabThicknessPage { get; init; }
     public string? DrawingSlabThicknessTitle { get; init; }
+
+    /// <summary>
+    /// The storeys this sheet's TITLE claims, before anything was placed or cut.
+    ///
+    /// Not <see cref="Stories"/>, which after the cut holds the storeys this sheet's surviving
+    /// OBJECTS landed on. The two differ by the engineer's own rule -- a solid wall or column drawn
+    /// on sheet N belongs to storey N+1 -- so a sheet titled LEVEL 28 reports its members on
+    /// B-LEVEL 29 and is still a drawing of level 28.
+    ///
+    /// Both are wanted, by different questions. "Which drawings filled this model" is the object
+    /// reading. "Which storey is this slab region on" is this one: she ruled on 24 Aug that the
+    /// storey shift is for walls and columns only and that "the slab stays at level N". Asking the
+    /// object reading put a slab question on B-LEVEL 29, one storey above the drawing it came from.
+    /// </summary>
+    public IReadOnlyList<string> NamedStories { get; init; } = Array.Empty<string>();
 }
 
 public sealed record DxfToEtabsReport(
@@ -175,6 +190,9 @@ public sealed record DxfToEtabsReport(
 {
     /// <summary>The building this model was cut to, where it was cut to one.</summary>
     public string? BuildingCut { get; init; }
+
+    /// <summary>The finished file's own contents, read back after every cut and cleanup pass.</summary>
+    public E2kModelContents SavedModel { get; init; } = E2kModelContents.Empty;
 
     /// <summary>
     /// How many floor plates each storey of the finished file carries.
@@ -496,6 +514,7 @@ public static class DxfToEtabsService
             ? E2kDocument.Load(request.ReferenceE2k)
             : E2kShellBuilder.FromLevels(
                 E2kShellBuilder.ParseLevels(File.ReadAllLines(request.LevelsFile)), request.LevelsUnit);
+        var referencePointNames = doc.PointNames();
 
         // Before anything else: the storey list is what ETABS builds from, and an export parks the
         // base a thousand feet under the building with the whole distance folded into the lowest
@@ -506,7 +525,16 @@ public static class DxfToEtabsService
         // whatever the cuts do to the model afterwards. See the note where matchNames is built.
         var storiesBeforeCuts = doc.ReadStories().Select(s => s.Name).ToList();
 
-        var files = Directory.EnumerateFiles(request.DxfFolder, "*.dxf", SearchOption.TopDirectoryOnly)
+        // READ FROM THIS DISK. A share path is mirrored locally first and the mirror is verified
+        // complete; a local path is used as it stands. See DrawingMirror -- this is the four
+        // minutes a run that used to depend on somebody remembering to copy the sheets over.
+        string dxfFolder = DrawingMirror.Folder(request.DxfFolder);
+        string? stickFile = request.StickFilePdf is null ? null : DrawingMirror.SingleFile(request.StickFilePdf);
+        string? annotatedFolder = request.AnnotatedDxfFolder is null
+            ? null
+            : DrawingMirror.Folder(request.AnnotatedDxfFolder);
+
+        var files = Directory.EnumerateFiles(dxfFolder, "*.dxf", SearchOption.TopDirectoryOnly)
             .OrderBy(f => f, StringComparer.OrdinalIgnoreCase)
             .ToList();
         var sheetInfoByFile = files.ToDictionary(f => f, PlanSheetNaming.Parse, StringComparer.OrdinalIgnoreCase);
@@ -744,7 +772,7 @@ public static class DxfToEtabsService
         var annotationNotes = new List<string>();
         var slabThicknessBySheet = StickFileSlabThicknessReader.ReadBySheet(
             sheetInfoByFile.Values.ToList(),
-            request.StickFilePdf);
+            stickFile);
 
         // TWO HALVES OF ONE PLAN, JOINED BEFORE ANYTHING ELSE LOOKS AT THEM.
         //
@@ -796,7 +824,37 @@ public static class DxfToEtabsService
             : files.Where(f => storeysOfSheet[f].Any(s =>
                   joinStoreys.Any(j => s.Contains(j, StringComparison.OrdinalIgnoreCase)))).ToList();
 
-        var segmentsOf = joinable.ToDictionary(f => f, DxfPlanReader.ReadSegments, StringComparer.OrdinalIgnoreCase);
+        // EVERY SHEET IS READ ONCE, HERE, BEFORE ANY OF IT IS CLASSIFIED.
+        //
+        // The drawings have to be put on the engineer's grid -- turned as well as moved -- and the
+        // turn is worked out from the grid lines across the whole set. That has to be known before
+        // the first sheet is classified, because a column's bearing and a slab's ring are computed
+        // from the geometry and must come out already in the model's frame. Reading here rather
+        // than in the loop below costs nothing: each file is parsed exactly once either way, and
+        // they are on local disk by now.
+        var segmentsOf = files.ToDictionary(f => f, DxfPlanReader.ReadSegments, StringComparer.OrdinalIgnoreCase);
+
+        var (gridX, gridY) = ReadGridCoordinates(doc);
+        var alignment = request.Offset is null
+            ? GridAlignment.Solve(segmentsOf.Values.SelectMany(s => s), gridX, gridY)
+            : null;
+
+        if (alignment is not null && alignment.Frame.RotationDegrees == 0
+            && Math.Abs(alignment.Frame.OffsetX) < 1.0 && Math.Abs(alignment.Frame.OffsetY) < 1.0)
+        {
+            // Already where it belongs. Saying so is worth a line; moving it is not.
+            alignment = null;
+        }
+
+        if (alignment is not null)
+        {
+            warnings.Add(
+                $"The drawings were turned {alignment.Frame.RotationDegrees:0}° and moved onto this model's " +
+                $"grid, matched by the grid lines themselves: {alignment.Note} A Revit export in shared site " +
+                "coordinates lands a long way from a model built at its own origin, and on this job a quarter " +
+                "turn away from it as well — project north against plan north. The structure is unchanged; it " +
+                "now lies on the grid it was drawn against, so the DXF can be laid straight over the model.");
+        }
 
         var joined = MatchLineSheetJoin.Group(joinable.Select(f => (
             File: f,
@@ -834,7 +892,7 @@ public static class DxfToEtabsService
                 continue;
             }
 
-            var segments = DxfPlanReader.ReadSegments(file);
+            var segments = segmentsOf[file];
             var tags = DxfPlanReader.ReadPositionedTags(file);
 
             // The other half of this plan, in the same coordinates. The two sheets are drawn from
@@ -844,20 +902,21 @@ public static class DxfToEtabsService
             {
                 foreach (string other in partners)
                 {
-                    segments = segments.Concat(DxfPlanReader.ReadSegments(other)).ToList();
+                    segments = segments.Concat(segmentsOf[other]).ToList();
                     tags = tags.Concat(DxfPlanReader.ReadPositionedTags(other)).ToList();
                 }
             }
+
 
             // THE WORDS COME FROM THE OTHER EXPORT, IF THERE IS ONE.
             //
             // Matched by storey rather than by file name: the two exports name their sheets
             // differently -- "LEVEL 2 PLAN - CONCRETE OUTLINE" against plain "LEVEL 2" -- and
             // PlanSheetNaming already reads both into the levels they serve.
-            if (!string.IsNullOrWhiteSpace(request.AnnotatedDxfFolder) && tags.Count == 0)
+            if (!string.IsNullOrWhiteSpace(annotatedFolder) && tags.Count == 0)
             {
                 var carried = AnnotationOverlay.TagsFor(
-                    request.AnnotatedDxfFolder!, sheet, segments, classification, out string? note);
+                    annotatedFolder!, sheet, segments, classification, out string? note);
                 if (carried.Count > 0) tags = carried;
                 if (note is not null) annotationNotes.Add(note);
             }
@@ -950,6 +1009,7 @@ public static class DxfToEtabsService
                 DrawingSlabThicknessInches = slabThickness?.ThicknessInches,
                 DrawingSlabThicknessPage = slabThickness?.PageNumber,
                 DrawingSlabThicknessTitle = slabThickness?.MatchedTitle,
+                NamedStories = matched,
             });
 
             if (matched.Count == 0)
@@ -995,7 +1055,12 @@ public static class DxfToEtabsService
             // The sheet is in the model, so what it could not read is now worth saying.
             if (unreadWarning is not null) warnings.Add(unreadWarning);
 
-            parsed.Add((sheet, geometry, matched));
+            // READ IN THE DRAWING'S FRAME, DELIVERED IN THE MODEL'S. See PlanGeometryTransform for
+            // why this is the last thing done to a sheet rather than the first.
+            parsed.Add((
+                sheet,
+                alignment is null ? geometry : PlanGeometryTransform.Apply(geometry, alignment.Frame),
+                matched));
         }
 
         // THE DRAWING SET SAYS WHAT A ROUND COLUMN LOOKS LIKE.
@@ -1109,9 +1174,45 @@ public static class DxfToEtabsService
         // ALL, it is moved onto them and the move is stated. Where it does overlap, nothing is
         // touched -- a drawing already in the model's coordinates must not be shifted, and that is
         // every job this tool has read until today.
+        // A RECONSTRUCTED EDGE NAMES ITSELF, AT THE TOP.
+        //
+        // The per-sheet flag for this is written by the classifier and does not reach the report
+        // for every sheet -- C-LEVEL 3's did not, and that storey's floor is the one the engineer
+        // asked about. A plate whose outline was completed through linework this tool does not
+        // model is the single thing on this run she most needs told, so it is said here, against
+        // the model, where nothing can drop it.
+        // Named by STOREY, not by sheet: it is the storey whose floor changed that she will open,
+        // and PlanSheetInfo.FileName has had its level token stripped by the time it reaches here
+        // ("S2.40.1_1_ PLAN"), which would put a half-name in front of an engineer.
+        var completed = parsed
+            .SelectMany(p => p.Geometry.Flags.Select(f => (
+                Sheet: p.Stories.Count > 0 ? string.Join(" / ", p.Stories) : p.Sheet.Label,
+                Flag: f)))
+            .Where(x => x.Flag.Contains("was completed through", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        if (completed.Count > 0)
+            warnings.Add(
+                $"{completed.Count} slab outline(s) were completed through linework on layers this tool does " +
+                "not model, because their ends meet that linework exactly — the edge is continuous on the " +
+                "drawing even where it is not continuous on one layer. Nothing was bridged or invented, and " +
+                "each is worth an eye: " +
+                string.Join("; ", completed.Select(x => $"{x.Sheet} — {Sized(x.Flag)}")));
+
+        // "…an outline of 22,663 sq ft was completed through 2 segment(s) on JBP_C_B_STRUCT…"
+        static string Sized(string flag)
+        {
+            var m = System.Text.RegularExpressions.Regex.Match(
+                flag, @"an outline of ([\d,]+ sq ft) was completed through (\d+ segment\(s\) on [^—]+)");
+            return m.Success ? $"{m.Groups[1].Value} closed through {m.Groups[2].Value.Trim()}" : flag;
+        }
+
         var offset = request.Offset ?? (0.0, 0.0);
 
-        if (request.Offset is null)
+        // The grid fit has already put the linework where it belongs, turn and all. Centring on
+        // top of it would move a model that is already on its grid -- and centring is what this
+        // fell back to when it could only translate.
+        if (request.Offset is null && alignment is null)
         {
             var geometry = parsed.Select(p => p.Geometry).ToList();
             if (request.CentreOnGrid)
@@ -1627,6 +1728,8 @@ public static class DxfToEtabsService
         // The bill for composing once and cutting afterwards: members that belong to a building
         // this model is not of are defined here and assigned to nothing. They come out.
         int orphanObjects = doc.DropObjectsWithNoAssign();
+        int orphanPoints = doc.DropGeneratedOrphanPoints(referencePointNames);
+        var saved = doc.ReadContents(summary.SourceSheetOfObject);
 
         // THE COUNTS HAVE TO BE THE COUNTS OF THE FILE, NOT OF THE COMPOSITION.
         //
@@ -1639,10 +1742,25 @@ public static class DxfToEtabsService
         // Recounted from the document itself, which is the only thing that can be right.
         summary = summary with
         {
-            Walls = doc.CountGenerated("AREA", "KW"),
-            Columns = doc.CountGenerated("LINE", "KC"),
-            Floors = doc.CountGenerated("AREA", "KF"),
-            Stories = doc.ReadStories().Count,
+            Walls = saved.Walls,
+            Columns = saved.Columns,
+            Floors = saved.Floors,
+            Points = saved.Joints,
+            Stories = saved.Storeys.Count,
+
+            // AND THE DENOMINATOR INSIDE THE PROSE, not only the numbers at the top.
+            //
+            // "Slab thickness still ASSUMED: 5 of 90 floor plate(s)" is written during composition,
+            // when there are 90; the building-C file that sentence is printed in holds 15 and the
+            // site file holds 89. Both reports carried the identical "90", which is how you can
+            // tell it describes neither of them. The count is corrected here, against the file, the
+            // same as every other number above.
+            Flags = summary.Flags
+                .Select(f => Regex.Replace(
+                    f,
+                    @"(\bof\s+)[\d,]+(\s+floor plate\(s\))",
+                    $"${{1}}{saved.Floors}${{2}}"))
+                .ToList(),
         };
         if (orphanObjects > 0)
             summary = summary with
@@ -1652,6 +1770,14 @@ public static class DxfToEtabsService
                     "were removed. The whole site is composed once and then cut to this building, so the " +
                     "members are made and then taken out rather than never made — which is what lets two " +
                     "models of one building agree about the storeys they share.").ToList(),
+            };
+        if (orphanPoints > 0)
+            summary = summary with
+            {
+                Flags = summary.Flags.Append(
+                    $"{orphanPoints} generated joint(s) were left behind by cut-away generated objects and " +
+                    "were removed. Reference-model points are left alone; only KOR-generated KP joints are " +
+                    "pruned by this cleanup.").ToList(),
             };
 
         // THE GAPS ARE COUNTED ON THE FILE SHE IS SENT, NOT ON THE COMPOSITION.
@@ -1728,23 +1854,31 @@ public static class DxfToEtabsService
             warnings, storiesBeforeCuts, doc.StoreyRenames,
             doc.ReadStories().Select(s => s.Name).ToList());
 
-        var (floorsWithNoPlate, platesWithNoSupport) = doc.FloorGaps();
+        var floorGaps = doc.FloorGapDetails();
 
         summary = summary with
         {
             Flags = summary.Flags
                 .Where(f => !f.Contains("carry walls or columns and no floor plate", StringComparison.OrdinalIgnoreCase)
-                            && !f.Contains("no wall or column beneath it", StringComparison.OrdinalIgnoreCase))
-                .Concat(floorsWithNoPlate.Count == 0 ? Array.Empty<string>() : new[]
+                            && !f.Contains("no wall or column beneath it", StringComparison.OrdinalIgnoreCase)
+                            && !f.Contains("Floor does not reach the structure", StringComparison.OrdinalIgnoreCase))
+                .Concat(floorGaps.FloorsWithNoPlate.Count == 0 ? Array.Empty<string>() : new[]
                 {
-                    $"{floorsWithNoPlate.Count} storey(s) carry walls or columns and no floor plate, so they " +
-                    $"have no diaphragm: {string.Join(", ", floorsWithNoPlate)}. Nothing was borrowed or " +
+                    $"{floorGaps.FloorsWithNoPlate.Count} storey(s) carry walls or columns and no floor plate at all, so they " +
+                    $"have no diaphragm: {string.Join(", ", floorGaps.FloorsWithNoPlate)}. Nothing was borrowed or " +
                     "invented for them; add a plate if these storeys need one.",
                 })
-                .Concat(platesWithNoSupport.Count == 0 ? Array.Empty<string>() : new[]
+                .Concat(floorGaps.MostlyUncovered.Count == 0 ? Array.Empty<string>() : new[]
                 {
-                    $"{platesWithNoSupport.Count} storey(s) carry a floor plate with no wall or column beneath " +
-                    $"it: {string.Join(", ", platesWithNoSupport)}. The plan placed there draws no vertical " +
+                    $"{floorGaps.MostlyUncovered.Count} storey(s) have floor plate(s), but most of their " +
+                    "walls and columns stand outside every plate on the floor: " +
+                    $"{string.Join(", ", floorGaps.MostlyUncovered)}. This is measured from the finished " +
+                    "file after cuts; it is a partial-coverage warning, not a no-diaphragm count.",
+                })
+                .Concat(floorGaps.PlatesWithNoSupport.Count == 0 ? Array.Empty<string>() : new[]
+                {
+                    $"{floorGaps.PlatesWithNoSupport.Count} storey(s) carry a floor plate with no wall or column beneath " +
+                    $"it: {string.Join(", ", floorGaps.PlatesWithNoSupport)}. The plan placed there draws no vertical " +
                     "structure, so either the structure stops below that level or another sheet holds it.",
                 })
                 .ToList(),
@@ -1753,27 +1887,54 @@ public static class DxfToEtabsService
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(request.OutputE2k))!);
         doc.Save(request.OutputE2k);
 
-        // Storeys the FILE carries structure on, not storeys the composition placed a sheet on.
-        // The two are the same until a cut, and after one the second is a count of a building this
-        // model is not of.
-        var storeysInFile = doc.ReadStories()
-            .Select(x => x.Name)
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        // The sheet table is also a readback of what survived into the file, not what the
+        // pre-cut composition placed.
+        var sheetsAfterCut = SheetsAfterCut(outcomes, saved);
 
         return new DxfToEtabsReport(
-            request.OutputE2k, files.Count, parsed.Count,
-            placements.Select(p => p.Story.Name)
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .Count(storeysInFile.Contains),
-            summary, offset, outcomes, warnings, requested, composeFromReference)
+            request.OutputE2k, files.Count, sheetsAfterCut.Count(s => s.Stories.Count > 0),
+            saved.Storeys.Count,
+            summary, offset, sheetsAfterCut, warnings, requested, composeFromReference)
         {
             RulesApplied = banked,
             FoundationStoreys = foundationStoreys,
             DeclinedCircleDiameters = declinedCircleDiameters,
             BuildingCut = request.TowerOnly,
-            PlatesByStorey = PlatesByStorey(doc),
+            SavedModel = saved,
+            PlatesByStorey = saved.PlatesByStorey,
             FloorsWiderThanTheirStructure = FloorsWiderThanTheirStructure(doc),
         };
+    }
+
+    private static IReadOnlyList<SheetOutcome> SheetsAfterCut(
+        IReadOnlyList<SheetOutcome> before,
+        E2kModelContents saved)
+    {
+        var bySheet = saved.Objects
+            .Where(o => !string.IsNullOrWhiteSpace(o.SourceSheet))
+            .GroupBy(o => o.SourceSheet!, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(
+                g => g.Key,
+                g => new
+                {
+                    Storeys = g.SelectMany(o => o.Storeys)
+                        .Distinct(StringComparer.OrdinalIgnoreCase)
+                        .OrderBy(s => s, StringComparer.OrdinalIgnoreCase)
+                        .ToList(),
+                    Walls = g.Count(o => o.Name.StartsWith("KW", StringComparison.Ordinal)
+                                        && o.Kind.Equals("PANEL", StringComparison.OrdinalIgnoreCase)),
+                    Columns = g.Count(o => o.Name.StartsWith("KC", StringComparison.Ordinal)
+                                          && o.Kind.Equals("COLUMN", StringComparison.OrdinalIgnoreCase)),
+                    Floors = g.Count(o => o.Name.StartsWith("KF", StringComparison.Ordinal)
+                                        && o.Kind.Equals("FLOOR", StringComparison.OrdinalIgnoreCase)),
+                },
+                StringComparer.OrdinalIgnoreCase);
+
+        return before
+            .Select(s => bySheet.TryGetValue(s.File, out var kept)
+                ? s with { Stories = kept.Storeys, Walls = kept.Walls, Columns = kept.Columns, Slabs = kept.Floors }
+                : s with { Stories = Array.Empty<string>(), Walls = 0, Columns = 0, Slabs = 0 })
+            .ToList();
     }
 
     /// <summary>
@@ -1908,7 +2069,16 @@ public static class DxfToEtabsService
         IReadOnlyDictionary<string, string> renames,
         IReadOnlyCollection<string> storeysNow)
     {
-        // Longest first, so "LEVEL 1" never matches inside "LEVEL 1 MEZZ" or "B-LEVEL 1".
+        // BOUNDED AT BOTH ENDS, or a storey name is eaten out of the middle of another one.
+        //
+        // The guard was one-sided -- a lookahead only -- and ordering longest-first does not save
+        // it, because the name being removed and the name being damaged are different storeys.
+        // 31168 drops LEVEL 3 through LEVEL 10 and keeps C-LEVEL 3 through C-LEVEL 9, so removing
+        // "LEVEL 4" from a note took the tail off "C-LEVEL 4" and left "C-". The engineer's own
+        // slab-thickness table shipped on 28 August reading "C-: 8", C-: 7", C-: 9", C-ROOF: 9""
+        // -- seven storeys she could not tell apart, in the model she was asked to check.
+        const string NotPartOfALongerName = @"(?<![\w-])";
+
         var known = storeysBefore
             .Concat(renames.Values)
             .Distinct(StringComparer.OrdinalIgnoreCase)
@@ -1924,10 +2094,10 @@ public static class DxfToEtabsService
 
             foreach (string name in known)
                 if (renames.TryGetValue(name, out string? now))
-                    text = Regex.Replace(text, Regex.Escape(name) + @"(?![\w-])", now);
+                    text = Regex.Replace(text, NotPartOfALongerName + Regex.Escape(name) + @"(?![\w-])", now);
 
             var mentioned = known
-                .Where(s => Regex.IsMatch(text, Regex.Escape(s) + @"(?![\w-])"))
+                .Where(s => Regex.IsMatch(text, NotPartOfALongerName + Regex.Escape(s) + @"(?![\w-])"))
                 .ToList();
 
             if (mentioned.Count == 0) { kept.Add(text); continue; }
@@ -1940,11 +2110,11 @@ public static class DxfToEtabsService
             foreach (string dead in gone)
                 text = Regex.Replace(
                     text,
-                    @",?\s*" + Regex.Escape(dead) + @"(?![\w-])(\s*\([^)]*\))?",
+                    @",?\s*" + NotPartOfALongerName + Regex.Escape(dead) + @"(?![\w-])(\s*\([^)]*\))?",
                     string.Empty);
 
             bool anythingLeft = mentioned.Except(gone, StringComparer.OrdinalIgnoreCase)
-                .Any(s => Regex.IsMatch(text, Regex.Escape(s) + @"(?![\w-])"));
+                .Any(s => Regex.IsMatch(text, NotPartOfALongerName + Regex.Escape(s) + @"(?![\w-])"));
 
             if (anythingLeft) kept.Add(Regex.Replace(text, @":\s*,", ": ").Trim());
         }
@@ -2151,6 +2321,42 @@ public static class DxfToEtabsService
         return (modelCx - dxfCx, modelCy - dxfCy);
     }
 
+    /// <summary>
+    /// Every grid line the reference model carries, by direction. The extents are not enough to put
+    /// a drawing on a grid: the SPACINGS are what identify it, because they are the building's and
+    /// nothing else has them. See GridAlignment.
+    /// </summary>
+    private static (List<double> X, List<double> Y) ReadGridCoordinates(E2kDocument doc)
+    {
+        var x = new List<double>();
+        var y = new List<double>();
+
+        foreach (string raw in doc.LinesOf("GRIDS"))
+        {
+            string line = raw.Trim();
+            if (!line.StartsWith("GRID ", StringComparison.OrdinalIgnoreCase)) continue;
+
+            int dirAt = line.IndexOf("DIR \"", StringComparison.OrdinalIgnoreCase);
+            int coordAt = line.IndexOf("COORD ", StringComparison.OrdinalIgnoreCase);
+            if (dirAt < 0 || coordAt < 0) continue;
+
+            string dir = line[(dirAt + 5)..];
+            dir = dir[..Math.Max(dir.IndexOf('"'), 0)];
+
+            string tail = line[(coordAt + 6)..].TrimStart();
+            int end = tail.IndexOfAny(new[] { ' ', '\t' });
+            if (end > 0) tail = tail[..end];
+            if (!double.TryParse(tail, System.Globalization.NumberStyles.Float,
+                    System.Globalization.CultureInfo.InvariantCulture, out double coord)) continue;
+
+            (dir.Equals("X", StringComparison.OrdinalIgnoreCase) ? x : y).Add(coord);
+        }
+
+        x.Sort();
+        y.Sort();
+        return (x, y);
+    }
+
     private static (double MinX, double MaxX, double MinY, double MaxY) ReadGridExtents(E2kDocument doc)
     {
         double minX = double.PositiveInfinity, maxX = double.NegativeInfinity;
@@ -2181,14 +2387,20 @@ public static class DxfToEtabsService
     /// <summary>A report an engineer can read in under a minute before opening the model.</summary>
     public static string FormatReport(DxfToEtabsReport report)
     {
+        bool hasSavedCounts = report.SavedModel.Storeys.Count > 0
+            || report.SavedModel.Walls > 0
+            || report.SavedModel.Columns > 0
+            || report.SavedModel.Floors > 0
+            || report.SavedModel.Joints > 0;
+
         var sb = new StringBuilder();
         sb.AppendLine($"Model written : {report.OutputPath}");
         sb.AppendLine($"Sheets read   : {report.SheetsRead}   placed: {report.SheetsPlaced}");
-        sb.AppendLine($"Storeys built : {report.StoriesPopulated}");
-        sb.AppendLine($"Walls         : {report.Summary.Walls}");
-        sb.AppendLine($"Columns       : {report.Summary.Columns}");
-        sb.AppendLine($"Floors        : {report.Summary.Floors}");
-        sb.AppendLine($"Joints        : {report.Summary.Points}");
+        sb.AppendLine($"Storeys built : {(hasSavedCounts ? report.SavedModel.Storeys.Count : report.StoriesPopulated)}");
+        sb.AppendLine($"Walls         : {(hasSavedCounts ? report.SavedModel.Walls : report.Summary.Walls)}");
+        sb.AppendLine($"Columns       : {(hasSavedCounts ? report.SavedModel.Columns : report.Summary.Columns)}");
+        sb.AppendLine($"Floors        : {(hasSavedCounts ? report.SavedModel.Floors : report.Summary.Floors)}");
+        sb.AppendLine($"Joints        : {(hasSavedCounts ? report.SavedModel.Joints : report.Summary.Points)}");
         // Made and reused, kept apart.
         //
         // One list headed "Sections made" that included Rvt-Wall2, Rvt-Wall8 and Rvt-Floor0 read

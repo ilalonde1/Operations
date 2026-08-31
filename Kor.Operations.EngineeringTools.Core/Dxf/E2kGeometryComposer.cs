@@ -316,6 +316,10 @@ public sealed record ComposeSummary(
     public IReadOnlyDictionary<string, IReadOnlyList<string>> BuildingOfObject { get; init; } =
         new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal);
 
+    /// <summary>The drawing sheet each generated object came from, for post-cut sheet reporting.</summary>
+    public IReadOnlyDictionary<string, string> SourceSheetOfObject { get; init; } =
+        new Dictionary<string, string>(StringComparer.Ordinal);
+
     /// <summary>
     /// Plates whose outline came within a whisker of itself, as measured during composition, with
     /// the sheet that drew each one. Filtered against the finished file before it is reported: the
@@ -539,6 +543,7 @@ public static class E2kGeometryComposer
         // of the site afterwards. The finished file cannot answer this: a shared storey is
         // named for nobody, and a member records its storey and its section and nothing else.
         var buildingOfObject = new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal);
+        var sourceSheetOfObject = new Dictionary<string, string>(StringComparer.Ordinal);
         int pointCounter = 0, wallCounter = 0, floorCounter = 0, colCounter = 0;
 
         // The model's whole storey stack, lowest first. A site model interleaves its towers here,
@@ -937,6 +942,7 @@ public static class E2kGeometryComposer
                 int wallSpan = wallStoreys.Count;
                 string name = NextName("W", ref wallCounter);
                 buildingOfObject[name] = placement.SheetBuildingTags;
+                sourceSheetOfObject[name] = placement.SourceSheet;
                 areaLines.Add($"  AREA \"{name}\"  PANEL  4  \"{pa}\"  \"{pb}\"  \"{pb}\"  \"{pa}\"  " +
                               $"{wallSpan}  {wallSpan}  0  0");
 
@@ -1013,6 +1019,7 @@ public static class E2kGeometryComposer
                 int colSpan = colStoreys.Count;
                 string name = NextName("C", ref colCounter);
                 buildingOfObject[name] = placement.SheetBuildingTags;
+                sourceSheetOfObject[name] = placement.SourceSheet;
                 lineLines.Add($"  LINE  \"{name}\"  COLUMN  \"{at}\"  \"{at}\"  {colSpan}");
                 foreach (string on in colStoreys)
                 {
@@ -1113,6 +1120,7 @@ public static class E2kGeometryComposer
                 string spandrel = SpandrelFor(sx, sy, ex, ey);
                 string name = NextName("S", ref spandrelCounter);
                 buildingOfObject[name] = placement.SheetBuildingTags;
+                sourceSheetOfObject[name] = placement.SourceSheet;
                 areaLines.Add($"  AREA \"{name}\"  PANEL  4  \"{highA}\"  \"{highB}\"  \"{lowB}\"  \"{lowA}\"  0  0  0  0");
                 areaAssigns.Add(
                     $"  AREAASSIGN  \"{name}\"  \"{headerStorey}\"  SECTION \"{headerSection}\"  SPANDREL  \"{spandrel}\"  " +
@@ -1218,6 +1226,7 @@ public static class E2kGeometryComposer
 
                 string name = NextName("F", ref floorCounter);
                 buildingOfObject[name] = placement.SheetBuildingTags;
+                sourceSheetOfObject[name] = placement.SourceSheet;
                 storeysWithPlates.Add(slabStory.Name);
                 string joints = string.Join("  ", names.Select(n => $"\"{n}\""));
                 string offsets = string.Join("  ", names.Select(_ => "0"));
@@ -1309,6 +1318,7 @@ public static class E2kGeometryComposer
 
                 string name = NextName("O", ref openingCounter);
                 buildingOfObject[name] = placement.SheetBuildingTags;
+                sourceSheetOfObject[name] = placement.SourceSheet;
                 string joints = string.Join("  ", names.Select(n => $"\"{n}\""));
                 string offsets = string.Join("  ", names.Select(_ => "0"));
                 areaLines.Add($"  AREA \"{name}\"  AREA  {names.Count}  {joints}  {offsets}");
@@ -1767,6 +1777,7 @@ public static class E2kGeometryComposer
         {
             Reused = reusedSections.OrderBy(s => s, StringComparer.OrdinalIgnoreCase).ToList(),
             BuildingOfObject = buildingOfObject,
+            SourceSheetOfObject = sourceSheetOfObject,
             PinchedPlates = pinchedPlates,
         };
     }

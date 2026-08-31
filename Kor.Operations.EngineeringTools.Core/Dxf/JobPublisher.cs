@@ -118,12 +118,13 @@ public static class JobPublisher
                 Compose = new ComposeOptions { InferMissingFloors = request.InferFloors },
             });
 
-            File.WriteAllText(
-                Path.Combine(request.StageFolder, $"{label}-FROM-DRAWINGS-report.txt"),
-                DxfToEtabsService.FormatReport(report));
+            string reportPath = Path.Combine(request.StageFolder, $"{label}-FROM-DRAWINGS-report.txt");
+            string questionsPath = Path.Combine(request.StageFolder, $"{label}-QUESTIONS.xlsx");
+
+            File.WriteAllText(reportPath, DxfToEtabsService.FormatReport(report));
 
             ModelQuestionnaire.Write(
-                Path.Combine(request.StageFolder, $"{label}-QUESTIONS.xlsx"),
+                questionsPath,
                 report, report.ClassificationUsed, report.ComposeUsed, label);
 
             // The reference goes in so the invariants judge what THIS TOOL built. On a gap-fill job
@@ -131,7 +132,7 @@ public static class JobPublisher
             // refuse: 31138 failed 514 checks, every one of them her work.
             var violations = ShippedModelInvariants.Check(
                 File.ReadLines(output), 0.05, plan.DropStoreys, File.ReadLines(referencePath),
-                report.FoundationStoreys);
+                report.FoundationStoreys, File.ReadLines(reportPath), ModelQuestionnaire.TextLines(questionsPath));
 
             built.Add(new Built(label, output, report.Summary.Stories, report.Summary.Walls,
                 report.Summary.Columns, report.Summary.Floors, violations));

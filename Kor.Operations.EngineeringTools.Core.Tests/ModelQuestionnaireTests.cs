@@ -79,6 +79,62 @@ public class ModelQuestionnaireTests
     }
 
     [Fact]
+    public void ClosedButUnpricedFloorQuestionOnlyNamesStoreysInTheSavedModel()
+    {
+        string candidate =
+            "CANDIDATE NOT MODELLED: a region of 1,298 sq ft at (3273, 2327) ft closed, but nothing on the drawing says this region is a floor.";
+
+        var report = MinimalReport(Path.Combine(Path.GetTempPath(), "unused.xlsx")) with
+        {
+            SavedModel = E2kModelContents.Empty with { Storeys = new[] { "LEVEL 1" } },
+            Summary = new ComposeSummary(1, 1, 0, 4, 1, Array.Empty<string>(), new[]
+            {
+                "1 storey(s) carry walls or columns and no floor plate at all, so they have no diaphragm: LEVEL 1. Nothing was borrowed or invented for them; add a plate if these storeys need one.",
+            }),
+            Sheets = new[]
+            {
+                new SheetOutcome("cut-away.dxf", "cut-away", "B", Array.Empty<int>(),
+                    new[] { "B-LEVEL 28" }, 16, 24, 0, new[] { candidate }),
+                new SheetOutcome("level1.dxf", "level1", null, Array.Empty<int>(),
+                    new[] { "LEVEL 1" }, 16, 24, 0, new[] { candidate }),
+            },
+        };
+
+        var s7 = Assert.Single(ModelQuestionnaire
+            .StandingQuestions(report.ClassificationUsed, report.ComposeUsed, report), q => q.Code == "S7");
+
+        Assert.Contains("LEVEL 1", s7.Question, StringComparison.Ordinal);
+        Assert.DoesNotContain("B-LEVEL 28", s7.Question, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void NoPlateRowsDisappearWhenThisReportHasNoPlatelessStoreys()
+    {
+        var clean = MinimalReport(Path.Combine(Path.GetTempPath(), "unused.xlsx"));
+        var cleanQuestions = ModelQuestionnaire.StandingQuestions(
+            clean.ClassificationUsed, clean.ComposeUsed, clean);
+
+        Assert.DoesNotContain(cleanQuestions, q => q.Code == "F2");
+        Assert.DoesNotContain(cleanQuestions, q => q.Code == "J1");
+
+        var plateless = clean with
+        {
+            Summary = clean.Summary with
+            {
+                Flags = new[]
+                {
+                    "1 storey(s) carry walls or columns and no floor plate at all, so they have no diaphragm: LEVEL 9. Nothing was borrowed or invented for them; add a plate if these storeys need one.",
+                },
+            },
+        };
+        var platelessQuestions = ModelQuestionnaire.StandingQuestions(
+            plateless.ClassificationUsed, plateless.ComposeUsed, plateless);
+
+        Assert.Contains(platelessQuestions, q => q.Code == "F2" && q.Question.Contains("LEVEL 9"));
+        Assert.Contains(platelessQuestions, q => q.Code == "J1" && q.Question.Contains("LEVEL 9"));
+    }
+
+    [Fact]
     public void AnsweredQuestionCanWriteMultipleSettingRules()
     {
         string path = Path.Combine(Path.GetTempPath(), $"kor-questions-{Guid.NewGuid():N}.xlsx");

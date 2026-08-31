@@ -413,10 +413,16 @@ public static class StructuralPlanClassifier
         var prepared = new List<(DxfSegment Segment, string? Role)>();
         int duplicateEdges = 0;
 
+        // KEPT, NOT MODELLED. Linework on a layer with no structural role is not structure and is
+        // never turned into a member -- but a slab edge that finishes through it is still a slab
+        // edge, and the ring cannot be completed from segments that were thrown away. See
+        // SlabEdgeClosure.
+        var unroled = new List<DxfSegment>();
+
         foreach (var s in DashedLineJoiner.Join(segments, options.DashJoinGap))
         {
             string? role = RoleOf(s.Layer, options);
-            if (role is null) continue;
+            if (role is null) { unroled.Add(s); continue; }
 
             var a = ((long)Math.Round(s.Start.X * 10), (long)Math.Round(s.Start.Y * 10));
             var b = ((long)Math.Round(s.End.X * 10), (long)Math.Round(s.End.Y * 10));
@@ -488,6 +494,37 @@ public static class StructuralPlanClassifier
             if (pooled is not null) loops.AddRange(pooled.Loops);
 
             var stillOpen = pooled?.OpenChains.ToList() ?? new List<IReadOnlyList<DxfPoint>>();
+
+            // A SLAB EDGE THAT FINISHES ON ANOTHER LAYER IS STILL CLOSED.
+            //
+            // Exact continuity only: the borrowed pieces must meet the chain's loose ends within
+            // the ordinary join tolerance, the same as any other corner. Nothing here bridges a
+            // gap. See SlabEdgeClosure for the C-LEVEL 3 measurements this was built from.
+            if (role == RoleSlab && unroled.Count > 0 && stillOpen.Count > 0)
+            {
+                foreach (var chain in stillOpen.ToList())
+                {
+                    var closed = SlabEdgeClosure.Close(chain, unroled, options.JoinTolerance);
+                    if (closed is null) continue;
+                    if (!SlabEdgeClosure.IsUsable(closed.Ring, options.MinWallThickness)) continue;
+
+                    var ring = new PlanLoop(RoleSlab, closed.Ring, closedExactly: true);
+                    loops.Add(ring);
+                    stillOpen.Remove(chain);
+
+                    double area = ring.Area / 144.0;
+                    var layers = closed.Borrowed
+                        .Select(b => b.Layer)
+                        .Distinct(StringComparer.OrdinalIgnoreCase);
+
+                    result.Flags.Add(
+                        $"slab edges: an outline of {area:n0} sq ft was completed through " +
+                        $"{closed.Borrowed.Count} segment(s) on {string.Join(", ", layers)} — layer(s) this " +
+                        "tool does not model. Its ends meet those segments exactly, so the edge is " +
+                        "continuous on the drawing even though it is not continuous on one layer. Nothing " +
+                        "was bridged or invented; check the edge.");
+                }
+            }
 
             if (slabRescue is not null && stillOpen.Count > 0)
             {
@@ -1488,6 +1525,38 @@ public static class StructuralPlanClassifier
         if (options.ConnectWalls && result.Walls.Count > 1)
             result.WallOpenings.AddRange(
                 WallNetwork.FindOpenings(result.Walls, options.MinOpeningSpan, options.MaxOpeningSpan));
+
+        // A HOLE THROUGH HALF A FLOOR IS NOT A HOLE. IT IS THE OTHER EDGE OF THE SLAB.
+        //
+        // C-LEVEL 3 draws two continuous outlines: the outer edge and a step inside it. Read as a
+        // floor with a ring in it, the step becomes an 11,736 sq ft opening in a 22,663 sq ft plate
+        // -- 52 per cent -- and the floor delivered is smaller than the one it replaced. The
+        // engineer named this exactly: "It's only grabbing this, which is just a step, actually...
+        // we will want the outer edge". A step is a change of thickness, which is hers to apply;
+        // it is not an absence of slab.
+        //
+        // Deliberately blunt, and only at the extreme. A ring the drawing puts inside a floor is
+        // still an opening -- that is what SplitSlabsAndOpenings is for, and shafts and stairs are
+        // read that way all day. But no slab has a void through more than half of itself, and this
+        // already existed as a publish-blocking advisory on the finished model: the check knew, and
+        // nothing acted on it.
+        var overHalf = result.Openings
+            .Select(hole => (Hole: hole, Floor: result.Slabs
+                .Where(s => FractionInside(hole, s) >= 0.8)
+                .OrderBy(s => s.Area)
+                .FirstOrDefault()))
+            .Where(x => x.Floor is not null && x.Hole.Area > x.Floor.Area * 0.5)
+            .ToList();
+
+        foreach (var (hole, floor) in overHalf)
+        {
+            result.Openings.Remove(hole);
+            result.Flags.Add(
+                $"slab edges: a ring of {hole.Area / 144:N0} sq ft inside a floor of {floor!.Area / 144:N0} sq ft " +
+                "was NOT cut as an opening — it covers more than half of it, and a slab does not have a void " +
+                "through half itself. This is the floor's other edge, a step or a change of thickness, and the " +
+                "thickness is yours to set. Check it is not a real void.");
+        }
 
         return result;
     }

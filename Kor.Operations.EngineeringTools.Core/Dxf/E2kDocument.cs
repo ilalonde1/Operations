@@ -4,6 +4,40 @@ using System.Text.RegularExpressions;
 
 namespace Kor.Operations.EngineeringTools.Dxf;
 
+public sealed record E2kStoreyContents(int Walls, int Columns, int Floors);
+
+public sealed record E2kObjectContents(
+    string Name,
+    string Kind,
+    IReadOnlyList<string> Storeys,
+    string? SourceSheet);
+
+public sealed record E2kFloorGaps(
+    IReadOnlyList<string> FloorsWithNoPlate,
+    IReadOnlyList<string> MostlyUncovered,
+    IReadOnlyList<string> PlatesWithNoSupport);
+
+public sealed record E2kModelContents(
+    IReadOnlyList<string> Storeys,
+    int Walls,
+    int Columns,
+    int Floors,
+    int Joints,
+    IReadOnlyDictionary<string, E2kStoreyContents> MembersByStorey,
+    IReadOnlyDictionary<string, int> PlatesByStorey,
+    IReadOnlyList<E2kObjectContents> Objects,
+    IReadOnlySet<string> ReferencedJoints,
+    IReadOnlySet<string> OrphanGeneratedJoints)
+{
+    public static E2kModelContents Empty { get; } = new(
+        Array.Empty<string>(), 0, 0, 0, 0,
+        new Dictionary<string, E2kStoreyContents>(StringComparer.OrdinalIgnoreCase),
+        new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase),
+        Array.Empty<E2kObjectContents>(),
+        new HashSet<string>(StringComparer.Ordinal),
+        new HashSet<string>(StringComparer.Ordinal));
+}
+
 /// <summary>
 /// An ETABS .e2k text model held as its ordered sections.
 ///
@@ -905,7 +939,7 @@ public sealed class E2kDocument
     /// Reported by floor and after every cut, the list is the one an engineer would write down
     /// looking at the file she was sent.
     /// </summary>
-    public (IReadOnlyList<string> FloorsWithNoPlate, IReadOnlyList<string> PlatesWithNoSupport) FloorGaps()
+    public E2kFloorGaps FloorGapDetails()
     {
         var floorOf = FloorOfStorey();
         var plates = PlateNames();
@@ -961,7 +995,11 @@ public sealed class E2kDocument
                               && outline.Count >= 3
                               && pts.Any(q => WithinOrNear(q, outline, 36.0)));
 
+        static bool IsMezzanineStorey(string storey)
+            => storey.Contains("MEZZ", StringComparison.OrdinalIgnoreCase);
+
         var plateless = new List<string>();
+        var mostlyUncovered = new List<string>();
         foreach (var (floor, here) in membersOnFloor)
         {
             platesOnFloor.TryGetValue(floor, out var above);
@@ -970,16 +1008,27 @@ public sealed class E2kDocument
             foreach (var byStorey in here.GroupBy(m => storeyOfObject[m], StringComparer.OrdinalIgnoreCase))
             {
                 var mine = byStorey.ToList();
-                if (mine.Count(m => Covered(m, above)) * 2 < mine.Count) plateless.Add(byStorey.Key);
+                int covered = mine.Count(m => Covered(m, above));
+                if (covered == 0) plateless.Add(byStorey.Key);
+                else if (!IsMezzanineStorey(byStorey.Key)
+                         && covered * 2 < mine.Count)
+                    mostlyUncovered.Add(byStorey.Key);
             }
         }
 
         var order = ReadStories().Select(s => s.Name).ToList();
         int Rank(string s) => order.IndexOf(s) is var i && i < 0 ? int.MaxValue : i;
 
-        return (
+        return new E2kFloorGaps(
             plateless.Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(Rank).ToList(),
+            mostlyUncovered.Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(Rank).ToList(),
             unsupported.Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(Rank).ToList());
+    }
+
+    public (IReadOnlyList<string> MostlyUncovered, IReadOnlyList<string> PlatesWithNoSupport) FloorGaps()
+    {
+        var gaps = FloorGapDetails();
+        return (gaps.MostlyUncovered, gaps.PlatesWithNoSupport);
     }
 
     /// <summary>Whether a point lies in an outline, or near enough its edge to count as on it.</summary>
@@ -991,8 +1040,11 @@ public sealed class E2kDocument
 
         if (ring.Count >= 3 && LoopGeometry.PointInPolygon(p, ring)) return true;
 
+        // To the SEGMENT, not the infinite line through it. See LoopGeometry.DistanceToSegment:
+        // the line reading called a column on the extension of a plate edge "on the plate",
+        // however far outside it stood.
         for (int i = 0; i < ring.Count; i++)
-            if (LoopGeometry.PerpendicularDistance(p, ring[i], ring[(i + 1) % ring.Count]) <= margin)
+            if (LoopGeometry.DistanceToSegment(p, ring[i], ring[(i + 1) % ring.Count]) <= margin)
                 return true;
 
         return false;
@@ -1043,6 +1095,156 @@ public sealed class E2kDocument
         }
 
         return found.ToDictionary(x => x.Key, x => (IReadOnlyList<string>)x.Value, StringComparer.Ordinal);
+    }
+
+    /// <summary>
+    /// What the saved model actually contains, read from the .e2k sections rather than from the
+    /// composition that produced them.
+    /// </summary>
+    public E2kModelContents ReadContents(IReadOnlyDictionary<string, string>? sourceSheets = null)
+    {
+        var storeys = ReadStories().Select(s => s.Name).ToList();
+        var points = GeneratedPointNames().ToHashSet(StringComparer.Ordinal);
+        var referenced = ReferencedJoints();
+        var storeysByObject = StoreysByObject();
+
+        var kinds = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (string raw in LinesOf("AREA CONNECTIVITIES"))
+        {
+            var m = Regex.Match(raw.TrimStart(), @"^AREA\s+""([^""]+)""\s+(\w+)\b");
+            if (m.Success) kinds[m.Groups[1].Value] = m.Groups[2].Value;
+        }
+
+        foreach (string raw in LinesOf("LINE CONNECTIVITIES"))
+        {
+            var m = Regex.Match(raw.TrimStart(), @"^LINE\s+""([^""]+)""\s+(\w+)\b");
+            if (m.Success) kinds[m.Groups[1].Value] = m.Groups[2].Value;
+        }
+
+        var members = storeys.ToDictionary(
+            s => s,
+            _ => new E2kStoreyContents(0, 0, 0),
+            StringComparer.OrdinalIgnoreCase);
+        var plates = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        var objects = new List<E2kObjectContents>();
+
+        foreach (var (name, kind) in kinds)
+        {
+            storeysByObject.TryGetValue(name, out var onStoreys);
+            onStoreys ??= Array.Empty<string>();
+
+            if (sourceSheets is not null && sourceSheets.TryGetValue(name, out string? sourceSheet))
+                objects.Add(new E2kObjectContents(name, kind, onStoreys, sourceSheet));
+            else
+                objects.Add(new E2kObjectContents(name, kind, onStoreys, null));
+
+            foreach (string storey in onStoreys)
+            {
+                if (!members.TryGetValue(storey, out var had))
+                    members[storey] = had = new E2kStoreyContents(0, 0, 0);
+
+                if (name.StartsWith("KW", StringComparison.Ordinal)
+                    && kind.Equals("PANEL", StringComparison.OrdinalIgnoreCase))
+                    members[storey] = had with { Walls = had.Walls + 1 };
+                else if (name.StartsWith("KC", StringComparison.Ordinal)
+                         && kind.Equals("COLUMN", StringComparison.OrdinalIgnoreCase))
+                    members[storey] = had with { Columns = had.Columns + 1 };
+                else if (name.StartsWith("KF", StringComparison.Ordinal)
+                         && kind.Equals("FLOOR", StringComparison.OrdinalIgnoreCase))
+                {
+                    members[storey] = had with { Floors = had.Floors + 1 };
+                    plates[storey] = plates.TryGetValue(storey, out int n) ? n + 1 : 1;
+                }
+            }
+        }
+
+        var orphanGenerated = points
+            .Where(p => p.StartsWith("KP", StringComparison.Ordinal) && !referenced.Contains(p))
+            .ToHashSet(StringComparer.Ordinal);
+
+        return new E2kModelContents(
+            storeys,
+            kinds.Count(x => x.Key.StartsWith("KW", StringComparison.Ordinal)
+                             && x.Value.Equals("PANEL", StringComparison.OrdinalIgnoreCase)),
+            kinds.Count(x => x.Key.StartsWith("KC", StringComparison.Ordinal)
+                             && x.Value.Equals("COLUMN", StringComparison.OrdinalIgnoreCase)),
+            kinds.Count(x => x.Key.StartsWith("KF", StringComparison.Ordinal)
+                             && x.Value.Equals("FLOOR", StringComparison.OrdinalIgnoreCase)),
+            points.Count,
+            members,
+            plates,
+            objects,
+            referenced,
+            orphanGenerated);
+    }
+
+    /// <summary>
+    /// Drops unreferenced generated points left behind when a tower cut removes generated objects.
+    /// Reference-model points are exempt because they are not this tool's geometry.
+    /// </summary>
+    public int DropGeneratedOrphanPoints(IEnumerable<string>? referencePointNames = null)
+    {
+        var referenced = ReferencedJoints();
+        var reference = new HashSet<string>(referencePointNames ?? Array.Empty<string>(), StringComparer.Ordinal);
+        int removed = 0;
+
+        var section = Find("POINT COORDINATES");
+        if (section is null) return 0;
+
+        removed += section.Lines.RemoveAll(line =>
+        {
+            var m = Regex.Match(line.TrimStart(), @"^POINT\s+""([^""]+)""");
+            return m.Success
+                && m.Groups[1].Value.StartsWith("KP", StringComparison.Ordinal)
+                && !reference.Contains(m.Groups[1].Value)
+                && !referenced.Contains(m.Groups[1].Value);
+        });
+
+        return removed;
+    }
+
+    private IEnumerable<string> GeneratedPointNames()
+    {
+        foreach (string raw in LinesOf("POINT COORDINATES"))
+        {
+            var m = Regex.Match(raw.TrimStart(), @"^POINT\s+""([^""]+)""");
+            if (m.Success && m.Groups[1].Value.StartsWith("KP", StringComparison.Ordinal))
+                yield return m.Groups[1].Value;
+        }
+    }
+
+    public IReadOnlySet<string> PointNames()
+    {
+        var points = new HashSet<string>(StringComparer.Ordinal);
+        foreach (string raw in LinesOf("POINT COORDINATES"))
+        {
+            var m = Regex.Match(raw.TrimStart(), @"^POINT\s+""([^""]+)""");
+            if (m.Success) points.Add(m.Groups[1].Value);
+        }
+        return points;
+    }
+
+    private HashSet<string> ReferencedJoints()
+    {
+        var referenced = new HashSet<string>(StringComparer.Ordinal);
+
+        foreach (string raw in LinesOf("AREA CONNECTIVITIES"))
+        {
+            var m = Regex.Match(raw.TrimStart(), @"^AREA\s+""[^""]+""\s+\w+\s+\d+\s+(.*)$");
+            if (!m.Success) continue;
+            foreach (Match joint in Regex.Matches(m.Groups[1].Value, @"""([^""]+)"""))
+                referenced.Add(joint.Groups[1].Value);
+        }
+
+        foreach (string raw in LinesOf("LINE CONNECTIVITIES"))
+        {
+            var m = Regex.Match(raw.TrimStart(), @"^LINE\s+""[^""]+""\s+\w+\s+""([^""]+)""\s+""([^""]+)""");
+            if (!m.Success) continue;
+            referenced.Add(m.Groups[1].Value);
+            referenced.Add(m.Groups[2].Value);
+        }
+
+        return referenced;
     }
 
     /// <summary>

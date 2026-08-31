@@ -589,19 +589,30 @@ public class ModelCoverageTests
     /// A floor area an engineer has already seen and accepted does not move without the build
     /// saying so.
     ///
-    /// C-LEVEL 3's own slab edge is 12,830 sq ft. That figure is not a preference: it is what
+    /// C-LEVEL 3's own slab edge was 12,830 sq ft. That figure was not a preference: it is what
     /// dxf.flood-fill-bridge = 36 in was SET BY -- migration 047 records it -- and it is the number
     /// that answered the engineer when she corrected a model that had borrowed C-LEVEL 4's plate:
-    /// "level 3 has its own slab edge, it's on the drawings." She has seen 12,830 in a model and
-    /// not objected.
+    /// "level 3 has its own slab edge, it's on the drawings."
     ///
     /// A later change to how slab outlines close read that storey as 22,676 sq ft instead, and
-    /// nothing failed. It was caught because a person remembered, which is not a control. Every
-    /// count in this model is checked by something; the one figure an engineer has actually ruled
-    /// on was checked by nobody.
+    /// nothing failed. It was caught because a person remembered, which is not a control -- hence
+    /// this test.
+    ///
+    /// MOVED TO 22,663 ON 2026-08-31, ON HER INSTRUCTION AND NOT AS A SIDE EFFECT. Reviewing the
+    /// published model she said the plate we had was the wrong outline of the two on that sheet:
+    /// "it is not matching the outer edge of the slab, which is in yellow here. It's only grabbing
+    /// this, which is just a step, actually... But we will want the outer edge, which is also a
+    /// continuous line." She was right that it is continuous: the outer ring closes exactly, using
+    /// two segments that sit on JBP_C_B_STRUCT -- a layer a banked ruling excludes from structure --
+    /// so it never closed on one layer and the flood fill found only the inner step. See
+    /// SlabEdgeClosure for the measured geometry.
+    ///
+    /// So 12,830 was the right answer to her 24 August correction and is the wrong answer to her
+    /// 31 August one. The test stays, pinned to the new figure, because the reason it exists is
+    /// unchanged: this number moves when an engineer says so and never because something else did.
     /// </summary>
     [Theory]
-    [InlineData("31168 YMCA Langara", "C-LEVEL 3", 12830)]
+    [InlineData("31168 YMCA Langara", "C-LEVEL 3", 22663)]
     public void APlateTheEngineerHasAcceptedKeepsItsArea(string name, string storey, int expected)
     {
         var built = GeneratedModel.BuildOrSkip(GeneratedModel.For(name));

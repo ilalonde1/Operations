@@ -2238,6 +2238,119 @@ public class E2kDocumentTests
     }
 
     [Fact]
+    public void FinishedModelContentsPrunesOnlyGeneratedOrphanPoints()
+    {
+        var doc = E2kDocument.Parse(InvariantModel(
+            "  POINT \"KP1\"  0 0", "  POINT \"KP2\"  100 0", "  POINT \"KP99\"  999 999",
+            "  POINT \"R1\"  500 500",
+            "$ AREA CONNECTIVITIES",
+            "  AREA \"KW1\"  PANEL  4  \"KP1\"  \"KP2\"  \"KP2\"  \"KP1\"  1 1 0 0",
+            "$ AREA ASSIGNS",
+            "  AREAASSIGN  \"KW1\"  \"LEVEL 1\"  SECTION \"x\""));
+
+        Assert.Equal(1, doc.DropGeneratedOrphanPoints());
+
+        string written = string.Join(Environment.NewLine, doc.LinesOf("POINT COORDINATES"));
+        Assert.DoesNotContain("\"KP99\"", written, StringComparison.Ordinal);
+        Assert.Contains("\"R1\"", written, StringComparison.Ordinal);
+
+        var contents = doc.ReadContents();
+        Assert.Equal(2, contents.Joints);
+        Assert.Empty(contents.OrphanGeneratedJoints);
+    }
+
+    [Fact]
+    public void FloorGapDetailsSeparatesNoPlateFromMostlyUncoveredAndSuppressesMezzanineCoverage()
+    {
+        var doc = E2kDocument.Parse(new[]
+        {
+            "$ STORIES - IN SEQUENCE FROM TOP",
+            "  STORY \"LEVEL 3\"  HEIGHT 120",
+            "  STORY \"LEVEL 1 MEZZ\"  HEIGHT 120",
+            "  STORY \"LEVEL 1\"  HEIGHT 120",
+            "  STORY \"Base\"  HEIGHT 0",
+            "",
+            "$ POINT COORDINATES",
+            "  POINT \"KP1\"  0 0", "  POINT \"KP2\"  100 0",
+            "  POINT \"KP3\"  100 100", "  POINT \"KP4\"  0 100",
+            "  POINT \"KP5\"  50 50", "  POINT \"KP6\"  300 0",
+            "  POINT \"KP7\"  340 0", "  POINT \"KP8\"  10 10",
+            "  POINT \"KP9\"  0 200", "  POINT \"KP10\"  100 200",
+            "  POINT \"KP11\"  100 300", "  POINT \"KP12\"  0 300",
+            "  POINT \"KP13\"  50 250", "  POINT \"KP14\"  300 250",
+            "  POINT \"KP15\"  340 250",
+            "$ AREA CONNECTIVITIES",
+            "  AREA \"KF1\"  FLOOR  4  \"KP1\"  \"KP2\"  \"KP3\"  \"KP4\"  0 0 0 0",
+            "  AREA \"KF2\"  FLOOR  4  \"KP9\"  \"KP10\"  \"KP11\"  \"KP12\"  0 0 0 0",
+            "$ LINE CONNECTIVITIES",
+            "  LINE \"KC1\"  COLUMN  \"KP5\"  \"KP5\"  1",
+            "  LINE \"KC2\"  COLUMN  \"KP6\"  \"KP6\"  1",
+            "  LINE \"KC3\"  COLUMN  \"KP7\"  \"KP7\"  1",
+            "  LINE \"KC4\"  COLUMN  \"KP8\"  \"KP8\"  1",
+            "  LINE \"KC5\"  COLUMN  \"KP13\"  \"KP13\"  1",
+            "  LINE \"KC6\"  COLUMN  \"KP14\"  \"KP14\"  1",
+            "  LINE \"KC7\"  COLUMN  \"KP15\"  \"KP15\"  1",
+            "$ AREA ASSIGNS",
+            "  AREAASSIGN  \"KF1\"  \"LEVEL 1\"  SECTION \"x\"",
+            "  AREAASSIGN  \"KF2\"  \"LEVEL 1 MEZZ\"  SECTION \"x\"",
+            "$ LINE ASSIGNS",
+            "  LINEASSIGN  \"KC1\"  \"LEVEL 1\"  SECTION \"x\"",
+            "  LINEASSIGN  \"KC2\"  \"LEVEL 1\"  SECTION \"x\"",
+            "  LINEASSIGN  \"KC3\"  \"LEVEL 1\"  SECTION \"x\"",
+            "  LINEASSIGN  \"KC4\"  \"LEVEL 3\"  SECTION \"x\"",
+            "  LINEASSIGN  \"KC5\"  \"LEVEL 1 MEZZ\"  SECTION \"x\"",
+            "  LINEASSIGN  \"KC6\"  \"LEVEL 1 MEZZ\"  SECTION \"x\"",
+            "  LINEASSIGN  \"KC7\"  \"LEVEL 1 MEZZ\"  SECTION \"x\"",
+        });
+
+        var gaps = doc.FloorGapDetails();
+
+        Assert.Contains("LEVEL 3", gaps.FloorsWithNoPlate);
+        Assert.DoesNotContain("LEVEL 1", gaps.FloorsWithNoPlate);
+        Assert.Contains("LEVEL 1", gaps.MostlyUncovered);
+        Assert.DoesNotContain("LEVEL 1 MEZZ", gaps.MostlyUncovered);
+    }
+
+    [Fact]
+    public void TheGateBlocksReportCountDriftAbsentStoreyNamesAndGeneratedOrphanJoints()
+    {
+        string[] model = InvariantModel(
+            "  POINT \"KP1\"  0 0", "  POINT \"KP2\"  100 0",
+            "  POINT \"KP3\"  100 100", "  POINT \"KP4\"  0 100",
+            "  POINT \"KP99\"  999 999",
+            "$ AREA CONNECTIVITIES",
+            "  AREA \"KW1\"  PANEL  4  \"KP1\"  \"KP2\"  \"KP2\"  \"KP1\"  1 1 0 0",
+            "  AREA \"KF1\"  FLOOR  4  \"KP1\"  \"KP2\"  \"KP3\"  \"KP4\"  0 0 0 0",
+            "$ LINE CONNECTIVITIES",
+            "  LINE \"KC1\"  COLUMN  \"KP3\"  \"KP3\"  1",
+            "$ AREA ASSIGNS",
+            "  AREAASSIGN  \"KW1\"  \"LEVEL 1\"  SECTION \"x\"",
+            "  AREAASSIGN  \"KF1\"  \"LEVEL 1\"  SECTION \"x\"",
+            "$ LINE ASSIGNS",
+            "  LINEASSIGN  \"KC1\"  \"LEVEL 1\"  SECTION \"x\"");
+
+        var violations = ShippedModelInvariants.Check(
+            model,
+            reportLines: new[]
+            {
+                "Storeys built : 99",
+                "Floors        : 2",
+                "Slab thickness still ASSUMED: 5 of 90 floor plate(s) use the engineer's default.",
+                "A row names B-LEVEL 28.",
+            },
+            workbookText: new[] { "Question | B-LEVEL 28 | Evidence" });
+
+        Assert.Contains(violations, x => x.Rule == "report-count-mismatch");
+        Assert.Contains(violations, x => x.Rule == "storey-name-not-in-file" && x.Where == "B-LEVEL 28");
+        Assert.Contains(violations, x => x.Rule == "orphan-generated-joint" && x.Where.Contains("KP99"));
+
+        var referenceExempt = ShippedModelInvariants.Check(
+            InvariantModel("  POINT \"KP99\"  999 999"),
+            referenceE2k: InvariantModel("  POINT \"KP99\"  999 999"));
+        Assert.DoesNotContain(referenceExempt, x => x.Rule == "orphan-generated-joint");
+    }
+
+    [Fact]
     public void AFoundationStoreyWithMembersAndNoFloorPlateDoesNotNeedADiaphragm()
     {
         var violations = ShippedModelInvariants.Check(InvariantModel(

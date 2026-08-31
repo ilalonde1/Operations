@@ -70,15 +70,22 @@ public static class ShippedModelInvariants
         double jointTolerance = 0.05,
         IEnumerable<string>? droppedStoreys = null,
         IEnumerable<string>? referenceE2k = null,
-        IEnumerable<string>? foundationStoreys = null)
+        IEnumerable<string>? foundationStoreys = null,
+        IEnumerable<string>? reportLines = null,
+        IEnumerable<string>? workbookText = null)
     {
+        var reportText = reportLines?.ToList();
+        var workbookLines = workbookText?.ToList();
         var foundation = new HashSet<string>(foundationStoreys ?? Array.Empty<string>(),
             StringComparer.OrdinalIgnoreCase);
         var openings = new HashSet<string>(StringComparer.Ordinal);
         var carriedThrough = new HashSet<string>(StringComparer.Ordinal);
+        var carriedThroughPoints = new HashSet<string>(StringComparer.Ordinal);
         if (referenceE2k is not null)
             foreach (string raw in referenceE2k)
             {
+                var asPoint = Point.Match(raw);
+                if (asPoint.Success) { carriedThroughPoints.Add(asPoint.Groups[1].Value); continue; }
                 var asArea = AreaLine.Match(raw);
                 if (asArea.Success) { carriedThrough.Add(asArea.Groups[1].Value); continue; }
                 var asLine = LineLine.Match(raw);
@@ -135,6 +142,42 @@ public static class ShippedModelInvariants
             m = Story.Match(raw);
             if (m.Success) storeys.Add(m.Groups[1].Value);
         }
+
+        // 0. The report and workbook ship beside the model, so their numbers and storey names are
+        //    part of the deliverable. They must describe this file, not the pre-cut composition.
+        int CountGenerated(string prefix, string objectKind) =>
+            kind.Count(x => x.Key.StartsWith(prefix, StringComparison.Ordinal)
+                            && x.Value.Equals(objectKind, StringComparison.OrdinalIgnoreCase));
+
+        // STOREYS THE BUILDING HAS, not rows in the list. The base is a datum, not a floor: it
+        // carries an elevation and nothing stands on it, and the report has always counted it out.
+        // Counting it in here made every model fail this check by exactly one.
+        int modelStoreys = storeys.Count(s => !s.Equals("Base", StringComparison.OrdinalIgnoreCase));
+        int modelWalls = CountGenerated("KW", "PANEL");
+        int modelColumns = CountGenerated("KC", "COLUMN");
+        int modelFloors = CountGenerated("KF", "FLOOR");
+        int modelJoints = pts.Keys.Count(p => p.StartsWith("KP", StringComparison.Ordinal));
+
+        if (reportText is not null)
+            CheckReportNumbers(reportText, modelStoreys, modelWalls, modelColumns, modelFloors, modelJoints, v);
+
+        CheckStoreyNames(reportText, storeys, "report", v);
+        CheckStoreyNames(workbookLines, storeys, "workbook", v);
+
+        var referencedJointNames = joints.Values
+            .SelectMany(x => x)
+            .ToHashSet(StringComparer.Ordinal);
+        var orphanGenerated = pts.Keys
+            .Where(p => p.StartsWith("KP", StringComparison.Ordinal)
+                        && !referencedJointNames.Contains(p)
+                        && !carriedThroughPoints.Contains(p))
+            .OrderBy(p => p, StringComparer.Ordinal)
+            .ToList();
+        if (orphanGenerated.Count > 0)
+            v.Add(new ModelViolation(
+                "orphan-generated-joint",
+                $"{orphanGenerated.Count} generated joint(s) are defined but not referenced by any generated object",
+                string.Join(", ", orphanGenerated.Take(8))));
 
         // 1. A storey the run was told to drop must not be in the finished file. Eight tower storeys
         //    reached an engineer because the cut was by elevation and could not see them.
@@ -400,5 +443,126 @@ public static class ShippedModelInvariants
             v.Add(new ModelViolation("joints-too-close", $"{tooClose} pair(s) of joints closer than {jointTolerance} in", firstPair));
 
         return v;
+    }
+
+    private static void CheckReportNumbers(
+        IReadOnlyList<string> report,
+        int storeys,
+        int walls,
+        int columns,
+        int floors,
+        int joints,
+        List<ModelViolation> violations)
+    {
+        var expected = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Storeys built"] = storeys,
+            ["Walls"] = walls,
+            ["Columns"] = columns,
+            ["Floors"] = floors,
+            ["Joints"] = joints,
+        };
+
+        var printed = new Regex(@"^\s*(Storeys built|Walls|Columns|Floors|Joints)\s*:\s*([\d,]+)\b",
+            RegexOptions.IgnoreCase);
+
+        foreach (string raw in report)
+        {
+            var m = printed.Match(raw);
+            if (!m.Success) continue;
+
+            string label = m.Groups[1].Value;
+            int actual = int.Parse(m.Groups[2].Value.Replace(",", ""), CultureInfo.InvariantCulture);
+            if (expected.TryGetValue(label, out int want) && actual != want)
+                violations.Add(new ModelViolation(
+                    "report-count-mismatch",
+                    $"report says {label} is {actual:N0}; the .e2k beside it contains {want:N0}",
+                    label));
+        }
+
+        var denominator = new Regex(@"\bof\s+([\d,]+)\s+floor plate\(s\)", RegexOptions.IgnoreCase);
+        foreach (string raw in report)
+        foreach (Match m in denominator.Matches(raw))
+        {
+            int actual = int.Parse(m.Groups[1].Value.Replace(",", ""), CultureInfo.InvariantCulture);
+            if (actual != floors)
+                violations.Add(new ModelViolation(
+                    "report-count-mismatch",
+                    $"report says a floor-plate denominator is {actual:N0}; the .e2k beside it contains {floors:N0}",
+                    raw.Trim()));
+        }
+    }
+
+    private static void CheckStoreyNames(
+        IReadOnlyList<string>? lines,
+        IReadOnlyList<string> storeys,
+        string document,
+        List<ModelViolation> violations)
+    {
+        if (lines is null) return;
+
+        var known = new HashSet<string>(storeys, StringComparer.OrdinalIgnoreCase);
+        // ONE SPACE, not \s+. A storey is "C-LEVEL 3" or "LEVEL 1 MEZZ" -- never "LEVEL" and then
+        // thirty spaces. Allowing a run of whitespace let the word LEVEL at the end of a sheet name
+        // pair up with the first number of the table column beside it and invent a storey.
+        var named = new Regex(@"\b(?:[A-Z]-)?LEVEL P?\d+(?: MEZZ)?\b|\b[A-Z]-ROOF\b",
+            RegexOptions.IgnoreCase);
+
+        // A LINE WHOSE SUBJECT IS ABSENCE IS ALLOWED TO NAME WHAT IS ABSENT.
+        //
+        // The point of this check is a sentence that treats a storey as though the engineer has it
+        // -- a question about B-LEVEL 28 in a file with no B storeys. It is not a sentence that
+        // exists precisely to tell her what was read and then left out, and those must keep their
+        // names or they say nothing: "2 drawing(s) carry structure that is NOT IN THIS MODEL" is a
+        // piece of the building she needs told about, by name.
+        string[] aboutAbsence =
+        {
+            "not placed", "no storey", "not in this model", "were removed", "was removed",
+            "do not exist in it", "does not exist in it", "cut away", "removed from the storeys",
+            "left out", "gave up", "stood down", "superseded",
+        };
+
+        // A STOREY NAME INSIDE A DRAWING'S FILENAME IS THE DRAWING'S NAME, NOT A CLAIM.
+        //
+        // "--Structural Plan - A-LEVEL 28.dxf" under the heading "Read but not placed on any storey
+        // in this model" is the report doing its job. The heading carries the caveat and the rows
+        // carry the names, so a line-by-line reading of the rows saw 49 storeys the file does not
+        // have and refused to publish a model that was correct.
+        // Greedy, back to the start of the line: a drawing name comes first on these lines, either
+        // as a table row or as the "<sheet>: <what happened>" prefix of a flag. Filenames contain
+        // spaces, so anything that stops at whitespace strips half a name and leaves the other half
+        // to be misread.
+        var drawingNames = new Regex(@"^.*\.dxf", RegexOptions.IgnoreCase);
+
+        foreach (string raw in lines)
+        {
+            if (aboutAbsence.Any(p => raw.Contains(p, StringComparison.OrdinalIgnoreCase))) continue;
+
+            string text = drawingNames.Replace(raw, string.Empty);
+
+            foreach (Match m in named.Matches(text))
+            {
+                string storey = m.Value.Trim();
+                if (known.Contains(storey)) continue;
+                // ADVISORY, DELIBERATELY, until it can tell a claim from a disclosure.
+                //
+                // What this was written for is a sentence that treats a storey as PRESENT -- the
+                // workbook asking her to price a floor on B-LEVEL 28 in a file with no B storeys.
+                // That defect is fixed at its source and tested.
+                //
+                // What it actually matches is any mention, and a report names absent storeys all
+                // the time on purpose: the sheet table's "read but not placed" rows, members cut
+                // away, drawings whose structure is not in this model, and J7, whose entire text is
+                // "YOUR MODEL HAS NO LEVEL P1 MEZZ, BUT THE DRAWINGS DO". Blocking on those refuses
+                // to publish a model that is right because the report is doing its job. Telling a
+                // claim from a disclosure needs the question's shape, not a phrase list, and that
+                // is a piece of work rather than a patch.
+                violations.Add(new ModelViolation(
+                    "storey-name-not-in-file",
+                    $"{document} names '{storey}', but the .e2k beside it does not contain that storey",
+                    storey,
+                    ModelViolationSeverity.Advisory));
+            }
+        }
     }
 }
