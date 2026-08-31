@@ -228,7 +228,7 @@ public static class Extractor
             .OrderByDescending(p => p.Dir.Length)   // longest first: a file belongs to its nearest project
             .ToList();
 
-        var types = new List<ArchType>();
+        var typeParts = new Dictionary<string, TypeParts>(StringComparer.Ordinal);
         var mentionsRaw = new List<(string From, string ToName)>();
         var formatsRaw = new List<(string TypeId, string Ext, string Source)>();
         var verbs = new List<ArchVerb>();
@@ -238,23 +238,23 @@ public static class Extractor
         var declarations = new Dictionary<string, List<string>>(StringComparer.Ordinal);
         var fileCounts = new Dictionary<string, (int Files, int Lines)>(StringComparer.OrdinalIgnoreCase);
         int totalFiles = 0, totalLines = 0;
+        var compiledBy = CompileOwners(root, projects, byDir);
 
         foreach (string file in EnumerateSources(root))
         {
             string rel = Rel(root, file);
-            var owner = byDir.FirstOrDefault(p =>
-                rel.StartsWith(p.Dir + "/", StringComparison.OrdinalIgnoreCase));
-            string projectName = owner?.Name ?? "(loose)";
+            var owners = compiledBy.TryGetValue(rel, out var ownerSet) && ownerSet.Count > 0
+                ? ownerSet.ToList()
+                : new List<string> { "(loose)" };
 
             string text;
-            try { text = File.ReadAllText(file); }
+            try { text = TextFiles.ReadAllText(file); }
             catch (IOException) { continue; }
+            catch (DecoderFallbackException) { continue; }
 
             int lines = CountLines(text);
             totalFiles++;
             totalLines += lines;
-            var prev = fileCounts.TryGetValue(projectName, out var c) ? c : (0, 0);
-            fileCounts[projectName] = (prev.Item1 + 1, prev.Item2 + lines);
 
             foreach (var (name, evidence) in ExternalSystems.Detect(text, rel))
             {
@@ -273,13 +273,13 @@ public static class Extractor
                 .ToList();
 
             foreach (var verb in CliVerbs(rootNode))
-                verbs.Add(new ArchVerb(verb, projectName));
+                foreach (string projectName in owners)
+                    verbs.Add(new ArchVerb(verb, projectName));
 
             foreach (var decl in rootNode.DescendantNodes().OfType<BaseTypeDeclarationSyntax>())
             {
                 string name = decl.Identifier.ValueText;
                 string ns = NamespaceOf(decl);
-                string id = $"{projectName}:{(ns.Length == 0 ? name : ns + "." + name)}";
                 string kind = decl switch
                 {
                     ClassDeclarationSyntax cls when cls.Modifiers.Any(SyntaxKind.StaticKeyword) => "static class",
@@ -291,20 +291,46 @@ public static class Extractor
                     _ => "type",
                 };
 
-                types.Add(new ArchType(id, name, kind, ns, projectName, rel, Roles.For(name, rel)));
-                declarations[id] = NormaliseDeclaration(decl.ToString());
+                foreach (string projectName in owners)
+                {
+                    string id = $"{projectName}:{(ns.Length == 0 ? name : ns + "." + name)}";
+                    if (!typeParts.TryGetValue(id, out var part))
+                    {
+                        part = new TypeParts(id, name, kind, ns, projectName, Roles.For(name, rel));
+                        typeParts[id] = part;
+                    }
+                    part.Add(rel, decl.SpanStart, NormaliseDeclaration(decl.ToString()));
 
-                foreach (string ident in decl.DescendantNodes()
-                             .OfType<IdentifierNameSyntax>()
-                             .Select(n => n.Identifier.ValueText)
-                             .Distinct(StringComparer.Ordinal))
-                    if (ident != name)
-                        mentionsRaw.Add((id, ident));
+                    foreach (string ident in decl.DescendantNodes()
+                                 .OfType<IdentifierNameSyntax>()
+                                 .Select(n => n.Identifier.ValueText)
+                                 .Distinct(StringComparer.Ordinal))
+                        if (ident != name)
+                            mentionsRaw.Add((id, ident));
 
-                foreach (var (ext, source) in FileFormats.For(name, decl, usings))
-                    formatsRaw.Add((id, ext, source));
+                    foreach (var (ext, source) in FileFormats.For(name, decl, usings))
+                        formatsRaw.Add((id, ext, source));
+                }
+            }
+
+            foreach (string projectName in owners)
+            {
+                var prev = fileCounts.TryGetValue(projectName, out var c) ? c : (0, 0);
+                fileCounts[projectName] = (prev.Item1 + 1, prev.Item2 + lines);
             }
         }
+
+        // A partial type is one type: all parts are merged by stable path/span order, and File lists
+        // every source part so the model does not depend on filesystem enumeration order.
+        var types = typeParts.Values
+            .Select(t =>
+            {
+                var declaration = t.Declaration();
+                declarations[t.Id] = declaration;
+                return t.ToArchType();
+            })
+            .OrderBy(t => t.Id, StringComparer.Ordinal)
+            .ToList();
 
         // ---- resolve mentions by NAME, and say how often that could not be done ----------------
         var byName = types
@@ -341,21 +367,12 @@ public static class Extractor
         return new ArchModel(
             Schema: 1,
             Projects: projectsOut,
-            Types: types.OrderBy(t => t.Id, StringComparer.Ordinal).ToList(),
+            Types: types,
             Mentions: mentions
                 .OrderBy(m => m.From, StringComparer.Ordinal).ThenBy(m => m.To, StringComparer.Ordinal)
                 .Select(m => new ArchEdge(m.From, m.To))
                 .ToList(),
-            Formats: formatsRaw
-                .Where(f => typeIds.Contains(f.TypeId))
-                .Select(f => new ArchFormat(
-                    f.TypeId,
-                    f.Ext,
-                    Roles.DirectionFor(types.First(t => t.Id == f.TypeId).Role),
-                    f.Source))
-                .DistinctBy(f => (f.Type, f.Ext))
-                .OrderBy(f => f.Type, StringComparer.Ordinal).ThenBy(f => f.Ext, StringComparer.Ordinal)
-                .ToList(),
+            Formats: BuildFormats(formatsRaw, typeIds, types),
             Externals: externalHits
                 .Select(kv => new ArchExternal(kv.Key, ExternalSystems.KindOf(kv.Key), kv.Value.ToList()))
                 .OrderBy(e => e.Name, StringComparer.Ordinal)
@@ -371,12 +388,7 @@ public static class Extractor
                 projectsOut,
                 types,
                 mentions,
-                formatsRaw
-                    .Where(f => typeIds.Contains(f.TypeId))
-                    .Select(f => new ArchFormat(f.TypeId, f.Ext,
-                        Roles.DirectionFor(types.First(t => t.Id == f.TypeId).Role), f.Source))
-                    .DistinctBy(f => (f.Type, f.Ext))
-                    .ToList(),
+                BuildFormats(formatsRaw, typeIds, types),
                 externalHits
                     .Select(kv => new ArchExternal(kv.Key, ExternalSystems.KindOf(kv.Key), kv.Value.ToList()))
                     .OrderBy(e => e.Name, StringComparer.Ordinal)
@@ -393,21 +405,17 @@ public static class Extractor
     /// byte under 62 bin/ and obj/ trees.</summary>
     private static IEnumerable<string> EnumerateSources(string root)
     {
-        foreach (string path in Directory.EnumerateFiles(root, "*.cs", SearchOption.AllDirectories))
+        foreach (string path in Directory.EnumerateFiles(root, "*.cs", SearchOption.AllDirectories)
+                     .OrderBy(p => Rel(root, p), StringComparer.Ordinal))
         {
             string rel = Rel(root, path);
             // THE INSTRUMENT DOES NOT MAP ITSELF. Left in, the marker table below matches its own
             // source and the diagram grows four external systems this repo does not talk to — Visio,
             // Excel and Revit appeared as dependencies whose only evidence was this file listing
             // their names.
-            if (rel.StartsWith("Kor.Operations.Architecture/", StringComparison.OrdinalIgnoreCase)) continue;
+            if (IsArchitectureToolPath(rel)) continue;
 
-            if (rel.Contains("/bin/", StringComparison.OrdinalIgnoreCase) ||
-                rel.Contains("/obj/", StringComparison.OrdinalIgnoreCase) ||
-                rel.Contains("/node_modules/", StringComparison.OrdinalIgnoreCase) ||
-                rel.EndsWith(".g.cs", StringComparison.OrdinalIgnoreCase) ||
-                rel.EndsWith(".g.i.cs", StringComparison.OrdinalIgnoreCase) ||
-                rel.EndsWith(".designer.cs", StringComparison.OrdinalIgnoreCase))
+            if (SkipSource(rel))
                 continue;
             yield return path;
         }
@@ -416,10 +424,11 @@ public static class Extractor
     private static List<ArchProject> ReadProjects(string root)
     {
         var result = new List<ArchProject>();
-        foreach (string path in Directory.EnumerateFiles(root, "*.csproj", SearchOption.AllDirectories))
+        foreach (string path in Directory.EnumerateFiles(root, "*.csproj", SearchOption.AllDirectories)
+                     .OrderBy(p => Rel(root, p), StringComparer.Ordinal))
         {
             string rel = Rel(root, path);
-            if (rel.StartsWith("Kor.Operations.Architecture/", StringComparison.OrdinalIgnoreCase) ||
+            if (IsArchitectureToolPath(rel) ||
                 rel.Contains("/bin/", StringComparison.OrdinalIgnoreCase) ||
                 rel.Contains("/obj/", StringComparison.OrdinalIgnoreCase))
                 continue;
@@ -459,24 +468,178 @@ public static class Extractor
         return result;
     }
 
-    /// <summary>`args[0].Equals("dxf-render", …)` — how this CLI declares a verb. Read off the
-    /// syntax rather than grepped, so a string that merely looks like one is not collected.</summary>
+    private sealed class TypeParts
+    {
+        private readonly SortedSet<string> _files = new(StringComparer.Ordinal);
+        private readonly SortedDictionary<string, List<string>> _declarations = new(StringComparer.Ordinal);
+
+        public TypeParts(string id, string name, string kind, string ns, string project, string role)
+        {
+            Id = id;
+            Name = name;
+            Kind = kind;
+            Namespace = ns;
+            Project = project;
+            Role = role;
+        }
+
+        public string Id { get; }
+        public string Name { get; }
+        public string Kind { get; }
+        public string Namespace { get; }
+        public string Project { get; }
+        public string Role { get; }
+
+        public void Add(string rel, int spanStart, List<string> declaration)
+        {
+            _files.Add(rel);
+            _declarations[$"{rel}#{spanStart.ToString(CultureInfo.InvariantCulture)}"] = declaration;
+        }
+
+        public List<string> Declaration()
+        {
+            var lines = new List<string>();
+            foreach (var part in _declarations.Values)
+            {
+                if (lines.Count > 0) lines.Add("");
+                lines.AddRange(part);
+            }
+            return lines;
+        }
+
+        public ArchType ToArchType()
+            => new(Id, Name, Kind, Namespace, Project, string.Join("; ", _files), Role);
+    }
+
+    private static List<ArchFormat> BuildFormats(
+        List<(string TypeId, string Ext, string Source)> formatsRaw,
+        HashSet<string> typeIds,
+        List<ArchType> types)
+    {
+        var roleByType = types.ToDictionary(t => t.Id, t => t.Role, StringComparer.Ordinal);
+        return formatsRaw
+            .Where(f => typeIds.Contains(f.TypeId))
+            .Select(f => new ArchFormat(
+                f.TypeId,
+                f.Ext,
+                Roles.DirectionFor(roleByType[f.TypeId]),
+                f.Source))
+            .DistinctBy(f => (f.Type, f.Ext))
+            .OrderBy(f => f.Type, StringComparer.Ordinal).ThenBy(f => f.Ext, StringComparer.Ordinal)
+            .ToList();
+    }
+
+    private static Dictionary<string, SortedSet<string>> CompileOwners(
+        string root, IReadOnlyList<ArchProject> projects, IReadOnlyList<ArchProject> byDir)
+    {
+        var owners = new Dictionary<string, SortedSet<string>>(StringComparer.OrdinalIgnoreCase);
+        foreach (string file in EnumerateSources(root))
+        {
+            string rel = Rel(root, file);
+            var owner = byDir.FirstOrDefault(p =>
+                rel.StartsWith(p.Dir + "/", StringComparison.OrdinalIgnoreCase));
+            AddOwner(rel, owner?.Name ?? "(loose)");
+        }
+
+        foreach (var project in projects)
+        {
+            // Full compile ownership without MSBuildWorkspace: default physical ownership plus
+            // explicit non-glob Compile Include links, so one source file can belong to many projects.
+            string projectPath = Path.Combine(root, project.Dir, project.Name + ".csproj");
+            XDocument doc;
+            try { doc = XDocument.Load(projectPath); }
+            catch (IOException) { continue; }
+            catch (System.Xml.XmlException) { continue; }
+
+            foreach (string include in doc.Descendants()
+                         .Where(e => e.Name.LocalName == "Compile")
+                         .Select(e => (string?)e.Attribute("Include"))
+                         .Where(v => !string.IsNullOrWhiteSpace(v))
+                         .Select(v => v!.Replace('\\', '/')))
+            {
+                if (include.Contains('*')) continue;
+
+                string full = Path.GetFullPath(Path.Combine(root, project.Dir, include));
+                if (!File.Exists(full)) continue;
+
+                string rel = Rel(root, full);
+                if (IsArchitectureToolPath(rel) || SkipSource(rel)) continue;
+                AddOwner(rel, project.Name);
+            }
+        }
+
+        return owners;
+
+        void AddOwner(string rel, string projectName)
+        {
+            if (!owners.TryGetValue(rel, out var set))
+                owners[rel] = set = new SortedSet<string>(StringComparer.Ordinal);
+            set.Add(projectName);
+        }
+    }
+
+    private static bool SkipSource(string rel)
+        => rel.Contains("/bin/", StringComparison.OrdinalIgnoreCase) ||
+           rel.Contains("/obj/", StringComparison.OrdinalIgnoreCase) ||
+           rel.Contains("/node_modules/", StringComparison.OrdinalIgnoreCase) ||
+           rel.EndsWith(".g.cs", StringComparison.OrdinalIgnoreCase) ||
+           rel.EndsWith(".g.i.cs", StringComparison.OrdinalIgnoreCase) ||
+           rel.EndsWith(".designer.cs", StringComparison.OrdinalIgnoreCase);
+
+    public static bool IsArchitectureToolPath(string rel)
+    {
+        int slash = rel.IndexOf('/');
+        string first = slash < 0 ? rel : rel[..slash];
+        return first.StartsWith("Kor.Operations.Architecture", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>Reads `args[0]` comparisons from syntax rather than grepping string literals.</summary>
     private static IEnumerable<string> CliVerbs(SyntaxNode root)
     {
         foreach (var inv in root.DescendantNodes().OfType<InvocationExpressionSyntax>())
         {
             if (inv.Expression is not MemberAccessExpressionSyntax member) continue;
             if (member.Name.Identifier.ValueText != "Equals") continue;
-            if (member.Expression is not ElementAccessExpressionSyntax elem) continue;
-            if (elem.Expression is not IdentifierNameSyntax arr || arr.Identifier.ValueText != "args") continue;
-
-            var index = elem.ArgumentList.Arguments.FirstOrDefault()?.Expression;
-            if (index is not LiteralExpressionSyntax lit || lit.Token.ValueText != "0") continue;
 
             var first = inv.ArgumentList.Arguments.FirstOrDefault()?.Expression;
-            if (first is LiteralExpressionSyntax verb && verb.IsKind(SyntaxKind.StringLiteralExpression))
+            if (IsArgsZero(member.Expression) &&
+                first is LiteralExpressionSyntax verb &&
+                verb.IsKind(SyntaxKind.StringLiteralExpression))
                 yield return verb.Token.ValueText;
+            else if (member.Expression is LiteralExpressionSyntax left &&
+                     left.IsKind(SyntaxKind.StringLiteralExpression) &&
+                     IsArgsZero(first))
+                yield return left.Token.ValueText;
         }
+
+        foreach (var bin in root.DescendantNodes().OfType<BinaryExpressionSyntax>())
+        {
+            if (!bin.IsKind(SyntaxKind.EqualsExpression)) continue;
+            if (IsArgsZero(bin.Left) &&
+                bin.Right is LiteralExpressionSyntax right &&
+                right.IsKind(SyntaxKind.StringLiteralExpression))
+                yield return right.Token.ValueText;
+            else if (bin.Left is LiteralExpressionSyntax left &&
+                     left.IsKind(SyntaxKind.StringLiteralExpression) &&
+                     IsArgsZero(bin.Right))
+                yield return left.Token.ValueText;
+        }
+
+        foreach (var sw in root.DescendantNodes().OfType<SwitchStatementSyntax>())
+        {
+            if (!IsArgsZero(sw.Expression)) continue;
+            foreach (var label in sw.Sections.SelectMany(s => s.Labels).OfType<CaseSwitchLabelSyntax>())
+                if (label.Value is LiteralExpressionSyntax lit && lit.IsKind(SyntaxKind.StringLiteralExpression))
+                    yield return lit.Token.ValueText;
+        }
+    }
+
+    private static bool IsArgsZero(ExpressionSyntax? expression)
+    {
+        if (expression is not ElementAccessExpressionSyntax elem) return false;
+        if (elem.Expression is not IdentifierNameSyntax arr || arr.Identifier.ValueText != "args") return false;
+        var index = elem.ArgumentList.Arguments.FirstOrDefault()?.Expression;
+        return index is LiteralExpressionSyntax lit && lit.Token.ValueText == "0";
     }
 
     private static string NamespaceOf(SyntaxNode node)
@@ -507,6 +670,15 @@ public static class Extractor
         => types
             .GroupBy(t => t.Name, StringComparer.Ordinal)
             .Where(g => g.Select(t => t.Project).Distinct(StringComparer.Ordinal).Count() > 1)
+            // MORE THAN ONE PROJECT IS NOT ENOUGH — IT MUST BE MORE THAN ONE FILE.
+            //
+            // Teaching the extractor about `Compile Include` links (so a shared file is owned by
+            // every project that compiles it) immediately turned three deliberately-shared files
+            // into 100% duplicates across two and four projects: SqlTimeouts, AppConfigKeys and
+            // ConnectionStrings. Sharing one file is the OPPOSITE of duplicating it, and reporting
+            // it as duplication would send someone to de-duplicate code that is already single-
+            // sourced. The tell was in the data — four projects, one file.
+            .Where(g => g.Select(t => t.File).Distinct(StringComparer.OrdinalIgnoreCase).Count() > 1)
             .Select(g =>
             {
                 var bodies = g.Select(t => t.Id)
@@ -627,19 +799,45 @@ public static class Extractor
             int at = path.IndexOf(node);
             if (at >= 0)
             {
-                var loop = path.Skip(at).Append(node).ToList();
-                string key = string.Join(">", loop.OrderBy(x => x, StringComparer.Ordinal));
-                if (seen.Add(key)) found.Add(new ArchCycle(loop));
+                // ONE RING IS ONE CYCLE, whichever node you started from.
+                //
+                // The key used to be the loop's members SORTED — which fails on exactly the case it
+                // was meant to handle. A loop is stored closed, so it repeats its first node at the
+                // end, and a different rotation repeats a DIFFERENT node: sorting P00..P13,P00 and
+                // P01..P00,P01 gives two different strings. A fourteen-project ring was therefore
+                // reported fourteen times. The depth-12 cap hid it by never finding a ring that long
+                // at all; removing the cap exposed a dedup that had never worked.
+                //
+                // Rotating to the lexically smallest member is the honest key. Rotation, not sorting:
+                // A→B→C and A→C→B are different cycles over the same three projects.
+                var ring = path.Skip(at).ToList();
+                int lowest = ring.IndexOf(ring.Min(StringComparer.Ordinal)!);
+                var canonical = ring.Skip(lowest).Concat(ring.Take(lowest)).ToList();
+                string key = string.Join(">", canonical);
+                if (seen.Add(key)) found.Add(new ArchCycle(canonical.Append(canonical[0]).ToList()));
                 return;
             }
-            if (path.Count > 12 || !refs.TryGetValue(node, out var next)) return;
+            if (!refs.TryGetValue(node, out var next)) return;
             path.Add(node);
-            foreach (string n in next) Walk(n, path);
+            foreach (string n in next.OrderBy(x => x, StringComparer.Ordinal)) Walk(n, path);
             path.RemoveAt(path.Count - 1);
         }
 
-        foreach (var p in projects) Walk(p.Name, new List<string>());
+        foreach (var p in projects.OrderBy(p => p.Name, StringComparer.Ordinal)) Walk(p.Name, new List<string>());
         return found;
+    }
+}
+
+public static class TextFiles
+{
+    private static readonly UTF8Encoding StrictUtf8 = new(false, true);
+
+    /// <summary>Repository text is UTF-8 unless it proves otherwise; Latin-1 fallback is stable and explicit.</summary>
+    public static string ReadAllText(string path)
+    {
+        byte[] bytes = File.ReadAllBytes(path);
+        try { return StrictUtf8.GetString(bytes); }
+        catch (DecoderFallbackException) { return Encoding.Latin1.GetString(bytes); }
     }
 }
 

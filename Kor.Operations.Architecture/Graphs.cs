@@ -46,7 +46,7 @@ public static class GraphBuilder
     {
         var nodes = new List<(string Id, string Label, string Detail, string Group, double Weight)>();
         foreach (var p in projects)
-            nodes.Add((p.Name, Short(p.Name), $"{p.Lines:N0} lines", p.Cluster, Math.Max(1, p.Lines)));
+            nodes.Add((p.Name, Short(p.Name), $"{p.Lines.ToString("N0", CultureInfo.InvariantCulture)} lines", p.Cluster, Math.Max(1, p.Lines)));
         foreach (var e in externals)
             nodes.Add(("ext:" + e.Name, e.Name, e.Kind, "external", Math.Max(1, e.Evidence.Count) * 400.0));
 
@@ -84,7 +84,9 @@ public static class GraphBuilder
                     dupPairs[key] = dupPairs.TryGetValue(key, out int n) ? n + 1 : 1;
                 }
         }
-        foreach (var ((a, b), n) in dupPairs.OrderBy(k => k.Key.Item1, StringComparer.Ordinal))
+        foreach (var ((a, b), n) in dupPairs
+                     .OrderBy(k => k.Key.Item1, StringComparer.Ordinal)
+                     .ThenBy(k => k.Key.Item2, StringComparer.Ordinal))
             edges.Add(new ArchGraphEdge(a, b, "duplicates:" + n.ToString(CultureInfo.InvariantCulture)));
 
         // PROJECTS AND EXTERNALS ARE SIZED ON SEPARATE SCALES. Sharing one made Deltek — named in
@@ -195,7 +197,9 @@ public static class GraphBuilder
                 edges.Add(new ArchGraphEdge(t.Id, "out:" + f.Ext, "into"));
         }
 
-        foreach (var (from, to) in mentions)
+        foreach (var (from, to) in mentions
+                     .OrderBy(m => m.From, StringComparer.Ordinal)
+                     .ThenBy(m => m.To, StringComparer.Ordinal))
         {
             if (!byId.ContainsKey(from) || !byId.ContainsKey(to)) continue;
             int rf = nodes[byId[from]].Rank, rt = nodes[byId[to]].Rank;
@@ -309,6 +313,14 @@ public static class GraphBuilder
     private static (double X, double Y)[] Layered(List<int> ranks, List<(int A, int B)> edges)
     {
         int count = ranks.Count;
+
+        // AN EMPTY GRAPH IS A GRAPH. `ranks.Max()` below throws on no elements, so extracting any
+        // repository with no drawing-intake types at all — which is every repository except this one
+        // — crashed the whole extraction, not just the page that would have been blank. Found by the
+        // synthetic fixtures written for the audit fixes; the audit itself never saw it, because it
+        // only ever ran against a tree that happens to have those types in it.
+        if (count == 0) return Array.Empty<(double X, double Y)>();
+
         var order = new double[count];
         var byRank = ranks.Select((r, i) => (r, i)).GroupBy(x => x.r)
             .ToDictionary(g => g.Key, g => g.Select(x => x.i).ToList());
@@ -345,6 +357,7 @@ public static class GraphBuilder
 
     private static (double X, double Y)[] Normalise((double X, double Y)[] p)
     {
+        if (p.Length == 0) return p;        // Min/Max throw on empty — same trap as Layered
         double x0 = p.Min(q => q.X), x1 = p.Max(q => q.X);
         double y0 = p.Min(q => q.Y), y1 = p.Max(q => q.Y);
         double w = Math.Max(1e-6, x1 - x0), h = Math.Max(1e-6, y1 - y0);

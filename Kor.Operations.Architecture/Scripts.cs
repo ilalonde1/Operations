@@ -58,7 +58,8 @@ public static class ScriptInventory
         var found = new List<(string Rel, string Full, string Kind)>();
 
         foreach (var (ext, kind) in Kinds)
-            foreach (string path in Directory.EnumerateFiles(root, "*" + ext, SearchOption.AllDirectories))
+            foreach (string path in Directory.EnumerateFiles(root, "*" + ext, SearchOption.AllDirectories)
+                         .OrderBy(p => Path.GetRelativePath(root, p).Replace('\\', '/'), StringComparer.Ordinal))
             {
                 string rel = Path.GetRelativePath(root, path).Replace('\\', '/');
                 if (Skip(rel)) continue;
@@ -84,10 +85,10 @@ public static class ScriptInventory
         {
             string rel = Path.GetRelativePath(root, path).Replace('\\', '/');
             string text;
-            try { text = File.ReadAllText(path); }
+            try { text = TextFiles.ReadAllText(path); }
             catch (IOException) { continue; }
 
-            foreach (string name in names.Keys)
+            foreach (string name in names.Keys.OrderBy(n => n, StringComparer.OrdinalIgnoreCase))
             {
                 if (!text.Contains(name, StringComparison.OrdinalIgnoreCase)) continue;
                 // A file naming itself is not a reference.
@@ -110,7 +111,7 @@ public static class ScriptInventory
             {
                 var info = new FileInfo(full);
                 bytes = info.Length;
-                lines = File.ReadLines(full).Count();
+                lines = CountLines(TextFiles.ReadAllText(full));
             }
             catch (IOException) { }
 
@@ -129,12 +130,21 @@ public static class ScriptInventory
     private static IEnumerable<string> CallerCandidates(string root)
     {
         foreach (string pattern in new[] { "*.cs", "*.ps1", "*.psm1", "*.py", "*.md", "*.json", "*.csproj", "*.yml", "*.yaml", "*.cmd", "*.bat", "*.sh", "*.xaml" })
-            foreach (string path in Directory.EnumerateFiles(root, pattern, SearchOption.AllDirectories))
+            foreach (string path in Directory.EnumerateFiles(root, pattern, SearchOption.AllDirectories)
+                         .OrderBy(p => Path.GetRelativePath(root, p).Replace('\\', '/'), StringComparer.Ordinal))
             {
                 string rel = Path.GetRelativePath(root, path).Replace('\\', '/');
                 if (Skip(rel)) continue;
                 yield return path;
             }
+    }
+
+    private static int CountLines(string text)
+    {
+        if (text.Length == 0) return 0;
+        int n = 1;
+        foreach (char c in text) if (c == '\n') n++;
+        return n;
     }
 
     /// <summary>Third-party PowerShell vendored into the tree. `_Scripts Rebuild/PowerShellGet` and
@@ -155,7 +165,8 @@ public static class ScriptInventory
         => rel.StartsWith("docs/architecture/", StringComparison.OrdinalIgnoreCase);
 
     private static bool Skip(string rel)
-        => Vendored(rel)
+        => Extractor.IsArchitectureToolPath(rel)
+        || Vendored(rel)
         || Generated(rel)
         || rel.Contains("/bin/", StringComparison.OrdinalIgnoreCase)
         || rel.Contains("/obj/", StringComparison.OrdinalIgnoreCase)

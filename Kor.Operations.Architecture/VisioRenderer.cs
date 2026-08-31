@@ -94,6 +94,12 @@ public static class VisioRenderer
                 "Visio is not installed on this machine — the model was written, but nothing can draw it.");
 
         dynamic visio = Activator.CreateInstance(progId)!;
+        dynamic? doc = null;
+        object? oldScreenUpdating = null;
+        object? oldEventsEnabled = null;
+        object? oldDeferRecalc = null;
+        object? oldUndoEnabled = null;
+        bool docClosed = false;
         try
         {
             visio.Visible = keepVisioOpen;
@@ -102,11 +108,15 @@ public static class VisioRenderer
             // AUTOMATION SWITCHES. Visio repaints, fires events and records an undo step for every
             // one of the ~9,000 shapes this draws, and none of that is wanted when nobody is
             // watching. Off, the render is a fraction of the time; the numbers are in the commit.
+            oldScreenUpdating = visio.ScreenUpdating;
+            oldEventsEnabled = visio.EventsEnabled;
+            oldDeferRecalc = visio.DeferRecalc;
             visio.ScreenUpdating = 0;
             visio.EventsEnabled = 0;
             visio.DeferRecalc = 1;
 
-            dynamic doc = visio.Documents.Add("");
+            doc = visio.Documents.Add("");
+            oldUndoEnabled = doc.UndoEnabled;
             doc.UndoEnabled = false;
 
             notes.Add(PageApplication(doc, model));
@@ -143,9 +153,26 @@ public static class VisioRenderer
             }
 
             doc.Close();
+            docClosed = true;
         }
         finally
         {
+            if (doc is not null && !docClosed && oldUndoEnabled is not null)
+            {
+                try { doc.UndoEnabled = oldUndoEnabled; } catch (COMException) { }
+            }
+            if (oldDeferRecalc is not null)
+            {
+                try { visio.DeferRecalc = oldDeferRecalc; } catch (COMException) { }
+            }
+            if (oldEventsEnabled is not null)
+            {
+                try { visio.EventsEnabled = oldEventsEnabled; } catch (COMException) { }
+            }
+            if (oldScreenUpdating is not null)
+            {
+                try { visio.ScreenUpdating = oldScreenUpdating; } catch (COMException) { }
+            }
             if (!keepVisioOpen)
             {
                 try { visio.Quit(); } catch (COMException) { }
@@ -474,25 +501,36 @@ public static class VisioRenderer
     /// question.</summary>
     private static string MatrixFormats(dynamic doc, ArchModel model)
     {
+        var handlerFormats = HandlerFormats(model);
         var cells = new Dictionary<string, int>(StringComparer.Ordinal);
         var cols = new SortedSet<string>(StringComparer.Ordinal);
-        foreach (var f in model.Formats)
+        foreach (var f in handlerFormats)
         {
             string proj = f.Type.Split(':')[0];
             cols.Add(proj);
             string k = f.Ext + "||" + proj;
             cells[k] = cells.TryGetValue(k, out int n) ? n + 1 : 1;
         }
-        var rows = model.Formats.Select(f => f.Ext).Distinct(StringComparer.Ordinal)
+        var rows = handlerFormats.Select(f => f.Ext).Distinct(StringComparer.Ordinal)
             .OrderBy(x => x, StringComparer.Ordinal).ToList();
 
         MatrixPage(doc, "Matrix - formats", "Which project handles which file format",
-            "the number is HOW MANY TYPES in that project touch that format. A format with several " +
-            $"columns is the same question answered in several places — {model.Formats.Count} format edges.",
+            "the number is HOW MANY NON-TEST TYPES in that project touch that format. A format with several " +
+            $"columns is the same question answered in several places — {handlerFormats.Count} handler edge(s), {model.Formats.Count} total format edge(s).",
             rows, cols.ToList(),
             cells.ToDictionary(kv => kv.Key, kv => kv.Value.ToString(CultureInfo.InvariantCulture), StringComparer.Ordinal),
             "RGB(252,232,206)");
         return $"matrix: formats — {cells.Count} cell(s)";
+    }
+
+    public static IReadOnlyList<ArchFormat> HandlerFormats(ArchModel model)
+    {
+        var roleByType = model.Types.ToDictionary(t => t.Id, t => t.Role, StringComparer.Ordinal);
+        return model.Formats
+            .Where(f => roleByType.TryGetValue(f.Type, out string? role) && role != "test")
+            .OrderBy(f => f.Type, StringComparer.Ordinal)
+            .ThenBy(f => f.Ext, StringComparer.Ordinal)
+            .ToList();
     }
 
     // ---- list pages --------------------------------------------------------------------------
@@ -521,7 +559,7 @@ public static class VisioRenderer
     {
         var lines = model.Verbs.Select(v => $"{v.Verb}   ·   {Short(v.Project)}").ToList();
         ListPage(doc, "CLI verbs", "Every command-line verb",
-            $"{model.Verbs.Count} verb(s), read off args[0].Equals(\"…\") rather than grepped for",
+            $"{model.Verbs.Count} verb(s), read off args[0] comparisons and switches rather than grepped for",
             lines, "RGB(226,240,226)", 24);
         return $"list: {model.Verbs.Count} CLI verb(s)";
     }
@@ -535,7 +573,8 @@ public static class VisioRenderer
     {
         var dupes = model.Duplicates.Where(d => !Boilerplate.Contains(d.Name)).ToList();
         var lines = dupes.Select(d =>
-            $"{d.Similarity * 100,3:0}%  {d.Lines,4} lines  {d.Name}  —  {d.Projects.Count}x:  " +
+            string.Format(CultureInfo.InvariantCulture, "{0,3:0}%  {1,4} lines  {2}  —  {3}x:  ",
+                d.Similarity * 100, d.Lines, d.Name, d.Projects.Count) +
             string.Join(", ", d.Projects.Select(Short))).ToList();
 
         int near = dupes.Count(d => d.Similarity >= 0.90);
@@ -560,8 +599,8 @@ public static class VisioRenderer
         ListPage(doc, "Nooks and crannies", "Scripts nothing references",
             $"{scripts.Count} script(s) live outside every project — " +
             $"{scripts.Count(s => s.Kind == "PowerShell")} PowerShell, {scripts.Count(s => s.Kind == "Python")} Python, " +
-            $"{scripts.Count(s => s.Kind == "SQL")} SQL. These {orphans.Count} are named by NO other file in the " +
-            "repository: dead, or run by a person from memory. The " + migrations +
+            $"{scripts.Count(s => s.Kind == "SQL")} SQL. These {orphans.Count} have no case-insensitive bare filename mention in any candidate caller file: " +
+            "dead, run by a person from memory, or invoked indirectly. The " + migrations +
             " numbered SQL migrations are excluded — a runner applies those in order and nothing names them.",
             lines, "RGB(238,232,244)", 46);
         return $"list: {orphans.Count} unreferenced script(s) of {scripts.Count} (+ {migrations} migrations)";
@@ -587,8 +626,9 @@ public static class VisioRenderer
             foreach (string r in p.ProjectRefs.Where(names.Contains))
                 dep[p.Name + "||" + r] = 1;
 
+        var handlerFormats = HandlerFormats(model);
         var fmt = new Dictionary<string, int>(StringComparer.Ordinal);
-        foreach (var f in model.Formats)
+        foreach (var f in handlerFormats)
         {
             string k = f.Type.Split(':')[0] + "||" + f.Ext;
             fmt[k] = fmt.TryGetValue(k, out int n) ? n + 1 : 1;
@@ -617,7 +657,7 @@ public static class VisioRenderer
         {
             new("depends on", rows.Select(p => p.Name).ToList(), dep, "RGB(210,228,244)", 0.44, true),
             new("file formats",
-                model.Formats.Select(f => f.Ext).Distinct(StringComparer.Ordinal).OrderBy(x => x, StringComparer.Ordinal).ToList(),
+                handlerFormats.Select(f => f.Ext).Distinct(StringComparer.Ordinal).OrderBy(x => x, StringComparer.Ordinal).ToList(),
                 fmt, "RGB(252,232,206)", 0.56, false),
             new("outside the repo", model.Externals.Select(e => e.Name).ToList(), ext, "RGB(255,240,200)", 0.62, false),
             new("types by role",
@@ -692,7 +732,7 @@ public static class VisioRenderer
         }
 
         return $"MASTER: {rows.Count} rows x {blocks.Sum(b => b.Cols.Count)} columns, {filled} filled cell(s), " +
-               $"{sheetW:N0} x {sheetH:N0} in";
+               $"{N0(sheetW)} x {N0(sheetH)} in";
     }
 
     // ---- graph pages -------------------------------------------------------------------------
