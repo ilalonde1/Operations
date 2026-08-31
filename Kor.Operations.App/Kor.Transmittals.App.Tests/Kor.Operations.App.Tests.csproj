@@ -104,13 +104,4 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
-  <ItemGroup>
-    <!-- The staleness gate must decide "is this a source file, and whose is it" EXACTLY as the
-         extractor does, or it reports the map stale forever or misses that it is. The two had been
-         copy-pasted and diverged within the hour. Shared by Compile Include rather than a
-         ProjectReference, so no Roslyn is dragged into a suite that runs on every edit — the same
-         mechanism SqlTimeouts.cs uses, and the one the map itself learned to read this week. -->
-    <Compile Include="..\..\Kor.Operations.Architecture\SourceConventions.cs" Link="SourceConventions.cs" />
-  </ItemGroup>
-
 </Project>

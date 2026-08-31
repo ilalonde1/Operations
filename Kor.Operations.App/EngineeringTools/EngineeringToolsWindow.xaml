@@ -135,6 +135,31 @@
                 </Button>
 
                 <!-- Drawings → ETABS -->
+                <Button x:Name="ArchitectureMapCard"
+                        Style="{StaticResource HomeCardButton}"
+                        Click="OpenArchitectureMap_Click">
+                    <StackPanel>
+                        <Grid>
+                            <Ellipse Width="32" Height="32" Fill="#EFEFF1"/>
+                            <TextBlock Text="🗺" FontSize="15"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"/>
+                        </Grid>
+                        <TextBlock Text="Application Map"
+                                   FontSize="15" FontWeight="SemiBold"
+                                   Margin="0,8,0,2"/>
+                        <TextBlock Text="Reads a codebase and draws it into Visio — every project, what depends on what, which file formats each one handles, what it talks to outside the repository, where the same code has been written twice, and the scripts nothing calls. Derived from the source each time, so it cannot be out of date."
+                                   Foreground="{StaticResource Text.Secondary}"
+                                   TextWrapping="Wrap"/>
+                        <Border Background="{StaticResource Brand.Primary.Brush}"
+                                CornerRadius="999"
+                                Margin="0,10,0,0" Padding="6,3,6,3"
+                                HorizontalAlignment="Left">
+                            <TextBlock Text="Open" Foreground="White" FontSize="12"/>
+                        </Border>
+                    </StackPanel>
+                </Button>
+
                 <Button x:Name="DxfToEtabsCard"
                         Style="{StaticResource HomeCardButton}"
                         Click="OpenDxfToEtabs_Click">

@@ -307,6 +307,7 @@
     <ProjectReference Include="..\Kor.EmailSearch.Core\Kor.EmailSearch.Core.csproj" />
     <ProjectReference Include="..\Kor.Operations.EngineeringTools.Core\Kor.Operations.EngineeringTools.Core.csproj" />
     <ProjectReference Include="..\Kor.Operations.Business\Kor.Operations.Business.csproj" />
+    <ProjectReference Include="..\Kor.Operations.Architecture\Kor.Operations.Architecture.csproj" />
     <ProjectReference Include="..\Kor.Operations.Core\Kor.Operations.Core.csproj" />
     <ProjectReference Include="..\Kor.Operations.Data\Kor.Operations.Data.csproj" />
     <ProjectReference Include="..\Kor.Operations.Graph\Kor.Operations.Graph.csproj" />

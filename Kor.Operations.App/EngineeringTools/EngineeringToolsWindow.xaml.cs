@@ -36,5 +36,12 @@ namespace Kor.Operations.EngineeringTools
             win.Owner = this;
             win.Show();
         }
+
+        private void OpenArchitectureMap_Click(object sender, RoutedEventArgs e)
+        {
+            var win = _services.GetRequiredService<ArchitectureMap.ArchitectureMapWindow>();
+            win.Owner = this;
+            win.Show();
+        }
     }
 }

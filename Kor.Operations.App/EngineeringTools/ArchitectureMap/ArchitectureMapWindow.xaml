@@ -1,0 +1,64 @@
+<Window x:Class="Kor.Operations.EngineeringTools.ArchitectureMap.ArchitectureMapWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="KOR — Application Map"
+        Width="1000" Height="760"
+        WindowStartupLocation="CenterScreen"
+        FontFamily="Segoe UI">
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" Text="Application Map" FontSize="18" FontWeight="Bold" Foreground="#1F3864"/>
+        <TextBlock Grid.Row="1" Margin="0,2,0,12" Foreground="#595959" TextWrapping="Wrap"
+                   Text="Reads a codebase and draws it into Visio — ten pages covering every project, what depends on what, which file formats each one handles, what it talks to outside the repository, where the same code has been written twice, and the scripts nothing calls. The map is derived from the source every time it is drawn, so it cannot be out of date."/>
+
+        <!-- What to read, and where to put it -->
+        <Border Grid.Row="2" BorderBrush="#D9D9D9" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,12">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="Codebase" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                <TextBox   Grid.Row="0" Grid.Column="1" x:Name="SourceFolderBox" Padding="6,4" VerticalContentAlignment="Center"/>
+                <Button    Grid.Row="0" Grid.Column="2" Content="Browse…" Padding="12,4" Margin="8,0,0,0"
+                           Click="BrowseSource_Click"/>
+
+                <TextBlock Grid.Row="1" Grid.Column="0" Text="Save to" VerticalAlignment="Center" Margin="0,10,10,0"/>
+                <TextBox   Grid.Row="1" Grid.Column="1" x:Name="OutputFolderBox" Padding="6,4" Margin="0,10,0,0" VerticalContentAlignment="Center"/>
+                <Button    Grid.Row="1" Grid.Column="2" Content="Browse…" Padding="12,4" Margin="8,10,0,0"
+                           Click="BrowseOutput_Click"/>
+            </Grid>
+        </Border>
+
+        <!-- What it did -->
+        <Border Grid.Row="3" BorderBrush="#D9D9D9" BorderThickness="1" CornerRadius="6" Padding="10">
+            <ScrollViewer x:Name="LogScroller" VerticalScrollBarVisibility="Auto">
+                <TextBlock x:Name="LogText" FontFamily="Consolas" FontSize="12"
+                           Foreground="#333333" TextWrapping="Wrap"
+                           Text="Choose a codebase and press Draw the map."/>
+            </ScrollViewer>
+        </Border>
+
+        <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+            <TextBlock x:Name="StatusText" VerticalAlignment="Center" Margin="0,0,14,0" Foreground="#595959"/>
+            <Button x:Name="OpenButton" Content="Open in Visio" Padding="16,6" Margin="0,0,8,0"
+                    IsEnabled="False" Click="Open_Click"/>
+            <Button x:Name="DrawButton" Content="Draw the map" Padding="16,6"
+                    Background="#1F3864" Foreground="White" BorderThickness="0"
+                    Click="Draw_Click"/>
+        </StackPanel>
+    </Grid>
+</Window>
