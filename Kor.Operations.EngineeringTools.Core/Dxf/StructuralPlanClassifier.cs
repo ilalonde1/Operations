@@ -1126,6 +1126,39 @@ public static class StructuralPlanClassifier
                         "plate spanning separate structures is a diaphragm they do not share.");
                     best = null;
                 }
+                // WHICH OF TWO READINGS SURVIVES IS NOT A QUESTION OF SIZE. IT IS A QUESTION OF
+                // WHICH ONE THE DRAWING DREW.
+                //
+                // A flood fill of the drawn linework is recovered geometry and says so; a ring the
+                // draftsman closed is the drawing itself. This file's own rule, written where the
+                // perimeter-wall fallback is, says a real slab edge always wins over a stand-in.
+                // Keeping the larger inverted that wherever the fill leaked past a boundary the
+                // vectors had closed properly.
+                //
+                // 31168's YMCA mezzanine is the case. Its 1,903 sq ft plate is a CLOSED outline
+                // carrying «12" SLAB» read from inside itself -- the strongest thing a drawing
+                // offers -- and it was dropped for a 2,330 sq ft fill of the same linework. The
+                // fill had leaked through the stretch where a core wall bounds the slab and no slab
+                // edge is drawn, because the fill is given slab layers alone. The engineer, twice:
+                // "the mezzanine levels still not good, the slab edge is wrong".
+                //
+                // ⚠ ONLY WHERE THE DRAWN RING IS MOST OF THE FILL. A stair nosing of 110 sq ft
+                // closed inside a 12,862 sq ft fill is not a competing reading of that floor, and
+                // letting it win would be far worse than the fault this fixes. Sixty per cent is
+                // the line: the mezzanine's ring is 82 per cent of its fill, a nosing under one.
+                else if (swallowed.Count > 0
+                         && swallowed.Any(x => x.ClosedExactly)
+                         && swallowed.Where(x => x.ClosedExactly).Sum(x => x.Area) >= best.Area * 0.6)
+                {
+                    result.Flags.Add(
+                        $"{swallowed.Count(x => x.ClosedExactly)} closed outline(s) totalling " +
+                        $"{swallowed.Where(x => x.ClosedExactly).Sum(x => x.Area) / 144:N0} sq ft were kept in " +
+                        $"place of the {best.Area / 144:N0} sq ft the flood fill recovered from the same " +
+                        "linework. A fill reaches wherever the drawn edge stops — at a core wall, say, which " +
+                        "bounds the slab without drawing it — so where the draftsman closed the ring himself, " +
+                        "his ring is the floor and the fill is only a reading of it.");
+                    best = null;
+                }
                 else if (swallowed.Count > 0)
                 {
                     // DISCARDED, NOT CUT OUT. Two readings of one floor is not a floor with a hole
