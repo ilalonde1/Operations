@@ -31,10 +31,32 @@ namespace Kor.Operations.EngineeringTools.Core.Tests;
 ///
 /// Every one of those was green until somebody looked. Finding the ninth by looking is not a plan.
 ///
-/// So: build the job with the merge on and off, and assert that everything the ENGINEER can see is
-/// identical. Object counts and object names are expected to differ and are the only things that
-/// may. Whatever the next name-keyed reader turns out to be, it fails here on the run that
-/// introduces it rather than in her model.
+/// So: build the job with the merge on and off, and assert that what it covers is identical.
+///
+/// WHAT IT COVERS, exactly — and a check that will not say this is a check nobody can rely on:
+///
+///   every (kind, plan position, storey, section, SPAN) placement, with multiplicity
+///   the counts she reads: walls, columns, floors, storeys
+///   how many members the building cut removed as somebody else's
+///   which drawing each storey came from
+///
+/// Object names and object counts are expected to differ and are the only things that may.
+///
+/// ⚠ WHAT IT DOES NOT COVER. The second audit was right that the name overclaimed, and the honest
+/// answer is that this is not "everything the engineer can see":
+///
+///   materials, thicknesses and frame dimensions BEHIND a section name — equal names are compared,
+///     equal definitions are not
+///   pier and spandrel labels, diaphragms, mesh flags, opening flags
+///   generated point counts and orphaned-point shape
+///   the workbook and the one-page summary — it reads the report only
+///   the --tower C and --per-building deliverables; it builds the SITE model
+///   any fault present in BOTH builds, which is invisible to a differential by construction
+///
+/// SPAN was added after the audit pointed out that this would not have caught the reset which hung
+/// 290 of building C's columns off the towers' floor. That one is now covered here AND blocked by
+/// the member-spans-through-its-own-floor invariant, which is the better of the two because it
+/// needs no second build.
 /// </remarks>
 [Trait("Speed", "Slow")]
 public class StackMergeChangesNothingButLabelsTests
@@ -80,6 +102,20 @@ public class StackMergeChangesNothingButLabelsTests
         var assign = new Regex(@"^\s*(?:AREA|LINE)ASSIGN\s+""([^""]+)""\s+""([^""]+)""(?:.*?SECTION\s+""([^""]+)"")?");
         var counted = new Dictionary<string, int>(StringComparer.Ordinal);
 
+        // AND SPAN, because it is deliverable-shaping and was the root of the wafer failures: a
+        // rename must not change how far a member reaches. Added after the second audit pointed out
+        // that this harness would not have caught the span reset that hung 290 of building C's
+        // columns off the towers' floor.
+        var spans = new Dictionary<string, string>(StringComparer.Ordinal);
+        var lineSpan = new Regex(@"^\s*LINE\s+""(K\w+)""\s+\w+\s+""[^""]+""\s+""[^""]+""\s+(\d+)");
+        var panelSpan = new Regex(@"^\s*AREA\s+""(K\w+)""\s+PANEL\s+\d+(?:\s+""[^""]+""){4}\s+(\d+)");
+        foreach (string raw in lines)
+        {
+            var sm = lineSpan.Match(raw);
+            if (!sm.Success) sm = panelSpan.Match(raw);
+            if (sm.Success) spans[sm.Groups[1].Value] = sm.Groups[2].Value;
+        }
+
         foreach (string raw in lines)
         {
             var m = assign.Match(raw);
@@ -94,7 +130,8 @@ public class StackMergeChangesNothingButLabelsTests
                 .Select(p => $"{p.X.ToString("0.###", CultureInfo.InvariantCulture)},{p.Y.ToString("0.###", CultureInfo.InvariantCulture)}")
                 .OrderBy(x => x, StringComparer.Ordinal));
 
-            string key = $"{kind}|{at}|{m.Groups[2].Value}|{m.Groups[3].Value}";
+            spans.TryGetValue(name, out string? span);
+            string key = $"{kind}|{at}|{m.Groups[2].Value}|{m.Groups[3].Value}|span{span}";
             counted[key] = counted.TryGetValue(key, out int had) ? had + 1 : 1;
         }
 

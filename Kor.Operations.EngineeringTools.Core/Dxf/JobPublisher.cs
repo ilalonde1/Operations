@@ -132,7 +132,7 @@ public static class JobPublisher
                 .ToList();
             var violations = ShippedModelInvariants.Check(
                 File.ReadLines(output), 0.05, dropped, File.ReadLines(referencePath),
-                report.FoundationStoreys, File.ReadLines(reportPath), ModelQuestionnaire.TextLines(questionsPath));
+                report.FoundationStoreys, File.ReadLines(reportPath), ModelQuestionnaire.ClaimLines(questionsPath));
 
             built.Add(new Built(
                 label,

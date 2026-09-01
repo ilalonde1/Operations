@@ -827,8 +827,12 @@ public static class ModelQuestionnaire
 
             string counted = string.Join(" · ", perStorey.Select(x => $"{x.Storey}: {x.Slabs}"));
 
+            // THE FILE, NOT THE LABEL. A sheet's label is "LEVEL P1", which is indistinguishable
+            // from a storey and is not one -- this model's storeys are L21, P1, Mezz. Naming the
+            // drawing by its file name says which vocabulary it is in, points her at something she
+            // can open, and is the same convention the rest of the report uses.
             string workings = string.Join("; ", underRead.Select(x =>
-                $"{x.sheet.Label} — {IgnoredUnits(x.Note!) / 12:N0} ft of slab edge would not close"));
+                $"{x.sheet.File} — {IgnoredUnits(x.Note!) / 12:N0} ft of slab edge would not close"));
 
             yield return new ModelQuestion("S4", "How many slabs on each of these levels",
                 $"HOW MANY SEPARATE SLABS ARE ON EACH OF THESE LEVELS? We modelled — {counted}. " +
@@ -1114,14 +1118,44 @@ public static class ModelQuestionnaire
     }
 
     /// <summary>Plain text from a generated questions workbook, for publish invariants.</summary>
-    public static IReadOnlyList<string> TextLines(string path)
+    /// <summary>
+    /// The rows of this workbook that say something about THIS MODEL, for the checks that hold the
+    /// workbook to it.
+    /// </summary>
+    /// <remarks>
+    /// Two of the five sheets are not about this model and must not be read as though they were:
+    ///
+    ///   Rules in force   a ledger of banked rules. Its "Why it holds" column cites the job each
+    ///                    value was measured on -- "sending 31168 C-LEVEL 3 six storeys up to borrow
+    ///                    from C-LEVEL 9" -- which is the provenance that makes a rule auditable
+    ///                    rather than a magic number. Named in job 31138's workbook it is still
+    ///                    correct; it is about the RULE, not about her model.
+    ///   Sheets read      a table of DRAWINGS. Every name in it is a file, not a storey.
+    ///
+    /// Reading all five had the storey-name check report 44 and 11 findings against those two, none
+    /// of them real, in a run whose four models were correct. A check that is wrong every time it
+    /// fires trains you to scroll past the time it is right.
+    ///
+    /// WHAT THIS STILL COVERS: Start here, Questions and If something looks wrong -- every row that
+    /// asks her something or asserts something about the model she is being handed.
+    ///
+    /// WHAT IT DOES NOT: a claim about this model written INTO the rules ledger or the drawings
+    /// table would not be seen. Neither sheet has a producer that writes one -- the ledger renders
+    /// rule rows and the table renders <see cref="SheetOutcome"/>s -- so the way that fault would
+    /// arrive is somebody adding model prose to one of them, and this comment is the warning.
+    /// </remarks>
+    public static IReadOnlyList<string> ClaimLines(string path)
     {
         if (!File.Exists(path)) return Array.Empty<string>();
+
+        var aboutThisModel = new HashSet<string>(
+            new[] { "Start here", "Questions", "If something looks wrong" },
+            StringComparer.OrdinalIgnoreCase);
 
         using var workbook = new XLWorkbook(path);
         var lines = new List<string>();
 
-        foreach (var sheet in workbook.Worksheets)
+        foreach (var sheet in workbook.Worksheets.Where(s => aboutThisModel.Contains(s.Name)))
         foreach (var row in sheet.RowsUsed())
         {
             string text = string.Join(" | ", row.CellsUsed()

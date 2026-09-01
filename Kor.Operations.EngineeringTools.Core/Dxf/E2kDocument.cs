@@ -695,44 +695,108 @@ public sealed class E2kDocument
     /// So the document applies its own renames. It is the only thing that knows what it renamed.
     /// </summary>
     /// <summary>
-    /// Every generated column and wall rises exactly one storey. Returns how many were changed.
+    /// Each generated column and wall reaches the next storey it actually stands on, and no
+    /// further. Returns how many spans were changed.
     /// </summary>
     /// <remarks>
-    /// ONLY AFTER A MODEL HAS BEEN CUT TO ONE BUILDING, and that is the whole of it.
+    /// A member's span says how far ONE member reaches; how many storeys it stands on is said with
+    /// assigns. The engineer: "columns broken down at every floor, from slab to slab", "no
+    /// overlap" — the overlap she photographed is a member crossing a floor instead of stopping at
+    /// it. Measured in her own 31138: 87 column objects, EVERY one span 1, 57 assigned to about
+    /// five storeys each.
     ///
-    /// A site model interleaves three buildings on one storey list, so a YMCA column from its floor
-    /// to the floor below has to step over the towers' storeys standing between them — that is what
-    /// span is for, and E2kGeometryComposer sets it to the number of storeys the member covers.
+    /// The composer writes span = the NUMBER of storeys the member covers, because a site model
+    /// interleaves three buildings and a YMCA column reaching its own floor below must step over
+    /// the towers' storeys standing between them.
     ///
-    /// Once the model is cut to one building there is nothing left to step over: the row below a
-    /// storey IS the floor below it. A span still greater than one is then a member running THROUGH
-    /// a floor rather than stopping at it, which is what the engineer photographed and called an
-    /// overlap, and what she asked for instead: "columns broken down at every floor, from slab to
-    /// slab", "no overlap", "the same label full height".
+    /// ⚠ SO IT IS NOT A BLANKET ONE. That was tried, on the reasoning that a per-building cut
+    /// leaves nothing to step over, and it is false: `--tower C` leaves 21 storeys, not 13, because
+    /// the tower levels C never reaches are unprefixed and the name cut cannot see them. Measured
+    /// on that deliverable, 290 column assigns had span 2 crossing a storey STILL IN THE LIST —
+    /// "KC448 on C-LEVEL 3 span 2 crosses LEVEL 3" — and forcing them to 1 hung 290 columns off the
+    /// towers' floor instead of the YMCA's. Nothing caught it: the wrong member is a full storey
+    /// tall, so NoColumnIsShorterThanAPerson sees a perfectly ordinary column.
     ///
-    /// Measured in her own 31138 model: 87 column objects, EVERY ONE span 1, 57 of them assigned to
-    /// about five storeys each. How many storeys a member stands on is said with assigns; span says
-    /// how far one member reaches, and that is one floor.
-    ///
-    /// ⚠ Doing this in the composer instead makes wafers: in the interleaved site list the row
-    /// below C-LEVEL 3 is the towers' LEVEL 3, an inch and a half away, and the model comes back
-    /// full of two-inch columns. NoColumnIsShorterThanAPerson catches it, and it is right to.
+    /// What is knowable is the gap the member's OWN assigns leave. Where every gap is the same, that
+    /// is its span: 1 in a model holding only this building's storeys, 2 where one foreign storey
+    /// sits between each of its floors. Where the gaps differ, one object cannot express two spans
+    /// and it is left exactly as composed.
     /// </remarks>
-    public int SpanEveryGeneratedMemberOneStorey()
+    public int SpanGeneratedMembersToTheirNextFloorBelow()
     {
-        var line = new Regex(@"^(\s*LINE\s+""(K[CW]\d+)""\s+\w+\s+""[^""]+""\s+""[^""]+""\s+)(\d+)(\s*)$");
+        var order = ReadStories().Select(s => s.Name).ToList();
+        var rank = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        for (int i = 0; i < order.Count; i++) rank[order[i]] = i;   // 0 is the highest storey
+
+        var storeysOf = StoreysByObject();
+
+        // THE SMALLEST GAP ITS OWN STOREYS LEAVE, which is the only span that can never run through
+        // a floor this member itself stands on.
+        //
+        // One object carries one span, and a member standing on storeys 27, 29, 30 and 31 wants two
+        // different ones. Of the three ways to pick:
+        //
+        //   the count of storeys   what the composer writes for the site model, and on A-LEVEL 31
+        //                          to 33 it puts a wall straight through its own floors
+        //   leave it alone         the same thing, which is what "uneven gaps, do nothing" meant
+        //   the smallest gap       reaches the nearest floor it stands on, and no further
+        //
+        // The third is the only one that cannot be wrong in the way she photographed. It can fall
+        // short of a more distant floor, but no single span could reach that one without crossing a
+        // nearer one, and the ASSIGNS still put a member on every storey either way.
+        //
+        // A single assign says nothing about a gap, so it is left as composed.
+        int? SpanFor(string name)
+        {
+            if (!storeysOf.TryGetValue(name, out var on)) return null;
+
+            var rows = on.Where(rank.ContainsKey).Select(s => rank[s]).OrderBy(x => x).ToList();
+            if (rows.Count < 2) return null;
+
+            return rows.Zip(rows.Skip(1), (a, b) => b - a).Min();
+        }
+
         int changed = 0;
 
-        var section = Find("LINE CONNECTIVITIES");
-        if (section is null) return 0;
-
-        for (int i = 0; i < section.Lines.Count; i++)
+        var lines = Find("LINE CONNECTIVITIES");
+        if (lines is not null)
         {
-            var m = line.Match(section.Lines[i]);
-            if (!m.Success || m.Groups[3].Value == "1") continue;
+            var column = new Regex(@"^(\s*LINE\s+""(K[CW]\d+)""\s+\w+\s+""[^""]+""\s+""[^""]+""\s+)(\d+)(\s*)$");
+            for (int i = 0; i < lines.Lines.Count; i++)
+            {
+                var m = column.Match(lines.Lines[i]);
+                if (!m.Success) continue;
 
-            section.Lines[i] = m.Groups[1].Value + "1" + m.Groups[4].Value;
-            changed++;
+                int? want = SpanFor(m.Groups[2].Value);
+                if (want is null || want.Value.ToString(CultureInfo.InvariantCulture) == m.Groups[3].Value) continue;
+
+                lines.Lines[i] = m.Groups[1].Value + want.Value.ToString(CultureInfo.InvariantCulture) + m.Groups[4].Value;
+                changed++;
+            }
+        }
+
+        // AND THE WALLS, WHICH ARE NOT LINE ROWS. A generated wall is an AREA PANEL whose span is
+        // carried in the first two panel flags; the previous version matched LINE rows only and
+        // reported that it had done walls as well, which it had not.
+        var areas = Find("AREA CONNECTIVITIES");
+        if (areas is not null)
+        {
+            var panel = new Regex(
+                @"^(\s*AREA\s+""(KW\d+)""\s+PANEL\s+\d+(?:\s+""[^""]+""){4}\s+)(\d+)\s+(\d+)(\s+.*)$");
+            for (int i = 0; i < areas.Lines.Count; i++)
+            {
+                var m = panel.Match(areas.Lines[i]);
+                if (!m.Success) continue;
+
+                int? want = SpanFor(m.Groups[2].Value);
+                if (want is null) continue;
+
+                string now = want.Value.ToString(CultureInfo.InvariantCulture);
+                if (m.Groups[3].Value == now && m.Groups[4].Value == now) continue;
+
+                areas.Lines[i] = m.Groups[1].Value + now + "  " + now + m.Groups[5].Value;
+                changed++;
+            }
         }
 
         return changed;

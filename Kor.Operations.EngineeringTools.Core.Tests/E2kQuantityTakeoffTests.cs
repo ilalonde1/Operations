@@ -250,7 +250,7 @@ public sealed class E2kQuantityTakeoffTests
             "  LINEASSIGN  \"C1\"  \"LEVEL 1\"  SECTION \"KOR-C12x12\"  ANG 0",
             "  LINEASSIGN  \"C1\"  \"LEVEL 1\"  SECTION \"KOR-C12x12\"  ANG 0"));
 
-        Assert.Equal(2, result.ObjectsRead);
+        Assert.Equal(2, result.MembersRead);
         Assert.Equal(110.0 * Yd3PerFt3, result.Inputs.Sum(i => i.ConcreteVolume), 6);
     }
 
@@ -560,7 +560,7 @@ public sealed class E2kQuantityTakeoffTests
 
         var result = E2kQuantityTakeoff.Read(doc);
 
-        Assert.Equal(3, result.ObjectsRead);
+        Assert.Equal(3, result.MembersRead);
         var storeys = doc.ReadStories().Select(s => s.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
         Assert.All(result.Inputs, i => Assert.Contains(i.Level, storeys));
 

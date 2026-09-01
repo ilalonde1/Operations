@@ -140,7 +140,7 @@ namespace Kor.Operations.EngineeringTools.StructuralTakeoff
 
                 string aU = Unit == UnitSystem.Imperial ? "sq ft" : "m²";
                 TakeoffCsvStatus.Text =
-                    $"{Path.GetFileName(ofd.FileName)} — {takeoff.ObjectsRead} objects, {_takeoffInputs.Count} rows"
+                    $"{Path.GetFileName(ofd.FileName)} — {takeoff.MembersRead} members, {_takeoffInputs.Count} rows"
                     + (takeoff.OpeningAreaDeducted > 0 ? $", {takeoff.OpeningAreaDeducted:N0} {aU} of openings deducted" : "");
             }
             catch (Exception ex)

@@ -1902,23 +1902,29 @@ public static class DxfToEtabsService
         int stacked = request.MergeStacksIntoOneLabel ? doc.MergeStackedMembers() : 0;
         MemberPlanStoreyMultisetPreserved.Assert(beforeStackMerge, doc);
 
-        // AND ONE STOREY PER MEMBER, NOW THAT THERE IS NOTHING LEFT TO STEP OVER.
+        // AND EACH MEMBER REACHES THE NEXT STOREY IT ACTUALLY STANDS ON.
         //
-        // Only in a model cut to one building. The site list interleaves three of them, so a span
-        // greater than one is how a YMCA column reaches past the towers' storeys to its own floor
-        // below. Cut to one building the row below a storey IS the floor below it, and a longer
-        // span is a member running through a floor -- the overlap she photographed.
-        if (request.TowerOnly is not null)
-        {
-            int unspanned = doc.SpanEveryGeneratedMemberOneStorey();
-            if (unspanned > 0)
-                warnings.Add(
-                    $"{unspanned} column and wall object(s) were cut back to one storey each. In the site " +
-                    "model a member spans the other buildings' storeys to reach its own floor below; in a " +
-                    "model of one building there is nothing between, and a longer span is a member running " +
-                    "through a floor rather than stopping at it. This is the convention your own 31138 model " +
-                    "uses: every column object span 1, with an assign on each storey it rises through.");
-        }
+        // Composition writes span = the number of storeys a member covers, because the site list
+        // interleaves three buildings. After the cuts the list is different, and the span has to
+        // follow it: the gap this member's own assigns leave IS how far one of them reaches.
+        //
+        // Not a blanket one. Forcing every span to 1 here hung 290 of building C's columns off the
+        // towers' floor, because --tower C leaves the unprefixed tower levels in the list and a
+        // C column still has to step over them. See SpanGeneratedMembersToTheirNextFloorBelow.
+        // ⚠ ONLY IN A MODEL CUT TO ONE BUILDING. On the site list a single plan point carries BOTH
+        // towers' columns, so the storeys "this member stands on" are two buildings' floors an inch
+        // and a half apart, and the smallest gap between them is 1 — a wafer. The composed span is
+        // the right answer there, and NoColumnIsShorterThanAPerson says so when it is not.
+        int respanned = request.TowerOnly is null ? 0 : doc.SpanGeneratedMembersToTheirNextFloorBelow();
+        if (respanned > 0)
+            warnings.Add(
+                $"{respanned} column and wall object(s) had their span set to the gap their own storeys " +
+                "leave. A member's span is how far ONE of it reaches; how many storeys it stands on is " +
+                "said with assigns. Where this model holds only your building's storeys that gap is one " +
+                "floor, which is the convention your own 31138 model uses — every column object span 1, " +
+                "with an assign on each storey it rises through. Where a storey belonging to another " +
+                "building still sits between two of yours, the span steps over it rather than stopping " +
+                "inside it.");
         if (stacked > 0)
             warnings.Add(
                 $"{stacked} column and wall object(s) were merged into the stack they belong to, so a member " +

@@ -51,6 +51,11 @@ public static class ShippedModelInvariants
     private static readonly Regex Story = new(@"^\s*STORY\s+""([^""]+)""", RegexOptions.Compiled);
     private static readonly Regex Quoted = new(@"""([^""]+)""", RegexOptions.Compiled);
 
+    /// <summary>A panel's span: the first flag after its joints. A LINE carries it after the two.</summary>
+    private static readonly Regex PanelSpan = new(@"""\s+(\d+)\s+\d+", RegexOptions.Compiled);
+    private static readonly Regex LineSpan =
+        new(@"^\s*LINE\s+""[^""]+""\s+\w+\s+""[^""]+""\s+""[^""]+""\s+(\d+)", RegexOptions.Compiled);
+
     /// <param name="lines">The finished model, as written.</param>
     /// <param name="jointTolerance">Two joints closer than this are one joint. See dxf.joint-merge-tolerance.</param>
     /// <param name="droppedStoreys">Storeys the run was told to leave out; none of them may appear.</param>
@@ -97,6 +102,7 @@ public static class ShippedModelInvariants
         var pts = new Dictionary<string, (double X, double Y, double Z)>(StringComparer.Ordinal);
         var kind = new Dictionary<string, string>(StringComparer.Ordinal);
         var joints = new Dictionary<string, List<string>>(StringComparer.Ordinal);
+        var spanOf = new Dictionary<string, int>(StringComparer.Ordinal);
         var onStoreys = new Dictionary<string, List<string>>(StringComparer.Ordinal);
         var storeys = new List<string>();
 
@@ -117,6 +123,10 @@ public static class ShippedModelInvariants
             {
                 kind[m.Groups[1].Value] = m.Groups[2].Value;
                 joints[m.Groups[1].Value] = Quoted.Matches(m.Groups[3].Value).Select(x => x.Groups[1].Value).ToList();
+
+                var flag = PanelSpan.Match(m.Groups[3].Value);
+                if (flag.Success)
+                    spanOf[m.Groups[1].Value] = int.Parse(flag.Groups[1].Value, CultureInfo.InvariantCulture);
                 continue;
             }
 
@@ -125,6 +135,10 @@ public static class ShippedModelInvariants
             {
                 kind[m.Groups[1].Value] = m.Groups[2].Value;
                 joints[m.Groups[1].Value] = new List<string> { m.Groups[3].Value, m.Groups[4].Value };
+
+                var reach = LineSpan.Match(raw);
+                if (reach.Success)
+                    spanOf[m.Groups[1].Value] = int.Parse(reach.Groups[1].Value, CultureInfo.InvariantCulture);
                 continue;
             }
 
@@ -388,6 +402,7 @@ public static class ShippedModelInvariants
         //    it is declared. A WALL, COLUMN or header on two storeys is one member counted twice:
         //    six spandrels shipped that way, 1.7 inches tall on the second storey.
         foreach (var (obj, sts) in onStoreys)
+        {
             // An OPENING on several storeys is one hole through several floors, which is what it
             // is: a lift shaft does not stop at each slab. The engineer's own model does exactly
             // this -- 31065 carries 359 opening assigns from 25 objects, about fourteen storeys
@@ -417,6 +432,44 @@ public static class ShippedModelInvariants
                     $"'{obj}' is a header assigned to {sts.Count} storeys: {string.Join(", ", sts)}. A header " +
                     "carries its own depth in its joints, so a second assign is a second copy of it, not the " +
                     "same one carried up", obj));
+
+            // 4b. AND A MEMBER MUST NOT SPAN THROUGH A FLOOR IT STANDS ON.
+            //
+            // Span says how far ONE member reaches; the assigns say which storeys it stands on. A
+            // span that carries past a storey the member is itself assigned to is a column running
+            // through its own floor -- exactly what the engineer photographed and called an
+            // overlap, and what "columns broken down at every floor, from slab to slab" forbids.
+            //
+            // Spanning a storey it does NOT stand on is fine and often required: a mezzanine is
+            // passed through -- her own words, "obviously the vertical elements have to go through"
+            // -- and on a site model another building's level has to be stepped over.
+            //
+            // This exists because 290 of building C's columns were hung off the towers' floor by a
+            // span reset that forced every span to 1, and nothing saw it: the wrong member is a
+            // full storey tall, so NoColumnIsShorterThanAPerson reads a perfectly ordinary column.
+            // A count cannot see it either. Only the storey list can.
+            if (sts.Count > 1 && spanOf.TryGetValue(obj, out int span) && span > 1
+                && !floors.Contains(obj) && !openings.Contains(obj) && !carriedThrough.Contains(obj))
+            {
+                var standsOn = new HashSet<string>(sts, StringComparer.OrdinalIgnoreCase);
+                foreach (string from in sts)
+                {
+                    int at = storeys.IndexOf(from);
+                    if (at < 0) continue;
+
+                    var crossed = Enumerable.Range(at + 1, Math.Min(span - 1, storeys.Count - at - 1))
+                        .Select(i => storeys[i])
+                        .Where(standsOn.Contains)
+                        .ToList();
+
+                    if (crossed.Count > 0)
+                        v.Add(new ModelViolation("member-spans-through-its-own-floor",
+                            $"'{obj}' stands on '{from}' and spans {span} storeys, carrying it through " +
+                            $"{string.Join(", ", crossed)} — which it also stands on. A member reaches the " +
+                            "next floor it stands on and stops there", obj));
+                }
+            }
+        }
 
         // 5. A member must not sit on a storey belonging to a different building. On a site model
         //    the storey below A-LEVEL 35 is B-LEVEL 35, and six of tower B's headers landed on a
@@ -601,29 +654,55 @@ public static class ShippedModelInvariants
         // to be misread.
         var drawingNames = new Regex(@"^.*\.dxf", RegexOptions.IgnoreCase);
 
+        // AND THE SHEET TABLE'S NAME COLUMN, WHICH HAS NO .dxf LEFT TO STRIP.
+        //
+        // The table pads or truncates the drawing name to exactly 52 characters and then prints its
+        // count columns, so a name longer than that ends "...LEVEL 21 AMENIT..." with the extension
+        // cut off. The suffix strip above then sees nothing to remove and the row's drawing name is
+        // read as a claim about a storey. Eleven of these on the 31168 models, every one wrong.
+        //
+        // Keyed on the table's own shape rather than on the ellipsis: 52 characters, then four or
+        // more whitespace-separated integers to end of line. Prose does not end that way.
+        var sheetTableRow = new Regex(@"^.{52}((?:\s+\d+){4,})\s*$");
+
         foreach (string raw in lines)
         {
             if (aboutAbsence.Any(p => raw.Contains(p, StringComparison.OrdinalIgnoreCase))) continue;
 
-            string text = drawingNames.Replace(raw, string.Empty);
+            var row = sheetTableRow.Match(raw);
+            string text = row.Success
+                ? row.Groups[1].Value
+                : drawingNames.Replace(raw, string.Empty);
 
             foreach (Match m in named.Matches(text))
             {
                 string storey = m.Value.Trim();
                 if (known.Contains(storey)) continue;
-                // ADVISORY, DELIBERATELY, until it can tell a claim from a disclosure.
+                // STILL ADVISORY, and now for a much narrower reason.
                 //
-                // What this was written for is a sentence that treats a storey as PRESENT -- the
-                // workbook asking her to price a floor on B-LEVEL 28 in a file with no B storeys.
-                // That defect is fixed at its source and tested.
+                // What this is for is a sentence that treats a storey as PRESENT -- the workbook
+                // asking her to price a floor on B-LEVEL 28 in a file with no B storeys.
                 //
-                // What it actually matches is any mention, and a report names absent storeys all
-                // the time on purpose: the sheet table's "read but not placed" rows, members cut
-                // away, drawings whose structure is not in this model, and J7, whose entire text is
-                // "YOUR MODEL HAS NO LEVEL P1 MEZZ, BUT THE DRAWINGS DO". Blocking on those refuses
-                // to publish a model that is right because the report is doing its job. Telling a
-                // claim from a disclosure needs the question's shape, not a phrase list, and that
-                // is a piece of work rather than a patch.
+                // It used to match ANY mention, and reported 69 findings across four models that
+                // were all correct. Those were one fault in three shapes, and each is now fixed
+                // where the producer knew the answer rather than guessed at here:
+                //
+                //   44  the banked-rule ledger's "Why it holds", which cites the job a value was
+                //       measured on -- ClaimLines no longer hands that sheet over, because it is
+                //       about the RULE and not about this model
+                //   14  question S4's workings naming drawings by their LABEL, "LEVEL P1", which
+                //       is not a storey of a model whose storeys are L21, P1, Mezz -- it names the
+                //       drawing by its file now
+                //   11  the sheet table's 52-character name column, truncated past its .dxf -- the
+                //       row's shape is matched above and only its counts are read
+                //
+                // WHAT IT STILL CANNOT DO is tell a claim from a disclosure inside prose it does
+                // read, and a report discloses absent storeys on purpose: members cut away, and J7,
+                // whose entire text is "YOUR MODEL HAS NO LEVEL P1 MEZZ, BUT THE DRAWINGS DO". The
+                // aboutAbsence list catches the phrasings we have; a new disclosure worded any
+                // other way would be reported here and would be wrong. Blocking on that would
+                // refuse a correct model because the report is doing its job -- so it stays
+                // advisory until the check reads the question's structure instead of its text.
                 violations.Add(new ModelViolation(
                     "storey-name-not-in-file",
                     $"{document} names '{storey}', but the .e2k beside it does not contain that storey",

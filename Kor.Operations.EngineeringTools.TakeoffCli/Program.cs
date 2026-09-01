@@ -255,7 +255,7 @@ if (args.Length >= 1 && args[0].Equals("verify-e2k", StringComparison.OrdinalIgn
         File.ReadLines(args[1]), jointTolerance, droppedNames,
         referencePath is null ? null : File.ReadLines(referencePath),
         reportLines: reportPath is null ? null : File.ReadLines(reportPath),
-        workbookText: questionsPath is null ? null : ModelQuestionnaire.TextLines(questionsPath));
+        workbookText: questionsPath is null ? null : ModelQuestionnaire.ClaimLines(questionsPath));
     var blockers = breaches.Where(b => b.BlocksPublishing).ToList();
     var advisory = breaches.Where(b => !b.BlocksPublishing).ToList();
     if (blockers.Count == 0)
@@ -1348,7 +1348,7 @@ if (args.Length >= 1 && args[0].Equals("e2k-takeoff", StringComparison.OrdinalIg
         Assumptions: e2kAssumptions);
     File.WriteAllBytes(args[2], StructuralTakeoffReportGenerator.BuildXlsx(e2kModel));
 
-    Console.WriteLine($"\nETABS model takeoff — {takeoff.ObjectsRead} objects priced ({takeoff.UnitNote}).");
+    Console.WriteLine($"\nETABS model takeoff — {takeoff.MembersRead} members priced ({takeoff.UnitNote}).");
     Console.WriteLine($"Concrete: {e2kComputed.TotalConcreteVolume:N1} {vol}   Reinforcing: {e2kComputed.TotalRebarWeight:N0} {mass}   Formwork: {e2kComputed.TotalFormworkArea:N0} {areaUnit}");
     if (takeoff.OpeningAreaDeducted > 0)
         Console.WriteLine($"  {takeoff.OpeningAreaDeducted:N0} {areaUnit} of openings deducted from the slabs they are cut in.");

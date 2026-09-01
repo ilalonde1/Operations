@@ -167,6 +167,20 @@ which nobody had looked at. Built at the second instance it would have replaced 
 else, run it both ways and diff everything else. That applies well past this merge: a cut, a rename,
 a reorder, a unit change.
 
+⚠ **AND THE CHECK MUST STATE WHAT IT COVERS AND WHAT IT DOES NOT.** This rule has one failure mode
+and it bit immediately: naming the class wider than the check. The harness was called "everything
+the engineer can see" and was a site-model diff of placements, counts and the sheet ledger — no
+spans, no materials behind a section name, no workbook, and never the per-building deliverable it
+actually ships. A broad name on a narrow check is worse than no check, because the next person reads
+the name and stops looking.
+
+So every harness written under this rule carries, in its own summary: the properties it compares,
+the properties it does not, and at least one same-class fault it would NOT catch. If that list
+cannot be written, the class is still not understood.
+
+A differential also cannot see a fault present in BOTH runs. Where that matters, the harness is the
+second gate and an invariant on the finished file is the first.
+
 ## Environment facts worth not rediscovering
 
 - Rules live in `KorStandards` on `KOR-APP01\SQLEXPRESS`, schema `analysis`. A missing rule stops a

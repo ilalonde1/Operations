@@ -163,15 +163,19 @@ public static class E2kModelQuery
 
         double u = doc.LengthUnitInInches() ?? 1.0;
         var plan = doc.PlanPointsOfObjects();
-        var storeysOf = doc.StoreysByObject();
         var result = new List<(string, string, double)>();
 
+        // THE STOREY OF THIS ROW. A lift shaft does not stop at each slab — one opening object
+        // carries an assign on every floor it passes through, and the engineer's own 31065 has 359
+        // opening assigns from 25 objects. Reporting StoreysByObject()[obj][0] put every one of
+        // them on the lowest floor it happens to reach, which is where she is told the hole is.
+        //
+        // Same shape as the Sections fault above, found by the same question: the row already knew.
         foreach (var (obj, storeyOfRow, _, isOpening) in AreaSections(doc))
         {
             if (!isOpening) continue;
-            string storey = storeysOf.TryGetValue(obj, out var st) && st.Count > 0 ? st[0] : "(none)";
             double area = plan.TryGetValue(obj, out var pts) && pts.Count >= 3 ? PolygonAreaSqFt(pts, u) : 0;
-            result.Add((storey, obj, area));
+            result.Add((storeyOfRow, obj, area));
         }
 
         return result.OrderByDescending(x => x.Item3).ToList();

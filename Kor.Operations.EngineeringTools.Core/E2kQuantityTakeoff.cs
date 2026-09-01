@@ -23,7 +23,7 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
         IReadOnlyList<StructuralTakeoffInput> Inputs,
         IReadOnlyList<E2kResidual> Residual,
         IReadOnlyList<E2kTakeoffFlag> Flags,
-        int ObjectsRead,
+        int MembersRead,
         double OpeningAreaDeducted,
         UnitSystem Unit,
         string UnitNote);
