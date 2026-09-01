@@ -109,9 +109,19 @@ internal static class DxfFloodFillPlateDetector
             // as 1,942 vertices and C-LEVEL 3 as 1,084, against perhaps forty in the drawing. ETABS
             // is handed the staircase and meshes it, and no count in the report can see that.
             //
-            // Straightened at the rule, then CHECKED: an outline that loses real area under it is
-            // not simplified, it is different, so the straightening is kept only where area holds.
-            var straightened = LoopGeometry.Straighten(points, options.RecoveredOutlineTolerance);
+            // AND NEVER BELOW THE CELL IT WAS DRAWN ON. A trace cannot carry detail finer than the
+            // raster that made it, so straightening under one cell can only preserve the raster's
+            // own staircase -- which is what happened. The cell here is MinPanelOverlap / 2 = 6 in
+            // and the rule is 3 in, exactly half, so every 6 in step survived: 31168's LEVEL 2
+            // shipped with 67 segments of exactly 6.0 in alternating V, H, V, H along a diagonal
+            // edge. Andrea Neuviale sent a picture of it on 31 August -- a flight of stairs where
+            // the drawing has one straight line.
+            //
+            // Straightened at the rule or the cell, whichever is coarser, then CHECKED: an outline
+            // that loses real area under it is not simplified, it is different, so the straightening
+            // is kept only where area holds.
+            double straightenAt = Math.Max(options.RecoveredOutlineTolerance, pixelSize * 1.5);
+            var straightened = LoopGeometry.Straighten(points, straightenAt);
             if (straightened.Count >= 3)
             {
                 double before = Math.Abs(new PlanLoop("t", points, false).SignedArea);

@@ -31,6 +31,17 @@ public static class JobPublisher
         /// <summary>Where the model is written before it has passed. Nothing lands until it does.</summary>
         public required string StageFolder { get; init; }
 
+        /// <summary>
+        /// Storeys to leave out of EVERY building's model, on top of whatever the split already
+        /// drops. For a level the engineer says does not belong in ETABS at all.
+        ///
+        /// Andrea Neuviale, 31 August, on 31168: "since there is no structural slab at P3 (only a
+        /// slab on grade), this level doesn't need to exist in etabs. It can go straight from
+        /// 'base' to 'P2'." A slab on grade is carried by the ground, not by the frame, and a
+        /// storey modelled under it puts stiffness where the building has none.
+        /// </summary>
+        public IReadOnlyList<string> DropStoreys { get; init; } = Array.Empty<string>();
+
         /// <summary>Give a storey with members but no drawn floor one borrowed from its neighbour.</summary>
         public bool InferFloors { get; init; }
 
@@ -114,7 +125,10 @@ public static class JobPublisher
                 ReferenceE2k = referencePath,
                 OutputE2k = output,
                 TowerOnly = plan.Tower.Length == 0 ? null : plan.Tower,
-                DropStoreys = plan.DropStoreys,
+                DropStoreys = plan.DropStoreys
+                    .Concat(request.DropStoreys)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList(),
                 Compose = new ComposeOptions { InferMissingFloors = request.InferFloors },
             });
 
@@ -131,7 +145,10 @@ public static class JobPublisher
             // the engineer's own model is carried through into the output, and hers is not ours to
             // refuse: 31138 failed 514 checks, every one of them her work.
             var violations = ShippedModelInvariants.Check(
-                File.ReadLines(output), 0.05, plan.DropStoreys, File.ReadLines(referencePath),
+                File.ReadLines(output), 0.05,
+                plan.DropStoreys.Concat(request.DropStoreys)
+                    .Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
+                File.ReadLines(referencePath),
                 report.FoundationStoreys, File.ReadLines(reportPath), ModelQuestionnaire.TextLines(questionsPath));
 
             built.Add(new Built(label, output, report.Summary.Stories, report.Summary.Walls,

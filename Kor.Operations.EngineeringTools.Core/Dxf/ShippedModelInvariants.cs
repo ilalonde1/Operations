@@ -337,6 +337,42 @@ public static class ShippedModelInvariants
                     $"'{obj}' has an outline that doubles back along itself. ETABS refuses it and " +
                     "drops the object without naming it, so the model an engineer opens is missing " +
                     "this one", obj));
+
+            // A PLATE EDGE IS NOT A FLIGHT OF STAIRS.
+            //
+            // A floor recovered by rasterising linework carries the raster's own steps unless it is
+            // straightened, and straightening below the cell size cannot remove them. 31168's
+            // LEVEL 2 shipped with 67 segments of exactly 6.0 in alternating vertical, horizontal,
+            // vertical along one diagonal edge -- 114 vertices where the drawing has about twenty.
+            // Every count in the report was right. The engineer sent a picture of it.
+            //
+            // Deliberately blunt: a real outline does not spend a quarter of its edges on runs
+            // under a foot that alternate direction. Anything that does is a trace, not an outline.
+            if (complete && shape.Count >= 12)
+            {
+                int stairs = 0;
+                for (int i = 0; i < shape.Count; i++)
+                {
+                    var a = shape[i];
+                    var b = shape[(i + 1) % shape.Count];
+                    var c = shape[(i + 2) % shape.Count];
+
+                    double first = Math.Abs(b.X - a.X) + Math.Abs(b.Y - a.Y);
+                    double next = Math.Abs(c.X - b.X) + Math.Abs(c.Y - b.Y);
+                    if (first >= 12.0 || next >= 12.0) continue;
+
+                    bool firstFlat = Math.Abs(b.Y - a.Y) < 0.5;
+                    bool nextFlat = Math.Abs(c.Y - b.Y) < 0.5;
+                    if (firstFlat != nextFlat) stairs++;
+                }
+
+                if (stairs * 4 > shape.Count)
+                    v.Add(new ModelViolation("outline-is-a-raster-staircase",
+                        $"'{obj}' has {stairs} stair step(s) in a {shape.Count}-point outline — runs " +
+                        "under a foot alternating between horizontal and vertical. That is the shape of " +
+                        "the raster it was traced from, not the edge the drawing draws, and it is what " +
+                        "an engineer sees the moment the model is opened", obj));
+            }
         }
 
         // 4. A member must not belong to two storeys. A floor may -- that is a borrowed plate, and
@@ -347,9 +383,31 @@ public static class ShippedModelInvariants
             // is: a lift shaft does not stop at each slab. The engineer's own model does exactly
             // this -- 31065 carries 359 opening assigns from 25 objects, about fourteen storeys
             // each -- and a borrowed floor here now carries its holes with it for the same reason.
-            if (sts.Count > 1 && !floors.Contains(obj) && !openings.Contains(obj) && !carriedThrough.Contains(obj))
+            // WITHDRAWN FOR WALLS AND COLUMNS. It forbade the engineer's own convention.
+            //
+            // This was written from six spandrels that shipped 1.7 inches tall on a second storey,
+            // and it read the symptom as "assigned twice" when the fault was "1.7 inches tall".
+            // Andrea Neuviale's own 31138 model does the thing this refused, everywhere: 57 of its
+            // 87 columns carry an assign on 5.1 storeys each (C100, C102, C103 on nineteen), and
+            // 101 of its 247 area objects the same. That is how ETABS is given one label at full
+            // height with a separate member between each pair of floors — which is exactly what
+            // she asked for on 31 August: "Columns have to be broken down at every floor, from
+            // slab to slab", "same with walls", "the same label full height".
+            //
+            // Only this tool obeyed it, and obeying it is why a column was written spanning two
+            // storeys instead: the rule made the correct output illegal, so the composer worked
+            // around its own gate and shipped members running through the mezzanine.
+            //
+            // The real fault it was reaching for is a member no taller than a wafer, and
+            // ModelPlausibilityTests.NoColumnIsShorterThanAPerson measures that directly. A
+            // HEADER is still one member per storey -- a spandrel carries its own depth in its
+            // joints, so a second assign really is a second copy of it.
+            if (sts.Count > 1 && obj.StartsWith("KS", StringComparison.Ordinal)
+                && !floors.Contains(obj) && !openings.Contains(obj) && !carriedThrough.Contains(obj))
                 v.Add(new ModelViolation("member-on-two-storeys",
-                    $"'{obj}' is assigned to {sts.Count} storeys: {string.Join(", ", sts)}", obj));
+                    $"'{obj}' is a header assigned to {sts.Count} storeys: {string.Join(", ", sts)}. A header " +
+                    "carries its own depth in its joints, so a second assign is a second copy of it, not the " +
+                    "same one carried up", obj));
 
         // 5. A member must not sit on a storey belonging to a different building. On a site model
         //    the storey below A-LEVEL 35 is B-LEVEL 35, and six of tower B's headers landed on a

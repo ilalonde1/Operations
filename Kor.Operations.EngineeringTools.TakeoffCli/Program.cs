@@ -449,7 +449,7 @@ if (args.Length >= 1 && args[0].Equals("publish", StringComparison.OrdinalIgnore
 {
     if (args.Length < 4)
     {
-        Console.Error.WriteLine("Usage: takeoff publish <modelFolder> <dxfFolder> <job> [--reference <f.e2k>] [--rules-db <c>] [--infer-floors] [--stick-file <f.pdf>] [--annotated-dxf <folder>] [--stage <folder>] [--land]");
+        Console.Error.WriteLine("Usage: takeoff publish <modelFolder> <dxfFolder> <job> [--reference <f.e2k>] [--rules-db <c>] [--infer-floors] [--stick-file <f.pdf>] [--annotated-dxf <folder>] [--stage <folder>] [--drop-storeys <a,b,c>] [--land]");
         return 1;
     }
     if (!Directory.Exists(args[1])) { Console.Error.WriteLine($"Not found '{args[1]}'."); return 2; }
@@ -458,6 +458,7 @@ if (args.Length >= 1 && args[0].Equals("publish", StringComparison.OrdinalIgnore
     string? pubReference = null, pubRules = null, pubStick = null;
     string pubStage = Path.Combine(Path.GetTempPath(), $"kor-publish-{args[3]}");
     bool pubInfer = false, pubLand = false;
+    var pubDrop = new List<string>();
 
     for (int i = 4; i < args.Length; i++)
     {
@@ -466,6 +467,8 @@ if (args.Length >= 1 && args[0].Equals("publish", StringComparison.OrdinalIgnore
         else if (args[i].Equals("--stage", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) pubStage = args[++i];
         else if (args[i].Equals("--infer-floors", StringComparison.OrdinalIgnoreCase)) pubInfer = true;
         else if (args[i].Equals("--stick-file", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) pubStick = args[++i];
+        else if (args[i].Equals("--drop-storeys", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length)
+            pubDrop = args[++i].Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
         else if (args[i].Equals("--land", StringComparison.OrdinalIgnoreCase)) pubLand = true;
         else { Console.Error.WriteLine($"Unknown argument '{args[i]}'."); return 1; }
     }
@@ -480,6 +483,7 @@ if (args.Length >= 1 && args[0].Equals("publish", StringComparison.OrdinalIgnore
         StageFolder = pubStage,
         InferFloors = pubInfer,
         StickFilePdf = pubStick,
+        DropStoreys = pubDrop,
     });
 
     if (outcome.Refused is not null)
