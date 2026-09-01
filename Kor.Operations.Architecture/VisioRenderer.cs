@@ -84,6 +84,10 @@ public static class VisioRenderer
 
     public static RenderResult Render(ArchModel model, string outDir, bool keepVisioOpen = false)
     {
+        // FULL PATH, PLATFORM SEPARATORS. A root given with forward slashes survives Path.Combine as
+        // a mixed-separator path, which .NET is happy with and Visio is not — SaveAs comes back
+        // "Path not found" with no clue which path it means.
+        outDir = Path.GetFullPath(outDir);
         Directory.CreateDirectory(outDir);
         string vsdxPath = Path.Combine(outDir, "KOR-Application-Map.vsdx");
         var notes = new List<string>();

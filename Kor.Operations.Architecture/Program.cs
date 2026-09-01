@@ -34,8 +34,13 @@ public static class Program
     public static int Main(string[] rawArgs)
     {
         string root = ArgValue(rawArgs, "--root") ?? Directory.GetCurrentDirectory();
-        string outPath = ArgValue(rawArgs, "--out")
-                         ?? Path.Combine(root, "docs", "architecture", "architecture.json");
+
+        // `--out` IS A FOLDER — the one the numbered versions live under. It used to be the path of
+        // a 2.7 MB model JSON that got committed and rotted, which is exactly what a version folder
+        // replaces. The full model is written only when it is asked for by name, for debugging.
+        string versionRoot = ArgValue(rawArgs, "--out")
+                             ?? Path.Combine(root, "docs", "architecture");
+        string? modelJson = ArgValue(rawArgs, "--model-json");
 
         if (!Directory.Exists(root))
         {
@@ -45,10 +50,13 @@ public static class Program
 
         var model = Extractor.Extract(root);
 
-        Directory.CreateDirectory(Path.GetDirectoryName(outPath)!);
-        string json = JsonSerializer.Serialize(model, JsonOptions);
-        // Normalise the line ending so the committed file is stable whichever machine wrote it.
-        File.WriteAllText(outPath, json.ReplaceLineEndings("\n") + "\n", new UTF8Encoding(false));
+        if (modelJson is not null)
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(modelJson)!);
+            string json = JsonSerializer.Serialize(model, JsonOptions);
+            File.WriteAllText(modelJson, json.ReplaceLineEndings("\n") + "\n", new UTF8Encoding(false));
+            Console.WriteLine($"wrote {modelJson}");
+        }
 
         Console.WriteLine($"{model.Projects.Count} project(s), {model.Types.Count} type(s), " +
                           $"{model.Mentions.Count} mention edge(s), {model.Formats.Count} format edge(s), " +
@@ -57,12 +65,17 @@ public static class Program
                           $"{model.Stats.AmbiguousTypeNames} ambiguous type name(s) not linked");
         Console.WriteLine($"  {model.Scripts.Count} script(s) outside any project, " +
                           $"{model.Scripts.Count(s => s.ReferencedBy == 0)} referenced by nothing");
-        Console.WriteLine($"wrote {outPath}");
 
         if (Flag(rawArgs, "--model-only")) return 0;
 
-        // ---- DRAW IT ------------------------------------------------------------------------
-        string outDir = Path.GetDirectoryName(outPath)!;
+        // ---- DRAW IT, AS A NUMBERED VERSION -------------------------------------------------
+        // Every draw is kept beside the ones before it, and compared with the last, because the
+        // question after a week of work is not "what is this system" but "what changed".
+        var lastFolder = MapVersions.ExistingVersions(versionRoot).LastOrDefault();
+        MapSummary? previous = lastFolder.Folder is null ? null : MapVersions.Read(lastFolder.Folder);
+
+        var (version, outDir) = MapVersions.NextFolder(versionRoot);
+        Directory.CreateDirectory(outDir);
         Console.WriteLine();
         Console.WriteLine("rendering…");
 
@@ -81,10 +94,39 @@ public static class Program
 
         foreach (string note in render.Notes) Console.WriteLine("  " + note);
 
+        var summary = MapVersions.Summarise(model, root, version, DateTime.UtcNow);
+        MapVersions.Write(summary, outDir);
+        string changesPath = MapVersions.WriteChanges(outDir, summary, previous);
+
+        Console.WriteLine();
+        if (previous is null)
+        {
+            Console.WriteLine($"v{version:D3} — first version, nothing to compare against yet.");
+        }
+        else
+        {
+            var changes = MapVersions.Compare(previous, summary);
+            if (changes.Count == 0)
+            {
+                Console.WriteLine($"v{version:D3} — nothing changed since v{previous.Version:D3} ({previous.DrawnUtc}).");
+            }
+            else
+            {
+                Console.WriteLine($"v{version:D3} vs v{previous.Version:D3} ({previous.DrawnUtc}) — {changes.Count} change(s):");
+                string? section = null;
+                foreach (var c in changes)
+                {
+                    if (c.Section != section) { Console.WriteLine("  " + c.Section.ToUpperInvariant()); section = c.Section; }
+                    Console.WriteLine("    " + c.Detail);
+                }
+            }
+        }
+        Console.WriteLine($"  kept in {Path.GetFileName(outDir)}/{Path.GetFileName(changesPath)}");
+
         // ---- ONE COMMAND MEASURES EVERY DELIVERABLE -------------------------------------------
         Console.WriteLine();
         Console.WriteLine("wrote:");
-        var produced = new List<string> { outPath, render.VsdxPath };
+        var produced = new List<string> { render.VsdxPath };
         produced.AddRange(render.PngPaths);
 
         var bad = new List<string>();

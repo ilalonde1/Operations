@@ -81,20 +81,59 @@ namespace Kor.Operations.EngineeringTools.ArchitectureMap
 
             try
             {
+                // EVERY DRAW IS KEPT. The previous summary is read BEFORE this one is written, or
+                // the comparison would be against itself.
+                var previousFolder = MapVersions.ExistingVersions(output).LastOrDefault();
+                MapSummary? previous = previousFolder.Folder is null ? null : MapVersions.Read(previousFolder.Folder);
+
+                var (version, folder) = MapVersions.NextFolder(output);
+                DateTime drawnUtc = DateTime.UtcNow;
+
                 var result = await Task.Run(() =>
                 {
                     var model = Extractor.Extract(source);
-                    return (Model: model, Render: VisioRenderer.Render(model, output));
+                    Directory.CreateDirectory(folder);
+                    var render = VisioRenderer.Render(model, folder);
+                    var summary = MapVersions.Summarise(model, source, version, drawnUtc);
+                    MapVersions.Write(summary, folder);
+                    MapVersions.WriteChanges(folder, summary, previous);
+                    return (Model: model, Render: render, Summary: summary);
                 }).ConfigureAwait(true);
 
                 var m = result.Model;
-                Say($"{m.Projects.Count} projects · {m.Types.Count:N0} types · {m.Stats.Lines:N0} lines · " +
-                    $"{m.Verbs.Count} CLI verbs · {m.Scripts.Count} scripts · {m.Cycles.Count} dependency cycles");
+                Say($"v{version:D3} — {m.Projects.Count} projects · {m.Types.Count:N0} types · " +
+                    $"{m.Stats.Lines:N0} lines · {m.Verbs.Count} CLI verbs · {m.Scripts.Count} scripts · " +
+                    $"{m.Cycles.Count} dependency cycles");
                 foreach (string note in result.Render.Notes) Say("  " + note);
 
+                Say(string.Empty);
+                if (previous is null)
+                {
+                    Say("First version — nothing to compare against yet.");
+                }
+                else
+                {
+                    var changes = MapVersions.Compare(previous, result.Summary);
+                    if (changes.Count == 0)
+                    {
+                        Say($"Nothing changed since v{previous.Version:D3} ({previous.DrawnUtc}).");
+                    }
+                    else
+                    {
+                        Say($"Since v{previous.Version:D3} ({previous.DrawnUtc}) — {changes.Count} change(s):");
+                        string? section = null;
+                        foreach (var c in changes)
+                        {
+                            if (c.Section != section) { Say("  " + c.Section.ToUpperInvariant()); section = c.Section; }
+                            Say("    " + c.Detail);
+                        }
+                    }
+                }
+
                 _lastDrawn = result.Render.VsdxPath;
+                Say(string.Empty);
                 Say($"Wrote {_lastDrawn}");
-                StatusText.Text = $"{result.Render.PngPaths.Count} pages";
+                StatusText.Text = $"v{version:D3} · {result.Render.PngPaths.Count} pages";
                 OpenButton.IsEnabled = true;
             }
             catch (Exception ex) when (ex is InvalidOperationException or IOException
