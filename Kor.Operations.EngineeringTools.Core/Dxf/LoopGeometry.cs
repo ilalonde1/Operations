@@ -539,4 +539,53 @@ public static class LoopGeometry
         static double Side(DxfPoint a, DxfPoint b, DxfPoint c)
             => (b.X - a.X) * (c.Y - a.Y) - (b.Y - a.Y) * (c.X - a.X);
     }
+
+    /// <summary>
+    /// The part of a ring lying on one side of a line — Sutherland–Hodgman against a half-plane.
+    /// </summary>
+    /// <remarks>
+    /// For a floor recovered across a MATCH LINE. A plan too wide for one sheet is cut on that line
+    /// and drawn twice, and neither half closes a slab edge on its own — measured on 31168's level
+    /// 1, building C's half recovers no plate at all, because the edge runs off the page at the
+    /// seam and a flood fill escapes through it. The halves have to be read together.
+    ///
+    /// What comes back is one ring over both buildings. Cutting it at the seam is not a guess about
+    /// where a building ends: the seam is where the draftsman divided the drawing, and each half is
+    /// titled with the building it covers.
+    /// </remarks>
+    /// <param name="ring">The polygon to cut.</param>
+    /// <param name="on">A point on the cutting line.</param>
+    /// <param name="along">A second point on the cutting line.</param>
+    /// <param name="keep">Any point on the side to keep.</param>
+    public static List<DxfPoint> ClipToSideOf(
+        IReadOnlyList<DxfPoint> ring, DxfPoint on, DxfPoint along, DxfPoint keep)
+    {
+        if (ring.Count < 3) return ring.ToList();
+
+        double nx = -(along.Y - on.Y);
+        double ny = along.X - on.X;
+        if (Math.Abs(nx) < 1e-9 && Math.Abs(ny) < 1e-9) return ring.ToList();
+
+        double Where(DxfPoint p) => (p.X - on.X) * nx + (p.Y - on.Y) * ny;
+
+        double wanted = Where(keep);
+        if (Math.Abs(wanted) < 1e-9) return ring.ToList();
+        double sign = wanted > 0 ? 1.0 : -1.0;
+
+        var kept = new List<DxfPoint>();
+        for (int i = 0; i < ring.Count; i++)
+        {
+            var a = ring[i];
+            var b = ring[(i + 1) % ring.Count];
+            double da = Where(a) * sign, db = Where(b) * sign;
+
+            if (da >= 0) kept.Add(a);
+            if (da >= 0 == db >= 0) continue;
+
+            double t = da / (da - db);
+            kept.Add(new DxfPoint(a.X + (b.X - a.X) * t, a.Y + (b.Y - a.Y) * t));
+        }
+
+        return kept.Count >= 3 ? kept : ring.ToList();
+    }
 }

@@ -67,11 +67,19 @@ public class PlateReadTwiceTests
         Run(2400, 1800, 0, 1800, 4, -24);
         Run(0, 1800, 0, 0, 4, -24);
 
-        // The inner reading: three sides of a step drawn on the same floor, left open the way
-        // crossing linework leaves one open, with the thickness call-out that says it is slab.
+        // The inner reading: a step drawn on the same floor, its fourth side INTERRUPTED the way
+        // crossing linework interrupts one, with the thickness call-out that says it is slab.
+        //
+        // It was three sides with the fourth absent, which SlabChainJoinFraction now refuses --
+        // a join of 1,500 against 5,500 drawn is 27 per cent, the band where the tool would be
+        // inventing a slab edge rather than recovering one. Refused, the inner ring never reaches
+        // the rule this test is about. A 120 in interruption is 2 per cent and is what a real one
+        // looks like.
         segments.Add(new DxfSegment(SlabLayer, new DxfPoint(200, 150), new DxfPoint(2200, 150)));
         segments.Add(new DxfSegment(SlabLayer, new DxfPoint(2200, 150), new DxfPoint(2200, 1650)));
         segments.Add(new DxfSegment(SlabLayer, new DxfPoint(2200, 1650), new DxfPoint(200, 1650)));
+        segments.Add(new DxfSegment(SlabLayer, new DxfPoint(200, 1650), new DxfPoint(200, 960)));
+        segments.Add(new DxfSegment(SlabLayer, new DxfPoint(200, 840), new DxfPoint(200, 150)));
 
         var options = new PlanClassificationOptions
         {

@@ -245,6 +245,27 @@ public sealed record PlanClassificationOptions
     public double DashJoinGap { get; init; } = 14.0;
 
     /// <summary>
+    /// How much of a slab outline may be the tool's own join rather than the drawing's line, as a
+    /// fraction of the length the drawing draws. See `dxf.slab-chain-join-fraction`.
+    ///
+    /// A chain closed by joining its own two loose ends is closing an INTERRUPTION — a doorway, a
+    /// beam, a wall running over the edge. Measured across 31168's sheets these fall in two groups
+    /// with nothing between 8% and 17%: 1–8% where the drawing really is interrupted (61 and 62 in
+    /// at a wall, 287 and 355 where a beam crosses), and 17–48% where the join is a slab edge the
+    /// drawing never had (2,839 in across the site podium, 2,081 across level 1, 1,044 across the
+    /// mezzanine slab the engineer rejected). Ten per cent sits in the gap.
+    /// </summary>
+    public double SlabChainJoinFraction { get; init; } = 0.10;
+
+    /// <summary>
+    /// Layers carrying the match line a plan was split on. See `dxf.match-line-layer-patterns`.
+    ///
+    /// Read here so a slab edge that runs off the page at the seam can be closed along it: that
+    /// join is the line the cut removed, not one this tool invented, however long it is.
+    /// </summary>
+    public IReadOnlyList<string> MatchLineLayerPatterns { get; init; } = MatchLineSheetJoin.DefaultLayerPatterns;
+
+    /// <summary>
     /// How far an interrupted edge may be carried along its own direction to reach the corner
     /// it was cut at. Off by default, on the evidence: extending was expected to recover slab
     /// plates and does not. On 31138 it left floors at 14 (13 at longer reaches) while walls
@@ -361,6 +382,11 @@ public static class StructuralPlanClassifier
         options ??= new PlanClassificationOptions();
         var all = segments as IReadOnlyList<DxfSegment> ?? segments.ToList();
         segments = all;
+
+        // The line this sheet was cut on, if it was. A slab edge that runs off the page at a match
+        // line is closed along the seam rather than refused as an invented edge; see where
+        // SlabChainJoinFraction is applied.
+        var seam = MatchLineSheetJoin.SeamOf(all, options.MatchLineLayerPatterns);
 
         // Where the drawing used an arc or a circle. A loop standing on these points was drawn as
         // a curve, and that is the only sound basis for calling a column round.
@@ -500,11 +526,32 @@ public static class StructuralPlanClassifier
             // Exact continuity only: the borrowed pieces must meet the chain's loose ends within
             // the ordinary join tolerance, the same as any other corner. Nothing here bridges a
             // gap. See SlabEdgeClosure for the C-LEVEL 3 measurements this was built from.
-            if (role == RoleSlab && unroled.Count > 0 && stillOpen.Count > 0)
+            // AND A SLAB EDGE THAT FINISHES INTO A WALL IS STILL CLOSED.
+            //
+            // The borrowed set was layers with no structural role, which is where C-LEVEL 3's
+            // chamfer was. It is not where the YMCA mezzanine's is. There the drawing simply stops
+            // drawing a slab edge along the stretch a core wall stands on -- the wall face IS the
+            // edge there, and the draftsman does not draw the same line twice.
+            //
+            // Measured on that sheet: the left slab's right side is 340 in of 1,002 drawn, and the
+            // missing 662 is exactly where the core walls are. With no way to finish the ring the
+            // chain closed on itself, putting a 914 in diagonal through the building -- while the
+            // longest angled slab-edge segment anywhere on the sheet is 28.6 in, a stair nosing.
+            // Nothing on that drawing runs at an angle, so the diagonal was invented whole.
+            //
+            // Safe for the same reason the original is: EXACT continuity only. The borrowed pieces
+            // must meet the loose ends within the ordinary join tolerance and a closure may use no
+            // more than a corner or two of them. A wall standing in the middle of a floor is not
+            // touched by any of this -- it meets no loose end, so it is never borrowed.
+            var canFinishAnEdge = role == RoleSlab
+                ? unroled.Concat(prepared.Where(x => x.Role == RoleWall).Select(x => x.Segment)).ToList()
+                : unroled;
+
+            if (role == RoleSlab && canFinishAnEdge.Count > 0 && stillOpen.Count > 0)
             {
                 foreach (var chain in stillOpen.ToList())
                 {
-                    var closed = SlabEdgeClosure.Close(chain, unroled, options.JoinTolerance);
+                    var closed = SlabEdgeClosure.Close(chain, canFinishAnEdge, options.JoinTolerance);
                     if (closed is null) continue;
                     if (!SlabEdgeClosure.IsUsable(closed.Ring, options.MinWallThickness)) continue;
 
@@ -746,6 +793,66 @@ public static class StructuralPlanClassifier
                         continue;
                     }
 
+                    // AND THE JOIN MUST BE AN INTERRUPTION, NOT AN EDGE.
+                    //
+                    // This pass exists because "the drawing leaves it open where other linework
+                    // crosses it" -- a doorway, a beam, a wall running over the edge. That is tens
+                    // of inches. It was closing 31168's ground floor across 2,081 in, and the site
+                    // podium across 2,839, which is not closing an interruption: it is drawing a
+                    // new slab edge two hundred feet long and calling it the engineer's.
+                    //
+                    // Judged against how much of the ring the DRAWING drew, because a long building
+                    // legitimately has longer interruptions than a small one. Every closure on
+                    // 31168 falls in one of two groups with nothing in between:
+                    //
+                    //     48% 47% 39% 34% 28% 20% 17%   invented -- 2,839 in across the podium,
+                    //                                   2,081 across level 1, 1,044 across the
+                    //                                   mezzanine slab the engineer rejected
+                    //     ── nothing between 8% and 17% ──
+                    //      8%  6%  5%  2%  1%           real -- 61 and 62 in at a wall, 287 and
+                    //                                   355 where a beam crosses the edge
+                    //
+                    // Ten per cent sits in that gap. Refused, never silent: the region is named
+                    // with its own numbers so the engineer can say "that one is a floor" and be
+                    // believed from then on.
+                    double joinAcross = chain[0].DistanceTo(chain[^1]);
+                    double drawnAlong = 0;
+                    for (int i = 1; i < chain.Count; i++) drawnAlong += chain[i - 1].DistanceTo(chain[i]);
+
+                    // EXCEPT ALONG A MATCH LINE, WHERE THE DRAWING REALLY DOES STOP.
+                    //
+                    // A plan too wide for one sheet is cut on a match line and the slab edge runs
+                    // off the page there. Both loose ends land on the seam, and the join between
+                    // them is not an invention: it is the line the cut removed, and it is long
+                    // because the building is wide.
+                    //
+                    // 31168's LEVEL 1 is the case. Building C's half closes across 2,081 in -- 47
+                    // per cent of its ring -- and that join lies along the seam. Refusing it leaves
+                    // the storey with nothing but the whole site's podium, which is the fault this
+                    // was all trying to fix.
+                    //
+                    // Both ends, not one: a chain that merely touches the seam somewhere has not
+                    // been cut by it.
+                    bool alongTheSeam = false;
+                    if (seam is not null)
+                    {
+                        double slack = Math.Max(options.JoinTolerance, options.FloodFillBridge);
+                        alongTheSeam =
+                            LoopGeometry.DistanceToSegment(chain[0], seam.Start, seam.End) <= slack &&
+                            LoopGeometry.DistanceToSegment(chain[^1], seam.Start, seam.End) <= slack;
+                    }
+
+                    if (!alongTheSeam && drawnAlong > 0 && joinAcross > drawnAlong * options.SlabChainJoinFraction)
+                    {
+                        Refused(ring, $"closed only by joining its two loose ends across {joinAcross:N0} in " +
+                                      $"against the {drawnAlong:N0} in the drawing draws " +
+                                      $"({joinAcross / drawnAlong:P0} of the ring, over the " +
+                                      $"{options.SlabChainJoinFraction:P0} an interruption takes) — that is a " +
+                                      "slab edge this tool would be inventing, not one the drawing leaves open " +
+                                      "where something crosses it");
+                        continue;
+                    }
+
                     var says = result.Tags.FirstOrDefault(t =>
                         SlabThicknessCallout.MatchNumberFirstText(t.Text).Any() &&
                         LoopGeometry.PointInPolygon(t.Point, ring.Points));
@@ -801,10 +908,25 @@ public static class StructuralPlanClassifier
                     chainRings.Add(ring);
                     chainClosedCount++;
 
+                    // HOW FAR IT REACHED, AND WHERE. "Closed by joining its own two loose ends"
+                    // does not say whether that was a six-inch interruption at a doorway or a
+                    // seventy-foot line drawn across the building, and those are not the same
+                    // claim. The edge she is asked to check is THIS one; naming it is the
+                    // difference between a note and something she can act on.
+                    double reach = chain[0].DistanceTo(chain[^1]);
+                    double drawn = 0;
+                    for (int i = 1; i < chain.Count; i++) drawn += chain[i - 1].DistanceTo(chain[i]);
+                    var midway = new DxfPoint((chain[0].X + chain[^1].X) / 2, (chain[0].Y + chain[^1].Y) / 2);
+                    string across =
+                        $" The join runs {reach:N0} in against {drawn:N0} in the drawing draws " +
+                        $"({(drawn > 0 ? reach / drawn : 0):P0} of the ring), from " +
+                        $"({chain[^1].X / 12:0}, {chain[^1].Y / 12:0}) ft to ({chain[0].X / 12:0}, " +
+                        $"{chain[0].Y / 12:0}) ft, crossing ({midway.X / 12:0}, {midway.Y / 12:0}) ft.";
+
                     // Never silently, and now with the reason. An engineer checking this model is
                     // entitled to know which of her floors this tool inferred, which it read, and
                     // which word on her own drawing it believed.
-                    result.Flags.Add(says is not null
+                    result.Flags.Add((says is not null
                         ? $"{layer}: a slab outline of {ring.Area / 144:N0} sq ft was closed by joining " +
                           "its own two loose ends — the drawing leaves it open where other linework " +
                           $"crosses it — and modelled as floor because \"{says.Text}\" is printed " +
@@ -813,7 +935,8 @@ public static class StructuralPlanClassifier
                           "its own two loose ends, and modelled as floor at this sheet's own field " +
                           $"thickness — \"{sheetSays.Text}\", printed elsewhere on the sheet rather than " +
                           "inside this outline. INHERITED, not read: a drafter writes the field slab " +
-                          "thickness once on a plan. Recovered geometry: check the edge and the thickness.");
+                          "thickness once on a plan. Recovered geometry: check the edge and the thickness.")
+                        + across);
                 }
             }
 

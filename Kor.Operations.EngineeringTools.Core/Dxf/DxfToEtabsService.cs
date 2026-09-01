@@ -305,6 +305,7 @@ public static class DxfToEtabsService
         "dxf.slab-callout-max-thickness",
         "dxf.ring-on-plate-edge-fraction",
         "dxf.recovered-outline-tolerance",
+        "dxf.slab-chain-join-fraction",
         "dxf.storeys-at-one-level-gap",
         "dxf.same-ground-area-tolerance",
         "dxf.same-ground-centre-tolerance",
@@ -384,6 +385,7 @@ public static class DxfToEtabsService
             ["dxf.slab-callout-max-thickness"] = classification.SlabCalloutMaxThickness,
             ["dxf.ring-on-plate-edge-fraction"] = classification.RingOnPlateEdgeFraction,
             ["dxf.recovered-outline-tolerance"] = classification.RecoveredOutlineTolerance,
+            ["dxf.slab-chain-join-fraction"] = classification.SlabChainJoinFraction,
             ["dxf.storeys-at-one-level-gap"] = compose.StoreysAtOneLevelGap,
             ["dxf.same-ground-area-tolerance"] = compose.SameGroundAreaTolerance,
             ["dxf.same-ground-centre-tolerance"] = compose.SameGroundCentreTolerance,
@@ -444,6 +446,7 @@ public static class DxfToEtabsService
             SlabCalloutMaxThickness = settings.ValueOr("dxf.slab-callout-max-thickness", options.SlabCalloutMaxThickness),
             RingOnPlateEdgeFraction = settings.ValueOr("dxf.ring-on-plate-edge-fraction", options.RingOnPlateEdgeFraction),
             RecoveredOutlineTolerance = settings.ValueOr("dxf.recovered-outline-tolerance", options.RecoveredOutlineTolerance),
+            SlabChainJoinFraction = settings.ValueOr("dxf.slab-chain-join-fraction", options.SlabChainJoinFraction),
         };
 
     /// <summary>
@@ -819,49 +822,38 @@ public static class DxfToEtabsService
                 .Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
             StringComparer.OrdinalIgnoreCase);
 
+        string? seamClipFor = null;
+
         var joinable = joinStoreys.Count == 0
             ? new List<string>()
             : files.Where(f => storeysOfSheet[f].Any(s =>
                   joinStoreys.Any(j => s.Contains(j, StringComparison.OrdinalIgnoreCase)))).ToList();
 
-        // A JOIN IS NOT REVERSIBLE BY A LATER CUT, SO IT MAY NOT CROSS A BUILDING THIS MODEL IS NOT.
+        // A JOIN IS NOT REVERSIBLE BY A LATER CUT, SO THE PLATE IT MAKES IS CUT AT THE SEAM.
         //
         // "Compose the site once, cut after" holds for members: every one carries the sheet it was
-        // drawn on, so the cut can put it back. It does not hold for a plate recovered by flood fill
-        // across two joined halves -- that plate is ONE ring over the whole site and there is
-        // nothing left in it to say where one half ended.
+        // drawn on, so the cut can put it back. It does not hold for a plate recovered across two
+        // joined halves -- that plate is ONE ring over the whole site with nothing left in it to
+        // say where one half ended.
         //
-        // 31168 LEVEL 1 is drafted in halves: "...- BLDG C" and "...- WEST". Joined, the fill
-        // recovers 73,776 sq ft -- the entire podium -- and the group LEADER is the BLDG C sheet, so
-        // the whole site is stamped as building C's and the building cut keeps it by its own correct
+        // 31168 LEVEL 1 is drafted in halves, "...- BLDG C" and "...- WEST". Joined, the fill
+        // recovers 73,776 sq ft -- the entire podium -- and the group LEADER is the BLDG C sheet,
+        // so the site is stamped building C's and the building cut keeps it by its own correct
         // rule. That is the engineer's "at L1 it is going past the basement walls": her YMCA model
-        // carried a 4050 x 2856 in ground floor over a building whose own floors are 14,988 sq ft.
+        // carried a 4,050 x 2,856 in ground floor over a building whose own floors are 14,988.
         //
-        // Read alone, C's half recovers 11,026 sq ft, which is the right floor -- measured, not
-        // assumed: that is exactly what --bldg C produces, and --bldg filters these sheets out.
+        // NOT JOINING THE OTHER HALF WAS TRIED AND IS WRONG. Measured on C's half alone: the flood
+        // fill recovers NO plate at all, because the slab edge runs off the page at the seam and
+        // the fill escapes through it, and the chain pass closes the ring by inventing a 2,081 in
+        // edge -- 47 per cent of the ring, on a sheet whose longest drawn diagonal is 28.6 in.
+        // Neither half closes a floor on its own; that is what the match line means.
         //
-        // So a half-sheet drawn for another building is not joined into a model being cut to this
-        // one. Narrow on purpose: only sheets that NAME buildings, none of them this one, are held
-        // back. A sheet naming nobody still joins, because the parkade is drafted once for the site
-        // and dropping untagged geometry cost the YMCA 66 walls and 108 columns the first time.
-        if (request.TowerOnly is { } joiningFor)
+        // So the halves are joined, and the plate the join produces is clipped at the seam to the
+        // side this building's own sheet is drawn on. Members are untouched: they carry their
+        // sheet and the ordinary building cut still decides them.
+        if (request.TowerOnly is { } clipFor)
         {
-            var heldBack = joinable
-                .Where(f => sheetInfoByFile[f].BuildingTags.Count > 0
-                            && !sheetInfoByFile[f].BuildingTags.Contains(joiningFor, StringComparer.OrdinalIgnoreCase))
-                .ToList();
-
-            if (heldBack.Count > 0)
-            {
-                joinable = joinable.Except(heldBack, StringComparer.OrdinalIgnoreCase).ToList();
-                warnings.Add(
-                    $"{heldBack.Count} half-sheet(s) drawn for another building were not joined into this " +
-                    $"model of building {joiningFor}: {string.Join(", ", heldBack.Select(Path.GetFileName))}. " +
-                    "A drawing split on a match line is read as one plan, and a floor plate recovered across " +
-                    "the seam is one ring over both halves that no later cut can divide — which is how a " +
-                    "one-building model came to carry the whole site's ground floor. Each half is still read " +
-                    "on its own, for the building it names.");
-            }
+            seamClipFor = clipFor;
         }
 
         // EVERY SHEET IS READ ONCE, HERE, BEFORE ANY OF IT IS CLASSIFIED.
@@ -1016,7 +1008,86 @@ public static class DxfToEtabsService
                 if (slabCounts.TryGetValue(storey, out int n)) { expected = n; break; }
 
             var geometry = StructuralPlanClassifier.Classify(
-                segments, classification with { ExpectedSlabCount = expected }, sheet, tags);
+                segments,
+                classification with { ExpectedSlabCount = expected, MatchLineLayerPatterns = matchLineLayers },
+                sheet,
+                tags);
+
+            // THE PLATE A JOIN MADE IS CUT BACK AT THE SEAM.
+            //
+            // Only where this plan was actually joined from halves that name different buildings,
+            // and only for a model of ONE building. The side kept is the side this building's own
+            // half-sheet is drawn on, taken from that sheet's own linework rather than assumed.
+            if (seamClipFor is not null
+                && partnersOf.TryGetValue(file, out var seamPartners)
+                && seamPartners.Count > 0
+                && geometry.Slabs.Count > 0)
+            {
+                var mine = new[] { file }.Concat(seamPartners)
+                    .FirstOrDefault(f => sheetInfoByFile[f].BuildingTags
+                        .Contains(seamClipFor, StringComparer.OrdinalIgnoreCase));
+
+                var seam = MatchLineSheetJoin.SeamOf(segmentsOf[file], matchLineLayers);
+
+                if (mine is not null && seam is not null && segmentsOf[mine].Count > 0)
+                {
+                    var here = segmentsOf[mine];
+                    var anchor = new DxfPoint(
+                        here.Average(s => (s.Start.X + s.End.X) / 2),
+                        here.Average(s => (s.Start.Y + s.End.Y) / 2));
+
+                    int cut = 0;
+                    for (int i = 0; i < geometry.Slabs.Count; i++)
+                    {
+                        var slab = geometry.Slabs[i];
+                        var trimmed = LoopGeometry.ClipToSideOf(slab.Points, seam.Start, seam.End, anchor);
+                        if (trimmed.Count < 3 || Math.Abs(trimmed.Count - slab.Points.Count) == 0) continue;
+
+                        var reshaped = new PlanLoop(slab.Layer, trimmed, closedExactly: false)
+                        {
+                            ThicknessInchesFromTag = slab.ThicknessInchesFromTag,
+                        };
+                        if (reshaped.Area < classification.MinPlateArea) continue;
+
+                        geometry.Slabs[i] = reshaped;
+                        cut++;
+                    }
+
+                    // AND THE MEMBERS ON THE OTHER HALF GO WITH IT.
+                    //
+                    // The two halves are read as one plan, so every member on it is attributed to
+                    // the sheet that LEADS the group -- which is this building's. That is how a
+                    // model of the YMCA came to carry 147 walls and 153 columns belonging to the
+                    // towers: not because the cut failed, but because the join told it they were
+                    // building C's.
+                    //
+                    // Position decides only here, and only because the drawing decided first: the
+                    // seam is the line the draftsman divided his own drawing on. Everywhere else in
+                    // this tool position is the weakest evidence there is and gets a say only where
+                    // the drawings are silent -- dropping untagged members by position once cost
+                    // the YMCA 66 walls and 108 columns.
+                    double SideOf(DxfPoint p) =>
+                        (p.X - seam.Start.X) * -(seam.End.Y - seam.Start.Y) +
+                        (p.Y - seam.Start.Y) * (seam.End.X - seam.Start.X);
+
+                    double keepSide = SideOf(anchor);
+                    bool Ours(DxfPoint p) => keepSide >= 0 ? SideOf(p) >= 0 : SideOf(p) <= 0;
+
+                    int wallsAway = geometry.Walls.RemoveAll(w =>
+                        !Ours(new DxfPoint((w.Start.X + w.End.X) / 2, (w.Start.Y + w.End.Y) / 2)));
+                    int columnsAway = geometry.Columns.RemoveAll(c => !Ours(c.Center));
+
+                    if (cut > 0 || wallsAway > 0 || columnsAway > 0)
+                        warnings.Add(
+                            $"{Path.GetFileName(file)}: {cut} floor plate(s) were cut back at the match line, " +
+                            $"and {wallsAway} wall(s) and {columnsAway} column(s) on the far side of it were " +
+                            $"left out, for a model of building {seamClipFor}. A plan too wide for one sheet " +
+                            "is read as one — neither half closes a slab edge alone — so everything on it " +
+                            "would otherwise be attributed to the half that leads the pair. The seam is where " +
+                            "the draftsman divided the drawing, and each half is titled with the building it " +
+                            "covers.");
+                }
+            }
 
             // WITHDRAWN. Admitting the largest region her count was short by looked right and was
             // wrong twice over.

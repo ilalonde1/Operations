@@ -37,6 +37,11 @@ public class RulesTravelBetweenUnitsTests
         ["PierFillRatio"] = "a ratio",
         ["DoubledEdgeParallelRatio"] = "a ratio",
         ["DoubledEdgeCoverage"] = "a fraction of an area",
+        ["SlabChainJoinFraction"] = "a fraction of a length, not a length — the join is judged " +
+                                    "against the ring it closes, so both sides carry the unit and " +
+                                    "it cancels. That is why it is a fraction and not a distance: " +
+                                    "355 in is an interruption on a 6,883 in ring and an invention " +
+                                    "on a 2,504 in one, in inches or millimetres alike",
         ["MinFloorCoverage"] = "a fraction of an area",
         ["DonorPlateLikenessMargin"] = "a ratio",
         ["OffsetX"] = "a position in the drawing's own units, applied after conversion",

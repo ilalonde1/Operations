@@ -17,15 +17,23 @@ public class TagGatedSlabRecoveryTests
     private const string ColumnLayer = "JBP_V_COL";
 
     /// <summary>
-    /// A slab edge drawn as an open chain: three sides of a rectangle, the fourth left out the
-    /// way crossing linework leaves one out on a real sheet.
+    /// A slab edge drawn as an open chain: all four sides, with the fourth INTERRUPTED the way
+    /// crossing linework interrupts one on a real sheet.
+    ///
+    /// It used to omit the fourth side entirely, which is a different thing and not what this pass
+    /// is for. Measured across 31168, every closure the drawing really leaves open is 1 to 8 per
+    /// cent of its ring; a whole missing side is 27, in the band where the join is a slab edge the
+    /// tool invents. SlabChainJoinFraction refuses that now, so the fixture says what its own
+    /// summary always said.
     /// </summary>
-    private static List<DxfSegment> OpenSlabOutline(double w = 1200, double h = 900)
+    private static List<DxfSegment> OpenSlabOutline(double w = 1200, double h = 900, double gap = 120)
         => new()
         {
             new DxfSegment(SlabLayer, new DxfPoint(0, 0), new DxfPoint(w, 0)),
             new DxfSegment(SlabLayer, new DxfPoint(w, 0), new DxfPoint(w, h)),
             new DxfSegment(SlabLayer, new DxfPoint(w, h), new DxfPoint(0, h)),
+            new DxfSegment(SlabLayer, new DxfPoint(0, h), new DxfPoint(0, h / 2 + gap / 2)),
+            new DxfSegment(SlabLayer, new DxfPoint(0, h / 2 - gap / 2), new DxfPoint(0, 0)),
         };
 
     private static PlanClassificationOptions Options() => new()
