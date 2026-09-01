@@ -264,6 +264,23 @@ one ring through its own edge"*, another is *"recovered by flood-filling"*.
 is *"not placed"* because **her own reference model has no `LEVEL P1 MEZZ` storey** — it carries
 only `LEVEL 1 MEZZ`. That half is a question for her, with the evidence attached.
 
+⭐ **The strongest lead, not yet acted on: it is the SAME join mechanism as A5.** Building C's own
+mezzanine sheet closes ONE substantial chain — 1,857 sq ft, and nothing else over 500 — yet
+`LEVEL 1 MEZZ` ships 2,754 + 2,330 + 1,098. The report has both the whole-site
+`LEVEL 1 PLAN MEZZ - CONCRETE OUTLINE.dxf` and `S2.12.1_1_… - BLDG C.dxf` quoting the SAME 2,754
+sq ft, which is what two sheets read as one plan look like. The A5 fix does not reach it because the
+whole-site sheet names NOBODY, and untagged sheets are deliberately still joined — that exemption
+exists to protect the parkade, which is drafted once for the site. Whether an untagged sheet should
+also be held back on a storey the building draws for itself is the open question.
+
+⛔ **FALSIFIED, do not retry: closing an open chain orthogonally.** The reasoning was that every
+slab edge on the mezzanine sheet is drawn square, so an invented diagonal closure must be wrong.
+`LoopGeometry.CloseAsDrawn` turned the closing gap through a corner instead of cutting across it.
+It did NOT move the mezzanine at all, and it BROKE level 1: the correct single 11,026 sq ft plate
+became two of 7,048 + 4,603, because **building C's north edge really is diagonal** — visible on
+`S2.10.1_1_LEVEL 1 PLAN - CONCRETE OUTLINE - BLDG C.dxf`. The premise "this drawing is square" is
+false, and squaring a real diagonal is worse than the fault it was aimed at.
+
 **A7. "Different slab thicknesses, this complexity is not reflected."** L3 prints 60 call-outs
 across 11 thicknesses, L2 prints 22 across 8; one plate at one thickness is modelled. The attempt is
 stashed and needs the full nesting tree from every closed ring rather than a branch on the opening
