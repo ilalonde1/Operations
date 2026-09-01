@@ -154,24 +154,31 @@ public static class PublishExplainers
         return new PublishExplainersResult(copy, Array.Empty<string>(), Array.Empty<string>(), null);
     }
 
-    // The delivery pipeline, as opposed to the code that decides what a model SAYS. These files
-    // find the job folder, build the summary page, gate these very explainers and copy files; none
-    // of them can change a count, an outline or a storey. They are excluded so that changing them
-    // does not declare the explainers stale.
+    // Files that only RENDER or GATE, never SELECT or BUILD. Nothing here can change a count, an
+    // outline or a storey, so changing one does not make an explainer's description of the tool out
+    // of date.
     //
     // This distinction only became necessary on 31 August, when publishing moved out of
     // tools\Publish-EtabsModel.ps1 and into this folder. Before that the publisher sat outside the
-    // watched directory and the question never arose. Excluding them keeps the gate meaning what it
-    // was written to mean; leaving them in would have fired it on every publish change, and a gate
-    // that cries wolf is one people learn to re-render past without reading.
+    // watched directory and the question never arose. Without some exclusion the gate fires on every
+    // publish change, and a gate that cries wolf is one people learn to re-render past without
+    // reading.
     //
-    // ⚠ If model-building logic is ever added to one of these, take it back out of this list. The
-    // claims gate below still checks every stated number against the model either way.
+    // ⚠ THE LINE IS "SELECTS OR BUILDS", AND IT IS DRAWN TIGHTLY ON PURPOSE. The first version of
+    // this list also held JobPublisher, PublishDiscovery and PublishPlan, and all three were wrong:
+    //
+    //   PublishPlan.ForBuildings computes each building's DROP-STOREY list from storey extents,
+    //     which is a direct decision about what is in the model.
+    //   PublishDiscovery chooses the reference and the DXF folder -- different inputs, different
+    //     model, from an unchanged command line.
+    //   JobPublisher assembles the generation request itself.
+    //
+    // A file that decides which storeys, which drawings or which reference belongs in the WATCHED
+    // set, however much it looks like plumbing. When in doubt, leave it out of this list: the cost
+    // is re-rendering two PDFs, and the cost of the other mistake is a stale document shipping to an
+    // engineer beside a model it no longer describes.
     internal static readonly string[] DeliveryPipelineFiles =
     {
-        "JobPublisher.cs",
-        "PublishPlan.cs",
-        "PublishDiscovery.cs",
         "PublishSummary.cs",
         "PublishExplainers.cs",
         "PublishExternalTools.cs",

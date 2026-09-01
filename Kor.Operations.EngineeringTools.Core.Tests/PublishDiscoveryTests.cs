@@ -65,6 +65,34 @@ public class PublishDiscoveryTests
         Assert.Equal(1, contents.PlatesByStorey.Count);
     }
 
+    // The projects root holds a bucket per sector and discovery walks all of them. On a share any
+    // one can refuse -- a permission this account does not hold, a folder mid-rename, a
+    // reconnecting mount. Unguarded that throws out of the whole walk and the publish fails before
+    // reading a drawing, for a condition in a bucket the job is not even in. The PowerShell this
+    // was ported from searched each child with -ErrorAction SilentlyContinue for this reason.
+    [Fact]
+    public void AProjectBucketThatWillNotEnumerateIsSkippedRatherThanThrown()
+    {
+        string unreadable = Path.Combine(NewFolder(), "no-such-bucket");
+
+        var found = PublishDiscovery.SafeChildren("31168")(unreadable);
+
+        Assert.Empty(found);
+    }
+
+    [Fact]
+    public void AReadableBucketStillReturnsItsMatchingJobs()
+    {
+        string bucket = NewFolder();
+        Directory.CreateDirectory(Path.Combine(bucket, "31168-01 (YMCA Langara Vancouver)"));
+        Directory.CreateDirectory(Path.Combine(bucket, "31138-01 (2170 W 1st)"));
+
+        var found = PublishDiscovery.SafeChildren("31168")(bucket).ToList();
+
+        Assert.Single(found);
+        Assert.EndsWith("31168-01 (YMCA Langara Vancouver)", found[0], StringComparison.Ordinal);
+    }
+
     private static string NewFolder()
     {
         string folder = Path.Combine(Path.GetTempPath(), "kor-publish-tests", Guid.NewGuid().ToString("N"));

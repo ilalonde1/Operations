@@ -550,7 +550,14 @@ if (args.Length >= 1 && args[0].Equals("publish", StringComparison.OrdinalIgnore
         Console.WriteLine($"{one.Label}");
         Console.WriteLine($"  storeys {one.Storeys}   walls {one.Walls}   columns {one.Columns}   floors {one.Floors}");
         if (one.SummaryPdfPath is not null)
-            Console.WriteLine($"  summary: {Path.GetFileName(one.SummaryPdfPath)}");
+        {
+            // Say what the one-page rule cost, because what it drops is dropped from the note an
+            // engineer reads. Silent on a clean run; nobody needs "trimmed 0".
+            string trimmed = one.SummaryFindingsTrimmed > 0
+                ? $" ({one.SummaryFindingsShown} finding(s) shown, {one.SummaryFindingsTrimmed} trimmed to hold one page)"
+                : string.Empty;
+            Console.WriteLine($"  summary: {Path.GetFileName(one.SummaryPdfPath)}{trimmed}");
+        }
 
         if (one.Passed)
         {

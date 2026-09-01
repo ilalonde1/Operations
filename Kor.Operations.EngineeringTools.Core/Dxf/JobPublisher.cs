@@ -41,6 +41,12 @@ public static class JobPublisher
         string? ReportPath = null,
         string? QuestionsPath = null,
         string? SummaryPdfPath = null,
+        // What the one-page rule cost this run. The summary shortens its findings list 8/6/4/3/2
+        // until the page fits, and whatever it drops is dropped from the covering note an engineer
+        // reads. The PDF says so itself, but the person running the publish should not have to open
+        // it to find out -- the script printed this and the port stopped.
+        int SummaryFindingsShown = 0,
+        int SummaryFindingsTrimmed = 0,
         DxfToEtabsReport? Report = null)
     {
         public IReadOnlyList<ModelViolation> BlockingViolations
@@ -164,7 +170,12 @@ public static class JobPublisher
                 var summary = PublishSummary.Write(new PublishSummaryRequest(
                     request.Project, one.Label, discovery.DxfFolder, discovery.Reference,
                     one.Report, one.ReportPath, one.QuestionsPath, stage, Path.GetTempPath(), tools));
-                built[i] = one with { SummaryPdfPath = summary.PdfPath };
+                built[i] = one with
+                {
+                    SummaryPdfPath = summary.PdfPath,
+                    SummaryFindingsShown = summary.FindingsShown,
+                    SummaryFindingsTrimmed = summary.TrimmedAway,
+                };
             }
             catch (Exception ex)
             {

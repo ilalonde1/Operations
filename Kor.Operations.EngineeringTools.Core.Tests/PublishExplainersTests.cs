@@ -67,10 +67,31 @@ public class PublishExplainersTests
         Assert.Contains("KOR-DxfToEtabs-web.pdf", result.Refused!, StringComparison.Ordinal);
     }
 
-    // ...but publishing moved into that same folder on 31 August, and finding a job folder or
-    // copying a PDF cannot change a count, an outline or a storey. Before the port these files were
-    // PowerShell, outside the watched directory. A gate that fires on them is one people re-render
-    // past without reading, which is how it stops catching the thing it was written for.
+    // A file that decides which storeys, which drawings or which reference is in the model belongs
+    // in the watched set however much it looks like plumbing. PublishPlan computes drop-storeys,
+    // PublishDiscovery picks the reference, JobPublisher assembles the generation request -- all
+    // three were wrongly excluded when this list was first written.
+    [Theory]
+    [InlineData("PublishPlan.cs")]
+    [InlineData("PublishDiscovery.cs")]
+    [InlineData("JobPublisher.cs")]
+    public void AFileThatDecidesWhatIsInTheModelIsNotDeliveryPlumbing(string fileName)
+    {
+        Assert.DoesNotContain(fileName, PublishExplainers.DeliveryPipelineFiles, StringComparer.OrdinalIgnoreCase);
+
+        string repo = NewRepoWithDossierNaming31168(out string modelFolder);
+        TouchSource(repo, fileName, DateTime.Now);
+
+        var result = Evaluate(repo, modelFolder);
+
+        Assert.NotNull(result.Refused);
+        Assert.Contains("STALE", result.Refused!, StringComparison.Ordinal);
+    }
+
+    // ...but rendering a summary page or gating these very explainers cannot change a count, an
+    // outline or a storey. Before the port these files were PowerShell, outside the watched
+    // directory. A gate that fires on them is one people re-render past without reading, which is
+    // how it stops catching the thing it was written for.
     [Fact]
     public void ChangingTheDeliveryPipelineDoesNotMakeTheExplainersStale()
     {

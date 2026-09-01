@@ -54,8 +54,18 @@ public static class PublishDiscovery
         if (!Directory.Exists(projectsRoot))
             throw new DirectoryNotFoundException($"Projects root not found '{projectsRoot}'.");
 
+        // ONE UNREADABLE BUCKET MUST NOT HIDE A JOB IN THE NEXT ONE.
+        //
+        // The projects root holds a bucket per sector and the enumeration walks all of them. On a
+        // share, any one can refuse: a permission this account does not hold, a folder mid-rename,
+        // a reconnecting mount. Unguarded, that throws out of the whole SelectMany and the publish
+        // fails before it has read a drawing -- for a condition in a bucket the job is not even in.
+        //
+        // The script searched each child with -ErrorAction SilentlyContinue for exactly this
+        // reason. EnumerateDirectories below already guards its walk; this one did not, and the two
+        // are the same problem.
         var job = Directory.EnumerateDirectories(projectsRoot)
-            .SelectMany(d => Directory.EnumerateDirectories(d, project + "*"))
+            .SelectMany(SafeChildren(project))
             .FirstOrDefault();
         if (job is null)
             throw new DirectoryNotFoundException($"No job folder starting with '{project}' under {projectsRoot}.");
@@ -69,6 +79,22 @@ public static class PublishDiscovery
         jobFolder = job;
         return model;
     }
+
+    /// <summary>
+    /// Job folders under one bucket, or nothing if that bucket will not be read. Materialised
+    /// inside the try because enumeration is lazy and would otherwise throw at the call site.
+    /// </summary>
+    internal static Func<string, IEnumerable<string>> SafeChildren(string project) => bucket =>
+    {
+        try
+        {
+            return Directory.EnumerateDirectories(bucket, project + "*").ToList();
+        }
+        catch
+        {
+            return Array.Empty<string>();
+        }
+    };
 
     private static string FindDxfFolder(string modelFolder)
     {
