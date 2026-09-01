@@ -192,3 +192,93 @@ Deliberate — a green suite must not be able to certify built-in values while p
 database values — but it is a hard dependency on KOR-APP01 for any run on any machine, and it is
 the opposite of how the share-backed tests behave, which skip quietly when `\\Kor-fs01` is
 unreachable.
+
+---
+
+# PART 3 — THE ENGINEER'S FEEDBACK, 31 AUGUST, AND WHAT MEASUREMENT FOUND
+
+She ran the model she was sent and gave nine points. Each is recorded with the measurement behind
+it rather than the impression, because three of them had already been "answered" wrongly from a
+plausible guess.
+
+## Fixed
+
+**A1. The model was north-south against her east-west grid.** `GridAlignment` solves rotation from
+the grid-line SPACINGS, which are a fingerprint: 93.4, 141.2, 326, 326, 326, 287, 39, 175… appear
+once, reversed. 19/19 X and 2/2 Y matched at 90°. It refuses rather than guesses where there is too
+little grid to be sure.
+
+**A2. C-LEVEL 3's outer edge, 12,862 → 22,663 sq ft.** The ring closes exactly, through two
+segments on `JBP_C_B_STRUCT` — a layer a banked ruling excludes from structure. A banked rule with
+no scope deleted a piece of a real building, and nothing in the report said so.
+
+**A3. "This at L2" — a stair-stepped slab edge.** Flood fill rasterises at `MinPanelOverlap/2` = 6 in
+while straightening ran at `RecoveredOutlineTolerance` = 3 in, HALF the cell, so it could only
+preserve the raster's steps. Now `max(rule, pixelSize × 1.5)`. LEVEL 2 went 114 → 24 points, L1
+58 → 26, areas moved under 0.03%. Blocking invariant `outline-is-a-raster-staircase` added.
+⚠ The bounding box was right the whole time. Counting could not see it; she sent a picture.
+
+**A4. Slab property names.** Ships `KOR-S7-30MPa`, `KOR-S9-30MPa`, `KOR-W12-65MPa`.
+⛔ **"Slab strength is in no DXF" was true and useless.** Every `MPa` string in all 139 sheets is a
+wall type, so the question went to the engineer twice. It is in HER REFERENCE MODEL, which this tool
+opens on every run: `SHELLPROP "Rvt-Floor0" MATERIAL "30 MPa Floor"`, `"25 MPa Footings"`,
+`"65 MPa Walls"`. The material was already carried onto every property written; only the NAME threw
+it away. **Before declaring anything unobtainable, grep the reference model.**
+
+**A5. "At L1 it is going past the basement walls."** Her `LEVEL 1` carried **73,776 sq ft** —
+4050 × 2856 in, the entire site podium — in a model of a building whose own floors are 14,988.
+
+Not a tagging fault and not the building cut failing. Building C's ground floor is drafted as a
+HALF-SHEET, and the report already said what happened:
+
+> `S2.10.1_1_LEVEL 1 PLAN - CONCRETE OUTLINE - BLDG C.dxf` **+**
+> `S2.11.1_1_LEVEL 1 PLAN - CONCRETE OUTLINE - WEST.dxf` carry the same match line and were read as
+> ONE plan. … `- BLDG C.dxf`: one floor plate was recovered by flood-filling — 73,776 sq ft.
+
+Rejoined with the WEST half the fill recovers the whole site, and the group LEADER is the BLDG C
+sheet — so the site is stamped building C's and the cut keeps it by its own correct rule.
+
+⭐ **The general rule this establishes: "compose the site once, cut after" holds for MEMBERS and not
+for JOINS.** Every member carries the sheet it was drawn on, so a cut can put it back. A plate
+recovered by flood fill across a seam is one ring over both halves with nothing left in it to say
+where one half ended — a join is not reversible by a later cut. So a half-sheet naming another
+building is no longer joined into a model being cut to this one. Narrow on purpose: a sheet naming
+NOBODY still joins, because the parkade is drafted once for the site and dropping untagged geometry
+cost the YMCA 66 walls and 108 columns the first time it was tried.
+
+Measured, not assumed: read alone, C's half recovers 11,026 sq ft, which is exactly what `--bldg C`
+has always produced — and `--bldg` filters those sheets out, which is why this never showed there.
+⚠ `--bldg` does NOT exercise the building cut at all: it sits behind `if (request.TowerOnly is …)`.
+Measure a per-building deliverable with `--tower`, which is what she was sent.
+
+## Open, with the measurement already done
+
+**A6. "Mezzanine levels still not good, the slab edge is wrong."** `LEVEL 1 MEZZ` ships THREE plates
+— 2,754, 2,330 and 1,098 sq ft — where the drawing's largest closable chain is 1,857. `chains.py`
+on the sheet: 274 chains, the largest OPEN with an 82 in gap. The report names both mechanisms
+itself: one plate is *"a slab outline crossed itself and was read as 1 separate plate rather than
+one ring through its own edge"*, another is *"recovered by flood-filling"*.
+**Render it and the sheet has no continuous outline at all** — several separate small regions.
+
+⚠ "Levels" is plural and the second is absent: `LEVEL P1 MEZZ PLAN` (54 walls, 51 columns, 1 plate)
+is *"not placed"* because **her own reference model has no `LEVEL P1 MEZZ` storey** — it carries
+only `LEVEL 1 MEZZ`. That half is a question for her, with the evidence attached.
+
+**A7. "Different slab thicknesses, this complexity is not reflected."** L3 prints 60 call-outs
+across 11 thicknesses, L2 prints 22 across 8; one plate at one thickness is modelled. The attempt is
+stashed and needs the full nesting tree from every closed ring rather than a branch on the opening
+test — zones nest, and a probe found ring 11,026 inside 72,424 carrying `[14,30,36,56,76]` where the
+ring around it carried `[12,14,30,36,37,56]`.
+
+**A8. "The wall and column thing has to be fixed, otherwise I can't really use the model."**
+One object, one label, an assign per storey — measured in HER model, not inferred: 87 column
+objects, every one LINE span 1, 57 assigned to about five storeys each. 19 of the 87 carry more than
+one section and four pair a rectangular with a circular one, so a column round on one storey and
+rectangular on the next IS one object with one label.
+
+`MemberPlanStoreyMultisetPreserved` gates it, and the merge is committed behind
+`const bool MergeStacksIntoOneLabel` in `DxfToEtabsService`. Placement is proven exact — 1,769
+column objects to 268 with all 29 storeys identical, confirmed by `members_by_storey.py`, which
+shares no code with the gate. **The "adds members, LEVEL 2 columns 36→60" it was stashed for does
+not reproduce and was never the merge.** Three coverage checks still disagree on column size and
+shape; that is unexplained, and the merge stays off until it is not.

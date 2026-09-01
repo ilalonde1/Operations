@@ -824,6 +824,46 @@ public static class DxfToEtabsService
             : files.Where(f => storeysOfSheet[f].Any(s =>
                   joinStoreys.Any(j => s.Contains(j, StringComparison.OrdinalIgnoreCase)))).ToList();
 
+        // A JOIN IS NOT REVERSIBLE BY A LATER CUT, SO IT MAY NOT CROSS A BUILDING THIS MODEL IS NOT.
+        //
+        // "Compose the site once, cut after" holds for members: every one carries the sheet it was
+        // drawn on, so the cut can put it back. It does not hold for a plate recovered by flood fill
+        // across two joined halves -- that plate is ONE ring over the whole site and there is
+        // nothing left in it to say where one half ended.
+        //
+        // 31168 LEVEL 1 is drafted in halves: "...- BLDG C" and "...- WEST". Joined, the fill
+        // recovers 73,776 sq ft -- the entire podium -- and the group LEADER is the BLDG C sheet, so
+        // the whole site is stamped as building C's and the building cut keeps it by its own correct
+        // rule. That is the engineer's "at L1 it is going past the basement walls": her YMCA model
+        // carried a 4050 x 2856 in ground floor over a building whose own floors are 14,988 sq ft.
+        //
+        // Read alone, C's half recovers 11,026 sq ft, which is the right floor -- measured, not
+        // assumed: that is exactly what --bldg C produces, and --bldg filters these sheets out.
+        //
+        // So a half-sheet drawn for another building is not joined into a model being cut to this
+        // one. Narrow on purpose: only sheets that NAME buildings, none of them this one, are held
+        // back. A sheet naming nobody still joins, because the parkade is drafted once for the site
+        // and dropping untagged geometry cost the YMCA 66 walls and 108 columns the first time.
+        if (request.TowerOnly is { } joiningFor)
+        {
+            var heldBack = joinable
+                .Where(f => sheetInfoByFile[f].BuildingTags.Count > 0
+                            && !sheetInfoByFile[f].BuildingTags.Contains(joiningFor, StringComparer.OrdinalIgnoreCase))
+                .ToList();
+
+            if (heldBack.Count > 0)
+            {
+                joinable = joinable.Except(heldBack, StringComparer.OrdinalIgnoreCase).ToList();
+                warnings.Add(
+                    $"{heldBack.Count} half-sheet(s) drawn for another building were not joined into this " +
+                    $"model of building {joiningFor}: {string.Join(", ", heldBack.Select(Path.GetFileName))}. " +
+                    "A drawing split on a match line is read as one plan, and a floor plate recovered across " +
+                    "the seam is one ring over both halves that no later cut can divide — which is how a " +
+                    "one-building model came to carry the whole site's ground floor. Each half is still read " +
+                    "on its own, for the building it names.");
+            }
+        }
+
         // EVERY SHEET IS READ ONCE, HERE, BEFORE ANY OF IT IS CLASSIFIED.
         //
         // The drawings have to be put on the engineer's grid -- turned as well as moved -- and the
