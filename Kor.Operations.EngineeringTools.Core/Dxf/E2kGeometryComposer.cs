@@ -437,14 +437,25 @@ public static class E2kGeometryComposer
         //
         // Silent when the reference does not say: "4000Psi" carries no MPa and the name stays as it
         // was, rather than inventing a conversion nobody asked for.
-        string GradeSuffix(string? materialName)
+        // Reads "35MPa", "35 MPa" and "27.5 MPa" alike. Anything else — "4000Psi", a bare "C30" —
+        // says nothing about a grade and the name stays as it was.
+        static string GradeSuffix(string? materialName)
         {
-            var m = Regex.Match(materialName ?? string.Empty, @"(\d+)\s*MPa", RegexOptions.IgnoreCase);
+            var m = Regex.Match(materialName ?? string.Empty, @"(\d+(?:\.\d+)?)\s*MPa", RegexOptions.IgnoreCase);
             return m.Success ? $"-{m.Groups[1].Value}MPa" : string.Empty;
         }
 
-        string slabGrade = GradeSuffix(doc.FindConcreteMaterial("Floor") ?? material);
-        string wallGrade = GradeSuffix(doc.FindConcreteMaterial("Wall") ?? material);
+        // CHOSEN ONCE, SO THE NAME CANNOT DISAGREE WITH THE MATERIAL IT NAMES.
+        //
+        // These were picked here for the property NAMES and again further down for the MATERIAL
+        // written on those same properties — the same expression twice, which is a pair waiting to
+        // drift. A slab called KOR-S8-30MPa carrying 65 MPa Walls is worse than one called KOR-S8.
+        string wallMaterial = doc.FindConcreteMaterial("Wall") ?? material;
+        string slabMaterial = doc.FindConcreteMaterial("Floor") ?? material;
+        string columnMaterial = doc.FindConcreteMaterial("Column") ?? material;
+
+        string slabGrade = GradeSuffix(slabMaterial);
+        string wallGrade = GradeSuffix(wallMaterial);
         var reusedSections = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var diaphragms = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
 
@@ -1378,14 +1389,10 @@ public static class E2kGeometryComposer
             }
         }
 
-        string wallMaterial = doc.FindConcreteMaterial("Wall") ?? material;
-        string slabMaterial = doc.FindConcreteMaterial("Floor") ?? material;
-
         var wallPropLines = newWallProps.Select(kv =>
             $"  SHELLPROP  \"{kv.Value}\"  PROPTYPE  \"Wall\"  MATERIAL \"{wallMaterial}\"  MODELINGTYPE \"ShellThin\"  WALLTHICKNESS {Trim(kv.Key)}").ToList();
         var slabPropLines = newSlabProps.Select(kv =>
             $"  SHELLPROP  \"{kv.Value}\"  PROPTYPE  \"Slab\"  MATERIAL \"{slabMaterial}\"  MODELINGTYPE \"ShellThin\"  SLABTYPE \"Slab\"  SLABTHICKNESS {Trim(kv.Key)}").ToList();
-        string columnMaterial = doc.FindConcreteMaterial("Column") ?? material;
         var framePropLines = frameProps.Select(kv =>
             $"  FRAMESECTION  \"{kv.Value}\"  MATERIAL \"{columnMaterial}\"  SHAPE \"Concrete Rectangular\"  D {Trim(kv.Key.D)} B {Trim(kv.Key.W)}")
             .Concat(roundProps.Select(kv =>

@@ -183,23 +183,29 @@ public static class E2kModelQuery
     {
         ArgumentNullException.ThrowIfNull(doc);
 
-        var storeysOf = doc.StoreysByObject();
         var shells = ShellThickness(doc);
         var shellKind = ShellKind(doc);
         var frames = FrameSize(doc);
         var used = new Dictionary<string, (int Count, SortedSet<string> On)>(StringComparer.Ordinal);
 
-        void Note(string? section, string obj)
+        // THE STOREY OF THIS ASSIGN, NOT THE FIRST STOREY OF ITS OBJECT.
+        //
+        // Each row already carries the storey it is on, and this reached past it for
+        // StoreysByObject()[obj][0] — the same answer only while one object means one member on one
+        // storey. Once a member carries one label its whole height, a section used on twelve floors
+        // is reported as used on the lowest, and an engineer asking what a section is doing in her
+        // model is told a twelfth of it.
+        void Note(string? section, string storey)
         {
             if (section is null) return;
             if (!used.TryGetValue(section, out var e))
                 used[section] = e = (0, new SortedSet<string>(StringComparer.OrdinalIgnoreCase));
             used[section] = (e.Count + 1, e.On);
-            if (storeysOf.TryGetValue(obj, out var st) && st.Count > 0) e.On.Add(st[0]);
+            e.On.Add(storey);
         }
 
-        foreach (var (obj, _, section, isOpening) in AreaSections(doc)) { if (!isOpening) Note(section, obj); }
-        foreach (var (obj, _, section) in LineSections(doc)) Note(section, obj);
+        foreach (var (_, storey, section, isOpening) in AreaSections(doc)) { if (!isOpening) Note(section, storey); }
+        foreach (var (_, storey, section) in LineSections(doc)) Note(section, storey);
 
         return used
             .Select(kv =>
