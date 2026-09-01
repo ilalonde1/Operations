@@ -53,6 +53,10 @@ public class RulingCoverageTests
         ["compose-the-site-once-then-cut"] = "ShippedModelsAgreeWithEachOtherTests.TheTwoPublished31168ModelsAgreeOnEveryStoreyTheyShare",
         ["a-whole-floor-sheet-and-its-parts-are-one-drawing"] = "ShippedModelsAgreeWithEachOtherTests.TheTwoPublished31168ModelsAgreeOnEveryStoreyTheyShare (C-LEVEL 3 carries its own members)",
         ["a-trace-is-not-an-outline"] = "LoopGeometry.Straighten, checked against the plate's own area in DxfFloodFillPlateDetector",
+        ["a-drawn-ring-beats-a-fill-of-itself"] =
+            "StructuralPlanClassifier keeps closed outlines in place of a flood fill of the same " +
+            "linework where they cover DrawnRingBeatsFillFraction of it, and reports the ratio. " +
+            "Proved by PlateReadTwiceTests",
         ["a-join-is-an-interruption-not-an-edge"] =
             "StructuralPlanClassifier refuses a chain whose join exceeds SlabChainJoinFraction of " +
             "the length the drawing draws, and names the region with its area, its coordinates and " +

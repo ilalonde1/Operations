@@ -318,6 +318,7 @@ public static class DxfToEtabsService
         "dxf.ring-on-plate-edge-fraction",
         "dxf.recovered-outline-tolerance",
         "dxf.slab-chain-join-fraction",
+        "dxf.drawn-ring-beats-fill-fraction",
         "dxf.storeys-at-one-level-gap",
         "dxf.same-ground-area-tolerance",
         "dxf.same-ground-centre-tolerance",
@@ -398,6 +399,7 @@ public static class DxfToEtabsService
             ["dxf.ring-on-plate-edge-fraction"] = classification.RingOnPlateEdgeFraction,
             ["dxf.recovered-outline-tolerance"] = classification.RecoveredOutlineTolerance,
             ["dxf.slab-chain-join-fraction"] = classification.SlabChainJoinFraction,
+            ["dxf.drawn-ring-beats-fill-fraction"] = classification.DrawnRingBeatsFillFraction,
             ["dxf.storeys-at-one-level-gap"] = compose.StoreysAtOneLevelGap,
             ["dxf.same-ground-area-tolerance"] = compose.SameGroundAreaTolerance,
             ["dxf.same-ground-centre-tolerance"] = compose.SameGroundCentreTolerance,
@@ -459,6 +461,7 @@ public static class DxfToEtabsService
             RingOnPlateEdgeFraction = settings.ValueOr("dxf.ring-on-plate-edge-fraction", options.RingOnPlateEdgeFraction),
             RecoveredOutlineTolerance = settings.ValueOr("dxf.recovered-outline-tolerance", options.RecoveredOutlineTolerance),
             SlabChainJoinFraction = settings.ValueOr("dxf.slab-chain-join-fraction", options.SlabChainJoinFraction),
+            DrawnRingBeatsFillFraction = settings.ValueOr("dxf.drawn-ring-beats-fill-fraction", options.DrawnRingBeatsFillFraction),
         };
 
     /// <summary>

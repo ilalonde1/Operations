@@ -258,6 +258,24 @@ public sealed record PlanClassificationOptions
     public double SlabChainJoinFraction { get; init; } = 0.10;
 
     /// <summary>
+    /// How much of a flood-fill plate a ring the draftsman CLOSED must cover before it is taken as
+    /// the same floor read twice, and kept in its place. See `dxf.drawn-ring-beats-fill-fraction`.
+    ///
+    /// A fill reaches wherever the drawn edge stops — at a core wall, say, which bounds a slab
+    /// without drawing it — so where the draftsman closed the ring himself his ring is the floor.
+    /// But only where the two are readings of ONE floor: a stair nosing of 110 sq ft closed inside
+    /// a 12,862 sq ft fill is not a competing reading, and letting it win would be far worse than
+    /// the fault this fixes.
+    ///
+    /// Measured on both reference jobs rather than the one case it was found in: it fires three
+    /// times on 31168, at 93, 94 and 94 per cent, and never on 31138. The competing shape -- a
+    /// nosing inside a floor -- is under one per cent. Sixty sits in a gap from 1 to 93, so the
+    /// number is not delicate; what would make it delicate is a fill correctly spanning two bays
+    /// where the drawing closed only one, and no such case exists on either job.
+    /// </summary>
+    public double DrawnRingBeatsFillFraction { get; init; } = 0.60;
+
+    /// <summary>
     /// Layers carrying the match line a plan was split on. See `dxf.match-line-layer-patterns`.
     ///
     /// Read here so a slab edge that runs off the page at the seam can be closed along it: that
@@ -1271,15 +1289,19 @@ public static class StructuralPlanClassifier
                 // the line: the mezzanine's ring is 82 per cent of its fill, a nosing under one.
                 else if (swallowed.Count > 0
                          && swallowed.Any(x => x.ClosedExactly)
-                         && swallowed.Where(x => x.ClosedExactly).Sum(x => x.Area) >= best.Area * 0.6)
+                         && swallowed.Where(x => x.ClosedExactly).Sum(x => x.Area)
+                            >= best.Area * options.DrawnRingBeatsFillFraction)
                 {
+                    double drawnArea = swallowed.Where(x => x.ClosedExactly).Sum(x => x.Area);
                     result.Flags.Add(
                         $"{swallowed.Count(x => x.ClosedExactly)} closed outline(s) totalling " +
                         $"{swallowed.Where(x => x.ClosedExactly).Sum(x => x.Area) / 144:N0} sq ft were kept in " +
                         $"place of the {best.Area / 144:N0} sq ft the flood fill recovered from the same " +
-                        "linework. A fill reaches wherever the drawn edge stops — at a core wall, say, which " +
-                        "bounds the slab without drawing it — so where the draftsman closed the ring himself, " +
-                        "his ring is the floor and the fill is only a reading of it.");
+                        $"linework — {drawnArea / best.Area:P0} of it, over the " +
+                        $"{options.DrawnRingBeatsFillFraction:P0} a competing reading of one floor takes. " +
+                        "A fill reaches wherever the drawn edge stops — at a core wall, say, which bounds the " +
+                        "slab without drawing it — so where the draftsman closed the ring himself, his ring is " +
+                        "the floor and the fill is only a reading of it.");
                     best = null;
                 }
                 else if (swallowed.Count > 0)

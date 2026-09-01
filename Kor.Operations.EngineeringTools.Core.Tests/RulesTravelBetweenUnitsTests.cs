@@ -37,6 +37,8 @@ public class RulesTravelBetweenUnitsTests
         ["PierFillRatio"] = "a ratio",
         ["DoubledEdgeParallelRatio"] = "a ratio",
         ["DoubledEdgeCoverage"] = "a fraction of an area",
+        ["DrawnRingBeatsFillFraction"] = "a fraction of an area — both sides carry the unit twice " +
+                                         "and it cancels",
         ["SlabChainJoinFraction"] = "a fraction of a length, not a length — the join is judged " +
                                     "against the ring it closes, so both sides carry the unit and " +
                                     "it cancels. That is why it is a fraction and not a distance: " +

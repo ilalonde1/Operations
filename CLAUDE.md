@@ -131,6 +131,42 @@ mutually inconsistent together; fixing any one of them broke the other two. The 
 that should have come on day one was finally written as
 `docs/codex/CODEX-DXF-TO-ETABS-WHOLE-SYSTEM-AUDIT.md`, and only because Ian demanded it.
 
+## 11. On the SECOND instance, stop fixing and build the thing that finds them all.
+
+Rule 10 says stop and characterise. This is the part that was still missing: the characterisation
+is not a paragraph, it is **a test that fails on every instance at once**. Until that exists, no
+more fixes.
+
+The trigger is mechanical, so there is nothing to judge:
+
+> Two symptoms with the same shape → name the class in one sentence → write the check that would
+> have caught both → only then fix.
+
+If the sentence will not come out, that IS the finding: the class is not understood yet, and the
+next fix is a guess.
+
+What this cost: on 2026-08-31 the stack merge gave every member one label its whole height, which
+breaks **every reader keyed on an object name**. That sentence was knowable at the second instance.
+Instead it was found EIGHT times, one symptom at a time, over two days — the report counts, the
+publish gate refusing a correct model, the coverage audit, the benchmark against her own model, the
+plausibility heights reading a wall at 454ft, the sheet ledger crediting one drawing with 32
+storeys, the baseline counts, and finally building attribution, where the merge ran before the
+building cut and let 2,591 of the towers' members into the YMCA's model. Every one was green until
+somebody happened to look.
+
+The check that finds them all is `StackMergeChangesNothingButLabelsTests`: build the same job with
+the merge on and off, and assert everything the engineer can see is identical — every (kind,
+position, storey, section) placement, the counts she reads, how many members the cut removed as
+somebody else's, and which drawing each storey came from. Object names and object counts are the
+only things allowed to differ.
+
+It took ten minutes and found a NINTH instance within seconds of existing, on the other building,
+which nobody had looked at. Built at the second instance it would have replaced two days of this.
+
+**A differential harness is the tool.** Where a change is supposed to alter one property and nothing
+else, run it both ways and diff everything else. That applies well past this merge: a cut, a rename,
+a reorder, a unit change.
+
 ## Environment facts worth not rediscovering
 
 - Rules live in `KorStandards` on `KOR-APP01\SQLEXPRESS`, schema `analysis`. A missing rule stops a

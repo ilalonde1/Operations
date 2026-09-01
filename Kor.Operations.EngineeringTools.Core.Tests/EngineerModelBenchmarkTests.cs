@@ -175,20 +175,26 @@ public class EngineerModelBenchmarkTests
 
         _out.WriteLine(score.Report);
 
-        // 201 of 214, RESET on 1 September when both models began offering every section a member
-        // carries rather than the first. The denominators moved with it — 139 to 214 columns, 122
-        // walls — because 19 of her own 87 columns carry more than one section, four of them
-        // pairing a rectangular with a circular. Comparing one size per object was the same thing
-        // as comparing all of them only while a member meant one storey.
+        // 849 of 929, PER STOREY. One observation for every storey a member stands on, carrying
+        // that storey's own section, matched against hers on the same storey.
         //
-        // Leaving the old 133 would have been slack by sixty-eight and let anything through.
-        Assert.True(score.SizedRight >= 201,
-            $"Columns matching her size fell to {score.SizedRight}/{score.SizedCompared}; the ratchet is 201.");
+        // Reset twice on 1 September and the second reset is the one that matters. It was 133 of
+        // 139 while each object had one section; then 201 of 214 when both models began offering
+        // every section a member carries — and that number was inflated, because it matched by
+        // POSITION alone. A member that changes size as it rises was credited for a size it carries
+        // on a different floor: her 18x18 at the bottom answered by our 18x18 at the top, and the
+        // check read as proof the sizes were right when it had proved the right size exists
+        // somewhere in the stack. Position-only says 94 per cent; per storey says 91.
+        //
+        // The denominator moved with it — 214 to 929 — because a stepped column is now several
+        // observations rather than one.
+        Assert.True(score.SizedRight >= 849,
+            $"Columns matching her size fell to {score.SizedRight}/{score.SizedCompared}; the ratchet is 849.");
 
-        // 112 of 122, reset with it and for the same reason. It was 60 of 66, itself tightened from
-        // 58 on 25 August when a widened comparison had left it slack by two.
-        Assert.True(score.ThickRight >= 112,
-            $"Walls matching her thickness fell to {score.ThickRight}/{score.ThickCompared}; the ratchet is 112.");
+        // 571 of 583, per storey, reset with it and for the same reason. It was 60 of 66, itself
+        // tightened from 58 on 25 August when a widened comparison had left it slack by two.
+        Assert.True(score.ThickRight >= 571,
+            $"Walls matching her thickness fell to {score.ThickRight}/{score.ThickCompared}; the ratchet is 571.");
     }
 
     /// <summary>
@@ -357,8 +363,8 @@ public class EngineerModelBenchmarkTests
         Dictionary<string, List<DxfPoint>> Columns,
         Dictionary<string, List<(DxfPoint A, DxfPoint B)>> Walls,
         Dictionary<string, double> FloorArea,
-        List<(DxfPoint At, double Long, double Short, bool Round)> ColumnSizes,
-        List<(DxfPoint At, double Thickness)> WallThicknesses,
+        List<(string Storey, DxfPoint At, double Long, double Short, bool Round)> ColumnSizes,
+        List<(string Storey, DxfPoint At, double Thickness)> WallThicknesses,
         int Openings,
         int FlaggedOpenings);
 
@@ -380,7 +386,7 @@ public class EngineerModelBenchmarkTests
         var frame = new Dictionary<string, (double Long, double Short, bool Round)>(StringComparer.OrdinalIgnoreCase);
         var shell = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
         var sectionOf = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        var sectionsOf = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+        var sectionOnStorey = new Dictionary<(string Object, string Storey), string>();
         int openings = 0, flagged = 0;
 
         foreach (string line in lines)
@@ -450,25 +456,21 @@ public class EngineerModelBenchmarkTests
             string name = a.Groups[1].Value, storey = a.Groups[2].Value;
             if (generated != name.StartsWith("K", StringComparison.Ordinal)) continue;
 
-            // EVERY SECTION A MEMBER CARRIES, NOT THE FIRST.
+            // THE SECTION ON THIS STOREY, NOT SOMEWHERE IN THE STACK.
             //
             // The section rides on the assign, so one object changes size — and shape — as it
             // rises. Her own 31138 does exactly this on 19 of its 87 columns, four of them pairing
             // a rectangular section with a circular one, and both models are read by this method.
             //
-            // Keeping only the first was the same thing as keeping all of them while the generator
-            // wrote a fresh object per storey. Once a member carries one label its whole height, a
-            // column that is 24x24 low and 18x18 high offers only its first size to the comparison,
-            // and her columns of the other size have nothing of ours to match.
+            // Keyed by (object, storey) because keying by object alone lets a stepped member be
+            // credited for a size it carries on a DIFFERENT floor: a column that is 24x24 low and
+            // 18x18 high would match her 18x18 at the bottom. That is the check saying the sizes
+            // are right when what it has proved is that the right size exists somewhere above.
             var sec = Regex.Match(line, @"SECTION\s+""(.+?)""");
             if (sec.Success)
             {
                 sectionOf.TryAdd(name, sec.Groups[1].Value);
-
-                if (!sectionsOf.TryGetValue(name, out var carried))
-                    sectionsOf[name] = carried = new List<string>();
-                if (!carried.Contains(sec.Groups[1].Value, StringComparer.OrdinalIgnoreCase))
-                    carried.Add(sec.Groups[1].Value);
+                sectionOnStorey[(name, storey)] = sec.Groups[1].Value;
             }
             if (line.Contains("OPENING \"Yes\"", StringComparison.OrdinalIgnoreCase))
             {
@@ -489,26 +491,25 @@ public class EngineerModelBenchmarkTests
             }
         }
 
-        var columnSizes = new List<(DxfPoint, double, double, bool)>();
-        foreach (var (name, at) in columnAt)
+        // ONE OBSERVATION PER STOREY THE MEMBER STANDS ON, carrying that storey's own section.
+        var columnSizes = new List<(string, DxfPoint, double, double, bool)>();
+        foreach (var ((name, storey), section) in sectionOnStorey)
         {
             if (generated != name.StartsWith("K", StringComparison.Ordinal)) continue;
+            if (!columnAt.TryGetValue(name, out string? at)) continue;
             if (!points.TryGetValue(at, out var where)) continue;
-            if (!sectionsOf.TryGetValue(name, out var carried)) continue;
-            foreach (string section in carried)
-                if (frame.TryGetValue(section, out var box))
-                    columnSizes.Add((where, box.Long, box.Short, box.Round));
+            if (!frame.TryGetValue(section, out var box)) continue;
+            columnSizes.Add((storey, where, box.Long, box.Short, box.Round));
         }
 
-        var wallThicknesses = new List<(DxfPoint, double)>();
-        foreach (var (name, ends) in wallEnds)
+        var wallThicknesses = new List<(string, DxfPoint, double)>();
+        foreach (var ((name, storey), section) in sectionOnStorey)
         {
             if (generated != name.StartsWith("K", StringComparison.Ordinal)) continue;
+            if (!wallEnds.TryGetValue(name, out var ends)) continue;
             if (!points.TryGetValue(ends.A, out var s1) || !points.TryGetValue(ends.B, out var e1)) continue;
-            if (!sectionsOf.TryGetValue(name, out var carried)) continue;
-            foreach (string section in carried)
-                if (shell.TryGetValue(section, out double t))
-                    wallThicknesses.Add((new DxfPoint((s1.X + e1.X) / 2, (s1.Y + e1.Y) / 2), t));
+            if (!shell.TryGetValue(section, out double t)) continue;
+            wallThicknesses.Add((storey, new DxfPoint((s1.X + e1.X) / 2, (s1.Y + e1.Y) / 2), t));
         }
 
         return new Members(columns, walls, floorArea, columnSizes, wallThicknesses, openings, flagged);
@@ -609,11 +610,17 @@ public class EngineerModelBenchmarkTests
         // Column size, wall thickness and openings: the properties an engineer retypes if they
         // are wrong, and which position alone cannot see. Compared only where BOTH models declare
         // one -- a member with no section says nothing about whether this tool sized it right.
+        // ON THE SAME STOREY, not merely at the same point. A member that changes size as it rises
+        // would otherwise be credited for a size it carries on a different floor: hers 18x18 at the
+        // bottom matched by ours 18x18 at the top, and the check reads as proof the sizes are right
+        // when it has only proved the right size exists somewhere in the stack.
         int sized = 0, sizedRight = 0;
-        foreach (var (at, wide, narrow, round) in engineer.ColumnSizes)
+        foreach (var (storey, at, wide, narrow, round) in engineer.ColumnSizes)
         {
             var near = ours.ColumnSizes
-                .Where(o => Math.Abs(o.At.X - at.X) <= ColumnTolerance && Math.Abs(o.At.Y - at.Y) <= ColumnTolerance)
+                .Where(o => o.Storey.Equals(storey, StringComparison.OrdinalIgnoreCase)
+                            && Math.Abs(o.At.X - at.X) <= ColumnTolerance
+                            && Math.Abs(o.At.Y - at.Y) <= ColumnTolerance)
                 .ToList();
             if (near.Count == 0) continue;
             sized++;
@@ -621,10 +628,12 @@ public class EngineerModelBenchmarkTests
         }
 
         int thick = 0, thickRight = 0;
-        foreach (var (at, t) in engineer.WallThicknesses)
+        foreach (var (storey, at, t) in engineer.WallThicknesses)
         {
             var near = ours.WallThicknesses
-                .Where(o => Math.Abs(o.At.X - at.X) <= WallTolerance && Math.Abs(o.At.Y - at.Y) <= WallTolerance)
+                .Where(o => o.Storey.Equals(storey, StringComparison.OrdinalIgnoreCase)
+                            && Math.Abs(o.At.X - at.X) <= WallTolerance
+                            && Math.Abs(o.At.Y - at.Y) <= WallTolerance)
                 .ToList();
             if (near.Count == 0) continue;
             thick++;
