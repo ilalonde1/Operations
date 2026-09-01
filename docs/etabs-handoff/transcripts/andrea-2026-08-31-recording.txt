@@ -1,0 +1,98 @@
+loading small.en ...
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+loaded in 16s
+
+======================================================================
+FILE: C:/Users/ilalonde/AppData/Local/Temp/claude/C--VIsual-Studio-Projects-Operations/6b3b880f-cc0c-4c5b-96e9-a1e59d601b34/scratchpad/audio/part0.wav
+======================================================================
+[duration 188s]
+[00:02] Yeah, so it looks pretty good.
+[00:06] So you can see that the parking's been fixed.
+[00:10] It looks fine.
+[00:13] One thing, it's not a very big deal,
+[00:15] but it's a little confusing, is that the building
+[00:22] is shown that way in the ETABS, so kind of north-south.
+[00:29] But on the drawings, it's showing east-west.
+[00:33] So it's a little confusing, I guess,
+[00:37] although not a very big deal.
+[00:39] And another one that we already had before, level three,
+[00:44] chose this on the ETABS.
+[00:46] But if you look at our drawings, what it did is actually,
+[00:54] OK, can I change the color so we can see better?
+[01:00] Yeah, OK, so what you see in the darker red color
+[01:04] is the only slab that was modeled in ETABS.
+[01:09] But this is actually only partially what should be modeled.
+[01:18] Because this line that you see here,
+[01:22] it's not so much a slab edge as it is a slab step.
+[01:26] The actual exterior slab edge is here.
+[01:31] And it would be better if it modeled
+[01:36] at least the outer slab edge instead of the inner one,
+[01:40] although this slab, as you can see, is very complicated.
+[01:44] You've got some thickenings, everything.
+[01:47] So I don't know if we expected to be
+[01:51] drawing those perfectly now.
+[01:54] I think it's OK for us to model it for now,
+[01:57] at least for this project.
+[01:58] I think I'm going to do it because I
+[01:59] have to start working on it.
+[02:00] But anyway, if it makes sense, if I cut a section through,
+[02:07] like here, for example, it's going to look like this.
+[02:19] So this is the actual outer edge of a slab.
+[02:24] But only this up to here.
+[02:27] And here is modeled right now, which is the step.
+[02:32] So yeah, that's pretty much it.
+[02:34] But it's not too big a deal for now.
+[02:39] As long as I have the vertical and overall the shape
+[02:44] of the slab, it's good enough for me to start doing some stuff.
+[02:48] So I think I'm going to start actually looking a little deeper,
+[02:54] like importing the DXF, making sure it matches,
+[02:57] and start putting some load, dead and live load, run it,
+[03:01] and see if it runs without issue
+[03:04] and if it gives some reasonable results.
+
+======================================================================
+FILE: C:/Users/ilalonde/AppData/Local/Temp/claude/C--VIsual-Studio-Projects-Operations/6b3b880f-cc0c-4c5b-96e9-a1e59d601b34/scratchpad/audio/part1.wav
+======================================================================
+[duration 148s]
+[00:01] OK, I think I found the problem.
+[00:03] I was recording the window instead of the whole screen,
+[00:05] so now it should work.
+[00:08] So yeah, it looks good.
+[00:11] Just two things.
+[00:15] One is the rotation, which is actually kind of important.
+[00:20] Right now, the building is modeled like north-south,
+[00:23] as you can see here, whereas on our drawing,
+[00:26] it's modeled east-west.
+[00:29] So it's not matching right now.
+[00:31] And when I import the DXF, I can't compare what I could.
+[00:34] If I rotate it and then move it, I mean, it's doable,
+[00:37] but it's kind of a pain.
+[00:38] So if it could be matching our drawings and our DXF
+[00:42] from the beginning, that would be awesome.
+[00:45] And then a little problem with the L3 slab.
+[00:53] I'm going to show you on the PDF.
+[00:56] So in dark red, that's what we have modeled in ETABS
+[01:00] right now, but as you can see, it is not
+[01:06] matching the outer edge of the slab, which is in yellow here.
+[01:11] It's only grabbing this, which is just a step, actually.
+[01:15] So if you were to look through a section,
+[01:18] just cut it west like this, you would see this.
+[01:24] So this is what's modeled right now, the step,
+[01:27] but we will want the outer edge, which
+[01:34] is also a continuous line.
+[01:36] So that's why it's continuous, I guess.
+[01:38] But we want the outer one.
+[01:41] The L3 slab is a bit complicated.
+[01:43] As you see, there are lots of thickening.
+[01:45] This is thicker.
+[01:46] This is thinner.
+[01:47] But it might be a bit complex for now.
+[01:51] If I can just get the outer edge, that'd be good for now,
+[01:55] and then maybe we can go into doing more detailed stuff.
+[01:59] But I feel like this is going to take maybe a bit of time.
+[02:03] And maybe I can start working on the modeling right now.
+[02:06] So if we can rotate it, that'd be great,
+[02:11] because then I can import the DXF, make sure it matches.
+[02:15] And then I'll add some loads, then I'll run it,
+[02:21] see if it runs, see if it gets some reasonable results.
+[02:24] And that'll be a good start.

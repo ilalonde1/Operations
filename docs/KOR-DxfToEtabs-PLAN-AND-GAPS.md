@@ -281,11 +281,27 @@ became two of 7,048 + 4,603, because **building C's north edge really is diagona
 `S2.10.1_1_LEVEL 1 PLAN - CONCRETE OUTLINE - BLDG C.dxf`. The premise "this drawing is square" is
 false, and squaring a real diagonal is worse than the fault it was aimed at.
 
-**A7. "Different slab thicknesses, this complexity is not reflected."** L3 prints 60 call-outs
-across 11 thicknesses, L2 prints 22 across 8; one plate at one thickness is modelled. The attempt is
-stashed and needs the full nesting tree from every closed ring rather than a branch on the opening
-test — zones nest, and a probe found ring 11,026 inside 72,424 carrying `[14,30,36,56,76]` where the
-ring around it carried `[12,14,30,36,37,56]`.
+**A7. "Different slab thicknesses, this complexity is not reflected."** ⛔**REPORTED AS AN OPEN
+QUESTION TWICE, AND SHE HAD ALREADY ANSWERED IT.** Her own words, 31 August, in the recording now
+kept at `docs/etabs-handoff/transcripts/andrea-2026-08-31-recording.txt`:
+
+> "this slab is very complicated. You've got some thickenings, everything. So I don't know if we
+> expected to be drawing those perfectly now. **I think it's OK for us to model it for now**, at
+> least for this project."
+>
+> "lots of thickening… it might be a bit complex for now. **If I can just get the outer edge, that'd
+> be good for now**, and then maybe we can go into doing more detailed stuff."
+
+She models the thickenings herself on this job; what she wants from the tool is the OUTER EDGE,
+which is A2. The work is still real — L3 prints 60 call-outs across 11 thicknesses, L2 prints 22
+across 8, and the stashed attempt needs the full nesting tree from every closed ring rather than a
+branch on the opening test, because zones nest: a probe found ring 11,026 inside 72,424 carrying
+`[14,30,36,56,76]` where the ring around it carried `[12,14,30,36,37,56]`. **It is not a blocker and
+must not be listed as one.**
+
+⭐ The transcription was run once and printed to stdout, so her answer was lost and then asked for
+again. `docs/etabs-handoff/transcribe.py` runs it locally with faster-whisper, no API spend — SAVE
+THE OUTPUT.
 
 **A8. "The wall and column thing has to be fixed, otherwise I can't really use the model."**
 One object, one label, an assign per storey — measured in HER model, not inferred: 87 column
