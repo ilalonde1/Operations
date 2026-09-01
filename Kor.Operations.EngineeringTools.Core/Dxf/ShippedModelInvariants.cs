@@ -145,9 +145,18 @@ public static class ShippedModelInvariants
 
         // 0. The report and workbook ship beside the model, so their numbers and storey names are
         //    part of the deliverable. They must describe this file, not the pre-cut composition.
+        // MEMBERS, NOT LABELS — the same number the report states.
+        //
+        // This counted connectivity rows, which is one per OBJECT. That is the same answer only
+        // while the generator writes a fresh object per storey. Once a member carries one label its
+        // whole height — the engineer's own convention, one object with an assign on every storey
+        // it rises through — 744 columns become 238 rows, and this check fails a model that is
+        // perfectly correct, because the report is counting the building and this was counting
+        // names.
         int CountGenerated(string prefix, string objectKind) =>
-            kind.Count(x => x.Key.StartsWith(prefix, StringComparison.Ordinal)
-                            && x.Value.Equals(objectKind, StringComparison.OrdinalIgnoreCase));
+            kind.Where(x => x.Key.StartsWith(prefix, StringComparison.Ordinal)
+                            && x.Value.Equals(objectKind, StringComparison.OrdinalIgnoreCase))
+                .Sum(x => onStoreys.TryGetValue(x.Key, out var on) ? on.Count : 0);
 
         // STOREYS THE BUILDING HAS, not rows in the list. The base is a datum, not a floor: it
         // carries an elevation and nothing stands on it, and the report has always counted it out.
