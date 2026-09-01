@@ -60,10 +60,34 @@ public static class PublishExplainers
                 new[] { $"The dossier and one-pager describe {string.Join(", ", describedJobs)} - not {request.Project}. They were not copied." },
                 null);
 
-        var stale = StaleSources(request.RepoRoot, new[] { dossierSourceHtml, dossierSourcePdf, onePagerSourcePdf }).ToList();
+        // Staleness is asked of the ARTIFACTS THAT SHIP, which is these two PDFs -- the HTML is a
+        // build input and is never copied to a job folder. Asking it of the HTML made the gate
+        // unclearable: a PDF can be re-rendered, which genuinely re-derives it from current source,
+        // but an HTML source can only be brought forward by editing its prose. With nothing to fix
+        // in the prose the only way past was to touch the file, and a gate whose remedy is
+        // laundering a timestamp teaches exactly the wrong habit.
+        var stale = StaleSources(request.RepoRoot, new[] { dossierSourcePdf, onePagerSourcePdf }).ToList();
         if (stale.Count > 0)
             return new PublishExplainersResult(Array.Empty<PublishExplainerFile>(), targets, Array.Empty<string>(),
                 "STALE - these explainers predate the source that builds models: " + string.Join(", ", stale));
+
+        // And the other direction, which nothing checked: the prose was edited and the PDF was
+        // never re-rendered, so the file an engineer opens is not the document that was written.
+        // This is the same class as the Edge-cached "File not found" PDF that shipped -- the source
+        // was right and the artifact was not.
+        string onePagerSourceHtml = Path.Combine(request.RepoRoot, "docs", "KOR-DxfToEtabs-onepager.html");
+        var unrendered = new[]
+            {
+                (Html: dossierSourceHtml, Pdf: dossierSourcePdf),
+                (Html: onePagerSourceHtml, Pdf: onePagerSourcePdf),
+            }
+            .Where(p => File.Exists(p.Html) && File.Exists(p.Pdf)
+                        && File.GetLastWriteTime(p.Pdf) < File.GetLastWriteTime(p.Html))
+            .Select(p => $"{Path.GetFileName(p.Pdf)} is older than {Path.GetFileName(p.Html)}")
+            .ToList();
+        if (unrendered.Count > 0)
+            return new PublishExplainersResult(Array.Empty<PublishExplainerFile>(), targets, Array.Empty<string>(),
+                "NOT RE-RENDERED - the prose moved on and the PDF beside it did not: " + string.Join("; ", unrendered));
 
         var wrong = new List<string>();
         var counts = CountsForNamedJobs(request, describedJobs);
@@ -71,32 +95,51 @@ public static class PublishExplainers
 
         if (File.Exists(dossierSourcePdf))
         {
-            string pdfText = PdfText(dossierSourcePdf);
-            if (LooksLikeBrowserError(pdfText))
+            string? pdfText = PdfText(dossierSourcePdf);
+            if (pdfText is null)
+                wrong.Add($"{Path.GetFileName(dossierSourcePdf)} will not open as a PDF");
+            else if (LooksLikeBrowserError(pdfText))
                 wrong.Add("dossier PDF renders as a browser error page");
-
-            foreach (var (what, count) in CurrentCounts(request.CurrentContents))
-            {
-                if (count == 0) continue;
-                if (!ContainsNumber(pdfText, count))
-                    wrong.Add($"{what} = {count}");
-            }
+            else
+                foreach (var (what, count) in CurrentCounts(request.CurrentContents))
+                {
+                    if (count == 0) continue;
+                    if (!ContainsNumber(pdfText, count))
+                        wrong.Add($"{what} = {count}");
+                }
         }
 
         if (File.Exists(onePagerSourcePdf))
         {
-            string onePagerText = PdfText(onePagerSourcePdf);
-            if (LooksLikeBrowserError(onePagerText))
+            string? onePagerText = PdfText(onePagerSourcePdf);
+            if (onePagerText is null)
+                wrong.Add($"{Path.GetFileName(onePagerSourcePdf)} will not open as a PDF");
+            else if (LooksLikeBrowserError(onePagerText))
                 wrong.Add("one-pager PDF renders as a browser error page");
-
-            var claims = CountClaims(onePagerText).ToList();
-            if (claims.Count == 0)
-                wrong.Add("one-pager PDF contains no checked model count claims");
-            CheckClaims(claims, counts.ModelCounts, allowed, "one-pager", wrong);
+            else
+            {
+                var claims = CountClaims(onePagerText).ToList();
+                if (claims.Count == 0)
+                    wrong.Add("one-pager PDF contains no checked model count claims");
+                CheckClaims(claims, counts.ModelCounts, allowed, "one-pager", wrong);
+            }
         }
 
         string prose = HtmlToText(sourceHtml);
-        CheckClaims(CountClaims(prose), counts.ModelCounts, allowed, "dossier", wrong);
+
+        // THE PROSE SCANNER READS PROSE. TABLES HAVE THEIR OWN READER, WHICH KNOWS ABOUT CELLS.
+        //
+        // The dossier compares two jobs side by side, so its summary table is
+        // "Wall panels 335 205 / Columns 713 304 / Floor plates 15 15" -- 31168 then 31138. Every
+        // tag becomes a space here, so flattened it reads "...335 205 Columns 713 304 Floor
+        // plates", and a scanner looking for "<number> <noun>" pairs each label with the PREVIOUS
+        // row's second column. It invented "205 Columns", "304 Floor plates" and "15 Headers" and
+        // refused a publish whose model matched the dossier on every real number.
+        //
+        // CheckDossierTable below reads the same table by cell and gets it right, so the tables are
+        // dropped here rather than the scanner taught to parse them.
+        string proseOutsideTables = HtmlToText(Regex.Replace(sourceHtml, @"(?s)<table.*?</table>", " "));
+        CheckClaims(CountClaims(proseOutsideTables), counts.ModelCounts, allowed, "dossier", wrong);
         CheckDossierTable(sourceHtml, prose, counts.ModelCounts, wrong);
         CheckPlatelessStoreys(request, prose, wrong);
         CheckOneSuiteCount(prose, wrong);
@@ -111,12 +154,36 @@ public static class PublishExplainers
         return new PublishExplainersResult(copy, Array.Empty<string>(), Array.Empty<string>(), null);
     }
 
+    // The delivery pipeline, as opposed to the code that decides what a model SAYS. These files
+    // find the job folder, build the summary page, gate these very explainers and copy files; none
+    // of them can change a count, an outline or a storey. They are excluded so that changing them
+    // does not declare the explainers stale.
+    //
+    // This distinction only became necessary on 31 August, when publishing moved out of
+    // tools\Publish-EtabsModel.ps1 and into this folder. Before that the publisher sat outside the
+    // watched directory and the question never arose. Excluding them keeps the gate meaning what it
+    // was written to mean; leaving them in would have fired it on every publish change, and a gate
+    // that cries wolf is one people learn to re-render past without reading.
+    //
+    // ⚠ If model-building logic is ever added to one of these, take it back out of this list. The
+    // claims gate below still checks every stated number against the model either way.
+    internal static readonly string[] DeliveryPipelineFiles =
+    {
+        "JobPublisher.cs",
+        "PublishPlan.cs",
+        "PublishDiscovery.cs",
+        "PublishSummary.cs",
+        "PublishExplainers.cs",
+        "PublishExternalTools.cs",
+    };
+
     private static IEnumerable<string> StaleSources(string repoRoot, IEnumerable<string> sources)
     {
         string dxfSource = Path.Combine(repoRoot, "Kor.Operations.EngineeringTools.Core", "Dxf");
         if (!Directory.Exists(dxfSource)) yield break;
 
         var newest = Directory.EnumerateFiles(dxfSource, "*.cs", SearchOption.TopDirectoryOnly)
+            .Where(f => !DeliveryPipelineFiles.Contains(Path.GetFileName(f), StringComparer.OrdinalIgnoreCase))
             .Select(File.GetLastWriteTime)
             .DefaultIfEmpty(DateTime.MinValue)
             .Max();
@@ -214,10 +281,26 @@ public static class PublishExplainers
         yield return ("openings", contents.Openings);
     }
 
-    private static string PdfText(string pdf)
+    /// <summary>
+    /// The words in an explainer PDF, or null if the file will not open as one.
+    /// </summary>
+    /// <remarks>
+    /// A file that is not a readable PDF is a defect of exactly the kind this gate exists to catch
+    /// -- the 59 KB Edge "File not found" page shipped to job folders for days -- so it must arrive
+    /// as a refusal naming the file, not as a PdfDocumentFormatException thrown through the
+    /// publisher. Truncated, zero-length and half-written renders all land here.
+    /// </remarks>
+    private static string? PdfText(string pdf)
     {
-        using var doc = PdfDocument.Open(pdf);
-        return string.Join(" ", doc.GetPages().SelectMany(p => p.GetWords()).Select(w => w.Text));
+        try
+        {
+            using var doc = PdfDocument.Open(pdf);
+            return string.Join(" ", doc.GetPages().SelectMany(p => p.GetWords()).Select(w => w.Text));
+        }
+        catch (Exception)
+        {
+            return null;
+        }
     }
 
     private static bool LooksLikeBrowserError(string text)

@@ -445,7 +445,10 @@ if (args.Length >= 1 && args[0].Equals("dxf-inspect", StringComparison.OrdinalIg
 //                        [--variant name] [--per-building] [--skip-dossier]
 if (args.Length >= 1 && args[0].Equals("publish", StringComparison.OrdinalIgnoreCase))
 {
-    if (args.Length < 2)
+    // A job number never starts with "--", so an option in the job position means the job was
+    // left out -- including the "--help" a person reasonably tries first. Without this the
+    // publisher goes looking for a job folder named "--help" and reports it cannot find one.
+    if (args.Length < 2 || args[1].StartsWith("--", StringComparison.Ordinal))
     {
         Console.Error.WriteLine("Usage: takeoff publish <job> [--model-folder <folder>] [--dxf-folder <folder>] [--reference <f.e2k>] [--rules-db <c>] [--infer-floors] [--stick-file <f.pdf>] [--annotated-dxf <folder>] [--stage <folder>] [--drop-storeys <a,b,c>] [--tower <tag>] [--top-storey <name>] [--variant <name>] [--per-building] [--skip-dossier] [--land]");
         return 1;
