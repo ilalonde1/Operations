@@ -1636,7 +1636,7 @@ public static class DxfToEtabsService
         // appearing, vanishing or moving while 1,769 objects become 268 is a defect in this code,
         // and a model built by broken code must not reach an engineer. So it throws rather than
         // warning -- the same reason a missing rule stops a production run.
-        const bool MergeStacksIntoOneLabel = false;
+        const bool MergeStacksIntoOneLabel = true;
 
         var beforeStackMerge = MemberPlanStoreyMultisetPreserved.Capture(doc);
         int stacked = MergeStacksIntoOneLabel ? doc.MergeStackedMembers() : 0;
@@ -2077,10 +2077,32 @@ public static class DxfToEtabsService
                 },
                 StringComparer.OrdinalIgnoreCase);
 
+        // WHICH STOREYS A SHEET IS ON IS A FACT ABOUT PLACEMENT, NOT ABOUT OBJECT NAMES.
+        //
+        // It was read back from the objects: group them by the sheet each was made from, and take
+        // the storeys they now stand on. That is the same answer only while one object means one
+        // member on one storey.
+        //
+        // Once a member carries ONE LABEL its whole height -- the engineer's own convention -- a
+        // single object holds members drawn on six different sheets, and its own sheet is credited
+        // with every storey they reach. 31168 reported "B-LEVEL 34.dxf" as placed on THIRTY-TWO
+        // storeys including LEVEL 1 MEZZ, LEVEL P1 and LEVEL P2. That report goes to the engineer,
+        // and ModelCoverageTests reads it to know which drawing to check a member against -- which
+        // is why ten columns came back "drawn with arcs but built rectangular": the audit was
+        // comparing them against a tower sheet two hundred feet away.
+        //
+        // The storeys a sheet was PLACED on are already recorded, before any of this. Surviving the
+        // cut is the only question left, and a rename cannot touch the answer.
+        var stillHere = new HashSet<string>(saved.Storeys, StringComparer.OrdinalIgnoreCase);
+
         return before
-            .Select(s => bySheet.TryGetValue(s.File, out var kept)
-                ? s with { Stories = kept.Storeys, Walls = kept.Walls, Columns = kept.Columns, Slabs = kept.Floors }
-                : s with { Stories = Array.Empty<string>(), Walls = 0, Columns = 0, Slabs = 0 })
+            .Select(s =>
+            {
+                var placed = s.Stories.Where(stillHere.Contains).ToList();
+                return bySheet.TryGetValue(s.File, out var kept)
+                    ? s with { Stories = placed, Walls = kept.Walls, Columns = kept.Columns, Slabs = kept.Floors }
+                    : s with { Stories = Array.Empty<string>(), Walls = 0, Columns = 0, Slabs = 0 };
+            })
             .ToList();
     }
 

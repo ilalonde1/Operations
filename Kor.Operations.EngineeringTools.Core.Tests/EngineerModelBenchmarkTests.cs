@@ -174,14 +174,21 @@ public class EngineerModelBenchmarkTests
         if (score is null) return;
 
         _out.WriteLine(score.Report);
-        Assert.True(score.SizedRight >= 133,
-            $"Columns matching her size fell to {score.SizedRight}/{score.SizedCompared}; the ratchet is 133.");
-        // 60 of 66, tightened from 58 on 25 August. The old figure was left behind by a change that
-        // widened the comparison — 62 of her walls were being checked when it was set, 66 now — so
-        // it had gone slack by two and would have let a real regression through. Read twice, on the
-        // code before and after this session's change, identical both times.
-        Assert.True(score.ThickRight >= 60,
-            $"Walls matching her thickness fell to {score.ThickRight}/{score.ThickCompared}; the ratchet is 60.");
+
+        // 201 of 214, RESET on 1 September when both models began offering every section a member
+        // carries rather than the first. The denominators moved with it — 139 to 214 columns, 122
+        // walls — because 19 of her own 87 columns carry more than one section, four of them
+        // pairing a rectangular with a circular. Comparing one size per object was the same thing
+        // as comparing all of them only while a member meant one storey.
+        //
+        // Leaving the old 133 would have been slack by sixty-eight and let anything through.
+        Assert.True(score.SizedRight >= 201,
+            $"Columns matching her size fell to {score.SizedRight}/{score.SizedCompared}; the ratchet is 201.");
+
+        // 112 of 122, reset with it and for the same reason. It was 60 of 66, itself tightened from
+        // 58 on 25 August when a widened comparison had left it slack by two.
+        Assert.True(score.ThickRight >= 112,
+            $"Walls matching her thickness fell to {score.ThickRight}/{score.ThickCompared}; the ratchet is 112.");
     }
 
     /// <summary>
@@ -373,6 +380,7 @@ public class EngineerModelBenchmarkTests
         var frame = new Dictionary<string, (double Long, double Short, bool Round)>(StringComparer.OrdinalIgnoreCase);
         var shell = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
         var sectionOf = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var sectionsOf = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
         int openings = 0, flagged = 0;
 
         foreach (string line in lines)
@@ -442,8 +450,26 @@ public class EngineerModelBenchmarkTests
             string name = a.Groups[1].Value, storey = a.Groups[2].Value;
             if (generated != name.StartsWith("K", StringComparison.Ordinal)) continue;
 
+            // EVERY SECTION A MEMBER CARRIES, NOT THE FIRST.
+            //
+            // The section rides on the assign, so one object changes size — and shape — as it
+            // rises. Her own 31138 does exactly this on 19 of its 87 columns, four of them pairing
+            // a rectangular section with a circular one, and both models are read by this method.
+            //
+            // Keeping only the first was the same thing as keeping all of them while the generator
+            // wrote a fresh object per storey. Once a member carries one label its whole height, a
+            // column that is 24x24 low and 18x18 high offers only its first size to the comparison,
+            // and her columns of the other size have nothing of ours to match.
             var sec = Regex.Match(line, @"SECTION\s+""(.+?)""");
-            if (sec.Success) sectionOf.TryAdd(name, sec.Groups[1].Value);
+            if (sec.Success)
+            {
+                sectionOf.TryAdd(name, sec.Groups[1].Value);
+
+                if (!sectionsOf.TryGetValue(name, out var carried))
+                    sectionsOf[name] = carried = new List<string>();
+                if (!carried.Contains(sec.Groups[1].Value, StringComparer.OrdinalIgnoreCase))
+                    carried.Add(sec.Groups[1].Value);
+            }
             if (line.Contains("OPENING \"Yes\"", StringComparison.OrdinalIgnoreCase))
             {
                 flagged++;
@@ -468,9 +494,10 @@ public class EngineerModelBenchmarkTests
         {
             if (generated != name.StartsWith("K", StringComparison.Ordinal)) continue;
             if (!points.TryGetValue(at, out var where)) continue;
-            if (!sectionOf.TryGetValue(name, out string? section)) continue;
-            if (!frame.TryGetValue(section, out var box)) continue;
-            columnSizes.Add((where, box.Long, box.Short, box.Round));
+            if (!sectionsOf.TryGetValue(name, out var carried)) continue;
+            foreach (string section in carried)
+                if (frame.TryGetValue(section, out var box))
+                    columnSizes.Add((where, box.Long, box.Short, box.Round));
         }
 
         var wallThicknesses = new List<(DxfPoint, double)>();
@@ -478,9 +505,10 @@ public class EngineerModelBenchmarkTests
         {
             if (generated != name.StartsWith("K", StringComparison.Ordinal)) continue;
             if (!points.TryGetValue(ends.A, out var s1) || !points.TryGetValue(ends.B, out var e1)) continue;
-            if (!sectionOf.TryGetValue(name, out string? section)) continue;
-            if (!shell.TryGetValue(section, out double t)) continue;
-            wallThicknesses.Add((new DxfPoint((s1.X + e1.X) / 2, (s1.Y + e1.Y) / 2), t));
+            if (!sectionsOf.TryGetValue(name, out var carried)) continue;
+            foreach (string section in carried)
+                if (shell.TryGetValue(section, out double t))
+                    wallThicknesses.Add((new DxfPoint((s1.X + e1.X) / 2, (s1.Y + e1.Y) / 2), t));
         }
 
         return new Members(columns, walls, floorArea, columnSizes, wallThicknesses, openings, flagged);
