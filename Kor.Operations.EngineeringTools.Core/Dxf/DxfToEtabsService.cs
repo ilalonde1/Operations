@@ -93,6 +93,18 @@ public sealed record DxfToEtabsRequest
     public string? TowerOnly { get; init; }
 
     /// <summary>
+    /// One object per stack, carrying an assign on every storey it rises through — the engineer's
+    /// own convention. On by default; a test turns it off to prove it changes nothing but labels.
+    /// </summary>
+    /// <remarks>
+    /// Not a feature switch to be left on a shelf. It exists so
+    /// <c>StackMergeChangesNothingButLabelsTests</c> can build the same job both ways and diff
+    /// everything that is not a name — which is the only way this class of fault gets found all at
+    /// once rather than one per session.
+    /// </remarks>
+    public bool MergeStacksIntoOneLabel { get; init; } = true;
+
+    /// <summary>
     /// Keep this storey and everything below it; drop everything above.
     ///
     /// The other way to say "the podium and the mid-rise, not the towers". <see cref="TowerOnly"/>
@@ -1872,10 +1884,19 @@ public static class DxfToEtabsService
         // appearing, vanishing or moving while 1,769 objects become 268 is a defect in this code,
         // and a model built by broken code must not reach an engineer. So it throws rather than
         // warning -- the same reason a missing rule stops a production run.
-        const bool MergeStacksIntoOneLabel = true;
+        // WHICH DRAWING GAVE WHAT, READ WHILE THE OBJECTS STILL SAY SO.
+        //
+        // The sheet ledger is a provenance question — she reads it to know which drawing each
+        // storey came from, and ModelCoverageTests reads it to know which drawing to check a member
+        // against. Provenance is carried on OBJECT names, and the merge is about to rewrite them.
+        //
+        // Read after the merge, a sheet whose objects were all absorbed into a neighbour's label
+        // vanishes from the ledger entirely. That is not a small thing: on 31138 a LEVEL 3 sheet
+        // dropped out and a LEVEL 4 sheet took its place in the list.
+        var provenance = doc.ReadContents(summary.SourceSheetOfObject);
 
         var beforeStackMerge = MemberPlanStoreyMultisetPreserved.Capture(doc);
-        int stacked = MergeStacksIntoOneLabel ? doc.MergeStackedMembers() : 0;
+        int stacked = request.MergeStacksIntoOneLabel ? doc.MergeStackedMembers() : 0;
         MemberPlanStoreyMultisetPreserved.Assert(beforeStackMerge, doc);
 
         // AND ONE STOREY PER MEMBER, NOW THAT THERE IS NOTHING LEFT TO STEP OVER.
@@ -2069,7 +2090,10 @@ public static class DxfToEtabsService
 
         // The sheet table is also a readback of what survived into the file, not what the
         // pre-cut composition placed.
-        var sheetsAfterCut = SheetsAfterCut(outcomes, saved);
+        // From the readback taken BEFORE the stack merge: the ledger says which drawing gave what,
+        // and the merge rewrites the object names that carry the answer. The storey list is trimmed
+        // to what survived, which is the same either way.
+        var sheetsAfterCut = SheetsAfterCut(outcomes, provenance, saved);
 
         return new DxfToEtabsReport(
             request.OutputE2k, files.Count, sheetsAfterCut.Count(s => s.Stories.Count > 0),
@@ -2088,9 +2112,10 @@ public static class DxfToEtabsService
 
     private static IReadOnlyList<SheetOutcome> SheetsAfterCut(
         IReadOnlyList<SheetOutcome> before,
+        E2kModelContents provenance,
         E2kModelContents saved)
     {
-        var bySheet = saved.Objects
+        var bySheet = provenance.Objects
             .Where(o => !string.IsNullOrWhiteSpace(o.SourceSheet))
             .GroupBy(o => o.SourceSheet!, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(
