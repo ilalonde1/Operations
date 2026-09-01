@@ -1614,60 +1614,6 @@ public static class DxfToEtabsService
         // A merge is only a merge once the members follow it.
         int followedRenames = doc.RenameStoreysInAssigns();
 
-        // ONE LABEL ALL THE WAY UP. After the cuts, so it merges exactly what she receives.
-        //
-        // ⚠ OFF, AND ONE LINE FROM ON. Turn this true to run it; everything else is finished.
-        //
-        // What is proven: placement is exact. 1,769 column objects become 268 and the multiset gate
-        // below stays silent, confirmed independently by docs/etabs-handoff/members_by_storey.py --
-        // all 29 storeys identical, walls, columns and plates. The "adds members, LEVEL 2 columns
-        // 36 to 60" this was stashed for does not reproduce and was never the merge.
-        //
-        // What is NOT settled, and why this is still off: three coverage checks disagree with the
-        // merged model on column SIZE and SHAPE -- 10 columns on 31168, 4 on 31138, every one of
-        // them "drawn with arcs but built rectangular". They are not mixed-section members; after
-        // the connectivity fix no object carries two sections. The lead is that a member now offers
-        // many candidate storeys to EveryGeneratedMemberHasTheSizeItWasDrawnAt, and at
-        // (2174,2630) a 42x42 column's 39in window reaches a KOR-D30 round column 23in away, so
-        // whose arcs are whose is decided by Closer() against a centre list the merge has thinned.
-        // That is a lead and not a measurement, and this stays off until it is one.
-        //
-        // The merge is a RENAMING, and the gate is its postcondition, not a report line. A member
-        // appearing, vanishing or moving while 1,769 objects become 268 is a defect in this code,
-        // and a model built by broken code must not reach an engineer. So it throws rather than
-        // warning -- the same reason a missing rule stops a production run.
-        const bool MergeStacksIntoOneLabel = true;
-
-        var beforeStackMerge = MemberPlanStoreyMultisetPreserved.Capture(doc);
-        int stacked = MergeStacksIntoOneLabel ? doc.MergeStackedMembers() : 0;
-        MemberPlanStoreyMultisetPreserved.Assert(beforeStackMerge, doc);
-
-        // AND ONE STOREY PER MEMBER, NOW THAT THERE IS NOTHING LEFT TO STEP OVER.
-        //
-        // Only in a model cut to one building. The site list interleaves three of them, so a span
-        // greater than one is how a YMCA column reaches past the towers' storeys to its own floor
-        // below. Cut to one building the row below a storey IS the floor below it, and a longer
-        // span is a member running through a floor -- the overlap she photographed.
-        if (request.TowerOnly is not null)
-        {
-            int unspanned = doc.SpanEveryGeneratedMemberOneStorey();
-            if (unspanned > 0)
-                warnings.Add(
-                    $"{unspanned} column and wall object(s) were cut back to one storey each. In the site " +
-                    "model a member spans the other buildings' storeys to reach its own floor below; in a " +
-                    "model of one building there is nothing between, and a longer span is a member running " +
-                    "through a floor rather than stopping at it. This is the convention your own 31138 model " +
-                    "uses: every column object span 1, with an assign on each storey it rises through.");
-        }
-        if (stacked > 0)
-            warnings.Add(
-                $"{stacked} column and wall object(s) were merged into the stack they belong to, so a member " +
-                "running through several floors now carries ONE label its whole height with a separate " +
-                "member between each pair of floors. Each storey is read from its own drawing, so each " +
-                "used to arrive as a differently named object — a single column reading C360, C359, C363 up " +
-                "the building. This is the convention your own 31138 model uses: one object, an assign per " +
-                "storey, the section carried on the assign so a column may still change size as it rises.");
-
         // One floor holds one of each member — whether the cut merged two storeys, or the model
         // always had two names for the same floor.
         int mergedAway = doc.DropMembersDuplicatedOnOneFloor();
@@ -1889,6 +1835,75 @@ public static class DxfToEtabsService
                     $"Removed: {string.Join(", ", droppedStoreys.Take(8))}{(droppedStoreys.Length > 8 ? ", …" : "")}.").ToList(),
             };
         }
+
+        // MERGED HERE, AFTER EVERY CUT, BECAUSE A RENAME DESTROYS THE EVIDENCE THE CUTS USE.
+        //
+        // This ran before the building cut and cost 2,741 foreign members. The cut decides what
+        // belongs to another building from summary.BuildingOfObject, keyed by the object names
+        // composition made. The merge absorbs objects into a keeper and rewrites their assigns to
+        // the keeper's name, so DropObjects then looks for names nothing is assigned to any more,
+        // and the towers' members ride into her model on a building-C label. Measured on 31168
+        // building C: 753 members removed as foreign with the merge before the cut, 3,494 after.
+        //
+        // MemberPlanStoreyMultisetPreserved cannot see it and is right not to: every member is
+        // still exactly where it was. What changed is WHOSE it is, and the gate does not read that.
+        // Order is the fix rather than another check -- attribution has to survive until the last
+        // reader of it has run.
+
+        // ONE LABEL ALL THE WAY UP. After the cuts, so it merges exactly what she receives.
+        //
+        // ⚠ OFF, AND ONE LINE FROM ON. Turn this true to run it; everything else is finished.
+        //
+        // What is proven: placement is exact. 1,769 column objects become 268 and the multiset gate
+        // below stays silent, confirmed independently by docs/etabs-handoff/members_by_storey.py --
+        // all 29 storeys identical, walls, columns and plates. The "adds members, LEVEL 2 columns
+        // 36 to 60" this was stashed for does not reproduce and was never the merge.
+        //
+        // What is NOT settled, and why this is still off: three coverage checks disagree with the
+        // merged model on column SIZE and SHAPE -- 10 columns on 31168, 4 on 31138, every one of
+        // them "drawn with arcs but built rectangular". They are not mixed-section members; after
+        // the connectivity fix no object carries two sections. The lead is that a member now offers
+        // many candidate storeys to EveryGeneratedMemberHasTheSizeItWasDrawnAt, and at
+        // (2174,2630) a 42x42 column's 39in window reaches a KOR-D30 round column 23in away, so
+        // whose arcs are whose is decided by Closer() against a centre list the merge has thinned.
+        // That is a lead and not a measurement, and this stays off until it is one.
+        //
+        // The merge is a RENAMING, and the gate is its postcondition, not a report line. A member
+        // appearing, vanishing or moving while 1,769 objects become 268 is a defect in this code,
+        // and a model built by broken code must not reach an engineer. So it throws rather than
+        // warning -- the same reason a missing rule stops a production run.
+        const bool MergeStacksIntoOneLabel = true;
+
+        var beforeStackMerge = MemberPlanStoreyMultisetPreserved.Capture(doc);
+        int stacked = MergeStacksIntoOneLabel ? doc.MergeStackedMembers() : 0;
+        MemberPlanStoreyMultisetPreserved.Assert(beforeStackMerge, doc);
+
+        // AND ONE STOREY PER MEMBER, NOW THAT THERE IS NOTHING LEFT TO STEP OVER.
+        //
+        // Only in a model cut to one building. The site list interleaves three of them, so a span
+        // greater than one is how a YMCA column reaches past the towers' storeys to its own floor
+        // below. Cut to one building the row below a storey IS the floor below it, and a longer
+        // span is a member running through a floor -- the overlap she photographed.
+        if (request.TowerOnly is not null)
+        {
+            int unspanned = doc.SpanEveryGeneratedMemberOneStorey();
+            if (unspanned > 0)
+                warnings.Add(
+                    $"{unspanned} column and wall object(s) were cut back to one storey each. In the site " +
+                    "model a member spans the other buildings' storeys to reach its own floor below; in a " +
+                    "model of one building there is nothing between, and a longer span is a member running " +
+                    "through a floor rather than stopping at it. This is the convention your own 31138 model " +
+                    "uses: every column object span 1, with an assign on each storey it rises through.");
+        }
+        if (stacked > 0)
+            warnings.Add(
+                $"{stacked} column and wall object(s) were merged into the stack they belong to, so a member " +
+                "running through several floors now carries ONE label its whole height with a separate " +
+                "member between each pair of floors. Each storey is read from its own drawing, so each " +
+                "used to arrive as a differently named object — a single column reading C360, C359, C363 up " +
+                "the building. This is the convention your own 31138 model uses: one object, an assign per " +
+                "storey, the section carried on the assign so a column may still change size as it rises.");
+
 
         // The bill for composing once and cutting afterwards: members that belong to a building
         // this model is not of are defined here and assigned to nothing. They come out.
