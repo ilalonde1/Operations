@@ -187,11 +187,28 @@ public static class MemberPlanStoreyMultisetPreserved
     {
         var points = position.Split('|');
         if (points.Length == 1 || points.All(p => p == points[0]))
-            return "(" + points[0].Replace(",", ", ") + ")";
+            return "(" + Readable(points[0]) + ")";
 
         if (points.Length == 2)
-            return "(" + points[0].Replace(",", ", ") + ") to (" + points[1].Replace(",", ", ") + ")";
+            return "(" + Readable(points[0]) + ") to (" + Readable(points[1]) + ")";
 
-        return "(" + points[0].Replace(",", ", ") + ") to (" + points[1].Replace(",", ", ") + "), ...";
+        return "(" + Readable(points[0]) + ") to (" + Readable(points[1]) + "), ...";
+    }
+
+    /// <summary>
+    /// One point, for a person to read. Exactness belongs to the KEY, which stays G17 so a coordinate
+    /// that moved at all still fails; this is the message, and a member is found on a drawing at a
+    /// tenth of an inch. Printing the round-trip form instead gives
+    /// "(-175.07329999999999, 3634.4459000000002)", which is the same position and harder to use.
+    /// </summary>
+    private static string Readable(string point)
+    {
+        var parts = point.Split(',');
+        if (parts.Length != 2
+            || !double.TryParse(parts[0], NumberStyles.Float, CultureInfo.InvariantCulture, out double x)
+            || !double.TryParse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out double y))
+            return point.Replace(",", ", ");
+
+        return x.ToString("0.#", CultureInfo.InvariantCulture) + ", " + y.ToString("0.#", CultureInfo.InvariantCulture);
     }
 }

@@ -296,6 +296,34 @@ if (args.Length >= 1 && args[0].Equals("verify-e2k", StringComparison.OrdinalIgn
     return 3;
 }
 
+// DID A REVISION MOVE A MEMBER, OR ONLY RENAME ONE?
+//
+// The multiset of (kind, plan position, storey) is what a rename-only change must preserve. Object
+// count is expected to fall -- a stack merge takes 1,769 column objects to 268 -- and not one
+// member may appear, vanish or move while it does.
+//
+// Usage: takeoff e2k-multiset <before.e2k> <after.e2k>
+if (args.Length >= 1 && args[0].Equals("e2k-multiset", StringComparison.OrdinalIgnoreCase))
+{
+    if (args.Length < 3)
+    {
+        Console.Error.WriteLine("Usage: takeoff e2k-multiset <before.e2k> <after.e2k>");
+        return 1;
+    }
+
+    var multiset = MemberPlanStoreyMultisetPreserved.Compare(args[1], args[2]);
+    if (multiset.Preserved)
+    {
+        Console.WriteLine(
+            $"e2k-multiset: every (kind, plan position, storey) assignment in {Path.GetFileName(args[1])} " +
+            $"is still in {Path.GetFileName(args[2])}, and nothing was added.");
+        return 0;
+    }
+
+    Console.Error.WriteLine($"e2k-multiset: {multiset.Message}");
+    return 3;
+}
+
 if (args.Length >= 1 && args[0].Equals("dxf-inspect", StringComparison.OrdinalIgnoreCase))
 {
     if (args.Length < 2) { Console.Error.WriteLine("Usage: takeoff dxf-inspect <plan.dxf> [--walls] [--plates]"); return 1; }
@@ -3779,6 +3807,7 @@ public static class TakeoffCliHelp
         new("corpus-read", "takeoff corpus-read <projectsRoot> [out.txt] [--limit N]", "Extract readable project corpus text."),
         new("dxf-to-etabs", "takeoff dxf-to-etabs <dxfFolder> <reference.e2k> <out.e2k> [options]", "Build an ETABS model from DXF plans."),
         new("verify-e2k", "takeoff verify-e2k <model.e2k> [--joint-tolerance <in>] [--dropped <a,b,c>] [--reference <ref.e2k>] [--report report.txt] [--questions questions.xlsx]", "Refuse a finished model that breaks a structural invariant."),
+        new("e2k-multiset", "takeoff e2k-multiset <before.e2k> <after.e2k>", "Prove a revision only renamed members and moved none."),
         new("ifc-takeoff", "takeoff ifc-takeoff <model.ifc> <out.xlsx>", "Generate a quantity takeoff from an IFC model."),
         new("e2k-takeoff", "takeoff e2k-takeoff <model.e2k> <out.xlsx> [--metric]", "Price the concrete in a generated ETABS model."),
         new("revit-takeoff", "takeoff revit-takeoff <folder|schedule.csv> [more.csv ...] <out.xlsx>", "Price the concrete straight off Revit schedule exports."),
