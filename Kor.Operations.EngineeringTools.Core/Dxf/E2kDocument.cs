@@ -745,6 +745,110 @@ public sealed class E2kDocument
     /// Nothing is judged by tolerance, because a duplicate of this kind is duplicated exactly, and
     /// anything that differs at all is two things the drawings really did draw differently.
     /// </summary>
+    /// <summary>
+    /// One object per column stack and per wall stack, carrying an assign on every storey it rises
+    /// through — one label at full height, with a separate member between each pair of floors.
+    ///
+    /// Andrea Neuviale, 31 August, having run the model: "when a column is running through several
+    /// floors, we want it to have the same label full height", with a picture of one stack labelled
+    /// C360, C359, C363 — three names for one column.
+    ///
+    /// This is her own convention, not an inference. Measured in her 31138 model: 57 of its 87
+    /// columns are ONE object assigned to 5.1 storeys on average — C100, C102 and C103 to nineteen
+    /// each — and 101 of its 247 area objects the same, every one with a span of 1.
+    ///
+    /// This tool wrote a fresh object per storey because each storey is read from its own sheet, so
+    /// 31168 building C stood 713 column objects at 219 plan points: 678 of them in stacks, every
+    /// member of every stack differently named.
+    ///
+    /// MERGED ON POSITION, NOT ON SECTION. The assign carries the section, so a column that steps
+    /// from 24x24 to 18x18 partway up stays one object with one label and two sections, which is
+    /// what her model does and what an engineer wants to see. Two members at one plan point are one
+    /// member of the building whatever their size.
+    ///
+    /// Only ours: a member carried through from the engineer's own model keeps her name.
+    /// </summary>
+    public int MergeStackedMembers()
+    {
+        // THE WHOLE CONNECTIVITY, NOT JUST THE JOINTS.
+        //
+        // Two members may be merged only where their connectivity rows are the SAME row -- one
+        // object can carry one geometry, and everything after the kind is that geometry.
+        //
+        // Matching on the joints alone merged members whose remaining fields differed, and the
+        // survivor's fields then governed every assign it absorbed. The field that matters is the
+        // last one on a LINE: the SPAN, how many storeys the member rises through. A member whose
+        // span was 2 absorbed into a keeper of span 1 is suddenly measured between the wrong pair
+        // of floors -- which is how a perfectly ordinary wall came out 5.4 INCHES tall.
+        //
+        // Nothing in the plan-position gate could see it: span is not part of (kind, position,
+        // storey), and the member really is at that position on that storey. NoWallIsAWafer caught
+        // it, and only once panel heights were measured per assign rather than per label.
+        var lineConn = new Regex(@"^\s*LINE\s+""([^""]+)""\s+(\w+)\s+(.*)$");
+        var areaConn = new Regex(@"^\s*AREA\s+""([^""]+)""\s+(\w+)\s+(.*)$");
+        var assign = new Regex(@"^(\s*(?:AREA|LINE)ASSIGN\s+)""([^""]+)""(\s+.*)$");
+
+        var keepFor = new Dictionary<string, string>(StringComparer.Ordinal);
+        int absorbed = 0;
+
+        foreach (var (header, rx, wanted) in new (string, Regex, string)[]
+                 {
+                     ("LINE CONNECTIVITIES", lineConn, "COLUMN"),
+                     ("AREA CONNECTIVITIES", areaConn, "PANEL"),
+                 })
+        {
+            var section = Find(header);
+            if (section is null) continue;
+
+            var firstAt = new Dictionary<string, string>(StringComparer.Ordinal);
+            var drop = new List<string>();
+
+            foreach (string raw in section.Lines)
+            {
+                var m = rx.Match(raw);
+                if (!m.Success) continue;
+                if (!string.Equals(m.Groups[2].Value, wanted, StringComparison.OrdinalIgnoreCase)) continue;
+
+                string name = m.Groups[1].Value;
+                if (!name.StartsWith("KC", StringComparison.Ordinal)
+                    && !name.StartsWith("KW", StringComparison.Ordinal)) continue;
+
+                string at = wanted + "|" + Regex.Replace(m.Groups[3].Value, @"\s+", " ").Trim();
+
+                if (firstAt.TryGetValue(at, out string? keep))
+                {
+                    keepFor[name] = keep;
+                    drop.Add(raw);
+                    absorbed++;
+                }
+                else
+                {
+                    firstAt[at] = name;
+                }
+            }
+
+            foreach (string raw in drop) section.Lines.Remove(raw);
+        }
+
+        if (keepFor.Count == 0) return 0;
+
+        foreach (string header in new[] { "AREA ASSIGNS", "LINE ASSIGNS" })
+        {
+            var section = Find(header);
+            if (section is null) continue;
+
+            for (int i = 0; i < section.Lines.Count; i++)
+            {
+                var m = assign.Match(section.Lines[i]);
+                if (!m.Success) continue;
+                if (!keepFor.TryGetValue(m.Groups[2].Value, out string? keep)) continue;
+                section.Lines[i] = m.Groups[1].Value + "\"" + keep + "\"" + m.Groups[3].Value;
+            }
+        }
+
+        return absorbed;
+    }
+
     public int DropMembersDuplicatedOnOneFloor()
     {
         // Storeys nearer than a storey are one floor, and the copy that stays is the one lowest
@@ -1164,18 +1268,31 @@ public sealed class E2kDocument
             .Where(p => p.StartsWith("KP", StringComparison.Ordinal) && !referenced.Contains(p))
             .ToHashSet(StringComparer.Ordinal);
 
+        // MEMBERS, NOT LABELS.
+        //
+        // These are the numbers the report, the summary page and the dossier all state as "wall
+        // panels" and "columns", and a panel is a member of the building -- one between each pair
+        // of floors. An OBJECT is a name, and one object may carry a member on every storey it
+        // rises through: that is the engineer's own convention, measured in her 31138 model, where
+        // 57 of 87 column objects are assigned to about five storeys each.
+        //
+        // Counted as objects these were the same number only while the generator wrote a fresh
+        // object per storey. Measured on 31168 building C before the stack merge: 1,019 wall
+        // objects and 1,019 wall assigns, 1,769 and 1,769. After it: 184 objects carrying the same
+        // 1,019 panels. Reporting 184 wall panels for an unchanged building is simply false, and it
+        // would have moved every published count the day the merge landed.
+        int MembersOf(string prefix, string kind) => kinds
+            .Where(x => x.Key.StartsWith(prefix, StringComparison.Ordinal)
+                        && x.Value.Equals(kind, StringComparison.OrdinalIgnoreCase))
+            .Sum(x => storeysByObject.TryGetValue(x.Key, out var on) ? on.Count : 0);
+
         return new E2kModelContents(
             storeys,
-            kinds.Count(x => x.Key.StartsWith("KW", StringComparison.Ordinal)
-                             && x.Value.Equals("PANEL", StringComparison.OrdinalIgnoreCase)),
-            kinds.Count(x => x.Key.StartsWith("KC", StringComparison.Ordinal)
-                             && x.Value.Equals("COLUMN", StringComparison.OrdinalIgnoreCase)),
-            kinds.Count(x => x.Key.StartsWith("KF", StringComparison.Ordinal)
-                              && x.Value.Equals("FLOOR", StringComparison.OrdinalIgnoreCase)),
-            kinds.Count(x => x.Key.StartsWith("KS", StringComparison.Ordinal)
-                              && x.Value.Equals("PANEL", StringComparison.OrdinalIgnoreCase)),
-            kinds.Count(x => x.Key.StartsWith("KO", StringComparison.Ordinal)
-                              && x.Value.Equals("AREA", StringComparison.OrdinalIgnoreCase)),
+            MembersOf("KW", "PANEL"),
+            MembersOf("KC", "COLUMN"),
+            MembersOf("KF", "FLOOR"),
+            MembersOf("KS", "PANEL"),
+            MembersOf("KO", "AREA"),
             points.Count,
             members,
             plates,

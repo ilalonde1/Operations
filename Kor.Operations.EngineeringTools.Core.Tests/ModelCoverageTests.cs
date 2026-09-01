@@ -418,7 +418,7 @@ public class ModelCoverageTests
         var sections = GeneratedModel.Sections(built.Lines);
         var joints = GeneratedModel.Joints(built.Lines);
         var assigns = GeneratedModel.AssignedStoreys(built.Lines);
-        var sectionOf = GeneratedModel.SectionOfMember(built.Lines);
+        var sectionsOfMember = GeneratedModel.SectionsOfMember(built.Lines);
         var linework = GeneratedModel.ColumnLineworkByStorey(project, built.Report);
         var sizeOrder = GeneratedModel.StoreysTopToBottom(built.Lines);
 
@@ -443,7 +443,12 @@ public class ModelCoverageTests
 
             string member = column.Groups[1].Value;
             if (!joints.TryGetValue(column.Groups[2].Value, out var at)) continue;
-            if (!sectionOf.TryGetValue(member, out string? section) || !sections.TryGetValue(section, out var built_)) continue;
+            if (!sectionsOfMember.TryGetValue(member, out var carried)) continue;
+            var builtSections = carried
+                .Where(sections.ContainsKey)
+                .Select(s => (Name: s, Section: sections[s]))
+                .ToList();
+            if (builtSections.Count == 0) continue;
             if (!assigns.TryGetValue(member, out var assigned)) continue;
 
             // Its drawing is on the storey below: a solid column drawn on the plan for storey N is
@@ -465,7 +470,13 @@ public class ModelCoverageTests
             //
             // So each candidate is judged alone and the member passes if ANY of them agrees. It
             // came from one sheet; agreeing with one is agreement.
-            double reach = Math.Max(built_.D, built_.B) / 2.0 + Tolerance;
+            // AND ONE MEMBER MAY CARRY SEVERAL SECTIONS, for the same reason it may stand on
+            // several storeys: the section rides on the assign, so a column keeping one label its
+            // whole height changes size -- and shape -- as it rises. Andrea's own 31138 model does
+            // this on 19 of its 87 columns, four of them pairing a rectangular section with a
+            // circular one. Agreeing with ANY of a member's sections is agreement, exactly as
+            // agreeing with any candidate storey is; a column that matches none of them still fails.
+            double reach = builtSections.Max(b => Math.Max(b.Section.D, b.Section.B)) / 2.0 + Tolerance;
             string? complaint = null;
             bool agreed = false, anyLinework = false;
 
@@ -490,13 +501,6 @@ public class ModelCoverageTests
                 // listens to curves nearer to this column than to any other.
                 bool drawnRound = under.Any(seg => seg.FromCurve &&
                     Closer(new DxfPoint((seg.Start.X + seg.End.X) / 2, (seg.Start.Y + seg.End.Y) / 2), at, centres));
-                if (drawnRound != built_.IsRound)
-                {
-                    complaint ??= $"{member} at ({at.X:F0},{at.Y:F0}) drawn with " +
-                                  $"{(drawnRound ? "arcs" : "straight lines only")} but built " +
-                                  $"{(built_.IsRound ? "round" : "rectangular")} as '{section}'";
-                    continue;
-                }
 
                 double minX = under.Min(seg => Math.Min(seg.Start.X, seg.End.X));
                 double maxX = under.Max(seg => Math.Max(seg.Start.X, seg.End.X));
@@ -505,31 +509,45 @@ public class ModelCoverageTests
 
                 double drawnLong = Math.Max(maxX - minX, maxY - minY);
                 double drawnShort = Math.Min(maxX - minX, maxY - minY);
-
-                // A footprint that reads as a sliver is one this window failed to capture whole,
-                // not a sliver column. Judging it would report the window's own limits as defects.
-                if (drawnShort < 4.0) { agreed = true; break; }
-
-                double builtLong = built_.IsRound ? built_.D : Math.Max(built_.D, built_.B);
-                double builtShort = built_.IsRound ? built_.D : Math.Min(built_.D, built_.B);
-
-                // The drawn box is axis-aligned and the column may be turned inside it, so the
-                // only sound bound is that the built section must fit within the box at SOME
-                // rotation: its diagonal cannot exceed the box's. Comparing lengths side to side
-                // instead calls an 8x43 turned 45 degrees oversize inside a 36x36 box.
-                double builtDiagonal = Math.Sqrt(builtLong * builtLong + builtShort * builtShort);
                 double drawnDiagonal = Math.Sqrt(drawnLong * drawnLong + drawnShort * drawnShort);
 
-                if (builtDiagonal - drawnDiagonal > 2.0)
+                foreach (var (section, built_) in builtSections)
                 {
-                    complaint ??= $"{member} at ({at.X:F0},{at.Y:F0}) drawn inside " +
-                                  $"{drawnShort:F0}x{drawnLong:F0} but built {builtShort:F0}x{builtLong:F0} " +
-                                  $"as '{section}', which does not fit";
-                    continue;
+                    if (drawnRound != built_.IsRound)
+                    {
+                        complaint ??= $"{member} at ({at.X:F0},{at.Y:F0}) drawn with " +
+                                      $"{(drawnRound ? "arcs" : "straight lines only")} but built " +
+                                      $"{(built_.IsRound ? "round" : "rectangular")} as '{section}'";
+                        continue;
+                    }
+
+                    // A footprint that reads as a sliver is one this window failed to capture
+                    // whole, not a sliver column. Judging it would report the window's own limits
+                    // as defects. Still reached only once roundness agrees, as it always was.
+                    if (drawnShort < 4.0) { agreed = true; break; }
+
+                    double builtLong = built_.IsRound ? built_.D : Math.Max(built_.D, built_.B);
+                    double builtShort = built_.IsRound ? built_.D : Math.Min(built_.D, built_.B);
+
+                    // The drawn box is axis-aligned and the column may be turned inside it, so the
+                    // only sound bound is that the built section must fit within the box at SOME
+                    // rotation: its diagonal cannot exceed the box's. Comparing lengths side to
+                    // side instead calls an 8x43 turned 45 degrees oversize inside a 36x36 box.
+                    double builtDiagonal = Math.Sqrt(builtLong * builtLong + builtShort * builtShort);
+
+                    if (builtDiagonal - drawnDiagonal > 2.0)
+                    {
+                        complaint ??= $"{member} at ({at.X:F0},{at.Y:F0}) drawn inside " +
+                                      $"{drawnShort:F0}x{drawnLong:F0} but built {builtShort:F0}x{builtLong:F0} " +
+                                      $"as '{section}', which does not fit";
+                        continue;
+                    }
+
+                    agreed = true;
+                    break;
                 }
 
-                agreed = true;
-                break;
+                if (agreed) break;
             }
 
             if (!anyLinework) continue;   // nothing drawn there is the other test's finding

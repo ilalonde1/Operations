@@ -138,10 +138,19 @@ public class ModelPlausibilityTests
         // Spandrels are wall panels too, but a header over a door is meant to be shallow — it is
         // sized as the storey height less the opening height. Only full-height walls are held to
         // the storey-height rules.
+        // ONE HEIGHT PER PANEL, NOT PER LABEL.
+        //
+        // These are assigns, and each assign IS a panel: the object is a name, the assign puts a
+        // panel of it on one storey. Grouping by name and spanning lowest to highest was the same
+        // thing only while the generator wrote a fresh object per storey. Once a member carries one
+        // label its whole height -- the engineer's own convention, measured in her 31138 model --
+        // that group spans the building, and a perfectly ordinary wall reads 454ft.
+        //
+        // Measuring per assign also restores the wafer check, which the grouping had quietly
+        // blinded: a 2in panel merged into a tall stack disappears into its span.
         var wallHeights = geometry.Walls
             .Where(w => w.Name.StartsWith("KW", StringComparison.OrdinalIgnoreCase))
-            .GroupBy(w => w.Name, StringComparer.OrdinalIgnoreCase)
-            .Select(g => SpanOf(g.Key, g.Select(w => w.Story)))
+            .Select(w => SpanOf(w.Name, new[] { w.Story }))
             .Where(h => !double.IsNaN(h))
             .ToList();
 
@@ -155,10 +164,11 @@ public class ModelPlausibilityTests
                 spandrelDepths.Add(z);
         }
 
+        // Per assign, for the reason above: one column between each pair of floors, however many
+        // of them share a label. NoColumnIsShorterThanAPerson depends on this to see a stub at all.
         var columnHeights = geometry.Columns
             .Where(c => c.Name.StartsWith("K", StringComparison.OrdinalIgnoreCase))
-            .GroupBy(c => c.Name, StringComparer.OrdinalIgnoreCase)
-            .Select(g => SpanOf(g.Key, g.Select(c => c.Story)))
+            .Select(c => SpanOf(c.Name, new[] { c.Story }))
             .Where(h => !double.IsNaN(h))
             .ToList();
 

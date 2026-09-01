@@ -302,6 +302,35 @@ internal static class GeneratedModel
     }
 
     /// <summary>The section each generated member is assigned.</summary>
+    /// <summary>
+    /// EVERY section a member carries, because one member may carry several.
+    ///
+    /// The section rides on the assign, so a column keeping one label its whole height changes size
+    /// as it rises -- and shape too. Andrea's own 31138 model does exactly this: 19 of her 87
+    /// column objects carry more than one section, and four of those pair a rectangular section
+    /// with a circular one (C15 through C18: C18X36-65MPA and c30-55MPa).
+    ///
+    /// SectionOfMember below keeps the FIRST and was right only while the generator wrote a fresh
+    /// object per storey. Reading one section for a member that has three compares the wrong one
+    /// against the drawing and reports "drawn with arcs but built rectangular" for a column that is
+    /// both, on different floors.
+    /// </summary>
+    internal static Dictionary<string, List<string>> SectionsOfMember(string[] lines)
+    {
+        var sections = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+        foreach (string line in lines)
+        {
+            var m = Regex.Match(line.Trim(), @"^(?:AREA|LINE)ASSIGN\s+""(K\w+)""\s+""[^""]+""\s+SECTION\s+""(.+?)""(?:\s|$)");
+            if (!m.Success) continue;
+
+            if (!sections.TryGetValue(m.Groups[1].Value, out var had))
+                sections[m.Groups[1].Value] = had = new List<string>();
+            if (!had.Contains(m.Groups[2].Value, StringComparer.OrdinalIgnoreCase))
+                had.Add(m.Groups[2].Value);
+        }
+        return sections;
+    }
+
     internal static Dictionary<string, string> SectionOfMember(string[] lines)
     {
         var section = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);

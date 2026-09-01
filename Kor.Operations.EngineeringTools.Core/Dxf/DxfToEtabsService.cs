@@ -1503,6 +1503,42 @@ public static class DxfToEtabsService
         // A merge is only a merge once the members follow it.
         int followedRenames = doc.RenameStoreysInAssigns();
 
+        // ONE LABEL ALL THE WAY UP. After the cuts, so it merges exactly what she receives.
+        //
+        // ⚠ OFF, AND ONE LINE FROM ON. Turn this true to run it; everything else is finished.
+        //
+        // What is proven: placement is exact. 1,769 column objects become 268 and the multiset gate
+        // below stays silent, confirmed independently by docs/etabs-handoff/members_by_storey.py --
+        // all 29 storeys identical, walls, columns and plates. The "adds members, LEVEL 2 columns
+        // 36 to 60" this was stashed for does not reproduce and was never the merge.
+        //
+        // What is NOT settled, and why this is still off: three coverage checks disagree with the
+        // merged model on column SIZE and SHAPE -- 10 columns on 31168, 4 on 31138, every one of
+        // them "drawn with arcs but built rectangular". They are not mixed-section members; after
+        // the connectivity fix no object carries two sections. The lead is that a member now offers
+        // many candidate storeys to EveryGeneratedMemberHasTheSizeItWasDrawnAt, and at
+        // (2174,2630) a 42x42 column's 39in window reaches a KOR-D30 round column 23in away, so
+        // whose arcs are whose is decided by Closer() against a centre list the merge has thinned.
+        // That is a lead and not a measurement, and this stays off until it is one.
+        //
+        // The merge is a RENAMING, and the gate is its postcondition, not a report line. A member
+        // appearing, vanishing or moving while 1,769 objects become 268 is a defect in this code,
+        // and a model built by broken code must not reach an engineer. So it throws rather than
+        // warning -- the same reason a missing rule stops a production run.
+        const bool MergeStacksIntoOneLabel = false;
+
+        var beforeStackMerge = MemberPlanStoreyMultisetPreserved.Capture(doc);
+        int stacked = MergeStacksIntoOneLabel ? doc.MergeStackedMembers() : 0;
+        MemberPlanStoreyMultisetPreserved.Assert(beforeStackMerge, doc);
+        if (stacked > 0)
+            warnings.Add(
+                $"{stacked} column and wall object(s) were merged into the stack they belong to, so a member " +
+                "running through several floors now carries ONE label its whole height with a separate " +
+                "member between each pair of floors. Each storey is read from its own drawing, so each " +
+                "used to arrive as a differently named object — a single column reading C360, C359, C363 up " +
+                "the building. This is the convention your own 31138 model uses: one object, an assign per " +
+                "storey, the section carried on the assign so a column may still change size as it rises.");
+
         // One floor holds one of each member — whether the cut merged two storeys, or the model
         // always had two names for the same floor.
         int mergedAway = doc.DropMembersDuplicatedOnOneFloor();
