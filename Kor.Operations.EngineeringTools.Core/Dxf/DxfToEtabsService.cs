@@ -1911,10 +1911,10 @@ public static class DxfToEtabsService
         // Not a blanket one. Forcing every span to 1 here hung 290 of building C's columns off the
         // towers' floor, because --tower C leaves the unprefixed tower levels in the list and a
         // C column still has to step over them. See SpanGeneratedMembersToTheirNextFloorBelow.
-        // ⚠ ONLY IN A MODEL CUT TO ONE BUILDING. On the site list a single plan point carries BOTH
-        // towers' columns, so the storeys "this member stands on" are two buildings' floors an inch
-        // and a half apart, and the smallest gap between them is 1 — a wafer. The composed span is
-        // the right answer there, and NoColumnIsShorterThanAPerson says so when it is not.
+        // ⚠ ONLY IN A MODEL CUT TO ONE BUILDING, and only because that model's storey list holds
+        // nothing but this building's floors. The site list interleaves three, so a span of one
+        // there would reach the neighbouring tower's slab an inch and a half away — a wafer — and
+        // the composed span is what reaches the real floor below.
         int respanned = request.TowerOnly is null ? 0 : doc.SpanGeneratedMembersToTheirNextFloorBelow();
         if (respanned > 0)
             warnings.Add(

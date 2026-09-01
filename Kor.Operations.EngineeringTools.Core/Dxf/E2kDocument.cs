@@ -730,31 +730,26 @@ public sealed class E2kDocument
 
         var storeysOf = StoreysByObject();
 
-        // THE SMALLEST GAP ITS OWN STOREYS LEAVE, which is the only span that can never run through
-        // a floor this member itself stands on.
+        // ONE ROW, because in a model cut to one building the row below a storey IS the floor below
+        // it. The drop list is derived from the building footprints, so no other building's storey
+        // is left in the list to step over.
         //
-        // One object carries one span, and a member standing on storeys 27, 29, 30 and 31 wants two
-        // different ones. Of the three ways to pick:
+        // ⚠ MEASURED, not reasoned. The smallest gap between a member's own assigned storeys was
+        // tried and is wrong, and the two shipped files said so: on C-LEVEL 3 the site model gives
+        // every wall 215.5 in and the cut model gave some of them 326.0 — 215.5 plus LEVEL 2's
+        // 110.5, a wall through the floor below it. Same on C-LEVEL 4, 115.9 against 331.4. The
+        // gap is a property of the ASSIGN SET, and the cut removes rows, so the same wall gets two
+        // heights in two files describing one building.
         //
-        //   the count of storeys   what the composer writes for the site model, and on A-LEVEL 31
-        //                          to 33 it puts a wall straight through its own floors
-        //   leave it alone         the same thing, which is what "uneven gaps, do nothing" meant
-        //   the smallest gap       reaches the nearest floor it stands on, and no further
+        // Span 1 reproduces the site model's heights exactly on all three storeys. It is also what
+        // shipped before, when this respanned LINE rows only; walls kept composed spans and were
+        // right by accident, because --tower C then dropped no storeys at all.
         //
-        // The third is the only one that cannot be wrong in the way she photographed. It can fall
-        // short of a more distant floor, but no single span could reach that one without crossing a
-        // nearer one, and the ASSIGNS still put a member on every storey either way.
-        //
-        // A single assign says nothing about a gap, so it is left as composed.
-        int? SpanFor(string name)
-        {
-            if (!storeysOf.TryGetValue(name, out var on)) return null;
+        // The assigns still put the member on every storey it stands on. Span says how far ONE of
+        // them reaches, and that is one floor.
+        const int OneFloor = 1;
 
-            var rows = on.Where(rank.ContainsKey).Select(s => rank[s]).OrderBy(x => x).ToList();
-            if (rows.Count < 2) return null;
-
-            return rows.Zip(rows.Skip(1), (a, b) => b - a).Min();
-        }
+        int? SpanFor(string name) => storeysOf.ContainsKey(name) ? OneFloor : null;
 
         int changed = 0;
 
@@ -1162,20 +1157,31 @@ public sealed class E2kDocument
 
         string FloorNamed(string storey) => floorOf.TryGetValue(storey, out string? f) ? f : storey;
 
-        var platesOnFloor = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
-        var membersOnFloor = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
-        var storeyOfObject = new Dictionary<string, string>(StringComparer.Ordinal);
+        // ONE ENTRY PER MEMBER, WHICH IS PER (OBJECT, STOREY) -- NEVER PER OBJECT.
+        //
+        // This read the object's FIRST storey and called that where its members were. Since the
+        // stack merge gives one object a label for its whole height, a wall standing on B-LEVEL 27
+        // through B-LEVEL 41 was counted entirely on B-LEVEL 27, and every other storey it stands
+        // on vanished from this reading. On the shipped site model that produced a report naming
+        // four plateless storeys -- A-LEVEL 35, B-LEVEL 28, B-LEVEL 27, A-LEVEL 1 -- where the file
+        // has three: B-LEVEL 41, A-LEVEL 35, B-LEVEL 28. Two invented, one missed, in the sentence
+        // that tells the engineer which storeys need a slab.
+        //
+        // The same fault as the report counts, the publish gate, the coverage audit, the heights,
+        // the sheet ledger and building attribution. The assign is the member; the object is a name.
+        var platesOnFloor = new Dictionary<string, List<(string Obj, string Storey)>>(StringComparer.OrdinalIgnoreCase);
+        var membersOnFloor = new Dictionary<string, List<(string Obj, string Storey)>>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var (obj, storeys) in storeysOf)
         {
             if (!planOf.ContainsKey(obj)) continue;
-            storeyOfObject[obj] = storeys[0];
 
-            foreach (string floor in storeys.Select(FloorNamed).Distinct(StringComparer.OrdinalIgnoreCase))
+            foreach (string storey in storeys.Distinct(StringComparer.OrdinalIgnoreCase))
             {
+                string floor = FloorNamed(storey);
                 var into = plates.Contains(obj) ? platesOnFloor : membersOnFloor;
-                if (!into.TryGetValue(floor, out var list)) into[floor] = list = new List<string>();
-                list.Add(obj);
+                if (!into.TryGetValue(floor, out var list)) into[floor] = list = new List<(string, string)>();
+                list.Add((obj, storey));
             }
         }
 
@@ -1183,19 +1189,20 @@ public sealed class E2kDocument
         // other and are still two buildings in the air: tower B's plate is not held up by tower A's
         // columns two hundred feet away. The shared ground floor is the opposite case — one slab
         // over both stacks — and only position tells them apart.
-        bool AnyUnder(string plate, IReadOnlyList<string> members) =>
+        bool AnyUnder(string plate, IReadOnlyList<(string Obj, string Storey)> members) =>
             planOf.TryGetValue(plate, out var outline)
             && outline.Count >= 3
-            && members.Any(m => planOf.TryGetValue(m, out var pts)
+            && members.Any(m => planOf.TryGetValue(m.Obj, out var pts)
                                 && pts.Any(p => WithinOrNear(p, outline, 36.0)));
 
+        var noMembers = new List<(string, string)>();
         var unsupported = new List<string>();
         foreach (var (floor, here) in platesOnFloor)
         {
             membersOnFloor.TryGetValue(floor, out var members);
-            foreach (string plate in here)
-                if (!AnyUnder(plate, members ?? new List<string>()))
-                    unsupported.Add(storeyOfObject[plate]);
+            foreach (var (plate, storey) in here)
+                if (!AnyUnder(plate, members ?? noMembers))
+                    unsupported.Add(storey);
         }
 
         // MOST of a storey, not one member of it. Tower A's level 28 and tower B's stand 36 in
@@ -1203,9 +1210,9 @@ public sealed class E2kDocument
         // tower A's plate found one at the edge and pronounced the whole storey floored. Tower B's
         // level 28 has no slab on the drawing at all — its outline would not close — and that is a
         // thing the engineer needs told.
-        bool Covered(string member, IReadOnlyList<string> above) =>
+        bool Covered(string member, IReadOnlyList<(string Obj, string Storey)> above) =>
             planOf.TryGetValue(member, out var pts)
-            && above.Any(p => planOf.TryGetValue(p, out var outline)
+            && above.Any(p => planOf.TryGetValue(p.Obj, out var outline)
                               && outline.Count >= 3
                               && pts.Any(q => WithinOrNear(q, outline, 36.0)));
 
@@ -1217,12 +1224,12 @@ public sealed class E2kDocument
         foreach (var (floor, here) in membersOnFloor)
         {
             platesOnFloor.TryGetValue(floor, out var above);
-            above ??= new List<string>();
+            above ??= noMembers;
 
-            foreach (var byStorey in here.GroupBy(m => storeyOfObject[m], StringComparer.OrdinalIgnoreCase))
+            foreach (var byStorey in here.GroupBy(m => m.Storey, StringComparer.OrdinalIgnoreCase))
             {
                 var mine = byStorey.ToList();
-                int covered = mine.Count(m => Covered(m, above));
+                int covered = mine.Count(m => Covered(m.Obj, above));
                 if (covered == 0) plateless.Add(byStorey.Key);
                 else if (!IsMezzanineStorey(byStorey.Key)
                          && covered * 2 < mine.Count)

@@ -136,6 +136,23 @@ public class ShippedModelsAgreeWithEachOtherTests
 
         if (site is null || ymca is null) { _out.WriteLine("SKIPPED: share unreachable."); return; }
 
+        AssertTheyAgree(site, ymca, "published");
+    }
+
+    /// <summary>
+    /// ⚠ WHY THIS IS SPLIT OUT FROM THE TEST ABOVE.
+    ///
+    /// That test can only read what has already SHIPPED, so by construction it cannot fail until
+    /// after a publish. Every cut-versus-site fault this year was therefore found on the share,
+    /// with the file already sitting where the engineer opens it — the span reset that gave one
+    /// building's walls two heights was caught that way, after landing.
+    ///
+    /// <see cref="TheModelsThisCodeBuildsNowAgreeBeforeAnyOfItShips"/> runs this identical
+    /// comparison on models built in the test, so the class is caught in the ordinary loop.
+    /// </summary>
+    private void AssertTheyAgree(
+        Dictionary<string, Storey> site, Dictionary<string, Storey> ymca, string which)
+    {
         var wrong = new List<string>();
 
         foreach (string storey in site.Keys.Intersect(ymca.Keys, StringComparer.OrdinalIgnoreCase)
@@ -191,11 +208,98 @@ public class ShippedModelsAgreeWithEachOtherTests
         }
 
         Assert.True(wrong.Count == 0,
-            "The two published models of 31168 disagree about storeys they both contain:\n  " +
+            $"The two {which} models of 31168 disagree about storeys they both contain:\n  " +
             string.Join("\n  ", wrong) +
             "\n\nThey share a parkade, a ground floor and a mezzanine, and an engineer opening both " +
             "finds two answers for one slab. Publish both from the same drawing set, or explain the " +
             "difference in the report before either ships.");
+    }
+
+    /// <summary>
+    /// The pair THIS CODE BUILDS must agree, before any of it reaches a job folder.
+    /// </summary>
+    /// <remarks>
+    /// Builds the site model and the building-C cut the way the publisher does — same reference,
+    /// same drawings, the drop list derived by <see cref="PublishPlan.ForBuildings"/> — and runs
+    /// the same comparison the published pair gets.
+    ///
+    /// WHAT IT COVERS: every storey named for one building must be identical in the two files, and
+    /// every shared storey must be a subset. That is the whole cut-versus-site class.
+    ///
+    /// WHAT IT DOES NOT: the suite's drawing folder is not the one the publisher discovers, so
+    /// this proves the INVARIANT holds for this code, not that a given shipped pair was built from
+    /// one set. The published test above is still the one that checks that. It also compares
+    /// counts, areas, thicknesses and concrete — not spans, sections or materials.
+    /// </remarks>
+    [Trait("Speed", "Slow")]
+    [Fact]
+    public void TheModelsThisCodeBuildsNowAgreeBeforeAnyOfItShips()
+    {
+        // THE INPUTS THE PUBLISHER DISCOVERS, not the suite's own folder.
+        //
+        // Written against GeneratedModel first, this built from _DXF-plans-for-rebuild while every
+        // shipped 31168 model comes from _DXF-from-Revit-2026-08-26. It failed on a disagreement in
+        // a drawing set nothing ships, which is a false alarm about the pair that does. A gate on
+        // what ships has to read what ships.
+        PublishDiscoveryResult discovery;
+        try
+        {
+            discovery = PublishDiscovery.Discover(
+                new PublishDiscoveryRequest("31168", null, null, "31168-reference.e2k"));
+        }
+        catch (Exception ex)
+        {
+            // ⚠ A GATE THAT PASSES BY NOT RUNNING IS THE FAULT IT EXISTS TO CATCH. This skipped
+            // silently on "Projects root not found ''" — a null root, not an unreachable share —
+            // and reported green in 2 ms. Only an unreachable share may skip; anything else fails.
+            if (!Directory.Exists(PublishDiscovery.DefaultProjectsRoot))
+            {
+                _out.WriteLine($"SKIPPED: share unreachable ({ex.Message}).");
+                return;
+            }
+
+            throw;
+        }
+
+        string reference = Path.Combine(discovery.ModelFolder, discovery.Reference);
+        if (!Directory.Exists(discovery.DxfFolder) || !File.Exists(reference))
+        {
+            _out.WriteLine("SKIPPED: share unreachable.");
+            return;
+        }
+
+        string dxf = DrawingCache.Local(discovery.DxfFolder);
+        var storeys = E2kDocument.Load(reference).ReadStories().Select(s => s.Name).ToList();
+        var derived = PublishPlan.ForBuildings(storeys, JobPublisher.ReachByStorey(dxf, storeys));
+        var cut = JobPublisher.ChoosePlans(derived, tower: "C", variant: null, perBuilding: false).Single();
+
+        Dictionary<string, Storey>? Build(string? tower, IReadOnlyList<string> drop)
+        {
+            string output = Path.Combine(Path.GetTempPath(), $"kor-agree-{Guid.NewGuid():N}.e2k");
+            try
+            {
+                DxfToEtabsService.Run(new DxfToEtabsRequest
+                {
+                    RequireRuleSettings = true,
+                    DxfFolder = dxf,
+                    ReferenceE2k = reference,
+                    OutputE2k = output,
+                    TowerOnly = tower,
+                    DropStoreys = drop.ToList(),
+                });
+                return Read(output);
+            }
+            finally
+            {
+                if (File.Exists(output)) File.Delete(output);
+            }
+        }
+
+        var site = Build(null, Array.Empty<string>());
+        var ymca = Build(cut.Tower, cut.DropStoreys);
+        if (site is null || ymca is null) { _out.WriteLine("SKIPPED: a model would not build."); return; }
+
+        AssertTheyAgree(site, ymca, "just-built");
     }
 
     /// <summary>
