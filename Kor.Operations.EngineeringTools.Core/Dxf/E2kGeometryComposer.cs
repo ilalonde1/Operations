@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.RegularExpressions;
 
 namespace Kor.Operations.EngineeringTools.Dxf;
 
@@ -422,6 +423,28 @@ public static class E2kGeometryComposer
         // thicknesses need a section writing.
         var newWallProps = new SortedDictionary<double, string>();
         var newSlabProps = new SortedDictionary<double, string>();
+
+        // THE STRENGTH BELONGS IN THE NAME, AND IT IS IN THE REFERENCE MODEL.
+        //
+        // Andrea, 31 August: her slab properties read "slab8-35MPa", and ours read "KOR-S8" --
+        // thickness only, so a schedule of them cannot be told apart by grade.
+        //
+        // This was written off as unobtainable because every MPa string in all 139 DXFs is a WALL
+        // type. That was the wrong place to look: the reference model we open on every run declares
+        // it outright -- SHELLPROP "Rvt-Floor0" MATERIAL "30 MPa Floor", "25 MPa Footings",
+        // "65 MPa Walls". The material was already being carried onto every property we write; only
+        // the NAME was throwing it away.
+        //
+        // Silent when the reference does not say: "4000Psi" carries no MPa and the name stays as it
+        // was, rather than inventing a conversion nobody asked for.
+        string GradeSuffix(string? materialName)
+        {
+            var m = Regex.Match(materialName ?? string.Empty, @"(\d+)\s*MPa", RegexOptions.IgnoreCase);
+            return m.Success ? $"-{m.Groups[1].Value}MPa" : string.Empty;
+        }
+
+        string slabGrade = GradeSuffix(doc.FindConcreteMaterial("Floor") ?? material);
+        string wallGrade = GradeSuffix(doc.FindConcreteMaterial("Wall") ?? material);
         var reusedSections = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var diaphragms = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
 
@@ -560,7 +583,7 @@ public static class E2kGeometryComposer
 
             string? found = doc.FindShellProperty("Wall", thickness);
             if (found is not null) reusedSections.Add(found);
-            else newWallProps[thickness] = found = $"KOR-W{Trim(thickness)}";
+            else newWallProps[thickness] = found = $"KOR-W{Trim(thickness)}{wallGrade}";
 
             wallProps[thickness] = found;
             return found;
@@ -1220,7 +1243,7 @@ public static class E2kGeometryComposer
                 {
                     propName = doc.FindShellProperty("Slab", thickness);
                     if (propName is not null) reusedSections.Add(propName);
-                    else newSlabProps[thickness] = propName = $"KOR-S{Trim(thickness)}";
+                    else newSlabProps[thickness] = propName = $"KOR-S{Trim(thickness)}{slabGrade}";
                     slabProps[thickness] = propName;
                 }
 
