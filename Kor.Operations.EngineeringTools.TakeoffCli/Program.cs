@@ -436,63 +436,109 @@ if (args.Length >= 1 && args[0].Equals("dxf-inspect", StringComparison.OrdinalIg
 // when it stands under all of them, which is what a shared podium or parkade is.
 //
 // Usage: takeoff dxf-buildings <dxfFolder> <reference.e2k>
-// PUBLISH a job: one model per building, verified, staged, and only then landed.
+// PUBLISH a job: discover it, generate to staging, verify, build the summary, gate explainers,
+// and only then land the files an engineer will open.
 //
-// The whole flow used to be an 818-line PowerShell script that the test suite could not reach and
-// that shipped as readable text beside the binary. What it DECIDED now lives in JobPublisher and
-// PublishPlan, compiled and covered; what is left in a launcher is rendering PDFs and copying
-// files, which is plumbing.
-//
-// Usage: takeoff publish <modelFolder> <dxfFolder> <job> [--reference f.e2k] [--rules-db c]
-//                        [--infer-floors] [--stage folder] [--land]
+// Usage: takeoff publish <job> [--model-folder folder] [--dxf-folder folder] [--reference f.e2k]
+//                        [--rules-db c] [--infer-floors] [--stage folder] [--land]
+//                        [--tower tag] [--top-storey name] [--drop-storeys a,b,c]
+//                        [--variant name] [--per-building] [--skip-dossier]
 if (args.Length >= 1 && args[0].Equals("publish", StringComparison.OrdinalIgnoreCase))
 {
-    if (args.Length < 4)
+    if (args.Length < 2)
     {
-        Console.Error.WriteLine("Usage: takeoff publish <modelFolder> <dxfFolder> <job> [--reference <f.e2k>] [--rules-db <c>] [--infer-floors] [--stick-file <f.pdf>] [--annotated-dxf <folder>] [--stage <folder>] [--drop-storeys <a,b,c>] [--land]");
+        Console.Error.WriteLine("Usage: takeoff publish <job> [--model-folder <folder>] [--dxf-folder <folder>] [--reference <f.e2k>] [--rules-db <c>] [--infer-floors] [--stick-file <f.pdf>] [--annotated-dxf <folder>] [--stage <folder>] [--drop-storeys <a,b,c>] [--tower <tag>] [--top-storey <name>] [--variant <name>] [--per-building] [--skip-dossier] [--land]");
         return 1;
     }
-    if (!Directory.Exists(args[1])) { Console.Error.WriteLine($"Not found '{args[1]}'."); return 2; }
-    if (!Directory.Exists(args[2])) { Console.Error.WriteLine($"Not found '{args[2]}'."); return 2; }
 
-    string? pubReference = null, pubRules = null, pubStick = null;
-    string pubStage = Path.Combine(Path.GetTempPath(), $"kor-publish-{args[3]}");
-    bool pubInfer = false, pubLand = false;
+    int firstOption = Array.FindIndex(args, 1, a => a.StartsWith("--", StringComparison.Ordinal));
+    if (firstOption < 0) firstOption = args.Length;
+
+    string? pubModelFolder = null, pubDxfFolder = null;
+    string pubProject;
+    int optionStart;
+    if (firstOption >= 4)
+    {
+        // Backwards-compatible form kept for local scripts:
+        // takeoff publish <modelFolder> <dxfFolder> <job>
+        pubModelFolder = args[1];
+        pubDxfFolder = args[2];
+        pubProject = args[3];
+        optionStart = 4;
+    }
+    else
+    {
+        pubProject = args[1];
+        optionStart = 2;
+    }
+
+    string? pubReference = null, pubRules = null, pubStick = null, pubAnnotated = null;
+    string? pubStage = null, pubTopStorey = null, pubTower = null, pubVariant = null;
+    string? pubProjectsRoot = null, pubRepoRoot = null, pubRenderer = null, pubPdfInfo = null;
+    bool pubInfer = false, pubLand = false, pubPerBuilding = false, pubSkipDossier = false;
     var pubDrop = new List<string>();
 
-    for (int i = 4; i < args.Length; i++)
+    for (int i = optionStart; i < args.Length; i++)
     {
         if (args[i].Equals("--reference", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) pubReference = args[++i];
         else if (args[i].Equals("--rules-db", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) pubRules = args[++i];
         else if (args[i].Equals("--stage", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) pubStage = args[++i];
+        else if (args[i].Equals("--model-folder", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) pubModelFolder = args[++i];
+        else if (args[i].Equals("--dxf-folder", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) pubDxfFolder = args[++i];
+        else if (args[i].Equals("--projects-root", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) pubProjectsRoot = args[++i];
+        else if (args[i].Equals("--repo-root", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) pubRepoRoot = args[++i];
+        else if (args[i].Equals("--renderer", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) pubRenderer = args[++i];
+        else if (args[i].Equals("--pdfinfo", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) pubPdfInfo = args[++i];
         else if (args[i].Equals("--infer-floors", StringComparison.OrdinalIgnoreCase)) pubInfer = true;
         else if (args[i].Equals("--stick-file", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) pubStick = args[++i];
+        else if (args[i].Equals("--annotated-dxf", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) pubAnnotated = args[++i];
+        else if (args[i].Equals("--top-storey", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) pubTopStorey = args[++i];
+        else if (args[i].Equals("--tower", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) pubTower = args[++i];
+        else if (args[i].Equals("--variant", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) pubVariant = args[++i];
         else if (args[i].Equals("--drop-storeys", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length)
             pubDrop = args[++i].Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
+        else if (args[i].Equals("--per-building", StringComparison.OrdinalIgnoreCase)) pubPerBuilding = true;
+        else if (args[i].Equals("--skip-dossier", StringComparison.OrdinalIgnoreCase)) pubSkipDossier = true;
         else if (args[i].Equals("--land", StringComparison.OrdinalIgnoreCase)) pubLand = true;
         else { Console.Error.WriteLine($"Unknown argument '{args[i]}'."); return 1; }
     }
 
+    pubRules ??= Environment.GetEnvironmentVariable("KOR_ENGINEERINGTOOLS_STANDARDSDB");
+
     var outcome = JobPublisher.Run(new JobPublisher.Request
     {
-        Project = args[3],
-        ModelFolder = args[1],
-        DxfFolder = args[2],
+        Project = pubProject,
+        ModelFolder = pubModelFolder,
+        DxfFolder = pubDxfFolder,
+        ProjectsRoot = pubProjectsRoot ?? PublishDiscovery.DefaultProjectsRoot,
+        RepoRoot = pubRepoRoot,
         Reference = pubReference,
         RuleSettingsConnection = pubRules,
         StageFolder = pubStage,
         InferFloors = pubInfer,
         StickFilePdf = pubStick,
+        AnnotatedDxfFolder = pubAnnotated,
+        TopStorey = pubTopStorey,
+        Tower = pubTower,
+        Variant = pubVariant,
+        PerBuilding = pubPerBuilding,
+        SkipDossier = pubSkipDossier,
+        Land = pubLand,
+        RendererScript = pubRenderer,
+        PdfInfoExe = pubPdfInfo,
         DropStoreys = pubDrop,
     });
 
-    if (outcome.Refused is not null)
+    if (outcome.Refused is not null && outcome.Models.Count == 0)
     {
         Console.Error.WriteLine($"REFUSED - {outcome.Refused}");
         return 3;
     }
 
-    Console.WriteLine($"reference : {outcome.Reference}");
+    Console.WriteLine($"model folder : {outcome.ModelFolder}");
+    Console.WriteLine($"drawings     : {outcome.DxfFolder}");
+    Console.WriteLine($"reference    : {outcome.Reference}");
+    Console.WriteLine($"stage        : {outcome.StageFolder}");
     Console.WriteLine($"buildings : {outcome.Models.Count}");
     Console.WriteLine();
 
@@ -500,6 +546,8 @@ if (args.Length >= 1 && args[0].Equals("publish", StringComparison.OrdinalIgnore
     {
         Console.WriteLine($"{one.Label}");
         Console.WriteLine($"  storeys {one.Storeys}   walls {one.Walls}   columns {one.Columns}   floors {one.Floors}");
+        if (one.SummaryPdfPath is not null)
+            Console.WriteLine($"  summary: {Path.GetFileName(one.SummaryPdfPath)}");
 
         if (one.Passed)
         {
@@ -535,22 +583,27 @@ if (args.Length >= 1 && args[0].Equals("publish", StringComparison.OrdinalIgnore
         }
     }
 
-    // Landing is the caller's word, not this tool's assumption. A staged model that failed stays
-    // where it is, with its violations, which is the whole point of staging it.
+    foreach (string warning in outcome.Warnings)
+    {
+        Console.WriteLine();
+        Console.WriteLine(warning);
+    }
+
+    if (outcome.Refused is not null)
+    {
+        Console.WriteLine();
+        Console.Error.WriteLine($"REFUSED - {outcome.Refused}");
+    }
+
     if (!pubLand) { Console.WriteLine(); Console.WriteLine("staged only; pass --land to copy what passed into the job folder."); }
     else
     {
         Console.WriteLine();
-        foreach (var passed in outcome.Models.Where(m => m.Passed))
-            foreach (string file in Directory.EnumerateFiles(pubStage, $"{passed.Label}-*"))
-            {
-                string to = Path.Combine(args[1], Path.GetFileName(file));
-                File.Copy(file, to, overwrite: true);
-                Console.WriteLine($"  landed {Path.GetFileName(file)}");
-            }
+        foreach (string file in outcome.Landed) Console.WriteLine($"  landed {file}");
+        foreach (string file in outcome.Withdrawn) Console.WriteLine($"  withdrew {file}");
     }
 
-    return outcome.Models.All(m => m.Passed) ? 0 : 3;
+    return outcome.Refused is null && outcome.Models.All(m => m.Passed) ? 0 : 3;
 }
 
 if (args.Length >= 1 && args[0].Equals("dxf-buildings", StringComparison.OrdinalIgnoreCase))
@@ -762,7 +815,7 @@ if (args.Length >= 1 && args[0].Equals("dxf-to-etabs", StringComparison.OrdinalI
     // The reference must be an engineer's model, never one of ours. A file round-tripped through
     // ETABS keeps its KOR-prefixed object names, and building from one produces a report saying
     // nothing was generated beside a file that plainly contains generated members -- both true,
-    // together untrue. The publish script has always refused this; the CLI, which is what a
+    // together untrue. The publisher has always refused this; the CLI, which is what a
     // wrapper calls, did not.
     if (!noReference && File.ReadLines(args[2]).Take(40000).Any(l => Regex.IsMatch(l, @"""K[WCPFSO]\d+""")))
     {
@@ -3709,7 +3762,7 @@ public static class TakeoffCliHelp
         new("pdf-readable", "takeoff pdf-readable <pdf> [first] [last]", "Check whether a PDF has readable vector text."),
         new("dxf-render", "takeoff dxf-render <plan.dxf> <out.png> [--size 1800] [--layers SLABEDG,...]", "Render structural DXF layers to a PNG."),
         new("dxf-inspect", "takeoff dxf-inspect <plan.dxf> [--walls] [--plates]", "Inspect DXF layers, loops, wall outlines, and recovered floor plates."),
-        new("publish", "takeoff publish <modelFolder> <dxfFolder> <job> [--rules-db <c>] [--land]", "Build, verify and land one model per building."),
+        new("publish", "takeoff publish <job> [--model-folder <folder>] [--dxf-folder <folder>] [--rules-db <c>] [--per-building] [--land]", "Discover, build, verify, summarize, gate and land a DXF-to-ETABS publish."),
         new("dxf-buildings", "takeoff dxf-buildings <dxfFolder> <reference.e2k>", "Say which storeys belong to which building."),
         new("e2k-compare", "takeoff e2k-compare <reference.e2k> <candidate.e2k> <story> [...]", "Compare generated ETABS geometry against a reference model."),
         new("dxf-import-rules", "takeoff dxf-import-rules <questions.xlsx> --engineer <name> [--rules-db <connection>]", "Import per-job DXF rule answers."),
@@ -3776,4 +3829,3 @@ public static class TakeoffCliHelp
         }
     }
 }
-

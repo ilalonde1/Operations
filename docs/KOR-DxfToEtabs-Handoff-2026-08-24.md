@@ -26,7 +26,7 @@ from that folder. Both described the old full-site model — **63 storeys, 1,119
 columns, 82 plates** — beside a model with 15, 349, 763 and 15. The one-pager is the page an
 engineer reads first, and it led with those numbers.
 
-They survived because the publish script copied them in and checked their counts *afterwards*, so
+They survived because the old publish script copied them in and checked their counts *afterwards*, so
 every run printed "the model is fine; the document describing it is not" and left them there. The
 check now reads the source in `docs/` **before anything is copied**, a source that fails takes any
 stale copy out of the job folder with it, and `-SkipDossier` withdraws rather than merely declining
@@ -36,11 +36,12 @@ one-pager for the current model.** That is the gate working, not a fault to rout
 ## How to rebuild it — the exact command
 
 ```powershell
-.\tools\Publish-EtabsModel.ps1 -Project 31168 `
-    -Reference '31168-reference-SHELL.e2k' `
-    -TopStorey 'C-ROOF' `
-    -DropStoreys 'LEVEL 3','LEVEL 4','LEVEL 5','LEVEL 6','LEVEL 7','LEVEL 8','LEVEL 9','LEVEL 10' `
-    -InferFloors
+takeoff publish 31168 `
+    --reference '31168-reference-SHELL.e2k' `
+    --top-storey 'C-ROOF' `
+    --drop-storeys 'LEVEL 3,LEVEL 4,LEVEL 5,LEVEL 6,LEVEL 7,LEVEL 8,LEVEL 9,LEVEL 10' `
+    --infer-floors `
+    --land
 ```
 
 Every argument is load-bearing:

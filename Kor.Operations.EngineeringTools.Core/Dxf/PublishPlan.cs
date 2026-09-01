@@ -133,7 +133,7 @@ public static class PublishPlan
         foreach (var (name, head) in candidates)
         {
             if (name.Contains("FROM-DRAWINGS", StringComparison.OrdinalIgnoreCase)) { ours.Add(name); continue; }
-            if (System.Text.RegularExpressions.Regex.IsMatch(head(), "\"K[WCPFSO][0-9]+\"")) { ours.Add(name); continue; }
+            if (ContainsGeneratedObjectName(head())) { ours.Add(name); continue; }
             theirs.Add(name);
         }
 
@@ -152,5 +152,22 @@ public static class PublishPlan
         why = "more than one model here could be the reference, and choosing between them is not " +
               "this tool's call: " + string.Join(", ", theirs) + ".";
         return null;
+    }
+
+    private static bool ContainsGeneratedObjectName(string text)
+    {
+        for (int i = 0; i + 3 < text.Length; i++)
+        {
+            if (text[i] != '"') continue;
+            if (text[i + 1] != 'K') continue;
+            if ("WCPFSO".IndexOf(text[i + 2], StringComparison.Ordinal) < 0) continue;
+            if (!char.IsDigit(text[i + 3])) continue;
+
+            int j = i + 4;
+            while (j < text.Length && char.IsDigit(text[j])) j++;
+            if (j < text.Length && text[j] == '"') return true;
+        }
+
+        return false;
     }
 }

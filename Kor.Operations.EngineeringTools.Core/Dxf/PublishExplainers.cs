@@ -1,0 +1,353 @@
+using System.Text.RegularExpressions;
+using UglyToad.PdfPig;
+
+namespace Kor.Operations.EngineeringTools.Dxf;
+
+public sealed record PublishExplainerFile(string Source, string Target);
+
+public sealed record PublishExplainersRequest(
+    string Project,
+    string ModelFolder,
+    string RepoRoot,
+    string ProjectsRoot,
+    string CurrentModelPath,
+    string CurrentReportPath,
+    E2kModelContents CurrentContents,
+    bool SkipDossier,
+    bool IsVariant);
+
+public sealed record PublishExplainersResult(
+    IReadOnlyList<PublishExplainerFile> ToCopy,
+    IReadOnlyList<string> ToWithdraw,
+    IReadOnlyList<string> Warnings,
+    string? Refused)
+{
+    public bool Skip => ToCopy.Count == 0;
+}
+
+public static class PublishExplainers
+{
+    private static readonly Regex JobNumber = new(@"\b(3\d{4})\b", RegexOptions.Compiled);
+
+    public static PublishExplainersResult Evaluate(PublishExplainersRequest request)
+    {
+        string dossierSourceHtml = Path.Combine(request.RepoRoot, "docs", "KOR-DxfToEtabs-dossier.html");
+        string dossierSourcePdf = Path.Combine(request.RepoRoot, "docs", "KOR-DxfToEtabs-web.pdf");
+        string onePagerSourcePdf = Path.Combine(request.RepoRoot, "docs", "KOR-DxfToEtabs-onepager-web.pdf");
+        string dossierTarget = Path.Combine(request.ModelFolder, "KOR-Model-From-Drawings-DOSSIER.pdf");
+        string onePagerTarget = Path.Combine(request.ModelFolder, "KOR-Model-From-Drawings-READ-THIS-FIRST.pdf");
+        string[] targets = { dossierTarget, onePagerTarget };
+
+        if (request.IsVariant)
+            return new PublishExplainersResult(Array.Empty<PublishExplainerFile>(), Array.Empty<string>(), Array.Empty<string>(), null);
+
+        if (request.SkipDossier)
+            return new PublishExplainersResult(Array.Empty<PublishExplainerFile>(), targets, Array.Empty<string>(), null);
+
+        if (!File.Exists(dossierSourceHtml))
+            return new PublishExplainersResult(Array.Empty<PublishExplainerFile>(), Array.Empty<string>(),
+                new[] { "Dossier source HTML was not found; no general explainer copied." }, null);
+
+        var sourceHtml = File.ReadAllText(dossierSourceHtml);
+        var describedJobs = JobNumber.Matches(sourceHtml).Cast<Match>()
+            .Select(m => m.Groups[1].Value)
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(x => x, StringComparer.Ordinal)
+            .ToList();
+
+        if (!describedJobs.Contains(request.Project, StringComparer.Ordinal))
+            return new PublishExplainersResult(Array.Empty<PublishExplainerFile>(), Array.Empty<string>(),
+                new[] { $"The dossier and one-pager describe {string.Join(", ", describedJobs)} - not {request.Project}. They were not copied." },
+                null);
+
+        var stale = StaleSources(request.RepoRoot, new[] { dossierSourceHtml, dossierSourcePdf, onePagerSourcePdf }).ToList();
+        if (stale.Count > 0)
+            return new PublishExplainersResult(Array.Empty<PublishExplainerFile>(), targets, Array.Empty<string>(),
+                "STALE - these explainers predate the source that builds models: " + string.Join(", ", stale));
+
+        var wrong = new List<string>();
+        var counts = CountsForNamedJobs(request, describedJobs);
+        var allowed = AllowedCounts(counts.Reuse);
+
+        if (File.Exists(dossierSourcePdf))
+        {
+            string pdfText = PdfText(dossierSourcePdf);
+            if (LooksLikeBrowserError(pdfText))
+                wrong.Add("dossier PDF renders as a browser error page");
+
+            foreach (var (what, count) in CurrentCounts(request.CurrentContents))
+            {
+                if (count == 0) continue;
+                if (!ContainsNumber(pdfText, count))
+                    wrong.Add($"{what} = {count}");
+            }
+        }
+
+        if (File.Exists(onePagerSourcePdf))
+        {
+            string onePagerText = PdfText(onePagerSourcePdf);
+            if (LooksLikeBrowserError(onePagerText))
+                wrong.Add("one-pager PDF renders as a browser error page");
+
+            var claims = CountClaims(onePagerText).ToList();
+            if (claims.Count == 0)
+                wrong.Add("one-pager PDF contains no checked model count claims");
+            CheckClaims(claims, counts.ModelCounts, allowed, "one-pager", wrong);
+        }
+
+        string prose = HtmlToText(sourceHtml);
+        CheckClaims(CountClaims(prose), counts.ModelCounts, allowed, "dossier", wrong);
+        CheckDossierTable(sourceHtml, prose, counts.ModelCounts, wrong);
+        CheckPlatelessStoreys(request, prose, wrong);
+        CheckOneSuiteCount(prose, wrong);
+
+        if (wrong.Count > 0)
+            return new PublishExplainersResult(Array.Empty<PublishExplainerFile>(), targets, Array.Empty<string>(),
+                "DOSSIER OUT OF DATE - these counts are not in it: " + string.Join("; ", wrong));
+
+        var copy = new List<PublishExplainerFile>();
+        if (File.Exists(dossierSourcePdf)) copy.Add(new PublishExplainerFile(dossierSourcePdf, dossierTarget));
+        if (File.Exists(onePagerSourcePdf)) copy.Add(new PublishExplainerFile(onePagerSourcePdf, onePagerTarget));
+        return new PublishExplainersResult(copy, Array.Empty<string>(), Array.Empty<string>(), null);
+    }
+
+    private static IEnumerable<string> StaleSources(string repoRoot, IEnumerable<string> sources)
+    {
+        string dxfSource = Path.Combine(repoRoot, "Kor.Operations.EngineeringTools.Core", "Dxf");
+        if (!Directory.Exists(dxfSource)) yield break;
+
+        var newest = Directory.EnumerateFiles(dxfSource, "*.cs", SearchOption.TopDirectoryOnly)
+            .Select(File.GetLastWriteTime)
+            .DefaultIfEmpty(DateTime.MinValue)
+            .Max();
+
+        foreach (string source in sources)
+            if (File.Exists(source) && File.GetLastWriteTime(source) < newest)
+                yield return Path.GetFileName(source);
+    }
+
+    private static (Dictionary<string, int> ModelCounts, IReadOnlyList<int> Reuse) CountsForNamedJobs(
+        PublishExplainersRequest request,
+        IReadOnlyList<string> describedJobs)
+    {
+        var counts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        var reuse = new List<int>();
+
+        foreach (string job in describedJobs)
+        {
+            E2kModelContents? contents = null;
+            string? report = null;
+            if (job == request.Project)
+            {
+                contents = request.CurrentContents;
+                report = request.CurrentReportPath;
+            }
+            else
+            {
+                var model = TryFindGeneratedModel(request.ProjectsRoot, job);
+                if (model is not null)
+                {
+                    contents = E2kDocument.Load(model).ReadContents();
+                    report = Path.Combine(Path.GetDirectoryName(model) ?? string.Empty, $"{job}-FROM-DRAWINGS-report.txt");
+                }
+            }
+
+            if (contents is null) continue;
+            counts[$"{job}.wall"] = contents.Walls;
+            counts[$"{job}.column"] = contents.Columns;
+            counts[$"{job}.plate"] = contents.Floors;
+            counts[$"{job}.header"] = contents.Headers;
+
+            if (report is not null && File.Exists(report))
+            {
+                var match = Regex.Match(File.ReadAllText(report),
+                    @"(?<w>\d+) wall\(s\) and (?<c>\d+) column\(s\) were already modelled");
+                if (match.Success)
+                {
+                    reuse.Add(int.Parse(match.Groups["w"].Value, System.Globalization.CultureInfo.InvariantCulture));
+                    reuse.Add(int.Parse(match.Groups["c"].Value, System.Globalization.CultureInfo.InvariantCulture));
+                }
+            }
+        }
+
+        return (counts, reuse);
+    }
+
+    private static string? TryFindGeneratedModel(string projectsRoot, string job)
+    {
+        if (!Directory.Exists(projectsRoot)) return null;
+
+        var jobFolder = Directory.EnumerateDirectories(projectsRoot)
+            .SelectMany(d => Directory.EnumerateDirectories(d, job + "*"))
+            .FirstOrDefault();
+        if (jobFolder is null) return null;
+
+        return PublishDiscovery.EnumerateDirectories(jobFolder, maxDepth: 4)
+            .Prepend(jobFolder)
+            .SelectMany(d => Directory.EnumerateFiles(d, $"{job}-FROM-DRAWINGS.e2k", SearchOption.TopDirectoryOnly))
+            .FirstOrDefault();
+    }
+
+    private static IReadOnlyDictionary<string, HashSet<int>> AllowedCounts(IReadOnlyList<int> reuse)
+    {
+        var allowed = new Dictionary<string, HashSet<int>>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["wall"] = new(new[] { 78, 29, 45, 60, 22 }),
+            ["column"] = new(new[] { 87, 67, 43 }),
+            ["plate"] = new(new[] { 14, 7, 2 }),
+            ["header"] = new(new[] { 5 }),
+        };
+        foreach (int value in reuse)
+        {
+            allowed["wall"].Add(value);
+            allowed["column"].Add(value);
+        }
+        return allowed;
+    }
+
+    private static IEnumerable<(string What, int Count)> CurrentCounts(E2kModelContents contents)
+    {
+        yield return ("walls", contents.Walls);
+        yield return ("columns", contents.Columns);
+        yield return ("plates", contents.Floors);
+        yield return ("headers", contents.Headers);
+        yield return ("openings", contents.Openings);
+    }
+
+    private static string PdfText(string pdf)
+    {
+        using var doc = PdfDocument.Open(pdf);
+        return string.Join(" ", doc.GetPages().SelectMany(p => p.GetWords()).Select(w => w.Text));
+    }
+
+    private static bool LooksLikeBrowserError(string text)
+        => text.Contains("ERR_FILE_NOT_FOUND", StringComparison.OrdinalIgnoreCase)
+           || text.Contains("File not found", StringComparison.OrdinalIgnoreCase)
+           || text.Contains("Microsoft Edge", StringComparison.OrdinalIgnoreCase);
+
+    private static bool ContainsNumber(string text, int number)
+    {
+        string plain = number.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        string grouped = number.ToString("N0", System.Globalization.CultureInfo.InvariantCulture);
+        return Regex.IsMatch(text, @"\b" + Regex.Escape(plain) + @"\b")
+               || Regex.IsMatch(text, @"\b" + Regex.Escape(grouped) + @"\b");
+    }
+
+    private static string HtmlToText(string html)
+    {
+        string prose = Regex.Replace(html, @"(?s)<style.*?</style>", " ");
+        prose = Regex.Replace(prose, @"(?s)<script.*?</script>", " ");
+        prose = Regex.Replace(prose, @"<[^>]+>", " ");
+        prose = Regex.Replace(prose, @"&[a-z]+;", " ");
+        return Regex.Replace(prose, @"\s+", " ");
+    }
+
+    private static IEnumerable<(int Number, string What, string Text)> CountClaims(string prose)
+    {
+        const string pattern = @"(?:(?<n>\d[\d,]*)\s+(?:of\s+(?:your|her|its|the)\s+)?(?<what>wall panels|walls|columns|floor plates|plates|headers))|(?:(?<what2>wall panels|walls|columns|floor plates|plates|headers)\s*[:(]\s*(?<n2>\d[\d,]*))";
+        foreach (Match match in Regex.Matches(prose, pattern, RegexOptions.IgnoreCase))
+        {
+            string nText = match.Groups["n"].Success ? match.Groups["n"].Value : match.Groups["n2"].Value;
+            string whatText = match.Groups["what"].Success ? match.Groups["what"].Value : match.Groups["what2"].Value;
+            string what = whatText.Contains("wall", StringComparison.OrdinalIgnoreCase) ? "wall"
+                : whatText.Contains("column", StringComparison.OrdinalIgnoreCase) ? "column"
+                : whatText.Contains("header", StringComparison.OrdinalIgnoreCase) ? "header"
+                : "plate";
+            yield return (int.Parse(nText.Replace(",", string.Empty), System.Globalization.CultureInfo.InvariantCulture),
+                what, match.Value);
+        }
+    }
+
+    private static void CheckClaims(
+        IEnumerable<(int Number, string What, string Text)> claims,
+        IReadOnlyDictionary<string, int> modelCounts,
+        IReadOnlyDictionary<string, HashSet<int>> allowed,
+        string source,
+        List<string> wrong)
+    {
+        foreach (var claim in claims)
+        {
+            bool ok = modelCounts.Any(x => x.Key.EndsWith("." + claim.What, StringComparison.OrdinalIgnoreCase)
+                                           && x.Value == claim.Number);
+            if (!ok && (!allowed.TryGetValue(claim.What, out var values) || !values.Contains(claim.Number)))
+                wrong.Add($"{source} says '{claim.Text}' - no model has that many {claim.What}s");
+        }
+    }
+
+    private static void CheckDossierTable(
+        string html,
+        string prose,
+        IReadOnlyDictionary<string, int> modelCounts,
+        List<string> wrong)
+    {
+        var rows = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Wall panels"] = "wall",
+            ["Columns, sized"] = "column",
+            ["Floor plates"] = "plate",
+            ["Headers over openings"] = "header",
+        };
+
+        var header = Regex.Match(html, @"(?s)<tr>\s*<th>What was generated</th>(?<cells>.*?)</tr>");
+        var tableJobs = header.Success
+            ? Regex.Matches(header.Groups["cells"].Value, @"<th>[^<]*?\b(3\d{4})\b").Cast<Match>()
+                .Select(m => m.Groups[1].Value)
+                .ToList()
+            : new List<string>();
+        if (tableJobs.Count == 0)
+        {
+            wrong.Add("dossier summary table does not name the jobs its columns describe");
+            return;
+        }
+
+        foreach (var row in rows)
+        {
+            string label = row.Key;
+            string what = row.Value;
+            string pattern = Regex.Escape(label) + "[^0-9]*" +
+                             string.Join(@"\s+", Enumerable.Range(0, tableJobs.Count).Select(_ => @"([\d,]+)"));
+            var match = Regex.Match(prose, pattern);
+            if (!match.Success)
+            {
+                wrong.Add($"dossier table has no '{label}' row");
+                continue;
+            }
+
+            for (int i = 0; i < tableJobs.Count; i++)
+            {
+                string job = tableJobs[i];
+                int stated = int.Parse(match.Groups[i + 1].Value.Replace(",", string.Empty),
+                    System.Globalization.CultureInfo.InvariantCulture);
+                if (modelCounts.TryGetValue($"{job}.{what}", out int actual) && stated != actual)
+                    wrong.Add($"dossier table: {label} for {job} says {stated}, model has {actual}");
+            }
+        }
+    }
+
+    private static void CheckPlatelessStoreys(PublishExplainersRequest request, string prose, List<string> wrong)
+    {
+        var listedFor = Regex.Match(prose,
+            @"Storeys still carrying members with no plate[^0-9]*\b(?<job>3\d{4})\b");
+        if (!listedFor.Success || listedFor.Groups["job"].Value != request.Project || !File.Exists(request.CurrentReportPath))
+            return;
+
+        var report = Regex.Match(File.ReadAllText(request.CurrentReportPath),
+            @"carry walls or columns but no floor plate[^:]*:\s*(?<list>[^.]+)\.");
+        if (!report.Success) return;
+
+        foreach (string raw in report.Groups["list"].Value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            if (!Regex.IsMatch(prose, Regex.Escape(raw)))
+                wrong.Add($"dossier does not name '{raw}' among the storeys left without a plate");
+    }
+
+    private static void CheckOneSuiteCount(string prose, List<string> wrong)
+    {
+        var suite = Regex.Matches(prose, @"(?<n>\d[\d,]*)\s+tests").Cast<Match>()
+            .Select(m => int.Parse(m.Groups["n"].Value.Replace(",", string.Empty), System.Globalization.CultureInfo.InvariantCulture))
+            .Distinct()
+            .OrderBy(n => n)
+            .ToList();
+        if (suite.Count > 1)
+            wrong.Add("dossier states more than one test count: " + string.Join(", ", suite));
+    }
+}

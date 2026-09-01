@@ -1,61 +1,47 @@
-using System.Text.RegularExpressions;
-
 namespace Kor.Operations.EngineeringTools.Dxf;
 
 /// <summary>
 /// Publishing a job: find it, decide what to build, build it, refuse it if it is wrong, and only
 /// then put it where an engineer will open it.
-///
-/// This was a PowerShell script. Everything in it that decides something is here now, because a
-/// decision the test suite cannot reach is a decision nobody is checking — and the way these were
-/// checked was to publish against the live project share and look at what came out. That is how a
-/// model reached an engineer carrying eight storeys of a building she had said was out of scope.
-///
-/// What is deliberately NOT here: rendering a PDF, which needs a browser, and copying files. Those
-/// are plumbing and they can stay in a launcher. Choosing the reference, splitting the job into
-/// buildings, and refusing a model that breaks an invariant are not plumbing.
 /// </summary>
 public static class JobPublisher
 {
     public sealed record Request
     {
         public required string Project { get; init; }
-        public required string ModelFolder { get; init; }
-        public required string DxfFolder { get; init; }
-
-        /// <summary>Named only when the folder holds more than one engineer-built model.</summary>
+        public string? ModelFolder { get; init; }
+        public string? DxfFolder { get; init; }
+        public string ProjectsRoot { get; init; } = PublishDiscovery.DefaultProjectsRoot;
+        public string? RepoRoot { get; init; }
         public string? Reference { get; init; }
-
         public string? RuleSettingsConnection { get; init; }
-
-        /// <summary>Where the model is written before it has passed. Nothing lands until it does.</summary>
-        public required string StageFolder { get; init; }
-
-        /// <summary>
-        /// Storeys to leave out of EVERY building's model, on top of whatever the split already
-        /// drops. For a level the engineer says does not belong in ETABS at all.
-        ///
-        /// Andrea Neuviale, 31 August, on 31168: "since there is no structural slab at P3 (only a
-        /// slab on grade), this level doesn't need to exist in etabs. It can go straight from
-        /// 'base' to 'P2'." A slab on grade is carried by the ground, not by the frame, and a
-        /// storey modelled under it puts stiffness where the building has none.
-        /// </summary>
+        public string? StageFolder { get; init; }
         public IReadOnlyList<string> DropStoreys { get; init; } = Array.Empty<string>();
-
-        /// <summary>Give a storey with members but no drawn floor one borrowed from its neighbour.</summary>
         public bool InferFloors { get; init; }
-
-        /// <summary>
-        /// The job's stick file. A sheet that matches one of its pages takes that page's field
-        /// slab thickness instead of the engineer's default — see StickFileSlabThicknessReader.
-        /// Without it every plate is the assumed default, which is what shipped until now.
-        /// </summary>
         public string? StickFilePdf { get; init; }
+        public string? AnnotatedDxfFolder { get; init; }
+        public string? TopStorey { get; init; }
+        public string? Tower { get; init; }
+        public string? Variant { get; init; }
+        public bool PerBuilding { get; init; }
+        public bool SkipDossier { get; init; }
+        public bool Land { get; init; }
+        public string? RendererScript { get; init; }
+        public string? PdfInfoExe { get; init; }
     }
 
     public sealed record Built(
-        string Label, string OutputPath, int Storeys, int Walls, int Columns, int Floors,
-        IReadOnlyList<ModelViolation> Violations)
+        string Label,
+        string OutputPath,
+        int Storeys,
+        int Walls,
+        int Columns,
+        int Floors,
+        IReadOnlyList<ModelViolation> Violations,
+        string? ReportPath = null,
+        string? QuestionsPath = null,
+        string? SummaryPdfPath = null,
+        DxfToEtabsReport? Report = null)
     {
         public IReadOnlyList<ModelViolation> BlockingViolations
             => Violations.Where(v => v.BlocksPublishing).ToList();
@@ -66,65 +52,64 @@ public static class JobPublisher
         public bool Passed => BlockingViolations.Count == 0;
     }
 
-    public sealed record Outcome(string Reference, IReadOnlyList<Built> Models, string? Refused);
+    public sealed record Outcome(string Reference, IReadOnlyList<Built> Models, string? Refused)
+    {
+        public string? ModelFolder { get; init; }
+        public string? DxfFolder { get; init; }
+        public string? StageFolder { get; init; }
+        public IReadOnlyList<string> Landed { get; init; } = Array.Empty<string>();
+        public IReadOnlyList<string> Withdrawn { get; init; } = Array.Empty<string>();
+        public IReadOnlyList<string> Warnings { get; init; } = Array.Empty<string>();
+    }
 
-    /// <summary>
-    /// Build every model this job needs — one per building — and verify each one.
-    ///
-    /// Nothing is copied anywhere. The caller lands what passed; a model that failed stays in the
-    /// staging folder with its violations, which is the whole point of staging it.
-    /// </summary>
     public static Outcome Run(Request request)
     {
-        Directory.CreateDirectory(request.StageFolder);
+        if (string.IsNullOrWhiteSpace(request.RuleSettingsConnection))
+            return new Outcome(string.Empty, Array.Empty<Built>(),
+                "KOR_ENGINEERINGTOOLS_STANDARDSDB is not set; refusing to publish a model from built-in rules.");
 
-        string? reference = request.Reference;
-        if (reference is null)
+        string repoRoot = FindRepoRoot(request.RepoRoot);
+        PublishDiscoveryResult discovery;
+        try
         {
-            var candidates = Directory.EnumerateFiles(request.ModelFolder)
-                .Where(f => Path.GetExtension(f) is ".e2k" or ".$et")
-                .Select(f => (Name: Path.GetFileName(f), Head: (Func<string>)(() => Head(f))))
-                .ToList();
-
-            reference = PublishPlan.ChooseReference(candidates, out string why);
-            if (reference is null) return new Outcome(string.Empty, Array.Empty<Built>(), why);
+            discovery = PublishDiscovery.Discover(new PublishDiscoveryRequest(
+                request.Project, request.ModelFolder, request.DxfFolder, request.Reference, request.ProjectsRoot));
+        }
+        catch (Exception ex)
+        {
+            return new Outcome(string.Empty, Array.Empty<Built>(), ex.Message);
         }
 
-        string referencePath = Path.Combine(request.ModelFolder, reference);
+        string labelForStage = string.IsNullOrWhiteSpace(request.Variant)
+            ? request.Project
+            : $"{request.Project}-{request.Variant.Trim().ToUpperInvariant()}";
+        string stage = request.StageFolder ?? Path.Combine(Path.GetTempPath(), $"kor-publish-{labelForStage}");
+        PrepareStage(stage, request.StageFolder is null);
+
+        string referencePath = Path.Combine(discovery.ModelFolder, discovery.Reference);
         var document = E2kDocument.Load(referencePath);
         var storeys = document.ReadStories().Select(s => s.Name).ToList();
-
-        // THE SAME RULES THE MODEL IS BUILT ON, not this file's defaults.
-        //
-        // Reach decides which sheets feed which building, so it decides what is IN each published
-        // model before a single one is generated. Reading it with built-in layer patterns meant a
-        // firm whose layers are named anything else got their buildings split on no structure at
-        // all -- and nothing downstream could tell, because each model that came out was then
-        // built correctly from whatever reach had handed it.
-        //
-        // Found by an adversarial audit on 2026-08-26. It could not have been found by the
-        // required-rule coverage test, which watches ApplyRules and never sees this call.
-        var reachRules = PlanRulesFor(request.RuleSettingsConnection);
-        var plans = PublishPlan.ForBuildings(storeys, ReachByStorey(request.DxfFolder, storeys, reachRules));
+        var plans = PlansFor(request, discovery, storeys);
 
         var built = new List<Built>();
         foreach (var plan in plans)
         {
-            // One building gets the job's own name; several get the job's name and the building's,
-            // because every output is named from the label and a second run would otherwise
-            // overwrite the first one silently -- model, report, workbook and summary, all four.
-            string label = plan.Building.Length == 0 ? request.Project : $"{request.Project}-{plan.Building}";
-            string output = Path.Combine(request.StageFolder, $"{label}-FROM-DRAWINGS.e2k");
+            string label = LabelFor(request.Project, request.Variant, request.PerBuilding, plan);
+            string output = Path.Combine(stage, $"{label}-FROM-DRAWINGS.e2k");
+            string reportPath = Path.Combine(stage, $"{label}-FROM-DRAWINGS-report.txt");
+            string questionsPath = Path.Combine(stage, $"{label}-QUESTIONS.xlsx");
 
             var report = DxfToEtabsService.Run(new DxfToEtabsRequest
             {
-                RequireRuleSettings = request.RuleSettingsConnection is not null,
+                RequireRuleSettings = true,
                 RuleSettingsConnection = request.RuleSettingsConnection,
-                DxfFolder = request.DxfFolder,
-                StickFilePdf = request.StickFilePdf,
+                DxfFolder = discovery.DxfFolder,
+                StickFilePdf = ResolveOptionalFile(request.StickFilePdf),
+                AnnotatedDxfFolder = ResolveOptionalFolder(request.AnnotatedDxfFolder),
                 ReferenceE2k = referencePath,
                 OutputE2k = output,
-                TowerOnly = plan.Tower.Length == 0 ? null : plan.Tower,
+                TowerOnly = string.IsNullOrWhiteSpace(plan.Tower) ? null : plan.Tower,
+                TopStorey = request.TopStorey,
                 DropStoreys = plan.DropStoreys
                     .Concat(request.DropStoreys)
                     .Distinct(StringComparer.OrdinalIgnoreCase)
@@ -132,41 +117,238 @@ public static class JobPublisher
                 Compose = new ComposeOptions { InferMissingFloors = request.InferFloors },
             });
 
-            string reportPath = Path.Combine(request.StageFolder, $"{label}-FROM-DRAWINGS-report.txt");
-            string questionsPath = Path.Combine(request.StageFolder, $"{label}-QUESTIONS.xlsx");
-
             File.WriteAllText(reportPath, DxfToEtabsService.FormatReport(report));
+            ModelQuestionnaire.Write(questionsPath, report, report.ClassificationUsed, report.ComposeUsed, label);
 
-            ModelQuestionnaire.Write(
-                questionsPath,
-                report, report.ClassificationUsed, report.ComposeUsed, label);
-
-            // The reference goes in so the invariants judge what THIS TOOL built. On a gap-fill job
-            // the engineer's own model is carried through into the output, and hers is not ours to
-            // refuse: 31138 failed 514 checks, every one of them her work.
+            var dropped = plan.DropStoreys
+                .Concat(request.DropStoreys)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
             var violations = ShippedModelInvariants.Check(
-                File.ReadLines(output), 0.05,
-                plan.DropStoreys.Concat(request.DropStoreys)
-                    .Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
-                File.ReadLines(referencePath),
+                File.ReadLines(output), 0.05, dropped, File.ReadLines(referencePath),
                 report.FoundationStoreys, File.ReadLines(reportPath), ModelQuestionnaire.TextLines(questionsPath));
 
-            built.Add(new Built(label, output, report.Summary.Stories, report.Summary.Walls,
-                report.Summary.Columns, report.Summary.Floors, violations));
+            built.Add(new Built(
+                label,
+                output,
+                report.SavedModel.Storeys.Count,
+                report.SavedModel.Walls,
+                report.SavedModel.Columns,
+                report.SavedModel.Floors,
+                violations,
+                reportPath,
+                questionsPath,
+                Report: report));
         }
 
-        return new Outcome(reference, built, null);
+        if (built.Any(b => !b.Passed))
+            return Result(discovery, stage, built, "one or more generated models failed publish-blocking invariants.");
+
+        PublishToolPaths tools;
+        try
+        {
+            tools = PublishExternalTools.Locate(repoRoot, request.RendererScript, request.PdfInfoExe);
+        }
+        catch (Exception ex)
+        {
+            return Result(discovery, stage, built, ex.Message);
+        }
+
+        for (int i = 0; i < built.Count; i++)
+        {
+            var one = built[i];
+            if (one.Report is null || one.ReportPath is null || one.QuestionsPath is null) continue;
+
+            try
+            {
+                var summary = PublishSummary.Write(new PublishSummaryRequest(
+                    request.Project, one.Label, discovery.DxfFolder, discovery.Reference,
+                    one.Report, one.ReportPath, one.QuestionsPath, stage, Path.GetTempPath(), tools));
+                built[i] = one with { SummaryPdfPath = summary.PdfPath };
+            }
+            catch (Exception ex)
+            {
+                return Result(discovery, stage, built, ex.Message);
+            }
+        }
+
+        var warnings = new List<string>();
+        var explainers = PublishExplainers.Evaluate(new PublishExplainersRequest(
+            request.Project,
+            discovery.ModelFolder,
+            repoRoot,
+            request.ProjectsRoot,
+            built[0].OutputPath,
+            built[0].ReportPath ?? string.Empty,
+            built[0].Report?.SavedModel ?? E2kModelContents.Empty,
+            request.SkipDossier,
+            request.PerBuilding || !string.IsNullOrWhiteSpace(request.Variant)));
+        warnings.AddRange(explainers.Warnings);
+
+        if (explainers.Refused is not null)
+        {
+            var withdrawnOnRefusal = request.Land
+                ? Withdraw(explainers.ToWithdraw)
+                : Array.Empty<string>();
+            return Result(discovery, stage, built, explainers.Refused)
+                with { Warnings = warnings, Withdrawn = withdrawnOnRefusal };
+        }
+
+        if (!request.Land)
+            return Result(discovery, stage, built, null) with { Warnings = warnings };
+
+        var landed = new List<string>();
+        var withdrawn = new List<string>();
+        foreach (string file in StagedFilesFor(built))
+        {
+            string target = Path.Combine(discovery.ModelFolder, Path.GetFileName(file));
+            File.Copy(file, target, overwrite: true);
+            landed.Add(Path.GetFileName(file));
+        }
+
+        foreach (var explainer in explainers.ToCopy)
+        {
+            File.Copy(explainer.Source, explainer.Target, overwrite: true);
+            landed.Add(Path.GetFileName(explainer.Target));
+        }
+
+        withdrawn.AddRange(Withdraw(explainers.ToWithdraw));
+
+        foreach (var one in built)
+        {
+            string old = Path.Combine(discovery.ModelFolder, $"{one.Label}-QUESTIONS-for-Andrea.xlsx");
+            string current = Path.Combine(discovery.ModelFolder, $"{one.Label}-QUESTIONS.xlsx");
+            if (File.Exists(old) && File.Exists(current))
+            {
+                File.Delete(old);
+                withdrawn.Add(Path.GetFileName(old));
+            }
+        }
+
+        var stale = StaleOwnedFiles(repoRoot, discovery.ModelFolder, landed).ToList();
+        if (stale.Count > 0)
+            return Result(discovery, stage, built, "STALE - these predate the source that built them: " + string.Join(", ", stale))
+                with { Landed = landed, Withdrawn = withdrawn, Warnings = warnings };
+
+        return Result(discovery, stage, built, null)
+            with { Landed = landed, Withdrawn = withdrawn, Warnings = warnings };
     }
 
-    /// <summary>
-    /// The classification rules from KorStandards, for the reads that happen BEFORE a model run.
-    ///
-    /// A run refuses to start without them. This one cannot: reach is computed while deciding
-    /// what to build, and a job published from a machine that cannot see the database should
-    /// still produce a model rather than an exception. So a missing connection falls back to the
-    /// built-in values and the caller is no worse off than before -- but a connection that IS
-    /// there is used, which is the whole point.
-    /// </summary>
+    private static IReadOnlyList<PublishPlan.Model> PlansFor(
+        Request request,
+        PublishDiscoveryResult discovery,
+        IReadOnlyList<string> storeys)
+    {
+        if (request.PerBuilding && string.IsNullOrWhiteSpace(request.Variant))
+        {
+            var reachRules = PlanRulesFor(request.RuleSettingsConnection);
+            return PublishPlan.ForBuildings(storeys, ReachByStorey(discovery.DxfFolder, storeys, reachRules));
+        }
+
+        string tower = request.Tower?.Trim().ToUpperInvariant() ?? string.Empty;
+        string building = request.Variant?.Trim().ToUpperInvariant() ?? tower;
+        return new[] { new PublishPlan.Model(building, tower, Array.Empty<string>()) };
+    }
+
+    private static string LabelFor(string project, string? variant, bool perBuilding, PublishPlan.Model plan)
+    {
+        if (!string.IsNullOrWhiteSpace(variant))
+            return $"{project}-{variant.Trim().ToUpperInvariant()}";
+        if (perBuilding && plan.Building.Length > 0)
+            return $"{project}-{plan.Building}";
+        return project;
+    }
+
+    private static Outcome Result(
+        PublishDiscoveryResult discovery,
+        string stage,
+        IReadOnlyList<Built> built,
+        string? refused)
+        => new(discovery.Reference, built, refused)
+        {
+            ModelFolder = discovery.ModelFolder,
+            DxfFolder = discovery.DxfFolder,
+            StageFolder = stage,
+        };
+
+    private static void PrepareStage(string stage, bool defaultStage)
+    {
+        if (defaultStage && Directory.Exists(stage))
+            Directory.Delete(stage, recursive: true);
+        Directory.CreateDirectory(stage);
+    }
+
+    private static string? ResolveOptionalFile(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return null;
+        if (!File.Exists(path))
+            throw new FileNotFoundException($"File not found '{path}'.", path);
+        return Path.GetFullPath(path);
+    }
+
+    private static string? ResolveOptionalFolder(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return null;
+        if (!Directory.Exists(path))
+            throw new DirectoryNotFoundException($"Folder not found '{path}'.");
+        return Path.GetFullPath(path);
+    }
+
+    private static IEnumerable<string> StaleOwnedFiles(string repoRoot, string folder, IReadOnlyList<string> owned)
+    {
+        string dxfSource = Path.Combine(repoRoot, "Kor.Operations.EngineeringTools.Core", "Dxf");
+        if (!Directory.Exists(dxfSource)) yield break;
+
+        var newest = Directory.EnumerateFiles(dxfSource, "*.cs", SearchOption.TopDirectoryOnly)
+            .Select(File.GetLastWriteTime)
+            .DefaultIfEmpty(DateTime.MinValue)
+            .Max();
+
+        foreach (string file in owned)
+        {
+            string path = Path.Combine(folder, file);
+            if (File.Exists(path) && File.GetLastWriteTime(path) < newest)
+                yield return file;
+        }
+    }
+
+    private static IReadOnlyList<string> StagedFilesFor(IReadOnlyList<Built> built)
+        => built.SelectMany(b => new[] { b.OutputPath, b.ReportPath, b.QuestionsPath, b.SummaryPdfPath })
+            .Where(p => !string.IsNullOrWhiteSpace(p) && File.Exists(p))
+            .Cast<string>()
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+    private static IReadOnlyList<string> Withdraw(IReadOnlyList<string> targets)
+    {
+        var withdrawn = new List<string>();
+        foreach (string target in targets)
+        {
+            if (!File.Exists(target)) continue;
+            File.Delete(target);
+            withdrawn.Add(Path.GetFileName(target));
+        }
+
+        return withdrawn;
+    }
+
+    private static string FindRepoRoot(string? given)
+    {
+        if (!string.IsNullOrWhiteSpace(given))
+            return Path.GetFullPath(given);
+
+        var current = new DirectoryInfo(AppContext.BaseDirectory);
+        while (current is not null)
+        {
+            if (File.Exists(Path.Combine(current.FullName, "Kor.Operations.EngineeringTools.Core", "Kor.Operations.EngineeringTools.Core.csproj"))
+                && Directory.Exists(Path.Combine(current.FullName, "tools")))
+                return current.FullName;
+            current = current.Parent;
+        }
+
+        return Directory.GetCurrentDirectory();
+    }
+
     private static PlanClassificationOptions PlanRulesFor(string? connection)
     {
         if (string.IsNullOrWhiteSpace(connection)) return new PlanClassificationOptions();
@@ -178,16 +360,10 @@ public static class JobPublisher
         }
         catch
         {
-            // Unreachable or incomplete: the model run that follows will refuse for the same
-            // reason and say so properly. Reach is not the place to fail a publish.
             return new PlanClassificationOptions();
         }
     }
 
-    /// <summary>
-    /// Where the structure read from each storey's sheets stands, in plan. This is what tells a
-    /// tower floor with no prefix apart from the mid-rise's own — nothing in the NAME does.
-    /// </summary>
     public static IReadOnlyList<PublishPlan.StoreyReach> ReachByStorey(
         string dxfFolder, IReadOnlyList<string> storeys, PlanClassificationOptions? rules = null)
     {
@@ -196,13 +372,6 @@ public static class JobPublisher
 
         foreach (string file in Directory.EnumerateFiles(dxfFolder, "*.dxf", SearchOption.TopDirectoryOnly))
         {
-            // THE SAME SHEETS THE RUN WILL READ, AND NO OTHERS.
-            //
-            // The generator refuses reinforcing plans, key plans and load plans by rule; reach did
-            // not, and reach decides which sheets feed which BUILDING before a model is generated.
-            // A key plan is a schematic of the whole site, so its linework reaches everywhere, and
-            // letting it vote on a building's footprint is how a split goes wrong in a way no
-            // later filter can undo.
             string name = Path.GetFileNameWithoutExtension(file);
             if (options.NonStructuralSheetPatterns.Any(
                     pattern => name.IndexOf(pattern, StringComparison.OrdinalIgnoreCase) >= 0))
@@ -234,14 +403,5 @@ public static class JobPublisher
         }
 
         return reach.Values.ToList();
-    }
-
-    /// <summary>Enough of a model to tell whose it is, without reading a 1.4 MB file to find out.</summary>
-    private static string Head(string path)
-    {
-        using var reader = new StreamReader(path);
-        var buffer = new char[64 * 1024];
-        int read = reader.Read(buffer, 0, buffer.Length);
-        return new string(buffer, 0, Math.Max(0, read));
     }
 }

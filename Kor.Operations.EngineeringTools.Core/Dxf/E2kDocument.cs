@@ -22,6 +22,8 @@ public sealed record E2kModelContents(
     int Walls,
     int Columns,
     int Floors,
+    int Headers,
+    int Openings,
     int Joints,
     IReadOnlyDictionary<string, E2kStoreyContents> MembersByStorey,
     IReadOnlyDictionary<string, int> PlatesByStorey,
@@ -30,7 +32,7 @@ public sealed record E2kModelContents(
     IReadOnlySet<string> OrphanGeneratedJoints)
 {
     public static E2kModelContents Empty { get; } = new(
-        Array.Empty<string>(), 0, 0, 0, 0,
+        Array.Empty<string>(), 0, 0, 0, 0, 0, 0,
         new Dictionary<string, E2kStoreyContents>(StringComparer.OrdinalIgnoreCase),
         new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase),
         Array.Empty<E2kObjectContents>(),
@@ -1169,7 +1171,11 @@ public sealed class E2kDocument
             kinds.Count(x => x.Key.StartsWith("KC", StringComparison.Ordinal)
                              && x.Value.Equals("COLUMN", StringComparison.OrdinalIgnoreCase)),
             kinds.Count(x => x.Key.StartsWith("KF", StringComparison.Ordinal)
-                             && x.Value.Equals("FLOOR", StringComparison.OrdinalIgnoreCase)),
+                              && x.Value.Equals("FLOOR", StringComparison.OrdinalIgnoreCase)),
+            kinds.Count(x => x.Key.StartsWith("KS", StringComparison.Ordinal)
+                              && x.Value.Equals("PANEL", StringComparison.OrdinalIgnoreCase)),
+            kinds.Count(x => x.Key.StartsWith("KO", StringComparison.Ordinal)
+                              && x.Value.Equals("AREA", StringComparison.OrdinalIgnoreCase)),
             points.Count,
             members,
             plates,

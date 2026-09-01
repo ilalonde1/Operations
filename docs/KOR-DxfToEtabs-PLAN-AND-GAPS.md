@@ -60,7 +60,7 @@ overwrite or duplicate geometry the engineer has already modelled.
 | Engine | `Kor.Operations.EngineeringTools.Core/Dxf/` |
 | Tests | `Kor.Operations.EngineeringTools.Core.Tests/` |
 | CLI | `Kor.Operations.EngineeringTools.TakeoffCli/` |
-| Publish | `tools/Publish-EtabsModel.ps1` |
+| Publish | `takeoff publish` |
 | Shipped documents | `docs/KOR-DxfToEtabs-*.html` |
 | Rules and evidence | `KorStandards` on `KOR-APP01\SQLEXPRESS`, schema `analysis` |
 | Rule contract | `analysis.vw_RuleSetting` — key, value, units, confidence, authority |

@@ -93,7 +93,7 @@ One of each, no version trails.
 |---|---|
 | Dossier (client-facing) | `docs/KOR-DxfToEtabs-web.pdf` — regenerate to a fresh scratch filename, then copy over this one (Edge caches by HTML path) |
 | Model renderer | `tools/Render-E2kModel.ps1 -E2k <file> -OutPng <png> -Title <text>` |
-| Delivered per project | `…/01 ETABS Models/`: `*-FROM-DRAWINGS.e2k`, `*-report.txt`, `*-QUESTIONS-for-Andrea.xlsx`, `*-MODEL-VIEWS.png`, `KOR-Model-From-Drawings-DOSSIER.pdf`, `READ-ME-Andrea.md` |
+| Delivered per project | `.../01 ETABS Models/`: `*-FROM-DRAWINGS.e2k`, `*-report.txt`, `*-QUESTIONS.xlsx`, `KOR-*-SUMMARY.pdf`, `KOR-Model-From-Drawings-DOSSIER.pdf`, `KOR-Model-From-Drawings-READ-THIS-FIRST.pdf` |
 
 The renderer is not optional decoration: nothing ships without being drawn and looked at first.
 Counts cannot see a two-inch wall, a plate modelled twice, or a member silently dropped — all
@@ -107,12 +107,13 @@ instead of re-deriving them.
 
 ## Publishing
 
-    .\tools\Publish-EtabsModel.ps1 -Project 31168
+    takeoff publish 31168 --land
 
-One command: builds the CLI (which `dotnet test` does not), regenerates the model, report and
-questionnaire, copies the current dossier, lists what shipped, and **exits non-zero if any
-deliverable predates the source that built it**.
+One command: finds the job folder, chooses the engineer's reference without guessing, regenerates
+the model, report, questionnaire and one-page summary in staging, gates the dossier and one-pager,
+then lands only the files that passed. It **exits non-zero if any deliverable predates the source
+that built it**.
 
 Publishing by hand is what made things stale — the model would be regenerated and the dossier left
 behind quoting counts two rounds old. Staleness was never a discipline problem; it was a four-step
-ritual performed from memory. Use the script.
+ritual performed from memory. Use `takeoff publish`.
