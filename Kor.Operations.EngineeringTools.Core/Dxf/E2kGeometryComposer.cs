@@ -1039,6 +1039,13 @@ public static class E2kGeometryComposer
                 // A column is one plan point, rising one storey from the storey it is assigned to.
                 // "same for columns" — one column from floor to floor of its own tower, spanning
                 // the other tower's storeys rather than being cut at each of them.
+                //
+                // ⚠ THIS IS THE SITE MODEL'S ANSWER, AND IT IS NOT THE ONE SHE RECEIVES. A model
+                // cut to one building has none of the other's storeys left to step over, and there
+                // the span is 1 — her own convention, and what E2kDocument.SpanEveryGeneratedMember
+                // resets it to after the cut. Setting it to 1 HERE instead makes wafers: in the
+                // interleaved site list the row below C-LEVEL 3 is the towers' LEVEL 3, an inch
+                // away, and NoColumnIsShorterThanAPerson says so.
                 int colSpan = colStoreys.Count;
                 string name = NextName("C", ref colCounter);
                 buildingOfObject[name] = placement.SheetBuildingTags;

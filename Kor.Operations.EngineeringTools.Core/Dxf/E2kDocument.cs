@@ -694,6 +694,50 @@ public sealed class E2kDocument
     ///
     /// So the document applies its own renames. It is the only thing that knows what it renamed.
     /// </summary>
+    /// <summary>
+    /// Every generated column and wall rises exactly one storey. Returns how many were changed.
+    /// </summary>
+    /// <remarks>
+    /// ONLY AFTER A MODEL HAS BEEN CUT TO ONE BUILDING, and that is the whole of it.
+    ///
+    /// A site model interleaves three buildings on one storey list, so a YMCA column from its floor
+    /// to the floor below has to step over the towers' storeys standing between them — that is what
+    /// span is for, and E2kGeometryComposer sets it to the number of storeys the member covers.
+    ///
+    /// Once the model is cut to one building there is nothing left to step over: the row below a
+    /// storey IS the floor below it. A span still greater than one is then a member running THROUGH
+    /// a floor rather than stopping at it, which is what the engineer photographed and called an
+    /// overlap, and what she asked for instead: "columns broken down at every floor, from slab to
+    /// slab", "no overlap", "the same label full height".
+    ///
+    /// Measured in her own 31138 model: 87 column objects, EVERY ONE span 1, 57 of them assigned to
+    /// about five storeys each. How many storeys a member stands on is said with assigns; span says
+    /// how far one member reaches, and that is one floor.
+    ///
+    /// ⚠ Doing this in the composer instead makes wafers: in the interleaved site list the row
+    /// below C-LEVEL 3 is the towers' LEVEL 3, an inch and a half away, and the model comes back
+    /// full of two-inch columns. NoColumnIsShorterThanAPerson catches it, and it is right to.
+    /// </remarks>
+    public int SpanEveryGeneratedMemberOneStorey()
+    {
+        var line = new Regex(@"^(\s*LINE\s+""(K[CW]\d+)""\s+\w+\s+""[^""]+""\s+""[^""]+""\s+)(\d+)(\s*)$");
+        int changed = 0;
+
+        var section = Find("LINE CONNECTIVITIES");
+        if (section is null) return 0;
+
+        for (int i = 0; i < section.Lines.Count; i++)
+        {
+            var m = line.Match(section.Lines[i]);
+            if (!m.Success || m.Groups[3].Value == "1") continue;
+
+            section.Lines[i] = m.Groups[1].Value + "1" + m.Groups[4].Value;
+            changed++;
+        }
+
+        return changed;
+    }
+
     public int RenameStoreysInAssigns()
     {
         if (_storeyRenames.Count == 0) return 0;

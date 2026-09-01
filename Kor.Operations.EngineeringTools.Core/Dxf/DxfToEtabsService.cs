@@ -1641,6 +1641,24 @@ public static class DxfToEtabsService
         var beforeStackMerge = MemberPlanStoreyMultisetPreserved.Capture(doc);
         int stacked = MergeStacksIntoOneLabel ? doc.MergeStackedMembers() : 0;
         MemberPlanStoreyMultisetPreserved.Assert(beforeStackMerge, doc);
+
+        // AND ONE STOREY PER MEMBER, NOW THAT THERE IS NOTHING LEFT TO STEP OVER.
+        //
+        // Only in a model cut to one building. The site list interleaves three of them, so a span
+        // greater than one is how a YMCA column reaches past the towers' storeys to its own floor
+        // below. Cut to one building the row below a storey IS the floor below it, and a longer
+        // span is a member running through a floor -- the overlap she photographed.
+        if (request.TowerOnly is not null)
+        {
+            int unspanned = doc.SpanEveryGeneratedMemberOneStorey();
+            if (unspanned > 0)
+                warnings.Add(
+                    $"{unspanned} column and wall object(s) were cut back to one storey each. In the site " +
+                    "model a member spans the other buildings' storeys to reach its own floor below; in a " +
+                    "model of one building there is nothing between, and a longer span is a member running " +
+                    "through a floor rather than stopping at it. This is the convention your own 31138 model " +
+                    "uses: every column object span 1, with an assign on each storey it rises through.");
+        }
         if (stacked > 0)
             warnings.Add(
                 $"{stacked} column and wall object(s) were merged into the stack they belong to, so a member " +
