@@ -250,15 +250,61 @@ public static class JobPublisher
         PublishDiscoveryResult discovery,
         IReadOnlyList<string> storeys)
     {
-        if (request.PerBuilding && string.IsNullOrWhiteSpace(request.Variant))
+        bool wantsBuildings = string.IsNullOrWhiteSpace(request.Variant)
+            && (request.PerBuilding || !string.IsNullOrWhiteSpace(request.Tower));
+
+        var derived = wantsBuildings
+            ? PublishPlan.ForBuildings(
+                storeys,
+                ReachByStorey(discovery.DxfFolder, storeys, PlanRulesFor(request.RuleSettingsConnection)))
+            : Array.Empty<PublishPlan.Model>();
+
+        return ChoosePlans(derived, request.Tower, request.Variant, request.PerBuilding);
+    }
+
+    /// <summary>
+    /// Which models this run builds, given the per-building plans the storeys and drawings imply.
+    /// </summary>
+    /// <remarks>
+    /// ONE BUILDING IS ONE BUILDING, HOWEVER IT WAS ASKED FOR.
+    ///
+    /// --tower C used to build a plan with an EMPTY drop list, because deriving one was written
+    /// inside the --per-building branch and nothing shared it. The two answers for building C were:
+    ///
+    ///   --per-building   14 storeys — C-ROOF, C-LEVEL 9..3, and the shared LEVEL 2, LEVEL 1 MEZZ,
+    ///                    LEVEL 1, LEVEL P1..P3 it stands on
+    ///   --tower C        38 storeys — the same 259 walls and 623 columns, plus the towers' LEVEL
+    ///                    3..26 carried along empty
+    ///
+    /// Same members, same drawings, same building; a model with twenty-four storeys in it that hold
+    /// nothing. The tower filter cuts MEMBERS and never claimed to cut storeys, and the storey drop
+    /// is derived from the footprints — so asking for one building has to go through the same
+    /// derivation as asking for all of them, and now does.
+    ///
+    /// A variant is deliberately left alone: --variant TOWERS means the whole site under another
+    /// name, and has no building to derive a footprint from.
+    /// </remarks>
+    internal static IReadOnlyList<PublishPlan.Model> ChoosePlans(
+        IReadOnlyList<PublishPlan.Model> derived,
+        string? tower,
+        string? variant,
+        bool perBuilding)
+    {
+        string wanted = tower?.Trim().ToUpperInvariant() ?? string.Empty;
+        string building = variant?.Trim().ToUpperInvariant() ?? wanted;
+
+        if (perBuilding && string.IsNullOrWhiteSpace(variant) && derived.Count > 0)
+            return derived;
+
+        if (wanted.Length > 0 && string.IsNullOrWhiteSpace(variant))
         {
-            var reachRules = PlanRulesFor(request.RuleSettingsConnection);
-            return PublishPlan.ForBuildings(storeys, ReachByStorey(discovery.DxfFolder, storeys, reachRules));
+            var mine = derived.FirstOrDefault(p => p.Tower.Equals(wanted, StringComparison.OrdinalIgnoreCase));
+            // No plan for it means the storeys carry no such building tag, and inventing a drop
+            // list from nothing would cut real structure. Cut members only, as before.
+            if (mine is not null) return new[] { mine };
         }
 
-        string tower = request.Tower?.Trim().ToUpperInvariant() ?? string.Empty;
-        string building = request.Variant?.Trim().ToUpperInvariant() ?? tower;
-        return new[] { new PublishPlan.Model(building, tower, Array.Empty<string>()) };
+        return new[] { new PublishPlan.Model(building, wanted, Array.Empty<string>()) };
     }
 
     private static string LabelFor(string project, string? variant, bool perBuilding, PublishPlan.Model plan)
