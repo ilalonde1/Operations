@@ -9,6 +9,10 @@ changes nothing, and rolls back if required tables, key columns, or baseline
 indexes are missing. After success, it prints the live row counts.
 */
 
+
+USE KorTransmittals;
+IF DB_NAME() <> N'KorTransmittals' BEGIN RAISERROR('Wrong database on server %s. This script runs ONLY in KorTransmittals.', 20, 1, @@SERVERNAME) WITH LOG; END;
+SELECT DB_NAME() AS [You are here];
 SET NOCOUNT ON;
 SET XACT_ABORT ON;
 
