@@ -158,44 +158,9 @@
                             AvatarDiameter="96"
                             AvatarBorderThickness="2"/>
 
-        <Border Grid.Row="1" Margin="12,0,12,8" Padding="12" CornerRadius="12" Background="{StaticResource HeroBand}" BorderBrush="#FFE3D8D0" BorderThickness="1">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-
-                <Border Background="#FFFFFFFF" CornerRadius="10" Padding="12,8" Margin="0,0,10,0">
-                    <StackPanel>
-                        <TextBlock Text="Single Source of Truth" FontWeight="SemiBold"/>
-                        <TextBlock x:Name="OfficialMetricText" Text="One official revision per record" Style="{StaticResource MetricValueLabel}"/>
-                    </StackPanel>
-                </Border>
-
-                <Border Grid.Column="1" Background="#FFFFFFFF" CornerRadius="10" Padding="12,8" Margin="0,0,10,0">
-                    <StackPanel>
-                        <TextBlock Text="Controlled Workflow" FontWeight="SemiBold"/>
-                        <TextBlock x:Name="WorkflowMetricText" Text="Draft -> Submit -> Approve -> Publish" Style="{StaticResource MetricValueLabel}"/>
-                    </StackPanel>
-                </Border>
-
-                <Border Grid.Column="2" Background="#FFFFFFFF" CornerRadius="10" Padding="12,8" Margin="0,0,10,0">
-                    <StackPanel>
-                        <TextBlock Text="Group-Based Organization" FontWeight="SemiBold"/>
-                        <TextBlock x:Name="GroupMetricText" Text="Nested groups and subgroup assignment" Style="{StaticResource MetricValueLabel}"/>
-                    </StackPanel>
-                </Border>
-
-                <TextBlock Grid.Column="3"
-                           VerticalAlignment="Center"
-                           HorizontalAlignment="Right"
-                           FontSize="12"
-                           Foreground="{StaticResource Text.Secondary}"
-                           Text="Tip: Select a record, pick a target group, then click Move Selected Record."/>
-            </Grid>
-        </Border>
+        <TextBlock Grid.Row="1" x:Name="HeroSummaryText" Margin="14,0,14,8"
+                   FontSize="12" Foreground="{StaticResource Text.Secondary}"
+                   Text="No records yet."/>
 
         <Border Grid.Row="2" Style="{StaticResource Card}" Margin="12,0,12,8" Padding="10" ToolTip="Use search and actions to manage document records and revisions.">
             <Grid>
@@ -266,53 +231,9 @@
             </Grid>
         </Border>
 
-        <Border Grid.Row="3" Style="{StaticResource Card}" Margin="12,0,12,8" Padding="10" BorderBrush="#FFCDD7E1" BorderThickness="1">
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                </Grid.RowDefinitions>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="2*"/>
-                </Grid.ColumnDefinitions>
-
-                <TextBlock Text="Current Selection" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,14,0"/>
-
-                <TextBlock Grid.Column="2" Text="Record:" FontWeight="SemiBold" VerticalAlignment="Center" Margin="12,0,6,0"/>
-                <TextBlock Grid.Column="3" x:Name="SelectedRecordValue" Text="None selected" VerticalAlignment="Center" Foreground="{StaticResource Text.Secondary}"/>
-
-                <TextBlock Grid.Column="4" Text="Revision:" FontWeight="SemiBold" VerticalAlignment="Center" Margin="12,0,6,0"/>
-                <TextBlock Grid.Column="5" x:Name="SelectedRevisionValue" Text="None selected" VerticalAlignment="Center" Foreground="{StaticResource Text.Secondary}"/>
-
-                <TextBlock Grid.Column="6" Text="Status/File:" FontWeight="SemiBold" VerticalAlignment="Center" Margin="12,0,6,0"/>
-                <StackPanel Grid.Column="7" Orientation="Horizontal" VerticalAlignment="Center">
-                    <Border x:Name="SelectedStatusBadge" Style="{StaticResource StatusBadgeBorder}" Tag="None" Margin="0,0,8,0">
-                        <TextBlock x:Name="SelectedStatusValue" Text="None" FontSize="11" FontWeight="SemiBold"/>
-                    </Border>
-                    <TextBlock x:Name="SelectedFileValue" Text="Choose a revision to see details" VerticalAlignment="Center" Foreground="{StaticResource Text.Secondary}" TextTrimming="CharacterEllipsis"/>
-                </StackPanel>
-
-                <Border Grid.Row="1" Grid.ColumnSpan="8" x:Name="WorkflowHintBorder" Style="{StaticResource GuidanceBanner}">
-                    <StackPanel>
-                        <TextBlock x:Name="WorkflowHintText"
-                                   Text="Select a document record to begin."
-                                   FontWeight="SemiBold"
-                                   Foreground="#FF1E3A5F"/>
-                        <TextBlock x:Name="ActivityMessageText"
-                                   Text="Ready."
-                                   Margin="0,3,0,0"
-                                   Foreground="{StaticResource Text.Secondary}"/>
-                    </StackPanel>
-                </Border>
-            </Grid>
-        </Border>
+        <TextBlock Grid.Row="3" x:Name="ActivityMessageText" Margin="14,0,14,8"
+                   Text="Ready." FontSize="12" Foreground="{StaticResource Text.Secondary}"
+                   TextTrimming="CharacterEllipsis"/>
 
         <Grid Grid.Row="4" Margin="12,0,12,12">
             <Grid.ColumnDefinitions>
@@ -335,19 +256,6 @@
                     </Grid.RowDefinitions>
 
                     <TextBlock Grid.Row="0" Text="Document Groups" Style="{StaticResource TitleLabel}"/>
-                    <TextBlock Grid.Row="1" Text="Organize record ownership with top-level groups and subgroups." Style="{StaticResource HintLabel}"/>
-
-                    <WrapPanel Grid.Row="2" Margin="0,0,0,8">
-                        <Border x:Name="StepSelectRecordChip" Style="{StaticResource StepChipBorder}">
-                            <TextBlock x:Name="StepSelectRecordText" Text="1 Select Record" Style="{StaticResource StepChipText}"/>
-                        </Border>
-                        <Border x:Name="StepSelectGroupChip" Style="{StaticResource StepChipBorder}">
-                            <TextBlock x:Name="StepSelectGroupText" Text="2 Select Target Group" Style="{StaticResource StepChipText}"/>
-                        </Border>
-                        <Border x:Name="StepMoveRecordChip" Style="{StaticResource StepChipBorder}">
-                            <TextBlock x:Name="StepMoveRecordText" Text="3 Move Selected Record" Style="{StaticResource StepChipText}"/>
-                        </Border>
-                    </WrapPanel>
 
                     <WrapPanel Grid.Row="3" Margin="0,0,0,8">
                         <Button x:Name="AddGroupButton" Content="Add Group" Width="95" Height="30" Margin="0,0,6,0" Style="{StaticResource Button.Secondary}" ToolTip="Create a new top-level group" Click="AddGroup_Click"/>
@@ -365,10 +273,6 @@
                                   ToolTip="On: tree selection filters the record list. Off: tree selection sets assignment target only."
                                   Checked="FilterByGroupCheckBox_Changed"
                                   Unchecked="FilterByGroupCheckBox_Changed"/>
-                        <TextBlock Text="(Off is recommended when moving existing records)"
-                                   Margin="12,0,0,0"
-                                   VerticalAlignment="Center"
-                                   Foreground="{StaticResource Text.Secondary}"/>
                     </StackPanel>
 
                     <Border Grid.Row="5" BorderBrush="#FFE0E4E8" BorderThickness="1" CornerRadius="8" Padding="4">

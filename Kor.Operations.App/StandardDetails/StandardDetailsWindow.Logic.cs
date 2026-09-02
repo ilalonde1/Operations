@@ -321,22 +321,7 @@ public partial class StandardDetailsWindow
 
     private void UpdateSelectionSummary()
     {
-        var doc = DocumentsGrid.SelectedItem as DocumentRow;
-        var version = VersionsGrid.SelectedItem as VersionRow;
-        SelectedRecordValue.Text = doc is null ? "None selected" : $"{doc.Title} [{doc.GroupName}]";
-        SelectedRevisionValue.Text = version?.VersionLabel ?? "None selected";
-        if (version is null)
-        {
-            SelectedStatusBadge.Tag = "None";
-            SelectedStatusValue.Text = "None";
-            SelectedFileValue.Text = "Choose a revision to see details";
-            UpdateActionStates();
-            return;
-        }
-
-        SelectedStatusBadge.Tag = version.StatusText;
-        SelectedStatusValue.Text = version.StatusText;
-        SelectedFileValue.Text = string.IsNullOrWhiteSpace(version.OriginalFileName) ? "(no file name)" : version.OriginalFileName;
+        // Selection detail now lives in the grids themselves; just refresh action states.
         UpdateActionStates();
     }
 

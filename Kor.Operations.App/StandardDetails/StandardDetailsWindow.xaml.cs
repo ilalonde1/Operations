@@ -98,29 +98,18 @@ public partial class StandardDetailsWindow : Window
         }));
     }
 
-    private void UpdateWorkflowHint(DocumentRow? selectedDoc, VersionRow? selectedVersion)
-    {
-        WorkflowHintText.Text = selectedDoc is null
-            ? (!_groupSchemaAvailable ? "Click New Record to start. Grouping is currently unavailable for this DB login." : _policy?.CanContribute() == true ? "Click New Record to start. Select a group when you want to move records or filter the list." : "Select a record to review versions and files.")
-            : selectedVersion is null
-                ? (_policy?.CanContribute() == true ? "Record selected. Click Add Revision to upload the next file." : "Record selected. Choose a revision to view status and file.")
-                : selectedVersion.Status switch
-                {
-                    StatusDraft => _policy?.CanContribute() == true ? "Draft revision selected. Next step: Submit for approval." : "Draft revision selected. Waiting for contributor submission.",
-                    StatusSubmitted => _policy?.CanApproveOrReject() == true ? "Submitted revision selected. Approve or Reject to continue." : "Submitted revision selected. Waiting for approver decision.",
-                    StatusApproved => _policy?.CanPublish() == true ? "Approved revision selected. Publish to make it the official version." : "Approved revision selected. Waiting for publisher.",
-                    StatusRejected => _policy?.CanContribute() == true ? "Rejected revision selected. Upload a corrected revision." : "Rejected revision selected. Waiting for contributor rework.",
-                    StatusPublished => "Published revision selected. This is currently official.",
-                    _ => "Revision selected. Review details and take the next appropriate action."
-                };
-    }
-
     private void UpdateHeroMetrics()
     {
         var recordCount = _documentSnapshot.Count;
-        OfficialMetricText.Text = $"{_documentSnapshot.Count(x => !string.Equals(x.CurrentOfficialText, "None", StringComparison.OrdinalIgnoreCase))} of {recordCount} records have an official revision";
-        WorkflowMetricText.Text = $"{_documentSnapshot.Count(x => string.Equals(x.LatestStatusText, "Submitted", StringComparison.OrdinalIgnoreCase))} awaiting review • {_documentSnapshot.Count(x => string.Equals(x.LatestStatusText, "Published", StringComparison.OrdinalIgnoreCase))} published • {_versionSnapshot.Count} revisions in view";
-        GroupMetricText.Text = _groupSchemaAvailable ? $"{_groupCount} active groups available for organization" : "Grouping unavailable for this database login";
+        if (recordCount == 0)
+        {
+            HeroSummaryText.Text = "No records yet. Click New Record to start.";
+            return;
+        }
+
+        var official = _documentSnapshot.Count(x => !string.Equals(x.CurrentOfficialText, "None", StringComparison.OrdinalIgnoreCase));
+        var awaiting = _documentSnapshot.Count(x => string.Equals(x.LatestStatusText, "Submitted", StringComparison.OrdinalIgnoreCase));
+        HeroSummaryText.Text = $"{recordCount} records · {official} official · {awaiting} awaiting review";
     }
 
     private void UpdateActionStates()
@@ -135,15 +124,6 @@ public partial class StandardDetailsWindow : Window
         AddGroupButton.IsEnabled = canManageGroups; AddSubgroupButton.IsEnabled = canManageGroups && selectedGroup?.GroupId is not null; RenameGroupButton.IsEnabled = canManageGroups && selectedGroup?.GroupId is not null; RemoveGroupButton.IsEnabled = canManageGroups && selectedGroup?.GroupId is not null;
         CreateRecordButton.IsEnabled = canContribute; UploadVersionButton.IsEnabled = canContribute && selectedDoc is not null; LinkDetailButton.IsEnabled = canContribute && selectedDoc is not null && _korStandardsRepo is not null; RegistersButton.IsEnabled = _korStandardsRepo is not null; AssignRecordButton.IsEnabled = canContribute && selectedDoc is not null && _groupSchemaAvailable && canAssignToSelectedGroup; DeleteRecordButton.IsEnabled = canContribute && selectedDoc is not null;
         OpenFileButton.IsEnabled = selectedVersion is not null; SubmitButton.IsEnabled = canContribute && selectedVersion is not null && selectedVersion.Status == StatusDraft; ApproveButton.IsEnabled = (_policy?.CanApproveOrReject() == true) && selectedVersion is not null && selectedVersion.Status == StatusSubmitted; RejectButton.IsEnabled = (_policy?.CanApproveOrReject() == true) && selectedVersion is not null && selectedVersion.Status == StatusSubmitted; PublishButton.IsEnabled = (_policy?.CanPublish() == true) && selectedVersion is not null && selectedVersion.Status == StatusApproved;
-        UpdateGroupStepChips(selectedDoc is not null, canAssignToSelectedGroup, AssignRecordButton.IsEnabled);
-        UpdateWorkflowHint(selectedDoc, selectedVersion);
-    }
-
-    private void UpdateGroupStepChips(bool hasSelectedRecord, bool hasTargetGroup, bool canMoveRecord)
-    {
-        SetStepChipVisual(StepSelectRecordChip, StepSelectRecordText, hasSelectedRecord);
-        SetStepChipVisual(StepSelectGroupChip, StepSelectGroupText, hasTargetGroup);
-        SetStepChipVisual(StepMoveRecordChip, StepMoveRecordText, canMoveRecord);
     }
 
     private static void SetStepChipVisual(Border chip, TextBlock label, bool isActive)
