@@ -51,6 +51,7 @@ internal static class CompositionHelpers
     internal static DatabaseOptions GetDatabaseOptions() => _databaseOptions ??= new DatabaseOptions
     {
         KorStandardsDb = ConfigurationManager.ConnectionStrings[AppConfigKeys.ConnectionStrings.KorStandardsDb]?.ConnectionString ?? "",
+        KorStandardsPromoterDb = ConfigurationManager.ConnectionStrings[AppConfigKeys.ConnectionStrings.KorStandardsPromoterDb]?.ConnectionString ?? "",
         KorTransmittalsDb = GetRequiredConnectionString(AppConfigKeys.ConnectionStrings.KorTransmittalsDb),
         KorTransmittals = ConfigurationManager.ConnectionStrings[AppConfigKeys.ConnectionStrings.KorTransmittals]?.ConnectionString ?? ""
     };

@@ -432,6 +432,18 @@ public partial class StandardDetailsWindow
         }
     }
 
+    private void PromotionQueue_Click(object sender, RoutedEventArgs e)
+    {
+        if (_repo == null)
+        {
+            MessageBox.Show(this, "Missing connection string 'KorTransmittalsDb' in App.config", "Standard Details — Promotion Queue", MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+
+        var dlg = new PromotionQueueWindow(_repo, ProcessPendingPromotionsAsync) { Owner = this };
+        dlg.ShowDialog();
+    }
+
     private void OpenFile_Click(object sender, RoutedEventArgs e)
     {
         if (VersionsGrid.SelectedItem is not VersionRow version) { SetActivityMessage("Select a revision to open its file.", BannerTone.Info); MessageBox.Show(this, "Select a version first.", "Standard Details — Open File", MessageBoxButton.OK, MessageBoxImage.Information); return; }
@@ -472,9 +484,80 @@ public partial class StandardDetailsWindow
     {
         if (VersionsGrid.SelectedItem is not VersionRow v) { SetActivityMessage("Select a revision first.", BannerTone.Info); MessageBox.Show(this, "Select a version first.", "Standard Details — Approval", MessageBoxButton.OK, MessageBoxImage.Information); return; }
         if (_repo == null) return;
-        var result = await _repo.DecideAsync(v.DocumentVersionId, v.DocumentId, v.RowVersion, _actorUserId, targetStatus, decision);
+        var result = await _repo.DecideAsync(v.DocumentVersionId, v.DocumentId, v.RowVersion, _actorUserId, Environment.UserName, targetStatus, decision);
         if (result.RowsAffected == 0) { await HandleStateChangeFailureAsync(v.DocumentId, result, StatusSubmitted, "Approval", "Approve/Reject requires Submitted status.", "Approve/Reject is only available when status is Submitted."); return; }
-        await LoadVersionsUiAsync(v.DocumentId); SetActivityMessage(decision == 1 ? "Revision approved." : "Revision rejected.", BannerTone.Success);
+        await LoadVersionsUiAsync(v.DocumentId);
+        if (decision != 1)
+        {
+            SetActivityMessage("Revision rejected.", BannerTone.Success);
+            return;
+        }
+
+        try
+        {
+            var promotionSummary = await ProcessPendingPromotionsAsync();
+            var tone = promotionSummary.Contains("failed", StringComparison.OrdinalIgnoreCase) || promotionSummary.Contains("not configured", StringComparison.OrdinalIgnoreCase)
+                ? BannerTone.Warning
+                : BannerTone.Success;
+            SetActivityMessage($"Revision approved. {promotionSummary}", tone);
+        }
+        catch (Exception ex)
+        {
+            SetActivityMessage("Revision approved, but promotion processing failed. Review the Promotion Queue.", BannerTone.Warning);
+            Log.Warning(ex, "Standard Details: promotion processing failed after approval.");
+        }
+    }
+
+    private async Task<string> ProcessPendingPromotionsAsync()
+    {
+        if (_repo == null)
+        {
+            return "Promotion queue is unavailable.";
+        }
+
+        if (_promoterRepo == null)
+        {
+            return "Promotion not configured; pending requests remain in queue.";
+        }
+
+        var pending = await _repo.LoadPendingOutboxAsync();
+        var processed = 0;
+        var failed = 0;
+
+        foreach (var row in pending)
+        {
+            try
+            {
+                var requestedBy = string.IsNullOrWhiteSpace(row.RequestedByUserName) ? "operations" : row.RequestedByUserName!;
+                var basis = $"Approved in Operations Standard Details by {requestedBy}";
+                var result = await _promoterRepo.PromoteAsync(row.DetailNumber, row.TargetConfidence, basis, requestedBy);
+                if (result.ok)
+                {
+                    await _repo.MarkOutboxDoneAsync(row.PromotionOutboxId, result.message);
+                    processed++;
+                }
+                else
+                {
+                    await _repo.MarkOutboxFailedAsync(row.PromotionOutboxId, result.message);
+                    failed++;
+                }
+            }
+            catch (Exception ex)
+            {
+                failed++;
+                Log.Warning(ex, "Standard Details: promotion outbox row {PromotionOutboxId} failed.", row.PromotionOutboxId);
+                try
+                {
+                    await _repo.MarkOutboxFailedAsync(row.PromotionOutboxId, ex.Message);
+                }
+                catch (Exception markEx)
+                {
+                    Log.Warning(markEx, "Standard Details: failed to mark promotion outbox row {PromotionOutboxId} failed.", row.PromotionOutboxId);
+                }
+            }
+        }
+
+        return $"Promotion processing: processed {processed}, failed {failed}.";
     }
 
     private async Task PublishSelectedVersionAsync()

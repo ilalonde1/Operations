@@ -29,6 +29,7 @@ public partial class StandardDetailsWindow : Window
     private bool _filterRecordsBySelectedGroup;
     private StandardDetailsRepository? _repo;
     private KorStandardsReadRepository? _korStandardsRepo;
+    private KorStandardsPromoterRepository? _promoterRepo;
     private StandardDetailsAccessPolicy? _policy;
     private StandardDetailsFileStore? _fileStore;
     private enum BannerTone { Info, Success, Warning, Error }
@@ -50,6 +51,8 @@ public partial class StandardDetailsWindow : Window
             _repo = new StandardDetailsRepository(connectionString);
         if (!string.IsNullOrWhiteSpace(databaseOptions.KorStandardsDb))
             _korStandardsRepo = new KorStandardsReadRepository(databaseOptions.KorStandardsDb);
+        if (!string.IsNullOrWhiteSpace(databaseOptions.KorStandardsPromoterDb))
+            _promoterRepo = new KorStandardsPromoterRepository(databaseOptions.KorStandardsPromoterDb);
         var storageRoot = StandardDetailsFileStore.NormalizeStorageRoot(Kor.Operations.Services.AppServices.Get<StorageOptions>().StandardDetailsFileStorageRootPath);
         _fileStore = new StandardDetailsFileStore(storageRoot);
         _policy = new StandardDetailsAccessPolicy(StandardDetailsAccessPolicy.ResolveCurrentUserIdentity(Kor.Operations.Services.AppServices.Get<UserOptions>(), HeaderBar?.UserEmail));

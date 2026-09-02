@@ -15,6 +15,20 @@ internal sealed record StandardDetailsDocumentRow(long DocumentId, string Title,
 internal sealed record StandardDetailsVersionRow(long DocumentVersionId, long DocumentId, int VersionNumber, byte Status, bool IsCurrentOfficial, DateTime CreatedUtc, string OriginalFileName, long ContentLengthBytes, string StoragePath, byte[] RowVersion);
 internal sealed record StandardDetailsStateChangeResult(int RowsAffected, byte? CurrentStatus, bool EntityMissing);
 internal sealed record StandardDetailsDeleteResult(bool EntityMissing, IReadOnlyList<string> DeletedStoragePaths);
+internal sealed record StandardDetailsOutboxRow(long PromotionOutboxId, long DocumentId, long DocumentVersionId, string DetailNumber, string TargetConfidence, string? RequestedByUserName, DateTime RequestedUtc, byte Status, int AttemptCount, DateTime? ProcessedUtc, string? ResultMessage, string? ErrorMessage)
+{
+    public string StatusText => Status switch
+    {
+        0 => "Pending",
+        1 => "Done",
+        2 => "Failed",
+        _ => $"Unknown ({Status})"
+    };
+
+    public string RequestedUtcDisplay => RequestedUtc.ToString("u");
+    public string ProcessedUtcDisplay => ProcessedUtc?.ToString("u") ?? string.Empty;
+    public string DisplayMessage => !string.IsNullOrWhiteSpace(ResultMessage) ? ResultMessage! : ErrorMessage ?? string.Empty;
+}
 
 internal sealed class StandardDetailsRepository
 {
@@ -505,7 +519,7 @@ VALUES (SYSUTCDATETIME(), @uid, 'DocumentVersion', @id, 'StatusChanged', @json, 
         return new StandardDetailsStateChangeResult(rows, null, false);
     }
 
-    internal async Task<StandardDetailsStateChangeResult> DecideAsync(long documentVersionId, long documentId, byte[] rowVersion, Guid actorUserId, byte targetStatus, int decision)
+    internal async Task<StandardDetailsStateChangeResult> DecideAsync(long documentVersionId, long documentId, byte[] rowVersion, Guid actorUserId, string actorUserName, byte targetStatus, int decision)
     {
         var oldStatusText = ToStatusText(1);
         var newStatusText = ToStatusText(targetStatus);
@@ -554,8 +568,137 @@ VALUES (SYSUTCDATETIME(), @uid, 'DocumentVersion', @id, 'StatusChanged', @oldJso
         AddNVarCharMax(auditCmd, "@newJson", $"{{\"Status\":\"{newStatusText}\"}}");
         await auditCmd.ExecuteNonQueryAsync();
 
+        if (decision == 1)
+        {
+            var detailCmd = new SqlCommand("SELECT DetailNumber FROM dbo.Documents WHERE DocumentId=@docId;", cn, (SqlTransaction)tx);
+            detailCmd.CommandTimeout = SqlTimeouts.UiFacing;
+            AddParam(detailCmd, "@docId", SqlDbType.BigInt, documentId);
+            var detailNumber = await detailCmd.ExecuteScalarAsync();
+            if (detailNumber is string { Length: > 0 } linkedDetailNumber)
+            {
+                var outboxCmd = new SqlCommand(@"
+INSERT INTO dbo.StandardDetailPromotionOutbox
+(
+    DocumentId,
+    DocumentVersionId,
+    DetailNumber,
+    TargetConfidence,
+    RequestedByUserId,
+    RequestedByUserName,
+    Status
+)
+VALUES
+(
+    @docId,
+    @versionId,
+    @detailNumber,
+    N'human-confirmed',
+    @uid,
+    @userName,
+    0
+);", cn, (SqlTransaction)tx);
+                outboxCmd.CommandTimeout = SqlTimeouts.UiFacing;
+                AddParam(outboxCmd, "@docId", SqlDbType.BigInt, documentId);
+                AddParam(outboxCmd, "@versionId", SqlDbType.BigInt, documentVersionId);
+                AddNVarChar(outboxCmd, "@detailNumber", 24, linkedDetailNumber);
+                AddParam(outboxCmd, "@uid", SqlDbType.UniqueIdentifier, actorUserId);
+                AddNVarChar(outboxCmd, "@userName", 150, actorUserName);
+                await outboxCmd.ExecuteNonQueryAsync();
+            }
+        }
+
         await tx.CommitAsync();
         return new StandardDetailsStateChangeResult(rows, null, false);
+    }
+
+    internal async Task<IReadOnlyList<StandardDetailsOutboxRow>> LoadOutboxAsync()
+    {
+        const string sql = @"
+SELECT PromotionOutboxId, DocumentId, DocumentVersionId, DetailNumber, TargetConfidence,
+       RequestedByUserName, RequestedUtc, Status, AttemptCount, ProcessedUtc, ResultMessage, ErrorMessage
+FROM dbo.StandardDetailPromotionOutbox
+ORDER BY RequestedUtc DESC, PromotionOutboxId DESC;";
+
+        return await LoadOutboxRowsAsync(sql);
+    }
+
+    internal async Task<IReadOnlyList<StandardDetailsOutboxRow>> LoadPendingOutboxAsync()
+    {
+        const string sql = @"
+SELECT PromotionOutboxId, DocumentId, DocumentVersionId, DetailNumber, TargetConfidence,
+       RequestedByUserName, RequestedUtc, Status, AttemptCount, ProcessedUtc, ResultMessage, ErrorMessage
+FROM dbo.StandardDetailPromotionOutbox
+WHERE Status = 0
+ORDER BY RequestedUtc, PromotionOutboxId;";
+
+        return await LoadOutboxRowsAsync(sql);
+    }
+
+    internal async Task MarkOutboxDoneAsync(long id, string resultMessage)
+    {
+        const string sql = @"
+UPDATE dbo.StandardDetailPromotionOutbox
+SET Status = 1,
+    AttemptCount = AttemptCount + 1,
+    ProcessedUtc = SYSUTCDATETIME(),
+    ResultMessage = @message,
+    ErrorMessage = NULL
+WHERE PromotionOutboxId = @id;";
+
+        await UpdateOutboxStatusAsync(sql, id, resultMessage, 1000);
+    }
+
+    internal async Task MarkOutboxFailedAsync(long id, string errorMessage)
+    {
+        const string sql = @"
+UPDATE dbo.StandardDetailPromotionOutbox
+SET Status = 2,
+    AttemptCount = AttemptCount + 1,
+    ProcessedUtc = SYSUTCDATETIME(),
+    ResultMessage = NULL,
+    ErrorMessage = @message
+WHERE PromotionOutboxId = @id;";
+
+        await UpdateOutboxStatusAsync(sql, id, errorMessage, 2000);
+    }
+
+    private async Task<IReadOnlyList<StandardDetailsOutboxRow>> LoadOutboxRowsAsync(string sql)
+    {
+        var rows = new List<StandardDetailsOutboxRow>();
+        await using var cn = new SqlConnection(_connectionString);
+        await cn.OpenAsync();
+        await using var cmd = new SqlCommand(sql, cn);
+        cmd.CommandTimeout = SqlTimeouts.UiFacing;
+        await using var r = await cmd.ExecuteReaderAsync();
+        while (await r.ReadAsync())
+        {
+            rows.Add(new StandardDetailsOutboxRow(
+                r.GetInt64(0),
+                r.GetInt64(1),
+                r.GetInt64(2),
+                r.GetStringOrEmpty(3),
+                r.GetStringOrEmpty(4),
+                r.IsDBNull(5) ? null : r.GetString(5),
+                r.GetDateTime(6),
+                r.GetByte(7),
+                r.GetInt32(8),
+                r.IsDBNull(9) ? null : r.GetDateTime(9),
+                r.IsDBNull(10) ? null : r.GetString(10),
+                r.IsDBNull(11) ? null : r.GetString(11)));
+        }
+
+        return rows;
+    }
+
+    private async Task UpdateOutboxStatusAsync(string sql, long id, string message, int messageMaxLength)
+    {
+        await using var cn = new SqlConnection(_connectionString);
+        await cn.OpenAsync();
+        await using var cmd = new SqlCommand(sql, cn);
+        cmd.CommandTimeout = SqlTimeouts.UiFacing;
+        AddParam(cmd, "@id", SqlDbType.BigInt, id);
+        AddNVarChar(cmd, "@message", messageMaxLength, message);
+        await cmd.ExecuteNonQueryAsync();
     }
 
     internal async Task<StandardDetailsStateChangeResult> PublishAsync(long documentVersionId, long documentId, byte[] rowVersion, bool oldIsOfficial, Guid actorUserId)
