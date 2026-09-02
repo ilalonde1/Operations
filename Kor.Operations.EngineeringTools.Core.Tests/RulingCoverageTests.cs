@@ -40,6 +40,15 @@ public class RulingCoverageTests
         // force and obeyed since 25 August, and its only record was a comment in
         // ShippedModelInvariants.cs — a sentence governing whether a model may publish, one rewrite
         // away from being gone.
+        // Banked by migration 064 on 2026-09-01, and answered from HER MODELS rather than by asking
+        // her: across 736 wall members in 31138 the thinnest is 6 in, and the outlines the reader
+        // refuses measure 3.1 to 3.4. Nothing lies between. "Are those thin outlines structure we
+        // are dropping?" was on the list to put to her and did not need to be.
+        ["thinner-than-her-thinnest-wall-is-linework"] =
+            "ThinnerThanHerThinnestWallIsLineworkTests.ThreeInchesOfMaterialIsLineworkAndMakesNoWall, "
+            + "with HerThinnestRealWallSurvives and TheFloorSitsBelowAnythingSheDraws holding the "
+            + "other side of it",
+
         ["a-slab-on-grade-is-not-a-diaphragm"] =
             "DxfToEtabsTests.AFoundationStoreyWithMembersAndNoFloorPlateDoesNotNeedADiaphragm, with "
             + "ANonFoundationStoreyWithMembersAndNoFloorPlateIsReportedButDoesNotBlockPublishing "
