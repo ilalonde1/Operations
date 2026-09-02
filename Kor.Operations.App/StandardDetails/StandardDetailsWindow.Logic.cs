@@ -444,11 +444,25 @@ public partial class StandardDetailsWindow
         dlg.ShowDialog();
     }
 
+    private void Registers_Click(object sender, RoutedEventArgs e)
+    {
+        if (_repo == null || _korStandardsRepo == null)
+        {
+            MessageBox.Show(this, "KorStandards catalog is not configured; the registers are unavailable.", "Standard Details — Registers", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var dlg = new RegistersWindow(_korStandardsRepo, _repo) { Owner = this };
+        dlg.ShowDialog();
+    }
+
     private void OpenFile_Click(object sender, RoutedEventArgs e)
     {
         if (VersionsGrid.SelectedItem is not VersionRow version) { SetActivityMessage("Select a revision to open its file.", BannerTone.Info); MessageBox.Show(this, "Select a version first.", "Standard Details — Open File", MessageBoxButton.OK, MessageBoxImage.Information); return; }
         if (_fileStore == null) return;
-        var result = _fileStore.OpenVersionFile(version.StoragePath, version.Status, version.StatusText);
+        // A published, detail-linked revision opens stamped TYPICAL + its KOR-D number.
+        var linkedDetailNumber = (DocumentsGrid.SelectedItem as DocumentRow)?.DetailNumber;
+        var result = _fileStore.OpenVersionFile(version.StoragePath, version.Status, version.StatusText, linkedDetailNumber);
         if (result.FileMissing) { SetActivityMessage("File could not be opened because it is missing from storage.", BannerTone.Warning); MessageBox.Show(this, "File not found in storage.", "Standard Details — Open File", MessageBoxButton.OK, MessageBoxImage.Warning); return; }
         SetActivityMessage(string.IsNullOrWhiteSpace(result.Note) ? $"Opened file '{version.OriginalFileName}'." : result.Note, string.IsNullOrWhiteSpace(result.Note) ? BannerTone.Success : BannerTone.Warning);
     }

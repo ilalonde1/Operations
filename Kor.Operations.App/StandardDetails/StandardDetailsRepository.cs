@@ -15,6 +15,7 @@ internal sealed record StandardDetailsDocumentRow(long DocumentId, string Title,
 internal sealed record StandardDetailsVersionRow(long DocumentVersionId, long DocumentId, int VersionNumber, byte Status, bool IsCurrentOfficial, DateTime CreatedUtc, string OriginalFileName, long ContentLengthBytes, string StoragePath, byte[] RowVersion);
 internal sealed record StandardDetailsStateChangeResult(int RowsAffected, byte? CurrentStatus, bool EntityMissing);
 internal sealed record StandardDetailsDeleteResult(bool EntityMissing, IReadOnlyList<string> DeletedStoragePaths);
+internal sealed record StandardDetailsLinkedDetailRow(string DetailNumber, long DocumentId, string DocumentTitle, byte? LatestStatus);
 internal sealed record StandardDetailsOutboxRow(long PromotionOutboxId, long DocumentId, long DocumentVersionId, string DetailNumber, string TargetConfidence, string? RequestedByUserName, DateTime RequestedUtc, byte Status, int AttemptCount, DateTime? ProcessedUtc, string? ResultMessage, string? ErrorMessage)
 {
     public string StatusText => Status switch
@@ -204,6 +205,29 @@ WHERE DocumentId=@id;";
         await cmd.ExecuteNonQueryAsync();
     }
 
+    // Every document that is linked to a KOR-D detail, with its latest version status. Used by the
+    // Details Register to show which of the 612 details are under governance and where they stand.
+    internal async Task<IReadOnlyList<StandardDetailsLinkedDetailRow>> LoadLinkedDetailNumbersAsync()
+    {
+        const string sql = @"
+SELECT d.DetailNumber, d.DocumentId, d.Title,
+       (SELECT TOP 1 v.Status FROM dbo.DocumentVersions v
+        WHERE v.DocumentId = d.DocumentId ORDER BY v.VersionNumber DESC) AS LatestStatus
+FROM dbo.Documents d
+WHERE d.DetailNumber IS NOT NULL
+ORDER BY d.DetailNumber;";
+
+        var rows = new List<StandardDetailsLinkedDetailRow>();
+        await using var cn = new SqlConnection(_connectionString);
+        await cn.OpenAsync();
+        await using var cmd = new SqlCommand(sql, cn);
+        cmd.CommandTimeout = SqlTimeouts.UiFacing;
+        await using var r = await cmd.ExecuteReaderAsync();
+        while (await r.ReadAsync())
+            rows.Add(new StandardDetailsLinkedDetailRow(r.GetStringOrEmpty(0), r.GetInt64(1), r.GetStringOrEmpty(2), r.IsDBNull(3) ? null : r.GetByte(3)));
+        return rows;
+    }
+
     internal async Task<IReadOnlyList<StandardDetailsVersionRow>> LoadVersionsAsync(long documentId)
     {
         const string sql = @"
@@ -323,22 +347,59 @@ WHERE DocumentId = @docId;";
 
     internal async Task<int> CreateDocumentAsync(string? title, string? description, bool groupSchemaAvailable, long? selectedGroupId, Guid actorUserId)
     {
-        var sql = groupSchemaAvailable
+        // A document is created with its DEFAULT variant in one transaction, so every version
+        // uploaded later has a variant to belong to (versioning and current-official are variant-scoped).
+        var insertDocSql = groupSchemaAvailable
             ? @"INSERT INTO dbo.Documents (DocumentUid, Title, Description, DocumentGroupId, CreatedByUserId, CreatedUtc)
-VALUES (NEWID(), @title, @desc, @groupId, @userId, SYSUTCDATETIME());"
+VALUES (NEWID(), @title, @desc, @groupId, @userId, SYSUTCDATETIME());
+SELECT CAST(SCOPE_IDENTITY() AS bigint);"
             : @"INSERT INTO dbo.Documents (DocumentUid, Title, Description, CreatedByUserId, CreatedUtc)
-VALUES (NEWID(), @title, @desc, @userId, SYSUTCDATETIME());";
+VALUES (NEWID(), @title, @desc, @userId, SYSUTCDATETIME());
+SELECT CAST(SCOPE_IDENTITY() AS bigint);";
 
         await using var cn = new SqlConnection(_connectionString);
         await cn.OpenAsync();
-        await using var cmd = new SqlCommand(sql, cn);
-        cmd.CommandTimeout = SqlTimeouts.UiFacing;
-        AddNVarChar(cmd, "@title", DocumentTitleMax, title);
-        AddNVarChar(cmd, "@desc", DocumentDescriptionMax, description);
+        await using var tx = await cn.BeginTransactionAsync();
+
+        var insertDoc = new SqlCommand(insertDocSql, cn, (SqlTransaction)tx);
+        insertDoc.CommandTimeout = SqlTimeouts.UiFacing;
+        AddNVarChar(insertDoc, "@title", DocumentTitleMax, title);
+        AddNVarChar(insertDoc, "@desc", DocumentDescriptionMax, description);
         if (groupSchemaAvailable)
-            AddParam(cmd, "@groupId", SqlDbType.BigInt, selectedGroupId);
+            AddParam(insertDoc, "@groupId", SqlDbType.BigInt, selectedGroupId);
+        AddParam(insertDoc, "@userId", SqlDbType.UniqueIdentifier, actorUserId);
+        var newDocId = (long)(await insertDoc.ExecuteScalarAsync() ?? 0L);
+
+        var insertVariant = new SqlCommand(@"
+INSERT INTO dbo.DocumentVariants (DocumentId, VariantKey, IsActive, CreatedByUserId, CreatedUtc)
+VALUES (@docId, N'DEFAULT', 1, @userId, SYSUTCDATETIME());", cn, (SqlTransaction)tx);
+        insertVariant.CommandTimeout = SqlTimeouts.UiFacing;
+        AddParam(insertVariant, "@docId", SqlDbType.BigInt, newDocId);
+        AddParam(insertVariant, "@userId", SqlDbType.UniqueIdentifier, actorUserId);
+        await insertVariant.ExecuteNonQueryAsync();
+
+        await tx.CommitAsync();
+        return 1;
+    }
+
+    // The DEFAULT variant id for a document, creating it if a legacy document lacks one.
+    private static async Task<long> ResolveDefaultVariantIdAsync(SqlConnection cn, SqlTransaction tx, long documentId, Guid actorUserId)
+    {
+        var sql = @"
+DECLARE @vid bigint = (SELECT DocumentVariantId FROM dbo.DocumentVariants
+                       WHERE DocumentId=@docId AND VariantKey=N'DEFAULT');
+IF @vid IS NULL
+BEGIN
+    INSERT INTO dbo.DocumentVariants (DocumentId, VariantKey, IsActive, CreatedByUserId, CreatedUtc)
+    VALUES (@docId, N'DEFAULT', 1, @userId, SYSUTCDATETIME());
+    SET @vid = CAST(SCOPE_IDENTITY() AS bigint);
+END
+SELECT @vid;";
+        var cmd = new SqlCommand(sql, cn, tx);
+        cmd.CommandTimeout = SqlTimeouts.UiFacing;
+        AddParam(cmd, "@docId", SqlDbType.BigInt, documentId);
         AddParam(cmd, "@userId", SqlDbType.UniqueIdentifier, actorUserId);
-        return await cmd.ExecuteNonQueryAsync();
+        return (long)(await cmd.ExecuteScalarAsync() ?? 0L);
     }
 
     internal async Task<int> UploadVersionAsync(long documentId, string documentTitle, string sourcePath, string ext, StandardDetailsFileStore fileStore, Guid actorUserId)
@@ -357,9 +418,11 @@ VALUES (NEWID(), @title, @desc, @userId, SYSUTCDATETIME());";
             AddParam(lockCmd, "@docId", SqlDbType.BigInt, documentId);
             await lockCmd.ExecuteScalarAsync();
 
-            var nextVersionCmd = new SqlCommand("SELECT ISNULL(MAX(VersionNumber),0)+1 FROM dbo.DocumentVersions WITH (UPDLOCK, HOLDLOCK) WHERE DocumentId=@docId", cn, (SqlTransaction)tx);
+            var variantId = await ResolveDefaultVariantIdAsync(cn, (SqlTransaction)tx, documentId, actorUserId);
+
+            var nextVersionCmd = new SqlCommand("SELECT ISNULL(MAX(VersionNumber),0)+1 FROM dbo.DocumentVersions WITH (UPDLOCK, HOLDLOCK) WHERE DocumentVariantId=@variantId", cn, (SqlTransaction)tx);
             nextVersionCmd.CommandTimeout = SqlTimeouts.UiFacing;
-            AddParam(nextVersionCmd, "@docId", SqlDbType.BigInt, documentId);
+            AddParam(nextVersionCmd, "@variantId", SqlDbType.BigInt, variantId);
             var nextVersion = Convert.ToInt32(await nextVersionCmd.ExecuteScalarAsync());
 
             preparedFile = await fileStore.PrepareVersionFileAsync(documentId, documentTitle, nextVersion, sourcePath, ext);
@@ -379,10 +442,11 @@ SELECT CAST(SCOPE_IDENTITY() AS bigint);", cn, (SqlTransaction)tx);
             var blobId = (long)(await insertBlob.ExecuteScalarAsync() ?? 0L);
 
             var insertVersion = new SqlCommand(@"
-INSERT INTO dbo.DocumentVersions (VersionUid, DocumentId, VersionNumber, FileBlobId, Status, IsCurrentOfficial, CreatedByUserId, CreatedUtc)
-VALUES (NEWID(), @docId, @ver, @blobId, 0, 0, @userId, SYSUTCDATETIME());", cn, (SqlTransaction)tx);
+INSERT INTO dbo.DocumentVersions (VersionUid, DocumentId, DocumentVariantId, VersionNumber, FileBlobId, Status, IsCurrentOfficial, CreatedByUserId, CreatedUtc)
+VALUES (NEWID(), @docId, @variantId, @ver, @blobId, 0, 0, @userId, SYSUTCDATETIME());", cn, (SqlTransaction)tx);
             insertVersion.CommandTimeout = SqlTimeouts.UiFacing;
             AddParam(insertVersion, "@docId", SqlDbType.BigInt, documentId);
+            AddParam(insertVersion, "@variantId", SqlDbType.BigInt, variantId);
             AddParam(insertVersion, "@ver", SqlDbType.Int, nextVersion);
             AddParam(insertVersion, "@blobId", SqlDbType.BigInt, blobId);
             AddParam(insertVersion, "@userId", SqlDbType.UniqueIdentifier, actorUserId);
@@ -741,10 +805,17 @@ WHERE Status = 2;";
         var oldStatusText = ToStatusText(2);
         await using var tx = await cn.BeginTransactionAsync();
 
-        var clearCmd = new SqlCommand("UPDATE dbo.DocumentVersions SET IsCurrentOfficial=0, UpdatedByUserId=@uid, UpdatedUtc=SYSUTCDATETIME() WHERE DocumentId=@docId AND IsCurrentOfficial=1", cn, (SqlTransaction)tx);
+        // Current-official is scoped to the VARIANT of the version being published, so publishing one
+        // sheet size does not clear another size's official. For a single-variant document this is the
+        // same set as the whole document.
+        var clearCmd = new SqlCommand(@"
+UPDATE dbo.DocumentVersions
+SET IsCurrentOfficial=0, UpdatedByUserId=@uid, UpdatedUtc=SYSUTCDATETIME()
+WHERE IsCurrentOfficial=1
+  AND DocumentVariantId = (SELECT DocumentVariantId FROM dbo.DocumentVersions WHERE DocumentVersionId=@id);", cn, (SqlTransaction)tx);
         clearCmd.CommandTimeout = SqlTimeouts.UiFacing;
         AddParam(clearCmd, "@uid", SqlDbType.UniqueIdentifier, actorUserId);
-        AddParam(clearCmd, "@docId", SqlDbType.BigInt, documentId);
+        AddParam(clearCmd, "@id", SqlDbType.BigInt, documentVersionId);
         await clearCmd.ExecuteNonQueryAsync();
 
         var publishCmd = new SqlCommand(@"

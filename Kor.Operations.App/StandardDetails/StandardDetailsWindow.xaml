@@ -207,6 +207,7 @@
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
                 <TextBox x:Name="SearchBox"
@@ -242,13 +243,20 @@
                         Style="{StaticResource ActionButton}"
                         ToolTip="Link the selected document record to a KOR-D standard detail"
                         Click="LinkDetail_Click"/>
-                <Button Grid.Column="5"
+                <Button x:Name="RegistersButton"
+                        Grid.Column="5"
+                        Content="Registers..."
+                        Width="110"
+                        Style="{StaticResource ActionButton}"
+                        ToolTip="Open the read-only Details and Components registers"
+                        Click="Registers_Click"/>
+                <Button Grid.Column="6"
                         Content="Promotion Queue..."
                         Width="145"
                         Style="{StaticResource ActionButton}"
                         ToolTip="Review and process pending KorStandards promotion requests"
                         Click="PromotionQueue_Click"/>
-                <Button Grid.Column="6"
+                <Button Grid.Column="7"
                         Content="Refresh"
                         Width="92"
                         Height="34"

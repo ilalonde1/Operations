@@ -97,7 +97,7 @@ internal sealed class StandardDetailsFileStore
         }
     }
 
-    internal StandardDetailsOpenFileResult OpenVersionFile(string storagePath, byte status, string fallbackStatusText)
+    internal StandardDetailsOpenFileResult OpenVersionFile(string storagePath, byte status, string fallbackStatusText, string? detailNumber = null)
     {
         if (!File.Exists(storagePath))
             return new StandardDetailsOpenFileResult(true, null);
@@ -105,7 +105,16 @@ internal sealed class StandardDetailsFileStore
         var launchPath = storagePath;
         var note = string.Empty;
         if (status != 4)
+        {
+            // Non-published revisions get their working-status stamp.
             StatusWatermarkRenderer.TryPrepareOpenCopy(storagePath, GetStatusWatermarkText(status, fallbackStatusText), out launchPath, out note);
+        }
+        else if (!string.IsNullOrWhiteSpace(detailNumber))
+        {
+            // Published AND linked to a KOR-D detail: this is an issued standard detail, so it
+            // carries the "TYPICAL" mark with its number (the July 2024 Drafting Strategy intent).
+            StatusWatermarkRenderer.TryPrepareOpenCopy(storagePath, $"TYPICAL  {detailNumber}", out launchPath, out note);
+        }
 
         Process.Start(new ProcessStartInfo { FileName = launchPath, UseShellExecute = true });
         return new StandardDetailsOpenFileResult(false, string.IsNullOrWhiteSpace(note) ? null : note);
