@@ -9,6 +9,26 @@
 > Reading files on the share is fine and is expected — the drawings, the reference models and the
 > published output all live there. Read them; change nothing.
 
+## READ THIS FIRST: sixteen issues are already found and measured
+
+`docs/etabs-handoff/FINDINGS-2026-09-01.md` is the current list of everything known to be wrong,
+each entry with the measurement behind it. **Read it before you start and do not re-report any of
+it.** It covers: floating columns, the "weird walls", double-height members, a wall of ours
+duplicating one of hers, 105 diagonal wall segments that reach neither model, wall lengths that
+match nothing drawn, 63 drawn rings that produce no panel, the storey-name comparison between the
+two published models, the undeployed bridge, unread wall strengths, and five things fixed that day.
+
+It also carries a section F — **two fixes that were tried and withdrawn**, with the numbers that
+killed them. Do not propose either again without reading why.
+
+**Your value is what is NOT on that list.** Everything on it was found by looking at one thing at a
+time, which is exactly the method this brief exists to replace. Go wider than it: the App, the
+takeoff and quantity path, the questionnaire, the MCP surface, the intake readers nobody has
+audited, and the classes in the failure-class section below.
+
+If your best finding is already in that file, you have not audited this system — you have re-run
+somebody else's afternoon.
+
 ## What this is
 
 This tool rebuilds a structural engineer's ETABS model from the drawings her office already
@@ -150,12 +170,13 @@ the two reference buildings.
 
 ### Known open, decided deliberately — do not report these as discoveries
 
-- **Four of her shaft walls.** In the site model `W17/W18/W19` sit on `LEVEL 3/4/5`; in the
-  building-C cut they land on `C-LEVEL 3/4/5`, 5.5 in higher, because the cut drops the towers'
-  `LEVEL 3/4/5`. The shaft stands inside building C's own floor plate. **Whether `LEVEL 3` is
-  building C's storey or a tower's is a question about her model**, and it is being put to her. Two
-  tests fail on exactly this and are expected to. If you can settle it from the drawings rather
-  than from her, that is a genuinely valuable finding.
+- **The two red tests on the published pair are a comparison fault, not a model fault.** `C-LEVEL 3`
+  sits 5.5 in above `LEVEL 3`, inside `dxf.storeys-at-one-level-gap` of 12 in, so they are one
+  physical level drawn twice. The site file keeps both; the cut drops `LEVEL 3` and re-homes the
+  members inside building C's footprint onto `C-LEVEL 3`. Comparing by NAME therefore compares
+  different things. Folding the twin in was tried and is worse — `LEVEL 3` carries the towers'
+  walls. See C2 in the findings file. A comparison that survives the re-homing WOULD be a good
+  finding; re-reporting the red tests as a model defect would not.
 - Slab **strength** is on no drawing — page 30 of the stick file prints `14" SLAB`, thickness only.
 - Thickness **zones** were deferred by the engineer, not missed.
 - Bridge 1.0.35 is not deployed. That is a deploy, not a code fault.
@@ -228,8 +249,12 @@ Read these before starting; all findings in them are fixed or answered:
 - `CLAUDE.md` — eleven working rules, each written after it was broken at cost. Rules 9, 10 and 11
   are about this exact system.
 
-The current state: **810 of 812 tests green**, the 2 failures being the known `LEVEL 3` question
-above. All three published models pass every publish-blocking invariant.
+The current state: **817 of 819 tests green**, the 2 failures being the storey-name comparison
+described above and expected. All four published files pass every publish-blocking invariant:
+
+    31168-FROM-DRAWINGS.e2k          14 storeys   263 walls    628 columns   15 floors
+    31168-TOWERS-FROM-DRAWINGS.e2k   64 storeys 1,425 walls  2,365 columns   88 floors
+    31138-FROM-DRAWINGS.e2k          29 storeys   224 walls    307 columns   15 floors
 
 ## How to report
 
