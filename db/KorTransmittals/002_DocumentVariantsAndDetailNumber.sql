@@ -16,8 +16,14 @@ non-null variant rows, so every current app code path (upload, publish, delete
 of variant-less documents) keeps working unchanged. WP2's follow-up migration
 (005) flips the column NOT NULL and tightens the indexes after the repository
 writes variants itself.
-*/
 
+TWO BATCHES BY NECESSITY: a statement that references a column added earlier in
+the SAME batch fails T-SQL compile-time name binding (Msg 207) before anything
+runs. Batch 1 is DDL only (create table, add columns). Batch 2, compiled only
+after the GO once the columns exist, is everything that references them. Every
+statement is existence-guarded, so re-running the whole script after a batch-2
+failure is safe.
+*/
 
 USE KorTransmittals;
 IF DB_NAME() <> N'KorTransmittals' BEGIN RAISERROR('Wrong database on server %s. This script runs ONLY in KorTransmittals.', 20, 1, @@SERVERNAME) WITH LOG; END;
@@ -25,6 +31,7 @@ SELECT DB_NAME() AS [You are here];
 SET NOCOUNT ON;
 SET XACT_ABORT ON;
 
+/* ---------------- Batch 1: DDL only (create the columns/table) ---------------- */
 BEGIN TRY
     BEGIN TRANSACTION;
 
@@ -63,6 +70,29 @@ BEGIN TRY
     BEGIN
         ALTER TABLE dbo.DocumentVersions ADD DocumentVariantId bigint NULL;
     END;
+
+    IF COL_LENGTH(N'dbo.Documents', N'DetailNumber') IS NULL
+    BEGIN
+        ALTER TABLE dbo.Documents ADD DetailNumber nvarchar(24) NULL;
+    END;
+
+    COMMIT TRANSACTION;
+END TRY
+BEGIN CATCH
+    IF XACT_STATE() <> 0
+        ROLLBACK TRANSACTION;
+    THROW;
+END CATCH;
+GO
+
+/* ------ Batch 2: everything that REFERENCES the new columns (compiles now) ------ */
+USE KorTransmittals;
+IF DB_NAME() <> N'KorTransmittals' BEGIN RAISERROR('Wrong database on server %s. This script runs ONLY in KorTransmittals.', 20, 1, @@SERVERNAME) WITH LOG; END;
+SET NOCOUNT ON;
+SET XACT_ABORT ON;
+
+BEGIN TRY
+    BEGIN TRANSACTION;
 
     IF NOT EXISTS
     (
@@ -121,7 +151,7 @@ BEGIN TRY
         RAISERROR('Migration failed: one or more DocumentVersions could not be assigned a DocumentVariantId.', 16, 1);
     END;
 
-    /* DocumentVariantId deliberately stays NULLABLE here. The live app inserts
+    /* DocumentVariantId deliberately stays NULLABLE. The live app inserts
        DocumentVersions without this column until WP2; a NOT NULL flip now would
        break UploadVersionAsync in the window. WP2's migration 005 flips it
        after the repository writes variants itself. */
@@ -155,11 +185,6 @@ BEGIN TRY
         CREATE UNIQUE INDEX UX_DocumentVersions_OneCurrentOfficialPerVariant
         ON dbo.DocumentVersions(DocumentVariantId)
         WHERE IsCurrentOfficial = 1 AND DocumentVariantId IS NOT NULL;
-    END;
-
-    IF COL_LENGTH(N'dbo.Documents', N'DetailNumber') IS NULL
-    BEGIN
-        ALTER TABLE dbo.Documents ADD DetailNumber nvarchar(24) NULL;
     END;
 
     IF NOT EXISTS
@@ -256,6 +281,5 @@ END TRY
 BEGIN CATCH
     IF XACT_STATE() <> 0
         ROLLBACK TRANSACTION;
-
     THROW;
 END CATCH;
