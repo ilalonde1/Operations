@@ -74,7 +74,7 @@ VALUES
     (N'dbo', N'DocumentVersions', N'FileBlobId'),
     (N'dbo', N'DocumentVersions', N'Status'),
     (N'dbo', N'DocumentVersions', N'IsCurrentOfficial'),
-    (N'dbo', N'DocumentVersions', N'Notes'),
+    (N'dbo', N'DocumentVersions', N'VersionNotes'),
     (N'dbo', N'DocumentVersions', N'CreatedByUserId'),
     (N'dbo', N'DocumentVersions', N'CreatedUtc'),
     (N'dbo', N'DocumentVersions', N'UpdatedByUserId'),
