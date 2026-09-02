@@ -112,10 +112,12 @@ public class RulingCoverageTests
     /// </summary>
     private static readonly Dictionary<string, string> NotYetObeyed = new(StringComparer.OrdinalIgnoreCase)
     {
-        ["mezzanine-has-three-slabs"] =
-            "Two of three found, and the reading that found the second also produced floors with " +
-            "holes cut in them that the engineer rejected on 25 Aug. Withdrawn; see " +
-            "reference_etabs_slab_reading_rules.",
+        // mezzanine-has-three-slabs was here saying "two of three found". It is gone from this list
+        // because it is gone from the table: RETIRED by migration 062 on 1 Sep, as a fact about one
+        // building's mezzanine rather than a rule about every job. The count it carried is banked
+        // where a project fact belongs — the job-scoped convention slab-count.31168.LEVEL 1 MEZZ = 3
+        // from migration 058 — and the tool now delivers it: the landed 31168 model carries three
+        // plates on that storey, so the "two of three" note was stale as well as misplaced.
         ["two-kinds-of-dashed-line"] =
             "Not a dash-pitch test. The reader is protected from a sparse building outline only " +
             "incidentally, by taking closed loops within the column size bounds.",
