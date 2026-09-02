@@ -36,6 +36,15 @@ public class RulingCoverageTests
     /// </summary>
     private static readonly Dictionary<string, string> Proven = new(StringComparer.OrdinalIgnoreCase)
     {
+        // Banked by migration 063 on 2026-09-01, five weeks after she said it. The rule had been in
+        // force and obeyed since 25 August, and its only record was a comment in
+        // ShippedModelInvariants.cs — a sentence governing whether a model may publish, one rewrite
+        // away from being gone.
+        ["a-slab-on-grade-is-not-a-diaphragm"] =
+            "DxfToEtabsTests.AFoundationStoreyWithMembersAndNoFloorPlateDoesNotNeedADiaphragm, with "
+            + "ANonFoundationStoreyWithMembersAndNoFloorPlateIsReportedButDoesNotBlockPublishing "
+            + "holding the other side of it",
+
         // The placement model, banked by migration 057 on 2026-08-27. One question — which storey
         // does a member belong to, and whose building is it — found as seven separate faults.
         ["a-set-defines-its-own-shorthand"] = "PlacementModelTests.ASetSpellsItsShorthandOutOnceAndTheShortFormMeansIt",
