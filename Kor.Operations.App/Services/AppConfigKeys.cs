@@ -54,6 +54,7 @@ namespace Kor.Operations.Services
         {
             public const string KorEmailIndex = "KorEmailIndex";
             public const string KorOpportunitiesDb = "KorOpportunitiesDb";
+            public const string KorStandardsDb = "KorStandardsDb";
             public const string KorTransmittals = "KorTransmittals";
             public const string KorTransmittalsDb = "KorTransmittalsDb";
         }

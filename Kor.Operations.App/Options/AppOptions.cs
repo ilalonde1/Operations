@@ -12,6 +12,7 @@ public sealed class GraphOptions
 
 public sealed class DatabaseOptions
 {
+    public string KorStandardsDb { get; init; } = "";
     public string KorTransmittalsDb { get; init; } = "";
     public string KorTransmittals { get; init; } = "";
 }

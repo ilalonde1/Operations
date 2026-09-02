@@ -1,0 +1,79 @@
+#nullable enable
+#pragma warning disable SA1649
+using System.Collections.Generic;
+using System.Data;
+using System.Threading.Tasks;
+using Kor.Operations.Data;
+using Microsoft.Data.SqlClient;
+
+namespace Kor.Operations.StandardDetails;
+
+internal sealed record PaletteDetailRow(string DetailNumber, string Title, string Discipline, string Confidence, bool IsPlaceable, int VariantCount);
+
+internal sealed class KorStandardsReadRepository
+{
+    private const int QueryMax = 2000;
+    private readonly string _connectionString;
+
+    internal KorStandardsReadRepository(string connectionString)
+    {
+        _connectionString = connectionString;
+    }
+
+    internal async Task<IReadOnlyList<PaletteDetailRow>> LoadPaletteDetailsAsync(string query)
+    {
+        const string sql = @"
+SELECT DetailNumber,
+       MIN(Title) AS Title,
+       MIN(Discipline) AS Discipline,
+       MIN(Confidence) AS Confidence,
+       MAX(CAST(IsPlaceable AS int)) AS IsPlaceable,
+       COUNT(*) AS VariantCount
+FROM detail.vw_PaletteCatalog
+WHERE (@q = '' OR DetailNumber LIKE @like OR Title LIKE @like)
+GROUP BY DetailNumber
+ORDER BY DetailNumber;";
+
+        var q = query?.Trim() ?? string.Empty;
+        var rows = new List<PaletteDetailRow>();
+        await using var cn = new SqlConnection(_connectionString);
+        await cn.OpenAsync();
+        await using var cmd = new SqlCommand(sql, cn);
+        cmd.CommandTimeout = SqlTimeouts.UiFacing;
+        AddNVarChar(cmd, "@q", QueryMax, q);
+        AddNVarChar(cmd, "@like", QueryMax + 2, $"%{q}%");
+
+        await using var r = await cmd.ExecuteReaderAsync();
+        while (await r.ReadAsync())
+        {
+            rows.Add(new PaletteDetailRow(
+                r.GetStringOrEmpty(0),
+                r.GetStringOrEmpty(1),
+                r.GetStringOrEmpty(2),
+                r.GetStringOrEmpty(3),
+                !r.IsDBNull(4) && r.GetInt32(4) == 1,
+                r.IsDBNull(5) ? 0 : r.GetInt32(5)));
+        }
+
+        return rows;
+    }
+
+    internal async Task<int> CountDistinctDetailsAsync()
+    {
+        const string sql = @"
+SELECT COUNT(DISTINCT DetailNumber)
+FROM detail.vw_PaletteCatalog;";
+
+        await using var cn = new SqlConnection(_connectionString);
+        await cn.OpenAsync();
+        await using var cmd = new SqlCommand(sql, cn);
+        cmd.CommandTimeout = SqlTimeouts.UiFacing;
+        return System.Convert.ToInt32(await cmd.ExecuteScalarAsync() ?? 0);
+    }
+
+    private static void AddNVarChar(SqlCommand cmd, string name, int size, string value)
+    {
+        var p = cmd.Parameters.Add(name, SqlDbType.NVarChar, size);
+        p.Value = value;
+    }
+}
