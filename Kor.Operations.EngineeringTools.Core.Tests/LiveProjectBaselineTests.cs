@@ -133,7 +133,21 @@ public class LiveProjectBaselineTests
         // Floors 48 -> 15 with the withdrawal of chain-closing. That job is back to reading only
         // the outlines its drawings actually close; its part-plan storeys are unfloored again, and
         // that is a visible gap rather than an invented slab.
-        Storeys: 29, Walls: 205, Columns: 304, Floors: 15);
+        //
+        // Rebaselined 2026-09-01, walls 205 -> 228 and columns 304 -> 307. Her rule of 1 Sep: "some
+        // columns are double height. In that case they should be modelled on both floors ...
+        // otherwise they're just hanging from L2", and "the same for walls too". A member standing
+        // on two storeys with one empty storey between now carries an assign on that storey, and a
+        // member whose base landed on a storey with no slab under it is carried down one floor to
+        // one that has. On 31138 that is 23 walls and 3 columns.
+        //
+        // The count RISING on this job is the direction to watch: 31138 is a gap-fill against a
+        // model she had already built, so most of what we would add is correctly skipped as hers.
+        // These are the members that were hanging, and the same change adds 17 columns on 31168
+        // where the drawings carry the whole building. Measured on both before it shipped -- an
+        // uncapped version of the same rule took this job to 455 walls and 587 columns, and that is
+        // what the second building is for.
+        Storeys: 29, Walls: 228, Columns: 307, Floors: 15);
 
     /// <summary>Counts may drift a little as rules improve; a real regression moves them further.</summary>
     private const double Tolerance = 0.10;

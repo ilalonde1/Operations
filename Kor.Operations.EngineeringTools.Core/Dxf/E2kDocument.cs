@@ -1329,6 +1329,13 @@ public sealed class E2kDocument
         var planOf = PlanPointsOfObjects();
         var storeysOf = StoreysByObject();
 
+        // How many buildings this file holds. One tag or none means nothing to confuse.
+        bool manyBuildings = order
+            .Select(BuildingTagOf)
+            .Where(t => t.Length > 0)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Count() > 1;
+
         // Every assign line, so a filled storey can copy a real one rather than invent a format.
         var lineOf = new Dictionary<(string Obj, string Storey), string>();
         foreach (string header in new[] { "AREA ASSIGNS", "LINE ASSIGNS" })
@@ -1368,7 +1375,112 @@ public sealed class E2kDocument
                 if (rank.TryGetValue(storey, out int r)) rows[r] = obj;
         }
 
+        // WHAT HOLDS A MEMBER UP: a plate on the storey its base lands on, under its own position.
+        // ⚠ HER PLATES COUNT TOO, NOT ONLY OURS.
+        //
+        // Keyed on "KF" this saw only plates this tool generated, and 31138 is a gap-fill model
+        // where the engineer has already drawn every slab. So nothing was ever "supported", and
+        // members marched down floor after floor: 224 walls became 455, 307 columns became 587.
+        // A member standing on HER slab is standing on a slab.
+        var floorKind = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (string header in new[] { "AREA CONNECTIVITIES", "LINE CONNECTIVITIES" })
+        {
+            var section = Find(header);
+            if (section is null) continue;
+
+            foreach (string line in section.Lines)
+            {
+                var m = Regex.Match(line.TrimStart(), @"^(?:AREA|LINE)\s+""([^""]+)""\s+(\w+)");
+                if (m.Success) floorKind[m.Groups[1].Value] = m.Groups[2].Value.ToUpperInvariant();
+            }
+        }
+
+        var plateOn = new Dictionary<int, List<IReadOnlyList<(double X, double Y)>>>();
+        foreach (var (obj, storeys) in storeysOf)
+        {
+            if (!floorKind.TryGetValue(obj, out string? k)
+                || !k.Equals("FLOOR", StringComparison.OrdinalIgnoreCase)) continue;
+            if (!planOf.TryGetValue(obj, out var ring) || ring.Count < 3) continue;
+
+            foreach (string storey in storeys)
+                if (rank.TryGetValue(storey, out int r))
+                {
+                    if (!plateOn.TryGetValue(r, out var list)) plateOn[r] = list = new();
+                    list.Add(ring);
+                }
+        }
+
+        static bool Inside((double X, double Y) p, IReadOnlyList<(double X, double Y)> ring)
+        {
+            bool inside = false;
+            for (int i = 0, j = ring.Count - 1; i < ring.Count; j = i++)
+                if (ring[i].Y > p.Y != ring[j].Y > p.Y
+                    && p.X < (ring[j].X - ring[i].X) * (p.Y - ring[i].Y) / (ring[j].Y - ring[i].Y + 1e-12) + ring[i].X)
+                    inside = !inside;
+            return inside;
+        }
+
+        bool Supported(int row, string obj)
+            => planOf.TryGetValue(obj, out var pts) && pts.Count > 0
+               && plateOn.TryGetValue(row, out var rings)
+               && rings.Any(r => Inside(pts[0], r));
+
         var added = new List<(string Header, string Line)>();
+
+        // A MEMBER DOES NOT END IN MID-AIR.
+        //
+        // "otherwise they're just hanging from L2" — 17 of building C's columns stopped at LEVEL 2
+        // with their base on LEVEL 1 MEZZ, which carries three small plates and nothing under them.
+        // The gap fill below cannot see these: it needs a member above AND below to bracket a hole,
+        // and there is nothing below. So carry each member down until a plate holds it.
+        //
+        // ⚠ NOT PAST THE FOUNDATION. The lowest storey is where the footings are — 107 parkade
+        // columns land on LEVEL P3, whose sheet is the FOUNDATION PLAN and whose 63 footing loops
+        // this tool does not model. Those are held up and must not be extended.
+        // ⚠ ONE STOREY. DOUBLE height, not any height.
+        //
+        // Uncapped, this ran away on the second reference building the moment it was measured:
+        // 31138 went from 224 walls and 307 columns to 455 and 587, because that model is a
+        // gap-fill where the engineer has already drawn the walls, so few positions carry a plate
+        // of ours and members marched down floor after floor. Inventing storeys of structure is the
+        // one thing this tool must not do, and an uncapped "until supported" does exactly that.
+        //
+        // Carrying one storey is what she asked for and all she asked for: "modelled on both
+        // floors ... L2 and Mezz". Anything still unsupported after one is reported, not invented.
+        // ⚠ ONE BUILDING ONLY, AND ONLY IF THIS MODEL HAS PLATES AT ALL.
+        //
+        // With no plates, "is it supported" has no answer and every member extends — which is what
+        // it did to four of its own tests before this guard.
+        //
+        // And on the SITE list the row below a storey belongs to another building. Carrying a
+        // member into it put building C's columns onto the towers' LEVEL 3, which contradicts the
+        // composed span that steps OVER that storey: 68 members through a floor they stand on, and
+        // the publish gate refused the file. On the site model the composed span already reaches
+        // the right floor; the carry-down is for a model cut to one building, like the respan.
+        bool carryDown = !manyBuildings && plateOn.Count > 0;
+
+        int lowest = order.Count - 1;                       // Base is last; the storey above it is the foundation
+        foreach (var rows in carryDown ? stacks.Values : Enumerable.Empty<Dictionary<int, string>>())
+        {
+            int bottom = rows.Keys.Max();
+            string obj = rows[bottom];
+
+            for (int row = bottom + 1; row < lowest && row <= bottom + 1 && !Supported(row, obj); row++)
+            {
+                if (!string.Equals(BuildingTagOf(order[bottom]), BuildingTagOf(order[row]),
+                        StringComparison.OrdinalIgnoreCase)
+                    && BuildingTagOf(order[row]).Length > 0)
+                    break;
+
+                if (!lineOf.TryGetValue((obj, order[bottom]), out string? carry)) break;
+
+                added.Add((carry.TrimStart().StartsWith("AREA", StringComparison.OrdinalIgnoreCase)
+                        ? "AREA ASSIGNS" : "LINE ASSIGNS",
+                    Regex.Replace(carry, @"^(\s*\w+ASSIGN\s+""[^""]+""\s+"")([^""]+)("")",
+                        m => m.Groups[1].Value + order[row] + m.Groups[3].Value)));
+            }
+        }
+
         foreach (var rows in stacks.Values)
         {
             var held = rows.Keys.OrderBy(x => x).ToList();
@@ -1381,8 +1493,17 @@ public sealed class E2kDocument
                 string gap = order[hole];
                 string below = order[held[i + 1]];
 
-                if (!string.Equals(BuildingTagOf(above), BuildingTagOf(gap), StringComparison.OrdinalIgnoreCase)
-                    || !string.Equals(BuildingTagOf(gap), BuildingTagOf(below), StringComparison.OrdinalIgnoreCase))
+                // ⚠ ONLY WHERE THERE IS MORE THAN ONE BUILDING TO CONFUSE.
+                //
+                // On the site list one plan point carries the YMCA's column and a tower's, and the
+                // storey between belongs to neither — there the tags must agree. In a model already
+                // cut to ONE building every storey is that building's, and requiring the tags to
+                // match refuses the very case she reported: a core wall running C-LEVEL 3 down to
+                // LEVEL 1 MEZZ skips LEVEL 2, whose name carries no tag because the podium is
+                // shared. That left 3 members still hanging in a file with nothing to confuse.
+                if (manyBuildings
+                    && (!string.Equals(BuildingTagOf(above), BuildingTagOf(gap), StringComparison.OrdinalIgnoreCase)
+                        || !string.Equals(BuildingTagOf(gap), BuildingTagOf(below), StringComparison.OrdinalIgnoreCase)))
                     continue;
 
                 string obj = rows[held[i]];

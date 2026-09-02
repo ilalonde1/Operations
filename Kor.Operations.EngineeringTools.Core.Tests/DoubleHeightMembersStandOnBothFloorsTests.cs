@@ -166,9 +166,13 @@ public class DoubleHeightMembersStandOnBothFloorsTests
     [Fact]
     public void AGapAcrossABuildingBoundaryIsNotFilled()
     {
+        // TWO buildings in the list, which is the only situation the guard is for. With one tag
+        // there is nothing to confuse and the guard is deliberately off — that is what left a core
+        // wall hanging over LEVEL 2 in the building-C file.
         var lines = new[]
         {
             "$ STORIES - IN SEQUENCE FROM TOP",
+            "  STORY \"B-LEVEL 4\"  HEIGHT 120",
             "  STORY \"C-LEVEL 3\"  HEIGHT 120",
             "  STORY \"LEVEL 3\"  HEIGHT 6",
             "  STORY \"C-LEVEL 2\"  HEIGHT 120",

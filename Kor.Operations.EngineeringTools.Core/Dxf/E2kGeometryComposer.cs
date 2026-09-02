@@ -942,9 +942,21 @@ public static class E2kGeometryComposer
 
                 // A wall the engineer has already modelled runs along the same line: compare the
                 // midpoint, since one drawn wall may be modelled as several stacked panels.
+                //
+                // ⚠ HALF THE WALL'S THICKNESS, NOT A FIXED SIX INCHES.
+                //
+                // Hers is a centreline; ours comes off an outline, so the two can differ by up to
+                // half the wall's width and still BE THE SAME WALL — they overlap in plan. On 31168
+                // LEVEL 2, KW164 is an 18-inch wall standing 7.5 in from her W20: overlapping, and
+                // 1.5 in outside a flat 6-inch tolerance, so it shipped as a second wall on top of
+                // hers. That is what "what's up with these walls? there's nothing like it in the
+                // drawings" is looking at — not an invented wall, a duplicate of her own.
+                //
+                // Six inches stays the floor, so a thin wall is no less protected than before.
+                double sameWall = Math.Max(options.AlreadyModelledTolerance, thickness / 2.0);
                 var mid = new DxfPoint((x1 + x2) / 2.0, (y1 + y2) / 2.0);
                 if (existingWalls.TryGetValue(story.Name, out var alreadyWalls) &&
-                    alreadyWalls.Any(w => DistanceToSegment(mid, w.A, w.B) <= options.AlreadyModelledTolerance))
+                    alreadyWalls.Any(w => DistanceToSegment(mid, w.A, w.B) <= sameWall))
                 {
                     skippedWalls++;
                     continue;
