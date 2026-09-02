@@ -33,7 +33,14 @@ BEGIN TRY
         RAISERROR('Refused: some DocumentVersions have NULL DocumentVariantId. Deploy the Task G app code first, then re-run.', 16, 1);
     END;
 
-    -- 1. make the column NOT NULL (safe: no NULLs remain, asserted above)
+    -- 1. drop the FILTERED variant indexes FIRST - a column cannot be ALTERed while an index
+    --    references it (Msg 5074). They are recreated as full indexes in step 3.
+    IF EXISTS (SELECT 1 FROM sys.indexes WHERE object_id = OBJECT_ID(N'dbo.DocumentVersions', N'U') AND name = N'UX_DocumentVersions_Variant_VersionNumber')
+        DROP INDEX UX_DocumentVersions_Variant_VersionNumber ON dbo.DocumentVersions;
+    IF EXISTS (SELECT 1 FROM sys.indexes WHERE object_id = OBJECT_ID(N'dbo.DocumentVersions', N'U') AND name = N'UX_DocumentVersions_OneCurrentOfficialPerVariant')
+        DROP INDEX UX_DocumentVersions_OneCurrentOfficialPerVariant ON dbo.DocumentVersions;
+
+    -- 2. now the column has no dependent index; make it NOT NULL (no NULLs remain, asserted above)
     IF EXISTS
     (
         SELECT 1 FROM sys.columns
@@ -44,19 +51,14 @@ BEGIN TRY
         ALTER TABLE dbo.DocumentVersions ALTER COLUMN DocumentVariantId bigint NOT NULL;
     END;
 
-    -- 2. replace the FILTERED variant indexes (from 002) with full unique indexes
-    IF EXISTS (SELECT 1 FROM sys.indexes WHERE object_id = OBJECT_ID(N'dbo.DocumentVersions', N'U') AND name = N'UX_DocumentVersions_Variant_VersionNumber')
-        DROP INDEX UX_DocumentVersions_Variant_VersionNumber ON dbo.DocumentVersions;
+    -- 3. recreate the variant indexes as FULL unique (no filter needed now the column is NOT NULL)
     CREATE UNIQUE INDEX UX_DocumentVersions_Variant_VersionNumber
         ON dbo.DocumentVersions(DocumentVariantId, VersionNumber);
-
-    IF EXISTS (SELECT 1 FROM sys.indexes WHERE object_id = OBJECT_ID(N'dbo.DocumentVersions', N'U') AND name = N'UX_DocumentVersions_OneCurrentOfficialPerVariant')
-        DROP INDEX UX_DocumentVersions_OneCurrentOfficialPerVariant ON dbo.DocumentVersions;
     CREATE UNIQUE INDEX UX_DocumentVersions_OneCurrentOfficialPerVariant
         ON dbo.DocumentVersions(DocumentVariantId)
         WHERE IsCurrentOfficial = 1;
 
-    -- 3. drop the superseded document-scoped indexes (variant scope now covers them)
+    -- 4. drop the superseded document-scoped indexes (variant scope now covers them)
     IF EXISTS (SELECT 1 FROM sys.indexes WHERE object_id = OBJECT_ID(N'dbo.DocumentVersions', N'U') AND name = N'IX_DocumentVersions_DocumentId_VersionNumber')
         DROP INDEX IX_DocumentVersions_DocumentId_VersionNumber ON dbo.DocumentVersions;
     IF EXISTS (SELECT 1 FROM sys.indexes WHERE object_id = OBJECT_ID(N'dbo.DocumentVersions', N'U') AND name = N'UX_DocumentVersions_OneCurrentOfficialPerDocument')
