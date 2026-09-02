@@ -12,10 +12,9 @@ namespace Kor.Operations.EngineeringTools.Tests.PdfToSafe;
 /// </summary>
 public class ReclassifyByColorTests
 {
-    private static readonly Assembly _asm = typeof(Kor.Operations.Services.AppAiService).Assembly;
-    private static readonly System.Type _tExtracted = _asm.GetType("Kor.Operations.EngineeringTools.PdfToSafe.ExtractedGeometry", throwOnError: true)!;
-    private static readonly System.Type _tSettings  = _asm.GetType("Kor.Operations.EngineeringTools.PdfToSafe.SlabColorSettings", throwOnError: true)!;
-    private static readonly System.Type _tExtractor = _asm.GetType("Kor.Operations.EngineeringTools.PdfToSafe.PdfGeometryExtractor", throwOnError: true)!;
+    private static readonly System.Type _tExtracted = PdfToSafeTestTypes.Resolve("Kor.Operations.EngineeringTools.PdfToSafe.ExtractedGeometry");
+    private static readonly System.Type _tSettings  = PdfToSafeTestTypes.Resolve("Kor.Operations.EngineeringTools.PdfToSafe.SlabColorSettings");
+    private static readonly System.Type _tExtractor = PdfToSafeTestTypes.Resolve("Kor.Operations.EngineeringTools.PdfToSafe.PdfGeometryExtractor");
 
     private static object NewExtracted() => System.Activator.CreateInstance(_tExtracted, nonPublic: true)!;
     private static object NewSettings(string type)

@@ -8,7 +8,7 @@ using System.Text;
 
 namespace Kor.Operations.EngineeringTools.PdfToSafe
 {
-    internal static class DxfExporter
+    public static class DxfExporter
     {
         /// <summary>
         /// Writes the geometry as a DXF.

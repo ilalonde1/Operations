@@ -7,90 +7,9 @@ using UglyToad.PdfPig.Annotations;
 
 namespace Kor.Operations.EngineeringTools.PdfToSafe
 {
-    internal readonly record struct TextAnnotation(
-        string Text,
-        double X,
-        double Y,
-        double LeftX,
-        double BottomY,
-        double HeightMm)
-    {
-        public TextAnnotation(string text, double x, double y)
-            : this(text, x, y, x, y, 0.0)
-        {
-        }
-
-        public void Deconstruct(out string text, out double x, out double y)
-        {
-            text = Text;
-            x = X;
-            y = Y;
-        }
-    }
-
-    internal sealed class ExtractedGeometry
-    {
-        // Each slab: ordered list of (X,Y) in mm, ready for a closed polyline
-        public List<List<(double X, double Y)>> Slabs { get; } = new();
-        // Each column: centroid (X,Y) in mm
-        public List<(double X, double Y)> Columns { get; } = new();
-        // Each line element: list of (X,Y) in mm (open polyline)
-        public List<List<(double X, double Y)>> Lines { get; } = new();
-        public List<(byte R, byte G, byte B)> SlabColors   { get; } = new();
-        public List<(byte R, byte G, byte B)> ColumnColors { get; } = new();
-        /// <summary>
-        /// Bounding-box dimensions (Width, Depth in mm) for each detected column,
-        /// parallel to <see cref="Columns"/>. Derived from the column polygon footprint.
-        /// Width = X extent, Depth = Y extent.
-        /// </summary>
-        public List<(double WidthMm, double DepthMm)> ColumnSizes { get; } = new();
-        public List<(byte R, byte G, byte B)> LineColors   { get; } = new();
-
-        /// <summary>
-        /// Parallel to Slabs / Columns / Lines: did this shape come from a MARKUP ANNOTATION, or
-        /// from the page the architect drew?
-        ///
-        /// It is the only exact way to tell an engineer's red from an architect's red, and on
-        /// Parcel 11 they are the same red — #F00000 carries Omar's shear walls AND the property
-        /// line sweeping round the site. Colour cannot separate those; origin can, and the parser
-        /// already knew it and threw it away. Every one of that sheet's 5 red closed shapes and 37
-        /// red wall segments is an annotation; 488 of its 489 red lines are the boundary.
-        /// </summary>
-        public List<bool> SlabIsAnnotation   { get; } = new();
-        public List<bool> ColumnIsAnnotation { get; } = new();
-        public List<bool> LineIsAnnotation   { get; } = new();
-        /// <summary>
-        /// Optional cross-section hints parallel to <see cref="Lines"/>. Populated when a
-        /// slab polygon is reclassified as a wall/beam and its intended beam section is
-        /// derived from the polygon's bounding box. Null entries mean "no hint — fall
-        /// back to text-annotation parsing (BeamSectionParser)". Not populated by the
-        /// initial extraction; only by <see cref="PdfGeometryExtractor.ReclassifyByColor"/>.
-        /// </summary>
-        public List<(double WidthMm, double DepthMm)?> LineSectionHints { get; set; } = new();
-        public List<List<(double X, double Y)>> DropPanelCandidates { get; set; } = new();
-        public double PageWidthPts  { get; set; }
-        public double PageHeightPts { get; set; }
-        public int    ScaleDenominator { get; set; }
-        public int  PageCount    { get; set; }
-        public int  RawPathCount { get; set; }
-        public bool IsVectorPdf  { get; set; }
-        /// <summary>
-        /// Raw text annotations extracted from the PDF page, with their centroid
-        /// positions in the same mm coordinate space as Slabs/Lines/Columns.
-        /// Populated during extraction when text parsing is enabled.
-        /// </summary>
-        public List<TextAnnotation> TextAnnotations { get; set; } = new();
-    }
-
-    internal sealed class SlabColorSettings
-    {
-        public string ElementType { get; set; } = "Slab";
-        public double ThicknessMm { get; set; } = PdfToSafeConstants.DefaultThicknessMm;
-        public double SdlKPa      { get; set; } = 0.0;
-        public double LiveKPa     { get; set; } = 0.0;
-        public string GradeCode   { get; set; } = PdfToSafeConstants.DefaultGradeCode;
-    }
-
+    // TextAnnotation, ExtractedGeometry, SlabColorSettings and RawSubpath moved to
+    // Kor.Operations.EngineeringTools.Core/PdfToSafe/PdfGeometryModels.cs on 2 September, so the
+    // CLI can reach them. Same namespace, so nothing here needed changing.
     internal static class PdfGeometryExtractor
     {
         /// <summary>

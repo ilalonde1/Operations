@@ -4,7 +4,7 @@ using System.Linq;
 
 namespace Kor.Operations.EngineeringTools.PdfToSafe
 {
-    internal static class PolygonProcessor
+    public static class PolygonProcessor
     {
         /// <summary>Euclidean distance between two mm-coordinate points.</summary>
         public static double Distance((double X, double Y) a, (double X, double Y) b)

@@ -1,6 +1,6 @@
 namespace Kor.Operations.EngineeringTools.PdfToSafe
 {
-    internal static class PdfToSafeConstants
+    public static class PdfToSafeConstants
     {
         // Geometry processing
         public const double PointsToMm = 25.4 / 72.0;

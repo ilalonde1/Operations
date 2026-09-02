@@ -12,17 +12,16 @@ namespace Kor.Operations.EngineeringTools.Tests.PdfToSafe;
 /// </summary>
 public class ExportValidatorTests
 {
-    private static readonly Assembly _asm = typeof(Kor.Operations.Services.AppAiService).Assembly;
     private static readonly System.Type _tExtracted =
-        _asm.GetType("Kor.Operations.EngineeringTools.PdfToSafe.ExtractedGeometry", throwOnError: true)!;
+        PdfToSafeTestTypes.Resolve("Kor.Operations.EngineeringTools.PdfToSafe.ExtractedGeometry");
     private static readonly System.Type _tSettings =
-        _asm.GetType("Kor.Operations.EngineeringTools.PdfToSafe.SlabColorSettings", throwOnError: true)!;
+        PdfToSafeTestTypes.Resolve("Kor.Operations.EngineeringTools.PdfToSafe.SlabColorSettings");
     private static readonly System.Type _tExport =
-        _asm.GetType("Kor.Operations.EngineeringTools.PdfToSafe.ExportSettings", throwOnError: true)!;
+        PdfToSafeTestTypes.Resolve("Kor.Operations.EngineeringTools.PdfToSafe.ExportSettings");
     private static readonly System.Type _tValidator =
-        _asm.GetType("Kor.Operations.EngineeringTools.PdfToSafe.ExportValidator", throwOnError: true)!;
+        PdfToSafeTestTypes.Resolve("Kor.Operations.EngineeringTools.PdfToSafe.ExportValidator");
     private static readonly System.Type _tResult =
-        _asm.GetType("Kor.Operations.EngineeringTools.PdfToSafe.ValidationResult", throwOnError: true)!;
+        PdfToSafeTestTypes.Resolve("Kor.Operations.EngineeringTools.PdfToSafe.ValidationResult");
 
     private static object NewExtracted() =>
         System.Activator.CreateInstance(_tExtracted, nonPublic: true)!;

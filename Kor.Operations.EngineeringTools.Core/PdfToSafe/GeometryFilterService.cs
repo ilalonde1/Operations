@@ -5,9 +5,9 @@ using System.Linq;
 
 namespace Kor.Operations.EngineeringTools.PdfToSafe
 {
-    internal static class GeometryFilterService
+    public static class GeometryFilterService
     {
-        internal static double BoundingBoxDiagonal(List<(double X, double Y)> pts)
+        public static double BoundingBoxDiagonal(List<(double X, double Y)> pts)
         {
             double minX = pts.Min(p => p.X), maxX = pts.Max(p => p.X);
             double minY = pts.Min(p => p.Y), maxY = pts.Max(p => p.Y);

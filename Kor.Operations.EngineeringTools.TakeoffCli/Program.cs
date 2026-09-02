@@ -3,6 +3,7 @@ using System.Text.RegularExpressions;
 using System.Text.Json;
 using Kor.Operations.EngineeringTools.ColumnDesign;
 using Kor.Operations.EngineeringTools.Dxf;
+using Kor.Operations.EngineeringTools.PdfToSafe;
 using Kor.Operations.EngineeringTools.QuantityTakeoff;
 using Kor.Operations.EngineeringTools.RebarChange;
 using SixLabors.ImageSharp;
@@ -40,6 +41,99 @@ if (args.Length >= 1 && args[0].Equals("pdf-readable", StringComparison.OrdinalI
     Console.WriteLine($"  pages: {verdict.PagesInRange}   text pages: {verdict.TextPages}   image-only pages: {verdict.ImageOnlyPages}   median words/text page: {verdict.MedianWordsPerTextPage}");
     Console.WriteLine($"  {verdict.Reason}");
     return verdict.Readable ? 0 : 3;
+}
+
+// TAKE OFF a drawing PDF's structure to DXF, so a job whose plans arrive only as a stick file can
+// enter the same pipeline as one that arrives as CAD: pdf-takeoff -> dxf-to-etabs -> publish.
+//
+// ⚠ READS THE DRAWING BY DEFAULT, NOT THE MARKUP. PdfToSafe was built for the Bluebeam workflow,
+// where the engineer's redlines ARE the model and the page underneath is the architect's noise, and
+// its filter defaulted that way with no caller anywhere able to change it. So a CLEAN ISSUED SET —
+// which carries no markup at all — read as completely empty and said nothing about why. 31130-01's
+// stick file is exactly that: 60 pages, every one carrying thousands of subpaths, every one
+// returning nothing. Pass --markup for the old behaviour.
+//
+// ⚠ The sheet border, title block and schedule tables are page content too, and come out as slabs
+// and beams. They are NOT filtered here — window the DXF, or drop those layers downstream.
+//
+// The scale is OFFERED, never assumed: with no --scale this reports what the sheet itself states
+// and stops, because a wrong denominator renders identically and is wrong by a constant.
+// Usage: takeoff pdf-takeoff <pdf> <out.dxf> [--page N] [--pages A-B] [--scale 96] [--markup]
+if (args.Length >= 1 && args[0].Equals("pdf-takeoff", StringComparison.OrdinalIgnoreCase))
+{
+    if (args.Length < 3) { Console.Error.WriteLine("Usage: takeoff pdf-takeoff <pdf> <out.dxf> [--page N] [--pages A-B] [--scale 96] [--markup]"); return 1; }
+    string ptPdf = args[1], ptOut = args[2];
+    if (!File.Exists(ptPdf)) { Console.Error.WriteLine($"PDF not found '{ptPdf}'."); return 2; }
+
+    int ptFirst = 1, ptLast = 1, ptScale = 0;
+    bool ptMarkup = false;
+    for (int i = 3; i < args.Length; i++)
+    {
+        string a = args[i];
+        if (a.Equals("--markup", StringComparison.OrdinalIgnoreCase)) ptMarkup = true;
+        else if (a.Equals("--page", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length)
+        { int.TryParse(args[++i], out ptFirst); ptLast = ptFirst; }
+        else if (a.Equals("--scale", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length)
+            int.TryParse(args[++i], out ptScale);
+        else if (a.Equals("--pages", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length)
+        {
+            string[] span = args[++i].Split('-', StringSplitOptions.RemoveEmptyEntries);
+            if (span.Length >= 1) int.TryParse(span[0], out ptFirst);
+            ptLast = span.Length >= 2 && int.TryParse(span[1], out int pl) ? pl : ptFirst;
+        }
+    }
+    if (ptFirst < 1) ptFirst = 1;
+    if (ptLast < ptFirst) ptLast = ptFirst;
+
+    // No --scale: say what the sheet states and stop. Assuming it is how a model ends up 4% out
+    // with nothing about the number looking wrong.
+    if (ptScale <= 0)
+    {
+        string? stated = SheetScaleReader.FromPage(VectorPageReader.ReadPage(ptPdf, ptFirst));
+        Console.Error.WriteLine(stated is null
+            ? $"No --scale given, and page {ptFirst} states no machine-readable scale (takeoff scale-scan says the same). "
+              + "The set's documented fallback is 1/8\" = 1'-0\", so --scale 96 — but confirm it against the sheet before a model is built on it."
+            : $"No --scale given. Page {ptFirst} states \"{stated}\". Pass --scale <denominator> to confirm it (1/8\" = 1'-0\" is 96).");
+        return 2;
+    }
+
+    bool ptRange = ptLast > ptFirst;
+    string ptDir = Path.GetDirectoryName(Path.GetFullPath(ptOut)) ?? ".";
+    string ptStem = Path.GetFileNameWithoutExtension(ptOut);
+    Directory.CreateDirectory(ptDir);
+
+    Console.WriteLine($"{Path.GetFileName(ptPdf)}  1:{ptScale}  pages {ptFirst}-{ptLast}  " +
+                      $"reading {(ptMarkup ? "MARKUP only" : "the drawing")}");
+    Console.WriteLine();
+    Console.WriteLine("page   raw  annot   slabs  columns   lines   file");
+
+    int ptWritten = 0, ptEmpty = 0;
+    for (int p = ptFirst; p <= ptLast; p++)
+    {
+        ExtractedGeometry geo;
+        try { geo = PdfPlanReader.Read(ptPdf, ptScale, p, annotationsOnly: ptMarkup); }
+        catch (Exception ex) { Console.WriteLine($"{p,4}   FAILED  {ex.GetType().Name}: {ex.Message}"); continue; }
+
+        int annot = PdfPlanReader.AnnotationCount(ptPdf, p, ptScale);
+        int found = geo.Slabs.Count + geo.Columns.Count + geo.Lines.Count;
+        string file = "";
+        if (found > 0)
+        {
+            string dxf = ptRange ? Path.Combine(ptDir, $"{ptStem}-p{p:00}.dxf") : Path.GetFullPath(ptOut);
+            DxfExporter.Export(geo, dxf);
+            file = Path.GetFileName(dxf);
+            ptWritten++;
+        }
+        else ptEmpty++;
+
+        Console.WriteLine($"{p,4} {geo.RawPathCount,5}  {annot,5}   {geo.Slabs.Count,5}  {geo.Columns.Count,7}   {geo.Lines.Count,5}   {file}");
+    }
+
+    Console.WriteLine();
+    Console.WriteLine($"{ptWritten} DXF written, {ptEmpty} page(s) empty.");
+    if (ptEmpty > 0 && ptMarkup)
+        Console.WriteLine("  Empty in --markup mode means the page carries no Bluebeam markup. Drop --markup to read the drawing itself.");
+    return ptWritten > 0 ? 0 : 3;
 }
 
 // RENDER a plan's structural layers to an image, so what the drawing contains can be seen
@@ -3798,6 +3892,7 @@ public static class TakeoffCliHelp
     public static IReadOnlyList<TakeoffCliCommand> Commands { get; } =
     [
         new("pdf-readable", "takeoff pdf-readable <pdf> [first] [last]", "Check whether a PDF has readable vector text."),
+        new("pdf-takeoff", "takeoff pdf-takeoff <pdf> <out.dxf> [--page N] [--pages A-B] [--scale 96] [--markup]", "Take a drawing PDF's structure off to DXF, reading the drawing itself unless --markup."),
         new("dxf-render", "takeoff dxf-render <plan.dxf> <out.png> [--size 1800] [--layers SLABEDG,...]", "Render structural DXF layers to a PNG."),
         new("dxf-inspect", "takeoff dxf-inspect <plan.dxf> [--walls] [--plates]", "Inspect DXF layers, loops, wall outlines, and recovered floor plates."),
         new("publish", "takeoff publish <job> [--model-folder <folder>] [--dxf-folder <folder>] [--rules-db <c>] [--per-building] [--land]", "Discover, build, verify, summarize, gate and land a DXF-to-ETABS publish."),

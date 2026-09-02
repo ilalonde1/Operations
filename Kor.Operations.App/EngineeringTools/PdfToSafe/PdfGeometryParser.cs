@@ -10,14 +10,8 @@ using UglyToad.PdfPig.Content;
 
 namespace Kor.Operations.EngineeringTools.PdfToSafe
 {
-    internal sealed record RawSubpath(
-        List<(double X, double Y)> Points,
-        bool IsClosed,
-        (byte R, byte G, byte B) Color,
-        bool IsFilled,
-        bool IsStroked,
-        double LineWidth,
-        bool IsAnnotation);
+    // RawSubpath moved to Core/PdfToSafe/PdfGeometryModels.cs — same namespace, so this file
+    // needed no other change.
 
     internal enum PdfScaleSource
     {
@@ -37,34 +31,14 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
     internal static class PdfGeometryParser
     {
+        /// <summary>
+        /// Moved to <see cref="PdfPlanReader.ParsePage"/> in Core on 2 September so the CLI can
+        /// read a drawing too. Kept as a forwarder: this file's other readers call it, and the
+        /// point of the move was one implementation, not a second one.
+        /// </summary>
         public static List<RawSubpath>
             ParsePage(Page page, double scale)
-        {
-            double? minPointDistance = scale > 0
-                ? PdfToSafeConstants.MinVertexDistanceMm / scale
-                : null;
-            double? closeDistance = scale > 0
-                ? PdfToSafeConstants.MinVertexDistanceMm * 4.0 / scale
-                : null;
-
-            var pageRead = VectorPageReader.ReadPage(
-                page,
-                includeAnnotations: true,
-                curveSegments: PdfToSafeConstants.BezierSegments,
-                minPointDistance: minPointDistance,
-                closeDistance: closeDistance);
-
-            return pageRead.Paths
-                .Select(path => new RawSubpath(
-                    path.Points.Select(p => (p.X * scale, p.Y * scale)).ToList(),
-                    path.IsClosed,
-                    path.Color,
-                    path.IsFilled,
-                    path.IsStroked,
-                    path.LineWidth,
-                    path.IsAnnotation))
-                .ToList();
-        }
+            => PdfPlanReader.ParsePage(page, scale);
 
         public static int? DetectScale(string filePath, int pageNumber = 1)
             => DetectScaleForLoad(filePath, pageNumber).Denominator;
