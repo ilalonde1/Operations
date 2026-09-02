@@ -181,6 +181,28 @@ cannot be written, the class is still not understood.
 A differential also cannot see a fault present in BOTH runs. Where that matters, the harness is the
 second gate and an invariant on the finished file is the first.
 
+## 12. A truncated command cannot support a claim about the whole.
+
+If the command contains `head`, `tail`, `grep -m`, `sed -n '1,Np'` or `Select-Object -First`, the
+words **all**, **every**, **none**, **only** and any range or distribution are off the table — and
+so is closing a finding. To claim something about the population, run something that counts it:
+`| wc -l`, or `| sort | uniq -c`. Then state it as **X of Y**, which forces you to have Y.
+
+What this cost: on 2026-09-01, `grep -oE "implied thickness..." report.txt | head -5` was read and
+the finding written from it said *"all 37 measure 3.1–3.4 in"*. The command said 5. The real
+distribution had five outlines at **4.3 in** — above the 4-inch minimum the whole argument rested
+on — so a defect was marked CLOSED on evidence that never supported it, and the engineer's own
+report was telling her 4.3 in for linework she would have gone back to five locations to find.
+
+It was caught by an audit, not by anything in the loop. So it is a hook now:
+`tools/claude_bash_sample_guard.py` stamps every truncated result as a sample, in the same text the
+claim gets written from. Silent when the command already counts the population.
+
+⚠ The general lesson is the one this file keeps proving: **a rule that lives only in prose loses to
+momentum.** Rule 7 is the one repeat offence that actually stopped, and it stopped because
+`claude_bash_guard.py` blocks the command. Recognising a mistake afterwards costs nothing and
+changes nothing; the gate is what changes the next action.
+
 ## Environment facts worth not rediscovering
 
 - Rules live in `KorStandards` on `KOR-APP01\SQLEXPRESS`, schema `analysis`. A missing rule stops a

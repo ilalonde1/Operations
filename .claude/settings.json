@@ -16,6 +16,19 @@
           }
         ]
       }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$CLAUDE_PROJECT_DIR/tools/claude_bash_sample_guard.py\"",
+            "timeout": 20,
+            "statusMessage": "Marking truncated output as a sample"
+          }
+        ]
+      }
     ]
   }
 }
