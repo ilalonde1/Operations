@@ -1915,6 +1915,20 @@ public static class DxfToEtabsService
         // nothing but this building's floors. The site list interleaves three, so a span of one
         // there would reach the neighbouring tower's slab an inch and a half away — a wafer — and
         // the composed span is what reaches the real floor below.
+        // AND NOTHING ETABS WILL PUT A DIALOG UP ABOUT.
+        //
+        // A null area exports as SECTION "None" and will not re-import: "Error reading line 9014.
+        // Line Ignored ... Area Object F134 not correctly defined". Seventy-four of those on 31138,
+        // one dialog each, before the engineer can look at the model at all. See the method.
+        int unreadable = doc.DropAreasEtabsWillNotReadBack();
+        if (unreadable > 0)
+            warnings.Add(
+                $"{unreadable} area object(s) of yours carry no shell property — ETABS writes those " +
+                "as SECTION \"None\" and then refuses to read them back, one error dialog each. They " +
+                "are not in this file. Nothing is lost by it: ETABS ignores the line even when it " +
+                "does read it, so they would not have arrived either way, and they are still in " +
+                "your own model. Most are the A-prefixed areas your rigid diaphragms are defined on.");
+
         // AND A DOUBLE-HEIGHT MEMBER STANDS ON BOTH FLOORS IT PASSES.
         //
         // Her words, 1 Sep: "some columns are double height. In that case they should be modelled on

@@ -1796,6 +1796,64 @@ public sealed class E2kDocument
     }
 
     /// <summary>Drops every assign that names a storey the model no longer has.</summary>
+    /// <summary>
+    /// Drops areas whose only shell property is the literal "None", which ETABS will not re-import.
+    /// </summary>
+    /// <remarks>
+    /// ETABS exports a null area — one with no shell property — as SECTION "None", and then refuses
+    /// to read it back. Importing 31138 puts up a dialog per line:
+    ///
+    ///     Error reading line 9014. Line Ignored.
+    ///     "AREAASSIGN "F134" "L02" SECTION "None" ..."
+    ///     Area Object F134 not correctly defined
+    ///
+    /// Seventy-four of them on that job, and the engineer clicks through every one before she can
+    /// look at the model. They come through this tool byte-for-byte from her own reference — 74 in
+    /// hers, 74 in ours — so they are not something we made, but they are something we hand her.
+    ///
+    /// ⚠ WHAT IS LOST, AND WHY IT IS NOTHING. ETABS says "Line Ignored": these assigns have no
+    /// effect on the imported model today. The objects are 41 of her A-prefixed diaphragm areas and
+    /// one floor, none of which carries a real section anywhere in the file. Dropping them removes
+    /// the dialogs and removes nothing ETABS was going to accept. Her own model still has them.
+    ///
+    /// An area that has a real section on ANY storey is left alone entirely, so this cannot touch a
+    /// member that carries structure.
+    /// </remarks>
+    /// <returns>The number of objects dropped.</returns>
+    public int DropAreasEtabsWillNotReadBack()
+    {
+        var sectioned = new HashSet<string>(StringComparer.Ordinal);
+        var noneOnly = new HashSet<string>(StringComparer.Ordinal);
+
+        var assigns = Find("AREA ASSIGNS");
+        if (assigns is null) return 0;
+
+        foreach (string line in assigns.Lines)
+        {
+            var m = Regex.Match(line.TrimStart(), @"^AREAASSIGN\s+""([^""]+)""\s+""[^""]+""\s+SECTION\s+""([^""]+)""");
+            if (!m.Success) continue;
+
+            if (m.Groups[2].Value.Equals("None", StringComparison.OrdinalIgnoreCase))
+                noneOnly.Add(m.Groups[1].Value);
+            else
+                sectioned.Add(m.Groups[1].Value);
+        }
+
+        noneOnly.ExceptWith(sectioned);
+        if (noneOnly.Count == 0) return 0;
+
+        assigns.Lines.RemoveAll(line =>
+            Regex.Match(line.TrimStart(), @"^AREAASSIGN\s+""([^""]+)""") is { Success: true } m
+            && noneOnly.Contains(m.Groups[1].Value));
+
+        var connectivity = Find("AREA CONNECTIVITIES");
+        connectivity?.Lines.RemoveAll(line =>
+            Regex.Match(line.TrimStart(), @"^AREA\s+""([^""]+)""") is { Success: true } m
+            && noneOnly.Contains(m.Groups[1].Value));
+
+        return noneOnly.Count;
+    }
+
     public int DropAssignsForMissingStoreys()
     {
         var known = new HashSet<string>(ReadStories().Select(s => s.Name), StringComparer.OrdinalIgnoreCase);
