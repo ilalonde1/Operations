@@ -2251,7 +2251,19 @@ public static class StructuralPlanClassifier
         // when every one was linework: 2 to 4 inches of implied material, against her thinnest
         // real wall at 10. The material per unit of run is the number that separates them, so the
         // flag carries it and whoever reads the flag does not have to go back to the drawing.
-        double implied = box.Length > 1e-9 ? loop.Area / box.Length : 0;
+        // ⚠ DIVIDED BY THE RING'S OWN RUN, NOT ITS BOUNDING BOX.
+        //
+        // A closed ribbon traces both faces, so its run is half its perimeter. For a straight wall
+        // that equals the bounding box's long side and the two agree. For an L-shaped or diagonal
+        // ribbon it does not: the 278x127 outline on 31168's LEVEL 2 has a 145-inch diagonal limb
+        // and a 199-inch vertical one, a run of 349 — but its bounding box is 278, and dividing by
+        // that reported 4.3 in for faces measuring 3.2 and 3.7 apart.
+        //
+        // Wrong in the worst direction. 4.3 reads as ABOVE dxf.min-wall-thickness of 4, so linework
+        // the tool correctly refused looked like structure it had lost, on five outlines of 31168.
+        // The flag exists so nobody has to go back to the drawing; it has to be right.
+        double run = loop.Perimeter / 2.0;
+        double implied = run > 1e-9 ? loop.Area / run : 0;
 
         result.Flags.Add(
             $"{loop.Layer}: outline {box.Length:0}x{box.Thickness:0} with {loop.Points.Count} vertices " +

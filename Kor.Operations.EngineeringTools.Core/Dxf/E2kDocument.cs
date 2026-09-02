@@ -1420,10 +1420,28 @@ public sealed class E2kDocument
             return inside;
         }
 
+        // ⚠ THE MIDPOINT, NOT THE FIRST POINT.
+        //
+        // Judged on pts[0] a long wall counts as standing on a floor when only one END is over the
+        // plate. On 31138 KW204 runs from (654.6,-899.7) to (758.6,-899.7): the first point is
+        // inside the plate below, the other is 100 in off it, and the wall was left hanging over
+        // that stretch. KW156's second point misses by three ten-thousandths of an inch.
+        //
+        // The midpoint is the one point that represents the member rather than an accident of which
+        // corner the panel happens to list first, and it is what the composer already uses to ask
+        // whether a wall is one the engineer has drawn.
         bool Supported(int row, string obj)
-            => planOf.TryGetValue(obj, out var pts) && pts.Count > 0
-               && plateOn.TryGetValue(row, out var rings)
-               && rings.Any(r => Inside(pts[0], r));
+        {
+            if (!planOf.TryGetValue(obj, out var pts) || pts.Count == 0) return false;
+            if (!plateOn.TryGetValue(row, out var rings)) return false;
+
+            var span = pts.Distinct().OrderBy(p => p.X).ThenBy(p => p.Y).ToList();
+            var mid = span.Count >= 2
+                ? ((span[0].X + span[^1].X) / 2.0, (span[0].Y + span[^1].Y) / 2.0)
+                : span[0];
+
+            return rings.Any(r => Inside(mid, r));
+        }
 
         var added = new List<(string Header, string Line)>();
 

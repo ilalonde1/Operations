@@ -91,6 +91,29 @@ public sealed class PlanLoop
 
     public double Area => Math.Abs(SignedArea);
 
+    /// <summary>
+    /// The way round the ring, corner to corner and closed.
+    /// </summary>
+    /// <remarks>
+    /// A wall outline is a ribbon tracing both faces, so HALF this is how far the wall runs — which
+    /// is the divisor for "how much material per unit of run". The bounding box is not: an L-shaped
+    /// or diagonal ribbon runs much further than its box is wide.
+    /// </remarks>
+    public double Perimeter
+    {
+        get
+        {
+            double sum = 0;
+            for (int i = 0; i < Points.Count; i++)
+            {
+                var a = Points[i];
+                var b = Points[(i + 1) % Points.Count];
+                sum += Math.Sqrt((b.X - a.X) * (b.X - a.X) + (b.Y - a.Y) * (b.Y - a.Y));
+            }
+            return sum;
+        }
+    }
+
     public (double MinX, double MinY, double MaxX, double MaxY) Bounds()
     {
         double minX = double.MaxValue, minY = double.MaxValue, maxX = double.MinValue, maxY = double.MinValue;
