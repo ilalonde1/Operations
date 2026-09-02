@@ -99,6 +99,10 @@ public static class ShippedModelInvariants
 
         var v = new List<ModelViolation>();
 
+        // Read once into a list: the dangling-reference check below needs a second pass, and the
+        // caller hands this in as a lazy File.ReadLines that would otherwise be re-read from disk.
+        var model = lines as IReadOnlyList<string> ?? lines.ToList();
+
         var pts = new Dictionary<string, (double X, double Y, double Z)>(StringComparer.Ordinal);
         var kind = new Dictionary<string, string>(StringComparer.Ordinal);
         var joints = new Dictionary<string, List<string>>(StringComparer.Ordinal);
@@ -106,7 +110,7 @@ public static class ShippedModelInvariants
         var onStoreys = new Dictionary<string, List<string>>(StringComparer.Ordinal);
         var storeys = new List<string>();
 
-        foreach (string raw in lines)
+        foreach (string raw in model)
         {
             var m = Point.Match(raw);
             if (m.Success)
@@ -215,6 +219,38 @@ public static class ShippedModelInvariants
         foreach (var (name, _) in kind)
             if (!name.StartsWith("K", StringComparison.Ordinal) && !carriedThrough.Contains(name))
                 v.Add(new ModelViolation("not-from-a-drawing", $"object '{name}' did not come from a drawing", name));
+
+        // 2b. AND NOTHING MAY NAME AN OBJECT THE FILE DOES NOT DEFINE.
+        //
+        //     ETABS puts up one dialog per dangling reference, ignores the line, and carries on —
+        //     so a file can be structurally fine and still be unusable for the minutes it takes to
+        //     click through. On 1 Sep it happened twice in one evening, both self-inflicted:
+        //     dropping 42 null areas left their AREAASSIGN lines, and fixing that left their
+        //     AREALOAD lines — «AREALOAD "A13" "P1" TYPE "UNIFF" DIR "GRAV" LC "Live"», a load on
+        //     an area that no longer existed.
+        //
+        //     Nothing in this file could see either one. Every other invariant here reads what the
+        //     model CONTAINS; this is the first that reads whether the file is internally
+        //     consistent, which is the only part ETABS checks before it starts complaining.
+        //
+        //     Blocking, because the engineer cannot open the model without clearing it by hand.
+        {
+            var definedObjects = new HashSet<string>(kind.Keys, StringComparer.Ordinal);
+            var names = new Regex(@"^(AREA|LINE)(\w+)\s+""([^""]+)""");
+
+            foreach (string raw in model)
+            {
+                var m = names.Match(raw.TrimStart());
+                if (!m.Success) continue;
+                if (definedObjects.Contains(m.Groups[3].Value)) continue;
+
+                v.Add(new ModelViolation(
+                    "names-an-object-that-is-not-there",
+                    $"{m.Groups[1].Value}{m.Groups[2].Value} names '{m.Groups[3].Value}', which this " +
+                    "file never defines — ETABS refuses the line and puts up a dialog for it",
+                    m.Groups[3].Value));
+            }
+        }
 
         // 3. A storey carrying members with no floor is a disclosure, not a refusal. Andrea has
         //    now rejected the alternative twice: borrowing made false slabs look like measured

@@ -1842,14 +1842,20 @@ public sealed class E2kDocument
         noneOnly.ExceptWith(sectioned);
         if (noneOnly.Count == 0) return 0;
 
-        assigns.Lines.RemoveAll(line =>
-            Regex.Match(line.TrimStart(), @"^AREAASSIGN\s+""([^""]+)""") is { Success: true } m
-            && noneOnly.Contains(m.Groups[1].Value));
-
-        var connectivity = Find("AREA CONNECTIVITIES");
-        connectivity?.Lines.RemoveAll(line =>
-            Regex.Match(line.TrimStart(), @"^AREA\s+""([^""]+)""") is { Success: true } m
-            && noneOnly.Contains(m.Groups[1].Value));
+        // ⚠ EVERY LINE THAT NAMES IT, NOT JUST THE ASSIGN AND THE CONNECTIVITY.
+        //
+        // Dropping the object and its assign left its LOADS behind, and ETABS put up a fresh dialog
+        // for each one: «AREALOAD "A13" "P1" TYPE "UNIFF" DIR "GRAV" LC "Live" FVAL 0.3472222» —
+        // a load on an area that no longer exists. Trading one error for another.
+        //
+        // Matched on the AREA* keyword so only the area namespace is touched: AREA, AREAASSIGN,
+        // AREALOAD and anything else of that family. A point or a line that happened to share the
+        // name is left alone.
+        var named = new Regex(@"^AREA\w*\s+""([^""]+)""");
+        foreach (var section in _sections)
+            section.Lines.RemoveAll(line =>
+                named.Match(line.TrimStart()) is { Success: true } m
+                && noneOnly.Contains(m.Groups[1].Value));
 
         return noneOnly.Count;
     }
