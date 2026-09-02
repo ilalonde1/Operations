@@ -12,7 +12,7 @@ namespace Kor.Operations.StandardDetails;
 internal sealed record StandardDetailsSchemaCheckResult(bool GroupSchemaAvailable, bool MissingSchema, bool PermissionDenied, bool SchemaMismatch);
 internal sealed record StandardDetailsGroupRow(long GroupId, long? ParentGroupId, string Name);
 internal sealed record StandardDetailsDocumentRow(long DocumentId, string Title, string? DetailNumber, string GroupName, string CurrentOfficialText, byte? LatestStatus);
-internal sealed record StandardDetailsVersionRow(long DocumentVersionId, long DocumentId, int VersionNumber, byte Status, bool IsCurrentOfficial, DateTime CreatedUtc, string OriginalFileName, long ContentLengthBytes, string StoragePath, byte[] RowVersion);
+internal sealed record StandardDetailsVersionRow(long DocumentVersionId, long DocumentId, long DocumentVariantId, string VariantKey, int VersionNumber, byte Status, bool IsCurrentOfficial, DateTime CreatedUtc, string OriginalFileName, long ContentLengthBytes, string StoragePath, byte[] RowVersion);
 internal sealed record StandardDetailsStateChangeResult(int RowsAffected, byte? CurrentStatus, bool EntityMissing);
 internal sealed record StandardDetailsDeleteResult(bool EntityMissing, IReadOnlyList<string> DeletedStoragePaths);
 internal sealed record StandardDetailsLinkedDetailRow(string DetailNumber, long DocumentId, string DocumentTitle, byte? LatestStatus);
@@ -231,12 +231,13 @@ ORDER BY d.DetailNumber;";
     internal async Task<IReadOnlyList<StandardDetailsVersionRow>> LoadVersionsAsync(long documentId)
     {
         const string sql = @"
-SELECT v.DocumentVersionId, v.DocumentId, v.VersionNumber, v.Status, v.IsCurrentOfficial, v.CreatedUtc,
+SELECT v.DocumentVersionId, v.DocumentId, v.DocumentVariantId, dv.VariantKey, v.VersionNumber, v.Status, v.IsCurrentOfficial, v.CreatedUtc,
        b.OriginalFileName, b.ContentLengthBytes, b.StoragePath, v.RowVersion
 FROM dbo.DocumentVersions v
+INNER JOIN dbo.DocumentVariants dv ON dv.DocumentVariantId = v.DocumentVariantId
 INNER JOIN dbo.FileBlobs b ON b.FileBlobId = v.FileBlobId
 WHERE v.DocumentId = @docId
-ORDER BY v.VersionNumber DESC;";
+ORDER BY dv.VariantKey, v.VersionNumber DESC;";
 
         var rows = new List<StandardDetailsVersionRow>();
         await using var cn = new SqlConnection(_connectionString);
@@ -246,7 +247,7 @@ ORDER BY v.VersionNumber DESC;";
         AddParam(cmd, "@docId", SqlDbType.BigInt, documentId);
         await using var r = await cmd.ExecuteReaderAsync();
         while (await r.ReadAsync())
-            rows.Add(new StandardDetailsVersionRow(r.GetInt64(0), r.GetInt64(1), r.GetInt32(2), r.GetByte(3), r.GetBoolean(4), r.GetDateTime(5), r.GetStringOrEmpty(6), r.GetInt64OrDefault(7), r.GetStringOrEmpty(8), r.IsDBNull(9) ? Array.Empty<byte>() : (byte[])r[9]));
+            rows.Add(new StandardDetailsVersionRow(r.GetInt64(0), r.GetInt64(1), r.GetInt64(2), r.GetStringOrEmpty(3), r.GetInt32(4), r.GetByte(5), r.GetBoolean(6), r.GetDateTime(7), r.GetStringOrEmpty(8), r.GetInt64OrDefault(9), r.GetStringOrEmpty(10), r.IsDBNull(11) ? Array.Empty<byte>() : (byte[])r[11]));
         return rows;
     }
 

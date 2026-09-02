@@ -468,6 +468,7 @@
                                       ToolTip="Version history for the selected record"
                                       SelectionChanged="VersionsGrid_SelectionChanged">
                                 <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Variant" Binding="{Binding VariantKey}" Width="82"/>
                                     <DataGridTextColumn Header="Revision" Binding="{Binding VersionLabel}" Width="88"/>
                                     <DataGridTemplateColumn Header="Status" Width="120">
                                         <DataGridTemplateColumn.CellTemplate>
@@ -535,4 +536,3 @@
         </Grid>
     </Grid>
 </Window>
-

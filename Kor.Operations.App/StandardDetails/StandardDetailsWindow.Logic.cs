@@ -236,6 +236,8 @@ public partial class StandardDetailsWindow
         {
             DocumentVersionId = r.DocumentVersionId,
             DocumentId = r.DocumentId,
+            DocumentVariantId = r.DocumentVariantId,
+            VariantKey = r.VariantKey,
             VersionNumber = r.VersionNumber,
             VersionLabel = $"v{r.VersionNumber}",
             Status = r.Status,
@@ -260,7 +262,9 @@ public partial class StandardDetailsWindow
             return;
 
         doc.LatestStatusText = versions.FirstOrDefault()?.StatusText ?? "None";
-        doc.CurrentOfficialText = versions.FirstOrDefault(x => x.IsCurrentOfficial)?.VersionLabel ?? "None";
+        doc.CurrentOfficialText = versions.Select(x => x.DocumentVariantId).Distinct().Count() > 1
+            ? "(per variant)"
+            : versions.FirstOrDefault(x => x.IsCurrentOfficial)?.VersionLabel ?? "None";
         DocumentsGrid.Items.Refresh();
         UpdateHeroMetrics();
     }
@@ -645,6 +649,8 @@ public partial class StandardDetailsWindow
     {
         public long DocumentVersionId { get; init; }
         public long DocumentId { get; init; }
+        public long DocumentVariantId { get; init; }
+        public string VariantKey { get; init; } = string.Empty;
         public int VersionNumber { get; init; }
         public string VersionLabel { get; init; } = string.Empty;
         public byte Status { get; init; }

@@ -6,10 +6,12 @@ NOT NULL, replaces the two FILTERED variant unique indexes with full ones, and d
 the superseded document-scoped indexes. After this, versioning and current-official are
 enforced per VARIANT, not per document.
 
-⚠ DEPLOY ORDER: run this AFTER the Task G app code is deployed (CreateDocumentAsync makes a
-DEFAULT variant; UploadVersionAsync writes DocumentVariantId). The script REFUSES to run if any
-existing DocumentVersion still has a NULL DocumentVariantId, so a wrong order fails safely rather
-than corrupting. With zero documents it passes trivially.
+DEPLOY ORDER: run this AFTER the Task G app code is deployed (CreateDocumentAsync makes a
+DEFAULT variant; UploadVersionAsync writes DocumentVariantId). This script cannot detect whether
+that app code is deployed; its guard only refuses pre-existing DocumentVersion rows whose
+DocumentVariantId is still NULL. If 006 runs before the variant-aware upload code, the NOT NULL
+column will reject old upload-path inserts loudly instead of corrupting data. The operator is
+responsible for running 006 after deploying the Task G code.
 
 Idempotent; run as sa in SSMS.
 */
