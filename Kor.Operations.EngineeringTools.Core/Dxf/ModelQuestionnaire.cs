@@ -1264,7 +1264,18 @@ public static class ModelQuestionnaire
             "if something in the model looks wrong they are what to name.";
         sheet.Cell(2, 1).Style.Font.Italic = true;
 
-        string[] headers = { "Rule", "Value", "Units", "Change it at", "Confidence", "Set by", "Why it holds" };
+        // ⚠ NO "WHY IT HOLDS" COLUMN. The reasoning behind a value is ours to keep, not hers to read.
+        //
+        // It carried the calibration narrative from the job each value was measured on, so job
+        // 31138's workbook explained itself with "sending 31168 C-LEVEL 3 six storeys up to borrow
+        // from C-LEVEL 9" — another building's storeys, in her workbook, under a heading that says
+        // these are the rules HER model was built on. Multi-sentence provenance for sixty-odd rules
+        // is an explainer nobody asked for.
+        //
+        // What she needs from this sheet is what the run used and where to change it. The reasoning
+        // lives in analysis.Ruling with the evidence and the test that proves the code obeys it,
+        // which is the right home for it and is read by us.
+        string[] headers = { "Rule", "Value", "Units", "Change it at", "Confidence", "Set by" };
         for (int c = 0; c < headers.Length; c++)
         {
             var cell = sheet.Cell(4, c + 1);
@@ -1289,7 +1300,6 @@ public static class ModelQuestionnaire
                 : "ask, and it becomes a question";
             sheet.Cell(row, 5).Value = rule.Confidence;
             sheet.Cell(row, 6).Value = rule.Authority;
-            sheet.Cell(row, 7).Value = rule.Because;
             row++;
         }
 
@@ -1299,9 +1309,8 @@ public static class ModelQuestionnaire
         sheet.Column(4).Width = 26;
         sheet.Column(5).Width = 20;
         sheet.Column(6).Width = 22;
-        sheet.Column(7).Width = 84;
-        sheet.Range(5, 4, row - 1, 7).Style.Alignment.WrapText = true;
-        sheet.Range(5, 1, row - 1, 7).Style.Alignment.Vertical = XLAlignmentVerticalValues.Top;
+        sheet.Range(5, 4, row - 1, 6).Style.Alignment.WrapText = true;
+        sheet.Range(5, 1, row - 1, 6).Style.Alignment.Vertical = XLAlignmentVerticalValues.Top;
         sheet.SheetView.FreezeRows(4);
     }
 
