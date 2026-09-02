@@ -109,7 +109,7 @@ BEGIN TRY
         RAISERROR('Post-purge assertion failed: FileBlobs is not empty.', 16, 1);
     END;
 
-    SELECT 'Documents' AS TableName, COUNT_BIG(*) AS RowCount FROM dbo.Documents
+    SELECT 'Documents' AS TableName, COUNT_BIG(*) AS TotalRows FROM dbo.Documents
     UNION ALL
     SELECT 'DocumentVariants', COUNT_BIG(*) FROM dbo.DocumentVariants
     UNION ALL

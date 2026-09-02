@@ -166,7 +166,7 @@ BEGIN
     RETURN;
 END;
 
-SELECT 'Documents' AS TableName, COUNT_BIG(*) AS RowCount FROM dbo.Documents
+SELECT 'Documents' AS TableName, COUNT_BIG(*) AS TotalRows FROM dbo.Documents
 UNION ALL
 SELECT 'DocumentVersions', COUNT_BIG(*) FROM dbo.DocumentVersions
 UNION ALL
