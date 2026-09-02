@@ -1483,7 +1483,18 @@ public sealed class E2kDocument
             int bottom = rows.Keys.Max();
             string obj = rows[bottom];
 
-            for (int row = bottom + 1; row < lowest && row <= bottom + 1 && !Supported(row, obj); row++)
+            // ⚠ ONLY IF CARRYING IT DOWN ACTUALLY LANDS IT ON A FLOOR.
+            //
+            // Extending a member into a storey that has no plate under it either does not help: the
+            // wall is simply longer and still standing on nothing. Written as "extend while the
+            // base is unsupported" it did exactly that and added two more unsupported walls to
+            // 31168. The member's base sits one row below its lowest storey; carrying it down one
+            // moves the base to the row after that, so THAT is the row which has to carry a plate.
+            for (int row = bottom + 1;
+                 row < lowest && row <= bottom + 1
+                 && !Supported(row, obj)                    // it is hanging today
+                 && row + 1 < order.Count && Supported(row + 1, obj);   // and this reaches a floor
+                 row++)
             {
                 if (!string.Equals(BuildingTagOf(order[bottom]), BuildingTagOf(order[row]),
                         StringComparison.OrdinalIgnoreCase)
