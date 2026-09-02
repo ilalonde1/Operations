@@ -8,7 +8,7 @@ using Microsoft.Data.SqlClient;
 
 namespace Kor.Operations.StandardDetails;
 
-internal sealed record PaletteDetailRow(string DetailNumber, string Title, string Discipline, string Confidence, bool IsPlaceable, int VariantCount);
+internal sealed record PaletteDetailRow(string DetailNumber, string Title, string Discipline, string Confidence, bool IsPlaceable, bool VariantsDiverge, int VariantCount);
 
 internal sealed class KorStandardsReadRepository
 {
@@ -28,6 +28,7 @@ SELECT DetailNumber,
        MIN(Discipline) AS Discipline,
        MIN(Confidence) AS Confidence,
        MAX(CAST(IsPlaceable AS int)) AS IsPlaceable,
+       MAX(CAST(VariantsDiverge AS int)) AS VariantsDiverge,
        COUNT(*) AS VariantCount
 FROM detail.vw_PaletteCatalog
 WHERE (@q = '' OR DetailNumber LIKE @like OR Title LIKE @like)
@@ -52,7 +53,8 @@ ORDER BY DetailNumber;";
                 r.GetStringOrEmpty(2),
                 r.GetStringOrEmpty(3),
                 !r.IsDBNull(4) && r.GetInt32(4) == 1,
-                r.IsDBNull(5) ? 0 : r.GetInt32(5)));
+                !r.IsDBNull(5) && r.GetInt32(5) == 1,
+                r.IsDBNull(6) ? 0 : r.GetInt32(6)));
         }
 
         return rows;

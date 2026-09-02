@@ -53,6 +53,20 @@ public partial class LinkDetailWindow : Window
             return;
         }
 
+        if (row.VariantsDiverge)
+        {
+            var result = MessageBox.Show(
+                this,
+                "This detail has divergent size variants. Approving it will set it human-confirmed but it will NOT become placeable until the divergence is resolved. Link anyway?",
+                "Standard Details - Divergent Detail",
+                MessageBoxButton.OKCancel,
+                MessageBoxImage.Information);
+            if (result != MessageBoxResult.OK)
+            {
+                return;
+            }
+        }
+
         SelectedDetailNumber = row.DetailNumber;
         ClearRequested = false;
         DialogResult = true;

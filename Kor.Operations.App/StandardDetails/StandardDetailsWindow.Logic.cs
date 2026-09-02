@@ -484,8 +484,27 @@ public partial class StandardDetailsWindow
     {
         if (VersionsGrid.SelectedItem is not VersionRow v) { SetActivityMessage("Select a revision first.", BannerTone.Info); MessageBox.Show(this, "Select a version first.", "Standard Details — Approval", MessageBoxButton.OK, MessageBoxImage.Information); return; }
         if (_repo == null) return;
-        var result = await _repo.DecideAsync(v.DocumentVersionId, v.DocumentId, v.RowVersion, _actorUserId, Environment.UserName, targetStatus, decision);
-        if (result.RowsAffected == 0) { await HandleStateChangeFailureAsync(v.DocumentId, result, StatusSubmitted, "Approval", "Approve/Reject requires Submitted status.", "Approve/Reject is only available when status is Submitted."); return; }
+        StandardDetailsStateChangeResult result;
+        try
+        {
+            result = await _repo.DecideAsync(v.DocumentVersionId, v.DocumentId, v.RowVersion, _actorUserId, Environment.UserName, targetStatus, decision);
+            if (result.RowsAffected == 0) { await HandleStateChangeFailureAsync(v.DocumentId, result, StatusSubmitted, "Approval", "Approve/Reject requires Submitted status.", "Approve/Reject is only available when status is Submitted."); return; }
+        }
+        catch (SqlException ex)
+        {
+            SetActivityMessage("Approval failed. No changes were committed.", BannerTone.Error);
+            Log.Warning(ex, "Standard Details: approval decision failed for document version {DocumentVersionId}.", v.DocumentVersionId);
+            MessageBox.Show(this, "Approval failed. No changes were committed.", "Standard Details - Approval", MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+        catch (Exception ex)
+        {
+            SetActivityMessage("Approval failed. No changes were committed.", BannerTone.Error);
+            Log.Warning(ex, "Standard Details: approval decision failed for document version {DocumentVersionId}.", v.DocumentVersionId);
+            MessageBox.Show(this, "Approval failed. No changes were committed.", "Standard Details - Approval", MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+
         await LoadVersionsUiAsync(v.DocumentId);
         if (decision != 1)
         {

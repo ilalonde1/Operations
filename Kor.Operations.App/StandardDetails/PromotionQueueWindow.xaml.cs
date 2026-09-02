@@ -37,6 +37,29 @@ public partial class PromotionQueueWindow : Window
         }
     }
 
+    private async void RetryFailed_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var resetCount = await _repo.ResetFailedOutboxToPendingAsync();
+            if (resetCount == 0)
+            {
+                QueueMessageText.Text = "No failed promotion requests to retry.";
+                await RefreshQueueAsync();
+                return;
+            }
+
+            var processMessage = await _processPending();
+            QueueMessageText.Text = $"Retried {resetCount} failed promotion request(s). {processMessage}";
+            await RefreshQueueAsync();
+        }
+        catch (Exception ex)
+        {
+            QueueMessageText.Text = "Promotion retry failed.";
+            MessageBox.Show(this, ex.Message, "Standard Details - Promotion Queue", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
     private async void Refresh_Click(object sender, RoutedEventArgs e)
     {
         await RefreshQueueAsync();

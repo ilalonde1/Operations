@@ -426,6 +426,9 @@ SELECT DISTINCT v.FileBlobId
 FROM dbo.DocumentVersions v
 WHERE v.DocumentId = @docId;
 
+DELETE FROM dbo.StandardDetailPromotionOutbox
+WHERE DocumentId = @docId;
+
 DELETE ar
 FROM dbo.ApprovalRecords ar
 INNER JOIN dbo.DocumentVersions v ON v.DocumentVersionId = ar.DocumentVersionId
@@ -437,6 +440,9 @@ INNER JOIN dbo.DocumentVersions v ON v.DocumentVersionId = pr.DocumentVersionId
 WHERE v.DocumentId = @docId;
 
 DELETE FROM dbo.DocumentVersions
+WHERE DocumentId = @docId;
+
+DELETE FROM dbo.DocumentVariants
 WHERE DocumentId = @docId;
 
 DELETE FROM dbo.Documents
@@ -643,7 +649,8 @@ SET Status = 1,
     ProcessedUtc = SYSUTCDATETIME(),
     ResultMessage = @message,
     ErrorMessage = NULL
-WHERE PromotionOutboxId = @id;";
+WHERE PromotionOutboxId = @id
+  AND Status = 0;";
 
         await UpdateOutboxStatusAsync(sql, id, resultMessage, 1000);
     }
@@ -657,9 +664,25 @@ SET Status = 2,
     ProcessedUtc = SYSUTCDATETIME(),
     ResultMessage = NULL,
     ErrorMessage = @message
-WHERE PromotionOutboxId = @id;";
+WHERE PromotionOutboxId = @id
+  AND Status = 0;";
 
         await UpdateOutboxStatusAsync(sql, id, errorMessage, 2000);
+    }
+
+    internal async Task<int> ResetFailedOutboxToPendingAsync()
+    {
+        const string sql = @"
+UPDATE dbo.StandardDetailPromotionOutbox
+SET Status = 0,
+    ErrorMessage = NULL
+WHERE Status = 2;";
+
+        await using var cn = new SqlConnection(_connectionString);
+        await cn.OpenAsync();
+        await using var cmd = new SqlCommand(sql, cn);
+        cmd.CommandTimeout = SqlTimeouts.UiFacing;
+        return await cmd.ExecuteNonQueryAsync();
     }
 
     private async Task<IReadOnlyList<StandardDetailsOutboxRow>> LoadOutboxRowsAsync(string sql)

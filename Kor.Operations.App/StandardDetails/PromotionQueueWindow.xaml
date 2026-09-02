@@ -66,6 +66,7 @@
             <Border Grid.Row="2" BorderBrush="#FFE6E8EB" BorderThickness="0,1,0,0" Padding="14,10">
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                     <Button Width="130" Height="34" Margin="0,0,8,0" Content="Process Pending" ToolTip="Process pending KorStandards promotion requests" Click="ProcessPending_Click"/>
+                    <Button Width="105" Height="34" Margin="0,0,8,0" Content="Retry Failed" Style="{StaticResource Button.Secondary}" ToolTip="Reset failed promotion requests to pending and process them" Click="RetryFailed_Click"/>
                     <Button Width="95" Height="34" Margin="0,0,8,0" Content="Refresh" Style="{StaticResource Button.Secondary}" ToolTip="Reload promotion queue rows" Click="Refresh_Click"/>
                     <Button Width="95" Height="34" Content="Close" Style="{StaticResource Button.Secondary}" ToolTip="Close the promotion queue" Click="Close_Click"/>
                 </StackPanel>
