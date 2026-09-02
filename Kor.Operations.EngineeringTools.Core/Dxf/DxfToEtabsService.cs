@@ -1915,6 +1915,21 @@ public static class DxfToEtabsService
         // nothing but this building's floors. The site list interleaves three, so a span of one
         // there would reach the neighbouring tower's slab an inch and a half away — a wafer — and
         // the composed span is what reaches the real floor below.
+        // AND A DOUBLE-HEIGHT MEMBER STANDS ON BOTH FLOORS IT PASSES.
+        //
+        // Her words, 1 Sep: "some columns are double height. In that case they should be modelled on
+        // both floors ... otherwise they're just hanging from L2" — and the same for walls. One
+        // empty storey between two the member occupies is that case; anything wider is a member the
+        // reader missed, and is left alone rather than invented. See the method.
+        int doubled = doc.ModelDoubleHeightMembersOnBothFloors();
+        if (doubled > 0)
+            warnings.Add(
+                $"{doubled} double-height member(s) were modelled on both floors they pass, not only " +
+                "the floor above. A member standing on two storeys with one empty storey between them " +
+                "hangs from the upper one until the middle storey carries it too. Gaps wider than one " +
+                "storey were NOT filled — those are members the drawings did not give us, and are " +
+                "listed separately rather than invented.");
+
         int respanned = request.TowerOnly is null ? 0 : doc.SpanGeneratedMembersToTheirNextFloorBelow();
         if (respanned > 0)
             warnings.Add(

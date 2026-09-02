@@ -67,12 +67,12 @@ had already rebuilt that building's walls by hand.</p>
 <table>
   <tr><th>What was generated</th><th>31168 YMCA Langara</th><th>31138 2170 W 1st</th></tr>
   <tr><td>Storeys populated</td><td><strong>14</strong></td><td>29</td></tr>
-  <tr><td>Wall panels, true thicknesses</td><td><strong>259</strong></td><td>222</td></tr>
-  <tr><td>Columns, sized &amp; oriented</td><td><strong>623</strong></td><td>304</td></tr>
+  <tr><td>Wall panels, true thicknesses</td><td><strong>263</strong></td><td>224</td></tr>
+  <tr><td>Columns, sized &amp; oriented</td><td><strong>628</strong></td><td>307</td></tr>
   <tr><td>Floor plates</td><td><strong>15</strong></td><td>15</td></tr>
   <tr><td>Headers over openings (spandrel shells)</td><td><strong>10</strong></td><td>25</td></tr>
   <tr><td>Shaft and stair openings cut</td><td><strong>40</strong></td><td>0</td></tr>
-  <tr><td>Pier labels</td><td><strong>259</strong></td><td>222</td></tr>
+  <tr><td>Pier labels</td><td><strong>263</strong></td><td>224</td></tr>
   <tr><td>Members you already had, not duplicated</td><td>—</td><td>353 walls, 391 columns</td></tr>
 </table>
 
@@ -140,7 +140,7 @@ on level 5, all 22 on level 6, all 15 on the mechanical level, all 15 on the roo
 reads the block section and places each insert with its own scale and rotation, and the size limits
 carry the same half-inch of slack the wall rules do — the HSS 6&times;6 sections close at exactly
 6.000000&times;6.000000 and were still falling a hair under a bare 6" minimum. All 100 are now
-modelled. On 31138 that is 304 columns where 244 stood, and 222 wall panels where 202 did. <em>31168 contains no
+modelled. On 31138 that is 307 columns where 244 stood, and 224 wall panels where 202 did. <em>31168 contains no
 blocks at all, so none of its numbers move.</em></p>
 <table>
   <tr><th>You said</th><th>What it does now</th></tr>
@@ -236,15 +236,15 @@ In ETABS: <strong>File → Import → ETABS .e2k Text File</strong>.</p>
   <tr><th>File</th><th>What it is</th></tr>
   <tr><td><code>31168-FROM-DRAWINGS.e2k</code></td>
       <td><strong>The one that matters.</strong> The YMCA, its podium and the parkade — 14 storeys,
-          259 walls, 623 columns, 15 plates, every storey floored. The parkade is building C&rsquo;s
+          263 walls, 628 columns, 15 plates, every storey floored. The parkade is building C&rsquo;s
           share of it, from the sheets titled for building C, not the whole site&rsquo;s. One model per building, as you
           asked: nothing belonging to either tower is in this file. The ground floor, drafted twice
           as A-LEVEL 1 and B-LEVEL 1 1.7&quot; apart, is one storey called LEVEL 1 — &ldquo;it&rsquo;s all
           one big slab at L1, one elevation&rdquo;. Nothing of this existed before.</td></tr>
   <tr><td><code>31138-FROM-DRAWINGS.e2k</code></td>
       <td>A gap-fill. You have already rebuilt this building's walls — between 17 and 42 panels on every
-          storey — so this adds only what the drawings show and your model does not: 222 walls and
-          304 columns, mostly at podium and parkade. 353 walls and 391 columns of yours were
+          storey — so this adds only what the drawings show and your model does not: 224 walls and
+          307 columns, mostly at podium and parkade. 353 walls and 391 columns of yours were
           recognised at those locations and deliberately not modelled again — more than before,
           because a member now sits on the storey it runs to and so lands where yours already is.</td></tr>
   <tr><td><code>…-QUESTIONS.xlsx</code></td>

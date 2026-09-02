@@ -1294,6 +1294,123 @@ public sealed class E2kDocument
     /// One object can stand on several: a column drawn once on a sheet that covers a range of
     /// levels gets an assign per storey in the range.
     /// </summary>
+    /// <summary>
+    /// A double-height member is modelled on BOTH floors it passes, not just the top one.
+    /// </summary>
+    /// <remarks>
+    /// Andrea, 1 Sep 2026: "some columns are double height. In that case they should be modelled on
+    /// both floors. For example here; L2 and Mezz level ... otherwise they're just hanging from L2",
+    /// and separately "BTW this rule that I explained in 1. for columns, it's the same for walls
+    /// too". So this fills columns and walls alike.
+    ///
+    /// A stack is the members standing at one plan position. Where that stack occupies two storeys
+    /// with EXACTLY ONE empty storey between them, the member is double height and the empty storey
+    /// gets an assign copied from the one above it.
+    ///
+    /// ⚠ ONE STOREY, NEVER MORE. A wider hole is not a double-height member, it is a member the
+    /// reader failed to find on the sheets between — 31138 has a wall absent on nine consecutive
+    /// storeys. Filling those would invent nine floors of structure from an assumption, which is
+    /// the one thing this tool must never do. Wider gaps are left alone and reported.
+    ///
+    /// ⚠ NEVER ACROSS A BUILDING BOUNDARY. On the site list one plan point carries the YMCA's
+    /// column and a tower's, and "the storey between" belongs to neither. All three storeys must
+    /// carry the same building tag — or none, for the shared podium and parkade.
+    ///
+    /// Generated members only. A hole in one of HER stacks is her model's business: 31138's W20
+    /// stands on L21 and then L09 down to L03, and that is how she drew it.
+    /// </remarks>
+    /// <returns>The number of assigns added.</returns>
+    public int ModelDoubleHeightMembersOnBothFloors()
+    {
+        var order = ReadStories().Select(s => s.Name).ToList();
+        var rank = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        for (int i = 0; i < order.Count; i++) rank[order[i]] = i;   // 0 is the highest
+
+        var planOf = PlanPointsOfObjects();
+        var storeysOf = StoreysByObject();
+
+        // Every assign line, so a filled storey can copy a real one rather than invent a format.
+        var lineOf = new Dictionary<(string Obj, string Storey), string>();
+        foreach (string header in new[] { "AREA ASSIGNS", "LINE ASSIGNS" })
+        {
+            var section = Find(header);
+            if (section is null) continue;
+
+            foreach (string line in section.Lines)
+            {
+                var m = Regex.Match(line.TrimStart(), @"^\w+ASSIGN\s+""([^""]+)""\s+""([^""]+)""");
+                if (m.Success) lineOf[(m.Groups[1].Value, m.Groups[2].Value)] = line;
+            }
+        }
+
+        string Where(string obj) => planOf.TryGetValue(obj, out var pts) && pts.Count > 0
+            ? string.Join("|", pts.Select(p => $"{p.X:0.#},{p.Y:0.#}").OrderBy(x => x, StringComparer.Ordinal))
+            : string.Empty;
+
+        // position -> the rows it stands on, and which object stands on each
+        var stacks = new Dictionary<string, Dictionary<int, string>>(StringComparer.Ordinal);
+        foreach (var (obj, storeys) in storeysOf)
+        {
+            // ⚠ WALLS AND COLUMNS ONLY — KW and KC.
+            //
+            // "K" alone also catches KF floor plates, KS headers and KO openings, and filling a
+            // stack of those puts a SLAB on the storey between two floors. Caught by
+            // FloorPlatesAreTheSizeTheEngineerMadeThem within a minute of it existing: her rule is
+            // about members that RISE through a storey, and a plate does not rise.
+            if (!obj.StartsWith("KW", StringComparison.Ordinal)
+                && !obj.StartsWith("KC", StringComparison.Ordinal)) continue;
+
+            string at = Where(obj);
+            if (at.Length == 0) continue;
+
+            if (!stacks.TryGetValue(at, out var rows)) stacks[at] = rows = new Dictionary<int, string>();
+            foreach (string storey in storeys)
+                if (rank.TryGetValue(storey, out int r)) rows[r] = obj;
+        }
+
+        var added = new List<(string Header, string Line)>();
+        foreach (var rows in stacks.Values)
+        {
+            var held = rows.Keys.OrderBy(x => x).ToList();
+            for (int i = 0; i + 1 < held.Count; i++)
+            {
+                if (held[i + 1] - held[i] != 2) continue;      // exactly one empty row between
+
+                int hole = held[i] + 1;
+                string above = order[held[i]];
+                string gap = order[hole];
+                string below = order[held[i + 1]];
+
+                if (!string.Equals(BuildingTagOf(above), BuildingTagOf(gap), StringComparison.OrdinalIgnoreCase)
+                    || !string.Equals(BuildingTagOf(gap), BuildingTagOf(below), StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                string obj = rows[held[i]];
+                if (!lineOf.TryGetValue((obj, above), out string? template)) continue;
+
+                string filled = Regex.Replace(
+                    template,
+                    @"^(\s*\w+ASSIGN\s+""[^""]+""\s+"")([^""]+)("")",
+                    m => m.Groups[1].Value + gap + m.Groups[3].Value);
+
+                added.Add((template.TrimStart().StartsWith("AREA", StringComparison.OrdinalIgnoreCase)
+                    ? "AREA ASSIGNS" : "LINE ASSIGNS", filled));
+            }
+        }
+
+        foreach (var group in added.GroupBy(x => x.Header))
+        {
+            var section = Find(group.Key);
+            if (section is null) continue;
+
+            int at = section.Lines.FindLastIndex(l => l.TrimStart().Contains("ASSIGN", StringComparison.OrdinalIgnoreCase));
+            if (at < 0) at = section.Lines.Count - 1;
+            section.Lines.InsertRange(at + 1, group.Select(x => x.Line));
+        }
+
+        return added.Count;
+    }
+
     public IReadOnlyDictionary<string, IReadOnlyList<string>> StoreysByObject()
     {
         var found = new Dictionary<string, List<string>>(StringComparer.Ordinal);

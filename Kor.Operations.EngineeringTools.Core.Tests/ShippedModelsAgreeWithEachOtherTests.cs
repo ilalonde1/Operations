@@ -161,6 +161,25 @@ public class ShippedModelsAgreeWithEachOtherTests
             var a = site[storey];
             var b = ymca[storey];
 
+            // ⚠ THESE TWO TESTS FAIL ON THE PUBLISHED PAIR, AND THE MODELS ARE NOT THE FAULT.
+            //
+            // C-LEVEL 3 sits 5.5 in above LEVEL 3 — under dxf.storeys-at-one-level-gap of 12 in, so
+            // they are one physical level drawn twice, once for building C and once for the towers.
+            // The site file holds both. The cut drops LEVEL 3, keeps the members standing inside
+            // building C's footprint by re-homing them onto C-LEVEL 3, and cuts the towers' away —
+            // which is why "LEVEL 3" appears zero times in that file.
+            //
+            // So a name-to-name comparison of C-LEVEL 3 measures C's share in one file against C's
+            // share PLUS what was re-homed in the other, and reports three storeys of a correct pair
+            // as wrong. Folding the whole twin in was tried and is worse: LEVEL 3 carries the
+            // TOWERS' 40-odd walls, and adding those made the site side 60 against 24.
+            //
+            // The comparison needs to know which members were re-homed, which is the cut's business
+            // and is not recoverable from the finished files. Until it does, these two are expected
+            // red and must not be read as a model fault. Every other check in this class passes,
+            // including TheModelsThisCodeBuildsNowAgreeBeforeAnyOfItShips, which builds both models
+            // and compares them before anything ships.
+
             // WHICH INVARIANT APPLIES DEPENDS ON WHOSE STOREY IT IS.
             //
             // This asked for equality on every shared storey, which was right while the
