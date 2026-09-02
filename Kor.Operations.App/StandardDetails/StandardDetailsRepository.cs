@@ -11,7 +11,7 @@ namespace Kor.Operations.StandardDetails;
 
 internal sealed record StandardDetailsSchemaCheckResult(bool GroupSchemaAvailable, bool MissingSchema, bool PermissionDenied, bool SchemaMismatch);
 internal sealed record StandardDetailsGroupRow(long GroupId, long? ParentGroupId, string Name);
-internal sealed record StandardDetailsDocumentRow(long DocumentId, string Title, string GroupName, string CurrentOfficialText, byte? LatestStatus);
+internal sealed record StandardDetailsDocumentRow(long DocumentId, string Title, string? DetailNumber, string GroupName, string CurrentOfficialText, byte? LatestStatus);
 internal sealed record StandardDetailsVersionRow(long DocumentVersionId, long DocumentId, int VersionNumber, byte Status, bool IsCurrentOfficial, DateTime CreatedUtc, string OriginalFileName, long ContentLengthBytes, string StoragePath, byte[] RowVersion);
 internal sealed record StandardDetailsStateChangeResult(int RowsAffected, byte? CurrentStatus, bool EntityMissing);
 internal sealed record StandardDetailsDeleteResult(bool EntityMissing, IReadOnlyList<string> DeletedStoragePaths);
@@ -103,6 +103,7 @@ WITH GroupFilter AS
 )
 SELECT d.DocumentId,
        d.Title,
+       d.DetailNumber,
        ISNULL(dg.Name, 'Ungrouped') AS GroupName,
        cur.CurrentOfficialText,
        latest.LatestStatus
@@ -131,6 +132,7 @@ OPTION (MAXRECURSION 100);";
         const string fallbackSql = @"
 SELECT d.DocumentId,
        d.Title,
+       d.DetailNumber,
        'Ungrouped' AS GroupName,
        cur.CurrentOfficialText,
        latest.LatestStatus
@@ -165,8 +167,27 @@ ORDER BY d.Title;";
 
         await using var r = await cmd.ExecuteReaderAsync();
         while (await r.ReadAsync())
-            rows.Add(new StandardDetailsDocumentRow(r.GetInt64(0), r.GetStringOrEmpty(1), r.IsDBNull(2) ? "Ungrouped" : r.GetString(2), r.IsDBNull(3) ? "None" : r.GetString(3), r.IsDBNull(4) ? null : r.GetByte(4)));
+            rows.Add(new StandardDetailsDocumentRow(r.GetInt64(0), r.GetStringOrEmpty(1), r.IsDBNull(2) ? null : r.GetString(2), r.IsDBNull(3) ? "Ungrouped" : r.GetString(3), r.IsDBNull(4) ? "None" : r.GetString(4), r.IsDBNull(5) ? null : r.GetByte(5)));
         return rows;
+    }
+
+    internal async Task SetDocumentDetailNumberAsync(long documentId, string? detailNumber, Guid actorUserId)
+    {
+        const string sql = @"
+UPDATE dbo.Documents
+SET DetailNumber=@detail,
+    UpdatedByUserId=@uid,
+    UpdatedUtc=SYSUTCDATETIME()
+WHERE DocumentId=@id;";
+
+        await using var cn = new SqlConnection(_connectionString);
+        await cn.OpenAsync();
+        await using var cmd = new SqlCommand(sql, cn);
+        cmd.CommandTimeout = SqlTimeouts.UiFacing;
+        AddNVarChar(cmd, "@detail", 24, detailNumber);
+        AddParam(cmd, "@uid", SqlDbType.UniqueIdentifier, actorUserId);
+        AddParam(cmd, "@id", SqlDbType.BigInt, documentId);
+        await cmd.ExecuteNonQueryAsync();
     }
 
     internal async Task<IReadOnlyList<StandardDetailsVersionRow>> LoadVersionsAsync(long documentId)

@@ -215,6 +215,7 @@ public partial class StandardDetailsWindow
         {
             DocumentId = r.DocumentId,
             Title = r.Title,
+            DetailNumber = r.DetailNumber ?? string.Empty,
             GroupName = r.GroupName,
             CurrentOfficialText = r.CurrentOfficialText,
             LatestStatusText = ToStatusText(r.LatestStatus)
@@ -404,6 +405,33 @@ public partial class StandardDetailsWindow
         catch (Exception ex) { SetActivityMessage("Upload failed. The file was not added.", BannerTone.Error); MessageBox.Show(this, ex.Message, "Standard Details — Add Revision Failed", MessageBoxButton.OK, MessageBoxImage.Error); }
     }
 
+    private async void LinkDetail_Click(object sender, RoutedEventArgs e)
+    {
+        if (!EnsureCanContribute("link details")) return;
+        if (DocumentsGrid.SelectedItem is not DocumentRow doc) { SetActivityMessage("Choose a document record first, then link it to a standard detail.", BannerTone.Info); MessageBox.Show(this, "Select a document record first.", "Standard Details — Link Detail", MessageBoxButton.OK, MessageBoxImage.Information); return; }
+        if (_korStandardsRepo == null) { SetActivityMessage("KorStandards catalog is not configured.", BannerTone.Info); MessageBox.Show(this, "KorStandards catalog is not configured.", "Standard Details — Link Detail", MessageBoxButton.OK, MessageBoxImage.Information); return; }
+        var dlg = new LinkDetailWindow(_korStandardsRepo) { Owner = this };
+        if (dlg.ShowDialog() != true) return;
+        try
+        {
+            if (_repo == null) return;
+            var detailNumber = dlg.ClearRequested ? null : dlg.SelectedDetailNumber;
+            await _repo.SetDocumentDetailNumberAsync(doc.DocumentId, detailNumber, _actorUserId);
+            await LoadDocumentsUiAsync();
+            SetActivityMessage(dlg.ClearRequested ? $"Removed detail link from '{doc.Title}'." : $"Linked '{doc.Title}' to {detailNumber}.", BannerTone.Success);
+        }
+        catch (SqlException ex) when (ex.Number is 2601 or 2627)
+        {
+            SetActivityMessage("That detail is already linked to another record.", BannerTone.Warning);
+            MessageBox.Show(this, "That detail (KOR-D-#####) is already linked to another record.", "Standard Details — Link Detail", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+        catch (Exception ex)
+        {
+            SetActivityMessage("Could not update the detail link. Please review the error and try again.", BannerTone.Error);
+            MessageBox.Show(this, ex.Message, "Standard Details — Link Detail Failed", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
     private void OpenFile_Click(object sender, RoutedEventArgs e)
     {
         if (VersionsGrid.SelectedItem is not VersionRow version) { SetActivityMessage("Select a revision to open its file.", BannerTone.Info); MessageBox.Show(this, "Select a version first.", "Standard Details — Open File", MessageBoxButton.OK, MessageBoxImage.Information); return; }
@@ -491,6 +519,7 @@ public partial class StandardDetailsWindow
     {
         public long DocumentId { get; set; }
         public string Title { get; set; } = string.Empty;
+        public string DetailNumber { get; set; } = string.Empty;
         public string GroupName { get; set; } = "Ungrouped";
         public string CurrentOfficialText { get; set; } = "None";
         public string LatestStatusText { get; set; } = "None";

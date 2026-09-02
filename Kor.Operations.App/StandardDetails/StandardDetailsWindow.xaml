@@ -205,6 +205,7 @@
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
                 <TextBox x:Name="SearchBox"
@@ -233,7 +234,14 @@
                         Style="{StaticResource PrimaryActionButton}"
                         ToolTip="Upload a new file revision for the selected document record"
                         Click="UploadVersion_Click"/>
-                <Button Grid.Column="4"
+                <Button x:Name="LinkDetailButton"
+                        Grid.Column="4"
+                        Content="Link Detail"
+                        Width="110"
+                        Style="{StaticResource ActionButton}"
+                        ToolTip="Link the selected document record to a KOR-D standard detail"
+                        Click="LinkDetail_Click"/>
+                <Button Grid.Column="5"
                         Content="Refresh"
                         Width="92"
                         Height="34"
@@ -388,6 +396,7 @@
                                   SelectionChanged="DocumentsGrid_SelectionChanged">
                             <DataGrid.Columns>
                                 <DataGridTextColumn Header="Record Title" Binding="{Binding Title}" Width="*"/>
+                                <DataGridTextColumn Header="Detail #" Binding="{Binding DetailNumber}" Width="95"/>
                                 <DataGridTextColumn Header="Group" Binding="{Binding GroupName}" Width="130"/>
                                 <DataGridTextColumn Header="Official Rev" Binding="{Binding CurrentOfficialText}" Width="95"/>
                                 <DataGridTextColumn Header="Latest Status" Binding="{Binding LatestStatusText}" Width="120"/>

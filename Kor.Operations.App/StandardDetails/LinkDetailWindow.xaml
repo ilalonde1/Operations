@@ -1,0 +1,114 @@
+<Window x:Class="Kor.Operations.StandardDetails.LinkDetailWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Link Standard Detail"
+        Width="720" MinHeight="520"
+        SizeToContent="Height"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        Background="{StaticResource App.Background}"
+        Loaded="Window_Loaded">
+    <Window.Resources>
+        <LinearGradientBrush x:Key="DialogHero" StartPoint="0,0" EndPoint="1,1">
+            <GradientStop Color="#FFF7F2EF" Offset="0"/>
+            <GradientStop Color="#FFEEE5DE" Offset="1"/>
+        </LinearGradientBrush>
+    </Window.Resources>
+
+    <Border Margin="10" Style="{StaticResource Card}" Padding="0">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <Border Grid.Row="0" Background="{StaticResource DialogHero}" CornerRadius="10,10,0,0" Padding="14,12">
+                <StackPanel>
+                    <TextBlock Text="Link Standard Detail" FontSize="17" FontWeight="SemiBold"/>
+                    <TextBlock Text="Choose the KOR-D detail this record is the issued document for."
+                               Margin="0,4,0,0"
+                               FontSize="12"
+                               Foreground="{StaticResource Text.Secondary}"/>
+                </StackPanel>
+            </Border>
+
+            <Grid Grid.Row="1" Margin="14,12,14,6">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <Grid Grid.Row="0" Margin="0,0,0,10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <TextBox x:Name="SearchBox"
+                             Height="34"
+                             VerticalContentAlignment="Center"
+                             ToolTip="Search by detail number or title. Example: KOR-D-00001, footing, anchor"/>
+                    <Button Grid.Column="1"
+                            Width="92"
+                            Height="34"
+                            Margin="8,0,0,0"
+                            Content="Search"
+                            Style="{StaticResource Button.Secondary}"
+                            ToolTip="Search the KorStandards detail catalog"
+                            Click="Search_Click"/>
+                </Grid>
+
+                <DataGrid x:Name="PaletteGrid"
+                          Grid.Row="1"
+                          Height="340"
+                          AutoGenerateColumns="False"
+                          IsReadOnly="True"
+                          SelectionMode="Single"
+                          HeadersVisibility="Column"
+                          GridLinesVisibility="Horizontal">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Detail #" Binding="{Binding DetailNumber}" Width="110"/>
+                        <DataGridTextColumn Header="Title" Binding="{Binding Title}" Width="*"/>
+                        <DataGridTextColumn Header="Discipline" Binding="{Binding Discipline}" Width="120"/>
+                        <DataGridTextColumn Header="Confidence" Binding="{Binding Confidence}" Width="125"/>
+                        <DataGridTemplateColumn Header="Placeable" Width="85">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock>
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Text" Value="No"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsPlaceable}" Value="True">
+                                                        <Setter Property="Text" Value="Yes"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </Grid>
+
+            <Border Grid.Row="2" BorderBrush="#FFE6E8EB" BorderThickness="0,1,0,0" Padding="14,10">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <Button Width="110" Height="34" Content="Remove Link" Style="{StaticResource Button.Secondary}" ToolTip="Clear the current detail link from this record" Click="RemoveLink_Click"/>
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Width="100" Height="34" Margin="0,0,8,0" Content="Cancel" Style="{StaticResource Button.Secondary}" ToolTip="Close without changing the detail link" Click="Cancel_Click"/>
+                        <Button Width="130" Height="34" Content="Link Selected" ToolTip="Link this record to the selected KOR-D detail" Click="LinkSelected_Click"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Grid>
+    </Border>
+</Window>

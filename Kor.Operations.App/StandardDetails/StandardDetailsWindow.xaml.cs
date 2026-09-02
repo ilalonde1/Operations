@@ -28,6 +28,7 @@ public partial class StandardDetailsWindow : Window
     private bool _groupSchemaAvailable = true;
     private bool _filterRecordsBySelectedGroup;
     private StandardDetailsRepository? _repo;
+    private KorStandardsReadRepository? _korStandardsRepo;
     private StandardDetailsAccessPolicy? _policy;
     private StandardDetailsFileStore? _fileStore;
     private enum BannerTone { Info, Success, Warning, Error }
@@ -43,9 +44,12 @@ public partial class StandardDetailsWindow : Window
         try { await HeaderLoader.ApplyAsync(HeaderBar); }
         catch (Exception ex) { Log.Warning(ex, "Standard Details: header loader failed."); }
 
-        var connectionString = Kor.Operations.Services.AppServices.Get<DatabaseOptions>().KorTransmittalsDb;
+        var databaseOptions = Kor.Operations.Services.AppServices.Get<DatabaseOptions>();
+        var connectionString = databaseOptions.KorTransmittalsDb;
         if (!string.IsNullOrWhiteSpace(connectionString))
             _repo = new StandardDetailsRepository(connectionString);
+        if (!string.IsNullOrWhiteSpace(databaseOptions.KorStandardsDb))
+            _korStandardsRepo = new KorStandardsReadRepository(databaseOptions.KorStandardsDb);
         var storageRoot = StandardDetailsFileStore.NormalizeStorageRoot(Kor.Operations.Services.AppServices.Get<StorageOptions>().StandardDetailsFileStorageRootPath);
         _fileStore = new StandardDetailsFileStore(storageRoot);
         _policy = new StandardDetailsAccessPolicy(StandardDetailsAccessPolicy.ResolveCurrentUserIdentity(Kor.Operations.Services.AppServices.Get<UserOptions>(), HeaderBar?.UserEmail));
@@ -126,7 +130,7 @@ public partial class StandardDetailsWindow : Window
         var canAssignToSelectedGroup = selectedGroup is not null && (selectedGroup.GroupId is not null || string.Equals(selectedGroup.Name, "All Records", StringComparison.OrdinalIgnoreCase));
 
         AddGroupButton.IsEnabled = canManageGroups; AddSubgroupButton.IsEnabled = canManageGroups && selectedGroup?.GroupId is not null; RenameGroupButton.IsEnabled = canManageGroups && selectedGroup?.GroupId is not null; RemoveGroupButton.IsEnabled = canManageGroups && selectedGroup?.GroupId is not null;
-        CreateRecordButton.IsEnabled = canContribute; UploadVersionButton.IsEnabled = canContribute && selectedDoc is not null; AssignRecordButton.IsEnabled = canContribute && selectedDoc is not null && _groupSchemaAvailable && canAssignToSelectedGroup; DeleteRecordButton.IsEnabled = canContribute && selectedDoc is not null;
+        CreateRecordButton.IsEnabled = canContribute; UploadVersionButton.IsEnabled = canContribute && selectedDoc is not null; LinkDetailButton.IsEnabled = canContribute && selectedDoc is not null && _korStandardsRepo is not null; AssignRecordButton.IsEnabled = canContribute && selectedDoc is not null && _groupSchemaAvailable && canAssignToSelectedGroup; DeleteRecordButton.IsEnabled = canContribute && selectedDoc is not null;
         OpenFileButton.IsEnabled = selectedVersion is not null; SubmitButton.IsEnabled = canContribute && selectedVersion is not null && selectedVersion.Status == StatusDraft; ApproveButton.IsEnabled = (_policy?.CanApproveOrReject() == true) && selectedVersion is not null && selectedVersion.Status == StatusSubmitted; RejectButton.IsEnabled = (_policy?.CanApproveOrReject() == true) && selectedVersion is not null && selectedVersion.Status == StatusSubmitted; PublishButton.IsEnabled = (_policy?.CanPublish() == true) && selectedVersion is not null && selectedVersion.Status == StatusApproved;
         UpdateGroupStepChips(selectedDoc is not null, canAssignToSelectedGroup, AssignRecordButton.IsEnabled);
         UpdateWorkflowHint(selectedDoc, selectedVersion);
