@@ -35,7 +35,7 @@ public class OneBuildingIsOneBuildingTests
     {
         var alone = Assert.Single(JobPublisher.ChoosePlans(Derived(), "C", null, perBuilding: false));
         var inTheSet = Assert.Single(
-            JobPublisher.ChoosePlans(Derived(), null, null, perBuilding: true).Where(p => p.Tower == "C"));
+            JobPublisher.ChoosePlans(Derived(), null, null, perBuilding: true), p => p.Tower == "C");
 
         Assert.Equal(inTheSet.DropStoreys, alone.DropStoreys);
     }

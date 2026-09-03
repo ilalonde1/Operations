@@ -910,7 +910,6 @@ SELECT CAST(SCOPE_IDENTITY() AS bigint);", icon);
 
                     string? currentDisplayName = null, currentSuppressedReason = null;
                     var orgRetired = false;
-                    var orgExists = false;
                     await using (var vcon = new Microsoft.Data.SqlClient.SqlConnection(cs))
                     {
                         await vcon.OpenAsync().ConfigureAwait(false);
@@ -920,14 +919,13 @@ SELECT CAST(SCOPE_IDENTITY() AS bigint);", icon);
                         await using var vr = await vcmd.ExecuteReaderAsync().ConfigureAwait(false);
                         if (await vr.ReadAsync().ConfigureAwait(false))
                         {
-                            orgExists = true;
                             currentDisplayName = vr.GetString(0);
                             orgRetired = !vr.IsDBNull(1);
                             currentSuppressedReason = vr.IsDBNull(2) ? null : vr.GetString(2);
                         }
                     }
 
-                    if (!orgExists)
+                    if (currentDisplayName is null)
                     {
                         log.LogWarning("Skipping {Name}: CanonicalOrg Id={Id} does not exist (merged/purged since batch generation).", name, id);
                         skipped++;

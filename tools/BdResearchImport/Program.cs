@@ -579,12 +579,12 @@ internal static class Program
                 aggressiveIndex[aggressiveKey] = orgId.Value;
             }
 
-            if (aggressiveHit && !options.DryRun)
+            if (aggressiveHit && !options.DryRun && orgId is { } aliasOrgId)
             {
                 await orgStore.UpsertAliasAsync(
                     rawName: displayName.Trim(),
                     source: "research-ingest",
-                    canonicalOrgId: orgId.Value,
+                    canonicalOrgId: aliasOrgId,
                     confidence: 70,
                     classifiedBy: "auto-aggressive-key",
                     notes: $"Matched via NormalizeAggressiveKey -> '{aggressiveKey}'",
@@ -598,6 +598,12 @@ internal static class Program
                     throw new InvalidOperationException("Enrichment store is not available.");
                 }
 
+                // Outside a dry run every path above has either landed an id or returned.
+                if (orgId is not { } landedOrgId)
+                {
+                    throw new InvalidOperationException($"{displayName}: no canonical org id after resolution.");
+                }
+
                 var json = record.GetRawText();
                 var result = new EnrichmentResult(
                     EnrichmentStatuses.Ok,
@@ -606,7 +612,7 @@ internal static class Program
                     $"Ingested via --ingest-canonical at {DateTime.UtcNow:yyyy-MM-ddTHH:mm:ssZ}");
                 var nextRefresh = DateTimeOffset.UtcNow.AddDays(21);
                 await enrichmentStore.RecordAttemptAsync(
-                    orgId.Value,
+                    landedOrgId,
                     providerName,
                     result,
                     nextRefresh,

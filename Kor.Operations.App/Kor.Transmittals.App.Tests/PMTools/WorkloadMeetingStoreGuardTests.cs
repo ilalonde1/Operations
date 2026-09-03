@@ -118,25 +118,23 @@ public sealed class WorkloadMeetingStoreGuardTests : IAsyncLifetime
         if (!_available) return;
 
         // The meeting a user had open, with a project already on it...
-        var opened = await InsertMeetingAsync(new DateTime(2026, 8, 10), createdAt: new DateTime(2026, 8, 10, 16, 5, 0))
-            .ConfigureAwait(false);
-        Assert.True(await Store.UpsertProjectPriorityAsync(opened, "01809-01", 2, "original").ConfigureAwait(false));
+        var opened = await InsertMeetingAsync(new DateTime(2026, 8, 10), createdAt: new DateTime(2026, 8, 10, 16, 5, 0));
+        Assert.True(await Store.UpsertProjectPriorityAsync(opened, "01809-01", 2, "original"));
 
         // ...superseded while that window sat open.
-        await InsertMeetingAsync(new DateTime(2026, 8, 24), createdAt: new DateTime(2026, 8, 24, 16, 45, 0))
-            .ConfigureAwait(false);
+        await InsertMeetingAsync(new DateTime(2026, 8, 24), createdAt: new DateTime(2026, 8, 24, 16, 45, 0));
 
-        Assert.False(await Store.UpsertProjectPriorityAsync(opened, "01809-01", 5, null).ConfigureAwait(false));
-        Assert.False(await Store.SaveProjectNotesAsync(opened, "01809-01", "typed after the fact").ConfigureAwait(false));
-        Assert.False(await Store.SaveMeetingNotesAsync(opened, "meeting notes after the fact").ConfigureAwait(false));
+        Assert.False(await Store.UpsertProjectPriorityAsync(opened, "01809-01", 5, null));
+        Assert.False(await Store.SaveProjectNotesAsync(opened, "01809-01", "typed after the fact"));
+        Assert.False(await Store.SaveMeetingNotesAsync(opened, "meeting notes after the fact"));
 
         // Refused means refused: the superseded meeting is untouched, not partially written.
-        var rows = await Store.GetProjectsForMeetingAsync(opened).ConfigureAwait(false);
+        var rows = await Store.GetProjectsForMeetingAsync(opened);
         var row = Assert.Single(rows);
         Assert.Equal(2, row.Priority);
         Assert.Equal("original", row.Notes);
 
-        var meetings = await Store.GetAllMeetingsAsync().ConfigureAwait(false);
+        var meetings = await Store.GetAllMeetingsAsync();
         Assert.Null(Assert.Single(meetings, m => m.Id == opened).Notes);
     }
 
@@ -145,20 +143,18 @@ public sealed class WorkloadMeetingStoreGuardTests : IAsyncLifetime
     {
         if (!_available) return;
 
-        await InsertMeetingAsync(new DateTime(2026, 8, 10), createdAt: new DateTime(2026, 8, 10, 16, 5, 0))
-            .ConfigureAwait(false);
-        var latest = await InsertMeetingAsync(new DateTime(2026, 8, 24), createdAt: new DateTime(2026, 8, 24, 16, 45, 0))
-            .ConfigureAwait(false);
+        await InsertMeetingAsync(new DateTime(2026, 8, 10), createdAt: new DateTime(2026, 8, 10, 16, 5, 0));
+        var latest = await InsertMeetingAsync(new DateTime(2026, 8, 24), createdAt: new DateTime(2026, 8, 24, 16, 45, 0));
 
-        Assert.True(await Store.UpsertProjectPriorityAsync(latest, "01809-01", 3, "note").ConfigureAwait(false));
-        Assert.True(await Store.SaveProjectNotesAsync(latest, "01809-01", "revised").ConfigureAwait(false));
-        Assert.True(await Store.SaveMeetingNotesAsync(latest, "agenda").ConfigureAwait(false));
+        Assert.True(await Store.UpsertProjectPriorityAsync(latest, "01809-01", 3, "note"));
+        Assert.True(await Store.SaveProjectNotesAsync(latest, "01809-01", "revised"));
+        Assert.True(await Store.SaveMeetingNotesAsync(latest, "agenda"));
 
-        var row = Assert.Single(await Store.GetProjectsForMeetingAsync(latest).ConfigureAwait(false));
+        var row = Assert.Single(await Store.GetProjectsForMeetingAsync(latest));
         Assert.Equal(3, row.Priority);
         Assert.Equal("revised", row.Notes);
         Assert.Equal("agenda", Assert.Single(
-            await Store.GetAllMeetingsAsync().ConfigureAwait(false), m => m.Id == latest).Notes);
+            await Store.GetAllMeetingsAsync(), m => m.Id == latest).Notes);
     }
 
     [Fact]
@@ -170,11 +166,11 @@ public sealed class WorkloadMeetingStoreGuardTests : IAsyncLifetime
         // The store must break the tie exactly as the UI's ORDER BY does, or the two disagree
         // about which meeting is current and legitimate edits get refused.
         var sameDate = new DateTime(2026, 7, 27);
-        var earlier = await InsertMeetingAsync(sameDate, createdAt: new DateTime(2026, 7, 27, 15, 44, 0)).ConfigureAwait(false);
-        var later = await InsertMeetingAsync(sameDate, createdAt: new DateTime(2026, 7, 27, 15, 54, 0)).ConfigureAwait(false);
+        var earlier = await InsertMeetingAsync(sameDate, createdAt: new DateTime(2026, 7, 27, 15, 44, 0));
+        var later = await InsertMeetingAsync(sameDate, createdAt: new DateTime(2026, 7, 27, 15, 54, 0));
 
-        Assert.False(await Store.UpsertProjectPriorityAsync(earlier, "01809-01", 1, null).ConfigureAwait(false));
-        Assert.True(await Store.UpsertProjectPriorityAsync(later, "01809-01", 1, null).ConfigureAwait(false));
+        Assert.False(await Store.UpsertProjectPriorityAsync(earlier, "01809-01", 1, null));
+        Assert.True(await Store.UpsertProjectPriorityAsync(later, "01809-01", 1, null));
     }
 
     [Fact]
@@ -184,15 +180,13 @@ public sealed class WorkloadMeetingStoreGuardTests : IAsyncLifetime
 
         // Priority 0 takes the DELETE branch, which is a different statement from the MERGE
         // and therefore needs its own guard — a deletion is as destructive as a write.
-        var opened = await InsertMeetingAsync(new DateTime(2026, 8, 10), createdAt: new DateTime(2026, 8, 10, 16, 5, 0))
-            .ConfigureAwait(false);
-        Assert.True(await Store.UpsertProjectPriorityAsync(opened, "01809-01", 4, "keep me").ConfigureAwait(false));
+        var opened = await InsertMeetingAsync(new DateTime(2026, 8, 10), createdAt: new DateTime(2026, 8, 10, 16, 5, 0));
+        Assert.True(await Store.UpsertProjectPriorityAsync(opened, "01809-01", 4, "keep me"));
 
-        await InsertMeetingAsync(new DateTime(2026, 8, 24), createdAt: new DateTime(2026, 8, 24, 16, 45, 0))
-            .ConfigureAwait(false);
+        await InsertMeetingAsync(new DateTime(2026, 8, 24), createdAt: new DateTime(2026, 8, 24, 16, 45, 0));
 
-        Assert.False(await Store.UpsertProjectPriorityAsync(opened, "01809-01", 0, null).ConfigureAwait(false));
-        Assert.Single(await Store.GetProjectsForMeetingAsync(opened).ConfigureAwait(false));
+        Assert.False(await Store.UpsertProjectPriorityAsync(opened, "01809-01", 0, null));
+        Assert.Single(await Store.GetProjectsForMeetingAsync(opened));
     }
 
     [Fact]
@@ -204,20 +198,17 @@ public sealed class WorkloadMeetingStoreGuardTests : IAsyncLifetime
         // third meeting in the gap, guarding the copy would leave the new meeting empty. The
         // copy is therefore exempt, and this pins that: seeding a meeting that is NOT the latest
         // still works.
-        var source = await InsertMeetingAsync(new DateTime(2026, 8, 10), createdAt: new DateTime(2026, 8, 10, 16, 5, 0))
-            .ConfigureAwait(false);
-        Assert.True(await Store.UpsertProjectPriorityAsync(source, "01809-01", 2, "carried").ConfigureAwait(false));
+        var source = await InsertMeetingAsync(new DateTime(2026, 8, 10), createdAt: new DateTime(2026, 8, 10, 16, 5, 0));
+        Assert.True(await Store.UpsertProjectPriorityAsync(source, "01809-01", 2, "carried"));
 
-        var target = await InsertMeetingAsync(new DateTime(2026, 8, 24), createdAt: new DateTime(2026, 8, 24, 16, 45, 0))
-            .ConfigureAwait(false);
+        var target = await InsertMeetingAsync(new DateTime(2026, 8, 24), createdAt: new DateTime(2026, 8, 24, 16, 45, 0));
 
         // The interloper: created after our target, so target is no longer latest.
-        await InsertMeetingAsync(new DateTime(2026, 8, 25), createdAt: new DateTime(2026, 8, 25, 16, 0, 0))
-            .ConfigureAwait(false);
+        await InsertMeetingAsync(new DateTime(2026, 8, 25), createdAt: new DateTime(2026, 8, 25, 16, 0, 0));
 
-        await Store.CarryForwardProjectsAsync(source, target).ConfigureAwait(false);
+        await Store.CarryForwardProjectsAsync(source, target);
 
-        var carried = Assert.Single(await Store.GetProjectsForMeetingAsync(target).ConfigureAwait(false));
+        var carried = Assert.Single(await Store.GetProjectsForMeetingAsync(target));
         Assert.Equal(2, carried.Priority);
         Assert.Equal("carried", carried.Notes);
     }

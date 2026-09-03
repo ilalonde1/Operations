@@ -96,7 +96,7 @@ public sealed class AlertRuleSmokeTests
         var rule = CreateRule(ruleType, sqlConnectionString: "Server=tcp:127.0.0.1,1;Database=missing;Connection Timeout=1;");
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
 
-        var alerts = await rule.RunAsync(cts.Token).ConfigureAwait(false);
+        var alerts = await rule.RunAsync(cts.Token);
 
         Assert.NotNull(alerts);
         Assert.Empty(alerts);

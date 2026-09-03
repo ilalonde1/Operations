@@ -1,0 +1,8 @@
+<Project>
+  <!--
+    Deliberately empty. MSBuild imports the NEAREST Directory.Build.props and stops, so this file
+    shields EmailFilerv2 from the repo-root one. EmailFilerv2 is a VSTO / .NET Framework 4.8 add-in
+    that only Visual Studio can build (Microsoft.VisualStudio.Tools.Office.targets is not in the SDK),
+    so the repo-wide warnings-as-errors gate cannot be verified for it from the command line.
+  -->
+</Project>

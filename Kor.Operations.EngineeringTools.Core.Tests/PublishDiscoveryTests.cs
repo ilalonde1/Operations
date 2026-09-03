@@ -62,7 +62,7 @@ public class PublishDiscoveryTests
         Assert.Equal(1, contents.Floors);
         Assert.Equal(1, contents.Headers);
         Assert.Equal(1, contents.Openings);
-        Assert.Equal(1, contents.PlatesByStorey.Count);
+        Assert.Single(contents.PlatesByStorey);
     }
 
     // The projects root holds a bucket per sector and discovery walks all of them. On a share any

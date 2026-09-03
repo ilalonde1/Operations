@@ -64,8 +64,8 @@ public static class GraphBuilder
         foreach (var e in externals)
             foreach (string owner in e.Evidence
                          .Select(ev => byDir.FirstOrDefault(p => ev.StartsWith(p.Dir + "/", StringComparison.OrdinalIgnoreCase))?.Name)
-                         .Where(n => n is not null)
-                         .Distinct(StringComparer.Ordinal)!)
+                         .OfType<string>()
+                         .Distinct(StringComparer.Ordinal))
                 edges.Add(new ArchGraphEdge(owner, "ext:" + e.Name, "talks to"));
 
         // A DUPLICATION TIE. Two projects declaring the same type name are pulled together, so the

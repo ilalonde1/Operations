@@ -30,15 +30,15 @@ public sealed class FileSyncLogTailerTests
                 AutoFlush = true,
             };
 
-            await writer.WriteLineAsync(LogLine("First open-handle line")).ConfigureAwait(false);
+            await writer.WriteLineAsync(LogLine("First open-handle line"));
 
             using var tailer = new FileSyncLogTailer(path);
-            var firstRead = await tailer.ReadNewAsync(CancellationToken.None).ConfigureAwait(false);
+            var firstRead = await tailer.ReadNewAsync(CancellationToken.None);
             Assert.Contains(firstRead, l => l.Message == "First open-handle line");
 
-            await writer.WriteLineAsync(LogLine("Second open-handle line")).ConfigureAwait(false);
+            await writer.WriteLineAsync(LogLine("Second open-handle line"));
 
-            var secondRead = await tailer.ReadNewAsync(CancellationToken.None).ConfigureAwait(false);
+            var secondRead = await tailer.ReadNewAsync(CancellationToken.None);
             Assert.Contains(secondRead, l => l.Message == "Second open-handle line");
             Assert.DoesNotContain(secondRead, l => l.Message == "First open-handle line");
         }

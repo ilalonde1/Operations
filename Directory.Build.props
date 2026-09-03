@@ -1,0 +1,15 @@
+<Project>
+  <!--
+    Repo-wide build gates. Every project under this directory picks this up before its own
+    csproj, so a project may append (NoWarn="$(NoWarn);...") but should not need to repeat these.
+    Nearest Directory.Build.props wins: EmailFiler/ carries an empty one on purpose (VSTO, VS-only).
+  -->
+  <PropertyGroup>
+    <!-- A warning anywhere in the repo is a build break. Gates, not advice (CLAUDE.md). -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <!-- NuGet audit advisories stay visible as warnings rather than failing the build: an advisory
+         published upstream overnight must not break every developer's build with no code change.
+         Fix them when they appear; `dotnet list package` with the vulnerable switch shows the full set. -->
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);NU1901;NU1902;NU1903;NU1904</WarningsNotAsErrors>
+  </PropertyGroup>
+</Project>

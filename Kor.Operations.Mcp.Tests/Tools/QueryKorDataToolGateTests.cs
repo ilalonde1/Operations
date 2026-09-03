@@ -17,7 +17,7 @@ public sealed class QueryKorDataToolGateTests
     [InlineData("SELECT * FROM OPENDATASOURCE('MSDASQL', 'dsn=x').dbo.X")]
     public async Task QueryKorDataAsync_RejectsPassThroughProviders(string sql)
     {
-        var result = await ExecuteAsync(sql).ConfigureAwait(false);
+        var result = await ExecuteAsync(sql);
 
         Assert.Contains("pass-through is not permitted", result, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("MCP service not configured", result, StringComparison.OrdinalIgnoreCase);
@@ -29,7 +29,7 @@ public sealed class QueryKorDataToolGateTests
     [InlineData("SELECT 1; DELETE FROM dbo.X")]
     public async Task QueryKorDataAsync_RejectsWriteOrBatchedStatements(string sql)
     {
-        var result = await ExecuteAsync(sql).ConfigureAwait(false);
+        var result = await ExecuteAsync(sql);
 
         Assert.Contains("error", result, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("MCP service not configured", result, StringComparison.OrdinalIgnoreCase);
@@ -43,7 +43,7 @@ public sealed class QueryKorDataToolGateTests
     [InlineData("SELECT 1 AS OPENROWSETXYZ")]
     public async Task QueryKorDataAsync_AllowsReadOnlyStatementsThroughGate(string sql)
     {
-        var result = await ExecuteAsync(sql).ConfigureAwait(false);
+        var result = await ExecuteAsync(sql);
 
         Assert.Contains("MCP service not configured", result, StringComparison.OrdinalIgnoreCase);
     }

@@ -116,7 +116,7 @@ public sealed class UnboundCommandPropertyTests
         _ = vmDeclaringSourcePath;
         return vmType.IsInterface
             || vmType.IsAbstract
-            || vmType.IsSerializable;
+            || vmType.IsDefined(typeof(SerializableAttribute), inherit: false);
     }
 
     private static bool ImplementsAiContextProvider(Type vmType)
@@ -261,7 +261,7 @@ public sealed class UnboundCommandPropertyTests
 
     private sealed class NoOpCommand : ICommand
     {
-        public event EventHandler? CanExecuteChanged;
+        public event EventHandler? CanExecuteChanged { add { } remove { } }
 
         public bool CanExecute(object? parameter) => true;
 

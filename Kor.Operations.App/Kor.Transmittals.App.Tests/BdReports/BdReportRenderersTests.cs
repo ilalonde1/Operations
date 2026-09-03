@@ -49,8 +49,9 @@ public sealed class BdReportRenderersTests
         using var ms = new MemoryStream(bytes);
         using var word = WordprocessingDocument.Open(ms, false);
 
-        var body = word.MainDocumentPart!.Document.Body!;
-        var styles = word.MainDocumentPart.StyleDefinitionsPart!.Styles!
+        var main = word.MainDocumentPart!;
+        var body = main.Document!.Body!;
+        var styles = main.StyleDefinitionsPart!.Styles!
             .Elements<Style>().Select(s => s.StyleId!.Value).ToList();
 
         Assert.Contains("Normal", styles);

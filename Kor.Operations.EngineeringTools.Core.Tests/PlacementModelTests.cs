@@ -157,7 +157,7 @@ public sealed class PlacementModelTests
             },
         });
 
-        var on = Assert.Single(doc.StoreysByObject().Where(x => x.Key.StartsWith("KC", StringComparison.Ordinal)));
+        var on = Assert.Single(doc.StoreysByObject(), x => x.Key.StartsWith("KC", StringComparison.Ordinal));
         _out.WriteLine($"{summary.Columns} column(s); building C's parkade column stands on {string.Join(", ", on.Value)}");
 
         Assert.Contains("A-LEVEL 1", on.Value, StringComparer.OrdinalIgnoreCase);
@@ -186,7 +186,7 @@ public sealed class PlacementModelTests
             },
         });
 
-        var on = Assert.Single(doc.StoreysByObject().Where(x => x.Key.StartsWith("KC", StringComparison.Ordinal)));
+        var on = Assert.Single(doc.StoreysByObject(), x => x.Key.StartsWith("KC", StringComparison.Ordinal));
         _out.WriteLine("tower A's level 2 column rises to " + string.Join(", ", on.Value));
 
         Assert.Contains("A-LEVEL 3", on.Value, StringComparer.OrdinalIgnoreCase);

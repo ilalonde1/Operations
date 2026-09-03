@@ -224,7 +224,7 @@ public sealed class UnusedViewModelPropertyTests
     private static bool ShouldSkipViewModelType(Type vmType, string vmDeclaringSourcePath)
     {
         if (ImplementsAiContextProvider(vmType)
-            || vmType.IsSerializable
+            || vmType.IsDefined(typeof(SerializableAttribute), inherit: false)
             || HasAttributeNameFragment(vmType.GetCustomAttributes(inherit: true), AttributeSkipNameFragments)
             || IsPartialClass(vmType, vmDeclaringSourcePath))
         {

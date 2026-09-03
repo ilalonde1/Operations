@@ -10,6 +10,12 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 {
     public static class DxfExporter
     {
+        // Encoding.GetEncoding(1252) in Export needs the code-page provider, which .NET does not
+        // register on its own. It used to work only because some other library already loaded in
+        // the process (AngleSharp, MsgReader) had registered it first — an ordering accident, not a
+        // dependency this class owned. Registering twice is harmless.
+        static DxfExporter() => Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+
         /// <summary>
         /// Writes the geometry as a DXF.
         ///

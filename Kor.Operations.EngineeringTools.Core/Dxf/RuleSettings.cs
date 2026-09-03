@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Text.RegularExpressions;
 using ClosedXML.Excel;
@@ -195,9 +196,11 @@ public static class RuleSettings
     /// An empty or whitespace-only list is refused rather than applied. A pattern list of nothing
     /// matches no layer, so the run would read a full set of drawings, find no structure anywhere,
     /// and report a building with no members as though that were the answer.
+    /// A null fallback means "no list": the caller keeps whatever default it already holds.
     /// </summary>
-    public static IReadOnlyList<string> ListOr(
-        this IReadOnlyDictionary<string, RuleSetting> settings, string key, IReadOnlyList<string> fallback)
+    [return: NotNullIfNotNull(nameof(fallback))]
+    public static IReadOnlyList<string>? ListOr(
+        this IReadOnlyDictionary<string, RuleSetting> settings, string key, IReadOnlyList<string>? fallback)
     {
         if (!settings.TryGetValue(key, out var s)) return fallback;
 

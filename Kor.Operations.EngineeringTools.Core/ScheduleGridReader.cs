@@ -142,7 +142,7 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             // Mark header row: the y-row carrying the most distinct mark-shaped tokens. LEVEL-row words
             // and pure numbers never match ColMark, so the ladder cannot be picked.
             var markTokens = page.Words.Where(w => ColMark.IsMatch((w.Text ?? "").Trim())
-                                                && !w.Text.StartsWith("LEVEL", StringComparison.OrdinalIgnoreCase)).ToList();
+                                                && !(w.Text ?? "").StartsWith("LEVEL", StringComparison.OrdinalIgnoreCase)).ToList();
             if (markTokens.Count == 0) return Array.Empty<ScheduleTakeoff.ColumnBand>();
             var headerRow = markTokens
                 .GroupBy(t => Math.Round(t.Cy / 6.0) * 6.0)

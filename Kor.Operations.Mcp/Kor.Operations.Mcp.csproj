@@ -9,8 +9,6 @@
          suffix yields an empty value (RZ3600). Pin it explicitly; the project has
          no Razor files, so any valid version satisfies the SDK. -->
     <RazorLangVersion>8.0</RazorLangVersion>
-    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <NoWarn>$(NoWarn);SA1402;SA1633</NoWarn>
     <!-- Bump on every meaningful service-side change so the /health
          endpoint and audit log let operators confirm a redeploy
          actually picked up the new binary. -->
@@ -33,10 +31,6 @@
     <PackageReference Include="Serilog.AspNetCore" Version="8.0.3" />
     <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
     <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
-    <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.556">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
-    </PackageReference>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Kor.Operations.Core\Kor.Operations.Core.csproj" />

@@ -233,9 +233,9 @@ public sealed class IntelExtractorTests
 
         var result = new DeveloperPipelineResearchExtractor().Extract(ctx);
 
-        Assert.Equal(1, result.People.Count);
-        Assert.Equal(1, result.Works.Count);
-        Assert.Equal(1, result.Actions.Count);
+        Assert.Single(result.People);
+        Assert.Single(result.Works);
+        Assert.Single(result.Actions);
     }
 
     [Fact]
@@ -348,8 +348,8 @@ public sealed class IntelExtractorTests
 
         var result = new MarketResearchExtractor("AlbertaMarketResearch").Extract(ctx);
 
-        Assert.Equal(1, result.People.Count);
-        Assert.Equal(1, result.Actions.Count);
+        Assert.Single(result.People);
+        Assert.Single(result.Actions);
         Assert.NotEmpty(result.Narratives);
     }
 
@@ -362,7 +362,7 @@ public sealed class IntelExtractorTests
         var result = new IndigenousResearchExtractor("IndigenousDevResearch").Extract(ctx);
 
         Assert.True(result.Narratives.Count >= 2);
-        Assert.Equal(1, result.Actions.Count);
+        Assert.Single(result.Actions);
     }
 
     [Fact]

@@ -32,7 +32,8 @@ namespace Kor.Operations.EngineeringTools.RebarChange
         /// implementation ("6-18 NORTH (x13)" → NORTH, L6..L18; "P3" → null, P3).</summary>
         public static (string? Tower, List<string> Floors) ParseLevelLabel(string label)
         {
-            string u = (label ?? "").ToUpperInvariant();
+            string text = label ?? "";
+            string u = text.ToUpperInvariant();
             string? tw = u.Contains("NORTH") ? "NORTH" : u.Contains("SOUTH") ? "SOUTH"
                        : u.Contains("EAST") ? "EAST" : u.Contains("WEST") ? "WEST" : null;
             var band = Regex.Match(u, @"^(\d+)\s*-\s*(\d+)\b");
@@ -41,7 +42,7 @@ namespace Kor.Operations.EngineeringTools.RebarChange
                 int lo = int.Parse(band.Groups[1].Value), hi = int.Parse(band.Groups[2].Value);
                 return (tw, Enumerable.Range(lo, hi - lo + 1).Select(i => $"L{i}").ToList());
             }
-            return (tw, new List<string> { SlabTakeoffEngine.NormalizeLevelKey(label) });
+            return (tw, new List<string> { SlabTakeoffEngine.NormalizeLevelKey(text) });
         }
 
         public static string ToJson(IEnumerable<LevelExtent> levels) =>

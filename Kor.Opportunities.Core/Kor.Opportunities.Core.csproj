@@ -4,7 +4,5 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>Kor.Opportunities.Core</AssemblyName>
-    <NoWarn>$(NoWarn);SA0001</NoWarn>
-    <StyleCopEnabled>false</StyleCopEnabled>
   </PropertyGroup>
 </Project>

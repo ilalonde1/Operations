@@ -101,12 +101,15 @@ WHERE OpportunityId = @oppId;";
             && !string.IsNullOrWhiteSpace(engagement.OwnerStaffId)
             && !string.IsNullOrWhiteSpace(engagement.Region);
 
-        if (hasBdTrackingNaturalKey)
+        if (hasBdTrackingNaturalKey
+            && engagement.BuyerCanonicalOrgId is { } naturalKeyOrgId
+            && engagement.OwnerStaffId is { } naturalKeyOwner
+            && engagement.Region is { } naturalKeyRegion)
         {
             var existing = await GetByBdTrackingNaturalKeyAsync(
-                engagement.BuyerCanonicalOrgId.Value,
-                engagement.OwnerStaffId,
-                engagement.Region,
+                naturalKeyOrgId,
+                naturalKeyOwner,
+                naturalKeyRegion,
                 ct).ConfigureAwait(false);
             if (existing is not null)
             {

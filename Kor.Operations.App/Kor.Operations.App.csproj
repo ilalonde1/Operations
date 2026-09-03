@@ -12,17 +12,17 @@
     <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <NoWarn>CA1416</NoWarn>
-    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <NoWarn>$(NoWarn);CA1416</NoWarn>
     <ApplicationIcon>logo.ico</ApplicationIcon>
     <PlatformTarget>x64</PlatformTarget>
     <!-- Work around duplicate assembly attributes being generated during WPF temp assembly generation. -->
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
     <ProduceReferenceAssembly>false</ProduceReferenceAssembly>
-    <UseSharedCompilation>false</UseSharedCompilation>
-    <NoWarn>$(NoWarn);SA0001</NoWarn>
-    <StyleCopEnabled>false</StyleCopEnabled>
+    <!-- Playwright's node driver (445 MB, every platform) arrives transitively through
+         Kor.Opportunities.Data. The app never launches a browser (scrapers run in the Worker),
+         so keep it out of this output and out of everything that references this project. -->
+    <PlaywrightPlatform>none</PlaywrightPlatform>
   </PropertyGroup>
   <ItemGroup>
     <Using Remove="System.Drawing" />
@@ -265,7 +265,7 @@
     <PackageReference Include="MsgReader" Version="6.0.9" />
     <PackageReference Include="ClosedXML" Version="0.105.0" />
     <PackageReference Include="Cronos" Version="0.10.0" />
-    <PackageReference Include="HtmlSanitizer" Version="9.0.892" />
+    <PackageReference Include="HtmlSanitizer" Version="9.2.1039" />
     <PackageReference Include="Polly" Version="8.5.2" />
     <PackageReference Include="Serilog" Version="4.3.0" />
     <PackageReference Include="Serilog.Extensions.Logging" Version="8.0.0" />
@@ -277,10 +277,6 @@
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.8" />
     <PackageReference Include="PdfPig" Version="0.1.9" />
     <PackageReference Include="netDxf.netstandard" Version="2.4.0" />
-    <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.556">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
-    </PackageReference>
   </ItemGroup>
   <ItemGroup>
     <!-- SqlTimeouts.cs is shared from Kor.Operations.Data via Compile Include rather than ProjectReference

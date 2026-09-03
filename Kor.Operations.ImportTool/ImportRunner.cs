@@ -116,8 +116,8 @@ END;";
                 current.Phone = Prefer(current.Phone, incoming.Phone);
                 current.Bio = Prefer(current.Bio, incoming.Bio);
                 current.PhotoPath = Prefer(current.PhotoPath, incoming.PhotoPath);
-                if ((current.PhotoBytes?.Length ?? 0) == 0 && (incoming.PhotoBytes?.Length ?? 0) > 0)
-                    current.PhotoBytes = incoming.PhotoBytes;
+                if ((current.PhotoBytes?.Length ?? 0) == 0 && incoming.PhotoBytes is { Length: > 0 } photo)
+                    current.PhotoBytes = photo;
             }
             else
             {

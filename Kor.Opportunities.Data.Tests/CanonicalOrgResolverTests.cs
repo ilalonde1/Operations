@@ -169,7 +169,7 @@ public sealed class CanonicalOrgResolverTests
         var resolved = await resolver.ResolveAsync("Merged Loser", OrgKinds.Buyer, Source, CancellationToken.None);
 
         Assert.Equal(survivorId, resolved);
-        Assert.Single(store.Aliases.Values.Where(a => a.CanonicalOrgId == survivorId));
+        Assert.Single(store.Aliases.Values, a => a.CanonicalOrgId == survivorId);
     }
 
     [Fact]

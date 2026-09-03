@@ -215,7 +215,7 @@ GROUP BY LEFT(LTRIM(RTRIM(COALESCE(Account,''))), 4), COALESCE(Org,'');";
                     ? "USA"
                     : (!string.IsNullOrWhiteSpace(row.Org)
                         ? row.Org.Trim().ToUpperInvariant()
-                        : (row.Company ?? string.Empty).Trim().ToUpperInvariant());
+                        : row.Company.Trim().ToUpperInvariant());
                 switch (classification)
                 {
                     case "USA": usa += delta; break;

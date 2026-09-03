@@ -4,8 +4,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>Kor.Operations.Rendering</AssemblyName>
-    <NoWarn>$(NoWarn);SA0001;NU1701</NoWarn>
-    <StyleCopEnabled>false</StyleCopEnabled>
+    <NoWarn>$(NoWarn);NU1701</NoWarn>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Azure.Identity" Version="1.18.0" />
@@ -13,10 +12,6 @@
     <PackageReference Include="PDFsharp-WPF" Version="6.2.4" />
     <PackageReference Include="QuestPDF" Version="2026.2.3" />
     <PackageReference Include="Serilog" Version="4.2.0" />
-    <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.556">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
-    </PackageReference>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Kor.Operations.Core\Kor.Operations.Core.csproj" />
