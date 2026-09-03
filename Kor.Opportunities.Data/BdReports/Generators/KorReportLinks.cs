@@ -17,9 +17,19 @@ public static class KorReportLinks
     public const string MpiKind = "mpi";
     public const string OrgKind = "org";
     public const string PersonKind = "person";
+    public const string OpportunityKind = "opp";
 
     /// <summary>Pursuit/project drill-down: MajorProjectsInventory id.</summary>
     public static string Mpi(long mpiId) => $"kor://{MpiKind}/{mpiId.ToString(CultureInfo.InvariantCulture)}";
+
+    /// <summary>
+    /// Live-tender drill-down: opportunities.Opportunities id. Lands on the
+    /// Opportunities hub's "All tenders" registry with the row pre-selected —
+    /// there is no standalone opportunity window, the registry IS the listing.
+    /// Null id yields no link.
+    /// </summary>
+    public static string? Opportunity(long? opportunityId) =>
+        opportunityId is { } id ? $"kor://{OpportunityKind}/{id.ToString(CultureInfo.InvariantCulture)}" : null;
 
     /// <summary>Org dossier drill-down: CanonicalOrg id. Null id (unresolved edge) yields no link.</summary>
     public static string? Org(long? canonicalOrgId) =>
@@ -48,7 +58,7 @@ public static class KorReportLinks
         }
 
         var host = parsed.Host.ToLowerInvariant();
-        if (host is not (MpiKind or OrgKind or PersonKind))
+        if (host is not (MpiKind or OrgKind or PersonKind or OpportunityKind))
         {
             return false;
         }
