@@ -1,0 +1,25 @@
+LoserId,SurvivorId,Reason
+# Perkins&Will fragments -> canonical 69688 "Perkins&Will" (perkinswill.com).
+# One firm held as five rows, which is why the relationship view looked empty:
+#   76744  "Busby Perkins + Will"     legacy Vancouver entity. Busby + Associates
+#                                     merged into Perkins&Will in 2004 and traded
+#                                     as Busby Perkins+Will before rebranding to
+#                                     Perkins&Will Vancouver. Same studio, same
+#                                     people - Dove, Newby, Wardle, Bragg, Foit
+#                                     and Gushe are all duplicated onto 69688.
+#   77160  "Perkins&Will San Diego"   studio of the same firm, not a separate
+#   77327  "Perkins&Will Calgary"     legal entity. Studio is preserved in each
+#                                     person's title, so no regional detail is
+#                                     lost by collapsing the org rows.
+#   271546 "Perkins and Will"         empty shell, 0 people / 0 projects. The
+#                                     fuzzy normalizer strips "&" rather than
+#                                     folding it to "and", so "perkinsandwill"
+#                                     never matched "perkinswill" and the row
+#                                     was created as a separate canonical.
+# NOT in scope, deliberately: "Perkins Eastman" is an unrelated firm, and
+# "Scott Edwards Architecture (with Perkins & Will)" is a JV-naming artifact.
+# Ian approved this targeted merge 2026-09-03.
+76744,69688
+77160,69688
+77327,69688
+271546,69688

@@ -91,10 +91,164 @@ invariants.Add(("org_multi_entity_active_name",
         AND co.Kind IN (N'Architect', N'GC', N'Developer', N'Buyer', N'Competitor', N'KorClient')
         AND (co.DisplayName LIKE N'%/%' OR co.DisplayName LIKE N'%;%' OR co.DisplayName LIKE N'% + %');"));
 
+// ── Entity identity: is one org row one real-world company? ──────────────────
+// Added 2026-09-03 after the Continuum incident: canonical 74300 held BOTH a
+// Denver mixed-use developer AND a Victoria BC architecture practice, because
+// NormalizeAggressiveKey strips "partners/llc/architecture/inc" so both names
+// collapsed to "continuum", --merge-dba supplied the post-DBA key, and
+// ChooseSurvivor preferred Developer (KindRank 2) over Architect (3). Nothing
+// errored. A FirmNarrative refresh then rewrote the row for the Denver firm and
+// destroyed the Victoria text in place. These checks would have failed on that
+// row the day the merge happened, and they fail on every instance at once.
+
+// Severity WARN, deliberately: the first live run returned 91, and inspection
+// showed a large legitimate share — one institution with many campus domains
+// (University of California: ucla/ucsb/ucsd/ucop), one body with several of its
+// own domains (Alberta Health Services: ahs.ca + albertahealthservices.ca +
+// gov.ab.ca), and member associations whose contacts sit at member organisations
+// (Alberta Municipalities: calgary.ca + edmonton.ca). As an ERROR this would gate
+// the pipeline red forever and be ignored inside a week. It is a REVIEW WORKLIST.
+// The high-signal subset is its intersection with org_dba_merge_discipline_conflict.
+invariants.Add(("org_conflated_people_domains",
+    "REVIEW WORKLIST (not a pass/fail): active orgs whose active people span 2+ distinct corporate email domains — the two-companies-in-one-row signature. Known-legitimate matches: multi-campus institutions, bodies with several own domains, and member associations whose contacts sit at member orgs. Cross it with org_dba_merge_discipline_conflict for the likely-conflated ones",
+    false,
+    @"WITH d AS (
+        SELECT a.CanonicalOrgId,
+               LOWER(SUBSTRING(p.Email, CHARINDEX('@', p.Email) + 1, 200)) AS Domain
+        FROM opportunities.IntelPersonAffiliation a
+        JOIN opportunities.IntelPerson p ON p.Id = a.IntelPersonId
+        JOIN opportunities.CanonicalOrg co ON co.Id = a.CanonicalOrgId AND co.RetiredAtUtc IS NULL
+        WHERE a.RetiredAtUtc IS NULL AND p.RetiredAtUtc IS NULL
+          AND p.Email IS NOT NULL AND CHARINDEX('@', p.Email) > 1
+          AND LOWER(SUBSTRING(p.Email, CHARINDEX('@', p.Email) + 1, 200)) NOT IN
+              (N'gmail.com', N'hotmail.com', N'outlook.com', N'yahoo.com', N'yahoo.ca',
+               N'live.com', N'icloud.com', N'shaw.ca', N'telus.net', N'me.com'))
+      SELECT COUNT(*) FROM (
+        SELECT CanonicalOrgId FROM d GROUP BY CanonicalOrgId HAVING COUNT(DISTINCT Domain) > 1) x;",
+    @"WITH d AS (
+        SELECT a.CanonicalOrgId, co.DisplayName,
+               LOWER(SUBSTRING(p.Email, CHARINDEX('@', p.Email) + 1, 200)) AS Domain
+        FROM opportunities.IntelPersonAffiliation a
+        JOIN opportunities.IntelPerson p ON p.Id = a.IntelPersonId
+        JOIN opportunities.CanonicalOrg co ON co.Id = a.CanonicalOrgId AND co.RetiredAtUtc IS NULL
+        WHERE a.RetiredAtUtc IS NULL AND p.RetiredAtUtc IS NULL
+          AND p.Email IS NOT NULL AND CHARINDEX('@', p.Email) > 1
+          AND LOWER(SUBSTRING(p.Email, CHARINDEX('@', p.Email) + 1, 200)) NOT IN
+              (N'gmail.com', N'hotmail.com', N'outlook.com', N'yahoo.com', N'yahoo.ca',
+               N'live.com', N'icloud.com', N'shaw.ca', N'telus.net', N'me.com'))
+      SELECT TOP 10 CanonicalOrgId, MIN(DisplayName) AS DisplayName,
+             COUNT(DISTINCT Domain) AS Domains,
+             STRING_AGG(CONVERT(nvarchar(max), Domain), N' | ') WITHIN GROUP (ORDER BY Domain) AS DomainList
+      FROM (SELECT DISTINCT CanonicalOrgId, DisplayName, Domain FROM d) u
+      GROUP BY CanonicalOrgId HAVING COUNT(DISTINCT Domain) > 1
+      ORDER BY COUNT(DISTINCT Domain) DESC, CanonicalOrgId;"));
+
+invariants.Add(("org_dba_merge_discipline_conflict",
+    "Active orgs that absorbed a 'X DBA: Y' alias via DedupeMerge where the alias names a DISCIPLINE the survivor's Kind contradicts (architecture alias on a Developer row = Continuum's exact shape)",
+    false,
+    @"SELECT COUNT(DISTINCT co.Id) FROM opportunities.CanonicalOrg co
+      JOIN opportunities.OrgAlias oa ON oa.CanonicalOrgId = co.Id AND oa.Source = N'DedupeMerge'
+      WHERE co.RetiredAtUtc IS NULL
+        AND ( (oa.RawName LIKE N'%architect%'   AND co.Kind IN (N'Developer', N'GC'))
+           OR (oa.RawName LIKE N'%construction%' AND co.Kind = N'Architect')
+           OR (oa.RawName LIKE N'%contracting%'  AND co.Kind = N'Architect')
+           OR (oa.RawName LIKE N'%engineering%'  AND co.Kind IN (N'Developer', N'Architect')) );",
+    @"SELECT TOP 10 co.Id, co.Kind, co.DisplayName, oa.RawName AS ConflictingAlias
+      FROM opportunities.CanonicalOrg co
+      JOIN opportunities.OrgAlias oa ON oa.CanonicalOrgId = co.Id AND oa.Source = N'DedupeMerge'
+      WHERE co.RetiredAtUtc IS NULL
+        AND ( (oa.RawName LIKE N'%architect%'   AND co.Kind IN (N'Developer', N'GC'))
+           OR (oa.RawName LIKE N'%construction%' AND co.Kind = N'Architect')
+           OR (oa.RawName LIKE N'%contracting%'  AND co.Kind = N'Architect')
+           OR (oa.RawName LIKE N'%engineering%'  AND co.Kind IN (N'Developer', N'Architect')) )
+      ORDER BY co.Id;"));
+
+invariants.Add(("org_narrative_without_website_anchor",
+    "EXPOSURE GAUGE, not a defect: active orgs carrying an active narrative but NO Website. A FirmNarrative refresh on these is anchored only by DisplayName, which is how Continuum was rewritten for the wrong company. Expect this to fall as websites are backfilled",
+    false,
+    @"SELECT COUNT(*) FROM opportunities.CanonicalOrg co
+      WHERE co.RetiredAtUtc IS NULL
+        AND (co.Website IS NULL OR LTRIM(RTRIM(co.Website)) = N'')
+        AND EXISTS (SELECT 1 FROM opportunities.IntelNarrative n
+                    WHERE n.CanonicalOrgId = co.Id AND n.RetiredAtUtc IS NULL);",
+    @"SELECT TOP 10 co.Id, co.Kind, co.DisplayName,
+             (SELECT COUNT(*) FROM opportunities.IntelNarrative n
+              WHERE n.CanonicalOrgId = co.Id AND n.RetiredAtUtc IS NULL) AS ActiveNarratives
+      FROM opportunities.CanonicalOrg co
+      WHERE co.RetiredAtUtc IS NULL
+        AND (co.Website IS NULL OR LTRIM(RTRIM(co.Website)) = N'')
+        AND EXISTS (SELECT 1 FROM opportunities.IntelNarrative n
+                    WHERE n.CanonicalOrgId = co.Id AND n.RetiredAtUtc IS NULL)
+      ORDER BY ActiveNarratives DESC, co.Id;"));
+
+invariants.Add(("org_thin_unsafe_redirect",
+    "Thin orgs (no people) that a dossier whole-word-prefix redirect could resolve to a RICHER org with a DIFFERENT fuzzy key — the read-time identity substitution the write-time dedup gate would refuse. APPROXIMATION of SqlBriefDataStore.RedirectSafe; treat as a review worklist",
+    false,
+    @"WITH thin AS (
+        SELECT co.Id, co.DisplayName, co.FuzzyNormalizedName
+        FROM opportunities.CanonicalOrg co
+        WHERE co.RetiredAtUtc IS NULL AND LEN(co.FuzzyNormalizedName) >= 6
+          AND NOT EXISTS (SELECT 1 FROM opportunities.IntelPersonAffiliation a
+                          WHERE a.CanonicalOrgId = co.Id AND a.RetiredAtUtc IS NULL))
+      SELECT COUNT(*) FROM thin t
+      WHERE EXISTS (
+        SELECT 1 FROM opportunities.CanonicalOrg r
+        WHERE r.RetiredAtUtc IS NULL AND r.Id <> t.Id
+          AND r.FuzzyNormalizedName <> t.FuzzyNormalizedName
+          AND LEN(r.DisplayName) > LEN(t.DisplayName)
+          AND LEFT(LOWER(LTRIM(RTRIM(r.DisplayName))), LEN(LTRIM(RTRIM(t.DisplayName))) + 1)
+              = LOWER(LTRIM(RTRIM(t.DisplayName))) + N' '
+          AND EXISTS (SELECT 1 FROM opportunities.IntelPersonAffiliation a2
+                      WHERE a2.CanonicalOrgId = r.Id AND a2.RetiredAtUtc IS NULL));",
+    @"WITH thin AS (
+        SELECT co.Id, co.DisplayName, co.FuzzyNormalizedName
+        FROM opportunities.CanonicalOrg co
+        WHERE co.RetiredAtUtc IS NULL AND LEN(co.FuzzyNormalizedName) >= 6
+          AND NOT EXISTS (SELECT 1 FROM opportunities.IntelPersonAffiliation a
+                          WHERE a.CanonicalOrgId = co.Id AND a.RetiredAtUtc IS NULL))
+      SELECT TOP 10 t.Id AS ThinId, t.DisplayName AS ThinName,
+             r.Id AS RicherId, r.DisplayName AS RicherName
+      FROM thin t
+      JOIN opportunities.CanonicalOrg r
+        ON r.RetiredAtUtc IS NULL AND r.Id <> t.Id
+       AND r.FuzzyNormalizedName <> t.FuzzyNormalizedName
+       AND LEN(r.DisplayName) > LEN(t.DisplayName)
+       AND LEFT(LOWER(LTRIM(RTRIM(r.DisplayName))), LEN(LTRIM(RTRIM(t.DisplayName))) + 1)
+           = LOWER(LTRIM(RTRIM(t.DisplayName))) + N' '
+      WHERE EXISTS (SELECT 1 FROM opportunities.IntelPersonAffiliation a2
+                    WHERE a2.CanonicalOrgId = r.Id AND a2.RetiredAtUtc IS NULL)
+      ORDER BY t.Id;"));
+
 var sb = new StringBuilder();
 void Emit(string line) { Console.WriteLine(line); sb.AppendLine(line); }
 
 Emit($"BdIntegrityCheck — {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}Z");
+Emit(new string('=', 72));
+
+// Repo rule 11: a harness states what it covers and what it does NOT, in its own
+// summary — a broad name over a narrow check is worse than no check, because the
+// next reader stops looking. This text is emitted into the same report the claims
+// get written from, deliberately.
+Emit("IDENTITY CHECKS — COVERAGE STATEMENT");
+Emit("  COVERS: one-row-two-companies where the people carry differing corporate email");
+Emit("          domains; DBA-merge survivors whose absorbed alias contradicts their Kind;");
+Emit("          orgs whose narrative can be refreshed with no website anchor; thin orgs a");
+Emit("          dossier prefix-redirect could resolve to a different richer entity.");
+Emit("  DOES NOT COVER: whether any narrative's CONTENT is about the right company —");
+Emit("          IntelNarrative is overwritten in place with no version history, so a wrong");
+Emit("          refresh leaves no trace to compare against. It also cannot see a conflation");
+Emit("          whose people share one domain, or have no email at all.");
+Emit("  WOULD NOT HAVE CAUGHT: the Continuum narrative overwrite itself. It would have");
+Emit("          flagged the CONFLATED ROW months earlier (org_dba_merge_discipline_conflict");
+Emit("          fires on an 'architecture' alias sitting on a Developer), but once the");
+Emit("          paragraph was replaced no check here can tell the new text is wrong.");
+Emit("  ACCEPTANCE: verified 2026-09-03 that org_dba_merge_discipline_conflict returns");
+Emit("          canonical 74300 (Continuum Partners, LLC) on both of its DedupeMerge");
+Emit("          aliases. A check nobody has fired on a known instance is a hypothesis.");
+Emit("  SEVERITY: all four identity checks are WARN worklists — they need human");
+Emit("          judgement, and a permanently-red ERROR gets ignored inside a week,");
+Emit("          which is worse than no check. Only the structural invariants above");
+Emit("          (dangling org references, merge-ledger consistency) gate the exit code.");
 Emit(new string('=', 72));
 
 await using var con = new SqlConnection(cs);

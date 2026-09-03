@@ -115,6 +115,21 @@ internal static class Program
         new("BdResearchTriggers", "CanonicalOrgId"),
         new("IntelProjectAction", "TargetCanonicalOrgId"),
         new("IntelProjectKeyPerson", "CanonicalOrgId"),
+        // Migrations 289/290 (2026-07-17, the CRM "neural" pass): OrgFact and
+        // CrmTouchpoint are hand-banked graph content — typed org facts and
+        // real past meetings/emails/calls. They are REPOINTED, never deleted:
+        // unlike IntelNarrative & co. they do not regenerate from BdIntelExtract.
+        // Safe to repoint without a collision handler because each table's only
+        // uniqueness is UQ_*_NaturalKey (a SHA1), not (CanonicalOrgId, ...), so
+        // moving the org id cannot collide. The fail-closed FK guard caught
+        // their absence on the first merge attempted after those migrations
+        // (2026-09-03, Perkins&Will) — working as designed, same as migration 280.
+        // KNOWN LIMITATION: a repointed row's NaturalKey still encodes the LOSER
+        // org id, so a later decompose pass re-banking the same fact against the
+        // survivor computes a different key and inserts a duplicate row (same
+        // content, new key). That is a duplicate to hone, not a failure.
+        new("OrgFact", "CanonicalOrgId"),
+        new("CrmTouchpoint", "CanonicalOrgId"),
     };
 
     // Tables whose CanonicalOrgId rows are deliberately DELETED (not repointed)
