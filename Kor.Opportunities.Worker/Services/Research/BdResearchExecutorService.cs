@@ -1,6 +1,7 @@
 #nullable enable
 using System.Data;
 using System.Globalization;
+using System.Text;
 using System.Text.Json;
 using Kor.Opportunities.Core.Models;
 using Kor.Opportunities.Data.Awards;
@@ -85,7 +86,8 @@ public sealed class BdResearchExecutorService
             {
                 var existing = await _intelReadService.GetOrgIntelAsync(candidate.Id, ct).ConfigureAwait(false);
                 var currentIntelJson = SerializeBundleAsContext(existing);
-                var userPrompt = prompt.UserPrompt.Replace("{CURRENT_INTEL_JSON}", currentIntelJson, StringComparison.Ordinal);
+                var anchor = await BuildIdentityAnchorAsync(candidate, ct).ConfigureAwait(false);
+                var userPrompt = anchor + prompt.UserPrompt.Replace("{CURRENT_INTEL_JSON}", currentIntelJson, StringComparison.Ordinal);
                 var result = await _executor.ExecuteAsync(
                     new ResearchTarget(
                         candidate.Id,
@@ -103,6 +105,22 @@ public sealed class BdResearchExecutorService
                 }
 
                 await WriteOutputAsync(result, ct).ConfigureAwait(false);
+
+                var gate = ResearchIdentityGate.Evaluate(candidate.AnchorHost, result.ResultJson);
+                if (!gate.Allow)
+                {
+                    failures++;
+                    _logger.LogError(
+                        "IDENTITY GATE blocked a narrative overwrite for org {CanonicalOrgId}/{OrgName}: {Reason}. Raw output kept; nothing was persisted.",
+                        candidate.Id, candidate.DisplayName, gate.Reason);
+                    continue;
+                }
+
+                if (!candidate.HasAnchor && gate.ResearchedHost is not null)
+                {
+                    await BackfillWebsiteAsync(candidate, gate.ResearchedHost, ct).ConfigureAwait(false);
+                }
+
                 await PushThroughChokepointAsync(result, ct).ConfigureAwait(false);
                 successes++;
                 totalInputTokens += result.InputTokens;
@@ -152,7 +170,8 @@ public sealed class BdResearchExecutorService
 
             var existing = await _intelReadService.GetOrgIntelAsync(org.Id, ct).ConfigureAwait(false);
             var currentIntelJson = SerializeBundleAsContext(existing);
-            var userPrompt = prompt.UserPrompt.Replace("{CURRENT_INTEL_JSON}", currentIntelJson, StringComparison.Ordinal);
+            var anchor = await BuildIdentityAnchorAsync(org, ct).ConfigureAwait(false);
+            var userPrompt = anchor + prompt.UserPrompt.Replace("{CURRENT_INTEL_JSON}", currentIntelJson, StringComparison.Ordinal);
             var result = await _executor.ExecuteAsync(
                 new ResearchTarget(
                     org.Id,
@@ -168,7 +187,24 @@ public sealed class BdResearchExecutorService
                 return null;
             }
 
+            // Always keep the raw output on disk, even when the gate refuses it —
+            // a refused result is evidence, and discarding it would hide the near-miss.
             await WriteOutputAsync(result, ct).ConfigureAwait(false);
+
+            var gate = ResearchIdentityGate.Evaluate(org.AnchorHost, result.ResultJson);
+            if (!gate.Allow)
+            {
+                _logger.LogError(
+                    "IDENTITY GATE blocked a narrative overwrite for org {CanonicalOrgId}/{OrgName}: {Reason}. Raw output kept; nothing was persisted.",
+                    org.Id, org.DisplayName, gate.Reason);
+                return null;
+            }
+
+            if (!org.HasAnchor && gate.ResearchedHost is not null)
+            {
+                await BackfillWebsiteAsync(org, gate.ResearchedHost, ct).ConfigureAwait(false);
+            }
+
             await PushThroughChokepointAsync(result, ct).ConfigureAwait(false);
             return result;
         }
@@ -200,6 +236,8 @@ public sealed class BdResearchExecutorService
 SELECT TOP (@max) co.Id,
        co.DisplayName,
        co.Kind,
+       co.Website,
+       co.WebsiteDomain,
        last_seen.LastSeenAtUtc
 FROM opportunities.CanonicalOrg co
 LEFT JOIN (
@@ -249,7 +287,9 @@ ORDER BY ISNULL(last_seen.LastSeenAtUtc, '0001-01-01') ASC;";
             rows.Add(new ResearchOrgCandidate(
                 reader.GetInt64(0),
                 reader.GetString(1),
-                reader.GetString(2)));
+                reader.GetString(2),
+                reader.IsDBNull(3) ? null : reader.GetString(3),
+                reader.IsDBNull(4) ? null : reader.GetString(4)));
         }
 
         return rows;
@@ -258,7 +298,7 @@ ORDER BY ISNULL(last_seen.LastSeenAtUtc, '0001-01-01') ASC;";
     private async Task<ResearchOrgCandidate?> LoadOrgAsync(long canonicalOrgId, CancellationToken ct)
     {
         const string sql = @"
-SELECT Id, DisplayName, Kind
+SELECT Id, DisplayName, Kind, Website, WebsiteDomain
 FROM opportunities.CanonicalOrg
 WHERE Id = @id
   AND RetiredAtUtc IS NULL;";
@@ -281,7 +321,123 @@ WHERE Id = @id
         return new ResearchOrgCandidate(
             reader.GetInt64(0),
             reader.GetString(1),
-            reader.GetString(2));
+            reader.GetString(2),
+            reader.IsDBNull(3) ? null : reader.GetString(3),
+            reader.IsDBNull(4) ? null : reader.GetString(4));
+    }
+
+    /// <summary>
+    /// Builds the ENTITY ON FILE preamble prepended to every research prompt.
+    /// The identifying evidence we already hold — website, aliases, the people
+    /// affiliated to the row — is exactly what would have stopped the Continuum
+    /// rewrite: four Victoria architects were sitting on the row while the model
+    /// was told only the words "Continuum Partners, LLC".
+    /// </summary>
+    private async Task<string> BuildIdentityAnchorAsync(ResearchOrgCandidate org, CancellationToken ct)
+    {
+        var aliases = new List<string>();
+        var people = new List<string>();
+
+        try
+        {
+            const string sql = @"
+SELECT TOP (12) N'alias' AS Kind, oa.RawName AS Value
+FROM opportunities.OrgAlias oa WHERE oa.CanonicalOrgId = @id
+UNION ALL
+SELECT TOP (12) N'person', p.DisplayName
+FROM opportunities.IntelPersonAffiliation a
+JOIN opportunities.IntelPerson p ON p.Id = a.IntelPersonId
+WHERE a.CanonicalOrgId = @id AND a.RetiredAtUtc IS NULL AND p.RetiredAtUtc IS NULL;";
+
+            await using var con = new SqlConnection(_workerOptions.OpportunitiesDb);
+            await con.OpenAsync(ct).ConfigureAwait(false);
+            await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+            cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = org.Id;
+            await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+            while (await reader.ReadAsync(ct).ConfigureAwait(false))
+            {
+                var bucket = reader.GetString(0) == "alias" ? aliases : people;
+                if (!reader.IsDBNull(1))
+                {
+                    bucket.Add(reader.GetString(1));
+                }
+            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // Evidence is an accuracy aid, not a correctness dependency — a failed
+            // lookup must not stop the refresh, but it IS logged so a systematically
+            // anchor-less run is visible rather than silent.
+            _logger.LogWarning(ex, "Identity anchor evidence lookup failed for org {CanonicalOrgId}; proceeding with name only.", org.Id);
+        }
+
+        var sb = new StringBuilder();
+        sb.AppendLine("=== ENTITY ON FILE — research THIS organization and no other ===");
+        sb.AppendLine(CultureInfo.InvariantCulture, $"Name: {org.DisplayName}");
+        sb.AppendLine(CultureInfo.InvariantCulture, $"Kind: {org.Kind}");
+        sb.AppendLine(org.HasAnchor
+            ? $"Official website (AUTHORITATIVE — the entity you research MUST be this one): {org.AnchorHost}"
+            : "Official website: NOT ON FILE. Identify it from the evidence below.");
+
+        if (aliases.Count > 0)
+        {
+            sb.AppendLine(CultureInfo.InvariantCulture, $"Known names/aliases on file: {string.Join("; ", aliases)}");
+        }
+
+        if (people.Count > 0)
+        {
+            sb.AppendLine(CultureInfo.InvariantCulture, $"People already on file at this organization: {string.Join("; ", people)}");
+        }
+
+        sb.AppendLine();
+        sb.AppendLine("RULES:");
+        sb.AppendLine("1. Many firms share a name. If the evidence above points to a different");
+        sb.AppendLine("   organization than the one your search surfaces, the evidence above wins.");
+        sb.AppendLine("2. Return the official website of the entity you actually researched in");
+        sb.AppendLine("   'entityWebsite', and set 'entityMatchesRecord' to true only if you are");
+        sb.AppendLine("   confident it is the same organization as the evidence above.");
+        sb.AppendLine("3. If you cannot confirm the match, set 'entityMatchesRecord' to false and");
+        sb.AppendLine("   explain in '_confidence'. Do NOT assert that the record on file is wrong");
+        sb.AppendLine("   and do NOT replace it with a different company's details.");
+        sb.AppendLine("=== END ENTITY ON FILE ===");
+        sb.AppendLine();
+        return sb.ToString();
+    }
+
+    /// <summary>
+    /// Self-healing: an org with no anchor that has just been researched gets the
+    /// discovered website written back, so the NEXT refresh is comparable. This is
+    /// how the 7,200 anchor-less orgs acquire anchors without a separate backfill.
+    /// </summary>
+    private async Task BackfillWebsiteAsync(ResearchOrgCandidate org, string host, CancellationToken ct)
+    {
+        try
+        {
+            const string sql = @"
+UPDATE opportunities.CanonicalOrg
+SET Website = @site, WebsiteDomain = @host, UpdatedAtUtc = sysdatetimeoffset()
+WHERE Id = @id
+  AND NULLIF(LTRIM(RTRIM(Website)), N'') IS NULL
+  AND NULLIF(LTRIM(RTRIM(WebsiteDomain)), N'') IS NULL;";
+
+            await using var con = new SqlConnection(_workerOptions.OpportunitiesDb);
+            await con.OpenAsync(ct).ConfigureAwait(false);
+            await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+            cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = org.Id;
+            cmd.Parameters.Add("@site", SqlDbType.NVarChar, 500).Value = "https://" + host + "/";
+            cmd.Parameters.Add("@host", SqlDbType.NVarChar, 255).Value = host;
+            var n = await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+            if (n > 0)
+            {
+                _logger.LogInformation(
+                    "Anchored org {CanonicalOrgId}/{OrgName} to {Host} from research output.",
+                    org.Id, org.DisplayName, host);
+            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogWarning(ex, "Website backfill failed for org {CanonicalOrgId}.", org.Id);
+        }
     }
 
     private async Task WriteOutputAsync(ExecutedResearch result, CancellationToken ct)
@@ -387,7 +543,24 @@ WHERE Id = @id
         });
     }
 
-    private sealed record ResearchOrgCandidate(long Id, string DisplayName, string Kind);
+    // Website/WebsiteDomain are the ENTITY ANCHOR. Before 2026-09-03 the research
+    // step received only Id/DisplayName/Kind, so a display name that collides with
+    // a bigger company elsewhere researched that company instead — canonical 74300
+    // held a Victoria architecture practice and was rewritten as a Denver developer
+    // because both were called "Continuum". Nothing errored.
+    private sealed record ResearchOrgCandidate(
+        long Id,
+        string DisplayName,
+        string Kind,
+        string? Website = null,
+        string? WebsiteDomain = null)
+    {
+        /// <summary>The anchor host ("perkinswill.com"), or null when this org has none.</summary>
+        public string? AnchorHost =>
+            ResearchIdentityGate.NormalizeHost(Website) ?? ResearchIdentityGate.NormalizeHost(WebsiteDomain);
+
+        public bool HasAnchor => AnchorHost is not null;
+    }
 }
 
 public sealed record BdResearchExecutorRunResult(

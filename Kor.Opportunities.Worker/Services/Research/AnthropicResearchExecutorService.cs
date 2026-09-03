@@ -25,6 +25,8 @@ public sealed class AnthropicResearchExecutorService : IResearchExecutorService
   ""properties"": {
     ""displayName"": { ""type"": ""string"" },
     ""kind"": { ""type"": ""string"" },
+    ""entityWebsite"": { ""type"": [""string"", ""null""] },
+    ""entityMatchesRecord"": { ""type"": [""boolean"", ""null""] },
     ""_providerName"": { ""type"": ""string"" },
     ""_generatedAt"": { ""type"": ""string"" },
     ""_confidence"": { ""type"": ""string"" },
