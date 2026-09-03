@@ -51,6 +51,68 @@ internal sealed class KorStandardsPromoterRepository
         }
     }
 
+    // Parts share the details' confidence ladder: detail.PromoteComponent, keyed on (FamilyName, TypeName).
+    internal async Task<(bool ok, string message)> PromoteComponentAsync(string familyName, string typeName, string toConfidence, string basis, string changedBy)
+    {
+        try
+        {
+            await using var cn = new SqlConnection(_connectionString);
+            await cn.OpenAsync();
+            await using var cmd = new SqlCommand("detail.PromoteComponent", cn);
+            cmd.CommandType = CommandType.StoredProcedure;
+            cmd.CommandTimeout = SqlTimeouts.UiFacing;
+            AddNVarChar(cmd, "@FamilyName", 200, familyName);
+            AddNVarChar(cmd, "@TypeName", 200, typeName);
+            AddNVarChar(cmd, "@ToConfidence", 32, toConfidence);
+            AddNVarChar(cmd, "@Basis", 1000, basis);
+            AddNVarChar(cmd, "@ChangedBy", 150, changedBy);
+
+            await using var r = await cmd.ExecuteReaderAsync();
+            if (!await r.ReadAsync())
+            {
+                return (true, "Promotion completed.");
+            }
+
+            var fromConfidence = r.GetStringOrEmpty(1);
+            var resultToConfidence = r.GetStringOrEmpty(2);
+            var changed = !r.IsDBNull(3) && r.GetBoolean(3);
+            var label = string.IsNullOrWhiteSpace(typeName) ? familyName : $"{familyName} / {typeName}";
+            return (true, changed
+                ? $"{label} promoted from {fromConfidence} to {resultToConfidence}."
+                : $"{label} already {resultToConfidence}; no change needed.");
+        }
+        catch (SqlException ex)
+        {
+            return (false, ex.Message);
+        }
+    }
+
+    // Upsert one image into the governed art store (detail.SetRenderedImage). Used by the in-app
+    // "Sync Part Images" tool; standards_promoter holds EXECUTE.
+    internal async Task<(bool ok, string message)> SetRenderedImageAsync(string entityKind, string entityKey, byte[] png, int width, int height, string source)
+    {
+        try
+        {
+            await using var cn = new SqlConnection(_connectionString);
+            await cn.OpenAsync();
+            await using var cmd = new SqlCommand("detail.SetRenderedImage", cn);
+            cmd.CommandType = CommandType.StoredProcedure;
+            cmd.CommandTimeout = SqlTimeouts.UiFacing;
+            AddNVarChar(cmd, "@EntityKind", 16, entityKind);
+            AddNVarChar(cmd, "@EntityKey", 410, entityKey);
+            cmd.Parameters.Add("@Png", SqlDbType.VarBinary, -1).Value = png;
+            cmd.Parameters.Add("@Width", SqlDbType.Int).Value = width;
+            cmd.Parameters.Add("@Height", SqlDbType.Int).Value = height;
+            AddNVarChar(cmd, "@Source", 64, source);
+            await cmd.ExecuteNonQueryAsync();
+            return (true, "ok");
+        }
+        catch (SqlException ex)
+        {
+            return (false, ex.Message);
+        }
+    }
+
     private static void AddNVarChar(SqlCommand cmd, string name, int size, string value)
     {
         var p = cmd.Parameters.Add(name, SqlDbType.NVarChar, size);

@@ -35,6 +35,7 @@
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
                         <Grid Grid.Row="0" Margin="0,0,0,8">
                             <Grid.ColumnDefinitions>
@@ -50,7 +51,8 @@
                                        FontSize="12" Foreground="{StaticResource Text.Secondary}"/>
                         </Grid>
                         <DataGrid x:Name="DetailsGrid" Grid.Row="1" AutoGenerateColumns="False" IsReadOnly="True"
-                                  SelectionMode="Single" HeadersVisibility="Column" GridLinesVisibility="Horizontal">
+                                  SelectionMode="Single" HeadersVisibility="Column" GridLinesVisibility="Horizontal"
+                                  SelectionChanged="DetailsGrid_SelectionChanged">
                             <DataGrid.Columns>
                                 <DataGridTextColumn Header="Detail #" Binding="{Binding DetailNumber}" Width="110"/>
                                 <DataGridTextColumn Header="Title" Binding="{Binding Title}" Width="*"/>
@@ -62,6 +64,12 @@
                                 <DataGridTextColumn Header="Doc Status" Binding="{Binding DocStatus}" Width="100"/>
                             </DataGrid.Columns>
                         </DataGrid>
+
+                        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,8,0,0">
+                            <Button x:Name="ApproveButton" Content="Approve (human-confirmed)" Height="34" Padding="14,0" Margin="0,0,8,0" IsEnabled="False" Style="{StaticResource Button.Primary}" Click="Approve_Click"/>
+                            <Button x:Name="RejectButton" Content="Reject" Height="34" Padding="14,0" Margin="0,0,12,0" IsEnabled="False" Style="{StaticResource Button.Secondary}" Click="Reject_Click"/>
+                            <TextBlock x:Name="ApprovalHint" VerticalAlignment="Center" FontSize="12" Foreground="{StaticResource Text.Secondary}"/>
+                        </StackPanel>
                     </Grid>
                 </TabItem>
 

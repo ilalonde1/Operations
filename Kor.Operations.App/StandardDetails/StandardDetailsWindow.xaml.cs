@@ -1,8 +1,10 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -31,7 +33,14 @@ public partial class StandardDetailsWindow : Window
     private KorStandardsReadRepository? _korStandardsRepo;
     private KorStandardsPromoterRepository? _promoterRepo;
     private StandardDetailsAccessPolicy? _policy;
+    private string _userIdentity = "operations";
+    private string? _selectedDiscipline;   // null = All disciplines
+    private bool _partsMode;               // false = Details tab, true = Parts tab
+    private int _previewToken;             // guards against a slow image load landing after the selection moved on
+    private bool _uiReady;                 // true after Loaded — chip/tab Checked events fire during XAML init and must no-op until then
+    private string _partImageRoot = "";    // Quick Insert imageRoot (QuickPick\BMP) — bare thumbnail names resolve here
     private StandardDetailsFileStore? _fileStore;
+    private StandardDetailsMasterPublishOptions? _masterPublishOptions;
     private enum BannerTone { Info, Success, Warning, Error }
 
     public StandardDetailsWindow()
@@ -53,14 +62,23 @@ public partial class StandardDetailsWindow : Window
             _korStandardsRepo = new KorStandardsReadRepository(databaseOptions.KorStandardsDb);
         if (!string.IsNullOrWhiteSpace(databaseOptions.KorStandardsPromoterDb))
             _promoterRepo = new KorStandardsPromoterRepository(databaseOptions.KorStandardsPromoterDb);
-        var storageRoot = StandardDetailsFileStore.NormalizeStorageRoot(Kor.Operations.Services.AppServices.Get<StorageOptions>().StandardDetailsFileStorageRootPath);
+        var storageOptions = Kor.Operations.Services.AppServices.Get<StorageOptions>();
+        var storageRoot = StandardDetailsFileStore.NormalizeStorageRoot(storageOptions.StandardDetailsFileStorageRootPath);
         _fileStore = new StandardDetailsFileStore(storageRoot);
-        _policy = new StandardDetailsAccessPolicy(StandardDetailsAccessPolicy.ResolveCurrentUserIdentity(Kor.Operations.Services.AppServices.Get<UserOptions>(), HeaderBar?.UserEmail));
+        _masterPublishOptions = new StandardDetailsMasterPublishOptions(
+            storageOptions.StandardDetailsAuthoringPath,
+            storageOptions.StandardDetailsMasterPath,
+            storageOptions.StandardDetailsBridgeRoot,
+            storageOptions.StandardDetailsPreviewCachePath);
+        _partImageRoot = storageOptions.StandardDetailsPartImageRoot;
+        _userIdentity = StandardDetailsAccessPolicy.ResolveCurrentUserIdentity(Kor.Operations.Services.AppServices.Get<UserOptions>(), HeaderBar?.UserEmail);
+        _policy = new StandardDetailsAccessPolicy(_userIdentity);
         _filterRecordsBySelectedGroup = FilterByGroupCheckBox.IsChecked == true;
         await EnsureGroupSchemaStateAsync();
         await LoadGroupsUiAsync();
         await LoadDocumentsUiAsync();
         UpdateActionStates();
+        _uiReady = true;
         SetActivityMessage("Ready.", BannerTone.Info);
     }
 
@@ -100,16 +118,162 @@ public partial class StandardDetailsWindow : Window
 
     private void UpdateHeroMetrics()
     {
-        var recordCount = _documentSnapshot.Count;
-        if (recordCount == 0)
+        var n = _documentSnapshot.Count;
+        if (_partsMode)
         {
-            HeroSummaryText.Text = "No records yet. Click New Record to start.";
+            var active = _documentSnapshot.Count(x => string.Equals(x.StatusLabel, "Active", StringComparison.Ordinal));
+            var retired = _documentSnapshot.Count(x => string.Equals(x.StatusLabel, "Retired", StringComparison.Ordinal));
+            HeroSummaryText.Text = n == 0 ? "No parts" : $"{n} parts  ·  {active} active  ·  {retired} retired";
+        }
+        else
+        {
+            var approved = _documentSnapshot.Count(x => string.Equals(x.StatusLabel, "Approved", StringComparison.Ordinal));
+            var pending = _documentSnapshot.Count(x => string.Equals(x.StatusLabel, "Pending", StringComparison.Ordinal) || string.Equals(x.StatusLabel, "Held", StringComparison.Ordinal));
+            HeroSummaryText.Text = n == 0 ? "No details" : $"{n} details  ·  {approved} approved  ·  {pending} pending";
+        }
+    }
+
+    // Drives the right-hand pane from the selected row: title, subtitle, status pill, drawing (details
+    // only), and which action affordances make sense. Parts have no standalone drawing and no approve
+    // action — the pane says so rather than showing dead buttons.
+    // Sets the text/status/action side of the pane synchronously. The drawing itself is loaded
+    // asynchronously from the DB store by LoadPreviewAsync (details AND parts are approvable and both
+    // carry art now), so this shows a placeholder and lets the image arrive.
+    private void UpdateDetailPane(DocumentRow? row)
+    {
+        if (row is null)
+        {
+            DetailTitleText.Text = _partsMode ? "Select a part" : "Select a detail";
+            DetailSubtitleText.Text = _partsMode ? "Pick a part on the left to review it." : "Pick a detail on the left to review it.";
+            DetailStatusPill.Visibility = Visibility.Collapsed;
+            ActionHintText.Text = _partsMode
+                ? "Approve a part and it goes into the Quick Insert palette."
+                : "This is the actual drawing. Approve it and it goes into the drafters' palette.";
+            ApproveButton.Visibility = Visibility.Visible;
+            RejectButton.Visibility = Visibility.Visible;
+            DrawingFootnote.Visibility = Visibility.Collapsed;
+            ShowPreviewEmpty(_partsMode ? "Select a part to see it." : "Select a detail to see its drawing.");
             return;
         }
 
-        var official = _documentSnapshot.Count(x => !string.Equals(x.CurrentOfficialText, "None", StringComparison.OrdinalIgnoreCase));
-        var awaiting = _documentSnapshot.Count(x => string.Equals(x.LatestStatusText, "Submitted", StringComparison.OrdinalIgnoreCase));
-        HeroSummaryText.Text = $"{recordCount} records · {official} official · {awaiting} awaiting review";
+        DetailTitleText.Text = string.IsNullOrWhiteSpace(row.Title) ? row.DetailNumber : row.Title;
+        DetailSubtitleText.Text = row.RightSubtitle;
+        ApplyStatusPill(row.StatusLabel);
+        ApproveButton.Visibility = Visibility.Visible;
+        RejectButton.Visibility = Visibility.Visible;
+        ActionHintText.Text = row.IsPart
+            ? "Approve → the part goes into the Quick Insert palette.  Reject → it never does."
+            : "This is the actual drawing. Approve it and it goes into the drafters' palette.";
+        DrawingFootnote.Visibility = Visibility.Collapsed;
+        ShowPreviewEmpty(row.IsPart ? "Loading part image…" : "Loading drawing…");
+    }
+
+    // Loads the art from the governed DB store (detail.RenderedImage), keyed by identity. Details fall
+    // back to the fs01 preview cache until they are ingested into the store; parts that have no image
+    // yet say so honestly. A token guards against a slow load landing after the selection moved on.
+    private async Task LoadPreviewAsync(DocumentRow? row)
+    {
+        var token = ++_previewToken;
+        if (row is null) return;
+
+        if (_korStandardsRepo is not null)
+        {
+            var kind = row.IsDetail ? "detail" : "component";
+            var key = row.IsDetail ? row.DetailNumber : $"{row.FamilyName}|{row.TypeName}";
+            byte[]? bytes = null;
+            try { bytes = await _korStandardsRepo.LoadRenderedImageAsync(kind, key); }
+            catch (Exception ex) { Log.Warning(ex, "Standard Details: rendered image load failed for {Kind} {Key}.", kind, key); }
+            if (token != _previewToken) return;
+            if (bytes is { Length: > 0 })
+            {
+                ShowPreviewBytes(bytes);
+                if (row.IsDetail) SetDrawingFootnote(row.DetailNumber);
+                return;
+            }
+        }
+
+        if (token != _previewToken) return;
+        if (row.IsDetail)
+        {
+            SetDetailPreview(row.DetailNumber); // fs01 fallback until details are ingested
+            if (PreviewImage.Source is not null) SetDrawingFootnote(row.DetailNumber);
+        }
+        else
+        {
+            ShowPreviewEmpty("No image rendered for this part yet — the next parts render adds it to the store.");
+        }
+    }
+
+    private void SetDrawingFootnote(string detailNumber)
+    {
+        DrawingFootnote.Text = $"KOR-Standards-Authoring-R25.rvt  ·  {detailNumber}";
+        DrawingFootnote.Visibility = Visibility.Visible;
+    }
+
+    private void ShowPreviewBytes(byte[] png)
+    {
+        try
+        {
+            var bmp = new System.Windows.Media.Imaging.BitmapImage();
+            using (var ms = new MemoryStream(png))
+            {
+                bmp.BeginInit();
+                bmp.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
+                bmp.StreamSource = ms;
+                bmp.EndInit();
+            }
+            bmp.Freeze();
+            PreviewImage.Source = bmp;
+            PreviewImage.Visibility = Visibility.Visible;
+            ZoomHintBadge.Visibility = Visibility.Visible;
+            PreviewEmpty.Visibility = Visibility.Collapsed;
+        }
+        catch
+        {
+            ShowPreviewEmpty("Could not load the image.");
+        }
+    }
+
+    private void ShowPreviewEmpty(string message)
+    {
+        PreviewImage.Source = null;
+        PreviewImage.Visibility = Visibility.Collapsed;
+        ZoomHintBadge.Visibility = Visibility.Collapsed;
+        PreviewEmpty.Text = message;
+        PreviewEmpty.Visibility = Visibility.Visible;
+    }
+
+    private void ApplyStatusPill(string label)
+    {
+        string bg, fg;
+        var text = label switch
+        {
+            "Approved" => "Approved",
+            "Pending" => "Pending review",
+            "Held" => "On hold",
+            "Rejected" => "Rejected",
+            "Active" => "Active",
+            "Retired" => "Retired",
+            _ => label
+        };
+        switch (label)
+        {
+            case "Approved":
+            case "Active":
+                bg = "#FFE7F4EA"; fg = "#FF2C7A3F"; break;
+            case "Pending":
+            case "Held":
+                bg = "#FFFBF3E2"; fg = "#FF8A6D1F"; break;
+            case "Rejected":
+                bg = "#FFFBECEB"; fg = "#FFB23A2E"; break;
+            default:
+                bg = "#FFEFF1F3"; fg = "#FF5B636D"; break;
+        }
+        DetailStatusPill.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString(bg));
+        DetailStatusDot.Fill = new SolidColorBrush((Color)ColorConverter.ConvertFromString(fg));
+        DetailStatusPillText.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString(fg));
+        DetailStatusPillText.Text = text;
+        DetailStatusPill.Visibility = Visibility.Visible;
     }
 
     private void UpdateActionStates()
@@ -122,14 +286,62 @@ public partial class StandardDetailsWindow : Window
         var canAssignToSelectedGroup = selectedGroup is not null && (selectedGroup.GroupId is not null || string.Equals(selectedGroup.Name, "All Records", StringComparison.OrdinalIgnoreCase));
 
         AddGroupButton.IsEnabled = canManageGroups; AddSubgroupButton.IsEnabled = canManageGroups && selectedGroup?.GroupId is not null; RenameGroupButton.IsEnabled = canManageGroups && selectedGroup?.GroupId is not null; RemoveGroupButton.IsEnabled = canManageGroups && selectedGroup?.GroupId is not null;
-        CreateRecordButton.IsEnabled = canContribute; UploadVersionButton.IsEnabled = canContribute && selectedDoc is not null; LinkDetailButton.IsEnabled = canContribute && selectedDoc is not null && _korStandardsRepo is not null; RegistersButton.IsEnabled = _korStandardsRepo is not null; AssignRecordButton.IsEnabled = canContribute && selectedDoc is not null && _groupSchemaAvailable && canAssignToSelectedGroup; DeleteRecordButton.IsEnabled = canContribute && selectedDoc is not null;
-        OpenFileButton.IsEnabled = selectedVersion is not null; SubmitButton.IsEnabled = canContribute && selectedVersion is not null && selectedVersion.Status == StatusDraft; ApproveButton.IsEnabled = (_policy?.CanApproveOrReject() == true) && selectedVersion is not null && selectedVersion.Status == StatusSubmitted; RejectButton.IsEnabled = (_policy?.CanApproveOrReject() == true) && selectedVersion is not null && selectedVersion.Status == StatusSubmitted; PublishButton.IsEnabled = (_policy?.CanPublish() == true) && selectedVersion is not null && selectedVersion.Status == StatusApproved;
+        CreateRecordButton.IsEnabled = canContribute; UploadVersionButton.IsEnabled = canContribute && selectedDoc is { IsDetail: false }; LinkDetailButton.IsEnabled = canContribute && selectedDoc is { IsDetail: false } && _korStandardsRepo is not null; RegistersButton.IsEnabled = _korStandardsRepo is not null; PublishToMasterButton.IsEnabled = _korStandardsRepo is not null && (_policy?.CanPublish() == true); ComposeSheetButton.IsEnabled = _repo is not null && _korStandardsRepo is not null && (_policy?.CanPublish() == true); AssignRecordButton.IsEnabled = canContribute && selectedDoc is { IsDetail: false } && _groupSchemaAvailable && canAssignToSelectedGroup; DeleteRecordButton.IsEnabled = canContribute && selectedDoc is { IsDetail: false };
+        OpenFileButton.IsEnabled = selectedVersion is not null; SubmitButton.IsEnabled = canContribute && selectedVersion is not null && selectedVersion.Status == StatusDraft; ApproveButton.IsEnabled = (_policy?.CanApproveOrReject() == true) && (((selectedDoc is { IsDetail: true } or { IsPart: true }) && _promoterRepo is not null) || (selectedVersion is not null && selectedVersion.Status == StatusSubmitted)); RejectButton.IsEnabled = (_policy?.CanApproveOrReject() == true) && (((selectedDoc is { IsDetail: true } or { IsPart: true }) && _promoterRepo is not null) || (selectedVersion is not null && selectedVersion.Status == StatusSubmitted)); PublishButton.IsEnabled = (_policy?.CanPublish() == true) && selectedVersion is not null && selectedVersion.Status == StatusApproved;
     }
 
-    private static void SetStepChipVisual(Border chip, TextBlock label, bool isActive)
+    // The drawing previews are PRE-RENDERED to a SHARED cache (beside the master template on the
+    // Drafting share), so every reviewer loads the SAME images — nobody needs Revit or the bridge to
+    // VIEW a detail. The bridge only (re)generates this cache when a detail changes.
+    private string ResolvePreviewCacheDir()
     {
-        chip.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString(isActive ? "#FFDCEEF9" : "#FFF1F3F6"));
-        chip.BorderBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString(isActive ? "#FF9FC6E3" : "#FFD9DEE5"));
-        label.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString(isActive ? "#FF114F78" : "#FF4F6275"));
+        // The shared fs01 cache path (StandardDetails.PreviewCachePath in App.config) — the drawing
+        // previews live on the file server with the templates, so the whole fleet reads the same
+        // images and nobody needs Revit or the bridge to VIEW a detail.
+        var configured = _masterPublishOptions?.PreviewCachePath;
+        if (!string.IsNullOrWhiteSpace(configured)) return configured;
+        return @"\\Kor-fs01\Drafting\KOR-Standards\detail-previews";
+    }
+
+    // Shows the selected detail's pre-rendered drawing from the shared cache. Fully guarded — a
+    // missing/broken image never throws into the UI; it just shows the fallback.
+    private void SetDetailPreview(string? detailNumber)
+    {
+        try
+        {
+            string? file = null;
+            if (!string.IsNullOrWhiteSpace(detailNumber))
+            {
+                var candidate = System.IO.Path.Combine(ResolvePreviewCacheDir(), detailNumber.Trim() + ".png");
+                if (System.IO.File.Exists(candidate)) file = candidate;
+            }
+
+            if (file is null)
+            {
+                PreviewImage.Source = null;
+                PreviewImage.Visibility = Visibility.Collapsed;
+                ZoomHintBadge.Visibility = Visibility.Collapsed;
+                PreviewEmpty.Text = "Select a detail to see its drawing.";
+                PreviewEmpty.Visibility = Visibility.Visible;
+                return;
+            }
+
+            var bmp = new System.Windows.Media.Imaging.BitmapImage();
+            bmp.BeginInit();
+            bmp.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
+            bmp.UriSource = new Uri(file);
+            bmp.EndInit();
+            PreviewImage.Source = bmp;
+            PreviewImage.Visibility = Visibility.Visible;
+            ZoomHintBadge.Visibility = Visibility.Visible;
+            PreviewEmpty.Visibility = Visibility.Collapsed;
+        }
+        catch
+        {
+            PreviewImage.Source = null;
+            PreviewImage.Visibility = Visibility.Collapsed;
+            ZoomHintBadge.Visibility = Visibility.Collapsed;
+            PreviewEmpty.Visibility = Visibility.Visible;
+        }
     }
 }

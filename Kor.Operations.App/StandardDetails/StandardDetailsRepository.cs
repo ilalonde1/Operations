@@ -346,7 +346,7 @@ WHERE DocumentId = @docId;";
         return await cmd.ExecuteNonQueryAsync();
     }
 
-    internal async Task<int> CreateDocumentAsync(string? title, string? description, bool groupSchemaAvailable, long? selectedGroupId, Guid actorUserId)
+    internal async Task<long> CreateDocumentAsync(string? title, string? description, bool groupSchemaAvailable, long? selectedGroupId, Guid actorUserId)
     {
         // A document is created with its DEFAULT variant in one transaction, so every version
         // uploaded later has a variant to belong to (versioning and current-official are variant-scoped).
@@ -380,7 +380,7 @@ VALUES (@docId, N'DEFAULT', 1, @userId, SYSUTCDATETIME());", cn, (SqlTransaction
         await insertVariant.ExecuteNonQueryAsync();
 
         await tx.CommitAsync();
-        return 1;
+        return newDocId;
     }
 
     // The DEFAULT variant id for a document, creating it if a legacy document lacks one.

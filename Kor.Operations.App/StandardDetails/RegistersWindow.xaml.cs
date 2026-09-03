@@ -11,12 +11,30 @@ public partial class RegistersWindow : Window
 {
     private readonly KorStandardsReadRepository _korRepo;
     private readonly StandardDetailsRepository _txRepo;
+    private readonly KorStandardsPromoterRepository? _promoter;
+    private readonly bool _canApproveReject;
+    private readonly string _actorIdentity;
 
-    internal RegistersWindow(KorStandardsReadRepository korRepo, StandardDetailsRepository txRepo)
+    internal RegistersWindow(
+        KorStandardsReadRepository korRepo,
+        StandardDetailsRepository txRepo,
+        KorStandardsPromoterRepository? promoter,
+        bool canApproveReject,
+        string actorIdentity)
     {
         _korRepo = korRepo ?? throw new ArgumentNullException(nameof(korRepo));
         _txRepo = txRepo ?? throw new ArgumentNullException(nameof(txRepo));
+        _promoter = promoter;
+        _canApproveReject = canApproveReject;
+        _actorIdentity = string.IsNullOrWhiteSpace(actorIdentity) ? "operations" : actorIdentity;
         InitializeComponent();
+
+        var canAct = _canApproveReject && _promoter != null;
+        ApproveButton.Visibility = canAct ? Visibility.Visible : Visibility.Collapsed;
+        RejectButton.Visibility = canAct ? Visibility.Visible : Visibility.Collapsed;
+        ApprovalHint.Text = canAct
+            ? "Select a detail, then Approve (sets human-confirmed) or Reject."
+            : "Read-only — approve/reject needs the Approver, Publisher, or Admin role.";
     }
 
     private async void Window_Loaded(object sender, RoutedEventArgs e)
@@ -107,6 +125,62 @@ public partial class RegistersWindow : Window
     {
         await LoadDetailsAsync(DetailSearchBox.Text?.Trim() ?? string.Empty);
         await LoadComponentsAsync(ComponentSearchBox.Text?.Trim() ?? string.Empty);
+    }
+
+    private void DetailsGrid_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        var enable = _canApproveReject && _promoter != null && DetailsGrid.SelectedItem is DetailRegisterDisplayRow;
+        ApproveButton.IsEnabled = enable;
+        RejectButton.IsEnabled = enable;
+    }
+
+    private async void Approve_Click(object sender, RoutedEventArgs e) => await DecideSelectedDetailAsync("human-confirmed", "Approve");
+
+    private async void Reject_Click(object sender, RoutedEventArgs e) => await DecideSelectedDetailAsync("rejected", "Reject");
+
+    private async Task DecideSelectedDetailAsync(string toConfidence, string verb)
+    {
+        if (_promoter is null || !_canApproveReject)
+        {
+            return;
+        }
+
+        if (DetailsGrid.SelectedItem is not DetailRegisterDisplayRow row)
+        {
+            MessageBox.Show(this, "Select a detail first.", "Standards Registers", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var confirm = MessageBox.Show(
+            this,
+            $"{verb} {row.DetailNumber} — {row.Title}?" + Environment.NewLine + Environment.NewLine
+                + $"This sets its confidence to '{toConfidence}' in KorStandards and journals a DetailHistory row.",
+            $"Standards Registers — {verb}",
+            MessageBoxButton.OKCancel,
+            MessageBoxImage.Question);
+        if (confirm != MessageBoxResult.OK)
+        {
+            return;
+        }
+
+        ApproveButton.IsEnabled = false;
+        RejectButton.IsEnabled = false;
+        try
+        {
+            var basis = $"Set to {toConfidence} in Standard Details Registers by {_actorIdentity}";
+            var (ok, message) = await _promoter.PromoteAsync(row.DetailNumber, toConfidence, basis, _actorIdentity);
+            if (!ok)
+            {
+                MessageBox.Show(this, message, $"Standards Registers — {verb}", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
+            await LoadDetailsAsync(DetailSearchBox.Text?.Trim() ?? string.Empty);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, $"Standards Registers — {verb}", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
     }
 
     private void Close_Click(object sender, RoutedEventArgs e) => Close();

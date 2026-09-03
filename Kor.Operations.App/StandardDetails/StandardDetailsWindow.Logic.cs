@@ -3,9 +3,11 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using Microsoft.Data.SqlClient;
 using Microsoft.Win32;
 using Serilog;
@@ -186,13 +188,78 @@ public partial class StandardDetailsWindow
 
     private async Task LoadDocumentsUiAsync()
     {
+        var q = SearchBox.Text?.Trim() ?? string.Empty;
+
+        // The main list IS the standard details — the governed content the engineer approves — read
+        // live from KorStandards. (Document records were an empty file-wrapper; the details are the point.)
+        if (_korStandardsRepo != null)
+        {
+            try
+            {
+                if (_partsMode)
+                {
+                    // Parts = the Quick Insert catalog: governed, placeable, on the SAME confidence ladder
+                    // as details. Palettes (Fasteners/Reinforcing/Symbols/...) are not the structural
+                    // disciplines, so the discipline chips don't filter parts — only search does.
+                    var parts = await _korStandardsRepo.LoadQuickInsertPartsAsync(q);
+                    _documentSnapshot = parts.Select(p => new DocumentRow
+                    {
+                        DocumentId = 0,
+                        IsDetail = false,
+                        IsPart = true,
+                        FamilyName = p.FamilyName,
+                        TypeName = p.TypeName,
+                        DetailNumber = string.IsNullOrWhiteSpace(p.Label) ? p.FamilyName : p.Label,
+                        Title = string.IsNullOrWhiteSpace(p.TypeName) ? p.FamilyName : p.TypeName,
+                        GroupName = p.Palette,
+                        StatusLabel = PartStatusLabel(p),
+                        RightSubtitle = $"{p.FamilyName}  ·  {p.Palette}  ·  {StatusWord(PartStatusLabel(p))}"
+                    }).ToList();
+                }
+                else
+                {
+                    var details = await _korStandardsRepo.LoadPaletteDetailsAsync(q);
+                    IEnumerable<PaletteDetailRow> filtered = details;
+                    // Discipline chips filter details to one of Concrete/Steel/General/Wood Frame; "All"
+                    // (null) shows everything.
+                    if (!string.IsNullOrWhiteSpace(_selectedDiscipline))
+                    {
+                        filtered = details.Where(d => string.Equals(d.Discipline, _selectedDiscipline, StringComparison.OrdinalIgnoreCase));
+                    }
+                    _documentSnapshot = filtered.Select(d => new DocumentRow
+                    {
+                        DocumentId = 0,
+                        IsDetail = true,
+                        Title = d.Title,
+                        DetailNumber = d.DetailNumber,
+                        GroupName = string.IsNullOrWhiteSpace(d.Discipline) ? "Ungrouped" : d.Discipline,
+                        CurrentOfficialText = d.IsPlaceable ? "Yes" : (d.VariantsDiverge ? "Diverges" : "No"),
+                        LatestStatusText = string.IsNullOrWhiteSpace(d.Confidence) ? "unverified" : d.Confidence,
+                        StatusLabel = DetailStatusLabel(d),
+                        RightSubtitle = $"{d.DetailNumber}  ·  {(string.IsNullOrWhiteSpace(d.Discipline) ? "Ungrouped" : d.Discipline)}  ·  {StatusWord(DetailStatusLabel(d))}"
+                    }).ToList();
+                }
+                _versionSnapshot = new List<VersionRow>();
+                UpdateHeroMetrics();
+                DocumentsGrid.ItemsSource = _documentSnapshot;
+                VersionsGrid.ItemsSource = null;
+                UpdateDetailPane(null);
+                UpdateSelectionSummary();
+                return;
+            }
+            catch (Exception ex)
+            {
+                SetActivityMessage(_partsMode ? "Could not load parts from KorStandards." : "Could not load standard details from KorStandards.", BannerTone.Warning);
+                Log.Warning(ex, "Standard Details: loading {Mode} from KorStandards failed.", _partsMode ? "parts" : "details");
+            }
+        }
+
         if (_repo == null)
         {
             MessageBox.Show(this, "Missing connection string 'KorTransmittalsDb' in App.config", "Standard Details — Configuration", MessageBoxButton.OK, MessageBoxImage.Error);
             return;
         }
 
-        var q = SearchBox.Text?.Trim() ?? string.Empty;
         var effectiveGroupId = _filterRecordsBySelectedGroup ? _selectedGroupId : null;
 
         IReadOnlyList<StandardDetailsDocumentRow> data;
@@ -284,6 +351,138 @@ public partial class StandardDetailsWindow
     private async void Search_Click(object sender, RoutedEventArgs e) => await LoadDocumentsUiAsync();
     private async void Refresh_Click(object sender, RoutedEventArgs e) { await LoadGroupsUiAsync(); await LoadDocumentsUiAsync(); }
 
+    private void ToolsButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (ToolsButton.ContextMenu is { } menu)
+        {
+            menu.PlacementTarget = ToolsButton;
+            menu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
+            menu.IsOpen = true;
+        }
+    }
+
+    private async void SearchBox_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Enter) return;
+        e.Handled = true;
+        await LoadDocumentsUiAsync();
+    }
+
+    private async void DisciplineChip_Checked(object sender, RoutedEventArgs e)
+    {
+        if (!_uiReady || sender is not RadioButton rb) return;
+        var label = rb.Content as string;
+        _selectedDiscipline = string.Equals(label, "All", StringComparison.OrdinalIgnoreCase) ? null : label;
+        await LoadDocumentsUiAsync();
+    }
+
+    private async void CatalogTab_Checked(object sender, RoutedEventArgs e)
+    {
+        var parts = ReferenceEquals(sender, PartsTab);
+        if (!_uiReady || parts == _partsMode) return;
+        _partsMode = parts;
+        ListIdColumn.Header = _partsMode ? "PART" : "DETAIL #";
+        await LoadDocumentsUiAsync();
+    }
+
+    private void PreviewImage_Click(object sender, MouseButtonEventArgs e)
+    {
+        if (PreviewImage.Source is null) return;
+        var zoom = new DetailZoomWindow(PreviewImage.Source, DetailTitleText.Text) { Owner = this };
+        zoom.ShowDialog();
+    }
+
+    // Tools ▸ Sync Part Images: reads every Quick Insert thumbnail (fastener/bolt .png + QuickPick .bmp)
+    // and upserts it into the DB art store the app shows. Production Quick Insert reads the files, not the
+    // store, so this never touches production — it just refreshes what reviewers see.
+    private async void SyncPartImages_Click(object sender, RoutedEventArgs e)
+    {
+        if (!EnsureCanPublishAction()) return;
+        if (_korStandardsRepo == null || _promoterRepo == null)
+        {
+            MessageBox.Show(this, "KorStandards is not fully configured (reader + promoter required).", "Standard Details — Sync Part Images", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+        if (MessageBox.Show(this, "Re-sync all Quick Insert part thumbnails into the image store?" + Environment.NewLine + Environment.NewLine + "Reads the current thumbnails and refreshes the DB store the app shows. Production Quick Insert is not affected.", "Standard Details — Sync Part Images", MessageBoxButton.OKCancel, MessageBoxImage.Question) != MessageBoxResult.OK) return;
+
+        SetActivityMessage("Syncing part images...", BannerTone.Info);
+        ToolsButton.IsEnabled = false;
+        try
+        {
+            var (total, done, missing, failed) = await Task.Run(SyncPartImagesCoreAsync);
+            SetActivityMessage($"Part images synced: {done} updated, {missing} missing, {failed} failed (of {total}).", failed > 0 ? BannerTone.Warning : BannerTone.Success);
+            if (_partsMode) await LoadDocumentsUiAsync();
+        }
+        catch (Exception ex)
+        {
+            SetActivityMessage("Part image sync failed.", BannerTone.Error);
+            Log.Warning(ex, "Standard Details: part image sync failed.");
+            MessageBox.Show(this, ex.Message, "Standard Details — Sync Part Images Failed", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            ToolsButton.IsEnabled = true;
+        }
+    }
+
+    private async Task<(int total, int done, int missing, int failed)> SyncPartImagesCoreAsync()
+    {
+        var root = string.IsNullOrWhiteSpace(_partImageRoot) ? @"\\Kor-fs01\Drafting\2026\QuickPick\BMP" : _partImageRoot;
+        var refs = await _korStandardsRepo!.LoadComponentImageRefsAsync();
+        int done = 0, missing = 0, failed = 0;
+        foreach (var cr in refs)
+        {
+            try
+            {
+                var path = System.IO.Path.IsPathRooted(cr.ImageFile) ? cr.ImageFile : System.IO.Path.Combine(root, cr.ImageFile);
+                if (!System.IO.File.Exists(path)) { missing++; continue; }
+                var (png, w, h) = LoadImageAsPng(path);
+                if (png.Length == 0) { failed++; continue; }
+                var (ok, _) = await _promoterRepo!.SetRenderedImageAsync("component", $"{cr.FamilyName}|{cr.TypeName}", png, w, h, "sync-thumb");
+                if (ok) done++; else failed++;
+            }
+            catch (Exception ex)
+            {
+                failed++;
+                Log.Warning(ex, "Standard Details: sync image failed for {Family}/{Type}.", cr.FamilyName, cr.TypeName);
+            }
+        }
+        return (refs.Count, done, missing, failed);
+    }
+
+    // Loads any WPF-decodable image (BMP/PNG/…) and re-encodes it as PNG bytes for the store.
+    private static (byte[] png, int w, int h) LoadImageAsPng(string path)
+    {
+        var bytes = System.IO.File.ReadAllBytes(path);
+        using var ms = new System.IO.MemoryStream(bytes);
+        var decoder = System.Windows.Media.Imaging.BitmapDecoder.Create(ms, System.Windows.Media.Imaging.BitmapCreateOptions.None, System.Windows.Media.Imaging.BitmapCacheOption.OnLoad);
+        var frame = decoder.Frames[0];
+        var encoder = new System.Windows.Media.Imaging.PngBitmapEncoder();
+        encoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(frame));
+        using var outMs = new System.IO.MemoryStream();
+        encoder.Save(outMs);
+        return (outMs.ToArray(), frame.PixelWidth, frame.PixelHeight);
+    }
+
+    // Parts ride the same confidence ladder as details, so the same status vocabulary applies.
+    private static string PartStatusLabel(QuickInsertPartRow p)
+    {
+        if (string.Equals(p.Confidence, "rejected", StringComparison.OrdinalIgnoreCase)) return "Rejected";
+        if (p.IsPlaceable) return "Approved";
+        if (string.Equals(p.Confidence, "content-verified", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(p.Confidence, "human-confirmed", StringComparison.OrdinalIgnoreCase)) return "Held";
+        return "Pending";
+    }
+
+    private static string StatusWord(string label) => label switch
+    {
+        "Approved" => "Approved",
+        "Pending" => "Pending",
+        "Held" => "On hold",
+        "Rejected" => "Rejected",
+        _ => label
+    };
+
     private async void GroupsTree_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
     {
         _selectedGroupId = (GroupsTree.SelectedItem as GroupNode)?.GroupId;
@@ -304,16 +503,22 @@ public partial class StandardDetailsWindow
 
     private async void DocumentsGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (DocumentsGrid.SelectedItem is DocumentRow doc)
+        var selected = DocumentsGrid.SelectedItem as DocumentRow;
+        // Only the legacy document-record rows (real DocumentId) have version history; details and parts
+        // do not, so don't fire a spurious version query for them.
+        if (selected is { IsDetail: false, DocumentId: > 0 } record)
         {
-            await LoadVersionsUiAsync(doc.DocumentId);
+            await LoadVersionsUiAsync(record.DocumentId);
         }
         else
         {
+            _versionSnapshot = new List<VersionRow>();
             VersionsGrid.ItemsSource = null;
             UpdateActionStates();
         }
 
+        UpdateDetailPane(selected);
+        await LoadPreviewAsync(selected);
         UpdateSelectionSummary();
     }
 
@@ -433,6 +638,143 @@ public partial class StandardDetailsWindow
         dlg.ShowDialog();
     }
 
+    private async void PublishToMaster_Click(object sender, RoutedEventArgs e)
+    {
+        if (!EnsureCanPublishAction())
+        {
+            return;
+        }
+
+        await PublishToMasterAsync();
+    }
+
+    private async void ComposeSheet_Click(object sender, RoutedEventArgs e)
+    {
+        if (!EnsureCanPublishAction())
+        {
+            return;
+        }
+
+        if (_repo == null || _korStandardsRepo == null)
+        {
+            SetActivityMessage("Standard Details sheet composer is not configured.", BannerTone.Warning);
+            MessageBox.Show(this, "KorStandards and Standard Details databases must both be configured.", "Standard Details - Sheet Composer", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        if (_masterPublishOptions is not { IsConfigured: true } options)
+        {
+            SetActivityMessage("Sheet composer settings are incomplete.", BannerTone.Warning);
+            MessageBox.Show(this, "App.config must define StandardDetails.AuthoringPath, StandardDetails.MasterPath, and StandardDetails.BridgeRoot.", "Standard Details - Sheet Composer", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        var bridge = new DrafterBridgeClient(options.BridgeRoot);
+        var composer = new StandardDetailsSheetComposer(bridge, options);
+        var dlg = new SheetComposerWindow(_korStandardsRepo, _repo, composer, _groupSchemaAvailable, _selectedGroupId, _actorUserId) { Owner = this };
+        if (dlg.ShowDialog() == true)
+        {
+            SetActivityMessage("Composed Standard Details sheet and created governance record.", BannerTone.Success);
+            await LoadDocumentsUiAsync();
+        }
+    }
+
+    private async Task PublishToMasterAsync()
+    {
+        if (_korStandardsRepo == null)
+        {
+            SetActivityMessage("KorStandards catalog is not configured.", BannerTone.Warning);
+            MessageBox.Show(this, "KorStandards catalog is not configured.", "Standard Details - Publish to Master", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        if (_masterPublishOptions is not { IsConfigured: true } options)
+        {
+            SetActivityMessage("Publish-to-master settings are incomplete.", BannerTone.Warning);
+            MessageBox.Show(this, "App.config must define StandardDetails.AuthoringPath, StandardDetails.MasterPath, and StandardDetails.BridgeRoot.", "Standard Details - Publish to Master", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        var confirm = MessageBox.Show(
+            this,
+            $"Rebuild MASTER from approved AUTHORING details?\n\nAUTHORING:\n{options.AuthoringPath}\n\nMASTER:\n{options.MasterPath}\n\nThe live MASTER file is replaced only after verification succeeds.",
+            "Standard Details - Publish to Master",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning);
+        if (confirm != MessageBoxResult.Yes)
+        {
+            return;
+        }
+
+        PublishToMasterButton.IsEnabled = false;
+        SetActivityMessage("Publishing approved details to MASTER...", BannerTone.Info);
+
+        try
+        {
+            var bridge = new DrafterBridgeClient(options.BridgeRoot);
+            var publisher = new MasterPublisher(bridge, _korStandardsRepo, options);
+            var result = await publisher.PublishAsync(TimeSpan.FromMinutes(15));
+            var summary = BuildMasterPublishSummary(result);
+
+            SetActivityMessage($"Published MASTER: removed {result.RemovedViews.Count} view(s); verified {result.MasterDetailCount} detail view(s).", BannerTone.Success);
+            MessageBox.Show(this, summary, "Standard Details - Publish to Master", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            SetActivityMessage("Publish to MASTER failed. Review the error before retrying.", BannerTone.Error);
+            Log.Warning(ex, "Standard Details: publish to MASTER failed.");
+            MessageBox.Show(this, ex.Message, "Standard Details - Publish to Master Failed", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            UpdateActionStates();
+        }
+    }
+
+    private static string BuildMasterPublishSummary(MasterPublishResult result)
+    {
+        var text = new StringBuilder();
+        text.AppendLine("MASTER publish completed.");
+        text.AppendLine();
+        text.AppendLine($"Approved details: {result.ApprovedCount}");
+        text.AppendLine($"AUTHORING KOR-D views: {result.AuthoringDetailCount}");
+        text.AppendLine($"Removed non-approved KOR-D views: {result.RemovedViews.Count}");
+        text.AppendLine($"MASTER KOR-D views after verification: {result.MasterDetailCount}");
+        text.AppendLine($"Verified: {result.Verified}");
+
+        if (result.RemovedViews.Count > 0)
+        {
+            text.AppendLine();
+            text.AppendLine("Removed:");
+            foreach (var view in result.RemovedViews.Take(20))
+            {
+                text.AppendLine($"- {view.DetailNumber} ({view.ViewId}) {view.ViewName}");
+            }
+
+            if (result.RemovedViews.Count > 20)
+            {
+                text.AppendLine($"- ... {result.RemovedViews.Count - 20} more");
+            }
+        }
+
+        if (result.ApprovedMissingFromAuthoring.Count > 0)
+        {
+            text.AppendLine();
+            text.AppendLine("Approved but not found in AUTHORING:");
+            foreach (var detailNumber in result.ApprovedMissingFromAuthoring.Take(20))
+            {
+                text.AppendLine($"- {detailNumber}");
+            }
+
+            if (result.ApprovedMissingFromAuthoring.Count > 20)
+            {
+                text.AppendLine($"- ... {result.ApprovedMissingFromAuthoring.Count - 20} more");
+            }
+        }
+
+        return text.ToString();
+    }
+
     private void Registers_Click(object sender, RoutedEventArgs e)
     {
         if (_repo == null || _korStandardsRepo == null)
@@ -441,7 +783,7 @@ public partial class StandardDetailsWindow
             return;
         }
 
-        var dlg = new RegistersWindow(_korStandardsRepo, _repo) { Owner = this };
+        var dlg = new RegistersWindow(_korStandardsRepo, _repo, _promoterRepo, _policy?.CanApproveOrReject() == true, _userIdentity) { Owner = this };
         dlg.ShowDialog();
     }
 
@@ -457,8 +799,77 @@ public partial class StandardDetailsWindow
     }
 
     private async void Submit_Click(object sender, RoutedEventArgs e) { if (!EnsureCanContribute("submit versions")) return; await SubmitSelectedVersionAsync(StatusDraft, StatusSubmitted, true); }
-    private async void Approve_Click(object sender, RoutedEventArgs e) { if (!EnsureCanApproveReject("approve versions")) return; await DecideSelectedVersionAsync(StatusApproved, 1); }
-    private async void Reject_Click(object sender, RoutedEventArgs e) { if (!EnsureCanApproveReject("reject versions")) return; await DecideSelectedVersionAsync(StatusRejected, 2); }
+    private async void Approve_Click(object sender, RoutedEventArgs e)
+    {
+        if (!EnsureCanApproveReject("approve")) return;
+        if (DocumentsGrid.SelectedItem is DocumentRow { IsDetail: true } detail) { await DecideSelectedDetailAsync(detail, "human-confirmed", "Approve"); return; }
+        if (DocumentsGrid.SelectedItem is DocumentRow { IsPart: true } part) { await DecideSelectedComponentAsync(part, "human-confirmed", "Approve"); return; }
+        await DecideSelectedVersionAsync(StatusApproved, 1);
+    }
+
+    private async void Reject_Click(object sender, RoutedEventArgs e)
+    {
+        if (!EnsureCanApproveReject("reject")) return;
+        if (DocumentsGrid.SelectedItem is DocumentRow { IsDetail: true } detail) { await DecideSelectedDetailAsync(detail, "rejected", "Reject"); return; }
+        if (DocumentsGrid.SelectedItem is DocumentRow { IsPart: true } part) { await DecideSelectedComponentAsync(part, "rejected", "Reject"); return; }
+        await DecideSelectedVersionAsync(StatusRejected, 2);
+    }
+
+    private async Task DecideSelectedDetailAsync(DocumentRow detail, string toConfidence, string verb)
+    {
+        if (_promoterRepo == null) { MessageBox.Show(this, "KorStandards promoter is not configured (App.config: KorStandardsPromoterDb).", "Standard Details — Approval", MessageBoxButton.OK, MessageBoxImage.Warning); return; }
+        if (string.IsNullOrWhiteSpace(detail.DetailNumber)) return;
+        if (MessageBox.Show(this, $"{verb} {detail.DetailNumber} — {detail.Title}?" + Environment.NewLine + Environment.NewLine + $"Sets its confidence to '{toConfidence}' in KorStandards, journaled to DetailHistory.", $"Standard Details — {verb}", MessageBoxButton.OKCancel, MessageBoxImage.Question) != MessageBoxResult.OK) return;
+        try
+        {
+            var basis = $"Set to {toConfidence} in Standard Details by {_userIdentity}";
+            var (ok, message) = await _promoterRepo.PromoteAsync(detail.DetailNumber, toConfidence, basis, _userIdentity);
+            if (!ok)
+            {
+                SetActivityMessage(message, BannerTone.Error);
+                MessageBox.Show(this, message, $"Standard Details — {verb}", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+            SetActivityMessage(message, BannerTone.Success);
+            await LoadDocumentsUiAsync();
+        }
+        catch (Exception ex)
+        {
+            SetActivityMessage("Approval failed. No changes were committed.", BannerTone.Error);
+            Log.Warning(ex, "Standard Details: detail promotion failed for {DetailNumber}.", detail.DetailNumber);
+            MessageBox.Show(this, ex.Message, $"Standard Details — {verb}", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    // Parts approve/reject through the SAME confidence ladder as details — detail.PromoteComponent,
+    // keyed on family + type, journaled to ComponentHistory.
+    private async Task DecideSelectedComponentAsync(DocumentRow part, string toConfidence, string verb)
+    {
+        if (_promoterRepo == null) { MessageBox.Show(this, "KorStandards promoter is not configured (App.config: KorStandardsPromoterDb).", "Standard Details — Approval", MessageBoxButton.OK, MessageBoxImage.Warning); return; }
+        if (string.IsNullOrWhiteSpace(part.FamilyName)) return;
+        var label = string.IsNullOrWhiteSpace(part.TypeName) ? part.FamilyName : $"{part.FamilyName} / {part.TypeName}";
+        if (MessageBox.Show(this, $"{verb} {label}?" + Environment.NewLine + Environment.NewLine + $"Sets its confidence to '{toConfidence}' in KorStandards, journaled to ComponentHistory.", $"Standard Details — {verb}", MessageBoxButton.OKCancel, MessageBoxImage.Question) != MessageBoxResult.OK) return;
+        try
+        {
+            var basis = $"Set to {toConfidence} in Standard Details by {_userIdentity}";
+            var (ok, message) = await _promoterRepo.PromoteComponentAsync(part.FamilyName, part.TypeName, toConfidence, basis, _userIdentity);
+            if (!ok)
+            {
+                SetActivityMessage(message, BannerTone.Error);
+                MessageBox.Show(this, message, $"Standard Details — {verb}", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+            SetActivityMessage(message, BannerTone.Success);
+            await LoadDocumentsUiAsync();
+        }
+        catch (Exception ex)
+        {
+            SetActivityMessage("Approval failed. No changes were committed.", BannerTone.Error);
+            Log.Warning(ex, "Standard Details: component promotion failed for {Family}/{Type}.", part.FamilyName, part.TypeName);
+            MessageBox.Show(this, ex.Message, $"Standard Details — {verb}", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
     private async void Publish_Click(object sender, RoutedEventArgs e) { if (!EnsureCanPublishAction()) return; await PublishSelectedVersionAsync(); }
 
     private async void DeleteRecord_Click(object sender, RoutedEventArgs e)
@@ -620,6 +1031,15 @@ public partial class StandardDetailsWindow
         await LoadVersionsUiAsync(documentId);
     }
 
+    private static string DetailStatusLabel(PaletteDetailRow d)
+    {
+        if (string.Equals(d.Confidence, "rejected", StringComparison.OrdinalIgnoreCase)) return "Rejected";
+        if (d.IsPlaceable) return "Approved";
+        if (string.Equals(d.Confidence, "content-verified", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(d.Confidence, "human-confirmed", StringComparison.OrdinalIgnoreCase)) return "Held";
+        return "Pending";
+    }
+
     private sealed class DocumentRow
     {
         public long DocumentId { get; set; }
@@ -628,6 +1048,12 @@ public partial class StandardDetailsWindow
         public string GroupName { get; set; } = "Ungrouped";
         public string CurrentOfficialText { get; set; } = "None";
         public string LatestStatusText { get; set; } = "None";
+        public string StatusLabel { get; set; } = "";
+        public string RightSubtitle { get; set; } = "";
+        public bool IsDetail { get; set; }
+        public bool IsPart { get; set; }
+        public string FamilyName { get; set; } = string.Empty;
+        public string TypeName { get; set; } = string.Empty;
     }
 
     private sealed class VersionRow

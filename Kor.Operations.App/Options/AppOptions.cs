@@ -22,6 +22,13 @@ public sealed class StorageOptions
 {
     public string ProjectsRoot { get; init; } = "";
     public string StandardDetailsFileStorageRootPath { get; init; } = "";
+    public string StandardDetailsAuthoringPath { get; init; } = "";
+    public string StandardDetailsMasterPath { get; init; } = "";
+    public string StandardDetailsBridgeRoot { get; init; } = "";
+    public string StandardDetailsPreviewCachePath { get; init; } = "";
+    // Quick Insert imageRoot (the QuickPick\BMP folder). Bare ImageFile names in the component catalog
+    // resolve against this; the "Sync Part Images" tool reads thumbnails from here into the DB store.
+    public string StandardDetailsPartImageRoot { get; init; } = "";
     public string BrochureSharedProposalsRootPath { get; init; } = "";
 
     /// <summary>UNC root for pursuit attachments (RFP PDFs, proposals, call

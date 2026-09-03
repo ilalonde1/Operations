@@ -3,440 +3,435 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:controls="clr-namespace:Kor.Operations.Controls"
         Title="Standard Details"
-        Width="1400" Height="860"
+        Width="1320" Height="800"
+        MinWidth="1060" MinHeight="640"
         WindowStartupLocation="CenterOwner"
-        Background="{StaticResource App.Background}">
+        Background="#FFF1F2F4"
+        TextOptions.TextFormattingMode="Ideal"
+        TextOptions.TextRenderingMode="ClearType">
     <Window.Resources>
-        <LinearGradientBrush x:Key="HeroBand" StartPoint="0,0" EndPoint="1,1">
-            <GradientStop Color="#FFF7F2EF" Offset="0"/>
-            <GradientStop Color="#FFECE4DE" Offset="1"/>
-        </LinearGradientBrush>
-
+        <!-- ===== styles the (hidden) legacy controls still need to compile ===== -->
         <Style x:Key="TitleLabel" TargetType="TextBlock">
-            <Setter Property="FontSize" Value="15"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Margin" Value="2,0,0,2"/>
+            <Setter Property="FontSize" Value="15"/><Setter Property="FontWeight" Value="SemiBold"/>
         </Style>
-
         <Style x:Key="HintLabel" TargetType="TextBlock">
-            <Setter Property="FontSize" Value="12"/>
-            <Setter Property="Foreground" Value="{StaticResource Text.Secondary}"/>
-            <Setter Property="Margin" Value="2,0,0,8"/>
+            <Setter Property="FontSize" Value="12"/><Setter Property="Foreground" Value="#FF7B8B9A"/>
         </Style>
-
-        <Style x:Key="ActionButton" TargetType="Button" BasedOn="{StaticResource Button.Secondary}">
-            <Setter Property="Height" Value="34"/>
-            <Setter Property="Padding" Value="12,0"/>
-            <Setter Property="Margin" Value="0,0,8,0"/>
-            <Setter Property="Cursor" Value="Hand"/>
-        </Style>
-
-        <Style x:Key="PrimaryActionButton" TargetType="Button" BasedOn="{StaticResource Button.Primary}">
-            <Setter Property="Height" Value="34"/>
-            <Setter Property="Padding" Value="14,0"/>
-            <Setter Property="Margin" Value="0,0,8,0"/>
-            <Setter Property="Cursor" Value="Hand"/>
-        </Style>
-
         <Style x:Key="GridHeader" TargetType="DataGridColumnHeader">
-            <Setter Property="Background" Value="#FFF4F5F7"/>
-            <Setter Property="Foreground" Value="#FF2E3A46"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#FF939BA4"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="BorderBrush" Value="#FFDCE2E8"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="BorderBrush" Value="#FFEEF0F2"/>
             <Setter Property="BorderThickness" Value="0,0,0,1"/>
-            <Setter Property="Padding" Value="8,6"/>
+            <Setter Property="Padding" Value="10,10"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+        </Style>
+        <Style x:Key="StatusBadgeBorder" TargetType="Border">
+            <Setter Property="Padding" Value="8,3"/><Setter Property="CornerRadius" Value="999"/><Setter Property="Background" Value="#FFE7EEF5"/>
+        </Style>
+        <Style x:Key="OfficialBadgeBorder" TargetType="Border">
+            <Setter Property="Padding" Value="8,3"/><Setter Property="CornerRadius" Value="999"/><Setter Property="Background" Value="#FFEAECEF"/>
         </Style>
 
-        <Style x:Key="GridRow" TargetType="DataGridRow">
-            <Setter Property="MinHeight" Value="32"/>
+        <!-- ===== new visible design ===== -->
+        <!-- clean list row -->
+        <Style x:Key="ListRow" TargetType="DataGridRow">
+            <Setter Property="MinHeight" Value="48"/>
             <Setter Property="Background" Value="White"/>
             <Setter Property="BorderBrush" Value="#FFF1F3F5"/>
             <Setter Property="BorderThickness" Value="0,0,0,1"/>
             <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#FFF9F8F6"/>
-                </Trigger>
+                <Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="#FFF8FAFC"/></Trigger>
                 <Trigger Property="IsSelected" Value="True">
-                    <Setter Property="Background" Value="#FFE6EEF8"/>
-                    <Setter Property="Foreground" Value="#FF12263A"/>
+                    <Setter Property="Background" Value="#FFEAF1FB"/>
+                    <Setter Property="BorderBrush" Value="#FFDD5A2A"/>
+                    <Setter Property="BorderThickness" Value="3,0,0,1"/>
                 </Trigger>
             </Style.Triggers>
         </Style>
-
-        <Style x:Key="StatusBadgeBorder" TargetType="Border">
-            <Setter Property="Padding" Value="8,3"/>
-            <Setter Property="CornerRadius" Value="999"/>
-            <Setter Property="Background" Value="#FFE7EEF5"/>
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding Tag, RelativeSource={RelativeSource Self}}" Value="Draft">
-                    <Setter Property="Background" Value="#FFE8EDF2"/>
-                </DataTrigger>
-                <DataTrigger Binding="{Binding Tag, RelativeSource={RelativeSource Self}}" Value="Submitted">
-                    <Setter Property="Background" Value="#FFFDEEC9"/>
-                </DataTrigger>
-                <DataTrigger Binding="{Binding Tag, RelativeSource={RelativeSource Self}}" Value="Approved">
-                    <Setter Property="Background" Value="#FFDDF4E2"/>
-                </DataTrigger>
-                <DataTrigger Binding="{Binding Tag, RelativeSource={RelativeSource Self}}" Value="Rejected">
-                    <Setter Property="Background" Value="#FFF9DADA"/>
-                </DataTrigger>
-                <DataTrigger Binding="{Binding Tag, RelativeSource={RelativeSource Self}}" Value="Published">
-                    <Setter Property="Background" Value="#FFD9EEF4"/>
-                </DataTrigger>
-                <DataTrigger Binding="{Binding Tag, RelativeSource={RelativeSource Self}}" Value="Archived">
-                    <Setter Property="Background" Value="#FFEAEAEA"/>
-                </DataTrigger>
-            </Style.Triggers>
-        </Style>
-
-        <Style x:Key="OfficialBadgeBorder" TargetType="Border">
-            <Setter Property="Padding" Value="8,3"/>
-            <Setter Property="CornerRadius" Value="999"/>
-            <Setter Property="Background" Value="#FFEAECEF"/>
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding Tag, RelativeSource={RelativeSource Self}}" Value="True">
-                    <Setter Property="Background" Value="#FFDDF4E2"/>
-                </DataTrigger>
-                <DataTrigger Binding="{Binding Tag, RelativeSource={RelativeSource Self}}" Value="False">
-                    <Setter Property="Background" Value="#FFF2F3F5"/>
-                </DataTrigger>
-            </Style.Triggers>
-        </Style>
-
-        <Style x:Key="GuidanceBanner" TargetType="Border">
-            <Setter Property="Background" Value="#FFF2F7FC"/>
-            <Setter Property="BorderBrush" Value="#FFD8E7F5"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="CornerRadius" Value="8"/>
-            <Setter Property="Padding" Value="10,8"/>
-            <Setter Property="Margin" Value="0,8,0,0"/>
-        </Style>
-
-        <Style x:Key="MetricValueLabel" TargetType="TextBlock">
-            <Setter Property="FontSize" Value="12"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Foreground" Value="#FF243647"/>
-        </Style>
-
-        <Style x:Key="StepChipBorder" TargetType="Border">
-            <Setter Property="CornerRadius" Value="12"/>
-            <Setter Property="Padding" Value="10,4"/>
-            <Setter Property="Margin" Value="0,0,8,0"/>
-            <Setter Property="Background" Value="#FFF1F3F6"/>
-            <Setter Property="BorderBrush" Value="#FFD9DEE5"/>
-            <Setter Property="BorderThickness" Value="1"/>
-        </Style>
-
-        <Style x:Key="StepChipText" TargetType="TextBlock">
-            <Setter Property="FontSize" Value="11"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Foreground" Value="#FF4F6275"/>
-        </Style>
-
-        <Style x:Key="GroupTreeItemStyle" TargetType="TreeViewItem">
-            <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}"/>
-            <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}"/>
+        <Style x:Key="ListCell" TargetType="DataGridCell">
+            <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Padding" Value="0"/>
-            <Setter Property="Margin" Value="0,0,0,1"/>
+            <Setter Property="Foreground" Value="#FF252B31"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="DataGridCell">
+                        <Border Background="Transparent" Padding="0" VerticalAlignment="Center"><ContentPresenter VerticalAlignment="Center"/></Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- discipline filter chip (single-select via GroupName) -->
+        <Style x:Key="ChipRadio" TargetType="RadioButton">
+            <Setter Property="Margin" Value="0,0,8,0"/><Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="b" CornerRadius="17" Height="34" Padding="16,0" Background="White" BorderBrush="#FFD5DAE0" BorderThickness="1">
+                            <TextBlock x:Name="t" Text="{TemplateBinding Content}" VerticalAlignment="Center" Foreground="#FF48515B" FontSize="13"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="b" Property="Background" Value="#FFF3F5F7"/></Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="b" Property="Background" Value="#FF2E353D"/>
+                                <Setter TargetName="b" Property="BorderBrush" Value="#FF2E353D"/>
+                                <Setter TargetName="t" Property="Foreground" Value="White"/>
+                                <Setter TargetName="t" Property="FontWeight" Value="SemiBold"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Details / Parts segmented tab -->
+        <Style x:Key="TabRadio" TargetType="RadioButton">
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="b" CornerRadius="7" Padding="22,7" Background="Transparent">
+                            <TextBlock x:Name="t" Text="{TemplateBinding Content}" Foreground="#FF6B7480" FontSize="13"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="b" Property="Background" Value="White"/>
+                                <Setter TargetName="t" Property="Foreground" Value="#FF20262D"/>
+                                <Setter TargetName="t" Property="FontWeight" Value="SemiBold"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- flat pill button (Reject) and primary (Approve) -->
+        <Style x:Key="RejectButtonStyle" TargetType="Button">
+            <Setter Property="Cursor" Value="Hand"/><Setter Property="SnapsToDevicePixels" Value="True"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="b" CornerRadius="8" Background="White" BorderBrush="#FFD5DAE0" BorderThickness="1" Padding="20,9">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="b" Property="Background" Value="#FFF6F7F9"/></Trigger>
+                            <Trigger Property="IsEnabled" Value="False"><Setter TargetName="b" Property="Opacity" Value="0.45"/></Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="ApproveButtonStyle" TargetType="Button">
+            <Setter Property="Cursor" Value="Hand"/><Setter Property="SnapsToDevicePixels" Value="True"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="b" CornerRadius="8" Background="#FF1E7E43" Padding="22,9">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="b" Property="Background" Value="#FF1A6E3A"/></Trigger>
+                            <Trigger Property="IsEnabled" Value="False"><Setter TargetName="b" Property="Opacity" Value="0.45"/></Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Tools button on the dark band -->
+        <Style x:Key="ToolsButtonStyle" TargetType="Button">
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="b" CornerRadius="6" Background="#FF3A424B" BorderBrush="#FF4C555F" BorderThickness="1" Padding="14,7">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="b" Property="Background" Value="#FF454E58"/></Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
     </Window.Resources>
 
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="72"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="0"/>
         </Grid.RowDefinitions>
 
-        <controls:KorHeader x:Name="HeaderBar"
-                            Grid.Row="0"
-                            Margin="2,0,2,8"
-                            HeaderText="Standard Details"
-                            SubtitleText="Document Management"
-                            AvatarDiameter="96"
-                            AvatarBorderThickness="2"/>
-
-        <TextBlock Grid.Row="1" x:Name="HeroSummaryText" Margin="14,0,14,8"
-                   FontSize="12" Foreground="{StaticResource Text.Secondary}"
-                   Text="No records yet."/>
-
-        <Border Grid.Row="2" Style="{StaticResource Card}" Margin="12,0,12,8" Padding="10" ToolTip="Use search and actions to manage document records and revisions.">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-
-                <TextBox x:Name="SearchBox"
-                         Height="34"
-                         VerticalContentAlignment="Center"
-                         Margin="0,0,10,0"
-                         FontSize="13"
-                         ToolTip="Search by record title or description. Example: seismic, footing, anchor bolt"/>
-                <Button Grid.Column="1"
-                        Content="Search"
-                        Width="92"
-                        Style="{StaticResource ActionButton}"
-                        ToolTip="Run search using the text in the search box"
-                        Click="Search_Click"/>
-                <Button x:Name="CreateRecordButton"
-                        Grid.Column="2"
-                        Content="New Record"
-                        Width="130"
-                        Style="{StaticResource PrimaryActionButton}"
-                        ToolTip="Create a new document record in the selected group (recommended first step)"
-                        Click="CreateDocument_Click"/>
-                <Button x:Name="UploadVersionButton"
-                        Grid.Column="3"
-                        Content="Add Revision"
-                        Width="120"
-                        Style="{StaticResource PrimaryActionButton}"
-                        ToolTip="Upload a new file revision for the selected document record"
-                        Click="UploadVersion_Click"/>
-                <Button x:Name="LinkDetailButton"
-                        Grid.Column="4"
-                        Content="Link Detail"
-                        Width="110"
-                        Style="{StaticResource ActionButton}"
-                        ToolTip="Link the selected document record to a KOR-D standard detail"
-                        Click="LinkDetail_Click"/>
-                <Button x:Name="RegistersButton"
-                        Grid.Column="5"
-                        Content="Registers..."
-                        Width="110"
-                        Style="{StaticResource ActionButton}"
-                        ToolTip="Open the read-only Details and Components registers"
-                        Click="Registers_Click"/>
-                <Button Grid.Column="6"
-                        Content="Promotion Queue..."
-                        Width="145"
-                        Style="{StaticResource ActionButton}"
-                        ToolTip="Review and process pending KorStandards promotion requests"
-                        Click="PromotionQueue_Click"/>
-                <Button Grid.Column="7"
-                        Content="Refresh"
-                        Width="92"
-                        Height="34"
-                        Style="{StaticResource Button.Secondary}"
-                        ToolTip="Reload groups, records, and version data from the database"
-                        Click="Refresh_Click"/>
+        <!-- ============ DARK HEADER BAND ============ -->
+        <Border Grid.Row="0" Background="#FF2E353D">
+            <Grid Margin="18,0">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Border Background="#FFDD5A2A" CornerRadius="9" Width="40" Height="40" VerticalAlignment="Center">
+                        <TextBlock Text="&#9670;" Foreground="White" FontSize="19" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <StackPanel Margin="13,0,0,0" VerticalAlignment="Center">
+                        <TextBlock Text="Standard Details" Foreground="White" FontSize="17" FontWeight="SemiBold"/>
+                        <TextBlock Text="Approve the details drafters are allowed to place." Foreground="#FFAEB6BF" FontSize="12" Margin="0,1,0,0"/>
+                    </StackPanel>
+                </StackPanel>
+                <Button x:Name="ToolsButton" HorizontalAlignment="Right" VerticalAlignment="Center"
+                        Style="{StaticResource ToolsButtonStyle}" Click="ToolsButton_Click"
+                        ToolTip="Advanced actions: compose a sheet, publish to master, refresh">
+                    <TextBlock Text="Tools  &#9662;" Foreground="#FFE8ECEF" FontSize="13"/>
+                    <Button.ContextMenu>
+                        <ContextMenu>
+                            <MenuItem Header="Compose Sheet..." Click="ComposeSheet_Click"/>
+                            <MenuItem Header="Publish to Master..." Click="PublishToMaster_Click"/>
+                            <Separator/>
+                            <MenuItem Header="Sync Part Images" Click="SyncPartImages_Click"/>
+                            <Separator/>
+                            <MenuItem Header="Refresh" Click="Refresh_Click"/>
+                        </ContextMenu>
+                    </Button.ContextMenu>
+                </Button>
             </Grid>
         </Border>
 
-        <TextBlock Grid.Row="3" x:Name="ActivityMessageText" Margin="14,0,14,8"
-                   Text="Ready." FontSize="12" Foreground="{StaticResource Text.Secondary}"
-                   TextTrimming="CharacterEllipsis"/>
-
-        <Grid Grid.Row="4" Margin="12,0,12,12">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="2.3*"/>
-                <ColumnDefinition Width="3*"/>
-            </Grid.ColumnDefinitions>
-
-            <Border Grid.Column="0" Style="{StaticResource Card}" Margin="0,0,8,0" Padding="8">
-                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="150"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
-
-                    <TextBlock Grid.Row="0" Text="Document Groups" Style="{StaticResource TitleLabel}"/>
-
-                    <WrapPanel Grid.Row="3" Margin="0,0,0,8">
-                        <Button x:Name="AddGroupButton" Content="Add Group" Width="95" Height="30" Margin="0,0,6,0" Style="{StaticResource Button.Secondary}" ToolTip="Create a new top-level group" Click="AddGroup_Click"/>
-                        <Button x:Name="AddSubgroupButton" Content="Add Subgroup" Width="105" Height="30" Margin="0,0,6,0" Style="{StaticResource Button.Secondary}" ToolTip="Create a subgroup under the selected group" Click="AddSubgroup_Click"/>
-                        <Button x:Name="RenameGroupButton" Content="Rename" Width="75" Height="30" Margin="0,0,6,0" Style="{StaticResource Button.Secondary}" ToolTip="Rename selected group" Click="RenameGroup_Click"/>
-                        <Button x:Name="RemoveGroupButton" Content="Remove" Width="75" Height="30" Margin="0,0,6,0" Style="{StaticResource Button.Secondary}" ToolTip="Delete selected group (must be empty)" Click="RemoveGroup_Click"/>
-                        <Button x:Name="AssignRecordButton" Content="Move Selected Record" Width="140" Height="30" ToolTip="Move the selected record to the selected group. Use 'All Records' to ungroup." Click="AssignRecordToGroup_Click"/>
-                    </WrapPanel>
-
-                    <StackPanel Grid.Row="4" Orientation="Horizontal" Margin="0,0,0,6">
-                        <CheckBox x:Name="FilterByGroupCheckBox"
-                                  Content="Filter records to selected group"
-                                  IsChecked="False"
-                                  VerticalAlignment="Center"
-                                  ToolTip="On: tree selection filters the record list. Off: tree selection sets assignment target only."
-                                  Checked="FilterByGroupCheckBox_Changed"
-                                  Unchecked="FilterByGroupCheckBox_Changed"/>
-                    </StackPanel>
-
-                    <Border Grid.Row="5" BorderBrush="#FFE0E4E8" BorderThickness="1" CornerRadius="8" Padding="4">
-                        <TreeView x:Name="GroupsTree"
-                                  ItemContainerStyle="{StaticResource GroupTreeItemStyle}"
-                                  FontSize="11"
-                                  SelectedItemChanged="GroupsTree_SelectedItemChanged"
-                                  ToolTip="Group target selector. Turn on filter toggle above to also filter the records list.">
-                            <TreeView.ItemTemplate>
-                                <HierarchicalDataTemplate ItemsSource="{Binding Children}">
-                                    <Border x:Name="GroupNodeBorder" Padding="3,1" CornerRadius="3" Background="Transparent">
-                                        <TextBlock Text="{Binding Name}"/>
-                                    </Border>
-                                    <HierarchicalDataTemplate.Triggers>
-                                        <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=TreeViewItem}, Path=IsMouseOver}" Value="True">
-                                            <Setter TargetName="GroupNodeBorder" Property="Background" Value="#FFF4F8FC"/>
-                                        </DataTrigger>
-                                        <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=TreeViewItem}, Path=IsSelected}" Value="True">
-                                            <Setter TargetName="GroupNodeBorder" Property="Background" Value="#FFDCEEF9"/>
-                                        </DataTrigger>
-                                    </HierarchicalDataTemplate.Triggers>
-                                </HierarchicalDataTemplate>
-                            </TreeView.ItemTemplate>
-                        </TreeView>
-                    </Border>
-
-                    <TextBlock Grid.Row="6" Text="Document Records" Style="{StaticResource TitleLabel}" Margin="0,6,0,2"/>
-                    <Grid Grid.Row="7">
-                        <DataGrid x:Name="DocumentsGrid"
-                                  AutoGenerateColumns="False"
-                                  Height="240"
-                                  IsReadOnly="True"
-                                  SelectionMode="Single"
-                                  HeadersVisibility="Column"
-                                  GridLinesVisibility="Horizontal"
-                                  HorizontalGridLinesBrush="#FFF0F2F4"
-                                  ColumnHeaderStyle="{StaticResource GridHeader}"
-                                  RowStyle="{StaticResource GridRow}"
-                                  ToolTip="Record list. Use the filter toggle above if you want tree selection to filter this list."
-                                  SelectionChanged="DocumentsGrid_SelectionChanged">
-                            <DataGrid.Columns>
-                                <DataGridTextColumn Header="Record Title" Binding="{Binding Title}" Width="*"/>
-                                <DataGridTextColumn Header="Detail #" Binding="{Binding DetailNumber}" Width="95"/>
-                                <DataGridTextColumn Header="Group" Binding="{Binding GroupName}" Width="130"/>
-                                <DataGridTextColumn Header="Official Rev" Binding="{Binding CurrentOfficialText}" Width="95"/>
-                                <DataGridTextColumn Header="Latest Status" Binding="{Binding LatestStatusText}" Width="120"/>
-                            </DataGrid.Columns>
-                        </DataGrid>
-                        <TextBlock Text="No records yet. Click New Record to create your first document record."
-                                   IsHitTestVisible="False"
-                                   HorizontalAlignment="Center"
-                                   VerticalAlignment="Center"
-                                   FontSize="13"
-                                   FontWeight="SemiBold"
-                                   Foreground="#FF7B8B9A">
+        <!-- ============ TOOLBAR: search + discipline chips + summary ============ -->
+        <Grid Grid.Row="1" Margin="18,14,18,4">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <Border Background="White" BorderBrush="#FFDCE1E7" BorderThickness="1" CornerRadius="8" Width="250" Height="38" VerticalAlignment="Center">
+                    <Grid Margin="12,0">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <Ellipse Width="12" Height="12" Stroke="#FFAAB2BB" StrokeThickness="2" VerticalAlignment="Center"/>
+                            <TextBox x:Name="SearchBox" Width="185" Margin="9,0,0,0" VerticalContentAlignment="Center"
+                                     BorderThickness="0" Background="Transparent" FontSize="13"
+                                     KeyDown="SearchBox_KeyDown"
+                                     ToolTip="Search by detail number or title, then press Enter"/>
+                        </StackPanel>
+                        <TextBlock Text="Search detail # or title..." Foreground="#FF9AA3AC" FontSize="13" Margin="21,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False">
                             <TextBlock.Style>
                                 <Style TargetType="TextBlock">
-                                    <Setter Property="Visibility" Value="Visible"/>
+                                    <Setter Property="Visibility" Value="Collapsed"/>
                                     <Style.Triggers>
-                                        <DataTrigger Binding="{Binding HasItems, ElementName=DocumentsGrid}" Value="True">
-                                            <Setter Property="Visibility" Value="Collapsed"/>
-                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding Text, ElementName=SearchBox}" Value=""><Setter Property="Visibility" Value="Visible"/></DataTrigger>
                                     </Style.Triggers>
                                 </Style>
                             </TextBlock.Style>
                         </TextBlock>
                     </Grid>
-                </Grid>
-                </ScrollViewer>
-            </Border>
-
-            <Grid Grid.Column="1" Margin="8,0,0,0">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="*"/>
-                    <RowDefinition Height="Auto"/>
-                </Grid.RowDefinitions>
-
-                <Border Grid.Row="0" Style="{StaticResource Card}" Padding="8">
-                    <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="*"/>
-                        </Grid.RowDefinitions>
-                        <TextBlock Grid.Row="0" Text="Version History" Style="{StaticResource TitleLabel}"/>
-                        <TextBlock Grid.Row="1" Text="Newest revisions first. Publishing sets the one official revision." Style="{StaticResource HintLabel}"/>
-                        <Grid Grid.Row="2">
-                            <DataGrid x:Name="VersionsGrid"
-                                      AutoGenerateColumns="False"
-                                      IsReadOnly="True"
-                                      SelectionMode="Single"
-                                      HeadersVisibility="Column"
-                                      GridLinesVisibility="Horizontal"
-                                      HorizontalGridLinesBrush="#FFF0F2F4"
-                                      ColumnHeaderStyle="{StaticResource GridHeader}"
-                                      RowStyle="{StaticResource GridRow}"
-                                      ToolTip="Version history for the selected record"
-                                      SelectionChanged="VersionsGrid_SelectionChanged">
-                                <DataGrid.Columns>
-                                    <DataGridTextColumn Header="Variant" Binding="{Binding VariantKey}" Width="82"/>
-                                    <DataGridTextColumn Header="Revision" Binding="{Binding VersionLabel}" Width="88"/>
-                                    <DataGridTemplateColumn Header="Status" Width="120">
-                                        <DataGridTemplateColumn.CellTemplate>
-                                            <DataTemplate>
-                                                <Border Style="{StaticResource StatusBadgeBorder}" Tag="{Binding StatusText}" HorizontalAlignment="Left">
-                                                    <TextBlock Text="{Binding StatusText}" FontSize="11" FontWeight="SemiBold"/>
-                                                </Border>
-                                            </DataTemplate>
-                                        </DataGridTemplateColumn.CellTemplate>
-                                    </DataGridTemplateColumn>
-                                    <DataGridTemplateColumn Header="Official" Width="92">
-                                        <DataGridTemplateColumn.CellTemplate>
-                                            <DataTemplate>
-                                                <Border Style="{StaticResource OfficialBadgeBorder}" Tag="{Binding IsCurrentOfficial}" HorizontalAlignment="Left">
-                                                    <TextBlock Text="{Binding IsCurrentOfficial}" FontSize="11" FontWeight="SemiBold"/>
-                                                </Border>
-                                            </DataTemplate>
-                                        </DataGridTemplateColumn.CellTemplate>
-                                    </DataGridTemplateColumn>
-                                    <DataGridTextColumn Header="Created (UTC)" Binding="{Binding CreatedUtcDisplay}" Width="170"/>
-                                    <DataGridTextColumn Header="File Name" Binding="{Binding OriginalFileName}" Width="*"/>
-                                    <DataGridTextColumn Header="Size (KB)" Binding="{Binding FileSizeKb}" Width="90"/>
-                                </DataGrid.Columns>
-                            </DataGrid>
-                            <TextBlock Text="No revisions yet. Click Add Revision after selecting a record."
-                                       IsHitTestVisible="False"
-                                       HorizontalAlignment="Center"
-                                       VerticalAlignment="Center"
-                                       FontSize="13"
-                                       FontWeight="SemiBold"
-                                       Foreground="#FF7B8B9A">
-                                <TextBlock.Style>
-                                    <Style TargetType="TextBlock">
-                                        <Setter Property="Visibility" Value="Visible"/>
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding HasItems, ElementName=VersionsGrid}" Value="True">
-                                                <Setter Property="Visibility" Value="Collapsed"/>
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </TextBlock.Style>
-                            </TextBlock>
-                        </Grid>
-                    </Grid>
                 </Border>
+                <RadioButton x:Name="ChipAll" GroupName="Disc" Content="All" IsChecked="True" Margin="14,0,8,0" Style="{StaticResource ChipRadio}" Checked="DisciplineChip_Checked"/>
+                <RadioButton GroupName="Disc" Content="Concrete" Style="{StaticResource ChipRadio}" Checked="DisciplineChip_Checked"/>
+                <RadioButton GroupName="Disc" Content="Steel" Style="{StaticResource ChipRadio}" Checked="DisciplineChip_Checked"/>
+                <RadioButton GroupName="Disc" Content="General" Style="{StaticResource ChipRadio}" Checked="DisciplineChip_Checked"/>
+                <RadioButton GroupName="Disc" Content="Wood Frame" Style="{StaticResource ChipRadio}" Checked="DisciplineChip_Checked"/>
+            </StackPanel>
+            <TextBlock x:Name="HeroSummaryText" HorizontalAlignment="Right" VerticalAlignment="Center" FontSize="13" Foreground="#FF5B646E" Text="Loading..."/>
+        </Grid>
 
-                <Border Grid.Row="1" Style="{StaticResource Card}" Margin="0,8,0,0" Padding="10">
-                    <StackPanel>
-                        <TextBlock Text="Workflow Actions" Style="{StaticResource TitleLabel}" Margin="0,0,0,6"/>
-                        <WrapPanel Margin="0,0,0,8">
-                            <Button x:Name="OpenFileButton" Content="Open File" Width="95" Height="34" Margin="0,0,8,0" Style="{StaticResource ActionButton}" ToolTip="Open the selected version file" Click="OpenFile_Click"/>
-                            <Button x:Name="SubmitButton" Content="Submit for Review" Width="120" Height="34" Margin="0,0,8,0" Style="{StaticResource ActionButton}" ToolTip="Move Draft revision to Submitted for review" Click="Submit_Click"/>
-                            <Button x:Name="ApproveButton" Content="Approve" Width="85" Height="34" Margin="0,0,8,0" Style="{StaticResource Button.Secondary}" ToolTip="Approve selected revision and log approval record" Click="Approve_Click"/>
-                            <Button x:Name="RejectButton" Content="Reject" Width="85" Height="34" Margin="0,0,8,0" Style="{StaticResource Button.Secondary}" ToolTip="Reject selected revision and log rejection record" Click="Reject_Click"/>
-                            <Button x:Name="DeleteRecordButton" Content="Delete Record" Width="110" Height="34" Margin="0,0,8,0" Style="{StaticResource Button.Secondary}" ToolTip="Delete selected record and all its revision history" Click="DeleteRecord_Click"/>
-                            <Button x:Name="PublishButton" Content="Publish Official" Width="120" Height="34" Style="{StaticResource PrimaryActionButton}" ToolTip="Set selected revision as Published and official" Click="Publish_Click"/>
-                        </WrapPanel>
+        <!-- ============ CONTENT: left list  |  right detail ============ -->
+        <Grid Grid.Row="2" Margin="18,8,18,10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="2.25*" MinWidth="360"/>
+                <ColumnDefinition Width="3*"/>
+            </Grid.ColumnDefinitions>
 
-                        <TextBlock Text="Workflow Guide: Draft -> Submitted -> Approved/Rejected -> Published"
-                                   FontSize="12"
-                                   Foreground="{StaticResource Text.Secondary}"/>
+            <!-- LEFT: Details/Parts tabs + list -->
+            <Grid Grid.Column="0" Margin="0,0,9,0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <Border Grid.Row="0" Background="#FFE7EAEE" CornerRadius="9" Padding="3" HorizontalAlignment="Left" Margin="0,0,0,10">
+                    <StackPanel Orientation="Horizontal">
+                        <RadioButton x:Name="DetailsTab" GroupName="Catalog" Content="Details" IsChecked="True" Style="{StaticResource TabRadio}" Checked="CatalogTab_Checked"/>
+                        <RadioButton x:Name="PartsTab" GroupName="Catalog" Content="Parts" Style="{StaticResource TabRadio}" Checked="CatalogTab_Checked"/>
                     </StackPanel>
                 </Border>
+
+                <Border Grid.Row="1" Background="White" BorderBrush="#FFE3E6EA" BorderThickness="1" CornerRadius="10">
+                    <DataGrid x:Name="DocumentsGrid"
+                              AutoGenerateColumns="False"
+                              IsReadOnly="True"
+                              SelectionMode="Single"
+                              HeadersVisibility="Column"
+                              GridLinesVisibility="None"
+                              Background="Transparent"
+                              BorderThickness="0"
+                              RowBackground="Transparent"
+                              Margin="6,4,6,6"
+                              ColumnHeaderStyle="{StaticResource GridHeader}"
+                              RowStyle="{StaticResource ListRow}"
+                              CellStyle="{StaticResource ListCell}"
+                              SelectionChanged="DocumentsGrid_SelectionChanged">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn x:Name="ListIdColumn" Header="DETAIL #" Binding="{Binding DetailNumber}" Width="118">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock"><Setter Property="VerticalAlignment" Value="Center"/><Setter Property="Margin" Value="10,0,0,0"/><Setter Property="FontSize" Value="12.5"/><Setter Property="Foreground" Value="#FF3B434C"/></Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+                            <DataGridTextColumn Header="TITLE" Binding="{Binding Title}" Width="*">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock"><Setter Property="VerticalAlignment" Value="Center"/><Setter Property="TextTrimming" Value="CharacterEllipsis"/><Setter Property="Margin" Value="0,0,10,0"/><Setter Property="FontSize" Value="13"/><Setter Property="Foreground" Value="#FF252B31"/></Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+                            <DataGridTemplateColumn Header="STATUS" Width="120">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Border CornerRadius="11" Padding="10,4" HorizontalAlignment="Left" VerticalAlignment="Center">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="Background" Value="#FFEFF1F3"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding StatusLabel}" Value="Approved"><Setter Property="Background" Value="#FFE7F4EA"/></DataTrigger>
+                                                        <DataTrigger Binding="{Binding StatusLabel}" Value="Active"><Setter Property="Background" Value="#FFE7F4EA"/></DataTrigger>
+                                                        <DataTrigger Binding="{Binding StatusLabel}" Value="Pending"><Setter Property="Background" Value="#FFFBF3E2"/></DataTrigger>
+                                                        <DataTrigger Binding="{Binding StatusLabel}" Value="Held"><Setter Property="Background" Value="#FFFBF3E2"/></DataTrigger>
+                                                        <DataTrigger Binding="{Binding StatusLabel}" Value="Rejected"><Setter Property="Background" Value="#FFFBECEB"/></DataTrigger>
+                                                        <DataTrigger Binding="{Binding StatusLabel}" Value="Retired"><Setter Property="Background" Value="#FFEDEEF0"/></DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+                                            <StackPanel Orientation="Horizontal">
+                                                <Ellipse Width="7" Height="7" VerticalAlignment="Center">
+                                                    <Ellipse.Style>
+                                                        <Style TargetType="Ellipse">
+                                                            <Setter Property="Fill" Value="#FF8A929B"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding StatusLabel}" Value="Approved"><Setter Property="Fill" Value="#FF2C7A3F"/></DataTrigger>
+                                                                <DataTrigger Binding="{Binding StatusLabel}" Value="Active"><Setter Property="Fill" Value="#FF2C7A3F"/></DataTrigger>
+                                                                <DataTrigger Binding="{Binding StatusLabel}" Value="Pending"><Setter Property="Fill" Value="#FFD9A21B"/></DataTrigger>
+                                                                <DataTrigger Binding="{Binding StatusLabel}" Value="Held"><Setter Property="Fill" Value="#FFD9A21B"/></DataTrigger>
+                                                                <DataTrigger Binding="{Binding StatusLabel}" Value="Rejected"><Setter Property="Fill" Value="#FFB23A2E"/></DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Ellipse.Style>
+                                                </Ellipse>
+                                                <TextBlock Text="{Binding StatusLabel}" FontSize="11.5" FontWeight="SemiBold" Margin="6,0,0,0" VerticalAlignment="Center">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Foreground" Value="#FF5B636D"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding StatusLabel}" Value="Approved"><Setter Property="Foreground" Value="#FF2C7A3F"/></DataTrigger>
+                                                                <DataTrigger Binding="{Binding StatusLabel}" Value="Active"><Setter Property="Foreground" Value="#FF2C7A3F"/></DataTrigger>
+                                                                <DataTrigger Binding="{Binding StatusLabel}" Value="Pending"><Setter Property="Foreground" Value="#FF8A6D1F"/></DataTrigger>
+                                                                <DataTrigger Binding="{Binding StatusLabel}" Value="Held"><Setter Property="Foreground" Value="#FF8A6D1F"/></DataTrigger>
+                                                                <DataTrigger Binding="{Binding StatusLabel}" Value="Rejected"><Setter Property="Foreground" Value="#FFB23A2E"/></DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Border>
             </Grid>
+
+            <!-- RIGHT: selected detail -->
+            <Border Grid.Column="1" Margin="9,0,0,0" Background="White" BorderBrush="#FFE3E6EA" BorderThickness="1" CornerRadius="10">
+                <Grid Margin="20,16,20,14">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <!-- title + status pill -->
+                    <Grid Grid.Row="0" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock x:Name="DetailTitleText" Text="Select a detail" FontSize="19" FontWeight="SemiBold" Foreground="#FF20262D" TextTrimming="CharacterEllipsis"/>
+                            <TextBlock x:Name="DetailSubtitleText" Text="Pick a detail on the left to review it." FontSize="12.5" Foreground="#FF8A929B" Margin="0,3,0,0"/>
+                        </StackPanel>
+                        <Border x:Name="DetailStatusPill" HorizontalAlignment="Right" VerticalAlignment="Top" CornerRadius="16" Padding="12,5" Background="#FFEFF1F3" Visibility="Collapsed">
+                            <StackPanel Orientation="Horizontal">
+                                <Ellipse x:Name="DetailStatusDot" Width="8" Height="8" Fill="#FF8A929B" VerticalAlignment="Center"/>
+                                <TextBlock x:Name="DetailStatusPillText" Text="" Foreground="#FF5B636D" FontSize="12" FontWeight="SemiBold" Margin="7,0,0,0" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                    <!-- drawing box -->
+                    <Border Grid.Row="1" BorderBrush="#FFE1E4E8" BorderThickness="1" CornerRadius="8" Background="White" ClipToBounds="True">
+                        <Grid>
+                            <Grid.Background>
+                                <DrawingBrush TileMode="Tile" Viewport="0,0,26,26" ViewportUnits="Absolute">
+                                    <DrawingBrush.Drawing>
+                                        <GeometryDrawing>
+                                            <GeometryDrawing.Geometry><RectangleGeometry Rect="0,0,26,26"/></GeometryDrawing.Geometry>
+                                            <GeometryDrawing.Pen><Pen Brush="#FFF1F3F5" Thickness="1"/></GeometryDrawing.Pen>
+                                        </GeometryDrawing>
+                                    </DrawingBrush.Drawing>
+                                </DrawingBrush>
+                            </Grid.Background>
+                            <Image x:Name="PreviewImage" Stretch="Uniform" Margin="26" Visibility="Collapsed"
+                                   RenderOptions.BitmapScalingMode="HighQuality"
+                                   Cursor="Hand" MouseLeftButtonUp="PreviewImage_Click"
+                                   ToolTip="Click to zoom"/>
+                            <TextBlock x:Name="PreviewEmpty" Text="Select a detail to see its drawing."
+                                       IsHitTestVisible="False" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                       TextAlignment="Center" MaxWidth="360" TextWrapping="Wrap" FontSize="13" Foreground="#FF7B8B9A"/>
+                            <Border x:Name="ZoomHintBadge" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,10,10,0"
+                                    Background="#E6202730" CornerRadius="6" Padding="9,4" Visibility="Collapsed" IsHitTestVisible="False">
+                                <TextBlock Text="Click to zoom" Foreground="White" FontSize="11"/>
+                            </Border>
+                            <TextBlock x:Name="DrawingFootnote" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="12,0,0,8"
+                                       Text="" FontSize="10.5" FontStyle="Italic" Foreground="#FFAEB4BB" Visibility="Collapsed"/>
+                        </Grid>
+                    </Border>
+                    <!-- action bar -->
+                    <Grid Grid.Row="2" Margin="0,14,0,0">
+                        <TextBlock x:Name="ActionHintText" VerticalAlignment="Center" FontSize="12.5" Foreground="#FF7A828B"
+                                   Text="This is the actual drawing. Approve it and it goes into the drafters' palette."/>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                            <Button x:Name="RejectButton" Style="{StaticResource RejectButtonStyle}" Margin="0,0,10,0" Click="Reject_Click"
+                                    ToolTip="Reject — the detail is not a standard and never goes in the palette">
+                                <TextBlock Text="&#10005;  Reject" Foreground="#FF48515B" FontSize="13.5" FontWeight="SemiBold"/>
+                            </Button>
+                            <Button x:Name="ApproveButton" Style="{StaticResource ApproveButtonStyle}" Click="Approve_Click"
+                                    ToolTip="Approve — the detail becomes placeable and goes into the drafters' palette">
+                                <TextBlock Text="&#10003;  Approve" Foreground="White" FontSize="13.5" FontWeight="SemiBold"/>
+                            </Button>
+                        </StackPanel>
+                    </Grid>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- ============ thin status strip ============ -->
+        <Border Grid.Row="3" Background="#FFF6F7F9" BorderBrush="#FFE6E8EB" BorderThickness="0,1,0,0" Padding="18,6">
+            <TextBlock x:Name="ActivityMessageText" Text="Ready." FontSize="11.5" Foreground="#FF6B7480" TextTrimming="CharacterEllipsis"/>
+        </Border>
+
+        <!-- ============ HIDDEN legacy controls: kept so existing code-behind compiles ============ -->
+        <!-- These drive the record/group/version machinery that predates the details-first UI. They are
+             not shown; the visible UI above is the product. Dead wiring is removed in a follow-up. -->
+        <Grid Grid.Row="4" Visibility="Collapsed" Height="0">
+            <controls:KorHeader x:Name="HeaderBar" HeaderText="Standard Details"/>
+            <TreeView x:Name="GroupsTree" SelectedItemChanged="GroupsTree_SelectedItemChanged"/>
+            <CheckBox x:Name="FilterByGroupCheckBox" IsChecked="False" Checked="FilterByGroupCheckBox_Changed" Unchecked="FilterByGroupCheckBox_Changed"/>
+            <DataGrid x:Name="VersionsGrid" AutoGenerateColumns="False" SelectionChanged="VersionsGrid_SelectionChanged"/>
+            <Button x:Name="CreateRecordButton" Click="CreateDocument_Click"/>
+            <Button x:Name="UploadVersionButton" Click="UploadVersion_Click"/>
+            <Button x:Name="LinkDetailButton" Click="LinkDetail_Click"/>
+            <Button x:Name="RegistersButton" Click="Registers_Click"/>
+            <Button x:Name="PromotionQueueButton" Click="PromotionQueue_Click"/>
+            <Button x:Name="PublishToMasterButton" Click="PublishToMaster_Click"/>
+            <Button x:Name="ComposeSheetButton" Click="ComposeSheet_Click"/>
+            <Button x:Name="AddGroupButton" Click="AddGroup_Click"/>
+            <Button x:Name="AddSubgroupButton" Click="AddSubgroup_Click"/>
+            <Button x:Name="RenameGroupButton" Click="RenameGroup_Click"/>
+            <Button x:Name="RemoveGroupButton" Click="RemoveGroup_Click"/>
+            <Button x:Name="AssignRecordButton" Click="AssignRecordToGroup_Click"/>
+            <Button x:Name="DeleteRecordButton" Click="DeleteRecord_Click"/>
+            <Button x:Name="OpenFileButton" Click="OpenFile_Click"/>
+            <Button x:Name="SubmitButton" Click="Submit_Click"/>
+            <Button x:Name="PublishButton" Click="Publish_Click"/>
+            <Button x:Name="RefreshButtonLegacy" Click="Refresh_Click"/>
+            <Button x:Name="SearchButtonLegacy" Click="Search_Click"/>
         </Grid>
     </Grid>
 </Window>

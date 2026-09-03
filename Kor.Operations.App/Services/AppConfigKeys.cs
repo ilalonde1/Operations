@@ -31,7 +31,12 @@ namespace Kor.Operations.Services
         public const string GraphTenantId = "Graph.TenantId";
         public const string ProjectsRoot = "ProjectsRoot";
         public const string RedirectorBaseUrl = "RedirectorBaseUrl";
+        public const string StandardDetailsAuthoringPath = "StandardDetails.AuthoringPath";
+        public const string StandardDetailsBridgeRoot = "StandardDetails.BridgeRoot";
         public const string StandardDetailsFileStorageRootPath = "StandardDetails.FileStorageRootPath";
+        public const string StandardDetailsMasterPath = "StandardDetails.MasterPath";
+        public const string StandardDetailsPreviewCachePath = "StandardDetails.PreviewCachePath";
+        public const string StandardDetailsPartImageRoot = "StandardDetails.PartImageRoot";
         public const string UserUpnOverride = "UserUpnOverride";
         public const string VpCatalog       = "Vp.Catalog";
         public const string VpDraftRate     = "Vp.DraftRate";
