@@ -840,6 +840,20 @@ SELECT TOP 1
              displayPrefix.WholeWordPrefix = 1
              OR EXISTS (SELECT 1 FROM CorporateToken ct WHERE prefix.Remainder LIKE ct.Token + N'%')
          )
+         -- ARBITER (2026-09-03). Two independent 'same company' heuristics existed:
+         -- this read-time redirect and BdCanonicalDedup's write-time fuzzy gate,
+         -- with no arbiter and the LOOSER one facing the user. A live query found
+         -- 254 redirect-safe pairs across 221 thin orgs whose fuzzy keys DIFFER --
+         -- 'Vulcan' -> 'Vulcan Real Estate', 'Sundre' -> 'Sundre Contracting Co.',
+         -- 'Brooks' -> 'Brooks Scarpa Huber'. Each would silently show a different
+         -- company's dossier while dedup would refuse to merge them.
+         -- The read path now defers to the write path: auto-redirect ONLY where
+         -- dedup would agree these are one org. Everything else still surfaces as
+         -- a review-for-merge suggestion, so a thin org is never silently
+         -- swapped for a different entity, and is never left looking like a bug.
+         AND t.FuzzyNormalizedName IS NOT NULL
+         AND r.FuzzyNormalizedName IS NOT NULL
+         AND t.FuzzyNormalizedName = r.FuzzyNormalizedName
         THEN 1 ELSE 0
     END AS RedirectSafe
 FROM opportunities.CanonicalOrg t

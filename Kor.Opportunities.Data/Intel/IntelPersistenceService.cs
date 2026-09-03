@@ -581,8 +581,22 @@ FROM @actions;";
         IntelExtractionContext ctx,
         CancellationToken ct)
     {
+        // The OUTPUT clause captures deleted.* alongside $action so the paragraph
+        // being replaced is preserved in the same statement that replaces it —
+        // history cannot drift from the live row, and there is no second round
+        // trip to lose. Migration 297 explains why this exists: before it, a
+        // refresh that researched the wrong company destroyed the correct text
+        // with no trace, because IntelNarrative is deliberately excluded from
+        // RetireSupersededIntelAsync ("it upserts cleanly").
         const string sql = @"
-DECLARE @actions table ([Action] nvarchar(10) NOT NULL);
+DECLARE @actions table (
+    [Action]        nvarchar(10)   NOT NULL,
+    OldId           bigint         NULL,
+    OldOrgId        bigint         NULL,
+    OldType         nvarchar(50)   NULL,
+    OldText         nvarchar(max)  NULL,
+    OldProvider     nvarchar(100)  NULL,
+    OldEnrichmentId bigint         NULL);
 
 MERGE opportunities.IntelNarrative WITH (HOLDLOCK) AS T
 USING (SELECT @naturalKey AS NaturalKey) AS S
@@ -602,7 +616,23 @@ WHEN NOT MATCHED THEN INSERT
     VALUES
     (@provider, @enrichmentId, @confidence, @naturalKey,
      @refreshed, @refreshed, @canonicalOrgId, @narrativeType, @paragraphText)
-OUTPUT $action INTO @actions;
+OUTPUT $action, deleted.Id, deleted.CanonicalOrgId, deleted.NarrativeType,
+       deleted.ParagraphText, deleted.SourceProviderName, deleted.SourceEnrichmentId
+INTO @actions;
+
+-- Keep the superseded paragraph, but only when the TEXT actually changed: a
+-- refresh that returns the same prose is the common case and must not mint a
+-- history row every night.
+INSERT INTO opportunities.IntelNarrativeVersion
+    (IntelNarrativeId, CanonicalOrgId, NarrativeType, ParagraphText,
+     SourceProviderName, SourceEnrichmentId, ReplacedByEnrichmentId)
+SELECT a.OldId, a.OldOrgId, a.OldType, a.OldText, a.OldProvider, a.OldEnrichmentId, @enrichmentId
+FROM @actions a
+WHERE a.[Action] = N'UPDATE'
+  AND a.OldText IS NOT NULL
+  AND a.OldOrgId IS NOT NULL
+  AND a.OldType IS NOT NULL
+  AND a.OldText <> @paragraphText;
 
 SELECT
     COALESCE(SUM(CASE WHEN [Action] = N'INSERT' THEN 1 ELSE 0 END), 0) AS Inserted,

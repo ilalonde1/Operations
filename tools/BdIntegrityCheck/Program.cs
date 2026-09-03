@@ -203,9 +203,19 @@ invariants.Add(("source_went_silent",
                SUM(CASE WHEN r.StartedAtUtc > DATEADD(day,-30,sysdatetimeoffset()) THEN ISNULL(r.InsertedCount,0) ELSE 0 END) AS RecentInserts,
                SUM(ISNULL(r.InsertedCount,0)) AS LifetimeInserts
         FROM opportunities.IngestionRuns r
+        WHERE r.EndedAtUtc IS NOT NULL   -- an IN-FLIGHT run looks identical to a
+                                         -- failed one (Success stays 0 until the
+                                         -- row is finalised). Counting them cost
+                                         -- a real mistake on 2026-09-03: a
+                                         -- 9-minute GovCanada run was read at 7
+                                         -- minutes, declared failed, and its
+                                         -- sibling cancelled. It had inserted 295.
         GROUP BY r.ProviderName)
+      -- LifetimeInserts >= 5, not > 0: a source with a single insert in its whole
+      -- life never 'worked' in the sense this check claims, and letting it through
+      -- makes the description a lie (Bonfire_Saanich, 352 runs, 1 insert ever).
       SELECT COUNT(*) FROM runs
-      WHERE RecentOkRuns >= 4 AND RecentInserts = 0 AND LifetimeInserts > 0;",
+      WHERE RecentOkRuns >= 4 AND RecentInserts = 0 AND LifetimeInserts >= 5;",
     @"WITH runs AS (
         SELECT r.ProviderName,
                SUM(CASE WHEN r.StartedAtUtc > DATEADD(day,-30,sysdatetimeoffset()) AND r.Success = 1 THEN 1 ELSE 0 END) AS RecentOkRuns,
@@ -213,11 +223,18 @@ invariants.Add(("source_went_silent",
                SUM(ISNULL(r.InsertedCount,0)) AS LifetimeInserts,
                MAX(r.StartedAtUtc) AS LastRun
         FROM opportunities.IngestionRuns r
+        WHERE r.EndedAtUtc IS NOT NULL   -- an IN-FLIGHT run looks identical to a
+                                         -- failed one (Success stays 0 until the
+                                         -- row is finalised). Counting them cost
+                                         -- a real mistake on 2026-09-03: a
+                                         -- 9-minute GovCanada run was read at 7
+                                         -- minutes, declared failed, and its
+                                         -- sibling cancelled. It had inserted 295.
         GROUP BY r.ProviderName)
       SELECT TOP 15 ProviderName, RecentOkRuns, LifetimeInserts,
              CONVERT(varchar(10), LastRun, 23) AS LastRun
       FROM runs
-      WHERE RecentOkRuns >= 4 AND RecentInserts = 0 AND LifetimeInserts > 0
+      WHERE RecentOkRuns >= 4 AND RecentInserts = 0 AND LifetimeInserts >= 5
       ORDER BY LifetimeInserts DESC;"));
 
 // ⚠ InsertedCount = 0 is NOT by itself a dead feed. Probing the first version of

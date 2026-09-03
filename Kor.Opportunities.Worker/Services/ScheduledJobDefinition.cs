@@ -63,5 +63,22 @@ internal static class ScheduledJobDefinitions
         // 2026-07-13: pursuit lifecycle — auto-release owned-but-unconverted plays.
         new(nameof(Jobs.MpiOwnershipReaperJob), "MpiOwnershipReaperCronSchedule", "0 40 2 * * ?", o => o.MpiOwnershipReaperEnabled, "Cleanup"),
         new(nameof(LiveOppDetailEnrichmentJob), "LiveOppDetailEnrichmentCronSchedule", "0 7 0/1 * * ?", o => o.LiveOppDetailEnrichmentEnabled, "Enrichment"),
+        // 2026-09-03 — THIRD instance of the Audit-v2 #15 class above: both of
+        // these are scheduled in Program.cs (IntelExtractionCatchUpJob ~line 931,
+        // BdResearchExecutorJob ~line 1090) and have recent successful JobRuns,
+        // but neither had a row in opportunities.JobSchedules, so the Admin
+        // registry under-reported the writers that touch BD intel. Found by the
+        // Codex entity-identity audit while tracing what could rewrite a
+        // narrative unattended — which is exactly the question an operator
+        // cannot answer from a registry that omits the writers.
+        //
+        // BdResearchExecutorJob's own kill switch lives in BdResearchExecutorOptions,
+        // not OpportunitiesWorkerOptions, so this predicate cannot read it. It is
+        // registered as always-scheduled and the job self-disables at run time
+        // ("BD research executor is disabled."). The registry's job is to show the
+        // schedule EXISTS; hiding it because it is currently off is what created
+        // this defect in the first place.
+        new(nameof(Jobs.IntelExtractionCatchUpJob), "IntelExtractionCatchUpCronSchedule", "0 30 3 * * ?", _ => true, "Enrichment"),
+        new(nameof(Jobs.BdResearchExecutorJob), "BdResearchExecutorCronSchedule", "0 0 7 * * ?", _ => true, "Enrichment"),
     ];
 }
