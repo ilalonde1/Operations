@@ -42,6 +42,127 @@ if (patternMode)
 }
 
 if (string.IsNullOrWhiteSpace(key)) { Console.Error.WriteLine("Missing KOR_HUNTER_APIKEY (required for the Hunter mode; --pattern-propagate does not need it)."); return 2; }
+
+// ── ROSTER INGEST ───────────────────────────────────────────────────────────
+// The default Hunter mode fills a MISSING EMAIL on a person we already hold. It
+// cannot add depth, because it never creates anyone. After the permit harvest
+// decomposed 42 firms into the Brain, 37 of them had exactly ONE named contact —
+// whoever happened to sign that application. One person is not a relationship map.
+//
+// This mode takes the same 1-credit domain search and ingests the whole personal
+// roster it returns, creating IntelPerson + affiliation for people we do not yet
+// hold. Same guards as everywhere else: personal emails only, a confidence floor,
+// SHA1(lower(email)) natural key so a person already known is corroborated rather
+// than duplicated, and dry-run unless --commit.
+//   --roster-ingest [--provider PermitApplicants] [--max-firms N] [--min-confidence N] [--commit]
+if (args.Contains("--roster-ingest"))
+{
+    var provider = ArgStr(args, "--provider", "PermitApplicants");
+    Console.WriteLine($"RosterIngest: provider={provider}; mode={(commit ? "COMMIT" : "dry-run")}; maxFirms={maxFirms}; minConfidence={minConf}");
+
+    using var rhttp = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
+    var targets = new List<(long OrgId, string Name, string Domain, long EnrichmentId)>();
+
+    await using (var cmd = new SqlCommand(@"
+SELECT TOP (@n) co.Id, co.DisplayName, co.WebsiteDomain, e.Id
+FROM opportunities.CanonicalOrgEnrichment e
+JOIN opportunities.CanonicalOrg co ON co.Id = e.CanonicalOrgId
+WHERE e.ProviderName = @p AND co.WebsiteDomain IS NOT NULL AND co.RetiredAtUtc IS NULL
+ORDER BY co.DisplayName;", con))
+    {
+        cmd.Parameters.AddWithValue("@n", maxFirms);
+        cmd.Parameters.AddWithValue("@p", provider);
+        await using var rd = await cmd.ExecuteReaderAsync().ConfigureAwait(false);
+        while (await rd.ReadAsync().ConfigureAwait(false))
+        {
+            targets.Add((rd.GetInt64(0), rd.GetString(1), rd.GetString(2), rd.GetInt64(3)));
+        }
+    }
+
+    Console.WriteLine($"Firms with a website anchor: {targets.Count}");
+    int credits = 0, created = 0, corroborated = 0, skipped = 0;
+
+    foreach (var t in targets)
+    {
+        HunterResult? hr;
+        try { hr = await DomainSearchAsync(rhttp, key!, t.Domain).ConfigureAwait(false); }
+        catch (Exception ex) { Console.Error.WriteLine($"[WARN] {t.Name} ({t.Domain}): {ex.Message}"); continue; }
+        credits++;
+        if (hr is null || hr.Emails.Count == 0) { Console.WriteLine($"  {t.Name}: no roster"); continue; }
+
+        foreach (var e in hr.Emails)
+        {
+            if (e.Type != "personal" || e.Confidence < minConf) { skipped++; continue; }
+            var display = $"{e.First} {e.Last}".Trim();
+            if (display.Length < 3) { skipped++; continue; }
+
+            Console.WriteLine($"  {t.Name} | {display} · {e.Value} · {e.Position ?? "(no title)"} (conf {e.Confidence})");
+            if (!commit) { created++; continue; }
+
+            await using var up = new SqlCommand(@"
+DECLARE @nk char(40) = CONVERT(char(40), HASHBYTES('SHA1', LOWER(@email)), 2);
+DECLARE @pid bigint;
+SELECT @pid = Id FROM opportunities.IntelPerson WHERE NaturalKey = @nk;
+IF @pid IS NULL
+BEGIN
+    INSERT INTO opportunities.IntelPerson
+        (SourceProviderName, SourceEnrichmentId, SourceConfidence, NaturalKey,
+         FirstSeenAtUtc, LastSeenAtUtc, CreatedAtUtc, UpdatedAtUtc,
+         DisplayName, NormalizedName, Email, Phone, LinkedinUrl, Corroborations,
+         EmailSource, EmailConfidence, Notes)
+    VALUES ('HunterRoster', @eid, 'Medium', @nk,
+            SYSDATETIMEOFFSET(), SYSDATETIMEOFFSET(), SYSDATETIMEOFFSET(), SYSDATETIMEOFFSET(),
+            @name, LOWER(@name), @email, @phone, @li, 1,
+            'Hunter', @conf, @notes);
+    SET @pid = SCOPE_IDENTITY();
+END
+ELSE
+BEGIN
+    UPDATE opportunities.IntelPerson
+    SET LastSeenAtUtc = SYSDATETIMEOFFSET(), UpdatedAtUtc = SYSDATETIMEOFFSET(),
+        Corroborations = Corroborations + 1,
+        LinkedinUrl = COALESCE(LinkedinUrl, @li),
+        Phone = COALESCE(Phone, @phone),
+        Notes = COALESCE(Notes, @notes)
+    WHERE Id = @pid;
+END
+IF NOT EXISTS (SELECT 1 FROM opportunities.IntelPersonAffiliation
+               WHERE IntelPersonId = @pid AND CanonicalOrgId = @org)
+BEGIN
+    INSERT INTO opportunities.IntelPersonAffiliation
+        (SourceProviderName, SourceEnrichmentId, SourceConfidence, NaturalKey,
+         FirstSeenAtUtc, LastSeenAtUtc, CreatedAtUtc, UpdatedAtUtc,
+         IntelPersonId, CanonicalOrgId, IsCurrent, Title, Notes)
+    VALUES ('HunterRoster', @eid, 'Medium',
+            CONVERT(char(40), HASHBYTES('SHA1', CONVERT(varchar(40), @pid) + '|' + CONVERT(varchar(40), @org)), 2),
+            SYSDATETIMEOFFSET(), SYSDATETIMEOFFSET(), SYSDATETIMEOFFSET(), SYSDATETIMEOFFSET(),
+            @pid, @org, 1, @title, 'Hunter domain-search roster.');
+END
+SELECT CASE WHEN @@ROWCOUNT >= 0 THEN 1 ELSE 0 END;", con);
+            up.Parameters.AddWithValue("@email", e.Value);
+            up.Parameters.AddWithValue("@name", display);
+            up.Parameters.AddWithValue("@org", t.OrgId);
+            up.Parameters.AddWithValue("@eid", t.EnrichmentId);
+            up.Parameters.AddWithValue("@conf", (byte)Math.Clamp(e.Confidence, 0, 255));
+            up.Parameters.AddWithValue("@li", (object?)e.Linkedin ?? DBNull.Value);
+            up.Parameters.AddWithValue("@phone", (object?)e.Phone ?? DBNull.Value);
+            up.Parameters.AddWithValue("@title", (object?)e.Position ?? DBNull.Value);
+            up.Parameters.AddWithValue("@notes", $"Hunter domain-search on {t.Domain}, confidence {e.Confidence}.");
+            await up.ExecuteNonQueryAsync().ConfigureAwait(false);
+            created++;
+        }
+    }
+
+    Console.WriteLine();
+    Console.WriteLine($"RosterIngest done: {credits} Hunter search credit(s); {created} person-rows {(commit ? "written" : "proposed")}; {skipped} below the bar; {corroborated} corroborated.");
+    return 0;
+}
+
+static string ArgStr(string[] a, string name, string dflt)
+{
+    var i = Array.IndexOf(a, name);
+    return i >= 0 && i + 1 < a.Length ? a[i + 1] : dflt;
+}
 Console.WriteLine($"BdContactEnrich: mode={(commit ? "COMMIT" : "dry-run")}; maxFirms={maxFirms}; minConfidence={minConf}");
 
 using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
@@ -219,7 +340,8 @@ static async Task<HunterResult?> DomainSearchAsync(HttpClient http, string key, 
             if (string.IsNullOrWhiteSpace(value)) continue;
             emails.Add(new HunterEmail(
                 value!, Str(e, "type") ?? "", Int(e, "confidence"),
-                Str(e, "first_name") ?? "", Str(e, "last_name") ?? ""));
+                Str(e, "first_name") ?? "", Str(e, "last_name") ?? "",
+                Str(e, "position"), Str(e, "linkedin"), Str(e, "phone_number")));
         }
     }
     return new HunterResult(Str(data, "pattern") ?? "", emails);
@@ -234,4 +356,6 @@ static int Int(JsonElement el, string name)
 internal sealed record Firm(long Id, string Name, string Website);
 internal sealed record Person(long Id, string Name);
 internal sealed record HunterResult(string Pattern, List<HunterEmail> Emails);
-internal sealed record HunterEmail(string Value, string Type, int Confidence, string First, string Last);
+internal sealed record HunterEmail(
+    string Value, string Type, int Confidence, string First, string Last,
+    string? Position = null, string? Linkedin = null, string? Phone = null);
