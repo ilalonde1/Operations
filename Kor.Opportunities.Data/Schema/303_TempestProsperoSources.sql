@@ -43,6 +43,13 @@ FETCH NEXT FROM c INTO @name, @url, @buyer, @city;
 
 WHILE @@FETCH_STATUS = 0
 BEGIN
+    -- ⚠ MUST reset. "SELECT @id = Id ... WHERE Name = @name" assigns NOTHING when
+    -- no row matches, so @id keeps the PREVIOUS iteration's value. Without this
+    -- line the second municipality is never created and its mappings are merged
+    -- onto the first — which is exactly what happened on 2026-09-04: View Royal
+    -- was never created and Saanich ingested 835 applications labelled "Town of
+    -- View Royal". Repaired by migration 305.
+    SET @id = NULL;
     SELECT @id = Id FROM opportunities.OpportunitySources WHERE Name = @name;
 
     IF @id IS NULL
