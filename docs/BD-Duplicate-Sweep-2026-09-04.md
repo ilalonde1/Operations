@@ -313,3 +313,61 @@ Nothing with a CSV. `--pairs` on the unmodified file rejects the eleven and merg
 
 The eleven land in `tools/BdCanonicalDedup/output/rejected-pairs.csv` with a reason each, and the
 five branch-survivor pairs can be resubmitted flipped once someone decides the survivor's name.
+
+---
+
+## 10. Executed — 2026-09-04, on Ian's instruction ("You run it")
+
+**109 merges committed.** Live `CanonicalOrg` rows: **9,734 → 9,625.**
+
+| Batch | Proposed | Merged | Refused by a gate |
+|---|---|---|---|
+| Batch 1 — same-domain brand-matched shells | 110 | **99** | 11 |
+| Batch 1b — control-character twins | 9 | **9** | 0 |
+| Sundt cleanup (found during the run) | 1 | **1** | 0 |
+
+The eleven refusals are the eleven from section 9; both rows of each are still live and untouched.
+Batch 1 was run twice — the first pass was killed at a two-minute timeout after 79 groups. Each
+group commits in its own transaction, so the re-run simply skipped the 79 as `org row not found`
+and finished the remaining 20. That is the design working; it is not a partial-write hazard.
+
+### Integrity report, before against after
+
+Nothing increased. Every movement is a decrease:
+
+| Check | Before | After |
+|---|---|---|
+| `org_same_domain_shell_brand_match` | 85 groups | **14** |
+| `org_same_domain_different_names` | 845 orgs | **675** |
+| `org_aggressive_key_collision` | 15 | **6** |
+| `org_name_control_chars` | 13 | **4** |
+| `org_name_prefix_same_kind` | 120 | **113** |
+| `org_conflated_people_domains` | 93 | 92 |
+| `org_thin_unsafe_redirect` | 77 | 75 |
+| `person_duplicate_active_affiliation` | 462 | **458** |
+| Errors | 1 | 1 |
+
+The single ERROR is unchanged and unrelated: the known `BIDSTEND` OpportunityKey prefix collision.
+Reports kept as `integrity-BEFORE-commit-20260904.txt` and `integrity-AFTER-commit-20260904.txt`.
+
+The 14 groups still reported by `org_same_domain_shell_brand_match` are the eleven refusals plus
+Townline (already on the never-merge list) and AECOM Hunt → AECOM Canada Ltd. They are real
+duplicates that need a decision about direction, not a merge.
+
+### ⚠ Two things this run established that the prompt got wrong
+
+**1. `BdCanonicalDedup` DELETES the loser row. It does not retire it.** The seed prompt asserted
+"archive, never delete — retire the loser and record the merge in `CanonicalOrgMerge`". Only the
+second half is true. Checked across the whole ledger: **306 of 306 merged loser rows are gone**
+(145 in June, 64 in July, 97 in September), so this is long-standing behaviour, not new. The ledger
+keeps `MergedFromCanonicalOrgId → MergedIntoCanonicalOrgId`, so any external reference still
+resolves; what is lost is the loser row's own `DisplayName`, domain and notes.
+Recovery path: the nightly full backup of `KorOpportunitiesDb` finished **2026-09-03 17:01**, which
+predates every merge today. Recovery model is SIMPLE, so there is no point-in-time restore.
+
+**2. The domain-anchor blind spot is not theoretical.** Renaming the Sundt survivor to
+"Sundt Construction" failed on `UX_CanonicalOrg_LiveNormalizedName`, which is how row **75158** was
+found: a plain "Sundt Construction" with four people and **no `WebsiteDomain`**. It was invisible to
+every same-domain check in the suite. 74% of `CanonicalOrg` is in that state. Merged the branch row
+into it (gate-clean direction, allowlisted in `sundt-2026-09-04.csv`) and set the anchor by hand —
+one row, `sundt.com`, eight people.

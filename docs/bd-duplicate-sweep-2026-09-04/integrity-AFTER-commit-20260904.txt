@@ -1,0 +1,506 @@
+BdIntegrityCheck — 2026-09-04 22:48:44Z
+========================================================================
+IDENTITY CHECKS — COVERAGE STATEMENT
+  COVERS: one-row-two-companies where the people carry differing corporate email
+          domains; DBA-merge survivors whose absorbed alias contradicts their Kind;
+          orgs whose narrative can be refreshed with no website anchor; thin orgs a
+          dossier prefix-redirect could resolve to a different richer entity.
+  DOES NOT COVER: whether any narrative's CONTENT is about the right company —
+          IntelNarrative is overwritten in place with no version history, so a wrong
+          refresh leaves no trace to compare against. It also cannot see a conflation
+          whose people share one domain, or have no email at all.
+  WOULD NOT HAVE CAUGHT: the Continuum narrative overwrite itself. It would have
+          flagged the CONFLATED ROW months earlier (org_dba_merge_discipline_conflict
+          fires on an 'architecture' alias sitting on a Developer), but once the
+          paragraph was replaced no check here can tell the new text is wrong.
+  ACCEPTANCE: verified 2026-09-03 that org_dba_merge_discipline_conflict returns
+          canonical 74300 (Continuum Partners, LLC) on both of its DedupeMerge
+          aliases. A check nobody has fired on a known instance is a hypothesis.
+  SEVERITY: all four identity checks are WARN worklists — they need human
+          judgement, and a permanently-red ERROR gets ignored inside a week,
+          which is worse than no check. Only the structural invariants above
+          (dangling org references, merge-ledger consistency) gate the exit code.
+========================================================================
+[OK   ] OrgFact.CanonicalOrgId_on_missing_org: 0
+[OK   ] OrgAlias.CanonicalOrgId_on_missing_org: 0
+[OK   ] OpportunityInterestedFirms.ResolvedCanonicalOrgId_on_missing_org: 0
+[OK   ] OpportunityBids.BidderCanonicalOrgId_on_missing_org: 0
+[OK   ] OpportunityAwards.AwardingCanonicalOrgId_on_missing_org: 0
+[OK   ] OpportunityAwards.AwardedToCanonicalOrgId_on_missing_org: 0
+[OK   ] Opportunities.BuyerCanonicalOrgId_on_missing_org: 0
+[OK   ] NewsArticleOrgMention.CanonicalOrgId_on_missing_org: 0
+[OK   ] MajorProjectsInventory.StructuralEngineerCanonicalOrgId_on_missing_org: 0
+[OK   ] MajorProjectsInventory.ProponentCanonicalOrgId_on_missing_org: 0
+[OK   ] MajorProjectsInventory.GeneralContractorCanonicalOrgId_on_missing_org: 0
+[OK   ] MajorProjectsInventory.ArchitectCanonicalOrgId_on_missing_org: 0
+[OK   ] KorPursuits.LostToCanonicalOrgId_on_missing_org: 0
+[OK   ] KorPursuits.BuyerCanonicalOrgId_on_missing_org: 0
+[OK   ] IntelWork.CanonicalOrgId_on_missing_org: 0
+[OK   ] IntelSignal.CanonicalOrgId_on_missing_org: 0
+[OK   ] IntelRisk.CanonicalOrgId_on_missing_org: 0
+[OK   ] IntelProjectKeyPerson.CanonicalOrgId_on_missing_org: 0
+[OK   ] IntelProjectAction.TargetCanonicalOrgId_on_missing_org: 0
+[OK   ] IntelPersonAffiliation.CanonicalOrgId_on_missing_org: 0
+[OK   ] IntelNarrativeVersion.CanonicalOrgId_on_missing_org: 0
+[OK   ] IntelNarrative.CanonicalOrgId_on_missing_org: 0
+[OK   ] IntelAction.CanonicalOrgId_on_missing_org: 0
+[OK   ] HistoricalOpportunities.BuyerCanonicalOrgId_on_missing_org: 0
+[OK   ] HistoricalOpportunities.AwardedToCanonicalOrgId_on_missing_org: 0
+[OK   ] CrmTouchpoint.CanonicalOrgId_on_missing_org: 0
+[OK   ] CrmEngagements.LostToCanonicalOrgId_on_missing_org: 0
+[OK   ] CrmEngagements.BuyerCanonicalOrgId_on_missing_org: 0
+[OK   ] CrmBuyerEmailWarmth.CanonicalOrgId_on_missing_org: 0
+[OK   ] CanonicalOrgEnrichment.CanonicalOrgId_on_missing_org: 0
+[OK   ] BuildingPermit.OwnerCanonicalOrgId_on_missing_org: 0
+[OK   ] BuildingPermit.ContractorCanonicalOrgId_on_missing_org: 0
+[OK   ] BuildingPermit.ApplicantCanonicalOrgId_on_missing_org: 0
+[OK   ] BdResearchTriggers.CanonicalOrgId_on_missing_org: 0
+[OK   ] ArchitectDisplacementBriefs.ArchitectCanonicalOrgId_on_missing_org: 0
+[OK   ] org_merge_from_still_active: 0
+[OK   ] org_merge_dead_survivor: 0
+[WARN ] person_zero_markers: 61
+         Active IntelPerson rows with no email, no LinkedIn, no phone, and no active affiliation (prune/regen candidates)
+         · Id=848, DisplayName=Claudia Escala, LEED AP
+         · Id=849, DisplayName=Marin Gertler, AIA
+         · Id=9463, DisplayName=Alan Cantlin
+         · Id=10382, DisplayName=John Pettigrew
+         · Id=13249, DisplayName=Cathy McLay
+[WARN ] person_ambiguous_name_clusters: 482
+         Normalized names with >1 ACTIVE IntelPerson. NOTE: name-only, so includes legitimately distinct same-name people — NOT a blind-merge list; needs name+org+signal dedup
+         · NormalizedName=denisebrown, ActiveRows=4
+         · NormalizedName=michellebiggar, ActiveRows=4
+         · NormalizedName=nickfoster, ActiveRows=4
+         · NormalizedName=robgrant, ActiveRows=4
+         · NormalizedName=vanceharris, ActiveRows=4
+[WARN ] org_multi_entity_active_name: 243
+         Active target-kind orgs with slash/semicolon/plus in DisplayName. NOTE: heuristic — legit firm names ('X, Planning + Interiors') match too; review before acting, never auto-reject
+         · Id=10, DisplayName=Sandhill Developments (Nordel) LP c/o Kiran Sandhu, Kind=KorClient
+         · Id=31, DisplayName=WNDR Architecture + Design Inc., Kind=Architect
+         · Id=51, DisplayName=Duke Management c/o Holar Development, Kind=KorClient
+         · Id=65, DisplayName=TELUS Communications Inc. c/o Ledcor Property Investments Ltd., Kind=KorClient
+         · Id=85, DisplayName=DA Architects + Planners, Kind=Architect
+[WARN ] org_conflated_people_domains: 92
+         REVIEW WORKLIST (not a pass/fail): active orgs whose active people span 2+ distinct corporate email domains — the two-companies-in-one-row signature. Known-legitimate matches: multi-campus institutions, bodies with several own domains, and member associations whose contacts sit at member orgs. Cross it with org_dba_merge_discipline_conflict for the likely-conflated ones
+         · CanonicalOrgId=24, DisplayName=DF Architecture, Domains=5, DomainList=161.io | allureventures.ca | appeltproperties.com | dfarchitecture.ca | mlemporio.ca
+         · CanonicalOrgId=65743, DisplayName=UNIVERSITY OF CALIFORNIA, Domains=5, DomainList=capnet.ucla.edu | spectrumknowledge.com | ucop.edu | ucsb.edu | ucsd.edu
+         · CanonicalOrgId=55056, DisplayName=Hariri Pontarini Architects, Domains=4, DomainList=grosvenor.com | hp-arch.com | ibigroup.com | vancouver.ca
+         · CanonicalOrgId=449, DisplayName=Alberta Municipalities, Domains=3, DomainList=calgary.ca | cityofgp.com | edmonton.ca
+         · CanonicalOrgId=476, DisplayName=Alberta Health Services, Domains=3, DomainList=ahs.ca | albertahealthservices.ca | gov.ab.ca
+         · CanonicalOrgId=870, DisplayName=NorQuest College, Domains=3, DomainList=clarkbuilders.com | gecarchitecture.com | norquest.ca
+         · CanonicalOrgId=32326, DisplayName=Parks Canada, Domains=3, DomainList=canada.ca | nrcan-rncan.gc.ca | parl.gc.ca
+         · CanonicalOrgId=38943, DisplayName=Bosa Properties, Domains=3, DomainList=bosaproperties.com | thinkbosa.com | townline.com
+         · CanonicalOrgId=53119, DisplayName=City of Calgary, Domains=3, DomainList=calgary.ca | gecarchitecture.com | rjc.ca
+         · CanonicalOrgId=54232, DisplayName=Bosa Properties/Kingswood Properties, Domains=3, DomainList=bosaproperties.com | thinkbosa.com | townline.com
+[WARN ] org_dba_merge_discipline_conflict: 8
+         Active orgs that absorbed a 'X DBA: Y' alias via DedupeMerge where the alias names a DISCIPLINE the survivor's Kind contradicts (architecture alias on a Developer row = Continuum's exact shape)
+         · Id=8538, Kind=Architect, DisplayName=Group2 Architecture Interior Design Ltd., ConflictingAlias=Group2 Architecture Engineering
+         · Id=8538, Kind=Architect, DisplayName=Group2 Architecture Interior Design Ltd., ConflictingAlias=Group2 Architecture Engineering Ltd
+         · Id=20402, Kind=Architect, DisplayName=Omicron Canada Inc., ConflictingAlias=Omicron (Vancouver — Architecture + Engineering Integrated Firm)
+         · Id=54159, Kind=Developer, DisplayName=Pheidias Project Management, ConflictingAlias=Pheidias Project Management / Oberto Oberti (architect-developer)
+         · Id=68701, Kind=Developer, DisplayName=Project^, ConflictingAlias=Project Architecture
+         · Id=69276, Kind=GC, DisplayName=PGH Consulting Services, ConflictingAlias=PGH Consulting Services Ltd. (design-build architect)
+         · Id=69968, Kind=Architect, DisplayName=Omicron Architecture Engineering Construction, ConflictingAlias=Ayla Calverley DBA: Omicron Architecture Engineering Construction Ltd.
+         · Id=69968, Kind=Architect, DisplayName=Omicron Architecture Engineering Construction, ConflictingAlias=Christine Young DBA: Omicron Architecture Engineering Construction Ltd.
+         · Id=69968, Kind=Architect, DisplayName=Omicron Architecture Engineering Construction, ConflictingAlias=Kati Shalevich DBA: OMICRON ARCHITECTURE ENGINEERING LTD.
+         · Id=69968, Kind=Architect, DisplayName=Omicron Architecture Engineering Construction, ConflictingAlias=Lori Gratl DBA: Omicron Architecture Engineering Construction Ltd.
+[WARN ] org_narrative_without_website_anchor: 4313
+         EXPOSURE GAUGE, not a defect: active orgs carrying an active narrative but NO Website. A FirmNarrative refresh on these is anchored only by DisplayName, which is how Continuum was rewritten for the wrong company. Expect this to fall as websites are backfilled
+         · Id=92, Kind=KorClient, DisplayName=Siddoo Holdings, ActiveNarratives=4
+         · Id=134, Kind=KorClient, DisplayName=Aria Block A Limited Partnership, ActiveNarratives=4
+         · Id=445, Kind=Buyer, DisplayName=Ministry of Transportation and TransitProvincial Field Services, ActiveNarratives=4
+         · Id=447, Kind=Buyer, DisplayName=Starland County, ActiveNarratives=4
+         · Id=449, Kind=Buyer, DisplayName=Alberta Municipalities, ActiveNarratives=4
+         · Id=453, Kind=Buyer, DisplayName=Lesser Slave River, ActiveNarratives=4
+         · Id=455, Kind=Buyer, DisplayName=Attorney GeneralCourt Services Branch, ActiveNarratives=4
+         · Id=456, Kind=Buyer, DisplayName=Wainwright, ActiveNarratives=4
+         · Id=457, Kind=Buyer, DisplayName=Health, ActiveNarratives=4
+         · Id=464, Kind=Buyer, DisplayName=TransAlta Tri Leisure Centre, ActiveNarratives=4
+[OK   ] source_went_silent: 0
+[WARN ] source_never_delivered_anything: 9
+         An enabled source that has run 5+ times and has never seen a SINGLE item — nothing inserted, nothing duplicate, nothing skipped. The feed is genuinely empty or the URL is wrong. Verify the endpoint returns items at all before assuming the publisher is quiet
+         · ProviderName=Bonfire_VCH (Rss), Runs=359, LastRun=2026-09-04
+         · ProviderName=Bonfire_Nelson (Rss), Runs=359, LastRun=2026-09-04
+         · ProviderName=Bonfire_SFU (Rss), Runs=358, LastRun=2026-09-04
+         · ProviderName=Bonfire_AthabascaU (Rss), Runs=358, LastRun=2026-09-04
+         · ProviderName=Bonfire_CapilanoU (Rss), Runs=358, LastRun=2026-09-04
+         · ProviderName=Bonfire_Burnaby (Rss), Runs=358, LastRun=2026-09-04
+         · ProviderName=Bonfire_MountRoyalU (Rss), Runs=358, LastRun=2026-09-04
+         · ProviderName=SamGov (SamGov), Runs=31, LastRun=2026-09-04
+         · ProviderName=Awards: BidsTendersAwards_Coquitlam (BidsAndTendersAwards), Runs=30, LastRun=2026-09-03
+[WARN ] source_everything_filtered_out: 18
+         A source where items ARRIVE but nothing is ever kept — 100% skipped or duplicate, zero inserts. Usually CORRECT (the buyer tenders non-construction through this channel). Treat as a prompt to ask where that buyer posts its construction work, not as a defect. Confirm against RelevanceGateRejects before acting
+         · ProviderName=Bonfire_AHS (Rss), Runs=358, Dup=180, Skipped=2351
+         · ProviderName=Bonfire_ICBC (Rss), Runs=358, Dup=0, Skipped=2375
+         · ProviderName=Bonfire_BCLC (Rss), Runs=358, Dup=263, Skipped=1209
+         · ProviderName=Bonfire_BCTransit (Rss), Runs=359, Dup=0, Skipped=1436
+         · ProviderName=Awards: BidsTendersAwards_CountyGP (BidsAndTendersAwards), Runs=30, Dup=1276, Skipped=0
+         · ProviderName=BidsTenders_Richmond (BidsAndTenders), Runs=121, Dup=5, Skipped=768
+         · ProviderName=BidsTenders_RedDeer (BidsAndTenders), Runs=121, Dup=0, Skipped=741
+         · ProviderName=Bonfire_PrrdBc (Rss), Runs=358, Dup=111, Skipped=527
+         · ProviderName=Awards: BidsTendersAwards_PortCoq (BidsAndTendersAwards), Runs=30, Dup=630, Skipped=0
+         · ProviderName=BidsTenders_Comoxvalleyrd (BidsAndTenders), Runs=121, Dup=0, Skipped=483
+         · ProviderName=BidsTenders_Okotoks (BidsAndTenders), Runs=121, Dup=0, Skipped=462
+         · ProviderName=Bonfire_IslandHealth (Rss), Runs=359, Dup=170, Skipped=258
+         · ProviderName=BidsTenders_PrinceGeorge (BidsAndTenders), Runs=121, Dup=24, Skipped=377
+         · ProviderName=BidsTenders_Camrose (BidsAndTenders), Runs=121, Dup=27, Skipped=353
+         · ProviderName=Bonfire_TravelAlberta (Rss), Runs=359, Dup=0, Skipped=265
+         · ProviderName=Bonfire_SAIT (Rss), Runs=358, Dup=157, Skipped=106
+         · ProviderName=BidsTenders_Rdco (BidsAndTenders), Runs=121, Dup=0, Skipped=73
+         · ProviderName=BidsTenders_PortCoq (BidsAndTenders), Runs=121, Dup=0, Skipped=56
+[WARN ] source_key_prefix_collision: 89
+         Two or more sources whose names share their first 8 alphanumeric characters, which is the whole of the OpportunityKey source prefix. Any two such sources that ever emit the same external reference produce ONE opportunity row for two different things. Name a new source so its first 8 alphanumeric characters are unique
+         · Prefix=BIDSTEND, Sources=48
+         · Prefix=BONFIREB, Sources=4
+         · Prefix=BONFIREU, Sources=4
+         · Prefix=BONFIRES, Sources=4
+         · Prefix=BONFIREP, Sources=3
+         · Prefix=BONFIREN, Sources=3
+         · Prefix=BONFIREM, Sources=3
+         · Prefix=BONFIREK, Sources=3
+         · Prefix=BONFIREC, Sources=3
+         · Prefix=GOVCANAD, Sources=2
+         · Prefix=CASOCRAT, Sources=2
+         · Prefix=CANADABU, Sources=2
+         · Prefix=BONFIREV, Sources=2
+         · Prefix=BONFIREA, Sources=2
+         · Prefix=BONFIREI, Sources=2
+         · Prefix=BONFIREF, Sources=2
+[ERROR] opportunity_merged_across_sibling_sources: 1
+         ONE opportunity row observed by two DIFFERENT tenants of the same provider AT DIFFERENT URLs — two municipalities' tenders collapsed into one row. The distinct-URL condition is what separates this from legitimate cross-posting: CivicInfoBC_All and CivicInfoBC_Construction see the SAME listing at the SAME url and are correct; BidsTenders_Coquitlam .../Detail/60 and BidsTenders_MapleRidge .../Detail/7 are two different procurements. This is the OpportunityKey prefix collision actually firing
+         · OppKey=BIDSTEND-26-067, Name=Audio Visual System Replacement and Upgrade – City, Sources=BidsTenders_MapleRidge + BidsTenders_Coquitlam
+[WARN ] source_insert_rate_collapsed: 1
+         A feed that has delivered before, is still returning items, and has kept NOTHING in 30 days. The lifetime-zero checks cannot see this shape — it is the regression version of source_everything_filtered_out. Confirm against RelevanceGateRejects: the gate is often right, and the useful question is whether the buyer moved its construction work elsewhere
+         · ProviderName=BidsTenders_Squamish (BidsAndTenders), Runs=119, FilteredLast30d=600, EverInserted=1
+[WARN ] org_same_domain_different_names: 675
+         Live canonical orgs sharing a WebsiteDomain under different names — one real firm split across several rows, so every dossier, brief and search sees only part of what we hold. Ordered by split intel. CANDIDATES, not confirmed duplicates: JVs, regional entities and government ministries legitimately share a domain
+         · WebsiteDomain=wsp.com, Rows_=2, People=5, Awards=1800, KorJobs=0, Client=
+         · WebsiteDomain=aecom.com, Rows_=2, People=8, Awards=601, KorJobs=0, Client=
+         · WebsiteDomain=ellisdon.com, Rows_=3, People=33, Awards=284, KorJobs=0, Client=
+         · WebsiteDomain=cima.ca, Rows_=3, People=19, Awards=160, KorJobs=0, Client=
+         · WebsiteDomain=dialogdesign.ca, Rows_=4, People=57, Awards=92, KorJobs=0, Client=DELTEK
+         · WebsiteDomain=greystar.com, Rows_=2, People=114, Awards=0, KorJobs=2, Client=DELTEK
+         · WebsiteDomain=townline.com, Rows_=2, People=77, Awards=0, KorJobs=37, Client=DELTEK
+         · WebsiteDomain=intracorphomes.com, Rows_=3, People=77, Awards=0, KorJobs=46, Client=DELTEK
+         · WebsiteDomain=www2.gov.bc.ca, Rows_=22, People=71, Awards=0, KorJobs=1, Client=DELTEK
+         · WebsiteDomain=cta.bc.ca, Rows_=2, People=37, Awards=17, KorJobs=0, Client=DELTEK
+         · WebsiteDomain=beedie.ca, Rows_=4, People=50, Awards=0, KorJobs=20, Client=DELTEK
+         · WebsiteDomain=aryze.ca, Rows_=3, People=43, Awards=0, KorJobs=0, Client=
+         · WebsiteDomain=omicronaec.com, Rows_=2, People=41, Awards=0, KorJobs=4, Client=DELTEK
+         · WebsiteDomain=hdrinc.com, Rows_=2, People=11, Awards=28, KorJobs=0, Client=DELTEK
+         · WebsiteDomain=factionprojects.com, Rows_=3, People=37, Awards=1, KorJobs=0, Client=
+         · WebsiteDomain=albertahealthservices.ca, Rows_=3, People=37, Awards=0, KorJobs=0, Client=
+         · WebsiteDomain=fraserhealth.ca, Rows_=2, People=36, Awards=1, KorJobs=0, Client=
+         · WebsiteDomain=iompropertygroup.com, Rows_=2, People=36, Awards=0, KorJobs=10, Client=DELTEK
+         · WebsiteDomain=onni.com, Rows_=2, People=36, Awards=0, KorJobs=1, Client=DELTEK
+         · WebsiteDomain=group161.com, Rows_=2, People=35, Awards=0, KorJobs=3, Client=DELTEK
+[WARN ] person_duplicate_active_affiliation: 458
+         Same person affiliated to the same org more than once, both active. Inflates how 'rich' an org looks, double-counts contacts in dossiers, and multiplies on every refresh. Found 2026-09-03 when a re-research after an org split added a second row for people who were already there
+         · OrgId=8799, DisplayName=hcma architecture + design, Person=Tracy Liu, ActiveRows=6
+         · OrgId=42, DisplayName=Stuart Howard Architects Inc., Person=Steve Akers, ActiveRows=5
+         · OrgId=54415, DisplayName=SD23 Central Okanagan School District, Person=Stuart Kamstra, ActiveRows=5
+         · OrgId=8129, DisplayName=GGA Architecture, Person=Jonny Hehr, ActiveRows=4
+         · OrgId=8129, DisplayName=GGA Architecture, Person=Vince Dods, ActiveRows=4
+         · OrgId=8129, DisplayName=GGA Architecture, Person=Stephanie Yeung, ActiveRows=4
+         · OrgId=8129, DisplayName=GGA Architecture, Person=Chito Pabustan, ActiveRows=4
+         · OrgId=69660, DisplayName=Yamamoto Architecture, Person=Taizo Yamamoto, ActiveRows=4
+         · OrgId=69688, DisplayName=Perkins&Will, Person=David Dove, ActiveRows=4
+         · OrgId=76633, DisplayName=Delnor Construction Ltd., Person=Glenn Cyrankiewicz, ActiveRows=4
+[WARN ] org_thin_unsafe_redirect: 75
+         Thin orgs (no people) that a dossier whole-word-prefix redirect could resolve to a RICHER org with a DIFFERENT fuzzy key — the read-time identity substitution the write-time dedup gate would refuse. APPROXIMATION of SqlBriefDataStore.RedirectSafe; treat as a review worklist
+         · ThinId=470, ThinName=Contracts, RicherId=331, RicherName=Contracts and Procurement
+         · ThinId=641, ThinName=Camrose, RicherId=614, RicherName=Camrose County
+         · ThinId=689, ThinName=St. Albert, RicherId=397, RicherName=St. Albert Public School District
+         · ThinId=717, ThinName=Sundre, RicherId=16252, RicherName=Sundre Contracting Co.
+         · ThinId=756, ThinName=Enterprise, RicherId=436, RicherName=Enterprise Information Management
+         · ThinId=798, ThinName=Wood Buffalo, RicherId=643, RicherName=Wood Buffalo Housing & Development Corporation
+         · ThinId=825, ThinName=Brooks, RicherId=77112, RicherName=Brooks Scarpa Huber
+         · ThinId=827, ThinName=Crowsnest Pass, RicherId=370, RicherName=Crowsnest Pass Seniors Housing
+         · ThinId=861, ThinName=Airdrie, RicherId=774, RicherName=Airdrie Public Library
+         · ThinId=867, ThinName=Vulcan, RicherId=722, RicherName=Vulcan County
+[WARN ] ArchitectDisplacementBriefs.ArchitectCanonicalOrgId_on_retired_org: 2
+         Active ArchitectDisplacementBriefs.ArchitectCanonicalOrgId rows pointing at a RETIRED (present) org — stale link, should re-point to a survivor
+         · OrgId=71486, Rows=1
+         · OrgId=75987, Rows=1
+[WARN ] BdResearchTriggers.CanonicalOrgId_on_retired_org: 1
+         Active BdResearchTriggers.CanonicalOrgId rows pointing at a RETIRED (present) org — stale link, should re-point to a survivor
+         · OrgId=76920, Rows=1
+[WARN ] BuildingPermit.ApplicantCanonicalOrgId_on_retired_org: 31636
+         Active BuildingPermit.ApplicantCanonicalOrgId rows pointing at a RETIRED (present) org — stale link, should re-point to a survivor
+         · OrgId=2631, Rows=22
+         · OrgId=3017, Rows=1
+         · OrgId=3180, Rows=2
+         · OrgId=3227, Rows=1
+         · OrgId=3262, Rows=1
+[WARN ] BuildingPermit.ContractorCanonicalOrgId_on_retired_org: 16085
+         Active BuildingPermit.ContractorCanonicalOrgId rows pointing at a RETIRED (present) org — stale link, should re-point to a survivor
+         · OrgId=1323, Rows=1
+         · OrgId=2631, Rows=22
+         · OrgId=2742, Rows=3
+         · OrgId=3472, Rows=1
+         · OrgId=5125, Rows=3
+[WARN ] BuildingPermit.OwnerCanonicalOrgId_on_retired_org: 31632
+         Active BuildingPermit.OwnerCanonicalOrgId rows pointing at a RETIRED (present) org — stale link, should re-point to a survivor
+         · OrgId=2631, Rows=22
+         · OrgId=3017, Rows=1
+         · OrgId=3180, Rows=2
+         · OrgId=3227, Rows=1
+         · OrgId=3262, Rows=1
+[WARN ] CanonicalOrgEnrichment.CanonicalOrgId_on_retired_org: 43516
+         Active CanonicalOrgEnrichment.CanonicalOrgId rows pointing at a RETIRED (present) org — stale link, should re-point to a survivor
+         · OrgId=108, Rows=3
+         · OrgId=248, Rows=4
+         · OrgId=297, Rows=7
+         · OrgId=346, Rows=7
+         · OrgId=365, Rows=6
+[OK   ] CrmBuyerEmailWarmth.CanonicalOrgId_on_retired_org: 0
+[WARN ] CrmEngagements.BuyerCanonicalOrgId_on_retired_org: 14
+         Active CrmEngagements.BuyerCanonicalOrgId rows pointing at a RETIRED (present) org — stale link, should re-point to a survivor
+         · OrgId=70834, Rows=1
+         · OrgId=70835, Rows=1
+         · OrgId=70837, Rows=1
+         · OrgId=70838, Rows=3
+         · OrgId=70839, Rows=1
+[OK   ] CrmEngagements.LostToCanonicalOrgId_on_retired_org: 0
+[OK   ] CrmTouchpoint.CanonicalOrgId_on_retired_org: 0
+[OK   ] HistoricalOpportunities.AwardedToCanonicalOrgId_on_retired_org: 0
+[WARN ] HistoricalOpportunities.BuyerCanonicalOrgId_on_retired_org: 445
+         Active HistoricalOpportunities.BuyerCanonicalOrgId rows pointing at a RETIRED (present) org — stale link, should re-point to a survivor
+         · OrgId=72134, Rows=3
+         · OrgId=77584, Rows=16
+         · OrgId=76674, Rows=372
+         · OrgId=553, Rows=7
+         · OrgId=77579, Rows=6
+[OK   ] IntelAction.CanonicalOrgId_on_retired_org: 0
+[OK   ] IntelNarrative.CanonicalOrgId_on_retired_org: 0
+[OK   ] IntelNarrativeVersion.CanonicalOrgId_on_retired_org: 0
+[OK   ] IntelPersonAffiliation.CanonicalOrgId_on_retired_org: 0
+[OK   ] IntelProjectAction.TargetCanonicalOrgId_on_retired_org: 0
+[OK   ] IntelProjectKeyPerson.CanonicalOrgId_on_retired_org: 0
+[OK   ] IntelRisk.CanonicalOrgId_on_retired_org: 0
+[OK   ] IntelSignal.CanonicalOrgId_on_retired_org: 0
+[OK   ] IntelWork.CanonicalOrgId_on_retired_org: 0
+[WARN ] KorPursuits.BuyerCanonicalOrgId_on_retired_org: 3
+         Active KorPursuits.BuyerCanonicalOrgId rows pointing at a RETIRED (present) org — stale link, should re-point to a survivor
+         · OrgId=108, Rows=3
+[OK   ] KorPursuits.LostToCanonicalOrgId_on_retired_org: 0
+[WARN ] MajorProjectsInventory.ArchitectCanonicalOrgId_on_retired_org: 7
+         Active MajorProjectsInventory.ArchitectCanonicalOrgId rows pointing at a RETIRED (present) org — stale link, should re-point to a survivor
+         · OrgId=72240, Rows=1
+         · OrgId=72217, Rows=3
+         · OrgId=72221, Rows=1
+         · OrgId=72252, Rows=1
+         · OrgId=72219, Rows=1
+[WARN ] MajorProjectsInventory.GeneralContractorCanonicalOrgId_on_retired_org: 3
+         Active MajorProjectsInventory.GeneralContractorCanonicalOrgId rows pointing at a RETIRED (present) org — stale link, should re-point to a survivor
+         · OrgId=76749, Rows=2
+         · OrgId=44756, Rows=1
+[WARN ] MajorProjectsInventory.ProponentCanonicalOrgId_on_retired_org: 3
+         Active MajorProjectsInventory.ProponentCanonicalOrgId rows pointing at a RETIRED (present) org — stale link, should re-point to a survivor
+         · OrgId=76918, Rows=1
+         · OrgId=74254, Rows=1
+         · OrgId=74243, Rows=1
+[OK   ] MajorProjectsInventory.StructuralEngineerCanonicalOrgId_on_retired_org: 0
+[WARN ] NewsArticleOrgMention.CanonicalOrgId_on_retired_org: 17
+         Active NewsArticleOrgMention.CanonicalOrgId rows pointing at a RETIRED (present) org — stale link, should re-point to a survivor
+         · OrgId=3491, Rows=1
+         · OrgId=18924, Rows=1
+         · OrgId=18926, Rows=1
+         · OrgId=18927, Rows=1
+         · OrgId=18928, Rows=1
+[WARN ] Opportunities.BuyerCanonicalOrgId_on_retired_org: 51
+         Active Opportunities.BuyerCanonicalOrgId rows pointing at a RETIRED (present) org — stale link, should re-point to a survivor
+         · OrgId=71453, Rows=4
+         · OrgId=72134, Rows=2
+         · OrgId=77584, Rows=2
+         · OrgId=76674, Rows=1
+         · OrgId=77579, Rows=1
+[WARN ] OpportunityAwards.AwardedToCanonicalOrgId_on_retired_org: 106147
+         Active OpportunityAwards.AwardedToCanonicalOrgId rows pointing at a RETIRED (present) org — stale link, should re-point to a survivor
+         · OrgId=297, Rows=1
+         · OrgId=908, Rows=1
+         · OrgId=909, Rows=3
+         · OrgId=910, Rows=1
+         · OrgId=911, Rows=5
+[WARN ] OpportunityAwards.AwardingCanonicalOrgId_on_retired_org: 1440
+         Active OpportunityAwards.AwardingCanonicalOrgId rows pointing at a RETIRED (present) org — stale link, should re-point to a survivor
+         · OrgId=534, Rows=5
+         · OrgId=800, Rows=1
+         · OrgId=73851, Rows=4
+         · OrgId=73868, Rows=2
+         · OrgId=73966, Rows=5
+[WARN ] OpportunityBids.BidderCanonicalOrgId_on_retired_org: 2860
+         Active OpportunityBids.BidderCanonicalOrgId rows pointing at a RETIRED (present) org — stale link, should re-point to a survivor
+         · OrgId=1037, Rows=3
+         · OrgId=1349, Rows=5
+         · OrgId=1621, Rows=3
+         · OrgId=2174, Rows=1
+         · OrgId=2210, Rows=4
+[WARN ] OpportunityInterestedFirms.ResolvedCanonicalOrgId_on_retired_org: 464
+         Active OpportunityInterestedFirms.ResolvedCanonicalOrgId rows pointing at a RETIRED (present) org — stale link, should re-point to a survivor
+         · OrgId=6498, Rows=1
+         · OrgId=1211, Rows=1
+         · OrgId=10912, Rows=1
+         · OrgId=18091, Rows=1
+         · OrgId=13142, Rows=1
+[WARN ] OrgAlias.CanonicalOrgId_on_retired_org: 53205
+         Active OrgAlias.CanonicalOrgId rows pointing at a RETIRED (present) org — stale link, should re-point to a survivor
+         · OrgId=248, Rows=1
+         · OrgId=297, Rows=2
+         · OrgId=346, Rows=1
+         · OrgId=365, Rows=1
+         · OrgId=377, Rows=1
+[WARN ] OrgFact.CanonicalOrgId_on_retired_org: 3
+         Active OrgFact.CanonicalOrgId rows pointing at a RETIRED (present) org — stale link, should re-point to a survivor
+         · OrgId=76290, Rows=1
+         · OrgId=76502, Rows=1
+         · OrgId=76558, Rows=1
+------------------------------------------------------------------------
+DUPLICATE CLASSES — computed with the platform's own normalizers over 9625 live orgs
+[WARN ] org_name_control_chars: 4
+         Live org DisplayName carrying CR, LF or TAB. The computed NormalizedName strips spaces but not these, so the row can never match its one-line twin and every intake mints another. Fix = strip at intake, then UPDATE the stored names; a merge is only needed where the twin already exists
+         · Id=75103, Kind=Buyer, DisplayName=Ministry of Citizens' Services<LF>Ministry of Transportation and Transit
+         · Id=272014, Kind=Buyer, DisplayName=BC Parks - Provincial Services Branch<LF>BC Parks and Conservation Officer Service Division<LF>Capital Investment Program<LF>Ministry of Environment and Parks
+         · Id=473331, Kind=Buyer, DisplayName=Fraser Health Authority<LF>Providence Health Care
+         · Id=902252, Kind=Buyer, DisplayName=Ministry of Environment and Parks<LF>Ministry of Forests
+         full population (4 rows): C:\VIsual Studio Projects\Operations\tools\BdIntegrityCheck\bin\Debug\net8.0\integrity-reports\org_name_control_chars-20260904-224900.csv
+[WARN ] org_fuzzy_key_stale: 19
+         Live orgs whose stored FuzzyNormalizedName is not what NormalizeForFuzzyMatch(DisplayName) returns today (empty counts). The write-time gate is blind to these rows, so the next reference to the same firm creates a duplicate. Fix = BdCanonicalDedup --backfill-fuzzy-key, then re-run this report: a backfilled key that now collides with another live row is a duplicate, not a repair
+         · Id=71528, Kind=Competitor, DisplayName=MCW Group of Companies, StoredFuzzy=mcw, ExpectedFuzzy=mcwgroupofcompanies
+         · Id=504241, Kind=Developer, DisplayName=Innascore Developments Inc., StoredFuzzy=, ExpectedFuzzy=innascoredevelopments
+         · Id=658682, Kind=Developer, DisplayName=Namdar Group, StoredFuzzy=, ExpectedFuzzy=namdargroup
+         · Id=927759, Kind=Architect, DisplayName=Christine Lintott Architects, StoredFuzzy=, ExpectedFuzzy=christinelintottarchitects
+         · Id=927760, Kind=GC, DisplayName=Knappett Industries, StoredFuzzy=, ExpectedFuzzy=knappettindustries
+         · Id=927761, Kind=Developer, DisplayName=Seba Construction, StoredFuzzy=, ExpectedFuzzy=sebaconstruction
+         · Id=927762, Kind=Architect, DisplayName=Barefoot Planning + Design, StoredFuzzy=barefootplanning+design, ExpectedFuzzy=barefootplanningdesign
+         · Id=927767, Kind=GC, DisplayName=Hutchinson Contracting Ltd., StoredFuzzy=hutchinsoncontractingltd, ExpectedFuzzy=hutchinsoncontracting
+         · Id=927769, Kind=Developer, DisplayName=Kors Development Services Inc, StoredFuzzy=korsdevelopmentservicesinc, ExpectedFuzzy=korsdevelopmentservices
+         · Id=927770, Kind=Architect, DisplayName=MJM Architect Inc., StoredFuzzy=mjmarchitectinc, ExpectedFuzzy=mjmarchitect
+         full population (19 rows): C:\VIsual Studio Projects\Operations\tools\BdIntegrityCheck\bin\Debug\net8.0\integrity-reports\org_fuzzy_key_stale-20260904-224900.csv
+[WARN ] org_website_anchor_malformed: 25
+         Live orgs whose website anchor cannot do its job: the literal string 'null', a Website with no WebsiteDomain, a domain with no Website, or a domain that is not ExtractWebsiteDomain(Website). These rows are invisible to the domain resolver, to ResearchIdentityGate and to the same-domain check. Fix = one UPDATE per reason; no merge involved
+         · Id=54107, Kind=Developer, DisplayName=Newmark Group, Website=, WebsiteDomain=www2.gov.bc.ca, Reason=WebsiteDomain set but Website empty
+         · Id=69369, Kind=Buyer, DisplayName=Tk'emlúps te Secwépemc, Website=null, WebsiteDomain=null, Reason=WebsiteDomain is the literal string 'null'
+         · Id=71236, Kind=Developer, DisplayName=Highstreet Ventures Inc., Website=https://buyhighstreet.ca, WebsiteDomain=gohighstreet.ca, Reason=WebsiteDomain is not ExtractWebsiteDomain(Website) = 'buyhighstreet.ca'
+         · Id=71314, Kind=Buyer, DisplayName=Atira Women's Resource Society, Website=null, WebsiteDomain=null, Reason=WebsiteDomain is the literal string 'null'
+         · Id=71315, Kind=Buyer, DisplayName=Pauquachin First Nation, Website=null, WebsiteDomain=null, Reason=WebsiteDomain is the literal string 'null'
+         · Id=71316, Kind=Buyer, DisplayName=Heiltsuk Nation, Website=null, WebsiteDomain=null, Reason=WebsiteDomain is the literal string 'null'
+         · Id=71317, Kind=Buyer, DisplayName=West Moberly First Nations, Website=null, WebsiteDomain=null, Reason=WebsiteDomain is the literal string 'null'
+         · Id=71321, Kind=Buyer, DisplayName=Elizabeth Fry Society of Greater Vancouver, Website=null, WebsiteDomain=null, Reason=WebsiteDomain is the literal string 'null'
+         · Id=71322, Kind=Buyer, DisplayName=Attainable Homes Calgary, Website=null, WebsiteDomain=null, Reason=WebsiteDomain is the literal string 'null'
+         · Id=71324, Kind=Buyer, DisplayName=North Wind Wellness Centre Society, Website=null, WebsiteDomain=null, Reason=WebsiteDomain is the literal string 'null'
+         full population (25 rows): C:\VIsual Studio Projects\Operations\tools\BdIntegrityCheck\bin\Debug\net8.0\integrity-reports\org_website_anchor_malformed-20260904-224900.csv
+[WARN ] org_fuzzy_key_collision: 4 groups / 8 orgs
+         Live orgs that share NormalizeForFuzzyMatch(DisplayName) — the write-time gate's own key — under different Ids. The gate would have attached, not created, had the stored key matched; these are duplicates the platform itself can prove. Survivor suggested by frozen Kind, Clendor anchor, then intel; merge via BdCanonicalDedup --pairs
+         · LoserId=20284, SurvivorId=927808, Key=senseengineering, LoserName=Sense Engineering Ltd., LoserKind=Competitor, LoserIntel=2, SurvivorName=Sense Engineering, SurvivorKind=Competitor, SurvivorIntel=89, SurvivorClient=
+         · LoserId=4905, SurvivorId=927792, Key=cityspacesconsulting, LoserName=CitySpaces Consulting Ltd., LoserKind=Vendor, LoserIntel=1, SurvivorName=CitySpaces Consulting, SurvivorKind=Architect, SurvivorIntel=23, SurvivorClient=
+         · LoserId=927759, SurvivorId=70603, Key=christinelintottarchitects, LoserName=Christine Lintott Architects, LoserKind=Architect, LoserIntel=0, SurvivorName=Christine Lintott Architects Inc., SurvivorKind=Architect, SurvivorIntel=19, SurvivorClient=
+         · LoserId=927761, SurvivorId=927807, Key=sebaconstruction, LoserName=Seba Construction, LoserKind=Developer, LoserIntel=0, SurvivorName=Seba Construction Ltd., SurvivorKind=GC, SurvivorIntel=2, SurvivorClient=
+         full population (4 rows): C:\VIsual Studio Projects\Operations\tools\BdIntegrityCheck\bin\Debug\net8.0\integrity-reports\org_fuzzy_key_collision-20260904-224900.csv
+[WARN ] org_ampersand_fold_collision: 6 groups / 12 orgs
+         Live orgs whose names are one firm spelled with '&', ' + ' or ' and ' and which the current fuzzy key keeps apart (the key strips a bare '&' instead of folding it). Differential: same normalizer, ampersand folded first, minus the groups check 4 already sees. Fixing the normalizer moves these into check 4; until then they are merge candidates for --pairs with an allowlist reason
+         · LoserId=272357, SurvivorId=54375, Key=dambrosioarchitectureandurbanism, LoserName=D'Ambrosio Architecture and Urbanism, LoserKind=Architect, LoserIntel=0, SurvivorName=D'Ambrosio Architecture + Urbanism, SurvivorKind=Architect, SurvivorIntel=34, SurvivorClient=DELTEK
+         · LoserId=36196, SurvivorId=69775, Key=humanstudioarchitectureandurbandesign, LoserName=Human Studio Architecture and Urban Design Ltd., LoserKind=Architect, LoserIntel=3, SurvivorName=Human Studio Architecture + Urban Design, SurvivorKind=Architect, SurvivorIntel=7, SurvivorClient=DELTEK
+         · LoserId=70291, SurvivorId=74052, Key=emilycarruniversityofartanddesign, LoserName=Emily Carr University of Art and Design, LoserKind=Buyer, LoserIntel=3, SurvivorName=Emily Carr University of Art + Design, SurvivorKind=Buyer, SurvivorIntel=6, SurvivorClient=
+         · LoserId=271554, SurvivorId=69122, Key=prosceniumarchitectureandinteriors, LoserName=Proscenium Architecture and Interiors Inc., LoserKind=Architect, LoserIntel=0, SurvivorName=Proscenium Architecture + Interiors, SurvivorKind=Architect, SurvivorIntel=8, SurvivorClient=
+         · LoserId=76869, SurvivorId=76834, Key=lpasarchitectureanddesign, LoserName=LPAS Architecture and Design, LoserKind=Architect, LoserIntel=3, SurvivorName=LPAS Architecture + Design, SurvivorKind=Architect, SurvivorIntel=4, SurvivorClient=
+         · LoserId=272369, SurvivorId=271639, Key=scbandhenninglarsen, LoserName=SCB and Henning Larsen, LoserKind=Architect, LoserIntel=0, SurvivorName=SCB + Henning Larsen, SurvivorKind=Architect, SurvivorIntel=0, SurvivorClient=
+         full population (6 rows): C:\VIsual Studio Projects\Operations\tools\BdIntegrityCheck\bin\Debug\net8.0\integrity-reports\org_ampersand_fold_collision-20260904-224900.csv
+[WARN ] org_aggressive_key_collision: 6 groups / 12 orgs
+         Live orgs BdCanonicalDedup's DEFAULT mode would merge on --commit, grouped by NormalizeAggressiveKey, which strips inc/ltd/co/architects/partners/group and every non-alphanumeric. That path has NO similarity gate, so an 'aggressive-only CROSS-KIND' row here is the Continuum shape and must not be committed without a per-pair review. Never run --commit without --pairs while this list has a cross-kind row
+         · AggressiveKey=ministryofforestssouthernengineering, Shape=aggressive-only: differs by a stripped word (inc/ltd/co/architects/partners/group), CrossKind=, Id=812, Kind=Buyer, DisplayName=Ministry of Forests — Southern Engineering Group, WebsiteDomain=, Intel=2
+         · AggressiveKey=ministryofforestssouthernengineering, Shape=aggressive-only: differs by a stripped word (inc/ltd/co/architects/partners/group), CrossKind=, Id=689488, Kind=Buyer, DisplayName=Ministry of ForestsSouthern Engineering Group, WebsiteDomain=, Intel=0
+         · AggressiveKey=cityspacesconsulting, Shape=fuzzy twin (check 4), CrossKind=CROSS-KIND, Id=4905, Kind=Vendor, DisplayName=CitySpaces Consulting Ltd., WebsiteDomain=, Intel=1
+         · AggressiveKey=cityspacesconsulting, Shape=fuzzy twin (check 4), CrossKind=CROSS-KIND, Id=927792, Kind=Architect, DisplayName=CitySpaces Consulting, WebsiteDomain=cityspaces.ca, Intel=23
+         · AggressiveKey=senseengineering, Shape=fuzzy twin (check 4), CrossKind=, Id=20284, Kind=Competitor, DisplayName=Sense Engineering Ltd., WebsiteDomain=, Intel=2
+         · AggressiveKey=senseengineering, Shape=fuzzy twin (check 4), CrossKind=, Id=927808, Kind=Competitor, DisplayName=Sense Engineering, WebsiteDomain=senseengineering.com, Intel=89
+         · AggressiveKey=christinelintott, Shape=fuzzy twin (check 4), CrossKind=, Id=70603, Kind=Architect, DisplayName=Christine Lintott Architects Inc., WebsiteDomain=lintottarchitect.ca, Intel=19
+         · AggressiveKey=christinelintott, Shape=fuzzy twin (check 4), CrossKind=, Id=927759, Kind=Architect, DisplayName=Christine Lintott Architects, WebsiteDomain=, Intel=0
+         · AggressiveKey=continuum, Shape=aggressive-only: differs by a stripped word (inc/ltd/co/architects/partners/group), CrossKind=CROSS-KIND, Id=74300, Kind=Developer, DisplayName=Continuum Partners, LLC, WebsiteDomain=, Intel=5
+         · AggressiveKey=continuum, Shape=aggressive-only: differs by a stripped word (inc/ltd/co/architects/partners/group), CrossKind=CROSS-KIND, Id=927758, Kind=Architect, DisplayName=Continuum Architecture Inc, WebsiteDomain=continuumarchitecture.ca, Intel=18
+         · AggressiveKey=sebaconstruction, Shape=fuzzy twin (check 4), CrossKind=CROSS-KIND, Id=927761, Kind=Developer, DisplayName=Seba Construction, WebsiteDomain=, Intel=0
+         · AggressiveKey=sebaconstruction, Shape=fuzzy twin (check 4), CrossKind=CROSS-KIND, Id=927807, Kind=GC, DisplayName=Seba Construction Ltd., WebsiteDomain=sebaconstruction.com, Intel=2
+         full population (12 rows): C:\VIsual Studio Projects\Operations\tools\BdIntegrityCheck\bin\Debug\net8.0\integrity-reports\org_aggressive_key_collision-20260904-224900.csv
+[INFO ] org_same_domain_umbrella: 94 groups / 286 orgs
+         NOT A DEFECT — counted so the exclusion is visible. Same-domain groups where every member is a public-sector Kind (Buyer/Government) or the domain is a public suffix: departments, ministries, campuses. Correct as they stand; excluded from the shell list below. A commercial firm mis-Kinded as Buyer hides here
+         · Domain=www2.gov.bc.ca, Tier=U2, Members=22, Orgs=285 BC Timber Sales Branch Prince George | 573 BC Corrections | 596 BC Timber Sales Branch | 642 Ministry of Forests — Quesnel Fire Zone | 675 Public Library Services | 743 Office of the Fire Commissioner | 18917 Vancouver Coastal Health | 53679 BC Ministry of Transportation and Infrastructure | 54107 Newmark Group | 54108 Lantzville Foothills Estates Inc | 54954 BC Ministry of Education & Child Care | 54955 BC Ministry of Health | 69059 Ministry of Infrastructure and Citizens' Services | 69597 BC Ministry of Education | 72211 Provincial Health Services Authority (PHSA) | 76021 BC Ministry of Transportation and Transit | 77392 BC Infrastructure (Ministry of Infrastructure) | 77448 BC Corrections (Ministry of Public Safety) | 77449 BC Court Services (Ministry of Attorney General) | 77838 Province of BC (BC Housing / MHSSI) | 77901 BC Ministry of Attorney General — Courts Division | 77902 BC Ministry of Public Safety & Solicitor General — Corrections Capital Division
+         · Domain=tol.ca, Tier=U1, Members=3, Orgs=439 Township of Langley | 18831 City of Langley | 54873 Langley Township
+         · Domain=metrovancouver.org, Tier=U1, Members=4, Orgs=18868 Greater Vancouver Regional District (Metro Vancouver) | 23987 Metro Vancouver | 71025 Metro Vancouver Housing Corporation | 72160 Metro Vancouver Regional District
+         · Domain=uvic.ca, Tier=U1, Members=2, Orgs=68861 University of Victoria (UVic) | 77385 University of Victoria
+         · Domain=capitalprojectsreport.ucop.edu, Tier=U1, Members=7, Orgs=68858 UC San Diego Health | 77451 University of California, San Diego (UCSD) | 77452 University of California, Berkeley (UC Berkeley) | 77453 University of California, Davis (UC Davis) | 77454 University of California, Irvine (UC Irvine) | 77457 University of California, Riverside (UC Riverside) | 77458 University of California, Merced (UC Merced)
+         full population (94 rows): C:\VIsual Studio Projects\Operations\tools\BdIntegrityCheck\bin\Debug\net8.0\integrity-reports\org_same_domain_umbrella-20260904-224900.csv
+[WARN ] org_same_domain_shell_brand_match: 14 groups / 29 orgs
+         One firm held as several rows: same WebsiteDomain, no public-sector member, no JV-shaped name, and EVERY member's name carries the domain's brand label (stantec.com -> 'stantec'). Regional and legal-entity variants of one company. Survivor suggested by frozen Kind, then Clendor anchor, then intel (people+awards+narratives+KOR jobs), then lowest Id; the dedup tool upgrades the survivor's Kind itself. Still reviewed per group before --pairs
+         · LoserId=77127, SurvivorId=18657, Domain=wsp.com, LoserName=WSP USA Buildings, LoserKind=Competitor, LoserIntel=3, SurvivorName=WSP Canada Inc., SurvivorKind=Competitor, SurvivorIntel=1801, SurvivorClient=
+         · LoserId=68620, SurvivorId=1818, Domain=aecom.com, LoserName=AECOM Hunt, LoserKind=GC, LoserIntel=3, SurvivorName=AECOM Canada Ltd., SurvivorKind=Competitor, SurvivorIntel=605, SurvivorClient=
+         · LoserId=20061, SurvivorId=49, Domain=cressey.com, LoserName=Cressey Developments, LoserKind=Developer, LoserIntel=11, SurvivorName=Cressey Development Group, SurvivorKind=KorClient, SurvivorIntel=123, SurvivorClient=DELTEK
+         · LoserId=55110, SurvivorId=202, Domain=greystar.com, LoserName=Greystar Real Estate Partners, LoserKind=Developer, LoserIntel=12, SurvivorName=Greystar Development West, LLC, SurvivorKind=KorClient, SurvivorIntel=108, SurvivorClient=DELTEK
+         · LoserId=105, SurvivorId=39, Domain=townline.com, LoserName=Townline Homes Inc., LoserKind=KorClient, LoserIntel=10, SurvivorName=Townline Group of Companies, SurvivorKind=KorClient, SurvivorIntel=102, SurvivorClient=DELTEK
+         · LoserId=22200, SurvivorId=218, Domain=bucci.com, LoserName=Bucci Garden Homes Ltd, LoserKind=Developer, LoserIntel=3, SurvivorName=Bucci Developments Ltd., SurvivorKind=KorClient, SurvivorIntel=73, SurvivorClient=DELTEK
+         · LoserId=38949, SurvivorId=167, Domain=onni.com, LoserName=Onni Group, LoserKind=Developer, LoserIntel=15, SurvivorName=Onni Contracting (California), Inc., SurvivorKind=KorClient, SurvivorIntel=15, SurvivorClient=DELTEK
+         · LoserId=69649, SurvivorId=169, Domain=amacon.com, LoserName=Amacon, LoserKind=Developer, LoserIntel=14, SurvivorName=Amacon Developments, SurvivorKind=KorClient, SurvivorIntel=9, SurvivorClient=DELTEK
+         · LoserId=77257, SurvivorId=76786, Domain=sgh.com, LoserName=Simpson Gumpertz & Heger (SGH), LoserKind=Competitor, LoserIntel=6, SurvivorName=Simpson Gumpertz & Heger (SGH) — San Diego, SurvivorKind=Competitor, SurvivorIntel=11, SurvivorClient=
+         · LoserId=38923, SurvivorId=77288, Domain=dci-engineers.com, LoserName=DCI Engineers, LoserKind=Competitor, LoserIntel=6, SurvivorName=DCI Engineers — Seattle, SurvivorKind=Competitor, SurvivorIntel=10, SurvivorClient=
+         full population (15 rows): C:\VIsual Studio Projects\Operations\tools\BdIntegrityCheck\bin\Debug\net8.0\integrity-reports\org_same_domain_shell_brand_match-20260904-224900.csv
+[WARN ] org_same_domain_shell_review: 147 groups / 349 orgs
+         Same-domain groups that are neither umbrella nor brand-matched shells, each with the reason it needs a human: R1a a commercial row shares a name word with the public body on its domain (a mis-Kinded twin); R1b it shares none (a wrong anchor or a subsidiary — not a merge); R2 has a JV-shaped member (EllisDon Kinetic is not EllisDon); S2 only some names carry the brand (RJC Engineers vs Read Jones Christoffersen — the initialism shape, usually a true duplicate); R3 no name carries the brand (renamed brands, holding companies, parked domains)
+         · Domain=ellisdon.com, Tier=R2, Why=a member is JV/composite-shaped, Id=22257, Kind=GC, DisplayName=EllisDon Corporation, Intel=298
+         · Domain=ellisdon.com, Tier=R2, Why=a member is JV/composite-shaped, Id=69026, Kind=GC, DisplayName=EllisDon Infrastructure, Intel=7
+         · Domain=ellisdon.com, Tier=R2, Why=a member is JV/composite-shaped, Id=69204, Kind=GC, DisplayName=EllisDon Kinetic, A Joint Venture, Intel=7
+         · Domain=cima.ca, Tier=R2, Why=a member is JV/composite-shaped, Id=4856, Kind=Competitor, DisplayName=CIMA+, Intel=169
+         · Domain=cima.ca, Tier=R2, Why=a member is JV/composite-shaped, Id=70791, Kind=Competitor, DisplayName=CIMA+ Consulting Engineers, Intel=4
+         · Domain=cima.ca, Tier=R2, Why=a member is JV/composite-shaped, Id=77758, Kind=Competitor, DisplayName=Bogdonov Pao Associates (BPA) / CIMA+, Intel=0
+         · Domain=polyhomes.com, Tier=R3, Why=no name carries the domain brand, Id=28, Kind=KorClient, DisplayName=Polygon Development Ltd., Intel=124
+         · Domain=polyhomes.com, Tier=R3, Why=no name carries the domain brand, Id=38951, Kind=Developer, DisplayName=Polygon Homes, Intel=10
+         · Domain=intracorphomes.com, Tier=S2, Why=only some names carry the domain brand (initialism/rename shape), Id=29, Kind=KorClient, DisplayName=Intracorp Projects Ltd., Intel=107
+         · Domain=intracorphomes.com, Tier=S2, Why=only some names carry the domain brand (initialism/rename shape), Id=53705, Kind=Developer, DisplayName=Intracorp Developments, Intel=9
+         full population (349 rows): C:\VIsual Studio Projects\Operations\tools\BdIntegrityCheck\bin\Debug\net8.0\integrity-reports\org_same_domain_shell_review-20260904-224900.csv
+[WARN ] org_commercial_on_public_domain: 68
+         Commercial-Kind orgs whose WebsiteDomain is a public body's — a public suffix, or a domain a Buyer/Government row also holds — sharing no name word with that body and not carrying the domain's brand. Not duplicates. Mostly wrong anchors (a developer stamped with the municipality whose project page mentioned it: Highland Valley Copper on golden.ca); some are a body's own development arm on its parent's domain (Petroglyph on snuneymuxw.ca), which is correct and stays. Fix for a wrong one = clear the domain (one UPDATE) and let the next research write the right one back; while it stands, ResearchIdentityGate defends the wrong website
+         · Id=39028, Kind=Vendor, DisplayName=Encore Global Events (Canada) ULC, WebsiteDomain=sd44.ca, WhyPublic=held by SD44 North Vancouver School District, Intel=16
+         · Id=72211, Kind=Client, DisplayName=Provincial Health Services Authority (PHSA), WebsiteDomain=www2.gov.bc.ca, WhyPublic=public suffix, Intel=8
+         · Id=54997, Kind=Developer, DisplayName=Petroglyph Development Group, WebsiteDomain=snuneymuxw.ca, WhyPublic=held by Snuneymuxw First Nation, Intel=7
+         · Id=38947, Kind=Developer, DisplayName=La Caisse (CDPQ), WebsiteDomain=ivanhoecambridge.com, WhyPublic=held by Ivanhoé Cambridge, Intel=6
+         · Id=54118, Kind=Developer, DisplayName=Canada Lands Company Ltd., WebsiteDomain=twnation.ca, WhyPublic=held by Tsleil-Waututh Nation | Tsleil-Waututh Nation — Economic Development, Intel=6
+         · Id=55016, Kind=Developer, DisplayName=Musqueam + Tsleil-Waututh + Aquilini Development, WebsiteDomain=bellevuewa.gov, WhyPublic=public suffix, Intel=6
+         · Id=68805, Kind=Developer, DisplayName=ICE District, WebsiteDomain=majorprojects.alberta.ca, WhyPublic=public suffix, Intel=6
+         · Id=39073, Kind=Vendor, DisplayName=ABC Life Literacy Canada, WebsiteDomain=sd73.bc.ca, WhyPublic=held by SD73 Kamloops-Thompson School District | School District 73 Kamloops/Thompson | Kamloops-Thompson School District No. 73 (SD73), Intel=5
+         · Id=54074, Kind=Developer, DisplayName=Highland Valley Copper Corporation, WebsiteDomain=golden.ca, WhyPublic=held by Town of Golden, Intel=4
+         · Id=54101, Kind=Developer, DisplayName=Independent Academies Canada Inc., WebsiteDomain=okib.ca, WhyPublic=held by Okanagan Indian Band (OKIB), Intel=4
+         full population (68 rows): C:\VIsual Studio Projects\Operations\tools\BdIntegrityCheck\bin\Debug\net8.0\integrity-reports\org_commercial_on_public_domain-20260904-224900.csv
+[WARN ] org_name_prefix_same_kind: 113
+         CANDIDATES, low confidence: a live commercial org whose whole name is a whole-word prefix of another live org of the same Kind, where at most one of the pair carries a domain. Catches suffix and region variants the fuzzy key keeps apart; also catches 'Vulcan' vs 'Vulcan Real Estate'. A pair is only a duplicate if a person confirms it — anchor the shorter row with a website first and let check 7 decide
+         · ShortId=75649, LongId=272396, Kind=Competitor, ShortName=McElhanney, LongName=McElhanney Consulting Services Ltd., ShortIntel=234, LongIntel=205, ShortDomain=mcelhanney.com, LongDomain=
+         · ShortId=18446, LongId=18454, Kind=GC, ShortName=Wilco Contractors, LongName=Wilco Contractors South West Inc., ShortIntel=100, LongIntel=101, ShortDomain=, LongDomain=
+         · ShortId=69625, LongId=10632, Kind=GC, ShortName=Lafarge Canada, LongName=Lafarge Canada inc., operating as Wells Construction Ltd, ShortIntel=158, LongIntel=2, ShortDomain=, LongDomain=
+         · ShortId=113392, LongId=70543, Kind=Architect, ShortName=Kasian, LongName=Kasian Architecture Interior Design and Planning, ShortIntel=3, LongIntel=113, ShortDomain=, LongDomain=kasian.com
+         · ShortId=7191, LongId=7193, Kind=GC, ShortName=Everest Construction, LongName=Everest Construction Management Ltd, ShortIntel=8, LongIntel=100, ShortDomain=, LongDomain=
+         · ShortId=927808, LongId=20284, Kind=Competitor, ShortName=Sense Engineering, LongName=Sense Engineering Ltd., ShortIntel=89, LongIntel=2, ShortDomain=senseengineering.com, LongDomain=
+         · ShortId=927808, LongId=240237, Kind=Competitor, ShortName=Sense Engineering, LongName=Sense Engineering (Alberta) Ltd, ShortIntel=89, LongIntel=0, ShortDomain=senseengineering.com, LongDomain=
+         · ShortId=271551, LongId=8538, Kind=Architect, ShortName=Group2 Architecture, LongName=Group2 Architecture Interior Design Ltd., ShortIntel=0, LongIntel=72, ShortDomain=, LongDomain=group2.ca
+         · ShortId=11123, LongId=47684, Kind=GC, ShortName=Luxton Construction, LongName=Luxton Construction PLains Inc, ShortIntel=46, LongIntel=16, ShortDomain=, LongDomain=
+         · ShortId=271548, LongId=68756, Kind=Architect, ShortName=ACI Architecture, LongName=ACI Architecture Inc. (& Stephens Kozak ACI), ShortIntel=0, LongIntel=60, ShortDomain=, LongDomain=aci-arch.com
+         full population (113 rows): C:\VIsual Studio Projects\Operations\tools\BdIntegrityCheck\bin\Debug\net8.0\integrity-reports\org_name_prefix_same_kind-20260904-224900.csv
+DUPLICATE CLASSES — COVERAGE STATEMENT
+  COVERS: live orgs only. Names that differ by control characters; stored fuzzy keys
+          that disagree with the normalizer; malformed website anchors; rows the
+          write-time key already proves duplicate; rows one ampersand fold away from
+          that; everything the dedup tool's default --commit would merge; same-domain
+          groups tiered umbrella / shell / review; same-Kind whole-word name prefixes.
+  DOES NOT COVER: retired rows and the retired-to-live links the merge ledger owns;
+          affiliation duplicates (person_duplicate_active_affiliation above, 2+ ACTIVE
+          rows only — a retired predecessor is churn, not a duplicate); typos, and
+          initialisms or renames on rows with NO domain (74% of the table), which no
+          key can see; whether two same-domain rows are subsidiaries a BD user wants
+          kept apart (Ledcor Construction vs Ledcor Properties) — the shell tier says
+          'one company', a person says whether that is the right granularity.
+  WOULD NOT CATCH: RJC before its merge — rjc.ca lands in S2 (review), not S1, because
+          'readjoneschristoffersen' does not contain 'rjc'. The initialism shape is
+          reported, not decided. Nor a conflated row whose members share one domain.
+  ACCEPTANCE: org_aggressive_key_collision must list key 'continuum' with 74300 and
+          927758 as aggressive-only CROSS-KIND; org_same_domain_shell_brand_match must
+          list stantec.com; org_fuzzy_key_collision must list Sense Engineering
+          20284/927808 (a hand insert on 2026-09-04 with an empty key).
+  SEVERITY: all WARN worklists except org_same_domain_umbrella (INFO, not a defect).
+========================================================================
+Errors: 1   Warnings: 43   CheckFailures: 0
+Report written: C:\VIsual Studio Projects\Operations\tools\BdIntegrityCheck\bin\Debug\net8.0\integrity-reports\integrity-report-20260904-224900.txt

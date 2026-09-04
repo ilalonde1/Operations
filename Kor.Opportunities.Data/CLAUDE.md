@@ -42,6 +42,15 @@ before changing anything about identity, merging or refresh.
   Market Entry)"*), and **names asserting different countries** (*WSP USA* into *WSP Canada Inc.*).
   Rejects go to `output/rejected-pairs.csv` with a reason. ⛔ Do not hand a merge CSV to a human to
   eyeball — if a rule can be stated, it goes in `RunPairsMergeAsync`.
+- ⛔ **A merge DELETES the loser row. It does not retire it.** 306 of 306 rows in
+  `CanonicalOrgMerge` have no surviving loser. The ledger keeps the id mapping, so references still
+  resolve; the loser's `DisplayName`, domain and notes are gone and come back only from the nightly
+  full backup of `KorOpportunitiesDb` (SIMPLE recovery, so no point-in-time restore). Say "delete",
+  not "archive", when describing what `--commit` does.
+- **Each group commits in its own transaction**, so a killed run is safe to re-run: merged pairs
+  come back as `org row not found; skipped`. A 110-pair batch takes longer than two minutes.
+- **The allowlist is read from the BUILD OUTPUT**, not the source tree — a new
+  `dedup-non-similar-allowlist.d/*.csv` does nothing until `dotnet build` copies it across.
 
 ## Rules with scars behind them
 

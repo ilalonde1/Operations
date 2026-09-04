@@ -1,0 +1,23 @@
+# Sundt Construction — one firm, two canonical rows (2026-09-04).
+#
+# Found while cleaning up after batch 1. 76850 "Sundt Construction (California)"
+# merged into 77205 "Sundt Construction San Diego": both names carried a branch
+# qualifier, so the branch-survivor gate could not fire, and the surviving row was
+# left named after one branch while holding two.
+#
+# Renaming it to "Sundt Construction" then failed on
+# UX_CanonicalOrg_LiveNormalizedName, which is how row 75158 turned up — a plain
+# "Sundt Construction" with FOUR people and NO WebsiteDomain. It was invisible to
+# the whole same-domain sweep, because 74% of CanonicalOrg has no anchor and no
+# domain-keyed check can see any of it. This pair is that blind spot, concretely.
+#
+# Direction is deliberate and gate-clean: the BRANCH row loses to the PARENT-named
+# row, which is the direction the branch-survivor gate wants. The sundt.com anchor
+# is then written onto the survivor by hand, because the merge does not carry the
+# loser's domain across.
+#
+# The fuzzy gate rejects the pair on its own ('sundtconstructionsandiego' vs
+# 'sundtconstruction'), which is correct behaviour for a name that is a strict
+# superset — so it is allowlisted here after reading both rows.
+# LoserId,SurvivorId,Reason
+77205,75158,"Sundt Construction San Diego = the sundt.com branch row (already holding the merged California branch); survivor 75158 is the plain-named row; anchor moved by hand afterwards"
