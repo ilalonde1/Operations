@@ -265,8 +265,26 @@ public sealed class IngestionService : IIngestionService
         var persistedObservation = await _observationStore.TryInsertAsync(observation, ct).ConfigureAwait(false);
         if (persistedObservation is null)
         {
-            if (await _opportunityStore.GetByKeyAsync(key, ct).ConfigureAwait(false) is not null)
+            var alreadyLinked = await _opportunityStore.GetByKeyAsync(key, ct).ConfigureAwait(false);
+            if (alreadyLinked is not null)
             {
+                // ⚠ A DUPLICATE OBSERVATION IS NOT A REASON TO SKIP THE OPPORTUNITY
+                // REFRESH — and for a long time it was. Returning here meant any
+                // field NOT in the dedup hash was frozen at whatever it said the
+                // first time anybody saw the posting, because the only way to
+                // reach the refresh was to change the hash.
+                //
+                // That produced three separate defects on 2026-09-04 alone, each
+                // debugged as if it were its own bug: a changed DESCRIPTION never
+                // landed; a newly learned CONTACT never landed (387 of 389
+                // Coquitlam applicants); and a newly parsed DATE never landed (all
+                // 349 Langford applications, whose re-run reported 349 duplicates
+                // and 0 inserts while the dates stayed null). Description and
+                // contact were each patched into the hash — treating the symptom.
+                // This is the class: the refresh now runs whether or not the
+                // observation was new. It is fill-only, so it still cannot clobber
+                // a human edit.
+                await RefreshExistingAsync(alreadyLinked, candidate, key, ct).ConfigureAwait(false);
                 await RunPersistedAckAsync(source, candidate, ct).ConfigureAwait(false);
                 return CandidateOutcome.Duplicate;
             }
@@ -321,66 +339,83 @@ public sealed class IngestionService : IIngestionService
         }
         else
         {
-            // Same external reference re-observed. Refresh score against current rules
-            // and bump UpdatedAt; preserve user-supplied edits (status, owner, etc.).
-            var scored = _scoringService.Score(existing);
-            // Backfill BuyerName when the existing row was ingested before the
-            // provider could parse a buyer (existing value = "Unknown" placeholder).
-            // Don't overwrite user-edited or already-meaningful buyers, and don't
-            // accept another "Unknown" from the candidate.
-            var candidateBuyer = string.IsNullOrWhiteSpace(candidate.Buyer)
-                ? null
-                : candidate.Buyer.Trim();
-            var shouldBackfillBuyer =
-                candidateBuyer is not null
-                && !string.Equals(candidateBuyer, "Unknown", StringComparison.OrdinalIgnoreCase)
-                && string.Equals(existing.BuyerName, "Unknown", StringComparison.OrdinalIgnoreCase);
-
-            var candidateRfpDate = candidate.PostedDateUtc.HasValue
-                ? DateOnly.FromDateTime(candidate.PostedDateUtc.Value.UtcDateTime)
-                : (DateOnly?)null;
-
-            // Fill-only enrichment on re-observation: populate Discipline + contact
-            // when the existing row is blank, but never clobber a value already set
-            // (e.g. a human-classified Discipline via the app, or a prior source).
-            var refreshedDiscipline = existing.Discipline == OpportunityDiscipline.Unknown
-                ? DisciplineClassifier.Classify(candidate)
-                : existing.Discipline;
-
-            var refreshed = existing with
-            {
-                RelevanceScore = scored.Score,
-                RelevanceTier = scored.Tier,
-                SubmissionDeadlineUtc = candidate.SubmissionDeadlineUtc ?? existing.SubmissionDeadlineUtc,
-                RfpReleaseDate = candidateRfpDate ?? existing.RfpReleaseDate,
-                BuyerName = shouldBackfillBuyer ? Truncate(candidateBuyer!, 300) : existing.BuyerName,
-                Discipline = refreshedDiscipline,
-                BuyerContactName = string.IsNullOrWhiteSpace(existing.BuyerContactName) && !string.IsNullOrWhiteSpace(candidate.BuyerContactName)
-                    ? Truncate(candidate.BuyerContactName.Trim(), 120) : existing.BuyerContactName,
-                BuyerContactEmail = string.IsNullOrWhiteSpace(existing.BuyerContactEmail) && !string.IsNullOrWhiteSpace(candidate.BuyerContactEmail)
-                    ? Truncate(candidate.BuyerContactEmail.Trim(), 255) : existing.BuyerContactEmail,
-                BuyerContactPhone = string.IsNullOrWhiteSpace(existing.BuyerContactPhone) && !string.IsNullOrWhiteSpace(candidate.BuyerContactPhone)
-                    ? Truncate(candidate.BuyerContactPhone.Trim(), 40) : existing.BuyerContactPhone,
-            };
-
-            try
-            {
-                var persisted = await _opportunityStore.UpdateAsync(refreshed, IngestionActor, ct).ConfigureAwait(false);
-                opportunityId = persisted.Id;
-            }
-            catch (OpportunityConcurrencyException)
-            {
-                // A user is editing concurrently — link the observation but skip the
-                // refresh. Their edit wins; next run will pick up the new RowVersion.
-                opportunityId = existing.Id;
-                _logger.LogInformation(
-                    "Opportunity {Key} updated concurrently; skipping ingestion-side refresh.", key);
-            }
+            opportunityId = await RefreshExistingAsync(existing, candidate, key, ct).ConfigureAwait(false);
         }
 
         await _observationStore.LinkAsync(persistedObservation.Id, opportunityId, ct).ConfigureAwait(false);
         await RunPersistedAckAsync(source, candidate, ct).ConfigureAwait(false);
         return CandidateOutcome.Inserted;
+    }
+
+    /// <summary>
+    /// Fill-only refresh of an opportunity we already hold, from a fresh sighting
+    /// of it. Re-scores against current rules, backfills a "Unknown" buyer, and
+    /// fills date, deadline, discipline and contact ONLY where the stored row is
+    /// blank — a human edit, or a better value from another source, always wins.
+    ///
+    /// Called from BOTH the new-observation path and the duplicate-observation
+    /// path. That second caller is the point: a posting whose title and url never
+    /// change still hashes identically forever, so if the refresh only ran on a
+    /// changed hash, every field outside the hash stayed frozen at first sight.
+    /// </summary>
+    private async Task<long> RefreshExistingAsync(
+        Opportunity existing,
+        OpportunityCandidate candidate,
+        string key,
+        CancellationToken ct)
+    {
+        var scored = _scoringService.Score(existing);
+
+        // Backfill BuyerName when the existing row was ingested before the
+        // provider could parse a buyer (existing value = "Unknown" placeholder).
+        // Don't overwrite user-edited or already-meaningful buyers, and don't
+        // accept another "Unknown" from the candidate.
+        var candidateBuyer = string.IsNullOrWhiteSpace(candidate.Buyer)
+            ? null
+            : candidate.Buyer.Trim();
+        var shouldBackfillBuyer =
+            candidateBuyer is not null
+            && !string.Equals(candidateBuyer, "Unknown", StringComparison.OrdinalIgnoreCase)
+            && string.Equals(existing.BuyerName, "Unknown", StringComparison.OrdinalIgnoreCase);
+
+        var candidateRfpDate = candidate.PostedDateUtc.HasValue
+            ? DateOnly.FromDateTime(candidate.PostedDateUtc.Value.UtcDateTime)
+            : (DateOnly?)null;
+
+        var refreshedDiscipline = existing.Discipline == OpportunityDiscipline.Unknown
+            ? DisciplineClassifier.Classify(candidate)
+            : existing.Discipline;
+
+        var refreshed = existing with
+        {
+            RelevanceScore = scored.Score,
+            RelevanceTier = scored.Tier,
+            SubmissionDeadlineUtc = candidate.SubmissionDeadlineUtc ?? existing.SubmissionDeadlineUtc,
+            RfpReleaseDate = candidateRfpDate ?? existing.RfpReleaseDate,
+            EstimatedValue = existing.EstimatedValue ?? candidate.EstimatedValueCad,
+            BuyerName = shouldBackfillBuyer ? Truncate(candidateBuyer!, 300) : existing.BuyerName,
+            Discipline = refreshedDiscipline,
+            BuyerContactName = string.IsNullOrWhiteSpace(existing.BuyerContactName) && !string.IsNullOrWhiteSpace(candidate.BuyerContactName)
+                ? Truncate(candidate.BuyerContactName.Trim(), 120) : existing.BuyerContactName,
+            BuyerContactEmail = string.IsNullOrWhiteSpace(existing.BuyerContactEmail) && !string.IsNullOrWhiteSpace(candidate.BuyerContactEmail)
+                ? Truncate(candidate.BuyerContactEmail.Trim(), 255) : existing.BuyerContactEmail,
+            BuyerContactPhone = string.IsNullOrWhiteSpace(existing.BuyerContactPhone) && !string.IsNullOrWhiteSpace(candidate.BuyerContactPhone)
+                ? Truncate(candidate.BuyerContactPhone.Trim(), 40) : existing.BuyerContactPhone,
+        };
+
+        try
+        {
+            var persisted = await _opportunityStore.UpdateAsync(refreshed, IngestionActor, ct).ConfigureAwait(false);
+            return persisted.Id;
+        }
+        catch (OpportunityConcurrencyException)
+        {
+            // A user is editing concurrently — their edit wins; the next run picks
+            // up the new RowVersion.
+            _logger.LogInformation(
+                "Opportunity {Key} updated concurrently; skipping ingestion-side refresh.", key);
+            return existing.Id;
+        }
     }
 
     /// <summary>
