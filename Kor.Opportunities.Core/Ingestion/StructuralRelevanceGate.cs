@@ -350,6 +350,35 @@ public static class StructuralRelevanceGate
         "export facility",
         "grinding facility",
         "lime project",
+        // ── Trade permits, added 2026-09-04 ─────────────────────────────────
+        // KOR is a STRUCTURAL engineering firm. A plumbing, tree, chimney or
+        // woodstove permit is out of lane no matter how good the building it
+        // sits in, so these live in the ALWAYS-irrelevant list, which is checked
+        // first and cannot be overridden by a building signal.
+        //
+        // They have to be here rather than in HardIrrelevant precisely BECAUSE a
+        // building signal would override them: Saanich's tracker publishes the
+        // full permit spectrum, every trade description reads "... FOR SINGLE
+        // FAMILY DWELLING", and "dwelling" had just been added as a building
+        // signal earlier the same day. 450 plumbing, tree and fireplace permits
+        // were sitting in the opportunity table as a result — a cost the
+        // vocabulary harness could not see, because its corpus was tender titles
+        // and Saanich did not exist yet.
+        //
+        // Phrases, not bare words, wherever a bare word would collide: "plumbing
+        // permit" must not kill "plumbing and mechanical upgrades to the hospital".
+        // ⚠ Bare "fireplace"/"chimney"/"woodstove" was tried first and is WRONG.
+        // Checked against the corpus before shipping, it would have killed a
+        // Victoria HERITAGE ALTERATION PERMIT for "restoration and rehabilitation"
+        // — a KOR lane — a Nanaimo "New construction of single-family dwelling
+        // with secondary suite, slab on grade", and three Saanich renovation and
+        // addition permits, all of which merely MENTION a fireplace. The permit
+        // TYPE is the safe match; an incidental mention is not.
+        "plumbing permit",
+        "tree permit",
+        "boulevard permit",
+        "sign permit",
+        "fireplace / chimney / woodstove",
     };
 
     private static readonly string[] ProfessionalSignals =

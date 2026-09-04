@@ -112,6 +112,7 @@ JOIN opportunities.OpportunitySources s ON s.Id = ob.OpportunitySourceId;";
 var keptTotal = 0;
 var keptFlipped = new List<string>();
 var keptAlreadyRejected = 0;
+var keptNowRejected = new List<(string Reason, string Title)>();
 
 await foreach (var r in ReadAsync(cs, keptSql))
 {
@@ -121,9 +122,10 @@ await foreach (var r in ReadAsync(cs, keptSql))
 
     if (!before.Keep)
     {
-        // Stored before a vocabulary change, or kept by a provider that bypasses
-        // the gate. Not a regression signal either way.
+        // We hold this row, but today's gate would refuse it — the cost side of
+        // any tightening, and the only place an exclusion change shows up.
         keptAlreadyRejected++;
+        keptNowRejected.Add((before.RejectReason ?? "(none)", $"[{r.SourceName}] {Cut(r.Title, 78)}"));
     }
 
     if (before.Keep && !after.Keep)
@@ -136,10 +138,27 @@ Console.WriteLine("REGRESSION ARM — rows the gate currently keeps (Title + Des
 Console.WriteLine(new string('-', 100));
 Console.WriteLine($"  scored              : {keptTotal}");
 Console.WriteLine($"  keep -> REJECT      : {keptFlipped.Count}   <- must be 0");
-Console.WriteLine($"  (already rejected by today's gate, informational: {keptAlreadyRejected})");
 foreach (var f in keptFlipped.Take(showCount))
 {
     Console.WriteLine($"    ! {f}");
+}
+
+// KEEP-DRIFT. The delta above can only ADD keep-signals, so it can never make the
+// regression arm move — which means an EXCLUSION change is invisible to it. This
+// counts rows we already hold that TODAY'S gate would refuse, which is the only
+// way to see the cost of tightening. It was a bare number until 2026-09-04, when
+// 450 Saanich plumbing, tree and fireplace permits turned out to be in the
+// opportunity table because "dwelling" had just been added as a building signal
+// and every trade permit description says "SINGLE FAMILY DWELLING".
+Console.WriteLine();
+Console.WriteLine($"  KEEP-DRIFT — rows we hold that today's gate would now REFUSE: {keptAlreadyRejected}");
+foreach (var g in keptNowRejected.GroupBy(k => k.Reason).OrderByDescending(g => g.Count()))
+{
+    Console.WriteLine($"    {g.Count(),5}  {g.Key}");
+    foreach (var e in g.Take(Math.Min(showCount, 4)))
+    {
+        Console.WriteLine($"           {e.Title}");
+    }
 }
 
 Console.WriteLine();
