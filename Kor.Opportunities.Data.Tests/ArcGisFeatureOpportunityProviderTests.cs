@@ -199,6 +199,71 @@ public sealed class ArcGisFeatureOpportunityProviderTests
     }
 
     [Fact]
+    public async Task WhenParcelRowsCarryDIFFERENTDescriptionsBothAreKept()
+    {
+        // Adversarial review 2026-09-04, verified live: Coquitlam file 22-067
+        // (Morningstar Homes) is two rows — phase one and phase two — and
+        // first-wins was silently discarding "a townhouse site with 92 units".
+        // Collapsing rows must never choose between differing content.
+        var cfg = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["arcgis.externalRefField"] = "PROJECT_NUMBER",
+            ["arcgis.titleField"] = "ADDRESS",
+            ["arcgis.buyerOverride"] = "City of Coquitlam",
+            ["arcgis.descriptionField"] = "PROJECT_DESCRIPTION",
+            ["arcgis.addressFields"] = "ADDRESS",
+        };
+
+        var page = JsonSerializer.Serialize(new
+        {
+            features = new[]
+            {
+                new
+                {
+                    attributes = new
+                    {
+                        PROJECT_NUMBER = "22-067",
+                        ADDRESS = "3409, 3411, 3415, 3421, 3435 Galloway",
+                        PROJECT_DESCRIPTION = "Phase one to create 29 single family lots, 5 Duplexes.",
+                    },
+                },
+                new
+                {
+                    attributes = new
+                    {
+                        PROJECT_NUMBER = "22-067",
+                        ADDRESS = "3421 & 3435 Galloway Ave",
+                        PROJECT_DESCRIPTION = "Phase two to create a townhouse site with 92 units.",
+                    },
+                },
+            },
+        });
+
+        var results = await FetchAsync(cfg, Meta(2000), page);
+
+        var only = Assert.Single(results);
+        Assert.Contains("29 single family lots", only.Description);
+        Assert.Contains("townhouse site with 92 units", only.Description);
+    }
+
+    [Fact]
+    public async Task IdenticalDescriptionsAcrossParcelRowsAreNotRepeated()
+    {
+        // The other half of the same rule: Victoria's parcel rows are identical,
+        // so de-duplicating is what keeps the merged text readable.
+        var page = Response(
+            exceeded: false,
+            Row("REZ00901", "846 Broughton Street", "Rezoning", "ACTIVE", "846", "BROUGHTON ST", Aug2025Ms,
+                "Three mixed-use towers."),
+            Row("REZ00901", "846 Broughton Street", "Rezoning", "ACTIVE", "829", "FORT ST", Aug2025Ms,
+                "Three mixed-use towers."));
+
+        var results = await FetchAsync(VictoriaConfig, Meta(2000), page);
+
+        Assert.Equal("Three mixed-use towers.", Assert.Single(results).Description);
+    }
+
+    [Fact]
     public async Task AnApplicantNameIsPushedToTheFrontOfTheDescription()
     {
         // Coquitlam's layer names the party who filed - the developer. It is the

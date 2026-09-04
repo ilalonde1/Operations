@@ -23,6 +23,7 @@ var args0 = args;
 string? sourceName = null;
 string? layerUrl = null;
 string? configPath = null;
+string? deltaPath = null;
 var showCount = 15;
 
 for (var i = 0; i < args0.Length; i++)
@@ -37,6 +38,9 @@ for (var i = 0; i < args0.Length; i++)
             break;
         case "--config" when i + 1 < args0.Length:
             configPath = args0[++i];
+            break;
+        case "--delta" when i + 1 < args0.Length:
+            deltaPath = args0[++i];
             break;
         case "--show" when i + 1 < args0.Length:
             showCount = int.Parse(args0[++i], CultureInfo.InvariantCulture);
@@ -120,24 +124,73 @@ var provider = new ArcGisFeatureOpportunityProvider(
 
 var candidates = await provider.FetchAsync(source, config, CancellationToken.None);
 
+// --delta is the GAIN ARM of the relevance-gate differential that
+// RelevanceGateDiff cannot run: opportunities.RelevanceGateRejects stores no
+// description, so a vocabulary change aimed at planning prose is invisible
+// there. Here the description is the live PURPOSE text, which is where the
+// signal actually lives.
+RelevanceVocabularyDelta? delta = null;
+if (deltaPath is not null)
+{
+    var building = new List<string>();
+    var professional = new List<string>();
+    foreach (var raw in File.ReadAllLines(deltaPath))
+    {
+        var line = raw.Trim();
+        if (line.Length == 0 || line.StartsWith('#'))
+        {
+            continue;
+        }
+
+        if (line.StartsWith("pro:", StringComparison.OrdinalIgnoreCase))
+        {
+            professional.Add(line[4..].Trim());
+        }
+        else
+        {
+            building.Add(line);
+        }
+    }
+
+    delta = new RelevanceVocabularyDelta(building, professional);
+    Console.WriteLine($"Delta    : {delta.BuildingSignals.Count} candidate building term(s) from {deltaPath}");
+    Console.WriteLine();
+}
+
 var kept = new List<OpportunityCandidate>();
 var rejected = new List<(OpportunityCandidate Candidate, string Reason)>();
+var newlyKept = new List<(OpportunityCandidate Candidate, string Term)>();
 foreach (var c in candidates)
 {
     var decision = StructuralRelevanceGate.Evaluate(c.Title, c.Description, c.Buyer);
     if (decision.Keep)
     {
         kept.Add(c);
+        continue;
     }
-    else
+
+    if (delta is not null)
     {
-        rejected.Add((c, decision.RejectReason ?? "(no reason)"));
+        var withDelta = StructuralRelevanceGate.Evaluate(c.Title, c.Description, c.Buyer, delta);
+        if (withDelta.Keep)
+        {
+            var text = $"{c.Title} {c.Description}".ToLowerInvariant();
+            newlyKept.Add((c, delta.FirstMatch(text) ?? "(unattributed)"));
+            continue;
+        }
     }
+
+    rejected.Add((c, decision.RejectReason ?? "(no reason)"));
 }
 
 Console.WriteLine();
 Console.WriteLine($"Applications : {candidates.Count}");
 Console.WriteLine($"  gate KEEP  : {kept.Count}");
+if (delta is not null)
+{
+    Console.WriteLine($"  delta KEEP : {newlyKept.Count}   <- newly kept by the candidate vocabulary");
+}
+
 Console.WriteLine($"  gate DROP  : {rejected.Count}");
 
 var dated = candidates.Where(c => c.PostedDateUtc is not null).ToList();
@@ -160,9 +213,26 @@ foreach (var c in kept.OrderByDescending(c => c.PostedDateUtc ?? DateTimeOffset.
     Console.WriteLine();
 }
 
+if (newlyKept.Count > 0)
+{
+    Console.WriteLine($"NEWLY KEPT BY THE DELTA ({newlyKept.Count} of {candidates.Count}) — LOOK AT THESE");
+    Console.WriteLine(new string('-', 100));
+    foreach (var g in newlyKept.GroupBy(n => n.Term).OrderByDescending(g => g.Count()))
+    {
+        Console.WriteLine($"  {g.Count(),4}  \"{g.Key}\"");
+        foreach (var n in g.Take(showCount))
+        {
+            Console.WriteLine($"          {Cut(n.Candidate.Title, 88)}");
+            Console.WriteLine($"            └ {Cut(n.Candidate.Description, 120)}");
+        }
+
+        Console.WriteLine();
+    }
+}
+
 if (rejected.Count > 0)
 {
-    Console.WriteLine($"REJECT REASONS ({rejected.Count} of {candidates.Count})");
+    Console.WriteLine($"STILL REJECTED ({rejected.Count} of {candidates.Count})");
     Console.WriteLine(new string('-', 100));
     foreach (var g in rejected.GroupBy(r => r.Reason).OrderByDescending(g => g.Count()))
     {

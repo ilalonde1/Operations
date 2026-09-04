@@ -1,0 +1,62 @@
+# Candidate vocabulary — planning-application prose (2026-09-03)
+#
+# The gate's shipped vocabulary is tender language: "construction of",
+# "renovation", "building". Municipal development-permit and rezoning
+# applications use planning language instead, and the gate threw them away:
+# 42 of Victoria's 146, 810 of Maple Ridge's 849.
+#
+# Every term below was scored on BOTH arms before it shipped:
+#   RelevanceGateDiff --vocab <this file>     13,521 tender-title rejects
+#                                             + 3,803 kept rows (regression)
+#   ArcGisProbe --source <city> --delta <this file>
+#                                             the live planning corpus, which is
+#                                             the only place the descriptions are
+#
+# DROPPED, and why — each of these was in the first draft and the harness killed it:
+#   retail      16 flips, all commodity: BCLC lottery retail design, card backers
+#               and packaging, liquor retail pricing, retail shelving, UPS units.
+#   restaurant  golf-clubhouse concession OPERATIONS on the tender side; a
+#               take-away kitchen Temporary Use Permit on the planning side.
+#   triplex     "Triplex Greens Mower", "Replacement Triplex Finishing Mower" —
+#               a triplex mower is a golf-course machine.
+#   office building / industrial building
+#               redundant: "building" is already a shipped signal.
+#
+# One term per line. '#' comments. 'pro:' prefix = professional-services signal.
+
+# --- form of building -------------------------------------------------------
+# storey       Victoria x4: "six-storey hotel", "six storey, 42-unit rental"
+# multi-family Maple Ridge x69: "Multi-Family Form and Character" permits
+# mixed use    Maple Ridge x12 ("Mixed Uses" rezonings). The hyphenated
+#              "mixed-use" is already shipped and does not match "mixed uses".
+storey
+multi-family
+multifamily
+mixed use
+townhouse
+townhome
+rowhouse
+row house
+duplex
+fourplex
+sixplex
+houseplex
+multiplex
+
+# --- dwelling units ---------------------------------------------------------
+# dwelling     Victoria: "move a heritage-designated principal dwelling". The
+#              tender-arm hits are single-family demolition RFQs, which are a
+#              genuine precursor signal rather than noise.
+dwelling
+garden suite
+secondary suite
+laneway house
+live-work
+purpose-built rental
+
+# --- occupancy types the shipped list misses --------------------------------
+# hotel        Victoria x4. One tender-arm miss ("Ramada Hotel energy
+#              connection"); kept because four real hotel projects outweigh it.
+hotel
+motel
+place of worship

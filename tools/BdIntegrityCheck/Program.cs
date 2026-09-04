@@ -285,6 +285,103 @@ invariants.Add(("source_everything_filtered_out",
       FROM runs WHERE Runs >= 5 AND Ins = 0 AND (Dup + Skipped) > 0
       ORDER BY (Dup + Skipped) DESC;"));
 
+// ── Adversarial review of the ArcGIS adapter, 2026-09-04 ─────────────────────
+// Codex raised OpportunityKey prefix collision as a latent risk. It is not
+// latent. IngestionService.ComposeOpportunityKey prefixes the key with the first
+// 8 ALPHANUMERIC characters of the source name, and 54 sources reduce to
+// BIDSTEND, plus most Bonfire tenants to BONFIRE?. Measured live the same day:
+// BIDSTEND-26-067 "Audio Visual System Replacement and Upgrade" is ONE row
+// carrying observations from BOTH BidsTenders_MapleRidge AND BidsTenders_Coquitlam
+// — two municipalities' tender #26-067 merged into one opportunity.
+//
+// The key algorithm cannot simply be changed: every OpportunityKey on record is
+// built from it, so a new algorithm re-keys the whole corpus. These two checks
+// make the exposure and the damage countable in the meantime.
+invariants.Add(("source_key_prefix_collision",
+    "Two or more sources whose names share their first 8 alphanumeric characters, which is the whole of the OpportunityKey source prefix. Any two such sources that ever emit the same external reference produce ONE opportunity row for two different things. Name a new source so its first 8 alphanumeric characters are unique",
+    false,
+    @"WITH p AS (
+        SELECT Id, Name,
+               UPPER(LEFT(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(Name,'_',''),'-',''),' ',''),'.',''),'(',''),')',''), 8)) AS Prefix
+        FROM opportunities.OpportunitySources
+        WHERE IsEnabled = 1)
+      SELECT ISNULL(SUM(N), 0) FROM (
+        SELECT COUNT(*) AS N FROM p GROUP BY Prefix HAVING COUNT(*) > 1) x;",
+    @"WITH p AS (
+        SELECT Id, Name,
+               UPPER(LEFT(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(Name,'_',''),'-',''),' ',''),'.',''),'(',''),')',''), 8)) AS Prefix
+        FROM opportunities.OpportunitySources
+        WHERE IsEnabled = 1)
+      SELECT TOP 20 Prefix, COUNT(*) AS Sources
+      FROM p GROUP BY Prefix HAVING COUNT(*) > 1 ORDER BY COUNT(*) DESC;"));
+
+invariants.Add(("opportunity_merged_across_sibling_sources",
+    "ONE opportunity row observed by two DIFFERENT tenants of the same provider AT DIFFERENT URLs — two municipalities' tenders collapsed into one row. The distinct-URL condition is what separates this from legitimate cross-posting: CivicInfoBC_All and CivicInfoBC_Construction see the SAME listing at the SAME url and are correct; BidsTenders_Coquitlam .../Detail/60 and BidsTenders_MapleRidge .../Detail/7 are two different procurements. This is the OpportunityKey prefix collision actually firing",
+    true,
+    @"WITH fam AS (
+        SELECT ob.OpportunityId,
+               LEFT(s.Name, CHARINDEX('_', s.Name + '_') - 1) AS Family,
+               ob.OpportunitySourceId, ob.Url
+        FROM opportunities.OpportunityObservations ob
+        JOIN opportunities.OpportunitySources s ON s.Id = ob.OpportunitySourceId
+        WHERE s.Name LIKE '%[_]%')
+      SELECT COUNT(*) FROM (
+        SELECT OpportunityId FROM fam
+        GROUP BY OpportunityId, Family
+        HAVING COUNT(DISTINCT OpportunitySourceId) > 1 AND COUNT(DISTINCT Url) > 1) x;",
+    @"WITH fam AS (
+        SELECT ob.OpportunityId,
+               LEFT(s.Name, CHARINDEX('_', s.Name + '_') - 1) AS Family,
+               ob.OpportunitySourceId, ob.Url
+        FROM opportunities.OpportunityObservations ob
+        JOIN opportunities.OpportunitySources s ON s.Id = ob.OpportunitySourceId
+        WHERE s.Name LIKE '%[_]%'),
+      bad AS (
+        SELECT OpportunityId FROM fam
+        GROUP BY OpportunityId, Family
+        HAVING COUNT(DISTINCT OpportunitySourceId) > 1 AND COUNT(DISTINCT Url) > 1)
+      SELECT TOP 20 LEFT(o.OpportunityKey, 40) AS OppKey, LEFT(o.Name, 50) AS Name,
+             STRING_AGG(CAST(s.Name AS nvarchar(max)), ' + ') AS Sources
+      FROM bad b
+      JOIN opportunities.Opportunities o ON o.Id = b.OpportunityId
+      JOIN opportunities.OpportunityObservations ob ON ob.OpportunityId = o.Id
+      JOIN opportunities.OpportunitySources s ON s.Id = ob.OpportunitySourceId
+      GROUP BY o.OpportunityKey, o.Name;"));
+
+// Codex also found that source_everything_filtered_out only fires on ZERO
+// LIFETIME inserts, so a feed that delivered once and is now rejecting
+// everything slips between the checks. This is the time-windowed version: it
+// HAS delivered before, items still arrive, and nothing has been kept in 30 days.
+invariants.Add(("source_insert_rate_collapsed",
+    "A feed that has delivered before, is still returning items, and has kept NOTHING in 30 days. The lifetime-zero checks cannot see this shape — it is the regression version of source_everything_filtered_out. Confirm against RelevanceGateRejects: the gate is often right, and the useful question is whether the buyer moved its construction work elsewhere",
+    false,
+    @"WITH lifetime AS (
+        SELECT ProviderName, SUM(ISNULL(InsertedCount,0)) AS EverInserted
+        FROM opportunities.IngestionRuns GROUP BY ProviderName),
+      recent AS (
+        SELECT ProviderName, COUNT(*) AS Runs,
+               SUM(ISNULL(InsertedCount,0)) AS Ins,
+               SUM(ISNULL(DuplicateCount,0) + ISNULL(SkippedCount,0)) AS Filtered
+        FROM opportunities.IngestionRuns
+        WHERE EndedAtUtc IS NOT NULL AND StartedAtUtc >= DATEADD(DAY, -30, SYSDATETIMEOFFSET())
+        GROUP BY ProviderName)
+      SELECT COUNT(*) FROM recent r JOIN lifetime l ON l.ProviderName = r.ProviderName
+      WHERE l.EverInserted > 0 AND r.Runs >= 4 AND r.Ins = 0 AND r.Filtered > 0;",
+    @"WITH lifetime AS (
+        SELECT ProviderName, SUM(ISNULL(InsertedCount,0)) AS EverInserted
+        FROM opportunities.IngestionRuns GROUP BY ProviderName),
+      recent AS (
+        SELECT ProviderName, COUNT(*) AS Runs,
+               SUM(ISNULL(InsertedCount,0)) AS Ins,
+               SUM(ISNULL(DuplicateCount,0) + ISNULL(SkippedCount,0)) AS Filtered
+        FROM opportunities.IngestionRuns
+        WHERE EndedAtUtc IS NOT NULL AND StartedAtUtc >= DATEADD(DAY, -30, SYSDATETIMEOFFSET())
+        GROUP BY ProviderName)
+      SELECT TOP 20 r.ProviderName, r.Runs, r.Filtered AS FilteredLast30d, l.EverInserted
+      FROM recent r JOIN lifetime l ON l.ProviderName = r.ProviderName
+      WHERE l.EverInserted > 0 AND r.Runs >= 4 AND r.Ins = 0 AND r.Filtered > 0
+      ORDER BY r.Filtered DESC;"));
+
 invariants.Add(("person_duplicate_active_affiliation",
     "Same person affiliated to the same org more than once, both active. Inflates how 'rich' an org looks, double-counts contacts in dossiers, and multiplies on every refresh. Found 2026-09-03 when a re-research after an org split added a second row for people who were already there",
     false,

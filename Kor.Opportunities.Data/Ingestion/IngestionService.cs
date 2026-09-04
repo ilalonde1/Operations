@@ -507,9 +507,22 @@ public sealed class IngestionService : IIngestionService
 
     /// <summary>
     /// Composes a stable business key. When the provider supplies a non-empty
-    /// <see cref="OpportunityCandidate.ExternalReference"/> we use it (with a source
-    /// prefix so different sources never collide); otherwise we fall back to a short
-    /// hash-derived suffix so the key remains deterministic and idempotent across runs.
+    /// <see cref="OpportunityCandidate.ExternalReference"/> we use it, prefixed by
+    /// the source; otherwise we fall back to a short hash-derived suffix so the key
+    /// remains deterministic and idempotent across runs.
+    ///
+    /// ⚠ THE PREFIX IS THE FIRST 8 ALPHANUMERIC CHARACTERS OF THE SOURCE NAME, so
+    /// "different sources never collide" — which this comment used to claim — is
+    /// true only while no two sources share those 8 characters. Adversarial review
+    /// 2026-09-04 caught the overstatement: "Victoria_DevelopmentApplications" and a
+    /// future "Victoria_BuildingPermits" both reduce to VICTORIA, and would then
+    /// collide on any permit number the two systems happen to share.
+    ///
+    /// The algorithm is NOT changeable — every OpportunityKey on record is built
+    /// from it, so touching it re-keys the whole corpus. The precondition is
+    /// enforced instead, by the <c>source_key_prefix_collision</c> invariant in
+    /// <c>tools/BdIntegrityCheck</c>. Name a new source so its first 8 alphanumeric
+    /// characters are unique.
     /// </summary>
     private static string ComposeOpportunityKey(OpportunitySource source, OpportunityCandidate candidate, byte[] hash)
     {

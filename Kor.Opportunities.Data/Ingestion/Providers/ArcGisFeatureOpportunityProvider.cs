@@ -48,6 +48,7 @@ public sealed class ArcGisFeatureOpportunityProvider : IOpportunityProvider
     private const int DefaultMaxPagesPerRun = 20;
     private const int HardPageCeiling = 5000;
     private const int MaxLocationLength = 400;
+    private const int MaxDescriptionLength = 4000;
 
     private readonly HttpClient _httpClient;
     private readonly ILogger<ArcGisFeatureOpportunityProvider> _logger;
@@ -150,8 +151,14 @@ public sealed class ArcGisFeatureOpportunityProvider : IOpportunityProvider
 
         if (truncated)
         {
-            // Say it out loud. A partial read that looks like a clean one is the
-            // exact failure the freshness checks were built for.
+            // A partial read that looks like a clean one is the exact failure the
+            // freshness checks were built for, so it goes in the RUN RECORD, not
+            // just the log — IngestionService drains these into ErrorSummary as
+            // "DEGRADED: …", which is queryable. Adversarial review 2026-09-04:
+            // this was log-only, so a max-page truncation completed Success=true
+            // with nothing to find it by.
+            IngestionRunDiagnostics.AddWarning(
+                $"ArcGIS partial read: {pages} page(s) of {pageSize} (cap {map.MaxPagesPerRun}); rows beyond that were not read.");
             _logger.LogWarning(
                 "ArcGIS source {SourceName} returned a PARTIAL read ({Pages} page(s) of {PageSize}, cap {MaxPages}).",
                 source.Name, pages, pageSize, map.MaxPagesPerRun);
@@ -215,6 +222,7 @@ public sealed class ArcGisFeatureOpportunityProvider : IOpportunityProvider
     private sealed class Application
     {
         private readonly List<string> _addresses = new();
+        private readonly List<string> _descriptions = new();
 
         public Application(string externalRef, string rawJson)
         {
@@ -230,7 +238,18 @@ public sealed class ArcGisFeatureOpportunityProvider : IOpportunityProvider
 
         public string? AppType { get; private set; }
 
-        public string? Description { get; private set; }
+        /// <summary>
+        /// Every DISTINCT description across the parcel rows, in order — not the
+        /// first one.
+        ///
+        /// Adversarial review, 2026-09-04: first-wins silently destroyed content.
+        /// Coquitlam file 22-067 (Morningstar Homes) is two rows — "Phase one …
+        /// 29 single family lots, 5 duplexes" and "Phase two … a townhouse site
+        /// with 92 units" — and the 92-unit phase was being dropped on OBJECTID
+        /// order. That is the one-row-one-real-thing violation this module opens
+        /// with, so differing content is now kept, not chosen between.
+        /// </summary>
+        public string? Description => JoinCapped(_descriptions, "  ·  ", MaxDescriptionLength);
 
         /// <summary>
         /// The party who filed — i.e. the developer or their agent. Some layers
@@ -256,8 +275,14 @@ public sealed class ArcGisFeatureOpportunityProvider : IOpportunityProvider
             RowCount++;
             Title ??= title;
             AppType ??= ReadString(attrs, map.TypeField);
-            Description ??= JoinFields(attrs, map.DescriptionFields, " ");
             Applicant ??= ReadString(attrs, map.ApplicantField);
+
+            var description = JoinFields(attrs, map.DescriptionFields, " ");
+            if (description is not null
+                && !_descriptions.Contains(description, StringComparer.OrdinalIgnoreCase))
+            {
+                _descriptions.Add(description);
+            }
             ContactName ??= ReadString(attrs, map.ContactNameField);
             ContactEmail ??= ReadString(attrs, map.ContactEmailField);
             ContactPhone ??= ReadString(attrs, map.ContactPhoneField);

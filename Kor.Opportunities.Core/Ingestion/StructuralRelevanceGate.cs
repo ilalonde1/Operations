@@ -106,6 +106,46 @@ public static class StructuralRelevanceGate
         "elevator replacement",
         "elevator upgrade",
         "pre-engineered",
+        // Planning-application vocabulary, added 2026-09-03. Everything above is
+        // TENDER language ("construction of", "renovation"); municipal
+        // development-permit and rezoning applications speak planning instead,
+        // and the gate was throwing them away — 42 of Victoria's 146 and 810 of
+        // Maple Ridge's 849, including a six-storey hotel, a six-storey 42-unit
+        // rental and a heritage building relocation.
+        //
+        // Every term here was proved on BOTH arms of tools/RelevanceGateDiff
+        // before it shipped: zero regressions across the 3,803 kept rows, and
+        // examples read by eye on the live planning corpus. Four candidates were
+        // KILLED by that harness and are deliberately absent — "retail" (16
+        // commodity hits: lottery terminals, shelving, packaging), "restaurant"
+        // (golf-clubhouse concession operations), "triplex" (a triplex mower is
+        // a golf-course machine) and "office building"/"industrial building"
+        // (redundant: "building" already matches). Do not re-add them without
+        // re-running that harness.
+        "storey",
+        "multi-family",
+        "multifamily",
+        // The hyphenated "mixed-use" is above; it does not match "mixed uses",
+        // which is how Maple Ridge writes it on 12 of its rezonings.
+        "mixed use",
+        "townhouse",
+        "townhome",
+        "rowhouse",
+        "row house",
+        "duplex",
+        "fourplex",
+        "sixplex",
+        "houseplex",
+        "multiplex",
+        "dwelling",
+        "garden suite",
+        "secondary suite",
+        "laneway house",
+        "live-work",
+        "purpose-built rental",
+        "hotel",
+        "motel",
+        "place of worship",
         // French vocabulary — CanadaBuys federal postings can be French-only;
         // accented and unaccented variants both included because upstream
         // encodings vary.
@@ -345,6 +385,21 @@ public static class StructuralRelevanceGate
         .ToArray();
 
     public static RelevanceDecision Evaluate(string? title, string? description, string? buyer)
+        => Evaluate(title, description, buyer, delta: null);
+
+    /// <summary>
+    /// As <see cref="Evaluate(string?, string?, string?)"/>, but scoring a
+    /// PROPOSED vocabulary addition alongside the shipped one. Production always
+    /// passes null; a non-null <paramref name="delta"/> is the differential arm
+    /// of <c>tools/RelevanceGateDiff</c>. A delta can only ever turn a reject
+    /// into a keep — it adds keep-signals and never exclusions — which is what
+    /// makes the regression side of that diff assertable.
+    /// </summary>
+    public static RelevanceDecision Evaluate(
+        string? title,
+        string? description,
+        string? buyer,
+        RelevanceVocabularyDelta? delta)
     {
         // Deliberately unused (audit-v2 #14 reviewed this): folding the buyer name
         // into the keep-scan would false-pass out-of-lane work from building-sector
@@ -359,8 +414,11 @@ public static class StructuralRelevanceGate
             return new RelevanceDecision(false, $"out-of-lane: {matchedAlwaysIrrelevant}");
         }
 
-        var hasBuilding = MatchesAny(text, BuildingSignalRegexes);
-        var hasKeep = hasBuilding || MatchesAny(text, ProfessionalSignalRegexes);
+        var hasBuilding = MatchesAny(text, BuildingSignalRegexes)
+                          || (delta?.MatchesBuilding(text) ?? false);
+        var hasKeep = hasBuilding
+                      || MatchesAny(text, ProfessionalSignalRegexes)
+                      || (delta?.MatchesProfessional(text) ?? false);
         var matchedIrrelevant = FirstHardIrrelevantMatch(text);
 
         // Hard-irrelevant first (more specific reason), but only fatal when no
