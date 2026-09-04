@@ -441,13 +441,14 @@
                                 <ComboBoxItem Content="Note / schedule" Tag="note-schedule"/>
                             </ComboBox>
                             <Button x:Name="OpenSheetPdfButton"
+                                    Width="108"
                                     Margin="12,0,0,0"
                                     VerticalAlignment="Center"
                                     Style="{StaticResource RejectButtonStyle}"
                                     Click="OpenSheetPdf_Click"
                                     Visibility="Collapsed"
                                     ToolTip="Open selected catalog item as a PDF">
-                                <TextBlock Text="Open PDF" Foreground="#FF48515B" FontSize="12.5" FontWeight="SemiBold"/>
+                                <TextBlock x:Name="OpenSheetPdfButtonText" Text="Open PDF" Foreground="#FF48515B" FontSize="12.5" FontWeight="SemiBold"/>
                             </Button>
                         </StackPanel>
                         <TextBlock x:Name="ActionHintText" Grid.Row="1" VerticalAlignment="Center" Margin="0,0,260,0"

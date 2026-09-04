@@ -921,6 +921,11 @@ public partial class StandardDetailsWindow
 
     private async void OpenSheetPdf_Click(object sender, RoutedEventArgs e)
     {
+        if (_openingCatalogPdf)
+        {
+            return;
+        }
+
         if (DocumentsGrid.SelectedItem is not DocumentRow { IsDetail: true } detail)
         {
             MessageBox.Show(this, "Select a detail or sheet first.", "Standard Details - Open PDF", MessageBoxButton.OK, MessageBoxImage.Information);
@@ -934,10 +939,12 @@ public partial class StandardDetailsWindow
             return;
         }
 
+        _openingCatalogPdf = true;
         OpenSheetPdfButton.IsEnabled = false;
+        OpenSheetPdfButtonText.Text = "Generating…";
         try
         {
-            SetActivityMessage($"Opening PDF for {detail.DetailNumber}...", BannerTone.Info);
+            SetActivityMessage($"Generating PDF for {detail.DetailNumber}...", BannerTone.Info);
             var composer = new StandardDetailsSheetComposer(new DrafterBridgeClient(options.BridgeRoot), options);
             await composer.OpenDetailPdfAsync(detail.DetailNumber, _korStandardsRepo, TimeSpan.FromMinutes(5));
             SetActivityMessage($"Opened PDF for {detail.DetailNumber}.", BannerTone.Success);
@@ -950,7 +957,10 @@ public partial class StandardDetailsWindow
         }
         finally
         {
+            _openingCatalogPdf = false;
+            OpenSheetPdfButtonText.Text = "Open PDF";
             UpdateActionStates();
+            SetActivityMessage("Ready.", BannerTone.Info);
         }
     }
 
