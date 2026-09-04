@@ -27,7 +27,7 @@ internal sealed class KorStandardsReadRepository
         _connectionString = connectionString;
     }
 
-    internal async Task<IReadOnlyList<PaletteDetailRow>> LoadPaletteDetailsAsync(string query)
+    internal async Task<IReadOnlyList<PaletteDetailRow>> LoadPaletteDetailsAsync(string query, string? discipline = null)
     {
         const string sql = @"
 SELECT DetailNumber,
@@ -39,6 +39,7 @@ SELECT DetailNumber,
        COUNT(*) AS VariantCount
 FROM detail.vw_PaletteCatalog
 WHERE (@q = '' OR DetailNumber LIKE @like OR Title LIKE @like)
+  AND (@discipline IS NULL OR Discipline = @discipline)
 GROUP BY DetailNumber
 ORDER BY DetailNumber;";
 
@@ -50,6 +51,7 @@ ORDER BY DetailNumber;";
         cmd.CommandTimeout = SqlTimeouts.UiFacing;
         AddNVarChar(cmd, "@q", QueryMax, q);
         AddNVarChar(cmd, "@like", QueryMax + 2, $"%{q}%");
+        AddNullableNVarChar(cmd, "@discipline", 80, discipline);
 
         await using var r = await cmd.ExecuteReaderAsync();
         while (await r.ReadAsync())
@@ -107,7 +109,7 @@ ORDER BY DetailNumber;";
         return rows;
     }
 
-    internal async Task<IReadOnlyList<SheetComposerDetailRow>> LoadSheetComposerDetailsAsync(string query)
+    internal async Task<IReadOnlyList<SheetComposerDetailRow>> LoadSheetComposerDetailsAsync(string query, string? discipline = null)
     {
         const string sql = @"
 SELECT DetailNumber,
@@ -129,6 +131,7 @@ FROM
     FROM detail.vw_PaletteCatalog
     WHERE IsPlaceable = 1
       AND (@q = '' OR DetailNumber LIKE @like OR Title LIKE @like OR ViewName LIKE @like)
+      AND (@discipline IS NULL OR Discipline = @discipline)
 ) ranked
 WHERE rn = 1
 ORDER BY DetailNumber;";
@@ -141,6 +144,7 @@ ORDER BY DetailNumber;";
         cmd.CommandTimeout = SqlTimeouts.UiFacing;
         AddNVarChar(cmd, "@q", QueryMax, q);
         AddNVarChar(cmd, "@like", QueryMax + 2, $"%{q}%");
+        AddNullableNVarChar(cmd, "@discipline", 80, discipline);
 
         await using var r = await cmd.ExecuteReaderAsync();
         while (await r.ReadAsync())
@@ -282,5 +286,11 @@ ORDER BY FamilyName, TypeName;";
     {
         var p = cmd.Parameters.Add(name, SqlDbType.NVarChar, size);
         p.Value = value;
+    }
+
+    private static void AddNullableNVarChar(SqlCommand cmd, string name, int size, string? value)
+    {
+        var p = cmd.Parameters.Add(name, SqlDbType.NVarChar, size);
+        p.Value = string.IsNullOrWhiteSpace(value) ? System.DBNull.Value : value.Trim();
     }
 }

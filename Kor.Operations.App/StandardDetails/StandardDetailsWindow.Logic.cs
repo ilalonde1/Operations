@@ -218,15 +218,8 @@ public partial class StandardDetailsWindow
                 }
                 else
                 {
-                    var details = await _korStandardsRepo.LoadPaletteDetailsAsync(q);
-                    IEnumerable<PaletteDetailRow> filtered = details;
-                    // Discipline chips filter details to one of Concrete/Steel/General/Wood Frame; "All"
-                    // (null) shows everything.
-                    if (!string.IsNullOrWhiteSpace(_selectedDiscipline))
-                    {
-                        filtered = details.Where(d => string.Equals(d.Discipline, _selectedDiscipline, StringComparison.OrdinalIgnoreCase));
-                    }
-                    _documentSnapshot = filtered.Select(d => new DocumentRow
+                    var details = await _korStandardsRepo.LoadPaletteDetailsAsync(q, _selectedDiscipline);
+                    _documentSnapshot = details.Select(d => new DocumentRow
                     {
                         DocumentId = 0,
                         IsDetail = true,
@@ -671,7 +664,7 @@ public partial class StandardDetailsWindow
 
         var bridge = new DrafterBridgeClient(options.BridgeRoot);
         var composer = new StandardDetailsSheetComposer(bridge, options);
-        var dlg = new SheetComposerWindow(_korStandardsRepo, _repo, composer, _groupSchemaAvailable, _selectedGroupId, _actorUserId) { Owner = this };
+        var dlg = new SheetComposerWindow(_korStandardsRepo, _repo, composer, _groupSchemaAvailable, _selectedGroupId, _actorUserId, _selectedDiscipline) { Owner = this };
         if (dlg.ShowDialog() == true)
         {
             SetActivityMessage("Composed Standard Details sheet and created governance record.", BannerTone.Success);
