@@ -1,7 +1,41 @@
 # Island pipeline build — RESUME
 
-**Read this first if context was lost.** State as of 2026-09-04, mid-build.
+**Read this first if context was lost.** State as of 2026-09-04.
 Everything below is live and verified unless marked TODO.
+
+## ✅ SHIPPED — v4, 2026-09-04
+
+`docs/KOR-Island-WhosWho-Victoria-Nanaimo-2026-09-04-v4-web.pdf` — 23 pages,
+Producer `Skia/PDF`, verified by `pdftotext` fact-grep and by rendering and
+looking at pages 1–6, 17–19 and 23.
+
+Source: `docs/island-pipeline/whoswho-v4-body.html` (body) assembled with the
+template `<style>` into `whoswho-v4.html`. Rebuild with:
+
+    python docs/island-pipeline/assemble_v4.py   # style block + body -> whoswho-v4.html
+    .\tools\Format-BdWebPdf.ps1 -Html docs\island-pipeline\whoswho-v4.html `
+        -Pdf docs\KOR-Island-WhosWho-Victoria-Nanaimo-2026-09-04-v4-web.pdf
+
+**What v4 has that v3 did not:** Saanich / Langford / Colwood wired; Langford's
+$326M of construction value; **nine engineering firms visible as the applicant
+of record on Saanich commercial permits, RJC Engineers on four of them**; a
+per-city coverage table stating which field each city does and does not publish;
+Island-only scope.
+
+**Template defect fixed while building it** (in `tools/BdDocTemplate/reference-handbook.html`,
+so every future dossier gets it): `break-inside: avoid` on `table` / `.table-wrap`
+does not keep a long table whole — the renderer bumps the whole block to the
+next page and leaves the current one two-thirds empty. Six pages were wasted
+that way. Tables now break, `thead` repeats via `display: table-header-group`,
+and rows/list items still stay whole. **25 pages → 23 with the same content.**
+
+## ➡ NEXT — whole-database duplicate sweep
+
+Seed prompt written and ready to paste into a fresh session:
+`docs/BD-Duplicate-Sweep-Prompt-2026-09-04.md`. Grounded in live 2026-09-04
+measurements — 9,734 live orgs, only 2,530 with a domain anchor; 327 same-domain
+groups / 845 orgs (306 / 721 excluding government umbrellas); 3,551 duplicate
+affiliation pairs, 3,493 of them last written in June 2026.
 
 ## ⛔ SCOPE RULE — Rory's dossier is VANCOUVER ISLAND ONLY
 
@@ -12,17 +46,29 @@ In a document for the Principal, Vancouver Island that reads as though we are
 presenting them as his market — in the one section meant to build confidence in
 the data.
 
-**In the dossier — the five Island cities (2,774 applications):**
+**In the dossier — the five Island cities. Measured 2026-09-04 AFTER the
+trade-permit purge, which is what v4 ships:**
 
-| Saanich | Nanaimo | Langford | Victoria | Colwood |
-| --- | --- | --- | --- | --- |
-| 1,398 | 877 | 349 | 121 | 29 |
+| Saanich | Nanaimo | Langford | Victoria | Colwood | **Total** |
+| --- | --- | --- | --- | --- | --- |
+| 960 | 876 | 349 | 121 | 29 | **2,335** |
 
-Plus **$326M of construction value across 293 priced Langford applications.**
+⚠ An earlier draft of this file said **2,774 / Saanich 1,398 / Nanaimo 877**.
+Those were pre-purge counts and are **wrong**. 439 trade permits (plumbing,
+tree, boulevard, sign, woodstove) were removed on 2026-09-04. Use the table
+above.
+
+Derived figures, all verified against the shipped PDF:
+- **1,626 of 2,335 are BD-relevant** (excludes single-lot residential building permits).
+- **837 filed in the last 12 months** (Nanaimo excluded — it publishes no dates).
+- **$326,163,279 across 293 priced Langford applications**; 8 at $10M+.
+- **75 firms / 1,821 person-affiliations** banked from the permit file.
+- Applicant field across 2,335: **532 named parties, 489 role words, 1,314 empty.**
 
 **In the platform, OUT of the dossier:** Coquitlam (391), Maple Ridge (120).
 ⚠ Any headline count must exclude them — "3,285 applications" silently included
-511 Lower Mainland rows.
+511 Lower Mainland rows. v4 names them **once**, in the honest-labels section,
+as an explicit statement that they are excluded.
 
 **Off-Island HEAD OFFICE is fine; off-Island MARKET is not.** Northland,
 Townline, Intracorp, Reliance, Ledcor and Starlight are Vancouver- or

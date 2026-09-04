@@ -261,8 +261,20 @@
     /* Keep blocks whole across page breaks. */
     h2, h3, h4 { break-after: avoid; }
     section { break-inside: auto; }
-    .box, .flow, .flow__step, .table-wrap, table, .chip-row, .map { break-inside: avoid; }
+    .box, .flow, .flow__step, .chip-row, .map { break-inside: avoid; }
     tr, li { break-inside: avoid; }
+    /* Tables MAY break across pages, and their header repeats when they do.
+       `break-inside: avoid` on a table taller than a page does not keep it
+       whole — the renderer bumps the whole block to the next page and leaves
+       the current one two-thirds empty. That cost six wasted pages in the
+       Island who's-who v4 (a 15-row door list and a 13-row permit register),
+       and it is the same class as the wide-table column loss above: the print
+       CSS assumed every block fits on one page. Rows and list items still
+       stay whole, which is the part that actually matters to a reader. */
+    .table-wrap { break-inside: auto; }
+    table { break-inside: auto; }
+    thead { display: table-header-group; }
+    tfoot { display: table-footer-group; }
     a.inline, .toc a { text-decoration: none; }
     footer { break-inside: avoid; }
   }

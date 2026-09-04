@@ -2,60 +2,358 @@
   "_source": "Apollo.io bulk organization enrichment, 2026-09-04, batch 2. Domains from Saanich + Colwood Tempest/Prospero applicant agents, filtered to BD-relevant permit types only (rezoning, development permit, commercial, subdivision, DVP, board of variance) — trade permits excluded.",
   "_note": "Supplements victoria-applicant-firms-2026-09-04.json. Together these are the Island firm set for the v4 dossier.",
   "firms": [
-    {"domain":"rjc.ca","name":"RJC Engineers (Read Jones Christoffersen)","kind":"Competitor","city":"Vancouver","employees":770,"founded":1948,"revenue":25000000,"phone":"+1 604-738-0048","apps":4,
-     "note":"⭐ KOR'S MOST DIRECT COMPETITOR, and it is filing in Saanich. Employee-owned STRUCTURAL ENGINEERING + building science firm, 20+ Canadian cities incl. a Nanaimo office (v2 noted this). Keywords lead with structural engineering, SEISMIC engineering, structural restoration, HERITAGE restoration, MASS TIMBER, building envelope, parking structures. 311 engineering staff. Headcount +13% over 24 months.",
-     "kor_fit":"DIRECT COMPETITOR — same lane, same island, larger"},
-
-    {"domain":"lhra.ca","name":"Low Hammond Rowe Architects Inc.","kind":"Architect","city":"Saanich","hq":"300-1590 Cedar Hill Cross Rd, Saanich","employees":23,"founded":1985,"phone":"+1 250-472-8013","apps":2,
-     "note":"v2 called this 'the closest fit on this page to KOR's strengths' from research alone — the permit file confirms it. Partners Jackson Low, Paul Hammond, Christopher Rowe. PASSIVE HOUSE, HYBRID MASS TIMBER, university buildings, libraries, multi-family market and non-market, seniors housing and care, recreation. Headcount +58% over 24 months.",
-     "kor_fit":"HIGHEST — timber + institutional + seniors, Island-native, growing"},
-
-    {"domain":"dhk.ca","name":"dHKarchitects (de Hoog & Kierulf)","kind":"Architect","city":"Victoria","hq":"977 Fort St, Victoria (+ Nanaimo)","employees":14,"founded":2001,"phone":"+1 250-658-3367","apps":3,
-     "note":"THE ONE ARCHITECT WITH KOR HISTORY (1 job, Jul 2025). Dual Victoria/Nanaimo. Their own positioning: 'deep understanding of Vancouver Island, navigating regional logistics, complex municipal codes'. Multi-family, affordable housing, seniors/complex care, institutional, marina. Headcount +62% over 24 months.",
-     "kor_fit":"WARMEST ARCHITECT DOOR — existing relationship, growing fast"},
-
-    {"domain":"hcma.ca","name":"hcma architecture + design","kind":"Architect","city":"Vancouver","employees":210,"founded":1976,"revenue":14523000,"phone":"+1 604-732-6620","apps":2,
-     "note":"⚠ The VIU 266-bed hybrid CLT student housing architect — the flagship Island mass-timber job where FAST + EPP holds the structural seat. Certified B Corp. Studios in Vancouver, VICTORIA, Calgary, Edmonton. Recreation, civic, libraries, healthcare, education.",
-     "kor_fit":"HIGH but contested — they already have a timber structural partner"},
-
-    {"domain":"mgba.com","name":"Mallen Gowing Berzins Architecture (MGBA)","kind":"Architect","city":"Vancouver","employees":47,"founded":2005,"phone":"+1 604-484-8285","apps":2,
-     "note":"20-year history, projects from Haida Gwaii to Ontario. Hospitality, institutional, commercial, retail, residential mixed-use, industrial."},
-
-    {"domain":"abbarch.com","name":"ABBARCH Architecture Inc.","kind":"Architect","city":"Toronto/Vancouver","employees":46,"founded":1979,"revenue":13657000,"phone":"+1 604-669-4041","apps":2,
-     "note":"Retail, grocery, commercial, industrial focus. Scarborough Town Centre, Pacific Centre Sears redevelopment."},
-
-    {"domain":"numberten.com","name":"Number TEN Architectural Group","kind":"Architect","city":"Winnipeg","employees":83,"founded":1953,"phone":"+1 204-942-0981","apps":2,
-     "note":"Offices in Winnipeg, Regina and VICTORIA. Sustainable design since 1993. Civic, commercial, educational, recreational. Strong Indigenous engagement positioning."},
-
-    {"domain":"continuumarchitecture.ca","name":"Continuum Architecture Inc.","kind":"Architect","city":"Victoria","hq":"519 Pandora Ave, Victoria","employees":13,"founded":1910,"phone":"+1 250-388-4261","apps":2,
-     "note":"Victoria's oldest practice (1910), rebranded from KPL James in 2020. HEALTHCARE, seniors care, advanced education, industrial, mixed-use/multi-family. LEED Platinum. Certified living wage employer. ⚠ This is the firm whose narrative was overwritten by a Denver developer's in the 2026-09-03 Continuum incident — now correctly anchored."},
-
-    {"domain":"aragon.ca","name":"Aragon Properties Ltd.","kind":"Developer","city":"Vancouver","employees":49,"founded":1988,"revenue":13814000,"phone":"+1 604-732-6170","apps":3,
-     "note":"Vancouver + GTA. Manages land acquisition through construction, marketing and sales in-house. Single-family, townhomes, condominiums, mixed-use. Filing as 'ARAGON (CORDOVA BAY) PROP. LTD' in Saanich."},
-
-    {"domain":"greystar.com","name":"Greystar","kind":"Developer","city":"Charleston SC","employees":20000,"founded":1993,"revenue":600000000,"apps":2,
-     "note":"KOR HAS 2 JOBS WITH THEM (last Feb 2026). ~$320-350B real estate under management, 1.1M units, 60+ offices. v2 flagged University Heights (597 rental homes) as 'late, not live' — but they are filing in SAANICH now, which is the next one v2 said to watch for.",
-     "kor_fit":"HIGH — existing client, and v2's prediction that they would come back is confirmed"},
-
-    {"domain":"shape.ca","name":"SHAPE","kind":"Developer","city":"Vancouver","employees":210,"founded":2005,"revenue":22792000,"phone":"+1 604-681-2358","apps":2,
-     "note":"CEO John Horton. The Amazing Brentwood, The City of Lougheed. Fully integrated: land acquisition to property management. Master planning, open-air retail, high-rise residential. Filing as 'SHAPE PROPERTIES GREGORY HOWRE' in Saanich."},
-
-    {"domain":"amica.ca","name":"Amica Senior Lifestyles","kind":"Buyer","city":"Toronto","employees":1700,"founded":1996,"revenue":683500000,"phone":"+1 416-487-2020","apps":1,
-     "note":"⭐ OWNED BY ONTARIO TEACHERS' PENSION PLAN. 34 luxury seniors residences across ON, BC, AB. Independent living, assisted living, memory care. Filing 'AMICA ON THE GORGE' in Saanich. Seniors housing and care is a KOR lane and this is an institutional owner buying design directly.",
-     "kor_fit":"HIGH — institutional seniors-care owner, pension-fund backed"},
-
-    {"domain":"habitatvictoria.com","name":"Habitat for Humanity Victoria","kind":"Buyer","city":"Langford","hq":"849 Orono Ave, Langford","employees":26,"founded":1990,"phone":"+1 250-386-7867","apps":2,
-     "note":"Registered charity, 34 homes built. Affordable homeownership in the Capital Region. An owner that builds directly."},
-
-    {"domain":"woodsmere.ca","name":"Woodsmere Holdings Corp.","kind":"Developer","city":"Lethbridge AB","employees":35,"phone":"+1 780-513-6200","apps":1,
-     "note":"PURPOSE-BUILT RENTAL apartments, multi-family. Alberta HQ, filing on the Island."},
-
-    {"domain":"ivlm.ca","name":"Island View Land Management","kind":"Developer","city":"Brentwood Bay","employees":1,"phone":"+1 250-514-8429","apps":2,
-     "note":"Related to Islandview Group (islandviewgroup.ca) already held — same principal, Niall Paltiel. ⚠ Verify whether these should be merged."}
+    {
+      "domain": "rjc.ca",
+      "name": "RJC Engineers (Read Jones Christoffersen)",
+      "kind": "Competitor",
+      "city": "Vancouver",
+      "employees": 770,
+      "founded": 1948,
+      "revenue": 25000000,
+      "phone": "+1 604-738-0048",
+      "apps": 4,
+      "note": "⭐ KOR'S MOST DIRECT COMPETITOR, and it is filing in Saanich. Employee-owned STRUCTURAL ENGINEERING + building science firm, 20+ Canadian cities incl. a Nanaimo office (v2 noted this). Keywords lead with structural engineering, SEISMIC engineering, structural restoration, HERITAGE restoration, MASS TIMBER, building envelope, parking structures. 311 engineering staff. Headcount +13% over 24 months.",
+      "kor_fit": "DIRECT COMPETITOR — same lane, same island, larger"
+    },
+    {
+      "domain": "lhra.ca",
+      "name": "Low Hammond Rowe Architects Inc.",
+      "kind": "Architect",
+      "city": "Saanich",
+      "hq": "300-1590 Cedar Hill Cross Rd, Saanich",
+      "employees": 23,
+      "founded": 1985,
+      "phone": "+1 250-472-8013",
+      "apps": 2,
+      "note": "v2 called this 'the closest fit on this page to KOR's strengths' from research alone — the permit file confirms it. Partners Jackson Low, Paul Hammond, Christopher Rowe. PASSIVE HOUSE, HYBRID MASS TIMBER, university buildings, libraries, multi-family market and non-market, seniors housing and care, recreation. Headcount +58% over 24 months.",
+      "kor_fit": "HIGHEST — timber + institutional + seniors, Island-native, growing"
+    },
+    {
+      "domain": "dhk.ca",
+      "name": "dHKarchitects (de Hoog & Kierulf)",
+      "kind": "Architect",
+      "city": "Victoria",
+      "hq": "977 Fort St, Victoria (+ Nanaimo)",
+      "employees": 14,
+      "founded": 2001,
+      "phone": "+1 250-658-3367",
+      "apps": 3,
+      "note": "THE ONE ARCHITECT WITH KOR HISTORY (1 job, Jul 2025). Dual Victoria/Nanaimo. Their own positioning: 'deep understanding of Vancouver Island, navigating regional logistics, complex municipal codes'. Multi-family, affordable housing, seniors/complex care, institutional, marina. Headcount +62% over 24 months.",
+      "kor_fit": "WARMEST ARCHITECT DOOR — existing relationship, growing fast"
+    },
+    {
+      "domain": "hcma.ca",
+      "name": "hcma architecture + design",
+      "kind": "Architect",
+      "city": "Vancouver",
+      "employees": 210,
+      "founded": 1976,
+      "revenue": 14523000,
+      "phone": "+1 604-732-6620",
+      "apps": 2,
+      "note": "⚠ The VIU 266-bed hybrid CLT student housing architect — the flagship Island mass-timber job where FAST + EPP holds the structural seat. Certified B Corp. Studios in Vancouver, VICTORIA, Calgary, Edmonton. Recreation, civic, libraries, healthcare, education.",
+      "kor_fit": "HIGH but contested — they already have a timber structural partner"
+    },
+    {
+      "domain": "mgba.com",
+      "name": "Mallen Gowing Berzins Architecture (MGBA)",
+      "kind": "Architect",
+      "city": "Vancouver",
+      "employees": 47,
+      "founded": 2005,
+      "phone": "+1 604-484-8285",
+      "apps": 2,
+      "note": "20-year history, projects from Haida Gwaii to Ontario. Hospitality, institutional, commercial, retail, residential mixed-use, industrial."
+    },
+    {
+      "domain": "abbarch.com",
+      "name": "ABBARCH Architecture Inc.",
+      "kind": "Architect",
+      "city": "Toronto/Vancouver",
+      "employees": 46,
+      "founded": 1979,
+      "revenue": 13657000,
+      "phone": "+1 604-669-4041",
+      "apps": 2,
+      "note": "Retail, grocery, commercial, industrial focus. Scarborough Town Centre, Pacific Centre Sears redevelopment."
+    },
+    {
+      "domain": "numberten.com",
+      "name": "Number TEN Architectural Group",
+      "kind": "Architect",
+      "city": "Winnipeg",
+      "employees": 83,
+      "founded": 1953,
+      "phone": "+1 204-942-0981",
+      "apps": 2,
+      "note": "Offices in Winnipeg, Regina and VICTORIA. Sustainable design since 1993. Civic, commercial, educational, recreational. Strong Indigenous engagement positioning."
+    },
+    {
+      "domain": "continuumarchitecture.ca",
+      "name": "Continuum Architecture Inc.",
+      "kind": "Architect",
+      "city": "Victoria",
+      "hq": "519 Pandora Ave, Victoria",
+      "employees": 13,
+      "founded": 1910,
+      "phone": "+1 250-388-4261",
+      "apps": 2,
+      "note": "Victoria's oldest practice (1910), rebranded from KPL James in 2020. HEALTHCARE, seniors care, advanced education, industrial, mixed-use/multi-family. LEED Platinum. Certified living wage employer. ⚠ This is the firm whose narrative was overwritten by a Denver developer's in the 2026-09-03 Continuum incident — now correctly anchored."
+    },
+    {
+      "domain": "aragon.ca",
+      "name": "Aragon Properties Ltd.",
+      "kind": "Developer",
+      "city": "Vancouver",
+      "employees": 49,
+      "founded": 1988,
+      "revenue": 13814000,
+      "phone": "+1 604-732-6170",
+      "apps": 3,
+      "note": "Vancouver + GTA. Manages land acquisition through construction, marketing and sales in-house. Single-family, townhomes, condominiums, mixed-use. Filing as 'ARAGON (CORDOVA BAY) PROP. LTD' in Saanich."
+    },
+    {
+      "domain": "greystar.com",
+      "name": "Greystar",
+      "kind": "Developer",
+      "city": "Charleston SC",
+      "employees": 20000,
+      "founded": 1993,
+      "revenue": 600000000,
+      "apps": 2,
+      "note": "KOR HAS 2 JOBS WITH THEM (last Feb 2026). ~$320-350B real estate under management, 1.1M units, 60+ offices. v2 flagged University Heights (597 rental homes) as 'late, not live' — but they are filing in SAANICH now, which is the next one v2 said to watch for.",
+      "kor_fit": "HIGH — existing client, and v2's prediction that they would come back is confirmed"
+    },
+    {
+      "domain": "shape.ca",
+      "name": "SHAPE",
+      "kind": "Developer",
+      "city": "Vancouver",
+      "employees": 210,
+      "founded": 2005,
+      "revenue": 22792000,
+      "phone": "+1 604-681-2358",
+      "apps": 2,
+      "note": "CEO John Horton. The Amazing Brentwood, The City of Lougheed. Fully integrated: land acquisition to property management. Master planning, open-air retail, high-rise residential. Filing as 'SHAPE PROPERTIES GREGORY HOWRE' in Saanich."
+    },
+    {
+      "domain": "amica.ca",
+      "name": "Amica Senior Lifestyles",
+      "kind": "Buyer",
+      "city": "Toronto",
+      "employees": 1700,
+      "founded": 1996,
+      "revenue": 683500000,
+      "phone": "+1 416-487-2020",
+      "apps": 1,
+      "note": "⭐ OWNED BY ONTARIO TEACHERS' PENSION PLAN. 34 luxury seniors residences across ON, BC, AB. Independent living, assisted living, memory care. Filing 'AMICA ON THE GORGE' in Saanich. Seniors housing and care is a KOR lane and this is an institutional owner buying design directly.",
+      "kor_fit": "HIGH — institutional seniors-care owner, pension-fund backed"
+    },
+    {
+      "domain": "habitatvictoria.com",
+      "name": "Habitat for Humanity Victoria",
+      "kind": "Buyer",
+      "city": "Langford",
+      "hq": "849 Orono Ave, Langford",
+      "employees": 26,
+      "founded": 1990,
+      "phone": "+1 250-386-7867",
+      "apps": 2,
+      "note": "Registered charity, 34 homes built. Affordable homeownership in the Capital Region. An owner that builds directly."
+    },
+    {
+      "domain": "woodsmere.ca",
+      "name": "Woodsmere Holdings Corp.",
+      "kind": "Developer",
+      "city": "Lethbridge AB",
+      "employees": 35,
+      "phone": "+1 780-513-6200",
+      "apps": 1,
+      "note": "PURPOSE-BUILT RENTAL apartments, multi-family. Alberta HQ, filing on the Island."
+    },
+    {
+      "domain": "ivlm.ca",
+      "name": "Island View Land Management",
+      "kind": "Developer",
+      "city": "Brentwood Bay",
+      "employees": 1,
+      "phone": "+1 250-514-8429",
+      "apps": 2,
+      "note": "Related to Islandview Group (islandviewgroup.ca) already held — same principal, Niall Paltiel. ⚠ Verify whether these should be merged."
+    },
+    {
+      "domain": "senseengineering.com",
+      "name": "Sense Engineering",
+      "kind": "Competitor",
+      "city": "Victoria",
+      "employees": 130,
+      "founded": 2014,
+      "revenue": 35200000,
+      "phone": "+1 250-514-2707",
+      "apps": 1,
+      "note": "⭐⭐ A SECOND DIRECT STRUCTURAL COMPETITOR ON THE ISLAND, and v2 missed it entirely. Founded 2014 by Brennan Vollering and Ted Denniston. STRUCTURAL ENGINEERING, building envelope, restoration, SEISMIC ASSESSMENT, capital planning. 10 offices; Victoria listed first. Headcount +29% over 24 months.",
+      "kor_fit": "DIRECT COMPETITOR — Victoria-headquartered, fast-growing, same services"
+    },
+    {
+      "domain": "mccuaig.net",
+      "name": "McCuaig & Associates Engineering Ltd. (MAE)",
+      "kind": "Competitor",
+      "city": "Vancouver",
+      "employees": 42,
+      "founded": 1992,
+      "revenue": 3367000,
+      "phone": "+1 604-255-0992",
+      "apps": 1,
+      "note": "Building science, envelope, concrete restoration, HERITAGE restoration, mechanical/electrical. Assessment and renovation of EXISTING buildings. Adjacent competitor — restoration overlaps KOR's heritage lane. +39% headcount over 24 months."
+    },
+    {
+      "domain": "cityspaces.ca",
+      "name": "CitySpaces Consulting",
+      "kind": "Architect",
+      "city": "Vancouver + VICTORIA",
+      "employees": 29,
+      "founded": 1985,
+      "revenue": 15432000,
+      "phone": "+1 604-687-2281",
+      "apps": 4,
+      "note": "Community planning and development consulting, 40 years. Affordable housing, Indigenous planning, feasibility, public engagement. Did View Royal's Official Community Plan. A gatekeeper to non-market and municipal work."
+    },
+    {
+      "domain": "westplanconsulting.ca",
+      "name": "Westplan Consulting Group",
+      "kind": "Architect",
+      "city": "Victoria",
+      "employees": 2,
+      "founded": 2022,
+      "phone": "+1 250-713-9789",
+      "apps": 3,
+      "note": "Mark Holland RPP FCIP and Teunesha Evertse RPP MCIP — 40 years combined. Development approvals, OCP, zoning amendments, urban containment boundary, reconciliation lands. Tiny but sits at the approvals gate."
+    },
+    {
+      "domain": "crd.bc.ca",
+      "name": "Capital Regional District (CRD)",
+      "kind": "Buyer",
+      "city": "Victoria",
+      "hq": "625 Fisgard St, Victoria",
+      "employees": 950,
+      "founded": 1966,
+      "revenue": 218000000,
+      "phone": "+1 250-360-3000",
+      "apps": 1,
+      "note": "⭐ The regional government for Greater Victoria — 13 municipalities, 413,000 residents, 24-member board. Water, waste, PARKS AND RECREATION, planning, housing. 37 engineering staff. A major public owner that buys design directly. v2 noted Studio 531 already works with them."
+    },
+    {
+      "domain": "plsi.ca",
+      "name": "Polaris Land Surveying Inc",
+      "kind": "Vendor",
+      "city": "Oak Bay",
+      "employees": 11,
+      "founded": 1993,
+      "apps": 1,
+      "note": "BC land surveyors — subdivision, rezoning support, 3D laser scanning, UAV, First Nations treaty land surveys. Team-mapping value: they see subdivisions before anyone."
+    },
+    {
+      "domain": "elac.ca",
+      "name": "LEES + Associates",
+      "kind": "Architect",
+      "city": "Vancouver",
+      "employees": 31,
+      "founded": 1998,
+      "apps": 1,
+      "note": "Landscape architecture and planning. Parks, trails, greenways, cemetery and memorial design, climate resilience. Principals Megan Turnock, Heidi Redman, Richard Cook."
+    },
+    {
+      "domain": "calid.ca",
+      "name": "Calid Services Ltd.",
+      "kind": "Vendor",
+      "city": "Victoria",
+      "employees": 4,
+      "founded": 1999,
+      "phone": "+1 250-388-6919",
+      "apps": 1,
+      "note": "Civil engineering and landscape architecture, Victoria and southern Vancouver Island."
+    },
+    {
+      "domain": "cypresslandservices.com",
+      "name": "Cypress Land Services",
+      "kind": "Vendor",
+      "city": "Vancouver",
+      "employees": 18,
+      "founded": 2013,
+      "apps": 3,
+      "note": "⚠ NOT OUR LANE — telecom and EV land rights, tower siting, fibre. Appears on Saanich ANTENNA permits. Recorded so nobody re-investigates it."
+    },
+    {
+      "domain": "sebaconstruction.com",
+      "name": "Seba Construction Ltd.",
+      "kind": "GC",
+      "city": "Victoria",
+      "phone": "+1 250-516-1224",
+      "apps": 3,
+      "note": "Custom home builder and developer, Victoria. v2 named it under 'Seacliff · Seba · Viking'."
+    },
+    {
+      "domain": "oemarchitectureoffice.com",
+      "name": "OEM Architecture Office Inc.",
+      "kind": "Architect",
+      "city": "Brentwood Bay",
+      "employees": 2,
+      "apps": 1
+    },
+    {
+      "domain": "robertblaneydesign.com",
+      "name": "Robert Blaney Design Inc",
+      "kind": "Designer",
+      "city": "West Vancouver",
+      "employees": 6,
+      "apps": 2,
+      "note": "Custom homes, timber frame, Built Green Gold. Works across BC incl. Victoria."
+    },
+    {
+      "domain": "hausen.ca",
+      "name": "Hausen Projects Inc.",
+      "kind": "GC",
+      "city": "Victoria",
+      "founded": 2022,
+      "apps": 1,
+      "note": "Building design studio and project consulting — feasibility, permit and construction documentation."
+    },
+    {
+      "domain": "maxcellent.ca",
+      "name": "Maxcellent Group",
+      "kind": "Developer",
+      "founded": 2013,
+      "apps": 3,
+      "note": "Dima Itskovich. Owner's representative, preconstruction, municipal approvals, hospitality/hotels. 22 years experience."
+    },
+    {
+      "domain": "luxuriahomes.ca",
+      "name": "Luxuria Homes",
+      "kind": "GC",
+      "city": "Calgary",
+      "employees": 22,
+      "founded": 2003,
+      "apps": 4,
+      "note": "Alberta home builder, division of Luxuria Group, expanding into BC. Filing as 'COOK ST PROPERTIES LTD' in Victoria."
+    }
   ],
   "unmatched_in_apollo": [
-    "nesarch.ca (NES Architecture, 4 apps)", "hillelarch.ca (Karen Hillel Architect, 2 apps)",
-    "abstractdevelopments.co (Abstract Developments — v2 named it; try abstractdevelopments.com)",
-    "minergroup.ca", "havenprojects.ca"
-  ]
+    "nesarch.ca (NES Architecture, 4 apps)",
+    "hillelarch.ca (Karen Hillel Architect, 2 apps)",
+    "jrtw.ca (JRTW Planning Services, 2 apps)",
+    "makoladev.com (M'akola — held in Brain as makoladevelopment.com)",
+    "abstractdevelopments.co (Abstract Developments — v2 named it)",
+    "minergroup.ca",
+    "havenprojects.ca",
+    "liaengineering.com",
+    "dotcross.ca",
+    "studioleaf.ca",
+    "motionconstruction.com",
+    "sharplescontracting.com",
+    "blackwolfbuilding.com",
+    "patriothomes.ca",
+    "bellgroup.com",
+    "NOTE: these are recorded from the permit file regardless — firm name, agent name, email and application count are the city's data, not Apollo's."
+  ],
+  "_apollo_batches": "54 Island domains attempted; 8 more were ALREADY HELD in the Brain and deliberately skipped (stantec.com 1,803 awards, wsp.com 1,800, arcadis.com, franclarchitecture.com, mcmparchitects.com, uwarchitecture.com, islandhealth.ca, kangandgill.com)."
 }
