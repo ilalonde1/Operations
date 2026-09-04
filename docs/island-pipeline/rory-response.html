@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KOR Structural &mdash; Island who&rsquo;s-who: response to Rory</title>
+<style>
+  :root {
+    --ground: #FBFAF9;
+    --surface: #FFFFFF;
+    --surface-2: #F4F2F0;
+    --ink: #1C2530;
+    --ink-soft: #55636F;
+    --ink-faint: #8A97A2;
+    --line: #E5E4E1;
+    --line-strong: #D3D2CE;
+    --slate: #3F5364;
+    --slate-deep: #2C3A47;
+    --accent: #FF5B35;
+    --accent-ink: #C6360F;
+    --good: #1E7D3A;   --good-bg: #E7F3EB;
+    --warn: #A9741A;   --warn-bg: #FBF1DE;
+    --crit: #C0392B;   --crit-bg: #FBE9E7;
+    --blue: #3E7CB1;   --blue-bg: #E8F0F7;
+    --shadow: 0 1px 2px rgba(28,37,48,.06), 0 8px 24px rgba(28,37,48,.05);
+    --radius: 10px;
+    --maxread: 44rem;
+    --sans: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+    --mono: "Cascadia Code", Consolas, "SF Mono", ui-monospace, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground: #13171C;
+      --surface: #1A2027;
+      --surface-2: #212A33;
+      --ink: #E9ECEF;
+      --ink-soft: #A6B2BC;
+      --ink-faint: #6E7C87;
+      --line: #29323B;
+      --line-strong: #38434E;
+      --slate: #7E97AC;
+      --slate-deep: #C4D3DF;
+      --accent: #FF7150;
+      --accent-ink: #FF9276;
+      --good: #6BD08A;   --good-bg: #16281C;
+      --warn: #E3B25A;   --warn-bg: #2C2413;
+      --crit: #F0938A;   --crit-bg: #2E1815;
+      --blue: #7FB1D9;   --blue-bg: #14212C;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="light"] {
+    --ground: #FBFAF9; --surface: #FFFFFF; --surface-2: #F4F2F0;
+    --ink: #1C2530; --ink-soft: #55636F; --ink-faint: #8A97A2;
+    --line: #E5E4E1; --line-strong: #D3D2CE; --slate: #3F5364; --slate-deep: #2C3A47;
+    --accent: #FF5B35; --accent-ink: #C6360F;
+    --good: #1E7D3A; --good-bg: #E7F3EB; --warn: #A9741A; --warn-bg: #FBF1DE;
+    --crit: #C0392B; --crit-bg: #FBE9E7; --blue: #3E7CB1; --blue-bg: #E8F0F7;
+    --shadow: 0 1px 2px rgba(28,37,48,.06), 0 8px 24px rgba(28,37,48,.05);
+  }
+  :root[data-theme="dark"] {
+    --ground: #13171C; --surface: #1A2027; --surface-2: #212A33;
+    --ink: #E9ECEF; --ink-soft: #A6B2BC; --ink-faint: #6E7C87;
+    --line: #29323B; --line-strong: #38434E; --slate: #7E97AC; --slate-deep: #C4D3DF;
+    --accent: #FF7150; --accent-ink: #FF9276;
+    --good: #6BD08A; --good-bg: #16281C; --warn: #E3B25A; --warn-bg: #2C2413;
+    --crit: #F0938A; --crit-bg: #2E1815; --blue: #7FB1D9; --blue-bg: #14212C;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  body {
+    margin: 0; background: var(--ground); color: var(--ink);
+    font-family: var(--sans); font-size: 17px; line-height: 1.68;
+    -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+  }
+
+  /* ---------- Hero ---------- */
+  .hero {
+    background:
+      radial-gradient(120% 140% at 88% -20%, rgba(255,91,53,.20), transparent 55%),
+      linear-gradient(180deg, var(--slate-deep), var(--slate));
+    color: #EAF0F5; padding: clamp(2.4rem, 6vw, 4.2rem) 1.5rem clamp(2rem, 5vw, 3.4rem);
+    border-bottom: 3px solid var(--accent);
+  }
+  .hero__wrap { max-width: 62rem; margin: 0 auto; }
+  .hero__eyebrow {
+    font-family: var(--mono); font-size: .72rem; letter-spacing: .22em;
+    text-transform: uppercase; color: #FFB59F; margin: 0 0 .9rem;
+  }
+  .hero h1 {
+    font-size: clamp(2rem, 5.2vw, 3.35rem); line-height: 1.05; margin: 0 0 .8rem;
+    font-weight: 700; letter-spacing: -.02em; text-wrap: balance; color: #FFFFFF;
+  }
+  .hero__lede {
+    font-size: clamp(1.05rem, 2.2vw, 1.3rem); max-width: 34rem; margin: 0;
+    color: #CBD8E2; line-height: 1.5;
+  }
+  .hero__meta {
+    margin-top: 1.6rem; display: flex; flex-wrap: wrap; gap: .5rem .7rem;
+    font-family: var(--mono); font-size: .74rem; color: #9FB3C4;
+  }
+  .hero__meta span { background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.12);
+    padding: .28rem .6rem; border-radius: 999px; }
+  /* Bold text inside the hero, on the dark ground. Without this it inherits the
+     accent colour and prints as dim amber on navy — barely legible, and the
+     emphasised words are usually the numbers the page exists to carry. Lives
+     OUTSIDE @media print on purpose so screen and print agree. Documented in
+     this directory's CLAUDE.md; it had gone missing from the style block and
+     was caught by looking at a rendered PDF page on 2026-09-04. */
+  .hero strong, .hero b { color: #FFFFFF; font-weight: 700; }
+
+  /* ---------- Shell ---------- */
+  .shell { max-width: 62rem; margin: 0 auto; padding: 0 1.5rem;
+    display: grid; grid-template-columns: 15rem minmax(0, 1fr); gap: 2.6rem; }
+  @media (max-width: 940px) { .shell { grid-template-columns: 1fr; gap: 0; } }
+
+  /* ---------- Table of contents ---------- */
+  .toc { position: sticky; top: 0; align-self: start; max-height: 100vh; overflow-y: auto;
+    padding: 2.2rem 0; }
+  @media (max-width: 940px) { .toc { position: static; max-height: none; padding: 1.4rem 0 0; } }
+  .toc__title { font-family: var(--mono); font-size: .68rem; letter-spacing: .2em;
+    text-transform: uppercase; color: var(--ink-faint); margin: 0 0 .8rem; }
+  .toc ol { list-style: none; margin: 0; padding: 0; counter-reset: toc; }
+  .toc li { margin: 0; }
+  .toc a { display: flex; gap: .6rem; align-items: baseline; text-decoration: none;
+    color: var(--ink-soft); padding: .32rem 0; font-size: .93rem; line-height: 1.3;
+    border-left: 2px solid transparent; padding-left: .7rem; transition: color .15s, border-color .15s; }
+  .toc a::before { counter-increment: toc; content: counter(toc, decimal-leading-zero);
+    font-family: var(--mono); font-size: .7rem; color: var(--ink-faint); }
+  .toc a:hover { color: var(--accent-ink); }
+  .toc a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 3px; }
+
+  /* ---------- Content ---------- */
+  main { padding: 2.2rem 0 5rem; min-width: 0; }
+  section { scroll-margin-top: 1.2rem; padding: 2.2rem 0; border-top: 1px solid var(--line); }
+  section:first-of-type { border-top: 0; padding-top: 1.4rem; }
+  .kicker { font-family: var(--mono); font-size: .72rem; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--accent-ink); margin: 0 0 .5rem; font-weight: 600; }
+  h2 { font-size: clamp(1.45rem, 3.4vw, 1.95rem); line-height: 1.15; margin: 0 0 .9rem;
+    letter-spacing: -.015em; font-weight: 700; text-wrap: balance; }
+  h3 { font-size: 1.14rem; margin: 1.8rem 0 .5rem; font-weight: 650; letter-spacing: -.01em; }
+  p { max-width: var(--maxread); margin: 0 0 1rem; }
+  .lede { font-size: 1.12rem; color: var(--ink-soft); max-width: var(--maxread); }
+  strong { font-weight: 650; color: var(--ink); }
+  a.inline { color: var(--accent-ink); text-decoration: underline; text-underline-offset: 2px;
+    text-decoration-thickness: 1px; }
+
+  ul.plain { max-width: var(--maxread); margin: 0 0 1rem; padding-left: 0; list-style: none; }
+  ul.plain li { position: relative; padding-left: 1.5rem; margin: 0 0 .55rem; }
+  ul.plain li::before { content: ""; position: absolute; left: .25rem; top: .62em;
+    width: .42rem; height: .42rem; border-radius: 2px; background: var(--accent); transform: rotate(45deg); }
+
+  /* keycap + click chips */
+  kbd { font-family: var(--mono); font-size: .82em; background: var(--surface);
+    border: 1px solid var(--line-strong); border-bottom-width: 2px; border-radius: 6px;
+    padding: .08em .5em; color: var(--ink); box-shadow: 0 1px 0 rgba(0,0,0,.04); white-space: nowrap; }
+  .btn { font-family: var(--mono); font-size: .82em; background: var(--slate); color: #fff;
+    border-radius: 6px; padding: .12em .55em; white-space: nowrap; }
+  :root[data-theme="dark"] .btn, .btn { }
+  @media (prefers-color-scheme: dark) { .btn { color: #0f141a; background: var(--slate); } }
+  :root[data-theme="dark"] .btn { color: #0f141a; }
+  :root[data-theme="light"] .btn { color: #fff; }
+  .path { font-family: var(--mono); font-size: .84em; color: var(--ink-soft); white-space: nowrap; }
+  .path b { color: var(--accent-ink); font-weight: 600; }
+
+  /* status pills that mirror the app */
+  .pill { display: inline-flex; align-items: center; gap: .35em; font-family: var(--mono);
+    font-size: .72rem; font-weight: 600; padding: .18em .6em; border-radius: 999px; color: #fff;
+    letter-spacing: .01em; vertical-align: middle; }
+  .pill--won { background: #228B22; } .pill--sub { background: #E5A800; }
+  .pill--draft { background: #609BD1; } .pill--lost { background: #808080; }
+  .pill--fresh { background: #228B22; } .pill--watch { background: #E5A800; } .pill--cold { background: #C11E1E; }
+  .pill--live { background: var(--slate); }
+
+  /* callout boxes */
+  .box { border-radius: var(--radius); padding: 1.05rem 1.15rem; margin: 1.2rem 0;
+    max-width: var(--maxread); border: 1px solid var(--line); background: var(--surface);
+    box-shadow: var(--shadow); }
+  .box__label { font-family: var(--mono); font-size: .68rem; letter-spacing: .14em;
+    text-transform: uppercase; margin: 0 0 .5rem; font-weight: 700; display: flex; align-items: center; gap: .45rem; }
+  .box p, .box ul.plain { margin-bottom: .5rem; }
+  .box p:last-child, .box ul.plain:last-child { margin-bottom: 0; }
+  .box--screen { border-left: 3px solid var(--slate); background: var(--surface-2); }
+  .box--screen .box__label { color: var(--slate); }
+  .box--tip { border-left: 3px solid var(--good); background: var(--good-bg); }
+  .box--tip .box__label { color: var(--good); }
+  .box--dont { border-left: 3px solid var(--crit); background: var(--crit-bg); }
+  .box--dont .box__label { color: var(--crit); }
+  .box--auto { border-left: 3px solid var(--accent); }
+  .box--auto .box__label { color: var(--accent-ink); }
+
+  /* lifecycle sequence */
+  .flow { display: grid; grid-template-columns: repeat(3, 1fr); gap: .8rem; margin: 1.4rem 0 .5rem;
+    max-width: var(--maxread); }
+  @media (max-width: 620px) { .flow { grid-template-columns: 1fr; } }
+  .flow__step { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 1rem; box-shadow: var(--shadow); }
+  .flow__n { font-family: var(--mono); font-size: .72rem; color: #fff; background: var(--accent);
+    width: 1.5rem; height: 1.5rem; border-radius: 6px; display: grid; place-items: center; font-weight: 700; }
+  .flow__step h4 { margin: .6rem 0 .3rem; font-size: 1rem; }
+  .flow__step p { font-size: .9rem; color: var(--ink-soft); margin: 0; }
+
+  /* map grid */
+  .map { display: grid; grid-template-columns: repeat(2, 1fr); gap: .55rem .9rem;
+    max-width: var(--maxread); margin: 1rem 0; }
+  @media (max-width: 620px) { .map { grid-template-columns: 1fr; } }
+  .map div { display: flex; gap: .6rem; align-items: baseline; padding: .5rem .2rem;
+    border-bottom: 1px solid var(--line); }
+  .map dt { font-family: var(--mono); font-size: .82rem; color: var(--accent-ink);
+    font-weight: 600; min-width: 6.6rem; }
+  .map dd { margin: 0; font-size: .92rem; color: var(--ink-soft); }
+
+  /* cheat table */
+  .table-wrap { max-width: var(--maxread); overflow-x: auto; margin: 1rem 0; }
+  table { border-collapse: collapse; width: 100%; font-size: .93rem; }
+  th, td { text-align: left; padding: .6rem .7rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-family: var(--mono); font-size: .68rem; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--ink-faint); font-weight: 600; }
+  td:first-child { font-weight: 600; white-space: nowrap; }
+
+  .chip-row { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1rem 0; }
+  footer { border-top: 1px solid var(--line); padding: 1.8rem 0 3rem; color: var(--ink-faint);
+    font-size: .86rem; max-width: var(--maxread); }
+  footer .path { font-size: .8em; }
+  .fade { opacity: 0; transform: translateY(8px); animation: rise .6s ease forwards; }
+  @keyframes rise { to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .fade { opacity: 1; transform: none; animation: none; } }
+
+  /* ---------- Print / PDF ---------- */
+  /* Side margins ZERO so a hero can bleed to the paper edge; top/bottom real so
+     pages 2..n never jam (container padding does NOT repeat per page). */
+  @page { size: Letter; margin: 11mm 0 13mm; }
+  @media print {
+    :root {
+      /* Force the light palette regardless of viewer theme. */
+      --ground:#FBFAF9; --surface:#FFFFFF; --surface-2:#F4F2F0;
+      --ink:#1C2530; --ink-soft:#55636F; --ink-faint:#8A97A2;
+      --line:#E5E4E1; --line-strong:#D3D2CE; --slate:#3F5364; --slate-deep:#2C3A47;
+      --accent:#FF5B35; --accent-ink:#C6360F;
+      --good:#1E7D3A; --good-bg:#E7F3EB; --warn:#A9741A; --warn-bg:#FBF1DE;
+      --crit:#C0392B; --crit-bg:#FBE9E7; --blue:#3E7CB1; --blue-bg:#E8F0F7;
+      --shadow: none;
+    }
+    /* --maxread is a SCREEN reading measure; left as-is it leaves a dead band
+       down the right of every printed page. */
+    :root { --maxread: 100%; }
+    html { font-size: 16.5px; }
+    body { background:#fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; color-scheme: light; }
+    .fade { opacity:1 !important; transform:none !important; animation:none !important; }
+
+    .hero { margin: -11mm 0 0; padding: 13mm 13mm 10mm; border-bottom-width: 2px; }
+    .hero h1 { font-size: 30pt; }
+    .hero__lede { font-size: 12.5pt; color:#D4E0EA; }
+    .hero__meta { display:none; }
+
+    /* Single reading column; contents becomes a printed page-1 index. */
+    .shell { display:block; max-width: none; padding: 0 13mm; }
+    .toc { position: static; max-height: none; padding: 5mm 0 1mm; break-after: auto; }
+    .toc a { color: var(--ink-soft) !important; border-left-color: var(--line-strong); }
+    main { padding: 6mm 0 0; }
+    section:first-of-type { padding-top: 4mm; }
+
+    /* Keep blocks whole across page breaks. */
+    h2, h3, h4 { break-after: avoid; }
+    section { break-inside: auto; }
+    .box, .flow, .flow__step, .chip-row, .map { break-inside: avoid; }
+    tr, li { break-inside: avoid; }
+    /* Tables MAY break across pages, and their header repeats when they do.
+       `break-inside: avoid` on a table taller than a page does not keep it
+       whole — the renderer bumps the whole block to the next page and leaves
+       the current one two-thirds empty. That cost six wasted pages in the
+       Island who's-who v4 (a 15-row door list and a 13-row permit register),
+       and it is the same class as the wide-table column loss above: the print
+       CSS assumed every block fits on one page. Rows and list items still
+       stay whole, which is the part that actually matters to a reader. */
+    .table-wrap { break-inside: auto; }
+    table { break-inside: auto; }
+    thead { display: table-header-group; }
+    tfoot { display: table-footer-group; }
+    a.inline, .toc a { text-decoration: none; }
+    footer { break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+<header class="hero">
+  <div class="hero__wrap fade">
+    <p class="hero__eyebrow">KOR Structural · Vancouver Island · Confidential · Response to Rory Beirne</p>
+    <h1>You were right on all six. Here is what changed.</h1>
+    <p class="hero__lede">Every point you raised was checked against Deltek, our own records, or the firm's own published material. <strong>Six were checkable and you were right on all six</strong> — including one where our data had been telling us the opposite for three versions. The mid- and north-Island markets you asked for are now wired and reading, and they are not the greenfield either of us expected.</p>
+    <div class="hero__meta">
+      <span class="pill pill--live">4 new municipal feeds</span>
+      <span class="pill pill--fresh">2,824 Island applications</span>
+      <span class="pill pill--won">34 KOR projects already mid-Island</span>
+      <span class="pill">4 Sep 2026</span>
+    </div>
+  </div>
+</header>
+
+<div class="shell">
+  <nav class="toc" aria-label="Contents">
+    <p class="toc__title">On this page</p>
+    <ol>
+      <li><a href="#s1">Starlight — we had this wrong</a></li>
+      <li><a href="#s2">Sense — and why it is worse than a correction</a></li>
+      <li><a href="#s3">Herold, Glotman Simpson, RJC</a></li>
+      <li><a href="#s4">dHK and DAU — our numbers measure the wrong thing</a></li>
+      <li><a href="#s5">Mid and north Island — not greenfield</a></li>
+      <li><a href="#s6">What is live there now</a></li>
+      <li><a href="#s7">Who to call first</a></li>
+    </ol>
+  </nav>
+
+  <section id="s1">
+    <p class="kicker">Correction</p>
+    <h2>Starlight — we had this wrong, and you caught it</h2>
+    <p class="lede">You said David Woo works for Starlight and that invest and dev are the same or linked. <strong>You are right. The document told you the opposite three versions running, and the cause was our own data.</strong></p>
+
+    <div class="box box--dont">
+      <p class="box__label">✕ What we told you</p>
+      <p>That <strong>Starlight Development</strong> — our client — and <strong>Starlight Investments</strong>, the REIT behind Harris Green, were unrelated firms that happened to share a first word. We flagged it as a trap to avoid.</p>
+    </div>
+
+    <div class="box box--tip">
+      <p class="box__label">▸ What is actually true</p>
+      <p>They are one relationship. The evidence was in our own files the whole time:</p>
+      <ul class="plain">
+        <li>The projects we have billed that client for are <strong>2740 Spencer Rd Langford</strong>, 1701 Cedar Hill Rd Saanich, Quadra East and West in Victoria, plus Burnaby and West Vancouver. Urban multi-family — nothing like a retreat fund.</li>
+        <li><strong>Every contact we hold on that client is @starlightinvest.com</strong>, including Daniel Drimmer, the CEO of Starlight Investments.</li>
+        <li>Starlight Investments' own announcements name <strong>"The District" in Langford</strong>. That is our project at 2740 Spencer Rd.</li>
+        <li><strong>David Woo is their VP Development, Western Canada.</strong></li>
+      </ul>
+    </div>
+
+    <p><strong>So the six-storey heritage-retention building at 350 Douglas St is being filed by our own client's VP of Development</strong>, and we described him as an unrelated party. That is the single most costly line in the document and it is now gone.</p>
+
+    <div class="box box--auto">
+      <p class="box__label">▸ How it happened, and why the correction is worth more than the error cost</p>
+      <p>Every firm in our system carries a website, and that website is how the system decides two records are the same company. Our Starlight client record had been given <strong>the wrong website</strong> — a similarly-named American retreat fund. Everything downstream then reasoned correctly from a bad premise: the system compared two web addresses, saw two different companies, and confidently told us so. Nothing errored, which is exactly why it survived three drafts.</p>
+      <p>Your correction did more than fix one line. That website is now right, the two duplicate Starlight records are merged into one with <strong>118 contacts</strong> on it, and the reasoning that produced the error is written into the system as a permanent warning so it cannot be repeated on this firm. <strong>Nine other Island firms were found fragmented the same way in the same pass and merged.</strong> That is the return on telling us we are wrong: one flag fixes the instance, and usually a class of them.</p>
+    </div>
+  </section>
+
+  <section id="s2">
+    <p class="kicker">Competitive</p>
+    <h2>Sense — you are right, and it is worse than a simple correction</h2>
+    <p class="lede">You said Sense is not our competitor <em>yet</em>: envelope, restoration, inspection, capital planning, lots of small jobs, on many of the same jobs as us and working existing relationships, expanding fast with money to invest. That is now what the record says. But their own hiring tells you where it goes next.</p>
+
+    <div class="box box--dont">
+      <p class="box__label">✕ Sense is advertising for the seat we want</p>
+      <p>They are recruiting a <strong>Structural Engineering Group Lead at $150–175k</strong> and intermediate structural design engineers, to — in their own words — <em>"help lead the expansion of their practice into new construction"</em>, with BC work <em>"focused on <strong>mass timber and hybrid structures</strong>"</em>.</p>
+      <p>Mass timber is not adjacent to us. It is the thread running through every institutional project on this island — VIU's hybrid CLT student housing, Camosun Lansdowne, and the design bench rebuilding around it.</p>
+    </div>
+
+    <p><strong>The practical read:</strong> today they are a relationship threat, sitting beside us on jobs we are already on. On a twelve-to-twenty-four month view they are a bid competitor in our best lane, funded, and headquartered in Victoria. The window to be the incumbent structural voice with those shared clients is now, not later.</p>
+  </section>
+
+  <section id="s3">
+    <p class="kicker">Competitive</p>
+    <h2>Herold, Glotman Simpson, RJC</h2>
+
+    <ul class="plain">
+      <li><strong>Herold was bought by Englobe, May 2025.</strong> They run as a separate division inside Englobe and keep their structure — 70+ staff, Nanaimo head office plus <strong>Victoria and Ucluelet</strong>. So the mid-Island incumbent now has a national balance sheet behind it.
+      <br><br>
+      <em>But we have already taken one off them.</em> Westmark's <strong>Gracewood at Fairwinds in Nanoose</strong> is ours as of December 2025, and Herold is Westmark's usual structural partner. The incumbency is not absolute.</li>
+
+      <li><strong>Glotman Simpson — you were right and we missed them.</strong> Victoria office at <strong>101-19 Dallas Road</strong>, confirmed on their own site. They also already sit in our Deltek as CL00573. A Vancouver structural heavyweight with a standing Victoria office should have been in the competitor section and was not.</li>
+
+      <li><strong>RJC fees.</strong> Recorded exactly as you put it, and flagged as grapevine rather than fact — it is a pricing signal to test on the next competitive bid. For what it is worth, it fits the file: RJC is named as applicant on <strong>four routine Saanich commercial permits</strong>, which is not how a firm defending premium fees behaves.</li>
+    </ul>
+  </section>
+
+  <section id="s4">
+    <p class="kicker">Correction</p>
+    <h2>dHK and DAU — our job counts measure the wrong thing</h2>
+    <p class="lede">You said we have had a good few jobs with dHK and named 31037, 31171 and 31128. The document said one. <strong>You are right and so is the number — they are counting different things.</strong></p>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Job</th><th>Site</th><th>Who paid us</th></tr></thead>
+        <tbody>
+          <tr><td>31037</td><td>West Wave, Bagshaw, <strong>Parksville</strong></td><td>Three Dog Ventures</td></tr>
+          <tr><td>31128</td><td>Rowan, 440 Island Hwy W, <strong>Parksville</strong></td><td>Radcliffe Development</td></tr>
+          <tr><td>31171</td><td>611 Brunswick St, Prince George</td><td>Yellowridge Construction</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>dHK was the <strong>architect</strong> on all three; a developer paid the invoice. Our systems count <strong>who pays us</strong>, so dHK shows as one job — the one where they were the client. There is nowhere in our records that captures who else was on the team, so <strong>every working relationship where we were not billing the architect is currently invisible.</strong> That is a gap we are closing, and your three job numbers are the reason we found it.</p>
+
+    <p>Same shape on <strong>DAU</strong>: you remember one job that died, and our record showed them set up as a client with nothing billed. Both true. Erica Sangster is worth the call — they are named on four live Victoria applications, more than any other architect in the city.</p>
+
+    <div class="box box--auto">
+      <p class="box__label">▸ One number in the last document to strike</p>
+      <p>It claimed we have "three architect clients and seven jobs between them" and built a strategy section on it. <strong>That was wrong</strong> — it counted only architects who appear in the Island permit file, then stated it as a fact about the whole practice. Across KOR the real figure is <strong>48 architecture firms and 152 projects</strong>, led by <strong>NSDA Architects at 28</strong>, JWDA at 17 and Studio One at 13.</p>
+      <p>The underlying point survives, but only for this island: <strong>on Vancouver Island specifically our architect relationships are thin</strong>, and that is where the opening is.</p>
+    </div>
+  </section>
+
+  <section id="s5">
+    <p class="kicker">New markets</p>
+    <h2>Duncan, Parksville/Qualicum, Comox/Courtenay, Campbell River</h2>
+    <p class="lede">You expected these to look similar and to be mostly smaller wood-frame. On the work, you are right. On it being new ground, you are not — <strong>we have 34 projects there already, and eleven of them were opened in the last two years.</strong></p>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Market</th><th>KOR projects</th><th>Most recent</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Campbell River</strong></td><td>8</td><td>Mar 2026</td></tr>
+          <tr><td><strong>Parksville</strong></td><td>7</td><td><strong>Jul 2026</strong></td></tr>
+          <tr><td>Duncan / North Cowichan</td><td>6</td><td>Nov 2025</td></tr>
+          <tr><td>Qualicum Beach</td><td>5</td><td>2019</td></tr>
+          <tr><td>Comox</td><td>4</td><td>Jun 2026</td></tr>
+          <tr><td>Courtenay</td><td>2</td><td>Mar 2025</td></tr>
+          <tr><td>Nanoose · Chemainus</td><td>2</td><td>Dec 2025</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p><strong>And several are repeat clients, not one-offs:</strong></p>
+    <ul class="plain">
+      <li><strong>D Akers Property Solutions — six projects, all Campbell River</strong>, most recent March 2026. Modular and multi-family. This is our deepest mid-Island relationship and nobody has been calling it that.</li>
+      <li><strong>Three Dog Ventures — three</strong>, across Parksville and Comox, most recent <strong>22 July 2026</strong>. The freshest job in these markets.</li>
+      <li><strong>Zemcore Group</strong> — Duncan Hub, Nov 2025 · <strong>Radcliffe Development</strong> — Rowan, Parksville · <strong>Ridge North America</strong> — two in North Cowichan · <strong>Westmark</strong> — Gracewood, Nanoose · <strong>Pennyfarthing</strong> — Duncan, and a 12-project client overall.</li>
+      <li><strong>NSDA Architects</strong> — 1441 Ironwood St, Campbell River, April 2026. An architect engaging us directly, and our largest architect relationship at 28 projects.</li>
+    </ul>
+  </section>
+
+  <section id="s6">
+    <p class="kicker">New markets</p>
+    <h2>What is live there now</h2>
+    <p class="lede">Four new municipal feeds are wired and reading — <strong>489 applications</strong>, taking the Island file to <strong>2,824</strong>. Three of the six markets publish nothing, and that is worth knowing before you plan around them.</p>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Market</th><th>Applications</th><th>Names the applicant</th><th>Dated</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Courtenay</strong></td><td><strong>410</strong></td><td>No</td><td><strong>Yes — 108 in the last year</strong></td></tr>
+          <tr><td><strong>Campbell River</strong></td><td>36</td><td><strong>Yes — 35 of 36</strong></td><td>No</td></tr>
+          <tr><td>Comox — building</td><td>31</td><td>No</td><td>No</td></tr>
+          <tr><td>Comox — planning</td><td>12</td><td>No</td><td>No</td></tr>
+          <tr><td>Parksville</td><td colspan="3">Publishes no application feed</td></tr>
+          <tr><td>Qualicum Beach</td><td colspan="3">Publishes no application feed</td></tr>
+          <tr><td>Duncan / North Cowichan</td><td colspan="3">Publishes no application feed</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p><strong>Campbell River is the valuable one</strong>, because it names the applicant — only Victoria and Saanich otherwise do. What is open there right now:</p>
+
+    <ul class="plain">
+      <li><strong>WestUrban Developments — three apartment buildings, 200 units</strong>, with a height variance from 10m to 16m. The largest single application anywhere on the mid-Island file.</li>
+      <li><strong>D Akers Property Solutions — rezoning from RM-1 to RM-2 for 27 townhouse units.</strong> That is <em>our own client</em>, filing right now.</li>
+      <li><strong>Seymour Pacific Developments</strong> — OCP and zoning amendment, 700 Petersen Rd.</li>
+      <li><strong>Ian Moxon Architect</strong> — two applications, a two-storey mixed-use with five apartments.</li>
+      <li><strong>Storey Creek Golf and Recreation Society</strong> — a new 3,200 sq ft restaurant. An owner buying design directly.</li>
+      <li><strong>Bakerview Building Design</strong> — 11 townhome units · <strong>IGV Housing</strong> — a fourplex and a fiveplex · <strong>Crowne Pacific</strong> — six-unit commercial and light industrial · <strong>McElhanney</strong> — a two-storey office complex · <strong>Parkway Properties</strong> — rezoning 351 Arizona Drive.</li>
+    </ul>
+
+    <p>Courtenay gives volume and dates but no names — 410 applications, 124 of them beyond single-lot housing, 55 commercial or industrial. For <strong>Parksville, Qualicum and Duncan</strong> there is no feed to read; those markets need the regional district's permit records and council agendas, which is a manual pull. Given we have thirteen projects across those three already, the relationships are probably the faster route than the paperwork.</p>
+  </section>
+
+  <section id="s7">
+    <p class="kicker">Next</p>
+    <h2>Who to call first</h2>
+    <p class="lede">You said the next step is deciding who to contact first. On the evidence, these are the five.</p>
+
+    <ul class="plain">
+      <li><strong>David Woo, Starlight Investments.</strong> Our client, filing 350 Douglas St, and we have 118 contacts on that relationship. He should have been at the top of the last list and was not.</li>
+      <li><strong>D Akers Property Solutions.</strong> Six KOR projects, all Campbell River, and filing a 27-unit townhouse rezoning right now. The warmest live signal on the whole Island file.</li>
+      <li><strong>Three Dog Ventures.</strong> Three projects, Parksville and Comox, most recent 22 July 2026. Active and current.</li>
+      <li><strong>Erica Sangster at DAU.</strong> Four live Victoria applications — the most of any architect in the city — set up as a client and never billed. You already know her.</li>
+      <li><strong>WestUrban Developments, Campbell River.</strong> 200 units across three buildings. No relationship with us at all, and the largest thing on the mid-Island file.</li>
+    </ul>
+
+    <div class="box box--tip">
+      <p class="box__label">▸ The pattern worth noticing</p>
+      <p>Four of those five are people we already have a relationship with and were not treating as live. The Island opportunity is at least as much about <strong>what we already have and cannot see</strong> as it is about new names — which is what your six corrections just demonstrated.</p>
+    </div>
+  </section>
+
+  <footer>
+    <p>KOR Structural — Confidential / Internal · Prepared for Rory Beirne, Principal Vancouver Island · 4 September 2026</p>
+    <p>Every correction in this document has been written back into our systems, so the next version starts from the corrected position rather than repeating it.</p>
+  </footer>
+</div>
+
+</body>
+</html>
