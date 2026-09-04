@@ -2,9 +2,31 @@
 
 ## Build / test scope — IMPORTANT (avoids ~10-min hangs and false failures)
 
-**Do NOT build or test the full solution.** It is slow, and ~20 tests rebuild both reference
-buildings from real drawings over SMB (10–14 minutes). **Build/test ONLY the project(s) you
-changed, in Debug.**
+**Do NOT build or test the full solution.** **Build/test ONLY the project(s) you changed, in Debug.**
+
+### Corrected 2026-09-03 — timings, and the failures that are NOT yours
+
+The "10–14 minutes over SMB" figure that used to be here is **stale**. The reference drawings are
+mirrored locally now (`DrawingCache`). Per `CLAUDE.md`, measured 2026-08-29:
+
+| command | scope | time |
+|---|---|---|
+| `dotnet test --filter "Speed!=Slow"` | every edit | ~22 s (678 tests) |
+| `dotnet test` | geometry + publish | ~7 min (731 tests) |
+| `…App/EngineeringTools.Tests` | the WPF side | ~15 s |
+
+⚠ **The App suite has KNOWN failures that are not caused by your change.** As at 2026-09-03,
+`dotnet test Kor.Operations.App/Kor.Transmittals.App.Tests/… --filter "Speed!=Slow"` gives
+**556 passed / 3 failed**, and those three are pre-existing:
+`EmptyCatchBlockTests.No_empty_catch_blocks_in_App`,
+`EmailMetadataExtractorTests.ValidMsgFile_ReturnsExpectedCoreMetadata` (pwsh MSG),
+`IntelExtractorTests.SqlEnrichmentTrackingStore_recordAttempt…` (needs a live DB; returns early
+without one). **Diff the failure list against this baseline before concluding you broke something** —
+that mistake has been made.
+
+⚠ **`Directory.Build.props` at the repo root makes warnings errors everywhere** (commit 438e5bfa,
+2026-09-02; the NuGet audit stays a warning). A new warning fails the build.
+⛔ **Never re-add `UseSharedCompilation=false`** — it took an App edit from 14 s to 37.5 s.
 
 ### Corrected 2026-08-21 — the two warnings that used to live here were both wrong
 
@@ -38,8 +60,9 @@ dotnet test "Kor.Operations.App/EngineeringTools.Tests/Kor.Operations.Engineerin
 ```
 
 - Use **Debug** (Release optimization is slow on the WPF app). Reruns are incremental.
-- The first build still compiles `Kor.Operations.App` (one-time cost); it will NOT touch the
-  broken EmailFiler/Transmittals projects.
+- The first build still compiles `Kor.Operations.App` (one-time cost). It will not pull in
+  EmailFiler/Transmittals — which **build fine**, see the table above; the word "broken" that used
+  to sit here contradicted this file's own correction.
 - Confirm change scope with `git status --short` — it should list only the files your task
   created/edited. That is the primary zero-regression check: code you never opened cannot
   regress.
@@ -63,3 +86,49 @@ inline in the installer. Every `IJobRunner` must appear there **or** carry a wri
 same file — `SchedulingCoverageTests` fails otherwise, which is how a job that is implemented,
 registered in DI and never scheduled gets caught. `KorMapSync` was exactly that for months.
 `WatcherSyncRunner` is exempt because `WatcherHostedService` drives it; `NoOpJobRunner` is a stub.
+
+## Talking to the databases (added 2026-09-03 — this cost real time to rediscover)
+
+A developer Windows account has **no rights** on the app databases. `HAS_DBACCESS` returns 0 for the
+domain user on `KorOpportunitiesDb`, `KorEmailIndex`, `KorStandards`, `KorTransmittals` and the rest;
+they are read by the service account. `sqlcmd -E` failing is expected, not a misconfiguration.
+
+The app connects with **SQL auth**, and the connection string lives in a machine environment variable
+on KOR-APP01 named `KOR_OPPORTUNITIES_OPPORTUNITIESDB`, readable over the remote registry via
+`[Microsoft.Win32.RegistryKey]::OpenRemoteBaseKey('LocalMachine','KOR-APP01')` and the
+`Session Manager/Environment` subkey. Connect with `System.Data.SqlClient` using that string.
+**Never echo the string or the password into output, a file, or a report.**
+
+Column names that are easy to guess wrong: `CanonicalOrg.DisplayName` (not `Name`),
+`IntelPerson.DisplayName` / `.Email`, `OrgAlias.RawName` (not `Alias`),
+`IntelNarrative.ParagraphText`, `OpportunityAwards.AwardedAtUtc` / `.AwardedToOrganization`,
+`JobRuns.Success` (not `Status`), `MajorProjectsInventory.FirstSeenAtUtc` (there is no `CreatedAtUtc`).
+
+⚠ `CanonicalOrg.NormalizedName` is a **computed column** — an INSERT that sets it fails.
+`FuzzyNormalizedName` is *not* computed and must be set explicitly, or the row gets an empty fuzzy
+key and can group with unrelated orgs.
+
+## Ingestion sources — where the config actually lives
+
+Per-source settings are key/value rows in **`opportunities.OpportunitySourceMappings`**, NOT in
+`OpportunitySources.ConfigJson` (NULL for the JSON providers). Keys look like `json.pageSize`,
+`json.maxPagesPerRun`, `json.maxRowsPerRun`, `json.sort`.
+
+⚠ **Ingestion runs have a cancellation timeout.** Many small pages hit it: 120 pages × 1,000 rows ×
+1.5 s pacing was cancelled at ~9 minutes, while the same corpus in 8 pages of 10,000 finished
+comfortably. **Few and large beats many and small.**
+
+⚠ **An IN-FLIGHT run is indistinguishable from a failed one.** `IngestionRuns.Success` stays 0 until
+the row is finalised. Filter `EndedAtUtc IS NOT NULL` before judging a run — a 9-minute run read at
+7 minutes was wrongly called failed and its sibling cancelled; it had inserted 295 rows.
+
+**Health, not vibes:** `dotnet run --project tools/BdIntegrityCheck -- --db <connstr>` runs the
+invariant suite — identity conflation, source freshness, dangling org references. Structural
+violations set a non-zero exit; the identity and source checks are WARN worklists by design.
+
+## Publish and deploy
+
+`publish-opportunities.ps1` **publishes only** — it runs its own test gate and drops a timestamped
+build under `_Publish`. Deploying is the separate step: stop the service, robocopy with
+`/XF appsettings.Production.json`, start, then verify `FileVersion`. **Ian runs deploys, and Ian runs
+Codex**, unless he says otherwise in the session.

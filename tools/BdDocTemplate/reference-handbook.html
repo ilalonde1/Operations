@@ -218,7 +218,9 @@
   @media (prefers-reduced-motion: reduce) { .fade { opacity: 1; transform: none; animation: none; } }
 
   /* ---------- Print / PDF ---------- */
-  @page { size: Letter; margin: 15mm 16mm 16mm; }
+  /* Side margins ZERO so a hero can bleed to the paper edge; top/bottom real so
+     pages 2..n never jam (container padding does NOT repeat per page). */
+  @page { size: Letter; margin: 11mm 0 13mm; }
   @media print {
     :root {
       /* Force the light palette regardless of viewer theme. */
@@ -230,18 +232,21 @@
       --crit:#C0392B; --crit-bg:#FBE9E7; --blue:#3E7CB1; --blue-bg:#E8F0F7;
       --shadow: none;
     }
-    html { font-size: 15px; }
+    /* --maxread is a SCREEN reading measure; left as-is it leaves a dead band
+       down the right of every printed page. */
+    :root { --maxread: 100%; }
+    html { font-size: 16.5px; }
     body { background:#fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; color-scheme: light; }
     .fade { opacity:1 !important; transform:none !important; animation:none !important; }
 
-    .hero { padding: 20mm 16mm 12mm; border-bottom-width: 2px; }
+    .hero { margin: -11mm 0 0; padding: 13mm 13mm 10mm; border-bottom-width: 2px; }
     .hero h1 { font-size: 30pt; }
     .hero__lede { font-size: 12.5pt; color:#D4E0EA; }
     .hero__meta { display:none; }
 
     /* Single reading column; contents becomes a printed page-1 index. */
-    .shell { display:block; max-width: none; padding: 0 16mm; }
-    .toc { position: static; max-height: none; padding: 8mm 0 2mm; break-after: page; }
+    .shell { display:block; max-width: none; padding: 0 13mm; }
+    .toc { position: static; max-height: none; padding: 5mm 0 1mm; break-after: auto; }
     .toc a { color: var(--ink-soft) !important; border-left-color: var(--line-strong); }
     main { padding: 6mm 0 0; }
     section:first-of-type { padding-top: 4mm; }
