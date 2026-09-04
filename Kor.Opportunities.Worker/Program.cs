@@ -751,6 +751,14 @@ builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.VendorSiteExtraction
                 sp => sp.GetRequiredService<Kor.Opportunities.Data.Ingestion.Scraping.BidsAndTendersLiveDetailExtractor>());
             builder.Services.AddSingleton<Kor.Opportunities.Data.Ingestion.Scraping.ILiveOppDetailExtractor>(
                 sp => sp.GetRequiredService<Kor.Opportunities.Data.Ingestion.Scraping.MerxDccLiveDetailExtractor>());
+            // Victoria's Tempest/Prospero development tracker — the detail page
+            // behind every Victoria_DevelopmentApplications row. It carries the
+            // APPLICATION CONTACT (the applicant's agent: the developer, their
+            // architect or their planning consultant) plus the submitted plan
+            // sets. No tender feed we ingest names that person.
+            builder.Services.AddSingleton<Kor.Opportunities.Data.Ingestion.Scraping.VictoriaProsperoLiveDetailExtractor>();
+            builder.Services.AddSingleton<Kor.Opportunities.Data.Ingestion.Scraping.ILiveOppDetailExtractor>(
+                sp => sp.GetRequiredService<Kor.Opportunities.Data.Ingestion.Scraping.VictoriaProsperoLiveDetailExtractor>());
             builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.IOpportunityInterestedFirmStore>(
                 sp =>
                 {
