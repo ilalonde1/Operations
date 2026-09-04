@@ -1,7 +1,9 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -41,6 +43,7 @@ internal sealed class StandardDetailsSheetComposer
     private const int GovernanceTitleMax = 300;
     private const int GovernanceDescriptionMax = 2000;
     private const int ParameterBatchSize = 300;
+    private static readonly TimeSpan TempPdfRetention = TimeSpan.FromDays(1);
     // The KOR-D identity lives in a view's "View Prefix" parameter, not necessarily in its name.
     // Match occupancy on that, the same way MasterPublisher does.
     private static readonly Regex DetailPrefixPattern = new(@"^KOR-D-\d{5}$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
@@ -199,6 +202,54 @@ internal sealed class StandardDetailsSheetComposer
 
             throw;
         }
+    }
+
+    internal async Task<string> OpenSheetPdfAsync(string sheetNumber, TimeSpan bridgeTimeout)
+    {
+        if (!_options.IsConfigured)
+        {
+            throw new InvalidOperationException("Standard Details sheet-composer settings are incomplete.");
+        }
+
+        sheetNumber = (sheetNumber ?? "").Trim();
+        if (string.IsNullOrWhiteSpace(sheetNumber))
+        {
+            throw new InvalidOperationException("Sheet number is required before opening a PDF.");
+        }
+
+        await AssertAuthoringActiveAsync("export sheet PDF", bridgeTimeout);
+
+        var exportFolder = Path.Combine(_options.BridgeRoot, "exports", "standard-details-sheets");
+        var exportFileName = $"KOR-StandardDetails-{SanitizeFileName(sheetNumber)}-{DateTime.Now:yyyyMMdd-HHmmss}";
+        Directory.CreateDirectory(exportFolder);
+
+        var reply = await _bridge.SendAsync(new
+        {
+            verb = "exportsheets",
+            folder = exportFolder,
+            filename = exportFileName,
+            sheets = new[] { sheetNumber }
+        }, bridgeTimeout);
+
+        var exportedPdf = ResolveExportedSheetPdf(reply.Result, sheetNumber);
+        if (!File.Exists(exportedPdf))
+        {
+            throw new InvalidOperationException($"Drafter exported '{sheetNumber}' to '{exportedPdf}', but the app could not read the PDF from that share path.");
+        }
+
+        var tempFolder = Path.Combine(Path.GetTempPath(), "KOR-StandardDetails");
+        Directory.CreateDirectory(tempFolder);
+        CleanOldTempPdfs(tempFolder);
+
+        var tempPath = Path.Combine(tempFolder, $"{SanitizeFileName(sheetNumber)}-{DateTime.Now:yyyyMMdd-HHmmss}.pdf");
+        File.Copy(exportedPdf, tempPath, overwrite: true);
+
+        Process.Start(new ProcessStartInfo(tempPath)
+        {
+            UseShellExecute = true
+        });
+
+        return tempPath;
     }
 
     private void ValidateRequest(SheetComposerRequest request)
@@ -417,6 +468,98 @@ internal sealed class StandardDetailsSheetComposer
         return failures;
     }
 
+    private static string ResolveExportedSheetPdf(JsonElement result, string sheetNumber)
+    {
+        if (TryGetBool(result, "exists", out var topExists) && !topExists)
+        {
+            throw new InvalidOperationException($"Drafter did not export sheet '{sheetNumber}'.");
+        }
+
+        if (TryFindSheetExportItem(result, sheetNumber, out var item))
+        {
+            if (TryGetBool(item, "exists", out var itemExists) && !itemExists)
+            {
+                throw new InvalidOperationException($"Drafter did not export sheet '{sheetNumber}'.");
+            }
+
+            if (TryGetString(item, "pdf") is { Length: > 0 } itemPdf)
+            {
+                return itemPdf;
+            }
+        }
+
+        if (TryGetString(result, "pdf") is { Length: > 0 } pdf)
+        {
+            return pdf;
+        }
+
+        throw new InvalidOperationException($"Drafter export for sheet '{sheetNumber}' did not return a PDF path.");
+    }
+
+    private static bool TryFindSheetExportItem(JsonElement result, string sheetNumber, out JsonElement item)
+    {
+        item = default;
+        var fallback = default(JsonElement);
+        var count = 0;
+        foreach (var candidate in EnumerateResultItems(result, "sheets", "items", "results"))
+        {
+            count++;
+            fallback = candidate;
+            if (string.Equals(TryGetString(candidate, "number"), sheetNumber, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(TryGetString(candidate, "sheet"), sheetNumber, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(TryGetString(candidate, "sheetNumber"), sheetNumber, StringComparison.OrdinalIgnoreCase))
+            {
+                item = candidate;
+                return true;
+            }
+        }
+
+        if (count == 1)
+        {
+            item = fallback;
+            return true;
+        }
+
+        return false;
+    }
+
+    private static void CleanOldTempPdfs(string tempFolder)
+    {
+        try
+        {
+            var cutoff = DateTime.UtcNow.Subtract(TempPdfRetention);
+            foreach (var file in Directory.EnumerateFiles(tempFolder, "*.pdf", SearchOption.TopDirectoryOnly))
+            {
+                try
+                {
+                    if (File.GetLastWriteTimeUtc(file) < cutoff)
+                    {
+                        File.Delete(file);
+                    }
+                }
+                catch
+                {
+                    // Best-effort temp cleanup only.
+                }
+            }
+        }
+        catch
+        {
+            // Best-effort temp cleanup only.
+        }
+    }
+
+    private static string SanitizeFileName(string sheetNumber)
+    {
+        var invalid = Path.GetInvalidFileNameChars().ToHashSet();
+        var cleaned = new string(sheetNumber.Trim()
+            .Select(ch => invalid.Contains(ch) ? '-' : ch)
+            .ToArray());
+        cleaned = Regex.Replace(cleaned, @"\s+", "-");
+        cleaned = Regex.Replace(cleaned, "-{2,}", "-").Trim('-', '.');
+        return string.IsNullOrWhiteSpace(cleaned) ? "sheet" : cleaned;
+    }
+
     private static SheetComposerOccupiedDetail? ResolveOccupiedPlacement(
         SheetComposerPlacement placement,
         IReadOnlyDictionary<string, SheetComposerOccupiedDetail> occupied)
@@ -621,6 +764,29 @@ internal sealed class StandardDetailsSheetComposer
 
         return property.ValueKind == JsonValueKind.String
                && int.TryParse(property.GetString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out value);
+    }
+
+    private static bool TryGetBool(JsonElement element, string name, out bool value)
+    {
+        value = false;
+        if (!TryGetProperty(element, name, out var property))
+        {
+            return false;
+        }
+
+        return property.ValueKind switch
+        {
+            JsonValueKind.True => SetBool(out value, true),
+            JsonValueKind.False => SetBool(out value, false),
+            JsonValueKind.String when bool.TryParse(property.GetString(), out var parsed) => SetBool(out value, parsed),
+            _ => false
+        };
+    }
+
+    private static bool SetBool(out bool value, bool parsed)
+    {
+        value = parsed;
+        return true;
     }
 
     private static bool TryGetDouble(JsonElement element, string name, out double value)

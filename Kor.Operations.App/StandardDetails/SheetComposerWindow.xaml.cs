@@ -154,12 +154,21 @@ public partial class SheetComposerWindow : Window
                 _actorUserId,
                 TimeSpan.FromMinutes(10));
 
-            MessageBox.Show(
-                this,
-                $"Created {result.SheetNumber} - {result.SheetName} with {result.PlacementCount} detail(s).",
-                "Standard Details - Sheet Composer",
-                MessageBoxButton.OK,
-                MessageBoxImage.Information);
+            SummaryText.Text = $"Created {result.SheetNumber} - {result.SheetName} with {result.PlacementCount} detail(s). Opening PDF...";
+            try
+            {
+                await _composer.OpenSheetPdfAsync(result.SheetNumber, TimeSpan.FromMinutes(5));
+            }
+            catch (Exception openEx)
+            {
+                MessageBox.Show(
+                    this,
+                    $"Created {result.SheetNumber} - {result.SheetName}, but the PDF could not be opened.{Environment.NewLine}{openEx.Message}",
+                    "Standard Details - Open PDF Failed",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+            }
+
             DialogResult = true;
         }
         catch (Exception ex)
@@ -179,6 +188,33 @@ public partial class SheetComposerWindow : Window
         var likeSheet = LikeSheetBox.Text.Trim();
         var placements = _placements.Select(ToPlacement).ToList();
         return new SheetComposerRequest(sheetNumber, sheetName, likeSheet, placements);
+    }
+
+    private async void OpenPdf_Click(object sender, RoutedEventArgs e)
+    {
+        var sheetNumber = SheetNumberBox.Text.Trim();
+        if (string.IsNullOrWhiteSpace(sheetNumber))
+        {
+            MessageBox.Show(this, "Enter a sheet number first.", "Standard Details - Open PDF", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        ToggleBusy(true);
+        try
+        {
+            SummaryText.Text = $"Opening PDF for {sheetNumber}...";
+            await _composer.OpenSheetPdfAsync(sheetNumber, TimeSpan.FromMinutes(5));
+            SummaryText.Text = $"Opened PDF for {sheetNumber}.";
+        }
+        catch (Exception ex)
+        {
+            SummaryText.Text = "PDF export unavailable.";
+            MessageBox.Show(this, ex.Message, "Standard Details - Open PDF Failed", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            ToggleBusy(false);
+        }
     }
 
     private static SheetComposerPlacement ToPlacement(ComposerPlacementDisplayRow row)
@@ -224,6 +260,7 @@ public partial class SheetComposerWindow : Window
     {
         SearchBox.IsEnabled = !busy;
         AddButton.IsEnabled = !busy;
+        OpenPdfButton.IsEnabled = !busy;
         SaveButton.IsEnabled = !busy;
     }
 
