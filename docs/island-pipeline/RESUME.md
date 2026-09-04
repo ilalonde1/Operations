@@ -100,6 +100,51 @@ ORDER BY COUNT(DISTINCT o.Id) DESC;
   Recycling Facility, consists of 3 buildings"; "(Convertus Canada) Addition of
   593m2 Group F2 processing plant … 4 pre-cast concrete composting tunnels".
 
+## ⭐ THE HEADLINE FINDING (migration 302, verified live 2026-09-04)
+
+Decomposing the permit harvest into the Brain resolved 42 applicant firms — **18
+created, 24 matched orgs KOR already had**. Ten of them carry a **Deltek client
+id**, and the merge revealed that the most active applicants in Victoria right
+now are **already KOR clients**:
+
+| Firm | Kind | Deltek | KOR projects | Last KOR project | Live Victoria apps |
+| --- | --- | --- | --- | --- | --- |
+| Northland Properties Ltd. | KorClient | CL00299 | **369** | **2026-08-26** | 2 |
+| Reliance Properties Ltd. | KorClient | CL00356 | **82** | 2026-01-19 | 1 |
+| Intracorp Projects Ltd. | KorClient | CL00205 | **46** | 2026-06-25 | 1 |
+| Townline Group of Companies | KorClient | 7A3C11F3… | **36** | 2026-02-05 | 2 |
+| Primex Investments Ltd. | KorClient | CL00337 | 9 | 2025-07-25 | 2 |
+| Sakura Developments | KorClient | 42B07C0E… | 3 | 2024-11-24 | 3 |
+| GWL Realty Advisors | Developer | CL00167 | 2 | 2023-10-11 | 2 |
+| M'Akola Development Services | KorClient | ce787f97… | 1 | 2025-10-20 | 3 |
+| Ledcor Construction | GC | CL00238 | 0 | — | 1 |
+| D'Ambrosio Architecture + Urbanism | Architect | f147c32b… | 0 | — | 4 |
+
+**Coldest high-value targets** (no Deltek id, most live applications):
+Islandview Group (4) · Aryze Developments (4) · Cascadia Architects (3) ·
+CHA – Colin Harper Architect (3) · Wiser Projects (2) · MJM Architect (2) ·
+Mike Geric Construction (2) · Bayview Place (1, Roundhouse master plan).
+
+Brain state written: **47 IntelPerson, 47 affiliations, 42 OrgFacts (MarketFocus),
+42 CanonicalOrgEnrichment rows**, provider tag `PermitApplicants`, fact CreatedBy
+`claude-island-permits-2026-09-04`.
+
+⚠ `OrgFact.FactType` is constrained to RiskNote / MarketFocus / DuplicateOf /
+DeltekLink / CompetitorNote / DeliveryModel / WarmChannel / SelfPerformsStructural.
+"LivePipeline" was rejected; MarketFocus is used.
+
+Re-run the standing query any time:
+`docs/island-pipeline/` + the warm/cold SQL in this file's history, or:
+
+```sql
+SELECT co.Kind, co.DisplayName, co.ClendorClientId, co.KorProjectsCount,
+       co.LastKorProjectAtUtc, f.Body
+FROM opportunities.OrgFact f
+JOIN opportunities.CanonicalOrg co ON co.Id = f.CanonicalOrgId
+WHERE f.CreatedBy = 'claude-island-permits-2026-09-04'
+ORDER BY co.KorProjectsCount DESC;
+```
+
 ## What remains — TODO
 
 1. **Decompose to the Brain.** No existing tool promotes `Opportunity.BuyerContact*`
