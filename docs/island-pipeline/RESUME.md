@@ -32,7 +32,11 @@ deploys (see the memory `feedback_user_runs_deploys`).
 **All 116 Victoria applications are detail-enriched** — the Prospero extractor
 pulled the applicant's own agent (name, email, phone) for each.
 
-⚠ **REVERT PENDING:** `LiveOppDetailEnrichmentBatchSize: 60` was written into
+✅ **DONE — reverted 2026-09-04.** The batch size below was raised to clear the
+backlog, then put back to the default and the service restarted;
+`appsettings.Production.json` is Logging-only again. Historical note follows.
+
+`LiveOppDetailEnrichmentBatchSize: 60` was written into
 `\\KOR-APP01\C$\Program Files\KorOperations\Opportunities\appsettings.Production.json`
 to clear the 116-row backlog fast (default is 8/hour). A `.bak-2026-09-04` sits
 beside it. **Put it back to the default once enrichment work is done.**

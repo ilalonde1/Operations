@@ -99,6 +99,13 @@
   }
   .hero__meta span { background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.12);
     padding: .28rem .6rem; border-radius: 999px; }
+  /* Bold text inside the hero, on the dark ground. Without this it inherits the
+     accent colour and prints as dim amber on navy — barely legible, and the
+     emphasised words are usually the numbers the page exists to carry. Lives
+     OUTSIDE @media print on purpose so screen and print agree. Documented in
+     this directory's CLAUDE.md; it had gone missing from the style block and
+     was caught by looking at a rendered PDF page on 2026-09-04. */
+  .hero strong, .hero b { color: #FFFFFF; font-weight: 700; }
 
   /* ---------- Shell ---------- */
   .shell { max-width: 62rem; margin: 0 auto; padding: 0 1.5rem;
