@@ -1,0 +1,22 @@
+# RJC Engineers — one firm, two canonical rows, both live on rjc.ca (2026-09-04).
+#
+# "RJC Engineers" is the operating name; "Read Jones Christoffersen Ltd." is the
+# full legal name of the same 1948 Vancouver firm. The fuzzy gate cannot see that
+# — an initialism against the names it stands for is exactly the case similarity
+# scoring gets wrong — so it is allowlisted after checking both rows by hand.
+#
+# Same-entity evidence: identical WebsiteDomain rjc.ca; both Kind = Competitor;
+# 74588's own narrative opens "Read Jones Christoffersen Ltd. (operating as RJC
+# Engineers)".
+#
+# SURVIVOR IS 69014, the richer and older row: 37 people, 3 narratives, 40 awards,
+# 65 aliases and 76 enrichment runs spanning BC K-12 seismic, BC health, mass
+# timber, IPD, the Island/Okanagan ecosystem and 20+ person briefs. 74588 was
+# created twelve days later and carries 20 people, 2 narratives, 31 awards and 4
+# enrichments.
+#
+# Why it matters: RJC is recorded in our own narrative as "KOR's primary and most
+# formidable BC competitor", and every dossier, brief and search has been seeing
+# roughly half of what we hold on them.
+# LoserId,SurvivorId,Reason
+74588,69014,"Read Jones Christoffersen Ltd. = legal name of RJC Engineers; same rjc.ca domain, both Competitor; survivor is the richer, older row"

@@ -394,6 +394,45 @@ invariants.Add(("source_insert_rate_collapsed",
       WHERE l.EverInserted > 0 AND r.Runs >= 4 AND r.Ins = 0 AND r.Filtered > 0
       ORDER BY r.Filtered DESC;"));
 
+// ── The duplicate class the name-based checks cannot see (2026-09-04) ────────
+// org_multi_entity_active_name finds duplicates by NAME. RJC was a duplicate by
+// DOMAIN with DIFFERENT names — "RJC Engineers" against "Read Jones
+// Christoffersen Ltd.", an initialism versus the words it stands for. No check
+// was watching that shape, and it had split KOR's most formidable BC competitor
+// almost exactly in half: 37 people / 40 awards on one row, 20 / 31 on the other.
+//
+// Second instance of the class (Perkins & Will was five fragments on 2026-09-03),
+// so per the repo's rule 11 this is the check that finds them all rather than a
+// third one-off merge.
+//
+// ⚠ IT IS A CANDIDATE LIST, NOT A DEFECT COUNT. Sharing a domain is legitimate
+// for joint ventures ("EllisDon Kinetic, A Joint Venture"), for deliberate
+// regional entities ("Stantec (Sacramento)" vs "Stantec Inc.") and for every
+// ministry under www2.gov.bc.ca. Ordering by how much intel is split puts the
+// ones worth merging at the top; each still needs a human look, and merging goes
+// through BdCanonicalDedup --pairs with an allowlist entry recording the reason.
+invariants.Add(("org_same_domain_different_names",
+    "Live canonical orgs sharing a WebsiteDomain under different names — one real firm split across several rows, so every dossier, brief and search sees only part of what we hold. Ordered by split intel. CANDIDATES, not confirmed duplicates: JVs, regional entities and government ministries legitimately share a domain",
+    false,
+    @"SELECT ISNULL(SUM(N), 0) FROM (
+        SELECT COUNT(*) AS N
+        FROM opportunities.CanonicalOrg
+        WHERE RetiredAtUtc IS NULL AND WebsiteDomain IS NOT NULL AND LTRIM(RTRIM(WebsiteDomain)) <> ''
+        GROUP BY WebsiteDomain HAVING COUNT(*) > 1) x;",
+    @"WITH o AS (
+        SELECT co.Id, co.WebsiteDomain, co.DisplayName, co.KorProjectsCount, co.ClendorClientId,
+               (SELECT COUNT(*) FROM opportunities.IntelPersonAffiliation a WHERE a.CanonicalOrgId = co.Id) AS People,
+               (SELECT COUNT(*) FROM opportunities.OpportunityAwards aw WHERE aw.AwardedToCanonicalOrgId = co.Id) AS Awards
+        FROM opportunities.CanonicalOrg co
+        WHERE co.RetiredAtUtc IS NULL AND co.WebsiteDomain IS NOT NULL AND LTRIM(RTRIM(co.WebsiteDomain)) <> '')
+      SELECT TOP 20 WebsiteDomain, COUNT(*) AS Rows_, SUM(People) AS People, SUM(Awards) AS Awards,
+             SUM(KorProjectsCount) AS KorJobs,
+             MAX(CASE WHEN ClendorClientId IS NOT NULL THEN 'DELTEK' ELSE '' END) AS Client
+      FROM o
+      WHERE WebsiteDomain IN (SELECT WebsiteDomain FROM o GROUP BY WebsiteDomain HAVING COUNT(*) > 1)
+      GROUP BY WebsiteDomain
+      ORDER BY SUM(People) + SUM(Awards) DESC;"));
+
 invariants.Add(("person_duplicate_active_affiliation",
     "Same person affiliated to the same org more than once, both active. Inflates how 'rich' an org looks, double-counts contacts in dossiers, and multiplies on every refresh. Found 2026-09-03 when a re-research after an org split added a second row for people who were already there",
     false,
