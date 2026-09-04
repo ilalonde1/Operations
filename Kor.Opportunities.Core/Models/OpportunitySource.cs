@@ -31,6 +31,13 @@ public enum OpportunitySourceType
     MajorProjectsInventory = 18,
     // MERX public DCC solicitations listing (Playwright; WAF blocks plain HTTP).
     MerxDcc = 19,
+    // ArcGIS Feature/Map Server layer query (2026-09-03). One adapter for the
+    // whole ArcGIS Hub / ArcGIS Open Data platform, which is what most BC
+    // municipalities and regional districts publish through — so a new city is
+    // a config row, not a scraper. Carries EARLY signal (development permit and
+    // rezoning APPLICATIONS), unlike the tender feeds which arrive after the
+    // structural engineer has already been chosen.
+    ArcGisFeatureService = 20,
     Manual = 99,
 }
 

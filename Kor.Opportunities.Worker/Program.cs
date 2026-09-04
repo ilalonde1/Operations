@@ -663,6 +663,18 @@ builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.VendorSiteExtraction
             .AddPolicyHandler((sp, _) => RetryPolicy(sp, "CivicInfoHtml"));
             builder.Services.AddSingleton<IOpportunityProvider>(sp =>
                 sp.GetRequiredService<CivicInfoHtmlOpportunityProvider>());
+            // ArcGIS Feature/Map Server (2026-09-03). Municipal development-permit
+            // and rezoning APPLICATIONS - the earliest public signal there is, and
+            // the replacement capability for the discontinued BC Major Projects
+            // Inventory. One adapter serves every ArcGIS Hub publisher, so adding
+            // a city is an OpportunitySources row plus arcgis.* mappings.
+            builder.Services.AddHttpClient<ArcGisFeatureOpportunityProvider>(c =>
+            {
+                c.Timeout = TimeSpan.FromMinutes(3);
+            })
+            .AddPolicyHandler((sp, _) => RetryPolicy(sp, "ArcGisFeature"));
+            builder.Services.AddSingleton<IOpportunityProvider>(sp =>
+                sp.GetRequiredService<ArcGisFeatureOpportunityProvider>());
 
             // Playwright platform - single browser pool shared across all
             // Playwright-driven scrapers.

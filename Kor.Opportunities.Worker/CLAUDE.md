@@ -33,6 +33,26 @@ a deliberate silence would raise.
 - Force a source to run by inserting into `opportunities.IngestionTriggers`
   (`OpportunitySourceId`, `RequestedBy`); the poller picks it up within ~15 s.
 
+## Early signal: the ArcGIS adapter
+
+`ArcGisFeatureOpportunityProvider` (SourceType 20) reads any ArcGIS Feature/Map Server layer, which
+is what most BC municipalities publish development-permit and rezoning **applications** through. A
+new city is an `OpportunitySources` row plus `arcgis.*` mappings — not a scraper.
+
+- **Prove a city before you seed it.** `tools/ArcGisProbe --source <Name>` (or `--layer <url>
+  --config <file>`) runs the adapter against the live layer without the Worker and prints the
+  row→application collapse, the gate verdict for every row, and the newest kept ones.
+- **One application is many rows.** These layers are spatial: a rezoning over nine parcels is nine
+  features. Victoria's 258 rows are 146 applications. The adapter collapses them; do not undo that.
+- **A "Development Permit AREA" layer is a zoning overlay, not applications.** It returns valid
+  features and ingests cleanly as nonsense. Abbotsford's was rejected for exactly this.
+- **Seed new sources `IsEnabled = 0`** and enable them after the Worker deploy. A source whose
+  SourceType the running binary has no provider for just fails.
+
+See `docs/codex/CODEX-EARLY-SIGNAL-ARCGIS-ADAPTER.md` — including the open finding that the shared
+relevance gate is tuned for tender prose and drops planning prose (42 of Victoria's 146, 810 of
+Maple Ridge's 849).
+
 ## The research path
 
 - `BdResearchExecutorService` is reached two ways — the dossier Refresh button (via
