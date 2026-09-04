@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Net.Http;
+using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -121,6 +122,17 @@ public sealed class GenericJsonOpportunityProvider : IOpportunityProvider
 
             var title = ReadString(item, mapping.TitlePath);
             var url = ReadString(item, mapping.UrlPath);
+
+            // Some publishers list records with no per-record permalink at all —
+            // Nanaimo's "What's Building" feed is one. Without a url the row is
+            // dropped outright, so json.urlTemplate lets a source compose one
+            // from the record's own fields ("...#{FileNumber}"). It is only
+            // consulted when the feed itself supplies nothing.
+            if (string.IsNullOrWhiteSpace(url) && mapping.UrlTemplate is not null)
+            {
+                url = ExpandTemplate(mapping.UrlTemplate, item);
+            }
+
             if (string.IsNullOrWhiteSpace(title) || string.IsNullOrWhiteSpace(url))
             {
                 dropped++;
@@ -143,7 +155,11 @@ public sealed class GenericJsonOpportunityProvider : IOpportunityProvider
             candidates.Add(new OpportunityCandidate
             {
                 Title = title.Trim(),
-                Buyer = string.IsNullOrWhiteSpace(buyer) ? "Unknown" : buyer.Trim(),
+                // A feed whose records carry no buyer at all (a single-city
+                // tracker) should say whose city it is, not "Unknown" — the
+                // placeholder exists for feeds where the buyer varies per row.
+                Buyer = mapping.BuyerOverride
+                        ?? (string.IsNullOrWhiteSpace(buyer) ? "Unknown" : buyer.Trim()),
                 Location = TrimOrNull(ReadString(item, mapping.LocationPath)),
                 Url = url.Trim(),
                 Description = TrimOrNull(ReadString(item, mapping.DescriptionPath)),
@@ -438,12 +454,56 @@ public sealed class GenericJsonOpportunityProvider : IOpportunityProvider
         return string.IsNullOrWhiteSpace(trimmed) ? null : trimmed;
     }
 
+    /// <summary>
+    /// Substitutes <c>{FieldName}</c> placeholders in a url template with values
+    /// read from the record. A placeholder that resolves to nothing yields no
+    /// url at all rather than a half-built one — a broken link is worse than an
+    /// honestly dropped row.
+    /// </summary>
+    private static string? ExpandTemplate(string template, JsonElement item)
+    {
+        var result = new StringBuilder(template.Length + 32);
+        var i = 0;
+
+        while (i < template.Length)
+        {
+            var open = template.IndexOf('{', i);
+            if (open < 0)
+            {
+                result.Append(template, i, template.Length - i);
+                break;
+            }
+
+            var close = template.IndexOf('}', open + 1);
+            if (close < 0)
+            {
+                result.Append(template, i, template.Length - i);
+                break;
+            }
+
+            result.Append(template, i, open - i);
+
+            var field = template[(open + 1)..close];
+            var value = TrimOrNull(ReadString(item, field));
+            if (value is null)
+            {
+                return null;
+            }
+
+            result.Append(Uri.EscapeDataString(value));
+            i = close + 1;
+        }
+
+        return result.ToString();
+    }
+
     private sealed record GenericJsonMapping(
         string? ItemsPath,
         string TitlePath,
         string BuyerPath,
         string LocationPath,
         string UrlPath,
+        string? UrlTemplate,
         string DescriptionPath,
         string PostedDatePath,
         string DeadlinePath,
@@ -451,6 +511,7 @@ public sealed class GenericJsonOpportunityProvider : IOpportunityProvider
         string? ProvincePath,
         string? EstimatedValuePath,
         string? ExternalReferencePath,
+        string? BuyerOverride,
         string? CityOverride,
         string? ProvinceOverride)
     {
@@ -462,6 +523,7 @@ public sealed class GenericJsonOpportunityProvider : IOpportunityProvider
                 Get(sourceConfig, "json.buyerPath") ?? "buyer",
                 Get(sourceConfig, "json.locationPath") ?? "location",
                 Get(sourceConfig, "json.urlPath") ?? "url",
+                Get(sourceConfig, "json.urlTemplate"),
                 Get(sourceConfig, "json.descriptionPath") ?? "description",
                 Get(sourceConfig, "json.postedDatePath") ?? "postedDate",
                 Get(sourceConfig, "json.deadlinePath") ?? "deadline",
@@ -469,6 +531,7 @@ public sealed class GenericJsonOpportunityProvider : IOpportunityProvider
                 Get(sourceConfig, "json.provincePath"),
                 Get(sourceConfig, "json.estimatedValuePath"),
                 Get(sourceConfig, "json.externalReferencePath"),
+                Get(sourceConfig, "json.buyerOverride"),
                 Get(sourceConfig, "json.cityOverride"),
                 Get(sourceConfig, "json.provinceOverride"));
         }
