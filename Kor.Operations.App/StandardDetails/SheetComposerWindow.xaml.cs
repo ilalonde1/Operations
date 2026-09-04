@@ -24,6 +24,7 @@ public partial class SheetComposerWindow : Window
     private const double MinPlacementWidthMm = 45;
     private const double MaxPlacementWidthMm = 360;
     private const double SnapGridMm = 5;
+    private static readonly TimeSpan OccupancyCheckTimeout = TimeSpan.FromSeconds(8);
 
     private readonly KorStandardsReadRepository _catalogRepository;
     private readonly StandardDetailsRepository _governanceRepository;
@@ -86,25 +87,37 @@ public partial class SheetComposerWindow : Window
         try
         {
             var rows = await _catalogRepository.LoadSheetComposerDetailsAsync(SearchBox.Text?.Trim() ?? string.Empty, _selectedDiscipline, _selectedKind);
-            var occupied = await _composer.LoadOccupiedDetailsAsync(TimeSpan.FromMinutes(2));
 
             _details.Clear();
             foreach (var row in rows)
             {
-                var occupancy = FindOccupancy(row, occupied);
                 _details.Add(new ComposerDetailDisplayRow
                 {
                     DetailNumber = row.DetailNumber,
                     Title = row.Title,
                     Discipline = row.Discipline,
                     Kind = row.Kind,
-                    CanonicalViewName = row.CanonicalViewName,
-                    CurrentSheetText = occupancy is null ? "" : $"{occupancy.SheetNumber} - {occupancy.SheetName}",
-                    IsAlreadyOnSheet = occupancy is not null
+                    CanonicalViewName = row.CanonicalViewName
                 });
             }
 
-            SummaryText.Text = $"{_details.Count} approved detail(s) loaded. Already-sheeted details stay visible but cannot be added.";
+            try
+            {
+                var occupied = await _composer.LoadOccupiedDetailsAsync(OccupancyCheckTimeout);
+                foreach (var detail in _details)
+                {
+                    var occupancy = FindOccupancy(detail, occupied);
+                    detail.CurrentSheetText = occupancy is null ? "" : $"{occupancy.SheetNumber} - {occupancy.SheetName}";
+                    detail.IsAlreadyOnSheet = occupancy is not null;
+                }
+
+                DetailsGrid.Items.Refresh();
+                SummaryText.Text = $"{_details.Count} approved detail(s) loaded. Already-sheeted details stay visible but cannot be added.";
+            }
+            catch
+            {
+                SummaryText.Text = $"{_details.Count} approved detail(s) loaded. Occupancy check unavailable - open the AUTHORING model to see which details are already on a sheet.";
+            }
         }
         catch (Exception ex)
         {
@@ -589,7 +602,7 @@ public partial class SheetComposerWindow : Window
     }
 
     private static SheetComposerOccupiedDetail? FindOccupancy(
-        SheetComposerDetailRow detail,
+        ComposerDetailDisplayRow detail,
         System.Collections.Generic.IReadOnlyDictionary<string, SheetComposerOccupiedDetail> occupied)
     {
         if (occupied.TryGetValue(detail.DetailNumber, out var byNumber))
@@ -628,8 +641,8 @@ public partial class SheetComposerWindow : Window
         public string Discipline { get; init; } = string.Empty;
         public string Kind { get; init; } = string.Empty;
         public string CanonicalViewName { get; init; } = string.Empty;
-        public string CurrentSheetText { get; init; } = string.Empty;
-        public bool IsAlreadyOnSheet { get; init; }
+        public string CurrentSheetText { get; set; } = string.Empty;
+        public bool IsAlreadyOnSheet { get; set; }
     }
 
     private sealed class ComposerPlacementDisplayRow : INotifyPropertyChanged
