@@ -3,6 +3,32 @@
 **Read this first if context was lost.** State as of 2026-09-04, mid-build.
 Everything below is live and verified unless marked TODO.
 
+## ⛔ SCOPE RULE — Rory's dossier is VANCOUVER ISLAND ONLY
+
+Confirmed by Ian, 2026-09-04. v3 named **Coquitlam and Maple Ridge** in its
+methodology box and used a **Coquitlam** project (Ledingham McAllister) as the
+worked example of "our feed publishes applicant names". Both are Lower Mainland.
+In a document for the Principal, Vancouver Island that reads as though we are
+presenting them as his market — in the one section meant to build confidence in
+the data.
+
+**In the dossier — the five Island cities (2,774 applications):**
+
+| Saanich | Nanaimo | Langford | Victoria | Colwood |
+| --- | --- | --- | --- | --- |
+| 1,398 | 877 | 349 | 121 | 29 |
+
+Plus **$326M of construction value across 293 priced Langford applications.**
+
+**In the platform, OUT of the dossier:** Coquitlam (391), Maple Ridge (120).
+⚠ Any headline count must exclude them — "3,285 applications" silently included
+511 Lower Mainland rows.
+
+**Off-Island HEAD OFFICE is fine; off-Island MARKET is not.** Northland,
+Townline, Intracorp, Reliance, Ledcor and Starlight are Vancouver- or
+Toronto-headquartered and belong in the dossier, because they are filing
+applications *in Victoria*.
+
 ## The goal
 
 Rory Beirne (Principal, Vancouver Island) asked for a who's-who of Victoria and
