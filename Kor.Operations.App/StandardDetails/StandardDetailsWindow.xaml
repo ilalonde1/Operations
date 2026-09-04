@@ -263,8 +263,8 @@
                 </Grid.RowDefinitions>
                 <Border Grid.Row="0" Background="#FFE7EAEE" CornerRadius="9" Padding="3" HorizontalAlignment="Left" Margin="0,0,0,10">
                     <StackPanel Orientation="Horizontal">
-                        <RadioButton x:Name="DetailsTab" GroupName="Catalog" Content="Details" IsChecked="True" Style="{StaticResource TabRadio}" Checked="CatalogTab_Checked"/>
                         <RadioButton x:Name="SheetsTab" GroupName="Catalog" Content="Sheets" Style="{StaticResource TabRadio}" Checked="CatalogTab_Checked"/>
+                        <RadioButton x:Name="DetailsTab" GroupName="Catalog" Content="Details" IsChecked="True" Style="{StaticResource TabRadio}" Checked="CatalogTab_Checked"/>
                         <RadioButton x:Name="PartsTab" GroupName="Catalog" Content="Parts" Style="{StaticResource TabRadio}" Checked="CatalogTab_Checked"/>
                     </StackPanel>
                 </Border>
