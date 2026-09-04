@@ -1,0 +1,29 @@
+# Fragmented firms found by checking Rory Beirne's feedback on the Island who's-who
+# against Deltek and the Brain, 2026-09-04. Each pair was read by hand; the evidence
+# is in the reason column and in docs/island-pipeline/RORY-FEEDBACK-2026-09-04.md.
+#
+# ⭐ The Starlight pair is the important one. Canonical 80 "Starlight Developments"
+# is our KOR client (Deltek b8987e23, 6 projects) and was anchored to
+# starlightdevelopment.com — a Caribbean luxury-retreat fund with no connection to
+# it. The real firm is Starlight Investments: every person on row 80 carries an
+# @starlightinvest.com address, including Daniel Drimmer, CEO of Starlight
+# Investments, and David Woo, VP Development Western Canada. Row 80's own projects
+# are 2740 Spencer Rd Langford, 1701 Cedar Hill Rd Saanich, Quadra East/West
+# Victoria, 7376 Halifax St Burnaby and 2222 Bellevue Ave West Vancouver — BC urban
+# multi-family, not retreats. Starlight Investments' own press names The District in
+# Langford, which is 2740 Spencer Rd.
+#
+# That wrong anchor is why three versions of the dossier told the Principal
+# Vancouver Island that "Starlight Development is NOT Starlight Investments". The
+# anchor is corrected to starlightinvest.com in the same change.
+#
+# ⛔ NOT merged and deliberately left alone: 77826 "dHK Architects" on
+# hospitalitydesign.com is a hospitality design practice, NOT de Hoog & Kierulf.
+# Same initialism, different firm — the Chard/Richard shape.
+# LoserId,SurvivorId,Reason
+927773,80,"Starlight Investments = the firm we bill as 'Starlight Developments' (Deltek b8987e23); survivor is the KOR client row with 6 projects; every person on both rows is @starlightinvest.com"
+73997,54246,"dHKarchitects (de Hoog & Kierulf) = deHoog & Kierulf Architects; same dhk.ca domain, both Architect; survivor carries the Deltek id"
+7302,54375,"F.M. D'Ambrosio Architect Inc. = D'Ambrosio Architecture + Urbanism; survivor carries daustudio.ca and the Deltek id"
+76530,54375,"DAU Studio is D'Ambrosio Architecture + Urbanism's operating name; survivor carries daustudio.ca and the Deltek id"
+272357,54375,"D'Ambrosio Architecture and Urbanism = the '+' spelling on 54375; survivor carries daustudio.ca and the Deltek id"
+271651,38926,"Glotman Simpson = Glotman Simpson Consulting Engineers; survivor carries glotmansimpson.com, Deltek CL00573 and all 23 people"

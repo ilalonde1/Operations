@@ -1,0 +1,9 @@
+# Fragmented firms found from Rory Beirne feedback, 2026-09-04.
+# See dedup-non-similar-allowlist.d/rory-feedback-2026-09-04.csv for the evidence.
+LoserId,SurvivorId
+927773,80
+73997,54246
+7302,54375
+76530,54375
+272357,54375
+271651,38926
