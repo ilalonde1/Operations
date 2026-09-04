@@ -443,8 +443,16 @@ public sealed class ArcGisFeatureOpportunityProvider : IOpportunityProvider
     }
 
     /// <summary>
-    /// ArcGIS date fields are epoch MILLISECONDS. Read as ISO they silently
-    /// become nonsense dates, so they are converted explicitly.
+    /// ArcGIS <c>esriFieldTypeDate</c> fields are epoch MILLISECONDS — read as
+    /// ISO they silently become nonsense dates, so they are converted explicitly.
+    ///
+    /// But a publisher can also store a date in a STRING column, and Langford
+    /// does: its Development Tracker types Entered and Issued as
+    /// esriFieldTypeString holding "2024-03-07". The epoch guard correctly
+    /// refused those — correctly, because a wrong-but-plausible date is worse
+    /// than none — which left 349 Langford applications with no date at all. So
+    /// a non-numeric string now gets one honest attempt at a real date parse
+    /// before being given up on.
     /// </summary>
     private static DateTimeOffset? ReadEpochMillis(JsonElement attrs, string? field)
     {
@@ -462,6 +470,18 @@ public sealed class ArcGisFeatureOpportunityProvider : IOpportunityProvider
                  && long.TryParse(el.GetString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var s))
         {
             ms = s;
+        }
+        else if (el.ValueKind == JsonValueKind.String)
+        {
+            var raw = el.GetString();
+            return !string.IsNullOrWhiteSpace(raw)
+                   && DateTimeOffset.TryParse(
+                       raw,
+                       CultureInfo.InvariantCulture,
+                       DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
+                       out var parsedText)
+                ? parsedText
+                : null;
         }
         else
         {

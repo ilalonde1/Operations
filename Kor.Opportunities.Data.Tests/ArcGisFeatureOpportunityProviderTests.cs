@@ -264,6 +264,66 @@ public sealed class ArcGisFeatureOpportunityProviderTests
     }
 
     [Fact]
+    public async Task ADateHeldInAStringColumnIsStillRead()
+    {
+        // Langford types Entered as esriFieldTypeString holding "2024-03-07".
+        // The epoch guard rightly refused it, which left 349 applications with no
+        // date at all until a text parse was added alongside.
+        var cfg = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["arcgis.externalRefField"] = "PermitNumber",
+            ["arcgis.titleField"] = "Full_Address",
+            ["arcgis.buyerOverride"] = "City of Langford",
+            ["arcgis.postedDateField"] = "Entered",
+            ["arcgis.estimatedValueField"] = "TotalValuation",
+        };
+
+        var page = JsonSerializer.Serialize(new
+        {
+            features = new[]
+            {
+                new
+                {
+                    attributes = new
+                    {
+                        PermitNumber = "BLD24-0090",
+                        Full_Address = "837 Hockley Ave",
+                        Entered = "2024-03-07",
+                        TotalValuation = "26832404.00",
+                    },
+                },
+            },
+        });
+
+        var only = Assert.Single(await FetchAsync(cfg, Meta(2000), page));
+
+        Assert.Equal(new DateTime(2024, 3, 7, 0, 0, 0, DateTimeKind.Utc), only.PostedDateUtc!.Value.UtcDateTime);
+        Assert.Equal(26_832_404m, only.EstimatedValueCad);
+    }
+
+    [Fact]
+    public async Task AStringThatIsNotADateIsStillRefused()
+    {
+        var cfg = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["arcgis.externalRefField"] = "PermitNumber",
+            ["arcgis.titleField"] = "Full_Address",
+            ["arcgis.buyerOverride"] = "City of Langford",
+            ["arcgis.postedDateField"] = "Entered",
+        };
+
+        var page = JsonSerializer.Serialize(new
+        {
+            features = new[]
+            {
+                new { attributes = new { PermitNumber = "X1", Full_Address = "1 Main St", Entered = "pending" } },
+            },
+        });
+
+        Assert.Null(Assert.Single(await FetchAsync(cfg, Meta(2000), page)).PostedDateUtc);
+    }
+
+    [Fact]
     public async Task AnApplicantNameIsPushedToTheFrontOfTheDescription()
     {
         // Coquitlam's layer names the party who filed - the developer. It is the
