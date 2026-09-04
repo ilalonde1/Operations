@@ -386,6 +386,27 @@
                         <StackPanel>
                             <TextBlock x:Name="DetailTitleText" Text="Select a detail" FontSize="19" FontWeight="SemiBold" Foreground="#FF20262D" TextTrimming="CharacterEllipsis"/>
                             <TextBlock x:Name="DetailSubtitleText" Text="Pick a detail on the left to review it." FontSize="12.5" Foreground="#FF8A929B" Margin="0,3,0,0"/>
+                            <StackPanel x:Name="DetailTypePanel" Orientation="Horizontal" Margin="0,10,0,0" Visibility="Collapsed">
+                                <TextBlock Text="Change Type" VerticalAlignment="Center" FontSize="12.5" FontWeight="SemiBold" Foreground="#FF5D6670" Margin="0,0,8,0"/>
+                                <ComboBox x:Name="DetailTypeCombo"
+                                          Width="168"
+                                          Height="30"
+                                          VerticalContentAlignment="Center"
+                                          SelectionChanged="DetailTypeCombo_SelectionChanged"
+                                          ToolTip="Set selected detail type">
+                                    <ComboBoxItem Content="Typical detail" Tag="typical"/>
+                                    <ComboBoxItem Content="Custom detail" Tag="custom"/>
+                                    <ComboBoxItem Content="Note / schedule" Tag="note-schedule"/>
+                                </ComboBox>
+                                <TextBlock x:Name="DetailTypeSavedText"
+                                           Text="✓ Saved"
+                                           Visibility="Collapsed"
+                                           VerticalAlignment="Center"
+                                           Margin="10,0,0,0"
+                                           FontSize="12.5"
+                                           FontWeight="SemiBold"
+                                           Foreground="#FF1E6B3A"/>
+                            </StackPanel>
                         </StackPanel>
                         <Border x:Name="DetailStatusPill" HorizontalAlignment="Right" VerticalAlignment="Top" CornerRadius="16" Padding="12,5" Background="#FFEFF1F3" Visibility="Collapsed">
                             <StackPanel Orientation="Horizontal">
@@ -424,37 +445,26 @@
                     </Border>
                     <!-- action bar -->
                     <Grid Grid.Row="2" Margin="0,14,0,0">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                        </Grid.RowDefinitions>
-                        <StackPanel x:Name="DetailTypePanel" Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8" Visibility="Collapsed">
-                            <TextBlock Text="Type" VerticalAlignment="Center" FontSize="12.5" FontWeight="SemiBold" Foreground="#FF5D6670" Margin="0,0,8,0"/>
-                            <ComboBox x:Name="DetailTypeCombo"
-                                      Width="168"
-                                      Height="30"
-                                      VerticalContentAlignment="Center"
-                                      SelectionChanged="DetailTypeCombo_SelectionChanged"
-                                      ToolTip="Set selected detail type">
-                                <ComboBoxItem Content="Typical detail" Tag="typical"/>
-                                <ComboBoxItem Content="Custom detail" Tag="custom"/>
-                                <ComboBoxItem Content="Note / schedule" Tag="note-schedule"/>
-                            </ComboBox>
-                            <Button x:Name="OpenSheetPdfButton"
-                                    Width="108"
-                                    Margin="12,0,0,0"
-                                    VerticalAlignment="Center"
-                                    Style="{StaticResource RejectButtonStyle}"
-                                    Click="OpenSheetPdf_Click"
-                                    Visibility="Collapsed"
-                                    ToolTip="Open selected catalog item as a PDF">
-                                <TextBlock x:Name="OpenSheetPdfButtonText" Text="Open PDF" Foreground="#FF48515B" FontSize="12.5" FontWeight="SemiBold"/>
-                            </Button>
-                        </StackPanel>
-                        <TextBlock x:Name="ActionHintText" Grid.Row="1" VerticalAlignment="Center" Margin="0,0,260,0"
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <Button x:Name="OpenSheetPdfButton"
+                                Grid.Column="0"
+                                Width="108"
+                                Margin="0,0,12,0"
+                                VerticalAlignment="Center"
+                                Style="{StaticResource RejectButtonStyle}"
+                                Click="OpenSheetPdf_Click"
+                                Visibility="Collapsed"
+                                ToolTip="Open selected catalog item as a PDF">
+                            <TextBlock x:Name="OpenSheetPdfButtonText" Text="Open PDF" Foreground="#FF48515B" FontSize="12.5" FontWeight="SemiBold"/>
+                        </Button>
+                        <TextBlock x:Name="ActionHintText" Grid.Column="1" VerticalAlignment="Center" Margin="0,0,16,0"
                                    FontSize="12.5" Foreground="#FF7A828B" TextTrimming="CharacterEllipsis"
                                    Text="This is the actual drawing. Approve it and it goes into the drafters' palette."/>
-                        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right">
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right">
                             <Button x:Name="RejectButton" Style="{StaticResource RejectButtonStyle}" Margin="0,0,10,0" Click="Reject_Click"
                                     ToolTip="Reject — the detail is not a standard and never goes in the palette">
                                 <TextBlock Text="&#10005;  Reject" Foreground="#FF48515B" FontSize="13.5" FontWeight="SemiBold"/>

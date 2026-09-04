@@ -856,6 +856,8 @@ public partial class StandardDetailsWindow
             return;
         }
 
+        DetailTypeSavedText.Visibility = Visibility.Collapsed;
+
         if (!EnsureCanApproveReject("classify details"))
         {
             SetDetailTypeControl(detail, true);
@@ -909,6 +911,8 @@ public partial class StandardDetailsWindow
                 DocumentsGrid.SelectedItem = refreshed;
                 DocumentsGrid.ScrollIntoView(refreshed);
             }
+
+            DetailTypeSavedText.Visibility = Visibility.Visible;
         }
         catch (Exception ex)
         {
@@ -1297,6 +1301,7 @@ public partial class StandardDetailsWindow
         try
         {
             DetailTypePanel.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+            DetailTypeSavedText.Visibility = Visibility.Collapsed;
             foreach (var item in DetailTypeCombo.Items.OfType<ComboBoxItem>())
             {
                 var value = item.Tag as string ?? string.Empty;
