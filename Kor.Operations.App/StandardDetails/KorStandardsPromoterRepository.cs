@@ -139,6 +139,32 @@ internal sealed class KorStandardsPromoterRepository
         }
     }
 
+    internal async Task<(bool ok, string message)> SetDetailIsSheetAsync(string detailNumber, bool isSheet)
+    {
+        try
+        {
+            await using var cn = new SqlConnection(_connectionString);
+            await cn.OpenAsync();
+            await using var cmd = new SqlCommand("detail.SetDetailIsSheet", cn);
+            cmd.CommandType = CommandType.StoredProcedure;
+            cmd.CommandTimeout = SqlTimeouts.UiFacing;
+            AddNVarChar(cmd, "@DetailNumber", 64, detailNumber);
+            cmd.Parameters.Add("@IsSheet", SqlDbType.Bit).Value = isSheet;
+            var returnValue = cmd.Parameters.Add("@ReturnValue", SqlDbType.Int);
+            returnValue.Direction = ParameterDirection.ReturnValue;
+
+            await cmd.ExecuteNonQueryAsync();
+            var affected = returnValue.Value is int value ? value : Convert.ToInt32(returnValue.Value ?? 0);
+            return affected == 0
+                ? (false, $"Detail {detailNumber} was not found.")
+                : (true, isSheet ? $"{detailNumber} moved to Sheets." : $"{detailNumber} moved to Details.");
+        }
+        catch (SqlException ex)
+        {
+            return (false, ex.Message);
+        }
+    }
+
     private static void AddNVarChar(SqlCommand cmd, string name, int size, string value)
     {
         var p = cmd.Parameters.Add(name, SqlDbType.NVarChar, size);

@@ -7,6 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Input;
 using Microsoft.Data.SqlClient;
 using Microsoft.Win32;
@@ -218,24 +219,28 @@ public partial class StandardDetailsWindow
                 }
                 else
                 {
-                    var details = await _korStandardsRepo.LoadPaletteDetailsAsync(q, _selectedDiscipline, _selectedKind);
+                    var details = await _korStandardsRepo.LoadPaletteDetailsAsync(q, _selectedDiscipline, _selectedKind, isSheet: _sheetsMode, orderByViewGroup: _sheetsMode);
                     _documentSnapshot = details.Select(d => new DocumentRow
                     {
                         DocumentId = 0,
                         IsDetail = true,
+                        IsSheet = d.IsSheet,
                         Title = d.Title,
                         DetailNumber = d.DetailNumber,
                         Kind = d.Kind,
-                        GroupName = string.IsNullOrWhiteSpace(d.Discipline) ? "Ungrouped" : d.Discipline,
+                        ViewGroup = d.ViewGroup,
+                        GroupName = _sheetsMode ? SheetCollectionDisplay(d.ViewGroup) : string.IsNullOrWhiteSpace(d.Discipline) ? "Ungrouped" : d.Discipline,
                         CurrentOfficialText = d.IsPlaceable ? "Yes" : (d.VariantsDiverge ? "Diverges" : "No"),
                         LatestStatusText = string.IsNullOrWhiteSpace(d.Confidence) ? "unverified" : d.Confidence,
                         StatusLabel = DetailStatusLabel(d),
-                        RightSubtitle = $"{d.DetailNumber}  ·  {(string.IsNullOrWhiteSpace(d.Discipline) ? "Ungrouped" : d.Discipline)}  ·  {DetailKindDisplay(d.Kind)}  ·  {StatusWord(DetailStatusLabel(d))}"
+                        RightSubtitle = _sheetsMode
+                            ? $"{d.DetailNumber}  ·  {SheetCollectionDisplay(d.ViewGroup)}  ·  {DetailKindDisplay(d.Kind)}  ·  {StatusWord(DetailStatusLabel(d))}"
+                            : $"{d.DetailNumber}  ·  {(string.IsNullOrWhiteSpace(d.Discipline) ? "Ungrouped" : d.Discipline)}  ·  {DetailKindDisplay(d.Kind)}  ·  {StatusWord(DetailStatusLabel(d))}"
                     }).ToList();
                 }
                 _versionSnapshot = new List<VersionRow>();
                 UpdateHeroMetrics();
-                DocumentsGrid.ItemsSource = _documentSnapshot;
+                ApplyDocumentsItemsSource();
                 VersionsGrid.ItemsSource = null;
                 UpdateDetailPane(null);
                 UpdateSelectionSummary();
@@ -283,7 +288,7 @@ public partial class StandardDetailsWindow
         }).ToList();
         _versionSnapshot = new List<VersionRow>();
         UpdateHeroMetrics();
-        DocumentsGrid.ItemsSource = _documentSnapshot;
+        ApplyDocumentsItemsSource();
         VersionsGrid.ItemsSource = null;
         UpdateSelectionSummary();
     }
@@ -384,10 +389,14 @@ public partial class StandardDetailsWindow
     private async void CatalogTab_Checked(object sender, RoutedEventArgs e)
     {
         var parts = ReferenceEquals(sender, PartsTab);
-        if (!_uiReady || parts == _partsMode) return;
+        var sheets = ReferenceEquals(sender, SheetsTab);
+        if (!_uiReady || (parts == _partsMode && sheets == _sheetsMode)) return;
         _partsMode = parts;
-        ListIdColumn.Header = _partsMode ? "PART" : "DETAIL #";
+        _sheetsMode = sheets;
+        ListIdColumn.Header = _partsMode ? "PART" : _sheetsMode ? "SHEET" : "DETAIL #";
+        ListGroupColumn.Header = _partsMode ? "PALETTE" : _sheetsMode ? "COLLECTION" : "DISCIPLINE";
         KindFilterCombo.IsEnabled = !_partsMode;
+        ApplyCatalogModeLayout(null);
         await LoadDocumentsUiAsync();
     }
 
@@ -534,6 +543,20 @@ public partial class StandardDetailsWindow
     {
         // Selection detail now lives in the grids themselves; just refresh action states.
         UpdateActionStates();
+    }
+
+    private void ApplyDocumentsItemsSource()
+    {
+        if (_sheetsMode && !_partsMode)
+        {
+            var view = CollectionViewSource.GetDefaultView(_documentSnapshot);
+            view.GroupDescriptions.Clear();
+            view.GroupDescriptions.Add(new PropertyGroupDescription(nameof(DocumentRow.GroupName)));
+            DocumentsGrid.ItemsSource = view;
+            return;
+        }
+
+        DocumentsGrid.ItemsSource = _documentSnapshot;
     }
 
     private async void AddGroup_Click(object sender, RoutedEventArgs e)
@@ -878,6 +901,98 @@ public partial class StandardDetailsWindow
         }
     }
 
+    private async void DetailIsSheetCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (!_uiReady || _syncingSheetUi)
+        {
+            return;
+        }
+
+        if (DocumentsGrid.SelectedItem is not DocumentRow { IsDetail: true } detail)
+        {
+            return;
+        }
+
+        if (!EnsureCanApproveReject("classify sheets"))
+        {
+            SetDetailSheetControl(detail.IsSheet, true);
+            return;
+        }
+
+        if (_promoterRepo == null)
+        {
+            SetActivityMessage("KorStandards promoter is not configured.", BannerTone.Warning);
+            MessageBox.Show(this, "KorStandards promoter is not configured (App.config: KorStandardsPromoterDb).", "Standard Details - Sheets", MessageBoxButton.OK, MessageBoxImage.Warning);
+            SetDetailSheetControl(detail.IsSheet, true);
+            return;
+        }
+
+        var isSheet = DetailIsSheetCheckBox.IsChecked == true;
+        try
+        {
+            var (ok, message) = await _promoterRepo.SetDetailIsSheetAsync(detail.DetailNumber, isSheet);
+            if (!ok)
+            {
+                SetActivityMessage(message, BannerTone.Error);
+                MessageBox.Show(this, message, "Standard Details - Sheets", MessageBoxButton.OK, MessageBoxImage.Error);
+                SetDetailSheetControl(detail.IsSheet, true);
+                return;
+            }
+
+            SetActivityMessage(message, BannerTone.Success);
+            var detailNumber = detail.DetailNumber;
+            await LoadDocumentsUiAsync();
+            var refreshed = _documentSnapshot.FirstOrDefault(x => x.IsDetail && string.Equals(x.DetailNumber, detailNumber, StringComparison.OrdinalIgnoreCase));
+            if (refreshed is not null)
+            {
+                DocumentsGrid.SelectedItem = refreshed;
+                DocumentsGrid.ScrollIntoView(refreshed);
+            }
+        }
+        catch (Exception ex)
+        {
+            SetActivityMessage("Sheet classification failed. No changes were committed.", BannerTone.Error);
+            Log.Warning(ex, "Standard Details: sheet classification failed for {DetailNumber}.", detail.DetailNumber);
+            MessageBox.Show(this, ex.Message, "Standard Details - Sheets", MessageBoxButton.OK, MessageBoxImage.Error);
+            SetDetailSheetControl(detail.IsSheet, true);
+        }
+    }
+
+    private async void OpenSheetPdf_Click(object sender, RoutedEventArgs e)
+    {
+        if (DocumentsGrid.SelectedItem is not DocumentRow { IsSheet: true } sheet)
+        {
+            MessageBox.Show(this, "Select a sheet first.", "Standard Details - Open PDF", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        if (_masterPublishOptions is not { IsConfigured: true } options)
+        {
+            SetActivityMessage("Sheet PDF settings are incomplete.", BannerTone.Warning);
+            MessageBox.Show(this, "App.config must define StandardDetails.AuthoringPath, StandardDetails.MasterPath, and StandardDetails.BridgeRoot.", "Standard Details - Open PDF", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        OpenSheetPdfButton.IsEnabled = false;
+        try
+        {
+            SetActivityMessage($"Opening PDF for {sheet.DetailNumber}...", BannerTone.Info);
+            var composer = new StandardDetailsSheetComposer(new DrafterBridgeClient(options.BridgeRoot), options);
+            await composer.OpenSheetPdfAsync(sheet.DetailNumber, TimeSpan.FromMinutes(5));
+            SetActivityMessage($"Opened PDF for {sheet.DetailNumber}.", BannerTone.Success);
+        }
+        catch (Exception ex)
+        {
+            SetActivityMessage("Sheet PDF could not be opened.", BannerTone.Error);
+            Log.Warning(ex, "Standard Details: sheet PDF open failed for {DetailNumber}.", sheet.DetailNumber);
+            MessageBox.Show(this, ex.Message, "Standard Details - Open PDF Failed", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            UpdateActionStates();
+        }
+    }
+
     private async Task DecideSelectedDetailAsync(DocumentRow detail, string toConfidence, string verb)
     {
         if (_promoterRepo == null) { MessageBox.Show(this, "KorStandards promoter is not configured (App.config: KorStandardsPromoterDb).", "Standard Details — Approval", MessageBoxButton.OK, MessageBoxImage.Warning); return; }
@@ -1111,6 +1226,9 @@ public partial class StandardDetailsWindow
         _ => "Unclassified"
     };
 
+    private static string SheetCollectionDisplay(string? viewGroup)
+        => string.IsNullOrWhiteSpace(viewGroup) ? "Uncollected" : viewGroup;
+
     private static string? SelectedKindValue(ComboBox combo)
     {
         if (combo.SelectedItem is not ComboBoxItem item || item.Tag is not string value)
@@ -1145,6 +1263,24 @@ public partial class StandardDetailsWindow
         DetailKindCombo.IsEnabled = visible && _promoterRepo != null && _policy?.CanApproveOrReject() == true;
     }
 
+    private void SetDetailSheetControl(bool isSheet, bool visible)
+    {
+        _syncingSheetUi = true;
+        try
+        {
+            DetailIsSheetCheckBox.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+            OpenSheetPdfButton.Visibility = visible && isSheet ? Visibility.Visible : Visibility.Collapsed;
+            DetailIsSheetCheckBox.IsChecked = isSheet;
+        }
+        finally
+        {
+            _syncingSheetUi = false;
+        }
+
+        DetailIsSheetCheckBox.IsEnabled = visible && _promoterRepo != null && _policy?.CanApproveOrReject() == true;
+        OpenSheetPdfButton.IsEnabled = visible && isSheet && _masterPublishOptions?.IsConfigured == true;
+    }
+
     private sealed class DocumentRow
     {
         public long DocumentId { get; set; }
@@ -1156,6 +1292,8 @@ public partial class StandardDetailsWindow
         public string StatusLabel { get; set; } = "";
         public string RightSubtitle { get; set; } = "";
         public string Kind { get; set; } = string.Empty;
+        public bool IsSheet { get; set; }
+        public string ViewGroup { get; set; } = string.Empty;
         public bool IsDetail { get; set; }
         public bool IsPart { get; set; }
         public string FamilyName { get; set; } = string.Empty;

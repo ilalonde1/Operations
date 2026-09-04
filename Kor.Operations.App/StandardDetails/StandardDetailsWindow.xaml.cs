@@ -37,7 +37,9 @@ public partial class StandardDetailsWindow : Window
     private string? _selectedDiscipline;   // null = All disciplines
     private string? _selectedKind;         // null = All detail kinds
     private bool _syncingKindUi;           // guards programmatic kind-combo updates
-    private bool _partsMode;               // false = Details tab, true = Parts tab
+    private bool _syncingSheetUi;          // guards programmatic IsSheet checkbox updates
+    private bool _partsMode;               // true = Parts tab
+    private bool _sheetsMode;              // true = Sheets tab
     private int _previewToken;             // guards against a slow image load landing after the selection moved on
     private bool _uiReady;                 // true after Loaded — chip/tab Checked events fire during XAML init and must no-op until then
     private string _partImageRoot = "";    // Quick Insert imageRoot (QuickPick\BMP) — bare thumbnail names resolve here
@@ -77,6 +79,7 @@ public partial class StandardDetailsWindow : Window
         _policy = new StandardDetailsAccessPolicy(_userIdentity);
         _filterRecordsBySelectedGroup = FilterByGroupCheckBox.IsChecked == true;
         await EnsureGroupSchemaStateAsync();
+        ApplyCatalogModeLayout(null);
         await LoadGroupsUiAsync();
         await LoadDocumentsUiAsync();
         UpdateActionStates();
@@ -127,6 +130,12 @@ public partial class StandardDetailsWindow : Window
             var retired = _documentSnapshot.Count(x => string.Equals(x.StatusLabel, "Retired", StringComparison.Ordinal));
             HeroSummaryText.Text = n == 0 ? "No parts" : $"{n} parts  ·  {active} active  ·  {retired} retired";
         }
+        else if (_sheetsMode)
+        {
+            var collections = _documentSnapshot.Select(x => x.ViewGroup).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct(StringComparer.OrdinalIgnoreCase).Count();
+            var approved = _documentSnapshot.Count(x => string.Equals(x.StatusLabel, "Approved", StringComparison.Ordinal));
+            HeroSummaryText.Text = n == 0 ? "No sheets" : $"{n} sheets  ·  {collections} collections  ·  {approved} approved";
+        }
         else
         {
             var approved = _documentSnapshot.Count(x => string.Equals(x.StatusLabel, "Approved", StringComparison.Ordinal));
@@ -143,19 +152,23 @@ public partial class StandardDetailsWindow : Window
     // carry art now), so this shows a placeholder and lets the image arrive.
     private void UpdateDetailPane(DocumentRow? row)
     {
+        ApplyCatalogModeLayout(row);
         if (row is null)
         {
-            DetailTitleText.Text = _partsMode ? "Select a part" : "Select a detail";
-            DetailSubtitleText.Text = _partsMode ? "Pick a part on the left to review it." : "Pick a detail on the left to review it.";
+            DetailTitleText.Text = _partsMode ? "Select a part" : _sheetsMode ? "Select a sheet" : "Select a detail";
+            DetailSubtitleText.Text = _partsMode ? "Pick a part on the left to review it." : _sheetsMode ? "Pick a sheet on the left to review it." : "Pick a detail on the left to review it.";
             DetailStatusPill.Visibility = Visibility.Collapsed;
             ActionHintText.Text = _partsMode
                 ? "Approve a part and it goes into the Quick Insert palette."
-                : "This is the actual drawing. Approve it and it goes into the drafters' palette.";
+                : _sheetsMode
+                    ? "Sheets are reviewed in the larger pane and can be opened as PDFs."
+                    : "This is the actual drawing. Approve it and it goes into the drafters' palette.";
             ApproveButton.Visibility = Visibility.Visible;
             RejectButton.Visibility = Visibility.Visible;
             DrawingFootnote.Visibility = Visibility.Collapsed;
             SetDetailKindControl(null, false);
-            ShowPreviewEmpty(_partsMode ? "Select a part to see it." : "Select a detail to see its drawing.");
+            SetDetailSheetControl(false, false);
+            ShowPreviewEmpty(_partsMode ? "Select a part to see it." : _sheetsMode ? "Select a sheet to see it." : "Select a detail to see its drawing.");
             return;
         }
 
@@ -166,9 +179,12 @@ public partial class StandardDetailsWindow : Window
         RejectButton.Visibility = Visibility.Visible;
         ActionHintText.Text = row.IsPart
             ? "Approve → the part goes into the Quick Insert palette.  Reject → it never does."
-            : "This is the actual drawing. Approve it and it goes into the drafters' palette.";
+            : row.IsSheet
+                ? "This sheet is a catalog detail. Open its PDF or move it back to Details if it was misclassified."
+                : "This is the actual drawing. Approve it and it goes into the drafters' palette.";
         DrawingFootnote.Visibility = Visibility.Collapsed;
         SetDetailKindControl(row.Kind, row.IsDetail);
+        SetDetailSheetControl(row.IsSheet, row.IsDetail);
         ShowPreviewEmpty(row.IsPart ? "Loading part image…" : "Loading drawing…");
     }
 
@@ -293,6 +309,18 @@ public partial class StandardDetailsWindow : Window
         CreateRecordButton.IsEnabled = canContribute; UploadVersionButton.IsEnabled = canContribute && selectedDoc is { IsDetail: false }; LinkDetailButton.IsEnabled = canContribute && selectedDoc is { IsDetail: false } && _korStandardsRepo is not null; RegistersButton.IsEnabled = _korStandardsRepo is not null; PublishToMasterButton.IsEnabled = _korStandardsRepo is not null && (_policy?.CanPublish() == true); ComposeSheetButton.IsEnabled = _repo is not null && _korStandardsRepo is not null && (_policy?.CanPublish() == true); AssignRecordButton.IsEnabled = canContribute && selectedDoc is { IsDetail: false } && _groupSchemaAvailable && canAssignToSelectedGroup; DeleteRecordButton.IsEnabled = canContribute && selectedDoc is { IsDetail: false };
         OpenFileButton.IsEnabled = selectedVersion is not null; SubmitButton.IsEnabled = canContribute && selectedVersion is not null && selectedVersion.Status == StatusDraft; ApproveButton.IsEnabled = (_policy?.CanApproveOrReject() == true) && (((selectedDoc is { IsDetail: true } or { IsPart: true }) && _promoterRepo is not null) || (selectedVersion is not null && selectedVersion.Status == StatusSubmitted)); RejectButton.IsEnabled = (_policy?.CanApproveOrReject() == true) && (((selectedDoc is { IsDetail: true } or { IsPart: true }) && _promoterRepo is not null) || (selectedVersion is not null && selectedVersion.Status == StatusSubmitted)); PublishButton.IsEnabled = (_policy?.CanPublish() == true) && selectedVersion is not null && selectedVersion.Status == StatusApproved;
         DetailKindCombo.IsEnabled = selectedDoc is { IsDetail: true } && _promoterRepo is not null && _policy?.CanApproveOrReject() == true;
+        DetailIsSheetCheckBox.IsEnabled = selectedDoc is { IsDetail: true } && _promoterRepo is not null && _policy?.CanApproveOrReject() == true;
+        OpenSheetPdfButton.IsEnabled = selectedDoc is { IsDetail: true, IsSheet: true } && _masterPublishOptions?.IsConfigured == true;
+    }
+
+    private void ApplyCatalogModeLayout(DocumentRow? row)
+    {
+        var sheetLayout = _sheetsMode || row?.IsSheet == true;
+        CatalogListColumn.MinWidth = sheetLayout ? 470 : 360;
+        CatalogListColumn.Width = new GridLength(sheetLayout ? 1.65 : 2.25, GridUnitType.Star);
+        DetailPaneColumn.Width = new GridLength(sheetLayout ? 4 : 3, GridUnitType.Star);
+        PreviewImage.Margin = new Thickness(sheetLayout ? 10 : 26);
+        PreviewEmpty.MaxWidth = sheetLayout ? 520 : 360;
     }
 
     // The drawing previews are PRE-RENDERED to a SHARED cache (beside the master template on the

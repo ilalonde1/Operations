@@ -251,8 +251,8 @@
         <!-- ============ CONTENT: left list  |  right detail ============ -->
         <Grid Grid.Row="2" Margin="18,8,18,10">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="2.25*" MinWidth="360"/>
-                <ColumnDefinition Width="3*"/>
+                <ColumnDefinition x:Name="CatalogListColumn" Width="2.25*" MinWidth="360"/>
+                <ColumnDefinition x:Name="DetailPaneColumn" Width="3*"/>
             </Grid.ColumnDefinitions>
 
             <!-- LEFT: Details/Parts tabs + list -->
@@ -264,6 +264,7 @@
                 <Border Grid.Row="0" Background="#FFE7EAEE" CornerRadius="9" Padding="3" HorizontalAlignment="Left" Margin="0,0,0,10">
                     <StackPanel Orientation="Horizontal">
                         <RadioButton x:Name="DetailsTab" GroupName="Catalog" Content="Details" IsChecked="True" Style="{StaticResource TabRadio}" Checked="CatalogTab_Checked"/>
+                        <RadioButton x:Name="SheetsTab" GroupName="Catalog" Content="Sheets" Style="{StaticResource TabRadio}" Checked="CatalogTab_Checked"/>
                         <RadioButton x:Name="PartsTab" GroupName="Catalog" Content="Parts" Style="{StaticResource TabRadio}" Checked="CatalogTab_Checked"/>
                     </StackPanel>
                 </Border>
@@ -279,6 +280,7 @@
                               EnableColumnVirtualization="True"
                               VirtualizingPanel.IsVirtualizing="True"
                               VirtualizingPanel.VirtualizationMode="Recycling"
+                              VirtualizingPanel.IsVirtualizingWhenGrouping="True"
                               ScrollViewer.CanContentScroll="True"
                               Background="Transparent"
                               BorderThickness="0"
@@ -288,6 +290,17 @@
                               RowStyle="{StaticResource ListRow}"
                               CellStyle="{StaticResource ListCell}"
                               SelectionChanged="DocumentsGrid_SelectionChanged">
+                        <DataGrid.GroupStyle>
+                            <GroupStyle>
+                                <GroupStyle.HeaderTemplate>
+                                    <DataTemplate>
+                                        <Border Background="#FFF6F7F9" BorderBrush="#FFE2E5E9" BorderThickness="0,0,0,1" Padding="10,7">
+                                            <TextBlock Text="{Binding Name}" FontSize="11.5" FontWeight="SemiBold" Foreground="#FF5D6670" TextTrimming="CharacterEllipsis"/>
+                                        </Border>
+                                    </DataTemplate>
+                                </GroupStyle.HeaderTemplate>
+                            </GroupStyle>
+                        </DataGrid.GroupStyle>
                         <DataGrid.Columns>
                             <DataGridTextColumn x:Name="ListIdColumn" Header="DETAIL #" Binding="{Binding DetailNumber}" Width="118">
                                 <DataGridTextColumn.ElementStyle>
@@ -297,6 +310,11 @@
                             <DataGridTextColumn Header="TITLE" Binding="{Binding Title}" Width="*">
                                 <DataGridTextColumn.ElementStyle>
                                     <Style TargetType="TextBlock"><Setter Property="VerticalAlignment" Value="Center"/><Setter Property="TextTrimming" Value="CharacterEllipsis"/><Setter Property="Margin" Value="0,0,10,0"/><Setter Property="FontSize" Value="13"/><Setter Property="Foreground" Value="#FF252B31"/></Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+                            <DataGridTextColumn x:Name="ListGroupColumn" Header="DISCIPLINE" Binding="{Binding GroupName}" Width="135">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock"><Setter Property="VerticalAlignment" Value="Center"/><Setter Property="TextTrimming" Value="CharacterEllipsis"/><Setter Property="Margin" Value="0,0,10,0"/><Setter Property="FontSize" Value="12.5"/><Setter Property="Foreground" Value="#FF68727D"/></Style>
                                 </DataGridTextColumn.ElementStyle>
                             </DataGridTextColumn>
                             <DataGridTemplateColumn Header="STATUS" Width="120">
@@ -423,6 +441,22 @@
                                 <ComboBoxItem Content="Typical" Tag="typical"/>
                                 <ComboBoxItem Content="Custom" Tag="custom"/>
                             </ComboBox>
+                            <CheckBox x:Name="DetailIsSheetCheckBox"
+                                      Content="Sheet"
+                                      Margin="14,0,0,0"
+                                      VerticalAlignment="Center"
+                                      Checked="DetailIsSheetCheckBox_Changed"
+                                      Unchecked="DetailIsSheetCheckBox_Changed"/>
+                            <Button x:Name="OpenSheetPdfButton"
+                                    Height="30"
+                                    Margin="12,0,0,0"
+                                    Padding="12,0"
+                                    Style="{StaticResource RejectButtonStyle}"
+                                    Click="OpenSheetPdf_Click"
+                                    Visibility="Collapsed"
+                                    ToolTip="Open selected sheet PDF">
+                                <TextBlock Text="Open PDF" Foreground="#FF48515B" FontSize="12.5" FontWeight="SemiBold"/>
+                            </Button>
                         </StackPanel>
                         <TextBlock x:Name="ActionHintText" Grid.Row="1" VerticalAlignment="Center" Margin="0,0,260,0"
                                    FontSize="12.5" Foreground="#FF7A828B" TextTrimming="CharacterEllipsis"

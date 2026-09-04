@@ -8,7 +8,7 @@ using Microsoft.Data.SqlClient;
 
 namespace Kor.Operations.StandardDetails;
 
-internal sealed record PaletteDetailRow(string DetailNumber, string Title, string Discipline, string Kind, string Confidence, bool IsPlaceable, bool VariantsDiverge, int VariantCount);
+internal sealed record PaletteDetailRow(string DetailNumber, string Title, string Discipline, string Kind, bool IsSheet, string ViewGroup, string Confidence, bool IsPlaceable, bool VariantsDiverge, int VariantCount);
 internal sealed record SheetComposerDetailRow(string DetailNumber, string Title, string Discipline, string Kind, string CanonicalViewName);
 internal sealed record ComponentRegisterRow(string Palette, string Label, string FamilyName, string TypeName, string Origin, bool IsRetired, int InstanceCount, int UsedInDetails);
 // The Quick Insert catalog: the placeable, governed parts (family+type) production reads. Same
@@ -27,13 +27,15 @@ internal sealed class KorStandardsReadRepository
         _connectionString = connectionString;
     }
 
-    internal async Task<IReadOnlyList<PaletteDetailRow>> LoadPaletteDetailsAsync(string query, string? discipline = null, string? kind = null)
+    internal async Task<IReadOnlyList<PaletteDetailRow>> LoadPaletteDetailsAsync(string query, string? discipline = null, string? kind = null, bool? isSheet = null, bool orderByViewGroup = false)
     {
         const string sql = @"
 SELECT DetailNumber,
        MIN(Title) AS Title,
        MIN(Discipline) AS Discipline,
        MIN(Kind) AS Kind,
+       MAX(CAST(IsSheet AS int)) AS IsSheet,
+       MIN(ViewGroup) AS ViewGroup,
        MIN(Confidence) AS Confidence,
        MAX(CAST(IsPlaceable AS int)) AS IsPlaceable,
        MAX(CAST(VariantsDiverge AS int)) AS VariantsDiverge,
@@ -42,8 +44,9 @@ FROM detail.vw_PaletteCatalog
 WHERE (@q = '' OR DetailNumber LIKE @like OR Title LIKE @like)
   AND (@discipline IS NULL OR Discipline = @discipline)
   AND (@kind IS NULL OR Kind = @kind)
+  AND (@isSheet IS NULL OR IsSheet = @isSheet)
 GROUP BY DetailNumber
-ORDER BY DetailNumber;";
+ORDER BY CASE WHEN @orderByViewGroup = 1 THEN MIN(ViewGroup) ELSE N'' END, DetailNumber;";
 
         var q = query?.Trim() ?? string.Empty;
         var rows = new List<PaletteDetailRow>();
@@ -55,6 +58,8 @@ ORDER BY DetailNumber;";
         AddNVarChar(cmd, "@like", QueryMax + 2, $"%{q}%");
         AddNullableNVarChar(cmd, "@discipline", 80, discipline);
         AddNullableNVarChar(cmd, "@kind", 16, kind);
+        AddNullableBit(cmd, "@isSheet", isSheet);
+        AddBit(cmd, "@orderByViewGroup", orderByViewGroup);
 
         await using var r = await cmd.ExecuteReaderAsync();
         while (await r.ReadAsync())
@@ -64,10 +69,12 @@ ORDER BY DetailNumber;";
                 r.GetStringOrEmpty(1),
                 r.GetStringOrEmpty(2),
                 r.GetStringOrEmpty(3),
-                r.GetStringOrEmpty(4),
-                !r.IsDBNull(5) && r.GetInt32(5) == 1,
-                !r.IsDBNull(6) && r.GetInt32(6) == 1,
-                r.IsDBNull(7) ? 0 : r.GetInt32(7)));
+                !r.IsDBNull(4) && r.GetInt32(4) == 1,
+                r.GetStringOrEmpty(5),
+                r.GetStringOrEmpty(6),
+                !r.IsDBNull(7) && r.GetInt32(7) == 1,
+                !r.IsDBNull(8) && r.GetInt32(8) == 1,
+                r.IsDBNull(9) ? 0 : r.GetInt32(9)));
         }
 
         return rows;
@@ -136,6 +143,7 @@ FROM
                    ViewName) AS rn
     FROM detail.vw_PaletteCatalog
     WHERE IsPlaceable = 1
+      AND IsSheet = 0
       AND (@q = '' OR DetailNumber LIKE @like OR Title LIKE @like OR ViewName LIKE @like)
       AND (@discipline IS NULL OR Discipline = @discipline)
       AND (@kind IS NULL OR Kind = @kind)
@@ -301,5 +309,17 @@ ORDER BY FamilyName, TypeName;";
     {
         var p = cmd.Parameters.Add(name, SqlDbType.NVarChar, size);
         p.Value = string.IsNullOrWhiteSpace(value) ? System.DBNull.Value : value.Trim();
+    }
+
+    private static void AddNullableBit(SqlCommand cmd, string name, bool? value)
+    {
+        var p = cmd.Parameters.Add(name, SqlDbType.Bit);
+        p.Value = value.HasValue ? (object)value.Value : System.DBNull.Value;
+    }
+
+    private static void AddBit(SqlCommand cmd, string name, bool value)
+    {
+        var p = cmd.Parameters.Add(name, SqlDbType.Bit);
+        p.Value = value;
     }
 }
