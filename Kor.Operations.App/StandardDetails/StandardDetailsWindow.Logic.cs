@@ -741,11 +741,16 @@ public partial class StandardDetailsWindow
         try
         {
             var bridge = new DrafterBridgeClient(options.BridgeRoot);
-            var publisher = new MasterPublisher(bridge, _korStandardsRepo, options);
+            var publisher = new MasterPublisher(
+                bridge,
+                _korStandardsRepo,
+                options,
+                _promoterRepo,
+                message => Dispatcher.Invoke(() => SetActivityMessage(message, BannerTone.Info)));
             var result = await publisher.PublishAsync(TimeSpan.FromMinutes(15));
             var summary = BuildMasterPublishSummary(result);
 
-            SetActivityMessage($"Published MASTER: removed {result.RemovedViews.Count} view(s); verified {result.MasterDetailCount} detail view(s).", BannerTone.Success);
+            SetActivityMessage($"Published MASTER: verified {result.MasterDetailCount} detail view(s); captured {result.PdfCapture.CapturedCount}/{result.PdfCapture.TargetCount} PDF(s).", BannerTone.Success);
             MessageBox.Show(this, summary, "Standard Details - Publish to Master", MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (Exception ex)
@@ -770,6 +775,9 @@ public partial class StandardDetailsWindow
         text.AppendLine($"Removed non-approved KOR-D views: {result.RemovedViews.Count}");
         text.AppendLine($"MASTER KOR-D views after verification: {result.MasterDetailCount}");
         text.AppendLine($"Verified: {result.Verified}");
+        text.AppendLine($"PDFs captured: {result.PdfCapture.CapturedCount} of {result.PdfCapture.TargetCount}");
+        text.AppendLine($"PDFs skipped: {result.PdfCapture.SkippedCount}");
+        text.AppendLine($"PDF capture failures: {result.PdfCapture.FailedCount}");
 
         if (result.RemovedViews.Count > 0)
         {
@@ -798,6 +806,21 @@ public partial class StandardDetailsWindow
             if (result.ApprovedMissingFromAuthoring.Count > 20)
             {
                 text.AppendLine($"- ... {result.ApprovedMissingFromAuthoring.Count - 20} more");
+            }
+        }
+
+        if (result.PdfCapture.Failures.Count > 0)
+        {
+            text.AppendLine();
+            text.AppendLine("PDF capture issues:");
+            foreach (var failure in result.PdfCapture.Failures.Take(20))
+            {
+                text.AppendLine($"- {failure}");
+            }
+
+            if (result.PdfCapture.Failures.Count > 20)
+            {
+                text.AppendLine($"- ... {result.PdfCapture.Failures.Count - 20} more");
             }
         }
 

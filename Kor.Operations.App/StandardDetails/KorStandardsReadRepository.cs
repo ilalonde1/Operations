@@ -10,6 +10,7 @@ namespace Kor.Operations.StandardDetails;
 
 internal sealed record PaletteDetailRow(string DetailNumber, string Title, string Discipline, string Kind, bool IsSheet, string ViewGroup, string Confidence, bool IsPlaceable, bool VariantsDiverge, int VariantCount);
 internal sealed record SheetComposerDetailRow(string DetailNumber, string Title, string Discipline, string Kind, string CanonicalViewName);
+internal sealed record PublishedDetailViewRow(string DetailNumber, long ViewElementId);
 internal sealed record ComponentRegisterRow(string Palette, string Label, string FamilyName, string TypeName, string Origin, bool IsRetired, int InstanceCount, int UsedInDetails);
 // The Quick Insert catalog: the placeable, governed parts (family+type) production reads. Same
 // confidence ladder as details, so a part is Approved/Pending exactly like a detail.
@@ -138,6 +139,52 @@ ORDER BY CASE WHEN o.ViewKind = N'DraftingView' THEN 0 ELSE 1 END,
         AddNVarChar(cmd, "@dn", 64, detailNumber.Trim());
         var result = await cmd.ExecuteScalarAsync();
         return result is null || result is System.DBNull ? null : System.Convert.ToInt64(result);
+    }
+
+    internal async Task<IReadOnlyList<PublishedDetailViewRow>> LoadPublishedDetailViewElementIdsAsync()
+    {
+        const string sql = @"
+WITH placeable AS
+(
+    SELECT DISTINCT DetailNumber
+    FROM detail.vw_PaletteCatalog
+    WHERE IsPlaceable = 1
+),
+ranked AS
+(
+    SELECT d.DetailNumber,
+           o.ViewElementId,
+           ROW_NUMBER() OVER (
+               PARTITION BY d.DetailNumber
+               ORDER BY CASE WHEN o.ViewKind = N'DraftingView' THEN 0 ELSE 1 END,
+                        o.ViewElementId) AS rn
+    FROM detail.DetailOccurrence o
+    JOIN detail.Detail d ON d.Id = o.DetailId
+    JOIN placeable p ON p.DetailNumber = d.DetailNumber
+    WHERE o.ViewElementId IS NOT NULL
+)
+SELECT DetailNumber, ViewElementId
+FROM ranked
+WHERE rn = 1
+ORDER BY DetailNumber;";
+
+        var rows = new List<PublishedDetailViewRow>();
+        await using var cn = new SqlConnection(_connectionString);
+        await cn.OpenAsync();
+        await using var cmd = new SqlCommand(sql, cn);
+        cmd.CommandTimeout = SqlTimeouts.UiFacing;
+
+        await using var r = await cmd.ExecuteReaderAsync();
+        while (await r.ReadAsync())
+        {
+            var detailNumber = r.GetStringOrEmpty(0).Trim();
+            if (!string.IsNullOrWhiteSpace(detailNumber))
+            {
+                rows.Add(new PublishedDetailViewRow(detailNumber, r.GetInt64(1)));
+            }
+        }
+
+        return rows;
     }
 
     internal async Task<IReadOnlyList<SheetComposerDetailRow>> LoadSheetComposerDetailsAsync(string query, string? discipline = null, string? kind = null)

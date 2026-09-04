@@ -113,6 +113,33 @@ internal sealed class KorStandardsPromoterRepository
         }
     }
 
+    internal async Task<(bool ok, bool stored, string message)> SetRenderedPdfAsync(string entityKind, string entityKey, byte[] pdf)
+    {
+        try
+        {
+            await using var cn = new SqlConnection(_connectionString);
+            await cn.OpenAsync();
+            await using var cmd = new SqlCommand("detail.SetRenderedPdf", cn);
+            cmd.CommandType = CommandType.StoredProcedure;
+            cmd.CommandTimeout = SqlTimeouts.UiFacing;
+            AddNVarChar(cmd, "@EntityKind", 16, entityKind);
+            AddNVarChar(cmd, "@EntityKey", 410, entityKey);
+            cmd.Parameters.Add("@Pdf", SqlDbType.VarBinary, -1).Value = pdf;
+            var returnValue = cmd.Parameters.Add("@ReturnValue", SqlDbType.Int);
+            returnValue.Direction = ParameterDirection.ReturnValue;
+
+            await cmd.ExecuteNonQueryAsync();
+            var affected = returnValue.Value is int value ? value : Convert.ToInt32(returnValue.Value ?? 0);
+            return affected == 0
+                ? (true, false, $"{entityKey}: no rendered image row exists yet.")
+                : (true, true, "ok");
+        }
+        catch (SqlException ex)
+        {
+            return (false, false, ex.Message);
+        }
+    }
+
     internal async Task<(bool ok, string message)> SetDetailKindAsync(string detailNumber, string? kind)
     {
         try

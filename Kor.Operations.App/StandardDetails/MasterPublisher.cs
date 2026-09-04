@@ -23,31 +23,57 @@ internal sealed record StandardDetailsMasterPublishOptions(
 
 internal sealed record MasterPublishRemovedView(long ViewId, string DetailNumber, string ViewName);
 
+internal sealed record MasterPublishPdfCaptureResult(
+    int TargetCount,
+    int CapturedCount,
+    int SkippedCount,
+    int FailedCount,
+    IReadOnlyList<string> Failures)
+{
+    internal static MasterPublishPdfCaptureResult Empty { get; } = new(0, 0, 0, 0, Array.Empty<string>());
+}
+
 internal sealed record MasterPublishResult(
     int ApprovedCount,
     int AuthoringDetailCount,
     int MasterDetailCount,
     IReadOnlyList<MasterPublishRemovedView> RemovedViews,
     IReadOnlyList<string> ApprovedMissingFromAuthoring,
+    MasterPublishPdfCaptureResult PdfCapture,
     bool Verified);
 
 internal sealed class MasterPublisher
 {
     private const int ParameterBatchSize = 300;
+    private const int PdfCaptureBatchSize = 125;
     private static readonly Regex DetailPrefixPattern = new("^KOR-D-\\d{5}$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
     private readonly DrafterBridgeClient _bridge;
     private readonly KorStandardsReadRepository _standardsRepository;
     private readonly StandardDetailsMasterPublishOptions _options;
+    private readonly KorStandardsPromoterRepository? _promoterRepository;
+    private readonly Action<string>? _reportProgress;
 
     internal MasterPublisher(
         DrafterBridgeClient bridge,
         KorStandardsReadRepository standardsRepository,
         StandardDetailsMasterPublishOptions options)
+        : this(bridge, standardsRepository, options, null, null)
+    {
+    }
+
+    internal MasterPublisher(
+        DrafterBridgeClient bridge,
+        KorStandardsReadRepository standardsRepository,
+        StandardDetailsMasterPublishOptions options,
+        KorStandardsPromoterRepository? promoterRepository,
+        Action<string>? reportProgress)
     {
         _bridge = bridge;
         _standardsRepository = standardsRepository;
         _options = options;
+        _promoterRepository = promoterRepository;
+        _reportProgress = reportProgress;
     }
 
     internal async Task<MasterPublishResult> PublishAsync(TimeSpan bridgeTimeout)
@@ -139,6 +165,8 @@ internal sealed class MasterPublisher
                 throw new InvalidOperationException($"MASTER verification failed. Non-approved KOR-D views remain in the temp file: {sample}");
             }
 
+            var pdfCapture = await CapturePublishedPdfsAsync(bridgeTimeout);
+
             await ReleaseTempDocumentAsync(tempDocToken, bridgeTimeout);
             try
             {
@@ -156,6 +184,7 @@ internal sealed class MasterPublisher
                 verifiedDetails.Count,
                 toRemove,
                 approvedMissingFromAuthoring,
+                pdfCapture,
                 Verified: true);
         }
         finally
@@ -168,6 +197,115 @@ internal sealed class MasterPublisher
                 await CleanupTempArtifactsAsync(tempDocumentMayBeOpen, tempDocToken, controllerTempMasterPath, cleanupTimeout);
             }
         }
+    }
+
+    private async Task<MasterPublishPdfCaptureResult> CapturePublishedPdfsAsync(TimeSpan bridgeTimeout)
+    {
+        IReadOnlyList<PublishedDetailViewRow> targets;
+        try
+        {
+            targets = await _standardsRepository.LoadPublishedDetailViewElementIdsAsync();
+        }
+        catch (Exception ex)
+        {
+            return new MasterPublishPdfCaptureResult(0, 0, 0, 1, new[] { $"Could not load PDF capture targets: {ex.Message}" });
+        }
+
+        if (targets.Count == 0)
+        {
+            return MasterPublishPdfCaptureResult.Empty;
+        }
+
+        if (_promoterRepository is null)
+        {
+            return new MasterPublishPdfCaptureResult(
+                targets.Count,
+                0,
+                0,
+                targets.Count,
+                new[] { "PDF capture skipped because KorStandards promoter is not configured." });
+        }
+
+        var exportFolder = Path.Combine(
+            _options.BridgeRoot,
+            "exports",
+            "standard-details-publish-capture",
+            DateTime.Now.ToString("yyyyMMdd-HHmmss"));
+        var captured = 0;
+        var skipped = 0;
+        var failures = new List<string>();
+        var processed = 0;
+        _reportProgress?.Invoke($"Capturing PDFs… 0 of {targets.Count}");
+
+        foreach (var batch in Batch(targets, PdfCaptureBatchSize))
+        {
+            BridgeReply reply;
+            try
+            {
+                Directory.CreateDirectory(exportFolder);
+                reply = await _bridge.SendAsync(new
+                {
+                    verb = "exportviews",
+                    folder = exportFolder,
+                    colors = "color",
+                    views = batch.Select(x => new { id = x.ViewElementId, key = x.DetailNumber }).ToArray()
+                }, bridgeTimeout);
+            }
+            catch (Exception ex)
+            {
+                foreach (var target in batch)
+                {
+                    failures.Add($"{target.DetailNumber}: export failed ({ex.Message})");
+                }
+
+                processed += batch.Count;
+                _reportProgress?.Invoke($"Capturing PDFs… {processed} of {targets.Count}");
+                continue;
+            }
+
+            foreach (var target in batch)
+            {
+                try
+                {
+                    if (!TryResolveExportedViewPdf(reply.Result, target.ViewElementId, target.DetailNumber, batch.Count == 1, out var exportedPdf, out var error))
+                    {
+                        failures.Add($"{target.DetailNumber}: {error}");
+                    }
+                    else if (!File.Exists(exportedPdf))
+                    {
+                        failures.Add($"{target.DetailNumber}: export returned '{exportedPdf}', but the PDF was not readable.");
+                    }
+                    else
+                    {
+                        var bytes = File.ReadAllBytes(exportedPdf);
+                        var (ok, stored, message) = await _promoterRepository.SetRenderedPdfAsync("detail", target.DetailNumber, bytes);
+                        if (!ok)
+                        {
+                            failures.Add($"{target.DetailNumber}: {message}");
+                        }
+                        else if (!stored)
+                        {
+                            skipped++;
+                        }
+                        else
+                        {
+                            captured++;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    failures.Add($"{target.DetailNumber}: {ex.Message}");
+                }
+                finally
+                {
+                    processed++;
+                    _reportProgress?.Invoke($"Capturing PDFs… {processed} of {targets.Count}");
+                }
+            }
+        }
+
+        return new MasterPublishPdfCaptureResult(targets.Count, captured, skipped, failures.Count, failures);
     }
 
     private void ValidateOptions()
@@ -455,6 +593,94 @@ internal sealed class MasterPublisher
                 x.Value.ToUpperInvariant(),
                 viewNames.TryGetValue(x.Key, out var name) ? name : ""))
             .ToList();
+    }
+
+    private static IEnumerable<IReadOnlyList<T>> Batch<T>(IReadOnlyList<T> items, int size)
+    {
+        for (var index = 0; index < items.Count; index += size)
+        {
+            yield return items.Skip(index).Take(Math.Min(size, items.Count - index)).ToList();
+        }
+    }
+
+    private static bool TryResolveExportedViewPdf(
+        JsonElement result,
+        long viewElementId,
+        string detailNumber,
+        bool allowTopLevelPdf,
+        out string pdf,
+        out string error)
+    {
+        pdf = "";
+        error = "";
+
+        if (TryFindViewExportItem(result, viewElementId, detailNumber, out var item))
+        {
+            if (TryGetBool(item, "exists", out var itemExists) && !itemExists)
+            {
+                error = "Drafter did not export the view.";
+                return false;
+            }
+
+            if (TryGetString(item, "pdf") is { Length: > 0 } itemPdf)
+            {
+                pdf = itemPdf;
+                return true;
+            }
+        }
+
+        if (allowTopLevelPdf && TryGetString(result, "pdf") is { Length: > 0 } resultPdf)
+        {
+            pdf = resultPdf;
+            return true;
+        }
+
+        error = "Drafter export did not return a PDF path.";
+        return false;
+    }
+
+    private static bool TryFindViewExportItem(JsonElement result, long viewElementId, string detailNumber, out JsonElement item)
+    {
+        item = default;
+        var fallback = default(JsonElement);
+        var count = 0;
+        foreach (var candidate in EnumerateResultItems(result, "views", "items", "results"))
+        {
+            count++;
+            fallback = candidate;
+            if ((TryGetInt64(candidate, "id", out var id) && id == viewElementId)
+                || string.Equals(TryGetString(candidate, "key"), detailNumber, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(TryGetString(candidate, "detailNumber"), detailNumber, StringComparison.OrdinalIgnoreCase))
+            {
+                item = candidate;
+                return true;
+            }
+        }
+
+        if (count == 1)
+        {
+            item = fallback;
+            return true;
+        }
+
+        return false;
+    }
+
+    private static bool TryGetBool(JsonElement element, string name, out bool value)
+    {
+        value = false;
+        if (!TryGetProperty(element, name, out var property))
+        {
+            return false;
+        }
+
+        if (property.ValueKind == JsonValueKind.True || property.ValueKind == JsonValueKind.False)
+        {
+            value = property.GetBoolean();
+            return true;
+        }
+
+        return property.ValueKind == JsonValueKind.String && bool.TryParse(property.GetString(), out value);
     }
 
     private static bool TryReadViewPrefix(JsonElement item, out string prefix)
