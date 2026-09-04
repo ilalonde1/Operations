@@ -38,6 +38,11 @@ public enum OpportunitySourceType
     // rezoning APPLICATIONS), unlike the tender feeds which arrive after the
     // structural engineer has already been chosen.
     ArcGisFeatureService = 20,
+    // Tempest "OurCity / Prospero" development tracker (2026-09-04). Victoria,
+    // Saanich and View Royal all license it, and the detail pages are identical
+    // enough that one extractor already reads them all. This is the LISTING
+    // side: ASP.NET WebForms, paged by partial postback.
+    TempestProspero = 21,
     Manual = 99,
 }
 

@@ -702,6 +702,13 @@ builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.VendorSiteExtraction
                     Password = options.MerxPassword,
                 };
             });
+            // Tempest/Prospero listing scraper — Saanich, View Royal and any other
+            // municipality on the same tracker. Pairs with
+            // VictoriaProsperoLiveDetailExtractor, which already reads the detail
+            // page for every Tempest host.
+            builder.Services.AddSingleton<Kor.Opportunities.Data.Ingestion.Scraping.TempestProsperoScraper>();
+            builder.Services.AddSingleton<Kor.Opportunities.Core.Ingestion.IOpportunityProvider>(
+                sp => sp.GetRequiredService<Kor.Opportunities.Data.Ingestion.Scraping.TempestProsperoScraper>());
             builder.Services.AddSingleton<Kor.Opportunities.Data.Ingestion.Scraping.BcBidScraper>();
             builder.Services.AddSingleton<Kor.Opportunities.Data.Ingestion.Scraping.MerxDccScraper>();
             builder.Services.AddSingleton<IOpportunityProvider>(

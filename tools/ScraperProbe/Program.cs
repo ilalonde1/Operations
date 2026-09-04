@@ -20,6 +20,10 @@ var baseUrlOpt = new Option<string>(
     () => "https://bcbid.gov.bc.ca/page.aspx/en/rfp/request_browse_public",
     "Base URL used to resolve relative hrefs.");
 var buyerOpt = new Option<string>("--buyer", () => "TestBuyer", "Buyer string passed to the row mapper.");
+var prosperoOpt = new Option<bool>(
+    "--prospero",
+    "Run TempestProsperoScraper LIVE against --base-url (a Tempest OurCity/Prospero Search.aspx). "
+    + "Prints the applications it would ingest. Read-only.");
 
 var root = new RootCommand("Scraper probe  runs row extraction against a saved HTML file.");
 root.AddOption(htmlOpt);
@@ -28,6 +32,7 @@ root.AddOption(enrichBatchOpt);
 root.AddOption(downloadBatchOpt);
 root.AddOption(baseUrlOpt);
 root.AddOption(buyerOpt);
+root.AddOption(prosperoOpt);
 
 root.SetHandler(async (
     FileInfo? htmlFile,
@@ -35,8 +40,48 @@ root.SetHandler(async (
     string buyer,
     FileInfo? detailHtml,
     int? enrichBatch,
-    int? downloadBatch) =>
+    int? downloadBatch,
+    bool prospero) =>
 {
+    if (prospero)
+    {
+        using var plf = LoggerFactory.Create(b => b.AddSimpleConsole(o => { o.SingleLine = true; }));
+        await using var ppool = new PlaywrightBrowserPool(plf.CreateLogger<PlaywrightBrowserPool>());
+        var scraper = new Kor.Opportunities.Data.Ingestion.Scraping.TempestProsperoScraper(
+            ppool, plf.CreateLogger<Kor.Opportunities.Data.Ingestion.Scraping.TempestProsperoScraper>());
+
+        var src = new Kor.Opportunities.Core.Models.OpportunitySource
+        {
+            Id = Guid.NewGuid(),
+            Name = "prospero-probe",
+            SourceType = Kor.Opportunities.Core.Models.OpportunitySourceType.TempestProspero,
+            BaseUrl = baseUrl,
+            RequestTimeoutSeconds = 120,
+        };
+
+        var cfg = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["prospero.buyer"] = buyer,
+            ["playwright.maxPages"] = "5",
+        };
+
+        var got = await scraper.FetchAsync(src, cfg, CancellationToken.None);
+        Console.WriteLine();
+        Console.WriteLine($"APPLICATIONS: {got.Count}");
+        foreach (var c in got.Take(12))
+        {
+            Console.WriteLine($"  {c.PostedDateUtc:yyyy-MM-dd}  {c.ExternalReference,-12} {c.Title}");
+            Console.WriteLine($"        {c.Location}");
+            Console.WriteLine($"        {(c.Description ?? string.Empty).PadRight(0)[..Math.Min(120, (c.Description ?? string.Empty).Length)]}");
+            Console.WriteLine($"        {c.Url}");
+        }
+
+        var dated = got.Count(x => x.PostedDateUtc is not null);
+        Console.WriteLine();
+        Console.WriteLine($"dated: {dated} of {got.Count}; distinct refs: {got.Select(x => x.ExternalReference).Distinct().Count()}");
+        return;
+    }
+
     if (enrichBatch is { } n && n > 0)
     {
         var cs = Environment.GetEnvironmentVariable("KOR_OPPORTUNITIES_CONNECTIONSTRING");
@@ -194,7 +239,7 @@ root.SetHandler(async (
         Console.WriteLine($"  Deadline:     {candidate.SubmissionDeadlineUtc:yyyy-MM-dd HH:mm zzz}");
         Console.WriteLine($"  ProjectProv:  {candidate.ProjectProvince}");
     }
-}, htmlOpt, baseUrlOpt, buyerOpt, detailHtmlOpt, enrichBatchOpt, downloadBatchOpt);
+}, htmlOpt, baseUrlOpt, buyerOpt, detailHtmlOpt, enrichBatchOpt, downloadBatchOpt, prosperoOpt);
 
 static string Snip(string? s) =>
     string.IsNullOrEmpty(s) ? "(null)" :
