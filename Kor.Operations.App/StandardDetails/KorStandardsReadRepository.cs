@@ -295,6 +295,28 @@ ORDER BY Label, FamilyName, TypeName;";
         }
     }
 
+    // The captured vector PDF for the same governed entity. Missing migration/table/column means
+    // no static PDF yet; callers can fall back to live export where a bridge is available.
+    internal async Task<byte[]?> LoadRenderedPdfAsync(string entityKind, string entityKey)
+    {
+        const string sql = @"SELECT TOP 1 Pdf FROM detail.RenderedImage WHERE EntityKind = @kind AND EntityKey = @key AND Pdf IS NOT NULL;";
+        try
+        {
+            await using var cn = new SqlConnection(_connectionString);
+            await cn.OpenAsync();
+            await using var cmd = new SqlCommand(sql, cn);
+            cmd.CommandTimeout = SqlTimeouts.UiFacing;
+            AddNVarChar(cmd, "@kind", 16, entityKind);
+            AddNVarChar(cmd, "@key", 410, entityKey);
+            var result = await cmd.ExecuteScalarAsync();
+            return result as byte[];
+        }
+        catch (SqlException ex) when (ex.Number is 208 or 207)
+        {
+            return null;
+        }
+    }
+
     // Every component that carries a thumbnail reference, for the "Sync Part Images" tool. ImageFile is
     // either a rooted path (the fastener/bolt .png) or a bare name resolved against the QuickPick image root.
     internal async Task<IReadOnlyList<ComponentImageRef>> LoadComponentImageRefsAsync()

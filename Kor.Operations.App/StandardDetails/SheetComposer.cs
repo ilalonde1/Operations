@@ -242,15 +242,21 @@ internal sealed class StandardDetailsSheetComposer
 
     internal async Task<string> OpenDetailPdfAsync(string detailNumber, KorStandardsReadRepository reader, TimeSpan bridgeTimeout)
     {
-        if (!_options.IsConfigured)
-        {
-            throw new InvalidOperationException("Standard Details bridge settings are incomplete.");
-        }
-
         detailNumber = (detailNumber ?? "").Trim();
         if (string.IsNullOrWhiteSpace(detailNumber))
         {
             throw new InvalidOperationException("Detail number is required before opening a PDF.");
+        }
+
+        var storedPdf = await reader.LoadRenderedPdfAsync("detail", detailNumber);
+        if (storedPdf is { Length: > 0 })
+        {
+            return CopyPdfBytesToTempAndOpen(storedPdf, detailNumber);
+        }
+
+        if (string.IsNullOrWhiteSpace(_options.BridgeRoot))
+        {
+            throw NoCapturedPdf(detailNumber);
         }
 
         var viewElementId = await reader.GetCanonicalViewElementIdAsync(detailNumber);
@@ -259,18 +265,33 @@ internal sealed class StandardDetailsSheetComposer
             throw new InvalidOperationException($"No drawing view is recorded for {detailNumber}; it cannot be exported as a PDF from the catalog.");
         }
 
-        await AssertDocumentActiveAsync("export catalog PDF", bridgeTimeout);
+        try
+        {
+            await AssertDocumentActiveAsync("export catalog PDF", bridgeTimeout);
+        }
+        catch (Exception ex) when (IsBridgeUnavailable(ex))
+        {
+            throw NoCapturedPdf(detailNumber, ex);
+        }
 
         var exportFolder = Path.Combine(_options.BridgeRoot, "exports", "standard-details-views");
-        Directory.CreateDirectory(exportFolder);
 
-        var reply = await _bridge.SendAsync(new
+        BridgeReply reply;
+        try
         {
-            verb = "exportviews",
-            folder = exportFolder,
-            colors = "color",
-            views = new[] { new { id = viewElementId.Value, key = detailNumber } }
-        }, bridgeTimeout);
+            Directory.CreateDirectory(exportFolder);
+            reply = await _bridge.SendAsync(new
+            {
+                verb = "exportviews",
+                folder = exportFolder,
+                colors = "color",
+                views = new[] { new { id = viewElementId.Value, key = detailNumber } }
+            }, bridgeTimeout);
+        }
+        catch (Exception ex) when (IsBridgeUnavailable(ex))
+        {
+            throw NoCapturedPdf(detailNumber, ex);
+        }
 
         var exportedPdf = ResolveExportedViewPdf(reply.Result, viewElementId.Value, detailNumber);
         if (!File.Exists(exportedPdf))
@@ -280,6 +301,9 @@ internal sealed class StandardDetailsSheetComposer
 
         return CopyPdfToTempAndOpen(exportedPdf, detailNumber);
     }
+
+    private static InvalidOperationException NoCapturedPdf(string detailNumber, Exception? inner = null)
+        => new($"No PDF captured for {detailNumber} yet. Publish to capture it, or open Drafter/Revit for a one-time live export.", inner);
 
     private void ValidateRequest(SheetComposerRequest request)
     {
@@ -627,12 +651,28 @@ internal sealed class StandardDetailsSheetComposer
         var tempPath = Path.Combine(tempFolder, $"{SanitizeFileName(identity)}-{DateTime.Now:yyyyMMdd-HHmmss}.pdf");
         File.Copy(exportedPdf, tempPath, overwrite: true);
 
+        OpenTempPdf(tempPath);
+        return tempPath;
+    }
+
+    private static string CopyPdfBytesToTempAndOpen(byte[] pdfBytes, string identity)
+    {
+        var tempFolder = Path.Combine(Path.GetTempPath(), "KOR-StandardDetails");
+        Directory.CreateDirectory(tempFolder);
+        CleanOldTempPdfs(tempFolder);
+
+        var tempPath = Path.Combine(tempFolder, $"{SanitizeFileName(identity)}-{DateTime.Now:yyyyMMdd-HHmmss}.pdf");
+        File.WriteAllBytes(tempPath, pdfBytes);
+        OpenTempPdf(tempPath);
+        return tempPath;
+    }
+
+    private static void OpenTempPdf(string tempPath)
+    {
         Process.Start(new ProcessStartInfo(tempPath)
         {
             UseShellExecute = true
         });
-
-        return tempPath;
     }
 
     private static void CleanOldTempPdfs(string tempFolder)
@@ -671,6 +711,14 @@ internal sealed class StandardDetailsSheetComposer
         cleaned = Regex.Replace(cleaned, "-{2,}", "-").Trim('-', '.');
         return string.IsNullOrWhiteSpace(cleaned) ? "sheet" : cleaned;
     }
+
+    private static bool IsBridgeUnavailable(Exception ex)
+        => ex is TimeoutException
+           || ex is IOException
+           || ex is UnauthorizedAccessException
+           || ex is InvalidOperationException invalid
+              && (invalid.Message.Contains("Could not queue Drafter bridge command", StringComparison.OrdinalIgnoreCase)
+                  || invalid.Message.Contains("no active Revit document", StringComparison.OrdinalIgnoreCase));
 
     private static SheetComposerOccupiedDetail? ResolveOccupiedPlacement(
         SheetComposerPlacement placement,

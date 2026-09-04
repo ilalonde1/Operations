@@ -932,20 +932,22 @@ public partial class StandardDetailsWindow
             return;
         }
 
-        if (_masterPublishOptions is not { IsConfigured: true } options || _korStandardsRepo is null)
+        if (_korStandardsRepo is null)
         {
-            SetActivityMessage("Catalog PDF settings are incomplete.", BannerTone.Warning);
-            MessageBox.Show(this, "App.config must define StandardDetails.AuthoringPath, StandardDetails.MasterPath, and StandardDetails.BridgeRoot.", "Standard Details - Open PDF", MessageBoxButton.OK, MessageBoxImage.Warning);
+            SetActivityMessage("KorStandards catalog is not configured.", BannerTone.Warning);
+            MessageBox.Show(this, "KorStandards catalog is not configured.", "Standard Details - Open PDF", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 
+        var options = _masterPublishOptions ?? new StandardDetailsMasterPublishOptions("", "", "");
+        var bridgeRoot = string.IsNullOrWhiteSpace(options.BridgeRoot) ? "." : options.BridgeRoot;
         _openingCatalogPdf = true;
         OpenSheetPdfButton.IsEnabled = false;
         OpenSheetPdfButtonText.Text = "Generating…";
         try
         {
             SetActivityMessage($"Generating PDF for {detail.DetailNumber}...", BannerTone.Info);
-            var composer = new StandardDetailsSheetComposer(new DrafterBridgeClient(options.BridgeRoot), options);
+            var composer = new StandardDetailsSheetComposer(new DrafterBridgeClient(bridgeRoot), options);
             await composer.OpenDetailPdfAsync(detail.DetailNumber, _korStandardsRepo, TimeSpan.FromMinutes(5));
             SetActivityMessage($"Opened PDF for {detail.DetailNumber}.", BannerTone.Success);
         }
@@ -1312,7 +1314,7 @@ public partial class StandardDetailsWindow
         }
 
         DetailTypeCombo.IsEnabled = visible && _promoterRepo != null && _policy?.CanApproveOrReject() == true;
-        OpenSheetPdfButton.IsEnabled = visible && _masterPublishOptions?.IsConfigured == true && _korStandardsRepo != null;
+        OpenSheetPdfButton.IsEnabled = visible && _korStandardsRepo != null && !_openingCatalogPdf;
     }
 
     private sealed class DocumentRow
