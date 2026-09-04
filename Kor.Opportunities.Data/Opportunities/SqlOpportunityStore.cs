@@ -116,6 +116,30 @@ WHERE Id = @id;";
         return await reader.ReadAsync(ct).ConfigureAwait(false) ? MapReader(reader) : null;
     }
 
+    public async Task<bool> KeyBelongsToDifferentSourceAsync(
+        string opportunityKey,
+        Guid sourceId,
+        string? candidateUrl,
+        CancellationToken ct)
+    {
+        const string sql = @"
+SELECT TOP 1 1
+FROM opportunities.Opportunities o
+JOIN opportunities.OpportunityObservations ob ON ob.OpportunityId = o.Id
+WHERE o.OpportunityKey = @key
+  AND ob.OpportunitySourceId <> @src
+  AND ISNULL(ob.Url, N'') <> ISNULL(@url, N'');";
+
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@key", SqlDbType.NVarChar, 64).Value = opportunityKey;
+        cmd.Parameters.Add("@src", SqlDbType.UniqueIdentifier).Value = sourceId;
+        cmd.Parameters.Add("@url", SqlDbType.NVarChar, 2000).Value = (object?)candidateUrl ?? DBNull.Value;
+        var hit = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
+        return hit is not null and not DBNull;
+    }
+
     public async Task<Opportunity?> GetByKeyAsync(string opportunityKey, CancellationToken ct)
     {
         var sql = $@"

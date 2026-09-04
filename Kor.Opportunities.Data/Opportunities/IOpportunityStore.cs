@@ -23,6 +23,26 @@ public interface IOpportunityStore
     Task<Opportunity?> GetByKeyAsync(string opportunityKey, CancellationToken ct);
 
     /// <summary>
+    /// True when the opportunity behind <paramref name="opportunityKey"/> has
+    /// ever been observed from a source OTHER than <paramref name="sourceId"/>
+    /// at a DIFFERENT url — i.e. the key is about to be shared by two unrelated
+    /// procurements.
+    ///
+    /// The OpportunityKey prefix is only the first 8 alphanumeric characters of
+    /// the source name, so 48 enabled sources reduce to BIDSTEND. That is not
+    /// theoretical: BIDSTEND-26-067 "Audio Visual System Replacement and
+    /// Upgrade" carried BidsTenders_MapleRidge .../Detail/7 AND
+    /// BidsTenders_Coquitlam .../Detail/60 in one row. Different url is what
+    /// separates a collision from honest cross-posting, where the same listing
+    /// appears under two configured views at the same url.
+    /// </summary>
+    Task<bool> KeyBelongsToDifferentSourceAsync(
+        string opportunityKey,
+        Guid sourceId,
+        string? candidateUrl,
+        CancellationToken ct);
+
+    /// <summary>
     /// The opportunity's already-resolved buyer canonical-org id, or null when
     /// the buyer hasn't been resolved (or the row is gone). Lean single-column
     /// read — BuyerCanonicalOrgId is deliberately NOT on the domain model /

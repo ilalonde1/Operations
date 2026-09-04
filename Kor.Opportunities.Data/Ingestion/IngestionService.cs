@@ -286,6 +286,24 @@ public sealed class IngestionService : IIngestionService
             }
         }
 
+        // The key prefix is only 8 alphanumeric characters of the source name, so
+        // sibling tenants collide (48 sources reduce to BIDSTEND). Re-keying the
+        // corpus to fix that would re-insert every opportunity as new, so instead
+        // the collision is disambiguated HERE, for the colliding candidate only:
+        // existing keys never move, and two municipalities can no longer land in
+        // one row. Verified damage before this existed: BIDSTEND-26-067 held both
+        // Maple Ridge's and Coquitlam's tender #26-067.
+        if (await _opportunityStore
+                .KeyBelongsToDifferentSourceAsync(key, source.Id, candidate.Url, ct)
+                .ConfigureAwait(false))
+        {
+            var disambiguated = DisambiguateKey(key, source);
+            _logger.LogWarning(
+                "OpportunityKey {Key} is already held by another source at a different url; using {NewKey} for {SourceName}.",
+                key, disambiguated, source.Name);
+            key = disambiguated;
+        }
+
         var existing = await _opportunityStore.GetByKeyAsync(key, ct).ConfigureAwait(false);
         long opportunityId;
         if (existing is null)
@@ -552,6 +570,32 @@ public sealed class IngestionService : IIngestionService
         return $"{prefix}-{shortHash}";
     }
 
+    /// <summary>
+    /// Inserts six hex characters of the source's own id into an otherwise
+    /// colliding key. Deterministic, so the same source composes the same
+    /// disambiguated key every run, and applied ONLY on a proven collision so no
+    /// existing key ever moves.
+    /// </summary>
+    private static string DisambiguateKey(string key, OpportunitySource source)
+    {
+        var disc = source.Id.ToString("N", CultureInfo.InvariantCulture)[..6].ToUpperInvariant();
+        var dash = key.IndexOf('-', StringComparison.Ordinal);
+        if (dash < 0)
+        {
+            return Truncate($"{key}{disc}", 64);
+        }
+
+        var prefix = key[..dash];
+        var rest = key[(dash + 1)..];
+        var budget = 64 - prefix.Length - disc.Length - 1;
+        if (rest.Length > budget && budget > 0)
+        {
+            rest = rest[..budget];
+        }
+
+        return $"{prefix}{disc}-{rest}";
+    }
+
     private static string SourcePrefix(OpportunitySource source)
     {
         // Short, alphanumeric prefix so keys read cleanly. Falls back to source type
@@ -662,6 +706,13 @@ public sealed class IngestionService : IIngestionService
     /// effect: Coquitlam file 22-067 gained "Phase two … a townhouse site with 92
     /// units" upstream and the row went on showing phase one only.
     ///
+    /// THE CONTACT JOINED IT ON 2026-09-04, third instance of the same shape. A
+    /// duplicate hash returns before the opportunity refresh block, so a newly
+    /// learned contact never landed: teaching the ArcGIS adapter to put
+    /// Coquitlam's APPLICANT in the contact slot changed nothing on 387 of 389
+    /// rows, because title, url and description were all unchanged. The people
+    /// that fix was for — Ledingham McAllister and the rest — stayed invisible.
+    ///
     /// Changing the formula is safe without rebuilding the observation table:
     /// the first re-observation of each posting simply inserts a new observation
     /// row and flows through the key-matched refresh path (idempotent; no
@@ -677,7 +728,8 @@ public sealed class IngestionService : IIngestionService
             (candidate.Location ?? "").Trim().ToUpperInvariant(),
             (candidate.Url ?? "").Trim().ToUpperInvariant(),
             candidate.SubmissionDeadlineUtc?.UtcDateTime.ToString("yyyy-MM-ddTHH:mm", CultureInfo.InvariantCulture) ?? "",
-            (candidate.Description ?? "").Trim().ToUpperInvariant());
+            (candidate.Description ?? "").Trim().ToUpperInvariant(),
+            (candidate.BuyerContactName ?? "").Trim().ToUpperInvariant());
 
         return SHA256.HashData(Encoding.UTF8.GetBytes(key));
     }

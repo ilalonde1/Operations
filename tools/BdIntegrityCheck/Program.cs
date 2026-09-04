@@ -45,13 +45,25 @@ invariants.Add(("org_merge_from_still_active",
       WHERE EXISTS (SELECT 1 FROM opportunities.CanonicalOrg co WHERE co.Id = m.MergedFromCanonicalOrgId AND co.RetiredAtUtc IS NULL);",
     @"SELECT TOP 5 m.MergedFromCanonicalOrgId, m.MergedIntoCanonicalOrgId, m.Reason FROM opportunities.CanonicalOrgMerge m
       WHERE EXISTS (SELECT 1 FROM opportunities.CanonicalOrg co WHERE co.Id = m.MergedFromCanonicalOrgId AND co.RetiredAtUtc IS NULL);"));
+// The ledger exists so that anything still holding a LOSER id can be forwarded to
+// a live survivor. A row is therefore only broken when a forward is still
+// possible — i.e. the loser id could still turn up — and the survivor is gone.
+//
+// 2026-09-04: this fired on 230932 -> 230931 where BOTH orgs had been deleted and
+// nothing anywhere referenced either (alias, awards, bids, affiliations, facts and
+// enrichment all zero). Nothing can ever ask to be forwarded from an id that no
+// longer exists and that no row holds, so the pair is inert history, not a defect.
+// The condition below says that out loud rather than leaving a standing ERROR
+// that everyone learns to scroll past.
 invariants.Add(("org_merge_dead_survivor",
-    "CanonicalOrgMerge rows whose MergedInto survivor is missing or retired (chain not collapsed to a live org)",
+    "CanonicalOrgMerge rows whose MergedInto survivor is missing or retired WHILE the loser id still exists — a forward that can be asked for and cannot be answered. Pairs where the loser is also gone are inert history and excluded",
     true,
     @"SELECT COUNT(*) FROM opportunities.CanonicalOrgMerge m
-      WHERE NOT EXISTS (SELECT 1 FROM opportunities.CanonicalOrg co WHERE co.Id = m.MergedIntoCanonicalOrgId AND co.RetiredAtUtc IS NULL);",
+      WHERE NOT EXISTS (SELECT 1 FROM opportunities.CanonicalOrg co WHERE co.Id = m.MergedIntoCanonicalOrgId AND co.RetiredAtUtc IS NULL)
+        AND EXISTS     (SELECT 1 FROM opportunities.CanonicalOrg lo WHERE lo.Id = m.MergedFromCanonicalOrgId);",
     @"SELECT TOP 5 m.MergedFromCanonicalOrgId, m.MergedIntoCanonicalOrgId, m.Reason FROM opportunities.CanonicalOrgMerge m
-      WHERE NOT EXISTS (SELECT 1 FROM opportunities.CanonicalOrg co WHERE co.Id = m.MergedIntoCanonicalOrgId AND co.RetiredAtUtc IS NULL);"));
+      WHERE NOT EXISTS (SELECT 1 FROM opportunities.CanonicalOrg co WHERE co.Id = m.MergedIntoCanonicalOrgId AND co.RetiredAtUtc IS NULL)
+        AND EXISTS     (SELECT 1 FROM opportunities.CanonicalOrg lo WHERE lo.Id = m.MergedFromCanonicalOrgId);"));
 
 // ── Hygiene (Warn) ───────────────────────────────────────────────────────────
 invariants.Add(("person_zero_markers",
