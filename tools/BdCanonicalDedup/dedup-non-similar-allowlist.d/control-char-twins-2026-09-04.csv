@@ -1,0 +1,16 @@
+# PROPOSED 2026-09-04 - NOT YET REVIEWED BY IAN. Nine buyers whose DisplayName carries a line feed
+# next to the same name on one line. The computed NormalizedName strips spaces but not LF, so the
+# strict key never matched; the fuzzy key differs for the same reason, hence the allowlist entry.
+# Loser = the <LF> row (0 intel in every case); survivor = the one-line row. Source:
+# tools/BdIntegrityCheck org_aggressive_key_collision, Shape = control-char twin.
+# Dry run: dotnet run --project tools/BdCanonicalDedup -- --pairs tools/BdCanonicalDedup/control-char-twins-merge-2026-09-04.csv
+LoserId,SurvivorId,Reason,Reviewer,ReviewedAt
+473332,311,same name as 311; loser carries a line feed the strict and fuzzy keys cannot see; survivor is the one-line row with the intel,,
+473335,357,same name as 357; loser carries a line feed the strict and fuzzy keys cannot see; survivor is the one-line row with the intel,,
+902256,501,same name as 501; loser carries a line feed the strict and fuzzy keys cannot see; survivor is the one-line row with the intel,,
+797333,660,same name as 660; loser carries a line feed the strict and fuzzy keys cannot see; survivor is the one-line row with the intel,,
+473334,71449,same name as 71449; loser carries a line feed the strict and fuzzy keys cannot see; survivor is the one-line row with the intel,,
+658611,658616,same name as 658616; loser carries a line feed the strict and fuzzy keys cannot see; survivor is the one-line row with the intel,,
+840570,825162,same name as 825162; loser carries a line feed the strict and fuzzy keys cannot see; survivor is the one-line row with the intel,,
+855968,855970,same name as 855970; loser carries a line feed the strict and fuzzy keys cannot see; survivor is the one-line row with the intel,,
+902254,902255,same name as 902255; loser carries a line feed the strict and fuzzy keys cannot see; survivor is the one-line row with the intel,,

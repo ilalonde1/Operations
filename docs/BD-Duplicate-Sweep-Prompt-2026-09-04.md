@@ -1,5 +1,10 @@
 # Seed prompt — whole-database duplicate sweep
 
+> **Run on 2026-09-04.** Results, the check, the kept reports and the proposed batches are in
+> `docs/BD-Duplicate-Sweep-2026-09-04.md`. Two figures in this prompt did not survive contact:
+> the affiliation "3,551 groups" counts retired rows (the live defect is 462 groups), and
+> "721 orgs" outside the umbrellas measures as 749 with the same 306 groups.
+
 **Paste everything below the line into a fresh Claude Code session in `C:\VIsual Studio Projects\Operations`.**
 
 Filed here to match the repo's existing convention for session prompts

@@ -1,0 +1,144 @@
+Output directory: C:\VIsual Studio Projects\Operations\tools\BdCanonicalDedup\output
+Allowlist validation report written: C:\VIsual Studio Projects\Operations\tools\BdCanonicalDedup\output\allowlist-validation-report.csv
+[DRY-RUN] merge 77161 (Stantec San Diego) -> 38934 (Stantec Inc.); kind=Competitor
+[DRY-RUN] merge 77211 (Stantec (Sacramento)) -> 38934 (Stantec Inc.); kind=Competitor
+[DRY-RUN] merge 77339 (Stantec Structural Engineering) -> 38934 (Stantec Inc.); kind=Competitor
+[DRY-RUN] merge 77705 (Stantec Architecture (Canada)) -> 38934 (Stantec Inc.); kind=Competitor
+[DRY-RUN] merge 77127 (WSP USA Buildings) -> 18657 (WSP Canada Inc.); kind=Competitor
+[DRY-RUN] merge 77884 (WSP Canada — Structural Engineering) -> 18657 (WSP Canada Inc.); kind=Competitor
+[DRY-RUN] merge 77133 (PCL Construction Services) -> 13243 (PCL Construction); kind=GC
+[DRY-RUN] merge 77193 (PCL Construction San Diego) -> 13243 (PCL Construction); kind=GC
+[DRY-RUN] merge 77342 (Morrison Hershfield (now Stantec)) -> 69543 (Morrison Hershfield); kind=Competitor
+[DRY-RUN] merge 77351 (Ledcor Group) -> 69671 (Ledcor Construction); kind=GC
+[DRY-RUN] merge 20061 (Cressey Developments) -> 49 (Cressey Development Group); kind=KorClient
+[DRY-RUN] merge 55110 (Greystar Real Estate Partners) -> 202 (Greystar Development West, LLC); kind=KorClient
+[DRY-RUN] merge 77635 (Greystar) -> 202 (Greystar Development West, LLC); kind=KorClient
+[DRY-RUN] merge 69623 (NORR) -> 12496 (NORR Architects Engineers Planners); kind=Architect
+[DRY-RUN] merge 77914 (NORR Architects & Engineers) -> 12496 (NORR Architects Engineers Planners); kind=Architect
+[DRY-RUN] merge 22200 (Bucci Garden Homes Ltd) -> 218 (Bucci Developments Ltd.); kind=KorClient
+[DRY-RUN] merge 77343 (EXP (EXP Services Inc.)) -> 69535 (EXP); kind=Competitor
+[DRY-RUN] merge 77153 (Gensler San Diego) -> 68631 (Gensler); kind=Architect
+[DRY-RUN] merge 77277 (Gensler Seattle) -> 68631 (Gensler); kind=Architect
+[DRY-RUN] merge 77324 (GGA-Architecture (Gibbs Gage Architects)) -> 8129 (GGA Architecture); kind=Architect
+[DRY-RUN] merge 76791 (HMC Architects — San Diego) -> 68925 (HMC Architects); kind=Architect
+[DRY-RUN] merge 77131 (Hensel Phelps) -> 68622 (Hensel Phelps Construction Co.); kind=GC
+[DRY-RUN] merge 77197 (Hensel Phelps San Diego) -> 68622 (Hensel Phelps Construction Co.); kind=GC
+[DRY-RUN] merge 77230 (Hensel Phelps (Sacramento)) -> 68622 (Hensel Phelps Construction Co.); kind=GC
+[DRY-RUN] merge 77300 (Hensel Phelps — Seattle) -> 68622 (Hensel Phelps Construction Co.); kind=GC
+[DRY-RUN] merge 77226 (Turner Construction Company (Sacramento)) -> 54947 (Turner Construction); kind=GC
+[DRY-RUN] merge 77299 (Turner Construction — Seattle) -> 54947 (Turner Construction); kind=GC
+[DRY-RUN] merge 77306 (Turner Construction — Portland) -> 54947 (Turner Construction); kind=GC
+[DRY-RUN] merge 38949 (Onni Group) -> 167 (Onni Contracting (California), Inc.); kind=KorClient
+[DRY-RUN] merge 77312 (Onni Group — Seattle) -> 167 (Onni Contracting (California), Inc.); kind=KorClient
+[DRY-RUN] merge 68690 (Holmes Structures) -> 73788 (Holmes); kind=Competitor
+[DRY-RUN] merge 76795 (LPA Design Studios — San Diego) -> 68930 (LPA Design Studios); kind=Architect
+[DRY-RUN] merge 69649 (Amacon) -> 169 (Amacon Developments); kind=KorClient
+[DRY-RUN] merge 71060 (Amacon Construction) -> 169 (Amacon Developments); kind=KorClient
+[DRY-RUN] merge 53900 (Holborn Group) -> 228 (Holborn Developments Ltd.); kind=KorClient
+[DRY-RUN] merge 76014 (Thurber Engineering) -> 16986 (Thurber Engineering Ltd. (Thurber Engineering Ltd.)); kind=Competitor
+[DRY-RUN] merge 16944 (ThinkSpace) -> 69109 (Thinkspace Architecture Planning Interior Design Ltd.); kind=Architect
+[DRY-RUN] merge 75161 (Webcor Builders) -> 54946 (Webcor); kind=GC
+[DRY-RUN] merge 75714 (Webcor (Webcor Builders)) -> 54946 (Webcor); kind=GC
+[DRY-RUN] merge 77202 (Webcor Builders San Diego) -> 54946 (Webcor); kind=GC
+[DRY-RUN] merge 77355 (Qualico Developments) -> 68773 (Qualico Group); kind=Developer
+[DRY-RUN] merge 76801 (Swinerton — San Diego) -> 68625 (Swinerton Builders); kind=GC
+[DRY-RUN] merge 77196 (Swinerton Builders San Diego) -> 68625 (Swinerton Builders); kind=GC
+[DRY-RUN] merge 77229 (Swinerton Builders (Sacramento)) -> 68625 (Swinerton Builders); kind=GC
+[DRY-RUN] merge 77171 (KPFF San Diego) -> 38927 (KPFF Consulting Engineers); kind=Competitor
+[DRY-RUN] merge 77286 (KPFF Consulting Engineers — Seattle) -> 38927 (KPFF Consulting Engineers); kind=Competitor
+[DRY-RUN] merge 77287 (KPFF Consulting Engineers — Portland) -> 38927 (KPFF Consulting Engineers); kind=Competitor
+[DRY-RUN] merge 75694 (Brookfield Residential Properties Inc.) -> 53589 (Brookfield Residential); kind=Developer
+[DRY-RUN] merge 77189 (Brookfield Residential San Diego) -> 53589 (Brookfield Residential); kind=Developer
+[DRY-RUN] merge 77115 (CallisonRTKL) -> 68630 (CallisonRTKL (CRTKL)); kind=Architect
+[DRY-RUN] merge 75570 (The Miller Hull Partnership) -> 68912 (Miller Hull Partnership); kind=Architect
+[DRY-RUN] merge 77168 (Miller Hull Partnership (San Diego)) -> 68912 (Miller Hull Partnership); kind=Architect
+[DRY-RUN] merge 53507 (Truman Homes) -> 75698 (Truman (Truman Homes)); kind=Developer
+[DRY-RUN] merge 54260 (Robert Ciccozzi Architecture) -> 54553 (Ciccozzi Architecture); kind=Architect
+[DRY-RUN] merge 72124 (Protostatix) -> 71157 (Protostatix Engineering Consultants Inc.); kind=Competitor
+[DRY-RUN] merge 76639 (Protostatix Engineering Consultants Inc. (a division of Englobe)) -> 71157 (Protostatix Engineering Consultants Inc.); kind=Competitor
+[DRY-RUN] merge 38923 (DCI Engineers) -> 77288 (DCI Engineers — Seattle); kind=Competitor
+[DRY-RUN] merge 77172 (DCI Engineers San Diego) -> 77288 (DCI Engineers — Seattle); kind=Competitor
+[DRY-RUN] merge 77289 (DCI Engineers — Portland) -> 77288 (DCI Engineers — Seattle); kind=Competitor
+[DRY-RUN] merge 77154 (SmithGroup San Diego) -> 68872 (SmithGroup); kind=Architect
+[DRY-RUN] merge 76838 (DLR Group (Sacramento)) -> 68931 (DLR Group); kind=Architect
+[DRY-RUN] merge 75725 (Arup (Seattle office)) -> 60360 (Arup); kind=Competitor
+[DRY-RUN] merge 75587 (Wesbild) -> 216 (Wesbild Holdings Ltd.); kind=KorClient
+[DRY-RUN] merge 77278 (HOK Seattle) -> 68633 (HOK); kind=Architect
+[DRY-RUN] merge 77279 (GGLO Design) -> 68687 (GGLO); kind=Architect
+[DRY-RUN] merge 54396 (Mission Group Homes) -> 193 (Mission Group); kind=KorClient
+[DRY-RUN] merge 77831 (Revery Architecture) -> 38974 (Revery Architecture Inc. (formerly Bing Thom Architects)); kind=Architect
+[DRY-RUN] merge 77155 (HGA San Diego) -> 68874 (HGA); kind=Architect
+[DRY-RUN] merge 77319 (Skanska USA — Seattle (development arm)) -> 68706 (Skanska USA); kind=Developer
+[DRY-RUN] merge 77357 (Rohit Group) -> 68774 (Rohit Group of Companies); kind=Developer
+[DRY-RUN] merge 68890 (SOM) -> 77101 (Skidmore, Owings & Merrill (SOM)); kind=Architect
+[DRY-RUN] merge 76886 (SOM (Skidmore, Owings & Merrill)) -> 77101 (Skidmore, Owings & Merrill (SOM)); kind=Architect
+[DRY-RUN] merge 77878 (PC Urban Properties — IntraUrban) -> 44 (PC Urban Properties Corp.); kind=KorClient
+[DRY-RUN] merge 77158 (NBBJ San Diego) -> 68638 (NBBJ); kind=Architect
+[DRY-RUN] merge 77257 (Simpson Gumpertz & Heger (SGH)) -> 76786 (Simpson Gumpertz & Heger (SGH) — San Diego); kind=Competitor
+[DRY-RUN] merge 54847 (Mortise Group) -> 124 (Mortise Group of Companies); kind=KorClient
+[DRY-RUN] merge 77194 (Clark Construction San Diego) -> 54950 (Clark Construction Group); kind=GC
+[DRY-RUN] merge 77174 (Degenkolb Engineers San Diego) -> 68610 (Degenkolb Engineers); kind=Competitor
+[DRY-RUN] merge 77195 (Suffolk Construction San Diego) -> 68628 (Suffolk Construction); kind=GC
+[DRY-RUN] merge 77157 (CannonDesign San Diego) -> 68884 (CannonDesign); kind=Architect
+[DRY-RUN] merge 69524 (Aplin & Martin) -> 70693 (Aplin Martin Consultants); kind=Architect
+[DRY-RUN] merge 77179 (Coffman Engineers San Diego) -> 38921 (Coffman Engineers, Inc.); kind=Competitor
+[DRY-RUN] merge 77175 (Miyamoto International San Diego) -> 38930 (Miyamoto International); kind=Competitor
+[DRY-RUN] merge 75662 (Partnerships BC (now Infrastructure BC)) -> 54978 (Infrastructure BC); kind=Developer
+[DRY-RUN] merge 77170 (Thornton Tomasetti San Diego) -> 68746 (Thornton Tomasetti); kind=Competitor
+[DRY-RUN] merge 77879 (QuadReal Property Group — Archetype (False Creek Flats)) -> 32319 (QuadReal Property Group); kind=Developer
+[DRY-RUN] merge 77227 (McCarthy Building Companies (Sacramento)) -> 54943 (McCarthy Building Companies); kind=GC
+[DRY-RUN] merge 73795 (Lendlease) -> 75723 (Lendlease (Lendlease Americas)); kind=Developer
+[DRY-RUN] merge 77233 (The Boldt Company (Sacramento)) -> 77272 (The Boldt Company); kind=GC
+[DRY-RUN] merge 75599 (ICON West Construction Corp. (formerly ICON Pacific Construction Corp.)) -> 22795 (Icon West Construction Corp); kind=GC
+[DRY-RUN] merge 53724 (Westcorp Properties Inc.) -> 53418 (Westcorp Developments Inc.); kind=Developer
+[DRY-RUN] merge 75711 (Bernards (Bernards Bros., Inc.)) -> 68621 (Bernards); kind=GC
+[DRY-RUN] merge 73714 (Bora Architects) -> 77282 (BORA Architecture & Interiors); kind=Architect
+[DRY-RUN] merge 77173 (Walter P Moore San Diego) -> 77122 (Walter P Moore); kind=Competitor
+[DRY-RUN] merge 77198 (Kitchell San Diego) -> 77231 (Kitchell Corporation); kind=GC
+[DRY-RUN] merge 53281 (Melcor Development) -> 76745 (Melcor Developments Ltd.); kind=Developer
+[DRY-RUN] merge 53843 (Tridecca Developments) -> 94 (Tridecca Project Management Inc.); kind=KorClient
+[DRY-RUN] merge 77284 (Leverett Architecture (Lever Architecture)) -> 68891 (LEVER Architecture); kind=Architect
+[DRY-RUN] merge 77803 (Marcon Construction & Development) -> 69659 (Marcon Developments); kind=Developer
+[DRY-RUN] merge 76850 (Sundt Construction (California)) -> 77205 (Sundt Construction San Diego); kind=GC
+[DRY-RUN] merge 77156 (Ware Malcomb San Diego) -> 36278 (Ware Malcomb); kind=Architect
+[DRY-RUN] merge 77186 (Lennar San Diego) -> 77223 (Lennar (Sacramento Division)); kind=Developer
+[DRY-RUN] merge 77203 (Skyline Construction San Diego) -> 77270 (Skyline Construction); kind=GC
+[DRY-RUN] merge 77880 (Panattoni Development Company (Canada)) -> 77219 (Panattoni Development Company); kind=Developer
+[DRY-RUN] merge 55100 (Tien Sher Group) -> 54035 (Tien Sher Group of Companies); kind=Developer
+[DRY-RUN] merge 77225 (Taylor Morrison (Sacramento)) -> 77190 (Taylor Morrison San Diego); kind=Developer
+[DRY-RUN] merge 77215 (Tipping Structural Engineering) -> 76877 (Tipping Structural Engineers); kind=Competitor
+[DRY-RUN] merge 77730 (Prologis) -> 77876 (Prologis — Vancouver BC (New Market Entry)); kind=Developer
+[DRY-RUN] merge 77711 (SPAL General Constructors Corporation) -> 55050 (SPAL General Contractors); kind=GC
+[DRY-RUN] merge 77760 (R+A Engineering (1997) Ltd.) -> 70548 (R+A Engineering Ltd.); kind=Competitor
+Canonical dedupe complete.
+  Groups found:                  110
+  Rows to merge:                 110
+  Rows before:                   893124
+  Projected rows after (if all groups commit): 893014
+  Groups committed successfully: 0
+  Groups failed:                 0
+  Enrichment collisions resolved: 0
+  Intel rows dropped (will be regenerated): 0
+  Aliases preserved:             0
+  DBA groups:                    0
+  DBA merge rows:                0
+  FK repoints by table:
+    ArchitectDisplacementBriefs: 0
+    BdResearchTriggers: 0
+    BuildingPermit: 0
+    CanonicalOrgEnrichment: 0
+    CrmEngagements: 0
+    CrmTouchpoint: 0
+    HistoricalOpportunities: 0
+    IntelPersonAffiliation: 0
+    IntelProjectAction: 0
+    IntelProjectKeyPerson: 0
+    KorPursuits: 0
+    MajorProjectsInventory: 0
+    NewsArticleOrgMention: 0
+    Opportunities: 0
+    OpportunityAwards: 0
+    OpportunityBids: 0
+    OpportunityInterestedFirms: 0
+    OrgAlias: 0
+    OrgFact: 0

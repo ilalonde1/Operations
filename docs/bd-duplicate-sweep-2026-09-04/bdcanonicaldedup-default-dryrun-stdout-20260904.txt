@@ -1,0 +1,38 @@
+Output directory: C:\VIsual Studio Projects\Operations\tools\BdCanonicalDedup\output
+Allowlist validation report written: C:\VIsual Studio Projects\Operations\tools\BdCanonicalDedup\output\allowlist-validation-report.csv
+Plan written: C:\VIsual Studio Projects\Operations\tools\BdCanonicalDedup\output\dedupe-plan.csv
+Mode: dry-run; merge-dba=false
+Dry-run only: no write transaction opened.
+Canonical dedupe complete.
+  Groups found:                  15
+  Rows to merge:                 15
+  Rows before:                   893124
+  Projected rows after (if all groups commit): 893109
+  Groups committed successfully: 0
+  Groups failed:                 0
+  Enrichment collisions resolved: 0
+  Intel rows dropped (will be regenerated): 0
+  Aliases preserved:             0
+  DBA groups:                    0
+  DBA merge rows:                0
+  FK repoints by table:
+    ArchitectDisplacementBriefs: 0
+    BdResearchTriggers: 2
+    BuildingPermit: 4
+    CanonicalOrgEnrichment: 20
+    CrmEngagements: 1
+    CrmTouchpoint: 0
+    HistoricalOpportunities: 0
+    IntelPersonAffiliation: 0
+    IntelProjectAction: 0
+    IntelProjectKeyPerson: 0
+    KorPursuits: 0
+    MajorProjectsInventory: 0
+    NewsArticleOrgMention: 0
+    Opportunities: 0
+    OpportunityAwards: 8
+    OpportunityBids: 0
+    OpportunityInterestedFirms: 0
+    OrgAlias: 16
+    OrgFact: 4
+exit=0

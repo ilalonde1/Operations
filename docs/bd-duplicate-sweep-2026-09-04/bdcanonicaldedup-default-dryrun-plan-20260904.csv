@@ -1,0 +1,25 @@
+﻿GroupKey,SurvivorId,SurvivorName,SurvivorKind,LoserId,LoserName,LoserKind,FkRefsRepointed
+attorneygeneralprocurementservicesbranch,501,Attorney GeneralProcurement Services Branch,Buyer,902256,"Attorney General
+Procurement Services Branch",Buyer,3
+babinebctimbersalesbranch,71449,Babine BC Timber Sales Branch,Buyer,473334,"Babine
+BC Timber Sales Branch",Buyer,3
+bcparksprovincialservicesbranchministryofenvironmentandparks,660,BC Parks - Provincial Services Branch Ministry of Environment and Parks,Buyer,797333,"BC Parks - Provincial Services Branch
+Ministry of Environment and Parks",Buyer,3
+bctimbersalesbranchcariboochilcotin,311,BC Timber Sales Branch Cariboo-Chilcotin,Buyer,473332,"BC Timber Sales Branch
+Cariboo-Chilcotin",Buyer,3
+christinelintott,70603,Christine Lintott Architects Inc.,Architect,927759,Christine Lintott Architects,Architect,2
+cityspacesconsulting,927792,CitySpaces Consulting,Architect,4905,CitySpaces Consulting Ltd.,Vendor,12
+continuum,74300,"Continuum Partners, LLC",Developer,927758,Continuum Architecture Inc,Architect,8
+engineeringbranchministryofforests,855970,Engineering Branch Ministry of Forests,Buyer,855968,"Engineering Branch
+Ministry of Forests",Buyer,2
+managementservicesdivisionministryofhousingandmunicipalaffairs,658616,Management Services Division Ministry of Housing and Municipal Affairs,Buyer,658611,"Management Services Division
+Ministry of Housing and Municipal Affairs",Buyer,2
+marinebranchministryoftransportationandtransit,825162,Marine Branch Ministry of Transportation and Transit,Buyer,840570,"Marine Branch
+Ministry of Transportation and Transit",Buyer,2
+ministryofcitizensservicesprocurementservicesbranch,357,Ministry of Citizens' ServicesProcurement Services Branch,Buyer,473335,"Ministry of Citizens' Services
+Procurement Services Branch",Buyer,3
+ministryofforestsregionaloperationscoastmountainsnaturalresourcedistrict,902255,Ministry of ForestsRegional Operations - Coast Mountains Natural Resource District,Buyer,902254,"Ministry of Forests
+Regional Operations - Coast Mountains Natural Resource District",Buyer,3
+ministryofforestssouthernengineering,812,Ministry of Forests — Southern Engineering Group,Buyer,689488,Ministry of ForestsSouthern Engineering Group,Buyer,3
+sebaconstruction,927761,Seba Construction,Developer,927807,Seba Construction Ltd.,GC,3
+senseengineering,20284,Sense Engineering Ltd.,Competitor,927808,Sense Engineering,Competitor,3

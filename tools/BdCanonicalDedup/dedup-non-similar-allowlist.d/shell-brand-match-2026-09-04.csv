@@ -1,0 +1,122 @@
+# PROPOSED 2026-09-04 - NOT YET REVIEWED BY IAN. Delete any row you reject before --commit.
+# Source: tools/BdIntegrityCheck org_same_domain_shell_brand_match (tier S1): same WebsiteDomain,
+# no public-sector member, no JV-shaped name, every member's name carries the domain's brand label.
+# Batch 1 keeps only Kind-compatible pairs (same Kind; survivor a frozen KOR client; loser a
+# Client/Unknown/Vendor/Subcontractor; or both Competitor/Architect). Cross-business-line pairs
+# and frozen losers are held in docs/bd-duplicate-sweep-2026-09-04/batch2-held-back-2026-09-04.csv.
+# Survivor = frozen Kind, else Deltek/Clendor anchor, else richest (people+awards+narratives+KOR
+# jobs), else lowest Id. BdCanonicalDedup upgrades the survivor's Kind to the best in the pair.
+# Dry run:  dotnet run --project tools/BdCanonicalDedup -- --pairs tools/BdCanonicalDedup/shell-brand-match-merge-2026-09-04.csv
+# Full detail per pair: docs/bd-duplicate-sweep-2026-09-04/org_same_domain_shell_brand_match-*.csv
+# Reason has no commas (the loader splits on them). RenameSurvivorTo is advisory: apply after the merge.
+LoserId,SurvivorId,Reason,Reviewer,ReviewedAt,RenameSurvivorTo
+77161,38934,same domain stantec.com; both names carry 'stantec'; survivor Deltek-anchored; both design consultancies (Competitor/Architect),,,
+77211,38934,same domain stantec.com; both names carry 'stantec'; survivor Deltek-anchored; both design consultancies (Competitor/Architect),,,
+77339,38934,same domain stantec.com; both names carry 'stantec'; survivor Deltek-anchored; same Kind,,,
+77705,38934,same domain stantec.com; both names carry 'stantec'; survivor Deltek-anchored; both design consultancies (Competitor/Architect),,,
+77127,18657,same domain wsp.com; both names carry 'wsp'; survivor richer (1801 vs 3 intel); same Kind,,,
+77884,18657,same domain wsp.com; both names carry 'wsp'; survivor richer (1801 vs 0 intel); same Kind,,,
+77133,13243,same domain pcl.com; both names carry 'pcl'; survivor richer (449 vs 6 intel); same Kind,,,
+77193,13243,same domain pcl.com; both names carry 'pcl'; survivor richer (449 vs 5 intel); same Kind,,,
+77342,69543,same domain morrisonhershfield.com; both names carry 'morrisonhershfield'; survivor Deltek-anchored; same Kind,,,
+77351,69671,same domain ledcor.com; both names carry 'ledcor'; survivor Deltek-anchored; same Kind,,,
+20061,49,same domain cressey.com; both names carry 'cressey'; survivor frozen KOR client anchor; survivor is the frozen KOR client anchor; the loser is its own shell,,,
+55110,202,same domain greystar.com; both names carry 'greystar'; survivor frozen KOR client anchor; survivor is the frozen KOR client anchor; the loser is its own shell,,,
+77635,202,same domain greystar.com; both names carry 'greystar'; survivor frozen KOR client anchor; survivor is the frozen KOR client anchor; the loser is its own shell,,,
+69623,12496,same domain norr.com; both names carry 'norr'; survivor Deltek-anchored; same Kind,,,
+77914,12496,same domain norr.com; both names carry 'norr'; survivor Deltek-anchored; same Kind,,,
+22200,218,same domain bucci.com; both names carry 'bucci'; survivor frozen KOR client anchor; survivor is the frozen KOR client anchor; the loser is its own shell,,,
+77343,69535,same domain exp.com; both names carry 'exp'; survivor richer (61 vs 2 intel); same Kind,,,
+77153,68631,same domain gensler.com; both names carry 'gensler'; survivor Deltek-anchored; same Kind,,,
+77277,68631,same domain gensler.com; both names carry 'gensler'; survivor Deltek-anchored; same Kind,,,
+77324,8129,same domain gga-arch.com; both names carry 'ggaarch'; survivor Deltek-anchored; same Kind,,,
+76791,68925,same domain hmcarchitects.com; both names carry 'hmcarchitects'; survivor Deltek-anchored; same Kind,,,
+77131,68622,same domain henselphelps.com; both names carry 'henselphelps'; survivor richer (8 vs 8 intel); same Kind,,,Hensel Phelps
+77197,68622,same domain henselphelps.com; both names carry 'henselphelps'; survivor richer (8 vs 7 intel); same Kind,,,Hensel Phelps
+77230,68622,same domain henselphelps.com; both names carry 'henselphelps'; survivor richer (8 vs 6 intel); same Kind,,,Hensel Phelps
+77300,68622,same domain henselphelps.com; both names carry 'henselphelps'; survivor richer (8 vs 7 intel); same Kind,,,Hensel Phelps
+77226,54947,same domain turnerconstruction.com; both names carry 'turnerconstruction'; survivor Deltek-anchored; same Kind,,,
+77299,54947,same domain turnerconstruction.com; both names carry 'turnerconstruction'; survivor Deltek-anchored; same Kind,,,
+77306,54947,same domain turnerconstruction.com; both names carry 'turnerconstruction'; survivor Deltek-anchored; same Kind,,,
+38949,167,same domain onni.com; both names carry 'onni'; survivor frozen KOR client anchor; survivor is the frozen KOR client anchor; the loser is its own shell,,,
+77312,167,same domain onni.com; both names carry 'onni'; survivor frozen KOR client anchor; survivor is the frozen KOR client anchor; the loser is its own shell,,,
+68690,73788,same domain holmes.us; both names carry 'holmes'; survivor richer (18 vs 14 intel); same Kind,,,
+76795,68930,same domain lpadesignstudios.com; both names carry 'lpadesignstudios'; survivor richer (26 vs 6 intel); same Kind,,,
+69649,169,same domain amacon.com; both names carry 'amacon'; survivor frozen KOR client anchor; survivor is the frozen KOR client anchor; the loser is its own shell,,,
+71060,169,same domain amacon.com; both names carry 'amacon'; survivor frozen KOR client anchor; survivor is the frozen KOR client anchor; the loser is its own shell,,,
+53900,228,same domain holborn.ca; both names carry 'holborn'; survivor frozen KOR client anchor; survivor is the frozen KOR client anchor; the loser is its own shell,,,
+76014,16986,same domain thurber.ca; both names carry 'thurber'; survivor richer (27 vs 2 intel); loser Kind carries no business line (Subcontractor),,,Thurber Engineering
+16944,69109,same domain thinkspace.ca; both names carry 'thinkspace'; survivor Deltek-anchored; same Kind,,,
+75161,54946,same domain webcor.com; both names carry 'webcor'; survivor richer (11 vs 5 intel); same Kind,,,
+75714,54946,same domain webcor.com; both names carry 'webcor'; survivor richer (11 vs 9 intel); same Kind,,,
+77202,54946,same domain webcor.com; both names carry 'webcor'; survivor richer (11 vs 3 intel); same Kind,,,
+77355,68773,same domain qualico.com; both names carry 'qualico'; survivor richer (22 vs 6 intel); same Kind,,,
+76801,68625,same domain swinerton.com; both names carry 'swinerton'; survivor Deltek-anchored; same Kind,,,
+77196,68625,same domain swinerton.com; both names carry 'swinerton'; survivor Deltek-anchored; same Kind,,,
+77229,68625,same domain swinerton.com; both names carry 'swinerton'; survivor Deltek-anchored; same Kind,,,
+77171,38927,same domain kpff.com; both names carry 'kpff'; survivor richer (11 vs 7 intel); same Kind,,,
+77286,38927,same domain kpff.com; both names carry 'kpff'; survivor richer (11 vs 3 intel); same Kind,,,
+77287,38927,same domain kpff.com; both names carry 'kpff'; survivor richer (11 vs 5 intel); same Kind,,,
+75694,53589,same domain brookfieldresidential.com; both names carry 'brookfieldresidential'; survivor richer (12 vs 10 intel); same Kind,,,
+77189,53589,same domain brookfieldresidential.com; both names carry 'brookfieldresidential'; survivor richer (12 vs 4 intel); same Kind,,,
+77115,68630,same domain callisonrtkl.com; both names carry 'callisonrtkl'; survivor richer (21 vs 3 intel); same Kind,,,CallisonRTKL
+75570,68912,same domain millerhull.com; both names carry 'millerhull'; survivor Deltek-anchored; same Kind,,,
+77168,68912,same domain millerhull.com; both names carry 'millerhull'; survivor Deltek-anchored; same Kind,,,
+53507,75698,same domain trumanhomes.com; both names carry 'trumanhomes'; survivor richer (15 vs 8 intel); same Kind,,,
+54260,54553,same domain ciccozziarchitecture.com; both names carry 'ciccozziarchitecture'; survivor Deltek-anchored; same Kind,,,
+72124,71157,same domain protostatix.com; both names carry 'protostatix'; survivor richer (10 vs 7 intel); same Kind,,,Protostatix
+76639,71157,same domain protostatix.com; both names carry 'protostatix'; survivor richer (10 vs 6 intel); same Kind,,,Protostatix
+38923,77288,same domain dci-engineers.com; both names carry 'dciengineers'; survivor richer (9 vs 6 intel); same Kind,,,DCI Engineers
+77172,77288,same domain dci-engineers.com; both names carry 'dciengineers'; survivor richer (9 vs 3 intel); same Kind,,,DCI Engineers
+77289,77288,same domain dci-engineers.com; both names carry 'dciengineers'; survivor richer (9 vs 4 intel); same Kind,,,DCI Engineers
+77154,68872,same domain smithgroup.com; both names carry 'smithgroup'; survivor richer (16 vs 6 intel); same Kind,,,
+76838,68931,same domain dlrgroup.com; both names carry 'dlrgroup'; survivor richer (20 vs 2 intel); same Kind,,,
+75725,60360,same domain arup.com; both names carry 'arup'; survivor richer (16 vs 5 intel); same Kind,,,
+75587,216,same domain wesbild.com; both names carry 'wesbild'; survivor frozen KOR client anchor; survivor is the frozen KOR client anchor; the loser is its own shell,,,
+77278,68633,same domain hok.com; both names carry 'hok'; survivor richer (14 vs 6 intel); same Kind,,,
+77279,68687,same domain gglo.com; both names carry 'gglo'; survivor richer (13 vs 7 intel); same Kind,,,
+54396,193,same domain missiongroup.ca; both names carry 'missiongroup'; survivor frozen KOR client anchor; survivor is the frozen KOR client anchor; the loser is its own shell,,,
+77831,38974,same domain reveryarchitecture.com; both names carry 'reveryarchitecture'; survivor Deltek-anchored; same Kind,,,
+77155,68874,same domain hga.com; both names carry 'hga'; survivor richer (13 vs 6 intel); same Kind,,,
+77319,68706,same domain usa.skanska.com; both names carry 'usa'; survivor richer (7 vs 3 intel); same Kind,,,
+77357,68774,same domain rohitgroup.com; both names carry 'rohitgroup'; survivor richer (15 vs 3 intel); same Kind,,,Rohit Group
+68890,77101,same domain som.com; both names carry 'som'; survivor richer (11 vs 5 intel); same Kind,,,
+76886,77101,same domain som.com; both names carry 'som'; survivor richer (11 vs 2 intel); same Kind,,,
+77878,44,same domain pcurban.ca; both names carry 'pcurban'; survivor frozen KOR client anchor; survivor is the frozen KOR client anchor; the loser is its own shell,,,
+77158,68638,same domain nbbj.com; both names carry 'nbbj'; survivor richer (13 vs 4 intel); same Kind,,,
+77257,76786,same domain sgh.com; both names carry 'sgh'; survivor richer (11 vs 6 intel); same Kind,,,Simpson Gumpertz & Heger (SGH)
+54847,124,same domain mortisegroup.com; both names carry 'mortisegroup'; survivor frozen KOR client anchor; survivor is the frozen KOR client anchor; the loser is its own shell,,,
+77194,54950,same domain clarkconstruction.com; both names carry 'clarkconstruction'; survivor richer (10 vs 4 intel); same Kind,,,
+77174,68610,same domain degenkolb.com; both names carry 'degenkolb'; survivor richer (8 vs 6 intel); same Kind,,,
+77195,68628,same domain suffolk.com; both names carry 'suffolk'; survivor Deltek-anchored; same Kind,,,
+77157,68884,same domain cannondesign.com; both names carry 'cannondesign'; survivor richer (10 vs 3 intel); same Kind,,,
+69524,70693,same domain aplinmartin.com; both names carry 'aplinmartin'; survivor Deltek-anchored; loser Kind carries no business line (Subcontractor),,,
+77179,38921,same domain coffman.com; both names carry 'coffman'; survivor Deltek-anchored; same Kind,,,
+77175,38930,same domain miyamotointernational.com; both names carry 'miyamotointernational'; survivor richer (7 vs 5 intel); same Kind,,,
+75662,54978,same domain infrastructurebc.com; both names carry 'infrastructurebc'; survivor richer (12 vs 0 intel); loser Kind carries no business line (Client),,,
+77170,68746,same domain thorntontomasetti.com; both names carry 'thorntontomasetti'; survivor Deltek-anchored; same Kind,,,
+77879,32319,same domain quadreal.com; both names carry 'quadreal'; survivor Deltek-anchored; same Kind,,,
+77227,54943,same domain mccarthy.com; both names carry 'mccarthy'; survivor richer (7 vs 4 intel); same Kind,,,
+73795,75723,same domain lendlease.com; both names carry 'lendlease'; survivor richer (7 vs 4 intel); same Kind,,,Lendlease
+77233,77272,same domain boldt.com; both names carry 'boldt'; survivor richer (6 vs 5 intel); same Kind,,,
+75599,22795,same domain iconwestconstruction.ca; both names carry 'iconwestconstruction'; survivor richer (8 vs 2 intel); same Kind,,,
+53724,53418,same domain westcorp.net; both names carry 'westcorp'; survivor richer (8 vs 2 intel); same Kind,,,
+75711,68621,same domain bernards.com; both names carry 'bernards'; survivor richer (5 vs 5 intel); same Kind,,,
+73714,77282,same domain bora.co; both names carry 'bora'; survivor richer (9 vs 1 intel); same Kind,,,
+77173,77122,same domain walterpmoore.com; both names carry 'walterpmoore'; survivor richer (6 vs 4 intel); same Kind,,,
+77198,77231,same domain kitchell.com; both names carry 'kitchell'; survivor richer (6 vs 4 intel); same Kind,,,
+53281,76745,same domain melcor.ca; both names carry 'melcor'; survivor richer (7 vs 2 intel); same Kind,,,
+53843,94,same domain tridecca.com; both names carry 'tridecca'; survivor frozen KOR client anchor; survivor is the frozen KOR client anchor; the loser is its own shell,,,
+77284,68891,same domain leverarchitecture.com; both names carry 'leverarchitecture'; survivor richer (5 vs 3 intel); same Kind,,,
+77803,69659,same domain marcon.ca; both names carry 'marcon'; survivor Deltek-anchored; same Kind,,,
+76850,77205,same domain sundt.com; both names carry 'sundt'; survivor richer (6 vs 2 intel); same Kind,,,
+77156,36278,same domain waremalcomb.com; both names carry 'waremalcomb'; survivor richer (5 vs 2 intel); same Kind,,,
+77186,77223,same domain lennar.com; both names carry 'lennar'; survivor richer (5 vs 2 intel); same Kind,,,
+77203,77270,same domain skylineconstruction.build; both names carry 'skylineconstruction'; survivor richer (4 vs 3 intel); same Kind,,,
+77880,77219,same domain panattoni.com; both names carry 'panattoni'; survivor richer (4 vs 3 intel); same Kind,,,
+55100,54035,same domain tiensher.com; both names carry 'tiensher'; survivor richer (3 vs 3 intel); same Kind,,,Tien Sher Group
+77225,77190,same domain taylormorrison.com; both names carry 'taylormorrison'; survivor richer (3 vs 3 intel); same Kind,,,
+77215,76877,same domain tippingstructural.com; both names carry 'tippingstructural'; survivor richer (5 vs 0 intel); same Kind,,,
+77730,77876,same domain prologis.com; both names carry 'prologis'; survivor richer (3 vs 2 intel); same Kind,,,Prologis
+77711,55050,same domain spal.ca; both names carry 'spal'; survivor richer (3 vs 1 intel); same Kind,,,
+77760,70548,same domain raengineering.ca; both names carry 'raengineering'; survivor richer (4 vs 0 intel); same Kind,,,

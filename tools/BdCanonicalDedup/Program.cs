@@ -393,6 +393,89 @@ WHERE Id = @id;", con, tx)
     private static readonly object _rejectedLock = new();
     private static bool _rejectedRunMarkerWritten;
 
+    // Place or business-line qualifiers that mark a row as a BRANCH of a larger
+    // company rather than the company. Matched as whole words against the name,
+    // so "Portland Cement Association" is not a Portland branch and "Sacramento
+    // Municipal Utility District" is not a Sacramento branch.
+    //
+    // Deliberately a short, literal list rather than a general place-name test:
+    // a false positive here only ever rejects a pair into rejected-pairs.csv,
+    // but a missing entry lets a parent company disappear under a branch name.
+    // Add to it when a real merge is refused for the wrong reason.
+    private static readonly string[] BranchQualifiers =
+    {
+        "San Diego", "Seattle", "Sacramento", "Portland", "San Francisco",
+        "Los Angeles", "Vancouver", "Calgary", "Edmonton", "Toronto",
+        "California", "Americas", "New Market Entry", "development arm",
+    };
+
+    // National legal entities that share one brand domain. WSP Canada Inc. and
+    // WSP USA are not two records of one company — they are two companies, and
+    // "WSP Canada Inc." holding WSP USA's intel is the canada.ca mistake in
+    // miniature: one brand, many real entities. Batch 1 proposed exactly that.
+    //
+    // Only fires when the two names assert DIFFERENT countries. A branch folding
+    // into its own national parent ("Stantec Architecture (Canada)" into the
+    // Canadian parent "Stantec Inc.") asserts one country and passes.
+    private static readonly (string Token, string Country)[] CountryTokens =
+    {
+        ("USA", "US"), ("U.S.", "US"), ("United States", "US"),
+        ("Canada", "CA"), ("Canadian", "CA"),
+        ("UK", "UK"), ("United Kingdom", "UK"), ("Australia", "AU"),
+    };
+
+    private static string? AssertedCountry(string displayName)
+    {
+        string? found = null;
+        foreach (var (token, country) in CountryTokens)
+        {
+            var i = displayName.IndexOf(token, StringComparison.OrdinalIgnoreCase);
+            while (i >= 0)
+            {
+                var beforeOk = i == 0 || !char.IsLetterOrDigit(displayName[i - 1]);
+                var end = i + token.Length;
+                var afterOk = end >= displayName.Length || !char.IsLetterOrDigit(displayName[end]);
+                if (beforeOk && afterOk)
+                {
+                    // A name asserting two countries at once asserts neither.
+                    if (found is not null && found != country)
+                    {
+                        return null;
+                    }
+
+                    found = country;
+                    break;
+                }
+
+                i = displayName.IndexOf(token, i + 1, StringComparison.OrdinalIgnoreCase);
+            }
+        }
+
+        return found;
+    }
+
+    private static string? BranchQualifier(string displayName)
+    {
+        foreach (var q in BranchQualifiers)
+        {
+            var i = displayName.IndexOf(q, StringComparison.OrdinalIgnoreCase);
+            while (i >= 0)
+            {
+                var beforeOk = i == 0 || !char.IsLetterOrDigit(displayName[i - 1]);
+                var end = i + q.Length;
+                var afterOk = end >= displayName.Length || !char.IsLetterOrDigit(displayName[end]);
+                if (beforeOk && afterOk)
+                {
+                    return q;
+                }
+
+                i = displayName.IndexOf(q, i + 1, StringComparison.OrdinalIgnoreCase);
+            }
+        }
+
+        return null;
+    }
+
     private static void AppendRejectedPair(ImportOptions options, long loserId, long survivorId, string loserName, string survivorName, string loserFuzzy, string survivorFuzzy)
     {
         var path = Path.Combine(options.OutputDirectory, "rejected-pairs.csv");
@@ -463,6 +546,62 @@ WHERE Id = @id;", con, tx)
             {
                 Console.Error.WriteLine($"[REJECT] pair {loserId} ({loser.DisplayName}) -> {survivorId} ({survivor.DisplayName}): names not similar (fuzzy '{loserFuzzy}' vs '{survivorFuzzy}'); written to rejected-pairs.csv.");
                 AppendRejectedPair(options, loserId, survivorId, loser.DisplayName, survivor.DisplayName, loserFuzzy, survivorFuzzy);
+                summary.GroupsFailed++;
+                continue;
+            }
+
+            // Two-billing-entity gate (2026-09-04). Two rows that BOTH carry a
+            // Clendor/Deltek client id are two entities we invoice separately,
+            // whatever the brand on the door says. Merging them destroys the
+            // billing split and there is no way back: the loser's id is gone.
+            //
+            // The duplicate sweep's own batch 1 caught Townline's two rows by
+            // hand and let five others through on the identical shape — Amacon
+            // (CL00653 + CL00009), Bucci, Cressey, Greystar and Tridecca. A rule
+            // that has to be applied by eye to a 110-row CSV is not a rule, so
+            // it lives here instead.
+            //
+            // Deliberately NOT allowlist-overridable. If two Deltek ids really
+            // are one company, decide which billing entity survives and clear
+            // the other's id first — that decision belongs in Deltek, not in a
+            // merge pair.
+            if (!string.IsNullOrWhiteSpace(loser.ClendorClientId)
+                && !string.IsNullOrWhiteSpace(survivor.ClendorClientId))
+            {
+                Console.Error.WriteLine($"[REJECT] pair {loserId} ({loser.DisplayName}) -> {survivorId} ({survivor.DisplayName}): both rows carry a Deltek client id ('{loser.ClendorClientId}' and '{survivor.ClendorClientId}'); clear one in Deltek first. Written to rejected-pairs.csv.");
+                AppendRejectedPair(options, loserId, survivorId, loser.DisplayName, survivor.DisplayName, "both-deltek", survivor.ClendorClientId!);
+                summary.GroupsFailed++;
+                continue;
+            }
+
+            // Regional-survivor gate (2026-09-04). A merge moves every row onto
+            // the survivor and retires the loser's NAME. When the survivor is a
+            // branch row and the loser is the parent, the surviving company is
+            // left called "Prologis - Vancouver BC (New Market Entry)" while
+            // holding the global REIT's intel, or "DCI Engineers - Seattle"
+            // holding all 25 of DCI's people. The merge is right; the direction
+            // is backwards.
+            //
+            // Five of batch 1's 110 pairs had this shape. Reject rather than
+            // silently flip, because which row should survive also depends on
+            // Deltek anchors and frozen Kinds that this tool does not arbitrate.
+            var loserBranch = BranchQualifier(loser.DisplayName);
+            var survivorBranch = BranchQualifier(survivor.DisplayName);
+            if (survivorBranch is not null && loserBranch is null)
+            {
+                Console.Error.WriteLine($"[REJECT] pair {loserId} ({loser.DisplayName}) -> {survivorId} ({survivor.DisplayName}): survivor is a branch row ('{survivorBranch}') and the loser is not; flip the pair or rename the survivor first. Written to rejected-pairs.csv.");
+                AppendRejectedPair(options, loserId, survivorId, loser.DisplayName, survivor.DisplayName, "parent", $"branch:{survivorBranch}");
+                summary.GroupsFailed++;
+                continue;
+            }
+
+            // Cross-border gate (2026-09-04). See CountryTokens above.
+            var loserCountry = AssertedCountry(loser.DisplayName);
+            var survivorCountry = AssertedCountry(survivor.DisplayName);
+            if (loserCountry is not null && survivorCountry is not null && loserCountry != survivorCountry)
+            {
+                Console.Error.WriteLine($"[REJECT] pair {loserId} ({loser.DisplayName}) -> {survivorId} ({survivor.DisplayName}): names assert different countries ({loserCountry} vs {survivorCountry}); these are separate legal entities on one brand domain. Written to rejected-pairs.csv.");
+                AppendRejectedPair(options, loserId, survivorId, loser.DisplayName, survivor.DisplayName, loserCountry, survivorCountry);
                 summary.GroupsFailed++;
                 continue;
             }

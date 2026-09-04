@@ -29,6 +29,19 @@ before changing anything about identity, merging or refresh.
 - **`BdCanonicalDedup`** is fail-closed on schema: a new FK to `CanonicalOrg` that is in neither
   `FkTargets` nor `IntelDeleteTargets` blocks **every** merge until you handle it. That is working as
   designed — it caught migrations 289/290 having silently blocked merges for seven weeks.
+  ⛔ **Its DEFAULT mode has no similarity gate.** Without `--pairs` it groups by
+  `NormalizeAggressiveKey` and commits every group; the fuzzy-name gate and the allowlist only
+  guard `--pairs`. The 2026-09-04 dry run proposed re-merging 927758 *Continuum Architecture* into
+  74300 *Continuum Partners* — the conflation split by hand the day before. **Only ever commit
+  through `--pairs`**, and read `org_aggressive_key_collision` in the integrity report first.
+- **`--pairs` has four gates and they are the review.** Name similarity (2026-05-30), plus three
+  added 2026-09-04 after a hand review of a 110-pair batch found eleven bad merges the batch's own
+  prose rule had missed: **both rows carrying a Deltek id** (two billing entities — never merge,
+  not allowlist-overridable), **survivor is a branch row and the loser is not** (the merge is right,
+  the direction is backwards — it would have left Prologis called *"Prologis — Vancouver BC (New
+  Market Entry)"*), and **names asserting different countries** (*WSP USA* into *WSP Canada Inc.*).
+  Rejects go to `output/rejected-pairs.csv` with a reason. ⛔ Do not hand a merge CSV to a human to
+  eyeball — if a rule can be stated, it goes in `RunPairsMergeAsync`.
 
 ## Rules with scars behind them
 
@@ -41,9 +54,13 @@ before changing anything about identity, merging or refresh.
 - **`IntelNarrative` is versioned as of migration 297**, but only history written after that date
   exists. Anything overwritten before it is gone unless it is in a nightly backup.
 - **A person moved between orgs can get a duplicate affiliation** — the person resolves correctly,
-  the affiliation row does not dedupe. 461 such pairs existed when first measured; re-measured
-  **2026-09-04 it is 3,551 pairs across 9,330 rows**, and 3,493 of those groups were last written
-  in **June 2026** — a bulk import, not the enrichment runs. Do not quote the 461.
+  the affiliation row does not dedupe. Measure it as `(IntelPersonId, CanonicalOrgId)` groups with
+  **2+ ACTIVE rows**: 461 when first measured, **462 groups / 960 active rows on 2026-09-04**
+  (356 last written June 2026 — the bulk import — 100 in July, 6 in September). A figure of
+  "3,551 groups / 9,330 rows" was quoted the same day; it counted retired rows too, and 2,763 of
+  those groups are one live row plus retired predecessors while 326 are wholly retired — churn
+  history, not duplicates. `person_duplicate_active_affiliation` in `tools/BdIntegrityCheck` is
+  the live count. Quote that, not either headline.
 - **Two "same company" heuristics exist**: the dedup fuzzy gate (write time) and
   `SqlBriefDataStore.FindRicherSameBrandCanonicalAsync` (read time). The read path now defers to the
   write path. Do not add a third.

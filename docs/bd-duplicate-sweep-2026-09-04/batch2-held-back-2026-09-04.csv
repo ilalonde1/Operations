@@ -1,0 +1,5 @@
+LoserId,SurvivorId,Domain,LoserName,LoserKind,LoserIntel,SurvivorName,SurvivorKind,SurvivorIntel,SurvivorClient,HeldBecause
+68620,1818,aecom.com,AECOM Hunt,GC,3,AECOM Canada Ltd.,Competitor,605,,but a BD user may want the roles kept apart (Ledcor Construction vs Ledcor Properties shape)
+105,39,townline.com,Townline Homes Inc.,KorClient,10,Townline Group of Companies,KorClient,102,DELTEK,frozen loser: a KOR client anchor is never merged away (two Deltek billing entities on one domain)
+77301,68706,usa.skanska.com,Skanska USA — Seattle,GC,2,Skanska USA,Developer,7,,but a BD user may want the roles kept apart (Ledcor Construction vs Ledcor Properties shape)
+77307,68706,usa.skanska.com,Skanska USA — Portland,GC,6,Skanska USA,Developer,7,,but a BD user may want the roles kept apart (Ledcor Construction vs Ledcor Properties shape)

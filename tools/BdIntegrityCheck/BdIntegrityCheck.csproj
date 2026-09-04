@@ -11,4 +11,11 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.4" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- The duplicate-class checks run the platform's OWN normalizers
+         (NormalizeForFuzzyMatch, NormalizeAggressiveKey, ExtractWebsiteDomain)
+         over the live org table. A SQL re-implementation would be a third
+         same-company heuristic, which Kor.Opportunities.Data/CLAUDE.md forbids. -->
+    <ProjectReference Include="..\..\Kor.Opportunities.Data\Kor.Opportunities.Data.csproj" />
+  </ItemGroup>
 </Project>

@@ -1,0 +1,52 @@
+Output directory: C:\VIsual Studio Projects\Operations\tools\BdCanonicalDedup\output
+Allowlist validation report written: C:\VIsual Studio Projects\Operations\tools\BdCanonicalDedup\output\allowlist-validation-report.csv
+[DRY-RUN] merge 473332 (BC Timber Sales Branch
+Cariboo-Chilcotin) -> 311 (BC Timber Sales Branch Cariboo-Chilcotin); kind=Buyer
+[DRY-RUN] merge 473335 (Ministry of Citizens' Services
+Procurement Services Branch) -> 357 (Ministry of Citizens' ServicesProcurement Services Branch); kind=Buyer
+[DRY-RUN] merge 902256 (Attorney General
+Procurement Services Branch) -> 501 (Attorney GeneralProcurement Services Branch); kind=Buyer
+[DRY-RUN] merge 797333 (BC Parks - Provincial Services Branch
+Ministry of Environment and Parks) -> 660 (BC Parks - Provincial Services Branch Ministry of Environment and Parks); kind=Buyer
+[DRY-RUN] merge 473334 (Babine
+BC Timber Sales Branch) -> 71449 (Babine BC Timber Sales Branch); kind=Buyer
+[DRY-RUN] merge 658611 (Management Services Division
+Ministry of Housing and Municipal Affairs) -> 658616 (Management Services Division Ministry of Housing and Municipal Affairs); kind=Buyer
+[DRY-RUN] merge 840570 (Marine Branch
+Ministry of Transportation and Transit) -> 825162 (Marine Branch Ministry of Transportation and Transit); kind=Buyer
+[DRY-RUN] merge 855968 (Engineering Branch
+Ministry of Forests) -> 855970 (Engineering Branch Ministry of Forests); kind=Buyer
+[DRY-RUN] merge 902254 (Ministry of Forests
+Regional Operations - Coast Mountains Natural Resource District) -> 902255 (Ministry of ForestsRegional Operations - Coast Mountains Natural Resource District); kind=Buyer
+Canonical dedupe complete.
+  Groups found:                  9
+  Rows to merge:                 9
+  Rows before:                   893124
+  Projected rows after (if all groups commit): 893115
+  Groups committed successfully: 0
+  Groups failed:                 0
+  Enrichment collisions resolved: 0
+  Intel rows dropped (will be regenerated): 0
+  Aliases preserved:             0
+  DBA groups:                    0
+  DBA merge rows:                0
+  FK repoints by table:
+    ArchitectDisplacementBriefs: 0
+    BdResearchTriggers: 0
+    BuildingPermit: 0
+    CanonicalOrgEnrichment: 0
+    CrmEngagements: 0
+    CrmTouchpoint: 0
+    HistoricalOpportunities: 0
+    IntelPersonAffiliation: 0
+    IntelProjectAction: 0
+    IntelProjectKeyPerson: 0
+    KorPursuits: 0
+    MajorProjectsInventory: 0
+    NewsArticleOrgMention: 0
+    Opportunities: 0
+    OpportunityAwards: 0
+    OpportunityBids: 0
+    OpportunityInterestedFirms: 0
+    OrgAlias: 0
+    OrgFact: 0
