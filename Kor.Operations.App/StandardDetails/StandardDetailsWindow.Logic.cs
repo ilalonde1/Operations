@@ -218,18 +218,19 @@ public partial class StandardDetailsWindow
                 }
                 else
                 {
-                    var details = await _korStandardsRepo.LoadPaletteDetailsAsync(q, _selectedDiscipline);
+                    var details = await _korStandardsRepo.LoadPaletteDetailsAsync(q, _selectedDiscipline, _selectedKind);
                     _documentSnapshot = details.Select(d => new DocumentRow
                     {
                         DocumentId = 0,
                         IsDetail = true,
                         Title = d.Title,
                         DetailNumber = d.DetailNumber,
+                        Kind = d.Kind,
                         GroupName = string.IsNullOrWhiteSpace(d.Discipline) ? "Ungrouped" : d.Discipline,
                         CurrentOfficialText = d.IsPlaceable ? "Yes" : (d.VariantsDiverge ? "Diverges" : "No"),
                         LatestStatusText = string.IsNullOrWhiteSpace(d.Confidence) ? "unverified" : d.Confidence,
                         StatusLabel = DetailStatusLabel(d),
-                        RightSubtitle = $"{d.DetailNumber}  ·  {(string.IsNullOrWhiteSpace(d.Discipline) ? "Ungrouped" : d.Discipline)}  ·  {StatusWord(DetailStatusLabel(d))}"
+                        RightSubtitle = $"{d.DetailNumber}  ·  {(string.IsNullOrWhiteSpace(d.Discipline) ? "Ungrouped" : d.Discipline)}  ·  {DetailKindDisplay(d.Kind)}  ·  {StatusWord(DetailStatusLabel(d))}"
                     }).ToList();
                 }
                 _versionSnapshot = new List<VersionRow>();
@@ -369,12 +370,24 @@ public partial class StandardDetailsWindow
         await LoadDocumentsUiAsync();
     }
 
+    private async void KindFilter_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (!_uiReady)
+        {
+            return;
+        }
+
+        _selectedKind = SelectedKindValue(KindFilterCombo);
+        await LoadDocumentsUiAsync();
+    }
+
     private async void CatalogTab_Checked(object sender, RoutedEventArgs e)
     {
         var parts = ReferenceEquals(sender, PartsTab);
         if (!_uiReady || parts == _partsMode) return;
         _partsMode = parts;
         ListIdColumn.Header = _partsMode ? "PART" : "DETAIL #";
+        KindFilterCombo.IsEnabled = !_partsMode;
         await LoadDocumentsUiAsync();
     }
 
@@ -664,7 +677,7 @@ public partial class StandardDetailsWindow
 
         var bridge = new DrafterBridgeClient(options.BridgeRoot);
         var composer = new StandardDetailsSheetComposer(bridge, options);
-        var dlg = new SheetComposerWindow(_korStandardsRepo, _repo, composer, _groupSchemaAvailable, _selectedGroupId, _actorUserId, _selectedDiscipline) { Owner = this };
+        var dlg = new SheetComposerWindow(_korStandardsRepo, _repo, composer, _groupSchemaAvailable, _selectedGroupId, _actorUserId, _selectedDiscipline, _selectedKind) { Owner = this };
         if (dlg.ShowDialog() == true)
         {
             SetActivityMessage("Composed Standard Details sheet and created governance record.", BannerTone.Success);
@@ -806,6 +819,63 @@ public partial class StandardDetailsWindow
         if (DocumentsGrid.SelectedItem is DocumentRow { IsDetail: true } detail) { await DecideSelectedDetailAsync(detail, "rejected", "Reject"); return; }
         if (DocumentsGrid.SelectedItem is DocumentRow { IsPart: true } part) { await DecideSelectedComponentAsync(part, "rejected", "Reject"); return; }
         await DecideSelectedVersionAsync(StatusRejected, 2);
+    }
+
+    private async void DetailKindCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (!_uiReady || _syncingKindUi)
+        {
+            return;
+        }
+
+        if (DocumentsGrid.SelectedItem is not DocumentRow { IsDetail: true } detail)
+        {
+            return;
+        }
+
+        if (!EnsureCanApproveReject("classify details"))
+        {
+            SetDetailKindControl(detail.Kind, true);
+            return;
+        }
+
+        if (_promoterRepo == null)
+        {
+            SetActivityMessage("KorStandards promoter is not configured.", BannerTone.Warning);
+            MessageBox.Show(this, "KorStandards promoter is not configured (App.config: KorStandardsPromoterDb).", "Standard Details - Detail Kind", MessageBoxButton.OK, MessageBoxImage.Warning);
+            SetDetailKindControl(detail.Kind, true);
+            return;
+        }
+
+        var kind = SelectedKindValue(DetailKindCombo);
+        try
+        {
+            var (ok, message) = await _promoterRepo.SetDetailKindAsync(detail.DetailNumber, kind);
+            if (!ok)
+            {
+                SetActivityMessage(message, BannerTone.Error);
+                MessageBox.Show(this, message, "Standard Details - Detail Kind", MessageBoxButton.OK, MessageBoxImage.Error);
+                SetDetailKindControl(detail.Kind, true);
+                return;
+            }
+
+            SetActivityMessage(message, BannerTone.Success);
+            var detailNumber = detail.DetailNumber;
+            await LoadDocumentsUiAsync();
+            var refreshed = _documentSnapshot.FirstOrDefault(x => x.IsDetail && string.Equals(x.DetailNumber, detailNumber, StringComparison.OrdinalIgnoreCase));
+            if (refreshed is not null)
+            {
+                DocumentsGrid.SelectedItem = refreshed;
+                DocumentsGrid.ScrollIntoView(refreshed);
+            }
+        }
+        catch (Exception ex)
+        {
+            SetActivityMessage("Detail kind update failed. No changes were committed.", BannerTone.Error);
+            Log.Warning(ex, "Standard Details: detail kind update failed for {DetailNumber}.", detail.DetailNumber);
+            MessageBox.Show(this, ex.Message, "Standard Details - Detail Kind", MessageBoxButton.OK, MessageBoxImage.Error);
+            SetDetailKindControl(detail.Kind, true);
+        }
     }
 
     private async Task DecideSelectedDetailAsync(DocumentRow detail, string toConfidence, string verb)
@@ -1033,6 +1103,48 @@ public partial class StandardDetailsWindow
         return "Pending";
     }
 
+    private static string DetailKindDisplay(string? kind) => kind switch
+    {
+        "general-note" => "General note",
+        "typical" => "Typical",
+        "custom" => "Custom",
+        _ => "Unclassified"
+    };
+
+    private static string? SelectedKindValue(ComboBox combo)
+    {
+        if (combo.SelectedItem is not ComboBoxItem item || item.Tag is not string value)
+        {
+            return null;
+        }
+
+        return string.IsNullOrWhiteSpace(value) ? null : value;
+    }
+
+    private void SetDetailKindControl(string? kind, bool visible)
+    {
+        _syncingKindUi = true;
+        try
+        {
+            DetailKindPanel.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+            foreach (var item in DetailKindCombo.Items.OfType<ComboBoxItem>())
+            {
+                var value = item.Tag as string ?? string.Empty;
+                if (string.Equals(value, kind ?? string.Empty, StringComparison.OrdinalIgnoreCase))
+                {
+                    DetailKindCombo.SelectedItem = item;
+                    break;
+                }
+            }
+        }
+        finally
+        {
+            _syncingKindUi = false;
+        }
+
+        DetailKindCombo.IsEnabled = visible && _promoterRepo != null && _policy?.CanApproveOrReject() == true;
+    }
+
     private sealed class DocumentRow
     {
         public long DocumentId { get; set; }
@@ -1043,6 +1155,7 @@ public partial class StandardDetailsWindow
         public string LatestStatusText { get; set; } = "None";
         public string StatusLabel { get; set; } = "";
         public string RightSubtitle { get; set; } = "";
+        public string Kind { get; set; } = string.Empty;
         public bool IsDetail { get; set; }
         public bool IsPart { get; set; }
         public string FamilyName { get; set; } = string.Empty;

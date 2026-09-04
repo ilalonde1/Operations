@@ -200,7 +200,11 @@
 
         <!-- ============ TOOLBAR: search + discipline chips + summary ============ -->
         <Grid Grid.Row="1" Margin="18,14,18,4">
-            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" ClipToBounds="True">
                 <Border Background="White" BorderBrush="#FFDCE1E7" BorderThickness="1" CornerRadius="8" Width="250" Height="38" VerticalAlignment="Center">
                     <Grid Margin="12,0">
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
@@ -227,8 +231,21 @@
                 <RadioButton GroupName="Disc" Content="Steel" Style="{StaticResource ChipRadio}" Checked="DisciplineChip_Checked"/>
                 <RadioButton GroupName="Disc" Content="General" Style="{StaticResource ChipRadio}" Checked="DisciplineChip_Checked"/>
                 <RadioButton GroupName="Disc" Content="Wood Frame" Style="{StaticResource ChipRadio}" Checked="DisciplineChip_Checked"/>
+                <ComboBox x:Name="KindFilterCombo"
+                          Width="142"
+                          Height="34"
+                          Margin="6,0,0,0"
+                          VerticalContentAlignment="Center"
+                          SelectedIndex="0"
+                          SelectionChanged="KindFilter_SelectionChanged"
+                          ToolTip="Filter details by kind">
+                    <ComboBoxItem Content="All kinds" Tag=""/>
+                    <ComboBoxItem Content="General notes" Tag="general-note"/>
+                    <ComboBoxItem Content="Typical" Tag="typical"/>
+                    <ComboBoxItem Content="Custom" Tag="custom"/>
+                </ComboBox>
             </StackPanel>
-            <TextBlock x:Name="HeroSummaryText" HorizontalAlignment="Right" VerticalAlignment="Center" FontSize="13" Foreground="#FF5B646E" Text="Loading..."/>
+            <TextBlock x:Name="HeroSummaryText" Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center" FontSize="13" Foreground="#FF5B646E" Text="Loading..."/>
         </Grid>
 
         <!-- ============ CONTENT: left list  |  right detail ============ -->
@@ -389,9 +406,28 @@
                     </Border>
                     <!-- action bar -->
                     <Grid Grid.Row="2" Margin="0,14,0,0">
-                        <TextBlock x:Name="ActionHintText" VerticalAlignment="Center" FontSize="12.5" Foreground="#FF7A828B"
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <StackPanel x:Name="DetailKindPanel" Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8" Visibility="Collapsed">
+                            <TextBlock Text="Kind" VerticalAlignment="Center" FontSize="12.5" FontWeight="SemiBold" Foreground="#FF5D6670" Margin="0,0,8,0"/>
+                            <ComboBox x:Name="DetailKindCombo"
+                                      Width="150"
+                                      Height="30"
+                                      VerticalContentAlignment="Center"
+                                      SelectionChanged="DetailKindCombo_SelectionChanged"
+                                      ToolTip="Set selected detail kind">
+                                <ComboBoxItem Content="Unset" Tag=""/>
+                                <ComboBoxItem Content="General note" Tag="general-note"/>
+                                <ComboBoxItem Content="Typical" Tag="typical"/>
+                                <ComboBoxItem Content="Custom" Tag="custom"/>
+                            </ComboBox>
+                        </StackPanel>
+                        <TextBlock x:Name="ActionHintText" Grid.Row="1" VerticalAlignment="Center" Margin="0,0,260,0"
+                                   FontSize="12.5" Foreground="#FF7A828B" TextTrimming="CharacterEllipsis"
                                    Text="This is the actual drawing. Approve it and it goes into the drafters' palette."/>
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right">
                             <Button x:Name="RejectButton" Style="{StaticResource RejectButtonStyle}" Margin="0,0,10,0" Click="Reject_Click"
                                     ToolTip="Reject — the detail is not a standard and never goes in the palette">
                                 <TextBlock Text="&#10005;  Reject" Foreground="#FF48515B" FontSize="13.5" FontWeight="SemiBold"/>

@@ -8,8 +8,8 @@ using Microsoft.Data.SqlClient;
 
 namespace Kor.Operations.StandardDetails;
 
-internal sealed record PaletteDetailRow(string DetailNumber, string Title, string Discipline, string Confidence, bool IsPlaceable, bool VariantsDiverge, int VariantCount);
-internal sealed record SheetComposerDetailRow(string DetailNumber, string Title, string Discipline, string CanonicalViewName);
+internal sealed record PaletteDetailRow(string DetailNumber, string Title, string Discipline, string Kind, string Confidence, bool IsPlaceable, bool VariantsDiverge, int VariantCount);
+internal sealed record SheetComposerDetailRow(string DetailNumber, string Title, string Discipline, string Kind, string CanonicalViewName);
 internal sealed record ComponentRegisterRow(string Palette, string Label, string FamilyName, string TypeName, string Origin, bool IsRetired, int InstanceCount, int UsedInDetails);
 // The Quick Insert catalog: the placeable, governed parts (family+type) production reads. Same
 // confidence ladder as details, so a part is Approved/Pending exactly like a detail.
@@ -27,12 +27,13 @@ internal sealed class KorStandardsReadRepository
         _connectionString = connectionString;
     }
 
-    internal async Task<IReadOnlyList<PaletteDetailRow>> LoadPaletteDetailsAsync(string query, string? discipline = null)
+    internal async Task<IReadOnlyList<PaletteDetailRow>> LoadPaletteDetailsAsync(string query, string? discipline = null, string? kind = null)
     {
         const string sql = @"
 SELECT DetailNumber,
        MIN(Title) AS Title,
        MIN(Discipline) AS Discipline,
+       MIN(Kind) AS Kind,
        MIN(Confidence) AS Confidence,
        MAX(CAST(IsPlaceable AS int)) AS IsPlaceable,
        MAX(CAST(VariantsDiverge AS int)) AS VariantsDiverge,
@@ -40,6 +41,7 @@ SELECT DetailNumber,
 FROM detail.vw_PaletteCatalog
 WHERE (@q = '' OR DetailNumber LIKE @like OR Title LIKE @like)
   AND (@discipline IS NULL OR Discipline = @discipline)
+  AND (@kind IS NULL OR Kind = @kind)
 GROUP BY DetailNumber
 ORDER BY DetailNumber;";
 
@@ -52,6 +54,7 @@ ORDER BY DetailNumber;";
         AddNVarChar(cmd, "@q", QueryMax, q);
         AddNVarChar(cmd, "@like", QueryMax + 2, $"%{q}%");
         AddNullableNVarChar(cmd, "@discipline", 80, discipline);
+        AddNullableNVarChar(cmd, "@kind", 16, kind);
 
         await using var r = await cmd.ExecuteReaderAsync();
         while (await r.ReadAsync())
@@ -61,9 +64,10 @@ ORDER BY DetailNumber;";
                 r.GetStringOrEmpty(1),
                 r.GetStringOrEmpty(2),
                 r.GetStringOrEmpty(3),
-                !r.IsDBNull(4) && r.GetInt32(4) == 1,
+                r.GetStringOrEmpty(4),
                 !r.IsDBNull(5) && r.GetInt32(5) == 1,
-                r.IsDBNull(6) ? 0 : r.GetInt32(6)));
+                !r.IsDBNull(6) && r.GetInt32(6) == 1,
+                r.IsDBNull(7) ? 0 : r.GetInt32(7)));
         }
 
         return rows;
@@ -109,18 +113,20 @@ ORDER BY DetailNumber;";
         return rows;
     }
 
-    internal async Task<IReadOnlyList<SheetComposerDetailRow>> LoadSheetComposerDetailsAsync(string query, string? discipline = null)
+    internal async Task<IReadOnlyList<SheetComposerDetailRow>> LoadSheetComposerDetailsAsync(string query, string? discipline = null, string? kind = null)
     {
         const string sql = @"
 SELECT DetailNumber,
        Title,
        Discipline,
+       Kind,
        ViewName AS CanonicalViewName
 FROM
 (
     SELECT DetailNumber,
            Title,
            Discipline,
+           Kind,
            ViewName,
            ROW_NUMBER() OVER (
                PARTITION BY DetailNumber
@@ -132,6 +138,7 @@ FROM
     WHERE IsPlaceable = 1
       AND (@q = '' OR DetailNumber LIKE @like OR Title LIKE @like OR ViewName LIKE @like)
       AND (@discipline IS NULL OR Discipline = @discipline)
+      AND (@kind IS NULL OR Kind = @kind)
 ) ranked
 WHERE rn = 1
 ORDER BY DetailNumber;";
@@ -145,12 +152,13 @@ ORDER BY DetailNumber;";
         AddNVarChar(cmd, "@q", QueryMax, q);
         AddNVarChar(cmd, "@like", QueryMax + 2, $"%{q}%");
         AddNullableNVarChar(cmd, "@discipline", 80, discipline);
+        AddNullableNVarChar(cmd, "@kind", 16, kind);
 
         await using var r = await cmd.ExecuteReaderAsync();
         while (await r.ReadAsync())
         {
             var detailNumber = r.GetStringOrEmpty(0).Trim();
-            var viewName = r.GetStringOrEmpty(3).Trim();
+            var viewName = r.GetStringOrEmpty(4).Trim();
             if (string.IsNullOrWhiteSpace(detailNumber) || string.IsNullOrWhiteSpace(viewName))
             {
                 continue;
@@ -160,6 +168,7 @@ ORDER BY DetailNumber;";
                 detailNumber,
                 r.GetStringOrEmpty(1),
                 r.GetStringOrEmpty(2),
+                r.GetStringOrEmpty(3),
                 viewName));
         }
 

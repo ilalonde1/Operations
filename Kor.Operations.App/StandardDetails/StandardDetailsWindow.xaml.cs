@@ -35,6 +35,8 @@ public partial class StandardDetailsWindow : Window
     private StandardDetailsAccessPolicy? _policy;
     private string _userIdentity = "operations";
     private string? _selectedDiscipline;   // null = All disciplines
+    private string? _selectedKind;         // null = All detail kinds
+    private bool _syncingKindUi;           // guards programmatic kind-combo updates
     private bool _partsMode;               // false = Details tab, true = Parts tab
     private int _previewToken;             // guards against a slow image load landing after the selection moved on
     private bool _uiReady;                 // true after Loaded — chip/tab Checked events fire during XAML init and must no-op until then
@@ -152,6 +154,7 @@ public partial class StandardDetailsWindow : Window
             ApproveButton.Visibility = Visibility.Visible;
             RejectButton.Visibility = Visibility.Visible;
             DrawingFootnote.Visibility = Visibility.Collapsed;
+            SetDetailKindControl(null, false);
             ShowPreviewEmpty(_partsMode ? "Select a part to see it." : "Select a detail to see its drawing.");
             return;
         }
@@ -165,6 +168,7 @@ public partial class StandardDetailsWindow : Window
             ? "Approve → the part goes into the Quick Insert palette.  Reject → it never does."
             : "This is the actual drawing. Approve it and it goes into the drafters' palette.";
         DrawingFootnote.Visibility = Visibility.Collapsed;
+        SetDetailKindControl(row.Kind, row.IsDetail);
         ShowPreviewEmpty(row.IsPart ? "Loading part image…" : "Loading drawing…");
     }
 
@@ -288,6 +292,7 @@ public partial class StandardDetailsWindow : Window
         AddGroupButton.IsEnabled = canManageGroups; AddSubgroupButton.IsEnabled = canManageGroups && selectedGroup?.GroupId is not null; RenameGroupButton.IsEnabled = canManageGroups && selectedGroup?.GroupId is not null; RemoveGroupButton.IsEnabled = canManageGroups && selectedGroup?.GroupId is not null;
         CreateRecordButton.IsEnabled = canContribute; UploadVersionButton.IsEnabled = canContribute && selectedDoc is { IsDetail: false }; LinkDetailButton.IsEnabled = canContribute && selectedDoc is { IsDetail: false } && _korStandardsRepo is not null; RegistersButton.IsEnabled = _korStandardsRepo is not null; PublishToMasterButton.IsEnabled = _korStandardsRepo is not null && (_policy?.CanPublish() == true); ComposeSheetButton.IsEnabled = _repo is not null && _korStandardsRepo is not null && (_policy?.CanPublish() == true); AssignRecordButton.IsEnabled = canContribute && selectedDoc is { IsDetail: false } && _groupSchemaAvailable && canAssignToSelectedGroup; DeleteRecordButton.IsEnabled = canContribute && selectedDoc is { IsDetail: false };
         OpenFileButton.IsEnabled = selectedVersion is not null; SubmitButton.IsEnabled = canContribute && selectedVersion is not null && selectedVersion.Status == StatusDraft; ApproveButton.IsEnabled = (_policy?.CanApproveOrReject() == true) && (((selectedDoc is { IsDetail: true } or { IsPart: true }) && _promoterRepo is not null) || (selectedVersion is not null && selectedVersion.Status == StatusSubmitted)); RejectButton.IsEnabled = (_policy?.CanApproveOrReject() == true) && (((selectedDoc is { IsDetail: true } or { IsPart: true }) && _promoterRepo is not null) || (selectedVersion is not null && selectedVersion.Status == StatusSubmitted)); PublishButton.IsEnabled = (_policy?.CanPublish() == true) && selectedVersion is not null && selectedVersion.Status == StatusApproved;
+        DetailKindCombo.IsEnabled = selectedDoc is { IsDetail: true } && _promoterRepo is not null && _policy?.CanApproveOrReject() == true;
     }
 
     // The drawing previews are PRE-RENDERED to a SHARED cache (beside the master template on the

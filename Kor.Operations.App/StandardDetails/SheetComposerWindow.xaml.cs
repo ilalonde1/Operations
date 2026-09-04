@@ -17,6 +17,7 @@ public partial class SheetComposerWindow : Window
     private readonly long? _selectedGroupId;
     private readonly Guid _actorUserId;
     private readonly string? _selectedDiscipline;
+    private readonly string? _selectedKind;
     private readonly ObservableCollection<ComposerDetailDisplayRow> _details = new();
     private readonly ObservableCollection<ComposerPlacementDisplayRow> _placements = new();
 
@@ -27,7 +28,8 @@ public partial class SheetComposerWindow : Window
         bool groupSchemaAvailable,
         long? selectedGroupId,
         Guid actorUserId,
-        string? selectedDiscipline = null)
+        string? selectedDiscipline = null,
+        string? selectedKind = null)
     {
         _catalogRepository = catalogRepository ?? throw new ArgumentNullException(nameof(catalogRepository));
         _governanceRepository = governanceRepository ?? throw new ArgumentNullException(nameof(governanceRepository));
@@ -36,6 +38,7 @@ public partial class SheetComposerWindow : Window
         _selectedGroupId = selectedGroupId;
         _actorUserId = actorUserId;
         _selectedDiscipline = string.IsNullOrWhiteSpace(selectedDiscipline) ? null : selectedDiscipline.Trim();
+        _selectedKind = string.IsNullOrWhiteSpace(selectedKind) ? null : selectedKind.Trim();
         InitializeComponent();
         DetailsGrid.ItemsSource = _details;
         PlacementsGrid.ItemsSource = _placements;
@@ -63,7 +66,7 @@ public partial class SheetComposerWindow : Window
         ToggleBusy(true);
         try
         {
-            var rows = await _catalogRepository.LoadSheetComposerDetailsAsync(SearchBox.Text?.Trim() ?? string.Empty, _selectedDiscipline);
+            var rows = await _catalogRepository.LoadSheetComposerDetailsAsync(SearchBox.Text?.Trim() ?? string.Empty, _selectedDiscipline, _selectedKind);
             var occupied = await _composer.LoadOccupiedDetailsAsync(TimeSpan.FromMinutes(2));
 
             _details.Clear();
@@ -75,6 +78,7 @@ public partial class SheetComposerWindow : Window
                     DetailNumber = row.DetailNumber,
                     Title = row.Title,
                     Discipline = row.Discipline,
+                    Kind = row.Kind,
                     CanonicalViewName = row.CanonicalViewName,
                     CurrentSheetText = occupancy is null ? "" : $"{occupancy.SheetNumber} - {occupancy.SheetName}",
                     IsAlreadyOnSheet = occupancy is not null
@@ -282,6 +286,7 @@ public partial class SheetComposerWindow : Window
         public string DetailNumber { get; init; } = string.Empty;
         public string Title { get; init; } = string.Empty;
         public string Discipline { get; init; } = string.Empty;
+        public string Kind { get; init; } = string.Empty;
         public string CanonicalViewName { get; init; } = string.Empty;
         public string CurrentSheetText { get; init; } = string.Empty;
         public bool IsAlreadyOnSheet { get; init; }
