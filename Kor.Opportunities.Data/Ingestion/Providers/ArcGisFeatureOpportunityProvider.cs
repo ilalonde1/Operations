@@ -260,6 +260,13 @@ public sealed class ArcGisFeatureOpportunityProvider : IOpportunityProvider
         /// </summary>
         public string? Applicant { get; private set; }
 
+        /// <summary>
+        /// Construction value where the layer publishes one. Langford's tracker
+        /// carries TotalValuation; none of the other municipal feeds has any
+        /// money at all, which is why nothing could be ranked by size.
+        /// </summary>
+        public decimal? EstimatedValue { get; private set; }
+
         public DateTimeOffset? PostedDateUtc { get; private set; }
 
         public string? ContactName { get; private set; }
@@ -276,6 +283,21 @@ public sealed class ArcGisFeatureOpportunityProvider : IOpportunityProvider
             Title ??= title;
             AppType ??= ReadString(attrs, map.TypeField);
             Applicant ??= ReadString(attrs, map.ApplicantField);
+
+            if (EstimatedValue is null && map.EstimatedValueField is not null)
+            {
+                var raw = ReadString(attrs, map.EstimatedValueField);
+                if (raw is not null
+                    && decimal.TryParse(
+                        raw,
+                        NumberStyles.Number | NumberStyles.AllowCurrencySymbol,
+                        CultureInfo.InvariantCulture,
+                        out var parsedValue)
+                    && parsedValue > 0)
+                {
+                    EstimatedValue = parsedValue;
+                }
+            }
 
             var description = JoinFields(attrs, map.DescriptionFields, " ");
             if (description is not null
@@ -335,6 +357,7 @@ public sealed class ArcGisFeatureOpportunityProvider : IOpportunityProvider
                 BuyerContactName = Trim(ContactName ?? Applicant, 200),
                 BuyerContactEmail = Trim(ContactEmail, 200),
                 BuyerContactPhone = Trim(ContactPhone, 100),
+                EstimatedValueCad = EstimatedValue,
                 RawJson = RawJson,
             };
         }
@@ -565,6 +588,7 @@ public sealed class ArcGisFeatureOpportunityProvider : IOpportunityProvider
         string? StatusField,
         IReadOnlyList<string> DescriptionFields,
         string? ApplicantField,
+        string? EstimatedValueField,
         string? PostedDateField,
         string? ContactNameField,
         string? ContactEmailField,
@@ -593,6 +617,7 @@ public sealed class ArcGisFeatureOpportunityProvider : IOpportunityProvider
                 // "what is proposed" and "where the file has got to".
                 SplitList(Get(cfg, "arcgis.descriptionFields") ?? Get(cfg, "arcgis.descriptionField")),
                 Get(cfg, "arcgis.applicantField"),
+                Get(cfg, "arcgis.estimatedValueField"),
                 Get(cfg, "arcgis.postedDateField"),
                 Get(cfg, "arcgis.contactNameField"),
                 Get(cfg, "arcgis.contactEmailField"),
