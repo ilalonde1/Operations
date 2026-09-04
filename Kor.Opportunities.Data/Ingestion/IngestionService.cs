@@ -644,16 +644,30 @@ public sealed class IngestionService : IIngestionService
 
     /// <summary>
     /// Builds the dedup key — uppercased, pipe-separated
-    /// <c>Title|Buyer|Location|Url|Deadline</c> — and returns its SHA-256 digest.
+    /// <c>Title|Buyer|Location|Url|Deadline|Description</c> — and returns its
+    /// SHA-256 digest.
+    ///
     /// The submission deadline joined the key in the 2026-07-01 completeness
     /// audit: without it, an AMENDED posting (deadline extension — same
     /// title/buyer/url) collided with its original observation and returned
     /// Duplicate before ever reaching the refresh block, so deadline changes
     /// were silently never picked up and opportunities auto-expired on stale
-    /// dates. Changing the formula is safe without rebuilding the observation
-    /// table: the first re-observation of each posting simply inserts a new
-    /// observation row and flows through the key-matched refresh path
-    /// (idempotent; no duplicate opportunities are created).
+    /// dates.
+    ///
+    /// THE DESCRIPTION JOINED IT ON 2026-09-04 for the same reason, one field
+    /// over. A posting whose SCOPE TEXT changes while its title and url stay put
+    /// hashed identically and was returned as a Duplicate, so the new text was
+    /// never written — the listing stayed frozen at whatever it said the first
+    /// time anybody saw it. Found while verifying a fix that could not take
+    /// effect: Coquitlam file 22-067 gained "Phase two … a townhouse site with 92
+    /// units" upstream and the row went on showing phase one only.
+    ///
+    /// Changing the formula is safe without rebuilding the observation table:
+    /// the first re-observation of each posting simply inserts a new observation
+    /// row and flows through the key-matched refresh path (idempotent; no
+    /// duplicate opportunities are created). Expect exactly one wave of
+    /// re-observations across every source on the next run after a formula
+    /// change, then steady state.
     /// </summary>
     private static byte[] ComputeHash(OpportunityCandidate candidate)
     {
@@ -662,7 +676,8 @@ public sealed class IngestionService : IIngestionService
             (candidate.Buyer ?? "").Trim().ToUpperInvariant(),
             (candidate.Location ?? "").Trim().ToUpperInvariant(),
             (candidate.Url ?? "").Trim().ToUpperInvariant(),
-            candidate.SubmissionDeadlineUtc?.UtcDateTime.ToString("yyyy-MM-ddTHH:mm", CultureInfo.InvariantCulture) ?? "");
+            candidate.SubmissionDeadlineUtc?.UtcDateTime.ToString("yyyy-MM-ddTHH:mm", CultureInfo.InvariantCulture) ?? "",
+            (candidate.Description ?? "").Trim().ToUpperInvariant());
 
         return SHA256.HashData(Encoding.UTF8.GetBytes(key));
     }
