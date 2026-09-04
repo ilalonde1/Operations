@@ -146,6 +146,22 @@ public static class StructuralRelevanceGate
         "hotel",
         "motel",
         "place of worship",
+        // Round 2, 2026-09-04. Planning-scope terms that imply a building
+        // without naming one — what was left after the street-address guard
+        // stopped "1435 Thurlow Road" rejecting on "road": its actual scope is
+        // "height variance, interior setback variance, gross floor area
+        // variance", which named no building. Measured on the live planning
+        // corpus: 5 gains, 0 regressions across 5,628 kept rows, and the
+        // examples include two more named developers on Coquitlam applications.
+        // "setback" and "gross floor area" carried the evidence; the rest are
+        // the standard BC synonyms of the same measures.
+        "setback",
+        "gross floor area",
+        "floor area ratio",
+        "floor space ratio",
+        "lot coverage",
+        "site coverage",
+        "building height",
         // French vocabulary — CanadaBuys federal postings can be French-only;
         // accented and unaccented variants both included because upstream
         // encodings vary.
@@ -361,6 +377,19 @@ public static class StructuralRelevanceGate
         "feasibility study",
     };
 
+    /// <summary>
+    /// A civic address whose street suffix is also an exclusion term — "645/55
+    /// Tyee Road", "1435 Thurlow Road". Between the number and the suffix it
+    /// allows one or two ordinary words, and refuses the connectives that would
+    /// mean a QUANTITY of road rather than a place ("1200 m of road").
+    /// </summary>
+    private static readonly Regex StreetAddressRx = new(
+        @"\b\d{1,6}[a-z]?(?:\s*[/-]\s*\d{1,6}[a-z]?)?\s+" +
+        @"(?!of\b|m\b|km\b|metres\b|meters\b|lineal\b|linear\b|sq\b|square\b)" +
+        @"[a-z][a-z'.\-]{1,20}(?:\s+[a-z][a-z'.\-]{1,20})?\s+" +
+        @"(?:road|roadway)\b",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
     private static readonly Regex[] HardIrrelevantRegexes = HardIrrelevantSignals
         .Select(signal => new Regex($@"\b{Regex.Escape(signal)}\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled))
         .ToArray();
@@ -408,6 +437,28 @@ public static class StructuralRelevanceGate
         _ = buyer;
 
         var text = $"{title ?? string.Empty} {description ?? string.Empty}".ToLowerInvariant();
+
+        // ── The address collision ───────────────────────────────────────────
+        // Exclusion terms match inside STREET NAMES. Victoria applications were
+        // rejected for "road" on "645/55 Tyee Road", "1435 Thurlow Road" and
+        // "414 Craigflower Road" — one of which was a genuine building job
+        // (height, interior setback and gross-floor-area variances). Platform
+        // wide that reason holds 432 rows.
+        //
+        // This is the SECOND instance of a known class, the first being org
+        // resolution by substring ("Chard" matched "Richard & Co. Architecture").
+        // The class: a keyword test run against a concatenation of fields will
+        // match a term that occurs only inside a proper noun and act on it as
+        // though it were about the subject.
+        //
+        // So exclusions are scored against text with address-shaped spans
+        // removed, while KEEP signals still see the whole string — an address is
+        // evidence of nothing, but removing it must never cost us a keep.
+        // Deliberately narrow: only spans that look like "<number> <one or two
+        // words> <street-suffix>", and only where that suffix is itself an
+        // exclusion term. "resurfacing 1200 m of road" is NOT an address and
+        // still excludes, because "of"/"m"/"km" are refused as street names.
+        var scopeText = StreetAddressRx.Replace(text, " ");
         var matchedAlwaysIrrelevant = FirstAlwaysIrrelevantMatch(text);
         if (matchedAlwaysIrrelevant is not null)
         {
@@ -419,7 +470,7 @@ public static class StructuralRelevanceGate
         var hasKeep = hasBuilding
                       || MatchesAny(text, ProfessionalSignalRegexes)
                       || (delta?.MatchesProfessional(text) ?? false);
-        var matchedIrrelevant = FirstHardIrrelevantMatch(text);
+        var matchedIrrelevant = FirstHardIrrelevantMatch(scopeText);
 
         // Hard-irrelevant first (more specific reason), but only fatal when no
         // building signal overrides it. Then the allowlist catch-all.

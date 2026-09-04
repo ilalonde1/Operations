@@ -43,34 +43,115 @@ public sealed class VancouverOpenDataPermitAdapter
 
     public sealed record AdapterResult(int Pulled, int Upserted, int CanonicalsResolved, int Failed);
 
+    /// <summary>Opendatasoft v2.1 caps a page at 100 and the offset at 10,000.</summary>
+    private const int OdsPageSize = 100;
+
+    private const int OdsMaxOffset = 10_000;
+
+    /// <summary>
+    /// Accepts either the legacy <c>/exports/json</c> endpoint stored in
+    /// PermitSource or a records URL, and returns the records endpoint. Kept
+    /// tolerant so an old configuration row still works after this change.
+    /// </summary>
+    internal static string ToRecordsEndpoint(string endpoint)
+    {
+        if (string.IsNullOrWhiteSpace(endpoint))
+        {
+            return endpoint;
+        }
+
+        var trimmed = endpoint.Trim();
+        var query = trimmed.IndexOf('?', StringComparison.Ordinal);
+        if (query >= 0)
+        {
+            trimmed = trimmed[..query];
+        }
+
+        var exports = trimmed.IndexOf("/exports/", StringComparison.OrdinalIgnoreCase);
+        if (exports >= 0)
+        {
+            return trimmed[..exports] + "/records";
+        }
+
+        return trimmed.EndsWith("/records", StringComparison.OrdinalIgnoreCase)
+            ? trimmed
+            : trimmed.TrimEnd('/') + "/records";
+    }
+
     public async Task<AdapterResult> ImportAsync(PermitSourceRow source, int maxRowsPerSource, CancellationToken ct)
     {
         var rowCap = maxRowsPerSource > 0 ? Math.Min(_maxRowsPerRun, maxRowsPerSource) : _maxRowsPerRun;
-        using var resp = await _http.GetAsync(source.Endpoint, ct).ConfigureAwait(false);
-        if (!resp.IsSuccessStatusCode)
-        {
-            throw new InvalidOperationException($"Vancouver OpenData {(int)resp.StatusCode}");
-        }
 
-        var body = await Kor.Opportunities.Data.Ingestion.HttpReadHelpers.ReadStringWithCapAsync(
-            resp.Content,
-            _maxBytesPerResponse,
-            "Vancouver permits",
-            ct).ConfigureAwait(false);
-
-        var root = JsonNode.Parse(body);
-        var arr = root?.AsArray();
-        if (arr is null)
-        {
-            return new AdapterResult(0, 0, 0, 0);
-        }
+        // ── Why this pages instead of downloading the export ────────────────
+        // The configured endpoint was Opendatasoft's /exports/json, which returns
+        // the WHOLE dataset in one response. That worked until the dataset grew
+        // past the 50 MB response cap, and then this source went dark for THREE
+        // MONTHS — last successful ingest 2026-06-07, still IsActive = 1, still
+        // polled daily, failing every time with "Content-Length 82765401 exceeds
+        // configured limit (52428800)" into a column nobody reads.
+        //
+        // Raising the cap only moves the date it breaks again. The /records
+        // endpoint pages, and sorted newest-first a daily run touches one or two
+        // pages instead of 80 MB. Same field names, so the mapping below is
+        // unchanged.
+        var recordsBase = ToRecordsEndpoint(source.Endpoint);
 
         var pulled = 0;
         var upserted = 0;
         var canonicals = 0;
         var failed = 0;
+        var offset = 0;
 
-        foreach (var item in arr)
+        var items = new List<JsonNode?>();
+        while (pulled + items.Count < rowCap && offset < OdsMaxOffset)
+        {
+            ct.ThrowIfCancellationRequested();
+            var take = Math.Min(OdsPageSize, rowCap - items.Count);
+            var url = $"{recordsBase}?limit={take.ToString(CultureInfo.InvariantCulture)}" +
+                      $"&offset={offset.ToString(CultureInfo.InvariantCulture)}" +
+                      "&order_by=issuedate%20desc";
+
+            using var pageResp = await _http.GetAsync(url, ct).ConfigureAwait(false);
+            if (!pageResp.IsSuccessStatusCode)
+            {
+                throw new InvalidOperationException($"Vancouver OpenData {(int)pageResp.StatusCode}");
+            }
+
+            var pageBody = await Kor.Opportunities.Data.Ingestion.HttpReadHelpers.ReadStringWithCapAsync(
+                pageResp.Content,
+                _maxBytesPerResponse,
+                "Vancouver permits",
+                ct).ConfigureAwait(false);
+
+            var pageResults = JsonNode.Parse(pageBody)?["results"]?.AsArray();
+            if (pageResults is null || pageResults.Count == 0)
+            {
+                break;
+            }
+
+            foreach (var n in pageResults)
+            {
+                items.Add(n);
+            }
+
+            if (pageResults.Count < take)
+            {
+                break;
+            }
+
+            offset += take;
+        }
+
+        if (items.Count == 0)
+        {
+            return new AdapterResult(0, 0, 0, 0);
+        }
+
+        _logger.LogInformation(
+            "Vancouver permits: {Count} record(s) read over {Pages} page(s).",
+            items.Count, (items.Count + OdsPageSize - 1) / OdsPageSize);
+
+        foreach (var item in items)
         {
             ct.ThrowIfCancellationRequested();
             if (pulled >= rowCap)

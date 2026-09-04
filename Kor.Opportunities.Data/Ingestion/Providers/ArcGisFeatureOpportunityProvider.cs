@@ -325,7 +325,14 @@ public sealed class ArcGisFeatureOpportunityProvider : IOpportunityProvider
                 ExternalReference = Trim(ExternalRef, 200),
                 ProjectCity = map.CityOverride,
                 ProjectProvince = map.ProvinceOverride,
-                BuyerContactName = Trim(ContactName, 200),
+                // The applicant is the developer or their agent; the contact
+                // fields on these layers are usually the CITY's planner. Where a
+                // layer gives us the applicant and no better contact, the
+                // applicant takes the slot — otherwise the only party worth
+                // calling stays buried in prose and never reaches the Brain.
+                // Coquitlam is exactly that shape: 389 applications naming firms
+                // like Ledingham McAllister, none of them in a queryable field.
+                BuyerContactName = Trim(ContactName ?? Applicant, 200),
                 BuyerContactEmail = Trim(ContactEmail, 200),
                 BuyerContactPhone = Trim(ContactPhone, 100),
                 RawJson = RawJson,

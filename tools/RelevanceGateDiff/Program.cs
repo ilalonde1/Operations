@@ -182,6 +182,66 @@ await foreach (var r in ReadAsync(cs, rejectSql))
     bySource[r.SourceName ?? "(none)"] = bySource.GetValueOrDefault(r.SourceName ?? "(none)") + 1;
 }
 
+// ── DRIFT ARM ────────────────────────────────────────────────────────────────
+// The differential above cannot see a change baked into the gate ITSELF — both
+// arms carry it. RelevanceGateRejects stores the verdict the gate gave AT THE
+// TIME, so comparing today's gate against that stored reason measures exactly
+// that: what the shipped gate now does differently from the one that wrote the
+// row. This is how the street-address guard was measured.
+var driftChanged = new Dictionary<string, (int Now, int Kept, List<string> Examples)>(StringComparer.OrdinalIgnoreCase);
+
+await foreach (var r in ReadAsync(cs, rejectSql))
+{
+    var stored = r.RejectReason;
+    if (string.IsNullOrWhiteSpace(stored))
+    {
+        continue;
+    }
+
+    var now = StructuralRelevanceGate.Evaluate(r.Title, null, r.Buyer);
+    var nowReason = now.Keep ? "(now KEPT)" : now.RejectReason ?? "(none)";
+    if (string.Equals(nowReason, stored, StringComparison.OrdinalIgnoreCase))
+    {
+        continue;
+    }
+
+    if (!driftChanged.TryGetValue(stored, out var bucket))
+    {
+        bucket = (0, 0, new List<string>());
+    }
+
+    bucket.Now++;
+    if (now.Keep)
+    {
+        bucket.Kept++;
+    }
+
+    if (bucket.Examples.Count < showCount)
+    {
+        bucket.Examples.Add($"{nowReason,-38} {Cut(r.Title, 66)}");
+    }
+
+    driftChanged[stored] = bucket;
+}
+
+Console.WriteLine("DRIFT ARM — where today's gate disagrees with the verdict stored on the row");
+Console.WriteLine(new string('-', 100));
+if (driftChanged.Count == 0)
+{
+    Console.WriteLine("  none — the shipped gate reproduces every stored reject reason.");
+}
+
+foreach (var (stored, bucket) in driftChanged.OrderByDescending(k => k.Value.Now))
+{
+    Console.WriteLine($"  was \"{stored}\" → {bucket.Now} row(s) now differ, of which {bucket.Kept} are now KEPT");
+    foreach (var e in bucket.Examples)
+    {
+        Console.WriteLine($"        {e}");
+    }
+
+    Console.WriteLine();
+}
+
 Console.WriteLine("GAIN ARM — rows the gate has rejected (Title ONLY; the table stores no description)");
 Console.WriteLine(new string('-', 100));
 Console.WriteLine($"  scored              : {rejTotal}");
