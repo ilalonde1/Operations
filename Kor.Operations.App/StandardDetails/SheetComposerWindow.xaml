@@ -110,9 +110,71 @@
                     <Grid Grid.Row="1">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="*"/>
+                            <RowDefinition Height="155"/>
                             <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
-                        <DataGrid x:Name="PlacementsGrid" Grid.Row="0" AutoGenerateColumns="False"
+
+                        <Border Grid.Row="0" Background="#FFEEF1F4" BorderBrush="#FFD5DAE0" BorderThickness="1" CornerRadius="8" Padding="10">
+                            <Grid>
+                                <Border x:Name="SheetHost"
+                                        HorizontalAlignment="Stretch"
+                                        VerticalAlignment="Stretch"
+                                        Background="#FFDDE3EA"
+                                        ClipToBounds="True"
+                                        SizeChanged="SheetHost_SizeChanged">
+                                    <Canvas x:Name="SheetCanvas" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <Rectangle x:Name="SheetPaper" Fill="White" Stroke="#FF7B8794" StrokeThickness="1"/>
+                                        <Rectangle x:Name="TitleBlockRegion" Fill="#FFF8FAFC" Stroke="#FFB8C1CC" StrokeThickness="1"/>
+                                        <Line x:Name="TitleBlockTopLine" Stroke="#FFD6DDE5" StrokeThickness="1"/>
+                                        <Line x:Name="TitleBlockMiddleLine" Stroke="#FFD6DDE5" StrokeThickness="1"/>
+                                        <Line x:Name="TitleBlockBottomLine" Stroke="#FFD6DDE5" StrokeThickness="1"/>
+                                        <ItemsControl x:Name="PlacementItems">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <Canvas/>
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemContainerStyle>
+                                                <Style TargetType="ContentPresenter">
+                                                    <Setter Property="Canvas.Left" Value="{Binding CanvasLeft}"/>
+                                                    <Setter Property="Canvas.Top" Value="{Binding CanvasTop}"/>
+                                                </Style>
+                                            </ItemsControl.ItemContainerStyle>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Grid Width="{Binding CanvasWidth}" Height="{Binding CanvasHeight}">
+                                                        <Thumb DragStarted="PlacementThumb_DragStarted" DragDelta="PlacementThumb_DragDelta" Cursor="SizeAll">
+                                                            <Thumb.Template>
+                                                                <ControlTemplate TargetType="Thumb">
+                                                                    <Border Background="White" BorderBrush="#FFDD5A2A" BorderThickness="2" CornerRadius="4" SnapsToDevicePixels="True">
+                                                                        <Grid ClipToBounds="True">
+                                                                            <Image Source="{Binding Thumbnail}" Stretch="Uniform" Margin="4" Visibility="{Binding ThumbnailVisibility}" RenderOptions.BitmapScalingMode="HighQuality"/>
+                                                                            <TextBlock Text="{Binding Title}" TextWrapping="Wrap" TextAlignment="Center" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="8" FontSize="11" Foreground="#FF5B636D" Visibility="{Binding PlaceholderVisibility}"/>
+                                                                            <Border Background="#E62E353D" VerticalAlignment="Top" Padding="6,3">
+                                                                                <TextBlock Text="{Binding DetailNumber}" Foreground="White" FontSize="10.5" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                                                                            </Border>
+                                                                        </Grid>
+                                                                    </Border>
+                                                                </ControlTemplate>
+                                                            </Thumb.Template>
+                                                        </Thumb>
+                                                        <Thumb Width="14" Height="14" HorizontalAlignment="Right" VerticalAlignment="Bottom" Cursor="SizeNWSE" DragStarted="PlacementThumb_DragStarted" DragDelta="ResizeThumb_DragDelta">
+                                                            <Thumb.Template>
+                                                                <ControlTemplate TargetType="Thumb">
+                                                                    <Border Background="#FFDD5A2A" BorderBrush="White" BorderThickness="1" CornerRadius="2"/>
+                                                                </ControlTemplate>
+                                                            </Thumb.Template>
+                                                        </Thumb>
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </Canvas>
+                                </Border>
+                            </Grid>
+                        </Border>
+
+                        <DataGrid x:Name="PlacementsGrid" Grid.Row="1" Margin="0,8,0,0" AutoGenerateColumns="False"
                                   CanUserAddRows="False" CanUserDeleteRows="False"
                                   SelectionMode="Single" HeadersVisibility="Column" GridLinesVisibility="Horizontal">
                             <DataGrid.Columns>
@@ -124,7 +186,8 @@
                                 <DataGridTextColumn Header="Scale" Binding="{Binding ScaleText, UpdateSourceTrigger=PropertyChanged}" Width="70"/>
                             </DataGrid.Columns>
                         </DataGrid>
-                        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
+                        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
+                            <CheckBox x:Name="SnapCheckBox" Content="Snap" IsChecked="True" VerticalAlignment="Center" Margin="0,0,14,0"/>
                             <TextBlock x:Name="PlacementSummaryText" VerticalAlignment="Center" Margin="0,0,12,0"
                                        FontSize="12" Foreground="{StaticResource Text.Secondary}"/>
                             <Button Width="100" Height="34" Content="Remove" Style="{StaticResource Button.Secondary}" Click="Remove_Click"/>
