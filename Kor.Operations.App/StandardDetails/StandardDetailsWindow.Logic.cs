@@ -921,15 +921,15 @@ public partial class StandardDetailsWindow
 
     private async void OpenSheetPdf_Click(object sender, RoutedEventArgs e)
     {
-        if (DocumentsGrid.SelectedItem is not DocumentRow { IsSheet: true } sheet)
+        if (DocumentsGrid.SelectedItem is not DocumentRow { IsDetail: true } detail)
         {
-            MessageBox.Show(this, "Select a sheet first.", "Standard Details - Open PDF", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show(this, "Select a detail or sheet first.", "Standard Details - Open PDF", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
 
-        if (_masterPublishOptions is not { IsConfigured: true } options)
+        if (_masterPublishOptions is not { IsConfigured: true } options || _korStandardsRepo is null)
         {
-            SetActivityMessage("Sheet PDF settings are incomplete.", BannerTone.Warning);
+            SetActivityMessage("Catalog PDF settings are incomplete.", BannerTone.Warning);
             MessageBox.Show(this, "App.config must define StandardDetails.AuthoringPath, StandardDetails.MasterPath, and StandardDetails.BridgeRoot.", "Standard Details - Open PDF", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
@@ -937,21 +937,71 @@ public partial class StandardDetailsWindow
         OpenSheetPdfButton.IsEnabled = false;
         try
         {
-            SetActivityMessage($"Opening PDF for {sheet.DetailNumber}...", BannerTone.Info);
+            SetActivityMessage($"Opening PDF for {detail.DetailNumber}...", BannerTone.Info);
             var composer = new StandardDetailsSheetComposer(new DrafterBridgeClient(options.BridgeRoot), options);
-            await composer.OpenSheetPdfAsync(sheet.DetailNumber, TimeSpan.FromMinutes(5));
-            SetActivityMessage($"Opened PDF for {sheet.DetailNumber}.", BannerTone.Success);
+            await composer.OpenDetailPdfAsync(detail.DetailNumber, _korStandardsRepo, TimeSpan.FromMinutes(5));
+            SetActivityMessage($"Opened PDF for {detail.DetailNumber}.", BannerTone.Success);
         }
         catch (Exception ex)
         {
-            SetActivityMessage("Sheet PDF could not be opened.", BannerTone.Error);
-            Log.Warning(ex, "Standard Details: sheet PDF open failed for {DetailNumber}.", sheet.DetailNumber);
-            MessageBox.Show(this, ex.Message, "Standard Details - Open PDF Failed", MessageBoxButton.OK, MessageBoxImage.Error);
+            SetActivityMessage("Catalog PDF could not be opened.", BannerTone.Error);
+            Log.Warning(ex, "Standard Details: catalog PDF open failed for {DetailNumber}.", detail.DetailNumber);
+            ShowScrollableMessage("Standard Details - Open PDF Failed", ex.Message, MessageBoxImage.Error);
         }
         finally
         {
             UpdateActionStates();
         }
+    }
+
+    private void ShowScrollableMessage(string title, string message, MessageBoxImage icon)
+    {
+        _ = icon;
+        var dialog = new Window
+        {
+            Owner = this,
+            Title = title,
+            Width = 760,
+            Height = 360,
+            MinWidth = 560,
+            MinHeight = 260,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            ResizeMode = ResizeMode.CanResize
+        };
+
+        var grid = new Grid { Margin = new Thickness(16) };
+        grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+        var text = new TextBox
+        {
+            Text = string.IsNullOrWhiteSpace(message) ? "The PDF could not be opened." : message,
+            IsReadOnly = true,
+            TextWrapping = TextWrapping.Wrap,
+            AcceptsReturn = true,
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
+            Padding = new Thickness(8)
+        };
+        Grid.SetRow(text, 0);
+        grid.Children.Add(text);
+
+        var okButton = new Button
+        {
+            Content = "OK",
+            Width = 90,
+            Height = 30,
+            IsDefault = true,
+            IsCancel = true,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            Margin = new Thickness(0, 12, 0, 0)
+        };
+        okButton.Click += (_, _) => dialog.Close();
+        Grid.SetRow(okButton, 1);
+        grid.Children.Add(okButton);
+
+        dialog.Content = grid;
+        dialog.ShowDialog();
     }
 
     private async Task DecideSelectedDetailAsync(DocumentRow detail, string toConfidence, string verb)
@@ -1227,9 +1277,9 @@ public partial class StandardDetailsWindow
         };
 
     private void SetDetailTypeControl(DocumentRow? detail, bool visible)
-        => SetDetailTypeControl(detail is null ? null : DetailTypeValue(detail), detail?.IsSheet == true, visible);
+        => SetDetailTypeControl(detail is null ? null : DetailTypeValue(detail), visible);
 
-    private void SetDetailTypeControl(string? detailType, bool isSheet, bool visible)
+    private void SetDetailTypeControl(string? detailType, bool visible)
     {
         _syncingTypeUi = true;
         try
@@ -1244,7 +1294,7 @@ public partial class StandardDetailsWindow
                     break;
                 }
             }
-            OpenSheetPdfButton.Visibility = visible && isSheet ? Visibility.Visible : Visibility.Collapsed;
+            OpenSheetPdfButton.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
         }
         finally
         {
@@ -1252,7 +1302,7 @@ public partial class StandardDetailsWindow
         }
 
         DetailTypeCombo.IsEnabled = visible && _promoterRepo != null && _policy?.CanApproveOrReject() == true;
-        OpenSheetPdfButton.IsEnabled = visible && isSheet && _masterPublishOptions?.IsConfigured == true;
+        OpenSheetPdfButton.IsEnabled = visible && _masterPublishOptions?.IsConfigured == true && _korStandardsRepo != null;
     }
 
     private sealed class DocumentRow

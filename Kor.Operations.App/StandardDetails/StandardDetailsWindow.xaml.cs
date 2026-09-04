@@ -165,7 +165,7 @@ public partial class StandardDetailsWindow : Window
             ApproveButton.Visibility = Visibility.Visible;
             RejectButton.Visibility = Visibility.Visible;
             DrawingFootnote.Visibility = Visibility.Collapsed;
-            SetDetailTypeControl(null, false, false);
+            SetDetailTypeControl((string?)null, false);
             ShowPreviewEmpty(_partsMode ? "Select a part to see it." : _sheetsMode ? "Select a sheet to see it." : "Select a detail to see its drawing.");
             return;
         }
@@ -306,7 +306,7 @@ public partial class StandardDetailsWindow : Window
         CreateRecordButton.IsEnabled = canContribute; UploadVersionButton.IsEnabled = canContribute && selectedDoc is { IsDetail: false }; LinkDetailButton.IsEnabled = canContribute && selectedDoc is { IsDetail: false } && _korStandardsRepo is not null; RegistersButton.IsEnabled = _korStandardsRepo is not null; PublishToMasterButton.IsEnabled = _korStandardsRepo is not null && (_policy?.CanPublish() == true); ComposeSheetButton.IsEnabled = _repo is not null && _korStandardsRepo is not null && (_policy?.CanPublish() == true); AssignRecordButton.IsEnabled = canContribute && selectedDoc is { IsDetail: false } && _groupSchemaAvailable && canAssignToSelectedGroup; DeleteRecordButton.IsEnabled = canContribute && selectedDoc is { IsDetail: false };
         OpenFileButton.IsEnabled = selectedVersion is not null; SubmitButton.IsEnabled = canContribute && selectedVersion is not null && selectedVersion.Status == StatusDraft; ApproveButton.IsEnabled = (_policy?.CanApproveOrReject() == true) && (((selectedDoc is { IsDetail: true } or { IsPart: true }) && _promoterRepo is not null) || (selectedVersion is not null && selectedVersion.Status == StatusSubmitted)); RejectButton.IsEnabled = (_policy?.CanApproveOrReject() == true) && (((selectedDoc is { IsDetail: true } or { IsPart: true }) && _promoterRepo is not null) || (selectedVersion is not null && selectedVersion.Status == StatusSubmitted)); PublishButton.IsEnabled = (_policy?.CanPublish() == true) && selectedVersion is not null && selectedVersion.Status == StatusApproved;
         DetailTypeCombo.IsEnabled = selectedDoc is { IsDetail: true } && _promoterRepo is not null && _policy?.CanApproveOrReject() == true;
-        OpenSheetPdfButton.IsEnabled = selectedDoc is { IsDetail: true, IsSheet: true } && _masterPublishOptions?.IsConfigured == true;
+        OpenSheetPdfButton.IsEnabled = selectedDoc is { IsDetail: true } && _masterPublishOptions?.IsConfigured == true && _korStandardsRepo is not null;
     }
 
     private void ApplyCatalogModeLayout(DocumentRow? row)

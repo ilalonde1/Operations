@@ -237,19 +237,48 @@ internal sealed class StandardDetailsSheetComposer
             throw new InvalidOperationException($"Drafter exported '{sheetNumber}' to '{exportedPdf}', but the app could not read the PDF from that share path.");
         }
 
-        var tempFolder = Path.Combine(Path.GetTempPath(), "KOR-StandardDetails");
-        Directory.CreateDirectory(tempFolder);
-        CleanOldTempPdfs(tempFolder);
+        return CopyPdfToTempAndOpen(exportedPdf, sheetNumber);
+    }
 
-        var tempPath = Path.Combine(tempFolder, $"{SanitizeFileName(sheetNumber)}-{DateTime.Now:yyyyMMdd-HHmmss}.pdf");
-        File.Copy(exportedPdf, tempPath, overwrite: true);
-
-        Process.Start(new ProcessStartInfo(tempPath)
+    internal async Task<string> OpenDetailPdfAsync(string detailNumber, KorStandardsReadRepository reader, TimeSpan bridgeTimeout)
+    {
+        if (!_options.IsConfigured)
         {
-            UseShellExecute = true
-        });
+            throw new InvalidOperationException("Standard Details bridge settings are incomplete.");
+        }
 
-        return tempPath;
+        detailNumber = (detailNumber ?? "").Trim();
+        if (string.IsNullOrWhiteSpace(detailNumber))
+        {
+            throw new InvalidOperationException("Detail number is required before opening a PDF.");
+        }
+
+        var viewElementId = await reader.GetCanonicalViewElementIdAsync(detailNumber);
+        if (viewElementId is null)
+        {
+            throw new InvalidOperationException($"No drawing view is recorded for {detailNumber}; it cannot be exported as a PDF from the catalog.");
+        }
+
+        await AssertDocumentActiveAsync("export catalog PDF", bridgeTimeout);
+
+        var exportFolder = Path.Combine(_options.BridgeRoot, "exports", "standard-details-views");
+        Directory.CreateDirectory(exportFolder);
+
+        var reply = await _bridge.SendAsync(new
+        {
+            verb = "exportviews",
+            folder = exportFolder,
+            colors = "color",
+            views = new[] { new { id = viewElementId.Value, key = detailNumber } }
+        }, bridgeTimeout);
+
+        var exportedPdf = ResolveExportedViewPdf(reply.Result, viewElementId.Value, detailNumber);
+        if (!File.Exists(exportedPdf))
+        {
+            throw new InvalidOperationException($"Drafter exported '{detailNumber}' to '{exportedPdf}', but the app could not read the PDF from that share path.");
+        }
+
+        return CopyPdfToTempAndOpen(exportedPdf, detailNumber);
     }
 
     private void ValidateRequest(SheetComposerRequest request)
@@ -332,6 +361,17 @@ internal sealed class StandardDetailsSheetComposer
 
         var activeDoc = string.IsNullOrWhiteSpace(reply.ActiveDoc) ? "(none)" : reply.ActiveDoc;
         throw new InvalidOperationException($"Drafter active document is {activeDoc}; expected AUTHORING '{expected}' before {stage}.");
+    }
+
+    private async Task AssertDocumentActiveAsync(string stage, TimeSpan bridgeTimeout)
+    {
+        var reply = await _bridge.SendAsync(new { verb = "ping" }, bridgeTimeout);
+        if (!string.IsNullOrWhiteSpace(reply.ActiveDoc))
+        {
+            return;
+        }
+
+        throw new InvalidOperationException($"Drafter bridge has no active Revit document before {stage}.");
     }
 
     private async Task<IReadOnlyList<BridgeSheet>> QuerySheetsAsync(TimeSpan bridgeTimeout)
@@ -521,6 +561,78 @@ internal sealed class StandardDetailsSheetComposer
         }
 
         return false;
+    }
+
+    private static string ResolveExportedViewPdf(JsonElement result, long viewElementId, string detailNumber)
+    {
+        if (TryGetBool(result, "exists", out var topExists) && !topExists)
+        {
+            throw new InvalidOperationException($"Drafter did not export view '{detailNumber}'.");
+        }
+
+        if (TryFindViewExportItem(result, viewElementId, detailNumber, out var item))
+        {
+            if (TryGetBool(item, "exists", out var itemExists) && !itemExists)
+            {
+                throw new InvalidOperationException($"Drafter did not export view '{detailNumber}'.");
+            }
+
+            if (TryGetString(item, "pdf") is { Length: > 0 } itemPdf)
+            {
+                return itemPdf;
+            }
+        }
+
+        if (TryGetString(result, "pdf") is { Length: > 0 } pdf)
+        {
+            return pdf;
+        }
+
+        throw new InvalidOperationException($"Drafter export for view '{detailNumber}' did not return a PDF path.");
+    }
+
+    private static bool TryFindViewExportItem(JsonElement result, long viewElementId, string detailNumber, out JsonElement item)
+    {
+        item = default;
+        var fallback = default(JsonElement);
+        var count = 0;
+        foreach (var candidate in EnumerateResultItems(result, "views", "items", "results"))
+        {
+            count++;
+            fallback = candidate;
+            if ((TryGetInt64(candidate, "id", out var id) && id == viewElementId)
+                || string.Equals(TryGetString(candidate, "key"), detailNumber, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(TryGetString(candidate, "detailNumber"), detailNumber, StringComparison.OrdinalIgnoreCase))
+            {
+                item = candidate;
+                return true;
+            }
+        }
+
+        if (count == 1)
+        {
+            item = fallback;
+            return true;
+        }
+
+        return false;
+    }
+
+    private static string CopyPdfToTempAndOpen(string exportedPdf, string identity)
+    {
+        var tempFolder = Path.Combine(Path.GetTempPath(), "KOR-StandardDetails");
+        Directory.CreateDirectory(tempFolder);
+        CleanOldTempPdfs(tempFolder);
+
+        var tempPath = Path.Combine(tempFolder, $"{SanitizeFileName(identity)}-{DateTime.Now:yyyyMMdd-HHmmss}.pdf");
+        File.Copy(exportedPdf, tempPath, overwrite: true);
+
+        Process.Start(new ProcessStartInfo(tempPath)
+        {
+            UseShellExecute = true
+        });
+
+        return tempPath;
     }
 
     private static void CleanOldTempPdfs(string tempFolder)

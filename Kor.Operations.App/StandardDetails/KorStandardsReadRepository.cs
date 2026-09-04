@@ -120,6 +120,26 @@ ORDER BY DetailNumber;";
         return rows;
     }
 
+    internal async Task<long?> GetCanonicalViewElementIdAsync(string detailNumber)
+    {
+        const string sql = @"
+SELECT TOP 1 o.ViewElementId
+FROM detail.DetailOccurrence o
+JOIN detail.Detail d ON d.Id = o.DetailId
+WHERE d.DetailNumber = @dn
+  AND o.ViewElementId IS NOT NULL
+ORDER BY CASE WHEN o.ViewKind = N'DraftingView' THEN 0 ELSE 1 END,
+         o.ViewElementId;";
+
+        await using var cn = new SqlConnection(_connectionString);
+        await cn.OpenAsync();
+        await using var cmd = new SqlCommand(sql, cn);
+        cmd.CommandTimeout = SqlTimeouts.UiFacing;
+        AddNVarChar(cmd, "@dn", 64, detailNumber.Trim());
+        var result = await cmd.ExecuteScalarAsync();
+        return result is null || result is System.DBNull ? null : System.Convert.ToInt64(result);
+    }
+
     internal async Task<IReadOnlyList<SheetComposerDetailRow>> LoadSheetComposerDetailsAsync(string query, string? discipline = null, string? kind = null)
     {
         const string sql = @"

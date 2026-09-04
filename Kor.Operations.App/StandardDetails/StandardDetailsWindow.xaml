@@ -447,7 +447,7 @@
                                     Style="{StaticResource RejectButtonStyle}"
                                     Click="OpenSheetPdf_Click"
                                     Visibility="Collapsed"
-                                    ToolTip="Open selected sheet PDF">
+                                    ToolTip="Open selected catalog item as a PDF">
                                 <TextBlock Text="Open PDF" Foreground="#FF48515B" FontSize="12.5" FontWeight="SemiBold"/>
                             </Button>
                         </StackPanel>
