@@ -232,17 +232,17 @@
                 <RadioButton GroupName="Disc" Content="General" Style="{StaticResource ChipRadio}" Checked="DisciplineChip_Checked"/>
                 <RadioButton GroupName="Disc" Content="Wood Frame" Style="{StaticResource ChipRadio}" Checked="DisciplineChip_Checked"/>
                 <ComboBox x:Name="KindFilterCombo"
-                          Width="142"
+                          Width="166"
                           Height="34"
                           Margin="6,0,0,0"
                           VerticalContentAlignment="Center"
                           SelectedIndex="0"
                           SelectionChanged="KindFilter_SelectionChanged"
-                          ToolTip="Filter details by kind">
-                    <ComboBoxItem Content="All kinds" Tag=""/>
-                    <ComboBoxItem Content="General notes" Tag="general-note"/>
-                    <ComboBoxItem Content="Typical" Tag="typical"/>
-                    <ComboBoxItem Content="Custom" Tag="custom"/>
+                          ToolTip="Filter details by type">
+                    <ComboBoxItem Content="All types" Tag=""/>
+                    <ComboBoxItem Content="Typical detail" Tag="typical"/>
+                    <ComboBoxItem Content="Custom detail" Tag="custom"/>
+                    <ComboBoxItem Content="Note / schedule" Tag="general-note"/>
                 </ComboBox>
             </StackPanel>
             <TextBlock x:Name="HeroSummaryText" Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center" FontSize="13" Foreground="#FF5B646E" Text="Loading..."/>
@@ -428,25 +428,18 @@
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
-                        <StackPanel x:Name="DetailKindPanel" Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8" Visibility="Collapsed">
-                            <TextBlock Text="Kind" VerticalAlignment="Center" FontSize="12.5" FontWeight="SemiBold" Foreground="#FF5D6670" Margin="0,0,8,0"/>
-                            <ComboBox x:Name="DetailKindCombo"
-                                      Width="150"
+                        <StackPanel x:Name="DetailTypePanel" Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8" Visibility="Collapsed">
+                            <TextBlock Text="Type" VerticalAlignment="Center" FontSize="12.5" FontWeight="SemiBold" Foreground="#FF5D6670" Margin="0,0,8,0"/>
+                            <ComboBox x:Name="DetailTypeCombo"
+                                      Width="168"
                                       Height="30"
                                       VerticalContentAlignment="Center"
-                                      SelectionChanged="DetailKindCombo_SelectionChanged"
-                                      ToolTip="Set selected detail kind">
-                                <ComboBoxItem Content="Unset" Tag=""/>
-                                <ComboBoxItem Content="General note" Tag="general-note"/>
-                                <ComboBoxItem Content="Typical" Tag="typical"/>
-                                <ComboBoxItem Content="Custom" Tag="custom"/>
+                                      SelectionChanged="DetailTypeCombo_SelectionChanged"
+                                      ToolTip="Set selected detail type">
+                                <ComboBoxItem Content="Typical detail" Tag="typical"/>
+                                <ComboBoxItem Content="Custom detail" Tag="custom"/>
+                                <ComboBoxItem Content="Note / schedule" Tag="note-schedule"/>
                             </ComboBox>
-                            <CheckBox x:Name="DetailIsSheetCheckBox"
-                                      Content="Sheet"
-                                      Margin="14,0,0,0"
-                                      VerticalAlignment="Center"
-                                      Checked="DetailIsSheetCheckBox_Changed"
-                                      Unchecked="DetailIsSheetCheckBox_Changed"/>
                             <Button x:Name="OpenSheetPdfButton"
                                     Height="30"
                                     Margin="12,0,0,0"

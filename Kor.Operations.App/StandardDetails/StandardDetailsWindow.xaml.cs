@@ -35,9 +35,8 @@ public partial class StandardDetailsWindow : Window
     private StandardDetailsAccessPolicy? _policy;
     private string _userIdentity = "operations";
     private string? _selectedDiscipline;   // null = All disciplines
-    private string? _selectedKind;         // null = All detail kinds
-    private bool _syncingKindUi;           // guards programmatic kind-combo updates
-    private bool _syncingSheetUi;          // guards programmatic IsSheet checkbox updates
+    private string? _selectedKind;         // null = All detail types
+    private bool _syncingTypeUi;           // guards programmatic type-combo updates
     private bool _partsMode;               // true = Parts tab
     private bool _sheetsMode;              // true = Sheets tab
     private int _previewToken;             // guards against a slow image load landing after the selection moved on
@@ -166,8 +165,7 @@ public partial class StandardDetailsWindow : Window
             ApproveButton.Visibility = Visibility.Visible;
             RejectButton.Visibility = Visibility.Visible;
             DrawingFootnote.Visibility = Visibility.Collapsed;
-            SetDetailKindControl(null, false);
-            SetDetailSheetControl(false, false);
+            SetDetailTypeControl(null, false, false);
             ShowPreviewEmpty(_partsMode ? "Select a part to see it." : _sheetsMode ? "Select a sheet to see it." : "Select a detail to see its drawing.");
             return;
         }
@@ -183,8 +181,7 @@ public partial class StandardDetailsWindow : Window
                 ? "This sheet is a catalog detail. Open its PDF or move it back to Details if it was misclassified."
                 : "This is the actual drawing. Approve it and it goes into the drafters' palette.";
         DrawingFootnote.Visibility = Visibility.Collapsed;
-        SetDetailKindControl(row.Kind, row.IsDetail);
-        SetDetailSheetControl(row.IsSheet, row.IsDetail);
+        SetDetailTypeControl(row, row.IsDetail);
         ShowPreviewEmpty(row.IsPart ? "Loading part image…" : "Loading drawing…");
     }
 
@@ -308,8 +305,7 @@ public partial class StandardDetailsWindow : Window
         AddGroupButton.IsEnabled = canManageGroups; AddSubgroupButton.IsEnabled = canManageGroups && selectedGroup?.GroupId is not null; RenameGroupButton.IsEnabled = canManageGroups && selectedGroup?.GroupId is not null; RemoveGroupButton.IsEnabled = canManageGroups && selectedGroup?.GroupId is not null;
         CreateRecordButton.IsEnabled = canContribute; UploadVersionButton.IsEnabled = canContribute && selectedDoc is { IsDetail: false }; LinkDetailButton.IsEnabled = canContribute && selectedDoc is { IsDetail: false } && _korStandardsRepo is not null; RegistersButton.IsEnabled = _korStandardsRepo is not null; PublishToMasterButton.IsEnabled = _korStandardsRepo is not null && (_policy?.CanPublish() == true); ComposeSheetButton.IsEnabled = _repo is not null && _korStandardsRepo is not null && (_policy?.CanPublish() == true); AssignRecordButton.IsEnabled = canContribute && selectedDoc is { IsDetail: false } && _groupSchemaAvailable && canAssignToSelectedGroup; DeleteRecordButton.IsEnabled = canContribute && selectedDoc is { IsDetail: false };
         OpenFileButton.IsEnabled = selectedVersion is not null; SubmitButton.IsEnabled = canContribute && selectedVersion is not null && selectedVersion.Status == StatusDraft; ApproveButton.IsEnabled = (_policy?.CanApproveOrReject() == true) && (((selectedDoc is { IsDetail: true } or { IsPart: true }) && _promoterRepo is not null) || (selectedVersion is not null && selectedVersion.Status == StatusSubmitted)); RejectButton.IsEnabled = (_policy?.CanApproveOrReject() == true) && (((selectedDoc is { IsDetail: true } or { IsPart: true }) && _promoterRepo is not null) || (selectedVersion is not null && selectedVersion.Status == StatusSubmitted)); PublishButton.IsEnabled = (_policy?.CanPublish() == true) && selectedVersion is not null && selectedVersion.Status == StatusApproved;
-        DetailKindCombo.IsEnabled = selectedDoc is { IsDetail: true } && _promoterRepo is not null && _policy?.CanApproveOrReject() == true;
-        DetailIsSheetCheckBox.IsEnabled = selectedDoc is { IsDetail: true } && _promoterRepo is not null && _policy?.CanApproveOrReject() == true;
+        DetailTypeCombo.IsEnabled = selectedDoc is { IsDetail: true } && _promoterRepo is not null && _policy?.CanApproveOrReject() == true;
         OpenSheetPdfButton.IsEnabled = selectedDoc is { IsDetail: true, IsSheet: true } && _masterPublishOptions?.IsConfigured == true;
     }
 

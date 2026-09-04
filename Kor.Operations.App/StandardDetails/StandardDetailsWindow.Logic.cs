@@ -234,8 +234,8 @@ public partial class StandardDetailsWindow
                         LatestStatusText = string.IsNullOrWhiteSpace(d.Confidence) ? "unverified" : d.Confidence,
                         StatusLabel = DetailStatusLabel(d),
                         RightSubtitle = _sheetsMode
-                            ? $"{d.DetailNumber}  ·  {SheetCollectionDisplay(d.ViewGroup)}  ·  {DetailKindDisplay(d.Kind)}  ·  {StatusWord(DetailStatusLabel(d))}"
-                            : $"{d.DetailNumber}  ·  {(string.IsNullOrWhiteSpace(d.Discipline) ? "Ungrouped" : d.Discipline)}  ·  {DetailKindDisplay(d.Kind)}  ·  {StatusWord(DetailStatusLabel(d))}"
+                            ? $"{d.DetailNumber}  ·  {SheetCollectionDisplay(d.ViewGroup)}  ·  {DetailTypeDisplay(d.Kind, d.IsSheet)}  ·  {StatusWord(DetailStatusLabel(d))}"
+                            : $"{d.DetailNumber}  ·  {(string.IsNullOrWhiteSpace(d.Discipline) ? "Ungrouped" : d.Discipline)}  ·  {DetailTypeDisplay(d.Kind, d.IsSheet)}  ·  {StatusWord(DetailStatusLabel(d))}"
                     }).ToList();
                 }
                 _versionSnapshot = new List<VersionRow>();
@@ -844,9 +844,9 @@ public partial class StandardDetailsWindow
         await DecideSelectedVersionAsync(StatusRejected, 2);
     }
 
-    private async void DetailKindCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    private async void DetailTypeCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (!_uiReady || _syncingKindUi)
+        if (!_uiReady || _syncingTypeUi)
         {
             return;
         }
@@ -858,32 +858,50 @@ public partial class StandardDetailsWindow
 
         if (!EnsureCanApproveReject("classify details"))
         {
-            SetDetailKindControl(detail.Kind, true);
+            SetDetailTypeControl(detail, true);
             return;
         }
 
         if (_promoterRepo == null)
         {
             SetActivityMessage("KorStandards promoter is not configured.", BannerTone.Warning);
-            MessageBox.Show(this, "KorStandards promoter is not configured (App.config: KorStandardsPromoterDb).", "Standard Details - Detail Kind", MessageBoxButton.OK, MessageBoxImage.Warning);
-            SetDetailKindControl(detail.Kind, true);
+            MessageBox.Show(this, "KorStandards promoter is not configured (App.config: KorStandardsPromoterDb).", "Standard Details - Detail Type", MessageBoxButton.OK, MessageBoxImage.Warning);
+            SetDetailTypeControl(detail, true);
             return;
         }
 
-        var kind = SelectedKindValue(DetailKindCombo);
+        var detailType = SelectedDetailTypeValue(DetailTypeCombo);
+        var typeFields = DetailTypeFields(detailType);
+        if (string.Equals(detail.Kind, typeFields.Kind, StringComparison.OrdinalIgnoreCase) && detail.IsSheet == typeFields.IsSheet)
+        {
+            return;
+        }
+
         try
         {
-            var (ok, message) = await _promoterRepo.SetDetailKindAsync(detail.DetailNumber, kind);
+            var (ok, message) = await _promoterRepo.SetDetailTypeAsync(detail.DetailNumber, detailType);
             if (!ok)
             {
                 SetActivityMessage(message, BannerTone.Error);
-                MessageBox.Show(this, message, "Standard Details - Detail Kind", MessageBoxButton.OK, MessageBoxImage.Error);
-                SetDetailKindControl(detail.Kind, true);
+                MessageBox.Show(this, message, "Standard Details - Detail Type", MessageBoxButton.OK, MessageBoxImage.Error);
+                SetDetailTypeControl(detail, true);
                 return;
             }
 
             SetActivityMessage(message, BannerTone.Success);
             var detailNumber = detail.DetailNumber;
+            if (typeFields.IsSheet != _sheetsMode || _partsMode)
+            {
+                _partsMode = false;
+                _sheetsMode = typeFields.IsSheet;
+                DetailsTab.IsChecked = !typeFields.IsSheet;
+                SheetsTab.IsChecked = typeFields.IsSheet;
+                ListIdColumn.Header = _sheetsMode ? "SHEET" : "DETAIL #";
+                ListGroupColumn.Header = _sheetsMode ? "COLLECTION" : "DISCIPLINE";
+                KindFilterCombo.IsEnabled = true;
+                ApplyCatalogModeLayout(null);
+            }
+
             await LoadDocumentsUiAsync();
             var refreshed = _documentSnapshot.FirstOrDefault(x => x.IsDetail && string.Equals(x.DetailNumber, detailNumber, StringComparison.OrdinalIgnoreCase));
             if (refreshed is not null)
@@ -894,67 +912,10 @@ public partial class StandardDetailsWindow
         }
         catch (Exception ex)
         {
-            SetActivityMessage("Detail kind update failed. No changes were committed.", BannerTone.Error);
-            Log.Warning(ex, "Standard Details: detail kind update failed for {DetailNumber}.", detail.DetailNumber);
-            MessageBox.Show(this, ex.Message, "Standard Details - Detail Kind", MessageBoxButton.OK, MessageBoxImage.Error);
-            SetDetailKindControl(detail.Kind, true);
-        }
-    }
-
-    private async void DetailIsSheetCheckBox_Changed(object sender, RoutedEventArgs e)
-    {
-        if (!_uiReady || _syncingSheetUi)
-        {
-            return;
-        }
-
-        if (DocumentsGrid.SelectedItem is not DocumentRow { IsDetail: true } detail)
-        {
-            return;
-        }
-
-        if (!EnsureCanApproveReject("classify sheets"))
-        {
-            SetDetailSheetControl(detail.IsSheet, true);
-            return;
-        }
-
-        if (_promoterRepo == null)
-        {
-            SetActivityMessage("KorStandards promoter is not configured.", BannerTone.Warning);
-            MessageBox.Show(this, "KorStandards promoter is not configured (App.config: KorStandardsPromoterDb).", "Standard Details - Sheets", MessageBoxButton.OK, MessageBoxImage.Warning);
-            SetDetailSheetControl(detail.IsSheet, true);
-            return;
-        }
-
-        var isSheet = DetailIsSheetCheckBox.IsChecked == true;
-        try
-        {
-            var (ok, message) = await _promoterRepo.SetDetailIsSheetAsync(detail.DetailNumber, isSheet);
-            if (!ok)
-            {
-                SetActivityMessage(message, BannerTone.Error);
-                MessageBox.Show(this, message, "Standard Details - Sheets", MessageBoxButton.OK, MessageBoxImage.Error);
-                SetDetailSheetControl(detail.IsSheet, true);
-                return;
-            }
-
-            SetActivityMessage(message, BannerTone.Success);
-            var detailNumber = detail.DetailNumber;
-            await LoadDocumentsUiAsync();
-            var refreshed = _documentSnapshot.FirstOrDefault(x => x.IsDetail && string.Equals(x.DetailNumber, detailNumber, StringComparison.OrdinalIgnoreCase));
-            if (refreshed is not null)
-            {
-                DocumentsGrid.SelectedItem = refreshed;
-                DocumentsGrid.ScrollIntoView(refreshed);
-            }
-        }
-        catch (Exception ex)
-        {
-            SetActivityMessage("Sheet classification failed. No changes were committed.", BannerTone.Error);
-            Log.Warning(ex, "Standard Details: sheet classification failed for {DetailNumber}.", detail.DetailNumber);
-            MessageBox.Show(this, ex.Message, "Standard Details - Sheets", MessageBoxButton.OK, MessageBoxImage.Error);
-            SetDetailSheetControl(detail.IsSheet, true);
+            SetActivityMessage("Detail type update failed. No changes were committed.", BannerTone.Error);
+            Log.Warning(ex, "Standard Details: detail type update failed for {DetailNumber}.", detail.DetailNumber);
+            MessageBox.Show(this, ex.Message, "Standard Details - Detail Type", MessageBoxButton.OK, MessageBoxImage.Error);
+            SetDetailTypeControl(detail, true);
         }
     }
 
@@ -1218,13 +1179,8 @@ public partial class StandardDetailsWindow
         return "Pending";
     }
 
-    private static string DetailKindDisplay(string? kind) => kind switch
-    {
-        "general-note" => "General note",
-        "typical" => "Typical",
-        "custom" => "Custom",
-        _ => "Unclassified"
-    };
+    private static string DetailTypeDisplay(string? kind, bool isSheet)
+        => DetailTypeFields(DetailTypeValue(kind, isSheet)).Display;
 
     private static string SheetCollectionDisplay(string? viewGroup)
         => string.IsNullOrWhiteSpace(viewGroup) ? "Uncollected" : viewGroup;
@@ -1239,45 +1195,63 @@ public partial class StandardDetailsWindow
         return string.IsNullOrWhiteSpace(value) ? null : value;
     }
 
-    private void SetDetailKindControl(string? kind, bool visible)
+    private static string SelectedDetailTypeValue(ComboBox combo)
     {
-        _syncingKindUi = true;
+        if (combo.SelectedItem is not ComboBoxItem item || item.Tag is not string value)
+        {
+            return "typical";
+        }
+
+        return string.IsNullOrWhiteSpace(value) ? "typical" : value;
+    }
+
+    private static string DetailTypeValue(DocumentRow detail)
+        => DetailTypeValue(detail.Kind, detail.IsSheet);
+
+    private static string DetailTypeValue(string? kind, bool isSheet)
+    {
+        if (isSheet)
+        {
+            return "note-schedule";
+        }
+
+        return string.Equals(kind, "custom", StringComparison.OrdinalIgnoreCase) ? "custom" : "typical";
+    }
+
+    private static (string Kind, bool IsSheet, string Display) DetailTypeFields(string type)
+        => type switch
+        {
+            "custom" => ("custom", false, "Custom detail"),
+            "note-schedule" => ("general-note", true, "Note / schedule"),
+            _ => ("typical", false, "Typical detail")
+        };
+
+    private void SetDetailTypeControl(DocumentRow? detail, bool visible)
+        => SetDetailTypeControl(detail is null ? null : DetailTypeValue(detail), detail?.IsSheet == true, visible);
+
+    private void SetDetailTypeControl(string? detailType, bool isSheet, bool visible)
+    {
+        _syncingTypeUi = true;
         try
         {
-            DetailKindPanel.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
-            foreach (var item in DetailKindCombo.Items.OfType<ComboBoxItem>())
+            DetailTypePanel.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+            foreach (var item in DetailTypeCombo.Items.OfType<ComboBoxItem>())
             {
                 var value = item.Tag as string ?? string.Empty;
-                if (string.Equals(value, kind ?? string.Empty, StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(value, detailType ?? "typical", StringComparison.OrdinalIgnoreCase))
                 {
-                    DetailKindCombo.SelectedItem = item;
+                    DetailTypeCombo.SelectedItem = item;
                     break;
                 }
             }
-        }
-        finally
-        {
-            _syncingKindUi = false;
-        }
-
-        DetailKindCombo.IsEnabled = visible && _promoterRepo != null && _policy?.CanApproveOrReject() == true;
-    }
-
-    private void SetDetailSheetControl(bool isSheet, bool visible)
-    {
-        _syncingSheetUi = true;
-        try
-        {
-            DetailIsSheetCheckBox.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
             OpenSheetPdfButton.Visibility = visible && isSheet ? Visibility.Visible : Visibility.Collapsed;
-            DetailIsSheetCheckBox.IsChecked = isSheet;
         }
         finally
         {
-            _syncingSheetUi = false;
+            _syncingTypeUi = false;
         }
 
-        DetailIsSheetCheckBox.IsEnabled = visible && _promoterRepo != null && _policy?.CanApproveOrReject() == true;
+        DetailTypeCombo.IsEnabled = visible && _promoterRepo != null && _policy?.CanApproveOrReject() == true;
         OpenSheetPdfButton.IsEnabled = visible && isSheet && _masterPublishOptions?.IsConfigured == true;
     }
 

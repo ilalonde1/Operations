@@ -165,6 +165,74 @@ internal sealed class KorStandardsPromoterRepository
         }
     }
 
+    internal async Task<(bool ok, string message)> SetDetailTypeAsync(string detailNumber, string detailType)
+    {
+        var (kind, isSheet, display) = DetailTypeFields(detailType);
+        try
+        {
+            await using var cn = new SqlConnection(_connectionString);
+            await cn.OpenAsync();
+            using var tx = cn.BeginTransaction();
+
+            var kindAffected = await ExecuteSetDetailKindAsync(cn, tx, detailNumber, kind);
+            if (kindAffected == 0)
+            {
+                tx.Rollback();
+                return (false, $"Detail {detailNumber} was not found.");
+            }
+
+            var sheetAffected = await ExecuteSetDetailIsSheetAsync(cn, tx, detailNumber, isSheet);
+            if (sheetAffected == 0)
+            {
+                tx.Rollback();
+                return (false, $"Detail {detailNumber} was not found.");
+            }
+
+            tx.Commit();
+            return (true, $"{detailNumber} type set to {display}.");
+        }
+        catch (SqlException ex)
+        {
+            return (false, ex.Message);
+        }
+    }
+
+    private static (string Kind, bool IsSheet, string Display) DetailTypeFields(string detailType)
+        => detailType switch
+        {
+            "custom" => ("custom", false, "Custom detail"),
+            "note-schedule" => ("general-note", true, "Note / schedule"),
+            _ => ("typical", false, "Typical detail")
+        };
+
+    private static async Task<int> ExecuteSetDetailKindAsync(SqlConnection cn, SqlTransaction tx, string detailNumber, string kind)
+    {
+        await using var cmd = new SqlCommand("detail.SetDetailKind", cn, tx);
+        cmd.CommandType = CommandType.StoredProcedure;
+        cmd.CommandTimeout = SqlTimeouts.UiFacing;
+        AddNVarChar(cmd, "@DetailNumber", 64, detailNumber);
+        AddNVarChar(cmd, "@Kind", 16, kind);
+        var returnValue = cmd.Parameters.Add("@ReturnValue", SqlDbType.Int);
+        returnValue.Direction = ParameterDirection.ReturnValue;
+
+        await cmd.ExecuteNonQueryAsync();
+        return returnValue.Value is int value ? value : Convert.ToInt32(returnValue.Value ?? 0);
+    }
+
+    private static async Task<int> ExecuteSetDetailIsSheetAsync(SqlConnection cn, SqlTransaction tx, string detailNumber, bool isSheet)
+    {
+        await using var cmd = new SqlCommand("detail.SetDetailIsSheet", cn, tx);
+        cmd.CommandType = CommandType.StoredProcedure;
+        cmd.CommandTimeout = SqlTimeouts.UiFacing;
+        AddNVarChar(cmd, "@DetailNumber", 64, detailNumber);
+        cmd.Parameters.Add("@IsSheet", SqlDbType.Bit).Value = isSheet;
+        var returnValue = cmd.Parameters.Add("@ReturnValue", SqlDbType.Int);
+        returnValue.Direction = ParameterDirection.ReturnValue;
+
+        await cmd.ExecuteNonQueryAsync();
+        return returnValue.Value is int value ? value : Convert.ToInt32(returnValue.Value ?? 0);
+    }
+
     private static void AddNVarChar(SqlCommand cmd, string name, int size, string value)
     {
         var p = cmd.Parameters.Add(name, SqlDbType.NVarChar, size);
