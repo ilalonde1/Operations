@@ -149,6 +149,47 @@ WHERE f.CreatedBy = 'claude-island-permits-2026-09-04'
 ORDER BY co.KorProjectsCount DESC;
 ```
 
+## Gap-closing pass — 2026-09-04 (commits 5e2c339a … 0ac7606d, all PUSHED)
+
+| Gap | State |
+| --- | --- |
+| Vancouver permits dark since 7 Jun | **FIXED.** Adapter pages `/records` instead of downloading the 82 MB export. 50,811 → **51,896** permits, latest issued 2026-09-01, `LastErrorMessage` NULL. |
+| Coquitlam applicants buried in prose | **FIXED.** Applicant takes the contact slot; contact joined the dedup hash (a duplicate hash returns before the refresh block, so 387 of 389 had been silently skipped). **2 → 391** contacts. |
+| Exclusions matching street names | **FIXED.** Exclusions score against address-masked text; keep-signals still see everything. `road` rejects gone from Victoria, 179 rows re-reasoned, **0 wrongly kept**. |
+| 37 of 42 firms with one contact | **FIXED.** `BdContactEnrich --roster-ingest` (new mode). 42 Hunter credits → 695 people. **37 → 11** single-contact firms; **47 → 937** people on those firms. |
+| 7 orgs with no website anchor | **FIXED.** 0 remaining. |
+| `org_merge_dead_survivor` ERROR | **FIXED** — was a false positive; both orgs deleted, zero references. Check now requires the loser to still exist. |
+| Key prefix collisions | **FIXED going forward** without re-keying: collisions disambiguate at ingest with 6 hex of the source id, only when the key is held by a different source at a different url. The one bad row self-heals on the next bids&tenders run. |
+| ~300 unpushed commits | **PUSHED.** 309 commits, clean fast-forward, `origin/develop` now level. |
+| Integrity | **Errors 2 → 1**, warnings 32 → 31. |
+
+Side effect worth knowing: Victoria went **116 → 119 opportunities**. The three
+new rows are exactly what the address guard and the setback vocabulary rescued —
+717 Pandora Ave, 1435 Thurlow Road, 1311 Johnson St.
+
+### Still open, and honestly scoped
+
+- **Saanich, Langford and Colwood are still unwired**, and they are the three
+  biggest permit markets in Greater Victoria (Q1 2026 starts 195 / 171 / 143
+  against the City of Victoria's 117).
+  **Saanich and View Royal both run Tempest/Prospero**, and their detail pages
+  parse correctly with the EXISTING extractor — verified against Saanich
+  ALR00041: identical `ctl00_FeaturedContent_*` ids, identical JS-obfuscated
+  applicant email. `UrlHostLike` is now path-matched so they are already covered
+  for enrichment.
+  **What is missing is only a LISTING source.** `Search.aspx` is ASP.NET
+  WebForms: 20 folder numbers per page, paging by postback, so it needs a
+  Playwright-paged provider (`PlaywrightBrowserPool` + `BcBidScraper` are the
+  models). That is the single highest-value remaining build.
+  Langford and Colwood run neither Tempest nor ArcGIS — platform still unknown.
+- **Two permit models still coexist** — `opportunities.BuildingPermit` (Vancouver
+  only, but with `EstimatedValue`, `NumberOfDwellingUnits` and three resolved org
+  roles) and the Opportunities route used by the four municipal feeds. Mine has
+  no value or unit count. Deciding which wins is a design call, not a bug fix.
+- No dollar value or unit count on any of the four municipal feeds.
+- 458 duplicate person affiliations; 470 ambiguous name clusters; 4,316
+  narratives with no website anchor. All pre-existing, all WARN.
+
 ## What remains — TODO
 
 1. **Decompose to the Brain.** No existing tool promotes `Opportunity.BuyerContact*`
