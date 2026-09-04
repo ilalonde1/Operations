@@ -70,7 +70,13 @@ public sealed class VictoriaProsperoLiveDetailExtractor : ILiveOppDetailExtracto
 
     public string Name => "VICPROSPERO";
 
-    public string UrlHostLike => "%tender.victoria.ca%";
+    // Matched on the PATH, not the host: Tempest serves the identical page shape
+    // from every municipality that licenses it. Verified 2026-09-04 against
+    // Saanich (online.saanich.ca/Tempest/OurCity/Prospero/) — same
+    // ctl00_FeaturedContent_* control ids, same JS-obfuscated applicant email —
+    // and View Royal runs it too. So this one extractor covers every Tempest
+    // city we ever add a listing source for, without another implementation.
+    public string UrlHostLike => "%/ourcity/prospero/%";
 
     public bool RequiresLogin => false;
 
