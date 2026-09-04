@@ -41,7 +41,9 @@ before changing anything about identity, merging or refresh.
 - **`IntelNarrative` is versioned as of migration 297**, but only history written after that date
   exists. Anything overwritten before it is gone unless it is in a nightly backup.
 - **A person moved between orgs can get a duplicate affiliation** — the person resolves correctly,
-  the affiliation row does not dedupe. 461 such pairs existed platform-wide when first measured.
+  the affiliation row does not dedupe. 461 such pairs existed when first measured; re-measured
+  **2026-09-04 it is 3,551 pairs across 9,330 rows**, and 3,493 of those groups were last written
+  in **June 2026** — a bulk import, not the enrichment runs. Do not quote the 461.
 - **Two "same company" heuristics exist**: the dedup fuzzy gate (write time) and
   `SqlBriefDataStore.FindRicherSameBrandCanonicalAsync` (read time). The read path now defers to the
   write path. Do not add a third.
