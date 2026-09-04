@@ -1,0 +1,9 @@
+# Duplicates minted by the Island who's-who SQL inserts on 2026-09-04.
+# Survivor is the anchored, richer row in every case. All four pass the fuzzy
+# similarity gate on their own (the suffix is stripped by the real normalizer),
+# so no allowlist entry is needed.
+LoserId,SurvivorId
+927759,70603
+4905,927792
+927761,927807
+20284,927808

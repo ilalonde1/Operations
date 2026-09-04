@@ -371,3 +371,52 @@ found: a plain "Sundt Construction" with four people and **no `WebsiteDomain`**.
 every same-domain check in the suite. 74% of `CanonicalOrg` is in that state. Merged the branch row
 into it (gate-clean direction, allowlisted in `sundt-2026-09-04.csv`) and set the anchor by hand —
 one row, `sundt.com`, eight people.
+
+---
+
+## 11. Cleaning up after the Island who's-who inserts — 2026-09-04
+
+Section 4 recorded that the Island session minted duplicates the same day. That is my mess and it
+was bigger than four rows.
+
+**The cause.** Migration 307 inserted 41 canonical orgs by SQL with a **hand-computed**
+`FuzzyNormalizedName` that kept the legal suffix — `hutchinsoncontractingltd` where the real
+`NormalizeForFuzzyMatch` returns `hutchinsoncontracting` — or with no key at all. **16 of the 19
+rows in `org_fuzzy_key_stale` were mine.** A row with the wrong fuzzy key is invisible to the
+write-time duplicate gate, which is precisely how it then minted duplicates of rows that already
+existed.
+
+**Fixed, in this order** (keys first would only have created collisions):
+
+1. **Four merges** — `927759 → 70603` Christine Lintott · `4905 → 927792` CitySpaces ·
+   `927761 → 927807` Seba · `20284 → 927808` Sense Engineering. All four passed the similarity gate
+   unaided, because the real normalizer strips the suffix the hand-written key had kept. No
+   allowlist entry needed.
+2. **Sixteen keys repaired** from the `ExpectedFuzzy` column of the report's own
+   `org_fuzzy_key_stale` CSV — the values are the tool's, not re-derived here. Script kept as
+   `fix-stale-fuzzy-keys-2026-09-04.sql`. ⛔ **`--backfill-fuzzy-key` was deliberately not used**:
+   it rewrites all 893k rows and would silently undo the MCW override.
+
+**Result.** `org_fuzzy_key_collision` **4 → 0** (now a green check, so warnings 43 → 42),
+`org_fuzzy_key_stale` **19 → 1**, `org_aggressive_key_collision` 6 → 2,
+`org_name_prefix_same_kind` 113 → 111, `org_website_anchor_malformed` 25 → 24. Nothing increased.
+Errors unchanged at 1. Live orgs **9,625 → 9,621**. Report kept as
+`integrity-FINAL-after-island-cleanup-20260904.txt`.
+
+The one remaining stale key is **71528 MCW Group of Companies**, which stores `mcw` on purpose.
+That row is a permanent, correct entry in this check and should not be "fixed".
+
+### One thing that turned out NOT to be broken
+
+`927765 Città Group` renders as `Citt? Group` in a terminal and looks like mojibake from the
+insert. It is not: the stored code point at position 5 is **U+00E0**, and **zero** live org names
+contain U+FFFD. The console was lying, the database is correct, and nothing was changed.
+
+### The check's acceptance list changed
+
+`org_fuzzy_key_collision` listing Sense Engineering 20284/927808 was one of the suite's three
+acceptance instances — a known-bad row proving the check fires. It is now fixed, so that check is
+expected to be empty and **a green result no longer proves it works.** The coverage statement in
+`tools/BdIntegrityCheck` says so rather than leaving a stale claim. The other two acceptance
+instances (Continuum on `org_aggressive_key_collision`, stantec.com on
+`org_same_domain_shell_brand_match`) still hold.

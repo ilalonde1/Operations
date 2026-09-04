@@ -955,8 +955,10 @@ if (liveOrgs.Count > 0)
     Emit("          reported, not decided. Nor a conflated row whose members share one domain.");
     Emit("  ACCEPTANCE: org_aggressive_key_collision must list key 'continuum' with 74300 and");
     Emit("          927758 as aggressive-only CROSS-KIND; org_same_domain_shell_brand_match must");
-    Emit("          list stantec.com; org_fuzzy_key_collision must list Sense Engineering");
-    Emit("          20284/927808 (a hand insert on 2026-09-04 with an empty key).");
+    Emit("          list stantec.com. The third acceptance instance, org_fuzzy_key_collision on");
+    Emit("          Sense Engineering 20284/927808, was FIXED on 2026-09-04 (merged into 927808,");
+    Emit("          and the 16 hand-written keys behind it repaired), so that check is expected");
+    Emit("          to be empty now — a green org_fuzzy_key_collision no longer proves it fired.");
     Emit("  SEVERITY: all WARN worklists except org_same_domain_umbrella (INFO, not a defect).");
 }
 
