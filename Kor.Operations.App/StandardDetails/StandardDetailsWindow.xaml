@@ -441,9 +441,8 @@
                                 <ComboBoxItem Content="Note / schedule" Tag="note-schedule"/>
                             </ComboBox>
                             <Button x:Name="OpenSheetPdfButton"
-                                    Height="30"
                                     Margin="12,0,0,0"
-                                    Padding="12,0"
+                                    VerticalAlignment="Center"
                                     Style="{StaticResource RejectButtonStyle}"
                                     Click="OpenSheetPdf_Click"
                                     Visibility="Collapsed"
