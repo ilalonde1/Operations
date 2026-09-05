@@ -24,6 +24,13 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
         /// <summary>A thickness cell: the value in inches and where it sits, with its resolved level row.</summary>
         public readonly record struct ThicknessCell(double ThicknessIn, double X, double Y, string Level);
 
+        /// <summary>One flat mark-row shear-wall schedule entry: mark, thickness, strength and notes.</summary>
+        public sealed record FlatWallScheduleRow(
+            string Mark,
+            double ThicknessIn,
+            double? StrengthMPa,
+            string RowText);
+
         // 1–2 digits then at most two non-alphanumeric chars (the inch mark, whatever glyph it is).
         // Matches 30", 6", 30 — rejects rebar tokens like "30-45M", "8-30M" (they carry letters).
         private static readonly Regex InchValue = new(@"^(\d{1,2})\s*[^0-9A-Za-z]{0,2}$", RegexOptions.Compiled);
@@ -371,6 +378,33 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             }
 
             return bands.OrderBy(b => b.Mark, StringComparer.Ordinal).ThenBy(b => b.LevelTop).ToList();
+        }
+
+        /// <summary>
+        /// Reads a non-ladder shear-wall schedule shaped as one mark row per wall type:
+        /// MARK | THICKNESS | STRENGTH | REINFORCING. The level-banded grid reader above still handles
+        /// tower schedules; this handles podium tables such as SWA | 12" | 35 MPa | 15M @ 14".
+        /// </summary>
+        public static IReadOnlyList<FlatWallScheduleRow> ReadFlatWallRows(VectorPageReader.PageContent page)
+        {
+            ArgumentNullException.ThrowIfNull(page);
+
+            var rows = new List<FlatWallScheduleRow>();
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var row in MarkRowScheduleReader.ReadSchedule(page, MarkRowScheduleReader.ShearWallDefaults()))
+            {
+                if (row.SingleLengthMm is not double thicknessMm) continue;
+                if (!seen.Add(row.Mark)) continue;
+
+                rows.Add(new FlatWallScheduleRow(
+                    row.Mark,
+                    thicknessMm / PrintedLength.MmPerInch,
+                    row.StrengthMPa,
+                    row.RowText));
+            }
+
+            return rows;
         }
     }
 }

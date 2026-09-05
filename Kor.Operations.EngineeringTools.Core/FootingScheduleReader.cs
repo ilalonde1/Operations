@@ -37,21 +37,6 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
 
         private const double DimMinMm = 200, DimMaxMm = 6000;
 
-        // The size cell, read from the row text right of the mark: "2500 x 2500 x 900 DEEP" (spread)
-        // or "550 x 300 DEEP" (strip). DEEP is required — it is what distinguishes a footing size row
-        // from any other "a x b" dimension string that shares a baseline with a short token.
-        // DEEP is still what makes a row a FOOTING size rather than any other "a x b" dimension
-        // sharing a baseline with a short token. The DIMENSIONS themselves are no longer matched
-        // here: PrintedLength reads them, so the same row parses whether the drawing prints
-        // "2500 x 2500 x 900 DEEP" or "4' - 0\" x 4' - 0\" x 26\" DEEP". The old pattern required
-        // \d{3,4} and so read metric only — one of five KOR jobs.
-        private static readonly Regex DeepRe = new(
-            @"\b(?:DEEP|DP)\b", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-
-        // A footing mark: 1–3 letters + 1–2 digits ("F1", "SF2", "PF10"). The schedule anchors which
-        // marks exist; the plan count only ever counts marks the schedule declared.
-        private static readonly Regex MarkRe = new(@"^[A-Z]{1,3}\d{1,2}$", RegexOptions.Compiled);
-
         /// <summary>
         /// Parse the FOUNDATION SCHEDULE rows on a page: for each mark-shaped token, the words on its
         /// baseline to its right are joined and must read as a footing SIZE cell. Returns the types and
@@ -64,34 +49,20 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             var types = new List<FootingType>();
             double minX = double.MaxValue, minY = double.MaxValue, maxX = double.MinValue, maxY = double.MinValue;
 
-            foreach (var t in page.Words)
+            var rows = MarkRowScheduleReader.ReadSchedule(page, MarkRowScheduleReader.FootingDefaults());
+            foreach (var row in rows)
             {
-                string mark = t.Text.Trim();
-                if (!MarkRe.IsMatch(mark)) continue;
-
-                // The size cell: words on the same baseline, right of the mark, within the table width.
-                var row = page.Words
-                    .Where(w => Math.Abs(w.Cy - t.Cy) <= 6 && w.Cx > t.Cx && w.Cx - t.Cx <= 320)
-                    .OrderBy(w => w.Cx).Select(w => w.Text).ToList();
-                if (row.Count == 0) continue;
-                // CAD tables format 4-digit mm with a thousands comma ("1,300 DEEP") — normalize first.
-                string rowText = string.Join(" ", row).Replace(",", "");
-                if (!DeepRe.IsMatch(rowText)) continue;
-
-                var dims = PrintedLength.TryFindSizeMm(rowText);
-                if (dims is null) continue;
-
+                var dims = row.DimensionsMm;
+                if (dims.Count < 2) continue;
                 double a = dims[0], b = dims[1];
                 double? c = dims.Count >= 3 ? dims[2] : null;
-                if (a < DimMinMm || a > DimMaxMm || b < DimMinMm || b > DimMaxMm) continue;
-                if (c is double cd && (cd < DimMinMm || cd > DimMaxMm)) continue;
 
                 // Three dims = spread (L x W x DEEP); two dims = strip (width x depth, length on plan).
                 types.Add(c is double depth
-                    ? new FootingType(mark, a, b, depth)
-                    : new FootingType(mark, 0, a, b));
-                minX = Math.Min(minX, t.MinX); minY = Math.Min(minY, t.MinY);
-                maxX = Math.Max(maxX, t.MaxX); maxY = Math.Max(maxY, t.MaxY);
+                    ? new FootingType(row.Mark, a, b, depth)
+                    : new FootingType(row.Mark, 0, a, b));
+                minX = Math.Min(minX, row.MarkToken.MinX); minY = Math.Min(minY, row.MarkToken.MinY);
+                maxX = Math.Max(maxX, row.MarkToken.MaxX); maxY = Math.Max(maxY, row.MarkToken.MaxY);
             }
 
             // Same mark twice (a mirrored/duplicated table) → keep one.

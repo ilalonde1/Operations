@@ -2246,6 +2246,11 @@ if (args.Length >= 1 && args[0].Equals("vector-sched", StringComparison.OrdinalI
     Console.WriteLine($"Wall bands ({bands.Count}) — mark: top..bottom = thickness:");
     foreach (var b in bands)
         Console.WriteLine($"    {b.Mark,-4} {b.LevelTop,-4}..{b.LevelBottom,-4} = {b.ThicknessIn:F0}\"");
+
+    var flatRows = ScheduleGridReader.ReadFlatWallRows(page);
+    Console.WriteLine($"Flat wall rows ({flatRows.Count}) — mark: thickness, strength:");
+    foreach (var r in flatRows)
+        Console.WriteLine($"    {r.Mark,-4} {r.ThicknessIn:F0}\"{(r.StrengthMPa is double mpa ? $"  {mpa:F0} MPa" : "")}");
     return 0;
 }
 

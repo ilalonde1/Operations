@@ -58,15 +58,6 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
     /// </remarks>
     public static class ColumnScheduleReader
     {
-        // PC1, TC02, C4, CC12 — 1-3 letters then 1-2 digits, the same shape a footing mark takes.
-        private static readonly Regex MarkRe = new(
-            @"^[A-Z]{1,3}\d{1,2}$", RegexOptions.Compiled | RegexOptions.CultureInvariant);
-
-        // "45 MPa", "45MPa", "45 mpa"
-        private static readonly Regex StrengthRe = new(
-            @"(?<v>\d{2,3}(?:\.\d+)?)\s*MPa",
-            RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
-
         /// <summary>How far right of the mark a row's cells are taken from, in PDF points.</summary>
         public const double DefaultRowWidth = 340.0;
 
@@ -110,76 +101,30 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             var rows = new List<ColumnScheduleRow>();
             var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-            // Every schedule heading on the sheet, not just the column ones: a row is kept when the
-            // table it belongs to is a column schedule, which cannot be decided without knowing where
-            // the OTHER tables are.
-            var headings = SchedulesOn(page);
-            double band = page.WidthPts * HeadingBandFraction;
-
-            // A mark with a readable SIZE beside it — the shape of a schedule row. This filter comes
-            // first because the same marks are printed all over the PLAN as well: 31130 page 12
-            // carries 52 PC* tokens and 45 of them label a column on the drawing, carrying no size.
-            // Grouping before filtering let those plan labels join the schedule's own mark column and
-            // drag its anchor up the sheet, which cost 31130 and 31138 every row they had.
-            var candidates = new List<(VectorPageReader.TextToken Token, string Mark, string RowText, IReadOnlyList<double> Size)>();
-            foreach (var token in page.Words)
+            var options = MarkRowScheduleReader.ColumnDefaults() with
             {
-                string mark = token.Text.Trim();
-                if (!MarkRe.IsMatch(mark)) continue;
+                RowWidthPts = rowWidth,
+                HeadingBandFraction = HeadingBandFraction,
+                MinDimensionMm = MinDimMm,
+                MaxDimensionMm = MaxDimMm,
+            };
 
-                var cells = page.Words
-                    .Where(w => Math.Abs(w.Cy - token.Cy) <= 6
-                                && w.Cx > token.Cx
-                                && w.Cx - token.Cx <= rowWidth)
-                    .OrderBy(w => w.Cx)
-                    .Select(w => w.Text)
-                    .ToList();
-                if (cells.Count == 0) continue;
-
-                string rowText = string.Join(" ", cells).Replace(",", "");
-
-                // The size is whatever in the row reads as "a x b" — wherever it sits.
-                var size = PrintedLength.TryFindSizeMm(rowText);
-                if (size is null || size.Count < 2) continue;
-                if (Math.Min(size[0], size[1]) < MinDimMm || Math.Max(size[0], size[1]) > MaxDimMm) continue;
-
-                candidates.Add((token, mark, rowText, size));
-            }
-
-            // ⭐ OWNERSHIP IS DECIDED PER MARK COLUMN, NOT PER ROW. Every row of a table shares one
-            // mark column, so they belong to one heading by construction. Scoring each row on its own
-            // let a heading that is sideways-but-near beat the table's real one further above, and
-            // 31168 lost TC02..TC04 that way while keeping TC01 — half a table, which is worse than
-            // none, because the total still looks like an answer.
-            var allowed = new HashSet<double>();
-            foreach (var column in candidates.GroupBy(c => Math.Round(c.Token.Cx / 15.0)))
+            foreach (var row in MarkRowScheduleReader.ReadSchedule(page, options))
             {
-                var top = column.OrderByDescending(c => c.Token.Cy).First();   // y-up: the first row
-                if (headings.Count == 0 ||
-                    OwnerOf(top.Token.Cx, top.Token.Cy, headings, band) is { IsColumn: true })
-                    allowed.Add(column.Key);
-            }
-
-            foreach (var (token, mark, rowText, size) in candidates)
-            {
-                if (!allowed.Contains(Math.Round(token.Cx / 15.0))) continue;
+                var size = row.DimensionsMm;
+                if (size.Count < 2) continue;
 
                 double w1 = Math.Min(size[0], size[1]);
                 double d1 = Math.Max(size[0], size[1]);
 
                 // One row per mark: a schedule states a mark once, but the mark is also printed
                 // against every column on the plan, and those carry no size.
-                if (!seen.Add(mark)) continue;
-
-                var s = StrengthRe.Match(rowText);
-                double? strength = s.Success
-                    ? double.Parse(s.Groups["v"].Value, System.Globalization.CultureInfo.InvariantCulture)
-                    : null;
+                if (!seen.Add(row.Mark)) continue;
 
                 rows.Add(new ColumnScheduleRow(
-                    mark, w1, d1, strength,
-                    Reinforcing: VertsRe.Match(rowText) is { Success: true } v ? v.Value.Trim() : null,
-                    Ties: TiesRe.Match(rowText) is { Success: true } t ? t.Value.Trim() : null));
+                    row.Mark, w1, d1, row.StrengthMPa,
+                    Reinforcing: VertsRe.Match(row.RowText) is { Success: true } v ? v.Value.Trim() : null,
+                    Ties: TiesRe.Match(row.RowText) is { Success: true } t ? t.Value.Trim() : null));
             }
 
             return rows;
@@ -200,30 +145,9 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
         {
             ArgumentNullException.ThrowIfNull(page);
 
-            var found = new List<ScheduleHeading>();
-            foreach (var w in page.Words)
-            {
-                if (!w.Text.StartsWith("SCHEDULE", StringComparison.OrdinalIgnoreCase)) continue;
-
-                // the qualifying words on the same baseline, to its left: "PARKADE COLUMN SCHEDULE"
-                var before = page.Words
-                    .Where(s => Math.Abs(s.Cy - w.Cy) <= 6 && s.Cx < w.Cx && w.Cx - s.Cx <= 260)
-                    .OrderBy(s => s.Cx)
-                    .Select(s => s.Text)
-                    .ToList();
-
-                string title = string.Join(" ", before.Append("SCHEDULE"));
-                bool isColumn = before.Any(t => t.StartsWith("COLUMN", StringComparison.OrdinalIgnoreCase));
-
-                // anchor on the leftmost word of the heading, which is where its table starts
-                double x = before.Count > 0
-                    ? page.Words.Where(s => Math.Abs(s.Cy - w.Cy) <= 6 && s.Cx < w.Cx && w.Cx - s.Cx <= 260)
-                                .Min(s => s.Cx)
-                    : w.Cx;
-
-                found.Add(new ScheduleHeading(x, w.Cy, isColumn, title));
-            }
-            return found;
+            return MarkRowScheduleReader.SchedulesOn(page, MarkRowScheduleReader.ColumnDefaults())
+                .Select(h => new ScheduleHeading(h.X, h.Y, h.IsTarget, h.Title))
+                .ToList();
         }
 
         /// <summary>
@@ -238,19 +162,13 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
         {
             ArgumentNullException.ThrowIfNull(headings);
 
-            ScheduleHeading? best = null;
-            double bestScore = double.MaxValue;
+            var owner = MarkRowScheduleReader.OwnerOf(
+                x,
+                y,
+                headings.Select(h => new MarkRowScheduleReader.ScheduleHeading(h.X, h.Y, h.IsColumn, h.Title)).ToList(),
+                band);
 
-            foreach (var h in headings)
-            {
-                if (h.Y <= y) continue;                       // not above this row
-                double dx = Math.Abs(x - h.X);
-                if (dx > band) continue;                      // a different column of the sheet
-
-                double score = (h.Y - y) + dx;
-                if (score < bestScore) { bestScore = score; best = h; }
-            }
-            return best;
+            return owner is { } h ? new ScheduleHeading(h.X, h.Y, h.IsTarget, h.Title) : null;
         }
 
         // "20-30M VERTS.", "14-25M @ 5\" VERTS" — a bar callout ending in VERT/VERTS.
