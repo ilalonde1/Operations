@@ -1,4 +1,7 @@
-# PROPOSED 2026-09-04 - NOT YET REVIEWED BY IAN. Delete any row you reject before --commit.
+# RUN 2026-09-04 with --commit on Ian's instruction, UNMODIFIED: 99 merged, 11 refused by the
+# gates in RunPairsMergeAsync (both rows Deltek-anchored, branch-into-parent direction reversed,
+# names asserting different countries). The entries stay: the allowlist only bypasses the NAME
+# similarity gate, and the three later gates are not allowlist-overridable.
 # Source: tools/BdIntegrityCheck org_same_domain_shell_brand_match (tier S1): same WebsiteDomain,
 # no public-sector member, no JV-shaped name, every member's name carries the domain's brand label.
 # Batch 1 keeps only Kind-compatible pairs (same Kind; survivor a frozen KOR client; loser a

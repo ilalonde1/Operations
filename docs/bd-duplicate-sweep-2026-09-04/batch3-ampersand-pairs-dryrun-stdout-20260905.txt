@@ -1,0 +1,39 @@
+Output directory: C:\VIsual Studio Projects\Operations\tools\BdCanonicalDedup\output
+Allowlist validation report written: C:\VIsual Studio Projects\Operations\tools\BdCanonicalDedup\output\allowlist-validation-report.csv
+[DRY-RUN] merge 36196 (Human Studio Architecture and Urban Design Ltd.) -> 69775 (Human Studio Architecture + Urban Design); kind=Architect
+[DRY-RUN] merge 70291 (Emily Carr University of Art and Design) -> 74052 (Emily Carr University of Art + Design); kind=Buyer
+[DRY-RUN] merge 271554 (Proscenium Architecture and Interiors Inc.) -> 69122 (Proscenium Architecture + Interiors); kind=Architect
+[DRY-RUN] merge 76869 (LPAS Architecture and Design) -> 76834 (LPAS Architecture + Design); kind=Architect
+[DRY-RUN] merge 272369 (SCB and Henning Larsen) -> 271639 (SCB + Henning Larsen); kind=Architect
+Canonical dedupe complete.
+  Groups found:                  5
+  Rows to merge:                 5
+  Rows before:                   893016
+  Projected rows after (if all groups commit): 893011
+  Groups committed successfully: 0
+  Groups failed:                 0
+  Enrichment collisions resolved: 0
+  Intel rows dropped (will be regenerated): 0
+  Aliases preserved:             0
+  DBA groups:                    0
+  DBA merge rows:                0
+  FK repoints by table:
+    ArchitectDisplacementBriefs: 0
+    BdResearchTriggers: 0
+    BuildingPermit: 0
+    CanonicalOrgEnrichment: 0
+    CrmEngagements: 0
+    CrmTouchpoint: 0
+    HistoricalOpportunities: 0
+    IntelPersonAffiliation: 0
+    IntelProjectAction: 0
+    IntelProjectKeyPerson: 0
+    KorPursuits: 0
+    MajorProjectsInventory: 0
+    NewsArticleOrgMention: 0
+    Opportunities: 0
+    OpportunityAwards: 0
+    OpportunityBids: 0
+    OpportunityInterestedFirms: 0
+    OrgAlias: 0
+    OrgFact: 0

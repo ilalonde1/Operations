@@ -9,6 +9,34 @@ public sealed class CanonicalOrgResolverTests
 {
     private const string Source = "UnitTest.Source";
 
+    [Theory]
+    [InlineData("Perkins&Will")]
+    [InlineData("Perkins & Will")]
+    [InlineData("Perkins and Will")]
+    [InlineData("Perkins + Will")]
+    public void NormalizeForFuzzyMatch_FoldsAmpersandAndSpacedPlusToAnd(string displayName)
+    {
+        Assert.Equal(
+            CanonicalOrgResolver.NormalizeForFuzzyMatch("Perkins and Will"),
+            CanonicalOrgResolver.NormalizeForFuzzyMatch(displayName));
+    }
+
+    [Fact]
+    public void NormalizeForFuzzyMatch_IntentionallyFoldsAttAndAtAndTToSameKey()
+    {
+        Assert.Equal(
+            CanonicalOrgResolver.NormalizeForFuzzyMatch("AT&T"),
+            CanonicalOrgResolver.NormalizeForFuzzyMatch("AT and T"));
+    }
+
+    [Fact]
+    public void StripIntakeNoise_CollapsesEmbeddedLineFeedToSingleSpace()
+    {
+        Assert.Equal(
+            "Attorney General Procurement Services Branch",
+            CanonicalOrgResolver.StripIntakeNoise("Attorney General\nProcurement Services Branch"));
+    }
+
     [Fact]
     public async Task FuzzySurvivorAttach_ResolvesSuffixParenAndProjectVariantsToOneSurvivor()
     {

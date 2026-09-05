@@ -3,8 +3,10 @@ using System.Data;
 using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
+using Kor.Opportunities.Core.Models;
 using Kor.Opportunities.Data.Awards;
 using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Kor.BdCanonicalDedup;
 
@@ -171,6 +173,11 @@ internal static class Program
                 return 2;
             }
 
+            if (options.Create)
+            {
+                return await RunCreateAsync(options).ConfigureAwait(false);
+            }
+
             Directory.CreateDirectory(options.OutputDirectory);
             // Round 45 (R6-T3.001): always show the absolute output path up
             // front. Avoids "did I just inspect a stale CSV?" confusion when
@@ -202,7 +209,30 @@ internal static class Program
             var orgs = await LoadOrgsAsync(con).ConfigureAwait(false);
             WriteAllowlistValidationReport(options, orgs);
             var groups = BuildGroups(orgs, options.MergeDba);
-            var plans = BuildPlans(groups).ToList();
+            var acceptedGroups = new List<DuplicateGroup>(groups.Count);
+            var rejectedGroups = 0;
+            foreach (var group in groups)
+            {
+                var groupAccepted = true;
+                foreach (var loser in group.Losers)
+                {
+                    if (!PairPassesMergeGates(options, loser, group.Survivor))
+                    {
+                        groupAccepted = false;
+                    }
+                }
+
+                if (groupAccepted)
+                {
+                    acceptedGroups.Add(group);
+                }
+                else
+                {
+                    rejectedGroups++;
+                }
+            }
+
+            var plans = BuildPlans(acceptedGroups).ToList();
 
             WritePlanCsv(planPath, plans);
             Console.WriteLine($"Plan written: {planPath}");
@@ -213,13 +243,14 @@ internal static class Program
                 GroupsFound = groups.Count,
                 RowsBefore = beforeCount,
                 RowsToMerge = plans.Count,
-                DbaGroups = groups.Count(g => g.HasDbaKey),
+                GroupsFailed = rejectedGroups,
+                DbaGroups = acceptedGroups.Count(g => g.HasDbaKey),
                 DbaMergeRows = plans.Count(p => p.FromDbaKey),
             };
 
             if (!options.Commit)
             {
-                foreach (var group in groups)
+                foreach (var group in acceptedGroups)
                 {
                     foreach (var loser in group.Losers)
                     {
@@ -233,7 +264,7 @@ internal static class Program
 
             if (options.Commit && plans.Count > 0)
             {
-                foreach (var group in groups)
+                foreach (var group in acceptedGroups)
                 {
                     if (group.Losers.Count == 0)
                     {
@@ -278,6 +309,35 @@ internal static class Program
             Console.Error.WriteLine($"BdCanonicalDedup failed: {ex.GetType().Name}: {ex.Message}");
             return 1;
         }
+    }
+
+    private static async Task<int> RunCreateAsync(ImportOptions options)
+    {
+        var store = new TrackingCanonicalOrgStore(new SqlCanonicalOrgStore(options.OpportunitiesDb));
+        var resolver = new CanonicalOrgResolver(
+            store,
+            NullLogger<CanonicalOrgResolver>.Instance,
+            resolverFuzzySurvivorAttach: true);
+
+        var id = await resolver.ResolveAsync(
+            options.CreateName,
+            options.CreateKind!,
+            "BdCanonicalDedup.Create",
+            CancellationToken.None,
+            allowCreate: true,
+            website: options.CreateWebsite).ConfigureAwait(false);
+
+        if (!id.HasValue)
+        {
+            Console.Error.WriteLine("Canonical org was not created or attached; resolver rejected the name.");
+            return 1;
+        }
+
+        var action = store.UpsertCalled && store.LastUpsertCreated == true
+            ? "created"
+            : "attached";
+        Console.WriteLine($"Canonical org {action}: Id={id.Value}");
+        return 0;
     }
 
     private static async Task<int> BackfillFuzzyKeysAsync(SqlConnection con)
@@ -330,8 +390,8 @@ WHERE Id = @id;", con, tx)
 
     // T1.001 similarity-gate helpers (post 2026-05-30 Abbotsford incident).
     // The honing pass's merge-pairs.csv emitted a wrong SurvivorId that this
-    // tool committed unchallenged; now every --pairs row must clear a
-    // fuzzy-name match (or be allowlisted) before commit.
+    // tool committed unchallenged; now every planned loser->survivor pair must
+    // clear a fuzzy-name match (or be allowlisted) before commit.
 
     private static readonly IReadOnlyList<AllowlistEntry> _allowlistEntries = LoadDedupAllowlistEntries();
     private static readonly HashSet<(long Loser, long Survivor)> _allowlistCache =
@@ -339,6 +399,25 @@ WHERE Id = @id;", con, tx)
 
     private static bool IsAllowlistedNonSimilar(long loserId, long survivorId)
         => _allowlistCache.Contains((loserId, survivorId));
+
+    private static readonly IReadOnlyList<NeverMergeEntry> _neverMergeEntries = LoadNeverMergeEntries();
+    private static readonly Dictionary<(long First, long Second), NeverMergeEntry> _neverMergeByOrderedPair =
+        _neverMergeEntries.ToDictionary(e => OrderedPair(e.LoserId, e.SurvivorId));
+
+    private static (long First, long Second) OrderedPair(long left, long right)
+        => left <= right ? (left, right) : (right, left);
+
+    private static bool TryGetNeverMergeEntry(long loserId, long survivorId, out NeverMergeEntry entry)
+    {
+        if (_neverMergeByOrderedPair.TryGetValue(OrderedPair(loserId, survivorId), out var found))
+        {
+            entry = found;
+            return true;
+        }
+
+        entry = null!;
+        return false;
+    }
 
     private static IReadOnlyList<AllowlistEntry> LoadDedupAllowlistEntries()
     {
@@ -356,6 +435,41 @@ WHERE Id = @id;", con, tx)
             {
                 LoadDedupAllowlistFile(path, Path.GetFileNameWithoutExtension(path), entries);
             }
+        }
+
+        return entries;
+    }
+
+    private static IReadOnlyList<NeverMergeEntry> LoadNeverMergeEntries()
+    {
+        var toolDir = Path.GetDirectoryName(typeof(Program).Assembly.Location) ?? ".";
+        var path = Path.Combine(toolDir, "dedup-never-merge.csv");
+        var entries = new List<NeverMergeEntry>();
+        if (!File.Exists(path))
+        {
+            return entries;
+        }
+
+        foreach (var line in File.ReadAllLines(path))
+        {
+            if (string.IsNullOrWhiteSpace(line) || line.TrimStart().StartsWith("#", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            var parts = line.Split(',');
+            if (parts.Length < 2
+                || !long.TryParse(parts[0].Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var loserId)
+                || !long.TryParse(parts[1].Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var survivorId))
+            {
+                continue;
+            }
+
+            entries.Add(new NeverMergeEntry(
+                LoserId: loserId,
+                SurvivorId: survivorId,
+                Reason: parts.Length > 2 ? parts[2].Trim() : "",
+                SourceFile: path));
         }
 
         return entries;
@@ -499,6 +613,68 @@ WHERE Id = @id;", con, tx)
         }
     }
 
+    private static bool PairPassesMergeGates(ImportOptions options, OrgRow loser, OrgRow survivor)
+    {
+        var loserId = loser.Id;
+        var survivorId = survivor.Id;
+
+        if (TryGetNeverMergeEntry(loserId, survivorId, out var neverMerge))
+        {
+            var reason = string.IsNullOrWhiteSpace(neverMerge.Reason) ? "listed in dedup-never-merge.csv" : neverMerge.Reason;
+            Console.Error.WriteLine($"[REJECT] pair {loserId} ({loser.DisplayName}) -> {survivorId} ({survivor.DisplayName}): never-merge list: {reason}. Written to rejected-pairs.csv.");
+            AppendRejectedPair(options, loserId, survivorId, loser.DisplayName, survivor.DisplayName, "never-merge", reason);
+            return false;
+        }
+
+        // Similarity gate (audit finding T1.001 / 2026-05-30): the 2026-05-30
+        // Abbotsford-SD -> Alterra-Power-Corp incident shipped because the
+        // pair path trusted merge-pairs.csv SurvivorId without any
+        // name-similarity check. Default grouping now uses this same gate.
+        var loserFuzzy = CanonicalOrgResolver.NormalizeForFuzzyMatch(loser.DisplayName);
+        var survivorFuzzy = CanonicalOrgResolver.NormalizeForFuzzyMatch(survivor.DisplayName);
+        if (!string.Equals(loserFuzzy, survivorFuzzy, StringComparison.Ordinal) && !IsAllowlistedNonSimilar(loserId, survivorId))
+        {
+            Console.Error.WriteLine($"[REJECT] pair {loserId} ({loser.DisplayName}) -> {survivorId} ({survivor.DisplayName}): names not similar (fuzzy '{loserFuzzy}' vs '{survivorFuzzy}'); written to rejected-pairs.csv.");
+            AppendRejectedPair(options, loserId, survivorId, loser.DisplayName, survivor.DisplayName, loserFuzzy, survivorFuzzy);
+            return false;
+        }
+
+        // Two-billing-entity gate (2026-09-04). Two rows that BOTH carry a
+        // Clendor/Deltek client id are two entities we invoice separately,
+        // whatever the brand on the door says.
+        if (!string.IsNullOrWhiteSpace(loser.ClendorClientId)
+            && !string.IsNullOrWhiteSpace(survivor.ClendorClientId))
+        {
+            Console.Error.WriteLine($"[REJECT] pair {loserId} ({loser.DisplayName}) -> {survivorId} ({survivor.DisplayName}): both rows carry a Deltek client id ('{loser.ClendorClientId}' and '{survivor.ClendorClientId}'); clear one in Deltek first. Written to rejected-pairs.csv.");
+            AppendRejectedPair(options, loserId, survivorId, loser.DisplayName, survivor.DisplayName, "both-deltek", survivor.ClendorClientId!);
+            return false;
+        }
+
+        // Regional-survivor gate (2026-09-04). The merge may be valid, but if
+        // the survivor is the branch row and the loser is the parent row, the
+        // direction is backwards.
+        var loserBranch = BranchQualifier(loser.DisplayName);
+        var survivorBranch = BranchQualifier(survivor.DisplayName);
+        if (survivorBranch is not null && loserBranch is null)
+        {
+            Console.Error.WriteLine($"[REJECT] pair {loserId} ({loser.DisplayName}) -> {survivorId} ({survivor.DisplayName}): survivor is a branch row ('{survivorBranch}') and the loser is not; flip the pair or rename the survivor first. Written to rejected-pairs.csv.");
+            AppendRejectedPair(options, loserId, survivorId, loser.DisplayName, survivor.DisplayName, "parent", $"branch:{survivorBranch}");
+            return false;
+        }
+
+        // Cross-border gate (2026-09-04). See CountryTokens above.
+        var loserCountry = AssertedCountry(loser.DisplayName);
+        var survivorCountry = AssertedCountry(survivor.DisplayName);
+        if (loserCountry is not null && survivorCountry is not null && loserCountry != survivorCountry)
+        {
+            Console.Error.WriteLine($"[REJECT] pair {loserId} ({loser.DisplayName}) -> {survivorId} ({survivor.DisplayName}): names assert different countries ({loserCountry} vs {survivorCountry}); these are separate legal entities on one brand domain. Written to rejected-pairs.csv.");
+            AppendRejectedPair(options, loserId, survivorId, loser.DisplayName, survivor.DisplayName, loserCountry, survivorCountry);
+            return false;
+        }
+
+        return true;
+    }
+
     // Explicit-pair merge: loser -> survivor pairs chosen by the data-honing pass
     // (often different display names the fuzzy grouper can't match). Reuses the
     // tested per-group FK-repoint/commit logic; survivor is fixed (not chosen).
@@ -532,76 +708,8 @@ WHERE Id = @id;", con, tx)
                 continue;
             }
 
-            // Similarity gate (audit finding T1.001 / 2026-05-30): the 2026-05-30
-            // Abbotsford-SD -> Alterra-Power-Corp incident shipped because this
-            // path trusted the honing pass's merge-pairs.csv SurvivorId without
-            // any name-similarity check. Now we require the loser and survivor
-            // to resolve to the same fuzzy-normalized name (which collapses
-            // suffix / SD-number / "City of X" / "&" vs "and" variants). Pairs
-            // that fail the gate are written to rejected-pairs.csv for human
-            // review and skipped.
-            var loserFuzzy = Kor.Opportunities.Data.Awards.CanonicalOrgResolver.NormalizeForFuzzyMatch(loser.DisplayName);
-            var survivorFuzzy = Kor.Opportunities.Data.Awards.CanonicalOrgResolver.NormalizeForFuzzyMatch(survivor.DisplayName);
-            if (!string.Equals(loserFuzzy, survivorFuzzy, StringComparison.Ordinal) && !IsAllowlistedNonSimilar(loserId, survivorId))
+            if (!PairPassesMergeGates(options, loser, survivor))
             {
-                Console.Error.WriteLine($"[REJECT] pair {loserId} ({loser.DisplayName}) -> {survivorId} ({survivor.DisplayName}): names not similar (fuzzy '{loserFuzzy}' vs '{survivorFuzzy}'); written to rejected-pairs.csv.");
-                AppendRejectedPair(options, loserId, survivorId, loser.DisplayName, survivor.DisplayName, loserFuzzy, survivorFuzzy);
-                summary.GroupsFailed++;
-                continue;
-            }
-
-            // Two-billing-entity gate (2026-09-04). Two rows that BOTH carry a
-            // Clendor/Deltek client id are two entities we invoice separately,
-            // whatever the brand on the door says. Merging them destroys the
-            // billing split and there is no way back: the loser's id is gone.
-            //
-            // The duplicate sweep's own batch 1 caught Townline's two rows by
-            // hand and let five others through on the identical shape — Amacon
-            // (CL00653 + CL00009), Bucci, Cressey, Greystar and Tridecca. A rule
-            // that has to be applied by eye to a 110-row CSV is not a rule, so
-            // it lives here instead.
-            //
-            // Deliberately NOT allowlist-overridable. If two Deltek ids really
-            // are one company, decide which billing entity survives and clear
-            // the other's id first — that decision belongs in Deltek, not in a
-            // merge pair.
-            if (!string.IsNullOrWhiteSpace(loser.ClendorClientId)
-                && !string.IsNullOrWhiteSpace(survivor.ClendorClientId))
-            {
-                Console.Error.WriteLine($"[REJECT] pair {loserId} ({loser.DisplayName}) -> {survivorId} ({survivor.DisplayName}): both rows carry a Deltek client id ('{loser.ClendorClientId}' and '{survivor.ClendorClientId}'); clear one in Deltek first. Written to rejected-pairs.csv.");
-                AppendRejectedPair(options, loserId, survivorId, loser.DisplayName, survivor.DisplayName, "both-deltek", survivor.ClendorClientId!);
-                summary.GroupsFailed++;
-                continue;
-            }
-
-            // Regional-survivor gate (2026-09-04). A merge moves every row onto
-            // the survivor and retires the loser's NAME. When the survivor is a
-            // branch row and the loser is the parent, the surviving company is
-            // left called "Prologis - Vancouver BC (New Market Entry)" while
-            // holding the global REIT's intel, or "DCI Engineers - Seattle"
-            // holding all 25 of DCI's people. The merge is right; the direction
-            // is backwards.
-            //
-            // Five of batch 1's 110 pairs had this shape. Reject rather than
-            // silently flip, because which row should survive also depends on
-            // Deltek anchors and frozen Kinds that this tool does not arbitrate.
-            var loserBranch = BranchQualifier(loser.DisplayName);
-            var survivorBranch = BranchQualifier(survivor.DisplayName);
-            if (survivorBranch is not null && loserBranch is null)
-            {
-                Console.Error.WriteLine($"[REJECT] pair {loserId} ({loser.DisplayName}) -> {survivorId} ({survivor.DisplayName}): survivor is a branch row ('{survivorBranch}') and the loser is not; flip the pair or rename the survivor first. Written to rejected-pairs.csv.");
-                AppendRejectedPair(options, loserId, survivorId, loser.DisplayName, survivor.DisplayName, "parent", $"branch:{survivorBranch}");
-                summary.GroupsFailed++;
-                continue;
-            }
-
-            // Cross-border gate (2026-09-04). See CountryTokens above.
-            var loserCountry = AssertedCountry(loser.DisplayName);
-            var survivorCountry = AssertedCountry(survivor.DisplayName);
-            if (loserCountry is not null && survivorCountry is not null && loserCountry != survivorCountry)
-            {
-                Console.Error.WriteLine($"[REJECT] pair {loserId} ({loser.DisplayName}) -> {survivorId} ({survivor.DisplayName}): names assert different countries ({loserCountry} vs {survivorCountry}); these are separate legal entities on one brand domain. Written to rejected-pairs.csv.");
-                AppendRejectedPair(options, loserId, survivorId, loser.DisplayName, survivor.DisplayName, loserCountry, survivorCountry);
                 summary.GroupsFailed++;
                 continue;
             }
@@ -1747,7 +1855,11 @@ JOIN #Losers l ON l.Id = co.Id;";
         bool MergeDba,
         string OutputDirectory,
         string? PairsFile,
-        bool BackfillFuzzyKey)
+        bool BackfillFuzzyKey,
+        bool Create,
+        string? CreateKind,
+        string? CreateName,
+        string? CreateWebsite)
     {
         public static ImportOptions Parse(string[] args)
         {
@@ -1755,6 +1867,10 @@ JOIN #Losers l ON l.Id = co.Id;";
             var commit = false;
             var mergeDba = false;
             var backfillFuzzyKey = false;
+            var create = false;
+            string? createKind = null;
+            string? createName = null;
+            string? createWebsite = null;
             var output = DefaultOutputDirectory;
             string? pairs = null;
 
@@ -1774,6 +1890,18 @@ JOIN #Losers l ON l.Id = co.Id;";
                     case "--backfill-fuzzy-key":
                         backfillFuzzyKey = true;
                         break;
+                    case "--create":
+                        create = true;
+                        break;
+                    case "--kind":
+                        createKind = RequireValue(args, ref i, "--kind");
+                        break;
+                    case "--name":
+                        createName = RequireValue(args, ref i, "--name");
+                        break;
+                    case "--website":
+                        createWebsite = RequireValue(args, ref i, "--website");
+                        break;
                     case "--out":
                         output = RequireValue(args, ref i, "--out");
                         break;
@@ -1785,7 +1913,38 @@ JOIN #Losers l ON l.Id = co.Id;";
                 }
             }
 
-            return new ImportOptions(db, commit, mergeDba, output, pairs, backfillFuzzyKey);
+            if (create)
+            {
+                if (string.IsNullOrWhiteSpace(createKind))
+                {
+                    throw new ArgumentException("--create requires --kind.");
+                }
+
+                if (string.IsNullOrWhiteSpace(createName))
+                {
+                    throw new ArgumentException("--create requires --name.");
+                }
+
+                if (!KindRank.ContainsKey(createKind))
+                {
+                    throw new ArgumentException($"Unknown canonical org kind '{createKind}'.");
+                }
+
+                createKind = KindRank.Keys.First(k => string.Equals(k, createKind, StringComparison.OrdinalIgnoreCase));
+
+                if (commit || mergeDba || backfillFuzzyKey || !string.IsNullOrWhiteSpace(pairs))
+                {
+                    throw new ArgumentException("--create cannot be combined with --commit, --merge-dba, --backfill-fuzzy-key, or --pairs.");
+                }
+            }
+            else if (!string.IsNullOrWhiteSpace(createKind)
+                || !string.IsNullOrWhiteSpace(createName)
+                || !string.IsNullOrWhiteSpace(createWebsite))
+            {
+                throw new ArgumentException("--kind, --name, and --website are only valid with --create.");
+            }
+
+            return new ImportOptions(db, commit, mergeDba, output, pairs, backfillFuzzyKey, create, createKind, createName, createWebsite);
         }
 
         private static string RequireValue(string[] args, ref int i, string name)
@@ -1830,6 +1989,104 @@ JOIN #Losers l ON l.Id = co.Id;";
     }
 
     private sealed record IntelDependentsResult(int RowsDropped, int AffiliationsRepointed, int PersonsPreserved);
+
+    private sealed class TrackingCanonicalOrgStore : ICanonicalOrgStore
+    {
+        private readonly ICanonicalOrgStore _inner;
+
+        public TrackingCanonicalOrgStore(ICanonicalOrgStore inner)
+        {
+            _inner = inner;
+        }
+
+        public bool UpsertCalled { get; private set; }
+        public bool? LastUpsertCreated { get; private set; }
+
+        public async Task<(long Id, bool Created)> UpsertCanonicalOrgAsync(
+            string kind,
+            string displayName,
+            string? clendorClientId,
+            string? website,
+            string? notes,
+            CancellationToken ct)
+        {
+            var result = await _inner.UpsertCanonicalOrgAsync(kind, displayName, clendorClientId, website, notes, ct)
+                .ConfigureAwait(false);
+            UpsertCalled = true;
+            LastUpsertCreated = result.Created;
+            return result;
+        }
+
+        public Task<CanonicalOrgRow?> GetCanonicalOrgAsync(long id, CancellationToken ct)
+            => _inner.GetCanonicalOrgAsync(id, ct);
+
+        public Task<IReadOnlyList<CanonicalOrgRow>> SearchCanonicalOrgsAsync(string? query, string? kind, int take, CancellationToken ct)
+            => _inner.SearchCanonicalOrgsAsync(query, kind, take, ct);
+
+        public Task<IReadOnlyList<CanonicalOrgRow>> SearchCanonicalOrgsWithRelationshipsAsync(string? query, string? kind, int take, CancellationToken ct)
+            => _inner.SearchCanonicalOrgsWithRelationshipsAsync(query, kind, take, ct);
+
+        public Task<CanonicalOrgRow?> GetCanonicalOrgByClendorIdAsync(string clendorClientId, CancellationToken ct)
+            => _inner.GetCanonicalOrgByClendorIdAsync(clendorClientId, ct);
+
+        public Task RecordBcRegistrySnapshotAsync(long canonicalOrgId, BcRegistrySnapshot snapshot, CancellationToken ct)
+            => _inner.RecordBcRegistrySnapshotAsync(canonicalOrgId, snapshot, ct);
+
+        public Task<(string DisplayName, string Kind)?> GetNameAndKindAsync(long canonicalOrgId, CancellationToken ct)
+            => _inner.GetNameAndKindAsync(canonicalOrgId, ct);
+
+        public Task<bool> UnretireAsync(long canonicalOrgId, string reason, CancellationToken ct)
+            => _inner.UnretireAsync(canonicalOrgId, reason, ct);
+
+        public Task<(long Id, bool InactivityArchived)?> FindResurrectableRetiredAsync(string normalizedName, CancellationToken ct)
+            => _inner.FindResurrectableRetiredAsync(normalizedName, ct);
+
+        public Task MarkRetiredOnIntakeAsync(long canonicalOrgId, string reason, CancellationToken ct)
+            => _inner.MarkRetiredOnIntakeAsync(canonicalOrgId, reason, ct);
+
+        public Task<long?> FindByNormalizedNameAsync(string normalizedName, CancellationToken ct)
+            => _inner.FindByNormalizedNameAsync(normalizedName, ct);
+
+        public Task<long?> FindByFuzzyNormalizedNameAsync(string fuzzyKey, CancellationToken ct)
+            => _inner.FindByFuzzyNormalizedNameAsync(fuzzyKey, ct);
+
+        public Task<long?> FindByWebsiteDomainAsync(string domain, CancellationToken ct)
+            => _inner.FindByWebsiteDomainAsync(domain, ct);
+
+        public Task<long?> ResolveCanonicalOrgMergeAsync(long canonicalOrgId, CancellationToken ct)
+            => _inner.ResolveCanonicalOrgMergeAsync(canonicalOrgId, ct);
+
+        public Task<long?> FindMergedSurvivorByAliasAsync(string rawName, string source, CancellationToken ct)
+            => _inner.FindMergedSurvivorByAliasAsync(rawName, source, ct);
+
+        public Task<long?> FindMergedSurvivorByNormalizedNameAsync(string normalizedName, CancellationToken ct)
+            => _inner.FindMergedSurvivorByNormalizedNameAsync(normalizedName, ct);
+
+        public Task<int> CountRetiredMatchesAsync(string rawName, string source, string normalizedName, string fuzzyKey, CancellationToken ct)
+            => _inner.CountRetiredMatchesAsync(rawName, source, normalizedName, fuzzyKey, ct);
+
+        public Task PromoteCanonicalOrgWebsiteNotesAsync(long canonicalOrgId, string? website, string? notes, CancellationToken ct)
+            => _inner.PromoteCanonicalOrgWebsiteNotesAsync(canonicalOrgId, website, notes, ct);
+
+        public Task<long> UpsertAliasAsync(
+            string rawName,
+            string source,
+            long? canonicalOrgId,
+            int confidence,
+            string? classifiedBy,
+            string? notes,
+            CancellationToken ct)
+            => _inner.UpsertAliasAsync(rawName, source, canonicalOrgId, confidence, classifiedBy, notes, ct);
+
+        public Task<OrgAliasRow?> LookupAliasAsync(string rawName, string source, CancellationToken ct)
+            => _inner.LookupAliasAsync(rawName, source, ct);
+
+        public Task<IReadOnlyList<OrgAliasRow>> ListUnclassifiedAsync(string? source, int batchSize, CancellationToken ct)
+            => _inner.ListUnclassifiedAsync(source, batchSize, ct);
+
+        public Task<(int Total, int Classified, int Unclassified)> GetAliasCountsAsync(CancellationToken ct)
+            => _inner.GetAliasCountsAsync(ct);
+    }
 
     private sealed class DisjointSet
     {
@@ -1887,6 +2144,7 @@ JOIN #Losers l ON l.Id = co.Id;";
         string Reviewer,
         string ReviewedAt,
         string SourceFile);
+    private sealed record NeverMergeEntry(long LoserId, long SurvivorId, string Reason, string SourceFile);
     private sealed record GroupKey(string Value, bool IsDba);
     private sealed record OrgRow(
         long Id,

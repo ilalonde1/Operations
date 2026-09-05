@@ -1,4 +1,4 @@
-# PROPOSED 2026-09-04 - NOT YET REVIEWED BY IAN. Nine buyers whose DisplayName carries a line feed
+# RUN 2026-09-04 with --commit on Ian's instruction: 9 of 9 merged. Nine buyers whose DisplayName carried a line feed
 # next to the same name on one line. The computed NormalizedName strips spaces but not LF, so the
 # strict key never matched; the fuzzy key differs for the same reason, hence the allowlist entry.
 # Loser = the <LF> row (0 intel in every case); survivor = the one-line row. Source:

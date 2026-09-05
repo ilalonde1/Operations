@@ -1,0 +1,14 @@
+# RUN 2026-09-05 with --commit on Ian's instruction: 5 of 5 merged. The five ampersand/plus pairs the OLD fuzzy key kept apart.
+# Under the normalizer that shipped in the Codex duplicate-sweep fixes they share a key, so the
+# name-similarity gate passes without an allowlist entry; the other three gates still run.
+# Source: tools/BdIntegrityCheck org_fuzzy_key_collision after the normalizer change (report
+# stamp 20260905-045424). Survivor = the report's suggestion (Deltek anchor, then intel).
+# Run BEFORE repairing the stale keys (merge first, fix keys second - repairing first only
+# creates collisions). Dry run:
+#   dotnet run --project tools/BdCanonicalDedup -- --pairs tools/BdCanonicalDedup/ampersand-fold-merge-2026-09-05.csv
+LoserId,SurvivorId
+36196,69775
+70291,74052
+271554,69122
+76869,76834
+272369,271639

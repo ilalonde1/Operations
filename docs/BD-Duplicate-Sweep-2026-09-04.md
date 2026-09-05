@@ -1,9 +1,17 @@
 # BD duplicate sweep — 2026-09-04
 
-Run from `docs/BD-Duplicate-Sweep-Prompt-2026-09-04.md`. **Nothing was merged and nothing was
-written to the database.** The deliverables are a check that fails on every instance of each
-duplicate class at once, the before/after integrity reports, and reviewed merge batches as
-dry-run output for Ian.
+> **Status at wrap-up (section 12):** the sweep ran, the batches were reviewed by gates in the
+> tool and **130 merges were committed on 2026-09-04** on Ian's instruction (sections 9–11).
+> Live canonical orgs 9,734 → 9,621. The Codex fixes from
+> `docs/codex/CODEX-BD-DUPLICATE-SWEEP-FIXES.md` landed on 2026-09-05, were verified, and the
+> five finishing steps ran the same day on Ian's instruction: batch 3 merged, keys repaired, the
+> Worker deployed, migration 314 applied, all committed (end of section 13). **Finished.**
+> Sections 1–8 are the sweep as it stood before any merge and are kept as written.
+
+Run from `docs/BD-Duplicate-Sweep-Prompt-2026-09-04.md`. At the end of the sweep session nothing
+had been merged and nothing written to the database. The deliverables were a check that fails on
+every instance of each duplicate class at once, the before/after integrity reports, and reviewed
+merge batches as dry-run output for Ian.
 
 Evidence folder: `docs/bd-duplicate-sweep-2026-09-04/` — both integrity reports, one CSV per
 class with its full population, the dedup tool's default dry run, and the batch dry runs.
@@ -246,6 +254,9 @@ warnings-as-errors. Not committed.
 
 ## 8. Definition of done
 
+*As written at the end of the sweep session. Sections 9–11 record what happened next the same
+day; the status as of the wrap-up is in section 12.*
+
 - A check that fails on every instance of a named class: **yes, eleven of them**, in the
   invariant suite, with a coverage statement and verified acceptance instances.
 - Integrity report clean of a class, or remaining rows allowlisted with a reason: **not yet** —
@@ -420,3 +431,138 @@ expected to be empty and **a green result no longer proves it works.** The cover
 `tools/BdIntegrityCheck` says so rather than leaving a stale claim. The other two acceptance
 instances (Continuum on `org_aggressive_key_collision`, stantec.com on
 `org_same_domain_shell_brand_match`) still hold.
+
+---
+
+## 12. Wrap-up check — 2026-09-05 (UTC), after the merges
+
+Re-ran `tools/BdIntegrityCheck` against the live database (report stamp 20260905-040741) and
+compared it with `integrity-FINAL-after-island-cleanup-20260904.txt`. **Nothing increased.**
+`org_ampersand_fold_collision` 6 → 5 groups, `org_name_prefix_same_kind` 111 → 110,
+`org_same_domain_shell_review` 147 → 146, `org_same_domain_different_names` 675 → 673;
+everything else equal. Errors still 1 (the known BIDSTEND key collision). Live canonical orgs
+**9,626** (five new rows since the last kept report, from the mid-Island source ingestion).
+
+Verified on the database directly: the four Stantec shells and the nine line-feed twins are gone;
+the four Island-session duplicates are in the merge ledger; Townline's two Deltek rows are both
+live; Continuum Architecture 927758 is still its own row; no 927xxx row carries a stale key.
+
+Definition of done, revisited:
+
+- A check that fails on every instance of a named class — **yes**, and `org_fuzzy_key_collision`
+  is green.
+- Report clean of a class or remaining rows allowlisted with a reason — **yes for the shell
+  class**: the 14 groups still reported are the 11 gate refusals plus Townline and AECOM Hunt,
+  each a stated direction decision, not a merge.
+- Data CLAUDE.md corrected — **yes**, and it now carries the four `--pairs` gates and the
+  delete-not-retire fact.
+- Nothing merged Ian did not see — **yes**: 130 merges, every one on his instruction, through the
+  gated path.
+
+**Still open, and only this:** the four code fixes in
+`docs/codex/CODEX-BD-DUPLICATE-SWEEP-FIXES.md`, re-checked against the code and the current
+counts at wrap-up. None has landed: the normalizer still folds only a spaced `&`; the default
+dedup mode is still ungated and would still re-merge Continuum; there is no never-merge list and
+no `--create` verb; the control-character migration is now **309** because 308 went to the
+mid-Island sources. Ian runs Codex.
+
+Housekeeping done at wrap-up: the four batch CSV headers now say they were run and with what
+result; `tools/BdCanonicalDedup/README.md` documents `--pairs`, the four gates, the default-mode
+hazard and `--backfill-fuzzy-key`'s side effect, none of which it mentioned before.
+
+---
+
+## 13. Codex fixes verified — 2026-09-05 (UTC)
+
+Codex applied the four fixes in `docs/codex/CODEX-BD-DUPLICATE-SWEEP-FIXES.md` as source-only
+edits. The migration is numbered **314**, not 309: 309–313 landed from the mid-Island work in
+between. Verified on the dev box, nothing run against the database except read-only dry runs:
+
+- **Builds** under warnings-as-errors: Data, Data.Tests, BdCanonicalDedup, BdIntegrityCheck and
+  the Worker — 0 warnings, 0 errors.
+- **Tests:** `Kor.Opportunities.Data.Tests` 123 of 123, including the three new resolver tests
+  (four spellings of Perkins&Will share a key; AT&T folds with "AT and T" by design; an embedded
+  line feed collapses to one space at intake).
+- **Fix 1, the normalizer.** `org_ampersand_fold_collision` 5 → **0**. The same five pairs now
+  appear in `org_fuzzy_key_collision` (0 → 5) and pass the `--pairs` gates **without** an
+  allowlist entry — batch 3, `tools/BdCanonicalDedup/ampersand-fold-merge-2026-09-05.csv`, dry
+  run 5 of 5, no refusals (`batch3-ampersand-pairs-dryrun-stdout-20260905.txt`). The cost is
+  `org_fuzzy_key_stale` 1 → **165**: 133 names with a spaced `+`, 31 with `&`, plus the MCW
+  override. That list is the repair list, kept as
+  `org_fuzzy_key_stale-after-normalizer-fix-20260905-045424.csv`, and the script is
+  `fix-stale-fuzzy-keys-2026-09-05.sql` beside it — values verbatim from the report's
+  `ExpectedFuzzy` column, 71528 excluded, each row guarded on the stored value the report saw.
+- **Fix 2, control characters.** Intake now collapses any whitespace run. Migration 314 mirrors the
+  computed `NormalizedName` formula and skips any row whose cleaned key already belongs to another
+  live row, guarded by `UX_CanonicalOrg_LiveNormalizedName`, which exists as named. 4 rows in scope
+  today, none with a twin.
+- **Fix 3, the default path.** One gate function now serves both modes, and `dedup-never-merge.csv`
+  is checked first, in both directions. The default dry run today: 2 groups found, 2 refused, **0
+  rows to merge** — Continuum by the never-merge list, and 812 / 689488 (Ministry of Forests
+  Southern Engineering) by name similarity, because an em dash survives `NormalizeName`. That pair
+  is a real twin and wants a `--pairs` run with an allowlist reason. Batch 1 re-run through the new
+  code: 99 skipped as already merged, the same 11 refused, nothing new. Behaviour change worth
+  knowing: the default mode now exits 1 whenever a group is refused.
+- **Fix 4, `--create`.** Reviewed, not exercised, because it writes. It resolves through
+  `CanonicalOrgResolver.ResolveAsync` with create enabled and reports "attached" or "created".
+  Two residuals: it accepts `--kind KorClient` and `KorStructural`, which are frozen Deltek anchors
+  nobody should mint by hand; and the resolver records an alias with source
+  `BdCanonicalDedup.Create` even on attach, which is intended but worth knowing.
+
+The integrity report under the new code is kept as `integrity-CODEX-FIXES-20260905-045424.txt`.
+Everything else in it is equal to the wrap-up report. The check's description of the default path
+was updated to say it is gated now, and the data CLAUDE.md gained the rule about the normalizer
+change and the stale keys.
+
+### What Ian runs, in this order
+
+1. Batch 3, five merges:
+   ```
+   dotnet run --project tools/BdCanonicalDedup -- --pairs tools/BdCanonicalDedup/ampersand-fold-merge-2026-09-05.csv --commit
+   ```
+2. The key repair, 164 rows (merge first, repair second — the other order only manufactures
+   collisions):
+   ```
+   python docs/island-pipeline/query-opportunities-db.py docs/bd-duplicate-sweep-2026-09-04/fix-stale-fuzzy-keys-2026-09-05.sql
+   ```
+3. Deploy the Worker in the same sitting. Between the repair and the deploy the stored keys and the
+   production normalizer disagree, and either side can mint a twin for a name with `&` or ` + `.
+4. Migration 314, the four line-feed names.
+5. Commit the working tree.
+
+Then run `tools/BdIntegrityCheck` and expect `org_fuzzy_key_stale` 1 (MCW), `org_fuzzy_key_collision`
+0, `org_name_control_chars` 0, `org_ampersand_fold_collision` 0.
+
+### Done — 2026-09-05, on Ian's "if it isn't finished, do it"
+
+Ran in the order above, from KOR-1001, with the database re-checked before the first step
+(9,626 live orgs, the five batch-3 losers and survivors all live, 4 line-feed names).
+
+1. **Batch 3:** 5 of 5 merged through the gated pairs path, 0 refused
+   (`batch3-ampersand-pairs-COMMIT-stdout-20260905.txt`).
+2. **Key repair:** 164 rows found with the stored value the report saw, 164 updated, 0 new
+   collisions (`fix-stale-fuzzy-keys-2026-09-05-RUN-output.txt`). MCW's `mcw` untouched.
+3. **Worker:** `publish-opportunities.ps1` passed its own gate (Data.Tests 123 of 123 in Release)
+   and produced `_Publish\_Ops\Opportunities\20260904_220435`, FileVersion 1.0.9743.1325. Deployed
+   to KOR-APP01's real service folder (`C:\Program Files\KorOperations\Opportunities`, confirmed
+   from the service's own `PathName`): stopped in 4 s, waited 5 s more, robocopy copied 9 files
+   with `appsettings.Production.json` excluded, Core/Data/Worker verified at 1.0.9743.1325 before
+   starting, Production config timestamp unchanged (2026-09-04 12:47:27), Running after 20 s.
+   About 51 s of downtime including the waits.
+4. **Migration 314:** 4 display names updated. Two things it taught:
+   - It rewrites `DisplayName` but not `FuzzyNormalizedName`, so the four repaired names came back
+     as stale keys. Any future migration that rewrites a name must set the fuzzy key too.
+   - The report's CSV rendered a line feed inside `StoredFuzzy` as a space, so a repair guarded on
+     equality with that column matched 0 rows. A second script guarded on "the stored key still
+     carries a line feed" repaired 4 of 4
+     (`fix-stale-fuzzy-keys-after-migration-314-2026-09-05.sql` and its `-RUN-output`). The
+     check now renders control characters visibly in that column.
+5. **Final report** `integrity-DONE-20260905-050808.txt`: `org_name_control_chars` **0**,
+   `org_fuzzy_key_collision` **0**, `org_ampersand_fold_collision` **0**, `org_fuzzy_key_stale`
+   **1** (the MCW override, permanent), `org_aggressive_key_collision` 2 groups (Continuum on the
+   never-merge list, and the em-dash twin). Errors 1, the known BIDSTEND key collision. Live
+   canonical orgs **9,621**.
+
+Left open, all small and none a duplicate factory: the em-dash twin 812 / 689488 (a `--pairs`
+run with an allowlist reason); `--create` accepting `KorClient` / `KorStructural`; the App is on
+the old normalizer until its next release, which only affects read-side brand matching.

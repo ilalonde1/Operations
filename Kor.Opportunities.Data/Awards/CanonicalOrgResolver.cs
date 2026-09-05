@@ -716,9 +716,13 @@ public sealed class CanonicalOrgResolver
         => value.TrimStart(' ', '\t', '\r', '\n', '.', ',', ';', ':', '-');
 
     private static string TidyIntakeName(string value)
-        => value
+        => WhitespaceRunRegex.Replace(value, " ")
             .TrimEnd(' ', '\t', '\r', '\n', ',', ';', ':', '-')
             .TrimStart(' ', '\t', '\r', '\n', ',', ':');
+
+    private static readonly System.Text.RegularExpressions.Regex WhitespaceRunRegex = new(
+        @"[\s\u00A0]+",
+        System.Text.RegularExpressions.RegexOptions.Compiled);
 
     private static readonly System.Text.RegularExpressions.Regex DbaPrefixRegex = new(
         @"\bdba\s*:\s*(.+)$",
@@ -783,10 +787,11 @@ public sealed class CanonicalOrgResolver
 
         var s = input.Trim().ToLowerInvariant();
 
-        // & / and equivalence — preserve word boundaries via surrounding spaces
-        // so "AT&T" doesn't become "ATandT" (it'd be "at&t" lowercased, then this
-        // would only fire if there was a space).
-        s = s.Replace(" & ", " and ", StringComparison.Ordinal);
+        // & / and / spaced-plus equivalence. This intentionally folds AT&T
+        // with AT and T; the fuzzy key is a duplicate-detection key, not the
+        // strict computed NormalizedName.
+        s = AmpersandRegex.Replace(s, " and ");
+        s = SpacedPlusRegex.Replace(s, " and ");
 
         // Civic forms
         var cityPrefix = CityOfPrefixRegex.Match(s);
@@ -830,4 +835,12 @@ public sealed class CanonicalOrgResolver
         // result is directly comparable to NormalizedName-style values.
         return NormalizeName(s);
     }
+
+    private static readonly System.Text.RegularExpressions.Regex AmpersandRegex = new(
+        @"\s*&\s*",
+        System.Text.RegularExpressions.RegexOptions.Compiled);
+
+    private static readonly System.Text.RegularExpressions.Regex SpacedPlusRegex = new(
+        @"\s\+\s",
+        System.Text.RegularExpressions.RegexOptions.Compiled);
 }

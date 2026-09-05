@@ -1,0 +1,39 @@
+Output directory: C:\VIsual Studio Projects\Operations\tools\BdCanonicalDedup\output
+Allowlist validation report written: C:\VIsual Studio Projects\Operations\tools\BdCanonicalDedup\output\allowlist-validation-report.csv
+[COMMIT] pair:36196->69775: survivor=69775; losers=1; enrichmentCollisions=4; intelRowsDropped=44
+[COMMIT] pair:70291->74052: survivor=74052; losers=1; enrichmentCollisions=2; intelRowsDropped=20
+[COMMIT] pair:271554->69122: survivor=69122; losers=1; enrichmentCollisions=1; intelRowsDropped=0
+[COMMIT] pair:76869->76834: survivor=76834; losers=1; enrichmentCollisions=3; intelRowsDropped=21
+[COMMIT] pair:272369->271639: survivor=271639; losers=1; enrichmentCollisions=1; intelRowsDropped=0
+Canonical dedupe complete.
+  Groups found:                  5
+  Rows to merge:                 5
+  Rows before:                   893016
+  Rows after:                    893011
+  Groups committed successfully: 5
+  Groups failed:                 0
+  Enrichment collisions resolved: 11
+  Intel rows dropped (will be regenerated): 85
+  Aliases preserved:             5
+  DBA groups:                    0
+  DBA merge rows:                0
+  FK repoints by table:
+    ArchitectDisplacementBriefs: 0
+    BdResearchTriggers: 0
+    BuildingPermit: 2
+    CanonicalOrgEnrichment: 4
+    CrmEngagements: 0
+    CrmTouchpoint: 0
+    HistoricalOpportunities: 0
+    IntelPersonAffiliation: 5
+    IntelProjectAction: 0
+    IntelProjectKeyPerson: 0
+    KorPursuits: 0
+    MajorProjectsInventory: 3
+    NewsArticleOrgMention: 0
+    Opportunities: 0
+    OpportunityAwards: 0
+    OpportunityBids: 0
+    OpportunityInterestedFirms: 0
+    OrgAlias: 4
+    OrgFact: 0

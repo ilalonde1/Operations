@@ -29,12 +29,11 @@ before changing anything about identity, merging or refresh.
 - **`BdCanonicalDedup`** is fail-closed on schema: a new FK to `CanonicalOrg` that is in neither
   `FkTargets` nor `IntelDeleteTargets` blocks **every** merge until you handle it. That is working as
   designed — it caught migrations 289/290 having silently blocked merges for seven weeks.
-  ⛔ **Its DEFAULT mode has no similarity gate.** Without `--pairs` it groups by
-  `NormalizeAggressiveKey` and commits every group; the fuzzy-name gate and the allowlist only
-  guard `--pairs`. The 2026-09-04 dry run proposed re-merging 927758 *Continuum Architecture* into
-  74300 *Continuum Partners* — the conflation split by hand the day before. **Only ever commit
-  through `--pairs`**, and read `org_aggressive_key_collision` in the integrity report first.
-- **`--pairs` has four gates and they are the review.** Name similarity (2026-05-30), plus three
+  Its default mode groups by `NormalizeAggressiveKey`, then applies the same per-pair gates as
+  `--pairs` before planning or committing. The 2026-09-04 dry run proposed re-merging 927758
+  *Continuum Architecture* into 74300 *Continuum Partners* — the conflation split by hand the day
+  before. That pair is now in `dedup-never-merge.csv`, which both modes check in either direction.
+- **Merge paths have four gates and they are the review.** Name similarity (2026-05-30), plus three
   added 2026-09-04 after a hand review of a 110-pair batch found eleven bad merges the batch's own
   prose rule had missed: **both rows carrying a Deltek id** (two billing entities — never merge,
   not allowlist-overridable), **survivor is a branch row and the loser is not** (the merge is right,
@@ -57,9 +56,16 @@ before changing anything about identity, merging or refresh.
 - **Resolve orgs by EXACT `DisplayName`, never `LIKE`.** A substring pass made five firms look
   missing: "Chard" matched *Richard & Co. Architecture*, "Seba" matched *Sebastien Garon*.
 - **`NormalizedName` is computed; `FuzzyNormalizedName` is not.** Set the fuzzy key explicitly on
-  insert or the row gets an empty one and can group with unrelated orgs.
-- **The fuzzy normalizer strips `&` rather than folding it to `and`**, so "Perkins and Will" never
-  matches "Perkins&Will". That is how duplicate shells get minted.
+  insert or the row gets an empty one and can group with unrelated orgs; for hand-created canonical
+  rows, use `tools/BdCanonicalDedup --create` so the resolver owns the fuzzy key.
+- **The fuzzy normalizer changed on 2026-09-05** — every `&` and every spaced `+` now folds to
+  ` and ` before the suffix pass, so *Perkins&Will*, *Perkins & Will*, *Perkins + Will* and
+  *Perkins and Will* share a key. A stored `FuzzyNormalizedName` computed before that is stale
+  for every name with `&` or ` + ` (164 rows on the day), and a stale key is invisible to the
+  write-time gate. Repair from `org_fuzzy_key_stale`'s own `ExpectedFuzzy` column, skipping the
+  deliberate `mcw` override on 71528 — **never `--backfill-fuzzy-key`**, which rewrites all 893k
+  rows and undoes that override. Repair and deploy together: in the gap between them the two
+  normalizers disagree and either side can mint a twin.
 - **`IntelNarrative` is versioned as of migration 297**, but only history written after that date
   exists. Anything overwritten before it is gone unless it is in a nightly backup.
 - **A person moved between orgs can get a duplicate affiliation** — the person resolves correctly,

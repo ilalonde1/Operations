@@ -711,7 +711,11 @@ if (liveOrgs.Count > 0)
         var rows = liveOrgs
             .Select(o => (o, expected: CanonicalOrgResolver.NormalizeForFuzzyMatch(o.DisplayName)))
             .Where(t => !string.Equals(t.o.StoredFuzzy, t.expected, StringComparison.Ordinal))
-            .Select(t => new[] { t.o.Id.ToString(), t.o.Kind, t.o.DisplayName, t.o.StoredFuzzy, t.expected })
+            // StoredFuzzy is shown with control characters made visible: a stored key
+            // computed from a name that carried a line feed still carries it, and a CSV
+            // that rendered it as a space made an equality-guarded repair match 0 rows
+            // on 2026-09-05. ExpectedFuzzy never contains one.
+            .Select(t => new[] { t.o.Id.ToString(), t.o.Kind, DupRules.ShowControls(t.o.DisplayName), DupRules.ShowControls(t.o.StoredFuzzy), t.expected })
             .ToList();
         Worklist("org_fuzzy_key_stale",
             "Live orgs whose stored FuzzyNormalizedName is not what NormalizeForFuzzyMatch(DisplayName) returns today (empty counts). The write-time gate is blind to these rows, so the next reference to the same firm creates a duplicate. Fix = BdCanonicalDedup --backfill-fuzzy-key, then re-run this report: a backfilled key that now collides with another live row is a duplicate, not a repair",
@@ -815,7 +819,7 @@ if (liveOrgs.Count > 0)
                 rows.Add(new[] { key, shape, crossKind, o.Id.ToString(), o.Kind, DupRules.ShowControls(o.DisplayName), o.Domain, o.Intel.ToString() });
         }
         Worklist("org_aggressive_key_collision",
-            "Live orgs BdCanonicalDedup's DEFAULT mode would merge on --commit, grouped by NormalizeAggressiveKey, which strips inc/ltd/co/architects/partners/group and every non-alphanumeric. That path has NO similarity gate, so an 'aggressive-only CROSS-KIND' row here is the Continuum shape and must not be committed without a per-pair review. Never run --commit without --pairs while this list has a cross-kind row",
+            "Live orgs BdCanonicalDedup's DEFAULT mode groups together, by NormalizeAggressiveKey, which strips inc/ltd/co/architects/partners/group and every non-alphanumeric. Since 2026-09-05 that path runs the same four per-pair gates as --pairs plus dedup-never-merge.csv, so a group here is what it would PLAN, not what it would commit unchallenged. An 'aggressive-only CROSS-KIND' row is still the Continuum shape: it belongs in the never-merge list or in a reviewed --pairs batch, never in a default --commit",
             true, rows, new[] { "AggressiveKey", "Shape", "CrossKind", "Id", "Kind", "DisplayName", "WebsiteDomain", "Intel" }, groups.Count, groups.Sum(g => g.members.Count), sample: 12);
     }
 
