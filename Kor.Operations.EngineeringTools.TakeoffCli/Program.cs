@@ -129,7 +129,28 @@ if (args.Length >= 1 && args[0].Equals("pdf-takeoff", StringComparison.OrdinalIg
         }
         else ptEmpty++;
 
-        Console.WriteLine($"{p,4} {geo.RawPathCount,5}  {annot,5}   {geo.Slabs.Count,5}  {geo.Columns.Count,7}   {geo.Lines.Count,5}   {file}");
+        // THE SHEET CHECKED AGAINST ITSELF. The geometry and the schedule are the same facts drawn
+        // twice and read here by entirely separate code, so agreement between them is evidence that
+        // needs no reference model — which is what every other gate in this repo requires, and why
+        // none of them can say anything about the first sheet of a new job.
+        string agree = "";
+        try
+        {
+            var schedulePage = VectorPageReader.ReadPage(ptPdf, p);
+            var declared = ColumnScheduleReader.ReadSchedule(schedulePage);
+            if (declared.Count > 0 && geo.Columns.Count > 0)
+            {
+                var check = PlanAgreesWithItsSchedule.Check(geo, declared, schedulePage);
+                agree = $"  {check.SizesDeclaredSomewhere}/{check.ColumnsFound} cols declared";
+                if (check.MatchedToTheirOwnMark > 0)
+                    agree += $", {check.MatchedToTheirOwnMark} by own mark";
+                if (check.MarksDeclaredButNeverFound.Count > 0)
+                    agree += $"; unplaced {string.Join(",", check.MarksDeclaredButNeverFound)}";
+            }
+        }
+        catch (Exception ex) { agree = $"  (self-check unavailable: {ex.GetType().Name})"; }
+
+        Console.WriteLine($"{p,4} {geo.RawPathCount,5}  {annot,5}   {geo.Slabs.Count,5}  {geo.Columns.Count,7}   {geo.Lines.Count,5}   {file}{agree}");
     }
 
     Console.WriteLine();
