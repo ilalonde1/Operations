@@ -765,6 +765,12 @@ public class PlanSheetNamingTests
     }
 }
 
+// Reads PlanSheetNaming.Vocabulary — through mezzanine and storey naming — so it belongs in the
+// collection that serialises against that mutable static, exactly as SheetNamingVocabularyCollection
+// says any class touching it must. It was not, and on 2026-09-02
+// ASheetCanNameAMezzanineForOneLevelAndNotAnother failed in a full run and passed alone immediately
+// after: the third time this static has produced an "unexplained" full-suite failure.
+[Collection(SheetNamingVocabularyCollection.Name)]
 public class E2kDocumentTests
 {
     /// <summary>

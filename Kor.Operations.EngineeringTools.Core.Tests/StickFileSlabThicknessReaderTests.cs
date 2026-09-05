@@ -3,6 +3,8 @@ using Xunit;
 
 namespace Kor.Operations.EngineeringTools.Core.Tests;
 
+// Reads PlanSheetNaming.Vocabulary, so it must not run beside a class that mutates it.
+[Collection(SheetNamingVocabularyCollection.Name)]
 public sealed class StickFileSlabThicknessReaderTests
 {
     [Fact]

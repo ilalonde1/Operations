@@ -14,6 +14,8 @@ namespace Kor.Operations.EngineeringTools.Core.Tests;
 /// names one level separately for different buildings; a BUILDING is sheet provenance first,
 /// storey-name ownership second, and geometry only where both are silent.
 /// </summary>
+// Reads PlanSheetNaming.Vocabulary, so it must not run beside a class that mutates it.
+[Collection(SheetNamingVocabularyCollection.Name)]
 public sealed class PlacementModelTests
 {
     private readonly ITestOutputHelper _out;
