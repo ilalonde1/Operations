@@ -5,6 +5,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
+using Kor.Operations.EngineeringTools.Dxf;   // PlanClassificationOptions: the layer vocabulary
 
 namespace Kor.Operations.EngineeringTools.PdfToSafe
 {
@@ -41,7 +42,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             HashSet<int>? excludedColumns = null,
             HashSet<(byte R, byte G, byte B)>? excludedColors = null,
             bool layerByColour = false,
-            IReadOnlyDictionary<(byte R, byte G, byte B), SlabColorSettings>? colorSettings = null)
+            IReadOnlyDictionary<(byte R, byte G, byte B), SlabColorSettings>? colorSettings = null,
+            bool korLayers = false)
         {
             double totalWeight = 0.0, sumX = 0.0, sumY = 0.0;
             foreach (var pts in geometry.Slabs)
@@ -201,8 +203,41 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             static string ColourLayer((byte R, byte G, byte B) c, bool markup) =>
                 $"PDF-{c.R:X2}{c.G:X2}{c.B:X2}" + (markup ? "-MARKUP" : "");
 
-            static string StructuralLayer(string baseLayer, bool markup) =>
-                markup ? baseLayer + "-MARKUP" : baseLayer;
+            // KOR's drafting vocabulary, BUILT FROM THE CLASSIFIER'S OWN PATTERNS rather than
+            // spelled out again here.
+            //
+            // A DXF the Revit bridge exports and one this writes are read by the same
+            // StructuralPlanClassifier, and it matches layers by SUBSTRING: SLABEDG, _COL, WALL.
+            // Naming a layer by concatenating the pattern it must match means the two cannot drift
+            // -- change the pattern and the emitted name follows it. Spelling "KOR_C_SLABEDG" as a
+            // literal here would be a second copy of the vocabulary, and the copy would be the one
+            // that goes stale.
+            //
+            // The prefixes mirror the Revit export's own shape (JBP_C_SLABEDG, JBP_V_COL,
+            // JBP_V-WALL) so a drafter opening either file sees the same thing.
+            //
+            // BEAM is deliberately absent and stays unmatched. Our Lines collection is whatever did
+            // not close -- on 31130 page 12 that is 2,420 subpaths, mostly grid, dimension and
+            // leader work. Naming those WALL would put 2,420 walls into the model. A caller who
+            // knows a colour IS a wall says so through colorSettings, and that answer is honoured
+            // below; nothing is promoted to structure by guessing.
+            static string KorLayerName(string kind)
+            {
+                var patterns = new PlanClassificationOptions();
+                return kind switch
+                {
+                    "SLAB"   => "KOR_C_" + patterns.SlabLayerPatterns[0],    // KOR_C_SLABEDG
+                    "COLUMN" => "KOR_V"  + patterns.ColumnLayerPatterns[0],  // KOR_V_COL
+                    "WALL"   => "KOR_V-" + patterns.WallLayerPatterns[0],    // KOR_V-WALL
+                    _        => kind,                                        // BEAM, unmatched
+                };
+            }
+
+            string StructuralLayer(string baseLayer, bool markup)
+            {
+                string name = korLayers ? KorLayerName(baseLayer) : baseLayer;
+                return markup ? name + "-MARKUP" : name;
+            }
 
             string StructuralBaseLayer(string fallback, (byte R, byte G, byte B) colour)
             {
@@ -263,10 +298,13 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             }
             else
             {
-                WL("SLAB", 3); WL("SLAB-MARKUP", 3);
-                WL("BEAM", 4); WL("BEAM-MARKUP", 4);
-                WL("COLUMN", 2); WL("COLUMN-MARKUP", 2);
-                WL("WALL", 1); WL("WALL-MARKUP", 1);
+                // Declared through the same StructuralLayer() the entities are written with, so the
+                // table and the entities cannot name layers differently.
+                foreach (var (kind, aci) in new[] { ("SLAB", 3), ("BEAM", 4), ("COLUMN", 2), ("WALL", 1) })
+                {
+                    WL(StructuralLayer(kind, markup: false), aci);
+                    WL(StructuralLayer(kind, markup: true), aci);
+                }
             }
             if (hasText) WL(textLayer, 7);
             G(0, "ENDTAB");

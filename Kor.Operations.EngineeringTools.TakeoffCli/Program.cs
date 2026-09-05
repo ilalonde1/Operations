@@ -58,19 +58,22 @@ if (args.Length >= 1 && args[0].Equals("pdf-readable", StringComparison.OrdinalI
 //
 // The scale is OFFERED, never assumed: with no --scale this reports what the sheet itself states
 // and stops, because a wrong denominator renders identically and is wrong by a constant.
-// Usage: takeoff pdf-takeoff <pdf> <out.dxf> [--page N] [--pages A-B] [--scale 96] [--markup]
+// Usage: takeoff pdf-takeoff <pdf> <out.dxf> [--page N] [--pages A-B] [--scale 96] [--markup] [--kor-layers]
 if (args.Length >= 1 && args[0].Equals("pdf-takeoff", StringComparison.OrdinalIgnoreCase))
 {
-    if (args.Length < 3) { Console.Error.WriteLine("Usage: takeoff pdf-takeoff <pdf> <out.dxf> [--page N] [--pages A-B] [--scale 96] [--markup]"); return 1; }
+    if (args.Length < 3) { Console.Error.WriteLine("Usage: takeoff pdf-takeoff <pdf> <out.dxf> [--page N] [--pages A-B] [--scale 96] [--markup] [--kor-layers]"); return 1; }
     string ptPdf = args[1], ptOut = args[2];
     if (!File.Exists(ptPdf)) { Console.Error.WriteLine($"PDF not found '{ptPdf}'."); return 2; }
 
     int ptFirst = 1, ptLast = 1, ptScale = 0;
-    bool ptMarkup = false;
+    bool ptMarkup = false, ptKor = false;
     for (int i = 3; i < args.Length; i++)
     {
         string a = args[i];
         if (a.Equals("--markup", StringComparison.OrdinalIgnoreCase)) ptMarkup = true;
+        // Name the layers the way the Revit bridge does, so dxf-to-etabs reads this file with no
+        // per-source options and a PDF-derived plan stops being a special case.
+        else if (a.Equals("--kor-layers", StringComparison.OrdinalIgnoreCase)) ptKor = true;
         else if (a.Equals("--page", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length)
         { int.TryParse(args[++i], out ptFirst); ptLast = ptFirst; }
         else if (a.Equals("--scale", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length)
@@ -120,7 +123,7 @@ if (args.Length >= 1 && args[0].Equals("pdf-takeoff", StringComparison.OrdinalIg
         if (found > 0)
         {
             string dxf = ptRange ? Path.Combine(ptDir, $"{ptStem}-p{p:00}.dxf") : Path.GetFullPath(ptOut);
-            DxfExporter.Export(geo, dxf);
+            DxfExporter.Export(geo, dxf, korLayers: ptKor);
             file = Path.GetFileName(dxf);
             ptWritten++;
         }
@@ -3892,7 +3895,7 @@ public static class TakeoffCliHelp
     public static IReadOnlyList<TakeoffCliCommand> Commands { get; } =
     [
         new("pdf-readable", "takeoff pdf-readable <pdf> [first] [last]", "Check whether a PDF has readable vector text."),
-        new("pdf-takeoff", "takeoff pdf-takeoff <pdf> <out.dxf> [--page N] [--pages A-B] [--scale 96] [--markup]", "Take a drawing PDF's structure off to DXF, reading the drawing itself unless --markup."),
+        new("pdf-takeoff", "takeoff pdf-takeoff <pdf> <out.dxf> [--page N] [--pages A-B] [--scale 96] [--markup] [--kor-layers]", "Take a drawing PDF's structure off to DXF, reading the drawing itself unless --markup."),
         new("dxf-render", "takeoff dxf-render <plan.dxf> <out.png> [--size 1800] [--layers SLABEDG,...]", "Render structural DXF layers to a PNG."),
         new("dxf-inspect", "takeoff dxf-inspect <plan.dxf> [--walls] [--plates]", "Inspect DXF layers, loops, wall outlines, and recovered floor plates."),
         new("publish", "takeoff publish <job> [--model-folder <folder>] [--dxf-folder <folder>] [--rules-db <c>] [--per-building] [--land]", "Discover, build, verify, summarize, gate and land a DXF-to-ETABS publish."),
