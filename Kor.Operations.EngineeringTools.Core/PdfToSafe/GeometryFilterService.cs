@@ -37,15 +37,16 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         /// and 32 on p12. Its commonest parkade column never reached a model, and the sheet still
         /// reported 220 "columns", which were isolation-joint squares.
         ///
-        /// 3.2 admits every column those five KOR jobs declare — the most slender is TC04 at
-        /// 12"x36", exactly 3.0 — with a little margin for a drawn outline carrying its line width.
+        /// 3.0 is the value KorStandards already banks as `dxf.max-column-aspect`, replay-verified on the
+        /// authority of ETABS-e2k. It admits every column these five KOR jobs declare, the most slender
+        /// being TC04 at 12"x36". An earlier 3.2 here was invented rather than looked up.
         /// It is not a licence: the limit still exists to keep linework out, and
         /// <see cref="Classify"/> takes it as a parameter so a job can state its own.
         ///
         /// ⚠ Raising it admits more, and the differential across all five jobs is in the commit that
         /// changed it. If this moves again, run that comparison again — slabs and lines shift too.
         /// </remarks>
-        public const double DefaultMaxColumnAspect = 3.2;
+        public const double DefaultMaxColumnAspect = 3.0;
 
         public static void Classify(
             IReadOnlyList<RawSubpath> rawSubpaths,

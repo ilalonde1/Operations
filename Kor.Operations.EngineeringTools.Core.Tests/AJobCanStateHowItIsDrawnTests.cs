@@ -42,7 +42,7 @@ public sealed class AJobCanStateHowItIsDrawnTests
         Assert.Equal(200.0,  d.LineMinLengthMm);        // PdfToSafeConstants.DefaultLineMinLengthMm
         Assert.Equal(1500.0, d.ColumnMaxSizeMm);        // Classify's columnMaxSizeMm
         Assert.Equal(200.0,  d.ColumnMinDimMm);         // Classify's columnMinDimMm
-        Assert.Equal(3.2,    d.ColumnMaxAspect);        // GeometryFilterService.DefaultMaxColumnAspect
+        Assert.Equal(3.0,    d.ColumnMaxAspect);        // == banked dxf.max-column-aspect
         Assert.Equal(25.0,   d.AgreementToleranceMm);   // PlanAgreesWithItsSchedule.DefaultToleranceMm
         Assert.Equal(1500.0, d.AgreementLabelReachMm);  // PlanAgreesWithItsSchedule.DefaultLabelReachMm
     }
@@ -68,7 +68,7 @@ public sealed class AJobCanStateHowItIsDrawnTests
     {
         var settings = new Dictionary<string, RuleSetting>(StringComparer.OrdinalIgnoreCase)
         {
-            ["dxf.pdf.column-max-aspect"] = Number("dxf.pdf.column-max-aspect", 4.5),
+            [PdfIntakeOptions.SharedMaxColumnAspect] = Number(PdfIntakeOptions.SharedMaxColumnAspect, 4.5),
             ["dxf.pdf.column-min-dim-mm"] = Number("dxf.pdf.column-min-dim-mm", 120),
         };
 
@@ -110,6 +110,38 @@ public sealed class AJobCanStateHowItIsDrawnTests
     {
         Assert.Equal(7, PdfIntakeOptions.SettingKeys.Count);
         Assert.All(PdfIntakeOptions.SettingKeys,
-            k => Assert.StartsWith(PdfIntakeOptions.Prefix + ".", k, StringComparison.Ordinal));
+            k => Assert.StartsWith("dxf.", k, StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// A column's SHAPE is shared with the DXF side; its SIZE WINDOW deliberately is not.
+    /// </summary>
+    /// <remarks>
+    /// `dxf.min-column-size` and `dxf.max-column-size` exist and were adopted here, then measured and
+    /// backed out: on the DXF side the LAYER says whether a shape is a column, so those bounds are a
+    /// plausibility check; PdfToSafe has no layers, so the size window is the DISCRIMINATOR and the
+    /// same numbers do a different job. Raising the ceiling to the banked 132in swallowed slabs whole
+    /// — 31130 p13 45 to 23, 31138 p11 102 to 58 — with coverage identical on every sheet.
+    ///
+    /// If a future change makes this test fail by adopting them, that measurement has to be redone.
+    /// </remarks>
+    [Fact]
+    public void TheColumnSizeWindowIsThisProjectsOwnAndTheAspectIsShared()
+    {
+        Assert.Contains("dxf.max-column-aspect", PdfIntakeOptions.SettingKeys);
+        Assert.DoesNotContain("dxf.min-column-size", PdfIntakeOptions.SettingKeys);
+        Assert.DoesNotContain("dxf.max-column-size", PdfIntakeOptions.SettingKeys);
+
+        // and a banked DXF-side size bound must not move this project's window
+        var settings = new Dictionary<string, RuleSetting>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["dxf.max-column-size"] = Number("dxf.max-column-size", 132),
+            ["dxf.min-column-size"] = Number("dxf.min-column-size", 6),
+        };
+
+        var applied = PdfIntakeOptions.ApplyRules(PdfIntakeOptions.Default, settings);
+
+        Assert.Equal(PdfIntakeOptions.Default.ColumnMaxSizeMm, applied.ColumnMaxSizeMm);
+        Assert.Equal(PdfIntakeOptions.Default.ColumnMinDimMm, applied.ColumnMinDimMm);
     }
 }
