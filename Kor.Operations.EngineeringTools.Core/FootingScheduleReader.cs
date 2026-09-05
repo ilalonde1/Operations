@@ -17,8 +17,11 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
     ///     it is reported as an honest residual, never fabricated;
     ///   • marks are counted OUTSIDE the schedule's own table region, so the schedule row itself is
     ///     never counted as a placement.
-    /// Metric-mm sets only (dimensions 200–6000 mm); an imperial schedule reads as no rows and the
-    /// foundation stays flagged unmeasured rather than misread.
+    /// Imperial or metric: the size cell is read by <see cref="PrintedLength"/>, so "4' - 0\" x 4' - 0\"
+    /// x 26\" DEEP" and "2500 x 2500 x 900 DEEP" both parse. Until 2026-09-02 this required
+    /// \d{3,4} and so read millimetres only, which was ONE of five KOR jobs — the other four
+    /// reported 0 cy, silently, and a deterministic tool reporting a total does not look broken.
+    /// Dimensions outside 200–6000 mm are still refused as implausible.
     /// </summary>
     public static class FootingScheduleReader
     {
@@ -75,7 +78,7 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                 string rowText = string.Join(" ", row).Replace(",", "");
                 if (!DeepRe.IsMatch(rowText)) continue;
 
-                var dims = PrintedLength.TryParseSizeMm(rowText);
+                var dims = PrintedLength.TryFindSizeMm(rowText);
                 if (dims is null) continue;
 
                 double a = dims[0], b = dims[1];

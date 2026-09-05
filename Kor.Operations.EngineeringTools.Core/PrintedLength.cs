@@ -120,5 +120,49 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             }
             return mm.Count >= 2 ? mm : null;
         }
+
+        // ── finding a size INSIDE a row, wherever the schedule put it ────────────────────────────
+        //
+        // Splitting a whole row on "x" and reading left to right assumes the size is the first thing
+        // in it. 31130 prints MARK | STRENGTH | SIZE, so the row reads "45 MPa 12\" x 24\"" and the
+        // leading 45 parses as 45 mm — giving a 45 x 610 column, which is then rejected as
+        // implausible and the row is lost silently. 31168 prints MARK | SIZE | STRENGTH and works.
+        // One practice's column order should not decide whether a schedule reads.
+        //
+        // So the size is found by anchoring on the × and requiring BOTH sides to be lengths that
+        // carry a unit mark, or to be the 3-4 digit integers a metric schedule prints. A bare "45"
+        // beside "MPa" is neither.
+        private const string LenPattern =
+            @"(?:\d+(?:\.\d+)?\s*['’′]\s*(?:[-–]\s*)?(?:\d+(?:\.\d+)?)?\s*[""”″]?" +   // 4' - 0"
+            @"|\d+(?:\.\d+)?\s*[""”″]" +                                                // 26"
+            @"|\d{3,4})";                                                               // 2500
+
+        // an optional cell keyword between a dimension and the next ×, as in 18" WIDE x 12" DEEP
+        private const string Gap = @"(?:\s+(?:WIDE|DEEP|DP|THK|THICK))?\s*[xX×]\s*";
+
+        private static readonly Regex SizeAnywhere = new(
+            "(?<a>" + LenPattern + ")" + Gap + "(?<b>" + LenPattern + ")" +
+            "(?:" + Gap + "(?<c>" + LenPattern + "))?",
+            RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
+        /// <summary>
+        /// The first printed size anywhere in this text, in millimetres, whatever sits around it.
+        /// </summary>
+        public static IReadOnlyList<double>? TryFindSizeMm(string? text)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return null;
+
+            foreach (Match m in SizeAnywhere.Matches(text))
+            {
+                if (LeadingMm(m.Groups["a"].Value) is not double a) continue;
+                if (LeadingMm(m.Groups["b"].Value) is not double b) continue;
+
+                var dims = new List<double> { a, b };
+                if (m.Groups["c"].Success && LeadingMm(m.Groups["c"].Value) is double c)
+                    dims.Add(c);
+                return dims;
+            }
+            return null;
+        }
     }
 }

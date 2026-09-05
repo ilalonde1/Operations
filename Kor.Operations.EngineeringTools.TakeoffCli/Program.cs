@@ -2212,6 +2212,23 @@ if (args.Length >= 1 && args[0].Equals("vector-digest", StringComparison.Ordinal
 if (args.Length >= 1 && args[0].Equals("vector-sched", StringComparison.OrdinalIgnoreCase))
 {
     if (args.Length < 3) { Console.Error.WriteLine("Usage: takeoff vector-sched <pdf> <page>"); return 1; }
+    // The COLUMN schedule alongside the shear-wall one, read the same deterministic way. The only
+    // column-schedule reader before this was `sched-read column`, which is an AI read of a
+    // downscaled PNG of text this project can read exactly, for free, and the same way twice.
+    try
+    {
+        var colPage = VectorPageReader.ReadPage(args[1], int.Parse(args[2], CultureInfo.InvariantCulture));
+        var colRows = ColumnScheduleReader.ReadSchedule(colPage);
+        Console.WriteLine($"Column schedule ({colRows.Count} mark(s)):");
+        foreach (var r in colRows)
+            Console.WriteLine($"  {r.Mark,-6} {r.WidthMm / PrintedLength.MmPerInch,5:0.#}\" x " +
+                              $"{r.DepthMm / PrintedLength.MmPerInch,5:0.#}\"" +
+                              $"{(r.StrengthMPa is double mpa ? $"  {mpa:0} MPa" : "")}" +
+                              $"{(r.Reinforcing is null ? "" : "  " + r.Reinforcing)}" +
+                              $"{(r.Ties is null ? "" : "  | " + r.Ties)}");
+        Console.WriteLine();
+    }
+    catch (Exception ex) { Console.WriteLine($"Column schedule: unreadable — {ex.GetType().Name}"); }
     if (!File.Exists(args[1])) { Console.Error.WriteLine($"PDF not found '{args[1]}'."); return 2; }
     if (!int.TryParse(args[2], out int schPage) || schPage < 1) { Console.Error.WriteLine("Page must be a positive integer."); return 2; }
 
