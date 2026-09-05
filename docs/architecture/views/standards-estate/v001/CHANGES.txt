@@ -1,0 +1,10 @@
+KOR Application Map — v001    drawn 2026-09-03 02:14:47Z
+Codebase: C:\VIsual Studio Projects\Operations
+
+FIRST VERSION — the baseline. Nothing to compare against yet.
+
+Where it starts:
+    built edges           1
+    live edges            9
+    scoped edges          10
+    scoped nodes          8

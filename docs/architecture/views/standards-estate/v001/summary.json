@@ -1,0 +1,40 @@
+{
+  "Version": 1,
+  "DrawnUtc": "2026-09-03 02:14:47Z",
+  "Root": "C:\\VIsual Studio Projects\\Operations",
+  "Counts": {
+    "scoped nodes": 8,
+    "scoped edges": 10,
+    "live edges": 9,
+    "built edges": 1
+  },
+  "Projects": [
+    "details-palette: DETAILS PALETTE",
+    "drafter-bridge: BRIDGE (KOR-302N)",
+    "drafters-revit: DRAFTERS\u0027 REVIT",
+    "gatekeeper: THE GATEKEEPER",
+    "kor-tools: KOR TOOLS RIBBON",
+    "korstandards-sql: KORSTANDARDS (SQL)",
+    "operations-app: OPERATIONS APP - STD DETAILS",
+    "templates: AUTHORING \u002B MASTER"
+  ],
+  "Verbs": [
+    "details-palette -\u003E kor-tools: live:additive tab (branch)",
+    "drafter-bridge -\u003E templates: live:runs the model",
+    "gatekeeper -\u003E operations-app: live:approves in the app",
+    "kor-tools -\u003E drafters-revit: live:publish.ps1 -\u003E share",
+    "korstandards-sql -\u003E details-palette: live:catalog: placeable only",
+    "korstandards-sql -\u003E kor-tools: live:288 parts",
+    "operations-app -\u003E drafter-bridge: live:Publish to Master -\u003E rebuild",
+    "operations-app -\u003E drafters-revit: built:deploy app to fleet (last step)",
+    "operations-app -\u003E korstandards-sql: live:approval -\u003E placeable",
+    "templates -\u003E korstandards-sql: live:census \u002B conformance"
+  ],
+  "Externals": [],
+  "Scripts": [],
+  "TypesByProject": {
+    "desktop app": 1,
+    "live": 7
+  },
+  "DuplicateSimilarity": {}
+}
