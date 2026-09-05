@@ -37,9 +37,13 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
         // The size cell, read from the row text right of the mark: "2500 x 2500 x 900 DEEP" (spread)
         // or "550 x 300 DEEP" (strip). DEEP is required — it is what distinguishes a footing size row
         // from any other "a x b" dimension string that shares a baseline with a short token.
-        private static readonly Regex SizeRe = new(
-            @"^(\d{3,4})\s*[xX×]\s*(\d{3,4})(?:\s*[xX×]\s*(\d{3,4}))?\s*(?:DEEP|DP)\b",
-            RegexOptions.Compiled);
+        // DEEP is still what makes a row a FOOTING size rather than any other "a x b" dimension
+        // sharing a baseline with a short token. The DIMENSIONS themselves are no longer matched
+        // here: PrintedLength reads them, so the same row parses whether the drawing prints
+        // "2500 x 2500 x 900 DEEP" or "4' - 0\" x 4' - 0\" x 26\" DEEP". The old pattern required
+        // \d{3,4} and so read metric only — one of five KOR jobs.
+        private static readonly Regex DeepRe = new(
+            @"\b(?:DEEP|DP)\b", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
         // A footing mark: 1–3 letters + 1–2 digits ("F1", "SF2", "PF10"). The schedule anchors which
         // marks exist; the plan count only ever counts marks the schedule declared.
@@ -68,11 +72,14 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                     .OrderBy(w => w.Cx).Select(w => w.Text).ToList();
                 if (row.Count == 0) continue;
                 // CAD tables format 4-digit mm with a thousands comma ("1,300 DEEP") — normalize first.
-                var m = SizeRe.Match(string.Join(" ", row).Replace(",", ""));
-                if (!m.Success) continue;
+                string rowText = string.Join(" ", row).Replace(",", "");
+                if (!DeepRe.IsMatch(rowText)) continue;
 
-                double a = double.Parse(m.Groups[1].Value), b = double.Parse(m.Groups[2].Value);
-                double? c = m.Groups[3].Success ? double.Parse(m.Groups[3].Value) : null;
+                var dims = PrintedLength.TryParseSizeMm(rowText);
+                if (dims is null) continue;
+
+                double a = dims[0], b = dims[1];
+                double? c = dims.Count >= 3 ? dims[2] : null;
                 if (a < DimMinMm || a > DimMaxMm || b < DimMinMm || b > DimMaxMm) continue;
                 if (c is double cd && (cd < DimMinMm || cd > DimMaxMm)) continue;
 

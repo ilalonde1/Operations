@@ -43,7 +43,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             HashSet<(byte R, byte G, byte B)>? excludedColors = null,
             bool layerByColour = false,
             IReadOnlyDictionary<(byte R, byte G, byte B), SlabColorSettings>? colorSettings = null,
-            bool korLayers = false)
+            bool korLayers = false,
+            PlanClassificationOptions? classification = null)
         {
             double totalWeight = 0.0, sumX = 0.0, sumY = 0.0;
             foreach (var pts in geometry.Slabs)
@@ -221,9 +222,16 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             // leader work. Naming those WALL would put 2,420 walls into the model. A caller who
             // knows a colour IS a wall says so through colorSettings, and that answer is honoured
             // below; nothing is promoted to structure by guessing.
-            static string KorLayerName(string kind)
+            // ⚠ THE PATTERNS MUST BE THE ONES THAT WILL READ THIS FILE, NOT THE COMPILED DEFAULTS.
+            // dxf.wall-layer-patterns, dxf.column-layer-patterns and dxf.slab-layer-patterns are all
+            // overridable per job in KorStandards, so a job that states its own vocabulary would get
+            // a file named for the default one and a classifier looking for something else. The
+            // first version of this built from `new PlanClassificationOptions()` and had exactly
+            // that bug: drift removed against the default, left against the effective rules.
+            var patterns = classification ?? new PlanClassificationOptions();
+
+            string KorLayerName(string kind)
             {
-                var patterns = new PlanClassificationOptions();
                 return kind switch
                 {
                     "SLAB"   => "KOR_C_" + patterns.SlabLayerPatterns[0],    // KOR_C_SLABEDG
