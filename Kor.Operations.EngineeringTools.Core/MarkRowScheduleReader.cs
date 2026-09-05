@@ -26,6 +26,7 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             double RowWidthPts,
             double HeadingBandFraction,
             double HeadingSearchWidthPts,
+            double MarkColumnTolerancePts,
             double MinDimensionMm,
             double MaxDimensionMm,
             bool RequireDimensionPair = true)
@@ -59,6 +60,7 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                 $"{RulePrefix}.row-width-pts",
                 $"{RulePrefix}.heading-band-fraction",
                 $"{RulePrefix}.heading-search-width-pts",
+                $"{RulePrefix}.mark-column-tolerance-pts",
                 $"{RulePrefix}.min-dimension-mm",
                 $"{RulePrefix}.max-dimension-mm",
                 $"{RulePrefix}.require-dimension-pair",
@@ -66,6 +68,7 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
         }
 
         public readonly record struct ScheduleHeading(double X, double Y, bool IsTarget, string Title);
+        public enum MarkRoute { ScheduleColumn, PatternFallback }
 
         public sealed record Row(
             string Mark,
@@ -75,27 +78,38 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             double? StrengthMPa,
             VectorPageReader.TextToken MarkToken,
             ScheduleHeading? Heading,
-            IReadOnlyList<string> SettingKeys);
+            IReadOnlyList<string> SettingKeys,
+            MarkRoute Route);
 
         public static Options ColumnDefaults() => new(
             "dxf.schedule.column",
             ["COLUMN"],
-            [@"^[A-Z]{1,3}\d{1,2}$"],
+            // PC1, TC02, C4 — and the SUFFIXED forms KOR's own drawings use: C02-A, C03-B, PC03-A,
+            // GC11-C are all declared on 31168 S2.02, and the unsuffixed pattern read six of that
+            // sheet's ~15 marks. A suffix is how a practice distinguishes two columns of the same
+            // number, so it is the norm, not an oddity.
+            [@"^[A-Z]{1,3}\d{1,2}(?:-[A-Z0-9]{1,3})?$"],
             [],
             RowWidthPts: 340,
             HeadingBandFraction: 0.18,
             HeadingSearchWidthPts: 260,
+            MarkColumnTolerancePts: 20,
             MinDimensionMm: 150,
             MaxDimensionMm: 3000);
 
         public static Options FootingDefaults() => new(
             "dxf.schedule.footing",
             ["FOUNDATION", "FOOTING"],
-            [@"^[A-Z]{1,3}\d{1,2}$"],
+            // PC1, TC02, C4 — and the SUFFIXED forms KOR's own drawings use: C02-A, C03-B, PC03-A,
+            // GC11-C are all declared on 31168 S2.02, and the unsuffixed pattern read six of that
+            // sheet's ~15 marks. A suffix is how a practice distinguishes two columns of the same
+            // number, so it is the norm, not an oddity.
+            [@"^[A-Z]{1,3}\d{1,2}(?:-[A-Z0-9]{1,3})?$"],
             ["DEEP", "DP"],
             RowWidthPts: 320,
             HeadingBandFraction: 0.18,
             HeadingSearchWidthPts: 260,
+            MarkColumnTolerancePts: 20,
             MinDimensionMm: 200,
             MaxDimensionMm: 6000);
 
@@ -107,6 +121,7 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             RowWidthPts: 360,
             HeadingBandFraction: 0.18,
             HeadingSearchWidthPts: 320,
+            MarkColumnTolerancePts: 20,
             MinDimensionMm: 100,
             MaxDimensionMm: 1500,
             // a flat wall row states one thickness, not a size, so it must accept a lone length
@@ -127,6 +142,7 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                 RowWidthPts = settings.ValueOr($"{options.RulePrefix}.row-width-pts", options.RowWidthPts),
                 HeadingBandFraction = settings.ValueOr($"{options.RulePrefix}.heading-band-fraction", options.HeadingBandFraction),
                 HeadingSearchWidthPts = settings.ValueOr($"{options.RulePrefix}.heading-search-width-pts", options.HeadingSearchWidthPts),
+                MarkColumnTolerancePts = settings.ValueOr($"{options.RulePrefix}.mark-column-tolerance-pts", options.MarkColumnTolerancePts),
                 MinDimensionMm = settings.ValueOr($"{options.RulePrefix}.min-dimension-mm", options.MinDimensionMm),
                 MaxDimensionMm = settings.ValueOr($"{options.RulePrefix}.max-dimension-mm", options.MaxDimensionMm),
                 RequireDimensionPair = settings.FlagOr($"{options.RulePrefix}.require-dimension-pair", options.RequireDimensionPair),
@@ -149,6 +165,13 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             var headings = SchedulesOn(page, options);
             double band = page.WidthPts * options.HeadingBandFraction;
             var settingKeys = options.SettingKeys;
+
+            var targetHeadings = headings.Where(h => h.IsTarget).ToList();
+            if (targetHeadings.Count > 0)
+                return ReadFromScheduleColumns(page, options, targetHeadings, band, settingKeys);
+
+            if (headings.Count > 0)
+                return Array.Empty<Row>();
 
             var candidates = new List<Candidate>();
             foreach (var token in page.Words)
@@ -182,7 +205,7 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                 if (s.Success)
                     strength = double.Parse(s.Groups["v"].Value, System.Globalization.CultureInfo.InvariantCulture);
 
-                candidates.Add(new Candidate(token, mark, rowText, dims ?? Array.Empty<double>(), single, strength));
+                candidates.Add(new Candidate(token, mark, rowText, dims ?? Array.Empty<double>(), single, strength, null));
             }
 
             var owners = new Dictionary<double, ScheduleHeading?>();
@@ -206,10 +229,94 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                     c.StrengthMPa,
                     c.Token,
                     owner,
-                    settingKeys));
+                    settingKeys,
+                    MarkRoute.PatternFallback));
             }
 
             return rows;
+        }
+
+        private static IReadOnlyList<Row> ReadFromScheduleColumns(
+            VectorPageReader.PageContent page,
+            Options options,
+            IReadOnlyList<ScheduleHeading> targetHeadings,
+            double band,
+            IReadOnlyList<string> settingKeys)
+        {
+            var rows = new List<Row>();
+
+            foreach (var heading in targetHeadings)
+            {
+                var candidates = new List<Candidate>();
+                foreach (var rowGroup in page.Words
+                    .Where(w => w.Cy < heading.Y && Math.Abs(w.Cx - heading.X) <= band)
+                    .GroupBy(w => Math.Round(w.Cy / 6.0) * 6.0)
+                    .OrderByDescending(g => g.Key))
+                {
+                    var token = rowGroup.OrderBy(w => w.Cx).First();
+                    if (TryCandidate(page, token, options, heading) is { } candidate)
+                        candidates.Add(candidate);
+                }
+
+                if (candidates.Count == 0)
+                    continue;
+
+                var anchor = candidates.OrderByDescending(c => c.Token.Cy).First();
+                double anchorLeft = anchor.Token.MinX;
+                foreach (var c in candidates
+                    .Where(c => Math.Abs(c.Token.MinX - anchorLeft) <= options.MarkColumnTolerancePts)
+                    .OrderByDescending(c => c.Token.Cy))
+                {
+                    rows.Add(new Row(
+                        c.Mark,
+                        c.RowText,
+                        c.DimensionsMm,
+                        c.SingleLengthMm,
+                        c.StrengthMPa,
+                        c.Token,
+                        heading,
+                        settingKeys,
+                        MarkRoute.ScheduleColumn));
+                }
+            }
+
+            return rows;
+        }
+
+        private static Candidate? TryCandidate(
+            VectorPageReader.PageContent page,
+            VectorPageReader.TextToken token,
+            Options options,
+            ScheduleHeading? heading)
+        {
+            string mark = token.Text.Trim();
+            if (mark.Length == 0) return null;
+
+            var cells = page.Words
+                .Where(w => Math.Abs(w.Cy - token.Cy) <= 6
+                            && w.Cx > token.Cx
+                            && w.Cx - token.Cx <= options.RowWidthPts)
+                .OrderBy(w => w.Cx)
+                .ToList();
+            if (cells.Count == 0) return null;
+
+            string rowText = string.Join(" ", cells.Select(w => w.Text)).Replace(",", "");
+            if (!HasRequiredWord(rowText, options.RequiredRowWords)) return null;
+
+            var dims = PrintedLength.TryFindSizeMm(rowText);
+            if (dims is not null && !Plausible(dims, options)) dims = null;
+
+            double? single = dims is null && !options.RequireDimensionPair
+                ? FirstPlausibleLength(cells.Select(c => c.Text).ToList(), options)
+                : null;
+            if (dims is null && single is null) return null;
+
+            double? strength = null;
+            var s = StrengthRe.Match(rowText);
+            if (s.Success)
+                strength = double.Parse(s.Groups["v"].Value, System.Globalization.CultureInfo.InvariantCulture);
+
+            return new Candidate(token, mark, rowText, dims ?? Array.Empty<double>(), single, strength, heading);
         }
 
         public static IReadOnlyList<ScheduleHeading> SchedulesOn(
@@ -310,6 +417,7 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             string RowText,
             IReadOnlyList<double> DimensionsMm,
             double? SingleLengthMm,
-            double? StrengthMPa);
+            double? StrengthMPa,
+            ScheduleHeading? Heading);
     }
 }

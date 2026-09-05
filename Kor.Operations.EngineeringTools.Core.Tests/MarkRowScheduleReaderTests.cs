@@ -30,19 +30,14 @@ public sealed class MarkRowScheduleReaderTests
     }
 
     [Fact]
-    public void SettingsOverrideTheScheduleVocabularyAndPlausibleRange()
+    public void SettingsOverrideTheFallbackVocabularyAndPlausibleRange()
     {
         var settings = new Dictionary<string, RuleSetting>(StringComparer.OrdinalIgnoreCase)
         {
-            ["dxf.schedule.column.heading-words"] =
-                new("dxf.schedule.column.heading-words", double.NaN, RuleSettings.TextUnits, "test", "test", "test")
-                {
-                    Text = "PARKADE COLUMN",
-                },
             ["dxf.schedule.column.mark-patterns"] =
                 new("dxf.schedule.column.mark-patterns", double.NaN, RuleSettings.TextUnits, "test", "test", "test")
                 {
-                    Text = "^TC\\d{2}$",
+                    Text = "^TC\\d{2}$;^PC\\d{2}-[A-Z]$",
                 },
             ["dxf.schedule.column.min-dimension-mm"] =
                 new("dxf.schedule.column.min-dimension-mm", 300, "mm", "test", "test", "test"),
@@ -54,19 +49,65 @@ public sealed class MarkRowScheduleReaderTests
         Assert.Contains("dxf.schedule.column.heading-words", options.SettingKeys);
         Assert.Equal(300, options.MinDimensionMm);
 
+        var words = new List<TT>();
+        words.AddRange(Row("TC02", "16\" x 40\" 45 MPa", 120, 430));
+        words.AddRange(Row("PC03-A", "42\" x 42\" 45 MPa", 120, 400));
+        words.AddRange(Row("PC1", "12\" x 24\" 45 MPa", 120, 370));
+
+        var rows = MarkRowScheduleReader.ReadSchedule(Page(words.ToArray()), options);
+
+        Assert.Equal(new[] { "TC02", "PC03-A" }, rows.Select(r => r.Mark).ToArray());
+        Assert.All(rows, r => Assert.Equal(MarkRowScheduleReader.MarkRoute.PatternFallback, r.Route));
+        Assert.All(rows, r => Assert.Contains("dxf.schedule.column.mark-patterns", r.SettingKeys));
+    }
+
+    [Fact]
+    public void LocatedScheduleReadsLiteralFirstColumnMarksInsteadOfGuessingTheirShape()
+    {
+        var options = MarkRowScheduleReader.ColumnDefaults() with
+        {
+            MarkPatterns = ["^NOPE$"],
+        };
         var words = new List<TT>
         {
             W("PARKADE", 100, 500), W("COLUMN", 170, 500), W("SCHEDULE", 250, 500),
         };
-        words.AddRange(Row("TC02", "16\" x 40\" 45 MPa", 120, 430));
-        words.AddRange(Row("PC1", "12\" x 24\" 45 MPa", 120, 400));
+        words.AddRange(Row("C02-A", "24\" x 24\" 45 MPa", 120, 430));
+        words.AddRange(Row("C03-B", "30\" x 30\" 45 MPa", 120, 400));
+        words.AddRange(Row("PC03-A", "42\" x 42\" 45 MPa", 120, 370));
+        words.AddRange(Row("GC11-C", "36\" x 36\" 45 MPa", 120, 340));
 
         var rows = MarkRowScheduleReader.ReadSchedule(Page(words.ToArray()), options);
 
-        var row = Assert.Single(rows);
-        Assert.Equal("TC02", row.Mark);
-        Assert.Equal(45, row.StrengthMPa);
-        Assert.Contains("dxf.schedule.column.mark-patterns", row.SettingKeys);
+        Assert.Equal(new[] { "C02-A", "C03-B", "PC03-A", "GC11-C" }, rows.Select(r => r.Mark).ToArray());
+        Assert.All(rows, r => Assert.Equal(MarkRowScheduleReader.MarkRoute.ScheduleColumn, r.Route));
+    }
+
+    [Fact]
+    public void PatternFallbackStillNamesTheRouteItUsed()
+    {
+        var words = Row("PC03-A", "42\" x 42\" 45 MPa", 120, 430).ToArray();
+
+        var row = Assert.Single(MarkRowScheduleReader.ReadSchedule(Page(words), MarkRowScheduleReader.ColumnDefaults()));
+
+        Assert.Equal("PC03-A", row.Mark);
+        Assert.Equal(MarkRowScheduleReader.MarkRoute.PatternFallback, row.Route);
+    }
+
+    [Fact]
+    public void ColumnScheduleReaderCarriesLiteralMarkAndRouteThroughItsAdapter()
+    {
+        var words = new List<TT>
+        {
+            W("PARKADE", 100, 500), W("COLUMN", 170, 500), W("SCHEDULE", 250, 500),
+        };
+        words.AddRange(Row("PC03-A", "42\" x 42\" 45 MPa", 120, 430));
+
+        var row = Assert.Single(ColumnScheduleReader.ReadSchedule(Page(words.ToArray())));
+
+        Assert.Equal("PC03-A", row.Mark);
+        Assert.Equal(42 * PrintedLength.MmPerInch, row.WidthMm, 0.6);
+        Assert.Equal(MarkRowScheduleReader.MarkRoute.ScheduleColumn, row.Route);
     }
 
     [Fact]

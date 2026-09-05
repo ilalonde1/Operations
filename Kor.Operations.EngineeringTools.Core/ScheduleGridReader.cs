@@ -29,7 +29,8 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             string Mark,
             double ThicknessIn,
             double? StrengthMPa,
-            string RowText);
+            string RowText,
+            MarkRowScheduleReader.MarkRoute Route = MarkRowScheduleReader.MarkRoute.ScheduleColumn);
 
         // 1–2 digits then at most two non-alphanumeric chars (the inch mark, whatever glyph it is).
         // Matches 30", 6", 30 — rejects rebar tokens like "30-45M", "8-30M" (they carry letters).
@@ -401,7 +402,8 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                     row.Mark,
                     thicknessMm / PrintedLength.MmPerInch,
                     row.StrengthMPa,
-                    row.RowText));
+                    row.RowText,
+                    row.Route));
             }
 
             return rows;

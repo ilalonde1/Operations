@@ -20,7 +20,8 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
         double DepthMm,
         double? StrengthMPa,
         string? Reinforcing,
-        string? Ties);
+        string? Ties,
+        MarkRowScheduleReader.MarkRoute Route = MarkRowScheduleReader.MarkRoute.ScheduleColumn);
 
     /// <summary>
     /// Reads a drawing's COLUMN SCHEDULE — mark, size, strength and reinforcing — from the native
@@ -124,7 +125,8 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                 rows.Add(new ColumnScheduleRow(
                     row.Mark, w1, d1, row.StrengthMPa,
                     Reinforcing: VertsRe.Match(row.RowText) is { Success: true } v ? v.Value.Trim() : null,
-                    Ties: TiesRe.Match(row.RowText) is { Success: true } t ? t.Value.Trim() : null));
+                    Ties: TiesRe.Match(row.RowText) is { Success: true } t ? t.Value.Trim() : null,
+                    Route: row.Route));
             }
 
             return rows;

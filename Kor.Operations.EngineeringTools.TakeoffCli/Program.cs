@@ -2246,7 +2246,8 @@ if (args.Length >= 1 && args[0].Equals("vector-sched", StringComparison.OrdinalI
                               $"{r.DepthMm / PrintedLength.MmPerInch,5:0.#}\"" +
                               $"{(r.StrengthMPa is double mpa ? $"  {mpa:0} MPa" : "")}" +
                               $"{(r.Reinforcing is null ? "" : "  " + r.Reinforcing)}" +
-                              $"{(r.Ties is null ? "" : "  | " + r.Ties)}");
+                              $"{(r.Ties is null ? "" : "  | " + r.Ties)}" +
+                              $"  [{r.Route}]");
         Console.WriteLine();
     }
     catch (Exception ex) { Console.WriteLine($"Column schedule: unreadable — {ex.GetType().Name}"); }
@@ -2271,7 +2272,7 @@ if (args.Length >= 1 && args[0].Equals("vector-sched", StringComparison.OrdinalI
     var flatRows = ScheduleGridReader.ReadFlatWallRows(page);
     Console.WriteLine($"Flat wall rows ({flatRows.Count}) — mark: thickness, strength:");
     foreach (var r in flatRows)
-        Console.WriteLine($"    {r.Mark,-4} {r.ThicknessIn:F0}\"{(r.StrengthMPa is double mpa ? $"  {mpa:F0} MPa" : "")}");
+        Console.WriteLine($"    {r.Mark,-4} {r.ThicknessIn:F0}\"{(r.StrengthMPa is double mpa ? $"  {mpa:F0} MPa" : "")}  [{r.Route}]");
     return 0;
 }
 

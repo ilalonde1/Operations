@@ -27,6 +27,26 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             return (max - min) <= 0x20 && max <= 0xC0;
         }
 
+        /// <summary>
+        /// How much longer than it is wide a closed shape may be and still be a column.
+        /// </summary>
+        /// <remarks>
+        /// This was the literal 2.5 in the aspect test below, and it silently discarded a declared
+        /// column type. 31168's COLUMN SCHEDULE - PARKADE states `PC01 14" x 36"` — aspect 2.571 —
+        /// and measured on that job's own sheets, 54 shapes at exactly 14x36 were rejected on p11
+        /// and 32 on p12. Its commonest parkade column never reached a model, and the sheet still
+        /// reported 220 "columns", which were isolation-joint squares.
+        ///
+        /// 3.2 admits every column those five KOR jobs declare — the most slender is TC04 at
+        /// 12"x36", exactly 3.0 — with a little margin for a drawn outline carrying its line width.
+        /// It is not a licence: the limit still exists to keep linework out, and
+        /// <see cref="Classify"/> takes it as a parameter so a job can state its own.
+        ///
+        /// ⚠ Raising it admits more, and the differential across all five jobs is in the commit that
+        /// changed it. If this moves again, run that comparison again — slabs and lines shift too.
+        /// </remarks>
+        public const double DefaultMaxColumnAspect = 3.2;
+
         public static void Classify(
             IReadOnlyList<RawSubpath> rawSubpaths,
             ExtractedGeometry result,
@@ -37,7 +57,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             double pageHeightMm,
             bool   annotationsOnly = true,
             double columnMaxSizeMm = 1500.0,
-            double columnMinDimMm = 200.0)
+            double columnMinDimMm = 200.0,
+            double maxColumnAspect = DefaultMaxColumnAspect)
         {
             double gridThreshMm = Math.Max(pageWidthMm, pageHeightMm) * 0.6;
 
@@ -77,7 +98,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     {
                         // Column candidates must pass structural plausibility checks:
                         // 1. Both dimensions above minimum (filters annotation boxes, symbols)
-                        // 2. Aspect ratio <= 2.5 (columns are roughly square, not elongated)
+                        // 2. Aspect ratio within maxColumnAspect (columns are roughly square, not elongated)
                         double minDim = Math.Min(bboxW, bboxH);
                         double maxDim = Math.Max(bboxW, bboxH);
                         if (!sub.IsAnnotation && minDim < columnMinDimMm) continue;
@@ -90,8 +111,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         // For annotations, all small filled shapes are structural
                         // elements — classify as columns regardless of aspect ratio.
                         // User can right-click to reclassify elongated ones as Beam.
-                        // For page content, keep the 2.5 aspect ratio filter.
-                        if (!sub.IsAnnotation && maxDim > 2.5 * minDim)
+                        // For page content, keep the aspect filter.
+                        if (!sub.IsAnnotation && maxDim > maxColumnAspect * minDim)
                             continue;
 
                         result.Columns.Add(PolygonProcessor.Centroid(pts));

@@ -26,7 +26,12 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
     public static class FootingScheduleReader
     {
         /// <summary>One schedule row. Strip footings have <see cref="LengthMm"/> = 0.</summary>
-        public sealed record FootingType(string Mark, double LengthMm, double WidthMm, double DepthMm)
+        public sealed record FootingType(
+            string Mark,
+            double LengthMm,
+            double WidthMm,
+            double DepthMm,
+            MarkRowScheduleReader.MarkRoute Route = MarkRowScheduleReader.MarkRoute.ScheduleColumn)
         {
             public bool IsSpread => LengthMm > 0;
 
@@ -59,8 +64,8 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
 
                 // Three dims = spread (L x W x DEEP); two dims = strip (width x depth, length on plan).
                 types.Add(c is double depth
-                    ? new FootingType(row.Mark, a, b, depth)
-                    : new FootingType(row.Mark, 0, a, b));
+                    ? new FootingType(row.Mark, a, b, depth, row.Route)
+                    : new FootingType(row.Mark, 0, a, b, row.Route));
                 minX = Math.Min(minX, row.MarkToken.MinX); minY = Math.Min(minY, row.MarkToken.MinY);
                 maxX = Math.Max(maxX, row.MarkToken.MaxX); maxY = Math.Max(maxY, row.MarkToken.MaxY);
             }
