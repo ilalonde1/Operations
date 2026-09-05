@@ -42,6 +42,39 @@ It scores only what was found. 31168 p11 scored 0/220 — and the reason was not
 wrong sizes, it is that the real columns were never detected at all and 220 isolation-joint squares
 were. The score was right, the story it implied was not.
 
+## Change this one first — stop guessing what a mark looks like
+
+`^[A-Z]{1,3}\d{1,2}$` is a guess at the SHAPE of a mark, and it is load-bearing twice over: it
+decides which schedule rows exist, and which words on the plan count as labels. It has now been
+wrong on real KOR drawings twice — `C02-A`, `C03-B`, `PC03-A` and `GC11-C` are all declared on
+31168 S2.02 and none of them matches.
+
+**The drawing does not need to be guessed at, because the schedule states the marks.** A schedule's
+first column IS the list of marks. Read that column structurally — the tokens sharing the table's
+leftmost x under its heading — and take the strings literally, whatever they look like. Then match
+plan labels against THAT KNOWN SET rather than pattern-matching every word on the page.
+
+This is worth doing before anything else in this file because:
+
+- it deletes the most brittle regex in the stack, and both known mark failures with it;
+- it removes the need for the 15-point mark-column bucket, since the mark column is simply the
+  column those tokens are in;
+- it makes plan-label matching exact instead of approximate, which is what
+  `PlanAgreesWithItsSchedule` attributes columns by, and what `FootingScheduleReader` counts
+  placements by;
+- and it removes the reason `Options.RequireDimensionPair` had to exist — a plan label only counts
+  if the schedule already named it, so a stray `SF1` on the plan can no longer anchor a mark column
+  and take a whole table down with it.
+
+⚠ Keep `MarkPatterns` as a fallback for a sheet whose schedule cannot be located, and say in the
+result which route was used. A reader that silently changes how it identified a mark is the same
+class of problem as everything else in this file.
+
+⚠ THE GENERAL LESSON, and the thing to look for elsewhere: a regex parsing a NOTATION is fine —
+`PrintedLength` reading `4' - 0"` has been right on every job since it was written. A regex encoding
+a CONVENTION is the recurring defect: metric-only sizes, this mark shape, a 2.5 aspect ratio, a
+260-point heading scope. Every failure this session was the second kind.
+
 ## What to attack
 
 **Every constant that is not a rule.** These decide what reaches a model and none is reachable as a
@@ -86,8 +119,12 @@ does it need a floor on `ColumnsFound` and the "matched to its own mark" figure 
 ## What I will check
 
 - Footings unchanged: 31065 1,174 cy, 31138 353 cy, 31130 258 cy.
-- Column schedules unchanged: 31130 7 marks, 31168 6, 31138 10, 31065 7 — and if the mark pattern
-  widens, 31168 should read MORE than 6 and still not read a footing row as a column.
+- Column schedules: 31130 7 marks, 31168 6, 31138 10, 31065 7 today. Reading marks off the table's
+  own column should INCREASE 31168 — its sheet declares roughly fifteen, including `C02-A`,
+  `C03-A`, `C03-B`, `C04-A`, `C04-B`, `GC11-C`, `PC03-A`, `PC03-B` — while 31130, 31138 and 31065
+  stay as they are, and no footing row is read as a column.
+- With marks taken from the schedule, 31168's `PC03-A 42" x 42"` should be recognised: 21 shapes at
+  42x42 are already detected on p11 and currently match nothing, because the mark was never read.
 - The gate reproduces 41/52 on 31130 S2.01.2, and still collapses on a wrong scale: 31065 at 1:100
   scores 19/36, 25/31, 22/33, and at 96 scores 3/36, 3/31, 3/33.
 - Any constant that becomes a rule keeps its current value as the default, so every number above is
