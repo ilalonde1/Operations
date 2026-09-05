@@ -58,19 +58,24 @@ if (args.Length >= 1 && args[0].Equals("pdf-readable", StringComparison.OrdinalI
 //
 // The scale is OFFERED, never assumed: with no --scale this reports what the sheet itself states
 // and stops, because a wrong denominator renders identically and is wrong by a constant.
-// Usage: takeoff pdf-takeoff <pdf> <out.dxf> [--page N] [--pages A-B] [--scale 96] [--markup] [--kor-layers]
+// Usage: takeoff pdf-takeoff <pdf> <out.dxf> [--page N] [--pages A-B] [--scale 96] [--markup] [--kor-layers] [--rules-db <conn>]
 if (args.Length >= 1 && args[0].Equals("pdf-takeoff", StringComparison.OrdinalIgnoreCase))
 {
-    if (args.Length < 3) { Console.Error.WriteLine("Usage: takeoff pdf-takeoff <pdf> <out.dxf> [--page N] [--pages A-B] [--scale 96] [--markup] [--kor-layers]"); return 1; }
+    if (args.Length < 3) { Console.Error.WriteLine("Usage: takeoff pdf-takeoff <pdf> <out.dxf> [--page N] [--pages A-B] [--scale 96] [--markup] [--kor-layers] [--rules-db <conn>]"); return 1; }
     string ptPdf = args[1], ptOut = args[2];
     if (!File.Exists(ptPdf)) { Console.Error.WriteLine($"PDF not found '{ptPdf}'."); return 2; }
 
     int ptFirst = 1, ptLast = 1, ptScale = 0;
     bool ptMarkup = false, ptKor = false;
+    string? ptRulesDb = null;
     for (int i = 3; i < args.Length; i++)
     {
         string a = args[i];
         if (a.Equals("--markup", StringComparison.OrdinalIgnoreCase)) ptMarkup = true;
+        // The numbers that decide what the linework becomes, from the job's own rules rather than
+        // this build's defaults. Without it nothing changes -- the defaults ARE what it did before.
+        else if (a.Equals("--rules-db", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length)
+            ptRulesDb = args[++i];
         // Name the layers the way the Revit bridge does, so dxf-to-etabs reads this file with no
         // per-source options and a PDF-derived plan stops being a special case.
         else if (a.Equals("--kor-layers", StringComparison.OrdinalIgnoreCase)) ptKor = true;
@@ -105,8 +110,10 @@ if (args.Length >= 1 && args[0].Equals("pdf-takeoff", StringComparison.OrdinalIg
     string ptStem = Path.GetFileNameWithoutExtension(ptOut);
     Directory.CreateDirectory(ptDir);
 
+    var (ptOptions, ptRulesSource) = PdfIntakeOptions.For(ptRulesDb);
+
     Console.WriteLine($"{Path.GetFileName(ptPdf)}  1:{ptScale}  pages {ptFirst}-{ptLast}  " +
-                      $"reading {(ptMarkup ? "MARKUP only" : "the drawing")}");
+                      $"reading {(ptMarkup ? "MARKUP only" : "the drawing")}  rules: {ptRulesSource}");
     Console.WriteLine();
     Console.WriteLine("page   raw  annot   slabs  columns   lines   file");
 
@@ -114,7 +121,7 @@ if (args.Length >= 1 && args[0].Equals("pdf-takeoff", StringComparison.OrdinalIg
     for (int p = ptFirst; p <= ptLast; p++)
     {
         ExtractedGeometry geo;
-        try { geo = PdfPlanReader.Read(ptPdf, ptScale, p, annotationsOnly: ptMarkup); }
+        try { geo = PdfPlanReader.Read(ptPdf, ptScale, p, ptOptions, ptMarkup); }
         catch (Exception ex) { Console.WriteLine($"{p,4}   FAILED  {ex.GetType().Name}: {ex.Message}"); continue; }
 
         int annot = PdfPlanReader.AnnotationCount(ptPdf, p, ptScale);
@@ -140,7 +147,7 @@ if (args.Length >= 1 && args[0].Equals("pdf-takeoff", StringComparison.OrdinalIg
             var declared = ColumnScheduleReader.ReadSchedule(schedulePage);
             if (declared.Count > 0 && geo.Columns.Count > 0)
             {
-                var check = PlanAgreesWithItsSchedule.Check(geo, declared, schedulePage);
+                var check = PlanAgreesWithItsSchedule.Check(geo, declared, schedulePage, ptOptions.AgreementToleranceMm, ptOptions.AgreementLabelReachMm);
 
                 // The DRAWING's own count first, because it is the denominator that means something:
                 // 31168 p11 read as 67/266 and looked like a disaster, when the sheet labels 71
@@ -3944,7 +3951,7 @@ public static class TakeoffCliHelp
     public static IReadOnlyList<TakeoffCliCommand> Commands { get; } =
     [
         new("pdf-readable", "takeoff pdf-readable <pdf> [first] [last]", "Check whether a PDF has readable vector text."),
-        new("pdf-takeoff", "takeoff pdf-takeoff <pdf> <out.dxf> [--page N] [--pages A-B] [--scale 96] [--markup] [--kor-layers]", "Take a drawing PDF's structure off to DXF, reading the drawing itself unless --markup."),
+        new("pdf-takeoff", "takeoff pdf-takeoff <pdf> <out.dxf> [--page N] [--pages A-B] [--scale 96] [--markup] [--kor-layers] [--rules-db <conn>]", "Take a drawing PDF's structure off to DXF, reading the drawing itself unless --markup."),
         new("dxf-render", "takeoff dxf-render <plan.dxf> <out.png> [--size 1800] [--layers SLABEDG,...]", "Render structural DXF layers to a PNG."),
         new("dxf-inspect", "takeoff dxf-inspect <plan.dxf> [--walls] [--plates]", "Inspect DXF layers, loops, wall outlines, and recovered floor plates."),
         new("publish", "takeoff publish <job> [--model-folder <folder>] [--dxf-folder <folder>] [--rules-db <c>] [--per-building] [--land]", "Discover, build, verify, summarize, gate and land a DXF-to-ETABS publish."),

@@ -85,6 +85,68 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         slabMinDiagonalMm, lineMinLengthMm, excludeGridLines);
         }
 
+        /// <summary>
+        /// Read a page with the numbers this JOB states, rather than the ones this build was written
+        /// with. See <see cref="PdfIntakeOptions"/>.
+        /// </summary>
+        /// <remarks>
+        /// ⚠ <paramref name="options"/> comes BEFORE <paramref name="annotationsOnly"/> so the flag
+        /// keeps its default. It defaults to true on every overload, deliberately — see the remarks
+        /// on this class — and a new overload that made it a required positional argument quietly
+        /// dropped that guarantee. ThePlanReaderForwardsTheFlagItWasGivenTests caught it.
+        /// </remarks>
+        public static ExtractedGeometry Read(
+            string filePath,
+            int    scaleDenominator,
+            int    pageNumber,
+            PdfIntakeOptions options,
+            bool   annotationsOnly  = true,
+            bool   excludeGridLines = false)
+        {
+            ArgumentNullException.ThrowIfNull(options);
+            using var doc = PdfDocument.Open(filePath);
+            return Read(doc, scaleDenominator, pageNumber, options, annotationsOnly, excludeGridLines);
+        }
+
+        /// <summary>Overload for a document already open, so a sweep parses once.</summary>
+        public static ExtractedGeometry Read(
+            PdfDocument doc,
+            int    scaleDenominator,
+            int    pageNumber,
+            PdfIntakeOptions options,
+            bool   annotationsOnly  = true,
+            bool   excludeGridLines = false)
+        {
+            ArgumentNullException.ThrowIfNull(doc);
+            ArgumentNullException.ThrowIfNull(options);
+
+            var result = new ExtractedGeometry { ScaleDenominator = scaleDenominator };
+            double scale = scaleDenominator * PdfToSafeConstants.PointsToMm;
+
+            var page = doc.GetPage(pageNumber);
+            result.PageWidthPts  = page.Width;
+            result.PageHeightPts = page.Height;
+            result.PageCount     = doc.NumberOfPages;
+
+            var rawSubpaths = ParsePage(page, scale);
+            result.RawPathCount = rawSubpaths.Count;
+
+            int meaningfulCount = rawSubpaths.Count(s =>
+                s.Points.Count > 3 ||
+                (s.IsClosed && GeometryFilterService.BoundingBoxDiagonal(s.Points) > 10.0));
+            result.IsVectorPdf = meaningfulCount >= 5;
+
+            if (rawSubpaths.Count == 0) return result;
+
+            GeometryFilterService.Classify(rawSubpaths, result,
+                options.SlabMinDiagonalMm, options.LineMinLengthMm, excludeGridLines,
+                result.PageWidthPts * scale, result.PageHeightPts * scale,
+                annotationsOnly,
+                options.ColumnMaxSizeMm, options.ColumnMinDimMm, options.ColumnMaxAspect);
+
+            return result;
+        }
+
         /// <summary>Overload for a document already open, so a sweep pays the parse cost once.</summary>
         public static ExtractedGeometry Read(
             PdfDocument doc,
