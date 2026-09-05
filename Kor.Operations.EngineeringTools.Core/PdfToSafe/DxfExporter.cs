@@ -1,4 +1,4 @@
-#nullable enable
+﻿#nullable enable
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -230,15 +230,52 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             // that bug: drift removed against the default, left against the effective rules.
             var patterns = classification ?? new PlanClassificationOptions();
 
+            // ⚠ A VOCABULARY IS A LIST, AND TAKING [0] IS A GUESS. KorStandards banks
+            // dxf.column-layer-patterns as "_COL;-COL;S-COL" — THREE patterns — and the first
+            // version of this concatenated element [0], which worked only because `_COL` happens to
+            // be first and happens to build an unambiguous name. A reordered list, a different
+            // practice's vocabulary, or an empty one (which threw) all break that silently.
+            //
+            // So every pattern is tried, and the first that yields a name matching ITS OWN
+            // vocabulary and no other is used. If none does, the plain kind name is emitted rather
+            // than an ambiguous one: the classifier will not read it, which is visible, where a
+            // layer read as the wrong element is not.
             string KorLayerName(string kind)
             {
-                return kind switch
+                var (prefix, own) = kind switch
                 {
-                    "SLAB"   => "KOR_C_" + patterns.SlabLayerPatterns[0],    // KOR_C_SLABEDG
-                    "COLUMN" => "KOR_V"  + patterns.ColumnLayerPatterns[0],  // KOR_V_COL
-                    "WALL"   => "KOR_V-" + patterns.WallLayerPatterns[0],    // KOR_V-WALL
-                    _        => kind,                                        // BEAM, unmatched
+                    "SLAB"   => ("KOR_C_", patterns.SlabLayerPatterns),
+                    "COLUMN" => ("KOR_V",  patterns.ColumnLayerPatterns),
+                    "WALL"   => ("KOR_V-", patterns.WallLayerPatterns),
+                    _        => (null, null),                                // BEAM, deliberately unmatched
                 };
+                if (prefix is null || own is null) return kind;
+
+                foreach (string pattern in own)
+                {
+                    if (string.IsNullOrWhiteSpace(pattern)) continue;
+                    string candidate = prefix + pattern;
+                    if (Unambiguous(candidate, own)) return candidate;
+                }
+                return kind;
+            }
+
+            // Matches its own vocabulary and neither of the other two. The trap is recorded in
+            // ModelQuestionnaire in KOR's own convention: "V_COL-WALL is a column layer, and testing
+            // walls first would take it for a wall."
+            bool Unambiguous(string layer, IReadOnlyList<string> own)
+            {
+                bool Hits(IReadOnlyList<string> vocab) =>
+                    vocab.Any(p => !string.IsNullOrWhiteSpace(p)
+                                && layer.Contains(p, StringComparison.OrdinalIgnoreCase));
+
+                if (!Hits(own)) return false;
+
+                int families = 0;
+                if (Hits(patterns.SlabLayerPatterns))   families++;
+                if (Hits(patterns.ColumnLayerPatterns)) families++;
+                if (Hits(patterns.WallLayerPatterns))   families++;
+                return families == 1;
             }
 
             string StructuralLayer(string baseLayer, bool markup)

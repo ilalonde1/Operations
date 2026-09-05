@@ -40,6 +40,92 @@ public sealed class KorLayerNamesAreReadByTheClassifierTests
     private static string[] LayersIn(string dxf)
         => System.IO.File.ReadAllLines(dxf);
 
+    // ── the vocabulary is a LIST, and the banked one has three column patterns ───────────────────
+
+    /// <summary>KorStandards as it actually stands: dxf.column-layer-patterns = "_COL;-COL;S-COL".</summary>
+    private static PlanClassificationOptions Banked => new()
+    {
+        SlabLayerPatterns   = ["SLABEDG"],
+        ColumnLayerPatterns = ["_COL", "-COL", "S-COL"],
+        WallLayerPatterns   = ["WALL"],
+    };
+
+    private static IReadOnlyList<string> EmittedLayers(bool korLayers, PlanClassificationOptions? rules)
+    {
+        var geo = new ExtractedGeometry();
+        geo.Columns.Add((100, 100));
+        geo.ColumnColors.Add((200, 16, 16));
+        geo.ColumnIsAnnotation.Add(false);
+        geo.ColumnSizes.Add((600, 600));
+
+        string path = System.IO.Path.Combine(
+            System.IO.Path.GetTempPath(), $"kor-vocab-{System.Guid.NewGuid():N}.dxf");
+        try
+        {
+            DxfExporter.Export(geo, path, korLayers: korLayers, classification: rules);
+            var lines = System.IO.File.ReadAllLines(path);
+            var names = new List<string>();
+            for (int i = 0; i < lines.Length - 1; i++)
+                if (lines[i].Trim() == "8") names.Add(lines[i + 1].Trim());
+            return names.Distinct().ToList();
+        }
+        finally
+        {
+            if (System.IO.File.Exists(path)) System.IO.File.Delete(path);
+        }
+    }
+
+    /// <summary>
+    /// The banked list has three column patterns. Any of them builds a workable name, but the
+    /// exporter must not depend on WHICH is first — the first version indexed [0] and was correct
+    /// only by luck of ordering.
+    /// </summary>
+    [Fact]
+    public void AReorderedVocabularyStillProducesAReadableLayer()
+    {
+        var forward = Banked;
+        var reversed = Banked with { ColumnLayerPatterns = ["S-COL", "-COL", "_COL"] };
+
+        string a = Assert.Single(EmittedLayers(true, forward),
+            n => Matches(n, forward.ColumnLayerPatterns));
+        string b = Assert.Single(EmittedLayers(true, reversed),
+            n => Matches(n, reversed.ColumnLayerPatterns));
+
+        Assert.StartsWith("KOR_", a, StringComparison.Ordinal);
+        Assert.StartsWith("KOR_", b, StringComparison.Ordinal);
+    }
+
+    /// <summary>An empty vocabulary must not throw — indexing [0] did.</summary>
+    [Fact]
+    public void AnEmptyVocabularyEmitsThePlainNameRatherThanThrowing()
+    {
+        var none = Banked with { ColumnLayerPatterns = [] };
+
+        var names = EmittedLayers(true, none);
+
+        Assert.Contains("COLUMN", names);
+    }
+
+    /// <summary>
+    /// A pattern that would build a name readable as two elements must be passed over, not emitted.
+    /// KOR's own convention carries this trap: "V_COL-WALL is a column layer, and testing walls
+    /// first would take it for a wall."
+    /// </summary>
+    [Fact]
+    public void APatternThatWouldBuildAnAmbiguousNameIsSkipped()
+    {
+        // "_COL-WALL" first would give KOR_V_COL-WALL — column AND wall
+        var trap = Banked with { ColumnLayerPatterns = ["_COL-WALL", "_COL"] };
+
+        string column = Assert.Single(EmittedLayers(true, trap),
+            n => n.StartsWith("KOR_V", StringComparison.Ordinal)
+              && !n.Contains("MARKUP", StringComparison.Ordinal)
+              && !n.Contains("SLABEDG", StringComparison.Ordinal)
+              && !n.EndsWith("WALL", StringComparison.Ordinal));
+
+        Assert.Equal("KOR_V_COL", column);
+    }
+
     /// <summary>Write one tiny geometry both ways and read the layer names back out of the file.</summary>
     private static IReadOnlyList<string> EmittedLayers(bool korLayers)
     {
