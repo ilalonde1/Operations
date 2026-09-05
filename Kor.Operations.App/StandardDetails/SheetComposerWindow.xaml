@@ -204,7 +204,11 @@
                             Style="{StaticResource Button.Secondary}" Click="Cancel_Click"/>
                     <Button x:Name="OpenPdfButton" Width="110" Height="34" Margin="0,0,8,0" Content="Open PDF"
                             Style="{StaticResource Button.Secondary}" Click="OpenPdf_Click"/>
-                    <Button x:Name="SaveButton" Width="120" Height="34" Content="Save Sheet"
+                    <Button x:Name="CreatePdfSheetButton" Width="140" Height="34" Margin="0,0,8,0" Content="Create PDF sheet"
+                            Style="{StaticResource Button.Secondary}" Click="CreatePdfSheet_Click"
+                            ToolTip="Builds a personal PDF from the captured detail art. No Revit needed - an uncontrolled working copy, not the governed standard."/>
+                    <Button x:Name="SaveButton" Width="120" Height="34" Content="Save to master"
+                            ToolTip="Writes a governed sheet into the master model. Requires Revit with the AUTHORING template open (gatekeeper)."
                             Style="{StaticResource PrimaryActionButton}" Click="Save_Click"/>
                 </StackPanel>
             </Border>

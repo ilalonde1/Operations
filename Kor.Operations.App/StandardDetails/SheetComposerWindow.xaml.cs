@@ -3,6 +3,7 @@ using System;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -12,6 +13,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Media.Imaging;
+using Microsoft.Win32;
 
 namespace Kor.Operations.StandardDetails;
 
@@ -277,6 +279,92 @@ public partial class SheetComposerWindow : Window
         }
     }
 
+    private async void CreatePdfSheet_Click(object sender, RoutedEventArgs e)
+    {
+        if (_placements.Count == 0)
+        {
+            MessageBox.Show(this, "Add at least one detail to the sheet.", "Standard Details - Create PDF Sheet", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        ToggleBusy(true);
+        try
+        {
+            SummaryText.Text = "Building personal PDF sheet...";
+            var placements = new System.Collections.Generic.List<CustomSheetPlacementSpec>();
+            var missing = new System.Collections.Generic.List<string>();
+            foreach (var row in _placements)
+            {
+                var center = ReadPlacementCenter(row);
+                var size = ComputePlacementSizeMm(row);
+                var detailPdf = await _catalogRepository.LoadRenderedPdfAsync("detail", row.DetailNumber);
+                if (detailPdf is not { Length: > 0 })
+                {
+                    detailPdf = null;
+                    missing.Add(row.DetailNumber);
+                }
+
+                placements.Add(new CustomSheetPlacementSpec(
+                    row.DetailNumber,
+                    detailPdf,
+                    center.X - (size.Width / 2),
+                    center.Y - (size.Height / 2),
+                    size.Width,
+                    size.Height));
+            }
+
+            if (missing.Count > 0 && !ConfirmMissingCustomPdfArt(missing))
+            {
+                SummaryText.Text = "Personal PDF sheet cancelled.";
+                return;
+            }
+
+            var generatedUtc = DateTime.UtcNow;
+            var spec = new CustomSheetSpec(
+                SheetWidthMm,
+                SheetHeightMm,
+                SheetNumberBox.Text.Trim(),
+                SheetNameBox.Text.Trim(),
+                Environment.UserName,
+                generatedUtc,
+                placements);
+
+            var bytes = CustomPdfSheetComposer.Build(spec);
+            var path = PromptForCustomSheetPath(generatedUtc);
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                SummaryText.Text = "Personal PDF sheet cancelled.";
+                return;
+            }
+
+            await File.WriteAllBytesAsync(path, bytes);
+            try
+            {
+                Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+                SummaryText.Text = $"Created personal PDF sheet: {path}";
+            }
+            catch (Exception openEx)
+            {
+                SummaryText.Text = $"Created personal PDF sheet: {path}";
+                MessageBox.Show(
+                    this,
+                    $"The PDF was saved at:{Environment.NewLine}{path}{Environment.NewLine}{Environment.NewLine}It could not be opened automatically:{Environment.NewLine}{openEx.Message}",
+                    "Standard Details - Create PDF Sheet",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+            }
+        }
+        catch (Exception ex)
+        {
+            SummaryText.Text = "Personal PDF sheet could not be created.";
+            MessageBox.Show(this, ex.Message, "Standard Details - Create PDF Sheet Failed", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            ToggleBusy(false);
+        }
+    }
+
     private static SheetComposerPlacement ToPlacement(ComposerPlacementDisplayRow row)
     {
         if (!double.TryParse(row.XmmText, NumberStyles.Float, CultureInfo.InvariantCulture, out var x))
@@ -302,6 +390,42 @@ public partial class SheetComposerWindow : Window
         }
 
         return new SheetComposerPlacement(row.DetailNumber, row.CanonicalViewName, x, y, scale);
+    }
+
+    private bool ConfirmMissingCustomPdfArt(System.Collections.Generic.IReadOnlyList<string> missing)
+    {
+        var shown = missing.Take(20).ToList();
+        var message = "These details have no captured art and will appear as labelled placeholders:"
+                      + Environment.NewLine
+                      + string.Join(Environment.NewLine, shown.Select(x => $"- {x}"));
+        if (missing.Count > shown.Count)
+        {
+            message += Environment.NewLine + $"- ... {missing.Count - shown.Count} more";
+        }
+
+        message += Environment.NewLine + Environment.NewLine + "Continue?";
+        return MessageBox.Show(this, message, "Standard Details - Missing PDF Art", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes;
+    }
+
+    private string? PromptForCustomSheetPath(DateTime generatedUtc)
+    {
+        var sheetNumber = SheetNumberBox.Text.Trim();
+        var fallback = $"KOR-Custom-Sheet-{generatedUtc:yyyyMMdd-HHmmss}";
+        var fileName = string.IsNullOrWhiteSpace(sheetNumber)
+            ? $"{fallback}.pdf"
+            : $"{SanitizeFileName(sheetNumber)}.pdf";
+        var documents = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+        var dialog = new SaveFileDialog
+        {
+            Filter = "PDF|*.pdf",
+            DefaultExt = ".pdf",
+            AddExtension = true,
+            OverwritePrompt = true,
+            FileName = fileName,
+            InitialDirectory = Directory.Exists(documents) ? documents : string.Empty
+        };
+
+        return dialog.ShowDialog(this) == true ? dialog.FileName : null;
     }
 
     private void SheetHost_SizeChanged(object sender, SizeChangedEventArgs e)
@@ -591,6 +715,17 @@ public partial class SheetComposerWindow : Window
 
     private static string FormatMm(double value) => Math.Round(value, 1).ToString("0.#", CultureInfo.InvariantCulture);
 
+    private static string SanitizeFileName(string value)
+    {
+        var invalid = Path.GetInvalidFileNameChars().ToHashSet();
+        var cleaned = new string(value.Trim()
+            .Select(ch => invalid.Contains(ch) ? '-' : ch)
+            .ToArray());
+        cleaned = System.Text.RegularExpressions.Regex.Replace(cleaned, @"\s+", "-");
+        cleaned = System.Text.RegularExpressions.Regex.Replace(cleaned, "-{2,}", "-").Trim('-', '.');
+        return string.IsNullOrWhiteSpace(cleaned) ? "KOR-Custom-Sheet" : cleaned;
+    }
+
     private static bool TryParseDouble(string text, out double value)
         => double.TryParse(text?.Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out value);
 
@@ -621,6 +756,7 @@ public partial class SheetComposerWindow : Window
         PlacementsGrid.IsEnabled = !busy;
         SheetCanvas.IsEnabled = !busy;
         OpenPdfButton.IsEnabled = !busy;
+        CreatePdfSheetButton.IsEnabled = !busy;
         SaveButton.IsEnabled = !busy;
     }
 

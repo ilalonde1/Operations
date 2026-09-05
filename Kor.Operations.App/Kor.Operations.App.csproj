@@ -275,6 +275,7 @@
     <PackageReference Include="Microsoft.Identity.Client.Extensions.Msal" Version="4.83.1" />
     <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="9.0.8" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.8" />
+    <PackageReference Include="PDFsharp-WPF" Version="6.2.4" />
     <PackageReference Include="PdfPig" Version="0.1.9" />
     <PackageReference Include="netDxf.netstandard" Version="2.4.0" />
   </ItemGroup>
