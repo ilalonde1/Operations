@@ -676,6 +676,18 @@ builder.Services.AddSingleton<Kor.Opportunities.Data.Awards.VendorSiteExtraction
             builder.Services.AddSingleton<IOpportunityProvider>(sp =>
                 sp.GetRequiredService<ArcGisFeatureOpportunityProvider>());
 
+            // EngagementHQ (2026-09-04). The regional districts' development
+            // applications live on their consultation platform, not on a map, and
+            // /projects.json is public. This is the only route into the
+            // unincorporated electoral areas.
+            builder.Services.AddHttpClient<EngagementHqOpportunityProvider>(c =>
+            {
+                c.Timeout = TimeSpan.FromMinutes(2);
+            })
+            .AddPolicyHandler((sp, _) => RetryPolicy(sp, "EngagementHq"));
+            builder.Services.AddSingleton<IOpportunityProvider>(sp =>
+                sp.GetRequiredService<EngagementHqOpportunityProvider>());
+
             // Playwright platform - single browser pool shared across all
             // Playwright-driven scrapers.
             builder.Services.AddSingleton<Kor.Opportunities.Data.Ingestion.Scraping.PlaywrightBrowserPool>();

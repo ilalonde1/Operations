@@ -43,6 +43,13 @@ public enum OpportunitySourceType
     // enough that one extractor already reads them all. This is the LISTING
     // side: ASP.NET WebForms, paged by partial postback.
     TempestProspero = 21,
+    // EngagementHQ / Bang the Table consultation platforms (2026-09-04). Several
+    // BC regional districts publish development and zoning applications as
+    // engagement PROJECTS rather than on a map — the RDN's own Current
+    // Development Applications page is a one-line redirect to getinvolved.rdn.ca.
+    // /projects.json is public and unauthenticated. This is the only route into
+    // the unincorporated electoral areas, which no municipal feed reaches.
+    EngagementHq = 22,
     Manual = 99,
 }
 
