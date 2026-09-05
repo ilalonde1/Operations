@@ -24,11 +24,47 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
         int SizesDeclaredSomewhere,
         int MatchedToTheirOwnMark,
         int AttributedToAMark,
+        int LabelsOnThePlan,
         IReadOnlyList<string> MarksDeclaredButNeverFound,
         IReadOnlyList<ColumnAgreement> Columns)
     {
         /// <summary>Of the columns found, the share whose size the schedule declares. 0 when none found.</summary>
         public double Score => ColumnsFound == 0 ? 0.0 : (double)SizesDeclaredSomewhere / ColumnsFound;
+
+        /// <summary>
+        /// Of the columns the DRAWING says are there, the share that was found and matched.
+        /// </summary>
+        /// <remarks>
+        /// ⭐ THIS IS THE NUMBER <see cref="Score"/> CANNOT GIVE. Score divides by what the reader
+        /// emitted, so a sheet whose real columns were never detected still scores well on whatever
+        /// else it happened to classify — and that is not hypothetical. 31168 p11 reported 67/266 and
+        /// read like a 25% disaster; the drawing labels 71 columns there (PC01 x47, PC03-A x12,
+        /// PC03-B x12), so 67 of 71 were actually found. The score was measuring the wrong
+        /// denominator.
+        ///
+        /// A plan states its own count: every column carries a mark beside it. That is the
+        /// denominator, and it comes free because the labels are read already.
+        /// </remarks>
+        /// <remarks>
+        /// ⚠ THE NUMERATOR IS THE STRICT ONE. Counting every column whose size appears SOMEWHERE in
+        /// the schedule produced coverage above 100% — 31138 p9 read 22 of 15 — because a shape with
+        /// no label at all still matched a declared size by coincidence. A labelled column correctly
+        /// found is one matched to ITS OWN mark, so that is what is counted.
+        ///
+        /// It can still nudge past 1.0 when two shapes claim one label — a column drawn as nested
+        /// rectangles, say — so treat it as a proportion to look at, not a proof.
+        /// </remarks>
+        public double Coverage => LabelsOnThePlan == 0 ? 0.0 : (double)MatchedToTheirOwnMark / LabelsOnThePlan;
+
+        /// <summary>
+        /// Columns emitted per column the drawing labels. 1.0 is right; above it is over-detection.
+        /// </summary>
+        /// <remarks>
+        /// The other half of the same reframing. 31168 p11 emitted 266 columns where the drawing
+        /// labels 71 — 3.7x — and every one of those extras is an isolation-joint square that will
+        /// reach a model as a column. Coverage alone would have called that sheet healthy.
+        /// </remarks>
+        public double Precision => LabelsOnThePlan == 0 ? 0.0 : (double)ColumnsFound / LabelsOnThePlan;
     }
 
     /// <summary>
@@ -152,8 +188,40 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                 SizesDeclaredSomewhere: results.Count(r => r.SizeIsDeclaredSomewhere),
                 MatchedToTheirOwnMark: results.Count(r => r.SizeMatchesItsOwnMark),
                 AttributedToAMark: results.Count(r => r.NearestMark is not null),
+                LabelsOnThePlan: CountPlanLabels(page, declared),
                 MarksDeclaredButNeverFound: never,
                 Columns: results);
+        }
+
+        /// <summary>
+        /// How many columns the DRAWING says are on this sheet: one mark printed beside each.
+        /// </summary>
+        /// <remarks>
+        /// Only labels of marks the COLUMN schedule declares are counted, so a footing mark on the
+        /// same plan does not inflate the denominator — 31130 p12 prints F2 twenty times and SF1
+        /// sixteen alongside its PC marks.
+        ///
+        /// ⚠ AND THE SCHEDULE'S OWN MARK COLUMN IS EXCLUDED. The table lists every mark once, so
+        /// counting it would add a phantom column per mark. A token inside a column-schedule table is
+        /// identified by the same ownership rule the reader uses to attribute rows, rather than by a
+        /// second guess about where tables sit.
+        /// </remarks>
+        public static int CountPlanLabels(
+            VectorPageReader.PageContent? page,
+            IReadOnlyList<ColumnScheduleRow> declared)
+        {
+            if (page is null) return 0;
+            ArgumentNullException.ThrowIfNull(declared);
+
+            var marks = new HashSet<string>(declared.Select(d => d.Mark), StringComparer.OrdinalIgnoreCase);
+            if (marks.Count == 0) return 0;
+
+            var headings = ColumnScheduleReader.SchedulesOn(page);
+            double band = page.WidthPts * ColumnScheduleReader.HeadingBandFraction;
+
+            return page.Words.Count(w =>
+                marks.Contains(w.Text.Trim())
+                && ColumnScheduleReader.OwnerOf(w.Cx, w.Cy, headings, band) is not { IsColumn: true });
         }
 
         private static bool Same(double small, double large, ColumnScheduleRow row, double toleranceMm)

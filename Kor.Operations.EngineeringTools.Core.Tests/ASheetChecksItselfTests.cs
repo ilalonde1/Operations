@@ -147,4 +147,73 @@ public sealed class ASheetChecksItselfTests
         Assert.Equal(0, check.ColumnsFound);
         Assert.Equal(0.0, check.Score);
     }
+
+    // ── the drawing's own count, which is the denominator that means something ───────────────────
+
+    private static VectorPageReader.PageContent PageWith(params (string Text, double X, double Y)[] words)
+        => new(1, 3000, 1800,
+               words.Select(w => new VectorPageReader.TextToken(w.Text, w.X, w.Y, w.X - 8, w.Y - 3, w.X + 8, w.Y + 3)).ToList(),
+               new List<VectorPageReader.GeomPath>());
+
+    /// <summary>
+    /// The schedule lists every mark once. Counting its own table would add a phantom column per
+    /// mark and quietly deflate coverage.
+    /// </summary>
+    [Fact]
+    public void TheSchedulesOwnMarkColumnIsNotCountedAsColumnsOnThePlan()
+    {
+        var page = PageWith(
+            ("COLUMN", 2000, 900), ("SCHEDULE", 2060, 900),   // the heading
+            ("PC1", 1990, 860),                               // its own row — not a column
+            ("PC1", 400, 1500), ("PC1", 600, 1500),           // two columns out on the plan
+            ("PC2", 800, 1500));
+
+        Assert.Equal(3, PlanAgreesWithItsSchedule.CountPlanLabels(page, Schedule()));
+    }
+
+    /// <summary>A footing mark on the same plan is not a column and must not inflate the count.</summary>
+    [Fact]
+    public void OnlyMarksTheColumnScheduleDeclaresAreCounted()
+    {
+        var page = PageWith(
+            ("PC1", 400, 1500),
+            ("F2", 600, 1500), ("SF1", 800, 1500));          // 31130 p12 prints F2 twenty times
+
+        Assert.Equal(1, PlanAgreesWithItsSchedule.CountPlanLabels(page, Schedule()));
+    }
+
+    /// <summary>
+    /// Coverage must use the strict numerator. A shape with no label that happens to be a declared
+    /// size is not evidence a labelled column was found — counting it gave 22 of 15 on 31138 p9.
+    /// </summary>
+    [Fact]
+    public void AnUnlabelledCoincidentalMatchDoesNotRaiseCoverage()
+    {
+        // one labelled PC1-sized column, and one PC1-sized shape nowhere near a label
+        var geo = Geometry((1000, 1000, 304.8, 609.6), (90_000, 90_000, 304.8, 609.6));
+        var page = PageWith(("PC1", 30, 30), ("PC1", 34, 30));
+
+        var check = PlanAgreesWithItsSchedule.Check(geo, Schedule(), page);
+
+        Assert.Equal(2, check.SizesDeclaredSomewhere);            // both are a declared size
+        Assert.Equal(2, check.LabelsOnThePlan);
+        Assert.True(check.Coverage <= 1.0, $"coverage was {check.Coverage:0.00}");
+    }
+
+    /// <summary>
+    /// The other half: over-detection. 31168 p11 emitted 266 columns where the drawing labels 72,
+    /// and coverage alone called that sheet healthy.
+    /// </summary>
+    [Fact]
+    public void EmittingFarMoreColumnsThanTheDrawingLabelsShowsUpAsPrecision()
+    {
+        var many = Enumerable.Range(0, 20)
+            .Select(i => ((double)(i * 1000), 1000.0, 304.8, 609.6))
+            .ToArray();
+
+        var check = PlanAgreesWithItsSchedule.Check(Geometry(many), Schedule(), PageWith(("PC1", 30, 30)));
+
+        Assert.Equal(1, check.LabelsOnThePlan);
+        Assert.Equal(20.0, check.Precision);
+    }
 }

@@ -141,9 +141,14 @@ if (args.Length >= 1 && args[0].Equals("pdf-takeoff", StringComparison.OrdinalIg
             if (declared.Count > 0 && geo.Columns.Count > 0)
             {
                 var check = PlanAgreesWithItsSchedule.Check(geo, declared, schedulePage);
-                agree = $"  {check.SizesDeclaredSomewhere}/{check.ColumnsFound} cols declared";
-                if (check.MatchedToTheirOwnMark > 0)
-                    agree += $", {check.MatchedToTheirOwnMark} by own mark";
+
+                // The DRAWING's own count first, because it is the denominator that means something:
+                // 31168 p11 read as 67/266 and looked like a disaster, when the sheet labels 71
+                // columns and 67 were found. The 266 was over-detection, which is the OTHER number.
+                agree = check.LabelsOnThePlan > 0
+                    ? $"  cover {check.MatchedToTheirOwnMark}/{check.LabelsOnThePlan} labelled"
+                      + $", emitted {check.ColumnsFound} ({check.Precision:0.0}x)"
+                    : $"  {check.SizesDeclaredSomewhere}/{check.ColumnsFound} cols declared";
                 if (check.MarksDeclaredButNeverFound.Count > 0)
                     agree += $"; unplaced {string.Join(",", check.MarksDeclaredButNeverFound)}";
             }
