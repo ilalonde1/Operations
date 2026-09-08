@@ -20,10 +20,11 @@ at least twice that is a **four-vertex rectangle** — 71 of 71 on 31168 p14, 24
 face lines on these sets: pairing parallel strokes at wall spacing finds 393–563 pairs per page,
 which is dimension and grid work.
 
-Applying the DXF side's own wall rules to those rectangles — thickness in [4", 36"], length ≥ 48",
-aspect ≥ 2 (`PlanClassificationOptions.MinWallThickness / MaxWallThickness / MinWallLength /
-MinWallAspect`, banked in KorStandards as `dxf.min-wall-thickness`, `dxf.max-wall-thickness`,
-`dxf.min-wall-length`, `dxf.min-wall-aspect`) — and excluding the title-block and schedule strips:
+Applying the wall rules banked in KorStandards to those rectangles — thickness in [4", 60"],
+length ≥ 48", aspect ≥ 2 (`dxf.min-wall-thickness`, `dxf.max-wall-thickness`, `dxf.min-wall-length`,
+`dxf.min-wall-aspect`; the prototype ran with 36" as the upper bound and the thickest band on these
+five pages is 36", so the counts below are unchanged at 60") — and excluding the title-block and
+schedule strips:
 
     sheet          PDF candidates   Revit walls (sum of views)
     31168 p10 S2.01       20             23
@@ -51,10 +52,20 @@ of the three its size happens to fall nearest.
 ### 1. `PdfIntakeOptions` — the wall numbers, from the SHARED rows
 
 Add `MinWallThicknessMm`, `MaxWallThicknessMm`, `MinWallLengthMm`, `MinWallAspect`. Defaults
-101.6, 914.4, 1219.2, 2.0 (the DXF side's 4", 36", 48", 2.0 in millimetres). `ApplyRules` reads
-them from the DXF side's own keys, converting inches to millimetres, the way `SharedMaxColumnAspect`
-already shares `dxf.max-column-aspect`: a wall's proportions do not depend on whether the drawing
-arrived as PDF or CAD. Add the four keys to the shared-keys list beside it. No new KorStandards row.
+**101.6, 1524.0, 1219.2, 2.0** — that is 4", **60"**, 48", 2.0 in millimetres: the values of the
+BANKED rows `dxf.min-wall-thickness = 4`, `dxf.max-wall-thickness = 60`, `dxf.min-wall-length = 48`,
+`dxf.min-wall-aspect = 2.0` as read from KorStandards on 2026-09-08, not the compiled defaults in
+`PlanClassificationOptions`, whose `MaxWallThickness` is 36. The 60 is corpus-verified: across
+1,126 engineer models 42" walls appear 1,256 times and 48" walls 831 times (ordinary tower cores),
+so a 36" limit would refuse walls KOR builds every year. A compiled default that is narrower than
+its banked row is a limit that breaks a read on any run without a connection string; the DXF side
+carries that divergence today (36 vs 60, and `MaxColumnSize` 96 vs 132) and it is the subject of
+its own brief. On the PDF side it does not get to start.
+
+`ApplyRules` reads the four from the DXF side's own keys, converting inches to millimetres, the way
+`SharedMaxColumnAspect` already shares `dxf.max-column-aspect`: a wall's proportions do not depend
+on whether the drawing arrived as PDF or CAD. Add the four keys to the shared-keys list beside it.
+No new KorStandards row.
 
 ### 2. `ExtractedGeometry` — walls exist
 
