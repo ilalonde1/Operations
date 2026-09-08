@@ -140,3 +140,47 @@ splits that row per path; the number that must fall is Unaccounted first, then U
 **What step 0 does not do:** it changes no reader and moves no number. It cannot tell a dropped grid
 line from an unread wall face (step 1). The differential has no registration, so it counts and
 does not place. The ledger's word kinds are shape rules and "other" is 25,950 words on 31130 alone.
+
+## 7. Step 1, done 2026-09-08: one record, one home, a reason for every path
+
+Codex brief 13, verified: the thirteen baseline DXFs are byte-identical; 930 of 930 tests pass
+(889 fast, 20 harness, 21 Intake); the classifier's conditions are unchanged and every one of its
+seventeen decisions now records a fate.
+
+What exists now, under `Core/Intake/`: `DrawingIntake.Read(pdf, request)` → `DrawingSetRecord` →
+`SheetRecord` per sheet, carrying everything today's readers produce plus `PathFates` and
+`WordFates`. `SheetInventory` is a report over the record and derives nothing itself. `pdf-takeoff`
+and `pdf-inventory` both read from the record.
+
+**Two defects the step's own verification found, one in the step and one in the intake:**
+
+1. **The ledger's population was the classifier's read, not the page.** The classifier thins points
+   closer than `MinVertexDistanceMm` and drops any subpath left with fewer than two, and the first
+   version of the intake counted only what survived: on 31130 p13 it reported 4,129 paths fully
+   accounted for and said nothing about the other 41,386 (hatching, mostly). Fixed in the step: the
+   record's `Content` is the unthinned read, the classifier still receives exactly the thinned read
+   the baseline depends on, every fate is mapped back by subpath ordinal, and what thinning removed
+   is `CollapsedByThinning`. `FiveStickFilesTests` now asserts, page by page, that every path on
+   the page has exactly one fate.
+2. **518 of 31130's 1,557 "slabs" are invisible clipping rectangles.** The report first printed fates
+   for inked paths only and kept "no ink: discarded" as a row of its own, and the two disagreed by
+   518: those paths' fates said `BecameSlab`. The invisible-ink rule covers paper *fills*; a closed
+   path with neither fill nor stroke passes the slab test and is written to the DXF. Across the five
+   sets: 518, 1,417, 986, 1,298, 1,697. This is the fault behind "PDF slabs 781 vs DXF 45" in the
+   differential, and it is step 2's first change, not step 1's — step 1 alters no geometry.
+
+**The ledger after step 1**, each word, path and sheet fact once:
+
+| Set | Items | Read | Discarded | Unread | Unaccounted | of which collapsed by thinning | no-ink paths emitted as geometry |
+|---|---|---|---|---|---|---|---|
+| 31130-01 | 568,310 | 8,685 | 420,927 | 32,392 | 105,895 | 176,882 | 518 |
+| 31168-01 | 442,611 | 11,997 | 239,853 | 18,990 | 79,501 | 16,582 | 1,417 |
+| 31138-01 | 531,450 | 9,966 | 374,340 | 33,191 | 113,532 | 10,181 | 986 |
+| 31065-01 | 845,192 | 16,378 | 649,333 | 39,782 | 138,968 | 9,333 | 1,298 |
+| 31202-01 | 1,006,086 | 8,815 | 816,070 | 34,763 | 146,203 | 96,006 | 1,697 |
+
+Unaccounted fell from 57–84% of every set to 14–19%, and what remains is now named: paths emitted
+as lines of unknown meaning (76,448 on 31130, where the walls are), words no kind matched, and
+letters outside any bubble. "Read" fell too, from 85,133 to 8,685 on 31130, because emitted lines
+are no longer counted as read — a BEAM-layer polyline is not knowledge, and the old number was
+flattering the intake. That is the honest baseline the walls step is measured from.

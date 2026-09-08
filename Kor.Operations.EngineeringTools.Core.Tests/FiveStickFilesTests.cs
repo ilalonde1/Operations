@@ -156,6 +156,35 @@ public sealed class FiveStickFilesTests
         Assert.True(notWalls.Count == 0, $"{number} p{job.SchedulePage}: read as wall marks and are not: {string.Join(",", notWalls)}");
     }
 
+    /// <summary>
+    /// The ledger's population is the page: on every banked page, the record's fates cover every
+    /// path of the unthinned read exactly once. On 2026-09-08 the first ledger covered 4,129 of
+    /// 45,515 on 31130 p13 and said nothing; this is the check that would have said it.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(JobNumbers))]
+    public void EveryPathOnEveryBankedPageHasExactlyOneFate(string number)
+    {
+        var job = JobNamed(number);
+        var (options, _) = PdfIntakeOptions.For(null);
+        using var doc = PdfDocument.Open(PdfOf(job));
+        var facts = Kor.Operations.EngineeringTools.Intake.DocumentFacts.From(doc);
+        foreach (var pageNo in job.CoverFloors.Keys)
+        {
+            var record = Kor.Operations.EngineeringTools.Intake.DrawingIntake.ReadSheet(
+                doc, pageNo, new Kor.Operations.EngineeringTools.Intake.IntakeRequest(job.Scale, options), facts);
+            var unthinned = VectorPageReader.ReadPage(doc.GetPage(pageNo), includeAnnotations: true, curveSegments: PdfToSafeConstants.BezierSegments);
+            Assert.True(record.Content.Paths.Count == unthinned.Paths.Count,
+                $"{number} p{pageNo}: the record's population is {record.Content.Paths.Count} paths; the unthinned read has {unthinned.Paths.Count}");
+            Assert.True(record.PathFates.Count == record.Content.Paths.Count,
+                $"{number} p{pageNo}: {record.PathFates.Count} fates for {record.Content.Paths.Count} paths");
+            Assert.Equal(record.Content.Paths.Count, record.PathFates.Select(f => f.PathIndex).Distinct().Count());
+            Assert.True(record.PathFates.Any(f => f.Reason == Kor.Operations.EngineeringTools.Intake.PathReason.BecameColumnByShape
+                                                  || f.Reason == Kor.Operations.EngineeringTools.Intake.PathReason.BecameColumnByDeclaredSize),
+                $"{number} p{pageNo}: no path became a column, on a page the self-check banks columns for");
+        }
+    }
+
     [Theory]
     [MemberData(nameof(JobNumbers))]
     public void PlanSelfCheckHoldsItsFloorAndUnplacedAreMarkShaped(string number)

@@ -42,7 +42,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             => ParsePage(page, scale, out _);
 
         /// <summary>The same, keeping the page read so its text and rules can say where the furniture is.</summary>
-        public static List<RawSubpath> ParsePage(Page page, double scale, out VectorPageReader.PageContent pageRead)
+        /// <param name="keptSubpathOrdinals">See <see cref="VectorPageReader.ReadPage(Page, bool, int, double?, double?, IList{int}?)"/>: which subpaths survived this read's thinning.</param>
+        public static List<RawSubpath> ParsePage(Page page, double scale, out VectorPageReader.PageContent pageRead, IList<int>? keptSubpathOrdinals = null)
         {
             double? minPointDistance = scale > 0
                 ? PdfToSafeConstants.MinVertexDistanceMm / scale
@@ -56,7 +57,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 includeAnnotations: true,
                 curveSegments: PdfToSafeConstants.BezierSegments,
                 minPointDistance: minPointDistance,
-                closeDistance: closeDistance);
+                closeDistance: closeDistance,
+                keptSubpathOrdinals: keptSubpathOrdinals);
 
             return pageRead.Paths
                 .Select(path => new RawSubpath(

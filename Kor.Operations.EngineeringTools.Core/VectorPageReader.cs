@@ -102,12 +102,21 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
         public static PageContent ReadPage(Page page)
             => ReadPage(page, includeAnnotations: false);
 
+        /// <param name="keptSubpathOrdinals">
+        /// When given, receives the reading-order ordinal (over every subpath of every path on the
+        /// page) of each content path this read KEPT, in the order they appear in the result. A
+        /// subpath that thins to fewer than two points is dropped and its ordinal is absent, which
+        /// is how a thinned read can be mapped back onto the unthinned one. On 31130's page 13 the
+        /// classifier's thinning drops 41,386 of 45,515 subpaths — hatching, mostly — and until
+        /// 2026-09-08 nothing could count them because nothing knew they had existed.
+        /// </param>
         public static PageContent ReadPage(
             Page page,
             bool includeAnnotations,
             int curveSegments = 0,
             double? minPointDistance = null,
-            double? closeDistance = null)
+            double? closeDistance = null,
+            IList<int>? keptSubpathOrdinals = null)
         {
             ArgumentNullException.ThrowIfNull(page);
 
@@ -130,6 +139,7 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
 
             // ── Geometry: every vector subpath, points + bbox ───────────────────
             var paths = new List<GeomPath>();
+            int subpathOrdinal = -1;
             foreach (var pdfPath in page.ExperimentalAccess.Paths)
             {
                 bool isFilled  = pdfPath.IsFilled;
@@ -139,6 +149,7 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
 
                 foreach (var sub in pdfPath)
                 {
+                    subpathOrdinal++;
                     var pts = new List<(double X, double Y)>();
                     foreach (var cmd in sub.Commands)
                     {
@@ -195,6 +206,7 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                     }
 
                     paths.Add(ToGeomPath(pts, isClosed, isFilled, isStroked, pathColor, lineWidth, isAnnotation: false));
+                    keptSubpathOrdinals?.Add(subpathOrdinal);
                 }
             }
 

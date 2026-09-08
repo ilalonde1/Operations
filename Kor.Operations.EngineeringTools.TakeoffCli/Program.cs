@@ -3,6 +3,7 @@ using System.Text.RegularExpressions;
 using System.Text.Json;
 using Kor.Operations.EngineeringTools.ColumnDesign;
 using Kor.Operations.EngineeringTools.Dxf;
+using Kor.Operations.EngineeringTools.Intake;
 using Kor.Operations.EngineeringTools.PdfToSafe;
 using Kor.Operations.EngineeringTools.QuantityTakeoff;
 using Kor.Operations.EngineeringTools.RebarChange;
@@ -97,7 +98,9 @@ if (args.Length >= 1 && args[0].Equals("pdf-takeoff", StringComparison.OrdinalIg
     // with nothing about the number looking wrong.
     if (ptScale <= 0)
     {
-        string? stated = SheetScaleReader.FromPage(VectorPageReader.ReadPage(ptPdf, ptFirst));
+        using var scaleDoc = UglyToad.PdfPig.PdfDocument.Open(ptPdf);
+        string? stated = DrawingIntake.ReadSheet(scaleDoc, ptFirst,
+            new IntakeRequest(null, PdfIntakeOptions.Default), DocumentFacts.From(scaleDoc)).ScaleNote;
         Console.Error.WriteLine(stated is null
             ? $"No --scale given, and page {ptFirst} states no machine-readable scale (takeoff scale-scan says the same). "
               + "The set's documented fallback is 1/8\" = 1'-0\", so --scale 96 — but confirm it against the sheet before a model is built on it."
@@ -117,14 +120,18 @@ if (args.Length >= 1 && args[0].Equals("pdf-takeoff", StringComparison.OrdinalIg
     Console.WriteLine();
     Console.WriteLine("page   raw  annot   slabs  columns   lines   file");
 
+    using var ptDoc = UglyToad.PdfPig.PdfDocument.Open(ptPdf);
+    var ptFacts = DocumentFacts.From(ptDoc);
+    var ptRequest = new IntakeRequest(ptScale, ptOptions, ptMarkup);
     int ptWritten = 0, ptEmpty = 0;
     for (int p = ptFirst; p <= ptLast; p++)
     {
-        ExtractedGeometry geo;
-        try { geo = PdfPlanReader.Read(ptPdf, ptScale, p, ptOptions, ptMarkup); }
+        SheetRecord record;
+        try { record = DrawingIntake.ReadSheet(ptDoc, p, ptRequest, ptFacts); }
         catch (Exception ex) { Console.WriteLine($"{p,4}   FAILED  {ex.GetType().Name}: {ex.Message}"); continue; }
 
-        int annot = PdfPlanReader.AnnotationCount(ptPdf, p, ptScale);
+        var geo = record.Geometry;
+        int annot = record.Context.AnnotationPaths;
         int found = geo.Slabs.Count + geo.Columns.Count + geo.Lines.Count;
         string file = "";
         if (found > 0)
@@ -140,27 +147,17 @@ if (args.Length >= 1 && args[0].Equals("pdf-takeoff", StringComparison.OrdinalIg
         // twice and read here by entirely separate code, so agreement between them is evidence that
         // needs no reference model — which is what every other gate in this repo requires, and why
         // none of them can say anything about the first sheet of a new job.
-        string agree = "";
-        try
+        string agree = record.ColumnAgreementError is { } error ? $"  (self-check unavailable: {error})" : "";
+        if (record.ColumnAgreement is { } check)
         {
-            var schedulePage = VectorPageReader.ReadPage(ptPdf, p);
-            var declared = ColumnScheduleReader.ReadSchedule(schedulePage);
-            if (declared.Count > 0 && geo.Columns.Count > 0)
-            {
-                var check = PlanAgreesWithItsSchedule.Check(geo, declared, schedulePage, ptOptions.AgreementToleranceMm, ptOptions.AgreementLabelReachMm);
-
-                // The DRAWING's own count first, because it is the denominator that means something:
-                // 31168 p11 read as 67/266 and looked like a disaster, when the sheet labels 71
-                // columns and 67 were found. The 266 was over-detection, which is the OTHER number.
-                agree = check.LabelsOnThePlan > 0
-                    ? $"  cover {check.MatchedToTheirOwnMark}/{check.LabelsOnThePlan} labelled"
-                      + $", emitted {check.ColumnsFound} ({check.Precision:0.0}x)"
-                    : $"  {check.SizesDeclaredSomewhere}/{check.ColumnsFound} cols declared";
-                if (check.MarksDeclaredButNeverFound.Count > 0)
-                    agree += $"; unplaced {string.Join(",", check.MarksDeclaredButNeverFound)}";
-            }
+            // Coverage uses the drawing's labels; precision exposes excess emitted columns.
+            agree = check.LabelsOnThePlan > 0
+                ? $"  cover {check.MatchedToTheirOwnMark}/{check.LabelsOnThePlan} labelled"
+                  + $", emitted {check.ColumnsFound} ({check.Precision:0.0}x)"
+                : $"  {check.SizesDeclaredSomewhere}/{check.ColumnsFound} cols declared";
+            if (check.MarksDeclaredButNeverFound.Count > 0)
+                agree += $"; unplaced {string.Join(",", check.MarksDeclaredButNeverFound)}";
         }
-        catch (Exception ex) { agree = $"  (self-check unavailable: {ex.GetType().Name})"; }
 
         Console.WriteLine($"{p,4} {geo.RawPathCount,5}  {annot,5}   {geo.Slabs.Count,5}  {geo.Columns.Count,7}   {geo.Lines.Count,5}   {file}{agree}");
     }
@@ -197,7 +194,7 @@ if (args.Length >= 1 && args[0].Equals("pdf-inventory", StringComparison.Ordinal
     }
     var (ivOptions, ivRulesSource) = PdfIntakeOptions.For(ivRules);
     using var ivDoc = UglyToad.PdfPig.PdfDocument.Open(ivPdf);
-    var facts = SheetInventory.Facts(ivDoc);
+    var facts = DocumentFacts.From(ivDoc);
     ivLast = Math.Min(ivLast, facts.Pages);
     Console.WriteLine($"{Path.GetFileName(ivPdf)}  pages {ivFirst}-{ivLast} of {facts.Pages}  producer: {facts.Producer}  bookmarks: {facts.Bookmarks.Count}  " +
                       $"scale: {(ivScale is int s ? $"1:{s}" : "none (geometry not classified)")}  rules: {ivRulesSource}");
@@ -207,20 +204,20 @@ if (args.Length >= 1 && args[0].Equals("pdf-inventory", StringComparison.Ordinal
     for (int p = ivFirst; p <= ivLast; p++)
     {
         SheetInventory.SheetLedger led;
-        try { led = SheetInventory.Of(ivDoc, p, ivScale, ivOptions, facts); }
+        try { led = SheetInventory.Of(DrawingIntake.ReadSheet(ivDoc, p, new IntakeRequest(ivScale, ivOptions), facts)); }
         catch (Exception ex) { Console.WriteLine($"{p,4}  FAILED {ex.GetType().Name}: {ex.Message}"); continue; }
         ledgers.Add(led);
         var t = SheetInventory.Totals(led.Rows);
         string sheet = (led.BookmarkTitle ?? led.Title ?? "").Trim();
         if (sheet.Length > 42) sheet = sheet[..42];
-        Console.WriteLine($"{p,4}  {led.SheetType,-18} {sheet,-42} {led.Words,6}  {led.Paths,6} | {t[SheetInventory.Disposition.Read],7}  {t[SheetInventory.Disposition.Discarded],7}  {t[SheetInventory.Disposition.Unread],6}  {t[SheetInventory.Disposition.Ignored],6}  {t[SheetInventory.Disposition.Unaccounted],6}");
+        Console.WriteLine($"{p,4}  {led.SheetType,-18} {sheet,-42} {led.Words,6}  {led.Paths,6} | {t[Disposition.Read],7}  {t[Disposition.Discarded],7}  {t[Disposition.Unread],6}  {t[Disposition.Ignored],6}  {t[Disposition.Unaccounted],6}");
     }
     Console.WriteLine();
     var summary = SheetInventory.Summarise(ledgers);
     var totals = SheetInventory.Totals(summary);
     int grand = totals.Values.Sum();
-    Console.WriteLine($"DOCUMENT ({grand:N0} words + paths + facts, each counted once)  read {totals[SheetInventory.Disposition.Read]:N0}   discarded {totals[SheetInventory.Disposition.Discarded]:N0}   " +
-                      $"UNREAD {totals[SheetInventory.Disposition.Unread]:N0}   ignored {totals[SheetInventory.Disposition.Ignored]:N0}   UNACCOUNTED {totals[SheetInventory.Disposition.Unaccounted]:N0}" +
+    Console.WriteLine($"DOCUMENT ({grand:N0} words + paths + facts, each counted once)  read {totals[Disposition.Read]:N0}   discarded {totals[Disposition.Discarded]:N0}   " +
+                      $"UNREAD {totals[Disposition.Unread]:N0}   ignored {totals[Disposition.Ignored]:N0}   UNACCOUNTED {totals[Disposition.Unaccounted]:N0}" +
                       (facts.OutlinesPresent && facts.Bookmarks.Count == 0 ? "   ⚠ the file has an outline tree PdfPig could not read" : ""));
     Console.WriteLine();
     foreach (var row in summary.Where(r => r.Primary && r.Count > 0))
@@ -233,7 +230,7 @@ if (args.Length >= 1 && args[0].Equals("pdf-inventory", StringComparison.Ordinal
     if (notes.Count > 0)
     {
         Console.WriteLine();
-        Console.WriteLine($"Annotation text ({notes.Count}), none of which reaches Core:");
+        Console.WriteLine($"Annotation text ({notes.Count}), retained by Core intake:");
         foreach (var n in notes.Take(25)) Console.WriteLine($"  p{n.PageNumber,-3} {n.Type,-9} {n.Author,-10} {n.Text}");
         if (notes.Count > 25) Console.WriteLine($"  … and {notes.Count - 25} more");
     }
@@ -312,7 +309,7 @@ if (args.Length >= 1 && args[0].Equals("pdf-overlay", StringComparison.OrdinalIg
     int marks = 0;
     foreach (var wd in ovContent.Words)
     {
-        if (SheetInventory.KindOf(wd.Text) != "mark") continue;
+        if (DrawingIntake.KindOf(wd.Text) != "mark") continue;
         marks++;
         double sMm = ovScale * PdfToSafeConstants.PointsToMm;
         OvPoly(new[] { (wd.MinX * sMm, wd.MinY * sMm), (wd.MaxX * sMm, wd.MinY * sMm), (wd.MaxX * sMm, wd.MaxY * sMm), (wd.MinX * sMm, wd.MaxY * sMm) }, green, 0, close: true);
