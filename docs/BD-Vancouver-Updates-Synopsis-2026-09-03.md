@@ -46,8 +46,8 @@
 | 4 | Events list: which to attend to bump into these people | Ian | this week | P&W 10 Sept, Graham 1 Oct, LA Tall Building Nov |
 | 5 | Get into the Perkins&Will client-appreciation party, 10 Sept | Omar (architect friend), Rory ("Ike"), Jim (CMO email) | before 10 Sept | Even one seat. JM knows Luciano and Ryan Bragg there but took no action |
 | 6 | NDY: keep the seismic-restraint referral line open; reuse existing details | Omar | ongoing | Small recurring revenue |
-| 7 | Bosa: Robert to broker lunch with Colin Bosa in October | JB | reach out late Sept | Colin is a family man, lunch not dinner. Robert is most likely Robert Bosa, founder of Bosa Properties and Colin's father; "Dale" is Dale Bosa, Colin's brother *[conf: Med]*. Bosa Properties #38943 kp=44 |
-| 8 | Solterra: one-on-one with Gerry Nichele, President, the decision maker | JB | this week / early next | Solterra Development #69730 kp=53. Also there: Mike Bosa (Vice President; JB did a free cabin scheme for him), Brian Webster, Kevin. The live item is the Wilson Avenue proposal, 6004–6018 Wilson Ave, Metrotown, a 36-storey tower with townhouses |
+| 7 | Bosa: Robert to broker lunch with Colin Bosa in October | JB | reach out late Sept | Lunch not dinner, on Jason Stuart's advice that Colin is a family man. Robert is most likely Robert Bosa, founder of Bosa Properties and Colin's father; "Dale" is Dale Bosa, Colin's brother *[conf: Med]*. Bosa Properties #38943 kp=44 |
+| 8 | Solterra: one-on-one with Gerry Nichele, President, the decision maker | JB | this week / early next | Solterra Development #69730 kp=53. Also there: Mike Bosa (Vice President; JB did a free cabin scheme for him) and Brian Webster; our Kevin Wurmlinger is the other channel in. The live item is the Wilson Avenue proposal, 6004–6018 Wilson Ave, Metrotown, a 36-storey tower with townhouses |
 | 9 | Stantec Vancouver structural group: overflow/specialty pitch | Omar + Islam | Sept | We are on their qualified-supplier list; say so |
 | 10 | Vancouver Fraser Port Authority recon: re-send the earlier dossier | Ian | this week | #75853 / #77395; JM + Omar have an ex-employee contact |
 | 11 | EGBC SRG seismic course, then the SMP list and NDA | Omar | week of 8 Sept | June item still open |
@@ -91,7 +91,7 @@ Distilled from what the room asked for or bumped into, not from what I would lik
 
 1. **Omar's Colliers contact:** her name, and whether she is at Colliers Project Leaders (#70132) or Colliers International (#5096). Also the owner body for BC Cancer that sounded like "Arana" at 0:03 — PHSA?
 2. **Perkins&Will:** a surname for **Ike**, Rory's contact who did the "bonus" job; there is no Ike or Isaac among the 87 Vancouver staff on record, so it may be a nickname. And whether the principal JM remembers is **Ryan Bragg**.
-3. **JB's Bosa names:** confirm Robert is Robert Bosa (founder of Bosa Properties, Colin's father) and Dale is Dale Bosa (Colin's brother). Still unplaced: **Jason**, who advised JB on Colin's habits, and **Kevin** at Solterra (surname).
+3. **JB's Bosa names:** confirm Robert is Robert Bosa (founder of Bosa Properties, Colin's father) and Dale is Dale Bosa (Colin's brother).
 4. **Stefan Hertel** (ex Development Manager, Mission Group): where he went. Conor: "maybe he'll take us with him wherever he ends up."
 5. **"Kent Arroyo" townhouses** (Conor, lost) and **"the turn"** (Islam, undecided): project or client names. Two re-listens could not recover the first; the second is said clearly as "the turn".
 6. **"Next Friday at 2"** (Ian, for Arcadis): a real slot or a joke; JM did not confirm.
@@ -129,6 +129,8 @@ Distilled from what the room asked for or bumped into, not from what I would lik
 | Clement | Clement Pun, Practice Group Director, Living | High | Arcadis #153 |
 | Jerry (Solterra) | Gerry Nichele, President | High | Solterra #69730; audio hears "Nacelli"; web |
 | Mike Balza | Mike Bosa, Vice President, Solterra | High | audio hears "Bosa"; web |
+| Jason (advised JB on Colin) | Jason Stuart, KOR | High | Ian; June notes use "Jason" for him |
+| Kevin (JB "can reach out to") | Kevin Wurmlinger, KOR | High | Ian; June notes use "Kevin" for him |
 | Charlie, the Wilson proposal | the Wilson Avenue proposal: Solterra's 6004–6018 Wilson Ave, Metrotown, 36 storeys | High | audio; web |
 | Arana (0:03) | "arena": a Surrey arena Colliers is bidding to be owner's rep on | Med | audio |
 | used to be at Bob | BOP, Boniface Oleksiuk Politano Architects | High | audio; Apollo history |

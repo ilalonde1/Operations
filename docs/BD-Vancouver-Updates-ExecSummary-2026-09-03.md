@@ -54,6 +54,5 @@ Said on the call, not confirmable from our records or anywhere public. A one-lin
 - **Jim:** is Trillium the Victoria seniors-housing operator Trillium Communities, and is there a "Sue" there.
 - **Conor:** where Stefan Hertel went after Mission Group, and the "Kent Arroyo" townhouses we lost, which two listens could not make out.
 - **JB / John:** who owns the Fraser Health list now, and its closing date.
-- **JB:** who Jason is (he advised on Colin's habits), and Kevin's surname at Solterra.
 
 *Full synopsis with contacts, org history and the app's existing records: see Ian.*
