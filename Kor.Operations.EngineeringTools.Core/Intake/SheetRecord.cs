@@ -29,6 +29,13 @@ public sealed record SheetRecord(
     public SheetContext Context { get; init; } = new();
     public PlanScheduleAgreement? ColumnAgreement { get; init; }
     public string? ColumnAgreementError { get; init; }
+
+    /// <summary>
+    /// The title block's labelled fields as the drafter wrote them — SHEET TITLE, SHEET NUMBER,
+    /// SCALE, PROJECT NO, DRAWN BY, CHK'D BY, PROJECT TITLE, REV … (<see cref="TitleBlockFields"/>).
+    /// Empty for a block without the labels.
+    /// </summary>
+    public IReadOnlyDictionary<string, string> TitleBlock { get; init; } = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 }
 
 /// <summary>Page facts captured during intake so reporting never opens or reinterprets a PDF.</summary>

@@ -126,7 +126,20 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             // extractor groups glyphs by proximity + baseline (and handles rotated text), so we get
             // real tokens like "WALL", "LEVEL", "30", "MPa".
             var words = new List<TextToken>();
-            foreach (var w in page.GetWords(NearestNeighbourWordExtractor.Instance))
+            // A GLYPH DRAWN TWICE AT ONE PLACE IS ONE GLYPH. KOR's title blocks set their 8 pt labels
+            // and 8.4 pt notes in fake bold — every glyph drawn twice at the same origin (358 of
+            // 5,579 letters on 31130 p11, offset exactly 0.0) — and the nearest-neighbour extractor
+            // given both copies orders equals arbitrarily: PROJECT TITLE came out as
+            // "PRPORJOEJCETC T TITTILTEL E" and SHEET TITLE never existed as a token, so no field of
+            // the title block could be read by its label (intake convergence brief 18, 2026-09-08).
+            var seenGlyphs = new HashSet<(string, long, long, long)>();
+            var letters = new List<Letter>(page.Letters.Count);
+            foreach (var l in page.Letters)
+            {
+                var key = (l.Value, (long)Math.Round(l.StartBaseLine.X * 10), (long)Math.Round(l.StartBaseLine.Y * 10), (long)Math.Round(l.PointSize * 10));
+                if (seenGlyphs.Add(key)) letters.Add(l);
+            }
+            foreach (var w in NearestNeighbourWordExtractor.Instance.GetWords(letters))
             {
                 if (string.IsNullOrWhiteSpace(w.Text)) continue;
                 var bb = w.BoundingBox;

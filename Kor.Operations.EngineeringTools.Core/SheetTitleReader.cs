@@ -59,6 +59,9 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             RegexOptions.Compiled | RegexOptions.IgnoreCase);
         // Plot stamps (dates, times) live in the title block too — never part of a title.
         private static readonly Regex StampTokenRx = new(@"^\d{1,4}[-/:.]\d{1,2}[-/:.]\d{1,4}", RegexOptions.Compiled);
+
+        /// <summary>A sheet number as KOR writes one (S2.01, S2.05.1, A-101), which is title-size but not a title.</summary>
+        private static readonly Regex SheetNumberTokenRx = new(@"^[A-Z]{1,3}-?\d{1,3}(\.\d{1,2})*$", RegexOptions.Compiled);
         private static readonly Regex PlanishDescriptorRx = new(
             @"\b(CONCRETE|OUTLINE|FRAMING|FORMWORK|REINFORCING|SLAB|DIAPHRAGM)\b",
             RegexOptions.Compiled | RegexOptions.IgnoreCase);
@@ -80,6 +83,60 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
         /// plan title there. Level comes from the title band; the match-line half comes from the sheet
         /// number suffix when present, else from the title text.
         /// </summary>
+        /// <summary>
+        /// The sheet's title as written in its title block — the title-size words around the largest
+        /// title-size token on the right edge, in reading order — whether or not a level parses out
+        /// of it. <see cref="FromPage"/> answers "which storey is this a plan of"; this answers "what
+        /// does the sheet call itself", which is what typing a sheet needs. 31138 titles its
+        /// foundation sheet "FOUNDATIONS" and 31168 titles S1.11 "FOUNDATION PLANS"; neither carries
+        /// a level word, both are plans, and both typed "other" until this existed (2026-09-08).
+        /// </summary>
+        public static string? TitleText(VectorPageReader.PageContent? page)
+        {
+            if (page is null || page.Words.Count == 0) return null;
+            double w = page.WidthPts;
+            if (w <= 0) return null;
+
+            // THE FIELD FIRST. A KOR title block labels its fields; the text under SHEET TITLE is the
+            // title, not a guess (Intake.TitleBlockFields). The size heuristic below is for blocks
+            // without the labels.
+            var fields = Intake.TitleBlockFields.Read(page);
+            if (fields.TryGetValue("SHEET TITLE", out var field) && field.Length > 0) return field;
+            if (fields.TryGetValue("DRAWING TITLE", out field) && field.Length > 0) return field;
+
+            // Title-size words on the right edge, less dates and the sheet number: the number is the
+            // largest text on most title blocks, and anchoring on it looked below it for a title
+            // that sits above (31138 p9: "S2.01 Location:" instead of "FOUNDATIONS").
+            // And less the block's LABELS — "Location:", "REVISIONS:", "SCALE:" — which are title-size
+            // on some blocks: a label ends in a colon or is not set in capitals; a KOR sheet title is.
+            var rightEdge = page.Words
+                .Where(t => t.Cx / w >= TitleRegionMinFx && t.Height >= TitleMinH
+                            && !StampTokenRx.IsMatch(t.Text.Trim()) && !SheetNumberTokenRx.IsMatch(t.Text.Trim())
+                            && !t.Text.EndsWith(':') && t.Text.Any(char.IsLetter)
+                            && t.Text.Trim() == t.Text.Trim().ToUpperInvariant())
+                .ToList();
+            if (rightEdge.Count == 0) return null;
+
+            // Prefer the largest PLAN or LEVEL token, as FromPage does; else the largest title-size token.
+            var anchor = rightEdge
+                .Where(t => t.Text.StartsWith("PLAN", StringComparison.OrdinalIgnoreCase)
+                         || t.Text.Equals("LEVEL", StringComparison.OrdinalIgnoreCase))
+                .OrderByDescending(t => t.Height).FirstOrDefault();
+            if (anchor.Height <= 0) anchor = rightEdge.OrderByDescending(t => t.Height).First();
+            double h = anchor.Height;
+
+            // Symmetric: a wrapped title stacks either way round the anchor.
+            double lo = anchor.Cy - 6.0 * h, hi = anchor.Cy + 6.0 * h;
+            double lineH = Math.Max(h * 0.6, 4.0);
+            var window = rightEdge.Where(t => t.Height >= 0.5 * h && t.Cy >= lo && t.Cy <= hi).ToList();
+            if (window.Count == 0) return null;
+            string text = string.Join(" ", window
+                .GroupBy(t => Math.Round(t.Cy / lineH))
+                .OrderByDescending(g => g.Key)
+                .SelectMany(g => g.OrderBy(t => t.Cx).Select(t => t.Text))).Trim();
+            return text.Length == 0 ? null : text;
+        }
+
         public static SheetTitle? FromPage(VectorPageReader.PageContent? page)
         {
             if (page is null || page.Words.Count == 0) return null;

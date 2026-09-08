@@ -284,6 +284,45 @@ connection is unset rather than skipping):
 byte-identical to step 2b's (the PDF side already used 60). The full Core suite's result is in the
 commit message.
 
+## 11. Steps 4 and 5, done 2026-09-08: a plan is the sheet that says PLAN, and a glyph drawn twice is one glyph
+
+Briefs 17 and 18, implemented by the verifier (Codex out of usage). Two steps landed together
+because the second turned out to be the precondition of the first.
+
+**The sheet type.** The record types a sheet from what the sheet says about itself, in this order:
+the drafter's index (bookmark), the SHEET TITLE field of the title block, then, only if neither
+names a kind, a parsed storey means plan, then the title text, then the title block's words.
+Measured against the bookmark titles where PdfPig can read them: **60 of 60** on 31130, **41 of 41**
+on 31168, **73 of 73** on 31065, **59 of 59** on 31202. The order matters and was measured: the
+storey rule alone typed 14 of 31168's 41 sheets plan, because wall elevations and typical details
+name storeys too; the largest right-edge text typed plans as notes, because a notes column sits in
+the right fifth of a KOR sheet in title-size type.
+
+**The title block is a form.** `TitleBlockFields` reads it by its labels — SHEET TITLE, SHEET NUMBER,
+SCALE, PROJECT NO, PROJECT TITLE, DRAWN BY, CHK'D BY, REV, ISSUED FOR, DATE, CONSULTANT … — a value
+beside its label when it shares the line (SCALE = 1/8" = 1'-0"), below it to the next label
+otherwise. Ten fields per sheet on the three KOR-drafted sets (600 on 31130's 60 sheets, 496 on
+31168, 611 on 31138); 31065 and 31202, whose blocks carry other labels, yield fewer and fall back.
+The record carries the fields (`SheetRecord.TitleBlock`). Note what this already answers: SCALE is
+read as a field on every KOR sheet, where `SheetScaleReader` reported none on 162 of 162 pages of
+those three sets; wiring the field into the scale reader is one line in the scale step.
+
+**A glyph drawn twice is one glyph.** The field reader was blind until the reader under it was
+fixed: KOR's title blocks set their 8 pt labels and 8.4 pt notes in fake bold, every glyph drawn
+twice at the same origin (358 of 5,579 letters on 31130 p11, offset exactly 0.0), and PdfPig's
+nearest-neighbour extractor given both copies interleaves them — PROJECT TITLE arrived as
+"PRPORJOEJCETC T TITTILTEL E". `VectorPageReader` now drops a letter whose value, size and origin
+equal an earlier letter's before extracting words. Word totals fell by the duplicates (568,310 →
+566,264 items on 31130); nothing else in the ledger moved; the thirteen DXFs are byte-identical.
+
+**Only a plan is taken off to a DXF.** `pdf-takeoff` reports a non-plan page and writes nothing
+for it; a whole-set run on 31130 writes 34 DXFs and names 26 pages as details (13), schedules (4),
+sections (4), covers (2), notes (1) and other (2). The differential compares plan sheets only and
+lists the rest: S3.01 is a shear wall schedule and is excluded; S1.11, "DESIGN LOAD PLANS", is a
+plan and is compared. Over the 23 compared plan sheets: PDF walls 425, DXF 850; columns 1,191
+against 1,576, equal on 8 of 23. The ledger carries a context row for geometry the classifier
+emitted on a non-plan sheet.
+
 **Still open on rules, and where it goes**: the corpus measurement is a one-off hand run from
 14 August. Making it a compiled, re-runnable verb that reports each rule's coverage of the
 portfolio — and does the same over the stick-file corpus for the `dxf.pdf.*` keys — is the step

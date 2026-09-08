@@ -82,7 +82,29 @@ public static class DrawingIntake
                 ? titleBlock.Any(r => r.Contains(w.Cx, w.Cy))
                 : w.Cx > 0.8 * content.WidthPts && w.Cy < 0.2 * content.HeightPts)
             .Select(w => w.Text));
-        string sheetType = SheetTypeOf(bookmark ?? (titleBlockText.Length > 0 ? titleBlockText : title?.Display));
+        // THE SHEET'S OWN TITLE FIRST. SheetTitleReader anchors on the sheet-title PLAN or LEVEL
+        // token and keeps the raw text; the bookmark is Bluebeam's index of the same; the region's
+        // words are the fallback. On 31138 (no bookmarks) the title sits at 82–87% of the width
+        // and the furniture's title-block strip starts at 91%, so the region fallback typed 20 plan
+        // sheets "other" (2026-09-08, intake convergence brief 17).
+        // A SHEET WHOSE TITLE BLOCK NAMES A STOREY IS A PLAN: that is SheetTitleReader's own
+        // contract (its wrapped parse demands a plan-ish descriptor around the level). Otherwise
+        // the bookmark, then the sheet's own title text, then the title block's words. The title
+        // text alone mistyped plans as notes on 2026-09-08, because a notes column often sits in
+        // the right fifth of a KOR sheet in title-size type.
+        // WHAT THE SHEET CALLS ITSELF, THEN WHAT IT CONTAINS. The drafter's index (bookmark) and
+        // the SHEET TITLE field are statements and type a sheet exactly (31065: 73 of 73 pages
+        // against the index; 31202: 58 of 59). The level rule and the right-edge text are
+        // inferences, and the level rule alone typed 14 of 31168's 41 sheets plan — wall
+        // elevations and typical details name storeys too. Measured 2026-09-08.
+        var fields = TitleBlockFields.Read(content);
+        string? fieldTitle = fields.TryGetValue("SHEET TITLE", out var ft) ? ft
+                           : fields.TryGetValue("DRAWING TITLE", out ft) ? ft : null;
+        string? titleText = null;
+        try { titleText = SheetTitleReader.TitleText(content); } catch { /* a title the reader cannot form is a fact, not a failure */ }
+        string sheetType = FirstTyped(bookmark, fieldTitle);
+        if (sheetType is "other" or "unknown")
+            sheetType = title is not null ? "plan" : FirstTyped(titleText, titleBlockText.Length > 0 ? titleBlockText : null);
 
         IReadOnlyList<ColumnScheduleRow> columns = [];
         IReadOnlyList<FootingScheduleReader.FootingType> footings = [];
@@ -182,6 +204,7 @@ public static class DrawingIntake
             markup, links, full, pathFates, wordFates)
         {
             ColumnAgreement = agreement, ColumnAgreementError = agreementError,
+            TitleBlock = fields,
             Context = new SheetContext
             {
                 OutlinesPresent = facts.OutlinesPresent, ScheduleHeadings = headings.Count,
@@ -361,17 +384,39 @@ public static class DrawingIntake
         ("note",              new Regex(@"[A-Za-z]{3,}\s+[A-Za-z]{3,}\s+[A-Za-z]{2,}", RegexOptions.Compiled)),
     };
 
+    // First match wins. Schedule first; then plan, tested before section so that "LEVEL 19 PLAN AND
+    // ROOF PLAN AND ELEVATIONS" (31065) is a plan; FOUNDATION(S) is a plan word — 31138 titles its
+    // foundation sheet "FOUNDATIONS" and 31168 titles S1.11 "FOUNDATION PLANS" — unless DETAILS or
+    // SCHEDULE follows it.
     public static readonly (string Type, Regex Rx)[] SheetTypes =
     {
         ("schedule",          new Regex(@"SCHEDULE", RegexOptions.IgnoreCase | RegexOptions.Compiled)),
-        ("plan",              new Regex(@"\bPLAN\b", RegexOptions.IgnoreCase | RegexOptions.Compiled)),
+        ("plan",              new Regex(@"\bPLANS?\b|\bFOUNDATIONS?\b(?!\s+(DETAILS?|SCHEDULES?|NOTES?)\b)", RegexOptions.IgnoreCase | RegexOptions.Compiled)),
         ("section/elevation", new Regex(@"SECTION|ELEVATION", RegexOptions.IgnoreCase | RegexOptions.Compiled)),
         ("details",           new Regex(@"DETAIL", RegexOptions.IgnoreCase | RegexOptions.Compiled)),
         ("notes/general",     new Regex(@"NOTES|GENERAL|LEGEND|ABBREV", RegexOptions.IgnoreCase | RegexOptions.Compiled)),
         // not TITLE: every title block on every sheet says "SHEET TITLE", and it classified 11 of
         // 31130's 60 sheets as covers before that was seen
-        ("cover/index",       new Regex(@"COVER SHEET|COVER PAGE|DRAWING (LIST|INDEX)|SHEET INDEX|3D VIEW", RegexOptions.IgnoreCase | RegexOptions.Compiled)),
+        ("cover/index",       new Regex(@"COVER SHEET|COVER PAGE|DRAWING (LIST|INDEX)|SHEET INDEX|\b3D\b.*\bVIEW|PRESENTATION VIEW", RegexOptions.IgnoreCase | RegexOptions.Compiled)),
     };
+
+    /// <summary>
+    /// The first source that names a kind wins; a source that exists but says nothing recognisable
+    /// yields to the next. Chaining by nullness instead stopped at a title text of "S4.01 REVISIONS"
+    /// and typed 21 of 31130's sheets "other" that the title block's words had typed correctly.
+    /// </summary>
+    public static string FirstTyped(params string?[] sources)
+    {
+        bool any = false;
+        foreach (var s in sources)
+        {
+            if (string.IsNullOrWhiteSpace(s)) continue;
+            any = true;
+            string t = SheetTypeOf(s);
+            if (t != "other" && t != "unknown") return t;
+        }
+        return any ? "other" : "unknown";
+    }
 
     /// <summary>The kind of sheet a title names; "unknown" when the title says nothing recognisable.</summary>
     public static string SheetTypeOf(string? title)

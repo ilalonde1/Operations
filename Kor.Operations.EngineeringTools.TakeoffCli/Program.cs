@@ -123,13 +123,22 @@ if (args.Length >= 1 && args[0].Equals("pdf-takeoff", StringComparison.OrdinalIg
     using var ptDoc = UglyToad.PdfPig.PdfDocument.Open(ptPdf);
     var ptFacts = DocumentFacts.From(ptDoc);
     var ptRequest = new IntakeRequest(ptScale, ptOptions, ptMarkup);
-    int ptWritten = 0, ptEmpty = 0;
+    int ptWritten = 0, ptEmpty = 0, ptNotPlan = 0;
     for (int p = ptFirst; p <= ptLast; p++)
     {
         SheetRecord record;
         try { record = DrawingIntake.ReadSheet(ptDoc, p, ptRequest, ptFacts); }
         catch (Exception ex) { Console.WriteLine($"{p,4}   FAILED  {ex.GetType().Name}: {ex.Message}"); continue; }
 
+        // A DXF PLAN IS WRITTEN FROM A PLAN SHEET. The classifier runs on every page and the record
+        // keeps what it found; a section's cut-wall poché or a detail's outline is not a storey and
+        // does not go to the model. S3.01 on 31168 yielded 36 "walls" before this (brief 17).
+        if (record.SheetType != "plan")
+        {
+            Console.WriteLine($"{p,4}  {record.SheetType,-18} not a plan sheet; no DXF written");
+            ptNotPlan++;
+            continue;
+        }
         var geo = record.Geometry;
         int annot = record.Context.AnnotationPaths;
         int found = geo.Slabs.Count + geo.Columns.Count + geo.Walls.Count + geo.Lines.Count;
@@ -163,7 +172,7 @@ if (args.Length >= 1 && args[0].Equals("pdf-takeoff", StringComparison.OrdinalIg
     }
 
     Console.WriteLine();
-    Console.WriteLine($"{ptWritten} DXF written, {ptEmpty} page(s) empty.");
+    Console.WriteLine($"{ptWritten} DXF written, {ptEmpty} page(s) empty, {ptNotPlan} page(s) not plan sheets.");
     if (ptEmpty > 0 && ptMarkup)
         Console.WriteLine("  Empty in --markup mode means the page carries no Bluebeam markup. Drop --markup to read the drawing itself.");
     return ptWritten > 0 ? 0 : 3;
@@ -347,7 +356,7 @@ if (args.Length >= 1 && args[0].Equals("pdf-vs-dxf", StringComparison.OrdinalIgn
     // A Revit export writes several views per sheet (S2.22.1_1, _2, …) and the PDF page carries them
     // all, so the comparison is per SHEET: one PDF page against the sum of its views.
     var bySheet = vd.Pairs.GroupBy(p => p.SheetNumber, StringComparer.OrdinalIgnoreCase)
-        .Select(g => (Sheet: g.Key, Page: g.First().Page, Title: g.First().PageTitle, Views: g.Count(),
+        .Select(g => (Sheet: g.Key, Page: g.First().Page, Title: g.First().PageTitle, Views: g.Count(), IsPlan: g.First().IsPlan, SheetType: g.First().SheetType,
                       PdfSlabs: g.First().PdfSlabs, PdfCols: g.First().PdfColumns, PdfLines: g.First().PdfLines, PdfWalls: g.First().PdfWalls,
                       DxfWalls: g.Sum(p => p.DxfWalls), DxfCols: g.Sum(p => p.DxfColumns), DxfSlabs: g.Sum(p => p.DxfSlabs), DxfOpenings: g.Sum(p => p.DxfOpenings)))
         .OrderBy(s => s.Page).ToList();
@@ -355,13 +364,17 @@ if (args.Length >= 1 && args[0].Equals("pdf-vs-dxf", StringComparison.OrdinalIgn
     foreach (var s in bySheet)
     {
         string title = s.Title.Length > 20 ? s.Title[..20] : s.Title;
-        Console.WriteLine($"{s.Sheet,-10} {s.Page,4} {s.Views,5}  {title,-20} |  {s.PdfSlabs,10} {s.PdfCols,5} {s.PdfLines,6} {s.PdfWalls,6} |  {s.DxfWalls,10} {s.DxfCols,5} {s.DxfSlabs,6} {s.DxfOpenings,9} |  {s.PdfCols - s.DxfCols,+6}");
+        Console.WriteLine($"{s.Sheet,-10} {s.Page,4} {s.Views,5}  {title,-20} |  {s.PdfSlabs,10} {s.PdfCols,5} {s.PdfLines,6} {s.PdfWalls,6} |  {s.DxfWalls,10} {s.DxfCols,5} {s.DxfSlabs,6} {s.DxfOpenings,9} |  {s.PdfCols - s.DxfCols,+6}" +
+                          (s.IsPlan ? "" : $"   ({s.SheetType}: not compared)"));
     }
     Console.WriteLine();
-    int colsAgree = bySheet.Count(s => s.PdfCols == s.DxfCols);
-    int wallsWithinTwo = bySheet.Count(s => Math.Abs(s.PdfWalls - s.DxfWalls) <= 2);
-    Console.WriteLine($"{bySheet.Count} sheet(s) matched from {vd.Pairs.Count} DXF view(s); {vd.Unmatched.Count} DXF file(s) with no PDF page (kept views carry no sheet number).");
-    Console.WriteLine($"Totals over matched sheets — PDF: slabs {bySheet.Sum(s => s.PdfSlabs)}, columns {bySheet.Sum(s => s.PdfCols)}, walls {bySheet.Sum(s => s.PdfWalls)} (within two of the DXF on {wallsWithinTwo} of {bySheet.Count} sheets)  |  " +
+    // Only plans are compared: a section sheet's cut poché against a section view's says nothing about the intake.
+    var plans = bySheet.Where(s => s.IsPlan).ToList();
+    int colsAgree = plans.Count(s => s.PdfCols == s.DxfCols);
+    int wallsWithinTwo = plans.Count(s => Math.Abs(s.PdfWalls - s.DxfWalls) <= 2);
+    Console.WriteLine($"{bySheet.Count} sheet(s) matched from {vd.Pairs.Count} DXF view(s), {plans.Count} of them plans; {vd.Unmatched.Count} DXF file(s) with no PDF page (kept views carry no sheet number).");
+    bySheet = plans;
+    Console.WriteLine($"Totals over compared plan sheets — PDF: slabs {bySheet.Sum(s => s.PdfSlabs)}, columns {bySheet.Sum(s => s.PdfCols)}, walls {bySheet.Sum(s => s.PdfWalls)} (within two of the DXF on {wallsWithinTwo} of {bySheet.Count} sheets)  |  " +
                       $"DXF: walls {bySheet.Sum(s => s.DxfWalls)}, columns {bySheet.Sum(s => s.DxfCols)}, slabs {bySheet.Sum(s => s.DxfSlabs)}  |  " +
                       $"column counts equal on {colsAgree} of {bySheet.Count} sheets");
     foreach (var u in vd.Unmatched.Take(12)) Console.WriteLine($"  unmatched: {u}");
@@ -2514,6 +2527,9 @@ if (args.Length >= 1 && args[0].Equals("sched-border", StringComparison.OrdinalI
     Console.WriteLine($"  underlines {sbSet.Underlines.Count}; grid axes {sbSet.VerticalAxesX.Count} vertical, {sbSet.HorizontalAxesY.Count} horizontal; " +
                       $"declared column sizes {sbSet.DeclaredColumnSizesMm.Count}: {string.Join(", ", sbSet.DeclaredColumnSizesMm.Select(s => $"{s.W:0}x{s.D:0}"))}");
     var sbGrid = GridBubbles.On(sbPc);
+    Console.WriteLine($"  sheet title: {SheetTitleReader.FromPage(sbPc)?.Raw ?? "(no storey parsed)"}   title text: {SheetTitleReader.TitleText(sbPc) ?? "(none)"}");
+    var sbFields = TitleBlockFields.Read(sbPc);
+    Console.WriteLine($"  title block fields {sbFields.Count}: " + string.Join(" | ", sbFields.OrderBy(kv => kv.Key).Select(kv => $"{kv.Key} = {kv.Value}")));
     Console.WriteLine($"  labelled circles {sbGrid.Bubbles.Count}, on a grid axis {sbGrid.Bubbles.Count(b => b.IsGridBubble)}: " +
                       string.Join(" ", sbGrid.Bubbles.Where(b => b.IsGridBubble).Select(b => b.Label).Distinct().OrderBy(l => l)));
 

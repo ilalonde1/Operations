@@ -35,7 +35,12 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
         public sealed record SheetPair(
             string DxfFile, string SheetNumber, int Page, string PageTitle,
             int PdfSlabs, int PdfColumns, int PdfLines, int PdfWalls,
-            int DxfWalls, int DxfColumns, int DxfSlabs, int DxfOpenings);
+            int DxfWalls, int DxfColumns, int DxfSlabs, int DxfOpenings)
+        {
+            /// <summary>The PDF page's sheet type; only a plan is compared (brief 17).</summary>
+            public string SheetType { get; init; } = "plan";
+            public bool IsPlan => SheetType == "plan";
+        }
 
         public sealed record Result(IReadOnlyList<SheetPair> Pairs, IReadOnlyList<string> Unmatched, string PageIndexSource);
 
@@ -56,6 +61,7 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
 
             using var doc = PdfDocument.Open(pdfPath);
             var (pageBySheet, source) = PageIndex(doc);
+            var facts = Kor.Operations.EngineeringTools.Intake.DocumentFacts.From(doc);
 
             var pairs = new List<SheetPair>();
             var unmatched = new List<string>();
@@ -74,12 +80,25 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                 var tags = DxfPlanReader.ReadPositionedTags(dxf);
                 var dxfGeo = StructuralPlanClassifier.Classify(segments, rules, PlanSheetNaming.Parse(dxf), tags);
 
-                // The PDF side, the way pdf-takeoff reads it.
+                // The PDF side, the way pdf-takeoff reads it — and the sheet's type, the way the
+                // record types it, so a section sheet's cut poché is listed and not compared.
                 var pdfGeo = PdfPlanReader.Read(doc, scaleDenominator, hit.Page, options, annotationsOnly: false);
+                var content = VectorPageReader.ReadPage(doc.GetPage(hit.Page));
+                // The sheet's type is the record's business — one rule, in one place (DrawingIntake),
+                // with the same fallbacks the ledger and pdf-takeoff use. Typed without a scale so
+                // nothing is classified twice.
+                string sheetType;
+                try
+                {
+                    sheetType = Kor.Operations.EngineeringTools.Intake.DrawingIntake
+                        .ReadSheet(doc, hit.Page, new Kor.Operations.EngineeringTools.Intake.IntakeRequest(null, options), facts)
+                        .SheetType;
+                }
+                catch { sheetType = "unknown"; }
 
                 pairs.Add(new SheetPair(name, m.Value.ToUpperInvariant(), hit.Page, hit.Title,
                     pdfGeo.Slabs.Count, pdfGeo.Columns.Count, pdfGeo.Lines.Count, pdfGeo.Walls.Count,
-                    dxfGeo.Walls.Count, dxfGeo.Columns.Count, dxfGeo.Slabs.Count, dxfGeo.Openings.Count));
+                    dxfGeo.Walls.Count, dxfGeo.Columns.Count, dxfGeo.Slabs.Count, dxfGeo.Openings.Count) { SheetType = sheetType });
             }
             return new Result(pairs, unmatched, source);
         }

@@ -45,6 +45,9 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             void Note(string cls, int n, Disposition d, string by) => rows.Add(new LedgerRow(cls, n, d, by, Primary: false));
             string? title = record.Level is null ? null : record.Zone is null ? record.Level : $"{record.Level} {record.Zone}";
             Row("sheet title (level and zone)", 1, title is null ? Disposition.Unread : Disposition.Read, title is null ? "SheetTitleReader found none" : "SheetTitleReader");
+            Note("title block fields read (SHEET TITLE, SCALE, PROJECT NO, DRAWN BY …)", record.TitleBlock.Count,
+                record.TitleBlock.Count > 0 ? Disposition.Read : Disposition.Unread,
+                record.TitleBlock.Count > 0 ? "TitleBlockFields: " + string.Join(", ", record.TitleBlock.Keys.OrderBy(k => k)) : "no labelled title block on this sheet");
             Row("scale note", 1, record.ScaleNote is null ? Disposition.Unread : Disposition.Read, record.ScaleNote is null ? "SheetScaleReader found none" : "SheetScaleReader");
             if (record.BookmarkTitle is not null) Row("bookmark (sheet index entry)", 1, Disposition.Unread, "no reader");
             else if (record.Context.OutlinesPresent) Row("bookmark present in the file, unreadable by PdfPig", 1, Disposition.Unaccounted, "PdfDocument.TryGetBookmarks returned none for an /Outlines tree");
@@ -77,6 +80,13 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                     noInkEmitted > 0 ? Disposition.Unaccounted : Disposition.Read,
                     noInkEmitted > 0 ? "a path that draws nothing became geometry; the invisible-ink rule covers paper FILLS only" : "none");
                 Note("emitted: walls", record.Geometry.Walls.Count, Disposition.Read, "GeometryFilterService");
+                if (record.SheetType != "plan")
+                {
+                    int onNonPlan = record.Geometry.Walls.Count + record.Geometry.Columns.Count + record.Geometry.Slabs.Count;
+                    Note($"geometry emitted on a non-plan sheet ({record.SheetType}): walls + columns + slabs", onNonPlan,
+                        onNonPlan > 0 ? Disposition.Unaccounted : Disposition.Read,
+                        "the classifier runs on every page; pdf-takeoff writes a DXF from plan sheets only (brief 17)");
+                }
                 Note("filled wall-thickness shapes with more than four vertices — ribbons, not split",
                     record.Geometry.WallRibbonsNotSplit, Disposition.Unread, "GeometryFilterService: retained with their existing fate");
                 Note("emitted: footings as objects", 0, Disposition.Unread, "FootingScheduleReader counts placements; nothing is emitted");
