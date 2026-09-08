@@ -8,14 +8,14 @@
 - **A seat at the owner's table.** Omar's contact at Colliers is taking owner's-representative roles on the **BC Cancer Vancouver expansion**, the **Delta Aquatic Centre** and a **BCIT lab**, with a say in team selection. She has offered introductions to the municipal recreation director and her private-sector lead. The BC Cancer prime-consultant RFP is already on file in the app.
 - **Heather Lands.** After our extra claim got Aquilini's attention, Jim met GBL's Thomas Lee. KOR has Block B; Aquilini has said we get a shot at **Block A** (growing into a large tower) and we are going after **Block C** too. Jim is preparing a **"designing without transfers"** presentation for Aquilini's and GBL's offices, with JM and Omar.
 - **Beedie / Fraser Mills.** Three parcels, three teams, a tryout. JM to confirm whether we are one of the three.
-- **Vancouver Island.** Our proposal to BAM (Ben Smith, ex-Starlight) for Trillium's seniors housing produced a warm intro to **Continuum Architecture** in Victoria, who appear to hold most of that developer's work. Rory to follow up.
+- **Vancouver Island.** Our proposal to BAM (Ben Smith, ex-Starlight) for Trillium's seniors housing produced a warm intro to **Continuum Architecture** in Victoria (partners Jeremy Beintema and Wil Wiens), who appear to hold most of that developer's work. Rory to follow up.
 - **Stantec.** We are now on Stantec's qualified-supplier list. Omar and Islam will pitch KOR to Stantec's Vancouver structural group as specialty and overflow support, the way we did with DIALOG in Edmonton.
 - **California.** A US$1M three-tower proposal in San Diego turned out to be leverage against an incumbent; a wood-frame RFP goes in this week. MVE (Irvine) responded well to the AI demo and has asked for updated insurance; visit around the LA Tall Building Conference in November.
 - **Market read.** Concrete high-rise is in a holding pattern; Rize's Cambie and Marine tower is stalled on offshore capital. "Hopefully next year" is what everyone is hearing.
 
 ## Decisions
 
-1. Health-sector architect outreach to run from **one coordinated target list**, one owner per contact, so three people do not call the same architect (Ian's proposal, no objection on the call). Ian prepares the list and talking points.
+1. Health-sector architect outreach runs from **one coordinated target list**, one owner per contact, so three people do not call the same architect. Ian prepares the list and talking points.
 2. **Seismic assessments and change-of-use work** (office to hotel or residential, S3 bylaw thresholds) become a promoted service line. Quote the report only; the upgrade work follows. Rory suggested a website and LinkedIn blurb, Ian will draft it; Omar raises it with Colliers as the thing we can do for them.
 3. The Stantec pitch belongs to **Omar and Islam**.
 4. **Omar to become gatekeeper** of inbound opportunities in the app; he and Ian sit down next week. Ian gets Jim onto the current build so the Teams spreadsheet can retire.
@@ -35,12 +35,12 @@
 ## Owner by owner
 
 - **Omar:** the Colliers introductions, and ask Colliers what change-of-use work they see; NDY seismic-restraint referrals; the office-to-hotel seismic assessment (NDA, structural drawings, report fee) and the same offer to the Coal Harbour hotel developer; Stantec with Islam; with JM, the ex-employee contact at the Port Authority.
-- **Jim:** the "no transfers" presentation; lunch with Giovanni at Aquilini; the San Diego RFP this week; the CDA lunch on the 11th; a call to Michael De Cotiis at Pinnacle for lunch after the long weekend; check with Daler that MVE's insurance update went back.
-- **JM:** call Gwyn at Arcadis for lunch; confirm with Beedie whether we are in the Fraser Mills tryout (nobody was sure on the call); Calgary, with Anthem and GGA direct; the Kelowna architect intro for Conor; call Brad at ITC. MCM is worth a visit and JM has the working contact there.
-- **JB:** Bosa lunch with Colin via Robert, October; Solterra one-on-one with Jerry, the decision maker, this week or early next.
+- **Jim:** the "no transfers" presentation; lunch with Giovanni Gunawan at Aquilini; the San Diego RFP this week; the CDA lunch on the 11th; a call to Michael De Cotiis at Pinnacle for lunch after the long weekend; check with Daler that MVE's insurance update went back.
+- **JM:** call Gwyn Vose at Arcadis for lunch; confirm with Beedie whether we are in the Fraser Mills tryout (nobody was sure on the call); Calgary, with Anthem and GGA direct; the Kelowna architect intro for Conor; call Brad Burnett at ITC. MCM is worth a visit and JM's contact Peter Odegaard is a partner there.
+- **JB:** Bosa lunch with Colin via Robert, October; Solterra one-on-one with Gerry Nichele, the decision maker, this week or early next.
 - **Rory:** Continuum Architecture, from Jim's hand-over; ask Ike about the Perkins&Will invite. The conversions blurb was his idea; Ian drafts it.
 - **Islam:** KRA's Vancouver team; Stantec with Omar; JM's Calgary meetings.
 - **Conor:** Graham night, and two more invites; press Lauren in Kelowna for the three developer intros; follow Mission Group's departed contact to wherever she lands.
 - **Ian:** the architect target list and talking points; the events list; Port Authority recon; Island intel and Continuum contacts to Rory; the conversions blurb; Jim onto the app; Omar set up as gatekeeper; this recap.
 
-*Full synopsis with contacts, org history, the app's existing records and fifteen open questions: see Ian.*
+*Full synopsis with contacts, org history, the app's existing records and the open questions: see Ian.*
