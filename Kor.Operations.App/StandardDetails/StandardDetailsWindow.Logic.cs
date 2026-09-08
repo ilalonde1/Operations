@@ -1009,6 +1009,85 @@ public partial class StandardDetailsWindow
         }
     }
 
+    /// <summary>
+    /// The whole filtered list as ONE PDF for Bluebeam markup, built from the store at the moment of the
+    /// click. Never saved anywhere but the viewer's temp folder, so there is no package to keep current:
+    /// every engineer who clicks gets the set as it is right now. Decisions still go through Approve /
+    /// Reject here; the marked-up PDF is what the gatekeeper works from in Revit.
+    /// </summary>
+    private async void OpenReviewSet_Click(object sender, RoutedEventArgs e)
+    {
+        if (_openingReviewSet)
+        {
+            return;
+        }
+
+        if (_korStandardsRepo is null)
+        {
+            SetActivityMessage("KorStandards catalog is not configured.", BannerTone.Warning);
+            MessageBox.Show(this, "KorStandards catalog is not configured.", "Standard Details - Open list as PDF", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        var rows = _documentSnapshot.Where(x => x.IsDetail).ToList();
+        if (rows.Count == 0)
+        {
+            MessageBox.Show(this, "Nothing to open: this list has no details or sheets. Parts carry no PDF art.", "Standard Details - Open list as PDF", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var tab = _sheetsMode ? "Sheets" : "Details";
+        var discipline = _selectedDiscipline ?? "All";
+        var filter = string.Join(" · ", new[]
+        {
+            _selectedDiscipline ?? "All disciplines",
+            _selectedKind ?? "all types",
+            string.IsNullOrWhiteSpace(SearchBox.Text) ? "" : $"search \"{SearchBox.Text.Trim()}\""
+        }.Where(x => !string.IsNullOrWhiteSpace(x)));
+        var title = $"KOR Standard Details — {tab} — {discipline}";
+
+        _openingReviewSet = true;
+        OpenReviewSetButton.IsEnabled = false;
+        OpenReviewSetButtonText.Text = "Building…";
+        try
+        {
+            var items = new List<ReviewSetItem>(rows.Count);
+            foreach (var row in rows)
+            {
+                var pdf = await _korStandardsRepo.LoadRenderedPdfAsync("detail", row.DetailNumber);
+                items.Add(new ReviewSetItem(row.DetailNumber, row.Title, row.ViewGroup, row.IsSheet ? "sheet" : row.Kind, row.StatusLabel, pdf));
+                if (items.Count % 25 == 0 || items.Count == rows.Count)
+                {
+                    SetActivityMessage($"Building review set… {items.Count} of {rows.Count}", BannerTone.Info);
+                    OpenReviewSetButtonText.Text = $"Building… {items.Count}/{rows.Count}";
+                }
+            }
+
+            var spec = new ReviewSetSpec(title, filter, _userIdentity, DateTime.UtcNow, items);
+            var bytes = await Task.Run(() => ReviewSetComposer.Build(spec));
+            var path = StandardDetailsSheetComposer.CopyPdfBytesToTempAndOpen(bytes, $"ReviewSet-{tab}-{discipline}");
+            var missing = items.Count(x => x.Pdf is not { Length: > 0 });
+            SetActivityMessage(
+                missing == 0
+                    ? $"Opened {items.Count} detail(s) as one PDF."
+                    : $"Opened {items.Count} detail(s) as one PDF; {missing} had no stored art (placeholder pages).",
+                BannerTone.Success);
+            Log.Information("Standard Details: review set opened, {Count} details, {Missing} without art, {Path}", items.Count, missing, path);
+        }
+        catch (Exception ex)
+        {
+            SetActivityMessage("Review set could not be built.", BannerTone.Error);
+            Log.Warning(ex, "Standard Details: review set failed.");
+            ShowScrollableMessage("Standard Details - Open list as PDF", ex.Message, MessageBoxImage.Error);
+        }
+        finally
+        {
+            _openingReviewSet = false;
+            OpenReviewSetButtonText.Text = "Open list as PDF";
+            OpenReviewSetButton.IsEnabled = true;
+        }
+    }
+
     private void ShowScrollableMessage(string title, string message, MessageBoxImage icon)
     {
         _ = icon;

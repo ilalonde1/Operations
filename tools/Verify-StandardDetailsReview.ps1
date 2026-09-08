@@ -189,7 +189,7 @@ Add-Check $S 'App.config StandardDetails.PreviewCachePath key removed' 'False' {
 # Kor.Operations.Architecture.Tests\ScopedViewTests.cs, which names the same classes as scene boxes.
 # Review said 1|1. By 09-07 evening: + MasterPublisherPdfMatchingTests (7), the five Codex audit-fix classes
 # (10), and SheetComposerNumberingTests (4) = 8 files, 22 facts. Only ever goes up.
-Add-Check $S 'test files in a *Tests*\StandardDetails\ folder|[Fact]s in them' '8|22' {
+Add-Check $S 'test files in a *Tests*\StandardDetails\ folder|[Fact]s in them' '9|26' {
     $files = @(Get-ChildItem $RepoRoot, $DrafterRepo, $RevitToolsRepo -Recurse -Filter '*.cs' -ErrorAction SilentlyContinue | Where-Object { $_.FullName -match '(?i)tests?[^\\]*\\StandardDetails\\' -and $_.FullName -notmatch '\\(bin|obj)\\' })
     $facts = 0; foreach ($f in $files) { $facts += ([regex]::Matches((Get-Content $f.FullName -Raw), '\[(Fact|Theory)')).Count }
     "$($files.Count)|$facts"
@@ -197,7 +197,7 @@ Add-Check $S 'test files in a *Tests*\StandardDetails\ folder|[Fact]s in them' '
 # Same measure as the review: wc -l over *.cs AND *.xaml (newline count). Review said 8458; the ship-blocker
 # fix made it 8506; the six audit fixes + automatic numbering (09-07 evening) 8619. Informational: a DIFF
 # here just means the module changed. -Include needs the wildcard path or it returns nothing.
-Add-Check $S 'StandardDetails .cs + .xaml line count (wc -l)' '8667' { (Get-ChildItem (Join-Path $sd '*') -Include '*.cs','*.xaml' -File | ForEach-Object { ([regex]::Matches([IO.File]::ReadAllText($_.FullName), "`n")).Count } | Measure-Object -Sum).Sum }
+Add-Check $S 'StandardDetails .cs + .xaml line count (wc -l)' '8997' { (Get-ChildItem (Join-Path $sd '*') -Include '*.cs','*.xaml' -File | ForEach-Object { ([regex]::Matches([IO.File]::ReadAllText($_.FullName), "`n")).Count } | Measure-Object -Sum).Sum }
 Add-Check $S 'census writers = migrations 005/005b/014/017/024 only (KOR.Drafter db)' '005_LoadDetailObservations.sql,005b_RepairAndCompleteLoad.sql,014_ReloadCensusV2.sql,017_ReloadCensusV3.sql,024_ReloadCensusV4.sql' { (Get-ChildItem (Join-Path $DrafterRepo 'db') -Filter '*.sql' | Where-Object { Select-String -Path $_.FullName -Pattern 'INSERT INTO detail\.DetailOccurrence' -Quiet } | Sort-Object Name | ForEach-Object { $_.Name }) -join ',' }
 
 # ---------------------------------------------------------------- Report

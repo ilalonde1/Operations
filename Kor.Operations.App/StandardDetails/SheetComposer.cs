@@ -708,7 +708,8 @@ internal sealed class StandardDetailsSheetComposer
         return tempPath;
     }
 
-    private static string CopyPdfBytesToTempAndOpen(byte[] pdfBytes, string identity)
+    // Internal: the review set (ReviewSetComposer) opens through the same temp folder and handler.
+    internal static string CopyPdfBytesToTempAndOpen(byte[] pdfBytes, string identity)
     {
         var tempFolder = Path.Combine(Path.GetTempPath(), "KOR-StandardDetails");
         Directory.CreateDirectory(tempFolder);

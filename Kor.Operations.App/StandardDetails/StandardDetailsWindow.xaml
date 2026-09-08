@@ -261,13 +261,32 @@
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
-                <Border Grid.Row="0" Background="#FFE7EAEE" CornerRadius="9" Padding="3" HorizontalAlignment="Left" Margin="0,0,0,10">
-                    <StackPanel Orientation="Horizontal">
-                        <RadioButton x:Name="SheetsTab" GroupName="Catalog" Content="Sheets" Style="{StaticResource TabRadio}" Checked="CatalogTab_Checked"/>
-                        <RadioButton x:Name="DetailsTab" GroupName="Catalog" Content="Details" IsChecked="True" Style="{StaticResource TabRadio}" Checked="CatalogTab_Checked"/>
-                        <RadioButton x:Name="PartsTab" GroupName="Catalog" Content="Parts" Style="{StaticResource TabRadio}" Checked="CatalogTab_Checked"/>
-                    </StackPanel>
-                </Border>
+                <Grid Grid.Row="0" Margin="0,0,0,10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <Border Grid.Column="0" Background="#FFE7EAEE" CornerRadius="9" Padding="3" HorizontalAlignment="Left">
+                        <StackPanel Orientation="Horizontal">
+                            <RadioButton x:Name="SheetsTab" GroupName="Catalog" Content="Sheets" Style="{StaticResource TabRadio}" Checked="CatalogTab_Checked"/>
+                            <RadioButton x:Name="DetailsTab" GroupName="Catalog" Content="Details" IsChecked="True" Style="{StaticResource TabRadio}" Checked="CatalogTab_Checked"/>
+                            <RadioButton x:Name="PartsTab" GroupName="Catalog" Content="Parts" Style="{StaticResource TabRadio}" Checked="CatalogTab_Checked"/>
+                        </StackPanel>
+                    </Border>
+                    <!-- The whole filtered list as ONE PDF for Bluebeam markup, built on demand from the store.
+                         Not a package: nothing is saved anywhere but a temp file the viewer opens. -->
+                    <Button x:Name="OpenReviewSetButton"
+                            Grid.Column="2"
+                            Height="32"
+                            Padding="12,0"
+                            VerticalAlignment="Center"
+                            Style="{StaticResource RejectButtonStyle}"
+                            Click="OpenReviewSet_Click"
+                            ToolTip="Open every detail in this list as one PDF in your PDF viewer, for markup. Built from the current store when you click.">
+                        <TextBlock x:Name="OpenReviewSetButtonText" Text="Open list as PDF" Foreground="#FF48515B" FontSize="12.5" FontWeight="SemiBold"/>
+                    </Button>
+                </Grid>
 
                 <Border Grid.Row="1" Background="White" BorderBrush="#FFE3E6EA" BorderThickness="1" CornerRadius="10">
                     <DataGrid x:Name="DocumentsGrid"

@@ -40,6 +40,7 @@ public partial class StandardDetailsWindow : Window
     private bool _partsMode;               // true = Parts tab
     private bool _sheetsMode;              // true = Sheets tab
     private bool _openingCatalogPdf;       // guards against re-entering the catalog PDF export
+    private bool _openingReviewSet;        // guards against re-entering the review-set build
     private int _previewToken;             // guards against a slow image load landing after the selection moved on
     private bool _uiReady;                 // true after Loaded — chip/tab Checked events fire during XAML init and must no-op until then
     private string _partImageRoot = "";    // Quick Insert imageRoot (QuickPick\BMP) — bare thumbnail names resolve here
