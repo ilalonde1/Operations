@@ -211,8 +211,9 @@ and are not re-rendered.
 
 ## What still needs a person
 
-- **Apply migration 080** to KorStandards on KOR-APP01\SQLEXPRESS (`KOR.Drafter\db\080_ScheduleReaderVocabulary.sql`,
-  idempotent). Until then the readers run on their compiled defaults, which are the same values.
+Nothing. Migration 080 was applied 2026-09-08: 7 of 7 `dxf.schedule.*` rows are live in
+`analysis.FormatConvention` under `CreatedBy = 'migration 080'`, read back through the readers'
+own login, and the harness passes 54 of 54 with them live.
 
 ## The export and deliver side — much less examined, look here with fresh eyes
 
