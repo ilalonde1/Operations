@@ -150,6 +150,8 @@ public static class DrawingIntake
                 options.MinWallThicknessMm, options.MaxWallThicknessMm, options.MinWallLengthMm, options.MinWallAspect,
                 footingPieces);
             pathFates = RemapToPopulation(thinnedFates, thinnedKept, fullKept, content.Paths.Count, full.Paths.Count);
+            if (!request.MarkupOnly)
+                geometry.GridAxes.AddRange(grid.Axes.Select(a => new GridAxis(a.Name, a.Vertical, a.At * scaleFactor)));
         }
         var wordFates = WordFates(content, furniture, grid, columns.Count, footings.Count, walls.Count);
         int inked = 0, noInk = 0, paper = 0, annotationPaths = 0;
@@ -343,7 +345,7 @@ public static class DrawingIntake
             if (grid.Bubbles.Any(b => (b.OnVerticalAxis || b.OnHorizontalAxis)
                                        && Math.Abs(b.Cx - w.Cx) <= b.Radius && Math.Abs(b.Cy - w.Cy) <= b.Radius))
             {
-                Word("words: grid axis names", Disposition.Discarded, "GridBubbles — the name is not kept");
+                Word("words: grid axis names", Disposition.Read, "GridBubbles — the name of a named axis (Geometry.GridAxes)");
                 continue;
             }
             string kind = KindOf(w.Text);

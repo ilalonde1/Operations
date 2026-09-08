@@ -365,7 +365,11 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
             bool hasText = xText.Count > 0;
             string textLayer = layerByColour ? "PDF-TEXT" : "TEXT";
-            int layerCount = (layerByColour ? colourLayers.Count + 1 : 9) + (hasText ? 1 : 0);
+            // the named grid axes, one LINE and two TEXTs each, on a layer the ETABS side recognises
+            // as a grid by name (GridAlignment.LooksLikeAGridLayer); never mapped to a KOR layer
+            bool hasGrid = geometry.GridAxes.Count > 0;
+            const string gridLayer = "GRID";
+            int layerCount = (layerByColour ? colourLayers.Count + 1 : 9) + (hasText ? 1 : 0) + (hasGrid ? 1 : 0);
 
             G(0, "TABLE"); G(2, "LAYER"); G(70, layerCount.ToString(ic));
             void WL(string n, int c) { G(0, "LAYER"); G(2, n); G(70, "0"); G(62, c.ToString()); G(6, "CONTINUOUS"); }
@@ -385,6 +389,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 }
             }
             if (hasText) WL(textLayer, 7);
+            if (hasGrid) WL(gridLayer, 8);
             G(0, "ENDTAB");
             G(0, "ENDSEC");
 
@@ -472,6 +477,39 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
             foreach (var (text, x, y, heightMm) in xText)
                 WriteText(text, x, y, heightMm);
+
+            // Each named axis is a line across the drawn extent, recentred with everything else, with
+            // its name at both ends — what a drafter draws, and what DxfToEtabsService aligns by.
+            if (hasGrid)
+            {
+                var drawn = geometry.Slabs.SelectMany(p => p)
+                    .Concat(geometry.Lines.SelectMany(p => p))
+                    .Concat(geometry.Walls.SelectMany(w => w.Outline))
+                    .Concat(geometry.Footings.SelectMany(f => f.Outline))
+                    .Concat(geometry.Columns)
+                    .Where(p => Ok(p.X, p.Y)).ToList();
+                if (drawn.Count > 0)
+                {
+                    double minX = drawn.Min(p => p.X) - cx, maxX = drawn.Max(p => p.X) - cx;
+                    double minY = drawn.Min(p => p.Y) - cy, maxY = drawn.Max(p => p.Y) - cy;
+                    double pad = Math.Max(1000.0, 0.05 * Math.Max(maxX - minX, maxY - minY));
+                    const double nameHeightMm = 300.0;
+                    foreach (var axis in geometry.GridAxes)
+                    {
+                        double at = axis.Vertical ? axis.AtMm - cx : axis.AtMm - cy;
+                        if (!Ok(at, at)) continue;
+                        var (x0, y0, x1, y1) = axis.Vertical ? (at, minY - pad, at, maxY + pad) : (minX - pad, at, maxX + pad, at);
+                        G(0, "LINE"); G(8, gridLayer); G(62, "8");
+                        Num(10, x0); Num(20, y0); Num(30, 0); Num(11, x1); Num(21, y1); Num(31, 0);
+                        foreach (var (tx, ty) in new[] { (x0, y0), (x1, y1) })
+                        {
+                            G(0, "TEXT"); G(8, gridLayer); G(62, "8");
+                            Num(10, tx); Num(20, ty); Num(30, 0); Num(40, nameHeightMm);
+                            G(1, TextForDxf(axis.Name));
+                        }
+                    }
+                }
+            }
 
             G(0, "ENDSEC");
             G(0, "EOF");

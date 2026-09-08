@@ -154,6 +154,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 minWallThicknessMm: options.MinWallThicknessMm, maxWallThicknessMm: options.MaxWallThicknessMm,
                 minWallLengthMm: options.MinWallLengthMm, minWallAspect: options.MinWallAspect,
                 footingPieces: footingPieces);
+            if (!annotationsOnly)
+                result.GridAxes.AddRange(GridBubbles.On(pageRead).Axes.Select(a => new GridAxis(a.Name, a.Vertical, a.At * scale)));
 
             return result;
         }
@@ -197,6 +199,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 annotationsOnly,
                 furniture: Furniture(pageRead, scale),
                 footingPieces: footingPieces);
+            if (!annotationsOnly)
+                result.GridAxes.AddRange(GridBubbles.On(pageRead).Axes.Select(a => new GridAxis(a.Name, a.Vertical, a.At * scale)));
 
             return result;
         }

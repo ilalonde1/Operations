@@ -29,7 +29,11 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             int Words,
             int Paths,
             IReadOnlyList<LedgerRow> Rows,
-            IReadOnlyList<MarkupNote> Markup);
+            IReadOnlyList<MarkupNote> Markup,
+            IReadOnlyList<GridAxisNote> GridAxes);
+
+        /// <summary>A named grid axis on the page, in millimetres; Dir "X" is a vertical line at x = AtMm, "Y" a horizontal one.</summary>
+        public sealed record GridAxisNote(string Name, string Dir, double AtMm);
 
 
         // Forwarding entry points retain existing callers outside this step's permitted file scope.
@@ -161,9 +165,18 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             Note("words in schedules with no reader", unreadTableWords, Disposition.Unread, "no reader");
             Note("thickness callouts", record.ThicknessCallouts.Count, Disposition.Read, "SlabThicknessZoner");
             int bubblesWithAxis = grid.Bubbles.Count(b => b.OnVerticalAxis || b.OnHorizontalAxis);
-            Note("grid bubbles with an axis", bubblesWithAxis, Disposition.Discarded, "GridBubbles — drops grid lines; names and positions not exported");
+            Note("grid bubbles with an axis", bubblesWithAxis, Disposition.Read, "GridBubbles — the ends of the named axes");
             Note("labelled circles without an axis (circled marks, callouts)", grid.Bubbles.Count - bubblesWithAxis, Disposition.Unaccounted, "kept as labels; not typed");
-            Note("grid axes (vertical + horizontal)", grid.VerticalAxesX.Count + grid.HorizontalAxesY.Count, Disposition.Discarded, "GridBubbles — not exported");
+            int disagreeing = grid.Axes.Count(a => a.LabelsDisagree);
+            // a name used twice in one direction is a second view on the sheet (a section, a key plan)
+            // — the per-view split's signal, listed, not merged
+            var twice = grid.Axes.GroupBy(a => (a.Vertical, a.Name), (k, g) => (k.Name, N: g.Count())).Where(t => t.N > 1).Select(t => t.Name).ToList();
+            Note("grid axes, named (vertical + horizontal)", grid.Axes.Count, Disposition.Read,
+                grid.Axes.Count == 0 ? "GridBubbles — none on this sheet"
+                : $"GridBubbles.Axes → Geometry.GridAxes, the DXF's GRID layer: X {string.Join(",", grid.Axes.Where(a => a.Vertical).Select(a => a.Name))}; "
+                  + $"Y {string.Join(",", grid.Axes.Where(a => !a.Vertical).Select(a => a.Name))}"
+                  + (disagreeing > 0 ? $"; {disagreeing} with disagreeing end labels" : "")
+                  + (twice.Count > 0 ? $"; names used twice — a second view on the sheet: {string.Join(",", twice)}" : ""));
             Note("furniture regions (schedules, titled boxes, title block)", furniture.Regions.Count, Disposition.Discarded, "SheetFurniture");
             Note("underlines", furniture.Underlines.Count, Disposition.Discarded, "SheetFurniture");
             Note("letters, non-horizontal", record.Context.NonHorizontalLetters, Disposition.Read, "VectorPageReader (nearest-neighbour extractor keeps orientation)");
@@ -175,7 +188,8 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
 
             return new SheetLedger(record.PageNumber, record.WidthPts, record.HeightPts, record.Rotation,
                 record.BookmarkTitle, record.SheetType, title, record.ScaleNote,
-                record.Content.Words.Count, record.Content.Paths.Count, rows, record.Markup);
+                record.Content.Words.Count, record.Content.Paths.Count, rows, record.Markup,
+                record.Geometry.GridAxes.Select(a => new GridAxisNote(a.Name, a.Vertical ? "X" : "Y", Math.Round(a.AtMm, 1))).ToList());
         }
 
         /// <summary>Sum a set of page ledgers by class and disposition, primary and context kept apart.</summary>

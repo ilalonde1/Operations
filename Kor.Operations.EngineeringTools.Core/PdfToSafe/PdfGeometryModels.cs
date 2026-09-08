@@ -63,8 +63,17 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
     public sealed record WallPanel(IReadOnlyList<(double X, double Y)> Outline,
         (double X, double Y) Start, (double X, double Y) End, double ThicknessMm);
 
+    /// <summary>
+    /// A named grid axis in millimetres: a vertical axis is the line x = <see cref="AtMm"/> (ETABS
+    /// DIR "X"), a horizontal one y = AtMm. The name is the bubble's label; the same name on two
+    /// sheets is the same line (GridBubbles.Axis, scaled).
+    /// </summary>
+    public sealed record GridAxis(string Name, bool Vertical, double AtMm);
+
     public sealed class ExtractedGeometry
     {
+        /// <summary>The sheet's named grid axes (Intake step 8). Written to the DXF's GRID layer.</summary>
+        public List<GridAxis> GridAxes { get; } = new();
         public List<WallPanel> Walls { get; } = new();
         public List<(byte R, byte G, byte B)> WallColors { get; } = new();
         public List<bool> WallIsAnnotation { get; } = new();

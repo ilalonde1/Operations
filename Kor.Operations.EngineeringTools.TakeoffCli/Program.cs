@@ -308,6 +308,10 @@ if (args.Length >= 1 && args[0].Equals("pdf-overlay", StringComparison.OrdinalIg
     foreach (var line in ovGeo.Lines) OvPoly(line, red, 0, close: false);
     foreach (var slab in ovGeo.Slabs) OvPoly(slab, grey, 1, close: true);
     foreach (var wall in ovGeo.Walls) OvPoly(wall.Outline, new Rgba32(130, 0, 0), 2, close: true);
+    // named grid axes, cyan, across the whole page
+    double ovPageWmm = ovContent.WidthPts * ovScale * PdfToSafeConstants.PointsToMm, ovPageHmm = ovContent.HeightPts * ovScale * PdfToSafeConstants.PointsToMm;
+    foreach (var axis in ovGeo.GridAxes)
+        OvPoly(axis.Vertical ? new[] { (axis.AtMm, 0.0), (axis.AtMm, ovPageHmm) } : new[] { (0.0, axis.AtMm), (ovPageWmm, axis.AtMm) }, new Rgba32(0, 170, 190), 1, close: false);
     // a footing no label on the plan names is drawn magenta and listed, and so is every placed
     // footing label no footing answers — the two ways the read and the plan disagree
     var magenta = new Rgba32(200, 0, 200);
@@ -353,7 +357,7 @@ if (args.Length >= 1 && args[0].Equals("pdf-overlay", StringComparison.OrdinalIg
     Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(ovOut)) ?? ".");
     ovImg.SaveAsPng(ovOut);
     Console.WriteLine($"{Path.GetFileName(ovPdf)} p{ovPage} 1:{ovScale} @ {ovDpi} dpi → {ovOut}");
-    Console.WriteLine($"  slabs {ovGeo.Slabs.Count} (grey)   columns {ovGeo.Columns.Count} (blue)   walls {ovGeo.Walls.Count} (dark red)   footings {ovGeo.Footings.Count} (orange; {unlabelled.Count} without a label, magenta)   lines {ovGeo.Lines.Count} (red)   mark-shaped words {marks} (green)");
+    Console.WriteLine($"  slabs {ovGeo.Slabs.Count} (grey)   columns {ovGeo.Columns.Count} (blue)   walls {ovGeo.Walls.Count} (dark red)   footings {ovGeo.Footings.Count} (orange; {unlabelled.Count} without a label, magenta)   grid axes {ovGeo.GridAxes.Count} (cyan: X {string.Join(",", ovGeo.GridAxes.Where(a => a.Vertical).Select(a => a.Name))}; Y {string.Join(",", ovGeo.GridAxes.Where(a => !a.Vertical).Select(a => a.Name))})   lines {ovGeo.Lines.Count} (red)   mark-shaped words {marks} (green)");
     foreach (var f in unlabelled) Console.WriteLine($"  footing {f.Mark} at ({f.Centre.X:0},{f.Centre.Y:0}) mm: no label on the plan names it");
     foreach (var u in unanswered) Console.WriteLine($"  label {u}: no footing read answers it");
     return 0;

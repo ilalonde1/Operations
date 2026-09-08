@@ -24,11 +24,13 @@ public sealed record PathFate(int PathIndex, Disposition Disposition, PathReason
 {
     public static Disposition DispositionOf(PathReason reason) => reason switch
     {
+        // GridAxis is read since step 8: the line through a bubble is a named axis in Geometry.GridAxes
+        // and on the DXF's GRID layer; the path itself has no object index because many pieces make one axis.
         PathReason.BecameSlab or PathReason.BecameColumnByDeclaredSize or PathReason.BecameColumnByShape or PathReason.BecameWall
-            or PathReason.BecameFooting
+            or PathReason.BecameFooting or PathReason.GridAxis
             => Disposition.Read,
         PathReason.EmittedAsLine => Disposition.Unaccounted,
-        PathReason.MarkupOnlyMode or PathReason.FurnitureRegion or PathReason.GridAxis or PathReason.Underline
+        PathReason.MarkupOnlyMode or PathReason.FurnitureRegion or PathReason.Underline
             or PathReason.PaperFill or PathReason.SheetFrame or PathReason.FrameEdgeLine
             or PathReason.GridLineExcluded or PathReason.ColumnTooSmall or PathReason.UnfilledSmallShape
             or PathReason.ColumnAspect or PathReason.TooShort or PathReason.TooFewPoints

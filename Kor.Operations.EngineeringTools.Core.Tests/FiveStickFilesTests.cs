@@ -71,25 +71,30 @@ public sealed class FiveStickFilesTests
         // a footing or a placement — 31130 p11 36 of 36 (F4 13 of 13 now; the hairpin legend's 4 ft
         // dashed square is out), 31065 p14 30 read of 29 placed (a note's two "F4" mentions are out;
         // the 30th is the 4.5 m core footing, which no label names and the ledger lists apart).
-        int FootingCount = 0, int FootingMarksPlaced = 0);
+        int FootingCount = 0, int FootingMarksPlaced = 0,
+        // Named grid axes on the schedule page (brief 22): a bubble's label and the rule through it,
+        // both ends one axis. Banked 2026-09-08: 31130 p11 19 (X 1,3,5,7,8,9,10,11,13,15,16; Y A–Q),
+        // 31168 p11 26 (X 1–19; Y J–R), 31138 p9 15, 31065 p14 17 (F and A twice: a second view on
+        // the sheet), 31202 p17 17 (the numerals 1 and 4 on horizontal axes are what the sheet draws).
+        int GridAxes = 0);
 
     private static readonly Job[] Jobs =
     {
         new("31130-01", 96, 258, "F1,F2,F3,F4,SF1", 11,
             "PC1,PC2,PC4,PC5,PC6,PC7,PC8", "SWA:12:35,SWB:12:45,SWC:12:45,SWD:16:55",
-            new Dictionary<int, int> { [11] = 14, [12] = 25, [13] = 41 }, WallCount: 11, FootingCount: 36, FootingMarksPlaced: 36),
+            new Dictionary<int, int> { [11] = 14, [12] = 25, [13] = 41 }, WallCount: 11, FootingCount: 36, FootingMarksPlaced: 36, GridAxes: 19),
         new("31168-01", 96, 0, "", 11,
             "C02-A,C02-B,C03-A,C03-B,C04-A,C04-B,GC11-C,PC01,PC02,PC03-A,PC03-B,TC01,TC02,TC03,TC04", "SWA:12:35,SWB:12:45,SWC:12:45,SWD:16:55",
-            new Dictionary<int, int> { [11] = 43, [12] = 65, [13] = 47 }, WallCount: 25),
+            new Dictionary<int, int> { [11] = 43, [12] = 65, [13] = 47 }, WallCount: 25, GridAxes: 26),
         new("31138-01", 96, 353, "F1,F2,SF1,SF2", 9,
             "PC1,PC1A,PC2,PC3,PC3A,PC4,PC5,PC6,PC7,PC8,PC9,PL1,PL2", "SWA:8:35",
-            new Dictionary<int, int> { [9] = 24, [11] = 21 }, WallCount: 41, FootingCount: 11, FootingMarksPlaced: 11),
+            new Dictionary<int, int> { [9] = 24, [11] = 21 }, WallCount: 41, FootingCount: 11, FootingMarksPlaced: 11, GridAxes: 15),
         new("31065-01", 100, 1174, "F1,F2,F3,F4,SF1,SF2", 14,
             "PC1,PC1A,PC2,PC3,PC4,PC5,ZC1,ZC2", "SWA:8:35,SWB:8:35,SWC:24:45",
-            new Dictionary<int, int> { [14] = 24, [15] = 22, [16] = 30 }, WallCount: 36, FootingCount: 30, FootingMarksPlaced: 29),
+            new Dictionary<int, int> { [14] = 24, [15] = 22, [16] = 30 }, WallCount: 36, FootingCount: 30, FootingMarksPlaced: 29, GridAxes: 17),
         new("31202-01", 96, 0, "", 17,
             "1,2,3,4,5,6,7,8", "",
-            new Dictionary<int, int> { [17] = 23 }, WallCount: 19),
+            new Dictionary<int, int> { [17] = 23 }, WallCount: 19, GridAxes: 17),
     };
 
     public static IEnumerable<object[]> JobNumbers() => Jobs.Select(j => new object[] { j.Number });
@@ -213,6 +218,24 @@ public sealed class FiveStickFilesTests
             $"{number} p{job.SchedulePage}: {geo.Walls.Count} walls read, {job.WallCount} banked");
         Assert.All(geo.Walls, w => Assert.True(w.ThicknessMm >= options.MinWallThicknessMm - 12.7 && w.ThicknessMm <= options.MaxWallThicknessMm + 12.7,
             $"{number}: a wall {w.ThicknessMm:0} mm thick is outside the banked limits"));
+    }
+
+    /// <summary>
+    /// The named grid axes on the schedule page, exact: every bubble with an axis through it names
+    /// one, both ends of a line count once, and every axis has a name. Read through the intake so the
+    /// record's Geometry.GridAxes is what is counted, not the bubble reader alone.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(JobNumbers))]
+    public void NamedGridAxesOnTheSchedulePageAreTheBankedCount(string number)
+    {
+        var job = JobNamed(number);
+        var (options, _) = PdfIntakeOptions.For(null);
+        var geo = PdfPlanReader.Read(PdfOf(job), job.Scale, job.SchedulePage, options, annotationsOnly: false);
+        string names = $"X {string.Join(",", geo.GridAxes.Where(a => a.Vertical).Select(a => a.Name))}; Y {string.Join(",", geo.GridAxes.Where(a => !a.Vertical).Select(a => a.Name))}";
+        Assert.True(job.GridAxes == geo.GridAxes.Count,
+            $"{number} p{job.SchedulePage}: {geo.GridAxes.Count} named axes, {job.GridAxes} banked: {names}");
+        Assert.All(geo.GridAxes, a => Assert.False(string.IsNullOrWhiteSpace(a.Name), "an axis without a name"));
     }
 
     /// <summary>

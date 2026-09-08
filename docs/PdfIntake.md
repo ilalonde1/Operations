@@ -3,7 +3,7 @@
 Written 2026-09-08 from the code and from a content inventory of the five local stick files
 (31065, 31130, 31138, 31168, 31202: 294 pages). Every number below was counted on the whole
 population named; nothing is from a sample. The intake brief series lives in
-`docs/codex/CODEX-INTAKE-CONVERGENCE-*.md` (21 so far) and this is the state they have reached.
+`docs/codex/CODEX-INTAKE-CONVERGENCE-*.md` (22 so far) and this is the state they have reached.
 
 The purpose of the intake is stated once so the rest can be judged against it: **pull everything a
 drawing set carries that any downstream tool could need, once, through one reader, and account for
@@ -36,7 +36,8 @@ publish (`takeoff publish --stick-file`).
 
 Measured at step 0 (2026-09-08). The step sections from §7 on record what has changed since:
 walls are emitted (§9), only plans are taken off to DXF (§11), the scale is accounted for on
-every sheet (§12), footings are objects (§13). The tables in §2 and §3 are the starting picture.
+every sheet (§12), footings are objects (§13, §14), the grid is named axes on a GRID layer (§15).
+The tables in §2 and §3 are the starting picture.
 
 | Tool | Path today | What it gets from the PDF | What it does not |
 |---|---|---|---|
@@ -454,3 +455,62 @@ count of footings read and of labels placed on the five schedule pages, and that
 read carries a scheduled spread mark. WHAT IT DOES NOT: whether each footing is labelled (the
 ledger row says; the test does not assert it), the east halves (p12, p15), position, and a footing
 read at the wrong place with the right mark.
+
+## 15. Step 8, done 2026-09-08: a grid axis is a named line
+
+Brief 22, implemented by the verifier. The intake already found every grid bubble with an axis
+through it and used the axes for one thing: to discard the grid lines. The names and positions
+reached no consumer, and the ETABS side — which puts a drawing on the engineer's model by matching
+grid lines on a layer named GRID (`GridAlignment.Solve`) — could never align a PDF-derived DXF,
+because that DXF had no such layer.
+
+**A grid axis is a named line**: its name is the bubble's label, its position the rule through the
+bubble, the two ends of one line are one axis, and the same name on two sheets is the same line.
+`GridBubbles.Grid.Axes` names them (both labels joined by "|" when the ends disagree); the record
+carries `Geometry.GridAxes` in millimetres; the DXF gets a GRID layer — one LINE per axis across
+the drawn extent and the name as TEXT at both ends, recentred with everything else; `pdf-overlay`
+draws them cyan; the ledger lists the names by direction. The pieces the drafter drew are **read**,
+not discarded: `PathReason.GridAxis` is Disposition.Read, since many pieces make one axis and the
+axis is in the record.
+
+| Sheet | Axes | X | Y |
+|---|---|---|---|
+| 31130 p11 | 19 | 1,3,5,7,8,9,10,11,13,15,16 | Q,P,L,G,F,E,B,A |
+| 31168 p11 | 26 | 1–19 | R,P,N,M,L,K,J |
+| 31138 p9 | 15 | 1–8 | G,F,E,D,C,B,A |
+| 31065 p14 | 17 | 1–8 | F,A,G,F,E,D,C,B,A — F and A twice |
+| 31202 p17 | 17 | 1,2,3,4,10,13,14 | 4,1,N,M,L,I,F,C.2,B,A |
+
+Spot-checked against the bubble labels' own positions on 31130 p11 (fitz, independent of PdfPig):
+axis 1 at 21,125 mm against the label at 21,120; 3 at 25,392 against 25,387; A at 68,647 against
+68,605; B at 63,466 against 63,423 — 4 of 4 within 45 mm, the label's offset from the circle's
+centre. Banked per schedule page in `FiveStickFilesTests.NamedGridAxesOnTheSchedulePageAreTheBankedCount`.
+
+**What moved in the ledger, and nothing else.** Totals unchanged on 5 of 5 sets. Read rose by the
+grid-line pieces and the axis names, discarded fell by the same:
+
+| Set | Paths GridAxis → read | Axis names → read | Named axes (all pages) | Read before → after |
+|---|---|---|---|---|
+| 31130 | 18,166 | 670 | 638 | 8,735 → 27,571 |
+| 31168 | 22,607 | 658 | 558 | 10,644 → 33,909 |
+| 31138 | 20,578 | 742 | 625 | 9,551 → 30,871 |
+| 31065 | 26,970 | 795 | 695 | 16,635 → 44,400 |
+| 31202 | 32,470 | 694 | 597 | 7,888 → 41,052 |
+
+Unread and unaccounted did not move on any set. DXF census against step 7b: a GRID layer on 13 of
+13 DXFs (three entities per axis: 57 on 31130 p11 = 19 axes), every other layer identical on 13 of
+13. Full Core suite 1,046 of 1,046 (4 m 56 s).
+
+**Two names on one sheet.** 31065 p14's second F (y 4,324 mm) and second A (8,401 mm) sit at the
+foot of the sheet, below the plan's own F (24,287) and A (54,527): a second view on the same sheet
+carries grid bubbles too. The ledger lists "names used twice — a second view on the sheet" and
+does not merge them; that is the per-view split's measurement (the multi-view sheets in §6). 31202
+p17 puts the numerals 1 and 4 on horizontal axes, which is what the sheet draws.
+
+**For other steps.** The named axes make alignment by NAME possible — `GridAlignment` matches by
+spacings today, and the drawing's "3" and the model's GRID "3" are the same line — a brief in
+`DxfToEtabsService`. WHAT THE CHECK COVERS: the count and naming of axes on the five schedule
+pages and the DXF's GRID layer for a synthetic geometry. WHAT IT DOES NOT: an axis's position
+against the drawn grid line (the spot check above was by hand), a bubble whose label sits outside
+the circle, a grid drawn without bubbles, and whether the ETABS side aligns a PDF-derived DXF
+better with the layer present — not yet measured.

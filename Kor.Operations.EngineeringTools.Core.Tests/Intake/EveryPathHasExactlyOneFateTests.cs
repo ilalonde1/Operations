@@ -67,7 +67,7 @@ public sealed class EveryPathHasExactlyOneFateTests
             var expected = reason switch
             {
                 PathReason.BecameSlab or PathReason.BecameColumnByDeclaredSize or PathReason.BecameColumnByShape or PathReason.BecameWall
-                    or PathReason.BecameFooting => Disposition.Read,
+                    or PathReason.BecameFooting or PathReason.GridAxis => Disposition.Read,
                 PathReason.EmittedAsLine => Disposition.Unaccounted,
                 _ => Disposition.Discarded,
             };

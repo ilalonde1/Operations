@@ -33,7 +33,16 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             public bool Contains(double x, double y) => (x - Cx) * (x - Cx) + (y - Cy) * (y - Cy) <= Radius * Radius;
         }
 
-        public sealed record Grid(IReadOnlyList<Bubble> Bubbles, IReadOnlyList<double> VerticalAxesX, IReadOnlyList<double> HorizontalAxesY);
+        /// <summary>
+        /// A named grid axis, in points: the bubble's label and the rule through it. A vertical axis
+        /// runs in y at x = <see cref="At"/> (ETABS DIR "X"); a horizontal one runs in x at y = At.
+        /// <see cref="Bubbles"/> is how many bubbles named it — two when both ends carry one — and
+        /// <see cref="LabelsDisagree"/> says the ends carried different labels, joined in the name by "|".
+        /// </summary>
+        public sealed record Axis(string Name, bool Vertical, double At, int Bubbles, bool LabelsDisagree);
+
+        public sealed record Grid(IReadOnlyList<Bubble> Bubbles, IReadOnlyList<double> VerticalAxesX, IReadOnlyList<double> HorizontalAxesY,
+            IReadOnlyList<Axis> Axes);
 
         /// <summary>A point is on the circle when its distance from the centroid is within this share of the radius.</summary>
         public const double RoundnessTolerance = 0.12;
@@ -76,7 +85,30 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             return new Grid(
                 bubbles,
                 bubbles.Where(b => b.OnVerticalAxis).Select(b => b.Cx).Distinct().OrderBy(x => x).ToList(),
-                bubbles.Where(b => b.OnHorizontalAxis).Select(b => b.Cy).Distinct().OrderBy(y => y).ToList());
+                bubbles.Where(b => b.OnHorizontalAxis).Select(b => b.Cy).Distinct().OrderBy(y => y).ToList(),
+                Axes(bubbles, vertical: true).Concat(Axes(bubbles, vertical: false)).ToList());
+        }
+
+        /// <summary>
+        /// The named axes in one direction: bubbles on an axis, sorted by the coordinate they share,
+        /// one axis per run of bubbles within <see cref="AxisTolerancePts"/> of the previous — the two
+        /// ends of one grid line are one axis, named once.
+        /// </summary>
+        private static List<Axis> Axes(List<Bubble> bubbles, bool vertical)
+        {
+            var ends = bubbles.Where(b => vertical ? b.OnVerticalAxis : b.OnHorizontalAxis)
+                .Select(b => (At: vertical ? b.Cx : b.Cy, b.Label)).OrderBy(e => e.At).ToList();
+            var axes = new List<Axis>();
+            int start = 0;
+            for (int i = 1; i <= ends.Count; i++)
+            {
+                if (i < ends.Count && ends[i].At - ends[i - 1].At <= AxisTolerancePts) continue;
+                var run = ends.GetRange(start, i - start);
+                var labels = run.Select(e => e.Label).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(l => l, StringComparer.OrdinalIgnoreCase).ToList();
+                axes.Add(new Axis(string.Join("|", labels), vertical, run.Average(e => e.At), run.Count, labels.Count > 1));
+                start = i;
+            }
+            return axes;
         }
     }
 }

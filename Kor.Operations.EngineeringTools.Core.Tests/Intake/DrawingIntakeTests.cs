@@ -42,6 +42,10 @@ public sealed class DrawingIntakeTests
         Assert.Equal("A", grid.Label);
         Assert.True(grid.OnVerticalAxis);
         Assert.Equal(200, Assert.Single(sheet.Grid.VerticalAxesX));
+        var axis = Assert.Single(sheet.Grid.Axes);
+        Assert.Equal("A", axis.Name); Assert.True(axis.Vertical); Assert.Equal(200, axis.At, 0.5);
+        var exported = Assert.Single(sheet.Geometry.GridAxes);
+        Assert.Equal("A", exported.Name); Assert.True(exported.Vertical);
         Assert.Single(sheet.Geometry.Columns);
         Assert.Contains(sheet.PathFates, f => f.Reason == PathReason.BecameColumnByDeclaredSize);
         Assert.Contains(sheet.PathFates, f => f.Reason == PathReason.FurnitureRegion);
@@ -51,7 +55,8 @@ public sealed class DrawingIntakeTests
         Assert.Equal(Enumerable.Range(0, sheet.Content.Paths.Count), sheet.PathFates.Select(f => f.PathIndex));
         Assert.Equal(Enumerable.Range(0, sheet.Content.Words.Count), sheet.WordFates.Select(f => f.WordIndex));
         Assert.Contains(sheet.WordFates, f => f.Kind == "words: in a schedule a reader read" && f.Disposition == Disposition.Read);
-        Assert.Contains(sheet.WordFates, f => f.Kind == "words: grid axis names" && f.Disposition == Disposition.Discarded);
+        Assert.Contains(sheet.WordFates, f => f.Kind == "words: grid axis names" && f.Disposition == Disposition.Read);
+        Assert.Contains(sheet.PathFates, f => f.Reason == PathReason.GridAxis && f.Disposition == Disposition.Read);
         var note = Assert.Single(sheet.Markup);
         Assert.Equal("Check this column", note.Text);
         Assert.Equal("Ian", note.Author);

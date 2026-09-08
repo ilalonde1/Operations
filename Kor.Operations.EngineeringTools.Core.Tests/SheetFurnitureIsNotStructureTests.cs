@@ -336,6 +336,37 @@ public sealed class SheetFurnitureIsNotStructureTests
         Assert.Empty(grid.HorizontalAxesY);
     }
 
+    /// <summary>
+    /// The two ends of one grid line are one named axis (brief 22); ends that carry different labels
+    /// are one axis that says so, named with both. A bubble at one end only still names its axis.
+    /// </summary>
+    [Fact]
+    public void TheTwoEndsOfAGridLineAreOneNamedAxis()
+    {
+        static GP Circle(double cx, double cy, double r) => new(
+            new List<(double X, double Y)> { (cx, cy + r), (cx + r, cy), (cx, cy - r), (cx - r, cy) },
+            true, false, true, cx - r, cy - r, cx + r, cy + r);
+
+        var words = new List<TT> { Tok("3", 1000, 1900), Tok("3", 1000, 200), Tok("5", 1400, 1900), Tok("6", 1400, 200), Tok("B", 300, 1000) };
+        var paths = new List<GP>
+        {
+            Circle(1000, 1900, 14), Circle(1000, 200, 14), VRule(1000, 214, 1886),   // "3" at both ends
+            Circle(1400, 1900, 14), Circle(1400, 200, 14), VRule(1400, 214, 1886),   // "5" above, "6" below: a slip
+            Circle(300, 1000, 14), HRule(314, 1900, 1000),                             // "B", one end only
+        };
+
+        var grid = GridBubbles.On(new PC(1, W, H, words, paths));
+
+        Assert.Equal(5, grid.Bubbles.Count(b => b.IsGridBubble));
+        Assert.Equal(3, grid.Axes.Count);
+        var three = Assert.Single(grid.Axes, a => a.Name == "3");
+        Assert.True(three.Vertical); Assert.Equal(1000, three.At, 0.5); Assert.Equal(2, three.Bubbles); Assert.False(three.LabelsDisagree);
+        var slip = Assert.Single(grid.Axes, a => a.LabelsDisagree);
+        Assert.Equal("5|6", slip.Name); Assert.Equal(1400, slip.At, 0.5);
+        var b = Assert.Single(grid.Axes, a => !a.Vertical);
+        Assert.Equal("B", b.Name); Assert.Equal(1000, b.At, 0.5); Assert.Equal(1, b.Bubbles);
+    }
+
     [Fact]
     public void EdgesAreCoverageNotLength()
     {
