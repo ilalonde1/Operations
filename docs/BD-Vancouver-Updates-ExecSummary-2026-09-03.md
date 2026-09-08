@@ -10,7 +10,7 @@
 - **Beedie / Fraser Mills.** Three parcels, three teams, a tryout. JM to confirm whether we are one of the three.
 - **Vancouver Island.** Our proposal to BAM (Ben Smith, ex-Starlight) for Trillium's seniors housing produced a warm intro to **Continuum Architecture** in Victoria (partners Jeremy Beintema and Wil Wiens), who appear to hold most of that developer's work. Rory to follow up.
 - **Stantec.** We are now on Stantec's qualified-supplier list. Omar and Islam will pitch KOR to Stantec's Vancouver structural group as specialty and overflow support, the way we did with DIALOG in Edmonton.
-- **California.** A US$1M three-tower proposal in San Diego turned out to be leverage against an incumbent; a wood-frame RFP goes in this week. MVE (Irvine) responded well to the AI demo and has asked for updated insurance; visit around the LA Tall Building Conference in November.
+- **California.** On an architect's referral, Jim put a **US$1M fee proposal** on three towers in San Diego. The owner then would not meet him, and it looks like they used our number to squeeze the structural engineer they had already chosen. Not won, but proof the referrals work. A separate **wood-frame RFP** for San Diego goes in this week. **MVE**, an architect in Irvine we have worked with before, responded well to the AI demo Jim and Ian gave their BD lead, then asked us to update our insurance with them, which Jim reads as keeping us qualified. Jim or JM will visit them around the LA Tall Building Conference in November.
 - **Market read.** Concrete high-rise is in a holding pattern; Rize's Cambie and Marine tower is stalled on offshore capital. "Hopefully next year" is what everyone is hearing.
 
 ## Decisions
