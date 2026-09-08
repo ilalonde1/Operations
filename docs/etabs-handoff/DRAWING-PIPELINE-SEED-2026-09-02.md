@@ -195,18 +195,24 @@ DXF sets 31168 now holds; name one with `--dxf <name>`.
    cut of it. Both comparisons pass on a pair staged from this build (2 of 2), the site model is
    byte-identical before and after, and the cut's "already filled" count fell from 454 to 66.
 
-## What still needs a person
+## Landed 2026-09-08
 
-- **Land the staged 31168 pair.** Both models are staged from this build and pass every
-  publish-blocking invariant; landing them is a write to the job folder, from KOR-1001:
+Both 31168 models were published from this build into `TEST` beside the reference:
 
-      takeoff publish 31168 --dxf-folder _DXF-from-Revit-2026-08-26 --reference 31168-reference.e2k --tower C --land
       takeoff publish 31168 --dxf-folder _DXF-from-Revit-2026-08-26 --reference 31168-reference.e2k --variant TOWERS --land
+      takeoff publish 31168 --dxf-folder _DXF-from-Revit-2026-08-26 --reference 31168-reference.e2k --tower C --skip-dossier --land
+
+The YMCA model is 14 storeys, 251 walls, 578 columns, 15 plates (was 267/645: the parkade
+storeys no longer carry the towers' side of the seam). The site model is 64 storeys, 1,424 walls,
+2,365 columns, 88 plates. Against the share, the build gate and both published-pair comparisons
+pass, 3 of 3. The tower C landing skipped the explainer PDFs because the dossier gate refuses a
+PDF older than the generator source; the dossier and one-pager HTML now carry 251/578/21 headers
+and are not re-rendered.
+
+## What still needs a person
 
 - **Apply migration 080** to KorStandards on KOR-APP01\SQLEXPRESS (`KOR.Drafter\db\080_ScheduleReaderVocabulary.sql`,
   idempotent). Until then the readers run on their compiled defaults, which are the same values.
-- **The published pair on the share is older than this build**, so the shared-storey comparison
-  is red against it (the same one wall) until the two `--land` commands above are run.
 
 ## The export and deliver side — much less examined, look here with fresh eyes
 
