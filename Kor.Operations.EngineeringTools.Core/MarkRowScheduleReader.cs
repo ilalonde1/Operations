@@ -166,11 +166,25 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             double band = page.WidthPts * options.HeadingBandFraction;
             var settingKeys = options.SettingKeys;
 
+            // ⭐ BOTH ROUTES RUN, AND THE ONE THAT READS MORE WINS.
+            //
+            // They fail in opposite directions, so choosing one up front loses whichever job the
+            // other suited. Reading marks off the table's own column is right when the table is
+            // clean — 31168 went from 6 marks to 12, picking up C02-A, PC03-A and the other suffixed
+            // forms. But it anchors on the topmost row under a heading, and where a sheet's rows wrap
+            // or a note sits above them it reads far too few: 31065 dropped from 7 marks to 2, losing
+            // PC1..PC5 and taking its footing total from 1,174 cy to 855, and 31138 fell from 10 to 7.
+            //
+            // That regression shipped because the commit that introduced the structural route was
+            // verified with column counts measured one commit earlier. Both routes are heading-scoped
+            // and both validate marks, so running both costs one pass and cannot invent a row —
+            // whichever sees more of the table is the one that read it.
             var targetHeadings = headings.Where(h => h.IsTarget).ToList();
-            if (targetHeadings.Count > 0)
-                return ReadFromScheduleColumns(page, options, targetHeadings, band, settingKeys);
+            IReadOnlyList<Row> structural = targetHeadings.Count > 0
+                ? ReadFromScheduleColumns(page, options, targetHeadings, band, settingKeys)
+                : Array.Empty<Row>();
 
-            if (headings.Count > 0)
+            if (targetHeadings.Count == 0 && headings.Count > 0)
                 return Array.Empty<Row>();
 
             var candidates = new List<Candidate>();
@@ -233,7 +247,9 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                     MarkRoute.PatternFallback));
             }
 
-            return rows;
+            // whichever route saw more of the table; ties go to the structural one, which knows
+            // which heading each row sits under rather than inferring it
+            return structural.Count >= rows.Count ? structural : rows;
         }
 
         private static IReadOnlyList<Row> ReadFromScheduleColumns(
@@ -254,6 +270,18 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                     .OrderByDescending(g => g.Key))
                 {
                     var token = rowGroup.OrderBy(w => w.Cx).First();
+
+                    // ⚠ NO SHAPE TEST HERE, DELIBERATELY. Reading the mark literally off the table's
+                    // own column is the whole point of this route — it is what lets C02-A, PC03-A and
+                    // GC11-C be read at all — and LocatedScheduleReadsLiteralFirstColumnMarksInstead
+                    // OfGuessingTheirShape exists to defend that.
+                    //
+                    // Where a sheet's rows wrap, this route does pick up a continuation line's first
+                    // token (31065 p14 yields "8-35M" and "BOT."), but that sheet is also where this
+                    // route reads FEWEST rows, so the pattern route wins the count and the garbage
+                    // never reaches a caller. Filtering here instead would trade a real capability
+                    // for a symptom. The actual cure is knowing where the table ENDS, which is still
+                    // open — see the seed doc.
                     if (TryCandidate(page, token, options, heading) is { } candidate)
                         candidates.Add(candidate);
                 }
