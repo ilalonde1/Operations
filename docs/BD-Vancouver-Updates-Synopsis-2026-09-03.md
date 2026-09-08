@@ -6,7 +6,7 @@
 
 **Verified 7 September** against the BD brain, Apollo, Hunter and the public web; the resolutions and what each rests on are in §6, and §5 says what is still open.
 
-**How to read this.** Every firm and person was checked against the BD brain. **#N** is the canonical org id, **kp=N** the KOR projects on record with that org, **Deltek** a linked client. **[conf: High/Med/Low]** is confidence in the *name*, because the audio garbled several. Section 5 lists what is still open; please answer those before anyone acts on them.
+**How to read this.** Every firm and person was checked against the BD brain. **#N** is the canonical org id, **kp=N** the KOR projects on record with that org, **Deltek** a linked client. **[conf: High/Med/Low]** is confidence in the *name*, because the audio garbled several. Section 5 is the unknowns: what was said that neither our records nor anything public can confirm. Please answer those before anyone acts on them.
 
 ---
 
@@ -87,7 +87,7 @@ Distilled from what the room asked for or bumped into, not from what I would lik
 10. **Service-line tags.** Seismic assessment, peer review, value engineering, TI seismic restraint, wood frame, steel stud. Tag opportunities and orgs by what we could sell them, so "who needs an S3 assessment" is a query.
 11. **Brain hygiene found while checking this meeting** (all live, all visible in the integrity report's duplicate classes): DIALOG in 9 rows, Beedie in 8, BCIT in 4, Vancouver Fraser Port Authority in 3 (Developer and Buyer twins), WHM in 2, MCM in 2, PHSA in 2, and **KPL James Architecture (#54444) still live beside Continuum Architecture (#927758)**, which is its 2020 rebrand. People: Mike Alivojvodic ×3 rows, Jeremy Beintema ×2. Missing entirely: NDY, BAM; Colliers Project Leaders is Kinded *Architect*. Missing people: Thomas Lee, Principal or Associate Principal depending on the source (GBL); Giovanni Gunawan, Development Manager (Aquilini Development); Gregory Eeman, architect (Continuum); Peter Odegaard, Partner (MCM); Fred Lin, Development Manager (Rize); Luciano Siffredi, Project Architect (Perkins&Will); Robert Bosa (Bosa Properties founder); Ben Smith (BAM); Ike (P&W), Salim and Mariam (Arcadis), Brian Webster and Mike Balza (Solterra) unresolved. Add them through the enrichment path, not by hand. All of these are one `--create` or one `--pairs` batch each now that those paths exist.
 
-## 5. Unclear — answer these before anyone acts on them
+## 5. Unknowns — answer these before anyone acts on them
 
 1. **Omar's Colliers contact:** her name, and whether she is at Colliers Project Leaders (#70132) or Colliers International (#5096). Also the owner body for BC Cancer that sounded like "Arana" at 0:03 — PHSA?
 2. **Perkins&Will:** a surname for **Ike**, Rory's contact who did the "bonus" job; there is no Ike or Isaac among the 87 Vancouver staff on record, so it may be a nickname. And whether the principal JM remembers is **Ryan Bragg**.

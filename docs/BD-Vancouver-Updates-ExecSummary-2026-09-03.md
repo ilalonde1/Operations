@@ -43,4 +43,16 @@
 - **Conor:** Graham night, and two more invites; press Lauren in Kelowna for the three developer intros; follow Mission Group's departed contact to wherever she lands.
 - **Ian:** the architect target list and talking points; the events list; Port Authority recon; Island intel and Continuum contacts to Rory; the conversions blurb; Jim onto the app; Omar set up as gatekeeper; this recap.
 
-*Full synopsis with contacts, org history, the app's existing records and the open questions: see Ian.*
+## Unknowns
+
+Said on the call, not confirmable from our records or anywhere public. A one-line reply from the owner closes each.
+
+- **Jim:** Ben Smith's company. Nothing turns up under "BAM", and the only Ben Smith in BC real estate on record has no Starlight history.
+- **Rory:** Ike's surname at Perkins&Will; no Ike or Isaac on their Vancouver staff list.
+- **Omar:** the Colliers contact's name, and whether she is at Colliers Project Leaders or Colliers International.
+- **Jim / JM:** which Heather Lands building is our Block B and whether WHM holds A and C; which three teams are in Beedie's Fraser Mills tryout.
+- **Jim:** is Trillium the Victoria seniors-housing operator Trillium Communities, and who is "Sue" there.
+- **JB / John:** who owns the Fraser Health list now, and its closing date.
+- **JB:** which firms Jason, Kevin, Brian Webster and Mike Balza are with.
+
+*Full synopsis with contacts, org history and the app's existing records: see Ian.*
