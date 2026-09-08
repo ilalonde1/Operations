@@ -2291,6 +2291,56 @@ if (args.Length >= 1 && args[0].Equals("vector-sched", StringComparison.OrdinalI
 // Vector front-end probe: read the NATIVE vector text + geometry of one drawing page straight from the
 // PDF — no raster, no OCR — and print what came out. Proves the exact-data foundation of the takeoff.
 // Usage: takeoff vector-dump <pdf> <page>
+// DIAGNOSTIC: takeoff sched-border <pdf> <page> — what MarkRowScheduleReader's border route sees.
+// For every schedule heading on the page and each reader's options (column, footing, shear wall):
+// the border found under it or "no border", its column rules, and every row band with the text of
+// its mark cell and its other cells. This is how to LOOK at a table read before believing a count;
+// a row that is lost is lost in one of these lines.
+if (args.Length >= 1 && args[0].Equals("sched-border", StringComparison.OrdinalIgnoreCase))
+{
+    if (args.Length < 3) { Console.Error.WriteLine("Usage: takeoff sched-border <pdf> <page>"); return 1; }
+    if (!File.Exists(args[1])) { Console.Error.WriteLine($"PDF not found '{args[1]}'."); return 2; }
+    if (!int.TryParse(args[2], out int sbPage) || sbPage < 1) { Console.Error.WriteLine("Page must be a positive integer."); return 2; }
+
+    var sbPc = VectorPageReader.ReadPage(args[1], sbPage);
+    var sbRules = ScheduleTableBorder.RulesOn(sbPc);
+    Console.WriteLine($"Page {sbPc.PageNumber}: {sbPc.WidthPts:F0}x{sbPc.HeightPts:F0} pts, {sbRules.Horizontal.Count} horizontal and {sbRules.Vertical.Count} vertical rules (pieces merged)");
+
+    foreach (var sbOptions in new[] { MarkRowScheduleReader.ColumnDefaults(), MarkRowScheduleReader.FootingDefaults(), MarkRowScheduleReader.ShearWallDefaults() })
+    {
+        Console.WriteLine();
+        Console.WriteLine($"── {sbOptions.RulePrefix} ──");
+        foreach (var h in MarkRowScheduleReader.SchedulesOn(sbPc, sbOptions))
+        {
+            if (!h.IsTarget) { Console.WriteLine($"  \"{h.Title}\" @ {h.X:F0},{h.Y:F0}  not a target"); continue; }
+            var border = ScheduleTableBorder.Under(sbPc, h.TitleMinX, h.TitleMinY, sbOptions.BorderReachPts, sbOptions.BorderTitleRowPts, sbRules);
+            if (border is null)
+            {
+                Console.WriteLine($"  \"{h.Title}\" @ {h.X:F0},{h.Y:F0}  title x {h.TitleMinX:F0}..{h.TitleMaxX:F0} bottom {h.TitleMinY:F0}  NO BORDER (band fallback)");
+                continue;
+            }
+            Console.WriteLine($"  \"{h.Title}\" @ {h.X:F0},{h.Y:F0}  border x {border.MinX:F0}..{border.MaxX:F0} y {border.MinY:F0}..{border.MaxY:F0} ({border.Width:F0}x{border.Height:F0})");
+            Console.WriteLine($"     column rules x: {string.Join(", ", border.ColumnRuleXs.Select(x => x.ToString("F0")))}");
+            double? markRight = border.ColumnRuleXs.Count > 0 ? border.ColumnRuleXs[0] : null;
+            var inside = sbPc.Words.Where(w => border.Contains(w.Cx, w.Cy)).ToList();
+            foreach (var (top, bottom) in border.RowBands())
+            {
+                var band = inside.Where(w => w.Cy < top && w.Cy > bottom).OrderByDescending(w => w.Cy).ThenBy(w => w.Cx).ToList();
+                var markCell = markRight is double r ? band.Where(w => w.Cx < r).ToList() : band.Take(1).ToList();
+                string mark = string.Join(" ", markCell.OrderByDescending(w => w.Cy).ThenBy(w => w.MinX).Select(w => w.Text));
+                string rest = string.Join(" ", border.InReadingOrder(band.Except(markCell)).Select(w => w.Text));
+                if (rest.Length > 100) rest = rest[..100] + "…";
+                string kind = border.IsRuledRow(top, bottom) ? "row " : "cell";
+                Console.WriteLine($"     {kind} y {top,7:F1}..{bottom,7:F1}  mark [{mark,-10}] | {rest}");
+            }
+        }
+
+        var read = MarkRowScheduleReader.ReadSchedule(sbPc, sbOptions);
+        Console.WriteLine($"  read {read.Count} row(s): {string.Join(", ", read.Select(r => $"{r.Mark}[{r.Route}]"))}");
+    }
+    return 0;
+}
+
 if (args.Length >= 1 && args[0].Equals("vector-dump", StringComparison.OrdinalIgnoreCase))
 {
     if (args.Length < 3) { Console.Error.WriteLine("Usage: takeoff vector-dump <pdf> <page>"); return 1; }
@@ -3974,6 +4024,7 @@ public static class TakeoffCliHelp
         new("vector-digest", "takeoff vector-digest <pdf> <out.json> [firstPage] [lastPage]", "Write a drawing digest JSON from a PDF."),
         new("vector-sched", "takeoff vector-sched <pdf> <page>", "Probe slab schedule thickness cells on a page."),
         new("vector-dump", "takeoff vector-dump <pdf> <page>", "Dump vector text and paths from a PDF page."),
+        new("sched-border", "takeoff sched-border <pdf> <page>", "Show the border and row cells found under every schedule heading on a page."),
         new("vector-plate-auto", "takeoff vector-plate-auto <png>", "Probe deterministic slab plate detection on a PNG."),
         new("vector-geom", "takeoff vector-geom <pdf> <page>", "Dump vector geometry area candidates."),
         new("vector-signals", "takeoff vector-signals <pdf> <page> [png] [scaleDenom=100] [dpi=110]", "Compare all slab-area signal candidates for a sheet."),

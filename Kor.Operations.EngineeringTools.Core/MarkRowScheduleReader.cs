@@ -29,8 +29,23 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             double MarkColumnTolerancePts,
             double MinDimensionMm,
             double MaxDimensionMm,
-            bool RequireDimensionPair = true)
+            bool RequireDimensionPair = true,
+            double BorderReachPts = 45,
+            double BorderTitleRowPts = 50)
         {
+            /// <summary>
+            /// How far below a heading's bottom edge its table's top rule may sit, in PDF points.
+            /// Measured 8–9pt on the four ruled KOR jobs; a practice that floats its title further
+            /// above its table sets this, rather than losing the border and falling back to the band.
+            /// </summary>
+            public double BorderReachPts { get; init; } = BorderReachPts;
+
+            /// <summary>
+            /// How far above the top rule a table's side vertical may start — the height of a boxed
+            /// title row — before it is taken for a frame rather than a side.
+            /// </summary>
+            public double BorderTitleRowPts { get; init; } = BorderTitleRowPts;
+
             /// <summary>
             /// Whether a row of THIS schedule states a size (a x b), or a single length.
             /// </summary>
@@ -64,11 +79,35 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                 $"{RulePrefix}.min-dimension-mm",
                 $"{RulePrefix}.max-dimension-mm",
                 $"{RulePrefix}.require-dimension-pair",
+                $"{RulePrefix}.border-reach-pts",
+                $"{RulePrefix}.border-title-row-pts",
             ];
         }
 
-        public readonly record struct ScheduleHeading(double X, double Y, bool IsTarget, string Title);
-        public enum MarkRoute { ScheduleColumn, PatternFallback }
+        public readonly record struct ScheduleHeading(double X, double Y, bool IsTarget, string Title)
+        {
+            /// <summary>The title's left edge — where its table's top rule is looked for.</summary>
+            public double TitleMinX { get; init; }
+
+            /// <summary>The title's bottom edge (y-up: its smallest y); the top rule sits just under it.</summary>
+            public double TitleMinY { get; init; }
+
+            /// <summary>The title's right edge. Zero with the others when the heading was not read off a page.</summary>
+            public double TitleMaxX { get; init; }
+        }
+
+        /// <summary>How a row's mark was identified, and — for the two schedule routes — what bounded its table.</summary>
+        public enum MarkRoute
+        {
+            /// <summary>Read off the table's own mark column, rows bounded by a band around the heading.</summary>
+            ScheduleColumn,
+
+            /// <summary>Matched a mark pattern anywhere on the page, then attributed to a heading.</summary>
+            PatternFallback,
+
+            /// <summary>Read off the table's own mark column, rows being the cells inside the border the table draws.</summary>
+            ScheduleBorder,
+        }
 
         public sealed record Row(
             string Mark,
@@ -146,6 +185,8 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                 MinDimensionMm = settings.ValueOr($"{options.RulePrefix}.min-dimension-mm", options.MinDimensionMm),
                 MaxDimensionMm = settings.ValueOr($"{options.RulePrefix}.max-dimension-mm", options.MaxDimensionMm),
                 RequireDimensionPair = settings.FlagOr($"{options.RulePrefix}.require-dimension-pair", options.RequireDimensionPair),
+                BorderReachPts = settings.ValueOr($"{options.RulePrefix}.border-reach-pts", options.BorderReachPts),
+                BorderTitleRowPts = settings.ValueOr($"{options.RulePrefix}.border-title-row-pts", options.BorderTitleRowPts),
             };
         }
 
@@ -166,23 +207,25 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             double band = page.WidthPts * options.HeadingBandFraction;
             var settingKeys = options.SettingKeys;
 
-            // ⭐ BOTH ROUTES RUN, AND THE ONE THAT READS MORE WINS.
+            // ⭐ A BORDERED TABLE IS READ FROM ITS BORDER, AND THAT IS THE ANSWER. The rows are its
+            // cells, read literally, so there is nothing a pattern could add and one thing it could
+            // do: re-admit a token from outside the table. Where no target heading draws a border,
+            // BOTH remaining routes run and the one that reads more wins.
             //
-            // They fail in opposite directions, so choosing one up front loses whichever job the
-            // other suited. Reading marks off the table's own column is right when the table is
-            // clean — 31168 went from 6 marks to 12, picking up C02-A, PC03-A and the other suffixed
-            // forms. But it anchors on the topmost row under a heading, and where a sheet's rows wrap
-            // or a note sits above them it reads far too few: 31065 dropped from 7 marks to 2, losing
-            // PC1..PC5 and taking its footing total from 1,174 cy to 855, and 31138 fell from 10 to 7.
-            //
-            // That regression shipped because the commit that introduced the structural route was
-            // verified with column counts measured one commit earlier. Both routes are heading-scoped
-            // and both validate marks, so running both costs one pass and cannot invent a row —
-            // whichever sees more of the table is the one that read it.
+            // The band and the pattern fail in opposite directions, so choosing one up front loses
+            // whichever job the other suited. Reading marks off the table's own column is right when
+            // the table is clean — 31168 went from 6 marks to 12, picking up C02-A, PC03-A and the
+            // other suffixed forms. But the band anchors on the topmost row under a heading, and
+            // where a sheet's rows wrap or a note sits above them it reads far too few: 31065 dropped
+            // from 7 marks to 2, losing PC1..PC5 and taking its footing total from 1,174 cy to 855,
+            // and 31138 fell from 10 to 7. That regression shipped because the commit that introduced
+            // the structural route was verified with column counts measured one commit earlier.
             var targetHeadings = headings.Where(h => h.IsTarget).ToList();
             IReadOnlyList<Row> structural = targetHeadings.Count > 0
                 ? ReadFromScheduleColumns(page, options, targetHeadings, band, settingKeys)
                 : Array.Empty<Row>();
+            if (structural.Any(r => r.Route == MarkRoute.ScheduleBorder))
+                return structural;
 
             if (targetHeadings.Count == 0 && headings.Count > 0)
                 return Array.Empty<Row>();
@@ -260,9 +303,39 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             IReadOnlyList<string> settingKeys)
         {
             var rows = new List<Row>();
+            var rules = ScheduleTableBorder.RulesOn(page);
 
-            foreach (var heading in targetHeadings)
+            // ⭐ THE TABLE'S OWN BORDER FIRST. Where the schedule draws its rules — every FOUNDATION
+            // and COLUMN table on four of the five KOR jobs — its rows are the cells between them,
+            // nothing outside the border joins a row, and a wrapped cell's second line stays in its
+            // row. The band is the fallback for a sheet that draws no border under any target
+            // heading, and MarkRoute says which one read each row.
+            //
+            // ⚠ On a sheet whose tables ARE bordered, a target heading with no border under it is a
+            // sentence, not a table: 31065 p15's notes say "4. IF NOTED IN THE COLUMN SCHEDULE", and
+            // the band under that line read the strip footings SF1 and SF2 as columns.
+            var borders = targetHeadings.Select(heading =>
             {
+                bool titleRead = heading.TitleMaxX > heading.TitleMinX;
+                return (Heading: heading, Border: ScheduleTableBorder.Under(
+                    page,
+                    titleRead ? heading.TitleMinX : heading.X,
+                    titleRead ? heading.TitleMinY : heading.Y,
+                    options.BorderReachPts,
+                    options.BorderTitleRowPts,
+                    rules));
+            }).ToList();
+            bool ruledSheet = borders.Any(b => b.Border is not null);
+
+            foreach (var (heading, border) in borders)
+            {
+                if (border is not null)
+                {
+                    rows.AddRange(ReadRowsInBorder(page, options, heading, border, settingKeys));
+                    continue;
+                }
+                if (ruledSheet) continue;
+
                 var candidates = new List<Candidate>();
                 foreach (var rowGroup in page.Words
                     .Where(w => w.Cy < heading.Y && Math.Abs(w.Cx - heading.X) <= band)
@@ -276,13 +349,12 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                     // GC11-C be read at all — and LocatedScheduleReadsLiteralFirstColumnMarksInstead
                     // OfGuessingTheirShape exists to defend that.
                     //
-                    // Where a sheet's rows wrap, this route does pick up a continuation line's first
-                    // token (31065 p14 yields "8-35M" and "BOT."), but that sheet is also where this
-                    // route reads FEWEST rows, so the pattern route wins the count and the garbage
-                    // never reaches a caller. Filtering here instead would trade a real capability
-                    // for a symptom. The actual cure is knowing where the table ENDS, which is still
-                    // open — see the seed doc.
-                    if (TryCandidate(page, token, options, heading) is { } candidate)
+                    // Where a sheet's rows wrap, this band does pick up a continuation line's first
+                    // token (31065 p14 yielded "8-35M" and "BOT." before its border was read), and
+                    // it cannot tell a neighbouring table's cell from its own. That is why it is the
+                    // fallback and the border is the route; filtering here would trade a real
+                    // capability for a symptom.
+                    if (TryCandidate(token, token.Text, BandCells(page, token, options), options, heading) is { } candidate)
                         candidates.Add(candidate);
                 }
 
@@ -311,21 +383,131 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             return rows;
         }
 
-        private static Candidate? TryCandidate(
+        /// <summary>
+        /// The rows of one table, read from the cells inside the border it draws.
+        /// </summary>
+        /// <remarks>
+        /// A row is the band between two rules crossing the mark column; its mark is the text of its
+        /// first cell; the other cells follow in column order, each cell's lines top to bottom, so a
+        /// wrapped reinforcing cell reads as one cell and never as a second row. A row whose first
+        /// cell is empty has no mark and is not a row — 31168's FOUNDATION SCHEDULE is a placeholder
+        /// table whose only text is one reinforcing note, and it reads as nothing, correctly.
+        ///
+        /// There is no anchor here. Every mark is in the first column by construction, so the
+        /// topmost-candidate rule that dropped F1 on 31065 and SF2 on 31138 has nothing left to do.
+        /// </remarks>
+        private static IEnumerable<Row> ReadRowsInBorder(
+            VectorPageReader.PageContent page,
+            Options options,
+            ScheduleHeading heading,
+            ScheduleTableBorder.Border border,
+            IReadOnlyList<string> settingKeys)
+        {
+            var inside = page.Words.Where(w => border.Contains(w.Cx, w.Cy)).ToList();
+            double? markCellRight = border.ColumnRuleXs.Count > 0 ? border.ColumnRuleXs[0] : null;
+
+            foreach (var (top, bottom) in border.RowBands())
+            {
+                // a band no column rule runs through is a merged full-width cell — the boxed NOTES
+                // under the last row — and its first token is not a mark, whatever it says
+                if (!border.IsRuledRow(top, bottom)) continue;
+
+                var band = inside.Where(w => w.Cy < top && w.Cy > bottom).ToList();
+                if (band.Count == 0) continue;
+
+                var markCell = markCellRight is double right
+                    ? band.Where(w => w.Cx < right).ToList()
+                    : [band.OrderBy(w => w.MinX).ThenByDescending(w => w.Cy).First()];
+                if (markCell.Count == 0) continue;
+
+                foreach (var (mark, markToken, subTop, subBottom) in MarksIn(markCell, top, bottom))
+                {
+                    var cells = border.InReadingOrder(
+                        band.Where(w => w.Cy < subTop && w.Cy > subBottom && !markCell.Contains(w)));
+
+                    if (TryCandidate(markToken, mark, cells, options, heading) is { } c)
+                    {
+                        yield return new Row(
+                            c.Mark,
+                            c.RowText,
+                            c.DimensionsMm,
+                            c.SingleLengthMm,
+                            c.StrengthMPa,
+                            c.Token,
+                            heading,
+                            settingKeys,
+                            MarkRoute.ScheduleBorder);
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// The marks in one row's first cell, each with the y-range it owns. One line is one mark; a
+        /// line ending in a hyphen continues on the next (31168 wraps GC11-C as "GC11-" over "C");
+        /// two lines that do not join are two marks sharing a cell — a separator the drafter left
+        /// out — and the row is split between them.
+        /// </summary>
+        private static IEnumerable<(string Mark, VectorPageReader.TextToken Token, double Top, double Bottom)> MarksIn(
+            IReadOnlyList<VectorPageReader.TextToken> markCell,
+            double top,
+            double bottom)
+        {
+            var lines = new List<List<VectorPageReader.TextToken>>();
+            foreach (var t in markCell.OrderByDescending(t => t.Cy).ThenBy(t => t.MinX))
+            {
+                if (lines.Count > 0 && Math.Abs(lines[^1][0].Cy - t.Cy) <= 4) lines[^1].Add(t);
+                else lines.Add([t]);
+            }
+
+            var marks = new List<(string Mark, VectorPageReader.TextToken Token)>();
+            for (int i = 0; i < lines.Count; i++)
+            {
+                var first = lines[i].OrderBy(t => t.MinX).First();
+                string text = first.Text.Trim();
+                while (text.EndsWith('-') && i + 1 < lines.Count)
+                {
+                    i++;
+                    text += lines[i].OrderBy(t => t.MinX).First().Text.Trim();
+                }
+                marks.Add((text, first));
+            }
+
+            if (marks.Count == 1)
+            {
+                yield return (marks[0].Mark, marks[0].Token, top, bottom);
+                yield break;
+            }
+
+            for (int i = 0; i < marks.Count; i++)
+            {
+                double t = i == 0 ? top : (marks[i - 1].Token.Cy + marks[i].Token.Cy) / 2;
+                double b = i == marks.Count - 1 ? bottom : (marks[i].Token.Cy + marks[i + 1].Token.Cy) / 2;
+                yield return (marks[i].Mark, marks[i].Token, t, b);
+            }
+        }
+
+        /// <summary>The cells of a band-route row: the tokens on the mark's baseline, within RowWidthPts to its right.</summary>
+        private static List<VectorPageReader.TextToken> BandCells(
             VectorPageReader.PageContent page,
             VectorPageReader.TextToken token,
-            Options options,
-            ScheduleHeading? heading)
-        {
-            string mark = token.Text.Trim();
-            if (mark.Length == 0) return null;
-
-            var cells = page.Words
+            Options options)
+            => page.Words
                 .Where(w => Math.Abs(w.Cy - token.Cy) <= 6
                             && w.Cx > token.Cx
                             && w.Cx - token.Cx <= options.RowWidthPts)
                 .OrderBy(w => w.Cx)
                 .ToList();
+
+        private static Candidate? TryCandidate(
+            VectorPageReader.TextToken token,
+            string mark,
+            IReadOnlyList<VectorPageReader.TextToken> cells,
+            Options options,
+            ScheduleHeading? heading)
+        {
+            mark = mark.Trim();
+            if (mark.Length == 0) return null;
             if (cells.Count == 0) return null;
 
             string rowText = string.Join(" ", cells.Select(w => w.Text)).Replace(",", "");
@@ -373,7 +555,13 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                               options.HeadingWords.Any(h => compactTitle.Contains(Compact(h), StringComparison.OrdinalIgnoreCase));
 
                 double x = beforeTokens.Count > 0 ? beforeTokens.Min(s => s.Cx) : w.Cx;
-                found.Add(new ScheduleHeading(x, w.Cy, target, title));
+                var titleTokens = beforeTokens.Append(w).ToList();
+                found.Add(new ScheduleHeading(x, w.Cy, target, title)
+                {
+                    TitleMinX = titleTokens.Min(s => s.MinX),
+                    TitleMinY = titleTokens.Min(s => s.MinY),
+                    TitleMaxX = titleTokens.Max(s => s.MaxX),
+                });
             }
 
             return found;
