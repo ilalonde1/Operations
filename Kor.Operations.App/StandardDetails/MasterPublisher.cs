@@ -603,18 +603,26 @@ internal sealed class MasterPublisher
         }
     }
 
-    private static bool TryResolveExportedViewPdf(
+    /// <summary>
+    /// Resolves the PDF the bridge exported for ONE requested view out of an <c>exportviews</c> reply.
+    /// The bridge answers with successes in <c>views</c> (each carrying <c>elementId</c>, <c>key</c>,
+    /// <c>pdf</c>, <c>exists</c>) and failures in <c>failures</c> (<c>elementId</c>, <c>key</c>, <c>reason</c>).
+    /// A target resolves only to an item that names it. It never resolves to some other view's export:
+    /// storing that under this detail number would put the wrong drawing in the governed store.
+    /// Internal so the matching tests can drive it with real reply shapes.
+    /// </summary>
+    internal static bool TryResolveExportedViewPdf(
         JsonElement result,
         long viewElementId,
         string detailNumber,
-        bool allowTopLevelPdf,
+        bool singleViewRequest,
         out string pdf,
         out string error)
     {
         pdf = "";
         error = "";
 
-        if (TryFindViewExportItem(result, viewElementId, detailNumber, out var item))
+        if (TryFindViewExportItem(result, viewElementId, detailNumber, singleViewRequest, out var item))
         {
             if (TryGetBool(item, "exists", out var itemExists) && !itemExists)
             {
@@ -629,41 +637,81 @@ internal sealed class MasterPublisher
             }
         }
 
-        if (allowTopLevelPdf && TryGetString(result, "pdf") is { Length: > 0 } resultPdf)
+        // A bare top-level "pdf" can only be ours when exactly one view was asked for.
+        if (singleViewRequest && TryGetString(result, "pdf") is { Length: > 0 } resultPdf)
         {
             pdf = resultPdf;
             return true;
         }
 
-        error = "Drafter export did not return a PDF path.";
+        error = TryFindExportFailureReason(result, viewElementId, detailNumber) is { Length: > 0 } reason
+            ? $"Drafter did not export the view: {reason}"
+            : "Drafter export did not return a PDF path for this view.";
         return false;
     }
 
-    private static bool TryFindViewExportItem(JsonElement result, long viewElementId, string detailNumber, out JsonElement item)
+    private static bool TryFindViewExportItem(JsonElement result, long viewElementId, string detailNumber, bool singleViewRequest, out JsonElement item)
     {
         item = default;
-        var fallback = default(JsonElement);
+        var lone = default(JsonElement);
         var count = 0;
         foreach (var candidate in EnumerateResultItems(result, "views", "items", "results"))
         {
             count++;
-            fallback = candidate;
-            if ((TryGetInt64(candidate, "id", out var id) && id == viewElementId)
-                || string.Equals(TryGetString(candidate, "key"), detailNumber, StringComparison.OrdinalIgnoreCase)
-                || string.Equals(TryGetString(candidate, "detailNumber"), detailNumber, StringComparison.OrdinalIgnoreCase))
+            lone = candidate;
+            if (NamesTarget(candidate, viewElementId, detailNumber))
             {
                 item = candidate;
                 return true;
             }
         }
 
-        if (count == 1)
+        // The old rule accepted ANY lone item. With batches of 125, one success and the rest failed meant
+        // that one PDF was stored under every failed detail number. A lone item is accepted only when it
+        // carries no identity at all (a bridge that does not echo ids or keys) AND one view was asked for.
+        if (count == 1 && singleViewRequest && !CarriesIdentity(lone))
         {
-            item = fallback;
+            item = lone;
             return true;
         }
 
         return false;
+    }
+
+    private static bool NamesTarget(JsonElement candidate, long viewElementId, string detailNumber)
+    {
+        if ((TryGetInt64(candidate, "id", out var id) && id == viewElementId)
+            || (TryGetInt64(candidate, "elementId", out var elementId) && elementId == viewElementId))
+        {
+            return true;
+        }
+
+        return string.Equals(TryGetString(candidate, "key"), detailNumber, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(TryGetString(candidate, "detailNumber"), detailNumber, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool CarriesIdentity(JsonElement candidate) =>
+        TryGetInt64(candidate, "id", out _)
+        || TryGetInt64(candidate, "elementId", out _)
+        || !string.IsNullOrEmpty(TryGetString(candidate, "key"))
+        || !string.IsNullOrEmpty(TryGetString(candidate, "detailNumber"));
+
+    private static string? TryFindExportFailureReason(JsonElement result, long viewElementId, string detailNumber)
+    {
+        if (result.ValueKind != JsonValueKind.Object)
+        {
+            return null;
+        }
+
+        foreach (var failure in EnumerateResultItems(result, "failures"))
+        {
+            if (NamesTarget(failure, viewElementId, detailNumber))
+            {
+                return TryGetString(failure, "reason") ?? TryGetString(failure, "error");
+            }
+        }
+
+        return null;
     }
 
     private static bool TryGetBool(JsonElement element, string name, out bool value)
