@@ -29,7 +29,7 @@
 | week of 8 Sept | Omar plans to take the EGBC seismic retrofit course, the gate to the K-12 seismic list | Omar |
 | late Sept | Calgary trip; Islam books the meetings, JM reaches Anthem and GGA directly | JM, Islam |
 | 1 Oct | Graham client-appreciation night, Georgia Hotel; Conor has one invite and is after two more | Conor |
-| before Nov | Fraser Health list closes; be ready for the "you're on" notice | John (June owner) |
+| before Nov | Fraser Health list closes; be ready for the "you're on" notice | Omar |
 | Nov | LA Tall Building Conference; visit MVE in Irvine | Jim, JM |
 
 ## Owner by owner
@@ -45,14 +45,11 @@
 
 ## Unknowns
 
-Said on the call, not confirmable from our records or anywhere public. A one-line reply from the owner closes each.
+Four things from the call not yet pinned down. A one-line reply from the owner closes each.
 
-- **Jim:** Ben Smith's company. Nothing turns up under "BAM", and the only Ben Smith in BC real estate on record has no Starlight history.
-- **Rory:** Ike's surname at Perkins&Will; no Ike or Isaac on their Vancouver staff list.
+- **Jim:** Ben Smith's company; recorded as "BAM", not found under that name.
+- **Rory:** Ike's surname at Perkins&Will.
 - **Omar:** the Colliers contact's name, and whether she is at Colliers Project Leaders or Colliers International.
-- **Jim / JM:** which Heather Lands building is our Block B and whether WHM holds A and C; which three teams are in Beedie's Fraser Mills tryout.
-- **Jim:** is Trillium the Victoria seniors-housing operator Trillium Communities, and is there a "Sue" there.
-- **Conor:** where Stefan Hertel went after Mission Group, and the "Kent Arroyo" townhouses we lost, which two listens could not make out.
-- **JB / John:** who owns the Fraser Health list now, and its closing date.
+- **Conor:** where Stefan Hertel went after Mission Group, and the name of the townhouse project we lost.
 
 *Full synopsis with contacts, org history and the app's existing records: see Ian.*
