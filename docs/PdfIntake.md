@@ -3,7 +3,7 @@
 Written 2026-09-08 from the code and from a content inventory of the five local stick files
 (31065, 31130, 31138, 31168, 31202: 294 pages). Every number below was counted on the whole
 population named; nothing is from a sample. The intake brief series lives in
-`docs/codex/CODEX-INTAKE-CONVERGENCE-*.md` (22 so far) and this is the state they have reached.
+`docs/codex/CODEX-INTAKE-CONVERGENCE-*.md` (23 so far; 23 is written, not yet implemented) and this is the state they have reached.
 
 The purpose of the intake is stated once so the rest can be judged against it: **pull everything a
 drawing set carries that any downstream tool could need, once, through one reader, and account for
@@ -444,11 +444,12 @@ foundation plans, BEAM down by the pieces consumed, the other 9 of 13 DXFs ident
 and SLAB identical on 13 of 13. Ledger totals unchanged on 5 of 5 sets. Full Core suite 1,037 of
 1,037 (5 m 20 s); fast suite 942 of 942 after the ledger-wording edit that followed it.
 
-**Two findings for other steps.** `takeoff footings` and the rebar takeoff still count placements
-without the furniture, so on 31065 they price 13 F4 where the plan places 11; step 9 (every tool
-reads the record) closes it. Rotated footings on 31130's angled wing are outside every axis-aligned
-rule here, as rotated marks are outside the column self-check — one rule for rotated geometry,
-later.
+**Two findings for other steps.** `takeoff footings` and the takeoff's foundation pricing counted
+placements without the furniture, so on 31065 they priced 13 F4 where the plan places 11 — fixed
+the same day: both pass the furniture now, and the banked 31065 spread-footing total moved from
+1,174 to 1,099 cu.yd, the 74 that were never on the plan. Rotated footings on 31130's angled wing
+are outside every axis-aligned rule here, as rotated marks are outside the column self-check — one
+rule for rotated geometry, later.
 
 WHAT THE CHECK COVERS (`FiveStickFilesTests.FootingsOnTheSchedulePageAreTheBankedCount`): the
 count of footings read and of labels placed on the five schedule pages, and that every footing

@@ -2095,7 +2095,8 @@ if (args.Length >= 1 && args[0].Equals("vector-takeoff", StringComparison.Ordina
             var fpPage = VectorPageReader.ReadPage(args[1], pg.Page);
             var (ftypes, tableBox) = FootingScheduleReader.ReadSchedule(fpPage);
             if (ftypes.Count == 0) continue;
-            var fpPositions = FootingScheduleReader.PlacementPositions(fpPage, ftypes, tableBox);
+            // a mark in a note or legend is a mention, not a placement (brief 21)
+            var fpPositions = FootingScheduleReader.PlacementPositions(fpPage, ftypes, tableBox, SheetFurniture.On(fpPage, PlanAgreesWithItsSchedule.DefaultToleranceMm));
             var placements = fpPositions.ToDictionary(kv => kv.Key, kv => kv.Value.Count, StringComparer.OrdinalIgnoreCase);
             string flevel = SheetTitleReader.FromPage(fpPage)?.Display ?? "FOUNDATION";
 
@@ -3667,7 +3668,7 @@ if (args.Length >= 2 && args[0].Equals("footings", StringComparison.OrdinalIgnor
             && !ds.Contains("RAFTSLAB") && !ds.Contains("MATFOUNDATION") && !ds.Contains("MATSLAB") && !ds.Contains("PILESCHEDULE")) continue;
         var (ftypes, box) = FootingScheduleReader.ReadSchedule(pc);
         if (ftypes.Count == 0) { Console.WriteLine($"p{pg}: no footing rows — {FootingScheduleReader.WhyNoRows(pc)}"); continue; }
-        var counts = FootingScheduleReader.CountPlacements(pc, ftypes, box);
+        var counts = FootingScheduleReader.CountPlacements(pc, ftypes, box, SheetFurniture.On(pc, PlanAgreesWithItsSchedule.DefaultToleranceMm));
         string lvl = SheetTitleReader.FromPage(pc)?.Display ?? "?";
         Console.WriteLine($"p{pg} ({lvl}): {ftypes.Count} schedule row(s)");
         foreach (var ft in ftypes)

@@ -89,7 +89,9 @@ public sealed class FiveStickFilesTests
         new("31138-01", 96, 353, "F1,F2,SF1,SF2", 9,
             "PC1,PC1A,PC2,PC3,PC3A,PC4,PC5,PC6,PC7,PC8,PC9,PL1,PL2", "SWA:8:35",
             new Dictionary<int, int> { [9] = 24, [11] = 21 }, WallCount: 41, FootingCount: 11, FootingMarksPlaced: 11, GridAxes: 15),
-        new("31065-01", 100, 1174, "F1,F2,F3,F4,SF1,SF2", 14,
+        // 1,174 → 1,099 cy on 2026-09-08 (brief 21): the two "F4" in p14's bond-breaker note were counted as
+        // placements, 74 cy of footing that is not on the plan; placements are now counted outside furniture
+        new("31065-01", 100, 1099, "F1,F2,F3,F4,SF1,SF2", 14,
             "PC1,PC1A,PC2,PC3,PC4,PC5,ZC1,ZC2", "SWA:8:35,SWB:8:35,SWC:24:45",
             new Dictionary<int, int> { [14] = 24, [15] = 22, [16] = 30 }, WallCount: 36, FootingCount: 30, FootingMarksPlaced: 29, GridAxes: 17),
         new("31202-01", 96, 0, "", 17,
@@ -131,7 +133,9 @@ public sealed class FiveStickFilesTests
                 && !ds.Contains("RAFTSLAB") && !ds.Contains("MATFOUNDATION") && !ds.Contains("MATSLAB") && !ds.Contains("PILESCHEDULE")) continue;
             var (types, box) = FootingScheduleReader.ReadSchedule(pc);
             if (types.Count == 0) continue;
-            var counts = FootingScheduleReader.CountPlacements(pc, types, box);
+            // a mark in a note or legend is a mention, not a placement (brief 21): 31065 p14's bond-breaker
+            // note said F4 twice and the takeoff priced two footings that are not there
+            var counts = FootingScheduleReader.CountPlacements(pc, types, box, SheetFurniture.On(pc, PlanAgreesWithItsSchedule.DefaultToleranceMm));
             foreach (var ft in types)
             {
                 marks.Add(ft.Mark);

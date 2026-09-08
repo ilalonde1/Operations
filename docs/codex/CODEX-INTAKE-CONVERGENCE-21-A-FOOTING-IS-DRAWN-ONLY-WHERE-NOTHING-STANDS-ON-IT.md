@@ -93,8 +93,9 @@ a sheet that places nothing, the ledger files it as unaccounted, not read.
 
 ## Two findings for other steps
 
-- `takeoff footings` and the rebar takeoff still call `CountPlacements` without furniture, so on
-  31065 p14 they count 13 F4 where the plan places 11 — 74 cu.yd that is not there. Step 9 (every
-  tool reads the record) closes it; until then it is a known over-count.
+- `takeoff footings` and the takeoff's foundation pricing called `CountPlacements` without
+  furniture, so on 31065 p14 they counted 13 F4 where the plan places 11 — 74 cu.yd that is not
+  there. Fixed the same day (commit after 6b8a45c6): both pass the furniture; the banked 31065
+  total moved 1,174 → 1,099 cu.yd.
 - Rotated footings (31130 p12, the angled wing) are outside every axis-aligned rule here, as
   rotated marks are outside the column self-check. One rule for rotated geometry, later.
