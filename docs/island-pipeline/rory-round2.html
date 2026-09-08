@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KOR Structural &mdash; Island response, round two</title>
+<style>
+  :root {
+    --ground: #FBFAF9;
+    --surface: #FFFFFF;
+    --surface-2: #F4F2F0;
+    --ink: #1C2530;
+    --ink-soft: #55636F;
+    --ink-faint: #8A97A2;
+    --line: #E5E4E1;
+    --line-strong: #D3D2CE;
+    --slate: #3F5364;
+    --slate-deep: #2C3A47;
+    --accent: #FF5B35;
+    --accent-ink: #C6360F;
+    --good: #1E7D3A;   --good-bg: #E7F3EB;
+    --warn: #A9741A;   --warn-bg: #FBF1DE;
+    --crit: #C0392B;   --crit-bg: #FBE9E7;
+    --blue: #3E7CB1;   --blue-bg: #E8F0F7;
+    --shadow: 0 1px 2px rgba(28,37,48,.06), 0 8px 24px rgba(28,37,48,.05);
+    --radius: 10px;
+    --maxread: 44rem;
+    --sans: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+    --mono: "Cascadia Code", Consolas, "SF Mono", ui-monospace, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground: #13171C;
+      --surface: #1A2027;
+      --surface-2: #212A33;
+      --ink: #E9ECEF;
+      --ink-soft: #A6B2BC;
+      --ink-faint: #6E7C87;
+      --line: #29323B;
+      --line-strong: #38434E;
+      --slate: #7E97AC;
+      --slate-deep: #C4D3DF;
+      --accent: #FF7150;
+      --accent-ink: #FF9276;
+      --good: #6BD08A;   --good-bg: #16281C;
+      --warn: #E3B25A;   --warn-bg: #2C2413;
+      --crit: #F0938A;   --crit-bg: #2E1815;
+      --blue: #7FB1D9;   --blue-bg: #14212C;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="light"] {
+    --ground: #FBFAF9; --surface: #FFFFFF; --surface-2: #F4F2F0;
+    --ink: #1C2530; --ink-soft: #55636F; --ink-faint: #8A97A2;
+    --line: #E5E4E1; --line-strong: #D3D2CE; --slate: #3F5364; --slate-deep: #2C3A47;
+    --accent: #FF5B35; --accent-ink: #C6360F;
+    --good: #1E7D3A; --good-bg: #E7F3EB; --warn: #A9741A; --warn-bg: #FBF1DE;
+    --crit: #C0392B; --crit-bg: #FBE9E7; --blue: #3E7CB1; --blue-bg: #E8F0F7;
+    --shadow: 0 1px 2px rgba(28,37,48,.06), 0 8px 24px rgba(28,37,48,.05);
+  }
+  :root[data-theme="dark"] {
+    --ground: #13171C; --surface: #1A2027; --surface-2: #212A33;
+    --ink: #E9ECEF; --ink-soft: #A6B2BC; --ink-faint: #6E7C87;
+    --line: #29323B; --line-strong: #38434E; --slate: #7E97AC; --slate-deep: #C4D3DF;
+    --accent: #FF7150; --accent-ink: #FF9276;
+    --good: #6BD08A; --good-bg: #16281C; --warn: #E3B25A; --warn-bg: #2C2413;
+    --crit: #F0938A; --crit-bg: #2E1815; --blue: #7FB1D9; --blue-bg: #14212C;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  body {
+    margin: 0; background: var(--ground); color: var(--ink);
+    font-family: var(--sans); font-size: 17px; line-height: 1.68;
+    -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+  }
+
+  /* ---------- Hero ---------- */
+  .hero {
+    background:
+      radial-gradient(120% 140% at 88% -20%, rgba(255,91,53,.20), transparent 55%),
+      linear-gradient(180deg, var(--slate-deep), var(--slate));
+    color: #EAF0F5; padding: clamp(2.4rem, 6vw, 4.2rem) 1.5rem clamp(2rem, 5vw, 3.4rem);
+    border-bottom: 3px solid var(--accent);
+  }
+  .hero__wrap { max-width: 62rem; margin: 0 auto; }
+  .hero__eyebrow {
+    font-family: var(--mono); font-size: .72rem; letter-spacing: .22em;
+    text-transform: uppercase; color: #FFB59F; margin: 0 0 .9rem;
+  }
+  .hero h1 {
+    font-size: clamp(2rem, 5.2vw, 3.35rem); line-height: 1.05; margin: 0 0 .8rem;
+    font-weight: 700; letter-spacing: -.02em; text-wrap: balance; color: #FFFFFF;
+  }
+  .hero__lede {
+    font-size: clamp(1.05rem, 2.2vw, 1.3rem); max-width: 34rem; margin: 0;
+    color: #CBD8E2; line-height: 1.5;
+  }
+  .hero__meta {
+    margin-top: 1.6rem; display: flex; flex-wrap: wrap; gap: .5rem .7rem;
+    font-family: var(--mono); font-size: .74rem; color: #9FB3C4;
+  }
+  .hero__meta span { background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.12);
+    padding: .28rem .6rem; border-radius: 999px; }
+  /* Bold text inside the hero, on the dark ground. Without this it inherits the
+     accent colour and prints as dim amber on navy — barely legible, and the
+     emphasised words are usually the numbers the page exists to carry. Lives
+     OUTSIDE @media print on purpose so screen and print agree. Documented in
+     this directory's CLAUDE.md; it had gone missing from the style block and
+     was caught by looking at a rendered PDF page on 2026-09-04. */
+  .hero strong, .hero b { color: #FFFFFF; font-weight: 700; }
+
+  /* ---------- Shell ---------- */
+  .shell { max-width: 62rem; margin: 0 auto; padding: 0 1.5rem;
+    display: grid; grid-template-columns: 15rem minmax(0, 1fr); gap: 2.6rem; }
+  @media (max-width: 940px) { .shell { grid-template-columns: 1fr; gap: 0; } }
+
+  /* ---------- Table of contents ---------- */
+  .toc { position: sticky; top: 0; align-self: start; max-height: 100vh; overflow-y: auto;
+    padding: 2.2rem 0; }
+  @media (max-width: 940px) { .toc { position: static; max-height: none; padding: 1.4rem 0 0; } }
+  .toc__title { font-family: var(--mono); font-size: .68rem; letter-spacing: .2em;
+    text-transform: uppercase; color: var(--ink-faint); margin: 0 0 .8rem; }
+  .toc ol { list-style: none; margin: 0; padding: 0; counter-reset: toc; }
+  .toc li { margin: 0; }
+  .toc a { display: flex; gap: .6rem; align-items: baseline; text-decoration: none;
+    color: var(--ink-soft); padding: .32rem 0; font-size: .93rem; line-height: 1.3;
+    border-left: 2px solid transparent; padding-left: .7rem; transition: color .15s, border-color .15s; }
+  .toc a::before { counter-increment: toc; content: counter(toc, decimal-leading-zero);
+    font-family: var(--mono); font-size: .7rem; color: var(--ink-faint); }
+  .toc a:hover { color: var(--accent-ink); }
+  .toc a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 3px; }
+
+  /* ---------- Content ---------- */
+  main { padding: 2.2rem 0 5rem; min-width: 0; }
+  section { scroll-margin-top: 1.2rem; padding: 2.2rem 0; border-top: 1px solid var(--line); }
+  section:first-of-type { border-top: 0; padding-top: 1.4rem; }
+  .kicker { font-family: var(--mono); font-size: .72rem; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--accent-ink); margin: 0 0 .5rem; font-weight: 600; }
+  h2 { font-size: clamp(1.45rem, 3.4vw, 1.95rem); line-height: 1.15; margin: 0 0 .9rem;
+    letter-spacing: -.015em; font-weight: 700; text-wrap: balance; }
+  h3 { font-size: 1.14rem; margin: 1.8rem 0 .5rem; font-weight: 650; letter-spacing: -.01em; }
+  p { max-width: var(--maxread); margin: 0 0 1rem; }
+  .lede { font-size: 1.12rem; color: var(--ink-soft); max-width: var(--maxread); }
+  strong { font-weight: 650; color: var(--ink); }
+  a.inline { color: var(--accent-ink); text-decoration: underline; text-underline-offset: 2px;
+    text-decoration-thickness: 1px; }
+
+  ul.plain { max-width: var(--maxread); margin: 0 0 1rem; padding-left: 0; list-style: none; }
+  ul.plain li { position: relative; padding-left: 1.5rem; margin: 0 0 .55rem; }
+  ul.plain li::before { content: ""; position: absolute; left: .25rem; top: .62em;
+    width: .42rem; height: .42rem; border-radius: 2px; background: var(--accent); transform: rotate(45deg); }
+
+  /* keycap + click chips */
+  kbd { font-family: var(--mono); font-size: .82em; background: var(--surface);
+    border: 1px solid var(--line-strong); border-bottom-width: 2px; border-radius: 6px;
+    padding: .08em .5em; color: var(--ink); box-shadow: 0 1px 0 rgba(0,0,0,.04); white-space: nowrap; }
+  .btn { font-family: var(--mono); font-size: .82em; background: var(--slate); color: #fff;
+    border-radius: 6px; padding: .12em .55em; white-space: nowrap; }
+  :root[data-theme="dark"] .btn, .btn { }
+  @media (prefers-color-scheme: dark) { .btn { color: #0f141a; background: var(--slate); } }
+  :root[data-theme="dark"] .btn { color: #0f141a; }
+  :root[data-theme="light"] .btn { color: #fff; }
+  .path { font-family: var(--mono); font-size: .84em; color: var(--ink-soft); white-space: nowrap; }
+  .path b { color: var(--accent-ink); font-weight: 600; }
+
+  /* status pills that mirror the app */
+  .pill { display: inline-flex; align-items: center; gap: .35em; font-family: var(--mono);
+    font-size: .72rem; font-weight: 600; padding: .18em .6em; border-radius: 999px; color: #fff;
+    letter-spacing: .01em; vertical-align: middle; }
+  .pill--won { background: #228B22; } .pill--sub { background: #E5A800; }
+  .pill--draft { background: #609BD1; } .pill--lost { background: #808080; }
+  .pill--fresh { background: #228B22; } .pill--watch { background: #E5A800; } .pill--cold { background: #C11E1E; }
+  .pill--live { background: var(--slate); }
+
+  /* callout boxes */
+  .box { border-radius: var(--radius); padding: 1.05rem 1.15rem; margin: 1.2rem 0;
+    max-width: var(--maxread); border: 1px solid var(--line); background: var(--surface);
+    box-shadow: var(--shadow); }
+  .box__label { font-family: var(--mono); font-size: .68rem; letter-spacing: .14em;
+    text-transform: uppercase; margin: 0 0 .5rem; font-weight: 700; display: flex; align-items: center; gap: .45rem; }
+  .box p, .box ul.plain { margin-bottom: .5rem; }
+  .box p:last-child, .box ul.plain:last-child { margin-bottom: 0; }
+  .box--screen { border-left: 3px solid var(--slate); background: var(--surface-2); }
+  .box--screen .box__label { color: var(--slate); }
+  .box--tip { border-left: 3px solid var(--good); background: var(--good-bg); }
+  .box--tip .box__label { color: var(--good); }
+  .box--dont { border-left: 3px solid var(--crit); background: var(--crit-bg); }
+  .box--dont .box__label { color: var(--crit); }
+  .box--auto { border-left: 3px solid var(--accent); }
+  .box--auto .box__label { color: var(--accent-ink); }
+
+  /* lifecycle sequence */
+  .flow { display: grid; grid-template-columns: repeat(3, 1fr); gap: .8rem; margin: 1.4rem 0 .5rem;
+    max-width: var(--maxread); }
+  @media (max-width: 620px) { .flow { grid-template-columns: 1fr; } }
+  .flow__step { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 1rem; box-shadow: var(--shadow); }
+  .flow__n { font-family: var(--mono); font-size: .72rem; color: #fff; background: var(--accent);
+    width: 1.5rem; height: 1.5rem; border-radius: 6px; display: grid; place-items: center; font-weight: 700; }
+  .flow__step h4 { margin: .6rem 0 .3rem; font-size: 1rem; }
+  .flow__step p { font-size: .9rem; color: var(--ink-soft); margin: 0; }
+
+  /* map grid */
+  .map { display: grid; grid-template-columns: repeat(2, 1fr); gap: .55rem .9rem;
+    max-width: var(--maxread); margin: 1rem 0; }
+  @media (max-width: 620px) { .map { grid-template-columns: 1fr; } }
+  .map div { display: flex; gap: .6rem; align-items: baseline; padding: .5rem .2rem;
+    border-bottom: 1px solid var(--line); }
+  .map dt { font-family: var(--mono); font-size: .82rem; color: var(--accent-ink);
+    font-weight: 600; min-width: 6.6rem; }
+  .map dd { margin: 0; font-size: .92rem; color: var(--ink-soft); }
+
+  /* cheat table */
+  .table-wrap { max-width: var(--maxread); overflow-x: auto; margin: 1rem 0; }
+  table { border-collapse: collapse; width: 100%; font-size: .93rem; }
+  th, td { text-align: left; padding: .6rem .7rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-family: var(--mono); font-size: .68rem; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--ink-faint); font-weight: 600; }
+  td:first-child { font-weight: 600; white-space: nowrap; }
+
+  .chip-row { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1rem 0; }
+  footer { border-top: 1px solid var(--line); padding: 1.8rem 0 3rem; color: var(--ink-faint);
+    font-size: .86rem; max-width: var(--maxread); }
+  footer .path { font-size: .8em; }
+  .fade { opacity: 0; transform: translateY(8px); animation: rise .6s ease forwards; }
+  @keyframes rise { to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .fade { opacity: 1; transform: none; animation: none; } }
+
+  /* ---------- Print / PDF ---------- */
+  /* Side margins ZERO so a hero can bleed to the paper edge; top/bottom real so
+     pages 2..n never jam (container padding does NOT repeat per page). */
+  @page { size: Letter; margin: 11mm 0 13mm; }
+  @media print {
+    :root {
+      /* Force the light palette regardless of viewer theme. */
+      --ground:#FBFAF9; --surface:#FFFFFF; --surface-2:#F4F2F0;
+      --ink:#1C2530; --ink-soft:#55636F; --ink-faint:#8A97A2;
+      --line:#E5E4E1; --line-strong:#D3D2CE; --slate:#3F5364; --slate-deep:#2C3A47;
+      --accent:#FF5B35; --accent-ink:#C6360F;
+      --good:#1E7D3A; --good-bg:#E7F3EB; --warn:#A9741A; --warn-bg:#FBF1DE;
+      --crit:#C0392B; --crit-bg:#FBE9E7; --blue:#3E7CB1; --blue-bg:#E8F0F7;
+      --shadow: none;
+    }
+    /* --maxread is a SCREEN reading measure; left as-is it leaves a dead band
+       down the right of every printed page. */
+    :root { --maxread: 100%; }
+    html { font-size: 16.5px; }
+    body { background:#fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; color-scheme: light; }
+    .fade { opacity:1 !important; transform:none !important; animation:none !important; }
+
+    .hero { margin: -11mm 0 0; padding: 13mm 13mm 10mm; border-bottom-width: 2px; }
+    .hero h1 { font-size: 30pt; }
+    .hero__lede { font-size: 12.5pt; color:#D4E0EA; }
+    .hero__meta { display:none; }
+
+    /* Single reading column; contents becomes a printed page-1 index. */
+    .shell { display:block; max-width: none; padding: 0 13mm; }
+    .toc { position: static; max-height: none; padding: 5mm 0 1mm; break-after: auto; }
+    .toc a { color: var(--ink-soft) !important; border-left-color: var(--line-strong); }
+    main { padding: 6mm 0 0; }
+    section:first-of-type { padding-top: 4mm; }
+
+    /* Keep blocks whole across page breaks. */
+    h2, h3, h4 { break-after: avoid; }
+    section { break-inside: auto; }
+    .box, .flow, .flow__step, .chip-row, .map { break-inside: avoid; }
+    tr, li { break-inside: avoid; }
+    /* Tables MAY break across pages, and their header repeats when they do.
+       `break-inside: avoid` on a table taller than a page does not keep it
+       whole — the renderer bumps the whole block to the next page and leaves
+       the current one two-thirds empty. That cost six wasted pages in the
+       Island who's-who v4 (a 15-row door list and a 13-row permit register),
+       and it is the same class as the wide-table column loss above: the print
+       CSS assumed every block fits on one page. Rows and list items still
+       stay whole, which is the part that actually matters to a reader. */
+    .table-wrap { break-inside: auto; }
+    table { break-inside: auto; }
+    thead { display: table-header-group; }
+    tfoot { display: table-footer-group; }
+    a.inline, .toc a { text-decoration: none; }
+    footer { break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+<header class="hero">
+  <div class="hero__wrap fade">
+    <p class="hero__eyebrow">KOR Structural · Vancouver Island · Confidential · Response to Rory Beirne, round two</p>
+    <h1>You were right about the proposals</h1>
+    <p class="hero__lede">Every count we have put in front of you was <strong>Deltek project records, not won jobs</strong>. Deltek knew the difference and we read the wrong column. Part one corrects each point; part two is the Island list with the single-family and tenant-improvement noise stripped out — <strong>3,020 applications down to 1,130</strong>.</p>
+    <div class="hero__meta">
+      <span class="pill pill--cold">4 counts corrected</span>
+      <span class="pill pill--live">1,130 big-ticket</span>
+      <span class="pill pill--fresh">246 in the last year</span>
+      <span class="pill">8 Sep 2026</span>
+    </div>
+  </div>
+</header>
+
+<div class="shell">
+  <nav class="toc" aria-label="Contents">
+    <p class="toc__title">On this page</p>
+    <ol>
+      <li><a href="#s1">Proposals counted as jobs — the whole picture</a></li>
+      <li><a href="#s2">Nanoose, and what it cost</a></li>
+      <li><a href="#s3">Sense — North Vancouver</a></li>
+      <li><a href="#s4">The architect on every job</a></li>
+      <li><a href="#s5">Proposals to jobs, by client</a></li>
+      <li><a href="#s6">The Island list, small stuff removed</a></li>
+      <li><a href="#s7">What is actually open</a></li>
+    </ol>
+  </nav>
+
+  <section id="s1">
+    <p class="kicker">Part one · the correction</p>
+    <h2>Proposals counted as jobs</h2>
+    <p class="lede">You said you suspected the PO we set up to track proposals was skewing the data. It is, and worse than that — it has skewed <strong>every job count in every document we have sent you.</strong></p>
+
+    <div class="box box--dont">
+      <p class="box__label">✕ What we were counting</p>
+      <p>A Deltek project record gets created when we decide to <em>chase</em> something. Our counts read those records. Across all <strong>10,017</strong> top-level projects in Deltek, only <strong>2,411 have ever been billed.</strong></p>
+      <p>Deltek already tracks this properly in a field called Stage — <strong>179 In&nbsp;Pursuit, 86 Lost, 8 Did&nbsp;Not&nbsp;Pursue</strong> — and we were reading a different field that lumps all of them in with real work.</p>
+    </div>
+
+    <p>So when a document said "369 projects", it meant 369 records. The honest number is the one where money moved.</p>
+  </section>
+
+  <section id="s2">
+    <p class="kicker">Part one · the correction</p>
+    <h2>Nanoose, and what it cost</h2>
+    <p class="lede">You said we did not get Westmark's Gracewood at Fairwinds. You are right, and the file said so all along.</p>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Deltek 20330-01</th><th>Value</th></tr></thead>
+        <tbody>
+          <tr><td>Stage</td><td><strong>In Pursuit</strong></td></tr>
+          <tr><td>Contract fee</td><td>$0</td></tr>
+          <tr><td>Ever billed</td><td>$0</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>The last document told you we had taken a job off Herold on their home turf. <strong>We had not.</strong> Herold is still the mid-Island incumbent, now with Englobe behind them since May 2025, and we have not displaced them anywhere.</p>
+
+    <div class="box box--auto">
+      <p class="box__label">▸ Why it slipped through</p>
+      <p>There are two definitions of "won" inside our own systems — one counts any regular project record, the other only counts a project once money has moved through accounts receivable. The first one is what fed the dossier. That is now written down, and the corrected counts below all use money-moved.</p>
+    </div>
+  </section>
+
+  <section id="s3">
+    <p class="kicker">Part one · the correction</p>
+    <h2>Sense — North Vancouver</h2>
+    <p class="lede">Corrected. Sense Engineering is headquartered in <strong>North Vancouver</strong>, not Victoria.</p>
+    <p>Their own website lists the Victoria address first, which is what we took for a head office — but that address is a residential-style terrace in the Colwood area, while North Vancouver is a commercial suite. Twelve offices in total.</p>
+    <p><strong>Everything else about them stands, and it is the part that matters:</strong> not a direct competitor today — envelope, restoration, inspection, capital planning, small jobs, working the relationships on projects we are already on — but recruiting a <strong>Structural Engineering Group Lead at $150–175k</strong> to expand into new construction, with BC work aimed at <strong>mass timber and hybrid structures</strong>.</p>
+  </section>
+
+  <section id="s4">
+    <p class="kicker">Part one · your question</p>
+    <h2>The architect on every job — yes, and it is better than expected</h2>
+    <p class="lede">You asked whether we could review previous jobs to see the architect on each. <strong>Deltek has been recording it all along</strong>, in a field nothing we have built reads.</p>
+
+    <p><strong>743 projects carry a named architect.</strong> The firms we have actually worked alongside, by project count:</p>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Architect</th><th>Projects</th><th>Architect</th><th>Projects</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Arcadis IBI Group</strong></td><td><strong>81</strong></td><td>Ramsay Worden</td><td>19</td></tr>
+          <tr><td><strong>DIALOG</strong></td><td><strong>68</strong></td><td>Keystone Architecture</td><td>17</td></tr>
+          <tr><td><strong>Chris Dikeakos Architects</strong></td><td><strong>61</strong></td><td>NSDA Architects</td><td>15</td></tr>
+          <tr><td><strong>GBL Architects</strong></td><td><strong>48</strong></td><td>CEI Architecture</td><td>14</td></tr>
+          <tr><td><strong>Pacific Coast Architecture</strong></td><td><strong>44</strong></td><td>Chandler Associates</td><td>14</td></tr>
+          <tr><td>Musson Cattell Mackey</td><td>29</td><td>Integra Architecture</td><td>13</td></tr>
+          <tr><td>Rositch Hemphill</td><td>28</td><td>JWDA · Christopher Bozyk · VIA</td><td>11 each</td></tr>
+          <tr><td>Yamamoto Architecture</td><td>26</td><td>Perkins&amp;Will · Buttjes · Focus</td><td>9 each</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>This is exactly the reference-job list you described — <strong>"we worked with you on 81 projects"</strong> is a different opening line from a cold call. And it is nothing like the client-side counts we have been quoting: <strong>Arcadis shows as 2 projects in our BD system and 81 here</strong>, because Arcadis was the architect, not the payer.</p>
+
+    <div class="box box--dont">
+      <p class="box__label">✕ The catch, stated plainly</p>
+      <p>743 of 10,017 projects — about <strong>7%</strong> — have the architect filled in. The field exists on every project; it has been populated on a fourteenth of them. So this list is real but partial, and the older the job the likelier it is blank. Backfilling it is a decision about how much it is worth, not a technical problem.</p>
+    </div>
+  </section>
+
+  <section id="s5">
+    <p class="kicker">Part one · your question</p>
+    <h2>Proposals to jobs, by client</h2>
+    <p class="lede">You asked to see the ratio. Records is what we were calling projects; billed is what we actually did.</p>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Client</th><th>Records</th><th>Billed</th><th>Total billed</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Northland Properties</strong></td><td>373</td><td><strong>239</strong></td><td>$2,459,145</td></tr>
+          <tr><td><strong>Reliance Properties</strong></td><td>83</td><td><strong>50</strong></td><td>$1,089,742</td></tr>
+          <tr><td><strong>Townline</strong></td><td>41</td><td><strong>26</strong></td><td>$2,236,710</td></tr>
+          <tr><td><strong>Intracorp</strong></td><td>54</td><td><strong>17</strong></td><td>$1,478,742</td></tr>
+          <tr><td>Pennyfarthing</td><td>13</td><td>10</td><td>$264,446</td></tr>
+          <tr><td>Primex Investments</td><td>10</td><td>8</td><td>$50,643</td></tr>
+          <tr><td><strong>NSDA Architects</strong></td><td>47</td><td><strong>6</strong></td><td>$210,134</td></tr>
+          <tr><td>Mallen Gowing Berzins</td><td>6</td><td>5</td><td>$21,149</td></tr>
+          <tr><td>Aragon · Ridge North America</td><td>5 · 3</td><td>2 · 2</td><td>$85,806 · $56,000</td></tr>
+          <tr><td>Radcliffe · Three Dog · Sakura</td><td>2 · 3 · 4</td><td>1 · 1 · 1</td><td>$53,000 · $151,701 · $117,537</td></tr>
+          <tr><td><strong>Starlight</strong></td><td>12</td><td><strong>0</strong></td><td>$0 — two contracts signed</td></tr>
+          <tr><td><strong>D Akers Property Solutions</strong></td><td>9</td><td><strong>0</strong></td><td>$0</td></tr>
+          <tr><td>Ledcor · Greystar · M'Akola · dHK</td><td>6 · 2 · 2 · 2</td><td>0</td><td>$0</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="box box--dont">
+      <p class="box__label">✕ Three that were badly wrong, and one of them is the one you flagged</p>
+      <ul class="plain">
+        <li><strong>D Akers Property Solutions — nine records, none billed.</strong> The last document called them "our deepest mid-Island relationship". They are our <em>most-pursued mid-Island prospect</em>. Consistent with the $5K Lantzville bid you lost.</li>
+        <li><strong>Starlight — twelve records, none billed.</strong> Two carry signed contracts, $145,000 at 7376 Halifax St Burnaby and $180,000 at Quadra East Victoria, with time charged against the Burnaby one. Real wins in progress, not six completed jobs.</li>
+        <li><strong>NSDA Architects — 47 records, 6 billed.</strong> We said 28.</li>
+      </ul>
+    </div>
+
+    <p><strong>And the whole mid-Island picture changes.</strong> Of 34 records across Campbell River, Parksville, Comox, Courtenay, Duncan and Qualicum, <strong>eight have ever been billed</strong>: West Wave Parksville $151,701 · Gibbins Rd North Cowichan $70,000 · Rowan Parksville $53,000 · Paddle Rd North Cowichan $40,000 · Chemainus $4,125 · Courtenay $3,750 · South Courtenay $1,733 · Duncan $1,125.</p>
+
+    <p><strong>Campbell River: eight records, nothing ever billed.</strong> Not a foothold — a market we keep bidding into and not winning.</p>
+  </section>
+
+  <section id="s6">
+    <p class="kicker">Part two · the list</p>
+    <h2>The Island list, small stuff removed</h2>
+    <p class="lede">You asked to weed out single-family and tenant-improvement work. Done — and it removes nearly two-thirds of the file.</p>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Removed</th><th>Applications</th></tr></thead>
+        <tbody>
+          <tr><td>Single-lot residential permits</td><td>1,003</td></tr>
+          <tr><td>Single-family dwellings</td><td>360</td></tr>
+          <tr><td>Decks, fences, garages, retaining walls</td><td>213</td></tr>
+          <tr><td>Tenant improvements</td><td>116</td></tr>
+          <tr><td>Suites and accessory dwellings</td><td>93</td></tr>
+          <tr><td>Alterations</td><td>74</td></tr>
+          <tr><td>Demolitions · signs · servicing</td><td>31</td></tr>
+          <tr><td><strong>What is left</strong></td><td><strong>1,130</strong></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p><strong>1,130 big-ticket applications, 246 of them filed in the last twelve months.</strong> By market: Nanaimo 388 · Saanich 191 · Langford 167 · Victoria 92 · Courtenay 85 · Qualicum Beach 78 · Parksville 44 · Campbell River 31 · Colwood 27 · Comox 19 · RDN 8.</p>
+
+    <p>This filter now runs on the file permanently, so the Island view starts from the 1,130 rather than the 3,020.</p>
+  </section>
+
+  <section id="s7">
+    <p class="kicker">Part two · the list</p>
+    <h2>What is actually open</h2>
+    <p class="lede">Big-ticket only, most recent first, with the applicant where the city publishes one.</p>
+
+    <ul class="plain">
+      <li><strong>Langford, 3 Sep 2026 — three six-storey buildings, approximately 154 units.</strong> The largest thing on the Island file right now.</li>
+      <li><strong>Saanich, 9 Jul 2026 — Continuum Architecture</strong>, rezoning for a <strong>6–8 storey mixed-use with 134 units</strong>.</li>
+      <li><strong>Colwood, 19 Jun 2026 — a 112-unit apartment building.</strong></li>
+      <li><strong>Saanich, 10 Jun 2026 — 6-storey, 113 dwelling units with two levels of underground parking.</strong></li>
+      <li><strong>Langford — 80 units</strong> (six-storey mixed use, 19 Aug), <strong>78 units</strong> (six-storey multifamily, 30 Jun), <strong>76 rental units</strong> (six-storey, 28 Jul). Three separate six-storey buildings in one summer.</li>
+      <li><strong>Saanich, 10 Aug 2026 — hcma architecture</strong>, a <strong>new K-12 Francophone school</strong>. Institutional, and hcma is on our list already.</li>
+      <li><strong>Saanich, 14 Aug 2026 — Francl Architecture</strong>, a <strong>new parks facility</strong>.</li>
+      <li><strong>Saanich, 13 Jul 2026 — Island View Land Management</strong>, rezoning for a comprehensive mixed-use development with <strong>eleven buildings</strong>.</li>
+      <li><strong>Saanich, 26 Aug 2026 — Alan Lowe Architect</strong>, rezoning C-2 General to a mixed-use zone.</li>
+      <li><strong>Saanich, 31 Aug 2026 — Abstract Developments</strong>, amending a development permit on site layout and building construction.</li>
+      <li><strong>Colwood — a 20-unit townhouse</strong> development (25 Aug) and a three-storey (12 Aug).</li>
+      <li><strong>Victoria, 2 Sep 2026 — Island Health</strong> proposes a covered secure bike facility. Small, but it is the health authority buying directly.</li>
+    </ul>
+
+    <div class="box box--tip">
+      <p class="box__label">▸ Where this leaves the mid-Island</p>
+      <p>Campbell River, Comox and Qualicum publish 128 big-ticket applications between them and we have never billed a dollar in any of the three. That is not a relationship problem — <strong>we are already bidding there and losing.</strong> The useful question is not who to call but why the bids are not landing, and the Akers Lantzville result at $5K suggests we may be aiming at the wrong end of the market in exactly the way you describe.</p>
+    </div>
+  </section>
+
+  <footer>
+    <p>KOR Structural — Confidential / Internal · Prepared for Rory Beirne, Principal Vancouver Island · 8 September 2026</p>
+    <p>All counts here are money-moved, not project records. Every correction has been written back into our systems.</p>
+  </footer>
+</div>
+
+</body>
+</html>
