@@ -34,13 +34,13 @@
 
 ## Owner by owner
 
-- **Omar:** Take up the Colliers introductions, and ask Colliers what change-of-use work they are seeing. Chase the NDY referrals for seismic restraint work. Run the office-to-hotel seismic assessment: NDA first, then their structural drawings, then a fee for the report. Make the same offer to the Coal Harbour hotel developer. Pitch Stantec with Islam. With JM, follow up the contact who used to work at the Port Authority.
+- **Omar:** Take up the Colliers introductions, and ask Colliers what change-of-use work they are seeing. Keep on his contact at NDY, the mechanical engineer who will recommend KOR for seismic restraint on his tenant-improvement jobs when nobody else is on board. Run the office-to-hotel seismic assessment: NDA first, then their structural drawings, then a fee for the report. Make the same offer to the Coal Harbour hotel developer. Pitch Stantec with Islam. With JM, follow up the contact who used to work at the Port Authority.
 - **Jim:** Prepare the "designing without transfers" presentation for Aquilini and GBL. Lunch with Giovanni Gunawan at Aquilini. Get the San Diego wood-frame RFP in this week. Lunch at CDA on the 11th with Omar. Call Michael De Cotiis at Pinnacle for lunch after the long weekend. Check with Daler that MVE's insurance update went back.
 - **JM:** Call Gwyn Vose at Arcadis for lunch. Confirm with Beedie whether we are one of the three Fraser Mills teams. Set up Calgary, reaching Anthem and GGA directly. Introduce Conor to Berry Architecture's new Kelowna studio. Call Brad Burnett at ITC. With Omar, follow up the contact who used to work at the Port Authority. MCM is worth a visit; JM's contact Peter Odegaard is a partner there.
 - **JB:** Lunch with Colin Bosa in October, set up through Robert. A one-on-one with Gerry Nichele, the decision maker at Solterra, this week or early next.
-- **Rory:** Pick up Continuum Architecture from Jim. Ask Ike about the Perkins&Will invite. The conversions blurb was Rory's idea; Ian drafts it.
-- **Islam:** Get in front of KRA's Vancouver team. Pitch Stantec with Omar. Book JM's Calgary meetings.
+- **Rory:** Go and see Continuum Architecture in Victoria. Ben Smith gave Jim two names there as a soft intro, Jeremy Beintema, a principal, and Gregory Eeman, the two working on the Trillium job KOR proposed on; Jim has put them in the spreadsheet. Ask Ike about the Perkins&Will invite. The conversions blurb was Rory's idea; Ian drafts it.
+- **Islam:** Set up the meeting with KRA's Vancouver team, the healthcare architects Islam met in Edmonton. Pitch Stantec with Omar. Book JM's Calgary meetings.
 - **Conor:** Graham night, and find two more invites. Press Lauren Macaulay at Arcadis Kelowna for the three developer introductions. Follow Stefan Hertel, who has left Mission Group, to wherever he lands.
-- **Ian:** Build the architect target list and talking points. Keep the events list. Recon on the Port Authority. Send Rory the Island intel and the Continuum contacts. Draft the conversions blurb. Get Jim onto the app and set Omar up as gatekeeper. This recap.
+- **Ian:** Build the architect target list and talking points. Send Omar a list of events worth showing up at to bump into these people. Recon on the Port Authority. Send Rory the Island intel and the Continuum contacts. Draft the conversions blurb. Get Jim onto the app and set Omar up as gatekeeper. This recap.
 
 *Full synopsis with contacts, org history and the app's existing records: see Ian.*
