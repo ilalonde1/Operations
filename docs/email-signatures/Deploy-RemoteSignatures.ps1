@@ -11,16 +11,23 @@
   before. Originals are already backed up on the share by the harvest
   (collected\<user>\).
 
-  For each roster user, on every reachable PC where their profile has a
-  Signatures folder:
-    - installs korlogo.png to Signatures\Kor Structural_files\ (the generated
-      HTML references it relatively, so it resolves from any .htm in that dir)
+  Who is in scope comes from Get-SignatureRoster (SignatureRoster.ps1), which
+  is shared with Push-TransmittalSignatures.ps1 so a user who keeps their own
+  signature is skipped on both surfaces from one file. Then, for each roster
+  user, on every reachable PC where their profile has a Signatures folder:
+    - writes the generated .htm, which is fully self-contained: the logo is a
+      base64 data URI, so there is no _files folder and no path rewriting.
+      (Classic Outlook sends file:/// image refs literally — proven broken in
+      real sent mail — which is why the old _files convention was abandoned.)
     - overwrites an existing .htm signature ONLY if its content contains the
       user's own email address (i.e. it is their personal firm signature) —
       this protects personal short sigs ("Thx MM"), shared-mailbox sigs
       (reviews@), and anything else deliberate. Name-based exclusions on top:
       vacation/holiday/away/out-of-office and cmurtagh's Okanagan role variant
       (different role line — left intact, still carries old boilerplate).
+      ⛔ A name rule is NOT enough for someone who curates their own signature:
+      kevinw restored his nine minutes after a deploy under a new name and
+      would have been overwritten again. That is what exclude-users.csv is for.
     - refreshes the matching .txt plain-text fallback for each overwritten name
     - if the user has no qualifying .htm at all, creates "Kor Structural.htm"
       (they would need to select it in Outlook once)
@@ -48,7 +55,11 @@ $genDir  = Join-Path $kitDir 'generated'
 $logoSrc = Join-Path $kitDir 'korlogo.png'
 $Exclude = 'vacation|holiday|away|out.?of.?office|okanagan'
 
-$roster = Import-Csv (Join-Path $kitDir 'roster.csv')
+# Who gets a signature is decided in one place for both push surfaces --
+# $Exclude above only filters FILE NAMES, which is not enough for a user who
+# curates their own (see SignatureRoster.ps1).
+. (Join-Path $kitDir 'SignatureRoster.ps1')
+$roster = Get-SignatureRoster -Surface outlook -KitDir $kitDir
 
 # Reachable workstations via ADSI (no RSAT needed)
 $searcher = [adsisearcher]'(&(objectCategory=computer)(!(userAccountControl:1.2.840.113556.1.4.803:=2)))'
