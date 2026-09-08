@@ -94,7 +94,25 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                 }
                 Note("filled wall-thickness shapes with more than four vertices — ribbons, not split",
                     record.Geometry.WallRibbonsNotSplit, Disposition.Unread, "GeometryFilterService: retained with their existing fate");
-                Note("emitted: footings as objects", 0, Disposition.Unread, "FootingScheduleReader counts placements; nothing is emitted");
+                int marksPlaced = 0;
+                string byMark = "";
+                try
+                {
+                    var (types, box) = FootingScheduleReader.ReadSchedule(record.Content);
+                    if (types.Count > 0)
+                    {
+                        var placed = FootingScheduleReader.CountPlacements(record.Content, types, box);
+                        var spread = types.Where(t => t.IsSpread).ToList();
+                        marksPlaced = placed.Where(kv => spread.Any(t => t.Mark == kv.Key)).Sum(kv => kv.Value);
+                        // read of placed, per mark, so the ledger says which mark the chaining is short on
+                        byMark = string.Join(", ", spread.Select(t =>
+                            $"{t.Mark} {record.Geometry.Footings.Count(f => f.Mark == t.Mark)} of {(placed.TryGetValue(t.Mark, out int n) ? n : 0)}"));
+                    }
+                }
+                catch { }
+                Note("footings read as dashed outlines of a scheduled size", record.Geometry.Footings.Count,
+                    record.Geometry.Footings.Count > 0 ? Disposition.Read : (marksPlaced > 0 ? Disposition.Unread : Disposition.Read),
+                    marksPlaced > 0 ? $"FootingOutlines; the plan places {marksPlaced} spread-footing mark(s): {byMark}" : "no spread footing scheduled on this sheet");
                 if (record.ColumnAgreement is { } check)
                 {
                     Note("plan labels standing at an emitted column", check.MatchedToTheirOwnMark, Disposition.Read, $"PlanAgreesWithItsSchedule, of {check.LabelsOnThePlan} labels");

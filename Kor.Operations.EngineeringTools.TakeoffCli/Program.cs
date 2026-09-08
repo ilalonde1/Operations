@@ -118,7 +118,7 @@ if (args.Length >= 1 && args[0].Equals("pdf-takeoff", StringComparison.OrdinalIg
     Console.WriteLine($"{Path.GetFileName(ptPdf)}  1:{ptScale}  pages {ptFirst}-{ptLast}  " +
                       $"reading {(ptMarkup ? "MARKUP only" : "the drawing")}  rules: {ptRulesSource}");
     Console.WriteLine();
-    Console.WriteLine("page   raw  annot   slabs  columns   walls   lines   file");
+    Console.WriteLine("page   raw  annot   slabs  columns   walls  footings   lines   file");
 
     using var ptDoc = UglyToad.PdfPig.PdfDocument.Open(ptPdf);
     var ptFacts = DocumentFacts.From(ptDoc);
@@ -168,7 +168,7 @@ if (args.Length >= 1 && args[0].Equals("pdf-takeoff", StringComparison.OrdinalIg
                 agree += $"; unplaced {string.Join(",", check.MarksDeclaredButNeverFound)}";
         }
 
-        Console.WriteLine($"{p,4} {geo.RawPathCount,5}  {annot,5}   {geo.Slabs.Count,5}  {geo.Columns.Count,7}   {geo.Walls.Count,5}   {geo.Lines.Count,5}   {file}{agree}");
+        Console.WriteLine($"{p,4} {geo.RawPathCount,5}  {annot,5}   {geo.Slabs.Count,5}  {geo.Columns.Count,7}   {geo.Walls.Count,5}  {geo.Footings.Count,8}   {geo.Lines.Count,5}   {file}{agree}");
     }
 
     Console.WriteLine();
@@ -308,6 +308,7 @@ if (args.Length >= 1 && args[0].Equals("pdf-overlay", StringComparison.OrdinalIg
     foreach (var line in ovGeo.Lines) OvPoly(line, red, 0, close: false);
     foreach (var slab in ovGeo.Slabs) OvPoly(slab, grey, 1, close: true);
     foreach (var wall in ovGeo.Walls) OvPoly(wall.Outline, new Rgba32(130, 0, 0), 2, close: true);
+    foreach (var footing in ovGeo.Footings) OvPoly(footing.Outline, new Rgba32(230, 120, 0), 2, close: true);
     for (int i = 0; i < ovGeo.Columns.Count; i++)
     {
         var (cx, cy) = ovGeo.Columns[i];

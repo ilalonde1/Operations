@@ -163,6 +163,15 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     xWallMarkup.Add(i < geometry.WallIsAnnotation.Count && geometry.WallIsAnnotation[i]);
                 }
             }
+            // Footings: the box each dashed outline closed, on a FOOTING layer. No KOR layer pattern
+            // names footings, so the layer is FOOTING under --kor-layers too, and visibly unread by
+            // the DXF-to-ETABS classifier rather than mistaken for something it does read.
+            var xFootings = new List<List<(double X, double Y)>>();
+            foreach (var footing in geometry.Footings)
+            {
+                var pts = FilterPts(Ctr(footing.Outline.ToList()));
+                if (pts.Count >= 3) xFootings.Add(pts);
+            }
 
             var xText = new List<(string Text, double X, double Y, double HeightMm)>();
             foreach (var annotation in geometry.TextAnnotations)
@@ -182,6 +191,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             }
             foreach (var s in xSlabs) foreach (var (ex, ey) in s) Expand(ex, ey);
             foreach (var wall in xWalls) foreach (var (ex, ey) in wall) Expand(ex, ey);
+            foreach (var footing in xFootings) foreach (var (ex, ey) in footing) Expand(ex, ey);
             foreach (var l in xLines) foreach (var (ex, ey) in l) Expand(ex, ey);
             foreach (var (ex, ey) in xColumns) Expand(ex, ey);
             if (bMinX > bMaxX) { bMinX = -1000; bMaxX = 1000; bMinY = -1000; bMaxY = 1000; }
@@ -414,6 +424,9 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     NearestAci(xWallColours[i]),
                     xWalls[i],
                     true);
+
+            foreach (var footing in xFootings)
+                WritePolyline(korLayers ? KorLayerName("FOOTING") : "FOOTING", NearestAci(black), footing, true);
 
             // Columns: footprint rectangles from the parallel xColumnSizes list.
             for (int i = 0; i < xColumns.Count; i++)

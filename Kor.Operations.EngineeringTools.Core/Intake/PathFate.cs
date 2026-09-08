@@ -15,6 +15,8 @@ public enum PathReason
     CollapsedByThinning,
     NoInk,
     BecameWall,
+    /// <summary>One dash of a footing outline the schedule sizes (Intake.FootingOutlines); the object index is the footing's.</summary>
+    BecameFooting,
 }
 
 /// <summary>Input path index and its decision; ObjectIndex is zero-based in the corresponding geometry list.</summary>
@@ -23,6 +25,7 @@ public sealed record PathFate(int PathIndex, Disposition Disposition, PathReason
     public static Disposition DispositionOf(PathReason reason) => reason switch
     {
         PathReason.BecameSlab or PathReason.BecameColumnByDeclaredSize or PathReason.BecameColumnByShape or PathReason.BecameWall
+            or PathReason.BecameFooting
             => Disposition.Read,
         PathReason.EmittedAsLine => Disposition.Unaccounted,
         PathReason.MarkupOnlyMode or PathReason.FurnitureRegion or PathReason.GridAxis or PathReason.Underline

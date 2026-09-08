@@ -96,7 +96,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             double minWallThicknessMm = PdfIntakeOptions.DefaultMinWallThicknessMm,
             double maxWallThicknessMm = PdfIntakeOptions.DefaultMaxWallThicknessMm,
             double minWallLengthMm = PdfIntakeOptions.DefaultMinWallLengthMm,
-            double minWallAspect = PdfIntakeOptions.DefaultMinWallAspect)
+            double minWallAspect = PdfIntakeOptions.DefaultMinWallAspect,
+            IReadOnlyDictionary<int, int>? footingPieces = null)
         {
             double gridThreshMm = Math.Max(pageWidthMm, pageHeightMm) * 0.6;
             furniture ??= SheetFurniture.Set.Empty;
@@ -106,6 +107,13 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 var sub = rawSubpaths[pathIndex];
                 void Fate(PathReason reason, int? objectIndex = null)
                     => fates?.Add(new PathFate(pathIndex, PathFate.DispositionOf(reason), reason, objectIndex));
+
+                // A DASH OF A FOOTING OUTLINE IS THE FOOTING'S. FootingOutlines read the page's dashed
+                // rectangles against the foundation schedule before this loop; a piece it claimed is
+                // accounted for here and goes nowhere else. Before 2026-09-08 these pieces were BEAM
+                // lines or TooShort, and no footing was ever placed.
+                if (footingPieces is not null && footingPieces.TryGetValue(pathIndex, out int footingIndex))
+                { Fate(PathReason.BecameFooting, footingIndex); continue; }
                 var pts = sub.Points;
                 var color = sub.Color;
                 bool isClosed = sub.IsClosed;

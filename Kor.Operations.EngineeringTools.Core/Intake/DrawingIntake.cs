@@ -141,12 +141,14 @@ public static class DrawingIntake
                 (s.IsClosed && GeometryFilterService.BoundingBoxDiagonal(s.Points) > 10.0));
             geometry.IsVectorPdf = meaningfulCount >= 5;
             var thinnedFates = new List<PathFate>();
+            var footingPieces = PdfPlanReader.ReadFootings(raw, content, geometry, request.MarkupOnly);
             GeometryFilterService.Classify(raw, geometry,
                 options.SlabMinDiagonalMm, options.LineMinLengthMm, false,
                 geometry.PageWidthPts * scaleFactor, geometry.PageHeightPts * scaleFactor,
                 request.MarkupOnly, options.ColumnMaxSizeMm, options.ColumnMinDimMm, options.ColumnMaxAspect,
                 furniture.Scaled(scaleFactor), thinnedFates,
-                options.MinWallThicknessMm, options.MaxWallThicknessMm, options.MinWallLengthMm, options.MinWallAspect);
+                options.MinWallThicknessMm, options.MaxWallThicknessMm, options.MinWallLengthMm, options.MinWallAspect,
+                footingPieces);
             pathFates = RemapToPopulation(thinnedFates, thinnedKept, fullKept, content.Paths.Count, full.Paths.Count);
         }
         var wordFates = WordFates(content, furniture, grid, columns.Count, footings.Count, walls.Count);

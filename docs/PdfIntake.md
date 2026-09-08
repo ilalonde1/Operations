@@ -34,9 +34,13 @@ publish (`takeoff publish --stick-file`).
 
 ## 2. Where each tool stands
 
+Measured at step 0 (2026-09-08). The step sections from §7 on record what has changed since:
+walls are emitted (§9), only plans are taken off to DXF (§11), the scale is accounted for on
+every sheet (§12), footings are objects (§13). The tables in §2 and §3 are the starting picture.
+
 | Tool | Path today | What it gets from the PDF | What it does not |
 |---|---|---|---|
-| **PDF → ETABS** | PDF → DXF (CLI) → `DxfToEtabsService` reads the DXF by layer | slabs, columns, a scale, the schedule's column sizes | **walls** (the DXF has none: 31130 p11 gave 42 COLUMN, 17 SLAB, 1,650 BEAM, 0 WALL), footings as objects, the grid, storey heights, openings from plan text |
+| **PDF → ETABS** | PDF → DXF (CLI) → `DxfToEtabsService` reads the DXF by layer | slabs, columns, a scale, the schedule's column sizes | **walls** (the DXF has none: 31130 p11 gave 42 COLUMN, 17 SLAB, 1,650 BEAM, 0 WALL), footings as objects (since step 7 the DXF has a FOOTING layer; `DxfToEtabsService` does not read it yet), the grid, storey heights, openings from plan text |
 | **PDF → SAFE / SAP** | WPF `PdfToSafeWindow` → `PdfGeometryExtractor` → F2K / E2K / CSI API | the same subpaths, parsed by the shared `PdfPlanReader.ParsePage` | **classification is not shared**: it calls `Classify` with no furniture and markup-only by default, so the WPF result differs from the CLI's on the same page and reads a clean issued set as empty. No `.s2k` writer exists; SAP is API-only |
 | **Rebar takeoff / change** | `takeoff rebar`, `takeoff overlay`, two WPF windows | callouts by position, sheet identity, deltas | uses PdfPig's default word splitter, which `VectorPageReader` documents as splitting CAD text into single characters; the WPF windows call the page-text `Compare` and the CLI calls `ComparePdfs`, and no test says they agree |
 | **Before / after drawings** | there is no general drawing diff; the rebar tools are the comparison | reinforcing callouts only | geometry deltas, moved/added members, revision clouds |
@@ -105,9 +109,9 @@ Three verbs in the compiled CLI and one test class, no product code changed:
 | Instrument | What it is | Run |
 |---|---|---|
 | `takeoff pdf-inventory` | the ledger: every word and path counted once under read / discarded / unread / ignored / unaccounted, plus context rows; `--json` banks it | `takeoff pdf-inventory <pdf> --scale 96 --json out.json` |
-| `takeoff pdf-overlay` | what was extracted drawn over the rasterised page: slabs grey, columns blue, leftover lines red, mark-shaped words green | `takeoff pdf-overlay <pdf> 11 out.png --scale 96` |
+| `takeoff pdf-overlay` | what was extracted drawn over the rasterised page: slabs grey, columns blue, walls dark red, footings orange, leftover lines red, mark-shaped words green | `takeoff pdf-overlay <pdf> 11 out.png --scale 96` |
 | `takeoff pdf-vs-dxf` | the differential against ground truth we own: PDF-side reads against the Revit DXF of the same sheets, per sheet number | `takeoff pdf-vs-dxf <pdf> <dxfFolder> --scale 96` |
-| `FiveStickFilesTests` | the harness, in C#: footings, column marks and route, wall rows, coverage floors, mark-shaped unplaced; 20 checks over 5 jobs in 32 s; FAILS when the local mirror is missing | `dotnet test --filter FullyQualifiedName~FiveStickFilesTests` |
+| `FiveStickFilesTests` | the harness, in C#: footing schedule, column marks and route, wall rows, coverage floors, mark-shaped unplaced, a fate for every path, walls and footings read on the schedule page; 32 checks over 5 jobs (20 at step 0); FAILS when the local mirror is missing | `dotnet test --filter FullyQualifiedName~FiveStickFilesTests` |
 
 **The ledger's starting numbers**, each word, path and sheet fact counted once (`%LOCALAPPDATA%\Temp\kor-drawings\harness\ledger-<job>.json`):
 
@@ -347,3 +351,52 @@ that turns "a row must not break a read" into a number. It has to run on the fil
 (the corpus is 1,126 models on the projects volume, and SMB enumeration is the one thing this repo
 has learned never to do from a workstation), so it is a self-contained publish started over RPC,
 and its own brief.
+
+## 13. Step 7, done 2026-09-08: a footing is a dashed rectangle whose size the schedule declares
+
+Brief 20, implemented by the verifier. Before this the intake placed no footing anywhere: the
+foundation schedule was read — marks, sizes, depths, how many of each mark the plan places — but
+the drawn outlines went to the DXF as BEAM lines or were dropped as too short. Measured first, on
+three foundation plans: not one footing outline is a closed path; every one is separate two-point
+strokes, one per dash. Chained across the DXF side's own dash-join gap (`dxf.dash-join-gap` =
+14 in), collinear within 12 mm, three or more pieces to a side, and closed into boxes, the boxes
+match the schedule's sizes to the millimetre.
+
+`Intake/FootingOutlines` reads them before the classifier runs; every consumed dash is recorded
+`BecameFooting` with its footing's index and reaches no other branch. The record carries
+`Geometry.Footings` (mark, outline, centre, the scheduled L × W × depth); the DXF gets a FOOTING
+layer; `pdf-overlay` draws them orange; the ledger carries a row per sheet — footings read of
+marks placed, per mark — so the engineer sees which mark is short.
+
+| Sheet | Read of placed | By mark |
+|---|---|---|
+| 31130 p11 | 35 of 36 | F1 2 of 1, F2 14 of 14, F3 8 of 8, F4 11 of 13 |
+| 31130 p12 | 34 of 39 | F1 3 of 4, F2 17 of 20, F3 9 of 9, F4 5 of 6 |
+| 31138 p9 | 11 of 11 | F1 7 of 7, F2 4 of 4 |
+| 31065 p14 | 26 of 31 | F1 4 of 4, F2 12 of 13, F3 0 of 1, F4 10 of 13 |
+| 31065 p15 | 14 of 23 | F1 4 of 5, F2 1 of 6, F3 3 of 6, F4 6 of 6 |
+| 31168, 31202 | 0 of 0 | no spread footing scheduled (a placeholder table; a raft) — the ledger says so |
+
+120 of 140 across the five foundation plans. DXF census against step 3: a FOOTING layer appears on
+5 of 13 DXFs (35, 34, 11, 26, 14 polylines), BEAM falls by the pieces consumed, and COLUMN, WALL
+and SLAB are identical on 13 of 13. Pieces recorded BecameFooting: 996 on 31130, 340 on 31138,
+1,327 on 31065. The 31130 ledger total is unchanged at 566,264 items. The counts are banked per
+schedule page in `FiveStickFilesTests.FootingsOnTheSchedulePageAreTheBankedCount`. Full Core
+suite 1,033 of 1,033 (5 m 50 s).
+
+**The 20 misses, looked at** (overlay crops on 31065 p15, `footing_miss.py` in the scratchpad):
+one cause, two shapes. *A footing outline is drawn only where nothing stands on it.* At the match
+line between the two halves of a plan the footing is drawn from the line out — one full side
+(3,001 mm, six pieces) and two stubs (758 mm, two pieces each); under the perimeter wall the side
+beneath the wall is absent or a few short pieces, and those pieces fell either side of a 12 mm
+bucket boundary (x = 77,208 and 77,220 mm), so neither bucket reached three. The F1 "2 of 1" on
+31130 p11 is the mirror fault: a dashed 4 ft square with no F1 standing in it is counted as F1,
+because a box is not yet tied to its mark label. Brief 21 is that rule — place from one full side
+and the stubs at its ends, cluster sides by sorted coordinate, carry whether a mark stands in the
+box.
+
+WHAT THE CHECK COVERS: axis-aligned dashed rectangles of a scheduled spread-footing size, either
+orientation, on the five schedule pages. WHAT IT DOES NOT: strip footings (a size, not a box),
+rotated footings, a footing drawn as a solid closed path, a footing the schedule does not declare,
+and a box of a scheduled size that is not a footing — the check counts boxes against marks and
+cannot tell a dashed 4 ft sump from an F1.

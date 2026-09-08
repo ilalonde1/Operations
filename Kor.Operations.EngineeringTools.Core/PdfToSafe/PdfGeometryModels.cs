@@ -47,6 +47,10 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         bool IsAnnotation);
 
     /// <summary>A cut wall's outline, centreline and thickness, all in millimetres.</summary>
+    /// <summary>A spread footing: the box its dashed outline closes, the schedule mark that sizes it, and that size.</summary>
+    public sealed record FootingOutline(string Mark, IReadOnlyList<(double X, double Y)> Outline,
+                                        (double X, double Y) Centre, double LengthMm, double WidthMm, double DepthMm);
+
     public sealed record WallPanel(IReadOnlyList<(double X, double Y)> Outline,
         (double X, double Y) Start, (double X, double Y) End, double ThicknessMm);
 
@@ -57,6 +61,9 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         public List<bool> WallIsAnnotation { get; } = new();
         /// <summary>Filled loops with wall-proportioned boxes but more than four vertices; not split.</summary>
         public int WallRibbonsNotSplit { get; set; }
+
+        /// <summary>Footings read as dashed rectangles of a scheduled size (Intake.FootingOutlines). Outline in mm.</summary>
+        public List<FootingOutline> Footings { get; } = new();
         // Each slab: ordered list of (X,Y) in mm, ready for a closed polyline
         public List<List<(double X, double Y)>> Slabs { get; } = new();
         // Each column: centroid (X,Y) in mm

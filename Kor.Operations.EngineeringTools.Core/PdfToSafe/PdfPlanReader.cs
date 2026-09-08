@@ -144,6 +144,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
             if (rawSubpaths.Count == 0) return result;
 
+            var footingPieces = ReadFootings(rawSubpaths, pageRead, result, annotationsOnly);
             GeometryFilterService.Classify(rawSubpaths, result,
                 options.SlabMinDiagonalMm, options.LineMinLengthMm, excludeGridLines,
                 result.PageWidthPts * scale, result.PageHeightPts * scale,
@@ -151,7 +152,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 options.ColumnMaxSizeMm, options.ColumnMinDimMm, options.ColumnMaxAspect,
                 Furniture(pageRead, scale, options.AgreementToleranceMm),
                 minWallThicknessMm: options.MinWallThicknessMm, maxWallThicknessMm: options.MaxWallThicknessMm,
-                minWallLengthMm: options.MinWallLengthMm, minWallAspect: options.MinWallAspect);
+                minWallLengthMm: options.MinWallLengthMm, minWallAspect: options.MinWallAspect,
+                footingPieces: footingPieces);
 
             return result;
         }
@@ -188,13 +190,33 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
             if (rawSubpaths.Count == 0) return result;
 
+            var footingPieces = ReadFootings(rawSubpaths, pageRead, result, annotationsOnly);
             GeometryFilterService.Classify(rawSubpaths, result,
                 slabMinDiagonalMm, lineMinLengthMm, excludeGridLines,
                 result.PageWidthPts * scale, result.PageHeightPts * scale,
                 annotationsOnly,
-                furniture: Furniture(pageRead, scale));
+                furniture: Furniture(pageRead, scale),
+                footingPieces: footingPieces);
 
             return result;
+        }
+
+        /// <summary>
+        /// The footings the page's dashed outlines close against its FOUNDATION SCHEDULE, added to the
+        /// result, and the raw-path indices of their dashes so the classifier records them as such.
+        /// Not in markup-only mode, where page content is not read. Null when the sheet schedules no
+        /// spread footing.
+        /// </summary>
+        public static IReadOnlyDictionary<int, int>? ReadFootings(
+            IReadOnlyList<RawSubpath> rawSubpaths, VectorPageReader.PageContent pageRead, ExtractedGeometry result, bool annotationsOnly)
+        {
+            if (annotationsOnly) return null;
+            IReadOnlyList<FootingScheduleReader.FootingType> types;
+            try { types = FootingScheduleReader.ReadSchedule(pageRead).Types; } catch { return null; }
+            if (types.Count == 0) return null;
+            var (footings, pieces) = Intake.FootingOutlines.Read(rawSubpaths, types);
+            result.Footings.AddRange(footings);
+            return pieces.Count > 0 ? pieces : null;
         }
 
         /// <summary>How many of this page's subpaths came from markup rather than the drawing.</summary>

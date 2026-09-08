@@ -54,7 +54,8 @@ public sealed class EveryPathHasExactlyOneFateTests
         var reached = FateFixture.Cases().Select(c => c.Reason)
             // CollapsedByThinning is never recorded by Classify: the read drops those paths before it
             // runs, and DrawingIntake.RemapToPopulation assigns it (ThePopulationIsTheUnthinnedReadTests).
-            .Append(PathReason.MarkupOnlyMode).Append(PathReason.GridLineExcluded).Append(PathReason.CollapsedByThinning).Distinct().OrderBy(r => r);
+            // BecameFooting is recorded only for a piece FootingOutlines claimed (AFootingIsADashedRectangleTheScheduleSizesTests).
+            .Append(PathReason.MarkupOnlyMode).Append(PathReason.GridLineExcluded).Append(PathReason.CollapsedByThinning).Append(PathReason.BecameFooting).Distinct().OrderBy(r => r);
         Assert.Equal(Enum.GetValues<PathReason>().OrderBy(r => r), reached);
     }
 
@@ -65,7 +66,8 @@ public sealed class EveryPathHasExactlyOneFateTests
         {
             var expected = reason switch
             {
-                PathReason.BecameSlab or PathReason.BecameColumnByDeclaredSize or PathReason.BecameColumnByShape or PathReason.BecameWall => Disposition.Read,
+                PathReason.BecameSlab or PathReason.BecameColumnByDeclaredSize or PathReason.BecameColumnByShape or PathReason.BecameWall
+                    or PathReason.BecameFooting => Disposition.Read,
                 PathReason.EmittedAsLine => Disposition.Unaccounted,
                 _ => Disposition.Discarded,
             };
