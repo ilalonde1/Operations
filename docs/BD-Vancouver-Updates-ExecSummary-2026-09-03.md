@@ -5,7 +5,7 @@
 
 ## What is moving
 
-- **A seat at the owner's table.** Omar's contact at Colliers is taking owner's-representative roles on the **BC Cancer Vancouver expansion**, the **Delta Aquatic Centre** and a **BCIT lab**, with a say in team selection. She has offered introductions to the municipal recreation director and her private-sector lead. The BC Cancer prime-consultant RFP is already on file in the app.
+- **A seat at the owner's table.** Omar's contact at Colliers is taking owner's-representative roles on the **BC Cancer Vancouver expansion**, the **Delta Aquatic Centre**, a **BCIT lab** and, if their bid lands, a **Surrey arena**, with a say in team selection. She has offered introductions to the municipal recreation director and her private-sector lead. The BC Cancer prime-consultant RFP is already on file in the app.
 - **Heather Lands.** After our extra claim got Aquilini's attention, Jim met GBL's Thomas Lee. KOR has Block B; Aquilini has said we get a shot at **Block A** (growing into a large tower) and we are going after **Block C** too. Jim is preparing a **"designing without transfers"** presentation for Aquilini's and GBL's offices, with JM and Omar.
 - **Beedie / Fraser Mills.** Three parcels, three teams, a tryout. JM to confirm whether we are one of the three.
 - **Vancouver Island.** Our proposal to BAM (Ben Smith, ex-Starlight) for Trillium's seniors housing produced a warm intro to **Continuum Architecture** in Victoria (partners Jeremy Beintema and Wil Wiens), who appear to hold most of that developer's work. Rory to follow up.
@@ -40,7 +40,7 @@
 - **JB:** Bosa lunch with Colin via Robert, October; Solterra one-on-one with Gerry Nichele, the decision maker, this week or early next.
 - **Rory:** Continuum Architecture, from Jim's hand-over; ask Ike about the Perkins&Will invite. The conversions blurb was his idea; Ian drafts it.
 - **Islam:** KRA's Vancouver team; Stantec with Omar; JM's Calgary meetings.
-- **Conor:** Graham night, and two more invites; press Lauren in Kelowna for the three developer intros; follow Mission Group's departed contact to wherever she lands.
+- **Conor:** Graham night, and two more invites; press Lauren Macaulay at Arcadis Kelowna for the three developer intros; follow Mission Group's departed contact, Stefan Hertel, to wherever he lands.
 - **Ian:** the architect target list and talking points; the events list; Port Authority recon; Island intel and Continuum contacts to Rory; the conversions blurb; Jim onto the app; Omar set up as gatekeeper; this recap.
 
 ## Unknowns
@@ -51,8 +51,9 @@ Said on the call, not confirmable from our records or anywhere public. A one-lin
 - **Rory:** Ike's surname at Perkins&Will; no Ike or Isaac on their Vancouver staff list.
 - **Omar:** the Colliers contact's name, and whether she is at Colliers Project Leaders or Colliers International.
 - **Jim / JM:** which Heather Lands building is our Block B and whether WHM holds A and C; which three teams are in Beedie's Fraser Mills tryout.
-- **Jim:** is Trillium the Victoria seniors-housing operator Trillium Communities, and who is "Sue" there.
+- **Jim:** is Trillium the Victoria seniors-housing operator Trillium Communities, and is there a "Sue" there.
+- **Conor:** where Stefan Hertel went after Mission Group, and the "Kent Arroyo" townhouses we lost, which two listens could not make out.
 - **JB / John:** who owns the Fraser Health list now, and its closing date.
-- **JB:** which firms Jason, Kevin, Brian Webster and Mike Balza are with.
+- **JB:** who Jason is (he advised on Colin's habits), and Kevin's surname at Solterra.
 
 *Full synopsis with contacts, org history and the app's existing records: see Ian.*

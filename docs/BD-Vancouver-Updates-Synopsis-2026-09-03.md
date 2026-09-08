@@ -4,7 +4,7 @@
 **Prepared:** Ian Lalonde, from the Teams transcript (Downloads, not filed in the repo) · **For:** the BD group
 **Attendees:** Omar Alcazar (chair), Jim DesRoches, John Markulin (JM), John Bryson (JB), Rory Beirne (the transcript's "Speaker 1"), Islam Shabana, Conor Murtagh, Ian Lalonde.
 
-**Verified 7 September** against the BD brain, Apollo, Hunter and the public web; the resolutions and what each rests on are in §6, and §5 says what is still open.
+**Verified 7 September** against the BD brain, Apollo, Hunter, the public web, and a second listen to the recording itself (faster-whisper large-v3-turbo over the eleven name-critical windows, once without and once with a vocabulary hint); the resolutions and what each rests on are in §6, and §5 says what is still open.
 
 **How to read this.** Every firm and person was checked against the BD brain. **#N** is the canonical org id, **kp=N** the KOR projects on record with that org, **Deltek** a linked client. **[conf: High/Med/Low]** is confidence in the *name*, because the audio garbled several. Section 5 is the unknowns: what was said that neither our records nor anything public can confirm. Please answer those before anyone acts on them.
 
@@ -12,7 +12,7 @@
 
 ## 1. Synopsis
 
-**The owner's-rep channel (Omar).** Omar's contact at Colliers *(Colliers Project Leaders, #70132 — name not given, see §5)* is moving from tenant-improvement work into owner's-representative roles and will have a say in team selection on three public jobs: the **BC Cancer Vancouver office expansion** (early, still to go to Council, then out to bid — the brain already holds the CM-services and prime/architectural RFPs, opportunities 23642 and 23643), the **Delta Aquatic Centre** (team already set; Omar offered value-engineering or peer review as the way in) and a **BCIT lab**. She offered to set up a lunch with the civic/municipal recreation director and, with a warning that he will ask "what's in it for us", an intro to her private-sector lead. Omar's ask of the room: how do we get ahead of these before the tenders land. Ian's answer: a single coordinated target list of the health-sector prime architects (Fraser Health, VCH, BC Cancer work), with talking points, one owner per contact so three people do not call the same architect.
+**The owner's-rep channel (Omar).** Omar's contact at Colliers *(Colliers Project Leaders, #70132 — name not given, see §5)* is moving from tenant-improvement work into owner's-representative roles and will have a say in team selection on four public jobs: a **Surrey arena** (early; Colliers is bidding to be owner's rep), the **BC Cancer Vancouver office expansion** (early, still to go to Council, then out to bid — the brain already holds the CM-services and prime/architectural RFPs, opportunities 23642 and 23643), the **Delta Aquatic Centre** (team already set; Omar offered value-engineering or peer review as the way in) and a **BCIT lab**. She offered to set up a lunch with the civic/municipal recreation director and, with a warning that he will ask "what's in it for us", an intro to her private-sector lead. Omar's ask of the room: how do we get ahead of these before the tenders land. Ian's answer: a single coordinated target list of the health-sector prime architects (Fraser Health, VCH, BC Cancer work), with talking points, one owner per contact so three people do not call the same architect.
 
 **Lists and qualifications.** We are not yet on the Fraser Health list; the window closes before November and the "you're on" notice could come any day, so the architects we would team with should be warmed now. The K-12 seismic (SMP) list still needs the EGBC SRG course — Omar is taking it next week; after that an NDA opens their project database. JB has, after considerable pain, got KOR onto **Stantec's** (#38934, Deltek) qualified-supplier list. Ian: the Port Authority is the same shape, be on the seismic lists and the doors open.
 
@@ -24,7 +24,7 @@
 
 **Jim's report.** Coffee with **Thomas Lee of GBL** (#54190, Deltek) after KOR's extra claim on **Aquilini** (#147, kp=36) got everyone's attention. GBL has three blocks at the **Heather Lands**; KOR has Block B; Aquilini has said KOR gets a shot at Block A (growing into a large tower). Aquilini wants an A-team it can hand most of its work to. Giovanni at Aquilini asked "can you design without transfers", which Jim is turning into a **presentation** (from the code-update deck) for Aquilini's and GBL's offices, with JM and Omar; goal is Blocks A and C, which **WHM** (#69332) currently hold. Thomas raised **Fraser Mills** — Beedie (#66, kp=20), three parcels, three teams in a tryout; JM: we bid two Beedie jobs a year or two ago and are doing three towers for them in West Vancouver, so we may be one of the three. A proposal on the Island for **BAM** (Ben Smith, ex-Starlight, not yet in the brain) for a seniors-housing client, **Trillium**, produced a warm intro to **Continuum Architecture** (Victoria, #927758): Jeremy Beintema (Partner) and Gregory Eeman (Architect AIBC). The partners are Beintema and Wil Wiens. Ian's intel: Continuum is the 2020 rebrand of KPL James (Victoria's oldest practice); founder Tony James died in October 2024, do not raise it. San Diego: a referral to a three-tower owner produced a US$1M proposal that turned out to be leverage against an incumbent; a wood-frame RFP in San Diego goes in this week. **MVE** (#76952, Deltek): the AI demo landed, their insurance-update request suggests requalification; visit around the LA Tall Building Conference in November.
 
-**Other pursuits.** Lunch with Mike Alivojvodic of CDA (#7, kp=8) on **11 September**; Jim will cold-call **Michael De Cotiis** (President & CEO, Pinnacle International, #53665, CRM #11, a June pursuit) for lunch after the long weekend. **Arcadis** (#153): after last week's meeting with Terry Gray, follow up while they are bringing BD to Edmonton; JM knows **Gwyn Vose** (Vancouver lead, 10 to 15 towers together) and will call him; Clement Pun and Mariam are on the Reliance Broadway towers with Rory. **MCM Architects** (#77714) are everywhere with PCI and transit; JM works with Peter Odegaard, a Partner there; last year's presentation reached only juniors. **Calgary**: JM keeps not going; Islam is arranging meetings for late September and will tell him to get on the plane; JM will reach **Anthem** (#207, kp=72) and **GGA** (#8129) himself. **Kelowna** (Conor): met four groups; Mission Group (#193) then lost the contact, Stephanie, two weeks later; Berry Architecture + Associates (#68976, Red Deer firm, new Kelowna studio led by Carlos Gamez Ruiz) needs JM's intro; **Lauren** (Lauren Macaulay, Principal, Arcadis Kelowna *[conf: Med]*) owes three developer intros and JM was her first client, so press her. JM to phone Brad Burnett at **ITC** (#70926), Omar's repeated ask. Lost: GEC wood frame (Edmonton), "the turn" undecided, "Kent Arroyo" townhouses *(see §5)*. Rory: Rize's (#16) Cambie and Marine tower is stalled on Chinese capital and Rize is going GC-for-hire; the concrete side is in a holding pattern, "hopefully next year".
+**Other pursuits.** Lunch with Mike Alivojvodic of CDA (#7, kp=8) on **11 September**; Jim will cold-call **Michael De Cotiis** (President & CEO, Pinnacle International, #53665, CRM #11, a June pursuit) for lunch after the long weekend. **Arcadis** (#153): after last week's meeting with Terry Gray, follow up while they are bringing BD to Edmonton; JM knows **Gwyn Vose** (Vancouver lead, 10 to 15 towers together) and will call him; Clement Pun and Mariam are on the Reliance Broadway towers with Rory. **MCM Architects** (#77714) are everywhere with PCI and transit; JM works with Peter Odegaard, a Partner there; last year's presentation reached only juniors. **Calgary**: JM keeps not going; Islam is arranging meetings for late September and will tell him to get on the plane; JM will reach **Anthem** (#207, kp=72) and **GGA** (#8129) himself. **Kelowna** (Conor): met four groups; Mission Group (#193) then lost the contact, Stefan Hertel (Development Manager; the brain already carries his affiliation as retired), two weeks later; Berry Architecture + Associates (#68976, Red Deer firm, new Kelowna studio led by Carlos Gamez Ruiz) needs JM's intro; **Lauren Macaulay** (Principal, Arcadis Kelowna; Conor says "Arcadis, I met with Lauren") owes three developer intros and JM was her first client, so press her. JM to phone Brad Burnett at **ITC** (#70926), Omar's repeated ask. Lost: GEC wood frame (Edmonton), "the turn" undecided, "Kent Arroyo" townhouses *(see §5)*. Rory: Rize's (#16) Cambie and Marine tower is stalled on Chinese capital and Rize is going GC-for-hire; the concrete side is in a holding pattern, "hopefully next year".
 
 **Bookkeeping.** Jim still keeps the BD spreadsheet in Teams. Ian: everything from its last iteration is in the CRM but nobody works it; Omar becomes (co-)gatekeeper of inbound opportunities; Jim has an old build and no working access; Ian will distil this meeting, send Rory the Island material and the Continuum contacts, and load it all. Standard details are cleaned up with an approval flow to a master (Rory wants them); the engineering tool has matured a dozen revisions since JM saw it.
 
@@ -47,7 +47,7 @@
 | 5 | Get into the Perkins&Will client-appreciation party, 10 Sept | Omar (architect friend), Rory ("Ike"), Jim (CMO email) | before 10 Sept | Even one seat. JM knows Luciano and Ryan Bragg there but took no action |
 | 6 | NDY: keep the seismic-restraint referral line open; reuse existing details | Omar | ongoing | Small recurring revenue |
 | 7 | Bosa: Robert to broker lunch with Colin Bosa in October | JB | reach out late Sept | Colin is a family man, lunch not dinner. Robert is most likely Robert Bosa, founder of Bosa Properties and Colin's father; "Dale" is Dale Bosa, Colin's brother *[conf: Med]*. Bosa Properties #38943 kp=44 |
-| 8 | Solterra: one-on-one with Gerry Nichele, President and CEO, the decision maker | JB | this week / early next | Solterra Development #69730 kp=53. Other names in §5 |
+| 8 | Solterra: one-on-one with Gerry Nichele, President, the decision maker | JB | this week / early next | Solterra Development #69730 kp=53. Also there: Mike Bosa (Vice President; JB did a free cabin scheme for him), Brian Webster, Kevin. The live item is the Wilson Avenue proposal, 6004–6018 Wilson Ave, Metrotown, a 36-storey tower with townhouses |
 | 9 | Stantec Vancouver structural group: overflow/specialty pitch | Omar + Islam | Sept | We are on their qualified-supplier list; say so |
 | 10 | Vancouver Fraser Port Authority recon: re-send the earlier dossier | Ian | this week | #75853 / #77395; JM + Omar have an ex-employee contact |
 | 11 | EGBC SRG seismic course, then the SMP list and NDA | Omar | week of 8 Sept | June item still open |
@@ -65,7 +65,7 @@
 | 23 | Call Gwyn Vose (Arcadis Vancouver) for lunch; keep Clement Pun warm | JM | this month | Arcadis #153, CRM #378; timely after Terry Gray |
 | 24 | Reach a principal at MCM Architects | JM | Sept | Not assigned on the call ("probably worth seeing"); JM's working contact Peter Odegaard is a Partner there. #77714 |
 | 25 | Calgary trip, late September: Islam books the meetings, JM reaches Anthem and GGA directly | JM + Islam | end Sept | |
-| 26 | Kelowna: press Lauren (Arcadis Kelowna) for the three developer intros; JM's intro to Berry Architecture + Associates' new Kelowna studio (Carlos Gamez Ruiz); follow Stephanie from Mission Group | Conor, JM (intro) | Sept | Berry #68976; Mission Group #193, CRM #221 |
+| 26 | Kelowna: press Lauren Macaulay (Arcadis Kelowna) for the three developer intros; JM's intro to Berry Architecture + Associates' new Kelowna studio (Carlos Gamez Ruiz); follow Stefan Hertel from Mission Group to his new firm | Conor, JM (intro) | Sept | Berry #68976; Mission Group #193, CRM #465 |
 | 27 | Graham client-appreciation night, 1 Oct: get two more invites, talk to everyone | Conor | by 1 Oct | Graham Construction #69232, CRM #91 |
 | 28 | Phone Brad Burnett, President, ITC Construction Group | JM | this week | ITC #70926 kp=3 |
 | 29 | Confirm MVE's insurance update went back; plan the Irvine visit around the LA Tall Building Conference | Daler / Jim, JM | Nov | MVE #76952 |
@@ -91,14 +91,14 @@ Distilled from what the room asked for or bumped into, not from what I would lik
 
 1. **Omar's Colliers contact:** her name, and whether she is at Colliers Project Leaders (#70132) or Colliers International (#5096). Also the owner body for BC Cancer that sounded like "Arana" at 0:03 — PHSA?
 2. **Perkins&Will:** a surname for **Ike**, Rory's contact who did the "bonus" job; there is no Ike or Isaac among the 87 Vancouver staff on record, so it may be a nickname. And whether the principal JM remembers is **Ryan Bragg**.
-3. **JB's Bosa and Solterra names:** confirm Robert is Robert Bosa (founder of Bosa Properties, Colin's father) and Dale is Dale Bosa (Colin's brother). Still unplaced: Jason, Kevin (Solterra has a junior development manager by that name), Brian Webster, Mike Balza, "Charlie, the Wilson proposal".
-4. **Conor's Lauren:** whether she is Lauren Macaulay of Arcadis; her title is certain, her being the Kelowna Lauren rests on the brain's record only.
-5. **"Kent Arroyo" townhouses** (Conor, lost) and **"the turn"** (Islam, undecided): project or client names.
+3. **JB's Bosa names:** confirm Robert is Robert Bosa (founder of Bosa Properties, Colin's father) and Dale is Dale Bosa (Colin's brother). Still unplaced: **Jason**, who advised JB on Colin's habits, and **Kevin** at Solterra (surname).
+4. **Stefan Hertel** (ex Development Manager, Mission Group): where he went. Conor: "maybe he'll take us with him wherever he ends up."
+5. **"Kent Arroyo" townhouses** (Conor, lost) and **"the turn"** (Islam, undecided): project or client names. Two re-listens could not recover the first; the second is said clearly as "the turn".
 6. **"Next Friday at 2"** (Ian, for Arcadis): a real slot or a joke; JM did not confirm.
 7. **"That thing you sent me"** (Omar to Ian): which item.
 8. **Heather Lands:** which of GBL's three south-parcel buildings (25, 18 and 6 storeys at 620 West 35th) is KOR's Block B, and whether WHM holds A and C.
 9. **Fraser Mills tryout:** which three teams; JM's "three towers in West Van" are Uplands, a different job.
-10. **BAM and Trillium:** Ben Smith's company cannot be found under "BAM"; the only Ben Smith in BC real estate on record is a proptech executive (Avesdo, ex-Rennie, ex-Polygon) with no Starlight history, so not him. Jim has his number. Is Trillium Trillium Communities (#54443, Victoria seniors housing) rather than Trillium Projects (#221, a KOR client), and who is "Sue" there?
+10. **BAM and Trillium:** Jim clearly says "a new development group called BAM", but nothing under that name can be found, and the only Ben Smith in BC real estate on record is a proptech executive with no Starlight history, so not him. Jim has his number. Is Trillium Trillium Communities (#54443, Victoria seniors housing) rather than Trillium Projects (#221, a KOR client)? "Sue" survives two re-listens ("Trillium, which is Sue there we gave the proposals to"), so either a person at Trillium or a slurred "who".
 11. **Continuum:** whether Ben Smith's second name was Gregory Eeman (Architect AIBC) or someone else. The partners are Beintema and Wiens; Kapuscinski has left; Peter Fair is Denver and is not to be contacted.
 12. **Fraser Health list:** who owns it now and the actual closing date.
 
@@ -108,7 +108,7 @@ Distilled from what the room asked for or bumped into, not from what I would lik
 |---|---|---|---|
 | Parkinson Wheels / Perkins | Perkins&Will | High | #69688, Deltek, 38 people |
 | Steven Stagg / Bragg | Ryan Bragg, Principal, Perkins&Will Vancouver | Med | person 4523; title verified (Apollo) |
-| Luciano, "used to be at Bob" | Luciano Siffredi, Project Architect, Perkins&Will; previously Boniface Oleksiuk Politano Architects | High | Apollo + LinkedIn; not on file |
+| Luciano | Luciano Siffredi, Project Architect, Perkins&Will; previously Boniface Oleksiuk Politano Architects | High | Apollo + LinkedIn; not on file |
 | Barry Architecture (Kelowna) | Berry Architecture + Associates, Red Deer, Kelowna studio led by Carlos Gamez Ruiz | High | #68976; web |
 | Mike Dakotis | Michael De Cotiis, President & CEO, Pinnacle International | High | #53665, CRM #11; web |
 | KRA | Kirsten Reite Architecture | High | #71252; Islam's 3 July lunch |
@@ -127,17 +127,23 @@ Distilled from what the room asked for or bumped into, not from what I would lik
 | Terry (Arcadis) | Terry Gray, Assoc. Principal, Govt & Civic | High | Arcadis #153 |
 | Gwen / Gwyn | Gwyn Vose, Canada West Practice Group Manager, Arcadis Architects | High | Arcadis #153; web |
 | Clement | Clement Pun, Practice Group Director, Living | High | Arcadis #153 |
-| Jerry (Solterra) | Gerry Nichele, President and CEO | High | Solterra #69730; web |
+| Jerry (Solterra) | Gerry Nichele, President | High | Solterra #69730; audio hears "Nacelli"; web |
+| Mike Balza | Mike Bosa, Vice President, Solterra | High | audio hears "Bosa"; web |
+| Charlie, the Wilson proposal | the Wilson Avenue proposal: Solterra's 6004–6018 Wilson Ave, Metrotown, 36 storeys | High | audio; web |
+| Arana (0:03) | "arena": a Surrey arena Colliers is bidding to be owner's rep on | Med | audio |
+| used to be at Bob | BOP, Boniface Oleksiuk Politano Architects | High | audio; Apollo history |
 | Brad from ITC | Brad Burnett, President | High | ITC #70926; Apollo |
-| Lauren (Kelowna) | Lauren Macaulay, Principal and Canada West Business Unit Director, Arcadis | Med | title verified (Apollo); Kelowna per the brain only |
+| Lauren (Kelowna) | Lauren Macaulay, Principal and Canada West Business Unit Director, Arcadis Kelowna | High | Apollo; audio: Conor says "Arcadis, I met with Lauren" |
+| Stephanie (Mission Group) | Stefan Hertel, Development Manager, Mission Group (left) | High | audio, both passes; brain person 3945, affiliation retired |
+| KCM / NCM | MCM Architects | High | audio hears "MCM"; #77714 |
+| Cambrian Marine | Cambie and Marine, Rize's stalled tower | High | audio hears "Cambry and Marine" |
+| Gregory Inman | Gregory Eeman | High | audio hears "Amon", the Belgian pronunciation; Apollo + Hunter |
 | Jeremy Betema / potato | Jeremy Beintema, Partner | High | Continuum #927758 |
 | Brian Kapochewski | Brian Kapuscinski, now BJK Architecture | High | #70599 |
 | Tony James | founder of KPL James, died Oct 2024 | High | do not raise |
 | Ben Smith (BAM) | ex-Starlight; BAM not on file | High | add |
 | Fred at Rise / Ruiz | Fred at Rize Alliance Properties | Med | Rize #16; Fred not on file |
-| KCM / NCM | MCM Architects | High | #77714; Odegaard confirmed there |
 | Heather Lands owner | MST Nations with Aquilini Development (MSTA Partnership), from 2025 | High | web |
-| Cambrian Marine | Cambie and Marine (Rize tower) | Med | project |
 | Cold Harbour | Coal Harbour | High | place |
 | Arcades | Arcadis | High | #153 |
 | BAM (Ben Smith) | unresolved: no company of that name in Apollo or on the web, and the one Ben Smith in BC real estate on record is a different person | Low | not on file; ask Jim |
