@@ -209,8 +209,8 @@
                     <Grid Margin="12,0">
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                             <Ellipse Width="12" Height="12" Stroke="#FFAAB2BB" StrokeThickness="2" VerticalAlignment="Center"/>
-                            <TextBox x:Name="SearchBox" Width="185" Margin="9,0,0,0" VerticalContentAlignment="Center"
-                                     BorderThickness="0" Background="Transparent" FontSize="13"
+                            <TextBox Padding="10,0" Foreground="#FF111111" CaretBrush="#FF111111" x:Name="SearchBox" Width="185" Margin="9,0,0,0" VerticalContentAlignment="Center"
+                                     BorderThickness="0"
                                      KeyDown="SearchBox_KeyDown"
                                      ToolTip="Search by detail number or title, then press Enter"/>
                         </StackPanel>

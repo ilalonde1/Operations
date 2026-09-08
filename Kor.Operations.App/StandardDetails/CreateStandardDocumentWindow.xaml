@@ -41,7 +41,7 @@
                 </Grid.RowDefinitions>
 
                 <TextBlock Grid.Row="0" Text="Record Title" FontWeight="SemiBold" Margin="0,0,0,4"/>
-                <TextBox Grid.Row="1"
+                <TextBox Padding="10,0" FontSize="13" Background="#FFFFFFFF" Foreground="#FF111111" CaretBrush="#FF111111" Grid.Row="1"
                          x:Name="TitleBox"
                          Height="34"
                          MaxLength="300"
@@ -49,7 +49,7 @@
                          ToolTip="Required. Max 300 characters. Example: Typical Foundation Pier Detail"/>
 
                 <TextBlock Grid.Row="2" Text="Description" FontWeight="SemiBold" Margin="0,12,0,4"/>
-                <TextBox Grid.Row="3"
+                <TextBox Padding="10,6" FontSize="13" VerticalContentAlignment="Top" Background="#FFFFFFFF" Foreground="#FF111111" CaretBrush="#FF111111" Grid.Row="3"
                          x:Name="DescriptionBox"
                          Height="130"
                          MaxLength="2000"

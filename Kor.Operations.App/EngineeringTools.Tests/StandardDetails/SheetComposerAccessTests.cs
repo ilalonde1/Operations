@@ -5,24 +5,29 @@ using Xunit;
 namespace Kor.Operations.EngineeringTools.Tests.StandardDetails;
 
 /// <summary>
-/// Covers member/publisher output permissions, busy-state restoration, and a personal PDF with no
-/// sheet number. Does not cover role lookup, WPF events, AUTHORING occupancy, or sheet numbering.
+/// Covers member/publisher output permissions, busy-state restoration, the sheet-name requirement on
+/// both outputs, and a personal PDF with no sheet number. Does not cover role lookup, WPF events,
+/// AUTHORING occupancy, or sheet numbering.
 /// A same-class fault this would not catch: Save_Click invoking ComposeAsync without its permission guard.
 /// </summary>
 public sealed class SheetComposerAccessTests
 {
     [Theory]
-    [InlineData(false, false, false, true)]
-    [InlineData(true, false, true, true)]
-    [InlineData(false, true, false, false)]
-    [InlineData(true, true, false, false)]
-    public void Personal_pdf_is_available_to_members_but_governed_outputs_require_publish_permission(
-        bool canPublish, bool busy, bool governedEnabled, bool personalEnabled)
+    //          canPublish busy   hasName  save   openPdf personal
+    [InlineData(false,     false, true,    false, false,  true)]
+    [InlineData(true,      false, true,    true,  true,   true)]
+    [InlineData(false,     true,  true,    false, false,  false)]
+    [InlineData(true,      true,  true,    false, false,  false)]
+    // No name: neither output, for anyone. Open PDF opens an already-saved sheet, so it does not need one.
+    [InlineData(false,     false, false,   false, false,  false)]
+    [InlineData(true,      false, false,   false, true,   false)]
+    public void Outputs_need_a_name_and_governed_outputs_need_publish_permission(
+        bool canPublish, bool busy, bool hasSheetName, bool saveEnabled, bool openPdfEnabled, bool personalEnabled)
     {
-        var actions = SheetComposerWindow.GetActionStates(canPublish, busy);
+        var actions = SheetComposerWindow.GetActionStates(canPublish, busy, hasSheetName);
 
-        Assert.Equal(governedEnabled, actions.SaveToMaster);
-        Assert.Equal(governedEnabled, actions.OpenPdf);
+        Assert.Equal(saveEnabled, actions.SaveToMaster);
+        Assert.Equal(openPdfEnabled, actions.OpenPdf);
         Assert.Equal(personalEnabled, actions.CreatePdfSheet);
     }
 

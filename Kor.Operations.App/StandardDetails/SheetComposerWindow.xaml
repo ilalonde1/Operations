@@ -57,7 +57,7 @@
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
-                        <TextBox x:Name="SearchBox" Height="32" VerticalContentAlignment="Center"
+                        <TextBox Padding="10,0" FontSize="13" Background="#FFFFFFFF" Foreground="#FF111111" CaretBrush="#FF111111" x:Name="SearchBox" Height="32" VerticalContentAlignment="Center"
                                  ToolTip="Search by detail number, title, or view name"/>
                         <Button Grid.Column="1" Width="88" Height="32" Margin="8,0,0,0" Content="Search"
                                 Style="{StaticResource Button.Secondary}" Click="Search_Click"/>
@@ -89,23 +89,21 @@
 
                     <Grid Grid.Row="0" Margin="0,0,0,8">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="110"/>
+                            <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="170"/>
-                            <ColumnDefinition Width="90"/>
+                            <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="90"/>
-                            <ColumnDefinition Width="150"/>
                         </Grid.ColumnDefinitions>
-                        <TextBlock Text="Sheet #" VerticalAlignment="Center" FontWeight="SemiBold"/>
-                        <TextBox Grid.Column="1" x:Name="SheetNumberBox" Height="32" Margin="6,0,12,0"
-                                 VerticalContentAlignment="Center" MaxLength="40" IsReadOnly="True"
-                                 ToolTip="Assigned on save: the next free S1.NN in the standards model. Filled in here once saved."/>
-                        <TextBlock Grid.Column="2" Text="Name" VerticalAlignment="Center" FontWeight="SemiBold"/>
-                        <TextBox Grid.Column="3" x:Name="SheetNameBox" Height="32" Margin="6,0,12,0"
-                                 VerticalContentAlignment="Center" MaxLength="300" ToolTip="New sheet name"/>
-                        <TextBlock Grid.Column="4" Text="Like" VerticalAlignment="Center" FontWeight="SemiBold"/>
-                        <TextBox Grid.Column="5" x:Name="LikeSheetBox" Height="32" Margin="6,0,0,0"
-                                 VerticalContentAlignment="Center" MaxLength="80" ToolTip="Existing sheet number/name whose title block will be copied"/>
+                        <!-- The number is assigned on save (next free S1.NN) and the title block is copied
+                             from the newest S1 sheet; neither is entered. Only the name is the user's. -->
+                        <TextBlock Text="Sheet #" VerticalAlignment="Center" FontWeight="SemiBold" Margin="0,0,6,0"/>
+                        <TextBlock Grid.Column="1" x:Name="SheetNumberText" VerticalAlignment="Center" Margin="0,0,18,0"
+                                   Foreground="#666" Text="assigned on save"
+                                   ToolTip="The next free S1.NN in the standards model, assigned when the sheet is saved."/>
+                        <TextBlock Grid.Column="2" Text="Name" VerticalAlignment="Center" FontWeight="SemiBold" Margin="0,0,6,0"/>
+                        <TextBox Padding="10,0" FontSize="13" Background="#FFFFFFFF" Foreground="#FF111111" CaretBrush="#FF111111" Grid.Column="3" x:Name="SheetNameBox" Height="32" Margin="0,0,0,0"
+                                 VerticalContentAlignment="Center" MaxLength="300" ToolTip="Required for both Create PDF sheet and Save to master"
+                                 TextChanged="SheetNameBox_TextChanged"/>
                     </Grid>
 
                     <Grid Grid.Row="1">

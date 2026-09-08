@@ -45,7 +45,7 @@
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
 
-                    <TextBox x:Name="SearchBox"
+                    <TextBox Padding="10,0" FontSize="13" Background="#FFFFFFFF" Foreground="#FF111111" CaretBrush="#FF111111" x:Name="SearchBox"
                              Height="34"
                              VerticalContentAlignment="Center"
                              ToolTip="Search by detail number or title. Example: KOR-D-00001, footing, anchor"/>

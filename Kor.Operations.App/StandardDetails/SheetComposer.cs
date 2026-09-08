@@ -133,6 +133,15 @@ internal sealed class StandardDetailsSheetComposer
             request = request with { SheetNumber = NextSheetNumber(sheets.Select(x => x.Number)) };
         }
 
+        // The title block is copied from the newest sheet in the same series, so a composed sheet looks
+        // like the standards sheets beside it. Nobody picks this; there is nothing to choose.
+        if (string.IsNullOrWhiteSpace(request.LikeSheet))
+        {
+            var source = HighestSheetNumberInSeries(sheets.Select(x => x.Number))
+                ?? throw new InvalidOperationException("Save refused: AUTHORING has no S1.NN sheet to copy the title block from.");
+            request = request with { LikeSheet = source };
+        }
+
         await ValidatePlacementViewsAsync(request, bridgeTimeout);
 
         long? sheetId = null;
@@ -331,17 +340,30 @@ internal sealed class StandardDetailsSheetComposer
     /// </summary>
     internal static string NextSheetNumber(IEnumerable<string> existingSheetNumbers)
     {
+        var (highest, _) = HighestInSeries(existingSheetNumbers);
+        return $"S1.{highest + 1:00}";
+    }
+
+    /// <summary>The existing sheet number with the highest S1.NN, as Revit spells it, or null when there is none.</summary>
+    internal static string? HighestSheetNumberInSeries(IEnumerable<string> existingSheetNumbers)
+        => HighestInSeries(existingSheetNumbers).Number;
+
+    private static (int Value, string? Number) HighestInSeries(IEnumerable<string> existingSheetNumbers)
+    {
         var highest = 0;
+        string? highestNumber = null;
         foreach (var number in existingSheetNumbers)
         {
-            var match = ComposedSheetSeriesPattern.Match((number ?? "").Trim());
+            var trimmed = (number ?? "").Trim();
+            var match = ComposedSheetSeriesPattern.Match(trimmed);
             if (match.Success && int.TryParse(match.Groups[1].Value, out var value) && value > highest)
             {
                 highest = value;
+                highestNumber = trimmed;
             }
         }
 
-        return $"S1.{highest + 1:00}";
+        return (highest, highestNumber);
     }
 
     private void ValidateRequest(SheetComposerRequest request)
@@ -362,12 +384,8 @@ internal sealed class StandardDetailsSheetComposer
             throw new InvalidOperationException("Sheet name is required.");
         }
 
-        if (string.IsNullOrWhiteSpace(request.LikeSheet))
-        {
-            throw new InvalidOperationException("A title-block source sheet number/name is required.");
-        }
-
-        if (request.LikeSheet.Length > LikeSheetMax)
+        // A blank title-block source means "copy the newest sheet in the series"; an explicit one is still honoured.
+        if (!string.IsNullOrWhiteSpace(request.LikeSheet) && request.LikeSheet.Length > LikeSheetMax)
         {
             throw new InvalidOperationException($"Title-block source sheet cannot exceed {LikeSheetMax} characters.");
         }

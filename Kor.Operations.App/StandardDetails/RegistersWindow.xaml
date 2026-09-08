@@ -43,7 +43,7 @@
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
-                            <TextBox x:Name="DetailSearchBox" Height="32" VerticalContentAlignment="Center"
+                            <TextBox Padding="10,0" FontSize="13" Background="#FFFFFFFF" Foreground="#FF111111" CaretBrush="#FF111111" x:Name="DetailSearchBox" Height="32" VerticalContentAlignment="Center"
                                      ToolTip="Search by detail number or title"/>
                             <Button Grid.Column="1" Width="88" Height="32" Margin="8,0,0,0" Content="Search"
                                     Style="{StaticResource Button.Secondary}" Click="DetailSearch_Click"/>
@@ -85,7 +85,7 @@
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
-                            <TextBox x:Name="ComponentSearchBox" Height="32" VerticalContentAlignment="Center"
+                            <TextBox Padding="10,0" FontSize="13" Background="#FFFFFFFF" Foreground="#FF111111" CaretBrush="#FF111111" x:Name="ComponentSearchBox" Height="32" VerticalContentAlignment="Center"
                                      ToolTip="Search by label, family, type or palette"/>
                             <Button Grid.Column="1" Width="88" Height="32" Margin="8,0,0,0" Content="Search"
                                     Style="{StaticResource Button.Secondary}" Click="ComponentSearch_Click"/>

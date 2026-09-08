@@ -231,7 +231,8 @@ public partial class SheetComposerWindow : Window
                 _actorUserId,
                 TimeSpan.FromMinutes(10));
 
-            SheetNumberBox.Text = result.SheetNumber;
+            _assignedSheetNumber = result.SheetNumber;
+            SheetNumberText.Text = result.SheetNumber;
             SummaryText.Text = $"Created {result.SheetNumber} - {result.SheetName} with {result.PlacementCount} detail(s). Opening PDF...";
             try
             {
@@ -261,12 +262,16 @@ public partial class SheetComposerWindow : Window
 
     private SheetComposerRequest BuildRequest()
     {
-        // The number is never typed: blank tells the composer to assign the next free S1.NN at save.
-        var sheetNumber = "";
+        // Neither the number nor the title-block source is typed: blank tells the composer to assign the
+        // next free S1.NN and copy the newest S1 sheet's title block at save time.
         var sheetName = SheetNameBox.Text.Trim();
-        var likeSheet = LikeSheetBox.Text.Trim();
+        if (string.IsNullOrWhiteSpace(sheetName))
+        {
+            throw new InvalidOperationException("Give the sheet a name first.");
+        }
+
         var placements = _placements.Select(ToPlacement).ToList();
-        return new SheetComposerRequest(sheetNumber, sheetName, likeSheet, placements);
+        return new SheetComposerRequest(SheetNumber: "", sheetName, LikeSheet: "", placements);
     }
 
     private async void OpenPdf_Click(object sender, RoutedEventArgs e)
@@ -279,7 +284,7 @@ public partial class SheetComposerWindow : Window
             return;
         }
 
-        var sheetNumber = SheetNumberBox.Text.Trim();
+        var sheetNumber = _assignedSheetNumber ?? "";
         if (string.IsNullOrWhiteSpace(sheetNumber))
         {
             MessageBox.Show(this, "Save the sheet first. Its number is assigned on save.", "Standard Details - Open PDF", MessageBoxButton.OK, MessageBoxImage.Information);
@@ -306,6 +311,12 @@ public partial class SheetComposerWindow : Window
 
     private async void CreatePdfSheet_Click(object sender, RoutedEventArgs e)
     {
+        if (!HasSheetName)
+        {
+            MessageBox.Show(this, "Give the sheet a name first.", "Standard Details - Create PDF Sheet", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
         if (_placements.Count == 0)
         {
             MessageBox.Show(this, "Add at least one detail to the sheet.", "Standard Details - Create PDF Sheet", MessageBoxButton.OK, MessageBoxImage.Information);
@@ -348,7 +359,7 @@ public partial class SheetComposerWindow : Window
             var spec = new CustomSheetSpec(
                 SheetWidthMm,
                 SheetHeightMm,
-                SheetNumberBox.Text.Trim(),
+                _assignedSheetNumber ?? "",
                 SheetNameBox.Text.Trim(),
                 Environment.UserName,
                 generatedUtc,
@@ -434,7 +445,7 @@ public partial class SheetComposerWindow : Window
 
     private string? PromptForCustomSheetPath(DateTime generatedUtc)
     {
-        var sheetNumber = SheetNumberBox.Text.Trim();
+        var sheetNumber = _assignedSheetNumber ?? "";
         var fallback = $"KOR-Custom-Sheet-{generatedUtc:yyyyMMdd-HHmmss}";
         var fileName = string.IsNullOrWhiteSpace(sheetNumber)
             ? $"{fallback}.pdf"
@@ -773,21 +784,42 @@ public partial class SheetComposerWindow : Window
         return occupied.Values.FirstOrDefault(x => string.Equals(x.ViewName, detail.CanonicalViewName, StringComparison.OrdinalIgnoreCase));
     }
 
+    private bool _busy;
+
+    // The number Revit assigned on save; null until then. The label beside "Sheet #" shows a hint before
+    // that, and the hint must never be read as a number, so nothing reads the label's text.
+    private string? _assignedSheetNumber;
+
+    private bool HasSheetName => !string.IsNullOrWhiteSpace(SheetNameBox.Text);
+
     private void ToggleBusy(bool busy)
     {
+        _busy = busy;
         SearchBox.IsEnabled = !busy;
         AddButton.IsEnabled = !busy;
         DetailsGrid.IsEnabled = !busy;
         PlacementsGrid.IsEnabled = !busy;
         SheetCanvas.IsEnabled = !busy;
-        var actions = GetActionStates(_canPublish, busy);
+        RefreshActionStates();
+    }
+
+    private void RefreshActionStates()
+    {
+        var actions = GetActionStates(_canPublish, _busy, HasSheetName);
         OpenPdfButton.IsEnabled = actions.OpenPdf;
         CreatePdfSheetButton.IsEnabled = actions.CreatePdfSheet;
         SaveButton.IsEnabled = actions.SaveToMaster;
     }
 
-    internal static (bool SaveToMaster, bool OpenPdf, bool CreatePdfSheet) GetActionStates(bool canPublish, bool busy)
-        => (!busy && canPublish, !busy && canPublish, !busy);
+    private void SheetNameBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e) => RefreshActionStates();
+
+    /// <summary>
+    /// Both outputs need a name: the governed sheet carries it in Revit, the personal PDF is stamped with it.
+    /// Save to master and the governed Open PDF also need publisher permission; Open PDF needs no name
+    /// because it opens an already-saved sheet by number.
+    /// </summary>
+    internal static (bool SaveToMaster, bool OpenPdf, bool CreatePdfSheet) GetActionStates(bool canPublish, bool busy, bool hasSheetName)
+        => (!busy && canPublish && hasSheetName, !busy && canPublish, !busy && hasSheetName);
 
     private void UpdatePlacementSummary()
     {
