@@ -15,32 +15,32 @@
 
 ## Decisions
 
-1. Health-sector architect outreach runs from **one coordinated target list**, one owner per contact. Ian prepares the list and talking points.
-2. **Seismic assessments and change-of-use work** (office to hotel or residential, S3 bylaw thresholds) become a promoted service line. Quote the report only; the upgrade work follows. Rory and Ian put it on the website and LinkedIn; Omar raises it with Colliers as the thing we can do for them.
+1. Health-sector architect outreach to run from **one coordinated target list**, one owner per contact, so three people do not call the same architect (Ian's proposal, no objection on the call). Ian prepares the list and talking points.
+2. **Seismic assessments and change-of-use work** (office to hotel or residential, S3 bylaw thresholds) become a promoted service line. Quote the report only; the upgrade work follows. Rory suggested a website and LinkedIn blurb, Ian will draft it; Omar raises it with Colliers as the thing we can do for them.
 3. The Stantec pitch belongs to **Omar and Islam**.
-4. **Omar becomes gatekeeper** of inbound opportunities in the app. Ian gets Jim onto the current build so the Teams spreadsheet can retire.
+4. **Omar to become gatekeeper** of inbound opportunities in the app; he and Ian sit down next week. Ian gets Jim onto the current build so the Teams spreadsheet can retire.
 
 ## Dates to hold
 
 | Date | What | Who |
 |---|---|---|
-| 10 Sept | Perkins&Will client-appreciation party. No invite yet; Omar, Rory, Jim and JM each working a contact | all |
-| 11 Sept | Lunch with Mike Alivojvodic, Chris Dikeakos Architects | Omar, Jim |
-| week of 8 Sept | Omar takes the EGBC seismic retrofit course, the gate to the K-12 seismic list | Omar |
+| 10 Sept | Perkins&Will client-appreciation party. No invite yet; Omar, Rory and Jim each working a contact | Omar, Rory, Jim |
+| 11 Sept | Lunch with Mike at CDA (Chris Dikeakos Architects) | Omar, Jim |
+| week of 8 Sept | Omar plans to take the EGBC seismic retrofit course, the gate to the K-12 seismic list | Omar |
 | late Sept | Calgary trip; Islam books the meetings, JM reaches Anthem and GGA directly | JM, Islam |
 | 1 Oct | Graham client-appreciation night, Georgia Hotel; Conor has one invite and is after two more | Conor |
-| before Nov | Fraser Health list closes; be ready for the "you're on" notice | JB |
+| before Nov | Fraser Health list closes; be ready for the "you're on" notice | John (June owner) |
 | Nov | LA Tall Building Conference; visit MVE in Irvine | Jim, JM |
 
 ## Owner by owner
 
-- **Omar:** the Colliers introductions; NDY seismic-restraint referrals; the office-to-hotel seismic assessment (NDA, drawings, report fee) and the same offer to the Coal Harbour hotel developer; Stantec with Islam.
-- **Jim:** the "no transfers" presentation; lunch with Giovanni at Aquilini; San Diego RFP; the CDA lunch and a cold call for the second Mike.
-- **JM:** Fraser Mills tryout status; Gwyn Vose at Arcadis; a principal at MCM; Calgary; the Kelowna architect intro for Conor; call Brad Burnett at ITC.
-- **JB:** Bosa lunch with Colin via Robert, October; Solterra one-on-one with Gerry Nichele this week or next.
-- **Rory:** Continuum Architecture; the conversions blurb; Perkins&Will invite via Ike.
+- **Omar:** the Colliers introductions, and ask Colliers what change-of-use work they see; NDY seismic-restraint referrals; the office-to-hotel seismic assessment (NDA, structural drawings, report fee) and the same offer to the Coal Harbour hotel developer; Stantec with Islam; with JM, the ex-employee contact at the Port Authority.
+- **Jim:** the "no transfers" presentation; lunch with Giovanni at Aquilini; the San Diego RFP this week; the CDA lunch on the 11th; a call to Michael De Cotiis at Pinnacle for lunch after the long weekend; check with Daler that MVE's insurance update went back.
+- **JM:** call Gwyn at Arcadis for lunch; confirm with Beedie whether we are in the Fraser Mills tryout (nobody was sure on the call); Calgary, with Anthem and GGA direct; the Kelowna architect intro for Conor; call Brad at ITC. MCM is worth a visit and JM has the working contact there.
+- **JB:** Bosa lunch with Colin via Robert, October; Solterra one-on-one with Jerry, the decision maker, this week or early next.
+- **Rory:** Continuum Architecture, from Jim's hand-over; ask Ike about the Perkins&Will invite. The conversions blurb was his idea; Ian drafts it.
 - **Islam:** KRA's Vancouver team; Stantec with Omar; JM's Calgary meetings.
-- **Conor:** Graham night; Lauren at Arcadis Kelowna for the three developer intros; Mission Group's departed contact.
-- **Ian:** the architect target list and talking points; the events list; Port Authority recon; Island intel and Continuum contacts to Rory; Jim onto the app; Omar set up as gatekeeper; this recap.
+- **Conor:** Graham night, and two more invites; press Lauren in Kelowna for the three developer intros; follow Mission Group's departed contact to wherever she lands.
+- **Ian:** the architect target list and talking points; the events list; Port Authority recon; Island intel and Continuum contacts to Rory; the conversions blurb; Jim onto the app; Omar set up as gatekeeper; this recap.
 
 *Full synopsis with contacts, org history, the app's existing records and fifteen open questions: see Ian.*

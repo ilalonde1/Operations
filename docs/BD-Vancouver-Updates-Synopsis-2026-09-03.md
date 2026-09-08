@@ -22,7 +22,7 @@
 
 **Jim's report.** Coffee with **Thomas Lee of GBL** (#54190, Deltek) after KOR's extra claim on **Aquilini** (#147, kp=36) got everyone's attention. GBL has three blocks at the **Heather Lands**; KOR has Block B; Aquilini has said KOR gets a shot at Block A (growing into a large tower). Aquilini wants an A-team it can hand most of its work to. Giovanni at Aquilini asked "can you design without transfers", which Jim is turning into a **presentation** (from the code-update deck) for Aquilini's and GBL's offices, with JM and Omar; goal is Blocks A and C, which **WHM** (#69332) currently hold. Thomas raised **Fraser Mills** — Beedie (#66, kp=20), three parcels, three teams in a tryout; JM: we bid two Beedie jobs a year or two ago and are doing three towers for them in West Vancouver, so we may be one of the three. A proposal on the Island for **BAM** (Ben Smith, ex-Starlight, not yet in the brain) for a seniors-housing client, **Trillium**, produced a warm intro to **Continuum Architecture** (Victoria, #927758): Jeremy Beintema (Partner, on file) and Gregory Inman (not on file). Ian's intel: Continuum is the 2020 rebrand of KPL James (Victoria's oldest practice); founder Tony James died in October 2024, do not raise it. San Diego: a referral to a three-tower owner produced a US$1M proposal that turned out to be leverage against an incumbent; a wood-frame RFP in San Diego goes in this week. **MVE** (#76952, Deltek): the AI demo landed, their insurance-update request suggests requalification; visit around the LA Tall Building Conference in November.
 
-**Other pursuits.** Lunch with "Big Mike" from CDA (Mike Alivojvodic, #7, kp=8) on **11 September**; Jim will cold-call for a lunch with "Mike Dakotis" *(see §5)*. **Arcadis** (#153): after last week's meeting with Terry Gray, follow up while they are bringing BD to Edmonton; JM knows **Gwyn Vose** (Vancouver lead, 10 to 15 towers together) and will call him; Clement Pun and Mariam are on the Reliance Broadway towers with Rory. **MCM Architects** *[conf: Med, heard "KCM/NCM"]* are everywhere with PCI and transit; JM works with Peter Odegaard *[conf: Low]*; last year's presentation reached only juniors. **Calgary**: JM keeps not going; Islam is arranging meetings for late September and will tell him to get on the plane; JM will reach **Anthem** (#207, kp=72) and **GGA** (#8129) himself. **Kelowna** (Conor): met four groups; Mission Group (#193) then lost the contact, Stephanie, two weeks later; "Barry Architecture" needs JM's intro; **Lauren** (Lauren Macaulay, Arcadis Kelowna *[conf: High]*) owes three developer intros and JM was her first client, so press her. JM to phone Brad Burnett at **ITC** (#70926), Omar's repeated ask. Lost: GEC wood frame (Edmonton), "the turn" undecided, "Kent Arroyo" townhouses *(see §5)*. Rory: Rize's (#16) Cambie and Marine tower is stalled on Chinese capital and Rize is going GC-for-hire; the concrete side is in a holding pattern, "hopefully next year".
+**Other pursuits.** Lunch with "Big Mike" from CDA (Mike Alivojvodic, #7, kp=8 *[conf: Med]*) on **11 September**; Jim will cold-call **Michael De Cotiis** (Pinnacle International, #53665, CRM #11, a June pursuit) for lunch after the long weekend *[conf: High, heard "Mike Dakotis"]*. **Arcadis** (#153): after last week's meeting with Terry Gray, follow up while they are bringing BD to Edmonton; JM knows **Gwyn Vose** (Vancouver lead, 10 to 15 towers together) and will call him; Clement Pun and Mariam are on the Reliance Broadway towers with Rory. **MCM Architects** *[conf: Med, heard "KCM/NCM"]* are everywhere with PCI and transit; JM works with Peter Odegaard *[conf: Low]*; last year's presentation reached only juniors. **Calgary**: JM keeps not going; Islam is arranging meetings for late September and will tell him to get on the plane; JM will reach **Anthem** (#207, kp=72) and **GGA** (#8129) himself. **Kelowna** (Conor): met four groups; Mission Group (#193) then lost the contact, Stephanie, two weeks later; "Barry Architecture" needs JM's intro; **Lauren** (Lauren Macaulay, Arcadis Kelowna *[conf: Med, name and city match only]*) owes three developer intros and JM was her first client, so press her. JM to phone Brad Burnett at **ITC** (#70926), Omar's repeated ask. Lost: GEC wood frame (Edmonton), "the turn" undecided, "Kent Arroyo" townhouses *(see §5)*. Rory: Rize's (#16) Cambie and Marine tower is stalled on Chinese capital and Rize is going GC-for-hire; the concrete side is in a holding pattern, "hopefully next year".
 
 **Bookkeeping.** Jim still keeps the BD spreadsheet in Teams. Ian: everything from its last iteration is in the CRM but nobody works it; Omar becomes (co-)gatekeeper of inbound opportunities; Jim has an old build and no working access; Ian will distil this meeting, send Rory the Island material and the Continuum contacts, and load it all. Standard details are cleaned up with an approval flow to a master (Rory wants them); the engineering tool has matured a dozen revisions since JM saw it.
 
@@ -42,30 +42,30 @@
 | 2 | Targeted list of health-sector prime architects (Fraser Health / VCH / BC Cancer) with talking points, one owner per contact | Ian | this week | Coordinated, not three people on one architect |
 | 3 | Arrange the KRA intro with their Vancouver team (met in Edmonton, healthcare) | Islam | Sept | KRA is not in the brain under that name (§5) |
 | 4 | Events list: which to attend to bump into these people | Ian | this week | P&W 10 Sept, Graham 1 Oct, LA Tall Building Nov |
-| 5 | Get into the Perkins&Will client-appreciation party, 10 Sept | Omar (architect friend), Rory ("Ike"), Jim (CMO email), JM (Luciano / Ryan Bragg) | before 10 Sept | Even one seat |
+| 5 | Get into the Perkins&Will client-appreciation party, 10 Sept | Omar (architect friend), Rory ("Ike"), Jim (CMO email) | before 10 Sept | Even one seat. JM knows Luciano and Ryan Bragg there but took no action |
 | 6 | NDY: keep the seismic-restraint referral line open; reuse existing details | Omar | ongoing | Small recurring revenue |
 | 7 | Bosa: Robert to broker lunch with Colin Bosa in October | JB | reach out late Sept | Colin is a family man, lunch not dinner. Bosa Properties #38943 kp=44; Bosa Development #69677 kp=79, CRM #70 |
-| 8 | Solterra: one-on-one with Gerry Nichele ("Jerry", the decision maker) | JB | this week / early next | Solterra Development #69730 kp=53. Names in §5 |
+| 8 | Solterra: one-on-one with "Jerry", the decision maker (Gerry Nichele, President, on file *[conf: Med]*) | JB | this week / early next | Solterra Development #69730 kp=53. Names in §5 |
 | 9 | Stantec Vancouver structural group: overflow/specialty pitch | Omar + Islam | Sept | We are on their qualified-supplier list; say so |
 | 10 | Vancouver Fraser Port Authority recon: re-send the earlier dossier | Ian | this week | #75853 / #77395; JM + Omar have an ex-employee contact |
 | 11 | EGBC SRG seismic course, then the SMP list and NDA | Omar | week of 8 Sept | June item still open |
-| 12 | Fraser Health list: be ready, it closes before November | JB/John (contact) | Oct | June item 2 |
+| 12 | Fraser Health list: be ready, it closes before November | John (June owner; which John was not said) | Oct | June item 2 |
 | 13 | Seismic assessment for the office-to-hotel client: NDA, ask for structural drawings, fee for the report only; pitch the same to the Coal Harbour hotel developer | Omar | now | Report first, upgrades later |
 | 14 | Ask Colliers what change-of-use / due-diligence work they see; offer the assessment service | Omar | Sept | Jim's "scratch their back" |
-| 15 | Website + LinkedIn blurb: office-to-hotel/residential conversions, S3 assessments | Rory + Ian | Sept | Rory's suggestion |
+| 15 | Website + LinkedIn blurb: office-to-hotel/residential conversions, S3 assessments | Ian (draft) | Sept | Rory's suggestion; no owner was set on the call |
 | 16 | Prepare the "designing without transfers" presentation; present at Aquilini (Giovanni) and GBL (Thomas Lee) | Jim, with JM + Omar | Sept | Target Heather Lands Blocks A and C |
 | 17 | Lunch with Giovanni (Aquilini) | Jim | Sept | Relationship, not pitch |
-| 18 | Confirm whether KOR is one of the three Fraser Mills tryout teams | JM | now | Beedie #66; Uplands towers are CRM #181/188/189 |
+| 18 | Confirm whether KOR is one of the three Fraser Mills tryout teams | JM / Jim | now | Not assigned on the call, nobody was sure. Beedie #66; Uplands towers are CRM #181/188/189 |
 | 19 | Continuum Architecture (Victoria): reach Jeremy Beintema and Gregory Inman via Ben Smith's intro | Rory (Jim hands over) | Sept | Do not mention Tony James |
 | 20 | Send Rory the Island intel + Continuum contacts; send this recap to all | Ian | now | This document |
 | 21 | Submit the San Diego wood-frame RFP; discuss with JM today | Jim | this week | |
-| 22 | Lunch with Mike Alivojvodic (CDA) 11 Sept; cold-call "Mike Dakotis" for lunch | Omar + Jim / Jim | 11 Sept / after the long weekend | CDA #7 kp=8, CRM #66 |
+| 22 | Lunch with "Big Mike" at CDA (Mike Alivojvodic *[conf: Med]*) 11 Sept; call Michael De Cotiis (Pinnacle) for lunch | Omar + Jim / Jim | 11 Sept / after the long weekend | CDA #7 kp=8, CRM #66; Pinnacle #53665, CRM #11 |
 | 23 | Call Gwyn Vose (Arcadis Vancouver) for lunch; keep Clement Pun warm | JM | this month | Arcadis #153, CRM #378; timely after Terry Gray |
-| 24 | Reach a principal at MCM Architects | JM | Sept | #77714; Peter Odegaard unconfirmed |
+| 24 | Reach a principal at MCM Architects | JM | Sept | Not assigned on the call ("probably worth seeing"); JM has the working contact. #77714; Peter Odegaard unconfirmed |
 | 25 | Calgary trip, late September: Islam books the meetings, JM reaches Anthem and GGA directly | JM + Islam | end Sept | |
 | 26 | Kelowna: press Lauren (Arcadis Kelowna) for the three developer intros; "Barry Architecture" intro; follow Stephanie from Mission Group | Conor, JM (intro) | Sept | Mission Group #193, CRM #221 |
 | 27 | Graham client-appreciation night, 1 Oct: get two more invites, talk to everyone | Conor | by 1 Oct | Graham Construction #69232, CRM #91 |
-| 28 | Phone Brad Burnett (ITC) | JM | this week | ITC #70926 kp=3 |
+| 28 | Phone Brad at ITC (Brad Burnett, President & CEO, on file *[conf: Med]*) | JM | this week | ITC #70926 kp=3 |
 | 29 | Confirm MVE's insurance update went back; plan the Irvine visit around the LA Tall Building Conference | Daler / Jim, JM | Nov | MVE #76952 |
 | 30 | Get Jim onto the current app build; sit down with Omar to make him gatekeeper; load this meeting into the CRM | Ian | this week | |
 
@@ -91,7 +91,7 @@ Distilled from what the room asked for or bumped into, not from what I would lik
 2. **"Parkinson Wheels"** I have taken as Perkins&Will. Surnames for **Luciano** (came from "Bob"?) and **Ike**; is "Stagg or Bragg" **Ryan Bragg**?
 3. **JB's Bosa and Solterra names:** Robert (Bosa?), Jason, Dale (assistant), Kevin, Brian Webster, Mike Balza, "Charlie, the Wilson proposal" — which firm each belongs to. I have Colin Bosa (Bosa Properties CEO) and Gerry Nichele (Solterra President) on file; nobody else.
 4. **KRA** — which firm; not in the brain under that name (Kasian is, and is not healthcare-led).
-5. **"Mike Dakotis"** — who Jim keeps trying to lunch with. Not a Dikeakos on file (Chris, Nicholas, Mike Alivojvodic).
+5. **"Mike Dakotis"** — **closed:** Michael De Cotiis, President & CEO of Pinnacle International (June pursuit, CRM #11, Jim's). Confirmed by Ian 7 Sept.
 6. **"KCM / NCM"** = MCM Architects? and **"Peter Odegard"**.
 7. **"Barry Architecture"** (Kelowna) and whether Conor's **Lauren** is Lauren Macaulay of Arcadis Kelowna.
 8. **"Kent Arroyo" townhouses** (Conor, lost) and **"the turn"** (Islam, undecided) — project or client names.
@@ -113,13 +113,14 @@ Distilled from what the room asked for or bumped into, not from what I would lik
 | Wiki Meverhurst | WHM Structural Engineers (Wicke Herfst Maver) | High | #69332 / #77756 |
 | BD (Fraser Mills) | Beedie Development Group | High | #66, kp=20 |
 | New Heatherlands | Heather Lands (Vancouver) | High | project, not an org |
-| Big Mike from CDA | Mike Alivojvodic, Chris Dikeakos Architects | High | #7, kp=8 |
+| Big Mike from CDA | Mike Alivojvodic, Principal, Chris Dikeakos Architects | Med | #7, kp=8 |
+| Mike Dakotis | Michael De Cotiis, President & CEO, Pinnacle International | High | #53665, CRM #11 |
 | Terry (Arcadis) | Terry Gray, Assoc. Principal, Govt & Civic | High | Arcadis #153 |
 | Gwen / Gwyn | Gwyn Vose, Canada West Practice Group Manager | High | Arcadis #153 |
 | Clement | Clement Pun, Practice Group Director, Living | High | Arcadis #153 |
-| Jerry (Solterra) | Gerry Nichele, President | High | Solterra #69730 |
-| Brad from ITC | Brad Burnett, President & CEO | High | ITC #70926 |
-| Lauren (Kelowna) | Lauren Macaulay, Principal, Arcadis Kelowna | High | Arcadis #153 |
+| Jerry (Solterra) | Gerry Nichele, President | Med | Solterra #69730 |
+| Brad from ITC | Brad Burnett, President & CEO | Med | ITC #70926 |
+| Lauren (Kelowna) | Lauren Macaulay, Principal, Arcadis Kelowna | Med | Arcadis #153 |
 | Jeremy Betema / potato | Jeremy Beintema, Partner | High | Continuum #927758 |
 | Brian Kapochewski | Brian Kapuscinski, now BJK Architecture | High | #70599 |
 | Tony James | founder of KPL James, died Oct 2024 | High | do not raise |
