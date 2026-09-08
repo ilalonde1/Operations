@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 
 namespace Kor.Operations.EngineeringTools.QuantityTakeoff
 {
@@ -91,6 +92,26 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             // Conflicting stated scales (two parseable SCALE fields disagreeing) → ambiguous, no guess.
             if (values.Any(v => Math.Abs(v - values[0]) / values[0] > 0.01)) return null;
             return note;
+        }
+
+        /// <summary>
+        /// The ratio a SCALE field states, normalised, or null when it states none ("AS NOTED",
+        /// "As indicated") or an unparseable one. Repairs the one export fault seen: 31168 drops the
+        /// "=" between the two lengths ("1/8" 1'-0""). Used as the fallback when <see cref="FromPage"/>
+        /// declines a page whose title block plainly states its scale — 31065 p20 states "1 : 100" and
+        /// FromPage returned null (2026-09-08).
+        /// </summary>
+        public static string? RatioOf(string? statement)
+        {
+            if (string.IsNullOrWhiteSpace(statement)) return null;
+            string s = statement.Trim();
+            if (s.Length == 0 || !char.IsDigit(s[0])) return null;
+            foreach (var candidate in new[] { s, Regex.Replace(s, @"""\s+(?=\d)", "\" = ") })
+            {
+                double? mpp = PlanGeometry.MetresPerPixel(candidate, 96);
+                if (mpp is double v && v > 0) return candidate;
+            }
+            return null;
         }
 
         public static IReadOnlyList<ScaleNote> ScaleNotesAnywhere(VectorPageReader.PageContent? page)

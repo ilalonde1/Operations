@@ -36,6 +36,13 @@ public sealed record SheetRecord(
     /// Empty for a block without the labels.
     /// </summary>
     public IReadOnlyDictionary<string, string> TitleBlock { get; init; } = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// What the title block's SCALE field says, verbatim — "1/8" = 1'-0"", "1 : 100", "AS NOTED",
+    /// "As indicated". <see cref="ScaleNote"/> is the ratio when one parses; this is the statement
+    /// either way, because "AS NOTED" on a details sheet is information, not a missing value.
+    /// </summary>
+    public string? ScaleStatement { get; init; }
 }
 
 /// <summary>Page facts captured during intake so reporting never opens or reinterprets a PDF.</summary>

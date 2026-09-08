@@ -100,6 +100,11 @@ public static class DrawingIntake
         var fields = TitleBlockFields.Read(content);
         string? fieldTitle = fields.TryGetValue("SHEET TITLE", out var ft) ? ft
                            : fields.TryGetValue("DRAWING TITLE", out ft) ? ft : null;
+        // THE SCALE FIELD IS THE SCALE. SheetScaleReader reads the same field by its own search and
+        // declined 80 of 294 pages on 2026-09-08; 45 of those state "AS NOTED" (details, notes,
+        // schedules — a statement, kept as ScaleStatement), the rest state a ratio the field yields.
+        string? scaleStatement = fields.TryGetValue("SCALE", out var sf) ? sf : null;
+        scale ??= SheetScaleReader.RatioOf(scaleStatement);
         string? titleText = null;
         try { titleText = SheetTitleReader.TitleText(content); } catch { /* a title the reader cannot form is a fact, not a failure */ }
         string sheetType = FirstTyped(bookmark, fieldTitle);
@@ -204,7 +209,7 @@ public static class DrawingIntake
             markup, links, full, pathFates, wordFates)
         {
             ColumnAgreement = agreement, ColumnAgreementError = agreementError,
-            TitleBlock = fields,
+            TitleBlock = fields, ScaleStatement = scaleStatement,
             Context = new SheetContext
             {
                 OutlinesPresent = facts.OutlinesPresent, ScheduleHeadings = headings.Count,

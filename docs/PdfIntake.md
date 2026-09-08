@@ -323,6 +323,23 @@ plan and is compared. Over the 23 compared plan sheets: PDF walls 425, DXF 850; 
 against 1,576, equal on 8 of 23. The ledger carries a context row for geometry the classifier
 emitted on a non-plan sheet.
 
+## 12. Step 6, done 2026-09-08: the scale is accounted for on every sheet
+
+Brief 19, implemented by the verifier. The glyph deduplication had already moved
+`SheetScaleReader` from 79 to 214 of 294 pages, because "SCALE:" was itself a double-drawn label.
+The remaining 80 are now accounted for rather than unread: the record carries `ScaleStatement`,
+the SCALE field verbatim, and `SheetScaleReader.RatioOf` parses it as the fallback when the reader
+declines (repairing the one export fault seen, an "=" dropped between two lengths).
+
+| Outcome | 31130 | 31168 | 31138 | 31065 | 31202 | All |
+|---|---|---|---|---|---|---|
+| ratio read | 46 | 37 | 42 | 45 | 44 | 214 |
+| stated without a ratio ("AS NOTED", "As indicated") | 12 | 1 | 17 | 25 | 15 | 70 |
+| none stated (covers, 3D views) | 2 | 3 | 2 | 3 | 0 | 10 |
+
+294 of 294. A details sheet that says "AS NOTED" is telling the truth about itself, and the ledger
+counts it as read; "none stated" is now ten cover pages.
+
 **Still open on rules, and where it goes**: the corpus measurement is a one-off hand run from
 14 August. Making it a compiled, re-runnable verb that reports each rule's coverage of the
 portfolio — and does the same over the stick-file corpus for the `dxf.pdf.*` keys — is the step

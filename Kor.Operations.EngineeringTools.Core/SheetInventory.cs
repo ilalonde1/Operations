@@ -48,7 +48,12 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             Note("title block fields read (SHEET TITLE, SCALE, PROJECT NO, DRAWN BY …)", record.TitleBlock.Count,
                 record.TitleBlock.Count > 0 ? Disposition.Read : Disposition.Unread,
                 record.TitleBlock.Count > 0 ? "TitleBlockFields: " + string.Join(", ", record.TitleBlock.Keys.OrderBy(k => k)) : "no labelled title block on this sheet");
-            Row("scale note", 1, record.ScaleNote is null ? Disposition.Unread : Disposition.Read, record.ScaleNote is null ? "SheetScaleReader found none" : "SheetScaleReader");
+            if (record.ScaleNote is not null)
+                Row("scale: ratio read", 1, Disposition.Read, "SheetScaleReader, or the title block's SCALE field");
+            else if (!string.IsNullOrWhiteSpace(record.ScaleStatement))
+                Row($"scale: stated without a ratio (\"{record.ScaleStatement.Trim()}\")", 1, Disposition.Read, "TitleBlockFields — the sheet says its scale varies; details and notes sheets do");
+            else
+                Row("scale: none stated", 1, Disposition.Unread, "neither SheetScaleReader nor a SCALE field");
             if (record.BookmarkTitle is not null) Row("bookmark (sheet index entry)", 1, Disposition.Unread, "no reader");
             else if (record.Context.OutlinesPresent) Row("bookmark present in the file, unreadable by PdfPig", 1, Disposition.Unaccounted, "PdfDocument.TryGetBookmarks returned none for an /Outlines tree");
             if (record.Rotation != 0) Row("page rotation != 0", 1, Disposition.Unaccounted, "no reader corrects for it");
