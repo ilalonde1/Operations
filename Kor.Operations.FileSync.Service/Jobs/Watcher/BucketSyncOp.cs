@@ -92,12 +92,41 @@ internal sealed class BucketSyncOp
         var byName = remote.ToDictionary(r => r.Name!, r => r, StringComparer.OrdinalIgnoreCase);
         int uploaded = 0, skipped = 0, deleted = 0, failed = 0, deferred = 0;
 
-        // ---- Upload phase ----
-        var skewTolerance = TimeSpan.FromSeconds(15);
+        // Map each local file to the name SharePoint will actually store it
+        // under. NTFS allows names SharePoint rejects (leading/trailing space,
+        // trailing dot); uploading such a name fails the whole run with Graph
+        // "Invalid request". We upload -- and compare against the remote
+        // listing -- under the sanitized name, so a cleaned name matches the
+        // stored remote item instead of re-uploading then re-deleting each pass.
+        var plan = new List<(FileInfo File, string Name)>(local.Count);
+        var claimed = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var f in local)
         {
+            var safe = SharePointName.Sanitize(f.Name);
+            if (string.IsNullOrEmpty(safe))
+            {
+                _logger.LogWarning("Skipping '{Name}' -> '{Sp}': no SharePoint-legal name remains after trimming.", f.Name, spTargetFolder);
+                continue;
+            }
+            if (!claimed.Add(safe))
+            {
+                // Two on-disk files reduce to one SharePoint name (e.g. 'x.pdf'
+                // and ' x.pdf'). Uploading both would have them fight over one
+                // remote item every pass; sync the first, flag the rest.
+                _logger.LogWarning("Skipping '{Name}' -> '{Sp}': its SharePoint name '{Safe}' is already taken by another local file this run.", f.Name, spTargetFolder, safe);
+                continue;
+            }
+            if (!string.Equals(safe, f.Name, StringComparison.Ordinal))
+                _logger.LogInformation("'{Name}' is not a legal SharePoint name; syncing it as '{Safe}'.", f.Name, safe);
+            plan.Add((f, safe));
+        }
+
+        // ---- Upload phase ----
+        var skewTolerance = TimeSpan.FromSeconds(15);
+        foreach (var (f, safeName) in plan)
+        {
             ct.ThrowIfCancellationRequested();
-            byName.TryGetValue(f.Name, out var sp);
+            byName.TryGetValue(safeName, out var sp);
 
             var needsUpload = ShouldUpload(bucket, f, sp, skewTolerance);
             if (!needsUpload)
@@ -108,7 +137,7 @@ internal sealed class BucketSyncOp
 
             if (isShadow)
             {
-                _logger.LogInformation("WOULD UPLOAD '{Name}' -> '{Sp}'", f.Name, spTargetFolder);
+                _logger.LogInformation("WOULD UPLOAD '{Name}' -> '{Sp}'", safeName, spTargetFolder);
                 uploaded++;
                 continue;
             }
@@ -116,10 +145,10 @@ internal sealed class BucketSyncOp
             try
             {
                 if (f.Length <= _options.SimpleVsChunkedThresholdBytes)
-                    await _facade.UploadSimpleAsync(_driveId, targetFolderId, f.Name, f.FullName, ct).ConfigureAwait(false);
+                    await _facade.UploadSimpleAsync(_driveId, targetFolderId, safeName, f.FullName, ct).ConfigureAwait(false);
                 else
-                    await _facade.UploadToFolderAsync(targetFolderId, f.Name, f.FullName, progress: null, chunkSizeBytes: _options.ImageUploadChunkBytes, ct).ConfigureAwait(false);
-                _logger.LogInformation("Uploaded '{Name}' -> '{Sp}' ({Bytes:n0} bytes)", f.Name, spTargetFolder, f.Length);
+                    await _facade.UploadToFolderAsync(targetFolderId, safeName, f.FullName, progress: null, chunkSizeBytes: _options.ImageUploadChunkBytes, ct).ConfigureAwait(false);
+                _logger.LogInformation("Uploaded '{Name}' -> '{Sp}' ({Bytes:n0} bytes)", safeName, spTargetFolder, f.Length);
                 uploaded++;
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
@@ -150,7 +179,10 @@ internal sealed class BucketSyncOp
         }
 
         // ---- Delete phase: remove SP files not present locally ----
-        var localNames = new HashSet<string>(local.Select(l => l.Name), StringComparer.OrdinalIgnoreCase);
+        // Compare against the sanitized names too: the remote items we just
+        // uploaded are keyed by their SharePoint name, so a file synced as
+        // ' x.pdf' -> 'x.pdf' must not now be deleted as "not present locally".
+        var localNames = new HashSet<string>(plan.Select(p => p.Name), StringComparer.OrdinalIgnoreCase);
         foreach (var item in remote)
         {
             ct.ThrowIfCancellationRequested();
