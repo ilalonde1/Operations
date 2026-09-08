@@ -204,3 +204,48 @@ the differential says it did exactly one thing:
 The 438 slabs still in excess of the Revit count on 31168 are drawn geometry — footing outlines,
 core outlines, notes-box borders that escape the furniture rule — and are the subject of the walls
 and footings steps, where a closed outline becomes the object it is instead of a floor plate.
+
+## 9. Step 2b, done 2026-09-08: a wall is a filled rectangle of wall proportions
+
+Codex brief 15, verified with two corrections of mine (half an inch of slack on the limits, the DXF
+side's own allowance, so a wall drawn at exactly 4" or 48" is not refused by floating point; and the
+differential's walls column, which my step 0 code had hard-coded to zero). 960 of 960 tests.
+
+**What the PDF side reads now**: a filled, non-paper, four-vertex rectangle on a plan whose narrow
+side is 4"–60" (the banked `dxf.max-wall-thickness` row, not the code's 36), long side ≥ 48" and at
+least twice the thickness, is a wall — after the declared-column-size rule, which wins. Its outline,
+axis and thickness go into `ExtractedGeometry.Walls`, its fate is `BecameWall`, and the DXF carries
+it on the WALL layer the DXF-to-ETABS classifier already reads. Ribbons (L and U cores drawn as one
+outline) are counted, not split: `WallRibbonsNotSplit`.
+
+**The differential**, thirteen baseline pages: COLUMN identical on 12 of 13, BEAM identical on 13 of
+13, SLAB down on 13 of 13, WALL new on 13 of 13 (11 / 21 / 13 on 31130 p11–13; 25 / 23 / 27 on 31168
+p11–13; 41 / 41 / 38 on 31138; 36 / 30 / 38 on 31065; 19 on 31202 p17). The one column that moved,
+31130 p12, is a 24" × 53¾" filled rectangle the sheet's column schedule does not declare; it was a
+column by shape and is a wall (a pier) now, which is the DXF side's own rule for an undeclared solid
+footprint of wall proportions. The schedule decides what is a column; the rule decides the rest.
+
+**Against 31168's Revit DXF**: PDF walls 0 → 461 over the 24 issued sheets (DXF 892); on the nine
+single-view parkade and podium sheets the counts are 22/23, 25/33, 23/24, 27/37, 24/26, 45/47,
+15/18, 17/40, 16/15, 16/16, 15/16, 13/18 — within two on 7 of 24 sheets overall. The tower sheets
+compare one PDF plan against three to eight Revit views and are not yet comparable per view.
+Columns unchanged: 1,193, equal on 8 of 24 sheets.
+
+**The convergence proof**: 31168 p14 → `pdf-takeoff --kor-layers` → `dxf-to-etabs` against the job's
+reference: 24 PDF walls on the sheet, 18 wall panels in the model (the DXF side merges collinear
+runs under `dxf.connect-walls`), 66 columns. A PDF-derived plan reaches ETABS with walls through
+the same code a Revit export uses. Before this step the number was 0.
+
+**The ledger**: `BecameWall` 632 / 1,025 / 1,359 / 1,137 / 1,411 across the five sets; `BecameSlab`
+on 31130 fell 1,039 → 424; totals unchanged.
+
+**Two things the step found, for the next briefs:**
+
+- **Section sheets read as plans.** S3.01 on 31168 is a sheet of sections, and the rule finds 36
+  "walls" there — the poché of cut walls in section. The classifier runs on every page regardless of
+  sheet type. The record knows the sheet type (§1's `SheetType`); geometry rules should run on plan
+  sheets and say so on the others. That is the "contracts per sheet type" item of §5, and it is now
+  a measured need rather than a design wish.
+- **The compiled defaults are narrower than the banked rows** (`MaxWallThickness` 36 vs 60,
+  `MaxColumnSize` 96 vs 132 on the DXF side), and nothing in the build proves the two agree. The
+  parity test and the re-runnable corpus measurement are brief 16.

@@ -118,7 +118,8 @@ public static class DrawingIntake
                 options.SlabMinDiagonalMm, options.LineMinLengthMm, false,
                 geometry.PageWidthPts * scaleFactor, geometry.PageHeightPts * scaleFactor,
                 request.MarkupOnly, options.ColumnMaxSizeMm, options.ColumnMinDimMm, options.ColumnMaxAspect,
-                furniture.Scaled(scaleFactor), thinnedFates);
+                furniture.Scaled(scaleFactor), thinnedFates,
+                options.MinWallThicknessMm, options.MaxWallThicknessMm, options.MinWallLengthMm, options.MinWallAspect);
             pathFates = RemapToPopulation(thinnedFates, thinnedKept, fullKept, content.Paths.Count, full.Paths.Count);
         }
         var wordFates = WordFates(content, furniture, grid, columns.Count, footings.Count, walls.Count);

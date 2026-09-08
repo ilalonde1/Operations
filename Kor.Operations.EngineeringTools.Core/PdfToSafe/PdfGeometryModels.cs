@@ -46,8 +46,17 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         double LineWidth,
         bool IsAnnotation);
 
+    /// <summary>A cut wall's outline, centreline and thickness, all in millimetres.</summary>
+    public sealed record WallPanel(IReadOnlyList<(double X, double Y)> Outline,
+        (double X, double Y) Start, (double X, double Y) End, double ThicknessMm);
+
     public sealed class ExtractedGeometry
     {
+        public List<WallPanel> Walls { get; } = new();
+        public List<(byte R, byte G, byte B)> WallColors { get; } = new();
+        public List<bool> WallIsAnnotation { get; } = new();
+        /// <summary>Filled loops with wall-proportioned boxes but more than four vertices; not split.</summary>
+        public int WallRibbonsNotSplit { get; set; }
         // Each slab: ordered list of (X,Y) in mm, ready for a closed polyline
         public List<List<(double X, double Y)>> Slabs { get; } = new();
         // Each column: centroid (X,Y) in mm

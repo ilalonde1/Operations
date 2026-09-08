@@ -24,6 +24,9 @@ public sealed class EveryPathHasExactlyOneFateTests
                 case PathReason.BecameSlab:
                     Assert.Same(path.Points, geometry.Slabs[fate.ObjectIndex!.Value]);
                     break;
+                case PathReason.BecameWall:
+                    Assert.Same(path.Points, geometry.Walls[fate.ObjectIndex!.Value].Outline);
+                    break;
                 case PathReason.BecameColumnByDeclaredSize:
                 case PathReason.BecameColumnByShape:
                     Assert.Equal(PolygonProcessor.Centroid(path.Points), geometry.Columns[fate.ObjectIndex!.Value]);
@@ -62,7 +65,7 @@ public sealed class EveryPathHasExactlyOneFateTests
         {
             var expected = reason switch
             {
-                PathReason.BecameSlab or PathReason.BecameColumnByDeclaredSize or PathReason.BecameColumnByShape => Disposition.Read,
+                PathReason.BecameSlab or PathReason.BecameColumnByDeclaredSize or PathReason.BecameColumnByShape or PathReason.BecameWall => Disposition.Read,
                 PathReason.EmittedAsLine => Disposition.Unaccounted,
                 _ => Disposition.Discarded,
             };
@@ -112,7 +115,8 @@ internal static class FateFixture
         (Rect(600, 600) with { IsFilled = false, IsStroked = true, Color = (0, 0, 0) }, PathReason.UnfilledSmallShape),
         (Rect(250, 1000), PathReason.ColumnAspect),
         (Line(0, 0, 100, 0), PathReason.TooShort),
-        (Rect(2000, 1000), PathReason.TooShort),
+        (Rect(2000, 1000), PathReason.BecameWall),
+        (Rect(2000, 1600), PathReason.TooShort),
         (Line(0, 0, 0, 0) with { Points = [] }, PathReason.TooFewPoints),
         (Line(0, 0, 0, 0) with { Points = [(0, 0)] }, PathReason.TooFewPoints),
         // Markup bypasses furniture, paper, frame, minimum-size and aspect rules.

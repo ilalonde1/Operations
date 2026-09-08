@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Kor.Operations.EngineeringTools.Intake;
+using Kor.Operations.EngineeringTools.Dxf;
 
 namespace Kor.Operations.EngineeringTools.PdfToSafe
 {
@@ -27,6 +28,13 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             int min = Math.Min(c.R, Math.Min(c.G, c.B));
             return (max - min) <= 0x20 && max <= 0xC0;
         }
+
+        /// <summary>
+        /// Half an inch of slack on the wall limits, the DXF side's own allowance: a wall drawn at
+        /// exactly 4" or exactly 48" measures a hair under after the export's arithmetic, and a
+        /// limit is a statement about walls, not about floating point.
+        /// </summary>
+        private const double WallLimitSlackMm = 12.7;
 
         /// <summary>
         /// How much longer than it is wide a closed shape may be and still be a column.
@@ -84,7 +92,11 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             double columnMinDimMm = 200.0,
             double maxColumnAspect = DefaultMaxColumnAspect,
             SheetFurniture.Set? furniture = null,
-            IList<PathFate>? fates = null)
+            IList<PathFate>? fates = null,
+            double minWallThicknessMm = PdfIntakeOptions.DefaultMinWallThicknessMm,
+            double maxWallThicknessMm = PdfIntakeOptions.DefaultMaxWallThicknessMm,
+            double minWallLengthMm = PdfIntakeOptions.DefaultMinWallLengthMm,
+            double minWallAspect = PdfIntakeOptions.DefaultMinWallAspect)
         {
             double gridThreshMm = Math.Max(pageWidthMm, pageHeightMm) * 0.6;
             furniture ??= SheetFurniture.Set.Empty;
@@ -159,6 +171,33 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         result.ColumnSizes.Add((bboxW, bboxH));
                         Fate(PathReason.BecameColumnByDeclaredSize, result.Columns.Count - 1);
                         continue;
+                    }
+
+                    // A WALL IS A FILLED RECTANGLE OF WALL PROPORTIONS. Declared columns win above.
+                    // The banked defaults are 4"-60" thick, at least 48" long, and aspect at least 2.
+                    // Measured 2026-09-08 on five sets: the candidates were four-vertex rectangles;
+                    // on 31168 their counts were within four of Revit's (intake convergence brief 15).
+                    if (!sub.IsAnnotation && sub.IsFilled)
+                    {
+                        var box = LoopGeometry.MinAreaBox(pts.Select(p => new DxfPoint(p.X, p.Y)).ToList());
+                        // Half an inch of slack on the limits, as the DXF side carries (its LengthSlack):
+                        // a wall drawn at exactly 4" or exactly 48" measures a hair under after the
+                        // export's arithmetic, and a limit is a statement about walls, not about
+                        // floating point.
+                        if (box.Thickness >= minWallThicknessMm - WallLimitSlackMm && box.Thickness <= maxWallThicknessMm + WallLimitSlackMm
+                            && box.Length >= minWallLengthMm - WallLimitSlackMm && box.Aspect >= minWallAspect)
+                        {
+                            if (pts.Count == 4)
+                            {
+                                result.Walls.Add(new WallPanel(pts,
+                                    (box.AxisStart.X, box.AxisStart.Y), (box.AxisEnd.X, box.AxisEnd.Y), box.Thickness));
+                                result.WallColors.Add(color);
+                                result.WallIsAnnotation.Add(false);
+                                Fate(PathReason.BecameWall, result.Walls.Count - 1);
+                                continue;
+                            }
+                            if (pts.Count > 4) result.WallRibbonsNotSplit++;
+                        }
                     }
 
                     bool looksLikeColumn = bboxW <= columnMaxSizeMm && bboxH <= columnMaxSizeMm;

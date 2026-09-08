@@ -108,7 +108,7 @@ public sealed class AJobCanStateHowItIsDrawnTests
     [Fact]
     public void EverySettingIsDiscoverableByItsKey()
     {
-        Assert.Equal(7, PdfIntakeOptions.SettingKeys.Count);
+        Assert.Equal(11, PdfIntakeOptions.SettingKeys.Count);
         Assert.All(PdfIntakeOptions.SettingKeys,
             k => Assert.StartsWith("dxf.", k, StringComparison.Ordinal));
     }

@@ -78,7 +78,7 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                 var pdfGeo = PdfPlanReader.Read(doc, scaleDenominator, hit.Page, options, annotationsOnly: false);
 
                 pairs.Add(new SheetPair(name, m.Value.ToUpperInvariant(), hit.Page, hit.Title,
-                    pdfGeo.Slabs.Count, pdfGeo.Columns.Count, pdfGeo.Lines.Count, 0,
+                    pdfGeo.Slabs.Count, pdfGeo.Columns.Count, pdfGeo.Lines.Count, pdfGeo.Walls.Count,
                     dxfGeo.Walls.Count, dxfGeo.Columns.Count, dxfGeo.Slabs.Count, dxfGeo.Openings.Count));
             }
             return new Result(pairs, unmatched, source);

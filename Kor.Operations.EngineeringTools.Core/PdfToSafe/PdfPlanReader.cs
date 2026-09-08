@@ -149,7 +149,9 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 result.PageWidthPts * scale, result.PageHeightPts * scale,
                 annotationsOnly,
                 options.ColumnMaxSizeMm, options.ColumnMinDimMm, options.ColumnMaxAspect,
-                Furniture(pageRead, scale, options.AgreementToleranceMm));
+                Furniture(pageRead, scale, options.AgreementToleranceMm),
+                minWallThicknessMm: options.MinWallThicknessMm, maxWallThicknessMm: options.MaxWallThicknessMm,
+                minWallLengthMm: options.MinWallLengthMm, minWallAspect: options.MinWallAspect);
 
             return result;
         }

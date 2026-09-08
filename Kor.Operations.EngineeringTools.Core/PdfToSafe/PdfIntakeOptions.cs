@@ -38,8 +38,18 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         double ColumnMinDimMm,
         double ColumnMaxAspect,
         double AgreementToleranceMm,
-        double AgreementLabelReachMm)
+        double AgreementLabelReachMm,
+        double MinWallThicknessMm = PdfIntakeOptions.DefaultMinWallThicknessMm,
+        double MaxWallThicknessMm = PdfIntakeOptions.DefaultMaxWallThicknessMm,
+        double MinWallLengthMm = PdfIntakeOptions.DefaultMinWallLengthMm,
+        double MinWallAspect = PdfIntakeOptions.DefaultMinWallAspect)
     {
+        // Shared KorStandards defaults, banked 2026-09-08: 4", 60", 48", aspect 2.
+        // The DXF compiled maximum is narrower (36"); use the banked 60" here.
+        public const double DefaultMinWallThicknessMm = 101.6;
+        public const double DefaultMaxWallThicknessMm = 1524.0;
+        public const double DefaultMinWallLengthMm = 1219.2;
+        public const double DefaultMinWallAspect = 2.0;
         /// <summary>The defaults, which are what the code did before any of this was settable.</summary>
         public static PdfIntakeOptions Default => new(
             SlabMinDiagonalMm:     PdfToSafeConstants.DefaultSlabMinDiagonalMm,
@@ -79,10 +89,18 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         /// rule name, two meanings, because one pipeline has layers and the other does not.
         /// </remarks>
         public const string SharedMaxColumnAspect = "dxf.max-column-aspect";
+        public const string SharedMinWallThickness = "dxf.min-wall-thickness";
+        public const string SharedMaxWallThickness = "dxf.max-wall-thickness";
+        public const string SharedMinWallLength = "dxf.min-wall-length";
+        public const string SharedMinWallAspect = "dxf.min-wall-aspect";
 
         public static IReadOnlyList<string> SettingKeys { get; } =
         [
             SharedMaxColumnAspect,
+            SharedMinWallThickness,
+            SharedMaxWallThickness,
+            SharedMinWallLength,
+            SharedMinWallAspect,
             $"{Prefix}.column-max-size-mm",
             $"{Prefix}.column-min-dim-mm",
             $"{Prefix}.slab-min-diagonal-mm",
@@ -99,6 +117,9 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             ArgumentNullException.ThrowIfNull(options);
             ArgumentNullException.ThrowIfNull(settings);
 
+            double WallMm(string key, double fallbackMm)
+                => settings.TryGetValue(key, out var setting) ? setting.Value * 25.4 : fallbackMm;
+
             return options with
             {
                 SlabMinDiagonalMm     = settings.ValueOr($"{Prefix}.slab-min-diagonal-mm", options.SlabMinDiagonalMm),
@@ -107,6 +128,10 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 ColumnMinDimMm        = settings.ValueOr($"{Prefix}.column-min-dim-mm", options.ColumnMinDimMm),
                 // shape is shared; the size window is not — see the remarks on SharedMaxColumnAspect
                 ColumnMaxAspect       = settings.ValueOr(SharedMaxColumnAspect, options.ColumnMaxAspect),
+                MinWallThicknessMm    = WallMm(SharedMinWallThickness, options.MinWallThicknessMm),
+                MaxWallThicknessMm    = WallMm(SharedMaxWallThickness, options.MaxWallThicknessMm),
+                MinWallLengthMm       = WallMm(SharedMinWallLength, options.MinWallLengthMm),
+                MinWallAspect         = settings.ValueOr(SharedMinWallAspect, options.MinWallAspect),
                 AgreementToleranceMm  = settings.ValueOr($"{Prefix}.agreement-tolerance-mm", options.AgreementToleranceMm),
                 AgreementLabelReachMm = settings.ValueOr($"{Prefix}.agreement-label-reach-mm", options.AgreementLabelReachMm),
             };

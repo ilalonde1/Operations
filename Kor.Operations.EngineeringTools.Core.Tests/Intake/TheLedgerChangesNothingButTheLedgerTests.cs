@@ -6,7 +6,8 @@ namespace Kor.Operations.EngineeringTools.Core.Tests.Intake;
 
 /// <summary>
 /// Compares Classify with and without fate recording: ordered slab/line vertices, column centroids
-/// and sizes, colours, annotation flags, drop-panel candidates, section hints, text and page metadata.
+/// and sizes, wall outlines/axes/thicknesses, ribbon count, colours, annotation flags, drop-panel
+/// candidates, section hints, text and page metadata.
 /// Does not compare PDF parsing, schedule interpretation, DXF bytes or any real drawing baseline.
 /// A changed parser closure tolerance, or a threshold wrong in BOTH runs, would not be caught here.
 /// </summary>
@@ -31,7 +32,7 @@ public sealed class TheLedgerChangesNothingButTheLedgerTests
     [Fact]
     public void DropPanelCandidatesAreAlsoUnchanged()
     {
-        var paths = new[] { FateFixture.Rect(1600, 300) };
+        var paths = new[] { FateFixture.Rect(1600, 300) with { IsAnnotation = true } };
         var without = FateFixture.Classify(paths, null, slabMinimum: 1000);
         var with = FateFixture.Classify(paths.Select(p => p with { Points = p.Points.ToList() }).ToList(),
             new List<PathFate>(), slabMinimum: 1000);
@@ -49,6 +50,17 @@ public sealed class TheLedgerChangesNothingButTheLedgerTests
         Points(expected.Slabs, actual.Slabs);
         Points(expected.Lines, actual.Lines);
         Points(expected.DropPanelCandidates, actual.DropPanelCandidates);
+        Assert.Equal(expected.Walls.Count, actual.Walls.Count);
+        for (int i = 0; i < expected.Walls.Count; i++)
+        {
+            Assert.Equal(expected.Walls[i].Outline.ToArray(), actual.Walls[i].Outline.ToArray());
+            Assert.Equal(expected.Walls[i].Start, actual.Walls[i].Start);
+            Assert.Equal(expected.Walls[i].End, actual.Walls[i].End);
+            Assert.Equal(expected.Walls[i].ThicknessMm, actual.Walls[i].ThicknessMm);
+        }
+        Assert.Equal(expected.WallColors.ToArray(), actual.WallColors.ToArray());
+        Assert.Equal(expected.WallIsAnnotation.ToArray(), actual.WallIsAnnotation.ToArray());
+        Assert.Equal(expected.WallRibbonsNotSplit, actual.WallRibbonsNotSplit);
         Assert.Equal(expected.Columns.ToArray(), actual.Columns.ToArray());
         Assert.Equal(expected.ColumnSizes.ToArray(), actual.ColumnSizes.ToArray());
         Assert.Equal(expected.SlabColors.ToArray(), actual.SlabColors.ToArray());

@@ -14,6 +14,7 @@ public enum PathReason
     /// </summary>
     CollapsedByThinning,
     NoInk,
+    BecameWall,
 }
 
 /// <summary>Input path index and its decision; ObjectIndex is zero-based in the corresponding geometry list.</summary>
@@ -21,7 +22,7 @@ public sealed record PathFate(int PathIndex, Disposition Disposition, PathReason
 {
     public static Disposition DispositionOf(PathReason reason) => reason switch
     {
-        PathReason.BecameSlab or PathReason.BecameColumnByDeclaredSize or PathReason.BecameColumnByShape
+        PathReason.BecameSlab or PathReason.BecameColumnByDeclaredSize or PathReason.BecameColumnByShape or PathReason.BecameWall
             => Disposition.Read,
         PathReason.EmittedAsLine => Disposition.Unaccounted,
         PathReason.MarkupOnlyMode or PathReason.FurnitureRegion or PathReason.GridAxis or PathReason.Underline

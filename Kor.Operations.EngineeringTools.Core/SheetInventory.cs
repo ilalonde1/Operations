@@ -76,7 +76,9 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                 Note("no-ink paths (clip or invisible) the classifier emitted as slabs, columns or lines", noInkEmitted,
                     noInkEmitted > 0 ? Disposition.Unaccounted : Disposition.Read,
                     noInkEmitted > 0 ? "a path that draws nothing became geometry; the invisible-ink rule covers paper FILLS only" : "none");
-                Note("emitted: walls", 0, Disposition.Unread, "no wall reader on the PDF side");
+                Note("emitted: walls", record.Geometry.Walls.Count, Disposition.Read, "GeometryFilterService");
+                Note("filled wall-thickness shapes with more than four vertices — ribbons, not split",
+                    record.Geometry.WallRibbonsNotSplit, Disposition.Unread, "GeometryFilterService: retained with their existing fate");
                 Note("emitted: footings as objects", 0, Disposition.Unread, "FootingScheduleReader counts placements; nothing is emitted");
                 if (record.ColumnAgreement is { } check)
                 {

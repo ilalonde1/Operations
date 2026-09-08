@@ -60,25 +60,27 @@ public sealed class FiveStickFilesTests
     private sealed record Job(
         string Number, int Scale, int FootingCy, string FootingMarks,
         int SchedulePage, string ColumnMarks, string WallRows,
-        IReadOnlyDictionary<int, int> CoverFloors);
+        IReadOnlyDictionary<int, int> CoverFloors,
+        // Schedule-page wall count is banked by the verifier; 0 is an unbanked slot, not a measured count.
+        int WallCount = 0);
 
     private static readonly Job[] Jobs =
     {
         new("31130-01", 96, 258, "F1,F2,F3,F4,SF1", 11,
             "PC1,PC2,PC4,PC5,PC6,PC7,PC8", "SWA:12:35,SWB:12:45,SWC:12:45,SWD:16:55",
-            new Dictionary<int, int> { [11] = 14, [12] = 25, [13] = 41 }),
+            new Dictionary<int, int> { [11] = 14, [12] = 25, [13] = 41 }, WallCount: 11),
         new("31168-01", 96, 0, "", 11,
             "C02-A,C02-B,C03-A,C03-B,C04-A,C04-B,GC11-C,PC01,PC02,PC03-A,PC03-B,TC01,TC02,TC03,TC04", "SWA:12:35,SWB:12:45,SWC:12:45,SWD:16:55",
-            new Dictionary<int, int> { [11] = 43, [12] = 65, [13] = 47 }),
+            new Dictionary<int, int> { [11] = 43, [12] = 65, [13] = 47 }, WallCount: 25),
         new("31138-01", 96, 353, "F1,F2,SF1,SF2", 9,
             "PC1,PC1A,PC2,PC3,PC3A,PC4,PC5,PC6,PC7,PC8,PC9,PL1,PL2", "SWA:8:35",
-            new Dictionary<int, int> { [9] = 24, [11] = 21 }),
+            new Dictionary<int, int> { [9] = 24, [11] = 21 }, WallCount: 41),
         new("31065-01", 100, 1174, "F1,F2,F3,F4,SF1,SF2", 14,
             "PC1,PC1A,PC2,PC3,PC4,PC5,ZC1,ZC2", "SWA:8:35,SWB:8:35,SWC:24:45",
-            new Dictionary<int, int> { [14] = 24, [15] = 22, [16] = 30 }),
+            new Dictionary<int, int> { [14] = 24, [15] = 22, [16] = 30 }, WallCount: 36),
         new("31202-01", 96, 0, "", 17,
             "1,2,3,4,5,6,7,8", "",
-            new Dictionary<int, int> { [17] = 23 }),
+            new Dictionary<int, int> { [17] = 23 }, WallCount: 19),
     };
 
     public static IEnumerable<object[]> JobNumbers() => Jobs.Select(j => new object[] { j.Number });
@@ -183,6 +185,25 @@ public sealed class FiveStickFilesTests
                                                   || f.Reason == Kor.Operations.EngineeringTools.Intake.PathReason.BecameColumnByDeclaredSize),
                 $"{number} p{pageNo}: no path became a column, on a page the self-check banks columns for");
         }
+    }
+
+    /// <summary>
+    /// The walls the intake reads off each job's schedule page, banked 2026-09-08 from the census of
+    /// the thirteen baseline DXFs after brief 15 (31130 p11 11, 31168 p11 25, 31138 p9 41, 31065 p14
+    /// 36, 31202 p17 19). Exact, not a floor: a wall count that moves either way is a change in what
+    /// the classifier calls a wall, and the commit that moves it says why.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(JobNumbers))]
+    public void WallsOnTheSchedulePageAreTheBankedCount(string number)
+    {
+        var job = JobNamed(number);
+        var (options, _) = PdfIntakeOptions.For(null);
+        var geo = PdfPlanReader.Read(PdfOf(job), job.Scale, job.SchedulePage, options, annotationsOnly: false);
+        Assert.True(job.WallCount == geo.Walls.Count,
+            $"{number} p{job.SchedulePage}: {geo.Walls.Count} walls read, {job.WallCount} banked");
+        Assert.All(geo.Walls, w => Assert.True(w.ThicknessMm >= options.MinWallThicknessMm - 12.7 && w.ThicknessMm <= options.MaxWallThicknessMm + 12.7,
+            $"{number}: a wall {w.ThicknessMm:0} mm thick is outside the banked limits"));
     }
 
     [Theory]

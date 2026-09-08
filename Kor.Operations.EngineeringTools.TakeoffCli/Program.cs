@@ -118,7 +118,7 @@ if (args.Length >= 1 && args[0].Equals("pdf-takeoff", StringComparison.OrdinalIg
     Console.WriteLine($"{Path.GetFileName(ptPdf)}  1:{ptScale}  pages {ptFirst}-{ptLast}  " +
                       $"reading {(ptMarkup ? "MARKUP only" : "the drawing")}  rules: {ptRulesSource}");
     Console.WriteLine();
-    Console.WriteLine("page   raw  annot   slabs  columns   lines   file");
+    Console.WriteLine("page   raw  annot   slabs  columns   walls   lines   file");
 
     using var ptDoc = UglyToad.PdfPig.PdfDocument.Open(ptPdf);
     var ptFacts = DocumentFacts.From(ptDoc);
@@ -132,7 +132,7 @@ if (args.Length >= 1 && args[0].Equals("pdf-takeoff", StringComparison.OrdinalIg
 
         var geo = record.Geometry;
         int annot = record.Context.AnnotationPaths;
-        int found = geo.Slabs.Count + geo.Columns.Count + geo.Lines.Count;
+        int found = geo.Slabs.Count + geo.Columns.Count + geo.Walls.Count + geo.Lines.Count;
         string file = "";
         if (found > 0)
         {
@@ -159,7 +159,7 @@ if (args.Length >= 1 && args[0].Equals("pdf-takeoff", StringComparison.OrdinalIg
                 agree += $"; unplaced {string.Join(",", check.MarksDeclaredButNeverFound)}";
         }
 
-        Console.WriteLine($"{p,4} {geo.RawPathCount,5}  {annot,5}   {geo.Slabs.Count,5}  {geo.Columns.Count,7}   {geo.Lines.Count,5}   {file}{agree}");
+        Console.WriteLine($"{p,4} {geo.RawPathCount,5}  {annot,5}   {geo.Slabs.Count,5}  {geo.Columns.Count,7}   {geo.Walls.Count,5}   {geo.Lines.Count,5}   {file}{agree}");
     }
 
     Console.WriteLine();
@@ -298,6 +298,7 @@ if (args.Length >= 1 && args[0].Equals("pdf-overlay", StringComparison.OrdinalIg
     var grey = new Rgba32(110, 110, 110); var blue = new Rgba32(30, 70, 220); var red = new Rgba32(220, 40, 40); var green = new Rgba32(0, 160, 60);
     foreach (var line in ovGeo.Lines) OvPoly(line, red, 0, close: false);
     foreach (var slab in ovGeo.Slabs) OvPoly(slab, grey, 1, close: true);
+    foreach (var wall in ovGeo.Walls) OvPoly(wall.Outline, new Rgba32(130, 0, 0), 2, close: true);
     for (int i = 0; i < ovGeo.Columns.Count; i++)
     {
         var (cx, cy) = ovGeo.Columns[i];
@@ -317,7 +318,7 @@ if (args.Length >= 1 && args[0].Equals("pdf-overlay", StringComparison.OrdinalIg
     Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(ovOut)) ?? ".");
     ovImg.SaveAsPng(ovOut);
     Console.WriteLine($"{Path.GetFileName(ovPdf)} p{ovPage} 1:{ovScale} @ {ovDpi} dpi → {ovOut}");
-    Console.WriteLine($"  slabs {ovGeo.Slabs.Count} (grey)   columns {ovGeo.Columns.Count} (blue)   lines {ovGeo.Lines.Count} (red)   mark-shaped words {marks} (green)   walls: none — the PDF side has no wall reader");
+    Console.WriteLine($"  slabs {ovGeo.Slabs.Count} (grey)   columns {ovGeo.Columns.Count} (blue)   walls {ovGeo.Walls.Count} (dark red)   lines {ovGeo.Lines.Count} (red)   mark-shaped words {marks} (green)");
     return 0;
 }
 
@@ -347,19 +348,20 @@ if (args.Length >= 1 && args[0].Equals("pdf-vs-dxf", StringComparison.OrdinalIgn
     // all, so the comparison is per SHEET: one PDF page against the sum of its views.
     var bySheet = vd.Pairs.GroupBy(p => p.SheetNumber, StringComparer.OrdinalIgnoreCase)
         .Select(g => (Sheet: g.Key, Page: g.First().Page, Title: g.First().PageTitle, Views: g.Count(),
-                      PdfSlabs: g.First().PdfSlabs, PdfCols: g.First().PdfColumns, PdfLines: g.First().PdfLines,
+                      PdfSlabs: g.First().PdfSlabs, PdfCols: g.First().PdfColumns, PdfLines: g.First().PdfLines, PdfWalls: g.First().PdfWalls,
                       DxfWalls: g.Sum(p => p.DxfWalls), DxfCols: g.Sum(p => p.DxfColumns), DxfSlabs: g.Sum(p => p.DxfSlabs), DxfOpenings: g.Sum(p => p.DxfOpenings)))
         .OrderBy(s => s.Page).ToList();
     Console.WriteLine("sheet      page views  title                 |  PDF: slabs  cols  lines  walls |  DXF: walls  cols  slabs  openings |  cols Δ");
     foreach (var s in bySheet)
     {
         string title = s.Title.Length > 20 ? s.Title[..20] : s.Title;
-        Console.WriteLine($"{s.Sheet,-10} {s.Page,4} {s.Views,5}  {title,-20} |  {s.PdfSlabs,10} {s.PdfCols,5} {s.PdfLines,6} {0,6} |  {s.DxfWalls,10} {s.DxfCols,5} {s.DxfSlabs,6} {s.DxfOpenings,9} |  {s.PdfCols - s.DxfCols,+6}");
+        Console.WriteLine($"{s.Sheet,-10} {s.Page,4} {s.Views,5}  {title,-20} |  {s.PdfSlabs,10} {s.PdfCols,5} {s.PdfLines,6} {s.PdfWalls,6} |  {s.DxfWalls,10} {s.DxfCols,5} {s.DxfSlabs,6} {s.DxfOpenings,9} |  {s.PdfCols - s.DxfCols,+6}");
     }
     Console.WriteLine();
     int colsAgree = bySheet.Count(s => s.PdfCols == s.DxfCols);
+    int wallsWithinTwo = bySheet.Count(s => Math.Abs(s.PdfWalls - s.DxfWalls) <= 2);
     Console.WriteLine($"{bySheet.Count} sheet(s) matched from {vd.Pairs.Count} DXF view(s); {vd.Unmatched.Count} DXF file(s) with no PDF page (kept views carry no sheet number).");
-    Console.WriteLine($"Totals over matched sheets — PDF: slabs {bySheet.Sum(s => s.PdfSlabs)}, columns {bySheet.Sum(s => s.PdfCols)}, walls 0  |  " +
+    Console.WriteLine($"Totals over matched sheets — PDF: slabs {bySheet.Sum(s => s.PdfSlabs)}, columns {bySheet.Sum(s => s.PdfCols)}, walls {bySheet.Sum(s => s.PdfWalls)} (within two of the DXF on {wallsWithinTwo} of {bySheet.Count} sheets)  |  " +
                       $"DXF: walls {bySheet.Sum(s => s.DxfWalls)}, columns {bySheet.Sum(s => s.DxfCols)}, slabs {bySheet.Sum(s => s.DxfSlabs)}  |  " +
                       $"column counts equal on {colsAgree} of {bySheet.Count} sheets");
     foreach (var u in vd.Unmatched.Take(12)) Console.WriteLine($"  unmatched: {u}");

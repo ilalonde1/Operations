@@ -58,6 +58,12 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 double w = PolygonProcessor.PathLength(pts); var (pcx, pcy) = PolygonProcessor.Centroid(pts);
                 sumX += pcx * w; sumY += pcy * w; totalWeight += w;
             }
+            foreach (var wall in geometry.Walls)
+            {
+                var pts = wall.Outline.ToList();
+                double w = PolygonProcessor.PathLength(pts); var (pcx, pcy) = PolygonProcessor.Centroid(pts);
+                sumX += pcx * w; sumY += pcy * w; totalWeight += w;
+            }
             if (totalWeight == 0.0) return;
             double cx = sumX / totalWeight;
             double cy = sumY / totalWeight;
@@ -86,6 +92,9 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             }
 
             var xSlabs = new List<List<(double X, double Y)>>();
+            var xWalls = new List<List<(double X, double Y)>>();
+            var xWallColours = new List<(byte R, byte G, byte B)>();
+            var xWallMarkup = new List<bool>();
             var xLines = new List<List<(double X, double Y)>>();
             // Parallel to xLines: was this line wall-hinted?
             var xLineIsWall = new List<bool>();
@@ -143,6 +152,18 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 }
             }
 
+            for (int i = 0; i < geometry.Walls.Count; i++)
+            {
+                if (excludedColors != null && i < geometry.WallColors.Count && excludedColors.Contains(geometry.WallColors[i])) continue;
+                var pts = FilterPts(Ctr(geometry.Walls[i].Outline.ToList()));
+                if (pts.Count >= 3)
+                {
+                    xWalls.Add(pts);
+                    xWallColours.Add(i < geometry.WallColors.Count ? geometry.WallColors[i] : black);
+                    xWallMarkup.Add(i < geometry.WallIsAnnotation.Count && geometry.WallIsAnnotation[i]);
+                }
+            }
+
             var xText = new List<(string Text, double X, double Y, double HeightMm)>();
             foreach (var annotation in geometry.TextAnnotations)
             {
@@ -160,6 +181,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 if (ey < bMinY) bMinY = ey; if (ey > bMaxY) bMaxY = ey;
             }
             foreach (var s in xSlabs) foreach (var (ex, ey) in s) Expand(ex, ey);
+            foreach (var wall in xWalls) foreach (var (ex, ey) in wall) Expand(ex, ey);
             foreach (var l in xLines) foreach (var (ex, ey) in l) Expand(ex, ey);
             foreach (var (ex, ey) in xColumns) Expand(ex, ey);
             if (bMinX > bMaxX) { bMinX = -1000; bMaxX = 1000; bMinY = -1000; bMaxY = 1000; }
@@ -328,6 +350,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 for (int i = 0; i < xSlabColours.Count; i++) Note(xSlabColours[i], xSlabMarkup[i]);
                 for (int i = 0; i < xColumnColours.Count; i++) Note(xColumnColours[i], xColumnMarkup[i]);
                 for (int i = 0; i < xLineColours.Count; i++) Note(xLineColours[i], xLineMarkup[i]);
+                for (int i = 0; i < xWallColours.Count; i++) Note(xWallColours[i], xWallMarkup[i]);
             }
 
             bool hasText = xText.Count > 0;
@@ -381,6 +404,15 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         : StructuralLayer(StructuralBaseLayer("SLAB", xSlabColours[i]), xSlabMarkup[i]),
                     NearestAci(xSlabColours[i]),
                     xSlabs[i],
+                    true);
+
+            for (int i = 0; i < xWalls.Count; i++)
+                WritePolyline(
+                    layerByColour
+                        ? ColourLayer(xWallColours[i], xWallMarkup[i])
+                        : StructuralLayer(StructuralBaseLayer("WALL", xWallColours[i]), xWallMarkup[i]),
+                    NearestAci(xWallColours[i]),
+                    xWalls[i],
                     true);
 
             // Columns: footprint rectangles from the parallel xColumnSizes list.
