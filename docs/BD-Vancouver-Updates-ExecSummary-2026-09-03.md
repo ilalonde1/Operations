@@ -43,13 +43,4 @@
 - **Conor:** Graham night, and find two more invites. Press Lauren Macaulay at Arcadis Kelowna for the three developer introductions. Follow Stefan Hertel, who has left Mission Group, to wherever he lands.
 - **Ian:** Build the architect target list and talking points. Keep the events list. Recon on the Port Authority. Send Rory the Island intel and the Continuum contacts. Draft the conversions blurb. Get Jim onto the app and set Omar up as gatekeeper. This recap.
 
-## Unknowns
-
-Four things from the call not yet pinned down. A one-line reply from the owner closes each.
-
-- **Jim:** Ben Smith's company; recorded as "BAM", not found under that name.
-- **Rory:** Ike's surname at Perkins&Will.
-- **Omar:** the Colliers contact's name, and whether she is at Colliers Project Leaders or Colliers International.
-- **Conor:** where Stefan Hertel went after Mission Group, and the name of the townhouse project we lost.
-
 *Full synopsis with contacts, org history and the app's existing records: see Ian.*

@@ -87,12 +87,14 @@ Distilled from what the room asked for or bumped into, not from what I would lik
 10. **Service-line tags.** Seismic assessment, peer review, value engineering, TI seismic restraint, wood frame, steel stud. Tag opportunities and orgs by what we could sell them, so "who needs an S3 assessment" is a query.
 11. **Brain hygiene found while checking this meeting** (all live, all visible in the integrity report's duplicate classes): DIALOG in 9 rows, Beedie in 8, BCIT in 4, Vancouver Fraser Port Authority in 3 (Developer and Buyer twins), WHM in 2, MCM in 2, PHSA in 2, and **KPL James Architecture (#54444) still live beside Continuum Architecture (#927758)**, which is its 2020 rebrand. People: Mike Alivojvodic ×3 rows, Jeremy Beintema ×2. Missing entirely: NDY, BAM; Colliers Project Leaders is Kinded *Architect*. Missing people: Thomas Lee, Principal or Associate Principal depending on the source (GBL); Giovanni Gunawan, Development Manager (Aquilini Development); Gregory Eeman, architect (Continuum); Peter Odegaard, Partner (MCM); Fred Lin, Development Manager (Rize); Luciano Siffredi, Project Architect (Perkins&Will); Robert Bosa (Bosa Properties founder); Ben Smith (BAM); Ike (P&W), Salim and Mariam (Arcadis), Brian Webster and Mike Balza (Solterra) unresolved. Add them through the enrichment path, not by hand. All of these are one `--create` or one `--pairs` batch each now that those paths exist.
 
-## 5. Unknowns — answer these before anyone acts on them
+## 5. Unknowns — CRM gaps for Ian to close one-to-one, not questions for the room
+
+None of these blocks an action. The three that matter for the records are Ben Smith's company (a KOR proposal is out to it: ask Jim), Ike's surname (ask Rory) and the Colliers contact's name (ask Omar). The rest are noted so nobody re-researches them.
 
 1. **Omar's Colliers contact:** her name, and whether she is at Colliers Project Leaders (#70132) or Colliers International (#5096).
 2. **Perkins&Will:** a surname for **Ike**, Rory's contact who did the "bonus" job; there is no Ike or Isaac among the 87 Vancouver staff on record, so it may be a nickname. And whether the principal JM remembers is **Ryan Bragg**.
 3. **JB's Bosa names:** confirm Robert is Robert Bosa (founder of Bosa Properties, Colin's father) and Dale is Dale Bosa (Colin's brother).
-4. **Stefan Hertel** (ex Development Manager, Mission Group): where he went. Conor: "maybe he'll take us with him wherever he ends up."
+4. **Stefan Hertel** (ex Development Manager, Mission Group): where he went. Conor's only words: "I lunched, and then Stefan left two weeks later, so that wasn't fun. Maybe he'll take us with him wherever he ends up." A passing remark, so Conor's follow-up, not a question for the room. Apollo on 7 Sept still shows Mission Group (since July 2024); before that Chard Development 2021–2024 and Wesgroup 2013–2021. The new firm is not public yet.
 5. **"Kent Arroyo" townhouses** (Conor, lost) and **"the turn"** (Islam, undecided): project or client names. Two re-listens could not recover the first; the second is said clearly as "the turn".
 6. **"Next Friday at 2"** (Ian, for Arcadis): a real slot or a joke; JM did not confirm.
 7. **"That thing you sent me"** (Omar to Ian): which item.
