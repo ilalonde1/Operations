@@ -13,6 +13,26 @@ using SixLabors.ImageSharp.Processing;
 /// </summary>
 internal static class PlanPdfRenderer
 {
+    /// <summary>
+    /// One page as an image at the dpi given, flattened onto white, for drawing an overlay on. The
+    /// caller owns the image. Pixel (0,0) is the page's top-left; a PDF point (x, y) with origin
+    /// bottom-left lands at (x · dpi/72, (H − y) · dpi/72).
+    /// </summary>
+    public static Image<Rgba32> RenderPage(string pdfPath, int page, double dpi)
+    {
+        double scaling = dpi / 72.0;
+        using var docReader = DocLib.Instance.GetDocReader(pdfPath, new PageDimensions(scaling));
+        using var pageReader = docReader.GetPageReader(page - 1);
+        int w = pageReader.GetPageWidth();
+        int h = pageReader.GetPageHeight();
+        byte[] bgra = pageReader.GetImage();
+        var img = Image.LoadPixelData<Bgra32>(bgra, w, h);
+        img.Mutate(c => c.BackgroundColor(Color.White));
+        var rgba = img.CloneAs<Rgba32>();
+        img.Dispose();
+        return rgba;
+    }
+
     public static int RenderMissing(string pdfPath, string pngDir, double dpi, int? firstPage, int? lastPage)
     {
         Directory.CreateDirectory(pngDir);

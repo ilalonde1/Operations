@@ -30,7 +30,8 @@ enforces that the list is complete).
   are gates, not advice. Rules 1 (search first), 5 (verify the artefact), 9 (data local, one
   harness, LOOK at the output) and 12 (a truncated command cannot support a claim about the whole)
   are the ones this pipeline keeps needing.
-- **`tools/Measure-StickFileSchedules.ps1` is the one command that measures every intake
+- **`FiveStickFilesTests` (Core.Tests, `Speed=Slow`; the C# port of the retired
+  `tools/Measure-StickFileSchedules.ps1`, 2026-09-08) is the one command that measures every intake
   deliverable** on the five local stick files: footing totals and mark sets, column mark sets and
   the route each was read by, wall marks, and the plan-against-schedule self-check per page. Run
   it before and after any reader change. It is green at 50-odd checks; it states what it covers

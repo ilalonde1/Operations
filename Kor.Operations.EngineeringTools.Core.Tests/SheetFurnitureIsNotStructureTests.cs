@@ -31,7 +31,7 @@ namespace Kor.Operations.EngineeringTools.Core.Tests;
 ///
 /// WHAT IT DOES NOT: notes, legends and key plans that are not ruled tables — they still read as
 /// lines; a sheet with no readable sheet number, which keeps its title block; and whether the
-/// numbers on the real sheets hold, which is tools/Measure-StickFileSchedules.ps1's job. A fault
+/// numbers on the real sheets hold, which is FiveStickFilesTests' job. A fault
 /// it would NOT catch: a real column drawn with a white fill and NO stroke, which would vanish
 /// with the invisible ink — none of the five jobs draws one, and the invariant would be the first
 /// thing to move if a practice did.

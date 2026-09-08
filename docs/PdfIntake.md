@@ -84,8 +84,8 @@ All 294 pages are vector: 0 raster-only pages, text on every page, no PDF layers
 2. **Contracts per sheet type.** A plan sheet yields grid, walls, columns, slabs, openings, footings,
    marks with sizes, thickness call-outs, dimensions, callouts, scale and title. A schedule sheet
    yields its tables. A section yields levels and heights. A notes sheet yields materials and
-   design basis. Each contract is a banked check on the five sets in `tools/Measure-StickFileSchedules.ps1`
-   until it is C#.
+   design basis. Each contract is a banked check on the five sets in `FiveStickFilesTests`
+   (Core.Tests, `Speed=Slow`), which replaced the PowerShell harness on 2026-09-08.
 3. **Ground truth we already hold.** 31168 has both a stick-file PDF and a Revit DXF export of the same
    sheets. Per sheet, the PDF-derived DXF must carry the walls, columns and slabs the Revit DXF
    carries. That comparison needs no engineer and would have shown the missing WALL layer on day one.
@@ -97,3 +97,46 @@ All 294 pages are vector: 0 raster-only pages, text on every page, no PDF layers
 6. **Widen the population.** Five sets are a sample. The job folders on the share hold the stick files
    of the 1,126-model corpus; the ledger runs on all of them (filename search only, never a content
    walk over SMB).
+
+## 6. Step 0, done 2026-09-08: the instruments, and the starting numbers
+
+Three verbs in the compiled CLI and one test class, no product code changed:
+
+| Instrument | What it is | Run |
+|---|---|---|
+| `takeoff pdf-inventory` | the ledger: every word and path counted once under read / discarded / unread / ignored / unaccounted, plus context rows; `--json` banks it | `takeoff pdf-inventory <pdf> --scale 96 --json out.json` |
+| `takeoff pdf-overlay` | what was extracted drawn over the rasterised page: slabs grey, columns blue, leftover lines red, mark-shaped words green | `takeoff pdf-overlay <pdf> 11 out.png --scale 96` |
+| `takeoff pdf-vs-dxf` | the differential against ground truth we own: PDF-side reads against the Revit DXF of the same sheets, per sheet number | `takeoff pdf-vs-dxf <pdf> <dxfFolder> --scale 96` |
+| `FiveStickFilesTests` | the harness, in C#: footings, column marks and route, wall rows, coverage floors, mark-shaped unplaced; 20 checks over 5 jobs in 32 s; FAILS when the local mirror is missing | `dotnet test --filter FullyQualifiedName~FiveStickFilesTests` |
+
+**The ledger's starting numbers**, each word, path and sheet fact counted once (`%LOCALAPPDATA%\Temp\kor-drawings\harness\ledger-<job>.json`):
+
+| Set | Pages | Items | Read | Discarded | Unread | Ignored | Unaccounted |
+|---|---|---|---|---|---|---|---|
+| 31130-01 | 60 | 568,310 | 85,133 | 9,165 | 32,392 | 411 | 441,209 |
+| 31168-01 | 41 | 442,611 | 68,851 | 8,796 | 18,990 | 92,270 | 253,704 |
+| 31138-01 | 61 | 531,450 | 88,526 | 8,001 | 33,191 | 421 | 401,311 |
+| 31065-01 | 73 | 845,192 | 123,020 | 15,127 | 39,852 | 731 | 666,462 |
+| 31202-01 | 59 | 1,006,086 | 105,750 | 24,340 | 34,763 | 235 | 840,998 |
+
+Unaccounted is 57–84% of every set and is almost entirely one row: paths the classifier did not
+emit, which today mixes grid lines the furniture rule dropped with wall faces nothing read. Step 1
+splits that row per path; the number that must fall is Unaccounted first, then Unread.
+
+**What the instruments found on their first run**, none of it known before:
+
+- The scale reader reads the title-block scale on **79 of 294 pages**: 0 of 60 on 31130, 0 of 41 on
+  31168, 0 of 61 on 31138, 35 of 73 on 31065, 44 of 59 on 31202. The scale is printed on every one
+  of those sheets; the three sets it reads nothing from are the Bluebeam-stapled KOR sets.
+- 31130 and 31168 carry an outline tree (the sheet index) that PdfPig's bookmark reader returns
+  nothing for. 31138 has none; 31065 and 31202 read fine (73 and 59 entries).
+- Against 31168's Revit DXF, over the 24 issued sheets both sides hold: PDF walls **0**, DXF walls
+  **892**; PDF slabs **781**, DXF slabs **45**; column counts equal on 8 of 24 sheets, and within
+  six on every single-view sheet. The multi-view sheets (S2.21.1 and up) need the per-view split
+  before their column deltas mean anything.
+- The plan self-check's 14 of 42 on 31130 p11 is the label match, not the columns: the overlay
+  shows all 42 columns on the drawing's columns.
+
+**What step 0 does not do:** it changes no reader and moves no number. It cannot tell a dropped grid
+line from an unread wall face (step 1). The differential has no registration, so it counts and
+does not place. The ledger's word kinds are shape rules and "other" is 25,950 words on 31130 alone.

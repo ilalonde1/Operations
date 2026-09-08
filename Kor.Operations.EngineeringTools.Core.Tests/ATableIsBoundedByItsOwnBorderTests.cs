@@ -31,7 +31,7 @@ namespace Kor.Operations.EngineeringTools.Core.Tests;
 /// and that every row says which extent read it.
 ///
 /// WHAT IT DOES NOT COVER: it does not open a PDF, so it says nothing about how PdfPig delivers a
-/// table's linework — that is what tools/Measure-StickFileSchedules.ps1 measures on the five stick
+/// table's linework — that is what FiveStickFilesTests measures on the five stick
 /// files. It does not cover a table with no rules at all, which the band reads as before. And a
 /// fault it would NOT catch: two tables that share a border side by side with no vertical between
 /// them — their rows would read as one table's, correctly bounded and wrongly attributed.

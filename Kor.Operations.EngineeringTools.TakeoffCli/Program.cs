@@ -172,6 +172,204 @@ if (args.Length >= 1 && args[0].Equals("pdf-takeoff", StringComparison.OrdinalIg
     return ptWritten > 0 ? 0 : 3;
 }
 
+// THE LEDGER. Everything a page carries, by kind, and what the intake did with each kind: read,
+// discarded by a named rule, unread, ignored by design, or unaccounted. The unaccounted and unread
+// totals are the intake's backlog as a number. See SheetInventory for what it covers and does not.
+// Usage: takeoff pdf-inventory <pdf> [--pages A-B] [--scale N] [--rules-db <conn>] [--json out.json]
+if (args.Length >= 1 && args[0].Equals("pdf-inventory", StringComparison.OrdinalIgnoreCase))
+{
+    if (args.Length < 2) { Console.Error.WriteLine("Usage: takeoff pdf-inventory <pdf> [--pages A-B] [--scale N] [--rules-db <conn>] [--json out.json]"); return 1; }
+    string ivPdf = args[1];
+    if (!File.Exists(ivPdf)) { Console.Error.WriteLine($"PDF not found '{ivPdf}'."); return 2; }
+    int ivFirst = 1, ivLast = int.MaxValue; int? ivScale = null; string? ivRules = null, ivJson = null;
+    for (int i = 2; i < args.Length; i++)
+    {
+        string a = args[i];
+        if (a.Equals("--scale", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length && int.TryParse(args[++i], out int sc)) ivScale = sc;
+        else if (a.Equals("--rules-db", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) ivRules = args[++i];
+        else if (a.Equals("--json", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) ivJson = args[++i];
+        else if (a.Equals("--pages", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length)
+        {
+            string[] span = args[++i].Split('-', StringSplitOptions.RemoveEmptyEntries);
+            if (span.Length >= 1) int.TryParse(span[0], out ivFirst);
+            ivLast = span.Length >= 2 && int.TryParse(span[1], out int pl) ? pl : ivFirst;
+        }
+    }
+    var (ivOptions, ivRulesSource) = PdfIntakeOptions.For(ivRules);
+    using var ivDoc = UglyToad.PdfPig.PdfDocument.Open(ivPdf);
+    var facts = SheetInventory.Facts(ivDoc);
+    ivLast = Math.Min(ivLast, facts.Pages);
+    Console.WriteLine($"{Path.GetFileName(ivPdf)}  pages {ivFirst}-{ivLast} of {facts.Pages}  producer: {facts.Producer}  bookmarks: {facts.Bookmarks.Count}  " +
+                      $"scale: {(ivScale is int s ? $"1:{s}" : "none (geometry not classified)")}  rules: {ivRulesSource}");
+    Console.WriteLine();
+    Console.WriteLine("page  type               sheet                                      words   paths |    read  discard  unread  ignore  unacct");
+    var ledgers = new List<SheetInventory.SheetLedger>();
+    for (int p = ivFirst; p <= ivLast; p++)
+    {
+        SheetInventory.SheetLedger led;
+        try { led = SheetInventory.Of(ivDoc, p, ivScale, ivOptions, facts); }
+        catch (Exception ex) { Console.WriteLine($"{p,4}  FAILED {ex.GetType().Name}: {ex.Message}"); continue; }
+        ledgers.Add(led);
+        var t = SheetInventory.Totals(led.Rows);
+        string sheet = (led.BookmarkTitle ?? led.Title ?? "").Trim();
+        if (sheet.Length > 42) sheet = sheet[..42];
+        Console.WriteLine($"{p,4}  {led.SheetType,-18} {sheet,-42} {led.Words,6}  {led.Paths,6} | {t[SheetInventory.Disposition.Read],7}  {t[SheetInventory.Disposition.Discarded],7}  {t[SheetInventory.Disposition.Unread],6}  {t[SheetInventory.Disposition.Ignored],6}  {t[SheetInventory.Disposition.Unaccounted],6}");
+    }
+    Console.WriteLine();
+    var summary = SheetInventory.Summarise(ledgers);
+    var totals = SheetInventory.Totals(summary);
+    int grand = totals.Values.Sum();
+    Console.WriteLine($"DOCUMENT ({grand:N0} words + paths + facts, each counted once)  read {totals[SheetInventory.Disposition.Read]:N0}   discarded {totals[SheetInventory.Disposition.Discarded]:N0}   " +
+                      $"UNREAD {totals[SheetInventory.Disposition.Unread]:N0}   ignored {totals[SheetInventory.Disposition.Ignored]:N0}   UNACCOUNTED {totals[SheetInventory.Disposition.Unaccounted]:N0}" +
+                      (facts.OutlinesPresent && facts.Bookmarks.Count == 0 ? "   ⚠ the file has an outline tree PdfPig could not read" : ""));
+    Console.WriteLine();
+    foreach (var row in summary.Where(r => r.Primary && r.Count > 0))
+        Console.WriteLine($"  {row.Disposition,-11} {row.Count,9:N0}  {row.Class}  — {row.By}");
+    Console.WriteLine();
+    Console.WriteLine("Context (what the readers produced; not summed above):");
+    foreach (var row in summary.Where(r => !r.Primary && r.Count > 0))
+        Console.WriteLine($"  {row.Disposition,-11} {row.Count,9:N0}  {row.Class}  — {row.By}");
+    var notes = ledgers.SelectMany(l => l.Markup).ToList();
+    if (notes.Count > 0)
+    {
+        Console.WriteLine();
+        Console.WriteLine($"Annotation text ({notes.Count}), none of which reaches Core:");
+        foreach (var n in notes.Take(25)) Console.WriteLine($"  p{n.PageNumber,-3} {n.Type,-9} {n.Author,-10} {n.Text}");
+        if (notes.Count > 25) Console.WriteLine($"  … and {notes.Count - 25} more");
+    }
+    Console.WriteLine();
+    Console.WriteLine("Sheet types: " + string.Join(", ", ledgers.GroupBy(l => l.SheetType).OrderByDescending(g => g.Count()).Select(g => $"{g.Key} {g.Count()}")));
+    if (ivJson is not null)
+    {
+        File.WriteAllText(ivJson, JsonSerializer.Serialize(new { File = Path.GetFileName(ivPdf), facts.Producer, facts.Pages, Scale = ivScale, Ledgers = ledgers, Summary = summary },
+            new JsonSerializerOptions { WriteIndented = true }));
+        Console.WriteLine($"wrote {ivJson}");
+    }
+    return 0;
+}
+
+// OVERLAY what the intake extracted on the page it extracted it from, so a gap is seen rather than
+// counted: slabs grey, columns blue, leftover lines red, mark-shaped words green. The two pictures
+// that found the missing WALL layer on 2026-09-08 were made by hand; this is that picture in one verb.
+// Usage: takeoff pdf-overlay <pdf> <page> <out.png> --scale N [--dpi 40] [--rules-db <conn>]
+if (args.Length >= 1 && args[0].Equals("pdf-overlay", StringComparison.OrdinalIgnoreCase))
+{
+    if (args.Length < 4) { Console.Error.WriteLine("Usage: takeoff pdf-overlay <pdf> <page> <out.png> --scale N [--dpi 40] [--rules-db <conn>]"); return 1; }
+    string ovPdf = args[1], ovOut = args[3];
+    if (!File.Exists(ovPdf)) { Console.Error.WriteLine($"PDF not found '{ovPdf}'."); return 2; }
+    if (!int.TryParse(args[2], out int ovPage) || ovPage < 1) { Console.Error.WriteLine("Page must be a positive integer."); return 2; }
+    int ovScale = 0; double ovDpi = 40; string? ovRules = null;
+    for (int i = 4; i < args.Length; i++)
+    {
+        string a = args[i];
+        if (a.Equals("--scale", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) int.TryParse(args[++i], out ovScale);
+        else if (a.Equals("--dpi", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) double.TryParse(args[++i], NumberStyles.Float, CultureInfo.InvariantCulture, out ovDpi);
+        else if (a.Equals("--rules-db", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) ovRules = args[++i];
+    }
+    if (ovScale <= 0) { Console.Error.WriteLine("--scale <denominator> is required (1/8\" = 1'-0\" is 96); the overlay must not assume one."); return 2; }
+    var (ovOptions, _) = PdfIntakeOptions.For(ovRules);
+
+    var ovGeo = PdfPlanReader.Read(ovPdf, ovScale, ovPage, ovOptions, annotationsOnly: false);
+    var ovContent = VectorPageReader.ReadPage(ovPdf, ovPage);
+    using var ovImg = PlanPdfRenderer.RenderPage(ovPdf, ovPage, ovDpi);
+    double mmToPt = 1.0 / (ovScale * PdfToSafeConstants.PointsToMm);
+    double px = ovDpi / 72.0;
+    (int X, int Y) ToPixel(double xMm, double yMm) => ((int)Math.Round(xMm * mmToPt * px), (int)Math.Round((ovGeo.PageHeightPts - yMm * mmToPt) * px));
+    void OvPlot(int x, int y, Rgba32 c, int weight)
+    {
+        for (int dx = -weight; dx <= weight; dx++)
+            for (int dy = -weight; dy <= weight; dy++)
+            {
+                int xx = x + dx, yy = y + dy;
+                if (xx >= 0 && yy >= 0 && xx < ovImg.Width && yy < ovImg.Height) ovImg[xx, yy] = c;
+            }
+    }
+    void OvLine((int X, int Y) a, (int X, int Y) b, Rgba32 c, int weight)
+    {
+        int steps = Math.Max(1, Math.Max(Math.Abs(b.X - a.X), Math.Abs(b.Y - a.Y)));
+        for (int s = 0; s <= steps; s++)
+        {
+            double f = (double)s / steps;
+            OvPlot((int)Math.Round(a.X + (b.X - a.X) * f), (int)Math.Round(a.Y + (b.Y - a.Y) * f), c, weight);
+        }
+    }
+    void OvPoly(IReadOnlyList<(double X, double Y)> pts, Rgba32 c, int weight, bool close)
+    {
+        for (int i = 1; i < pts.Count; i++) OvLine(ToPixel(pts[i - 1].X, pts[i - 1].Y), ToPixel(pts[i].X, pts[i].Y), c, weight);
+        if (close && pts.Count > 2) OvLine(ToPixel(pts[^1].X, pts[^1].Y), ToPixel(pts[0].X, pts[0].Y), c, weight);
+    }
+    var grey = new Rgba32(110, 110, 110); var blue = new Rgba32(30, 70, 220); var red = new Rgba32(220, 40, 40); var green = new Rgba32(0, 160, 60);
+    foreach (var line in ovGeo.Lines) OvPoly(line, red, 0, close: false);
+    foreach (var slab in ovGeo.Slabs) OvPoly(slab, grey, 1, close: true);
+    for (int i = 0; i < ovGeo.Columns.Count; i++)
+    {
+        var (cx, cy) = ovGeo.Columns[i];
+        var (w, d) = i < ovGeo.ColumnSizes.Count ? ovGeo.ColumnSizes[i] : (0.0, 0.0);
+        if (w > 0 && d > 0)
+            OvPoly(new[] { (cx - w / 2, cy - d / 2), (cx + w / 2, cy - d / 2), (cx + w / 2, cy + d / 2), (cx - w / 2, cy + d / 2) }, blue, 1, close: true);
+        var c = ToPixel(cx, cy); OvPlot(c.X, c.Y, blue, 2);
+    }
+    int marks = 0;
+    foreach (var wd in ovContent.Words)
+    {
+        if (SheetInventory.KindOf(wd.Text) != "mark") continue;
+        marks++;
+        double sMm = ovScale * PdfToSafeConstants.PointsToMm;
+        OvPoly(new[] { (wd.MinX * sMm, wd.MinY * sMm), (wd.MaxX * sMm, wd.MinY * sMm), (wd.MaxX * sMm, wd.MaxY * sMm), (wd.MinX * sMm, wd.MaxY * sMm) }, green, 0, close: true);
+    }
+    Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(ovOut)) ?? ".");
+    ovImg.SaveAsPng(ovOut);
+    Console.WriteLine($"{Path.GetFileName(ovPdf)} p{ovPage} 1:{ovScale} @ {ovDpi} dpi → {ovOut}");
+    Console.WriteLine($"  slabs {ovGeo.Slabs.Count} (grey)   columns {ovGeo.Columns.Count} (blue)   lines {ovGeo.Lines.Count} (red)   mark-shaped words {marks} (green)   walls: none — the PDF side has no wall reader");
+    return 0;
+}
+
+// THE DIFFERENTIAL AGAINST GROUND TRUTH WE OWN. A job with both a stick-file PDF and a Revit DXF
+// export of the same sheets: sheet by sheet, what the PDF side emits against what the DXF side
+// reads from the same drawing. See PdfVersusDxf for what it covers and does not (position, yet).
+// Usage: takeoff pdf-vs-dxf <pdf> <dxfFolder> --scale N [--rules-db <conn>]
+if (args.Length >= 1 && args[0].Equals("pdf-vs-dxf", StringComparison.OrdinalIgnoreCase))
+{
+    if (args.Length < 3) { Console.Error.WriteLine("Usage: takeoff pdf-vs-dxf <pdf> <dxfFolder> --scale N [--rules-db <conn>]"); return 1; }
+    string vdPdf = args[1], vdFolder = args[2];
+    int vdScale = 0; string? vdRules = null;
+    for (int i = 3; i < args.Length; i++)
+    {
+        if (args[i].Equals("--scale", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) int.TryParse(args[++i], out vdScale);
+        else if (args[i].Equals("--rules-db", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) vdRules = args[++i];
+    }
+    if (vdScale <= 0) { Console.Error.WriteLine("--scale <denominator> is required (1/8\" = 1'-0\" is 96)."); return 2; }
+    var (vdOptions, vdRulesSource) = PdfIntakeOptions.For(vdRules);
+    PdfVersusDxf.Result vd;
+    try { vd = PdfVersusDxf.Compare(vdPdf, vdFolder, vdScale, vdOptions); }
+    catch (Exception ex) { Console.Error.WriteLine($"{ex.GetType().Name}: {ex.Message}"); return 2; }
+
+    Console.WriteLine($"{Path.GetFileName(vdPdf)} 1:{vdScale} vs {vdFolder}   page index from {vd.PageIndexSource}   PDF rules: {vdRulesSource}   DXF rules: compiled defaults in the drawing's unit");
+    Console.WriteLine();
+    // A Revit export writes several views per sheet (S2.22.1_1, _2, …) and the PDF page carries them
+    // all, so the comparison is per SHEET: one PDF page against the sum of its views.
+    var bySheet = vd.Pairs.GroupBy(p => p.SheetNumber, StringComparer.OrdinalIgnoreCase)
+        .Select(g => (Sheet: g.Key, Page: g.First().Page, Title: g.First().PageTitle, Views: g.Count(),
+                      PdfSlabs: g.First().PdfSlabs, PdfCols: g.First().PdfColumns, PdfLines: g.First().PdfLines,
+                      DxfWalls: g.Sum(p => p.DxfWalls), DxfCols: g.Sum(p => p.DxfColumns), DxfSlabs: g.Sum(p => p.DxfSlabs), DxfOpenings: g.Sum(p => p.DxfOpenings)))
+        .OrderBy(s => s.Page).ToList();
+    Console.WriteLine("sheet      page views  title                 |  PDF: slabs  cols  lines  walls |  DXF: walls  cols  slabs  openings |  cols Δ");
+    foreach (var s in bySheet)
+    {
+        string title = s.Title.Length > 20 ? s.Title[..20] : s.Title;
+        Console.WriteLine($"{s.Sheet,-10} {s.Page,4} {s.Views,5}  {title,-20} |  {s.PdfSlabs,10} {s.PdfCols,5} {s.PdfLines,6} {0,6} |  {s.DxfWalls,10} {s.DxfCols,5} {s.DxfSlabs,6} {s.DxfOpenings,9} |  {s.PdfCols - s.DxfCols,+6}");
+    }
+    Console.WriteLine();
+    int colsAgree = bySheet.Count(s => s.PdfCols == s.DxfCols);
+    Console.WriteLine($"{bySheet.Count} sheet(s) matched from {vd.Pairs.Count} DXF view(s); {vd.Unmatched.Count} DXF file(s) with no PDF page (kept views carry no sheet number).");
+    Console.WriteLine($"Totals over matched sheets — PDF: slabs {bySheet.Sum(s => s.PdfSlabs)}, columns {bySheet.Sum(s => s.PdfCols)}, walls 0  |  " +
+                      $"DXF: walls {bySheet.Sum(s => s.DxfWalls)}, columns {bySheet.Sum(s => s.DxfCols)}, slabs {bySheet.Sum(s => s.DxfSlabs)}  |  " +
+                      $"column counts equal on {colsAgree} of {bySheet.Count} sheets");
+    foreach (var u in vd.Unmatched.Take(12)) Console.WriteLine($"  unmatched: {u}");
+    if (vd.Unmatched.Count > 12) Console.WriteLine($"  … and {vd.Unmatched.Count - 12} more");
+    return 0;
+}
+
 // RENDER a plan's structural layers to an image, so what the drawing contains can be seen
 // rather than inferred. Walls red, columns blue, slab edges grey.
 // Usage: takeoff dxf-render <plan.dxf> <out.png> [--size 1800] [--layers A,B] [--window x0,y0,x1,y1 (feet)]
@@ -4019,6 +4217,9 @@ public static class TakeoffCliHelp
     [
         new("pdf-readable", "takeoff pdf-readable <pdf> [first] [last]", "Check whether a PDF has readable vector text."),
         new("pdf-takeoff", "takeoff pdf-takeoff <pdf> <out.dxf> [--page N] [--pages A-B] [--scale 96] [--markup] [--kor-layers] [--rules-db <conn>]", "Take a drawing PDF's structure off to DXF, reading the drawing itself unless --markup."),
+        new("pdf-inventory", "takeoff pdf-inventory <pdf> [--pages A-B] [--scale N] [--rules-db <conn>] [--json out.json]", "Ledger every content class on each page: read, discarded, unread, ignored, unaccounted."),
+        new("pdf-overlay", "takeoff pdf-overlay <pdf> <page> <out.png> --scale N [--dpi 40] [--rules-db <conn>]", "Draw what the intake extracted over the rasterised page."),
+        new("pdf-vs-dxf", "takeoff pdf-vs-dxf <pdf> <dxfFolder> --scale N [--rules-db <conn>]", "Compare the PDF side's reads against a Revit DXF export of the same sheets."),
         new("dxf-render", "takeoff dxf-render <plan.dxf> <out.png> [--size 1800] [--layers SLABEDG,...]", "Render structural DXF layers to a PNG."),
         new("dxf-inspect", "takeoff dxf-inspect <plan.dxf> [--walls] [--plates]", "Inspect DXF layers, loops, wall outlines, and recovered floor plates."),
         new("publish", "takeoff publish <job> [--model-folder <folder>] [--dxf-folder <folder>] [--rules-db <c>] [--per-building] [--land]", "Discover, build, verify, summarize, gate and land a DXF-to-ETABS publish."),
