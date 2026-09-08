@@ -98,7 +98,8 @@
                         </Grid.ColumnDefinitions>
                         <TextBlock Text="Sheet #" VerticalAlignment="Center" FontWeight="SemiBold"/>
                         <TextBox Grid.Column="1" x:Name="SheetNumberBox" Height="32" Margin="6,0,12,0"
-                                 VerticalContentAlignment="Center" MaxLength="40" ToolTip="New sheet number"/>
+                                 VerticalContentAlignment="Center" MaxLength="40" IsReadOnly="True"
+                                 ToolTip="Assigned on save: the next free S1.NN in the standards model. Filled in here once saved."/>
                         <TextBlock Grid.Column="2" Text="Name" VerticalAlignment="Center" FontWeight="SemiBold"/>
                         <TextBox Grid.Column="3" x:Name="SheetNameBox" Height="32" Margin="6,0,12,0"
                                  VerticalContentAlignment="Center" MaxLength="300" ToolTip="New sheet name"/>
@@ -203,11 +204,12 @@
                     <Button Width="100" Height="34" Margin="0,0,8,0" Content="Cancel"
                             Style="{StaticResource Button.Secondary}" Click="Cancel_Click"/>
                     <Button x:Name="OpenPdfButton" Width="110" Height="34" Margin="0,0,8,0" Content="Open PDF"
-                            Style="{StaticResource Button.Secondary}" Click="OpenPdf_Click"/>
+                            IsEnabled="False" Style="{StaticResource Button.Secondary}" Click="OpenPdf_Click"/>
                     <Button x:Name="CreatePdfSheetButton" Width="140" Height="34" Margin="0,0,8,0" Content="Create PDF sheet"
                             Style="{StaticResource Button.Secondary}" Click="CreatePdfSheet_Click"
                             ToolTip="Builds a personal PDF from the captured detail art. No Revit needed - an uncontrolled working copy, not the governed standard."/>
                     <Button x:Name="SaveButton" Width="120" Height="34" Content="Save to master"
+                            IsEnabled="False"
                             ToolTip="Writes a governed sheet into the master model. Requires Revit with the AUTHORING template open (gatekeeper)."
                             Style="{StaticResource PrimaryActionButton}" Click="Save_Click"/>
                 </StackPanel>

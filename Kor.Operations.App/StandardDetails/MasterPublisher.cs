@@ -12,8 +12,7 @@ namespace Kor.Operations.StandardDetails;
 internal sealed record StandardDetailsMasterPublishOptions(
     string AuthoringPath,
     string MasterPath,
-    string BridgeRoot,
-    string PreviewCachePath = "")
+    string BridgeRoot)
 {
     internal bool IsConfigured =>
         !string.IsNullOrWhiteSpace(AuthoringPath)
@@ -31,6 +30,25 @@ internal sealed record MasterPublishPdfCaptureResult(
     IReadOnlyList<string> Failures)
 {
     internal static MasterPublishPdfCaptureResult Empty { get; } = new(0, 0, 0, 0, Array.Empty<string>());
+
+    internal bool IsComplete => FailedCount == 0 && Failures.Count == 0;
+
+    internal void EnsurePublishAllowed(bool allowPdfCaptureFailures = false)
+    {
+        if (!IsComplete && !allowPdfCaptureFailures)
+        {
+            throw new MasterPublishPdfCaptureException(this);
+        }
+    }
+}
+
+internal sealed class MasterPublishPdfCaptureException : InvalidOperationException
+{
+    internal MasterPublishPdfCaptureException(MasterPublishPdfCaptureResult capture)
+        : base($"Publish refused because PDF capture is incomplete ({capture.FailedCount} failure(s)). MASTER was not replaced."
+            + Environment.NewLine + string.Join(Environment.NewLine, capture.Failures))
+    {
+    }
 }
 
 internal sealed record MasterPublishResult(
@@ -40,7 +58,11 @@ internal sealed record MasterPublishResult(
     IReadOnlyList<MasterPublishRemovedView> RemovedViews,
     IReadOnlyList<string> ApprovedMissingFromAuthoring,
     MasterPublishPdfCaptureResult PdfCapture,
-    bool Verified);
+    bool Verified,
+    string? BackupPath = null)
+{
+    internal bool PdfCaptureComplete => PdfCapture.IsComplete;
+}
 
 internal sealed class MasterPublisher
 {
@@ -76,7 +98,7 @@ internal sealed class MasterPublisher
         _reportProgress = reportProgress;
     }
 
-    internal async Task<MasterPublishResult> PublishAsync(TimeSpan bridgeTimeout)
+    internal async Task<MasterPublishResult> PublishAsync(TimeSpan bridgeTimeout, string changedBy, bool allowPdfCaptureFailures = false)
     {
         ValidateOptions();
 
@@ -165,12 +187,14 @@ internal sealed class MasterPublisher
                 throw new InvalidOperationException($"MASTER verification failed. Non-approved KOR-D views remain in the temp file: {sample}");
             }
 
-            var pdfCapture = await CapturePublishedPdfsAsync(bridgeTimeout);
+            var pdfCapture = await CapturePublishedPdfsAsync(bridgeTimeout, changedBy);
+            pdfCapture.EnsurePublishAllowed(allowPdfCaptureFailures);
 
             await ReleaseTempDocumentAsync(tempDocToken, bridgeTimeout);
+            string? backupPath;
             try
             {
-                ReplaceMaster(controllerTempMasterPath, controllerMasterPath);
+                backupPath = ReplaceMaster(controllerTempMasterPath, controllerMasterPath);
                 liveMasterReplaced = true;
             }
             catch (Exception ex)
@@ -185,7 +209,8 @@ internal sealed class MasterPublisher
                 toRemove,
                 approvedMissingFromAuthoring,
                 pdfCapture,
-                Verified: true);
+                Verified: true,
+                BackupPath: backupPath);
         }
         finally
         {
@@ -199,7 +224,7 @@ internal sealed class MasterPublisher
         }
     }
 
-    private async Task<MasterPublishPdfCaptureResult> CapturePublishedPdfsAsync(TimeSpan bridgeTimeout)
+    private async Task<MasterPublishPdfCaptureResult> CapturePublishedPdfsAsync(TimeSpan bridgeTimeout, string changedBy)
     {
         IReadOnlyList<PublishedDetailViewRow> targets;
         try
@@ -231,6 +256,7 @@ internal sealed class MasterPublisher
             "exports",
             "standard-details-publish-capture",
             DateTime.Now.ToString("yyyyMMdd-HHmmss"));
+        var basis = $"Publish to Master {DateTime.UtcNow:yyyy-MM-dd}";
         var captured = 0;
         var skipped = 0;
         var failures = new List<string>();
@@ -278,7 +304,7 @@ internal sealed class MasterPublisher
                     else
                     {
                         var bytes = File.ReadAllBytes(exportedPdf);
-                        var (ok, stored, message) = await _promoterRepository.SetRenderedPdfAsync("detail", target.DetailNumber, bytes);
+                        var (ok, stored, message) = await _promoterRepository.SetRenderedPdfAsync("detail", target.DetailNumber, bytes, changedBy, basis);
                         if (!ok)
                         {
                             failures.Add($"{target.DetailNumber}: {message}");
@@ -393,7 +419,7 @@ internal sealed class MasterPublisher
         }
     }
 
-    private void ReplaceMaster(string tempMasterPath, string masterPath)
+    internal static string? ReplaceMaster(string tempMasterPath, string masterPath)
     {
         if (!File.Exists(tempMasterPath))
         {
@@ -402,11 +428,58 @@ internal sealed class MasterPublisher
 
         if (File.Exists(masterPath))
         {
-            File.Replace(tempMasterPath, masterPath, destinationBackupFileName: null, ignoreMetadataErrors: true);
-            return;
+            var archiveDirectory = Path.Combine(Path.GetDirectoryName(Path.GetFullPath(masterPath))!, "_archive");
+            Directory.CreateDirectory(archiveDirectory);
+            var masterName = Path.GetFileNameWithoutExtension(masterPath);
+            var backupPath = Path.Combine(archiveDirectory, $"{masterName}.{DateTime.Now:yyyyMMdd-HHmmss}.rvt");
+            if (File.Exists(backupPath))
+            {
+                throw new IOException("A MASTER backup already exists for this second. Retry the publish to preserve it.");
+            }
+
+            File.Replace(tempMasterPath, masterPath, destinationBackupFileName: backupPath, ignoreMetadataErrors: true);
+            PruneMasterBackups(archiveDirectory, masterName);
+            return backupPath;
         }
 
         File.Move(tempMasterPath, masterPath);
+        return null;
+    }
+
+    private static void PruneMasterBackups(string archiveDirectory, string masterName)
+    {
+        try
+        {
+            var pattern = $"^{Regex.Escape(masterName)}\\.\\d{{8}}-\\d{{6}}\\.rvt$";
+            var obsolete = Directory.EnumerateFiles(archiveDirectory)
+                .Where(path => Regex.IsMatch(Path.GetFileName(path), pattern, RegexOptions.IgnoreCase))
+                .OrderByDescending(path => Path.GetFileName(path), StringComparer.OrdinalIgnoreCase)
+                .Skip(5)
+                .ToList();
+            foreach (var path in obsolete)
+            {
+                try
+                {
+                    File.Delete(path);
+                }
+                catch (IOException)
+                {
+                    // Retention is best-effort after a successful atomic replacement.
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    // A locked-down old backup must not turn a successful publish into a failure.
+                }
+            }
+        }
+        catch (IOException)
+        {
+            // An unavailable archive must not obscure a successful replacement.
+        }
+        catch (UnauthorizedAccessException)
+        {
+            // Retain extra backups if the archive cannot be enumerated.
+        }
     }
 
     private static FileStream AcquirePublishLock(string controllerMasterPath)

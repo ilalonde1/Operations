@@ -63,7 +63,6 @@ internal static class CompositionHelpers
         StandardDetailsAuthoringPath = ConfigurationManager.AppSettings[AppConfigKeys.StandardDetailsAuthoringPath] ?? "",
         StandardDetailsMasterPath = ConfigurationManager.AppSettings[AppConfigKeys.StandardDetailsMasterPath] ?? "",
         StandardDetailsBridgeRoot = ConfigurationManager.AppSettings[AppConfigKeys.StandardDetailsBridgeRoot] ?? "",
-        StandardDetailsPreviewCachePath = ConfigurationManager.AppSettings[AppConfigKeys.StandardDetailsPreviewCachePath] ?? "",
         StandardDetailsPartImageRoot = ConfigurationManager.AppSettings[AppConfigKeys.StandardDetailsPartImageRoot] ?? "",
         BrochureSharedProposalsRootPath = ConfigurationManager.AppSettings[AppConfigKeys.BrochureSharedProposalsRootPath] ?? "",
         PursuitFilesRoot = ConfigurationManager.AppSettings[AppConfigKeys.PursuitFilesRoot] ?? ""

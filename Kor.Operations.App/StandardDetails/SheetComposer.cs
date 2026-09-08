@@ -67,6 +67,13 @@ internal sealed class StandardDetailsSheetComposer
         var placedViewIds = sheets.SelectMany(s => s.Views.Select(v => v.Id)).Distinct();
         var prefixes = await GetViewPrefixesAsync(placedViewIds, bridgeTimeout);
 
+        return BuildOccupiedDetails(sheets, prefixes);
+    }
+
+    private static IReadOnlyDictionary<string, SheetComposerOccupiedDetail> BuildOccupiedDetails(
+        IReadOnlyList<BridgeSheet> sheets,
+        IReadOnlyDictionary<long, string> prefixes)
+    {
         var occupied = new Dictionary<string, SheetComposerOccupiedDetail>(StringComparer.OrdinalIgnoreCase);
         foreach (var sheet in sheets)
         {
@@ -105,7 +112,8 @@ internal sealed class StandardDetailsSheetComposer
         ValidateRequest(request);
         await AssertAuthoringActiveAsync("compose sheet", bridgeTimeout);
 
-        var occupied = await LoadOccupiedDetailsAsync(bridgeTimeout);
+        var sheets = await QuerySheetsAsync(bridgeTimeout);
+        var occupied = BuildOccupiedDetails(sheets, await GetViewPrefixesAsync(sheets.SelectMany(x => x.Views).Select(x => x.Id), bridgeTimeout));
         var alreadyPlaced = request.Placements
             .Select(x => (Placement: x, Occupancy: ResolveOccupiedPlacement(x, occupied)))
             .Where(x => x.Occupancy is not null)
@@ -115,6 +123,14 @@ internal sealed class StandardDetailsSheetComposer
         if (alreadyPlaced.Count > 0)
         {
             throw new InvalidOperationException("Save refused because these details are already committed to sheets: " + string.Join(", ", alreadyPlaced));
+        }
+
+        // The sheet number is never typed: it is the next free number in the series the standards
+        // sheets already use (S1.01 .. S1.19 in the template), read from the live model at save time so
+        // two composers cannot be handed the same number from a stale list. The name is the user's.
+        if (string.IsNullOrWhiteSpace(request.SheetNumber))
+        {
+            request = request with { SheetNumber = NextSheetNumber(sheets.Select(x => x.Number)) };
         }
 
         await ValidatePlacementViewsAsync(request, bridgeTimeout);
@@ -305,6 +321,29 @@ internal sealed class StandardDetailsSheetComposer
     private static InvalidOperationException NoCapturedPdf(string detailNumber, Exception? inner = null)
         => new($"No PDF captured for {detailNumber} yet. Publish to capture it, or open Drafter/Revit for a one-time live export.", inner);
 
+    private static readonly Regex ComposedSheetSeriesPattern = new(@"^S1\.(\d{2,})$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+    /// <summary>
+    /// The next free number in the series the standards sheets use (S1.01 .. S1.19 in the template):
+    /// one past the highest S1.NN present. A gap is not free: a sheet can exist with nothing placed on
+    /// it, and the list this is fed comes from the live model, so it already contains such sheets.
+    /// Internal for the numbering tests.
+    /// </summary>
+    internal static string NextSheetNumber(IEnumerable<string> existingSheetNumbers)
+    {
+        var highest = 0;
+        foreach (var number in existingSheetNumbers)
+        {
+            var match = ComposedSheetSeriesPattern.Match((number ?? "").Trim());
+            if (match.Success && int.TryParse(match.Groups[1].Value, out var value) && value > highest)
+            {
+                highest = value;
+            }
+        }
+
+        return $"S1.{highest + 1:00}";
+    }
+
     private void ValidateRequest(SheetComposerRequest request)
     {
         if (!_options.IsConfigured)
@@ -312,12 +351,8 @@ internal sealed class StandardDetailsSheetComposer
             throw new InvalidOperationException("Standard Details sheet-composer settings are incomplete.");
         }
 
-        if (string.IsNullOrWhiteSpace(request.SheetNumber))
-        {
-            throw new InvalidOperationException("Sheet number is required.");
-        }
-
-        if (request.SheetNumber.Length > SheetNumberMax)
+        // A blank sheet number means "assign the next free one"; an explicit one is still honoured.
+        if (!string.IsNullOrWhiteSpace(request.SheetNumber) && request.SheetNumber.Length > SheetNumberMax)
         {
             throw new InvalidOperationException($"Sheet number cannot exceed {SheetNumberMax} characters.");
         }

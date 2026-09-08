@@ -453,7 +453,7 @@ public partial class StandardDetailsWindow
                 if (!System.IO.File.Exists(path)) { missing++; continue; }
                 var (png, w, h) = LoadImageAsPng(path);
                 if (png.Length == 0) { failed++; continue; }
-                var (ok, _) = await _promoterRepo!.SetRenderedImageAsync("component", $"{cr.FamilyName}|{cr.TypeName}", png, w, h, "sync-thumb");
+                var (ok, _) = await _promoterRepo!.SetRenderedImageAsync("component", $"{cr.FamilyName}|{cr.TypeName}", png, w, h, "sync-thumb", _userIdentity, "Sync Part Images");
                 if (ok) done++; else failed++;
             }
             catch (Exception ex)
@@ -679,28 +679,22 @@ public partial class StandardDetailsWindow
 
     private async void ComposeSheet_Click(object sender, RoutedEventArgs e)
     {
-        if (!EnsureCanPublishAction())
-        {
-            return;
-        }
-
-        if (_repo == null || _korStandardsRepo == null)
+        if (_korStandardsRepo == null)
         {
             SetActivityMessage("Standard Details sheet composer is not configured.", BannerTone.Warning);
-            MessageBox.Show(this, "KorStandards and Standard Details databases must both be configured.", "Standard Details - Sheet Composer", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(this, "The Standard Details catalog must be configured.", "Standard Details - Sheet Composer", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 
-        if (_masterPublishOptions is not { IsConfigured: true } options)
+        StandardDetailsSheetComposer? composer = null;
+        if (_masterPublishOptions is { IsConfigured: true } options)
         {
-            SetActivityMessage("Sheet composer settings are incomplete.", BannerTone.Warning);
-            MessageBox.Show(this, "App.config must define StandardDetails.AuthoringPath, StandardDetails.MasterPath, and StandardDetails.BridgeRoot.", "Standard Details - Sheet Composer", MessageBoxButton.OK, MessageBoxImage.Warning);
-            return;
+            var bridge = new DrafterBridgeClient(options.BridgeRoot);
+            composer = new StandardDetailsSheetComposer(bridge, options);
         }
 
-        var bridge = new DrafterBridgeClient(options.BridgeRoot);
-        var composer = new StandardDetailsSheetComposer(bridge, options);
-        var dlg = new SheetComposerWindow(_korStandardsRepo, _repo, composer, _groupSchemaAvailable, _selectedGroupId, _actorUserId, _selectedDiscipline, _selectedKind) { Owner = this };
+        var dlg = new SheetComposerWindow(_korStandardsRepo, _repo, composer, _groupSchemaAvailable, _selectedGroupId, _actorUserId,
+            _policy?.CanPublish() == true, _selectedDiscipline, _selectedKind) { Owner = this };
         if (dlg.ShowDialog() == true)
         {
             SetActivityMessage("Composed Standard Details sheet and created governance record.", BannerTone.Success);
@@ -747,11 +741,35 @@ public partial class StandardDetailsWindow
                 options,
                 _promoterRepo,
                 message => Dispatcher.Invoke(() => SetActivityMessage(message, BannerTone.Info)));
-            var result = await publisher.PublishAsync(TimeSpan.FromMinutes(15));
+            MasterPublishResult result;
+            try
+            {
+                result = await publisher.PublishAsync(TimeSpan.FromMinutes(15), _userIdentity);
+            }
+            catch (MasterPublishPdfCaptureException ex)
+            {
+                var publishAnyway = MessageBox.Show(
+                    this,
+                    ex.Message + "\n\nRetry and publish anyway, allowing incomplete PDF capture? Some stored PDFs may remain stale.",
+                    "Standard Details - PDF Capture Incomplete",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Warning,
+                    MessageBoxResult.No);
+                if (publishAnyway != MessageBoxResult.Yes || !EnsureCanPublishAction())
+                {
+                    SetActivityMessage("Publish refused because PDF capture is incomplete. MASTER was not replaced.", BannerTone.Warning);
+                    return;
+                }
+
+                result = await publisher.PublishAsync(TimeSpan.FromMinutes(15), _userIdentity, allowPdfCaptureFailures: true);
+            }
             var summary = BuildMasterPublishSummary(result);
 
-            SetActivityMessage($"Published MASTER: verified {result.MasterDetailCount} detail view(s); captured {result.PdfCapture.CapturedCount}/{result.PdfCapture.TargetCount} PDF(s).", BannerTone.Success);
-            MessageBox.Show(this, summary, "Standard Details - Publish to Master", MessageBoxButton.OK, MessageBoxImage.Information);
+            SetActivityMessage($"Published MASTER: verified {result.MasterDetailCount} detail view(s); captured {result.PdfCapture.CapturedCount}/{result.PdfCapture.TargetCount} PDF(s)."
+                + (result.PdfCaptureComplete ? "" : " PDF capture is incomplete; review failed details."),
+                result.PdfCaptureComplete ? BannerTone.Success : BannerTone.Warning);
+            MessageBox.Show(this, summary, "Standard Details - Publish to Master", MessageBoxButton.OK,
+                result.PdfCaptureComplete ? MessageBoxImage.Information : MessageBoxImage.Warning);
         }
         catch (Exception ex)
         {
@@ -765,7 +783,7 @@ public partial class StandardDetailsWindow
         }
     }
 
-    private static string BuildMasterPublishSummary(MasterPublishResult result)
+    internal static string BuildMasterPublishSummary(MasterPublishResult result)
     {
         var text = new StringBuilder();
         text.AppendLine("MASTER publish completed.");
@@ -775,6 +793,8 @@ public partial class StandardDetailsWindow
         text.AppendLine($"Removed non-approved KOR-D views: {result.RemovedViews.Count}");
         text.AppendLine($"MASTER KOR-D views after verification: {result.MasterDetailCount}");
         text.AppendLine($"Verified: {result.Verified}");
+        text.AppendLine($"Previous MASTER backup: {result.BackupPath ?? "None (first publish)"}");
+        text.AppendLine($"PDF capture complete: {result.PdfCaptureComplete}");
         text.AppendLine($"PDFs captured: {result.PdfCapture.CapturedCount} of {result.PdfCapture.TargetCount}");
         text.AppendLine($"PDFs skipped: {result.PdfCapture.SkippedCount}");
         text.AppendLine($"PDF capture failures: {result.PdfCapture.FailedCount}");
@@ -813,15 +833,11 @@ public partial class StandardDetailsWindow
         {
             text.AppendLine();
             text.AppendLine("PDF capture issues:");
-            foreach (var failure in result.PdfCapture.Failures.Take(20))
+            foreach (var failure in result.PdfCapture.Failures)
             {
                 text.AppendLine($"- {failure}");
             }
 
-            if (result.PdfCapture.Failures.Count > 20)
-            {
-                text.AppendLine($"- ... {result.PdfCapture.Failures.Count - 20} more");
-            }
         }
 
         return text.ToString();
@@ -904,7 +920,7 @@ public partial class StandardDetailsWindow
 
         try
         {
-            var (ok, message) = await _promoterRepo.SetDetailTypeAsync(detail.DetailNumber, detailType);
+            var (ok, message) = await _promoterRepo.SetDetailTypeAsync(detail.DetailNumber, detailType, _userIdentity, "Type set in Operations Standard Details");
             if (!ok)
             {
                 SetActivityMessage(message, BannerTone.Error);

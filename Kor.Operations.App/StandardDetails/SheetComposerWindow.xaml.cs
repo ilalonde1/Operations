@@ -29,8 +29,9 @@ public partial class SheetComposerWindow : Window
     private static readonly TimeSpan OccupancyCheckTimeout = TimeSpan.FromSeconds(8);
 
     private readonly KorStandardsReadRepository _catalogRepository;
-    private readonly StandardDetailsRepository _governanceRepository;
-    private readonly StandardDetailsSheetComposer _composer;
+    private readonly StandardDetailsRepository? _governanceRepository;
+    private readonly StandardDetailsSheetComposer? _composer;
+    private readonly bool _canPublish;
     private readonly bool _groupSchemaAvailable;
     private readonly long? _selectedGroupId;
     private readonly Guid _actorUserId;
@@ -43,17 +44,19 @@ public partial class SheetComposerWindow : Window
 
     internal SheetComposerWindow(
         KorStandardsReadRepository catalogRepository,
-        StandardDetailsRepository governanceRepository,
-        StandardDetailsSheetComposer composer,
+        StandardDetailsRepository? governanceRepository,
+        StandardDetailsSheetComposer? composer,
         bool groupSchemaAvailable,
         long? selectedGroupId,
         Guid actorUserId,
+        bool canPublish,
         string? selectedDiscipline = null,
         string? selectedKind = null)
     {
         _catalogRepository = catalogRepository ?? throw new ArgumentNullException(nameof(catalogRepository));
-        _governanceRepository = governanceRepository ?? throw new ArgumentNullException(nameof(governanceRepository));
-        _composer = composer ?? throw new ArgumentNullException(nameof(composer));
+        _governanceRepository = governanceRepository;
+        _composer = composer;
+        _canPublish = canPublish;
         _groupSchemaAvailable = groupSchemaAvailable;
         _selectedGroupId = selectedGroupId;
         _actorUserId = actorUserId;
@@ -64,6 +67,7 @@ public partial class SheetComposerWindow : Window
         PlacementsGrid.ItemsSource = _placements;
         PlacementItems.ItemsSource = _placements;
         _placements.CollectionChanged += Placements_CollectionChanged;
+        ToggleBusy(false);
     }
 
     private async void Window_Loaded(object sender, RoutedEventArgs e)
@@ -105,6 +109,11 @@ public partial class SheetComposerWindow : Window
 
             try
             {
+                if (_composer is null)
+                {
+                    throw new InvalidOperationException("AUTHORING is not configured.");
+                }
+
                 var occupied = await _composer.LoadOccupiedDetailsAsync(OccupancyCheckTimeout);
                 foreach (var detail in _details)
                 {
@@ -194,9 +203,15 @@ public partial class SheetComposerWindow : Window
 
     private async void Save_Click(object sender, RoutedEventArgs e)
     {
+        if (!_canPublish) return;
         SheetComposerRequest request;
         try
         {
+            if (_composer is null || _governanceRepository is null)
+            {
+                throw new InvalidOperationException("Saving to master requires the AUTHORING connection and governance catalog to be configured.");
+            }
+
             request = BuildRequest();
         }
         catch (Exception ex)
@@ -216,6 +231,7 @@ public partial class SheetComposerWindow : Window
                 _actorUserId,
                 TimeSpan.FromMinutes(10));
 
+            SheetNumberBox.Text = result.SheetNumber;
             SummaryText.Text = $"Created {result.SheetNumber} - {result.SheetName} with {result.PlacementCount} detail(s). Opening PDF...";
             try
             {
@@ -245,7 +261,8 @@ public partial class SheetComposerWindow : Window
 
     private SheetComposerRequest BuildRequest()
     {
-        var sheetNumber = SheetNumberBox.Text.Trim();
+        // The number is never typed: blank tells the composer to assign the next free S1.NN at save.
+        var sheetNumber = "";
         var sheetName = SheetNameBox.Text.Trim();
         var likeSheet = LikeSheetBox.Text.Trim();
         var placements = _placements.Select(ToPlacement).ToList();
@@ -254,10 +271,18 @@ public partial class SheetComposerWindow : Window
 
     private async void OpenPdf_Click(object sender, RoutedEventArgs e)
     {
+        if (!_canPublish) return;
+        if (_composer is null)
+        {
+            MessageBox.Show(this, "Opening a governed sheet PDF requires the AUTHORING connection to be configured.",
+                "Standard Details - Open PDF", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
         var sheetNumber = SheetNumberBox.Text.Trim();
         if (string.IsNullOrWhiteSpace(sheetNumber))
         {
-            MessageBox.Show(this, "Enter a sheet number first.", "Standard Details - Open PDF", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show(this, "Save the sheet first. Its number is assigned on save.", "Standard Details - Open PDF", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
 
@@ -755,10 +780,14 @@ public partial class SheetComposerWindow : Window
         DetailsGrid.IsEnabled = !busy;
         PlacementsGrid.IsEnabled = !busy;
         SheetCanvas.IsEnabled = !busy;
-        OpenPdfButton.IsEnabled = !busy;
-        CreatePdfSheetButton.IsEnabled = !busy;
-        SaveButton.IsEnabled = !busy;
+        var actions = GetActionStates(_canPublish, busy);
+        OpenPdfButton.IsEnabled = actions.OpenPdf;
+        CreatePdfSheetButton.IsEnabled = actions.CreatePdfSheet;
+        SaveButton.IsEnabled = actions.SaveToMaster;
     }
+
+    internal static (bool SaveToMaster, bool OpenPdf, bool CreatePdfSheet) GetActionStates(bool canPublish, bool busy)
+        => (!busy && canPublish, !busy && canPublish, !busy);
 
     private void UpdatePlacementSummary()
     {

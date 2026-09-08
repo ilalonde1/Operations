@@ -35,7 +35,6 @@ namespace Kor.Operations.Services
         public const string StandardDetailsBridgeRoot = "StandardDetails.BridgeRoot";
         public const string StandardDetailsFileStorageRootPath = "StandardDetails.FileStorageRootPath";
         public const string StandardDetailsMasterPath = "StandardDetails.MasterPath";
-        public const string StandardDetailsPreviewCachePath = "StandardDetails.PreviewCachePath";
         public const string StandardDetailsPartImageRoot = "StandardDetails.PartImageRoot";
         public const string UserUpnOverride = "UserUpnOverride";
         public const string VpCatalog       = "Vp.Catalog";

@@ -112,7 +112,14 @@ internal sealed class DrafterBridgeClient
         }
 
         var detail = lastReadError is null ? "" : $" Last read error: {lastReadError.Message}";
-        throw new TimeoutException($"Timed out waiting {timeout:g} for Drafter bridge command '{verb}' reply at '{replyPath}'.{detail}");
+        var wasQueued = File.Exists(commandPath);
+        TryDelete(commandPath);
+        var withdrawal = File.Exists(commandPath)
+            ? " The request could not be withdrawn and remains queued."
+            : !wasQueued || File.Exists(Path.Combine(inbox, "done", $"{id}.json"))
+                ? " The request was already picked up; it may still execute."
+                : " The request was withdrawn from the inbox.";
+        throw new TimeoutException($"Timed out waiting {timeout:g} for Drafter bridge command '{verb}' reply at '{replyPath}'.{withdrawal}{detail}");
     }
 
     private static BridgeReply ParseReply(string json, string expectedId, string fallbackVerb)

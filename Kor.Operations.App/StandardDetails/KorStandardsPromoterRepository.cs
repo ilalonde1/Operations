@@ -89,7 +89,7 @@ internal sealed class KorStandardsPromoterRepository
 
     // Upsert one image into the governed art store (detail.SetRenderedImage). Used by the in-app
     // "Sync Part Images" tool; standards_promoter holds EXECUTE.
-    internal async Task<(bool ok, string message)> SetRenderedImageAsync(string entityKind, string entityKey, byte[] png, int width, int height, string source)
+    internal async Task<(bool ok, string message)> SetRenderedImageAsync(string entityKind, string entityKey, byte[] png, int width, int height, string source, string changedBy, string basis)
     {
         try
         {
@@ -98,6 +98,7 @@ internal sealed class KorStandardsPromoterRepository
             await using var cmd = new SqlCommand("detail.SetRenderedImage", cn);
             cmd.CommandType = CommandType.StoredProcedure;
             cmd.CommandTimeout = SqlTimeouts.UiFacing;
+            AddGovernanceParameters(cmd, changedBy, basis);
             AddNVarChar(cmd, "@EntityKind", 16, entityKind);
             AddNVarChar(cmd, "@EntityKey", 410, entityKey);
             cmd.Parameters.Add("@Png", SqlDbType.VarBinary, -1).Value = png;
@@ -113,7 +114,7 @@ internal sealed class KorStandardsPromoterRepository
         }
     }
 
-    internal async Task<(bool ok, bool stored, string message)> SetRenderedPdfAsync(string entityKind, string entityKey, byte[] pdf)
+    internal async Task<(bool ok, bool stored, string message)> SetRenderedPdfAsync(string entityKind, string entityKey, byte[] pdf, string changedBy, string basis)
     {
         try
         {
@@ -122,6 +123,7 @@ internal sealed class KorStandardsPromoterRepository
             await using var cmd = new SqlCommand("detail.SetRenderedPdf", cn);
             cmd.CommandType = CommandType.StoredProcedure;
             cmd.CommandTimeout = SqlTimeouts.UiFacing;
+            AddGovernanceParameters(cmd, changedBy, basis);
             AddNVarChar(cmd, "@EntityKind", 16, entityKind);
             AddNVarChar(cmd, "@EntityKey", 410, entityKey);
             cmd.Parameters.Add("@Pdf", SqlDbType.VarBinary, -1).Value = pdf;
@@ -140,7 +142,7 @@ internal sealed class KorStandardsPromoterRepository
         }
     }
 
-    internal async Task<(bool ok, string message)> SetDetailKindAsync(string detailNumber, string? kind)
+    internal async Task<(bool ok, string message)> SetDetailKindAsync(string detailNumber, string? kind, string changedBy, string basis)
     {
         try
         {
@@ -149,6 +151,7 @@ internal sealed class KorStandardsPromoterRepository
             await using var cmd = new SqlCommand("detail.SetDetailKind", cn);
             cmd.CommandType = CommandType.StoredProcedure;
             cmd.CommandTimeout = SqlTimeouts.UiFacing;
+            AddGovernanceParameters(cmd, changedBy, basis);
             AddNVarChar(cmd, "@DetailNumber", 64, detailNumber);
             AddNVarChar(cmd, "@Kind", 16, kind ?? string.Empty);
             var returnValue = cmd.Parameters.Add("@ReturnValue", SqlDbType.Int);
@@ -166,7 +169,7 @@ internal sealed class KorStandardsPromoterRepository
         }
     }
 
-    internal async Task<(bool ok, string message)> SetDetailIsSheetAsync(string detailNumber, bool isSheet)
+    internal async Task<(bool ok, string message)> SetDetailIsSheetAsync(string detailNumber, bool isSheet, string changedBy, string basis)
     {
         try
         {
@@ -175,6 +178,7 @@ internal sealed class KorStandardsPromoterRepository
             await using var cmd = new SqlCommand("detail.SetDetailIsSheet", cn);
             cmd.CommandType = CommandType.StoredProcedure;
             cmd.CommandTimeout = SqlTimeouts.UiFacing;
+            AddGovernanceParameters(cmd, changedBy, basis);
             AddNVarChar(cmd, "@DetailNumber", 64, detailNumber);
             cmd.Parameters.Add("@IsSheet", SqlDbType.Bit).Value = isSheet;
             var returnValue = cmd.Parameters.Add("@ReturnValue", SqlDbType.Int);
@@ -192,7 +196,7 @@ internal sealed class KorStandardsPromoterRepository
         }
     }
 
-    internal async Task<(bool ok, string message)> SetDetailTypeAsync(string detailNumber, string detailType)
+    internal async Task<(bool ok, string message)> SetDetailTypeAsync(string detailNumber, string detailType, string changedBy, string basis)
     {
         var (kind, isSheet, display) = DetailTypeFields(detailType);
         try
@@ -201,14 +205,14 @@ internal sealed class KorStandardsPromoterRepository
             await cn.OpenAsync();
             using var tx = cn.BeginTransaction();
 
-            var kindAffected = await ExecuteSetDetailKindAsync(cn, tx, detailNumber, kind);
+            var kindAffected = await ExecuteSetDetailKindAsync(cn, tx, detailNumber, kind, changedBy, basis);
             if (kindAffected == 0)
             {
                 tx.Rollback();
                 return (false, $"Detail {detailNumber} was not found.");
             }
 
-            var sheetAffected = await ExecuteSetDetailIsSheetAsync(cn, tx, detailNumber, isSheet);
+            var sheetAffected = await ExecuteSetDetailIsSheetAsync(cn, tx, detailNumber, isSheet, changedBy, basis);
             if (sheetAffected == 0)
             {
                 tx.Rollback();
@@ -232,11 +236,12 @@ internal sealed class KorStandardsPromoterRepository
             _ => ("typical", false, "Typical detail")
         };
 
-    private static async Task<int> ExecuteSetDetailKindAsync(SqlConnection cn, SqlTransaction tx, string detailNumber, string kind)
+    private static async Task<int> ExecuteSetDetailKindAsync(SqlConnection cn, SqlTransaction tx, string detailNumber, string kind, string changedBy, string basis)
     {
         await using var cmd = new SqlCommand("detail.SetDetailKind", cn, tx);
         cmd.CommandType = CommandType.StoredProcedure;
         cmd.CommandTimeout = SqlTimeouts.UiFacing;
+        AddGovernanceParameters(cmd, changedBy, basis);
         AddNVarChar(cmd, "@DetailNumber", 64, detailNumber);
         AddNVarChar(cmd, "@Kind", 16, kind);
         var returnValue = cmd.Parameters.Add("@ReturnValue", SqlDbType.Int);
@@ -246,11 +251,12 @@ internal sealed class KorStandardsPromoterRepository
         return returnValue.Value is int value ? value : Convert.ToInt32(returnValue.Value ?? 0);
     }
 
-    private static async Task<int> ExecuteSetDetailIsSheetAsync(SqlConnection cn, SqlTransaction tx, string detailNumber, bool isSheet)
+    private static async Task<int> ExecuteSetDetailIsSheetAsync(SqlConnection cn, SqlTransaction tx, string detailNumber, bool isSheet, string changedBy, string basis)
     {
         await using var cmd = new SqlCommand("detail.SetDetailIsSheet", cn, tx);
         cmd.CommandType = CommandType.StoredProcedure;
         cmd.CommandTimeout = SqlTimeouts.UiFacing;
+        AddGovernanceParameters(cmd, changedBy, basis);
         AddNVarChar(cmd, "@DetailNumber", 64, detailNumber);
         cmd.Parameters.Add("@IsSheet", SqlDbType.Bit).Value = isSheet;
         var returnValue = cmd.Parameters.Add("@ReturnValue", SqlDbType.Int);
@@ -258,6 +264,12 @@ internal sealed class KorStandardsPromoterRepository
 
         await cmd.ExecuteNonQueryAsync();
         return returnValue.Value is int value ? value : Convert.ToInt32(returnValue.Value ?? 0);
+    }
+
+    internal static void AddGovernanceParameters(SqlCommand cmd, string changedBy, string basis)
+    {
+        AddNVarChar(cmd, "@Basis", 1000, basis);
+        AddNVarChar(cmd, "@ChangedBy", 150, changedBy);
     }
 
     private static void AddNVarChar(SqlCommand cmd, string name, int size, string value)

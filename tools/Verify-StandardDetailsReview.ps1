@@ -119,10 +119,15 @@ Add-Check $S 'FS01 AUTHORING .rvt' '120.8MB 2026-09-02 17:13' { Get-FileStamp "$
 Add-Check $S 'FS01 MASTER .rvt' '120.8MB 2026-09-02 17:40' { Get-FileStamp "$fsRoot\template\MASTER\KOR-Standards-Master-R25.rvt" }
 Add-Check $S '302N AUTHORING .rvt' '120.8MB 2026-09-02 17:13' { Get-FileStamp "$n302\AUTHORING\KOR-Standards-Authoring-R25.rvt" }
 Add-Check $S '302N MASTER .rvt' '120.8MB 2026-09-02 17:40' { Get-FileStamp "$n302\MASTER\KOR-Standards-Master-R25.rvt" }
-Add-Check $S 'MASTER contains a .0002.rvt Revit backup (finding: should not)' 'True' { Test-Path -LiteralPath "$fsRoot\template\MASTER\KOR-Standards-Master-R25.0002.rvt" }
-Add-Check $S 'scratch dirs present: _detailrender,_rendertest,_verbtest,review-images,detail-previews' 'True,True,True,True,True' { (@('_detailrender','_rendertest','_verbtest','review-images','detail-previews') | ForEach-Object { Test-Path -LiteralPath "$fsRoot\$_" }) -join ',' }
-Add-Check $S 'explicit ACEs on KOR-Standards|MASTER dir|MASTER .rvt' '0|0|0' { (Get-ExplicitAceCount $fsRoot), (Get-ExplicitAceCount "$fsRoot\template\MASTER"), (Get-ExplicitAceCount "$fsRoot\template\MASTER\KOR-Standards-Master-R25.rvt") -join '|' }
-Add-Check $S 'BMZ_FS_Drafting_RW rights on MASTER dir (inherited)' 'Modify, Synchronize' { ((Get-Acl -LiteralPath "$fsRoot\template\MASTER").Access | Where-Object { $_.IdentityReference -like '*BMZ_FS_Drafting_RW' } | Select-Object -First 1).FileSystemRights.ToString() }
+# Review (09-07 morning) found the .0002.rvt present and every scratch dir in place; archived the same
+# evening into KOR-Standards\_archive\2026-09-07\. review-images STAYS: the Sep 3 workbook links into it.
+Add-Check $S 'MASTER contains a .0002.rvt Revit backup (archived 09-07)' 'False' { Test-Path -LiteralPath "$fsRoot\template\MASTER\KOR-Standards-Master-R25.0002.rvt" }
+Add-Check $S 'present: _detailrender,_rendertest,_verbtest,review-images,detail-previews (only review-images should be)' 'False,False,False,True,False' { (@('_detailrender','_rendertest','_verbtest','review-images','detail-previews') | ForEach-Object { Test-Path -LiteralPath "$fsRoot\$_" }) -join ',' }
+# Review found 0 explicit ACEs anywhere (MASTER inherited Modify for drafters). Locked 09-07: inheritance off
+# on MASTER, 8 explicit ACEs, groups read-only. The .rvt and KOR-Standards itself carry none.
+Add-Check $S 'explicit ACEs on KOR-Standards|MASTER dir|MASTER .rvt' '0|8|0' { (Get-ExplicitAceCount $fsRoot), (Get-ExplicitAceCount "$fsRoot\template\MASTER"), (Get-ExplicitAceCount "$fsRoot\template\MASTER\KOR-Standards-Master-R25.rvt") -join '|' }
+Add-Check $S 'BMZ_FS_Drafting_RW rights on MASTER dir (was Modify; read-only since 09-07)' 'ReadAndExecute, Synchronize' { ((Get-Acl -LiteralPath "$fsRoot\template\MASTER").Access | Where-Object { $_.IdentityReference -like '*BMZ_FS_Drafting_RW' } | Select-Object -First 1).FileSystemRights.ToString() }
+Add-Check $S 'identities with write on MASTER dir' 'BUILTIN\Administrators,kor\Domain Admins,kor\ilalonde,NT AUTHORITY\SYSTEM' { (((Get-Acl -LiteralPath "$fsRoot\template\MASTER").Access | Where-Object { $_.FileSystemRights -match 'Modify|FullControl|Write|CreateFiles' } | ForEach-Object { $_.IdentityReference.Value } | Sort-Object -Unique) -join ',') }
 Add-Check $S 'App.config StandardDetails.MasterPath' "$fsRoot\template\MASTER\KOR-Standards-Master-R25.rvt" { $c = Get-Content (Join-Path $RepoRoot 'Kor.Operations.App\App.config') -Raw; [regex]::Match($c, 'key="StandardDetails\.MasterPath"\s+value="([^"]+)"').Groups[1].Value }
 Add-Check $S 'App.config StandardDetails.BridgeRoot' '\\KOR-302N\C$\KOR.Drafter\bridge' { $c = Get-Content (Join-Path $RepoRoot 'Kor.Operations.App\App.config') -Raw; [regex]::Match($c, 'key="StandardDetails\.BridgeRoot"\s+value="([^"]+)"').Groups[1].Value }
 
@@ -142,8 +147,10 @@ Add-Check $S '302N kor-tools.json showUnverified detailsPalette|quickInsert' 'Fa
 $S = 'Bridge'
 Add-Check $S 'bridge dll 2026 FileVersion' '1.0.36.0' { (Get-Item '\\KOR-302N\C$\KOR.Drafter\app\artifacts\2026\KOR.Drafter.Bridge.dll').VersionInfo.FileVersion }
 Add-Check $S 'bridge dll 2025 FileVersion' '1.0.31.0' { (Get-Item '\\KOR-302N\C$\KOR.Drafter\app\artifacts\2025\KOR.Drafter.Bridge.dll').VersionInfo.FileVersion }
-Add-Check $S 'newest bridge log last line' '2026-09-04 14:34:26  Bridge down.' { $l = Get-ChildItem '\\KOR-302N\C$\KOR.Drafter\logs\bridge-*.log' | Sort-Object LastWriteTime -Descending | Select-Object -First 1; (Get-Content $l.FullName -Tail 1) }
-Add-Check $S 'inbox pending files|all ping' '3|True' { $f = @(Get-ChildItem '\\KOR-302N\C$\KOR.Drafter\bridge\inbox' -File); $allPing = ($f | ForEach-Object { (Get-Content $_.FullName -Raw) -match '"verb"\s*:\s*"ping"' }) -notcontains $false; "$($f.Count)|$allPing" }
+# Daily bridge logs are bridge-yyyyMMdd.log; the purge log (bridge-purge-*.log) must not match.
+Add-Check $S 'newest daily bridge log last line' '2026-09-04 14:34:26  Bridge down.' { $l = Get-ChildItem '\\KOR-302N\C$\KOR.Drafter\logs' -Filter 'bridge-*.log' | Where-Object { $_.Name -match '^bridge-\d{8}\.log$' } | Sort-Object LastWriteTime -Descending | Select-Object -First 1; (Get-Content $l.FullName -Tail 1) }
+# Review found 3 stale pings queued; purged 09-07. Anything pending while Revit is closed is a finding.
+Add-Check $S 'inbox pending files' '0' { @(Get-ChildItem '\\KOR-302N\C$\KOR.Drafter\bridge\inbox' -File).Count }
 if ($IncludeBridgeCounts) {
     Add-Check $S 'outbox files|MB (slow)' '94091|2959.6' { $o = Get-ChildItem '\\KOR-302N\C$\KOR.Drafter\bridge\outbox' -File; '{0}|{1:N1}' -f $o.Count, (($o | Measure-Object Length -Sum).Sum / 1MB) }
     Add-Check $S 'inbox\done files (slow)' '94136' { (Get-ChildItem '\\KOR-302N\C$\KOR.Drafter\bridge\inbox\done' -File | Measure-Object).Count }
@@ -155,29 +162,42 @@ if ($IncludeBridgeCounts) {
 $S = 'Git'
 # Remotes: Operations -> origin (GitHub). KOR.Drafter and KOR.RevitTools -> "backup", a bare repo on \\KOR-302N\C$.
 # Counted against the NAMED remote branch, not @{u}: KOR.RevitTools main has no upstream, so @{u} silently reads 0.
-Add-Check $S 'Operations branch|not on origin/develop|ahead of origin/main' 'develop|14|509' { (Invoke-Git $RepoRoot @('branch','--show-current')).Trim() + '|' + ((Invoke-Git $RepoRoot @('rev-list','--count','origin/develop..HEAD')).Trim()) + '|' + ((Invoke-Git $RepoRoot @('rev-list','--count','origin/main..HEAD')).Trim()) }
-Add-Check $S 'KOR.Drafter branch|ahead of local main|not on backup/main|078 tracked' 'standard-details-rendered-image-store|5|16|False' { (Invoke-Git $DrafterRepo @('branch','--show-current')).Trim() + '|' + ((Invoke-Git $DrafterRepo @('rev-list','--count','main..HEAD')).Trim()) + '|' + ((Invoke-Git $DrafterRepo @('rev-list','--count','backup/main..HEAD')).Trim()) + '|' + ([bool]((Invoke-Git $DrafterRepo @('ls-files','db/078_RenderedPdf.sql')).Trim())) }
+# Review (09-07 morning): Operations 14 unpushed; KOR.Drafter 16 not on backup and 078 untracked; KOR.RevitTools
+# 2 not on backup (the review said 0, wrongly). All pushed 09-07 evening. Ahead-of-main counts drift with every
+# commit, so only "not on the remote" is asserted: 0 means backed up.
+Add-Check $S 'Operations branch|commits not on origin/develop' 'develop|0' { (Invoke-Git $RepoRoot @('branch','--show-current')).Trim() + '|' + ((Invoke-Git $RepoRoot @('rev-list','--count','origin/develop..HEAD')).Trim()) }
+Add-Check $S 'KOR.Drafter branch|commits not on its backup branch|078 tracked' 'standard-details-rendered-image-store|0|True' { $b = (Invoke-Git $DrafterRepo @('branch','--show-current')).Trim(); $b + '|' + ((Invoke-Git $DrafterRepo @('rev-list','--count',"backup/$b..HEAD")).Trim()) + '|' + ([bool]((Invoke-Git $DrafterRepo @('ls-files','db/078_RenderedPdf.sql')).Trim())) }
 Add-Check $S 'KOR.Drafter 078_RenderedPdf.sql exists on disk' 'True' { Test-Path (Join-Path $DrafterRepo 'db\078_RenderedPdf.sql') }
-Add-Check $S 'KOR.RevitTools HEAD|not on backup/main (review said 0: WRONG)' 'a6c8e38|2' { ((Invoke-Git $RevitToolsRepo @('rev-parse','--short=7','HEAD')).Trim()) + '|' + ((Invoke-Git $RevitToolsRepo @('rev-list','--count','backup/main..HEAD')).Trim()) }
+Add-Check $S 'KOR.RevitTools commits not on backup/main' '0' { (Invoke-Git $RevitToolsRepo @('rev-list','--count','backup/main..HEAD')).Trim() }
 
 # ---------------------------------------------------------------- Source facts
 $S = 'Source'
 $sd = Join-Path $RepoRoot 'Kor.Operations.App\StandardDetails'
-Add-Check $S 'MasterPublisher File.Replace with backup=null|backup/archive mentions' 'True|0' { $t = Get-Content (Join-Path $sd 'MasterPublisher.cs') -Raw; ([bool]($t -match 'File\.Replace\([^)]*destinationBackupFileName:\s*null')).ToString() + '|' + ([regex]::Matches($t, '(?i)backup|archive').Count - [regex]::Matches($t, 'destinationBackupFileName').Count) }
-Add-Check $S 'SheetComposerWindow still requires a sheet number' 'True' { [bool]((Get-Content (Join-Path $sd 'SheetComposerWindow.xaml.cs') -Raw) -match 'Enter a sheet number first') }
+# Review: File.Replace(..., destinationBackupFileName: null) destroyed the previous master. Fixed 09-07 (Codex
+# item 2): a backup path into MASTER\_archive, newest five kept. The null form must never come back.
+Add-Check $S 'MasterPublisher File.Replace still passes backup=null' 'False' { [bool]((Get-Content (Join-Path $sd 'MasterPublisher.cs') -Raw) -match 'File\.Replace\([^)]*destinationBackupFileName:\s*null') }
+# Review + Jim (Sep 3, live): "sheet number is required". Since 09-07 the number is assigned on save (next free
+# S1.NN); the window never asks for it.
+Add-Check $S 'composer asks the user to enter a sheet number' 'False' { [bool]((Get-Content (Join-Path $sd 'SheetComposerWindow.xaml.cs') -Raw) -match 'Enter a sheet number first') }
+Add-Check $S 'composer assigns the number itself (NextSheetNumber)' 'True' { [bool]((Get-Content (Join-Path $sd 'SheetComposer.cs') -Raw) -match 'NextSheetNumber\(') }
 Add-Check $S 'composer sheet size constants 914.4|609.6 ; overflow logic' 'True|True|0' { $t = Get-Content (Join-Path $sd 'SheetComposerWindow.xaml.cs') -Raw; "$([bool]($t -match '914\.4'))|$([bool]($t -match '609\.6'))|$([regex]::Matches($t, '(?i)overflow|next sheet').Count)" }
-Add-Check $S 'App.config Approvers|Publishers' 'ilalonde@korstructural.com|ilalonde@korstructural.com' { $c = Get-Content (Join-Path $RepoRoot 'Kor.Operations.App\App.config') -Raw; [regex]::Match($c, 'StandardDetailsApprovers\.Members"\s+value="([^"]+)"').Groups[1].Value + '|' + [regex]::Match($c, 'StandardDetailsPublishers\.Members"\s+value="([^"]+)"').Groups[1].Value }
+# Review: ilalonde was the only approver and publisher. Serban (sacosti) added to Approvers 09-07 per Jim's
+# Sep 3 meeting. Publishing stays with ilalonde until Serban also gets Modify on MASTER.
+Add-Check $S 'App.config Approvers|Publishers' 'ilalonde@korstructural.com;sacosti@korstructural.com|ilalonde@korstructural.com' { $c = Get-Content (Join-Path $RepoRoot 'Kor.Operations.App\App.config') -Raw; [regex]::Match($c, 'StandardDetailsApprovers\.Members"\s+value="([^"]+)"').Groups[1].Value + '|' + [regex]::Match($c, 'StandardDetailsPublishers\.Members"\s+value="([^"]+)"').Groups[1].Value }
+Add-Check $S 'App.config StandardDetails.PreviewCachePath key removed' 'False' { [bool]((Get-Content (Join-Path $RepoRoot 'Kor.Operations.App\App.config') -Raw) -match 'StandardDetails\.PreviewCachePath') }
 # Counts test FILES in a *Tests*\StandardDetails\ folder (tests OF the module). A name-only grep also hits
 # Kor.Operations.Architecture.Tests\ScopedViewTests.cs, which names the same classes as scene boxes.
-# Review said 1|1. Post-fix 2026-09-07: + MasterPublisherPdfMatchingTests (7 facts) for the ship-blocker.
-Add-Check $S 'test files in a *Tests*\StandardDetails\ folder|[Fact]s in them' '2|8' {
+# Review said 1|1. By 09-07 evening: + MasterPublisherPdfMatchingTests (7), the five Codex audit-fix classes
+# (10), and SheetComposerNumberingTests (4) = 8 files, 22 facts. Only ever goes up.
+Add-Check $S 'test files in a *Tests*\StandardDetails\ folder|[Fact]s in them' '8|22' {
     $files = @(Get-ChildItem $RepoRoot, $DrafterRepo, $RevitToolsRepo -Recurse -Filter '*.cs' -ErrorAction SilentlyContinue | Where-Object { $_.FullName -match '(?i)tests?[^\\]*\\StandardDetails\\' -and $_.FullName -notmatch '\\(bin|obj)\\' })
     $facts = 0; foreach ($f in $files) { $facts += ([regex]::Matches((Get-Content $f.FullName -Raw), '\[(Fact|Theory)')).Count }
     "$($files.Count)|$facts"
 }
 # Same measure as the review: wc -l over *.cs AND *.xaml (newline count). Review said 8458; the ship-blocker
-# fix (MasterPublisher matcher, 2026-09-07) made it 8506. -Include needs the wildcard path or it returns nothing.
-Add-Check $S 'StandardDetails .cs + .xaml line count (wc -l)' '8506' { (Get-ChildItem (Join-Path $sd '*') -Include '*.cs','*.xaml' -File | ForEach-Object { ([regex]::Matches([IO.File]::ReadAllText($_.FullName), "`n")).Count } | Measure-Object -Sum).Sum }
+# fix made it 8506; the six audit fixes + automatic numbering (09-07 evening) 8619. Informational: a DIFF
+# here just means the module changed. -Include needs the wildcard path or it returns nothing.
+Add-Check $S 'StandardDetails .cs + .xaml line count (wc -l)' '8619' { (Get-ChildItem (Join-Path $sd '*') -Include '*.cs','*.xaml' -File | ForEach-Object { ([regex]::Matches([IO.File]::ReadAllText($_.FullName), "`n")).Count } | Measure-Object -Sum).Sum }
 Add-Check $S 'census writers = migrations 005/005b/014/017/024 only (KOR.Drafter db)' '005_LoadDetailObservations.sql,005b_RepairAndCompleteLoad.sql,014_ReloadCensusV2.sql,017_ReloadCensusV3.sql,024_ReloadCensusV4.sql' { (Get-ChildItem (Join-Path $DrafterRepo 'db') -Filter '*.sql' | Where-Object { Select-String -Path $_.FullName -Pattern 'INSERT INTO detail\.DetailOccurrence' -Quiet } | Sort-Object Name | ForEach-Object { $_.Name }) -join ',' }
 
 # ---------------------------------------------------------------- Report

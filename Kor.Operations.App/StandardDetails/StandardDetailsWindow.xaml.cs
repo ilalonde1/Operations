@@ -72,8 +72,7 @@ public partial class StandardDetailsWindow : Window
         _masterPublishOptions = new StandardDetailsMasterPublishOptions(
             storageOptions.StandardDetailsAuthoringPath,
             storageOptions.StandardDetailsMasterPath,
-            storageOptions.StandardDetailsBridgeRoot,
-            storageOptions.StandardDetailsPreviewCachePath);
+            storageOptions.StandardDetailsBridgeRoot);
         _partImageRoot = storageOptions.StandardDetailsPartImageRoot;
         _userIdentity = StandardDetailsAccessPolicy.ResolveCurrentUserIdentity(Kor.Operations.Services.AppServices.Get<UserOptions>(), HeaderBar?.UserEmail);
         _policy = new StandardDetailsAccessPolicy(_userIdentity);
@@ -186,9 +185,8 @@ public partial class StandardDetailsWindow : Window
         ShowPreviewEmpty(row.IsPart ? "Loading part image…" : "Loading drawing…");
     }
 
-    // Loads the art from the governed DB store (detail.RenderedImage), keyed by identity. Details fall
-    // back to the fs01 preview cache until they are ingested into the store; parts that have no image
-    // yet say so honestly. A token guards against a slow load landing after the selection moved on.
+    // Loads art only from the governed DB store (detail.RenderedImage), keyed by identity.
+    // A token guards against a slow load landing after the selection moved on.
     private async Task LoadPreviewAsync(DocumentRow? row)
     {
         var token = ++_previewToken;
@@ -211,15 +209,9 @@ public partial class StandardDetailsWindow : Window
         }
 
         if (token != _previewToken) return;
-        if (row.IsDetail)
-        {
-            SetDetailPreview(row.DetailNumber); // fs01 fallback until details are ingested
-            if (PreviewImage.Source is not null) SetDrawingFootnote(row.DetailNumber);
-        }
-        else
-        {
-            ShowPreviewEmpty("No image rendered for this part yet — the next parts render adds it to the store.");
-        }
+        ShowPreviewEmpty(row.IsDetail
+            ? "No drawing stored for this detail yet."
+            : "No image rendered for this part yet — the next parts render adds it to the store.");
     }
 
     private void SetDrawingFootnote(string detailNumber)
@@ -304,7 +296,7 @@ public partial class StandardDetailsWindow : Window
         var canAssignToSelectedGroup = selectedGroup is not null && (selectedGroup.GroupId is not null || string.Equals(selectedGroup.Name, "All Records", StringComparison.OrdinalIgnoreCase));
 
         AddGroupButton.IsEnabled = canManageGroups; AddSubgroupButton.IsEnabled = canManageGroups && selectedGroup?.GroupId is not null; RenameGroupButton.IsEnabled = canManageGroups && selectedGroup?.GroupId is not null; RemoveGroupButton.IsEnabled = canManageGroups && selectedGroup?.GroupId is not null;
-        CreateRecordButton.IsEnabled = canContribute; UploadVersionButton.IsEnabled = canContribute && selectedDoc is { IsDetail: false }; LinkDetailButton.IsEnabled = canContribute && selectedDoc is { IsDetail: false } && _korStandardsRepo is not null; RegistersButton.IsEnabled = _korStandardsRepo is not null; PublishToMasterButton.IsEnabled = _korStandardsRepo is not null && (_policy?.CanPublish() == true); ComposeSheetButton.IsEnabled = _repo is not null && _korStandardsRepo is not null && (_policy?.CanPublish() == true); AssignRecordButton.IsEnabled = canContribute && selectedDoc is { IsDetail: false } && _groupSchemaAvailable && canAssignToSelectedGroup; DeleteRecordButton.IsEnabled = canContribute && selectedDoc is { IsDetail: false };
+        CreateRecordButton.IsEnabled = canContribute; UploadVersionButton.IsEnabled = canContribute && selectedDoc is { IsDetail: false }; LinkDetailButton.IsEnabled = canContribute && selectedDoc is { IsDetail: false } && _korStandardsRepo is not null; RegistersButton.IsEnabled = _korStandardsRepo is not null; PublishToMasterButton.IsEnabled = _korStandardsRepo is not null && (_policy?.CanPublish() == true); ComposeSheetButton.IsEnabled = _korStandardsRepo is not null; AssignRecordButton.IsEnabled = canContribute && selectedDoc is { IsDetail: false } && _groupSchemaAvailable && canAssignToSelectedGroup; DeleteRecordButton.IsEnabled = canContribute && selectedDoc is { IsDetail: false };
         OpenFileButton.IsEnabled = selectedVersion is not null; SubmitButton.IsEnabled = canContribute && selectedVersion is not null && selectedVersion.Status == StatusDraft; ApproveButton.IsEnabled = (_policy?.CanApproveOrReject() == true) && (((selectedDoc is { IsDetail: true } or { IsPart: true }) && _promoterRepo is not null) || (selectedVersion is not null && selectedVersion.Status == StatusSubmitted)); RejectButton.IsEnabled = (_policy?.CanApproveOrReject() == true) && (((selectedDoc is { IsDetail: true } or { IsPart: true }) && _promoterRepo is not null) || (selectedVersion is not null && selectedVersion.Status == StatusSubmitted)); PublishButton.IsEnabled = (_policy?.CanPublish() == true) && selectedVersion is not null && selectedVersion.Status == StatusApproved;
         DetailTypeCombo.IsEnabled = selectedDoc is { IsDetail: true } && _promoterRepo is not null && _policy?.CanApproveOrReject() == true;
         OpenSheetPdfButton.IsEnabled = selectedDoc is { IsDetail: true } && _korStandardsRepo is not null && !_openingCatalogPdf;
@@ -320,58 +312,5 @@ public partial class StandardDetailsWindow : Window
         PreviewEmpty.MaxWidth = sheetLayout ? 520 : 360;
     }
 
-    // The drawing previews are PRE-RENDERED to a SHARED cache (beside the master template on the
-    // Drafting share), so every reviewer loads the SAME images — nobody needs Revit or the bridge to
-    // VIEW a detail. The bridge only (re)generates this cache when a detail changes.
-    private string ResolvePreviewCacheDir()
-    {
-        // The shared fs01 cache path (StandardDetails.PreviewCachePath in App.config) — the drawing
-        // previews live on the file server with the templates, so the whole fleet reads the same
-        // images and nobody needs Revit or the bridge to VIEW a detail.
-        var configured = _masterPublishOptions?.PreviewCachePath;
-        if (!string.IsNullOrWhiteSpace(configured)) return configured;
-        return @"\\Kor-fs01\Drafting\KOR-Standards\detail-previews";
-    }
 
-    // Shows the selected detail's pre-rendered drawing from the shared cache. Fully guarded — a
-    // missing/broken image never throws into the UI; it just shows the fallback.
-    private void SetDetailPreview(string? detailNumber)
-    {
-        try
-        {
-            string? file = null;
-            if (!string.IsNullOrWhiteSpace(detailNumber))
-            {
-                var candidate = System.IO.Path.Combine(ResolvePreviewCacheDir(), detailNumber.Trim() + ".png");
-                if (System.IO.File.Exists(candidate)) file = candidate;
-            }
-
-            if (file is null)
-            {
-                PreviewImage.Source = null;
-                PreviewImage.Visibility = Visibility.Collapsed;
-                ZoomHintBadge.Visibility = Visibility.Collapsed;
-                PreviewEmpty.Text = "Select a detail to see its drawing.";
-                PreviewEmpty.Visibility = Visibility.Visible;
-                return;
-            }
-
-            var bmp = new System.Windows.Media.Imaging.BitmapImage();
-            bmp.BeginInit();
-            bmp.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
-            bmp.UriSource = new Uri(file);
-            bmp.EndInit();
-            PreviewImage.Source = bmp;
-            PreviewImage.Visibility = Visibility.Visible;
-            ZoomHintBadge.Visibility = Visibility.Visible;
-            PreviewEmpty.Visibility = Visibility.Collapsed;
-        }
-        catch
-        {
-            PreviewImage.Source = null;
-            PreviewImage.Visibility = Visibility.Collapsed;
-            ZoomHintBadge.Visibility = Visibility.Collapsed;
-            PreviewEmpty.Visibility = Visibility.Visible;
-        }
-    }
 }
