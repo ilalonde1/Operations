@@ -142,3 +142,41 @@ Distilled from what the room asked for or bumped into, not from what I would lik
 | Arcades | Arcadis | High | #153 |
 | BAM (Ben Smith) | unresolved: no company of that name in Apollo or on the web, and the one Ben Smith in BC real estate on record is a different person | Low | not on file; ask Jim |
 | Ike (Perkins&Will) | unresolved: no Ike or Isaac among P&W Vancouver's 87 staff on record | Low | ask Rory |
+
+## 7. Loaded into the CRM
+
+Script: `docs/BD-Vancouver-Updates-CRM-Load-2026-09-03.sql`, run 7 September. Idempotent: each row
+carries `ExternalSourceKey` `BDV-2026-09-03:<orgId>`, so re-running inserts nothing twice.
+
+| Engagement | Org | Owner | Next action due |
+|---|---|---|---|
+| 11 (existing) | Pinnacle International | Jim | 9 Sept, call Michael De Cotiis |
+| 91 (existing) | Graham Construction | Omar, + Conor | 1 Oct, client-appreciation night |
+| 447 | Colliers Project Leaders | Omar | 19 Sept |
+| 448 | Kirsten Reite Architecture | Islam | 19 Sept |
+| 449 | Perkins&Will | Omar, + Rory, Jim | 10 Sept |
+| 450 | Bosa Properties | JB | 26 Sept |
+| 451 | Solterra Development | JB | 12 Sept |
+| 452 | Stantec | Omar, + Islam | 30 Sept |
+| 453 | Vancouver Fraser Port Authority | JM, + Omar, Ian | 19 Sept |
+| 454 | Aquilini Investment Group | Jim, + JM, Omar | 30 Sept |
+| 455 | GBL Architects | Jim | 30 Sept |
+| 456 | Beedie Development Group | JM | 12 Sept |
+| 457 | Continuum Architecture | Rory, + Jim | 19 Sept |
+| 458 | Trillium Communities | Jim, + Rory | 19 Sept |
+| 459 | MVE + Partners | Jim, + JM | 19 Sept |
+| 460 | Chris Dikeakos Architects | Omar, + Jim | 11 Sept |
+| 461 | Arcadis (Vancouver) | JM | 19 Sept |
+| 462 | MCM Architects | JM | 15 Oct |
+| 463 | Anthem Properties | JM, + Islam | 26 Sept |
+| 464 | GGA Architecture | JM, + Islam | 26 Sept |
+| 465 | Mission Group | Conor | 30 Sept |
+| 466 | Berry Architecture + Associates | Conor, + JM | 30 Sept |
+| 467 | ITC Construction Group | JM | 12 Sept |
+| 468 | Rize Alliance Properties | Rory | 1 Dec |
+| 469 | Fraser Health Authority | unassigned, + John | 15 Oct |
+
+Not loaded, and why: **NDY** (not in the brain; the new `--create` verb failed on its first real use
+with a SQL memory-grant error, see the duplicate-sweep notes); Omar's office-to-hotel client and the
+Coal Harbour hotel developer (firms not named); the San Diego wood-frame RFP client (not named); the
+K-12 seismic list (a qualification, not a pursuit).
