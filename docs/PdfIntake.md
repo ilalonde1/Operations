@@ -184,3 +184,23 @@ as lines of unknown meaning (76,448 on 31130, where the walls are), words no kin
 letters outside any bubble. "Read" fell too, from 85,133 to 8,685 on 31130, because emitted lines
 are no longer counted as read — a BEAM-layer polyline is not knowledge, and the old number was
 flattering the intake. That is the honest baseline the walls step is measured from.
+
+## 8. Step 2a, done 2026-09-08: a path that draws nothing is not geometry
+
+Codex brief 14, verified. One rule added to the classifier: a content path with neither fill nor
+stroke is `NoInk` and discarded; annotations exempt. The first change to what the intake emits, and
+the differential says it did exactly one thing:
+
+- **Thirteen baseline DXFs**: COLUMN and BEAM counts identical on 13 of 13; SLAB counts down on 13
+  of 13 (31130 p11 17→11, p12 36→23, p13 18→16; 31168 p11 51→42; 31202 p17 63→18; 31065 p14 72→46);
+  the two Bluebeam markup layers on 31065 p15 unchanged (133 and 37). Nothing else differs.
+- **The ledger**: `paths: NoInk` equals each set's no-ink total (7,489 / 3,765 / 6,745 / 12,326 /
+  15,371); the "no-ink paths emitted as geometry" context row is 0 on all five; `BecameSlab` on
+  31130 fell 1,557 → 1,039, the 518 exactly; every other row unchanged; totals unchanged.
+- **Against 31168's Revit DXF**: PDF slabs 781 → 483 over the 24 issued sheets (DXF 45); columns
+  unchanged, equal on 8 of 24 sheets as before.
+- 939 of 939 tests. Scope: the three named files plus one new test.
+
+The 438 slabs still in excess of the Revit count on 31168 are drawn geometry — footing outlines,
+core outlines, notes-box borders that escape the furniture rule — and are the subject of the walls
+and footings steps, where a closed outline becomes the object it is instead of a floor plate.

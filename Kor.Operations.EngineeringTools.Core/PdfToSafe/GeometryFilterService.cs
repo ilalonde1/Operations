@@ -104,6 +104,11 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 if (annotationsOnly && !sub.IsAnnotation)
                 { Fate(PathReason.MarkupOnlyMode); continue; }
 
+                // A PATH THAT DRAWS NOTHING IS NOT GEOMETRY. A closed path with neither fill nor stroke is a
+                // clipping boundary or a construction artefact; it puts no ink on the page. On 31130 it was
+                // 518 of the 1,557 "slabs" the DXF carried (2026-09-08).
+                if (!sub.IsAnnotation && !sub.IsFilled && !sub.IsStroked) { Fate(PathReason.NoInk); continue; }
+
                 // ── Sheet furniture ──────────────────────────────────────────
                 // Whatever sits inside a schedule's border, a notes box or the title block is a
                 // table cell, a tie sketch, a rule or a logo box, and it is not read as structure;

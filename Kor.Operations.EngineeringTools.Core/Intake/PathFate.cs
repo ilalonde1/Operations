@@ -13,6 +13,7 @@ public enum PathReason
     /// parkade plans go this way; the ledger counts them here, against the unthinned read.
     /// </summary>
     CollapsedByThinning,
+    NoInk,
 }
 
 /// <summary>Input path index and its decision; ObjectIndex is zero-based in the corresponding geometry list.</summary>
@@ -27,7 +28,7 @@ public sealed record PathFate(int PathIndex, Disposition Disposition, PathReason
             or PathReason.PaperFill or PathReason.SheetFrame or PathReason.FrameEdgeLine
             or PathReason.GridLineExcluded or PathReason.ColumnTooSmall or PathReason.UnfilledSmallShape
             or PathReason.ColumnAspect or PathReason.TooShort or PathReason.TooFewPoints
-            or PathReason.CollapsedByThinning => Disposition.Discarded,
+            or PathReason.CollapsedByThinning or PathReason.NoInk => Disposition.Discarded,
         _ => throw new ArgumentOutOfRangeException(nameof(reason), reason, "Unknown path reason."),
     };
 }

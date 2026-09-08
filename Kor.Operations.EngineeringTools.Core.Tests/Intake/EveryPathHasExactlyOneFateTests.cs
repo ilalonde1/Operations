@@ -96,6 +96,7 @@ internal static class FateFixture
     internal static List<(RawSubpath Path, PathReason Reason)> Cases() =>
     [
         (Rect(5000, 4000), PathReason.BecameSlab),
+        (Rect(5000, 4000) with { IsFilled = false, IsStroked = false }, PathReason.NoInk),
         (Rect(1800, 400), PathReason.BecameColumnByDeclaredSize),
         (Rect(600, 800), PathReason.BecameColumnByShape),
         (Line(1000, 1000, 4000, 1500), PathReason.EmittedAsLine),
@@ -108,7 +109,7 @@ internal static class FateFixture
         (Line(0, 0, 70000, 0), PathReason.FrameEdgeLine),
         (Line(0, 0, 0, 50000), PathReason.FrameEdgeLine),
         (Rect(100, 500), PathReason.ColumnTooSmall),
-        (Rect(600, 600) with { IsFilled = false, Color = (0, 0, 0) }, PathReason.UnfilledSmallShape),
+        (Rect(600, 600) with { IsFilled = false, IsStroked = true, Color = (0, 0, 0) }, PathReason.UnfilledSmallShape),
         (Rect(250, 1000), PathReason.ColumnAspect),
         (Line(0, 0, 100, 0), PathReason.TooShort),
         (Rect(2000, 1000), PathReason.TooShort),
