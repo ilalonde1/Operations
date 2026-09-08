@@ -249,3 +249,45 @@ on 31130 fell 1,039 → 424; totals unchanged.
 - **The compiled defaults are narrower than the banked rows** (`MaxWallThickness` 36 vs 60,
   `MaxColumnSize` 96 vs 132 on the DXF side), and nothing in the build proves the two agree. The
   parity test and the re-runnable corpus measurement are brief 16.
+
+## 10. Step 3, done 2026-09-08: the build proves the compiled defaults and the banked rows agree
+
+Brief 16, implemented by the verifier (Codex was out of usage) and verified the same way.
+
+**Measured first**: 49 numeric `dxf.*` rows against their compiled defaults. 46 agreed. Three did
+not: `dxf.max-wall-thickness` 60 (row, migration 038, corpus of 1,126 models) against 36 (code);
+`dxf.max-column-size` 132 against 96; `dxf.outline-self-touch-tolerance` 0.5 (live row) against
+0.05 (code, and migration 045's own committed text). The first two were the code never following
+the corpus widening: a production run admitted a 42" core wall and every default-mode run refused
+it. The third was a row that had drifted from its own migration.
+
+**Changed**: the two code defaults are now the rows (60, 132), with the corpus basis in their
+remarks; migration 081 (`KOR.Drafter\db\081_ARowMatchesItsOwnMigration.sql`, applied by Ian
+2026-09-08) set the self-touch row back to 0.05. `DxfToEtabsService.BuiltInRuleValues` is internal
+and `PdfIntakeOptions.BuiltInRuleValues()` mirrors it for the PDF side's eleven keys.
+
+**The gate**, `CompiledDefaultsAreTheBankedRowsTests` (Slow; needs KorStandards; FAILS when the
+connection is unset rather than skipping):
+
+- every key the code reads equals its row within 1e-6 in the row's unit, and a key both sides
+  read compiles to the same value on both sides;
+- a key with no row must be declared `UnbankedByDesign` with a reason — the six `dxf.pdf.*` keys
+  are, pending the corpus measurement — and a declared-unbanked key that gains a row fails the test
+  until it is removed from the list;
+- every public numeric property on `PlanClassificationOptions` and `ComposeOptions` is a rule
+  (its kebab-case name is a `dxf.*` key) or is declared `NotARule` with a reason. Nine are: her
+  per-storey slab count, the model unit, the storey convention, four pieces of per-run state, a
+  report-only copy, and `SpandrelDepth`, superseded by the floor and ceiling rows and marked for
+  removal.
+
+**Result**: 0 divergences, 0 undeclared orphans, 2 of 2 tests green; the thirteen PDF-side DXFs
+byte-identical to step 2b's (the PDF side already used 60). The full Core suite's result is in the
+commit message.
+
+**Still open on rules, and where it goes**: the corpus measurement is a one-off hand run from
+14 August. Making it a compiled, re-runnable verb that reports each rule's coverage of the
+portfolio — and does the same over the stick-file corpus for the `dxf.pdf.*` keys — is the step
+that turns "a row must not break a read" into a number. It has to run on the file server itself
+(the corpus is 1,126 models on the projects volume, and SMB enumeration is the one thing this repo
+has learned never to do from a workstation), so it is a self-contained publish started over RPC,
+and its own brief.

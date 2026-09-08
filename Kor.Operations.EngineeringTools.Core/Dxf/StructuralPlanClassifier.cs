@@ -61,7 +61,15 @@ public sealed record PlanClassificationOptions
     public double RecoveredOutlineTolerance { get; init; } = 3.0;
 
     public double MinWallThickness { get; init; } = 4.0;
-    public double MaxWallThickness { get; init; } = 36.0;
+
+    /// <summary>
+    /// 60", the banked row `dxf.max-wall-thickness` since migration 038: across 1,126 engineer
+    /// models the 36" this code carried until 2026-09-08 rejected 4,681 of 36,761 wall sections
+    /// (12.7%), including 42" walls 1,256 times and 48" walls 831 times — ordinary tower cores.
+    /// 60" admits 99.2%. The compiled default must be the row (CompiledDefaultsAreTheBankedRowsTests);
+    /// a production run read 60 while every default-mode run refused a 42" wall.
+    /// </summary>
+    public double MaxWallThickness { get; init; } = 60.0;
 
     /// <summary>
     /// Shorter than this on plan and the element is a column, not a wall — the engineer's rule,
@@ -133,7 +141,13 @@ public sealed record PlanClassificationOptions
     public double MaxColumnAspect { get; init; } = 3.0;
 
     public double MinColumnSize { get; init; } = 6.0;
-    public double MaxColumnSize { get; init; } = 96.0;
+
+    /// <summary>
+    /// 132", the banked row `dxf.max-column-size` since migration 038: 99.2% of the 7,538 columns
+    /// in 1,126 engineer models fit under it. The code carried 96" until 2026-09-08; the compiled
+    /// default must be the row (CompiledDefaultsAreTheBankedRowsTests).
+    /// </summary>
+    public double MaxColumnSize { get; init; } = 132.0;
 
     /// <summary>
     /// A wall outline is a thin ribbon tracing faces, so it fills little of its bounding box. A

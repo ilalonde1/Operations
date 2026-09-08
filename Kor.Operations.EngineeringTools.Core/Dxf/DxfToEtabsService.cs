@@ -354,7 +354,11 @@ public static class DxfToEtabsService
         "dxf.elevator-roof-words",
     ];
 
-    private static IReadOnlyDictionary<string, double> BuiltInRuleValues(
+    /// <summary>
+    /// Every rule key this generator reads, with the value the compiled default supplies for it.
+    /// Internal so that CompiledDefaultsAreTheBankedRowsTests can hold each one against its row.
+    /// </summary>
+    internal static IReadOnlyDictionary<string, double> BuiltInRuleValues(
         PlanClassificationOptions classification,
         ComposeOptions compose)
     {

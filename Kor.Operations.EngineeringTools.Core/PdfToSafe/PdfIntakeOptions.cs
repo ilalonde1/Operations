@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using Kor.Operations.EngineeringTools.Dxf;
+using Kor.Operations.EngineeringTools.QuantityTakeoff;
 
 
 namespace Kor.Operations.EngineeringTools.PdfToSafe
@@ -108,6 +109,32 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             $"{Prefix}.agreement-tolerance-mm",
             $"{Prefix}.agreement-label-reach-mm",
         ];
+
+        /// <summary>
+        /// Every rule key the PDF side reads, with the value its compiled default supplies, in the
+        /// unit the ROW is banked in: the shared DXF keys in inches (the row's unit), the
+        /// <c>dxf.pdf.*</c> keys in millimetres. CompiledDefaultsAreTheBankedRowsTests holds each
+        /// against its row, and lists the <c>dxf.pdf.*</c> keys as unbanked until a corpus
+        /// measurement banks them.
+        /// </summary>
+        public static IReadOnlyDictionary<string, double> BuiltInRuleValues()
+        {
+            var d = Default;
+            return new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase)
+            {
+                [SharedMaxColumnAspect]  = d.ColumnMaxAspect,
+                [SharedMinWallThickness] = d.MinWallThicknessMm / PrintedLength.MmPerInch,
+                [SharedMaxWallThickness] = d.MaxWallThicknessMm / PrintedLength.MmPerInch,
+                [SharedMinWallLength]    = d.MinWallLengthMm / PrintedLength.MmPerInch,
+                [SharedMinWallAspect]    = d.MinWallAspect,
+                [$"{Prefix}.slab-min-diagonal-mm"]     = d.SlabMinDiagonalMm,
+                [$"{Prefix}.line-min-length-mm"]       = d.LineMinLengthMm,
+                [$"{Prefix}.column-max-size-mm"]       = d.ColumnMaxSizeMm,
+                [$"{Prefix}.column-min-dim-mm"]        = d.ColumnMinDimMm,
+                [$"{Prefix}.agreement-tolerance-mm"]   = d.AgreementToleranceMm,
+                [$"{Prefix}.agreement-label-reach-mm"] = d.AgreementLabelReachMm,
+            };
+        }
 
         /// <summary>Overlay whatever KorStandards states; anything unbanked keeps its default.</summary>
         public static PdfIntakeOptions ApplyRules(
