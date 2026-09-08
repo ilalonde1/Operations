@@ -89,7 +89,7 @@ Distilled from what the room asked for or bumped into, not from what I would lik
 
 ## 5. Unknowns — answer these before anyone acts on them
 
-1. **Omar's Colliers contact:** her name, and whether she is at Colliers Project Leaders (#70132) or Colliers International (#5096). Also the owner body for BC Cancer that sounded like "Arana" at 0:03 — PHSA?
+1. **Omar's Colliers contact:** her name, and whether she is at Colliers Project Leaders (#70132) or Colliers International (#5096).
 2. **Perkins&Will:** a surname for **Ike**, Rory's contact who did the "bonus" job; there is no Ike or Isaac among the 87 Vancouver staff on record, so it may be a nickname. And whether the principal JM remembers is **Ryan Bragg**.
 3. **JB's Bosa names:** confirm Robert is Robert Bosa (founder of Bosa Properties, Colin's father) and Dale is Dale Bosa (Colin's brother).
 4. **Stefan Hertel** (ex Development Manager, Mission Group): where he went. Conor: "maybe he'll take us with him wherever he ends up."
