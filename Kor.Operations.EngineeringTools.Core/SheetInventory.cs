@@ -95,24 +95,35 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                 Note("filled wall-thickness shapes with more than four vertices — ribbons, not split",
                     record.Geometry.WallRibbonsNotSplit, Disposition.Unread, "GeometryFilterService: retained with their existing fate");
                 int marksPlaced = 0;
+                bool scheduled = false;
                 string byMark = "";
                 try
                 {
                     var (types, box) = FootingScheduleReader.ReadSchedule(record.Content);
+                    scheduled = types.Any(t => t.IsSpread);
                     if (types.Count > 0)
                     {
-                        var placed = FootingScheduleReader.CountPlacements(record.Content, types, box);
+                        var placed = FootingScheduleReader.CountPlacements(record.Content, types, box, record.Furniture);
                         var spread = types.Where(t => t.IsSpread).ToList();
                         marksPlaced = placed.Where(kv => spread.Any(t => t.Mark == kv.Key)).Sum(kv => kv.Value);
-                        // read of placed, per mark, so the ledger says which mark the chaining is short on
+                        // labelled footings of placed labels, per mark, so the ledger says which mark the
+                        // chaining is short on; a box of a scheduled size that no label names is listed apart
                         byMark = string.Join(", ", spread.Select(t =>
-                            $"{t.Mark} {record.Geometry.Footings.Count(f => f.Mark == t.Mark)} of {(placed.TryGetValue(t.Mark, out int n) ? n : 0)}"));
+                            $"{t.Mark} {record.Geometry.Footings.Count(f => f.Mark == t.Mark && f.LabelledOnThePlan)} of {(placed.TryGetValue(t.Mark, out int n) ? n : 0)}"));
+                        var unlabelled = record.Geometry.Footings.Where(f => !f.LabelledOnThePlan).GroupBy(f => f.Mark).ToList();
+                        if (unlabelled.Count > 0)
+                            byMark += "; no label names " + string.Join(", ", unlabelled.Select(g => $"{g.Count()} {g.Key}-sized box(es)"));
                     }
                 }
                 catch { }
+                // a footing read on a sheet whose plan places no footing mark is a box the size of a
+                // footing, and nothing on the sheet says it is one: unaccounted, not read
                 Note("footings read as dashed outlines of a scheduled size", record.Geometry.Footings.Count,
-                    record.Geometry.Footings.Count > 0 ? Disposition.Read : (marksPlaced > 0 ? Disposition.Unread : Disposition.Read),
-                    marksPlaced > 0 ? $"FootingOutlines; the plan places {marksPlaced} spread-footing mark(s): {byMark}" : "no spread footing scheduled on this sheet");
+                    record.Geometry.Footings.Count > 0 ? (marksPlaced > 0 ? Disposition.Read : Disposition.Unaccounted)
+                        : (marksPlaced > 0 ? Disposition.Unread : Disposition.Read),
+                    marksPlaced > 0 ? $"FootingOutlines; the plan places {marksPlaced} spread-footing mark(s): {byMark}"
+                    : scheduled ? $"the schedule declares spread footings and the plan places no mark{(byMark.Length > 0 ? ": " + byMark : "")}"
+                    : "no spread footing scheduled on this sheet");
                 if (record.ColumnAgreement is { } check)
                 {
                     Note("plan labels standing at an emitted column", check.MatchedToTheirOwnMark, Disposition.Read, $"PlanAgreesWithItsSchedule, of {check.LabelsOnThePlan} labels");

@@ -63,6 +63,72 @@ public sealed class AFootingIsADashedRectangleTheScheduleSizesTests
         Assert.Empty(solid);
     }
 
+    /// <summary>One full dashed side at x, and a stub at each of its ends running +x — the outline of a footing something stands on.</summary>
+    private static List<RawSubpath> InterruptedSquare(double x, double y, double side, int dashesPerSide, double stub)
+    {
+        var raw = new List<RawSubpath>();
+        double dash = side / (2.0 * dashesPerSide - 1);
+        for (int k = 0; k < dashesPerSide; k++) { double a = k * 2 * dash; raw.Add(Line(x, y + a, x, y + a + dash)); }
+        raw.Add(Line(x, y, x + stub, y));
+        raw.Add(Line(x, y + side, x + stub, y + side));
+        return raw;
+    }
+
+    [Fact]
+    public void AFullSideAndTwoStubsPlaceTheFootingItsScheduledDepthFromTheSide()
+    {
+        var raw = InterruptedSquare(10000, 20000, 1524, 5, 400);
+        var (footings, pieces) = FootingOutlines.Read(raw, [F2, F4]);
+        var f = Assert.Single(footings);
+        Assert.Equal("F2", f.Mark);
+        Assert.Equal(10000 + 762, f.Centre.X, 1); Assert.Equal(20000 + 762, f.Centre.Y, 1);
+        Assert.Equal(raw.Count, pieces.Count);
+        Assert.False(f.LabelledOnThePlan);
+    }
+
+    [Fact]
+    public void AFullSideWithAStubAtOneEndOnlyIsNotAFootingNorAreStubsPointingApart()
+    {
+        var oneStub = InterruptedSquare(10000, 20000, 1524, 5, 400);
+        oneStub.RemoveAt(oneStub.Count - 1);
+        Assert.Empty(FootingOutlines.Read(oneStub, [F2, F4]).Footings);
+        var apart = InterruptedSquare(10000, 20000, 1524, 5, 400);
+        apart[^1] = Line(10000, 20000 + 1524, 10000 - 400, 20000 + 1524);   // top stub runs −x, bottom +x
+        Assert.Empty(FootingOutlines.Read(apart, [F2, F4]).Footings);
+    }
+
+    [Fact]
+    public void PiecesEitherSideOfATwelveMillimetreBoundaryAreOneSide()
+    {
+        // every other dash of the left side sits 10 mm off the others' line (77,000 / 77,010 — the
+        // 31065 p15 case was 77,208 / 77,220); a fixed 12 mm bucket split them 3 and 2, one side does not
+        var raw = DashedSquare(77000, 20000, 2134, 5);
+        int n = 0;
+        for (int i = 0; i < raw.Count; i++)
+        {
+            var s = raw[i];
+            bool leftSide = s.Points.All(p => Math.Abs(p.X - 77000) < 1) && s.Points[0].Y != s.Points[1].Y;
+            if (leftSide && n++ % 2 == 1) raw[i] = s with { Points = s.Points.Select(p => (p.X + 10, p.Y)).ToList() };
+        }
+        var (footings, pieces) = FootingOutlines.Read(raw, [F2, F4]);
+        Assert.Equal("F4", Assert.Single(footings).Mark);
+        Assert.Equal(raw.Count, pieces.Count);
+    }
+
+    [Fact]
+    public void ALabelInOrJustBeneathTheBoxNamesItAndOneElsewhereOrOfAnotherMarkDoesNot()
+    {
+        var raw = DashedSquare(10000, 20000, 1524, 5);
+        var inside = FootingOutlines.Read(raw, [F2, F4], labels: [new FootingOutlines.MarkLabel("F2", 10700, 20700)]);
+        Assert.True(Assert.Single(inside.Footings).LabelledOnThePlan);
+        // 31130 labels 254–461 mm beneath the outline, beside the column
+        var beneath = FootingOutlines.Read(raw, [F2, F4], labels: [new FootingOutlines.MarkLabel("F2", 10700, 20000 - 400)]);
+        Assert.True(Assert.Single(beneath.Footings).LabelledOnThePlan);
+        var elsewhere = FootingOutlines.Read(raw, [F2, F4],
+            labels: [new FootingOutlines.MarkLabel("F2", 30000, 30000), new FootingOutlines.MarkLabel("F4", 10700, 20700)]);
+        Assert.False(Assert.Single(elsewhere.Footings).LabelledOnThePlan);
+    }
+
     [Fact]
     public void TheClassifierRecordsEveryDashAsTheFootingsAndEmitsNothingElseFromThem()
     {

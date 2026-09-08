@@ -66,13 +66,18 @@ public sealed class FiveStickFilesTests
         // Footings read as dashed outlines of a scheduled size on the schedule page, and the spread
         // footing marks the plan places there. Banked 2026-09-08 (31130 p11 35 of 36, 31138 p9 11 of 11,
         // 31065 p14 26 of 31; 31168 and 31202 schedule no spread footing on their banked pages).
+        // Brief 21, same day: a footing something stands on (a wall, the match line) is drawn as one
+        // full side and two stubs; sides cluster by sorted coordinate; nothing in a legend or note is
+        // a footing or a placement — 31130 p11 36 of 36 (F4 13 of 13 now; the hairpin legend's 4 ft
+        // dashed square is out), 31065 p14 30 read of 29 placed (a note's two "F4" mentions are out;
+        // the 30th is the 4.5 m core footing, which no label names and the ledger lists apart).
         int FootingCount = 0, int FootingMarksPlaced = 0);
 
     private static readonly Job[] Jobs =
     {
         new("31130-01", 96, 258, "F1,F2,F3,F4,SF1", 11,
             "PC1,PC2,PC4,PC5,PC6,PC7,PC8", "SWA:12:35,SWB:12:45,SWC:12:45,SWD:16:55",
-            new Dictionary<int, int> { [11] = 14, [12] = 25, [13] = 41 }, WallCount: 11, FootingCount: 35, FootingMarksPlaced: 36),
+            new Dictionary<int, int> { [11] = 14, [12] = 25, [13] = 41 }, WallCount: 11, FootingCount: 36, FootingMarksPlaced: 36),
         new("31168-01", 96, 0, "", 11,
             "C02-A,C02-B,C03-A,C03-B,C04-A,C04-B,GC11-C,PC01,PC02,PC03-A,PC03-B,TC01,TC02,TC03,TC04", "SWA:12:35,SWB:12:45,SWC:12:45,SWD:16:55",
             new Dictionary<int, int> { [11] = 43, [12] = 65, [13] = 47 }, WallCount: 25),
@@ -81,7 +86,7 @@ public sealed class FiveStickFilesTests
             new Dictionary<int, int> { [9] = 24, [11] = 21 }, WallCount: 41, FootingCount: 11, FootingMarksPlaced: 11),
         new("31065-01", 100, 1174, "F1,F2,F3,F4,SF1,SF2", 14,
             "PC1,PC1A,PC2,PC3,PC4,PC5,ZC1,ZC2", "SWA:8:35,SWB:8:35,SWC:24:45",
-            new Dictionary<int, int> { [14] = 24, [15] = 22, [16] = 30 }, WallCount: 36, FootingCount: 26, FootingMarksPlaced: 31),
+            new Dictionary<int, int> { [14] = 24, [15] = 22, [16] = 30 }, WallCount: 36, FootingCount: 30, FootingMarksPlaced: 29),
         new("31202-01", 96, 0, "", 17,
             "1,2,3,4,5,6,7,8", "",
             new Dictionary<int, int> { [17] = 23 }, WallCount: 19),
@@ -229,7 +234,8 @@ public sealed class FiveStickFilesTests
         var page = VectorPageReader.ReadPage(pdf, job.SchedulePage);
         var (types, box) = FootingScheduleReader.ReadSchedule(page);
         int placed = types.Count == 0 ? 0
-            : FootingScheduleReader.CountPlacements(page, types, box).Where(kv => types.Any(t => t.Mark == kv.Key && t.IsSpread)).Sum(kv => kv.Value);
+            : FootingScheduleReader.CountPlacements(page, types, box, SheetFurniture.On(page, PlanAgreesWithItsSchedule.DefaultToleranceMm))
+                .Where(kv => types.Any(t => t.Mark == kv.Key && t.IsSpread)).Sum(kv => kv.Value);
         Assert.True(job.FootingMarksPlaced == placed,
             $"{number} p{job.SchedulePage}: the plan places {placed} spread-footing marks, {job.FootingMarksPlaced} banked");
         Assert.All(geo.Footings, f => Assert.Contains(types, t => t.Mark == f.Mark && t.IsSpread));

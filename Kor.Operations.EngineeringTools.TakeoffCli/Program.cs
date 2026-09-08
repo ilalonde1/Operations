@@ -308,7 +308,32 @@ if (args.Length >= 1 && args[0].Equals("pdf-overlay", StringComparison.OrdinalIg
     foreach (var line in ovGeo.Lines) OvPoly(line, red, 0, close: false);
     foreach (var slab in ovGeo.Slabs) OvPoly(slab, grey, 1, close: true);
     foreach (var wall in ovGeo.Walls) OvPoly(wall.Outline, new Rgba32(130, 0, 0), 2, close: true);
-    foreach (var footing in ovGeo.Footings) OvPoly(footing.Outline, new Rgba32(230, 120, 0), 2, close: true);
+    // a footing no label on the plan names is drawn magenta and listed, and so is every placed
+    // footing label no footing answers — the two ways the read and the plan disagree
+    var magenta = new Rgba32(200, 0, 200);
+    foreach (var footing in ovGeo.Footings) OvPoly(footing.Outline, footing.LabelledOnThePlan ? new Rgba32(230, 120, 0) : magenta, 2, close: true);
+    var unlabelled = ovGeo.Footings.Where(f => !f.LabelledOnThePlan).ToList();
+    var unanswered = new List<string>();
+    try
+    {
+        var (ftypes, fbox) = FootingScheduleReader.ReadSchedule(ovContent);
+        double sMm0 = ovScale * PdfToSafeConstants.PointsToMm;
+        var ovFurniture = SheetFurniture.On(ovContent, PlanAgreesWithItsSchedule.DefaultToleranceMm);
+        foreach (var (mark, positions) in FootingScheduleReader.PlacementPositions(ovContent, ftypes, fbox, ovFurniture))
+            foreach (var (lpx, lpy) in positions)
+            {
+                double lx = lpx * sMm0, ly = lpy * sMm0;
+                bool answered = ovGeo.Footings.Any(f =>
+                {
+                    double x0 = f.Outline.Min(p => p.X), x1 = f.Outline.Max(p => p.X), y0 = f.Outline.Min(p => p.Y), y1 = f.Outline.Max(p => p.Y);
+                    double dx = Math.Max(Math.Max(x0 - lx, 0), lx - x1), dy = Math.Max(Math.Max(y0 - ly, 0), ly - y1);
+                    return string.Equals(f.Mark, mark, StringComparison.OrdinalIgnoreCase) && Math.Sqrt(dx * dx + dy * dy) <= Math.Max(f.LengthMm, f.WidthMm) / 2;
+                });
+                if (!answered && ftypes.Any(t => t.Mark.Equals(mark, StringComparison.OrdinalIgnoreCase) && t.IsSpread))
+                    unanswered.Add($"{mark} at ({lx:0},{ly:0}) mm");
+            }
+    }
+    catch { /* no foundation schedule on this sheet */ }
     for (int i = 0; i < ovGeo.Columns.Count; i++)
     {
         var (cx, cy) = ovGeo.Columns[i];
@@ -328,7 +353,9 @@ if (args.Length >= 1 && args[0].Equals("pdf-overlay", StringComparison.OrdinalIg
     Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(ovOut)) ?? ".");
     ovImg.SaveAsPng(ovOut);
     Console.WriteLine($"{Path.GetFileName(ovPdf)} p{ovPage} 1:{ovScale} @ {ovDpi} dpi → {ovOut}");
-    Console.WriteLine($"  slabs {ovGeo.Slabs.Count} (grey)   columns {ovGeo.Columns.Count} (blue)   walls {ovGeo.Walls.Count} (dark red)   lines {ovGeo.Lines.Count} (red)   mark-shaped words {marks} (green)");
+    Console.WriteLine($"  slabs {ovGeo.Slabs.Count} (grey)   columns {ovGeo.Columns.Count} (blue)   walls {ovGeo.Walls.Count} (dark red)   footings {ovGeo.Footings.Count} (orange; {unlabelled.Count} without a label, magenta)   lines {ovGeo.Lines.Count} (red)   mark-shaped words {marks} (green)");
+    foreach (var f in unlabelled) Console.WriteLine($"  footing {f.Mark} at ({f.Centre.X:0},{f.Centre.Y:0}) mm: no label on the plan names it");
+    foreach (var u in unanswered) Console.WriteLine($"  label {u}: no footing read answers it");
     return 0;
 }
 

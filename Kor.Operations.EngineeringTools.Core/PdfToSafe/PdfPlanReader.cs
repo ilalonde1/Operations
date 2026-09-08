@@ -144,7 +144,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
             if (rawSubpaths.Count == 0) return result;
 
-            var footingPieces = ReadFootings(rawSubpaths, pageRead, result, annotationsOnly);
+            var footingPieces = ReadFootings(rawSubpaths, pageRead, result, annotationsOnly, scale);
             GeometryFilterService.Classify(rawSubpaths, result,
                 options.SlabMinDiagonalMm, options.LineMinLengthMm, excludeGridLines,
                 result.PageWidthPts * scale, result.PageHeightPts * scale,
@@ -190,7 +190,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
             if (rawSubpaths.Count == 0) return result;
 
-            var footingPieces = ReadFootings(rawSubpaths, pageRead, result, annotationsOnly);
+            var footingPieces = ReadFootings(rawSubpaths, pageRead, result, annotationsOnly, scale);
             GeometryFilterService.Classify(rawSubpaths, result,
                 slabMinDiagonalMm, lineMinLengthMm, excludeGridLines,
                 result.PageWidthPts * scale, result.PageHeightPts * scale,
@@ -205,16 +205,24 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         /// The footings the page's dashed outlines close against its FOUNDATION SCHEDULE, added to the
         /// result, and the raw-path indices of their dashes so the classifier records them as such.
         /// Not in markup-only mode, where page content is not read. Null when the sheet schedules no
-        /// spread footing.
+        /// spread footing. <paramref name="scale"/> is millimetres per PDF point, the factor the raw
+        /// paths were read with, so the plan's mark labels land in the same frame as the outlines.
         /// </summary>
         public static IReadOnlyDictionary<int, int>? ReadFootings(
-            IReadOnlyList<RawSubpath> rawSubpaths, VectorPageReader.PageContent pageRead, ExtractedGeometry result, bool annotationsOnly)
+            IReadOnlyList<RawSubpath> rawSubpaths, VectorPageReader.PageContent pageRead, ExtractedGeometry result, bool annotationsOnly, double scale,
+            SheetFurniture.Set? furniture = null)
         {
             if (annotationsOnly) return null;
             IReadOnlyList<FootingScheduleReader.FootingType> types;
-            try { types = FootingScheduleReader.ReadSchedule(pageRead).Types; } catch { return null; }
+            (double MinX, double MinY, double MaxX, double MaxY) tableBox;
+            try { (types, tableBox) = FootingScheduleReader.ReadSchedule(pageRead); } catch { return null; }
             if (types.Count == 0) return null;
-            var (footings, pieces) = Intake.FootingOutlines.Read(rawSubpaths, types);
+            // sheet furniture in the page's own points, as SheetFurniture.On reads it; the outlines are in mm
+            furniture ??= SheetFurniture.On(pageRead, PlanAgreesWithItsSchedule.DefaultToleranceMm);
+            var labels = FootingScheduleReader.PlacementPositions(pageRead, types, tableBox, furniture)
+                .SelectMany(kv => kv.Value.Select(p => new Intake.FootingOutlines.MarkLabel(kv.Key, p.X * scale, p.Y * scale)))
+                .ToList();
+            var (footings, pieces) = Intake.FootingOutlines.Read(rawSubpaths, types, labels: labels, furniture: furniture.Scaled(scale));
             result.Footings.AddRange(footings);
             return pieces.Count > 0 ? pieces : null;
         }

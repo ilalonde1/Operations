@@ -141,7 +141,7 @@ public static class DrawingIntake
                 (s.IsClosed && GeometryFilterService.BoundingBoxDiagonal(s.Points) > 10.0));
             geometry.IsVectorPdf = meaningfulCount >= 5;
             var thinnedFates = new List<PathFate>();
-            var footingPieces = PdfPlanReader.ReadFootings(raw, content, geometry, request.MarkupOnly);
+            var footingPieces = PdfPlanReader.ReadFootings(raw, content, geometry, request.MarkupOnly, scaleFactor, furniture);
             GeometryFilterService.Classify(raw, geometry,
                 options.SlabMinDiagonalMm, options.LineMinLengthMm, false,
                 geometry.PageWidthPts * scaleFactor, geometry.PageHeightPts * scaleFactor,

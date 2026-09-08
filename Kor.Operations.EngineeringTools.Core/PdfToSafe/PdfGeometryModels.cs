@@ -49,7 +49,16 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
     /// <summary>A cut wall's outline, centreline and thickness, all in millimetres.</summary>
     /// <summary>A spread footing: the box its dashed outline closes, the schedule mark that sizes it, and that size.</summary>
     public sealed record FootingOutline(string Mark, IReadOnlyList<(double X, double Y)> Outline,
-                                        (double X, double Y) Centre, double LengthMm, double WidthMm, double DepthMm);
+                                        (double X, double Y) Centre, double LengthMm, double WidthMm, double DepthMm)
+    {
+        /// <summary>
+        /// The plan's own label for this mark names this footing: it is the label's nearest footing and
+        /// stands in the box or within half the footing's size of its edge (inside on metric sets,
+        /// 254–461 mm beneath on 31130). False is a box of a scheduled size that no label claims — a
+        /// sump the size of an F1 reads as F1 — and the ledger counts those.
+        /// </summary>
+        public bool LabelledOnThePlan { get; init; }
+    }
 
     public sealed record WallPanel(IReadOnlyList<(double X, double Y)> Outline,
         (double X, double Y) Start, (double X, double Y) End, double ThicknessMm);

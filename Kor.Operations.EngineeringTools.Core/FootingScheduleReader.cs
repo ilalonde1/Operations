@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
+using Kor.Operations.EngineeringTools.PdfToSafe;
 
 namespace Kor.Operations.EngineeringTools.QuantityTakeoff
 {
@@ -129,24 +130,35 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
 
         /// <summary>
         /// Count each declared mark's PLACEMENTS on the plan: standalone mark words outside the
-        /// schedule's own table box. Each footing is labelled once by convention.
+        /// schedule's own table box — and, when <paramref name="furniture"/> is given, outside every
+        /// note, legend and schedule box on the sheet. Each footing is labelled once by convention.
         /// </summary>
+        /// <remarks>
+        /// A mark in a note is a mention, not a placement. 31065 p14's note "ADD BOND BREAKER BETWEEN
+        /// F4 &amp; CORE FOOTING" appears twice and counted two F4s (13 where the plan places 11) until
+        /// the furniture was passed — 74 cu.yd of footing that is not there. Callers without a
+        /// furniture set keep the old count; the intake passes it (brief 21).
+        /// </remarks>
         public static Dictionary<string, int> CountPlacements(
             VectorPageReader.PageContent page,
             IReadOnlyList<FootingType> types,
-            (double MinX, double MinY, double MaxX, double MaxY) tableBox)
-            => PlacementPositions(page, types, tableBox)
+            (double MinX, double MinY, double MaxX, double MaxY) tableBox,
+            SheetFurniture.Set? furniture = null)
+            => PlacementPositions(page, types, tableBox, furniture)
                 .ToDictionary(kv => kv.Key, kv => kv.Value.Count, StringComparer.OrdinalIgnoreCase);
 
         /// <summary>
         /// Every plan placement of each mark WITH its position (PDF points, y-up) — the same
-        /// outside-the-table filter as <see cref="CountPlacements"/>. Positions let a strip footing's
-        /// contour run be assigned to its nearest mark (the length the schedule itself cannot state).
+        /// outside-the-table (and, given <paramref name="furniture"/>, outside-the-furniture) filter as
+        /// <see cref="CountPlacements"/>. Positions let a strip footing's contour run be assigned to its
+        /// nearest mark (the length the schedule itself cannot state), and a spread footing's outline
+        /// be tied to the label that names it.
         /// </summary>
         public static Dictionary<string, List<(double X, double Y)>> PlacementPositions(
             VectorPageReader.PageContent page,
             IReadOnlyList<FootingType> types,
-            (double MinX, double MinY, double MaxX, double MaxY) tableBox)
+            (double MinX, double MinY, double MaxX, double MaxY) tableBox,
+            SheetFurniture.Set? furniture = null)
         {
             ArgumentNullException.ThrowIfNull(page);
             var marks = new HashSet<string>(types.Select(t => t.Mark), StringComparer.OrdinalIgnoreCase);
@@ -158,6 +170,7 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                 bool inTable = w.Cx >= tableBox.MinX && w.Cx <= tableBox.MaxX
                             && w.Cy >= tableBox.MinY && w.Cy <= tableBox.MaxY;
                 if (inTable) continue;
+                if (furniture is not null && furniture.IsFurniture(w.Cx, w.Cy)) continue;
                 if (!found.TryGetValue(txt, out var list)) found[txt] = list = new List<(double X, double Y)>();
                 list.Add((w.Cx, w.Cy));
             }

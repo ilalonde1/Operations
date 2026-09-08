@@ -3,7 +3,7 @@
 Written 2026-09-08 from the code and from a content inventory of the five local stick files
 (31065, 31130, 31138, 31168, 31202: 294 pages). Every number below was counted on the whole
 population named; nothing is from a sample. The intake brief series lives in
-`docs/codex/CODEX-INTAKE-CONVERGENCE-*.md` (12 so far) and this is the state they have reached.
+`docs/codex/CODEX-INTAKE-CONVERGENCE-*.md` (21 so far) and this is the state they have reached.
 
 The purpose of the intake is stated once so the rest can be judged against it: **pull everything a
 drawing set carries that any downstream tool could need, once, through one reader, and account for
@@ -400,3 +400,57 @@ orientation, on the five schedule pages. WHAT IT DOES NOT: strip footings (a siz
 rotated footings, a footing drawn as a solid closed path, a footing the schedule does not declare,
 and a box of a scheduled size that is not a footing — the check counts boxes against marks and
 cannot tell a dashed 4 ft sump from an F1.
+
+## 14. Step 7b, done 2026-09-08: a footing outline is drawn only where nothing stands on it
+
+Brief 21, implemented by the verifier. The 20 misses of step 7 were looked at on 31065 p15 and had
+one shape: the drafter draws a footing only where nothing stands on it. Cut by the match line
+between the two halves of a plan, or under the perimeter wall, the outline is one full side and
+two stubs — and two of a wall-side's short pieces sat either side of a fixed 12 mm bucket boundary,
+so neither bucket reached three. Three rules, each measured first:
+
+- **One full side and the stubs at its ends place the footing.** A dashed chain of a scheduled
+  length with a perpendicular chain starting at each end, running the same way and no further
+  than the box is deep, is that footing extended from the side. One side and one stub is not.
+  Sides cluster by sorted coordinate, never by a fixed bucket.
+- **The plan's label names the footing it is nearest to**, when it stands in the box or within half
+  the footing's size of its edge. Measured: inside the box on 31065 and 31138 (37 of 37); 254–461 mm
+  beneath the outline, beside the column, on 31130 (67 of 68). `FootingOutline.LabelledOnThePlan`.
+- **Nothing inside sheet furniture is a footing or a placement.** 31130 p11's hairpin-stirrup legend
+  draws a dashed 4 ft square — an F1 by size, and the "F1 2 of 1" of §13. 31065 p14's note "ADD
+  BOND BREAKER BETWEEN F4 & CORE FOOTING" says F4 twice, and the placement counter took both as
+  footings — 74 cu.yd that is not there. `FootingScheduleReader.CountPlacements` now takes the
+  furniture; the intake, the ledger, the overlay and the harness pass it.
+
+| Sheet | Labelled of placed | Was (§13) | What remains |
+|---|---|---|---|
+| 31130 p11 | 36 of 36 | 35 of 36 | — |
+| 31130 p12 | 37 of 39 | 34 of 39 | two rotated footings on the angled wing |
+| 31138 p9 | 11 of 11 | 11 of 11 | — |
+| 31065 p14 | 29 of 29 | 26 of 31 | one 4.5 m dashed box no label names — the core footing — emitted with the F4 mark its size matches, flagged, and listed apart |
+| 31065 p15 | 22 of 23 | 14 of 23 | one F2 with one side and one stub drawn |
+| **All** | **135 of 138** | 120 of 140 | |
+
+The ledger's footing row now reads labelled footings of labels placed, per mark, and lists boxes
+no label names apart; `pdf-overlay` draws those magenta and prints them, and prints every placed
+label no footing answers — the two ways the read and the plan can disagree, each with a position
+to go and look at. The flag earned its keep at once: 31130 p15, the L0 WEST floor plan, repeats
+the FOUNDATION SCHEDULE like every parkade sheet and places no footing mark, and one 4 ft dashed
+square round a PCX column read as an F1. It is unlabelled, the sheet places nothing, and the
+ledger files it as **unaccounted**, not read: a footing read on a sheet whose plan places no
+footing mark is a box the size of a footing and nothing on the sheet says it is one. DXF census against step 7: FOOTING 35→36, 34→37, 26→30, 14→22 on the four
+foundation plans, BEAM down by the pieces consumed, the other 9 of 13 DXFs identical, COLUMN, WALL
+and SLAB identical on 13 of 13. Ledger totals unchanged on 5 of 5 sets. Full Core suite 1,037 of
+1,037 (5 m 20 s); fast suite 942 of 942 after the ledger-wording edit that followed it.
+
+**Two findings for other steps.** `takeoff footings` and the rebar takeoff still count placements
+without the furniture, so on 31065 they price 13 F4 where the plan places 11; step 9 (every tool
+reads the record) closes it. Rotated footings on 31130's angled wing are outside every axis-aligned
+rule here, as rotated marks are outside the column self-check — one rule for rotated geometry,
+later.
+
+WHAT THE CHECK COVERS (`FiveStickFilesTests.FootingsOnTheSchedulePageAreTheBankedCount`): the
+count of footings read and of labels placed on the five schedule pages, and that every footing
+read carries a scheduled spread mark. WHAT IT DOES NOT: whether each footing is labelled (the
+ledger row says; the test does not assert it), the east halves (p12, p15), position, and a footing
+read at the wrong place with the right mark.
