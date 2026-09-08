@@ -78,6 +78,56 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
         }
 
         /// <summary>
+        /// Why a page that mentions a foundation schedule yielded no footing rows, in the sheet's own
+        /// words: which foundation-type schedules it titles, whether each is drawn as a ruled table,
+        /// and how many ruled rows that table holds.
+        /// </summary>
+        /// <remarks>
+        /// "Schedule text present but no parseable rows" said the same thing about 31168, whose
+        /// FOUNDATION SCHEDULE is a bordered placeholder with blank rows on the 2026-04-21 stick file,
+        /// and about 31202, whose foundation is a RAFT SLAB with a reinforcing schedule of its own.
+        /// Neither is a parse failure, and a reader that reports them as one sends somebody to look
+        /// for a bug in the reader. The sheet says what it has; this repeats it.
+        /// </remarks>
+        public static string WhyNoRows(VectorPageReader.PageContent page)
+        {
+            ArgumentNullException.ThrowIfNull(page);
+
+            var any = MarkRowScheduleReader.ColumnDefaults() with { HeadingWords = Array.Empty<string>() };
+            var foundation = MarkRowScheduleReader.SchedulesOn(page, any)
+                .Where(h => h.Title.Contains("FOUNDATION", StringComparison.OrdinalIgnoreCase)
+                            || h.Title.Contains("FOOTING", StringComparison.OrdinalIgnoreCase)
+                            || h.Title.Contains("RAFT", StringComparison.OrdinalIgnoreCase)
+                            || h.Title.Contains("MAT", StringComparison.OrdinalIgnoreCase)
+                            || h.Title.Contains("PILE", StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            if (foundation.Count == 0)
+                return "foundation schedule mentioned in the text, but no schedule title on the sheet says FOUNDATION, FOOTING, RAFT, MAT or PILE";
+
+            var rules = ScheduleTableBorder.RulesOn(page);
+            var parts = new List<string>();
+            foreach (var h in foundation)
+            {
+                var border = h.TitleMaxX > h.TitleMinX
+                    ? ScheduleTableBorder.Under(page, h.TitleMinX, h.TitleMaxX, h.TitleMinY, h.TitleHeight, rules)
+                    : null;
+                if (border is null)
+                {
+                    parts.Add($"\"{h.Title}\" is titled but no ruled table is drawn under it");
+                    continue;
+                }
+
+                int ruled = border.RowBands().Count(b => border.IsRuledRow(b.Top, b.Bottom));
+                bool targeted = MarkRowScheduleReader.FootingDefaults().HeadingWords.Any(w =>
+                    MarkRowScheduleReader.IsHeadedBy(h.Title.Split(' ', StringSplitOptions.RemoveEmptyEntries).SkipLast(1).ToList(), w));
+                parts.Add(targeted
+                    ? $"\"{h.Title}\" is drawn as a ruled table with {ruled} ruled row(s) and none states a size: a placeholder table, not a reader fault"
+                    : $"\"{h.Title}\" is the foundation this sheet schedules ({ruled} ruled row(s)); it is not a spread-footing schedule, so 0 footings is what the sheet says");
+            }
+            return string.Join("; ", parts);
+        }
+
+        /// <summary>
         /// Count each declared mark's PLACEMENTS on the plan: standalone mark words outside the
         /// schedule's own table box. Each footing is labelled once by convention.
         /// </summary>

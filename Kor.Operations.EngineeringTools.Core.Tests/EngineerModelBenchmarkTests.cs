@@ -40,13 +40,11 @@ public class EngineerModelBenchmarkTests
 
     public EngineerModelBenchmarkTests(ITestOutputHelper output) => _out = output;
 
-    private const string Job =
-        @"\\Kor-fs01\Projects\Projects\03 Residential\31065-01 (5350 5430 Heather Street Vancouver)";
+    // the drawing export and the engineer's model this benchmark was measured on, by NAME; where
+    // job 31065 keeps them on the share is LiveProjects' business, and a moved set fails loudly
+    private static string DxfFolder => LiveProjects.Drawings("31065", @"CAD Export\DXF Files\2025-06-18");
 
-    private const string DxfFolder = Job + @"\02 Engineering\CAD Export\DXF Files\2025-06-18";
-
-    private const string EngineerModel =
-        Job + @"\02 Engineering\02 Lateral Design\01 ETABS Models\31065-01 Wind ULS_SG_Both Towers.e2k";
+    private static string EngineerModel => LiveProjects.File("31065", "31065-01 Wind ULS_SG_Both Towers.e2k");
 
     /// <summary>
     /// Columns landing within 6 in of one of the engineer's, ON THE SAME STOREY. Storey matters:
@@ -277,14 +275,9 @@ public class EngineerModelBenchmarkTests
             // Say why, rather than passing in under a millisecond and looking like a green test.
             // A benchmark that quietly skips is worse than no benchmark: it reports success for a
             // measurement it never took.
-            if (!Directory.Exists(DxfFolder))
+            if (!LiveProjects.ShareReachable)
             {
-                _out.WriteLine($"SKIPPED: drawings not reachable at {DxfFolder}");
-                return null;
-            }
-            if (!File.Exists(EngineerModel))
-            {
-                _out.WriteLine($"SKIPPED: reference model not reachable at {EngineerModel}");
+                _out.WriteLine($"SKIPPED: projects share not reachable at {LiveProjects.Root}");
                 return null;
             }
 

@@ -19,9 +19,7 @@ public sealed class SConcreteFileTests
 
     /// <summary>The 31 files one engineer made by hand on 30961-01, which everything here is
     /// measured against.</summary>
-    private const string RealFolder =
-        @"\\Kor-fs01\Projects\Projects\03 Residential\30961-01 (River District Parcel 29 & 30)"
-        + @"\02 Engineering\05 Column Design\Column Design - AEM\S-CONCRETE";
+    private static string RealFolder => LiveProjects.Folder("30961", @"05 Column Design\Column Design - AEM\S-CONCRETE");
 
     // The real shape, taken from 30961-01: object header, table count, tab-separated header row,
     // rows, terminator. The Comment column is the only place the identity lives.
@@ -228,7 +226,7 @@ public sealed class SConcreteFileTests
     [Fact]
     public void EveryHandMadeFileOn30961SurvivesBeingWrittenBack()
     {
-        if (!Directory.Exists(RealFolder)) { _out.WriteLine("SKIPPED: share unreachable."); return; }
+        if (!LiveProjects.ShareReachable) { _out.WriteLine($"SKIPPED: projects share unreachable at {LiveProjects.Root}."); return; }
 
         int files = 0, demands = 0;
         foreach (string path in Directory.EnumerateFiles(RealFolder, "*.SCO"))
@@ -266,7 +264,7 @@ public sealed class SConcreteFileTests
     [Fact]
     public void TheHandMadeFilesOn30961MatchTheWorkbookTheyWereTypedFrom()
     {
-        if (!Directory.Exists(RealFolder)) { _out.WriteLine("SKIPPED: share unreachable."); return; }
+        if (!LiveProjects.ShareReachable) { _out.WriteLine($"SKIPPED: projects share unreachable at {LiveProjects.Root}."); return; }
 
         var files = Directory.EnumerateFiles(RealFolder, "*.SCO").ToList();
         if (files.Count == 0) { _out.WriteLine("SKIPPED: no .SCO files."); return; }

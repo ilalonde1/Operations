@@ -36,29 +36,19 @@ namespace Kor.Operations.EngineeringTools.Core.Tests;
 [Trait("Speed", "Slow")]
 public class ModelIntegrityTests
 {
-    private const string Residential = @"\\Kor-fs01\Projects\Projects\03 Residential";
+    // the two live jobs, by name; where they are on the share is LiveProjects' business
+    private static GeneratedModel.Project Langara => GeneratedModel.Langara;
+    private static GeneratedModel.Project WestFirst => GeneratedModel.WestFirst;
 
-    private sealed record Project(string Name, string DxfFolder, string Reference);
+    public static TheoryData<string> Projects => GeneratedModel.Projects;
 
-    private static readonly Project Langara = new(
-        "31168 YMCA Langara",
-        $@"{Residential}\31168-01 (YMCA Langara Vancouver)\02 Engineering\02 Lateral Design\01 ETABS Models\_DXF-plans-for-rebuild",
-        $@"{Residential}\31168-01 (YMCA Langara Vancouver)\02 Engineering\02 Lateral Design\01 ETABS Models\31168-reference.e2k");
-
-    private static readonly Project WestFirst = new(
-        "31138 2170 W 1st",
-        $@"{Residential}\31138-01 (2170 W 1st Ave Vancouver BC)\02 Engineering\02 Lateral Design\_DXF-plans-for-rebuild",
-        $@"{Residential}\31138-01 (2170 W 1st Ave Vancouver BC)\02 Engineering\02 Lateral Design\01 ETABS Models\31138-reference-from-Andrea-gravity.e2k");
-
-    public static TheoryData<string> Projects => new() { Langara.Name, WestFirst.Name };
-
-    private static Project For(string name) => name == Langara.Name ? Langara : WestFirst;
+    private static GeneratedModel.Project For(string name) => GeneratedModel.For(name);
 
     private sealed record Built(string[] Lines, DxfToEtabsReport Report);
 
-    private static Built? BuildOrSkip(Project project)
+    private static Built? BuildOrSkip(GeneratedModel.Project project)
     {
-        if (!Directory.Exists(project.DxfFolder) || !File.Exists(project.Reference)) return null;
+        if (!LiveProjects.ShareReachable) return null;
 
         string output = Path.Combine(Path.GetTempPath(), $"kor-integrity-{Guid.NewGuid():N}.e2k");
         try

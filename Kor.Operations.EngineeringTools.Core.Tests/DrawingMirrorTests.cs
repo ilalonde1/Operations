@@ -54,11 +54,10 @@ public class DrawingMirrorTests
     [Trait("Speed", "Slow")]
     public void TheShareIsMirroredWholeOrNotAtAll()
     {
-        const string remote =
-            @"\\Kor-fs01\Projects\Projects\03 Residential\31168-01 (YMCA Langara Vancouver)" +
-            @"\02 Engineering\02 Lateral Design\01 ETABS Models\_DXF-from-Revit-2026-08-26";
+        if (!LiveProjects.ShareReachable) return; // share unreachable; the publish path is not exercised here
 
-        if (!Directory.Exists(remote)) return; // share unreachable; the publish path is not exercised here
+        // the set by NAME; a reachable share that no longer holds it fails here, it does not skip
+        string remote = LiveProjects.Drawings("31168", "_DXF-from-Revit-2026-08-26");
 
         string local = DrawingMirror.Folder(remote);
 

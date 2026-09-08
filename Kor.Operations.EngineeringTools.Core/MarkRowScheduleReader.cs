@@ -14,8 +14,26 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
     /// </summary>
     public static class MarkRowScheduleReader
     {
+        // A strength as a schedule prints it: "45 MPa", or "7.0 ksi" on a set drawn in US units
+        // (31202). The unit is on the sheet, so it is read, not assumed; ksi is returned as MPa.
         private static readonly Regex StrengthRe = new(
-            @"(?<v>\d{2,3}(?:\.\d+)?)\s*MPa",
+            @"(?<v>\d{1,3}(?:\.\d+)?)\s*(?<u>MPa|ksi)\b",
+            RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
+        private const double MPaPerKsi = 6.894757;
+
+        private static double? StrengthMPa(string rowText)
+        {
+            var s = StrengthRe.Match(rowText);
+            if (!s.Success) return null;
+            double v = double.Parse(s.Groups["v"].Value, System.Globalization.CultureInfo.InvariantCulture);
+            return s.Groups["u"].Value.Equals("ksi", StringComparison.OrdinalIgnoreCase) ? v * MPaPerKsi : v;
+        }
+
+        // A size cell that says the size is on the plan: "<varies> x <varies>" (31168's C03-B), or
+        // VARIES on its own. The row is a real mark with no size, not a row that failed to parse.
+        private static readonly Regex VariesRe = new(
+            @"\bVARIES\b",
             RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
         public sealed record Options(
@@ -29,23 +47,8 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             double MarkColumnTolerancePts,
             double MinDimensionMm,
             double MaxDimensionMm,
-            bool RequireDimensionPair = true,
-            double BorderReachPts = 45,
-            double BorderTitleRowPts = 50)
+            bool RequireDimensionPair = true)
         {
-            /// <summary>
-            /// How far below a heading's bottom edge its table's top rule may sit, in PDF points.
-            /// Measured 8–9pt on the four ruled KOR jobs; a practice that floats its title further
-            /// above its table sets this, rather than losing the border and falling back to the band.
-            /// </summary>
-            public double BorderReachPts { get; init; } = BorderReachPts;
-
-            /// <summary>
-            /// How far above the top rule a table's side vertical may start — the height of a boxed
-            /// title row — before it is taken for a frame rather than a side.
-            /// </summary>
-            public double BorderTitleRowPts { get; init; } = BorderTitleRowPts;
-
             /// <summary>
             /// Whether a row of THIS schedule states a size (a x b), or a single length.
             /// </summary>
@@ -79,8 +82,6 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                 $"{RulePrefix}.min-dimension-mm",
                 $"{RulePrefix}.max-dimension-mm",
                 $"{RulePrefix}.require-dimension-pair",
-                $"{RulePrefix}.border-reach-pts",
-                $"{RulePrefix}.border-title-row-pts",
             ];
         }
 
@@ -94,6 +95,9 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
 
             /// <summary>The title's right edge. Zero with the others when the heading was not read off a page.</summary>
             public double TitleMaxX { get; init; }
+
+            /// <summary>The title's text height: the unit every reach around the table is measured in.</summary>
+            public double TitleHeight { get; init; }
         }
 
         /// <summary>How a row's mark was identified, and — for the two schedule routes — what bounded its table.</summary>
@@ -118,7 +122,8 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             VectorPageReader.TextToken MarkToken,
             ScheduleHeading? Heading,
             IReadOnlyList<string> SettingKeys,
-            MarkRoute Route);
+            MarkRoute Route,
+            bool SizeVaries = false);
 
         public static Options ColumnDefaults() => new(
             "dxf.schedule.column",
@@ -185,8 +190,6 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                 MinDimensionMm = settings.ValueOr($"{options.RulePrefix}.min-dimension-mm", options.MinDimensionMm),
                 MaxDimensionMm = settings.ValueOr($"{options.RulePrefix}.max-dimension-mm", options.MaxDimensionMm),
                 RequireDimensionPair = settings.FlagOr($"{options.RulePrefix}.require-dimension-pair", options.RequireDimensionPair),
-                BorderReachPts = settings.ValueOr($"{options.RulePrefix}.border-reach-pts", options.BorderReachPts),
-                BorderTitleRowPts = settings.ValueOr($"{options.RulePrefix}.border-title-row-pts", options.BorderTitleRowPts),
             };
         }
 
@@ -257,12 +260,7 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                     : null;
                 if (dims is null && single is null) continue;
 
-                double? strength = null;
-                var s = StrengthRe.Match(rowText);
-                if (s.Success)
-                    strength = double.Parse(s.Groups["v"].Value, System.Globalization.CultureInfo.InvariantCulture);
-
-                candidates.Add(new Candidate(token, mark, rowText, dims ?? Array.Empty<double>(), single, strength, null));
+                candidates.Add(new Candidate(token, mark, rowText, dims ?? Array.Empty<double>(), single, StrengthMPa(rowText), null));
             }
 
             var owners = new Dictionary<double, ScheduleHeading?>();
@@ -287,7 +285,8 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                     c.Token,
                     owner,
                     settingKeys,
-                    MarkRoute.PatternFallback));
+                    MarkRoute.PatternFallback,
+                    c.SizeVaries));
             }
 
             // whichever route saw more of the table; ties go to the structural one, which knows
@@ -320,9 +319,9 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                 return (Heading: heading, Border: ScheduleTableBorder.Under(
                     page,
                     titleRead ? heading.TitleMinX : heading.X,
+                    titleRead ? heading.TitleMaxX : heading.X + 60,
                     titleRead ? heading.TitleMinY : heading.Y,
-                    options.BorderReachPts,
-                    options.BorderTitleRowPts,
+                    heading.TitleHeight,
                     rules));
             }).ToList();
             bool ruledSheet = borders.Any(b => b.Border is not null);
@@ -376,7 +375,8 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                         c.Token,
                         heading,
                         settingKeys,
-                        MarkRoute.ScheduleColumn));
+                        MarkRoute.ScheduleColumn,
+                        c.SizeVaries));
                 }
             }
 
@@ -436,7 +436,8 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                             c.Token,
                             heading,
                             settingKeys,
-                            MarkRoute.ScheduleBorder);
+                            MarkRoute.ScheduleBorder,
+                            c.SizeVaries);
                     }
                 }
             }
@@ -519,14 +520,13 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             double? single = dims is null && !options.RequireDimensionPair
                 ? FirstPlausibleLength(cells.Select(c => c.Text).ToList(), options)
                 : null;
-            if (dims is null && single is null) return null;
 
-            double? strength = null;
-            var s = StrengthRe.Match(rowText);
-            if (s.Success)
-                strength = double.Parse(s.Groups["v"].Value, System.Globalization.CultureInfo.InvariantCulture);
+            // a row whose size cell says VARIES is a mark whose size is stated on the plan, and it is
+            // returned as one rather than dropped as a row that did not parse
+            bool varies = dims is null && single is null && options.RequireDimensionPair && VariesRe.IsMatch(rowText);
+            if (dims is null && single is null && !varies) return null;
 
-            return new Candidate(token, mark, rowText, dims ?? Array.Empty<double>(), single, strength, heading);
+            return new Candidate(token, mark, rowText, dims ?? Array.Empty<double>(), single, StrengthMPa(rowText), heading, varies);
         }
 
         public static IReadOnlyList<ScheduleHeading> SchedulesOn(
@@ -550,17 +550,33 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
 
                 var before = beforeTokens.Select(s => s.Text).ToList();
                 string title = string.Join(" ", before.Append("SCHEDULE"));
-                string compactTitle = Compact(title);
                 bool target = options.HeadingWords.Count == 0 ||
-                              options.HeadingWords.Any(h => compactTitle.Contains(Compact(h), StringComparison.OrdinalIgnoreCase));
+                              options.HeadingWords.Any(h => IsHeadedBy(before, h));
 
                 double x = beforeTokens.Count > 0 ? beforeTokens.Min(s => s.Cx) : w.Cx;
+
+                // The title's EXTENT runs past the word SCHEDULE: "COLUMN SCHEDULE - LEVEL 1 TO
+                // LEVEL 3" is one title, and 31202 underlines all of it. The qualifier is not part
+                // of what is scheduled, so it does not join the words above, but it is part of where
+                // the title is. Tokens after SCHEDULE belong to it while they run on, on the same
+                // baseline, with no gap wider than two of their heights.
                 var titleTokens = beforeTokens.Append(w).ToList();
+                double reachRight = w.MaxX;
+                foreach (var after in page.Words
+                    .Where(s => Math.Abs(s.Cy - w.Cy) <= 6 && s.Cx > w.Cx)
+                    .OrderBy(s => s.MinX))
+                {
+                    if (after.MinX - reachRight > 2 * Math.Max(after.Height, w.Height)) break;
+                    titleTokens.Add(after);
+                    reachRight = Math.Max(reachRight, after.MaxX);
+                }
+
                 found.Add(new ScheduleHeading(x, w.Cy, target, title)
                 {
                     TitleMinX = titleTokens.Min(s => s.MinX),
                     TitleMinY = titleTokens.Min(s => s.MinY),
                     TitleMaxX = titleTokens.Max(s => s.MaxX),
+                    TitleHeight = titleTokens.Max(s => s.Height),
                 });
             }
 
@@ -595,6 +611,38 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             return best;
         }
 
+        /// <summary>
+        /// Whether a title names THIS kind of schedule: the words before SCHEDULE end with the
+        /// heading phrase.
+        /// </summary>
+        /// <remarks>
+        /// ⭐ THE LAST WORD BEFORE "SCHEDULE" IS WHAT IS SCHEDULED. English compounds are head-final:
+        /// a SHEAR WALL ZONE SCHEDULE schedules zones, a COLUMN STIRRUP SCHEDULE schedules stirrups,
+        /// a PARKADE COLUMN SCHEDULE schedules columns. "Contains the word anywhere" read the zone
+        /// table as walls (ZA..ZD with a rebar grade for a strength) and the stirrup table as
+        /// columns. A parenthetical after the head — "STEEL BEAM (SB) &amp; COLUMN (SC) SCHEDULE" — is
+        /// an abbreviation, not the head, and is stepped over.
+        /// </remarks>
+        public static bool IsHeadedBy(IReadOnlyList<string> titleWordsBeforeSchedule, string headingPhrase)
+        {
+            ArgumentNullException.ThrowIfNull(titleWordsBeforeSchedule);
+            if (string.IsNullOrWhiteSpace(headingPhrase)) return false;
+
+            var words = titleWordsBeforeSchedule
+                .Select(t => t.Trim().Trim(':', '-', '–', ','))
+                .Where(t => t.Length > 0 && !(t.StartsWith('(') && t.EndsWith(')')))
+                .ToList();
+            var phrase = headingPhrase.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            if (phrase.Length == 0 || words.Count < phrase.Length) return false;
+
+            for (int i = 0; i < phrase.Length; i++)
+            {
+                if (!words[words.Count - phrase.Length + i].Equals(phrase[i], StringComparison.OrdinalIgnoreCase))
+                    return false;
+            }
+            return true;
+        }
+
         private static bool HasRequiredWord(string rowText, IReadOnlyList<string> required)
         {
             if (required.Count == 0) return true;
@@ -621,9 +669,6 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             return null;
         }
 
-        private static string Compact(string text)
-            => string.Concat((text ?? "").ToUpperInvariant().Where(ch => !char.IsWhiteSpace(ch)));
-
         private static double ColumnKey(VectorPageReader.TextToken token)
             => Math.Round(token.Cx / 15.0);
 
@@ -634,6 +679,7 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             IReadOnlyList<double> DimensionsMm,
             double? SingleLengthMm,
             double? StrengthMPa,
-            ScheduleHeading? Heading);
+            ScheduleHeading? Heading,
+            bool SizeVaries = false);
     }
 }

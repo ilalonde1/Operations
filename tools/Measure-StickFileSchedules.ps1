@@ -26,24 +26,25 @@
       - a page the standard does not list; add the page when a reader learns to read it
       - a schedule read with the right marks and the wrong sizes: the totals would move, the
         mark set would not, and a compensating pair of size errors is invisible here
-      - a column mark that is real but unreadable today: 31138's PL2 is "28 1/2" x 36"" and
-        31168's C03-B is "<varies> x <varies>"; neither parses, neither is banked, and a reader
-        that learned them would pass this check unchanged until the standard is raised
-      - the ZONE schedule's marks (ZA..ZD), which the flat-wall reader admits because its heading
-        vocabulary contains WALL and the table is titled SHEAR WALL ZONE SCHEDULE; they are
-        wall-shaped here so that a bar size cannot hide among them, not because they are walls
+      - the self-check's denominator on a job whose marks are bare numerals: 31202 circles its
+        column marks 1..8, and its grid bubbles are circled numerals too, so "labels on the plan"
+        counts both (105 on p17 for 8 marks). Its coverage floor is a floor on the numerator only
+      - whether a mark whose size VARIES (31168's C03-B) is placed right: it is banked as a mark,
+        and the self-check counts its columns as agreeing because the plan is the statement
 
     THE STANDARD
       Footings are banked at the last commit that read the marks off every job (4fd1abbe, the
       Codex 10 landing), reproduced from that commit's own build on these files, and reproduced
       again unchanged when rows were bounded by the table's border (2026-09-07). Column marks are
       banked at that border change, read off the crops of the tables by eye and matched to the
-      reader's output: they are the marks the drawing declares whose size parses. Column coverage
-      is banked as a FLOOR from the same build and may only rise. 31168 footings at 0 and 31202
-      at 0 are KNOWN: 31168's FOUNDATION SCHEDULE is a placeholder table on the sheet -- ruled,
-      titled, and blank but for one reinforcing note (seen in the rendered crop, not inferred) --
-      and 31202 has a raft slab, not footings. Change the standard when a reader changes what it
-      reads, in the same commit, and say why.
+      reader's output: every mark the drawing declares, including one whose size varies. Raised
+      the same day when fractional inches (PL2), a title's underline (31202) and ksi strengths
+      were read. Column coverage is banked as a FLOOR from the same build and may only rise.
+      31168 footings at 0 and 31202 at 0 are KNOWN: 31168's FOUNDATION SCHEDULE is a placeholder
+      table on the sheet -- ruled, titled, and blank but for one reinforcing note (seen in the
+      rendered crop, not inferred) -- and 31202 schedules a RAFT SLAB, which `takeoff footings`
+      now says in as many words. Change the standard when a reader changes what it reads, in the
+      same commit, and say why.
 
     The stick files are a frozen local mirror, one PDF per job, copied 2026-09-04:
       31130-01  2026-05-20 issue (the share now carries 2026-09-03; page numbers may differ)
@@ -72,18 +73,19 @@ $jobs = @(
     @{ Job='31130-01'; Pages='11-13'; Scale=96;  FootingCy=258;  FootingMarks='F1,F2,F3,F4,SF1';       Cover=@{11=14; 12=25; 13=41}
        SchedulePage=11; ColumnMarks='PC1,PC2,PC4,PC5,PC6,PC7,PC8'; ColumnRoute='ScheduleBorder' },
     @{ Job='31168-01'; Pages='11-13'; Scale=96;  FootingCy=0;    FootingMarks='';                      Cover=@{11=43; 12=65; 13=47}
-       SchedulePage=11; ColumnMarks='C02-A,C02-B,C03-A,C04-A,C04-B,GC11-C,PC01,PC02,PC03-A,PC03-B,TC01,TC02,TC03,TC04'; ColumnRoute='ScheduleBorder' },
-    @{ Job='31138-01'; Pages='9-11';  Scale=96;  FootingCy=353;  FootingMarks='F1,F2,SF1,SF2';         Cover=@{9=23; 11=20}
-       SchedulePage=9;  ColumnMarks='PC1,PC1A,PC2,PC3,PC3A,PC4,PC5,PC6,PC7,PC8,PC9,PL1'; ColumnRoute='ScheduleBorder' },
+       SchedulePage=11; ColumnMarks='C02-A,C02-B,C03-A,C03-B,C04-A,C04-B,GC11-C,PC01,PC02,PC03-A,PC03-B,TC01,TC02,TC03,TC04'; ColumnRoute='ScheduleBorder' },
+    @{ Job='31138-01'; Pages='9-11';  Scale=96;  FootingCy=353;  FootingMarks='F1,F2,SF1,SF2';         Cover=@{9=24; 11=21}
+       SchedulePage=9;  ColumnMarks='PC1,PC1A,PC2,PC3,PC3A,PC4,PC5,PC6,PC7,PC8,PC9,PL1,PL2'; ColumnRoute='ScheduleBorder' },
     @{ Job='31065-01'; Pages='14-16'; Scale=100; FootingCy=1174; FootingMarks='F1,F2,F3,F4,SF1,SF2';   Cover=@{14=24; 15=22; 16=30}
        SchedulePage=14; ColumnMarks='PC1,PC1A,PC2,PC3,PC4,PC5,ZC1,ZC2'; ColumnRoute='ScheduleBorder' },
-    @{ Job='31202-01'; Pages='';      Scale=0;   FootingCy=0;    FootingMarks='';                      Cover=@{}
-       SchedulePage=0;  ColumnMarks='';                                                                 ColumnRoute='' }
+    @{ Job='31202-01'; Pages='17-17'; Scale=96;  FootingCy=0;    FootingMarks='';                      Cover=@{17=23}
+       SchedulePage=17; ColumnMarks='1,2,3,4,5,6,7,8';                                                  ColumnRoute='ScheduleBorder' }
 )
 
-# A mark as KOR draws one: C4, PC1, TC02, C02-A, PC03-A, GC11-C, SF1, PL1, PC1A. Anything else in an
-# unplaced list is a token the reader took for a mark and should not have.
-$markShape = '^[A-Z]{1,3}\d{1,2}[A-Z]?(?:-[A-Z0-9]{1,3})?$'
+# A mark as KOR draws one: C4, PC1, TC02, C02-A, PC03-A, GC11-C, SF1, PL1, PC1A -- or a bare numeral,
+# which 31202 circles for its column marks. Anything else in an unplaced list is a token the reader
+# took for a mark and should not have (8-35M, BOT., 3.).
+$markShape = '^(?:[A-Z]{1,3}\d{1,2}[A-Z]?(?:-[A-Z0-9]{1,3})?|\d{1,2})$'
 
 # A wall mark as KOR draws one (SWA, SWB1, W2), or a zone mark (ZA) -- see the header for why the
 # zone marks are admitted here. A bar size (4-20M), a note number (3.) or a footing mark (F2) read

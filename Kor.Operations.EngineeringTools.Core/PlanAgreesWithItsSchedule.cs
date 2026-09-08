@@ -226,6 +226,10 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
 
         private static bool Same(double small, double large, ColumnScheduleRow row, double toleranceMm)
         {
+            // a mark whose schedule row says the size VARIES states no size to disagree with: the
+            // plan is the statement, so a column labelled with that mark agrees with it by definition
+            if (row.SizeVaries) return true;
+
             double rs = Math.Min(row.WidthMm, row.DepthMm);
             double rl = Math.Max(row.WidthMm, row.DepthMm);
             return Math.Abs(small - rs) <= toleranceMm && Math.Abs(large - rl) <= toleranceMm;

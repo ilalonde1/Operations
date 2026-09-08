@@ -48,6 +48,28 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         /// </remarks>
         public const double DefaultMaxColumnAspect = 3.0;
 
+        /// <summary>
+        /// A closed shape spanning at least this share of the page in both directions is the sheet's
+        /// frame, not a slab: no floor plate is drawn the size of the paper.
+        /// </summary>
+        public const double SheetFrameMinShare = 0.6;
+
+        /// <summary>
+        /// A fill this light, on every channel, is the paper. A shape filled with it and drawn with
+        /// no stroke is invisible ink: it knocks out hatching under a column or a footing, and it
+        /// is not structure. Colours are quantized to 0xF0, so white is (240, 240, 240).
+        /// </summary>
+        /// <remarks>
+        /// Measured on the five KOR jobs' schedule pages: every closed shape whose size matched a
+        /// declared column mark was grey-filled (208) with no stroke, and the paper-filled shapes
+        /// matched none — 192 of 31168 p11's 266 "columns" were 36" and 46" white squares around
+        /// each real one, 31 of 31202 p17's 72, 7 of 31065 p14's 46.
+        /// </remarks>
+        public const byte PaperMinChannel = 0xF0;
+
+        private static bool IsPaper((byte R, byte G, byte B) c)
+            => c.R >= PaperMinChannel && c.G >= PaperMinChannel && c.B >= PaperMinChannel;
+
         public static void Classify(
             IReadOnlyList<RawSubpath> rawSubpaths,
             ExtractedGeometry result,
@@ -59,7 +81,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             bool   annotationsOnly = true,
             double columnMaxSizeMm = 1500.0,
             double columnMinDimMm = 200.0,
-            double maxColumnAspect = DefaultMaxColumnAspect)
+            double maxColumnAspect = DefaultMaxColumnAspect,
+            IReadOnlyList<SheetFurniture.Region>? furniture = null)
         {
             double gridThreshMm = Math.Max(pageWidthMm, pageHeightMm) * 0.6;
 
@@ -75,6 +98,21 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 if (annotationsOnly && !sub.IsAnnotation)
                     continue;
 
+                // ── Sheet furniture ──────────────────────────────────────────
+                // Whatever sits inside a schedule's border or the title block is a table cell, a tie
+                // sketch, a rule or a logo box, and it is not read as structure — see SheetFurniture.
+                if (!sub.IsAnnotation && furniture is { Count: > 0 } && pts.Count > 0)
+                {
+                    double cx = (pts.Min(p => p.X) + pts.Max(p => p.X)) / 2;
+                    double cy = (pts.Min(p => p.Y) + pts.Max(p => p.Y)) / 2;
+                    if (furniture.Any(f => f.Contains(cx, cy)))
+                        continue;
+                }
+
+                // Invisible ink: a shape with no stroke filled the colour of the paper draws nothing.
+                if (!sub.IsAnnotation && sub.IsFilled && !sub.IsStroked && IsPaper(color))
+                    continue;
+
                 // ── Classification ───────────────────────────────────────────
 
                 if (isClosed)
@@ -84,6 +122,10 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     double minY = pts.Min(p => p.Y), maxY = pts.Max(p => p.Y);
                     double bboxW = maxX - minX;
                     double bboxH = maxY - minY;
+
+                    // the sheet's own frame, drawn around everything: not a slab
+                    if (!sub.IsAnnotation && bboxW >= SheetFrameMinShare * pageWidthMm && bboxH >= SheetFrameMinShare * pageHeightMm)
+                        continue;
 
                     bool looksLikeColumn = bboxW <= columnMaxSizeMm && bboxH <= columnMaxSizeMm;
 
@@ -129,6 +171,15 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     {
                         if (excludeGridLines && pts.Count == 2 && len > gridThreshMm)
                             continue;
+
+                        // the sheet's frame, drawn as four separate strokes rather than one closed
+                        // rectangle, is a line the length of the paper: not a beam
+                        if (!sub.IsAnnotation && pts.Count == 2)
+                        {
+                            double dx = Math.Abs(pts[1].X - pts[0].X), dy = Math.Abs(pts[1].Y - pts[0].Y);
+                            if (dx >= SheetFrameMinShare * pageWidthMm && dy < dx * 0.01) continue;
+                            if (dy >= SheetFrameMinShare * pageHeightMm && dx < dy * 0.01) continue;
+                        }
                         result.Lines.Add(pts); result.LineColors.Add(color);
                         result.LineIsAnnotation.Add(sub.IsAnnotation);
                     }

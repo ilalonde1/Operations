@@ -2306,6 +2306,14 @@ if (args.Length >= 1 && args[0].Equals("sched-border", StringComparison.OrdinalI
     var sbRules = ScheduleTableBorder.RulesOn(sbPc);
     Console.WriteLine($"Page {sbPc.PageNumber}: {sbPc.WidthPts:F0}x{sbPc.HeightPts:F0} pts, {sbRules.Horizontal.Count} horizontal and {sbRules.Vertical.Count} vertical rules (pieces merged)");
 
+    // what the classifier will refuse to read as structure on this sheet
+    var sbNumber = SheetTitleReader.SheetNumber(sbPc);
+    Console.WriteLine(sbNumber is { } n
+        ? $"Sheet number \"{n.Text}\" @ {n.Cx:F0},{n.Cy:F0} (h {n.Height:F1})"
+        : "Sheet number: none found in the bottom-right region, so no title block is excluded");
+    foreach (var region in SheetFurniture.On(sbPc))
+        Console.WriteLine($"  furniture  {region.Kind,-44} x {region.MinX:F0}..{region.MaxX:F0}  y {region.MinY:F0}..{region.MaxY:F0}");
+
     foreach (var sbOptions in new[] { MarkRowScheduleReader.ColumnDefaults(), MarkRowScheduleReader.FootingDefaults(), MarkRowScheduleReader.ShearWallDefaults() })
     {
         Console.WriteLine();
@@ -2313,7 +2321,7 @@ if (args.Length >= 1 && args[0].Equals("sched-border", StringComparison.OrdinalI
         foreach (var h in MarkRowScheduleReader.SchedulesOn(sbPc, sbOptions))
         {
             if (!h.IsTarget) { Console.WriteLine($"  \"{h.Title}\" @ {h.X:F0},{h.Y:F0}  not a target"); continue; }
-            var border = ScheduleTableBorder.Under(sbPc, h.TitleMinX, h.TitleMinY, sbOptions.BorderReachPts, sbOptions.BorderTitleRowPts, sbRules);
+            var border = ScheduleTableBorder.Under(sbPc, h.TitleMinX, h.TitleMaxX, h.TitleMinY, h.TitleHeight, sbRules);
             if (border is null)
             {
                 Console.WriteLine($"  \"{h.Title}\" @ {h.X:F0},{h.Y:F0}  title x {h.TitleMinX:F0}..{h.TitleMaxX:F0} bottom {h.TitleMinY:F0}  NO BORDER (band fallback)");
@@ -3402,9 +3410,12 @@ if (args.Length >= 2 && args[0].Equals("footings", StringComparison.OrdinalIgnor
         VectorPageReader.PageContent pc; try { pc = VectorPageReader.ReadPage(args[1], pg); } catch { break; }
         if (pc.Words.Count == 0) continue;
         string ds = string.Concat(string.Join(" ", pc.Words.Select(w => w.Text)).ToUpperInvariant().Where(c => !char.IsWhiteSpace(c)));
-        if (!ds.Contains("FOUNDATIONSCHEDULE") && !ds.Contains("FOOTINGSCHEDULE")) continue;
+        // a sheet that schedules a RAFT, a MAT or PILES has said what its foundation is, and a
+        // total of 0 spread footings should say so rather than say nothing (31202 is a raft)
+        if (!ds.Contains("FOUNDATIONSCHEDULE") && !ds.Contains("FOOTINGSCHEDULE")
+            && !ds.Contains("RAFTSLAB") && !ds.Contains("MATFOUNDATION") && !ds.Contains("MATSLAB") && !ds.Contains("PILESCHEDULE")) continue;
         var (ftypes, box) = FootingScheduleReader.ReadSchedule(pc);
-        if (ftypes.Count == 0) { Console.WriteLine($"p{pg}: schedule text present but no parseable rows"); continue; }
+        if (ftypes.Count == 0) { Console.WriteLine($"p{pg}: no footing rows — {FootingScheduleReader.WhyNoRows(pc)}"); continue; }
         var counts = FootingScheduleReader.CountPlacements(pc, ftypes, box);
         string lvl = SheetTitleReader.FromPage(pc)?.Display ?? "?";
         Console.WriteLine($"p{pg} ({lvl}): {ftypes.Count} schedule row(s)");

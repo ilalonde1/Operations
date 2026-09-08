@@ -39,6 +39,10 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
     {
         /// <summary>Turn the page's subpaths into mm-space geometry, before classification.</summary>
         public static List<RawSubpath> ParsePage(Page page, double scale)
+            => ParsePage(page, scale, out _);
+
+        /// <summary>The same, keeping the page read so its text and rules can say where the furniture is.</summary>
+        public static List<RawSubpath> ParsePage(Page page, double scale, out VectorPageReader.PageContent pageRead)
         {
             double? minPointDistance = scale > 0
                 ? PdfToSafeConstants.MinVertexDistanceMm / scale
@@ -47,7 +51,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 ? PdfToSafeConstants.MinVertexDistanceMm * 4.0 / scale
                 : null;
 
-            var pageRead = VectorPageReader.ReadPage(
+            pageRead = VectorPageReader.ReadPage(
                 page,
                 includeAnnotations: true,
                 curveSegments: PdfToSafeConstants.BezierSegments,
@@ -128,7 +132,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             result.PageHeightPts = page.Height;
             result.PageCount     = doc.NumberOfPages;
 
-            var rawSubpaths = ParsePage(page, scale);
+            var rawSubpaths = ParsePage(page, scale, out var pageRead);
             result.RawPathCount = rawSubpaths.Count;
 
             int meaningfulCount = rawSubpaths.Count(s =>
@@ -142,10 +146,15 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 options.SlabMinDiagonalMm, options.LineMinLengthMm, excludeGridLines,
                 result.PageWidthPts * scale, result.PageHeightPts * scale,
                 annotationsOnly,
-                options.ColumnMaxSizeMm, options.ColumnMinDimMm, options.ColumnMaxAspect);
+                options.ColumnMaxSizeMm, options.ColumnMinDimMm, options.ColumnMaxAspect,
+                Furniture(pageRead, scale));
 
             return result;
         }
+
+        /// <summary>The sheet's schedules and title block, in the mm space the subpaths are in.</summary>
+        private static IReadOnlyList<SheetFurniture.Region> Furniture(VectorPageReader.PageContent pageRead, double scale)
+            => SheetFurniture.On(pageRead).Select(r => r.Scaled(scale)).ToList();
 
         /// <summary>Overload for a document already open, so a sweep pays the parse cost once.</summary>
         public static ExtractedGeometry Read(
@@ -165,7 +174,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             result.PageHeightPts = page.Height;
             result.PageCount     = doc.NumberOfPages;
 
-            var rawSubpaths = ParsePage(page, scale);
+            var rawSubpaths = ParsePage(page, scale, out var pageRead);
             result.RawPathCount = rawSubpaths.Count;
 
             int meaningfulCount = rawSubpaths.Count(s =>
@@ -178,7 +187,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             GeometryFilterService.Classify(rawSubpaths, result,
                 slabMinDiagonalMm, lineMinLengthMm, excludeGridLines,
                 result.PageWidthPts * scale, result.PageHeightPts * scale,
-                annotationsOnly);
+                annotationsOnly,
+                furniture: Furniture(pageRead, scale));
 
             return result;
         }

@@ -212,6 +212,10 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
         /// then identifies the level of an otherwise untitled plan (flagged, never silent).
         /// </summary>
         public static string? SheetNumberToken(VectorPageReader.PageContent? page)
+            => SheetNumber(page)?.Text.Trim();
+
+        /// <summary>The sheet-number token itself, with its position: where the title block is.</summary>
+        public static VectorPageReader.TextToken? SheetNumber(VectorPageReader.PageContent? page)
         {
             if (page is null || page.WidthPts <= 0 || page.HeightPts <= 0) return null;
             double w = page.WidthPts, h = page.HeightPts;
@@ -223,7 +227,7 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                 if (!SheetNumRx.IsMatch(t.Text)) continue;
                 if (t.Height > bestH) { best = t; bestH = t.Height; }
             }
-            return bestH > 0 ? best.Text.Trim() : null;
+            return bestH > 0 ? best : null;
         }
 
         // The match-line half from the bottom-right sheet number's suffix ("S2.02-N" -> NORTH), or null.

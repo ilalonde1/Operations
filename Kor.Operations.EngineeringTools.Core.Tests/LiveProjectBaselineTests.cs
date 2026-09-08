@@ -30,16 +30,20 @@ namespace Kor.Operations.EngineeringTools.Core.Tests;
 [Trait("Speed", "Slow")]
 public class LiveProjectBaselineTests
 {
-    private const string Residential = @"\\Kor-fs01\Projects\Projects\03 Residential";
-
+    /// <summary>
+    /// A live job and the counts it was measured at. The drawing set and the reference are NAMES,
+    /// resolved on the share by <see cref="LiveProjects"/> when asked; nothing here is a path.
+    /// </summary>
     private sealed record Baseline(
-        string Name, string DxfFolder, string Reference,
-        int Storeys, int Walls, int Columns, int Floors);
+        string Name, string JobNumber, string DrawingSet, string ReferenceName,
+        int Storeys, int Walls, int Columns, int Floors)
+    {
+        public string DxfFolder => LiveProjects.Drawings(JobNumber, DrawingSet);
+        public string Reference => LiveProjects.File(JobNumber, ReferenceName);
+    }
 
     private static readonly Baseline Langara = new(
-        "31168 YMCA Langara",
-        $@"{Residential}\31168-01 (YMCA Langara Vancouver)\02 Engineering\02 Lateral Design\01 ETABS Models\_DXF-plans-for-rebuild",
-        $@"{Residential}\31168-01 (YMCA Langara Vancouver)\02 Engineering\02 Lateral Design\01 ETABS Models\31168-reference.e2k",
+        "31168 YMCA Langara", "31168", "_DXF-plans-for-rebuild", "31168-reference.e2k",
         // Rebaselined 2026-08-09. Storeys 61->63 and walls 918->925 because a mezzanine was
         // taking the sheet for the floor below it, so both towers' level 1 stood empty; columns
         // 2425->2464 as the same fix landed level 1 and slender footprints became walls.
@@ -77,9 +81,7 @@ public class LiveProjectBaselineTests
         Storeys: 63, Walls: 1388, Columns: 2462, Floors: 87);
 
     private static readonly Baseline WestFirst = new(
-        "31138 2170 W 1st",
-        $@"{Residential}\31138-01 (2170 W 1st Ave Vancouver BC)\02 Engineering\02 Lateral Design\_DXF-plans-for-rebuild",
-        $@"{Residential}\31138-01 (2170 W 1st Ave Vancouver BC)\02 Engineering\02 Lateral Design\01 ETABS Models\31138-reference-from-Andrea-gravity.e2k",
+        "31138 2170 W 1st", "31138", "_DXF-plans-for-rebuild", "31138-reference-from-Andrea-gravity.e2k",
         // Rebaselined 2026-08-09. The big move is walls 89->136: the decomposer was refusing any
         // face shorter than 48" so corner limbs never formed, and her own gravity model carries
         // wall panels at 9, 12, 15, 23 and 27 inches. Columns 162->180 net of footprints more
@@ -154,7 +156,8 @@ public class LiveProjectBaselineTests
 
     private static DxfToEtabsReport? RunOrSkip(Baseline baseline)
     {
-        if (!Directory.Exists(baseline.DxfFolder) || !File.Exists(baseline.Reference)) return null;
+        // null only when the share cannot be reached at all; a set that has moved throws, and fails
+        if (!LiveProjects.ShareReachable) return null;
 
         string output = Path.Combine(Path.GetTempPath(), $"kor-baseline-{Guid.NewGuid():N}.e2k");
         try
@@ -232,7 +235,7 @@ public class LiveProjectBaselineTests
     public void GeneratedGeometryStandsInsideTheBuilding(string name)
     {
         var baseline = For(name);
-        if (!Directory.Exists(baseline.DxfFolder) || !File.Exists(baseline.Reference)) return;
+        if (!LiveProjects.ShareReachable) return;
 
         string output = Path.Combine(Path.GetTempPath(), $"kor-height-{Guid.NewGuid():N}.e2k");
         try
@@ -291,7 +294,7 @@ public class LiveProjectBaselineTests
     public void MembersAreNotModelledOnTopOfOnesTheEngineerAlreadyHas()
     {
         var baseline = WestFirst;   // the reference here is an engineer's own working model
-        if (!File.Exists(baseline.Reference)) return;
+        if (!LiveProjects.ShareReachable) return;
 
         string output = Path.Combine(Path.GetTempPath(), $"kor-dupe-{Guid.NewGuid():N}.e2k");
         try

@@ -132,10 +132,14 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
         // So the size is found by anchoring on the × and requiring BOTH sides to be lengths that
         // carry a unit mark, or to be the 3-4 digit integers a metric schedule prints. A bare "45"
         // beside "MPa" is neither.
+        // A fractional inch is written "28 1/2"" or "1/2"" — a whole, a space, a fraction, the mark.
+        // Without the fraction alternative, PL2's "28 1/2" x 36"" on 31138 matched from the 2 of
+        // its fraction as 2" x 36", read as 51 x 914 mm, and was refused as implausible, silently.
         private const string LenPattern =
-            @"(?:\d+(?:\.\d+)?\s*['’′]\s*(?:[-–]\s*)?(?:\d+(?:\.\d+)?)?\s*[""”″]?" +   // 4' - 0"
-            @"|\d+(?:\.\d+)?\s*[""”″]" +                                                // 26"
-            @"|\d{3,4})";                                                               // 2500
+            @"(?:\d+(?:\.\d+)?\s*['’′]\s*(?:[-–]\s*)?(?:\d+(?:\.\d+)?(?:\s+\d+\s*/\s*\d+)?)?\s*[""”″]?" +   // 4' - 0", 4' - 6 1/2"
+            @"|\d+(?:\.\d+)?(?:\s+\d+\s*/\s*\d+)?\s*[""”″]" +                                            // 26", 28 1/2"
+            @"|\d+\s*/\s*\d+\s*[""”″]" +                                                                  // 1/2"
+            @"|\d{3,4})";                                                                                 // 2500
 
         // an optional cell keyword between a dimension and the next ×, as in 18" WIDE x 12" DEEP
         private const string Gap = @"(?:\s+(?:WIDE|DEEP|DP|THK|THICK))?\s*[xX×]\s*";

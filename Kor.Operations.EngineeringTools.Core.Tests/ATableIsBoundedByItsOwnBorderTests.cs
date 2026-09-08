@@ -404,12 +404,159 @@ public sealed class ATableIsBoundedByItsOwnBorderTests
         Assert.Empty(rules.Vertical);
     }
 
-    // ── the convention is reachable as a setting ────────────────────────────────────────────────
+    // ── every reach around a table is measured in the title's own text height ──────────────────
 
+    /// <summary>
+    /// The distance from a title to its table is a line or two of text on any sheet, so the reach
+    /// is a multiple of the title's height and not a number of points — and not a rule key either:
+    /// a row in KorStandards stating "45 points" would be a limit fitted to one sheet, which is
+    /// the class of fault the border exists to end. A title four times taller than KOR's, with its
+    /// table proportionally further below, reads the same.
+    /// </summary>
     [Fact]
-    public void TheBorderReachIsARuleNotAConstant()
+    public void TheReachToATableScalesWithItsTitleAndIsNotARuleKey()
     {
-        Assert.Contains(MarkRowScheduleReader.FootingDefaults().SettingKeys, k => k.EndsWith("border-reach-pts", StringComparison.Ordinal));
-        Assert.Contains(MarkRowScheduleReader.ColumnDefaults().SettingKeys, k => k.EndsWith("border-title-row-pts", StringComparison.Ordinal));
+        Assert.DoesNotContain(MarkRowScheduleReader.FootingDefaults().SettingKeys, k => k.Contains("border", StringComparison.Ordinal));
+
+        // a title of the given height, with the table's top rule `lines` title-heights below its bottom
+        static PC Big(double titleHeight, double lines)
+        {
+            double titleBottom = 700 - titleHeight / 2;
+            double top = titleBottom - lines * titleHeight;
+            var words = new List<TT>
+            {
+                new("COLUMN", 1520, 700, 1500, titleBottom, 1540, titleBottom + titleHeight),
+                new("SCHEDULE", 1600, 700, 1560, titleBottom, 1640, titleBottom + titleHeight),
+                Tok("MARK", 1520, top - 10), Tok("SIZE", 1600, top - 10),
+                Tok("PC1", 1520, top - 35), Tok("18\"", 1590, top - 35), Tok("x", 1610, top - 35), Tok("42\"", 1630, top - 35),
+            };
+            return Page(words, Table(1495, 1990, top, top - 50, [top - 22], [1570, 1660]));
+        }
+
+        // a 6pt title with its table three lines below: found
+        var small = ColumnScheduleReader.ReadSchedule(Big(6, 3));
+        Assert.Equal(MarkRowScheduleReader.MarkRoute.ScheduleBorder, Assert.Single(small).Route);
+
+        // a 24pt title with its table three of ITS lines below — 72pt, far past any point constant: found
+        var big = ColumnScheduleReader.ReadSchedule(Big(24, 3));
+        Assert.Equal(MarkRowScheduleReader.MarkRoute.ScheduleBorder, Assert.Single(big).Route);
+
+        // and a 6pt title with a table six lines below it is not that table's title: the band reads
+        var far = ColumnScheduleReader.ReadSchedule(Big(6, 6));
+        Assert.Equal(MarkRowScheduleReader.MarkRoute.ScheduleColumn, Assert.Single(far).Route);
+    }
+
+    // ── a title's underline is not its table's top rule ────────────────────────────────────────
+
+    /// <summary>
+    /// 31202 underlines every schedule title inside the table's own title row. The underline is a
+    /// rule under the title spanning its left edge, so it was taken for the top, no vertical came
+    /// within reach of it, and the table was not found. A rule that begins and ends within the
+    /// title's own extent draws under the words; a table's rule extends beyond them.
+    /// </summary>
+    [Fact]
+    public void ATitleUnderlineIsSteppedOverToTheTableBeneathIt()
+    {
+        // a 12pt title, as the real ones are, inside a boxed title row 27pt tall
+        var words = new List<TT>
+        {
+            new("COLUMN", 1620, 700, 1595, 694, 1645, 706), new("SCHEDULE", 1700, 700, 1670, 694, 1730, 706),
+            Tok("TYPE", 1520, 675), Tok("MARK", 1520, 665), Tok("COLUMN", 1600, 675), Tok("SIZE", 1600, 665),
+            Tok("1", 1520, 640), Tok("14\"", 1590, 640), Tok("x", 1610, 640), Tok("48\"", 1630, 640), Tok("7.0", 1680, 640), Tok("ksi", 1705, 640),
+            Tok("2", 1520, 615), Tok("14\"", 1590, 615), Tok("x", 1610, 615), Tok("24\"", 1630, 615), Tok("7.0", 1680, 615), Tok("ksi", 1705, 615),
+        };
+        var paths = Table(1495, 1990, 685, 600, [655, 628], [1570, 1660]).ToList();
+        paths.Add(HRule(1595, 1730, 692));    // the underline: exactly the title's extent
+        paths.Add(VRule(1495, 600, 712));     // the boxed title row's sides run above the top rule
+        paths.Add(VRule(1990, 600, 712));
+        paths.Add(HRule(1495, 1990, 712));
+
+        var rows = ColumnScheduleReader.ReadSchedule(Page(words, paths));
+
+        Assert.Equal(new[] { "1", "2" }, rows.Select(r => r.Mark).ToArray());
+        Assert.All(rows, r => Assert.Equal(MarkRowScheduleReader.MarkRoute.ScheduleBorder, r.Route));
+        Assert.Equal(48 * 25.4, rows[0].DepthMm, 0.6);
+        // and a strength printed in ksi is returned in MPa, the unit read off the sheet
+        Assert.Equal(7.0 * 6.894757, rows[0].StrengthMPa!.Value, 0.01);
+    }
+
+    // ── the last word before SCHEDULE is what is scheduled ─────────────────────────────────────
+
+    /// <summary>
+    /// A SHEAR WALL ZONE SCHEDULE schedules zones and a COLUMN STIRRUP SCHEDULE schedules stirrups;
+    /// "contains the word" read the first as walls (ZA..ZD, with a rebar grade for a strength) and
+    /// the second as columns. A parenthetical abbreviation after the head is stepped over.
+    /// </summary>
+    [Theory]
+    [InlineData("PARKADE COLUMN", "COLUMN", true)]
+    [InlineData("COLUMN", "COLUMN", true)]
+    [InlineData("STEEL BEAM (SB) & COLUMN (SC)", "COLUMN", true)]
+    [InlineData("LEVEL 5 COLUMN STIRRUP", "COLUMN", false)]
+    [InlineData("SHEAR WALL ZONE", "WALL", false)]
+    [InlineData("SHEAR WALL ZONE", "SHEAR WALL", false)]
+    [InlineData("SHEAR WALL", "SHEAR WALL", true)]
+    [InlineData("SHEAR WALL", "WALL", true)]
+    [InlineData("DRYWALL", "WALL", false)]
+    [InlineData("FOUNDATION", "FOUNDATION", true)]
+    [InlineData("RAFT SLAB REINFORCING", "FOUNDATION", false)]
+    [InlineData("4. IF NOTED IN THE COLUMN", "COLUMN", true)]
+    public void TheHeadNounOfTheTitleDecidesWhatIsScheduled(string before, string heading, bool expected)
+    {
+        var words = before.Split(' ');
+        Assert.Equal(expected, MarkRowScheduleReader.IsHeadedBy(words, heading));
+    }
+
+    /// <summary>The zone schedule's rows do not reach the flat-wall reader any more.</summary>
+    [Fact]
+    public void AZoneScheduleIsNotAWallSchedule()
+    {
+        var words = new List<TT>
+        {
+            Tok("SHEAR", 1280, 720), Tok("WALL", 1330, 720), Tok("ZONE", 1380, 720), Tok("SCHEDULE", 1450, 720),
+            Tok("MARK", 1300, 700), Tok("LENGTH", 1365, 700), Tok("VERTS", 1435, 700),
+            Tok("ZA", 1300, 675), Tok("16\"", 1365, 675), Tok("400", 1425, 675), Tok("MPa", 1450, 675),
+        };
+        var paths = Table(1278, 1602, 710, 660, [690], [1330, 1400]);
+
+        Assert.Empty(MarkRowScheduleReader.ReadSchedule(Page(words, paths), MarkRowScheduleReader.ShearWallDefaults()));
+    }
+
+    // ── a size that VARIES is a mark, not a parse failure ──────────────────────────────────────
+
+    /// <summary>31168's C03-B prints "&lt;varies&gt; x &lt;varies&gt;": the size is on the plan.</summary>
+    [Fact]
+    public void ASizeThatVariesIsAMarkWhoseSizeIsOnThePlan()
+    {
+        var words = new List<TT>
+        {
+            Tok("COLUMN", 1520, 700), Tok("SCHEDULE", 1600, 700),
+            Tok("MARK", 1520, 680), Tok("SIZE", 1600, 680),
+            Tok("C03-B", 1520, 655), Tok("<varies>", 1590, 655), Tok("x", 1620, 655), Tok("<varies>", 1650, 655), Tok("45", 1700, 655), Tok("MPa", 1725, 655),
+            Tok("C04-A", 1520, 625), Tok("18\"", 1590, 625), Tok("x", 1610, 625), Tok("36\"", 1630, 625), Tok("45", 1700, 625), Tok("MPa", 1725, 625),
+        };
+        var paths = Table(1495, 1990, 690, 610, [668, 640], [1570, 1680]);
+
+        var rows = ColumnScheduleReader.ReadSchedule(Page(words, paths));
+
+        Assert.Equal(new[] { "C03-B", "C04-A" }, rows.Select(r => r.Mark).ToArray());
+        var varies = rows.Single(r => r.Mark == "C03-B");
+        Assert.True(varies.SizeVaries);
+        Assert.Equal(45, varies.StrengthMPa);
+        Assert.False(rows.Single(r => r.Mark == "C04-A").SizeVaries);
+    }
+
+    /// <summary>A fractional inch is a length: 28 1/2" x 36" is PL2 on 31138, not 2" x 36".</summary>
+    [Theory]
+    [InlineData("28 1/2\" x 36\"", 28.5, 36)]
+    [InlineData("1/2\" x 36\"", 0.5, 36)]
+    [InlineData("4' - 6 1/2\" x 4' - 0\"", 54.5, 48)]
+    [InlineData("12-35M VERTS 28 1/2\" x 36\" 45 MPa", 28.5, 36)]
+    public void AFractionalInchReadsAsALength(string text, double aIn, double bIn)
+    {
+        var mm = PrintedLength.TryFindSizeMm(text);
+
+        Assert.NotNull(mm);
+        Assert.Equal(aIn * 25.4, mm![0], 0.1);
+        Assert.Equal(bIn * 25.4, mm[1], 0.1);
     }
 }

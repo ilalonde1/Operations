@@ -11,19 +11,22 @@ namespace Kor.Operations.EngineeringTools.Core.Tests;
 /// </summary>
 internal static class GeneratedModel
 {
-    private const string Residential = @"\\Kor-fs01\Projects\Projects\03 Residential";
-
-    internal sealed record Project(string Name, string DxfFolder, string Reference);
+    /// <summary>
+    /// A live job the gates run against: its number, and the NAMES of the drawing set and the
+    /// reference model the gate's numbers were measured on. Where those are on the share is
+    /// resolved when asked, by <see cref="LiveProjects"/>, never written here.
+    /// </summary>
+    internal sealed record Project(string Name, string JobNumber, string DrawingSet, string ReferenceName)
+    {
+        public string DxfFolder => LiveProjects.Drawings(JobNumber, DrawingSet);
+        public string Reference => LiveProjects.File(JobNumber, ReferenceName);
+    }
 
     internal static readonly Project Langara = new(
-        "31168 YMCA Langara",
-        $@"{Residential}\31168-01 (YMCA Langara Vancouver)\02 Engineering\02 Lateral Design\01 ETABS Models\_DXF-plans-for-rebuild",
-        $@"{Residential}\31168-01 (YMCA Langara Vancouver)\02 Engineering\02 Lateral Design\01 ETABS Models\31168-reference.e2k");
+        "31168 YMCA Langara", "31168", "_DXF-plans-for-rebuild", "31168-reference.e2k");
 
     internal static readonly Project WestFirst = new(
-        "31138 2170 W 1st",
-        $@"{Residential}\31138-01 (2170 W 1st Ave Vancouver BC)\02 Engineering\02 Lateral Design\_DXF-plans-for-rebuild",
-        $@"{Residential}\31138-01 (2170 W 1st Ave Vancouver BC)\02 Engineering\02 Lateral Design\01 ETABS Models\31138-reference-from-Andrea-gravity.e2k");
+        "31138 2170 W 1st", "31138", "_DXF-plans-for-rebuild", "31138-reference-from-Andrea-gravity.e2k");
 
     internal static TheoryData<string> Projects => new() { Langara.Name, WestFirst.Name };
 
@@ -60,13 +63,17 @@ internal static class GeneratedModel
     private static readonly Dictionary<string, Built> Cache = new();
     private static readonly Dictionary<string, PlanGeometrySet?> Classified = new(StringComparer.OrdinalIgnoreCase);
 
-    /// <summary>Builds the model once per test run; null when the share is unreachable.</summary>
+    /// <summary>
+    /// Builds the model once per test run; null ONLY when the projects share is unreachable. A
+    /// reachable share with the drawing set or the reference gone from where it was throws, and
+    /// the gate fails with where it looked — see <see cref="LiveProjects"/>.
+    /// </summary>
     internal static Built? BuildOrSkip(Project project)
     {
         lock (Cache)
         {
             if (Cache.TryGetValue(project.Name, out var cached)) return cached;
-            if (!Directory.Exists(project.DxfFolder) || !File.Exists(project.Reference)) return null;
+            if (!LiveProjects.ShareReachable) return null;
 
             // Read the drawings from this disk. Same sheets, checked against the share; see
             // DrawingCache. Thirteen minutes of this suite is SMB, and it holds the build lock
@@ -409,7 +416,7 @@ internal static class GeneratedModel
     internal static Dictionary<string, List<(DxfPoint A, DxfPoint B)>> ExistingByStorey(Project project)
     {
         var byStorey = new Dictionary<string, List<(DxfPoint A, DxfPoint B)>>(StringComparer.OrdinalIgnoreCase);
-        if (!File.Exists(project.Reference)) return byStorey;
+        if (!LiveProjects.ShareReachable) return byStorey;
 
         var doc = E2kDocument.Load(project.Reference);
         var geometry = E2kGeometryReader.Read(doc);

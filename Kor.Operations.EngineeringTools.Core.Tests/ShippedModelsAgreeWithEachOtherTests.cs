@@ -28,9 +28,12 @@ public class ShippedModelsAgreeWithEachOtherTests
 
     public ShippedModelsAgreeWithEachOtherTests(ITestOutputHelper output) => _out = output;
 
-    private const string Folder =
-        @"\\Kor-fs01\Projects\Projects\03 Residential\31168-01 (YMCA Langara Vancouver)" +
-        @"\02 Engineering\02 Lateral Design\01 ETABS Models";
+    // the two published models, by NAME; where job 31168 keeps them is LiveProjects' business
+    private static string SiteModel => LiveProjects.File("31168", "31168-TOWERS-FROM-DRAWINGS.e2k");
+    private static string YmcaModel => LiveProjects.File("31168", "31168-FROM-DRAWINGS.e2k");
+
+    /// <summary>The drawing set every shipped 31168 model was built from.</summary>
+    private const string ShippedDrawingSet = "_DXF-from-Revit-2026-08-26";
 
     private static readonly Regex Point = new(@"^\s*POINT\s+""([^""]+)""\s+(-?[\d.]+)\s+(-?[\d.]+)", RegexOptions.Compiled);
     private static readonly Regex Floor = new(@"^\s*AREA\s+""(KF\d+)""\s+FLOOR\s+(\d+)\s+(.*)$", RegexOptions.Compiled);
@@ -131,10 +134,11 @@ public class ShippedModelsAgreeWithEachOtherTests
     [Fact]
     public void TheTwoPublished31168ModelsAgreeOnEveryStoreyTheyShare()
     {
-        var site = Read(Path.Combine(Folder, "31168-TOWERS-FROM-DRAWINGS.e2k"));
-        var ymca = Read(Path.Combine(Folder, "31168-FROM-DRAWINGS.e2k"));
-
-        if (site is null || ymca is null) { _out.WriteLine("SKIPPED: share unreachable."); return; }
+        if (!LiveProjects.ShareReachable) { _out.WriteLine($"SKIPPED: projects share unreachable at {LiveProjects.Root}."); return; }
+        var site = Read(SiteModel);
+        var ymca = Read(YmcaModel);
+        Assert.NotNull(site);
+        Assert.NotNull(ymca);
 
         AssertTheyAgree(site, ymca, "published");
     }
@@ -260,32 +264,24 @@ public class ShippedModelsAgreeWithEachOtherTests
         // shipped 31168 model comes from _DXF-from-Revit-2026-08-26. It failed on a disagreement in
         // a drawing set nothing ships, which is a false alarm about the pair that does. A gate on
         // what ships has to read what ships.
-        PublishDiscoveryResult discovery;
-        try
+        // ⚠ A GATE THAT PASSES BY NOT RUNNING IS THE FAULT IT EXISTS TO CATCH. This skipped
+        // silently on "Projects root not found ''" — a null root, not an unreachable share —
+        // and reported green in 2 ms. Only an unreachable share may skip; anything else fails.
+        if (!LiveProjects.ShareReachable)
         {
-            discovery = PublishDiscovery.Discover(
-                new PublishDiscoveryRequest("31168", null, null, "31168-reference.e2k"));
-        }
-        catch (Exception ex)
-        {
-            // ⚠ A GATE THAT PASSES BY NOT RUNNING IS THE FAULT IT EXISTS TO CATCH. This skipped
-            // silently on "Projects root not found ''" — a null root, not an unreachable share —
-            // and reported green in 2 ms. Only an unreachable share may skip; anything else fails.
-            if (!Directory.Exists(PublishDiscovery.DefaultProjectsRoot))
-            {
-                _out.WriteLine($"SKIPPED: share unreachable ({ex.Message}).");
-                return;
-            }
-
-            throw;
-        }
-
-        string reference = Path.Combine(discovery.ModelFolder, discovery.Reference);
-        if (!Directory.Exists(discovery.DxfFolder) || !File.Exists(reference))
-        {
-            _out.WriteLine("SKIPPED: share unreachable.");
+            _out.WriteLine($"SKIPPED: projects share unreachable at {LiveProjects.Root}.");
             return;
         }
+
+        // The set is NAMED. Job 31168 now holds three sets beside its reference, and a publish
+        // that had to choose between them would be guessing which drawings it reads; discovery
+        // refuses to, so the gate says which set the shipped models came from.
+        var discovery = PublishDiscovery.Discover(
+            new PublishDiscoveryRequest("31168", null, ShippedDrawingSet, "31168-reference.e2k"));
+
+        string reference = Path.Combine(discovery.ModelFolder, discovery.Reference);
+        Assert.True(Directory.Exists(discovery.DxfFolder), $"discovered drawing set is not a folder: {discovery.DxfFolder}");
+        Assert.True(File.Exists(reference), $"discovered reference is not a file: {reference}");
 
         string dxf = DrawingCache.Local(discovery.DxfFolder);
         var storeys = E2kDocument.Load(reference).ReadStories().Select(s => s.Name).ToList();
@@ -332,9 +328,9 @@ public class ShippedModelsAgreeWithEachOtherTests
     [Fact]
     public void TheTwoPublished31168ModelsPriceBuildingCTheSame()
     {
-        string sitePath = Path.Combine(Folder, "31168-TOWERS-FROM-DRAWINGS.e2k");
-        string ymcaPath = Path.Combine(Folder, "31168-FROM-DRAWINGS.e2k");
-        if (!File.Exists(sitePath) || !File.Exists(ymcaPath)) { _out.WriteLine("SKIPPED: share unreachable."); return; }
+        if (!LiveProjects.ShareReachable) { _out.WriteLine($"SKIPPED: projects share unreachable at {LiveProjects.Root}."); return; }
+        string sitePath = SiteModel;
+        string ymcaPath = YmcaModel;
 
         static Dictionary<string, double> ByStoreyElement(string path) =>
             QuantityTakeoff.E2kQuantityTakeoff.Read(E2kDocument.Load(path)).Inputs

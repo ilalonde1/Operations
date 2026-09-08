@@ -21,7 +21,15 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
         double? StrengthMPa,
         string? Reinforcing,
         string? Ties,
-        MarkRowScheduleReader.MarkRoute Route = MarkRowScheduleReader.MarkRoute.ScheduleColumn);
+        MarkRowScheduleReader.MarkRoute Route = MarkRowScheduleReader.MarkRoute.ScheduleColumn,
+        bool SizeVaries = false)
+    {
+        /// <summary>
+        /// True when the schedule says the size is stated on the plan ("&lt;varies&gt; x &lt;varies&gt;");
+        /// <see cref="WidthMm"/> and <see cref="DepthMm"/> are then zero and mean nothing.
+        /// </summary>
+        public bool SizeVaries { get; init; } = SizeVaries;
+    }
 
     /// <summary>
     /// Reads a drawing's COLUMN SCHEDULE — mark, size, strength and reinforcing — from the native
@@ -113,10 +121,10 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             foreach (var row in MarkRowScheduleReader.ReadSchedule(page, options))
             {
                 var size = row.DimensionsMm;
-                if (size.Count < 2) continue;
+                if (size.Count < 2 && !row.SizeVaries) continue;
 
-                double w1 = Math.Min(size[0], size[1]);
-                double d1 = Math.Max(size[0], size[1]);
+                double w1 = size.Count >= 2 ? Math.Min(size[0], size[1]) : 0;
+                double d1 = size.Count >= 2 ? Math.Max(size[0], size[1]) : 0;
 
                 // One row per mark: a schedule states a mark once, but the mark is also printed
                 // against every column on the plan, and those carry no size.
@@ -126,7 +134,8 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                     row.Mark, w1, d1, row.StrengthMPa,
                     Reinforcing: VertsRe.Match(row.RowText) is { Success: true } v ? v.Value.Trim() : null,
                     Ties: TiesRe.Match(row.RowText) is { Success: true } t ? t.Value.Trim() : null,
-                    Route: row.Route));
+                    Route: row.Route,
+                    SizeVaries: row.SizeVaries));
             }
 
             return rows;

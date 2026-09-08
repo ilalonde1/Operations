@@ -39,7 +39,7 @@ namespace Kor.Operations.EngineeringTools.Core.Tests;
 [Trait("Speed", "Slow")]
 public class PortfolioRuleTests
 {
-    private const string ProjectsRoot = @"\\Kor-fs01\Projects\Projects";
+    private static string ProjectsRoot => LiveProjects.Root;
 
     /// <summary>Our own output round-tripped through ETABS is never evidence about what an engineer draws.</summary>
     private static readonly Regex OurOwn = new(@"""K[A-Z]\d+""", RegexOptions.Compiled);

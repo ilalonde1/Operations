@@ -169,6 +169,18 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
         /// <summary>A vertical spanning at least this share of the table's height is a column rule.</summary>
         public const double ColumnRuleMinShare = 0.3;
 
+        /// <summary>
+        /// How far under a title its table's top rule may sit, and how far above that rule a side
+        /// vertical may start, in TITLE HEIGHTS — the drawing's own unit, not points.
+        /// </summary>
+        /// <remarks>
+        /// A title sits a line or two above its table, whatever the sheet size or the practice; a
+        /// number of points fitted to one sheet is the class of fault this whole file exists to end.
+        /// Measured 8–9pt under a 14pt title on the four ruled KOR jobs, so four lines is generous
+        /// without reaching a table that belongs to another title lower on the sheet.
+        /// </remarks>
+        public const double TitleLinesReach = 4.0;
+
         /// <summary>Every horizontal and vertical rule on the page, pieces merged.</summary>
         public static Rules RulesOn(VectorPageReader.PageContent page)
         {
@@ -247,28 +259,35 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
         /// </summary>
         /// <param name="page">The page.</param>
         /// <param name="titleMinX">The title's left edge.</param>
+        /// <param name="titleMaxX">The title's right edge.</param>
         /// <param name="titleBottomY">The title's bottom edge (y-up: its smallest y).</param>
-        /// <param name="reachBelowTitlePts">How far below the title's bottom the top rule may sit.</param>
-        /// <param name="titleRowPts">How far above the top rule a side vertical may start (a boxed title row).</param>
+        /// <param name="titleHeight">The title's text height; every reach below is a multiple of it.</param>
         /// <param name="rules">The page's rules, if already extracted.</param>
         public static Border? Under(
             VectorPageReader.PageContent page,
             double titleMinX,
+            double titleMaxX,
             double titleBottomY,
-            double reachBelowTitlePts,
-            double titleRowPts,
+            double titleHeight,
             Rules? rules = null)
         {
             ArgumentNullException.ThrowIfNull(page);
             rules ??= RulesOn(page);
+            if (titleHeight <= 0) titleHeight = 10;
+            double reach = TitleLinesReach * titleHeight;
 
-            // the top: the highest horizontal rule just under the title that spans its left edge
+            // the top: the highest horizontal rule just under the title that spans its left edge and
+            // is not the title's own UNDERLINE — a rule that begins and ends within the title's
+            // extent draws under the words, not around a table. 31202 underlines every schedule
+            // title inside its table's title row, and taking the underline as the top found no
+            // verticals within reach of it and no table at all.
             Rule? top = null;
             foreach (var h in rules.Horizontal)
             {
-                if (h.At > titleBottomY + 4 || h.At < titleBottomY - reachBelowTitlePts) continue;
+                if (h.At > titleBottomY + 4 || h.At < titleBottomY - reach) continue;
                 if (h.Lo > titleMinX + 5 || h.Hi < titleMinX + TopRuleMinReachPts) continue;
                 if (h.Length < TopRuleMinLengthPts) continue;
+                if (h.Lo >= titleMinX - titleHeight && h.Hi <= titleMaxX + titleHeight) continue;
                 if (top is null || h.At > top.Value.At) top = h;
             }
             if (top is not { } t) return null;
@@ -283,7 +302,7 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                 foreach (var v in rules.Vertical)
                 {
                     if (v.At < minX - SideSlackPts || v.At > maxX + SideSlackPts) continue;
-                    if (v.Hi > maxY + titleRowPts) continue;   // starts far above the table: a frame, not a side
+                    if (v.Hi > maxY + reach) continue;         // starts far above the table: a frame, not a side
                     if (v.Hi < minY - TouchPts) continue;      // does not touch the box
                     if (v.Lo < minY - 0.5)
                     {
