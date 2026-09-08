@@ -46,7 +46,37 @@ public class ShippedModelsAgreeWithEachOtherTests
     /// catch: on 27 August C-ROOF carried 3 walls and 8 columns in one published model and 33 and
     /// 56 in the other, and its plate is the same 2,015 sq ft in both.
     /// </summary>
-    private sealed record Storey(double AreaSqFt, string[] Thicknesses, int Walls, int Columns, int Plates);
+    /// <summary>
+    /// One member of a storey, by WHERE it stands: the same wall is "KW12" in the site model and
+    /// something else in the building cut of it, and only its position says they are one wall.
+    /// </summary>
+    private sealed record Member(char Kind, string Name, double X, double Y, double AreaSqFt, string Thickness);
+
+    private sealed record Storey(double AreaSqFt, string[] Thicknesses, int Walls, int Columns, int Plates, IReadOnlyList<Member> Members)
+    {
+        /// <summary>The storey's elevation in the file, in model units; NaN when the file does not list it.</summary>
+        public double Elevation { get; init; } = double.NaN;
+
+        /// <summary>The storey's height in the file — what a member standing on it rises through.</summary>
+        public double Height { get; init; } = double.NaN;
+
+        public static Storey Of(IReadOnlyList<Member> members) => new(
+            members.Where(m => m.Kind == 'P').Sum(m => m.AreaSqFt),
+            members.Where(m => m.Kind == 'P').Select(m => m.Thickness).Distinct(StringComparer.Ordinal).OrderBy(t => t, StringComparer.Ordinal).ToArray(),
+            members.Count(m => m.Kind == 'W'),
+            members.Count(m => m.Kind == 'C'),
+            members.Count(m => m.Kind == 'P'),
+            members);
+    }
+
+    /// <summary>Two members are the same member when they stand within this of each other, in model units.</summary>
+    private const double SamePlaceIn = 0.5;
+
+    private static bool SamePlace(Member a, Member b)
+        => a.Kind == b.Kind && Math.Abs(a.X - b.X) <= SamePlaceIn && Math.Abs(a.Y - b.Y) <= SamePlaceIn;
+
+    private static readonly Regex AreaPoints = new(@"^\s*AREA\s+""([^""]+)""\s+(PANEL|FLOOR)\s+(\d+)\s+(.*)$", RegexOptions.Compiled);
+    private static readonly Regex ColumnPoints = new(@"^\s*LINE\s+""([^""]+)""\s+COLUMN\s+""([^""]+)""\s+""([^""]+)""", RegexOptions.Compiled);
 
     private static Dictionary<string, Storey>? Read(string path)
     {
@@ -55,6 +85,8 @@ public class ShippedModelsAgreeWithEachOtherTests
         var pts = new Dictionary<string, (double X, double Y)>(StringComparer.Ordinal);
         var props = new Dictionary<string, double>(StringComparer.Ordinal);
         var areaOf = new Dictionary<string, double>(StringComparer.Ordinal);
+        var centroidOf = new Dictionary<string, (char Kind, double X, double Y)>(StringComparer.Ordinal);
+        var members = new Dictionary<string, List<Member>>(StringComparer.OrdinalIgnoreCase);
         var byStorey = new Dictionary<string, (double Area, SortedSet<string> T)>(StringComparer.OrdinalIgnoreCase);
         var kindOf = new Dictionary<string, string>(StringComparer.Ordinal);
         var count = new Dictionary<string, (int W, int C, int P)>(StringComparer.OrdinalIgnoreCase);
@@ -68,6 +100,27 @@ public class ShippedModelsAgreeWithEachOtherTests
                     double.Parse(m.Groups[2].Value, CultureInfo.InvariantCulture),
                     double.Parse(m.Groups[3].Value, CultureInfo.InvariantCulture));
                 continue;
+            }
+
+            // where each member stands: the centroid of its points
+            var ap = AreaPoints.Match(raw);
+            if (ap.Success)
+            {
+                // recorded here because the FLOOR branch below takes the line and moves on before
+                // the kind is noted, which left every plate uncounted: "0 plate(s)" on a storey
+                // carrying 22,663 sq ft of one
+                kindOf[ap.Groups[1].Value] = ap.Groups[2].Value;
+                var names = Quoted.Matches(ap.Groups[4].Value).Select(x => x.Groups[1].Value)
+                    .Take(int.Parse(ap.Groups[3].Value, CultureInfo.InvariantCulture)).ToList();
+                var found = names.Where(pts.ContainsKey).Select(n => pts[n]).ToList();
+                if (found.Count > 0)
+                    centroidOf[ap.Groups[1].Value] = (ap.Groups[2].Value == "PANEL" ? 'W' : 'P', found.Average(p => p.X), found.Average(p => p.Y));
+            }
+            var cp = ColumnPoints.Match(raw);
+            if (cp.Success && pts.TryGetValue(cp.Groups[2].Value, out var c1) && pts.TryGetValue(cp.Groups[3].Value, out var c2))
+            {
+                kindOf[cp.Groups[1].Value] = "COLUMN";
+                centroidOf[cp.Groups[1].Value] = ('C', (c1.X + c2.X) / 2, (c1.Y + c2.Y) / 2);
             }
 
             m = Prop.Match(raw);
@@ -96,7 +149,7 @@ public class ShippedModelsAgreeWithEachOtherTests
             var k = Regex.Match(raw.TrimStart(), @"^(?:AREA|LINE)\s+""([^""]+)""\s+(\w+)");
             if (k.Success) kindOf[k.Groups[1].Value] = k.Groups[2].Value;
 
-            var any = Regex.Match(raw.TrimStart(), @"^(?:AREA|LINE)ASSIGN\s+""([^""]+)""\s+""([^""]+)""");
+            var any = Regex.Match(raw.TrimStart(), @"^(?:AREA|LINE)ASSIGN\s+""([^""]+)""\s+""([^""]+)""(?:\s+SECTION\s+""([^""]+)"")?");
             if (any.Success && kindOf.TryGetValue(any.Groups[1].Value, out string? what))
             {
                 count.TryGetValue(any.Groups[2].Value, out var n);
@@ -107,6 +160,16 @@ public class ShippedModelsAgreeWithEachOtherTests
                     "FLOOR" => (n.W, n.C, n.P + 1),
                     _ => n,
                 };
+
+                if (centroidOf.TryGetValue(any.Groups[1].Value, out var at))
+                {
+                    if (!members.TryGetValue(any.Groups[2].Value, out var list)) members[any.Groups[2].Value] = list = new List<Member>();
+                    props.TryGetValue(any.Groups[3].Success ? any.Groups[3].Value : "", out double thick);
+                    list.Add(new Member(
+                        at.Kind, any.Groups[1].Value, at.X, at.Y,
+                        at.Kind == 'P' && areaOf.TryGetValue(any.Groups[1].Value, out double sqft) ? sqft : 0,
+                        thick.ToString("0.##", CultureInfo.InvariantCulture)));
+                }
             }
 
             m = Assign.Match(raw);
@@ -121,14 +184,73 @@ public class ShippedModelsAgreeWithEachOtherTests
             }
         }
 
-        return byStorey.ToDictionary(
-            x => x.Key,
-            x =>
+        // every storey that carries anything, at the elevation and height the file gives it
+        var stories = E2kDocument.Load(path).ReadStories()
+            .GroupBy(s => s.Name, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+        var elevation = stories.ToDictionary(kv => kv.Key, kv => kv.Value.Elevation, StringComparer.OrdinalIgnoreCase);
+        var height = stories.ToDictionary(kv => kv.Key, kv => kv.Value.Elevation - kv.Value.ElevationBelow, StringComparer.OrdinalIgnoreCase);
+
+        return byStorey.Keys
+            .Union(count.Keys, StringComparer.OrdinalIgnoreCase)
+            .Union(members.Keys, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(
+                k => k,
+                k =>
+                {
+                    byStorey.TryGetValue(k, out var acc);
+                    count.TryGetValue(k, out var n);
+                    members.TryGetValue(k, out var list);
+                    return new Storey(acc.Area, acc.T?.ToArray() ?? Array.Empty<string>(), n.W, n.C, n.P, list ?? new List<Member>())
+                    {
+                        Elevation = elevation.GetValueOrDefault(k, double.NaN),
+                        Height = height.GetValueOrDefault(k, double.NaN),
+                    };
+                },
+                StringComparer.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// The gap under which two storeys are one physical level drawn twice — the generator's own
+    /// rule, from KorStandards, with its compiled default where the bank is not reachable.
+    /// </summary>
+    private static readonly double OneLevelGapIn = RuleSettings.Load().ValueOr("dxf.storeys-at-one-level-gap", 12.0);
+
+    /// <summary>The other storeys of a model within one physical level of this one.</summary>
+    private static IReadOnlyList<string> TwinsOf(Dictionary<string, Storey> model, string storey)
+    {
+        if (!model.TryGetValue(storey, out var self) || double.IsNaN(self.Elevation)) return Array.Empty<string>();
+        return model
+            .Where(kv => !kv.Key.Equals(storey, StringComparison.OrdinalIgnoreCase)
+                         && !double.IsNaN(kv.Value.Elevation)
+                         && Math.Abs(kv.Value.Elevation - self.Elevation) <= OneLevelGapIn)
+            .Select(kv => kv.Key)
+            .ToList();
+    }
+
+    /// <summary>
+    /// The site's storey with what the cut re-homed onto it folded back in: a member of a twin
+    /// storey that stands exactly where a member of the cut's storey stands, and stands nowhere on
+    /// the site's own storey, is the same member, carried down by the cut when its twin was
+    /// dropped. Everything else on the twin — the towers' walls — stays out.
+    /// </summary>
+    private static (Storey Folded, IReadOnlyList<Member> FoldedIn) Fold(Dictionary<string, Storey> site, string storey, Storey cut)
+    {
+        var own = site.TryGetValue(storey, out var s) ? s.Members : Array.Empty<Member>();
+        var folded = new List<Member>(own);
+        var foldedIn = new List<Member>();
+        foreach (string twin in TwinsOf(site, storey))
+        {
+            if (!site.TryGetValue(twin, out var t)) continue;
+            foreach (var m in t.Members)
             {
-                count.TryGetValue(x.Key, out var n);
-                return new Storey(x.Value.Area, x.Value.T.ToArray(), n.W, n.C, n.P);
-            },
-            StringComparer.OrdinalIgnoreCase);
+                if (own.Any(o => SamePlace(o, m))) continue;
+                if (!cut.Members.Any(c => SamePlace(c, m))) continue;
+                folded.Add(m);
+                foldedIn.Add(m);
+            }
+        }
+        return (Storey.Of(folded) with { Elevation = s?.Elevation ?? double.NaN }, foldedIn);
     }
 
     [Fact]
@@ -178,11 +300,13 @@ public class ShippedModelsAgreeWithEachOtherTests
             // as wrong. Folding the whole twin in was tried and is worse: LEVEL 3 carries the
             // TOWERS' 40-odd walls, and adding those made the site side 60 against 24.
             //
-            // The comparison needs to know which members were re-homed, which is the cut's business
-            // and is not recoverable from the finished files. Until it does, these two are expected
-            // red and must not be read as a model fault. Every other check in this class passes,
-            // including TheModelsThisCodeBuildsNowAgreeBeforeAnyOfItShips, which builds both models
-            // and compares them before anything ships.
+            // The comparison needs to know which members were re-homed. It was written off as
+            // "the cut's business and not recoverable from the finished files", and that was
+            // wrong: a member the cut carried down from LEVEL 3 stands at the same plan position
+            // in both files, so the finished files DO say which they were. The site's C-LEVEL 3 is
+            // compared with what the cut re-homed onto it folded back in (Fold), member by member,
+            // by position; the towers' walls on LEVEL 3 stand nowhere in the cut and stay out.
+            // The two tests were red for a week on a correct pair; closed 2026-09-08.
 
             // WHICH INVARIANT APPLIES DEPENDS ON WHOSE STOREY IT IS.
             //
@@ -199,16 +323,33 @@ public class ShippedModelsAgreeWithEachOtherTests
             // it compared floor AREA, and C-ROOF's plate is the same 2,015 sq ft either way.
             bool exclusiveToThisBuilding = E2kDocument.BuildingTagOf(storey).Length > 0;
 
+            // the site side is read with what the cut re-homed onto this storey folded in: on the
+            // building's own storey from the twin the cut dropped, and on a shared storey from the
+            // twins the cut merged into it (A-LEVEL P1 and B-LEVEL P1 become LEVEL P1)
+            (a, var foldedIn) = Fold(site, storey, b);
+
             double drift = Math.Abs(a.AreaSqFt - b.AreaSqFt) / Math.Max(a.AreaSqFt, b.AreaSqFt);
             bool sameThickness = a.Thicknesses.SequenceEqual(b.Thicknesses, StringComparer.Ordinal);
 
             _out.WriteLine($"{storey,-16}{a.AreaSqFt,10:N0} sf [{string.Join("/", a.Thicknesses)}]" +
                            $"   {b.AreaSqFt,10:N0} sf [{string.Join("/", b.Thicknesses)}]" +
                            $"   {a.Walls}/{a.Columns}/{a.Plates} vs {b.Walls}/{b.Columns}/{b.Plates}" +
-                           (exclusiveToThisBuilding ? "   [must be identical]" : "   [subset]"));
+                           (exclusiveToThisBuilding ? $"   [must be identical; {foldedIn.Count} folded in from a twin storey]" : "   [subset]"));
 
             if (exclusiveToThisBuilding)
             {
+                // member by member: nothing of the site's own storey may be missing from the cut,
+                // and nothing in the cut may stand where the site has nothing on this level
+                var own = site[storey].Members;
+                var missing = own.Where(o => !b.Members.Any(c => SamePlace(c, o))).ToList();
+                var invented = b.Members.Where(c => !a.Members.Any(o => SamePlace(o, c))).ToList();
+                if (missing.Count > 0)
+                    wrong.Add($"{storey}: {missing.Count} member(s) of the site's own storey are not in the cut: " +
+                              string.Join(", ", missing.Take(5).Select(m => $"{m.Kind} at ({m.X:0},{m.Y:0})")));
+                if (invented.Count > 0)
+                    wrong.Add($"{storey}: {invented.Count} member(s) in the cut stand nowhere on the site's storey or its twins: " +
+                              string.Join(", ", invented.Take(5).Select(m => $"{m.Kind} at ({m.X:0},{m.Y:0})")));
+
                 if (drift >= 0.02 || !sameThickness)
                     wrong.Add($"{storey}: site {a.AreaSqFt:N0} sq ft [{string.Join("/", a.Thicknesses)}\"] " +
                               $"vs YMCA {b.AreaSqFt:N0} sq ft [{string.Join("/", b.Thicknesses)}\"]");
@@ -225,9 +366,32 @@ public class ShippedModelsAgreeWithEachOtherTests
             // than the larger one means they were not cut from one composition.
             if (b.Walls > a.Walls || b.Columns > a.Columns || b.Plates > a.Plates
                 || b.AreaSqFt > a.AreaSqFt * 1.02)
+            {
+                // say WHICH members, and where the site keeps a member at that position, if anywhere
+                var extra = b.Members.Where(c => !a.Members.Any(o => SamePlace(o, c))).ToList();
+                var whereInSite = extra.Select(c =>
+                {
+                    var hit = site.FirstOrDefault(kv => kv.Value.Members.Any(o => SamePlace(o, c)));
+                    return $"{c.Kind} {c.Name} at ({c.X:0},{c.Y:0}) → site has it on {(hit.Key is null ? "no storey" : hit.Key)}";
+                });
+                // Measured 2026-09-08 on a pair staged from one build: ONE wall, KW63 at (1674,2969),
+                // on LEVEL P1 in the cut and on LEVEL P2 (as KW3) in the site. The reports say why:
+                // the site feeds LEVEL P1 from the joined "S2.05.1 ... BLDG C" + "S2.06.1 ... WEST"
+                // plan (64 walls, 108 columns) and the untagged "LEVEL P1 PLAN" sheet stands down;
+                // the cut clips that joined plan at its match line, the joined sheet then places on
+                // NO storey, and the untagged sheet feeds LEVEL P1 instead (29 walls, 57 columns).
+                // The cause was the whole-floor stand-down rule measuring coverage on the CLIPPED
+                // counts (its drawn-count lookup was keyed by path and read by name, so it never
+                // hit). Fixed in DxfToEtabsService; both comparisons pass on a pair staged from
+                // that build. The message keeps the diagnosis path because the next instance of
+                // this class will look the same: one member, one storey, two sheet ledgers.
                 wrong.Add($"{storey} is shared, so the YMCA model must hold a SUBSET of the site model — " +
                           $"it holds more: site {a.Walls}/{a.Columns}/{a.Plates} at {a.AreaSqFt:N0} sq ft " +
-                          $"vs YMCA {b.Walls}/{b.Columns}/{b.Plates} at {b.AreaSqFt:N0} sq ft");
+                          $"vs YMCA {b.Walls}/{b.Columns}/{b.Plates} at {b.AreaSqFt:N0} sq ft; " +
+                          string.Join("; ", whereInSite.Take(5)) +
+                          ". A member the cut places on a storey the site does not is the cut composing that " +
+                          "storey from a different sheet: compare the two reports' sheet ledgers for this storey.");
+            }
         }
 
         Assert.True(wrong.Count == 0,
@@ -332,14 +496,72 @@ public class ShippedModelsAgreeWithEachOtherTests
         string sitePath = SiteModel;
         string ymcaPath = YmcaModel;
 
-        static Dictionary<string, double> ByStoreyElement(string path) =>
-            QuantityTakeoff.E2kQuantityTakeoff.Read(E2kDocument.Load(path)).Inputs
-                .Where(i => i.Level.StartsWith("C-", StringComparison.OrdinalIgnoreCase))
-                .GroupBy(i => $"{i.Level}|{i.Element}")
-                .ToDictionary(g => g.Key, g => g.Sum(x => x.ConcreteVolume), StringComparer.OrdinalIgnoreCase);
+        var siteModel = Read(sitePath)!;
+        var ymcaModel = Read(ymcaPath)!;
+        var siteTakeoff = QuantityTakeoff.E2kQuantityTakeoff.Read(E2kDocument.Load(sitePath));
+        var ymcaTakeoff = QuantityTakeoff.E2kQuantityTakeoff.Read(E2kDocument.Load(ymcaPath));
+        var siteInputs = siteTakeoff.ByObject;   // one row per object, so a wall can be followed by where it stands
+        var ymcaInputs = ymcaTakeoff.ByObject;
 
-        var site = ByStoreyElement(sitePath);
-        var ymca = ByStoreyElement(ymcaPath);
+        // the cut's own storeys, priced as the cut prices them
+        var ymca = ymcaTakeoff.Inputs
+            .Where(i => i.Level.StartsWith("C-", StringComparison.OrdinalIgnoreCase))
+            .GroupBy(i => $"{i.Level}|{i.Element}")
+            .ToDictionary(g => g.Key, g => g.Sum(x => x.ConcreteVolume), StringComparer.OrdinalIgnoreCase);
+
+        // the site's same storeys, with the concrete of the members the cut re-homed from a twin
+        // storey folded back in — the same members, found by where they stand (see Fold)
+        var site = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+        foreach (string level in ymcaModel.Keys.Where(k => k.StartsWith("C-", StringComparison.OrdinalIgnoreCase)))
+        {
+            var twins = TwinsOf(siteModel, level);
+            var (_, foldedIn) = siteModel.ContainsKey(level) ? Fold(siteModel, level, ymcaModel[level]) : (null!, Array.Empty<Member>());
+            var foldedNames = new HashSet<string>(foldedIn.Select(m => m.Name), StringComparer.Ordinal);
+            int reHomedPriced = 0;
+            foreach (var input in siteInputs)
+            {
+                bool own = input.Level.Equals(level, StringComparison.OrdinalIgnoreCase);
+                bool reHomed = input.Object is not null && foldedNames.Contains(input.Object)
+                               && twins.Contains(input.Level, StringComparer.OrdinalIgnoreCase);
+                if (!own && !reHomed) continue;
+
+                // A member the cut carried down from a twin now stands on a storey that absorbed the
+                // twin's height: C-LEVEL 3 is 215.5 in tall in the cut, LEVEL 3 was 210 in the site,
+                // and W18 is priced 2.6% taller for exactly that reason. Both heights are in the
+                // files, so the site's figure is put on the cut's storey height before comparing.
+                double volume = input.ConcreteVolume;
+                if (reHomed)
+                {
+                    reHomedPriced++;
+                    double cutHeight = ymcaModel[level].Height, siteHeight = siteModel[input.Level].Height;
+                    if (cutHeight > 0 && siteHeight > 0) volume *= cutHeight / siteHeight;
+                }
+                string key = $"{level}|{input.Element}";
+                site[key] = site.GetValueOrDefault(key) + volume;
+            }
+            if (foldedIn.Count > 0)
+                _out.WriteLine($"{level}: {foldedIn.Count} member(s) re-homed from {string.Join("/", twins)} " +
+                               $"[{string.Join(", ", foldedIn.Select(m => m.Name))}], {reHomedPriced} of them priced on the site side");
+
+            // member by member, where the two files price one wall differently. An object may be
+            // assigned to more than one storey (the engineer's walls are), so the row is found by
+            // object AND storey.
+            var siteByObject = siteInputs.Where(i => i.Object is not null).ToLookup(i => i.Object!, StringComparer.Ordinal);
+            var cutByObject = ymcaInputs.Where(i => i.Object is not null).ToLookup(i => i.Object!, StringComparer.Ordinal);
+            var siteMembers = (siteModel.TryGetValue(level, out var sm) ? sm.Members : Array.Empty<Member>()).Concat(foldedIn).ToList();
+            foreach (var cm in ymcaModel[level].Members.Where(m => m.Kind == 'W'))
+            {
+                var twin = siteMembers.FirstOrDefault(s => SamePlace(s, cm));
+                double cutVol = cutByObject[cm.Name].Where(i => i.Level.Equals(level, StringComparison.OrdinalIgnoreCase)).Select(i => (double?)i.ConcreteVolume).FirstOrDefault() ?? double.NaN;
+                double siteVol = twin is null
+                    ? double.NaN
+                    : siteByObject[twin.Name]
+                        .Where(i => i.Level.Equals(level, StringComparison.OrdinalIgnoreCase) || twins.Contains(i.Level, StringComparer.OrdinalIgnoreCase))
+                        .Select(i => (double?)i.ConcreteVolume).FirstOrDefault() ?? double.NaN;
+                if (double.IsNaN(siteVol) || double.IsNaN(cutVol) || Math.Abs(siteVol - cutVol) > 0.05)
+                    _out.WriteLine($"   {level} wall {cm.Name} at ({cm.X:0},{cm.Y:0}): cut {cutVol:N1} yd³ vs site {twin?.Name ?? "(no twin)"} {siteVol:N1} yd³");
+            }
+        }
 
         var priced = new List<string>();
         foreach (string key in site.Keys.Union(ymca.Keys, StringComparer.OrdinalIgnoreCase)

@@ -14,7 +14,16 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
         string? Variant,
         double ConcreteVolume,
         double FormworkArea = 0,
-        string Grade = "");
+        string Grade = "")
+    {
+        /// <summary>
+        /// The model object this quantity came from (an e2k area or line name), when the takeoff
+        /// read a model. It lets one model's quantities be matched to another's by the object's
+        /// position rather than its name: the same wall is "KW12" in the site model and something
+        /// else in the building cut of it.
+        /// </summary>
+        public string? Object { get; init; }
+    }
 
     public sealed record StructuralTakeoffLine(
         string Level,

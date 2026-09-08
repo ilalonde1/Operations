@@ -839,6 +839,15 @@ public static class DxfToEtabsService
 
         string? seamClipFor = null;
 
+        // WHAT EACH SHEET DRAWS, before a building cut takes anything off it. Which sheet feeds a
+        // storey is decided by comparing a whole-floor sheet with its per-building parts, and that
+        // is a property of the DRAWING SET: it must come out the same whether the model is the
+        // site or one building cut from it. Under --tower C the joined BLDG C + WEST plan is
+        // clipped at its match line before that comparison ran, the parts no longer covered the
+        // whole, and the whole-site sheet fed LEVEL P1 in the cut where the parts feed it in the
+        // site — one wall on LEVEL P1 in one file and not the other, from the same drawings.
+        var drawnByFile = new Dictionary<string, (int Walls, int Columns)>(StringComparer.OrdinalIgnoreCase);
+
         var joinable = joinStoreys.Count == 0
             ? new List<string>()
             : files.Where(f => storeysOfSheet[f].Any(s =>
@@ -1027,6 +1036,13 @@ public static class DxfToEtabsService
                 classification with { ExpectedSlabCount = expected, MatchLineLayerPatterns = matchLineLayers },
                 sheet,
                 tags);
+
+            // as drawn, before the seam takes anything off it
+            // Keyed the way the placement loop looks it up: by sheet NAME, not by path. Keyed by
+            // path this never hit, coverage fell back to the clipped counts, and the tower cut of
+            // 31168 fed LEVEL P1 from the whole-site sheet where the site fed it from the joined
+            // BLDG C + WEST plan — one wall, KW63, on a storey the site does not put it on.
+            drawnByFile[sheet.FileName] = (geometry.Walls.Count, geometry.Columns.Count);
 
             // THE PLATE A JOIN MADE IS CUT BACK AT THE SEAM.
             //
@@ -1401,6 +1417,8 @@ public static class DxfToEtabsService
                         SlabThickness = slabThickness is null ? null : slabThickness.ThicknessInches / modelUnitInInches,
                         SlabThicknessInches = slabThickness?.ThicknessInches,
                         SlabThicknessPage = slabThickness?.PageNumber,
+                        DrawnWalls = drawnByFile.TryGetValue(sheet.FileName, out var drawn) ? drawn.Walls : null,
+                        DrawnColumns = drawnByFile.TryGetValue(sheet.FileName, out drawn) ? drawn.Columns : null,
                     });
         }
 
@@ -1478,12 +1496,14 @@ public static class DxfToEtabsService
         static bool StandsDownTo(StoryPlacement part, StoryPlacement whole) =>
             DrawnBy(part, whole) || (part.IsIssuedSheet && !whole.IsIssuedSheet);
 
+        // Coverage is measured on what the sheets DRAW, not on what a building cut left of them:
+        // the same drawing set must choose the same sheets for the site and for a cut of it.
         var supersededByParts = placements
             .Where(whole => onFloor.TryGetValue(FloorNamed(whole.Story.Name), out var siblings)
                             && siblings.Where(p => StandsDownTo(p, whole)) is var parts
                             && parts.Any()
-                            && parts.Sum(p => p.Geometry.Walls.Count) >= whole.Geometry.Walls.Count
-                            && parts.Sum(p => p.Geometry.Columns.Count) >= whole.Geometry.Columns.Count)
+                            && parts.Sum(p => p.DrawnWalls ?? p.Geometry.Walls.Count) >= (whole.DrawnWalls ?? whole.Geometry.Walls.Count)
+                            && parts.Sum(p => p.DrawnColumns ?? p.Geometry.Columns.Count) >= (whole.DrawnColumns ?? whole.Geometry.Columns.Count))
             .ToList();
 
         // MEMBERS ONLY. The whole-floor sheet keeps its FLOOR.

@@ -2311,8 +2311,14 @@ if (args.Length >= 1 && args[0].Equals("sched-border", StringComparison.OrdinalI
     Console.WriteLine(sbNumber is { } n
         ? $"Sheet number \"{n.Text}\" @ {n.Cx:F0},{n.Cy:F0} (h {n.Height:F1})"
         : "Sheet number: none found in the bottom-right region, so no title block is excluded");
-    foreach (var region in SheetFurniture.On(sbPc))
+    var sbSet = SheetFurniture.On(sbPc);
+    foreach (var region in sbSet.Regions)
         Console.WriteLine($"  furniture  {region.Kind,-44} x {region.MinX:F0}..{region.MaxX:F0}  y {region.MinY:F0}..{region.MaxY:F0}");
+    Console.WriteLine($"  underlines {sbSet.Underlines.Count}; grid axes {sbSet.VerticalAxesX.Count} vertical, {sbSet.HorizontalAxesY.Count} horizontal; " +
+                      $"declared column sizes {sbSet.DeclaredColumnSizesMm.Count}: {string.Join(", ", sbSet.DeclaredColumnSizesMm.Select(s => $"{s.W:0}x{s.D:0}"))}");
+    var sbGrid = GridBubbles.On(sbPc);
+    Console.WriteLine($"  labelled circles {sbGrid.Bubbles.Count}, on a grid axis {sbGrid.Bubbles.Count(b => b.IsGridBubble)}: " +
+                      string.Join(" ", sbGrid.Bubbles.Where(b => b.IsGridBubble).Select(b => b.Label).Distinct().OrderBy(l => l)));
 
     foreach (var sbOptions in new[] { MarkRowScheduleReader.ColumnDefaults(), MarkRowScheduleReader.FootingDefaults(), MarkRowScheduleReader.ShearWallDefaults() })
     {

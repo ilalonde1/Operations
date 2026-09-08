@@ -147,14 +147,14 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 result.PageWidthPts * scale, result.PageHeightPts * scale,
                 annotationsOnly,
                 options.ColumnMaxSizeMm, options.ColumnMinDimMm, options.ColumnMaxAspect,
-                Furniture(pageRead, scale));
+                Furniture(pageRead, scale, options.AgreementToleranceMm));
 
             return result;
         }
 
-        /// <summary>The sheet's schedules and title block, in the mm space the subpaths are in.</summary>
-        private static IReadOnlyList<SheetFurniture.Region> Furniture(VectorPageReader.PageContent pageRead, double scale)
-            => SheetFurniture.On(pageRead).Select(r => r.Scaled(scale)).ToList();
+        /// <summary>The sheet's furniture, grid and declared column sizes, in the mm space the subpaths are in.</summary>
+        private static SheetFurniture.Set Furniture(VectorPageReader.PageContent pageRead, double scale, double sizeToleranceMm = PlanAgreesWithItsSchedule.DefaultToleranceMm)
+            => SheetFurniture.On(pageRead, sizeToleranceMm).Scaled(scale);
 
         /// <summary>Overload for a document already open, so a sweep pays the parse cost once.</summary>
         public static ExtractedGeometry Read(

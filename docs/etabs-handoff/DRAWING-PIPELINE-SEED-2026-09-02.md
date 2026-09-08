@@ -159,28 +159,54 @@ outcomes only: the share is unreachable and the test SAYS it skipped, or the nam
 and the test FAILS with where it looked. `takeoff publish` refuses to guess between the three
 DXF sets 31168 now holds; name one with `--dxf <name>`.
 
-## Open, with evidence
+## Closed 2026-09-08, each by a universal statement measured on all five jobs first
 
-1. **31202's plan self-check is not meaningful** while column marks and grid bubbles are both
-   circled numerals; the reader reads the table right (8 of 8), the plan labels cannot be told
-   apart by text alone. A circled-numeral label sits inside a circle path; the grid bubble sits at
-   the end of a grid line. Untried.
-2. **The flat shear-wall reader** admits nothing but wall schedules now, and reads SWA–SWD on
-   31130 and 31168; whether its thickness and strength are right on every job has not been banked
-   beyond "wall-shaped marks".
-3. **`dxf.pdf.*` thresholds** remain code defaults with no population behind them. The path to
-   banking any of them is the 1,126-model measurement that set the DXF side's, not a copy.
-4. **Publish landing folder.** Discovery now lands a rebuilt model beside the reference it was
-   built against (so, in `TEST` for 31168). Whether that is where the engineer wants it is a
-   human decision that nobody has taken.
-5. **Grid lines still reach the DXF as beams**, and so do the notes and legend boxes. The frame
-   rule drops a single stroke the length of the sheet; a grid line is a dash-dot linetype drawn
-   as pieces, and a notes box is ruled but titled with no SCHEDULE. Rendered 2026-09-07 with
-   `takeoff dxf-render <dxf> <png> --layers SLAB,COLUMN,BEAM` — look, do not count. What the
-   DXF→ETABS side does with a PDF-derived BEAM layer has not been asked.
-6. **The two published-model comparisons are red again**, honestly: they now FIND the published
-   31168 models under `TEST` and run, where before the move they "skipped: share unreachable"
-   and passed. They are the C2-OPEN pair above; nothing about them changed but the finding.
+1. **Circled marks vs grid bubbles (31202).** A grid bubble is a labelled circle with a grid axis
+   through it; a circled mark has none (`GridBubbles`). Measured: 19 of 19 on 31130, 15 of 15 on
+   31138 have an axis; on 31202 17 of 115 do and the other 98 are the marks. The self-check's
+   labels exclude bubbles, and 31202 p17 reads 67 of 101 with nothing unplaced (was 23 of 105).
+2. **Flat shear-wall rows** are banked in the harness by mark, thickness and strength, read off
+   the crops (31130 SWA 12" 35 MPa … SWD 16" 55 MPa; 31065 SWA 200 35 MPa, SWC 600 45 MPa).
+3. **The column size window.** Re-measured with the invisible-ink and furniture rules in place:
+   the DXF side's 152–3,353 mm window changes coverage on none of 12 pages and costs 10–28 slabs
+   on each, so it is not adopted. What actually lost PC7 (18" x 60") and PC8 (18" x 96") was the
+   3.0 aspect limit — on a sheet whose own schedule declares them. So: **a filled shape of a size
+   the sheet's column schedule declares is a column**, and the window and aspect are only the
+   fallback for a sheet with no schedule. On 31138 those two marks are not drawn on p9–p11 at all.
+4. **Where a publish lands** is decided: beside the reference it was built against. That is
+   what `TEST` now holds for 31168, and it is what the move to `TEST` did by hand.
+5. **Grid lines, underlines, notes and legends.** A grid line is the line through a bubble; an
+   underline is a rule under a line of text matching its extent; a notes box, table, legend or
+   sheet of details is the ruled box under (or around) a title carrying NOTES, TABLE, LEGEND,
+   ORDER, DETAILS, TRANSITIONS, ZONES or HEADERS — a vocabulary from the population of 705 titled
+   boxes on 294 pages, chosen to leave out "… PLAN" and "OUTLINE", the plan's own viewport; and
+   furniture is never half the sheet. Lines on 31130 p11 went 1,937 → 1,650; rendered and looked at.
+6. **The two published-model comparisons.** The C2 finding said which members the cut re-homed
+   "is not recoverable from the finished files". It is: a re-homed member stands at the same plan
+   position in both files, on the twin storey within `dxf.storeys-at-one-level-gap`. The
+   comparison now folds those back in by position, and prices them on the cut's storey height
+   (C-LEVEL 3 is 215.5 in tall in the cut, LEVEL 3 was 210 in the site — the 2.6% that was left).
+   The last disagreement was one wall, KW63 at (1674,2969), on LEVEL P1 in the cut and LEVEL P2
+   in the site: the tower cut clipped the joined BLDG C + WEST plan at its match line, the
+   whole-floor stand-down rule then measured coverage on the CLIPPED counts, the untagged LEVEL P1
+   sheet stayed and placed first, and the joined plan's 97 members were refused as "a place
+   another sheet had already filled". Coverage is now measured on what the sheets DRAW, before the
+   seam takes anything off — the same drawing set chooses the same sheets for the site and for a
+   cut of it. Both comparisons pass on a pair staged from this build (2 of 2), the site model is
+   byte-identical before and after, and the cut's "already filled" count fell from 454 to 66.
+
+## What still needs a person
+
+- **Land the staged 31168 pair.** Both models are staged from this build and pass every
+  publish-blocking invariant; landing them is a write to the job folder, from KOR-1001:
+
+      takeoff publish 31168 --dxf-folder _DXF-from-Revit-2026-08-26 --reference 31168-reference.e2k --tower C --land
+      takeoff publish 31168 --dxf-folder _DXF-from-Revit-2026-08-26 --reference 31168-reference.e2k --variant TOWERS --land
+
+- **Apply migration 080** to KorStandards on KOR-APP01\SQLEXPRESS (`KOR.Drafter\db\080_ScheduleReaderVocabulary.sql`,
+  idempotent). Until then the readers run on their compiled defaults, which are the same values.
+- **The published pair on the share is older than this build**, so the shared-storey comparison
+  is red against it (the same one wall) until the two `--land` commands above are run.
 
 ## The export and deliver side — much less examined, look here with fresh eyes
 

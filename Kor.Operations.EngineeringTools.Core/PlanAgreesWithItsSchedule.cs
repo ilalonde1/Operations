@@ -132,8 +132,7 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             var marks = new HashSet<string>(declared.Select(d => d.Mark), StringComparer.OrdinalIgnoreCase);
             var labels = page is null || scale <= 0
                 ? new List<(string Mark, double X, double Y)>()
-                : page.Words
-                    .Where(w => marks.Contains(w.Text.Trim()))
+                : PlanLabels(page, marks)
                     .Select(w => (Mark: w.Text.Trim(), X: w.Cx * scale, Y: w.Cy * scale))
                     .ToList();
 
@@ -216,12 +215,31 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             var marks = new HashSet<string>(declared.Select(d => d.Mark), StringComparer.OrdinalIgnoreCase);
             if (marks.Count == 0) return 0;
 
+            return PlanLabels(page, marks).Count();
+        }
+
+        /// <summary>
+        /// The tokens on the plan that label a column with one of the declared marks: not those in
+        /// the column schedule's own mark column, and not those inside a grid bubble.
+        /// </summary>
+        /// <remarks>
+        /// 31202 circles its column marks AND its grid bubbles, and both are numerals, so by text
+        /// alone "3" on the plan is as likely a grid as a column. A grid bubble has a grid axis
+        /// through it and a mark's circle does not (<see cref="GridBubbles"/>); measured on that
+        /// sheet, 17 of 115 labelled circles carry an axis and they are the grid.
+        /// </remarks>
+        private static IEnumerable<VectorPageReader.TextToken> PlanLabels(
+            VectorPageReader.PageContent page,
+            HashSet<string> marks)
+        {
             var headings = ColumnScheduleReader.SchedulesOn(page);
             double band = page.WidthPts * ColumnScheduleReader.HeadingBandFraction;
+            var grid = GridBubbles.On(page).Bubbles.Where(b => b.IsGridBubble).ToList();
 
-            return page.Words.Count(w =>
+            return page.Words.Where(w =>
                 marks.Contains(w.Text.Trim())
-                && ColumnScheduleReader.OwnerOf(w.Cx, w.Cy, headings, band) is not { IsColumn: true });
+                && ColumnScheduleReader.OwnerOf(w.Cx, w.Cy, headings, band) is not { IsColumn: true }
+                && !grid.Any(b => b.Contains(w.Cx, w.Cy)));
         }
 
         private static bool Same(double small, double large, ColumnScheduleRow row, double toleranceMm)

@@ -82,9 +82,10 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             double columnMaxSizeMm = 1500.0,
             double columnMinDimMm = 200.0,
             double maxColumnAspect = DefaultMaxColumnAspect,
-            IReadOnlyList<SheetFurniture.Region>? furniture = null)
+            SheetFurniture.Set? furniture = null)
         {
             double gridThreshMm = Math.Max(pageWidthMm, pageHeightMm) * 0.6;
+            furniture ??= SheetFurniture.Set.Empty;
 
             foreach (var sub in rawSubpaths)
             {
@@ -99,14 +100,23 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     continue;
 
                 // ── Sheet furniture ──────────────────────────────────────────
-                // Whatever sits inside a schedule's border or the title block is a table cell, a tie
-                // sketch, a rule or a logo box, and it is not read as structure — see SheetFurniture.
-                if (!sub.IsAnnotation && furniture is { Count: > 0 } && pts.Count > 0)
+                // Whatever sits inside a schedule's border, a notes box or the title block is a
+                // table cell, a tie sketch, a rule or a logo box, and it is not read as structure;
+                // a line along a grid axis is the grid — see SheetFurniture.
+                if (!sub.IsAnnotation && pts.Count > 0)
                 {
                     double cx = (pts.Min(p => p.X) + pts.Max(p => p.X)) / 2;
                     double cy = (pts.Min(p => p.Y) + pts.Max(p => p.Y)) / 2;
-                    if (furniture.Any(f => f.Contains(cx, cy)))
+                    if (furniture.IsFurniture(cx, cy))
                         continue;
+
+                    if (!isClosed && pts.Count == 2)
+                    {
+                        double dx = Math.Abs(pts[1].X - pts[0].X), dy = Math.Abs(pts[1].Y - pts[0].Y);
+                        if (dx <= furniture.AxisTolerance && furniture.OnVerticalAxis(cx)) continue;
+                        if (dy <= furniture.AxisTolerance && furniture.OnHorizontalAxis(cy)) continue;
+                        if (dy <= furniture.AxisTolerance && furniture.IsUnderline(pts[0].X, pts[1].X, cy)) continue;
+                    }
                 }
 
                 // Invisible ink: a shape with no stroke filled the colour of the paper draws nothing.
@@ -126,6 +136,19 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     // the sheet's own frame, drawn around everything: not a slab
                     if (!sub.IsAnnotation && bboxW >= SheetFrameMinShare * pageWidthMm && bboxH >= SheetFrameMinShare * pageHeightMm)
                         continue;
+
+                    // ⭐ THE SHEET SAYS WHAT ITS COLUMNS ARE. A filled shape the size the column
+                    // schedule declares is a column, whatever a size window or an aspect limit
+                    // fitted to other sheets would make of it: 31138 declares PC7 at 18" x 60" and
+                    // PC8 at 18" x 96", and the 3.0 aspect limit refused both on their own sheet.
+                    if (!sub.IsAnnotation && sub.IsFilled && furniture.IsDeclaredColumnSize(bboxW, bboxH))
+                    {
+                        result.Columns.Add(PolygonProcessor.Centroid(pts));
+                        result.ColumnColors.Add(color);
+                        result.ColumnIsAnnotation.Add(sub.IsAnnotation);
+                        result.ColumnSizes.Add((bboxW, bboxH));
+                        continue;
+                    }
 
                     bool looksLikeColumn = bboxW <= columnMaxSizeMm && bboxH <= columnMaxSizeMm;
 

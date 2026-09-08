@@ -10,6 +10,15 @@ public sealed record StoryPlacement(
     string SourceSheet,
     bool IsFoundationSheet = false)
 {
+    /// <summary>
+    /// How many walls and columns the sheet DRAWS, before a building cut took any of them off its
+    /// geometry. Null where nothing was taken. Coverage between a whole-floor sheet and its parts
+    /// is measured on these, so that the site and a cut of it choose the same sheets.
+    /// </summary>
+    public int? DrawnWalls { get; init; }
+
+    public int? DrawnColumns { get; init; }
+
     /// <summary>Slab thickness for this sheet, in the same length unit as the model being written.</summary>
     public double? SlabThickness { get; init; }
 

@@ -53,7 +53,7 @@ public sealed class SheetFurnitureIsNotStructureTests
         new(new List<(double X, double Y)> { (x0 * Scale, y0 * Scale), (x1 * Scale, y1 * Scale) },
             IsClosed: false, Color: Black, IsFilled: false, IsStroked: true, LineWidth: 0.5, IsAnnotation: false);
 
-    private static ExtractedGeometry Classify(IEnumerable<RawSubpath> subpaths, IReadOnlyList<SheetFurniture.Region>? furniture = null)
+    private static ExtractedGeometry Classify(IEnumerable<RawSubpath> subpaths, SheetFurniture.Set? furniture = null)
     {
         var result = new ExtractedGeometry { ScaleDenominator = 96 };
         GeometryFilterService.Classify(subpaths.ToList(), result,
@@ -108,11 +108,14 @@ public sealed class SheetFurnitureIsNotStructureTests
     [Fact]
     public void WhatSitsInsideAScheduleBorderOrTheTitleBlockIsNotStructure()
     {
-        var furniture = new List<SheetFurniture.Region>
+        var furniture = SheetFurniture.Set.Empty with
         {
-            new("schedule: COLUMN SCHEDULE", 2000, 300, 2400, 600),
-            new("title block", 2700, 0, W, H),
-        }.Select(r => r.Scaled(Scale)).ToList();
+            Regions = new List<SheetFurniture.Region>
+            {
+                new("schedule: COLUMN SCHEDULE", 2000, 300, 2400, 600),
+                new("title block", 2700, 0, W, H),
+            }.Select(r => r.Scaled(Scale)).ToList(),
+        };
 
         var geo = Classify([
             Column(1000, 1000),                       // on the plan
@@ -126,6 +129,52 @@ public sealed class SheetFurnitureIsNotStructureTests
         Assert.Single(geo.Columns);
         Assert.Empty(geo.Slabs);
         Assert.Empty(geo.Lines);
+    }
+
+    /// <summary>A grid line is the line through a grid bubble; a beam a hand's width off it is not.</summary>
+    [Fact]
+    public void ALineAlongAGridAxisIsTheGridNotABeam()
+    {
+        var furniture = SheetFurniture.Set.Empty with
+        {
+            VerticalAxesX = [1000 * Scale],
+            HorizontalAxesY = [800 * Scale],
+            AxisTolerance = 1.5 * Scale,
+        };
+
+        var geo = Classify([
+            Line(1000, 100, 1000, 700),      // a dash of the grid line through bubble "3"
+            Line(100, 800, 900, 800),        // and one of the horizontal grid
+            Line(1010, 100, 1010, 700),      // a beam drawn 10pt (13") off the grid
+            Column(500, 500),
+        ], furniture);
+
+        Assert.Single(geo.Lines);
+        Assert.Single(geo.Columns);
+    }
+
+    /// <summary>
+    /// 31138 declares PC7 at 18" x 60" and PC8 at 18" x 96". A 3.0 aspect limit refused both on the
+    /// sheet that declares them; the sheet says what its columns are.
+    /// </summary>
+    [Fact]
+    public void AFilledShapeOfADeclaredSizeIsAColumnWhateverTheAspectLimitSays()
+    {
+        var furniture = SheetFurniture.Set.Empty with
+        {
+            DeclaredColumnSizesMm = [(18 * 25.4, 96 * 25.4), (18 * 25.4, 60 * 25.4)],
+            SizeToleranceMm = 25,
+        };
+        // 18" x 96" at 1:96 is 13.5 x 72 points; 18" x 60" is 13.5 x 45
+        var pc8 = Rect(1000, 1000, 1013.5, 1072, Grey);
+        var pc7 = Rect(1200, 1000, 1245, 1013.5, Grey);
+        var undeclared = Rect(1400, 1000, 1413.5, 1080, Grey);   // 18" x 107": no such column
+
+        var withSchedule = Classify([pc8, pc7, undeclared], furniture);
+        Assert.Equal(2, withSchedule.Columns.Count);
+
+        var withoutSchedule = Classify([pc8, pc7, undeclared]);
+        Assert.Empty(withoutSchedule.Columns);   // the aspect limit is the fallback, and it refuses all three
     }
 
     // ── the regions themselves, from a page ─────────────────────────────────────────────────
@@ -152,7 +201,7 @@ public sealed class SheetFurnitureIsNotStructureTests
             VRule(1495, 640, 690), VRule(1990, 640, 690), VRule(1570, 640, 690),
         };
 
-        var region = Assert.Single(SheetFurniture.On(new PC(1, W, H, words, paths)));
+        var region = Assert.Single(SheetFurniture.On(new PC(1, W, H, words, paths)).Regions);
 
         Assert.StartsWith("schedule", region.Kind);
         Assert.Equal(1495, region.MinX, 0.5);
@@ -174,7 +223,7 @@ public sealed class SheetFurnitureIsNotStructureTests
             paths.Add(VRule(2700, 40 + i * 105, 40 + i * 105 + 95));
         paths.Add(VRule(1500, 900, 1500));               // a grid line: short, and on the plan
 
-        var region = Assert.Single(SheetFurniture.On(new PC(1, W, H, words, paths)));
+        var region = Assert.Single(SheetFurniture.On(new PC(1, W, H, words, paths)).Regions);
 
         Assert.Equal("title block", region.Kind);
         Assert.Equal(2700, region.MinX, 0.5);
@@ -188,7 +237,103 @@ public sealed class SheetFurnitureIsNotStructureTests
         var words = new List<TT> { new("S2.02", 2900, 80, 2870, 70, 2930, 90) };
         var paths = new List<GP> { VRule(1700, 100, 2000) };
 
-        Assert.Empty(SheetFurniture.On(new PC(1, W, H, words, paths)));
+        Assert.Empty(SheetFurniture.On(new PC(1, W, H, words, paths)).Regions);
+    }
+
+    /// <summary>A ruled box under a title ending in NOTES, TABLE, LEGEND or DETAILS is furniture; one ending in PLAN is the plan.</summary>
+    [Fact]
+    public void ATitledBoxIsFurnitureByItsLastWordAndAPlanIsNot()
+    {
+        // title words are set a fraction of their height apart, as on a real sheet
+        var words = new List<TT>
+        {
+            Tok("GENERAL", 1520, 700, 14), Tok("NOTES:", 1545, 700, 14),
+            Tok("1.", 1510, 670), Tok("PROVIDE", 1560, 670), Tok("DOWELS", 1620, 670),
+            Tok("FOUNDATION", 500, 1500, 14), Tok("PLAN", 525, 1500, 14),
+        };
+        var paths = new List<GP>
+        {
+            HRule(1495, 1990, 690), HRule(1495, 1990, 640), VRule(1495, 640, 690), VRule(1990, 640, 690),   // the notes box
+            HRule(100, 1400, 1490), HRule(100, 1400, 300), VRule(100, 300, 1490), VRule(1400, 300, 1490),  // the plan's viewport
+        };
+
+        var regions = SheetFurniture.On(new PC(1, W, H, words, paths)).Regions;
+
+        var notes = Assert.Single(regions);
+        Assert.StartsWith("furniture: GENERAL NOTES", notes.Kind);
+        Assert.Equal(1495, notes.MinX, 0.5);
+    }
+
+    /// <summary>
+    /// A notes box puts its heading INSIDE the box and draws no rule under it; it is found from the
+    /// rule above. A NOTES heading placed inside the plan's own viewport has that frame above it
+    /// too, and the plan is never furniture: a box half the sheet is refused.
+    /// </summary>
+    [Fact]
+    public void ABoxEnclosingItsHeadingIsFurnitureUnlessItIsHalfTheSheet()
+    {
+        var words = new List<TT>
+        {
+            Tok("REFERENCE", 1520, 700, 14), Tok("NOTES:", 1560, 700, 14),
+            Tok("1.", 1510, 670), Tok("PROVIDE", 1560, 670), Tok("DOWELS", 1620, 670),
+            Tok("GENERAL", 500, 1400, 14), Tok("NOTES:", 530, 1400, 14),   // inside the plan's frame
+        };
+        var paths = new List<GP>
+        {
+            HRule(1495, 1990, 715), HRule(1495, 1990, 600), VRule(1495, 600, 715), VRule(1990, 600, 715),   // the notes box, heading inside
+            HRule(100, 1800, 1420), HRule(100, 1800, 200), VRule(100, 200, 1420), VRule(1800, 200, 1420),   // the plan's viewport
+        };
+
+        var regions = SheetFurniture.On(new PC(1, W, H, words, paths)).Regions;
+
+        var notes = Assert.Single(regions);
+        Assert.StartsWith("furniture: REFERENCE NOTES", notes.Kind);
+        Assert.Equal(715, notes.MaxY, 0.5);
+        Assert.Equal(600, notes.MinY, 0.5);
+    }
+
+    /// <summary>A rule directly under a line of text, the width of that line, is its underline.</summary>
+    [Fact]
+    public void AnUnderlineIsARegionAndABeamUnderNothingIsNot()
+    {
+        var words = new List<TT> { Tok("SHEAR", 1500, 700, 14), Tok("WALL", 1525, 700, 14), Tok("NOTES", 1550, 700, 14) };
+        var paths = new List<GP>
+        {
+            HRule(1490, 1560, 691),   // under the words, matching them
+            HRule(300, 900, 691),     // a beam elsewhere on the same y
+        };
+
+        var set = SheetFurniture.On(new PC(1, W, H, words, paths));
+
+        var u = Assert.Single(set.Underlines);
+        Assert.Equal(1490, u.MinX, 0.5);
+        Assert.Equal(1560, u.MaxX, 0.5);
+        Assert.True(set.IsUnderline(1490, 1560, 691));
+        Assert.False(set.IsUnderline(300, 900, 691));
+        Assert.Empty(set.Regions);   // an underline is not a region: a shape centred on one is not swallowed
+    }
+
+    /// <summary>A labelled circle with a grid axis through it is a grid bubble; a circled mark is not.</summary>
+    [Fact]
+    public void AGridBubbleHasAnAxisThroughItAndACircledMarkDoesNot()
+    {
+        static GP Circle(double cx, double cy, double r) => new(
+            new List<(double X, double Y)> { (cx, cy + r), (cx + r, cy), (cx, cy - r), (cx - r, cy) },
+            true, false, true, cx - r, cy - r, cx + r, cy + r);
+
+        var words = new List<TT> { Tok("3", 1000, 1900), Tok("3", 1400, 1200) };
+        var paths = new List<GP>
+        {
+            Circle(1000, 1900, 14), VRule(1000, 200, 1886),     // bubble "3" with its grid line
+            Circle(1400, 1200, 14),                             // column mark "3" on the plan
+        };
+
+        var grid = GridBubbles.On(new PC(1, W, H, words, paths));
+
+        Assert.Equal(2, grid.Bubbles.Count);
+        Assert.Single(grid.Bubbles, b => b.IsGridBubble);
+        Assert.Equal(1000, Assert.Single(grid.VerticalAxesX), 0.5);
+        Assert.Empty(grid.HorizontalAxesY);
     }
 
     [Fact]

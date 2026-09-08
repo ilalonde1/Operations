@@ -26,7 +26,16 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
         int MembersRead,
         double OpeningAreaDeducted,
         UnitSystem Unit,
-        string UnitNote);
+        string UnitNote)
+    {
+        /// <summary>
+        /// The same quantities before they were summed per storey and element: one row per model
+        /// object, carrying its name. <see cref="Inputs"/> is what the estimator reads; this is
+        /// what a comparison of two models of one building reads, because the only thing the two
+        /// files share about a wall is where it stands, and that lives on the object.
+        /// </summary>
+        public IReadOnlyList<StructuralTakeoffInput> ByObject { get; init; } = Array.Empty<StructuralTakeoffInput>();
+    }
 
     /// <summary>
     /// Turns a finished ETABS model into concrete quantities. The model was already built from the
@@ -226,7 +235,7 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                     if (variant is null) slabStoreysDefaulted.Add(a.Storey);
 
                     inputs.Add(new StructuralTakeoffInput(a.Storey, TakeoffElementType.Slab, variant,
-                        volume, formwork, Grade(prop.Material)));
+                        volume, formwork, Grade(prop.Material)) { Object = name });
                     read++;
                 }
                 else if (string.Equals(kind, "PANEL", StringComparison.OrdinalIgnoreCase))
@@ -257,7 +266,7 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                     double formwork = 2.0 * lengthU * u * riseU * u / areaDiv;
 
                     inputs.Add(new StructuralTakeoffInput(a.Storey, TakeoffElementType.Wall, null,
-                        volume, formwork, Grade(prop.Material)));
+                        volume, formwork, Grade(prop.Material)) { Object = name });
                     read++;
                 }
                 else
@@ -302,7 +311,7 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                 double formwork = sec.Perimeter * u * riseU * u / areaDiv;
 
                 inputs.Add(new StructuralTakeoffInput(l.Storey, TakeoffElementType.Column, null,
-                    volume, formwork, Grade(sec.Material)));
+                    volume, formwork, Grade(sec.Material)) { Object = name });
                 read++;
             }
 
@@ -333,7 +342,10 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                 .OrderBy(r => r.Level, StringComparer.OrdinalIgnoreCase).ThenBy(r => r.Element)
                 .ToList();
 
-            return new E2kTakeoffResult(grouped, residual, flags, read, openingDeducted, unit, unitNote);
+            return new E2kTakeoffResult(grouped, residual, flags, read, openingDeducted, unit, unitNote)
+            {
+                ByObject = inputs,
+            };
         }
 
         // ---- reading the model -----------------------------------------------------------------

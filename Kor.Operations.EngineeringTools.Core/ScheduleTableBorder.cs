@@ -212,6 +212,61 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
         }
 
         /// <summary>
+        /// The box a title sits INSIDE: the lowest horizontal rule just above the title spanning its
+        /// left edge, chained down through the verticals that touch it. A notes box or a legend
+        /// puts its heading inside the box and draws no rule under it, so <see cref="Under"/> finds
+        /// nothing; this finds the box from its top.
+        /// </summary>
+        /// <remarks>
+        /// ⚠ Not for the schedule reader, whose title row is found from the rule beneath the title.
+        /// And never without a size guard from the caller: a heading placed inside the plan's own
+        /// viewport has that viewport's top rule above it too.
+        /// </remarks>
+        public static Border? Enclosing(
+            VectorPageReader.PageContent page,
+            double titleMinX,
+            double titleTopY,
+            double titleHeight,
+            Rules? rules = null)
+        {
+            ArgumentNullException.ThrowIfNull(page);
+            rules ??= RulesOn(page);
+            if (titleHeight <= 0) titleHeight = 10;
+            double reach = TitleLinesReach * titleHeight;
+
+            Rule? top = null;
+            foreach (var h in rules.Horizontal)
+            {
+                if (h.At < titleTopY - 4 || h.At > titleTopY + reach) continue;
+                if (h.Lo > titleMinX + 5 || h.Hi < titleMinX + TopRuleMinReachPts) continue;
+                if (h.Length < TopRuleMinLengthPts) continue;
+                if (top is null || h.At < top.Value.At) top = h;
+            }
+            if (top is not { } t) return null;
+
+            double minX = t.Lo, maxX = t.Hi, maxY = t.At, minY = t.At;
+            bool grew = true;
+            while (grew)
+            {
+                grew = false;
+                foreach (var v in rules.Vertical)
+                {
+                    if (v.At < minX - SideSlackPts || v.At > maxX + SideSlackPts) continue;
+                    if (v.Hi > maxY + reach) continue;
+                    if (v.Hi < minY - TouchPts) continue;
+                    if (v.Lo < minY - 0.5)
+                    {
+                        minY = v.Lo;
+                        grew = true;
+                    }
+                }
+            }
+            if (maxY - minY < MinHeightPts) return null;
+
+            return new Border(minX, minY, maxX, maxY, [], []);
+        }
+
+        /// <summary>
         /// Cluster pieces by their position across the rule (within <see cref="StraightPts"/>), then
         /// within a cluster merge spans that overlap or abut within <see cref="AbutPts"/>.
         /// </summary>
@@ -263,13 +318,19 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
         /// <param name="titleBottomY">The title's bottom edge (y-up: its smallest y).</param>
         /// <param name="titleHeight">The title's text height; every reach below is a multiple of it.</param>
         /// <param name="rules">The page's rules, if already extracted.</param>
+        /// <param name="requireRules">
+        /// Whether a box with no rule inside it is refused. A schedule reader wants that: a bare
+        /// frame under a heading is not a table, and reading nothing out of it would hide the band
+        /// fallback. Furniture does not: a notes box IS a bare frame with text in it.
+        /// </param>
         public static Border? Under(
             VectorPageReader.PageContent page,
             double titleMinX,
             double titleMaxX,
             double titleBottomY,
             double titleHeight,
-            Rules? rules = null)
+            Rules? rules = null,
+            bool requireRules = true)
         {
             ArgumentNullException.ThrowIfNull(page);
             rules ??= RulesOn(page);
@@ -330,7 +391,7 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
 
             // a box with nothing ruled inside it is a frame around a title, not a table; the caller
             // falls back rather than reading nothing out of a border that was never one
-            if (rowYs.Count == 0 && columns.Count == 0) return null;
+            if (requireRules && rowYs.Count == 0 && columns.Count == 0) return null;
 
             return new Border(minX, minY, maxX, maxY, rowYs, columns);
         }

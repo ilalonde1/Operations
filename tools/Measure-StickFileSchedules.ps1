@@ -71,16 +71,25 @@ New-Item -ItemType Directory -Force $OutDir | Out-Null
 # the route every one of them must carry; column floors are per page (numerator of cover).
 $jobs = @(
     @{ Job='31130-01'; Pages='11-13'; Scale=96;  FootingCy=258;  FootingMarks='F1,F2,F3,F4,SF1';       Cover=@{11=14; 12=25; 13=41}
-       SchedulePage=11; ColumnMarks='PC1,PC2,PC4,PC5,PC6,PC7,PC8'; ColumnRoute='ScheduleBorder' },
+       SchedulePage=11; ColumnMarks='PC1,PC2,PC4,PC5,PC6,PC7,PC8'; ColumnRoute='ScheduleBorder'
+       WallRows='SWA:12:35,SWB:12:45,SWC:12:45,SWD:16:55' },
     @{ Job='31168-01'; Pages='11-13'; Scale=96;  FootingCy=0;    FootingMarks='';                      Cover=@{11=43; 12=65; 13=47}
-       SchedulePage=11; ColumnMarks='C02-A,C02-B,C03-A,C03-B,C04-A,C04-B,GC11-C,PC01,PC02,PC03-A,PC03-B,TC01,TC02,TC03,TC04'; ColumnRoute='ScheduleBorder' },
+       SchedulePage=11; ColumnMarks='C02-A,C02-B,C03-A,C03-B,C04-A,C04-B,GC11-C,PC01,PC02,PC03-A,PC03-B,TC01,TC02,TC03,TC04'; ColumnRoute='ScheduleBorder'
+       WallRows='SWA:12:35,SWB:12:45,SWC:12:45,SWD:16:55' },
     @{ Job='31138-01'; Pages='9-11';  Scale=96;  FootingCy=353;  FootingMarks='F1,F2,SF1,SF2';         Cover=@{9=24; 11=21}
-       SchedulePage=9;  ColumnMarks='PC1,PC1A,PC2,PC3,PC3A,PC4,PC5,PC6,PC7,PC8,PC9,PL1,PL2'; ColumnRoute='ScheduleBorder' },
+       SchedulePage=9;  ColumnMarks='PC1,PC1A,PC2,PC3,PC3A,PC4,PC5,PC6,PC7,PC8,PC9,PL1,PL2'; ColumnRoute='ScheduleBorder'
+       WallRows='SWA:8:35' },
     @{ Job='31065-01'; Pages='14-16'; Scale=100; FootingCy=1174; FootingMarks='F1,F2,F3,F4,SF1,SF2';   Cover=@{14=24; 15=22; 16=30}
-       SchedulePage=14; ColumnMarks='PC1,PC1A,PC2,PC3,PC4,PC5,ZC1,ZC2'; ColumnRoute='ScheduleBorder' },
+       SchedulePage=14; ColumnMarks='PC1,PC1A,PC2,PC3,PC4,PC5,ZC1,ZC2'; ColumnRoute='ScheduleBorder'
+       WallRows='SWA:8:35,SWB:8:35,SWC:24:45' },
     @{ Job='31202-01'; Pages='17-17'; Scale=96;  FootingCy=0;    FootingMarks='';                      Cover=@{17=23}
-       SchedulePage=17; ColumnMarks='1,2,3,4,5,6,7,8';                                                  ColumnRoute='ScheduleBorder' }
+       SchedulePage=17; ColumnMarks='1,2,3,4,5,6,7,8';                                                  ColumnRoute='ScheduleBorder'
+       WallRows='' }
 )
+
+# Wall rows are banked as MARK:THICKNESS-IN:MPa, read off the SHEAR WALL SCHEDULE crops by eye
+# (31130 p11: SWA 12" 35 MPa ... SWD 16" 55 MPa; 31065 p14: SWA 200 35 MPa, SWC 600 45 MPa).
+# A strength the sheet does not state is banked as 0.
 
 # A mark as KOR draws one: C4, PC1, TC02, C02-A, PC03-A, GC11-C, SF1, PL1, PC1A -- or a bare numeral,
 # which 31202 circles for its column marks. Anything else in an unplaced list is a token the reader
@@ -125,14 +134,25 @@ foreach ($j in $jobs) {
         $colMarks = New-Object System.Collections.Generic.List[string]
         $colRoutes = New-Object System.Collections.Generic.List[string]
         $wallMarks = New-Object System.Collections.Generic.List[string]
+        $wallRows = New-Object System.Collections.Generic.List[string]
         foreach ($line in Get-Content $sout) {
             if ($line -match '^Column schedule \(')  { $section = 'column'; continue }
             if ($line -match '^Flat wall rows \(')   { $section = 'wall';   continue }
             if ($line -match '^\S')                  { $section = ''; continue }
             if ($line -notmatch '^\s+(\S+)\s.*\[(\w+)\]\s*$') { continue }
             if ($section -eq 'column') { $colMarks.Add($Matches[1]); $colRoutes.Add($Matches[2]) }
-            elseif ($section -eq 'wall') { $wallMarks.Add($Matches[1]) }
+            elseif ($section -eq 'wall') {
+                $wallMarks.Add($Matches[1])
+                # "    SWA  12"  35 MPa  [ScheduleBorder]" -> SWA:12:35 ; no strength -> :0
+                if ($line -match '^\s+(\S+)\s+([\d.]+)"(?:\s+(\d+) MPa)?') {
+                    $mpa = if ($Matches[3]) { $Matches[3] } else { '0' }
+                    $wallRows.Add(('{0}:{1}:{2}' -f $Matches[1], [int][double]$Matches[2], $mpa))
+                }
+            }
         }
+        $readWalls = ($wallRows | Sort-Object) -join ','
+        $expectWalls = ($j.WallRows -split ',' | Where-Object { $_ } | Sort-Object) -join ','
+        Check "$($j.Job) p$($j.SchedulePage) wall rows = [$expectWalls]" ($readWalls -eq $expectWalls) "read [$readWalls]"
         $readMarks = ($colMarks | Sort-Object -Unique) -join ','
         $expectCols = ($j.ColumnMarks -split ',' | Where-Object { $_ } | Sort-Object) -join ','
         $offRoute = @($colRoutes | Where-Object { $_ -ne $j.ColumnRoute })
