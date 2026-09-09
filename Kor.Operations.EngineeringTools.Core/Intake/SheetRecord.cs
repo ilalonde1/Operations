@@ -6,7 +6,18 @@ namespace Kor.Operations.EngineeringTools.Intake;
 public sealed record ScheduleTable(string Heading, string Kind, IReadOnlyList<ScheduleRow> Rows);
 public sealed record ScheduleRow(string Mark, IReadOnlyDictionary<string, string> Cells, string Route);
 public sealed record PlanMark(string Text, double X, double Y);
-public sealed record MarkupNote(string Type, string Text, string Author, int PageNumber);
+/// <summary>
+/// An annotation with text: its Bluebeam type, the words, the author, and where it sits on the page
+/// in PDF points (the annotation rectangle's centre and size), so an instruction can be placed on
+/// the grid and beside the member it is about (intake step 17).
+/// </summary>
+public sealed record MarkupNote(string Type, string Text, string Author, int PageNumber)
+{
+    public double Cx { get; init; }
+    public double Cy { get; init; }
+    public double Width { get; init; }
+    public double Height { get; init; }
+}
 
 /// <summary>One retained page read. Content, furniture, grid and marks are in PDF points; geometry is in mm.</summary>
 public sealed record SheetRecord(

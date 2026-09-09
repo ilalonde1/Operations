@@ -193,7 +193,15 @@ public static class DrawingIntake
                 annotTypes[type] = annotTypes.GetValueOrDefault(type) + 1;
                 string text = (a.Content ?? "").Trim();
                 string author = a.AnnotationDictionary.Data.TryGetValue("T", out var t) && t is StringToken st ? st.Data : "";
-                if (text.Length > 0) markup.Add(new MarkupNote(type, text, author, pageNumber));
+                if (text.Length > 0)
+                {
+                    var r = a.Rectangle;
+                    markup.Add(new MarkupNote(type, text, author, pageNumber)
+                    {
+                        Cx = (r.Left + r.Right) / 2, Cy = (r.Bottom + r.Top) / 2,
+                        Width = Math.Abs(r.Right - r.Left), Height = Math.Abs(r.Top - r.Bottom),
+                    });
+                }
             }
         }
         catch { }

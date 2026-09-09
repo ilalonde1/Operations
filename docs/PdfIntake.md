@@ -868,3 +868,40 @@ against the model rather than the previous issue; a grid renumbered between issu
 axes removed and added; the "OAP" variant against a plain one, which is two populations; a
 schedule row the schedule reader invents from a NOTE line ("PC9ETON:" on 31130's parkade column
 schedule), which the diff reports as a row added and which is the reader's defect to fix.
+
+## 25. Step 17, done 2026-09-08: a mark-up is a list of instructions
+
+The engineer-to-drafter loop (foundation §3.1): the engineer marks up the drafting issue in
+Bluebeam and sends it back; the drafter adjusts the model. Measured first on what the share holds:
+31168's Building C column-location diagram (the architect's mark-up on her own plan, 285
+annotations by one author — FreeText "Move Column right 1'-11"" beside a Line annotation reading
+1'-11", Polygons for the new column positions, KOR's reply "Column changes are OK structurally")
+and 31065's MB-6 back-check (the engineer on the drafter's sheets: 70 Ink ticks, one comment about
+dowels copied to three sheets, five measurements and "show hook" on the details sheet).
+
+**A mark-up is a list of instructions.** The record's mark-up notes now carry their position
+(`MarkupNote.Cx/Cy/Width/Height`, the annotation rectangle in points). `Intake/MarkupList.Build`
+turns each note into an item: its kind — an instruction (the words start with a verb the office
+uses: move, add, remove, align, extend, change, show …), a measurement (a Line or PolyLine whose
+words are a dimension), an approval (Bluebeam's ink for a tick carries a character of nothing), or
+a note — and for an instruction what it asks: the action, the subject (gridline, column, wall …),
+the direction, and the distance, from the words or **from the dimension line drawn beside it**
+(every one of Building C's moves has one within a metre). Each item is placed on the grid by the
+sheet's named axes ("5/J", with the offset when past a foot) and beside the nearest member of the
+drawing read within five feet. `takeoff markup-list <pdf> --scale N [--pages A-B]` prints it.
+
+Measured after. Building C: 13 instructions, 10 with a distance (six gridline moves of 3"–8",
+column moves of 2", 3" and 1'-11", two "change column to circular/rectangular", one "align
+gridline with the multipurpose hall column"), 31 measurements, 78 notes — the notes are the
+diagram's own labels and dimensions read as annotations, which is what an architect's mark-up on
+an architect's plan carries. MB-6: 70 ticks, 9 notes, 1 instruction, 5 measurements; the back-check
+is approval with one comment, which is what a back-check is.
+
+WHAT THE CHECK COVERS (`AMarkUpIsAListOfInstructionsTests`): the parse of the words both files
+carry; a dimension line as a measurement; the ink tick; the comment as a note; the grid reference
+with its offset; the dimension line taken as the instruction's distance; the nearest member.
+WHAT IT DOES NOT: the reconciliation of the drafter's next issue against this list (Reissue Impact
+does the first half; matching its deltas to these items is the next module); an instruction split
+across two annotations; deletions, which need a convention the reader can see (a strike or the
+word DELETE); the mark-up's geometry (the red columns) as a second reading of the same instruction,
+which the diff of drawing-read against mark-up-read would give and is not wired.
