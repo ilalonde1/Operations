@@ -134,6 +134,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             for (int i = 0; i < geometry.Lines.Count; i++)
             {
                 if (excludedLines?.Contains(i) == true) continue;
+                if (geometry.WallFaceLines.ContainsKey(i)) continue;   // a wall's face is the wall (step 20), not a beam
                 if (excludedColors != null && i < geometry.LineColors.Count && excludedColors.Contains(geometry.LineColors[i])) continue;
                 var pts = FilterPts(Ctr(geometry.Lines[i]));
                 if (pts.Count >= 2)

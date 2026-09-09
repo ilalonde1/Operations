@@ -98,6 +98,9 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                     noInkEmitted > 0 ? Disposition.Unaccounted : Disposition.Read,
                     noInkEmitted > 0 ? "a path that draws nothing became geometry; the invisible-ink rule covers paper FILLS only" : "none");
                 Note("emitted: walls", record.Geometry.Walls.Count, Disposition.Read, "GeometryFilterService");
+                if (record.Geometry.WallFaceLines.Count > 0)
+                    Note("emitted: walls read from two face lines a wall's thickness apart (step 20)", record.Geometry.WallFaceLines.Count / 2,
+                        Disposition.Read, "GeometryFilterService.WallsFromFaceLines");
                 if (record.Geometry.Doorways.Count > 0)
                     Note("emitted: doorways (paper fills knocked out of walls; the walls are their piers)", record.Geometry.Doorways.Count, Disposition.Read, "GeometryFilterService.DoorwaysOn");
                 if (record.SheetType != "plan")

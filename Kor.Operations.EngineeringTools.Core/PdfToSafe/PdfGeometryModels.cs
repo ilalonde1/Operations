@@ -92,6 +92,10 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         public List<WallPanel> Walls { get; } = new();
         /// <summary>Openings knocked out of walls; each wall with one is in <see cref="Walls"/> as its piers.</summary>
         public List<Doorway> Doorways { get; } = new();
+        /// <summary>Line index to wall index for lines that are a wall's two faces (step 20); the wall is in <see cref="Walls"/>, the lines are not beams.</summary>
+        public Dictionary<int, int> WallFaceLines { get; } = new();
+        /// <summary>Stroke width of each line as the PDF drew it, parallel to <see cref="Lines"/>; the pen a face was drawn with.</summary>
+        public List<double> LineWidths { get; } = new();
         public List<(byte R, byte G, byte B)> WallColors { get; } = new();
         public List<bool> WallIsAnnotation { get; } = new();
         /// <summary>Filled loops with wall-proportioned boxes but more than four vertices; not split.</summary>

@@ -24,7 +24,7 @@ Three families sit on it:
 
 | Family | Entry | Reads | Produces |
 |---|---|---|---|
-| **Plan geometry** | `takeoff pdf-takeoff` → `PdfPlanReader.Read` → `GeometryFilterService.Classify` (with `SheetFurniture`, `GridBubbles`) → `DxfExporter` | subpaths + schedule headings + bubbles | a DXF with layers SLAB, COLUMN, BEAM — **no WALL layer** |
+| **Plan geometry** | `takeoff pdf-takeoff` → `PdfPlanReader.Read` → `GeometryFilterService.Classify` (with `SheetFurniture`, `GridBubbles`) → `DxfExporter` | subpaths + schedule headings + bubbles | a DXF with layers SLAB, COLUMN, BEAM, WALL (filled walls §9, their piers §21, and walls drawn as two cut-pen faces §28), FOOTING, GRID |
 | **Schedules and sheet facts** | `MarkRowScheduleReader` (+ `ScheduleTableBorder`), facades `ColumnScheduleReader`, `FootingScheduleReader`; `ScheduleGridReader` (a second, 2-D table engine); `SheetTitleReader`, `SheetScaleReader`, `StructuralGridReader`, `SlabThicknessZoner`, `DrawingDigest` | words + rules | rows (mark, size, strength), sheet level/zone, scale note, grid envelope area, thickness call-outs |
 | **Reinforcing** | `RebarPdfReader`, `PdfPageTextReader` → `RebarChangeService`, `RebarOverlayGenerator` | **its own** `page.GetWords()`, not `VectorPageReader` | before/after callout counts, marked-up PDF, xlsx |
 
@@ -987,3 +987,65 @@ reported them — Reissue Impact as a row added, Set Check as a mark placed nowh
 keeps a column row only when its mark is shaped like one (the same shape a mark on the plan must
 have), counts the rest in the ledger as "schedule rows whose mark is not a mark", and 31130's
 September page fell from 25 findings to 17, the four marks placed nowhere all being C2.
+
+## 28. Step 20, done 2026-09-09: a wall is what the cut pen encloses
+
+The Model Start gap from §23: the parkade plates read as slivers because a retaining wall on a
+foundation plan is drawn as its two faces, unfilled, and the filled-rectangle rule (§9) cannot see
+it. After step 14b the PDF read 533 walls on 31168's plan sheets to the Revit DXF's 666.
+
+Measured first, with a `pdf-overlay` instrument that paired any two parallel lines 48"+ long,
+4"–60" apart, overlapping 48"+, not under a filled wall: 31168 p11 gave 23 pairs — its west and
+south perimeter, the core's walls — but 31130 p11 gave 140 at 11", 23", 34", 45" and 57" (the
+elevator pit's hatch, one pair per spacing) and 31065 p14 150. Written as a rule and run through
+the census, WALL rose on 13 of 13 files (31130 p13 15 → 76, 31202 21 → 70) and 31168 read 1,061
+walls to the model's 666. Looked at, page by page: on 31130 p13, 60 of the 61 new walls were the
+rebar extent boxes drawn over the mats, 21"–57" across, and the one real wall was the west
+retaining wall; on 31168, 31138 and 31065 the stair flights, 44"–45" wide; on 31202 a shaft drawn
+with an X across it, the column outlines drawn again as four lines around eleven 14" x 48" columns,
+the ramp's edges — and the real ones: the 8" CMU perimeter along grid N, 1,770" of it, the 28"
+and 30" walls at grids 13 and 13.2.
+
+Then the pens. A filled wall carries no stroke of its own on 5 of 5 stick-file plans; the lines
+along its faces are drawn separately, and they are one pen: w9 on 28 of 28 (31130 p13), 40 of 41
+(31202 p17), 43 of 44 (31168 p11) and 80 of 82 (31138 p9), w0.96 on 68 of 69 (31065 p14, another
+producer). The rebar boxes are w2 and w4. That is the cut pen, and it is read off the sheet, not
+declared.
+
+**A wall is what the cut pen encloses.** `GeometryFilterService.WallsFromFaceLines`, after the
+filled walls, doorways and clips: two lines in the sheet's cut pen (`CutPen`: the commonest width
+of the lines along the filled walls' faces; a sheet with no filled wall has no cut pen and reads no
+face wall), parallel within a degree, a wall's thickness apart, overlapping a wall's length, taking
+the nearest such partner; with no third cut-pen line between them or at the same spacing beyond
+either (a hatch repeats its spacing; adjacent faces are a wall's), at most one lighter line between
+them (a tapered wall's batter line is one; 31138's flights carry a dozen 15" segments), nothing
+drawn across them between their ends — three or more lines square to the faces, spanning most of
+the gap, a tread apart, are a stair's risers whether inset from the stringers or run past them to
+the walls; a line corner to corner is a shaft's X; a dimension's extension lines are a bay apart
+and do not count — and not under a wall or column already read (a filled wall's own faces and a
+column's outline are pairs too). The wall is the overlap, its thickness the gap; both lines are
+read as its faces (`BecameWallFace`, indexed to the wall, `Geometry.WallFaceLines`) and stay in
+`Lines` for the ledger, and `DxfExporter` writes the wall and not the faces as beams. The ledger
+carries "walls read from two face lines"; `pdf-overlay` paints them purple and prints their
+thicknesses, and `--walls` prints the sheet's pens, each face wall's pens, what lies beside it and
+what is drawn between its faces, which is how the stairs and the batter lines were seen.
+
+Measured after: the census from step 14b moved WALL and BEAM only, on 8 of 13 files, and the faces
+left BEAM by the same count the walls entered WALL: 31130 p12 25 → 29, 31138 p9–11 42 → 43,
+42 → 43, 38 → 40, 31168 p11–13 29 → 30, 23 → 24, 31 → 33, 31202 21 → 33; 5 identical. Against
+Revit (`pdf-vs-dxf`): 31168's plan sheets read 681 walls to the model's 666, within two of it on
+10 of 23 sheets. The banked schedule-page counts moved 29 → 30, 42 → 43, 21 → 33; 13 and 39 did
+not, and are rebanked.
+
+WHAT THE CHECK COVERS (`TwoFaceLinesAWallsThicknessApartAreAWallTests`): a pair in the cut pen
+becoming one wall of the gap's thickness over the overlap, its faces' fates and their absence
+from the exported beams; the cut pen read from the filled wall's face lines and a sheet with
+none reading nothing; a pair in a lighter pen; one lighter line between (a wall) and several (not);
+a third cut line beyond at the same spacing and one between; a filled wall's own faces and a
+declared column's outline; a run of risers inset and a run overshooting; extension lines a bay
+apart; an X; one end cap; unequal faces; a 2" and a 6' gap; a pair turned 30°. WHAT IT DOES NOT:
+31168 p11's west property-line wall, 984" x 23" — filled and tapered, its inner face lighter than
+the cut pen, its fill under the rectangle rule's 0.95 fill share — and 31130 p13's, 1,218" x 18"
+with faces w9 and w4: the filled-wall rule's next counter-example, not this rule's; 31202's ramp
+curb, 4" x 96" in the cut pen, which reads as a 4" wall; a hatched wall, whose diagonal hatch is
+allowed across it but occurs on none of the five sets; a stair drawn without risers.

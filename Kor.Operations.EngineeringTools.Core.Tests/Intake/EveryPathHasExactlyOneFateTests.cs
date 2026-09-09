@@ -51,6 +51,14 @@ public sealed class EveryPathHasExactlyOneFateTests
                     Assert.Equal(PathReason.BecameWall, fates.Single(f => f.PathIndex == fate.PathIndex + 1).Reason);
                     Assert.Equal(0, fate.ObjectIndex);
                     break;
+                case PathReason.BecameWallFace:
+                    // the face line is one long edge of the wall it became: both its points lie on the outline's box
+                    var faceWall = geometry.Walls[fate.ObjectIndex!.Value];
+                    Assert.All(path.Points, p => Assert.True(
+                        p.X >= faceWall.Outline.Min(q => q.X) - 1 && p.X <= faceWall.Outline.Max(q => q.X) + 1 &&
+                        p.Y >= faceWall.Outline.Min(q => q.Y) - 1 && p.Y <= faceWall.Outline.Max(q => q.Y) + 1));
+                    Assert.Equal(2, fates.Count(f => f.Reason == PathReason.BecameWallFace && f.ObjectIndex == fate.ObjectIndex));
+                    break;
                 case PathReason.BecameColumnByDeclaredSize:
                 case PathReason.BecameColumnByShape:
                     Assert.Equal(PolygonProcessor.Centroid(path.Points), geometry.Columns[fate.ObjectIndex!.Value]);
@@ -92,7 +100,8 @@ public sealed class EveryPathHasExactlyOneFateTests
             var expected = reason switch
             {
                 PathReason.BecameSlab or PathReason.BecameColumnByDeclaredSize or PathReason.BecameColumnByShape or PathReason.BecameWall
-                    or PathReason.BecameFooting or PathReason.GridAxis or PathReason.Doorway or PathReason.ClipOfWall => Disposition.Read,
+                    or PathReason.BecameFooting or PathReason.GridAxis or PathReason.Doorway or PathReason.ClipOfWall
+                    or PathReason.BecameWallFace => Disposition.Read,
                 PathReason.EmittedAsLine or PathReason.FootingBoxNoLabel => Disposition.Unaccounted,
                 _ => Disposition.Discarded,
             };
@@ -145,9 +154,20 @@ internal static class FateFixture
         // the clip drawn just before the wall (path ordinals 100, 101), a piece on it: the wall shows through it
         (Rect(700, 1000) with { IsFilled = false, IsStroked = false, IsClipping = true, PathOrdinal = 100 }, PathReason.ClipOfWall),
         (Rect(2000, 1000) with { PathOrdinal = 101 }, PathReason.BecameWall),
+        // the lines along the pier's faces (the wall runs along x, 1000 thick; the clip leaves 700 of
+        // it): the sheet's cut pen (step 20); under the wall, they stay lines
+        (Line(0, 0, 700, 0), PathReason.EmittedAsLine),
+        (Line(0, 1000, 700, 1000), PathReason.EmittedAsLine),
         // a paper fill painted after the wall, across its thickness, a door wide: a doorway in it
         (Rect(600, 1040, 700, -20) with { Color = (0xF0, 0xF0, 0xF0) }, PathReason.Doorway),
         (Rect(2000, 1600), PathReason.TooShort),
+        // two face lines a wall's thickness apart, alone: a wall drawn unfilled (step 20)
+        (Line(10000, 8000, 13000, 8000), PathReason.BecameWallFace),
+        (Line(10000, 8300, 13000, 8300), PathReason.BecameWallFace),
+        // three at the same spacing: a hatch, still lines
+        (Line(10000, 12000, 13000, 12000), PathReason.EmittedAsLine),
+        (Line(10000, 12300, 13000, 12300), PathReason.EmittedAsLine),
+        (Line(10000, 12600, 13000, 12600), PathReason.EmittedAsLine),
         (Line(0, 0, 0, 0) with { Points = [] }, PathReason.TooFewPoints),
         (Line(0, 0, 0, 0) with { Points = [(0, 0)] }, PathReason.TooFewPoints),
         // Markup bypasses furniture, paper, frame, minimum-size and aspect rules.

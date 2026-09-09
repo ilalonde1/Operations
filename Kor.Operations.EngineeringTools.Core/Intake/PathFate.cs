@@ -18,6 +18,12 @@ public enum PathReason
     /// first pier. A clip that shapes nothing read stays NoInk.
     /// </summary>
     ClipOfWall,
+    /// <summary>
+    /// One of two parallel face lines a wall's thickness apart, overlapping a wall's length, with
+    /// no third line at the same spacing beyond either (a hatch has many): a wall drawn as its
+    /// two faces (intake step 20). Read; the object index is the wall.
+    /// </summary>
+    BecameWallFace,
     GridLineExcluded, ColumnTooSmall, UnfilledSmallShape, ColumnAspect, TooShort, TooFewPoints,
     /// <summary>
     /// Never reached the classifier: the read it classifies thins points closer than
@@ -47,6 +53,7 @@ public sealed record PathFate(int PathIndex, Disposition Disposition, PathReason
         // and on the DXF's GRID layer; the path itself has no object index because many pieces make one axis.
         PathReason.BecameSlab or PathReason.BecameColumnByDeclaredSize or PathReason.BecameColumnByShape or PathReason.BecameWall
             or PathReason.BecameFooting or PathReason.GridAxis or PathReason.Doorway or PathReason.ClipOfWall
+            or PathReason.BecameWallFace
             => Disposition.Read,
         PathReason.EmittedAsLine or PathReason.FootingBoxNoLabel => Disposition.Unaccounted,
         PathReason.MarkupOnlyMode or PathReason.FurnitureRegion or PathReason.Underline

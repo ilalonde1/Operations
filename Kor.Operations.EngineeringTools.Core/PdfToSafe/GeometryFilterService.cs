@@ -362,7 +362,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                             if (dx >= SheetFrameMinShare * pageWidthMm && dy < dx * 0.01) { Fate(PathReason.FrameEdgeLine); continue; }
                             if (dy >= SheetFrameMinShare * pageHeightMm && dx < dy * 0.01) { Fate(PathReason.FrameEdgeLine); continue; }
                         }
-                        result.Lines.Add(pts); result.LineColors.Add(color);
+                        result.Lines.Add(pts); result.LineColors.Add(color); result.LineWidths.Add(sub.LineWidth);
                         result.LineIsAnnotation.Add(sub.IsAnnotation);
                         Fate(PathReason.EmittedAsLine, result.Lines.Count - 1);
                     }
@@ -383,10 +383,258 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 if (clipOf.TryGetValue(index, out int w)) FateAt(index, PathReason.ClipOfWall, w);
                 else FateAt(index, PathReason.NoInk);
             }
+            // TWO FACE LINES A WALL'S THICKNESS APART ARE A WALL (intake step 20). A retaining wall
+            // on a foundation plan is drawn as its two faces, unfilled — 31168 p11's west and south
+            // perimeter, 31130 p11's west. Measured 2026-09-09 with pdf-overlay --face-pairs: the
+            // pairs were those walls and, on 31130, 139 pairs inside the elevator pit's hatch at its
+            // regular spacing. A hatch has a third line at the same spacing beyond either face; a
+            // wall does not.
+            WallsFromFaceLines(result, fates, firstFate, minWallThicknessMm, maxWallThicknessMm, minWallLengthMm);
+
             if (fates is not null && (deferredPaper.Count > 0 || deferredNoInk.Count > 0))
             {
                 var ordered = fates.Skip(firstFate).OrderBy(f => f.PathIndex).ToList();
                 for (int i = 0; i < ordered.Count; i++) fates[firstFate + i] = ordered[i];
+            }
+        }
+
+        /// <summary>Two faces are parallel within this cosine (about a degree).</summary>
+        private const double FaceParallelCos = 0.9998;
+        /// <summary>The two faces' separations at either end may differ by this much and still be one wall.</summary>
+        private const double FaceTaperMm = 25.0;
+        /// <summary>A third cut-pen line at the pair's spacing, within this share of it, beyond either face, makes the pair a pattern.</summary>
+        private const double PatternSpacingShare = 0.15;
+        /// <summary>A line is drawn with the cut pen when its width is within this share of the sheet's.</summary>
+        private const double PenMatchShare = 0.10;
+        /// <summary>A line across the pair is perpendicular within this cosine (about 10°): a riser, not a hatch.</summary>
+        private const double AcrossCos = 0.17;
+        /// <summary>A riser spans at least this share of the gap between the faces; stringers inset it from them.</summary>
+        private const double RiserGapShare = 0.7;
+        /// <summary>Risers closer than this along the pair are a run: a tread is at most 14".</summary>
+        private const double TreadMaxMm = 14 * 25.4;
+        /// <summary>This many risers in a run and the pair encloses a stair, not a wall.</summary>
+        private const int RiserRunMin = 3;
+        /// <summary>This many lighter lines along the pair between its faces and it encloses something drawn, not a wall's one batter line.</summary>
+        private const int LighterBetweenMax = 2;
+
+        /// <summary>
+        /// The sheet's cut pen: the stroke width of the lines drawn along the filled walls' long
+        /// edges (the fills carry no stroke of their own on 5 of 5 stick-file plans; their edges
+        /// are separate lines, one pen on 259 of 264 measured). Zero when the sheet has no filled
+        /// wall with an edge line, and then no face wall is read.
+        /// </summary>
+        internal static double CutPen(ExtractedGeometry result)
+        {
+            var pens = new List<double>();
+            foreach (var w in result.Walls)
+            {
+                // the wall's faces: the outline's edges along its axis
+                double ax = w.End.X - w.Start.X, ay = w.End.Y - w.Start.Y, al = Math.Sqrt(ax * ax + ay * ay);
+                if (al <= 0) continue;
+                ax /= al; ay /= al;
+                var o = w.Outline;
+                for (int e = 0; e < o.Count; e++)
+                {
+                    var p0 = o[e]; var p1 = o[(e + 1) % o.Count];
+                    double ex = p1.X - p0.X, ey = p1.Y - p0.Y, el = Math.Sqrt(ex * ex + ey * ey);
+                    if (el <= 0) continue;
+                    ex /= el; ey /= el;
+                    if (Math.Abs(ex * ax + ey * ay) < FaceParallelCos) continue;
+                    for (int i = 0; i < result.Lines.Count && i < result.LineWidths.Count; i++)
+                    {
+                        var l = result.Lines[i];
+                        if (l.Count != 2) continue;
+                        bool on = true;
+                        foreach (var q in l)
+                        {
+                            double t = (q.X - p0.X) * ex + (q.Y - p0.Y) * ey, n = Math.Abs(-(q.X - p0.X) * ey + (q.Y - p0.Y) * ex);
+                            if (n >= 2 || t <= -2 || t >= el + 2) { on = false; break; }
+                        }
+                        if (!on) continue;
+                        double ll = Math.Sqrt(Math.Pow(l[1].X - l[0].X, 2) + Math.Pow(l[1].Y - l[0].Y, 2));
+                        if (ll > el / 2) pens.Add(result.LineWidths[i]);
+                    }
+                }
+            }
+            if (pens.Count == 0) return 0;
+            return pens.GroupBy(p => p).OrderByDescending(g => g.Count()).ThenByDescending(g => g.Key).First().Key;
+        }
+
+        /// <summary>
+        /// The walls drawn as two face lines (intake step 20). A wall is what the cut pen encloses:
+        /// two lines in the sheet's cut pen, parallel within a degree, a wall's thickness apart,
+        /// overlapping a wall's length, with no third cut-pen line between them or at the same
+        /// spacing beyond either (a lighter line between is the wall's own batter or step; a hatch
+        /// repeats its spacing), nothing drawn across them between their ends (a stair's risers),
+        /// and not under a wall or column already read (a filled wall's edges and a column's
+        /// outline are pairs too). One wall panel over the overlap; both lines re-fated as faces.
+        /// </summary>
+        internal static void WallsFromFaceLines(ExtractedGeometry result, IList<PathFate>? fates, int firstFate,
+            double minWallThicknessMm, double maxWallThicknessMm, double minWallLengthMm)
+        {
+            double cutPen = CutPen(result);
+            if (cutPen <= 0) return;
+            bool CutPenLine(int i) => i < result.LineWidths.Count && Math.Abs(result.LineWidths[i] - cutPen) <= PenMatchShare * cutPen;
+
+            // every straight line long enough to be a face, and which are in the cut pen
+            var segs = new List<(int Line, (double X, double Y) A, (double X, double Y) B, double Len, double Ux, double Uy, bool Cut)>();
+            for (int i = 0; i < result.Lines.Count; i++)
+            {
+                var line = result.Lines[i];
+                if (line.Count != 2 || result.LineIsAnnotation[i]) continue;
+                double dx = line[1].X - line[0].X, dy = line[1].Y - line[0].Y, len = Math.Sqrt(dx * dx + dy * dy);
+                if (len < minWallLengthMm - WallLimitSlackMm) continue;
+                segs.Add((i, line[0], line[1], len, dx / len, dy / len, CutPenLine(i)));
+            }
+            if (segs.Count(s => s.Cut) < 2) return;
+
+            // the perpendicular offset of segment j's ends from segment i's line, and their overlap along it
+            static (double D0, double D1, double T0, double T1) Relative(
+                (int Line, (double X, double Y) A, (double X, double Y) B, double Len, double Ux, double Uy, bool Cut) a,
+                (int Line, (double X, double Y) A, (double X, double Y) B, double Len, double Ux, double Uy, bool Cut) b)
+            {
+                double nx = -a.Uy, ny = a.Ux;
+                double d0 = (b.A.X - a.A.X) * nx + (b.A.Y - a.A.Y) * ny, d1 = (b.B.X - a.A.X) * nx + (b.B.Y - a.A.Y) * ny;
+                double t0 = (b.A.X - a.A.X) * a.Ux + (b.A.Y - a.A.Y) * a.Uy, t1 = (b.B.X - a.A.X) * a.Ux + (b.B.Y - a.A.Y) * a.Uy;
+                if (t0 > t1) (t0, t1) = (t1, t0);
+                return (d0, d1, Math.Max(0, t0), Math.Min(a.Len, t1));
+            }
+
+            // what is already read where the pair would sit: a filled wall's outline, a column's box
+            var wallPolys = result.Walls.Select(w => w.Outline.Select(p => new DxfPoint(p.X, p.Y)).ToList()).ToList();
+            var columnBoxes = result.Columns.Select((c, i) =>
+            {
+                var (w, d) = i < result.ColumnSizes.Count ? result.ColumnSizes[i] : (0.0, 0.0);
+                return (X0: c.X - w / 2 - WallLimitSlackMm, X1: c.X + w / 2 + WallLimitSlackMm, Y0: c.Y - d / 2 - WallLimitSlackMm, Y1: c.Y + d / 2 + WallLimitSlackMm);
+            }).ToList();
+            bool Covered(double x, double y)
+                => wallPolys.Any(poly => LoopGeometry.PointInPolygon(new DxfPoint(x, y), poly))
+                   || columnBoxes.Any(b => x >= b.X0 && x <= b.X1 && y >= b.Y0 && y <= b.Y1);
+
+            var used = new HashSet<int>();
+            var lineToPath = new Dictionary<int, int>();
+            if (fates is not null)
+                for (int k = firstFate; k < fates.Count; k++)
+                    if (fates[k].Reason == PathReason.EmittedAsLine && fates[k].ObjectIndex is int li) lineToPath[li] = fates[k].PathIndex;
+
+            for (int i = 0; i < segs.Count; i++)
+            {
+                if (!segs[i].Cut || used.Contains(segs[i].Line)) continue;
+                // the nearest qualifying partner, not the first: a batter line inside a tapered wall
+                // is lighter and is skipped as a face, and the two cut faces are what remain
+                int bestJ = -1; double bestGap = double.MaxValue; (double, double, double, double) bestRel = default;
+                for (int j = 0; j < segs.Count; j++)
+                {
+                    if (j == i || !segs[j].Cut || used.Contains(segs[j].Line)) continue;
+                    var a = segs[i]; var b = segs[j];
+                    if (Math.Abs(a.Ux * b.Ux + a.Uy * b.Uy) < FaceParallelCos) continue;
+                    var rel = Relative(a, b);
+                    double gap = Math.Abs((rel.D0 + rel.D1) / 2);
+                    if (Math.Abs(rel.D0 - rel.D1) > FaceTaperMm) continue;
+                    if (gap < minWallThicknessMm - WallLimitSlackMm || gap > maxWallThicknessMm + WallLimitSlackMm) continue;
+                    if (rel.T1 - rel.T0 < minWallLengthMm - WallLimitSlackMm) continue;
+                    if (gap < bestGap) { bestGap = gap; bestJ = j; bestRel = rel; }
+                }
+                if (bestJ < 0) continue;
+                {
+                    var a = segs[i]; var b = segs[bestJ];
+                    var (d0, d1, t0, t1) = bestRel;
+                    double gap = bestGap;
+                    double side = Math.Sign((d0 + d1) / 2);
+                    double nx = -a.Uy, ny = a.Ux;
+
+                    double mx = a.A.X + a.Ux * (t0 + t1) / 2 + nx * side * gap / 2, my = a.A.Y + a.Uy * (t0 + t1) / 2 + ny * side * gap / 2;
+                    if (Covered(mx, my)) continue;
+
+                    // a pattern: another cut-pen line at the same spacing beyond either face, or any
+                    // cut-pen line between them (a wall's two faces are adjacent; a hatch's are not)
+                    bool pattern = false;
+                    for (int k = 0; k < segs.Count && !pattern; k++)
+                    {
+                        if (k == i || k == bestJ) continue;
+                        var c = segs[k];
+                        if (!c.Cut || Math.Abs(a.Ux * c.Ux + a.Uy * c.Uy) < FaceParallelCos) continue;
+                        var (e0, e1, s0, s1) = Relative(a, c);
+                        double off = (e0 + e1) / 2 * side;   // along the normal towards b: b is at +gap
+                        if (Math.Min(s1, t1) - Math.Max(s0, t0) < (t1 - t0) / 2) continue;
+                        bool beyondB = Math.Abs(off - 2 * gap) <= PatternSpacingShare * gap;
+                        bool beyondA = Math.Abs(off + gap) <= PatternSpacingShare * gap;
+                        bool between = off > WallLimitSlackMm && off < gap - WallLimitSlackMm;
+                        if (beyondA || beyondB || between) pattern = true;
+                    }
+                    if (pattern) continue;
+
+                    // between a wall's faces there is nothing, or one line of its own in a lighter pen
+                    // (a batter, a step); several lighter lines along the pair are something drawn
+                    // there (31138 p9's flights: a dozen 15" segments between cut lines 45" apart)
+                    int lighterBetween = 0;
+                    for (int li = 0; li < result.Lines.Count && lighterBetween < LighterBetweenMax; li++)
+                    {
+                        var l = result.Lines[li];
+                        if (l.Count != 2 || li == a.Line || li == b.Line || CutPenLine(li)) continue;
+                        double lx = l[1].X - l[0].X, ly = l[1].Y - l[0].Y, ll = Math.Sqrt(lx * lx + ly * ly);
+                        if (ll <= 0 || Math.Abs((lx * a.Ux + ly * a.Uy) / ll) < FaceParallelCos) continue;
+                        double off = ((l[0].X - a.A.X) * nx + (l[0].Y - a.A.Y) * ny) * side;
+                        if (off <= WallLimitSlackMm || off >= gap - WallLimitSlackMm) continue;
+                        double u0 = (l[0].X - a.A.X) * a.Ux + (l[0].Y - a.A.Y) * a.Uy, u1 = (l[1].X - a.A.X) * a.Ux + (l[1].Y - a.A.Y) * a.Uy;
+                        if (Math.Max(u0, u1) < t0 || Math.Min(u0, u1) > t1) continue;
+                        lighterBetween++;
+                    }
+                    if (lighterBetween >= LighterBetweenMax) continue;
+
+                    // something drawn across the pair between its ends, in any pen. A stair is a run
+                    // of risers: lines square to the faces, spanning the gap (inset from the stringers,
+                    // or past them to the walls), a tread apart — three or more closer than a tread
+                    // (31138's, 31065's and 31168's flights are 44"–45" wide, risers 10"–12" apart).
+                    // A shaft's X runs corner to corner (31202's, 45" x 60"). A dimension's extension
+                    // lines cross a wall too, but a bay apart; a hatch line is diagonal and a gap long.
+                    var risers = new List<double>();
+                    bool shaft = false;
+                    for (int li = 0; li < result.Lines.Count && !shaft; li++)
+                    {
+                        var l = result.Lines[li];
+                        if (l.Count != 2 || li == a.Line || li == b.Line) continue;
+                        double lx = l[1].X - l[0].X, ly = l[1].Y - l[0].Y, ll = Math.Sqrt(lx * lx + ly * ly);
+                        if (ll <= 0) continue;
+                        double ca = ((l[0].X - a.A.X) * nx + (l[0].Y - a.A.Y) * ny) * side, cb = ((l[1].X - a.A.X) * nx + (l[1].Y - a.A.Y) * ny) * side;
+                        double lo = Math.Min(ca, cb), hi = Math.Max(ca, cb);
+                        if (hi < RiserGapShare * gap || lo > (1 - RiserGapShare) * gap) continue;             // does not span the gap
+                        double u0 = (l[0].X - a.A.X) * a.Ux + (l[0].Y - a.A.Y) * a.Uy, u1 = (l[1].X - a.A.X) * a.Ux + (l[1].Y - a.A.Y) * a.Uy;
+                        if (Math.Max(u0, u1) < t0 + 2 * WallLimitSlackMm || Math.Min(u0, u1) > t1 - 2 * WallLimitSlackMm) continue;   // at an end: a cap or a jamb
+                        bool square = Math.Abs((lx * a.Ux + ly * a.Uy) / ll) <= AcrossCos;
+                        if (square && hi - lo >= RiserGapShare * gap) risers.Add((u0 + u1) / 2);
+                        else if (lo <= WallLimitSlackMm && hi >= gap - WallLimitSlackMm && Math.Abs(u1 - u0) >= (t1 - t0) / 2) shaft = true;
+                    }
+                    if (shaft) continue;
+                    risers.Sort();
+                    int run = 1, longestRun = 1;
+                    for (int r = 1; r < risers.Count; r++)
+                    {
+                        run = risers[r] - risers[r - 1] <= TreadMaxMm ? run + 1 : 1;
+                        longestRun = Math.Max(longestRun, run);
+                    }
+                    if (longestRun >= RiserRunMin) continue;
+
+                    var s = (a.A.X + a.Ux * t0, a.A.Y + a.Uy * t0);
+                    var e = (a.A.X + a.Ux * t1, a.A.Y + a.Uy * t1);
+                    double ox = nx * side * gap, oy = ny * side * gap;
+                    var outline = new List<(double X, double Y)> { s, e, (e.Item1 + ox, e.Item2 + oy), (s.Item1 + ox, s.Item2 + oy) };
+                    var axisS = (s.Item1 + ox / 2, s.Item2 + oy / 2);
+                    var axisE = (e.Item1 + ox / 2, e.Item2 + oy / 2);
+                    int wallIndex = result.Walls.Count;
+                    result.Walls.Add(new WallPanel(outline, axisS, axisE, gap));
+                    result.WallColors.Add(a.Line < result.LineColors.Count ? result.LineColors[a.Line] : ((byte)0, (byte)0, (byte)0));
+                    result.WallIsAnnotation.Add(false);
+                    result.WallFaceLines[a.Line] = wallIndex;
+                    result.WallFaceLines[b.Line] = wallIndex;
+                    used.Add(a.Line); used.Add(b.Line);
+                    if (fates is not null)
+                        foreach (int line in new[] { a.Line, b.Line })
+                            if (lineToPath.TryGetValue(line, out int pathIndex))
+                                for (int k = firstFate; k < fates.Count; k++)
+                                    if (fates[k].PathIndex == pathIndex)
+                                        fates[k] = new PathFate(pathIndex, Disposition.Read, PathReason.BecameWallFace, wallIndex);
+                }
             }
         }
 

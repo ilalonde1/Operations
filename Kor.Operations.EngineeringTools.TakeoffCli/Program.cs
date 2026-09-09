@@ -655,7 +655,10 @@ if (args.Length >= 1 && args[0].Equals("pdf-overlay", StringComparison.OrdinalIg
     var grey = new Rgba32(110, 110, 110); var blue = new Rgba32(30, 70, 220); var red = new Rgba32(220, 40, 40); var green = new Rgba32(0, 160, 60);
     foreach (var line in ovGeo.Lines) OvPoly(line, red, 0, close: false);
     foreach (var slab in ovGeo.Slabs) OvPoly(slab, grey, 1, close: true);
-    foreach (var wall in ovGeo.Walls) OvPoly(wall.Outline, new Rgba32(130, 0, 0), 2, close: true);
+    // walls read from two face lines (step 20) purple; they are appended after the filled ones
+    int ovFirstFaceWall = ovGeo.Walls.Count - ovGeo.WallFaceLines.Count / 2;
+    for (int wi = 0; wi < ovGeo.Walls.Count; wi++)
+        OvPoly(ovGeo.Walls[wi].Outline, wi >= ovFirstFaceWall ? new Rgba32(150, 0, 200) : new Rgba32(130, 0, 0), 2, close: true);
     // doorways knocked out of walls, yellow, across the opening
     foreach (var d in ovGeo.Doorways) OvPoly(new[] { d.Start, d.End }, new Rgba32(230, 180, 0), 3, close: false);
     // named grid axes, cyan, across the whole page
@@ -711,6 +714,55 @@ if (args.Length >= 1 && args[0].Equals("pdf-overlay", StringComparison.OrdinalIg
     foreach (var f in unlabelled) Console.WriteLine($"  footing {f.Mark} at ({f.Centre.X:0},{f.Centre.Y:0}) mm: no label on the plan names it");
     foreach (var u in unanswered) Console.WriteLine($"  label {u}: no footing read answers it");
     if (ovGeo.Doorways.Count > 0) Console.WriteLine($"  doorways {ovGeo.Doorways.Count} (yellow): openings knocked out of walls with paper fills; those walls are their piers");
+    static double OvWallLen(WallPanel w) => Math.Sqrt(Math.Pow(w.End.X - w.Start.X, 2) + Math.Pow(w.End.Y - w.Start.Y, 2));
+    if (ovGeo.WallFaceLines.Count > 0)
+    {
+        var faceWalls = ovGeo.Walls.Skip(ovFirstFaceWall).ToList();
+        Console.WriteLine($"  walls from two face lines {faceWalls.Count} (purple): parallel lines a wall's thickness apart, alone, overlapping a wall's length (step 20)");
+        foreach (var g in faceWalls.GroupBy(w => (int)Math.Round(w.ThicknessMm / 25.4)).OrderBy(g => g.Key))
+            Console.WriteLine($"    {g.Key,3} in thick: {g.Count(),4} wall(s), length {g.Min(OvWallLen) / 25.4:0}-{g.Max(OvWallLen) / 25.4:0} in");
+        if (args.Any(a => a.Equals("--walls", StringComparison.OrdinalIgnoreCase)))
+            foreach (var (w, wi) in faceWalls.Select((w, i) => (w, i + ovFirstFaceWall)).OrderByDescending(x => OvWallLen(x.w)))
+            {
+                var faces = ovGeo.WallFaceLines.Where(kv => kv.Value == wi).Select(kv => kv.Key).OrderBy(k => k).ToList();
+                string pens = string.Join(" + ", faces.Select(k => $"#{ovGeo.LineColors[k].R:X2}{ovGeo.LineColors[k].G:X2}{ovGeo.LineColors[k].B:X2} w{ovGeo.LineWidths[k]:0.00}"));
+                // every other long stroked line parallel to the wall within three thicknesses of its axis:
+                // offset from the axis in inches and its pen, so a footing edge or a hatch beside a face shows
+                double ax = w.End.X - w.Start.X, ay = w.End.Y - w.Start.Y, al = Math.Sqrt(ax * ax + ay * ay); ax /= al; ay /= al;
+                double nx = -ay, ny = ax;
+                var near = new List<string>();
+                for (int li = 0; li < ovGeo.Lines.Count; li++)
+                {
+                    var l = ovGeo.Lines[li];
+                    if (l.Count != 2 || faces.Contains(li)) continue;
+                    double lx = l[1].X - l[0].X, ly = l[1].Y - l[0].Y, ll = Math.Sqrt(lx * lx + ly * ly);
+                    if (ll < 609.6 || Math.Abs((lx * ax + ly * ay) / ll) < 0.9998) continue;
+                    double t0 = (l[0].X - w.Start.X) * ax + (l[0].Y - w.Start.Y) * ay, t1 = (l[1].X - w.Start.X) * ax + (l[1].Y - w.Start.Y) * ay;
+                    if (Math.Max(t0, t1) < 0 || Math.Min(t0, t1) > al) continue;
+                    double off = (l[0].X - w.Start.X) * nx + (l[0].Y - w.Start.Y) * ny;
+                    if (Math.Abs(off) > 3 * w.ThicknessMm) continue;
+                    near.Add($"{off / 25.4:+0.0;-0.0}\" w{ovGeo.LineWidths[li]:0.00} {ll / 25.4:0}\"");
+                }
+                // and what is drawn between the faces: every line whose midpoint lies in the wall's box,
+                // by its angle to the axis and how much of the gap it spans, so a stair's risers show
+                double wl = OvWallLen(w);
+                var inside = new List<string>();
+                for (int li = 0; li < ovGeo.Lines.Count; li++)
+                {
+                    var l = ovGeo.Lines[li];
+                    if (faces.Contains(li)) continue;
+                    double mxl = l.Average(p => p.X), myl = l.Average(p => p.Y);
+                    double t = (mxl - w.Start.X) * ax + (myl - w.Start.Y) * ay, n = (mxl - w.Start.X) * nx + (myl - w.Start.Y) * ny;
+                    if (t < 0 || t > wl || Math.Abs(n) > w.ThicknessMm / 2) continue;
+                    double lx = l[^1].X - l[0].X, ly = l[^1].Y - l[0].Y, ll = Math.Sqrt(lx * lx + ly * ly);
+                    double cosA = ll > 0 ? Math.Abs((lx * ax + ly * ay) / ll) : 1;
+                    double n0 = (l[0].X - w.Start.X) * nx + (l[0].Y - w.Start.Y) * ny, n1 = (l[^1].X - w.Start.X) * nx + (l[^1].Y - w.Start.Y) * ny;
+                    inside.Add($"{(cosA > 0.98 ? "along" : cosA < 0.17 ? "square" : "diag")} {l.Count}pt {ll / 25.4:0}\" spans {Math.Abs(n1 - n0) / w.ThicknessMm:0.00} at {t / 25.4:0}\" w{ovGeo.LineWidths[li]:0.00}");
+                }
+                Console.WriteLine($"    face wall {wl / 25.4,7:0.0} x {w.ThicknessMm / 25.4,5:0.0} in   centre ({(w.Start.X + w.End.X) / 2,6:0},{(w.Start.Y + w.End.Y) / 2,6:0}) mm   faces {pens}   beside: {string.Join(", ", near)}");
+                if (inside.Count > 0) Console.WriteLine($"      between the faces ({inside.Count}): {string.Join("; ", inside.Take(12))}");
+            }
+    }
     if (args.Any(a => a.Equals("--walls", StringComparison.OrdinalIgnoreCase)))
     {
         foreach (var d in ovGeo.Doorways)
@@ -721,6 +773,45 @@ if (args.Length >= 1 && args[0].Equals("pdf-overlay", StringComparison.OrdinalIg
         // colour and stroke they carry, so a doorway the rule did not read can be seen for what it is.
         using var ovDoc = UglyToad.PdfPig.PdfDocument.Open(ovPdf);
         var ovRaw = PdfPlanReader.ParsePage(ovDoc.GetPage(ovPage), ovScale * PdfToSafeConstants.PointsToMm);
+        // The pens: what the sheet's long lines, its filled walls' outlines and its grid axes are drawn
+        // with, so a rule about "the cut pen" can be measured before it is written.
+        {
+            var longPens = ovRaw.Where(r => !r.IsFilled && r.IsStroked && r.Points.Count == 2
+                                            && Math.Sqrt(Math.Pow(r.Points[1].X - r.Points[0].X, 2) + Math.Pow(r.Points[1].Y - r.Points[0].Y, 2)) >= 1219.2)
+                                .GroupBy(r => r.LineWidth).OrderBy(g => g.Key).Select(g => $"w{g.Key:0.00}x{g.Count()}");
+            Console.WriteLine($"  pens of stroked lines 48\"+: {string.Join(" ", longPens)}");
+            var wallPens = ovRaw.Where(r => r.IsFilled && r.IsStroked && ovGeo.Walls.Take(ovFirstFaceWall).Any(w =>
+                                            Math.Abs(r.Points.Min(p => p.X) - w.Outline.Min(p => p.X)) < 1 && Math.Abs(r.Points.Max(p => p.Y) - w.Outline.Max(p => p.Y)) < 1))
+                                .GroupBy(r => r.LineWidth).OrderBy(g => g.Key).Select(g => $"w{g.Key:0.00}x{g.Count()}");
+            Console.WriteLine($"  pens of filled walls' outlines: {string.Join(" ", wallPens)}");
+            var unstrokedWalls = ovRaw.Count(r => r.IsFilled && !r.IsStroked && ovGeo.Walls.Take(ovFirstFaceWall).Any(w =>
+                                            Math.Abs(r.Points.Min(p => p.X) - w.Outline.Min(p => p.X)) < 1 && Math.Abs(r.Points.Max(p => p.Y) - w.Outline.Max(p => p.Y)) < 1));
+            Console.WriteLine($"  filled walls with no stroke of their own: {unstrokedWalls}");
+            // the pen of the stroked lines that lie along a filled wall's long edges: the cut pen
+            var edgePens = new List<double>();
+            foreach (var w in ovGeo.Walls.Take(ovFirstFaceWall))
+            {
+                var o = w.Outline;
+                for (int e = 0; e < o.Count; e++)
+                {
+                    var p0 = o[e]; var p1 = o[(e + 1) % o.Count];
+                    double ex = p1.X - p0.X, ey = p1.Y - p0.Y, el = Math.Sqrt(ex * ex + ey * ey);
+                    if (el < w.ThicknessMm * 1.5) continue;                                   // a short edge is the end
+                    ex /= el; ey /= el;
+                    foreach (var r in ovRaw)
+                    {
+                        if (r.IsFilled || !r.IsStroked || r.Points.Count != 2) continue;
+                        bool on = r.Points.All(q =>
+                        {
+                            double t = (q.X - p0.X) * ex + (q.Y - p0.Y) * ey, n = Math.Abs(-(q.X - p0.X) * ey + (q.Y - p0.Y) * ex);
+                            return n < 2 && t > -2 && t < el + 2;
+                        });
+                        if (on && Math.Sqrt(Math.Pow(r.Points[1].X - r.Points[0].X, 2) + Math.Pow(r.Points[1].Y - r.Points[0].Y, 2)) > el / 2) edgePens.Add(r.LineWidth);
+                    }
+                }
+            }
+            Console.WriteLine($"  pens of lines along filled walls' long edges: {string.Join(" ", edgePens.GroupBy(p => p).OrderBy(g => g.Key).Select(g => $"w{g.Key:0.00}x{g.Count()}"))}");
+        }
         foreach (var w in ovGeo.Walls.OrderByDescending(w => Math.Sqrt(Math.Pow(w.End.X - w.Start.X, 2) + Math.Pow(w.End.Y - w.Start.Y, 2))))
         {
             double lenMm = Math.Sqrt(Math.Pow(w.End.X - w.Start.X, 2) + Math.Pow(w.End.Y - w.Start.Y, 2));
