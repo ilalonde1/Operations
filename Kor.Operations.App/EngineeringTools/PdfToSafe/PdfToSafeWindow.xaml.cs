@@ -143,7 +143,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 _extractedGeometry = await ExtractGeometryAsync(_loadedFilePath, scale, 1).ConfigureAwait(true);
                 await RefreshFromGeometryAsync(_extractedGeometry, _loadedFilePath, 1, scale, true).ConfigureAwait(true);
 
-                string loadDiagnosis = DiagnoseLoad(_extractedGeometry, _markedPages, CurrentPageNumber);
+                string loadDiagnosis = DiagnoseLoad(_extractedGeometry, _markedPages, CurrentPageNumber, AnnotationsOnly);
                 loadDiagnosis += " " + scaleMessage;
                 SetStatus(
                     loadDiagnosis,
@@ -179,12 +179,15 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
         private int CurrentPageNumber => Math.Max(1, PageSelector.SelectedIndex + 1);
 
+        private bool AnnotationsOnly => ReadModeSelector.SelectedIndex != 1;
+
         private async Task<ExtractedGeometry> ExtractGeometryAsync(string filePath, int scale, int pageNumber)
         {
             var (slabMin, lineMin, excludeGridLines) = ReadThresholds();
+            bool annotationsOnly = AnnotationsOnly;
             var ct = BeginOperation();
             return await Task.Run(
-                () => PdfGeometryExtractor.Extract(filePath, scale, pageNumber, slabMin, lineMin, excludeGridLines),
+                () => PdfGeometryExtractor.Extract(filePath, scale, pageNumber, slabMin, lineMin, excludeGridLines, annotationsOnly),
                 ct).ConfigureAwait(true);
         }
 
@@ -973,14 +976,20 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         ///
         /// A tool that finds nothing has to say what it looked for.
         /// </summary>
-        internal static string DiagnoseLoad(ExtractedGeometry g, IReadOnlyList<int>? markedPages = null, int currentPage = 0)
+        internal static string DiagnoseLoad(ExtractedGeometry g, IReadOnlyList<int>? markedPages = null, int currentPage = 0,
+            bool annotationsOnly = true)
         {
             if (!g.IsVectorPdf)
                 return "Raster or image-only PDF detected. Vector PDF is required for export.";
 
-            int found = g.Slabs.Count + g.Columns.Count + g.Lines.Count;
+            int found = ReadElementCount(g);
             if (found > 0)
-                return $"Vector PDF detected — {g.Slabs.Count} slab, {g.Columns.Count} column and {g.Lines.Count} line markup(s) read. Ready for configuration and export.";
+                return $"Vector PDF detected — {g.Slabs.Count} slab, {g.Columns.Count} column, {g.Lines.Count} line, " +
+                    $"{g.Walls.Count} wall, {g.Footings.Count} footing and {g.GridAxes.Count} grid axis object(s) read " +
+                    $"from the {(annotationsOnly ? "mark-up" : "drawing")}. Ready for configuration and export.";
+
+            if (!annotationsOnly)
+                return $"This page holds {g.RawPathCount:N0} vector paths, but no structural geometry was found in the drawing. Check the selected page and scale.";
 
             // POINT AT THE PAGE THAT WORKS.
             //
@@ -992,20 +1001,22 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             if (elsewhere.Count > 0)
                 return $"This page holds {g.RawPathCount:N0} vector paths and no markups, but "
                     + (elsewhere.Count == 1 ? $"page {elsewhere[0]} does" : $"pages {string.Join(", ", elsewhere.Take(8))} do")
-                    + ". This reader takes the structure traced over the drawing, not the drawing itself — go to that page.";
+                    + ". To read the mark-up, go to that page, or choose Read the drawing to read this sheet's linework.";
 
             return
                 $"This page holds {g.RawPathCount:N0} vector paths, and no page in this document carries markups. " +
-                "This reader takes Bluebeam markup annotations — the structure traced over the drawing — " +
-                "not the drawing itself, so an issued set gives it nothing. Mark the structure up in " +
-                "Bluebeam and load it again, or use Drawings to ETABS Model if you have the DXFs.";
+                "Read the mark-up takes Bluebeam markup annotations. Choose Read the drawing to read this sheet's linework, " +
+                "or use Drawings to ETABS Model if you have the DXFs.";
         }
 
+        private static int ReadElementCount(ExtractedGeometry g) =>
+            g.Slabs.Count + g.Columns.Count + g.Lines.Count + g.Walls.Count + g.Footings.Count + g.GridAxes.Count;
+
         private static string StatusFill(ExtractedGeometry g) =>
-            !g.IsVectorPdf || g.Slabs.Count + g.Columns.Count + g.Lines.Count == 0 ? "#FFF3E0" : "#E8F5E9";
+            !g.IsVectorPdf || ReadElementCount(g) == 0 ? "#FFF3E0" : "#E8F5E9";
 
         private static string StatusInk(ExtractedGeometry g) =>
-            !g.IsVectorPdf || g.Slabs.Count + g.Columns.Count + g.Lines.Count == 0 ? "#E65100" : "#2E7D32";
+            !g.IsVectorPdf || ReadElementCount(g) == 0 ? "#E65100" : "#2E7D32";
 
         private void LegendSlab_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
         {
@@ -1124,6 +1135,14 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
         private void FitView_Click(object sender, RoutedEventArgs e) => FitToView();
 
+        private void ReadModeSelector_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (!IsInitialized || string.IsNullOrWhiteSpace(_loadedFilePath))
+                return;
+
+            ReAnalyse_Click(sender, e);
+        }
+
         private async void PageSelector_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (_isPopulatingPageSelector || string.IsNullOrWhiteSpace(_loadedFilePath) || PageSelector.SelectedIndex < 0)
@@ -1139,7 +1158,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 _extractedGeometry = await ExtractGeometryAsync(_loadedFilePath, scale, pageNumber).ConfigureAwait(true);
                 await RefreshFromGeometryAsync(_extractedGeometry, _loadedFilePath, pageNumber, scale, false).ConfigureAwait(true);
                 // Turning to a page that yields nothing must say so too, for the same reason.
-                SetStatus(DiagnoseLoad(_extractedGeometry, _markedPages, CurrentPageNumber), StatusFill(_extractedGeometry), StatusInk(_extractedGeometry));
+                SetStatus(DiagnoseLoad(_extractedGeometry, _markedPages, CurrentPageNumber, AnnotationsOnly), StatusFill(_extractedGeometry), StatusInk(_extractedGeometry));
             }
             catch (OperationCanceledException)
             {
@@ -1175,7 +1194,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 // Re-analysing at a new scale must report what it found, for the same reason the
                 // first load does: "complete" in green over an empty model is the message that made
                 // this tool look broken.
-                SetStatus(DiagnoseLoad(_extractedGeometry, _markedPages, CurrentPageNumber), StatusFill(_extractedGeometry), StatusInk(_extractedGeometry));
+                SetStatus(DiagnoseLoad(_extractedGeometry, _markedPages, CurrentPageNumber, AnnotationsOnly), StatusFill(_extractedGeometry), StatusInk(_extractedGeometry));
             }
             catch (OperationCanceledException)
             {
@@ -2339,8 +2358,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 ScaleInput.Text = scale.ToString();
                 int pageNumber = Math.Max(1, project.PageNumber);
 
-                var geo = await Task.Run(() => PdfGeometryExtractor.Extract(
-                    _loadedFilePath, scale, pageNumber)).ConfigureAwait(true);
+                var geo = await ExtractGeometryAsync(_loadedFilePath, scale, pageNumber).ConfigureAwait(true);
                 _extractedGeometry = geo;
 
                 FileNameText.Text = System.IO.Path.GetFileName(_loadedFilePath);
@@ -2581,13 +2599,16 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             SlabCountText.Text = $"{geo.Slabs.Count} slabs";
             ColumnCountText.Text = $"{geo.Columns.Count} cols";
             LineCountText.Text = $"{geo.Lines.Count} lines";
+            WallCountText.Text = $"{geo.Walls.Count} walls";
+            FootingCountText.Text = $"{geo.Footings.Count} footings";
+            GridAxisCountText.Text = $"{geo.GridAxes.Count} grid axes";
             DetectionSummaryPanel.Visibility = geo.IsVectorPdf ? Visibility.Visible : Visibility.Collapsed;
         }
 
         private void UpdatePdfInfo(ExtractedGeometry geo)
         {
             PageCountText.Text = $"{geo.PageCount} page{(geo.PageCount == 1 ? "" : "s")}";
-            PathCountText.Text = $"{geo.Slabs.Count + geo.Lines.Count + geo.Columns.Count} elements";
+            PathCountText.Text = $"{ReadElementCount(geo)} elements";
             PdfInfoPanel.Visibility = Visibility.Visible;
         }
 

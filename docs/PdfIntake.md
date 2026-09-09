@@ -3,7 +3,7 @@
 Written 2026-09-08 from the code and from a content inventory of the five local stick files
 (31065, 31130, 31138, 31168, 31202: 294 pages). Every number below was counted on the whole
 population named; nothing is from a sample. The intake brief series lives in
-`docs/codex/CODEX-INTAKE-CONVERGENCE-*.md` (28 so far; 23 is written for Codex, not yet run; 24 was Codex's audit, answered in §18) and this is the state they have reached.
+`docs/codex/CODEX-INTAKE-CONVERGENCE-*.md` (29 so far; 23 was implemented by Codex and verified 2026-09-08 — the window's extractor is the CLI's `PdfPlanReader.Read` call, `TheWindowReadsWhatTheCliReadsTests`; 24 was Codex's audit, answered in §18) and this is the state they have reached.
 
 The purpose of the intake is stated once so the rest can be judged against it: **pull everything a
 drawing set carries that any downstream tool could need, once, through one reader, and account for
@@ -40,12 +40,12 @@ every sheet (§12), footings are objects (§13, §14), the grid is named axes on
 storey heights are read off the wall elevations (§16) and checked against the model in the publish
 (§17), the audit's eleven findings are fixed (§18), dimension strings are typed with their values
 (§19), and an AS NOTED sheet's views are read at their own captions' scale (§20). The tables in
-§2 and §3 are the starting picture.
+§2 and §3 are the starting picture, except the PDF → SAFE / SAP row updated for step 23.
 
 | Tool | Path today | What it gets from the PDF | What it does not |
 |---|---|---|---|
 | **PDF → ETABS** | PDF → DXF (CLI) → `DxfToEtabsService` reads the DXF by layer | slabs, columns, a scale, the schedule's column sizes | **walls** (the DXF has none: 31130 p11 gave 42 COLUMN, 17 SLAB, 1,650 BEAM, 0 WALL), footings as objects (since step 7 the DXF has a FOOTING layer; `DxfToEtabsService` does not read it yet), the grid, storey heights, openings from plan text |
-| **PDF → SAFE / SAP** | WPF `PdfToSafeWindow` → `PdfGeometryExtractor` → F2K / E2K / CSI API | the same subpaths, parsed by the shared `PdfPlanReader.ParsePage` | **classification is not shared**: it calls `Classify` with no furniture and markup-only by default, so the WPF result differs from the CLI's on the same page and reads a clean issued set as empty. No `.s2k` writer exists; SAP is API-only |
+| **PDF → SAFE / SAP** | WPF `PdfToSafeWindow` → `PdfGeometryExtractor` → `PdfPlanReader.Read` → F2K / E2K / CSI API | the CLI's shared page reading and classification, including sheet furniture, walls, footings and grid axes; the window offers Read the mark-up (default) and Read the drawing, and adds markup text annotations | No `.s2k` writer exists; SAP is API-only. Step 23's code change awaits the verifier's tests and window check |
 | **Rebar takeoff / change** | `takeoff rebar`, `takeoff overlay`, two WPF windows | callouts by position, sheet identity, deltas | uses PdfPig's default word splitter, which `VectorPageReader` documents as splitting CAD text into single characters; the WPF windows call the page-text `Compare` and the CLI calls `ComparePdfs`, and no test says they agree |
 | **Before / after drawings** | there is no general drawing diff; the rebar tools are the comparison | reinforcing callouts only | geometry deltas, moved/added members, revision clouds |
 | **Structural takeoff** (`StructuralTakeoffService`) | CSV from Revit | nothing from PDF | — |

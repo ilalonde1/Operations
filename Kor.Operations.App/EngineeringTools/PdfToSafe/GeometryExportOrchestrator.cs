@@ -12,7 +12,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         int Scale,
         double SlabMinDiagonalMm,
         double LineMinLengthMm,
-        bool ExcludeGridLines);
+        bool ExcludeGridLines,
+        bool AnnotationsOnly = true);
 
     internal static class GeometryExportOrchestrator
     {
@@ -27,7 +28,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
             return await Task.Run(() =>
                 PdfGeometryExtractor.Extract(p.FilePath, p.Scale, pageNumber,
-                    p.SlabMinDiagonalMm, p.LineMinLengthMm, p.ExcludeGridLines));
+                    p.SlabMinDiagonalMm, p.LineMinLengthMm, p.ExcludeGridLines, p.AnnotationsOnly));
         }
 
         public static int CountVisibleSlabs(ExtractedGeometry geom, GeometryExclusionState excl)

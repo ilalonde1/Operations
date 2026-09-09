@@ -52,10 +52,11 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             int    pageNumber          = 1,
             double slabMinDiagonalMm  = PdfToSafeConstants.DefaultSlabMinDiagonalMm,
             double lineMinLengthMm    = PdfToSafeConstants.DefaultLineMinLengthMm,
-            bool   excludeGridLines   = false)
+            bool   excludeGridLines   = false,
+            bool   annotationsOnly    = true)
         {
             using var stream = System.IO.File.OpenRead(filePath);
-            return Extract(stream, scaleDenominator, pageNumber, slabMinDiagonalMm, lineMinLengthMm, excludeGridLines);
+            return Extract(stream, scaleDenominator, pageNumber, slabMinDiagonalMm, lineMinLengthMm, excludeGridLines, annotationsOnly);
         }
 
         /// <summary>
@@ -68,35 +69,16 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             int    pageNumber          = 1,
             double slabMinDiagonalMm  = PdfToSafeConstants.DefaultSlabMinDiagonalMm,
             double lineMinLengthMm    = PdfToSafeConstants.DefaultLineMinLengthMm,
-            bool   excludeGridLines   = false)
+            bool   excludeGridLines   = false,
+            bool   annotationsOnly    = true)
         {
-            var result = new ExtractedGeometry();
-            result.ScaleDenominator = scaleDenominator;
             double scale = scaleDenominator * PdfToSafeConstants.PointsToMm;
 
             using var doc = PdfDocument.Open(pdfStream);
+            var result = PdfPlanReader.Read(doc, scaleDenominator, pageNumber, annotationsOnly,
+                slabMinDiagonalMm, lineMinLengthMm, excludeGridLines);
             var page = doc.GetPage(pageNumber);
-            result.PageWidthPts  = page.Width;
-            result.PageHeightPts = page.Height;
-            result.PageCount     = doc.NumberOfPages;
             result.TextAnnotations = PdfGeometryParser.ExtractMarkupTextAnnotations(page, scale);
-
-            var rawSubpaths = PdfGeometryParser.ParsePage(page, scale);
-
-            result.RawPathCount = rawSubpaths.Count;
-
-            int meaningfulCount = rawSubpaths.Count(s =>
-                s.Points.Count > 3 ||
-                (s.IsClosed && GeometryFilterService.BoundingBoxDiagonal(s.Points) > 10.0));
-            result.IsVectorPdf = meaningfulCount >= 5;
-
-            if (rawSubpaths.Count == 0) return result;
-
-            double pageWidthMm  = result.PageWidthPts  * scale;
-            double pageHeightMm = result.PageHeightPts * scale;
-            GeometryFilterService.Classify(rawSubpaths, result,
-                slabMinDiagonalMm, lineMinLengthMm,
-                excludeGridLines, pageWidthMm, pageHeightMm);
 
             return result;
         }

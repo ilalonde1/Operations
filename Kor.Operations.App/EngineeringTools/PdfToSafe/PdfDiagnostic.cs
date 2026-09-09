@@ -12,13 +12,15 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
     /// </summary>
     internal static class PdfDiagnostic
     {
-        public static void TraceExtraction(string pdfPath, string outputPath, int scaleDenominator = 100, int pageNumber = 1)
+        public static void TraceExtraction(string pdfPath, string outputPath, int scaleDenominator = 100, int pageNumber = 1,
+            bool annotationsOnly = true)
         {
             using var sw = new StreamWriter(outputPath, false);
             sw.WriteLine($"=== PdfDiagnostic Trace ===");
             sw.WriteLine($"PDF: {pdfPath}");
             sw.WriteLine($"Scale: 1:{scaleDenominator}");
             sw.WriteLine($"Page: {pageNumber}");
+            sw.WriteLine($"Mode: {(annotationsOnly ? "Read the mark-up" : "Read the drawing")}");
             sw.WriteLine($"Time: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
             sw.WriteLine();
 
@@ -116,19 +118,19 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             sw.WriteLine();
 
             // Step 5: Run classification
-            var result = new ExtractedGeometry();
-            result.ScaleDenominator = scaleDenominator;
-            result.PageWidthPts = page.Width;
-            result.PageHeightPts = page.Height;
-            GeometryFilterService.Classify(rawSubpaths, result,
+            var result = PdfPlanReader.Read(doc, scaleDenominator, pageNumber, annotationsOnly,
                 PdfToSafeConstants.DefaultSlabMinDiagonalMm,
                 PdfToSafeConstants.DefaultLineMinLengthMm,
-                false, pageWidthMm, pageHeightMm);
+                excludeGridLines: false);
+            result.TextAnnotations = PdfGeometryParser.ExtractMarkupTextAnnotations(page, scale);
 
             sw.WriteLine("=== CLASSIFIED GEOMETRY ===");
             sw.WriteLine($"  Slabs: {result.Slabs.Count}");
             sw.WriteLine($"  Columns: {result.Columns.Count}");
             sw.WriteLine($"  Lines: {result.Lines.Count}");
+            sw.WriteLine($"  Walls: {result.Walls.Count}");
+            sw.WriteLine($"  Footings: {result.Footings.Count}");
+            sw.WriteLine($"  Grid axes: {result.GridAxes.Count}");
             sw.WriteLine($"  Drop panel candidates: {result.DropPanelCandidates.Count}");
             sw.WriteLine();
 
