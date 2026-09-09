@@ -946,3 +946,38 @@ words beside another, silence on a third; the engineer inferred; his own ticks n
 drafter's comment beside no item; one tick answering three labels; a ring as an item, a stroke as
 none. WHAT IT DOES NOT: the two real rounds beyond their counts; a tick that means "no"; the next
 round raising an item again; a reply farther than an inch on a dense sheet.
+
+## 27. Step 19, done 2026-09-09: the set checks itself
+
+The third product (foundation §3.3), from what the record already holds. `Intake/SetCheck.Sheet`
+gives a sheet's own findings — no sheet number read, type unknown, a scale stated twice, a plan
+with none, no SHEET TITLE, a column drawn a size other than its own mark's, a footing box no label
+names, a footing label no footing answers, a grid name drawn twice on a plan — and `SetCheck.Set`
+the set's: a sheet number used twice; **a schedule mark placed on no plan in the set** and **a
+column of a size no schedule in the set declares**, both decided across the set because a mark
+declared on the foundation plan is placed on the level above and a tower column's size is declared
+on the column schedule sheet; a grid axis a plan draws elsewhere than the set's reference plan (the
+one with the most named axes) draws it, after setting the plan on it by name; and the storeys
+against the model when one is given. `takeoff set-check <pdf> --scale N [--reference model.e2k]`
+prints the page.
+
+Measured first, per sheet: 31130's September issue gave 33 findings of which "marks never placed"
+and "sizes undeclared" were mostly the set's structure read per sheet (28 of 28 columns on a tower
+plan "undeclared" because their schedule is on S4.02), and "grid name drawn twice" fired on every
+wall elevation sheet, which draws the same bubbles on each elevation. Those three moved to the set
+or to plans only. Measured after: 31130 September, 25 findings — a footing label no footing
+answers (S2.01.2: F2, F1), a footing box no label names (S2.03.1), marks placed on no plan in the
+set (C2 on three sheets, which is the gatekeeper's; "PC9ETON:" on six and "EXTENTS" on one, which
+are the schedule reader's), and 12 sheets with column sizes no schedule in the set declares as
+read, the tower schedules on S4.01 and S4.02 not being read as sizes yet. 31065 August, 62 — 33 of
+them a grid name drawn twice on a plan, which on this set is every plan's layout and reads as a
+note; a footing box no label names (S2.01.1, 4,500 x 4,500); one plan's axis drawn elsewhere than
+the set's reference plan draws it. 31168 with its model: 47, and its storeys agree, which is a
+finding of none.
+
+WHAT THE CHECK COVERS (`TheSetChecksItselfTests`): each sheet class on a synthetic sheet; the set's
+duplicate number and an axis drawn 300 mm off; a mark placed on another sheet and a size declared
+on another sheet being no finding. WHAT IT DOES NOT: what the gatekeeper finds that this does not,
+which is the done-when and a person's step on the last three issues; the schedule reader's invented
+row ("PC9ETON:"), which appears here as a mark placed nowhere until the reader is fixed; a grid
+renumbered between two views of one sheet.

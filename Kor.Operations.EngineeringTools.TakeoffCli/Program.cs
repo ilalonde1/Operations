@@ -283,6 +283,48 @@ if (args.Length >= 1 && args[0].Equals("markup-list", StringComparison.OrdinalIg
     return 0;
 }
 
+// THE SET CHECKS ITSELF (foundation §3.3): the gatekeeper's page before an issue goes out.
+// Usage: takeoff set-check <pdf> --scale N [--reference model.e2k] [--rules-db <conn>]
+if (args.Length >= 1 && args[0].Equals("set-check", StringComparison.OrdinalIgnoreCase))
+{
+    if (args.Length < 2) { Console.Error.WriteLine("Usage: takeoff set-check <pdf> --scale N [--reference model.e2k] [--rules-db <conn>]"); return 1; }
+    string scPdf = args[1];
+    int scScale = 0; string? scRef = null, scRules = null;
+    for (int i = 2; i < args.Length; i++)
+    {
+        if (args[i].Equals("--scale", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) int.TryParse(args[++i], out scScale);
+        else if (args[i].Equals("--reference", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) scRef = args[++i];
+        else if (args[i].Equals("--rules-db", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) scRules = args[++i];
+    }
+    if (!File.Exists(scPdf)) { Console.Error.WriteLine($"PDF not found '{scPdf}'."); return 2; }
+    if (scScale <= 0) { Console.Error.WriteLine("--scale <denominator> is required (1/8\" = 1'-0\" is 96)."); return 2; }
+    var (scOptions, scRulesSource) = PdfIntakeOptions.For(scRules);
+    var scRecords = new List<SheetRecord>();
+    using (var scDoc = UglyToad.PdfPig.PdfDocument.Open(scPdf))
+    {
+        var scFacts = DocumentFacts.From(scDoc);
+        var scRequest = new IntakeRequest(scScale, scOptions);
+        for (int p = 1; p <= scDoc.NumberOfPages; p++)
+        {
+            try { scRecords.Add(DrawingIntake.ReadSheet(scDoc, p, scRequest, scFacts)); }
+            catch (Exception ex) { Console.Error.WriteLine($"p{p}: {ex.GetType().Name}: {ex.Message}"); }
+        }
+    }
+    StoreyAgreement.Result? scStoreys = null;
+    if (scRef is not null && File.Exists(scRef))
+    {
+        var e2k = E2kDocument.Load(scRef);
+        scStoreys = StoreyAgreement.Compare(SetStoreys.Read(scPdf), e2k.ReadStories(), e2k.LengthUnitInInches() ?? 1.0);
+    }
+    var report = SetCheck.Set(scRecords, scStoreys);
+    Console.WriteLine($"{Path.GetFileName(scPdf)}  {report.Pages} pages, {report.Plans} plans  1:{scScale}  rules: {scRulesSource}{(scRef is null ? "" : "  model: " + Path.GetFileName(scRef))}");
+    Console.WriteLine();
+    foreach (string line in report.Lines()) Console.WriteLine(line);
+    Console.WriteLine();
+    Console.WriteLine($"{report.Findings.Count} finding(s): " + string.Join("; ", report.ByKind().Select(k => $"{k.Kind} {k.Count}")));
+    return 0;
+}
+
 // THE DRAFTER'S REPLY IS BESIDE THE THING IT ANSWERS: a round of the engineer's mark-ups against
 // the back-checked copy the drafter saved over it; each item done, replied or open, page by page.
 // Usage: takeoff markup-reconcile <round.pdf> <backchecked.pdf> --scale N [--engineer <name>]
@@ -4673,6 +4715,7 @@ public static class TakeoffCliHelp
         new("set-diff", "takeoff set-diff <old.pdf> <new.pdf> --scale N [--sheet S2.02] [--overlay <dir>] [--rules-db <conn>]", "Reissue Impact: what changed between two issues, sheet by sheet, as objects — columns, walls, footings, grid, storeys, schedules; --overlay paints each changed sheet."),
         new("markup-list", "takeoff markup-list <pdf> --scale N [--pages A-B] [--rules-db <conn>]", "A mark-up as a list of instructions: each annotation's words, what it asks, how far, where on the grid, beside which member."),
         new("markup-reconcile", "takeoff markup-reconcile <round.pdf> <backchecked.pdf> --scale N [--engineer <name>]", "The engineer's round against the drafter's back-checked copy: each item done (a tick beside it), replied (words beside it) or open."),
+        new("set-check", "takeoff set-check <pdf> --scale N [--reference model.e2k]", "Set Check: the gatekeeper's page — unnumbered or untyped sheets, scale conflicts, marks never placed, undeclared column sizes, footings without labels, grid names twice, a grid axis elsewhere than the set draws it, storeys against the model."),
         new("dxf-render", "takeoff dxf-render <plan.dxf> <out.png> [--size 1800] [--layers SLABEDG,...]", "Render structural DXF layers to a PNG."),
         new("dxf-inspect", "takeoff dxf-inspect <plan.dxf> [--walls] [--plates]", "Inspect DXF layers, loops, wall outlines, and recovered floor plates."),
         new("publish", "takeoff publish <job> [--model-folder <folder>] [--dxf-folder <folder>] [--rules-db <c>] [--per-building] [--land]", "Discover, build, verify, summarize, gate and land a DXF-to-ETABS publish."),
