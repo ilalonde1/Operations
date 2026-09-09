@@ -929,6 +929,56 @@ public static class DxfToEtabsService
                 "now lies on the grid it was drawn against, so the DXF can be laid straight over the model.");
         }
 
+        // A SHEET FROM THE STICK FILE SITS ON THE MODEL'S GRID BY THE NAMES OF ITS AXES (intake
+        // step 15). The fit above is one frame for the whole set, from grid positions; a sheet read
+        // off a PDF is in its own page frame and carries its grid as named lines, so each such sheet
+        // gets its own frame, matched name to name against the model's GRIDS table. A sheet with no
+        // named axes, or too few names the model knows, keeps the set's fit as before.
+        var referenceGrids = ReadGridLines(doc);
+        var tagsOf = files.ToDictionary(f => f, DxfPlanReader.ReadPositionedTags, StringComparer.OrdinalIgnoreCase);
+        var namedAxesOf = files.ToDictionary(f => f, f => GridAlignment.NamedAxes(segmentsOf[f], tagsOf[f]), StringComparer.OrdinalIgnoreCase);
+        var alignedByName = new Dictionary<string, GridAlignment.Fit>(StringComparer.OrdinalIgnoreCase);
+        if (request.Offset is null && referenceGrids.Count > 0)
+        {
+            foreach (string f in files)
+                if (namedAxesOf[f].Count > 0 && GridAlignment.SolveByName(namedAxesOf[f], referenceGrids, scale) is { } fit)
+                    alignedByName[f] = fit;
+
+            // AN AXIS PLACED ON THE GRID IS A GRID LINE FOR THE REST OF THE SET. The model's GRIDS
+            // names what the engineer drew — 31168's names X 1–19 and Y R and A — and building C's
+            // plan letters its Y axes B–J, so it matches nothing on Y; but J is on the foundation
+            // plan too, and that plan was placed. The placed sheets' axes, carried into the model,
+            // join the reference for the sheets still unplaced, until no more can be.
+            for (bool placedMore = true; placedMore;)
+            {
+                placedMore = false;
+                var extended = new List<GridAlignment.ReferenceGrid>(referenceGrids);
+                foreach (var (placed, fit) in alignedByName)
+                    foreach (var g in GridAlignment.Carried(namedAxesOf[placed], fit.Frame, scale))
+                        if (!extended.Any(e => e.DirX == g.DirX && e.Label.Equals(g.Label, StringComparison.OrdinalIgnoreCase)))
+                            extended.Add(g);
+                foreach (string f in files.Where(f => !alignedByName.ContainsKey(f) && namedAxesOf[f].Count > 0).ToList())
+                {
+                    if (GridAlignment.SolveByName(namedAxesOf[f], extended, scale) is { } fit)
+                    {
+                        alignedByName[f] = fit with { Note = fit.Note + " (through the axes of a sheet already placed)" };
+                        placedMore = true;
+                    }
+                }
+            }
+        }
+        if (alignedByName.Count > 0)
+        {
+            warnings.Add(
+                $"{alignedByName.Count} of {files.Count} sheet(s) set on this model's grid by the names of their axes, each in its own frame: " +
+                string.Join(" ", alignedByName.Select(kv => $"{Path.GetFileName(kv.Key)}: {kv.Value.Note}")));
+            var unplaced = files.Where(f => !alignedByName.ContainsKey(f)).Select(Path.GetFileName).ToList();
+            if (unplaced.Count > 0)
+                warnings.Add(
+                    $"{unplaced.Count} sheet(s) could NOT be set on the grid by name and stay in their own frame — their axes name nothing " +
+                    $"the model or a placed sheet names: {string.Join(", ", unplaced)}. Where they sit in the model is where the page put them, not where the grid does.");
+        }
+
         var joined = MatchLineSheetJoin.Group(joinable.Select(f => (
             File: f,
             Seam: MatchLineSheetJoin.SeamOf(segmentsOf[f], matchLineLayers),
@@ -966,7 +1016,7 @@ public static class DxfToEtabsService
             }
 
             var segments = segmentsOf[file];
-            var tags = DxfPlanReader.ReadPositionedTags(file);
+            var tags = tagsOf[file];
 
             // The other half of this plan, in the same coordinates. The two sheets are drawn from
             // one model onto one grid — their match lines land on each other — so joining them is a
@@ -1216,9 +1266,10 @@ public static class DxfToEtabsService
 
             // READ IN THE DRAWING'S FRAME, DELIVERED IN THE MODEL'S. See PlanGeometryTransform for
             // why this is the last thing done to a sheet rather than the first.
+            var frame = alignedByName.TryGetValue(file, out var namedFit) ? namedFit.Frame : alignment?.Frame;
             parsed.Add((
                 sheet,
-                alignment is null ? geometry : PlanGeometryTransform.Apply(geometry, alignment.Frame),
+                frame is { } sheetFrame ? PlanGeometryTransform.Apply(geometry, sheetFrame) : geometry,
                 matched));
         }
 
@@ -1371,7 +1422,7 @@ public static class DxfToEtabsService
         // The grid fit has already put the linework where it belongs, turn and all. Centring on
         // top of it would move a model that is already on its grid -- and centring is what this
         // fell back to when it could only translate.
-        if (request.Offset is null && alignment is null)
+        if (request.Offset is null && alignment is null && alignedByName.Count == 0)
         {
             var geometry = parsed.Select(p => p.Geometry).ToList();
             if (request.CentreOnGrid)
@@ -1606,6 +1657,26 @@ public static class DxfToEtabsService
                 // printed dimension in inches and is the only value here that needs it.
                 ModelUnitInInches = modelUnitInInches,
             };
+        // A MODEL BUILT WITHOUT A REFERENCE STILL OPENS ON THE DRAWINGS' GRID. The shell has an
+        // empty GRIDS table; the sheets name their axes. Each named axis goes through the frame its
+        // sheet was placed by (or the centring offset, when nothing was) into the model's unit.
+        if (referenceGrids.Count == 0)
+        {
+            var gridSheets = files
+                .Where(f => namedAxesOf[f].Count > 0)
+                .Select(f => (
+                    (IReadOnlyList<GridAlignment.NamedAxis>)namedAxesOf[f],
+                    alignedByName.TryGetValue(f, out var fit) ? fit.Frame : alignment?.Frame ?? new AnnotationOverlay.Frame(0, offset.X, offset.Y),
+                    scale))
+                .ToList();
+            var gridLines = GridAlignment.GridLines(gridSheets);
+            if (gridLines.Count > 1)
+            {
+                doc.Append("GRIDS", gridLines);
+                warnings.Add($"The model's grid is the drawings' own: {gridLines.Count - 1} named axis(es) written to GRIDS.");
+            }
+        }
+
         var summary = E2kGeometryComposer.Compose(doc, placements, composeOptions);
 
         if (baseNormalised)
@@ -2657,6 +2728,37 @@ public static class DxfToEtabsService
         x.Sort();
         y.Sort();
         return (x, y);
+    }
+
+    /// <summary>The model's grid lines with their labels: GRID "G1" LABEL "5" DIR "X" COORD -492.9482.</summary>
+    internal static List<GridAlignment.ReferenceGrid> ReadGridLines(E2kDocument doc)
+    {
+        var grids = new List<GridAlignment.ReferenceGrid>();
+        foreach (string raw in doc.LinesOf("GRIDS"))
+        {
+            string line = raw.Trim();
+            if (!line.StartsWith("GRID ", StringComparison.OrdinalIgnoreCase)) continue;
+            string? label = Quoted(line, "LABEL \"");
+            string? dir = Quoted(line, "DIR \"");
+            int coordAt = line.IndexOf("COORD ", StringComparison.OrdinalIgnoreCase);
+            if (label is null || dir is null || coordAt < 0) continue;
+            string tail = line[(coordAt + 6)..].TrimStart();
+            int end = tail.IndexOfAny(new[] { ' ', '\t' });
+            if (end > 0) tail = tail[..end];
+            if (!double.TryParse(tail, System.Globalization.NumberStyles.Float,
+                    System.Globalization.CultureInfo.InvariantCulture, out double coord)) continue;
+            grids.Add(new GridAlignment.ReferenceGrid(label, dir.Equals("X", StringComparison.OrdinalIgnoreCase), coord));
+        }
+        return grids;
+
+        static string? Quoted(string line, string key)
+        {
+            int at = line.IndexOf(key, StringComparison.OrdinalIgnoreCase);
+            if (at < 0) return null;
+            string rest = line[(at + key.Length)..];
+            int close = rest.IndexOf('"');
+            return close < 0 ? null : rest[..close];
+        }
     }
 
     private static (double MinX, double MaxX, double MinY, double MaxY) ReadGridExtents(E2kDocument doc)

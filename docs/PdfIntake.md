@@ -44,7 +44,7 @@ storey heights are read off the wall elevations (§16) and checked against the m
 
 | Tool | Path today | What it gets from the PDF | What it does not |
 |---|---|---|---|
-| **PDF → ETABS** | PDF → DXF (CLI) → `DxfToEtabsService` reads the DXF by layer | slabs, columns, a scale, the schedule's column sizes | **walls** (the DXF has none: 31130 p11 gave 42 COLUMN, 17 SLAB, 1,650 BEAM, 0 WALL), footings as objects (since step 7 the DXF has a FOOTING layer; `DxfToEtabsService` does not read it yet), the grid, storey heights, openings from plan text |
+| **PDF → ETABS** | PDF → DXF (`pdf-takeoff --kor-layers`, one DXF per sheet named as a view) → `DxfToEtabsService` reads it by layer and sets each sheet on the model's grid by the names of its axes (§23) | slabs, columns, walls as piers (§21), a scale, the schedule's column sizes, the grid by name, the storey from the sheet's name | **floor plates** on a parkade plan (no filled region; the perimeter is two face lines the wall rule does not read), footings (SAFE's, not ETABS's — the FOOTING layer is for the SAFE window), storey heights (read, §16, not yet written to a shell), openings from plan text |
 | **PDF → SAFE / SAP** | WPF `PdfToSafeWindow` → `PdfGeometryExtractor` → `PdfPlanReader.Read` → F2K / E2K / CSI API | the CLI's shared page reading and classification, including sheet furniture, walls, footings and grid axes; the window offers Read the mark-up (default) and Read the drawing, and adds markup text annotations | No `.s2k` writer exists; SAP is API-only. Step 23's code change awaits the verifier's tests and window check |
 | **Rebar takeoff / change** | `takeoff rebar`, `takeoff overlay`, two WPF windows | callouts by position, sheet identity, deltas | uses PdfPig's default word splitter, which `VectorPageReader` documents as splitting CAD text into single characters; the WPF windows call the page-text `Compare` and the CLI calls `ComparePdfs`, and no test says they agree |
 | **Before / after drawings** | there is no general drawing diff; the rebar tools are the comparison | reinforcing callouts only | geometry deltas, moved/added members, revision clouds |
@@ -774,3 +774,49 @@ WHAT THE CHECK COVERS: the ring beside the word with the shaft inside it; the wo
 alone; a ring two diameters away. WHAT IT DOES NOT: a compass with no closed or open twelve-point
 outline at all, and a plan note reading NORTH beside a twelve-point stroked shape 30–200 pt across,
 which this would wrongly swallow.
+
+## 23. Step 15, done 2026-09-08: a sheet from the stick file is a drawing like any other
+
+Brief 30, implemented by the verifier. Measured first: the thirteen-file baseline's DXFs for
+31168 p11–p13, given to `dxf-to-etabs` against Andrea's reference, produced no model at all — "No
+layer in this drawing set matched columns or slab edges, yet 9,263 segments sit on layers the tool
+does not recognise". Written on the office's layers (`--kor-layers`) they built, but as sheets of no
+storey: the reader takes a sheet's storeys from its file NAME, the way the office's export names a
+view ("S2.01_1_LEVEL P3 PLAN …"), and a page named "31168-p11" says nothing. And the grid fit the
+reader has is one frame for a whole set from grid POSITIONS, right for a Revit export in shared
+coordinates and wrong for pages each in their own frame — it compared millimetres to inches and
+found nothing.
+
+**A sheet from the stick file is a drawing like any other: named as the office names a view, on
+the office's layers, and set on the model's grid by the names of its axes.**
+
+- `Intake/SheetDxfName`: `{sheet number}_1_{SHEET TITLE}.dxf` from the record; `pdf-takeoff` names
+  each page's DXF that way (the page number only when the title block gave nothing).
+- `GridAlignment.NamedAxes` pairs each grid-layer text of a name's length with the line whose end
+  it sits at; `SolveByName` fits a sheet to the model's GRIDS table label to label, in the model's
+  unit, at whichever quarter turn the names agree, when three or more do (`NameTolerance` 6").
+  **An axis placed on the grid is a grid line for the rest of the set**: the model names X 1–19 and
+  Y R and A only, building C's plan letters its Y axes B–J, but J is on the foundation plan too, so
+  the placed sheets' axes join the reference for the sheets still unplaced (`Carried`). A sheet
+  that still names nothing keeps its page frame, and the report says so.
+- `DxfToEtabsService`: one frame per sheet where a by-name fit exists, the set's fit otherwise;
+  no centring on top of a by-name fit; `ReadGridLines` reads the labels. A model built with no
+  reference gets its GRIDS from the drawings' own named axes (`GridLines`).
+
+Measured after, 31168 p11–p13 against the reference: 3 sheets read, 3 placed, 3 of 3 set on the
+grid by name — S2.02 and S2.04.1 with 19 of 19 X and 1 of 2 Y agreeing within 0.8", S2.03.1 with
+19 of 19 X and J through the foundation plan, within 0.9". 182 columns and 65 walls: the P3 plan's
+70 columns rise to P2, the two P2 plans' 112 to P1, at x −1,160 to 2,392" on both, inside the
+model's grid; the storeys are the reference's own (P3 1,366", P2 1,480", P1 1,594"). Rendered with
+`plan_sheet.py` and looked at: the arrays line up storey over storey, the cores sit where the
+drawings put them.
+
+WHAT THE CHECK COVERS: the name from the sheet number and title, and what `PlanSheetNaming` reads
+from it; text naming the line whose end it sits at; the millimetre sheet on the inch model at 0°
+and the quarter-turned sheet; too few or disagreeing names; the GRIDS table from two sheets; the
+live route on 31168 (`TheStickFileBuildsAModelOnItsGridTests`: 3 of 3 by name, columns on P1 and
+P2). WHAT IT DOES NOT: floor plates — a parkade plan draws no filled plate and the perimeter is two
+face lines, so the plates in this model are slivers; a building whose letters no placed sheet
+shares; the reference's own member counts on the parkade (Andrea's file carries 16 columns in all,
+it is a shell); the SHEET TITLE's word order across lines, which the title-block reader gets wrong
+("FOUNDATIONS PLAN BLDG A - & B") and the name carries.

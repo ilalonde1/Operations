@@ -204,4 +204,198 @@ public static class GridAlignment
     /// </summary>
     public static bool LooksLikeAGridLayer(string layer) =>
         layer.Contains("GRID", StringComparison.OrdinalIgnoreCase);
+
+    // ── By name (intake step 15) ───────────────────────────────────────────────────────────────
+    //
+    // A SHEET FROM THE STICK FILE SITS ON THE MODEL'S GRID BY THE NAMES OF ITS AXES. The fit above
+    // fingerprints grid POSITIONS across a whole set, one frame for all of it, which is right for a
+    // Revit export in shared coordinates and wrong for a sheet read off a PDF: each page is in its
+    // own frame, millimetres from its own corner. But the intake reads the grid as NAMED axes
+    // (step 8) and writes each name at its line's ends on the GRID layer, and the model's GRIDS
+    // table names its lines too. Axis "5" is grid "5": the match is exact, needs no fingerprint,
+    // and is one frame per sheet.
+
+    /// <summary>A grid axis the drawing names: a grid-layer line with its label at an end.</summary>
+    public sealed record NamedAxis(string Name, bool Vertical, double At);
+
+    /// <summary>A grid line of the model: LABEL, DIR and COORD from its GRIDS table.</summary>
+    public sealed record ReferenceGrid(string Label, bool DirX, double Coord);
+
+    /// <summary>Text on the grid layer names the line whose end it sits at, within this many text heights, or 60 units.</summary>
+    private const double NameReachHeights = 4.0, NameReachFloor = 60.0;
+
+    /// <summary>
+    /// Two named lines may disagree by this much and still be the same line: a plan read at 1:96
+    /// resolves to about an inch, and the drafter's grid is drafted, not derived. Wider than the
+    /// fingerprint's <see cref="Tolerance"/>, because a name is the match; the position only confirms it.
+    /// </summary>
+    public const double NameTolerance = 6.0;
+
+    /// <summary>Fewer named lines than this agreeing on one frame is a coincidence, not a fit.</summary>
+    public const int LeastConvincingByName = 3;
+
+    /// <summary>
+    /// The drawing's named axes: each grid-layer text of a grid-name's length paired with the
+    /// nearest end of a grid-layer line within reach; the axis is that line's constant coordinate.
+    /// </summary>
+    public static List<NamedAxis> NamedAxes(
+        IEnumerable<DxfSegment> segments, IEnumerable<DxfPositionedTag> tags, Func<string, bool>? isGridLayer = null)
+    {
+        isGridLayer ??= LooksLikeAGridLayer;
+        var lines = new List<(bool Vertical, double At, DxfPoint A, DxfPoint B)>();
+        foreach (var s in segments)
+        {
+            if (!isGridLayer(s.Layer)) continue;
+            double dx = Math.Abs(s.End.X - s.Start.X), dy = Math.Abs(s.End.Y - s.Start.Y);
+            if (Math.Max(dx, dy) < 120.0) continue;
+            if (dx <= SamePosition && dy > SamePosition) lines.Add((true, s.Start.X, s.Start, s.End));
+            else if (dy <= SamePosition && dx > SamePosition) lines.Add((false, s.Start.Y, s.Start, s.End));
+        }
+        var axes = new List<NamedAxis>();
+        if (lines.Count == 0) return axes;
+        foreach (var t in tags)
+        {
+            if (!isGridLayer(t.Layer)) continue;
+            // a grid name is "1", "19", "R", "AA", "1A": three characters at most; GRID is a word
+            string name = t.Text.Trim();
+            if (name.Length == 0 || name.Length > 3) continue;
+            double reach = Math.Max(NameReachFloor, NameReachHeights * t.Height);
+            (bool Vertical, double At, DxfPoint A, DxfPoint B) best = default;
+            double bestDistance = double.MaxValue;
+            foreach (var l in lines)
+            {
+                double d = Math.Min(t.Point.DistanceTo(l.A), t.Point.DistanceTo(l.B));
+                if (d < bestDistance) { bestDistance = d; best = l; }
+            }
+            if (bestDistance > reach) continue;
+            if (axes.Any(a => a.Vertical == best.Vertical && Math.Abs(a.At - best.At) <= SamePosition
+                              && a.Name.Equals(name, StringComparison.OrdinalIgnoreCase))) continue;
+            axes.Add(new NamedAxis(name, best.Vertical, best.At));
+        }
+        return axes;
+    }
+
+    /// <summary>
+    /// The frame that carries this sheet onto the model's grid by the names of its axes, in the
+    /// model's unit (<paramref name="scale"/> is drawing unit per model unit), or null when fewer
+    /// than <see cref="LeastConvincingByName"/> named lines agree on one. Tried at each quarter
+    /// turn: a sheet drawn to plan north whose vertical axes carry the model's Y labels is turned.
+    /// </summary>
+    public static Fit? SolveByName(IReadOnlyList<NamedAxis> axes, IReadOnlyList<ReferenceGrid> reference, double scale = 1.0)
+    {
+        if (axes.Count == 0 || reference.Count == 0) return null;
+        var refX = reference.Where(g => g.DirX).ToList();
+        var refY = reference.Where(g => !g.DirX).ToList();
+        var vertical = axes.Where(a => a.Vertical).ToList();
+        var horizontal = axes.Where(a => !a.Vertical).ToList();
+
+        Fit? best = null;
+        double bestSpread = double.MaxValue;
+        foreach (int degrees in new[] { 0, 90, 180, 270 })
+        {
+            // Which drawing axes land on the model's X lines, and with what sign: Frame.Apply turns
+            // about the origin, so at 90° a horizontal axis at y becomes a constant-x line at -y.
+            var (toX, signX, toY, signY) = degrees switch
+            {
+                0 => (vertical, 1.0, horizontal, 1.0),
+                90 => (horizontal, -1.0, vertical, 1.0),
+                180 => (vertical, -1.0, horizontal, -1.0),
+                _ => (horizontal, 1.0, vertical, -1.0),
+            };
+            var (ox, mx, sx) = AgreedOffset(toX, refX, signX * scale);
+            var (oy, my, sy) = AgreedOffset(toY, refY, signY * scale);
+            if (mx == 0 || my == 0) continue;
+            double spread = Math.Max(sx, sy);
+            if (best is null || mx + my > best.MatchedX + best.MatchedY
+                || (mx + my == best.MatchedX + best.MatchedY && spread < bestSpread))
+            {
+                best = new Fit(new Frame(degrees, ox, oy), mx, my,
+                    $"{mx} of {refX.Count} X and {my} of {refY.Count} Y grid lines matched by name at {degrees}°, agreeing within {spread:0.0}.");
+                bestSpread = spread;
+            }
+        }
+        return best is not null && best.MatchedX + best.MatchedY >= LeastConvincingByName ? best : null;
+    }
+
+    /// <summary>
+    /// The translation the named pairs agree on: the median of coord - factor * at over every axis
+    /// whose name is a model label, then the mean of those within <see cref="NameTolerance"/> of it,
+    /// how many there are, and how far the farthest of them sits from it.
+    /// </summary>
+    private static (double Offset, int Matched, double Spread) AgreedOffset(
+        List<NamedAxis> axes, List<ReferenceGrid> grids, double factor)
+    {
+        var offsets = new List<double>();
+        foreach (var g in grids)
+        {
+            var axis = axes.FirstOrDefault(a => a.Name.Equals(g.Label, StringComparison.OrdinalIgnoreCase));
+            if (axis is null) continue;
+            offsets.Add(g.Coord - axis.At * factor);
+        }
+        if (offsets.Count == 0) return (0, 0, 0);
+        offsets.Sort();
+        double median = offsets[offsets.Count / 2];
+        var agreeing = offsets.Where(o => Math.Abs(o - median) <= NameTolerance).ToList();
+        double offset = agreeing.Average();
+        return (offset, agreeing.Count, agreeing.Max(o => Math.Abs(o - offset)));
+    }
+
+    /// <summary>
+    /// A placed sheet's named axes as grid lines of the model: each carried through the sheet's
+    /// frame in the model's unit. An axis placed on the grid is a grid line for the rest of the
+    /// set — the model's GRIDS names only what the engineer drew, and a sheet whose letters the
+    /// model lacks can still be placed by a sheet that shares them and was placed.
+    /// </summary>
+    public static List<ReferenceGrid> Carried(IReadOnlyList<NamedAxis> axes, Frame frame, double scale)
+    {
+        var carried = new List<ReferenceGrid>();
+        foreach (var a in axes)
+        {
+            var p0 = frame.Apply(a.Vertical ? new DxfPoint(a.At * scale, 0) : new DxfPoint(0, a.At * scale));
+            var p1 = frame.Apply(a.Vertical ? new DxfPoint(a.At * scale, 1000) : new DxfPoint(1000, a.At * scale));
+            bool dirX = Math.Abs(p1.X - p0.X) <= 1e-6;
+            carried.Add(new ReferenceGrid(a.Name, dirX, dirX ? p0.X : p0.Y));
+        }
+        return carried;
+    }
+
+    /// <summary>
+    /// The GRIDS table a model built without a reference gets: every named axis of every sheet,
+    /// carried through the sheet's frame into the model, one line per name, at the median where
+    /// several sheets draw it. ETABS's own form, as the office's exports carry it.
+    /// </summary>
+    public static List<string> GridLines(IEnumerable<(IReadOnlyList<NamedAxis> Axes, Frame Frame, double Scale)> sheets)
+    {
+        var byName = new Dictionary<(string Name, bool DirX), List<double>>();
+        foreach (var (axes, frame, scale) in sheets)
+        {
+            foreach (var a in axes)
+            {
+                var p0 = frame.Apply(a.Vertical ? new DxfPoint(a.At * scale, 0) : new DxfPoint(0, a.At * scale));
+                var p1 = frame.Apply(a.Vertical ? new DxfPoint(a.At * scale, 1000) : new DxfPoint(1000, a.At * scale));
+                bool dirX = Math.Abs(p1.X - p0.X) <= 1e-6;
+                var key = (a.Name.ToUpperInvariant(), dirX);
+                if (!byName.TryGetValue(key, out var list)) byName[key] = list = new List<double>();
+                list.Add(dirX ? p0.X : p0.Y);
+            }
+        }
+        if (byName.Count == 0) return new List<string>();
+        var lines = new List<string> { "  GRIDSYSTEM \"G1\"  TYPE \"CARTESIAN\"  BUBBLESIZE 60 " };
+        foreach (var entry in byName
+                     .Select(kv => (kv.Key.Name, kv.Key.DirX, Coord: Median(kv.Value)))
+                     .OrderByDescending(e => e.DirX).ThenBy(e => e.Coord))
+        {
+            lines.Add($"  GRID \"G1\"  LABEL \"{entry.Name}\"  DIR \"{(entry.DirX ? "X" : "Y")}\"  COORD " +
+                      entry.Coord.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture) +
+                      " VISIBLE \"Yes\"  BUBBLELOC \"End\"  ");
+        }
+        return lines;
+
+        static double Median(List<double> values)
+        {
+            var sorted = values.OrderBy(v => v).ToList();
+            int n = sorted.Count;
+            return n % 2 == 1 ? sorted[n / 2] : (sorted[n / 2 - 1] + sorted[n / 2]) / 2;
+        }
+    }
 }

@@ -145,7 +145,9 @@ if (args.Length >= 1 && args[0].Equals("pdf-takeoff", StringComparison.OrdinalIg
         string file = "";
         if (found > 0)
         {
-            string dxf = ptRange ? Path.Combine(ptDir, $"{ptStem}-p{p:00}.dxf") : Path.GetFullPath(ptOut);
+            // Named as the office's export names a view — sheet number, view index, title — so the
+            // DXF-to-ETABS reader takes the sheet's storeys from the name (intake step 15).
+            string dxf = ptRange ? Path.Combine(ptDir, SheetDxfName.For(record, $"{ptStem}-p{p:00}")) : Path.GetFullPath(ptOut);
             DxfExporter.Export(geo, dxf, korLayers: ptKor);
             file = Path.GetFileName(dxf);
             ptWritten++;
