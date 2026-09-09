@@ -52,13 +52,21 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             Note("title block fields read (SHEET TITLE, SCALE, PROJECT NO, DRAWN BY …)", record.TitleBlock.Count,
                 record.TitleBlock.Count > 0 ? Disposition.Read : Disposition.Unread,
                 record.TitleBlock.Count > 0 ? "TitleBlockFields: " + string.Join(", ", record.TitleBlock.Keys.OrderBy(k => k)) : "no labelled title block on this sheet");
-            if (record.ScaleNote is not null)
+            if (record.ScaleConflict)
+                Row("scale: the title block states two different scales", 1, Disposition.Unaccounted, "SheetScaleReader refused to guess; the SCALE field is not a fallback for a conflict");
+            else if (record.ScaleNote is not null)
                 Row("scale: ratio read", 1, Disposition.Read, "SheetScaleReader, or the title block's SCALE field");
             else if (!string.IsNullOrWhiteSpace(record.ScaleStatement))
                 Row($"scale: stated without a ratio (\"{record.ScaleStatement.Trim()}\")", 1, Disposition.Read, "TitleBlockFields — the sheet says its scale varies; details and notes sheets do");
             else
                 Row("scale: none stated", 1, Disposition.Unread, "neither SheetScaleReader nor a SCALE field");
-            if (record.BookmarkTitle is not null) Row("bookmark (sheet index entry)", 1, Disposition.Unread, "no reader");
+            if (record.BookmarkTitle is not null)
+            {
+                // the bookmark is the first source the sheet type comes from; when it named a kind it was read (audit F10)
+                bool typedTheSheet = DrawingIntake.FirstTyped(record.BookmarkTitle) is not ("other" or "unknown");
+                Row("bookmark (sheet index entry)", 1, typedTheSheet ? Disposition.Read : Disposition.Unread,
+                    typedTheSheet ? "DrawingIntake.FirstTyped — it typed the sheet" : "names no kind the typing knows; no other reader");
+            }
             else if (record.Context.OutlinesPresent) Row("bookmark present in the file, unreadable by PdfPig", 1, Disposition.Unaccounted, "PdfDocument.TryGetBookmarks returned none for an /Outlines tree");
             if (record.Rotation != 0) Row("page rotation != 0", 1, Disposition.Unaccounted, "no reader corrects for it");
 
@@ -98,28 +106,23 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                 }
                 Note("filled wall-thickness shapes with more than four vertices — ribbons, not split",
                     record.Geometry.WallRibbonsNotSplit, Disposition.Unread, "GeometryFilterService: retained with their existing fate");
-                int marksPlaced = 0;
-                bool scheduled = false;
+                // From the record, re-reading nothing (audit F9): the labels the footing reader placed
+                // and the schedule table the intake typed.
+                int marksPlaced = record.FootingLabels.Count;
+                bool scheduled = record.Schedules.Any(t => t.Kind == "footing" && t.Rows.Count > 0);
                 string byMark = "";
-                try
+                if (marksPlaced > 0 || record.Geometry.Footings.Count > 0)
                 {
-                    var (types, box) = FootingScheduleReader.ReadSchedule(record.Content);
-                    scheduled = types.Any(t => t.IsSpread);
-                    if (types.Count > 0)
-                    {
-                        var placed = FootingScheduleReader.CountPlacements(record.Content, types, box, record.Furniture);
-                        var spread = types.Where(t => t.IsSpread).ToList();
-                        marksPlaced = placed.Where(kv => spread.Any(t => t.Mark == kv.Key)).Sum(kv => kv.Value);
-                        // labelled footings of placed labels, per mark, so the ledger says which mark the
-                        // chaining is short on; a box of a scheduled size that no label names is listed apart
-                        byMark = string.Join(", ", spread.Select(t =>
-                            $"{t.Mark} {record.Geometry.Footings.Count(f => f.Mark == t.Mark && f.LabelledOnThePlan)} of {(placed.TryGetValue(t.Mark, out int n) ? n : 0)}"));
-                        var unlabelled = record.Geometry.Footings.Where(f => !f.LabelledOnThePlan).GroupBy(f => f.Mark).ToList();
-                        if (unlabelled.Count > 0)
-                            byMark += "; no label names " + string.Join(", ", unlabelled.Select(g => $"{g.Count()} {g.Key}-sized box(es)"));
-                    }
+                    var placed = record.FootingLabels.GroupBy(l => l.Mark, StringComparer.OrdinalIgnoreCase).ToDictionary(g => g.Key, g => g.Count(), StringComparer.OrdinalIgnoreCase);
+                    var marks = placed.Keys.Concat(record.Geometry.Footings.Select(f => f.Mark)).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(m => m, StringComparer.OrdinalIgnoreCase).ToList();
+                    // labelled footings of placed labels, per mark, so the ledger says which mark the
+                    // chaining is short on; a box of a scheduled size that no label names is listed apart
+                    byMark = string.Join(", ", marks.Select(m =>
+                        $"{m} {record.Geometry.Footings.Count(f => string.Equals(f.Mark, m, StringComparison.OrdinalIgnoreCase) && f.LabelledOnThePlan)} of {(placed.TryGetValue(m, out int n) ? n : 0)}"));
+                    var unlabelled = record.Geometry.Footings.Where(f => !f.LabelledOnThePlan).GroupBy(f => f.Mark).ToList();
+                    if (unlabelled.Count > 0)
+                        byMark += "; no label names " + string.Join(", ", unlabelled.Select(g => $"{g.Count()} {g.Key}-sized box(es)"));
                 }
-                catch { }
                 // a footing read on a sheet whose plan places no footing mark is a box the size of a
                 // footing, and nothing on the sheet says it is one: unaccounted, not read
                 Note("footings read as dashed outlines of a scheduled size", record.Geometry.Footings.Count,

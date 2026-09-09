@@ -54,9 +54,6 @@ public static class FootingOutlines
     public const double CollinearMm = 12.0;
     /// <summary>A dashed side has at least this many pieces; a solid line has one.</summary>
     public const int MinPieces = 3;
-    /// <summary>When two scheduled sizes both fit a box, the label within this of the box decides between them.</summary>
-    public const double LabelSlackMm = 150.0;
-
     public sealed record Chain(double At, double From, double To, IReadOnlyList<int> Pieces);
     /// <summary>A footing mark placed on the plan, in the same millimetre frame as the paths.</summary>
     public readonly record struct MarkLabel(string Mark, double X, double Y);
@@ -138,34 +135,44 @@ public static class FootingOutlines
         }
 
         // Pass 2: one full side of a scheduled length and a stub at each end, both pointing the
-        // same way — the outline of a footing something stands on (a wall, the match line).
+        // same way — the outline of a footing something stands on (a wall, the match line). When
+        // more than one scheduled type fits the drawn side, the label standing in the box decides,
+        // as it does for a closed box (audit F3, 2026-09-08: the first type in schedule order won).
         foreach (var side in hc)
         {
             if (side.Pieces.Any(taken.Contains)) continue;
             double span = side.To - side.From;
+            var fits = new List<(FootingScheduleReader.FootingType Type, double X0, double Y0, double X1, double Y1, Chain A, Chain B)>();
             foreach (var (type, depth) in DepthsFor(spread, span, sizeToleranceMm))
             {
                 var (a, dirA) = Stub(vAll, side.From, side.At, depth, sizeToleranceMm, taken);
                 var (b, dirB) = Stub(vAll, side.To, side.At, depth, sizeToleranceMm, taken);
                 if (a is null || b is null || dirA != dirB) continue;
-                double y0 = dirA > 0 ? side.At : side.At - depth, y1 = y0 + depth;
-                Place(type, side.From, y0, side.To, y1, side.Pieces.Concat(a.Pieces).Concat(b.Pieces));
-                break;
+                double y0 = dirA > 0 ? side.At : side.At - depth;
+                fits.Add((type, side.From, y0, side.To, y0 + depth, a, b));
             }
+            if (fits.Count == 0) continue;
+            var named = fits.Where(f => LabelNames(labels, f.Type, f.X0, f.Y0, f.X1, f.Y1)).ToList();
+            var pick = named.Count > 0 ? named[0] : fits[0];
+            Place(pick.Type, pick.X0, pick.Y0, pick.X1, pick.Y1, side.Pieces.Concat(pick.A.Pieces).Concat(pick.B.Pieces));
         }
         foreach (var side in vc)
         {
             if (side.Pieces.Any(taken.Contains)) continue;
             double span = side.To - side.From;
+            var fits = new List<(FootingScheduleReader.FootingType Type, double X0, double Y0, double X1, double Y1, Chain A, Chain B)>();
             foreach (var (type, depth) in DepthsFor(spread, span, sizeToleranceMm))
             {
                 var (a, dirA) = Stub(hAll, side.From, side.At, depth, sizeToleranceMm, taken);
                 var (b, dirB) = Stub(hAll, side.To, side.At, depth, sizeToleranceMm, taken);
                 if (a is null || b is null || dirA != dirB) continue;
-                double x0 = dirA > 0 ? side.At : side.At - depth, x1 = x0 + depth;
-                Place(type, x0, side.From, x1, side.To, side.Pieces.Concat(a.Pieces).Concat(b.Pieces));
-                break;
+                double x0 = dirA > 0 ? side.At : side.At - depth;
+                fits.Add((type, x0, side.From, x0 + depth, side.To, a, b));
             }
+            if (fits.Count == 0) continue;
+            var named = fits.Where(f => LabelNames(labels, f.Type, f.X0, f.Y0, f.X1, f.Y1)).ToList();
+            var pick = named.Count > 0 ? named[0] : fits[0];
+            Place(pick.Type, pick.X0, pick.Y0, pick.X1, pick.Y1, side.Pieces.Concat(pick.A.Pieces).Concat(pick.B.Pieces));
         }
 
         // A label names the footing it is nearest to, when it stands in that footing or within half
@@ -195,7 +202,7 @@ public static class FootingOutlines
         return Math.Sqrt(dx * dx + dy * dy);
     }
 
-    /// <summary>The scheduled type a w × h box is, either orientation; the one whose mark stands in the box when several fit.</summary>
+    /// <summary>The scheduled type a w × h box is, either orientation; the one whose label names the box when several fit.</summary>
     private static FootingScheduleReader.FootingType? TypeOf(List<FootingScheduleReader.FootingType> spread, double w, double h, double tol,
         IReadOnlyList<MarkLabel> labels, double x0, double y0, double x1, double y1)
     {
@@ -203,9 +210,24 @@ public static class FootingOutlines
             (Math.Abs(w - t.LengthMm) <= tol && Math.Abs(h - t.WidthMm) <= tol) ||
             (Math.Abs(w - t.WidthMm) <= tol && Math.Abs(h - t.LengthMm) <= tol)).ToList();
         if (fits.Count <= 1) return fits.FirstOrDefault();
-        return fits.FirstOrDefault(t => labels.Any(l => string.Equals(l.Mark, t.Mark, StringComparison.OrdinalIgnoreCase)
-                && l.X >= x0 - LabelSlackMm && l.X <= x1 + LabelSlackMm && l.Y >= y0 - LabelSlackMm && l.Y <= y1 + LabelSlackMm))
-            ?? fits[0];
+        return fits.FirstOrDefault(t => LabelNames(labels, t, x0, y0, x1, y1)) ?? fits[0];
+    }
+
+    /// <summary>
+    /// A label of the type's mark names this box when it stands in it or within half the footing's
+    /// size of its edge — the one reach, used to choose between types and to flag the footing
+    /// (audit F3: type choice used a 150 mm reach while the flag used half the size).
+    /// </summary>
+    private static bool LabelNames(IReadOnlyList<MarkLabel> labels, FootingScheduleReader.FootingType type, double x0, double y0, double x1, double y1)
+    {
+        double reach = Math.Max(type.LengthMm, type.WidthMm) / 2;
+        return labels.Any(l => string.Equals(l.Mark, type.Mark, StringComparison.OrdinalIgnoreCase) && EdgeDistance(x0, y0, x1, y1, l.X, l.Y) <= reach);
+    }
+
+    private static double EdgeDistance(double x0, double y0, double x1, double y1, double x, double y)
+    {
+        double dx = Math.Max(Math.Max(x0 - x, 0), x - x1), dy = Math.Max(Math.Max(y0 - y, 0), y - y1);
+        return Math.Sqrt(dx * dx + dy * dy);
     }
 
     /// <summary>For a full side of this span, each scheduled type it could be and the box depth away from it.</summary>

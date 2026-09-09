@@ -25,15 +25,23 @@ namespace Kor.Operations.EngineeringTools.Core.Tests;
 ///   - the plan self-check per page: a coverage FLOOR (may only rise), and that the unplaced list
 ///     holds only mark-shaped tokens (a bar size like 8-35M or a wrapped word like BOT. read as a
 ///     mark is the fault this guards)
+///   - added 2026-09-08, steps 1–11: every path on the coverage pages has exactly one fate and the
+///     population is the unthinned read; the walls, the footings read and labels placed, and the
+///     named grid axes (count AND names, in order) on the schedule page; the storeys on two
+///     elevation sheets against the engineer's model, ±5 mm
 ///
 /// WHAT IT DOES NOT COVER
 ///   - whether a coverage number is RIGHT — only that it does not go down; on 31130 p11 the
 ///     number is 14 of 42 while all 42 columns are emitted where drawn, because the label match
 ///     fails on rotated marks (measured 2026-09-08). The floor guards the reader, not the truth
-///   - the DXF written, the storeys, or anything downstream of intake
-///   - a page the standard does not list
+///   - the DXF written, the E2K, or anything downstream of intake (the census verb and the live
+///     storey test hold those)
+///   - a page the standard does not list; the east halves of the foundation plans (p12, p15)
 ///   - a schedule read with the right marks and the wrong sizes: the mark set would not move
 ///   - a mark whose size VARIES (31168's C03-B): banked as a mark, its columns agree by definition
+///   - a wall, footing or axis counted right and PLACED wrong: the counts and names would not move;
+///     nor whether each footing is labelled (the ledger row says; the count here is all boxes)
+///   - a fate that is unique and WRONG: the fate check is cardinality, not ordinal correctness
 ///
 /// THE FIXTURES are a frozen local mirror, one PDF per job, at %LOCALAPPDATA%\Temp\kor-drawings\stickfiles:
 ///   31130-01 2026-05-20 issue · 31138-01 2026-09-01 · 31168-01 2026-04-21 · 31065-01 2026-07-08 · 31202-01 2026-09-04.
@@ -76,27 +84,35 @@ public sealed class FiveStickFilesTests
         // both ends one axis. Banked 2026-09-08: 31130 p11 19 (X 1,3,5,7,8,9,10,11,13,15,16; Y A–Q),
         // 31168 p11 26 (X 1–19; Y J–R), 31138 p9 15, 31065 p14 17 (F and A twice: a second view on
         // the sheet), 31202 p17 17 (the numerals 1 and 4 on horizontal axes are what the sheet draws).
-        int GridAxes = 0);
+        int GridAxes = 0,
+        // The axes' names in order of position, X (vertical axes) then Y, as the sheet draws them; a
+        // count alone let every name become "X" (audit Q7). Banked 2026-09-08 off the overlay's legend.
+        string GridNamesX = "", string GridNamesY = "");
 
     private static readonly Job[] Jobs =
     {
         new("31130-01", 96, 258, "F1,F2,F3,F4,SF1", 11,
             "PC1,PC2,PC4,PC5,PC6,PC7,PC8", "SWA:12:35,SWB:12:45,SWC:12:45,SWD:16:55",
-            new Dictionary<int, int> { [11] = 14, [12] = 25, [13] = 41 }, WallCount: 11, FootingCount: 36, FootingMarksPlaced: 36, GridAxes: 19),
+            new Dictionary<int, int> { [11] = 14, [12] = 25, [13] = 41 }, WallCount: 11, FootingCount: 36, FootingMarksPlaced: 36, GridAxes: 19,
+            GridNamesX: "1,3,5,7,8,9,10,11,13,15,16", GridNamesY: "Q,P,L,G,F,E,B,A"),
         new("31168-01", 96, 0, "", 11,
             "C02-A,C02-B,C03-A,C03-B,C04-A,C04-B,GC11-C,PC01,PC02,PC03-A,PC03-B,TC01,TC02,TC03,TC04", "SWA:12:35,SWB:12:45,SWC:12:45,SWD:16:55",
-            new Dictionary<int, int> { [11] = 43, [12] = 65, [13] = 47 }, WallCount: 25, GridAxes: 26),
+            new Dictionary<int, int> { [11] = 43, [12] = 65, [13] = 47 }, WallCount: 25, GridAxes: 26,
+            GridNamesX: "1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19", GridNamesY: "R,P,N,M,L,K,J"),
         new("31138-01", 96, 353, "F1,F2,SF1,SF2", 9,
             "PC1,PC1A,PC2,PC3,PC3A,PC4,PC5,PC6,PC7,PC8,PC9,PL1,PL2", "SWA:8:35",
-            new Dictionary<int, int> { [9] = 24, [11] = 21 }, WallCount: 41, FootingCount: 11, FootingMarksPlaced: 11, GridAxes: 15),
+            new Dictionary<int, int> { [9] = 24, [11] = 21 }, WallCount: 41, FootingCount: 11, FootingMarksPlaced: 11, GridAxes: 15,
+            GridNamesX: "1,2,3,4,5,6,7,8", GridNamesY: "G,F,E,D,C,B,A"),
         // 1,174 → 1,099 cy on 2026-09-08 (brief 21): the two "F4" in p14's bond-breaker note were counted as
         // placements, 74 cy of footing that is not on the plan; placements are now counted outside furniture
         new("31065-01", 100, 1099, "F1,F2,F3,F4,SF1,SF2", 14,
             "PC1,PC1A,PC2,PC3,PC4,PC5,ZC1,ZC2", "SWA:8:35,SWB:8:35,SWC:24:45",
-            new Dictionary<int, int> { [14] = 24, [15] = 22, [16] = 30 }, WallCount: 36, FootingCount: 30, FootingMarksPlaced: 29, GridAxes: 17),
+            new Dictionary<int, int> { [14] = 24, [15] = 22, [16] = 30 }, WallCount: 36, FootingCount: 30, FootingMarksPlaced: 29, GridAxes: 17,
+            GridNamesX: "1,2,3,4,5,6,7,8", GridNamesY: "F,A,G,F,E,D,C,B,A"),
         new("31202-01", 96, 0, "", 17,
             "1,2,3,4,5,6,7,8", "",
-            new Dictionary<int, int> { [17] = 23 }, WallCount: 19, GridAxes: 17),
+            new Dictionary<int, int> { [17] = 23 }, WallCount: 19, GridAxes: 17,
+            GridNamesX: "1,2,3,4,10,13,14", GridNamesY: "4,1,N,M,L,I,F,C.2,B,A"),
     };
 
     public static IEnumerable<object[]> JobNumbers() => Jobs.Select(j => new object[] { j.Number });
@@ -266,6 +282,8 @@ public sealed class FiveStickFilesTests
         Assert.True(job.GridAxes == geo.GridAxes.Count,
             $"{number} p{job.SchedulePage}: {geo.GridAxes.Count} named axes, {job.GridAxes} banked: {names}");
         Assert.All(geo.GridAxes, a => Assert.False(string.IsNullOrWhiteSpace(a.Name), "an axis without a name"));
+        Assert.Equal(job.GridNamesX, string.Join(",", geo.GridAxes.Where(a => a.Vertical).Select(a => a.Name)));
+        Assert.Equal(job.GridNamesY, string.Join(",", geo.GridAxes.Where(a => !a.Vertical).Select(a => a.Name)));
     }
 
     /// <summary>

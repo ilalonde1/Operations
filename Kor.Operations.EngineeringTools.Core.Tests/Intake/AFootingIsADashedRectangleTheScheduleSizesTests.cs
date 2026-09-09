@@ -133,14 +133,33 @@ public sealed class AFootingIsADashedRectangleTheScheduleSizesTests
     public void TheClassifierRecordsEveryDashAsTheFootingsAndEmitsNothingElseFromThem()
     {
         var raw = DashedSquare(10000, 20000, 2134, 6);
-        var (footings, pieces) = FootingOutlines.Read(raw, [F2, F4]);
+        var (footings, pieces) = FootingOutlines.Read(raw, [F2, F4], labels: [new FootingOutlines.MarkLabel("F4", 11000, 21000)]);
         Assert.Single(footings);
         var result = new ExtractedGeometry();
+        result.Footings.AddRange(footings);
         var fates = new List<PathFate>();
         GeometryFilterService.Classify(raw, result, 3000, 200, false, 100000, 70000, annotationsOnly: false,
             furniture: SheetFurniture.Set.Empty, fates: fates, footingPieces: pieces);
         Assert.Equal(raw.Count, fates.Count);
         Assert.All(fates, f => { Assert.Equal(PathReason.BecameFooting, f.Reason); Assert.Equal(0, f.ObjectIndex); Assert.Equal(Disposition.Read, f.Disposition); });
+        Assert.Empty(result.Lines); Assert.Empty(result.Slabs); Assert.Empty(result.Walls); Assert.Empty(result.Columns);
+    }
+
+    /// <summary>A dashed box of a scheduled size that no label names is emitted, flagged, and its pieces are unaccounted, not read (audit F2).</summary>
+    [Fact]
+    public void ABoxNoLabelNamesIsEmittedFlaggedAndItsPiecesAreUnaccounted()
+    {
+        var raw = DashedSquare(10000, 20000, 2134, 6);
+        var (footings, pieces) = FootingOutlines.Read(raw, [F2, F4]);
+        var f = Assert.Single(footings);
+        Assert.False(f.LabelledOnThePlan);
+        var result = new ExtractedGeometry();
+        result.Footings.AddRange(footings);
+        var fates = new List<PathFate>();
+        GeometryFilterService.Classify(raw, result, 3000, 200, false, 100000, 70000, annotationsOnly: false,
+            furniture: SheetFurniture.Set.Empty, fates: fates, footingPieces: pieces);
+        Assert.Equal(raw.Count, fates.Count);
+        Assert.All(fates, ft => { Assert.Equal(PathReason.FootingBoxNoLabel, ft.Reason); Assert.Equal(0, ft.ObjectIndex); Assert.Equal(Disposition.Unaccounted, ft.Disposition); });
         Assert.Empty(result.Lines); Assert.Empty(result.Slabs); Assert.Empty(result.Walls);
     }
 }

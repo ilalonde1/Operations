@@ -5,6 +5,15 @@ using Xunit;
 namespace Kor.Operations.EngineeringTools.Core.Tests.Intake;
 
 /// <summary>Exercises each classifier decision, including both axes, both frame edges and fallthroughs.</summary>
+/// <remarks>
+/// WHAT THIS COVERS: one synthetic fixture with a path for every classifier branch — every input
+/// index gets one fate, the object index points at the object made, the disposition follows the
+/// reason alone, markup-only and grid-exclusion have their own reasons, and every PathReason value is
+/// reached by some test. WHAT IT DOES NOT: the remap from the thinned read to the population
+/// (ThePopulationIsTheUnthinnedReadTests), a real page (FiveStickFilesTests counts fates on the
+/// banked pages), a page read with no scale (its fates are empty by design), and a fate that is
+/// unique but WRONG — a rectangle read as a slab where a wall was meant has exactly one fate too.
+/// </remarks>
 public sealed class EveryPathHasExactlyOneFateTests
 {
     [Fact]
@@ -55,7 +64,8 @@ public sealed class EveryPathHasExactlyOneFateTests
             // CollapsedByThinning is never recorded by Classify: the read drops those paths before it
             // runs, and DrawingIntake.RemapToPopulation assigns it (ThePopulationIsTheUnthinnedReadTests).
             // BecameFooting is recorded only for a piece FootingOutlines claimed (AFootingIsADashedRectangleTheScheduleSizesTests).
-            .Append(PathReason.MarkupOnlyMode).Append(PathReason.GridLineExcluded).Append(PathReason.CollapsedByThinning).Append(PathReason.BecameFooting).Distinct().OrderBy(r => r);
+            // FootingBoxNoLabel likewise, for a claimed piece of a box no label names (ABoxNoLabelNamesIsEmittedFlaggedAndItsPiecesAreUnaccounted).
+            .Append(PathReason.MarkupOnlyMode).Append(PathReason.GridLineExcluded).Append(PathReason.CollapsedByThinning).Append(PathReason.BecameFooting).Append(PathReason.FootingBoxNoLabel).Distinct().OrderBy(r => r);
         Assert.Equal(Enum.GetValues<PathReason>().OrderBy(r => r), reached);
     }
 
@@ -68,7 +78,7 @@ public sealed class EveryPathHasExactlyOneFateTests
             {
                 PathReason.BecameSlab or PathReason.BecameColumnByDeclaredSize or PathReason.BecameColumnByShape or PathReason.BecameWall
                     or PathReason.BecameFooting or PathReason.GridAxis => Disposition.Read,
-                PathReason.EmittedAsLine => Disposition.Unaccounted,
+                PathReason.EmittedAsLine or PathReason.FootingBoxNoLabel => Disposition.Unaccounted,
                 _ => Disposition.Discarded,
             };
             Assert.Equal(expected, PathFate.DispositionOf(reason));

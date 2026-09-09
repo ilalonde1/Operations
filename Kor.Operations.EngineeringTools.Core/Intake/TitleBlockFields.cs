@@ -34,8 +34,17 @@ public static class TitleBlockFields
 
     private const double RegionMinFx = 0.80;
 
-    public static IReadOnlyDictionary<string, string> Read(VectorPageReader.PageContent? page)
+    public static IReadOnlyDictionary<string, string> Read(VectorPageReader.PageContent? page) => Read(page, out _);
+
+    /// <summary>
+    /// The fields, and the centres of every token the reader consumed — each label's own tokens and
+    /// the tokens that became a kept value — so the ledger can call those words read and the rest
+    /// of the title block unread, rather than the whole block one or the other (audit F10).
+    /// </summary>
+    public static IReadOnlyDictionary<string, string> Read(VectorPageReader.PageContent? page, out IReadOnlySet<(double X, double Y)> consumedTokens)
     {
+        var consumed = new HashSet<(double X, double Y)>();
+        consumedTokens = consumed;
         var fields = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         if (page is null || page.Words.Count == 0 || page.WidthPts <= 0) return fields;
 
@@ -86,40 +95,50 @@ public static class TitleBlockFields
         foreach (var lab in labels)
         {
             var line = lines[lab.Line];
+            for (int i = lab.From; i <= lab.To; i++) consumed.Add((line[i].Cx, line[i].Cy));
             // beside: the tokens after the label on its line, up to the next label on that line
             int stop = labels.Where(o => o.Line == lab.Line && o.From > lab.To).Select(o => o.From).DefaultIfEmpty(line.Count).Min();
-            var beside = line.Skip(lab.To + 1).Take(stop - lab.To - 1).Select(t => t.Text.Trim()).Where(s => s.Length > 0).ToList();
-            if (beside.Count > 0)
+            var besideTokens = line.Skip(lab.To + 1).Take(stop - lab.To - 1).Where(t => t.Text.Trim().Length > 0).ToList();
+            if (besideTokens.Count > 0)
             {
-                Set(fields, lab.Label, string.Join(" ", beside));
+                if (Set(fields, lab.Label, string.Join(" ", besideTokens.Select(t => t.Text.Trim()))))
+                    foreach (var t in besideTokens) consumed.Add((t.Cx, t.Cy));
                 continue;
             }
             // below: the lines under the label until the next LABEL LINE below it — the block is one
             // column, so a label anywhere across it ends the field above (SHEET NUMBER ends SHEET
             // TITLE; PROJECT NO ends PROJECT TITLE). Tokens in the label's column only.
-            double floor = labels.Where(o => o.Cy < lab.Cy - 1).Select(o => o.Cy).DefaultIfEmpty(double.NegativeInfinity).Max();
             // the column ends where the next label on the label's own line begins (SHEET NUMBER | REV:)
             double right = labels.Where(o => o.Line == lab.Line && o.From > lab.To).Select(o => o.MinX).DefaultIfEmpty(lab.MinX + 260).Min();
+            // and the field ends at the next label BELOW IN THAT COLUMN — a REV label in the next
+            // column does not cut the SHEET TITLE off (audit F11, 2026-09-08)
+            double floor = labels.Where(o => o.Cy < lab.Cy - 1 && o.MinX >= lab.MinX - 15 && o.MinX < right).Select(o => o.Cy).DefaultIfEmpty(double.NegativeInfinity).Max();
             var below = new List<string>();
+            var belowTokens = new List<VectorPageReader.TextToken>();
             for (int li = 0; li < lines.Count; li++)
             {
                 var l = lines[li];
                 if (!(l[0].Cy < lab.Cy - 1 && l[0].Cy > floor + 1)) continue;
-                string text = string.Join(" ", l.Select((t, i) => (t, i))
-                    .Where(x => !IsLabelToken(li, x.i) && x.t.MinX >= lab.MinX - 15 && x.t.MinX < right)
-                    .Select(x => x.t.Text.Trim()).Where(s => s.Length > 0));
-                if (text.Length > 0) below.Add(text);
+                var used = l.Select((t, i) => (t, i))
+                    .Where(x => !IsLabelToken(li, x.i) && x.t.MinX >= lab.MinX - 15 && x.t.MinX < right && x.t.Text.Trim().Length > 0)
+                    .Select(x => x.t).ToList();
+                if (used.Count == 0) continue;
+                below.Add(string.Join(" ", used.Select(t => t.Text.Trim())));
+                belowTokens.AddRange(used);
             }
-            if (below.Count > 0) Set(fields, lab.Label, string.Join(" ", below));
+            if (below.Count > 0 && Set(fields, lab.Label, string.Join(" ", below)))
+                foreach (var t in belowTokens) consumed.Add((t.Cx, t.Cy));
         }
         return fields;
     }
 
     private static string Clean(string s) => s.Trim().TrimEnd(':').Trim().ToUpperInvariant();
 
-    private static void Set(Dictionary<string, string> fields, string label, string value)
+    /// <summary>The first instance of a label wins; a block drawn twice (fake bold) repeats its labels. True when this one was kept.</summary>
+    private static bool Set(Dictionary<string, string> fields, string label, string value)
     {
-        // The first instance of a label wins; a block drawn twice (fake bold) repeats its labels.
-        if (!fields.ContainsKey(label)) fields[label] = value;
+        if (fields.ContainsKey(label)) return false;
+        fields[label] = value;
+        return true;
     }
 }

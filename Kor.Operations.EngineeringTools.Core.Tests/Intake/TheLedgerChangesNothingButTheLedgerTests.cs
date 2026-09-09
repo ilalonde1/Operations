@@ -61,6 +61,15 @@ public sealed class TheLedgerChangesNothingButTheLedgerTests
         Assert.Equal(expected.WallColors.ToArray(), actual.WallColors.ToArray());
         Assert.Equal(expected.WallIsAnnotation.ToArray(), actual.WallIsAnnotation.ToArray());
         Assert.Equal(expected.WallRibbonsNotSplit, actual.WallRibbonsNotSplit);
+        // the collections steps 7 and 8 added (audit Q7: the helper omitted them)
+        Assert.Equal(expected.Footings.Count, actual.Footings.Count);
+        for (int i = 0; i < expected.Footings.Count; i++)
+        {
+            Assert.Equal(expected.Footings[i].Mark, actual.Footings[i].Mark);
+            Assert.Equal(expected.Footings[i].Outline.ToArray(), actual.Footings[i].Outline.ToArray());
+            Assert.Equal(expected.Footings[i].LabelledOnThePlan, actual.Footings[i].LabelledOnThePlan);
+        }
+        Assert.Equal(expected.GridAxes.ToArray(), actual.GridAxes.ToArray());
         Assert.Equal(expected.Columns.ToArray(), actual.Columns.ToArray());
         Assert.Equal(expected.ColumnSizes.ToArray(), actual.ColumnSizes.ToArray());
         Assert.Equal(expected.SlabColors.ToArray(), actual.SlabColors.ToArray());

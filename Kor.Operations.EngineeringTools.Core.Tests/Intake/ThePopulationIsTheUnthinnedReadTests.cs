@@ -14,8 +14,11 @@ namespace Kor.Operations.EngineeringTools.Core.Tests.Intake;
 /// WHAT THIS COVERS: the remap from thinned indices to population indices by subpath ordinal, the
 /// annotation paths appended after content paths, and that every population index comes back
 /// exactly once with the removed ones as CollapsedByThinning.
-/// WHAT IT DOES NOT: that the reader's ordinals are right on a real page — FiveStickFilesTests
-/// checks that on the five sets, page by page.
+/// WHAT IT DOES NOT: that the reader's ordinals are right on a real page — no test checks that;
+/// FiveStickFilesTests counts fates on the banked pages, which proves cardinality, not that each
+/// fate sits on the shape it was decided for. Since audit F7 (2026-09-08) the remap fails loudly
+/// on a path decided twice or a retained path decided never (TheAuditsCounterexamplesTests), so
+/// "collapsed by thinning" can no longer paper over a missing decision.
 /// </remarks>
 public sealed class ThePopulationIsTheUnthinnedReadTests
 {

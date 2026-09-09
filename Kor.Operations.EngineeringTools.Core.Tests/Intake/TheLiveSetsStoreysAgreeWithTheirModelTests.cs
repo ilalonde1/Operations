@@ -7,9 +7,10 @@ namespace Kor.Operations.EngineeringTools.Core.Tests.Intake;
 
 /// <summary>
 /// A live set's wall elevations against the engineer's own model, both resolved on the share by
-/// NAME (job number, "05 Stickfile", the reference's file name) — never a path in a test. Skipped
-/// when the share is unreachable; fails otherwise, so a reader that starts disagreeing with the
-/// model is caught here and not in ETABS.
+/// NAME (job number, "05 Stickfile", the reference's file name) — never a path in a test. When the
+/// share is unreachable it returns without asserting, which xUnit reports as a pass that proved
+/// nothing (the convention every live class here follows); on the network it fails when a reader
+/// starts disagreeing with the model, so that is caught here and not in ETABS.
 /// </summary>
 /// <remarks>
 /// SLOW: one PDF and one .e2k read off the share through DrawingMirror. Banked 2026-09-08: 31168

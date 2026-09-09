@@ -83,6 +83,10 @@ public sealed class AGridAxisIsANamedLineTests
             Assert.Equal(26000 - 20000, X(horizontal.Groups, 20) - slabBottom, 1);
             // and the line runs past the drawn extent on both sides
             Assert.True(X(vertical.Groups, 20) < slabBottom && X(vertical.Groups, 21) > slabTop);
+            // the two names stand at the line's two ends, not somewhere on the layer (audit Q7)
+            var threes = gridText.Where(t => t.Groups.Any(gp => gp.Code == 1 && gp.Value == "3")).ToList();
+            Assert.Contains(threes, t => Math.Abs(X(t.Groups, 10) - X(vertical.Groups, 10)) < 1e-6 && Math.Abs(X(t.Groups, 20) - X(vertical.Groups, 20)) < 1e-6);
+            Assert.Contains(threes, t => Math.Abs(X(t.Groups, 10) - X(vertical.Groups, 11)) < 1e-6 && Math.Abs(X(t.Groups, 20) - X(vertical.Groups, 21)) < 1e-6);
         }
         finally { File.Delete(path); }
     }

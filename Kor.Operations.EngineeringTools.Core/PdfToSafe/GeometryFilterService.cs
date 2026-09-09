@@ -36,6 +36,32 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         /// </summary>
         private const double WallLimitSlackMm = 12.7;
 
+        /// <summary>A corner is square within about 3° (cos 87°).</summary>
+        private const double RectangleCornerCos = 0.05;
+        /// <summary>A rectangle fills its own oriented box; a taper or a self-crossing outline does not.</summary>
+        private const double RectangleFillShare = 0.95;
+
+        /// <summary>
+        /// Four points are a rectangle when every corner is square and the polygon fills its oriented
+        /// box. The wall rule tested the box and the vertex count only, so a filled trapezoid
+        /// (0,0) (6000,0) (5800,300) (200,300) became a wall (audit F1, 2026-09-08).
+        /// </summary>
+        public static bool IsRectangle(List<(double X, double Y)> pts, double boxLength, double boxThickness)
+        {
+            ArgumentNullException.ThrowIfNull(pts);
+            if (pts.Count != 4) return false;
+            for (int i = 0; i < 4; i++)
+            {
+                var a = pts[i]; var b = pts[(i + 1) % 4]; var c = pts[(i + 2) % 4];
+                double e1x = b.X - a.X, e1y = b.Y - a.Y, e2x = c.X - b.X, e2y = c.Y - b.Y;
+                double n = Math.Sqrt(e1x * e1x + e1y * e1y) * Math.Sqrt(e2x * e2x + e2y * e2y);
+                if (n <= 0) return false;
+                if (Math.Abs(e1x * e2x + e1y * e2y) > RectangleCornerCos * n) return false;
+            }
+            double area = Math.Abs(PolygonProcessor.PolygonAreaMm2(pts));
+            return boxLength > 0 && boxThickness > 0 && area >= RectangleFillShare * boxLength * boxThickness;
+        }
+
         /// <summary>
         /// How much longer than it is wide a closed shape may be and still be a column.
         /// </summary>
@@ -113,7 +139,13 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 // accounted for here and goes nowhere else. Before 2026-09-08 these pieces were BEAM
                 // lines or TooShort, and no footing was ever placed.
                 if (footingPieces is not null && footingPieces.TryGetValue(pathIndex, out int footingIndex))
-                { Fate(PathReason.BecameFooting, footingIndex); continue; }
+                {
+                    // A box no label on the plan names is a box the size of a footing, and nothing on the
+                    // sheet says it is one: its pieces are unaccounted, not read (audit F2, 2026-09-08).
+                    bool labelled = footingIndex < result.Footings.Count && result.Footings[footingIndex].LabelledOnThePlan;
+                    Fate(labelled ? PathReason.BecameFooting : PathReason.FootingBoxNoLabel, footingIndex);
+                    continue;
+                }
                 var pts = sub.Points;
                 var color = sub.Color;
                 bool isClosed = sub.IsClosed;
@@ -171,12 +203,20 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     // schedule declares is a column, whatever a size window or an aspect limit
                     // fitted to other sheets would make of it: 31138 declares PC7 at 18" x 60" and
                     // PC8 at 18" x 96", and the 3.0 aspect limit refused both on their own sheet.
-                    if (!sub.IsAnnotation && sub.IsFilled && furniture.IsDeclaredColumnSize(bboxW, bboxH))
+                    // The oriented box of a filled shape, once: the declared-size rule and the wall rule
+                    // both read it, so a rotated column is judged by its own sides and not by the sheet's
+                    // axes (audit F11, 2026-09-08: a declared 18 x 60 turned 30° matched no schedule
+                    // size on the world axes and fell through to the wall rule).
+                    var obox = !sub.IsAnnotation && sub.IsFilled && pts.Count >= 3
+                        ? LoopGeometry.MinAreaBox(pts.Select(p => new DxfPoint(p.X, p.Y)).ToList()) : null;
+                    bool declaredOnAxes = !sub.IsAnnotation && sub.IsFilled && furniture.IsDeclaredColumnSize(bboxW, bboxH);
+                    bool declaredTurned = !declaredOnAxes && obox is { } ob && furniture.IsDeclaredColumnSize(ob.Length, ob.Thickness);
+                    if (declaredOnAxes || declaredTurned)
                     {
                         result.Columns.Add(PolygonProcessor.Centroid(pts));
                         result.ColumnColors.Add(color);
                         result.ColumnIsAnnotation.Add(sub.IsAnnotation);
-                        result.ColumnSizes.Add((bboxW, bboxH));
+                        result.ColumnSizes.Add(declaredOnAxes ? (bboxW, bboxH) : (obox!.Length, obox.Thickness));
                         Fate(PathReason.BecameColumnByDeclaredSize, result.Columns.Count - 1);
                         continue;
                     }
@@ -185,9 +225,9 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     // The banked defaults are 4"-60" thick, at least 48" long, and aspect at least 2.
                     // Measured 2026-09-08 on five sets: the candidates were four-vertex rectangles;
                     // on 31168 their counts were within four of Revit's (intake convergence brief 15).
-                    if (!sub.IsAnnotation && sub.IsFilled)
+                    // Non-paper: a white fill is not poché whether or not it is stroked (audit F11).
+                    if (obox is { } box && !IsPaper(color))
                     {
-                        var box = LoopGeometry.MinAreaBox(pts.Select(p => new DxfPoint(p.X, p.Y)).ToList());
                         // Half an inch of slack on the limits, as the DXF side carries (its LengthSlack):
                         // a wall drawn at exactly 4" or exactly 48" measures a hair under after the
                         // export's arithmetic, and a limit is a statement about walls, not about
@@ -195,7 +235,9 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         if (box.Thickness >= minWallThicknessMm - WallLimitSlackMm && box.Thickness <= maxWallThicknessMm + WallLimitSlackMm
                             && box.Length >= minWallLengthMm - WallLimitSlackMm && box.Aspect >= minWallAspect)
                         {
-                            if (pts.Count == 4)
+                            // four points are a rectangle only when they are one: a trapezoid's box passed
+                            // these limits and became a wall (audit F1, 2026-09-08)
+                            if (pts.Count == 4 && IsRectangle(pts, box.Length, box.Thickness))
                             {
                                 result.Walls.Add(new WallPanel(pts,
                                     (box.AxisStart.X, box.AxisStart.Y), (box.AxisEnd.X, box.AxisEnd.Y), box.Thickness));

@@ -17,6 +17,12 @@ public enum PathReason
     BecameWall,
     /// <summary>One dash of a footing outline the schedule sizes (Intake.FootingOutlines); the object index is the footing's.</summary>
     BecameFooting,
+    /// <summary>
+    /// One dash of a dashed box of a scheduled footing size that no label on the plan names. The box
+    /// is still emitted with the mark its size matches, flagged, for the consumer to judge; the
+    /// ledger does not call its pieces read (audit F2, 2026-09-08).
+    /// </summary>
+    FootingBoxNoLabel,
 }
 
 /// <summary>Input path index and its decision; ObjectIndex is zero-based in the corresponding geometry list.</summary>
@@ -29,7 +35,7 @@ public sealed record PathFate(int PathIndex, Disposition Disposition, PathReason
         PathReason.BecameSlab or PathReason.BecameColumnByDeclaredSize or PathReason.BecameColumnByShape or PathReason.BecameWall
             or PathReason.BecameFooting or PathReason.GridAxis
             => Disposition.Read,
-        PathReason.EmittedAsLine => Disposition.Unaccounted,
+        PathReason.EmittedAsLine or PathReason.FootingBoxNoLabel => Disposition.Unaccounted,
         PathReason.MarkupOnlyMode or PathReason.FurnitureRegion or PathReason.Underline
             or PathReason.PaperFill or PathReason.SheetFrame or PathReason.FrameEdgeLine
             or PathReason.GridLineExcluded or PathReason.ColumnTooSmall or PathReason.UnfilledSmallShape

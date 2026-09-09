@@ -54,7 +54,7 @@ public sealed class DrawingIntakeTests
         Assert.Contains(sheet.PathFates, f => f.Reason == PathReason.EmittedAsLine && f.Disposition == Disposition.Unaccounted);
         Assert.Equal(Enumerable.Range(0, sheet.Content.Paths.Count), sheet.PathFates.Select(f => f.PathIndex));
         Assert.Equal(Enumerable.Range(0, sheet.Content.Words.Count), sheet.WordFates.Select(f => f.WordIndex));
-        Assert.Contains(sheet.WordFates, f => f.Kind == "words: in a schedule a reader read" && f.Disposition == Disposition.Read);
+        Assert.Contains(sheet.WordFates, f => f.Kind == "words: in a schedule a reader read rows of" && f.Disposition == Disposition.Read);
         Assert.Contains(sheet.WordFates, f => f.Kind == "words: grid axis names" && f.Disposition == Disposition.Read);
         Assert.Contains(sheet.PathFates, f => f.Reason == PathReason.GridAxis && f.Disposition == Disposition.Read);
         var note = Assert.Single(sheet.Markup);

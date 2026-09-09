@@ -64,6 +64,13 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 double w = PolygonProcessor.PathLength(pts); var (pcx, pcy) = PolygonProcessor.Centroid(pts);
                 sumX += pcx * w; sumY += pcy * w; totalWeight += w;
             }
+            // footings weigh too: a foundation plan whose only structure is footings is a plan (audit F6)
+            foreach (var footing in geometry.Footings)
+            {
+                var pts = footing.Outline.ToList();
+                double w = PolygonProcessor.PathLength(pts); var (pcx, pcy) = PolygonProcessor.Centroid(pts);
+                sumX += pcx * w; sumY += pcy * w; totalWeight += w;
+            }
             if (totalWeight == 0.0) return;
             double cx = sumX / totalWeight;
             double cy = sumY / totalWeight;
@@ -369,7 +376,9 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             // as a grid by name (GridAlignment.LooksLikeAGridLayer); never mapped to a KOR layer
             bool hasGrid = geometry.GridAxes.Count > 0;
             const string gridLayer = "GRID";
-            int layerCount = (layerByColour ? colourLayers.Count + 1 : 9) + (hasText ? 1 : 0) + (hasGrid ? 1 : 0);
+            bool hasFootings = xFootings.Count > 0;
+            string footingLayer = korLayers ? KorLayerName("FOOTING") : "FOOTING";
+            int layerCount = (layerByColour ? colourLayers.Count + 1 : 9) + (hasText ? 1 : 0) + (hasGrid ? 1 : 0) + (hasFootings ? 1 : 0);
 
             G(0, "TABLE"); G(2, "LAYER"); G(70, layerCount.ToString(ic));
             void WL(string n, int c) { G(0, "LAYER"); G(2, n); G(70, "0"); G(62, c.ToString()); G(6, "CONTINUOUS"); }
@@ -390,6 +399,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             }
             if (hasText) WL(textLayer, 7);
             if (hasGrid) WL(gridLayer, 8);
+            // declared like the entities are written (audit F6: FOOTING polylines had no table entry)
+            if (hasFootings) WL(footingLayer, NearestAci(black));
             G(0, "ENDTAB");
             G(0, "ENDSEC");
 
@@ -431,7 +442,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     true);
 
             foreach (var footing in xFootings)
-                WritePolyline(korLayers ? KorLayerName("FOOTING") : "FOOTING", NearestAci(black), footing, true);
+                WritePolyline(footingLayer, NearestAci(black), footing, true);
 
             // Columns: footprint rectangles from the parallel xColumnSizes list.
             for (int i = 0; i < xColumns.Count; i++)

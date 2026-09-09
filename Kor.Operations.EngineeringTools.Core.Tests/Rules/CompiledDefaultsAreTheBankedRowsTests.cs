@@ -115,7 +115,8 @@ public sealed class CompiledDefaultsAreTheBankedRowsTests
             foreach (var p in type.GetProperties(BindingFlags.Public | BindingFlags.Instance))
             {
                 var t = Nullable.GetUnderlyingType(p.PropertyType) ?? p.PropertyType;
-                if (t != typeof(double) && t != typeof(int) && t != typeof(bool)) continue;
+                // every numeric kind an option could be declared as; a new decimal or long must not escape (audit F11)
+                if (t != typeof(double) && t != typeof(int) && t != typeof(bool) && t != typeof(long) && t != typeof(decimal) && t != typeof(float)) continue;
                 string qualified = $"{type.Name}.{p.Name}";
                 if (NotARule.ContainsKey(qualified)) continue;
                 if (!keys.Contains("dxf." + Kebab(p.Name))) orphans.Add(qualified);

@@ -215,7 +215,14 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         public static IReadOnlyDictionary<int, int>? ReadFootings(
             IReadOnlyList<RawSubpath> rawSubpaths, VectorPageReader.PageContent pageRead, ExtractedGeometry result, bool annotationsOnly, double scale,
             SheetFurniture.Set? furniture = null)
+            => ReadFootings(rawSubpaths, pageRead, result, annotationsOnly, scale, furniture, out _);
+
+        /// <summary>As above, and the spread-footing labels the plan places (mm), for the record to carry.</summary>
+        public static IReadOnlyDictionary<int, int>? ReadFootings(
+            IReadOnlyList<RawSubpath> rawSubpaths, VectorPageReader.PageContent pageRead, ExtractedGeometry result, bool annotationsOnly, double scale,
+            SheetFurniture.Set? furniture, out IReadOnlyList<Intake.FootingOutlines.MarkLabel> spreadLabels)
         {
+            spreadLabels = Array.Empty<Intake.FootingOutlines.MarkLabel>();
             if (annotationsOnly) return null;
             IReadOnlyList<FootingScheduleReader.FootingType> types;
             (double MinX, double MinY, double MaxX, double MaxY) tableBox;
@@ -223,9 +230,12 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             if (types.Count == 0) return null;
             // sheet furniture in the page's own points, as SheetFurniture.On reads it; the outlines are in mm
             furniture ??= SheetFurniture.On(pageRead, PlanAgreesWithItsSchedule.DefaultToleranceMm);
+            var spreadMarks = new HashSet<string>(types.Where(t => t.IsSpread).Select(t => t.Mark), StringComparer.OrdinalIgnoreCase);
             var labels = FootingScheduleReader.PlacementPositions(pageRead, types, tableBox, furniture)
+                .Where(kv => spreadMarks.Contains(kv.Key))
                 .SelectMany(kv => kv.Value.Select(p => new Intake.FootingOutlines.MarkLabel(kv.Key, p.X * scale, p.Y * scale)))
                 .ToList();
+            spreadLabels = labels;
             var (footings, pieces) = Intake.FootingOutlines.Read(rawSubpaths, types, labels: labels, furniture: furniture.Scaled(scale));
             result.Footings.AddRange(footings);
             return pieces.Count > 0 ? pieces : null;

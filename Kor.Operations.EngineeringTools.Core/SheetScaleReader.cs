@@ -47,11 +47,33 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
         /// </summary>
         public static string? FromPage(VectorPageReader.PageContent? page)
         {
-            if (page is null || page.WidthPts <= 0 || page.HeightPts <= 0 || page.Words.Count == 0) return null;
+            var (values, note) = Candidates(page);
+            if (values.Count == 0) return null;
+            // Conflicting stated scales (two parseable SCALE fields disagreeing) → ambiguous, no guess.
+            if (Conflicting(values)) return null;
+            return note;
+        }
+
+        /// <summary>
+        /// True when the title block states two SCALE values that parse to different ratios. Then
+        /// <see cref="FromPage"/> is null by refusal, not by absence, and no fallback may fill it
+        /// (audit F8, 2026-09-08).
+        /// </summary>
+        public static bool StatesConflictingScales(VectorPageReader.PageContent? page)
+        {
+            var (values, _) = Candidates(page);
+            return values.Count > 1 && Conflicting(values);
+        }
+
+        private static bool Conflicting(List<double> values) => values.Any(v => Math.Abs(v - values[0]) / values[0] > 0.01);
+
+        private static (List<double> Values, string? Note) Candidates(VectorPageReader.PageContent? page)
+        {
+            if (page is null || page.WidthPts <= 0 || page.HeightPts <= 0 || page.Words.Count == 0) return (new List<double>(), null);
             double w = page.WidthPts, h = page.HeightPts;
 
             var region = page.Words.Where(t => t.Cx / w >= TitleRegionMinFx).ToList();
-            if (region.Count == 0) return null;
+            if (region.Count == 0) return (new List<double>(), null);
 
             var values = new List<double>();
             string? note = null;
@@ -87,11 +109,7 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                 values.Add(v);
                 note ??= candidate;
             }
-
-            if (values.Count == 0) return null;
-            // Conflicting stated scales (two parseable SCALE fields disagreeing) → ambiguous, no guess.
-            if (values.Any(v => Math.Abs(v - values[0]) / values[0] > 0.01)) return null;
-            return note;
+            return (values, note);
         }
 
         /// <summary>

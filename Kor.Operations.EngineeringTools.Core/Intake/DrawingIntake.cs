@@ -97,14 +97,18 @@ public static class DrawingIntake
         // against the index; 31202: 58 of 59). The level rule and the right-edge text are
         // inferences, and the level rule alone typed 14 of 31168's 41 sheets plan — wall
         // elevations and typical details name storeys too. Measured 2026-09-08.
-        var fields = TitleBlockFields.Read(content);
+        var fields = TitleBlockFields.Read(content, out var titleBlockConsumed);
         string? fieldTitle = fields.TryGetValue("SHEET TITLE", out var ft) ? ft
                            : fields.TryGetValue("DRAWING TITLE", out ft) ? ft : null;
         // THE SCALE FIELD IS THE SCALE. SheetScaleReader reads the same field by its own search and
         // declined 80 of 294 pages on 2026-09-08; 45 of those state "AS NOTED" (details, notes,
         // schedules — a statement, kept as ScaleStatement), the rest state a ratio the field yields.
         string? scaleStatement = fields.TryGetValue("SCALE", out var sf) ? sf : null;
-        scale ??= SheetScaleReader.RatioOf(scaleStatement);
+        // a title block stating two different scales is ambiguous and the reader refused to guess; the
+        // field must not undo that refusal (audit F8, 2026-09-08)
+        bool scaleConflict = false;
+        try { scaleConflict = SheetScaleReader.StatesConflictingScales(content); } catch { }
+        if (!scaleConflict) scale ??= SheetScaleReader.RatioOf(scaleStatement);
         string? titleText = null;
         try { titleText = SheetTitleReader.TitleText(content); } catch { /* a title the reader cannot form is a fact, not a failure */ }
         string sheetType = FirstTyped(bookmark, fieldTitle);
@@ -135,13 +139,14 @@ public static class DrawingIntake
             RawPathCount = content.Paths.Count,
         };
         IReadOnlyList<PathFate> pathFates = [];
+        IReadOnlyList<FootingOutlines.MarkLabel> footingLabels = Array.Empty<FootingOutlines.MarkLabel>();
         if (classify)
         {
             int meaningfulCount = raw.Count(s => s.Points.Count > 3 ||
                 (s.IsClosed && GeometryFilterService.BoundingBoxDiagonal(s.Points) > 10.0));
             geometry.IsVectorPdf = meaningfulCount >= 5;
             var thinnedFates = new List<PathFate>();
-            var footingPieces = PdfPlanReader.ReadFootings(raw, content, geometry, request.MarkupOnly, scaleFactor, furniture);
+            var footingPieces = PdfPlanReader.ReadFootings(raw, content, geometry, request.MarkupOnly, scaleFactor, furniture, out footingLabels);
             GeometryFilterService.Classify(raw, geometry,
                 options.SlabMinDiagonalMm, options.LineMinLengthMm, false,
                 geometry.PageWidthPts * scaleFactor, geometry.PageHeightPts * scaleFactor,
@@ -153,7 +158,7 @@ public static class DrawingIntake
             if (!request.MarkupOnly)
                 geometry.GridAxes.AddRange(grid.Axes.Select(a => new GridAxis(a.Name, a.Vertical, a.At * scaleFactor)));
         }
-        var wordFates = WordFates(content, furniture, grid, columns.Count, footings.Count, walls.Count);
+        var wordFates = WordFates(content, furniture, grid, columns.Count, footings.Count, walls.Count, titleBlockConsumed, geometry.GridAxes.Count > 0);
         int inked = 0, noInk = 0, paper = 0, annotationPaths = 0;
         var inkedPathIndices = new HashSet<int>();
         for (int pathIndex = 0; pathIndex < full.Paths.Count; pathIndex++)
@@ -217,7 +222,7 @@ public static class DrawingIntake
             markup, links, full, pathFates, wordFates)
         {
             ColumnAgreement = agreement, ColumnAgreementError = agreementError,
-            TitleBlock = fields, ScaleStatement = scaleStatement, Storeys = storeys,
+            TitleBlock = fields, ScaleStatement = scaleStatement, ScaleConflict = scaleConflict, Storeys = storeys, FootingLabels = footingLabels,
             Context = new SheetContext
             {
                 OutlinesPresent = facts.OutlinesPresent, ScheduleHeadings = headings.Count,
@@ -256,22 +261,30 @@ public static class DrawingIntake
         for (int i = 0; i < fullKeptOrdinals.Count; i++) fullIndexOfOrdinal[fullKeptOrdinals[i]] = i;
 
         var result = new PathFate?[fullPathCount];
+        // FAIL LOUDLY, NOT SILENTLY. A path the classifier decided twice, or a retained path it never
+        // decided, is a classifier fault; filling the gap with "collapsed by thinning" hid both
+        // (audit F7, 2026-09-08). Only an ordinal the thinned read dropped may be collapsed.
+        int FullIndexOf(int j)
+        {
+            if (j < thinnedKeptOrdinals.Count)
+                return fullIndexOfOrdinal.TryGetValue(thinnedKeptOrdinals[j], out int f) ? f : -1;
+            int k = j - thinnedKeptOrdinals.Count;   // an annotation path: the k-th after the content paths, in both reads
+            int fullIndex = fullKeptOrdinals.Count + k;
+            return k < 0 || fullIndex >= fullPathCount || j >= thinnedPathCount ? -1 : fullIndex;
+        }
         foreach (var fate in thinnedFates)
         {
-            int j = fate.PathIndex;
-            int fullIndex;
-            if (j < thinnedKeptOrdinals.Count)
-            {
-                if (!fullIndexOfOrdinal.TryGetValue(thinnedKeptOrdinals[j], out fullIndex)) continue;
-            }
-            else
-            {
-                // an annotation path: the k-th after the content paths, in both reads
-                int k = j - thinnedKeptOrdinals.Count;
-                fullIndex = fullKeptOrdinals.Count + k;
-                if (k < 0 || fullIndex >= fullPathCount || j >= thinnedPathCount) continue;
-            }
+            int fullIndex = FullIndexOf(fate.PathIndex);
+            if (fullIndex < 0) continue;
+            if (result[fullIndex] is { } already)
+                throw new InvalidOperationException($"path {fullIndex} was decided twice: {already.Reason} and {fate.Reason}.");
             result[fullIndex] = fate with { PathIndex = fullIndex };
+        }
+        for (int j = 0; j < thinnedPathCount; j++)
+        {
+            int fullIndex = FullIndexOf(j);
+            if (fullIndex >= 0 && result[fullIndex] is null)
+                throw new InvalidOperationException($"path {fullIndex} reached the classifier (thinned index {j}) and was given no decision.");
         }
         for (int i = 0; i < fullPathCount; i++)
             result[i] ??= new PathFate(i, Disposition.Discarded, PathReason.CollapsedByThinning, null);
@@ -315,7 +328,8 @@ public static class DrawingIntake
     }
 
     private static IReadOnlyList<WordFate> WordFates(VectorPageReader.PageContent content,
-        SheetFurniture.Set furniture, GridBubbles.Grid grid, int colRows, int footRows, int wallRows)
+        SheetFurniture.Set furniture, GridBubbles.Grid grid, int colRows, int footRows, int wallRows,
+        IReadOnlySet<(double X, double Y)> titleBlockConsumed, bool gridExported)
     {
         bool ReaderClaims(string regionKind)
         {
@@ -336,10 +350,19 @@ public static class DrawingIntake
             if (region.Kind is not null)
             {
                 if (region.Kind == "title block")
-                    Word("words: title block (number, title, revisions, dates, drawn by …)", Disposition.Unread, "SheetTitleReader/SheetScaleReader read level, zone and scale only");
+                {
+                    // a word the field reader consumed — a label or a kept value — is read; the rest of
+                    // the block (revisions, dates, addresses) is not (audit F10)
+                    if (titleBlockConsumed.Contains((w.Cx, w.Cy)))
+                        Word("words: title block fields read (SHEET TITLE, SCALE, PROJECT NO …)", Disposition.Read, "TitleBlockFields");
+                    else
+                        Word("words: title block (revisions, dates, addresses, seal …)", Disposition.Unread, "no field reader takes them; SheetTitleReader/SheetScaleReader read level, zone and scale only");
+                }
                 else if (region.Kind.StartsWith("schedule:", StringComparison.Ordinal))
                 {
-                    if (ReaderClaims(region.Kind)) Word("words: in a schedule a reader read", Disposition.Read, "MarkRowScheduleReader (column, footing, flat shear wall)");
+                    // read means a reader returned rows for this KIND of table on this sheet; not every
+                    // word in the table is a row (a note under the table shares the region) — audit F10
+                    if (ReaderClaims(region.Kind)) Word("words: in a schedule a reader read rows of", Disposition.Read, "MarkRowScheduleReader (column, footing, flat shear wall) — the table's kind, not each word");
                     else { Word("words: in a schedule with no reader (stirrup, zone, beam, slab reinforcing …)", Disposition.Unread, "no reader"); }
                 }
                 else
@@ -349,7 +372,10 @@ public static class DrawingIntake
             if (grid.Bubbles.Any(b => (b.OnVerticalAxis || b.OnHorizontalAxis)
                                        && Math.Abs(b.Cx - w.Cx) <= b.Radius && Math.Abs(b.Cy - w.Cy) <= b.Radius))
             {
-                Word("words: grid axis names", Disposition.Read, "GridBubbles — the name of a named axis (Geometry.GridAxes)");
+                // read only when the axis it names left the record as geometry; in markup-only mode,
+                // or with no scale, the name went nowhere (audit F10)
+                if (gridExported) Word("words: grid axis names", Disposition.Read, "GridBubbles — the name of a named axis (Geometry.GridAxes)");
+                else Word("words: grid axis names", Disposition.Unread, "GridBubbles names the axis; no axis was exported (markup-only, or no scale)");
                 continue;
             }
             string kind = KindOf(w.Text);
@@ -404,7 +430,9 @@ public static class DrawingIntake
     public static readonly (string Type, Regex Rx)[] SheetTypes =
     {
         ("schedule",          new Regex(@"SCHEDULE", RegexOptions.IgnoreCase | RegexOptions.Compiled)),
-        ("plan",              new Regex(@"\bPLANS?\b|\bFOUNDATIONS?\b(?!\s+(DETAILS?|SCHEDULES?|NOTES?)\b)", RegexOptions.IgnoreCase | RegexOptions.Compiled)),
+        // a PLAN followed by NOTES, SCHEDULE, DETAILS or LEGEND is that kind, and a KEY PLAN is an
+        // inset, not a sheet (audit F5, 2026-09-08: "FOUNDATION PLAN NOTES" typed plan)
+        ("plan",              new Regex(@"(?<!\bKEY\s+)\bPLANS?\b(?!\s+(NOTES?|SCHEDULES?|DETAILS?|LEGENDS?)\b)|\bFOUNDATIONS?\b(?!\s+(DETAILS?|SCHEDULES?|NOTES?|PLANS?\s+(NOTES?|SCHEDULES?|DETAILS?|LEGENDS?))\b)", RegexOptions.IgnoreCase | RegexOptions.Compiled)),
         ("section/elevation", new Regex(@"SECTION|ELEVATION", RegexOptions.IgnoreCase | RegexOptions.Compiled)),
         ("details",           new Regex(@"DETAIL", RegexOptions.IgnoreCase | RegexOptions.Compiled)),
         ("notes/general",     new Regex(@"NOTES|GENERAL|LEGEND|ABBREV", RegexOptions.IgnoreCase | RegexOptions.Compiled)),

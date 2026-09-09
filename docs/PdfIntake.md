@@ -232,7 +232,8 @@ side is 4"–60" (the banked `dxf.max-wall-thickness` row, not the code's 36), l
 least twice the thickness, is a wall — after the declared-column-size rule, which wins. Its outline,
 axis and thickness go into `ExtractedGeometry.Walls`, its fate is `BecameWall`, and the DXF carries
 it on the WALL layer the DXF-to-ETABS classifier already reads. Ribbons (L and U cores drawn as one
-outline) are counted, not split: `WallRibbonsNotSplit`.
+outline) are counted, not split — `WallRibbonsNotSplit`, and only when the whole outline's box
+passes the wall limits; a broad core with thin legs is not counted (audit F11).
 
 **The differential**, thirteen baseline pages: COLUMN identical on 12 of 13, BEAM identical on 13 of
 13, SLAB down on 13 of 13, WALL new on 13 of 13 (11 / 21 / 13 on 31130 p11–13; 25 / 23 / 27 on 31168
@@ -328,7 +329,7 @@ fixed: KOR's title blocks set their 8 pt labels and 8.4 pt notes in fake bold, e
 twice at the same origin (358 of 5,579 letters on 31130 p11, offset exactly 0.0), and PdfPig's
 nearest-neighbour extractor given both copies interleaves them — PROJECT TITLE arrived as
 "PRPORJOEJCETC T TITTILTEL E". `VectorPageReader` now drops a letter whose value, size and origin
-equal an earlier letter's before extracting words. Word totals fell by the duplicates (568,310 →
+equal an earlier letter's to a tenth of a point before extracting words. Word totals fell by the duplicates (568,310 →
 566,264 items on 31130); nothing else in the ledger moved; the thirteen DXFs are byte-identical.
 
 **Only a plan is taken off to a DXF.** `pdf-takeoff` reports a non-plan page and writes nothing
@@ -344,8 +345,10 @@ emitted on a non-plan sheet.
 Brief 19, implemented by the verifier. The glyph deduplication had already moved
 `SheetScaleReader` from 79 to 214 of 294 pages, because "SCALE:" was itself a double-drawn label.
 The remaining 80 are now accounted for rather than unread: the record carries `ScaleStatement`,
-the SCALE field verbatim, and `SheetScaleReader.RatioOf` parses it as the fallback when the reader
-declines (repairing the one export fault seen, an "=" dropped between two lengths).
+the SCALE field as the drafter wrote it (its tokens joined with single spaces), and
+`SheetScaleReader.RatioOf` parses it as the fallback when the reader declines for want of a field
+(repairing the one export fault seen, an "=" dropped between two lengths) — never when the reader
+declined because two SCALE fields disagree (audit F8; the ledger says so).
 
 | Outcome | 31130 | 31168 | 31138 | 31065 | 31202 | All |
 |---|---|---|---|---|---|---|
@@ -371,8 +374,8 @@ foundation schedule was read — marks, sizes, depths, how many of each mark the
 the drawn outlines went to the DXF as BEAM lines or were dropped as too short. Measured first, on
 three foundation plans: not one footing outline is a closed path; every one is separate two-point
 strokes, one per dash. Chained across the DXF side's own dash-join gap (`dxf.dash-join-gap` =
-14 in), collinear within 12 mm, three or more pieces to a side, and closed into boxes, the boxes
-match the schedule's sizes to the millimetre.
+14 in), adjacent pieces within 12 mm of one another, three or more pieces to a side, and closed
+into boxes, the boxes match the schedule's sizes to the millimetre.
 
 `Intake/FootingOutlines` reads them before the classifier runs; every consumed dash is recorded
 `BecameFooting` with its footing's index and reaches no other branch. The record carries
@@ -521,8 +524,8 @@ p17 puts the numerals 1 and 4 on horizontal axes, which is what the sheet draws.
 
 **For other steps.** The named axes make alignment by NAME possible — `GridAlignment` matches by
 spacings today, and the drawing's "3" and the model's GRID "3" are the same line — a brief in
-`DxfToEtabsService`. WHAT THE CHECK COVERS: the count and naming of axes on the five schedule
-pages and the DXF's GRID layer for a synthetic geometry. WHAT IT DOES NOT: an axis's position
+`DxfToEtabsService`. WHAT THE CHECK COVERS: the count and the names in order of the axes on the
+five schedule pages (banked after audit Q7) and the DXF's GRID layer for a synthetic geometry. WHAT IT DOES NOT: an axis's position
 against the drawn grid line (the spot check above was by hand), a bubble whose label sits outside
 the circle, a grid drawn without bubbles, and whether the ETABS side aligns a PDF-derived DXF
 better with the layer present — not yet measured.
@@ -589,3 +592,52 @@ on the share, and holds at least 18 matched storeys with none off tolerance (13 
 the share is unreachable). WHAT IT DOES NOT: a second live set (31130's reference is not on the
 share under a name the test knows), AS NOTED sheets (31138 states nothing to compare), and a level
 the two sides name differently.
+
+## 18. The audit, 2026-09-08, and what it changed
+
+Brief 24 asked Codex to read steps 1–11 as committed and find where the code contradicts its own
+stated rule, where a test's name is wider than its check, and where a doc sentence is not something
+the code does. Its response is `docs/codex/CODEX-24-AUDIT-RESPONSE.md`: eleven findings and eight
+answers, every one with a file, a line and the smallest input. Each defect became the failing test
+in `TheAuditsCounterexamplesTests` before its fix; the fixes below landed in one pass.
+
+| Finding | What the audit showed | What changed |
+|---|---|---|
+| F1 | the wall rule tested the box and the vertex count, never that four points form a rectangle: a filled trapezoid became a wall | `GeometryFilterService.IsRectangle` — square corners within 3° and the polygon fills its box |
+| F2 | an unlabelled footing box's pieces were read in the primary ledger, and only a context note said otherwise | `PathReason.FootingBoxNoLabel`, unaccounted; the box is still emitted, flagged |
+| F3 | pass 2 took the first scheduled type that fit; a label could not correct it; two label reaches | one reach (half the footing's size) chooses the type and flags the footing |
+| F4 | an axis sat at the bubble's centre, not on its rule, and bubbles within 1.5 pt merged | each bubble keeps the rule nearest its centre; axes cluster by rule (0.5 pt); the floor is the rule reader's 0.6 pt |
+| F5 | "FOUNDATION PLAN NOTES" and "KEY PLAN" typed as plans | the PLAN regex refuses a following NOTES / SCHEDULE / DETAILS / LEGEND and a preceding KEY |
+| F6 | a footing-only page wrote no DXF; FOOTING was written without a LAYER-table entry | footings weigh in the centring; the layer is declared |
+| F7 | the remapper filled every empty slot with "collapsed by thinning", hiding a path decided twice or never | it throws on both |
+| F8 | two different SCALE fields: the reader refused, the field fallback answered anyway | `SheetScaleReader.StatesConflictingScales`; the ledger says "states two different scales", unaccounted |
+| F9 | the ledger re-read the footing schedule and placements instead of reporting the record | the record carries `FootingLabels`; the ledger counts them |
+| F10 | title-block words were all unread though the field reader consumed some; the bookmark "had no reader" though it typed the sheet; axis names were read in markup-only mode | the field reader returns the tokens it consumed; the bookmark row is read when it typed the sheet; axis names are read only when an axis was exported |
+| F11 | a declared column turned 30° fell through to the wall rule; a stroked white fill could be a wall; a REV label in the next column cut SHEET TITLE off; the parity detector skipped decimal and long | the oriented box serves both rules; non-paper is a wall condition; the field ends at the next label in its own column; the detector takes every numeric kind |
+
+Measured after, with the harness the audit could not run: `dxf-census` step 11 → 12 moved BEAM
+only, by 1–4 lines on 6 of 13 files (the axes' lines now sit on the rules); WALL, COLUMN, SLAB,
+FOOTING and GRID identical on 13 of 13; the five sets' ledger totals unchanged; the Revit
+differential unchanged at walls 425 / 850, columns 1,191 / 1,576, slabs 48 / 44. On the five sets no
+trapezoid wall, no turned declared column and no stroked white wall existed — the fixes are guards,
+not corrections of a banked number — and the unlabelled boxes (the core footing on 31065 p14, the
+4 ft square on 31130 p15) moved 12 pieces from read to unaccounted. The ledger-honesty items
+moved words the other way: the title-block words the field reader consumed are read now (5,146 on
+31130, 3,128 on 31168, 4,959 on 31138, 4,888 on 31065, 3,495 on 31202), the bookmark row is read on
+the two sets whose bookmarks PdfPig can read (31065 73 of 73 pages, 31202 59 of 59), and unread
+fell by the same on each set — 31130 31,388 → 26,242 — with totals and unaccounted unchanged.
+
+**What the audit said that this document now says differently.** "The inventory derives nothing"
+was false until F9 and is true again. "Ribbons are counted" is counted only when the whole outline's
+box passes the wall limits. "The SCALE field verbatim" is the field's tokens joined with single
+spaces. "Collinear within 12 mm" is adjacent pieces within 12 mm of one another. "A glyph drawn twice
+at one origin" is one within a tenth of a point. The banked grid check now holds the names in order,
+not a count. And equal ledger totals mean the accounting is stable, not that the geometry is the
+same: a bookmark, a rotation, an image or a link each add one item, and a footing's label moves
+none.
+
+**Not changed, on purpose.** Empty fates when no scale is requested (documented, tested). "DESIGN
+LOAD PLANS" typed as a plan (policy). The two-read design (unthinned content, thinned classifier)
+superseded the one-read sentence in brief 13. A ribbon is still not split, a wall with an opening
+is still not reconstructed, and a curved wall is still not a wall — the audit's table in question 2
+is the honest list of what the rectangle rule cannot read, and the 425 against 850 lives there.

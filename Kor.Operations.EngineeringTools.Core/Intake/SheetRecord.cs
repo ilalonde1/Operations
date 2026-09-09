@@ -45,6 +45,18 @@ public sealed record SheetRecord(
     public string? ScaleStatement { get; init; }
 
     /// <summary>
+    /// The title block states two different scales. <see cref="ScaleNote"/> is then null by refusal,
+    /// and the SCALE field was not used as a fallback (audit F8).
+    /// </summary>
+    public bool ScaleConflict { get; init; }
+
+    /// <summary>
+    /// The spread-footing marks the plan places, with their positions in millimetres, as the footing
+    /// reader used them — the report counts these and re-reads nothing (audit F9).
+    /// </summary>
+    public IReadOnlyList<FootingOutlines.MarkLabel> FootingLabels { get; init; } = Array.Empty<FootingOutlines.MarkLabel>();
+
+    /// <summary>
     /// Storey heights read off a section or elevation sheet: the distance between consecutive level
     /// lines of its level ladder at the sheet's stated scale (<see cref="StoreyLadder"/>). Empty on any
     /// other sheet type, and on an elevation with no ratio scale or fewer than three level lines.
