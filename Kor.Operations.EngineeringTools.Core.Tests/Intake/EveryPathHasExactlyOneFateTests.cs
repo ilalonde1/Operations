@@ -101,7 +101,7 @@ public sealed class EveryPathHasExactlyOneFateTests
             {
                 PathReason.BecameSlab or PathReason.BecameColumnByDeclaredSize or PathReason.BecameColumnByShape or PathReason.BecameWall
                     or PathReason.BecameFooting or PathReason.GridAxis or PathReason.Doorway or PathReason.ClipOfWall
-                    or PathReason.BecameWallFace => Disposition.Read,
+                    or PathReason.BecameWallFace or PathReason.MatchLine => Disposition.Read,
                 PathReason.EmittedAsLine or PathReason.FootingBoxNoLabel or PathReason.Band => Disposition.Unaccounted,
                 _ => Disposition.Discarded,
             };
@@ -166,6 +166,8 @@ internal static class FateFixture
         (Line(10000, 8300, 13000, 8300), PathReason.BecameWallFace),
         // a filled band thicker than the thickest wall, many times longer than wide: not a slab (step 21)
         (Rect(40000, 1700, 10000, 40000), PathReason.Band),
+        // a dash of the line the fixture's furniture names as the match line (step 22)
+        (Line(5000, 48000, 8000, 48000), PathReason.MatchLine),
         // three at the same spacing: a hatch, still lines
         (Line(10000, 12000, 13000, 12000), PathReason.EmittedAsLine),
         (Line(10000, 12300, 13000, 12300), PathReason.EmittedAsLine),
@@ -189,6 +191,7 @@ internal static class FateFixture
             [30000], [30000], 1.5, [(1800, 400)], 1)
         {
             Underlines = [new(1000, 3000, 2000)],
+            MatchLines = [new(0, 48000, 70000, 48000)],
         };
         GeometryFilterService.Classify(paths, result, slabMinimum, 200, excludeGrid, 100000, 70000,
             markupOnly, furniture: furniture, fates: fates);

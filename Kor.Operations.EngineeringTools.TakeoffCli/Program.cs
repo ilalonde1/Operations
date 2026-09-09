@@ -757,6 +757,17 @@ if (args.Length >= 1 && args[0].Equals("pdf-overlay", StringComparison.OrdinalIg
     foreach (var r in ovRegions)
         OvPoly(new[] { (r.MinX * sMmR, r.MinY * sMmR), (r.MaxX * sMmR, r.MinY * sMmR), (r.MaxX * sMmR, r.MaxY * sMmR), (r.MinX * sMmR, r.MaxY * sMmR) }, lightBlue, 1, close: true);
     Console.WriteLine($"  furniture regions {ovRegions.Count} (light blue): {string.Join("; ", ovRegions.Select(r => r.Kind).Take(14))}");
+    // the match line a plan too wide for one sheet was split on (step 22), magenta
+    var ovMatch = SheetFurniture.MatchLines(ovContent).ToList();
+    foreach (var m in ovMatch) OvPoly(new[] { (m.X0 * sMmR, m.Y0 * sMmR), (m.X1 * sMmR, m.Y1 * sMmR) }, new Rgba32(220, 0, 160), 3, close: false);
+    var ovMatchWords = ovContent.Words.Where(w => w.Text.Trim().StartsWith("MATCH", StringComparison.OrdinalIgnoreCase)).ToList();
+    foreach (var w in ovMatchWords)
+    {
+        var lineWord = ovContent.Words.FirstOrDefault(o => o.Text.Trim().Equals("LINE", StringComparison.OrdinalIgnoreCase) && Math.Abs(o.Cx - w.Cx) <= 4 * w.Height && Math.Abs(o.Cy - w.Cy) <= 4 * w.Height);
+        Console.WriteLine($"    '{w.Text}' at ({w.Cx:0},{w.Cy:0}) pt, box {w.Width:0.0} x {w.Height:0.0} pt" + (lineWord.Text is not null ? $"; LINE at ({lineWord.Cx:0},{lineWord.Cy:0}) box {lineWord.Width:0.0} x {lineWord.Height:0.0}" : "; no LINE beside it"));
+    }
+    foreach (var m in ovMatch) Console.WriteLine($"    match line ({m.X0:0},{m.Y0:0})-({m.X1:0},{m.Y1:0}) pt, {(Math.Abs(m.X1 - m.X0) > Math.Abs(m.Y1 - m.Y0) ? "horizontal" : "vertical")}");
+    Console.WriteLine($"  match lines {ovMatch.Count} (magenta){(ovMatch.Count == 0 && ovMatchWords.Count > 0 ? $"; the word MATCH appears {ovMatchWords.Count} time(s) at {string.Join(", ", ovMatchWords.Take(3).Select(w => $"({w.Cx:0},{w.Cy:0}) pt '{w.Text}'"))} but no line spanning the drawing runs beside it" : "")}");
     Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(ovOut)) ?? ".");
     ovImg.SaveAsPng(ovOut);
     Console.WriteLine($"{Path.GetFileName(ovPdf)} p{ovPage} 1:{ovScale} @ {ovDpi} dpi → {ovOut}");

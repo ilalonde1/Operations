@@ -60,3 +60,11 @@ does not work.
 `Run-Migration.ps1 -Path <db\0NN_*.sql>` applies a KorStandards migration through the same
 connection string the tool and the tests use. `sqlcmd` cannot: integrated auth is refused for this
 account. Batches split on a line that is exactly `GO`, the way SSMS does it.
+
+## Added 2026-09-09, intake step 22 (the PDF-only route)
+
+`pdf_only_all.sh` builds every one of the five sets from its stick file alone -- `pdf-takeoff` on every page, `pdf-levels` for the storeys, `dxf-to-etabs` with `-` for the reference -- and lists each plate per storey. The differential for any rule that touches the PDF route.
+
+`e2k_read.py` is `plan_sheet.py`'s reader without its side effect (importing plan_sheet draws a sheet named after your argv). `storey_walls.py <e2k> <storey> [minLen]` lists one storey's wall panels with extents; `draw_storey.py <e2k> <storey> <out.svg> [px]` draws one storey large. Screenshot an SVG with Edge headless and a fresh `--user-data-dir`, or it silently writes nothing.
+
+`crop_mm.py <png> <dpi> <scale> <xmm> <ymm> <halfW> <halfH> <out>` crops a `pdf-overlay` render around a point in drawing millimetres -- the PNG's y runs down, the geometry's up, and it flips. `dxf_layer_entities.py <dxf> <layer> [rows]` boxes every polyline and hatch on a layer. `ledger_diff.py <old.txt> <new.txt>` compares two `pdf-inventory` ledgers page by page.

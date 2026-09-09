@@ -63,6 +63,86 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         /// <summary>A heading's underline: a horizontal rule under a line of text, matching its extent.</summary>
         public readonly record struct Underline(double MinX, double MaxX, double Y);
 
+        /// <summary>The line a plan too wide for one sheet was split on, labelled MATCH LINE; its two ends.</summary>
+        public readonly record struct MatchLine(double X0, double Y0, double X1, double Y1);
+
+        /// <summary>A match line spans at least this share of the page across the drawing.</summary>
+        public const double MatchLineMinSpanShare = 0.4;
+        /// <summary>The line runs within this many label heights of the words MATCH LINE.</summary>
+        public const double MatchLineLabelReachHeights = 6.0;
+
+        /// <summary>
+        /// A PLAN TOO WIDE FOR ONE SHEET IS SPLIT ON A MATCH LINE (intake step 22), and the sheet says
+        /// so: the words MATCH LINE beside a line that spans the drawing, drawn dash-dot — many
+        /// collinear pieces. The DXF side already joins the sheets that carry the same one into one
+        /// plan (<c>MatchLineSheetJoin</c>); no half closes a floor at its match line on its own.
+        /// 31168's P1, P2 and P3 plans are north and south halves split on grid J, the label at
+        /// the right margin, and read separately neither half's walls close a ring.
+        /// </summary>
+        public static IEnumerable<MatchLine> MatchLines(VectorPageReader.PageContent page)
+        {
+            // the label: MATCH with LINE beside or beneath it (the label stands in the margin,
+            // often stacked), or one token MATCHLINE. The label is written ALONG the line — turned
+            // with it: 31065's "MATCHLINE" stands 6 pt wide and 48 pt tall beside a vertical seam,
+            // 31168's "MATCH"/"LINE" lie 30 pt wide and 6 pt tall beside a horizontal one — so its
+            // shape says which way the line runs, and its text height (the short side) how near.
+            var labels = new List<(double Cx, double Cy, double TextHeight, bool Vertical)>();
+            foreach (var w in page.Words)
+            {
+                string t = w.Text.Trim().TrimEnd(':', '.', '-');
+                double box = Math.Max(w.Width, w.Height), text = Math.Max(Math.Min(w.Width, w.Height), 1);
+                if (t.Equals("MATCHLINE", StringComparison.OrdinalIgnoreCase)) { labels.Add((w.Cx, w.Cy, text, w.Height > w.Width)); continue; }
+                if (!t.Equals("MATCH", StringComparison.OrdinalIgnoreCase)) continue;
+                var line = page.Words.FirstOrDefault(o => o.Text.Trim().Equals("LINE", StringComparison.OrdinalIgnoreCase)
+                    && Math.Abs(o.Cx - w.Cx) <= 2 * box && Math.Abs(o.Cy - w.Cy) <= 2 * box);
+                if (line.Text is not null) labels.Add(((w.Cx + line.Cx) / 2, (w.Cy + line.Cy) / 2, text, w.Height > w.Width));
+            }
+            if (labels.Count == 0) yield break;
+
+            // the line: every straight stroked piece, axis-aligned within a degree, bucketed by the
+            // coordinate it runs along; the bucket nearest a label whose pieces span the drawing
+            var horizontal = new Dictionary<int, (double Min, double Max)>();
+            var vertical = new Dictionary<int, (double Min, double Max)>();
+            foreach (var p in page.Paths)
+            {
+                if (!p.IsStroked || p.IsFilled || p.IsAnnotation || p.Points.Count != 2) continue;
+                var a = p.Points[0]; var b = p.Points[1];
+                double dx = Math.Abs(b.X - a.X), dy = Math.Abs(b.Y - a.Y);
+                if (dx + dy < 0.5) continue;
+                if (dy <= 0.0175 * dx)
+                {
+                    int key = (int)Math.Round((a.Y + b.Y) / 2);
+                    var (lo, hi) = horizontal.TryGetValue(key, out var e) ? e : (double.MaxValue, double.MinValue);
+                    horizontal[key] = (Math.Min(lo, Math.Min(a.X, b.X)), Math.Max(hi, Math.Max(a.X, b.X)));
+                }
+                else if (dx <= 0.0175 * dy)
+                {
+                    int key = (int)Math.Round((a.X + b.X) / 2);
+                    var (lo, hi) = vertical.TryGetValue(key, out var e) ? e : (double.MaxValue, double.MinValue);
+                    vertical[key] = (Math.Min(lo, Math.Min(a.Y, b.Y)), Math.Max(hi, Math.Max(a.Y, b.Y)));
+                }
+            }
+
+            var found = new List<MatchLine>();
+            foreach (var (cx, cy, h, isVertical) in labels)
+            {
+                // the line of the label's own orientation nearest the label, among those spanning the drawing
+                double reach = MatchLineLabelReachHeights * h;
+                MatchLine? best = null; double bestDistance = double.MaxValue;
+                if (!isVertical)
+                    foreach (var (y, (lo, hi)) in horizontal)
+                        if (Math.Abs(y - cy) <= reach && hi - lo >= MatchLineMinSpanShare * page.WidthPts && Math.Abs(y - cy) < bestDistance)
+                        { best = new MatchLine(lo, y, hi, y); bestDistance = Math.Abs(y - cy); }
+                if (isVertical)
+                    foreach (var (x, (lo, hi)) in vertical)
+                        if (Math.Abs(x - cx) <= reach && hi - lo >= MatchLineMinSpanShare * page.HeightPts && Math.Abs(x - cx) < bestDistance)
+                        { best = new MatchLine(x, lo, x, hi); bestDistance = Math.Abs(x - cx); }
+                if (best is { } m && !found.Any(f => Math.Abs(f.X0 - m.X0) < 1 && Math.Abs(f.Y0 - m.Y0) < 1 && Math.Abs(f.X1 - m.X1) < 1 && Math.Abs(f.Y1 - m.Y1) < 1))
+                    found.Add(m);
+            }
+            foreach (var m in found) yield return m;
+        }
+
         public sealed record Set(
             IReadOnlyList<Region> Regions,
             IReadOnlyList<double> VerticalAxesX,
@@ -75,6 +155,27 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
             /// <summary>The underlines on the sheet. A LINE matching one is an underline; a shape centred on one is not.</summary>
             public IReadOnlyList<Underline> Underlines { get; init; } = [];
+            /// <summary>The lines labelled MATCH LINE, each spanning the drawing (step 22); usually none or one.</summary>
+            public IReadOnlyList<MatchLine> MatchLines { get; init; } = [];
+
+            /// <summary>A two-point line lies on a match line when both ends sit on it within the axis tolerance and inside its extent.</summary>
+            public bool IsOnMatchLine((double X, double Y) a, (double X, double Y) b)
+            {
+                foreach (var m in MatchLines)
+                {
+                    double dx = m.X1 - m.X0, dy = m.Y1 - m.Y0, len = Math.Sqrt(dx * dx + dy * dy);
+                    if (len <= 0) continue;
+                    double ux = dx / len, uy = dy / len;
+                    bool on = true;
+                    foreach (var p in new[] { a, b })
+                    {
+                        double t = (p.X - m.X0) * ux + (p.Y - m.Y0) * uy, n = Math.Abs(-(p.X - m.X0) * uy + (p.Y - m.Y0) * ux);
+                        if (n > AxisTolerance || t < -AxisTolerance || t > len + AxisTolerance) { on = false; break; }
+                    }
+                    if (on) return true;
+                }
+                return false;
+            }
 
             public bool IsFurniture(double x, double y) => Regions.Any(r => r.Contains(x, y));
 
@@ -108,6 +209,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 SizeToleranceMm)
             {
                 Underlines = Underlines.Select(u => new Underline(u.MinX * factor, u.MaxX * factor, u.Y * factor)).ToList(),
+                MatchLines = MatchLines.Select(m => new MatchLine(m.X0 * factor, m.Y0 * factor, m.X1 * factor, m.Y1 * factor)).ToList(),
             };
         }
 
@@ -215,6 +317,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             return new Set(regions, grid.VerticalAxesX, grid.HorizontalAxesY, GridBubbles.AxisTolerancePts, declared, sizeToleranceMm)
             {
                 Underlines = Underlines(page, rules).ToList(),
+                MatchLines = MatchLines(page).ToList(),
             };
         }
 

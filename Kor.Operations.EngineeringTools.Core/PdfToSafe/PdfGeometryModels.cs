@@ -85,8 +85,16 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         public double LengthMm => Math.Sqrt(Math.Pow(End.X - Start.X, 2) + Math.Pow(End.Y - Start.Y, 2));
     }
 
+    /// <summary>
+    /// The line labelled MATCH LINE that a plan too wide for one sheet was split on (intake step 22),
+    /// in mm. Written to the DXF on a MATCH layer so the ETABS side joins the sheets that share it.
+    /// </summary>
+    public sealed record PlanMatchLine((double X, double Y) Start, (double X, double Y) End);
+
     public sealed class ExtractedGeometry
     {
+        /// <summary>The sheet's match lines (step 22); usually none or one.</summary>
+        public List<PlanMatchLine> MatchLines { get; } = new();
         /// <summary>The sheet's named grid axes (Intake step 8). Written to the DXF's GRID layer.</summary>
         public List<GridAxis> GridAxes { get; } = new();
         public List<WallPanel> Walls { get; } = new();

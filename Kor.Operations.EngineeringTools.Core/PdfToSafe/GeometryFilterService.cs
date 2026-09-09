@@ -128,6 +128,13 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             double gridThreshMm = Math.Max(pageWidthMm, pageHeightMm) * 0.6;
             furniture ??= SheetFurniture.Set.Empty;
 
+            // A PLAN TOO WIDE FOR ONE SHEET IS SPLIT ON A MATCH LINE (intake step 22): the sheet's
+            // match lines, read by the furniture from the words MATCH LINE and the line spanning the
+            // drawing beside them, go to the geometry so the DXF carries them on a MATCH layer and
+            // the ETABS side joins the sheets that share one. The pieces of the line are read below.
+            foreach (var m in furniture.MatchLines)
+                result.MatchLines.Add(new PlanMatchLine((m.X0, m.Y0), (m.X1, m.Y1)));
+
             // A DOORWAY IS A PAPER-COLOURED FILL PAINTED OVER A WALL (intake step 14). The drafter
             // draws the wall its full length and knocks each opening out with a white rectangle
             // across it, so the paper fills are gathered before the walls are read and a wall is
@@ -208,6 +215,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         if (dx <= furniture.AxisTolerance && furniture.OnVerticalAxis(cx)) { Fate(PathReason.GridAxis); continue; }
                         if (dy <= furniture.AxisTolerance && furniture.OnHorizontalAxis(cy)) { Fate(PathReason.GridAxis); continue; }
                         if (dy <= furniture.AxisTolerance && furniture.IsUnderline(pts[0].X, pts[1].X, cy)) { Fate(PathReason.Underline); continue; }
+                        if (furniture.IsOnMatchLine(pts[0], pts[1])) { Fate(PathReason.MatchLine); continue; }
                     }
                 }
 

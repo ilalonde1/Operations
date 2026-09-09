@@ -1147,3 +1147,89 @@ ruled — *"follow the outer edge of the walls"*, 25 Aug — is written on the D
 drawn as concentric rings, not for the panels the PDF route emits: the next step), the storeys
 above the last wall elevation, mezzanine levels, building-aware level names, concrete grades.
 None of these needs the engineer; each is a rule with a measurement.
+
+## 31. Step 22, done 2026-09-09: the PDF alone gives the parkade its plate
+
+Three rules, each Andrea's own or the drawing's own, and together the first floor plate the
+PDF-only route has produced. Measured against Revit's plate on 31168's P1 and P2, 76,967 sq ft
+each: the PDF alone now reads **77,240 sq ft on P1 and 77,478 on P2**, within 0.4% and 0.7%.
+
+**A storey's plate is what its wall panels enclose, at their outer face.** Her ruling, 25 Aug:
+*"it should always follow the outer edge of the walls"*; 07 Aug: *"just one thickness per floor,
+general outline at first."* The DXF side had this for a Revit export's perimeter wall, drawn as a
+ring inside a ring (`PairConcentricWallRings`); walls that arrive as separate panels — every plan
+the PDF route emits — gave nothing, and the storey went to the model with no diaphragm.
+`DxfFloodFillPlateDetector.EnclosedByWallPanels`: the panels painted solid on a raster, the paint
+closed across gaps up to a doorway (`dxf.max-opening-span`, the banked 72": a wall stops at a
+doorway and the floor does not), the outside flooded from the raster's edge and grown back by the
+same radius so the closing adds no width, and what is left is the walls and everything they
+enclose; its boundary is the outer face. A ring that does not close leaks, the outside floods
+everything, and the storey keeps having no plate rather than being given the sheet. It runs under
+the same gate as the ring reading — only where the drawing closes no slab at all, and never on a
+FOUNDATION sheet (P3 is slab on grade, *"we just don't model it"*, 25 Aug). Where it cannot close
+the ring, the report says at what gap it would have (a ramp or a garage door is wider than a
+doorway, and the engineer decides whether the floor runs across it).
+
+**A plan too wide for one sheet is split on a match line, and the sheet says so.** Her ruling,
+banked in migration 059: *"A plan too wide for one sheet is cut on a MATCH LINE and drawn twice."*
+The DXF side joined such sheets already, but only where a row `match-line-join.<job>.<storey>`
+said to — a fact per building — and only on a MATCH layer the PDF route never wrote. Now
+`SheetFurniture.MatchLines` reads the words MATCH LINE (stacked in the margin, or one word) and
+the line spanning at least 40% of the page beside them, drawn dash-dot as many collinear pieces —
+the line of the label's own orientation, since the label is written along it (31065's MATCHLINE
+stands 6 pt wide and 48 pt tall beside a vertical seam on grid 8; 31168's MATCH / LINE lie flat
+beside a horizontal one on grid J), the nearest such line within six text heights;
+the pieces are read (`PathReason.MatchLine`), `Geometry.MatchLines` carries the line, and
+`DxfExporter` writes it on `KOR_MATCHLINE`. On the DXF side a sheet read off a PDF sits in its own
+page frame, so the seams are compared on the model's grid (each through its by-name frame, within
+the fit's own tolerance, 6") as LINES that overlap — each half draws its own match line at its own
+length (31065's north half runs 86 m from x −30.3 m, its south half 86 m from x −7.2 m, both on
+y 24,722 to the millimetre) — and a partner's linework is brought into the leader's frame; a Revit
+export, one frame for every sheet, is joined exactly as before. And where she banked which storeys
+to join, those and only those join; where she banked nothing — every job nobody has modelled —
+the drawing decides, `MatchLineSheetJoin` still asking that the other sheet carry the same line,
+the same storey, and its linework on the other side. The census from step 21: MATCHLINE appears
+on 31168 p11–13 and on 31065 p14–16 (its parkade is split the same way), BEAM falls by the dashes
+(31168 p11 2,923 → 2,818), 7 of 13 files identical.
+
+**A job nobody has modelled has no grid to set the sheets on, so the drawings' own reference plan
+is the grid.** With no reference model, no sheet was set on the grid by name, each sat in its own
+page frame, and 31168's P2 halves stood 7 m apart — the ring "closed at 24 ft", which was the
+offset, not a gap. Now the sheet naming the most axes stays in its frame and its axes are the
+reference (`GridAlignment.Carried` at the identity), and every other sheet is set on it by name:
+22 of 22 on 31168, *"19 of 20 X and 8 of 10 Y grid lines matched by name … agreeing within 0.0"*.
+
+**And a ring of walls that stands over few of the storey's columns is a core, not the floor.**
+The banked `dxf.min-floor-coverage` (0.6), the composer's own rule for a floor that stops short of
+its members, applied to the one reading that can produce a plate a core's size: before it, 31138's
+L3–L22 and 31065's L2, L3 and L19 read 8 m x 9 m "floors" from their core walls, and the 31138
+Revit-route baseline moved; with it, those storeys keep having no plate, the report says why
+("stands over 7 of the storey's 34 columns"), and the baseline holds.
+
+Measured after, on all five sets built from their stick files alone (`pdf_only_all.sh`):
+31168 joins P3, P2, P1 and L1 from their halves and carries P1 77,240 and P2 77,478 sq ft against
+Revit's 76,967; 31065 joins P3, P2, P1 and carries P1 35,490 and P2 35,640 sq ft against the
+engineer's own 40,067 on P1 (89%, its ramp side still open); 31138's P1–P5 read 18,590 sq ft each
+from their perimeter walls (no model to score them against); 31130's halves carry no MATCH LINE
+label (its four MATCH words are notes, "to match wall verts") and stay apart; 31202's title block
+reads nothing, so none of its 34 sheets names a level and none is placed — two readers' items,
+not this rule's. The full suite, the Revit route and the two engineer models included: 1,194 pass.
+
+Measured after, 31168 from the PDF alone (`pdf-takeoff` 23 DXFs, `pdf-levels` 22 storeys,
+`dxf-to-etabs … -`): P3, P2 and P1 read as one plan each from their two halves; P1 and P2 carry
+a plate each at the walls' outer face, P3 none; 1,042 walls, 2,328 columns. Still open on this
+job, named by the report: the L1 halves meet on their seam now but their perimeter is slab edge,
+not walls, so L1 has no plate; the L2 sheets and the tower plans have no perimeter wall either and
+wait for the slab-edge rule (the outermost closed loop of cut-pen lines); the mezzanines have no
+storey. The Revit route, the two engineer models and the five sets' PDF-only builds are the
+differential — the full suite and `pdf_only_all` in this step's commit.
+
+WHAT THE CHECK COVERS (`AStoreysPlateIsWhatItsWallsEncloseTests`, 6; `APlanTooWideForOneSheetIsSplitOnAMatchLineTests`, 6):
+a rectangle of panels giving its outer rectangle; a doorway in one wall still the plate; a gap
+wider than a doorway, none; two panels, none; an L; a turned ring; the stacked label beside a
+dashed line spanning the page, a turned label beside a vertical line with a longer horizontal one
+close by, a flat label ignoring a vertical line close by, no label, a label beside a short line; the pieces
+fated MatchLine and not beams, the DXF's MATCHLINE layer and the seam the DXF side reads. WHAT IT
+DOES NOT: the join on a real set (measured on 31168 in the build above, not banked as a test); a
+match line drawn at an angle; two on one sheet with one label; a ring's re-entrant corner, which
+the closing fills by about the doorway's radius (2.3% on the test's L).

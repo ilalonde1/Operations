@@ -450,6 +450,7 @@ public static class DxfToEtabsService
             UnusualWallThickness = settings.ValueOr("dxf.unusual-wall-thickness", options.UnusualWallThickness),
             MaxPierThickness = settings.ValueOr("dxf.max-pier-thickness", options.MaxPierThickness),
             MinSlabArea = settings.ValueOr("dxf.min-slab-area", options.MinSlabArea),
+            MinFloorCoverage = settings.ValueOr("dxf.min-floor-coverage", options.MinFloorCoverage),
             MinPlateArea = settings.ValueOr("dxf.min-plate-area", options.MinPlateArea),
             DashJoinGap = settings.ValueOr("dxf.dash-join-gap", options.DashJoinGap),
             ExtendLimit = settings.ValueOr("dxf.extend-limit", options.ExtendLimit),
@@ -865,10 +866,16 @@ public static class DxfToEtabsService
         // site — one wall on LEVEL P1 in one file and not the other, from the same drawings.
         var drawnByFile = new Dictionary<string, (int Walls, int Columns)>(StringComparer.OrdinalIgnoreCase);
 
-        var joinable = joinStoreys.Count == 0
-            ? new List<string>()
-            : files.Where(f => storeysOfSheet[f].Any(s =>
-                  joinStoreys.Any(j => s.Contains(j, StringComparison.OrdinalIgnoreCase)))).ToList();
+        // THE MATCH LINE IS THE DRAFTER'S OWN STATEMENT THAT TWO SHEETS ARE ONE PLAN (intake step
+        // 22). Where she banked which storeys to join for a job, those and only those join, as she
+        // said. Where she banked nothing — every job nobody has modelled, and every job read off
+        // its PDF alone — the drawing decides: a sheet carrying a match line is a half, and
+        // MatchLineSheetJoin still asks that the other half carry the same line, the same storey,
+        // and its linework on the other side. A row per job and storey cannot be the only door.
+        var joinable = joinStoreys.Count > 0
+            ? files.Where(f => storeysOfSheet[f].Any(s =>
+                  joinStoreys.Any(j => s.Contains(j, StringComparison.OrdinalIgnoreCase)))).ToList()
+            : files.ToList();
 
         // A JOIN IS NOT REVERSIBLE BY A LATER CUT, SO THE PLATE IT MAKES IS CUT AT THE SEAM.
         //
@@ -938,6 +945,26 @@ public static class DxfToEtabsService
         var tagsOf = files.ToDictionary(f => f, DxfPlanReader.ReadPositionedTags, StringComparer.OrdinalIgnoreCase);
         var namedAxesOf = files.ToDictionary(f => f, f => GridAlignment.NamedAxes(segmentsOf[f], tagsOf[f]), StringComparer.OrdinalIgnoreCase);
         var alignedByName = new Dictionary<string, GridAlignment.Fit>(StringComparer.OrdinalIgnoreCase);
+
+        // A JOB NOBODY HAS MODELLED HAS NO GRID TO SET THE SHEETS ON, SO THE DRAWINGS' OWN REFERENCE
+        // PLAN IS THE GRID. With no reference model (or a shell with no GRIDS), the sheet naming the
+        // most axes stays in its own frame and its axes become the reference; every other sheet is
+        // then set on it by name, as against a model. Measured 2026-09-09 on 31168 built from the
+        // PDF alone: without this, the two halves of the P2 plan sat 7 m apart in their own page
+        // frames and the perimeter walls could not close a floor; with her shell they coincide.
+        if (request.Offset is null && referenceGrids.Count == 0)
+        {
+            string? referencePlan = files.Where(f => namedAxesOf[f].Count >= GridAlignment.LeastConvincingByName)
+                .OrderByDescending(f => namedAxesOf[f].Count).FirstOrDefault();
+            if (referencePlan is not null)
+            {
+                var own = new AnnotationOverlay.Frame(0, 0, 0);
+                alignedByName[referencePlan] = new GridAlignment.Fit(own, namedAxesOf[referencePlan].Count(a => a.Vertical),
+                    namedAxesOf[referencePlan].Count(a => !a.Vertical), "the set's reference plan, in its own frame (no model grid to set it on)");
+                referenceGrids = GridAlignment.Carried(namedAxesOf[referencePlan], own, scale);
+            }
+        }
+
         if (request.Offset is null && referenceGrids.Count > 0)
         {
             foreach (string f in files)
@@ -979,11 +1006,52 @@ public static class DxfToEtabsService
                     $"the model or a placed sheet names: {string.Join(", ", unplaced)}. Where they sit in the model is where the page put them, not where the grid does.");
         }
 
+        // A SHEET IN ITS OWN FRAME MEETS ITS OTHER HALF ON THE MODEL'S GRID (intake step 22). A
+        // Revit export draws every sheet in one frame, so two halves' match lines land on each other
+        // as drawn. A sheet read off a PDF is in its own page frame and was set on the grid by the
+        // names of its axes above; its match line lands on its partner's only in that frame, within
+        // the fit's own tolerance, and its linework joins the partner's in the partner's frame. A
+        // sheet with no frame of its own is left exactly as it was.
+        var identity = new AnnotationOverlay.Frame(0, 0, 0);
+        AnnotationOverlay.Frame FrameOfSheet(string f) => alignedByName.TryGetValue(f, out var nf) ? nf.Frame : identity;
+        IReadOnlyList<DxfSegment> InModelFrame(string f)
+        {
+            var fr = FrameOfSheet(f);
+            return fr.Equals(identity) ? segmentsOf[f]
+                : segmentsOf[f].Select(s => s with { Start = fr.Apply(s.Start), End = fr.Apply(s.End) }).ToList();
+        }
+        static DxfPoint Unapply(AnnotationOverlay.Frame fr, DxfPoint q)
+        {
+            double r = fr.RotationDegrees * Math.PI / 180.0, c = Math.Cos(r), s = Math.Sin(r);
+            double x = q.X - fr.OffsetX, y = q.Y - fr.OffsetY;
+            return new DxfPoint(x * c + y * s, -x * s + y * c);
+        }
+        double seamTolerance = alignedByName.Count > 0 && drawingUnit is { } du && du > 0
+            ? Math.Max(MatchLineSheetJoin.DefaultTolerance, GridAlignment.NameTolerance / du)
+            : MatchLineSheetJoin.DefaultTolerance;
+        var seamOf = joinable.ToDictionary(f => f, f => MatchLineSheetJoin.SeamOf(InModelFrame(f), matchLineLayers), StringComparer.OrdinalIgnoreCase);
         var joined = MatchLineSheetJoin.Group(joinable.Select(f => (
             File: f,
-            Seam: MatchLineSheetJoin.SeamOf(segmentsOf[f], matchLineLayers),
+            Seam: seamOf[f],
             Storeys: storeysOfSheet[f],
-            Segments: segmentsOf[f])));
+            Segments: InModelFrame(f))), seamTolerance);
+
+        // A sheet that carries a match line and joined nothing is said so, with where its seam
+        // sits on the grid, so a pair that should have met can be seen not meeting.
+        foreach (string f in joinable)
+        {
+            if (seamOf[f] is not { } seam || joined.Any(g => g.Files.Contains(f, StringComparer.OrdinalIgnoreCase))) continue;
+            // and why each candidate on the same storeys was not its other half
+            var candidates = joinable.Where(o => o != f && seamOf[o] is not null
+                    && storeysOfSheet[o].Intersect(storeysOfSheet[f], StringComparer.OrdinalIgnoreCase).Any())
+                .Select(o => $"{Path.GetFileName(o)}: {(seam.SameAs(seamOf[o]!, seamTolerance) ? "same line" : "another line")}, " +
+                             $"sides {MatchLineSheetJoin.DominantSide(InModelFrame(f), seam)}/{MatchLineSheetJoin.DominantSide(InModelFrame(o), seamOf[o]!)}")
+                .ToList();
+            warnings.Add(
+                $"{Path.GetFileName(f)} carries a match line from ({seam.Start.X:0},{seam.Start.Y:0}) to ({seam.End.X:0},{seam.End.Y:0}) on the grid, " +
+                $"storeys {string.Join("/", storeysOfSheet[f])}, and no other sheet carries the same one within {seamTolerance:0}: read on its own." +
+                (candidates.Count > 0 ? $" Candidates on its storeys: {string.Join("; ", candidates)}." : ""));
+        }
 
         // Every partner keyed to the sheet that leads its group, and every follower marked so the
         // loop reads it once, as part of the plan it belongs to, rather than again on its own.
@@ -1023,10 +1091,17 @@ public static class DxfToEtabsService
             // union, not a transform. Do not move anything.
             if (partnersOf.TryGetValue(file, out var partners))
             {
+                var leaderFrame = FrameOfSheet(file);
                 foreach (string other in partners)
                 {
-                    segments = segments.Concat(segmentsOf[other]).ToList();
-                    tags = tags.Concat(DxfPlanReader.ReadPositionedTags(other)).ToList();
+                    // the partner's linework brought into THIS sheet's frame: through its own frame
+                    // onto the grid, then back through the leader's (a union, as before, when both
+                    // sheets share one frame — the Revit export's case)
+                    var otherFrame = FrameOfSheet(other);
+                    bool sameFrame = otherFrame.Equals(leaderFrame);
+                    DxfPoint Into(DxfPoint p) => sameFrame ? p : Unapply(leaderFrame, otherFrame.Apply(p));
+                    segments = segments.Concat(segmentsOf[other].Select(s => sameFrame ? s : s with { Start = Into(s.Start), End = Into(s.End) })).ToList();
+                    tags = tags.Concat(DxfPlanReader.ReadPositionedTags(other).Select(t => sameFrame ? t : t with { Point = Into(t.Point) })).ToList();
                 }
             }
 

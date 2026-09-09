@@ -23,6 +23,154 @@ internal static class DxfFloodFillPlateDetector
     }
 
     /// <summary>
+    /// The floor a storey's wall panels enclose, at the walls' OUTER face. Andrea Neuviale,
+    /// 25 Aug 2026, on the plate a perimeter wall stands in for: "it should always follow the outer
+    /// edge of the walls"; 07 Aug: "just one thickness per floor, general outline at first."
+    /// The rings a Revit export draws (<c>PairConcentricWallRings</c>) already give this; a plan
+    /// whose walls arrive as separate panels — every plan the PDF route emits, and any export
+    /// that draws walls one by one — gave nothing, and the storey had no diaphragm at all.
+    ///
+    /// The panels are painted solid on a raster, the paint is closed across gaps up to a doorway
+    /// (<see cref="PlanClassificationOptions.MaxOpeningSpan"/>, the banked opening span: a wall
+    /// stops at a doorway and the floor does not), the outside is flooded from the raster's edge
+    /// and then pulled back by the same distance so the closing adds no width, and what is left is
+    /// the walls and everything they enclose. Its boundary is the outer face. A ring that does not
+    /// close leaks, the outside floods everything, and nothing is returned — the storey keeps
+    /// having no plate rather than being given the sheet.
+    /// </summary>
+    public static PlanLoop? EnclosedByWallPanels(
+        IReadOnlyList<WallAxis> walls,
+        PlanClassificationOptions options,
+        out string note)
+    {
+        note = string.Empty;
+        if (walls.Count < 3) return null;
+
+        var corners = new List<DxfPoint[]>();
+        foreach (var w in walls)
+        {
+            double dx = w.End.X - w.Start.X, dy = w.End.Y - w.Start.Y, len = Math.Sqrt(dx * dx + dy * dy);
+            if (len <= 0) continue;
+            double nx = -dy / len * w.Thickness / 2, ny = dx / len * w.Thickness / 2;
+            corners.Add(new[]
+            {
+                new DxfPoint(w.Start.X + nx, w.Start.Y + ny), new DxfPoint(w.End.X + nx, w.End.Y + ny),
+                new DxfPoint(w.End.X - nx, w.End.Y - ny), new DxfPoint(w.Start.X - nx, w.Start.Y - ny),
+            });
+        }
+        if (corners.Count < 3) return null;
+
+        double minX = corners.Min(c => c.Min(p => p.X)), minY = corners.Min(c => c.Min(p => p.Y));
+        double maxX = corners.Max(c => c.Max(p => p.X)), maxY = corners.Max(c => c.Max(p => p.Y));
+        double spanX = maxX - minX, spanY = maxY - minY;
+        if (spanX <= 0 || spanY <= 0 || spanX * spanY < options.MinPlateArea) return null;
+
+        const int maxEdgePixels = 1800;
+        double bridge = Math.Max(options.MaxOpeningSpan, options.FloodFillBridge);
+        double pixelSize = Math.Max(options.MinPanelOverlap / 2.0, Math.Max(spanX, spanY) / (maxEdgePixels - 2.0));
+        if (pixelSize <= 0 || double.IsNaN(pixelSize) || double.IsInfinity(pixelSize)) return null;
+        // the margin is the closing radius plus a border, so the outside can always be reached
+        int radius = Math.Max(1, (int)Math.Ceiling(bridge / (2.0 * pixelSize)));
+        int margin = radius + 4;
+        int width = (int)Math.Ceiling(spanX / pixelSize) + margin * 2 + 1;
+        int height = (int)Math.Ceiling(spanY / pixelSize) + margin * 2 + 1;
+        if ((long)width * height > 6_000_000) return null;
+
+        // 1. the panels, painted solid
+        var solid = new bool[width * height];
+        foreach (var c in corners)
+        {
+            int x0 = Math.Clamp((int)Math.Floor((c.Min(p => p.X) - minX) / pixelSize) + margin, 0, width - 1);
+            int x1 = Math.Clamp((int)Math.Ceiling((c.Max(p => p.X) - minX) / pixelSize) + margin, 0, width - 1);
+            int y0 = Math.Clamp((int)Math.Floor((c.Min(p => p.Y) - minY) / pixelSize) + margin, 0, height - 1);
+            int y1 = Math.Clamp((int)Math.Ceiling((c.Max(p => p.Y) - minY) / pixelSize) + margin, 0, height - 1);
+            var poly = c.ToList();
+            for (int y = y0; y <= y1; y++)
+            for (int x = x0; x <= x1; x++)
+            {
+                var centre = new DxfPoint(minX + (x - margin) * pixelSize, minY + (y - margin) * pixelSize);
+                if (LoopGeometry.PointInPolygon(centre, poly) || OnEdge(centre, poly, pixelSize * 0.75)) solid[y * width + x] = true;
+            }
+        }
+
+        // 2. closed across doorways: dilate, flood the outside, erode the outside back
+        var dilated = new bool[width * height];
+        for (int i = 0; i < solid.Length; i++)
+        {
+            if (!solid[i]) continue;
+            int x = i % width, y = i / width;
+            for (int dy = -radius; dy <= radius; dy++)
+            for (int dx = -radius; dx <= radius; dx++)
+            {
+                int px = x + dx, py = y + dy;
+                if (px >= 0 && py >= 0 && px < width && py < height) dilated[py * width + px] = true;
+            }
+        }
+        // The closing is dilate-then-erode on the paint, which seen from the outside is: the
+        // outside of the dilated paint, grown back by the same radius. A cell is outside when any
+        // cell within the radius reached the raster's edge without crossing the dilated paint.
+        var outsideDilated = FloodExterior(dilated, width, height);
+        var outside = new bool[width * height];
+        for (int i = 0; i < outside.Length; i++)
+        {
+            if (!outsideDilated[i]) continue;
+            int x = i % width, y = i / width;
+            for (int dy = -radius; dy <= radius; dy++)
+            for (int dx = -radius; dx <= radius; dx++)
+            {
+                int px = x + dx, py = y + dy;
+                if (px >= 0 && py >= 0 && px < width && py < height) outside[py * width + px] = true;
+            }
+        }
+
+        // 3. what is not outside is the walls and what they enclose; the largest piece is the floor
+        var component = SolidComponents(solid, outside, width, height).FirstOrDefault();
+        if (component is null || component.Count == 0) return null;
+        var loops = BoundaryLoops(component, width, height);
+        var pixelLoop = loops.OrderByDescending(AbsArea).FirstOrDefault();
+        if (pixelLoop is null || pixelLoop.Count < 4) return null;
+
+        var points = Simplify(pixelLoop
+            .Select(p => new DxfPoint(minX + (p.X - margin) * pixelSize, minY + (p.Y - margin) * pixelSize))
+            .ToList(), pixelSize * 1.5);
+        if (points.Count < 3) return null;
+        double straightenAt = Math.Max(options.RecoveredOutlineTolerance, pixelSize * 1.5);
+        var straightened = LoopGeometry.Straighten(points, straightenAt);
+        if (straightened.Count >= 3)
+        {
+            double before = Math.Abs(new PlanLoop("t", points, false).SignedArea);
+            double after = Math.Abs(new PlanLoop("t", straightened, false).SignedArea);
+            if (before > 0 && Math.Abs(after - before) / before <= 0.01) points = straightened;
+        }
+
+        var plate = new PlanLoop("walls' outer edge", points, closedExactly: false);
+        if (plate.Area < options.MinPlateArea) return null;
+        // the walls did not close and the outside flooded through: the paint left is the walls alone
+        double painted = component.Count * pixelSize * pixelSize;
+        double wallArea = walls.Sum(w => w.Length * w.Thickness);
+        if (painted < 2 * wallArea) return null;
+
+        note = $"No slab edge on this drawing would close, so the floor is taken from the OUTER face of "
+             + $"the walls it stands on — {plate.Area / 144:N0} sq ft, one outline, one thickness, closed "
+             + $"across gaps up to {bridge:0} in (a doorway). It is an approximation offered because a "
+             + "storey with no plate has no diaphragm at all.";
+        return plate;
+
+        static bool OnEdge(DxfPoint p, List<DxfPoint> poly, double within)
+        {
+            for (int i = 0; i < poly.Count; i++)
+            {
+                var a = poly[i]; var b = poly[(i + 1) % poly.Count];
+                double vx = b.X - a.X, vy = b.Y - a.Y, l2 = vx * vx + vy * vy;
+                double t = l2 <= 0 ? 0 : Math.Clamp(((p.X - a.X) * vx + (p.Y - a.Y) * vy) / l2, 0, 1);
+                double ex = a.X + vx * t - p.X, ey = a.Y + vy * t - p.Y;
+                if (ex * ex + ey * ey <= within * within) return true;
+            }
+            return false;
+        }
+    }
+
+    /// <summary>
     /// EVERY floor the linework encloses, biggest first.
     ///
     /// The fill has always walked every solid region and then thrown all but the largest away. A

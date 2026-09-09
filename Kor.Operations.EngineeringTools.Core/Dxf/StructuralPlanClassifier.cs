@@ -190,6 +190,15 @@ public sealed record PlanClassificationOptions
     public double MinPlateArea { get; init; } = 57600.0;
 
     /// <summary>
+    /// The share of a storey's columns a plate taken from its wall panels must stand over to be
+    /// the floor. The banked `dxf.min-floor-coverage` (0.6), the composer's own rule for a floor
+    /// that stops short of its members, applied here to the one reading that can produce a
+    /// plate a core's size: a tower's core walls enclose the core, not the floor (31138's L3–L22
+    /// and 31065's L2, L3, L19 read 8 m x 9 m "floors" from them, 2026-09-09).
+    /// </summary>
+    public double MinFloorCoverage { get; init; } = 0.6;
+
+    /// <summary>
     /// How many separate slabs the ENGINEER says this sheet's storey carries, when she has said.
     ///
     /// It opens the flood fill on a sheet that would otherwise skip it. The fill normally runs only
@@ -1456,6 +1465,52 @@ public static class StructuralPlanClassifier
         // is checked against this and not against what a perimeter wall stood in for; see below.
         int fromSlabEdges = result.Slabs.Count;
 
+        // A STOREY'S PLATE IS WHAT ITS WALL PANELS ENCLOSE, AT THEIR OUTER FACE. The ring-in-a-ring
+        // reading above gives this for a Revit export's perimeter wall; walls that arrive as
+        // separate panels (every plan the PDF route emits) gave nothing, and the storey went to
+        // the model with no diaphragm. Her ruling, 25 Aug 2026: "it should always follow the outer
+        // edge of the walls." Same gate as below: only where the drawing closes no slab at all.
+        string? panelNote = null;
+        if (options.FloorFromPerimeterWall
+            && result.Slabs.Count == 0
+            && !result.EnclosedByWalls.Any(l => l.Area >= options.MinPlateArea)   // a ring in a ring the size of a stair core is not the floor
+            && result.Walls.Count >= 3)
+        {
+            if (DxfFloodFillPlateDetector.EnclosedByWallPanels(result.Walls, options, out panelNote) is { } byPanels)
+            {
+                // the floor stands under the storey's columns; a ring of walls that encloses few of
+                // them is a core, and a core is not the floor (the banked dxf.min-floor-coverage)
+                int columns = result.Columns.Count;
+                int under = columns == 0 ? 0 : result.Columns.Count(c => LoopGeometry.PointInPolygon(c.Center, byPanels.Points));
+                double coverage = columns == 0 ? 1.0 : (double)under / columns;
+                if (columns >= 4 && coverage < options.MinFloorCoverage)
+                {
+                    result.Flags.Add(
+                        $"No slab edge on this drawing would close, and the walls enclose a ring of {byPanels.Area / 144:N0} sq ft " +
+                        $"that stands over {under} of the storey's {columns} columns ({coverage:P0}): a core, not the floor. The storey has no plate.");
+                    panelNote = null;
+                }
+                else result.EnclosedByWalls.Add(byPanels);
+            }
+            else
+            {
+                // say where it stands: the widest gap in the ring, found by asking at what bridge
+                // the walls would close — a ramp or a garage door is wider than a doorway, and
+                // the engineer decides whether the floor runs across it
+                double doorway = Math.Max(options.MaxOpeningSpan, options.FloodFillBridge);
+                string closesAt = "not within eight doorways";
+                foreach (double factor in new[] { 2.0, 4.0, 8.0 })
+                {
+                    var wider = options with { MaxOpeningSpan = doorway * factor, FloodFillBridge = doorway * factor };
+                    if (DxfFloodFillPlateDetector.EnclosedByWallPanels(result.Walls, wider, out _) is { } would)
+                    { closesAt = $"at a gap of {doorway * factor:0} ({would.Area / 144:N0} sq ft)"; break; }
+                }
+                result.Flags.Add(
+                    $"No slab edge on this drawing would close, and the {result.Walls.Count} wall panels do not " +
+                    $"enclose the floor within a doorway ({doorway:0}): the ring closes {closesAt}. The storey has no plate.");
+            }
+        }
+
         if (options.FloorFromPerimeterWall
             && result.Slabs.Count == 0
             && result.EnclosedByWalls.Count > 0)
@@ -1484,7 +1539,7 @@ public static class StructuralPlanClassifier
                 else
                 {
                     result.Slabs.Add(enclosed);
-                    result.Flags.Add(
+                    result.Flags.Add(!string.IsNullOrEmpty(panelNote) ? panelNote :
                         $"No slab edge on this drawing would close, so the floor is taken from the inside face of " +
                         $"the perimeter wall — {enclosed.Area / 144:N0} sq ft, one outline, one thickness. It is an " +
                         "approximation offered because a storey with no plate has no diaphragm at all.");

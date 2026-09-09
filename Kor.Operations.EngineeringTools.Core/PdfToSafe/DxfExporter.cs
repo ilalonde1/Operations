@@ -379,7 +379,11 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             const string gridLayer = "GRID";
             bool hasFootings = xFootings.Count > 0;
             string footingLayer = korLayers ? KorLayerName("FOOTING") : "FOOTING";
-            int layerCount = (layerByColour ? colourLayers.Count + 1 : 9) + (hasText ? 1 : 0) + (hasGrid ? 1 : 0) + (hasFootings ? 1 : 0);
+            // the match line a plan was split on (step 22), on a layer the ETABS side's sheet join
+            // recognises by the word MATCH (MatchLineSheetJoin.DefaultLayerPatterns)
+            bool hasMatch = geometry.MatchLines.Count > 0;
+            string matchLayer = korLayers ? "KOR_MATCHLINE" : "MATCHLINE";
+            int layerCount = (layerByColour ? colourLayers.Count + 1 : 9) + (hasText ? 1 : 0) + (hasGrid ? 1 : 0) + (hasFootings ? 1 : 0) + (hasMatch ? 1 : 0);
 
             G(0, "TABLE"); G(2, "LAYER"); G(70, layerCount.ToString(ic));
             void WL(string n, int c) { G(0, "LAYER"); G(2, n); G(70, "0"); G(62, c.ToString()); G(6, "CONTINUOUS"); }
@@ -402,10 +406,17 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             if (hasGrid) WL(gridLayer, 8);
             // declared like the entities are written (audit F6: FOOTING polylines had no table entry)
             if (hasFootings) WL(footingLayer, NearestAci(black));
+            if (hasMatch) WL(matchLayer, 6);
             G(0, "ENDTAB");
             G(0, "ENDSEC");
 
             G(0, "SECTION"); G(2, "ENTITIES");
+            foreach (var m in geometry.MatchLines)
+            {
+                if (!Ok(m.Start.X, m.Start.Y) || !Ok(m.End.X, m.End.Y)) continue;
+                G(0, "LINE"); G(8, matchLayer); G(62, "6");
+                Num(10, m.Start.X - cx); Num(20, m.Start.Y - cy); Num(30, 0); Num(11, m.End.X - cx); Num(21, m.End.Y - cy); Num(31, 0);
+            }
 
             void WritePolyline(string layer, int aci, List<(double X, double Y)> pts, bool closed)
             {

@@ -10,8 +10,23 @@ public sealed record MatchLineSeam(DxfPoint Start, DxfPoint End)
     {
         ArgumentNullException.ThrowIfNull(other);
 
-        return (Near(Start, other.Start, tolerance) && Near(End, other.End, tolerance))
-            || (Near(Start, other.End, tolerance) && Near(End, other.Start, tolerance));
+        // A Revit export draws the one line on both sheets, end for end. A sheet read off a PDF
+        // draws its own match line at its own length (31065's parkade: the north half's runs
+        // 86 m from x -30.3 m, the south half's 86 m from x -7.2 m, both on y 24,722 to the
+        // millimetre), so the seam is the same LINE — each end of one within the tolerance of the
+        // other's line — with the two extents overlapping, whichever way round they were drawn.
+        if ((Near(Start, other.Start, tolerance) && Near(End, other.End, tolerance))
+            || (Near(Start, other.End, tolerance) && Near(End, other.Start, tolerance)))
+            return true;
+
+        double dx = End.X - Start.X, dy = End.Y - Start.Y, len = Math.Sqrt(dx * dx + dy * dy);
+        if (len <= 0) return false;
+        double ux = dx / len, uy = dy / len;
+        double Off(DxfPoint p) => Math.Abs(-(p.X - Start.X) * uy + (p.Y - Start.Y) * ux);
+        double Along(DxfPoint p) => (p.X - Start.X) * ux + (p.Y - Start.Y) * uy;
+        if (Off(other.Start) > tolerance || Off(other.End) > tolerance) return false;
+        double a0 = Math.Min(Along(other.Start), Along(other.End)), a1 = Math.Max(Along(other.Start), Along(other.End));
+        return Math.Min(a1, len) - Math.Max(a0, 0) > tolerance;   // the extents overlap
     }
 
     private static bool Near(DxfPoint a, DxfPoint b, double tolerance) =>

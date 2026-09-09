@@ -31,6 +31,13 @@ public enum PathReason
     /// and not a wall; it stays unaccounted, inked and named, for the ledger.
     /// </summary>
     Band,
+    /// <summary>
+    /// A line on the sheet's match line — the line labelled MATCH LINE that a plan too wide for one
+    /// sheet was split on (intake step 22). Read: the line goes to the DXF on a MATCH layer, and
+    /// the DXF side joins the sheets that share it into one plan. No sheet closes a floor at a
+    /// match line on its own.
+    /// </summary>
+    MatchLine,
     GridLineExcluded, ColumnTooSmall, UnfilledSmallShape, ColumnAspect, TooShort, TooFewPoints,
     /// <summary>
     /// Never reached the classifier: the read it classifies thins points closer than
@@ -60,7 +67,7 @@ public sealed record PathFate(int PathIndex, Disposition Disposition, PathReason
         // and on the DXF's GRID layer; the path itself has no object index because many pieces make one axis.
         PathReason.BecameSlab or PathReason.BecameColumnByDeclaredSize or PathReason.BecameColumnByShape or PathReason.BecameWall
             or PathReason.BecameFooting or PathReason.GridAxis or PathReason.Doorway or PathReason.ClipOfWall
-            or PathReason.BecameWallFace
+            or PathReason.BecameWallFace or PathReason.MatchLine
             => Disposition.Read,
         PathReason.EmittedAsLine or PathReason.FootingBoxNoLabel or PathReason.Band => Disposition.Unaccounted,
         PathReason.MarkupOnlyMode or PathReason.FurnitureRegion or PathReason.Underline
