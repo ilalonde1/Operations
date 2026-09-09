@@ -158,7 +158,12 @@ public static class DrawingIntake
             if (!request.MarkupOnly)
                 geometry.GridAxes.AddRange(grid.Axes.Select(a => new GridAxis(a.Name, a.Vertical, a.At * scaleFactor)));
         }
-        var wordFates = WordFates(content, furniture, grid, columns.Count, footings.Count, walls.Count, titleBlockConsumed, geometry.GridAxes.Count > 0);
+        // a dimension string is typed text with a value; between grid axes it is the drawing's own
+        // check on the scale (brief 27, 2026-09-08)
+        IReadOnlyList<DimensionStrings.Dimension> dimensions = classify && !request.MarkupOnly
+            ? DimensionStrings.Read(content, geometry.GridAxes, scaleFactor, furniture)
+            : Array.Empty<DimensionStrings.Dimension>();
+        var wordFates = WordFates(content, furniture, grid, columns.Count, footings.Count, walls.Count, titleBlockConsumed, geometry.GridAxes.Count > 0, dimensions);
         int inked = 0, noInk = 0, paper = 0, annotationPaths = 0;
         var inkedPathIndices = new HashSet<int>();
         for (int pathIndex = 0; pathIndex < full.Paths.Count; pathIndex++)
@@ -223,6 +228,7 @@ public static class DrawingIntake
         {
             ColumnAgreement = agreement, ColumnAgreementError = agreementError,
             TitleBlock = fields, ScaleStatement = scaleStatement, ScaleConflict = scaleConflict, Storeys = storeys, FootingLabels = footingLabels,
+            Dimensions = dimensions,
             Context = new SheetContext
             {
                 OutlinesPresent = facts.OutlinesPresent, ScheduleHeadings = headings.Count,
@@ -329,8 +335,9 @@ public static class DrawingIntake
 
     private static IReadOnlyList<WordFate> WordFates(VectorPageReader.PageContent content,
         SheetFurniture.Set furniture, GridBubbles.Grid grid, int colRows, int footRows, int wallRows,
-        IReadOnlySet<(double X, double Y)> titleBlockConsumed, bool gridExported)
+        IReadOnlySet<(double X, double Y)> titleBlockConsumed, bool gridExported, IReadOnlyList<DimensionStrings.Dimension> dimensions)
     {
+        var dimensionByWord = dimensions.ToDictionary(d => d.WordIndex);
         bool ReaderClaims(string regionKind)
         {
             string t = regionKind.ToUpperInvariant();
@@ -379,6 +386,16 @@ public static class DrawingIntake
                 continue;
             }
             string kind = KindOf(w.Text);
+            // a dimension string the reader typed with a value is read; a bare number is a dimension
+            // only when a span of axes agrees with it, else it stays what it was (a mark, a level, a count)
+            if (dimensionByWord.TryGetValue(wordIndex, out var dim) && (!dim.BareNumber || dim.Agrees))
+            {
+                Word($"words on the plan: {kind}", Disposition.Read,
+                    dim.Agrees ? $"DimensionStrings: {dim.ValueMm:0} mm, agrees with axes {dim.SpansFrom}–{dim.SpansTo} ({dim.AxisGapMm:0} mm)"
+                    : dim.Disagrees ? $"DimensionStrings: {dim.ValueMm:0} mm, between axes {dim.SpansFrom}–{dim.SpansTo} ({dim.AxisGapMm:0} mm apart) — a member's length, not the grid's"
+                    : $"DimensionStrings: {dim.ValueMm:0} mm, not between grid axes");
+                continue;
+            }
             var (disp, by) = kind switch
             {
                 "mark"              => (Disposition.Read,        "PlanAgreesWithItsSchedule (as a label to check columns against; not kept as data)"),

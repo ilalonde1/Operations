@@ -131,6 +131,17 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                     marksPlaced > 0 ? $"FootingOutlines; the plan places {marksPlaced} spread-footing mark(s): {byMark}"
                     : scheduled ? $"the schedule declares spread footings and the plan places no mark{(byMark.Length > 0 ? ": " + byMark : "")}"
                     : "no spread footing scheduled on this sheet");
+                if (record.Dimensions.Count > 0)
+                {
+                    var typed = record.Dimensions.Where(d => !d.BareNumber || d.Agrees).ToList();
+                    int agree = typed.Count(d => d.Agrees), disagree = typed.Count(d => d.Disagrees);
+                    var off = typed.Where(d => d.Disagrees).Take(4).Select(d => $"{d.Text} between {d.SpansFrom}–{d.SpansTo} {d.AxisGapMm:0} mm");
+                    Note("dimension strings typed with a value", typed.Count, Disposition.Read,
+                        $"DimensionStrings; {agree} agree with a span of grid axes at the sheet's scale (±{DimensionStrings.AgreeMm:0} mm), {disagree} sit between adjacent axes and state another length"
+                        + (disagree > 0 ? ": " + string.Join(", ", off) + (disagree > 4 ? ", ..." : "") : ""));
+                    if (agree >= 3)
+                        Note("scale confirmed by the drawing's own grid dimensions", agree, Disposition.Read, "DimensionStrings — written lengths between grid axes match the axes' spacing at the stated scale");
+                }
                 if (record.Storeys.Count > 0)
                 {
                     double? typical = StoreyLadder.Typical(record.Storeys);

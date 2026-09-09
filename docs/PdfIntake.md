@@ -3,7 +3,7 @@
 Written 2026-09-08 from the code and from a content inventory of the five local stick files
 (31065, 31130, 31138, 31168, 31202: 294 pages). Every number below was counted on the whole
 population named; nothing is from a sample. The intake brief series lives in
-`docs/codex/CODEX-INTAKE-CONVERGENCE-*.md` (26 so far; 23 and 24 are written for Codex, not yet run) and this is the state they have reached.
+`docs/codex/CODEX-INTAKE-CONVERGENCE-*.md` (27 so far; 23 is written for Codex, not yet run; 24 was Codex's audit, answered in §18) and this is the state they have reached.
 
 The purpose of the intake is stated once so the rest can be judged against it: **pull everything a
 drawing set carries that any downstream tool could need, once, through one reader, and account for
@@ -38,7 +38,8 @@ Measured at step 0 (2026-09-08). The step sections from §7 on record what has c
 walls are emitted (§9), only plans are taken off to DXF (§11), the scale is accounted for on
 every sheet (§12), footings are objects (§13, §14), the grid is named axes on a GRID layer (§15),
 storey heights are read off the wall elevations (§16) and checked against the model in the publish
-(§17). The tables in §2 and §3 are the starting picture.
+(§17), the audit's eleven findings are fixed (§18), dimension strings are typed with their values
+(§19). The tables in §2 and §3 are the starting picture.
 
 | Tool | Path today | What it gets from the PDF | What it does not |
 |---|---|---|---|
@@ -641,3 +642,38 @@ LOAD PLANS" typed as a plan (policy). The two-read design (unthinned content, th
 superseded the one-read sentence in brief 13. A ribbon is still not split, a wall with an opening
 is still not reconstructed, and a curved wall is still not a wall — the audit's table in question 2
 is the honest list of what the rectangle rule cannot read, and the 425 against 850 lives there.
+
+## 19. Step 12, done 2026-09-08: a dimension string is a length the drafter wrote
+
+Brief 27, implemented by the verifier. The ledger typed 1,680 to 6,629 words per set as dimension
+strings and read none of them. `Intake/DimensionStrings` parses each — feet and inches, bare
+inches, and a bare three-to-five-digit number as millimetres — into a value, keeps its position and
+orientation on the record (`SheetRecord.Dimensions`), and for a string that sits between two grid
+axes says which span and whether the written length agrees with the axes' spacing at the sheet's
+scale, within an inch. A bare number is typed as a dimension only when a span agrees with it;
+otherwise it stays what it was, a mark, a level or a count.
+
+The premise this step began with — that a dimension between grid axes would confirm the scale
+without the title block — is **false on KOR's structural sets**. Across the five sets, 294 pages,
+0 dimension strings agree with any span of grid axes: the structural plans dimension members and
+openings, and the grid spacing lives on the architect's drawings. The check stays, stated with its
+zero, for a set that does dimension its grid; the value of the step is the typed text.
+
+| Set | Dimension strings typed | Agree with a grid span | Unread before → after |
+|---|---|---|---|
+| 31130 | 4,001 | 0 | 26,242 → 22,241 |
+| 31168 | 1,677 | 0 | 15,255 → 13,578 |
+| 31138 | 5,858 | 0 | 27,336 → 21,478 |
+| 31065 | 321 | 0 | 33,837 → 33,521 |
+| 31202 | 6,626 | 0 | 31,195 → 24,569 |
+
+Totals unchanged on 5 of 5. On the five schedule pages 49, 27, 72, 2 and 186 strings are typed and
+banked (`FiveStickFilesTests.DimensionStringsOnTheSchedulePageAreTheBankedCount`). 31065's plans
+carry their lengths as bare millimetre numbers, which this rule leaves unread until a span agrees:
+128 on p14, none agreeing — so a metric set's dimensions are the next reader, with the dimension
+LINE (its extension lines and ticks) as the witness instead of the grid.
+
+WHAT THE CHECK COVERS: the parse, the tightest agreeing span, the adjacent pair, tall text against
+the horizontal axes, furniture excluded; the typed count per schedule page. WHAT IT DOES NOT: the
+dimension line, so a string's own extent is not read; a bare millimetre number on a metric sheet;
+and whether a typed value is the length of the member beside it.

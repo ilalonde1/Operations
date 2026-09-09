@@ -57,6 +57,13 @@ public sealed record SheetRecord(
     public IReadOnlyList<FootingOutlines.MarkLabel> FootingLabels { get; init; } = Array.Empty<FootingOutlines.MarkLabel>();
 
     /// <summary>
+    /// Every dimension string on the sheet typed with its value in millimetres, and for those between
+    /// grid axes, the span and whether the written length agrees with the axes' spacing at the
+    /// sheet's scale (<see cref="DimensionStrings"/>). Empty when no scale was requested.
+    /// </summary>
+    public IReadOnlyList<DimensionStrings.Dimension> Dimensions { get; init; } = Array.Empty<DimensionStrings.Dimension>();
+
+    /// <summary>
     /// Storey heights read off a section or elevation sheet: the distance between consecutive level
     /// lines of its level ladder at the sheet's stated scale (<see cref="StoreyLadder"/>). Empty on any
     /// other sheet type, and on an elevation with no ratio scale or fewer than three level lines.
