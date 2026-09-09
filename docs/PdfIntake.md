@@ -978,6 +978,12 @@ finding of none.
 WHAT THE CHECK COVERS (`TheSetChecksItselfTests`): each sheet class on a synthetic sheet; the set's
 duplicate number and an axis drawn 300 mm off; a mark placed on another sheet and a size declared
 on another sheet being no finding. WHAT IT DOES NOT: what the gatekeeper finds that this does not,
-which is the done-when and a person's step on the last three issues; the schedule reader's invented
-row ("PC9ETON:"), which appears here as a mark placed nowhere until the reader is fixed; a grid
-renumbered between two views of one sheet.
+which is the done-when and a person's step on the last three issues; a grid renumbered between two
+views of one sheet.
+
+**A schedule row is a row whose mark is a mark** (same day). The column schedule reader offered
+"PC9ETON:" (a NOTE line under PC9) and "EXTENTS" as rows on 31130, and both products downstream
+reported them — Reissue Impact as a row added, Set Check as a mark placed nowhere. The intake now
+keeps a column row only when its mark is shaped like one (the same shape a mark on the plan must
+have), counts the rest in the ledger as "schedule rows whose mark is not a mark", and 31130's
+September page fell from 25 findings to 17, the four marks placed nowhere all being C2.

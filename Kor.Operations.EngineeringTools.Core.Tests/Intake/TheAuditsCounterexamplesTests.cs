@@ -201,6 +201,26 @@ public sealed class TheAuditsCounterexamplesTests
         Assert.Equal(new[] { "L1", "L22", "L0/P1" }, ladder.Select(r => r.Normalized));
     }
 
+    /// <summary>
+    /// A schedule row is a row whose mark is a mark (2026-09-09): the column reader offered
+    /// "PC9ETON:" (a NOTE line under PC9) and "EXTENTS" as rows on 31130, and Reissue Impact
+    /// reported a row added while Set Check reported a mark placed nowhere. The gate is the same
+    /// shape a mark on the plan must have.
+    /// </summary>
+    [Theory]
+    [InlineData("PC9ETON:", false)]
+    [InlineData("EXTENTS", false)]
+    [InlineData("NOTE:", false)]
+    [InlineData("PC9", true)]
+    [InlineData("GC1A", true)]
+    [InlineData("PC03-B", true)]
+    [InlineData("ZC2", true)]
+    [InlineData("C11", true)]
+    public void AScheduleRowIsARowWhoseMarkIsAMark(string mark, bool isMark)
+    {
+        Assert.Equal(isMark, DrawingIntake.KindOf(mark) == "mark");
+    }
+
     [Fact]
     public void F11_ALabelInTheNextColumnDoesNotCutATitleBlockFieldOff()
     {

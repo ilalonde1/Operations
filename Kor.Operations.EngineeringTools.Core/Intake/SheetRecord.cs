@@ -106,6 +106,8 @@ public sealed record SheetContext
     public int AnnotationPaths { get; init; }
     public int NoInkPaths { get; init; }
     public int PaperPaths { get; init; }
+    /// <summary>Column schedule rows the reader offered whose mark is not shaped like a mark ("PC9ETON:", "EXTENTS"); not rows.</summary>
+    public int ScheduleRowsNotMarks { get; init; }
     public int InkedPaths { get; init; }
     public IReadOnlySet<int> InkedPathIndices { get; init; } = new HashSet<int>();
 }

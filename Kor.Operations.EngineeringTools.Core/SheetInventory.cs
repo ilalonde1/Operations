@@ -180,6 +180,8 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
 
             foreach (var (type, n) in record.Context.AnnotationTypes.OrderByDescending(kv => kv.Value))
                 Note($"annotations: {type}", n, Disposition.Read, "VectorPageReader.ReadAnnotationPaths (geometry only)");
+            if (record.Context.ScheduleRowsNotMarks > 0)
+                Row("schedule rows whose mark is not a mark (a NOTE line, a heading word)", record.Context.ScheduleRowsNotMarks, Disposition.Discarded, "DrawingIntake: a row is a row whose mark is shaped like one");
             Row("annotation text (engineer's comments)", record.Markup.Count, Disposition.Read, "DrawingIntake: PdfPig Annotation.Content and author");
             if (record.Annotations.Count > record.Markup.Count)
                 Row("annotations without words (ticks, shapes)", record.Annotations.Count - record.Markup.Count, Disposition.Read, "DrawingIntake: position and author kept; a tick is a reply (MarkupReconcile)");

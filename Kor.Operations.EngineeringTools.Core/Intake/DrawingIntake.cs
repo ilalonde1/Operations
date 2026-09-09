@@ -120,7 +120,18 @@ public static class DrawingIntake
         IReadOnlyList<ScheduleGridReader.FlatWallScheduleRow> walls = [];
         IReadOnlyList<MarkRowScheduleReader.ScheduleHeading> headings = [];
         string? agreementError = null;
-        try { columns = ColumnScheduleReader.ReadSchedule(content); }
+        int rowsNotMarks = 0;
+        try
+        {
+            columns = ColumnScheduleReader.ReadSchedule(content);
+            // A SCHEDULE ROW IS A ROW WHOSE MARK IS A MARK. The column reader read "PC9ETON:" (a
+            // NOTE line under PC9) and "EXTENTS" as rows on 31130, and both products downstream
+            // reported them — as a row added on the reissue, as a mark placed nowhere in the set
+            // (2026-09-09). A mark is shaped like one; a row whose mark is not is not a row.
+            var markShaped = columns.Where(r => KindOf(r.Mark.Trim()) == "mark").ToList();
+            rowsNotMarks = columns.Count - markShaped.Count;
+            columns = markShaped;
+        }
         catch (Exception ex) { agreementError = ex.GetType().Name; }
         try { footings = FootingScheduleReader.ReadSchedule(content).Types; } catch { /* Optional schedule unread. */ }
         try { walls = ScheduleGridReader.ReadFlatWallRows(content); } catch { /* Optional schedule unread. */ }
@@ -245,6 +256,7 @@ public static class DrawingIntake
                 NonHorizontalLetters = nonHorizontal, InvisibleLetters = invisible, NonRgbLetters = nonRgb,
                 ClippingOperations = clipOps, Fonts = fonts.Count,
                 AnnotationPaths = annotationPaths, NoInkPaths = noInk, PaperPaths = paper, InkedPaths = inked,
+                ScheduleRowsNotMarks = rowsNotMarks,
                 InkedPathIndices = inkedPathIndices,
             },
         };
