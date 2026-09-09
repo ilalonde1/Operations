@@ -161,6 +161,12 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             foreach (var (title, minX, maxX, minY, height) in TitledBoxes(page))
                 AddTitledBox(regions, page, rules, "furniture: " + title, minX, maxX, minY, height, enclosingToo: true);
 
+            // 1b. the north arrow: a compass — a stroked ring beside the word NORTH — and whatever is
+            //     drawn inside it. Its filled shaft measured 48" x 6" at 1:96 and read as a wall on
+            //     3 of 5 sets' plans (2026-09-08). The ring is the region; the word alone is not,
+            //     because NORTH is also a word in notes on the plan.
+            foreach (var region in NorthArrows(page)) regions.Add(region);
+
             // 2. the title block: the strip beyond the long edge nearest the sheet number. An edge
             //    is every rule at one position taken together — a title block's side is drawn box
             //    by box, and no one box's side is the length of the sheet, but the side is.
@@ -244,6 +250,35 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         /// Every line of text carrying one of <see cref="FurnitureHeadings"/> as a whole word: the
         /// title, its extent and its height, found the way schedule titles are.
         /// </summary>
+        /// <summary>A compass ring is this many points across at least, and at most.</summary>
+        public const double NorthArrowMinPts = 30, NorthArrowMaxPts = 200;
+
+        /// <summary>
+        /// The north arrows on the sheet: each stroked path of at least twelve points, 30 to
+        /// 200 points across and no more than 2.5 times as long as wide (31168's is a ring, 31202's
+        /// an arrow outline 1/2" x 1"), whose centre lies within two lengths of a word NORTH. The
+        /// region is the path's box and the word's, together.
+        /// </summary>
+        public static IEnumerable<Region> NorthArrows(VectorPageReader.PageContent page)
+        {
+            var norths = page.Words.Where(w => w.Text.Equals("NORTH", StringComparison.OrdinalIgnoreCase)).ToList();
+            if (norths.Count == 0) yield break;
+            foreach (var p in page.Paths)
+            {
+                // closed or open: 31202's arrow outline is an open 17-point polyline
+                if (!p.IsStroked || p.IsAnnotation || p.Points.Count < 12) continue;
+                double w = p.Width, h = p.Height, d = Math.Max(w, h);
+                if (d < NorthArrowMinPts || d > NorthArrowMaxPts || d > 2.5 * Math.Min(w, h)) continue;
+                double cx = (p.MinX + p.MaxX) / 2, cy = (p.MinY + p.MaxY) / 2;
+                var near = norths.Where(n => Math.Sqrt((n.Cx - cx) * (n.Cx - cx) + (n.Cy - cy) * (n.Cy - cy)) <= 2 * d).ToList();
+                if (near.Count == 0) continue;
+                var word = near[0];
+                yield return new Region("north arrow",
+                    Math.Min(p.MinX, word.MinX) - 2, Math.Min(p.MinY, word.MinY) - 2,
+                    Math.Max(p.MaxX, word.MaxX) + 2, Math.Max(p.MaxY, word.MaxY) + 2);
+            }
+        }
+
         private static IEnumerable<(string Title, double MinX, double MaxX, double MinY, double Height)> TitledBoxes(VectorPageReader.PageContent page)
         {
             foreach (var w in page.Words)

@@ -433,7 +433,7 @@ if (args.Length >= 1 && args[0].Equals("pdf-overlay", StringComparison.OrdinalIg
                 if (ox <= 25 || oy <= 25) continue;
                 if ((x1 - x0) > 3 * (wx1 - wx0) && (y1 - y0) > 3 * (wy1 - wy0)) continue;   // a region, not a knockout
                 string when = i == wallAt ? "the wall itself" : i < wallAt ? "painted before" : "painted after";
-                Console.WriteLine($"      on it, {when} (path {i}): {(x1 - x0) / 25.4,6:0.0} x {(y1 - y0) / 25.4,5:0.0} in  colour #{r.Color.R:X2}{r.Color.G:X2}{r.Color.B:X2}  {(r.IsFilled ? "filled" : "unfilled")} {(r.IsStroked ? "stroked" : "unstroked")}  pts {r.Points.Count}{(r.IsAnnotation ? "  annotation" : "")}");
+                Console.WriteLine($"      on it, {when} (path {i}): {(x1 - x0) / 25.4,6:0.0} x {(y1 - y0) / 25.4,5:0.0} in  colour #{r.Color.R:X2}{r.Color.G:X2}{r.Color.B:X2}  {(r.IsFilled ? "filled" : "unfilled")} {(r.IsStroked ? "stroked" : "unstroked")} {(r.IsClosed ? "closed" : "open")}  pts {r.Points.Count}{(r.IsAnnotation ? "  annotation" : "")}");
             }
         }
     }

@@ -751,3 +751,26 @@ a clip ended by `Q` before the wall is painted (PdfPig does not expose the graph
 pieces-on-the-wall test is the guard); a knockout that is STROKED white; a doorway drawn as a gap
 between two separate fills, which needs no rule; a curved clip; and the north arrow, whose 48" x 6"
 shaft reads as a wall on 3 of 5 sets' baseline plans — the next rule.
+
+## 22. Step 14b, done 2026-09-08: the north arrow is furniture
+
+Found by §21's `pdf-overlay --walls`: a 48" x 6" filled bar read as a wall on 3 of 5 sets' baseline
+plans, on every sheet that carries it. It sits at the sheet's top right beside the word NORTH — the
+compass's shaft. Its ring (8 ft across at 1:96) was a slab and its arrow's four strokes were beams
+on the same sheets, which the census found once the region existed.
+
+**The north arrow is a compass beside the word NORTH, and nothing in it is structure.**
+`SheetFurniture.NorthArrows`: a stroked path of at least twelve points, 30 to 200 points across
+and no more than 2.5 times as long as wide (31168's is a closed ring, 31202's an open arrow outline
+1/2" x 1"), whose centre lies within two lengths of a word NORTH; the region is the path's box and
+the word's together. The word alone is not a region, because NORTH is a word in notes on the plan;
+the ring alone is not, because a detail bubble is one too.
+
+Measured after: the census from step 14 moved WALL −1, SLAB −1 and BEAM −4 on 6 of 13 files
+(31168 and 31138), WALL −1 and BEAM −5 on 31202, and nothing on 31130 and 31065, whose compasses had
+never read as anything. Banks 13/29/42/39/21.
+
+WHAT THE CHECK COVERS: the ring beside the word with the shaft inside it; the word alone; the ring
+alone; a ring two diameters away. WHAT IT DOES NOT: a compass with no closed or open twelve-point
+outline at all, and a plan note reading NORTH beside a twelve-point stroked shape 30–200 pt across,
+which this would wrongly swallow.

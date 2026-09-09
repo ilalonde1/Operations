@@ -179,6 +179,29 @@ public sealed class SheetFurnitureIsNotStructureTests
 
     // ── the regions themselves, from a page ─────────────────────────────────────────────────
 
+    [Fact]
+    public void TheNorthArrowIsFurniture()
+    {
+        // a compass: a stroked ring 72 pt across beside the word NORTH, with a filled shaft inside it
+        static GP Ring(double cx, double cy, double r)
+        {
+            var pts = Enumerable.Range(0, 32).Select(i => (cx + r * Math.Cos(i * Math.PI / 16), cy + r * Math.Sin(i * Math.PI / 16))).ToList();
+            return new GP(pts, true, false, true, cx - r, cy - r, cx + r, cy + r);
+        }
+        var shaft = new GP(new List<(double X, double Y)> { (3108, 2410), (3112, 2410), (3112, 2470), (3108, 2470) }, true, true, false, 3108, 2410, 3112, 2470);
+        var withWord = new PC(1, 3456, 2592, new List<TT> { Tok("TRUE", 3095, 2500), Tok("NORTH", 3115, 2500) }, new List<GP> { Ring(3110, 2440, 36), shaft });
+        var set = SheetFurniture.On(withWord);
+        var region = Assert.Single(set.Regions, r => r.Kind == "north arrow");
+        Assert.True(set.IsFurniture(3110, 2440));                               // the shaft's centre
+        Assert.True(region.MinY <= 2404 && region.MaxY >= 2503);                // the ring and the word together
+
+        // the word alone is a note; the ring alone is a detail bubble or a column
+        Assert.DoesNotContain(SheetFurniture.On(withWord with { Paths = new List<GP> { shaft } }).Regions, r => r.Kind == "north arrow");
+        Assert.DoesNotContain(SheetFurniture.On(withWord with { Words = new List<TT> { Tok("WALL", 3115, 2500) } }).Regions, r => r.Kind == "north arrow");
+        // a ring two diameters away from the word is not its compass
+        Assert.DoesNotContain(SheetFurniture.On(withWord with { Paths = new List<GP> { Ring(2900, 2440, 36) } }).Regions, r => r.Kind == "north arrow");
+    }
+
     private static TT Tok(string text, double x, double y, double h = 6) => new(text, x, y, x - 8, y - h / 2, x + 8, y + h / 2);
 
     private static GP HRule(double x0, double x1, double y) => new(
