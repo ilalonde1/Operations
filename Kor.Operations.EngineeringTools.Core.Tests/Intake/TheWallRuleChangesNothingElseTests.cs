@@ -82,7 +82,10 @@ public sealed class TheWallRuleChangesNothingElseTests
 
     private static (List<RawSubpath> Paths, HashSet<int> Walls, int RibbonIndex) Fixture()
     {
-        var cases = FateFixture.Cases();
+        // Without the doorway case (step 14): this differential is about the wall RULE against the
+        // pre-wall classifier, and it asserts each wall keeps the path's own outline, which a wall
+        // split into piers does not. AWallIsThePiersBesideItsDoorwaysTests covers the doorway.
+        var cases = FateFixture.Cases().Where(c => c.Reason is not (PathReason.Doorway or PathReason.ClipOfWall)).ToList();
         var paths = cases.Select(c => c.Path).ToList();
         var walls = cases.Select((c, i) => (c, i)).Where(x => x.c.Reason == PathReason.BecameWall).Select(x => x.i).ToHashSet();
         foreach (var rectangle in new[] { WallFixture.Rect(12, 240), WallFixture.Rect(12, 50), WallFixture.Rect(4, 48) })

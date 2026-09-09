@@ -97,25 +97,25 @@ public sealed class FiveStickFilesTests
     {
         new("31130-01", 96, 258, "F1,F2,F3,F4,SF1", 11,
             "PC1,PC2,PC4,PC5,PC6,PC7,PC8", "SWA:12:35,SWB:12:45,SWC:12:45,SWD:16:55",
-            new Dictionary<int, int> { [11] = 14, [12] = 25, [13] = 41 }, WallCount: 11, FootingCount: 36, FootingMarksPlaced: 36, GridAxes: 19,
+            new Dictionary<int, int> { [11] = 14, [12] = 25, [13] = 41 }, WallCount: 13, FootingCount: 36, FootingMarksPlaced: 36, GridAxes: 19,
             GridNamesX: "1,3,5,7,8,9,10,11,13,15,16", GridNamesY: "Q,P,L,G,F,E,B,A", DimensionsTyped: 49),
         new("31168-01", 96, 0, "", 11,
             "C02-A,C02-B,C03-A,C03-B,C04-A,C04-B,GC11-C,PC01,PC02,PC03-A,PC03-B,TC01,TC02,TC03,TC04", "SWA:12:35,SWB:12:45,SWC:12:45,SWD:16:55",
-            new Dictionary<int, int> { [11] = 43, [12] = 65, [13] = 47 }, WallCount: 25, GridAxes: 26,
+            new Dictionary<int, int> { [11] = 43, [12] = 65, [13] = 47 }, WallCount: 30, GridAxes: 26,
             GridNamesX: "1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19", GridNamesY: "R,P,N,M,L,K,J", DimensionsTyped: 27),
         new("31138-01", 96, 353, "F1,F2,SF1,SF2", 9,
             "PC1,PC1A,PC2,PC3,PC3A,PC4,PC5,PC6,PC7,PC8,PC9,PL1,PL2", "SWA:8:35",
-            new Dictionary<int, int> { [9] = 24, [11] = 21 }, WallCount: 41, FootingCount: 11, FootingMarksPlaced: 11, GridAxes: 15,
+            new Dictionary<int, int> { [9] = 24, [11] = 21 }, WallCount: 43, FootingCount: 11, FootingMarksPlaced: 11, GridAxes: 15,
             GridNamesX: "1,2,3,4,5,6,7,8", GridNamesY: "G,F,E,D,C,B,A", DimensionsTyped: 72),
         // 1,174 → 1,099 cy on 2026-09-08 (brief 21): the two "F4" in p14's bond-breaker note were counted as
         // placements, 74 cy of footing that is not on the plan; placements are now counted outside furniture
         new("31065-01", 100, 1099, "F1,F2,F3,F4,SF1,SF2", 14,
             "PC1,PC1A,PC2,PC3,PC4,PC5,ZC1,ZC2", "SWA:8:35,SWB:8:35,SWC:24:45",
-            new Dictionary<int, int> { [14] = 24, [15] = 22, [16] = 30 }, WallCount: 36, FootingCount: 30, FootingMarksPlaced: 29, GridAxes: 17,
+            new Dictionary<int, int> { [14] = 24, [15] = 22, [16] = 30 }, WallCount: 39, FootingCount: 30, FootingMarksPlaced: 29, GridAxes: 17,
             GridNamesX: "1,2,3,4,5,6,7,8", GridNamesY: "F,A,G,F,E,D,C,B,A", DimensionsTyped: 2),
         new("31202-01", 96, 0, "", 17,
             "1,2,3,4,5,6,7,8", "",
-            new Dictionary<int, int> { [17] = 23 }, WallCount: 19, GridAxes: 17,
+            new Dictionary<int, int> { [17] = 23 }, WallCount: 22, GridAxes: 17,
             GridNamesX: "1,2,3,4,10,13,14", GridNamesY: "4,1,N,M,L,I,F,C.2,B,A", DimensionsTyped: 186),
     };
 

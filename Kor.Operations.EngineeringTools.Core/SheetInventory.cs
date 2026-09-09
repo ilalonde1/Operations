@@ -92,11 +92,14 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                     f.PathIndex < record.Content.Paths.Count
                     && !record.Content.Paths[f.PathIndex].IsFilled && !record.Content.Paths[f.PathIndex].IsStroked
                     && !record.Content.Paths[f.PathIndex].IsAnnotation
+                    && f.Reason != PathReason.ClipOfWall   // a clip a wall is drawn through shapes the wall; it is read as that, not emitted
                     && (f.Disposition == Disposition.Read || f.Reason == PathReason.EmittedAsLine));
                 Note("no-ink paths (clip or invisible) the classifier emitted as slabs, columns or lines", noInkEmitted,
                     noInkEmitted > 0 ? Disposition.Unaccounted : Disposition.Read,
                     noInkEmitted > 0 ? "a path that draws nothing became geometry; the invisible-ink rule covers paper FILLS only" : "none");
                 Note("emitted: walls", record.Geometry.Walls.Count, Disposition.Read, "GeometryFilterService");
+                if (record.Geometry.Doorways.Count > 0)
+                    Note("emitted: doorways (paper fills knocked out of walls; the walls are their piers)", record.Geometry.Doorways.Count, Disposition.Read, "GeometryFilterService.DoorwaysOn");
                 if (record.SheetType != "plan")
                 {
                     int onNonPlan = record.Geometry.Walls.Count + record.Geometry.Columns.Count + record.Geometry.Slabs.Count;
@@ -163,8 +166,15 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                 if (classified) Note(cls, n, d, by); else Row(cls, n, d, by);
             }
             Provenance("paths: from annotations (Bluebeam geometry)", record.Context.AnnotationPaths, Disposition.Read, "VectorPageReader.ReadAnnotationPaths");
-            Provenance("paths: no ink (clip or invisible)", record.Context.NoInkPaths, Disposition.Discarded, "VectorPageReader ink flags");
-            Provenance("paths: paper-coloured fill, no stroke (invisible ink)", record.Context.PaperPaths, Disposition.Discarded, "GeometryFilterService.IsPaper");
+            int clipsOfWalls = record.PathFates.Count(f => f.Reason == PathReason.ClipOfWall);
+            Provenance(clipsOfWalls > 0
+                    ? $"paths: no ink (clip or invisible; {clipsOfWalls} of them clips walls are drawn through, read as the walls' piers)"
+                    : "paths: no ink (clip or invisible)",
+                record.Context.NoInkPaths, Disposition.Discarded, "VectorPageReader ink flags");
+            Provenance(record.Geometry.Doorways.Count > 0
+                    ? $"paths: paper-coloured fill, no stroke (invisible ink; {record.Geometry.Doorways.Count} of them doorways, read)"
+                    : "paths: paper-coloured fill, no stroke (invisible ink)",
+                record.Context.PaperPaths, Disposition.Discarded, "GeometryFilterService.IsPaper");
             if (!classified)
                 Row("paths: inked, not classified (no scale given)", record.Context.InkedPaths, Disposition.Unaccounted, "pass --scale, or read one off the sheet");
 

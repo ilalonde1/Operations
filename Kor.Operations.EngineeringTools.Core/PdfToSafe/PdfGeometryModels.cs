@@ -44,7 +44,13 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         bool IsFilled,
         bool IsStroked,
         double LineWidth,
-        bool IsAnnotation);
+        bool IsAnnotation)
+    {
+        /// <summary>A clip (W n): draws nothing, limits what the paths after it show. See VectorPageReader.GeomPath.</summary>
+        public bool IsClipping { get; init; }
+        /// <summary>The page path this subpath came from, in content order; -1 when unknown (fixtures).</summary>
+        public int PathOrdinal { get; init; } = -1;
+    }
 
     /// <summary>A cut wall's outline, centreline and thickness, all in millimetres.</summary>
     /// <summary>A spread footing: the box its dashed outline closes, the schedule mark that sizes it, and that size.</summary>
@@ -70,11 +76,22 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
     /// </summary>
     public sealed record GridAxis(string Name, bool Vertical, double AtMm);
 
+    /// <summary>
+    /// An opening knocked out of a wall with a paper-coloured fill (Intake step 14): its extent along
+    /// the wall's axis in mm, the wall's thickness, and the index of the first pier the wall became.
+    /// </summary>
+    public sealed record Doorway((double X, double Y) Start, (double X, double Y) End, double ThicknessMm, int FirstPier)
+    {
+        public double LengthMm => Math.Sqrt(Math.Pow(End.X - Start.X, 2) + Math.Pow(End.Y - Start.Y, 2));
+    }
+
     public sealed class ExtractedGeometry
     {
         /// <summary>The sheet's named grid axes (Intake step 8). Written to the DXF's GRID layer.</summary>
         public List<GridAxis> GridAxes { get; } = new();
         public List<WallPanel> Walls { get; } = new();
+        /// <summary>Openings knocked out of walls; each wall with one is in <see cref="Walls"/> as its piers.</summary>
+        public List<Doorway> Doorways { get; } = new();
         public List<(byte R, byte G, byte B)> WallColors { get; } = new();
         public List<bool> WallIsAnnotation { get; } = new();
         /// <summary>Filled loops with wall-proportioned boxes but more than four vertices; not split.</summary>

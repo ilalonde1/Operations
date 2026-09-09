@@ -704,3 +704,50 @@ at a caption's scale with no sheet scale, and 31138 p53 banked. WHAT IT DOES NOT
 caption belongs to beyond "below and nearest" — two ladders one above the other take the same
 caption; a plan on an AS NOTED sheet (the geometry still takes the requested denominator); and a
 caption the extractor splits some other way.
+
+## 21. Step 14, done 2026-09-08: a wall is what its clip lets through, and its doorways are its piers
+
+Brief 29, implemented by the verifier. The wall gap against Revit on 31168 was stated as 425 to
+850 since step 5. Measured per sheet first (`takeoff pdf-vs-dxf --views`): the 850 was the sum of
+every DXF view a sheet stands for (S2.22.1 carries LEVEL 33 to 36) and a "for reinforcing plan"
+copy of each; paired sheet to its own concrete-outline view the DXF carries 521 walls, and 795 of
+the 850 sit on JBP_V-WALL, 26 on JBP_B_WALL. What remained was looked at: on the typical tower plan
+(p22) the PDF read each core face as ONE 328" wall where Revit carries three piers, and on the
+podium plan (p17) it read 17 walls to Revit's 29.
+
+Two drawing conventions, found by listing what is painted on each wall in paint order
+(`takeoff pdf-overlay --walls`):
+
+**A wall is what its clip lets through.** Revit's export draws a core face as one grey fill the
+length of the face and clips it (`W n`) with the path drawn immediately before it, one rectangle
+per pier; the fill shows only through the clip. p22's west face is a 328" x 30" fill behind a clip
+of 30" x 74", 118" and 41". `VectorPageReader` now carries a path's clipping flag and its ordinal
+in the page; `GeometryFilterService` takes the clip drawn just before a wall's own path, every
+piece of which lies on the wall (across its thickness, within its length), and emits the wall as
+those pieces. A clip with a piece off the wall is left over from a graphics state the reader cannot
+see the end of, and the wall is taken whole. The clip's pieces are read (`ClipOfWall`, indexed to
+the first pier); a clip that shaped nothing stays `NoInk`.
+
+**A doorway is a paper-coloured fill painted over a wall.** The podium's drafter draws the wall full
+length and knocks each opening out with a white rectangle: painted after the wall, across its
+thickness and no wider across than twice it, at least 18" along it (Revit's own doorways on 31168
+measured 36"–48" on 142 of 160 and none under 18"). The wall is emitted as the piers on either side,
+a pier being at least 12" (the DXF side's panel floor; 31138's model carries 9"–27" piers with
+labels, so the wall's 48" minimum does not apply to a pier). The fill is read (`Doorway`, into
+`Geometry.Doorways`); one painted before the wall is covered by it and stays `PaperFill`. p17 has
+five, 40"–55" wide.
+
+Measured after: p22 reads 10 walls per plan, which is what `dxf-inspect --walls` reads in Revit's
+LEVEL 4 view (north, south, stair and landing walls, three piers each side); p17 reads 25 walls
+(was 17). The census from step 12 moved WALL only, on 13 of 13 files, rising on each; the five
+banked schedule-page counts moved 11→13, 25→30, 41→43, 36→39, 19→22 and are rebanked.
+
+WHAT THE CHECK COVERS: a three-piece clip drawn before its wall; a clip not immediately before, or
+with a piece off the wall; a clip and a doorway together; two knockouts making three piers, their
+fates and object indices; a fill painted before the wall, one not crossing the thickness, a slot
+under 18", a mask wider than the wall; a turned wall with a turned knockout; a knockout at a wall's
+end; piers narrower than a panel dropped; every path fated once and in path order. WHAT IT DOES NOT:
+a clip ended by `Q` before the wall is painted (PdfPig does not expose the graphics state — the
+pieces-on-the-wall test is the guard); a knockout that is STROKED white; a doorway drawn as a gap
+between two separate fills, which needs no rule; a curved clip; and the north arrow, whose 48" x 6"
+shaft reads as a wall on 3 of 5 sets' baseline plans — the next rule.

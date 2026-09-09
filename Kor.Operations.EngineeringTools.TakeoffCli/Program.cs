@@ -352,6 +352,8 @@ if (args.Length >= 1 && args[0].Equals("pdf-overlay", StringComparison.OrdinalIg
     foreach (var line in ovGeo.Lines) OvPoly(line, red, 0, close: false);
     foreach (var slab in ovGeo.Slabs) OvPoly(slab, grey, 1, close: true);
     foreach (var wall in ovGeo.Walls) OvPoly(wall.Outline, new Rgba32(130, 0, 0), 2, close: true);
+    // doorways knocked out of walls, yellow, across the opening
+    foreach (var d in ovGeo.Doorways) OvPoly(new[] { d.Start, d.End }, new Rgba32(230, 180, 0), 3, close: false);
     // named grid axes, cyan, across the whole page
     double ovPageWmm = ovContent.WidthPts * ovScale * PdfToSafeConstants.PointsToMm, ovPageHmm = ovContent.HeightPts * ovScale * PdfToSafeConstants.PointsToMm;
     foreach (var axis in ovGeo.GridAxes)
@@ -404,6 +406,37 @@ if (args.Length >= 1 && args[0].Equals("pdf-overlay", StringComparison.OrdinalIg
     Console.WriteLine($"  slabs {ovGeo.Slabs.Count} (grey)   columns {ovGeo.Columns.Count} (blue)   walls {ovGeo.Walls.Count} (dark red)   footings {ovGeo.Footings.Count} (orange; {unlabelled.Count} without a label, magenta)   grid axes {ovGeo.GridAxes.Count} (cyan: X {string.Join(",", ovGeo.GridAxes.Where(a => a.Vertical).Select(a => a.Name))}; Y {string.Join(",", ovGeo.GridAxes.Where(a => !a.Vertical).Select(a => a.Name))})   lines {ovGeo.Lines.Count} (red)   mark-shaped words {marks} (green)");
     foreach (var f in unlabelled) Console.WriteLine($"  footing {f.Mark} at ({f.Centre.X:0},{f.Centre.Y:0}) mm: no label on the plan names it");
     foreach (var u in unanswered) Console.WriteLine($"  label {u}: no footing read answers it");
+    if (ovGeo.Doorways.Count > 0) Console.WriteLine($"  doorways {ovGeo.Doorways.Count} (yellow): openings knocked out of walls with paper fills; those walls are their piers");
+    if (args.Any(a => a.Equals("--walls", StringComparison.OrdinalIgnoreCase)))
+    {
+        foreach (var d in ovGeo.Doorways)
+            Console.WriteLine($"  doorway {d.LengthMm / 25.4,6:0.0} in wide in a {d.ThicknessMm / 25.4,4:0.0} in wall at ({(d.Start.X + d.End.X) / 2,6:0},{(d.Start.Y + d.End.Y) / 2,6:0}) mm");
+        // Each wall the page read, as the draftsman would size it: length x thickness in inches at
+        // the sheet's scale, and where its centre sits in page millimetres.
+        // What else is painted on each wall after it: the drafter's knockouts are here, whatever
+        // colour and stroke they carry, so a doorway the rule did not read can be seen for what it is.
+        using var ovDoc = UglyToad.PdfPig.PdfDocument.Open(ovPdf);
+        var ovRaw = PdfPlanReader.ParsePage(ovDoc.GetPage(ovPage), ovScale * PdfToSafeConstants.PointsToMm);
+        foreach (var w in ovGeo.Walls.OrderByDescending(w => Math.Sqrt(Math.Pow(w.End.X - w.Start.X, 2) + Math.Pow(w.End.Y - w.Start.Y, 2))))
+        {
+            double lenMm = Math.Sqrt(Math.Pow(w.End.X - w.Start.X, 2) + Math.Pow(w.End.Y - w.Start.Y, 2));
+            Console.WriteLine($"  wall {lenMm / 25.4,7:0.0} x {w.ThicknessMm / 25.4,5:0.0} in   centre ({(w.Start.X + w.End.X) / 2,6:0},{(w.Start.Y + w.End.Y) / 2,6:0}) mm   outline pts {w.Outline.Count}");
+            double wx0 = w.Outline.Min(p => p.X), wx1 = w.Outline.Max(p => p.X), wy0 = w.Outline.Min(p => p.Y), wy1 = w.Outline.Max(p => p.Y);
+            int wallAt = ovRaw.FindIndex(r => r.Points.Count == 4 && r.IsFilled && Math.Abs(r.Points.Min(p => p.X) - wx0) < 1 && Math.Abs(r.Points.Max(p => p.X) - wx1) < 1
+                                              && Math.Abs(r.Points.Min(p => p.Y) - wy0) < 1 && Math.Abs(r.Points.Max(p => p.Y) - wy1) < 1);
+            for (int i = 0; i < ovRaw.Count; i++)
+            {
+                var r = ovRaw[i];
+                if (r.Points.Count < 3) continue;
+                double x0 = r.Points.Min(p => p.X), x1 = r.Points.Max(p => p.X), y0 = r.Points.Min(p => p.Y), y1 = r.Points.Max(p => p.Y);
+                double ox = Math.Min(x1, wx1) - Math.Max(x0, wx0), oy = Math.Min(y1, wy1) - Math.Max(y0, wy0);
+                if (ox <= 25 || oy <= 25) continue;
+                if ((x1 - x0) > 3 * (wx1 - wx0) && (y1 - y0) > 3 * (wy1 - wy0)) continue;   // a region, not a knockout
+                string when = i == wallAt ? "the wall itself" : i < wallAt ? "painted before" : "painted after";
+                Console.WriteLine($"      on it, {when} (path {i}): {(x1 - x0) / 25.4,6:0.0} x {(y1 - y0) / 25.4,5:0.0} in  colour #{r.Color.R:X2}{r.Color.G:X2}{r.Color.B:X2}  {(r.IsFilled ? "filled" : "unfilled")} {(r.IsStroked ? "stroked" : "unstroked")}  pts {r.Points.Count}{(r.IsAnnotation ? "  annotation" : "")}");
+            }
+        }
+    }
     return 0;
 }
 
@@ -415,11 +448,12 @@ if (args.Length >= 1 && args[0].Equals("pdf-vs-dxf", StringComparison.OrdinalIgn
 {
     if (args.Length < 3) { Console.Error.WriteLine("Usage: takeoff pdf-vs-dxf <pdf> <dxfFolder> --scale N [--rules-db <conn>]"); return 1; }
     string vdPdf = args[1], vdFolder = args[2];
-    int vdScale = 0; string? vdRules = null;
+    int vdScale = 0; string? vdRules = null; bool vdViews = false;
     for (int i = 3; i < args.Length; i++)
     {
         if (args[i].Equals("--scale", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) int.TryParse(args[++i], out vdScale);
         else if (args[i].Equals("--rules-db", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) vdRules = args[++i];
+        else if (args[i].Equals("--views", StringComparison.OrdinalIgnoreCase)) vdViews = true;
     }
     if (vdScale <= 0) { Console.Error.WriteLine("--scale <denominator> is required (1/8\" = 1'-0\" is 96)."); return 2; }
     var (vdOptions, vdRulesSource) = PdfIntakeOptions.For(vdRules);
@@ -442,6 +476,17 @@ if (args.Length >= 1 && args[0].Equals("pdf-vs-dxf", StringComparison.OrdinalIgn
         string title = s.Title.Length > 20 ? s.Title[..20] : s.Title;
         Console.WriteLine($"{s.Sheet,-10} {s.Page,4} {s.Views,5}  {title,-20} |  {s.PdfSlabs,10} {s.PdfCols,5} {s.PdfLines,6} {s.PdfWalls,6} |  {s.DxfWalls,10} {s.DxfCols,5} {s.DxfSlabs,6} {s.DxfOpenings,9} |  {s.PdfCols - s.DxfCols,+6}" +
                           (s.IsPlan ? "" : $"   ({s.SheetType}: not compared)"));
+        if (!vdViews) continue;
+        // One row per DXF view under its sheet, so a typical plan drawn once on the page and exported
+        // once per level (and once more "for reinforcing plan") is seen for what it is.
+        foreach (var v in vd.Pairs.Where(p => p.SheetNumber.Equals(s.Sheet, StringComparison.OrdinalIgnoreCase)).OrderBy(p => p.DxfFile, StringComparer.OrdinalIgnoreCase))
+        {
+            string view = Path.GetFileNameWithoutExtension(v.DxfFile);
+            int cut = view.IndexOf(s.Sheet, StringComparison.OrdinalIgnoreCase);
+            if (cut >= 0) view = view[(cut + s.Sheet.Length)..].TrimStart('_');
+            if (view.Length > 44) view = view[..44];
+            Console.WriteLine($"{"",-10} {"",4} {"",5}  {"",-20} |  {"",10} {"",5} {"",6} {"",6} |  {v.DxfWalls,10} {v.DxfColumns,5} {v.DxfSlabs,6} {v.DxfOpenings,9} |         {view,-44}  walls: {v.DxfWallLayers}");
+        }
     }
     Console.WriteLine();
     // Only plans are compared: a section sheet's cut poché against a section view's says nothing about the intake.

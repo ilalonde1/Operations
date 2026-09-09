@@ -39,6 +39,12 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
         {
             /// <summary>The PDF page's sheet type; only a plan is compared (brief 17).</summary>
             public string SheetType { get; init; } = "plan";
+            /// <summary>
+            /// The DXF's walls by layer ("JBP_V-WALL 14, JBP_B_WALL 31"): a Revit export draws the
+            /// walls cut at the level and the walls below it on two layers, and the PDF reads only
+            /// the filled cut. The split says which population a shortfall sits in.
+            /// </summary>
+            public string DxfWallLayers { get; init; } = "";
             public bool IsPlan => SheetType == "plan";
         }
 
@@ -98,7 +104,12 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
 
                 pairs.Add(new SheetPair(name, m.Value.ToUpperInvariant(), hit.Page, hit.Title,
                     pdfGeo.Slabs.Count, pdfGeo.Columns.Count, pdfGeo.Lines.Count, pdfGeo.Walls.Count,
-                    dxfGeo.Walls.Count, dxfGeo.Columns.Count, dxfGeo.Slabs.Count, dxfGeo.Openings.Count) { SheetType = sheetType });
+                    dxfGeo.Walls.Count, dxfGeo.Columns.Count, dxfGeo.Slabs.Count, dxfGeo.Openings.Count)
+                {
+                    SheetType = sheetType,
+                    DxfWallLayers = string.Join(", ", dxfGeo.Walls.GroupBy(w => w.Layer, StringComparer.OrdinalIgnoreCase)
+                        .OrderByDescending(g => g.Count()).Select(g => $"{g.Key} {g.Count()}")),
+                });
             }
             return new Result(pairs, unmatched, source);
         }

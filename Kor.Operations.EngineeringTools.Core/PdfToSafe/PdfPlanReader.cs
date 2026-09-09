@@ -68,7 +68,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     path.IsFilled,
                     path.IsStroked,
                     path.LineWidth,
-                    path.IsAnnotation))
+                    path.IsAnnotation) { IsClipping = path.IsClipping, PathOrdinal = path.PathOrdinal })
                 .ToList();
         }
 

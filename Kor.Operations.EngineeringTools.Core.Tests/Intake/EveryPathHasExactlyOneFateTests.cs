@@ -34,7 +34,22 @@ public sealed class EveryPathHasExactlyOneFateTests
                     Assert.Same(path.Points, geometry.Slabs[fate.ObjectIndex!.Value]);
                     break;
                 case PathReason.BecameWall:
-                    Assert.Same(path.Points, geometry.Walls[fate.ObjectIndex!.Value].Outline);
+                    // A wall with a doorway is its piers, each with an outline of its own (step 14);
+                    // the fate names the first pier. A wall without one keeps the path's own points.
+                    bool shaped = geometry.Doorways.Any(d => d.FirstPier == fate.ObjectIndex)
+                                  || fates.Any(f => f.Reason == PathReason.ClipOfWall && f.ObjectIndex == fate.ObjectIndex);
+                    if (shaped)
+                        Assert.All(geometry.Walls[fate.ObjectIndex!.Value].Outline, p => Assert.True(
+                            p.X >= path.Points.Min(q => q.X) - 1 && p.X <= path.Points.Max(q => q.X) + 1 &&
+                            p.Y >= path.Points.Min(q => q.Y) - 1 && p.Y <= path.Points.Max(q => q.Y) + 1));
+                    else Assert.Same(path.Points, geometry.Walls[fate.ObjectIndex!.Value].Outline);
+                    break;
+                case PathReason.Doorway:
+                    Assert.Equal(0, geometry.Doorways[fate.ObjectIndex!.Value].FirstPier);
+                    break;
+                case PathReason.ClipOfWall:
+                    Assert.Equal(PathReason.BecameWall, fates.Single(f => f.PathIndex == fate.PathIndex + 1).Reason);
+                    Assert.Equal(0, fate.ObjectIndex);
                     break;
                 case PathReason.BecameColumnByDeclaredSize:
                 case PathReason.BecameColumnByShape:
@@ -77,7 +92,7 @@ public sealed class EveryPathHasExactlyOneFateTests
             var expected = reason switch
             {
                 PathReason.BecameSlab or PathReason.BecameColumnByDeclaredSize or PathReason.BecameColumnByShape or PathReason.BecameWall
-                    or PathReason.BecameFooting or PathReason.GridAxis => Disposition.Read,
+                    or PathReason.BecameFooting or PathReason.GridAxis or PathReason.Doorway or PathReason.ClipOfWall => Disposition.Read,
                 PathReason.EmittedAsLine or PathReason.FootingBoxNoLabel => Disposition.Unaccounted,
                 _ => Disposition.Discarded,
             };
@@ -127,7 +142,11 @@ internal static class FateFixture
         (Rect(600, 600) with { IsFilled = false, IsStroked = true, Color = (0, 0, 0) }, PathReason.UnfilledSmallShape),
         (Rect(250, 1000), PathReason.ColumnAspect),
         (Line(0, 0, 100, 0), PathReason.TooShort),
-        (Rect(2000, 1000), PathReason.BecameWall),
+        // the clip drawn just before the wall (path ordinals 100, 101), a piece on it: the wall shows through it
+        (Rect(700, 1000) with { IsFilled = false, IsStroked = false, IsClipping = true, PathOrdinal = 100 }, PathReason.ClipOfWall),
+        (Rect(2000, 1000) with { PathOrdinal = 101 }, PathReason.BecameWall),
+        // a paper fill painted after the wall, across its thickness, a door wide: a doorway in it
+        (Rect(600, 1040, 700, -20) with { Color = (0xF0, 0xF0, 0xF0) }, PathReason.Doorway),
         (Rect(2000, 1600), PathReason.TooShort),
         (Line(0, 0, 0, 0) with { Points = [] }, PathReason.TooFewPoints),
         (Line(0, 0, 0, 0) with { Points = [(0, 0)] }, PathReason.TooFewPoints),

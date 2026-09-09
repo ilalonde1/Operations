@@ -44,6 +44,13 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             public (byte R, byte G, byte B) Color { get; init; }
             public bool IsAnnotation { get; init; }
             public double LineWidth { get; init; }
+            /// <summary>
+            /// The path was used as a clip (W n): it paints nothing itself and limits what the paths
+            /// painted after it show. Revit's export clips a wall's fill to its piers this way.
+            /// </summary>
+            public bool IsClipping { get; init; }
+            /// <summary>Which path of the page this subpath came from, in content order; -1 when unknown.</summary>
+            public int PathOrdinal { get; init; } = -1;
             public double Width       => MaxX - MinX;
             public double Height      => MaxY - MinY;
             public double DiagonalLen => Math.Sqrt(Width * Width + Height * Height);
@@ -152,9 +159,10 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
 
             // ── Geometry: every vector subpath, points + bbox ───────────────────
             var paths = new List<GeomPath>();
-            int subpathOrdinal = -1;
+            int subpathOrdinal = -1, pathOrdinal = -1;
             foreach (var pdfPath in page.ExperimentalAccess.Paths)
             {
+                pathOrdinal++;
                 bool isFilled  = pdfPath.IsFilled;
                 bool isStroked = pdfPath.IsStroked;
                 double lineWidth = pdfPath.LineWidth;
@@ -218,7 +226,8 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                         }
                     }
 
-                    paths.Add(ToGeomPath(pts, isClosed, isFilled, isStroked, pathColor, lineWidth, isAnnotation: false));
+                    paths.Add(ToGeomPath(pts, isClosed, isFilled, isStroked, pathColor, lineWidth, isAnnotation: false)
+                        with { IsClipping = pdfPath.IsClipping, PathOrdinal = pathOrdinal });
                     keptSubpathOrdinals?.Add(subpathOrdinal);
                 }
             }

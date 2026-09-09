@@ -128,6 +128,35 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             double gridThreshMm = Math.Max(pageWidthMm, pageHeightMm) * 0.6;
             furniture ??= SheetFurniture.Set.Empty;
 
+            // A DOORWAY IS A PAPER-COLOURED FILL PAINTED OVER A WALL (intake step 14). The drafter
+            // draws the wall its full length and knocks each opening out with a white rectangle
+            // across it, so the paper fills are gathered before the walls are read and a wall is
+            // split at those that lie on it: painted after it, covering its thickness, at least a
+            // door wide. What remains on either side are the piers — the members the model carries
+            // (31168 p22: the core's west face read as one 328" wall where Revit has 104", 41" and
+            // 54" piers). A paper fill's fate is decided once the walls are known.
+            var paperFills = new List<(int Index, List<(double X, double Y)> Pts)>();
+            // A WALL IS WHAT ITS CLIP LETS THROUGH. Revit's export draws a core face as one fill the
+            // length of the face, clipped (W n) to its piers by the path drawn just before it; the
+            // fill shows only through the clip. The clip's pieces are gathered here and a wall drawn
+            // right after its clip, with every piece on it, is emitted as those pieces (31168 p22:
+            // 328" faces that are 74", 118" and 41" of pier). A clip is a no-ink path until then.
+            var clipPieces = new List<(int Index, int PathOrdinal, List<(double X, double Y)> Pts)>();
+            for (int i = 0; i < rawSubpaths.Count; i++)
+            {
+                var s = rawSubpaths[i];
+                if (s.IsAnnotation || s.Points.Count < 3) continue;
+                if (s.IsFilled && !s.IsStroked && IsPaper(s.Color)) paperFills.Add((i, s.Points));
+                else if (!s.IsFilled && !s.IsStroked && s.IsClipping && s.PathOrdinal >= 0) clipPieces.Add((i, s.PathOrdinal, s.Points));
+            }
+            var deferredPaper = new List<int>();
+            var deferredNoInk = new List<int>();
+            var doorwayOf = new Dictionary<int, int>();
+            var clipOf = new Dictionary<int, int>();
+            int firstFate = fates?.Count ?? 0;
+            void FateAt(int index, PathReason reason, int? objectIndex = null)
+                => fates?.Add(new PathFate(index, PathFate.DispositionOf(reason), reason, objectIndex));
+
             for (int pathIndex = 0; pathIndex < rawSubpaths.Count; pathIndex++)
             {
                 var sub = rawSubpaths[pathIndex];
@@ -159,7 +188,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 // A PATH THAT DRAWS NOTHING IS NOT GEOMETRY. A closed path with neither fill nor stroke is a
                 // clipping boundary or a construction artefact; it puts no ink on the page. On 31130 it was
                 // 518 of the 1,557 "slabs" the DXF carried (2026-09-08).
-                if (!sub.IsAnnotation && !sub.IsFilled && !sub.IsStroked) { Fate(PathReason.NoInk); continue; }
+                // — unless it is the clip a wall is drawn through, which is known once the walls are read.
+                if (!sub.IsAnnotation && !sub.IsFilled && !sub.IsStroked) { deferredNoInk.Add(pathIndex); continue; }
 
                 // ── Sheet furniture ──────────────────────────────────────────
                 // Whatever sits inside a schedule's border, a notes box or the title block is a
@@ -181,9 +211,10 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     }
                 }
 
-                // Invisible ink: a shape with no stroke filled the colour of the paper draws nothing.
+                // Invisible ink: a shape with no stroke filled the colour of the paper draws nothing —
+                // unless it is a doorway knocked out of a wall, which is known once the walls are read.
                 if (!sub.IsAnnotation && sub.IsFilled && !sub.IsStroked && IsPaper(color))
-                { Fate(PathReason.PaperFill); continue; }
+                { deferredPaper.Add(pathIndex); continue; }
 
                 // ── Classification ───────────────────────────────────────────
 
@@ -239,11 +270,36 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                             // these limits and became a wall (audit F1, 2026-09-08)
                             if (pts.Count == 4 && IsRectangle(pts, box.Length, box.Thickness))
                             {
-                                result.Walls.Add(new WallPanel(pts,
-                                    (box.AxisStart.X, box.AxisStart.Y), (box.AxisEnd.X, box.AxisEnd.Y), box.Thickness));
-                                result.WallColors.Add(color);
-                                result.WallIsAnnotation.Add(false);
-                                Fate(PathReason.BecameWall, result.Walls.Count - 1);
+                                int first = result.Walls.Count;
+                                var clip = ClipPiecesOn(box, sub.PathOrdinal, clipPieces);
+                                var doorways = DoorwaysOn(box, pathIndex, paperFills);
+                                var piers = clip.Count == 0 && doorways.Count == 0
+                                    ? []
+                                    : Piers(clip.Count == 0 ? [(0.0, box.Length)] : clip.Select(c => (c.T0, c.T1)).ToList(), doorways);
+                                if (piers.Count == 0)
+                                {
+                                    // No clip and no doorway, or nothing a panel wide was left: the wall as drawn.
+                                    result.Walls.Add(new WallPanel(pts,
+                                        (box.AxisStart.X, box.AxisStart.Y), (box.AxisEnd.X, box.AxisEnd.Y), box.Thickness));
+                                    result.WallColors.Add(color);
+                                    result.WallIsAnnotation.Add(false);
+                                }
+                                else
+                                {
+                                    foreach (var (t0, t1) in piers)
+                                    {
+                                        result.Walls.Add(Pier(box, t0, t1));
+                                        result.WallColors.Add(color);
+                                        result.WallIsAnnotation.Add(false);
+                                    }
+                                    foreach (var c in clip) clipOf[c.PathIndex] = first;
+                                    foreach (var d in doorways)
+                                    {
+                                        doorwayOf[d.PathIndex] = result.Doorways.Count;
+                                        result.Doorways.Add(new Doorway(Along(box, d.T0), Along(box, d.T1), box.Thickness, first));
+                                    }
+                                }
+                                Fate(PathReason.BecameWall, first);
                                 continue;
                             }
                             if (pts.Count > 4) result.WallRibbonsNotSplit++;
@@ -313,6 +369,161 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     else Fate(pts.Count < 2 ? PathReason.TooFewPoints : PathReason.TooShort);
                 }
             }
+
+            // The paper fills, last: one that opened a wall is a doorway, the rest are invisible ink.
+            // Then this call's fates back into path order, which is how every reader of them is written.
+            foreach (int index in deferredPaper)
+            {
+                if (doorwayOf.TryGetValue(index, out int d)) FateAt(index, PathReason.Doorway, d);
+                else FateAt(index, PathReason.PaperFill);
+            }
+            // And the no-ink paths: a clip a wall was drawn through is read as that wall's shape.
+            foreach (int index in deferredNoInk)
+            {
+                if (clipOf.TryGetValue(index, out int w)) FateAt(index, PathReason.ClipOfWall, w);
+                else FateAt(index, PathReason.NoInk);
+            }
+            if (fates is not null && (deferredPaper.Count > 0 || deferredNoInk.Count > 0))
+            {
+                var ordered = fates.Skip(firstFate).OrderBy(f => f.PathIndex).ToList();
+                for (int i = 0; i < ordered.Count; i++) fates[firstFate + i] = ordered[i];
+            }
+        }
+
+        /// <summary>
+        /// Narrower than this along the wall and a paper fill is a slot or a text mask, not an
+        /// opening a person walks through. Revit's own doorways on 31168 measured 36"–48" on 142 of
+        /// 160 and none below 18" (reference_kor_dxf_drafting_conventions).
+        /// </summary>
+        public const double DoorwayMinLengthMm = 18 * 25.4;
+
+        /// <summary>
+        /// A pier shorter than this between two openings is not carried as a wall. The DXF side's
+        /// panel floor (PlanClassificationOptions.MinPanelOverlap, 12"): 31138's model carries piers
+        /// at 9"–27" with pier labels, so the wall's own 48" minimum must not apply to a pier.
+        /// </summary>
+        public const double PierMinLengthMm = 12 * 25.4;
+
+        /// <summary>
+        /// The openings knocked out of the wall whose oriented box this is: paper fills painted after
+        /// the wall (paint order — one painted before it is covered by it), crossing its thickness
+        /// and no wider across than twice it (a mask under a note is wider), overlapping its length
+        /// by at least a door. Extents are along the wall's axis from its start.
+        /// </summary>
+        internal static List<(int PathIndex, double T0, double T1)> DoorwaysOn(OrientedBox box, int wallPathIndex,
+            IReadOnlyList<(int Index, List<(double X, double Y)> Pts)> paperFills)
+        {
+            var found = new List<(int PathIndex, double T0, double T1)>();
+            if (paperFills.Count == 0) return found;
+            double ux = box.AxisEnd.X - box.AxisStart.X, uy = box.AxisEnd.Y - box.AxisStart.Y;
+            double len = Math.Sqrt(ux * ux + uy * uy);
+            if (len < 1e-9) return found;
+            ux /= len; uy /= len;
+            double nx = -uy, ny = ux, half = box.Thickness / 2;
+            foreach (var (index, fill) in paperFills)
+            {
+                if (index < wallPathIndex) continue;
+                double u0 = double.MaxValue, u1 = double.MinValue, n0 = double.MaxValue, n1 = double.MinValue;
+                foreach (var p in fill)
+                {
+                    double dx = p.X - box.AxisStart.X, dy = p.Y - box.AxisStart.Y;
+                    double u = dx * ux + dy * uy, n = dx * nx + dy * ny;
+                    u0 = Math.Min(u0, u); u1 = Math.Max(u1, u); n0 = Math.Min(n0, n); n1 = Math.Max(n1, n);
+                }
+                bool crosses = n0 <= -half + WallLimitSlackMm && n1 >= half - WallLimitSlackMm
+                               && n1 - n0 <= 2 * box.Thickness + 2 * WallLimitSlackMm;
+                if (!crosses) continue;
+                double t0 = Math.Max(0, u0), t1 = Math.Min(box.Length, u1);
+                if (t1 - t0 < DoorwayMinLengthMm) continue;
+                found.Add((index, t0, t1));
+            }
+            return found;
+        }
+
+        /// <summary>
+        /// The pieces of the clip the wall was drawn through, along its axis: the clip path drawn
+        /// immediately before the wall's own path (nothing painted between), every piece of which
+        /// lies on the wall — across its thickness and within its length. A clip with a piece off
+        /// the wall is somebody else's, left over from a graphics state this reader cannot see the
+        /// end of, and the wall is taken whole.
+        /// </summary>
+        internal static List<(int PathIndex, double T0, double T1)> ClipPiecesOn(OrientedBox box, int wallPathOrdinal,
+            IReadOnlyList<(int Index, int PathOrdinal, List<(double X, double Y)> Pts)> clipPieces)
+        {
+            var found = new List<(int PathIndex, double T0, double T1)>();
+            if (wallPathOrdinal < 1 || clipPieces.Count == 0) return found;
+            double ux = box.AxisEnd.X - box.AxisStart.X, uy = box.AxisEnd.Y - box.AxisStart.Y;
+            double len = Math.Sqrt(ux * ux + uy * uy);
+            if (len < 1e-9) return found;
+            ux /= len; uy /= len;
+            double nx = -uy, ny = ux, half = box.Thickness / 2;
+            foreach (var (index, ordinal, piece) in clipPieces)
+            {
+                if (ordinal != wallPathOrdinal - 1) continue;
+                double u0 = double.MaxValue, u1 = double.MinValue, n0 = double.MaxValue, n1 = double.MinValue;
+                foreach (var p in piece)
+                {
+                    double dx = p.X - box.AxisStart.X, dy = p.Y - box.AxisStart.Y;
+                    double u = dx * ux + dy * uy, n = dx * nx + dy * ny;
+                    u0 = Math.Min(u0, u); u1 = Math.Max(u1, u); n0 = Math.Min(n0, n); n1 = Math.Max(n1, n);
+                }
+                bool onTheWall = n0 <= -half + WallLimitSlackMm && n1 >= half - WallLimitSlackMm
+                                 && n1 - n0 <= box.Thickness + 2 * WallLimitSlackMm
+                                 && u0 >= -WallLimitSlackMm && u1 <= box.Length + WallLimitSlackMm;
+                if (!onTheWall) { found.Clear(); return found; }
+                found.Add((index, Math.Max(0, u0), Math.Min(box.Length, u1)));
+            }
+            return found;
+        }
+
+        /// <summary>The runs of wall a panel wide or wider left between the doorways, along the axis.</summary>
+        internal static List<(double T0, double T1)> PiersBetween(IReadOnlyList<(int PathIndex, double T0, double T1)> doorways, double length)
+            => Piers([(0.0, length)], doorways);
+
+        /// <summary>
+        /// The runs a panel wide or wider that the wall shows: each allowed interval (the whole wall,
+        /// or the clip's pieces) less the doorways cut through it.
+        /// </summary>
+        internal static List<(double T0, double T1)> Piers(IReadOnlyList<(double T0, double T1)> allowed,
+            IReadOnlyList<(int PathIndex, double T0, double T1)> doorways)
+        {
+            var piers = new List<(double T0, double T1)>();
+            var cuts = doorways.OrderBy(d => d.T0).ToList();
+            foreach (var (a0, a1) in allowed.OrderBy(a => a.T0))
+            {
+                double at = a0;
+                foreach (var d in cuts)
+                {
+                    if (d.T1 <= at || d.T0 >= a1) continue;
+                    if (d.T0 - at >= PierMinLengthMm) piers.Add((at, d.T0));
+                    at = Math.Max(at, d.T1);
+                }
+                if (a1 - at >= PierMinLengthMm) piers.Add((at, a1));
+            }
+            return piers;
+        }
+
+        private static (double X, double Y) Along(OrientedBox box, double t)
+        {
+            double ux = box.AxisEnd.X - box.AxisStart.X, uy = box.AxisEnd.Y - box.AxisStart.Y;
+            double len = Math.Sqrt(ux * ux + uy * uy);
+            return (box.AxisStart.X + ux / len * t, box.AxisStart.Y + uy / len * t);
+        }
+
+        /// <summary>The wall between two stations on its axis, as its own four-cornered panel.</summary>
+        private static WallPanel Pier(OrientedBox box, double t0, double t1)
+        {
+            double ux = box.AxisEnd.X - box.AxisStart.X, uy = box.AxisEnd.Y - box.AxisStart.Y;
+            double len = Math.Sqrt(ux * ux + uy * uy);
+            ux /= len; uy /= len;
+            double nx = -uy * box.Thickness / 2, ny = ux * box.Thickness / 2;
+            var s = Along(box, t0);
+            var e = Along(box, t1);
+            var outline = new List<(double X, double Y)>
+            {
+                (s.X + nx, s.Y + ny), (e.X + nx, e.Y + ny), (e.X - nx, e.Y - ny), (s.X - nx, s.Y - ny),
+            };
+            return new WallPanel(outline, s, e, box.Thickness);
         }
     }
 }
