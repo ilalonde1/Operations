@@ -604,6 +604,19 @@ public static class DxfToEtabsService
 
         var warnings = new List<string>();
 
+        // THE DRAWINGS' STOREYS AGAINST THE MODEL'S. When a stick file is given, its wall elevations
+        // state every storey height at the sheet's scale (Intake.StoreyLadder); the model is not
+        // changed by this, the disagreement is reported. Brief 26, 2026-09-08.
+        if (stickFile is not null)
+        {
+            try
+            {
+                var storeyTable = Intake.SetStoreys.Read(stickFile);
+                warnings.Add(Intake.StoreyAgreement.Compare(storeyTable, doc.ReadStories(), doc.LengthUnitInInches() ?? 1.0).Summary());
+            }
+            catch (Exception ex) { warnings.Add($"Storeys: the stick file's elevations were not compared ({ex.GetType().Name}: {ex.Message})."); }
+        }
+
         // UNITS. Every rule here is a real length — a 48" wall, a 12" face, a 400 sq ft plate — and
         // every coordinate written has to be in the model's own unit. Both are inches on the two
         // jobs built so far, which is precisely why neither was ever read. A drawing in millimetres

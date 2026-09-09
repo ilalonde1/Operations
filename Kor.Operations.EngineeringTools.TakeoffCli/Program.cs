@@ -197,6 +197,22 @@ if (args.Length >= 3 && args[0].Equals("dxf-census", StringComparison.OrdinalIgn
     return 2;
 }
 
+// THE DRAWINGS' STOREYS AGAINST THE MODEL'S. Usage: takeoff storeys-check <stickfile.pdf> <model.e2k>
+if (args.Length >= 3 && args[0].Equals("storeys-check", StringComparison.OrdinalIgnoreCase))
+{
+    if (!File.Exists(args[1]) || !File.Exists(args[2])) { Console.Error.WriteLine("Both files must exist."); return 1; }
+    var scTable = SetStoreys.Read(args[1]);
+    var scDoc = E2kDocument.Load(args[2]);
+    var scResult = StoreyAgreement.Compare(scTable, scDoc.ReadStories(), scDoc.LengthUnitInInches() ?? 1.0);
+    Console.WriteLine($"{Path.GetFileName(args[1])} against {Path.GetFileName(args[2])}");
+    Console.WriteLine("level      below      sheets   drawing mm   model mm   delta");
+    foreach (var r in scResult.Rows)
+        Console.WriteLine($"{r.Level,-10} {r.LevelBelow,-10} {r.Sheets,6}   {r.DrawingMm,10:0}   {(r.ModelMm is double m ? m.ToString("0") : "-"),8}   {(r.DeltaMm is double d ? d.ToString("+0;-0;0") : "-"),5}{(r.ModelMm is not null && !r.Within ? "  OFF" : "")}");
+    Console.WriteLine();
+    Console.WriteLine(scResult.Summary());
+    return 0;
+}
+
 // THE BASELINE. The thirteen plan DXFs of the five stick files, to a folder named for the step, for dxf-census.
 // Usage: takeoff intake-baseline <stickFilesDir> <outDir>
 if (args.Length >= 3 && args[0].Equals("intake-baseline", StringComparison.OrdinalIgnoreCase))
@@ -4376,6 +4392,7 @@ public static class TakeoffCliHelp
         new("render", "takeoff render <pdf> <pngDir> [dpi] [first] [last]", "Rasterize PDF pages to PNG files."),
         new("elev-scan", "takeoff elev-scan <pdf> [first] [last]", "Scan for floor elevations and storey height notes; prints the level ladder's gaps at the sheet's scale."),
         new("e2k-storeys", "takeoff e2k-storeys <model.e2k>", "A model's storeys top to bottom with their heights — what elev-scan's ladder is measured against."),
+        new("storeys-check", "takeoff storeys-check <stickfile.pdf> <model.e2k>", "The drawings' storey heights (wall elevations) against the model's, pair by pair; the publish reports the same line when --stick-file is given."),
         new("wallconcrete", "takeoff wallconcrete <keyplan.png> <schedule.png> <levels.json>", "Price core wall concrete from key plan and schedule."),
         new("single", "takeoff single <schedule.csv> <out.xlsx> [wbs] [name] [issue] [imperial]", "Generate an absolute takeoff workbook from one schedule CSV."),
         new("overlay", "takeoff overlay <before.pdf> <after.pdf> <out.pdf> [name] [beforeLabel] [afterLabel] [imperial]", "Generate visual rebar markup between two PDFs."),

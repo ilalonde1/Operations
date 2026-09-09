@@ -1,0 +1,48 @@
+#nullable enable
+using Kor.Operations.EngineeringTools.Dxf;
+using Kor.Operations.EngineeringTools.Intake;
+using Xunit;
+
+namespace Kor.Operations.EngineeringTools.Core.Tests.Intake;
+
+/// <summary>
+/// A live set's wall elevations against the engineer's own model, both resolved on the share by
+/// NAME (job number, "05 Stickfile", the reference's file name) — never a path in a test. Skipped
+/// when the share is unreachable; fails otherwise, so a reader that starts disagreeing with the
+/// model is caught here and not in ETABS.
+/// </summary>
+/// <remarks>
+/// SLOW: one PDF and one .e2k read off the share through DrawingMirror. Banked 2026-09-08: 31168
+/// states 22 storeys on its 4 section/elevation sheets, 20 match the model by both level names and
+/// 20 of those are within 5 mm; the two unmatched are the drawings' LEVEL 1 against A-LEVEL 1 /
+/// B-LEVEL 1. The floor here is 18 matched, every match within the 25 mm tolerance.
+/// WHAT IT DOES NOT COVER: a second live set (31130's reference is not on the share under a
+/// name this test knows), and the unmatched pairs' correctness.
+/// </remarks>
+[Trait("Speed", "Slow")]
+public sealed class TheLiveSetsStoreysAgreeWithTheirModelTests
+{
+    [Fact]
+    public void Langara31168StatesItsStoreysAsItsModelHasThem()
+    {
+        if (!LiveProjects.ShareReachable) return;   // off the network: nothing to compare, nothing to claim
+        string stickFolder = LiveProjects.Folder("31168", "05 Stickfile");
+        // the office names a stick file "<job> - <yyyy-MM-dd>- <project> - Stickfile….pdf"; the newest date is the current set
+        var dated = Directory.EnumerateFiles(stickFolder, "31168-01 - *.pdf", SearchOption.TopDirectoryOnly)
+            .Select(f => (File: f, Date: System.Text.RegularExpressions.Regex.Match(Path.GetFileName(f), @"^31168-01 - (\d{4}-\d{2}-\d{2})").Groups[1].Value))
+            .Where(t => t.Date.Length > 0)
+            .OrderByDescending(t => t.Date, StringComparer.Ordinal).ThenBy(t => t.File, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        Assert.True(dated.Count > 0, $"no dated stick file PDF under {stickFolder}");
+        string pdf = DrawingMirror.SingleFile(dated[0].File);
+        string reference = DrawingMirror.SingleFile(LiveProjects.File("31168", "31168-reference.e2k"));
+
+        var table = SetStoreys.Read(pdf);
+        var doc = E2kDocument.Load(reference);
+        var result = StoreyAgreement.Compare(table, doc.ReadStories(), doc.LengthUnitInInches() ?? 1.0);
+
+        Assert.True(result.Matched >= 18, result.Summary());
+        Assert.True(result.Off.Count == 0, result.Summary());
+        Assert.True(table.SheetsWithStoreys >= 3, result.Summary());
+    }
+}

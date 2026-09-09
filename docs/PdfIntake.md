@@ -3,7 +3,7 @@
 Written 2026-09-08 from the code and from a content inventory of the five local stick files
 (31065, 31130, 31138, 31168, 31202: 294 pages). Every number below was counted on the whole
 population named; nothing is from a sample. The intake brief series lives in
-`docs/codex/CODEX-INTAKE-CONVERGENCE-*.md` (25 so far; 23 and 24 are written for Codex, not yet run) and this is the state they have reached.
+`docs/codex/CODEX-INTAKE-CONVERGENCE-*.md` (26 so far; 23 and 24 are written for Codex, not yet run) and this is the state they have reached.
 
 The purpose of the intake is stated once so the rest can be judged against it: **pull everything a
 drawing set carries that any downstream tool could need, once, through one reader, and account for
@@ -37,8 +37,8 @@ publish (`takeoff publish --stick-file`).
 Measured at step 0 (2026-09-08). The step sections from §7 on record what has changed since:
 walls are emitted (§9), only plans are taken off to DXF (§11), the scale is accounted for on
 every sheet (§12), footings are objects (§13, §14), the grid is named axes on a GRID layer (§15),
-storey heights are read off the wall elevations (§16). The tables in §2 and §3 are the starting
-picture.
+storey heights are read off the wall elevations (§16) and checked against the model in the publish
+(§17). The tables in §2 and §3 are the starting picture.
 
 | Tool | Path today | What it gets from the PDF | What it does not |
 |---|---|---|---|
@@ -565,3 +565,27 @@ ladders reconciled by level name — the next brief, and the one that hands stor
 `DxfToEtabsService` in place of, or as a check on, the reference model's), two buildings' ladders on
 one sheet (the busiest column wins), an AS NOTED sheet whose views carry their own scale (31138,
 0 of its elevation sheets read), and the mangled level name.
+
+## 17. Step 11, done 2026-09-08: the drawings' storeys against the model's
+
+Brief 26, implemented by the verifier. A set's storey table is the union of its section and
+elevation sheets' level ladders, reconciled by the pair of level names each storey runs between
+(`Intake/SetStoreys`: the median across sheets and their spread). Against a model, the height for
+the same pair is **the difference of the two named elevations**, not the model's own "storey
+below" — a site model interleaves several buildings' levels, and the storey under LEVEL 10 in
+31168's list is another building's roof (`Intake/StoreyAgreement`). A check, not a replacement:
+the model is not changed; `takeoff publish --stick-file` and `takeoff dxf-to-etabs` now carry one
+line in their warnings, and `takeoff storeys-check <pdf> <e2k>` prints the table.
+
+31168's drawings against the engineer's own model: 22 storeys on 4 of 4 section/elevation sheets;
+20 match the model by both level names, and 20 of those are within 5 mm (deltas 0 to +5 mm, at a
+25 mm tolerance). The two unmatched pairs, L2 → L1 and L1 → P1, are the drawings' "LEVEL 1" against
+a model that names it A-LEVEL 1 and B-LEVEL 1 — a naming fact the line reports, not a fault.
+
+WHAT THE CHECK COVERS: the reconciliation and the pair-wise comparison on synthetic data; by hand
+the local 31168 set against its model; and live, `TheLiveSetsStoreysAgreeWithTheirModelTests`
+resolves the newest dated stick file under 31168's "05 Stickfile" and the reference model by name
+on the share, and holds at least 18 matched storeys with none off tolerance (13 s, skipped when
+the share is unreachable). WHAT IT DOES NOT: a second live set (31130's reference is not on the
+share under a name the test knows), AS NOTED sheets (31138 states nothing to compare), and a level
+the two sides name differently.
