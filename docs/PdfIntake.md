@@ -1102,3 +1102,48 @@ line between; a band of 66", the 60" wall still a wall, a 121" strip a floor aga
 fill a slab, a turned band, a paper band a mask. WHAT IT DOES NOT: the second pier along a shared
 outer face, which stays lines; the balcony bands as spandrels, which the DXF side reads from BEAM
 and this leaves there; what the 66" band is.
+
+## 30. The PDF alone, measured 2026-09-09: what Model Start gives with no Revit and no reference
+
+Ian, 09-09: *"What happens when we don't have the Revit model and just the PDF? That's what I'm
+trying to build. I feel you're cheating by already having the Revit model."* Where the Revit side
+has stood in this programme: the Revit DXFs are the yardstick only (`pdf-vs-dxf`: 628 PDF walls to
+666), never an input to the PDF route; but every ETABS model built from the PDF so far took
+Andrea's reference `.e2k` for its storey list, grid names, units and material names. That is the
+cheat, and this section removes it and measures what is left.
+
+`takeoff pdf-levels <stickfile.pdf> [levels.csv]` writes the set's storeys as the levels file
+`dxf-to-etabs` already accepted in place of a reference (`-`): the storey heights the wall
+elevations state (§16), chained from the lowest stated level at 0, in millimetres. On 31168 the
+four elevation sheets give **22 levels, P3 to L19**, one base (P3), and one name stated twice
+(L2 over L1 at 2,808 mm and L2 over P1 at 11,460 mm — building C's and the towers' second floors
+share a name; the first stated is kept and the rest reported, the building-aware level names
+being an open item).
+
+Then, with nothing but the PDF — `pdf-takeoff --pages 9-32 --kor-layers` (23 DXFs, one per sheet,
+named as views) and `dxf-to-etabs <dxfs> - out.e2k --levels levels.csv --levels-unit mm`:
+
+| | PDF alone | same DXFs against her shell |
+|---|---|---|
+| sheets read / placed | 22 / 16 | 22 / 22 |
+| storeys | 22 (the drawings') | 64 (the reference's) |
+| walls | 1,007 | 1,607 |
+| columns | 2,316 | 3,435 |
+| floors | 0 | 0 |
+
+The six sheets the PDF-only model cannot place are the two mezzanines (no elevation sheet states
+a MEZZ level) and tower B's L28–L39 and tower A's L33–roof (the wall elevations read stop at L19;
+the typical-storey note above that is not read yet). The walls and columns that do land are the
+same objects either way; the count difference is range sheets (L4–L14, L15–L26) replicated onto
+storeys the reference names and the drawings' ladder does not. Sections in the PDF-only model are
+named by millimetre thickness with no concrete grade (`KOR-W305`), the grade being the engineer's
+and the reference's `65 MPa Walls` the only source of the name.
+
+**So the PDF-only route today**: every plan sheet to a view-named DXF on KOR layers; walls
+(filled, clipped, doorway-split, and two-face), columns by declared size, footings, named grid
+axes; a grid frame per sheet by axis name; a storey list off the wall elevations; a model that
+ETABS opens. **What it does not give yet**: floor plates (the perimeter-wall plate that Andrea
+ruled — *"follow the outer edge of the walls"*, 25 Aug — is written on the DXF side for walls
+drawn as concentric rings, not for the panels the PDF route emits: the next step), the storeys
+above the last wall elevation, mezzanine levels, building-aware level names, concrete grades.
+None of these needs the engineer; each is a rule with a measurement.

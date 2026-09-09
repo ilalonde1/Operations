@@ -199,6 +199,43 @@ if (args.Length >= 3 && args[0].Equals("dxf-census", StringComparison.OrdinalIgn
     return 2;
 }
 
+// THE DRAWINGS' STOREYS AS A LEVELS FILE, for a job nobody has modelled: what dxf-to-etabs takes
+// in place of a reference .e2k. Usage: takeoff pdf-levels <stickfile.pdf> [levels.csv]
+// The set's storeys come off its wall elevations (SetStoreys: a storey height is the distance
+// between two level lines at the sheet's scale), chained from the lowest level at 0 upward, in mm.
+if (args.Length >= 2 && args[0].Equals("pdf-levels", StringComparison.OrdinalIgnoreCase))
+{
+    if (!File.Exists(args[1])) { Console.Error.WriteLine($"Not found: {args[1]}"); return 1; }
+    var plTable = SetStoreys.Read(args[1]);
+    // a level named twice with two different levels below it (LEVEL 3 of building A and of building
+    // B, each over its own LEVEL 2) is one name for two storeys; the first stated wins here and the
+    // rest are reported — building-aware level names are an open intake item
+    var plTwice = plTable.Storeys.GroupBy(s => s.Level, StringComparer.OrdinalIgnoreCase).Where(g => g.Count() > 1)
+        .Select(g => $"{g.Key} ({string.Join(" / ", g.Select(s => $"over {s.LevelBelow} {s.HeightMm:0} mm"))})").ToList();
+    var plHeights = plTable.Storeys.GroupBy(s => s.Level, StringComparer.OrdinalIgnoreCase).ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+    // the base is a level that is below something and above nothing the set states
+    var plBases = plTable.Storeys.Select(s => s.LevelBelow).Where(b => !plHeights.ContainsKey(b)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+    var plElevation = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+    foreach (var b in plBases) plElevation[b] = 0;
+    bool plMoved = true;
+    while (plMoved)
+    {
+        plMoved = false;
+        foreach (var s in plTable.Storeys)
+            if (!plElevation.ContainsKey(s.Level) && plElevation.TryGetValue(s.LevelBelow, out double below))
+            { plElevation[s.Level] = below + s.HeightMm; plMoved = true; }
+    }
+    var plLines = new List<string> { "# level,elevation mm — from the stick file's wall elevations; the lowest stated level is 0" };
+    foreach (var kv in plElevation.OrderBy(kv => kv.Value)) plLines.Add($"{kv.Key},{kv.Value:0}");
+    var plUnchained = plTable.Storeys.Where(s => !plElevation.ContainsKey(s.Level)).Select(s => $"{s.Level} over {s.LevelBelow}").ToList();
+    if (args.Length >= 3) { File.WriteAllLines(args[2], plLines); Console.WriteLine($"{plElevation.Count} levels → {args[2]}"); }
+    else foreach (var l in plLines) Console.WriteLine(l);
+    Console.WriteLine($"{plTable.SheetsWithStoreys} of {plTable.ElevationSheets} elevation sheets stated storeys; {plTable.Storeys.Count} storeys, {plBases.Count} base(s): {string.Join(", ", plBases)}"
+                      + (plUnchained.Count > 0 ? $"; not chained to a base: {string.Join(", ", plUnchained)}" : ""));
+    if (plTwice.Count > 0) Console.WriteLine($"named twice, first stated kept: {string.Join("; ", plTwice)}");
+    return 0;
+}
+
 // THE DRAWINGS' STOREYS AGAINST THE MODEL'S. Usage: takeoff storeys-check <stickfile.pdf> <model.e2k>
 if (args.Length >= 3 && args[0].Equals("storeys-check", StringComparison.OrdinalIgnoreCase))
 {
@@ -4929,6 +4966,7 @@ public static class TakeoffCliHelp
         new("render", "takeoff render <pdf> <pngDir> [dpi] [first] [last]", "Rasterize PDF pages to PNG files."),
         new("elev-scan", "takeoff elev-scan <pdf> [first] [last]", "Scan for floor elevations and storey height notes; prints the level ladder's gaps at the sheet's scale."),
         new("e2k-storeys", "takeoff e2k-storeys <model.e2k>", "A model's storeys top to bottom with their heights — what elev-scan's ladder is measured against."),
+        new("pdf-levels", "takeoff pdf-levels <stickfile.pdf> [levels.csv]", "The drawings' storeys as a levels file (level, elevation mm from the lowest stated level), read off the wall elevations — what dxf-to-etabs takes in place of a reference .e2k for a job nobody has modelled."),
         new("storeys-check", "takeoff storeys-check <stickfile.pdf> <model.e2k>", "The drawings' storey heights (wall elevations) against the model's, pair by pair; the publish reports the same line when --stick-file is given."),
         new("wallconcrete", "takeoff wallconcrete <keyplan.png> <schedule.png> <levels.json>", "Price core wall concrete from key plan and schedule."),
         new("single", "takeoff single <schedule.csv> <out.xlsx> [wbs] [name] [issue] [imperial]", "Generate an absolute takeoff workbook from one schedule CSV."),
