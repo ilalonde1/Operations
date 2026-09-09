@@ -1,7 +1,6 @@
 """List a storey's wall panels (extents, length, thickness) from an e2k; optionally only those near a corner.
-import os
 usage: storey_walls.py <e2k> <storey> [minLen]"""
-import sys
+import sys, os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from e2k_read import read
 path, storey = sys.argv[1], sys.argv[2]
