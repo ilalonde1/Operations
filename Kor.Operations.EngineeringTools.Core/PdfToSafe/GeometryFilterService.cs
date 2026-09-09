@@ -306,6 +306,18 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         }
                     }
 
+                    // A FILLED BAND THICKER THAN THE THICKEST WALL IS NOT A SLAB (intake step 21).
+                    // 31168's parkade plans carry a 63"-66" grey band 127 ft long along the property
+                    // line, the real 12"-15" wall drawn as two lines inside it; read as a slab it became
+                    // the storey's only floor plate, a strip 5.5 ft wide, and stood in the way of the
+                    // plate the perimeter walls enclose. It is not a wall (thicker than any) and not a
+                    // floor (narrower than a bay, many times longer than wide); it stays unaccounted.
+                    if (!sub.IsAnnotation && obox is { } bandBox && !IsPaper(color)
+                        && bandBox.Thickness > maxWallThicknessMm + WallLimitSlackMm
+                        && bandBox.Thickness <= BandMaxThicknessShare * maxWallThicknessMm
+                        && bandBox.Aspect >= BandMinAspect)
+                    { Fate(PathReason.Band); continue; }
+
                     bool looksLikeColumn = bboxW <= columnMaxSizeMm && bboxH <= columnMaxSizeMm;
 
                     if (!looksLikeColumn && diag >= slabMinDiagonalMm)
@@ -389,7 +401,18 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             // pairs were those walls and, on 31130, 139 pairs inside the elevator pit's hatch at its
             // regular spacing. A hatch has a third line at the same spacing beyond either face; a
             // wall does not.
-            WallsFromFaceLines(result, fates, firstFate, minWallThicknessMm, maxWallThicknessMm, minWallLengthMm);
+            if (FaceTrace is not null && fates is not null)
+                for (int k = firstFate; k < fates.Count; k++)
+                {
+                    var f = fates[k];
+                    if (f.PathIndex < 0 || f.PathIndex >= rawSubpaths.Count) continue;
+                    var s = rawSubpaths[f.PathIndex];
+                    if (s.Points.Count != 2 || !s.IsStroked || s.IsFilled) continue;
+                    double ln = Math.Sqrt(Math.Pow(s.Points[1].X - s.Points[0].X, 2) + Math.Pow(s.Points[1].Y - s.Points[0].Y, 2));
+                    if (ln >= FaceTraceMinOverlapMm)
+                        FaceTrace($"line {ln / 25.4:0}\" w{s.LineWidth:0.00} at ({(s.Points[0].X + s.Points[1].X) / 2:0},{(s.Points[0].Y + s.Points[1].Y) / 2:0}) mm: {f.Reason}");
+                }
+            WallsFromFaceLines(result, fates, firstFate, minWallThicknessMm, maxWallThicknessMm, minWallLengthMm, minWallAspect);
 
             if (fates is not null && (deferredPaper.Count > 0 || deferredNoInk.Count > 0))
             {
@@ -402,6 +425,15 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         private const double FaceParallelCos = 0.9998;
         /// <summary>The two faces' separations at either end may differ by this much and still be one wall.</summary>
         private const double FaceTaperMm = 25.0;
+        /// <summary>
+        /// Or by a third of the mean gap: a wall's faces may converge (step 21). 31168 p11's
+        /// property-line wall runs 127 ft at 15" narrowing to 12" — a fifth — its faces 0.13° apart.
+        /// </summary>
+        private const double FaceTaperShare = 1.0 / 3.0;
+        /// <summary>A filled band this many times longer than it is thick, thicker than the thickest wall, is a band, not a slab (step 21).</summary>
+        private const double BandMinAspect = 10.0;
+        /// <summary>And no thicker than this many times the thickest wall; wider than that it is a floor.</summary>
+        private const double BandMaxThicknessShare = 2.0;
         /// <summary>A third cut-pen line at the pair's spacing, within this share of it, beyond either face, makes the pair a pattern.</summary>
         private const double PatternSpacingShare = 0.15;
         /// <summary>A line is drawn with the cut pen when its width is within this share of the sheet's.</summary>
@@ -418,14 +450,15 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         private const int LighterBetweenMax = 2;
 
         /// <summary>
-        /// The sheet's cut pen: the stroke width of the lines drawn along the filled walls' long
-        /// edges (the fills carry no stroke of their own on 5 of 5 stick-file plans; their edges
-        /// are separate lines, one pen on 259 of 264 measured). Zero when the sheet has no filled
-        /// wall with an edge line, and then no face wall is read.
+        /// The lines drawn along the filled walls' faces: each with the side of the line its wall
+        /// lies on (the sign of the wall's centre along the line's normal, the normal being the
+        /// line's direction turned a quarter left) and the pen it was drawn with. A face line is
+        /// one wall's; the face rule may pair it again only for a wall on the same side (piers
+        /// along one outer face), never for one on its other side.
         /// </summary>
-        internal static double CutPen(ExtractedGeometry result)
+        internal static List<(int Line, int Side, double Width)> FilledWallFaceLines(ExtractedGeometry result)
         {
-            var pens = new List<double>();
+            var faces = new List<(int Line, int Side, double Width)>();
             foreach (var w in result.Walls)
             {
                 // the wall's faces: the outline's edges along its axis
@@ -433,6 +466,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 if (al <= 0) continue;
                 ax /= al; ay /= al;
                 var o = w.Outline;
+                double cx = o.Average(p => p.X), cy = o.Average(p => p.Y);
                 for (int e = 0; e < o.Count; e++)
                 {
                     var p0 = o[e]; var p1 = o[(e + 1) % o.Count];
@@ -452,10 +486,26 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         }
                         if (!on) continue;
                         double ll = Math.Sqrt(Math.Pow(l[1].X - l[0].X, 2) + Math.Pow(l[1].Y - l[0].Y, 2));
-                        if (ll > el / 2) pens.Add(result.LineWidths[i]);
+                        if (ll <= el / 2) continue;
+                        // the side of THIS line (its own direction) the wall's centre lies on
+                        double lx = (l[1].X - l[0].X) / ll, ly = (l[1].Y - l[0].Y) / ll;
+                        int side = Math.Sign((cx - l[0].X) * -ly + (cy - l[0].Y) * lx);
+                        faces.Add((i, side, result.LineWidths[i]));
                     }
                 }
             }
+            return faces;
+        }
+
+        /// <summary>
+        /// The sheet's cut pen: the commonest stroke width of the lines drawn along the filled
+        /// walls' faces (the fills carry no stroke of their own on 5 of 5 stick-file plans; their
+        /// edges are separate lines, one pen on 259 of 264 measured). Zero when the sheet has no
+        /// filled wall with a face line, and then no face wall is read.
+        /// </summary>
+        internal static double CutPen(ExtractedGeometry result)
+        {
+            var pens = FilledWallFaceLines(result).Select(f => f.Width).ToList();
             if (pens.Count == 0) return 0;
             return pens.GroupBy(p => p).OrderByDescending(g => g.Count()).ThenByDescending(g => g.Key).First().Key;
         }
@@ -469,10 +519,29 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         /// and not under a wall or column already read (a filled wall's edges and a column's
         /// outline are pairs too). One wall panel over the overlap; both lines re-fated as faces.
         /// </summary>
+        /// <summary>
+        /// An instrument, not a setting: when set, every candidate pair of cut-pen lines at least
+        /// <see cref="FaceTraceMinOverlapMm"/> long reports why it was or was not a wall. The CLI's
+        /// <c>pdf-overlay --walls</c> sets it; nothing in production does.
+        /// </summary>
+        internal static Action<string>? FaceTrace;
+        internal const double FaceTraceMinOverlapMm = 2400;
+
         internal static void WallsFromFaceLines(ExtractedGeometry result, IList<PathFate>? fates, int firstFate,
-            double minWallThicknessMm, double maxWallThicknessMm, double minWallLengthMm)
+            double minWallThicknessMm, double maxWallThicknessMm, double minWallLengthMm, double minWallAspect = PdfIntakeOptions.DefaultMinWallAspect)
         {
+            result.FirstFaceWall = result.Walls.Count;
             double cutPen = CutPen(result);
+            FaceTrace?.Invoke($"cut pen w{cutPen:0.00}");
+            if (FaceTrace is not null)
+                for (int i = 0; i < result.Lines.Count; i++)
+                {
+                    var l = result.Lines[i];
+                    if (l.Count != 2) continue;
+                    double ln = Math.Sqrt(Math.Pow(l[1].X - l[0].X, 2) + Math.Pow(l[1].Y - l[0].Y, 2));
+                    if (ln >= FaceTraceMinOverlapMm)
+                        FaceTrace($"emitted line {ln / 25.4:0}\" w{(i < result.LineWidths.Count ? result.LineWidths[i] : -1):0.00} at ({(l[0].X + l[1].X) / 2:0},{(l[0].Y + l[1].Y) / 2:0}) mm{(result.LineIsAnnotation[i] ? " (annotation)" : "")}");
+                }
             if (cutPen <= 0) return;
             bool CutPenLine(int i) => i < result.LineWidths.Count && Math.Abs(result.LineWidths[i] - cutPen) <= PenMatchShare * cutPen;
 
@@ -501,50 +570,91 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             }
 
             // what is already read where the pair would sit: a filled wall's outline, a column's box
-            var wallPolys = result.Walls.Select(w => w.Outline.Select(p => new DxfPoint(p.X, p.Y)).ToList()).ToList();
             var columnBoxes = result.Columns.Select((c, i) =>
             {
                 var (w, d) = i < result.ColumnSizes.Count ? result.ColumnSizes[i] : (0.0, 0.0);
                 return (X0: c.X - w / 2 - WallLimitSlackMm, X1: c.X + w / 2 + WallLimitSlackMm, Y0: c.Y - d / 2 - WallLimitSlackMm, Y1: c.Y + d / 2 + WallLimitSlackMm);
             }).ToList();
+            // the walls read so far, the face walls made in this pass included: a shorter pair whose
+            // midpoint lies in a wall already made is that wall's own face against a stub
             bool Covered(double x, double y)
-                => wallPolys.Any(poly => LoopGeometry.PointInPolygon(new DxfPoint(x, y), poly))
+                => result.Walls.Any(w => LoopGeometry.PointInPolygon(new DxfPoint(x, y), w.Outline.Select(p => new DxfPoint(p.X, p.Y)).ToList()))
                    || columnBoxes.Any(b => x >= b.X0 && x <= b.X1 && y >= b.Y0 && y <= b.Y1);
 
-            var used = new HashSet<int>();
             var lineToPath = new Dictionary<int, int>();
             if (fates is not null)
                 for (int k = firstFate; k < fates.Count; k++)
                     if (fates[k].Reason == PathReason.EmittedAsLine && fates[k].ObjectIndex is int li) lineToPath[li] = fates[k].PathIndex;
 
+            // which side of each face line its wall lies on, for the filled walls' face lines now
+            // and for every face wall as it is made
+            var faceSide = new Dictionary<int, int>();
+            foreach (var f in FilledWallFaceLines(result))
+                if (f.Side != 0) faceSide[f.Line] = f.Side;
+
+            // every qualifying pair first, then the longest overlap first: a face line may serve more
+            // than one wall (a retaining wall's outer face against the piers on its inner side), and
+            // a 96" stub must not take the face a 1,527" wall needs (31168 p11's property-line wall,
+            // whose outer face a short line at its foot paired with first while the walk went by index)
+            var pairs = new List<(int I, int J, double Gap, (double D0, double D1, double T0, double T1) Rel)>();
             for (int i = 0; i < segs.Count; i++)
             {
-                if (!segs[i].Cut || used.Contains(segs[i].Line)) continue;
-                // the nearest qualifying partner, not the first: a batter line inside a tapered wall
-                // is lighter and is skipped as a face, and the two cut faces are what remain
-                int bestJ = -1; double bestGap = double.MaxValue; (double, double, double, double) bestRel = default;
-                for (int j = 0; j < segs.Count; j++)
+                if (!segs[i].Cut) continue;
+                for (int j = i + 1; j < segs.Count; j++)
                 {
-                    if (j == i || !segs[j].Cut || used.Contains(segs[j].Line)) continue;
+                    if (!segs[j].Cut) continue;
                     var a = segs[i]; var b = segs[j];
                     if (Math.Abs(a.Ux * b.Ux + a.Uy * b.Uy) < FaceParallelCos) continue;
                     var rel = Relative(a, b);
                     double gap = Math.Abs((rel.D0 + rel.D1) / 2);
-                    if (Math.Abs(rel.D0 - rel.D1) > FaceTaperMm) continue;
-                    if (gap < minWallThicknessMm - WallLimitSlackMm || gap > maxWallThicknessMm + WallLimitSlackMm) continue;
+                    // the faces may converge: by an inch, or by a third of the gap, with a wall's
+                    // thickness at both ends (step 21)
+                    if (Math.Abs(rel.D0 - rel.D1) > Math.Max(FaceTaperMm, FaceTaperShare * gap)) continue;
+                    if (Math.Min(Math.Abs(rel.D0), Math.Abs(rel.D1)) < minWallThicknessMm - WallLimitSlackMm
+                        || Math.Max(Math.Abs(rel.D0), Math.Abs(rel.D1)) > maxWallThicknessMm + WallLimitSlackMm) continue;
                     if (rel.T1 - rel.T0 < minWallLengthMm - WallLimitSlackMm) continue;
-                    if (gap < bestGap) { bestGap = gap; bestJ = j; bestRel = rel; }
+                    // and a wall's proportions, as the filled rule asks: a box of lines 49" x 38"
+                    // around an unfilled column (31168's tower plans, sixteen a sheet) is not a wall
+                    if (rel.T1 - rel.T0 < minWallAspect * gap) continue;
+                    pairs.Add((i, j, gap, rel));
                 }
-                if (bestJ < 0) continue;
+            }
+            if (FaceTrace is not null)
+                for (int i = 0; i < segs.Count; i++)
+                    if (segs[i].Cut && segs[i].Len >= FaceTraceMinOverlapMm && !pairs.Any(p => p.I == i || p.J == i))
+                        FaceTrace($"cut line {segs[i].Len / 25.4:0}\" at ({(segs[i].A.X + segs[i].B.X) / 2:0},{(segs[i].A.Y + segs[i].B.Y) / 2:0}) mm: no partner a wall's thickness away");
+
+            // and a line is one wall's face, the longest wall's: letting a face serve several walls
+            // (piers along one outer face) read the balcony bands along 31168's tower slab edges as
+            // walls, 32 a sheet where Revit has none — a spandrel is two lines too. Measured
+            // 2026-09-09: 750 walls to the model's 666 with faces shared, 681 with each face used once.
+            var used = new HashSet<int>();
+            foreach (var pr in pairs.OrderByDescending(p => p.Rel.T1 - p.Rel.T0).ThenBy(p => p.Gap))
+            {
+                int i = pr.I, bestJ = pr.J;
+                if (used.Contains(segs[i].Line) || used.Contains(segs[bestJ].Line)) continue;
                 {
                     var a = segs[i]; var b = segs[bestJ];
-                    var (d0, d1, t0, t1) = bestRel;
-                    double gap = bestGap;
+                    var (d0, d1, t0, t1) = pr.Rel;
+                    double gap = pr.Gap;
                     double side = Math.Sign((d0 + d1) / 2);
                     double nx = -a.Uy, ny = a.Ux;
 
                     double mx = a.A.X + a.Ux * (t0 + t1) / 2 + nx * side * gap / 2, my = a.A.Y + a.Uy * (t0 + t1) / 2 + ny * side * gap / 2;
-                    if (Covered(mx, my)) continue;
+                    string tag = FaceTrace is not null && t1 - t0 >= FaceTraceMinOverlapMm
+                        ? $"pair {(t1 - t0) / 25.4:0}\" x {gap / 25.4:0.0}\" (ends {Math.Abs(d0) / 25.4:0.0}\"/{Math.Abs(d1) / 25.4:0.0}\") at ({mx:0},{my:0}) mm" : "";
+                    void Why(string reason) { if (tag.Length > 0) FaceTrace!(tag + ": " + reason); }
+                    if (Covered(mx, my)) { Why("under a wall or column already read"); continue; }
+
+                    // a face line is one wall's: a line already the face of a filled wall, or of a
+                    // face wall made in this pass, may serve again only for a wall on the SAME side
+                    // (piers along one outer face), never on its other side — the 6" walls flanking a
+                    // stair flight (31168 p11, 31138 p9) and the 8" ramp wall beside a 58" gap (31202)
+                    int sideOfA = (int)side;
+                    double amx = a.A.X + a.Ux * (t0 + t1) / 2, amy = a.A.Y + a.Uy * (t0 + t1) / 2;
+                    int sideOfB = Math.Sign((amx - b.A.X) * -b.Uy + (amy - b.A.Y) * b.Ux);
+                    if (faceSide.TryGetValue(a.Line, out int usedA) && usedA != sideOfA) { Why("its first face is another wall's, on its other side"); continue; }
+                    if (faceSide.TryGetValue(b.Line, out int usedB) && usedB != sideOfB) { Why("its second face is another wall's, on its other side"); continue; }
 
                     // a pattern: another cut-pen line at the same spacing beyond either face, or any
                     // cut-pen line between them (a wall's two faces are adjacent; a hatch's are not)
@@ -560,15 +670,17 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         bool beyondB = Math.Abs(off - 2 * gap) <= PatternSpacingShare * gap;
                         bool beyondA = Math.Abs(off + gap) <= PatternSpacingShare * gap;
                         bool between = off > WallLimitSlackMm && off < gap - WallLimitSlackMm;
-                        if (beyondA || beyondB || between) pattern = true;
+                        if (beyondA || beyondB || between) { pattern = true; Why($"a cut-pen line {(between ? "between the faces" : "beyond a face at the same spacing")}, {c.Len / 25.4:0}\" long at {off / 25.4:0.0}\""); }
                     }
                     if (pattern) continue;
 
                     // between a wall's faces there is nothing, or one line of its own in a lighter pen
-                    // (a batter, a step); several lighter lines along the pair are something drawn
-                    // there (31138 p9's flights: a dozen 15" segments between cut lines 45" apart)
-                    int lighterBetween = 0;
-                    for (int li = 0; li < result.Lines.Count && lighterBetween < LighterBetweenMax; li++)
+                    // (a batter, a step, the property line a retaining wall stands on — dashed, so
+                    // its dashes are one line, counted by where it lies across the wall); several
+                    // lighter lines along the pair are something drawn there (31138 p9's flights: a
+                    // dozen 15" segments between cut lines 45" apart)
+                    var lighterOffsets = new List<double>();
+                    for (int li = 0; li < result.Lines.Count; li++)
                     {
                         var l = result.Lines[li];
                         if (l.Count != 2 || li == a.Line || li == b.Line || CutPenLine(li)) continue;
@@ -578,9 +690,10 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         if (off <= WallLimitSlackMm || off >= gap - WallLimitSlackMm) continue;
                         double u0 = (l[0].X - a.A.X) * a.Ux + (l[0].Y - a.A.Y) * a.Uy, u1 = (l[1].X - a.A.X) * a.Ux + (l[1].Y - a.A.Y) * a.Uy;
                         if (Math.Max(u0, u1) < t0 || Math.Min(u0, u1) > t1) continue;
-                        lighterBetween++;
+                        if (!lighterOffsets.Any(o => Math.Abs(o - off) <= WallLimitSlackMm)) lighterOffsets.Add(off);
+                        if (lighterOffsets.Count >= LighterBetweenMax) break;
                     }
-                    if (lighterBetween >= LighterBetweenMax) continue;
+                    if (lighterOffsets.Count >= LighterBetweenMax) { Why($"lighter lines between the faces at {string.Join(", ", lighterOffsets.Select(o => $"{o / 25.4:0.0}\""))}"); continue; }
 
                     // something drawn across the pair between its ends, in any pen. A stair is a run
                     // of risers: lines square to the faces, spanning the gap (inset from the stringers,
@@ -603,9 +716,13 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         if (Math.Max(u0, u1) < t0 + 2 * WallLimitSlackMm || Math.Min(u0, u1) > t1 - 2 * WallLimitSlackMm) continue;   // at an end: a cap or a jamb
                         bool square = Math.Abs((lx * a.Ux + ly * a.Uy) / ll) <= AcrossCos;
                         if (square && hi - lo >= RiserGapShare * gap) risers.Add((u0 + u1) / 2);
-                        else if (lo <= WallLimitSlackMm && hi >= gap - WallLimitSlackMm && Math.Abs(u1 - u0) >= (t1 - t0) / 2) shaft = true;
+                        // an X's diagonal ends ON the faces; a line that crosses the pair and runs on
+                        // past both (31168 p11: the band's edge line crossing the slanted wall at 1.9°)
+                        // is somebody else's line
+                        else if (lo >= -WallLimitSlackMm && lo <= WallLimitSlackMm && hi >= gap - WallLimitSlackMm && hi <= gap + WallLimitSlackMm
+                                 && Math.Abs(u1 - u0) >= (t1 - t0) / 2) shaft = true;
                     }
-                    if (shaft) continue;
+                    if (shaft) { Why("a line corner to corner: a shaft's X"); continue; }
                     risers.Sort();
                     int run = 1, longestRun = 1;
                     for (int r = 1; r < risers.Count; r++)
@@ -613,7 +730,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         run = risers[r] - risers[r - 1] <= TreadMaxMm ? run + 1 : 1;
                         longestRun = Math.Max(longestRun, run);
                     }
-                    if (longestRun >= RiserRunMin) continue;
+                    if (longestRun >= RiserRunMin) { Why($"a run of {longestRun} risers a tread apart ({risers.Count} lines across it)"); continue; }
+                    Why($"a wall (faces w{(a.Line < result.LineWidths.Count ? result.LineWidths[a.Line] : 0):0.00}/w{(b.Line < result.LineWidths.Count ? result.LineWidths[b.Line] : 0):0.00}, {risers.Count} across, lighter between at {string.Join(", ", lighterOffsets.Select(o => $"{o / 25.4:0.0}\""))})");
 
                     var s = (a.A.X + a.Ux * t0, a.A.Y + a.Uy * t0);
                     var e = (a.A.X + a.Ux * t1, a.A.Y + a.Uy * t1);
@@ -627,6 +745,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     result.WallIsAnnotation.Add(false);
                     result.WallFaceLines[a.Line] = wallIndex;
                     result.WallFaceLines[b.Line] = wallIndex;
+                    faceSide[a.Line] = sideOfA;
+                    faceSide[b.Line] = sideOfB;
                     used.Add(a.Line); used.Add(b.Line);
                     if (fates is not null)
                         foreach (int line in new[] { a.Line, b.Line })

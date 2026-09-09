@@ -102,7 +102,7 @@ public sealed class EveryPathHasExactlyOneFateTests
                 PathReason.BecameSlab or PathReason.BecameColumnByDeclaredSize or PathReason.BecameColumnByShape or PathReason.BecameWall
                     or PathReason.BecameFooting or PathReason.GridAxis or PathReason.Doorway or PathReason.ClipOfWall
                     or PathReason.BecameWallFace => Disposition.Read,
-                PathReason.EmittedAsLine or PathReason.FootingBoxNoLabel => Disposition.Unaccounted,
+                PathReason.EmittedAsLine or PathReason.FootingBoxNoLabel or PathReason.Band => Disposition.Unaccounted,
                 _ => Disposition.Discarded,
             };
             Assert.Equal(expected, PathFate.DispositionOf(reason));
@@ -164,6 +164,8 @@ internal static class FateFixture
         // two face lines a wall's thickness apart, alone: a wall drawn unfilled (step 20)
         (Line(10000, 8000, 13000, 8000), PathReason.BecameWallFace),
         (Line(10000, 8300, 13000, 8300), PathReason.BecameWallFace),
+        // a filled band thicker than the thickest wall, many times longer than wide: not a slab (step 21)
+        (Rect(40000, 1700, 10000, 40000), PathReason.Band),
         // three at the same spacing: a hatch, still lines
         (Line(10000, 12000, 13000, 12000), PathReason.EmittedAsLine),
         (Line(10000, 12300, 13000, 12300), PathReason.EmittedAsLine),

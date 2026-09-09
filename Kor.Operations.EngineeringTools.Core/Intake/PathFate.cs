@@ -24,6 +24,13 @@ public enum PathReason
     /// two faces (intake step 20). Read; the object index is the wall.
     /// </summary>
     BecameWallFace,
+    /// <summary>
+    /// A filled band thicker than the thickest wall and many times longer than it is wide
+    /// (intake step 21): 31168's parkade plans carry a 63"–66" grey band 127 ft long at the
+    /// property line with the real 12"–15" wall drawn as two lines inside it. It is not a slab
+    /// and not a wall; it stays unaccounted, inked and named, for the ledger.
+    /// </summary>
+    Band,
     GridLineExcluded, ColumnTooSmall, UnfilledSmallShape, ColumnAspect, TooShort, TooFewPoints,
     /// <summary>
     /// Never reached the classifier: the read it classifies thins points closer than
@@ -55,7 +62,7 @@ public sealed record PathFate(int PathIndex, Disposition Disposition, PathReason
             or PathReason.BecameFooting or PathReason.GridAxis or PathReason.Doorway or PathReason.ClipOfWall
             or PathReason.BecameWallFace
             => Disposition.Read,
-        PathReason.EmittedAsLine or PathReason.FootingBoxNoLabel => Disposition.Unaccounted,
+        PathReason.EmittedAsLine or PathReason.FootingBoxNoLabel or PathReason.Band => Disposition.Unaccounted,
         PathReason.MarkupOnlyMode or PathReason.FurnitureRegion or PathReason.Underline
             or PathReason.PaperFill or PathReason.SheetFrame or PathReason.FrameEdgeLine
             or PathReason.GridLineExcluded or PathReason.ColumnTooSmall or PathReason.UnfilledSmallShape

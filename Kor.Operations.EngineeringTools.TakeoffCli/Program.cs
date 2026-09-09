@@ -623,7 +623,11 @@ if (args.Length >= 1 && args[0].Equals("pdf-overlay", StringComparison.OrdinalIg
     if (ovScale <= 0) { Console.Error.WriteLine("--scale <denominator> is required (1/8\" = 1'-0\" is 96); the overlay must not assume one."); return 2; }
     var (ovOptions, _) = PdfIntakeOptions.For(ovRules);
 
+    // with --walls, the classifier says why each long pair of cut-pen lines was or was not a wall
+    var ovFaceTrace = new List<string>();
+    if (args.Any(a => a.Equals("--walls", StringComparison.OrdinalIgnoreCase))) GeometryFilterService.FaceTrace = ovFaceTrace.Add;
     var ovGeo = PdfPlanReader.Read(ovPdf, ovScale, ovPage, ovOptions, annotationsOnly: false);
+    GeometryFilterService.FaceTrace = null;
     var ovContent = VectorPageReader.ReadPage(ovPdf, ovPage);
     using var ovImg = PlanPdfRenderer.RenderPage(ovPdf, ovPage, ovDpi);
     double mmToPt = 1.0 / (ovScale * PdfToSafeConstants.PointsToMm);
@@ -656,7 +660,7 @@ if (args.Length >= 1 && args[0].Equals("pdf-overlay", StringComparison.OrdinalIg
     foreach (var line in ovGeo.Lines) OvPoly(line, red, 0, close: false);
     foreach (var slab in ovGeo.Slabs) OvPoly(slab, grey, 1, close: true);
     // walls read from two face lines (step 20) purple; they are appended after the filled ones
-    int ovFirstFaceWall = ovGeo.Walls.Count - ovGeo.WallFaceLines.Count / 2;
+    int ovFirstFaceWall = ovGeo.FirstFaceWall;
     for (int wi = 0; wi < ovGeo.Walls.Count; wi++)
         OvPoly(ovGeo.Walls[wi].Outline, wi >= ovFirstFaceWall ? new Rgba32(150, 0, 200) : new Rgba32(130, 0, 0), 2, close: true);
     // doorways knocked out of walls, yellow, across the opening
@@ -707,6 +711,15 @@ if (args.Length >= 1 && args[0].Equals("pdf-overlay", StringComparison.OrdinalIg
         double sMm = ovScale * PdfToSafeConstants.PointsToMm;
         OvPoly(new[] { (wd.MinX * sMm, wd.MinY * sMm), (wd.MaxX * sMm, wd.MinY * sMm), (wd.MaxX * sMm, wd.MaxY * sMm), (wd.MinX * sMm, wd.MaxY * sMm) }, green, 0, close: true);
     }
+    // the furniture regions, light blue: what the classifier discards as furniture (schedules,
+    // titled boxes, the title block, the north arrow) — so a table whose rules still reach the
+    // DXF as lines can be seen standing outside its region
+    var lightBlue = new Rgba32(90, 170, 230);
+    double sMmR = ovScale * PdfToSafeConstants.PointsToMm;
+    var ovRegions = SheetFurniture.On(ovContent, PlanAgreesWithItsSchedule.DefaultToleranceMm).Regions;
+    foreach (var r in ovRegions)
+        OvPoly(new[] { (r.MinX * sMmR, r.MinY * sMmR), (r.MaxX * sMmR, r.MinY * sMmR), (r.MaxX * sMmR, r.MaxY * sMmR), (r.MinX * sMmR, r.MaxY * sMmR) }, lightBlue, 1, close: true);
+    Console.WriteLine($"  furniture regions {ovRegions.Count} (light blue): {string.Join("; ", ovRegions.Select(r => r.Kind).Take(14))}");
     Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(ovOut)) ?? ".");
     ovImg.SaveAsPng(ovOut);
     Console.WriteLine($"{Path.GetFileName(ovPdf)} p{ovPage} 1:{ovScale} @ {ovDpi} dpi → {ovOut}");
@@ -715,7 +728,7 @@ if (args.Length >= 1 && args[0].Equals("pdf-overlay", StringComparison.OrdinalIg
     foreach (var u in unanswered) Console.WriteLine($"  label {u}: no footing read answers it");
     if (ovGeo.Doorways.Count > 0) Console.WriteLine($"  doorways {ovGeo.Doorways.Count} (yellow): openings knocked out of walls with paper fills; those walls are their piers");
     static double OvWallLen(WallPanel w) => Math.Sqrt(Math.Pow(w.End.X - w.Start.X, 2) + Math.Pow(w.End.Y - w.Start.Y, 2));
-    if (ovGeo.WallFaceLines.Count > 0)
+    if (ovGeo.Walls.Count > ovFirstFaceWall)
     {
         var faceWalls = ovGeo.Walls.Skip(ovFirstFaceWall).ToList();
         Console.WriteLine($"  walls from two face lines {faceWalls.Count} (purple): parallel lines a wall's thickness apart, alone, overlapping a wall's length (step 20)");
@@ -765,6 +778,8 @@ if (args.Length >= 1 && args[0].Equals("pdf-overlay", StringComparison.OrdinalIg
     }
     if (args.Any(a => a.Equals("--walls", StringComparison.OrdinalIgnoreCase)))
     {
+        Console.WriteLine($"  face-line rule, every pair of cut-pen lines {GeometryFilterService.FaceTraceMinOverlapMm / 25.4:0}\"+ long ({ovFaceTrace.Count} lines):");
+        foreach (var t in ovFaceTrace) Console.WriteLine($"      {t}");
         foreach (var d in ovGeo.Doorways)
             Console.WriteLine($"  doorway {d.LengthMm / 25.4,6:0.0} in wide in a {d.ThicknessMm / 25.4,4:0.0} in wall at ({(d.Start.X + d.End.X) / 2,6:0},{(d.Start.Y + d.End.Y) / 2,6:0}) mm");
         // Each wall the page read, as the draftsman would size it: length x thickness in inches at
@@ -811,6 +826,69 @@ if (args.Length >= 1 && args[0].Equals("pdf-overlay", StringComparison.OrdinalIg
                 }
             }
             Console.WriteLine($"  pens of lines along filled walls' long edges: {string.Join(" ", edgePens.GroupBy(p => p).OrderBy(g => g.Key).Select(g => $"w{g.Key:0.00}x{g.Count()}"))}");
+
+            // Filled four-point shapes of wall proportions the rectangle rule rejected: a wall that
+            // tapers (a property-line retaining wall) is one, and this lists its faces' angle and its
+            // thickness at each end so the next rule can be written against the population.
+            int tapered = 0;
+            foreach (var r in ovRaw)
+            {
+                if (!r.IsFilled || r.IsAnnotation || r.Points.Count < 4) continue;
+                var p = r.Points;
+                int n = p.Count;
+                double bw = p.Max(q => q.X) - p.Min(q => q.X), bh = p.Max(q => q.Y) - p.Min(q => q.Y);
+                if (Math.Sqrt(bw * bw + bh * bh) >= 20000)
+                {
+                    Console.WriteLine($"  long fill: {n} pts, box {bw / 25.4:0} x {bh / 25.4:0} in, colour #{r.Color.R:X2}{r.Color.G:X2}{r.Color.B:X2}, {(r.IsStroked ? "stroked" : "no stroke")}, at ({p.Average(q => q.X):0},{p.Average(q => q.Y):0}) mm, corners {string.Join(" ", p.Take(6).Select(q => $"({q.X:0},{q.Y:0})"))}");
+                    // what is painted over it afterwards in paper colour, and what lines cross it
+                    double fx0 = p.Min(q => q.X), fx1 = p.Max(q => q.X), fy0 = p.Min(q => q.Y), fy1 = p.Max(q => q.Y);
+                    int at = ovRaw.IndexOf(r);
+                    for (int k = at + 1; k < ovRaw.Count; k++)
+                    {
+                        var o = ovRaw[k];
+                        if (!o.IsFilled || o.Points.Count < 3) continue;
+                        if (!(o.Color.R >= 0xF0 && o.Color.G >= 0xF0 && o.Color.B >= 0xF0)) continue;
+                        double ox0 = o.Points.Min(q => q.X), ox1 = o.Points.Max(q => q.X), oy0 = o.Points.Min(q => q.Y), oy1 = o.Points.Max(q => q.Y);
+                        if (Math.Min(ox1, fx1) - Math.Max(ox0, fx0) <= 0 || Math.Min(oy1, fy1) - Math.Max(oy0, fy0) <= 0) continue;
+                        Console.WriteLine($"      paper fill after it (path {k}): {o.Points.Count} pts, box {(ox1 - ox0) / 25.4:0} x {(oy1 - oy0) / 25.4:0} in, corners {string.Join(" ", o.Points.Take(5).Select(q => $"({q.X:0},{q.Y:0})"))}");
+                    }
+                    // and the long lines running along it: offset of each end from the band's edge, in inches, with its pen
+                    bool alongY = bh > bw;
+                    foreach (var o in ovRaw)
+                    {
+                        if (o.IsFilled || !o.IsStroked || o.Points.Count != 2) continue;
+                        var q0 = o.Points[0]; var q1 = o.Points[1];
+                        double len = Math.Sqrt(Math.Pow(q1.X - q0.X, 2) + Math.Pow(q1.Y - q0.Y, 2));
+                        if (len < 0.25 * Math.Max(bw, bh)) continue;
+                        double along = alongY ? Math.Abs(q1.Y - q0.Y) / len : Math.Abs(q1.X - q0.X) / len;
+                        if (along < 0.98) continue;
+                        double m0 = alongY ? Math.Min(q0.Y, q1.Y) : Math.Min(q0.X, q1.X), m1 = alongY ? Math.Max(q0.Y, q1.Y) : Math.Max(q0.X, q1.X);
+                        double lo = alongY ? fy0 : fx0, hi = alongY ? fy1 : fx1;
+                        if (m1 < lo || m0 > hi) continue;
+                        double e0 = (alongY ? q0.X - fx0 : q0.Y - fy0), e1 = (alongY ? q1.X - fx0 : q1.Y - fy0);
+                        if (Math.Min(e0, e1) < -3 * Math.Min(bw, bh) || Math.Max(e0, e1) > 4 * Math.Min(bw, bh)) continue;
+                        Console.WriteLine($"      line along it: {len / 25.4:0}\" long, offset {e0 / 25.4:0.0}\" to {e1 / 25.4:0.0}\" from the band's edge, w{o.LineWidth:0.00} #{o.Color.R:X2}{o.Color.G:X2}{o.Color.B:X2}");
+                    }
+                }
+                if (n > 12) continue;
+                var edges = Enumerable.Range(0, n).Select(e => (A: p[e], B: p[(e + 1) % n], Len: Math.Sqrt(Math.Pow(p[(e + 1) % n].X - p[e].X, 2) + Math.Pow(p[(e + 1) % n].Y - p[e].Y, 2)))).OrderByDescending(e => e.Len).ToList();
+                var f1 = edges[0]; var f2 = edges[1];
+                if (f1.Len < 1219.2 || f2.Len < 1219.2 * 0.5) continue;
+                double ux = (f1.B.X - f1.A.X) / f1.Len, uy = (f1.B.Y - f1.A.Y) / f1.Len;
+                double vx = (f2.B.X - f2.A.X) / f2.Len, vy = (f2.B.Y - f2.A.Y) / f2.Len;
+                double angle = Math.Acos(Math.Min(1, Math.Abs(ux * vx + uy * vy))) * 180 / Math.PI;
+                if (angle > 5) continue;
+                double nx = -uy, ny = ux;
+                double d0 = Math.Abs((f2.A.X - f1.A.X) * nx + (f2.A.Y - f1.A.Y) * ny), d1 = Math.Abs((f2.B.X - f1.A.X) * nx + (f2.B.Y - f1.A.Y) * ny);
+                double tMin = Math.Min(d0, d1), tMax = Math.Max(d0, d1);
+                if (tMin < 101.6 || tMax > 1524) continue;
+                bool isWall = ovGeo.Walls.Any(w => Math.Abs(w.Outline.Average(q => q.X) - p.Average(q => q.X)) < 50 && Math.Abs(w.Outline.Average(q => q.Y) - p.Average(q => q.Y)) < 50);
+                if (isWall) continue;
+                double area = Math.Abs(PolygonProcessor.PolygonAreaMm2(p));
+                tapered++;
+                Console.WriteLine($"  filled shape of wall proportions not read as a wall: {n} pts, {f1.Len / 25.4:0} in long, {tMin / 25.4:0.0}-{tMax / 25.4:0.0} in thick, faces {angle:0.00} deg apart, fills {area / (f1.Len * tMax):0.00} of its box, colour #{r.Color.R:X2}{r.Color.G:X2}{r.Color.B:X2}, {(r.IsStroked ? "stroked" : "no stroke")}, at ({p.Average(q => q.X):0},{p.Average(q => q.Y):0}) mm");
+            }
+            if (tapered == 0) Console.WriteLine("  filled shapes of wall proportions not read as walls: none");
         }
         foreach (var w in ovGeo.Walls.OrderByDescending(w => Math.Sqrt(Math.Pow(w.End.X - w.Start.X, 2) + Math.Pow(w.End.Y - w.Start.Y, 2))))
         {

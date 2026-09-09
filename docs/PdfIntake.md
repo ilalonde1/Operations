@@ -1049,3 +1049,56 @@ the cut pen, its fill under the rectangle rule's 0.95 fill share — and 31130 p
 with faces w9 and w4: the filled-wall rule's next counter-example, not this rule's; 31202's ramp
 curb, 4" x 96" in the cut pen, which reads as a 4" wall; a hatched wall, whose diagonal hatch is
 allowed across it but occurs on none of the five sets; a stair drawn without risers.
+
+## 29. Step 21, done 2026-09-09: a wall's faces may converge, and a band thicker than any wall is not a slab
+
+What §28 named as its counter-example, looked at. 31168 p11's west property-line wall is not a
+tapered fill: the fill there is an axis-aligned grey band 66" x 1,631" (63" x 1,510" on p12,
+p13), thicker than the thickest wall, and inside it run two cut-pen lines 15" apart narrowing to
+12" over 1,527", slanted 1.9° off the grid along the property line — the wall. Three things kept
+the rule of §28 from reading it, each found with the trace `pdf-overlay --walls` now prints (why
+every pair of cut-pen lines 94"+ long was or was not a wall, and every long cut line with no
+partner): the faces converge by 3.4", past the inch the rule allowed; the band's edge line
+crossing the slanted pair at 1.9° read as a shaft's X; and a 96" stub at the wall's foot, 12"
+from its outer face, took that face first because the walk went by index. And the band itself,
+read as a slab, was the storey's only floor plate in the ETABS model — a strip 5.5 ft wide on P3
+and P2 (§28's KF1–KF3) — and stood where the plate the perimeter walls enclose should go.
+
+**A wall's faces may converge**: by an inch, or by a third of the mean gap, with a wall's
+thickness at both ends. **A line crossing a pair and running on past both faces is somebody
+else's line**; a shaft's X ends on the faces. **The longest pair first**, so a stub cannot take a
+wall's face. **A face line is one wall's**: the lines along the filled walls' faces carry the
+side their wall lies on (`FilledWallFaceLines`), and a line already a face — of a filled wall or
+of a face wall made in this pass — may not be paired on its other side; that is what the 6" walls
+flanking a stair flight are (31168 p11, 31138 p9: the 44"–45" between them is not a wall), and
+the 8" ramp wall beside a 58" gap (31202). **A wall has a wall's proportions** in the face rule
+as in the filled one (aspect at least 2): the tower plans' boxes of lines 49" x 38" around
+unfilled columns, sixteen a sheet, are not walls. **A dashed line between the faces is one
+line**, counted by where it lies across the wall, not by its dashes — the property line the
+retaining wall stands on. And **a filled band thicker than the thickest wall, at least ten times
+longer than thick and no wider than twice that thickness, is a band** (`PathReason.Band`,
+unaccounted, inked and named in the ledger): not a slab, not a wall, what it is on the drawing
+being a person's to say.
+
+Tried and taken back, with the numbers: letting a face line serve several walls (piers along one
+outer face) read the balcony bands along the tower slab edges as walls — 32 on S2.21.1 where Revit
+has 28 walls in all, 750 across the set to the model's 666. Each face used once, longest first:
+628, and S2.21.1 reads 28.
+
+Measured after (the census from step 20): SLAB moved on 31168 p11–13 (17 → 16, 1 → 0, 1 → 0: the
+three bands), WALL on 31130 p12 (29 → 30) and 31138 p11 (40 → 39), BEAM by the faces those took
+or gave back; 8 of 13 identical; the five banked counts unchanged. Against Revit: 628 walls to
+666, within two on 9 of 23 sheets, p11's west wall read at 1,527" x 12". The ETABS model from
+the three parkade sheets now carries no floor plate at all — the slivers are gone and the
+perimeter-wall fallback on the DXF side needs the walls as a ring inside a ring
+(`PairConcentricWallRings`), which walls read as panels are not. That is Model Start's next
+step, on the DXF side: a storey's plate is what its wall panels enclose.
+
+WHAT THE CHECK COVERS (`TwoFaceLinesAWallsThicknessApartAreAWallTests`, 25 checks;
+`AFilledBandThickerThanAnyWallIsNotASlabTests`, 6): faces converging within a third and beyond
+it; a crossing line that overshoots; a stub at a wall's foot; a filled wall's face line refused
+on its other side; the longest pair keeping a shared face; a box of column proportions; a dashed
+line between; a band of 66", the 60" wall still a wall, a 121" strip a floor again, a short thick
+fill a slab, a turned band, a paper band a mask. WHAT IT DOES NOT: the second pier along a shared
+outer face, which stays lines; the balcony bands as spandrels, which the DXF side reads from BEAM
+and this leaves there; what the 66" band is.

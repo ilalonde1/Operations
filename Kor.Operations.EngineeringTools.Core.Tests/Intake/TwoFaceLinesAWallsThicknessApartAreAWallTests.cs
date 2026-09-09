@@ -116,13 +116,34 @@ public sealed class TwoFaceLinesAWallsThicknessApartAreAWallTests
     [Fact]
     public void SeveralLighterLinesBetweenTheFacesAreSomethingDrawnThereNotAWall()
     {
-        // 31138 p9's flights: 45" between the cut lines, a dozen 15" segments in a lighter pen between them
+        // 31138 p9's flights: 45" between the cut lines, a dozen 15" segments in a lighter pen between
+        // them at more than one distance across
         double w = 45 * 25.4;
         var paths = new List<RawSubpath> { Face(1000, 5000, 1000 + L, 5000), Face(1000, 5000 + w, 1000 + L, 5000 + w) };
-        for (double x = 1500; x < 1000 + L - 400; x += 600)
-            paths.Add(FateFixture.Line(x, 5000 + w / 3, x + 380, 5000 + w / 3) with { LineWidth = 0.2 });
+        int k = 0;
+        for (double x = 1500; x < 1000 + L - 400; x += 600, k++)
+            paths.Add(FateFixture.Line(x, 5000 + w * (k % 2 == 0 ? 1 : 2) / 3, x + 380, 5000 + w * (k % 2 == 0 ? 1 : 2) / 3) with { LineWidth = 0.2 });
         var (g, _) = Read(paths.ToArray());
         Assert.Single(g.Walls);
+    }
+
+    [Fact]
+    public void ADashedLineAlongTheWallBetweenItsFacesIsOneLine()
+    {
+        // a retaining wall stands on the property line, dashed: many segments, one distance across
+        var paths = new List<RawSubpath> { Face(1000, 5000, 1000 + L, 5000), Face(1000, 5000 + T, 1000 + L, 5000 + T) };
+        for (double x = 1100; x < 1000 + L - 200; x += 300)
+            paths.Add(FateFixture.Line(x, 5000 + 60, x + 150, 5000 + 60) with { LineWidth = 0.2 });
+        var (g, _) = Read(paths.ToArray());
+        Assert.Equal(2, g.Walls.Count);
+    }
+
+    [Fact]
+    public void ALineCrossingThePairAndRunningPastBothFacesIsNotAnX()
+    {
+        var (g, _) = Read(Face(1000, 5000, 1000 + L, 5000), Face(1000, 5000 + T, 1000 + L, 5000 + T),
+                          Face(1000, 5000 - 800, 1000 + L, 5000 + T + 800, pen: 0.2));
+        Assert.Equal(2, g.Walls.Count);
     }
 
     [Fact]
@@ -203,10 +224,78 @@ public sealed class TwoFaceLinesAWallsThicknessApartAreAWallTests
     }
 
     [Fact]
+    public void AFilledWallsFaceLineIsNotAnotherWallsFaceOnItsOtherSide()
+    {
+        // two 6" filled walls 45" apart with a stair flight between: the flanking walls' inner face
+        // lines are the walls' own, and the 45" between them is not a wall (31168 p11, 31138 p9)
+        double t6 = 6 * 25.4, w = 45 * 25.4, l = 216 * 25.4, y = 20000;
+        var lower = FateFixture.Rect(l, t6, 1000, y);                                 // y .. y+6"
+        var upper = FateFixture.Rect(l, t6, 1000, y + t6 + w);                        // y+51" .. y+57"
+        var (g, _) = Read(lower, Face(1000, y, 1000 + l, y), Face(1000, y + t6, 1000 + l, y + t6),
+                          upper, Face(1000, y + t6 + w, 1000 + l, y + t6 + w), Face(1000, y + 2 * t6 + w, 1000 + l, y + 2 * t6 + w));
+        Assert.Equal(3, g.Walls.Count);                                               // the fixture's wall and the two 6" walls, no 45" one
+        Assert.Empty(g.WallFaceLines);
+    }
+
+    [Fact]
+    public void AFaceLineIsOneWallsTheLongest()
+    {
+        // a retaining wall's outer face is one line; its inner face is broken by a pilaster. The
+        // outer face serves the longer pier only — sharing it read balcony bands as walls on the
+        // tower plans (WHAT IT DOES NOT: the second pier stays lines)
+        var (g, _) = Read(Face(1000, 5000, 1000 + L, 5000),
+                          Face(1000, 5000 + T, 1000 + L / 2 - 500, 5000 + T), Face(1000 + L / 2 + 1500, 5000 + T, 1000 + L, 5000 + T));
+        Assert.Equal(2, g.Walls.Count);
+        Assert.Equal(L / 2 - 500, Length(FaceWall(g)), 1);
+    }
+
+    [Fact]
+    public void AStubAtAWallsFootDoesNotTakeItsFace()
+    {
+        // 31168 p11: a 96" stub line 12" from the property-line wall's outer face, at its foot,
+        // paired first when the walk went by index and left the 1,527" wall unread
+        var (g, _) = Read(Face(1000, 5000, 1000 + L, 5000), Face(1000, 5000 + T, 1000 + L, 5000 + T),
+                          Face(1000, 5000 - T, 1000 + 2500, 5000 - T));
+        var walls = g.Walls.Skip(1).ToList();
+        Assert.Equal(L, Length(walls[0]), 1);
+        Assert.Single(walls);
+    }
+
+    [Fact]
+    public void ABoxOfLinesOfColumnProportionsIsNotAWall()
+    {
+        // 31168's tower plans: sixteen 49" x 38" boxes of cut-pen lines around unfilled columns
+        double bw = 49 * 25.4, bh = 38 * 25.4;
+        var (g, _) = Read(Face(8000, 8000, 8000 + bw, 8000), Face(8000, 8000 + bh, 8000 + bw, 8000 + bh),
+                          Face(8000, 8000, 8000, 8000 + bh), Face(8000 + bw, 8000, 8000 + bw, 8000 + bh));
+        Assert.Single(g.Walls);
+    }
+
+    [Fact]
     public void OneEndCapAcrossThePairIsStillAWall()
     {
         var (g, _) = Read(Face(1000, 5000, 1000 + L, 5000), Face(1000, 5000 + T, 1000 + L, 5000 + T), Face(1000 + L, 5000, 1000 + L, 5000 + T));
         Assert.Equal(2, g.Walls.Count);
+    }
+
+    [Fact]
+    public void FacesThatConvergeWithinAQuarterAreAWallOfTheMeanThickness()
+    {
+        // 31168 p11's property-line wall: 15" narrowing to 12" over 1,527", slanted 1.9° off the grid
+        double t0 = 15 * 25.4, t1 = 12 * 25.4, len = 1527 * 25.4, slant = 1.9 * Math.PI / 180;
+        (double, double) P(double u, double v) => (20000 + u * Math.Sin(slant) + v * Math.Cos(slant), 5000 + u * Math.Cos(slant) - v * Math.Sin(slant));
+        var a0 = P(0, 0); var a1 = P(len, 0); var b0 = P(0, t0); var b1 = P(len, t1);
+        var (g, _) = Read(Face(a0.Item1, a0.Item2, a1.Item1, a1.Item2), Face(b0.Item1, b0.Item2, b1.Item1, b1.Item2));
+        var wall = FaceWall(g);
+        Assert.Equal((t0 + t1) / 2, wall.ThicknessMm, 5);
+        Assert.Equal(len, Length(wall), 10);
+    }
+
+    [Fact]
+    public void FacesThatConvergeByMoreThanAQuarterAreNotAWall()
+    {
+        var (g, _) = Read(Face(1000, 5000, 1000 + L, 5000), Face(1000, 5000 + T, 1000 + L, 5000 + T * 0.6));
+        Assert.Single(g.Walls);
     }
 
     [Fact]

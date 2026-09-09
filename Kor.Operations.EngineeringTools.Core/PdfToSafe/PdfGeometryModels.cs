@@ -94,6 +94,13 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         public List<Doorway> Doorways { get; } = new();
         /// <summary>Line index to wall index for lines that are a wall's two faces (step 20); the wall is in <see cref="Walls"/>, the lines are not beams.</summary>
         public Dictionary<int, int> WallFaceLines { get; } = new();
+        /// <summary>
+        /// Index in <see cref="Walls"/> of the first wall read from face lines (step 20); the face
+        /// walls follow the filled ones. Equal to <c>Walls.Count</c> when there are none. A face
+        /// line may serve several walls (piers along one outer face), so this, not the count of
+        /// <see cref="WallFaceLines"/>, says how many walls the faces made.
+        /// </summary>
+        public int FirstFaceWall { get; set; }
         /// <summary>Stroke width of each line as the PDF drew it, parallel to <see cref="Lines"/>; the pen a face was drawn with.</summary>
         public List<double> LineWidths { get; } = new();
         public List<(byte R, byte G, byte B)> WallColors { get; } = new();

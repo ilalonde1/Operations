@@ -18,6 +18,8 @@
          dictionary that records every key looked up, which is the only way to prove the
          required-rule list covers everything the code actually reads. -->
     <InternalsVisibleTo Include="Kor.Operations.EngineeringTools.Core.Tests" />
+    <!-- the CLI's instruments read the classifier's trace of why a pair of lines was not a wall -->
+    <InternalsVisibleTo Include="takeoff" />
   </ItemGroup>
 
 </Project>
