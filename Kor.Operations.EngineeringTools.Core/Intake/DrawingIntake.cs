@@ -212,7 +212,7 @@ public static class DrawingIntake
 
         // a storey height is the distance between two level lines on an elevation drawn to scale; a
         // schedule's level column has a table's pitch, not a drawing's, so only this sheet type reads them
-        var storeys = sheetType == "section/elevation" ? StoreyLadder.Read(content, scale) : Array.Empty<StoreyLadder.Storey>();
+        var storeys = sheetType == "section/elevation" ? StoreyLadder.Read(content, scale, ViewCaptions.Read(content)) : Array.Empty<StoreyLadder.Storey>();
 
         PlanScheduleAgreement? agreement = null;
         if (columns.Count > 0 && geometry.Columns.Count > 0)

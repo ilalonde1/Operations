@@ -187,6 +187,20 @@ public sealed class TheAuditsCounterexamplesTests
         Assert.Equal("1 : 100", SheetScaleReader.FromPage(one));
     }
 
+    /// <summary>The level reader took "LEVEL 1 - CONCRETE" as a level named CONCRETE and "LEVEL 22 / MECH." as MECH. (doc §16, §19): the value is the level-shaped token on the label's own line.</summary>
+    [Fact]
+    public void TheLevelValueIsTheNumberOnTheLabelsLineNotTheWordWrappedUnderIt()
+    {
+        var page = new PC(1, W, H, new List<TT>
+        {
+            Tok("LEVEL", 100, 1000), Tok("1", 130, 1000), Tok("-", 145, 1000), Tok("CONCRETE", 118, 992),   // CONCRETE is nearer in x, on the line below
+            Tok("LEVEL", 100, 900), Tok("22", 132, 900), Tok("MECH.", 122, 892),
+            Tok("LEVEL", 100, 800), Tok("L0/P1", 136, 800),
+        }, new List<GP>());
+        var ladder = ScheduleGridReader.ReadLevelLadder(page);
+        Assert.Equal(new[] { "L1", "L22", "L0/P1" }, ladder.Select(r => r.Normalized));
+    }
+
     [Fact]
     public void F11_ALabelInTheNextColumnDoesNotCutATitleBlockFieldOff()
     {

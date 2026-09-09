@@ -255,6 +255,8 @@ public sealed class FiveStickFilesTests
     [Theory]
     [InlineData("31168-01", 37, 21, "LEVEL 3", "LEVEL 2", 5336, 2946)]
     [InlineData("31130-01", 53, 4, "LEVEL P2", "LEVEL P3", 2743, -1)]
+    // 31138 p53 says SCALE = AS NOTED; the ladder is read at the view's own caption, 1/8" = 1'-0" (brief 28)
+    [InlineData("31138-01", 53, 17, "LEVEL 20", "LEVEL 19", 2995, 2995)]
     public void StoreyHeightsOnAnElevationSheetAreTheBankedOnes(string number, int page, int storeys, string level, string below, double heightMm, double typicalMm)
     {
         var job = JobNamed(number);

@@ -32,12 +32,26 @@ public static class StoreyLadder
 
     /// <summary>Storey heights top → bottom, or empty when the sheet states no ratio scale or has no ladder.</summary>
     public static IReadOnlyList<Storey> Read(VectorPageReader.PageContent page, string? scaleNote)
+        => Read(page, scaleNote, Array.Empty<ViewCaptions.Caption>());
+
+    /// <summary>
+    /// As above; when the sheet states no ratio (AS NOTED), the view's own caption under the ladder
+    /// supplies it (brief 28: 31138's wall elevations read nothing until this).
+    /// </summary>
+    public static IReadOnlyList<Storey> Read(VectorPageReader.PageContent page, string? scaleNote, IReadOnlyList<ViewCaptions.Caption> captions)
     {
         ArgumentNullException.ThrowIfNull(page);
-        if (string.IsNullOrWhiteSpace(scaleNote)) return Array.Empty<Storey>();
-        if (PlanGeometry.MetresPerPixel(scaleNote, 72) is not double metresPerPoint || metresPerPoint <= 0) return Array.Empty<Storey>();
+        ArgumentNullException.ThrowIfNull(captions);
         var ladder = ScheduleGridReader.ReadLevelLadder(page);
         if (ladder.Count < MinRows) return Array.Empty<Storey>();
+        if (string.IsNullOrWhiteSpace(scaleNote))
+        {
+            double ladderX = page.Words.Where(w => string.Equals(w.Text, "LEVEL", StringComparison.OrdinalIgnoreCase)
+                    && ladder.Any(r => Math.Abs(r.Y - w.Cy) <= 10)).Select(w => w.Cx).DefaultIfEmpty(0).Average();
+            scaleNote = ViewCaptions.For(captions, ladderX, ladder.Min(r => r.Y));
+        }
+        if (string.IsNullOrWhiteSpace(scaleNote)) return Array.Empty<Storey>();
+        if (PlanGeometry.MetresPerPixel(scaleNote, 72) is not double metresPerPoint || metresPerPoint <= 0) return Array.Empty<Storey>();
         var rows = ladder.OrderByDescending(r => r.Y).ToList();
         var storeys = new List<Storey>();
         for (int i = 0; i + 1 < rows.Count; i++)

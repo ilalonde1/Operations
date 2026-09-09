@@ -3765,6 +3765,21 @@ if (args.Length >= 2 && args[0].Equals("elev-scan", StringComparison.OrdinalIgno
         var ladder = ScheduleGridReader.ReadLevelLadder(pc);
         if (elevToks.Count == 0 && !ftf && ladder.Count == 0) continue;
         Console.WriteLine($"p{pg}: {elevToks.Count} elevation-pattern token(s){(ftf ? "  [has FLOOR-TO-FLOOR/STOREY note]" : "")}{(ladder.Count > 0 ? $"  [level ladder: {ladder.Count} rows]" : "")}");
+        // MEASUREMENT (brief 28): on an AS NOTED sheet every view carries its own scale caption; where
+        // they sit against the ladder decides which caption a ladder belongs to.
+        foreach (var sn in SheetScaleReader.ScaleNotesAnywhere(pc))
+            Console.WriteLine($"    scale note  fx={sn.FractionX:0.00} fy={sn.FractionY:0.00}  \"{sn.Note}\"");
+        // captions with no SCALE label: a ratio-shaped run of tokens on one baseline (1/8" = 1'-0", 1 : 100)
+        foreach (var t in pc.Words.Where(w => w.Text.Contains("1'-0", StringComparison.Ordinal) || Regex.IsMatch(w.Text.Trim(), @"^1\s*:\s*\d{2,4}$")))
+        {
+            var run = pc.Words.Where(o => Math.Abs(o.Cy - t.Cy) <= 4 && o.Cx <= t.Cx + 2 && o.Cx >= t.Cx - 90).OrderBy(o => o.Cx).Select(o => o.Text);
+            Console.WriteLine($"    caption?    fx={t.Cx / pc.WidthPts:0.00} fy={t.Cy / pc.HeightPts:0.00}  \"{string.Join(" ", run)}\"");
+        }
+        if (ladder.Count >= 3)
+        {
+            var levelTokens = pc.Words.Where(w => string.Equals(w.Text, "LEVEL", StringComparison.OrdinalIgnoreCase)).ToList();
+            Console.WriteLine($"    ladder x: LEVEL tokens at fx {string.Join(",", levelTokens.Select(t => (t.Cx / pc.WidthPts).ToString("0.00")).Distinct().OrderBy(s => s))}; rows fy {ladder.Min(r => r.Y) / pc.HeightPts:0.00}..{ladder.Max(r => r.Y) / pc.HeightPts:0.00}");
+        }
         foreach (var t in elevToks.Take(12)) Console.WriteLine($"    elev  fx={t.Cx / pc.WidthPts:0.00} fy={t.Cy / pc.HeightPts:0.00}  \"{t.Text}\"");
         if (ladder.Count >= 3)
             foreach (var r in ladder.Take(6))

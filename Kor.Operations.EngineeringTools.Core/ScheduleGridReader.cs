@@ -53,6 +53,9 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
         /// the ladder left and right, so the busiest column is the axis), pair each with its number, and
         /// sort by y descending so the first entry is the topmost level.
         /// </summary>
+        /// <summary>A level's value: a number, P2, L0/P1, 1M, 1A — not a word that follows the level on the next line.</summary>
+        private static readonly Regex LevelShaped = new(@"^[A-Z]?\d{1,3}[A-Z]?(?:/[A-Z0-9]+)?$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
         public static IReadOnlyList<LevelRow> ReadLevelLadder(VectorPageReader.PageContent page)
         {
             ArgumentNullException.ThrowIfNull(page);
@@ -71,10 +74,15 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             var rows = new List<LevelRow>();
             foreach (var lt in levelTokens.Where(t => Math.Abs(t.Cx - axisX) <= 12))
             {
-                // The level value is the nearest token just to the right on the same baseline.
+                // The level value is the token just to the right: on the label's own baseline before the
+                // line wrapped under it, a level-shaped token (22, P2, L0/P1, 1M) before a word, then the
+                // nearest. Nearest alone read "LEVEL 1 - CONCRETE" as a level named CONCRETE and
+                // "LEVEL 22 / MECH." as MECH. (2026-09-08, 31130 p53 and 31138 p53).
                 var num = page.Words
                     .Where(w => Math.Abs(w.Cy - lt.Cy) <= 10 && w.Cx > lt.Cx && w.Cx - lt.Cx <= 90)
-                    .OrderBy(w => w.Cx - lt.Cx)
+                    .OrderBy(w => Math.Abs(w.Cy - lt.Cy) <= 4 ? 0 : 1)
+                    .ThenBy(w => LevelShaped.IsMatch(w.Text.Trim()) ? 0 : 1)
+                    .ThenBy(w => w.Cx - lt.Cx)
                     .Select(w => (string?)w.Text)
                     .FirstOrDefault();
 

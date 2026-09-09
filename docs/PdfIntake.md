@@ -3,7 +3,7 @@
 Written 2026-09-08 from the code and from a content inventory of the five local stick files
 (31065, 31130, 31138, 31168, 31202: 294 pages). Every number below was counted on the whole
 population named; nothing is from a sample. The intake brief series lives in
-`docs/codex/CODEX-INTAKE-CONVERGENCE-*.md` (27 so far; 23 is written for Codex, not yet run; 24 was Codex's audit, answered in §18) and this is the state they have reached.
+`docs/codex/CODEX-INTAKE-CONVERGENCE-*.md` (28 so far; 23 is written for Codex, not yet run; 24 was Codex's audit, answered in §18) and this is the state they have reached.
 
 The purpose of the intake is stated once so the rest can be judged against it: **pull everything a
 drawing set carries that any downstream tool could need, once, through one reader, and account for
@@ -39,7 +39,8 @@ walls are emitted (§9), only plans are taken off to DXF (§11), the scale is ac
 every sheet (§12), footings are objects (§13, §14), the grid is named axes on a GRID layer (§15),
 storey heights are read off the wall elevations (§16) and checked against the model in the publish
 (§17), the audit's eleven findings are fixed (§18), dimension strings are typed with their values
-(§19). The tables in §2 and §3 are the starting picture.
+(§19), and an AS NOTED sheet's views are read at their own captions' scale (§20). The tables in
+§2 and §3 are the starting picture.
 
 | Tool | Path today | What it gets from the PDF | What it does not |
 |---|---|---|---|
@@ -557,10 +558,10 @@ Banked in `FiveStickFilesTests.StoreyHeightsOnAnElevationSheetAreTheBankedOnes` 
 sixteenth of an inch on paper at 1:96.
 
 Across the five sets the ledger reads 13 storeys on 31130, 48 on 31168, 48 on 31065 (typical
-2,845 mm, 9'-4"), 40 on 31202 (typical 2,946) — and **0 on 31138**, whose wall elevation sheets
-state SCALE = AS NOTED and carry the scale as a caption under each view (`1/8" = 1'-0"` beneath
-"SHEAR WALL ELEVATION 3"). The reader takes the sheet's scale and a sheet that says AS NOTED has
-none; the view's own caption is the per-view step's business. Totals unchanged on 5 of 5. Full
+2,845 mm, 9'-4"), 40 on 31202 (typical 2,946) — and **0 on 31138** at this step, whose wall
+elevation sheets state SCALE = AS NOTED and carry the scale as a caption under each view (`1/8" =
+1'-0"` beneath "SHEAR WALL ELEVATION 3"). The reader took the sheet's scale and a sheet that says AS
+NOTED has none; §20 reads the view's own caption and 31138 gives 28. Totals unchanged on 5 of 5. Full
 Core suite 1,051 of 1,051 (6 m 21 s).
 
 WHAT THE CHECK COVERS: two elevation sheets, the storey count, one named pair each, and the typical
@@ -677,3 +678,29 @@ WHAT THE CHECK COVERS: the parse, the tightest agreeing span, the adjacent pair,
 the horizontal axes, furniture excluded; the typed count per schedule page. WHAT IT DOES NOT: the
 dimension line, so a string's own extent is not read; a bare millimetre number on a metric sheet;
 and whether a typed value is the length of the member beside it.
+
+## 20. Step 13, done 2026-09-08: a view's scale is the caption under it
+
+Brief 28, implemented by the verifier. §16 read no storeys on 31138 because its wall elevation
+sheets say SCALE = AS NOTED, and the storey reader took the sheet's scale. Measured first with
+`takeoff elev-scan`: on those sheets every view carries its own caption on one baseline — the
+view number, the sheet reference and the ratio, "3 / S3.11 1/8" = 1'-0"" — two under p53's two
+ladders (fx 0.43 and 0.65, under ladders at fx 0.50 and 0.72), five under p57's five views, three
+under 31130 p53's three wall elevations besides the title block's own. None carries the word SCALE,
+which is why `SheetScaleReader.ScaleNotesAnywhere` found none of them.
+
+**A view's scale is the ratio in the caption under it.** `Intake/ViewCaptions` reads every caption
+with its position, rejoining the imperial form the word extractor splits into three tokens and
+reading the metric form whole; `StoreyLadder` takes, when the sheet states no ratio, the caption
+nearest below the ladder — and when every caption on the sheet states one ratio, that ratio. On
+31138 p53 the ladder now reads 17 storeys, typical 2,995 mm (9'-10"), and p57 reads 6 (P1 → P2
+2,946 mm). Banked in the storey theory with 31168 and 31130. The level reader's own fault from
+§16 is fixed with it: the level's value is the level-shaped token on the label's own baseline, so
+"LEVEL 1 - CONCRETE" is L1 and "LEVEL 22 / MECH." is L22.
+
+WHAT THE CHECK COVERS: the rejoined imperial caption and the metric one, the title-block fifth
+excluded, the caption below and nearest, one ratio for a sheet whose captions agree, a ladder read
+at a caption's scale with no sheet scale, and 31138 p53 banked. WHAT IT DOES NOT: which VIEW a
+caption belongs to beyond "below and nearest" — two ladders one above the other take the same
+caption; a plan on an AS NOTED sheet (the geometry still takes the requested denominator); and a
+caption the extractor splits some other way.

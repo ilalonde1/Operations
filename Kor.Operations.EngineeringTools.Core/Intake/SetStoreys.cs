@@ -52,7 +52,7 @@ public static class SetStoreys
             string? scale = null;
             try { scale = SheetScaleReader.FromPage(content); } catch { }
             scale ??= SheetScaleReader.RatioOf(fields.TryGetValue("SCALE", out var sf) ? sf : null);
-            var storeys = StoreyLadder.Read(content, scale);
+            var storeys = StoreyLadder.Read(content, scale, ViewCaptions.Read(content));
             if (storeys.Count > 0) perSheet.Add((page, storeys));
         }
         return Reconcile(perSheet, elevationSheets);
