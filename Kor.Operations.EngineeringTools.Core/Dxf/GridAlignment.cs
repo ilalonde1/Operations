@@ -318,26 +318,44 @@ public static class GridAlignment
     }
 
     /// <summary>
-    /// The translation the named pairs agree on: the median of coord - factor * at over every axis
-    /// whose name is a model label, then the mean of those within <see cref="NameTolerance"/> of it,
-    /// how many there are, and how far the farthest of them sits from it.
+    /// The translation the most named pairs agree on. Every axis carrying a label is paired with
+    /// every grid line of that label and each pair casts one vote, coord - factor * at; the
+    /// largest cluster of votes within <see cref="NameTolerance"/> is the frame, its mean the
+    /// offset, the labels in it the match count (each label once), the farthest vote its spread.
+    /// A vote and not a median because a sheet may carry a name more than once — a key plan with
+    /// four buildings' grids, a sheet with two views — and pairing the first "2" with the first
+    /// "2" set 31065's S1.11 on the wrong building (2026-09-08). The true pairs all vote for one
+    /// offset; the cross pairs scatter theirs.
     /// </summary>
     private static (double Offset, int Matched, double Spread) AgreedOffset(
         List<NamedAxis> axes, List<ReferenceGrid> grids, double factor)
     {
-        var offsets = new List<double>();
+        var votes = new List<(string Label, double Offset)>();
         foreach (var g in grids)
+            foreach (var axis in axes.Where(a => a.Name.Equals(g.Label, StringComparison.OrdinalIgnoreCase)))
+                votes.Add((g.Label, g.Coord - axis.At * factor));
+        if (votes.Count == 0) return (0, 0, 0);
+
+        var best = new List<(string Label, double Offset)>();
+        int bestLabels = -1;
+        foreach (var centre in votes)
         {
-            var axis = axes.FirstOrDefault(a => a.Name.Equals(g.Label, StringComparison.OrdinalIgnoreCase));
-            if (axis is null) continue;
-            offsets.Add(g.Coord - axis.At * factor);
+            var cluster = votes.Where(v => Math.Abs(v.Offset - centre.Offset) <= NameTolerance).ToList();
+            int labels = cluster.Select(v => v.Label.ToUpperInvariant()).Distinct().Count();
+            // more labels wins; then more votes; then the smaller move — one name each way is a
+            // tie, and a reissue is the same page until the names say otherwise
+            bool better = labels > bestLabels
+                          || (labels == bestLabels && cluster.Count > best.Count)
+                          || (labels == bestLabels && cluster.Count == best.Count
+                              && Math.Abs(cluster.Average(v => v.Offset)) < Math.Abs(best.Average(v => v.Offset)));
+            if (better)
+            {
+                best = cluster;
+                bestLabels = labels;
+            }
         }
-        if (offsets.Count == 0) return (0, 0, 0);
-        offsets.Sort();
-        double median = offsets[offsets.Count / 2];
-        var agreeing = offsets.Where(o => Math.Abs(o - median) <= NameTolerance).ToList();
-        double offset = agreeing.Average();
-        return (offset, agreeing.Count, agreeing.Max(o => Math.Abs(o - offset)));
+        double offset = best.Average(v => v.Offset);
+        return (offset, bestLabels, best.Max(v => Math.Abs(v.Offset - offset)));
     }
 
     /// <summary>

@@ -820,3 +820,51 @@ face lines, so the plates in this model are slivers; a building whose letters no
 shares; the reference's own member counts on the parkade (Andrea's file carries 16 columns in all,
 it is a shell); the SHEET TITLE's word order across lines, which the title-block reader gets wrong
 ("FOUNDATIONS PLAN BLDG A - & B") and the name carries.
+
+## 24. Step 16, done 2026-09-08: Reissue Impact, first cut — what changed between two issues
+
+The first product of the foundation (`docs/KOR-Engineering-Tools-Foundation-2026-09-08.md` §3.1).
+Ground truth: the share holds dated issues of one set per job — 31130 May and September (the May
+one "on the architectural plan"), 31065 July and August (like for like), 31168 four. Mirrored to
+the local drawings cache under `kor-drawings/issues`.
+
+**What changed on a sheet is the difference between its objects on two issues, with the new issue
+set on the old one's grid by name first.** `Intake/SheetObjects` is a sheet's objects in one light
+record; `Intake/SheetDiff.Compare` pairs columns within five feet (moved past two inches, resized
+past an inch), walls of one orientation and thickness whose axes lie within a foot and overlap half
+the shorter, footings within two feet, grid axes and schedule rows by name, storeys by their two
+level names; `takeoff set-diff <old> <new> --scale N [--sheet A,B]` reads both issues through the
+one reader, pairs sheets by number and prints the table, or one sheet's changes in words.
+
+Two rules were found by measuring, not designed:
+
+- **One member, two readings.** A 48" x 24" pier sits on the wall-or-column boundary; 31130's
+  S2.03.1 read it as a wall in May and a column in September, which came out as a wall removed and
+  a column added at one place. Paired at one place, it is the same member re-read and not a change.
+- **A name carried twice on a sheet anchors by the frame the most pairs agree on.** A key plan
+  carries four buildings' grids, a sheet carries two views, and pairing the first "2" with the
+  first "2" set 31065's S1.11 on the wrong building: 0 columns the same, 15 added, 15 removed, 33
+  grid axes "moved" 26 m. `GridAlignment.AgreedOffset` now lets every same-named pair vote and
+  takes the largest cluster (labels first, then votes, then the smaller move); the diff pairs each
+  old axis with the nearest new one of its name. The ETABS route uses the same solve and is
+  unchanged by it: the full suite and the live 31168 test pass.
+
+Measured after. 31065 July → August, 73 sheets, like for like: **1 object change in all** — a
+223" x 8" wall on S2.03.1.1 that July's read has and August's does not (26 other walls identical to
+the millimetre, 37 columns the same); it was 466 before the two rules. 31130 May → September: 660
+changes, of which the parkade and podium sheets carry the plausible handful — S2.03.1: a column
+moved 241 mm and resized 24x30 → 42x24, two walls lengthened (261 → 577", 252 → 289"), one
+removed, one pier re-read — and the tower sheets carry the architectural background of the May
+"OAP" file read as columns and slabs (S2.17.1: 127 columns in May, 25 in September), which is a
+population difference and not a reissue; 815 before the rules. 3 sheets only in May, 1 only in
+September, found by number.
+
+WHAT THE CHECK COVERS (`AReissueIsWhatMovedTests`, `ASheetSitsOnTheModelsGridByNameTests`): moved,
+added, removed and resized columns; a wall lengthened and one gone; a footing re-marked; a grid axis
+moved beside two that agree; a storey changed; a schedule cell rewritten and a row added; a whole
+sheet shifted on its page with the grid shared, which is no change; the pier re-read; a name carried
+twice. WHAT IT DOES NOT: the overlay PDF (the change list is words and positions today); a reissue
+against the model rather than the previous issue; a grid renumbered between issues, which reads as
+axes removed and added; the "OAP" variant against a plain one, which is two populations; a
+schedule row the schedule reader invents from a NOTE line ("PC9ETON:" on 31130's parkade column
+schedule), which the diff reports as a row added and which is the reader's defect to fix.

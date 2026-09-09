@@ -86,6 +86,25 @@ public sealed class ASheetSitsOnTheModelsGridByNameTests
     }
 
     [Fact]
+    public void ANameCarriedTwiceOnASheetAnchorsByTheFrameMostPairsAgreeOn()
+    {
+        // two views on one sheet, each with grids 1, 2, 3, the second view 20 m to the right; the
+        // reference is the same sheet's own axes (a reissue) — the true frame is no move at all
+        var axes = new List<GridAlignment.NamedAxis>
+        {
+            new("1", true, 1000), new("2", true, 5000), new("3", true, 9000), new("A", false, 500),
+            new("1", true, 21000), new("2", true, 25000), new("3", true, 29000), new("A", false, 500),
+        };
+        var reference = axes.Select(a => new GridAlignment.ReferenceGrid(a.Name, a.Vertical, a.At)).ToList();
+        var fit = GridAlignment.SolveByName(axes, reference);
+        Assert.NotNull(fit);
+        Assert.Equal(0, fit!.Frame.RotationDegrees);
+        Assert.Equal(0, fit.Frame.OffsetX, 3);
+        Assert.Equal(0, fit.Frame.OffsetY, 3);
+        Assert.Equal(3, fit.MatchedX);
+    }
+
+    [Fact]
     public void TheGridsTableIsTheSheetsOwnAxesThroughTheirFrames()
     {
         var a = new List<GridAlignment.NamedAxis> { new("1", true, 1000), new("2", true, 3540), new("R", false, 2000) };
