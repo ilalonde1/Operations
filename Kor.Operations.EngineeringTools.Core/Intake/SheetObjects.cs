@@ -20,12 +20,16 @@ public sealed record SheetObjects(
     IReadOnlyList<StoreyLadder.Storey> Storeys,
     IReadOnlyList<ScheduleTable> Schedules)
 {
+    /// <summary>The page's height in PDF points, so a change can be painted back onto the page.</summary>
+    public double PageHeightPts { get; init; }
+
     public static SheetObjects From(SheetRecord record)
     {
         ArgumentNullException.ThrowIfNull(record);
         var g = record.Geometry;
         return new SheetObjects(record.SheetNumber, record.PageNumber, record.SheetType, record.Level,
-            g.Columns, g.ColumnSizes, g.Walls, g.Footings, g.GridAxes, record.Storeys, record.Schedules);
+            g.Columns, g.ColumnSizes, g.Walls, g.Footings, g.GridAxes, record.Storeys, record.Schedules)
+        { PageHeightPts = record.HeightPts };
     }
 
     /// <summary>An empty sheet of this number and page, for a sheet one issue has and the other does not.</summary>

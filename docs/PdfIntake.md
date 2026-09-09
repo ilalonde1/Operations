@@ -863,7 +863,10 @@ WHAT THE CHECK COVERS (`AReissueIsWhatMovedTests`, `ASheetSitsOnTheModelsGridByN
 added, removed and resized columns; a wall lengthened and one gone; a footing re-marked; a grid axis
 moved beside two that agree; a storey changed; a schedule cell rewritten and a row added; a whole
 sheet shifted on its page with the grid shared, which is no change; the pier re-read; a name carried
-twice. WHAT IT DOES NOT: the overlay PDF (the change list is words and positions today); a reissue
+twice. WHAT IT DOES NOT: the overlay as one PDF (`--overlay <dir>` paints each changed sheet on
+the old issue's page as a PNG — green added, red removed, orange moved or changed, cyan a grid
+axis moved, grey a member re-read — and 31130's S2.03.1 reads at a glance; binding them into a PDF
+with the list is not done); a reissue
 against the model rather than the previous issue; a grid renumbered between issues, which reads as
 axes removed and added; the "OAP" variant against a plain one, which is two populations; a
 schedule row the schedule reader invents from a NOTE line ("PC9ETON:" on 31130's parkade column

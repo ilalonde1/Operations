@@ -344,11 +344,12 @@ if (args.Length >= 1 && args[0].Equals("set-diff", StringComparison.OrdinalIgnor
 {
     if (args.Length < 3) { Console.Error.WriteLine("Usage: takeoff set-diff <old.pdf> <new.pdf> --scale N [--sheet S2.02] [--rules-db <conn>]"); return 1; }
     string sdOld = args[1], sdNew = args[2];
-    int sdScale = 0; string? sdSheet = null, sdRules = null;
+    int sdScale = 0; string? sdSheet = null, sdRules = null, sdOverlay = null;
     for (int i = 3; i < args.Length; i++)
     {
         if (args[i].Equals("--scale", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) int.TryParse(args[++i], out sdScale);
         else if (args[i].Equals("--sheet", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) sdSheet = args[++i];
+        else if (args[i].Equals("--overlay", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) sdOverlay = args[++i];
         else if (args[i].Equals("--rules-db", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) sdRules = args[++i];
     }
     if (!File.Exists(sdOld) || !File.Exists(sdNew)) { Console.Error.WriteLine("Both PDFs must exist."); return 2; }
@@ -384,6 +385,66 @@ if (args.Length >= 1 && args[0].Equals("set-diff", StringComparison.OrdinalIgnor
     {
         var o = First(oldSet, number); var n = First(newSet, number);
         deltas.Add((number, o, n, o is not null && n is not null ? SheetDiff.Compare(o, n) : null));
+    }
+
+    // THE ENGINEER OPENS A PICTURE, NOT A LIST. Every changed sheet painted on the OLD issue's page —
+    // where everything in the delta already sits, the new issue having been set on the old grid —
+    // green for added, red for removed, orange for moved or changed, cyan for a grid axis moved.
+    if (sdOverlay is not null)
+    {
+        Directory.CreateDirectory(sdOverlay);
+        const int dpi = 40;
+        var green = new Rgba32(0, 160, 60); var redC = new Rgba32(220, 40, 40); var orange = new Rgba32(240, 140, 0); var cyan = new Rgba32(0, 170, 190); var greyC = new Rgba32(120, 120, 120);
+        int painted = 0;
+        foreach (var (number, o, n, d) in deltas)
+        {
+            if (d is null || d.Changes == 0 || o is null) continue;
+            using var img = PlanPdfRenderer.RenderPage(sdOld, d.OldPage, dpi);
+            double mmToPt = 1.0 / (sdScale * PdfToSafeConstants.PointsToMm), px = dpi / 72.0;
+            (int X, int Y) P(double xMm, double yMm) => ((int)Math.Round(xMm * mmToPt * px), (int)Math.Round((o.PageHeightPts - yMm * mmToPt) * px));
+            void Plot(int x, int y, Rgba32 c, int w)
+            {
+                for (int dx = -w; dx <= w; dx++) for (int dy = -w; dy <= w; dy++)
+                {
+                    int xx = x + dx, yy = y + dy;
+                    if (xx >= 0 && yy >= 0 && xx < img.Width && yy < img.Height) img[xx, yy] = c;
+                }
+            }
+            void Line((int X, int Y) a, (int X, int Y) b, Rgba32 c, int w)
+            {
+                int steps = Math.Max(1, Math.Max(Math.Abs(b.X - a.X), Math.Abs(b.Y - a.Y)));
+                for (int s = 0; s <= steps; s++) { double f = (double)s / steps; Plot((int)Math.Round(a.X + (b.X - a.X) * f), (int)Math.Round(a.Y + (b.Y - a.Y) * f), c, w); }
+            }
+            void Poly(IReadOnlyList<(double X, double Y)> pts, Rgba32 c, int w)
+            {
+                for (int i = 1; i < pts.Count; i++) Line(P(pts[i - 1].X, pts[i - 1].Y), P(pts[i].X, pts[i].Y), c, w);
+                if (pts.Count > 2) Line(P(pts[^1].X, pts[^1].Y), P(pts[0].X, pts[0].Y), c, w);
+            }
+            void Box((double X, double Y) at, double halfMm, Rgba32 c, int w)
+                => Poly(new[] { (at.X - halfMm, at.Y - halfMm), (at.X + halfMm, at.Y - halfMm), (at.X + halfMm, at.Y + halfMm), (at.X - halfMm, at.Y + halfMm) }, c, w);
+
+            foreach (var c in d.ColumnsAdded) Box(c, 450, green, 2);
+            foreach (var c in d.ColumnsRemoved) Box(c, 450, redC, 2);
+            foreach (var m in d.ColumnsMoved) { Line(P(m.From.X, m.From.Y), P(m.To.X, m.To.Y), orange, 2); Box(m.To, 450, orange, 2); }
+            foreach (var r in d.ColumnsResized) Box(r.At, 600, orange, 1);
+            foreach (var w in d.WallsAdded) Poly(w.Outline, green, 2);
+            foreach (var w in d.WallsRemoved) Poly(w.Outline, redC, 2);
+            foreach (var w in d.WallsChanged) { Poly(w.From.Outline, orange, 1); Poly(w.To.Outline, orange, 2); }
+            foreach (var f in d.FootingsAdded) Poly(f.Outline, green, 2);
+            foreach (var f in d.FootingsRemoved) Poly(f.Outline, redC, 2);
+            foreach (var f in d.FootingsChanged) Poly(f.To.Outline, orange, 2);
+            foreach (var k in d.KindChanges) Box(k.At, 500, greyC, 1);
+            double pageWmm = img.Width / px / mmToPt, pageHmm = o.PageHeightPts / mmToPt;
+            foreach (var g in d.GridMoved)
+                Poly(g.Vertical ? new[] { (g.ToMm, 0.0), (g.ToMm, pageHmm) } : new[] { (0.0, g.ToMm), (pageWmm, g.ToMm) }, cyan, 1);
+
+            string file = Path.Combine(sdOverlay, SheetDxfName.Sanitise($"{number}-changes") + ".png");
+            img.SaveAsPng(file);
+            painted++;
+            Console.WriteLine($"{number}: {d.Changes} change(s) painted on the old issue's p{d.OldPage} -> {file}");
+        }
+        Console.WriteLine($"{painted} sheet(s) painted. Green added, red removed, orange moved or changed, cyan a grid axis moved, grey a member re-read.");
+        Console.WriteLine();
     }
 
     if (sdSheet is not null)
@@ -4609,7 +4670,7 @@ public static class TakeoffCliHelp
         new("intake-baseline", "takeoff intake-baseline <stickFilesDir> <outDir>", "Write the thirteen plan DXFs of the five stick files to a step folder, for dxf-census."),
         new("pdf-overlay", "takeoff pdf-overlay <pdf> <page> <out.png> --scale N [--dpi 40] [--rules-db <conn>]", "Draw what the intake extracted over the rasterised page."),
         new("pdf-vs-dxf", "takeoff pdf-vs-dxf <pdf> <dxfFolder> --scale N [--rules-db <conn>]", "Compare the PDF side's reads against a Revit DXF export of the same sheets."),
-        new("set-diff", "takeoff set-diff <old.pdf> <new.pdf> --scale N [--sheet S2.02] [--rules-db <conn>]", "Reissue Impact: what changed between two issues, sheet by sheet, as objects — columns, walls, footings, grid, storeys, schedules."),
+        new("set-diff", "takeoff set-diff <old.pdf> <new.pdf> --scale N [--sheet S2.02] [--overlay <dir>] [--rules-db <conn>]", "Reissue Impact: what changed between two issues, sheet by sheet, as objects — columns, walls, footings, grid, storeys, schedules; --overlay paints each changed sheet."),
         new("markup-list", "takeoff markup-list <pdf> --scale N [--pages A-B] [--rules-db <conn>]", "A mark-up as a list of instructions: each annotation's words, what it asks, how far, where on the grid, beside which member."),
         new("markup-reconcile", "takeoff markup-reconcile <round.pdf> <backchecked.pdf> --scale N [--engineer <name>]", "The engineer's round against the drafter's back-checked copy: each item done (a tick beside it), replied (words beside it) or open."),
         new("dxf-render", "takeoff dxf-render <plan.dxf> <out.png> [--size 1800] [--layers SLABEDG,...]", "Render structural DXF layers to a PNG."),
