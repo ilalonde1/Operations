@@ -128,6 +128,12 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                     marksPlaced > 0 ? $"FootingOutlines; the plan places {marksPlaced} spread-footing mark(s): {byMark}"
                     : scheduled ? $"the schedule declares spread footings and the plan places no mark{(byMark.Length > 0 ? ": " + byMark : "")}"
                     : "no spread footing scheduled on this sheet");
+                if (record.Storeys.Count > 0)
+                {
+                    double? typical = StoreyLadder.Typical(record.Storeys);
+                    Note("storey heights from the level ladder at the sheet's scale", record.Storeys.Count, Disposition.Read,
+                        $"StoreyLadder; typical {typical:0} mm; " + string.Join(", ", record.Storeys.Take(6).Select(s => $"{s.Level} -> {s.LevelBelow} {s.HeightMm:0}")) + (record.Storeys.Count > 6 ? ", ..." : ""));
+                }
                 if (record.ColumnAgreement is { } check)
                 {
                     Note("plan labels standing at an emitted column", check.MatchedToTheirOwnMark, Disposition.Read, $"PlanAgreesWithItsSchedule, of {check.LabelsOnThePlan} labels");

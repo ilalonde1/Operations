@@ -200,6 +200,10 @@ public static class DrawingIntake
         int clipOps = 0;
         try { clipOps = page.Operations.Count(op => op.Operator is "W" or "W*"); } catch { }
 
+        // a storey height is the distance between two level lines on an elevation drawn to scale; a
+        // schedule's level column has a table's pitch, not a drawing's, so only this sheet type reads them
+        var storeys = sheetType == "section/elevation" ? StoreyLadder.Read(content, scale) : Array.Empty<StoreyLadder.Storey>();
+
         PlanScheduleAgreement? agreement = null;
         if (columns.Count > 0 && geometry.Columns.Count > 0)
         {
@@ -213,7 +217,7 @@ public static class DrawingIntake
             markup, links, full, pathFates, wordFates)
         {
             ColumnAgreement = agreement, ColumnAgreementError = agreementError,
-            TitleBlock = fields, ScaleStatement = scaleStatement,
+            TitleBlock = fields, ScaleStatement = scaleStatement, Storeys = storeys,
             Context = new SheetContext
             {
                 OutlinesPresent = facts.OutlinesPresent, ScheduleHeadings = headings.Count,

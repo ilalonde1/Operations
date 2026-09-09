@@ -3,7 +3,7 @@
 Written 2026-09-08 from the code and from a content inventory of the five local stick files
 (31065, 31130, 31138, 31168, 31202: 294 pages). Every number below was counted on the whole
 population named; nothing is from a sample. The intake brief series lives in
-`docs/codex/CODEX-INTAKE-CONVERGENCE-*.md` (23 so far; 23 is written, not yet implemented) and this is the state they have reached.
+`docs/codex/CODEX-INTAKE-CONVERGENCE-*.md` (25 so far; 23 and 24 are written for Codex, not yet run) and this is the state they have reached.
 
 The purpose of the intake is stated once so the rest can be judged against it: **pull everything a
 drawing set carries that any downstream tool could need, once, through one reader, and account for
@@ -36,8 +36,9 @@ publish (`takeoff publish --stick-file`).
 
 Measured at step 0 (2026-09-08). The step sections from §7 on record what has changed since:
 walls are emitted (§9), only plans are taken off to DXF (§11), the scale is accounted for on
-every sheet (§12), footings are objects (§13, §14), the grid is named axes on a GRID layer (§15).
-The tables in §2 and §3 are the starting picture.
+every sheet (§12), footings are objects (§13, §14), the grid is named axes on a GRID layer (§15),
+storey heights are read off the wall elevations (§16). The tables in §2 and §3 are the starting
+picture.
 
 | Tool | Path today | What it gets from the PDF | What it does not |
 |---|---|---|---|
@@ -515,3 +516,42 @@ pages and the DXF's GRID layer for a synthetic geometry. WHAT IT DOES NOT: an ax
 against the drawn grid line (the spot check above was by hand), a bubble whose label sits outside
 the circle, a grid drawn without bubbles, and whether the ETABS side aligns a PDF-derived DXF
 better with the layer present — not yet measured.
+
+## 16. Step 10, done 2026-09-08: a storey height is the distance between two level lines
+
+Brief 25, implemented by the verifier. Storey heights came from the reference model only
+(`E2kDocument.ReadStories`), and §3 listed that as a gap. Measured first, with `takeoff elev-scan`
+extended to print the level ladder's gaps at the sheet's scale and a new `takeoff e2k-storeys`
+printing a model's storeys: the five sets' level ladders sit on the wall elevation and section
+sheets late in each set; absolute elevations are rare on them; **the storey height is the drawn
+distance between consecutive level lines at the sheet's scale**, with a dimension string only where
+a storey is typical.
+
+| 31168 p37, SHEAR WALL ELEVATIONS - BLDG B, 1/8" = 1'-0" | From the ladder | The engineer's 31168 model |
+|---|---|---|
+| typical tower storey (L4 → L19, 16 of 21 storeys) | 2,946 mm | LEVEL 12–26: 116 in = 2,946 mm |
+| L3 → L2 | 5,336 mm | LEVEL 3: 210 in = 5,334 mm |
+| L2 → L1 | 2,808 mm | LEVEL 2: 110.5 in = 2,807 mm |
+
+Within 2 mm on the three storeys the two name alike. `Intake/StoreyLadder` reads them on sheets
+typed section/elevation only — a schedule's level column is a table's pitch, not a drawing's — into
+`SheetRecord.Storeys`; the ledger carries a row with the count, the typical height and the first
+pairs. 31130 p53 (WEST TOWER SHEAR WALL ELEVATIONS) reads four: L1M → CONCRETE 2,731, CONCRETE →
+L0/P1 4,125, L0/P1 → P2 3,353, P2 → P3 2,743 mm — and "CONCRETE" is the level reader taking
+"LEVEL 1 - CONCRETE" as a level named CONCRETE, a `ReadLevelLadder` finding recorded, not fixed.
+Banked in `FiveStickFilesTests.StoreyHeightsOnAnElevationSheetAreTheBankedOnes` at ±5 mm, a
+sixteenth of an inch on paper at 1:96.
+
+Across the five sets the ledger reads 13 storeys on 31130, 48 on 31168, 48 on 31065 (typical
+2,845 mm, 9'-4"), 40 on 31202 (typical 2,946) — and **0 on 31138**, whose wall elevation sheets
+state SCALE = AS NOTED and carry the scale as a caption under each view (`1/8" = 1'-0"` beneath
+"SHEAR WALL ELEVATION 3"). The reader takes the sheet's scale and a sheet that says AS NOTED has
+none; the view's own caption is the per-view step's business. Totals unchanged on 5 of 5. Full
+Core suite 1,051 of 1,051 (6 m 21 s).
+
+WHAT THE CHECK COVERS: two elevation sheets, the storey count, one named pair each, and the typical
+height where one repeats. WHAT IT DOES NOT: a set's storey table (the union of its elevation sheets'
+ladders reconciled by level name — the next brief, and the one that hands storeys to
+`DxfToEtabsService` in place of, or as a check on, the reference model's), two buildings' ladders on
+one sheet (the busiest column wins), an AS NOTED sheet whose views carry their own scale (31138,
+0 of its elevation sheets read), and the mangled level name.

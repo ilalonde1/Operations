@@ -225,6 +225,32 @@ public sealed class FiveStickFilesTests
     }
 
     /// <summary>
+    /// Storey heights read off a wall-elevation sheet through the record, against the engineer's own
+    /// model where one exists (brief 25). 31168 p37, SHEAR WALL ELEVATIONS - BLDG B at 1/8" = 1'-0":
+    /// 21 storeys, typical 2,946 mm and LEVEL 3 → LEVEL 2 5,336 mm; the 31168 reference .e2k states
+    /// 116 in (2,946 mm) and 210 in (5,334 mm). 31130 p53, WEST TOWER SHEAR WALL ELEVATIONS: 4
+    /// storeys, P2 → P3 2,743 mm (9'-0"), four different heights so no typical is asserted (-1).
+    /// Tolerance 5 mm: a sixteenth of an inch on paper at 1:96.
+    /// </summary>
+    [Theory]
+    [InlineData("31168-01", 37, 21, "LEVEL 3", "LEVEL 2", 5336, 2946)]
+    [InlineData("31130-01", 53, 4, "LEVEL P2", "LEVEL P3", 2743, -1)]
+    public void StoreyHeightsOnAnElevationSheetAreTheBankedOnes(string number, int page, int storeys, string level, string below, double heightMm, double typicalMm)
+    {
+        var job = JobNamed(number);
+        var (options, _) = PdfIntakeOptions.For(null);
+        using var doc = PdfDocument.Open(PdfOf(job));
+        var sheet = Kor.Operations.EngineeringTools.Intake.DrawingIntake.ReadSheet(doc, page,
+            new Kor.Operations.EngineeringTools.Intake.IntakeRequest(job.Scale, options), Kor.Operations.EngineeringTools.Intake.DocumentFacts.From(doc));
+        Assert.Equal("section/elevation", sheet.SheetType);
+        Assert.True(storeys == sheet.Storeys.Count,
+            $"{number} p{page}: {sheet.Storeys.Count} storeys read, {storeys} banked: {string.Join(", ", sheet.Storeys.Select(s => $"{s.Level}→{s.LevelBelow} {s.HeightMm:0}"))}");
+        var one = Assert.Single(sheet.Storeys, s => s.Level == ScheduleTakeoff.NormalizeLevel(level) && s.LevelBelow == ScheduleTakeoff.NormalizeLevel(below));
+        Assert.InRange(one.HeightMm, heightMm - 5, heightMm + 5);
+        if (typicalMm > 0) Assert.InRange(Kor.Operations.EngineeringTools.Intake.StoreyLadder.Typical(sheet.Storeys)!.Value, typicalMm - 5, typicalMm + 5);
+    }
+
+    /// <summary>
     /// The named grid axes on the schedule page, exact: every bubble with an axis through it names
     /// one, both ends of a line count once, and every axis has a name. Read through the intake so the
     /// record's Geometry.GridAxes is what is counted, not the bubble reader alone.

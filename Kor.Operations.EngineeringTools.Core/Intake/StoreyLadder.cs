@@ -1,0 +1,52 @@
+using Kor.Operations.EngineeringTools.QuantityTakeoff;
+
+namespace Kor.Operations.EngineeringTools.Intake;
+
+/// <summary>
+/// A storey height is the distance between two level lines on an elevation drawn to scale. The level
+/// ladder (<see cref="ScheduleGridReader.ReadLevelLadder"/>) gives the level lines' y in points; the
+/// sheet's stated scale turns each gap into millimetres.
+/// </summary>
+/// <remarks>
+/// Measured 2026-09-08 before this was written (`takeoff elev-scan`, `takeoff e2k-storeys`): on
+/// 31168's SHEAR WALL ELEVATIONS - BLDG B (p37, 1/8" = 1'-0") the ladder gives 2,946 mm for the
+/// typical tower storey and 5,336 mm for LEVEL 3 → LEVEL 2; the engineer's own model states 116 in
+/// (2,946 mm) and 210 in (5,334 mm). Within 2 mm on the storeys the two name alike. Storey heights
+/// had been taken from the reference model only; the drawings state them on every wall elevation.
+///
+/// WHAT IT COVERS: a sheet typed section/elevation, with a level ladder of at least
+/// <see cref="MinRows"/> rows and a stated ratio scale. WHAT IT DOES NOT: a schedule sheet's level
+/// column (its rows are a table's pitch, not a drawing's — the caller must not apply this to a
+/// schedule), a ladder whose names the level reader mangles ("LEVEL 1 - CONCRETE" reads as a level
+/// named CONCRETE on 31130 p53 — a level reader finding, recorded, not fixed here), two views on
+/// one sheet with different ladders (the busiest column wins, as the level reader has it), and an
+/// elevation with no stated scale.
+/// </remarks>
+public static class StoreyLadder
+{
+    /// <summary>One storey: the level line above, the one below, and the height between them.</summary>
+    public sealed record Storey(string Level, string LevelBelow, double HeightMm, double YPts);
+
+    /// <summary>A ladder of fewer rows is a caption or a table fragment, not an elevation's levels.</summary>
+    public const int MinRows = 3;
+
+    /// <summary>Storey heights top → bottom, or empty when the sheet states no ratio scale or has no ladder.</summary>
+    public static IReadOnlyList<Storey> Read(VectorPageReader.PageContent page, string? scaleNote)
+    {
+        ArgumentNullException.ThrowIfNull(page);
+        if (string.IsNullOrWhiteSpace(scaleNote)) return Array.Empty<Storey>();
+        if (PlanGeometry.MetresPerPixel(scaleNote, 72) is not double metresPerPoint || metresPerPoint <= 0) return Array.Empty<Storey>();
+        var ladder = ScheduleGridReader.ReadLevelLadder(page);
+        if (ladder.Count < MinRows) return Array.Empty<Storey>();
+        var rows = ladder.OrderByDescending(r => r.Y).ToList();
+        var storeys = new List<Storey>();
+        for (int i = 0; i + 1 < rows.Count; i++)
+            storeys.Add(new Storey(rows[i].Normalized, rows[i + 1].Normalized, (rows[i].Y - rows[i + 1].Y) * metresPerPoint * 1000.0, rows[i].Y));
+        return storeys;
+    }
+
+    /// <summary>The most common height to the nearest 5 mm, the "typical storey" a set repeats.</summary>
+    public static double? Typical(IReadOnlyList<Storey> storeys)
+        => storeys.Count == 0 ? null
+            : storeys.GroupBy(s => Math.Round(s.HeightMm / 5.0) * 5.0).OrderByDescending(g => g.Count()).ThenBy(g => g.Key).First().Key;
+}

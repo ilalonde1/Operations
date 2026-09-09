@@ -3728,6 +3728,40 @@ if (args.Length >= 2 && args[0].Equals("elev-scan", StringComparison.OrdinalIgno
                 var rowToks = pc.Words.Where(w => Math.Abs(w.Cy - r.Y) <= 7).OrderBy(w => w.Cx).Select(w => w.Text);
                 Console.WriteLine($"    row {r.Normalized,-8}: {string.Join(" | ", rowToks)}");
             }
+        // MEASUREMENT (2026-09-08): an elevation drawn to scale carries its storey heights as the distance
+        // between consecutive level lines. The ladder gives the level lines' y; the sheet's stated scale
+        // turns the distance into millimetres. Printed here, before any reader, to be compared with the
+        // reference model's storeys and the dimension strings on the same sheet.
+        string? scaleNote = null;
+        try { scaleNote = SheetScaleReader.FromPage(pc); } catch { }
+        if (scaleNote is null) { try { scaleNote = SheetScaleReader.RatioOf(TitleBlockFields.Read(pc)["SCALE"]); } catch { } }
+        double? mmPerPt = scaleNote is null ? null : PlanGeometry.MetresPerPixel(scaleNote, 72) is double mpp && mpp > 0 ? mpp * 1000.0 : null;
+        if (ladder.Count >= 3 && mmPerPt is double k)
+        {
+            var rows = ladder.OrderByDescending(r => r.Y).ToList();
+            Console.WriteLine($"    storey heights from the ladder at \"{scaleNote}\" (top → bottom):");
+            for (int i = 0; i + 1 < rows.Count; i++)
+            {
+                double mm = (rows[i].Y - rows[i + 1].Y) * k;
+                double inches = mm / 25.4;
+                Console.WriteLine($"      {rows[i].Normalized,-10} → {rows[i + 1].Normalized,-10} {mm,8:0} mm  {Math.Floor(inches / 12):0}'-{inches % 12:0.#}\"");
+            }
+        }
+    }
+    return 0;
+}
+
+// DIAGNOSTIC: takeoff e2k-storeys <model.e2k> — the model's storeys top → bottom with their heights, the
+// ground truth an elevation sheet's level ladder is measured against (elev-scan).
+if (args.Length >= 2 && args[0].Equals("e2k-storeys", StringComparison.OrdinalIgnoreCase))
+{
+    var sdoc = E2kDocument.Load(args[1]);
+    var storeys = sdoc.ReadStories().OrderByDescending(s => s.Elevation).ToList();
+    Console.WriteLine($"{Path.GetFileName(args[1])}: {storeys.Count} storey(s), elevations in the model's units");
+    foreach (var s in storeys)
+    {
+        double h = s.Elevation - s.ElevationBelow;
+        Console.WriteLine($"  {s.Name,-14} elev {s.Elevation,10:0.##}   height {h,8:0.##}   ({h * 25.4,7:0} mm if inches)");
     }
     return 0;
 }
@@ -4310,7 +4344,8 @@ public static class TakeoffCliHelp
         new("dedupe-probe", "takeoff dedupe-probe <pdf> <page> <needle>", "Inspect PDF word de-duplication for a token."),
         new("footings", "takeoff footings <pdf> [first] [last]", "Run deterministic footing schedule takeoff."),
         new("render", "takeoff render <pdf> <pngDir> [dpi] [first] [last]", "Rasterize PDF pages to PNG files."),
-        new("elev-scan", "takeoff elev-scan <pdf> [first] [last]", "Scan for floor elevations and storey height notes."),
+        new("elev-scan", "takeoff elev-scan <pdf> [first] [last]", "Scan for floor elevations and storey height notes; prints the level ladder's gaps at the sheet's scale."),
+        new("e2k-storeys", "takeoff e2k-storeys <model.e2k>", "A model's storeys top to bottom with their heights — what elev-scan's ladder is measured against."),
         new("wallconcrete", "takeoff wallconcrete <keyplan.png> <schedule.png> <levels.json>", "Price core wall concrete from key plan and schedule."),
         new("single", "takeoff single <schedule.csv> <out.xlsx> [wbs] [name] [issue] [imperial]", "Generate an absolute takeoff workbook from one schedule CSV."),
         new("overlay", "takeoff overlay <before.pdf> <after.pdf> <out.pdf> [name] [beforeLabel] [afterLabel] [imperial]", "Generate visual rebar markup between two PDFs."),

@@ -43,6 +43,13 @@ public sealed record SheetRecord(
     /// either way, because "AS NOTED" on a details sheet is information, not a missing value.
     /// </summary>
     public string? ScaleStatement { get; init; }
+
+    /// <summary>
+    /// Storey heights read off a section or elevation sheet: the distance between consecutive level
+    /// lines of its level ladder at the sheet's stated scale (<see cref="StoreyLadder"/>). Empty on any
+    /// other sheet type, and on an elevation with no ratio scale or fewer than three level lines.
+    /// </summary>
+    public IReadOnlyList<StoreyLadder.Storey> Storeys { get; init; } = Array.Empty<StoreyLadder.Storey>();
 }
 
 /// <summary>Page facts captured during intake so reporting never opens or reinterprets a PDF.</summary>
