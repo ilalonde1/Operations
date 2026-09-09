@@ -181,6 +181,8 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             foreach (var (type, n) in record.Context.AnnotationTypes.OrderByDescending(kv => kv.Value))
                 Note($"annotations: {type}", n, Disposition.Read, "VectorPageReader.ReadAnnotationPaths (geometry only)");
             Row("annotation text (engineer's comments)", record.Markup.Count, Disposition.Read, "DrawingIntake: PdfPig Annotation.Content and author");
+            if (record.Annotations.Count > record.Markup.Count)
+                Row("annotations without words (ticks, shapes)", record.Annotations.Count - record.Markup.Count, Disposition.Read, "DrawingIntake: position and author kept; a tick is a reply (MarkupReconcile)");
             Row("links (callout → sheet)", record.Links, Disposition.Unread, "no reader");
             Row("images", record.Context.Images, Disposition.Ignored, "by design: logos, stamps, 3D-view tiles; none structural on the five sets");
 

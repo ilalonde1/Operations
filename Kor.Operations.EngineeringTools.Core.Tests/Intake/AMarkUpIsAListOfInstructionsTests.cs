@@ -21,7 +21,9 @@ namespace Kor.Operations.EngineeringTools.Core.Tests.Intake;
 /// </remarks>
 public sealed class AMarkUpIsAListOfInstructionsTests
 {
-    private static MarkupNote Note(string type, string text, double cx = 0, double cy = 0) => new(type, text, "wilma", 1) { Cx = cx, Cy = cy, Width = 40, Height = 12 };
+    // ink is read by its size: a tick is 14 x 14 on the paper, a text box 40 x 12
+    private static MarkupNote Note(string type, string text, double cx = 0, double cy = 0)
+        => new(type, text, "wilma", 1) { Cx = cx, Cy = cy, Width = type == "Ink" ? 14 : 40, Height = type == "Ink" ? 14 : 12 };
 
     [Theory]
     [InlineData("Move Column right 1'-11\"", "move", "column", "right", 584.2)]

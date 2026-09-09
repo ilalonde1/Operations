@@ -13,7 +13,7 @@ namespace Kor.Operations.EngineeringTools.Intake;
 /// </summary>
 public static class MarkupList
 {
-    public enum Kind { Instruction, Measurement, Approval, Note }
+    public enum Kind { Instruction, Measurement, Approval, Note, Shape }
 
     public sealed record Item(
         int Page, string? Sheet, string Author, Kind Kind, string Text,
@@ -24,10 +24,12 @@ public static class MarkupList
         {
             string what = Kind switch
             {
+                Kind.Instruction when Action == "attend" => "ring drawn round something to attend to",
                 Kind.Instruction => $"{Action}{(Subject is null ? "" : " " + Subject)}{(Direction is null ? "" : " " + Direction)}" +
                                     (DistanceMm is double d ? $" {d:0} mm ({d / 25.4:0.#} in{(DistanceFrom is null ? "" : ", " + DistanceFrom)})" : ""),
                 Kind.Measurement => $"measures {DistanceMm:0} mm",
                 Kind.Approval => "tick",
+                Kind.Shape => "shape",
                 _ => "note",
             };
             return $"p{Page}{(Sheet is null ? "" : " " + Sheet)}  [{Author}] {Kind.ToString().ToLowerInvariant()}: {what}  at {GridRef}" +
@@ -41,6 +43,10 @@ public static class MarkupList
     public const double MeasurementReachMm = 3000;
     /// <summary>A member within this reach of an instruction is the member it is about.</summary>
     public const double MemberReachMm = 1524;
+    /// <summary>Ink this small on the paper (a third of an inch) is a tick.</summary>
+    public const double TickMaxPts = 24;
+    /// <summary>Ink between these sizes, and no more than 1.6 times as long as wide, is a ring drawn round something to attend to.</summary>
+    public const double RingMinPts = 40, RingMaxPts = 400, RingMaxAspect = 1.6;
 
     private static readonly Regex Verb = new(
         @"^\s*(?<action>move|shift|relocate|add|provide|remove|delete|omit|align|extend|shorten|lengthen|change|revise|increase|reduce|lower|raise|rotate|flip|confirm|check|show)\b",
@@ -62,7 +68,7 @@ public static class MarkupList
         ArgumentNullException.ThrowIfNull(record);
         double mmPerPt = (record.ScaleDenominator ?? 1) * PdfToSafeConstants.PointsToMm;
         var items = new List<Item>();
-        foreach (var note in record.Markup)
+        foreach (var note in record.Annotations.Count > 0 ? record.Annotations : record.Markup)
         {
             double x = note.Cx * mmPerPt, y = note.Cy * mmPerPt;
             var (kind, action, subject, direction, distance) = Classify(note);
@@ -92,9 +98,18 @@ public static class MarkupList
     {
         ArgumentNullException.ThrowIfNull(note);
         string text = note.Text.Trim();
-        // a tick, a dash, a stroke: the ink Bluebeam writes for a checkmark carries a character or two of nothing
-        if (text.Length <= 2 && !text.Any(char.IsLetterOrDigit)) return (Kind.Approval, null, null, null, null);
-        if (text.Length <= 2 && note.Type.Equals("Ink", StringComparison.OrdinalIgnoreCase)) return (Kind.Approval, null, null, null, null);
+        // INK IS READ BY ITS SIZE ON THE PAPER, not by the character or two Bluebeam writes into it.
+        // A tick is small (MB-6: 14 x 14 pt, "." and "/"); a ring drawn round a thing to fix is
+        // round and a hand's width (127 x 144, "o"); a long stroke is a leader or an underline.
+        if (Wordless(note))
+        {
+            if (note.Type is not ("Ink" or "Line" or "PolyLine")) return (Kind.Shape, null, null, null, null);
+            double w = note.Width, h = note.Height, size = Math.Max(w, h);
+            if (size <= TickMaxPts) return (Kind.Approval, null, null, null, null);
+            if (note.Type == "Ink" && size >= RingMinPts && size <= RingMaxPts && size <= RingMaxAspect * Math.Min(w, h))
+                return (Kind.Instruction, "attend", null, null, null);
+            return (Kind.Shape, null, null, null, null);
+        }
 
         double? dim = Distance(text);
         if (dim is not null && (note.Type.Equals("Line", StringComparison.OrdinalIgnoreCase) || note.Type.Equals("PolyLine", StringComparison.OrdinalIgnoreCase)
@@ -110,6 +125,19 @@ public static class MarkupList
             subject.Success ? Canonical(subject.Groups["subject"].Value) : null,
             direction.Success ? direction.Groups["direction"].Value.ToLowerInvariant() : null,
             dim);
+    }
+
+    /// <summary>
+    /// No words: nothing at all, or the character or two Bluebeam writes into ink ("." "/" "-" "o").
+    /// What such an annotation is comes from its size on the paper, not its text.
+    /// </summary>
+    public static bool Wordless(MarkupNote note)
+    {
+        ArgumentNullException.ThrowIfNull(note);
+        string text = note.Text.Trim();
+        return text.Length == 0
+               || (text.Length <= 2 && !text.Any(char.IsLetterOrDigit))
+               || (text.Length <= 2 && note.Type.Equals("Ink", StringComparison.OrdinalIgnoreCase));
     }
 
     /// <summary>A length in the words: feet and inches as the drafter writes them, decimal inches with a mark, or millimetres.</summary>

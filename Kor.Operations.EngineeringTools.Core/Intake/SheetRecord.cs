@@ -38,6 +38,14 @@ public sealed record SheetRecord(
     IReadOnlyList<WordFate> WordFates)
 {
     public SheetContext Context { get; init; } = new();
+
+    /// <summary>
+    /// Every annotation but the links, with or without words — the ticks Bluebeam writes as ink
+    /// with nothing in them are the drafter's replies (intake step 18). <see cref="Markup"/> is
+    /// the subset with words, as the ledger counts it.
+    /// </summary>
+    public IReadOnlyList<MarkupNote> Annotations { get; init; } = Array.Empty<MarkupNote>();
+
     public PlanScheduleAgreement? ColumnAgreement { get; init; }
     public string? ColumnAgreementError { get; init; }
 

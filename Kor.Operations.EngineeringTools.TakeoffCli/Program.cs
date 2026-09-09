@@ -267,7 +267,7 @@ if (args.Length >= 1 && args[0].Equals("markup-list", StringComparison.OrdinalIg
         Console.WriteLine($"p{p} {record.SheetNumber ?? "(no sheet number)"} {record.SheetType}: {items.Count} annotation(s) with words, " +
                           $"{items.Count(i => i.Kind == MarkupList.Kind.Instruction)} instruction(s), {items.Count(i => i.Kind == MarkupList.Kind.Measurement)} measurement(s), " +
                           $"{items.Count(i => i.Kind == MarkupList.Kind.Approval)} tick(s), {items.Count(i => i.Kind == MarkupList.Kind.Note)} note(s); grid axes {record.Geometry.GridAxes.Count}");
-        foreach (var item in items.Where(i => i.Kind != MarkupList.Kind.Approval))
+        foreach (var item in items.Where(i => i.Kind is not (MarkupList.Kind.Approval or MarkupList.Kind.Shape)))
         {
             Console.WriteLine("  " + item.Line());
             mlCounts[item.Kind] = mlCounts.GetValueOrDefault(item.Kind) + 1;
@@ -280,6 +280,59 @@ if (args.Length >= 1 && args[0].Equals("markup-list", StringComparison.OrdinalIg
     int mlInstr = mlCounts.GetValueOrDefault(MarkupList.Kind.Instruction);
     Console.WriteLine($"{mlInstr} instruction(s) ({mlWithDistance} with a distance, {mlWithMember} beside a member), {mlCounts.GetValueOrDefault(MarkupList.Kind.Measurement)} measurement(s), " +
                       $"{mlCounts.GetValueOrDefault(MarkupList.Kind.Approval)} tick(s), {mlCounts.GetValueOrDefault(MarkupList.Kind.Note)} note(s).");
+    return 0;
+}
+
+// THE DRAFTER'S REPLY IS BESIDE THE THING IT ANSWERS: a round of the engineer's mark-ups against
+// the back-checked copy the drafter saved over it; each item done, replied or open, page by page.
+// Usage: takeoff markup-reconcile <round.pdf> <backchecked.pdf> --scale N [--engineer <name>]
+if (args.Length >= 1 && args[0].Equals("markup-reconcile", StringComparison.OrdinalIgnoreCase))
+{
+    if (args.Length < 3) { Console.Error.WriteLine("Usage: takeoff markup-reconcile <round.pdf> <backchecked.pdf> --scale N [--engineer <name>] [--rules-db <conn>]"); return 1; }
+    string mrRound = args[1], mrChecked = args[2];
+    int mrScale = 0; string? mrEngineer = null, mrRules = null;
+    for (int i = 3; i < args.Length; i++)
+    {
+        if (args[i].Equals("--scale", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) int.TryParse(args[++i], out mrScale);
+        else if (args[i].Equals("--engineer", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) mrEngineer = args[++i];
+        else if (args[i].Equals("--rules-db", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) mrRules = args[++i];
+    }
+    if (!File.Exists(mrRound) || !File.Exists(mrChecked)) { Console.Error.WriteLine("Both PDFs must exist."); return 2; }
+    if (mrScale <= 0) { Console.Error.WriteLine("--scale <denominator> is required (1/8\" = 1'-0\" is 96)."); return 2; }
+    var (mrOptions, mrRulesSource) = PdfIntakeOptions.For(mrRules);
+    using var mrRoundDoc = UglyToad.PdfPig.PdfDocument.Open(mrRound);
+    using var mrCheckedDoc = UglyToad.PdfPig.PdfDocument.Open(mrChecked);
+    var mrRequest = new IntakeRequest(mrScale, mrOptions);
+    var mrRoundFacts = DocumentFacts.From(mrRoundDoc);
+    var mrCheckedFacts = DocumentFacts.From(mrCheckedDoc);
+    Console.WriteLine($"{Path.GetFileName(mrRound)} ({mrRoundDoc.NumberOfPages} pages) against {Path.GetFileName(mrChecked)} ({mrCheckedDoc.NumberOfPages} pages)   1:{mrScale}   rules: {mrRulesSource}");
+    int done = 0, replied = 0, open = 0, unprompted = 0;
+    var openLines = new List<string>();
+    for (int p = 1; p <= Math.Min(mrRoundDoc.NumberOfPages, mrCheckedDoc.NumberOfPages); p++)
+    {
+        SheetRecord round, checkedRecord;
+        try
+        {
+            round = DrawingIntake.ReadSheet(mrRoundDoc, p, mrRequest, mrRoundFacts);
+            checkedRecord = DrawingIntake.ReadSheet(mrCheckedDoc, p, mrRequest, mrCheckedFacts);
+        }
+        catch (Exception ex) { Console.WriteLine($"p{p}: {ex.GetType().Name}: {ex.Message}"); continue; }
+        var page = MarkupReconcile.Reconcile(round, checkedRecord, mrEngineer);
+        if (page.Results.Count == 0 && page.Unprompted.Count == 0) continue;
+        Console.WriteLine();
+        Console.WriteLine($"p{p} {round.SheetNumber ?? "(no sheet number)"} {round.SheetType}: {page.Results.Count} item(s) by {page.Engineer} — {page.Done} done, {page.Replied} replied, {page.Open} open; {page.Unprompted.Count} unprompted");
+        foreach (var r in page.Results)
+        {
+            string mark = r.Outcome switch { MarkupReconcile.Outcome.Done => "done   ", MarkupReconcile.Outcome.Replied => "replied", _ => "OPEN   " };
+            string reply = r.Outcome == MarkupReconcile.Outcome.Replied ? $"  <- [{r.ReplyAuthor}] \"{r.Reply}\"" : "";
+            Console.WriteLine($"  {mark}  {r.Item.Line()}{reply}");
+            if (r.Outcome == MarkupReconcile.Outcome.Open) openLines.Add($"p{p} {r.Item.Line()}");
+        }
+        foreach (var u in page.Unprompted) Console.WriteLine($"  unprompted  {u.Line()}");
+        done += page.Done; replied += page.Replied; open += page.Open; unprompted += page.Unprompted.Count;
+    }
+    Console.WriteLine();
+    Console.WriteLine($"{done + replied + open} item(s): {done} done, {replied} replied, {open} open; {unprompted} unprompted note(s) by the drafter.");
     return 0;
 }
 
@@ -4558,6 +4611,7 @@ public static class TakeoffCliHelp
         new("pdf-vs-dxf", "takeoff pdf-vs-dxf <pdf> <dxfFolder> --scale N [--rules-db <conn>]", "Compare the PDF side's reads against a Revit DXF export of the same sheets."),
         new("set-diff", "takeoff set-diff <old.pdf> <new.pdf> --scale N [--sheet S2.02] [--rules-db <conn>]", "Reissue Impact: what changed between two issues, sheet by sheet, as objects — columns, walls, footings, grid, storeys, schedules."),
         new("markup-list", "takeoff markup-list <pdf> --scale N [--pages A-B] [--rules-db <conn>]", "A mark-up as a list of instructions: each annotation's words, what it asks, how far, where on the grid, beside which member."),
+        new("markup-reconcile", "takeoff markup-reconcile <round.pdf> <backchecked.pdf> --scale N [--engineer <name>]", "The engineer's round against the drafter's back-checked copy: each item done (a tick beside it), replied (words beside it) or open."),
         new("dxf-render", "takeoff dxf-render <plan.dxf> <out.png> [--size 1800] [--layers SLABEDG,...]", "Render structural DXF layers to a PNG."),
         new("dxf-inspect", "takeoff dxf-inspect <plan.dxf> [--walls] [--plates]", "Inspect DXF layers, loops, wall outlines, and recovered floor plates."),
         new("publish", "takeoff publish <job> [--model-folder <folder>] [--dxf-folder <folder>] [--rules-db <c>] [--per-building] [--land]", "Discover, build, verify, summarize, gate and land a DXF-to-ETABS publish."),

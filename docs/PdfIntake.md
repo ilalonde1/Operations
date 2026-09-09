@@ -905,3 +905,41 @@ does the first half; matching its deltas to these items is the next module); an 
 across two annotations; deletions, which need a convention the reader can see (a strike or the
 word DELETE); the mark-up's geometry (the red columns) as a second reading of the same instruction,
 which the diff of drawing-read against mark-up-read would give and is not wired.
+
+## 26. Step 18, done 2026-09-09: the drafter's reply is beside the thing it answers
+
+The loop as the share actually holds it (31065, `02 Lateral Design\MB-Files…\Mark-ups`): the
+engineer writes a round — "MB-4 (Column-final-design mark-ups)": 300 labels at the columns, the
+mark, the size, the reinforcing, "45MPa", "8-35M verts 10M@175 ties"; "MB-6 (back-check
+mark-ups)": ink rings round things to fix and his own small ticks — and the drafter replies **on the
+same file**, a tick beside each item done, words beside one that could not be, saved under
+`Back-checked\…-sz-back-checked-MB.pdf`; then the next round. So the reconciliation is
+annotation against annotation on one page, not a drawing diff.
+
+**The drafter's reply is beside the thing it answers.** The record now carries every annotation
+but the links (`SheetRecord.Annotations`, with or without words; `Markup` stays the subset with
+words the ledger counts). `MarkupReconcile.Reconcile(round, backChecked)` takes the engineer as the
+round's main author, his instructions and notes as the items, and answers each with the nearest
+annotation another author put within an inch of it on the paper: ink is done, words are a reply,
+nothing is open; the drafter's words beside no item are unprompted. Three rules found by measuring:
+
+- **Ink is read by its size on the paper, not by the character Bluebeam writes into it.** A tick is
+  14 x 14 pt ("." or "/"); a ring drawn round a thing to fix is a hand's width and round (127 x 144,
+  "o"); a long stroke is a leader. So the engineer's rings are items on a back-check round and his
+  scribbles are not.
+- **A tick answers everything within an inch of it.** The engineer writes three labels at a column;
+  the drafter ticks the column once (MB-4: 300 labels, 228 ticks). A reply is not used up.
+- **The drafter's ink beside an item is done whatever its size**: 18 x 18 or 93 x 87, a tick is
+  drawn as large as the hand draws it.
+
+Measured after: MB-6, 27 items, 13 done, 14 open, 2 unprompted; MB-4, 335 items, 148 done, 187
+open, 27 unprompted. The open count is the product's own done-when: an engineer walks one round
+and says which open items are truly open, which are ticked farther than an inch (a dense schedule
+sheet puts labels ten points apart), and which were done without a tick. That is the next step,
+and it is a person's, not a rule's.
+
+WHAT THE CHECK COVERS (`TheDraftersReplyIsBesideTheThingItAnswersTests`): a tick beside one item,
+words beside another, silence on a third; the engineer inferred; his own ticks not items; the
+drafter's comment beside no item; one tick answering three labels; a ring as an item, a stroke as
+none. WHAT IT DOES NOT: the two real rounds beyond their counts; a tick that means "no"; the next
+round raising an item again; a reply farther than an inch on a dense sheet.
