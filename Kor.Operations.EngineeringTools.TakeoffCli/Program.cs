@@ -178,6 +178,34 @@ if (args.Length >= 1 && args[0].Equals("pdf-takeoff", StringComparison.OrdinalIg
     return ptWritten > 0 ? 0 : 3;
 }
 
+// THE DIFFERENTIAL'S EYES. Which layers moved between two folders of DXFs written from the same pages.
+// Usage: takeoff dxf-census <beforeDir> <afterDir> [--only LAYER,LAYER]   (exit 2 when another layer moved)
+if (args.Length >= 3 && args[0].Equals("dxf-census", StringComparison.OrdinalIgnoreCase))
+{
+    string? only = null;
+    for (int i = 3; i < args.Length; i++)
+        if (args[i].Equals("--only", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) only = args[++i];
+    if (!Directory.Exists(args[1]) || !Directory.Exists(args[2])) { Console.Error.WriteLine("Both folders must exist."); return 1; }
+    var censusDiffs = DxfLayerCensus.Compare(args[1], args[2]);
+    foreach (var line in DxfLayerCensus.Report(censusDiffs)) Console.WriteLine(line);
+    if (only is null) return 0;
+    var allowed = new HashSet<string>(only.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries), StringComparer.OrdinalIgnoreCase);
+    var outside = censusDiffs.SelectMany(d => d.Changed.Keys).Where(l => !allowed.Contains(l)).Distinct().OrderBy(l => l).ToList();
+    var missing = censusDiffs.Where(d => d.MissingBefore || d.MissingAfter).Select(d => d.Name).ToList();
+    if (outside.Count == 0 && missing.Count == 0) { Console.WriteLine($"only {only} moved, as intended."); return 0; }
+    Console.Error.WriteLine($"a layer outside --only moved: {string.Join(", ", outside)}" + (missing.Count > 0 ? $"; files on one side only: {string.Join(", ", missing)}" : ""));
+    return 2;
+}
+
+// THE BASELINE. The thirteen plan DXFs of the five stick files, to a folder named for the step, for dxf-census.
+// Usage: takeoff intake-baseline <stickFilesDir> <outDir>
+if (args.Length >= 3 && args[0].Equals("intake-baseline", StringComparison.OrdinalIgnoreCase))
+{
+    if (!Directory.Exists(args[1])) { Console.Error.WriteLine($"Stick-file folder not found '{args[1]}'."); return 1; }
+    foreach (var line in IntakeBaseline.Write(args[1], args[2])) Console.WriteLine(line);
+    return 0;
+}
+
 // THE LEDGER. Everything a page carries, by kind, and what the intake did with each kind: read,
 // discarded by a named rule, unread, ignored by design, or unaccounted. The unaccounted and unread
 // totals are the intake's backlog as a number. See SheetInventory for what it covers and does not.
@@ -4300,6 +4328,8 @@ public static class TakeoffCliHelp
         new("pdf-readable", "takeoff pdf-readable <pdf> [first] [last]", "Check whether a PDF has readable vector text."),
         new("pdf-takeoff", "takeoff pdf-takeoff <pdf> <out.dxf> [--page N] [--pages A-B] [--scale 96] [--markup] [--kor-layers] [--rules-db <conn>]", "Take a drawing PDF's structure off to DXF, reading the drawing itself unless --markup."),
         new("pdf-inventory", "takeoff pdf-inventory <pdf> [--pages A-B] [--scale N] [--rules-db <conn>] [--json out.json]", "Ledger every content class on each page: read, discarded, unread, ignored, unaccounted."),
+        new("dxf-census", "takeoff dxf-census <beforeDir> <afterDir> [--only LAYER,LAYER]", "Which layers moved between two folders of DXFs written from the same pages; exit 2 when a layer outside --only moved."),
+        new("intake-baseline", "takeoff intake-baseline <stickFilesDir> <outDir>", "Write the thirteen plan DXFs of the five stick files to a step folder, for dxf-census."),
         new("pdf-overlay", "takeoff pdf-overlay <pdf> <page> <out.png> --scale N [--dpi 40] [--rules-db <conn>]", "Draw what the intake extracted over the rasterised page."),
         new("pdf-vs-dxf", "takeoff pdf-vs-dxf <pdf> <dxfFolder> --scale N [--rules-db <conn>]", "Compare the PDF side's reads against a Revit DXF export of the same sheets."),
         new("dxf-render", "takeoff dxf-render <plan.dxf> <out.png> [--size 1800] [--layers SLABEDG,...]", "Render structural DXF layers to a PNG."),

@@ -113,7 +113,17 @@ Three verbs in the compiled CLI and one test class, no product code changed:
 | `takeoff pdf-inventory` | the ledger: every word and path counted once under read / discarded / unread / ignored / unaccounted, plus context rows; `--json` banks it | `takeoff pdf-inventory <pdf> --scale 96 --json out.json` |
 | `takeoff pdf-overlay` | what was extracted drawn over the rasterised page: slabs grey, columns blue, walls dark red, footings orange, leftover lines red, mark-shaped words green | `takeoff pdf-overlay <pdf> 11 out.png --scale 96` |
 | `takeoff pdf-vs-dxf` | the differential against ground truth we own: PDF-side reads against the Revit DXF of the same sheets, per sheet number | `takeoff pdf-vs-dxf <pdf> <dxfFolder> --scale 96` |
-| `FiveStickFilesTests` | the harness, in C#: footing schedule, column marks and route, wall rows, coverage floors, mark-shaped unplaced, a fate for every path, walls and footings read on the schedule page; 32 checks over 5 jobs (20 at step 0); FAILS when the local mirror is missing | `dotnet test --filter FullyQualifiedName~FiveStickFilesTests` |
+| `takeoff intake-baseline` | the thirteen plan DXFs of the five sets (31130 p11–13, 31138 p9–11, 31168 p11–13 at 1:96; 31065 p14–16 at 1:100; 31202 p17 at 1:96), compiled defaults, the drawing read, plans only — written to a folder named for the step | `takeoff intake-baseline %LOCALAPPDATA%\Temp\kor-drawings\stickfiles %LOCALAPPDATA%\Temp\kor-drawings\harness\stepN-after` |
+| `takeoff dxf-census` | the differential's eyes: entities per layer, per file, before against after; `--only` names the layers the step is meant to touch and exits 2 when any other moved | `takeoff dxf-census …\step9-after …\step10-after --only GRID` |
+| `FiveStickFilesTests` | the harness, in C#: footing schedule, column marks and route, wall rows, coverage floors, mark-shaped unplaced, a fate for every path, walls, footings, grid axes and storeys read on the banked pages; 40 checks over 5 jobs (20 at step 0); FAILS when the local mirror is missing | `dotnet test --filter FullyQualifiedName~FiveStickFilesTests` |
+
+**The procedure every step follows**, and the one a reader of this document can repeat: write the
+baseline before the change with `intake-baseline` to `stepN-1-after`, make the change, write
+`stepN-after`, run `dxf-census` between them with `--only` naming the layers the rule is meant to
+touch, run `pdf-inventory` on the five sets and check the totals did not move, look at one
+`pdf-overlay` crop, run the fast suite while iterating and the full suite before the commit. Until
+step 10 the census was a scratch Python script; it is a compiled verb now, and the baseline list
+lives in `IntakeBaseline.Jobs` instead of a shell loop.
 
 **The ledger's starting numbers**, each word, path and sheet fact counted once (`%LOCALAPPDATA%\Temp\kor-drawings\harness\ledger-<job>.json`):
 
