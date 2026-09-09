@@ -76,6 +76,11 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                 string name = Path.GetFileName(dxf);
                 var m = SheetNumber.Match(name);
                 if (!m.Success) { unmatched.Add($"{name}: no sheet number in its name"); continue; }
+                // Revit exports each concrete-outline view a second time "for reinforcing plan": the
+                // same level drawn again, not a second view on the sheet. Counted once, it put 850
+                // walls against the PDF's 425 on 31168 when the sheets carry 521 (2026-09-08).
+                if (name.Contains("for reinforcing plan", StringComparison.OrdinalIgnoreCase))
+                { unmatched.Add($"{name}: the level's reinforcing-plan copy, not compared"); continue; }
                 if (!pageBySheet.TryGetValue(m.Value, out var hit)) { unmatched.Add($"{name}: sheet {m.Value} has no page in the PDF"); continue; }
 
                 // The DXF side, the way dxf-to-etabs reads it, in the drawing's own unit.
