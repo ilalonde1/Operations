@@ -143,6 +143,14 @@ internal static class DxfFloodFillPlateDetector
             if (before > 0 && Math.Abs(after - before) / before <= 0.01) points = straightened;
         }
 
+        // THE RASTER'S EDGE IS NOT THE WALL'S. A cell is painted when its centre lies within three
+        // quarters of a cell of a panel, so the traced boundary runs up to a cell outside the outer
+        // face — on a parkade about half a per cent of the area, which is the whole of the 0.4%
+        // and 0.7% over Revit the first measurement read as agreement (Codex 31, F9). Each edge of
+        // the loop is moved onto the panel edge it runs along, where one lies within a cell and a
+        // half, and the corners are where the moved edges meet: the boundary IS the outer face.
+        points = SnapToPanelEdges(points, corners, pixelSize * 1.5);
+
         var plate = new PlanLoop("walls' outer edge", points, closedExactly: false);
         if (plate.Area < options.MinPlateArea) return null;
         // the walls did not close and the outside flooded through: the paint left is the walls alone
@@ -168,6 +176,86 @@ internal static class DxfFloodFillPlateDetector
             }
             return false;
         }
+    }
+
+    /// <summary>
+    /// The loop with each edge moved onto the panel edge it runs along — parallel within a degree,
+    /// within <paramref name="within"/>, overlapping it along its length — and each corner where
+    /// its two moved edges meet. An edge running along no panel edge stays where the raster put
+    /// it. The loop is returned unchanged when the moved one differs in area by more than a tenth,
+    /// which is no longer a snap.
+    /// </summary>
+    internal static List<DxfPoint> SnapToPanelEdges(List<DxfPoint> loop, IReadOnlyList<DxfPoint[]> panels, double within)
+    {
+        if (loop.Count < 3) return loop;
+        var panelEdges = new List<(DxfPoint A, DxfPoint B)>();
+        foreach (var c in panels)
+            for (int i = 0; i < c.Length; i++) panelEdges.Add((c[i], c[(i + 1) % c.Length]));
+
+        // each loop edge as a line: a point on it and a unit direction — the panel's own line
+        // where the edge runs along one. An edge along no panel, a few cells long, between two
+        // that are, is a step of the raster at a corner and not an edge of the floor: dropped,
+        // so the corner is where the two real edges meet.
+        List<(DxfPoint P, double Ux, double Uy, bool Snapped)> lines;
+        for (;;)
+        {
+            lines = new List<(DxfPoint P, double Ux, double Uy, bool Snapped)>(loop.Count);
+            for (int i = 0; i < loop.Count; i++)
+            {
+                var a = loop[i]; var b = loop[(i + 1) % loop.Count];
+                double dx = b.X - a.X, dy = b.Y - a.Y, len = Math.Sqrt(dx * dx + dy * dy);
+                if (len <= 0) { lines.Add((a, 1, 0, false)); continue; }
+                double ux = dx / len, uy = dy / len;
+                (DxfPoint P, double Ux, double Uy, bool Snapped) line = (a, ux, uy, false);
+                double bestOverlap = 0;
+                foreach (var (p, q) in panelEdges)
+                {
+                    double ex = q.X - p.X, ey = q.Y - p.Y, el = Math.Sqrt(ex * ex + ey * ey);
+                    if (el <= 0 || Math.Abs(ux * ey - uy * ex) / el > 0.0175) continue;          // not parallel within a degree
+                    double off0 = (p.X - a.X) * -uy + (p.Y - a.Y) * ux, off1 = (q.X - a.X) * -uy + (q.Y - a.Y) * ux;
+                    if (Math.Abs(off0) > within || Math.Abs(off1) > within) continue;              // not the edge this one runs along
+                    double t0 = (p.X - a.X) * ux + (p.Y - a.Y) * uy, t1 = (q.X - a.X) * ux + (q.Y - a.Y) * uy;
+                    double overlap = Math.Min(Math.Max(t0, t1), len) - Math.Max(Math.Min(t0, t1), 0);
+                    if (overlap <= bestOverlap) continue;
+                    bestOverlap = overlap;
+                    // the panel's own line — its point AND its direction, which the raster's chord
+                    // has only to within a fraction of a degree, six inches over a hundred feet —
+                    // run the loop's way
+                    double sign = ux * ex + uy * ey >= 0 ? 1 : -1;
+                    line = (p, sign * ex / el, sign * ey / el, true);
+                }
+                lines.Add(line);
+            }
+
+            int step = -1;
+            for (int i = 0; i < loop.Count && loop.Count > 3; i++)
+            {
+                if (lines[i].Snapped || loop[i].DistanceTo(loop[(i + 1) % loop.Count]) > 4 * within) continue;
+                if (lines[(i - 1 + loop.Count) % loop.Count].Snapped && lines[(i + 1) % loop.Count].Snapped) { step = i; break; }
+            }
+            if (step < 0) break;
+            loop = loop.Where((_, k) => k != (step + 1) % loop.Count).ToList();
+        }
+
+        var snapped = new List<DxfPoint>(loop.Count);
+        for (int i = 0; i < loop.Count; i++)
+        {
+            var prev = lines[(i - 1 + loop.Count) % loop.Count]; var next = lines[i];
+            double cross = prev.Ux * next.Uy - prev.Uy * next.Ux;
+            if (Math.Abs(cross) < 1e-6)
+            {
+                // collinear neighbours: the corner projected onto the moved line
+                double t = (loop[i].X - next.P.X) * next.Ux + (loop[i].Y - next.P.Y) * next.Uy;
+                snapped.Add(new DxfPoint(next.P.X + next.Ux * t, next.P.Y + next.Uy * t));
+                continue;
+            }
+            double s = ((next.P.X - prev.P.X) * next.Uy - (next.P.Y - prev.P.Y) * next.Ux) / cross;
+            snapped.Add(new DxfPoint(prev.P.X + prev.Ux * s, prev.P.Y + prev.Uy * s));
+        }
+
+        double before = Math.Abs(new PlanLoop("t", loop, false).SignedArea);
+        double after = Math.Abs(new PlanLoop("t", snapped, false).SignedArea);
+        return before > 0 && Math.Abs(after - before) / before <= 0.10 ? snapped : loop;
     }
 
     /// <summary>

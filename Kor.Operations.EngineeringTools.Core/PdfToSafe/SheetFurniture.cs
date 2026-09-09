@@ -70,6 +70,9 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         public const double MatchLineMinSpanShare = 0.4;
         /// <summary>The line runs within this many label heights of the words MATCH LINE.</summary>
         public const double MatchLineLabelReachHeights = 6.0;
+        /// <summary>Two strokes a point apart across the line are the same line where they meet
+        /// along it within this gap: a dash of a dash-dot line, in points.</summary>
+        public const double MatchLinePieceGapPts = 24.0;
 
         /// <summary>
         /// A PLAN TOO WIDE FOR ONE SHEET IS SPLIT ON A MATCH LINE (intake step 22), and the sheet says
@@ -123,6 +126,12 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 }
             }
 
+            // a line drawn as two strokes a point apart (a thick pen, or dashes whose pieces sit
+            // either side of a whole point) falls into two buckets, neither spanning the drawing
+            // (Codex 31, F11): buckets a point apart are one line
+            horizontal = Coalesced(horizontal);
+            vertical = Coalesced(vertical);
+
             var found = new List<MatchLine>();
             foreach (var (cx, cy, h, isVertical) in labels)
             {
@@ -141,6 +150,37 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     found.Add(m);
             }
             foreach (var m in found) yield return m;
+
+            // A NEIGHBOUR IS THE SAME LINE ONLY WHERE IT CONTINUES IT. Merging every adjacent bucket
+            // read 31065's parkade seam off a stack of unrelated strokes a point apart and moved it
+            // from the 86 m line the two halves share to a 38 m one across the page; merged where
+            // the two runs meet end to end, the pieces of one dash-dot line come back together and
+            // nothing else does. The merged bucket keeps the coordinate of its longest piece, which
+            // is the line's own, so the label's reach still measures to where the line is drawn.
+            static Dictionary<int, (double Min, double Max)> Coalesced(Dictionary<int, (double Min, double Max)> buckets)
+            {
+                var merged = new Dictionary<int, (double Min, double Max)>();
+                int at = 0; double longest = -1; (double Min, double Max) run = default;
+                bool open = false; int last = int.MinValue;
+                foreach (int key in buckets.Keys.OrderBy(k => k))
+                {
+                    var (lo, hi) = buckets[key];
+                    // end to end (or overlapping) along the line, and next to it across it
+                    bool continues = open && key == last + 1
+                        && Math.Min(run.Max, hi) - Math.Max(run.Min, lo) > -MatchLinePieceGapPts;
+                    if (continues) run = (Math.Min(run.Min, lo), Math.Max(run.Max, hi));
+                    else
+                    {
+                        if (open) merged[at] = run;
+                        run = (lo, hi); at = key; longest = -1;
+                        open = true;
+                    }
+                    if (hi - lo > longest) { longest = hi - lo; at = key; }
+                    last = key;
+                }
+                if (open) merged[at] = run;
+                return merged;
+            }
         }
 
         public sealed record Set(

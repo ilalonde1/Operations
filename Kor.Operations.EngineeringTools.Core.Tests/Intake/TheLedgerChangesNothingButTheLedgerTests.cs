@@ -78,6 +78,11 @@ public sealed class TheLedgerChangesNothingButTheLedgerTests
         Assert.Equal(expected.SlabIsAnnotation.ToArray(), actual.SlabIsAnnotation.ToArray());
         Assert.Equal(expected.ColumnIsAnnotation.ToArray(), actual.ColumnIsAnnotation.ToArray());
         Assert.Equal(expected.LineIsAnnotation.ToArray(), actual.LineIsAnnotation.ToArray());
+        // the collections steps 20 to 22 added (Codex 31, F12: the helper omitted them)
+        Assert.Equal(expected.LineWidths.ToArray(), actual.LineWidths.ToArray());
+        Assert.Equal(expected.WallFaceLines.OrderBy(kv => kv.Key).ToArray(), actual.WallFaceLines.OrderBy(kv => kv.Key).ToArray());
+        Assert.Equal(expected.FirstFaceWall, actual.FirstFaceWall);
+        Assert.Equal(expected.MatchLines.ToArray(), actual.MatchLines.ToArray());
         Assert.Equal(expected.LineSectionHints.ToArray(), actual.LineSectionHints.ToArray());
         Assert.Equal(expected.TextAnnotations.ToArray(), actual.TextAnnotations.ToArray());
         Assert.Equal(expected.PageWidthPts, actual.PageWidthPts);

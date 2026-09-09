@@ -46,6 +46,13 @@ public sealed record DxfToEtabsRequest
     /// <summary>The unit the level elevations are given in, as ETABS names it: "in", "ft", "mm", "m".</summary>
     public string LevelsUnit { get; init; } = "in";
 
+    /// <summary>
+    /// The job the drawings belong to — "31168" — which is what the facts the engineer banked
+    /// against a job (<c>match-line-join.31168.LEVEL P1</c>) are matched on. Null, and it is the
+    /// five-digit number in the stick file's, DXF folder's, reference's or output's name.
+    /// </summary>
+    public string? Job { get; init; }
+
     public required string OutputE2k { get; init; }
 
     /// <summary>Restrict to one building's sheets, e.g. "B" for a "BLDG B" tower.</summary>
@@ -513,6 +520,27 @@ public static class DxfToEtabsService
             SameGroundCentreTolerance = settings.ValueOr("dxf.same-ground-centre-tolerance", options.SameGroundCentreTolerance),
         };
 
+    /// <summary>
+    /// The job number in the first of these paths that carries one: five digits on their own in a
+    /// file's name or any folder's on the way to it — 31168-01.pdf, pdf-only-31168-01\dxf,
+    /// 31168-reference.e2k. The office numbers jobs so; a match anywhere on the path is the job.
+    /// </summary>
+    internal static string? JobNumberIn(params string?[] paths)
+    {
+        foreach (string? path in paths)
+        {
+            if (string.IsNullOrWhiteSpace(path)) continue;
+            foreach (string part in path.Split('\\', '/').Reverse())
+            {
+                var m = JobNumber.Match(part);
+                if (m.Success) return m.Value;
+            }
+        }
+        return null;
+    }
+
+    private static readonly Regex JobNumber = new(@"(?<!\d)\d{5}(?!\d)", RegexOptions.Compiled);
+
     private static string Describe(double unitInInches) => unitInInches switch
     {
         1.0 => "inches",
@@ -826,7 +854,24 @@ public static class DxfToEtabsService
         // Banked as match-line-join.<job>.<storey>, the same shape as slab-count.<job>.<storey>:
         // not a rule about how drawings are read anywhere, just something she told us about this
         // building.
-        string joinJob = Path.GetFileNameWithoutExtension(request.OutputE2k);
+        //
+        // THE JOB IS WHAT THE INPUTS SAY IT IS, NOT WHAT THE OUTPUT WAS CALLED. Read from the
+        // output's name alone (Codex 31, F1), a run named out.e2k matched no row, and with no rows
+        // every split plan in the set joined — LEVEL 1 of 31168 included, the storey she accepted
+        // as it was. The job is given, or it is the five-digit number in the stick file's name,
+        // the DXF folder's path, the reference model's name or the output's, the first found; and
+        // where rows are banked for some job and none for this one, the report says so.
+        string joinJob = request.Job ?? JobNumberIn(request.StickFilePdf, request.DxfFolder, request.ReferenceE2k, request.OutputE2k) ?? string.Empty;
+        {
+            var bankedJobs = banked
+                .Where(r => r.Key.StartsWith("match-line-join.", StringComparison.OrdinalIgnoreCase) || r.Key.StartsWith("slab-count.", StringComparison.OrdinalIgnoreCase))
+                .Select(r => r.Key.Split('.', 3)).Where(p => p.Length == 3).Select(p => p[1])
+                .Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+            if (bankedJobs.Count > 0 && !bankedJobs.Any(j => joinJob.Contains(j, StringComparison.OrdinalIgnoreCase)))
+                warnings.Add(
+                    $"Facts are banked for job(s) {string.Join(", ", bankedJobs)} (which storeys to join on a match line, how many slabs a storey carries) " +
+                    $"and this run is job '{(joinJob.Length > 0 ? joinJob : "unknown — no five-digit job number in the stick file, DXF folder, reference or output names; give --job")}': none of them applies.");
+        }
 
         // slab-count.<job>.<storey> — how many separate slabs she says a storey carries.
         var slabCounts = banked
@@ -876,6 +921,22 @@ public static class DxfToEtabsService
             ? files.Where(f => storeysOfSheet[f].Any(s =>
                   joinStoreys.Any(j => s.Contains(j, StringComparison.OrdinalIgnoreCase)))).ToList()
             : files.ToList();
+
+        // HER ROW NAMES A STOREY IN HER MODEL'S WORDS. A run whose storeys are named otherwise —
+        // this job read off its PDF alone, where the storeys come from the drawings' own wall
+        // elevations and are called P3, P2, P1, L1 — matches none of them, and the restriction then
+        // silences every join instead of narrowing it: 31168's parkade lost all four joins and both
+        // its plates, quietly (measured 2026-09-09, after the job stopped being read off the output
+        // file's name). Where her rows name no storey this run has, they cannot say anything about
+        // it; the drawing decides, and the report says her rows went unused and why.
+        if (joinStoreys.Count > 0 && joinable.Count == 0)
+        {
+            warnings.Add(
+                $"The engineer banked which storeys of {joinJob} are joined on a match line ({string.Join(", ", joinStoreys)}), " +
+                $"and this run's storeys are named {string.Join(", ", storeysOfSheet.Values.SelectMany(s => s).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(s => s, StringComparer.OrdinalIgnoreCase))}: " +
+                "none of hers is one of these, so the restriction cannot apply and the drawings' own match lines decide which sheets are halves of one plan.");
+            joinable = files.ToList();
+        }
 
         // A JOIN IS NOT REVERSIBLE BY A LATER CUT, SO THE PLATE IT MAKES IS CUT AT THE SEAM.
         //
@@ -954,21 +1015,27 @@ public static class DxfToEtabsService
         // frames and the perimeter walls could not close a floor; with her shell they coincide.
         if (request.Offset is null && referenceGrids.Count == 0)
         {
-            string? referencePlan = files.Where(f => namedAxesOf[f].Count >= GridAlignment.LeastConvincingByName)
+            // A PLAN OF A STOREY, not a key plan or a site plan: a sheet naming every axis of every
+            // building would win on names and set the set on a frame nothing structural is drawn
+            // in (Codex 31, F5). The reference plan is a sheet the model places.
+            string? referencePlan = files.Where(f => namedAxesOf[f].Count >= GridAlignment.LeastConvincingByName && storeysOfSheet[f].Count > 0)
                 .OrderByDescending(f => namedAxesOf[f].Count).FirstOrDefault();
             if (referencePlan is not null)
             {
                 var own = new AnnotationOverlay.Frame(0, 0, 0);
                 alignedByName[referencePlan] = new GridAlignment.Fit(own, namedAxesOf[referencePlan].Count(a => a.Vertical),
-                    namedAxesOf[referencePlan].Count(a => !a.Vertical), "the set's reference plan, in its own frame (no model grid to set it on)");
+                    namedAxesOf[referencePlan].Count(a => !a.Vertical),
+                    $"the set's reference plan, in its own frame (no model grid to set it on; its {namedAxesOf[referencePlan].Count} named axes are the grid)");
                 referenceGrids = GridAlignment.Carried(namedAxesOf[referencePlan], own, scale);
             }
         }
 
         if (request.Offset is null && referenceGrids.Count > 0)
         {
+            // the reference plan IS the grid; fitting it to itself would only replace the note that
+            // says so with one that reads like any other fit
             foreach (string f in files)
-                if (namedAxesOf[f].Count > 0 && GridAlignment.SolveByName(namedAxesOf[f], referenceGrids, scale) is { } fit)
+                if (!alignedByName.ContainsKey(f) && namedAxesOf[f].Count > 0 && GridAlignment.SolveByName(namedAxesOf[f], referenceGrids, scale) is { } fit)
                     alignedByName[f] = fit;
 
             // AN AXIS PLACED ON THE GRID IS A GRID LINE FOR THE REST OF THE SET. The model's GRIDS
@@ -1012,23 +1079,29 @@ public static class DxfToEtabsService
         // names of its axes above; its match line lands on its partner's only in that frame, within
         // the fit's own tolerance, and its linework joins the partner's in the partner's frame. A
         // sheet with no frame of its own is left exactly as it was.
+        //
+        // IN THE MODEL'S UNIT AS WELL AS ITS FRAME. A by-name fit is solved in the model's unit —
+        // the sheet's axes are scaled before they are matched to the grid — so its offset is a
+        // model-unit distance, and a sheet has to be scaled before it is set on the grid by it.
+        // Applied to raw drawing-unit linework (Codex 31, F2) the seams of a millimetre drawing on
+        // an inch model landed 25 times too far apart; it went unmeasured because every PDF-only
+        // build so far was millimetre on millimetre, scale one.
         var identity = new AnnotationOverlay.Frame(0, 0, 0);
+        bool unscaled = Math.Abs(scale - 1.0) <= 1e-9;
+        DxfPoint Scaled(DxfPoint p) => unscaled ? p : new DxfPoint(p.X * scale, p.Y * scale);
+        DxfPoint Unscaled(DxfPoint p) => unscaled ? p : new DxfPoint(p.X / scale, p.Y / scale);
         AnnotationOverlay.Frame FrameOfSheet(string f) => alignedByName.TryGetValue(f, out var nf) ? nf.Frame : identity;
         IReadOnlyList<DxfSegment> InModelFrame(string f)
         {
             var fr = FrameOfSheet(f);
-            return fr.Equals(identity) ? segmentsOf[f]
-                : segmentsOf[f].Select(s => s with { Start = fr.Apply(s.Start), End = fr.Apply(s.End) }).ToList();
+            return fr.Equals(identity) && unscaled ? segmentsOf[f]
+                : segmentsOf[f].Select(s => s with { Start = fr.Apply(Scaled(s.Start)), End = fr.Apply(Scaled(s.End)) }).ToList();
         }
-        static DxfPoint Unapply(AnnotationOverlay.Frame fr, DxfPoint q)
-        {
-            double r = fr.RotationDegrees * Math.PI / 180.0, c = Math.Cos(r), s = Math.Sin(r);
-            double x = q.X - fr.OffsetX, y = q.Y - fr.OffsetY;
-            return new DxfPoint(x * c + y * s, -x * s + y * c);
-        }
-        double seamTolerance = alignedByName.Count > 0 && drawingUnit is { } du && du > 0
-            ? Math.Max(MatchLineSheetJoin.DefaultTolerance, GridAlignment.NameTolerance / du)
-            : MatchLineSheetJoin.DefaultTolerance;
+        // in the model's unit: the drawing's own half-inch, or where the sheets were each set on the
+        // grid by name, four times the fit's tolerance — two halves are fitted independently and
+        // each may sit up to the fit's own tolerance off the grid, either way
+        double seamTolerance = Math.Max(MatchLineSheetJoin.DefaultTolerance * scale,
+            alignedByName.Count > 0 ? 4 * GridAlignment.NameTolerance : 0);
         var seamOf = joinable.ToDictionary(f => f, f => MatchLineSheetJoin.SeamOf(InModelFrame(f), matchLineLayers), StringComparer.OrdinalIgnoreCase);
         var joined = MatchLineSheetJoin.Group(joinable.Select(f => (
             File: f,
@@ -1099,7 +1172,9 @@ public static class DxfToEtabsService
                     // sheets share one frame — the Revit export's case)
                     var otherFrame = FrameOfSheet(other);
                     bool sameFrame = otherFrame.Equals(leaderFrame);
-                    DxfPoint Into(DxfPoint p) => sameFrame ? p : Unapply(leaderFrame, otherFrame.Apply(p));
+                    // scaled into the model's unit for the frames, and back into the drawing's for
+                    // the leader's own linework, which is scaled with everything else below
+                    DxfPoint Into(DxfPoint p) => sameFrame ? p : Unscaled(leaderFrame.Unapply(otherFrame.Apply(Scaled(p))));
                     segments = segments.Concat(segmentsOf[other].Select(s => sameFrame ? s : s with { Start = Into(s.Start), End = Into(s.End) })).ToList();
                     tags = tags.Concat(DxfPlanReader.ReadPositionedTags(other).Select(t => sameFrame ? t : t with { Point = Into(t.Point) })).ToList();
                 }

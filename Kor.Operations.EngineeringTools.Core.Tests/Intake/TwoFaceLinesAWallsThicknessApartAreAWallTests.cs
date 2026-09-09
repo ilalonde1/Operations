@@ -160,7 +160,8 @@ public sealed class TwoFaceLinesAWallsThicknessApartAreAWallTests
     {
         var (g, _) = Read(
             Face(1000, 5000, 1000 + L, 5000), Face(1000, 5000 + T, 1000 + L, 5000 + T), Face(1000, 5000 + T / 2, 1000 + L, 5000 + T / 2));
-        // the outer pair has a cut line between; the inner pairs are 6" apart, thinner than a wall
+        // the outer pair has a cut line between; each inner pair (6" apart, a wall's thickness) has
+        // a third cut line beyond it at the same spacing — a hatch's repeat
         Assert.Single(g.Walls);
     }
 
@@ -217,10 +218,47 @@ public sealed class TwoFaceLinesAWallsThicknessApartAreAWallTests
     [Fact]
     public void AnXCornerToCornerMakesItAShaftNotAWall()
     {
-        double w = 45 * 25.4, l = 60 * 25.4;
+        // long enough to be a wall by every other measure (31202's shaft is 45" x 60", which the
+        // aspect gate alone refuses — Codex 31, F12 — so this one is 45" x 240"): with the X it is
+        // a shaft; without it, the same pair is a wall
+        double w = 45 * 25.4, l = 240 * 25.4;
+        var (control, _) = Read(Face(1000, 5000, 1000 + l, 5000), Face(1000, 5000 + w, 1000 + l, 5000 + w));
+        Assert.Equal(2, control.Walls.Count);
         var (g, _) = Read(Face(1000, 5000, 1000 + l, 5000), Face(1000, 5000 + w, 1000 + l, 5000 + w),
                           Face(1000, 5000, 1000 + l, 5000 + w, pen: 0.2), Face(1000, 5000 + w, 1000 + l, 5000, pen: 0.2));
         Assert.Single(g.Walls);
+    }
+
+    [Fact]
+    public void AFaceLineSpentOnOneWallIsSpentForTheSecondPier()
+    {
+        // A MEASURED COST, NOT AN OVERSIGHT (Codex 31, F7). A retaining wall's outer face is one
+        // line, its inner face broken by a pilaster: the longest pier takes the outer face and the
+        // second pier stays lines. Letting each wall take only the STRETCH it lies along was built
+        // and measured on 2026-09-09 — 31168's BLDG A tower plan went 28 walls to 52, every new one
+        // a balcony band, because balconies pair with the slab-edge line exactly as pilasters do.
+        var (g, _) = Read(Face(1000, 5000, 1000 + L, 5000),
+                          Face(1000, 5000 + T, 1000 + L / 2 - 500, 5000 + T), Face(1000 + L / 2 + 1500, 5000 + T, 1000 + L, 5000 + T));
+        Assert.Equal(2, g.Walls.Count);
+        Assert.Equal(L / 2 - 500, Length(FaceWall(g)), 1);
+    }
+
+    [Fact]
+    public void TwoWallsThatCrossAreBothWallsWhicheverIsReadFirst()
+    {
+        // a wall crossing another at its middle (Codex 31, F6): judged at its midpoint alone, the
+        // second pair read as under the first wall; judged along its length it is a wall of its own
+        double l1 = L, l2 = L / 2;
+        RawSubpath[] Crossing(bool longFirst)
+        {
+            var across = new[] { Face(5000, 3000, 5000, 3000 + l2), Face(5000 + T, 3000, 5000 + T, 3000 + l2) };
+            var along = new[] { Face(1000, 3000 + l2 / 2, 1000 + l1, 3000 + l2 / 2), Face(1000, 3000 + l2 / 2 + T, 1000 + l1, 3000 + l2 / 2 + T) };
+            return longFirst ? along.Concat(across).ToArray() : across.Concat(along).ToArray();
+        }
+        var (a, _) = Read(Crossing(true));
+        var (b, _) = Read(Crossing(false));
+        Assert.Equal(3, a.Walls.Count);
+        Assert.Equal(3, b.Walls.Count);
     }
 
     [Fact]
@@ -238,15 +276,15 @@ public sealed class TwoFaceLinesAWallsThicknessApartAreAWallTests
     }
 
     [Fact]
-    public void AFaceLineIsOneWallsTheLongest()
+    public void AStretchOfAFaceLineIsOneWallsTheLongest()
     {
-        // a retaining wall's outer face is one line; its inner face is broken by a pilaster. The
-        // outer face serves the longer pier only — sharing it read balcony bands as walls on the
-        // tower plans (WHAT IT DOES NOT: the second pier stays lines)
+        // one outer face, two inner-face lines along the SAME stretch a wall's thickness apart on
+        // the same side (a band drawn with three lines): the stretch serves the longer wall only —
+        // sharing a stretch read balcony bands as walls on the tower plans
         var (g, _) = Read(Face(1000, 5000, 1000 + L, 5000),
-                          Face(1000, 5000 + T, 1000 + L / 2 - 500, 5000 + T), Face(1000 + L / 2 + 1500, 5000 + T, 1000 + L, 5000 + T));
+                          Face(1000, 5000 + T, 1000 + L, 5000 + T), Face(1000 + 2000, 5000 + T + 40, 1000 + L - 2000, 5000 + T + 40));
         Assert.Equal(2, g.Walls.Count);
-        Assert.Equal(L / 2 - 500, Length(FaceWall(g)), 1);
+        Assert.Equal(L, Length(FaceWall(g)), 1);
     }
 
     [Fact]

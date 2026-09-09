@@ -1233,3 +1233,90 @@ fated MatchLine and not beams, the DXF's MATCHLINE layer and the seam the DXF si
 DOES NOT: the join on a real set (measured on 31168 in the build above, not banked as a test); a
 match line drawn at an angle; two on one sheet with one label; a ring's re-entrant corner, which
 the closing fills by about the doorway's radius (2.3% on the test's L).
+
+## 32. Step 23, done 2026-09-09: what the audit of steps 20 to 22 changed
+
+Codex read steps 20–22 against their own claims (brief
+`docs/codex/CODEX-INTAKE-CONVERGENCE-31-AUDIT-STEPS-20-TO-22-THE-PDF-ALONE.md`, response
+`docs/codex/CODEX-31-AUDIT-RESPONSE.md`, fourteen findings). Every one was checked against the
+code. Six were real and are fixed, two are real and are now recorded as measured costs rather than
+traded for something worse, and the rest were answered by instrumenting or by narrowing a sentence.
+
+**The job is what the inputs say it is, not what the output was called.** A fact the engineer
+banks against a job — which storeys of 31168 join on a match line, how many slabs a storey carries
+— was matched against the output file's base name, so `out.e2k` matched nothing and every split
+plan in the set joined, LEVEL 1 included, which is the one storey she asked us to leave as it was.
+The job now comes from `--job`, or from the five-digit number in the stick file's, the DXF folder's,
+the reference's or the output's name, first found; and where rules are banked for some job and none
+for this one, the report says so instead of going quiet.
+
+**Her row names a storey in her model's words.** Fixing the above surfaced the other half of it:
+her row says LEVEL, this job read off its PDF alone calls the same storeys P3, P2, P1, L1, and the
+restriction then silenced every join rather than narrowing it — 31168's parkade lost all four joins
+and both its plates. Where her rows name no storey a run has, they cannot say anything about that
+run: the drawings' own match lines decide, and the report says her rows went unused and why.
+
+**A seam is read in the model's unit.** The by-name fits are solved in the model's unit, and their
+frames were being applied to raw drawing-unit linework. Millimetre drawings on an inch model — the
+stick-file route on 31168 — put the two halves' seams a factor of 25 apart, so the parkade she
+asked us to join stayed apart on that route while joining on the PDF-only one, where both sides are
+millimetres and the fault cancels. `TheStickFileBuildsAModelOnItsGridTests` now reads three sheets
+and places two, the two LEVEL P2 halves being one plan.
+
+**The other half is one sheet, on the other side of this sheet's line.** The side test measured the
+partner against the partner's own match line, so the same seam drawn end for end flipped the sign
+and refused the real other half; and a seam shared by three sheets took them all. Both halves are
+now judged against the leader's seam, and where more than one sheet qualifies the one whose line
+overlaps this one's the most is the other half.
+
+**The plate's boundary is the outer face, not the raster's edge.** A cell was painted when its
+centre lay within three quarters of a cell of a panel, so the traced ring ran up to a cell outside
+the wall — about half a per cent of a parkade, which the first measurement read as agreement with
+Revit. Each edge of the ring is now moved onto the panel edge it runs along and each corner is
+where the moved edges meet.
+
+**A pair is judged along its length.** `Covered` asked one point, the pair's midpoint, so two walls
+that cross read as one under the other or not by which was made first. It now samples five points
+along the pair's axis and asks for a majority.
+
+**A line drawn as two strokes a point apart is one line.** The match-line reader bucketed strokes by
+their rounded coordinate, so a thick pen or a dash-dot line whose pieces straddle a whole point fell
+into two buckets and neither spanned the page. Buckets that continue each other end to end are now
+one line, keeping the coordinate of the longest piece. On 31065 this changes which line the reader
+calls the seam: it now reads the vertical line the drafter labelled MATCHLINE, beside the word,
+instead of a horizontal line elsewhere on the sheet.
+
+**And the trace says why every pair was or was not a wall**, including the pairs that never
+qualified — the taper, the gap, the overlap and the aspect each now report themselves — and the
+differential comparator compares the collections steps 20–22 added (`LineWidths`, `WallFaceLines`,
+`FirstFaceWall`, `MatchLines`), which it did not.
+
+**Two findings are real and were not traded.** A face line is consumed whole, so a retaining wall
+whose inner face is broken by pilasters gives its longest pier only (Codex F7). Letting each wall
+take just the stretch of face it lies along was built and measured: 31168's BLDG A tower plan went
+28 walls to 52, every new one a balcony band beside a balcony's own box, and the same on towers B
+and C. Balconies pair with a slab-edge line exactly as pilasters do, and no test on the pair alone
+separates them, so the line stays whole and the cost is written into the check. The Band fate (F8)
+likewise refuses a genuinely narrow floor — a 66" corridor slab reads as Band — and that waits for
+the slab-edge rule rather than for a threshold.
+
+Measured before and after on identical inputs (`plate_diff.py`, the same DXFs built by both
+binaries): every set's storeys, walls, columns and floors come out the same, and only the plate
+areas move, each one closer to what it is measured against — 31168 P1 77,246 → 77,182 and P2
+77,481 → 77,144 against Revit's 76,967; 31065 P1 35,485 → 35,374 against the engineer's 40,067;
+31138's P1, P2, P3 and P5 18,590 → 18,374 with no model to score them. The five sets' ledgers move
+on 13 pages of 294 and no page's total changes; the thirteen banked plan DXFs are identical but
+31065's three, where the match line is now read; the full suite passes 1,210 and the App suite 478.
+
+WHAT THE CHECKS COVER (`TheJobIsWhatTheInputsSayItIsTests`, 6; the join and frame cases added to
+`MatchLineSheetJoinTests`, `AnnotationOverlayTests`, `APlanTooWideForOneSheetIsSplitOnAMatchLineTests`,
+`AStoreysPlateIsWhatItsWallsEncloseTests` and `TwoFaceLinesAWallsThicknessApartAreAWallTests`): the
+job read from each kind of input path and their order of precedence; a frame unapplied is its own
+inverse to the bit at a quarter turn; the other half found when its line is drawn end for end, and
+one partner chosen where two qualify; a line drawn as two strokes a point apart; the plate's ring
+on the outer face to a hundredth of an inch, turned as well as square; two walls that cross both
+read whichever comes first; the face line spent on one wall. WHAT THEY DO NOT: the banked rows
+against a live rules database (the service's own use of them is measured on the five sets, not
+asserted); a job numbered otherwise than five digits; 31138's LEVEL P4, whose plate is suppressed
+as a member already standing in that place — true before this step and after it, and not yet
+explained.

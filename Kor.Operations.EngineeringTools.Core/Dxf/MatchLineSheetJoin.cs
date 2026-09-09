@@ -29,6 +29,19 @@ public sealed record MatchLineSeam(DxfPoint Start, DxfPoint End)
         return Math.Min(a1, len) - Math.Max(a0, 0) > tolerance;   // the extents overlap
     }
 
+    /// <summary>How much of the other seam's extent lies along this one's, in this one's units;
+    /// zero when they do not overlap.</summary>
+    public double OverlapAlong(MatchLineSeam other)
+    {
+        ArgumentNullException.ThrowIfNull(other);
+        double dx = End.X - Start.X, dy = End.Y - Start.Y, len = Math.Sqrt(dx * dx + dy * dy);
+        if (len <= 0) return 0;
+        double ux = dx / len, uy = dy / len;
+        double Along(DxfPoint p) => (p.X - Start.X) * ux + (p.Y - Start.Y) * uy;
+        double a0 = Math.Min(Along(other.Start), Along(other.End)), a1 = Math.Max(Along(other.Start), Along(other.End));
+        return Math.Max(0, Math.Min(a1, len) - Math.Max(a0, 0));
+    }
+
     private static bool Near(DxfPoint a, DxfPoint b, double tolerance) =>
         Math.Abs(a.X - b.X) <= tolerance && Math.Abs(a.Y - b.Y) <= tolerance;
 }
@@ -120,23 +133,33 @@ public static class MatchLineSheetJoin
             int sideA = DominantSide(a.Segments, a.Seam!);
             if (sideA == 0) continue;                     // straddles the line: a whole plan
 
-            var members = new List<string> { a.File };
+            // THE OTHER HALF IS ONE SHEET, ON THE OTHER SIDE OF THIS SHEET'S SEAM. A seam is a line,
+            // not an arrow: measured against the other sheet's own match line the side depended on
+            // which way that line happened to be drawn, and a line the same but drawn end for end
+            // put the real other half on the "same" side (Codex 31, F3). And a split has two sides,
+            // so a half has one other half; where more than one sheet qualifies — a tower's plan
+            // carrying the same site match line as the podium's — the one whose match line
+            // overlaps this one's the most is the other half, and the rest are their own plans.
+            (string File, double Overlap)? partner = null;
             foreach (var b in withSeam)
             {
-                if (taken.Contains(b.File) || ReferenceEquals(a.File, b.File) || b.File == a.File) continue;
+                if (taken.Contains(b.File) || b.File.Equals(a.File, StringComparison.OrdinalIgnoreCase)) continue;
                 if (!a.Seam!.SameAs(b.Seam!, tolerance)) continue;
                 if (!a.Storeys.Intersect(b.Storeys, StringComparer.OrdinalIgnoreCase).Any()) continue;
+                if (DominantSide(b.Segments, a.Seam!) != -sideA) continue;
 
-                // The other half has to be the OTHER half.
-                if (DominantSide(b.Segments, b.Seam!) != -sideA) continue;
-
-                members.Add(b.File);
-                taken.Add(b.File);
+                double overlap = a.Seam!.OverlapAlong(b.Seam!);
+                if (partner is null || overlap > partner.Value.Overlap) partner = (b.File, overlap);
             }
 
             // A sheet whose seam nobody shares is not half of anything — it is a sheet with a match
             // line to a drawing that is not in this set, and it is left exactly as it was.
-            if (members.Count > 1) { taken.Add(a.File); groups.Add(new SheetGroup(members, a.Seam!)); }
+            if (partner is { } other)
+            {
+                taken.Add(a.File);
+                taken.Add(other.File);
+                groups.Add(new SheetGroup(new List<string> { a.File, other.File }, a.Seam!));
+            }
         }
 
         return groups;

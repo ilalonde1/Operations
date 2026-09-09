@@ -73,6 +73,17 @@ public sealed class APlanTooWideForOneSheetIsSplitOnAMatchLineTests
     }
 
     [Fact]
+    public void ALineDrawnAsTwoStrokesAPointApartIsOneLine()
+    {
+        // a thick pen drawn as two strokes, or dashes whose pieces sit either side of a whole
+        // point: two buckets, neither spanning the page, and the seam was lost (Codex 31, F11)
+        var page = Page([Word("MATCH", 2900, 1000), Word("LINE", 2900, 1010)],
+            Dashed(100, 1000.4, 1400, 1000.4).Concat(Dashed(1400, 1000.6, 2850, 1000.6)));
+        var m = Assert.Single(SheetFurniture.MatchLines(page));
+        Assert.InRange(m.X0, 99, 101); Assert.InRange(m.X1, 2800, 2850);
+    }
+
+    [Fact]
     public void NoLabelNoMatchLine()
     {
         Assert.Empty(SheetFurniture.MatchLines(Page([Word("SLAB", 2900, 1000)], Dashed(100, 1000, 2850, 1000))));

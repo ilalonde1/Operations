@@ -48,22 +48,36 @@ public static class AnnotationOverlay
             // because closure is decided on exact endpoint identity before any tolerance applies.
             // Turning 31168 by a computed 90 degrees lost the 2,754 sq ft mezzanine slab, which is
             // the one the engineer has corrected us on twice.
-            var (c, s) = ((RotationDegrees % 360 + 360) % 360) switch
-            {
-                0 => (1.0, 0.0),
-                90 => (0.0, 1.0),
-                180 => (-1.0, 0.0),
-                270 => (0.0, -1.0),
-                _ => Trig(RotationDegrees),
-            };
-
+            var (c, s) = CosSin();
             return new DxfPoint(p.X * c - p.Y * s + OffsetX, p.X * s + p.Y * c + OffsetY);
+        }
 
-            static (double C, double S) Trig(double degrees)
-            {
-                double r = degrees * System.Math.PI / 180.0;
-                return (System.Math.Cos(r), System.Math.Sin(r));
-            }
+        /// <summary>
+        /// The inverse of <see cref="Apply"/>: a point in the model's frame back into the sheet's.
+        /// The same exact quarter turns, so a sheet taken onto the grid and back is the sheet, to
+        /// the bit — the partner half of a split plan is carried into its leader's frame this way,
+        /// and the leader's walls close on exact endpoints (Codex 31, question 9).
+        /// </summary>
+        public DxfPoint Unapply(DxfPoint q)
+        {
+            var (c, s) = CosSin();
+            double x = q.X - OffsetX, y = q.Y - OffsetY;
+            return new DxfPoint(x * c + y * s, -x * s + y * c);
+        }
+
+        private (double C, double S) CosSin() => ((RotationDegrees % 360 + 360) % 360) switch
+        {
+            0 => (1.0, 0.0),
+            90 => (0.0, 1.0),
+            180 => (-1.0, 0.0),
+            270 => (0.0, -1.0),
+            _ => Trig(RotationDegrees),
+        };
+
+        private static (double C, double S) Trig(double degrees)
+        {
+            double r = degrees * System.Math.PI / 180.0;
+            return (System.Math.Cos(r), System.Math.Sin(r));
         }
     }
 

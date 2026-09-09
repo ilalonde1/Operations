@@ -76,6 +76,7 @@ public sealed class TheWallRuleChangesNothingElseTests
         after.WallColors.Clear();
         after.WallIsAnnotation.Clear();
         after.WallRibbonsNotSplit = 0;
+        after.FirstFaceWall = 0;                                   // the marker goes with the walls it counts
         TheLedgerChangesNothingButTheLedgerTests.AssertGeometryEqual(expected, after);
         Assert.True(before.Slabs.Count > after.Slabs.Count);
     }
@@ -326,7 +327,9 @@ internal static class PreWallClassifier
                         if (dx >= SheetFrameMinShare * pageWidthMm && dy < dx * 0.01) { Fate(PathReason.FrameEdgeLine); continue; }
                         if (dy >= SheetFrameMinShare * pageHeightMm && dx < dy * 0.01) { Fate(PathReason.FrameEdgeLine); continue; }
                     }
-                    result.Lines.Add(pts); result.LineColors.Add(color);
+                    // the pen recorded with the line (step 20) is a fact about the path, not the
+                    // wall rule; the pre-wall copy records it too so the comparator can hold it
+                    result.Lines.Add(pts); result.LineColors.Add(color); result.LineWidths.Add(sub.LineWidth);
                     result.LineIsAnnotation.Add(sub.IsAnnotation);
                     Fate(PathReason.EmittedAsLine, result.Lines.Count - 1);
                 }

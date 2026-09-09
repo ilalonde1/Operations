@@ -71,9 +71,17 @@ public sealed class TheStickFileBuildsAModelOnItsGridTests
             OutputE2k = Path.Combine(work, "out.e2k"),
         });
         Assert.Equal(3, report.SheetsRead);
-        Assert.Equal(3, report.SheetsPlaced);
         Assert.Contains(report.Warnings, w => w.StartsWith("3 of 3 sheet(s) set on this model's grid by the names of their axes", StringComparison.Ordinal));
         Assert.DoesNotContain(report.Warnings, w => w.Contains("could NOT be set on the grid", StringComparison.Ordinal));
+
+        // AND THE TWO P2 HALVES ARE ONE PLAN, so three sheets are placed as two (intake step 23).
+        // These drawings are millimetres and this model is inches: until 2026-09-09 the seams were
+        // compared with a model-unit frame applied to millimetre linework, they missed each other by
+        // a factor of 25, and the halves of the parkade she asked us to join stayed apart on this
+        // route while joining on the PDF-only one. Read in the model's unit they land on each other.
+        Assert.Equal(2, report.SheetsPlaced);
+        Assert.Contains(report.Warnings, w => w.Contains("carry the same match line and were read as ONE plan", StringComparison.Ordinal)
+                                              && w.Contains("S2.03.1", StringComparison.Ordinal) && w.Contains("S2.04.1", StringComparison.Ordinal));
 
         // the P3 plan's columns rise to P2 and the two P2 plans' to P1; banked 2026-09-08 at 70 and 112
         var model = File.ReadAllLines(report.OutputPath);

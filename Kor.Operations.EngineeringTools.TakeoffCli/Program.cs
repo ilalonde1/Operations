@@ -221,11 +221,14 @@ if (args.Length >= 2 && args[0].Equals("pdf-levels", StringComparison.OrdinalIgn
     while (plMoved)
     {
         plMoved = false;
-        foreach (var s in plTable.Storeys)
+        // over the one storey kept per name, so "first stated" is what is chained — walking the
+        // whole table let a second statement of the name chain first whenever the first one's
+        // level below was not placed yet (Codex 31, F4)
+        foreach (var s in plHeights.Values)
             if (!plElevation.ContainsKey(s.Level) && plElevation.TryGetValue(s.LevelBelow, out double below))
             { plElevation[s.Level] = below + s.HeightMm; plMoved = true; }
     }
-    var plLines = new List<string> { "# level,elevation mm — from the stick file's wall elevations; the lowest stated level is 0" };
+    var plLines = new List<string> { "# unit: mm", "# level,elevation mm — from the stick file's wall elevations; the lowest stated level is 0" };
     foreach (var kv in plElevation.OrderBy(kv => kv.Value)) plLines.Add($"{kv.Key},{kv.Value:0}");
     var plUnchained = plTable.Storeys.Where(s => !plElevation.ContainsKey(s.Level)).Select(s => $"{s.Level} over {s.LevelBelow}").ToList();
     if (args.Length >= 3) { File.WriteAllLines(args[2], plLines); Console.WriteLine($"{plElevation.Count} levels → {args[2]}"); }
@@ -1855,6 +1858,8 @@ if (args.Length >= 1 && args[0].Equals("dxf-to-etabs", StringComparison.OrdinalI
     var dropStoreys = new List<string>();
     string? levelsFile = null;
     string levelsUnit = "in";
+    bool levelsUnitGiven = false;
+    string? job = null;
     string? reportPath = null;
     string? questionsPath = null;
     string? rulesDb = null;
@@ -1888,7 +1893,8 @@ if (args.Length >= 1 && args[0].Equals("dxf-to-etabs", StringComparison.OrdinalI
         else if (flag.Equals("--tower", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) towerOnly = args[++i];
         else if (flag.Equals("--top-storey", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) topStorey = args[++i];
         else if (flag.Equals("--levels", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) levelsFile = args[++i];
-        else if (flag.Equals("--levels-unit", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) levelsUnit = args[++i];
+        else if (flag.Equals("--levels-unit", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) { levelsUnit = args[++i]; levelsUnitGiven = true; }
+        else if (flag.Equals("--job", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) job = args[++i];
         else if (flag.Equals("--drop-storeys", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length)
             dropStoreys.AddRange(args[++i].Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
         else if (flag.Equals("--report", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) reportPath = args[++i];
@@ -1933,12 +1939,24 @@ if (args.Length >= 1 && args[0].Equals("dxf-to-etabs", StringComparison.OrdinalI
         }
     }
 
+    // A levels file says its own unit ("# unit: mm", as pdf-levels writes it) and is believed
+    // unless --levels-unit says otherwise; a file that says nothing is in inches, as before.
+    if (!levelsUnitGiven && levelsFile is not null && File.Exists(levelsFile))
+    {
+        foreach (string line in File.ReadLines(levelsFile).Take(5))
+        {
+            var m = System.Text.RegularExpressions.Regex.Match(line, @"^#\s*unit\s*:\s*(in|ft|mm|m)\b", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            if (m.Success) { levelsUnit = m.Groups[1].Value.ToLowerInvariant(); break; }
+        }
+    }
+
     DxfToEtabsReport dxfReport;
     try
     {
         dxfReport = DxfToEtabsService.Run(new DxfToEtabsRequest
     {
         DxfFolder = args[1],
+        Job = job,
         StickFilePdf = stickFile,
         AnnotatedDxfFolder = annotatedDxf,
         ReferenceE2k = noReference ? string.Empty : args[2],
@@ -4940,7 +4958,7 @@ public static class TakeoffCliHelp
         new("e2k-compare", "takeoff e2k-compare <reference.e2k> <candidate.e2k> <story> [...]", "Compare generated ETABS geometry against a reference model."),
         new("dxf-import-rules", "takeoff dxf-import-rules <questions.xlsx> --engineer <name> [--rules-db <connection>]", "Import per-job DXF rule answers."),
         new("corpus-read", "takeoff corpus-read <projectsRoot> [out.txt] [--limit N]", "Extract readable project corpus text."),
-        new("dxf-to-etabs", "takeoff dxf-to-etabs <dxfFolder> <reference.e2k> <out.e2k> [options]", "Build an ETABS model from DXF plans."),
+        new("dxf-to-etabs", "takeoff dxf-to-etabs <dxfFolder> <reference.e2k|-> <out.e2k> [--levels levels.csv [--levels-unit in|ft|mm|m]] [--job 31168] [options]", "Build an ETABS model from DXF plans. --job names the job the banked facts are matched on; absent, the five-digit number in the input names."),
         new("verify-e2k", "takeoff verify-e2k <model.e2k> [--joint-tolerance <in>] [--dropped <a,b,c>] [--reference <ref.e2k>] [--report report.txt] [--questions questions.xlsx]", "Refuse a finished model that breaks a structural invariant."),
         new("e2k-multiset", "takeoff e2k-multiset <before.e2k> <after.e2k>", "Prove a revision only renamed members and moved none."),
         new("ifc-takeoff", "takeoff ifc-takeoff <model.ifc> <out.xlsx>", "Generate a quantity takeoff from an IFC model."),

@@ -68,3 +68,13 @@ account. Batches split on a line that is exactly `GO`, the way SSMS does it.
 `e2k_read.py` is `plan_sheet.py`'s reader without its side effect (importing plan_sheet draws a sheet named after your argv). `storey_walls.py <e2k> <storey> [minLen]` lists one storey's wall panels with extents; `draw_storey.py <e2k> <storey> <out.svg> [px]` draws one storey large. Screenshot an SVG with Edge headless and a fresh `--user-data-dir`, or it silently writes nothing.
 
 `crop_mm.py <png> <dpi> <scale> <xmm> <ymm> <halfW> <halfH> <out>` crops a `pdf-overlay` render around a point in drawing millimetres -- the PNG's y runs down, the geometry's up, and it flips. `dxf_layer_entities.py <dxf> <layer> [rows]` boxes every polyline and hatch on a layer. `ledger_diff.py <old.txt> <new.txt>` compares two `pdf-inventory` ledgers page by page.
+
+## Added 2026-09-09, intake step 23 (the audit of steps 20 to 22)
+
+`plate_diff.py <a.e2k> <b.e2k> [mm|in]` lists the floor plates per storey of two models side by
+side in square feet and marks the storeys whose plates moved. It is the differential for anything
+that is meant to change a plate's shape and nothing else: build the same DXFs with both binaries,
+and every storey that is not marked is a storey the change did not touch. It compares plate area
+per storey and nothing else -- not walls, columns, joints, sections or which sheet fed a storey
+(the run's own header carries those) -- so a change that moves a wall and leaves the plate alone
+looks identical here.

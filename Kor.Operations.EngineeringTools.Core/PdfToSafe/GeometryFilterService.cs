@@ -456,6 +456,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         private const int RiserRunMin = 3;
         /// <summary>This many lighter lines along the pair between its faces and it encloses something drawn, not a wall's one batter line.</summary>
         private const int LighterBetweenMax = 2;
+        /// <summary>Points along a pair's axis asked whether they lie in a wall or column already read; more than half inside and the pair is under it.</summary>
+        private const int CoverSamples = 5;
 
         /// <summary>
         /// The lines drawn along the filled walls' faces: each with the side of the line its wall
@@ -583,11 +585,21 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 var (w, d) = i < result.ColumnSizes.Count ? result.ColumnSizes[i] : (0.0, 0.0);
                 return (X0: c.X - w / 2 - WallLimitSlackMm, X1: c.X + w / 2 + WallLimitSlackMm, Y0: c.Y - d / 2 - WallLimitSlackMm, Y1: c.Y + d / 2 + WallLimitSlackMm);
             }).ToList();
-            // the walls read so far, the face walls made in this pass included: a shorter pair whose
-            // midpoint lies in a wall already made is that wall's own face against a stub
+            // the walls read so far, the face walls made in this pass included: a pair that lies in
+            // a wall already made is that wall's own edges, or a stub against its face. Judged along
+            // the pair, not at one point — at its midpoint alone a wall crossing another read as
+            // under it, or not, by which was made first (Codex 31, F6): a wall is under another
+            // when most of its length is
             bool Covered(double x, double y)
                 => result.Walls.Any(w => LoopGeometry.PointInPolygon(new DxfPoint(x, y), w.Outline.Select(p => new DxfPoint(p.X, p.Y)).ToList()))
                    || columnBoxes.Any(b => x >= b.X0 && x <= b.X1 && y >= b.Y0 && y <= b.Y1);
+            bool CoveredAlong((double X, double Y) from, (double X, double Y) to)
+            {
+                int inside = 0;
+                for (int k = 1; k <= CoverSamples; k++)
+                    if (Covered(from.X + (to.X - from.X) * k / (CoverSamples + 1), from.Y + (to.Y - from.Y) * k / (CoverSamples + 1))) inside++;
+                return inside * 2 > CoverSamples;
+            }
 
             var lineToPath = new Dictionary<int, int>();
             if (fates is not null)
@@ -615,15 +627,22 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     if (Math.Abs(a.Ux * b.Ux + a.Uy * b.Uy) < FaceParallelCos) continue;
                     var rel = Relative(a, b);
                     double gap = Math.Abs((rel.D0 + rel.D1) / 2);
+                    // the trace hears why a long pair never qualified too, so "every pair" is every
+                    // pair (Codex 31, F13): both lines long enough to trace, within twice a wall
+                    bool traced = FaceTrace is not null && a.Len >= FaceTraceMinOverlapMm && b.Len >= FaceTraceMinOverlapMm && gap <= 2 * maxWallThicknessMm;
+                    void Never(string reason)
+                    {
+                        if (traced) FaceTrace!($"lines {a.Len / 25.4:0}\"/{b.Len / 25.4:0}\" {gap / 25.4:0.0}\" apart at ({(a.A.X + a.B.X) / 2:0},{(a.A.Y + a.B.Y) / 2:0}) mm: not a pair, {reason}");
+                    }
                     // the faces may converge: by an inch, or by a third of the gap, with a wall's
                     // thickness at both ends (step 21)
-                    if (Math.Abs(rel.D0 - rel.D1) > Math.Max(FaceTaperMm, FaceTaperShare * gap)) continue;
+                    if (Math.Abs(rel.D0 - rel.D1) > Math.Max(FaceTaperMm, FaceTaperShare * gap)) { Never($"they converge by {Math.Abs(rel.D0 - rel.D1) / 25.4:0.0}\""); continue; }
                     if (Math.Min(Math.Abs(rel.D0), Math.Abs(rel.D1)) < minWallThicknessMm - WallLimitSlackMm
-                        || Math.Max(Math.Abs(rel.D0), Math.Abs(rel.D1)) > maxWallThicknessMm + WallLimitSlackMm) continue;
-                    if (rel.T1 - rel.T0 < minWallLengthMm - WallLimitSlackMm) continue;
+                        || Math.Max(Math.Abs(rel.D0), Math.Abs(rel.D1)) > maxWallThicknessMm + WallLimitSlackMm) { Never("the gap is outside wall thicknesses"); continue; }
+                    if (rel.T1 - rel.T0 < minWallLengthMm - WallLimitSlackMm) { Never($"they overlap by only {(rel.T1 - rel.T0) / 25.4:0}\""); continue; }
                     // and a wall's proportions, as the filled rule asks: a box of lines 49" x 38"
                     // around an unfilled column (31168's tower plans, sixteen a sheet) is not a wall
-                    if (rel.T1 - rel.T0 < minWallAspect * gap) continue;
+                    if (rel.T1 - rel.T0 < minWallAspect * gap) { Never($"the overlap is under {minWallAspect:0.#} times the gap"); continue; }
                     pairs.Add((i, j, gap, rel));
                 }
             }
@@ -636,6 +655,15 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             // (piers along one outer face) read the balcony bands along 31168's tower slab edges as
             // walls, 32 a sheet where Revit has none — a spandrel is two lines too. Measured
             // 2026-09-09: 750 walls to the model's 666 with faces shared, 681 with each face used once.
+            //
+            // A LINE IS TAKEN WHOLE, AND THAT COSTS THE SECOND PIER. Codex 31 (F7) is right that a
+            // retaining wall's outer face drawn as one line, with its inner face broken by pilasters,
+            // gives the longest pier only; the rest of the outer face is spent. Letting a wall take
+            // just the STRETCH it lies along was built and measured on 2026-09-09, and it is worse:
+            // on 31168's BLDG A tower plan (p23) the walls went 28 to 52, every new one a balcony
+            // band beside a balcony's own box, and the same on B and C. The balconies pair with the
+            // slab-edge line one after another exactly as pilasters do, so no test on the pair alone
+            // separates them. Kept whole, with the cost recorded rather than traded for that one.
             var used = new HashSet<int>();
             foreach (var pr in pairs.OrderByDescending(p => p.Rel.T1 - p.Rel.T0).ThenBy(p => p.Gap))
             {
@@ -652,7 +680,10 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     string tag = FaceTrace is not null && t1 - t0 >= FaceTraceMinOverlapMm
                         ? $"pair {(t1 - t0) / 25.4:0}\" x {gap / 25.4:0.0}\" (ends {Math.Abs(d0) / 25.4:0.0}\"/{Math.Abs(d1) / 25.4:0.0}\") at ({mx:0},{my:0}) mm" : "";
                     void Why(string reason) { if (tag.Length > 0) FaceTrace!(tag + ": " + reason); }
-                    if (Covered(mx, my)) { Why("under a wall or column already read"); continue; }
+
+                    var axisFrom = (a.A.X + a.Ux * t0 + nx * side * gap / 2, a.A.Y + a.Uy * t0 + ny * side * gap / 2);
+                    var axisTo = (a.A.X + a.Ux * t1 + nx * side * gap / 2, a.A.Y + a.Uy * t1 + ny * side * gap / 2);
+                    if (CoveredAlong(axisFrom, axisTo)) { Why("under a wall or column already read"); continue; }
 
                     // a face line is one wall's: a line already the face of a filled wall, or of a
                     // face wall made in this pass, may serve again only for a wall on the SAME side

@@ -135,6 +135,43 @@ public sealed class MatchLineSheetJoinTests
     }
 
     [Fact]
+    public void TheOtherHalfIsTheOtherHalfWhicheverWayItsOwnLineWasDrawn()
+    {
+        // the same seam drawn end for end on the second sheet: judged against that sheet's own
+        // line the side flipped and the real other half was refused (Codex 31, F3)
+        var reversed = new MatchLineSeam(Seam.End, Seam.Start);
+        var groups = MatchLineSheetJoin.Group(new[]
+        {
+            ("BLDG C.dxf", (MatchLineSeam?)Seam, (IReadOnlyList<string>)new[] { "LEVEL P3" }, Linework(+1)),
+            ("BLDG A & B.dxf", reversed, new[] { "LEVEL P3" }, Linework(-1)),
+        });
+        Assert.Equal(2, Assert.Single(groups).Files.Count);
+
+        // and a sheet on the SAME side, drawn end for end, is still not the other half
+        Assert.Empty(MatchLineSheetJoin.Group(new[]
+        {
+            ("a.dxf", (MatchLineSeam?)Seam, (IReadOnlyList<string>)new[] { "LEVEL P3" }, Linework(+1)),
+            ("b.dxf", reversed, new[] { "LEVEL P3" }, Linework(+1)),
+        }));
+    }
+
+    [Fact]
+    public void AHalfHasOneOtherHalfTheOneWhoseLineOverlapsItsMost()
+    {
+        // two sheets on the far side carrying the same line: the podium's other half and a tower
+        // plan sharing the site's match line over a shorter run — one plan, two sheets, not three
+        var shorter = new MatchLineSeam(new DxfPoint(SeamX, 27019), new DxfPoint(SeamX, 28000));
+        var groups = MatchLineSheetJoin.Group(new[]
+        {
+            ("BLDG C.dxf", (MatchLineSeam?)Seam, (IReadOnlyList<string>)new[] { "LEVEL P3" }, Linework(+1)),
+            ("TOWER.dxf", shorter, new[] { "LEVEL P3" }, Linework(-1)),
+            ("BLDG A & B.dxf", Seam, new[] { "LEVEL P3" }, Linework(-1)),
+        });
+        var group = Assert.Single(groups);
+        Assert.Equal(new[] { "BLDG C.dxf", "BLDG A & B.dxf" }, group.Files);
+    }
+
+    [Fact]
     public void TwoSheetsOnTheSameSideAreNotTwoHalves()
     {
         var groups = MatchLineSheetJoin.Group(new[]

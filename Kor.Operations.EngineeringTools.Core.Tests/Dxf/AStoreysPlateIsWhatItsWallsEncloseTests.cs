@@ -42,10 +42,27 @@ public sealed class AStoreysPlateIsWhatItsWallsEncloseTests
         double w = 100 * 12, h = 60 * 12;
         var plate = DxfFloodFillPlateDetector.EnclosedByWallPanels(Ring(w, h), Options, out string note);
         Assert.NotNull(plate);
-        Assert.InRange(plate!.Area, w * h * 0.98, w * h * 1.02);
-        Assert.InRange(plate.Points.Min(p => p.X), -6, 6);        // the outer face, not the inner one
-        Assert.InRange(plate.Points.Max(p => p.X), w - 6, w + 6);
+        // THE OUTER FACE EXACTLY, not the raster's edge a cell outside it (Codex 31, F9): the paint
+        // ran up to 6 in past the face, half a per cent of a parkade, which the first measurement
+        // read as agreement with Revit
+        Assert.InRange(plate!.Area, w * h * 0.999, w * h * 1.001);
+        Assert.InRange(plate.Points.Min(p => p.X), -0.01, 0.01);
+        Assert.InRange(plate.Points.Max(p => p.X), w - 0.01, w + 0.01);
+        Assert.InRange(plate.Points.Min(p => p.Y), -0.01, 0.01);
+        Assert.InRange(plate.Points.Max(p => p.Y), h - 0.01, h + 0.01);
         Assert.Contains("OUTER face", note);
+    }
+
+    [Fact]
+    public void ATurnedRingsPlateIsOnItsOuterFaceToo()
+    {
+        // the snap is to the panel edge the loop edge runs along, at any angle
+        double c = Math.Cos(Math.PI / 7), s = Math.Sin(Math.PI / 7), w = 1200, h = 720;
+        DxfPoint P(DxfPoint p) => new(5000 + p.X * c - p.Y * s, 5000 + p.X * s + p.Y * c);
+        var turned = Ring(w, h).Select(a => new WallAxis(P(a.Start), P(a.End), a.Thickness, a.Layer)).ToList();
+        var plate = DxfFloodFillPlateDetector.EnclosedByWallPanels(turned, Options, out _);
+        Assert.NotNull(plate);
+        Assert.InRange(plate!.Area, w * h * 0.999, w * h * 1.001);
     }
 
     [Fact]

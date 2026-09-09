@@ -24,6 +24,24 @@ public class AnnotationOverlayTests
     private static List<DxfPoint> AsAnnotated(IEnumerable<DxfPoint> ps, double dx, double dy)
         => ps.Select(p => new DxfPoint(p.Y - dy, dx - p.X)).ToList();
 
+    [Theory]
+    [InlineData(90.0)]
+    [InlineData(270.0)]
+    [InlineData(180.0)]
+    [InlineData(37.5)]
+    public void AFrameUnappliedIsTheInverseOfItselfToTheBit(double degrees)
+    {
+        // a quarter turn there and back is exact — the partner half of a split plan is carried
+        // into its leader's frame this way, and the leader's walls close on exact endpoints
+        var frame = new AnnotationOverlay.Frame(degrees, OffsetX, OffsetY);
+        var p = new DxfPoint(1234.5, -678.25);
+        var back = frame.Unapply(frame.Apply(p));
+        double slack = degrees % 90 == 0 ? 0 : 1e-9;
+        Assert.InRange(back.X, p.X - slack, p.X + slack);
+        Assert.InRange(back.Y, p.Y - slack, p.Y + slack);
+        if (degrees % 90 == 0) Assert.Equal(p, back);
+    }
+
     [Fact]
     public void FindsTheRotationBetweenTwoExportsOfOneBuilding()
     {
