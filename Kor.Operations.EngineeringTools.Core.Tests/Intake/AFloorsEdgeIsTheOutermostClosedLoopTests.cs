@@ -18,12 +18,16 @@ namespace Kor.Operations.EngineeringTools.Core.Tests.Intake;
 /// WHAT THIS COVERS: four lines closing a floor-sized ring becoming one slab, with its lines read
 /// as its edge and kept out of the DXF's beams; a ring too small to be a floor; a ring with nothing
 /// standing in it; a core's ring inside a floor's, which is not a second floor; a ring left open,
-/// which is nothing; a wall's own face lines, which are the wall and not an edge. WHAT IT DOES NOT:
-/// the areas on a real sheet (31168's tower plans against Revit's plates, measured in the build,
-/// not banked here); a plan whose edge is drawn in two pieces that do not meet, which this leaves
-/// open by design; which storey the plate lands on (the DXF side's business); a ring whose inside
-/// is another sheet's view, and a sheet carrying two plans' rings — both give one slab each, and
-/// only the sheet-to-view split decides where they belong.
+/// which is nothing; a wall's own face lines, which are the wall and not an edge; and (step 27) an
+/// edge broken by a hand's width closing, an edge stopping short of its corner carried to it, a
+/// gap wider than the bridge staying open, a hatch of short dashes not being searched, and an edge
+/// stepping round a balcony closing through it and keeping the floor's area. WHAT IT DOES NOT: the
+/// areas on a real sheet (31168's tower plans against Revit's plates, measured in the build, not
+/// banked here); which storey the plate lands on (the DXF side's business); a ring whose inside is
+/// another sheet's view, and a sheet carrying two plans' rings — both give one slab each, and only
+/// the sheet-to-view split decides where they belong; a gap bridged to the wrong neighbour where
+/// two edges end near one another; and the storeys that still have no plate at all, which only the
+/// build's own count against Revit shows.
 /// </remarks>
 public sealed class AFloorsEdgeIsTheOutermostClosedLoopTests
 {
@@ -118,6 +122,86 @@ public sealed class AFloorsEdgeIsTheOutermostClosedLoopTests
         var (g, fates) = Read([ring[0], ring[1], ring[2], Column(43000, 22000)]);   // three sides
         Assert.Empty(g.Slabs);
         Assert.DoesNotContain(fates, f => f.Reason == PathReason.BecameSlabEdge);
+    }
+
+    // ---------------------------------------------------------------------------------------
+    // An edge interrupted is still one edge (intake step 27)
+    // ---------------------------------------------------------------------------------------
+
+    [Fact]
+    public void AnEdgeBrokenByAHandsWidthIsStillTheEdge()
+    {
+        // the south edge drawn in two pieces 100 mm apart where a leader crosses it: the DXF
+        // side's own bridge (6 in) closes it, and the ring is the floor
+        var (g, _) = Read(
+            Line(40000, 20000, 43000, 20000), Line(43100, 20000, 48000, 20000),
+            Line(48000, 20000, 48000, 26000), Line(48000, 26000, 40000, 26000), Line(40000, 26000, 40000, 20000),
+            Column(43000, 22000), Column(46000, 24000));
+        var slab = Assert.Single(g.Slabs);
+        Assert.InRange(Math.Abs(PolygonProcessor.PolygonAreaMm2(slab)), W * H * 0.999, W * H * 1.001);
+    }
+
+    [Fact]
+    public void AnEdgeStoppingShortOfItsCornerIsCarriedToIt()
+    {
+        // the east edge stops a metre short of the north-east corner (a bubble's leader took the
+        // rest): carried on to where the north edge's line meets it, within the 4 ft the DXF side
+        // allows, and the ring is the floor at its true area
+        var (g, _) = Read(
+            Line(40000, 20000, 48000, 20000), Line(48000, 20000, 48000, 25000),
+            Line(48000, 26000, 40000, 26000), Line(40000, 26000, 40000, 20000),
+            Column(43000, 22000), Column(46000, 24000));
+        var slab = Assert.Single(g.Slabs);
+        Assert.InRange(Math.Abs(PolygonProcessor.PolygonAreaMm2(slab)), W * H * 0.999, W * H * 1.001);
+    }
+
+    [Fact]
+    public void AGapWiderThanTheBridgeStaysOpen()
+    {
+        // three metres missing from the south edge is a ramp, a stair or a drawing not finished:
+        // nothing bridges it and the storey keeps having no plate
+        var (g, _) = Read(
+            Line(40000, 20000, 42000, 20000), Line(45000, 20000, 48000, 20000),
+            Line(48000, 20000, 48000, 26000), Line(48000, 26000, 40000, 26000), Line(40000, 26000, 40000, 20000),
+            Column(43000, 22000), Column(46000, 24000));
+        Assert.Empty(g.Slabs);
+    }
+
+    [Fact]
+    public void AnEdgeSteppingRoundABalconyClosesThroughItAndKeepsTheFloorsArea()
+    {
+        // the south edge stops either side of a balcony: a closed box standing out from the
+        // outline, its diagonals drawn, with the outline's line ending at its sides two metres
+        // apart. The outline itself never closes, so the chain pass carries on through the
+        // balcony's own linework — here its diagonal — and the ring that comes back is the floor
+        // plus part of the balcony. That is the answer this rule is allowed to give: somewhere
+        // between the outline and the outline with the balcony, never less and never more.
+        double bx0 = 43000, bx1 = 45000, by = 18500;                        // the box hangs 1.5 m below the south edge
+        var (g, _) = Read(
+            Line(40000, 20000, bx0, 20000), Line(bx1, 20000, 48000, 20000),
+            Line(48000, 20000, 48000, 26000), Line(48000, 26000, 40000, 26000), Line(40000, 26000, 40000, 20000),
+            Line(bx0, 20000, bx0, by), Line(bx0, by, bx1, by), Line(bx1, by, bx1, 20000),
+            Line(bx0, 20000, bx1, by), Line(bx0, by, bx1, 20000),
+            Column(43000, 22000), Column(46000, 24000), Column(41000, 24000));
+        var slab = Assert.Single(g.Slabs);
+        Assert.InRange(Math.Abs(PolygonProcessor.PolygonAreaMm2(slab)),
+                       W * H * 0.999, W * H + (bx1 - bx0) * (20000 - by));
+    }
+
+    [Fact]
+    public void OnlyLongChainsAreBridgedSoAHatchIsNotSearched()
+    {
+        // a hatch of a thousand short dashes beside the ring: none of them is long enough to be a
+        // piece of an edge, and the ring still closes across its one gap
+        var paths = new List<RawSubpath>
+        {
+            Line(40000, 20000, 43000, 20000), Line(43100, 20000, 48000, 20000),
+            Line(48000, 20000, 48000, 26000), Line(48000, 26000, 40000, 26000), Line(40000, 26000, 40000, 20000),
+            Column(43000, 22000), Column(46000, 24000),
+        };
+        for (int i = 0; i < 1000; i++) paths.Add(Line(50000 + (i % 40) * 120, 20000 + (i / 40) * 120, 50000 + (i % 40) * 120 + 60, 20000 + (i / 40) * 120 + 60));
+        var (g, _) = Read(paths.ToArray());
+        Assert.Single(g.Slabs);
     }
 
     [Fact]

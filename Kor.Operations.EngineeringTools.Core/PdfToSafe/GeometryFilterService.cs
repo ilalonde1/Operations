@@ -839,13 +839,47 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     new DxfPoint(result.Lines[i][1].X, result.Lines[i][1].Y)))
                 .ToList();
             var built = new PlanLoopBuilder(SlabEdgeJoinMm, SlabEdgeJoinMm, SlabEdgeJoinMm).Build(segments);
-            if (built.Loops.Count == 0) return;
+            var loops = built.Loops.ToList();
 
+            // AN EDGE INTERRUPTED IS STILL ONE EDGE (intake step 27). A slab edge is broken where a
+            // bubble's leader, a note or a dimension crosses it, and stops short of its corner where
+            // the other edge's line took the corner: exact joins leave every tower plan's ring open
+            // (31168's L4–L14 and L15–L32 views, measured 2026-09-09). The DXF side closes a Revit
+            // export's slab edge the same way, with the same two bounds: chain ends within a hand's
+            // width (6 in) are one edge, and an edge running toward a corner it stops short of by up
+            // to 4 ft is carried to it. Only chains long enough to be a piece of an edge are tried —
+            // the bridge search is every pair of chains, and a hatched plan has ten thousand dashes.
+            var pieces = built.OpenChains
+                .Where(c => c.Count >= 2 && ChainLength(c) >= SlabEdgeChainMinMm)
+                .ToList();
+            if (pieces.Count >= 2)
+            {
+                var chainSegments = new List<DxfSegment>();
+                foreach (var c in pieces)
+                    for (int i = 0; i + 1 < c.Count; i++)
+                        chainSegments.Add(new DxfSegment("SLABEDGE", c[i], c[i + 1]));
+                var bridged = new PlanLoopBuilder(SlabEdgeJoinMm, SlabEdgeBridgeMm, SlabEdgeExtendMm).Build(chainSegments);
+                loops.AddRange(bridged.Loops);
+            }
             // big enough to be a floor, and with something standing in it
-            var floors = built.Loops
+            var floors = loops
                 .Where(l => l.Area >= MinSlabAreaMm2 && StandsIn(l))
                 .OrderByDescending(l => l.Area)
                 .ToList();
+
+            // ⛔ MEASURED AND REJECTED (step 27, 2026-09-09). A typical tower floor's edge is not one
+            // line: it steps out round every balcony, and each balcony is a closed box drawn against
+            // the outline with its own diagonals — 31168's L4–L14 views, where the west edge is drawn
+            // in two five-metre pieces eighteen metres apart. No chain closes that, so the DXF side's
+            // own flood-fill recovery was tried here as a fallback where no ring closed: every line
+            // 500 mm or longer painted, gaps bridged, the outside flooded, the boundary taken, gated
+            // the same way on area and on structure standing in it. On 31168 it did not find a tower
+            // plate. It found the CORES — 858 sq ft on A-L27..A-L32, 1,218 on B's, 869 beside them on
+            // L15..L26, against Revit's 9,743 — and it cost the parkades their step-22 plates, P1
+            // 77,182 -> 5,536 and P2 77,144 -> 893. A recovery that answers with the core when it was
+            // asked for the floor is not a weaker version of the ring rule, it is a different and
+            // wrong one. The tower edge stays open until the rule that closes it is known: a storey
+            // with no plate is honest, a storey carrying its core's area as its floor is not.
             if (floors.Count == 0) return;
 
             // and outermost: a core's ring inside a floor is a hole in it, not a second floor
@@ -912,11 +946,27 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     if (LoopGeometry.DistanceToSegment(p, loop.Points[i], loop.Points[(i + 1) % loop.Points.Count]) <= SlabEdgeJoinMm) return true;
                 return false;
             }
+
+            static double ChainLength(IReadOnlyList<DxfPoint> c)
+            {
+                double len = 0;
+                for (int i = 0; i + 1 < c.Count; i++) len += c[i].DistanceTo(c[i + 1]);
+                return len;
+            }
         }
 
         /// <summary>Endpoints this close are one corner of a ring, in millimetres: the intake reads a
         /// PDF's own coordinates, which meet exactly where the drafter closed a polyline.</summary>
         private const double SlabEdgeJoinMm = 1.0;
+
+        /// <summary>Two chain ends this close are one edge broken by what crossed it: a hand's width, the DXF side's own bridge (6 in).</summary>
+        private const double SlabEdgeBridgeMm = 6 * 25.4;
+
+        /// <summary>An edge stopping this short of the corner the other edge's line makes is carried to it: the DXF side's own limit (48 in).</summary>
+        private const double SlabEdgeExtendMm = 48 * 25.4;
+
+        /// <summary>A chain shorter than this is a tick, a dash or a letter, not a piece of a floor's edge, and is not bridged.</summary>
+        private const double SlabEdgeChainMinMm = 2000;
 
         /// <summary>The structure a ring is judged against stands within this share of the ring's own size of it.</summary>
         private const double SlabEdgeNeighbourhoodShare = 0.10;

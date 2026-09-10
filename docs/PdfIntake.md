@@ -1,5 +1,61 @@
 # PDF intake — what it does today, and what it leaves on the page
 
+## 0. START HERE (state as of 2026-09-09, after step 27)
+
+A session picking this up cold reads this section, then §30 (what the PDF alone gives), then the
+last three step sections. It does not need to read §1–§29 to work; those are the record of how each
+rule was arrived at, and are read when a rule is being changed.
+
+**Where the data is.** `%LOCALAPPDATA%\Temp\kor-drawings\stickfiles` holds the five PDFs (31065,
+31130, 31138, 31168, 31202). `...\kor-drawings\harness` holds one folder per job, the banked `.e2k`
+baselines named for the step that produced them (`pdf-only-<job>-01-s26.e2k`), and
+`revit-31168\out.e2k`, which is the Revit route's answer for the same building and the only yardstick
+that is not our own output. Nothing here is read over SMB.
+
+**The one command that measures every deliverable.** `bash docs/etabs-handoff/pdf_only_all.sh`
+rebuilds all five jobs from their PDFs alone, about 4 minutes. Then
+`python docs/etabs-handoff/plate_diff.py <banked.e2k> <new.e2k> mm` for each job says which storey's
+plate moved, and the scratchpad's `storey_counts.py` compares columns and walls per storey against
+Revit. A change that is not run through all five has not been measured.
+
+**Look at it, do not count it.** `takeoff pdf-overlay <pdf> <page> <png> --scale 96 --dpi 200
+[--walls]` renders what the reader saw onto the sheet, and `docs/etabs-handoff/crop_mm.py` cuts a
+window out of it. Step 27 was a day spent guessing closing rules that a rendered view would have
+settled; that is the mistake this line exists to stop.
+
+**Where the route stands on 31168**, PDF-only against the Revit route, both built by the same
+DXF-to-ETABS code:
+
+| | PDF only | Revit route |
+|---|---|---|
+| columns | 2,502 | 2,380 |
+| walls | 1,209 | 1,832 |
+| storeys with a plate | 9 of 62 | all |
+
+Parkade plates agree closely (P1 77,182 sq ft against Revit's 76,967). The towers have no plate at
+all, and the tower wall count is the other large gap.
+
+**The open list, largest first.** Each is one rule, and each is measured on the five sets before it
+is kept:
+
+1. **The tower plate** (§36). 53 of 62 storeys on 31168 carry no floor. Three closing rules have
+   been tried and measured; the next attempt starts by rendering the L4–L14 view and looking.
+2. **31202 places 0 of 34 sheets.** A whole job produces an empty model. Not yet characterised —
+   the title block is the suspect, and it is one job's worth of evidence, so it may be quick.
+3. **Tower walls, 33 a storey against Revit's 40.**
+4. **The storey-rise convention.** The top storeys sit one level off the Revit route's.
+5. **Mezzanine levels** are read as storeys but not placed.
+6. **31130's halves** do not join.
+7. **L10 carries 58 columns against Revit's 48.**
+8. **Parkade plan titles are not found as views** (§35's title reader), so a parkade sheet is not
+   split the way a tower sheet is.
+
+**The working rule for all of them.** One universal rule per step, never a fix for one drawing;
+banked as a test that states what it covers AND what it does not; measured on all five sets before
+and after; and the cost written down when a rule is rejected, so it is not tried again.
+
+---
+
 Written 2026-09-08 from the code and from a content inventory of the five local stick files
 (31065, 31130, 31138, 31168, 31202: 294 pages). Every number below was counted on the whole
 population named; nothing is from a sample. The intake brief series lives in
@@ -1506,3 +1562,40 @@ drop; a view without a building taking the sheet's; the view file's name; a tagg
 another building's storey. WHAT IT DOES NOT: a real sheet's titles (the builds above); a title
 whose words the extractor put on two baselines; what is drawn under no title at all; a sheet whose
 two views share one building tag in the title block but differ in the titles.
+
+## 36. Step 27, 2026-09-09: an edge interrupted is still one edge — and what a flood fill answers instead
+
+Step 24 gave a storey its plate from the outermost closed ring the plan draws. On 31168 that found
+9 plates for 62 storeys. The towers have none: their outline is drawn as a "CONCRETE OUTLINE" that
+steps out round every balcony, and on the L4–L14 view the west edge is two 5,186 mm pieces 18.6 m
+apart. Exact rings on that sheet: 12. Open chains: 208.
+
+**The rule kept.** A gap the width of a leader is not a gap. Open chains of 2 m or more are run a
+second time through the same loop builder the DXF side uses, with its own banked tolerances — join
+1 mm, bridge 6 in, extend 48 in — so an edge broken where a leader crosses it closes, and an edge
+stopping short of its corner is carried to it. Five cases are banked in
+`AFloorsEdgeIsTheOutermostClosedLoopTests`: the hand's-width break, the short corner, a 3 m gap
+that stays open, a hatch of a thousand short dashes that is never searched (only chains ≥ 2 m are),
+and an edge stepping round a balcony, which closes through the balcony's own diagonal and lands
+between the outline's area and the outline-plus-balcony.
+
+**Measured cost: nothing, and nothing gained.** Across 31065, 31130, 31138 and 31168 the second
+pass moved zero plate lines against the step-26 baseline. 31168 stays at 1,209 walls, 2,502 columns
+and 9 floors. The rule is right and it is free; on these five sets it changes no drawing.
+
+**⛔ MEASURED AND REJECTED: the flood fill.** The DXF side already has a recovery for a slab edge
+that will not close — `DxfFloodFillPlateDetector.RecoverAll`, which paints the long lines, bridges
+the gaps, floods the outside and takes the boundary of what is left. It was wired in as the
+fallback where no ring closed, gated the same way on area and on structure standing inside. On
+31168 it did not find a tower plate. It found the **cores**: 858 sq ft on A-L27 to A-L32, 1,218 on
+B's, 869 more beside them on L15 to L26, against Revit's 9,743 sq ft. And it cost the parkades
+their step-22 plates, P1 77,182 → 5,536 sq ft and P2 77,144 → 893. A recovery that answers with the
+core when it was asked for the floor is not a weaker version of the ring rule; it is a different
+and wrong one. It is reverted, and the reason is written where the code was, so it is not tried a
+third time.
+
+**What this leaves.** The tower plate is still unread, and it is now the largest single gap in the
+PDF-only route: 53 of 62 storeys on 31168 carry no floor. The next attempt does not start from
+another closing heuristic. It starts by rendering the L4–L14 view's slab-edge candidates and
+looking at them (`pdf-overlay`, `crop_mm.py`), because three closing rules have now been guessed at
+and measured, and the picture has not.
