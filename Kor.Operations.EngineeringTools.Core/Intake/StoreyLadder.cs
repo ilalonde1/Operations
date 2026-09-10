@@ -42,21 +42,33 @@ public static class StoreyLadder
     {
         ArgumentNullException.ThrowIfNull(page);
         ArgumentNullException.ThrowIfNull(captions);
-        var ladder = ScheduleGridReader.ReadLevelLadder(page);
-        if (ladder.Count < MinRows) return Array.Empty<Storey>();
-        if (string.IsNullOrWhiteSpace(scaleNote))
-        {
-            double ladderX = page.Words.Where(w => string.Equals(w.Text, "LEVEL", StringComparison.OrdinalIgnoreCase)
-                    && ladder.Any(r => Math.Abs(r.Y - w.Cy) <= 10)).Select(w => w.Cx).DefaultIfEmpty(0).Average();
-            scaleNote = ViewCaptions.For(captions, ladderX, ladder.Min(r => r.Y));
-        }
-        if (string.IsNullOrWhiteSpace(scaleNote)) return Array.Empty<Storey>();
-        if (PlanGeometry.MetresPerPixel(scaleNote, 72) is not double metresPerPoint || metresPerPoint <= 0) return Array.Empty<Storey>();
-        var rows = ladder.OrderByDescending(r => r.Y).ToList();
+
+        // EVERY COLUMN OF THE LADDER (intake step 25). An elevation taller than its sheet is drawn
+        // in strips side by side, and above the storeys the buildings share each tower's levels
+        // are labelled for it (B-LEVEL 27); one column read the lower strip and lost the rest, and
+        // 31168's towers above L19 had no storey to land on.
         var storeys = new List<Storey>();
-        for (int i = 0; i + 1 < rows.Count; i++)
-            storeys.Add(new Storey(rows[i].Normalized, rows[i + 1].Normalized, (rows[i].Y - rows[i + 1].Y) * metresPerPoint * 1000.0, rows[i].Y));
-        return storeys;
+        foreach (var ladder in ScheduleGridReader.ReadLevelLadders(page, MinRows))
+        {
+            string? scale = scaleNote;
+            if (string.IsNullOrWhiteSpace(scale))
+            {
+                double ladderX = page.Words.Where(w => (string.Equals(w.Text, "LEVEL", StringComparison.OrdinalIgnoreCase) || w.Text.EndsWith("LEVEL", StringComparison.OrdinalIgnoreCase))
+                        && ladder.Any(r => Math.Abs(r.Y - w.Cy) <= 10)).Select(w => w.Cx).DefaultIfEmpty(0).Average();
+                scale = ViewCaptions.For(captions, ladderX, ladder.Min(r => r.Y));
+            }
+            if (string.IsNullOrWhiteSpace(scale)) continue;
+            if (PlanGeometry.MetresPerPixel(scale, 72) is not double metresPerPoint || metresPerPoint <= 0) continue;
+            var rows = ladder.OrderByDescending(r => r.Y).ToList();
+            for (int i = 0; i + 1 < rows.Count; i++)
+                storeys.Add(new Storey(rows[i].Normalized, rows[i + 1].Normalized, (rows[i].Y - rows[i + 1].Y) * metresPerPoint * 1000.0, rows[i].Y));
+        }
+        // a strip's ladder is drawn on both sides of it, so the same storey comes from two columns
+        // with the same lines: one statement per sheet, the first column's
+        return storeys
+            .GroupBy(s => (s.Level, s.LevelBelow))
+            .Select(g => g.First())
+            .ToList();
     }
 
     /// <summary>The most common height to the nearest 5 mm, the "typical storey" a set repeats.</summary>

@@ -207,35 +207,19 @@ if (args.Length >= 2 && args[0].Equals("pdf-levels", StringComparison.OrdinalIgn
 {
     if (!File.Exists(args[1])) { Console.Error.WriteLine($"Not found: {args[1]}"); return 1; }
     var plTable = SetStoreys.Read(args[1]);
-    // a level named twice with two different levels below it (LEVEL 3 of building A and of building
-    // B, each over its own LEVEL 2) is one name for two storeys; the first stated wins here and the
-    // rest are reported — building-aware level names are an open intake item
-    var plTwice = plTable.Storeys.GroupBy(s => s.Level, StringComparer.OrdinalIgnoreCase).Where(g => g.Count() > 1)
-        .Select(g => $"{g.Key} ({string.Join(" / ", g.Select(s => $"over {s.LevelBelow} {s.HeightMm:0} mm"))})").ToList();
-    var plHeights = plTable.Storeys.GroupBy(s => s.Level, StringComparer.OrdinalIgnoreCase).ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
-    // the base is a level that is below something and above nothing the set states
-    var plBases = plTable.Storeys.Select(s => s.LevelBelow).Where(b => !plHeights.ContainsKey(b)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
-    var plElevation = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
-    foreach (var b in plBases) plElevation[b] = 0;
-    bool plMoved = true;
-    while (plMoved)
-    {
-        plMoved = false;
-        // over the one storey kept per name, so "first stated" is what is chained — walking the
-        // whole table let a second statement of the name chain first whenever the first one's
-        // level below was not placed yet (Codex 31, F4)
-        foreach (var s in plHeights.Values)
-            if (!plElevation.ContainsKey(s.Level) && plElevation.TryGetValue(s.LevelBelow, out double below))
-            { plElevation[s.Level] = below + s.HeightMm; plMoved = true; }
-    }
+    // chained in Core (SetStoreys.Levels, intake step 25): first stated wins a name, a storey that
+    // skips names is a break filled at the typical storey, a storey across two buildings is nobody's
+    var plChain = SetStoreys.Levels(plTable);
     var plLines = new List<string> { "# unit: mm", "# level,elevation mm — from the stick file's wall elevations; the lowest stated level is 0" };
-    foreach (var kv in plElevation.OrderBy(kv => kv.Value)) plLines.Add($"{kv.Key},{kv.Value:0}");
-    var plUnchained = plTable.Storeys.Where(s => !plElevation.ContainsKey(s.Level)).Select(s => $"{s.Level} over {s.LevelBelow}").ToList();
-    if (args.Length >= 3) { File.WriteAllLines(args[2], plLines); Console.WriteLine($"{plElevation.Count} levels → {args[2]}"); }
+    foreach (var l in plChain.Levels) plLines.Add($"{l.Name},{l.ElevationMm:0}");
+    if (args.Length >= 3) { File.WriteAllLines(args[2], plLines); Console.WriteLine($"{plChain.Levels.Count} levels → {args[2]}"); }
     else foreach (var l in plLines) Console.WriteLine(l);
-    Console.WriteLine($"{plTable.SheetsWithStoreys} of {plTable.ElevationSheets} elevation sheets stated storeys; {plTable.Storeys.Count} storeys, {plBases.Count} base(s): {string.Join(", ", plBases)}"
-                      + (plUnchained.Count > 0 ? $"; not chained to a base: {string.Join(", ", plUnchained)}" : ""));
-    if (plTwice.Count > 0) Console.WriteLine($"named twice, first stated kept: {string.Join("; ", plTwice)}");
+    Console.WriteLine($"{plTable.SheetsWithStoreys} of {plTable.ElevationSheets} elevation sheets stated storeys; {plTable.Storeys.Count} storeys, {plChain.Bases.Count} base(s): {string.Join(", ", plChain.Bases)}"
+                      + (plChain.TypicalMm is double plTyp ? $"; typical storey {plTyp:0} mm" : "")
+                      + (plChain.Unchained.Count > 0 ? $"; not chained to a base: {string.Join(", ", plChain.Unchained)}" : ""));
+    if (plChain.NamedTwice.Count > 0) Console.WriteLine($"named twice, first stated kept: {string.Join("; ", plChain.NamedTwice)}");
+    foreach (var b in plChain.Breaks) Console.WriteLine($"break: {b}");
+    foreach (var l in plChain.Levels.Where(l => l.From.Contains("not drawn", StringComparison.Ordinal))) Console.WriteLine($"  {l.Name} at {l.ElevationMm:0}: {l.From}");
     return 0;
 }
 

@@ -253,7 +253,9 @@ public sealed class FiveStickFilesTests
     /// Tolerance 5 mm: a sixteenth of an inch on paper at 1:96.
     /// </summary>
     [Theory]
-    [InlineData("31168-01", 37, 21, "LEVEL 3", "LEVEL 2", 5336, 2946)]
+    // 45 since step 25 (was 21): every column of the ladder is read, so the strips carrying LEVEL 20–26
+    // and B-LEVEL 27–41 beside the lower one are storeys too, one statement per sheet
+    [InlineData("31168-01", 37, 45, "LEVEL 3", "LEVEL 2", 5336, 2946)]
     [InlineData("31130-01", 53, 4, "LEVEL P2", "LEVEL P3", 2743, -1)]
     // 31138 p53 says SCALE = AS NOTED; the ladder is read at the view's own caption, 1/8" = 1'-0" (brief 28)
     [InlineData("31138-01", 53, 17, "LEVEL 20", "LEVEL 19", 2995, 2995)]

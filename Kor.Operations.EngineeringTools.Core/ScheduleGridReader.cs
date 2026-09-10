@@ -55,6 +55,8 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
         /// </summary>
         /// <summary>A level's value: a number, P2, L0/P1, 1M, 1A — not a word that follows the level on the next line.</summary>
         private static readonly Regex LevelShaped = new(@"^[A-Z]?\d{1,3}[A-Z]?(?:/[A-Z0-9]+)?$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        /// <summary>The level-shaped start of a token a tag was glued onto: the 12 of "12-TN".</summary>
+        private static readonly Regex LevelLeading = new(@"^([A-Z]?\d{1,3}[A-Z]?)[-–]", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
         public static IReadOnlyList<LevelRow> ReadLevelLadder(VectorPageReader.PageContent page)
         {
@@ -71,8 +73,57 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                 .ThenBy(g => g.Key)
                 .First().Key;
 
+            return LadderAt(page, levelTokens.Where(t => Math.Abs(t.Cx - axisX) <= LadderColumnPts).ToList());
+        }
+
+        /// <summary>A level label with a building in front of it: "B-LEVEL", "A-LEVEL". The letters are the building.</summary>
+        private static readonly Regex BuildingLevelToken = new(@"^([A-Z]{1,2})-(LEVEL|LVL|LEV)$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+        /// <summary>Level labels within this of one x are one column of the ladder, in points.</summary>
+        public const double LadderColumnPts = 12.0;
+
+        /// <summary>
+        /// EVERY ladder on the sheet, one per column of level labels (intake step 25). An elevation
+        /// taller than its sheet is drawn in strips side by side, each strip a column of level
+        /// labels with its own level lines; and above the storeys the buildings share, each tower's
+        /// levels are labelled for it — 31168's S3.12 carries LEVEL 2–19 in one column and B-LEVEL
+        /// 27–41 in others. The busiest column alone (<see cref="ReadLevelLadder"/>) read one strip
+        /// and merged the others' labels into its rows by y, so B-LEVEL 37 sat on LEVEL 16's row and
+        /// was lost, and the towers above L19 had no storey to land on. A column with fewer labels
+        /// than a ladder needs is a caption, not a strip.
+        /// </summary>
+        public static IReadOnlyList<IReadOnlyList<LevelRow>> ReadLevelLadders(VectorPageReader.PageContent page, int minRows = 3)
+        {
+            ArgumentNullException.ThrowIfNull(page);
+
+            var levelTokens = page.Words
+                .Where(w => string.Equals(w.Text, "LEVEL", StringComparison.OrdinalIgnoreCase) || BuildingLevelToken.IsMatch(w.Text.Trim()))
+                .OrderBy(w => w.Cx)
+                .ToList();
+            if (levelTokens.Count == 0) return Array.Empty<IReadOnlyList<LevelRow>>();
+
+            // columns: labels within LadderColumnPts of the column's first label, left to right
+            var columns = new List<List<VectorPageReader.TextToken>>();
+            foreach (var t in levelTokens)
+            {
+                if (columns.Count > 0 && Math.Abs(t.Cx - columns[^1][0].Cx) <= LadderColumnPts) columns[^1].Add(t);
+                else columns.Add(new List<VectorPageReader.TextToken> { t });
+            }
+
+            var ladders = new List<IReadOnlyList<LevelRow>>();
+            foreach (var column in columns)
+            {
+                var rows = LadderAt(page, column);
+                if (rows.Count >= minRows) ladders.Add(rows);
+            }
+            return ladders;
+        }
+
+        /// <summary>The ladder one column of level labels makes: each label paired with its level, one row per line, top to bottom.</summary>
+        private static List<LevelRow> LadderAt(VectorPageReader.PageContent page, IReadOnlyList<VectorPageReader.TextToken> labels)
+        {
             var rows = new List<LevelRow>();
-            foreach (var lt in levelTokens.Where(t => Math.Abs(t.Cx - axisX) <= 12))
+            foreach (var lt in labels)
             {
                 // The level value is the token just to the right: on the label's own baseline before the
                 // line wrapped under it, a level-shaped token (22, P2, L0/P1, 1M) before a word, then the
@@ -86,7 +137,17 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                     .Select(w => (string?)w.Text)
                     .FirstOrDefault();
 
-                string raw = num is null ? "LEVEL" : $"LEVEL {num}";
+                // a label "B-LEVEL" names building B's level: the building rides with the name
+                var building = BuildingLevelToken.Match(lt.Text.Trim());
+                string prefix = building.Success ? building.Groups[1].Value.ToUpperInvariant() + "-" : "";
+                // and the level is the level-shaped start of its token: "12-TN" on 31065's south
+                // tower elevations is level 12 with the view's tag glued on, not a level named 12-TN
+                if (num is not null && !LevelShaped.IsMatch(num.Trim()))
+                {
+                    var leading = LevelLeading.Match(num.Trim());
+                    if (leading.Success) num = leading.Groups[1].Value;
+                }
+                string raw = num is null ? $"{prefix}LEVEL" : $"{prefix}LEVEL {num}";
                 rows.Add(new LevelRow(raw, ScheduleTakeoff.NormalizeLevel(raw), lt.Cy));
             }
 

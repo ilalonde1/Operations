@@ -30,7 +30,7 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             if (string.IsNullOrWhiteSpace(s)) return "";
             string n = Regex.Replace(s.Trim().ToUpperInvariant(), @"\s+", " ");
             n = Regex.Replace(n, @"0*(\d+)", "$1");                  // strip zero-padding in numbers
-            n = Regex.Replace(n, @"^(LEVEL|LVL|LEV)\s+(?=\d)", "L"); // LEVEL 7 → L7
+            n = Regex.Replace(n, @"^([A-Z]{1,2}-)?(LEVEL|LVL|LEV)\s+(?=\d)", "$1L"); // LEVEL 7 → L7; B-LEVEL 37 → B-L37 (step 25: the building rides with the name)
             n = Regex.Replace(n, @"^(LEVEL|LVL|LEV)\s+(?=[A-Z])", ""); // LEVEL P1 → P1
             return n;
         }

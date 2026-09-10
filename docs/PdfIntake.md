@@ -1380,3 +1380,67 @@ beside it, and the same strip with the structure in it; two plans' rings on one 
 open; a wall's own faces not an edge. WHAT IT DOES NOT: the areas on a real sheet (the build above,
 not banked); a plan whose edge is drawn in pieces that do not meet; which storey a ring lands on;
 a ring whose "structure" is a legend's filled square.
+
+## 34. Step 25, done 2026-09-09: an elevation's ladder is every column of it, and a break is not a storey
+
+The storeys come off the wall elevations (step 10), and the reader took one column of level
+labels per sheet — the busiest — with the number beside each. An elevation taller than its sheet is
+drawn in strips side by side, each strip a column of labels with its own level lines, and above
+the storeys the buildings share each tower's levels are labelled for it: 31168's S3.12 carries
+LEVEL 2–19 in one column and B-LEVEL 27–41 in others, at the same y as the lower strip's labels.
+One column read the lower strip and merged the others' labels into its rows by y, so B-LEVEL 37
+sat on LEVEL 16's row and was lost; the levels file stopped at L19, and every tower storey above
+it had nowhere to land whatever the plans said.
+
+**Three rules, each measured first.**
+
+*Every column of the ladder is a ladder.* Level labels within 12 points of one x are a column;
+a column of three or more is a strip's ladder and gives its storeys; a column of fewer is a
+caption. A strip's ladder is drawn on both sides of it, so one statement per sheet is kept per
+storey. *A level labelled for a building is that building's storey*: "B-LEVEL 37" is B-L37, the
+building riding with the name, and the existing plan matcher places a BLDG B plan on it; a storey
+stated from one building's level to another's — two towers' labels on one row — is nobody's and
+is not chained. *A storey that skips names is a break.* 31065's S3.14 draws LEVEL 13 straight
+above LEVEL 3 with a break line between them, and 31138's S3.10 LEVEL 17 above LEVEL 7: how a
+drafter draws a run of typical storeys once. The drawn gap is the break's, not a height, and the
+levels it skips stand at the set's typical storey each, said so per level. The chain that does
+this moved out of the CLI into `SetStoreys.Levels`, where it can be tested; it was the pdf-levels
+verb's own loop until now.
+
+**Measured before**, on the three elevation sheets the five-set check banks: 31168 p37 read 21
+storeys (LEVEL 2–19 and the parkade) where the sheet states 45; 31130 p53 4 of 4; 31138 p53 17 of
+17. **Measured after**, the five sets' levels files: 31168 22 → 62 levels — L1 to L26 shared, A-L27
+to A-L36 and B-L27 to B-L40 each on its tower, C-L3 to C-L9, A-L1 and B-L1 — every storey the
+engineer's own model names but the two mezzanines; 31138 18 → 27, L8–L16 filled at the typical
+2,995 mm across the L7–L17 break; 31065 13 → 22, L5–L13 at the typical 2,845 mm across the L3–L13
+break, and its old 13 had been read partly off the column schedule's row pitch, which by luck is
+about a storey; 31130 and 31202 unchanged. Then the models: 31168's floors 28 → 34 with the roof
+sheets' rings landing — A-L33 9,686 sq ft against Revit's 9,676, B-L38 9,621 against 9,612,
+B-L39 9,475 against 9,465 — and tower C's strip on C-L5 to C-L8 rather than the shared L5 to L8;
+31138 places 18 sheets of 20 (was 15), 605 walls and 834 columns (393 and 496); 31065 places 15
+of 18 (was 9), 404 walls and 605 columns (293 and 385). Full suite 1,226 pass, App 478. Against
+the engineer's own 31168 model (`TheLiveSetsStoreysAgreeWithTheirModelTests`), 61 storeys now
+match by both names where 20 did, 60 of them within 25 mm, and one disagrees: C-L9 over C-L8, the
+drawing 3,202 mm and her model 3,502 — tower C's top storey, read for the first time. That is a
+question for her, named in the check rather than silenced.
+
+**Open, named:** 31168's L15–L32 still carry no plate, their rings not closing as drawn (step 24's
+open item, unchanged); S2.22.1's two rings both land on A-L33 while the sheet is titled for
+LEVEL 33, 34 and 35 — the title's level list is read as one level, a sheet-naming item; 31168
+reads 1,639 walls and 3,426 columns where the Revit route reads 1,424 and 2,365, the tower sheets
+now feeding every storey they name, which is the one-object-per-stack question the engineer has
+already ruled on and the next step; a level whose tag is glued to its number ("12-TN") reads as
+the number now, and a level the reader cannot pair with a number at all still reads as "LEVEL".
+
+WHAT THE CHECKS COVER (`AStoreyHeightIsTheDistanceBetweenLevelLinesTests`, +3;
+`ALevelABreakSkipsIsATypicalStoreyTests`, 5; the banked counts in `FiveStickFilesTests`): two
+strips side by side read column by column, a strip's lowest label giving no storey of its own; a
+building's column standing on the shared level under it and keeping the building in its names; a
+two-label column that is a caption; the chain from the base; a break filled at the typical storey
+with the level above the break placed on the filled ones and a level another sheet drew keeping
+its drawn elevation; the typical storey from the storeys that are not breaks; a name stated twice
+keeping its first statement; a storey across two buildings left aside while each building chains
+on; a set with a break and nothing typical to fill it, left unchained and said. WHAT THEY DO NOT:
+the ladder on a real sheet beyond the three banked pages; a break across a parkade or mezzanine
+name, which carries no number to skip; a typical storey that is wrong for the levels it fills —
+the fill is the set's most repeated height, not the tower's own.
