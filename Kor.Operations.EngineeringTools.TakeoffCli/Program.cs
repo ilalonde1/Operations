@@ -146,11 +146,29 @@ if (args.Length >= 1 && args[0].Equals("pdf-takeoff", StringComparison.OrdinalIg
         if (found > 0)
         {
             // Named as the office's export names a view — sheet number, view index, title — so the
-            // DXF-to-ETABS reader takes the sheet's storeys from the name (intake step 15).
-            string dxf = ptRange ? Path.Combine(ptDir, SheetDxfName.For(record, $"{ptStem}-p{p:00}")) : Path.GetFullPath(ptOut);
-            DxfExporter.Export(geo, dxf, korLayers: ptKor);
-            file = Path.GetFileName(dxf);
-            ptWritten++;
+            // DXF-to-ETABS reader takes the sheet's storeys from the name (intake step 15); and a
+            // sheet drawing two plans side by side is written as two views (intake step 26)
+            if (ptRange)
+            {
+                var parts = SheetViews.Parts(record, $"{ptStem}-p{p:00}");
+                var names = new List<string>();
+                foreach (var part in parts)
+                {
+                    var pg = part.Geometry;
+                    if (pg.Slabs.Count + pg.Columns.Count + pg.Walls.Count + pg.Lines.Count == 0) continue;
+                    DxfExporter.Export(pg, Path.Combine(ptDir, part.FileName), korLayers: ptKor);
+                    names.Add(part.FileName);
+                    ptWritten++;
+                }
+                file = names.Count == 1 ? names[0] : $"{names.Count} views: {string.Join(" | ", names)}";
+            }
+            else
+            {
+                string dxf = Path.GetFullPath(ptOut);
+                DxfExporter.Export(geo, dxf, korLayers: ptKor);
+                file = Path.GetFileName(dxf);
+                ptWritten++;
+            }
         }
         else ptEmpty++;
 
@@ -740,7 +758,11 @@ if (args.Length >= 1 && args[0].Equals("pdf-overlay", StringComparison.OrdinalIg
     // DXF as lines can be seen standing outside its region
     var lightBlue = new Rgba32(90, 170, 230);
     double sMmR = ovScale * PdfToSafeConstants.PointsToMm;
-    var ovRegions = SheetFurniture.On(ovContent, PlanAgreesWithItsSchedule.DefaultToleranceMm).Regions;
+    var ovSet = SheetFurniture.On(ovContent, PlanAgreesWithItsSchedule.DefaultToleranceMm);
+    var ovRegions = ovSet.Regions;
+    // the plan views the sheet titles (step 26): each underlined title naming a plan, with where it sits
+    var ovViews = SheetViews.Titles(ovContent);
+    Console.WriteLine($"  views {ovViews.Count}: {string.Join("; ", ovViews.Select(v => $"\"{v.Title}\" under x {v.MinXPts:0}-{v.MaxXPts:0} pt at y {v.YPts:0}"))}");
     foreach (var r in ovRegions)
         OvPoly(new[] { (r.MinX * sMmR, r.MinY * sMmR), (r.MaxX * sMmR, r.MinY * sMmR), (r.MaxX * sMmR, r.MaxY * sMmR), (r.MinX * sMmR, r.MaxY * sMmR) }, lightBlue, 1, close: true);
     Console.WriteLine($"  furniture regions {ovRegions.Count} (light blue): {string.Join("; ", ovRegions.Select(r => r.Kind).Take(14))}");

@@ -55,10 +55,13 @@ public sealed class TheStickFileBuildsAModelOnItsGridTests
                 var record = DrawingIntake.ReadSheet(doc, page, request, facts);
                 if (record.SheetNumber is null || !wanted.Contains(record.SheetNumber)) continue;
                 Assert.Equal("plan", record.SheetType);
-                string name = SheetDxfName.For(record, $"31168-p{page:00}");
+                // the parkade sheets are one plan each, so each is one view (intake step 26)
+                var parts = SheetViews.Parts(record, $"31168-p{page:00}");
+                var part = Assert.Single(parts);
+                string name = part.FileName;
                 Assert.StartsWith(record.SheetNumber + "_1_", name);
                 Assert.True(PlanSheetNaming.Parse(name).ParkadeLevels.Count > 0, $"{name}: no parkade level read from the name");
-                DxfExporter.Export(record.Geometry, Path.Combine(dxfDir, name), korLayers: true);
+                DxfExporter.Export(part.Geometry, Path.Combine(dxfDir, name), korLayers: true);
                 written.Add(name);
             }
         }

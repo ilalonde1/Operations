@@ -60,8 +60,12 @@ public static class IntakeBaseline
                 var geo = record.Geometry;
                 if (geo.Slabs.Count + geo.Columns.Count + geo.Walls.Count + geo.Lines.Count == 0) { log.Add($"{job.Number}  {p,4}  empty"); continue; }
                 string file = DxfName(job, p);
-                DxfExporter.Export(geo, Path.Combine(outDir, file));
-                written++;
+                // the thirteen banked plans are single-view sheets and keep their banked names; a
+                // sheet that titles two plans is banked as its views (intake step 26)
+                var parts = SheetViews.Parts(record, Path.GetFileNameWithoutExtension(file));
+                if (parts.Count == 1) DxfExporter.Export(geo, Path.Combine(outDir, file));
+                else foreach (var part in parts) DxfExporter.Export(part.Geometry, Path.Combine(outDir, part.FileName));
+                written += parts.Count;
                 log.Add($"{job.Number}  {p,4}  {geo.Slabs.Count,5}  {geo.Columns.Count,7}  {geo.Walls.Count,5}  {geo.Footings.Count,8}  {geo.GridAxes.Count,4}  {geo.Lines.Count,5}  {file}");
             }
         }

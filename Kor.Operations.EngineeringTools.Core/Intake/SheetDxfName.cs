@@ -28,6 +28,19 @@ public static class SheetDxfName
         return (number is null || title is null ? fallbackStem : Sanitise($"{number}_1_{title}")) + ".dxf";
     }
 
+    /// <summary>
+    /// One VIEW of a sheet, named as the office's export names it (intake step 26): the sheet
+    /// number, the view's index on the sheet, and the view's own title — "S2.20.1_2_LEVEL 4 PLAN
+    /// (L4-L14) - CONCRETE OUTLINE - BLDG A.dxf". The DXF-to-ETABS reader takes the storeys from
+    /// the title, so a sheet drawing two plans side by side reaches the model as two plans.
+    /// </summary>
+    public static string ForView(string? sheetNumber, int viewIndex, string viewTitle, string fallbackStem)
+    {
+        ArgumentNullException.ThrowIfNull(viewTitle);
+        string? number = string.IsNullOrWhiteSpace(sheetNumber) ? null : sheetNumber.Trim();
+        return (number is null || string.IsNullOrWhiteSpace(viewTitle) ? $"{fallbackStem}-v{viewIndex}" : Sanitise($"{number}_{viewIndex}_{viewTitle.Trim()}")) + ".dxf";
+    }
+
     private static string? Field(IReadOnlyDictionary<string, string> titleBlock, params string[] keys)
     {
         foreach (string key in keys)

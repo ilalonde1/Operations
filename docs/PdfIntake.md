@@ -1444,3 +1444,65 @@ on; a set with a break and nothing typical to fill it, left unchained and said. 
 the ladder on a real sheet beyond the three banked pages; a break across a parkade or mezzanine
 name, which carries no number to skip; a typical storey that is wrong for the levels it fills —
 the fill is the set's most repeated height, not the tower's own.
+
+## 35. Step 26, done 2026-09-09: a sheet is its views
+
+A tower sheet draws two plans side by side under two underlined titles — "LEVEL 3 PLAN" and
+"LEVEL 4 PLAN (L4-L14)" on 31168's S2.20.1 — and was written as one DXF named for the sheet, so
+both plans' columns and walls landed on every storey the sheet's title names: 100 columns a storey
+on L4–L14 where Revit's export gives 48, 3,426 on the job where the Revit route reads 2,380. The
+office's own export names a file per VIEW — sheet number, view index, view title — and the DXF
+side already takes a view's storeys from that name, so the stick file's sheet is now written the
+same way: one file per plan view, each carrying what is drawn above its title.
+
+**The rules.** A view's title is a line of text that names a plan — a level, a parkade level, a
+roof or a foundation, and the word PLAN — with a stroke drawn under it covering at least half its
+width; the stroke runs from the view's number bubble to the end of the words, so it is longer than
+the words, which is why the furniture reader's heading underline (a rule no wider than its text)
+never found these. A title in the title block's fifth of the width is the sheet's; a heading that
+ends in a colon or names notes, a legend, a schedule or a key plan is a list's, not a plan's; a
+title drawn with a double stroke is one title. What is drawn belongs to the title nearest below
+it: the drop to the title plus how far the thing sits outside the title's own span — plans side by
+side share a title height, so the span decides, and plans stacked one above the other (tower C's
+LEVEL 5–8, LEVEL 9 and roof on S2.41.1) share a span, so the drop decides. A grid axis goes to
+every view it crosses. A view titled for a level but not for a building is the sheet's building's,
+and its name says so, else "LEVEL 35 PLAN" on tower A's sheet lands on no storey. A sheet with one
+title, or none, is one view and is written as before. And a tagged sheet's second chance at
+storeys no longer takes another building's: once C-L4 to C-L9 were named, a BLDG A plan took them
+by number and tower A's floors stood on tower C.
+
+**Measured**, 31168 from its stick file, columns and walls per storey against the Revit route
+(`storey_counts.py`): L5–L26 50 columns a storey against 48 (was 100); A-L27 to A-L33 26 against
+24 (was 52); B-L27 to B-L38 24 against 24 (was 48) and 30 against 31; C-L5 to C-L9 41 against 41,
+10 walls against 10 (was 49 and 12, on the wrong storeys); the job 2,502 columns against 2,380
+(was 3,426) and 1,209 walls against 1,832 (was 1,639). 31168 reads 35 views from 23 plan sheets
+and places 29; 31138 47 from 29, places 26, 574 walls and 676 columns (605 and 834); 31065 48 from
+22, places 17, its counts unchanged, L19 gaining the elevator roof's 621 sq ft; 31130 and 31202
+unchanged; the thirteen banked plan DXFs identical 13 of 13. Full suite 1,235 pass, App 478.
+
+**And an honest loss:** 31168's floors go 34 → 9. The 9,870 and 9,867 sq ft rings that stood on
+L4–L14 since step 24 were the LEVEL 3 plan's ring, credited to L4–L14 by the sheet's title; they
+now stand on L3, where they were drawn, and the LEVEL 4 (L4-L14) view's own ring does not close
+as drawn — the same open item as L15 and up. The plates that remain are each view's own: A-L33
+9,686, A-L34 9,326, B-L38 9,621, B-L39 9,475, C-L9's strip, L3, and the parkade.
+
+**Open, named:** the tower views' rings that do not meet as drawn (the bounded bridge, now the
+biggest single item on 31168); 31168 reads a third fewer walls than the Revit route on the tower
+storeys (33 against 40, 12 against 18), which is the wall rule's next measurement; the top storeys
+disagree by one with Revit — A-L34 38 columns against 17, B-L39 37 against 9 — because a stick-file
+plan at level N draws what stands ON it and rises to N+1, while Revit's plan export of level N
+draws what rises TO it, and the DXF side reads both as rising; L10 reads 58 columns against 48
+from a second sheet naming it; a parkade plan's own title is not found as a view (the stroke or
+the words differ), which costs nothing while the sheet has one plan and would cost the plan if it
+had two; views stacked with no title between them.
+
+WHAT THE CHECK COVERS (`ASheetIsItsViewsTests`, 8; `ATaggedSheetsSecondChanceNeverTakesAnotherBuildingsStorey`):
+two titled plans found from their words and the stroke under them, the stroke running past the
+words; the columns, walls, slabs and lines above each going to it with the face-line and slab-edge
+indices remapped; a vertical axis to the view it crosses and a horizontal one to both; one title or
+none staying one part; a notes heading, a key plan, the title block's title and a double stroke not
+making views; a title with no stroke not a view; plans stacked one above the other split by the
+drop; a view without a building taking the sheet's; the view file's name; a tagged sheet refused
+another building's storey. WHAT IT DOES NOT: a real sheet's titles (the builds above); a title
+whose words the extractor put on two baselines; what is drawn under no title at all; a sheet whose
+two views share one building tag in the title block but differ in the titles.

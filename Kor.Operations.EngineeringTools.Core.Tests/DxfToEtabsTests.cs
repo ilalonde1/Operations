@@ -405,6 +405,22 @@ public class PlanSheetNamingTests
         Assert.Equal(new[] { "B-LEVEL 29" }, PlanSheetNaming.MatchStories(sheet, stories));
     }
 
+    [Fact]
+    public void ATaggedSheetsSecondChanceNeverTakesAnotherBuildingsStorey()
+    {
+        // the levels the drawings state (intake step 25): L4-L14 shared, and tower C's own C-L4 to
+        // C-L9 named for it. A BLDG A plan for levels 4 to 14 has no A-prefixed storey to land on,
+        // so it takes the shared ones by number — and must not take tower C's by number too, which
+        // is what put tower A's floors on C-L4 to C-L9 (31168, 2026-09-09)
+        var sheet = PlanSheetNaming.Parse("S2.20.1_1_BLDG A LEVEL 3 AND LEVEL - 4 (L4-L14) PLAN CONCRETE - OUTLINE.dxf");
+        var stories = new[] { "L14", "L13", "L12", "L11", "L10", "L9", "C-L9", "L8", "C-L8", "L7", "C-L7", "L6", "C-L6", "L5", "C-L5", "L4", "C-L4", "L3", "C-L3" };
+
+        var matched = PlanSheetNaming.MatchStories(sheet, stories);
+        Assert.DoesNotContain(matched, s => s.StartsWith("C-", StringComparison.Ordinal));
+        Assert.Contains("L4", matched);
+        Assert.Contains("L14", matched);
+    }
+
     /// <summary>
     /// The tower A plans at the top of 31168, with the model's real storey names around them.
     ///

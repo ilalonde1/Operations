@@ -311,6 +311,10 @@ public static partial class PlanSheetNaming
             foreach (string story in storyNames)
             {
                 if (IsMezzanineName(story) != sheet.IsMezzanine) continue;
+                // shared and unprefixed, or its own building's — never another building's: once
+                // the levels file named C-L4 to C-L9 (intake step 25), a BLDG A plan's second
+                // chance took them by number and tower C's storeys carried tower A's floors
+                if (NamedForAnotherBuilding(story, sheet.BuildingTags)) continue;
 
                 var parkade = Vocabulary.ParkadeStory.Match(story);
                 if (parkade.Success)
@@ -456,6 +460,18 @@ public static partial class PlanSheetNaming
         }
         return sb.ToString().Trim();
     }
+
+    /// <summary>A storey named for a building ("B-LEVEL 27", "C-L4") that is none of the sheet's.</summary>
+    private static bool NamedForAnotherBuilding(string storyName, IReadOnlyList<string> buildingTags)
+    {
+        var m = BuildingPrefix.Match(storyName.TrimStart());
+        if (!m.Success) return false;
+        string tag = m.Groups[1].Value;
+        return !buildingTags.Any(t => string.Equals(t, tag, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static readonly System.Text.RegularExpressions.Regex BuildingPrefix =
+        new(@"^([A-Z]{1,2})-(?:LEVEL|LVL|LEV|L)\s*\d", System.Text.RegularExpressions.RegexOptions.Compiled | System.Text.RegularExpressions.RegexOptions.IgnoreCase);
 
     private static bool StoryBelongsToBuilding(string storyName, string buildingTag)
     {
