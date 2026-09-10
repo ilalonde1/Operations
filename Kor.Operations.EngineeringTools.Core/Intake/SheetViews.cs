@@ -126,12 +126,12 @@ public static class SheetViews
     /// millimetres are to the page's points (the scale denominator times a point in millimetres).
     /// </summary>
     public static IReadOnlyList<Part> Split(ExtractedGeometry geometry, IReadOnlyList<View> views, double mmPerPt,
-        string? sheetNumber, IReadOnlyDictionary<string, string> titleBlock, string fallbackStem)
+        string? sheetNumber, IReadOnlyDictionary<string, string> titleBlock, string fallbackStem, string? sheetDxfName = null)
     {
         ArgumentNullException.ThrowIfNull(geometry);
         ArgumentNullException.ThrowIfNull(views);
         if (views.Count < 2 || mmPerPt <= 0)
-            return new[] { new Part(views.Count == 1 ? views[0] : null, SheetDxfName.For(sheetNumber, titleBlock, fallbackStem), geometry) };
+            return new[] { new Part(views.Count == 1 ? views[0] : null, sheetDxfName ?? SheetDxfName.For(sheetNumber, titleBlock, fallbackStem), geometry) };
 
         // which view each thing belongs to: the title nearest below it — by the drop to the title
         // plus how far the thing sits outside the title's own span across. Plans side by side share
@@ -266,9 +266,10 @@ public static class SheetViews
     public static IReadOnlyList<Part> Parts(SheetRecord record, string fallbackStem)
     {
         ArgumentNullException.ThrowIfNull(record);
-        var views = WithTheSheetsBuilding(Titles(record.Content), SheetDxfName.For(record, fallbackStem));
+        string sheetName = SheetDxfName.For(record, fallbackStem);
+        var views = WithTheSheetsBuilding(Titles(record.Content), sheetName);
         double mmPerPt = record.ScaleDenominator.GetValueOrDefault() * PdfToSafeConstants.PointsToMm;
-        return Split(record.Geometry, views, mmPerPt, record.SheetNumber, record.TitleBlock, fallbackStem);
+        return Split(record.Geometry, views, mmPerPt, record.SheetNumber, record.TitleBlock, fallbackStem, sheetName);
     }
 
     /// <summary>

@@ -16,7 +16,38 @@ public static class SheetDxfName
     public static string For(SheetRecord record, string fallbackStem)
     {
         ArgumentNullException.ThrowIfNull(record);
-        return For(record.SheetNumber, record.TitleBlock, fallbackStem);
+        return For(record.SheetNumber, record.TitleBlock, fallbackStem, record.BookmarkTitle);
+    }
+
+    /// <summary>
+    /// A SHEET'S TITLE IS WHICHEVER OF ITS STATEMENTS NAMES A LEVEL (intake step 30). A set states a
+    /// sheet's title up to three ways — the title block's field, the PDF's own bookmark, the title
+    /// text on the page — and the storey reader already falls through them in that order. The namer
+    /// took the title block's field alone, and on the architect's set for 31170 (Vectorworks) that
+    /// field reads "-" while the bookmark reads "A101-LEVEL P1 PLAN": every plan reached the model
+    /// as "A101_1_-.dxf", a sheet of no storey, and the whole job built nothing. The bookmark's own
+    /// leading sheet number is dropped so the name is not "A101_1_A101-LEVEL P1 PLAN".
+    /// </summary>
+    public static string For(string? sheetNumber, IReadOnlyDictionary<string, string> titleBlock, string fallbackStem, string? bookmarkTitle)
+    {
+        ArgumentNullException.ThrowIfNull(titleBlock);
+        string? number = string.IsNullOrWhiteSpace(sheetNumber) ? Field(titleBlock, "SHEET NUMBER", "SHEET NO") : sheetNumber.Trim();
+        string? field = Field(titleBlock, "SHEET TITLE", "DRAWING TITLE");
+        string? bookmark = string.IsNullOrWhiteSpace(bookmarkTitle) ? null : bookmarkTitle.Trim();
+        if (bookmark is not null && number is not null && bookmark.StartsWith(number, StringComparison.OrdinalIgnoreCase))
+            bookmark = bookmark[number.Length..].TrimStart(' ', '-', '–', ':', '_').Trim();
+        if (string.IsNullOrWhiteSpace(bookmark)) bookmark = null;
+
+        bool NamesALevel(string? t)
+        {
+            if (t is null || number is null) return false;
+            var info = Dxf.PlanSheetNaming.Parse($"{number}_1_{t}.dxf");
+            return info.Levels.Count > 0 || info.ParkadeLevels.Count > 0 || info.IsRoof || info.IsFoundation;
+        }
+
+        string? title = NamesALevel(field) ? field : NamesALevel(bookmark) ? bookmark : field ?? bookmark;
+        if (title is not null && title.Trim().Trim('-', '–').Length == 0) title = bookmark;
+        return (number is null || title is null ? fallbackStem : Sanitise($"{number}_1_{title}")) + ".dxf";
     }
 
     /// <summary>The same, from the sheet number the record read and the title block's fields.</summary>

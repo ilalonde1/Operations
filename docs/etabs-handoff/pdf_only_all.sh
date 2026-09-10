@@ -3,7 +3,9 @@
 cd "C:/VIsual Studio Projects/Operations" || exit 1
 H="$LOCALAPPDATA/Temp/kor-drawings/harness"; S="$LOCALAPPDATA/Temp/kor-drawings/stickfiles"
 CLI=Kor.Operations.EngineeringTools.TakeoffCli/bin/Debug/net8.0/takeoff.exe
-for spec in "31130-01 96" "31138-01 96" "31065-01 100" "31202-01 96" "31168-01 96"; do
+# 31170-01-arch is the ARCHITECT's set (Vectorworks), not a KOR stick file: the sixth job since 2026-09-10,
+# and the only one from another office. What it reads with no code change is the measure of the tool.
+for spec in "31130-01 96" "31138-01 96" "31065-01 100" "31202-01 96" "31168-01 96" "31170-01-arch 96"; do
   set -- $spec; job=$1; scale=$2
   E="$H/pdf-only-$job"; rm -rf "$E"; mkdir -p "$E/dxf"
   "$CLI" pdf-takeoff "$S/$job.pdf" "$E/dxf/$job.dxf" --pages 1-$(python -c "import pypdf,sys; print(len(pypdf.PdfReader(sys.argv[1]).pages))" "$S/$job.pdf" 2>/dev/null || echo 80) --scale $scale --kor-layers > "$E/takeoff.txt" 2>&1

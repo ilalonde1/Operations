@@ -46,4 +46,36 @@ public sealed class ASheetFromTheStickFileIsNamedLikeAViewTests
     {
         Assert.Equal("S2.01_1_LEVEL 3 4 PLAN.dxf", SheetDxfName.For("S2.01", Block(("SHEET TITLE", "LEVEL 3/4  PLAN")), "x"));
     }
+
+    // ---------------------------------------------------------------------------------------
+    // A sheet's title is whichever of its statements names a level (intake step 30)
+    // ---------------------------------------------------------------------------------------
+
+    /// <summary>
+    /// The architect's title block field reads "-" and the PDF's bookmark reads "A101-LEVEL P1
+    /// PLAN": the bookmark names the level, so it is the title, with its own sheet number dropped.
+    /// 31170's set, and 31202's — both built nothing while the field alone was read.
+    /// </summary>
+    [Fact]
+    public void TheBookmarkNamesTheSheetWhenTheTitleBlockDoesNot()
+    {
+        Assert.Equal("A101_1_LEVEL P1 PLAN.dxf", SheetDxfName.For("A101", Block(("SHEET TITLE", "-")), "x", "A101-LEVEL P1 PLAN"));
+        Assert.Equal("A203_1_LEVEL 2 SLAB PLAN.dxf", SheetDxfName.For("A203", Block(), "x", "A203 - LEVEL 2 SLAB PLAN"));
+    }
+
+    /// <summary>And where the title block's field names the level itself, it is kept over the bookmark, as before.</summary>
+    [Fact]
+    public void TheTitleBlocksFieldIsKeptWhenItNamesTheLevel()
+    {
+        Assert.Equal("S2.01_1_LEVEL P3 PLAN.dxf", SheetDxfName.For("S2.01", Block(("SHEET TITLE", "LEVEL P3 PLAN")), "x", "S2.01 - something else"));
+    }
+
+    /// <summary>Neither names a level: the field is still preferred, then the bookmark, then the fallback.</summary>
+    [Fact]
+    public void WithNoLevelInEitherTheFieldThenTheBookmarkThenTheFallback()
+    {
+        Assert.Equal("A000_1_COVER.dxf", SheetDxfName.For("A000", Block(("SHEET TITLE", "COVER")), "x", "A000-GENERAL"));
+        Assert.Equal("A000_1_GENERAL.dxf", SheetDxfName.For("A000", Block(), "x", "A000-GENERAL"));
+        Assert.Equal("x.dxf", SheetDxfName.For("A000", Block(), "x", null));
+    }
 }

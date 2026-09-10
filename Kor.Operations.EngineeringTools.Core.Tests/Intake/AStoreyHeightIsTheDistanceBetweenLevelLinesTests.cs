@@ -115,4 +115,56 @@ public sealed class AStoreyHeightIsTheDistanceBetweenLevelLinesTests
         Assert.Equal(2, storeys.Count);
         Assert.DoesNotContain(storeys, s => s.Level == "L9");
     }
+
+    // ---------------------------------------------------------------------------------------
+    // The words a drawing names a level with are a vocabulary (intake step 30)
+    // ---------------------------------------------------------------------------------------
+
+    /// <summary>
+    /// An architect's ladder: "Top of Slab-L5" as three words on one baseline with the level glued to
+    /// the last, the feet and metres under it — 31170's Vectorworks set, which read 0 of 11 elevation
+    /// sheets while the reader looked for the one word LEVEL.
+    /// </summary>
+    [Fact]
+    public void TopOfSlabWithTheLevelGluedOnIsALevelLabel()
+    {
+        var words = new List<TT>();
+        foreach (var (level, y) in new[] { ("L3", 1000.0), ("L2", 900.0), ("L1", 700.0) })
+        {
+            words.Add(Tok("Top", 160, y)); words.Add(Tok("of", 184, y)); words.Add(Tok($"Slab-{level}", 208, y));
+            words.Add(Tok("281.96'", 200, y + 15)); words.Add(Tok("85.94m", 200, y + 29));   // the geodetic height, not the level
+        }
+        var storeys = StoreyLadder.Read(new PC(1, W, H, words, new List<GP>()), "1/8\" = 1'-0\"");
+        Assert.Equal(2, storeys.Count);
+        Assert.Equal("L3", storeys[0].Level); Assert.Equal("L2", storeys[0].LevelBelow);
+        Assert.Equal(3387, storeys[0].HeightMm, 0);
+        Assert.Equal("L2", storeys[1].Level); Assert.Equal("L1", storeys[1].LevelBelow);
+    }
+
+    /// <summary>The same ladder written T.O. SLAB with a space before the level, and a parkade level in it.</summary>
+    [Fact]
+    public void AnyPhraseFromTheVocabularyNamesALevel()
+    {
+        var words = new List<TT>();
+        foreach (var (level, y) in new[] { ("2", 1000.0), ("1", 900.0), ("P1", 700.0) })
+        {
+            words.Add(Tok("T.O.", 160, y)); words.Add(Tok("SLAB", 184, y)); words.Add(Tok(level, 215, y));
+        }
+        var storeys = StoreyLadder.Read(new PC(1, W, H, words, new List<GP>()), "1 : 100");
+        Assert.Equal(2, storeys.Count);
+        Assert.Equal("L2", storeys[0].Level);
+        Assert.Equal("P1", storeys[1].LevelBelow);
+    }
+
+    /// <summary>A word that is not in the vocabulary names nothing: "SLAB" alone, or "TOP OF" something else.</summary>
+    [Fact]
+    public void AWordOutsideTheVocabularyIsNotALevel()
+    {
+        var words = new List<TT>();
+        foreach (var (level, y) in new[] { ("3", 1000.0), ("2", 900.0), ("1", 700.0) })
+        {
+            words.Add(Tok("TOP", 160, y)); words.Add(Tok("OF", 184, y)); words.Add(Tok("WALL", 208, y)); words.Add(Tok(level, 235, y));
+        }
+        Assert.Empty(StoreyLadder.Read(new PC(1, W, H, words, new List<GP>()), "1 : 100"));
+    }
 }

@@ -5,14 +5,14 @@ specific about what has been MEASURED versus what is assumed, because most of th
 this pipeline has come from re-deriving things that were already measured, or trusting things that
 were never checked.
 
-Last brought up to date 2026-09-09, after intake step 27. The earlier "READ THIS FIRST — there is
+Last brought up to date 2026-09-10, after intake step 30. The earlier "READ THIS FIRST — there is
 uncommitted work" section is gone because the work is committed (c707ec5b, 5199f091, and the commit
 that carries this edit); its regression story is kept below under "What went wrong before", because
 the lesson is the point.
 
 ---
 
-## THE JOB IN FRONT OF YOU (2026-09-10, after intake step 28)
+## THE JOB IN FRONT OF YOU (2026-09-10, after intake step 30)
 
 Everything below this section is the pipeline as a whole and is still true. This section is the
 work actually in progress, and it is where you start.
@@ -23,13 +23,14 @@ gets the columns, the parkade plates and (since step 28) the tower plates close 
 route's answer, on 36 of 62 storeys.
 
 **Read, in this order, and stop.** `CLAUDE.md` (twelve rules, gates not advice), then
-`docs/PdfIntake.md` **§0 START HERE**, then its §30, then its last three step sections (§36, §37,
-§38). That is about seventy lines of state plus three rules. Sections 1 to 29 of that document are
+`docs/PdfIntake.md` **§0 START HERE**, then its §30, then its last three step sections (§37, §38,
+§39). That is about seventy lines of state plus three rules. Sections 1 to 29 of that document are
 the record of how each earlier rule was arrived at; read one only when you are changing that rule.
 Do not read the whole document to begin work.
 
-**The data is local already.** `%LOCALAPPDATA%\Temp\kor-drawings\stickfiles` holds five PDF sets
-(31065, 31130, 31138, 31168, 31202). `...\kor-drawings\harness` holds one output folder per job,
+**The data is local already.** `%LOCALAPPDATA%\Temp\kor-drawings\stickfiles` holds six PDF sets
+(31065, 31130, 31138, 31168, 31202, and `31170-01-arch`, the ARCHITECT's set — the only one from
+another office, and since step 30 the measure of whether a rule is universal). `...\kor-drawings\harness` holds one output folder per job,
 the banked `.e2k` baselines named for the step that produced them (`pdf-only-<job>-01-s28.e2k` is
 the most recent), and `revit-31168\out.e2k`, the Revit route's answer for the same building. That
 last file is the only yardstick in the harness that is not our own output. Nothing here is read
@@ -37,11 +38,14 @@ over SMB or the VPN, and it must stay that way.
 
 **One command measures every deliverable.**
 
-      bash docs/etabs-handoff/pdf_only_all.sh                      # all five jobs from PDFs, ~4 min
+      bash docs/etabs-handoff/pdf_only_all.sh                      # all six jobs from PDFs, ~8 min
       python docs/etabs-handoff/plate_diff.py <banked.e2k> <new.e2k> mm    # which storey's plate moved
       python docs/etabs-handoff/storey_counts.py <a.e2k> <b.e2k>           # columns and walls per storey
 
-A change measured on one job has not been measured. Run all five, before and after.
+A change measured on one job has not been measured. Run all six, before and after — and the one that
+decides whether a rule is universal is 31170, the only set from another office. Steps 28 and 29
+were called universal and moved only 31168; step 30 moved 31170 and 31202 and left the other four
+byte-identical. That is the shape to look for.
 
 **Look at the drawing, do not count its lines.** `takeoff pdf-overlay <pdf> <page> <out.png>
 --scale 96 --dpi 200 [--walls]` paints what the reader saw back onto the sheet, and
@@ -76,7 +80,15 @@ POLYLINE/VERTEX — it silently said "0 segment(s)" on every PDF-route DXF until
 `plan_sheet.py` (every storey on one sheet), `plate_diff.py`, `storey_counts.py`. All in
 `docs/etabs-handoff/`. Anything you work out with a throwaway script belongs here afterwards.
 
-**The open list, largest first.** Each is one universal rule, measured on all five sets:
+**What the tool is, so nobody tunes it to a job again.** ONE ingestion point — `DrawingIntake.ReadSheet`
+reads every sheet of a set once into a `SheetRecord` and accounts for every path and word — feeding
+SEVERAL outlets: DXF→ETABS `.e2k`, the inventory ledger, the schedule reads, the reissue diff
+(`set-diff`), the markup reconciliation, the set self-check. What is shallow is the plan-geometry
+reader, not the shape. "Finished" is a contract, not a floor count: a set from an office we have
+never seen builds a model with no code change, and every sheet it cannot read says why. On
+2026-09-10 the first such set built a model after two vocabulary rules (step 30).
+
+**The open list, largest first.** Each is one universal rule, measured on all six sets:
 
 1. **Finish or abandon the boundary walk** (§38) — STASHED, not committed: worth +13 storeys
    (36 → 49 of 62) but it turned `Langara31168ParkadePlansBuildOnTheReferencesGridByName` red and
@@ -96,8 +108,9 @@ POLYLINE/VERTEX — it silently said "0 segment(s)" on every PDF-route DXF until
    corner block explained A's L15–26 and it did not, which is how that generalisation was caught.
    ⛔ Within step 29, walking only the biggest piece by node count traced the CORE, and flipping
    the walk's handedness changed nothing at all — both measured, neither to be retried.
-4. **31202 places 0 of its 34 sheets.** A whole job produces an empty model. Not characterised yet;
-   the title block is the suspect.
+4. **31202 — CLOSED by step 30** (was 0 of 34 sheets; now 12 placed, 13 storeys, 1,164 columns).
+   Not yet rendered. **31170's P1** is wrong (22 overlapping plates, no columns); its 49 room-sized
+   plates are item 2 at full strength.
 5. **Tower walls: 33 a storey against Revit's 40.**
 6. **The storey-rise convention.** The top storeys sit one level off the Revit route's.
 7. **Mezzanine levels** are read as storeys but never placed.

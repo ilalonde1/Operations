@@ -79,6 +79,79 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
         /// <summary>A level label with a building in front of it: "B-LEVEL", "A-LEVEL". The letters are the building.</summary>
         private static readonly Regex BuildingLevelToken = new(@"^([A-Z]{1,2})-(LEVEL|LVL|LEV)$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
+        /// <summary>
+        /// THE WORDS A DRAWING NAMES A LEVEL WITH (intake step 30). KOR's own elevations write
+        /// "LEVEL 5"; the architect's set for 31170 (Vectorworks, 2026-09-10) writes "Top of Slab-L5"
+        /// down every section and elevation, with the geodetic height in feet and metres under it —
+        /// the cleanest storey ladder yet seen, and this reader found none of it because it looked
+        /// for the one word LEVEL. Every new practice will bring its own phrase, so the phrase is a
+        /// vocabulary: these are the compiled defaults, true of drawings generally, and the
+        /// KorStandards row <c>dxf.level.label-words</c> extends them without a build.
+        ///
+        /// A phrase is matched against the words to a token's LEFT on its own baseline, so
+        /// "Top of Slab" is found from its last word; and the value may be glued to the phrase with a
+        /// dash ("Slab-L5" is the phrase TOP OF SLAB and the level L5).
+        /// </summary>
+        public static readonly IReadOnlyList<string> DefaultLevelLabelWords =
+        [
+            "LEVEL", "LVL", "LEV",
+            "TOP OF SLAB", "T.O. SLAB", "T.O.SLAB", "T/O SLAB", "TO SLAB", "T.O.S.", "TOS",
+            "TOP OF CONCRETE", "T.O. CONCRETE", "T/O CONCRETE", "T.O.C.",
+            "FIN. FLOOR", "FINISHED FLOOR", "F.F.L.", "FFL",
+        ];
+
+        /// <summary>Words on one baseline closer than this are one phrase (a space, not a column gap).</summary>
+        private const double PhraseGapPts = 14.0;
+
+        /// <summary>
+        /// The level label a token ends, if it ends one: the phrase from the vocabulary that the token
+        /// and the words to its left on the same baseline spell, and the level value glued to it if any.
+        /// Null when the token is not the end of a level phrase.
+        /// </summary>
+        internal static (string Phrase, string? GluedValue, string? Building)? LevelPhraseEndingAt(
+            VectorPageReader.PageContent page, VectorPageReader.TextToken token, IReadOnlyList<string> labelWords)
+        {
+            // the words to the left on this baseline, nearest first, each within a space of the one
+            // after it — a phrase is a chain of neighbours, not everything within reach of its last word
+            var left = new List<VectorPageReader.TextToken>();
+            double edge = token.MinX;
+            foreach (var w in page.Words
+                         .Where(w => Math.Abs(w.Cy - token.Cy) <= 3 && w.MaxX <= token.MinX + 1)
+                         .OrderByDescending(w => w.MaxX))
+            {
+                if (edge - w.MaxX > PhraseGapPts) break;
+                left.Add(w);
+                edge = w.MinX;
+                if (left.Count == 3) break;
+            }
+
+            // split a glued value off the token: "Slab-L5" → "Slab", "L5"; "LEVEL-3" → "LEVEL", "3"
+            string last = token.Text.Trim();
+            string? glued = null;
+            int dash = last.LastIndexOfAny(['-', '–', ':']);
+            if (dash > 0 && dash < last.Length - 1 && LevelShaped.IsMatch(last[(dash + 1)..]))
+            {
+                glued = last[(dash + 1)..];
+                last = last[..dash];
+            }
+
+            // try the token alone, then with one, two, three words to its left
+            var words = new List<string> { last };
+            for (int take = 0; take <= left.Count; take++)
+            {
+                if (take > 0) words.Insert(0, left[take - 1].Text.Trim());
+                string phrase = Regex.Replace(string.Join(" ", words), @"\s+", " ").Trim();
+                string bare = phrase;
+                string? building = null;
+                var b = Regex.Match(phrase, @"^([A-Z]{1,2})-(.+)$", RegexOptions.IgnoreCase);
+                if (b.Success) { building = b.Groups[1].Value.ToUpperInvariant(); bare = b.Groups[2].Value; }
+                foreach (var lw in labelWords)
+                    if (string.Equals(bare, lw, StringComparison.OrdinalIgnoreCase))
+                        return (lw.ToUpperInvariant(), glued, building);
+            }
+            return null;
+        }
+
         /// <summary>Level labels within this of one x are one column of the ladder, in points.</summary>
         public const double LadderColumnPts = 12.0;
 
@@ -93,21 +166,32 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
         /// than a ladder needs is a caption, not a strip.
         /// </summary>
         public static IReadOnlyList<IReadOnlyList<LevelRow>> ReadLevelLadders(VectorPageReader.PageContent page, int minRows = 3)
+            => ReadLevelLadders(page, minRows, DefaultLevelLabelWords);
+
+        /// <summary>As above, with the words a level is named by (step 30): the compiled defaults, or the KorStandards row.</summary>
+        public static IReadOnlyList<IReadOnlyList<LevelRow>> ReadLevelLadders(VectorPageReader.PageContent page, int minRows, IReadOnlyList<string> labelWords)
         {
             ArgumentNullException.ThrowIfNull(page);
+            ArgumentNullException.ThrowIfNull(labelWords);
 
-            var levelTokens = page.Words
-                .Where(w => string.Equals(w.Text, "LEVEL", StringComparison.OrdinalIgnoreCase) || BuildingLevelToken.IsMatch(w.Text.Trim()))
-                .OrderBy(w => w.Cx)
-                .ToList();
+            // a level label is any word that ENDS a phrase from the vocabulary: LEVEL, B-LEVEL, the
+            // "Slab" of "Top of Slab-L5". The label's position is that last word's.
+            var levelTokens = new List<LevelLabel>();
+            foreach (var w in page.Words)
+            {
+                var hit = LevelPhraseEndingAt(page, w, labelWords);
+                if (hit is null) continue;
+                levelTokens.Add(new LevelLabel(w, hit.Value.GluedValue, hit.Value.Building));
+            }
+            levelTokens = levelTokens.OrderBy(l => l.Token.Cx).ToList();
             if (levelTokens.Count == 0) return Array.Empty<IReadOnlyList<LevelRow>>();
 
             // columns: labels within LadderColumnPts of the column's first label, left to right
-            var columns = new List<List<VectorPageReader.TextToken>>();
+            var columns = new List<List<LevelLabel>>();
             foreach (var t in levelTokens)
             {
-                if (columns.Count > 0 && Math.Abs(t.Cx - columns[^1][0].Cx) <= LadderColumnPts) columns[^1].Add(t);
-                else columns.Add(new List<VectorPageReader.TextToken> { t });
+                if (columns.Count > 0 && Math.Abs(t.Token.Cx - columns[^1][0].Token.Cx) <= LadderColumnPts) columns[^1].Add(t);
+                else columns.Add(new List<LevelLabel> { t });
             }
 
             var ladders = new List<IReadOnlyList<LevelRow>>();
@@ -119,12 +203,27 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             return ladders;
         }
 
+        /// <summary>A level label as found: the word that ends its phrase, a value glued to it, and the building in front of it.</summary>
+        internal readonly record struct LevelLabel(VectorPageReader.TextToken Token, string? GluedValue, string? Building);
+
         /// <summary>The ladder one column of level labels makes: each label paired with its level, one row per line, top to bottom.</summary>
         private static List<LevelRow> LadderAt(VectorPageReader.PageContent page, IReadOnlyList<VectorPageReader.TextToken> labels)
+            => LadderAt(page, labels.Select(t => new LevelLabel(t, null, BuildingLevelToken.Match(t.Text.Trim()) is { Success: true } m ? m.Groups[1].Value.ToUpperInvariant() : null)).ToList());
+
+        private static List<LevelRow> LadderAt(VectorPageReader.PageContent page, IReadOnlyList<LevelLabel> labels)
         {
             var rows = new List<LevelRow>();
-            foreach (var lt in labels)
+            foreach (var label in labels)
             {
+                var lt = label.Token;
+                // a value glued to the phrase is the level: "Top of Slab-L5" needs no word to its right
+                if (label.GluedValue is string gluedValue)
+                {
+                    string gluedPrefix = label.Building is null ? "" : label.Building + "-";
+                    string gluedRaw = $"{gluedPrefix}LEVEL {gluedValue}";
+                    rows.Add(new LevelRow(gluedRaw, ScheduleTakeoff.NormalizeLevel(gluedRaw), lt.Cy));
+                    continue;
+                }
                 // The level value is the token just to the right: on the label's own baseline before the
                 // line wrapped under it, a level-shaped token (22, P2, L0/P1, 1M) before a word, then the
                 // nearest. Nearest alone read "LEVEL 1 - CONCRETE" as a level named CONCRETE and
@@ -138,8 +237,7 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                     .FirstOrDefault();
 
                 // a label "B-LEVEL" names building B's level: the building rides with the name
-                var building = BuildingLevelToken.Match(lt.Text.Trim());
-                string prefix = building.Success ? building.Groups[1].Value.ToUpperInvariant() + "-" : "";
+                string prefix = label.Building is null ? "" : label.Building + "-";
                 // and the level is the level-shaped start of its token: "12-TN" on 31065's south
                 // tower elevations is level 12 with the view's tag glued on, not a level named 12-TN
                 if (num is not null && !LevelShaped.IsMatch(num.Trim()))

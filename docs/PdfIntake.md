@@ -1,19 +1,20 @@
 # PDF intake — what it does today, and what it leaves on the page
 
-## 0. START HERE (state as of 2026-09-10, after step 28)
+## 0. START HERE (state as of 2026-09-10, after step 30)
 
 A session picking this up cold reads this section, then §30 (what the PDF alone gives), then the
-last three step sections (§36, §37, §38). It does not need to read §1–§29 to work; those are the record of how each
+last three step sections (§37, §38, §39). It does not need to read §1–§29 to work; those are the record of how each
 rule was arrived at, and are read when a rule is being changed.
 
-**Where the data is.** `%LOCALAPPDATA%\Temp\kor-drawings\stickfiles` holds the five PDFs (31065,
-31130, 31138, 31168, 31202). `...\kor-drawings\harness` holds one folder per job, the banked `.e2k`
+**Where the data is.** `%LOCALAPPDATA%\Temp\kor-drawings\stickfiles` holds the six PDFs (31065,
+31130, 31138, 31168, 31202, and `31170-01-arch` — the ARCHITECT's set for 31170, the only one from
+another office and the measure of whether a rule is universal). `...\kor-drawings\harness` holds one folder per job, the banked `.e2k`
 baselines named for the step that produced them (`pdf-only-<job>-01-s28.e2k` is the most recent), and
 `revit-31168\out.e2k`, which is the Revit route's answer for the same building and the only yardstick
 that is not our own output. Nothing here is read over SMB.
 
 **The one command that measures every deliverable.** `bash docs/etabs-handoff/pdf_only_all.sh`
-rebuilds all five jobs from their PDFs alone, about 4 minutes. Then
+rebuilds all six jobs from their PDFs alone, about 8 minutes. Then
 `python docs/etabs-handoff/plate_diff.py <banked.e2k> <new.e2k> mm` for each job says which storey's
 plate moved, and the scratchpad's `storey_counts.py` compares columns and walls per storey against
 Revit. A change that is not run through all five has not been measured.
@@ -72,8 +73,10 @@ is kept:
    (12 storeys), C's L5–L8 (4), the three L1 sheets (3), C's L3, A's L35, B's L28, B's L37.
    **Fourteen of them have never been rendered and looked at**, which is the next thing to do and
    is bounded work — not another rule.
-3. **31202 places 0 of 34 sheets.** A whole job produces an empty model. Not yet characterised —
-   the title block is the suspect, and it is one job's worth of evidence, so it may be quick.
+3. **31202 — was 0 of 34 sheets, CLOSED by step 30's title rule (§39): 12 placed, 13 storeys,
+   1,164 columns.** Not yet rendered or checked against anything; that is its next step.
+   **31170's P1** (§39): 22 overlapping plates, no columns, 311 "columns" read off the plan —
+   parking stalls, at a guess. And 31170's 49 room-sized plates are item 2 at full strength.
 4. **Tower walls, 33 a storey against Revit's 40.**
 5. **The storey-rise convention.** The top storeys sit one level off the Revit route's.
 6. **Mezzanine levels** are read as storeys but not placed.
@@ -1799,3 +1802,82 @@ the areas on any real sheet, which only the build's own count against Revit show
 `view_breaks.py` (a contact sheet of every failing view with its open ends ringed), and
 `view_parts.py` (a view's wall panels as objects). `chains.py` was reading LINE and LWPOLYLINE only,
 so it answered "0 segment(s)" on every DXF the PDF route writes; it reads POLYLINE/VERTEX now.
+
+## 39. Step 30, done 2026-09-10: the words a drawing names a level with are a vocabulary — and the first set from another office
+
+Ian, 2026-09-10: *"I want to make sure you haven't lost sight of what we're trying to do here with
+one ingestion point and multiple outlets. Are you doing this the most efficient professional way?
+How close are we to finishing? And finishing does not mean 47 of 69 floors."* The honest answer
+was that steps 28 and 29 had moved only 31168 — the four other sets were byte-identical both
+times — so the tool was being tuned to one job, whatever the rules were called. The right test
+was a set it had never seen. He gave one: **the architect's 75% BP set for 31170** (2005–2045 West
+49th, Vectorworks, 67 pages) — not a KOR stick file, the drawings that arrive *before* any
+structural model exists, which is the case the PDF-only route is for.
+
+**Run untouched, it read the hard part and failed on two phrases.** 67 of 67 sheets numbered,
+titled and typed (49 plans, 6 schedules, 11 sections/elevations); scale on 60 of 67; plan
+geometry on all 16 plan sheets — 56–57 columns a floor, the same count off the floor plans and
+off the slab plans, which is two independent sheets agreeing. Then: **0 storeys from 11 elevation
+sheets**, and every plan named `A101_1_-.dxf`, a sheet of no storey. No model. Both failures were a
+convention compiled into the binary, which §3 of this document already names as the one recurring
+class.
+
+**Rule one: the words a drawing names a level with are a vocabulary.** The ladder reader
+(`ScheduleGridReader.ReadLevelLadders`) keyed on the literal token LEVEL (or B-LEVEL). The architect
+writes `Top of Slab-L5` down every section and elevation, with `260.50'` and `79.40m` under it and
+`10'-5"` between levels — the cleanest storey ladder in the six sets, and the reader found none of
+it. Now a level label is any word that ENDS a phrase from the vocabulary, matched against the words
+to its left on the same baseline as a chain of neighbours (a space apart, not everything within
+reach), with a level value glued to the phrase by a dash read as the level (`Slab-L5` → L5). The
+compiled defaults are true of drawings generally — LEVEL / LVL / LEV, TOP OF SLAB / T.O. SLAB /
+T/O SLAB / T.O.S. / TOS, TOP OF CONCRETE / T.O.C., FIN. FLOOR / FFL — and the KorStandards row
+`dxf.level.label-words` extends them without a build. ⛔ Not a mutable static: the words are passed
+down, because `PlanSheetNaming.Vocabulary` already cost a day as one (CLAUDE.md).
+
+**Rule two: a sheet's title is whichever of its statements names a level.** A set states a sheet's
+title up to three ways — the title block's field, the PDF's own bookmark, the title text on the
+page — and `SetStoreys` already fell through them in that order. `SheetDxfName.For` took the field
+alone; on this set the field reads `-` and the bookmark reads `A101-LEVEL P1 PLAN`. Now the field is
+kept when it names a level, else the bookmark (its own leading sheet number dropped), else the
+field, the bookmark, the fallback — so a KOR sheet, whose field names the level, is named exactly
+as before.
+
+**Measured on six sets:**
+
+- **31170 (the architect's set): nothing → a model.** 11 of 11 elevation sheets state storeys;
+  9 levels P1, L1–L8, storey heights within 5 mm of the drawing's own metres (L5→L6 3,175 mm
+  against 82.58 − 79.40 = 3.18 m). 49 sheets read, 47 placed, 483 columns (~72 a storey),
+  3,635 walls, and a 32,076 sq ft plate on every storey P1 to L8. **Rendered** (`plan_sheet.py`):
+  the plate is the building's footprint on every floor with the columns inside it and the
+  partitions on top — an architectural plan draws every wall, and that is what the input is.
+- **31202: 0 of 34 sheets placed → 14 read, 12 placed, 13 storeys, 1,164 columns, 374 walls.**
+  Open item 3 in §0 since step 22, "a whole job produces an empty model, the title block is the
+  suspect" — it was rule two: the same convention, the second job. Not yet rendered or checked
+  against anything; that is its next step, and it is a job that had NOTHING.
+- **31065, 31130, 31138, 31168: identical to their step-28 baselines** — 0 of 4 moved a plate;
+  31168's 62 levels byte-identical. Two rules, two jobs changed, four untouched: the shape a
+  universal rule is supposed to have.
+- Core suite 1,241 pass and one red that is **not code**: `Langara31168ParkadePlansBuildOnThe
+  ReferencesGridByName` reads the newest dated 31168 stick file on the share, and
+  `31168-01 - 2026-09-10 - … Stickfile - With Arch.pdf` was issued there today. It was red before
+  any of today's edits (proved with every change stashed). That is a reissue, and the pipeline has
+  a verb for it (`set-diff`); it is named here, not silenced.
+
+**Open, named by the render:** 31170's **P1 is wrong** — 22 overlapping plates, no columns, though
+the P1 plan read 311 "columns" (parking stalls, at a guess: the size window is the only
+discriminator on a sheet with no column schedule, and an architect's set has none). 31170's walls
+are every partition, so which are structural is a downstream question the architect's own WALL
+SCHEDULE (A005) answers by type. And the 49 room-sized plates on 31170 (400–1,800 sq ft, every
+apartment's walls closing a ring) are §37's open item 2, "a ring that is a piece of the floor",
+at full strength: on an architectural plan every room closes.
+
+WHAT THE CHECKS COVER (`AStoreyHeightIsTheDistanceBetweenLevelLinesTests`, +3, and
+`ASheetFromTheStickFileIsNamedLikeAViewTests`, +3): "Top of Slab-L5" as three words with the level
+glued to the last and the geodetic heights under it giving the ladder; "T.O. SLAB 2" as a phrase
+with the level beside it and a parkade level in the ladder; a phrase outside the vocabulary
+("TOP OF WALL") naming nothing; the bookmark naming the sheet when the field reads "-" or is absent,
+with its own number dropped; the field kept over the bookmark when it names the level; and the
+field-then-bookmark-then-fallback order when neither does. WHAT THEY DO NOT: the vocabulary read
+from KorStandards rather than the compiled defaults (the row is not yet seeded — migration to
+follow in KOR.Drafter\db); the real sheets (the six-set build above); a phrase split across two
+baselines; and a level named by a symbol rather than words.
