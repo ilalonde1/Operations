@@ -815,6 +815,12 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         /// Revit's own export gives that storey — 1.3%, the difference being the balcony steps the
         /// drawing rounds off.
         ///
+        /// A wall's face line is offered to the chain too when the wall did not use the whole of it
+        /// (step 28): a wall standing on part of the edge does not remove the edge, and taking a face
+        /// whole was spending a tower floor's whole side on a few metres of balcony band. A face the
+        /// wall runs the full length of stays the wall's, or slanted walls' own faces chain into
+        /// floors that are not there.
+        ///
         /// WHAT IT IS NOT: a fill, a hatch or a flood. Where the drawing's edge does not close, this
         /// finds nothing and the storey keeps having no plate, which the DXF side already reports.
         /// </summary>
@@ -823,13 +829,51 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             result.FirstEdgeSlab = result.Slabs.Count;
             if (result.Lines.Count < 4) return;
 
-            // every line that is not already something: a wall's face is the wall, a match line is
-            // the seam, and both are read
+            // A WALL STANDING ON THE SLAB EDGE DOES NOT REMOVE THE SLAB EDGE (intake step 28). A line
+            // the drafter drew is still that line after a wall has been read from it, and a floor's
+            // edge running along a wall's outer face is the normal case rather than the exception: it
+            // is what the parkade plate already follows (step 22; Andrea, 25 Aug, "it should always
+            // follow the outer edge of the walls").
+            //
+            // Until now a line was spent the moment ANY part of it paired as a face, because a face
+            // is taken whole (see WallsFromFaceLines, where that is deliberate). On a tower plan each
+            // side's slab edge is one long line and a balcony band is drawn a wall's thickness inside
+            // it, so the two pair over a few metres and the whole edge became a "wall": on 31168's
+            // L4-L14 view a 3,633 mm overlap consumed a 21,320 mm north edge and a 4,828 mm overlap
+            // consumed an 18,649 mm west edge, all four sides of the floor disappearing before the
+            // ring builder saw them. That is what left 53 of 62 storeys with no plate, and it is why
+            // three closing heuristics in a row found nothing to close: the edge was already gone.
+            //
+            // SO THE TEST IS WHETHER THE WALL USED THE WHOLE LINE. A face line the wall runs the full
+            // length of is the wall's and nothing else — that is the ordinary case, a wall drawn as
+            // its two sides. A face line with a stretch left over is a longer line the wall stands on
+            // part of, and that stretch is the plan's own. Offering EVERY face line back was measured
+            // 2026-09-10 and invents floors: 31168's LEVEL 2 sheet chained slanted walls' own faces
+            // into a 12,391 sq ft chevron with columns inside it, so the neighbourhood gate passed it,
+            // and one look at the rendered storey showed it was not a floor. The leftover has to be
+            // long enough to be a piece of an edge, which is the bridging pass's own bound
+            // (SlabEdgeChainMinMm), not a new number.
+            //
+            // The line goes to the chain WHOLE, not as its leftover: it is one line the drafter drew,
+            // and a floor's edge runs along the wall standing on it — cutting the wall's stretch out
+            // would leave the ring a hole exactly where the balcony band pairs.
             var candidates = new List<int>();
             for (int i = 0; i < result.Lines.Count; i++)
             {
-                if (result.Lines[i].Count != 2 || result.LineIsAnnotation[i] || result.WallFaceLines.ContainsKey(i)) continue;
+                if (result.Lines[i].Count != 2 || result.LineIsAnnotation[i]) continue;
+                if (result.WallFaceLines.TryGetValue(i, out int wall) && !WallLeftPartOfIt(i, wall)) continue;
                 candidates.Add(i);
+            }
+
+            // whether the wall read from this face line leaves a piece of edge over
+            bool WallLeftPartOfIt(int line, int wall)
+            {
+                if (wall < 0 || wall >= result.Walls.Count) return false;
+                var l = result.Lines[line];
+                double lineLen = Math.Sqrt(Math.Pow(l[1].X - l[0].X, 2) + Math.Pow(l[1].Y - l[0].Y, 2));
+                var w = result.Walls[wall];
+                double wallLen = Math.Sqrt(Math.Pow(w.End.X - w.Start.X, 2) + Math.Pow(w.End.Y - w.Start.Y, 2));
+                return lineLen - wallLen >= SlabEdgeChainMinMm;
             }
             if (candidates.Count < 4) return;
 

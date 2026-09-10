@@ -12,7 +12,7 @@ the lesson is the point.
 
 ---
 
-## THE JOB IN FRONT OF YOU (2026-09-09)
+## THE JOB IN FRONT OF YOU (2026-09-10)
 
 Everything below this section is the pipeline as a whole and is still true. This section is the
 work actually in progress, and it is where you start.
@@ -56,33 +56,50 @@ DXF-to-ETABS code:
 |---|---|---|
 | columns | 2,502 | 2,380 |
 | walls | 1,209 | 1,832 |
-| storeys carrying a plate | 9 of 62 | all |
+| storeys carrying a plate | **36 of 62** | all |
 
-Parkade plates agree closely: P1 77,182 sq ft against Revit's 76,967. Tower storeys have no plate
-at all.
+Parkade plates agree closely: P1 77,182 sq ft against Revit's 76,967. Since step 28 the tower plates
+agree within 0.1% on every storey that carries one.
+
+⚠ **The lesson of step 28, which cost four days across steps 24–27.** The tower slab edge was never
+missing and never needed closing: it is a plain rectangle the drawing draws in three pieces a side,
+and all four sides were being eaten by the wall reader before the ring builder ran, because a face
+line is taken WHOLE and a balcony band pairs with a few metres of it. Three closing heuristics were
+guessed at against a symptom whose cause was already written in this repo's own code comment. One
+rendered view settled it in a glance. **Render first is a gate, not advice** — and the same habit
+caught step 28's own false positive, a 12,391 sq ft chevron on LEVEL 2 that every count called green.
 
 **The open list, largest first.** Each is one universal rule, measured on all five sets:
 
-1. **The tower plate.** 53 of 62 storeys on 31168 have no floor. Their outline is drawn as a
-   "CONCRETE OUTLINE" that steps out round every balcony; on the L4–L14 view the west edge is two
-   5,186 mm pieces 18.6 m apart. Exact closed rings on that sheet: 12. Open chains: 208. Three
-   closing rules have been tried and measured. **Render that view and look at it before writing a
-   fourth.**
-2. **31202 places 0 of its 34 sheets.** A whole job produces an empty model. Not characterised yet;
+1. **A ring that is a piece of the floor rather than the floor.** 31168's LEVEL 2 takes a 4,222 sq ft
+   rectangle where Revit's storey is 48,501 sq ft in three plates; tower C's L5–L8 take a 1,922 sq ft
+   strip of a 14,988 sq ft floor. The gates measure the neighbourhood against the RING's own size, so
+   a small ring in the corner of a big floor passes. A storey with no plate is honest; a 9% plate
+   is not.
+2. **Tower A's L4–L14 and L15–L26 views do not close** while tower B's do — the NE corner piece is
+   drawn 0.8 pt (27 mm) off the middle run, so the pieces meet at a T rather than a corner. 12
+   storeys, and why L4–L14 carry one plate where Revit has two.
+3. **31202 places 0 of its 34 sheets.** A whole job produces an empty model. Not characterised yet;
    the title block is the suspect.
-3. **Tower walls: 33 a storey against Revit's 40.**
-4. **The storey-rise convention.** The top storeys sit one level off the Revit route's.
-5. **Mezzanine levels** are read as storeys but never placed.
-6. **31130's halves** do not join.
-7. **L10 carries 58 columns against Revit's 48.**
-8. **Parkade plan titles are not found as views**, so a parkade sheet is not split the way a tower
+4. **Tower walls: 33 a storey against Revit's 40.**
+5. **The storey-rise convention.** The top storeys sit one level off the Revit route's.
+6. **Mezzanine levels** are read as storeys but never placed.
+7. **31130's halves** do not join.
+8. **L10 carries 58 columns against Revit's 48.**
+9. **Parkade plan titles are not found as views**, so a parkade sheet is not split the way a tower
    sheet is.
+10. **C's floor lands on C-L4** where Revit has it on C-L5 to C-L8; **A-L34 reads 9,326 against
+    Revit's 5,949**, unexplained.
 
 **⛔ Measured and rejected, do not retry.** `DxfFloodFillPlateDetector.RecoverAll` as the fallback
 where no ring closes. Asked for the tower floor it answers with the **core** — 858 sq ft on
 A-L27 to A-L32 against Revit's 9,743 — and it costs the parkades their own plates (P1 77,182 →
 5,536 sq ft). The reason is written in `GeometryFilterService.SlabEdgesFromLoops` where the code
 was, and in `docs/PdfIntake.md` §36. Two other closing heuristics were rejected the same way.
+
+**⛔ And do not offer EVERY wall-face line back to the ring builder** (step 28, §37). It invents
+floors: slanted walls' own faces chained into a 12,391 sq ft chevron on 31168's LEVEL 2. The test is
+whether the wall used the WHOLE line — a face the wall runs the full length of stays the wall's.
 
 **How the work is done here.** One universal rule per step, never a fix aimed at one drawing.
 Banked as a test whose summary states what it covers **and what it does not**. Measured on all five

@@ -1,6 +1,6 @@
 # PDF intake — what it does today, and what it leaves on the page
 
-## 0. START HERE (state as of 2026-09-09, after step 27)
+## 0. START HERE (state as of 2026-09-10, after step 28)
 
 A session picking this up cold reads this section, then §30 (what the PDF alone gives), then the
 last three step sections. It does not need to read §1–§29 to work; those are the record of how each
@@ -8,7 +8,7 @@ rule was arrived at, and are read when a rule is being changed.
 
 **Where the data is.** `%LOCALAPPDATA%\Temp\kor-drawings\stickfiles` holds the five PDFs (31065,
 31130, 31138, 31168, 31202). `...\kor-drawings\harness` holds one folder per job, the banked `.e2k`
-baselines named for the step that produced them (`pdf-only-<job>-01-s26.e2k`), and
+baselines named for the step that produced them (`pdf-only-<job>-01-s28.e2k` is the most recent), and
 `revit-31168\out.e2k`, which is the Revit route's answer for the same building and the only yardstick
 that is not our own output. Nothing here is read over SMB.
 
@@ -30,25 +30,34 @@ DXF-to-ETABS code:
 |---|---|---|
 | columns | 2,502 | 2,380 |
 | walls | 1,209 | 1,832 |
-| storeys with a plate | 9 of 62 | all |
+| storeys with a plate | **36 of 62** | all |
 
-Parkade plates agree closely (P1 77,182 sq ft against Revit's 76,967). The towers have no plate at
-all, and the tower wall count is the other large gap.
+Parkade plates agree closely (P1 77,182 sq ft against Revit's 76,967), and since step 28 the tower
+plates agree within 0.1% on every storey that has one (A-L27 9,753 against 9,743, B-L29 9,735
+against 9,726, C-L4 15,002 against 14,989). The tower wall count is now the largest gap.
 
 **The open list, largest first.** Each is one rule, and each is measured on the five sets before it
 is kept:
 
-1. **The tower plate** (§36). 53 of 62 storeys on 31168 carry no floor. Three closing rules have
-   been tried and measured; the next attempt starts by rendering the L4–L14 view and looking.
-2. **31202 places 0 of 34 sheets.** A whole job produces an empty model. Not yet characterised —
+1. **A ring that is a piece of the floor rather than the floor** (§37). 31168's LEVEL 2 takes a
+   4,222 sq ft rectangle where Revit's storey is 48,501 sq ft in three plates; tower C's L5–L8 take
+   a 1,922 sq ft strip of a 14,988 sq ft floor. The gates measure the neighbourhood against the
+   RING's own size, so a small ring in the corner of a big floor passes. By this document's own
+   standard — *a storey with no plate is honest* — a 9% plate is not.
+2. **Tower A's L4–L14 and L15–L26 views do not close** while tower B's do: the NE corner piece is
+   drawn 0.8 pt (27 mm) off the middle run, so the pieces meet at a T. 12 storeys, and the reason
+   L4–L14 carry one plate where Revit has two.
+3. **31202 places 0 of 34 sheets.** A whole job produces an empty model. Not yet characterised —
    the title block is the suspect, and it is one job's worth of evidence, so it may be quick.
-3. **Tower walls, 33 a storey against Revit's 40.**
-4. **The storey-rise convention.** The top storeys sit one level off the Revit route's.
-5. **Mezzanine levels** are read as storeys but not placed.
-6. **31130's halves** do not join.
-7. **L10 carries 58 columns against Revit's 48.**
-8. **Parkade plan titles are not found as views** (§35's title reader), so a parkade sheet is not
+4. **Tower walls, 33 a storey against Revit's 40.**
+5. **The storey-rise convention.** The top storeys sit one level off the Revit route's.
+6. **Mezzanine levels** are read as storeys but not placed.
+7. **31130's halves** do not join.
+8. **L10 carries 58 columns against Revit's 48.**
+9. **Parkade plan titles are not found as views** (§35's title reader), so a parkade sheet is not
    split the way a tower sheet is.
+10. **C's floor lands on C-L4** where Revit has it on C-L5 to C-L8; **A-L34 reads 9,326 against
+    Revit's 5,949**, unexplained.
 
 **The working rule for all of them.** One universal rule per step, never a fix for one drawing;
 banked as a test that states what it covers AND what it does not; measured on all five sets before
@@ -1599,3 +1608,95 @@ PDF-only route: 53 of 62 storeys on 31168 carry no floor. The next attempt does 
 another closing heuristic. It starts by rendering the L4–L14 view's slab-edge candidates and
 looking at them (`pdf-overlay`, `crop_mm.py`), because three closing rules have now been guessed at
 and measured, and the picture has not.
+
+→ **Answered in §37 (step 28).** Rendered, the edge turned out to be a plain rectangle the drawing
+closes; nothing needed closing. All four sides had been eaten by the wall reader before the ring
+builder ran. Every rule guessed at in steps 24–27 was aimed at a symptom whose cause was already
+written in this repo's own code comment. **Render first is not advice.**
+
+## 37. Step 28, done 2026-09-10: a wall standing on the slab edge does not remove the slab edge
+
+Step 27 ended by saying the next attempt must not be a fourth closing heuristic, and must start by
+rendering the L4–L14 view and looking at it. Rendered, the view settles the question in one glance:
+**the tower slab edge is a plain rectangle at the outermost face, and the drawing closes it.** It
+does not step out round every balcony. Each side is drawn as three collinear pieces, two five-metre
+corner pieces and one long middle run, measured off the PDF's own paths with no reader involved:
+
+| side | pieces (mm) | total |
+|---|---|---|
+| north | 5,133 + **21,320** + 5,133 | 31,586 |
+| south | 5,133 + **21,320** + 5,133 | 31,586 |
+| west | 5,186 + **18,649** + 5,186 | 29,021 |
+| east | 5,186 + **18,649** + 5,210 | 29,045 |
+
+That rectangle is 31,586 x 29,021 mm against the 31,572 x 29,007 mm bounding box of Revit's own
+plate for the storey — twenty millimetres. Andrea's ruling reads straight onto the sheet (*"the
+outer continuous line"*, 25 Aug): the stepped line inside it is the 60"/10" slab-thickness step,
+which she has already said is not the edge, and the crossed boxes along the perimeter lie INSIDE
+Revit's plate, so whatever they mark they are not holes in the floor.
+
+**Why nothing closed: the edge was gone before the ring builder ran.** Each long edge line runs
+parallel to a balcony band's own edge — 711 mm (28") away north and south, 264 mm (10.4") east and
+west — and the two pair as a wall's faces. `WallsFromFaceLines` takes a face line WHOLE, deliberately
+(the note there records the trade-off, and rejects taking only the overlapping stretch because it
+read 52 balcony bands as walls). `SlabEdgesFromLoops` then skipped any line that was a wall's face.
+So a 3,633 mm overlap consumed a 21,320 mm north edge and a 4,828 mm overlap consumed an 18,649 mm
+west edge, on all four sides. Three ways of seeing it: the face trace makes exactly 4 walls on p22
+(143"x28.0" twice, 190"x10.4", 190"x10.6"); `pdf-inventory` accounts exactly 8 paths as
+BecameWallFace, those four edges and their four short partners; and the DXF holds no segment
+between 9,046 mm and the title block's linework, the corner pieces surviving and the middle runs
+gone. Step 27's *"the west edge is two 5,186 mm pieces 18.6 m apart"* was the eaten line: the 18.6 m
+is exactly what the wall took.
+
+The cost was recorded in the code as *"the second pier"*. It was the entire floor plate on every
+tower storey, and three closing rules were then guessed at against a symptom whose cause was already
+written in the file.
+
+**The rule.** A wall's face line is offered to the chain when the wall did not use the whole of it;
+the line goes in WHOLE, because it is one line the drafter drew and a floor's edge runs along the
+wall standing on part of it. A face the wall runs the full length of stays the wall's. The leftover
+has to be long enough to be a piece of an edge, which is the bridging pass's own bound
+(`SlabEdgeChainMinMm`, 2 m), not a new number.
+
+Offering EVERY face line back was tried first and measured: it invents floors. 31168's LEVEL 2 sheet
+chained slanted walls' own faces into a **12,391 sq ft chevron** with columns inside it, so the
+neighbourhood gate passed it — and one look at the rendered storey showed it was not a floor. The
+leftover test removes it. That is the second time on this pipeline that rendering caught what every
+count called green.
+
+**Measured on all five sets, before and after** (`pdf_only_all.sh`, then `plate_diff.py … mm`
+against the banked s26 baselines):
+
+- **31168: floors 9 → 37, storeys carrying a plate 9 → 36 of 62.** Twenty-eight storeys that had no
+  plate gained one; **no plate that existed changed, and none was lost** — P1 77,182, P2 77,144,
+  L3 9,870/9,867, A-L33 9,686, A-L34 9,326, B-L38 9,621, B-L39 9,475, C-L9 1,922 are identical.
+  Walls 1,209 and columns 2,502 unchanged, so the rule moved floors and nothing else.
+- **Against Revit, within 0.1% on every tower storey**: A-L27–L32 9,753 v 9,743; A-L33 9,686 v 9,676;
+  B-L27 9,746 v 9,737; B-L29–L35 9,735 v 9,726; B-L36 9,649 v 9,641; B-L38 9,621 v 9,612; B-L39
+  9,475 v 9,465; C-L4 15,002 v 14,989; L4–L14 9,870 v 9,859.
+- **31138 and 31130: identical to baseline**, every plate unchanged.
+- **31065: L19 only**, 3 plates to 4 (6,665 / 6,610 / 3,305 / 2,168) — the known open item, that
+  sheet drawing the level, the roof and the elevator roof side by side. No other storey moved.
+- Core suite 1,242 pass, App 484.
+
+**Open, named by the measurement:**
+
+- **Tower A's L4–L14 and L15–L26 views still do not close**, while tower B's L4–L14 does. On A's
+  sheet the NE corner piece is drawn 0.8 pt (27 mm) off the middle run's y, so the pieces meet at a
+  T rather than a corner. That is why L4–L14 carry one plate where Revit has two, and L15–L26 carry
+  none: 12 storeys, the largest remaining piece.
+- **A ring that is a piece of the floor rather than the floor.** LEVEL 2 now takes a 4,222 sq ft
+  rectangle where Revit's storey is 48,501 sq ft in three plates. The gates measure the
+  neighbourhood against the RING's own size, so a small ring in the corner of a big floor passes —
+  the same gate that lets tower C's L5–L8 take a 1,922 sq ft strip of a 14,988 sq ft floor. This
+  rule adds one instance to that class; it does not create it. **It is the next step**, and by this
+  document's own standard (*a storey with no plate is honest*) a 9% plate is not.
+- C's floor lands on C-L4 where Revit has it on C-L5 to C-L8 — storey assignment, not the edge.
+- A-L34 reads 9,326 against Revit's 5,949; unchanged by this rule and unexplained.
+
+WHAT THE CHECK COVERS (`AFloorsEdgeIsTheOutermostClosedLoopTests`, +2, 15 in all): a wall standing
+on a quarter of the edge, read as a wall, with the floor still closing at its full area; and a wall
+running 7 m of an 8 m edge keeping the line, so no floor is read. WHAT IT DOES NOT: the areas on a
+real sheet (the build above, not banked); a ring that is a piece of the floor, stated in the class's
+own remarks with both live instances; a face line shared by two walls; and the corner mismatch that
+still leaves tower A's two views open, which only the build shows.
