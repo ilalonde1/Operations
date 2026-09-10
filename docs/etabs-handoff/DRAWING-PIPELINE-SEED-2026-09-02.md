@@ -76,13 +76,17 @@ caught step 28's own false positive, a 12,391 sq ft chevron on LEVEL 2 that ever
    strip of a 14,988 sq ft floor. The gates measure the neighbourhood against the RING's own size, so
    a small ring in the corner of a big floor passes. A storey with no plate is honest; a 9% plate
    is not.
-2. **Tower A's L4–L14 and L15–L26 views do not close** while tower B's do. 12 storeys, and why
-   L4–L14 carry one plate where Revit has two. Characterised 09-10: A draws its tower corners as
+2. **Fifteen views on 31168 do not close, and they are NOT one cause** — those 15 give all 25 of the
+   storeys with no plate (A and B's L15–26 = 12, C's L5–L8 = 4, the three L1 sheets, C's L3, A's L35,
+   B's L28, B's L37). Only ONE is diagnosed, BLDG A's L4–L14: A draws its tower corners as
    their own 5,133 × 5,186 mm rectangles, and such a block **shares two of its four edges with the
    perimeter**; a segment can belong to only one ring, so whichever is built first spends them.
    ⛔ Feeding small closed loops to the bridging pass changed NOTHING on all five sets; ⛔ seeding the
    walk from the longest segment was worse (31168 37→36 floors, 31065 9→8 and 605→601 columns).
    Rule 10 reached: STOPPED.
+   ⚠ The block signature is on 3 of 12 failing views, and A's L15–26 has NONE — an earlier claim
+   that it explained L15–26 too was an unverified generalisation and is withdrawn.
+   **Fourteen of the fifteen have never been rendered and looked at. That is the next thing.**
    The fix is a piece of linework serving two rings, or an outer boundary found without chaining —
    neither is a tolerance, neither should be guessed at.
 3. **31202 places 0 of its 34 sheets.** A whole job produces an empty model. Not characterised yet;
