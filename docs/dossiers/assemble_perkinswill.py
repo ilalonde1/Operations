@@ -5,7 +5,7 @@ a = tpl.index('<style>')
 b = tpl.index('</style>') + len('</style>')
 style = tpl[a:b]
 
-body = io.open('docs/island-pipeline/pw-omar-body.html', encoding='utf-8').read()
+body = io.open('docs/dossiers/perkinswill-2026-09-10-body.html', encoding='utf-8').read()
 
 head = (
     '<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n'
@@ -13,5 +13,5 @@ head = (
     '<title>KOR Structural &mdash; Perkins&amp;Will, beyond Vancouver</title>\n'
 )
 out = head + style + '\n</head>\n<body>\n' + body + '\n</body>\n</html>\n'
-io.open('docs/island-pipeline/pw-omar.html', 'w', encoding='utf-8').write(out)
+io.open('docs/dossiers/perkinswill-2026-09-10.html', 'w', encoding='utf-8').write(out)
 print('style', len(style), '| body', len(body), '| page', len(out))

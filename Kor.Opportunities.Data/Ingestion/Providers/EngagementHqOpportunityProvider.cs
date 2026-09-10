@@ -45,6 +45,20 @@ namespace Kor.Opportunities.Data.Ingestion.Providers;
 ///   engagementhq.includeArchived  "true" to keep archived projects. Default
 ///                                 false — archived means decided, and by then
 ///                                 the structural engineer was chosen.
+///   engagementhq.fileNumberRegex  what a planning file number looks like in
+///                                 THIS jurisdiction's titles. The number is the
+///                                 stable ExternalReference; the platform's own
+///                                 numeric id changes if a project is recreated.
+///                                 Default matches the RDN's "PL2026-028" and
+///                                 the BC municipal "DP-2026-00529" / "RZ-…"
+///                                 style together.
+///   engagementhq.applicantRegex   capture group 1 is the applicant. Default
+///                                 reads the opening clause EngagementHQ
+///                                 descriptions are written in — "Gradual
+///                                 Architecture has applied to the City of
+///                                 Vancouver for permission to develop…" — which
+///                                 is how the architect's name gets onto the
+///                                 record. Set to a single space to disable.
 ///   engagementhq.buyerOverride    buyer name; defaults to the source name
 ///   engagementhq.cityOverride     ProjectCity
 ///   engagementhq.provinceOverride ProjectProvince, default "BC"
@@ -58,6 +72,21 @@ public sealed class EngagementHqOpportunityProvider : IOpportunityProvider
     // development applications, and everything it carries looks like a project.
     private const string DefaultTitlePattern =
         @"PL\d{4}-\d+|development\s+application|zoning\s+amendment|rezoning|subdivis|official\s+community\s+plan\s+amendment|ocp\s+amendment";
+
+    // A planning file number is written differently in every jurisdiction. The
+    // RDN writes PL2026-028; BC municipalities on the same platform write
+    // DP-2026-00529 and RZ-2026-00014. Hardcoding one of them silently drops
+    // every other jurisdiction's reference to the platform's numeric id, which
+    // is not the number anyone searches by.
+    private const string DefaultFileNumberPattern =
+        @"PL\d{4}-\d+|\b(?:DP|RZ|DE|CD|TU|HA|BP)-\d{4}-\d+";
+
+    // These descriptions are written to a house style, and it starts with the
+    // applicant: "Arcadis Architects has applied to the City of Vancouver…".
+    // That opening clause is the only place in the whole feed the design team
+    // is named, so it is worth reading rather than storing as prose.
+    private const string DefaultApplicantPattern =
+        @"^(.{3,120}?)\s+(?:has|have)\s+applied\b";
 
     private readonly HttpClient _http;
     private readonly ILogger<EngagementHqOpportunityProvider> _log;
@@ -85,6 +114,15 @@ public sealed class EngagementHqOpportunityProvider : IOpportunityProvider
         var includeArchived = string.Equals(
             Get(sourceConfig, "engagementhq.includeArchived"), "true", StringComparison.OrdinalIgnoreCase);
 
+        var fileNoRx = new Regex(
+            Get(sourceConfig, "engagementhq.fileNumberRegex") ?? DefaultFileNumberPattern,
+            RegexOptions.IgnoreCase);
+
+        var applicantPattern = Get(sourceConfig, "engagementhq.applicantRegex") ?? DefaultApplicantPattern;
+        var applicantRx = applicantPattern.Trim().Length == 0
+            ? null
+            : new Regex(applicantPattern, RegexOptions.IgnoreCase);
+
         var buyer = Get(sourceConfig, "engagementhq.buyerOverride") ?? source.Name;
         var city = Get(sourceConfig, "engagementhq.cityOverride");
         var province = Get(sourceConfig, "engagementhq.provinceOverride") ?? "BC";
@@ -103,6 +141,7 @@ public sealed class EngagementHqOpportunityProvider : IOpportunityProvider
         var seenNames = 0;
         var droppedArchived = 0;
         var droppedTitle = 0;
+        var withApplicant = 0;
 
         foreach (var p in projects.EnumerateArray())
         {
@@ -141,8 +180,10 @@ public sealed class EngagementHqOpportunityProvider : IOpportunityProvider
 
             // The file number in the title is the stable external reference;
             // the numeric id changes if a project is recreated.
-            var fileNo = Regex.Match(name, @"PL\d{4}-\d+", RegexOptions.IgnoreCase);
+            var fileNo = fileNoRx.Match(name);
             var externalRef = fileNo.Success ? fileNo.Value.ToUpperInvariant() : (id ?? permalink);
+
+            var applicant = ApplicantFrom(applicantRx, description);
 
             results.Add(new OpportunityCandidate
             {
@@ -155,17 +196,70 @@ public sealed class EngagementHqOpportunityProvider : IOpportunityProvider
                 ProjectCity = city,
                 ProjectProvince = province,
                 ExternalReference = Trim(externalRef, 200),
+                BuyerContactName = Trim(applicant, 200),
                 SourceInternalId = id,
                 RawJson = p.GetRawText(),
             });
+
+            if (applicant is not null)
+            {
+                withApplicant++;
+            }
         }
 
         _log.LogInformation(
-            "EngagementHQ {Source}: {Kept} application(s) from {Total} project(s) ({DroppedTitle} not applications, {DroppedArchived} archived).",
-            source.Name, results.Count, seenNames, droppedTitle, droppedArchived);
+            "EngagementHQ {Source}: {Kept} application(s) from {Total} project(s) ({DroppedTitle} not applications, {DroppedArchived} archived); {WithApplicant} name an applicant.",
+            source.Name, results.Count, seenNames, droppedTitle, droppedArchived, withApplicant);
 
         return results;
     }
+
+    /// <summary>
+    /// Read the applicant out of the description's opening clause. Returns null
+    /// rather than a guess: a wrong firm on a lead is worse than no firm, because
+    /// it is the field somebody will call on.
+    /// </summary>
+    private static string? ApplicantFrom(Regex? rx, string description)
+    {
+        if (rx is null || string.IsNullOrWhiteSpace(description))
+        {
+            return null;
+        }
+
+        var m = rx.Match(description);
+        if (!m.Success || m.Groups.Count < 2)
+        {
+            return null;
+        }
+
+        var applicant = m.Groups[1].Value.Trim().Trim('“', '”', '"', '\'', ',', '.', ':', ';');
+
+        // The clause is only worth reading when it names a party. "The City",
+        // "Council" and a bare pronoun are the sentence's subject but not an
+        // applicant, and a single word is almost always one of those.
+        if (applicant.Length < 4 || !applicant.Any(char.IsLetter))
+        {
+            return null;
+        }
+
+        foreach (var stop in NotApplicants)
+        {
+            if (applicant.Equals(stop, StringComparison.OrdinalIgnoreCase)
+                || applicant.StartsWith(stop + " ", StringComparison.OrdinalIgnoreCase))
+            {
+                return null;
+            }
+        }
+
+        return applicant;
+    }
+
+    private static readonly string[] NotApplicants =
+    {
+        "the city", "city of", "council", "the applicant", "an applicant",
+        "the owner", "the developer", "staff", "they", "we", "it", "this",
+        "the board", "the district", "the regional district", "the province",
+    };
 
     private static string? Get(IReadOnlyDictionary<string, string> cfg, string key)
         => cfg.TryGetValue(key, out var v) && !string.IsNullOrWhiteSpace(v) ? v.Trim() : null;
