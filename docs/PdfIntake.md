@@ -44,9 +44,17 @@ is kept:
    a 1,922 sq ft strip of a 14,988 sq ft floor. The gates measure the neighbourhood against the
    RING's own size, so a small ring in the corner of a big floor passes. By this document's own
    standard — *a storey with no plate is honest* — a 9% plate is not.
-2. **Tower A's L4–L14 and L15–L26 views do not close** while tower B's do: the NE corner piece is
-   drawn 0.8 pt (27 mm) off the middle run, so the pieces meet at a T. 12 storeys, and the reason
-   L4–L14 carry one plate where Revit has two.
+2. **Tower A's L4–L14 and L15–L26 views do not close** while tower B's do. 12 storeys, and the
+   reason L4–L14 carry one plate where Revit has two. **Characterised 2026-09-10, and it is not a
+   tolerance:** A draws its tower corners as their own 5,133 × 5,186 mm rectangles (B's sheet draws
+   none), and such a block **shares two of its four edges with the perimeter** — its top edge is a
+   piece of the north edge, both at y 15,700 meeting exactly at x −10,482, and its outer vertical is
+   a piece of the west edge. A segment can belong to only one ring, so whichever ring is built first
+   spends them. ⛔ Feeding the small closed loops to the bridging pass was tried and **changed
+   nothing on any of the five sets** (31168 stayed at 37 floors, zero storeys moved): the block
+   re-closes on its own exact joins in that pass too. The fix is either that a piece of linework may
+   serve a small loop AND the floor's edge, or that the outer boundary is found by something other
+   than chaining. The cost is written in `SlabEdgesFromLoops` where the code was.
 3. **31202 places 0 of 34 sheets.** A whole job produces an empty model. Not yet characterised —
    the title block is the suspect, and it is one job's worth of evidence, so it may be quick.
 4. **Tower walls, 33 a storey against Revit's 40.**

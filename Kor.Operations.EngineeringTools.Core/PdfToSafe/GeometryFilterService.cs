@@ -896,6 +896,24 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             var pieces = built.OpenChains
                 .Where(c => c.Count >= 2 && ChainLength(c) >= SlabEdgeChainMinMm)
                 .ToList();
+
+            // ⛔ MEASURED AND REJECTED 2026-09-10: offering the small CLOSED loops to this pass too.
+            // 31168's BLDG A L4-L14 view draws its tower corners as their own 5,133 x 5,186 mm
+            // rectangles, one of which closes at 287 sq ft; BLDG B's sheet draws no such block and
+            // closes, which is why A's L4-L14 and L15-26 carry no plate and B's do. It looked as
+            // though the block was leaving OpenChains and taking the corner with it, so the small
+            // loops' segments were fed back in here. It changed NOTHING on any of the five sets —
+            // 31168 stayed at 37 floors, zero storeys moved — because the block re-closes on its own
+            // exact joins in this pass exactly as it did in the first.
+            //
+            // The real shape of it, which this proved: A SEGMENT CAN ONLY BELONG TO ONE RING, and the
+            // corner block SHARES TWO of its four edges with the perimeter — its top edge is a piece
+            // of the north edge (both at y 15,700, meeting exactly at x -10,482) and its outer
+            // vertical is a piece of the west edge; its other two edges are interior. Whichever ring
+            // is built first spends them. So the fix is not about which chains this pass is given: it
+            // is that a piece of linework must be allowed to serve a small loop AND the floor's edge,
+            // or the outer boundary must be found by something other than chaining. Neither is a
+            // tolerance, and neither should be guessed at.
             if (pieces.Count >= 2)
             {
                 var chainSegments = new List<DxfSegment>();

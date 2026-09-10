@@ -76,9 +76,13 @@ caught step 28's own false positive, a 12,391 sq ft chevron on LEVEL 2 that ever
    strip of a 14,988 sq ft floor. The gates measure the neighbourhood against the RING's own size, so
    a small ring in the corner of a big floor passes. A storey with no plate is honest; a 9% plate
    is not.
-2. **Tower A's L4–L14 and L15–L26 views do not close** while tower B's do — the NE corner piece is
-   drawn 0.8 pt (27 mm) off the middle run, so the pieces meet at a T rather than a corner. 12
-   storeys, and why L4–L14 carry one plate where Revit has two.
+2. **Tower A's L4–L14 and L15–L26 views do not close** while tower B's do. 12 storeys, and why
+   L4–L14 carry one plate where Revit has two. Characterised 09-10: A draws its tower corners as
+   their own 5,133 × 5,186 mm rectangles, and such a block **shares two of its four edges with the
+   perimeter**; a segment can belong to only one ring, so whichever is built first spends them.
+   ⛔ Feeding small closed loops to the bridging pass was tried and changed NOTHING on all five sets.
+   The fix is a piece of linework serving two rings, or an outer boundary found without chaining —
+   neither is a tolerance, neither should be guessed at.
 3. **31202 places 0 of its 34 sheets.** A whole job produces an empty model. Not characterised yet;
    the title block is the suspect.
 4. **Tower walls: 33 a storey against Revit's 40.**
