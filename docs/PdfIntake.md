@@ -1881,3 +1881,35 @@ field-then-bookmark-then-fallback order when neither does. WHAT THEY DO NOT: the
 from KorStandards rather than the compiled defaults (the row is not yet seeded — migration to
 follow in KOR.Drafter\db); the real sheets (the six-set build above); a phrase split across two
 baselines; and a level named by a symbol rather than words.
+
+## 40. Step 31, done 2026-09-10: every sheet is read at the scale it states
+
+The intake has read each sheet's stated scale since step 6 (`SheetScaleReader`) and then scaled
+every sheet's geometry by the CLI's `--scale` anyway — the stated scale was recorded on the record
+and never applied. It did not show on KOR's sets, whose plan sheets all state one scale. The
+architect's set for 31170 draws each storey four ways: a floor plan and a slab plan at 1/8", and
+enlarged part plans (SW, NE, SE, NW) at 1/4". Read at one scale the enlargements landed on the
+storeys at twice their size — 3,635 walls on nine storeys, a 55,219 sq ft plate over the 32,076 one,
+and 32 of 49 sheets that could not be set on the grid because their axes were a factor of two out.
+
+**The rule.** The sheet's stated scale is read from the full (un-thinned) page read, which is in
+hand before the geometry is parsed and whose words are the same, and the geometry is parsed at it.
+The request's `--scale` is the fallback for a sheet that states none, and a title block stating two
+different scales counts as stating none (`DrawingIntake.StatedScaleDenominator`). Whether to
+classify at all is still the request's — `pdf-inventory` with no scale still reads no geometry.
+
+**Measured on six sets:** 31170 — **49 of 49 sheets set on the model's grid by name** (was 17),
+walls 3,635 → 1,453, floors 58 → 24, 1,880 duplicate members refused by the stand-down rule as
+"a place another sheet had already filled". The five KOR sets **identical** to their step-30
+baselines, every count and every plate. Core 1,250 pass and the known reissue red.
+
+**Open, named by the numbers:** columns on 31170 went 71–77 a storey to 51, below the 56 a single
+floor plan reads — so with several sheets drawing one storey, which sheet the storey is modelled
+from needs its own rule (the plan at the set's plan scale; enlargements are references). That is
+step 33's, after the wall types.
+
+WHAT THE CHECK COVERS (`ASheetIsReadAtTheScaleItStatesTests`, 3): an imperial note giving its
+denominator, a metric ratio, and a sheet stating nothing giving null so the request's scale stands.
+WHAT IT DOES NOT: the real sheets (the harness); a view's own caption on an AS NOTED sheet, which is
+`ViewCaptions`' and applies to ladders; a sheet whose stated scale is wrong for the plan on it, which
+only the self-check can see.

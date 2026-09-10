@@ -35,11 +35,38 @@ public static class DrawingIntake
         return ReadPage(doc.GetPage(page), request, facts);
     }
 
+    /// <summary>
+    /// The scale denominator a sheet states for itself (96 for 1/8" = 1'-0", 100 for 1:100), from
+    /// the scale note the reader finds, else the title block's SCALE field — unless the block states
+    /// two different scales, in which case the sheet has said nothing usable and null is returned.
+    /// </summary>
+    internal static int? StatedScaleDenominator(VectorPageReader.PageContent full)
+    {
+        string? note = null;
+        try { note = SheetScaleReader.FromPage(full); } catch { }
+        if (note is null)
+        {
+            bool conflict = false;
+            try { conflict = SheetScaleReader.StatesConflictingScales(full); } catch { }
+            if (!conflict)
+            {
+                var fields = TitleBlockFields.Read(full);
+                note = SheetScaleReader.RatioOf(fields.TryGetValue("SCALE", out var sf) ? sf : null);
+            }
+        }
+        if (note is null) return null;
+        // metres per point at 72 dpi → the denominator: 1 pt is 25.4/72 mm on paper
+        double? metresPerPoint = PlanGeometry.MetresPerPixel(note, 72);
+        if (metresPerPoint is not > 0) return null;
+        double denominator = metresPerPoint.Value * 1000.0 / PdfToSafeConstants.PointsToMm;
+        int rounded = (int)Math.Round(denominator);
+        return rounded >= 1 && rounded <= 5000 ? rounded : null;
+    }
+
     private static SheetRecord ReadPage(Page page, IntakeRequest request, DocumentFacts facts)
     {
         int pageNumber = page.Number;
         var options = request.Options;
-        double scaleFactor = request.ScaleDenominator.GetValueOrDefault() * PdfToSafeConstants.PointsToMm;
         bool classify = request.ScaleDenominator is > 0;
 
         // THE POPULATION IS THE UNTHINNED READ.
@@ -55,6 +82,18 @@ public static class DrawingIntake
         var fullKept = new List<int>();
         var full = VectorPageReader.ReadPage(page, includeAnnotations: true,
             curveSegments: PdfToSafeConstants.BezierSegments, keptSubpathOrdinals: fullKept);
+
+        // EVERY SHEET IS READ AT THE SCALE IT STATES (intake step 31); the request's scale is the
+        // fallback for a sheet that states none. The intake read each sheet's stated scale since
+        // step 6 and then scaled every sheet by the CLI's --scale anyway. The architect's set for
+        // 31170 draws each storey four ways — a floor plan and a slab plan at 1/8", and enlarged
+        // part plans (SW, NE …) at 1/4" — and read at one scale the part plans landed on the
+        // storeys at twice their size: 3,635 walls on nine storeys, a 55,219 sq ft plate over a
+        // 32,076 one. The words are the same in the full read as in the thinned one, so the sheet
+        // can say its scale before the geometry is parsed at it.
+        int? statedDenominator = classify ? StatedScaleDenominator(full) : null;
+        int denominator = classify ? statedDenominator ?? request.ScaleDenominator!.Value : 0;
+        double scaleFactor = denominator * PdfToSafeConstants.PointsToMm;
 
         VectorPageReader.PageContent content;
         var thinnedKept = new List<int>();
@@ -145,7 +184,7 @@ public static class DrawingIntake
 
         var geometry = new ExtractedGeometry
         {
-            ScaleDenominator = request.ScaleDenominator.GetValueOrDefault(),
+            ScaleDenominator = denominator,
             PageWidthPts = page.Width, PageHeightPts = page.Height, PageCount = facts.Pages,
             RawPathCount = content.Paths.Count,
         };
@@ -242,7 +281,7 @@ public static class DrawingIntake
         }
         return new SheetRecord(pageNumber, page.Width, page.Height, page.Rotation.Value,
             SheetTitleReader.SheetNumberToken(content), bookmark, sheetType, title?.Level, title?.Zone,
-            scale, request.ScaleDenominator, geometry, schedules, marks, callouts, grid, furniture,
+            scale, classify ? denominator : request.ScaleDenominator, geometry, schedules, marks, callouts, grid, furniture,
             markup, links, full, pathFates, wordFates)
         {
             ColumnAgreement = agreement, ColumnAgreementError = agreementError,
