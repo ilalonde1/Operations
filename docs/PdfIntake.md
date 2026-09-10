@@ -1320,3 +1320,63 @@ against a live rules database (the service's own use of them is measured on the 
 asserted); a job numbered otherwise than five digits; 31138's LEVEL P4, whose plate is suppressed
 as a member already standing in that place — true before this step and after it, and not yet
 explained.
+
+## 33. Step 24, done 2026-09-09: a floor's edge is the outermost closed loop the plan draws
+
+A parkade's perimeter is a wall, and step 22 takes its plate from the walls' outer face. Every
+other storey's perimeter is a slab edge — the tower plans, the ground floors, the mezzanines —
+and the drafter draws it as ordinary lines: 31168's tower sheets are titled CONCRETE OUTLINE after
+it. The intake emitted those lines as beams, the DXF side saw no slab layer and no wall ring, and
+every tower storey reached ETABS with no diaphragm at all.
+
+**The rule.** After the walls are read, the lines nothing else claimed — not a wall's face, not a
+match line, not annotation — are chained into rings by the builder the DXF side already uses on a
+Revit export (`PlanLoopBuilder`, endpoints within a millimetre being one corner), and a ring is the
+storey's slab edge when it is big enough to be a floor (400 sq ft, the DXF side's own
+`MinPlateArea`), something stands in it, of the columns and walls within a tenth of its size most
+stand in it, and it lies inside no other such ring. The ring goes to the DXF's slab layer as a
+closed polyline and its lines are read as its edge (`PathReason.BecameSlabEdge`), not written as
+beams. Where the drawn edge does not meet itself, this finds nothing and the storey keeps having
+no plate, which the DXF side already reports. Nothing is bridged, extended or flooded.
+
+**Measured first**, on 31168's BLDG A tower plan (p22): of the plan's 7,296 lines, one ring
+closes on its own at 31,585 x 29,021 mm — the same bounding box, to the inch, as the plate Revit's
+own export gives that storey (1,243 x 1,142 in) — and encloses 9,866 sq ft against Revit's 9,743,
+the 1.3% being the balcony steps the drawn edge rounds off. Revit's tower plates, built from its
+DXF export through the same DXF side (`harness/revit-31168`): A 9,743 sq ft on levels 27–32, B
+9,726, C 14,988 on levels 5–8, A-LEVEL 33 9,676, B-LEVEL 38 9,612, B-LEVEL 39 9,465.
+
+**Measured after**, the five sets from their stick files alone: 31168 goes from 2 floors to 28 —
+towers A and B carry 9,870 and 9,867 sq ft on every storey L4 to L14, and the roof sheets' rings
+(A L33 9,867; B L38 9,869, L39 9,616 by their boxes) close too but land on no storey, the levels
+file ending at L19. 31065 goes from 3 floors to 5, both on L19 (6,665 and 3,305 sq ft: that sheet
+draws the level, the roof and the elevator roof side by side, and two of the three rings close).
+31130, 31138 and 31202 are unchanged in every count; the thirteen banked plan DXFs are identical
+13 of 13 (the parkade and foundation plans, whose perimeters are walls). The ledgers move on 19
+pages of 294 with no page's total changed — the lines that became a floor's edge are read now,
+and on 31168's two roof sheets that is 244 and 248 of them. Core 1,220 pass, App 478.
+
+**Open, named by the measurement, not by the rule:** tower C's L5–L8 on 31168 carry a 1,922 sq ft
+ring — a strip of the 14,988 sq ft floor whose edge does not otherwise meet — and the neighbourhood
+gate does not refuse it because C's columns stand more than a tenth of the strip's size from it;
+31168's L15–L32 sheets and 31065's L2, L3 sheets have no ring that closes as drawn (their longest
+chains end metres apart), which is the bounded bridging the DXF side does on a Revit export and
+this step deliberately does not; a sheet that draws two storeys' plans side by side gives each its
+ring, and where the sheet feeds one storey (31065's L19 with its roof) both rings land on it; and
+on four notes pages (31130 p3, 31138 p3, 31168 p4, 31065 p4) twelve lines read as a floor's edge —
+a detail's border with a small filled shape in it — which reaches no model, no plan page being
+involved, and says the "something stands in it" gate is a weak one.
+
+**And a cost found and removed:** the loop builder's bridging pass is every pair of open chains,
+restarted after every merge, and with exact joins asked for it can never merge anything; on a
+hatched plan with ten thousand dashes it spent a minute a page finding nothing. It now returns at
+once when the bridge and the extension are no wider than the join, and the five-set batch runs in
+four minutes.
+
+WHAT THE CHECK COVERS (`AFloorsEdgeIsTheOutermostClosedLoopTests`, 8): four lines closing a
+floor-sized ring becoming one slab, its lines read as its edge and kept out of the beams; a ring
+too small; a ring with nothing in it; a core's ring inside a floor's; a strip with the structure
+beside it, and the same strip with the structure in it; two plans' rings on one sheet; a ring left
+open; a wall's own faces not an edge. WHAT IT DOES NOT: the areas on a real sheet (the build above,
+not banked); a plan whose edge is drawn in pieces that do not meet; which storey a ring lands on;
+a ring whose "structure" is a legend's filled square.

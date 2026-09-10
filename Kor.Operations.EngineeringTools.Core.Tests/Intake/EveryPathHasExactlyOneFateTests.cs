@@ -66,6 +66,14 @@ public sealed class EveryPathHasExactlyOneFateTests
                 case PathReason.EmittedAsLine:
                     Assert.Same(path.Points, geometry.Lines[fate.ObjectIndex!.Value]);
                     break;
+                case PathReason.BecameSlabEdge:
+                    // the line lies on the ring of the floor it became (step 24)
+                    var edge = geometry.Slabs[fate.ObjectIndex!.Value];
+                    Assert.All(path.Points, p => Assert.True(
+                        p.X >= edge.Min(q => q.X) - 1 && p.X <= edge.Max(q => q.X) + 1 &&
+                        p.Y >= edge.Min(q => q.Y) - 1 && p.Y <= edge.Max(q => q.Y) + 1));
+                    Assert.True(fate.ObjectIndex >= geometry.FirstEdgeSlab, "an edge slab follows the filled ones");
+                    break;
                 default:
                     Assert.Null(fate.ObjectIndex);
                     break;
@@ -101,7 +109,7 @@ public sealed class EveryPathHasExactlyOneFateTests
             {
                 PathReason.BecameSlab or PathReason.BecameColumnByDeclaredSize or PathReason.BecameColumnByShape or PathReason.BecameWall
                     or PathReason.BecameFooting or PathReason.GridAxis or PathReason.Doorway or PathReason.ClipOfWall
-                    or PathReason.BecameWallFace or PathReason.MatchLine => Disposition.Read,
+                    or PathReason.BecameWallFace or PathReason.MatchLine or PathReason.BecameSlabEdge => Disposition.Read,
                 PathReason.EmittedAsLine or PathReason.FootingBoxNoLabel or PathReason.Band => Disposition.Unaccounted,
                 _ => Disposition.Discarded,
             };
@@ -168,6 +176,13 @@ internal static class FateFixture
         (Rect(40000, 1700, 10000, 40000), PathReason.Band),
         // a dash of the line the fixture's furniture names as the match line (step 22)
         (Line(5000, 48000, 8000, 48000), PathReason.MatchLine),
+        // four lines closing a ring big enough to be a floor, with a column standing in it: the
+        // storey's slab edge (step 24). 8 m x 6 m is 517 sq ft, over the 400 a floor must have.
+        (Line(40000, 20000, 48000, 20000), PathReason.BecameSlabEdge),
+        (Line(48000, 20000, 48000, 26000), PathReason.BecameSlabEdge),
+        (Line(48000, 26000, 40000, 26000), PathReason.BecameSlabEdge),
+        (Line(40000, 26000, 40000, 20000), PathReason.BecameSlabEdge),
+        (Rect(600, 800, 43000, 22000), PathReason.BecameColumnByShape),
         // three at the same spacing: a hatch, still lines
         (Line(10000, 12000, 13000, 12000), PathReason.EmittedAsLine),
         (Line(10000, 12300, 13000, 12300), PathReason.EmittedAsLine),

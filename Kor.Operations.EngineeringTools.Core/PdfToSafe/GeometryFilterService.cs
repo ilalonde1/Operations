@@ -421,6 +421,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         FaceTrace($"line {ln / 25.4:0}\" w{s.LineWidth:0.00} at ({(s.Points[0].X + s.Points[1].X) / 2:0},{(s.Points[0].Y + s.Points[1].Y) / 2:0}) mm: {f.Reason}");
                 }
             WallsFromFaceLines(result, fates, firstFate, minWallThicknessMm, maxWallThicknessMm, minWallLengthMm, minWallAspect);
+            SlabEdgesFromLoops(result, fates, firstFate);
 
             if (fates is not null && (deferredPaper.Count > 0 || deferredNoInk.Count > 0))
             {
@@ -796,6 +797,135 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 }
             }
         }
+
+        /// <summary>
+        /// A FLOOR'S EDGE IS THE OUTERMOST CLOSED LOOP THE PLAN DRAWS (intake step 24).
+        ///
+        /// A parkade's perimeter is a wall, and step 22 takes its plate from the walls' outer face.
+        /// Every other storey's perimeter is a slab edge: the tower plans, the ground floors, the
+        /// mezzanines. The drafter draws that edge as ordinary lines — 31168's "CONCRETE OUTLINE"
+        /// sheets are named after it — so the intake emitted them as beams and the storey reached
+        /// ETABS with no diaphragm at all.
+        ///
+        /// The lines are chained into rings by the same builder the DXF side uses on a Revit export
+        /// (<see cref="PlanLoopBuilder"/>: endpoints within a tolerance are one node), and a ring
+        /// big enough to be a floor, with structure standing inside it, and inside no other such
+        /// ring, is this plan's slab edge. Measured 2026-09-09 on 31168's BLDG A tower plan: the
+        /// outermost ring closes on its own and encloses 9,866 sq ft, against the 9,743 sq ft
+        /// Revit's own export gives that storey — 1.3%, the difference being the balcony steps the
+        /// drawing rounds off.
+        ///
+        /// WHAT IT IS NOT: a fill, a hatch or a flood. Where the drawing's edge does not close, this
+        /// finds nothing and the storey keeps having no plate, which the DXF side already reports.
+        /// </summary>
+        internal static void SlabEdgesFromLoops(ExtractedGeometry result, IList<PathFate>? fates, int firstFate)
+        {
+            result.FirstEdgeSlab = result.Slabs.Count;
+            if (result.Lines.Count < 4) return;
+
+            // every line that is not already something: a wall's face is the wall, a match line is
+            // the seam, and both are read
+            var candidates = new List<int>();
+            for (int i = 0; i < result.Lines.Count; i++)
+            {
+                if (result.Lines[i].Count != 2 || result.LineIsAnnotation[i] || result.WallFaceLines.ContainsKey(i)) continue;
+                candidates.Add(i);
+            }
+            if (candidates.Count < 4) return;
+
+            var segments = candidates
+                .Select(i => new DxfSegment("SLABEDGE",
+                    new DxfPoint(result.Lines[i][0].X, result.Lines[i][0].Y),
+                    new DxfPoint(result.Lines[i][1].X, result.Lines[i][1].Y)))
+                .ToList();
+            var built = new PlanLoopBuilder(SlabEdgeJoinMm, SlabEdgeJoinMm, SlabEdgeJoinMm).Build(segments);
+            if (built.Loops.Count == 0) return;
+
+            // big enough to be a floor, and with something standing in it
+            var floors = built.Loops
+                .Where(l => l.Area >= MinSlabAreaMm2 && StandsIn(l))
+                .OrderByDescending(l => l.Area)
+                .ToList();
+            if (floors.Count == 0) return;
+
+            // and outermost: a core's ring inside a floor is a hole in it, not a second floor
+            var outermost = new List<PlanLoop>();
+            foreach (var l in floors)
+                if (!outermost.Any(o => LoopGeometry.PointInPolygon(l.Points[0], o.Points)))
+                    outermost.Add(l);
+
+            foreach (var loop in outermost)
+            {
+                int slabIndex = result.Slabs.Count;
+                result.Slabs.Add(loop.Points.Select(p => (p.X, p.Y)).ToList());
+                result.SlabColors.Add(((byte)0, (byte)0, (byte)0));
+                result.SlabIsAnnotation.Add(false);
+
+                // the lines that lie on it are its edge, not beams
+                foreach (int i in candidates)
+                {
+                    if (result.SlabEdgeLines.ContainsKey(i)) continue;
+                    var a = new DxfPoint(result.Lines[i][0].X, result.Lines[i][0].Y);
+                    var b = new DxfPoint(result.Lines[i][1].X, result.Lines[i][1].Y);
+                    if (!OnRing(a, loop) || !OnRing(b, loop)) continue;
+                    result.SlabEdgeLines[i] = slabIndex;
+                }
+            }
+
+            if (fates is not null)
+            {
+                var lineToPath = new Dictionary<int, int>();
+                for (int k = firstFate; k < fates.Count; k++)
+                    if (fates[k].Reason == PathReason.EmittedAsLine && fates[k].ObjectIndex is int li) lineToPath[li] = fates[k].PathIndex;
+                foreach (var (line, slab) in result.SlabEdgeLines)
+                    if (lineToPath.TryGetValue(line, out int pathIndex))
+                        for (int k = firstFate; k < fates.Count; k++)
+                            if (fates[k].PathIndex == pathIndex)
+                                fates[k] = new PathFate(pathIndex, Disposition.Read, PathReason.BecameSlabEdge, slab);
+            }
+
+            // A FLOOR IS WHAT THE STRUCTURE AROUND IT STANDS ON. Something stands in the ring, and
+            // of the columns and walls within a tenth of the ring's size of it, most stand in it:
+            // a 28.6 m x 6.3 m strip on 31168's BLDG C plan closed on its own with a column in it
+            // and would have been the storey's plate at 1,922 sq ft where the floor is 14,988 —
+            // the columns beside it, outside it, say it is a strip of the floor and not the floor.
+            bool StandsIn(PlanLoop loop)
+            {
+                double x0 = loop.Points.Min(p => p.X), x1 = loop.Points.Max(p => p.X);
+                double y0 = loop.Points.Min(p => p.Y), y1 = loop.Points.Max(p => p.Y);
+                double reach = Math.Max(x1 - x0, y1 - y0) * SlabEdgeNeighbourhoodShare;
+                int inside = 0, near = 0;
+                void Count(double x, double y)
+                {
+                    if (x < x0 - reach || x > x1 + reach || y < y0 - reach || y > y1 + reach) return;
+                    near++;
+                    if (LoopGeometry.PointInPolygon(new DxfPoint(x, y), loop.Points)) inside++;
+                }
+                foreach (var c in result.Columns) Count(c.X, c.Y);
+                foreach (var w in result.Walls) Count((w.Start.X + w.End.X) / 2, (w.Start.Y + w.End.Y) / 2);
+                return inside > 0 && inside * 2 > near;
+            }
+
+            static bool OnRing(DxfPoint p, PlanLoop loop)
+            {
+                for (int i = 0; i < loop.Points.Count; i++)
+                    if (LoopGeometry.DistanceToSegment(p, loop.Points[i], loop.Points[(i + 1) % loop.Points.Count]) <= SlabEdgeJoinMm) return true;
+                return false;
+            }
+        }
+
+        /// <summary>Endpoints this close are one corner of a ring, in millimetres: the intake reads a
+        /// PDF's own coordinates, which meet exactly where the drafter closed a polyline.</summary>
+        private const double SlabEdgeJoinMm = 1.0;
+
+        /// <summary>The structure a ring is judged against stands within this share of the ring's own size of it.</summary>
+        private const double SlabEdgeNeighbourhoodShare = 0.10;
+
+        /// <summary>
+        /// Smaller than this and a closed ring is a stair, a shaft or a box of notes, not a floor.
+        /// 400 sq ft, the DXF side's own <c>MinPlateArea</c>, in millimetres.
+        /// </summary>
+        private const double MinSlabAreaMm2 = 400 * 144 * 25.4 * 25.4;
 
         /// <summary>
         /// Narrower than this along the wall and a paper fill is a slot or a text mask, not an

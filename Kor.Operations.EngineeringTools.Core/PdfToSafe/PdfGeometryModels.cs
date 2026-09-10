@@ -109,6 +109,14 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         /// <see cref="WallFaceLines"/>, says how many walls the faces made.
         /// </summary>
         public int FirstFaceWall { get; set; }
+        /// <summary>
+        /// Line index to slab index for lines that are a floor's edge (step 24): the closed loop
+        /// they make is in <see cref="Slabs"/> and the lines are not written as beams. A line may
+        /// serve one loop only.
+        /// </summary>
+        public Dictionary<int, int> SlabEdgeLines { get; } = new();
+        /// <summary>Index in <see cref="Slabs"/> of the first slab recovered from a loop of lines (step 24); those follow the filled ones.</summary>
+        public int FirstEdgeSlab { get; set; }
         /// <summary>Stroke width of each line as the PDF drew it, parallel to <see cref="Lines"/>; the pen a face was drawn with.</summary>
         public List<double> LineWidths { get; } = new();
         public List<(byte R, byte G, byte B)> WallColors { get; } = new();

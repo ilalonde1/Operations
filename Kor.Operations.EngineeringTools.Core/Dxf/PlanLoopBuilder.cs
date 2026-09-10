@@ -260,6 +260,14 @@ public sealed class PlanLoopBuilder
         var loops = new List<PlanLoop>();
         var work = chains.Where(c => c.Count >= 2).ToList();
 
+        // NOTHING TO BRIDGE, NOTHING TO SEARCH. Two chain ends within the join tolerance are
+        // already one node, so a bridge no wider than the join and an extension no longer than it
+        // can never fire — and the search below is every pair of chains, restarted after every
+        // merge. Asked for exact rings only (the PDF side's slab edge, intake step 24), a hatched
+        // plan with ten thousand dashes spent minutes here finding nothing.
+        if (_bridgeTolerance <= _joinTolerance && _extendLimit <= _joinTolerance)
+            return (loops, work.Select(c => (IReadOnlyList<DxfPoint>)c).ToList());
+
         bool merged = true;
         while (merged)
         {

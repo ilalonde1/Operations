@@ -38,6 +38,13 @@ public enum PathReason
     /// match line on its own.
     /// </summary>
     MatchLine,
+    /// <summary>
+    /// One line of the closed loop that is a floor's edge (intake step 24). A plan whose perimeter
+    /// is a slab edge rather than a wall — every tower plan, every ground floor — draws that edge
+    /// as ordinary lines, and the loop they make is the storey's plate. Read; the object index is
+    /// the slab.
+    /// </summary>
+    BecameSlabEdge,
     GridLineExcluded, ColumnTooSmall, UnfilledSmallShape, ColumnAspect, TooShort, TooFewPoints,
     /// <summary>
     /// Never reached the classifier: the read it classifies thins points closer than
@@ -67,7 +74,7 @@ public sealed record PathFate(int PathIndex, Disposition Disposition, PathReason
         // and on the DXF's GRID layer; the path itself has no object index because many pieces make one axis.
         PathReason.BecameSlab or PathReason.BecameColumnByDeclaredSize or PathReason.BecameColumnByShape or PathReason.BecameWall
             or PathReason.BecameFooting or PathReason.GridAxis or PathReason.Doorway or PathReason.ClipOfWall
-            or PathReason.BecameWallFace or PathReason.MatchLine
+            or PathReason.BecameWallFace or PathReason.MatchLine or PathReason.BecameSlabEdge
             => Disposition.Read,
         PathReason.EmittedAsLine or PathReason.FootingBoxNoLabel or PathReason.Band => Disposition.Unaccounted,
         PathReason.MarkupOnlyMode or PathReason.FurnitureRegion or PathReason.Underline
