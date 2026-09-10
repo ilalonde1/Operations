@@ -276,10 +276,11 @@
                     </Border>
                     <!-- The whole filtered list as ONE PDF for Bluebeam markup, built on demand from the store.
                          Not a package: nothing is saved anywhere but a temp file the viewer opens. -->
+                    <!-- No Height and no Padding: RejectButtonStyle's template hard-codes Padding="20,9"
+                         and never binds the button's own Padding, so a pinned Height clips the text
+                         (this shipped at Height="32" against a 38px minimum) and Padding here does nothing. -->
                     <Button x:Name="OpenReviewSetButton"
                             Grid.Column="2"
-                            Height="32"
-                            Padding="12,0"
                             VerticalAlignment="Center"
                             Style="{StaticResource RejectButtonStyle}"
                             Click="OpenReviewSet_Click"

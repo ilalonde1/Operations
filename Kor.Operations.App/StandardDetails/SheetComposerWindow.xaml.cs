@@ -10,7 +10,9 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Input;
 using System.Windows.Controls;
+using System.Windows.Media;
 using System.Windows.Controls.Primitives;
 using System.Windows.Media.Imaging;
 using Microsoft.Win32;
@@ -89,7 +91,15 @@ public partial class SheetComposerWindow : Window
 
     private async Task LoadDetailsAsync()
     {
+        // The list is a database read and takes well under a second. The occupancy annotation is a
+        // Drafter-bridge round trip that costs the FULL timeout whenever Revit is not open on the
+        // bridge machine — which is the normal state now that the runtime is Revit-free. Blocking the
+        // list on it made every open and every Search sit dead for 8 s with no cue (Jim, 2026-09-09).
+        // So: show the list, release the window, and only then go looking for occupancy.
+        var generation = ++_loadGeneration;
+
         ToggleBusy(true);
+        SummaryText.Text = "Loading approved details…";
         try
         {
             var rows = await _catalogRepository.LoadSheetComposerDetailsAsync(SearchBox.Text?.Trim() ?? string.Empty, _selectedDiscipline, _selectedKind);
@@ -107,38 +117,77 @@ public partial class SheetComposerWindow : Window
                 });
             }
 
-            try
-            {
-                if (_composer is null)
-                {
-                    throw new InvalidOperationException("AUTHORING is not configured.");
-                }
-
-                var occupied = await _composer.LoadOccupiedDetailsAsync(OccupancyCheckTimeout);
-                foreach (var detail in _details)
-                {
-                    var occupancy = FindOccupancy(detail, occupied);
-                    detail.CurrentSheetText = occupancy is null ? "" : $"{occupancy.SheetNumber} - {occupancy.SheetName}";
-                    detail.IsAlreadyOnSheet = occupancy is not null;
-                }
-
-                DetailsGrid.Items.Refresh();
-                SummaryText.Text = $"{_details.Count} approved detail(s) loaded. Already-sheeted details stay visible but cannot be added.";
-            }
-            catch
-            {
-                SummaryText.Text = $"{_details.Count} approved detail(s) loaded. Occupancy check unavailable - open the AUTHORING model to see which details are already on a sheet.";
-            }
+            SummaryText.Text = $"{_details.Count} approved detail(s) loaded.";
         }
         catch (Exception ex)
         {
             SummaryText.Text = "Sheet composer unavailable.";
             MessageBox.Show(this, ex.Message, "Standard Details - Sheet Composer", MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
         }
         finally
         {
             ToggleBusy(false);
         }
+
+        await AnnotateOccupancyAsync(generation);
+    }
+
+    /// <summary>
+    /// Marks the details already committed to a governed sheet. It only matters to someone who can
+    /// write one, so for everybody else it is skipped rather than waited on. The window is already
+    /// usable by the time this runs; a failure leaves every row addable, which Revit's own one-sheet
+    /// rule still backstops at save time.
+    /// </summary>
+    private async Task AnnotateOccupancyAsync(int generation)
+    {
+        if (!_canPublish || _composer is null) return;
+
+        SummaryText.Text = $"{_details.Count} approved detail(s) loaded. Checking which are already on a sheet…";
+        try
+        {
+            var occupied = await _composer.LoadOccupiedDetailsAsync(OccupancyCheckTimeout);
+            if (generation != _loadGeneration) return; // a newer search replaced this list
+
+            foreach (var detail in _details)
+            {
+                var occupancy = FindOccupancy(detail, occupied);
+                detail.CurrentSheetText = occupancy is null ? "" : $"{occupancy.SheetNumber} - {occupancy.SheetName}";
+                detail.IsAlreadyOnSheet = occupancy is not null;
+            }
+
+            DetailsGrid.Items.Refresh();
+            SummaryText.Text = $"{_details.Count} approved detail(s) loaded. Already-sheeted details stay visible but cannot be added.";
+        }
+        catch
+        {
+            if (generation != _loadGeneration) return;
+            SummaryText.Text = $"{_details.Count} approved detail(s) loaded. Occupancy check unavailable - open the AUTHORING model to see which details are already on a sheet.";
+        }
+    }
+
+    /// <summary>
+    /// Double-clicking a detail places it, which is what a list of things you are choosing from should
+    /// do. Routed to the same handler as Add so there is one path, not two. Ignores double-clicks on
+    /// the header and on empty space below the rows.
+    /// </summary>
+    private void DetailsGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (_busy) return;
+        if (DetailsGrid.SelectedItem is not ComposerDetailDisplayRow) return;
+        if (e.OriginalSource is DependencyObject source && FindParent<DataGridRow>(source) is null) return;
+
+        Add_Click(sender, new RoutedEventArgs());
+    }
+
+    private static T? FindParent<T>(DependencyObject from) where T : DependencyObject
+    {
+        for (DependencyObject? node = from; node is not null; node = VisualTreeHelper.GetParent(node))
+        {
+            if (node is T hit) return hit;
+        }
+
+        return null;
     }
 
     private async void Add_Click(object sender, RoutedEventArgs e)
@@ -786,6 +835,9 @@ public partial class SheetComposerWindow : Window
 
     private bool _busy;
 
+    // Bumped on every list load so a slow occupancy check cannot annotate a list that has moved on.
+    private int _loadGeneration;
+
     // The number Revit assigned on save; null until then. The label beside "Sheet #" shows a hint before
     // that, and the hint must never be read as a number, so nothing reads the label's text.
     private string? _assignedSheetNumber;
@@ -795,6 +847,8 @@ public partial class SheetComposerWindow : Window
     private void ToggleBusy(bool busy)
     {
         _busy = busy;
+        // A visible cue, not just dead controls: the window said nothing at all while it worked.
+        Mouse.OverrideCursor = busy ? Cursors.Wait : null;
         SearchBox.IsEnabled = !busy;
         AddButton.IsEnabled = !busy;
         DetailsGrid.IsEnabled = !busy;
@@ -809,6 +863,14 @@ public partial class SheetComposerWindow : Window
         OpenPdfButton.IsEnabled = actions.OpenPdf;
         CreatePdfSheetButton.IsEnabled = actions.CreatePdfSheet;
         SaveButton.IsEnabled = actions.SaveToMaster;
+
+        // Someone who cannot publish will never use these; leaving them permanently greyed makes the
+        // whole window read as broken, which is exactly how it reached Jim on 2026-09-09.
+        var governed = _canPublish ? Visibility.Visible : Visibility.Collapsed;
+        OpenPdfButton.Visibility = governed;
+        SaveButton.Visibility = governed;
+
+        ActionHintText.Text = DescribeActionState(_canPublish, _busy, HasSheetName, _placements.Count);
     }
 
     private void SheetNameBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e) => RefreshActionStates();
@@ -821,9 +883,24 @@ public partial class SheetComposerWindow : Window
     internal static (bool SaveToMaster, bool OpenPdf, bool CreatePdfSheet) GetActionStates(bool canPublish, bool busy, bool hasSheetName)
         => (!busy && canPublish && hasSheetName, !busy && canPublish, !busy && hasSheetName);
 
+    /// <summary>
+    /// Why the buttons are in the state they are, in the words of the thing the user still has to do.
+    /// Empty once there is nothing blocking them.
+    /// </summary>
+    internal static string DescribeActionState(bool canPublish, bool busy, bool hasSheetName, int placementCount)
+    {
+        if (busy) return "Working…";
+        if (placementCount == 0 && !hasSheetName) return "Add details to the sheet, then give it a name.";
+        if (placementCount == 0) return "Add at least one detail to the sheet.";
+        if (!hasSheetName) return "Give the sheet a name to create a PDF.";
+        return canPublish ? "" : "Ready. Create PDF sheet gives you a personal copy; the governed sheet is the gatekeeper's.";
+    }
+
     private void UpdatePlacementSummary()
     {
         PlacementSummaryText.Text = $"{_placements.Count} detail(s) selected";
+        // The hint reads on the placement count too, so it has to move when details come and go.
+        RefreshActionStates();
     }
 
     private void Cancel_Click(object sender, RoutedEventArgs e)

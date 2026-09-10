@@ -62,7 +62,10 @@
                         <Button Grid.Column="1" Width="88" Height="32" Margin="8,0,0,0" Content="Search"
                                 Style="{StaticResource Button.Secondary}" Click="Search_Click"/>
                     </Grid>
+                    <!-- Double-click a row to place it. Select-then-Add still works; nobody should have
+                         to use two controls to do the obvious thing with a list. -->
                     <DataGrid x:Name="DetailsGrid" Grid.Row="1" AutoGenerateColumns="False" IsReadOnly="True"
+                              MouseDoubleClick="DetailsGrid_MouseDoubleClick"
                               SelectionMode="Single" HeadersVisibility="Column" GridLinesVisibility="Horizontal"
                               EnableRowVirtualization="True"
                               EnableColumnVirtualization="True"
@@ -100,9 +103,11 @@
                         <TextBlock Grid.Column="1" x:Name="SheetNumberText" VerticalAlignment="Center" Margin="0,0,18,0"
                                    Foreground="#666" Text="assigned on save"
                                    ToolTip="The next free S1.NN in the standards model, assigned when the sheet is saved."/>
-                        <TextBlock Grid.Column="2" Text="Name" VerticalAlignment="Center" FontWeight="SemiBold" Margin="0,0,6,0"/>
+                        <TextBlock Grid.Column="2" VerticalAlignment="Center" FontWeight="SemiBold" Margin="0,0,6,0">
+                            <Run Text="Name"/><Run Text=" *" Foreground="#FFC0392B"/>
+                        </TextBlock>
                         <TextBox Padding="10,0" FontSize="13" Background="#FFFFFFFF" Foreground="#FF111111" CaretBrush="#FF111111" Grid.Column="3" x:Name="SheetNameBox" Height="32" Margin="0,0,0,0"
-                                 VerticalContentAlignment="Center" MaxLength="300" ToolTip="Required for both Create PDF sheet and Save to master"
+                                 VerticalContentAlignment="Center" MaxLength="300" ToolTip="Required. Name this sheet, then Create PDF sheet."
                                  TextChanged="SheetNameBox_TextChanged"/>
                     </Grid>
 
@@ -196,21 +201,39 @@
             </Grid>
 
             <Border Grid.Row="2" BorderBrush="#FFE6E8EB" BorderThickness="0,1,0,0" Padding="14,10">
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                    <Button Width="100" Height="34" Margin="0,0,8,0" Content="Refresh"
-                            Style="{StaticResource Button.Secondary}" Click="Refresh_Click"/>
-                    <Button Width="100" Height="34" Margin="0,0,8,0" Content="Cancel"
-                            Style="{StaticResource Button.Secondary}" Click="Cancel_Click"/>
-                    <Button x:Name="OpenPdfButton" Width="110" Height="34" Margin="0,0,8,0" Content="Open PDF"
-                            IsEnabled="False" Style="{StaticResource Button.Secondary}" Click="OpenPdf_Click"/>
-                    <Button x:Name="CreatePdfSheetButton" Width="140" Height="34" Margin="0,0,8,0" Content="Create PDF sheet"
-                            Style="{StaticResource Button.Secondary}" Click="CreatePdfSheet_Click"
-                            ToolTip="Builds a personal PDF from the captured detail art. No Revit needed - an uncontrolled working copy, not the governed standard."/>
-                    <Button x:Name="SaveButton" Width="120" Height="34" Content="Save to master"
-                            IsEnabled="False"
-                            ToolTip="Writes a governed sheet into the master model. Requires Revit with the AUTHORING template open (gatekeeper)."
-                            Style="{StaticResource PrimaryActionButton}" Click="Save_Click"/>
-                </StackPanel>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <!-- A disabled button must say why it is disabled. Without this the composer
+                         reads as broken: everything greyed out and nothing on screen explaining it. -->
+                    <TextBlock x:Name="ActionHintText" Grid.Column="0" VerticalAlignment="Center"
+                               Margin="0,0,16,0" FontSize="12.5" TextTrimming="CharacterEllipsis"
+                               Foreground="{StaticResource Text.Secondary}"/>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Width="100" Height="34" Margin="0,0,8,0" Content="Refresh"
+                                Style="{StaticResource Button.Secondary}" Click="Refresh_Click"/>
+                        <Button Width="100" Height="34" Margin="0,0,8,0" Content="Cancel"
+                                Style="{StaticResource Button.Secondary}" Click="Cancel_Click"/>
+                        <!-- Governed outputs: hidden outright for anyone who cannot publish, rather than
+                             shown dead forever. Collapsed by default; shown only when publishing is allowed. -->
+                        <!-- Named for what it does: re-opens a sheet ALREADY SAVED to the master, by number,
+                             through Revit. The catalog's "Open PDF" is a different thing (a stored PDF, no
+                             Revit) and two buttons with one name read as a fault. -->
+                        <Button x:Name="OpenPdfButton" Width="150" Height="34" Margin="0,0,8,0" Content="Open saved sheet"
+                                IsEnabled="False" Visibility="Collapsed"
+                                ToolTip="Re-opens a sheet already saved to the master, by its number, through Revit."
+                                Style="{StaticResource Button.Secondary}" Click="OpenPdf_Click"/>
+                        <Button x:Name="CreatePdfSheetButton" Width="140" Height="34" Margin="0,0,8,0" Content="Create PDF sheet"
+                                Style="{StaticResource Button.Secondary}" Click="CreatePdfSheet_Click"
+                                ToolTip="Builds a personal PDF from the captured detail art. No Revit needed - an uncontrolled working copy, not the governed standard."/>
+                        <Button x:Name="SaveButton" Width="120" Height="34" Content="Save to master"
+                                IsEnabled="False" Visibility="Collapsed"
+                                ToolTip="Writes a governed sheet into the master model. Requires Revit with the AUTHORING template open (gatekeeper)."
+                                Style="{StaticResource PrimaryActionButton}" Click="Save_Click"/>
+                    </StackPanel>
+                </Grid>
             </Border>
         </Grid>
     </Border>

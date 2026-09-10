@@ -31,6 +31,25 @@ public sealed class SheetComposerAccessTests
         Assert.Equal(personalEnabled, actions.CreatePdfSheet);
     }
 
+    [Theory]
+    // A disabled button must always be accompanied by the reason. Jim hit exactly the third row on
+    // 2026-09-09: three details placed, no name, every button greyed and nothing saying why.
+    [InlineData(false, false, false, 0, "Add details to the sheet, then give it a name.")]
+    [InlineData(false, false, false, 3, "Give the sheet a name to create a PDF.")]
+    [InlineData(false, false, true, 0, "Add at least one detail to the sheet.")]
+    [InlineData(true, false, false, 3, "Give the sheet a name to create a PDF.")]
+    public void A_blocked_action_says_what_is_missing(bool canPublish, bool busy, bool hasName, int placements, string expected)
+    {
+        Assert.Equal(expected, SheetComposerWindow.DescribeActionState(canPublish, busy, hasName, placements));
+    }
+
+    [Fact]
+    public void Nothing_blocking_leaves_a_publisher_with_no_hint_and_tells_everyone_else_what_they_get()
+    {
+        Assert.Empty(SheetComposerWindow.DescribeActionState(canPublish: true, busy: false, hasSheetName: true, placementCount: 2));
+        Assert.Contains("personal copy", SheetComposerWindow.DescribeActionState(canPublish: false, busy: false, hasSheetName: true, placementCount: 2));
+    }
+
     [Fact]
     public void Personal_pdf_accepts_an_empty_sheet_number()
     {
