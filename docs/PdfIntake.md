@@ -52,9 +52,13 @@ is kept:
    a piece of the west edge. A segment can belong to only one ring, so whichever ring is built first
    spends them. ⛔ Feeding the small closed loops to the bridging pass was tried and **changed
    nothing on any of the five sets** (31168 stayed at 37 floors, zero storeys moved): the block
-   re-closes on its own exact joins in that pass too. The fix is either that a piece of linework may
-   serve a small loop AND the floor's edge, or that the outer boundary is found by something other
-   than chaining. The cost is written in `SlabEdgesFromLoops` where the code was.
+   re-closes on its own exact joins in that pass too. ⛔ **Seeding the walk from the longest segment**
+   was tried second and is worse: it did not close BLDG A and cost 31168 a floor (37 → 36) and 31065
+   a floor and four columns (9 → 8, 605 → 601). Two attempts on one symptom is where CLAUDE.md rule
+   10 says to stop, so it is stopped. The fix is either that a piece of linework may serve a small
+   loop AND the floor's edge, or that the outer boundary is found by something other than chaining —
+   and the next attempt needs a differential showing which ring each shared segment ought to belong
+   to, not a third heuristic. Both costs are written in `SlabEdgesFromLoops` where the code was.
 3. **31202 places 0 of 34 sheets.** A whole job produces an empty model. Not yet characterised —
    the title block is the suspect, and it is one job's worth of evidence, so it may be quick.
 4. **Tower walls, 33 a storey against Revit's 40.**

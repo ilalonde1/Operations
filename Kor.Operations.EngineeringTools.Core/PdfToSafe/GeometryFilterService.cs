@@ -914,6 +914,15 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             // is that a piece of linework must be allowed to serve a small loop AND the floor's edge,
             // or the outer boundary must be found by something other than chaining. Neither is a
             // tolerance, and neither should be guessed at.
+            //
+            // ⛔ AND MEASURED AND REJECTED THE SAME DAY: seeding PlanLoopBuilder's walk from the
+            // LONGEST segment instead of in arrival order. The walk follows the straightest
+            // continuation, so seeding on the floor's own long run should have carried it through the
+            // shared corner and round the building. It did not close BLDG A, and it cost elsewhere:
+            // 31168 37 floors -> 36, and 31065 9 floors -> 8 with columns 605 -> 601. Two attempts on
+            // one symptom is where CLAUDE.md rule 10 says to stop, so the code stops here and the
+            // finding is the deliverable. Do not try a third without a differential that shows which
+            // ring each shared segment ought to belong to.
             if (pieces.Count >= 2)
             {
                 var chainSegments = new List<DxfSegment>();

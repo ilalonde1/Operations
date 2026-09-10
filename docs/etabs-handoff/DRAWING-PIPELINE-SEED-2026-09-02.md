@@ -19,18 +19,18 @@ work actually in progress, and it is where you start.
 
 **The goal.** A structural drawing set becomes an ETABS model **from the PDF alone** — no Revit, no
 reference model. That route works end to end today. It is not finished: on the biggest test set it
-gets the columns and the parkade plates close to the Revit route's answer and misses the tower
-plates entirely.
+gets the columns, the parkade plates and (since step 28) the tower plates close to the Revit
+route's answer, on 36 of 62 storeys.
 
 **Read, in this order, and stop.** `CLAUDE.md` (twelve rules, gates not advice), then
-`docs/PdfIntake.md` **§0 START HERE**, then its §30, then its last three step sections (§34, §35,
-§36). That is about seventy lines of state plus three rules. Sections 1 to 29 of that document are
+`docs/PdfIntake.md` **§0 START HERE**, then its §30, then its last three step sections (§35, §36,
+§37). That is about seventy lines of state plus three rules. Sections 1 to 29 of that document are
 the record of how each earlier rule was arrived at; read one only when you are changing that rule.
 Do not read the whole document to begin work.
 
 **The data is local already.** `%LOCALAPPDATA%\Temp\kor-drawings\stickfiles` holds five PDF sets
 (31065, 31130, 31138, 31168, 31202). `...\kor-drawings\harness` holds one output folder per job,
-the banked `.e2k` baselines named for the step that produced them (`pdf-only-<job>-01-s26.e2k` is
+the banked `.e2k` baselines named for the step that produced them (`pdf-only-<job>-01-s28.e2k` is
 the most recent), and `revit-31168\out.e2k`, the Revit route's answer for the same building. That
 last file is the only yardstick in the harness that is not our own output. Nothing here is read
 over SMB or the VPN, and it must stay that way.
@@ -80,7 +80,9 @@ caught step 28's own false positive, a 12,391 sq ft chevron on LEVEL 2 that ever
    L4–L14 carry one plate where Revit has two. Characterised 09-10: A draws its tower corners as
    their own 5,133 × 5,186 mm rectangles, and such a block **shares two of its four edges with the
    perimeter**; a segment can belong to only one ring, so whichever is built first spends them.
-   ⛔ Feeding small closed loops to the bridging pass was tried and changed NOTHING on all five sets.
+   ⛔ Feeding small closed loops to the bridging pass changed NOTHING on all five sets; ⛔ seeding the
+   walk from the longest segment was worse (31168 37→36 floors, 31065 9→8 and 605→601 columns).
+   Rule 10 reached: STOPPED.
    The fix is a piece of linework serving two rings, or an outer boundary found without chaining —
    neither is a tolerance, neither should be guessed at.
 3. **31202 places 0 of its 34 sheets.** A whole job produces an empty model. Not characterised yet;
