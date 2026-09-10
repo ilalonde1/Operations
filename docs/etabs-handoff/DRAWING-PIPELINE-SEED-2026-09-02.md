@@ -5,10 +5,95 @@ specific about what has been MEASURED versus what is assumed, because most of th
 this pipeline has come from re-deriving things that were already measured, or trusting things that
 were never checked.
 
-Last brought up to date 2026-09-07, after the border-bounded schedule reader landed. The earlier
-"READ THIS FIRST — there is uncommitted work" section is gone because the work is committed
-(c707ec5b, 5199f091, and the commit that carries this edit); its regression story is kept below
-under "What went wrong before", because the lesson is the point.
+Last brought up to date 2026-09-09, after intake step 27. The earlier "READ THIS FIRST — there is
+uncommitted work" section is gone because the work is committed (c707ec5b, 5199f091, and the commit
+that carries this edit); its regression story is kept below under "What went wrong before", because
+the lesson is the point.
+
+---
+
+## THE JOB IN FRONT OF YOU (2026-09-09)
+
+Everything below this section is the pipeline as a whole and is still true. This section is the
+work actually in progress, and it is where you start.
+
+**The goal.** A structural drawing set becomes an ETABS model **from the PDF alone** — no Revit, no
+reference model. That route works end to end today. It is not finished: on the biggest test set it
+gets the columns and the parkade plates close to the Revit route's answer and misses the tower
+plates entirely.
+
+**Read, in this order, and stop.** `CLAUDE.md` (twelve rules, gates not advice), then
+`docs/PdfIntake.md` **§0 START HERE**, then its §30, then its last three step sections (§34, §35,
+§36). That is about seventy lines of state plus three rules. Sections 1 to 29 of that document are
+the record of how each earlier rule was arrived at; read one only when you are changing that rule.
+Do not read the whole document to begin work.
+
+**The data is local already.** `%LOCALAPPDATA%\Temp\kor-drawings\stickfiles` holds five PDF sets
+(31065, 31130, 31138, 31168, 31202). `...\kor-drawings\harness` holds one output folder per job,
+the banked `.e2k` baselines named for the step that produced them (`pdf-only-<job>-01-s26.e2k` is
+the most recent), and `revit-31168\out.e2k`, the Revit route's answer for the same building. That
+last file is the only yardstick in the harness that is not our own output. Nothing here is read
+over SMB or the VPN, and it must stay that way.
+
+**One command measures every deliverable.**
+
+      bash docs/etabs-handoff/pdf_only_all.sh                      # all five jobs from PDFs, ~4 min
+      python docs/etabs-handoff/plate_diff.py <banked.e2k> <new.e2k> mm    # which storey's plate moved
+      python docs/etabs-handoff/storey_counts.py <a.e2k> <b.e2k>           # columns and walls per storey
+
+A change measured on one job has not been measured. Run all five, before and after.
+
+**Look at the drawing, do not count its lines.** `takeoff pdf-overlay <pdf> <page> <out.png>
+--scale 96 --dpi 200 [--walls]` paints what the reader saw back onto the sheet, and
+`docs/etabs-handoff/crop_mm.py` cuts a window out of that. Step 27 was a day spent guessing rules
+for closing a slab edge that one rendered view would have settled. That is the single most
+expensive habit on this pipeline and CLAUDE.md rule 9 already says not to do it.
+
+**Where the PDF-only route stands on 31168**, against the Revit route, both built by the same
+DXF-to-ETABS code:
+
+| | PDF only | Revit route |
+|---|---|---|
+| columns | 2,502 | 2,380 |
+| walls | 1,209 | 1,832 |
+| storeys carrying a plate | 9 of 62 | all |
+
+Parkade plates agree closely: P1 77,182 sq ft against Revit's 76,967. Tower storeys have no plate
+at all.
+
+**The open list, largest first.** Each is one universal rule, measured on all five sets:
+
+1. **The tower plate.** 53 of 62 storeys on 31168 have no floor. Their outline is drawn as a
+   "CONCRETE OUTLINE" that steps out round every balcony; on the L4–L14 view the west edge is two
+   5,186 mm pieces 18.6 m apart. Exact closed rings on that sheet: 12. Open chains: 208. Three
+   closing rules have been tried and measured. **Render that view and look at it before writing a
+   fourth.**
+2. **31202 places 0 of its 34 sheets.** A whole job produces an empty model. Not characterised yet;
+   the title block is the suspect.
+3. **Tower walls: 33 a storey against Revit's 40.**
+4. **The storey-rise convention.** The top storeys sit one level off the Revit route's.
+5. **Mezzanine levels** are read as storeys but never placed.
+6. **31130's halves** do not join.
+7. **L10 carries 58 columns against Revit's 48.**
+8. **Parkade plan titles are not found as views**, so a parkade sheet is not split the way a tower
+   sheet is.
+
+**⛔ Measured and rejected, do not retry.** `DxfFloodFillPlateDetector.RecoverAll` as the fallback
+where no ring closes. Asked for the tower floor it answers with the **core** — 858 sq ft on
+A-L27 to A-L32 against Revit's 9,743 — and it costs the parkades their own plates (P1 77,182 →
+5,536 sq ft). The reason is written in `GeometryFilterService.SlabEdgesFromLoops` where the code
+was, and in `docs/PdfIntake.md` §36. Two other closing heuristics were rejected the same way.
+
+**How the work is done here.** One universal rule per step, never a fix aimed at one drawing.
+Banked as a test whose summary states what it covers **and what it does not**. Measured on all five
+sets before and after. When a rule is rejected, the cost is written down where the code was, so
+nobody tries it a fourth time. Ian runs Codex and runs server deploys; you implement, publish and
+measure. Nothing goes to the engineer until it is the complete tool.
+
+**A build gate you will hit.** A repo hook refuses `dotnet build` and `dotnet test` unless Ian's
+most recent message asks for a build or a test. Ask him for "build and test" when you need one, and
+batch your work so you need few. A running testhost also holds the build lock; clear it with
+PowerShell `Get-Process testhost | Stop-Process -Force`.
 
 ---
 
