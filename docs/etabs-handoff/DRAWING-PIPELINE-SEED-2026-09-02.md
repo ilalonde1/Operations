@@ -12,7 +12,7 @@ the lesson is the point.
 
 ---
 
-## THE JOB IN FRONT OF YOU (2026-09-10)
+## THE JOB IN FRONT OF YOU (2026-09-10, after intake step 28)
 
 Everything below this section is the pipeline as a whole and is still true. This section is the
 work actually in progress, and it is where you start.
@@ -23,8 +23,8 @@ gets the columns, the parkade plates and (since step 28) the tower plates close 
 route's answer, on 36 of 62 storeys.
 
 **Read, in this order, and stop.** `CLAUDE.md` (twelve rules, gates not advice), then
-`docs/PdfIntake.md` **§0 START HERE**, then its §30, then its last three step sections (§35, §36,
-§37). That is about seventy lines of state plus three rules. Sections 1 to 29 of that document are
+`docs/PdfIntake.md` **§0 START HERE**, then its §30, then its last three step sections (§36, §37,
+§38). That is about seventy lines of state plus three rules. Sections 1 to 29 of that document are
 the record of how each earlier rule was arrived at; read one only when you are changing that rule.
 Do not read the whole document to begin work.
 
@@ -69,36 +69,43 @@ guessed at against a symptom whose cause was already written in this repo's own 
 rendered view settled it in a glance. **Render first is a gate, not advice** — and the same habit
 caught step 28's own false positive, a 12,391 sq ft chevron on LEVEL 2 that every count called green.
 
+**The instruments, and they live in the repo, not in a session.** `pdf_lines.py` (what the PDF
+itself draws, no reader in the way), `view_breaks.py` (a contact sheet of every failing view with
+its open ends ringed), `view_parts.py` (a view's wall panels as objects), `chains.py` (now reads
+POLYLINE/VERTEX — it silently said "0 segment(s)" on every PDF-route DXF until 2026-09-10),
+`plan_sheet.py` (every storey on one sheet), `plate_diff.py`, `storey_counts.py`. All in
+`docs/etabs-handoff/`. Anything you work out with a throwaway script belongs here afterwards.
+
 **The open list, largest first.** Each is one universal rule, measured on all five sets:
 
-1. **A ring that is a piece of the floor rather than the floor.** 31168's LEVEL 2 takes a 4,222 sq ft
+1. **Finish or abandon the boundary walk** (§38) — STASHED, not committed: worth +13 storeys
+   (36 → 49 of 62) but it turned `Langara31168ParkadePlansBuildOnTheReferencesGridByName` red and
+   carries an 11% corner notch. L15–L26 read 8,721 and 8,699 sq ft against Revit's 9,831 and 9,835:
+   11% under, and the shortfall is exactly the four 287 sq ft corner blocks cut out. The bounding
+   box is right to the millimetre; the boundary walk rounds the INSIDE of each corner block, which
+   `plan_sheet.py` shows as four notches with the corner columns stranded outside the plate.
+2. **A ring that is a piece of the floor rather than the floor.** 31168's LEVEL 2 takes a 4,222 sq ft
    rectangle where Revit's storey is 48,501 sq ft in three plates; tower C's L5–L8 take a 1,922 sq ft
    strip of a 14,988 sq ft floor. The gates measure the neighbourhood against the RING's own size, so
    a small ring in the corner of a big floor passes. A storey with no plate is honest; a 9% plate
    is not.
-2. **Fifteen views on 31168 do not close, and they are NOT one cause** — those 15 give all 25 of the
-   storeys with no plate (A and B's L15–26 = 12, C's L5–L8 = 4, the three L1 sheets, C's L3, A's L35,
-   B's L28, B's L37). Only ONE is diagnosed, BLDG A's L4–L14: A draws its tower corners as
-   their own 5,133 × 5,186 mm rectangles, and such a block **shares two of its four edges with the
-   perimeter**; a segment can belong to only one ring, so whichever is built first spends them.
-   ⛔ Feeding small closed loops to the bridging pass changed NOTHING on all five sets; ⛔ seeding the
-   walk from the longest segment was worse (31168 37→36 floors, 31065 9→8 and 605→601 columns).
-   Rule 10 reached: STOPPED.
-   ⚠ The block signature is on 3 of 12 failing views, and A's L15–26 has NONE — an earlier claim
-   that it explained L15–26 too was an unverified generalisation and is withdrawn.
-   **Fourteen of the fifteen have never been rendered and looked at. That is the next thing.**
-   The fix is a piece of linework serving two rings, or an outer boundary found without chaining —
-   neither is a tolerance, neither should be guessed at.
-3. **31202 places 0 of its 34 sheets.** A whole job produces an empty model. Not characterised yet;
+3. **Thirteen storeys still carry no plate** (25 before step 29): L1 and A-L1/B-L1, C-L3,
+   C-L5 to C-L8, A-L35, A-L36, B-L28, B-L40. P3 correctly has none. Each is a view whose edge the
+   boundary walk could not return, and they are NOT one cause — `view_breaks.py` draws them all on
+   one sheet, which is where to start. ⚠ Do not assume one cause: an earlier session claimed the
+   corner block explained A's L15–26 and it did not, which is how that generalisation was caught.
+   ⛔ Within step 29, walking only the biggest piece by node count traced the CORE, and flipping
+   the walk's handedness changed nothing at all — both measured, neither to be retried.
+4. **31202 places 0 of its 34 sheets.** A whole job produces an empty model. Not characterised yet;
    the title block is the suspect.
-4. **Tower walls: 33 a storey against Revit's 40.**
-5. **The storey-rise convention.** The top storeys sit one level off the Revit route's.
-6. **Mezzanine levels** are read as storeys but never placed.
-7. **31130's halves** do not join.
-8. **L10 carries 58 columns against Revit's 48.**
-9. **Parkade plan titles are not found as views**, so a parkade sheet is not split the way a tower
+5. **Tower walls: 33 a storey against Revit's 40.**
+6. **The storey-rise convention.** The top storeys sit one level off the Revit route's.
+7. **Mezzanine levels** are read as storeys but never placed.
+8. **31130's halves** do not join.
+9. **L10 carries 58 columns against Revit's 48.**
+10. **Parkade plan titles are not found as views**, so a parkade sheet is not split the way a tower
    sheet is.
-10. **C's floor lands on C-L4** where Revit has it on C-L5 to C-L8; **A-L34 reads 9,326 against
+11. **C's floor lands on C-L4** where Revit has it on C-L5 to C-L8; **A-L34 reads 9,326 against
     Revit's 5,949**, unexplained.
 
 **⛔ Measured and rejected, do not retry.** `DxfFloodFillPlateDetector.RecoverAll` as the fallback

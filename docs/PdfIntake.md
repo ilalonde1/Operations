@@ -3,7 +3,7 @@
 ## 0. START HERE (state as of 2026-09-10, after step 28)
 
 A session picking this up cold reads this section, then §30 (what the PDF alone gives), then the
-last three step sections. It does not need to read §1–§29 to work; those are the record of how each
+last three step sections (§36, §37, §38). It does not need to read §1–§29 to work; those are the record of how each
 rule was arrived at, and are read when a rule is being changed.
 
 **Where the data is.** `%LOCALAPPDATA%\Temp\kor-drawings\stickfiles` holds the five PDFs (31065,
@@ -39,7 +39,12 @@ against 9,726, C-L4 15,002 against 14,989). The tower wall count is now the larg
 **The open list, largest first.** Each is one rule, and each is measured on the five sets before it
 is kept:
 
-1. **A ring that is a piece of the floor rather than the floor** (§37). 31168's LEVEL 2 takes a
+1. **Finish or abandon the boundary walk** (§38) — stashed, worth +13 storeys, held back by one red
+   gate and an 11% corner notch. L15–L26 read 8,721 and 8,699 sq ft against Revit's 9,831 and 9,835
+   — 11% under, the shortfall being exactly the four 287 sq ft corner blocks cut out. The bounding
+   box is right to the millimetre; the boundary walk rounds the INSIDE of each corner block. It is
+   rendered in `plan_sheet.py` as a rectangle with four notches and the corner columns outside it.
+2. **A ring that is a piece of the floor rather than the floor** (§37). 31168's LEVEL 2 takes a
    4,222 sq ft rectangle where Revit's storey is 48,501 sq ft in three plates; tower C's L5–L8 take
    a 1,922 sq ft strip of a 14,988 sq ft floor. The gates measure the neighbourhood against the
    RING's own size, so a small ring in the corner of a big floor passes. By this document's own
@@ -1720,3 +1725,77 @@ running 7 m of an 8 m edge keeping the line, so no floor is read. WHAT IT DOES N
 real sheet (the build above, not banked); a ring that is a piece of the floor, stated in the class's
 own remarks with both live instances; a face line shared by two walls; and the corner mismatch that
 still leaves tower A's two views open, which only the build shows.
+
+## 38. Step 29, ATTEMPTED 2026-09-10 and NOT LANDED: a floor's edge as the outer boundary
+
+⛔ **The code for this is NOT in the build.** It is stashed, not committed, because it turned one
+gate red (below). Everything here is measured and is kept so the next attempt starts from it
+rather than from nothing. The shipped state is step 28: 36 of 62 storeys.
+
+Step 24 read a floor's edge as *the outermost closed ring the plan draws*. On a tower plan that
+question has no answer. The corner blocks and the balcony boxes are drawn AGAINST the edge and
+share their outer sides with it, and a segment can belong to only one ring — so whichever ring is
+walked first spends the shared piece and the floor is left in fragments. Two ways of choosing
+between the rings were built and measured on all five sets, and both failed (§37's open item 2:
+feeding the small closed loops to the bridging pass changed nothing; seeding the walk from the
+longest segment cost 31168 a floor and 31065 a floor and four columns).
+
+**The question was wrong.** What a floor's edge IS, is the outside of everything the plan draws.
+That is a boundary walk, and it does not care which ring a shared segment "belongs" to, because it
+travels along the segment's outward side and carries on.
+
+**The rule** (`GeometryFilterService.OuterBoundary`). Loose ends are dropped first — a floor's edge
+has none, and a leader or a dimension hanging off the perimeter would be walked out and back as a
+spike; dropping every node with fewer than two neighbours, repeatedly, leaves only what lies on a
+cycle. Then **every** remaining piece of linework whose own bounding box could hold a floor offers
+its outside, and the gates already there — floor-sized, structure standing in it, most of the
+structure near it inside it, inside no other ring — choose between them. Each walk starts at the
+leftmost node of its piece, which is on the outside by construction, arrives heading south, and at
+every node takes the most clockwise turn. Nodes are merged at the banked bridge tolerance
+(`SlabEdgeBridgeMm`, 6 in) rather than exactly, because the drafter's pieces meet within a hand's
+width and not on the millimetre.
+
+**⛔ Two things measured and rejected inside this step, so they are not retried.** Walking only the
+BIGGEST piece by node count: on a tower plan the perimeter and the core are separate pieces and the
+core has far more nodes, so it traced the CORE and 31168 gained exactly one plate, on LEVEL 2, with
+no tower view closing. And flipping the turn from clockwise to counter-clockwise: no change at all
+on 31168 — the corner notch below is not a handedness problem, and the tests pin the convention.
+
+**WHAT THIS IS NOT: a flood fill.** Nothing is painted, no gap is closed and no pixel is involved;
+the rejected `DxfFloodFillPlateDetector.RecoverAll` (§36) answered with the core and cost the
+parkades their plates. Where the perimeter is genuinely broken this returns the boundary of the
+piece it is on and the gates throw it out, exactly as before.
+
+**Measured on all five sets, before and after:**
+
+- **31168: storeys carrying a plate 36 → 49 of 62; floors 37 → 63.** L15 to L26 gain both towers'
+  plates, which is 12 storeys that had nothing. Columns unchanged at 2,502.
+- **31065, 31130 and 31138 are identical to their step-28 baselines** — zero storeys moved on any
+  of the three. This rule touches only the job whose plans are drawn this way.
+- Walls 1,209 → 1,233: +2 a storey on L16–L26 and on B-L27, columns unchanged. Revit reads 40 a
+  tower storey against our 33, so the move is toward it; it is named, not explained.
+
+**Open, named by the measurement:**
+
+- **The corner notch.** L15–L26 read 8,721 and 8,699 sq ft against Revit's 9,831 and 9,835 — 11%
+  under, and the shortfall is 1,149 sq ft, which is exactly the four 287 sq ft corner blocks cut
+  out of the corners. The bounding box is right to the millimetre (31,585 x 29,021); the walk goes
+  round the inside of each corner block instead of its outside. **Rendered and looked at**
+  (`plan_sheet.py`): the plate is a rectangle with four square notches and the corner columns
+  stranded outside it. Merging nodes at the bridge tolerance did not close it.
+- Thirteen storeys still carry no plate: L1 and A-L1/B-L1, C-L3, C-L5 to C-L8, A-L35, A-L36,
+  B-L28, B-L40. P3 correctly has none.
+
+WHAT THE CHECK COVERS (`AFloorsEdgeIsTheOutermostClosedLoopTests`, +2, 17 in all): a block drawn
+against the edge and sharing a run of it, where the floor comes back whole and the block is simply
+inside it — the shape ring-chaining could not answer; and a leader hanging off the edge being a
+loose end rather than a spike in the floor. WHAT IT DOES NOT: the corner notch above, which is live
+on a real sheet and not banked; a block whose outer side is drawn OFFSET from the edge rather than
+along it, which is what the notch is; two floors touching, where one boundary would wrap both; and
+the areas on any real sheet, which only the build's own count against Revit shows.
+
+**The instruments this step needed are in the repo now, not in a scratchpad** —
+`docs/etabs-handoff/pdf_lines.py` (what the PDF itself draws, no reader in the way),
+`view_breaks.py` (a contact sheet of every failing view with its open ends ringed), and
+`view_parts.py` (a view's wall panels as objects). `chains.py` was reading LINE and LWPOLYLINE only,
+so it answered "0 segment(s)" on every DXF the PDF route writes; it reads POLYLINE/VERTEX now.

@@ -1,4 +1,11 @@
-"""Chain the slab-edge linework of one DXF sheet and report how close each ring is to closing."""
+"""Chain the slab-edge linework of one DXF sheet and report how close each ring is to closing.
+
+    python docs/etabs-handoff/chains.py <sheet.dxf> [layerSubstring=SLABEDG]
+
+Reads LINE, LWPOLYLINE and POLYLINE/VERTEX. The last of those matters: a Revit export writes loose
+LINEs, but the PDF route writes POLYLINE with VERTEX children, so until 2026-09-10 this said
+"0 segment(s)" on every DXF the PDF route produced and looked like an answer.
+"""
 import math
 import sys
 
@@ -9,6 +16,36 @@ with open(path, encoding="utf-8", errors="replace") as fh:
     raw = [ln.rstrip("\n").rstrip("\r") for ln in fh]
 
 segments = []
+
+# POLYLINE carries its points as following VERTEX entities, so gather those first
+i = 0
+poly_layer = None
+poly_pts = []
+while i < len(raw) - 1:
+    if raw[i].strip() != "0":
+        i += 1
+        continue
+    kind = raw[i + 1].strip()
+    j = i + 2
+    codes = []
+    while j < len(raw) - 1 and raw[j].strip() != "0":
+        codes.append((raw[j].strip(), raw[j + 1].strip()))
+        j += 2
+    d = {c: v for c, v in codes}
+    if kind == "POLYLINE":
+        poly_layer, poly_pts = d.get("8", ""), []
+    elif kind == "VERTEX" and poly_layer is not None:
+        try:
+            poly_pts.append((float(d["10"]), float(d["20"])))
+        except (KeyError, ValueError):
+            pass
+    elif kind == "SEQEND":
+        if poly_layer is not None and want.upper() in poly_layer.upper():
+            for a, b in zip(poly_pts, poly_pts[1:]):
+                segments.append((a, b))
+        poly_layer, poly_pts = None, []
+    i = j
+
 i = 0
 while i < len(raw) - 1:
     if raw[i].strip() != "0":
