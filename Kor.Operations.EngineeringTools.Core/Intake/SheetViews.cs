@@ -164,6 +164,7 @@ public static class SheetViews
         var columnOwner = geometry.Columns.Select(c => Owner(c.X, c.Y)).ToList();
         var wallOwner = geometry.Walls.Select(w => Owner((w.Start.X + w.End.X) / 2, (w.Start.Y + w.End.Y) / 2)).ToList();
         var lineOwner = geometry.Lines.Select(l => Owner(Centroid(l).X, Centroid(l).Y)).ToList();
+        var tagOwner = geometry.WallTypeTags.Select(t => Owner(t.X, t.Y)).ToList();
         var footingOwner = geometry.Footings.Select(f => Owner(Centroid(f.Outline).X, Centroid(f.Outline).Y)).ToList();
         var dropOwner = geometry.DropPanelCandidates.Select(d => Owner(Centroid(d).X, Centroid(d).Y)).ToList();
 
@@ -218,6 +219,8 @@ public static class SheetViews
                 g.Walls.Add(geometry.Walls[i]);
                 g.WallColors.Add(i < geometry.WallColors.Count ? geometry.WallColors[i] : ((byte)0, (byte)0, (byte)0));
                 g.WallIsAnnotation.Add(i < geometry.WallIsAnnotation.Count && geometry.WallIsAnnotation[i]);
+                g.WallTypeCodes.Add(i < geometry.WallTypeCodes.Count ? geometry.WallTypeCodes[i] : null);
+                g.WallIsPartition.Add(i < geometry.WallIsPartition.Count && geometry.WallIsPartition[i]);
             }
             g.FirstFaceWall = Enumerable.Range(0, Math.Min(geometry.FirstFaceWall, geometry.Walls.Count)).Count(i => wallOwner[i] == k);
             foreach (var d in geometry.Doorways)
@@ -241,6 +244,7 @@ public static class SheetViews
 
             for (int i = 0; i < geometry.Footings.Count; i++) if (footingOwner[i] == k) g.Footings.Add(geometry.Footings[i]);
             for (int i = 0; i < geometry.DropPanelCandidates.Count; i++) if (dropOwner[i] == k) g.DropPanelCandidates.Add(geometry.DropPanelCandidates[i]);
+            for (int i = 0; i < geometry.WallTypeTags.Count; i++) if (tagOwner[i] == k) g.WallTypeTags.Add(geometry.WallTypeTags[i]);
 
             // an axis to every view it crosses; a match line to every view
             var e = extent[k];

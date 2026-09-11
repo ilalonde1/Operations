@@ -1,15 +1,15 @@
 # PDF intake — what it does today, and what it leaves on the page
 
-## 0. START HERE (state as of 2026-09-10, after step 30)
+## 0. START HERE (state as of 2026-09-10, after step 33)
 
 A session picking this up cold reads this section, then §30 (what the PDF alone gives), then the
-last three step sections (§37, §38, §39). It does not need to read §1–§29 to work; those are the record of how each
+last three step sections (§40, §41, §42). It does not need to read §1–§29 to work; those are the record of how each
 rule was arrived at, and are read when a rule is being changed.
 
 **Where the data is.** `%LOCALAPPDATA%\Temp\kor-drawings\stickfiles` holds the six PDFs (31065,
 31130, 31138, 31168, 31202, and `31170-01-arch` — the ARCHITECT's set for 31170, the only one from
 another office and the measure of whether a rule is universal). `...\kor-drawings\harness` holds one folder per job, the banked `.e2k`
-baselines named for the step that produced them (`pdf-only-<job>-01-s28.e2k` is the most recent), and
+baselines named for the step that produced them (`pdf-only-<job>-s33.e2k` is the most recent), and
 `revit-31168\out.e2k`, which is the Revit route's answer for the same building and the only yardstick
 that is not our own output. Nothing here is read over SMB.
 
@@ -1967,3 +1967,38 @@ not a card; the name deciding the material before the layers; the thickest struc
 the thickness, a decimal inch, an on-centre spacing not a thickness; the kind from the title.
 WHAT IT DOES NOT: the real sheets (the six-set run above); a card whose lines wrap into the next
 column; the vocabulary from KorStandards rather than the defaults; which wall carries which code.
+
+## 42. Step 33, done 2026-09-10: a wall is what its tag says it is
+
+With the assembly schedule read (§41), each plan's walls take their type from the plan's own tags:
+a tag is a word equal to a schedule code, not furniture; a wall takes the nearest tag within reach
+of its axis (`WallTypeTagging.ReachMm`, 1,200 mm — on 31170's 1/4" plans a tag stands within about
+600 mm of its wall and a bay is 3 m or more); the code's material comes from the card. A wall whose
+type is a partition (stud, gypsum) goes to the DXF's **`KOR_PARTITION`** layer, which no wall-layer
+pattern matches, so the model does not read it; every tag on the sheet is written as TEXT on
+`KOR_WALLTYPE` so a reader of the DXF can see what the plan said. A wall with no tag within reach is
+modelled as drawn and counted — the report says what it could not decide; it does not guess.
+
+The set's schedule is read once per `pdf-takeoff` run and rides in `IntakeRequest.Assemblies`;
+`SheetViews` carries the per-wall type into each view. Layer names are how DXF carries meaning — the
+Revit route's own convention — and this is the honest way to carry a fact through it. What DXF cannot
+carry is a type learned on ANOTHER sheet, which is the next item and the case for the composer
+reading the intake's record directly.
+
+**Measured on six sets:** 31170 — **1,673 tags on the plans; 1,174 walls typed, 1,046 of them
+partitions sent out of the model; 1,856 walls with no tag within reach, modelled as drawn.** Walls
+1,453 → 1,062, columns 351 unchanged, L3 310 → 232. The L3 enlargement alone put 438 partitions on
+`KOR_PARTITION`; the 1/8" floor plan put 0, because it carries no tags. The five KOR sets **identical**
+to step 31 (no schedule, no tagging, every count and plate the same). Core: `AWallIsWhatItsTagSaysItIsTests`, 4.
+
+**Open, named:** the 1,856 untagged walls are mostly the 1/8" floor plans', and most have a typed
+twin on an enlargement. The composer's duplicate check is an exact endpoint key, so a wall drawn at
+1/8" and the same wall at 1/4" never match — sheets stack. **Step 34: when two sheets draw the same
+wall and one says what it is, the one that says wins** — a spatial stand-down (a wall within a
+partition's footprint on the same storey is that partition, not a second wall). That is what will
+take L3 from 232 walls to its concrete ones.
+
+WHAT THE CHECK COVERS (4): a tag beside a wall typing it, a partition's code and a concrete code; the
+nearer of two tags; a tag out of reach leaving the wall untagged and its tag still kept; no legend,
+no typing. WHAT IT DOES NOT: the real sheets (the six-set run); a tag on another sheet; a tag reached
+through a leader; the DXF layer the exporter writes.

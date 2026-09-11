@@ -12,7 +12,7 @@ the lesson is the point.
 
 ---
 
-## THE JOB IN FRONT OF YOU (2026-09-10, after intake step 30)
+## THE JOB IN FRONT OF YOU (2026-09-10, after intake step 33)
 
 Everything below this section is the pipeline as a whole and is still true. This section is the
 work actually in progress, and it is where you start.
@@ -23,15 +23,15 @@ gets the columns, the parkade plates and (since step 28) the tower plates close 
 route's answer, on 36 of 62 storeys.
 
 **Read, in this order, and stop.** `CLAUDE.md` (twelve rules, gates not advice), then
-`docs/PdfIntake.md` **§0 START HERE**, then its §30, then its last three step sections (§37, §38,
-§39). That is about seventy lines of state plus three rules. Sections 1 to 29 of that document are
+`docs/PdfIntake.md` **§0 START HERE**, then its §30, then its last three step sections (§40, §41,
+§42). That is about seventy lines of state plus three rules. Sections 1 to 29 of that document are
 the record of how each earlier rule was arrived at; read one only when you are changing that rule.
 Do not read the whole document to begin work.
 
 **The data is local already.** `%LOCALAPPDATA%\Temp\kor-drawings\stickfiles` holds six PDF sets
 (31065, 31130, 31138, 31168, 31202, and `31170-01-arch`, the ARCHITECT's set — the only one from
 another office, and since step 30 the measure of whether a rule is universal). `...\kor-drawings\harness` holds one output folder per job,
-the banked `.e2k` baselines named for the step that produced them (`pdf-only-<job>-01-s28.e2k` is
+the banked `.e2k` baselines named for the step that produced them (`pdf-only-<job>-s33.e2k` is
 the most recent), and `revit-31168\out.e2k`, the Revit route's answer for the same building. That
 last file is the only yardstick in the harness that is not our own output. Nothing here is read
 over SMB or the VPN, and it must stay that way.

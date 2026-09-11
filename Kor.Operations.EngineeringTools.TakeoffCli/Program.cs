@@ -122,8 +122,15 @@ if (args.Length >= 1 && args[0].Equals("pdf-takeoff", StringComparison.OrdinalIg
 
     using var ptDoc = UglyToad.PdfPig.PdfDocument.Open(ptPdf);
     var ptFacts = DocumentFacts.From(ptDoc);
-    var ptRequest = new IntakeRequest(ptScale, ptOptions, ptMarkup);
+    // the set's assembly schedule, read once (step 32), so every plan's walls can take their tags (step 33)
+    IReadOnlyList<AssemblySchedule.Assembly> ptAssemblies = [];
+    try { ptAssemblies = AssemblySchedule.ReadSet(ptPdf); } catch { }
+    if (ptAssemblies.Count > 0)
+        Console.WriteLine($"assembly schedule: {ptAssemblies.Count} card(s) — {ptAssemblies.Count(a => a.IsStructural)} structural, " +
+                          $"{ptAssemblies.Count(a => a.Material == AssemblySchedule.Material.Stud)} stud; walls tagged with these codes are typed, partitions go to KOR_PARTITION");
+    var ptRequest = new IntakeRequest(ptScale, ptOptions, ptMarkup, ptAssemblies);
     int ptWritten = 0, ptEmpty = 0, ptNotPlan = 0;
+    int ptTyped = 0, ptPartitions = 0, ptUntagged = 0, ptTags = 0;
     for (int p = ptFirst; p <= ptLast; p++)
     {
         SheetRecord record;
@@ -142,6 +149,13 @@ if (args.Length >= 1 && args[0].Equals("pdf-takeoff", StringComparison.OrdinalIg
         var geo = record.Geometry;
         int annot = record.Context.AnnotationPaths;
         int found = geo.Slabs.Count + geo.Columns.Count + geo.Walls.Count + geo.Lines.Count;
+        if (ptAssemblies.Count > 0)
+        {
+            ptTags += geo.WallTypeTags.Count;
+            ptTyped += geo.WallTypeCodes.Count(c => c is not null);
+            ptPartitions += geo.WallIsPartition.Count(x => x);
+            ptUntagged += geo.WallTypeCodes.Count(c => c is null);
+        }
         string file = "";
         if (found > 0)
         {
@@ -193,6 +207,8 @@ if (args.Length >= 1 && args[0].Equals("pdf-takeoff", StringComparison.OrdinalIg
 
     Console.WriteLine();
     Console.WriteLine($"{ptWritten} DXF written, {ptEmpty} page(s) empty, {ptNotPlan} page(s) not plan sheets.");
+    if (ptAssemblies.Count > 0)
+        Console.WriteLine($"wall types: {ptTags} tag(s) on the plans; {ptTyped} wall(s) typed, of which {ptPartitions} partition(s) sent to KOR_PARTITION (not modelled); {ptUntagged} wall(s) with no tag within reach, modelled as drawn.");
     if (ptEmpty > 0 && ptMarkup)
         Console.WriteLine("  Empty in --markup mode means the page carries no Bluebeam markup. Drop --markup to read the drawing itself.");
     return ptWritten > 0 ? 0 : 3;

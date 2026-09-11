@@ -121,6 +121,18 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         public List<double> LineWidths { get; } = new();
         public List<(byte R, byte G, byte B)> WallColors { get; } = new();
         public List<bool> WallIsAnnotation { get; } = new();
+        /// <summary>
+        /// A WALL IS WHAT ITS TAG SAYS IT IS (intake step 33). Parallel to <see cref="Walls"/>: the
+        /// assembly code the plan tags the wall with (S8.1, C12), read from the nearest tag within
+        /// reach, or null where the plan tags nothing near it. The code's material comes from the
+        /// set's assembly schedule (<see cref="Intake.AssemblySchedule"/>); a wall whose type is a
+        /// partition goes to the DXF's KOR_PARTITION layer, which the model does not read.
+        /// </summary>
+        public List<string?> WallTypeCodes { get; } = new();
+        /// <summary>Parallel to <see cref="Walls"/>: true when the wall's tagged type is a partition (stud, gypsum).</summary>
+        public List<bool> WallIsPartition { get; } = new();
+        /// <summary>Every assembly-code tag on the sheet, in millimetres, whether or not a wall took it — written to KOR_WALLTYPE.</summary>
+        public List<(string Code, double X, double Y)> WallTypeTags { get; } = new();
         /// <summary>Filled loops with wall-proportioned boxes but more than four vertices; not split.</summary>
         public int WallRibbonsNotSplit { get; set; }
 

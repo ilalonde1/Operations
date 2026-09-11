@@ -1,4 +1,4 @@
-﻿#nullable enable
+#nullable enable
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -102,6 +102,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             var xWalls = new List<List<(double X, double Y)>>();
             var xWallColours = new List<(byte R, byte G, byte B)>();
             var xWallMarkup = new List<bool>();
+            // parallel to xWalls: a wall whose tagged type is a partition, written to KOR_PARTITION (step 33)
+            var xWallPartition = new List<bool>();
             var xLines = new List<List<(double X, double Y)>>();
             // Parallel to xLines: was this line wall-hinted?
             var xLineIsWall = new List<bool>();
@@ -170,7 +172,16 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     xWalls.Add(pts);
                     xWallColours.Add(i < geometry.WallColors.Count ? geometry.WallColors[i] : black);
                     xWallMarkup.Add(i < geometry.WallIsAnnotation.Count && geometry.WallIsAnnotation[i]);
+                    xWallPartition.Add(i < geometry.WallIsPartition.Count && geometry.WallIsPartition[i]);
                 }
+            }
+            // A WALL IS WHAT ITS TAG SAYS IT IS (intake step 33): every assembly-code tag the sheet
+            // carries, as TEXT on KOR_WALLTYPE, so a reader of the DXF can see what the plan said
+            var xWallTags = new List<(string Code, double X, double Y)>();
+            foreach (var tag in geometry.WallTypeTags)
+            {
+                double px = tag.X - cx, py = tag.Y - cy;
+                if (Ok(px, py)) xWallTags.Add((tag.Code, px, py));
             }
             // Footings: the box each dashed outline closed, on a FOOTING layer. No KOR layer pattern
             // names footings, so the layer is FOOTING under --kor-layers too, and visibly unread by
@@ -447,12 +458,21 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
             for (int i = 0; i < xWalls.Count; i++)
                 WritePolyline(
-                    layerByColour
-                        ? ColourLayer(xWallColours[i], xWallMarkup[i])
-                        : StructuralLayer(StructuralBaseLayer("WALL", xWallColours[i]), xWallMarkup[i]),
+                    xWallPartition[i]
+                        ? "KOR_PARTITION"                                     // a stud or gypsum wall the plan tagged: not structure, not read by the model
+                        : layerByColour
+                            ? ColourLayer(xWallColours[i], xWallMarkup[i])
+                            : StructuralLayer(StructuralBaseLayer("WALL", xWallColours[i]), xWallMarkup[i]),
                     NearestAci(xWallColours[i]),
                     xWalls[i],
                     true);
+
+            foreach (var (code, tx, ty) in xWallTags)
+            {
+                G(0, "TEXT"); G(8, "KOR_WALLTYPE"); G(62, "7");
+                Num(10, tx); Num(20, ty); Num(30, 0); Num(40, 250.0);
+                G(1, code);
+            }
 
             foreach (var footing in xFootings)
                 WritePolyline(footingLayer, NearestAci(black), footing, true);

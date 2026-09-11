@@ -11,7 +11,8 @@ using UglyToad.PdfPig.Tokens;
 
 namespace Kor.Operations.EngineeringTools.Intake;
 
-public sealed record IntakeRequest(int? ScaleDenominator, PdfIntakeOptions Options, bool MarkupOnly = false);
+public sealed record IntakeRequest(int? ScaleDenominator, PdfIntakeOptions Options, bool MarkupOnly = false,
+    IReadOnlyList<AssemblySchedule.Assembly>? Assemblies = null);
 
 /// <summary>The document entry point: retain one vector read and the existing readers' decisions per sheet.</summary>
 public static class DrawingIntake
@@ -213,6 +214,10 @@ public static class DrawingIntake
         IReadOnlyList<DimensionStrings.Dimension> dimensions = classify && !request.MarkupOnly
             ? DimensionStrings.Read(content, geometry.GridAxes, scaleFactor, furniture)
             : Array.Empty<DimensionStrings.Dimension>();
+        // a wall is what its tag says it is (step 33): with the set's assembly schedule in hand, each
+        // wall takes the nearest code tag within reach, and a partition's goes to a layer the model does not read
+        if (classify && request.Assemblies is { Count: > 0 })
+            WallTypeTagging.Apply(geometry, content, furniture, request.Assemblies);
         var wordFates = WordFates(content, furniture, grid, columns.Count, footings.Count, walls.Count, titleBlockConsumed, geometry.GridAxes.Count > 0, dimensions);
         int inked = 0, noInk = 0, paper = 0, annotationPaths = 0;
         var inkedPathIndices = new HashSet<int>();
