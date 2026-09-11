@@ -1,15 +1,15 @@
 # PDF intake — what it does today, and what it leaves on the page
 
-## 0. START HERE (state as of 2026-09-10, after step 33)
+## 0. START HERE (state as of 2026-09-10, after step 34)
 
 A session picking this up cold reads this section, then §30 (what the PDF alone gives), then the
-last three step sections (§40, §41, §42). It does not need to read §1–§29 to work; those are the record of how each
+last three step sections (§41, §42, §43). It does not need to read §1–§29 to work; those are the record of how each
 rule was arrived at, and are read when a rule is being changed.
 
 **Where the data is.** `%LOCALAPPDATA%\Temp\kor-drawings\stickfiles` holds the six PDFs (31065,
 31130, 31138, 31168, 31202, and `31170-01-arch` — the ARCHITECT's set for 31170, the only one from
 another office and the measure of whether a rule is universal). `...\kor-drawings\harness` holds one folder per job, the banked `.e2k`
-baselines named for the step that produced them (`pdf-only-<job>-s33.e2k` is the most recent), and
+baselines named for the step that produced them (`pdf-only-<job>-s34.e2k` is the most recent), and
 `revit-31168\out.e2k`, which is the Revit route's answer for the same building and the only yardstick
 that is not our own output. Nothing here is read over SMB.
 
@@ -2002,3 +2002,66 @@ WHAT THE CHECK COVERS (4): a tag beside a wall typing it, a partition's code and
 nearer of two tags; a tag out of reach leaving the wall untagged and its tag still kept; no legend,
 no typing. WHAT IT DOES NOT: the real sheets (the six-set run); a tag on another sheet; a tag reached
 through a leader; the DXF layer the exporter writes.
+
+## 43. Step 34, done 2026-09-10: a sheet that says what a wall is wins
+
+Ian, from the first ETABS screenshot of a model built from an architect's PDF alone: *"looks a
+little funky"*. It was walls — 1,062 of them, most steel stud. The 1/8" key plan draws every wall
+and tags none; the 1/4" enlargements tag every wall assembly; the key plan places first (its file
+sorts first), so its untagged walls were the survivors and the enlargements' typed twins were the
+duplicates. And the composer's duplicate check is an exact endpoint key, which a wall drawn at 1/8"
+and again at 1/4" never satisfies.
+
+**One convention, three clauses**, each measured on six sets:
+
+1. **A tag names its whole run** (intake, `WallTypeTagging`). A wall is drawn as piers where doorways
+   cut it and as panels where the two-face reader found it; the drafter tags the run once. A pier
+   that runs the same way as a typed neighbour, on the same line within a wall's thickness, and
+   abuts it within a hand's width, takes its type.
+2. **On a plan that tags its walls, a wall with no tag is not a wall** (intake). An architect's
+   enlarged plan tags every wall assembly; what the two-face reader finds untagged there is millwork,
+   a tub, a counter, a balcony rail. A sheet with at least `TaggingSheetMinTags` (10) codes has
+   tagged its walls; on it, an untagged wall goes to `KOR_PARTITION` too, counted separately. A sheet
+   with fewer has not tagged (the 1/8" key plan, 24 tags on 16 sheets), and its untagged walls are
+   modelled as drawn.
+3. **A storey that has a tagging sheet takes its walls from the tagging sheets; and two sheets
+   drawing one wall in one place draw one wall** (composer, `DxfToEtabsService.StandDownToTaggedPartitions`).
+   With every sheet in the model's frame: where a sheet carrying ≥10 `KOR_WALLTYPE` tags names the
+   storey, sheets carrying none contribute no walls (their columns and plates still count); a wall
+   whose axis midpoint lies inside, or a hand's width from, a partition footprint another sheet drew
+   is that partition; and a wall on a later sheet whose midpoint lies within a hand's width of an
+   earlier sheet's wall axis, running the same way, is that wall. The hand's width is the bridge
+   tolerance's own 6 in, in the model's unit. `KOR_PARTITION` is a role of its own on the DXF side
+   now (`PartitionLayerPatterns`), read into `PlanGeometrySet.Partitions` as footprints — never a
+   member, never fed to the slab-edge builder.
+
+**Measured on six sets:**
+
+- **31170: walls 1,062 → 67**, columns 351 unchanged, floors 17. L3 232 → 43. **Rendered**: the
+  footprint plate, 51 columns on grid, the elevator/stair core with its concrete walls, a handful
+  of concrete walls, the partitions gone — what a stud building over a concrete podium looks like.
+  1,142 walls stood down: 1,101 on sheets that tag no walls, 41 twice-drawn.
+- **The five KOR sets: every plate and every column identical to step 33.** Walls: 31168 identical
+  (1,209); **31138 574 → 543, 31202 374 → 360, 31065 403 → 400, 31130 193 → 191** — clause 3's
+  second half. 31138 draws LEVEL 1 on six sheets (two outline plans, two mezzanine part plans, two
+  reinforcing-slab sheets); a wall on the outline plan and the same wall on the reinforcing sheet is
+  one wall drawn twice, the class the composer's own comment describes (KC249/KC2100 doubling 22
+  walls on 31168). **Rendered before and after**: every storey visually identical — perimeter,
+  core, wall pattern — while L1 goes 99 → 85. Duplicates removed; nothing visible lost.
+- Core: `AWallIsWhatItsTagSaysItIsTests` +2 (the run, the tagging sheet), `ASheetThatSaysWhatAWallIsWinsTests` 4.
+
+**Open, named:** the 1/8" key plan's walls are now references on 31170 — so on a set whose
+enlargements tag but do not cover every part of a storey, the uncovered part would lose its walls;
+this set's enlargements cover each floor in four quadrants. A wall drawn twice at more than ten
+degrees is not caught. And the short red dashes outside the footprint on 31170 (balcony rails read
+as two-face walls on the tagging sheets) are now out as "not walls" — the same reader reads them on
+KOR's sets, where no tag exists to say otherwise, and *a wall stands on a floor* is the rule that
+would catch them there.
+
+WHAT THE CHECKS COVER: a tag naming its run through doorways and not across lines; an untagged wall
+on a tagging sheet being no wall and on a sparse sheet modelled; a storey with a tagging sheet taking
+its walls from it; an untagged wall inside another sheet's partition; the same wall on two sheets
+modelled once with the first copy kept and a crossing wall untouched; a storey with no tagging sheet
+and no partitions losing nothing to the first two clauses. WHAT THEY DO NOT: the real sets (the six-set
+run and the two renders above); columns and plates, which no clause touches; the reach and the
+ten-degree bound on a real sheet's imprecision.

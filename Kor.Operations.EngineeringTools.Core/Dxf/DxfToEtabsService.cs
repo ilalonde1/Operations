@@ -1607,6 +1607,18 @@ public static class DxfToEtabsService
 
         warnings.AddRange(FarFromOriginWarnings(parsed.Select(p => p.Geometry), offset));
 
+        // WHEN TWO SHEETS DRAW THE SAME WALL AND ONE SAYS WHAT IT IS, THE ONE THAT SAYS WINS
+        // (intake step 34). An architect's set tags its walls on the enlarged plans and not on the
+        // key plan (31170: 1,673 tags on the 1/4" sheets, 24 on the 1/8" ones). The intake sends a
+        // tagged partition to a layer this side does not model, but the key plan draws the same wall
+        // untagged, and the duplicate check above is an exact endpoint key — a wall at 1/8" never
+        // matches its twin at 1/4", so the untagged one stayed and the model carried 1,856 walls the
+        // building does not have in concrete. Now, sheet by sheet: a wall whose axis lies inside a
+        // partition's footprint drawn by ANOTHER sheet of the same storey is that partition, and is
+        // left out with the count said. Sheets are in the model's frame here, so a footprint from a
+        // 1/4" sheet lies exactly where the 1/8" sheet drew the wall.
+        warnings.AddRange(StandDownToTaggedPartitions(parsed, StandDownReachInches / modelUnitInInches));
+
         // What this job's own drawings say a wall is, before anything is written. A portfolio rule
         // cannot tell a 42" tower core from two faces paired across a parkade corridor; the job's
         // own distribution can, and it costs nothing to measure. See JobCalibration.
@@ -2465,6 +2477,122 @@ public static class DxfToEtabsService
     /// project coordinates while ETABS models sit near their own origin, so without
     /// this the geometry lands thousands of inches away from the grid.
     /// </summary>
+    /// <summary>
+    /// WHEN TWO SHEETS DRAW THE SAME WALL AND ONE SAYS WHAT IT IS, THE ONE THAT SAYS WINS (step 34).
+    /// For every storey, the partition footprints every sheet naming it carries are pooled; a wall
+    /// on any sheet naming that storey whose axis midpoint lies inside a footprint from a DIFFERENT
+    /// sheet is that partition, drawn untagged, and is removed. Walls tagged on their own sheet were
+    /// never walls here (they arrived on the partition layer), so a sheet cannot stand its own walls
+    /// down. Returns one line per storey that lost walls, with the count, and one for the set.
+    ///
+    /// WHAT IT DOES NOT: a concrete wall drawn untagged on one sheet and tagged concrete on another
+    /// (both stay, both modelled — the exact-key duplicate check does not match across scales, and a
+    /// spatial merge of two concrete walls is its own rule); a wall whose midpoint falls just outside
+    /// a footprint drawn a hand's width off; a partition tagged on a sheet that names no storey.
+    /// </summary>
+    internal static IReadOnlyList<string> StandDownToTaggedPartitions(
+        List<(PlanSheetInfo Sheet, PlanGeometrySet Geometry, IReadOnlyList<string> Stories)> parsed, double reach)
+    {
+        var warnings = new List<string>();
+        var storeys = parsed.SelectMany(p => p.Stories).Distinct().ToList();
+        int total = 0;
+        foreach (string storey in storeys)
+        {
+            var here = parsed.Where(p => p.Stories.Contains(storey)).ToList();
+
+            // A STOREY THAT HAS A SHEET TAGGING ITS WALLS TAKES ITS WALLS FROM THE TAGGING SHEETS. The
+            // 1/8" key plan draws every wall and tags none; the 1/4" enlargements tag every wall
+            // assembly. Where the enlargements name the storey, the key plan's walls are a reference —
+            // its columns and plates still count. A sheet tags its walls when it carries at least
+            // TaggingSheetMinTags codes on KOR_WALLTYPE, the same bound the intake uses.
+            bool Tagging((PlanSheetInfo Sheet, PlanGeometrySet Geometry, IReadOnlyList<string> Stories) p)
+                => p.Geometry.Tags.Count(t => string.Equals(t.Layer, "KOR_WALLTYPE", StringComparison.OrdinalIgnoreCase)) >= Intake.WallTypeTagging.TaggingSheetMinTags;
+            if (here.Any(Tagging))
+            {
+                int reference = 0;
+                foreach (var p in here.Where(p => !Tagging(p)))
+                {
+                    reference += p.Geometry.Walls.Count;
+                    p.Geometry.Walls.Clear();
+                }
+                if (reference > 0)
+                {
+                    total += reference;
+                    warnings.Add($"{storey}: {reference} wall(s) on sheet(s) that tag no walls were not modelled - a sheet that tags its walls names this storey, and the storey's walls are its.");
+                }
+            }
+
+            int removed = 0;
+            for (int i = 0; i < here.Count; i++)
+            {
+                var others = here.Where((_, j) => j != i).SelectMany(p => p.Geometry.Partitions).ToList();
+                if (others.Count == 0) continue;
+                // inside the footprint, or within a hand's width of it: a stud partition's footprint
+                // is a 40-90 mm sliver and the sheets are set on the grid to within a few inches, so
+                // an exact point-in-polygon missed twins that a person sees at once. The hand's width
+                // is the pipeline's own (SlabEdgeClosure's bridge, 6 in), not a new number.
+                removed += here[i].Geometry.Walls.RemoveAll(w =>
+                {
+                    var mid = new DxfPoint((w.Start.X + w.End.X) / 2, (w.Start.Y + w.End.Y) / 2);
+                    return others.Any(p => p.Points.Count >= 3 && (LoopGeometry.PointInPolygon(mid, p.Points) || WithinOf(mid, p.Points, reach)));
+                });
+            }
+            if (removed > 0)
+            {
+                total += removed;
+                warnings.Add($"{storey}: {removed} wall(s) drawn untagged on one sheet lie inside a partition another sheet " +
+                             "tags (stud or gypsum per the set's assembly schedule) and were not modelled - the sheet that says what a wall is wins.");
+            }
+
+            // AND TWO SHEETS DRAWING ONE WALL IN ONE PLACE DRAW ONE WALL. A set that draws a storey
+            // several ways draws its concrete walls several times too — floor plan, slab plan, four
+            // enlargements — and the duplicate check downstream is an exact endpoint key, which a
+            // wall drawn at 1/8" and again at 1/4" never satisfies. Here, with every sheet in the
+            // model's frame: a wall on a later sheet whose axis midpoint lies within a hand's width
+            // of an earlier sheet's wall axis, running the same way, is that wall. The first sheet's
+            // copy stays; a sheet cannot dedupe against itself, so piers along one line are untouched.
+            int twice = 0;
+            var kept = new List<WallAxis>();
+            for (int i = 0; i < here.Count; i++)
+            {
+                int before = here[i].Geometry.Walls.Count;
+                var earlier = kept.ToList();
+                here[i].Geometry.Walls.RemoveAll(w =>
+                {
+                    var mid = new DxfPoint((w.Start.X + w.End.X) / 2, (w.Start.Y + w.End.Y) / 2);
+                    return earlier.Any(e => SameWay(w, e) && LoopGeometry.DistanceToSegment(mid, e.Start, e.End) <= reach);
+                });
+                twice += before - here[i].Geometry.Walls.Count;
+                kept.AddRange(here[i].Geometry.Walls);
+            }
+            if (twice > 0)
+            {
+                total += twice;
+                warnings.Add($"{storey}: {twice} wall(s) drawn on a second sheet where an earlier sheet had already drawn the same wall were modelled once.");
+            }
+        }
+        if (total > 0) warnings.Add($"{total} wall(s) across {storeys.Count} storey(s) stood down between sheets: to the partitions other sheets tag, and to the same wall drawn twice.");
+        return warnings;
+
+        static bool SameWay(WallAxis a, WallAxis b)
+        {
+            double ax = a.End.X - a.Start.X, ay = a.End.Y - a.Start.Y, al = Math.Sqrt(ax * ax + ay * ay);
+            double bx = b.End.X - b.Start.X, by = b.End.Y - b.Start.Y, bl = Math.Sqrt(bx * bx + by * by);
+            if (al <= 0 || bl <= 0) return false;
+            return Math.Abs((ax * bx + ay * by) / (al * bl)) >= 0.985;          // within about ten degrees
+        }
+
+        static bool WithinOf(DxfPoint p, IReadOnlyList<DxfPoint> polygon, double reach)
+        {
+            for (int i = 0; i < polygon.Count; i++)
+                if (LoopGeometry.DistanceToSegment(p, polygon[i], polygon[(i + 1) % polygon.Count]) <= reach) return true;
+            return false;
+        }
+    }
+
+    /// <summary>A hand's width: how far from a partition's footprint an untagged twin may sit. The bridge tolerance's own value, in inches, scaled to the model's unit by the caller.</summary>
+    private const double StandDownReachInches = 6.0;
+
     /// <summary>
     /// Whether the geometry lands somewhere a building could be, once the offset is applied.
     ///

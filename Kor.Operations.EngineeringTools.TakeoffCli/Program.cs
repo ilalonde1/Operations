@@ -130,7 +130,7 @@ if (args.Length >= 1 && args[0].Equals("pdf-takeoff", StringComparison.OrdinalIg
                           $"{ptAssemblies.Count(a => a.Material == AssemblySchedule.Material.Stud)} stud; walls tagged with these codes are typed, partitions go to KOR_PARTITION");
     var ptRequest = new IntakeRequest(ptScale, ptOptions, ptMarkup, ptAssemblies);
     int ptWritten = 0, ptEmpty = 0, ptNotPlan = 0;
-    int ptTyped = 0, ptPartitions = 0, ptUntagged = 0, ptTags = 0;
+    int ptTyped = 0, ptPartitions = 0, ptUntagged = 0, ptTags = 0, ptNotWalls = 0;
     for (int p = ptFirst; p <= ptLast; p++)
     {
         SheetRecord record;
@@ -153,8 +153,14 @@ if (args.Length >= 1 && args[0].Equals("pdf-takeoff", StringComparison.OrdinalIg
         {
             ptTags += geo.WallTypeTags.Count;
             ptTyped += geo.WallTypeCodes.Count(c => c is not null);
-            ptPartitions += geo.WallIsPartition.Count(x => x);
-            ptUntagged += geo.WallTypeCodes.Count(c => c is null);
+            for (int wi = 0; wi < geo.Walls.Count; wi++)
+            {
+                bool typed = wi < geo.WallTypeCodes.Count && geo.WallTypeCodes[wi] is not null;
+                bool outOfModel = wi < geo.WallIsPartition.Count && geo.WallIsPartition[wi];
+                if (typed && outOfModel) ptPartitions++;
+                else if (!typed && outOfModel) ptNotWalls++;
+                else if (!typed) ptUntagged++;
+            }
         }
         string file = "";
         if (found > 0)
@@ -208,7 +214,7 @@ if (args.Length >= 1 && args[0].Equals("pdf-takeoff", StringComparison.OrdinalIg
     Console.WriteLine();
     Console.WriteLine($"{ptWritten} DXF written, {ptEmpty} page(s) empty, {ptNotPlan} page(s) not plan sheets.");
     if (ptAssemblies.Count > 0)
-        Console.WriteLine($"wall types: {ptTags} tag(s) on the plans; {ptTyped} wall(s) typed, of which {ptPartitions} partition(s) sent to KOR_PARTITION (not modelled); {ptUntagged} wall(s) with no tag within reach, modelled as drawn.");
+        Console.WriteLine($"wall types: {ptTags} tag(s) on the plans; {ptTyped} wall(s) typed, of which {ptPartitions} partition(s) sent to KOR_PARTITION (not modelled); {ptNotWalls} untagged on plans that tag their walls, so not walls (KOR_PARTITION); {ptUntagged} untagged on plans that do not tag, modelled as drawn.");
     if (ptEmpty > 0 && ptMarkup)
         Console.WriteLine("  Empty in --markup mode means the page carries no Bluebeam markup. Drop --markup to read the drawing itself.");
     return ptWritten > 0 ? 0 : 3;

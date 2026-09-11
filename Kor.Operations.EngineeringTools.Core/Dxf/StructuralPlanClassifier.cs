@@ -11,6 +11,13 @@ namespace Kor.Operations.EngineeringTools.Dxf;
 public sealed record PlanClassificationOptions
 {
     public IReadOnlyList<string> WallLayerPatterns { get; init; } = new[] { "WALL" };
+    /// <summary>
+    /// A WALL THE PLAN TAGS AS A PARTITION (intake step 33) arrives on this layer: stud or gypsum,
+    /// not structure. It is not a wall in the model, and it is not left to the slab-edge builder
+    /// either; it is kept as a footprint so a wall another sheet draws in the same place, untagged,
+    /// can be recognised as that partition and left out too (step 34).
+    /// </summary>
+    public IReadOnlyList<string> PartitionLayerPatterns { get; init; } = new[] { "PARTITION" };
     public IReadOnlyList<string> ColumnLayerPatterns { get; init; } = new[] { "_COL" };
     public IReadOnlyList<string> SlabLayerPatterns { get; init; } = new[] { "SLABEDG" };
 
@@ -384,6 +391,7 @@ public sealed record PlanClassificationOptions
     /// </summary>
     public string? RoleOf(string layer)
     {
+        if (Matches(layer, PartitionLayerPatterns)) return "partitions";
         if (Matches(layer, ColumnLayerPatterns)) return "columns";
         if (Matches(layer, WallLayerPatterns)) return "walls";
         if (Matches(layer, SlabLayerPatterns)) return "slab edges";
@@ -404,6 +412,7 @@ public static class StructuralPlanClassifier
     internal const string RoleWall = "walls";
     internal const string RoleColumn = "columns";
     internal const string RoleSlab = "slab edges";
+    internal const string RolePartition = "partitions";
 
     private static string? RoleOf(string layer, PlanClassificationOptions options)
         => options.RoleOf(layer) switch
@@ -411,6 +420,7 @@ public static class StructuralPlanClassifier
             "columns" => RoleColumn,
             "walls" => RoleWall,
             "slab edges" => RoleSlab,
+            "partitions" => RolePartition,
             _ => null,
         };
 
@@ -485,11 +495,13 @@ public static class StructuralPlanClassifier
         // edge, and the ring cannot be completed from segments that were thrown away. See
         // SlabEdgeClosure.
         var unroled = new List<DxfSegment>();
+        var partitionSegments = new List<DxfSegment>();
 
         foreach (var s in DashedLineJoiner.Join(segments, options.DashJoinGap))
         {
             string? role = RoleOf(s.Layer, options);
             if (role is null) { unroled.Add(s); continue; }
+            if (role == RolePartition) { partitionSegments.Add(s); continue; }      // a footprint, not a member and not an edge
 
             var a = ((long)Math.Round(s.Start.X * 10), (long)Math.Round(s.Start.Y * 10));
             var b = ((long)Math.Round(s.End.X * 10), (long)Math.Round(s.End.Y * 10));
@@ -1803,6 +1815,14 @@ public static class StructuralPlanClassifier
                 "was NOT cut as an opening — it covers more than half of it, and a slab does not have a void " +
                 "through half itself. This is the floor's other edge, a step or a change of thickness, and the " +
                 "thickness is yours to set. Check it is not a real void.");
+        }
+
+        // the partitions' footprints (step 34): each closed outline the intake wrote on the partition
+        // layer, exactly as drawn, for the stand-down between sheets — never a member, never an edge
+        if (partitionSegments.Count > 0)
+        {
+            var built = new PlanLoopBuilder(options.JoinTolerance, options.JoinTolerance, options.JoinTolerance).Build(partitionSegments);
+            result.Partitions.AddRange(built.Loops);
         }
 
         return result;

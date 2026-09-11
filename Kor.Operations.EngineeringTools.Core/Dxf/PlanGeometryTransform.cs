@@ -39,6 +39,8 @@ public static class PlanGeometryTransform
 
         foreach (var t in set.Tags)
             moved.Tags.Add(t with { Point = frame.Apply(t.Point) });
+        foreach (var p in set.Partitions)
+            moved.Partitions.Add(new PlanLoop(p.Layer, p.Points.Select(frame.Apply).ToList(), p.ClosedExactly));
 
         moved.Slabs.AddRange(set.Slabs.Select(l => Move(l, frame)));
         moved.Openings.AddRange(set.Openings.Select(l => Move(l, frame)));

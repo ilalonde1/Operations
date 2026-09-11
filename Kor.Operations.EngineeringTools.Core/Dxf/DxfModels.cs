@@ -214,6 +214,8 @@ public sealed record ColumnFootprint(
 public sealed class PlanGeometrySet
 {
     public List<WallAxis> Walls { get; } = new();
+    /// <summary>Walls the plan tags as partitions (stud, gypsum): footprints that are not modelled, kept so a twin drawn untagged on another sheet is left out too (step 34).</summary>
+    public List<PlanLoop> Partitions { get; } = new();
     public List<ColumnFootprint> Columns { get; } = new();
 
     /// <summary>Outer slab boundaries (largest closed rings on the slab-edge layers).</summary>
