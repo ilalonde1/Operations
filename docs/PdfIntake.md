@@ -1,15 +1,15 @@
 # PDF intake — what it does today, and what it leaves on the page
 
-## 0. START HERE (state as of 2026-09-10, after step 40)
+## 0. START HERE (state as of 2026-09-10, after step 41)
 
 A session picking this up cold reads this section, then §30 (what the PDF alone gives), then the
-last three step sections (§47, §48, §49). It does not need to read §1–§29 to work; those are the record of how each
+last three step sections (§48, §49, §50). It does not need to read §1–§29 to work; those are the record of how each
 rule was arrived at, and are read when a rule is being changed.
 
 **Where the data is.** `%LOCALAPPDATA%\Temp\kor-drawings\stickfiles` holds the six PDFs (31065,
 31130, 31138, 31168, 31202, and `31170-01-arch` — the ARCHITECT's set for 31170, the only one from
 another office and the measure of whether a rule is universal). `...\kor-drawings\harness` holds one folder per job, the banked `.e2k`
-baselines named for the step that produced them (`pdf-only-<job>-s40.e2k` is the most recent), and
+baselines named for the step that produced them (`pdf-only-<job>-s41.e2k` is the most recent), and
 `revit-31168\out.e2k`, which is the Revit route's answer for the same building and the only yardstick
 that is not our own output. Nothing here is read over SMB.
 
@@ -2376,3 +2376,52 @@ WHAT THE CHECK COVERS: one sheet with named axes on its GRID layer and no refere
 GRIDS with those labels at those coordinates in the model's unit, and the warning. WHAT IT DOES
 NOT: a reference model's own GRIDS (unchanged); several sheets disagreeing about an axis (the
 median is taken).
+
+## 50. Step 41, done 2026-09-10: a level may be named by a word alone
+
+Step 36's open item: the KOR ladders stopped short of the roof levels the plans name — 31065's
+plans say ROOF LEVEL (L20) and ELEVATOR ROOF while `pdf-levels` read L19 as the top; 31202's say
+ROOF and UPPER ROOF above an L13 ladder — so on those sets the roof plan and the top floor plan
+shared a storey and stacked their plates. Asked the drawings what they call it
+(`pdf_words_near.py`): 31065 `ROOF LEVEL`, 31138 `ROOF`, 31202 `ROOF`, `HIGH ROOF`, `LOW ROOF`,
+`PENTHOUSE`. "LEVEL 19" is a label and a value; these are a level's whole name, with nothing to the
+right but the level line, and the ladder reader, wanting a value after a label, read none of them.
+
+**The rule** (`ScheduleGridReader.DefaultLevelNameWords`, `LevelPhraseEndingAt` longest phrase
+first, `LadderAt`): a word or phrase from the name vocabulary is a level named by itself — ROOF,
+ROOF LEVEL, HIGH ROOF, LOW ROOF, UPPER/LOWER/MAIN/MECH ROOF, ELEVATOR ROOF, PENTHOUSE, PENTHOUSE
+ROOF, T/O PARAPET. The longest phrase is tried first, so "ROOF LEVEL" is the level ROOF LEVEL and
+not a LEVEL wanting a value. A name written on two lines — "PENTHOUSE" over "ROOF" at one x, a line
+apart — is one name at the lower line. **And a set has one base** (`SetStoreys.Levels`): a
+parapet detail on 31202 states HIGH ROOF 1,219 mm over LOW ROOF and nothing under LOW ROOF, which
+made a second base at 0 and chained LOW ROOF to the ground; the set's base is the one the most
+levels chain up from, and a ladder that reaches none of that chain is a detail's, reported as
+"not chained to a base" and not placed.
+
+**Measured on six sets:** 31065 gains the storey ROOF at 67,919 (the two roof plates that stacked
+on L19 now on it; floors 7 → 9); 31138 gains ROOF at 85,905 (2,883 over L22; the roof plan's 13
+walls on it); 31202 gains ROOF and PENTHOUSE (the roof plans' members rise there: columns 1,157 →
+1,234, walls 354 → 368); 31130, 31168 and 31170 byte-identical to step 40. Core:
+`ALevelMayBeNamedByAWordAloneTests` 3 (a roof word alone topping a ladder; ROOF LEVEL one name and
+a two-line name one name at the lower line; one base, the detail's ladder reported).
+
+**The vocabularies are wired to the bank now** (owed since step 30): `PdfIntakeOptions` carries
+`LevelLabelWords`, `LevelNameWords`, `AssemblyStructuralWords`, `AssemblyPartitionWords`, each the
+compiled defaults EXTENDED by the KorStandards row (`dxf.level.label-words`, `dxf.level.name-words`,
+`dxf.assembly.structural-words`, `dxf.assembly.partition-words`) — a practice's phrase is added to
+what is true of drawings generally, never in place of it — and `pdf-levels`, `pdf-takeoff` and
+`pdf-assemblies` read through them. Migration `KOR.Drafter\db\082_LevelAndAssemblyVocabulary.sql`
+seeds the four rows with the compiled words (Ian applies migrations). With no row the behaviour is
+the compiled defaults; the six-set run is unchanged by the wiring.
+
+**Open, named:** 31202's PENTHOUSE is stated twice (over L13 6,313 mm on one sheet, over HIGH ROOF
+1,841 on another) and its ROOF sits 5,997 mm over L13 — two storeys' worth; the sections' two-line
+"PENTHOUSE / ROOF" label did not merge on the real sheet though the synthetic one does, so the
+level named PENTHOUSE may be the roof's upper word 317 mm above ROOF. The tool reports the double
+statement; a person should read S3.xx. 31065's ROOF at 5,793 mm over L19 wants the same look
+(ROOF LEVEL (L20) and ELEVATOR ROOF (L21) are two levels on the plans; one was read).
+
+WHAT THE CHECKS COVER: a roof word alone as the top of a ladder at the drawn height; "ROOF LEVEL"
+as one name; a two-line name read at the lower line and no phantom level; one base with a detail's
+ladder reported. WHAT THEY DO NOT: the real sheets (the six-set run above); the rows (not applied);
+a roof word used as a caption on a plan; 31202's two statements.

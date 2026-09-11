@@ -44,7 +44,7 @@ public sealed class AJobCanStateHowItIsDrawnTests
         Assert.Equal(200.0,  d.ColumnMinDimMm);         // Classify's columnMinDimMm
         Assert.Equal(3.0,    d.ColumnMaxAspect);        // == banked dxf.max-column-aspect
         Assert.Equal(25.0,   d.AgreementToleranceMm);   // PlanAgreesWithItsSchedule.DefaultToleranceMm
-        Assert.Equal(1500.0, d.AgreementLabelReachMm);  // PlanAgreesWithItsSchedule.DefaultLabelReachMm
+        Assert.Equal(2000.0, d.AgreementLabelReachMm);  // PlanAgreesWithItsSchedule.DefaultLabelReachMm: 2000 since step 39, measured on twelve banked pages
     }
 
     /// <summary>The defaults must track the constants, not drift into a second copy of them.</summary>

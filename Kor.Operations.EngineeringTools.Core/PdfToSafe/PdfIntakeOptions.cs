@@ -45,6 +45,15 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         double MinWallLengthMm = PdfIntakeOptions.DefaultMinWallLengthMm,
         double MinWallAspect = PdfIntakeOptions.DefaultMinWallAspect)
     {
+        /// <summary>THE WORDS A DRAWING NAMES A LEVEL WITH (step 30): the KorStandards row dxf.level.label-words, else the compiled defaults.</summary>
+        public IReadOnlyList<string> LevelLabelWords { get; init; } = ScheduleGridReader.DefaultLevelLabelWords;
+        /// <summary>The words a level may be NAMED by alone (step 41): dxf.level.name-words, else the compiled defaults.</summary>
+        public IReadOnlyList<string> LevelNameWords { get; init; } = ScheduleGridReader.DefaultLevelNameWords;
+        /// <summary>The words in an assembly card's layers that make it structural (step 32): dxf.assembly.structural-words, else the compiled defaults.</summary>
+        public IReadOnlyList<string> AssemblyStructuralWords { get; init; } = Intake.AssemblySchedule.StructuralWords;
+        /// <summary>The words that make it a partition (step 32): dxf.assembly.partition-words, else the compiled defaults.</summary>
+        public IReadOnlyList<string> AssemblyPartitionWords { get; init; } = Intake.AssemblySchedule.PartitionWords;
+
         // Shared KorStandards defaults, banked 2026-09-08: 4", 60", 48", aspect 2.
         // The DXF compiled maximum is narrower (36"); use the banked 60" here.
         public const double DefaultMinWallThicknessMm = 101.6;
@@ -161,7 +170,19 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 MinWallAspect         = settings.ValueOr(SharedMinWallAspect, options.MinWallAspect),
                 AgreementToleranceMm  = settings.ValueOr($"{Prefix}.agreement-tolerance-mm", options.AgreementToleranceMm),
                 AgreementLabelReachMm = settings.ValueOr($"{Prefix}.agreement-label-reach-mm", options.AgreementLabelReachMm),
+                // the vocabularies (steps 30, 32, 41): a row EXTENDS the compiled defaults, it does not replace them —
+                // a practice's phrase is added to what is true of drawings generally, never in place of it
+                LevelLabelWords         = Extended("dxf.level.label-words", options.LevelLabelWords),
+                LevelNameWords          = Extended("dxf.level.name-words", options.LevelNameWords),
+                AssemblyStructuralWords = Extended("dxf.assembly.structural-words", options.AssemblyStructuralWords),
+                AssemblyPartitionWords  = Extended("dxf.assembly.partition-words", options.AssemblyPartitionWords),
             };
+
+            IReadOnlyList<string> Extended(string key, IReadOnlyList<string> defaults)
+            {
+                var banked = settings.ListOr(key, null);
+                return banked is null ? defaults : defaults.Concat(banked).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+            }
         }
 
         /// <summary>

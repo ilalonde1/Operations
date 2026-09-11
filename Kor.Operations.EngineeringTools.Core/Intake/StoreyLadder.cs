@@ -39,6 +39,11 @@ public static class StoreyLadder
     /// supplies it (brief 28: 31138's wall elevations read nothing until this).
     /// </summary>
     public static IReadOnlyList<Storey> Read(VectorPageReader.PageContent page, string? scaleNote, IReadOnlyList<ViewCaptions.Caption> captions)
+        => Read(page, scaleNote, captions, ScheduleGridReader.DefaultLevelLabelWords, ScheduleGridReader.DefaultLevelNameWords);
+
+    /// <summary>As above, with the words a level is labelled by and named by (steps 30 and 41): the compiled defaults, or the KorStandards rows.</summary>
+    public static IReadOnlyList<Storey> Read(VectorPageReader.PageContent page, string? scaleNote, IReadOnlyList<ViewCaptions.Caption> captions,
+        IReadOnlyList<string> labelWords, IReadOnlyList<string> nameWords)
     {
         ArgumentNullException.ThrowIfNull(page);
         ArgumentNullException.ThrowIfNull(captions);
@@ -48,7 +53,7 @@ public static class StoreyLadder
         // are labelled for it (B-LEVEL 27); one column read the lower strip and lost the rest, and
         // 31168's towers above L19 had no storey to land on.
         var storeys = new List<Storey>();
-        foreach (var ladder in ScheduleGridReader.ReadLevelLadders(page, MinRows))
+        foreach (var ladder in ScheduleGridReader.ReadLevelLadders(page, MinRows, labelWords, nameWords))
         {
             string? scale = scaleNote;
             if (string.IsNullOrWhiteSpace(scale))

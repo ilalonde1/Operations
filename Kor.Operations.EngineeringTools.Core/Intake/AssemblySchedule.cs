@@ -82,7 +82,10 @@ public static class AssemblySchedule
     /// Every card in a set: the schedule sheets found the way <see cref="SetStoreys"/> finds elevation
     /// sheets (bookmark, then the title block's field, then the title text), each read once.
     /// </summary>
-    public static IReadOnlyList<Assembly> ReadSet(string pdfPath)
+    public static IReadOnlyList<Assembly> ReadSet(string pdfPath) => ReadSet(pdfPath, StructuralWords, PartitionWords);
+
+    /// <summary>As above, with the material vocabulary (step 32): the compiled defaults, or the KorStandards rows dxf.assembly.structural-words / dxf.assembly.partition-words.</summary>
+    public static IReadOnlyList<Assembly> ReadSet(string pdfPath, IReadOnlyList<string> structuralWords, IReadOnlyList<string> partitionWords)
     {
         ArgumentNullException.ThrowIfNull(pdfPath);
         using var doc = UglyToad.PdfPig.PdfDocument.Open(pdfPath);
@@ -98,7 +101,7 @@ public static class AssemblySchedule
             string? fieldTitle = fields.TryGetValue("SHEET TITLE", out var ft) ? ft : fields.TryGetValue("DRAWING TITLE", out ft) ? ft : null;
             string? title = bookmark ?? fieldTitle;
             if (title is null || !title.Contains("SCHEDULE", StringComparison.OrdinalIgnoreCase)) continue;
-            all.AddRange(Read(content, title, page));
+            all.AddRange(Read(content, title, page, structuralWords, partitionWords));
         }
         return all;
     }
@@ -107,7 +110,7 @@ public static class AssemblySchedule
     public static Action<string>? Trace;
 
     /// <summary>The cards on one sheet, left to right then top to bottom. Empty when the sheet lays out no card.</summary>
-    public static IReadOnlyList<Assembly> Read(VectorPageReader.PageContent page, string? sheetTitle, int pageNumber)
+    public static IReadOnlyList<Assembly> Read(VectorPageReader.PageContent page, string? sheetTitle, int pageNumber, IReadOnlyList<string>? structuralWords = null, IReadOnlyList<string>? partitionWords = null)
     {
         ArgumentNullException.ThrowIfNull(page);
 
@@ -175,7 +178,7 @@ public static class AssemblySchedule
                 double right = nextColumn - 60;
                 var box = lines.Where(l => l.X >= left && l.X < right && l.Y > top && l.Y < bottom && l.Y > lines[inRow[c].Index].Y + 2)
                                .OrderBy(l => l.Y).ThenBy(l => l.X).ToList();
-                var card = Card(kind, inRow[c].Code, inRow[c].Name, box, pageNumber);
+                var card = Card(kind, inRow[c].Code, inRow[c].Name, box, pageNumber, structuralWords, partitionWords);
                 if (inRow[c].SymbolSays is string says)
                     card = card with { Remarks = card.Remarks.Append($"DRAWING: the symbol beside this card reads {says}, not {inRow[c].Code}").ToList() };
                 cards.Add(card);
@@ -184,7 +187,7 @@ public static class AssemblySchedule
         return cards;
     }
 
-    private static Assembly Card(string kind, string code, string name, List<TextLine> box, int pageNumber)
+    private static Assembly Card(string kind, string code, string name, List<TextLine> box, int pageNumber, IReadOnlyList<string>? structuralWords = null, IReadOnlyList<string>? partitionWords = null)
     {
         var layers = new List<string>();
         var ratings = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -221,28 +224,28 @@ public static class AssemblySchedule
                 remarks.Add(t);
         }
 
-        var material = MaterialOf(name, layers);
+        var material = MaterialOf(name, layers, structuralWords, partitionWords);
         return new Assembly(kind, code, name, layers, ratings, references, remarks, material, ThicknessOf(name, layers, material), pageNumber);
     }
 
     /// <summary>The name decides first; the layers only when the name says nothing.</summary>
-    public static Material MaterialOf(string name, IReadOnlyList<string> layers)
+    public static Material MaterialOf(string name, IReadOnlyList<string> layers, IReadOnlyList<string>? structuralWords = null, IReadOnlyList<string>? partitionWords = null)
     {
-        var fromName = MaterialIn(name);
+        var fromName = MaterialIn(name, structuralWords, partitionWords);
         if (fromName != Material.Unknown) return fromName;
         foreach (var layer in layers)
         {
-            var m = MaterialIn(layer);
+            var m = MaterialIn(layer, structuralWords, partitionWords);
             if (m != Material.Unknown) return m;
         }
         return Material.Unknown;
     }
 
-    private static Material MaterialIn(string text)
+    private static Material MaterialIn(string text, IReadOnlyList<string>? structuralWords = null, IReadOnlyList<string>? partitionWords = null)
     {
         string u = text.ToUpperInvariant();
-        bool structural = StructuralWords.Any(w => u.Contains(w, StringComparison.Ordinal));
-        bool partition = PartitionWords.Any(w => u.Contains(w, StringComparison.Ordinal));
+        bool structural = (structuralWords ?? StructuralWords).Any(w => u.Contains(w, StringComparison.Ordinal));
+        bool partition = (partitionWords ?? PartitionWords).Any(w => u.Contains(w, StringComparison.Ordinal));
         if (structural && !partition) return MasonryWords.Any(w => u.Contains(w, StringComparison.Ordinal)) ? Material.Masonry : Material.Concrete;
         if (partition && !structural) return Material.Stud;
         // both in one line ("C.I.P wall, G.W.B. furring"): the structural word names the wall

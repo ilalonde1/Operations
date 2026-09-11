@@ -124,7 +124,7 @@ if (args.Length >= 1 && args[0].Equals("pdf-takeoff", StringComparison.OrdinalIg
     var ptFacts = DocumentFacts.From(ptDoc);
     // the set's assembly schedule, read once (step 32), so every plan's walls can take their tags (step 33)
     IReadOnlyList<AssemblySchedule.Assembly> ptAssemblies = [];
-    try { ptAssemblies = AssemblySchedule.ReadSet(ptPdf); } catch { }
+    try { ptAssemblies = AssemblySchedule.ReadSet(ptPdf, ptOptions.AssemblyStructuralWords, ptOptions.AssemblyPartitionWords); } catch { }
     if (ptAssemblies.Count > 0)
         Console.WriteLine($"assembly schedule: {ptAssemblies.Count} card(s) — {ptAssemblies.Count(a => a.IsStructural)} structural, " +
                           $"{ptAssemblies.Count(a => a.Material == AssemblySchedule.Material.Stud)} stud; walls tagged with these codes are typed, partitions go to KOR_PARTITION");
@@ -253,7 +253,8 @@ if (args.Length >= 3 && args[0].Equals("dxf-census", StringComparison.OrdinalIgn
 if (args.Length >= 2 && args[0].Equals("pdf-levels", StringComparison.OrdinalIgnoreCase))
 {
     if (!File.Exists(args[1])) { Console.Error.WriteLine($"Not found: {args[1]}"); return 1; }
-    var plTable = SetStoreys.Read(args[1]);
+    var (plOptions, _) = PdfIntakeOptions.For(args.SkipWhile(a => !a.Equals("--rules-db", StringComparison.OrdinalIgnoreCase)).Skip(1).FirstOrDefault());
+    var plTable = SetStoreys.Read(args[1], plOptions.LevelLabelWords, plOptions.LevelNameWords);
     // chained in Core (SetStoreys.Levels, intake step 25): first stated wins a name, a storey that
     // skips names is a break filled at the typical storey, a storey across two buildings is nobody's
     var plChain = SetStoreys.Levels(plTable);

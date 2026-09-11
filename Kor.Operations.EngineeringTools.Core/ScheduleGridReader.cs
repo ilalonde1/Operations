@@ -100,6 +100,21 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             "FIN. FLOOR", "FINISHED FLOOR", "F.F.L.", "FFL",
         ];
 
+        /// <summary>
+        /// A LEVEL MAY BE NAMED BY A WORD ALONE (intake step 41). "LEVEL 19" is a label and a value;
+        /// "ROOF", "HIGH ROOF", "PENTHOUSE", "ELEVATOR ROOF" are a level's whole name — a ladder row
+        /// with nothing to its right but the elevation. The KOR sets' sections name their roof levels
+        /// this way (31065: ROOF LEVEL, ELEVATOR ROOF; 31202: ROOF, HIGH ROOF, LOW ROOF, PENTHOUSE;
+        /// 31138: ROOF), and the ladder reader, wanting a value after a label, read none of them —
+        /// so every roof plan landed on the top numbered storey, stacked on its plate. These are the
+        /// compiled defaults; the KorStandards row <c>dxf.level.name-words</c> extends them.
+        /// </summary>
+        public static readonly IReadOnlyList<string> DefaultLevelNameWords =
+        [
+            "ROOF", "ROOF LEVEL", "MAIN ROOF", "HIGH ROOF", "LOW ROOF", "UPPER ROOF", "LOWER ROOF", "MECH ROOF", "MECH. ROOF",
+            "ELEVATOR ROOF", "ELEV ROOF", "ELEV. ROOF", "PENTHOUSE", "PENTHOUSE ROOF", "T/O PARAPET", "TOP OF PARAPET",
+        ];
+
         /// <summary>Words on one baseline closer than this are one phrase (a space, not a column gap).</summary>
         private const double PhraseGapPts = 14.0;
 
@@ -110,6 +125,11 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
         /// </summary>
         internal static (string Phrase, string? GluedValue, string? Building)? LevelPhraseEndingAt(
             VectorPageReader.PageContent page, VectorPageReader.TextToken token, IReadOnlyList<string> labelWords)
+            => LevelPhraseEndingAt(page, token, labelWords, DefaultLevelNameWords);
+
+        /// <summary>As above, with the words a level may be named by alone (step 41): a hit on one of those carries the phrase itself as the value.</summary>
+        internal static (string Phrase, string? GluedValue, string? Building)? LevelPhraseEndingAt(
+            VectorPageReader.PageContent page, VectorPageReader.TextToken token, IReadOnlyList<string> labelWords, IReadOnlyList<string> nameWords)
         {
             // the words to the left on this baseline, nearest first, each within a space of the one
             // after it — a phrase is a chain of neighbours, not everything within reach of its last word
@@ -135,16 +155,21 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                 last = last[..dash];
             }
 
-            // try the token alone, then with one, two, three words to its left
-            var words = new List<string> { last };
-            for (int take = 0; take <= left.Count; take++)
+            // the token with three, two, one, no words to its left — the LONGEST phrase first, so "ROOF
+            // LEVEL" is the level named ROOF LEVEL before "LEVEL" is a label wanting a value (step 41)
+            var chain = new List<string> { last };
+            foreach (var w in left) chain.Insert(0, w.Text.Trim());
+            for (int take = left.Count; take >= 0; take--)
             {
-                if (take > 0) words.Insert(0, left[take - 1].Text.Trim());
+                var words = chain.Skip(left.Count - take).ToList();
                 string phrase = Regex.Replace(string.Join(" ", words), @"\s+", " ").Trim();
                 string bare = phrase;
                 string? building = null;
                 var b = Regex.Match(phrase, @"^([A-Z]{1,2})-(.+)$", RegexOptions.IgnoreCase);
                 if (b.Success) { building = b.Groups[1].Value.ToUpperInvariant(); bare = b.Groups[2].Value; }
+                foreach (var nw in nameWords)
+                    if (glued is null && string.Equals(bare, nw, StringComparison.OrdinalIgnoreCase))
+                        return (nw.ToUpperInvariant(), nw.ToUpperInvariant(), building);      // the name is the value
                 foreach (var lw in labelWords)
                     if (string.Equals(bare, lw, StringComparison.OrdinalIgnoreCase))
                         return (lw.ToUpperInvariant(), glued, building);
@@ -170,20 +195,49 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
 
         /// <summary>As above, with the words a level is named by (step 30): the compiled defaults, or the KorStandards row.</summary>
         public static IReadOnlyList<IReadOnlyList<LevelRow>> ReadLevelLadders(VectorPageReader.PageContent page, int minRows, IReadOnlyList<string> labelWords)
+            => ReadLevelLadders(page, minRows, labelWords, DefaultLevelNameWords);
+
+        /// <summary>As above, with the words a level may be named by alone (step 41): the compiled defaults, or the KorStandards row <c>dxf.level.name-words</c>.</summary>
+        public static IReadOnlyList<IReadOnlyList<LevelRow>> ReadLevelLadders(VectorPageReader.PageContent page, int minRows, IReadOnlyList<string> labelWords, IReadOnlyList<string> nameWords)
         {
             ArgumentNullException.ThrowIfNull(page);
             ArgumentNullException.ThrowIfNull(labelWords);
+            ArgumentNullException.ThrowIfNull(nameWords);
 
             // a level label is any word that ENDS a phrase from the vocabulary: LEVEL, B-LEVEL, the
             // "Slab" of "Top of Slab-L5". The label's position is that last word's.
             var levelTokens = new List<LevelLabel>();
             foreach (var w in page.Words)
             {
-                var hit = LevelPhraseEndingAt(page, w, labelWords);
+                var hit = LevelPhraseEndingAt(page, w, labelWords, nameWords);
                 if (hit is null) continue;
                 levelTokens.Add(new LevelLabel(w, hit.Value.GluedValue, hit.Value.Building));
             }
-            levelTokens = levelTokens.OrderBy(l => l.Token.Cx).ToList();
+            // A NAME WRITTEN ON TWO LINES IS ONE NAME (step 41): "PENTHOUSE" over "ROOF" at the same x,
+            // a line apart, is the level PENTHOUSE ROOF, not two levels 300 mm apart (31202's sections).
+            // A name label with a name label directly above it, within a line and a half, takes the
+            // upper one's words in front of its own and stands at its own line.
+            var stacked = new HashSet<int>();
+            for (int i = 0; i < levelTokens.Count; i++)
+            {
+                var lower = levelTokens[i];
+                if (lower.GluedValue is null || !nameWords.Contains(lower.GluedValue, StringComparer.OrdinalIgnoreCase)) continue;
+                for (int j = 0; j < levelTokens.Count; j++)
+                {
+                    if (j == i || stacked.Contains(j)) continue;
+                    var upper = levelTokens[j];
+                    if (upper.GluedValue is null || !nameWords.Contains(upper.GluedValue, StringComparer.OrdinalIgnoreCase)) continue;
+                    double lineHeight = Math.Max(upper.Token.MaxY - upper.Token.MinY, 4);
+                    double above = upper.Token.Cy - lower.Token.Cy;      // PdfPig's y runs up the page
+                    if (Math.Abs(upper.Token.MinX - lower.Token.MinX) > 3 * lineHeight || above <= 0 || above > 1.5 * lineHeight) continue;
+                    string joined = $"{upper.GluedValue} {lower.GluedValue}";
+                    if (!nameWords.Contains(joined, StringComparer.OrdinalIgnoreCase)) continue;
+                    levelTokens[i] = lower with { GluedValue = joined };
+                    stacked.Add(j);
+                    break;
+                }
+            }
+            levelTokens = levelTokens.Where((_, k) => !stacked.Contains(k)).OrderBy(l => l.Token.Cx).ToList();
             if (levelTokens.Count == 0) return Array.Empty<IReadOnlyList<LevelRow>>();
 
             // columns: labels within LadderColumnPts of the column's first label, left to right
@@ -197,7 +251,7 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             var ladders = new List<IReadOnlyList<LevelRow>>();
             foreach (var column in columns)
             {
-                var rows = LadderAt(page, column);
+                var rows = LadderAt(page, column, nameWords);
                 if (rows.Count >= minRows) ladders.Add(rows);
             }
             return ladders;
@@ -208,9 +262,9 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
 
         /// <summary>The ladder one column of level labels makes: each label paired with its level, one row per line, top to bottom.</summary>
         private static List<LevelRow> LadderAt(VectorPageReader.PageContent page, IReadOnlyList<VectorPageReader.TextToken> labels)
-            => LadderAt(page, labels.Select(t => new LevelLabel(t, null, BuildingLevelToken.Match(t.Text.Trim()) is { Success: true } m ? m.Groups[1].Value.ToUpperInvariant() : null)).ToList());
+            => LadderAt(page, labels.Select(t => new LevelLabel(t, null, BuildingLevelToken.Match(t.Text.Trim()) is { Success: true } m ? m.Groups[1].Value.ToUpperInvariant() : null)).ToList(), DefaultLevelNameWords);
 
-        private static List<LevelRow> LadderAt(VectorPageReader.PageContent page, IReadOnlyList<LevelLabel> labels)
+        private static List<LevelRow> LadderAt(VectorPageReader.PageContent page, IReadOnlyList<LevelLabel> labels, IReadOnlyList<string> nameWords)
         {
             var rows = new List<LevelRow>();
             foreach (var label in labels)
@@ -220,7 +274,10 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                 if (label.GluedValue is string gluedValue)
                 {
                     string gluedPrefix = label.Building is null ? "" : label.Building + "-";
-                    string gluedRaw = $"{gluedPrefix}LEVEL {gluedValue}";
+                    // a level named by a word alone (step 41) is that word: ROOF, not LEVEL ROOF
+                    string gluedRaw = nameWords.Any(nw => string.Equals(nw, gluedValue, StringComparison.OrdinalIgnoreCase))
+                        ? $"{gluedPrefix}{gluedValue}"
+                        : $"{gluedPrefix}LEVEL {gluedValue}";
                     rows.Add(new LevelRow(gluedRaw, ScheduleTakeoff.NormalizeLevel(gluedRaw), lt.Cy));
                     continue;
                 }

@@ -27,6 +27,10 @@ public static class SetStoreys
     public const double AgreeMm = 25.0;
 
     public static Table Read(string pdfPath)
+        => Read(pdfPath, ScheduleGridReader.DefaultLevelLabelWords, ScheduleGridReader.DefaultLevelNameWords);
+
+    /// <summary>As above, with the level vocabulary (steps 30 and 41): the compiled defaults, or the KorStandards rows dxf.level.label-words / dxf.level.name-words through <see cref="PdfToSafe.PdfIntakeOptions"/>.</summary>
+    public static Table Read(string pdfPath, IReadOnlyList<string> labelWords, IReadOnlyList<string> nameWords)
     {
         ArgumentNullException.ThrowIfNull(pdfPath);
         using var doc = PdfDocument.Open(pdfPath);
@@ -53,7 +57,7 @@ public static class SetStoreys
             string? scale = null;
             try { scale = SheetScaleReader.FromPage(content); } catch { }
             scale ??= SheetScaleReader.RatioOf(fields.TryGetValue("SCALE", out var sf) ? sf : null);
-            var storeys = StoreyLadder.Read(content, scale, ViewCaptions.Read(content));
+            var storeys = StoreyLadder.Read(content, scale, ViewCaptions.Read(content), labelWords, nameWords);
             if (storeys.Count > 0) perSheet.Add((page, storeys));
         }
         return Reconcile(perSheet, elevationSheets);
@@ -125,6 +129,27 @@ public static class SetStoreys
 
         // the base is a level that is below something and above nothing the set states
         var bases = table.Storeys.Select(s => s.LevelBelow).Where(b => !first.ContainsKey(b)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        // A SET HAS ONE BASE (intake step 41). A ladder on a detail sheet — 31202's parapet section
+        // states HIGH ROOF 1,219 mm over LOW ROOF and nothing under LOW ROOF — made a second base at
+        // 0, and its levels were chained from there: LOW ROOF at the ground, HIGH ROOF at 1.2 m. The
+        // set's base is the one the most levels chain up from; a ladder that reaches no level of that
+        // chain is somebody else's — a detail's — and its levels are reported, not placed.
+        if (bases.Count > 1)
+        {
+            int Reach(string b)
+            {
+                var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { b };
+                for (bool grew = true; grew;)
+                {
+                    grew = false;
+                    foreach (var st in first.Values)
+                        if (!seen.Contains(st.Level) && seen.Contains(st.LevelBelow)) { seen.Add(st.Level); grew = true; }
+                }
+                return seen.Count;
+            }
+            string main = bases.OrderByDescending(Reach).ThenBy(b => b, StringComparer.OrdinalIgnoreCase).First();
+            bases = [main];
+        }
         var elevation = new Dictionary<string, (double Mm, string From)>(StringComparer.OrdinalIgnoreCase);
         foreach (var b in bases) elevation[b] = (0, "the lowest stated level");
         var breaks = new List<string>();
