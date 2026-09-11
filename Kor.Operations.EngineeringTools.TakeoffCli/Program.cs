@@ -241,6 +241,37 @@ if (args.Length >= 2 && args[0].Equals("pdf-levels", StringComparison.OrdinalIgn
     return 0;
 }
 
+// THE SET'S ASSEMBLY SCHEDULES, READ WHOLE (intake step 32). Usage: takeoff pdf-assemblies <set.pdf> [assemblies.csv]
+// An architect's set states its wall and floor types as cards on schedule sheets — code, name,
+// every layer of the build-up, the fire and sound ratings, the references, the remarks. The plans
+// tag walls with the codes. Everything on the card is read; the material and thickness the
+// structural model takes are derived from the words by a vocabulary.
+if (args.Length >= 2 && args[0].Equals("pdf-assemblies", StringComparison.OrdinalIgnoreCase))
+{
+    if (!File.Exists(args[1])) { Console.Error.WriteLine($"Not found: {args[1]}"); return 1; }
+    if (args.Any(a => a.Equals("--trace", StringComparison.OrdinalIgnoreCase))) AssemblySchedule.Trace = Console.WriteLine;
+    var cards = AssemblySchedule.ReadSet(args[1]);
+    Console.WriteLine($"{cards.Count} assembly card(s) on {cards.Select(c => c.Page).Distinct().Count()} schedule sheet(s)");
+    Console.WriteLine($"{"kind",-7} {"code",-8} {"material",-9} {"mm",5}  {"F.R.R.",-6} {"S.T.C.",-6} layers  name");
+    foreach (var c in cards)
+        Console.WriteLine($"{c.Kind,-7} {c.Code,-8} {c.Material,-9} {(c.ThicknessMm is double t ? t.ToString("0") : "-"),5}  " +
+                          $"{(c.Ratings.TryGetValue("F.R.R.", out var frr) ? frr : "-"),-6} {(c.Ratings.TryGetValue("S.T.C.", out var stc) ? stc : "-"),-6} {c.Layers.Count,6}  {c.Name}");
+    var byKind = cards.GroupBy(c => c.Kind).Select(g => $"{g.Key}: {g.Count()} ({g.Count(c => c.IsStructural)} structural, {g.Count(c => c.Material == AssemblySchedule.Material.Stud)} stud, {g.Count(c => c.Material == AssemblySchedule.Material.Unknown)} unknown)");
+    Console.WriteLine(string.Join("; ", byKind));
+    if (args.Length >= 3)
+    {
+        var csv = new List<string> { "kind,code,name,material,structural,thickness_mm,frr,stc,layers,references,remarks,page" };
+        static string Q(string s) => "\"" + s.Replace("\"", "\"\"") + "\"";
+        foreach (var c in cards)
+            csv.Add(string.Join(",", c.Kind, c.Code, Q(c.Name), c.Material, c.IsStructural ? "1" : "0",
+                c.ThicknessMm is double tm ? tm.ToString("0") : "", Q(c.Ratings.TryGetValue("F.R.R.", out var f) ? f : ""), Q(c.Ratings.TryGetValue("S.T.C.", out var s) ? s : ""),
+                Q(string.Join(" | ", c.Layers)), Q(string.Join(" | ", c.References)), Q(string.Join(" | ", c.Remarks)), c.Page.ToString()));
+        File.WriteAllLines(args[2], csv);
+        Console.WriteLine($"→ {args[2]}");
+    }
+    return 0;
+}
+
 // THE DRAWINGS' STOREYS AGAINST THE MODEL'S. Usage: takeoff storeys-check <stickfile.pdf> <model.e2k>
 if (args.Length >= 3 && args[0].Equals("storeys-check", StringComparison.OrdinalIgnoreCase))
 {
@@ -5002,6 +5033,7 @@ public static class TakeoffCliHelp
         new("elev-scan", "takeoff elev-scan <pdf> [first] [last]", "Scan for floor elevations and storey height notes; prints the level ladder's gaps at the sheet's scale."),
         new("e2k-storeys", "takeoff e2k-storeys <model.e2k>", "A model's storeys top to bottom with their heights — what elev-scan's ladder is measured against."),
         new("pdf-levels", "takeoff pdf-levels <stickfile.pdf> [levels.csv]", "The drawings' storeys as a levels file (level, elevation mm from the lowest stated level), read off the wall elevations — what dxf-to-etabs takes in place of a reference .e2k for a job nobody has modelled."),
+        new("pdf-assemblies", "takeoff pdf-assemblies <set.pdf> [assemblies.csv]", "Every wall and floor type card on the set's schedule sheets, read whole: code, name, each layer, F.R.R., S.T.C., references, remarks — and the material and thickness the model takes from them."),
         new("storeys-check", "takeoff storeys-check <stickfile.pdf> <model.e2k>", "The drawings' storey heights (wall elevations) against the model's, pair by pair; the publish reports the same line when --stick-file is given."),
         new("wallconcrete", "takeoff wallconcrete <keyplan.png> <schedule.png> <levels.json>", "Price core wall concrete from key plan and schedule."),
         new("single", "takeoff single <schedule.csv> <out.xlsx> [wbs] [name] [issue] [imperial]", "Generate an absolute takeoff workbook from one schedule CSV."),

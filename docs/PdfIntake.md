@@ -1913,3 +1913,57 @@ denominator, a metric ratio, and a sheet stating nothing giving null so the requ
 WHAT IT DOES NOT: the real sheets (the harness); a view's own caption on an AS NOTED sheet, which is
 `ViewCaptions`' and applies to ladders; a sheet whose stated scale is wrong for the plan on it, which
 only the self-check can see.
+
+## 41. Step 32, done 2026-09-10: an assembly schedule is a legend of cards, and a card is read whole
+
+Ian: *"for the wall type 'unknowable' — is it knowable now that you yourself pointed to where it's
+listed (A005)?"* It was, and the answer changes the model. An architect's set states its wall and
+floor types on schedule sheets laid out as **cards**: a heading `CODE - NAME` with the code drawn
+again in its own symbol beside it, the build-up one line per layer, a ratings block (F.R.R.,
+S.T.C.) with the value provided and the reference, and remarks. 31170's A005 carries 21 wall
+cards and A006 ten floor cards. The code letter is the material — **C** cast-in-place concrete
+(C6…C20, C10.f/C12.f foundation, EC12 exterior), **B8** CMU, **S/SW/SF/ES** steel stud, **VS**
+gypsum shaft wall — and the plans tag their walls with these codes: **887 tags on the enlarged 1/4"
+plans (pages 49–67) against 24 on the 1/8" floor plans**, which is a drafting convention worth
+knowing (the key plan is too dense to tag; the enlargement carries the tags). The tag counts say
+what the building is: 635 steel-stud tags against 24 concrete. The solid party walls the tool was
+sending to ETABS as concrete are `S8.1 STEEL STUD PARTY WALL`.
+
+Ian: *"Can we make sure to extract all the info out of these schedules??? That seems important."*
+So the card is read WHOLE — every layer, both ratings, the references, the remarks — and the
+material and thickness the structural model takes are derived from the words by a vocabulary
+(`AssemblySchedule.StructuralWords` / `PartitionWords`; KorStandards rows
+`dxf.assembly.structural-words` / `partition-words`, not yet seeded). `takeoff pdf-assemblies
+<set.pdf> [out.csv]` prints the table and writes every field.
+
+**The rules, each of which the real sheet taught:** a row is words whose vertical extents overlap
+(PdfPig sets a dash 3 pt below its letters, and a fixed bucket put every `-` on its own line, so no
+heading had its dash and no layer its bullet); a legend is a **fixed grid** — a card's right edge is
+the sheet's next column whether or not this row fills it (an empty column let C12 take the overflow
+of the card above); a rating states a number (2HR, 1HR., 55 — `OmniClass` beside a label is a
+reference); the thickness is the name's, else the **thickest** layer of the material (2" concrete
+pavers sit on a 12" slab); nothing "@ … O.C." is a thickness; and a card whose symbol disagrees
+with its heading is read and the disagreement recorded as a finding — **A005 draws `C13 - 13" C.I.P
+WALL` with the symbol `C12` beside it**, a copied card whose symbol was not updated, which is a
+coordination error to tell the architect, not a card to drop. A dashed heading with no symbol counts
+only on a sheet that has at least one confirmed card; on a sheet with none it is a table row
+(31065's `DW1 - 4-30M3200 @ 400 DOWELS`).
+
+**Measured on six sets:** 31170 — **31 cards, 21 walls (13 structural, 8 stud), 10 floors (9
+structural: F7.5 191 mm, F9 229, F12 305, F18 457, F22 559, F24 610, R1 305 under its pavers)**, the
+count matching the raw PDF text's; the five KOR sets **0 cards** each (their schedules are
+tabular, read by `MarkRowScheduleReader`). Core: `AnAssemblyScheduleIsALegendOfCardsTests`, 6.
+
+⚠ **Rule 7 bit, exactly as written.** A `\b` written through a Python heredoc landed in the C# regex
+as a BACKSPACE (`^H`), the pattern matched nothing, and `VS.1` read "@ 600mm O.C." as 600 mm. Found
+by `cat -A`; fixed with a raw-string script that reads the file back and counts control characters.
+
+**Not yet wired — step 33:** the plans' tags to the walls they sit on, a partition layer the DXF
+side does not model, and the report saying how many walls are concrete, stud, and untagged.
+
+WHAT THE CHECK COVERS (6): two cards side by side and one below each read whole; a symbol
+disagreeing with its heading, read and recorded; a dashed row on a sheet with no confirmed card
+not a card; the name deciding the material before the layers; the thickest structural layer as
+the thickness, a decimal inch, an on-centre spacing not a thickness; the kind from the title.
+WHAT IT DOES NOT: the real sheets (the six-set run above); a card whose lines wrap into the next
+column; the vocabulary from KorStandards rather than the defaults; which wall carries which code.
