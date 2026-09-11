@@ -20,7 +20,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 from plan_sheet import read
 
 UNIT = {"mm": 1.0, "in": 25.4}
-GRID = re.compile(r'\s*GRID\s+"[^"]*"\s+LABEL\s+"([^"]+)"\s+DIR\s+"([XY])"\s+COORD\s+(-?[\d.]+)')
+GRID = re.compile(r'\s*GRID\s+"([^"]*)"\s+LABEL\s+"([^"]+)"\s+DIR\s+"([XY])"\s+COORD\s+(-?[\d.]+)')
 
 
 def columns(path, unit):
@@ -42,7 +42,7 @@ def grids(path, unit):
     out = {}
     for raw in open(path, encoding='utf-8', errors='replace'):
         m = GRID.match(raw)
-        if m: out[(m.group(1).upper(), m.group(2))] = float(m.group(3)) * k
+        if m: out[(m.group(1), m.group(2).upper(), m.group(3))] = float(m.group(4)) * k   # keyed by grid SYSTEM too (Codex audit 2026-09-11, F23)
     return out
 
 
@@ -56,10 +56,17 @@ def main():
     model, mu, yard, yu = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
     only = sys.argv[5] if len(sys.argv) > 5 else None
     m = columns(model, mu); y = columns(yard, yu)
-    ym = {key(s): p for s, p in y.items()}
+    # a storey is matched by its FULL name first (A-L1 to A-L1), and by its stripped name only when the
+    # yardstick has no full-name match - A-L1 and B-L1 both stripped to L1 and one overwrote the other
+    # (Codex audit 2026-09-11, F23)
+    yfull = {s_.upper(): p for s_, p in y.items()}
+    ystripped = {}
+    for s_, p in y.items(): ystripped.setdefault(key(s_), []).extend(p)
+    def yard_for(storey):
+        return yfull.get(storey.upper()) or ystripped.get(key(storey))
     gm, gy = grids(model, mu), grids(yard, yu)
     shared = [k for k in gm if k in gy]
-    dx = [gy[k] - gm[k] for k in shared if k[1] == 'X']; dy = [gy[k] - gm[k] for k in shared if k[1] == 'Y']
+    dx = [gy[k] - gm[k] for k in shared if k[2] == 'X']; dy = [gy[k] - gm[k] for k in shared if k[2] == 'Y']
     if len(dx) >= 2 and len(dy) >= 2:
         shift = (statistics.median(dx), statistics.median(dy))
         spread = max(max(dx) - min(dx), max(dy) - min(dy))
@@ -71,7 +78,7 @@ def main():
     pairs = []
     for s, pts in m.items():
         if only and s != only: continue
-        ypts = ym.get(key(s))
+        ypts = yard_for(s)
         if not ypts: continue
         for p in pts:
             pp = (p[0] + shift[0], p[1] + shift[1]) if shift else p
@@ -88,7 +95,10 @@ def main():
           f"within 300 mm {sum(r <= 300 for r in res)} ({100 * sum(r <= 300 for r in res) / n:.0f}%)")
     by = {}
     for (s, _, _), r in zip(pairs, res): by.setdefault(s, []).append(r)
-    for s in sorted(by, key=lambda s: -len(by[s]))[:8]:
+    # EVERY storey, largest first - the first version printed the eight largest and a "tower storeys 96% within
+    # 100 mm" was written from that sample as if it were the population (PdfIntake.md §48, withdrawn 2026-09-11)
+    print(f"{len(by)} storeys both models name, every one:")
+    for s in sorted(by, key=lambda s: -len(by[s])):
         rs = by[s]
         print(f"   {s:10} {len(rs):4} columns  median {statistics.median(rs):,.0f} mm  within 100 mm {100 * sum(r <= 100 for r in rs) / len(rs):.0f}%")
 

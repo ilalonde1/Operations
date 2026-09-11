@@ -164,7 +164,6 @@ public static class SheetViews
         var columnOwner = geometry.Columns.Select(c => Owner(c.X, c.Y)).ToList();
         var wallOwner = geometry.Walls.Select(w => Owner((w.Start.X + w.End.X) / 2, (w.Start.Y + w.End.Y) / 2)).ToList();
         var lineOwner = geometry.Lines.Select(l => Owner(Centroid(l).X, Centroid(l).Y)).ToList();
-        var tagOwner = geometry.WallTypeTags.Select(t => Owner(t.X, t.Y)).ToList();
         var footingOwner = geometry.Footings.Select(f => Owner(Centroid(f.Outline).X, Centroid(f.Outline).Y)).ToList();
         var dropOwner = geometry.DropPanelCandidates.Select(d => Owner(Centroid(d).X, Centroid(d).Y)).ToList();
 
@@ -245,7 +244,14 @@ public static class SheetViews
 
             for (int i = 0; i < geometry.Footings.Count; i++) if (footingOwner[i] == k) g.Footings.Add(geometry.Footings[i]);
             for (int i = 0; i < geometry.DropPanelCandidates.Count; i++) if (dropOwner[i] == k) g.DropPanelCandidates.Add(geometry.DropPanelCandidates[i]);
-            for (int i = 0; i < geometry.WallTypeTags.Count; i++) if (tagOwner[i] == k) g.WallTypeTags.Add(geometry.WallTypeTags[i]);
+            // THE SHEET TAGS ITS WALLS, NOT THE VIEW. The tagging decision (step 34: ten tags or more and
+            // an untagged wall is no wall) was taken on the whole sheet at intake, and the composer takes
+            // it again on each DXF it is handed by counting that DXF's tags — a sheet of two views with six
+            // tags each had stood its untagged walls down and then counted as tagging nothing in the model
+            // (Codex audit 2026-09-11, F13). Every view carries the sheet's every tag, so the two decisions
+            // agree; a tag is a word with a position, not geometry, and one outside the view's frame
+            // places nothing.
+            g.WallTypeTags.AddRange(geometry.WallTypeTags);
 
             // an axis to every view it crosses; a match line to every view
             var e = extent[k];

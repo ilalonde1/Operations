@@ -1,28 +1,35 @@
 # PDF intake — what it does today, and what it leaves on the page
 
-## 0. START HERE (state as of 2026-09-10, after step 41)
+## 0. START HERE (state as of 2026-09-11, after step 43 — the audit of steps 31–41 answered, and a reissue read)
 
 A session picking this up cold reads this section, then §30 (what the PDF alone gives), then the
-last three step sections (§48, §49, §50). It does not need to read §1–§29 to work; those are the record of how each
+last three step sections (§50, §51, §52). It does not need to read §1–§29 to work; those are the record of how each
 rule was arrived at, and are read when a rule is being changed.
 
 **Where the data is.** `%LOCALAPPDATA%\Temp\kor-drawings\stickfiles` holds the six PDFs (31065,
 31130, 31138, 31168, 31202, and `31170-01-arch` — the ARCHITECT's set for 31170, the only one from
 another office and the measure of whether a rule is universal). `...\kor-drawings\harness` holds one folder per job, the banked `.e2k`
-baselines named for the step that produced them (`pdf-only-<job>-s41.e2k` is the most recent), and
+baselines named for the step that produced them (`pdf-only-<job>-s42.e2k` is the most recent, with
+its console beside it as `...-s42-console.txt` from s42 on), and
 `revit-31168\out.e2k`, which is the Revit route's answer for the same building and the only yardstick
 that is not our own output. Nothing here is read over SMB.
 
 **The one command that measures every deliverable.** `bash docs/etabs-handoff/pdf_only_all.sh`
-rebuilds all six jobs from their PDFs alone, about 8 minutes. Then
-`python docs/etabs-handoff/plate_diff.py <banked.e2k> <new.e2k> mm` for each job says which storey's
-plate moved, and the scratchpad's `storey_counts.py` compares columns and walls per storey against
-Revit. A change that is not run through all five has not been measured.
+rebuilds all six jobs from their PDFs alone, in parallel, about 5 minutes, and prints ⛔ for a job
+with FAILED pages or NO MODEL. Then `bash docs/etabs-handoff/six_set_diff.sh s42` reads every job
+against the banked step in one line each — byte-identical, or plates moved / columns and walls lost
+and gained, counted by `members_diff.py` on keyed members in a grid-aligned frame. When a step is
+kept, `bash docs/etabs-handoff/six_set_bank.sh s43` banks model and console together. A change that
+is not run through all six has not been measured; one job alone is `pdf_only_one.sh <job> <scale>`,
+for characterising, never for deciding.
 
 **Look at it, do not count it.** `takeoff pdf-overlay <pdf> <page> <png> --scale 96 --dpi 200
-[--walls]` renders what the reader saw onto the sheet, and `docs/etabs-handoff/crop_mm.py` cuts a
-window out of it. Step 27 was a day spent guessing closing rules that a rendered view would have
-settled; that is the mistake this line exists to stop.
+[--walls] [--columns]` renders what the reader saw onto the sheet, and `docs/etabs-handoff/crop_mm.py`
+cuts a window out of it; `model_to_page.py` takes a model coordinate (a wall the diff named) back to
+the sheet's millimetres through the grid and the overlay's own wall census, so the window is cut
+where the member is. `render_storeys.sh` draws every storey of a model on one sheet. Step 27 was a
+day spent guessing closing rules that a rendered view would have settled; that is the mistake this
+line exists to stop.
 
 **Where the route stands on 31168**, PDF-only against the Revit route, both built by the same
 DXF-to-ETABS code:
@@ -2347,7 +2354,16 @@ first PDF read. The ring is closed now when its ends are apart and it has three 
 **Measured against the one yardstick that is not our own output** — the Revit route's 31168 model,
 frames matched by grid name (`columns_vs_yardstick.py`, new): before, the median column residual
 to the nearest Revit column was **100 mm, 7% within 50 mm**; after, **18 mm, 71% within 50 mm**,
-on 2,211 columns across the shared storeys (tower storeys 96% within 100 mm). And a second effect
+on 2,211 columns across the shared storeys. ⚠ Corrected 2026-09-11 (audit F23, F24): the "71%" was
+measured with the script matching storeys by a stripped name, so 31168's A-L1 and B-L1 both matched
+Revit's L1 and the residuals of one tower were taken against the other's columns; matched by full
+name first, the same 2,211 columns are **median 16 mm, 92% within 50 mm**. And a claim this section
+made about "tower storeys 96% within 100 mm" was read off the script's printed sample of eight
+storeys, not a count of them, and is withdrawn. The script prints every storey now: of the **58
+storeys both models name, 38 have 96–100% of their columns within 100 mm, 46 have 90% or more, and
+9 are under 80%** — the top-of-tower storeys (A-L34–36, B-L39–40, where the PDF-only model reads
+columns the Revit model does not have at those names: medians of 1.7–44 m are a storey mismatch,
+not a positional one), L1 (67 mm median), L3, B-L37–38. And a second effect
 the bias had hidden: with the corner columns of the tower cores sitting where they are drawn, the
 cores' face pairs are no longer "under a column already read" and pair — **31168's tower storeys
 33 → 43–45 walls** (Revit's 40; the open item "tower walls 33 vs 40" since step 25), L10 rendered
@@ -2425,3 +2441,115 @@ WHAT THE CHECKS COVER: a roof word alone as the top of a ladder at the drawn hei
 as one name; a two-line name read at the lower line and no phantom level; one base with a detail's
 ladder reported. WHAT THEY DO NOT: the real sheets (the six-set run above); the rows (not applied);
 a roof word used as a caption on a plan; 31202's two statements.
+
+## 51. Step 42, done 2026-09-11: the adversarial audit of steps 31–41, answered
+
+Codex read the summaries of steps 31–41 (§40–§50) against the source and the fourteen named test
+files, statically, and wrote 25 findings
+(`docs/codex/CODEX-PDF-INTAKE-STEPS-31-41-ADVERSARIAL-AUDIT-RESPONSE.md`): 13 High, 12 Medium,
+each with the smallest input that breaks the claim. Every one was answered the same way — the
+counterexample written as a test first, in `TheAuditsCounterexamplesForSteps31To41Tests` (14
+facts) or in the step's own test file, then the fix, then all six sets.
+
+**What the six-set run said.** With every fix in, four sets moved and two were byte-identical to
+s41; the one-job switch (F7 reverted alone, all six byte-identical) attributed every moved member to
+F7 — **the other 24 fixes change none of the six models**, which is what a fix to an edge case
+should do. F7's first cut ("both ends of the later wall within reach of the earlier axis") returned
+25 walls, and `model_to_page.py` (new) put the first four back on their sheets: 31138's L1 stub
+walls, drawn 4'-0" long on the 55'-0 plan and 4'-8" on the 64'-1 plan — the same walls, and both
+copies modelled. The rule kept is **the earlier wall must have drawn MOST of the later one** — its
+midpoint within a hand's width, and the earlier axis covering more than half its length — which
+refuses the audit's pier (a 1.2 m pier draws 20% of a 6 m wall) and takes the stub (86%). Under it
+three walls return against s41: on 31138 one 8" wall the two L1 plans read as two overlapping
+2.2 m pieces of one 3.6 m wall (each piece draws 47% of the other; both stand now, overlapping
+1 m, where one stood short before) and its copy on L1; on 31170 a 140 mm end cap. Banked as
+**s42**, model and console together (`six_set_bank.sh`, new — the s41 consoles that would have
+said which clause took the stubs were never banked).
+
+**The High findings, and what each became:**
+
+| | finding | fix |
+|---|---|---|
+| F1 | a range sheet (LEVEL 2-3) shares one geometry list across its storeys, so a stand-down on one removes from both | the composer gives every storey of a range sheet its own copy (`PlanGeometryTransform.Copy`); calibration sees each sheet once |
+| F2 | one base per set discards a second, independently founded building | a base with three or more levels chaining from it, or one numbered like a base, is kept (`SetStoreys`) |
+| F3 | a finish layer named first made a concrete assembly a partition | material is the concrete or masonry layer anywhere in the card, a finish only when there is none |
+| F4 | three precast piers abutting within an inch read as cells | **accepted as a limit**: three filled shapes of one size edge to edge ARE what a hatch looks like; a schedule that declares the size keeps them (§46's declared-size clause) — documented in the test's WHAT IT DOES NOT |
+| F5 | three equal walls at one pitch read as stripes | **accepted as a limit**, the same way: the tests state it |
+| F6 | a partition footprint crossing a concrete wall stood the wall down | the wall must run the footprint's way (parallel to its longest edge) with both ends inside or within reach |
+| F7 | a short earlier wall took a much longer later wall | above |
+| F8 | a sheet of only partitions was refused at the admission gate before it could say what a wall is | a sheet with no structure but partition footprints or wall-type tags is kept for what it says, placing nothing of its own |
+| F9 | a bare number inside a wall stood it down as a dimension string | a bare number must agree with a grid span; a written length ("19'-8"") needs none |
+| F10 | a wall flagged as a dimension string still passed its tag along a run | a flagged wall neither takes nor passes a tag |
+| F11 | one roof plan landed on every storey whose name contains ROOF | one roof per sheet: an elevator sheet's is the ELEV level, otherwise the lowest named roof without ELEV or PENTHOUSE |
+| F12 | "ROOF LEVEL 3" read as the level ROOF LEVEL | a name word is a name only when no level-shaped value follows it on the baseline |
+| F13 | splitting a tagging sheet into views left one view with the tags and the others untagged | every view carries the sheet's whole tag list |
+
+**The Medium findings:** F14 stripe removal drops the doorways whose pier left and remaps the rest;
+F15 a joined face's eventual fate (wall face, slab edge) reaches every piece, not the first
+(`WhenAJoinedFaceBecomesAWallEveryPieceOfItBecomesThatWallsFace`); F16 a run's end cell may not be
+larger than the run's cells (`NoLargerThan`), so a column standing beside a run is not its end;
+F17 a filled wall's faces may taper by no more than a quarter of the thickness
+(`WallShapeTaperShare`); F18 every card line that is not a rating, heading or layer is a remark;
+F19 a decimal millimetre thickness ("12.7 mm") is read; F20 `pdf-assemblies` reads the vocabulary
+rows too. The instruments: F21 `members_diff.py` keys walls by (centroid, length) so a wall turned
+about its centre is seen; F22 it aligns frames by shared grid labels and says GUESS when it must
+fall back to the mode; F23 `columns_vs_yardstick.py` keys grids by system and matches storeys by
+full name first (§48's figure corrected there: **92% within 50 mm**, not 71%); F24 `six_set_diff.sh`
+sums the bracketed counts, not printed samples, and the yardstick prints every storey.
+
+**F25, the tests that promised more than they asserted:** the grid test asserts every axis's
+direction and coordinate and a column on its axes; `StructureStandsOnAFloor` asserts the key plan's
+openings and the members' coordinates unchanged; `APatternsCellsAbut` has a real cell run beside its
+declared column; `AWallIsWhatAFillPatternFills` checks the optional list is empty or parallel;
+`ASheetThatSaysWhatAWallIsWins` has the within-reach case; `ASheetIsReadAtTheScaleItStates` has
+the two-scales-give-null case and the same two scales agreeing giving one. Not strengthened, and
+said so: the card test's layer text and order; the tag test's doorway records.
+
+**Measured on six sets:** 31130, 31065, 31202, 31168 byte-identical to step 41; 31138 +2 walls,
+31170 +1, above. Core: `TheAuditsCounterexamplesForSteps31To41Tests` 14, and the strengthened
+facts named above; fast suite 1,203 of 1,203.
+
+WHAT THE CHECKS COVER: each finding's smallest input, as Codex wrote it, refused or read as the
+summary claimed. WHAT THEY DO NOT: F4 and F5 (limits, stated); a range sheet whose storeys
+genuinely differ (the copy is identical by construction); F7 on two pieces of one wall from two
+sheets, which now both stand — a collinear overlapping join across sheets is the next candidate
+rule, and it is NOT the global collinear join step 38 refused (that joined abutting Revit walls;
+this would join overlapping copies).
+
+## 52. Step 43, done 2026-09-11: a bubble labelled twice with one name is labelled once
+
+Found by refusing to wave a red test through. `Langara31168ParkadePlansBuildOnTheReferencesGridByName`
+— the end-to-end test that reads the NEWEST dated stick file on the share, writes 31168's three
+parkade sheets on the office's layers and builds them on the Revit reference's grid — went red on
+2026-09-10 and was carried as "the new stick file, not code". It was code. On the 09-10 reissue the
+two BLDG A & B sheets placed 0 of their axes ("their axes name nothing the model names"); on the
+08-25 issue 26 of 26. `grid_names.py` (new) put the two side by side: the reissue's sheets carried
+9 labels, H–R, and no numbered axis at all. `pdf_words_in_band.py` (new) showed why: **every
+numbered bubble holds its label twice** — "5" at y 234.8 and "5" at y 240.4, the architect's
+underlay's grid under the engineer's ("With Arch" is in the file's name) — and the bubble reader
+wanted exactly one word inside the circle. The numbered grid lines are also drawn twice, once in
+7.6 m pieces and once as a dash-dot pattern (`pdf_lines.py` prints the vertical runs now); that
+was not the fault, the rule reader already sums the pieces through a bubble.
+
+**The rule** (`GridBubbles.On`): the words inside a circle are its label when they are ONE
+distinct name — written once, or written again over itself by an underlay. Two different words
+inside a circle are still a mark, not a bubble. Core: `ABubbleLabelledTwiceWithOneNameIsLabelledOnce`
+in `SheetFurnitureIsNotStructureTests`. The end-to-end test is green on the reissue: 3 of 3 sheets
+on the grid.
+
+**Measured on six sets:** all six byte-identical to s42 (none of the harness PDFs carries an
+underlay's labels; the harness's 31168 is the 09-04 file, not the reissue). Not banked as a step of
+its own — s42 stands.
+
+**What the red test is, for the record.** Its name is the claim it makes, as every test here is
+named; it is job-specific because it is an end-to-end test on a real set — the reference route
+needs a real Revit model and a real stick file, and 31168 is the one we have both for — not a rule
+tuned to a job. It reads the newest issue on the share, so it is also a monitor: when the office
+reissues the set it measures the new drawing, and "a reissue builds with no code change" is
+exactly the bar §0 sets. A day of "known red" was a day of not looking.
+
+WHAT THE CHECK COVERS: a doubled label read once, two different words refused. WHAT IT DOES NOT:
+an underlay whose bubble is offset from the engineer's (two circles, two bubbles — the axis reader
+would merge them within 0.5 pt of one rule and otherwise name two axes); the harness on the
+reissue (open: move the harness's 31168 to the 09-10 issue, which re-banks every 31168 baseline
+and is Ian's call).

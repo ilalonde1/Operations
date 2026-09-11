@@ -390,6 +390,39 @@ public sealed class SheetFurnitureIsNotStructureTests
         Assert.Equal("B", b.Name); Assert.Equal(1000, b.At, 0.5); Assert.Equal(1, b.Bubbles);
     }
 
+    /// <summary>
+    /// A bubble labelled twice with one name is labelled once (intake step 43): a set issued with the
+    /// architect's plan under the engineer's writes the underlay's "5" a few points under the
+    /// engineer's "5" in the same circle. 31168's 2026-09-10 reissue names every numbered axis so, and
+    /// "exactly one word inside" read 9 of 28 axes on S2.04.1 where the 08-25 issue gave 26 of 26 —
+    /// two of three parkade sheets could not be set on the grid, and the end-to-end test was red for a
+    /// day as "the new stick file, not code". Two DIFFERENT words inside a circle are still a mark.
+    /// </summary>
+    [Fact]
+    public void ABubbleLabelledTwiceWithOneNameIsLabelledOnce()
+    {
+        static GP Circle(double cx, double cy, double r) => new(
+            new List<(double X, double Y)> { (cx, cy + r), (cx + r, cy), (cx, cy - r), (cx - r, cy) },
+            true, false, true, cx - r, cy - r, cx + r, cy + r);
+
+        var words = new List<TT>
+        {
+            Tok("5", 1000, 1900), Tok("5", 1000, 1905),      // the engineer's label and the underlay's, 5 pt apart, one name
+            Tok("7", 1400, 1900), Tok("A", 1400, 1905),      // two different words in one circle: not a bubble
+        };
+        var paths = new List<GP>
+        {
+            Circle(1000, 1900, 14), VRule(1000, 200, 1886),
+            Circle(1400, 1900, 14), VRule(1400, 200, 1886),
+        };
+
+        var grid = GridBubbles.On(new PC(1, W, H, words, paths));
+
+        var five = Assert.Single(grid.Axes);
+        Assert.Equal("5", five.Name); Assert.True(five.Vertical); Assert.Equal(1000, five.At, 0.5); Assert.Equal(1, five.Bubbles);
+        Assert.DoesNotContain(grid.Bubbles, b => Math.Abs(b.Cx - 1400) < 1);
+    }
+
     [Fact]
     public void EdgesAreCoverageNotLength()
     {

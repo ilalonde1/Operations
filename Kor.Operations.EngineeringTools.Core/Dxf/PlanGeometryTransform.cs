@@ -18,6 +18,14 @@ namespace Kor.Operations.EngineeringTools.Dxf;
 /// </summary>
 public static class PlanGeometryTransform
 {
+    /// <summary>
+    /// A geometry set of its own, every list a new list, nothing moved. A sheet that serves several
+    /// storeys (LEVEL 4-14) was placed on each of them with ONE shared object, so a pass that took a
+    /// wall from it on one storey took it from every storey it served (Codex audit 2026-09-11, F1);
+    /// each storey holds a copy now.
+    /// </summary>
+    public static PlanGeometrySet Copy(PlanGeometrySet set) => Apply(set, new Frame(0, 0, 0));
+
     public static PlanGeometrySet Apply(PlanGeometrySet set, Frame frame)
     {
         var moved = new PlanGeometrySet();

@@ -12,7 +12,7 @@ the lesson is the point.
 
 ---
 
-## THE JOB IN FRONT OF YOU (2026-09-10, after intake step 41)
+## THE JOB IN FRONT OF YOU (2026-09-11, after intake step 43 — the audit of 31–41 answered; the 31168 reissue reads)
 
 Everything below this section is the pipeline as a whole and is still true. This section is the
 work actually in progress, and it is where you start.
@@ -23,15 +23,15 @@ gets the columns, the parkade plates and (since step 28) the tower plates close 
 route's answer, on 36 of 62 storeys.
 
 **Read, in this order, and stop.** `CLAUDE.md` (twelve rules, gates not advice), then
-`docs/PdfIntake.md` **§0 START HERE**, then its §30, then its last three step sections (§48, §49,
-§50). That is about seventy lines of state plus three rules. Sections 1 to 29 of that document are
+`docs/PdfIntake.md` **§0 START HERE**, then its §30, then its last three step sections (§50, §51,
+§52). That is about seventy lines of state plus three rules. Sections 1 to 29 of that document are
 the record of how each earlier rule was arrived at; read one only when you are changing that rule.
 Do not read the whole document to begin work.
 
 **The data is local already.** `%LOCALAPPDATA%\Temp\kor-drawings\stickfiles` holds six PDF sets
 (31065, 31130, 31138, 31168, 31202, and `31170-01-arch`, the ARCHITECT's set — the only one from
 another office, and since step 30 the measure of whether a rule is universal). `...\kor-drawings\harness` holds one output folder per job,
-the banked `.e2k` baselines named for the step that produced them (`pdf-only-<job>-s41.e2k` is
+the banked `.e2k` baselines named for the step that produced them (`pdf-only-<job>-s42.e2k` is
 the most recent), and `revit-31168\out.e2k`, the Revit route's answer for the same building. That
 last file is the only yardstick in the harness that is not our own output. Nothing here is read
 over SMB or the VPN, and it must stay that way.
@@ -39,7 +39,8 @@ over SMB or the VPN, and it must stay that way.
 **One command measures every deliverable.**
 
       bash docs/etabs-handoff/pdf_only_all.sh                      # all six jobs from PDFs, IN PARALLEL, ~3-5 min; prints ⛔ on FAILED pages / NO MODEL
-      bash docs/etabs-handoff/six_set_diff.sh s41                  # THEN THIS: one line per set against the banked step - byte-identical, or what moved
+      bash docs/etabs-handoff/six_set_diff.sh s42                  # THEN THIS: one line per set against the banked step - byte-identical, or what moved
+      bash docs/etabs-handoff/six_set_bank.sh s43                  # when a step is KEPT: bank model AND console under the step name (refuses to overwrite)
       python docs/etabs-handoff/columns_vs_yardstick.py <out.e2k> mm <revit-31168/out.e2k> in   # POSITIONS against Revit, frames matched by grid name
       bash docs/etabs-handoff/pdf_only_one.sh 31170-01-arch 96     # one set, ~1 min: characterise a rule here BEFORE the six-set run
       python docs/etabs-handoff/plate_diff.py <banked.e2k> <new.e2k> mm    # which storey's plate moved
@@ -48,6 +49,7 @@ over SMB or the VPN, and it must stay that way.
       bash   docs/etabs-handoff/render_storeys.sh <out.e2k> <out.png> "<title>"   # every storey on one PNG - LOOK before you count
       python docs/etabs-handoff/pdf_words_near.py <pdf> ROOF OVERRUN            # what does the drawing CALL it? ask before any rule
       python docs/etabs-handoff/members_diff.py <before.e2k> <after.e2k>       # WHICH members moved, with positions - then crop and look
+      python docs/etabs-handoff/model_to_page.py <out.e2k> <sheet.dxf> --census <overlay --walls output> <x> <y>   # a model point back onto its SHEET, for crop_mm.py
       takeoff pdf-overlay <pdf> <page> <png> --scale N --columns              # the column reads as a census: size, pen, abutting twins
 
 A change measured on one job has not been measured. Run all six, before and after — and the one that
@@ -131,6 +133,16 @@ never seen builds a model with no code change, and every sheet it cannot read sa
    sheet is.
 11. **C's floor lands on C-L4** where Revit has it on C-L5 to C-L8; **A-L34 reads 9,326 against
     Revit's 5,949**, unexplained.
+
+**Owed, in this order, agreed with Ian 2026-09-11:** (a) the audit of steps 31–41 — DONE as step 42
+(§51: 23 of 25 findings fixed with the counterexample as a test, F4/F5 stated as limits; the fixes
+other than F7 change none of the six models); (b) **the in-memory handoff** replacing the
+scratch-DXF detour between `pdf-takeoff` and `dxf-to-etabs` — write the gate FIRST (build all six
+with the detour and without, `cmp` every `.e2k`), then the code; (c) **`Program.cs` one file per
+verb** (5,000 lines) — gate: the help-list test and six byte-identical models. A smaller rule the
+audit surfaced: two sheets reading two overlapping collinear pieces of one wall (31138's 3.6 m
+wall, §51) both stand now; an overlapping-copies join across sheets is a candidate, distinct from
+the abutting join step 38 refused.
 
 **⛔ Measured and rejected, do not retry.** `DxfFloodFillPlateDetector.RecoverAll` as the fallback
 where no ring closes. Asked for the tower floor it answers with the **core** — 858 sq ft on

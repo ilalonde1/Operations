@@ -73,7 +73,8 @@ public static class AssemblySchedule
     private static readonly Regex RatingLabel = new(@"^(?<label>[A-Z](?:\.?[A-Z]){1,4}\.?)$", RegexOptions.Compiled);
 
     /// <summary>A thickness stated in the words: 457mm, 305 mm, 16", 5/8".</summary>
-    private static readonly Regex Millimetres = new(@"(?<![\d.])(?<mm>\d{2,4})\s*mm", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    // a decimal too (203.2mm, 15.9mm): the integer-only form read no thickness from a metric-only card (Codex audit 2026-09-11, F19)
+    private static readonly Regex Millimetres = new(@"(?<![\d.])(?<mm>\d{1,4}(?:\.\d+)?)\s*mm", RegexOptions.Compiled | RegexOptions.IgnoreCase);
     private static readonly Regex Inches = new(@"(?<![\d/.])(?<in>\d{1,2}(?:\.\d{1,2})?(?:\s+\d/\d{1,2})?)\s*(?:""|”|″)", RegexOptions.Compiled);
 
     private static readonly string[] ColumnHeads = ["PROVIDED", "REFERENCE CODE", "REFERENCE", "REMARKS", "NOTE:", "NOTES:"];
@@ -220,25 +221,28 @@ public static class AssemblySchedule
 
             var layer = LayerLine.Match(t);
             if (layer.Success) { layers.Add(layer.Groups["text"].Value.Trim()); continue; }
-            if (t.StartsWith("NOTE", StringComparison.OrdinalIgnoreCase) || remarks.Count > 0 || layers.Count > 0)
-                remarks.Add(t);
+            // anything else in the card is a remark, before the first layer as well as after it - a line
+            // before the first layer was dropped without a record (Codex audit 2026-09-11, F18)
+            remarks.Add(t);
         }
 
         var material = MaterialOf(name, layers, structuralWords, partitionWords);
-        return new Assembly(kind, code, name, layers, ratings, references, remarks, material, ThicknessOf(name, layers, material), pageNumber);
+        return new Assembly(kind, code, name, layers, ratings, references, remarks, material, ThicknessOf(name, layers, material, structuralWords, partitionWords), pageNumber);
     }
 
-    /// <summary>The name decides first; the layers only when the name says nothing.</summary>
+    /// <summary>
+    /// The name decides first; the layers only when the name says nothing — and then a STRUCTURAL
+    /// layer anywhere in the card decides, whatever finishes are listed before it. A card named
+    /// EXTERIOR WALL with 15.9mm GYPSUM BOARD printed above 200mm CONCRETE WALL was a stud partition
+    /// because the first recognised layer won (Codex audit 2026-09-11, F3); a finish does not hide a core.
+    /// </summary>
     public static Material MaterialOf(string name, IReadOnlyList<string> layers, IReadOnlyList<string>? structuralWords = null, IReadOnlyList<string>? partitionWords = null)
     {
         var fromName = MaterialIn(name, structuralWords, partitionWords);
         if (fromName != Material.Unknown) return fromName;
-        foreach (var layer in layers)
-        {
-            var m = MaterialIn(layer, structuralWords, partitionWords);
-            if (m != Material.Unknown) return m;
-        }
-        return Material.Unknown;
+        var found = layers.Select(l => MaterialIn(l, structuralWords, partitionWords)).Where(m => m != Material.Unknown).ToList();
+        if (found.Count == 0) return Material.Unknown;
+        return found.FirstOrDefault(m => m is Material.Concrete or Material.Masonry) is var core && core != Material.Unknown ? core : found[0];
     }
 
     private static Material MaterialIn(string text, IReadOnlyList<string>? structuralWords = null, IReadOnlyList<string>? partitionWords = null)
@@ -257,12 +261,12 @@ public static class AssemblySchedule
     /// The thickness in the name ("16" C.I.P WALL"), else the THICKEST layer that carries the
     /// material — 2" concrete pavers sit on a 22" concrete slab, and the slab is the assembly.
     /// </summary>
-    public static double? ThicknessOf(string name, IReadOnlyList<string> layers, Material material)
+    public static double? ThicknessOf(string name, IReadOnlyList<string> layers, Material material, IReadOnlyList<string>? structuralWords = null, IReadOnlyList<string>? partitionWords = null)
     {
         if (ThicknessIn(name) is double fromName) return fromName;
         double? best = null;
         foreach (var layer in layers)
-            if (material != Material.Unknown && MaterialIn(layer) == material && ThicknessIn(layer) is double t && (best is null || t > best))
+            if (material != Material.Unknown && MaterialIn(layer, structuralWords, partitionWords) == material && ThicknessIn(layer) is double t && (best is null || t > best))
                 best = t;
         return best;
     }

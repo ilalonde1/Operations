@@ -59,8 +59,12 @@ public static class WallTypeTagging
         }
 
         var codes = new string?[geometry.Walls.Count];
+        // a dimension string (step 35) is no wall: it takes no tag, and it passes none along a run —
+        // it took the stud tag beside it and handed it to the real wall it abutted (Codex audit 2026-09-11, F10)
+        bool NotAWall(int i) => i < geometry.WallIsDimensionString.Count && geometry.WallIsDimensionString[i];
         for (int i = 0; i < geometry.Walls.Count; i++)
         {
+            if (NotAWall(i)) continue;
             var wall = geometry.Walls[i];
             string? best = null;
             double bestD = double.MaxValue;
@@ -81,10 +85,10 @@ public static class WallTypeTagging
             spread = false;
             for (int i = 0; i < codes.Length; i++)
             {
-                if (codes[i] is not null) continue;
+                if (codes[i] is not null || NotAWall(i)) continue;
                 for (int j = 0; j < codes.Length; j++)
                 {
-                    if (codes[j] is null || !ContinuesRun(geometry.Walls[i], geometry.Walls[j])) continue;
+                    if (codes[j] is null || NotAWall(j) || !ContinuesRun(geometry.Walls[i], geometry.Walls[j])) continue;
                     codes[i] = codes[j]; spread = true; break;
                 }
             }

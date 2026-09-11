@@ -65,3 +65,6 @@ for x, spans in sorted(ver.items()):
     spans.sort()
     tot = sum(b - a for a, b in spans)
     print(f"  x={x:8.1f}  {len(spans):3d} run(s)  total {tot*MM:8.0f} mm   y {spans[0][0]:.0f}..{spans[-1][1]:.0f}")
+    # the runs themselves, as for the horizontals: a grid line drawn as dashes shows here as many short
+    # runs with gaps between (31168's 2026-09-10 reissue draws its numbered axes so - 87 runs on one x)
+    print("        " + "  ".join(f"[{a:.0f},{b:.0f}]={(b-a)*MM:.0f}mm" for a, b in spans))

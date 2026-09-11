@@ -167,8 +167,11 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                 string? building = null;
                 var b = Regex.Match(phrase, @"^([A-Z]{1,2})-(.+)$", RegexOptions.IgnoreCase);
                 if (b.Success) { building = b.Groups[1].Value.ToUpperInvariant(); bare = b.Groups[2].Value; }
+                // a name only where NO level value follows on the baseline: "ROOF LEVEL 3" is LEVEL 3 with a word
+                // in front, not the level ROOF LEVEL (Codex audit 2026-09-11, F12)
+                bool valueFollows = page.Words.Any(w => Math.Abs(w.Cy - token.Cy) <= 4 && w.MinX >= token.MaxX - 1 && w.MinX - token.MaxX <= PhraseGapPts && LevelShaped.IsMatch(w.Text.Trim()));
                 foreach (var nw in nameWords)
-                    if (glued is null && string.Equals(bare, nw, StringComparison.OrdinalIgnoreCase))
+                    if (glued is null && !valueFollows && string.Equals(bare, nw, StringComparison.OrdinalIgnoreCase))
                         return (nw.ToUpperInvariant(), nw.ToUpperInvariant(), building);      // the name is the value
                 foreach (var lw in labelWords)
                     if (string.Equals(bare, lw, StringComparison.OrdinalIgnoreCase))

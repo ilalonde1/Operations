@@ -14,7 +14,8 @@ namespace Kor.Operations.EngineeringTools.Core.Tests.Intake;
 /// </summary>
 /// <remarks>
 /// WHAT THIS COVERS: collinear same-pen pieces meeting end to end joined into one line with the
-/// pieces' fates re-pointed at it, a gap wider than an inch left, a different pen left; two light
+/// pieces' fates re-pointed at it, a gap wider than an inch left, a different pen left; a joined
+/// face that then pairs into a wall carrying the wall's fate to every piece (audit F15); two light
 /// faces inside a run of pattern cells pairing as a wall while the same faces with no pattern do
 /// not; three parallel stripes at one pitch leaving
 /// the walls while two do not; the mitred end (in `TheAuditsCounterexamplesTests.F1`). WHAT IT DOES
@@ -60,6 +61,27 @@ public sealed class AWallIsWhatAFillPatternFillsTests
         Assert.Equal(3, pieceFates.Count(f => f.Reason == PathReason.EmittedAsLine && f.ObjectIndex == joined));
         Assert.Equal(0, fates.Single(f => f.PathIndex == cells.Length).ObjectIndex);               // the annotation line is still line 0
         Assert.Equal(g.Lines.Count, g.LineWidths.Count); Assert.Equal(g.Lines.Count, g.LineColors.Count); Assert.Equal(g.Lines.Count, g.LineIsAnnotation.Count);
+        Assert.True(g.LineSectionHints.Count == 0 || g.LineSectionHints.Count == g.Lines.Count);   // the optional list is empty or parallel (audit F25)
+    }
+
+    [Fact]
+    public void WhenAJoinedFaceBecomesAWallEveryPieceOfItBecomesThatWallsFace()
+    {
+        // the joined face and one whole line a wall's thickness away, overlapping its length: step 20 pairs
+        // them into a wall, and the wall's fate must reach all three pieces, not the first (Codex audit
+        // 2026-09-11, F15: the fate map was keyed one path per line)
+        var cells = new[] { Cell(60000, 30400), Cell(60900, 30400), Cell(61800, 30400), Cell(62700, 30400) };
+        var (g, fates) = Read(cells.Concat(new[]
+                              {
+                                  Line(60000, 31000, 61200, 31000), Line(61200, 31000, 62400, 31000), Line(62400, 31000, 63600, 31000),
+                                  Line(60000, 31250, 63600, 31250),
+                              }).ToArray());
+        int wall = g.Walls.FindIndex(w => Math.Abs(w.Start.Y - 31125) < 1 && Math.Abs(w.End.Y - 31125) < 1);
+        Assert.True(wall >= 0, "the joined face and its partner did not pair into a wall");
+        var pieceFates = fates.Where(f => f.PathIndex >= cells.Length && f.PathIndex < cells.Length + 3).ToList();
+        Assert.Equal(3, pieceFates.Count);
+        Assert.All(pieceFates, f => { Assert.Equal(PathReason.BecameWallFace, f.Reason); Assert.Equal(wall, f.ObjectIndex); });
+        Assert.Equal(PathReason.BecameWallFace, fates.Single(f => f.PathIndex == cells.Length + 3).Reason);
     }
 
     [Fact]

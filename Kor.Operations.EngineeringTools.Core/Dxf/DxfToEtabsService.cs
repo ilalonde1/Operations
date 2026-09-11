@@ -1407,8 +1407,16 @@ public static class DxfToEtabsService
 
             if (geometry.Walls.Count == 0 && geometry.Columns.Count == 0 && geometry.Slabs.Count == 0)
             {
-                warnings.Add($"{sheet.FileName}: no structural outlines found on the expected layers — not placed.");
-                continue;
+                // A sheet with no structure of its own still SAYS things about the storey: an enlargement
+                // whose every wall is a tagged stud partition carries the tags and the footprints that stand
+                // the key plan's untagged twins down (step 34), and skipping it here kept those twins in
+                // the model (Codex audit 2026-09-11, F8). It is admitted for what it says; it places nothing.
+                if (geometry.Partitions.Count == 0 && geometry.Tags.Count == 0)
+                {
+                    warnings.Add($"{sheet.FileName}: no structural outlines found on the expected layers — not placed.");
+                    continue;
+                }
+                warnings.Add($"{sheet.FileName}: no structural outlines, but {geometry.Partitions.Count} partition footprint(s) and {geometry.Tags.Count} wall-type tag(s) — kept for what it says about the storey's walls; it places nothing of its own.");
             }
 
             // The sheet is in the model, so what it could not read is now worth saying.
@@ -1617,6 +1625,16 @@ public static class DxfToEtabsService
         // partition's footprint drawn by ANOTHER sheet of the same storey is that partition, and is
         // left out with the count said. Sheets are in the model's frame here, so a footprint from a
         // 1/4" sheet lies exactly where the 1/8" sheet drew the wall.
+        // EACH STOREY A SHEET SERVES HOLDS ITS OWN COPY. A typical-range sheet (LEVEL 4-14) is one
+        // geometry placed on eleven storeys, and the two passes below take walls and plates OUT of the
+        // geometry storey by storey — so what one storey's enlargement stood down came off every
+        // storey the range sheet served (Codex audit 2026-09-11, F1). Split before the passes: one
+        // entry per (sheet, storey), the geometry copied, so a decision on L2 is L2's alone.
+        parsed = parsed
+            .SelectMany(p => p.Stories.Count <= 1
+                ? [p]
+                : p.Stories.Select(s => (p.Sheet, PlanGeometryTransform.Copy(p.Geometry), (IReadOnlyList<string>)[s])))
+            .ToList();
         warnings.AddRange(StandDownToTaggedPartitions(parsed, StandDownReachInches / modelUnitInInches));
 
         // ACROSS THE SHEETS OF ONE STOREY, A PLATE INSIDE A LARGER PLATE IS NOT A SECOND FLOOR
@@ -1629,11 +1647,13 @@ public static class DxfToEtabsService
         // What this job's own drawings say a wall is, before anything is written. A portfolio rule
         // cannot tell a 42" tower core from two faces paired across a parkade corridor; the job's
         // own distribution can, and it costs nothing to measure. See JobCalibration.
+        // one geometry per sheet for the calibration, not one per storey it serves (the split above)
+        var oncePerSheet = parsed.GroupBy(p => p.Sheet.FileName, StringComparer.OrdinalIgnoreCase).Select(g => g.First()).ToList();
         var calibration = JobCalibration.From(
-            parsed.SelectMany(p => p.Geometry.Walls).ToList(),
-            parsed.SelectMany(p => p.Geometry.Columns).ToList());
+            oncePerSheet.SelectMany(p => p.Geometry.Walls).ToList(),
+            oncePerSheet.SelectMany(p => p.Geometry.Columns).ToList());
 
-        warnings.AddRange(calibration.Notes(parsed.SelectMany(p => p.Geometry.Walls).ToList()));
+        warnings.AddRange(calibration.Notes(oncePerSheet.SelectMany(p => p.Geometry.Walls).ToList()));
 
         var placements = new List<StoryPlacement>();
         foreach (var (sheet, geometry, matched) in parsed)
@@ -2545,10 +2565,17 @@ public static class DxfToEtabsService
                 // is a 40-90 mm sliver and the sheets are set on the grid to within a few inches, so
                 // an exact point-in-polygon missed twins that a person sees at once. The hand's width
                 // is the pipeline's own (SlabEdgeClosure's bridge, 6 in), not a new number.
+                // and the footprint must RUN THE WALL'S WAY and hold both its ends: a stud partition crossing a
+                // concrete wall put the wall's midpoint inside its footprint and took the whole wall (Codex audit
+                // 2026-09-11, F6). A footprint's way is its longest edge's.
                 removed += here[i].Geometry.Walls.RemoveAll(w =>
                 {
                     var mid = new DxfPoint((w.Start.X + w.End.X) / 2, (w.Start.Y + w.End.Y) / 2);
-                    return others.Any(p => p.Points.Count >= 3 && (LoopGeometry.PointInPolygon(mid, p.Points) || WithinOf(mid, p.Points, reach)));
+                    return others.Any(p => p.Points.Count >= 3
+                                          && RunsTheSameWay(w, p)
+                                          && (LoopGeometry.PointInPolygon(mid, p.Points) || WithinOf(mid, p.Points, reach))
+                                          && (LoopGeometry.PointInPolygon(w.Start, p.Points) || WithinOf(w.Start, p.Points, reach))
+                                          && (LoopGeometry.PointInPolygon(w.End, p.Points) || WithinOf(w.End, p.Points, reach)));
                 });
             }
             if (removed > 0)
@@ -2571,11 +2598,17 @@ public static class DxfToEtabsService
             {
                 int before = here[i].Geometry.Walls.Count;
                 var earlier = kept.ToList();
+                // and the earlier wall must have drawn MOST of the later one - the midpoint within a hand's
+                // width of the earlier axis, and the earlier axis covering more than half the later wall's
+                // length - or a 1.2 m pier on the first sheet took a 6 m wall on the second (Codex audit
+                // 2026-09-11, F7). Not "both ends within reach": 31138 draws its L1 stub walls 4'-0" on the
+                // 55'-0 plan and 4'-8" on the 64'-1 plan, and that clause modelled the four of them twice
+                // (measured 2026-09-11: 25 walls over four sets, every one a wall drawn a little longer on a
+                // second sheet). A later wall that runs mostly past the earlier one is another wall, or more of it.
                 here[i].Geometry.Walls.RemoveAll(w =>
-                {
-                    var mid = new DxfPoint((w.Start.X + w.End.X) / 2, (w.Start.Y + w.End.Y) / 2);
-                    return earlier.Any(e => SameWay(w, e) && LoopGeometry.DistanceToSegment(mid, e.Start, e.End) <= reach);
-                });
+                    earlier.Any(e => SameWay(w, e)
+                                     && LoopGeometry.DistanceToSegment(new DxfPoint((w.Start.X + w.End.X) / 2, (w.Start.Y + w.End.Y) / 2), e.Start, e.End) <= reach
+                                     && ShareCovered(w, e) > 0.5));
                 twice += before - here[i].Geometry.Walls.Count;
                 kept.AddRange(here[i].Geometry.Walls);
             }
@@ -2596,11 +2629,39 @@ public static class DxfToEtabsService
             return Math.Abs((ax * bx + ay * by) / (al * bl)) >= 0.985;          // within about ten degrees
         }
 
+        // the share of wall w's length that lies alongside wall e: w's ends projected onto e's axis,
+        // the overlap of that span with e's own, over w's length
+        static double ShareCovered(WallAxis w, WallAxis e)
+        {
+            double ex = e.End.X - e.Start.X, ey = e.End.Y - e.Start.Y, el = Math.Sqrt(ex * ex + ey * ey);
+            double wl = w.Length;
+            if (el <= 0 || wl <= 0) return 0;
+            double t0 = ((w.Start.X - e.Start.X) * ex + (w.Start.Y - e.Start.Y) * ey) / el;
+            double t1 = ((w.End.X - e.Start.X) * ex + (w.End.Y - e.Start.Y) * ey) / el;
+            double lo = Math.Max(Math.Min(t0, t1), 0), hi = Math.Min(Math.Max(t0, t1), el);
+            return Math.Max(hi - lo, 0) / wl;
+        }
+
         static bool WithinOf(DxfPoint p, IReadOnlyList<DxfPoint> polygon, double reach)
         {
             for (int i = 0; i < polygon.Count; i++)
                 if (LoopGeometry.DistanceToSegment(p, polygon[i], polygon[(i + 1) % polygon.Count]) <= reach) return true;
             return false;
+        }
+
+        // a wall runs a footprint's way when it is parallel (within ten degrees) to the footprint's longest edge
+        static bool RunsTheSameWay(WallAxis w, PlanLoop footprint)
+        {
+            double wx = w.End.X - w.Start.X, wy = w.End.Y - w.Start.Y, wl = Math.Sqrt(wx * wx + wy * wy);
+            if (wl <= 0) return false;
+            double best = 0, bx = 1, by = 0;
+            for (int i = 0; i < footprint.Points.Count; i++)
+            {
+                var a = footprint.Points[i]; var b = footprint.Points[(i + 1) % footprint.Points.Count];
+                double ex = b.X - a.X, ey = b.Y - a.Y, el = Math.Sqrt(ex * ex + ey * ey);
+                if (el > best) { best = el; bx = ex / el; by = ey / el; }
+            }
+            return best > 0 && Math.Abs((wx * bx + wy * by) / wl) >= 0.985;
         }
     }
 

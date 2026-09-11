@@ -20,7 +20,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
     /// A circle read with no curve segmentation is the four Bézier end points of its arcs, a
     /// diamond whose corners are equidistant from its centre; with segmentation it is a polygon
     /// whose vertices are. Either way: a closed path whose points all sit one radius from their
-    /// centroid, holding exactly one short text token.
+    /// centroid, holding exactly one short label — written once, or written again over itself by
+    /// an underlay (intake step 43, 2026-09-11).
     ///
     /// WHAT THIS DOES NOT COVER: a grid drawn without bubbles (its lines then read as they did),
     /// and a bubble whose label is set outside the circle.
@@ -78,7 +79,13 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     continue;
 
                 var inside = page.Words.Where(t => (t.Cx - cx) * (t.Cx - cx) + (t.Cy - cy) * (t.Cy - cy) <= r * r).ToList();
-                if (inside.Count != 1 || inside[0].Text.Trim().Length > 4) continue;
+                // A BUBBLE LABELLED TWICE WITH ONE NAME IS LABELLED ONCE. A set issued with the
+                // architect's plan under the engineer's draws the grid twice, the underlay's "5" a few
+                // points under the engineer's "5" in the same circle; 31168's 2026-09-10 reissue names
+                // every numbered axis so, and "exactly one word inside" read 9 of 28 axes on S2.04.1
+                // where the 08-25 issue gave 26 of 26. Two DIFFERENT words inside are still a mark.
+                var labels = inside.Select(t => t.Text.Trim()).Distinct(StringComparer.Ordinal).ToList();
+                if (labels.Count != 1 || labels[0].Length > 4) continue;
 
                 var throughV = rules.Vertical.Where(v => Math.Abs(v.At - cx) <= AxisTolerancePts).ToList();
                 var throughH = rules.Horizontal.Where(hr => Math.Abs(hr.At - cy) <= AxisTolerancePts).ToList();
@@ -89,7 +96,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 // longer one, and taking it merged two grids into one axis.
                 double? ruleX = vertical >= reach ? throughV.OrderBy(v => Math.Abs(v.At - cx)).ThenByDescending(v => v.Length).First().At : null;
                 double? ruleY = horizontal >= reach ? throughH.OrderBy(hr => Math.Abs(hr.At - cy)).ThenByDescending(hr => hr.Length).First().At : null;
-                bubbles.Add(new Bubble(cx, cy, r, inside[0].Text.Trim(), vertical >= reach, horizontal >= reach, ruleX, ruleY));
+                bubbles.Add(new Bubble(cx, cy, r, labels[0], vertical >= reach, horizontal >= reach, ruleX, ruleY));
             }
 
             var vAxes = Axes(bubbles, vertical: true);

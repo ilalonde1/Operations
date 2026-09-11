@@ -59,4 +59,22 @@ public sealed class ASheetIsReadAtTheScaleItStatesTests
         var page = new PC(1, W, H, new List<TT> { Tok("LEVEL", 100, 100), Tok("3", 140, 100) }, new List<GP>());
         Assert.Null(DrawingIntake.StatedScaleDenominator(page));
     }
+
+    [Fact]
+    public void ATitleBlockStatingTwoDifferentScalesGivesNullRatherThanAGuess()
+    {
+        // two SCALE fields in the bottom corner (PDF y is up: the reader wants the bottom third) on their own
+        // baselines, 1/4" and 1/8": neither is taken, and the
+        // title-block-field fallback may not fill the refusal either (the summary claimed this; the audit
+        // noted no test asserted it — F25)
+        var words = new List<TT> { Tok("SCALE", 2700, 100), Tok("1/4\"", 2760, 100), Tok("=", 2790, 100), Tok("1'-0\"", 2820, 100),
+                                   Tok("SCALE", 2700, 140), Tok("1/8\"", 2760, 140), Tok("=", 2790, 140), Tok("1'-0\"", 2820, 140) };
+        var page = new PC(1, W, H, words, new List<GP>());
+        Assert.True(SheetScaleReader.StatesConflictingScales(page));
+        Assert.Null(DrawingIntake.StatedScaleDenominator(page));
+        // and the same two fields AGREEING are one scale, so it is the disagreement that refuses, not the second field
+        var agreeing = new List<TT> { Tok("SCALE", 2700, 100), Tok("1/4\"", 2760, 100), Tok("=", 2790, 100), Tok("1'-0\"", 2820, 100),
+                                      Tok("SCALE", 2700, 140), Tok("1/4\"", 2760, 140), Tok("=", 2790, 140), Tok("1'-0\"", 2820, 140) };
+        Assert.Equal(48, DrawingIntake.StatedScaleDenominator(new PC(1, W, H, agreeing, new List<GP>())));
+    }
 }

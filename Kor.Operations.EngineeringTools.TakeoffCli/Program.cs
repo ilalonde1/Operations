@@ -280,7 +280,8 @@ if (args.Length >= 2 && args[0].Equals("pdf-assemblies", StringComparison.Ordina
 {
     if (!File.Exists(args[1])) { Console.Error.WriteLine($"Not found: {args[1]}"); return 1; }
     if (args.Any(a => a.Equals("--trace", StringComparison.OrdinalIgnoreCase))) AssemblySchedule.Trace = Console.WriteLine;
-    var cards = AssemblySchedule.ReadSet(args[1]);
+    var (paOptions, paRulesSource) = PdfIntakeOptions.For(args.SkipWhile(a => !a.Equals("--rules-db", StringComparison.OrdinalIgnoreCase)).Skip(1).FirstOrDefault() ?? Environment.GetEnvironmentVariable(RuleSettings.ConnectionEnvironmentVariable));
+    var cards = AssemblySchedule.ReadSet(args[1], paOptions.AssemblyStructuralWords, paOptions.AssemblyPartitionWords);   // the vocabulary rows reach this verb too (Codex audit 2026-09-11, F20)
     Console.WriteLine($"{cards.Count} assembly card(s) on {cards.Select(c => c.Page).Distinct().Count()} schedule sheet(s)");
     Console.WriteLine($"{"kind",-7} {"code",-8} {"material",-9} {"mm",5}  {"F.R.R.",-6} {"S.T.C.",-6} layers  name");
     foreach (var c in cards)

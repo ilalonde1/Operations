@@ -89,10 +89,13 @@ public sealed class APatternsCellsAbutAColumnStandsAloneTests
     [Fact]
     public void ADeclaredColumnBesideARunIsNeverACell()
     {
-        // 1800 x 400 is the fixture schedule's declared size: three of them end to end are three declared columns
-        var (g, fates) = Read(FateFixture.Rect(1800, 400, 60000, 30000), FateFixture.Rect(1800, 400, 60000, 30400), FateFixture.Rect(1800, 400, 60000, 30800));
-        Assert.Equal(3, g.Columns.Count);
-        Assert.Equal(3, fates.Count(f => f.Reason == PathReason.BecameColumnByDeclaredSize));
+        // 1800 x 400 is the fixture schedule's declared size: three of them end to end are three declared columns,
+        // and a declared column standing at the end of a REAL run of cells is not the run's end cell either (audit F25)
+        var (g, fates) = Read(FateFixture.Rect(1800, 400, 60000, 30000), FateFixture.Rect(1800, 400, 60000, 30400), FateFixture.Rect(1800, 400, 60000, 30800),
+                              Cell(70000, 30000), Cell(70000, 31200), Cell(70000, 32400), FateFixture.Rect(1800, 400, 70000, 33600));
+        Assert.Equal(4, g.Columns.Count);
+        Assert.Equal(4, fates.Count(f => f.Reason == PathReason.BecameColumnByDeclaredSize));
+        Assert.Equal(3, g.PatternCells.Count);
     }
 
     [Fact]

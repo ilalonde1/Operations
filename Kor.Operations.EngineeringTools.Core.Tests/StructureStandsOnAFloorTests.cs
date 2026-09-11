@@ -49,6 +49,7 @@ public sealed class StructureStandsOnAFloorTests
         Assert.Single(keyPlan.Slabs);
         Assert.Empty(enlargement.Slabs);
         Assert.Empty(enlargement.Openings);                                                    // the drawing did not say it is a hole
+        Assert.Empty(keyPlan.Openings);                                                        // and not cut from the container either (audit F25)
         Assert.Contains(warnings, w => w.StartsWith("1 ring(s) inside another sheet's floor are not second floors", StringComparison.Ordinal));
         Assert.Contains(warnings, w => w.Contains("L3: a 69 sq ft ring on A415_1_LEVEL 3 PLAN (SW).dxf lies inside the 6,667 sq ft floor", StringComparison.Ordinal)
                                     && w.Contains("not cut as an opening", StringComparison.Ordinal));
@@ -68,6 +69,8 @@ public sealed class StructureStandsOnAFloorTests
         var warnings = DxfToEtabsService.SettleFloorsAcrossSheets(parsed, Reach, SqFtPerUnit);
 
         Assert.Equal(3, g.Walls.Count);                                                        // nothing removed
+        Assert.Equal([0.0, 804, 900], g.Walls.Select(w => w.Start.Y));                          // and nothing moved (audit F25)
+        Assert.Equal([600.0, 1300], g.Columns.Select(c => c.Center.X));
         Assert.Equal(2, g.Columns.Count);
         Assert.Contains(warnings, w => w.StartsWith("0 ring(s) inside another sheet's floor are not second floors; 1 wall(s) and 1 column(s) stand beyond every plate", StringComparison.Ordinal));
         var line = Assert.Single(warnings, w => w.StartsWith("L3: 1 of 3 wall(s) and 1 of 2 column(s) stand beyond every plate read for the storey", StringComparison.Ordinal));

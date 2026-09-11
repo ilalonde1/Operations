@@ -147,8 +147,12 @@ public static class SetStoreys
                 }
                 return seen.Count;
             }
-            string main = bases.OrderByDescending(Reach).ThenBy(b => b, StringComparer.OrdinalIgnoreCase).First();
-            bases = [main];
+            // a base stays when its ladder is a building's: three levels and more, or names that carry a
+            // building prefix (A-L1, B-L1 — two towers founded apart, Codex audit 2026-09-11, F2). A ladder
+            // of two, unprefixed, chained from nothing the set founds, is a detail's.
+            var candidates = bases;
+            bases = candidates.Where(b => Reach(b) >= 3 || Numbered.Match(b.Trim()).Groups["b"].Success).ToList();
+            if (bases.Count == 0) bases = [candidates.OrderByDescending(Reach).ThenBy(b => b, StringComparer.OrdinalIgnoreCase).First()];
         }
         var elevation = new Dictionary<string, (double Mm, string From)>(StringComparer.OrdinalIgnoreCase);
         foreach (var b in bases) elevation[b] = (0, "the lowest stated level");

@@ -67,12 +67,21 @@ public sealed class TheDrawingsOwnGridIsWrittenToTheModelTests
             Assert.Equal(5, grids.Count);
             foreach (string label in new[] { "\"1\"", "\"2\"", "\"3\"", "\"A\"", "\"B\"" })
                 Assert.Contains(grids, g => g.Contains($"LABEL {label}", StringComparison.Ordinal));
-            var x2 = Assert.Single(grids, g => g.Contains("LABEL \"2\"", StringComparison.Ordinal));
-            var x3 = Assert.Single(grids, g => g.Contains("LABEL \"3\"", StringComparison.Ordinal));
-            Assert.Contains("DIR \"X\"", x2, StringComparison.Ordinal);
-            double c2 = double.Parse(x2.Split("COORD")[1].Trim().Split(' ')[0], CultureInfo.InvariantCulture);
-            double c3 = double.Parse(x3.Split("COORD")[1].Trim().Split(' ')[0], CultureInfo.InvariantCulture);
-            Assert.Equal(6000, c3 - c2, 1);                                                    // the model is in mm: axes 2 and 3 are 6 m apart
+            // every axis: its direction, and its coordinate relative to axis 1 / axis A in the model's unit (mm) —
+            // the drawing's own spacing, whatever origin the model chose (the audit noted the earlier assertion
+            // checked one direction and one spacing; a translated, corrupted or turned axis escaped it)
+            static (string Dir, double Coord) Of(string line) =>
+                (line.Split("DIR")[1].Trim().Split(' ')[0].Trim('"'), double.Parse(line.Split("COORD")[1].Trim().Split(' ')[0], CultureInfo.InvariantCulture));
+            var axes = new[] { "1", "2", "3", "A", "B" }.ToDictionary(l => l, l => Of(Assert.Single(grids, g => g.Contains($"LABEL \"{l}\"", StringComparison.Ordinal))));
+            foreach (string l in new[] { "1", "2", "3" }) Assert.Equal("X", axes[l].Dir);
+            foreach (string l in new[] { "A", "B" }) Assert.Equal("Y", axes[l].Dir);
+            Assert.Equal(6000, axes["2"].Coord - axes["1"].Coord, 1);
+            Assert.Equal(12000, axes["3"].Coord - axes["1"].Coord, 1);
+            Assert.Equal(8000, axes["B"].Coord - axes["A"].Coord, 1);
+            // and the columns stand on the axes they were drawn on: the column at (2, B) is at the axes' coordinates
+            var points = File.ReadAllLines(output).Where(l => l.TrimStart().StartsWith("POINT ", StringComparison.Ordinal))
+                .Select(l => l.Split('"')[2].Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(v => double.Parse(v, CultureInfo.InvariantCulture)).ToArray()).ToList();
+            Assert.Contains(points, p => Math.Abs(p[0] - axes["2"].Coord) <= 1 && Math.Abs(p[1] - axes["B"].Coord) <= 1);
             Assert.Contains(report.Warnings, w => w.Contains("The model's grid is the drawings' own: 5 named axis(es)", StringComparison.Ordinal));
         }
         finally

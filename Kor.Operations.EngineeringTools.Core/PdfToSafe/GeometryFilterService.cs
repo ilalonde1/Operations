@@ -67,6 +67,13 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             var a = edges[longest]; var b = edges[opposite];
             if (a.len <= 0 || b.len <= 0) return false;
             if (Math.Abs(a.ux * b.ux + a.uy * b.uy) < FaceParallelCos) return false;              // a taper
+            // and the faces may converge by an inch, or by a third of the gap, as the face reader allows a
+            // retaining wall's (step 21) - a 6 m shape 300 thick at one end and 400 at the other passed
+            // the angle alone (Codex audit 2026-09-11, F17)
+            double nx = -a.uy, ny = a.ux;
+            double d0 = Math.Abs((pts[opposite].X - pts[longest].X) * nx + (pts[opposite].Y - pts[longest].Y) * ny);
+            double d1 = Math.Abs((pts[(opposite + 1) % 4].X - pts[longest].X) * nx + (pts[(opposite + 1) % 4].Y - pts[longest].Y) * ny);
+            if (Math.Abs(d0 - d1) > Math.Max(FaceTaperMm, WallShapeTaperShare * Math.Min(d0, d1))) return false;
             foreach (int e in new[] { (longest + 1) % 4, (longest + 3) % 4 })
             {
                 double along = Math.Abs(edges[e].dx * a.ux + edges[e].dy * a.uy);                   // the end's run along the wall
@@ -474,6 +481,9 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             }
         }
 
+        /// <summary>A filled wall's faces may converge by this share of the thinner end: a quarter (31168's retaining wall, 15" to 12", is a fifth; the audit's 300 to 400 mm shape, a third, is a taper).</summary>
+        private const double WallShapeTaperShare = 0.25;
+
         /// <summary>Two cells abut when their facing edges are within this of each other: an inch of drafting.</summary>
         private const double CellAbutMm = 25.4;
 
@@ -541,12 +551,21 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             var cell = new bool[n];
             for (int i = 0; i < n; i++) cell[i] = byShape[i] && size[Find(i)] >= 3;
 
-            // the cut-short cell at a run's end: the run's width, abutting a cell of it
+            // the cut-short cell at a run's end: the run's width, abutting a cell of it, and NO LARGER than
+            // that cell either way - "cut short" means shorter (a 600 x 1000 column beside a run of 600 x 800
+            // cells was taken as its end cell, Codex audit 2026-09-11, F16). Only cells of the run recruit;
+            // an end cell recruits nothing.
+            bool NoLargerThan(int i, int j)
+            {
+                var (wi, hi) = SizeOf(i); var (wj, hj) = SizeOf(j);
+                return wi <= wj + CellAbutMm && hi <= hj + CellAbutMm;
+            }
+            var runCell = (bool[])cell.Clone();
             for (int i = 0; i < n; i++)
             {
                 if (cell[i] || !byShape[i]) continue;
                 for (int j = 0; j < n; j++)
-                    if (cell[j] && SharesASide(i, j) && Abut(i, j)) { cell[i] = true; break; }
+                    if (runCell[j] && SharesASide(i, j) && NoLargerThan(i, j) && Abut(i, j)) { cell[i] = true; break; }
             }
             if (!cell.Any(c => c)) return;
 
@@ -641,9 +660,19 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 if (i < result.WallIsAnnotation.Count) result.WallIsAnnotation.RemoveAt(i);
             }
             result.FirstFaceWall = result.Walls.Count;
+            // a doorway whose first pier left with the stripes has no wall to be a doorway in: it leaves
+            // too, and the fates that pointed at doorways are re-pointed or discarded (Codex audit
+            // 2026-09-11, F14 - a doorway kept pointing at a wall index that no longer existed)
+            var doorwayIndex = new int[result.Doorways.Count];
+            var keptDoorways = new List<Doorway>();
             for (int d = 0; d < result.Doorways.Count; d++)
-                if (result.Doorways[d].FirstPier >= 0 && result.Doorways[d].FirstPier < n && newIndex[result.Doorways[d].FirstPier] >= 0)
-                    result.Doorways[d] = result.Doorways[d] with { FirstPier = newIndex[result.Doorways[d].FirstPier] };
+            {
+                int pier = result.Doorways[d].FirstPier;
+                bool survives = pier >= 0 && pier < n && newIndex[pier] >= 0;
+                doorwayIndex[d] = survives ? keptDoorways.Count : -1;
+                if (survives) keptDoorways.Add(result.Doorways[d] with { FirstPier = newIndex[pier] });
+            }
+            result.Doorways.Clear(); result.Doorways.AddRange(keptDoorways);
             var faceKeys = result.WallFaceLines.Keys.ToList();
             foreach (int k in faceKeys)
                 if (result.WallFaceLines[k] < n) result.WallFaceLines[k] = newIndex[result.WallFaceLines[k]];
@@ -651,6 +680,13 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             for (int k = firstFate; k < fates.Count; k++)
             {
                 var f = fates[k];
+                if (f.Reason == PathReason.Doorway && f.ObjectIndex is int di && di >= 0 && di < doorwayIndex.Length)
+                {
+                    fates[k] = doorwayIndex[di] < 0
+                        ? new PathFate(f.PathIndex, PathFate.DispositionOf(PathReason.PaperFill), PathReason.PaperFill, null)
+                        : f with { ObjectIndex = doorwayIndex[di] };
+                    continue;
+                }
                 if (f.Reason is not (PathReason.BecameWall or PathReason.ClipOfWall) || f.ObjectIndex is not int oi || oi < 0 || oi >= n) continue;
                 fates[k] = newIndex[oi] < 0
                     ? new PathFate(f.PathIndex, PathFate.DispositionOf(PathReason.PatternCell), PathReason.PatternCell, null)
@@ -993,10 +1029,14 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 return inside * 2 > CoverSamples;
             }
 
-            var lineToPath = new Dictionary<int, int>();
+            // every path that became this line: a face joined from pieces (step 38) is several paths, and
+            // each of them became the wall's face (Codex audit 2026-09-11, F15 - one map entry per line
+            // re-fated the last piece only)
+            var lineToPaths = new Dictionary<int, List<int>>();
             if (fates is not null)
                 for (int k = firstFate; k < fates.Count; k++)
-                    if (fates[k].Reason == PathReason.EmittedAsLine && fates[k].ObjectIndex is int li) lineToPath[li] = fates[k].PathIndex;
+                    if (fates[k].Reason == PathReason.EmittedAsLine && fates[k].ObjectIndex is int li)
+                        (lineToPaths.TryGetValue(li, out var ps) ? ps : lineToPaths[li] = new List<int>()).Add(fates[k].PathIndex);
 
             // which side of each face line its wall lies on, for the filled walls' face lines now
             // and for every face wall as it is made
@@ -1181,10 +1221,10 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     used.Add(a.Line); used.Add(b.Line);
                     if (fates is not null)
                         foreach (int line in new[] { a.Line, b.Line })
-                            if (lineToPath.TryGetValue(line, out int pathIndex))
+                            if (lineToPaths.TryGetValue(line, out var pathIndices))
                                 for (int k = firstFate; k < fates.Count; k++)
-                                    if (fates[k].PathIndex == pathIndex)
-                                        fates[k] = new PathFate(pathIndex, Disposition.Read, PathReason.BecameWallFace, wallIndex);
+                                    if (pathIndices.Contains(fates[k].PathIndex))
+                                        fates[k] = new PathFate(fates[k].PathIndex, Disposition.Read, PathReason.BecameWallFace, wallIndex);
                 }
             }
         }
@@ -1370,14 +1410,15 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
             if (fates is not null)
             {
-                var lineToPath = new Dictionary<int, int>();
+                var lineToPaths = new Dictionary<int, List<int>>();
                 for (int k = firstFate; k < fates.Count; k++)
-                    if (fates[k].Reason == PathReason.EmittedAsLine && fates[k].ObjectIndex is int li) lineToPath[li] = fates[k].PathIndex;
+                    if (fates[k].Reason == PathReason.EmittedAsLine && fates[k].ObjectIndex is int li)
+                        (lineToPaths.TryGetValue(li, out var ps) ? ps : lineToPaths[li] = new List<int>()).Add(fates[k].PathIndex);
                 foreach (var (line, slab) in result.SlabEdgeLines)
-                    if (lineToPath.TryGetValue(line, out int pathIndex))
+                    if (lineToPaths.TryGetValue(line, out var pathIndices))
                         for (int k = firstFate; k < fates.Count; k++)
-                            if (fates[k].PathIndex == pathIndex)
-                                fates[k] = new PathFate(pathIndex, Disposition.Read, PathReason.BecameSlabEdge, slab);
+                            if (pathIndices.Contains(fates[k].PathIndex))
+                                fates[k] = new PathFate(fates[k].PathIndex, Disposition.Read, PathReason.BecameSlabEdge, slab);
             }
 
             // A FLOOR IS WHAT THE STRUCTURE AROUND IT STANDS ON. Something stands in the ring, and

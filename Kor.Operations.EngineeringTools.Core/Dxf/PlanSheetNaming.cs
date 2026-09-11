@@ -238,7 +238,7 @@ public static partial class PlanSheetNaming
             if (sheet.IsRoof)
             {
                 var named = eligible.Where(s => s.Contains("ROOF", StringComparison.OrdinalIgnoreCase)).ToList();
-                if (named.Count > 0) return named;
+                if (named.Count > 0) return [OneRoofOf(sheet, named)];
                 var above = StoreyAboveTheHighestPlan(sheet, set, eligible);
                 return above is not null ? [above] : eligible.Take(1).ToList();
             }
@@ -441,6 +441,23 @@ public static partial class PlanSheetNaming
             return m.Success && int.TryParse(m.Groups[1].Value, out int k) && k == n && !IsMezzanineName(s);
         });
         return Numbered(wanted) ?? (sheet.IsElevatorRoof ? Numbered(highest + 1) : null);
+    }
+
+    /// <summary>
+    /// ONE roof storey for a roof sheet, when the model names several (ROOF, ELEVATOR ROOF, PENTHOUSE
+    /// ROOF — step 41 reads them all). The substring match returned every one, so a ROOF PLAN and an
+    /// ELEVATOR ROOF PLAN were each placed on both (Codex audit 2026-09-11, F11). An elevator-roof sheet
+    /// takes the storey whose name says elevator; a plain roof sheet takes the storey whose name does
+    /// not say elevator or penthouse; failing either, the lowest of the named, which is the main roof.
+    /// The storeys arrive highest first.
+    /// </summary>
+    private static string OneRoofOf(PlanSheetInfo sheet, IReadOnlyList<string> named)
+    {
+        static bool Elev(string s) => s.Contains("ELEV", StringComparison.OrdinalIgnoreCase);
+        static bool Pent(string s) => s.Contains("PENTHOUSE", StringComparison.OrdinalIgnoreCase);
+        if (named.Count == 1) return named[0];
+        if (sheet.IsElevatorRoof) return named.FirstOrDefault(Elev) ?? named[0];
+        return named.LastOrDefault(s => !Elev(s) && !Pent(s)) ?? named[^1];
     }
 
     /// <summary>The largest level number any storey in the model names.</summary>

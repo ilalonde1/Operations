@@ -114,8 +114,11 @@ public static class DimensionStrings
         {
             bool wallVertical = Math.Abs(wall.End.Y - wall.Start.Y) > Math.Abs(wall.End.X - wall.Start.X);
             var outline = wall.Outline.Select(p => new DxfPoint(p.X, p.Y)).ToList();
+            // a bare number (500) is a length only when a span of grid axes agrees with it — else it is a mark,
+            // a count or an identifier inside the wall, and it flagged a real wall (Codex audit 2026-09-11, F9)
             bool isString = outline.Count >= 3 && dimensions.Any(d =>
-                d.Vertical == wallVertical
+                (!d.BareNumber || d.Agrees)
+                && d.Vertical == wallVertical
                 && d.ValueMm > wall.ThicknessMm + AgreeMm                          // its own thickness, within an inch of drafting, is the wall's
                 && LoopGeometry.PointInPolygon(new DxfPoint(d.XMm, d.YMm), outline));
             geometry.WallIsDimensionString.Add(isString);

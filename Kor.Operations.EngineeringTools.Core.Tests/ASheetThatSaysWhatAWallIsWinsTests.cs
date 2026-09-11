@@ -63,17 +63,18 @@ public sealed class ASheetThatSaysWhatAWallIsWinsTests
     [Fact]
     public void AnUntaggedWallInsideAnotherSheetsPartitionIsThatPartition()
     {
-        // neither sheet tags enough to count as a tagging sheet, but one carries a partition footprint
-        var a = new PlanGeometrySet(); a.Walls.Add(Wall(0, 100, 200, 100)); a.Walls.Add(Wall(0, 500, 200, 500));
-        var b = new PlanGeometrySet(); b.Partitions.Add(Box(0, 98, 200, 102));
+        // neither sheet tags enough to count as a tagging sheet, but one carries partition footprints: one wall INSIDE
+        // a footprint, one a hand's width (4, under the reach of 6) beside a footprint, one on a line of its own
+        var a = new PlanGeometrySet(); a.Walls.Add(Wall(0, 100, 200, 100)); a.Walls.Add(Wall(0, 500, 200, 500)); a.Walls.Add(Wall(0, 900, 200, 900));
+        var b = new PlanGeometrySet(); b.Partitions.Add(Box(0, 98, 200, 102)); b.Partitions.Add(Box(0, 904, 200, 908));
         var parsed = new List<(PlanSheetInfo, PlanGeometrySet, IReadOnlyList<string>)>
         {
             Sheet("A104_1_LEVEL 3 PLAN.dxf", "L3", a), Sheet("A415_1_LEVEL 3 PLAN (SW).dxf", "L3", b),
         };
         var warnings = DxfToEtabsService.StandDownToTaggedPartitions(parsed, reach: 6);
         var left = Assert.Single(a.Walls);
-        Assert.Equal(500, left.Start.Y);                                          // the wall on another line is untouched
-        Assert.Contains(warnings, w => w.Contains("1 wall(s) drawn untagged on one sheet lie inside a partition", StringComparison.Ordinal));
+        Assert.Equal(500, left.Start.Y);                                          // the wall on another line is untouched; the one within reach is not
+        Assert.Contains(warnings, w => w.Contains("2 wall(s) drawn untagged on one sheet lie inside a partition", StringComparison.Ordinal));   // inside, and within reach of (audit F25)
     }
 
     [Fact]
