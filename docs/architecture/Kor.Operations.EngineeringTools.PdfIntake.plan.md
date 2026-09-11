@@ -1,6 +1,8 @@
 # PDF intake → ETABS — Completion Plan
 
-**Status:** Proposed 2026-09-11, for Ian's approval. Nothing below starts until it is approved.
+**Status:** Rev 2, 2026-09-11 — revised the same day on Ian's direction: *"rather than build the
+brain, then expose it to one drawing at a time … build an analyzer to get all the info you need at
+once"*, and on the census that direction called for (§1a). Nothing below WP1 starts until approved.
 **Author:** Claude, for Ian Lalonde. Written after Ian's instruction the same day: *"You build
 ephemeral bloated solutions and they're not built as code or in DB. This must stop."*
 **Audience:** Ian. Approve it, strike what you disagree with, and each package then runs one per
@@ -18,15 +20,30 @@ reissue diff, the self-check.
 
 That is a contract, not a floor count. It is met when:
 
-1. **A seventh set** — one not among the six used to build the rules, from an office we have
-   not seen — builds end to end with zero code change, and its report names every sheet it did
-   not read and why. (Ian supplies the set; I do not see it first.)
+1. **The corpus builds.** Every structural stick file the office holds (292 jobs' current issues,
+   §1a) runs through the one ingestion point, and the ledger says, set by set and sheet by sheet,
+   what was read, what was placed, and why not — with the totals rising, never a set regressing.
+   The sets from other offices are already in it (460 jobs hold an architect's set), so there is
+   no "seventh set" to ask for: the held-out sets are the ones the rules were never written for.
 2. **Andrea accepts one model** built this way as a starting point she would use. (The
    31170-from-PDF deliverable exists; it has not been put in front of her.)
 3. **Every instrument that measures the tool is code in the repo** — a `takeoff` verb, a test,
    or a `tools/` console — and every drafting convention the readers apply is a row in
    KorStandards with its compiled default proven equal by a test. Nothing the loop depends on
    lives in `%TEMP%`, in `docs/*.py`, or in a memory file.
+
+## 1a. The corpus, counted (2026-09-11, `takeoff corpus-census`, 90 s over the share, 0 folders unlisted)
+
+| | |
+|---|---|
+| Job folders on `\\Kor-fs01\Projects\Projects` | **1,158** in 9 categories |
+| Jobs with a structural stick file (`05 Stickfile\*Stickfile*.pdf`) | **292** — 382 issues; the newest per job is the current set: **3.5 GB** to mirror (4.6 GB for every issue). 109 current sets dated 2026, 60 dated 2025 |
+| Jobs with an architect's set (`05 Stickfile\01 Architectural`) | **460** — 6,829 PDFs (single sheets and whole sets mixed; the analyzer sorts them by page count) |
+| Jobs with an ETABS model where the convention files it | **104** — 47 `.e2k`, 746 `.EDB` (the 2026-08 server-side walk found 1,126 `.e2k` on the volume: models are filed in more places than the convention) |
+| **Jobs with both a stick file and a model — a yardstick each** | **66** (56 residential, 6 industrial-garage): 9 with an `.e2k` now, 57 `.EDB` only, which ETABS must export — a batch on a machine with ETABS, Ian's call |
+| Pitfalls the census found | the naming template `31###-01 YYYY-MM-DD … Stickfile.pdf` copied into 437 job folders (excluded); one job's stick file copied into 16 others (flagged); three spellings of the dated name, all read |
+
+Today's harness is 6 of those 292. The one-job yardstick (31168) is 1 of 66.
 
 ## 2. Where it stands, measured (2026-09-11, commit `3da6f85c`)
 
@@ -54,18 +71,31 @@ That is a contract, not a floor count. It is met when:
 Nothing new is read from a drawing until WP1–WP5 land, except from a red test. The reading
 backlog (§6) waits; it is where the last two weeks went and it is not what makes this a tool.
 
-### WP1 — The harness is a test, and the bank is a commit
-- `SixSetsBuildAsBankedTests` (`Speed=Slow`): builds each of the six from its mirrored PDF,
-  in parallel, and asserts byte-identity with `Baselines/pdf-only-<job>.e2k` **in the repo**.
-  On a difference it prints the keyed member diff, the plate diff, and renders every storey of
-  both to PNG in `TestResults/` — one verdict, nothing to chain by hand.
-- Banking a step = replacing the baseline files in the same commit as the rule. The diff is
-  reviewable in git; the console goes beside it.
+### WP1 — The analyzer: the whole corpus through the one ingestion point, into a ledger
+- **Mirror** (done once, then by hash): the 292 current issues (3.5 GB) to the local drawing
+  cache the tests already use; the architects' PDFs with more than a few pages. Read-only on
+  the share; nothing read over SMB in the loop after that.
+- **`takeoff corpus-analyze`**, on `StickFileCorpus` (the census, landed today): every sheet of
+  every set through `DrawingIntake.ReadSheet`, then the composer, in parallel; one row per sheet
+  and one per set into **`analysis.IntakeLedger`** in KorStandards (migration for Ian) and a
+  CSV beside it: set, sheet, type, title, storey, stated scale, placed on the grid or why not,
+  columns/walls/plates per storey, the yardstick residual where the job has a model. Incremental:
+  a set is re-read only when its file hash or the tool's version changes.
+- **The population's vocabulary** out of the same pass, as rows: every level name, sheet-title
+  word, scale note, wall-tag code and layer word across all 292 sets, with counts — the part
+  that is learned from the corpus into the DB rather than typed from one drawing.
+- **The regression bank inside it**: the six sets' baselines move into the repo beside the
+  tests and stay byte-identical gates (`SixSetsBuildAsBankedTests`); the other 286 are a ledger
+  that only ratchets. Banking = a commit that changes a baseline file, reviewable.
+- **The order of work falls out of the ledger** — "31 of 292 sets have a sheet that cannot be
+  set on the grid, 19 of them for one reason" — and every rule is measured on all 292 before it
+  is kept.
 - Deletes: `pdf_only_all.sh`, `pdf_only_one.sh`, `six_set_diff.sh`, `six_set_bank.sh`,
   `render_storeys.sh`, `members_diff.py`, `plate_diff.py`, `storey_counts.py`, `plan_sheet.py`
-  (ported, as one C# implementation shared by the test and a `takeoff model-diff` verb).
-- Gate: the test is green on `3da6f85c`'s six models; the old scripts and the new test give
-  the same diff on one deliberately changed model.
+  (ported as one C# implementation shared by the test, the analyzer and a `takeoff model-diff` verb).
+- Gate: the six baselines byte-identical on `3da6f85c`; the ledger holds 292 sets with a row
+  for every sheet; the old scripts and the new code give the same diff on one deliberately
+  changed model; a second run reads nothing that did not change.
 
 ### WP2 — Instruments are verbs
 - The instruments used more than once become `takeoff` verbs on the same code the readers use:
@@ -94,9 +124,10 @@ backlog (§6) waits; it is where the last two weeks went and it is not what make
 - Gate: `CompiledDefaultsAreTheBankedRowsTests` covers every row; the six byte-identical.
 
 ### WP6 — The finish line
-- Ian names a seventh set. It is run once, untouched. Its report and model go in front of Andrea
-  with the 31170 model. What she and the report say is the backlog for the next plan — not
-  this one.
+- The ledger's totals against §1: how many of the 292 build, how many sheets say why not, the
+  yardstick distribution over the 66. One model — 31170's, or whichever the ledger ranks best
+  of the architects' sets — goes in front of Andrea. What she and the ledger say is the backlog
+  for the next plan, not this one.
 - Gate: §1's three conditions, each with its evidence in the commit.
 
 ## 5. Process rules that become code, not prose
@@ -112,7 +143,8 @@ backlog (§6) waits; it is where the last two weeks went and it is not what make
 Boundary walk (+13 storeys, stashed); a ring that is a piece of the floor; 25 storeys with no
 plate (not one cause); tower walls 33 vs 40; mezzanines placed; 31130's halves; overlapping
 collinear copies across sheets (§51); 31202's PENTHOUSE stated twice; 31065 ROOF 5.8 m over L19;
-the harness's 31168 moved to the 09-10 reissue (re-banks every 31168 baseline — Ian's call).
+the harness's 31168 moved to the 09-10 reissue (re-banks every 31168 baseline — Ian's call);
+the 57 EDB-only yardsticks exported to `.e2k` on a machine with ETABS.
 
 ## 7. What this plan does not do
 It does not promise a storey count, a wall count, or "31168 = Revit". Those are measurements the

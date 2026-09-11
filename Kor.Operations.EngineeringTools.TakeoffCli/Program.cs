@@ -246,6 +246,36 @@ if (args.Length >= 3 && args[0].Equals("dxf-census", StringComparison.OrdinalIgn
     return 2;
 }
 
+// THE CENSUS OF THE DRAWING CORPUS: every job on the projects share, what it holds that the intake
+// can learn from - dated structural stick files, architects' sets, the engineer's ETABS models -
+// so rules are chosen by how many sets share a failure, not one drawing at a time (2026-09-11).
+// Usage: takeoff corpus-census [<projectsRoot>] [--out census.csv] [--parallel N]
+// Read-only; one bounded listing per folder, never a recursive walk (CLAUDE.md rule 4).
+if (args.Length >= 1 && args[0].Equals("corpus-census", StringComparison.OrdinalIgnoreCase))
+{
+    string ccRoot = PublishDiscovery.ProjectsRoot;
+    string? ccOut = null;
+    int ccParallel = 8;
+    for (int i = 1; i < args.Length; i++)
+    {
+        if (args[i].Equals("--out", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) ccOut = args[++i];
+        else if (args[i].Equals("--parallel", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) ccParallel = int.Parse(args[++i], CultureInfo.InvariantCulture);
+        else ccRoot = args[i];
+    }
+    var ccProblems = new List<string>();
+    var ccWatch = System.Diagnostics.Stopwatch.StartNew();
+    var ccCensus = StickFileCorpus.Census(ccRoot, ccProblems, progress: line => Console.Error.WriteLine("  " + line), parallel: ccParallel);
+    Console.Write(StickFileCorpus.Summary(ccCensus));
+    Console.WriteLine($"  {ccProblems.Count} folder(s) could not be listed; {ccWatch.Elapsed.TotalSeconds:F0} s over {ccRoot}");
+    foreach (var p in ccProblems.Take(20)) Console.WriteLine("    ! " + p);
+    if (ccOut is not null)
+    {
+        StickFileCorpus.WriteCsv(ccCensus, ccOut);
+        Console.WriteLine($"  one row per job: {ccOut}");
+    }
+    return 0;
+}
+
 // THE DRAWINGS' STOREYS AS A LEVELS FILE, for a job nobody has modelled: what dxf-to-etabs takes
 // in place of a reference .e2k. Usage: takeoff pdf-levels <stickfile.pdf> [levels.csv]
 // The set's storeys come off its wall elevations (SetStoreys: a storey height is the distance
@@ -5120,6 +5150,7 @@ public static class TakeoffCliHelp
         new("render", "takeoff render <pdf> <pngDir> [dpi] [first] [last]", "Rasterize PDF pages to PNG files."),
         new("elev-scan", "takeoff elev-scan <pdf> [first] [last]", "Scan for floor elevations and storey height notes; prints the level ladder's gaps at the sheet's scale."),
         new("e2k-storeys", "takeoff e2k-storeys <model.e2k>", "A model's storeys top to bottom with their heights — what elev-scan's ladder is measured against."),
+        new("corpus-census", "takeoff corpus-census [<projectsRoot>] [--out census.csv] [--parallel N]", "Every job on the projects share and what it holds for the intake to learn from: dated structural stick files, architects' sets, the engineer's ETABS models; X of Y, one row per job. Read-only, bounded listings."),
         new("pdf-levels", "takeoff pdf-levels <stickfile.pdf> [levels.csv]", "The drawings' storeys as a levels file (level, elevation mm from the lowest stated level), read off the wall elevations — what dxf-to-etabs takes in place of a reference .e2k for a job nobody has modelled."),
         new("pdf-assemblies", "takeoff pdf-assemblies <set.pdf> [assemblies.csv]", "Every wall and floor type card on the set's schedule sheets, read whole: code, name, each layer, F.R.R., S.T.C., references, remarks — and the material and thickness the model takes from them."),
         new("storeys-check", "takeoff storeys-check <stickfile.pdf> <model.e2k>", "The drawings' storey heights (wall elevations) against the model's, pair by pair; the publish reports the same line when --stick-file is given."),
