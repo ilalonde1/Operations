@@ -1,15 +1,15 @@
 # PDF intake — what it does today, and what it leaves on the page
 
-## 0. START HERE (state as of 2026-09-10, after step 35)
+## 0. START HERE (state as of 2026-09-10, after step 36)
 
 A session picking this up cold reads this section, then §30 (what the PDF alone gives), then the
-last three step sections (§42, §43, §44). It does not need to read §1–§29 to work; those are the record of how each
+last three step sections (§43, §44, §45). It does not need to read §1–§29 to work; those are the record of how each
 rule was arrived at, and are read when a rule is being changed.
 
 **Where the data is.** `%LOCALAPPDATA%\Temp\kor-drawings\stickfiles` holds the six PDFs (31065,
 31130, 31138, 31168, 31202, and `31170-01-arch` — the ARCHITECT's set for 31170, the only one from
 another office and the measure of whether a rule is universal). `...\kor-drawings\harness` holds one folder per job, the banked `.e2k`
-baselines named for the step that produced them (`pdf-only-<job>-s35.e2k` is the most recent), and
+baselines named for the step that produced them (`pdf-only-<job>-s36.e2k` is the most recent), and
 `revit-31168\out.e2k`, which is the Revit route's answer for the same building and the only yardstick
 that is not our own output. Nothing here is read over SMB.
 
@@ -2144,3 +2144,50 @@ counted "n of m" and left; a storey with no plate untouched and unmentioned; a p
 left and said without "kept". WHAT THEY DO NOT: the real sets (the six-set run and the renders above);
 the exporter leaving a flagged wall out (measured on the DXF census); a split dimension token; whether
 the composer's later gates keep what this pass leaves.
+
+## 45. Step 36, done 2026-09-10: a roof plan draws the storey above the highest storey the set's numbered plans draw
+
+Ian's first ETABS screenshot: the ROOF PLAN's plate sat on L8, and L7 — 34 columns, 17 walls —
+had no floor. The rule was "roof = the storey named ROOF, else the topmost", and it held on KOR's
+sets because their ladders end at the roof. The architect's set states L1–L8 on its sections
+(`Top of Slab-L7` on 11 of 11, `Top of Slab-L8` on 5 of 11 — the elevator overrun, which only the
+sections through the shaft see) and draws plans P1, 1, 2, 3, 4, 5, 6, ROOF. The drawing does say
+which is the roof, in two places: the plan list, and the roof assembly card `R4 - PAVERS OVER L7
+ROOFTOP`. A person reads the plan list and knows the roof is 7.
+
+**The rule** (`PlanSheetNaming.StoreyAboveTheHighestPlan`, reached from `MatchStories` when the
+caller passes the set's sheets): a roof plan with no level number goes to the storey NAMED roof if
+the model has one; else to the eligible storey numbered one above the highest level any numbered,
+non-roof plan of the set draws — for the sheet's own building where it names one; else, as before,
+to the topmost. An elevator roof takes the storey above that, when there is one. A roof plan that
+carries its own level number ("ROOF PLAN (L20)") matches by number and never reaches this.
+
+**Measured on six sets:** 31170 — the 32,076 sq ft plate moves L8 → L7, the only plate that moved;
+L7 walls 18 → 17 (the roof plan's copy of a wall the L6 plan also draws, now on the same storey and
+caught by step 34's third clause); L8 keeps the one wall that rises to it (the overrun). **Rendered**:
+L7 has its floor over its columns; L8 has a wall and nothing else. **The five KOR sets: every plate,
+wall and column identical to step 35** — their plans end where their ladders end, so "one above the
+highest plan" does not exist and the topmost stands. Core: `ARoofPlanDrawsTheStoreyAboveTheHighestPlanTests` 5.
+
+**Instruments made permanent this step:** `docs/etabs-handoff/pdf_words_near.py` — every line of a
+PDF's text mentioning given words, with its pages, most-repeated first: the "what does the drawing
+CALL this?" question, answered before a rule is written (it found `Top of Slab-L8` on 5 of 11 and
+`R4 - PAVERS OVER L7 ROOFTOP`); and `docs/etabs-handoff/render_storeys.sh` — `.e2k` → every-storey
+PNG in one call. ⚠ **The "flaky" Edge screenshot had a cause**: a running Edge window takes the
+headless call, opens nothing, writes nothing and exits 0; `--user-data-dir` on its own profile
+fixes it, and a mixed backslash-then-slash path from `$LOCALAPPDATA` fails the same silent way. Both
+are handled in the script; nobody needs to remember either.
+
+**Open, named:** the KOR ladders themselves stop short of the roof levels the plans name — 31065's
+plans say ROOF (L20) and ELEVATOR ROOF while `pdf-levels` reads L19 as the top, 31202's say ROOF and
+UPPER ROOF above an L13 ladder — so on those sets the roof plan and the top floor plan share a
+storey (31065 L19: two plates, 6,665 and 6,610). That is a level-reader item (the sections' words for
+a roof level — `ROOF`, `T/O ROOF`, `U/S ROOF SLAB` — are not level-label words yet), and it is the
+same class as step 30. "UPPER ROOF" is not an elevator-roof word.
+
+WHAT THE CHECKS COVER: the storey above the highest numbered plan when the ladder runs higher; the
+topmost when the ladder ends with the plans, with and without the set passed; a storey named roof
+winning; an elevator roof one higher, and sharing when there is no higher; a tagged roof plan
+counting its own building's plans. WHAT THEY DO NOT: the real sets (the six-set run and the render
+above); a roof plan with its own level number; "UPPER ROOF"; a set whose highest numbered plan is
+mistitled.

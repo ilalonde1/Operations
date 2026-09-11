@@ -218,7 +218,8 @@ public static partial class PlanSheetNaming
     /// "BLDG B" plan never lands on Tower A's storeys.
     /// </summary>
     /// <param name="storyNames">The model's storeys, highest first.</param>
-    public static IReadOnlyList<string> MatchStories(PlanSheetInfo sheet, IEnumerable<string> storyNames)
+    /// <param name="set">Every sheet of the set, when the caller has them: a roof plan with no level number is placed by what the OTHER plans draw (step 36).</param>
+    public static IReadOnlyList<string> MatchStories(PlanSheetInfo sheet, IEnumerable<string> storyNames, IReadOnlyCollection<PlanSheetInfo>? set = null)
     {
         var stories = storyNames.ToList();
         var matches = new List<string>();
@@ -237,7 +238,9 @@ public static partial class PlanSheetNaming
             if (sheet.IsRoof)
             {
                 var named = eligible.Where(s => s.Contains("ROOF", StringComparison.OrdinalIgnoreCase)).ToList();
-                return named.Count > 0 ? named : eligible.Take(1).ToList();
+                if (named.Count > 0) return named;
+                var above = StoreyAboveTheHighestPlan(sheet, set, eligible);
+                return above is not null ? [above] : eligible.Take(1).ToList();
             }
 
             if (sheet.IsFoundation) return eligible.Count > 0 ? eligible.TakeLast(1).ToList() : matches;
@@ -407,6 +410,37 @@ public static partial class PlanSheetNaming
         }
 
         return matches;
+    }
+
+    /// <summary>
+    /// A ROOF PLAN DRAWS THE STOREY ABOVE THE HIGHEST STOREY THE SET'S NUMBERED PLANS DRAW (intake
+    /// step 36). "Roof = the topmost storey" held on KOR's sets because their ladders end at the
+    /// roof. The architect's set for 31170 draws plans P1, 1–6 and ROOF, and its sections state
+    /// L1–L8 — L7 is the roof slab ("R4 - PAVERS OVER L7 ROOFTOP" on the assembly schedule), L8
+    /// the elevator overrun, stated on 5 of 11 sections; the roof plan landed on L8 and L7 had no
+    /// floor. A person reads the plan list — P1, 1, 2, 3, 4, 5, 6, roof — and knows the roof is 7.
+    ///
+    /// The highest level any numbered, non-roof plan of the set draws, for this sheet's building
+    /// where it names one; the eligible storey numbered one higher, or null when the set gives no
+    /// numbered plan or the model has no such storey (the caller then takes the topmost, as before).
+    /// An elevator roof takes the storey above THAT, when there is one.
+    /// </summary>
+    private static string? StoreyAboveTheHighestPlan(PlanSheetInfo sheet, IReadOnlyCollection<PlanSheetInfo>? set, IReadOnlyList<string> eligible)
+    {
+        if (set is null) return null;
+        var plans = set.Where(o => !o.IsRoof && o.Levels.Count > 0
+                                   && (sheet.BuildingTags.Count == 0 || o.BuildingTags.Count == 0
+                                       || o.BuildingTags.Any(t => sheet.BuildingTags.Contains(t, StringComparer.OrdinalIgnoreCase))))
+                        .ToList();
+        if (plans.Count == 0) return null;
+        int highest = plans.Max(o => o.Levels.Max());
+        int wanted = highest + (sheet.IsElevatorRoof ? 2 : 1);
+        string? Numbered(int n) => eligible.FirstOrDefault(s =>
+        {
+            var m = Vocabulary.SingleLevel.Match(s);
+            return m.Success && int.TryParse(m.Groups[1].Value, out int k) && k == n && !IsMezzanineName(s);
+        });
+        return Numbered(wanted) ?? (sheet.IsElevatorRoof ? Numbered(highest + 1) : null);
     }
 
     /// <summary>The largest level number any storey in the model names.</summary>

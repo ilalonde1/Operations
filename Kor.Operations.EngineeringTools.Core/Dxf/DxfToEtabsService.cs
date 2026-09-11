@@ -894,7 +894,7 @@ public static class DxfToEtabsService
             f => f,
             // Renamed the same way the placement below renames them, or a fact banked against the
             // storey's real name — slab-count.31168.LEVEL 1 MEZZ — matches nothing.
-            f => (IReadOnlyList<string>)PlanSheetNaming.MatchStories(sheetInfoByFile[f], matchNames)
+            f => (IReadOnlyList<string>)PlanSheetNaming.MatchStories(sheetInfoByFile[f], matchNames, sheetInfoByFile.Values)
                 .Select(s => doc.StoreyRenames.TryGetValue(s, out string? now) ? now : s)
                 .Where(s => !cutStoreys.Contains(s))
                 .Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
@@ -1353,7 +1353,7 @@ public static class DxfToEtabsService
             // RefusedForSize is kept because the question it answers is still the right one; what
             // was missing is which check is actually dropping a 502 sq ft chain.
 
-            var matched = PlanSheetNaming.MatchStories(sheet, matchNames)
+            var matched = PlanSheetNaming.MatchStories(sheet, matchNames, sheetInfoByFile.Values)
                 .Select(s => doc.StoreyRenames.TryGetValue(s, out string? now) ? now : s)
                 .Where(s => !cutStoreys.Contains(s))
                 .Distinct(StringComparer.OrdinalIgnoreCase)
