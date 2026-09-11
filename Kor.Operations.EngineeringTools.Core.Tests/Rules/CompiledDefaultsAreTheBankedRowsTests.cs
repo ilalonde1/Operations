@@ -38,7 +38,7 @@ public sealed class CompiledDefaultsAreTheBankedRowsTests
         ["dxf.pdf.column-max-size-mm"]       = "PDF-side size window, deliberately not the DXF row (PdfIntakeOptions remarks); no corpus measurement yet",
         ["dxf.pdf.column-min-dim-mm"]        = "PDF-side size window; no corpus measurement yet",
         ["dxf.pdf.agreement-tolerance-mm"]   = "self-check tolerance; no corpus measurement yet",
-        ["dxf.pdf.agreement-label-reach-mm"] = "self-check reach; no corpus measurement yet",
+        ["dxf.pdf.agreement-label-reach-mm"] = "self-check reach; measured 2026-09-10 on twelve banked pages of five sets (PlanAgreesWithItsSchedule.DefaultLabelReachMm), a row is owed",
     };
 
     /// <summary>Public numeric properties on the option records that are facts, not rules, each with the reason.</summary>

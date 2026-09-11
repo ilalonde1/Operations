@@ -1,15 +1,15 @@
 # PDF intake — what it does today, and what it leaves on the page
 
-## 0. START HERE (state as of 2026-09-10, after step 37)
+## 0. START HERE (state as of 2026-09-10, after step 40)
 
 A session picking this up cold reads this section, then §30 (what the PDF alone gives), then the
-last three step sections (§44, §45, §46). It does not need to read §1–§29 to work; those are the record of how each
+last three step sections (§47, §48, §49). It does not need to read §1–§29 to work; those are the record of how each
 rule was arrived at, and are read when a rule is being changed.
 
 **Where the data is.** `%LOCALAPPDATA%\Temp\kor-drawings\stickfiles` holds the six PDFs (31065,
 31130, 31138, 31168, 31202, and `31170-01-arch` — the ARCHITECT's set for 31170, the only one from
 another office and the measure of whether a rule is universal). `...\kor-drawings\harness` holds one folder per job, the banked `.e2k`
-baselines named for the step that produced them (`pdf-only-<job>-s37.e2k` is the most recent), and
+baselines named for the step that produced them (`pdf-only-<job>-s40.e2k` is the most recent), and
 `revit-31168\out.e2k`, which is the Revit route's answer for the same building and the only yardstick
 that is not our own output. Nothing here is read over SMB.
 
@@ -2256,3 +2256,123 @@ end cell; two shapes alone standing (a column in pieces, and two identical cells
 apart; corner contact; declared sizes; the survivor's fate and the cells kept on the geometry.
 WHAT THEY DO NOT: the real sheets (the six-set run, the census and the crops above); a rotated
 pattern; a pattern of exactly two cells; the walls the cells filled.
+
+## 47. Step 38, done 2026-09-10: a wall is what a fill pattern fills
+
+After step 37 the P1 plan of the architect's set had its pattern cells out of the columns and still
+no walls: 14 on A101, 3–8 on the enlargements. Ground truth first (`pdf_lines.py` on a stippled
+wall, then crops): the concrete walls are stippled bands whose FACES are drawn in pieces — the
+west wall of the MAIN COMM. ROOM is two faces 203 mm apart, one in seven pieces and one in nine,
+broken at every cell of the fill — in a light pen (w0.60) while the sheet's cut pen, taken from
+its few filled walls, is w3.30. And the perimeter is a single pattern-filled band 54 m long, 10"
+thick, with one end mitred against a 12" return, refused as "not a rectangle".
+
+**Three clauses landed, two were refused.** Each measured on six sets, the five KOR sets
+byte-identical to step 37 at the end (`six_set_diff.sh s37`).
+
+1. **A face drawn in pieces through a fill pattern is one face** (`AFaceInPiecesIsOneFace`):
+   two emitted lines of one pen and colour, both lying within step 37's pattern cells, on one line
+   and meeting end to end within an inch — or overlapping — are one line, and their paths' fates
+   point at it. ⛔ The first cut joined EVERY touching collinear pair and the six-set run refused it
+   (31065 walls 400 → 388, 31202 360 → 343): a Revit export draws two walls that meet end to end
+   as two touching faces, and joined, the one face pairs with neither. Touching is not the same
+   line; the pattern running across both pieces is what says it is.
+2. **A line inside a fill pattern's cells is a cut line whatever its pen** (`WallsFromFaceLines`):
+   the pattern is the cut material, so the pen gate steps aside for lines with both ends in the
+   cells. A101's interior walls came from this: 8" walls to 429" long.
+3. **A wall's end may be mitred** (`IsWallShape`, replacing `IsRectangle` in the filled-wall rule):
+   four points are a wall's shape when the long edges are opposite and parallel (a taper is not),
+   each end runs no further along the wall than the thickest wall is thick (a mitre against any
+   return; a square end at the least), and the polygon fills half its box (a bow-tie does not).
+   The perimeter came from this. Audit F1's (0,0) (6000,0) (5800,300) (200,300) passes it too —
+   parallel faces, chamfered ends — and its test now names the taper it meant (faces 300 → 450).
+   **And so a pattern's stripes are not walls** (`PatternStripesAreNotWalls`): admitting a mitred
+   end admits a hatch stripe — the accessible stalls' three grey 22" × 68" parallelograms each —
+   so three or more filled walls of one thickness and length, parallel, at one pitch across their
+   width, are a hatch (step 37's principle for the wall rule); 12 → 0 on A101.
+
+4. ⛔ **A stipple beside a line is cut material — refused.** The perimeter has a dot stipple between
+   a heavy face and a light one, and "a line with a stipple's dots beside it, on three rows, is a
+   cut line" read it — and then 110 more walls on the LEVEL 1 key plan (195 → 305), and on KOR's
+   31130 parkade turned the edges of a cross-hatched slab-reinforcing zone (`17-35M19.8 @ 12"
+   EXTRA BOT.`, seen in the crop) into cut lines: 48"–114" stubs across L1, walls 191 → 264. A hatch
+   marks what a drafter chooses; only the architect's convention makes it concrete. It bought 3
+   walls on P1 that clause 3 reads anyway. The cost is written in `WallsFromFaceLines` where the
+   clause was.
+
+**Measured on six sets:**
+
+- **31170**: A101 walls 14 → 49 (28 filled — the 10" and 12" perimeter at 288"–2,275", the 6"–20"
+  interior — and 21 from face pairs), lines 2,478 → 1,989 (pieces joined inside the cells). In the
+  model L1 walls 12 → 45: **rendered**, the parkade's perimeter on three sides, the bike rooms,
+  the core, the north-west rooms. L2–L7 +3 to +8 each (mitred core walls), L8 1 → 30 (the roof
+  plan's parapets and overrun walls, which rise to it). Columns 350 → 342.
+- **The five KOR sets: byte-identical `.e2k` to step 37.** With the global join they were not; with
+  the stipple clause they were not; both are written above.
+- Core: `AWallIsWhatAFillPatternFillsTests` 3, `TheAuditsCounterexamplesTests.F1` rewritten to say
+  what a taper is (and a bow-tie, a chamfer, a mitre, an over-long end); full suite below.
+
+**What this step cost in runs, and what changed so it costs less.** Five six-set runs where two
+should have done: the first cut of the join indexed one list by another and threw on 53 of 67
+pages — the harness summary showed only "Sheets read", so one run was read as "the rule moved every
+set" when most pages had crashed; then KorStandards went unreachable and four of six models were
+not built at all, and the diff scripts compared against nothing. Both now print ⛔ lines in
+`pdf_only_all.sh` (FAILED-page count; NO MODEL). And the harness runs its six jobs **in parallel**
+(9 min → about 3), `pdf_only_one.sh` characterises a rule on one set before six are run, and
+`six_set_diff.sh <step>` is the one-line-per-set reading that follows every run. Ian: "another
+harness, another suite. This is TEDIOUS" — it was.
+
+**Open, named:** the "14 × 36" concrete blocks at every stall line, still columns; the 59" × 217"
+hatched accessible aisle, now a filled wall of wall proportions (the drawing does not say); the
+L8 count wants a look (30 walls on the overrun storey — parapets rise there by the convention, but
+30 is many); KOR's roof-level ladder words; the in-memory handoff.
+
+WHAT THE CHECKS COVER: pieces joined with fates re-pointed, a gap and a pen change left, and the
+parallel lists kept the same length with an annotation line first; light faces inside cells
+pairing and the same faces without cells not; three stripes at a pitch leaving the walls, two
+standing, three a room apart standing; a taper, a bow-tie, an over-long end refused and a
+rectangle, a chamfer and a mitre read. WHAT THEY DO NOT: the real sheets (A101 and the six-set
+run above); a face broken by a doorway; a Z-jog wall with two mitres of opposite sense beside two
+siblings at its pitch; the stipple clause, which is gone.
+
+## 48. Step 39, done 2026-09-10: a column stands at the centre of its outline
+
+Found while writing the test for step 38's join: a 900 × 1200 pattern cell's box did not contain
+the face at its own edge, because the cell's centre was 180 mm over. `PolygonProcessor.Centroid`
+weighted a polyline's edges by length — the three drawn edges of a closed subpath and not the
+fourth, because a PDF's close is a command, not a repeated corner. **Every column read by shape
+had stood off centre towards its last-drawn side**: a 400 × 400 column 67 mm (2.6"), since the
+first PDF read. The ring is closed now when its ends are apart and it has three or more points.
+
+**Measured against the one yardstick that is not our own output** — the Revit route's 31168 model,
+frames matched by grid name (`columns_vs_yardstick.py`, new): before, the median column residual
+to the nearest Revit column was **100 mm, 7% within 50 mm**; after, **18 mm, 71% within 50 mm**,
+on 2,211 columns across the shared storeys (tower storeys 96% within 100 mm). And a second effect
+the bias had hidden: with the corner columns of the tower cores sitting where they are drawn, the
+cores' face pairs are no longer "under a column already read" and pair — **31168's tower storeys
+33 → 43–45 walls** (Revit's 40; the open item "tower walls 33 vs 40" since step 25), L10 rendered
+before and after: a U-shaped core became the closed box with its inner walls. Every set's columns
+moved by their bias (the six-set diff shows 51–97 mm model shifts and every column "moved");
+column counts settled a little where two reads of one column now coincide (31138 676 → 669, 31168
+2,502 → 2,483). Core: `AColumnStandsAtTheCentreOfItsOutlineTests` 3.
+
+WHAT THE CHECK COVERS: a ring's centroid at its centre with and without the repeated corner; a
+two-point polyline unchanged; a column read by shape at the centre of its box. WHAT IT DOES NOT:
+the yardstick numbers (the script, run by hand — the frames need GRIDS in both files, which is
+step 40); the DXF side's own `PlanLoop.Centroid`, which closes its ring already.
+
+## 49. Step 40, done 2026-09-10: the drawings' own grid is written to the model
+
+`columns_vs_yardstick.py` could not match the frames at first: the PDF-only 31168 model had **no
+GRIDS section at all** — the Revit route's has 21 named axes. Every sheet is placed on the set's
+reference plan by axis name (step 25), and the branch that writes GRIDS ran only when no grid was
+known at all; with the reference plan supplying the grid, `referenceGrids` was populated and the
+branch skipped. A reference MODEL brings its own GRIDS; a reference PLAN did not, and the axes the
+sheets were placed by are exactly the grid to write. Now written whenever the document carries no
+GRID lines: 31130 44 axes, 31138 15, 31065 20, 31202 46, 31168 38, 31170 27 — the engineer opens the
+model and finds the drawings' grid. Core: `TheDrawingsOwnGridIsWrittenToTheModelTests` 1.
+
+WHAT THE CHECK COVERS: one sheet with named axes on its GRID layer and no reference model giving
+GRIDS with those labels at those coordinates in the model's unit, and the warning. WHAT IT DOES
+NOT: a reference model's own GRIDS (unchanged); several sheets disagreeing about an axis (the
+median is taken).

@@ -37,14 +37,33 @@ public sealed class TheAuditsCounterexamplesTests
     [Fact]
     public void F1_AFourPointTaperIsNotAWall()
     {
+        // The audit's point: the box alone is not the shape. Its example, (0,0) (6000,0) (5800,300)
+        // (200,300), has parallel faces 300 apart and ends that run 200 along the wall — a wall with
+        // chamfered ends, which 31170's P1 perimeter (a 54 m band with a mitred east end) showed is a
+        // wall on a real plan (step 38). The taper the principle excludes is faces that are NOT
+        // parallel: 300 thick at one end, 450 at the other.
         var fates = new List<PathFate>();
-        var geometry = FateFixture.Classify([Filled((0, 0), (6000, 0), (5800, 300), (200, 300))], fates);
+        var geometry = FateFixture.Classify([Filled((0, 0), (6000, 0), (6000, 450), (0, 300))], fates);
         Assert.NotEqual(PathReason.BecameWall, Assert.Single(fates).Reason);
         Assert.Empty(geometry.Walls);
-        // and the rectangle it tapers from still is one
+        // a bow-tie of wall proportions is not a wall either
+        fates.Clear();
+        geometry = FateFixture.Classify([Filled((0, 0), (6000, 300), (6000, 0), (0, 300))], fates);
+        Assert.Empty(geometry.Walls);
+        // and the rectangle still is one, and so is the chamfered one, and so is a mitred end
         fates.Clear();
         FateFixture.Classify([Filled((0, 0), (6000, 0), (6000, 300), (0, 300))], fates);
         Assert.Equal(PathReason.BecameWall, Assert.Single(fates).Reason);
+        fates.Clear();
+        FateFixture.Classify([Filled((0, 0), (6000, 0), (5800, 300), (200, 300))], fates);
+        Assert.Equal(PathReason.BecameWall, Assert.Single(fates).Reason);
+        fates.Clear();
+        FateFixture.Classify([Filled((0, 0), (6000, 0), (6305, 254), (0, 254))], fates);           // 10" wall mitred against a 12" return
+        Assert.Equal(PathReason.BecameWall, Assert.Single(fates).Reason);
+        // an end that runs further along than the thickest wall is thick is not a mitre
+        fates.Clear();
+        geometry = FateFixture.Classify([Filled((0, 0), (6000, 0), (8000, 300), (0, 300))], fates);
+        Assert.Empty(geometry.Walls);
     }
 
     [Fact]

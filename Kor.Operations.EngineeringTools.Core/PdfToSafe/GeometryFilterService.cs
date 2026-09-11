@@ -42,9 +42,46 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         private const double RectangleFillShare = 0.95;
 
         /// <summary>
+        /// A WALL'S END MAY BE MITRED (intake step 38). Four points are a wall's shape when the two long
+        /// edges are opposite and parallel (a taper is not a wall), each end edge runs no further along
+        /// the wall than the thickest wall is thick (a mitre against a wall of any thickness, a square
+        /// end at the least), and the polygon fills at least half its box (a bow-tie does not). The
+        /// rectangle test this replaces refused 31170's P1 perimeter: a 54 m filled band 10" thick with
+        /// one end mitred against a 12" return — corners (26586,58142) (26586,57888) (80751,57888)
+        /// (81056,58142), a 305 mm skew at the east end — which is a wall on any plan. Audit F1's
+        /// (0,0) (6000,0) (5800,300) (200,300) passes this too: parallel faces 300 apart, ends 200
+        /// along — a wall with chamfered ends, not a taper; the taper the audit meant is faces that
+        /// are not parallel, and that is what the test now says.
+        /// </summary>
+        public static bool IsWallShape(List<(double X, double Y)> pts, double boxLength, double boxThickness, double maxWallThicknessMm)
+        {
+            ArgumentNullException.ThrowIfNull(pts);
+            if (pts.Count != 4 || boxLength <= 0 || boxThickness <= 0) return false;
+            var edges = Enumerable.Range(0, 4).Select(i => (A: pts[i], B: pts[(i + 1) % 4])).Select(e =>
+            {
+                double dx = e.B.X - e.A.X, dy = e.B.Y - e.A.Y, len = Math.Sqrt(dx * dx + dy * dy);
+                return (dx, dy, len, ux: len > 0 ? dx / len : 0, uy: len > 0 ? dy / len : 0);
+            }).ToList();
+            int longest = Enumerable.Range(0, 4).OrderByDescending(i => edges[i].len).First();
+            int opposite = (longest + 2) % 4;
+            var a = edges[longest]; var b = edges[opposite];
+            if (a.len <= 0 || b.len <= 0) return false;
+            if (Math.Abs(a.ux * b.ux + a.uy * b.uy) < FaceParallelCos) return false;              // a taper
+            foreach (int e in new[] { (longest + 1) % 4, (longest + 3) % 4 })
+            {
+                double along = Math.Abs(edges[e].dx * a.ux + edges[e].dy * a.uy);                   // the end's run along the wall
+                if (along > maxWallThicknessMm + WallLimitSlackMm) return false;
+            }
+            double area = Math.Abs(PolygonProcessor.PolygonAreaMm2(pts));
+            return area >= 0.5 * boxLength * boxThickness;
+        }
+
+        /// <summary>
         /// Four points are a rectangle when every corner is square and the polygon fills its oriented
         /// box. The wall rule tested the box and the vertex count only, so a filled trapezoid
-        /// (0,0) (6000,0) (5800,300) (200,300) became a wall (audit F1, 2026-09-08).
+        /// (0,0) (6000,0) (5800,300) (200,300) became a wall (audit F1, 2026-09-08). Since step 38 the
+        /// wall rule asks <see cref="IsWallShape"/> instead, which admits a mitred end; this stays for
+        /// any reader that wants a rectangle and nothing else.
         /// </summary>
         public static bool IsRectangle(List<(double X, double Y)> pts, double boxLength, double boxThickness)
         {
@@ -276,9 +313,10 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         if (box.Thickness >= minWallThicknessMm - WallLimitSlackMm && box.Thickness <= maxWallThicknessMm + WallLimitSlackMm
                             && box.Length >= minWallLengthMm - WallLimitSlackMm && box.Aspect >= minWallAspect)
                         {
-                            // four points are a rectangle only when they are one: a trapezoid's box passed
-                            // these limits and became a wall (audit F1, 2026-09-08)
-                            if (pts.Count == 4 && IsRectangle(pts, box.Length, box.Thickness))
+                            // four points are a wall's shape when the faces are parallel and the ends are
+                            // square or mitred: a taper's box passed these limits and became a wall (audit
+                            // F1, 2026-09-08); a mitred end is a wall's (step 38, 31170's P1 perimeter)
+                            if (pts.Count == 4 && IsWallShape(pts, box.Length, box.Thickness, maxWallThicknessMm))
                             {
                                 int first = result.Walls.Count;
                                 var clip = ClipPiecesOn(box, sub.PathOrdinal, clipPieces);
@@ -424,6 +462,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         FaceTrace($"line {ln / 25.4:0}\" w{s.LineWidth:0.00} at ({(s.Points[0].X + s.Points[1].X) / 2:0},{(s.Points[0].Y + s.Points[1].Y) / 2:0}) mm: {f.Reason}");
                 }
             PatternCellsAreNotColumns(result, columnByShape, fates, firstFate);
+            PatternStripesAreNotWalls(result, fates, firstFate);
+            AFaceInPiecesIsOneFace(result, fates, firstFate);
             WallsFromFaceLines(result, fates, firstFate, minWallThicknessMm, maxWallThicknessMm, minWallLengthMm, minWallAspect);
             SlabEdgesFromLoops(result, fates, firstFate);
 
@@ -532,6 +572,229 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 fates[k] = newIndex[oi] < 0
                     ? new PathFate(f.PathIndex, PathFate.DispositionOf(PathReason.PatternCell), PathReason.PatternCell, null)
                     : f with { ObjectIndex = newIndex[oi] };
+            }
+        }
+
+        /// <summary>
+        /// A PATTERN'S STRIPES ARE NOT WALLS (intake step 38, step 37's principle for the filled wall
+        /// rule). Admitting a mitred end (<see cref="IsWallShape"/>) admits a hatch stripe too — a
+        /// parallelogram of wall proportions — and 31170's P1 plan draws its accessible stalls with
+        /// three grey 22" x 68" stripes each. A pattern is many of one thing: three or more filled
+        /// walls of one thickness and length, parallel, spaced at one pitch across their width (a
+        /// hatch's stripes stand apart by their own width; walls stand a room apart), are its stripes.
+        /// They leave the walls, and their paths are fated <see cref="PathReason.PatternCell"/>.
+        ///
+        /// WHAT IT DOES NOT: two stripes; stripes of different lengths (a stripe clipped by the
+        /// symbol's edge is shorter, and the first and last of a run may be); a wall read from face
+        /// lines, which comes after this; a rotated pattern's box, which the oriented box handles.
+        /// </summary>
+        internal static void PatternStripesAreNotWalls(ExtractedGeometry result, IList<PathFate>? fates, int firstFate)
+        {
+            int n = result.Walls.Count;
+            if (n < 3) return;
+            var stripe = new bool[n];
+            var info = result.Walls.Select(w =>
+            {
+                double dx = w.End.X - w.Start.X, dy = w.End.Y - w.Start.Y, len = Math.Sqrt(dx * dx + dy * dy);
+                double ux = len > 0 ? dx / len : 1, uy = len > 0 ? dy / len : 0;
+                if (ux < 0 || (ux == 0 && uy < 0)) { ux = -ux; uy = -uy; }
+                double mx = (w.Start.X + w.End.X) / 2, my = (w.Start.Y + w.End.Y) / 2;
+                return (Len: len, T: w.ThicknessMm, Ux: ux, Uy: uy, Off: -uy * mx + ux * my, Along: ux * mx + uy * my);
+            }).ToList();
+            for (int i = 0; i < n; i++)
+            {
+                if (stripe[i]) continue;
+                // the family of i: same thickness and length, parallel, overlapping along the run
+                var family = new List<int> { i };
+                for (int j = 0; j < n; j++)
+                {
+                    if (j == i) continue;
+                    if (Math.Abs(info[j].T - info[i].T) > CellAbutMm || Math.Abs(info[j].Len - info[i].Len) > CellAbutMm) continue;
+                    if (info[i].Ux * info[j].Ux + info[i].Uy * info[j].Uy < FaceParallelCos) continue;
+                    if (Math.Abs(info[j].Along - info[i].Along) > info[i].Len) continue;     // a diagonal hatch steps along as it steps across
+                    family.Add(j);
+                }
+                if (family.Count < 3) continue;
+                // sorted across the run: a run of three or more at one pitch, the pitch no more than a few widths
+                var ordered = family.OrderBy(k => info[k].Off).ToList();
+                for (int s = 0; s + 2 < ordered.Count; s++)
+                {
+                    double p0 = info[ordered[s + 1]].Off - info[ordered[s]].Off, p1 = info[ordered[s + 2]].Off - info[ordered[s + 1]].Off;
+                    if (p0 <= 0 || Math.Abs(p1 - p0) > CellAbutMm || p0 > 4 * info[i].T) continue;
+                    int e = s + 2;
+                    while (e + 1 < ordered.Count && Math.Abs(info[ordered[e + 1]].Off - info[ordered[e]].Off - p0) <= CellAbutMm) e++;
+                    for (int k = s; k <= e; k++) stripe[ordered[k]] = true;
+                    s = e;
+                }
+            }
+            if (!stripe.Any(x => x)) return;
+
+            var newIndex = new int[n];
+            int kept = 0;
+            for (int i = 0; i < n; i++) newIndex[i] = stripe[i] ? -1 : kept++;
+            for (int i = n - 1; i >= 0; i--)
+            {
+                if (!stripe[i]) continue;
+                result.PatternCells.Add((((result.Walls[i].Start.X + result.Walls[i].End.X) / 2, (result.Walls[i].Start.Y + result.Walls[i].End.Y) / 2), result.Walls[i].ThicknessMm, info[i].Len));
+                result.Walls.RemoveAt(i);
+                if (i < result.WallColors.Count) result.WallColors.RemoveAt(i);
+                if (i < result.WallIsAnnotation.Count) result.WallIsAnnotation.RemoveAt(i);
+            }
+            result.FirstFaceWall = result.Walls.Count;
+            for (int d = 0; d < result.Doorways.Count; d++)
+                if (result.Doorways[d].FirstPier >= 0 && result.Doorways[d].FirstPier < n && newIndex[result.Doorways[d].FirstPier] >= 0)
+                    result.Doorways[d] = result.Doorways[d] with { FirstPier = newIndex[result.Doorways[d].FirstPier] };
+            var faceKeys = result.WallFaceLines.Keys.ToList();
+            foreach (int k in faceKeys)
+                if (result.WallFaceLines[k] < n) result.WallFaceLines[k] = newIndex[result.WallFaceLines[k]];
+            if (fates is null) return;
+            for (int k = firstFate; k < fates.Count; k++)
+            {
+                var f = fates[k];
+                if (f.Reason is not (PathReason.BecameWall or PathReason.ClipOfWall) || f.ObjectIndex is not int oi || oi < 0 || oi >= n) continue;
+                fates[k] = newIndex[oi] < 0
+                    ? new PathFate(f.PathIndex, PathFate.DispositionOf(PathReason.PatternCell), PathReason.PatternCell, null)
+                    : f with { ObjectIndex = newIndex[oi] };
+            }
+        }
+
+        /// <summary>Two pieces of one line lie within this of the same line: drafting exact, with a pen's width of slack.</summary>
+        private const double PieceLateralMm = 5.0;
+
+        /// <summary>
+        /// A FACE DRAWN IN PIECES THROUGH A FILL PATTERN IS ONE FACE (intake step 38; step 27's rule for
+        /// a slab edge, for the lines a pattern runs along). A stippled wall on 31170's P1 plan is drawn
+        /// as its two faces and a cross line at every cell of the fill, and each face arrives as the
+        /// pieces between the cross lines — seven and nine pieces for a 9.4 m wall, each about a cell
+        /// long. A piece is not a face: the face reader wants a line a wall's length.
+        ///
+        /// Two emitted lines of the same pen and colour, neither an annotation, BOTH LYING WITHIN THE
+        /// CELLS OF A FILL PATTERN (step 37's), on one line (parallel within a degree, both ends within
+        /// <see cref="PieceLateralMm"/> of it) and meeting end to end within an inch of drafting — or
+        /// overlapping — are one line, and every fate that pointed at a piece points at the whole. A gap
+        /// wider than an inch is a doorway or a break the drafter meant, and stays.
+        ///
+        /// ⛔ Joining EVERY collinear touching pair was the first cut, and the six-set run refused it
+        /// (2026-09-10: 31065 walls 400 → 388, 31202 360 → 343): a Revit export draws two walls that
+        /// meet end to end as two faces that touch — a 12" wall's face and the 10" wall's beyond it —
+        /// and joined, the one face pairs with neither. Touching is not the same line; only the
+        /// pattern that runs across both pieces says it is.
+        ///
+        /// WHAT IT DOES NOT: pieces outside any pattern cell; pieces in different pens; annotations; a
+        /// face broken by a doorway; the closed shapes; the slab-edge chain, which still bridges its
+        /// own gaps (step 27).
+        /// </summary>
+        internal static void AFaceInPiecesIsOneFace(ExtractedGeometry result, IList<PathFate>? fates, int firstFate)
+        {
+            int n = result.Lines.Count;
+            if (n < 2 || result.PatternCells.Count == 0) return;
+            var cellBoxes = result.PatternCells.Where(c => c.WidthMm > 0 && c.DepthMm > 0)
+                .Select(c => (X0: c.Centre.X - c.WidthMm / 2 - CellAbutMm, X1: c.Centre.X + c.WidthMm / 2 + CellAbutMm, Y0: c.Centre.Y - c.DepthMm / 2 - CellAbutMm, Y1: c.Centre.Y + c.DepthMm / 2 + CellAbutMm)).ToList();
+            bool InACell(double x, double y) => cellBoxes.Any(b => x >= b.X0 && x <= b.X1 && y >= b.Y0 && y <= b.Y1);
+            // the line each piece lies on: its direction (folded to a half-turn) and its signed offset
+            // from the origin along the normal, binned coarsely; pieces of one line share a bin or a
+            // neighbouring one, so each piece is tried against its own bin and the bins beside it
+            var keyed = new List<(int Index, double Ux, double Uy, double Off, double T0, double T1)>();
+            var bins = new Dictionary<(int A, int O), List<int>>();
+            for (int i = 0; i < n; i++)
+            {
+                var l = result.Lines[i];
+                if (l.Count != 2 || (i < result.LineIsAnnotation.Count && result.LineIsAnnotation[i])) continue;
+                if (!InACell(l[0].X, l[0].Y) || !InACell(l[1].X, l[1].Y)) continue;
+                double dx = l[1].X - l[0].X, dy = l[1].Y - l[0].Y, len = Math.Sqrt(dx * dx + dy * dy);
+                if (len <= 0) continue;
+                double ux = dx / len, uy = dy / len;
+                if (ux < 0 || (ux == 0 && uy < 0)) { ux = -ux; uy = -uy; }          // one direction per line
+                double off = -uy * l[0].X + ux * l[0].Y;                              // along the normal (-uy, ux)
+                double t0 = l[0].X * ux + l[0].Y * uy, t1 = l[1].X * ux + l[1].Y * uy;
+                if (t0 > t1) (t0, t1) = (t1, t0);
+                int a = (int)Math.Round(Math.Atan2(uy, ux) * 180 / Math.PI * 4);       // quarter-degree bins
+                int o = (int)Math.Floor(off / (4 * PieceLateralMm));
+                keyed.Add((i, ux, uy, off, t0, t1));
+                if (!bins.TryGetValue((a, o), out var list)) bins[(a, o)] = list = new List<int>();
+                list.Add(keyed.Count - 1);
+            }
+            var group = Enumerable.Range(0, keyed.Count).ToArray();
+            int Find(int i) { while (group[i] != i) i = group[i] = group[group[i]]; return i; }
+            bool SamePen(int i, int j)
+                => (i >= result.LineWidths.Count || j >= result.LineWidths.Count || Math.Abs(result.LineWidths[i] - result.LineWidths[j]) <= 0.01)
+                   && (i >= result.LineColors.Count || j >= result.LineColors.Count || result.LineColors[i] == result.LineColors[j]);
+            for (int k = 0; k < keyed.Count; k++)
+            {
+                var a = keyed[k];
+                int ab = (int)Math.Round(Math.Atan2(a.Uy, a.Ux) * 180 / Math.PI * 4), ob = (int)Math.Floor(a.Off / (4 * PieceLateralMm));
+                for (int da = -1; da <= 1; da++)
+                    for (int dO = -1; dO <= 1; dO++)
+                    {
+                        if (!bins.TryGetValue((ab + da, ob + dO), out var list)) continue;
+                        foreach (int m in list)
+                        {
+                            if (m <= k) continue;
+                            var b = keyed[m];
+                            if (a.Ux * b.Ux + a.Uy * b.Uy < FaceParallelCos) continue;
+                            if (Math.Abs(a.Off - b.Off) > PieceLateralMm) continue;
+                            if (!SamePen(a.Index, b.Index)) continue;
+                            // end to end within an inch, or overlapping
+                            double gap = Math.Max(a.T0, b.T0) - Math.Min(a.T1, b.T1);
+                            if (gap > CellAbutMm) continue;
+                            group[Find(k)] = Find(m);
+                        }
+                    }
+            }
+            var members = new Dictionary<int, List<int>>();
+            for (int k = 0; k < keyed.Count; k++)
+            {
+                int root = Find(k);
+                if (!members.TryGetValue(root, out var list)) members[root] = list = new List<int>();
+                list.Add(k);
+            }
+            if (!members.Values.Any(v => v.Count > 1)) return;
+
+            // rebuild the lines: a piece alone stays as it is; a group becomes one line from its
+            // first end to its last, in the first piece's pen, at the first piece's index
+            var newIndex = new int[n];
+            Array.Fill(newIndex, -1);
+            var keepLines = new List<List<(double X, double Y)>>();
+            var keepColors = new List<(byte R, byte G, byte B)>();
+            var keepWidths = new List<double>();
+            var keepAnnotation = new List<bool>();
+            var joined = new Dictionary<int, (List<int> Pieces, double Ux, double Uy, double Off, double T0, double T1)>();
+            foreach (var (root, list) in members)
+            {
+                if (list.Count < 2) continue;
+                double t0 = list.Min(k => keyed[k].T0), t1 = list.Max(k => keyed[k].T1);
+                var first = keyed[list.OrderBy(k => keyed[k].Index).First()];
+                double off = list.Average(k => keyed[k].Off);
+                joined[first.Index] = (list.Select(k => keyed[k].Index).ToList(), first.Ux, first.Uy, off, t0, t1);
+            }
+            var absorbed = new HashSet<int>(joined.Values.SelectMany(j => j.Pieces));
+            for (int i = 0; i < n; i++)
+            {
+                if (joined.TryGetValue(i, out var j))
+                {
+                    double nx = -j.Uy, ny = j.Ux;
+                    keepLines.Add([(j.Ux * j.T0 + nx * j.Off, j.Uy * j.T0 + ny * j.Off), (j.Ux * j.T1 + nx * j.Off, j.Uy * j.T1 + ny * j.Off)]);
+                }
+                else if (absorbed.Contains(i)) continue;
+                else keepLines.Add(result.Lines[i]);
+                keepColors.Add(i < result.LineColors.Count ? result.LineColors[i] : ((byte)0, (byte)0, (byte)0));
+                keepWidths.Add(i < result.LineWidths.Count ? result.LineWidths[i] : 0);
+                keepAnnotation.Add(i < result.LineIsAnnotation.Count && result.LineIsAnnotation[i]);
+                newIndex[i] = keepLines.Count - 1;
+            }
+            foreach (var (head, j) in joined)
+                foreach (int piece in j.Pieces) newIndex[piece] = newIndex[head];
+            result.Lines.Clear(); result.Lines.AddRange(keepLines);
+            result.LineColors.Clear(); result.LineColors.AddRange(keepColors);
+            result.LineWidths.Clear(); result.LineWidths.AddRange(keepWidths);
+            result.LineIsAnnotation.Clear(); result.LineIsAnnotation.AddRange(keepAnnotation);
+            result.LinePiecesJoined += absorbed.Count - joined.Count;
+            if (fates is null) return;
+            for (int k = firstFate; k < fates.Count; k++)
+            {
+                var f = fates[k];
+                if (f.Reason != PathReason.EmittedAsLine || f.ObjectIndex is not int oi || oi < 0 || oi >= n || newIndex[oi] < 0) continue;
+                fates[k] = f with { ObjectIndex = newIndex[oi] };
             }
         }
 
@@ -658,8 +921,28 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     if (ln >= FaceTraceMinOverlapMm)
                         FaceTrace($"emitted line {ln / 25.4:0}\" w{(i < result.LineWidths.Count ? result.LineWidths[i] : -1):0.00} at ({(l[0].X + l[1].X) / 2:0},{(l[0].Y + l[1].Y) / 2:0}) mm{(result.LineIsAnnotation[i] ? " (annotation)" : "")}");
                 }
-            if (cutPen <= 0) return;
-            bool CutPenLine(int i) => i < result.LineWidths.Count && Math.Abs(result.LineWidths[i] - cutPen) <= PenMatchShare * cutPen;
+            // A WALL IS WHAT A FILL PATTERN FILLS (intake step 38, with step 37). A stippled wall's faces
+            // are in a light pen — 31170's P1 plan draws them at w0.60 while its cut pen is w3.30 — and
+            // the pen gate alone would never pair them. The fill says what they are: a line lying
+            // within the cells of a fill pattern, both ends, is a cut line whatever its pen, because
+            // the pattern is the cut material. The cells are the boxes step 37 took out of the columns.
+            var cellBoxes = result.PatternCells
+                .Where(c => c.WidthMm > 0 && c.DepthMm > 0)
+                .Select(c => (X0: c.Centre.X - c.WidthMm / 2 - CellAbutMm, X1: c.Centre.X + c.WidthMm / 2 + CellAbutMm, Y0: c.Centre.Y - c.DepthMm / 2 - CellAbutMm, Y1: c.Centre.Y + c.DepthMm / 2 + CellAbutMm))
+                .ToList();
+            bool InACell(double x, double y) => cellBoxes.Any(b => x >= b.X0 && x <= b.X1 && y >= b.Y0 && y <= b.Y1);
+            bool InPattern(List<(double X, double Y)> l) => cellBoxes.Count > 0 && InACell(l[0].X, l[0].Y) && InACell(l[1].X, l[1].Y);
+            // ⛔ A STIPPLE BESIDE A LINE IS NOT EVIDENCE OF CUT MATERIAL — tried and refused (2026-09-10). The
+            // P1 perimeter of 31170 is a dot stipple between a heavy face and a light one, and "a line with a
+            // stipple's dots beside it, on three rows, is a cut line whatever its pen" read it — and then read
+            // 110 more walls on the LEVEL 1 key plan (195 → 305) and, on KOR's 31130 parkade, made the edges
+            // of a cross-hatched slab-reinforcing zone ("17-35M19.8 @ 12" EXTRA BOT.") cut lines, 48"–114"
+            // stubs all over L1 (191 → 264 walls). A hatch marks what a drafter chooses — a slab zone, a
+            // footing, a stall — and only the architect's convention makes it concrete. The perimeter it was
+            // built for is read anyway: it is a pattern-filled rectangle with a mitred end (IsWallShape).
+            // It bought 3 walls on P1. Not universal; not kept.
+            if (cutPen <= 0 && cellBoxes.Count == 0) return;
+            bool CutPenLine(int i) => cutPen > 0 && i < result.LineWidths.Count && Math.Abs(result.LineWidths[i] - cutPen) <= PenMatchShare * cutPen;
 
             // every straight line long enough to be a face, and which are in the cut pen
             var segs = new List<(int Line, (double X, double Y) A, (double X, double Y) B, double Len, double Ux, double Uy, bool Cut)>();
@@ -669,8 +952,11 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 if (line.Count != 2 || result.LineIsAnnotation[i]) continue;
                 double dx = line[1].X - line[0].X, dy = line[1].Y - line[0].Y, len = Math.Sqrt(dx * dx + dy * dy);
                 if (len < minWallLengthMm - WallLimitSlackMm) continue;
-                segs.Add((i, line[0], line[1], len, dx / len, dy / len, CutPenLine(i)));
+                segs.Add((i, line[0], line[1], len, dx / len, dy / len, CutPenLine(i) || InPattern(line)));
             }
+            if (FaceTrace is not null)
+                foreach (var sg in segs.Where(sg => sg.Cut && !CutPenLine(sg.Line)))
+                    FaceTrace($"cut by fill: line {sg.Len / 25.4:0}\" w{(sg.Line < result.LineWidths.Count ? result.LineWidths[sg.Line] : -1):0.00} at ({(sg.A.X + sg.B.X) / 2:0},{(sg.A.Y + sg.B.Y) / 2:0}) mm is a cut line by the pattern cells around it");
             if (segs.Count(s => s.Cut) < 2) return;
 
             // the perpendicular offset of segment j's ends from segment i's line, and their overlap along it

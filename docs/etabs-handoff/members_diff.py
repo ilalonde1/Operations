@@ -38,6 +38,21 @@ def main():
     only = sys.argv[3] if len(sys.argv) > 3 else None
     order, ma = members(a)
     _, mb = members(b)
+    # the whole model can shift when its origin re-derives (a new wall at the edge moves the extent):
+    # the modal displacement between each column in A and its nearest column in B is that shift, and
+    # is taken out before matching, so a shifted model reads as unchanged and a moved member as moved
+    from collections import Counter
+    votes = Counter()
+    for storey in order:
+        ca, _ = ma.get(storey, (set(), set())); cb, _ = mb.get(storey, (set(), set()))
+        for p in ca:
+            if not cb: continue
+            q = min(cb, key=lambda q: (q[0] - p[0]) ** 2 + (q[1] - p[1]) ** 2)
+            votes[(q[0] - p[0], q[1] - p[1])] += 1
+    shift = votes.most_common(1)[0][0] if votes else (0, 0)
+    if shift != (0, 0):
+        print(f"(the second model sits {shift[0]:+,}, {shift[1]:+,} from the first; positions below are the first model's frame)")
+        mb = {k: ({(x - shift[0], y - shift[1]) for x, y in c}, {(x - shift[0], y - shift[1]) for x, y in w}) for k, (c, w) in mb.items()}
     for storey in order:
         if only and storey != only: continue
         ca, wa = ma.get(storey, (set(), set()))

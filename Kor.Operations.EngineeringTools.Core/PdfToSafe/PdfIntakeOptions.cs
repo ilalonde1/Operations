@@ -59,7 +59,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             ColumnMinDimMm:        200.0,
             ColumnMaxAspect:       GeometryFilterService.DefaultMaxColumnAspect,
             AgreementToleranceMm:  25.0,
-            AgreementLabelReachMm: 1500.0);
+            AgreementLabelReachMm: PlanAgreesWithItsSchedule.DefaultLabelReachMm);   // 2000 mm since step 39: measured on twelve banked pages, see the constant
 
         public const string Prefix = "dxf.pdf";
 

@@ -117,6 +117,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         public Dictionary<int, int> SlabEdgeLines { get; } = new();
         /// <summary>Index in <see cref="Slabs"/> of the first slab recovered from a loop of lines (step 24); those follow the filled ones.</summary>
         public int FirstEdgeSlab { get; set; }
+        /// <summary>A FACE DRAWN IN PIECES IS ONE FACE (intake step 38): how many pieces were absorbed into the lines they lay on — the count the sheet reports, so a joined face is not a silent change.</summary>
+        public int LinePiecesJoined { get; set; }
         /// <summary>Stroke width of each line as the PDF drew it, parallel to <see cref="Lines"/>; the pen a face was drawn with.</summary>
         public List<double> LineWidths { get; } = new();
         public List<(byte R, byte G, byte B)> WallColors { get; } = new();

@@ -876,7 +876,32 @@ if (args.Length >= 1 && args[0].Equals("pdf-overlay", StringComparison.OrdinalIg
         foreach (var g in cols.Select((c, i) => (c, i)).GroupBy(x => (Inches(x.c.Size), x.c.Pen)).OrderByDescending(g => g.Count()).Take(12))
             Console.WriteLine($"    {g.Key.Item1.Item1,3} x {g.Key.Item1.Item2,3} in  {g.Key.Pen}: {g.Count(),4}, of which {g.Count(x => abuts[x.i]),4} abut a twin");
     }
+    // --agreement: the plan's self-check column by column — size, the nearest mark label and how far, and
+    // whether the schedule's size for that mark is this column's. The coverage ratchet in FiveStickFilesTests
+    // fails on a number; this is the list behind the number (built 2026-09-10 when the centroid fix moved
+    // 31130 p12 from 25 to 22 of 45 and the question was which three, and why).
+    if (args.Any(a => a.Equals("--agreement", StringComparison.OrdinalIgnoreCase)))
+    {
+        var declaredRows = ColumnScheduleReader.ReadSchedule(ovContent);
+        // --reach N overrides the label reach for the listing, so a floor that moved can be asked "how far are the labels"
+        double ovReach = ovOptions.AgreementLabelReachMm;
+        int reachAt = Array.FindIndex(args, a => a.Equals("--reach", StringComparison.OrdinalIgnoreCase));
+        if (reachAt >= 0 && reachAt + 1 < args.Length && double.TryParse(args[reachAt + 1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double r)) ovReach = r;
+        var agreement = PlanAgreesWithItsSchedule.Check(ovGeo, declaredRows, ovContent, ovOptions.AgreementToleranceMm, ovReach);
+        Console.WriteLine($"  agreement (--agreement): {agreement.ColumnsFound} columns, {agreement.LabelsOnThePlan} labels on the plan, {agreement.MatchedToTheirOwnMark} match their own mark's size, {agreement.AttributedToAMark} have a mark within {ovReach:0} mm; never found: {string.Join(",", agreement.MarksDeclaredButNeverFound)}");
+        foreach (var c in agreement.Columns.OrderBy(c => c.SizeMatchesItsOwnMark).ThenBy(c => c.NearestMark))
+            Console.WriteLine($"    {(c.SizeMatchesItsOwnMark ? "own " : c.NearestMark is null ? "none" : "MISS")} {Math.Min(c.WidthMm, c.DepthMm) / 25.4,3:0} x {Math.Max(c.WidthMm, c.DepthMm) / 25.4,3:0} in at ({c.XMm:0},{c.YMm:0}) mm  nearest {c.NearestMark ?? "-",-6} {(c.NearestMarkDistanceMm is double dd ? $"{dd:0} mm" : "")}{(c.SizeIsDeclaredSomewhere ? "" : "  (size declared nowhere)")}");
+    }
     static double OvWallLen(WallPanel w) => Math.Sqrt(Math.Pow(w.End.X - w.Start.X, 2) + Math.Pow(w.End.Y - w.Start.Y, 2));
+    // --walls: the filled walls as a census too — thickness, pen colour, count and length range — so a
+    // stall symbol or a legend box read as a wall shows up as a size no wall has (step 38)
+    if (args.Any(a => a.Equals("--walls", StringComparison.OrdinalIgnoreCase)) && ovFirstFaceWall > 0)
+    {
+        Console.WriteLine($"  filled walls {ovFirstFaceWall} (dark red), by thickness and colour:");
+        foreach (var g in ovGeo.Walls.Take(ovFirstFaceWall).Select((w, i) => (w, c: i < ovGeo.WallColors.Count ? $"#{ovGeo.WallColors[i].R:X2}{ovGeo.WallColors[i].G:X2}{ovGeo.WallColors[i].B:X2}" : "?"))
+                                     .GroupBy(x => ((int)Math.Round(x.w.ThicknessMm / 25.4), x.c)).OrderBy(g => g.Key.Item1))
+            Console.WriteLine($"    {g.Key.Item1,3} in thick {g.Key.c}: {g.Count(),4} wall(s), length {g.Min(x => OvWallLen(x.w)) / 25.4:0}-{g.Max(x => OvWallLen(x.w)) / 25.4:0} in");
+    }
     if (ovGeo.Walls.Count > ovFirstFaceWall)
     {
         var faceWalls = ovGeo.Walls.Skip(ovFirstFaceWall).ToList();

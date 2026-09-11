@@ -22,18 +22,28 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         public static double PolylineLengthMm(List<(double X, double Y)> pts)
             => PathLength(pts);
 
-        /// <summary>Centroid of a polyline (weighted by segment length).</summary>
+        /// <summary>
+        /// Centroid of a polyline, weighted by segment length — and of a RING, closed through its
+        /// last edge. A closed subpath from the PDF carries its corners once (the close is a command,
+        /// not a repeated point), and weighting the three drawn edges without the fourth put every
+        /// column read by shape off centre towards its last side: a 400 x 400 column 67 mm (2.6") over,
+        /// a 900 x 1200 pattern cell 180 mm. Found 2026-09-10 when a pattern cell's box did not contain
+        /// the face at its own edge. A polyline whose ends are apart by more than a hair is a ring here
+        /// when it has three or more points; a genuinely open polyline of two points is unaffected.
+        /// </summary>
         public static (double X, double Y) Centroid(List<(double X, double Y)> pts)
         {
             if (pts.Count == 0) return (0, 0);
             double sumX = 0, sumY = 0, total = 0;
-            for (int i = 1; i < pts.Count; i++)
+            void Edge((double X, double Y) a, (double X, double Y) b)
             {
-                double w = Distance(pts[i - 1], pts[i]);
-                sumX += (pts[i - 1].X + pts[i].X) * 0.5 * w;
-                sumY += (pts[i - 1].Y + pts[i].Y) * 0.5 * w;
+                double w = Distance(a, b);
+                sumX += (a.X + b.X) * 0.5 * w;
+                sumY += (a.Y + b.Y) * 0.5 * w;
                 total += w;
             }
+            for (int i = 1; i < pts.Count; i++) Edge(pts[i - 1], pts[i]);
+            if (pts.Count >= 3 && Distance(pts[^1], pts[0]) > 1e-6) Edge(pts[^1], pts[0]);
             return total > 0 ? (sumX / total, sumY / total) : (pts[0].X, pts[0].Y);
         }
 

@@ -110,10 +110,17 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
 
         /// <summary>How near a mark label must be to a column to be taken as ITS label, in mm.</summary>
         /// <remarks>
-        /// Marks are printed beside the column they name, not on it. 1500 mm is about five feet at
-        /// full size — beyond that the nearest label is more likely a neighbour's.
+        /// Marks are printed beside the column they name, not on it, on a leader. 1500 mm (five feet)
+        /// was the first guess and it sat right where KOR's leaders end: measured 2026-09-10 on the
+        /// twelve banked self-check pages of five sets (`pdf-overlay --agreement --reach`), the columns
+        /// matched to their own mark at 1500 / 2000 mm were 31130 p11 14/40, p12 22/41, p13 41/42;
+        /// 31168 p11 44/67, p12 65/65, p13 47/67; 31138 p9 24/24, p11 21/24; 31065 p14 24/27, p15
+        /// 22/25, p16 31/31; 31202 p17 67/67 — never fewer at 2000, and the mismatches (a neighbour's
+        /// label nearer) stayed at three or fewer a page. Step 39's centroid fix moved every column
+        /// centre by its bias and tipped 31130 p12 from 25 to 22 at the old reach, which is how the
+        /// knife-edge was found. Two metres, then: a leader's length on a 1/8" plan.
         /// </remarks>
-        public const double DefaultLabelReachMm = 1500.0;
+        public const double DefaultLabelReachMm = 2000.0;
 
         public static PlanScheduleAgreement Check(
             ExtractedGeometry geometry,

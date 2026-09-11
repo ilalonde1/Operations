@@ -1829,7 +1829,14 @@ public static class DxfToEtabsService
         // A MODEL BUILT WITHOUT A REFERENCE STILL OPENS ON THE DRAWINGS' GRID. The shell has an
         // empty GRIDS table; the sheets name their axes. Each named axis goes through the frame its
         // sheet was placed by (or the centring offset, when nothing was) into the model's unit.
-        if (referenceGrids.Count == 0)
+        // THE DRAWINGS' OWN GRID IS WRITTEN (intake step 39). This ran only when no grid was known at all;
+        // with the set's reference plan supplying the grid (referenceGrids carried from its axes, step 25)
+        // the branch was skipped and the PDF-only models shipped with NO GRIDS section — every sheet placed
+        // on axes by name, and not one axis in the file for the engineer (found 2026-09-10, comparing
+        // 31168's PDF-only model with the Revit route's by grid name: the Revit one had 21, ours 0). A
+        // reference MODEL brings its own GRIDS; a reference PLAN does not, and the axes it was placed by
+        // are exactly the grid to write.
+        if (ReadGridLines(doc).Count == 0)
         {
             var gridSheets = files
                 .Where(f => namedAxesOf[f].Count > 0)
