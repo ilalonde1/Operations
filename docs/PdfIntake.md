@@ -1,15 +1,15 @@
 # PDF intake — what it does today, and what it leaves on the page
 
-## 0. START HERE (state as of 2026-09-10, after step 36)
+## 0. START HERE (state as of 2026-09-10, after step 37)
 
 A session picking this up cold reads this section, then §30 (what the PDF alone gives), then the
-last three step sections (§43, §44, §45). It does not need to read §1–§29 to work; those are the record of how each
+last three step sections (§44, §45, §46). It does not need to read §1–§29 to work; those are the record of how each
 rule was arrived at, and are read when a rule is being changed.
 
 **Where the data is.** `%LOCALAPPDATA%\Temp\kor-drawings\stickfiles` holds the six PDFs (31065,
 31130, 31138, 31168, 31202, and `31170-01-arch` — the ARCHITECT's set for 31170, the only one from
 another office and the measure of whether a rule is universal). `...\kor-drawings\harness` holds one folder per job, the banked `.e2k`
-baselines named for the step that produced them (`pdf-only-<job>-s36.e2k` is the most recent), and
+baselines named for the step that produced them (`pdf-only-<job>-s37.e2k` is the most recent), and
 `revit-31168\out.e2k`, which is the Revit route's answer for the same building and the only yardstick
 that is not our own output. Nothing here is read over SMB.
 
@@ -2191,3 +2191,68 @@ winning; an elevator roof one higher, and sharing when there is no higher; a tag
 counting its own building's plans. WHAT THEY DO NOT: the real sets (the six-set run and the render
 above); a roof plan with its own level number; "UPPER ROOF"; a set whose highest numbered plan is
 mistitled.
+
+## 46. Step 37, done 2026-09-10: a pattern's cells abut, three and more of a size; a column stands alone
+
+Ian: "P1 is wrong — 4 plates, no columns, no walls; the plan reads 311 columns." The first thing
+was to LOOK, and the second was to build the instrument that shows it: `pdf-overlay --columns` is
+a census of the column reads — size to the inch, pen, and how many of that size stand edge to edge
+with a twin. On A101 (LEVEL P1 PLAN) it read: **248 of 311 are 36" × 48", black, and 245 of those
+abut a twin.** Overlaid at 150 dpi they are the walls: the concrete walls are drawn with a stipple
+fill (a "concrete" pattern), and Vectorworks writes that fill as its pattern's cells — closed,
+filled, one cell in size, shoulder to shoulder along every wall — each the size of a column. The
+reader took the cells as columns, and their boxes then "covered" the walls' own face lines, so the
+two-face reader made no walls from them either.
+
+**The rule** (`GeometryFilterService.PatternCellsAreNotColumns`, after the classification loop and
+before the face-line wall reader): a pattern is many of one thing. Three or more shapes read as
+columns by shape, of ONE size (within an inch), each edge to edge with the next (facing edges an
+inch apart or less, overlapping by half the shorter side), are its cells; a shape of the run's
+width abutting it is the run's last cell, cut short where the wall ends. Cells leave the columns,
+are kept on the geometry as `PatternCells` (the overlay draws them orange; `--columns` lists them),
+and their paths are fated `PatternCell` (discarded) so the ledger says what they were. Fates that
+pointed at a column are re-pointed.
+
+⚠ **The first cut was "two shapes that abut are cells" and the six-set run refused it**: 31138 lost
+five columns on L1 and L2 and one on L6, 31130 one on L1M. `members_diff.py` (new: which members a
+second `.e2k` lost or gained, per storey, with positions) put a finger on one, and the crop showed
+**GC15 (18" × 49") drawn as two filled pieces, 18 × 41 and 11 × 18, where a bearing wall crosses it**
+— one column in two pieces, which abut because they are one column. Hence "three and more of a
+size": a column in pieces is two or three pieces of different sizes; a pattern is many of one. A
+declared-size column is never a cell (31138's declared 1800 × 400s three in a row stay three columns).
+
+**Measured on six sets:**
+
+- **31170**: A101 columns 311 → 66 (245 cells), A201 287 → 42, A401 88 → 25, A403 148 → 33, A404
+  102 → 12; **the plans' own cells: 245 on A101 alone**. In the model: L1 columns 68 → 67; walls
+  214 → 209 net, with a handful of short walls changing storey (L5 −3, L3 −1 +1, L2 −1 +1, L4 +1 −1)
+  — the cells' boxes no longer cover face pairs, so the two-face reader makes a few new walls, and
+  step 34's stand-down then settles which sheet's copy stands. **Rendered before and after**: the
+  same rows of columns on L2–L5, two short dashes at L5's top edge now on L3.
+- **The five KOR sets: byte-identical `.e2k` to step 36** (`cmp`), once the rule asked for three of
+  a size. With the two-shape rule they were not, and that is written above.
+- Core: `APatternsCellsAbutAColumnStandsAloneTests` 8 (a run of three end to end, three side by
+  side, the cut-short end cell, TWO alone standing — GC15 in two pieces and two identical cells —
+  columns a bay apart, corners, declared sizes, the survivor's fate); `EveryPathHasExactlyOneFateTests`
+  carries the `PatternCell` case and the re-pointed column fate.
+
+**What P1 still is not.** The cells are gone; the walls they filled are still not read — A101 has
+14 walls, the enlargements 3–8. The stippled walls' faces are drawn in short pieces (A101: 9,299
+paths TooShort, the largest class on the page), and a face in pieces does not pair. That is the
+next rule of this class and it is step 27's for walls: *a face interrupted is still one face.* And
+the 38 "14 × 36" black shapes at every stall line (one per stall, 2.5 m apart) stand as columns —
+concrete-filled, column-shaped, unlabelled; too dense for a column grid, not a pattern (they do not
+abut). The drawing does not say what they are; they are kept and counted ("3 of 179 columns beyond
+the plate" on P1).
+
+**Instruments made permanent this step:** `pdf-overlay --columns` (the census, and the cells in
+orange); `docs/etabs-handoff/members_diff.py` (lost/gained members per storey with positions,
+tolerant of the one-unit re-rounding a moved offset causes); `docs/etabs-handoff/pdf_tiles.py`
+(ground truth through fitz: closed rectangles by size and whether they sit under a clip — it
+showed the cells are NOT single paths in the PDF, which is why the fix is in the classifier).
+
+WHAT THE CHECKS COVER: three cells end to end and side by side leaving no column; the cut-short
+end cell; two shapes alone standing (a column in pieces, and two identical cells); columns a bay
+apart; corner contact; declared sizes; the survivor's fate and the cells kept on the geometry.
+WHAT THEY DO NOT: the real sheets (the six-set run, the census and the crops above); a rotated
+pattern; a pattern of exactly two cells; the walls the cells filled.

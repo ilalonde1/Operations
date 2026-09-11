@@ -157,6 +157,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 else if (!s.IsFilled && !s.IsStroked && s.IsClipping && s.PathOrdinal >= 0) clipPieces.Add((i, s.PathOrdinal, s.Points));
             }
             var deferredPaper = new List<int>();
+            var columnByShape = new List<bool>();          // parallel to result.Columns: read by shape (a cell candidate) or by declared size
             var deferredNoInk = new List<int>();
             var doorwayOf = new Dictionary<int, int>();
             var clipOf = new Dictionary<int, int>();
@@ -256,6 +257,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         result.ColumnColors.Add(color);
                         result.ColumnIsAnnotation.Add(sub.IsAnnotation);
                         result.ColumnSizes.Add(declaredOnAxes ? (bboxW, bboxH) : (obox!.Length, obox.Thickness));
+                        columnByShape.Add(false);
                         Fate(PathReason.BecameColumnByDeclaredSize, result.Columns.Count - 1);
                         continue;
                     }
@@ -362,6 +364,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         result.ColumnColors.Add(color);
                         result.ColumnIsAnnotation.Add(sub.IsAnnotation);
                         result.ColumnSizes.Add((bboxW, bboxH));
+                        columnByShape.Add(true);
                         Fate(PathReason.BecameColumnByShape, result.Columns.Count - 1);
                     }
                     else Fate(pts.Count < 2 ? PathReason.TooFewPoints : PathReason.TooShort);
@@ -420,6 +423,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     if (ln >= FaceTraceMinOverlapMm)
                         FaceTrace($"line {ln / 25.4:0}\" w{s.LineWidth:0.00} at ({(s.Points[0].X + s.Points[1].X) / 2:0},{(s.Points[0].Y + s.Points[1].Y) / 2:0}) mm: {f.Reason}");
                 }
+            PatternCellsAreNotColumns(result, columnByShape, fates, firstFate);
             WallsFromFaceLines(result, fates, firstFate, minWallThicknessMm, maxWallThicknessMm, minWallLengthMm, minWallAspect);
             SlabEdgesFromLoops(result, fates, firstFate);
 
@@ -427,6 +431,107 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             {
                 var ordered = fates.Skip(firstFate).OrderBy(f => f.PathIndex).ToList();
                 for (int i = 0; i < ordered.Count; i++) fates[firstFate + i] = ordered[i];
+            }
+        }
+
+        /// <summary>Two cells abut when their facing edges are within this of each other: an inch of drafting.</summary>
+        private const double CellAbutMm = 25.4;
+
+        /// <summary>
+        /// A PATTERN'S CELLS ABUT, THREE AND MORE OF A SIZE; A COLUMN STANDS ALONE (intake step 37).
+        ///
+        /// A stippled or hatched wall arrives from Vectorworks as its fill pattern's cells: closed,
+        /// filled shapes one cell in size, shoulder to shoulder along the wall and cut short at its
+        /// ends. Each is the size of a column, so 31170's LEVEL P1 PLAN read 311 columns, 248 of
+        /// them 36" x 48" black cells edge to edge, and the walls they filled were not read at all.
+        ///
+        /// A pattern is many of one thing: three or more shapes of ONE size, each standing edge to
+        /// edge with the next (facing edges an inch apart or less, overlapping by half the shorter
+        /// side), are its cells; a shape of the same width abutting such a run is the run's last cell,
+        /// cut short where the wall ends. Two shapes alone are not a pattern — 31138's GC15 (18" x 49")
+        /// is drawn as two filled pieces, 18 x 41 and 11 x 18, where a bearing wall crosses it, and
+        /// the first cut of this rule ("two shapes that abut are cells") took the column with the
+        /// cells (2026-09-10, five columns on L1 and L2; seen in the crop, not argued). Cells leave
+        /// the columns, are kept in <see cref="ExtractedGeometry.PatternCells"/> for the overlay, and
+        /// their paths are fated <see cref="PathReason.PatternCell"/>, so the ledger says what they were.
+        ///
+        /// WHAT IT DOES NOT: a column declared by the schedule's own sizes (read by declared size,
+        /// never a cell); a column drawn in two or three pieces of different sizes; two cells that only
+        /// touch at a corner; a pattern whose cells are rotated (the boxes are the sheet's axes); one or
+        /// two cells alone in a wall shorter than three, which still read as columns; the wall the cells
+        /// filled, which this pass does not build.
+        /// </summary>
+        internal static void PatternCellsAreNotColumns(ExtractedGeometry result, IReadOnlyList<bool> columnByShape, IList<PathFate>? fates, int firstFate)
+        {
+            int n = result.Columns.Count;
+            if (n < 3) return;
+            bool[] byShape = Enumerable.Range(0, n).Select(i => i < columnByShape.Count && columnByShape[i]).ToArray();
+            (double W, double H) SizeOf(int i) => i < result.ColumnSizes.Count ? result.ColumnSizes[i] : (0.0, 0.0);
+            bool Abut(int i, int j)
+            {
+                var (wi, hi) = SizeOf(i); var (wj, hj) = SizeOf(j);
+                if (wi <= 0 || hi <= 0 || wj <= 0 || hj <= 0) return false;
+                double dx = Math.Abs(result.Columns[i].X - result.Columns[j].X), dy = Math.Abs(result.Columns[i].Y - result.Columns[j].Y);
+                bool sideBySide = Math.Abs(dx - (wi + wj) / 2) <= CellAbutMm && dy <= (hi + hj) / 2 - Math.Min(hi, hj) / 2;
+                bool endToEnd = Math.Abs(dy - (hi + hj) / 2) <= CellAbutMm && dx <= (wi + wj) / 2 - Math.Min(wi, wj) / 2;
+                return sideBySide || endToEnd;
+            }
+            bool SameSize(int i, int j)
+            {
+                var (wi, hi) = SizeOf(i); var (wj, hj) = SizeOf(j);
+                return Math.Abs(wi - wj) <= CellAbutMm && Math.Abs(hi - hj) <= CellAbutMm;
+            }
+            bool SharesASide(int i, int j)
+            {
+                var (wi, hi) = SizeOf(i); var (wj, hj) = SizeOf(j);
+                return Math.Abs(wi - wj) <= CellAbutMm || Math.Abs(hi - hj) <= CellAbutMm;
+            }
+
+            // runs: connected groups of same-size shapes that abut; three or more make a pattern
+            var group = Enumerable.Range(0, n).ToArray();
+            int Find(int i) { while (group[i] != i) i = group[i] = group[group[i]]; return i; }
+            for (int i = 0; i < n; i++)
+            {
+                if (!byShape[i]) continue;
+                for (int j = i + 1; j < n; j++)
+                    if (byShape[j] && SameSize(i, j) && Abut(i, j)) group[Find(i)] = Find(j);
+            }
+            var size = new int[n];
+            for (int i = 0; i < n; i++) if (byShape[i]) size[Find(i)]++;
+            var cell = new bool[n];
+            for (int i = 0; i < n; i++) cell[i] = byShape[i] && size[Find(i)] >= 3;
+
+            // the cut-short cell at a run's end: the run's width, abutting a cell of it
+            for (int i = 0; i < n; i++)
+            {
+                if (cell[i] || !byShape[i]) continue;
+                for (int j = 0; j < n; j++)
+                    if (cell[j] && SharesASide(i, j) && Abut(i, j)) { cell[i] = true; break; }
+            }
+            if (!cell.Any(c => c)) return;
+
+            // the survivors keep their order; every fate that pointed at a column is re-pointed, and
+            // a cell's path is fated as what it was
+            var newIndex = new int[n];
+            int kept = 0;
+            for (int i = 0; i < n; i++) newIndex[i] = cell[i] ? -1 : kept++;
+            for (int i = n - 1; i >= 0; i--)
+            {
+                if (!cell[i]) continue;
+                result.PatternCells.Add((result.Columns[i], i < result.ColumnSizes.Count ? result.ColumnSizes[i].WidthMm : 0, i < result.ColumnSizes.Count ? result.ColumnSizes[i].DepthMm : 0));
+                result.Columns.RemoveAt(i);
+                if (i < result.ColumnColors.Count) result.ColumnColors.RemoveAt(i);
+                if (i < result.ColumnIsAnnotation.Count) result.ColumnIsAnnotation.RemoveAt(i);
+                if (i < result.ColumnSizes.Count) result.ColumnSizes.RemoveAt(i);
+            }
+            if (fates is null) return;
+            for (int k = firstFate; k < fates.Count; k++)
+            {
+                var f = fates[k];
+                if (f.Reason is not (PathReason.BecameColumnByShape or PathReason.BecameColumnByDeclaredSize) || f.ObjectIndex is not int oi || oi < 0 || oi >= n) continue;
+                fates[k] = newIndex[oi] < 0
+                    ? new PathFate(f.PathIndex, PathFate.DispositionOf(PathReason.PatternCell), PathReason.PatternCell, null)
+                    : f with { ObjectIndex = newIndex[oi] };
             }
         }
 

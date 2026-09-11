@@ -63,6 +63,13 @@ public enum PathReason
     /// ledger does not call its pieces read (audit F2, 2026-09-08).
     /// </summary>
     FootingBoxNoLabel,
+    /// <summary>
+    /// A closed shape of column size that stands edge to edge with another closed shape: a cell of
+    /// a fill pattern — a hatch, a stipple, a tile — not a column (intake step 37). A pattern's
+    /// cells abut; a column stands alone. 31170's LEVEL P1 PLAN read 311 "columns", 248 of them
+    /// 36" x 48" black cells shoulder to shoulder along every stippled wall.
+    /// </summary>
+    PatternCell,
 }
 
 /// <summary>Input path index and its decision; ObjectIndex is zero-based in the corresponding geometry list.</summary>
@@ -81,7 +88,7 @@ public sealed record PathFate(int PathIndex, Disposition Disposition, PathReason
             or PathReason.PaperFill or PathReason.SheetFrame or PathReason.FrameEdgeLine
             or PathReason.GridLineExcluded or PathReason.ColumnTooSmall or PathReason.UnfilledSmallShape
             or PathReason.ColumnAspect or PathReason.TooShort or PathReason.TooFewPoints
-            or PathReason.CollapsedByThinning or PathReason.NoInk => Disposition.Discarded,
+            or PathReason.CollapsedByThinning or PathReason.NoInk or PathReason.PatternCell => Disposition.Discarded,
         _ => throw new ArgumentOutOfRangeException(nameof(reason), reason, "Unknown path reason."),
     };
 }

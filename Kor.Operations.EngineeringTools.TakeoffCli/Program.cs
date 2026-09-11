@@ -130,7 +130,7 @@ if (args.Length >= 1 && args[0].Equals("pdf-takeoff", StringComparison.OrdinalIg
                           $"{ptAssemblies.Count(a => a.Material == AssemblySchedule.Material.Stud)} stud; walls tagged with these codes are typed, partitions go to KOR_PARTITION");
     var ptRequest = new IntakeRequest(ptScale, ptOptions, ptMarkup, ptAssemblies);
     int ptWritten = 0, ptEmpty = 0, ptNotPlan = 0;
-    int ptTyped = 0, ptPartitions = 0, ptUntagged = 0, ptTags = 0, ptNotWalls = 0, ptDimensionStrings = 0;
+    int ptTyped = 0, ptPartitions = 0, ptUntagged = 0, ptTags = 0, ptNotWalls = 0, ptDimensionStrings = 0, ptPatternCells = 0;
     for (int p = ptFirst; p <= ptLast; p++)
     {
         SheetRecord record;
@@ -150,6 +150,7 @@ if (args.Length >= 1 && args[0].Equals("pdf-takeoff", StringComparison.OrdinalIg
         int annot = record.Context.AnnotationPaths;
         int found = geo.Slabs.Count + geo.Columns.Count + geo.Walls.Count + geo.Lines.Count;
         ptDimensionStrings += record.Context.DimensionStringsReadAsWalls;   // a dimension string is not a wall (step 35), on every set
+        ptPatternCells += geo.PatternCells.Count;                             // a pattern's cells are not columns (step 37)
         if (ptAssemblies.Count > 0)
         {
             ptTags += geo.WallTypeTags.Count;
@@ -217,6 +218,8 @@ if (args.Length >= 1 && args[0].Equals("pdf-takeoff", StringComparison.OrdinalIg
     Console.WriteLine($"{ptWritten} DXF written, {ptEmpty} page(s) empty, {ptNotPlan} page(s) not plan sheets.");
     if (ptDimensionStrings > 0)
         Console.WriteLine($"{ptDimensionStrings} wall(s) the two-face reader offered were dimension strings - a length written along them - and were not written.");
+    if (ptPatternCells > 0)
+        Console.WriteLine($"{ptPatternCells} column-sized shape(s) stood edge to edge in runs of three or more of a size - the cells of a fill pattern, not columns - and were not written.");
     if (ptAssemblies.Count > 0)
         Console.WriteLine($"wall types: {ptTags} tag(s) on the plans; {ptTyped} wall(s) typed, of which {ptPartitions} partition(s) sent to KOR_PARTITION (not modelled); {ptNotWalls} untagged on plans that tag their walls, so not walls (KOR_PARTITION); {ptUntagged} untagged on plans that do not tag, modelled as drawn.");
     if (ptEmpty > 0 && ptMarkup)
@@ -704,10 +707,10 @@ if (args.Length >= 1 && args[0].Equals("pdf-inventory", StringComparison.Ordinal
 // OVERLAY what the intake extracted on the page it extracted it from, so a gap is seen rather than
 // counted: slabs grey, columns blue, leftover lines red, mark-shaped words green. The two pictures
 // that found the missing WALL layer on 2026-09-08 were made by hand; this is that picture in one verb.
-// Usage: takeoff pdf-overlay <pdf> <page> <out.png> --scale N [--dpi 40] [--rules-db <conn>]
+// Usage: takeoff pdf-overlay <pdf> <page> <out.png> --scale N [--dpi 40] [--walls] [--columns] [--rules-db <conn>]
 if (args.Length >= 1 && args[0].Equals("pdf-overlay", StringComparison.OrdinalIgnoreCase))
 {
-    if (args.Length < 4) { Console.Error.WriteLine("Usage: takeoff pdf-overlay <pdf> <page> <out.png> --scale N [--dpi 40] [--rules-db <conn>]"); return 1; }
+    if (args.Length < 4) { Console.Error.WriteLine("Usage: takeoff pdf-overlay <pdf> <page> <out.png> --scale N [--dpi 40] [--walls] [--columns] [--rules-db <conn>]"); return 1; }
     string ovPdf = args[1], ovOut = args[3];
     if (!File.Exists(ovPdf)) { Console.Error.WriteLine($"PDF not found '{ovPdf}'."); return 2; }
     if (!int.TryParse(args[2], out int ovPage) || ovPage < 1) { Console.Error.WriteLine("Page must be a positive integer."); return 2; }
@@ -802,6 +805,12 @@ if (args.Length >= 1 && args[0].Equals("pdf-overlay", StringComparison.OrdinalIg
             OvPoly(new[] { (cx - w / 2, cy - d / 2), (cx + w / 2, cy - d / 2), (cx + w / 2, cy + d / 2), (cx - w / 2, cy + d / 2) }, blue, 1, close: true);
         var c = ToPixel(cx, cy); OvPlot(c.X, c.Y, blue, 2);
     }
+    // the pattern cells that left the columns (step 37), orange: a person can see they were a fill
+    // pattern along a wall and not two members touching
+    var orange = new Rgba32(240, 140, 0);
+    foreach (var (centre, w, d) in ovGeo.PatternCells)
+        if (w > 0 && d > 0)
+            OvPoly(new[] { (centre.X - w / 2, centre.Y - d / 2), (centre.X + w / 2, centre.Y - d / 2), (centre.X + w / 2, centre.Y + d / 2), (centre.X - w / 2, centre.Y + d / 2) }, orange, 1, close: true);
     int marks = 0;
     foreach (var wd in ovContent.Words)
     {
@@ -841,6 +850,32 @@ if (args.Length >= 1 && args[0].Equals("pdf-overlay", StringComparison.OrdinalIg
     foreach (var f in unlabelled) Console.WriteLine($"  footing {f.Mark} at ({f.Centre.X:0},{f.Centre.Y:0}) mm: no label on the plan names it");
     foreach (var u in unanswered) Console.WriteLine($"  label {u}: no footing read answers it");
     if (ovGeo.Doorways.Count > 0) Console.WriteLine($"  doorways {ovGeo.Doorways.Count} (yellow): openings knocked out of walls with paper fills; those walls are their piers");
+    // --columns: the column reads as a census — size (short x long, to the inch), pen, and how many of
+    // that size stand shoulder to shoulder with a twin (a pattern's cells abut; a column stands alone).
+    // Built for 31170's P1 plan, where 311 "columns" were the cells of the walls' fill pattern (step 37).
+    if (args.Any(a => a.Equals("--columns", StringComparison.OrdinalIgnoreCase)) && ovGeo.Columns.Count > 0)
+    {
+        var cols = ovGeo.Columns.Select((c, i) => (Centre: c, Size: i < ovGeo.ColumnSizes.Count ? ovGeo.ColumnSizes[i] : (0.0, 0.0),
+                                                  Pen: i < ovGeo.ColumnColors.Count ? $"#{ovGeo.ColumnColors[i].R:X2}{ovGeo.ColumnColors[i].G:X2}{ovGeo.ColumnColors[i].B:X2}" : "?")).ToList();
+        static (int, int) Inches((double W, double D) s) => ((int)Math.Round(Math.Min(s.W, s.D) / 25.4), (int)Math.Round(Math.Max(s.W, s.D) / 25.4));
+        int abutting = 0;
+        var abuts = new bool[cols.Count];
+        for (int i = 0; i < cols.Count; i++)
+            for (int j = 0; j < cols.Count && !abuts[i]; j++)
+            {
+                if (i == j || Inches(cols[i].Size) != Inches(cols[j].Size)) continue;
+                double dx = Math.Abs(cols[i].Centre.X - cols[j].Centre.X), dy = Math.Abs(cols[i].Centre.Y - cols[j].Centre.Y);
+                double w = cols[i].Size.Item1, d = cols[i].Size.Item2;
+                bool alongX = Math.Abs(dx - w) <= 25 && dy <= 25, alongY = Math.Abs(dy - d) <= 25 && dx <= 25;
+                if (alongX || alongY) { abuts[i] = true; abutting++; }
+            }
+        Console.WriteLine($"  columns by size (--columns): {cols.Count} read, {abutting} standing edge to edge with a twin of the same size; {ovGeo.PatternCells.Count} pattern cell(s) already left the columns (orange)");
+        foreach (var (centre, w, d) in ovGeo.PatternCells.Take(40))
+            Console.WriteLine($"    cell {Inches((w, d)).Item1,3} x {Inches((w, d)).Item2,3} in at ({centre.X:0}, {centre.Y:0}) mm");
+        if (ovGeo.PatternCells.Count > 40) Console.WriteLine($"    ... and {ovGeo.PatternCells.Count - 40} more cells");
+        foreach (var g in cols.Select((c, i) => (c, i)).GroupBy(x => (Inches(x.c.Size), x.c.Pen)).OrderByDescending(g => g.Count()).Take(12))
+            Console.WriteLine($"    {g.Key.Item1.Item1,3} x {g.Key.Item1.Item2,3} in  {g.Key.Pen}: {g.Count(),4}, of which {g.Count(x => abuts[x.i]),4} abut a twin");
+    }
     static double OvWallLen(WallPanel w) => Math.Sqrt(Math.Pow(w.End.X - w.Start.X, 2) + Math.Pow(w.End.Y - w.Start.Y, 2));
     if (ovGeo.Walls.Count > ovFirstFaceWall)
     {
@@ -5008,7 +5043,7 @@ public static class TakeoffCliHelp
         new("pdf-inventory", "takeoff pdf-inventory <pdf> [--pages A-B] [--scale N] [--rules-db <conn>] [--json out.json]", "Ledger every content class on each page: read, discarded, unread, ignored, unaccounted."),
         new("dxf-census", "takeoff dxf-census <beforeDir> <afterDir> [--only LAYER,LAYER]", "Which layers moved between two folders of DXFs written from the same pages; exit 2 when a layer outside --only moved."),
         new("intake-baseline", "takeoff intake-baseline <stickFilesDir> <outDir>", "Write the thirteen plan DXFs of the five stick files to a step folder, for dxf-census."),
-        new("pdf-overlay", "takeoff pdf-overlay <pdf> <page> <out.png> --scale N [--dpi 40] [--rules-db <conn>]", "Draw what the intake extracted over the rasterised page."),
+        new("pdf-overlay", "takeoff pdf-overlay <pdf> <page> <out.png> --scale N [--dpi 40] [--walls] [--columns] [--rules-db <conn>]", "Draw what the intake extracted over the rasterised page."),
         new("pdf-vs-dxf", "takeoff pdf-vs-dxf <pdf> <dxfFolder> --scale N [--rules-db <conn>]", "Compare the PDF side's reads against a Revit DXF export of the same sheets."),
         new("set-diff", "takeoff set-diff <old.pdf> <new.pdf> --scale N [--sheet S2.02] [--overlay <dir>] [--rules-db <conn>]", "Reissue Impact: what changed between two issues, sheet by sheet, as objects — columns, walls, footings, grid, storeys, schedules; --overlay paints each changed sheet."),
         new("markup-list", "takeoff markup-list <pdf> --scale N [--pages A-B] [--rules-db <conn>]", "A mark-up as a list of instructions: each annotation's words, what it asks, how far, where on the grid, beside which member."),

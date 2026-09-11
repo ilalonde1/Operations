@@ -154,6 +154,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         /// Width = X extent, Depth = Y extent.
         /// </summary>
         public List<(double WidthMm, double DepthMm)> ColumnSizes { get; } = new();
+        /// <summary>A PATTERN'S CELLS ABUT; A COLUMN STANDS ALONE (intake step 37): the column-sized closed shapes that stood edge to edge with another and left the columns, centre and size, so the overlay can draw them and a person can check they were a fill pattern and not two members touching.</summary>
+        public List<((double X, double Y) Centre, double WidthMm, double DepthMm)> PatternCells { get; } = new();
         public List<(byte R, byte G, byte B)> LineColors   { get; } = new();
 
         /// <summary>

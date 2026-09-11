@@ -183,6 +183,12 @@ internal static class FateFixture
         (Line(48000, 26000, 40000, 26000), PathReason.BecameSlabEdge),
         (Line(40000, 26000, 40000, 20000), PathReason.BecameSlabEdge),
         (Rect(600, 800, 43000, 22000), PathReason.BecameColumnByShape),
+        // three column-sized cells of one size edge to edge: a fill pattern's cells, not columns (step 37)
+        // — and the column read after them keeps a fate that points at itself once they are gone
+        (Rect(900, 1200, 60000, 30000) with { Color = (0, 0, 0) }, PathReason.PatternCell),
+        (Rect(900, 1200, 60000, 31200) with { Color = (0, 0, 0) }, PathReason.PatternCell),
+        (Rect(900, 1200, 60000, 32400) with { Color = (0, 0, 0) }, PathReason.PatternCell),
+        (Rect(600, 800, 63000, 30000), PathReason.BecameColumnByShape),
         // three at the same spacing: a hatch, still lines
         (Line(10000, 12000, 13000, 12000), PathReason.EmittedAsLine),
         (Line(10000, 12300, 13000, 12300), PathReason.EmittedAsLine),
