@@ -131,6 +131,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         public List<string?> WallTypeCodes { get; } = new();
         /// <summary>Parallel to <see cref="Walls"/>: true when the wall's tagged type is a partition (stud, gypsum).</summary>
         public List<bool> WallIsPartition { get; } = new();
+        /// <summary>A DIMENSION STRING IS NOT A WALL (intake step 35). Parallel to <see cref="Walls"/>: true when the outline holds a length written along it, which no wall does (<see cref="Intake.DimensionStrings.StandDownWalls"/>); not written, not tagged, not counted as a wall.</summary>
+        public List<bool> WallIsDimensionString { get; } = new();
         /// <summary>Every assembly-code tag on the sheet, in millimetres, whether or not a wall took it — written to KOR_WALLTYPE.</summary>
         public List<(string Code, double X, double Y)> WallTypeTags { get; } = new();
         /// <summary>Filled loops with wall-proportioned boxes but more than four vertices; not split.</summary>

@@ -100,6 +100,7 @@ public static class WallTypeTagging
         for (int i = 0; i < geometry.Walls.Count; i++)
         {
             string? code = codes[i];
+            if (i < geometry.WallIsDimensionString.Count && geometry.WallIsDimensionString[i]) { geometry.WallTypeCodes.Add(null); geometry.WallIsPartition.Add(false); continue; }   // a dimension string is not a wall (step 35): neither typed nor a footprint
             geometry.WallTypeCodes.Add(code);
             bool partition = code is not null
                 ? byCode[code].Material == AssemblySchedule.Material.Stud

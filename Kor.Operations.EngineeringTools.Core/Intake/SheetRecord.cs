@@ -108,6 +108,8 @@ public sealed record SheetContext
     public int PaperPaths { get; init; }
     /// <summary>Column schedule rows the reader offered whose mark is not shaped like a mark ("PC9ETON:", "EXTENTS"); not rows.</summary>
     public int ScheduleRowsNotMarks { get; init; }
+    /// <summary>Walls the two-face reader offered whose outline holds a length written along it: dimension strings, flagged and not written (step 35).</summary>
+    public int DimensionStringsReadAsWalls { get; init; }
     public int InkedPaths { get; init; }
     public IReadOnlySet<int> InkedPathIndices { get; init; } = new HashSet<int>();
 }

@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using Kor.Operations.EngineeringTools.Dxf;
 using Kor.Operations.EngineeringTools.PdfToSafe;
 using Kor.Operations.EngineeringTools.QuantityTakeoff;
 
@@ -83,6 +84,44 @@ public static class DimensionStrings
             result.Add(new Dimension(i, w.Text.Trim(), parsed.Mm, x, y, vertical, parsed.BareNumber, from, to, gap));
         }
         return result;
+    }
+
+    /// <summary>
+    /// A DIMENSION STRING IS NOT A WALL (intake step 35). Two stacked dimension lines run parallel
+    /// an inch apart on paper — four feet at 1/4" — and the two-face reader pairs them as a wall
+    /// 48 in thick and a bay long, standing outside the building. 31170's enlargements carry two
+    /// rows along the top and one down the side, so every storey came out with short walls above
+    /// and below its plate that survived every stand-down (a tag lay within reach). Ian: "some of
+    /// this stuff I don't think should be here?" — it was the dimension strings.
+    ///
+    /// A wall carries its thickness inside its faces, never its length. A wall whose outline holds
+    /// a dimension word running the wall's way and stating a length greater than the wall is thick
+    /// is a dimension string; it is flagged in <see cref="ExtractedGeometry.WallIsDimensionString"/>
+    /// so the exporter, the tagging and the counts all leave it out, and the count is returned so
+    /// the sheet says what it read and did not write.
+    ///
+    /// WHAT IT DOES NOT: a wall whose length dimension a drafter wrote inside its faces (none seen
+    /// on six sets); a dimension string whose text the tokeniser split ("29'-3" and the inch mark
+    /// apart); a single dimension line paired with a real wall face, which has no word inside.
+    /// </summary>
+    public static int StandDownWalls(ExtractedGeometry geometry, IReadOnlyList<Dimension> dimensions)
+    {
+        ArgumentNullException.ThrowIfNull(geometry);
+        ArgumentNullException.ThrowIfNull(dimensions);
+        geometry.WallIsDimensionString.Clear();
+        int stoodDown = 0;
+        foreach (var wall in geometry.Walls)
+        {
+            bool wallVertical = Math.Abs(wall.End.Y - wall.Start.Y) > Math.Abs(wall.End.X - wall.Start.X);
+            var outline = wall.Outline.Select(p => new DxfPoint(p.X, p.Y)).ToList();
+            bool isString = outline.Count >= 3 && dimensions.Any(d =>
+                d.Vertical == wallVertical
+                && d.ValueMm > wall.ThicknessMm + AgreeMm                          // its own thickness, within an inch of drafting, is the wall's
+                && LoopGeometry.PointInPolygon(new DxfPoint(d.XMm, d.YMm), outline));
+            geometry.WallIsDimensionString.Add(isString);
+            if (isString) stoodDown++;
+        }
+        return stoodDown;
     }
 
     /// <summary>

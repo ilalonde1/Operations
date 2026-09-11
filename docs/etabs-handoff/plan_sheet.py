@@ -107,4 +107,5 @@ def svg(path, out, title):
     io.open(out, 'w', encoding='utf-8').write('\n'.join(parts))
     print(f'{out}  ({len(live)} storeys drawn)')
 
-svg(sys.argv[1], sys.argv[2], sys.argv[3])
+if __name__ == '__main__':          # outside_plate.py imports read() and must not render
+    svg(sys.argv[1], sys.argv[2], sys.argv[3])

@@ -214,6 +214,9 @@ public static class DrawingIntake
         IReadOnlyList<DimensionStrings.Dimension> dimensions = classify && !request.MarkupOnly
             ? DimensionStrings.Read(content, geometry.GridAxes, scaleFactor, furniture)
             : Array.Empty<DimensionStrings.Dimension>();
+        // a dimension string is not a wall (step 35): two stacked strings pair as a wall four feet
+        // thick and a bay long; the length written inside says what it is
+        int dimensionStringsReadAsWalls = classify ? DimensionStrings.StandDownWalls(geometry, dimensions) : 0;
         // a wall is what its tag says it is (step 33): with the set's assembly schedule in hand, each
         // wall takes the nearest code tag within reach, and a partition's goes to a layer the model does not read
         if (classify && request.Assemblies is { Count: > 0 })
@@ -300,7 +303,7 @@ public static class DrawingIntake
                 NonHorizontalLetters = nonHorizontal, InvisibleLetters = invisible, NonRgbLetters = nonRgb,
                 ClippingOperations = clipOps, Fonts = fonts.Count,
                 AnnotationPaths = annotationPaths, NoInkPaths = noInk, PaperPaths = paper, InkedPaths = inked,
-                ScheduleRowsNotMarks = rowsNotMarks,
+                ScheduleRowsNotMarks = rowsNotMarks, DimensionStringsReadAsWalls = dimensionStringsReadAsWalls,
                 InkedPathIndices = inkedPathIndices,
             },
         };

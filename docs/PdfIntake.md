@@ -1,15 +1,15 @@
 # PDF intake — what it does today, and what it leaves on the page
 
-## 0. START HERE (state as of 2026-09-10, after step 34)
+## 0. START HERE (state as of 2026-09-10, after step 35)
 
 A session picking this up cold reads this section, then §30 (what the PDF alone gives), then the
-last three step sections (§41, §42, §43). It does not need to read §1–§29 to work; those are the record of how each
+last three step sections (§42, §43, §44). It does not need to read §1–§29 to work; those are the record of how each
 rule was arrived at, and are read when a rule is being changed.
 
 **Where the data is.** `%LOCALAPPDATA%\Temp\kor-drawings\stickfiles` holds the six PDFs (31065,
 31130, 31138, 31168, 31202, and `31170-01-arch` — the ARCHITECT's set for 31170, the only one from
 another office and the measure of whether a rule is universal). `...\kor-drawings\harness` holds one folder per job, the banked `.e2k`
-baselines named for the step that produced them (`pdf-only-<job>-s34.e2k` is the most recent), and
+baselines named for the step that produced them (`pdf-only-<job>-s35.e2k` is the most recent), and
 `revit-31168\out.e2k`, which is the Revit route's answer for the same building and the only yardstick
 that is not our own output. Nothing here is read over SMB.
 
@@ -37,8 +37,12 @@ Parkade plates agree closely (P1 77,182 sq ft against Revit's 76,967), and since
 plates agree within 0.1% on every storey that has one (A-L27 9,753 against 9,743, B-L29 9,735
 against 9,726, C-L4 15,002 against 14,989). The tower wall count is now the largest gap.
 
-**The open list, largest first.** Each is one rule, and each is measured on the five sets before it
-is kept:
+**The open list, largest first.** Each is one rule, and each is measured on the six sets before it
+is kept. ⚠ Step 35 (§44) is the second rule this month that the six-set run REFUSED in its first
+cut — a removal that was right on the architect's set and wrong on four of KOR's, because the
+plate reader reads fragments there. A rule that acts on "outside the plate" is not universal until
+the plate is; until then such rules COUNT and LIST. The count is now printed per storey ("n of m
+wall(s) … beyond every plate read for the storey") and `outside_plate.py` gives it on an `.e2k`:
 
 1. **Finish or abandon the boundary walk** (§38) — stashed, worth +13 storeys, held back by one red
    gate and an 11% corner notch. L15–L26 read 8,721 and 8,699 sq ft against Revit's 9,831 and 9,835
@@ -2065,3 +2069,78 @@ modelled once with the first copy kept and a crossing wall untouched; a storey w
 and no partitions losing nothing to the first two clauses. WHAT THEY DO NOT: the real sets (the six-set
 run and the two renders above); columns and plates, which no clause touches; the reach and the
 ten-degree bound on a real sheet's imprecision.
+
+## 44. Step 35, done 2026-09-10: a dimension string is not a wall — and across sheets, a ring inside the floor is not a second floor
+
+Ian, from the second ETABS screenshot: *"some of this stuff I don't think should be here? … Or maybe
+it should - I dunno!!"* Two things were on the storey sheet that a drawing does not put there: small
+plates inside the footprint (17 floors on 9 storeys), and short walls above and below every storey's
+plate. The rule set out was "structure stands on a floor"; what landed is narrower and true.
+
+**What the short walls were.** Overlaid the intake's reading on A412 (LEVEL 2 PLAN (NE)) and looked:
+the purple wall boxes along the top of the sheet sit on the **dimension strings** — two stacked rows
+of dimensions an inch apart on paper, four feet at 1/4", paired by the two-face reader as walls 48 in
+thick and a bay long ("48 in thick: 10 wall(s), length 142–475 in" on that sheet), the vertical
+strings down the right edge as 24 in walls all exactly 166 in long. A tag lay within reach, so they
+survived step 34. **A wall carries its thickness inside its faces, never its length**: a wall whose
+outline holds a dimension word running the wall's way and stating a length more than an inch of
+drafting greater than the wall is thick is a dimension string (`DimensionStrings.StandDownWalls`,
+flag `ExtractedGeometry.WallIsDimensionString`, parallel to `Walls`; the exporter leaves it out, the
+tagging neither types it nor makes it a partition, the console counts it on its own line, the sheet
+record carries the count as `DimensionStringsReadAsWalls`). The reader that knows what a dimension
+string is already existed (`DimensionStrings.Read`, brief 27); the rule is one method beside it.
+
+**What the small plates were — and what the first cut got wrong.** Across the sheets of one storey
+the composer knew neither a ring inside a floor nor a member outside every plate. The first cut of
+`SettleFloorsAcrossSheets` made a ring inside another sheet's floor an OPENING and REMOVED a wall or
+column standing beyond every plate. The six-set run refused both, and rule 10 applied:
+
+- The removal: **31130 walls 191 → 58, 31202 360 → 247, 31065 400 → 304, 31168 1,209 → 1,061**, and
+  31130 L0/P1's columns 97 → 10. One sentence: a member outside every plate is a stray only when the
+  floor was read whole, and on KOR's sets the plate reader still reads fragments (31202 places 2
+  plates on 13 storeys), so real structure "stood outside". On 31170 it had bought 3 P1 columns and
+  had not touched the dashes at all (they were within reach of a plate on their own sheet). **Now it
+  counts and lists — "L2: 1 of 39 wall(s) … stand beyond every plate read for the storey — strays, or
+  a floor the tool did not read whole; nothing removed" — and removes nothing.** The count is the
+  per-storey measure of how whole the floor was read; `docs/etabs-handoff/outside_plate.py` is the
+  same measure on a finished `.e2k`.
+- The opening: 31065 L19 has each tower's roof drawn on two sheets (ROOF PLAN concrete outline,
+  ELEVATOR ROOF PLAN), the second reading a smaller plate inside the first — the same roof again, not
+  a hole; cutting it as one would have holed both roofs. **Now a plate wholly inside a larger plate
+  from another sheet leaves the floors and is listed as "a shaft, a stair, or the same floor drawn
+  again in part; not a second floor, and not cut as an opening, which the drawing does not say".**
+  Within one sheet the classifier's ring rule still applies as before.
+- A plate the storey's largest does not contain is left as read and said — "another building, a
+  ramp, a canopy, a podium edge, or a floor read twice"; on 31168 L3 it is tower B beside tower A.
+  The first wording called it "kept", which this pass cannot promise: 31170's 1,008 sq ft L1 sliver
+  was refused downstream by the composer's own "nothing stands under it" gate (`E2kGeometryComposer`,
+  orphan plates), and the message said "kept" while the model did not carry it.
+
+**Measured on six sets:**
+
+- **31170**: walls 228 → 215 by storey (L2 43 → 39, L3–L6 −2 each, L7 −1); **223 dimension-string
+  "walls" flagged on the plans**; floors 17 → 8 (the rings out, no openings cut); columns 351
+  unchanged. **Rendered**: the two dashes above L2 gone, two of the three below every storey gone.
+  One remains per storey at (6,925, −24,143): the 4'-7" bay whose text sits above its pair rather
+  than between the lines — listed by the pass and by `outside_plate.py`, not caught. The 3 columns
+  beyond L1's plate are the P1 plan's, listed.
+- **The five KOR sets: walls and columns identical to step 34 on every storey** (`storey_counts.py`:
+  0 storeys changed on each). Plates: 31065 L19 4 → 2 (the two second readings out; **rendered
+  before and after**, one plate per tower, everything else identical); the other four identical.
+  **0 dimension strings flagged on any KOR set** — their walls are filled, not paired from faces.
+- Core: `ADimensionStringIsNotAWallTests` 4, `StructureStandsOnAFloorTests` 4; the step-34 tests
+  unchanged (18 green together); full suite below.
+
+**Open, named:** a dimension string whose only text sits above its pair (one per storey on 31170);
+a real wall with its length written inside it, which this rule would flag (none seen on six sets);
+the 15-m line along L6's north edge (the L5 plan) — unknown, inside the plate, left; ROOF on L8 not
+L7; P1's 311 hatch cells; the tower-plate gap on KOR sets, which the "n of m beyond every plate"
+count now names storey by storey.
+
+WHAT THE CHECKS COVER: a feet-and-inches length inside a horizontal pair flagged; a thickness inside a
+wall not; the word running the wall's way; a flagged wall neither typed nor a partition; a ring inside
+another sheet's floor leaving the floors and not becoming an opening; members beyond every plate
+counted "n of m" and left; a storey with no plate untouched and unmentioned; a plate beyond the largest
+left and said without "kept". WHAT THEY DO NOT: the real sets (the six-set run and the renders above);
+the exporter leaving a flagged wall out (measured on the DXF census); a split dimension token; whether
+the composer's later gates keep what this pass leaves.

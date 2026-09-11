@@ -221,6 +221,7 @@ public static class SheetViews
                 g.WallIsAnnotation.Add(i < geometry.WallIsAnnotation.Count && geometry.WallIsAnnotation[i]);
                 g.WallTypeCodes.Add(i < geometry.WallTypeCodes.Count ? geometry.WallTypeCodes[i] : null);
                 g.WallIsPartition.Add(i < geometry.WallIsPartition.Count && geometry.WallIsPartition[i]);
+                g.WallIsDimensionString.Add(i < geometry.WallIsDimensionString.Count && geometry.WallIsDimensionString[i]);
             }
             g.FirstFaceWall = Enumerable.Range(0, Math.Min(geometry.FirstFaceWall, geometry.Walls.Count)).Count(i => wallOwner[i] == k);
             foreach (var d in geometry.Doorways)

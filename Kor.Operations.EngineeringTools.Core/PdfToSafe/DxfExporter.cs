@@ -166,6 +166,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             for (int i = 0; i < geometry.Walls.Count; i++)
             {
                 if (excludedColors != null && i < geometry.WallColors.Count && excludedColors.Contains(geometry.WallColors[i])) continue;
+                if (i < geometry.WallIsDimensionString.Count && geometry.WallIsDimensionString[i]) continue;   // a dimension string is not a wall (step 35)
                 var pts = FilterPts(Ctr(geometry.Walls[i].Outline.ToList()));
                 if (pts.Count >= 3)
                 {

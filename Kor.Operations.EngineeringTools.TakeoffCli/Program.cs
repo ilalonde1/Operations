@@ -130,7 +130,7 @@ if (args.Length >= 1 && args[0].Equals("pdf-takeoff", StringComparison.OrdinalIg
                           $"{ptAssemblies.Count(a => a.Material == AssemblySchedule.Material.Stud)} stud; walls tagged with these codes are typed, partitions go to KOR_PARTITION");
     var ptRequest = new IntakeRequest(ptScale, ptOptions, ptMarkup, ptAssemblies);
     int ptWritten = 0, ptEmpty = 0, ptNotPlan = 0;
-    int ptTyped = 0, ptPartitions = 0, ptUntagged = 0, ptTags = 0, ptNotWalls = 0;
+    int ptTyped = 0, ptPartitions = 0, ptUntagged = 0, ptTags = 0, ptNotWalls = 0, ptDimensionStrings = 0;
     for (int p = ptFirst; p <= ptLast; p++)
     {
         SheetRecord record;
@@ -149,12 +149,14 @@ if (args.Length >= 1 && args[0].Equals("pdf-takeoff", StringComparison.OrdinalIg
         var geo = record.Geometry;
         int annot = record.Context.AnnotationPaths;
         int found = geo.Slabs.Count + geo.Columns.Count + geo.Walls.Count + geo.Lines.Count;
+        ptDimensionStrings += record.Context.DimensionStringsReadAsWalls;   // a dimension string is not a wall (step 35), on every set
         if (ptAssemblies.Count > 0)
         {
             ptTags += geo.WallTypeTags.Count;
             ptTyped += geo.WallTypeCodes.Count(c => c is not null);
             for (int wi = 0; wi < geo.Walls.Count; wi++)
             {
+                if (wi < geo.WallIsDimensionString.Count && geo.WallIsDimensionString[wi]) continue;   // counted on its own line
                 bool typed = wi < geo.WallTypeCodes.Count && geo.WallTypeCodes[wi] is not null;
                 bool outOfModel = wi < geo.WallIsPartition.Count && geo.WallIsPartition[wi];
                 if (typed && outOfModel) ptPartitions++;
@@ -213,6 +215,8 @@ if (args.Length >= 1 && args[0].Equals("pdf-takeoff", StringComparison.OrdinalIg
 
     Console.WriteLine();
     Console.WriteLine($"{ptWritten} DXF written, {ptEmpty} page(s) empty, {ptNotPlan} page(s) not plan sheets.");
+    if (ptDimensionStrings > 0)
+        Console.WriteLine($"{ptDimensionStrings} wall(s) the two-face reader offered were dimension strings - a length written along them - and were not written.");
     if (ptAssemblies.Count > 0)
         Console.WriteLine($"wall types: {ptTags} tag(s) on the plans; {ptTyped} wall(s) typed, of which {ptPartitions} partition(s) sent to KOR_PARTITION (not modelled); {ptNotWalls} untagged on plans that tag their walls, so not walls (KOR_PARTITION); {ptUntagged} untagged on plans that do not tag, modelled as drawn.");
     if (ptEmpty > 0 && ptMarkup)

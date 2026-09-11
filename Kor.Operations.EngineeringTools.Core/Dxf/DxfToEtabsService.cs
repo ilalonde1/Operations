@@ -1619,6 +1619,13 @@ public static class DxfToEtabsService
         // 1/4" sheet lies exactly where the 1/8" sheet drew the wall.
         warnings.AddRange(StandDownToTaggedPartitions(parsed, StandDownReachInches / modelUnitInInches));
 
+        // ACROSS THE SHEETS OF ONE STOREY, A PLATE INSIDE A LARGER PLATE IS NOT A SECOND FLOOR
+        // (intake step 35). Ian, from the storey sheet: "some of this stuff I don't think should be
+        // here? Or maybe it should - I dunno." Where the drawing does not say, the tool does not
+        // guess: the ring is not a floor, it is not cut as a hole either, and what stands beyond the
+        // plates is counted and left. The removal this pass first did cost four KOR sets their walls.
+        warnings.AddRange(SettleFloorsAcrossSheets(parsed, StandDownReachInches / modelUnitInInches, modelUnitInInches * modelUnitInInches / 144.0));
+
         // What this job's own drawings say a wall is, before anything is written. A portfolio rule
         // cannot tell a 42" tower core from two faces paired across a parkade corridor; the job's
         // own distribution can, and it costs nothing to measure. See JobCalibration.
@@ -2592,6 +2599,106 @@ public static class DxfToEtabsService
 
     /// <summary>A hand's width: how far from a partition's footprint an untagged twin may sit. The bridge tolerance's own value, in inches, scaled to the model's unit by the caller.</summary>
     private const double StandDownReachInches = 6.0;
+
+    /// <summary>
+    /// ACROSS THE SHEETS OF ONE STOREY, A PLATE INSIDE A LARGER PLATE IS NOT A SECOND FLOOR — and
+    /// that is all the tool knows (intake step 35, composer side).
+    ///
+    /// Within one sheet the classifier makes a ring inside a floor an opening and refuses a plate
+    /// lying over one already read. Across sheets it did neither, so on 31170 the stair and elevator
+    /// boxes one enlargement closed became plates of their own inside the footprint the key plan
+    /// closed: 17 floors on 9 storeys, of which 10 were rings. Per storey, with every sheet in the
+    /// model's frame, a plate wholly inside a larger plate from another sheet is taken out of the
+    /// floors and LISTED — a shaft, a stair, or the same floor drawn again in part; whether it is a
+    /// hole the drawing does not say, so it is not cut as one.
+    ///
+    /// A wall or a column standing beyond every plate of its storey by more than a hand's width is
+    /// COUNTED and listed, never removed. The first cut of this pass removed them, and the six-set
+    /// run said why not (2026-09-10): 31130 walls 191 → 58, 31202 360 → 247, 31065 400 → 304,
+    /// 31168 1,209 → 1,061, hundreds of columns — a member outside every plate is a stray only
+    /// when the floor was read whole, and on KOR's sets the plate reader still reads fragments, so
+    /// real structure "stood outside". The count is a measure of how whole the storey's floor was
+    /// read; the tool does not act on it. A plate the storey's largest does not contain is left as
+    /// read and said — another building, a ramp, a canopy, a podium edge, or a floor read twice.
+    ///
+    /// WHAT IT DOES NOT: a ring inside a floor on the SAME sheet (the classifier's, as before); a
+    /// plate that overlaps the larger one without lying inside it; whether the composer's own gates
+    /// downstream (a plate nothing stands under, two plates on one place) keep what this pass leaves.
+    /// </summary>
+    internal static IReadOnlyList<string> SettleFloorsAcrossSheets(
+        List<(PlanSheetInfo Sheet, PlanGeometrySet Geometry, IReadOnlyList<string> Stories)> parsed, double reach, double sqFtPerUnitArea)
+    {
+        var warnings = new List<string>();
+        var storeys = parsed.SelectMany(p => p.Stories).Distinct().ToList();
+        int notSecondFloors = 0, wallsBeyond = 0, columnsBeyond = 0;
+        string SqFt(double area) => (area * sqFtPerUnitArea).ToString("N0");
+        var listed = new List<string>();
+
+        foreach (string storey in storeys)
+        {
+            var here = parsed.Where(p => p.Stories.Contains(storey)).ToList();
+            var plates = here.SelectMany(p => p.Geometry.Slabs.Select(s => (Sheet: p, Slab: s))).ToList();
+            if (plates.Count == 0) continue;
+
+            // a plate wholly inside a larger plate from another sheet is not a second floor
+            foreach (var (sheet, slab) in plates.OrderBy(x => x.Slab.Area).ToList())
+            {
+                var container = plates.FirstOrDefault(o => o.Sheet.Sheet != sheet.Sheet && o.Slab.Area > slab.Area
+                                                             && slab.Points.All(pt => LoopGeometry.PointInPolygon(pt, o.Slab.Points)));
+                if (container.Slab is null) continue;
+                sheet.Geometry.Slabs.Remove(slab);
+                notSecondFloors++;
+                listed.Add($"{storey}: a {SqFt(slab.Area)} sq ft ring on {sheet.Sheet.FileName} lies inside the {SqFt(container.Slab.Area)} sq ft floor another sheet drew - a shaft, a stair, or the same floor drawn again in part; not a second floor, and not cut as an opening, which the drawing does not say");
+            }
+            plates = here.SelectMany(p => p.Geometry.Slabs.Select(s => (Sheet: p, Slab: s))).ToList();
+            if (plates.Count == 0) continue;
+            var floors = plates.Select(x => x.Slab).ToList();
+
+            // a plate the largest does not contain: left as read, and said
+            var largest = floors.OrderByDescending(f => f.Area).First();
+            foreach (var f in floors.Where(f => f != largest && !f.Points.All(pt => LoopGeometry.PointInPolygon(pt, largest.Points) || WithinOf(pt, largest.Points, reach))))
+                listed.Add($"{storey}: a {SqFt(f.Area)} sq ft plate stands beyond the storey's {SqFt(largest.Area)} sq ft floor - another building, a ramp, a canopy, a podium edge, or a floor read twice; left as read for the engineer, and a later gate may still refuse it and say so");
+
+            // how whole the floor was read: what stands beyond every plate, counted, never removed
+            bool OnAFloor(DxfPoint p) => floors.Any(f => LoopGeometry.PointInPolygon(p, f.Points) || WithinOf(p, f.Points, reach));
+            int walls = 0, columns = 0, wallsOut = 0, columnsOut = 0;
+            var where = new List<string>();
+            foreach (var p in here)
+            {
+                foreach (var wall in p.Geometry.Walls)
+                {
+                    walls++;
+                    var mid = new DxfPoint((wall.Start.X + wall.End.X) / 2, (wall.Start.Y + wall.End.Y) / 2);
+                    if (OnAFloor(mid)) continue;
+                    wallsOut++;
+                    if (where.Count < 6) where.Add($"wall at ({mid.X:N0}, {mid.Y:N0}) on {p.Sheet.FileName}");
+                }
+                foreach (var col in p.Geometry.Columns)
+                {
+                    columns++;
+                    if (OnAFloor(col.Center)) continue;
+                    columnsOut++;
+                    if (where.Count < 6) where.Add($"column at ({col.Center.X:N0}, {col.Center.Y:N0}) on {p.Sheet.FileName}");
+                }
+            }
+            if (wallsOut + columnsOut == 0) continue;
+            wallsBeyond += wallsOut; columnsBeyond += columnsOut;
+            listed.Add($"{storey}: {wallsOut} of {walls} wall(s) and {columnsOut} of {columns} column(s) stand beyond every plate read for the storey - strays, or a floor the tool did not read whole; nothing removed. " +
+                       string.Join("; ", where) + (wallsOut + columnsOut > where.Count ? "; ..." : ""));
+        }
+
+        if (notSecondFloors + wallsBeyond + columnsBeyond > 0)
+            warnings.Add($"{notSecondFloors} ring(s) inside another sheet's floor are not second floors; {wallsBeyond} wall(s) and {columnsBeyond} column(s) stand beyond every plate of their storey and were left in place. Each is listed below.");
+        warnings.AddRange(listed);
+        return warnings;
+
+        static bool WithinOf(DxfPoint p, IReadOnlyList<DxfPoint> polygon, double reach)
+        {
+            for (int i = 0; i < polygon.Count; i++)
+                if (LoopGeometry.DistanceToSegment(p, polygon[i], polygon[(i + 1) % polygon.Count]) <= reach) return true;
+            return false;
+        }
+    }
 
     /// <summary>
     /// Whether the geometry lands somewhere a building could be, once the offset is applied.
