@@ -205,19 +205,17 @@ Revit route.
 
 ## 8. What needs Ian (2026-09-12 morning)
 
-1. **Migrations, in order, on `KOR-APP01\SQLEXPRESS` / KorStandards** (`C:\VIsual Studio Projects\KOR.Drafter\db\`):
-   083 is applied — the analyzer wrote 292 set rows and 8,692 sheet rows to `analysis.IntakeSet` /
-   `IntakeSheet` on both of tonight's runs (runs `292f8c48`, `e85ee4b9`; `vw_IntakeLatest` is the
-   current one). Still to apply: `084_AssumedStoreyHeight.sql`, `085_PdfIntakeConventionsTierOne.sql`
-   (the parity test proves 084 is not on yet: its key is still declared unbanked and the test is
-   green). After 084 and 085, remove
-   `dxf.pdf.assumed-storey-height-mm`, `dxf.pdf.fallback-scale` and `dxf.pdf.ladder-min-rows` from
-   `CompiledDefaultsAreTheBankedRowsTests.UnbankedByDesign` — the test says so and goes red if a
-   row exists that is still declared unbanked.
-2. **ETABS 23 on KOR-210** — the nine `.EDB` yardsticks ETABS 22 refused (31097, 31138, 31168,
-   31170, 31183, 31195, 31199, 31202, 50054):
-   `C:\Temp\kor-etabs-export\tool\EtabsExportE2k.exe --etabs "C:\Program Files\Computers and Structures\ETABS 23\ETABS.exe" …`
-   as handed over on 2026-09-11; then `takeoff corpus-analyze --reuse` to measure them.
+1. **Migrations — DONE 2026-09-12** (083, 084, 085 by Ian; then 086, because 084 and 085 had
+   inserted their rows `'unverified'` and `analysis.vw_RuleSetting` exposes only `replay-verified` /
+   `engineer-confirmed` — the tool never saw them and the parity test, reading the same view, stayed
+   green instead of going red. 086 set the three rows `replay-verified` on the evidence that the six
+   sets build byte-identical at those values; the three keys left `UnbankedByDesign`, and
+   `CompiledDefaultsAreTheBankedRowsTests` now reads each row and holds it equal to its compiled
+   default. Lesson in 086's header: a PDF-intake row is inserted `replay-verified` when the harness
+   has replayed at its value, as 082's were.)
+2. **ETABS 23 on KOR-210 — DONE 2026-09-12**: all nine exported (31097, 31138, 31168, 31170,
+   31183, 31195, 31199, 31202, 50054 — 8.0 MB of `.e2k`), mirrored to the yardstick folder (105
+   models); four of them are harness sets, so the six have engineers' yardsticks now.
 3. **31130's yardstick** — 20 shared storeys and under 25% of our columns within 100 mm of the
    engineer's: the next thing to look at with `takeoff model-yardstick` and `model-render`, before
    any rule.
