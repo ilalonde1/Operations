@@ -1,9 +1,9 @@
 # PDF intake — what it does today, and what it leaves on the page
 
-## 0. START HERE (state as of 2026-09-11, after step 43 — the audit of steps 31–41 answered, and a reissue read)
+## 0. START HERE (state as of 2026-09-11, after step 44 — the whole corpus measured: 39 of 292 sets build, 225 want a storey ladder)
 
 A session picking this up cold reads this section, then §30 (what the PDF alone gives), then the
-last three step sections (§50, §51, §52). It does not need to read §1–§29 to work; those are the record of how each
+last three step sections (§51, §52, §53). It does not need to read §1–§29 to work; those are the record of how each
 rule was arrived at, and are read when a rule is being changed.
 
 **Where the data is.** `%LOCALAPPDATA%\Temp\kor-drawings\stickfiles` holds the six PDFs (31065,
@@ -2553,3 +2553,58 @@ an underlay whose bubble is offset from the engineer's (two circles, two bubbles
 would merge them within 0.5 pt of one rule and otherwise name two axes); the harness on the
 reissue (open: move the harness's 31168 to the 09-10 issue, which re-banks every 31168 baseline
 and is Ian's call).
+
+## 53. Step 44, 2026-09-11: the whole corpus through the one ingestion point — the first run
+
+WP1 of the completion plan (`docs/architecture/Kor.Operations.EngineeringTools.PdfIntake.plan.md`),
+on Ian's direction the same day: *build the analyzer, not one drawing at a time.* The census
+(`takeoff corpus-census`, §1a of the plan): 1,158 job folders, **292 with a structural stick
+file**, 460 with an architect's set, 66 with both a stick file and an ETABS model. The route is
+one call in Core now (`PdfOnlyBuild`, shared by the verbs, the six-set gate and the analyzer; the
+six banked models byte-identical, the verb's own output identical), and `takeoff corpus-analyze`
+built every one of the 292 current issues — 3.5 GB mirrored once — in 139 minutes, six in
+parallel, into a ledger (`analysis.IntakeSet` / `IntakeSheet`, migration 083; CSV beside the work).
+
+**What the population says, run 1 (`cd9d4cc4`):**
+
+| | |
+|---|---|
+| Sets | 292 (median 26 pages; 163 of them 21–60 pages) |
+| Pages read | **8,692 — 3,989 plans, 0 failed** |
+| Sets that build a model | **39 of 292** |
+| No model: *no storeys read off the elevations* | **225 of 292** — every one of them has plan sheets (2,462 plan views written); what they lack is a level LADDER the reader can read: "0 of 0 elevation sheets" on the four sampled |
+| No model: no plan sheet with structure | 17 |
+| No model: no layer matched walls / slab edges | 10 / 1 |
+| Of the 39 with a model | 2,058 plan views, **873 set on the grid by axis name (42%)**; 1,098 storeys, **230 with a plate (21%)**; 21,563 walls, 29,879 columns; every view placed on 2 of 39; a plate on every storey on 2 of 39 |
+
+**The yardsticks** (`ModelYardstick`, ported from `columns_vs_yardstick.py` and taught what the
+engineers' real models look like — 68 of the 81 exported carry no grid lines and sit at survey
+coordinates, so the frame is found by column registration with its support stated; residuals
+both ways; a storey prefixed for one building meets only that building's; our own published
+output is never the yardstick): 18 of the 39 modelled sets have the engineer's model, 16 share a
+storey with columns; **2,767 of 6,189 of our columns within 100 mm of one of theirs (45%); 2,648
+of 5,085 of theirs within 100 mm of ours (52%)**. Per set: 31039 100%, 31087 75–99%, four sets
+50–74%, four 25–49%, six under 25%. On 31168 against the Revit route it is 93% / 97% — the six
+sets the rules were written on are not the population.
+
+**What this changes.** The work order is now a count, not a choice. Item one, by a factor of
+ten over everything else: **a set's storeys**. 225 sets read their plans and could not be built
+because the storey ladder comes only from shear-wall elevations (§25, §41), and most of the
+office's sets — wood, steel, small concrete — have none. The plans name the storeys and their
+order on every set; the heights are on sections where a set has them, in the architect's set
+for 460 jobs, and otherwise a stated assumption. That is the next rule, and it is measured on
+292 sets before it is kept. Item two: sheets on the grid — 42% of plan views; item three: plates
+on 21% of storeys. The reading backlog of §0 (boundary walk, rings, mezzanines) is measured
+against these numbers now, not against 31168.
+
+**Instruments that landed as code** (the plan's WP2, begun): `takeoff corpus-census`,
+`corpus-analyze` (with `--reuse` for a pass proven outside the build path), `model-yardstick`;
+`tools/EtabsExportE2k` — the engineers' `.EDB` models exported to `.e2k` through ETABS's API on
+KOR-210, run by Ian: **92 exported**; 12 would not open in ETABS 22.6 (saved by ETABS 23, or not
+valid), among them 31170 and 31202. `columns_vs_yardstick.py` removed.
+
+WHAT THE CHECKS COVER: the census on a synthetic share; the ledger's rows through their CSV; the
+yardstick's frame from grids and from columns, both directions, the building rule
+(`AModelIsMeasuredAgainstTheEngineersOwnTests`); the route's refactor by the six-set bank. WHAT
+THEY DO NOT: the ledger tables (083 not applied); the 460 architects' sets (not yet analyzed);
+walls and plates against the yardstick (columns only).

@@ -45,6 +45,20 @@ That is a contract, not a floor count. It is met when:
 
 Today's harness is 6 of those 292. The one-job yardstick (31168) is 1 of 66.
 
+## 1b. The corpus, built (2026-09-11, `takeoff corpus-analyze`, run 1 — WP1's first pass, PdfIntake.md §53)
+
+| | |
+|---|---|
+| Sets built from the PDF alone | **39 of 292**; 8,692 pages read, 3,989 plans, 0 failed |
+| No model because no storey ladder was read | **225 of 292** — they all have plans (2,462 plan views); the ladder reader wants shear-wall elevations, and most of the office's sets have none |
+| Of the 39: plan views set on the grid by name | 873 of 2,058 (42%) |
+| Of the 39: storeys with a plate | 230 of 1,098 (21%) |
+| Yardsticks (engineers' own models, 92 exported from KOR-210) | 18 of the 39 have one; **45% of our columns within 100 mm of theirs, 52% of theirs within 100 mm of ours**; per set from 100% (31039) to under 25% (six sets) |
+
+**The work order is a count now.** 1. A set's storeys from its plans (names, order) with heights
+from sections where present, the architect's set, or a stated assumption — the one rule that
+unblocks 225 sets. 2. Views on the grid (42%). 3. Plates (21%). Each measured on 292 before it is kept.
+
 ## 2. Where it stands, measured (2026-09-11, commit `3da6f85c`)
 
 | | |

@@ -12,7 +12,7 @@ the lesson is the point.
 
 ---
 
-## THE JOB IN FRONT OF YOU (2026-09-11, after intake step 43 — the audit of 31–41 answered; the 31168 reissue reads)
+## THE JOB IN FRONT OF YOU (2026-09-11, after intake step 44 — the corpus analyzer: 39 of 292 sets build, 225 want a storey ladder, 45% of columns within 100 mm of the engineers')
 
 Everything below this section is the pipeline as a whole and is still true. This section is the
 work actually in progress, and it is where you start.
@@ -23,8 +23,8 @@ gets the columns, the parkade plates and (since step 28) the tower plates close 
 route's answer, on 36 of 62 storeys.
 
 **Read, in this order, and stop.** `CLAUDE.md` (twelve rules, gates not advice), then
-`docs/PdfIntake.md` **§0 START HERE**, then its §30, then its last three step sections (§50, §51,
-§52). That is about seventy lines of state plus three rules. Sections 1 to 29 of that document are
+`docs/PdfIntake.md` **§0 START HERE**, then its §30, then its last three step sections (§51, §52,
+§53). That is about seventy lines of state plus three rules. Sections 1 to 29 of that document are
 the record of how each earlier rule was arrived at; read one only when you are changing that rule.
 Do not read the whole document to begin work.
 
