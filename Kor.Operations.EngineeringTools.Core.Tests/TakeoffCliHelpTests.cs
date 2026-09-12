@@ -9,12 +9,14 @@ public sealed class TakeoffCliHelpTests
     [Fact]
     public void Help_lists_every_dispatched_subcommand()
     {
-        var source = File.ReadAllText(Path.Combine(RepoRoot(), "Kor.Operations.EngineeringTools.TakeoffCli", "Program.cs"));
-        var dispatched = Regex.Matches(source, @"args\[0\]\.Equals\(""(?<name>[^""]+)""")
-            .Select(match => match.Groups["name"].Value)
+        // the verbs are the registry Program.cs dispatches through (one file each under Verbs/ since the
+        // split, WP3 2026-09-11) — the same list the help must carry, read as data, not scraped from source
+        var dispatched = global::TakeoffVerbs.All
+            .Select(verb => verb.Name)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
             .ToArray();
+        Assert.True(dispatched.Length >= 60, $"the registry lists {dispatched.Length} verbs; Program.cs dispatched 63 before the split");
         var helped = global::TakeoffCliHelp.Commands
             .Select(command => command.Name)
             .Distinct(StringComparer.OrdinalIgnoreCase)

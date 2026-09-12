@@ -142,7 +142,8 @@ never seen builds a model with no code change, and every sheet it cannot read sa
 other than F7 change none of the six models); (b) **the in-memory handoff** replacing the
 scratch-DXF detour between `pdf-takeoff` and `dxf-to-etabs` — write the gate FIRST (build all six
 with the detour and without, `cmp` every `.e2k`), then the code; (c) **`Program.cs` one file per
-verb** (5,000 lines) — gate: the help-list test and six byte-identical models. A smaller rule the
+verb** — DONE as WP3 (2026-09-11): 70 files under `Verbs/`, `TakeoffVerbs.All` the registry, Program.cs
+345 lines; the help-list test reads the registry, and the six were byte-identical after the split. A smaller rule the
 audit surfaced: two sheets reading two overlapping collinear pieces of one wall (31138's 3.6 m
 wall, §51) both stand now; an overlapping-copies join across sheets is a candidate, distinct from
 the abutting join step 38 refused.

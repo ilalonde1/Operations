@@ -119,9 +119,13 @@ backlog (§6) waits; it is where the last two weeks went and it is not what make
   already in `PdfIntake.md`, and that section gets the sentence "measured with X, since removed".
 - Gate: `docs/etabs-handoff/` holds `.md` only; `takeoff --help` lists every verb (existing test).
 
-### WP3 — `Program.cs` one file per verb
-- `Verbs/<Verb>.cs` each with its usage line, a registry, `Program.cs` under 100 lines.
-- Gate: the help-list test; the six baselines byte-identical (WP1's test).
+### WP3 — `Program.cs` one file per verb — DONE 2026-09-11
+- `Verbs/<Verb>.cs` (70 files, one class per verb: `Matches(args)` and `Run(args)`, the body moved
+  verbatim by `tools/split_program_cs.py`), `TakeoffVerbs.All` the registry in the order Program.cs
+  always tried them, `GlobalUsings.cs`; `Program.cs` is the help check, the dispatch loop, the
+  rebar-CSV default and the help catalogue (345 lines, from 5,153).
+- Gate, met: the help-list test reads the registry (not the source); the six byte-identical
+  (`SixSetsBuildAsBankedTests`, 8 m 33 s); the fast suite 1,218 green.
 
 ### WP4 — In-memory handoff
 - Gate FIRST: a test that builds all six through the DXF detour and through memory and asserts
