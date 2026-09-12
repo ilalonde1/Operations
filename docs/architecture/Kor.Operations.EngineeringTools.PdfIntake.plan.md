@@ -1,8 +1,11 @@
 # PDF intake → ETABS — Completion Plan
 
-**Status:** Rev 2, 2026-09-11 — revised the same day on Ian's direction: *"rather than build the
-brain, then expose it to one drawing at a time … build an analyzer to get all the info you need at
-once"*, and on the census that direction called for (§1a). Nothing below WP1 starts until approved.
+**Status:** Rev 3, 2026-09-12 — WP1–WP5 landed overnight on Ian's go-ahead ("go through this all,
+step by step, and finish it overnight"): commits `8fccbc25` (WP3), `3f3f82b9` (WP2), `aba7d9ff`
+(WP4), `69e554b5` (WP5), each gated by the six byte-identical and the fast suite; WP5's remaining
+conventions are counted by a test, not by this document. §8 is what needs Ian. Rev 2 (2026-09-11)
+turned the plan on Ian's direction: *"rather than build the brain, then expose it to one drawing at
+a time … build an analyzer to get all the info you need at once"* (§1a, §1b).
 **Author:** Claude, for Ian Lalonde. Written after Ian's instruction the same day: *"You build
 ephemeral bloated solutions and they're not built as code or in DB. This must stop."*
 **Audience:** Ian. Approve it, strike what you disagree with, and each package then runs one per
@@ -45,19 +48,21 @@ That is a contract, not a floor count. It is met when:
 
 Today's harness is 6 of those 292. The one-job yardstick (31168) is 1 of 66.
 
-## 1b. The corpus, built (2026-09-11, `takeoff corpus-analyze`, run 1 — WP1's first pass, PdfIntake.md §53)
+## 1b. The corpus, built (`takeoff corpus-analyze`; run 1 2026-09-11 = WP1's first pass, PdfIntake.md §53; run 3 2026-09-12 = after steps 45 and 46, §55)
 
-| | |
-|---|---|
-| Sets built from the PDF alone | **39 of 292**; 8,692 pages read, 3,989 plans, 0 failed |
-| No model because no storey ladder was read | **225 of 292** — they all have plans (2,462 plan views); the ladder reader wants shear-wall elevations, and most of the office's sets have none |
-| Of the 39: plan views set on the grid by name | 873 of 2,058 (42%) |
-| Of the 39: storeys with a plate | 230 of 1,098 (21%) |
-| Yardsticks (engineers' own models, 92 exported from KOR-210) | 18 of the 39 have one; **45% of our columns within 100 mm of theirs, 52% of theirs within 100 mm of ours**; per set from 100% (31039) to under 25% (six sets) |
+| | run 1 (step 44) | run 3 (step 46) |
+|---|---|---|
+| Sets built from the PDF alone | **39 of 292**; 8,692 pages read, 3,989 plans, 0 failed | **197 of 292** |
+| No model because no storey ladder was read | **225 of 292** — they all have plans; the ladder reader wanted shear-wall elevations | **67** — their plans name storeys with WORDS (step 47) |
+| No model: no plan the reader typed / refused at the layer gate | 17 / 11 | 17 / 11 (two of the 11 by our own `-MARKUP` layer, fixed §55) |
+| Plan views set on the grid by name | 873 of 2,058 (42%) | 1,894 of 4,228 (45%) |
+| Storeys with a plate | 230 of 1,098 (21%) | 723 of 2,351 (31%) |
+| Yardsticks (engineers' own models, 92 exported from KOR-210) | 18 of the 39: **45% / 52%** within 100 mm | 62 sets have one, 39 share a storey with columns: **34% / 48%**; per set from 75–99% (4 sets) to 0–24% (20 sets) — more sets, more assumed storeys, a lower share |
 
-**The work order is a count now.** 1. A set's storeys from its plans (names, order) with heights
-from sections where present, the architect's set, or a stated assumption — the one rule that
-unblocks 225 sets. 2. Views on the grid (42%). 3. Plates (21%). Each measured on 292 before it is kept.
+**The work order is a count now.** 1. Storeys: the 67 sets whose plans name their storeys with
+words, and 935 views the composer can put on no storey by name (step 47, §8 item 5). 2. Views on
+the grid (55% are not placed by name). 3. Plates (69% of storeys have none). Each measured on 292
+before it is kept.
 
 ## 2. Where it stands, measured (2026-09-11, commit `3da6f85c`)
 
@@ -197,3 +202,30 @@ the 57 EDB-only yardsticks exported to `.e2k` on a machine with ETABS.
 It does not promise a storey count, a wall count, or "31168 = Revit". Those are measurements the
 harness reports; the contract is §1. It does not touch the app (WPF), the Drafter bridge, or the
 Revit route.
+
+## 8. What needs Ian (2026-09-12 morning)
+
+1. **Migrations, in order, on `KOR-APP01\SQLEXPRESS` / KorStandards** (`C:\VIsual Studio Projects\KOR.Drafter\db\`):
+   `083_IntakeLedger.sql` (the ledger tables the analyzer writes when they exist),
+   `084_AssumedStoreyHeight.sql`, `085_PdfIntakeConventionsTierOne.sql`. After 084 and 085, remove
+   `dxf.pdf.assumed-storey-height-mm`, `dxf.pdf.fallback-scale` and `dxf.pdf.ladder-min-rows` from
+   `CompiledDefaultsAreTheBankedRowsTests.UnbankedByDesign` — the test says so and goes red if a
+   row exists that is still declared unbanked.
+2. **ETABS 23 on KOR-210** — the nine `.EDB` yardsticks ETABS 22 refused (31097, 31138, 31168,
+   31170, 31183, 31195, 31199, 31202, 50054):
+   `C:\Temp\kor-etabs-export\tool\EtabsExportE2k.exe --etabs "C:\Program Files\Computers and Structures\ETABS 23\ETABS.exe" …`
+   as handed over on 2026-09-11; then `takeoff corpus-analyze --reuse` to measure them.
+3. **31130's yardstick** — 20 shared storeys and under 25% of our columns within 100 mm of the
+   engineer's: the next thing to look at with `takeoff model-yardstick` and `model-render`, before
+   any rule.
+4. **WP6** — one model in front of Andrea (31170's, or whichever the ledger ranks best of the
+   architects' sets). Ian's call when.
+5. **Step 47**, the next reading rule, from the corpus. `takeoff corpus-query plan-titles` on the
+   step-45 ledger: **1,049 of 3,967 written views (162 sets) the composer can put on no storey by
+   name.** 579 are named by the PDF's stem and page (step 46's class — the running rebuild measures
+   it); the rest name their storey with WORDS: FLOOR 269, SHOWING/OVER 62/63 ("MAIN FLOOR PLAN
+   SHOWING 2ND FLOOR FRAMING OVER" — the storey is the one before SHOWING), MAIN 28, GROUND 21,
+   FIRST/SECOND/2ND/3RD, LOWER; "PARKADE PLAN - P2" (P2 at the end of a title is not read as a
+   parkade level); "FLOOR PLAN AND CEILING PLAN" ×16 (one-storey sets naming no level at all);
+   "BUILDING n FLOOR PLANS". Ordinals and GROUND/MAIN/LOWER are a vocabulary row; one rule,
+   measured on the six and on the corpus (`--recompose`, ~20 min) before it is kept.

@@ -680,6 +680,14 @@ public class PlanSheetNamingTests
         var woodLedger = LayerLedger.Build(new[] { (IReadOnlyList<DxfSegment>)wood }, options);
         Assert.Equal(new[] { "walls" }, LayerLedger.RolesMissingWithGeometryUnclaimed(woodLedger));
         Assert.Empty(LayerLedger.RolesMissingWithGeometryUnclaimed(woodLedger, explainedLayers: PdfToSafe.DxfExporter.NonMemberLayers));
+
+        // AND THE SAME LAYER WITH THE EXPORTER'S -MARKUP SUFFIX (the drafter's Bluebeam ink) EXPLAINS ITS
+        // GEOMETRY TOO: 30954 had 160,404 lines on BEAM and 928 on BEAM-MARKUP, and the 928 alone refused the
+        // set (corpus rebuild, 2026-09-11). A layer that is not ours with the suffix is not explained.
+        var inked = wood.Concat(Enumerable.Repeat(On("BEAM-MARKUP"), 928)).ToList();
+        Assert.Empty(LayerLedger.RolesMissingWithGeometryUnclaimed(LayerLedger.Build(new[] { (IReadOnlyList<DxfSegment>)inked }, options), explainedLayers: PdfToSafe.DxfExporter.NonMemberLayers));
+        var foreign = wood.Concat(Enumerable.Repeat(On("S-ANNO-MARKUP"), 928)).ToList();
+        Assert.Equal(new[] { "walls" }, LayerLedger.RolesMissingWithGeometryUnclaimed(LayerLedger.Build(new[] { (IReadOnlyList<DxfSegment>)foreign }, options), explainedLayers: PdfToSafe.DxfExporter.NonMemberLayers));
     }
 
     /// <summary>

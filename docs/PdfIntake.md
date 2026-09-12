@@ -47,15 +47,15 @@ reader (is the line there? what does the drawing call it? is the bubble drawn tw
 `takeoff grid-names` puts a sheet's axis names beside the model's. Step 27 was a day spent guessing
 closing rules that a rendered view would have settled; that is the mistake this line exists to stop.
 
-**Where the route stands, measured on the corpus** (§54, step 45; step 46's rebuild in §55):
+**Where the route stands, measured on the corpus** (§55, step 46):
 
 | | |
 |---|---|
-| Sets that build a model from the PDF alone | **192 of 292** (39 before step 45) |
-| No model | 72 no storeys read (their plans are named GROUND/MAIN/SECOND… — the vocabulary, step 47), 17 no plan the reader typed, 11 refused at the composer's gate |
-| Plan views on the grid by name | 1,824 of 4,109 (44%) |
-| Storeys with a plate | 707 of 2,290 (31%) |
-| Against the engineers' own models (37 sets) | 35% of our columns within 100 mm of theirs, 49% of theirs within 100 mm of ours; 31130 under 25% with 20 shared storeys — the next thing to look at |
+| Sets that build a model from the PDF alone | **197 of 292** (39 before step 45, 192 after it, 197 after step 46) |
+| No model | 67 no storeys read (their plans are named GROUND/MAIN/SECOND… — the vocabulary, step 47), 17 no plan the reader typed, 11 refused at the composer's gate (two of them by our own -MARKUP layer, fixed §55) |
+| Plan views on the grid by name | 1,894 of 4,228 (45%) |
+| Storeys with a plate | 723 of 2,351 (31%) |
+| Against the engineers' own models (39 sets sharing a storey with columns, of 62 with a model) | 34% of our columns within 100 mm of theirs, 48% of theirs within 100 mm of ours; 31130 under 25% with 20 shared storeys — the next thing to look at |
 | 31168 against the Revit route | columns median 16 mm, 92% within 50 mm; tower plates within 0.1%; 36 of 62 storeys carry a plate; walls 1,324 vs 1,832 |
 
 **The work order is the count.** 1. Storeys: the 72 sets whose plans name their storeys with
@@ -2634,3 +2634,50 @@ precedence (`ASheetFromTheStickFileIsNamedLikeAViewTests`); the exporter's layer
 geometry (`ARoleWithNoLayerIsAMismatchWhenGeometrySitsUnclaimed`); the six sets, byte for byte.
 WHAT THEY DO NOT: heights from sections or the architect's set; storeys named by a word alone
 (GROUND, MAIN, SECOND — the vocabulary, next); the 17 sets with no plan typed; the 11 at the gate.
+
+## 55. 2026-09-12: step 46 measured on the corpus; the completion plan's WP1–WP5 closed; a layer of ours with the mark-up suffix
+
+**Step 46 on 292 sets** (every sheet re-read, 169 min, six in parallel beside the night's gates;
+ledger banked as `docs/etabs-handoff/corpus/ledger-sets-2026-09-11-run3-step46.csv`):
+
+| | step 45 (recompose) | step 46 (rebuild) |
+|---|---|---|
+| Sets that build a model | 192 of 292 | **197 of 292** |
+| No model: no storeys read | 72 | **67** |
+| No model: no plan the reader typed | 17 | 17 |
+| No model: refused at the composer's layer gate | 11 | 11 (8 walls, 2 walls or columns, 1 slab edges) |
+| Plan views, on the grid by axis name | 4,109 / 1,824 (44%) | 4,228 / 1,894 (45%) |
+| Storeys, with a plate | 2,290 / 707 (31%) | 2,351 / 723 (31%) |
+| Views the composer can put on no storey by name (`corpus-query plan-titles`) | 1,049 in 162 sets, 579 named by the PDF's stem and page | **935 in 160 sets, 197 by stem and page** |
+| Yardsticks | 37 sets | 62 sets have the engineer's model, 39 share a storey with columns: 34% of ours within 100 mm of theirs, 48% of theirs within 100 mm of ours |
+
+The title written on the page named 382 more views; five more sets build. What is left without a
+storey is, by its own words: FLOOR 287 (MAIN, GROUND, FIRST/SECOND, 2ND/3RD, LOWER), SHOWING/OVER
+68/68 ("MAIN FLOOR PLAN SHOWING 2ND FLOOR FRAMING OVER" — the storey is the one before SHOWING),
+"FLOOR PLAN AND CEILING PLAN" ×16 (a one-storey set naming no level), "PARKADE PLAN - P2" (a
+parkade level at the end of a title), "BUILDING n FLOOR PLANS", and 197 sheets still nameless.
+That is step 47, and it is a vocabulary (plan §8).
+
+**The 11 at the gate are not one cause, and one of them is ours.** Two of the refusals read "no
+layer matched walls, yet 161,332 segments sit on layers the tool does not recognise … BEAM
+(160,404), BEAM-MARKUP (928)": the exporter writes the drafter's Bluebeam ink on the same
+non-member layer with a `-MARKUP` suffix, and the gate explained BEAM and not BEAM-MARKUP, so
+928 segments of ink refused 30954 (and 334 refused 30977). A layer of ours carrying the suffix
+explains its geometry as the base layer does (`LayerLedger.RolesMissingWithGeometryUnclaimed`);
+a foreign layer with the suffix does not. Six sets unchanged; the corpus's count is the next
+`--recompose`.
+
+**The completion plan's WP1–WP5 closed tonight** (`8fccbc25` WP3, `3f3f82b9` WP2, `aba7d9ff`
+WP4, `69e554b5` WP5; the plan's status, §3 and each package say what landed and what is owed).
+In one sentence each: the instruments are verbs and `docs/etabs-handoff/` holds no scripts
+(§0 lists them); Program.cs is 70 verb files and a registry the help test reads; the two halves
+hand over in memory (`DxfSheet`; the DXF is an outlet) with both routes byte-identical on the
+six; every reader constant is triaged by a test (169: 13 rows, 44 conventions still compiled
+and named, 85 tolerances, 22 rules, 5 another product's, 3 dead deleted), and tier one reads
+rows — three shared with the DXF side, two seeded by migration 085.
+
+WHAT THE CHECKS COVER: the `-MARKUP` layer explained and a foreign one not
+(`ARoleWithNoLayerIsAMismatchWhenGeometrySitsUnclaimed`); the ledger readers through
+`corpus-query`; the six, byte for byte, after every package and after this rule. WHAT THEY DO
+NOT: the 11 refused sets rebuilt (the next `--recompose` says how many of them the suffix
+freed); step 47's vocabulary.

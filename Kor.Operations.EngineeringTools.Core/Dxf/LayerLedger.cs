@@ -54,7 +54,13 @@ public static class LayerLedger
         // KOR_WALLTYPE, the partitions to KOR_PARTITION, by construction. A wood-frame set with no concrete
         // wall then has "walls" missing and 49,000 segments on BEAM, which is the building, not a naming
         // mismatch - the gate refused 2 of the 3 first sets the storeys-from-plans rule unblocked (2026-09-11).
-        int unclaimed = ledger.Where(e => !e.Claimed && !(explainedLayers?.Contains(e.Layer) ?? false)).Sum(e => e.Segments);
+        // ... and the same layer carrying the exporter's -MARKUP suffix (the drafter's Bluebeam ink,
+        // kept apart from page content by origin) explains its geometry the same way: 30954's 928
+        // segments on BEAM-MARKUP beside 160,404 on BEAM refused a whole set (corpus, 2026-09-11).
+        static bool Explains(IReadOnlySet<string> explained, string layer) =>
+            explained.Contains(layer)
+            || (layer.EndsWith("-MARKUP", StringComparison.OrdinalIgnoreCase) && explained.Contains(layer[..^"-MARKUP".Length]));
+        int unclaimed = ledger.Where(e => !e.Claimed && !(explainedLayers is not null && Explains(explainedLayers, e.Layer))).Sum(e => e.Segments);
         if (unclaimed < unclaimedSegmentsThatMatter) return Array.Empty<string>();
 
         return new[] { "walls", "columns", "slab edges" }
