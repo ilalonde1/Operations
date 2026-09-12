@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Kor.EtabsExportE2k</RootNamespace>
+    <AssemblyName>EtabsExportE2k</AssemblyName>
+    <IsPackable>false</IsPackable>
+    <PlatformTarget>x64</PlatformTarget>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- CSI's API assembly (ETABS 22, .NET Standard 2.0), copied from the machine that has ETABS, for
+         COMPILING against. Its interfaces are COM interop over IUnknown, so `dynamic` cannot reach them
+         (the first run on KOR-210: "'System.__ComObject' does not contain a definition for
+         'ApplicationStart'"). It is NOT shipped with the exe (Private=false): ETABS refuses an API client
+         that carries its own copy — "The developer of the API client ... needs to update it ... ETABS
+         will close" (third run on KOR-210, 2026-09-11) — and CSI's instruction is Copy Local = False so
+         the client loads the ETABSv1.dll that sits in the ETABS folder it starts. Program.cs resolves
+         the assembly from there at run time. -->
+    <Reference Include="ETABSv1">
+      <HintPath>lib\ETABSv1.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+</Project>
