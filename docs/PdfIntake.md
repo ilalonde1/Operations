@@ -2352,7 +2352,7 @@ had stood off centre towards its last-drawn side**: a 400 × 400 column 67 mm (2
 first PDF read. The ring is closed now when its ends are apart and it has three or more points.
 
 **Measured against the one yardstick that is not our own output** — the Revit route's 31168 model,
-frames matched by grid name (`columns_vs_yardstick.py`, new): before, the median column residual
+frames matched by grid name (`columns_vs_yardstick.py`, new; ported 2026-09-11 to `ModelYardstick` / `takeoff model-yardstick`, the script removed): before, the median column residual
 to the nearest Revit column was **100 mm, 7% within 50 mm**; after, **18 mm, 71% within 50 mm**,
 on 2,211 columns across the shared storeys. ⚠ Corrected 2026-09-11 (audit F23, F24): the "71%" was
 measured with the script matching storeys by a stripped name, so 31168's A-L1 and B-L1 both matched

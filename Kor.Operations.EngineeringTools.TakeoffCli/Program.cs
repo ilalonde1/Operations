@@ -108,11 +108,6 @@ if (args.Length >= 1 && args[0].Equals("pdf-takeoff", StringComparison.OrdinalIg
         return 2;
     }
 
-    bool ptRange = ptLast > ptFirst;
-    string ptDir = Path.GetDirectoryName(Path.GetFullPath(ptOut)) ?? ".";
-    string ptStem = Path.GetFileNameWithoutExtension(ptOut);
-    Directory.CreateDirectory(ptDir);
-
     var (ptOptions, ptRulesSource) = PdfIntakeOptions.For(ptRulesDb);
 
     Console.WriteLine($"{Path.GetFileName(ptPdf)}  1:{ptScale}  pages {ptFirst}-{ptLast}  " +
@@ -120,111 +115,31 @@ if (args.Length >= 1 && args[0].Equals("pdf-takeoff", StringComparison.OrdinalIg
     Console.WriteLine();
     Console.WriteLine("page   raw  annot   slabs  columns   walls  footings   lines   file");
 
-    using var ptDoc = UglyToad.PdfPig.PdfDocument.Open(ptPdf);
-    var ptFacts = DocumentFacts.From(ptDoc);
-    // the set's assembly schedule, read once (step 32), so every plan's walls can take their tags (step 33)
-    IReadOnlyList<AssemblySchedule.Assembly> ptAssemblies = [];
-    try { ptAssemblies = AssemblySchedule.ReadSet(ptPdf, ptOptions.AssemblyStructuralWords, ptOptions.AssemblyPartitionWords); } catch { }
-    if (ptAssemblies.Count > 0)
-        Console.WriteLine($"assembly schedule: {ptAssemblies.Count} card(s) — {ptAssemblies.Count(a => a.IsStructural)} structural, " +
-                          $"{ptAssemblies.Count(a => a.Material == AssemblySchedule.Material.Stud)} stud; walls tagged with these codes are typed, partitions go to KOR_PARTITION");
-    var ptRequest = new IntakeRequest(ptScale, ptOptions, ptMarkup, ptAssemblies);
-    int ptWritten = 0, ptEmpty = 0, ptNotPlan = 0;
-    int ptTyped = 0, ptPartitions = 0, ptUntagged = 0, ptTags = 0, ptNotWalls = 0, ptDimensionStrings = 0, ptPatternCells = 0;
-    for (int p = ptFirst; p <= ptLast; p++)
-    {
-        SheetRecord record;
-        try { record = DrawingIntake.ReadSheet(ptDoc, p, ptRequest, ptFacts); }
-        catch (Exception ex) { Console.WriteLine($"{p,4}   FAILED  {ex.GetType().Name}: {ex.Message}"); continue; }
-
-        // A DXF PLAN IS WRITTEN FROM A PLAN SHEET. The classifier runs on every page and the record
-        // keeps what it found; a section's cut-wall poché or a detail's outline is not a storey and
-        // does not go to the model. S3.01 on 31168 yielded 36 "walls" before this (brief 17).
-        if (record.SheetType != "plan")
+    // THE ROUTE IS ONE CALL IN CORE (PdfOnlyBuild.WriteSheets, 2026-09-11): the verb prints what it
+    // always printed, and the six-set test and the corpus analyzer build a set the same way.
+    var ptResult = PdfOnlyBuild.WriteSheets(ptPdf, ptOut, ptFirst, ptLast, ptScale, ptMarkup, ptKor, ptOptions,
+        onSheet: s =>
         {
-            Console.WriteLine($"{p,4}  {record.SheetType,-18} not a plan sheet; no DXF written");
-            ptNotPlan++;
-            continue;
-        }
-        var geo = record.Geometry;
-        int annot = record.Context.AnnotationPaths;
-        int found = geo.Slabs.Count + geo.Columns.Count + geo.Walls.Count + geo.Lines.Count;
-        ptDimensionStrings += record.Context.DimensionStringsReadAsWalls;   // a dimension string is not a wall (step 35), on every set
-        ptPatternCells += geo.PatternCells.Count;                             // a pattern's cells are not columns (step 37)
-        if (ptAssemblies.Count > 0)
-        {
-            ptTags += geo.WallTypeTags.Count;
-            ptTyped += geo.WallTypeCodes.Count(c => c is not null);
-            for (int wi = 0; wi < geo.Walls.Count; wi++)
-            {
-                if (wi < geo.WallIsDimensionString.Count && geo.WallIsDimensionString[wi]) continue;   // counted on its own line
-                bool typed = wi < geo.WallTypeCodes.Count && geo.WallTypeCodes[wi] is not null;
-                bool outOfModel = wi < geo.WallIsPartition.Count && geo.WallIsPartition[wi];
-                if (typed && outOfModel) ptPartitions++;
-                else if (!typed && outOfModel) ptNotWalls++;
-                else if (!typed) ptUntagged++;
-            }
-        }
-        string file = "";
-        if (found > 0)
-        {
-            // Named as the office's export names a view — sheet number, view index, title — so the
-            // DXF-to-ETABS reader takes the sheet's storeys from the name (intake step 15); and a
-            // sheet drawing two plans side by side is written as two views (intake step 26)
-            if (ptRange)
-            {
-                var parts = SheetViews.Parts(record, $"{ptStem}-p{p:00}");
-                var names = new List<string>();
-                foreach (var part in parts)
-                {
-                    var pg = part.Geometry;
-                    if (pg.Slabs.Count + pg.Columns.Count + pg.Walls.Count + pg.Lines.Count == 0) continue;
-                    DxfExporter.Export(pg, Path.Combine(ptDir, part.FileName), korLayers: ptKor);
-                    names.Add(part.FileName);
-                    ptWritten++;
-                }
-                file = names.Count == 1 ? names[0] : $"{names.Count} views: {string.Join(" | ", names)}";
-            }
-            else
-            {
-                string dxf = Path.GetFullPath(ptOut);
-                DxfExporter.Export(geo, dxf, korLayers: ptKor);
-                file = Path.GetFileName(dxf);
-                ptWritten++;
-            }
-        }
-        else ptEmpty++;
-
-        // THE SHEET CHECKED AGAINST ITSELF. The geometry and the schedule are the same facts drawn
-        // twice and read here by entirely separate code, so agreement between them is evidence that
-        // needs no reference model — which is what every other gate in this repo requires, and why
-        // none of them can say anything about the first sheet of a new job.
-        string agree = record.ColumnAgreementError is { } error ? $"  (self-check unavailable: {error})" : "";
-        if (record.ColumnAgreement is { } check)
-        {
-            // Coverage uses the drawing's labels; precision exposes excess emitted columns.
-            agree = check.LabelsOnThePlan > 0
-                ? $"  cover {check.MatchedToTheirOwnMark}/{check.LabelsOnThePlan} labelled"
-                  + $", emitted {check.ColumnsFound} ({check.Precision:0.0}x)"
-                : $"  {check.SizesDeclaredSomewhere}/{check.ColumnsFound} cols declared";
-            if (check.MarksDeclaredButNeverFound.Count > 0)
-                agree += $"; unplaced {string.Join(",", check.MarksDeclaredButNeverFound)}";
-        }
-
-        Console.WriteLine($"{p,4} {geo.RawPathCount,5}  {annot,5}   {geo.Slabs.Count,5}  {geo.Columns.Count,7}   {geo.Walls.Count,5}  {geo.Footings.Count,8}   {geo.Lines.Count,5}   {file}{agree}");
-    }
+            if (s.Failure is not null) { Console.WriteLine($"{s.Page,4}   FAILED  {s.Failure}"); return; }
+            if (!s.IsPlan) { Console.WriteLine($"{s.Page,4}  {s.SheetType,-18} not a plan sheet; no DXF written"); return; }
+            string file = s.DxfFiles.Count == 1 ? s.DxfFiles[0] : s.DxfFiles.Count == 0 ? "" : $"{s.DxfFiles.Count} views: {string.Join(" | ", s.DxfFiles)}";
+            Console.WriteLine($"{s.Page,4} {s.RawPaths,5}  {s.AnnotationPaths,5}   {s.Slabs,5}  {s.Columns,7}   {s.Walls,5}  {s.Footings,8}   {s.Lines,5}   {file}{s.SelfCheck}");
+        },
+        onAssemblies: a =>
+            Console.WriteLine($"assembly schedule: {a.Count} card(s) — {a.Count(x => x.IsStructural)} structural, " +
+                              $"{a.Count(x => x.Material == AssemblySchedule.Material.Stud)} stud; walls tagged with these codes are typed, partitions go to KOR_PARTITION"));
 
     Console.WriteLine();
-    Console.WriteLine($"{ptWritten} DXF written, {ptEmpty} page(s) empty, {ptNotPlan} page(s) not plan sheets.");
-    if (ptDimensionStrings > 0)
-        Console.WriteLine($"{ptDimensionStrings} wall(s) the two-face reader offered were dimension strings - a length written along them - and were not written.");
-    if (ptPatternCells > 0)
-        Console.WriteLine($"{ptPatternCells} column-sized shape(s) stood edge to edge in runs of three or more of a size - the cells of a fill pattern, not columns - and were not written.");
-    if (ptAssemblies.Count > 0)
-        Console.WriteLine($"wall types: {ptTags} tag(s) on the plans; {ptTyped} wall(s) typed, of which {ptPartitions} partition(s) sent to KOR_PARTITION (not modelled); {ptNotWalls} untagged on plans that tag their walls, so not walls (KOR_PARTITION); {ptUntagged} untagged on plans that do not tag, modelled as drawn.");
-    if (ptEmpty > 0 && ptMarkup)
+    Console.WriteLine($"{ptResult.Written} DXF written, {ptResult.Empty} page(s) empty, {ptResult.NotPlan} page(s) not plan sheets.");
+    if (ptResult.DimensionStrings > 0)
+        Console.WriteLine($"{ptResult.DimensionStrings} wall(s) the two-face reader offered were dimension strings - a length written along them - and were not written.");
+    if (ptResult.PatternCells > 0)
+        Console.WriteLine($"{ptResult.PatternCells} column-sized shape(s) stood edge to edge in runs of three or more of a size - the cells of a fill pattern, not columns - and were not written.");
+    if (ptResult.Assemblies.Count > 0)
+        Console.WriteLine($"wall types: {ptResult.Tags} tag(s) on the plans; {ptResult.Typed} wall(s) typed, of which {ptResult.Partitions} partition(s) sent to KOR_PARTITION (not modelled); {ptResult.NotWalls} untagged on plans that tag their walls, so not walls (KOR_PARTITION); {ptResult.Untagged} untagged on plans that do not tag, modelled as drawn.");
+    if (ptResult.Empty > 0 && ptMarkup)
         Console.WriteLine("  Empty in --markup mode means the page carries no Bluebeam markup. Drop --markup to read the drawing itself.");
-    return ptWritten > 0 ? 0 : 3;
+    return ptResult.Written > 0 ? 0 : 3;
 }
 
 // THE DIFFERENTIAL'S EYES. Which layers moved between two folders of DXFs written from the same pages.
@@ -273,6 +188,55 @@ if (args.Length >= 1 && args[0].Equals("corpus-census", StringComparison.Ordinal
         StickFileCorpus.WriteCsv(ccCensus, ccOut);
         Console.WriteLine($"  one row per job: {ccOut}");
     }
+    return 0;
+}
+
+// A MODEL AGAINST THE ENGINEER'S OWN, column by column: the positional check the counts never give
+// (ModelYardstick, ported 2026-09-11 from columns_vs_yardstick.py). Frames matched by grid name,
+// storeys by full name then stripped, residuals BOTH ways, every storey listed.
+// Usage: takeoff model-yardstick <model.e2k> <yardstick.e2k>
+if (args.Length >= 3 && args[0].Equals("model-yardstick", StringComparison.OrdinalIgnoreCase))
+{
+    if (!File.Exists(args[1]) || !File.Exists(args[2])) { Console.Error.WriteLine("Both .e2k files must exist."); return 1; }
+    Console.Write(ModelYardstick.Summary(ModelYardstick.Compare(args[1], args[2])));
+    return 0;
+}
+
+// THE ANALYZER: the whole corpus through the one ingestion point, into the ledger (completion plan
+// WP1, 2026-09-11). Every job's current stick file, mirrored once, built exactly as the verbs build
+// one (PdfOnlyBuild), one row per set and per sheet into analysis.IntakeSet / IntakeSheet (migration
+// 083) and CSV beside the work; then the summary: X of Y build, and why the rest do not.
+// Usage: takeoff corpus-analyze [<projectsRoot>] [--work <dir>] [--jobs 31168-01,31170-01] [--parallel N] [--force] [--reuse] [--rules-db <conn>] [--yardsticks <dir of <job>.e2k>]
+// --reuse keeps every built model whatever the tool's build stamp (for a change proven outside the build path by the six-set bank) and re-measures the yardsticks.
+if (args.Length >= 1 && args[0].Equals("corpus-analyze", StringComparison.OrdinalIgnoreCase))
+{
+    string caRoot = PublishDiscovery.ProjectsRoot;
+    string caWork = Path.Combine(DrawingMirror.Root, "corpus");
+    string? caJobs = null, caRulesDb = null, caYardsticks = null;
+    int caParallel = 4;
+    bool caForce = false, caReuse = false;
+    for (int i = 1; i < args.Length; i++)
+    {
+        if (args[i].Equals("--work", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) caWork = args[++i];
+        else if (args[i].Equals("--jobs", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) caJobs = args[++i];
+        else if (args[i].Equals("--parallel", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) caParallel = int.Parse(args[++i], CultureInfo.InvariantCulture);
+        else if (args[i].Equals("--rules-db", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) caRulesDb = args[++i];
+        else if (args[i].Equals("--yardsticks", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) caYardsticks = args[++i];
+        else if (args[i].Equals("--force", StringComparison.OrdinalIgnoreCase)) caForce = true;
+        else if (args[i].Equals("--reuse", StringComparison.OrdinalIgnoreCase)) caReuse = true;
+        else caRoot = args[i];
+    }
+    var caProblems = new List<string>();
+    Console.WriteLine("census...");
+    var caCensus = StickFileCorpus.Census(caRoot, caProblems, parallel: 12);
+    Console.Write(StickFileCorpus.Summary(caCensus));
+    var (caOptions, caRulesSource) = PdfIntakeOptions.For(caRulesDb ?? Environment.GetEnvironmentVariable(RuleSettings.ConnectionEnvironmentVariable));
+    Console.WriteLine($"rules: {caRulesSource}; work: {caWork}");
+    var caRun = CorpusAnalyzer.Run(caCensus, caWork, caOptions, caRulesDb, caParallel, caForce, line => Console.WriteLine(line), caJobs, caYardsticks, caReuse);
+    Console.WriteLine();
+    Console.Write(CorpusAnalyzer.Summary(caRun));
+    Console.WriteLine("  " + CorpusAnalyzer.WriteLedger(caRun, caRulesDb));
+    Console.WriteLine($"  csv: {Path.Combine(caWork, "ledger-sets.csv")}, {Path.Combine(caWork, "ledger-sheets.csv")}");
     return 0;
 }
 
@@ -5150,6 +5114,8 @@ public static class TakeoffCliHelp
         new("render", "takeoff render <pdf> <pngDir> [dpi] [first] [last]", "Rasterize PDF pages to PNG files."),
         new("elev-scan", "takeoff elev-scan <pdf> [first] [last]", "Scan for floor elevations and storey height notes; prints the level ladder's gaps at the sheet's scale."),
         new("e2k-storeys", "takeoff e2k-storeys <model.e2k>", "A model's storeys top to bottom with their heights — what elev-scan's ladder is measured against."),
+        new("model-yardstick", "takeoff model-yardstick <model.e2k> <yardstick.e2k>", "A model against the engineer's own model of the job, column by column: frames matched by grid name, storeys by name, residuals both ways (ours to theirs, theirs to ours), every storey listed."),
+        new("corpus-analyze", "takeoff corpus-analyze [<projectsRoot>] [--work <dir>] [--jobs a,b] [--parallel N] [--force] [--rules-db <conn>]", "The whole corpus through the one ingestion point: every job's current stick file mirrored once and built as the verbs build one, one row per set and per sheet into analysis.IntakeSet / IntakeSheet (migration 083) and CSV beside the work; then X of Y build, and why the rest do not."),
         new("corpus-census", "takeoff corpus-census [<projectsRoot>] [--out census.csv] [--parallel N]", "Every job on the projects share and what it holds for the intake to learn from: dated structural stick files, architects' sets, the engineer's ETABS models; X of Y, one row per job. Read-only, bounded listings."),
         new("pdf-levels", "takeoff pdf-levels <stickfile.pdf> [levels.csv]", "The drawings' storeys as a levels file (level, elevation mm from the lowest stated level), read off the wall elevations — what dxf-to-etabs takes in place of a reference .e2k for a job nobody has modelled."),
         new("pdf-assemblies", "takeoff pdf-assemblies <set.pdf> [assemblies.csv]", "Every wall and floor type card on the set's schedule sheets, read whole: code, name, each layer, F.R.R., S.T.C., references, remarks — and the material and thickness the model takes from them."),

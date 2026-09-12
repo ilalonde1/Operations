@@ -102,12 +102,11 @@ internal static class Program
                 long bytes = 0;
                 try
                 {
-                    var candidates = Models(job.ModelFolder);
-                    if (candidates.Any(f => f.EndsWith(".e2k", StringComparison.OrdinalIgnoreCase)))
-                    {
-                        outcome = "has an .e2k already";
-                    }
-                    else if (candidates.Count == 0)
+                    // every job with an .EDB is exported, an .e2k beside it or not: the .e2k there may be this
+                    // tool's own published output (31168's "31168-FROM-DRAWINGS.e2k"), and the yardstick must be
+                    // the engineer's - the first run skipped 15 jobs for "has an .e2k already"
+                    var candidates = Models(job.ModelFolder).Where(f => f.EndsWith(".edb", StringComparison.OrdinalIgnoreCase)).ToList();
+                    if (candidates.Count == 0)
                     {
                         outcome = "no .EDB in the model folder";
                     }

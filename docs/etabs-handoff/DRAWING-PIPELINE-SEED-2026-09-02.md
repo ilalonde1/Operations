@@ -41,7 +41,7 @@ over SMB or the VPN, and it must stay that way.
       bash docs/etabs-handoff/pdf_only_all.sh                      # all six jobs from PDFs, IN PARALLEL, ~3-5 min; prints ⛔ on FAILED pages / NO MODEL
       bash docs/etabs-handoff/six_set_diff.sh s42                  # THEN THIS: one line per set against the banked step - byte-identical, or what moved
       bash docs/etabs-handoff/six_set_bank.sh s43                  # when a step is KEPT: bank model AND console under the step name (refuses to overwrite)
-      python docs/etabs-handoff/columns_vs_yardstick.py <out.e2k> mm <revit-31168/out.e2k> in   # POSITIONS against Revit, frames matched by grid name
+      takeoff model-yardstick <out.e2k> <engineers.e2k>              # POSITIONS against the engineer's own model, both ways; the corpus analyzer runs it per job
       bash docs/etabs-handoff/pdf_only_one.sh 31170-01-arch 96     # one set, ~1 min: characterise a rule here BEFORE the six-set run
       python docs/etabs-handoff/plate_diff.py <banked.e2k> <new.e2k> mm    # which storey's plate moved
       python docs/etabs-handoff/storey_counts.py <a.e2k> <b.e2k>           # columns and walls per storey

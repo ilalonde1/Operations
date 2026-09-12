@@ -214,6 +214,14 @@ public sealed record DxfToEtabsReport(
     public E2kModelContents SavedModel { get; init; } = E2kModelContents.Empty;
 
     /// <summary>
+    /// The sheets (file names) set on the model's grid by the names of their axes — each in its own
+    /// frame, placed where the grid says, not where the page put it. A sheet absent here stayed in
+    /// its page frame; the warning says why. Carried as data so the corpus ledger does not parse the
+    /// warning's text for it (2026-09-11).
+    /// </summary>
+    public IReadOnlyList<string> SheetsSetOnGridByName { get; init; } = Array.Empty<string>();
+
+    /// <summary>
     /// How many floor plates each storey of the finished file carries.
     ///
     /// So the tool can hold itself to a count the engineer has already given. She said the YMCA
@@ -2449,6 +2457,7 @@ public static class DxfToEtabsService
             SavedModel = saved,
             PlatesByStorey = saved.PlatesByStorey,
             FloorsWiderThanTheirStructure = FloorsWiderThanTheirStructure(doc),
+            SheetsSetOnGridByName = alignedByName.Keys.Select(f => Path.GetFileName(f)).ToList(),
         };
     }
 
