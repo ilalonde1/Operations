@@ -36,21 +36,24 @@ the most recent), and `revit-31168\out.e2k`, the Revit route's answer for the sa
 last file is the only yardstick in the harness that is not our own output. Nothing here is read
 over SMB or the VPN, and it must stay that way.
 
-**One command measures every deliverable.**
+**One command measures every deliverable — and it is a test, not a script (2026-09-11).**
 
-      bash docs/etabs-handoff/pdf_only_all.sh                      # all six jobs from PDFs, IN PARALLEL, ~3-5 min; prints ⛔ on FAILED pages / NO MODEL
-      bash docs/etabs-handoff/six_set_diff.sh s42                  # THEN THIS: one line per set against the banked step - byte-identical, or what moved
-      bash docs/etabs-handoff/six_set_bank.sh s43                  # when a step is KEPT: bank model AND console under the step name (refuses to overwrite)
-      takeoff model-yardstick <out.e2k> <engineers.e2k>              # POSITIONS against the engineer's own model, both ways; the corpus analyzer runs it per job
-      bash docs/etabs-handoff/pdf_only_one.sh 31170-01-arch 96     # one set, ~1 min: characterise a rule here BEFORE the six-set run
-      python docs/etabs-handoff/plate_diff.py <banked.e2k> <new.e2k> mm    # which storey's plate moved
-      python docs/etabs-handoff/storey_counts.py <a.e2k> <b.e2k>           # columns and walls per storey
-      python docs/etabs-handoff/outside_plate.py <out.e2k> 150             # per storey, n of m members beyond every plate
-      bash   docs/etabs-handoff/render_storeys.sh <out.e2k> <out.png> "<title>"   # every storey on one PNG - LOOK before you count
-      python docs/etabs-handoff/pdf_words_near.py <pdf> ROOF OVERRUN            # what does the drawing CALL it? ask before any rule
-      python docs/etabs-handoff/members_diff.py <before.e2k> <after.e2k>       # WHICH members moved, with positions - then crop and look
-      python docs/etabs-handoff/model_to_page.py <out.e2k> <sheet.dxf> --census <overlay --walls output> <x> <y>   # a model point back onto its SHEET, for crop_mm.py
-      takeoff pdf-overlay <pdf> <page> <png> --scale N --columns              # the column reads as a census: size, pen, abutting twins
+      dotnet test Kor.Operations.EngineeringTools.Core.Tests --filter "FullyQualifiedName~SixSetsBuildAsBanked"
+                                                                    # THE SIX-SET GATE: the six sets built from their share paths through
+                                                                    # PdfOnlyBuild, byte for byte against Baselines/pdf-only-<job>.e2k in the
+                                                                    # test project; ~5 min; a difference prints what moved (TestResults/six-sets)
+                                                                    # BANKING A STEP = replacing a baseline in the commit that changes the rule
+      takeoff corpus-analyze [--recompose|--reuse] [--parallel N]   # THE CORPUS: every structural stick file on the share (292) built into the
+                                                                    # ledger; --recompose keeps the views and re-runs the ladder and composer
+                                                                    # (minutes), a reader change rebuilds everything (~2.5 h, run it detached)
+      takeoff model-diff <before.e2k> <after.e2k>                   # WHICH members moved, with positions; plates by area; frames by grid label
+      takeoff model-render <out.e2k> <out.png> "<title>"            # every storey on one sheet - LOOK before you count (SVG always, PNG via Edge)
+      takeoff model-yardstick <out.e2k> <engineers.e2k>             # POSITIONS against the engineer's own model, both ways; the analyzer runs it per job
+      takeoff corpus-census [--out census.csv]                      # what the share holds: 1,158 jobs, 292 stick files, 460 architects' sets, 66 both
+      takeoff pdf-overlay <pdf> <page> <png> --scale N --columns    # the column reads as a census: size, pen, abutting twins
+      python docs/etabs-handoff/pdf_words_near.py <pdf> ROOF OVERRUN            # what does the drawing CALL it? ask before any rule (verb owed, WP2)
+      python docs/etabs-handoff/model_to_page.py <out.e2k> <sheet.dxf> --census <overlay --walls output> <x> <y>   # a model point back onto its SHEET, for crop_mm.py (verb owed)
+      python docs/etabs-handoff/corpus/set_sheets.py <job>          # one set's sheet rows from the ledger, no PDF opened (verb owed: corpus-query)
 
 A change measured on one job has not been measured. Run all six, before and after — and the one that
 decides whether a rule is universal is 31170, the only set from another office. Steps 28 and 29
@@ -90,8 +93,8 @@ caught step 28's own false positive, a 12,391 sq ft chevron on LEVEL 2 that ever
 itself draws, no reader in the way), `view_breaks.py` (a contact sheet of every failing view with
 its open ends ringed), `view_parts.py` (a view's wall panels as objects), `chains.py` (now reads
 POLYLINE/VERTEX — it silently said "0 segment(s)" on every PDF-route DXF until 2026-09-10),
-`plan_sheet.py` (every storey on one sheet), `plate_diff.py`, `storey_counts.py`. All in
-`docs/etabs-handoff/`. Anything you work out with a throwaway script belongs here afterwards.
+`takeoff model-render` (every storey on one sheet), `model-diff`, `model-yardstick` — verbs since
+2026-09-11; the python they replaced is gone. The rest are in `docs/etabs-handoff/`. Anything you work out with a throwaway script belongs here afterwards.
 
 **What the tool is, so nobody tunes it to a job again.** ONE ingestion point — `DrawingIntake.ReadSheet`
 reads every sheet of a set once into a `SheetRecord` and accounts for every path and word — feeding
@@ -108,7 +111,7 @@ never seen builds a model with no code change, and every sheet it cannot read sa
    carries an 11% corner notch. L15–L26 read 8,721 and 8,699 sq ft against Revit's 9,831 and 9,835:
    11% under, and the shortfall is exactly the four 287 sq ft corner blocks cut out. The bounding
    box is right to the millimetre; the boundary walk rounds the INSIDE of each corner block, which
-   `plan_sheet.py` shows as four notches with the corner columns stranded outside the plate.
+   `takeoff model-render` shows as four notches with the corner columns stranded outside the plate.
 2. **A ring that is a piece of the floor rather than the floor.** 31168's LEVEL 2 takes a 4,222 sq ft
    rectangle where Revit's storey is 48,501 sq ft in three plates; tower C's L5–L8 take a 1,922 sq ft
    strip of a 14,988 sq ft floor. The gates measure the neighbourhood against the RING's own size, so
@@ -402,7 +405,7 @@ This half has had far more scrutiny on correctness and far less on whether it is
 
 - **Verify against the five real stick files, not just unit tests.** Three rounds of this work
   passed their unit tests and were wrong on real drawings; the harness is the fourth round's answer.
-- **Render it and LOOK.** `docs/etabs-handoff/plan_sheet.py` draws every storey of an `.e2k` on one
+- **Render it and LOOK.** `takeoff model-render` (once `plan_sheet.py`) draws every storey of an `.e2k` on one
   sheet; `renderpage.py` rasterises a PDF page; `takeoff sched-border` prints a table read.
 - **State findings as X of Y.** A `head`/`tail`-truncated command cannot support a claim about a
   population, and a hook stamps truncated output to remind you.

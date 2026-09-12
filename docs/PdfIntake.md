@@ -2608,3 +2608,54 @@ yardstick's frame from grids and from columns, both directions, the building rul
 (`AModelIsMeasuredAgainstTheEngineersOwnTests`); the route's refactor by the six-set bank. WHAT
 THEY DO NOT: the ledger tables (083 not applied); the 460 architects' sets (not yet analyzed);
 walls and plates against the yardstick (columns only).
+
+## 54. Steps 45 and 46, 2026-09-11: a set's storeys are what its plans name; the title on the page names the sheet
+
+**Step 45 — the first rule chosen by the corpus.** 225 of 292 sets read their plans and built no
+model because the storey ladder came only from shear-wall elevations (§25, §41), which most of the
+office's sets do not draw. `StoreysFromPlans` merges the elevations' chain with the storeys the
+written plan views are NAMED for — parsed by the composer's own `PlanSheetNaming`, so the names
+agree by construction — parkade levels below, numbered levels up, the roof on top. A stated
+elevation stands; a plan-only storey between two stated ones is spaced evenly between them; one
+above the top stated storey rises the set's own typical height, or the assumed height
+(`dxf.pdf.assumed-storey-height-mm`, 3,000; migration **084**, Ian applies), and every assumption is
+written into `levels.csv` ("# ASSUMED: …") and the report. Two things the six sets taught the
+first cut: a ladder's own spellings cover the plans' (A-L27 covers L27; L0/P1 covers L0 — the first
+cut put L27 beside A-L27 on 31168 and lost 50 columns), and the roof plan names a storey only where
+the elevations put none above the plans (31170's L7 stays the roof; L8 is the elevator overrun).
+The composer's layer gate learned the PDF route's DXF is ours: a wood-frame set with no concrete
+wall and 49,000 lines on BEAM is the building, not a naming mismatch (`DxfExporter.NonMemberLayers`).
+
+**Measured.** Six sets: 31138, 31202, 31168, 31170 byte-identical; **31130 gains its tower** —
+19 storeys the stick file's plans named all along (+131 columns, +63 walls; rendered: one core on
+every storey); 31065 gains L20 under its ROOF, closing §50's two-storey gap. Banked **s45**. The
+corpus, recomposed (18 min, the views standing): **192 of 292 build a model, from 39.** What
+remains: 72 with no ladder still, 17 with no plan the reader typed, 11 refused at the layer gate
+for other reasons. Of the 192: 4,109 plan views, 1,824 on the grid (44%); 2,290 storeys, 707 with
+a plate (31%); yardsticks on 37 sets: 35% of our columns within 100 mm of theirs, 49% the other way
+— more sets, more assumed storeys, a lower share; 31130 now shares 20 storeys with its engineer's
+model instead of two, and sits under 25%, which is the next thing to look at there.
+
+**Step 46 — the title written on the page is the third statement of a sheet's name.** Of the 72
+sets still without a ladder, 298 of their 486 views were named by the PDF's stem and page — sheets
+with a number, a level the storey reader had read, and no title-block field or bookmark to name
+them by (30940: 65 plans, 18 with a level; 31009: 28, 22). `SheetRecord.TitleText` carries the
+page's own title now and `SheetDxfName` takes it third, after the field and the bookmark, when
+neither names a level. Six sets unchanged. The corpus rebuild (every sheet re-read) is the measure;
+its count is in §55.
+
+**Instruments that landed as code:** `takeoff model-diff` (`ModelDiff`, from `members_diff.py` and
+`plate_diff.py`; the same counts on the s42→s45 pairs), `takeoff model-render` (`ModelRender`, from
+`plan_sheet.py` and `render_storeys.sh`), and **the six-set gate as a test**:
+`SixSetsBuildAsBankedTests` builds the six from their share paths through `PdfOnlyBuild` and holds
+them byte-identical to `Baselines/pdf-only-<job>.e2k` in the test project — banking a step is
+replacing a baseline in the commit that changes the rule. The shell harness and its banking scripts
+are gone with it.
+
+WHAT THE CHECKS COVER: the ladder from plans alone, a stated elevation standing with plan-only
+storeys spaced between, a ladder unchanged when the elevations name everything, a foundation plan
+naming no storey (`ASetsStoreysAreWhatItsPlansNameTests`); the third title source and its
+precedence (`ASheetFromTheStickFileIsNamedLikeAViewTests`); the exporter's layers explaining their
+geometry (`ARoleWithNoLayerIsAMismatchWhenGeometrySitsUnclaimed`); the six sets, byte for byte.
+WHAT THEY DO NOT: heights from sections or the architect's set; storeys named by a word alone
+(GROUND, MAIN, SECOND — the vocabulary, next); the 17 sets with no plan typed; the 11 at the gate.

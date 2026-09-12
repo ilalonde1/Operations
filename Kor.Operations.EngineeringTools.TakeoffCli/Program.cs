@@ -191,6 +191,38 @@ if (args.Length >= 1 && args[0].Equals("corpus-census", StringComparison.Ordinal
     return 0;
 }
 
+// EVERY STOREY OF A MODEL ON ONE SHEET, so a person can LOOK (ModelRender, ported 2026-09-11 from
+// plan_sheet.py and render_storeys.sh). SVG always; PNG through Edge when it is there.
+// Usage: takeoff model-render <model.e2k> <out.png|out.svg> ["title"] [--columns N] [--cell px] [--no-png]
+if (args.Length >= 3 && args[0].Equals("model-render", StringComparison.OrdinalIgnoreCase))
+{
+    if (!File.Exists(args[1])) { Console.Error.WriteLine($"no such model: {args[1]}"); return 1; }
+    string mrTitle = args.Length >= 4 && !args[3].StartsWith("--", StringComparison.Ordinal) ? args[3] : Path.GetFileName(args[1]);
+    int mrColumns = 3, mrCell = 600; bool mrPng = true;
+    for (int i = 3; i < args.Length; i++)
+    {
+        if (args[i].Equals("--columns", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) mrColumns = int.Parse(args[++i], CultureInfo.InvariantCulture);
+        else if (args[i].Equals("--cell", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) mrCell = int.Parse(args[++i], CultureInfo.InvariantCulture);
+        else if (args[i].Equals("--no-png", StringComparison.OrdinalIgnoreCase)) mrPng = false;
+    }
+    var (mrSvg, mrPngPath, mrDrawn) = ModelRender.Write(args[1], args[2], mrTitle, mrColumns, mrCell, mrPng);
+    Console.WriteLine($"{mrSvg}  ({mrDrawn} storeys drawn)");
+    if (mrPng) Console.WriteLine(mrPngPath ?? "Edge wrote no PNG (is Edge installed?); the SVG stands");
+    return mrPng && mrPngPath is null ? 2 : 0;
+}
+
+// WHAT A SECOND MODEL LOST OR GAINED AGAINST A FIRST, storey by storey, with positions - the
+// differential behind "byte-identical, or what moved" (ModelDiff, ported 2026-09-11 from
+// members_diff.py and plate_diff.py). Frames by grid label, else the modal displacement (a GUESS, said).
+// Usage: takeoff model-diff <before.e2k> <after.e2k>
+if (args.Length >= 3 && args[0].Equals("model-diff", StringComparison.OrdinalIgnoreCase))
+{
+    if (!File.Exists(args[1]) || !File.Exists(args[2])) { Console.Error.WriteLine("Both .e2k files must exist."); return 1; }
+    var mdResult = ModelDiff.Compare(args[1], args[2]);
+    Console.Write(ModelDiff.Report(mdResult));
+    return mdResult.ByteIdentical ? 0 : 2;
+}
+
 // A MODEL AGAINST THE ENGINEER'S OWN, column by column: the positional check the counts never give
 // (ModelYardstick, ported 2026-09-11 from columns_vs_yardstick.py). Frames matched by grid name,
 // storeys by full name then stripped, residuals BOTH ways, every storey listed.
@@ -5119,6 +5151,8 @@ public static class TakeoffCliHelp
         new("render", "takeoff render <pdf> <pngDir> [dpi] [first] [last]", "Rasterize PDF pages to PNG files."),
         new("elev-scan", "takeoff elev-scan <pdf> [first] [last]", "Scan for floor elevations and storey height notes; prints the level ladder's gaps at the sheet's scale."),
         new("e2k-storeys", "takeoff e2k-storeys <model.e2k>", "A model's storeys top to bottom with their heights — what elev-scan's ladder is measured against."),
+        new("model-render", "takeoff model-render <model.e2k> <out.png|out.svg> [\"title\"] [--columns N] [--cell px] [--no-png]", "Every storey of a model on one sheet - walls dark red, columns green, each plate its own colour - so a person can LOOK before counting. SVG always, PNG through Edge."),
+        new("model-diff", "takeoff model-diff <before.e2k> <after.e2k>", "What a second model lost or gained against a first, storey by storey, with positions: byte-identical, or plates moved / columns and walls lost and gained, frames matched by grid label. Exit 2 when they differ."),
         new("model-yardstick", "takeoff model-yardstick <model.e2k> <yardstick.e2k>", "A model against the engineer's own model of the job, column by column: frames matched by grid name, storeys by name, residuals both ways (ours to theirs, theirs to ours), every storey listed."),
         new("corpus-analyze", "takeoff corpus-analyze [<projectsRoot>] [--work <dir>] [--jobs a,b] [--parallel N] [--force] [--rules-db <conn>]", "The whole corpus through the one ingestion point: every job's current stick file mirrored once and built as the verbs build one, one row per set and per sheet into analysis.IntakeSet / IntakeSheet (migration 083) and CSV beside the work; then X of Y build, and why the rest do not."),
         new("corpus-census", "takeoff corpus-census [<projectsRoot>] [--out census.csv] [--parallel N]", "Every job on the projects share and what it holds for the intake to learn from: dated structural stick files, architects' sets, the engineer's ETABS models; X of Y, one row per job. Read-only, bounded listings."),

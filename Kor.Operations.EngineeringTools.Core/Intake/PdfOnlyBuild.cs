@@ -196,8 +196,9 @@ public static class PdfOnlyBuild
     /// <c>levels.csv</c>, <c>out.e2k</c>. A set the tool cannot use is an ordinary outcome carried in
     /// <see cref="BuildOutcome.ModelError"/>, not an exception — the corpus has hundreds of them.
     /// </summary>
+    /// <param name="stem">The name a view takes when the sheet gives it none ("&lt;stem&gt;-pNN"); the PDF's own name by default. The six-set bank was built with the job number, and its models are byte-identical only under it.</param>
     public static BuildOutcome Build(string pdf, string workDir, int scale, PdfIntakeOptions options, string? rulesConnection = null,
-        Action<SheetOutcome>? onSheet = null)
+        Action<SheetOutcome>? onSheet = null, string? stem = null)
     {
         var watch = System.Diagnostics.Stopwatch.StartNew();
         if (Directory.Exists(workDir)) Directory.Delete(workDir, recursive: true);
@@ -206,7 +207,7 @@ public static class PdfOnlyBuild
         int pages;
         using (var doc = PdfDocument.Open(pdf)) pages = doc.NumberOfPages;
 
-        string stem = Path.GetFileNameWithoutExtension(pdf);
+        stem ??= Path.GetFileNameWithoutExtension(pdf);
         var sheets = WriteSheets(pdf, Path.Combine(dxfDir, stem + ".dxf"), 1, pages, scale, markup: false, korLayers: true, options, onSheet);
         return Compose(pdf, workDir, pages, sheets, sheets.Sheets.SelectMany(s => s.DxfFiles).ToList(), options, rulesConnection, watch);
     }

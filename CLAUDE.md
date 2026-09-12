@@ -106,7 +106,7 @@ and the reply that starts the work names all three:
 2. **One command measures EVERY deliverable.** Not the one being worked on — all of them, and the
    other project too. If a fix can break something without the harness saying so, the harness is
    not finished.
-3. **The output has been LOOKED AT**, rendered, not counted. `docs/etabs-handoff/plan_sheet.py`
+3. **The output has been LOOKED AT**, rendered, not counted. `takeoff model-render` (once `plan_sheet.py`)
    draws every storey on one sheet in a second.
 
 What this cost: on 2026-08-27 each iteration re-read 139 DXFs across the VPN — four minutes a

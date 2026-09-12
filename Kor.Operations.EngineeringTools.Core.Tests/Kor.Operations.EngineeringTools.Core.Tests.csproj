@@ -14,6 +14,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- The six banked PDF-only models (SixSetsBuildAsBankedTests): banking a step = replacing these in the commit that changes the rule. -->
+    <None Include="Baselines\*.e2k" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Kor.Operations.EngineeringTools.Core\Kor.Operations.EngineeringTools.Core.csproj" />
     <ProjectReference Include="..\Kor.Operations.EngineeringTools.TakeoffCli\Kor.Operations.EngineeringTools.TakeoffCli.csproj" />
   </ItemGroup>
