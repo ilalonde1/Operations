@@ -1,10 +1,10 @@
 # PDF intake — what it does today, and what it leaves on the page
 
-## 0. START HERE (state as of 2026-09-12, after step 46 and completion-plan WP1–WP3 — 192 of 292 sets build from the PDF alone)
+## 0. START HERE (state as of 2026-09-12, after step 48 and completion-plan WP1–WP5 — 207 of 292 sets build from the PDF alone)
 
 A session picking this up cold reads this section, then the completion plan
 (`docs/architecture/Kor.Operations.EngineeringTools.PdfIntake.plan.md` — what "complete" means, the
-packages, and where each stands), then the last three step sections (§53–§55). §1–§52 are the
+packages, and where each stands), then the last three step sections (§54–§56). §1–§52 are the
 record of how each rule was arrived at, read when a rule is being changed.
 
 **What this is.** A PDF ingestor: one ingestion point (`DrawingIntake.ReadSheet` → `PdfOnlyBuild`)
@@ -57,6 +57,7 @@ closing rules that a rendered view would have settled; that is the mistake this 
 | Storeys with a plate | 741 of 2,401 (31%) |
 | Against the engineers' own models (39 sets sharing a storey with columns, of 62 with a model) | 34% of our columns within 100 mm of theirs, 48% of theirs within 100 mm of ours; 31130 under 25% with 20 shared storeys — the next thing to look at |
 | 31168 against the Revit route | columns median 16 mm, 92% within 50 mm; tower plates within 0.1%; 36 of 62 storeys carry a plate; walls 1,324 vs 1,832 |
+| The four harness sets with the engineer's own model (§56, after step 48) | 31138 69% / 96%; 31170 83% / 91%; 31202 66% / 95% (the tendon anchors, 45 of 55 a sheet still read as columns); 31065 43% / 76% |
 
 **The work order is the count.** 1. Storeys: the 72 sets whose plans name their storeys with
 words (step 47). 2. Views on the grid: 56% of plan views are not placed by name. 3. Plates: 69%
@@ -2683,3 +2684,84 @@ WHAT THE CHECKS COVER: the `-MARKUP` layer explained and a foreign one not
 (`ARoleWithNoLayerIsAMismatchWhenGeometrySitsUnclaimed`); the ledger readers through
 `corpus-query`; the six, byte for byte, after every package and after this rule. WHAT THEY DO
 NOT: the one set still at the gate (slab edges); step 47's vocabulary.
+
+## 56. 2026-09-12: the engineers' own models of four harness sets, and what they showed — an inch, one joint per column, a tendon's anchor, and a gate that tells the truth
+
+Ian ran the nine ETABS 23 exports, and four of the six harness sets have the engineer's own model
+now (31138, 31170, 31202; 31168's is "BldgC-Secondary-elements-MB", built on our own output — 211
+of its columns are named KC — and is not a yardstick; `IsKorGenerated` already refuses it). Ian's
+direction for the day: *keep honing; no rush to put a model in front of an engineer; first
+impressions are everything.* So the yardsticks were read for what is WRONG, not for a number.
+
+**The yardstick reads by section now** (`model-yardstick`, `ModelYardstick.OursUnmatchedBySection`):
+our columns with none of theirs within 300 mm, by the size we gave them, and theirs with none of
+ours. That one line named each fault. And the storey spellings an engineer's model uses —
+`L-1..L-7` (31170), `L01..L09` (31138) — are `L1..L9`: `Stripped` folds the hyphen and the leading
+zero, and 31170 went from 0 shared storeys to 7, 31138 from 16 to 25.
+
+| set (engineer's model) | before, ours → theirs / theirs → ours within 100 mm | what the sections said |
+|---|---|---|
+| 31138 (Grav-Rev3) | 641 columns, 70% / 96% — 25 a storey where she models 13 | unmatched 14x36 37, 24x37 32, 18x30 17 … real sizes, at real positions, **twice**: pairs 2–20 mm apart on every storey L11–L20 |
+| 31202 (Hotel Circle) | 1,075 columns, 61% / 95% — 102 a storey where she models 53 | unmatched 9x12 230, 11x14 76: the **post-tensioning tendon anchors**, drawn as small filled blocks at each tendon's end and labelled with the force (rendered and looked at, p32) |
+| 31170 (Eq Model, the architect's set) | 342, 83% / 91% | 12x30 ×10 of hers we do not read |
+| 31065 | 584, 44% / 76% | median 287 mm: two views of one storey in frames that disagree |
+
+**An inch is an inch in a millimetre model.** The twins were not two readings: they were one
+column, read from two sheets a few millimetres apart (each sheet set on the grid in its own frame),
+that the composer kept as two joints — joints merge at a twentieth of an inch — and so two column
+stacks, each with the storeys the other sheet drew, and the pass that models a member on both floors
+it spans filled each stack's gaps with the other's storeys. Behind that a class (rule 11): every
+length the composer quantises by — the inch a column is placed to, the half inch a thickness snaps
+to, the six inches a pier label is shared within, the foot a plate is keyed by — was a literal applied
+in the model's unit, and the PDF route writes millimetres: "to the nearest inch" was to the nearest
+millimetre, a 4 in wall was `KOR-W101.5`, 31168 declared 133 sections where the drawings draw a
+few dozen sizes. `AModelIsTheSameInInchesAndMillimetresTests` is the differential — the same
+drawings into an inch model and a millimetre model must be the same structure — and it was red on
+the column count before the fix. `E2kGeometryComposer` now knows the inch (`ModelUnitInInches`) at
+every literal; the inch-model route is byte-identical (the full suite's geometry tests).
+
+**One column, one joint.** A column within an inch of one already placed stands at that one's joint
+(`ColumnJointAt`), and `ShippedModelInvariants` refuses a model with two column objects within an
+inch of each other on one storey (`two-columns-in-one-place`): 31138 had 40 such pairs, 31065 and
+31168 theirs; the six have none now. Column objects: 31168 557 → 369, 31065 390 → 248, 31138 144 →
+129; members per storey where she has 13: 25 → 17. Sections: 31168 133 → 61, 31065 125 → 72.
+31138's ours → theirs: 599 columns, 69% / 96% — the twins gone, the engineer's columns all still met.
+
+**A tendon's anchor is not a column (step 48).** A line labelled with a force — `dxf.pdf.force-words`,
+KIPS/KIP/KN and the per-foot forms, **migration 087**, extending the compiled default — is a
+tendon; a tendon is drawn in pieces (broken for the label, the chair marks, the crossing
+dimensions), so the axis-aligned pieces on one line within 20 mm and 1.5 m of one another are
+chained into the run they belong to; a column whose footprint holds either end is the anchor and
+is stood down — **unless the sheet's own column schedule declares that size**, in which case it is
+a column a tendon happens to end at. That last clause came from the measurement: without it, one
+real 12x48 column a storey went with the anchors on 31202 (theirs → ours 660 → 653), and the
+schedule already knew the 12x48s. With it: 31202 1,005 columns, 66% / 95%; 70 anchors gone;
+**recall is 10 of 55 on the typical sheet** — the chains reach the anchors of the long "Kips"
+tendons at both slab edges, but the distributed "Kips/ft" tendons are drawn as linework the chain
+does not yet see (measured with `pdf-overlay --tendons`, which prints every tendon and every
+column-sized shape's nearest tendon end). What the anchors are is settled and looked at; reading
+more of the tendons is the next turn of this rule, and the alternative — a filled shape of a size
+the schedule does not declare, on a sheet that carries a schedule, is not a column — is the
+candidate to measure against the 42 yardstick sets first.
+
+**And the gate asserted the connection and did not use it.** `SixSetsBuildAsBankedTests` built the
+six with `PdfIntakeOptions.Default` and no rules connection; the composer read the rows anyway
+(through the environment variable) and every `dxf.pdf` row equals its compiled default, so the six
+were the same either way — but a gate one row away from banking the wrong model. It builds with
+the rows and says so.
+
+**Banked s48**: all six re-banked (the units, the joints, the anchors — every set moved).
+Corpus: a reader change, so the full rebuild runs next (~3 h); the yardsticks over all 42 sets are
+the measure.
+
+WHAT THE CHECKS COVER: the unit differential (columns, walls, piers, sections, joints across
+inches and millimetres); the invariant (two columns within an inch on one storey refuses; the
+inch from the model's UNITS); the tendon rule (a labelled line, a column at its end stood down, a
+column it runs over kept, a beam with no force label, a leader too short, the vocabulary row
+extending the default; declared sizes never anchors — `ATendonsAnchorIsNotAColumnTests`); the
+yardstick's spellings and sections (`AModelIsMeasuredAgainstTheEngineersOwnTests`); the six, byte
+for byte. WHAT THEY DO NOT: tendons drawn as anything but axis-aligned pieces (the 45 of 55);
+31130's yardstick (median 5.7 m: two halves registered as one frame — the backlog); the
+PENTHOUSE storey of 31202, which the render shows placed a page away from the building (a sheet
+in the wrong frame — found by the render, not yet read); the render itself, which fits every
+storey to the model's whole extent and shows a building as a dot when one storey sits a page away.

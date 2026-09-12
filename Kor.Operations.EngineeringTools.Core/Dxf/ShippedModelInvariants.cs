@@ -598,8 +598,48 @@ public static class ShippedModelInvariants
         if (tooClose > 0)
             v.Add(new ModelViolation("joints-too-close", $"{tooClose} pair(s) of joints closer than {jointTolerance} in", firstPair));
 
+        // 7. NO TWO COLUMNS IN ONE PLACE ON ONE STOREY. A building never has two columns an inch apart;
+        //    two generated column objects assigned to the same storey with their joints within an inch
+        //    are one column read twice - from two sheets that draw the same storey, or one sheet that
+        //    draws it twice - and the model carries twice the stiffness and twice the load there.
+        //    31138 (2026-09-12): every storey from L11 to L20 held six such pairs, 2 mm apart, and the
+        //    yardstick counted 25 columns a storey where the engineer's model has 13. The inch is the
+        //    model's own unit converted (the PDF route writes millimetres).
+        double inch = 1.0;
+        foreach (string raw in model)
+        {
+            var u = Units.Match(raw);
+            if (!u.Success) continue;
+            inch = u.Groups[1].Value.ToUpperInvariant() switch { "MM" => 25.4, "CM" => 2.54, "M" => 0.0254, "FT" => 1.0 / 12.0, _ => 1.0 };
+            break;
+        }
+        var columnsOn = new Dictionary<string, List<(string Name, double X, double Y)>>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (obj, sts) in onStoreys)
+        {
+            if (!kind.TryGetValue(obj, out var k) || !k.Equals("COLUMN", StringComparison.OrdinalIgnoreCase)) continue;
+            if (!obj.StartsWith("K", StringComparison.Ordinal) || carriedThrough.Contains(obj)) continue;
+            if (!joints.TryGetValue(obj, out var js) || js.Count == 0 || !pts.TryGetValue(js[0], out var at)) continue;
+            foreach (string st in sts)
+                (columnsOn.TryGetValue(st, out var list) ? list : columnsOn[st] = new List<(string, double, double)>()).Add((obj, at.X, at.Y));
+        }
+        int twins = 0;
+        string firstTwin = string.Empty;
+        foreach (var (storey, cols) in columnsOn)
+            for (int i = 0; i < cols.Count; i++)
+                for (int j = i + 1; j < cols.Count; j++)
+                {
+                    double d = Math.Sqrt(Math.Pow(cols[i].X - cols[j].X, 2) + Math.Pow(cols[i].Y - cols[j].Y, 2));
+                    if (d > inch) continue;
+                    twins++;
+                    if (firstTwin.Length == 0) firstTwin = $"{cols[i].Name}/{cols[j].Name} on {storey}, {d / inch:0.00} in apart";
+                }
+        if (twins > 0)
+            v.Add(new ModelViolation("two-columns-in-one-place", $"{twins} pair(s) of columns within an inch of each other on one storey - one column read twice", firstTwin));
+
         return v;
     }
+
+    private static readonly Regex Units = new(@"^\s*UNITS\s+""[^""]*""\s+""([^""]+)""", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
     private static void CheckReportNumbers(
         IReadOnlyList<string> report,

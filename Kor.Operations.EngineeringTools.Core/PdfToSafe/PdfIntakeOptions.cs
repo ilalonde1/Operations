@@ -53,6 +53,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         public IReadOnlyList<string> AssemblyStructuralWords { get; init; } = Intake.AssemblySchedule.StructuralWords;
         /// <summary>The words that make it a partition (step 32): dxf.assembly.partition-words, else the compiled defaults.</summary>
         public IReadOnlyList<string> AssemblyPartitionWords { get; init; } = Intake.AssemblySchedule.PartitionWords;
+        /// <summary>The words a tendon's force is written in (step 48): dxf.pdf.force-words, else the compiled defaults.</summary>
+        public IReadOnlyList<string> ForceWords { get; init; } = Intake.TendonAnchors.DefaultForceWords;
         /// <summary>A storey's height when the drawings state none (step 45): dxf.pdf.assumed-storey-height-mm, else the compiled default; always said in the levels file.</summary>
         public double AssumedStoreyHeightMm { get; init; } = Intake.StoreysFromPlans.DefaultAssumedStoreyHeightMm;
 
@@ -216,6 +218,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 LevelNameWords          = Extended("dxf.level.name-words", options.LevelNameWords),
                 AssemblyStructuralWords = Extended("dxf.assembly.structural-words", options.AssemblyStructuralWords),
                 AssemblyPartitionWords  = Extended("dxf.assembly.partition-words", options.AssemblyPartitionWords),
+                ForceWords              = Extended($"{Prefix}.force-words", options.ForceWords),
             };
 
             IReadOnlyList<string> Extended(string key, IReadOnlyList<string> defaults)

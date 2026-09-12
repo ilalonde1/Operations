@@ -217,8 +217,13 @@ Revit route.
    31183, 31195, 31199, 31202, 50054 — 8.0 MB of `.e2k`), mirrored to the yardstick folder (105
    models); four of them are harness sets, so the six have engineers' yardsticks now.
 3. **31130's yardstick** — 20 shared storeys and under 25% of our columns within 100 mm of the
-   engineer's: the next thing to look at with `takeoff model-yardstick` and `model-render`, before
-   any rule.
+   engineer's: the yardstick's own numbers say why (median 5.7 m ours → theirs, 22.9 m theirs →
+   ours): the two halves of the building are registered as one frame. The backlog's "31130's
+   halves" item, now with a measurement. Nothing for Ian.
+3a. **What the yardsticks found on 2026-09-12** (PdfIntake.md §56): an inch applied in
+   millimetre models (a unit differential now gates it), one column read from two sheets kept as
+   two (an invariant now refuses it), and 31202's tendon anchors read as columns (step 48; 10 of
+   55 a sheet caught so far). All six re-banked; migration **087** (`dxf.pdf.force-words`) for Ian.
 4. **WP6** — one model in front of Andrea (31170's, or whichever the ledger ranks best of the
    architects' sets). Ian's call when.
 5. **Step 47**, the next reading rule, from the corpus. `takeoff corpus-query plan-titles` on the

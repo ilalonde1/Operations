@@ -130,3 +130,4 @@ __pycache__/
 # PNGs, a small summary and a CHANGES.txt; that is local history, not repository content, and
 # committing ~2.5 MB of binary per draw would bloat the repo within a fortnight.
 docs/architecture/v[0-9][0-9][0-9]/
+TestResults/

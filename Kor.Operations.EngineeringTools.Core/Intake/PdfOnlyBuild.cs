@@ -36,7 +36,7 @@ public static class PdfOnlyBuild
     public sealed record SheetsResult(
         IReadOnlyList<SheetOutcome> Sheets, IReadOnlyList<AssemblySchedule.Assembly> Assemblies,
         int Written, int Empty, int NotPlan, int Failed,
-        int DimensionStrings, int PatternCells, int Tags, int Typed, int Partitions, int NotWalls, int Untagged)
+        int DimensionStrings, int PatternCells, int Tags, int Typed, int Partitions, int NotWalls, int Untagged, int TendonAnchors = 0)
     {
         /// <summary>
         /// The views as the composer reads them, held in memory (WP4, 2026-09-11) — one per written
@@ -81,7 +81,7 @@ public static class PdfOnlyBuild
         var sheets = new List<SheetOutcome>();
         var views = new List<DxfSheet>();
         int written = 0, empty = 0, notPlan = 0, failed = 0;
-        int typed = 0, partitions = 0, untagged = 0, tags = 0, notWalls = 0, dimensionStrings = 0, patternCells = 0;
+        int typed = 0, partitions = 0, untagged = 0, tags = 0, notWalls = 0, dimensionStrings = 0, patternCells = 0, tendonAnchors = 0;
         for (int p = first; p <= last; p++)
         {
             SheetRecord record;
@@ -111,6 +111,7 @@ public static class PdfOnlyBuild
             int found = geo.Slabs.Count + geo.Columns.Count + geo.Walls.Count + geo.Lines.Count;
             dimensionStrings += record.Context.DimensionStringsReadAsWalls;   // a dimension string is not a wall (step 35), on every set
             patternCells += geo.PatternCells.Count;                             // a pattern's cells are not columns (step 37)
+            tendonAnchors += record.Context.TendonAnchorsReadAsColumns;        // a tendon's anchor is not a column (step 48)
             if (assemblies.Count > 0)
             {
                 tags += geo.WallTypeTags.Count;
@@ -184,7 +185,7 @@ public static class PdfOnlyBuild
             sheets.Add(outcome); onSheet?.Invoke(outcome);
         }
 
-        return new SheetsResult(sheets, assemblies, written, empty, notPlan, failed, dimensionStrings, patternCells, tags, typed, partitions, notWalls, untagged) { Views = views };
+        return new SheetsResult(sheets, assemblies, written, empty, notPlan, failed, dimensionStrings, patternCells, tags, typed, partitions, notWalls, untagged, tendonAnchors) { Views = views };
     }
 
     /// <summary>

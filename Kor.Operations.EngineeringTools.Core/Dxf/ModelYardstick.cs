@@ -45,6 +45,10 @@ public static class ModelYardstick
         int TheirsCompared, double TheirsMedianMm, int TheirsWithin100,
         IReadOnlyList<string> Notes)
     {
+        /// <summary>Our columns on shared storeys with none of theirs within 300 mm, counted by the section we gave them — what we read that the engineer did not model, named by its size.</summary>
+        public IReadOnlyList<(string Section, int Count)> OursUnmatchedBySection { get; init; } = [];
+        /// <summary>Their columns on shared storeys with none of ours within 300 mm, by their section — what the engineer modelled that we did not read.</summary>
+        public IReadOnlyList<(string Section, int Count)> TheirsUnmatchedBySection { get; init; } = [];
         public double OursWithin100Share => OursCompared == 0 ? 0 : (double)OursWithin100 / OursCompared;
         public double TheirsWithin100Share => TheirsCompared == 0 ? 0 : (double)TheirsWithin100 / TheirsCompared;
     }
@@ -139,6 +143,36 @@ public static class ModelYardstick
 
         var residuals = pairs.Select(pr => Math.Sqrt(Sq((pr.Q.X - sh.X, pr.Q.Y - sh.Y), pr.P))).ToList();
 
+        // WHAT THE UNMATCHED ARE, BY SIZE. A column of ours with none of theirs within 300 mm is something we
+        // read that the engineer did not model; its section names its size, and the sizes say what it was
+        // (31202, 2026-09-12: 55 of 108 on a storey were 9x12 and 11x14 in - the tendon anchors of a P/T
+        // slab, drawn as small filled rectangles; their 53 columns were the 12x48 and 12x24 the schedule
+        // declares). And theirs with none of ours: what we missed, by their section.
+        var ourSections = SectionsByColumn(model);
+        var theirSections = SectionsByColumn(yard);
+        var oursUnmatched = new Dictionary<string, int>(StringComparer.Ordinal);
+        foreach (var s in shared)
+            foreach (var p in s.OurPts)
+                if (Math.Sqrt(s.TheirPts.Min(q => Sq((q.X - sh.X, q.Y - sh.Y), p))) > 300)
+                {
+                    string sec = ourSections.TryGetValue((s.Ours, p.X, p.Y), out var os) ? os : "?";
+                    oursUnmatched[sec] = oursUnmatched.GetValueOrDefault(sec) + 1;
+                }
+        var theirsUnmatched = new Dictionary<string, int>(StringComparer.Ordinal);
+        foreach (var bucket in ours.Where(kv => kv.Value.Count > 0).Select(kv => (Ours: kv.Key, Theirs: TheirsFor(kv.Key))).Where(t => t.Theirs is not null).GroupBy(t => t.Theirs!.Value.Name, StringComparer.OrdinalIgnoreCase))
+        {
+            var ourPoints = bucket.SelectMany(t => ours[t.Ours]).ToList();
+            foreach (var q in bucket.First().Theirs!.Value.Points)
+            {
+                var qq = (q.X - sh.X, q.Y - sh.Y);
+                if (Math.Sqrt(ourPoints.Min(p => Sq(p, qq))) > 300)
+                {
+                    string sec = theirSections.TryGetValue((bucket.Key, q.X, q.Y), out var ts) ? ts : "?";
+                    theirsUnmatched[sec] = theirsUnmatched.GetValueOrDefault(sec) + 1;
+                }
+            }
+        }
+
         // and theirs to ours: every column they modelled on a matched storey, to the nearest of ours -
         // ONCE per yardstick storey, against the union of our storeys that met it (two of ours can meet
         // one of theirs through the stripped name, and counting theirs per our storey counted them twice)
@@ -174,7 +208,27 @@ public static class ModelYardstick
             support,
             residuals.Count, residuals.Count == 0 ? 0 : Median(residuals), residuals.Count(r => r <= 50), residuals.Count(r => r <= 100), residuals.Count(r => r <= 300),
             theirResiduals.Count, theirResiduals.Count == 0 ? 0 : Median(theirResiduals.Select(t => t.R).ToList()), theirResiduals.Count(t => t.R <= 100),
-            notes);
+            notes)
+        {
+            OursUnmatchedBySection = oursUnmatched.OrderByDescending(kv => kv.Value).ThenBy(kv => kv.Key, StringComparer.Ordinal).Select(kv => (kv.Key, kv.Value)).ToList(),
+            TheirsUnmatchedBySection = theirsUnmatched.OrderByDescending(kv => kv.Value).ThenBy(kv => kv.Key, StringComparer.Ordinal).Select(kv => (kv.Key, kv.Value)).ToList(),
+        };
+    }
+
+    /// <summary>Every COLUMN's section, keyed by (storey, x, y) in mm — the same key ColumnsByStorey gives a point.</summary>
+    private static Dictionary<(string Storey, double X, double Y), string> SectionsByColumn(E2kDocument doc)
+    {
+        double unitMm = (doc.LengthUnitInInches() ?? 1.0) * 25.4;
+        var points = doc.PlanPointsOfObjects();
+        var result = new Dictionary<(string, double, double), string>();
+        foreach (string raw in doc.LinesOf("LINE ASSIGNS"))
+        {
+            var m = LineAssign.Match(raw.TrimStart());
+            if (!m.Success) continue;
+            if (!points.TryGetValue(m.Groups[1].Value, out var pts) || pts.Count == 0) continue;
+            result[(m.Groups[2].Value, pts[0].X * unitMm, pts[0].Y * unitMm)] = m.Groups[3].Value;
+        }
+        return result;
     }
 
     /// <summary>The figures a person reads first — X of Y, both ways, every storey.</summary>
@@ -196,6 +250,10 @@ public static class ModelYardstick
                 sb.AppendLine(CultureInfo.InvariantCulture, $"   {f.Storey,-10} {f.YardstickStorey,-10} {f.Ours,4} {f.Theirs,4}  {f.MedianMm,7:N0} mm  {100.0 * f.OursWithin100 / f.Ours,3:F0}%  {100.0 * f.TheirsWithin100 / Math.Max(1, f.Theirs),3:F0}%");
         }
         else sb.AppendLine("no columns on a storey both models name");
+        if (c.OursUnmatchedBySection.Count > 0)
+            sb.AppendLine(CultureInfo.InvariantCulture, $"ours with none of theirs within 300 mm, by section: {string.Join(", ", c.OursUnmatchedBySection.Take(8).Select(u => $"{u.Section} {u.Count}"))}{(c.OursUnmatchedBySection.Count > 8 ? " ..." : "")}");
+        if (c.TheirsUnmatchedBySection.Count > 0)
+            sb.AppendLine(CultureInfo.InvariantCulture, $"theirs with none of ours within 300 mm, by their section: {string.Join(", ", c.TheirsUnmatchedBySection.Take(8).Select(u => $"{u.Section} {u.Count}"))}{(c.TheirsUnmatchedBySection.Count > 8 ? " ..." : "")}");
         foreach (var n in c.Notes) sb.AppendLine("  note: " + n);
         return sb.ToString();
     }
@@ -237,8 +295,14 @@ public static class ModelYardstick
     {
         string s = BuildingPrefix.Replace(storey.Trim().ToUpperInvariant(), "");
         s = ParkadeLevel.Replace(s, "$1");
-        return LevelWord.Replace(s, "L");
+        s = LevelWord.Replace(s, "L");
+        // an engineer's model spells a storey L-1, L01 or LEVEL 01 as readily as L1 (31170's model names
+        // L-1..L-7, 31138's L01..L09, 2026-09-12): the letter, no hyphen, no leading zero, is the name
+        return NumberedLevel.Replace(s, "$1$2");
     }
+
+    private static readonly Regex NumberedLevel = new(@"^([A-Z]+)-?0*(\d+)$", RegexOptions.Compiled);
+    private static readonly Regex LineAssign = new(@"^LINEASSIGN\s+""([^""]+)""\s+""([^""]+)""\s+SECTION\s+""([^""]+)""", RegexOptions.Compiled);
 
     private static readonly Regex ParkadeLevel = new(@"^LEVEL\s*(P\d+)", RegexOptions.Compiled);
     private static readonly Regex LevelWord = new(@"LEVEL\s*", RegexOptions.Compiled);

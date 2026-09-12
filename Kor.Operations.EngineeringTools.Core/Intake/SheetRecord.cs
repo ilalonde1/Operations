@@ -117,6 +117,8 @@ public sealed record SheetContext
     public int ScheduleRowsNotMarks { get; init; }
     /// <summary>Walls the two-face reader offered whose outline holds a length written along it: dimension strings, flagged and not written (step 35).</summary>
     public int DimensionStringsReadAsWalls { get; init; }
+    /// <summary>Columns the classifier offered whose footprint holds the end of a tendon: anchors, flagged and not written (step 48).</summary>
+    public int TendonAnchorsReadAsColumns { get; init; }
     public int InkedPaths { get; init; }
     public IReadOnlySet<int> InkedPathIndices { get; init; } = new HashSet<int>();
 }

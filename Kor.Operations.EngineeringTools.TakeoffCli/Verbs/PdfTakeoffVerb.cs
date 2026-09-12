@@ -94,6 +94,8 @@ internal static class PdfTakeoffVerb
             Console.WriteLine($"{ptResult.DimensionStrings} wall(s) the two-face reader offered were dimension strings - a length written along them - and were not written.");
         if (ptResult.PatternCells > 0)
             Console.WriteLine($"{ptResult.PatternCells} column-sized shape(s) stood edge to edge in runs of three or more of a size - the cells of a fill pattern, not columns - and were not written.");
+        if (ptResult.TendonAnchors > 0)
+            Console.WriteLine($"{ptResult.TendonAnchors} column-sized shape(s) stood at the end of a line labelled with a force - a tendon's anchor, not a column - and were not written.");
         if (ptResult.Assemblies.Count > 0)
             Console.WriteLine($"wall types: {ptResult.Tags} tag(s) on the plans; {ptResult.Typed} wall(s) typed, of which {ptResult.Partitions} partition(s) sent to KOR_PARTITION (not modelled); {ptResult.NotWalls} untagged on plans that tag their walls, so not walls (KOR_PARTITION); {ptResult.Untagged} untagged on plans that do not tag, modelled as drawn.");
         if (ptResult.Empty > 0 && ptMarkup)

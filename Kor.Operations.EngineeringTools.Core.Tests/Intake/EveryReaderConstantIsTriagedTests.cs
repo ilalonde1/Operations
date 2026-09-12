@@ -92,6 +92,8 @@ public sealed class EveryReaderConstantIsTriagedTests
         ["MarkupList.cs:RingMaxPts"] = Convention("dxf.pdf.markup-ring-max-pt"),
         ["MarkupList.cs:RingMaxAspect"] = Convention("dxf.pdf.markup-ring-max-aspect"),
         ["MarkupReconcile.cs:ReplyReachPts"] = Convention("dxf.pdf.markup-reply-reach-pt — a reply sits within an inch of what it answers"),
+        ["TendonAnchors.cs:LabelReachHeights"] = Convention("dxf.pdf.tendon-label-reach-heights — a force label sits within four of its heights of its tendon"),
+        ["TendonAnchors.cs:MinTendonLengthMm"] = Convention("dxf.pdf.tendon-min-length-mm — a tendon spans a bay at least"),
         ["ScheduleGridReader.cs:ColDimMinMm"] = Convention("dxf.pdf.schedule-column-dim-min-mm — a scheduled column dimension is between these"),
         ["ScheduleGridReader.cs:ColDimMaxMm"] = Convention("dxf.pdf.schedule-column-dim-max-mm"),
         ["DxfExporter.cs:nameHeightMm"] = Convention("dxf.pdf.dxf-name-height-mm — the text height the DXF outlet writes grid names at"),
@@ -121,6 +123,9 @@ public sealed class EveryReaderConstantIsTriagedTests
         ["SheetDiff.cs:GridMovedMm"] = Tolerance("the differential"),
         ["SheetDiff.cs:StoreyHeightChangedMm"] = Tolerance("the differential"),
         ["WallTypeTagging.cs:hand"] = Tolerance("a hand's width"),
+        ["TendonAnchors.cs:EndSlackMm"] = Tolerance("a tendon's end inside a column's footprint, with slack"),
+        ["TendonAnchors.cs:PieceLateralMm"] = Tolerance("pieces of one tendon lie on one line within this"),
+        ["TendonAnchors.cs:PieceGapMm"] = Convention("dxf.pdf.tendon-piece-gap-mm — a tendon's pieces are broken for labels and chair marks up to this gap"),
         ["DxfExporter.cs:minSeg"] = Tolerance("an alias of MinVertexDistanceMm"),
         ["GeometryFilterService.cs:WallLimitSlackMm"] = Tolerance("half an inch on the wall limits: a wall drawn at exactly the limit is a wall"),
         ["GeometryFilterService.cs:RectangleCornerCos"] = Tolerance("a corner is square within 3 degrees"),
@@ -182,7 +187,6 @@ public sealed class EveryReaderConstantIsTriagedTests
         ["DxfToEtabsService.cs:StandDownReachInches"] = Tolerance("a hand's width from a partition's footprint"),
         ["DxfToEtabsService.cs:FarFromOrigin"] = Tolerance("a coordinate that is a survey coordinate"),
         ["E2kDocument.cs:duplicateFloorTolerance"] = Tolerance("two floors at one elevation"),
-        ["E2kGeometryComposer.cs:Nominal"] = Tolerance("a nominal size"),
         ["E2kGeometryComposer.cs:Thin"] = Tolerance("floating point"),
         ["LoopGeometry.cs:Slack"] = Tolerance("floating point: the T-touch"),
         ["MatchLineSheetJoin.cs:DefaultTolerance"] = Tolerance("two match lines that are one seam"),
@@ -292,6 +296,6 @@ public sealed class EveryReaderConstantIsTriagedTests
         var byClass = Table.Where(kv => scanned.Contains(kv.Key)).GroupBy(kv => kv.Value.Class).ToDictionary(g => g.Key, g => g.Count());
         string summary = string.Join(", ", Enum.GetValues<Class>().Select(c => $"{c} {byClass.GetValueOrDefault(c)}"));
         // the number the plan carries (§3 of the completion plan): conventions still compiled
-        Assert.True(byClass.GetValueOrDefault(Class.Convention) <= 44, $"more conventions compiled than the plan states: {summary}");
+        Assert.True(byClass.GetValueOrDefault(Class.Convention) <= 47, $"more conventions compiled than the plan states: {summary}");
     }
 }

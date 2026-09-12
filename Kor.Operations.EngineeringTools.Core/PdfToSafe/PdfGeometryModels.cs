@@ -173,6 +173,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         public List<bool> SlabIsAnnotation   { get; } = new();
         public List<bool> ColumnIsAnnotation { get; } = new();
         public List<bool> LineIsAnnotation   { get; } = new();
+        /// <summary>A TENDON'S ANCHOR IS NOT A COLUMN (intake step 48). Parallel to <see cref="Columns"/>: true when the column's footprint holds the end of a line labelled with a force (<see cref="Intake.TendonAnchors"/>); not written, not counted as a column.</summary>
+        public List<bool> ColumnIsTendonAnchor { get; } = new();
         /// <summary>
         /// Optional cross-section hints parallel to <see cref="Lines"/>. Populated when a
         /// slab polygon is reclassified as a wall/beam and its intended beam section is

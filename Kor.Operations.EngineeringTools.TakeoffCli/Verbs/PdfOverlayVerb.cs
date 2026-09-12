@@ -9,7 +9,7 @@ internal static class PdfOverlayVerb
 
     public static int Run(string[] args)
     {
-        if (args.Length < 4) { Console.Error.WriteLine("Usage: takeoff pdf-overlay <pdf> <page> <out.png> --scale N [--dpi 40] [--walls] [--columns] [--rules-db <conn>] [--mark x y]... [--crop x y halfW halfH]"); return 1; }
+        if (args.Length < 4) { Console.Error.WriteLine("Usage: takeoff pdf-overlay <pdf> <page> <out.png> --scale N [--dpi 40] [--walls] [--columns] [--rules-db <conn>] [--tendons] [--mark x y]... [--crop x y halfW halfH]"); return 1; }
         string ovPdf = args[1], ovOut = args[3];
         if (!File.Exists(ovPdf)) { Console.Error.WriteLine($"PDF not found '{ovPdf}'."); return 2; }
         if (!int.TryParse(args[2], out int ovPage) || ovPage < 1) { Console.Error.WriteLine("Page must be a positive integer."); return 2; }
@@ -96,13 +96,43 @@ internal static class PdfOverlayVerb
                 }
         }
         catch { /* no foundation schedule on this sheet */ }
+        // a tendon's anchor is not a column (step 48): the intake stands them down after the classifier; so does this picture
+        var ovTendons = TendonAnchors.Read(ovContent, ovGeo, ovScale * PdfToSafeConstants.PointsToMm, ovOptions.ForceWords);
+        IReadOnlyList<bool>? ovDeclared = null;
+        try
+        {
+            var ovSchedule = ColumnScheduleReader.ReadSchedule(ovContent);
+            if (ovSchedule.Count > 0 && ovGeo.Columns.Count > 0)
+                ovDeclared = PlanAgreesWithItsSchedule.Check(ovGeo, ovSchedule, ovContent, ovOptions.AgreementToleranceMm, ovOptions.AgreementLabelReachMm).Columns.Select(c => c.SizeIsDeclaredSomewhere).ToList();
+        }
+        catch { /* no column schedule the reader can use: every column is undeclared */ }
+        int ovAnchors = TendonAnchors.StandDownColumns(ovGeo, ovTendons, ovDeclared);
+        var anchorOrange = new Rgba32(240, 140, 0);
         for (int i = 0; i < ovGeo.Columns.Count; i++)
         {
             var (cx, cy) = ovGeo.Columns[i];
             var (w, d) = i < ovGeo.ColumnSizes.Count ? ovGeo.ColumnSizes[i] : (0.0, 0.0);
+            bool anchor = i < ovGeo.ColumnIsTendonAnchor.Count && ovGeo.ColumnIsTendonAnchor[i];
+            var colour = anchor ? anchorOrange : blue;
             if (w > 0 && d > 0)
-                OvPoly(new[] { (cx - w / 2, cy - d / 2), (cx + w / 2, cy - d / 2), (cx + w / 2, cy + d / 2), (cx - w / 2, cy + d / 2) }, blue, 1, close: true);
-            var c = ToPixel(cx, cy); OvPlot(c.X, c.Y, blue, 2);
+                OvPoly(new[] { (cx - w / 2, cy - d / 2), (cx + w / 2, cy - d / 2), (cx + w / 2, cy + d / 2), (cx - w / 2, cy + d / 2) }, colour, 1, close: true);
+            var c = ToPixel(cx, cy); OvPlot(c.X, c.Y, colour, 2);
+        }
+        if (ovTendons.Count > 0) Console.WriteLine($"  tendons {ovTendons.Count} (a line labelled with a force); {ovAnchors} column-sized shape(s) at their ends are anchors, not columns (orange)");
+        // --tendons: each tendon's ends and label, and for every column-sized shape the nearest tendon end - the
+        // census that says why an anchor was or was not stood down (step 48)
+        if (args.Any(a => a.Equals("--tendons", StringComparison.OrdinalIgnoreCase)))
+        {
+            foreach (var t in ovTendons)
+                Console.WriteLine($"    tendon '{t.Label}' ({t.Start.X:0},{t.Start.Y:0}) -> ({t.End.X:0},{t.End.Y:0}) mm, {Math.Sqrt((t.End.X - t.Start.X) * (t.End.X - t.Start.X) + (t.End.Y - t.Start.Y) * (t.End.Y - t.Start.Y)):0} mm long");
+            for (int i = 0; i < ovGeo.Columns.Count; i++)
+            {
+                var (cx, cy) = ovGeo.Columns[i];
+                var (w, d) = i < ovGeo.ColumnSizes.Count ? ovGeo.ColumnSizes[i] : (0.0, 0.0);
+                double nearest = ovTendons.Count == 0 ? double.NaN : ovTendons.Min(t => Math.Min(Math.Sqrt((t.Start.X - cx) * (t.Start.X - cx) + (t.Start.Y - cy) * (t.Start.Y - cy)), Math.Sqrt((t.End.X - cx) * (t.End.X - cx) + (t.End.Y - cy) * (t.End.Y - cy))));
+                bool anchor = i < ovGeo.ColumnIsTendonAnchor.Count && ovGeo.ColumnIsTendonAnchor[i];
+                Console.WriteLine($"    column {w / 25.4:0}x{d / 25.4:0} in at ({cx:0},{cy:0}): nearest tendon end {nearest:0} mm{(anchor ? "  ANCHOR" : "")}");
+            }
         }
         // the pattern cells that left the columns (step 37), orange: a person can see they were a fill
         // pattern along a wall and not two members touching
@@ -173,7 +203,7 @@ internal static class PdfOverlayVerb
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(ovOut)) ?? ".");
         ovImg.SaveAsPng(ovOut);
         Console.WriteLine($"{Path.GetFileName(ovPdf)} p{ovPage} 1:{ovScale} @ {ovDpi} dpi → {ovOut}");
-        Console.WriteLine($"  slabs {ovGeo.Slabs.Count} (grey)   columns {ovGeo.Columns.Count} (blue)   walls {ovGeo.Walls.Count} (dark red)   footings {ovGeo.Footings.Count} (orange; {unlabelled.Count} without a label, magenta)   grid axes {ovGeo.GridAxes.Count} (cyan: X {string.Join(",", ovGeo.GridAxes.Where(a => a.Vertical).Select(a => a.Name))}; Y {string.Join(",", ovGeo.GridAxes.Where(a => !a.Vertical).Select(a => a.Name))})   lines {ovGeo.Lines.Count} (red)   mark-shaped words {marks} (green)");
+        Console.WriteLine($"  slabs {ovGeo.Slabs.Count} (grey)   columns {ovGeo.Columns.Count - ovAnchors} (blue)   walls {ovGeo.Walls.Count} (dark red)   footings {ovGeo.Footings.Count} (orange; {unlabelled.Count} without a label, magenta)   grid axes {ovGeo.GridAxes.Count} (cyan: X {string.Join(",", ovGeo.GridAxes.Where(a => a.Vertical).Select(a => a.Name))}; Y {string.Join(",", ovGeo.GridAxes.Where(a => !a.Vertical).Select(a => a.Name))})   lines {ovGeo.Lines.Count} (red)   mark-shaped words {marks} (green)");
         foreach (var f in unlabelled) Console.WriteLine($"  footing {f.Mark} at ({f.Centre.X:0},{f.Centre.Y:0}) mm: no label on the plan names it");
         foreach (var u in unanswered) Console.WriteLine($"  label {u}: no footing read answers it");
         if (ovGeo.Doorways.Count > 0) Console.WriteLine($"  doorways {ovGeo.Doorways.Count} (yellow): openings knocked out of walls with paper fills; those walls are their piers");

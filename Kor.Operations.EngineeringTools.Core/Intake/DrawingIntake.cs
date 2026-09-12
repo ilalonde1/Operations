@@ -289,6 +289,13 @@ public static class DrawingIntake
                 options.AgreementToleranceMm, options.AgreementLabelReachMm); }
             catch (Exception ex) { agreementError = ex.GetType().Name; }
         }
+        // a tendon's anchor is not a column (step 48): a line labelled with a force is a tendon, and the
+        // small filled block at its end is where the strand is stressed, not a column - unless the sheet's
+        // own schedule declares that size, in which case it is a column a tendon happens to end at
+        int tendonAnchorsReadAsColumns = classify && !request.MarkupOnly
+            ? TendonAnchors.StandDownColumns(geometry, TendonAnchors.Read(content, geometry, scaleFactor, options.ForceWords),
+                agreement?.Columns.Select(c => c.SizeIsDeclaredSomewhere).ToList())
+            : 0;
         return new SheetRecord(pageNumber, page.Width, page.Height, page.Rotation.Value,
             SheetTitleReader.SheetNumberToken(content), bookmark, sheetType, title?.Level, title?.Zone,
             scale, classify ? denominator : request.ScaleDenominator, geometry, schedules, marks, callouts, grid, furniture,
@@ -306,6 +313,7 @@ public static class DrawingIntake
                 ClippingOperations = clipOps, Fonts = fonts.Count,
                 AnnotationPaths = annotationPaths, NoInkPaths = noInk, PaperPaths = paper, InkedPaths = inked,
                 ScheduleRowsNotMarks = rowsNotMarks, DimensionStringsReadAsWalls = dimensionStringsReadAsWalls,
+                TendonAnchorsReadAsColumns = tendonAnchorsReadAsColumns,
                 InkedPathIndices = inkedPathIndices,
             },
         };

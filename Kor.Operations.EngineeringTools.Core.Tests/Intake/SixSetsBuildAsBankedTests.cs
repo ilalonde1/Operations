@@ -58,7 +58,13 @@ public sealed class SixSetsBuildAsBankedTests
         string baselines = Path.Combine(AppContext.BaseDirectory, "Baselines");
         string results = Path.Combine(AppContext.BaseDirectory, "TestResults", "six-sets");
         Directory.CreateDirectory(results);
-        var options = PdfIntakeOptions.Default;
+        // THE BANK IS BUILT THE WAY PRODUCTION BUILDS: with the rows, and it says so. Until 2026-09-12
+        // this read PdfIntakeOptions.Default and passed no connection; the composer read the rows anyway
+        // (through the environment variable) and every dxf.pdf row equals its compiled default, so the six
+        // were byte-identical either way - but a gate that asserts the connection and then does not use it
+        // is one row away from banking the wrong model. Now it uses it.
+        var (options, source) = PdfIntakeOptions.For(conn);
+        Assert.Equal("KorStandards", source);
 
         var outcomes = new (Banked Set, string? Failure, ModelDiff.Result? Diff)[Sets.Count];
         Parallel.For(0, Sets.Count, new ParallelOptions { MaxDegreeOfParallelism = Sets.Count }, i =>
@@ -69,7 +75,7 @@ public sealed class SixSetsBuildAsBankedTests
                 string pdf = DrawingMirror.SingleFile(set.SharePath);
                 Assert.True(File.Exists(pdf), $"{set.Job}: not mirrored from {set.SharePath}");
                 string work = Path.Combine(results, set.Job);
-                var built = PdfOnlyBuild.Build(pdf, work, set.Scale, options, rulesConnection: null, stem: set.Job);
+                var built = PdfOnlyBuild.Build(pdf, work, set.Scale, options, rulesConnection: conn, stem: set.Job);
                 if (built.Model is null) { outcomes[i] = (set, $"no model: {built.ModelError}", null); return; }
                 string baseline = Path.Combine(baselines, $"pdf-only-{set.Job}.e2k");
                 Assert.True(File.Exists(baseline), $"{set.Job}: no baseline at {baseline}");

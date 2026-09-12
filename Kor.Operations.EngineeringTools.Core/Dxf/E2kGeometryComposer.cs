@@ -90,11 +90,11 @@ public readonly record struct Extent(double MinX, double MinY, double MaxX, doub
     /// with no area, every candidate then scores zero, they all tie, and the choice falls silently
     /// back to "nearest" — which is the rule this replaced.
     /// </summary>
-    public double LikenessTo(Extent other)
+    public double LikenessTo(Extent other, double inch = 1.0)
     {
-        const double Nominal = 12.0;
-        var mineBox = Fattened(this, Nominal);
-        var theirsBox = Fattened(other, Nominal);
+        double nominal = 12.0 * inch;                 // a foot: an extent with no area (one column) is judged as a foot square
+        var mineBox = Fattened(this, nominal);
+        var theirsBox = Fattened(other, nominal);
 
         double w = Math.Min(mineBox.MaxX, theirsBox.MaxX) - Math.Max(mineBox.MinX, theirsBox.MinX);
         double h = Math.Min(mineBox.MaxY, theirsBox.MaxY) - Math.Max(mineBox.MinY, theirsBox.MinY);
@@ -410,6 +410,15 @@ public static class E2kGeometryComposer
     {
         options ??= new ComposeOptions();
 
+        // EVERY LENGTH THIS COMPOSER QUANTISES BY IS AN INCH, AND THE MODEL MAY NOT COUNT IN INCHES.
+        // The inch a column is placed to, the half inch a thickness snaps to, the six inches a pier
+        // label is shared within, the foot a plate is keyed by: written as literals, they were applied
+        // in whatever unit the model counted in. The PDF route writes millimetre models, so "to the
+        // nearest inch" was to the nearest millimetre there - 31138's columns, read from two sheets
+        // 2 mm apart, stood twice on every storey both covered, and a 4 in wall came out KOR-W101.5
+        // (yardstick, 2026-09-12). AModelIsTheSameInInchesAndMillimetresTests is the differential.
+        double inch = options.ModelUnitInInches > 0 ? 1.0 / options.ModelUnitInInches : 1.0;
+
         string material = doc.FindConcreteMaterial(options.MaterialContains)
             ?? throw new InvalidOperationException("The reference model defines no concrete material to build sections from.");
 
@@ -555,6 +564,28 @@ public static class E2kGeometryComposer
         var pointCoords = new Dictionary<string, (double X, double Y, double Z)>(StringComparer.Ordinal);
         var placedSlabs = new HashSet<(long, long, string)>();
         var placedColumns = new HashSet<(long, long, long, long, string)>();
+        // ONE COLUMN, ONE JOINT. Two sheets draw the same column a few millimetres apart - each is set on
+        // the grid in its own frame - and joints merged at a twentieth of an inch made two joints of it, so
+        // two column stacks stood at one place, each with the storeys the other sheet drew, and the pass
+        // that models a member on both floors it spans filled each stack's gaps with the other's storeys:
+        // 31138 carried six pairs of columns 2 mm apart on every storey from L11 to L20 (2026-09-12). A
+        // column's joint is the joint of any column already placed within an inch of it. A building has
+        // no two columns an inch apart; ShippedModelInvariants refuses a model with a pair.
+        var columnJoints = new List<(string Name, double X, double Y)>();
+        (string Name, double X, double Y)? ColumnJointNear(double x, double y)
+        {
+            foreach (var j in columnJoints)
+                if (Math.Abs(j.X - x) <= inch && Math.Abs(j.Y - y) <= inch && Math.Sqrt((j.X - x) * (j.X - x) + (j.Y - y) * (j.Y - y)) <= inch)
+                    return j;
+            return null;
+        }
+        string ColumnJointAt(double x, double y)
+        {
+            if (ColumnJointNear(x, y) is { } near) return near.Name;
+            string made = PointAt(x, y);
+            columnJoints.Add((made, x, y));
+            return made;
+        }
         var placedWalls = new HashSet<(long, long, long, long, string)>();
         var storeysWithMembers = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
         // Seeded with the storeys the engineer's own model already floors. "No floor plate" has to
@@ -683,7 +714,7 @@ public static class E2kGeometryComposer
         /// </summary>
         string PierFor(double x1, double y1, double x2, double y2)
         {
-            static long Q(double v) => (long)Math.Round(v / 6.0);
+            long Q(double v) => (long)Math.Round(v / (6.0 * inch));
             var ends = new[] { (Q(x1), Q(y1)), (Q(x2), Q(y2)) }.OrderBy(e => e.Item1).ThenBy(e => e.Item2).ToArray();
             var key = (ends[0].Item1, ends[0].Item2, ends[1].Item1, ends[1].Item2);
 
@@ -695,7 +726,7 @@ public static class E2kGeometryComposer
         /// <summary>A spandrel label for the header at this opening, shared up the building.</summary>
         string SpandrelFor(double x1, double y1, double x2, double y2)
         {
-            static long Q(double v) => (long)Math.Round(v / 6.0);
+            long Q(double v) => (long)Math.Round(v / (6.0 * inch));
             var ends = new[] { (Q(x1), Q(y1)), (Q(x2), Q(y2)) }.OrderBy(e => e.Item1).ThenBy(e => e.Item2).ToArray();
             var key = (ends[0].Item1, ends[0].Item2, ends[1].Item1, ends[1].Item2);
 
@@ -937,13 +968,13 @@ public static class E2kGeometryComposer
 
             foreach (var wall in placement.Geometry.Walls)
             {
-                double thickness = SnapHalfInch(wall.Thickness);
+                double thickness = SnapHalfInch(wall.Thickness, inch);
                 double x1 = wall.Start.X + options.OffsetX, y1 = wall.Start.Y + options.OffsetY;
                 double x2 = wall.End.X + options.OffsetX, y2 = wall.End.Y + options.OffsetY;
 
                 // Same panel from two overlapping sheets must not be modelled twice — tested against
                 // the storeys it will actually be assigned to, not the one it was placed on.
-                var ends = new[] { ((long)Math.Round(x1), (long)Math.Round(y1)), ((long)Math.Round(x2), (long)Math.Round(y2)) }
+                var ends = new[] { ((long)Math.Round(x1 / inch), (long)Math.Round(y1 / inch)), ((long)Math.Round(x2 / inch), (long)Math.Round(y2 / inch)) }
                     .OrderBy(e => e.Item1).ThenBy(e => e.Item2).ToArray();
                 var wallWhere = (ends[0].Item1, ends[0].Item2, ends[1].Item1, ends[1].Item2);
                 var wallStoreys = FreeStoreysFor(story, wallWhere, placedWalls);
@@ -1030,12 +1061,14 @@ public static class E2kGeometryComposer
                 // holding this slab up, so it belongs to the sheet's own storey and does not rise.
                 var colStory = column.FromBelow ? slabStory : story;
 
-                double w = SnapInch(column.Width), d = SnapInch(column.Depth);
+                double w = SnapInch(column.Width, inch), d = SnapInch(column.Depth, inch);
                 double x = column.Center.X + options.OffsetX, y = column.Center.Y + options.OffsetY;
+                // a column within an inch of one already placed stands at that one's joint, and is keyed by it
+                if (ColumnJointNear(x, y) is { } sameColumn) { x = sameColumn.X; y = sameColumn.Y; }
 
                 // One member per place per storey, to the nearest inch. Quantising finer does not work: the// One column per location per storey — tested against the storeys it will actually
                 // be assigned to. Sheets overlap, and duplicates double the stiffness at that point.
-                var colWhere = ((long)Math.Round(x), (long)Math.Round(y), 0L, 0L);
+                var colWhere = ((long)Math.Round(x / inch), (long)Math.Round(y / inch), 0L, 0L);
                 var colStoreys = FreeStoreysFor(colStory, colWhere, placedColumns);
                 if (colStoreys.Count == 0) continue;
 
@@ -1046,7 +1079,7 @@ public static class E2kGeometryComposer
                     continue;
                 }
 
-                string at = PointAt(x, y);
+                string at = ColumnJointAt(x, y);
 
                 // The section is claimed only once the column is certain to be written. Claimed any
                 // earlier, a column that is then skipped as one the engineer already has leaves its
@@ -1109,11 +1142,11 @@ public static class E2kGeometryComposer
             // running 20" to 60". The engineer then set the range herself: "Bounding can be 18-60". Without the
             // ceiling a double-height storey produced a 396"-deep header, which is a wall.
             double storeyHeight = story.Elevation - story.ElevationBelow;
-            double spandrelDepth = SnapInch(Math.Clamp(storeyHeight - options.OpeningHeight, options.SpandrelDepthFloor, options.SpandrelDepthCeiling));
+            double spandrelDepth = SnapInch(Math.Clamp(storeyHeight - options.OpeningHeight, options.SpandrelDepthFloor, options.SpandrelDepthCeiling), inch);
 
             foreach (var opening in placement.Geometry.WallOpenings)
             {
-                double thickness = SnapHalfInch(opening.Thickness);
+                double thickness = SnapHalfInch(opening.Thickness, inch);
                 double sx = opening.Start.X + options.OffsetX, sy = opening.Start.Y + options.OffsetY;
                 double ex = opening.End.X + options.OffsetX, ey = opening.End.Y + options.OffsetY;
 
@@ -1122,8 +1155,8 @@ public static class E2kGeometryComposer
                 // the placement storey put two headers over one opening on 31168 — one from
                 // B-LEVEL 32 and one from A-LEVEL 33, both spanning A-LEVEL 33, at different depths
                 // because the two storeys are different heights.
-                var span = new[] { ((long)Math.Round(sx), (long)Math.Round(sy)),
-                                   ((long)Math.Round(ex), (long)Math.Round(ey)) }
+                var span = new[] { ((long)Math.Round(sx / inch), (long)Math.Round(sy / inch)),
+                                   ((long)Math.Round(ex / inch), (long)Math.Round(ey / inch)) }
                     .OrderBy(e => e.Item1).ThenBy(e => e.Item2).ToArray();
                 var headerWhere = (span[0].Item1, span[0].Item2, span[1].Item1, span[1].Item2);
                 var headerStoreys = FreeStoreysFor(story, headerWhere, placedSpandrels);
@@ -1257,8 +1290,8 @@ public static class E2kGeometryComposer
                 // twice — "every floor we have two slabs on top of each other". Walls and columns
                 // were already deduplicated; plates were not.
                 var middle = slab.Centroid();
-                var where = ((long)Math.Round((middle.X + options.OffsetX) / 12.0),
-                             (long)Math.Round((middle.Y + options.OffsetY) / 12.0), slabStory.Name);
+                var where = ((long)Math.Round((middle.X + options.OffsetX) / (12.0 * inch)),
+                             (long)Math.Round((middle.Y + options.OffsetY) / (12.0 * inch)), slabStory.Name);
                 if (!placedSlabs.Add(where)) continue;
 
                 // A floor stands on something. A closed ring on a slab layer with no wall and no
@@ -1273,7 +1306,7 @@ public static class E2kGeometryComposer
                 // in the same model.
                 if (!AnythingStandsUnder(slab, options))
                 {
-                    orphanPlates.Add((placement.SourceSheet, slabStory.Name, Math.Round(Math.Abs(slab.SignedArea) / 144.0)));
+                    orphanPlates.Add((placement.SourceSheet, slabStory.Name, Math.Round(Math.Abs(slab.SignedArea) / (144.0 * inch * inch))));
                     continue;
                 }
 
@@ -1534,7 +1567,7 @@ public static class E2kGeometryComposer
                         ? p.Where(x => x.Where.CoverageOf(standingOn) >= 0.5).ToList()
                         : new List<(string Name, string Prop, Extent Where)>()))
                     .Where(x => x.Plates.Count > 0)
-                    .Select(x => (x.Storey, x.Plates, Likeness: x.Plates.Max(pl => pl.Where.LikenessTo(standingOn))))
+                    .Select(x => (x.Storey, x.Plates, Likeness: x.Plates.Max(pl => pl.Where.LikenessTo(standingOn, inch))))
                     .ToList();
                 if (candidates.Count == 0) continue;
 
@@ -1887,8 +1920,8 @@ public static class E2kGeometryComposer
     private static bool SelfIntersects(IReadOnlyList<DxfPoint> polygon)
         => LoopGeometry.SelfIntersects(polygon);
 
-    private static double SnapHalfInch(double value) => Math.Round(value * 2.0, MidpointRounding.AwayFromZero) / 2.0;
-    private static double SnapInch(double value) => Math.Round(value, MidpointRounding.AwayFromZero);
+    private static double SnapHalfInch(double value, double inch) => Math.Round(value / inch * 2.0, MidpointRounding.AwayFromZero) / 2.0 * inch;
+    private static double SnapInch(double value, double inch) => Math.Round(value / inch, MidpointRounding.AwayFromZero) * inch;
     private static string Trim(double value) => value.ToString("0.###", Inv);
     private static string F(double value) => value.ToString("0.####", Inv);
 }
