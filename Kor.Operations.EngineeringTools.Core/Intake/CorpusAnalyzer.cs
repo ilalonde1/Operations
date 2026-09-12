@@ -109,7 +109,7 @@ public static class CorpusAnalyzer
 
     public static RunResult Run(
         IReadOnlyList<StickFileCorpus.JobCensus> census, string workRoot, PdfIntakeOptions options, string? rulesConnection,
-        int parallel, bool force, Action<string> log, string? onlyJobs = null, string? yardstickFolder = null, bool reuseBuilds = false)
+        int parallel, bool force, Action<string> log, string? onlyJobs = null, string? yardstickFolder = null, bool reuseBuilds = false, bool recompose = false)
     {
         yardstickFolder ??= DefaultYardstickFolder;
         ArgumentNullException.ThrowIfNull(census);
@@ -149,8 +149,29 @@ public static class CorpusAnalyzer
                 // match: a changed PDF is rebuilt regardless.
                 string buildStamp = $"{issue.Bytes}|{File.GetLastWriteTimeUtc(issue.Path):O}";
                 bool manifestStands = File.Exists(manifest) && File.Exists(Path.Combine(work, "set.csv"))
-                    && (File.ReadAllText(manifest).Trim() == stamp || (reuseBuilds && File.ReadAllText(manifest).Trim().StartsWith(buildStamp + "|", StringComparison.Ordinal)));
-                if (!force && manifestStands)
+                    && (File.ReadAllText(manifest).Trim() == stamp || ((reuseBuilds || recompose) && File.ReadAllText(manifest).Trim().StartsWith(buildStamp + "|", StringComparison.Ordinal)));
+                if (!force && manifestStands && recompose && File.ReadAllText(manifest).Trim().StartsWith(buildStamp + "|", StringComparison.Ordinal))
+                {
+                    // --recompose: the views a previous build wrote stand; the ladder and the composer run again
+                    // (a change to how storeys are found, step 45), and the set's and sheets' rows are remade from
+                    // the new model - the sheets' reader-side columns kept, their composer-side ones re-joined
+                    var kept = ReadSetRow(Path.Combine(work, "set.csv"), runId, runAt);
+                    var keptSheets = ReadSheetRows(Path.Combine(work, "sheets.csv"), runId).ToList();
+                    var sheetsResult = new PdfOnlyBuild.SheetsResult(
+                        keptSheets.Select(r => new PdfOnlyBuild.SheetOutcome(r.Page, r.SheetNumber, r.SheetType, r.Title, r.Level, r.ScaleNote, r.ScaleDenominator, 0, 0, r.Slabs, r.Columns, r.Walls, 0, r.Lines,
+                            r.DxfFiles is null ? [] : r.DxfFiles.Split(" | "), r.SelfCheck ?? "", r.Failure)).ToList(),
+                        [], kept.SheetsWritten, 0, kept.SheetsNotPlan, kept.SheetsFailed, 0, 0, 0, 0, 0, 0, 0);
+                    var outcome = PdfOnlyBuild.Recompose(pdf, work, kept.Pages, sheetsResult, options, rulesConnection);
+                    (row, rows) = Rows(outcome, job, issue, runId, runAt, built);
+                    row = row with { AssemblyCards = kept.AssemblyCards, Seconds = kept.Seconds + outcome.Elapsed.TotalSeconds };
+                    if (yardstick is not null && outcome.Model is not null) row = Measured(row, outcome.OutputE2k, yardstick, work);
+                    else if (yardstick is not null) row = row with { Yardstick = yardstick };
+                    WriteSetCsv(Path.Combine(work, "set.csv"), [row]);
+                    WriteSheetCsv(Path.Combine(work, "sheets.csv"), rows);
+                    File.WriteAllText(manifest, stamp);
+                    lock (gate) rebuilt++;
+                }
+                else if (!force && manifestStands)
                 {
                     row = ReadSetRow(Path.Combine(work, "set.csv"), runId, runAt) with { RunId = runId, RunAtUtc = runAt };
                     rows.AddRange(ReadSheetRows(Path.Combine(work, "sheets.csv"), runId));

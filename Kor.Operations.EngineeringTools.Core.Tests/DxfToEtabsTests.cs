@@ -668,6 +668,18 @@ public class PlanSheetNamingTests
         var resolved = LayerLedger.Build(new[] { (IReadOnlyList<DxfSegment>)sheet }, told);
         Assert.Equal("columns", resolved.Single(e => e.Layer == "S-COLS-NEW").Role);
         Assert.Empty(LayerLedger.RolesMissingWithGeometryUnclaimed(resolved));
+
+        // AND A LAYER OUR OWN EXPORTER WRITES FOR NON-MEMBERS EXPLAINS ITS GEOMETRY (step 45): a wood-frame set
+        // read off a PDF has columns and slab edges, no concrete wall, and 49,000 lines on BEAM - the building,
+        // not a mismatch. The same ledger without the explanation is still the mismatch it always was.
+        var wood = Enumerable.Repeat(On("KOR_V_COL"), 300)
+            .Concat(Enumerable.Repeat(On("KOR_C_SLABEDG"), 300))
+            .Concat(Enumerable.Repeat(On("BEAM"), 49000))
+            .Concat(Enumerable.Repeat(On("GRID"), 40))
+            .ToList();
+        var woodLedger = LayerLedger.Build(new[] { (IReadOnlyList<DxfSegment>)wood }, options);
+        Assert.Equal(new[] { "walls" }, LayerLedger.RolesMissingWithGeometryUnclaimed(woodLedger));
+        Assert.Empty(LayerLedger.RolesMissingWithGeometryUnclaimed(woodLedger, explainedLayers: PdfToSafe.DxfExporter.NonMemberLayers));
     }
 
     /// <summary>

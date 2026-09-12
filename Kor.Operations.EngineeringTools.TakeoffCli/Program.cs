@@ -208,13 +208,14 @@ if (args.Length >= 3 && args[0].Equals("model-yardstick", StringComparison.Ordin
 // 083) and CSV beside the work; then the summary: X of Y build, and why the rest do not.
 // Usage: takeoff corpus-analyze [<projectsRoot>] [--work <dir>] [--jobs 31168-01,31170-01] [--parallel N] [--force] [--reuse] [--rules-db <conn>] [--yardsticks <dir of <job>.e2k>]
 // --reuse keeps every built model whatever the tool's build stamp (for a change proven outside the build path by the six-set bank) and re-measures the yardsticks.
+// --recompose keeps the views a previous build wrote and runs the ladder and the composer again (a change to how storeys are found, or to the composer).
 if (args.Length >= 1 && args[0].Equals("corpus-analyze", StringComparison.OrdinalIgnoreCase))
 {
     string caRoot = PublishDiscovery.ProjectsRoot;
     string caWork = Path.Combine(DrawingMirror.Root, "corpus");
     string? caJobs = null, caRulesDb = null, caYardsticks = null;
     int caParallel = 4;
-    bool caForce = false, caReuse = false;
+    bool caForce = false, caReuse = false, caRecompose = false;
     for (int i = 1; i < args.Length; i++)
     {
         if (args[i].Equals("--work", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) caWork = args[++i];
@@ -224,6 +225,7 @@ if (args.Length >= 1 && args[0].Equals("corpus-analyze", StringComparison.Ordina
         else if (args[i].Equals("--yardsticks", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) caYardsticks = args[++i];
         else if (args[i].Equals("--force", StringComparison.OrdinalIgnoreCase)) caForce = true;
         else if (args[i].Equals("--reuse", StringComparison.OrdinalIgnoreCase)) caReuse = true;
+        else if (args[i].Equals("--recompose", StringComparison.OrdinalIgnoreCase)) caRecompose = true;
         else caRoot = args[i];
     }
     var caProblems = new List<string>();
@@ -232,7 +234,7 @@ if (args.Length >= 1 && args[0].Equals("corpus-analyze", StringComparison.Ordina
     Console.Write(StickFileCorpus.Summary(caCensus));
     var (caOptions, caRulesSource) = PdfIntakeOptions.For(caRulesDb ?? Environment.GetEnvironmentVariable(RuleSettings.ConnectionEnvironmentVariable));
     Console.WriteLine($"rules: {caRulesSource}; work: {caWork}");
-    var caRun = CorpusAnalyzer.Run(caCensus, caWork, caOptions, caRulesDb, caParallel, caForce, line => Console.WriteLine(line), caJobs, caYardsticks, caReuse);
+    var caRun = CorpusAnalyzer.Run(caCensus, caWork, caOptions, caRulesDb, caParallel, caForce, line => Console.WriteLine(line), caJobs, caYardsticks, caReuse, caRecompose);
     Console.WriteLine();
     Console.Write(CorpusAnalyzer.Summary(caRun));
     Console.WriteLine("  " + CorpusAnalyzer.WriteLedger(caRun, caRulesDb));
@@ -241,21 +243,24 @@ if (args.Length >= 1 && args[0].Equals("corpus-analyze", StringComparison.Ordina
 }
 
 // THE DRAWINGS' STOREYS AS A LEVELS FILE, for a job nobody has modelled: what dxf-to-etabs takes
-// in place of a reference .e2k. Usage: takeoff pdf-levels <stickfile.pdf> [levels.csv]
+// in place of a reference .e2k. Usage: takeoff pdf-levels <stickfile.pdf> [levels.csv] [--plans <dxfDir>]
 // The set's storeys come off its wall elevations (SetStoreys: a storey height is the distance
 // between two level lines at the sheet's scale), chained from the lowest level at 0 upward, in mm.
 if (args.Length >= 2 && args[0].Equals("pdf-levels", StringComparison.OrdinalIgnoreCase))
 {
     if (!File.Exists(args[1])) { Console.Error.WriteLine($"Not found: {args[1]}"); return 1; }
     var (plOptions, _) = PdfIntakeOptions.For(args.SkipWhile(a => !a.Equals("--rules-db", StringComparison.OrdinalIgnoreCase)).Skip(1).FirstOrDefault());
-    var plTable = SetStoreys.Read(args[1], plOptions.LevelLabelWords, plOptions.LevelNameWords);
+    // --plans <dxfDir>: the storeys the written plan views are NAMED for join the ladder, heights assumed where
+    // the elevations state none (StoreysFromPlans, step 45); without it the ladder is the elevations' alone
+    string? plPlans = args.SkipWhile(a => !a.Equals("--plans", StringComparison.OrdinalIgnoreCase)).Skip(1).FirstOrDefault();
+    var plPlanNames = plPlans is not null && Directory.Exists(plPlans) ? Directory.EnumerateFiles(plPlans, "*.dxf").Select(Path.GetFileName).Select(n => n!).ToList() : null;
+    string plOut = args.Length >= 3 && !args[2].StartsWith("--", StringComparison.Ordinal) ? args[2] : Path.Combine(Path.GetTempPath(), "levels.csv");
     // chained in Core (SetStoreys.Levels, intake step 25): first stated wins a name, a storey that
     // skips names is a break filled at the typical storey, a storey across two buildings is nobody's
-    var plChain = SetStoreys.Levels(plTable);
-    var plLines = new List<string> { "# unit: mm", "# level,elevation mm — from the stick file's wall elevations; the lowest stated level is 0" };
-    foreach (var l in plChain.Levels) plLines.Add($"{l.Name},{l.ElevationMm:0}");
-    if (args.Length >= 3) { File.WriteAllLines(args[2], plLines); Console.WriteLine($"{plChain.Levels.Count} levels → {args[2]}"); }
-    else foreach (var l in plLines) Console.WriteLine(l);
+    var plLadder = PdfOnlyBuild.WriteLevels(args[1], plOut, plOptions, out var plTable, out var plChain, plPlanNames);
+    if (args.Length >= 3 && !args[2].StartsWith("--", StringComparison.Ordinal)) Console.WriteLine($"{plLadder.Storeys.Count} levels → {args[2]}");
+    else foreach (var l in File.ReadAllLines(plOut)) Console.WriteLine(l);
+    Console.WriteLine(StoreysFromPlans.Summary(plLadder));
     Console.WriteLine($"{plTable.SheetsWithStoreys} of {plTable.ElevationSheets} elevation sheets stated storeys; {plTable.Storeys.Count} storeys, {plChain.Bases.Count} base(s): {string.Join(", ", plChain.Bases)}"
                       + (plChain.TypicalMm is double plTyp ? $"; typical storey {plTyp:0} mm" : "")
                       + (plChain.Unchained.Count > 0 ? $"; not chained to a base: {string.Join(", ", plChain.Unchained)}" : ""));
@@ -5117,7 +5122,7 @@ public static class TakeoffCliHelp
         new("model-yardstick", "takeoff model-yardstick <model.e2k> <yardstick.e2k>", "A model against the engineer's own model of the job, column by column: frames matched by grid name, storeys by name, residuals both ways (ours to theirs, theirs to ours), every storey listed."),
         new("corpus-analyze", "takeoff corpus-analyze [<projectsRoot>] [--work <dir>] [--jobs a,b] [--parallel N] [--force] [--rules-db <conn>]", "The whole corpus through the one ingestion point: every job's current stick file mirrored once and built as the verbs build one, one row per set and per sheet into analysis.IntakeSet / IntakeSheet (migration 083) and CSV beside the work; then X of Y build, and why the rest do not."),
         new("corpus-census", "takeoff corpus-census [<projectsRoot>] [--out census.csv] [--parallel N]", "Every job on the projects share and what it holds for the intake to learn from: dated structural stick files, architects' sets, the engineer's ETABS models; X of Y, one row per job. Read-only, bounded listings."),
-        new("pdf-levels", "takeoff pdf-levels <stickfile.pdf> [levels.csv]", "The drawings' storeys as a levels file (level, elevation mm from the lowest stated level), read off the wall elevations — what dxf-to-etabs takes in place of a reference .e2k for a job nobody has modelled."),
+        new("pdf-levels", "takeoff pdf-levels <stickfile.pdf> [levels.csv] [--plans <dxfDir>]", "The drawings' storeys as a levels file (level, elevation mm from the lowest stated level), read off the wall elevations — what dxf-to-etabs takes in place of a reference .e2k for a job nobody has modelled."),
         new("pdf-assemblies", "takeoff pdf-assemblies <set.pdf> [assemblies.csv]", "Every wall and floor type card on the set's schedule sheets, read whole: code, name, each layer, F.R.R., S.T.C., references, remarks — and the material and thickness the model takes from them."),
         new("storeys-check", "takeoff storeys-check <stickfile.pdf> <model.e2k>", "The drawings' storey heights (wall elevations) against the model's, pair by pair; the publish reports the same line when --stick-file is given."),
         new("wallconcrete", "takeoff wallconcrete <keyplan.png> <schedule.png> <levels.json>", "Price core wall concrete from key plan and schedule."),

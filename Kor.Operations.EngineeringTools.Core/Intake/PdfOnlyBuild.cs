@@ -164,22 +164,32 @@ public static class PdfOnlyBuild
         return new SheetsResult(sheets, assemblies, written, empty, notPlan, failed, dimensionStrings, patternCells, tags, typed, partitions, notWalls, untagged);
     }
 
-    /// <summary>The set's storeys as the levels file dxf-to-etabs takes in place of a reference model (the pdf-levels verb's file).</summary>
-    public static SetStoreys.Chain WriteLevels(string pdf, string levelsCsv, PdfIntakeOptions options, out SetStoreys.Table table)
+    /// <summary>
+    /// The set's storeys as the levels file dxf-to-etabs takes in place of a reference model: the
+    /// elevations' ladder merged with what the plans name (<see cref="StoreysFromPlans"/>, step 45),
+    /// every assumed height written in the file. <paramref name="planFileNames"/> are the written
+    /// views' names; with none given, the ladder is the elevations' alone (as the pdf-levels verb
+    /// wrote it before step 45).
+    /// </summary>
+    public static StoreysFromPlans.Ladder WriteLevels(string pdf, string levelsCsv, PdfIntakeOptions options, out SetStoreys.Table table, out SetStoreys.Chain chain,
+        IEnumerable<string>? planFileNames = null)
     {
         ArgumentNullException.ThrowIfNull(options);
         table = SetStoreys.Read(pdf, options.LevelLabelWords, options.LevelNameWords);
-        var chain = SetStoreys.Levels(table);
-        var lines = new List<string> { "# unit: mm", "# level,elevation mm — from the stick file's wall elevations; the lowest stated level is 0" };
-        foreach (var l in chain.Levels) lines.Add($"{l.Name},{l.ElevationMm:0}");
-        File.WriteAllLines(levelsCsv, lines);
-        return chain;
+        chain = SetStoreys.Levels(table);
+        var ladder = StoreysFromPlans.Merge(chain, planFileNames ?? [], options.AssumedStoreyHeightMm);
+        File.WriteAllLines(levelsCsv, StoreysFromPlans.LevelsFileLines(ladder));
+        return ladder;
     }
 
     /// <summary>What one set became: its sheets, its storeys, and the model or the reason there is none.</summary>
     public sealed record BuildOutcome(
         string Pdf, int Pages, SheetsResult Sheets, SetStoreys.Chain? Levels, string? LevelsError,
-        DxfToEtabsReport? Model, string? ModelError, string OutputE2k, TimeSpan Elapsed);
+        DxfToEtabsReport? Model, string? ModelError, string OutputE2k, TimeSpan Elapsed)
+    {
+        /// <summary>The storeys the model was built on: the elevations' and the plans' together, assumptions marked.</summary>
+        public StoreysFromPlans.Ladder? Ladder { get; init; }
+    }
 
     /// <summary>
     /// The whole route for one set into <paramref name="workDir"/>: <c>dxf/</c> (the scratch views),
@@ -198,17 +208,38 @@ public static class PdfOnlyBuild
 
         string stem = Path.GetFileNameWithoutExtension(pdf);
         var sheets = WriteSheets(pdf, Path.Combine(dxfDir, stem + ".dxf"), 1, pages, scale, markup: false, korLayers: true, options, onSheet);
+        return Compose(pdf, workDir, pages, sheets, sheets.Sheets.SelectMany(s => s.DxfFiles).ToList(), options, rulesConnection, watch);
+    }
 
+    /// <summary>
+    /// The second half of <see cref="Build"/> alone — the ladder and the composer over the views a
+    /// previous build wrote to <paramref name="workDir"/>/dxf — for a change that touches nothing
+    /// before the ladder (step 45 changed how the storeys are found, not how a sheet is read; the
+    /// corpus's 292 sets recompose in minutes where they rebuild in hours). The sheet outcomes come
+    /// from the caller (the analyzer keeps them); the views are the DXF files on disk.
+    /// </summary>
+    public static BuildOutcome Recompose(string pdf, string workDir, int pages, SheetsResult sheets, PdfIntakeOptions options, string? rulesConnection = null)
+    {
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        string dxfDir = Path.Combine(workDir, "dxf");
+        var written = Directory.Exists(dxfDir) ? Directory.EnumerateFiles(dxfDir, "*.dxf").Select(f => Path.GetFileName(f)!).OrderBy(n => n, StringComparer.Ordinal).ToList() : [];
+        return Compose(pdf, workDir, pages, sheets, written, options, rulesConnection, watch);
+    }
+
+    private static BuildOutcome Compose(string pdf, string workDir, int pages, SheetsResult sheets, IReadOnlyList<string> written, PdfIntakeOptions options, string? rulesConnection, System.Diagnostics.Stopwatch watch)
+    {
+        string dxfDir = Path.Combine(workDir, "dxf");
         string levelsCsv = Path.Combine(workDir, "levels.csv");
         SetStoreys.Chain? chain = null;
+        StoreysFromPlans.Ladder? ladder = null;
         string? levelsError = null;
-        try { chain = WriteLevels(pdf, levelsCsv, options, out _); }
+        try { ladder = WriteLevels(pdf, levelsCsv, options, out _, out chain, written); }
         catch (Exception ex) when (ex is InvalidOperationException or IOException or FormatException or ArgumentException) { levelsError = $"{ex.GetType().Name}: {ex.Message}"; }
 
         string outE2k = Path.Combine(workDir, "out.e2k");
         DxfToEtabsReport? model = null;
         string? modelError = null;
-        if (sheets.Written > 0 && chain is not null && chain.Levels.Count > 0)
+        if (written.Count > 0 && ladder is not null && !ladder.IsEmpty)
         {
             try
             {
@@ -231,7 +262,7 @@ public static class PdfOnlyBuild
                 modelError = $"Cannot build a model from these inputs: {ex.Message}";
             }
             // the composer's report beside the model, as dxf-to-etabs prints it: the WHY for every count in the ledger
-            var report = new List<string>();
+            var report = new List<string> { "Storeys       : " + StoreysFromPlans.Summary(ladder) };
             if (model is not null)
             {
                 report.Add($"Sheets read   : {model.SheetsRead}   placed: {model.SheetsPlaced}   set on the grid by name: {model.SheetsSetOnGridByName.Count}");
@@ -241,8 +272,8 @@ public static class PdfOnlyBuild
             else report.Add(modelError ?? "");
             File.WriteAllLines(Path.Combine(workDir, "report.txt"), report);
         }
-        else modelError = sheets.Written == 0 ? "no plan sheet with structure on it" : levelsError ?? "no storeys read off the elevations";
+        else modelError = written.Count == 0 ? "no plan sheet with structure on it" : levelsError ?? "no storeys: the elevations chained none and no plan names one";
 
-        return new BuildOutcome(pdf, pages, sheets, chain, levelsError, model, modelError, outE2k, watch.Elapsed);
+        return new BuildOutcome(pdf, pages, sheets, chain, levelsError, model, modelError, outE2k, watch.Elapsed) { Ladder = ladder };
     }
 }

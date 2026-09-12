@@ -39,6 +39,7 @@ public sealed class CompiledDefaultsAreTheBankedRowsTests
         ["dxf.pdf.column-min-dim-mm"]        = "PDF-side size window; no corpus measurement yet",
         ["dxf.pdf.agreement-tolerance-mm"]   = "self-check tolerance; no corpus measurement yet",
         ["dxf.pdf.agreement-label-reach-mm"] = "self-check reach; measured 2026-09-10 on twelve banked pages of five sets (PlanAgreesWithItsSchedule.DefaultLabelReachMm), a row is owed",
+        ["dxf.pdf.assumed-storey-height-mm"] = "a storey height the drawings do not state (step 45, 2026-09-11); the row is seeded by migration 084 - remove this line when Ian has applied it",
     };
 
     /// <summary>Public numeric properties on the option records that are facts, not rules, each with the reason.</summary>

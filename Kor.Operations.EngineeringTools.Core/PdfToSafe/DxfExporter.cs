@@ -11,6 +11,16 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 {
     public static class DxfExporter
     {
+        /// <summary>
+        /// The layers this exporter writes for what is NOT a member: linework left as lines (BEAM),
+        /// the named axes (GRID), match lines, wall-type tags and partition footprints. Geometry on
+        /// them is accounted for, not unclaimed (LayerLedger.RolesMissingWithGeometryUnclaimed).
+        /// </summary>
+        public static readonly IReadOnlySet<string> NonMemberLayers = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "BEAM", "GRID", "KOR_MATCHLINE", "KOR_WALLTYPE", "KOR_PARTITION", "TEXT",
+        };
+
         // Encoding.GetEncoding(1252) in Export needs the code-page provider, which .NET does not
         // register on its own. It used to work only because some other library already loaded in
         // the process (AngleSharp, MsgReader) had registered it first — an ordering accident, not a

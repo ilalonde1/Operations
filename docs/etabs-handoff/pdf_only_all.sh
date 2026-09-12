@@ -19,7 +19,7 @@ build_one() {
   local E="$H/pdf-only-$job"; rm -rf "$E"; mkdir -p "$E/dxf"
   local pages; pages=$(python -c "import pypdf,sys; print(len(pypdf.PdfReader(sys.argv[1]).pages))" "$S/$job.pdf" 2>/dev/null || echo 80)
   "$CLI" pdf-takeoff "$S/$job.pdf" "$E/dxf/$job.dxf" --pages 1-$pages --scale $scale --kor-layers > "$E/takeoff.txt" 2>&1
-  "$CLI" pdf-levels "$S/$job.pdf" "$E/levels.csv" > "$E/levels.txt" 2>&1
+  "$CLI" pdf-levels "$S/$job.pdf" "$E/levels.csv" --plans "$E/dxf" > "$E/levels.txt" 2>&1
   "$CLI" dxf-to-etabs "$E/dxf" - "$E/out.e2k" --levels "$E/levels.csv" --levels-unit mm > "$E/console.txt" 2>&1
 }
 

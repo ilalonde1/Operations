@@ -53,6 +53,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         public IReadOnlyList<string> AssemblyStructuralWords { get; init; } = Intake.AssemblySchedule.StructuralWords;
         /// <summary>The words that make it a partition (step 32): dxf.assembly.partition-words, else the compiled defaults.</summary>
         public IReadOnlyList<string> AssemblyPartitionWords { get; init; } = Intake.AssemblySchedule.PartitionWords;
+        /// <summary>A storey's height when the drawings state none (step 45): dxf.pdf.assumed-storey-height-mm, else the compiled default; always said in the levels file.</summary>
+        public double AssumedStoreyHeightMm { get; init; } = Intake.StoreysFromPlans.DefaultAssumedStoreyHeightMm;
 
         // Shared KorStandards defaults, banked 2026-09-08: 4", 60", 48", aspect 2.
         // The DXF compiled maximum is narrower (36"); use the banked 60" here.
@@ -117,6 +119,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             $"{Prefix}.line-min-length-mm",
             $"{Prefix}.agreement-tolerance-mm",
             $"{Prefix}.agreement-label-reach-mm",
+            $"{Prefix}.assumed-storey-height-mm",
         ];
 
         /// <summary>
@@ -142,6 +145,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 [$"{Prefix}.column-min-dim-mm"]        = d.ColumnMinDimMm,
                 [$"{Prefix}.agreement-tolerance-mm"]   = d.AgreementToleranceMm,
                 [$"{Prefix}.agreement-label-reach-mm"] = d.AgreementLabelReachMm,
+                [$"{Prefix}.assumed-storey-height-mm"] = d.AssumedStoreyHeightMm,
             };
         }
 
@@ -170,6 +174,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 MinWallAspect         = settings.ValueOr(SharedMinWallAspect, options.MinWallAspect),
                 AgreementToleranceMm  = settings.ValueOr($"{Prefix}.agreement-tolerance-mm", options.AgreementToleranceMm),
                 AgreementLabelReachMm = settings.ValueOr($"{Prefix}.agreement-label-reach-mm", options.AgreementLabelReachMm),
+                AssumedStoreyHeightMm = settings.ValueOr($"{Prefix}.assumed-storey-height-mm", options.AssumedStoreyHeightMm),
                 // the vocabularies (steps 30, 32, 41): a row EXTENDS the compiled defaults, it does not replace them —
                 // a practice's phrase is added to what is true of drawings generally, never in place of it
                 LevelLabelWords         = Extended("dxf.level.label-words", options.LevelLabelWords),

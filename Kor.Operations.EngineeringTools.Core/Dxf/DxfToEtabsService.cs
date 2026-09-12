@@ -1508,7 +1508,7 @@ public static class DxfToEtabsService
         // read. So the ledger goes in the report, and a role that ends up with nothing while
         // unclaimed layers carry real geometry stops the run.
         var ledger = LayerLedger.Build(readSheets, classification);
-        var missingRoles = LayerLedger.RolesMissingWithGeometryUnclaimed(ledger);
+        var missingRoles = LayerLedger.RolesMissingWithGeometryUnclaimed(ledger, explainedLayers: PdfToSafe.DxfExporter.NonMemberLayers);
         if (missingRoles.Count > 0)
         {
             var candidates = ledger.Where(e => !e.Claimed).Take(10)

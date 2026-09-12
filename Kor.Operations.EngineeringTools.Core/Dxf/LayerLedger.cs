@@ -47,9 +47,14 @@ public static class LayerLedger
     /// really can have no columns, and refusing that would be a different kind of wrong.
     /// </summary>
     public static IReadOnlyList<string> RolesMissingWithGeometryUnclaimed(
-        IReadOnlyList<LayerEntry> ledger, int unclaimedSegmentsThatMatter = 200)
+        IReadOnlyList<LayerEntry> ledger, int unclaimedSegmentsThatMatter = 200, IReadOnlySet<string>? explainedLayers = null)
     {
-        int unclaimed = ledger.Where(e => !e.Claimed).Sum(e => e.Segments);
+        // A LAYER THIS TOOL'S OWN EXPORTER WROTE FOR NON-MEMBERS EXPLAINS ITS GEOMETRY. On the PDF route the
+        // DXF is ours: the linework that is not a member goes to BEAM, the axes to GRID, the tags to
+        // KOR_WALLTYPE, the partitions to KOR_PARTITION, by construction. A wood-frame set with no concrete
+        // wall then has "walls" missing and 49,000 segments on BEAM, which is the building, not a naming
+        // mismatch - the gate refused 2 of the 3 first sets the storeys-from-plans rule unblocked (2026-09-11).
+        int unclaimed = ledger.Where(e => !e.Claimed && !(explainedLayers?.Contains(e.Layer) ?? false)).Sum(e => e.Segments);
         if (unclaimed < unclaimedSegmentsThatMatter) return Array.Empty<string>();
 
         return new[] { "walls", "columns", "slab edges" }
