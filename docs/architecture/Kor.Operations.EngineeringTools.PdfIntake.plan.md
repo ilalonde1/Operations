@@ -206,8 +206,11 @@ Revit route.
 ## 8. What needs Ian (2026-09-12 morning)
 
 1. **Migrations, in order, on `KOR-APP01\SQLEXPRESS` / KorStandards** (`C:\VIsual Studio Projects\KOR.Drafter\db\`):
-   `083_IntakeLedger.sql` (the ledger tables the analyzer writes when they exist),
-   `084_AssumedStoreyHeight.sql`, `085_PdfIntakeConventionsTierOne.sql`. After 084 and 085, remove
+   083 is applied — the analyzer wrote 292 set rows and 8,692 sheet rows to `analysis.IntakeSet` /
+   `IntakeSheet` on both of tonight's runs (runs `292f8c48`, `e85ee4b9`; `vw_IntakeLatest` is the
+   current one). Still to apply: `084_AssumedStoreyHeight.sql`, `085_PdfIntakeConventionsTierOne.sql`
+   (the parity test proves 084 is not on yet: its key is still declared unbanked and the test is
+   green). After 084 and 085, remove
    `dxf.pdf.assumed-storey-height-mm`, `dxf.pdf.fallback-scale` and `dxf.pdf.ladder-min-rows` from
    `CompiledDefaultsAreTheBankedRowsTests.UnbankedByDesign` — the test says so and goes red if a
    row exists that is still declared unbanked.

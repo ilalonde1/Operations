@@ -20,7 +20,7 @@ set for 31170, the only one from another office); `...\kor-drawings\<hash>\` mir
 current stick file on the share (292 sets, 3.5 GB, mirrored once by hash); `...\corpus\<job>\`
 is each set's build (DXF views, levels.csv, out.e2k, report.txt, yardstick.txt) and
 `...\corpus\ledger-sets.csv` / `ledger-sheets.csv` the ledger of the last run (banked copies under
-`docs/etabs-handoff/corpus/`; `analysis.IntakeSet`/`IntakeSheet` once migration 083 is applied);
+`docs/etabs-handoff/corpus/`; the same rows in `analysis.IntakeSet`/`IntakeSheet` — 083 is applied, both of 2026-09-12's runs wrote them);
 `...\yardsticks\<job>.e2k` the engineers' own models (92, exported on KOR-210). The six banked
 baselines are IN THE REPO: `Kor.Operations.EngineeringTools.Core.Tests/Baselines/pdf-only-<job>.e2k`.
 Nothing is read over SMB in the loop.
