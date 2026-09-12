@@ -6,7 +6,19 @@ namespace Kor.Operations.EngineeringTools.Dxf;
 
 public sealed record DxfToEtabsRequest
 {
+    /// <summary>The folder of plan DXFs — the office's export, or the PDF route's outlet. Not read when <see cref="Sheets"/> is given.</summary>
     public required string DxfFolder { get; init; }
+
+    /// <summary>
+    /// The plan views handed over in memory (completion plan WP4, 2026-09-11): the PDF route's
+    /// intake gives the composer its views as <see cref="DxfSheet"/>s, named as the export would
+    /// name the files, without a scratch folder between the two halves. When given,
+    /// <see cref="DxfFolder"/> is not read; the DXF on disk is an outlet, not the transport.
+    /// </summary>
+    public IReadOnlyList<DxfSheet>? Sheets { get; init; }
+
+    /// <summary>The level list held in memory ("name, elevation" a line), in place of <see cref="LevelsFile"/>.</summary>
+    public IReadOnlyList<string>? LevelLines { get; init; }
 
     /// <summary>
     /// An .e2k that ETABS itself exported from the target model — storeys, grids and materials.
@@ -563,16 +575,17 @@ public static class DxfToEtabsService
     {
         // Either a model ETABS exported, or a list of levels. The second is the ordinary case now:
         // a job that has never been modelled has no .e2k to give, which is every job but two.
-        if (string.IsNullOrWhiteSpace(request.ReferenceE2k) && string.IsNullOrWhiteSpace(request.LevelsFile))
+        bool levelsGiven = !string.IsNullOrWhiteSpace(request.LevelsFile) || request.LevelLines is not null;
+        if (string.IsNullOrWhiteSpace(request.ReferenceE2k) && !levelsGiven)
             throw new InvalidOperationException(
                 "Give either a reference .e2k or a level list. Without one there is no way to know " +
                 "what the storeys are called or how high they are, and a plan drawing cannot say — " +
                 "it is flat.");
 
-        var doc = string.IsNullOrWhiteSpace(request.LevelsFile)
+        var doc = !levelsGiven
             ? E2kDocument.Load(request.ReferenceE2k)
             : E2kShellBuilder.FromLevels(
-                E2kShellBuilder.ParseLevels(File.ReadAllLines(request.LevelsFile)), request.LevelsUnit);
+                E2kShellBuilder.ParseLevels(request.LevelLines ?? File.ReadAllLines(request.LevelsFile!)), request.LevelsUnit);
         var referencePointNames = doc.PointNames();
 
         // Before anything else: the storey list is what ETABS builds from, and an export parks the
@@ -587,13 +600,18 @@ public static class DxfToEtabsService
         // READ FROM THIS DISK. A share path is mirrored locally first and the mirror is verified
         // complete; a local path is used as it stands. See DrawingMirror -- this is the four
         // minutes a run that used to depend on somebody remembering to copy the sheets over.
-        string dxfFolder = DrawingMirror.Folder(request.DxfFolder);
+        // THE VIEWS COME FROM MEMORY OR FROM A FOLDER, AND EVERY READ BELOW GOES THROUGH LinesOf.
+        // Given Sheets, a "file" is the sheet's name and its lines are the ones the intake handed
+        // over; given a folder, it is a path and the lines are read from it (WP4, 2026-09-11).
+        var inMemory = request.Sheets?.ToDictionary(sh => sh.Name, sh => sh.Lines, StringComparer.OrdinalIgnoreCase);
+        IEnumerable<string> LinesOf(string file) => inMemory is not null ? inMemory[file] : File.ReadLines(file);
+        string dxfFolder = inMemory is not null ? string.Empty : DrawingMirror.Folder(request.DxfFolder);
         string? stickFile = request.StickFilePdf is null ? null : DrawingMirror.SingleFile(request.StickFilePdf);
         string? annotatedFolder = request.AnnotatedDxfFolder is null
             ? null
             : DrawingMirror.Folder(request.AnnotatedDxfFolder);
 
-        var files = Directory.EnumerateFiles(dxfFolder, "*.dxf", SearchOption.TopDirectoryOnly)
+        var files = (inMemory is not null ? inMemory.Keys : Directory.EnumerateFiles(dxfFolder, "*.dxf", SearchOption.TopDirectoryOnly))
             .OrderBy(f => f, StringComparer.OrdinalIgnoreCase)
             .ToList();
         var sheetInfoByFile = files.ToDictionary(f => f, PlanSheetNaming.Parse, StringComparer.OrdinalIgnoreCase);
@@ -663,7 +681,7 @@ public static class DxfToEtabsService
                 "The reference model does not state a length unit this tool understands, so geometry " +
                 "cannot be written in its units. Expected CONTROLS UNITS with IN, FT, MM, CM or M.");
 
-        double? drawingUnit = files.Count > 0 ? DxfPlanReader.UnitInInches(files[0]) : modelUnitInInches;
+        double? drawingUnit = files.Count > 0 ? DxfPlanReader.UnitInInches(LinesOf(files[0])) : modelUnitInInches;
         if (drawingUnit is null)
         {
             throw new InvalidOperationException(
@@ -675,7 +693,7 @@ public static class DxfToEtabsService
         // Mixed units across one set means the sheets disagree about the size of the building.
         foreach (string file in files)
         {
-            double? each = DxfPlanReader.UnitInInches(file);
+            double? each = DxfPlanReader.UnitInInches(LinesOf(file));
             if (each is null || Math.Abs(each.Value - drawingUnit.Value) > 1e-9)
                 throw new InvalidOperationException(
                     $"{Path.GetFileName(file)} is drawn in different units from the rest of the set. " +
@@ -981,7 +999,7 @@ public static class DxfToEtabsService
         // from the geometry and must come out already in the model's frame. Reading here rather
         // than in the loop below costs nothing: each file is parsed exactly once either way, and
         // they are on local disk by now.
-        var segmentsOf = files.ToDictionary(f => f, DxfPlanReader.ReadSegments, StringComparer.OrdinalIgnoreCase);
+        var segmentsOf = files.ToDictionary(f => f, f => DxfPlanReader.ReadSegments(LinesOf(f)), StringComparer.OrdinalIgnoreCase);
 
         var (gridX, gridY) = ReadGridCoordinates(doc);
         var alignment = request.Offset is null
@@ -1011,7 +1029,7 @@ public static class DxfToEtabsService
         // gets its own frame, matched name to name against the model's GRIDS table. A sheet with no
         // named axes, or too few names the model knows, keeps the set's fit as before.
         var referenceGrids = ReadGridLines(doc);
-        var tagsOf = files.ToDictionary(f => f, DxfPlanReader.ReadPositionedTags, StringComparer.OrdinalIgnoreCase);
+        var tagsOf = files.ToDictionary(f => f, f => DxfPlanReader.ReadPositionedTags(LinesOf(f)), StringComparer.OrdinalIgnoreCase);
         var namedAxesOf = files.ToDictionary(f => f, f => GridAlignment.NamedAxes(segmentsOf[f], tagsOf[f]), StringComparer.OrdinalIgnoreCase);
         var alignedByName = new Dictionary<string, GridAlignment.Fit>(StringComparer.OrdinalIgnoreCase);
 
@@ -1184,7 +1202,7 @@ public static class DxfToEtabsService
                     // the leader's own linework, which is scaled with everything else below
                     DxfPoint Into(DxfPoint p) => sameFrame ? p : Unscaled(leaderFrame.Unapply(otherFrame.Apply(Scaled(p))));
                     segments = segments.Concat(segmentsOf[other].Select(s => sameFrame ? s : s with { Start = Into(s.Start), End = Into(s.End) })).ToList();
-                    tags = tags.Concat(DxfPlanReader.ReadPositionedTags(other).Select(t => sameFrame ? t : t with { Point = Into(t.Point) })).ToList();
+                    tags = tags.Concat(DxfPlanReader.ReadPositionedTags(LinesOf(other)).Select(t => sameFrame ? t : t with { Point = Into(t.Point) })).ToList();
                 }
             }
 
@@ -1205,7 +1223,7 @@ public static class DxfToEtabsService
             // sheet whose storeys were cut away, or that placed nowhere, already has its own line
             // saying so, and telling an engineer about 96 unread ellipses on a tower she asked us
             // to leave out reads as though nobody understood the request.
-            var unsupported = DxfPlanReader.UnsupportedStructuralEntities(file, classification);
+            var unsupported = DxfPlanReader.UnsupportedStructuralEntities(LinesOf(file), classification);
             string? unreadWarning = null;
             // HATCH is fill, and fill is not structure.
             //

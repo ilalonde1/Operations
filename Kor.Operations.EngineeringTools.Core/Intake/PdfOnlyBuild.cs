@@ -36,7 +36,18 @@ public static class PdfOnlyBuild
     public sealed record SheetsResult(
         IReadOnlyList<SheetOutcome> Sheets, IReadOnlyList<AssemblySchedule.Assembly> Assemblies,
         int Written, int Empty, int NotPlan, int Failed,
-        int DimensionStrings, int PatternCells, int Tags, int Typed, int Partitions, int NotWalls, int Untagged);
+        int DimensionStrings, int PatternCells, int Tags, int Typed, int Partitions, int NotWalls, int Untagged)
+    {
+        /// <summary>
+        /// The views as the composer reads them, held in memory (WP4, 2026-09-11) — one per written
+        /// DXF name in <see cref="SheetOutcome.DxfFiles"/>, the same lines the file holds where one
+        /// was written. The handoff between the two halves of the route.
+        /// </summary>
+        public IReadOnlyList<DxfSheet> Views { get; init; } = [];
+    }
+
+    /// <summary>How the composer receives the views: from memory (the route), or re-read from the DXF files on disk (the gate's reference, and a recompose over standing views).</summary>
+    public enum Handoff { Memory, Disk }
 
     /// <summary>
     /// Every page from <paramref name="first"/> to <paramref name="last"/> read and, when it is a plan
@@ -44,9 +55,11 @@ public static class PdfOnlyBuild
     /// view in range mode (more than one page), the single file named by <paramref name="outDxf"/>
     /// otherwise. <paramref name="onSheet"/> sees each outcome as it lands, in page order.
     /// </summary>
+    /// <param name="writeDxf">Whether each view is also written as a file beside <paramref name="outDxf"/> — the DXF outlet. The views are always in the result's <see cref="SheetsResult.Views"/>.</param>
     public static SheetsResult WriteSheets(
         string pdf, string outDxf, int first, int last, int scale, bool markup, bool korLayers,
-        PdfIntakeOptions options, Action<SheetOutcome>? onSheet = null, Action<IReadOnlyList<AssemblySchedule.Assembly>>? onAssemblies = null)
+        PdfIntakeOptions options, Action<SheetOutcome>? onSheet = null, Action<IReadOnlyList<AssemblySchedule.Assembly>>? onAssemblies = null,
+        bool writeDxf = true)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(pdf);
         ArgumentNullException.ThrowIfNull(options);
@@ -66,6 +79,7 @@ public static class PdfOnlyBuild
         var request = new IntakeRequest(scale, options, markup, assemblies);
 
         var sheets = new List<SheetOutcome>();
+        var views = new List<DxfSheet>();
         int written = 0, empty = 0, notPlan = 0, failed = 0;
         int typed = 0, partitions = 0, untagged = 0, tags = 0, notWalls = 0, dimensionStrings = 0, patternCells = 0;
         for (int p = first; p <= last; p++)
@@ -124,7 +138,11 @@ public static class PdfOnlyBuild
                     {
                         var pg = part.Geometry;
                         if (pg.Slabs.Count + pg.Columns.Count + pg.Walls.Count + pg.Lines.Count == 0) continue;
-                        DxfExporter.Export(pg, Path.Combine(dir, part.FileName), korLayers: korLayers);
+                        // the view is exported once, into memory; the file is the same lines, written where a DXF is wanted
+                        var lines = DxfExporter.ExportLines(pg, korLayers: korLayers);
+                        if (lines.Count == 0) continue;
+                        views.Add(new DxfSheet(part.FileName, lines));
+                        if (writeDxf) File.WriteAllLines(Path.Combine(dir, part.FileName), lines, DxfExporter.FileEncoding);
                         files.Add(part.FileName);
                         written++;
                     }
@@ -132,9 +150,14 @@ public static class PdfOnlyBuild
                 else
                 {
                     string dxf = Path.GetFullPath(outDxf);
-                    DxfExporter.Export(geo, dxf, korLayers: korLayers);
-                    files.Add(Path.GetFileName(dxf));
-                    written++;
+                    var lines = DxfExporter.ExportLines(geo, korLayers: korLayers);
+                    if (lines.Count > 0)
+                    {
+                        views.Add(new DxfSheet(Path.GetFileName(dxf), lines));
+                        if (writeDxf) File.WriteAllLines(dxf, lines, DxfExporter.FileEncoding);
+                        files.Add(Path.GetFileName(dxf));
+                        written++;
+                    }
                 }
             }
             else empty++;
@@ -161,7 +184,7 @@ public static class PdfOnlyBuild
             sheets.Add(outcome); onSheet?.Invoke(outcome);
         }
 
-        return new SheetsResult(sheets, assemblies, written, empty, notPlan, failed, dimensionStrings, patternCells, tags, typed, partitions, notWalls, untagged);
+        return new SheetsResult(sheets, assemblies, written, empty, notPlan, failed, dimensionStrings, patternCells, tags, typed, partitions, notWalls, untagged) { Views = views };
     }
 
     /// <summary>
@@ -197,8 +220,9 @@ public static class PdfOnlyBuild
     /// <see cref="BuildOutcome.ModelError"/>, not an exception — the corpus has hundreds of them.
     /// </summary>
     /// <param name="stem">The name a view takes when the sheet gives it none ("&lt;stem&gt;-pNN"); the PDF's own name by default. The six-set bank was built with the job number, and its models are byte-identical only under it.</param>
+    /// <param name="handoff">Memory (the route: the composer takes the views the intake holds) or Disk (the composer re-reads the DXF files this build wrote — the gate's reference).</param>
     public static BuildOutcome Build(string pdf, string workDir, int scale, PdfIntakeOptions options, string? rulesConnection = null,
-        Action<SheetOutcome>? onSheet = null, string? stem = null)
+        Action<SheetOutcome>? onSheet = null, string? stem = null, Handoff handoff = Handoff.Memory)
     {
         var watch = System.Diagnostics.Stopwatch.StartNew();
         if (Directory.Exists(workDir)) Directory.Delete(workDir, recursive: true);
@@ -209,7 +233,8 @@ public static class PdfOnlyBuild
 
         stem ??= Path.GetFileNameWithoutExtension(pdf);
         var sheets = WriteSheets(pdf, Path.Combine(dxfDir, stem + ".dxf"), 1, pages, scale, markup: false, korLayers: true, options, onSheet);
-        return Compose(pdf, workDir, pages, sheets, sheets.Sheets.SelectMany(s => s.DxfFiles).ToList(), options, rulesConnection, watch);
+        return Compose(pdf, workDir, pages, sheets, sheets.Sheets.SelectMany(s => s.DxfFiles).ToList(), options, rulesConnection, watch,
+            handoff == Handoff.Memory ? sheets.Views : null);
     }
 
     /// <summary>
@@ -224,10 +249,12 @@ public static class PdfOnlyBuild
         var watch = System.Diagnostics.Stopwatch.StartNew();
         string dxfDir = Path.Combine(workDir, "dxf");
         var written = Directory.Exists(dxfDir) ? Directory.EnumerateFiles(dxfDir, "*.dxf").Select(f => Path.GetFileName(f)!).OrderBy(n => n, StringComparer.Ordinal).ToList() : [];
-        return Compose(pdf, workDir, pages, sheets, written, options, rulesConnection, watch);
+        return Compose(pdf, workDir, pages, sheets, written, options, rulesConnection, watch, views: null);
     }
 
-    private static BuildOutcome Compose(string pdf, string workDir, int pages, SheetsResult sheets, IReadOnlyList<string> written, PdfIntakeOptions options, string? rulesConnection, System.Diagnostics.Stopwatch watch)
+    /// <param name="views">The views in memory; null and the composer reads the DXF files under workDir/dxf.</param>
+    private static BuildOutcome Compose(string pdf, string workDir, int pages, SheetsResult sheets, IReadOnlyList<string> written, PdfIntakeOptions options, string? rulesConnection, System.Diagnostics.Stopwatch watch,
+        IReadOnlyList<DxfSheet>? views)
     {
         string dxfDir = Path.Combine(workDir, "dxf");
         string levelsCsv = Path.Combine(workDir, "levels.csv");
@@ -246,10 +273,12 @@ public static class PdfOnlyBuild
             {
                 model = DxfToEtabsService.Run(new DxfToEtabsRequest
                 {
-                    DxfFolder = dxfDir,
+                    DxfFolder = dxfDir,                                      // the outlet's folder; read only when no views are handed over
+                    Sheets = views,
                     ReferenceE2k = string.Empty,
                     OutputE2k = outE2k,
                     LevelsFile = levelsCsv,
+                    LevelLines = views is null ? null : StoreysFromPlans.LevelsFileLines(ladder),
                     LevelsUnit = "mm",
                     Classification = new PlanClassificationOptions(),
                     Compose = new ComposeOptions { IncludeFloors = true, InferMissingFloors = false, MembersRiseToStoreyAbove = true },
