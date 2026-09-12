@@ -5,13 +5,51 @@ internal static class DxfInspectVerb
 
     public static int Run(string[] args)
     {
-        if (args.Length < 2) { Console.Error.WriteLine("Usage: takeoff dxf-inspect <plan.dxf> [--walls] [--plates]"); return 1; }
+        if (args.Length < 2) { Console.Error.WriteLine("Usage: takeoff dxf-inspect <plan.dxf> [--walls] [--plates] [--loops]"); return 1; }
         if (!File.Exists(args[1])) { Console.Error.WriteLine($"Not found '{args[1]}'."); return 2; }
 
         bool wallDetail = args.Any(a => a.Equals("--walls", StringComparison.OrdinalIgnoreCase));
         bool plateDetail = args.Any(a => a.Equals("--plates", StringComparison.OrdinalIgnoreCase));
+        bool loopDetail = args.Any(a => a.Equals("--loops", StringComparison.OrdinalIgnoreCase));
         var inspectOptions = new PlanClassificationOptions();
         var inspectSegments = DxfPlanReader.ReadSegments(args[1]);
+
+        // WHICH LOOPS HAVE NO HONEST CENTRE? A bow-tie's area formula puts its centre kilometres
+        // away (31202, 2026-09-12); a loop drawn out-and-back has no area at all. PlanLoop.Centroid
+        // falls back to the vertex mean for both, and this lists every wall and column loop on the
+        // sheet - the loops the classifier itself builds, not a copy - where the two answers differ
+        // by more than a millimetre: the loops that fallback changed, with their vertices.
+        if (loopDetail)
+        {
+            Console.WriteLine($"{Path.GetFileName(args[1])}");
+            int loops = 0, changed = 0;
+            foreach (var (role, loop) in StructuralPlanClassifier.WallAndColumnLoops(inspectSegments, inspectOptions))
+            {
+                loops++;
+                var (minX, minY, maxX, maxY) = loop.Bounds();
+                double box = Math.Max((maxX - minX) * (maxY - minY), 1e-9);
+                double sa = loop.SignedArea;
+                double cx = 0, cy = 0;
+                for (int i = 0; i < loop.Points.Count; i++)
+                {
+                    var p = loop.Points[i];
+                    var q = loop.Points[(i + 1) % loop.Points.Count];
+                    double cross = p.X * q.Y - q.X * p.Y;
+                    cx += (p.X + q.X) * cross;
+                    cy += (p.Y + q.Y) * cross;
+                }
+                double fx = sa == 0 ? double.NaN : cx / (6.0 * sa), fy = sa == 0 ? double.NaN : cy / (6.0 * sa);
+                var c = loop.Centroid();
+                bool differs = double.IsNaN(fx) || Math.Abs(fx - c.X) > 1 || Math.Abs(fy - c.Y) > 1;
+                if (!differs) continue;
+                changed++;
+                string why = Math.Abs(sa) < 1e-3 * box ? $"area {sa:0.###} is under a thousandth of its {box:0} box" : "formula centre outside the box";
+                Console.WriteLine($"  {role,-8} {loop.Layer,-16} {loop.Points.Count,3} pts  box {maxX - minX:0}x{maxY - minY:0} at {minX:0},{minY:0}  formula ({fx:0.#}, {fy:0.#}) -> ({c.X:0.#}, {c.Y:0.#})  {why}");
+                Console.WriteLine("           " + string.Join(" ", loop.Points.Select(p => $"({p.X:0.#},{p.Y:0.#})")));
+            }
+            Console.WriteLine($"{changed} of {loops} wall and column loops take the vertex mean");
+            return 0;
+        }
 
         // What floor plates does this ONE sheet yield, and at what bridge width? Reading it out of a
         // finished model means rebuilding the whole job over SMB to answer a question about one

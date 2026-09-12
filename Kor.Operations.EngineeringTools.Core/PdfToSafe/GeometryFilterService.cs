@@ -471,6 +471,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         FaceTrace($"line {ln / 25.4:0}\" w{s.LineWidth:0.00} at ({(s.Points[0].X + s.Points[1].X) / 2:0},{(s.Points[0].Y + s.Points[1].Y) / 2:0}) mm: {f.Reason}");
                 }
             PatternCellsAreNotColumns(result, columnByShape, fates, firstFate);
+            ATargetsQuadrantsAreNotColumns(result, columnByShape, fates, firstFate);
             PatternStripesAreNotWalls(result, fates, firstFate);
             AFaceInPiecesIsOneFace(result, fates, firstFate);
             WallsFromFaceLines(result, fates, firstFate, minWallThicknessMm, maxWallThicknessMm, minWallLengthMm, minWallAspect);
@@ -592,6 +593,80 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 if (f.Reason is not (PathReason.BecameColumnByShape or PathReason.BecameColumnByDeclaredSize) || f.ObjectIndex is not int oi || oi < 0 || oi >= n) continue;
                 fates[k] = newIndex[oi] < 0
                     ? new PathFate(f.PathIndex, PathFate.DispositionOf(PathReason.PatternCell), PathReason.PatternCell, null)
+                    : f with { ObjectIndex = newIndex[oi] };
+            }
+        }
+
+        /// <summary>
+        /// A TARGET'S QUADRANTS ARE NOT COLUMNS (intake step 49).
+        ///
+        /// A spot-elevation target is a circle with two of its quadrants filled, diagonally opposite:
+        /// two filled squares of one size that meet at the circle's centre and nowhere else. Each
+        /// square is column-sized, so the reader took the pair as two 9" x 9" columns - 62 pairs on
+        /// 31202's plans - and downstream the DXF loop builder walked both squares through the shared
+        /// corner as one figure-of-eight, an "18 x 18" whose centroid the area formula put at
+        /// (-3.2 km, 3.3 km). Every banked model of the set carried eight such points; the render
+        /// drew each storey as a dot in a frame that held them (2026-09-12).
+        ///
+        /// No two columns share only a corner. A column drawn in pieces meets itself on an edge
+        /// (31138's GC15, step 37); a pattern's cells stand edge to edge. Two same-size filled shapes
+        /// whose centres are a width apart in x AND a depth apart in y touch at one point, and that
+        /// is a symbol. The pair leaves the columns, is kept in <see cref="ExtractedGeometry.SymbolQuadrants"/>
+        /// for the overlay, and its paths are fated <see cref="PathReason.SymbolQuadrant"/>.
+        ///
+        /// WHAT IT DOES NOT: a column declared by the schedule's sizes (never a quadrant); the circle
+        /// and the two unfilled quadrants, which are lines; a target drawn with one filled quadrant
+        /// or with all four; two shapes of different sizes at a corner; a diagonal of three or more
+        /// sharing corners (a checkerboard, not a target: those stand); the spot elevation's text.
+        /// </summary>
+        internal static void ATargetsQuadrantsAreNotColumns(ExtractedGeometry result, IReadOnlyList<bool> columnByShape, IList<PathFate>? fates, int firstFate)
+        {
+            int n = result.Columns.Count;
+            if (n < 2) return;
+            bool[] byShape = Enumerable.Range(0, n).Select(i => i < columnByShape.Count && columnByShape[i]).ToArray();
+            (double W, double H) SizeOf(int i) => i < result.ColumnSizes.Count ? result.ColumnSizes[i] : (0.0, 0.0);
+            bool CornerToCorner(int i, int j)
+            {
+                var (wi, hi) = SizeOf(i); var (wj, hj) = SizeOf(j);
+                if (wi <= 0 || hi <= 0 || wj <= 0 || hj <= 0) return false;
+                if (Math.Abs(wi - wj) > CellAbutMm || Math.Abs(hi - hj) > CellAbutMm) return false;
+                double dx = Math.Abs(result.Columns[i].X - result.Columns[j].X), dy = Math.Abs(result.Columns[i].Y - result.Columns[j].Y);
+                return Math.Abs(dx - (wi + wj) / 2) <= CellAbutMm && Math.Abs(dy - (hi + hj) / 2) <= CellAbutMm;
+            }
+            // a PAIR: each is the other's only corner twin. A diagonal of three sharing corners is a
+            // checkerboard's cells (step 37 leaves those standing), not a target, and stays.
+            var twin = new int[n];
+            var twins = new int[n];
+            for (int i = 0; i < n; i++)
+            {
+                if (!byShape[i]) continue;
+                for (int j = i + 1; j < n; j++)
+                    if (byShape[j] && CornerToCorner(i, j)) { twin[i] = j; twins[i]++; twin[j] = i; twins[j]++; }
+            }
+            var quadrant = new bool[n];
+            for (int i = 0; i < n; i++)
+                quadrant[i] = twins[i] == 1 && twins[twin[i]] == 1;
+            if (!quadrant.Any(q => q)) return;
+
+            var newIndex = new int[n];
+            int kept = 0;
+            for (int i = 0; i < n; i++) newIndex[i] = quadrant[i] ? -1 : kept++;
+            for (int i = n - 1; i >= 0; i--)
+            {
+                if (!quadrant[i]) continue;
+                result.SymbolQuadrants.Add((result.Columns[i], i < result.ColumnSizes.Count ? result.ColumnSizes[i].WidthMm : 0, i < result.ColumnSizes.Count ? result.ColumnSizes[i].DepthMm : 0));
+                result.Columns.RemoveAt(i);
+                if (i < result.ColumnColors.Count) result.ColumnColors.RemoveAt(i);
+                if (i < result.ColumnIsAnnotation.Count) result.ColumnIsAnnotation.RemoveAt(i);
+                if (i < result.ColumnSizes.Count) result.ColumnSizes.RemoveAt(i);
+            }
+            if (fates is null) return;
+            for (int k = firstFate; k < fates.Count; k++)
+            {
+                var f = fates[k];
+                if (f.Reason is not (PathReason.BecameColumnByShape or PathReason.BecameColumnByDeclaredSize) || f.ObjectIndex is not int oi || oi < 0 || oi >= n) continue;
+                fates[k] = newIndex[oi] < 0
+                    ? new PathFate(f.PathIndex, PathFate.DispositionOf(PathReason.SymbolQuadrant), PathReason.SymbolQuadrant, null)
                     : f with { ObjectIndex = newIndex[oi] };
             }
         }

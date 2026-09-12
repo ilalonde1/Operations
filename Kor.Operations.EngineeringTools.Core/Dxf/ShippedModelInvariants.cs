@@ -636,6 +636,29 @@ public static class ShippedModelInvariants
         if (twins > 0)
             v.Add(new ModelViolation("two-columns-in-one-place", $"{twins} pair(s) of columns within an inch of each other on one storey - one column read twice", firstTwin));
 
+        // 8. EVERY MEMBER STANDS ON THE BUILDING. The building is where most of the joints are: the
+        //    middle half of them in x and in y spans it, and a generated joint farther from that span
+        //    than the span's own width is not in the building - a bow-tie's centroid at 3 km (31202,
+        //    2026-09-12: eight of them, in every model of the set since its first bank), a sheet placed
+        //    in the wrong frame. The render showed it first as a building drawn as a dot.
+        var generatedPts = pts.Where(kv => kv.Key.StartsWith("KP", StringComparison.Ordinal)).Select(kv => kv.Value).ToList();
+        if (generatedPts.Count >= 8)
+        {
+            var xs = generatedPts.Select(p => p.X).OrderBy(x => x).ToList();
+            var ys = generatedPts.Select(p => p.Y).OrderBy(y => y).ToList();
+            double qx0 = xs[xs.Count / 4], qx1 = xs[3 * xs.Count / 4], qy0 = ys[ys.Count / 4], qy1 = ys[3 * ys.Count / 4];
+            double reach = Math.Max(Math.Max(qx1 - qx0, qy1 - qy0), 100 * inch);
+            var far = pts.Where(kv => kv.Key.StartsWith("KP", StringComparison.Ordinal)
+                && (kv.Value.X < qx0 - reach || kv.Value.X > qx1 + reach || kv.Value.Y < qy0 - reach || kv.Value.Y > qy1 + reach)).ToList();
+            if (far.Count > 0)
+            {
+                var first = far[0];
+                v.Add(new ModelViolation("member-outside-the-building",
+                    $"{far.Count} joint(s) farther from the building than the building is wide - a member placed off the sheet, or a shape whose centre the reader put kilometres away",
+                    $"{first.Key} at ({first.Value.X:0}, {first.Value.Y:0}); the building spans x {qx0:0}..{qx1:0}, y {qy0:0}..{qy1:0}"));
+            }
+        }
+
         return v;
     }
 

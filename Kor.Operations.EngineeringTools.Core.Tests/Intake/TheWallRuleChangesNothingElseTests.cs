@@ -87,9 +87,10 @@ public sealed class TheWallRuleChangesNothingElseTests
         // pre-wall classifier, and it asserts each wall keeps the path's own outline, which a wall
         // split into piers does not. AWallIsThePiersBesideItsDoorwaysTests covers the doorway.
         // the other wall-shaping steps (14: doorways and clips; 20: face lines) have differentials of their own,
-        // and so does step 37 (pattern cells are not columns: APatternsCellsAbutAColumnStandsAloneTests),
-        // which the frozen classifier predates
-        var cases = FateFixture.Cases().Where(c => c.Reason is not (PathReason.Doorway or PathReason.ClipOfWall or PathReason.BecameWallFace or PathReason.Band or PathReason.BecameSlabEdge or PathReason.PatternCell)).ToList();
+        // and so do step 37 (pattern cells are not columns: APatternsCellsAbutAColumnStandsAloneTests) and
+        // step 49 (a target's quadrants are not columns: ATargetsQuadrantsAreNotColumnsTests), which the
+        // frozen classifier predates
+        var cases = FateFixture.Cases().Where(c => c.Reason is not (PathReason.Doorway or PathReason.ClipOfWall or PathReason.BecameWallFace or PathReason.Band or PathReason.BecameSlabEdge or PathReason.PatternCell or PathReason.SymbolQuadrant)).ToList();
         var paths = cases.Select(c => c.Path).ToList();
         var walls = cases.Select((c, i) => (c, i)).Where(x => x.c.Reason == PathReason.BecameWall).Select(x => x.i).ToHashSet();
         foreach (var rectangle in new[] { WallFixture.Rect(12, 240), WallFixture.Rect(12, 50), WallFixture.Rect(4, 48) })

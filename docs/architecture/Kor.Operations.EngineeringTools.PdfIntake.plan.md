@@ -1,6 +1,6 @@
 # PDF intake → ETABS — Completion Plan
 
-**Status:** Rev 3, 2026-09-12 — WP1–WP5 landed overnight on Ian's go-ahead ("go through this all,
+**Status:** Rev 3, 2026-09-12 (step 49 added to §8, 3b) — WP1–WP5 landed overnight on Ian's go-ahead ("go through this all,
 step by step, and finish it overnight"): commits `8fccbc25` (WP3), `3f3f82b9` (WP2), `aba7d9ff`
 (WP4), `69e554b5` (WP5), each gated by the six byte-identical and the fast suite; WP5's remaining
 conventions are counted by a test, not by this document. §8 is what needs Ian. Rev 2 (2026-09-11)
@@ -224,6 +224,18 @@ Revit route.
    millimetre models (a unit differential now gates it), one column read from two sheets kept as
    two (an invariant now refuses it), and 31202's tendon anchors read as columns (step 48; 10 of
    55 a sheet caught so far). All six re-banked; migration **087** (`dxf.pdf.force-words`) for Ian.
+3b. **Step 49, 2026-09-12 afternoon** (PdfIntake.md §57), on Ian's "go with step 1 — can we get
+   these numbers nearly identical?": 31202's 34 unmatched "18x18" columns were the two filled
+   quadrants of spot-elevation targets, read as columns, walked into one figure-of-eight by the
+   loop builder, and placed by a centroid formula that divides by a near-zero area — eight joints
+   at kilometres in every banked 31202 model since its first bank, the reason every render showed
+   the building as a dot. Three rules, each banked: a centroid lies inside its own box; a
+   target's quadrants are not columns (a pair of one-size filled shapes touching only at a
+   corner); a member stands on the building (publish-blocking invariant; the OLD banked model
+   fails it). 31202 **85% / 95%** (from 82%); 31065 one wall moved; four sets byte-identical.
+   `dxf-inspect --loops` lists the classifier's own loops whose centroid is the vertex mean.
+   Nothing for Ian. Next: the 42 anchors the chains miss, the 32 offset 12x24s, the crossing-strip
+   wall loops (9 on 31202, 1 on 31065).
 4. **WP6** — one model in front of Andrea (31170's, or whichever the ledger ranks best of the
    architects' sets). Ian's call when.
 5. **Step 47**, the next reading rule, from the corpus. `takeoff corpus-query plan-titles` on the

@@ -158,6 +158,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         public List<(double WidthMm, double DepthMm)> ColumnSizes { get; } = new();
         /// <summary>A PATTERN'S CELLS ABUT; A COLUMN STANDS ALONE (intake step 37): the column-sized closed shapes that stood edge to edge with another and left the columns, centre and size, so the overlay can draw them and a person can check they were a fill pattern and not two members touching.</summary>
         public List<((double X, double Y) Centre, double WidthMm, double DepthMm)> PatternCells { get; } = new();
+        /// <summary>A TARGET'S QUADRANTS ARE NOT COLUMNS (intake step 49): the pairs of one-size filled shapes that met only at a corner - the two filled quadrants of a spot-elevation target - and left the columns, centre and size, for the overlay.</summary>
+        public List<((double X, double Y) Centre, double WidthMm, double DepthMm)> SymbolQuadrants { get; } = new();
         public List<(byte R, byte G, byte B)> LineColors   { get; } = new();
 
         /// <summary>

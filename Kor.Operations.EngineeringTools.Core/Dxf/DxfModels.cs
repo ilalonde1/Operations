@@ -129,24 +129,32 @@ public sealed class PlanLoop
 
     public DxfPoint Centroid()
     {
+        // A CENTROID LIES INSIDE ITS OWN BOUNDING BOX. The area formula divides by the signed area, and a
+        // loop drawn as a bow-tie - two lobes that cancel - has an area near zero but not zero, so the
+        // quotient lands kilometres away: 31202's L1 plan put an 18x18 column at (-3.2 km, 3.3 km), eight
+        // such points sat in every model of that set since the first bank, and every storey rendered as
+        // a dot in the corner of a frame that had to hold them (2026-09-12). A centroid the formula puts
+        // outside the box, or from an area smaller than a thousandth of the box's, is the vertex mean.
+        var (minX, minY, maxX, maxY) = Bounds();
         double a = SignedArea;
-        if (Math.Abs(a) < 1e-9)
+        double box = Math.Max((maxX - minX) * (maxY - minY), 1e-9);
+        if (Math.Abs(a) >= 1e-3 * box)
         {
-            double sx = 0, sy = 0;
-            foreach (var p in Points) { sx += p.X; sy += p.Y; }
-            return new DxfPoint(sx / Points.Count, sy / Points.Count);
+            double cx = 0, cy = 0;
+            for (int i = 0; i < Points.Count; i++)
+            {
+                var p = Points[i];
+                var q = Points[(i + 1) % Points.Count];
+                double cross = p.X * q.Y - q.X * p.Y;
+                cx += (p.X + q.X) * cross;
+                cy += (p.Y + q.Y) * cross;
+            }
+            var c = new DxfPoint(cx / (6.0 * a), cy / (6.0 * a));
+            if (c.X >= minX && c.X <= maxX && c.Y >= minY && c.Y <= maxY) return c;
         }
-
-        double cx = 0, cy = 0;
-        for (int i = 0; i < Points.Count; i++)
-        {
-            var p = Points[i];
-            var q = Points[(i + 1) % Points.Count];
-            double cross = p.X * q.Y - q.X * p.Y;
-            cx += (p.X + q.X) * cross;
-            cy += (p.Y + q.Y) * cross;
-        }
-        return new DxfPoint(cx / (6.0 * a), cy / (6.0 * a));
+        double sx = 0, sy = 0;
+        foreach (var p in Points) { sx += p.X; sy += p.Y; }
+        return new DxfPoint(sx / Points.Count, sy / Points.Count);
     }
 }
 

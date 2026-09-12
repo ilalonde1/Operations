@@ -1,11 +1,11 @@
 # PDF intake — what it does today, and what it leaves on the page
 
-## 0. START HERE (state as of 2026-09-12, after step 48 and completion-plan WP1–WP5 — 207 of 292 sets build from the PDF alone)
+## 0. START HERE (state as of 2026-09-12, after step 49 and completion-plan WP1–WP5 — 207 of 292 sets build from the PDF alone)
 
 A session picking this up cold reads this section, then the completion plan
 (`docs/architecture/Kor.Operations.EngineeringTools.PdfIntake.plan.md` — what "complete" means, the
 packages, and where each stands), then the last three step sections (§54–§56). §1–§52 are the
-record of how each rule was arrived at, read when a rule is being changed.
+record of how each rule was arrived at, read when a rule is being changed. §57 is the latest step.
 
 **What this is.** A PDF ingestor: one ingestion point (`DrawingIntake.ReadSheet` → `PdfOnlyBuild`)
 that reads a drawing set and hands its geometry to outlets — the ETABS `.e2k` today, the DXF as a
@@ -57,7 +57,7 @@ closing rules that a rendered view would have settled; that is the mistake this 
 | Storeys with a plate | 741 of 2,401 (31%) |
 | Against the engineers' own models (39 sets sharing a storey with columns, of 62 with a model) | 34% of our columns within 100 mm of theirs, 48% of theirs within 100 mm of ours; 31130 under 25% with 20 shared storeys — the next thing to look at |
 | 31168 against the Revit route | columns median 16 mm, 92% within 50 mm; tower plates within 0.1%; 36 of 62 storeys carry a plate; walls 1,324 vs 1,832 |
-| The four harness sets with the engineer's own model (§56, after step 48) | 31138 69% / 96%; 31170 83% / 91%; 31202 66% / 95% (the tendon anchors, 45 of 55 a sheet still read as columns); 31065 43% / 76% |
+| The four harness sets with the engineer's own model (§56–§57, after step 49) | 31138 69% / 96%; 31170 83% / 91%; 31202 **85% / 95%** (66% before the anchors and the target quadrants; 115 of 777 still unmatched: 42 anchors the chains miss, 32 offset 12x24s, 28 11x14s); 31065 43% / 76% |
 
 **The work order is the count.** 1. Storeys: the 72 sets whose plans name their storeys with
 words (step 47). 2. Views on the grid: 56% of plan views are not placed by name. 3. Plates: 69%
@@ -2763,5 +2763,74 @@ yardstick's spellings and sections (`AModelIsMeasuredAgainstTheEngineersOwnTests
 for byte. WHAT THEY DO NOT: tendons drawn as anything but axis-aligned pieces (the 45 of 55);
 31130's yardstick (median 5.7 m: two halves registered as one frame — the backlog); the
 PENTHOUSE storey of 31202, which the render shows placed a page away from the building (a sheet
-in the wrong frame — found by the render, not yet read); the render itself, which fits every
-storey to the model's whole extent and shows a building as a dot when one storey sits a page away.
+in the wrong frame — found by the render, not yet read; **read in §57: not a sheet, eight
+centroids at kilometres**); the render itself, which fits every storey to the model's whole
+extent and shows a building as a dot when one storey sits a page away.
+
+## 57. Step 49, 2026-09-12: a centroid lies inside its own box; a target's quadrants are not columns; a member stands on the building
+
+Ian: *"go with step 1 — can we get these numbers nearly identical? … I JUST WANT TO MAKE CERTAIN
+the crunching is properly being used as efficiently and intelligently as possible and this is
+actually taking steps to completion."* Step 1 was 31202's remaining unmatched columns, by section.
+The largest class after the anchors was `KOR-C457.2x457.2 34` — 18x18 columns she does not have —
+and the render (§56) had shown every 31202 storey as a dot in the corner of its frame.
+
+**What it was.** Not a sheet in the wrong frame. `verify-e2k` on the banked model listed the far
+joints: eight, at (−3.2 km, 3.3 km), (−587 km, 587 km), (−746 km, 716 km), one at 3×10¹⁴ mm — in
+every banked 31202 model since the set's first bank, and every render since had fitted the storeys
+to a frame that held them. The DXF holds no far coordinate (`vector-lines` and the `$INSBASE`
+header both proved innocent: the model is identical with the header stripped). Composing the L1
+plan alone reproduced one. The cause is `PlanLoop.Centroid()`: the area formula divides by the
+signed area, and a loop whose lobes cancel — a bow-tie, a figure-of-eight — has an area near zero
+but not zero, so the quotient lands anywhere. The old guard was `|a| < 1e-9`.
+
+**What the loops were.** `dxf-inspect --loops` (new; lists every wall and column loop the
+classifier itself builds — `StructuralPlanClassifier.WallAndColumnLoops`, the same join, the same
+duplicate rule, the same builders, the same pooling, so it lists the loops the model was made from
+and not a copy's — where the area centroid and the vertex mean differ by more than a millimetre)
+found **62 of 739** across the set: 53 on `KOR_V_COL`, 6-point loops in 451–459 mm boxes, two
+9" x 9" squares meeting at one corner; 9 on `KOR_V-WALL`, an L drawn as two strips that cross.
+Rendered and looked at (p16, 300 dpi crop): the column pairs are **spot-elevation targets** — a
+circle with two diagonally opposite quadrants filled, "−1'-0"" beside it. The reader took each
+filled quadrant as a 9x9 column (78 on p16, 12 of them quadrants); the DXF loop builder walked
+both squares through the shared corner as one ring; the classifier read the ring's 455 x 451 box as
+an 18x18 column at the centroid the formula gave it.
+
+**Three rules, one step, each with its banked test:**
+
+1. *A centroid lies inside its own bounding box.* `PlanLoop.Centroid()` returns the vertex mean
+   when the signed area is under a thousandth of the box's or when the formula's point falls
+   outside the box. `ACentroidLiesInsideItsOwnBoxTests` — a rectangle's centre is unchanged; an
+   exact and a near bow-tie (0.01 mm taller lobe) land inside; a sliver. Proved by breaking it:
+   against the old code the near bow-tie's centre is at 6,962 km.
+2. *A target's quadrants are not columns* (`GeometryFilterService.ATargetsQuadrantsAreNotColumns`,
+   after step 37's cells): two filled shapes of one size whose centres are a width apart in x AND
+   a depth apart in y touch at one point and nowhere else, and each is the other's ONLY such twin
+   — a pair, not a diagonal of three (that is a checkerboard; step 37 leaves those standing). The
+   pair leaves the columns, is kept in `ExtractedGeometry.SymbolQuadrants` for `pdf-overlay`
+   (orange, with the cells), and its paths are fated `PathReason.SymbolQuadrant` (Discarded);
+   `pdf-takeoff` counts them. Declared-size columns are never quadrants.
+   `ATargetsQuadrantsAreNotColumnsTests`; `EveryPathHasExactlyOneFateTests` carries the case;
+   the frozen step-14 differential excludes the reason as it excludes step 37's.
+3. *Every member stands on the building* (`ShippedModelInvariants`, `member-outside-the-building`,
+   publish-blocking): the middle half of the generated joints in x and in y spans the building,
+   and a joint farther from that span than the span is wide — never less than 100 in — is not on
+   it. Eight or more joints to judge. `AMemberStandsOnTheBuildingTests` — a 12x12 grid with one
+   joint at 130 m is refused by name; the grid alone passes; a joint one bay past the grid passes;
+   a two-joint model is not judged. `verify-e2k` on the OLD banked 31202 model now FAILS on it;
+   the new model passes.
+
+**Measured.** 31202: columns 811 → 777 (the 34 "18x18" gone, 56 column objects across storeys);
+ours → theirs within 100 mm **661 of 777 = 85%** (was 82%), theirs → ours held at **95%**; the
+`KOR-C457.2x457.2` class is gone from the unmatched list, which is now `KOR-C228.6x304.8 42,
+KOR-C304.8x609.6 32, KOR-C279.4x355.6 28, KOR-C254x355.6 7, KOR-C609.6x889 4, KOR-C965.2x1193.8 2`
+= 115 of 777. The render now draws the building on every storey. 31065's P2 moved one wall (a
+46 m panel became 13 m, same right end): its P3 north plan carries one crossing-strip wall loop
+whose centroid was off the sheet and now is not, and a two-face pairing decided from that point
+changed. Both re-banked; 31130, 31138, 31168, 31170 byte-identical.
+
+WHAT THIS DOES NOT: the crossing-strip wall loops themselves (9 on 31202, 1 on 31065) — a wall
+outline that crosses itself is two strips, not one ring, and the loop builder should not walk
+through a crossing (a follow-up; the centroid is now honest, the ring is still one); the 42
+anchors the tendon chains miss and the 32 offset 12x24s (next); a target drawn with one filled
+quadrant or four; the corpus, which the s48 rebuild is restating and this step will change again.

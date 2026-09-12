@@ -189,6 +189,9 @@ internal static class FateFixture
         (Rect(900, 1200, 60000, 31200) with { Color = (0, 0, 0) }, PathReason.PatternCell),
         (Rect(900, 1200, 60000, 32400) with { Color = (0, 0, 0) }, PathReason.PatternCell),
         (Rect(600, 800, 63000, 30000), PathReason.BecameColumnByShape),
+        // a spot-elevation target's two filled quadrants, corner to corner (step 49)
+        (Rect(229, 229, 66000, 30000) with { Color = (0, 0, 0) }, PathReason.SymbolQuadrant),
+        (Rect(229, 229, 66229, 30229) with { Color = (0, 0, 0) }, PathReason.SymbolQuadrant),
         // three at the same spacing: a hatch, still lines
         (Line(10000, 12000, 13000, 12000), PathReason.EmittedAsLine),
         (Line(10000, 12300, 13000, 12300), PathReason.EmittedAsLine),

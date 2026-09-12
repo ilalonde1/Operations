@@ -70,6 +70,14 @@ public enum PathReason
     /// 36" x 48" black cells shoulder to shoulder along every stippled wall.
     /// </summary>
     PatternCell,
+    /// <summary>
+    /// A closed filled shape of column size that meets another of the same size at a corner and
+    /// nowhere else: one of the two filled quadrants of a spot-elevation target, not a column
+    /// (intake step 49). No two columns share only a corner. 31202's plans carry 62 such pairs;
+    /// each read as two 9x9 columns, and the DXF loop builder walked both through the shared corner
+    /// as one figure-of-eight whose centroid the area formula put kilometres away.
+    /// </summary>
+    SymbolQuadrant,
 }
 
 /// <summary>Input path index and its decision; ObjectIndex is zero-based in the corresponding geometry list.</summary>
@@ -88,7 +96,7 @@ public sealed record PathFate(int PathIndex, Disposition Disposition, PathReason
             or PathReason.PaperFill or PathReason.SheetFrame or PathReason.FrameEdgeLine
             or PathReason.GridLineExcluded or PathReason.ColumnTooSmall or PathReason.UnfilledSmallShape
             or PathReason.ColumnAspect or PathReason.TooShort or PathReason.TooFewPoints
-            or PathReason.CollapsedByThinning or PathReason.NoInk or PathReason.PatternCell => Disposition.Discarded,
+            or PathReason.CollapsedByThinning or PathReason.NoInk or PathReason.PatternCell or PathReason.SymbolQuadrant => Disposition.Discarded,
         _ => throw new ArgumentOutOfRangeException(nameof(reason), reason, "Unknown path reason."),
     };
 }

@@ -144,6 +144,10 @@ internal static class PdfOverlayVerb
         foreach (var (centre, w, d) in ovGeo.PatternCells)
             if (w > 0 && d > 0)
                 OvPoly(new[] { (centre.X - w / 2, centre.Y - d / 2), (centre.X + w / 2, centre.Y - d / 2), (centre.X + w / 2, centre.Y + d / 2), (centre.X - w / 2, centre.Y + d / 2) }, orange, 1, close: true);
+        // and a target's quadrants (step 49), the same orange: two filled squares corner to corner are a symbol
+        foreach (var (centre, w, d) in ovGeo.SymbolQuadrants)
+            if (w > 0 && d > 0)
+                OvPoly(new[] { (centre.X - w / 2, centre.Y - d / 2), (centre.X + w / 2, centre.Y - d / 2), (centre.X + w / 2, centre.Y + d / 2), (centre.X - w / 2, centre.Y + d / 2) }, orange, 1, close: true);
         int marks = 0;
         foreach (var wd in ovContent.Words)
         {
@@ -230,7 +234,7 @@ internal static class PdfOverlayVerb
                     bool alongX = Math.Abs(dx - w) <= 25 && dy <= 25, alongY = Math.Abs(dy - d) <= 25 && dx <= 25;
                     if (alongX || alongY) { abuts[i] = true; abutting++; }
                 }
-            Console.WriteLine($"  columns by size (--columns): {cols.Count} read, {abutting} standing edge to edge with a twin of the same size; {ovGeo.PatternCells.Count} pattern cell(s) already left the columns (orange)");
+            Console.WriteLine($"  columns by size (--columns): {cols.Count} read, {abutting} standing edge to edge with a twin of the same size; {ovGeo.PatternCells.Count} pattern cell(s) and {ovGeo.SymbolQuadrants.Count} target quadrant(s) already left the columns (orange)");
             foreach (var (centre, w, d) in ovGeo.PatternCells.Take(40))
                 Console.WriteLine($"    cell {Inches((w, d)).Item1,3} x {Inches((w, d)).Item2,3} in at ({centre.X:0}, {centre.Y:0}) mm");
             if (ovGeo.PatternCells.Count > 40) Console.WriteLine($"    ... and {ovGeo.PatternCells.Count - 40} more cells");

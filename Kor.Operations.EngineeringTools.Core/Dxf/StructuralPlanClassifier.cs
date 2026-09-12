@@ -409,6 +409,88 @@ public static class StructuralPlanClassifier
     private static string LayerFamily(string layer)
         => System.Text.RegularExpressions.Regex.Replace(layer, @"[-_]\d+$", string.Empty);
 
+    /// <summary>
+    /// The segments Classify closes into loops, each with its role, after the dashed-line join and
+    /// with every edge drawn twice on one layer family read once; the unroled segments a slab edge
+    /// may finish through; partition footprints; and how many duplicate edges were dropped.
+    /// </summary>
+    private static (List<(DxfSegment Segment, string? Role)> Prepared, List<DxfSegment> Unroled, List<DxfSegment> Partitions, int DuplicateEdges)
+        Prepare(IEnumerable<DxfSegment> segments, PlanClassificationOptions options)
+    {
+        var seenEdges = new HashSet<(string Family, long, long, long, long)>();
+        var prepared = new List<(DxfSegment Segment, string? Role)>();
+        var unroled = new List<DxfSegment>();
+        var partitionSegments = new List<DxfSegment>();
+        int duplicateEdges = 0;
+
+        foreach (var s in DashedLineJoiner.Join(segments, options.DashJoinGap))
+        {
+            string? role = RoleOf(s.Layer, options);
+            if (role is null) { unroled.Add(s); continue; }
+            if (role == RolePartition) { partitionSegments.Add(s); continue; }      // a footprint, not a member and not an edge
+
+            var a = ((long)Math.Round(s.Start.X * 10), (long)Math.Round(s.Start.Y * 10));
+            var b = ((long)Math.Round(s.End.X * 10), (long)Math.Round(s.End.Y * 10));
+            var (lo, hi) = a.CompareTo(b) <= 0 ? (a, b) : (b, a);
+
+            if (!seenEdges.Add((LayerFamily(s.Layer), lo.Item1, lo.Item2, hi.Item1, hi.Item2)))
+            {
+                duplicateEdges++;
+                continue;
+            }
+            prepared.Add((s, role));
+        }
+        return (prepared, unroled, partitionSegments, duplicateEdges);
+    }
+
+    /// <summary>
+    /// Closed first, then pooled: each layer family of the role is built on its own, and only what
+    /// is left open is pooled across the role's families for a second chance. Returns the loops and
+    /// the chains still open after both.
+    /// </summary>
+    private static (List<PlanLoop> Loops, List<IReadOnlyList<DxfPoint>> StillOpen) CloseByFamilyThenPooled(
+        List<(DxfSegment Segment, string? Role)> prepared, string role, PlanLoopBuilder builder)
+    {
+        var loops = new List<PlanLoop>();
+        var leftovers = new List<DxfSegment>();
+
+        foreach (var family in prepared.Where(x => x.Role == role)
+                                       .GroupBy(x => LayerFamily(x.Segment.Layer), x => x.Segment))
+        {
+            var attempt = builder.Build(family);
+            loops.AddRange(attempt.Loops);
+
+            foreach (var chain in attempt.OpenChains)
+                for (int i = 0; i < chain.Count - 1; i++)
+                    leftovers.Add(new DxfSegment(family.Key, chain[i], chain[i + 1]));
+        }
+
+        // Second chance for everything that did not close on its own.
+        var pooled = leftovers.Count > 0 ? builder.Build(leftovers) : null;
+        if (pooled is not null) loops.AddRange(pooled.Loops);
+
+        var stillOpen = pooled?.OpenChains.ToList() ?? new List<IReadOnlyList<DxfPoint>>();
+        return (loops, stillOpen);
+    }
+
+    /// <summary>
+    /// The closed loops Classify reads on the wall and column layers, by role, exactly as it builds
+    /// them (the same join, the same duplicate rule, the same builders, the same pooling) - so an
+    /// instrument that lists loops lists the loops the model was made from and not a copy's. Slab
+    /// edges are not here: their closure borrows from other layers and is judged in Classify.
+    /// </summary>
+    public static IReadOnlyList<(string Role, PlanLoop Loop)> WallAndColumnLoops(IEnumerable<DxfSegment> segments, PlanClassificationOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(segments);
+        ArgumentNullException.ThrowIfNull(options);
+        var (prepared, _, _, _) = Prepare(segments, options);
+        var builder = new PlanLoopBuilder(options.JoinTolerance, options.WallBridgeTolerance, options.ExtendLimit);
+        var all = new List<(string Role, PlanLoop Loop)>();
+        foreach (string role in new[] { RoleWall, RoleColumn })
+            all.AddRange(CloseByFamilyThenPooled(prepared, role, builder).Loops.Select(l => (role, l)));
+        return all;
+    }
+
     internal const string RoleWall = "walls";
     internal const string RoleColumn = "columns";
     internal const string RoleSlab = "slab edges";
@@ -486,34 +568,11 @@ public static class StructuralPlanClassifier
         // Deduplicated per layer FAMILY and by geometry, undirected, so a segment and its reverse
         // count once. Across families it is left alone: JBP_V-WALL and JBP_B_WALL drawing the same
         // line is two different claims about the same place, and the layer ledger should keep both.
-        var seenEdges = new HashSet<(string Family, long, long, long, long)>();
-        var prepared = new List<(DxfSegment Segment, string? Role)>();
-        int duplicateEdges = 0;
-
         // KEPT, NOT MODELLED. Linework on a layer with no structural role is not structure and is
         // never turned into a member -- but a slab edge that finishes through it is still a slab
         // edge, and the ring cannot be completed from segments that were thrown away. See
         // SlabEdgeClosure.
-        var unroled = new List<DxfSegment>();
-        var partitionSegments = new List<DxfSegment>();
-
-        foreach (var s in DashedLineJoiner.Join(segments, options.DashJoinGap))
-        {
-            string? role = RoleOf(s.Layer, options);
-            if (role is null) { unroled.Add(s); continue; }
-            if (role == RolePartition) { partitionSegments.Add(s); continue; }      // a footprint, not a member and not an edge
-
-            var a = ((long)Math.Round(s.Start.X * 10), (long)Math.Round(s.Start.Y * 10));
-            var b = ((long)Math.Round(s.End.X * 10), (long)Math.Round(s.End.Y * 10));
-            var (lo, hi) = a.CompareTo(b) <= 0 ? (a, b) : (b, a);
-
-            if (!seenEdges.Add((LayerFamily(s.Layer), lo.Item1, lo.Item2, hi.Item1, hi.Item2)))
-            {
-                duplicateEdges++;
-                continue;
-            }
-            prepared.Add((s, role));
-        }
+        var (prepared, unroled, partitionSegments, duplicateEdges) = Prepare(segments, options);
 
         if (duplicateEdges > 0)
             result.Flags.Add($"{duplicateEdges} edge(s) were drawn more than once on the same layer family " +
@@ -554,25 +613,7 @@ public static class StructuralPlanClassifier
             PlanLoopBuilder? slabRescue = role == RoleSlab && result.Tags.Count > 0
                 ? new PlanLoopBuilder(options.JoinTolerance, options.FloodFillBridge, options.ExtendLimit)
                 : null;
-            var loops = new List<PlanLoop>();
-            var leftovers = new List<DxfSegment>();
-
-            foreach (var family in prepared.Where(x => x.Role == role)
-                                           .GroupBy(x => LayerFamily(x.Segment.Layer), x => x.Segment))
-            {
-                var attempt = builder.Build(family);
-                loops.AddRange(attempt.Loops);
-
-                foreach (var chain in attempt.OpenChains)
-                    for (int i = 0; i < chain.Count - 1; i++)
-                        leftovers.Add(new DxfSegment(family.Key, chain[i], chain[i + 1]));
-            }
-
-            // Second chance for everything that did not close on its own.
-            var pooled = leftovers.Count > 0 ? builder.Build(leftovers) : null;
-            if (pooled is not null) loops.AddRange(pooled.Loops);
-
-            var stillOpen = pooled?.OpenChains.ToList() ?? new List<IReadOnlyList<DxfPoint>>();
+            var (loops, stillOpen) = CloseByFamilyThenPooled(prepared, role, builder);
 
             // A SLAB EDGE THAT FINISHES ON ANOTHER LAYER IS STILL CLOSED.
             //
