@@ -51,10 +51,10 @@ closing rules that a rendered view would have settled; that is the mistake this 
 
 | | |
 |---|---|
-| Sets that build a model from the PDF alone | **197 of 292** (39 before step 45, 192 after it, 197 after step 46) |
-| No model | 67 no storeys read (their plans are named GROUND/MAIN/SECOND… — the vocabulary, step 47), 17 no plan the reader typed, 11 refused at the composer's gate (two of them by our own -MARKUP layer, fixed §55) |
-| Plan views on the grid by name | 1,894 of 4,228 (45%) |
-| Storeys with a plate | 723 of 2,351 (31%) |
+| Sets that build a model from the PDF alone | **207 of 292** (39 before step 45, 192 after it, 197 after step 46, 207 after the -MARKUP layer rule) |
+| No model | 67 no storeys read (their plans are named GROUND/MAIN/SECOND… — the vocabulary, step 47), 17 no plan the reader typed, 1 refused at the composer's gate (11 until our own -MARKUP layer was explained, §55) |
+| Plan views on the grid by name | 1,948 of 4,323 (45%) |
+| Storeys with a plate | 741 of 2,401 (31%) |
 | Against the engineers' own models (39 sets sharing a storey with columns, of 62 with a model) | 34% of our columns within 100 mm of theirs, 48% of theirs within 100 mm of ours; 31130 under 25% with 20 shared storeys — the next thing to look at |
 | 31168 against the Revit route | columns median 16 mm, 92% within 50 mm; tower plates within 0.1%; 36 of 62 storeys carry a plate; walls 1,324 vs 1,832 |
 
@@ -2664,8 +2664,11 @@ layer matched walls, yet 161,332 segments sit on layers the tool does not recogn
 non-member layer with a `-MARKUP` suffix, and the gate explained BEAM and not BEAM-MARKUP, so
 928 segments of ink refused 30954 (and 334 refused 30977). A layer of ours carrying the suffix
 explains its geometry as the base layer does (`LayerLedger.RolesMissingWithGeometryUnclaimed`);
-a foreign layer with the suffix does not. Six sets unchanged; the corpus's count is the next
-`--recompose`.
+a foreign layer with the suffix does not. Six sets unchanged. **The corpus, recomposed (18 min):
+207 of 292 build — the rule freed 10 of the 11 sets at the gate;** the one left reads "no layer
+matched slab edges" and is its own cause. Of the 207: 4,323 views, 1,948 on the grid (45%); 2,401
+storeys, 741 with a plate (31%); 42 sets share a storey with their yardstick, 34% / 48% within
+100 mm. Ledger banked as run 4.
 
 **The completion plan's WP1–WP5 closed tonight** (`8fccbc25` WP3, `3f3f82b9` WP2, `aba7d9ff`
 WP4, `69e554b5` WP5; the plan's status, §3 and each package say what landed and what is owed).
@@ -2679,5 +2682,4 @@ rows — three shared with the DXF side, two seeded by migration 085.
 WHAT THE CHECKS COVER: the `-MARKUP` layer explained and a foreign one not
 (`ARoleWithNoLayerIsAMismatchWhenGeometrySitsUnclaimed`); the ledger readers through
 `corpus-query`; the six, byte for byte, after every package and after this rule. WHAT THEY DO
-NOT: the 11 refused sets rebuilt (the next `--recompose` says how many of them the suffix
-freed); step 47's vocabulary.
+NOT: the one set still at the gate (slab edges); step 47's vocabulary.

@@ -52,12 +52,12 @@ Today's harness is 6 of those 292. The one-job yardstick (31168) is 1 of 66.
 
 | | run 1 (step 44) | run 3 (step 46) |
 |---|---|---|
-| Sets built from the PDF alone | **39 of 292**; 8,692 pages read, 3,989 plans, 0 failed | **197 of 292** |
+| Sets built from the PDF alone | **39 of 292**; 8,692 pages read, 3,989 plans, 0 failed | **207 of 292** (197 after step 46; the `-MARKUP` layer rule freed 10 more, run 4) |
 | No model because no storey ladder was read | **225 of 292** — they all have plans; the ladder reader wanted shear-wall elevations | **67** — their plans name storeys with WORDS (step 47) |
-| No model: no plan the reader typed / refused at the layer gate | 17 / 11 | 17 / 11 (two of the 11 by our own `-MARKUP` layer, fixed §55) |
-| Plan views set on the grid by name | 873 of 2,058 (42%) | 1,894 of 4,228 (45%) |
-| Storeys with a plate | 230 of 1,098 (21%) | 723 of 2,351 (31%) |
-| Yardsticks (engineers' own models, 92 exported from KOR-210) | 18 of the 39: **45% / 52%** within 100 mm | 62 sets have one, 39 share a storey with columns: **34% / 48%**; per set from 75–99% (4 sets) to 0–24% (20 sets) — more sets, more assumed storeys, a lower share |
+| No model: no plan the reader typed / refused at the layer gate | 17 / 11 | 17 / 1 (10 of the 11 were our own `-MARKUP` layer, §55) |
+| Plan views set on the grid by name | 873 of 2,058 (42%) | 1,948 of 4,323 (45%) |
+| Storeys with a plate | 230 of 1,098 (21%) | 741 of 2,401 (31%) |
+| Yardsticks (engineers' own models, 92 exported from KOR-210) | 18 of the 39: **45% / 52%** within 100 mm | 62 sets have one, 42 share a storey with columns: **34% / 48%**; per set from 75–99% (4 sets) to 0–24% (20 sets) — more sets, more assumed storeys, a lower share |
 
 **The work order is a count now.** 1. Storeys: the 67 sets whose plans name their storeys with
 words, and 935 views the composer can put on no storey by name (step 47, §8 item 5). 2. Views on
