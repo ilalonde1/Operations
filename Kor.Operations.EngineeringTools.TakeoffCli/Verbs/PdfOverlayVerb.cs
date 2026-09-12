@@ -99,14 +99,18 @@ internal static class PdfOverlayVerb
         // a tendon's anchor is not a column (step 48): the intake stands them down after the classifier; so does this picture
         var ovTendons = TendonAnchors.Read(ovContent, ovGeo, ovScale * PdfToSafeConstants.PointsToMm, ovOptions.ForceWords);
         IReadOnlyList<bool>? ovDeclared = null;
+        double? ovSmallest = null;
         try
         {
+            // the sheet's own schedule only: the intake also knows the set's (SetSchedules), so the picture may keep an anchor the build stands down
             var ovSchedule = ColumnScheduleReader.ReadSchedule(ovContent);
             if (ovSchedule.Count > 0 && ovGeo.Columns.Count > 0)
                 ovDeclared = PlanAgreesWithItsSchedule.Check(ovGeo, ovSchedule, ovContent, ovOptions.AgreementToleranceMm, ovOptions.AgreementLabelReachMm).Columns.Select(c => c.SizeIsDeclaredSomewhere).ToList();
+            var sized = ovSchedule.Where(r => !r.SizeVaries && r.WidthMm > 0 && r.DepthMm > 0).Select(r => r.WidthMm * r.DepthMm).ToList();
+            if (sized.Count > 0) ovSmallest = sized.Min();
         }
         catch { /* no column schedule the reader can use: every column is undeclared */ }
-        int ovAnchors = TendonAnchors.StandDownColumns(ovGeo, ovTendons, ovDeclared);
+        int ovAnchors = TendonAnchors.StandDownColumns(ovGeo, ovTendons, ovDeclared, ovSmallest);
         var anchorOrange = new Rgba32(240, 140, 0);
         for (int i = 0; i < ovGeo.Columns.Count; i++)
         {

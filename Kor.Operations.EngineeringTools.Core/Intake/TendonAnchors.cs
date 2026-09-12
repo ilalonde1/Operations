@@ -36,11 +36,17 @@ public static class TendonAnchors
     /// <summary>A tendon's end inside a column's footprint, with this much slack, stands the column down.</summary>
     public const double EndSlackMm = 50.0;
 
+    /// <summary>A sheet with at least this many force labels is a post-tensioning plan, on which every long run is a tendon.</summary>
+    public const int PostTensionedSheetMinLabels = 3;
+
     /// <summary>Pieces of one tendon lie on one line within this, and a gap between pieces (a label, a chair mark) is bridged up to <see cref="PieceGapMm"/>.</summary>
     public const double PieceLateralMm = 20.0;
-    public const double PieceGapMm = 1500.0;
+    public const double PieceGapMm = 2500.0;
 
     public sealed record Tendon((double X, double Y) Start, (double X, double Y) End, string Label);
+
+    /// <summary>The label of a run taken for a tendon by the sheet's signature rather than by its own force label.</summary>
+    public const string SheetTendon = "(P/T sheet)";
 
     /// <summary>The tendons on the sheet: every line a force label sits beside, in the geometry's millimetres.</summary>
     public static IReadOnlyList<Tendon> Read(VectorPageReader.PageContent content, ExtractedGeometry geometry, double mmPerPoint, IReadOnlyList<string> forceWords)
@@ -52,10 +58,12 @@ public static class TendonAnchors
         var tendons = new List<Tendon>();
         var taken = new HashSet<int>();
         var chains = Chains(geometry.Lines);
+        int forceLabels = 0;
         foreach (var word in content.Words)
         {
             string text = word.Text.Trim().TrimEnd('.', ',').ToUpperInvariant();
             if (!words.Contains(text) && !words.Contains(text + ".")) continue;
+            forceLabels++;
             double cx = word.Cx * mmPerPoint, cy = word.Cy * mmPerPoint;
             double reach = Math.Max(word.Height, 1.0) * mmPerPoint * LabelReachHeights;
             int best = -1;
@@ -71,6 +79,16 @@ public static class TendonAnchors
             var pts = chains[best];
             tendons.Add(new Tendon(pts[0], pts[^1], word.Text.Trim()));
         }
+        // A SHEET THAT LABELS FORCES IS A POST-TENSIONING PLAN, AND ON IT EVERY LONG RUN IS A TENDON. The
+        // distributed tendons are not labelled one by one: one "55 Kips/ft" sits on the band's extent line
+        // along the slab edge, and the tendons it describes run perpendicular to it, 43 m long, each
+        // ending in its own anchor (31202 p32: 22 of them at x 517 pt, read with vector-lines). With the
+        // label rule alone 10 of 55 anchors were caught; the sheet's own signature - three force labels
+        // or more - names the rest. What ends in an undeclared block on such a sheet is an anchor.
+        if (forceLabels >= PostTensionedSheetMinLabels)
+            for (int i = 0; i < chains.Count; i++)
+                if (!taken.Contains(i) && Length(chains[i]) >= MinTendonLengthMm)
+                    tendons.Add(new Tendon(chains[i][0], chains[i][^1], SheetTendon));
         return tendons;
     }
 
@@ -131,7 +149,8 @@ public static class TendonAnchors
     /// not counted as a column. Returns how many.
     /// </summary>
     /// <param name="sizeIsDeclared">Parallel to the columns, or null: true where the sheet's own column schedule declares the column's size. A declared size is a column whatever ends at it — 31202's 12x48 columns had a tendon ending in one on every typical storey and the rule without this stood one real column a storey down (2026-09-12).</param>
-    public static int StandDownColumns(ExtractedGeometry geometry, IReadOnlyList<Tendon> tendons, IReadOnlyList<bool>? sizeIsDeclared = null)
+    /// <param name="smallestDeclaredAreaMm2">The smallest column the SET schedules, as an area. A run on a P/T sheet that carries no force label of its own (a "(P/T sheet)" tendon) stands a block down only when the block is smaller than every column the set has: an anchor is a fitting, and 31130's schedule reads incomplete (a ladder schedule the reader takes one band of), so its 14x36 columns were undeclared and a tendon ends on each (2026-09-12). Null: those runs stand nothing down.</param>
+    public static int StandDownColumns(ExtractedGeometry geometry, IReadOnlyList<Tendon> tendons, IReadOnlyList<bool>? sizeIsDeclared = null, double? smallestDeclaredAreaMm2 = null)
     {
         ArgumentNullException.ThrowIfNull(geometry);
         ArgumentNullException.ThrowIfNull(tendons);
@@ -143,7 +162,8 @@ public static class TendonAnchors
             var (w, d) = i < geometry.ColumnSizes.Count ? geometry.ColumnSizes[i] : (0.0, 0.0);
             double hx = w / 2 + EndSlackMm, hy = d / 2 + EndSlackMm;
             bool declared = sizeIsDeclared is not null && i < sizeIsDeclared.Count && sizeIsDeclared[i];
-            bool anchor = !declared && tendons.Any(t => Inside(t.Start) || Inside(t.End));
+            bool smallerThanAnyColumn = smallestDeclaredAreaMm2 is double least && w * d < least;
+            bool anchor = !declared && tendons.Any(t => (t.Label != SheetTendon || smallerThanAnyColumn) && (Inside(t.Start) || Inside(t.End)));
             geometry.ColumnIsTendonAnchor.Add(anchor);
             if (anchor) stoodDown++;
 

@@ -2,6 +2,7 @@
 using System.Globalization;
 using Kor.Operations.EngineeringTools.Dxf;
 using Kor.Operations.EngineeringTools.PdfToSafe;
+using Kor.Operations.EngineeringTools.QuantityTakeoff;
 using UglyToad.PdfPig;
 
 namespace Kor.Operations.EngineeringTools.Intake;
@@ -74,9 +75,16 @@ public static class PdfOnlyBuild
         var facts = DocumentFacts.From(doc);
         // the set's assembly schedule, read once (step 32), so every plan's walls can take their tags (step 33)
         IReadOnlyList<AssemblySchedule.Assembly> assemblies = [];
-        try { assemblies = AssemblySchedule.ReadSet(pdf, options.AssemblyStructuralWords, options.AssemblyPartitionWords); } catch { }
+        IReadOnlyList<ColumnScheduleRow> declaredColumns = [];
+        try
+        {
+            var set = SetSchedules.Of(pdf, options.AssemblyStructuralWords, options.AssemblyPartitionWords);
+            assemblies = set.Assemblies;
+            declaredColumns = set.ColumnRows;       // every column size the set schedules, for the tendon rule (step 48)
+        }
+        catch { }
         if (assemblies.Count > 0) onAssemblies?.Invoke(assemblies);
-        var request = new IntakeRequest(scale, options, markup, assemblies);
+        var request = new IntakeRequest(scale, options, markup, assemblies) { DeclaredColumnSizes = declaredColumns };
 
         var sheets = new List<SheetOutcome>();
         var views = new List<DxfSheet>();

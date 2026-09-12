@@ -12,7 +12,11 @@ using UglyToad.PdfPig.Tokens;
 namespace Kor.Operations.EngineeringTools.Intake;
 
 public sealed record IntakeRequest(int? ScaleDenominator, PdfIntakeOptions Options, bool MarkupOnly = false,
-    IReadOnlyList<AssemblySchedule.Assembly>? Assemblies = null);
+    IReadOnlyList<AssemblySchedule.Assembly>? Assemblies = null)
+{
+    /// <summary>Every column size the SET's schedules declare (SetSchedules), so a sheet that carries no schedule of its own still knows a 14x36 is a column (step 48). Null: only the sheet's own schedule speaks.</summary>
+    public IReadOnlyList<ColumnScheduleRow>? DeclaredColumnSizes { get; init; }
+}
 
 /// <summary>The document entry point: retain one vector read and the existing readers' decisions per sheet.</summary>
 public static class DrawingIntake
@@ -62,6 +66,33 @@ public static class DrawingIntake
         double denominator = metresPerPoint.Value * 1000.0 / PdfToSafeConstants.PointsToMm;
         int rounded = (int)Math.Round(denominator);
         return rounded >= 1 && rounded <= 5000 ? rounded : null;
+    }
+
+    /// <summary>The smallest column any schedule of the sheet or the set declares, as an area in mm², or null where nothing is declared.</summary>
+    private static double? SmallestDeclaredArea(IReadOnlyList<ColumnScheduleRow> own, IReadOnlyList<ColumnScheduleRow>? set)
+    {
+        var sized = own.Concat(set ?? []).Where(r => !r.SizeVaries && r.WidthMm > 0 && r.DepthMm > 0).Select(r => r.WidthMm * r.DepthMm).ToList();
+        return sized.Count == 0 ? null : sized.Min();
+    }
+
+    /// <summary>Parallel to the columns: true where the sheet's own schedule, or any schedule in the set, declares the column's size.</summary>
+    private static IReadOnlyList<bool>? DeclaredSizes(ExtractedGeometry geometry, PlanScheduleAgreement? own, IReadOnlyList<ColumnScheduleRow>? set, double toleranceMm)
+    {
+        if (own is null && (set is null || set.Count == 0)) return null;
+        var flags = new List<bool>(geometry.Columns.Count);
+        for (int i = 0; i < geometry.Columns.Count; i++)
+        {
+            bool declared = own is not null && i < own.Columns.Count && own.Columns[i].SizeIsDeclaredSomewhere;
+            if (!declared && set is { Count: > 0 } && i < geometry.ColumnSizes.Count)
+            {
+                var (w, d) = geometry.ColumnSizes[i];
+                double small = Math.Min(w, d), large = Math.Max(w, d);
+                declared = set.Any(r => r.SizeVaries
+                    || (Math.Abs(Math.Min(r.WidthMm, r.DepthMm) - small) <= toleranceMm && Math.Abs(Math.Max(r.WidthMm, r.DepthMm) - large) <= toleranceMm));
+            }
+            flags.Add(declared);
+        }
+        return flags;
     }
 
     private static SheetRecord ReadPage(Page page, IntakeRequest request, DocumentFacts facts)
@@ -294,7 +325,8 @@ public static class DrawingIntake
         // own schedule declares that size, in which case it is a column a tendon happens to end at
         int tendonAnchorsReadAsColumns = classify && !request.MarkupOnly
             ? TendonAnchors.StandDownColumns(geometry, TendonAnchors.Read(content, geometry, scaleFactor, options.ForceWords),
-                agreement?.Columns.Select(c => c.SizeIsDeclaredSomewhere).ToList())
+                DeclaredSizes(geometry, agreement, request.DeclaredColumnSizes, options.AgreementToleranceMm),
+                SmallestDeclaredArea(columns, request.DeclaredColumnSizes))
             : 0;
         return new SheetRecord(pageNumber, page.Width, page.Height, page.Rotation.Value,
             SheetTitleReader.SheetNumberToken(content), bookmark, sheetType, title?.Level, title?.Zone,

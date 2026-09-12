@@ -126,6 +126,7 @@ public sealed class EveryReaderConstantIsTriagedTests
         ["TendonAnchors.cs:EndSlackMm"] = Tolerance("a tendon's end inside a column's footprint, with slack"),
         ["TendonAnchors.cs:PieceLateralMm"] = Tolerance("pieces of one tendon lie on one line within this"),
         ["TendonAnchors.cs:PieceGapMm"] = Convention("dxf.pdf.tendon-piece-gap-mm — a tendon's pieces are broken for labels and chair marks up to this gap"),
+        ["TendonAnchors.cs:PostTensionedSheetMinLabels"] = Convention("dxf.pdf.tendon-sheet-min-labels — three force labels make a P/T plan"),
         ["DxfExporter.cs:minSeg"] = Tolerance("an alias of MinVertexDistanceMm"),
         ["GeometryFilterService.cs:WallLimitSlackMm"] = Tolerance("half an inch on the wall limits: a wall drawn at exactly the limit is a wall"),
         ["GeometryFilterService.cs:RectangleCornerCos"] = Tolerance("a corner is square within 3 degrees"),
@@ -296,6 +297,6 @@ public sealed class EveryReaderConstantIsTriagedTests
         var byClass = Table.Where(kv => scanned.Contains(kv.Key)).GroupBy(kv => kv.Value.Class).ToDictionary(g => g.Key, g => g.Count());
         string summary = string.Join(", ", Enum.GetValues<Class>().Select(c => $"{c} {byClass.GetValueOrDefault(c)}"));
         // the number the plan carries (§3 of the completion plan): conventions still compiled
-        Assert.True(byClass.GetValueOrDefault(Class.Convention) <= 47, $"more conventions compiled than the plan states: {summary}");
+        Assert.True(byClass.GetValueOrDefault(Class.Convention) <= 48, $"more conventions compiled than the plan states: {summary}");
     }
 }

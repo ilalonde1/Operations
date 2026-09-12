@@ -38,7 +38,7 @@ public sealed class ATendonsAnchorIsNotAColumnTests
         g.Columns.Add((1000, 3000)); g.ColumnSizes.Add((229, 305));
         g.Columns.Add((11000, 3000)); g.ColumnSizes.Add((229, 305));
         // a column a beam ends at, with no force label anywhere near
-        g.Columns.Add((6000, 9000)); g.ColumnSizes.Add((400, 400));
+        g.Columns.Add((6000, 9000)); g.ColumnSizes.Add((500, 500));
         // the tendon: a 10 m line from anchor to anchor, passing over the column; the beam: 4 m into the fourth column
         g.Lines.Add([(1000, 3000), (11000, 3000)]);
         g.Lines.Add([(2000, 9000), (6000, 9000)]);
@@ -70,6 +70,24 @@ public sealed class ATendonsAnchorIsNotAColumnTests
         Assert.Empty(TendonAnchors.Read(content, g, MmPerPoint, TendonAnchors.DefaultForceWords));
         Assert.Equal(0, TendonAnchors.StandDownColumns(g, []));
         Assert.All(g.ColumnIsTendonAnchor, a => Assert.False(a));
+    }
+
+    [Fact]
+    public void OnASheetThatLabelsForcesEveryLongRunIsATendonAndADeclaredSizeIsNeverAnAnchor()
+    {
+        var g = Geometry();
+        // three force labels anywhere make it a P/T plan: the unlabelled beam's end column is an anchor too...
+        var content = new VectorPageReader.PageContent(1, 3000, 2000, [Word("Kips", 5800, 3200), Word("Kips/ft", 20000, 20000), Word("kN", 25000, 25000)], []);
+        var tendons = TendonAnchors.Read(content, g, MmPerPoint, TendonAnchors.DefaultForceWords);
+        Assert.Equal(2, tendons.Count);                                          // the labelled tendon and the 4 m beam; the leader is too short
+        // ...but a run the sheet's signature named stands a block down only when the set's smallest column is bigger than it:
+        // with no schedule at all the beam's 500x500 stays; with a 12x24 (305x610) scheduled the 229x305 anchors go and the 500x500 (bigger) stays
+        Assert.Equal(2, TendonAnchors.StandDownColumns(g, tendons));
+        Assert.Equal(2, TendonAnchors.StandDownColumns(g, tendons, null, 305.0 * 610.0));
+        Assert.Equal([false, true, true, false], g.ColumnIsTendonAnchor);
+        // and a schedule that declares the 500x500 keeps it whatever ends there
+        Assert.Equal(2, TendonAnchors.StandDownColumns(g, tendons, [false, false, false, true], 100.0 * 100.0));
+        Assert.Equal([false, true, true, false], g.ColumnIsTendonAnchor);
     }
 
     [Fact]
