@@ -47,7 +47,6 @@ public static class ModelDiff
             : $"plates moved {PlatesMoved}, columns lost {LostColumns} / gained {GainedColumns}, walls lost {LostWalls} / gained {GainedWalls}";
     }
 
-    private static readonly Regex GridLine = new(@"^\s*GRID\s+""(?<sys>[^""]*)""\s+LABEL\s+""(?<label>[^""]+)""\s+DIR\s+""(?<dir>[XY])""\s+COORD\s+(?<coord>-?[\d.eE+]+)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
     public static Result Compare(string beforePath, string afterPath)
     {
@@ -61,7 +60,7 @@ public static class ModelDiff
         var order = orderA.Concat(orderB.Where(s => !orderA.Contains(s, StringComparer.OrdinalIgnoreCase))).ToList();
 
         // the frame shift between the two models, by grid label first
-        var ga = Grids(before); var gb = Grids(after);
+        var ga = before.ReadGrids(); var gb = after.ReadGrids();
         var dx = ga.Keys.Where(k => k.Dir == "X" && gb.ContainsKey(k)).Select(k => gb[k] - ga[k]).ToList();
         var dy = ga.Keys.Where(k => k.Dir == "Y" && gb.ContainsKey(k)).Select(k => gb[k] - ga[k]).ToList();
         (long X, long Y) shift;
@@ -183,18 +182,6 @@ public static class ModelDiff
         }
         var dict = members.ToDictionary(kv => kv.Key, kv => ((IReadOnlyList<Member>)kv.Value.Columns, (IReadOnlyList<Member>)kv.Value.Walls), StringComparer.OrdinalIgnoreCase);
         return (order, dict, plates);
-    }
-
-    private static Dictionary<(string System, string Label, string Dir), double> Grids(E2kDocument doc)
-    {
-        var grids = new Dictionary<(string, string, string), double>();
-        foreach (string raw in doc.LinesOf("GRIDS"))
-        {
-            var m = GridLine.Match(raw);
-            if (m.Success && double.TryParse(m.Groups["coord"].Value, NumberStyles.Float, CultureInfo.InvariantCulture, out double c))
-                grids[(m.Groups["sys"].Value, m.Groups["label"].Value.ToUpperInvariant(), m.Groups["dir"].Value.ToUpperInvariant())] = c;
-        }
-        return grids;
     }
 
     private static double Median(List<double> values)

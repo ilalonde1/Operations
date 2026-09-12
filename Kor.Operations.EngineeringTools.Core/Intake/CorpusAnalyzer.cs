@@ -350,10 +350,21 @@ public static class CorpusAnalyzer
     }
 
     private static SetRow ReadSetRow(string path, Guid runId, DateTime runAt)
+        => ParseSetRow(File.ReadAllLines(path)[1]) with { RunId = runId, RunAtUtc = runAt };
+
+    /// <summary>Every set row of a ledger CSV (the analyzer's `ledger-sets.csv`, or a banked copy under docs/etabs-handoff/corpus/).</summary>
+    public static IReadOnlyList<SetRow> ReadSets(string path) => File.ReadAllLines(path).Skip(1).Where(l => l.Length > 0).Select(ParseSetRow).ToList();
+
+    /// <summary>Every sheet row of a ledger CSV (`ledger-sheets.csv`).</summary>
+    public static IReadOnlyList<SheetRow> ReadSheets(string path) => File.ReadAllLines(path).Skip(1).Where(l => l.Length > 0).Select(l => ParseSheetRow(l, Guid.Empty)).ToList();
+
+    private static SetRow ParseSetRow(string line)
     {
-        var f = Csv.Parse(File.ReadAllLines(path)[1]);
+        var f = Csv.Parse(line);
         static int? I(string s) => s.Length == 0 ? null : int.Parse(s, CultureInfo.InvariantCulture);
         static string? S(string s) => s.Length == 0 ? null : s;
+        Guid runId = Guid.TryParse(f[0], out var g) ? g : Guid.Empty;
+        DateTime runAt = DateTime.TryParse(f[1], CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var at) ? at : default;
         return new SetRow(runId, runAt, DateTime.Parse(f[2], CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind), f[3], f[4], f[5], f[6], S(f[7]), bool.Parse(f[8]), long.Parse(f[9], CultureInfo.InvariantCulture),
             int.Parse(f[10], CultureInfo.InvariantCulture), int.Parse(f[11], CultureInfo.InvariantCulture), int.Parse(f[12], CultureInfo.InvariantCulture), int.Parse(f[13], CultureInfo.InvariantCulture),
             int.Parse(f[14], CultureInfo.InvariantCulture), int.Parse(f[15], CultureInfo.InvariantCulture), int.Parse(f[16], CultureInfo.InvariantCulture), bool.Parse(f[17]), S(f[18]), I(f[19]), I(f[20]), I(f[21]), I(f[22]), I(f[23]), I(f[24]),
@@ -365,15 +376,19 @@ public static class CorpusAnalyzer
     private static IEnumerable<SheetRow> ReadSheetRows(string path, Guid runId)
     {
         if (!File.Exists(path)) yield break;
+        foreach (var line in File.ReadAllLines(path).Skip(1))
+            yield return ParseSheetRow(line, runId);
+    }
+
+    private static SheetRow ParseSheetRow(string line, Guid runId)
+    {
         static int? I(string s) => s.Length == 0 ? null : int.Parse(s, CultureInfo.InvariantCulture);
         static string? S(string s) => s.Length == 0 ? null : s;
-        foreach (var line in File.ReadAllLines(path).Skip(1))
-        {
-            var f = Csv.Parse(line);
-            yield return new SheetRow(runId, f[1], int.Parse(f[2], CultureInfo.InvariantCulture), S(f[3]), f[4], S(f[5]), S(f[6]), S(f[7]), I(f[8]),
-                int.Parse(f[9], CultureInfo.InvariantCulture), int.Parse(f[10], CultureInfo.InvariantCulture), int.Parse(f[11], CultureInfo.InvariantCulture), int.Parse(f[12], CultureInfo.InvariantCulture),
-                S(f[13]), S(f[14]), f[15].Length == 0 ? null : bool.Parse(f[15]), S(f[16]), S(f[17]), S(f[18]));
-        }
+        var f = Csv.Parse(line);
+        if (runId == Guid.Empty && Guid.TryParse(f[0], out var g)) runId = g;
+        return new SheetRow(runId, f[1], int.Parse(f[2], CultureInfo.InvariantCulture), S(f[3]), f[4], S(f[5]), S(f[6]), S(f[7]), I(f[8]),
+            int.Parse(f[9], CultureInfo.InvariantCulture), int.Parse(f[10], CultureInfo.InvariantCulture), int.Parse(f[11], CultureInfo.InvariantCulture), int.Parse(f[12], CultureInfo.InvariantCulture),
+            S(f[13]), S(f[14]), f[15].Length == 0 ? null : bool.Parse(f[15]), S(f[16]), S(f[17]), S(f[18]));
     }
 
     /// <summary>A quoted-field CSV line back into its fields (the writer above's inverse).</summary>

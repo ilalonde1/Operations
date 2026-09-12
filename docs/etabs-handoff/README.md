@@ -1,8 +1,29 @@
 # Checking a generated ETABS model
 
-These are the scripts that found the defects of 26–27 August, kept out of a scratchpad because
-every one of them found something no test did. Run them against a **shipped `.e2k`**, not against
-the composer's output — the whole lesson of those two days is that the artifact is the thing.
+**2026-09-11 (completion plan WP2): this folder holds no scripts any more.** Every instrument that
+is used more than once is a `takeoff` verb on the same code the readers use, and every one-off's
+finding is written in `docs/PdfIntake.md`. The tables below are kept as the record of what found
+what — read the script names as history, and use the verb:
+
+| was | is | |
+|---|---|---|
+| `plan_sheet.py`, `render_storeys.sh`, `draw_storey.py` | `takeoff model-render` | every storey on one sheet |
+| `members_diff.py`, `plate_diff.py`, `members_by_storey.py`, `compare_shared.py`, `storey_counts.py` | `takeoff model-diff` | what a second model lost or gained, storey by storey |
+| `columns_vs_yardstick.py` | `takeoff model-yardstick` | a model against the engineer's own, both ways |
+| `pdf_only_all.sh`, `pdf_only_one.sh`, `six_set_diff.sh`, `six_set_bank.sh` | `SixSetsBuildAsBankedTests`, `takeoff corpus-analyze` | the six-set gate is a test; the corpus is the harness |
+| `pdf_lines.py` | `takeoff vector-lines` | what the page itself draws, below every reader |
+| `pdf_words_near.py` | `takeoff vector-find` | what the drawing calls a thing, with pages |
+| `pdf_words_in_band.py` | `takeoff vector-words --band` | every word in a band, twins flagged |
+| `grid_names.py` | `takeoff grid-names` | a sheet's axis names beside the model's |
+| `model_to_page.py`, `crop_mm.py` | `takeoff model-to-page`, `pdf-overlay --mark/--crop` | a model point back on its page, drawn there |
+| `plan_titles.py`, `set_sheets.py` | `takeoff corpus-query` | questions to the ledger, no PDF opened |
+| `chains.py`, `view_breaks.py`, `view_parts.py`, `dxf_layer_entities.py`, `pdf_tiles.py` | `takeoff dxf-inspect`, `pdf-overlay`; findings in PdfIntake.md §36–§38, §47 | retired |
+| `e2k_read.py`, `storey_walls.py`, `outside_plate.py`, `plate_by_storey.py`, `plate_areas.py`, `extents.py`, `joints.py`, `orphan_openings.py`, `overlap.py`, `selfcross.py`, `steps.py` | `takeoff verify-e2k`, `e2k-storeys`, `model-render`; findings below | retired |
+| `ledger_diff.py`, `pick_plans.py`, `mpa.py`, `tags.py`, `annots.py`, `renderpage.py`, `order.py`, `idbprose.py`, `read_questions.py`, `transcribe.py` | `takeoff markup-list`, `set-diff`, `sched-tokens`; the Teams transcript `.docx` beside the recording | retired |
+
+The scripts below found the defects of 26–27 August, and every one of them found something no test
+did. Run the verbs against a **shipped `.e2k`**, not against the composer's output — the whole
+lesson of those two days is that the artifact is the thing.
 
 Paths below assume the 31168 job folder:
 

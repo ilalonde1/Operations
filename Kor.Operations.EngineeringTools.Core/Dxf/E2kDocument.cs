@@ -88,6 +88,27 @@ public sealed class E2kDocument
     public IReadOnlyList<string> LinesOf(string headerContains)
         => Find(headerContains)?.Lines ?? (IReadOnlyList<string>)Array.Empty<string>();
 
+    private static readonly Regex GridLine = new(
+        @"^\s*GRID\s+""(?<sys>[^""]*)""\s+LABEL\s+""(?<label>[^""]+)""\s+DIR\s+""(?<dir>[XY])""\s+COORD\s+(?<coord>-?[\d.eE+]+)",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+    /// <summary>
+    /// The model's grid axes: (system, LABEL, DIR) → the axis's coordinate in the file's own unit.
+    /// One reader for the differential, the yardstick and the instruments (grid-names, model-to-page);
+    /// it was private to two of them until WP2 (2026-09-11) — the second copy is the class rule 11 names.
+    /// </summary>
+    public IReadOnlyDictionary<(string System, string Label, string Dir), double> ReadGrids()
+    {
+        var grids = new Dictionary<(string, string, string), double>();
+        foreach (string raw in LinesOf("GRIDS"))
+        {
+            var m = GridLine.Match(raw);
+            if (m.Success && double.TryParse(m.Groups["coord"].Value, NumberStyles.Float, CultureInfo.InvariantCulture, out double c))
+                grids[(m.Groups["sys"].Value, m.Groups["label"].Value.ToUpperInvariant(), m.Groups["dir"].Value.ToUpperInvariant())] = c;
+        }
+        return grids;
+    }
+
     public void Append(string headerContains, IEnumerable<string> lines)
     {
         var section = Find(headerContains) ?? CreateSection(headerContains);

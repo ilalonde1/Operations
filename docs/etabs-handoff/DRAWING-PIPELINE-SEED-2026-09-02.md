@@ -51,9 +51,13 @@ over SMB or the VPN, and it must stay that way.
       takeoff model-yardstick <out.e2k> <engineers.e2k>             # POSITIONS against the engineer's own model, both ways; the analyzer runs it per job
       takeoff corpus-census [--out census.csv]                      # what the share holds: 1,158 jobs, 292 stick files, 460 architects' sets, 66 both
       takeoff pdf-overlay <pdf> <page> <png> --scale N --columns    # the column reads as a census: size, pen, abutting twins
-      python docs/etabs-handoff/pdf_words_near.py <pdf> ROOF OVERRUN            # what does the drawing CALL it? ask before any rule (verb owed, WP2)
-      python docs/etabs-handoff/model_to_page.py <out.e2k> <sheet.dxf> --census <overlay --walls output> <x> <y>   # a model point back onto its SHEET, for crop_mm.py (verb owed)
-      python docs/etabs-handoff/corpus/set_sheets.py <job>          # one set's sheet rows from the ledger, no PDF opened (verb owed: corpus-query)
+      takeoff vector-find <pdf> ROOF OVERRUN                        # what does the drawing CALL it? every phrase that says so, with pages; ask before any rule
+      takeoff vector-lines <pdf> <page> [--region x0 y0 x1 y1]      # GROUND TRUTH: what the page itself draws, below every reader (is the line there?)
+      takeoff vector-words <pdf> <page> --band y0 y1                # every word in a band, twins on one spot flagged (a bubble drawn twice)
+      takeoff grid-names <out.e2k> <sheet.dxf>...                   # the sheet's axis names beside the model's: which it names, which it does not
+      takeoff model-to-page <out.e2k> <sheet.dxf> <x> <y>           # a model point back onto its SHEET and its PAGE (the DXF banks its page origin)
+      takeoff pdf-overlay ... --mark x y --crop x y hw hh           # ...and drawn there, cut to the neighbourhood: LOOK at it
+      takeoff corpus-query summary|no-model|plan-titles|set <job>|yardsticks   # questions to the ledger, no PDF opened
 
 A change measured on one job has not been measured. Run all six, before and after — and the one that
 decides whether a rule is universal is 31170, the only set from another office. Steps 28 and 29
@@ -65,7 +69,7 @@ lists until the plate reader is whole.
 
 **Look at the drawing, do not count its lines.** `takeoff pdf-overlay <pdf> <page> <out.png>
 --scale 96 --dpi 200 [--walls]` paints what the reader saw back onto the sheet, and
-`docs/etabs-handoff/crop_mm.py` cuts a window out of that. Step 27 was a day spent guessing rules
+`--crop x y halfW halfH` cuts a window out of that (`crop_mm.py` until 2026-09-11). Step 27 was a day spent guessing rules
 for closing a slab edge that one rendered view would have settled. That is the single most
 expensive habit on this pipeline and CLAUDE.md rule 9 already says not to do it.
 
@@ -89,12 +93,18 @@ guessed at against a symptom whose cause was already written in this repo's own 
 rendered view settled it in a glance. **Render first is a gate, not advice** — and the same habit
 caught step 28's own false positive, a 12,391 sq ft chevron on LEVEL 2 that every count called green.
 
-**The instruments, and they live in the repo, not in a session.** `pdf_lines.py` (what the PDF
-itself draws, no reader in the way), `view_breaks.py` (a contact sheet of every failing view with
-its open ends ringed), `view_parts.py` (a view's wall panels as objects), `chains.py` (now reads
-POLYLINE/VERTEX — it silently said "0 segment(s)" on every PDF-route DXF until 2026-09-10),
-`takeoff model-render` (every storey on one sheet), `model-diff`, `model-yardstick` — verbs since
-2026-09-11; the python they replaced is gone. The rest are in `docs/etabs-handoff/`. Anything you work out with a throwaway script belongs here afterwards.
+**The instruments, and they live in the repo as verbs, not in a session.** Since 2026-09-11
+(WP2) `docs/etabs-handoff/` holds no scripts: `takeoff vector-lines` (what the PDF itself draws,
+below every reader — was `pdf_lines.py`), `vector-find` (what the drawing calls a thing — was
+`pdf_words_near.py`), `vector-words --band` (was `pdf_words_in_band.py`), `grid-names`,
+`model-to-page`, `pdf-overlay --mark/--crop` (was `crop_mm.py`), `corpus-query` (was
+`plan_titles.py`/`set_sheets.py`), `model-render`, `model-diff`, `model-yardstick`, `dxf-inspect`
+(covers `view_parts.py`/`dxf_layer_entities.py`). `view_breaks.py` (a contact sheet of failing
+views with their open ends ringed) and `chains.py` (ring closure per DXF — it silently said
+"0 segment(s)" on every PDF-route DXF until 2026-09-10) were retired with their findings in
+PdfIntake.md §36–§38; if a slab-edge question comes back, they are the shape to rebuild as a verb.
+Anything you work out with a throwaway script becomes a verb afterwards, or its finding is written
+down and the script goes.
 
 **What the tool is, so nobody tunes it to a job again.** ONE ingestion point — `DrawingIntake.ReadSheet`
 reads every sheet of a set once into a `SheetRecord` and accounts for every path and word — feeding
@@ -119,8 +129,8 @@ never seen builds a model with no code change, and every sheet it cannot read sa
    is not.
 3. **Thirteen storeys still carry no plate** (25 before step 29): L1 and A-L1/B-L1, C-L3,
    C-L5 to C-L8, A-L35, A-L36, B-L28, B-L40. P3 correctly has none. Each is a view whose edge the
-   boundary walk could not return, and they are NOT one cause — `view_breaks.py` draws them all on
-   one sheet, which is where to start. ⚠ Do not assume one cause: an earlier session claimed the
+   boundary walk could not return, and they are NOT one cause — `view_breaks.py` drew them all on
+   one sheet (retired 2026-09-11; `takeoff pdf-overlay` per view is the picture now), which is where to start. ⚠ Do not assume one cause: an earlier session claimed the
    corner block explained A's L15–26 and it did not, which is how that generalisation was caught.
    ⛔ Within step 29, walking only the biggest piece by node count traced the CORE, and flipping
    the walk's handedness changed nothing at all — both measured, neither to be retried.
@@ -407,7 +417,7 @@ This half has had far more scrutiny on correctness and far less on whether it is
 - **Verify against the five real stick files, not just unit tests.** Three rounds of this work
   passed their unit tests and were wrong on real drawings; the harness is the fourth round's answer.
 - **Render it and LOOK.** `takeoff model-render` (once `plan_sheet.py`) draws every storey of an `.e2k` on one
-  sheet; `renderpage.py` rasterises a PDF page; `takeoff sched-border` prints a table read.
+  sheet; `takeoff pdf-overlay` rasterises a PDF page with what was read on it; `takeoff sched-border` prints a table read.
 - **State findings as X of Y.** A `head`/`tail`-truncated command cannot support a claim about a
   population, and a hook stamps truncated output to remind you.
 - **Full suite before a publish** (~5 min); `--filter` while iterating (seconds). A test that passes

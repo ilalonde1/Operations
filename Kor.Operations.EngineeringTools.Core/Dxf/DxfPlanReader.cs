@@ -66,6 +66,35 @@ public static class DxfPlanReader
     /// </summary>
     public static double? UnitInInches(string path) => UnitInInches(File.ReadLines(path));
 
+    /// <summary>
+    /// Where the page's origin sits in this drawing's frame, from its <c>$INSBASE</c> header — the
+    /// scratch DXF the PDF route writes is recentred on its content and banks the page origin there
+    /// (DxfExporter). Null when the drawing does not say (a Revit export, an older scratch file).
+    /// </summary>
+    public static (double X, double Y)? PageOriginInDrawing(string path) => PageOriginInDrawing(File.ReadLines(path));
+
+    public static (double X, double Y)? PageOriginInDrawing(IEnumerable<string> rawLines)
+    {
+        bool inHeader = false, pending = false;
+        double? x = null;
+        string? code = null;
+        foreach (string raw in rawLines)
+        {
+            string line = raw.Trim();
+            if (line.Equals("ENTITIES", StringComparison.OrdinalIgnoreCase)) break;
+            if (line.Equals("HEADER", StringComparison.OrdinalIgnoreCase)) { inHeader = true; continue; }
+            if (!inHeader) continue;
+            if (line.Equals("$INSBASE", StringComparison.OrdinalIgnoreCase)) { pending = true; code = null; continue; }
+            if (!pending) continue;
+            if (code is null) { code = line; if (code.StartsWith('$')) return null; continue; }
+            if (!double.TryParse(line, NumberStyles.Float, CultureInfo.InvariantCulture, out double v)) return null;
+            if (code == "10") x = v;
+            else if (code == "20" && x is double px) return (px, v);
+            code = null;
+        }
+        return null;
+    }
+
     public static double? UnitInInches(IEnumerable<string> rawLines)
     {
         // The header sits before ENTITIES and can run to thousands of lines; stop at the first

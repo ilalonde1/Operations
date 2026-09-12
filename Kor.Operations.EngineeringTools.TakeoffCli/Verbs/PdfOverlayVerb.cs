@@ -2,14 +2,14 @@
 // OVERLAY what the intake extracted on the page it extracted it from, so a gap is seen rather than
 // counted: slabs grey, columns blue, leftover lines red, mark-shaped words green. The two pictures
 // that found the missing WALL layer on 2026-09-08 were made by hand; this is that picture in one verb.
-// Usage: takeoff pdf-overlay <pdf> <page> <out.png> --scale N [--dpi 40] [--walls] [--columns] [--rules-db <conn>]
+// Usage: takeoff pdf-overlay <pdf> <page> <out.png> --scale N [--dpi 40] [--walls] [--columns] [--rules-db <conn>] [--mark x y]... [--crop x y halfW halfH]
 internal static class PdfOverlayVerb
 {
     public static bool Matches(string[] args) => args.Length >= 1 && args[0].Equals("pdf-overlay", StringComparison.OrdinalIgnoreCase);
 
     public static int Run(string[] args)
     {
-        if (args.Length < 4) { Console.Error.WriteLine("Usage: takeoff pdf-overlay <pdf> <page> <out.png> --scale N [--dpi 40] [--walls] [--columns] [--rules-db <conn>]"); return 1; }
+        if (args.Length < 4) { Console.Error.WriteLine("Usage: takeoff pdf-overlay <pdf> <page> <out.png> --scale N [--dpi 40] [--walls] [--columns] [--rules-db <conn>] [--mark x y]... [--crop x y halfW halfH]"); return 1; }
         string ovPdf = args[1], ovOut = args[3];
         if (!File.Exists(ovPdf)) { Console.Error.WriteLine($"PDF not found '{ovPdf}'."); return 2; }
         if (!int.TryParse(args[2], out int ovPage) || ovPage < 1) { Console.Error.WriteLine("Page must be a positive integer."); return 2; }
@@ -142,6 +142,34 @@ internal static class PdfOverlayVerb
         }
         foreach (var m in ovMatch) Console.WriteLine($"    match line ({m.X0:0},{m.Y0:0})-({m.X1:0},{m.Y1:0}) pt, {(Math.Abs(m.X1 - m.X0) > Math.Abs(m.Y1 - m.Y0) ? "horizontal" : "vertical")}");
         Console.WriteLine($"  match lines {ovMatch.Count} (magenta){(ovMatch.Count == 0 && ovMatchWords.Count > 0 ? $"; the word MATCH appears {ovMatchWords.Count} time(s) at {string.Join(", ", ovMatchWords.Take(3).Select(w => $"({w.Cx:0},{w.Cy:0}) pt '{w.Text}'"))} but no line spanning the drawing runs beside it" : "")}");
+        // --mark x y (page mm, repeatable): a ring where model-to-page said a point is; --crop x y halfW halfH
+        // (page mm): the picture cut to that neighbourhood, so the thing is looked at rather than counted.
+        // From docs/etabs-handoff/crop_mm.py (WP2, 2026-09-11).
+        var ovMarks = new List<(double X, double Y)>();
+        (double X, double Y, double HalfW, double HalfH)? ovCrop = null;
+        for (int i = 4; i < args.Length; i++)
+        {
+            if (args[i].Equals("--mark", StringComparison.OrdinalIgnoreCase) && i + 2 < args.Length)
+                ovMarks.Add((OvNum(args[i + 1]), OvNum(args[i + 2])));
+            else if (args[i].Equals("--crop", StringComparison.OrdinalIgnoreCase) && i + 4 < args.Length)
+                ovCrop = (OvNum(args[i + 1]), OvNum(args[i + 2]), OvNum(args[i + 3]), OvNum(args[i + 4]));
+        }
+        foreach (var (mx, my) in ovMarks)
+        {
+            var c = ToPixel(mx, my);
+            int r = Math.Max(6, (int)Math.Round(300 * mmToPt * px));           // a 600 mm ring, never smaller than 12 px
+            for (int deg = 0; deg < 360; deg += 2)
+                OvPlot(c.X + (int)Math.Round(r * Math.Cos(deg * Math.PI / 180)), c.Y + (int)Math.Round(r * Math.Sin(deg * Math.PI / 180)), new Rgba32(255, 0, 0), 2);
+            Console.WriteLine($"  mark at ({mx:0}, {my:0}) mm -> pixel ({c.X}, {c.Y})");
+        }
+        if (ovCrop is { } cr)
+        {
+            var lo = ToPixel(cr.X - cr.HalfW, cr.Y + cr.HalfH); var hi = ToPixel(cr.X + cr.HalfW, cr.Y - cr.HalfH);
+            int x0 = Math.Clamp(lo.X, 0, ovImg.Width - 1), y0 = Math.Clamp(lo.Y, 0, ovImg.Height - 1);
+            int x1 = Math.Clamp(hi.X, x0 + 1, ovImg.Width), y1 = Math.Clamp(hi.Y, y0 + 1, ovImg.Height);
+            ovImg.Mutate(m => m.Crop(new Rectangle(x0, y0, x1 - x0, y1 - y0)));
+            Console.WriteLine($"  cropped to ({cr.X - cr.HalfW:0}..{cr.X + cr.HalfW:0}, {cr.Y - cr.HalfH:0}..{cr.Y + cr.HalfH:0}) mm = pixels ({x0},{y0})-({x1},{y1})");
+        }
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(ovOut)) ?? ".");
         ovImg.SaveAsPng(ovOut);
         Console.WriteLine($"{Path.GetFileName(ovPdf)} p{ovPage} 1:{ovScale} @ {ovDpi} dpi → {ovOut}");
@@ -384,5 +412,7 @@ internal static class PdfOverlayVerb
             }
         }
         return 0;
+
+        static double OvNum(string s) => double.Parse(s, NumberStyles.Float, CultureInfo.InvariantCulture);
     }
 }

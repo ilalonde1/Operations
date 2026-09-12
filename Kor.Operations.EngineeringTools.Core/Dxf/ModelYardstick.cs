@@ -49,7 +49,6 @@ public static class ModelYardstick
         public double TheirsWithin100Share => TheirsCompared == 0 ? 0 : (double)TheirsWithin100 / TheirsCompared;
     }
 
-    private static readonly Regex GridLine = new(@"^\s*GRID\s+""(?<sys>[^""]*)""\s+LABEL\s+""(?<label>[^""]+)""\s+DIR\s+""(?<dir>[XY])""\s+COORD\s+(?<coord>-?[\d.eE+]+)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
     private static readonly Regex BuildingPrefix = new(@"^[A-C]-", RegexOptions.Compiled);
 
     public static Comparison Compare(string modelE2k, string yardstickE2k)
@@ -66,8 +65,8 @@ public static class ModelYardstick
         var theirs = ColumnsByStorey(yard, yu);
 
         // the frames, by grid name
-        var gm = Grids(model, mu);
-        var gy = Grids(yard, yu);
+        var gm = model.ReadGrids().ToDictionary(g => g.Key, g => g.Value * mu);
+        var gy = yard.ReadGrids().ToDictionary(g => g.Key, g => g.Value * yu);
         var dx = gm.Keys.Where(k => k.Dir == "X" && gy.ContainsKey(k)).Select(k => gy[k] - gm[k]).ToList();
         var dy = gm.Keys.Where(k => k.Dir == "Y" && gy.ContainsKey(k)).Select(k => gy[k] - gm[k]).ToList();
         (double X, double Y)? shift = null;
@@ -226,19 +225,6 @@ public static class ModelYardstick
         // in the model's storey order, top down, as every other reading of a model lists them
         return order.Where(result.ContainsKey).Concat(result.Keys.Where(k => !order.Contains(k, StringComparer.OrdinalIgnoreCase)))
             .ToDictionary(s => s, s => result[s], StringComparer.OrdinalIgnoreCase);
-    }
-
-    private static Dictionary<(string System, string Label, string Dir), double> Grids(E2kDocument doc, double unitMm)
-    {
-        var grids = new Dictionary<(string, string, string), double>();
-        foreach (string raw in doc.LinesOf("GRIDS"))
-        {
-            var m = GridLine.Match(raw);
-            if (!m.Success) continue;
-            if (double.TryParse(m.Groups["coord"].Value, NumberStyles.Float, CultureInfo.InvariantCulture, out double c))
-                grids[(m.Groups["sys"].Value, m.Groups["label"].Value.ToUpperInvariant(), m.Groups["dir"].Value.ToUpperInvariant())] = c * unitMm;
-        }
-        return grids;
     }
 
     /// <summary>

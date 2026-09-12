@@ -56,6 +56,69 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             bool korLayers = false,
             PlanClassificationOptions? classification = null)
         {
+            var lines = ExportLines(geometry, excludedSlabs, excludedLines, excludedColumns, excludedColors, layerByColour, colorSettings, korLayers, classification);
+            if (lines.Count == 0) return;                       // nothing drawn: no file, as before
+
+            // WINDOWS-1252, NOT ASCII, AND THE FILE SAYS SO.
+            //
+            // A drawing's words are not ASCII. Written as ASCII, every character above 127 becomes a
+            // question mark, so the architect's "ft²" and "m²" arrived as "ft?" and "m?" — 22 of
+            // them on Parcel 11's plan, in an area schedule where the unit is the point. Degrees,
+            // diameters, dashes and accented names go the same way.
+            //
+            // A DXF states its own code page in $DWGCODEPAGE, so this declares ANSI_1252 and writes
+            // to match, which is what AutoCAD has assumed by default since R12. ² is 0xB2 in it.
+            File.WriteAllLines(outputPath, lines, FileEncoding);
+        }
+
+        /// <summary>Windows-1252, the code page the file declares in $DWGCODEPAGE (see the file overload of Export).</summary>
+        public static Encoding FileEncoding => Encoding.GetEncoding(1252);
+
+        /// <summary>
+        /// The same DXF as <see cref="Export(ExtractedGeometry, string, HashSet{int}?, HashSet{int}?, HashSet{int}?, HashSet{ValueTuple{byte, byte, byte}}?, bool, IReadOnlyDictionary{ValueTuple{byte, byte, byte}, SlabColorSettings}?, bool, PlanClassificationOptions?)"/>
+        /// writes, held as its lines — the in-memory handoff to the composer (completion plan WP4,
+        /// 2026-09-11): a view goes from the intake to DxfToEtabsService as a <see cref="DxfSheet"/>
+        /// without touching the disk, and the file is written only where a DXF is wanted as an
+        /// outlet. Empty when nothing was drawn (the file overload writes no file then).
+        /// </summary>
+        public static IReadOnlyList<string> ExportLines(
+            ExtractedGeometry geometry,
+            HashSet<int>? excludedSlabs = null,
+            HashSet<int>? excludedLines = null,
+            HashSet<int>? excludedColumns = null,
+            HashSet<(byte R, byte G, byte B)>? excludedColors = null,
+            bool layerByColour = false,
+            IReadOnlyDictionary<(byte R, byte G, byte B), SlabColorSettings>? colorSettings = null,
+            bool korLayers = false,
+            PlanClassificationOptions? classification = null)
+        {
+            var lines = new List<string>();
+            using var sw = new LineWriter(lines);
+            Export(geometry, sw, excludedSlabs, excludedLines, excludedColumns, excludedColors, layerByColour, colorSettings, korLayers, classification);
+            return lines;
+        }
+
+        /// <summary>A TextWriter whose WriteLine calls land in a list, one entry each — the DXF is written a line at a time and read the same way.</summary>
+        private sealed class LineWriter(List<string> lines) : TextWriter
+        {
+            public override Encoding Encoding => Encoding.Unicode;
+            public override void WriteLine(string? value) => lines.Add(value ?? string.Empty);
+            public override void WriteLine(int value) => lines.Add(value.ToString(CultureInfo.InvariantCulture));
+            public override void Write(char value) => throw new NotSupportedException("The DXF is written whole lines at a time.");
+        }
+
+        private static void Export(
+            ExtractedGeometry geometry,
+            TextWriter sw,
+            HashSet<int>? excludedSlabs,
+            HashSet<int>? excludedLines,
+            HashSet<int>? excludedColumns,
+            HashSet<(byte R, byte G, byte B)>? excludedColors,
+            bool layerByColour,
+            IReadOnlyDictionary<(byte R, byte G, byte B), SlabColorSettings>? colorSettings,
+            bool korLayers,
+            PlanClassificationOptions? classification)
+        {
             double totalWeight = 0.0, sumX = 0.0, sumY = 0.0;
             foreach (var pts in geometry.Slabs)
             {
@@ -229,17 +292,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
             var ic = CultureInfo.InvariantCulture;
 
-            // WINDOWS-1252, NOT ASCII, AND THE FILE SAYS SO.
-            //
-            // A drawing's words are not ASCII. Written as ASCII, every character above 127 becomes a
-            // question mark, so the architect's "ft²" and "m²" arrived as "ft?" and "m?" — 22 of
-            // them on Parcel 11's plan, in an area schedule where the unit is the point. Degrees,
-            // diameters, dashes and accented names go the same way.
-            //
-            // A DXF states its own code page in $DWGCODEPAGE, so this declares ANSI_1252 and writes
-            // to match, which is what AutoCAD has assumed by default since R12. ² is 0xB2 in it.
-            var codePage = Encoding.GetEncoding(1252);
-            using var sw = new StreamWriter(outputPath, false, codePage);
+            // the code page is the file overload's business; here every line is a string
             void G(int code, string val) { sw.WriteLine(code); sw.WriteLine(val); }
             void Num(int code, double v) => G(code, v.ToString("F4", ic));
 
@@ -249,6 +302,12 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             G(9, "$INSUNITS"); G(70, "4");
             G(9, "$EXTMIN"); Num(10, bMinX); Num(20, bMinY); G(30, "0.0000");
             G(9, "$EXTMAX"); Num(10, bMaxX); Num(20, bMaxY); G(30, "0.0000");
+            // THE FILE SAYS WHERE ITS ORIGIN CAME FROM. Everything below is recentred on the drawn
+            // content's weighted centroid (cx, cy); the page's own origin is at (-cx, -cy) in this
+            // frame, banked as the insertion base so a point in this file can be carried back to the
+            // page (takeoff model-to-page → pdf-overlay --mark) without a second guess. Readers of
+            // the entities ignore it; the composed model is unchanged (WP2, 2026-09-11).
+            G(9, "$INSBASE"); Num(10, -cx); Num(20, -cy); G(30, "0.0000");
             G(0, "ENDSEC");
 
             G(0, "SECTION"); G(2, "TABLES");
