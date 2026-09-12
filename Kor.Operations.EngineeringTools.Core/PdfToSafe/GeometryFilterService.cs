@@ -167,7 +167,9 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             double maxWallThicknessMm = PdfIntakeOptions.DefaultMaxWallThicknessMm,
             double minWallLengthMm = PdfIntakeOptions.DefaultMinWallLengthMm,
             double minWallAspect = PdfIntakeOptions.DefaultMinWallAspect,
-            IReadOnlyDictionary<int, int>? footingPieces = null)
+            IReadOnlyDictionary<int, int>? footingPieces = null,
+            double slabEdgeBridgeMm = DefaultSlabEdgeBridgeMm,
+            double minSlabAreaMm2 = DefaultMinSlabAreaMm2)
         {
             double gridThreshMm = Math.Max(pageWidthMm, pageHeightMm) * 0.6;
             furniture ??= SheetFurniture.Set.Empty;
@@ -472,7 +474,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             PatternStripesAreNotWalls(result, fates, firstFate);
             AFaceInPiecesIsOneFace(result, fates, firstFate);
             WallsFromFaceLines(result, fates, firstFate, minWallThicknessMm, maxWallThicknessMm, minWallLengthMm, minWallAspect);
-            SlabEdgesFromLoops(result, fates, firstFate);
+            SlabEdgesFromLoops(result, fates, firstFate, slabEdgeBridgeMm, minSlabAreaMm2);
 
             if (fates is not null && (deferredPaper.Count > 0 || deferredNoInk.Count > 0))
             {
@@ -1255,7 +1257,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         /// WHAT IT IS NOT: a fill, a hatch or a flood. Where the drawing's edge does not close, this
         /// finds nothing and the storey keeps having no plate, which the DXF side already reports.
         /// </summary>
-        internal static void SlabEdgesFromLoops(ExtractedGeometry result, IList<PathFate>? fates, int firstFate)
+        internal static void SlabEdgesFromLoops(ExtractedGeometry result, IList<PathFate>? fates, int firstFate,
+            double slabEdgeBridgeMm = DefaultSlabEdgeBridgeMm, double minSlabAreaMm2 = DefaultMinSlabAreaMm2)
         {
             result.FirstEdgeSlab = result.Slabs.Count;
             if (result.Lines.Count < 4) return;
@@ -1360,12 +1363,12 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 foreach (var c in pieces)
                     for (int i = 0; i + 1 < c.Count; i++)
                         chainSegments.Add(new DxfSegment("SLABEDGE", c[i], c[i + 1]));
-                var bridged = new PlanLoopBuilder(SlabEdgeJoinMm, SlabEdgeBridgeMm, SlabEdgeExtendMm).Build(chainSegments);
+                var bridged = new PlanLoopBuilder(SlabEdgeJoinMm, slabEdgeBridgeMm, SlabEdgeExtendMm).Build(chainSegments);
                 loops.AddRange(bridged.Loops);
             }
             // big enough to be a floor, and with something standing in it
             var floors = loops
-                .Where(l => l.Area >= MinSlabAreaMm2 && StandsIn(l))
+                .Where(l => l.Area >= minSlabAreaMm2 && StandsIn(l))
                 .OrderByDescending(l => l.Area)
                 .ToList();
 
@@ -1462,8 +1465,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         /// PDF's own coordinates, which meet exactly where the drafter closed a polyline.</summary>
         private const double SlabEdgeJoinMm = 1.0;
 
-        /// <summary>Two chain ends this close are one edge broken by what crossed it: a hand's width, the DXF side's own bridge (6 in).</summary>
-        private const double SlabEdgeBridgeMm = 6 * 25.4;
+        /// <summary>Two chain ends this close are one edge broken by what crossed it: a hand's width, the DXF side's own bridge (6 in). The compiled default of dxf.bridge-tolerance (PdfIntakeOptions.SlabEdgeBridgeMm).</summary>
+        public const double DefaultSlabEdgeBridgeMm = 6 * 25.4;
 
         /// <summary>An edge stopping this short of the corner the other edge's line makes is carried to it: the DXF side's own limit (48 in).</summary>
         private const double SlabEdgeExtendMm = 48 * 25.4;
@@ -1478,7 +1481,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         /// Smaller than this and a closed ring is a stair, a shaft or a box of notes, not a floor.
         /// 400 sq ft, the DXF side's own <c>MinPlateArea</c>, in millimetres.
         /// </summary>
-        private const double MinSlabAreaMm2 = 400 * 144 * 25.4 * 25.4;
+        public const double DefaultMinSlabAreaMm2 = 400 * 144 * 25.4 * 25.4;   // the compiled default of dxf.min-plate-area (PdfIntakeOptions.MinSlabAreaMm2)
 
         /// <summary>
         /// Narrower than this along the wall and a paper fill is a slot or a text mask, not an

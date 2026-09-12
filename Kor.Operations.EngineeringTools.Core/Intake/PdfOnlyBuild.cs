@@ -198,7 +198,7 @@ public static class PdfOnlyBuild
         IEnumerable<string>? planFileNames = null)
     {
         ArgumentNullException.ThrowIfNull(options);
-        table = SetStoreys.Read(pdf, options.LevelLabelWords, options.LevelNameWords);
+        table = SetStoreys.Read(pdf, options.LevelLabelWords, options.LevelNameWords, options.LadderMinRows);
         chain = SetStoreys.Levels(table);
         var ladder = StoreysFromPlans.Merge(chain, planFileNames ?? [], options.AssumedStoreyHeightMm);
         File.WriteAllLines(levelsCsv, StoreysFromPlans.LevelsFileLines(ladder));

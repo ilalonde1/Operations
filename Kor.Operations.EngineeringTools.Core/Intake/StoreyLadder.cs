@@ -15,7 +15,7 @@ namespace Kor.Operations.EngineeringTools.Intake;
 /// had been taken from the reference model only; the drawings state them on every wall elevation.
 ///
 /// WHAT IT COVERS: a sheet typed section/elevation, with a level ladder of at least
-/// <see cref="MinRows"/> rows and a stated ratio scale. WHAT IT DOES NOT: a schedule sheet's level
+/// <see cref="DefaultMinRows"/> rows and a stated ratio scale. WHAT IT DOES NOT: a schedule sheet's level
 /// column (its rows are a table's pitch, not a drawing's — the caller must not apply this to a
 /// schedule), a ladder whose names the level reader mangles ("LEVEL 1 - CONCRETE" reads as a level
 /// named CONCRETE on 31130 p53 — a level reader finding, recorded, not fixed here), two views on
@@ -28,7 +28,7 @@ public static class StoreyLadder
     public sealed record Storey(string Level, string LevelBelow, double HeightMm, double YPts);
 
     /// <summary>A ladder of fewer rows is a caption or a table fragment, not an elevation's levels.</summary>
-    public const int MinRows = 3;
+    public const int DefaultMinRows = 3;   // the compiled default of dxf.pdf.ladder-min-rows (PdfIntakeOptions.LadderMinRows)
 
     /// <summary>Storey heights top → bottom, or empty when the sheet states no ratio scale or has no ladder.</summary>
     public static IReadOnlyList<Storey> Read(VectorPageReader.PageContent page, string? scaleNote)
@@ -43,7 +43,7 @@ public static class StoreyLadder
 
     /// <summary>As above, with the words a level is labelled by and named by (steps 30 and 41): the compiled defaults, or the KorStandards rows.</summary>
     public static IReadOnlyList<Storey> Read(VectorPageReader.PageContent page, string? scaleNote, IReadOnlyList<ViewCaptions.Caption> captions,
-        IReadOnlyList<string> labelWords, IReadOnlyList<string> nameWords)
+        IReadOnlyList<string> labelWords, IReadOnlyList<string> nameWords, int minRows = DefaultMinRows)
     {
         ArgumentNullException.ThrowIfNull(page);
         ArgumentNullException.ThrowIfNull(captions);
@@ -53,7 +53,7 @@ public static class StoreyLadder
         // are labelled for it (B-LEVEL 27); one column read the lower strip and lost the rest, and
         // 31168's towers above L19 had no storey to land on.
         var storeys = new List<Storey>();
-        foreach (var ladder in ScheduleGridReader.ReadLevelLadders(page, MinRows, labelWords, nameWords))
+        foreach (var ladder in ScheduleGridReader.ReadLevelLadders(page, minRows, labelWords, nameWords))
         {
             string? scale = scaleNote;
             if (string.IsNullOrWhiteSpace(scale))

@@ -144,7 +144,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
             if (rawSubpaths.Count == 0) return result;
 
-            var footingPieces = ReadFootings(rawSubpaths, pageRead, result, annotationsOnly, scale);
+            var footingPieces = ReadFootings(rawSubpaths, pageRead, result, annotationsOnly, scale, dashGapMm: options.DashGapMm);
             GeometryFilterService.Classify(rawSubpaths, result,
                 options.SlabMinDiagonalMm, options.LineMinLengthMm, excludeGridLines,
                 result.PageWidthPts * scale, result.PageHeightPts * scale,
@@ -153,7 +153,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 Furniture(pageRead, scale, options.AgreementToleranceMm),
                 minWallThicknessMm: options.MinWallThicknessMm, maxWallThicknessMm: options.MaxWallThicknessMm,
                 minWallLengthMm: options.MinWallLengthMm, minWallAspect: options.MinWallAspect,
-                footingPieces: footingPieces);
+                footingPieces: footingPieces,
+                slabEdgeBridgeMm: options.SlabEdgeBridgeMm, minSlabAreaMm2: options.MinSlabAreaMm2);
             if (!annotationsOnly)
                 result.GridAxes.AddRange(GridBubbles.On(pageRead).Axes.Select(a => new GridAxis(a.Name, a.Vertical, a.At * scale)));
 
@@ -214,13 +215,13 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         /// </summary>
         public static IReadOnlyDictionary<int, int>? ReadFootings(
             IReadOnlyList<RawSubpath> rawSubpaths, VectorPageReader.PageContent pageRead, ExtractedGeometry result, bool annotationsOnly, double scale,
-            SheetFurniture.Set? furniture = null)
-            => ReadFootings(rawSubpaths, pageRead, result, annotationsOnly, scale, furniture, out _);
+            SheetFurniture.Set? furniture = null, double dashGapMm = Intake.FootingOutlines.DefaultDashGapMm)
+            => ReadFootings(rawSubpaths, pageRead, result, annotationsOnly, scale, furniture, out _, dashGapMm);
 
         /// <summary>As above, and the spread-footing labels the plan places (mm), for the record to carry.</summary>
         public static IReadOnlyDictionary<int, int>? ReadFootings(
             IReadOnlyList<RawSubpath> rawSubpaths, VectorPageReader.PageContent pageRead, ExtractedGeometry result, bool annotationsOnly, double scale,
-            SheetFurniture.Set? furniture, out IReadOnlyList<Intake.FootingOutlines.MarkLabel> spreadLabels)
+            SheetFurniture.Set? furniture, out IReadOnlyList<Intake.FootingOutlines.MarkLabel> spreadLabels, double dashGapMm = Intake.FootingOutlines.DefaultDashGapMm)
         {
             spreadLabels = Array.Empty<Intake.FootingOutlines.MarkLabel>();
             if (annotationsOnly) return null;
@@ -236,7 +237,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 .SelectMany(kv => kv.Value.Select(p => new Intake.FootingOutlines.MarkLabel(kv.Key, p.X * scale, p.Y * scale)))
                 .ToList();
             spreadLabels = labels;
-            var (footings, pieces) = Intake.FootingOutlines.Read(rawSubpaths, types, labels: labels, furniture: furniture.Scaled(scale));
+            var (footings, pieces) = Intake.FootingOutlines.Read(rawSubpaths, types, labels: labels, furniture: furniture.Scaled(scale), dashGapMm: dashGapMm);
             result.Footings.AddRange(footings);
             return pieces.Count > 0 ? pieces : null;
         }

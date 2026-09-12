@@ -56,6 +56,23 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         /// <summary>A storey's height when the drawings state none (step 45): dxf.pdf.assumed-storey-height-mm, else the compiled default; always said in the levels file.</summary>
         public double AssumedStoreyHeightMm { get; init; } = Intake.StoreysFromPlans.DefaultAssumedStoreyHeightMm;
 
+        // WP5 (2026-09-11): the readers' compiled conventions become rows, tier one. Three are the DXF
+        // side's own rows, read here in the DXF side's unit and converted, because the two sides mean
+        // the same thing by them (CompiledDefaultsAreTheBankedRowsTests holds both compiled values equal);
+        // two are the PDF side's own (migration 085). EveryReaderConstantIsTriagedTests is the table.
+        /// <summary>Two slab-edge chain ends this close are one edge broken by what crossed it: dxf.bridge-tolerance (inches on the row), shared with the DXF side.</summary>
+        public double SlabEdgeBridgeMm { get; init; } = GeometryFilterService.DefaultSlabEdgeBridgeMm;
+        /// <summary>Smaller than this and a closed ring is a stair, a shaft or a box of notes, not a floor: dxf.min-plate-area (square inches on the row), shared with the DXF side.</summary>
+        public double MinSlabAreaMm2 { get; init; } = GeometryFilterService.DefaultMinSlabAreaMm2;
+        /// <summary>A footing's dashed side joins across gaps up to this: dxf.dash-join-gap (inches on the row), shared with the DXF side.</summary>
+        public double DashGapMm { get; init; } = Intake.FootingOutlines.DefaultDashGapMm;
+        /// <summary>The scale a sheet is read at when it states none: dxf.pdf.fallback-scale; KOR's plans are 1/8" = 1'-0" (96).</summary>
+        public int FallbackScale { get; init; } = DefaultFallbackScale;
+        /// <summary>A level ladder of fewer rows is a caption or a table fragment: dxf.pdf.ladder-min-rows.</summary>
+        public int LadderMinRows { get; init; } = Intake.StoreyLadder.DefaultMinRows;
+
+        public const int DefaultFallbackScale = 96;
+
         // Shared KorStandards defaults, banked 2026-09-08: 4", 60", 48", aspect 2.
         // The DXF compiled maximum is narrower (36"); use the banked 60" here.
         public const double DefaultMinWallThicknessMm = 101.6;
@@ -105,6 +122,9 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         public const string SharedMaxWallThickness = "dxf.max-wall-thickness";
         public const string SharedMinWallLength = "dxf.min-wall-length";
         public const string SharedMinWallAspect = "dxf.min-wall-aspect";
+        public const string SharedBridgeTolerance = "dxf.bridge-tolerance";
+        public const string SharedMinPlateArea = "dxf.min-plate-area";
+        public const string SharedDashJoinGap = "dxf.dash-join-gap";
 
         public static IReadOnlyList<string> SettingKeys { get; } =
         [
@@ -120,6 +140,11 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             $"{Prefix}.agreement-tolerance-mm",
             $"{Prefix}.agreement-label-reach-mm",
             $"{Prefix}.assumed-storey-height-mm",
+            SharedBridgeTolerance,
+            SharedMinPlateArea,
+            SharedDashJoinGap,
+            $"{Prefix}.fallback-scale",
+            $"{Prefix}.ladder-min-rows",
         ];
 
         /// <summary>
@@ -146,6 +171,11 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 [$"{Prefix}.agreement-tolerance-mm"]   = d.AgreementToleranceMm,
                 [$"{Prefix}.agreement-label-reach-mm"] = d.AgreementLabelReachMm,
                 [$"{Prefix}.assumed-storey-height-mm"] = d.AssumedStoreyHeightMm,
+                [SharedBridgeTolerance]  = d.SlabEdgeBridgeMm / PrintedLength.MmPerInch,
+                [SharedMinPlateArea]     = d.MinSlabAreaMm2 / (PrintedLength.MmPerInch * PrintedLength.MmPerInch),
+                [SharedDashJoinGap]      = d.DashGapMm / PrintedLength.MmPerInch,
+                [$"{Prefix}.fallback-scale"]   = d.FallbackScale,
+                [$"{Prefix}.ladder-min-rows"]  = d.LadderMinRows,
             };
         }
 
@@ -175,6 +205,11 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 AgreementToleranceMm  = settings.ValueOr($"{Prefix}.agreement-tolerance-mm", options.AgreementToleranceMm),
                 AgreementLabelReachMm = settings.ValueOr($"{Prefix}.agreement-label-reach-mm", options.AgreementLabelReachMm),
                 AssumedStoreyHeightMm = settings.ValueOr($"{Prefix}.assumed-storey-height-mm", options.AssumedStoreyHeightMm),
+                SlabEdgeBridgeMm      = WallMm(SharedBridgeTolerance, options.SlabEdgeBridgeMm),
+                MinSlabAreaMm2        = settings.TryGetValue(SharedMinPlateArea, out var plate) ? plate.Value * 25.4 * 25.4 : options.MinSlabAreaMm2,
+                DashGapMm             = WallMm(SharedDashJoinGap, options.DashGapMm),
+                FallbackScale         = (int)Math.Round(settings.ValueOr($"{Prefix}.fallback-scale", options.FallbackScale)),
+                LadderMinRows         = (int)Math.Round(settings.ValueOr($"{Prefix}.ladder-min-rows", options.LadderMinRows)),
                 // the vocabularies (steps 30, 32, 41): a row EXTENDS the compiled defaults, it does not replace them —
                 // a practice's phrase is added to what is true of drawings generally, never in place of it
                 LevelLabelWords         = Extended("dxf.level.label-words", options.LevelLabelWords),

@@ -197,7 +197,7 @@ public static class DrawingIntake
                 (s.IsClosed && GeometryFilterService.BoundingBoxDiagonal(s.Points) > 10.0));
             geometry.IsVectorPdf = meaningfulCount >= 5;
             var thinnedFates = new List<PathFate>();
-            var footingPieces = PdfPlanReader.ReadFootings(raw, content, geometry, request.MarkupOnly, scaleFactor, furniture, out footingLabels);
+            var footingPieces = PdfPlanReader.ReadFootings(raw, content, geometry, request.MarkupOnly, scaleFactor, furniture, out footingLabels, options.DashGapMm);
             GeometryFilterService.Classify(raw, geometry,
                 options.SlabMinDiagonalMm, options.LineMinLengthMm, false,
                 geometry.PageWidthPts * scaleFactor, geometry.PageHeightPts * scaleFactor,
@@ -278,7 +278,9 @@ public static class DrawingIntake
 
         // a storey height is the distance between two level lines on an elevation drawn to scale; a
         // schedule's level column has a table's pitch, not a drawing's, so only this sheet type reads them
-        var storeys = sheetType == "section/elevation" ? StoreyLadder.Read(content, scale, ViewCaptions.Read(content)) : Array.Empty<StoreyLadder.Storey>();
+        var storeys = sheetType == "section/elevation"
+            ? StoreyLadder.Read(content, scale, ViewCaptions.Read(content), ScheduleGridReader.DefaultLevelLabelWords, ScheduleGridReader.DefaultLevelNameWords, options.LadderMinRows)
+            : Array.Empty<StoreyLadder.Storey>();
 
         PlanScheduleAgreement? agreement = null;
         if (columns.Count > 0 && geometry.Columns.Count > 0)

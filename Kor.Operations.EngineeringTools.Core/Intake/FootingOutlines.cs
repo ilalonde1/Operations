@@ -47,7 +47,7 @@ namespace Kor.Operations.EngineeringTools.Intake;
 public static class FootingOutlines
 {
     /// <summary>The DXF side's dash-join gap, 14 in, in millimetres.</summary>
-    public const double DashGapMm = 355.6;
+    public const double DefaultDashGapMm = 355.6;   // the compiled default of dxf.dash-join-gap (PdfIntakeOptions.DashGapMm)
     /// <summary>How far a drawn side may differ from the scheduled size.</summary>
     public const double SizeToleranceMm = 60.0;
     /// <summary>Collinearity: pieces within this of one another are one side.</summary>
@@ -63,7 +63,7 @@ public static class FootingOutlines
     public static (IReadOnlyList<FootingOutline> Footings, IReadOnlyDictionary<int, int> Pieces) Read(
         IReadOnlyList<RawSubpath> raw,
         IReadOnlyList<FootingScheduleReader.FootingType> types,
-        double dashGapMm = DashGapMm,
+        double dashGapMm = DefaultDashGapMm,
         double sizeToleranceMm = SizeToleranceMm,
         IReadOnlyList<MarkLabel>? labels = null,
         SheetFurniture.Set? furniture = null)

@@ -49,7 +49,7 @@ public static class CorpusAnalyzer
     public static DateTime ToolBuiltAtUtc => File.GetLastWriteTimeUtc(typeof(CorpusAnalyzer).Assembly.Location);
 
     /// <summary>The fallback scale for a sheet that states none (every sheet is read at the scale it states, step 31); KOR's plans are 1/8" = 1'-0".</summary>
-    public const int FallbackScale = 96;
+    // the scale a set is read at when a sheet states none is a row now (dxf.pdf.fallback-scale, WP5); every sheet that states one is read at that (step 31)
 
     /// <summary>Where the engineers' models exported on KOR-210 land: &lt;job&gt;.e2k, one per job (EtabsExportE2k).</summary>
     public static string DefaultYardstickFolder => Path.Combine(DrawingMirror.Root, "yardsticks");
@@ -186,7 +186,7 @@ public static class CorpusAnalyzer
                 }
                 else
                 {
-                    var outcome = PdfOnlyBuild.Build(pdf, work, FallbackScale, options, rulesConnection);
+                    var outcome = PdfOnlyBuild.Build(pdf, work, options.FallbackScale, options, rulesConnection);
                     (row, rows) = Rows(outcome, job, issue, runId, runAt, built);
                     if (yardstick is not null && outcome.Model is not null) row = Measured(row, outcome.OutputE2k, yardstick, work);
                     else if (yardstick is not null) row = row with { Yardstick = yardstick };

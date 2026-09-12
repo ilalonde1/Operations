@@ -40,6 +40,8 @@ public sealed class CompiledDefaultsAreTheBankedRowsTests
         ["dxf.pdf.agreement-tolerance-mm"]   = "self-check tolerance; no corpus measurement yet",
         ["dxf.pdf.agreement-label-reach-mm"] = "self-check reach; measured 2026-09-10 on twelve banked pages of five sets (PlanAgreesWithItsSchedule.DefaultLabelReachMm), a row is owed",
         ["dxf.pdf.assumed-storey-height-mm"] = "a storey height the drawings do not state (step 45, 2026-09-11); the row is seeded by migration 084 - remove this line when Ian has applied it",
+        ["dxf.pdf.fallback-scale"]           = "the scale a sheet is read at when it states none (WP5, 2026-09-11); seeded by migration 085 - remove this line when Ian has applied it",
+        ["dxf.pdf.ladder-min-rows"]          = "a level ladder's least rows (WP5, 2026-09-11); seeded by migration 085 - remove this line when Ian has applied it",
     };
 
     /// <summary>Public numeric properties on the option records that are facts, not rules, each with the reason.</summary>

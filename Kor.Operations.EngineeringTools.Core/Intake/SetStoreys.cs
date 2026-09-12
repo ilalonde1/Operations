@@ -30,7 +30,7 @@ public static class SetStoreys
         => Read(pdfPath, ScheduleGridReader.DefaultLevelLabelWords, ScheduleGridReader.DefaultLevelNameWords);
 
     /// <summary>As above, with the level vocabulary (steps 30 and 41): the compiled defaults, or the KorStandards rows dxf.level.label-words / dxf.level.name-words through <see cref="PdfToSafe.PdfIntakeOptions"/>.</summary>
-    public static Table Read(string pdfPath, IReadOnlyList<string> labelWords, IReadOnlyList<string> nameWords)
+    public static Table Read(string pdfPath, IReadOnlyList<string> labelWords, IReadOnlyList<string> nameWords, int minRows = StoreyLadder.DefaultMinRows)
     {
         ArgumentNullException.ThrowIfNull(pdfPath);
         using var doc = PdfDocument.Open(pdfPath);
@@ -57,7 +57,7 @@ public static class SetStoreys
             string? scale = null;
             try { scale = SheetScaleReader.FromPage(content); } catch { }
             scale ??= SheetScaleReader.RatioOf(fields.TryGetValue("SCALE", out var sf) ? sf : null);
-            var storeys = StoreyLadder.Read(content, scale, ViewCaptions.Read(content), labelWords, nameWords);
+            var storeys = StoreyLadder.Read(content, scale, ViewCaptions.Read(content), labelWords, nameWords, minRows);
             if (storeys.Count > 0) perSheet.Add((page, storeys));
         }
         return Reconcile(perSheet, elevationSheets);

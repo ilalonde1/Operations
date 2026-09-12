@@ -73,11 +73,11 @@ unblocks 225 sets. 2. Views on the grid (42%). 3. Plates (21%). Each measured on
 
 | What | Count | Where it should be |
 |---|---|---|
-| Loose scripts the loop depends on | **40 python + 5 bash** in `docs/etabs-handoff/` (26 touched this week) | `takeoff` verbs, tests, or deleted with the finding recorded |
+| Loose scripts the loop depends on | **40 python + 5 bash** in `docs/etabs-handoff/` (26 touched this week). **2026-09-11: none (WP2)** | `takeoff` verbs, tests, or deleted with the finding recorded |
 | Banked baselines and the yardstick | 80 `.e2k` (1.8 MB for the current six) + 616 MB of renders/DXFs in **`%LOCALAPPDATA%\Temp`**, banked by a hand-typed `cp` until this morning | the current six in the repo beside the tests; a bank is a reviewable commit diff |
-| Drafting conventions compiled as constants | **106** `const` values in the readers (reach, taper share, pattern count, label reach…) against **49** rules in KorStandards | rows, read through `PdfIntakeOptions.For(conn)`, parity gated by `CompiledDefaultsAreTheBankedRowsTests` |
-| `Program.cs` | **5,153 lines, 56 verbs** in one file | one file per verb, a registry, the help-list test |
-| Transport between the two halves | scratch DXF written to disk and re-read (`pdf-takeoff` → `dxf-to-etabs`) | in-memory `PlanGeometrySet`; the DXF stays as an outlet |
+| Drafting conventions compiled as constants | **106** `const` values in the readers (reach, taper share, pattern count, label reach…) against **49** rules in KorStandards. **2026-09-11: 169 declarators triaged by a test — 13 rows, 44 conventions still compiled, 85 tolerances, 22 rules, 5 another product's, 3 dead deleted** | rows, read through `PdfIntakeOptions.For(conn)`, parity gated by `CompiledDefaultsAreTheBankedRowsTests`; the triage gated by `EveryReaderConstantIsTriagedTests` |
+| `Program.cs` | **5,153 lines, 56 verbs** in one file. **2026-09-11: 345 lines, 70 verb files (WP3)** | one file per verb, a registry, the help-list test |
+| Transport between the two halves | scratch DXF written to disk and re-read (`pdf-takeoff` → `dxf-to-etabs`). **2026-09-11: in memory (`DxfSheet`), the DXF an outlet (WP4)** | in-memory `PlanGeometrySet`; the DXF stays as an outlet |
 | State carried in prose | `docs/PdfIntake.md` 2,555 lines; the seed doc; memory files; "known red" carried a day | one START page; the log frozen as the record; a red is a finding, never a known |
 
 ## 4. The packages, in order — each one sitting, one commit, one verdict
@@ -111,13 +111,21 @@ backlog (§6) waits; it is where the last two weeks went and it is not what make
   for every sheet; the old scripts and the new code give the same diff on one deliberately
   changed model; a second run reads nothing that did not change.
 
-### WP2 — Instruments are verbs
-- The instruments used more than once become `takeoff` verbs on the same code the readers use:
-  `pdf-lines`, `pdf-words` (band and near), `pdf-tiles`, `grid-names`, `model-to-page`,
-  `outside-plate`, `columns-vs-yardstick`, `crop`. Each prints what it covers.
-- The one-off diagnostics (the rest of the 45) are deleted; the finding each produced is
-  already in `PdfIntake.md`, and that section gets the sentence "measured with X, since removed".
-- Gate: `docs/etabs-handoff/` holds `.md` only; `takeoff --help` lists every verb (existing test).
+### WP2 — Instruments are verbs — DONE 2026-09-11
+- The instruments used more than once are `takeoff` verbs on the code the readers use:
+  `vector-lines` (was `pdf_lines.py`), `vector-find` (`pdf_words_near.py`), `vector-words --band`
+  (`pdf_words_in_band.py`), `grid-names`, `model-to-page`, `pdf-overlay --mark/--crop` (`crop_mm.py`),
+  `corpus-query` (`plan_titles.py`, `set_sheets.py`), and from WP1 `model-diff`, `model-render`,
+  `model-yardstick`. One e2k grid reader (`E2kDocument.ReadGrids`) serves the differential, the
+  yardstick and the instruments — it was two private copies. The scratch DXF banks its page origin
+  (`$INSBASE`) so a model point comes back to the page without a second alignment; verified by
+  marking a P2 column of 31168 on its own sheet and looking.
+- The one-offs (`chains`, `view_breaks`, `view_parts`, `dxf_layer_entities`, `pdf_tiles`,
+  `ledger_diff`, `pick_plans`, `mpa`, `tags`, `annots`, `renderpage`, `order`, `idbprose`,
+  `read_questions`, `transcribe`) are deleted; each finding stands in `PdfIntake.md`, annotated at
+  its first mention; `docs/etabs-handoff/README.md` maps every old name to its verb.
+- Gate, met: `docs/etabs-handoff/` holds no scripts; the help-list test; the six byte-identical
+  (the exporter's header changed, the models did not); `TheInstrumentsShareTheReadersFramesTests`.
 
 ### WP3 — `Program.cs` one file per verb — DONE 2026-09-11
 - `Verbs/<Verb>.cs` (70 files, one class per verb: `Matches(args)` and `Run(args)`, the body moved
@@ -127,19 +135,40 @@ backlog (§6) waits; it is where the last two weeks went and it is not what make
 - Gate, met: the help-list test reads the registry (not the source); the six byte-identical
   (`SixSetsBuildAsBankedTests`, 8 m 33 s); the fast suite 1,218 green.
 
-### WP4 — In-memory handoff
-- Gate FIRST: a test that builds all six through the DXF detour and through memory and asserts
-  the `.e2k` identical. Then `DrawingIntake` hands `PlanGeometrySet` straight to the composer;
-  `pdf-takeoff` keeps writing DXF for anyone who wants it, as an outlet.
-- Deletes the scratch-DXF folder per job and the re-read.
-- Gate: that test, green; the harness run time falls (measured, stated).
+### WP4 — In-memory handoff — DONE 2026-09-11 (first form)
+- Gate first: `TheHandoffIsInMemoryAndTheModelIsTheSameTests` — the composer given views in memory
+  and a folder that does not exist builds the same model as the folder route (fast, synthetic), and
+  the six built both ways are byte-identical (Slow). Then the change: `DxfExporter.ExportLines`
+  holds a view as its lines, `SheetsResult.Views` carries them as `DxfSheet`s, and
+  `DxfToEtabsRequest.Sheets` / `LevelLines` hand them to the composer, whose every read goes
+  through one `LinesOf`. `PdfOnlyBuild.Build` composes from memory (`Handoff.Memory`, the default);
+  the DXF files are still written as the outlet the corpus, `--recompose` and the instruments read.
+- What this is and is not: the DXF TEXT is the interchange, held in memory — every reader in the
+  composer takes lines and the office's own exports arrive as files of them. The typed
+  `PlanGeometrySet` behind it (no serialisation at all) is the next refinement; the rounding a
+  typed handoff would have to reproduce to stay byte-identical is the DXF's 0.0001 mm.
+- Gate, met: both tests green; the six through memory and through the disk, 21 m 42 s for the eighteen builds with the corpus rebuild running beside them; the per-route seconds print from the test's next run.
 
-### WP5 — Conventions are rows
-- The 106 compiled constants triaged in one table: **drafting convention** (a row, with the
-  compiled value as its default — the pattern `PdfIntakeOptions` already uses for the vocabularies),
-  **geometry tolerance** (stays code, named, documented as such), or **dead**. One migration for
-  Ian (`KOR.Drafter\db\083_...`), one parity test extended.
-- Gate: `CompiledDefaultsAreTheBankedRowsTests` covers every row; the six byte-identical.
+### WP5 — Conventions are rows — TRIAGED 2026-09-11, tier one wired
+- The triage is a gate, not a table in prose: `EveryReaderConstantIsTriagedTests` scans every
+  `const double|int` in the readers (the same scan as `tools/list_reader_constants.py`, 169
+  declarators) and holds each to one line — **Row** (a KorStandards key, named and present in the
+  code), **Convention** (belongs in a row, still compiled: the debt, counted), **Tolerance**
+  (slack against drafting and precision, code by design), **Rule** (a fact of geometry or of
+  buildings), **Elsewhere** (the SAFE/WPF side's, sharing a file), **Dead** (fails until deleted —
+  three were, and are gone). A constant added without a line fails the test.
+- Tier one, wired end to end: three conventions the two sides mean the same thing by now read
+  the DXF side's rows — `dxf.bridge-tolerance`, `dxf.min-plate-area`, `dxf.dash-join-gap` (both
+  compiled values equal; the parity test holds them so) — and two PDF-side rows are seeded by
+  **migration 085** for Ian: `dxf.pdf.fallback-scale` (96) and `dxf.pdf.ladder-min-rows` (3).
+  `PdfIntakeOptions.SettingKeys` is 17 keys.
+- Owed (the test counts them, 44 lines): the title-block region compiled five times over
+  (`TitleRegionMinFx` — one definition first, then the row), the sheet-furniture and title-reader
+  shares, the wall-tag and mark-up reaches, the bubble radii, the schedule column bounds, the DXF
+  outlet's name height; each names its row in the test. NOT shared with the DXF side, deliberately:
+  the slab-edge extend limit (48 in here; the DXF side measured extending as harmful and banks 0).
+- Gate, met: the triage test green; `CompiledDefaultsAreTheBankedRowsTests` (085's two keys
+  declared unbanked until applied); the six byte-identical.
 
 ### WP6 — The finish line
 - The ledger's totals against §1: how many of the 292 build, how many sheets say why not, the

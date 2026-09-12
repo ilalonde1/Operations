@@ -1,106 +1,81 @@
 # PDF intake — what it does today, and what it leaves on the page
 
-## 0. START HERE (state as of 2026-09-11, after step 44 — the whole corpus measured: 39 of 292 sets build, 225 want a storey ladder)
+## 0. START HERE (state as of 2026-09-12, after step 46 and completion-plan WP1–WP3 — 192 of 292 sets build from the PDF alone)
 
-A session picking this up cold reads this section, then §30 (what the PDF alone gives), then the
-last three step sections (§51, §52, §53). It does not need to read §1–§29 to work; those are the record of how each
-rule was arrived at, and are read when a rule is being changed.
+A session picking this up cold reads this section, then the completion plan
+(`docs/architecture/Kor.Operations.EngineeringTools.PdfIntake.plan.md` — what "complete" means, the
+packages, and where each stands), then the last three step sections (§53–§55). §1–§52 are the
+record of how each rule was arrived at, read when a rule is being changed.
 
-**Where the data is.** `%LOCALAPPDATA%\Temp\kor-drawings\stickfiles` holds the six PDFs (31065,
-31130, 31138, 31168, 31202, and `31170-01-arch` — the ARCHITECT's set for 31170, the only one from
-another office and the measure of whether a rule is universal). `...\kor-drawings\harness` holds one folder per job, the banked `.e2k`
-baselines named for the step that produced them (`pdf-only-<job>-s42.e2k` is the most recent, with
-its console beside it as `...-s42-console.txt` from s42 on), and
-`revit-31168\out.e2k`, which is the Revit route's answer for the same building and the only yardstick
-that is not our own output. Nothing here is read over SMB.
+**What this is.** A PDF ingestor: one ingestion point (`DrawingIntake.ReadSheet` → `PdfOnlyBuild`)
+that reads a drawing set and hands its geometry to outlets — the ETABS `.e2k` today, the DXF as a
+second outlet, Revit and SAFE to follow. "Finished" is a set from an office we have never seen
+building a model with no code change. Nothing lives in a session, a scratch folder or a memory: a
+rule is code with a banked test that states what it covers and what it does not; a drafting
+convention is a KorStandards row with its compiled default; an instrument is a `takeoff` verb.
 
-**The one command that measures every deliverable.** `bash docs/etabs-handoff/pdf_only_all.sh`
-rebuilds all six jobs from their PDFs alone, in parallel, about 5 minutes, and prints ⛔ for a job
-with FAILED pages or NO MODEL. Then `bash docs/etabs-handoff/six_set_diff.sh s42` reads every job
-against the banked step in one line each — byte-identical, or plates moved / columns and walls lost
-and gained, counted by `members_diff.py` on keyed members in a grid-aligned frame. When a step is
-kept, `bash docs/etabs-handoff/six_set_bank.sh s43` banks model and console together. A change that
-is not run through all six has not been measured; one job alone is `pdf_only_one.sh <job> <scale>`,
-for characterising, never for deciding.
+**Where the data is.** `%LOCALAPPDATA%\Temp\kor-drawings\stickfiles` mirrors the six PDFs the
+rules were written on (31065, 31130, 31138, 31168, 31202, and `31170-01-arch` — the ARCHITECT's
+set for 31170, the only one from another office); `...\kor-drawings\<hash>\` mirrors every
+current stick file on the share (292 sets, 3.5 GB, mirrored once by hash); `...\corpus\<job>\`
+is each set's build (DXF views, levels.csv, out.e2k, report.txt, yardstick.txt) and
+`...\corpus\ledger-sets.csv` / `ledger-sheets.csv` the ledger of the last run (banked copies under
+`docs/etabs-handoff/corpus/`; `analysis.IntakeSet`/`IntakeSheet` once migration 083 is applied);
+`...\yardsticks\<job>.e2k` the engineers' own models (92, exported on KOR-210). The six banked
+baselines are IN THE REPO: `Kor.Operations.EngineeringTools.Core.Tests/Baselines/pdf-only-<job>.e2k`.
+Nothing is read over SMB in the loop.
 
-**Look at it, do not count it.** `takeoff pdf-overlay <pdf> <page> <png> --scale 96 --dpi 200
-[--walls] [--columns]` renders what the reader saw onto the sheet, and `docs/etabs-handoff/crop_mm.py`
-cuts a window out of it; `model_to_page.py` takes a model coordinate (a wall the diff named) back to
-the sheet's millimetres through the grid and the overlay's own wall census, so the window is cut
-where the member is. `render_storeys.sh` draws every storey of a model on one sheet. Step 27 was a
-day spent guessing closing rules that a rendered view would have settled; that is the mistake this
-line exists to stop.
+**The commands that measure every deliverable.**
 
-**Where the route stands on 31168**, PDF-only against the Revit route, both built by the same
-DXF-to-ETABS code:
+    dotnet test Kor.Operations.EngineeringTools.Core.Tests --filter "FullyQualifiedName~SixSetsBuildAsBanked"
+                                                        # THE SIX-SET GATE, ~8 min: byte-identical to the baselines, or what moved
+                                                        # (TestResults/six-sets). Banking a step = replacing a baseline in the commit
+    takeoff corpus-analyze [--recompose|--reuse] [--parallel N]
+                                                        # THE CORPUS: all 292 sets into the ledger; --recompose re-runs ladder+composer
+                                                        # on standing views (~20 min); a reader change rebuilds everything (~3 h, detached)
+    takeoff corpus-query summary|no-model|plan-titles|set <job>|yardsticks
+                                                        # the population in one table; every set without a model, by reason; how the
+                                                        # plans name their storeys; one set's sheets; the yardsticks worst first
+    dotnet test ... --filter "Speed!=Slow"              # the fast suite, ~35 s, every edit; the full suite before a commit of a rule
 
-| | PDF only | Revit route |
-|---|---|---|
-| columns | 2,502 | 2,380 |
-| walls | 1,209 | 1,832 |
-| storeys with a plate | **36 of 62** | all |
+**Look at it, do not count it.** `takeoff model-render <e2k> <png>` draws every storey on one
+sheet; `takeoff pdf-overlay <pdf> <page> <png> --scale N [--walls] [--columns]` paints what the
+reader saw onto the sheet, `--mark x y --crop x y hw hh` cuts to a point; `takeoff model-to-page
+<e2k> <sheet.dxf> <x> <y>` carries a model point back to its sheet and page through the shared
+grid names; `takeoff vector-lines`, `vector-find`, `vector-words --band` read the PDF below every
+reader (is the line there? what does the drawing call it? is the bubble drawn twice?);
+`takeoff grid-names` puts a sheet's axis names beside the model's. Step 27 was a day spent guessing
+closing rules that a rendered view would have settled; that is the mistake this line exists to stop.
 
-Parkade plates agree closely (P1 77,182 sq ft against Revit's 76,967), and since step 28 the tower
-plates agree within 0.1% on every storey that has one (A-L27 9,753 against 9,743, B-L29 9,735
-against 9,726, C-L4 15,002 against 14,989). The tower wall count is now the largest gap.
+**Where the route stands, measured on the corpus** (§54, step 45; step 46's rebuild in §55):
 
-**The open list, largest first.** Each is one rule, and each is measured on the six sets before it
-is kept. ⚠ Step 35 (§44) is the second rule this month that the six-set run REFUSED in its first
-cut — a removal that was right on the architect's set and wrong on four of KOR's, because the
-plate reader reads fragments there. A rule that acts on "outside the plate" is not universal until
-the plate is; until then such rules COUNT and LIST. The count is now printed per storey ("n of m
-wall(s) … beyond every plate read for the storey") and `outside_plate.py` gives it on an `.e2k`:
+| | |
+|---|---|
+| Sets that build a model from the PDF alone | **192 of 292** (39 before step 45) |
+| No model | 72 no storeys read (their plans are named GROUND/MAIN/SECOND… — the vocabulary, step 47), 17 no plan the reader typed, 11 refused at the composer's gate |
+| Plan views on the grid by name | 1,824 of 4,109 (44%) |
+| Storeys with a plate | 707 of 2,290 (31%) |
+| Against the engineers' own models (37 sets) | 35% of our columns within 100 mm of theirs, 49% of theirs within 100 mm of ours; 31130 under 25% with 20 shared storeys — the next thing to look at |
+| 31168 against the Revit route | columns median 16 mm, 92% within 50 mm; tower plates within 0.1%; 36 of 62 storeys carry a plate; walls 1,324 vs 1,832 |
 
-1. **Finish or abandon the boundary walk** (§38) — stashed, worth +13 storeys, held back by one red
-   gate and an 11% corner notch. L15–L26 read 8,721 and 8,699 sq ft against Revit's 9,831 and 9,835
-   — 11% under, the shortfall being exactly the four 287 sq ft corner blocks cut out. The bounding
-   box is right to the millimetre; the boundary walk rounds the INSIDE of each corner block. It is
-   rendered in `plan_sheet.py` as a rectangle with four notches and the corner columns outside it.
-2. **A ring that is a piece of the floor rather than the floor** (§37). 31168's LEVEL 2 takes a
-   4,222 sq ft rectangle where Revit's storey is 48,501 sq ft in three plates; tower C's L5–L8 take
-   a 1,922 sq ft strip of a 14,988 sq ft floor. The gates measure the neighbourhood against the
-   RING's own size, so a small ring in the corner of a big floor passes. By this document's own
-   standard — *a storey with no plate is honest* — a 9% plate is not.
-2. **Fifteen views on 31168 do not close, and they are NOT one cause.** Those 15 give all 25 of the
-   storeys with no plate. Only **one** has been diagnosed — BLDG A's L4–L14, where A draws its tower
-   corners as their own 5,133 × 5,186 mm rectangles and such a block **shares two of its four edges
-   with the perimeter** — its top edge is a
-   piece of the north edge, both at y 15,700 meeting exactly at x −10,482, and its outer vertical is
-   a piece of the west edge. A segment can belong to only one ring, so whichever ring is built first
-   spends them. ⛔ Feeding the small closed loops to the bridging pass was tried and **changed
-   nothing on any of the five sets** (31168 stayed at 37 floors, zero storeys moved): the block
-   re-closes on its own exact joins in that pass too. ⛔ **Seeding the walk from the longest segment**
-   was tried second and is worse: it did not close BLDG A and cost 31168 a floor (37 → 36) and 31065
-   a floor and four columns (9 → 8, 605 → 601). Two attempts on one symptom is where CLAUDE.md rule
-   10 says to stop, so it is stopped. The fix is either that a piece of linework may serve a small
-   loop AND the floor's edge, or that the outer boundary is found by something other than chaining —
-   and the next attempt needs a differential showing which ring each shared segment ought to belong
-   to, not a third heuristic. Both costs are written in `SlabEdgesFromLoops` where the code was.
+**The work order is the count.** 1. Storeys: the 72 sets whose plans name their storeys with
+words (step 47). 2. Views on the grid: 56% of plan views are not placed by name. 3. Plates: 69%
+of storeys have none. Each rule is universal, measured on the six (byte-identical or what moved)
+AND on the corpus before it is kept; a rule the corpus refuses is written down with its cost.
 
-   ⚠ **And the corner block does NOT explain the other fourteen.** Measured 2026-09-10 across the
-   failing views: the block-sharing-the-extent signature is on **3 of 12** checked, and BLDG A's
-   L15–26 — which an earlier draft of this item claimed it explained — has **none**. That claim was
-   an unverified generalisation from one view and is withdrawn. The 15 are: A and B's L15–26
-   (12 storeys), C's L5–L8 (4), the three L1 sheets (3), C's L3, A's L35, B's L28, B's L37.
-   **Fourteen of them have never been rendered and looked at**, which is the next thing to do and
-   is bounded work — not another rule.
-3. **31202 — was 0 of 34 sheets, CLOSED by step 30's title rule (§39): 12 placed, 13 storeys,
-   1,164 columns.** Not yet rendered or checked against anything; that is its next step.
-   **31170's P1** (§39): 22 overlapping plates, no columns, 311 "columns" read off the plan —
-   parking stalls, at a guess. And 31170's 49 room-sized plates are item 2 at full strength.
-4. **Tower walls, 33 a storey against Revit's 40.**
-5. **The storey-rise convention.** The top storeys sit one level off the Revit route's.
-6. **Mezzanine levels** are read as storeys but not placed.
-7. **31130's halves** do not join.
-8. **L10 carries 58 columns against Revit's 48.**
-9. **Parkade plan titles are not found as views** (§35's title reader), so a parkade sheet is not
-   split the way a tower sheet is.
-10. **C's floor lands on C-L4** where Revit has it on C-L5 to C-L8; **A-L34 reads 9,326 against
-    Revit's 5,949**, unexplained.
+**The reading backlog, parked until the plan's WP6** (plan §6; each was measured on 31168 and is
+NOT one cause): the boundary walk (+13 storeys, stashed, held by one red gate and an 11% corner
+notch); a ring that is a piece of the floor (31168 L2 takes 4,222 sq ft of 48,501); 15 views on
+31168 that do not close, 14 never rendered; tower walls 33 vs 40 a storey; mezzanines placed;
+31130's halves; C's floor on C-L4; A-L34 at 9,326 vs 5,949. ⛔ Measured and rejected, do not
+retry: seeding the walk from the longest segment; feeding small loops to the bridging pass;
+`RecoverAll` as the plate fallback; removing members outside the plate (KOR plates are fragments —
+such rules count and list, §44).
 
 **The working rule for all of them.** One universal rule per step, never a fix for one drawing;
-banked as a test that states what it covers AND what it does not; measured on all five sets before
-and after; and the cost written down when a rule is rejected, so it is not tried again.
+banked as a test that states what it covers AND what it does not; measured on all six sets and on
+the corpus before it is kept; the cost written down when a rule is rejected, so it is not tried
+again; a red test is a finding, never a "known red".
 
 ---
 
@@ -1645,7 +1620,7 @@ third time.
 **What this leaves.** The tower plate is still unread, and it is now the largest single gap in the
 PDF-only route: 53 of 62 storeys on 31168 carry no floor. The next attempt does not start from
 another closing heuristic. It starts by rendering the L4–L14 view's slab-edge candidates and
-looking at them (`pdf-overlay`, `crop_mm.py`), because three closing rules have now been guessed at
+looking at them (`pdf-overlay`, `crop_mm.py` (now `takeoff pdf-overlay --crop`)), because three closing rules have now been guessed at
 and measured, and the picture has not.
 
 → **Answered in §37 (step 28).** Rendered, the edge turned out to be a plain rectangle the drawing
@@ -1809,9 +1784,9 @@ along it, which is what the notch is; two floors touching, where one boundary wo
 the areas on any real sheet, which only the build's own count against Revit shows.
 
 **The instruments this step needed are in the repo now, not in a scratchpad** —
-`docs/etabs-handoff/pdf_lines.py` (what the PDF itself draws, no reader in the way),
-`view_breaks.py` (a contact sheet of every failing view with its open ends ringed), and
-`view_parts.py` (a view's wall panels as objects). `chains.py` was reading LINE and LWPOLYLINE only,
+`docs/etabs-handoff/pdf_lines.py` (now `takeoff vector-lines`) (what the PDF itself draws, no reader in the way),
+`view_breaks.py` (retired 2026-09-11) (a contact sheet of every failing view with its open ends ringed), and
+`view_parts.py` (retired 2026-09-11; `takeoff dxf-inspect --walls`) (a view's wall panels as objects). `chains.py` (retired 2026-09-11) was reading LINE and LWPOLYLINE only,
 so it answered "0 segment(s)" on every DXF the PDF route writes; it reads POLYLINE/VERTEX now.
 
 ## 39. Step 30, done 2026-09-10: the words a drawing names a level with are a vocabulary — and the first set from another office
@@ -2176,7 +2151,7 @@ L7 has its floor over its columns; L8 has a wall and nothing else. **The five KO
 wall and column identical to step 35** — their plans end where their ladders end, so "one above the
 highest plan" does not exist and the topmost stands. Core: `ARoofPlanDrawsTheStoreyAboveTheHighestPlanTests` 5.
 
-**Instruments made permanent this step:** `docs/etabs-handoff/pdf_words_near.py` — every line of a
+**Instruments made permanent this step:** `docs/etabs-handoff/pdf_words_near.py` (now `takeoff vector-find`) — every line of a
 PDF's text mentioning given words, with its pages, most-repeated first: the "what does the drawing
 CALL this?" question, answered before a rule is written (it found `Top of Slab-L8` on 5 of 11 and
 `R4 - PAVERS OVER L7 ROOFTOP`); and `docs/etabs-handoff/render_storeys.sh` — `.e2k` → every-storey
@@ -2254,7 +2229,7 @@ the plate" on P1).
 
 **Instruments made permanent this step:** `pdf-overlay --columns` (the census, and the cells in
 orange); `docs/etabs-handoff/members_diff.py` (lost/gained members per storey with positions,
-tolerant of the one-unit re-rounding a moved offset causes); `docs/etabs-handoff/pdf_tiles.py`
+tolerant of the one-unit re-rounding a moved offset causes); `docs/etabs-handoff/pdf_tiles.py` (retired 2026-09-11, finding kept here)
 (ground truth through fitz: closed rectangles by size and whether they sit under a clip — it
 showed the cells are NOT single paths in the PDF, which is why the fix is in the classifier).
 
@@ -2267,7 +2242,7 @@ pattern; a pattern of exactly two cells; the walls the cells filled.
 ## 47. Step 38, done 2026-09-10: a wall is what a fill pattern fills
 
 After step 37 the P1 plan of the architect's set had its pattern cells out of the columns and still
-no walls: 14 on A101, 3–8 on the enlargements. Ground truth first (`pdf_lines.py` on a stippled
+no walls: 14 on A101, 3–8 on the enlargements. Ground truth first (`pdf_lines.py` (now `takeoff vector-lines`) on a stippled
 wall, then crops): the concrete walls are stippled bands whose FACES are drawn in pieces — the
 west wall of the MAIN COMM. ROOM is two faces 203 mm apart, one in seven pieces and one in nine,
 broken at every cell of the fill — in a light pen (w0.60) while the sheet's cut pen, taken from
@@ -2399,7 +2374,7 @@ Step 36's open item: the KOR ladders stopped short of the roof levels the plans 
 plans say ROOF LEVEL (L20) and ELEVATOR ROOF while `pdf-levels` read L19 as the top; 31202's say
 ROOF and UPPER ROOF above an L13 ladder — so on those sets the roof plan and the top floor plan
 shared a storey and stacked their plates. Asked the drawings what they call it
-(`pdf_words_near.py`): 31065 `ROOF LEVEL`, 31138 `ROOF`, 31202 `ROOF`, `HIGH ROOF`, `LOW ROOF`,
+(`pdf_words_near.py` (now `takeoff vector-find`)): 31065 `ROOF LEVEL`, 31138 `ROOF`, 31202 `ROOF`, `HIGH ROOF`, `LOW ROOF`,
 `PENTHOUSE`. "LEVEL 19" is a label and a value; these are a level's whole name, with nothing to the
 right but the level line, and the ladder reader, wanting a value after a label, read none of them.
 
@@ -2455,7 +2430,7 @@ facts) or in the step's own test file, then the fix, then all six sets.
 s41; the one-job switch (F7 reverted alone, all six byte-identical) attributed every moved member to
 F7 — **the other 24 fixes change none of the six models**, which is what a fix to an edge case
 should do. F7's first cut ("both ends of the later wall within reach of the earlier axis") returned
-25 walls, and `model_to_page.py` (new) put the first four back on their sheets: 31138's L1 stub
+25 walls, and `model_to_page.py` (now `takeoff model-to-page`) (new) put the first four back on their sheets: 31138's L1 stub
 walls, drawn 4'-0" long on the 55'-0 plan and 4'-8" on the 64'-1 plan — the same walls, and both
 copies modelled. The rule kept is **the earlier wall must have drawn MOST of the later one** — its
 midpoint within a hand's width, and the earlier axis covering more than half its length — which
@@ -2523,8 +2498,8 @@ Found by refusing to wave a red test through. `Langara31168ParkadePlansBuildOnTh
 parkade sheets on the office's layers and builds them on the Revit reference's grid — went red on
 2026-09-10 and was carried as "the new stick file, not code". It was code. On the 09-10 reissue the
 two BLDG A & B sheets placed 0 of their axes ("their axes name nothing the model names"); on the
-08-25 issue 26 of 26. `grid_names.py` (new) put the two side by side: the reissue's sheets carried
-9 labels, H–R, and no numbered axis at all. `pdf_words_in_band.py` (new) showed why: **every
+08-25 issue 26 of 26. `grid_names.py` (now `takeoff grid-names`) (new) put the two side by side: the reissue's sheets carried
+9 labels, H–R, and no numbered axis at all. `pdf_words_in_band.py` (now `takeoff vector-words --band`) (new) showed why: **every
 numbered bubble holds its label twice** — "5" at y 234.8 and "5" at y 240.4, the architect's
 underlay's grid under the engineer's ("With Arch" is in the file's name) — and the bubble reader
 wanted exactly one word inside the circle. The numbered grid lines are also drawn twice, once in
