@@ -16,7 +16,7 @@ public static class SheetDxfName
     public static string For(SheetRecord record, string fallbackStem)
     {
         ArgumentNullException.ThrowIfNull(record);
-        return For(record.SheetNumber, record.TitleBlock, fallbackStem, record.BookmarkTitle);
+        return For(record.SheetNumber, record.TitleBlock, fallbackStem, record.BookmarkTitle, record.TitleText);
     }
 
     /// <summary>
@@ -28,7 +28,7 @@ public static class SheetDxfName
     /// as "A101_1_-.dxf", a sheet of no storey, and the whole job built nothing. The bookmark's own
     /// leading sheet number is dropped so the name is not "A101_1_A101-LEVEL P1 PLAN".
     /// </summary>
-    public static string For(string? sheetNumber, IReadOnlyDictionary<string, string> titleBlock, string fallbackStem, string? bookmarkTitle)
+    public static string For(string? sheetNumber, IReadOnlyDictionary<string, string> titleBlock, string fallbackStem, string? bookmarkTitle, string? titleText = null)
     {
         ArgumentNullException.ThrowIfNull(titleBlock);
         string? number = string.IsNullOrWhiteSpace(sheetNumber) ? Field(titleBlock, "SHEET NUMBER", "SHEET NO") : sheetNumber.Trim();
@@ -37,6 +37,15 @@ public static class SheetDxfName
         if (bookmark is not null && number is not null && bookmark.StartsWith(number, StringComparison.OrdinalIgnoreCase))
             bookmark = bookmark[number.Length..].TrimStart(' ', '-', '–', ':', '_').Trim();
         if (string.IsNullOrWhiteSpace(bookmark)) bookmark = null;
+        // THE THIRD STATEMENT: the title written on the page itself (intake step 46). The corpus analyzer's
+        // second run left 72 sets with no storey ladder, and 298 of their 486 views were named by the PDF's
+        // stem and page - sheets with a number, a level the storey reader had read, and no title-block
+        // field or bookmark to name them by (30940: 65 plans, 18 with a level; 31009: 28, 22). A name that
+        // says nothing places nothing.
+        string? page = string.IsNullOrWhiteSpace(titleText) ? null : titleText.Trim();
+        if (page is not null && number is not null && page.StartsWith(number, StringComparison.OrdinalIgnoreCase))
+            page = page[number.Length..].TrimStart(' ', '-', '–', ':', '_').Trim();
+        if (string.IsNullOrWhiteSpace(page)) page = null;
 
         bool NamesALevel(string? t)
         {
@@ -45,8 +54,8 @@ public static class SheetDxfName
             return info.Levels.Count > 0 || info.ParkadeLevels.Count > 0 || info.IsRoof || info.IsFoundation;
         }
 
-        string? title = NamesALevel(field) ? field : NamesALevel(bookmark) ? bookmark : field ?? bookmark;
-        if (title is not null && title.Trim().Trim('-', '–').Length == 0) title = bookmark;
+        string? title = NamesALevel(field) ? field : NamesALevel(bookmark) ? bookmark : NamesALevel(page) ? page : field ?? bookmark ?? page;
+        if (title is not null && title.Trim().Trim('-', '–').Length == 0) title = bookmark ?? page;
         return (number is null || title is null ? fallbackStem : Sanitise($"{number}_1_{title}")) + ".dxf";
     }
 

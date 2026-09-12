@@ -293,7 +293,7 @@ public static class DrawingIntake
             markup, links, full, pathFates, wordFates)
         {
             ColumnAgreement = agreement, ColumnAgreementError = agreementError,
-            TitleBlock = fields, ScaleStatement = scaleStatement, ScaleConflict = scaleConflict, Storeys = storeys, FootingLabels = footingLabels,
+            TitleBlock = fields, TitleText = title?.Raw ?? titleText, ScaleStatement = scaleStatement, ScaleConflict = scaleConflict, Storeys = storeys, FootingLabels = footingLabels,
             Annotations = annotations,
             Dimensions = dimensions,
             Context = new SheetContext

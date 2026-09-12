@@ -37,6 +37,22 @@ def main():
     for l, n in levels.most_common(25):
         print(f"   {n:5}  {l}")
 
+    # the sets that still have no storey ladder (ledger-sets.csv beside): what their written views are NAMED,
+    # since the storeys-from-plans rule (step 45) reads the view names and these are the names it could not
+    sets_path = os.path.join(os.path.dirname(path), "ledger-sets.csv")
+    if os.path.exists(sets_path):
+        nostorey = {r["job"] for r in csv.DictReader(open(sets_path, encoding="utf-8-sig", newline="")) if r["model_error"].startswith("no storeys")}
+        views = [f for r in sheets if r["job"] in nostorey and r["dxf_files"] for f in r["dxf_files"].split(" | ")]
+        words = collections.Counter()
+        prefix = re.compile(r"^[A-Z]+[0-9.]+_[0-9]+_")
+        for f in views:
+            for w in re.findall(r"[A-Z0-9]+", prefix.sub("", f).upper()):
+                if len(w) > 2 and w not in ("PLAN", "PLANS", "AND", "THE", "DXF"):
+                    words[w] += 1
+        print(f"{len(nostorey)} sets with no storey ladder, {len(views)} views written for them; the words their views are named with:")
+        for w, n in words.most_common(45):
+            print(f"   {n:5}  {w}")
+
 
 if __name__ == "__main__":
     main()

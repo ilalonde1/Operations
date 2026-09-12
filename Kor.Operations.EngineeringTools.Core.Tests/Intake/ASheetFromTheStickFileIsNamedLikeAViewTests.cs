@@ -12,8 +12,9 @@ namespace Kor.Operations.EngineeringTools.Core.Tests.Intake;
 /// <remarks>
 /// WHAT THIS COVERS: the name from the sheet number and the title block's SHEET TITLE; that
 /// PlanSheetNaming reads the parkade level and a level range out of it; the fallback when either
-/// is missing; characters a file name refuses. WHAT IT DOES NOT: a title block the reader did not
-/// read at all, which is the fallback's case and the ledger's business.
+/// is missing; characters a file name refuses; the title on the page as the third source when the
+/// block's field and the bookmark name no level (step 46). WHAT IT DOES NOT: a title block the
+/// reader did not read at all, which is the fallback's case and the ledger's business.
 /// </remarks>
 [Collection(SheetNamingVocabularyCollection.Name)]   // PlanSheetNaming.Vocabulary is a mutable static another class rewrites
 public sealed class ASheetFromTheStickFileIsNamedLikeAViewTests
@@ -39,6 +40,27 @@ public sealed class ASheetFromTheStickFileIsNamedLikeAViewTests
         Assert.Equal("31168-p11.dxf", SheetDxfName.For(null, Block(("SHEET TITLE", "LEVEL P3 PLAN")), "31168-p11"));
         Assert.Equal("31168-p11.dxf", SheetDxfName.For("S2.01", Block(("SCALE", "1/8\" = 1'-0\"")), "31168-p11"));
         Assert.Equal("S2.01_1_LEVEL P3 PLAN.dxf", SheetDxfName.For(null, Block(("SHEET NUMBER", "S2.01"), ("SHEET TITLE", "LEVEL P3 PLAN")), "31168-p11"));
+    }
+
+    /// <summary>
+    /// The title written on the page is the third statement of a sheet's name (intake step 46): a
+    /// sheet with a number and a level the storey reader read, but no title-block field and no
+    /// bookmark, was named by the PDF's stem and page, and a name that says nothing places nothing
+    /// (298 of 486 views on the 72 sets the corpus left without a ladder, 2026-09-11).
+    /// </summary>
+    [Fact]
+    public void TheTitleOnThePageNamesTheSheetWhenTheBlockAndTheBookmarkDoNot()
+    {
+        // no field, no bookmark, the page says LEVEL 2 PLAN - CONCRETE OUTLINE
+        Assert.Equal("S2.03.1_1_LEVEL 2 PLAN - CONCRETE OUTLINE.dxf",
+            SheetDxfName.For("S2.03.1", Block(("SCALE", "1/8\" = 1'-0\"")), "31009-p18", null, "LEVEL 2 PLAN - CONCRETE OUTLINE"));
+        // the page's title carrying its own sheet number loses it, as a bookmark's does
+        Assert.Equal("S2.03.1_1_LEVEL 2 PLAN.dxf", SheetDxfName.For("S2.03.1", Block(), "x", null, "S2.03.1 - LEVEL 2 PLAN"));
+        // a field that names a level still wins over the page; a field that names none loses to a page that does
+        Assert.Equal("S2.03.1_1_LEVEL 3 PLAN.dxf", SheetDxfName.For("S2.03.1", Block(("SHEET TITLE", "LEVEL 3 PLAN")), "x", null, "LEVEL 2 PLAN"));
+        Assert.Equal("S2.03.1_1_LEVEL 2 PLAN.dxf", SheetDxfName.For("S2.03.1", Block(("SHEET TITLE", "GENERAL NOTES")), "x", null, "LEVEL 2 PLAN"));
+        // and with no number nothing names it, whatever the page says
+        Assert.Equal("31009-p18.dxf", SheetDxfName.For(null, Block(), "31009-p18", null, "LEVEL 2 PLAN"));
     }
 
     [Fact]

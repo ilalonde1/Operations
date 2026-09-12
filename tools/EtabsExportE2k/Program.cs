@@ -120,7 +120,12 @@ internal static class Program
                         // ETABS 22 can read: 31168's newest was a "secondary elements" file that would not open
                         // while its full building model beside it would (2026-09-11). Newest first, then the next,
                         // each named in the outcome so a person sees what was taken and what was passed over.
+                        // AT MOST TWO ATTEMPTS: a job whose newest model is a newer ETABS's is usually a job whose older
+                        // ones are too, and every refusal is a dialog for the person at the keyboard (twelve jobs, a
+                        // dozen refusals each, 2026-09-11). The newest and the one before it; the rest are named as passed over.
                         var ordered = candidates.Select(f => new FileInfo(f)).OrderByDescending(f => f.LastWriteTimeUtc).ToList();
+                        var notTried = ordered.Skip(2).Select(f => f.Name).ToList();
+                        ordered = ordered.Take(2).ToList();
                         string jobDir = Path.Combine(work, job.Job);
                         Directory.CreateDirectory(jobDir);
                         e2k = Path.Combine(jobDir, job.Job + ".e2k");
@@ -138,7 +143,7 @@ internal static class Program
                             if (ret != 0)
                             {
                                 passedOver.Add(candidate.Name);
-                                outcome = $"OpenFile returned {ret} on every .EDB tried ({passedOver.Count}): {string.Join("; ", passedOver)}";
+                                outcome = $"OpenFile returned {ret} on every .EDB tried ({passedOver.Count}): {string.Join("; ", passedOver)}" + (notTried.Count > 0 ? $"; not tried ({notTried.Count}): {string.Join("; ", notTried)}" : "");
                                 Console.Write("would not open; ");
                                 continue;
                             }

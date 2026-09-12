@@ -57,6 +57,13 @@ public sealed record SheetRecord(
     public IReadOnlyDictionary<string, string> TitleBlock { get; init; } = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
+    /// The sheet's own title as written on the page — the storey reader's raw text where it read a
+    /// storey, else the title-size words on the title block's edge — the third statement of a sheet's
+    /// name beside the title block's field and the PDF's bookmark (intake step 46, 2026-09-11).
+    /// </summary>
+    public string? TitleText { get; init; }
+
+    /// <summary>
     /// What the title block's SCALE field says, verbatim — "1/8" = 1'-0"", "1 : 100", "AS NOTED",
     /// "As indicated". <see cref="ScaleNote"/> is the ratio when one parses; this is the statement
     /// either way, because "AS NOTED" on a details sheet is information, not a missing value.
