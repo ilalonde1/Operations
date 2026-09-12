@@ -38,6 +38,9 @@ internal static class Program
         for (int i = 0; i + 1 < args.Length; i++)
             if (args[i].Equals("--etabs", StringComparison.OrdinalIgnoreCase)) etabsExe = args[i + 1];
         string etabsDir = Path.GetDirectoryName(Path.GetFullPath(etabsExe)) ?? ".";
+        // said here, before Run is compiled: Run names the API's types, and on a machine with no ETABS the
+        // loader would fail first and say so less plainly
+        if (!File.Exists(etabsExe)) { Console.Error.WriteLine($"ETABS not found at {etabsExe} (pass --etabs <path to ETABS.exe>); this runs on KOR-210."); return 3; }
         System.Runtime.Loader.AssemblyLoadContext.Default.Resolving += (context, name) =>
         {
             if (!string.Equals(name.Name, "ETABSv1", StringComparison.OrdinalIgnoreCase)) return null;
@@ -113,21 +116,32 @@ internal static class Program
                     else
                     {
                         tried++;
-                        var newest = candidates.Where(f => f.EndsWith(".edb", StringComparison.OrdinalIgnoreCase))
-                            .Select(f => new FileInfo(f)).OrderByDescending(f => f.LastWriteTimeUtc).First();
-                        edb = newest.FullName;
+                        // THE NEWEST THAT OPENS. A folder holds several models, and the newest is not always one
+                        // ETABS 22 can read: 31168's newest was a "secondary elements" file that would not open
+                        // while its full building model beside it would (2026-09-11). Newest first, then the next,
+                        // each named in the outcome so a person sees what was taken and what was passed over.
+                        var ordered = candidates.Select(f => new FileInfo(f)).OrderByDescending(f => f.LastWriteTimeUtc).ToList();
                         string jobDir = Path.Combine(work, job.Job);
                         Directory.CreateDirectory(jobDir);
-                        string copy = Path.Combine(jobDir, newest.Name);
-                        File.Copy(newest.FullName, copy, overwrite: true);            // ETABS opens the COPY; the engineer's file is never touched
                         e2k = Path.Combine(jobDir, job.Job + ".e2k");
                         if (File.Exists(e2k)) File.Delete(e2k);
-
-                        Console.Write($"  {job.Job,-10} opening {newest.Name} ({newest.Length / 1048576.0:F0} MB) ... ");
-                        int ret = model.File.OpenFile(copy);
-                        if (ret != 0) outcome = $"OpenFile returned {ret}";
-                        else
+                        var passedOver = new List<string>();
+                        outcome = "no .EDB in the model folder";
+                        Console.Write($"  {job.Job,-10} ");
+                        foreach (var candidate in ordered)
                         {
+                            edb = candidate.FullName;
+                            string copy = Path.Combine(jobDir, candidate.Name);
+                            File.Copy(candidate.FullName, copy, overwrite: true);            // ETABS opens the COPY; the engineer's file is never touched
+                            Console.Write($"opening {candidate.Name} ({candidate.Length / 1048576.0:F0} MB) ... ");
+                            int ret = model.File.OpenFile(copy);
+                            if (ret != 0)
+                            {
+                                passedOver.Add(candidate.Name);
+                                outcome = $"OpenFile returned {ret} on every .EDB tried ({passedOver.Count}): {string.Join("; ", passedOver)}";
+                                Console.Write("would not open; ");
+                                continue;
+                            }
                             Console.Write("saving text model ... ");
                             // ETABS 22.6 given "<job>.e2k" wrote "<job>.EDB" and its text twin "<job>.$et" and left no .e2k
                             // (31016-01 on KOR-210, 2026-09-11: "Save returned 0 but wrote nothing"). The .$et IS the text
@@ -136,17 +150,19 @@ internal static class Program
                             string stem = Path.Combine(jobDir, job.Job);
                             ret = model.File.Save(stem + ".EDB");
                             string et = stem + ".$et";
-                            if (ret != 0) outcome = $"Save returned {ret}";
-                            else if (!File.Exists(et) && !File.Exists(e2k)) outcome = "Save returned 0 but wrote no text model (.$et)";
-                            else
+                            if (ret != 0) { outcome = $"Save returned {ret}"; break; }
+                            if (!File.Exists(et) && !File.Exists(e2k)) { outcome = "Save returned 0 but wrote no text model (.$et)"; break; }
+                            if (File.Exists(et)) File.Copy(et, e2k, overwrite: true);
+                            bytes = new FileInfo(e2k).Length;
+                            string head = ReadHead(e2k, 2000);
+                            outcome = head.Contains("$ PROGRAM INFORMATION", StringComparison.OrdinalIgnoreCase) || head.Contains("$ File", StringComparison.OrdinalIgnoreCase)
+                                ? "OK" : "wrote a file that does not read as an .e2k";
+                            if (outcome == "OK")
                             {
-                                if (File.Exists(et)) File.Copy(et, e2k, overwrite: true);
-                                bytes = new FileInfo(e2k).Length;
-                                string head = ReadHead(e2k, 2000);
-                                outcome = head.Contains("$ PROGRAM INFORMATION", StringComparison.OrdinalIgnoreCase) || head.Contains("$ File", StringComparison.OrdinalIgnoreCase)
-                                    ? "OK" : "wrote a file that does not read as an .e2k";
-                                if (outcome == "OK") ok++;
+                                ok++;
+                                if (passedOver.Count > 0) outcome += $" (passed over, would not open: {string.Join("; ", passedOver)})";
                             }
+                            break;
                         }
                     }
                 }
@@ -154,7 +170,7 @@ internal static class Program
                 {
                     outcome = $"{ex.GetType().Name}: {ex.Message}";
                 }
-                Console.WriteLine($"{(edb.Length > 0 ? "" : $"  {job.Job,-10} ")}{outcome}{(bytes > 0 ? $"  ({bytes / 1024:N0} KB)" : "")}");
+                Console.WriteLine($"{(edb.Length > 0 ? "" : $"  {job.Job,-10} ")}{outcome}{(bytes > 0 ? $"  ({bytes / 1024:N0} KB)  <- {Path.GetFileName(edb)}" : "")}");
                 rows.Add(string.Join(",", Q(job.Job), Q(edb), Q(e2k), bytes.ToString(CultureInfo.InvariantCulture), Q(outcome)));
             }
         }
