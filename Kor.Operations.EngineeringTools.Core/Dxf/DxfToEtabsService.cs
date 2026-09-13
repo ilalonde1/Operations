@@ -295,6 +295,7 @@ public static class DxfToEtabsService
         "dxf.mezzanine-words",
         "dxf.foundation-words",
         "dxf.elevator-roof-words",
+        "dxf.structural-plan-words",
         "dxf.min-wall-thickness",
         "dxf.max-wall-thickness",
         "dxf.min-wall-length",
@@ -379,6 +380,7 @@ public static class DxfToEtabsService
         "dxf.mezzanine-words",
         "dxf.foundation-words",
         "dxf.elevator-roof-words",
+        "dxf.structural-plan-words",
     ];
 
     /// <summary>
@@ -460,6 +462,7 @@ public static class DxfToEtabsService
             ColumnLayerPatterns = settings.ListOr("dxf.column-layer-patterns", options.ColumnLayerPatterns),
             SlabLayerPatterns = settings.ListOr("dxf.slab-layer-patterns", options.SlabLayerPatterns),
             NonStructuralSheetPatterns = settings.ListOr("dxf.non-structural-sheet-patterns", options.NonStructuralSheetPatterns),
+            StructuralPlanWords = settings.ListOr("dxf.structural-plan-words", options.StructuralPlanWords),
             MinWallThickness = settings.ValueOr("dxf.min-wall-thickness", options.MinWallThickness),
             MaxWallThickness = settings.ValueOr("dxf.max-wall-thickness", options.MaxWallThickness),
             MinWallLength = settings.ValueOr("dxf.min-wall-length", options.MinWallLength),

@@ -50,13 +50,15 @@ public static class ModelYardstick
         int FrameSupport,
         int OursCompared, double OursMedianMm, int OursWithin50, int OursWithin100, int OursWithin300,
         int TheirsCompared, double TheirsMedianMm, int TheirsWithin100,
-        int OursBeyondHerModel,
+        int OursBeyondHerModel, int OursOnHerWalls,
         IReadOnlyList<string> Notes)
     {
         /// <summary>Our columns on shared storeys with none of theirs within 300 mm, counted by the section we gave them — what we read that the engineer did not model, named by its size.</summary>
         public IReadOnlyList<(string Section, int Count)> OursUnmatchedBySection { get; init; } = [];
         /// <summary>Their columns on shared storeys with none of ours within 300 mm, by their section — what the engineer modelled that we did not read.</summary>
         public IReadOnlyList<(string Section, int Count)> TheirsUnmatchedBySection { get; init; } = [];
+        /// <summary>Of ours unmatched, those standing within 100 mm of one of her wall panels on that storey: modelled by her as a wall, by us as a column.</summary>
+        public IReadOnlyList<(string Section, int Count)> OursOnHerWallsBySection { get; init; } = [];
         public double OursWithin100Share => OursCompared == 0 ? 0 : (double)OursWithin100 / OursCompared;
         public double TheirsWithin100Share => TheirsCompared == 0 ? 0 : (double)TheirsWithin100 / TheirsCompared;
     }
@@ -179,13 +181,25 @@ public static class ModelYardstick
         // declares). And theirs with none of ours: what we missed, by their section.
         var ourSections = SectionsByColumn(model);
         var theirSections = SectionsByColumn(yard);
+        // A COLUMN OF OURS ON A WALL OF HERS IS A DIFFERENCE OF KIND, NOT OF PLACE (2026-09-12). 31138's
+        // C3A/C3B/C2B, drawn and scheduled as 14x36 and 18x30 columns on the building's edge, and the 24x37
+        // ends of its stair core, are wall piers in her gravity model: five a storey, on seventeen storeys,
+        // at 0-1 mm from one of her panels. They are counted here, by section, and are still unmatched.
+        var theirWalls = WallsByStorey(yard, yu);
+        int oursOnHerWalls = 0;
         var oursUnmatched = new Dictionary<string, int>(StringComparer.Ordinal);
+        var oursOnWallsBySection = new Dictionary<string, int>(StringComparer.Ordinal);
         foreach (var s in judged)
             foreach (var p in s.OurPts)
                 if (Math.Sqrt(s.TheirPts.Min(q => Sq((q.X - sh.X, q.Y - sh.Y), p))) > 300)
                 {
                     string sec = ourSections.TryGetValue((s.Ours, p.X, p.Y), out var os) ? os : "?";
                     oursUnmatched[sec] = oursUnmatched.GetValueOrDefault(sec) + 1;
+                    if (theirWalls.TryGetValue(s.Theirs, out var panels) && panels.Any(w => DistanceToBox(p, (w.MinX - sh.X, w.MinY - sh.Y, w.MaxX - sh.X, w.MaxY - sh.Y)) <= 100))
+                    {
+                        oursOnHerWalls++;
+                        oursOnWallsBySection[sec] = oursOnWallsBySection.GetValueOrDefault(sec) + 1;
+                    }
                 }
         var theirsUnmatched = new Dictionary<string, int>(StringComparer.Ordinal);
         foreach (var bucket in ours.Where(kv => kv.Value.Count > 0).Select(kv => (Ours: kv.Key, Theirs: TheirsFor(kv.Key))).Where(t => t.Theirs is not null).GroupBy(t => t.Theirs!.Value.Name, StringComparer.OrdinalIgnoreCase))
@@ -237,12 +251,43 @@ public static class ModelYardstick
             support,
             residuals.Count, residuals.Count == 0 ? 0 : Median(residuals), residuals.Count(r => r <= 50), residuals.Count(r => r <= 100), residuals.Count(r => r <= 300),
             theirResiduals.Count, theirResiduals.Count == 0 ? 0 : Median(theirResiduals.Select(t => t.R).ToList()), theirResiduals.Count(t => t.R <= 100),
-            oursBeyond,
+            oursBeyond, oursOnHerWalls,
             notes)
         {
             OursUnmatchedBySection = oursUnmatched.OrderByDescending(kv => kv.Value).ThenBy(kv => kv.Key, StringComparer.Ordinal).Select(kv => (kv.Key, kv.Value)).ToList(),
+            OursOnHerWallsBySection = oursOnWallsBySection.OrderByDescending(kv => kv.Value).ThenBy(kv => kv.Key, StringComparer.Ordinal).Select(kv => (kv.Key, kv.Value)).ToList(),
             TheirsUnmatchedBySection = theirsUnmatched.OrderByDescending(kv => kv.Value).ThenBy(kv => kv.Key, StringComparer.Ordinal).Select(kv => (kv.Key, kv.Value)).ToList(),
         };
+    }
+
+    /// <summary>Her wall panels by storey, each as the plan box of its joints in mm.</summary>
+    private static Dictionary<string, List<(double MinX, double MinY, double MaxX, double MaxY)>> WallsByStorey(E2kDocument doc, double unitMm)
+    {
+        var kinds = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (string raw in doc.LinesOf("AREA CONNECTIVITIES"))
+        {
+            var m = Regex.Match(raw.TrimStart(), @"^AREA\s+""([^""]+)""\s+(\w+)\b");
+            if (m.Success) kinds[m.Groups[1].Value] = m.Groups[2].Value;
+        }
+        var points = doc.PlanPointsOfObjects();
+        var storeysOf = doc.StoreysByObject();
+        var result = new Dictionary<string, List<(double, double, double, double)>>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (name, kind) in kinds)
+        {
+            if (!kind.Equals("PANEL", StringComparison.OrdinalIgnoreCase) && !kind.Equals("WALL", StringComparison.OrdinalIgnoreCase)) continue;
+            if (!points.TryGetValue(name, out var pts) || pts.Count < 2) continue;
+            if (!storeysOf.TryGetValue(name, out var on)) continue;
+            var box = (pts.Min(p => p.X) * unitMm, pts.Min(p => p.Y) * unitMm, pts.Max(p => p.X) * unitMm, pts.Max(p => p.Y) * unitMm);
+            foreach (var storey in on)
+                (result.TryGetValue(storey, out var list) ? list : result[storey] = new List<(double, double, double, double)>()).Add(box);
+        }
+        return result;
+    }
+
+    private static double DistanceToBox((double X, double Y) p, (double MinX, double MinY, double MaxX, double MaxY) b)
+    {
+        double dx = Math.Max(Math.Max(b.MinX - p.X, 0), p.X - b.MaxX), dy = Math.Max(Math.Max(b.MinY - p.Y, 0), p.Y - b.MaxY);
+        return Math.Sqrt(dx * dx + dy * dy);
     }
 
     /// <summary>Every COLUMN's section, keyed by (storey, x, y) in mm — the same key ColumnsByStorey gives a point.</summary>
@@ -282,6 +327,8 @@ public static class ModelYardstick
         else sb.AppendLine("no columns on a storey both models name");
         if (c.OursUnmatchedBySection.Count > 0)
             sb.AppendLine(CultureInfo.InvariantCulture, $"ours with none of theirs within 300 mm, by section: {string.Join(", ", c.OursUnmatchedBySection.Take(8).Select(u => $"{u.Section} {u.Count}"))}{(c.OursUnmatchedBySection.Count > 8 ? " ..." : "")}");
+        if (c.OursOnHerWalls > 0)
+            sb.AppendLine(CultureInfo.InvariantCulture, $"  of which {c.OursOnHerWalls} stand on a wall she modelled (a column to us, a pier to her): {string.Join(", ", c.OursOnHerWallsBySection.Take(8).Select(u => $"{u.Section} {u.Count}"))}");
         if (c.TheirsUnmatchedBySection.Count > 0)
             sb.AppendLine(CultureInfo.InvariantCulture, $"theirs with none of ours within 300 mm, by their section: {string.Join(", ", c.TheirsUnmatchedBySection.Take(8).Select(u => $"{u.Section} {u.Count}"))}{(c.TheirsUnmatchedBySection.Count > 8 ? " ..." : "")}");
         foreach (var n in c.Notes) sb.AppendLine("  note: " + n);

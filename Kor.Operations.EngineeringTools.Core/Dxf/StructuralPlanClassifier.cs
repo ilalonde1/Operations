@@ -49,9 +49,8 @@ public sealed record PlanClassificationOptions
     public IReadOnlyList<string> NonStructuralSheetPatterns { get; init; } = Array.Empty<string>();
 
     /// <summary>
-    /// A SHEET THAT SAYS WHAT IT IS, IS THAT (intake step 50, 2026-09-12). A compiled convention; its
-    /// row (`dxf.structural-plan-words`) comes with WP5's next tier, and every rule the composer reads
-    /// is required of KorStandards, so the row lands before the read does.
+    /// A SHEET THAT SAYS WHAT IT IS, IS THAT (intake step 50, 2026-09-12). See `dxf.structural-plan-words`
+    /// (migration 088); the row replaces this default, as the layer and vocabulary rows do.
     ///
     /// A name that carries one of these is a structural plan whatever else it says: 31130's
     /// "LEVEL 3 - 16 CONCRETE OUTLINE PLANS &amp; POST TENSION REINFORCING - WEST TOWER" is the

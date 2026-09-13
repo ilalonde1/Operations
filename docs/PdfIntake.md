@@ -5,7 +5,7 @@
 A session picking this up cold reads this section, then the completion plan
 (`docs/architecture/Kor.Operations.EngineeringTools.PdfIntake.plan.md` — what "complete" means, the
 packages, and where each stands), then the last three step sections (§54–§56). §1–§52 are the
-record of how each rule was arrived at, read when a rule is being changed. §59 is the latest step.
+record of how each rule was arrived at, read when a rule is being changed. §60 is the latest section.
 
 **What this is.** A PDF ingestor: one ingestion point (`DrawingIntake.ReadSheet` → `PdfOnlyBuild`)
 that reads a drawing set and hands its geometry to outlets — the ETABS `.e2k` today, the DXF as a
@@ -2928,3 +2928,38 @@ with only one direction and nothing confirms the other; 31130's `L1M` storey, wh
 same 47 columns as L2 (a mezzanine named by the ladder that the LEVEL 2 plan also feeds — next);
 her 36" round columns, which we do not read on this set (next); the corpus, which run 6 will
 restate with steps 50–51.
+
+## 60. 2026-09-12, later: what the residue on 31130 and 31138 is — hers, by the drawings — and the yardstick says so
+
+Ian: *"keep going… No misses."* So the remaining unmatched columns on the two sets were read one by
+one against the drawings before anything was coded.
+
+**31130, her unmatched (`C36` 42 = three 36" round columns a storey on L3–L16).** On L2 all six of
+her C36 match ours to 1 mm (we read the circle, as its 36x36 box). On L3–L12 three of the six are
+not on the drawing: the east tower's L3–12 plan draws a tendon anchor ("324 KIPS") on the balcony
+slab edge where her model has a column, and the slab edge curves round it (p35, rendered at 200
+dpi with her positions marked). Her model carries the L2 columns up; the drawings do not. **31130,
+ours unmatched (`KOR-C355.6x914.4` 40 = three 14x36 a storey).** Rendered (p35 at 250 dpi): each is
+a second 14" x 36" column the drawing draws and labels on the balcony line, two bays south of the
+one she models. Both are the drawings' word against her model's; neither is a reading miss.
+
+**31138, ours unmatched (177 of 591).** On L10, all five of our unmatched columns stand 0–1 mm from
+one of her wall panels (W113, W109, W49, W38, W39): the drawing labels three of them **C3A, C3B, C2B
+(14" x 36", 18" x 30")** — scheduled columns on the building's east edge — and draws the other two as
+the 24" x 37" ends of the stair core's wall; her gravity model has all five as wall piers. A
+difference of kind, not of place. **The yardstick now counts it** (`OursOnHerWallsBySection`, "of
+which N stand on a wall she modelled"): 31138 **121 of 177** (14x36 40, 24x37 32, 18x30 16, 30x37
+13…), 31130 31, 31202 16, 31170 14, 31065 5. What is left on 31138 is L1/L2, where her L01 has 23
+columns and no walls to our 51 — a partial storey in her model — and a dozen columns 100–290 mm
+from hers with a median of 0 (the face-on-grid class of §58, to be confirmed with her).
+
+**Step 50's row is live:** migration **088** (`dxf.structural-plan-words`, replay-verified) applied
+by Ian; the composer requires it, as it requires every rule it reads; the parity, coverage and
+questionnaire tests hold the row to the compiled default.
+
+**For Andrea at WP6, one question with two pictures:** a scheduled edge column (C3B, 14x36) and a
+core-wall end (24x37) — column or pier in her model? Her 31168 rule ("less than 48 in length should
+be a column") and her 31138 model disagree; the reader follows the drawing's label until she says.
+
+WHAT THIS DOES NOT: change any model (no rule was added; the six are as banked at step 51); 31130's
+`L1M`, which the wall elevations name and her model folds into L1 — ours is the drawings' storey.
