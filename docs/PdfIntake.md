@@ -1,11 +1,11 @@
 # PDF intake — what it does today, and what it leaves on the page
 
-## 0. START HERE (state as of 2026-09-12, after step 49 and completion-plan WP1–WP5 — 207 of 292 sets build from the PDF alone)
+## 0. START HERE (state as of 2026-09-12, after step 50 and completion-plan WP1–WP5 — 207 of 292 sets build from the PDF alone)
 
 A session picking this up cold reads this section, then the completion plan
 (`docs/architecture/Kor.Operations.EngineeringTools.PdfIntake.plan.md` — what "complete" means, the
 packages, and where each stands), then the last three step sections (§54–§56). §1–§52 are the
-record of how each rule was arrived at, read when a rule is being changed. §57 is the latest step.
+record of how each rule was arrived at, read when a rule is being changed. §58 is the latest step.
 
 **What this is.** A PDF ingestor: one ingestion point (`DrawingIntake.ReadSheet` → `PdfOnlyBuild`)
 that reads a drawing set and hands its geometry to outlets — the ETABS `.e2k` today, the DXF as a
@@ -57,7 +57,7 @@ closing rules that a rendered view would have settled; that is the mistake this 
 | Storeys with a plate | 741 of 2,401 (31%) |
 | Against the engineers' own models (39 sets sharing a storey with columns, of 62 with a model) | 34% of our columns within 100 mm of theirs, 48% of theirs within 100 mm of ours; 31130 under 25% with 20 shared storeys — the next thing to look at |
 | 31168 against the Revit route | columns median 16 mm, 92% within 50 mm; tower plates within 0.1%; 36 of 62 storeys carry a plate; walls 1,324 vs 1,832 |
-| The four harness sets with the engineer's own model (§56–§57, after step 49) | 31138 69% / 96%; 31170 83% / 91%; 31202 **85% / 95%** (66% before the anchors and the target quadrants; 115 of 777 still unmatched: 42 anchors the chains miss, 32 offset 12x24s, 28 11x14s); 31065 43% / 76% |
+| The four harness sets with the engineer's own model (§56–§58, after step 50; ours judged only inside her footprint) | 31138 70% / 96%; 31170 86% / 91%; 31202 **90% / 95%** (42 anchors stand beyond her perimeter and are counted, not judged; 32 offset 12x24s are her grid-snapped columns; 28 11x14s); 31065 **73% / 76%** (231 columns of the tower she did not model, not judged); 31130 not a number yet — two frames (step 51) |
 
 **The work order is the count.** 1. Storeys: the 72 sets whose plans name their storeys with
 words (step 47). 2. Views on the grid: 56% of plan views are not placed by name. 3. Plates: 69%
@@ -2834,3 +2834,54 @@ outline that crosses itself is two strips, not one ring, and the loop builder sh
 through a crossing (a follow-up; the centroid is now honest, the ring is still one); the 42
 anchors the tendon chains miss and the 32 offset 12x24s (next); a target drawn with one filled
 quadrant or four; the corpus, which the s48 rebuild is restating and this step will change again.
+
+## 58. Step 50, 2026-09-12: a sheet that says what it is, is that; and the yardstick judges only where the engineer modelled
+
+Ian: *"go"* on item 1 of the board — two views of one storey in frames that disagree (31065, 31130).
+Measured first, and the two sets turned out to be two different things.
+
+**31065 was not a frame fault; it was the yardstick's scope.** Her model is the podium and ONE of
+the two towers (35 columns on L3 in a 34 m box; ours 90 across 93 m), so on every tower storey two
+thirds of our columns had "none of theirs within 300 mm" and a median residual of 20 m — a building
+she did not model, counted against us. `ModelYardstick` now judges our columns only inside her
+storey's footprint — the box of her columns plus `FootprintMarginMm` (1.5 m: registration slop and a
+slab-edge column, not a bay) — and counts the rest as *beyond her model*, named per storey. Her
+columns are all judged against ours as before. 31065: 43% → **73%** (322 judged, 231 beyond; median
+20 mm). 31202: 85% → **90%** — its 42 `KOR-C228.6x304.8` are slab-edge anchors past her outermost
+column and are now beyond, not unmatched; the number says what is judged and the note says what is
+not. 31138 70%, 31170 86%. ⚠ The scope rule hides a false column of ours that stands past her
+perimeter; the beyond count is printed for that reason, and the anchors stay on the board.
+
+**31202's 32 offset 12x24s are hers, not ours.** Four columns on grid 7, L6–L13, each exactly
+304 mm (its own width) east of hers. Rendered (p32, 300 dpi): the drawing draws the column with its
+WEST FACE on grid 7; she models it centred on the grid. We read the drawing. A modelling
+idealisation for Andrea's word at WP6 (recorded in the answers index as an open question); no code.
+
+**31130 was a frame fault — and, before that, fourteen storeys of tower were never read.**
+`REINFORC` in `dxf.non-structural-sheet-patterns` refused "LEVEL 3 - 16 CONCRETE OUTLINE PLANS &
+POST TENSION REINFORCING - WEST TOWER" and its eight siblings: the concrete outline of the tower
+with the tendons drawn on it. The model had 7 storeys with columns where hers has 20. On the
+corpus, **39 of 548** sheets a non-structural word refuses name a structural plan kind as well
+(31 CONCRETE OUTLINE, 8 FOUNDATION PLAN; 15 sets). Step 50: **a sheet that says what it is, is
+that** — `PlanClassificationOptions.StructuralPlanWords` (CONCRETE OUTLINE, FOUNDATION PLAN; a
+compiled convention, its row `dxf.structural-plan-words` with WP5's next tier), `RefusedBy` /
+`KeptBy`, the report names every sheet kept this way. `NonStructuralSheetsAreRefusedTests` carries
+31130's title, a foundation plan with footing reinforcing, and the slab-reinforcing plans that stay
+refused. Six-set gate: 31130 gained 862 columns and 174 walls on L4–L20, nothing lost; the other
+five byte-identical. Banked.
+
+**What 31130 shows now, and what step 51 is.** 10 of 20 sheets place by name (the WEST half's:
+axes 1–16, A–Q); the 10 EAST sheets (axes 17–28, A–Q) share the Y names but no X name with any
+placed sheet, so they stay in their page frame — on top of the west half. Our tower storeys carry
+58 columns: the west tower placed and the east tower landed on it. The set does draw the whole grid
+in one frame: the DESIGN LOAD PLAN carries 1–16 AND 17–28 in one view, and it is refused as a plan
+(rightly — its zone boundaries are not structure). Step 51: a refused sheet's named axes still
+place the sheets that name them. The yardstick on 31130 today (22% / 40%, medians 1.9–3.2 m on the
+podium) is the two frames, not the reading, and is not the number to hold.
+
+WHAT THIS COVERS: the scope rule (`AModelIsMeasuredAgainstTheEngineersOwnTests` unchanged; the
+note and per-storey beyond count are printed, not asserted — a test is owed with step 51's
+measurement); the sheet rule on four titles. WHAT IT DOES NOT: a title with neither word that is
+still a structural plan (read as before); a sheet whose linework is a schematic under a CONCRETE
+OUTLINE title (none seen); the frames (step 51); 31130's `L1M` storey, which duplicates L2 (47
+columns) — read next to step 51.

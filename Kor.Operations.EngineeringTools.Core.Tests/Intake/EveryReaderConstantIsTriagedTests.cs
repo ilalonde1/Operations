@@ -192,6 +192,7 @@ public sealed class EveryReaderConstantIsTriagedTests
         ["LoopGeometry.cs:Slack"] = Tolerance("floating point: the T-touch"),
         ["MatchLineSheetJoin.cs:DefaultTolerance"] = Tolerance("two match lines that are one seam"),
         ["ModelYardstick.cs:bin"] = Tolerance("the residual histogram's bin"),
+        ["ModelYardstick.cs:FootprintMarginMm"] = Tolerance("how far past her outermost column a column of ours is still judged against her model - registration slop and a slab-edge column, not a bay"),
 
         // ---- rules: facts of geometry or of buildings, code by design ----
         ["GeometryFilterService.cs:WallShapeTaperShare"] = Rule("a retaining wall's faces converge by up to a quarter"),

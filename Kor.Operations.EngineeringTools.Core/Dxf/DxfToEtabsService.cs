@@ -760,13 +760,18 @@ public static class DxfToEtabsService
         if (requested.NonStructuralSheetPatterns.Count > 0)
         {
             var refused = new List<string>();
+            var kept = new List<string>();
 
             foreach (string file in files.ToList())
             {
                 string name = Path.GetFileNameWithoutExtension(file);
-                string? hit = requested.NonStructuralSheetPatterns.FirstOrDefault(
-                    pattern => name.IndexOf(pattern, StringComparison.OrdinalIgnoreCase) >= 0);
-                if (hit is null) continue;
+                string? hit = requested.RefusedBy(name);
+                if (hit is null)
+                {
+                    // a sheet that says what it is, is that (step 50): CONCRETE OUTLINE beside REINFORCING is an outline
+                    if (requested.KeptBy(name) is { } word) kept.Add($"{Path.GetFileName(file)} [{word}]");
+                    continue;
+                }
 
                 files.Remove(file);
                 sheetInfoByFile.Remove(file);
@@ -779,6 +784,12 @@ public static class DxfToEtabsService
                     string.Join(", ", refused.Take(6)) +
                     (refused.Count > 6 ? $", and {refused.Count - 6} more" : "") +
                     ". Governed by dxf.non-structural-sheet-patterns.");
+            if (kept.Count > 0)
+                warnings.Add(
+                    $"{kept.Count} sheet(s) whose name carries a non-structural word were read anyway because the name says what the sheet is: " +
+                    string.Join(", ", kept.Take(6)) +
+                    (kept.Count > 6 ? $", and {kept.Count - 6} more" : "") +
+                    ". Governed by dxf.structural-plan-words.");
         }
 
         // After the rules, never before: ApplyRules takes the database value over whatever the

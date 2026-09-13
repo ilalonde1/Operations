@@ -48,6 +48,40 @@ public sealed record PlanClassificationOptions
     /// </summary>
     public IReadOnlyList<string> NonStructuralSheetPatterns { get; init; } = Array.Empty<string>();
 
+    /// <summary>
+    /// A SHEET THAT SAYS WHAT IT IS, IS THAT (intake step 50, 2026-09-12). A compiled convention; its
+    /// row (`dxf.structural-plan-words`) comes with WP5's next tier, and every rule the composer reads
+    /// is required of KorStandards, so the row lands before the read does.
+    ///
+    /// A name that carries one of these is a structural plan whatever else it says: 31130's
+    /// "LEVEL 3 - 16 CONCRETE OUTLINE PLANS &amp; POST TENSION REINFORCING - WEST TOWER" is the
+    /// concrete outline of fourteen tower storeys with the tendons drawn on it, and REINFORC refused
+    /// it, so the model had seven storeys with columns where the engineer's has twenty. On the
+    /// corpus, 39 of 548 sheets a non-structural word refuses name a structural plan kind as well
+    /// (31 CONCRETE OUTLINE, 8 FOUNDATION PLAN; 15 sets). Matched as substrings, case-insensitively.
+    /// </summary>
+    public IReadOnlyList<string> StructuralPlanWords { get; init; } = new[] { "CONCRETE OUTLINE", "FOUNDATION PLAN" };
+
+    /// <summary>
+    /// The non-structural word that refuses a sheet by its name, or null where the sheet is read:
+    /// no pattern in the name, or a word that says it is a structural plan beside the pattern.
+    /// </summary>
+    public string? RefusedBy(string sheetName)
+    {
+        ArgumentNullException.ThrowIfNull(sheetName);
+        string? hit = NonStructuralSheetPatterns.FirstOrDefault(p => sheetName.IndexOf(p, StringComparison.OrdinalIgnoreCase) >= 0);
+        if (hit is null) return null;
+        return StructuralPlanWords.Any(w => sheetName.IndexOf(w, StringComparison.OrdinalIgnoreCase) >= 0) ? null : hit;
+    }
+
+    /// <summary>The structural-plan word that kept a sheet a non-structural pattern would have refused, or null.</summary>
+    public string? KeptBy(string sheetName)
+    {
+        ArgumentNullException.ThrowIfNull(sheetName);
+        if (!NonStructuralSheetPatterns.Any(p => sheetName.IndexOf(p, StringComparison.OrdinalIgnoreCase) >= 0)) return null;
+        return StructuralPlanWords.FirstOrDefault(w => sheetName.IndexOf(w, StringComparison.OrdinalIgnoreCase) >= 0);
+    }
+
     /// <summary>Thinnest printed slab call-out this believes. See `dxf.slab-callout-min-thickness`.</summary>
     public double SlabCalloutMinThickness { get; init; } = 4.0;
 

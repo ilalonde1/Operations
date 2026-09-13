@@ -43,12 +43,20 @@ public class NonStructuralSheetsAreRefusedTests
     [InlineData("--Structural Plan - LEVEL 2 PLAN - CONCRETE OUTLINE", true)]
     [InlineData("--Structural Plan - A-LEVEL 28", true)]
     [InlineData("--Structural Plan - LEVEL P3 PLAN - FOUNDATION", true)]
+    // Read, step 50: a sheet that says what it is, is that. 31130's fourteen tower storeys are drawn on a
+    // concrete outline that carries the tendons, and REINFORC refused it (7 storeys with columns where the
+    // engineer's model has 20); a foundation plan with the footing reinforcing on it is the foundation plan.
+    [InlineData("S2.06.1_1_LEVEL 3 - 16 CONCRETE OUTLINE PLANS & POST TENSION REINFORCING - WEST TOWER", true)]
+    [InlineData("S2.00.2 - FOUNDATION PLAN / PARKING LEVEL P6 -SOUTH (FOOTING REINFORCING)", true)]
+    // ...but a reinforcing plan of a slab is a reinforcing plan, and a design load plan says nothing structural
+    [InlineData("S2.04.2_1_LEVEL 1 PLAN SLAB REINFORCING WEST - TOWER", false)]
+    [InlineData("S2.06.2_1_LEVEL 3 - 16 REINFORCING PLANS WEST TOWER -", false)]
     public void OnlyThePlansThatDrawTheStructureAreRead(string fileName, bool shouldBeRead)
     {
-        string? hit = Patterns.FirstOrDefault(
-            p => fileName.IndexOf(p, StringComparison.OrdinalIgnoreCase) >= 0);
+        var options = new PlanClassificationOptions { NonStructuralSheetPatterns = Patterns };
+        string? hit = options.RefusedBy(fileName);
 
-        _out.WriteLine($"{fileName}  ->  {(hit is null ? "read" : "refused by " + hit)}");
+        _out.WriteLine($"{fileName}  ->  {(hit is null ? "read" + (options.KeptBy(fileName) is { } w ? $" (kept by {w})" : "") : "refused by " + hit)}");
 
         Assert.Equal(shouldBeRead, hit is null);
     }

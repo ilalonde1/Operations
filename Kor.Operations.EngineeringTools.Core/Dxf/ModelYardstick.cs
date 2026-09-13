@@ -32,7 +32,14 @@ namespace Kor.Operations.EngineeringTools.Dxf;
 /// </remarks>
 public static class ModelYardstick
 {
-    public sealed record StoreyFigure(string Storey, string YardstickStorey, int Ours, int Theirs, double MedianMm, int OursWithin100, int TheirsWithin100);
+    public sealed record StoreyFigure(string Storey, string YardstickStorey, int Ours, int Theirs, double MedianMm, int OursWithin100, int TheirsWithin100, int OursBeyond = 0);
+
+    /// <summary>
+    /// How far past the engineer's outermost column on a storey a column of ours may stand and still be
+    /// judged against her model: registration slop and a column drawn at the slab edge, not a bay. A
+    /// bay is 5 m and more; a second tower on the same storey starts a bay past her last column.
+    /// </summary>
+    public const double FootprintMarginMm = 1500;
 
     public sealed record Comparison(
         string Model, string Yardstick, double ModelUnitMm, double YardstickUnitMm,
@@ -43,6 +50,7 @@ public static class ModelYardstick
         int FrameSupport,
         int OursCompared, double OursMedianMm, int OursWithin50, int OursWithin100, int OursWithin300,
         int TheirsCompared, double TheirsMedianMm, int TheirsWithin100,
+        int OursBeyondHerModel,
         IReadOnlyList<string> Notes)
     {
         /// <summary>Our columns on shared storeys with none of theirs within 300 mm, counted by the section we gave them — what we read that the engineer did not model, named by its size.</summary>
@@ -136,8 +144,29 @@ public static class ModelYardstick
         }
         var sh = shift ?? (0, 0);
 
-        var pairs = new List<(string Storey, string Theirs, (double X, double Y) P, (double X, double Y) Q)>();
+        // THE YARDSTICK JUDGES ONLY WHERE THE ENGINEER MODELLED. Her model of 31065 is the podium and ONE
+        // of its two towers (35 columns on L3 in a 34 m box; ours 90 across 93 m), so on every tower storey
+        // two thirds of our columns had "none of theirs within 300 mm" and a median residual of 20 m - not
+        // a defect of ours, a building she did not model (2026-09-12). A column of ours farther than
+        // FootprintMarginMm past the box of her columns on that storey is beyond her model: counted and
+        // named, judged by nothing. Her columns are all judged against ours as before - what she
+        // modelled, we must have read.
+        var judged = new List<(string Ours, string Theirs, IReadOnlyList<(double X, double Y)> OurPts, IReadOnlyList<(double X, double Y)> TheirPts)>();
+        var beyondByStorey = new Dictionary<string, int>(StringComparer.Ordinal);
         foreach (var s in shared)
+        {
+            double x0 = s.TheirPts.Min(q => q.X) - sh.X - FootprintMarginMm, x1 = s.TheirPts.Max(q => q.X) - sh.X + FootprintMarginMm;
+            double y0 = s.TheirPts.Min(q => q.Y) - sh.Y - FootprintMarginMm, y1 = s.TheirPts.Max(q => q.Y) - sh.Y + FootprintMarginMm;
+            var inside = s.OurPts.Where(p => p.X >= x0 && p.X <= x1 && p.Y >= y0 && p.Y <= y1).ToList();
+            beyondByStorey[s.Ours] = s.OurPts.Count - inside.Count;
+            if (inside.Count > 0) judged.Add((s.Ours, s.Theirs, inside, s.TheirPts));
+        }
+        int oursBeyond = beyondByStorey.Values.Sum();
+        if (oursBeyond > 0)
+            notes.Add($"{oursBeyond} of our columns stand beyond her model's footprint on their storey (more than {FootprintMarginMm / 1000:0.#} m past her outermost column) and are not judged: {string.Join(", ", beyondByStorey.Where(kv => kv.Value > 0).OrderByDescending(kv => kv.Value).Select(kv => $"{kv.Key} {kv.Value}"))}");
+
+        var pairs = new List<(string Storey, string Theirs, (double X, double Y) P, (double X, double Y) Q)>();
+        foreach (var s in judged)
             foreach (var p in s.OurPts)
                 pairs.Add((s.Ours, s.Theirs, p, s.TheirPts.MinBy(q => Sq((q.X - sh.X, q.Y - sh.Y), p))));
 
@@ -151,7 +180,7 @@ public static class ModelYardstick
         var ourSections = SectionsByColumn(model);
         var theirSections = SectionsByColumn(yard);
         var oursUnmatched = new Dictionary<string, int>(StringComparer.Ordinal);
-        foreach (var s in shared)
+        foreach (var s in judged)
             foreach (var p in s.OurPts)
                 if (Math.Sqrt(s.TheirPts.Min(q => Sq((q.X - sh.X, q.Y - sh.Y), p))) > 300)
                 {
@@ -193,7 +222,7 @@ public static class ModelYardstick
         {
             var rs = g.Select(pr => Math.Sqrt(Sq((pr.Q.X - sh.X, pr.Q.Y - sh.Y), pr.P))).ToList();
             var trs = theirResiduals.Where(t => t.Storey.Split('+').Contains(g.Key, StringComparer.Ordinal)).Select(t => t.R).ToList();
-            storeyFigures.Add(new StoreyFigure(g.Key, g.First().Theirs, rs.Count, trs.Count, Median(rs), rs.Count(r => r <= 100), trs.Count(r => r <= 100)));
+            storeyFigures.Add(new StoreyFigure(g.Key, g.First().Theirs, rs.Count, trs.Count, Median(rs), rs.Count(r => r <= 100), trs.Count(r => r <= 100), beyondByStorey.GetValueOrDefault(g.Key)));
         }
         storeyFigures = storeyFigures.OrderByDescending(f => f.Ours).ThenBy(f => f.Storey, StringComparer.Ordinal).ToList();
 
@@ -208,6 +237,7 @@ public static class ModelYardstick
             support,
             residuals.Count, residuals.Count == 0 ? 0 : Median(residuals), residuals.Count(r => r <= 50), residuals.Count(r => r <= 100), residuals.Count(r => r <= 300),
             theirResiduals.Count, theirResiduals.Count == 0 ? 0 : Median(theirResiduals.Select(t => t.R).ToList()), theirResiduals.Count(t => t.R <= 100),
+            oursBeyond,
             notes)
         {
             OursUnmatchedBySection = oursUnmatched.OrderByDescending(kv => kv.Value).ThenBy(kv => kv.Key, StringComparer.Ordinal).Select(kv => (kv.Key, kv.Value)).ToList(),
@@ -243,11 +273,11 @@ public static class ModelYardstick
         sb.AppendLine(CultureInfo.InvariantCulture, $"storeys: ours {c.ModelStoreys}, theirs {c.YardstickStoreys}, shared {c.Storeys.Count}; only ours: {(c.StoreysOnlyInModel.Count == 0 ? "-" : string.Join(" ", c.StoreysOnlyInModel))}; only theirs: {(c.StoreysOnlyInYardstick.Count == 0 ? "-" : string.Join(" ", c.StoreysOnlyInYardstick))}");
         if (c.OursCompared > 0)
         {
-            sb.AppendLine(CultureInfo.InvariantCulture, $"ours -> theirs: {c.OursCompared} columns on shared storeys, nearest of theirs: median {c.OursMedianMm:N0} mm; within 50 mm {c.OursWithin50} ({100.0 * c.OursWithin50 / c.OursCompared:F0}%), within 100 mm {c.OursWithin100} ({100.0 * c.OursWithin100 / c.OursCompared:F0}%), within 300 mm {c.OursWithin300} ({100.0 * c.OursWithin300 / c.OursCompared:F0}%)");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"ours -> theirs: {c.OursCompared} columns on shared storeys inside her footprint{(c.OursBeyondHerModel > 0 ? $" ({c.OursBeyondHerModel} beyond it, not judged)" : "")}, nearest of theirs: median {c.OursMedianMm:N0} mm; within 50 mm {c.OursWithin50} ({100.0 * c.OursWithin50 / c.OursCompared:F0}%), within 100 mm {c.OursWithin100} ({100.0 * c.OursWithin100 / c.OursCompared:F0}%), within 300 mm {c.OursWithin300} ({100.0 * c.OursWithin300 / c.OursCompared:F0}%)");
             sb.AppendLine(CultureInfo.InvariantCulture, $"theirs -> ours: {c.TheirsCompared} columns they modelled on those storeys, nearest of ours: median {c.TheirsMedianMm:N0} mm; within 100 mm {c.TheirsWithin100} ({100.0 * c.TheirsWithin100 / Math.Max(1, c.TheirsCompared):F0}%)");
-            sb.AppendLine(CultureInfo.InvariantCulture, $"{c.Storeys.Count} storeys both models name, every one (ours / theirs / median / ours within 100 / theirs within 100):");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"{c.Storeys.Count} storeys both models name, every one (ours judged / theirs / median / ours within 100 / theirs within 100 / ours beyond her footprint):");
             foreach (var f in c.Storeys)
-                sb.AppendLine(CultureInfo.InvariantCulture, $"   {f.Storey,-10} {f.YardstickStorey,-10} {f.Ours,4} {f.Theirs,4}  {f.MedianMm,7:N0} mm  {100.0 * f.OursWithin100 / f.Ours,3:F0}%  {100.0 * f.TheirsWithin100 / Math.Max(1, f.Theirs),3:F0}%");
+                sb.AppendLine(CultureInfo.InvariantCulture, $"   {f.Storey,-10} {f.YardstickStorey,-10} {f.Ours,4} {f.Theirs,4}  {f.MedianMm,7:N0} mm  {100.0 * f.OursWithin100 / f.Ours,3:F0}%  {100.0 * f.TheirsWithin100 / Math.Max(1, f.Theirs),3:F0}%{(f.OursBeyond > 0 ? $"   beyond {f.OursBeyond}" : "")}");
         }
         else sb.AppendLine("no columns on a storey both models name");
         if (c.OursUnmatchedBySection.Count > 0)
