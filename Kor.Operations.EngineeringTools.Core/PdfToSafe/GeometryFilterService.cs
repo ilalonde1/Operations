@@ -259,8 +259,15 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     if (!isClosed && pts.Count == 2)
                     {
                         double dx = Math.Abs(pts[1].X - pts[0].X), dy = Math.Abs(pts[1].Y - pts[0].Y);
-                        if (dx <= furniture.AxisTolerance && furniture.OnVerticalAxis(cx)) { Fate(PathReason.GridAxis); continue; }
-                        if (dy <= furniture.AxisTolerance && furniture.OnHorizontalAxis(cy)) { Fate(PathReason.GridAxis); continue; }
+                        // ...drawn with the grid's pen (step 53): a heavier stroke along the axis is a tendon or a beam,
+                        // kept apart from the lines for the tendon reader - no wall reader sees it
+                        if ((dx <= furniture.AxisTolerance && furniture.OnVerticalAxis(cx)) || (dy <= furniture.AxisTolerance && furniture.OnHorizontalAxis(cy)))
+                        {
+                            if (furniture.IsGridPen(sub.LineWidth)) { Fate(PathReason.GridAxis); continue; }
+                            result.StrokesOnGrid.Add(pts);
+                            Fate(PathReason.StrokeOnGrid, result.StrokesOnGrid.Count - 1);
+                            continue;
+                        }
                         if (dy <= furniture.AxisTolerance && furniture.IsUnderline(pts[0].X, pts[1].X, cy)) { Fate(PathReason.Underline); continue; }
                         if (furniture.IsOnMatchLine(pts[0], pts[1])) { Fate(PathReason.MatchLine); continue; }
                     }

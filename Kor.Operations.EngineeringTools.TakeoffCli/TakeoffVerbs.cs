@@ -16,6 +16,7 @@ public static class TakeoffVerbs
         ("model-yardstick", ModelYardstickVerb.Matches, ModelYardstickVerb.Run),
         ("grid-names", GridNamesVerb.Matches, GridNamesVerb.Run),
         ("model-to-page", ModelToPageVerb.Matches, ModelToPageVerb.Run),
+        ("pdf-at", PdfAtVerb.Matches, PdfAtVerb.Run),
         ("corpus-analyze", CorpusAnalyzeVerb.Matches, CorpusAnalyzeVerb.Run),
         ("corpus-query", CorpusQueryVerb.Matches, CorpusQueryVerb.Run),
         ("pdf-levels", PdfLevelsVerb.Matches, PdfLevelsVerb.Run),

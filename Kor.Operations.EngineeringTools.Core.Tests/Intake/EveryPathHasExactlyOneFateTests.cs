@@ -66,6 +66,11 @@ public sealed class EveryPathHasExactlyOneFateTests
                 case PathReason.EmittedAsLine:
                     Assert.Same(path.Points, geometry.Lines[fate.ObjectIndex!.Value]);
                     break;
+                case PathReason.StrokeOnGrid:
+                    // kept apart from the lines (step 53): the tendon reader's, and nobody else's
+                    Assert.Same(path.Points, geometry.StrokesOnGrid[fate.ObjectIndex!.Value]);
+                    Assert.DoesNotContain(path.Points, geometry.Lines);
+                    break;
                 case PathReason.BecameSlabEdge:
                     // the line lies on the ring of the floor it became (step 24)
                     var edge = geometry.Slabs[fate.ObjectIndex!.Value];
@@ -110,7 +115,7 @@ public sealed class EveryPathHasExactlyOneFateTests
                 PathReason.BecameSlab or PathReason.BecameColumnByDeclaredSize or PathReason.BecameColumnByShape or PathReason.BecameWall
                     or PathReason.BecameFooting or PathReason.GridAxis or PathReason.Doorway or PathReason.ClipOfWall
                     or PathReason.BecameWallFace or PathReason.MatchLine or PathReason.BecameSlabEdge => Disposition.Read,
-                PathReason.EmittedAsLine or PathReason.FootingBoxNoLabel or PathReason.Band => Disposition.Unaccounted,
+                PathReason.EmittedAsLine or PathReason.FootingBoxNoLabel or PathReason.Band or PathReason.StrokeOnGrid => Disposition.Unaccounted,
                 _ => Disposition.Discarded,
             };
             Assert.Equal(expected, PathFate.DispositionOf(reason));
@@ -150,6 +155,8 @@ internal static class FateFixture
         (Rect(600, 600, 20000, 20000), PathReason.FurnitureRegion),
         (Line(30000, 1000, 30000, 3000), PathReason.GridAxis),
         (Line(1000, 30000, 3000, 30000), PathReason.GridAxis),
+        // a stroke along the axis eighteen times the grid's pen: a tendon drawn on the grid line (step 53)
+        (Line(30000, 5000, 30000, 25000) with { LineWidth = 9 }, PathReason.StrokeOnGrid),
         (Line(1000, 2000, 3000, 2000), PathReason.Underline),
         (Rect(600, 600) with { Color = (0xF0, 0xF0, 0xF0) }, PathReason.PaperFill),
         (Rect(70000, 50000), PathReason.SheetFrame),
@@ -214,6 +221,7 @@ internal static class FateFixture
             [new("schedule: COLUMN SCHEDULE", 20000, 20000, 22000, 22000)],
             [30000], [30000], 1.5, [(1800, 400)], 1)
         {
+            AxisPenPts = 0.5,                      // the fixture's grid is drawn at the fixture line's own pen
             Underlines = [new(1000, 3000, 2000)],
             MatchLines = [new(0, 48000, 70000, 48000)],
         };

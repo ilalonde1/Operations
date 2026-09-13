@@ -36,6 +36,13 @@ public static class TendonAnchors
     /// <summary>A tendon's end inside a column's footprint, with this much slack, stands the column down.</summary>
     public const double EndSlackMm = 50.0;
 
+    /// <summary>
+    /// A tendon's run may pass through its anchor and stop a little beyond it - the leader stub to the
+    /// force label, drawn on the tendon's own line (31202 p32: "189 Kips", the run ending 632 mm past the
+    /// block, 2026-09-12). A block the run passes through with an end within this of it is its anchor.
+    /// </summary>
+    public const double EndOvershootMm = 800.0;
+
     /// <summary>A sheet with at least this many force labels is a post-tensioning plan, on which every long run is a tendon.</summary>
     public const int PostTensionedSheetMinLabels = 3;
 
@@ -57,7 +64,7 @@ public static class TendonAnchors
         var words = new HashSet<string>(forceWords.Select(w => w.Trim().ToUpperInvariant()), StringComparer.Ordinal);
         var tendons = new List<Tendon>();
         var taken = new HashSet<int>();
-        var chains = Chains(geometry.Lines);
+        var chains = Chains(geometry.Lines.Concat(geometry.StrokesOnGrid).ToList());   // the strokes along the grid are the tendons drawn on it (step 53)
         int forceLabels = 0;
         foreach (var word in content.Words)
         {
@@ -163,11 +170,25 @@ public static class TendonAnchors
             double hx = w / 2 + EndSlackMm, hy = d / 2 + EndSlackMm;
             bool declared = sizeIsDeclared is not null && i < sizeIsDeclared.Count && sizeIsDeclared[i];
             bool smallerThanAnyColumn = smallestDeclaredAreaMm2 is double least && w * d < least;
-            bool anchor = !declared && tendons.Any(t => (t.Label != SheetTendon || smallerThanAnyColumn) && (Inside(t.Start) || Inside(t.End)));
+            // the overshoot clause is for fittings only: a block no column the set schedules is as small as. A 36" round
+            // column a tendon runs over, with a chain break at a MID mark a metre past it, is not an anchor (31130 west
+            // tower, sixteen storeys of it, 2026-09-12).
+            bool anchor = !declared && tendons.Any(t => (t.Label != SheetTendon || smallerThanAnyColumn) && (Inside(t.Start) || Inside(t.End) || (smallerThanAnyColumn && EndsJustPast(t))));
             geometry.ColumnIsTendonAnchor.Add(anchor);
             if (anchor) stoodDown++;
 
             bool Inside((double X, double Y) p) => Math.Abs(p.X - cx) <= Math.Max(hx, hy) && Math.Abs(p.Y - cy) <= Math.Max(hx, hy);
+            // the run passes through the block (its line within the block's half-width of the centre) and one end is within the overshoot of it
+            bool EndsJustPast(Tendon t)
+            {
+                bool horizontal = Math.Abs(t.End.Y - t.Start.Y) <= Math.Abs(t.End.X - t.Start.X);
+                double along0 = horizontal ? t.Start.X : t.Start.Y, along1 = horizontal ? t.End.X : t.End.Y;
+                double across = horizontal ? t.Start.Y : t.Start.X, centreAlong = horizontal ? cx : cy, centreAcross = horizontal ? cy : cx;
+                double half = horizontal ? hy : hx, halfAlong = horizontal ? hx : hy;
+                if (Math.Abs(across - centreAcross) > half) return false;
+                if (centreAlong < Math.Min(along0, along1) || centreAlong > Math.Max(along0, along1)) return false;   // through it, not beside it
+                return Math.Min(Math.Abs(along0 - centreAlong), Math.Abs(along1 - centreAlong)) <= halfAlong + EndOvershootMm;
+            }
         }
         return stoodDown;
     }

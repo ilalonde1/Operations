@@ -78,6 +78,13 @@ public enum PathReason
     /// as one figure-of-eight whose centroid the area formula put kilometres away.
     /// </summary>
     SymbolQuadrant,
+    /// <summary>
+    /// A stroke lying along a grid axis and heavier than the grid's own pen (intake step 53): a tendon or a
+    /// beam drawn on the grid line, not the grid. Kept apart from the lines (ExtractedGeometry.StrokesOnGrid)
+    /// for the tendon reader; no wall reader sees it. 31202's L7-12 plan draws the tendons on grids F and J
+    /// at 9 and 16 pt where the grid is 3 pt, and eleven anchors at their ends were columns for it.
+    /// </summary>
+    StrokeOnGrid,
 }
 
 /// <summary>Input path index and its decision; ObjectIndex is zero-based in the corresponding geometry list.</summary>
@@ -91,7 +98,7 @@ public sealed record PathFate(int PathIndex, Disposition Disposition, PathReason
             or PathReason.BecameFooting or PathReason.GridAxis or PathReason.Doorway or PathReason.ClipOfWall
             or PathReason.BecameWallFace or PathReason.MatchLine or PathReason.BecameSlabEdge
             => Disposition.Read,
-        PathReason.EmittedAsLine or PathReason.FootingBoxNoLabel or PathReason.Band => Disposition.Unaccounted,
+        PathReason.EmittedAsLine or PathReason.FootingBoxNoLabel or PathReason.Band or PathReason.StrokeOnGrid => Disposition.Unaccounted,
         PathReason.MarkupOnlyMode or PathReason.FurnitureRegion or PathReason.Underline
             or PathReason.PaperFill or PathReason.SheetFrame or PathReason.FrameEdgeLine
             or PathReason.GridLineExcluded or PathReason.ColumnTooSmall or PathReason.UnfilledSmallShape

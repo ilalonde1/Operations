@@ -127,6 +127,8 @@ public sealed class EveryReaderConstantIsTriagedTests
         ["TendonAnchors.cs:PieceLateralMm"] = Tolerance("pieces of one tendon lie on one line within this"),
         ["TendonAnchors.cs:PieceGapMm"] = Convention("dxf.pdf.tendon-piece-gap-mm — a tendon's pieces are broken for labels and chair marks up to this gap"),
         ["TendonAnchors.cs:PostTensionedSheetMinLabels"] = Convention("dxf.pdf.tendon-sheet-min-labels — three force labels make a P/T plan"),
+        ["TendonAnchors.cs:EndOvershootMm"] = Tolerance("a tendon's run may stop this far past its anchor - the leader stub on its own line"),
+        ["SheetFurniture.cs:AxisPenHeavierBy"] = Tolerance("a stroke on a grid axis heavier than this many times the grid's pen at its bubble is not the grid"),
         ["DxfExporter.cs:minSeg"] = Tolerance("an alias of MinVertexDistanceMm"),
         ["GeometryFilterService.cs:WallLimitSlackMm"] = Tolerance("half an inch on the wall limits: a wall drawn at exactly the limit is a wall"),
         ["GeometryFilterService.cs:RectangleCornerCos"] = Tolerance("a corner is square within 3 degrees"),

@@ -46,7 +46,17 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         public sealed record Axis(string Name, bool Vertical, double At, int Bubbles, bool LabelsDisagree);
 
         public sealed record Grid(IReadOnlyList<Bubble> Bubbles, IReadOnlyList<double> VerticalAxesX, IReadOnlyList<double> HorizontalAxesY,
-            IReadOnlyList<Axis> Axes);
+            IReadOnlyList<Axis> Axes)
+        {
+            /// <summary>
+            /// THE GRID IS DRAWN WITH ONE PEN (intake step 53, 2026-09-12): the stroke width, in points, of the
+            /// axis line where it enters its bubble - the median over the bubbles, 0 where no bubble has a
+            /// stroked line at it. A tendon drawn along a grid line is heavier than the grid: 31202's L7-12
+            /// plan draws the tendons on grids F and J at 9 and 16 pt where the grid is 3 pt, every piece of
+            /// them was read as the grid, and eleven anchors at their ends stayed columns.
+            /// </summary>
+            public double PenPts { get; init; }
+        }
 
         /// <summary>A point is on the circle when its distance from the centroid is within this share of the radius.</summary>
         public const double RoundnessTolerance = 0.12;
@@ -105,7 +115,38 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 bubbles,
                 vAxes.Select(a => a.At).ToList(),
                 hAxes.Select(a => a.At).ToList(),
-                vAxes.Concat(hAxes).ToList());
+                vAxes.Concat(hAxes).ToList())
+            { PenPts = PenAtTheBubbles(page, bubbles) };
+        }
+
+        /// <summary>
+        /// The pen the grid is drawn with: for each bubble that has a rule, the stroked two-point line on
+        /// that rule whose end lies nearest the bubble's centre (the grid line enters its bubble; a tendon
+        /// drawn along the grid stops at the slab edge, well short of it), and the median of their widths.
+        /// </summary>
+        private static double PenAtTheBubbles(VectorPageReader.PageContent page, IReadOnlyList<Bubble> bubbles)
+        {
+            var widths = new List<double>();
+            foreach (var b in bubbles)
+            {
+                double best = double.MaxValue, width = 0;
+                foreach (var path in page.Paths)
+                {
+                    if (path.IsAnnotation || path.IsClosed || !path.IsStroked || path.Points.Count != 2) continue;
+                    var p0 = path.Points[0]; var p1 = path.Points[1];
+                    double d;
+                    if (b.RuleX is double rx && Math.Abs(p0.X - p1.X) <= AxisTolerancePts && Math.Abs((p0.X + p1.X) / 2 - rx) <= AxisTolerancePts)
+                        d = Math.Min(Math.Abs(p0.Y - b.Cy), Math.Abs(p1.Y - b.Cy));
+                    else if (b.RuleY is double ry && Math.Abs(p0.Y - p1.Y) <= AxisTolerancePts && Math.Abs((p0.Y + p1.Y) / 2 - ry) <= AxisTolerancePts)
+                        d = Math.Min(Math.Abs(p0.X - b.Cx), Math.Abs(p1.X - b.Cx));
+                    else continue;
+                    if (d < best) { best = d; width = path.LineWidth; }
+                }
+                if (best <= 4 * b.Radius && width > 0) widths.Add(width);
+            }
+            if (widths.Count == 0) return 0;
+            widths.Sort();
+            return widths[widths.Count / 2];
         }
 
         /// <summary>

@@ -1,11 +1,11 @@
 # PDF intake — what it does today, and what it leaves on the page
 
-## 0. START HERE (state as of 2026-09-12, after step 51 and completion-plan WP1–WP5 — 207 of 292 sets build from the PDF alone)
+## 0. START HERE (state as of 2026-09-12, after step 53 and completion-plan WP1–WP5 — 207 of 292 sets build from the PDF alone)
 
 A session picking this up cold reads this section, then the completion plan
 (`docs/architecture/Kor.Operations.EngineeringTools.PdfIntake.plan.md` — what "complete" means, the
 packages, and where each stands), then the last three step sections (§54–§56). §1–§52 are the
-record of how each rule was arrived at, read when a rule is being changed. §60 is the latest section.
+record of how each rule was arrived at, read when a rule is being changed. §61 is the latest step.
 
 **What this is.** A PDF ingestor: one ingestion point (`DrawingIntake.ReadSheet` → `PdfOnlyBuild`)
 that reads a drawing set and hands its geometry to outlets — the ETABS `.e2k` today, the DXF as a
@@ -57,7 +57,7 @@ closing rules that a rendered view would have settled; that is the mistake this 
 | Storeys with a plate | 741 of 2,401 (31%) |
 | Against the engineers' own models (39 sets sharing a storey with columns, of 62 with a model) | 34% of our columns within 100 mm of theirs, 48% of theirs within 100 mm of ours; 31130 under 25% with 20 shared storeys — the next thing to look at |
 | 31168 against the Revit route | columns median 16 mm, 92% within 50 mm; tower plates within 0.1%; 36 of 62 storeys carry a plate; walls 1,324 vs 1,832 |
-| The four harness sets with the engineer's own model (§56–§58, after step 50; ours judged only inside her footprint) | 31138 70% / 96%; 31170 86% / 91%; 31202 **90% / 95%** (42 anchors stand beyond her perimeter and are counted, not judged; 32 offset 12x24s are her grid-snapped columns; 28 11x14s); 31065 **73% / 76%** (231 columns of the tower she did not model, not judged); 31130 **75% / 83%** (one building since step 51; 424 columns of the tower she did not model, not judged) |
+| The four harness sets with the engineer's own model (§56–§58, after step 50; ours judged only inside her footprint) | 31138 70% / 96%; 31170 86% / 91%; 31202 **93% / 95%** (after step 53; 32 offset 12x24s are her grid-snapped columns; 28 11x14s); 31065 **73% / 76%** (231 columns of the tower she did not model, not judged); 31130 **75% / 83%** (one building since step 51; 424 columns of the tower she did not model, not judged) |
 
 **The work order is the count.** 1. Storeys: the 72 sets whose plans name their storeys with
 words (step 47). 2. Views on the grid: 56% of plan views are not placed by name. 3. Plates: 69%
@@ -2963,3 +2963,71 @@ be a column") and her 31138 model disagree; the reader follows the drawing's lab
 
 WHAT THIS DOES NOT: change any model (no rule was added; the six are as banked at step 51); 31130's
 `L1M`, which the wall elevations name and her model folds into L1 — ours is the drawings' storey.
+
+## 61. Step 53, 2026-09-12: `pdf-at`; the grid is drawn with one pen; a run may stop just past its anchor — and a class found and NOT shipped: the model depends on where the origin is
+
+**The instrument first.** 11 of 55 anchor blocks on 31202's L7–12 plan (p32) were still columns
+and the tendon census said only "nearest tendon end 1,696 mm" — while `vector-lines` showed the
+page draws a 16 m line from that very block. Which fate had the intake given that line? Nothing
+answered at a point. `takeoff pdf-at <pdf> <page> <x> <y> --scale N [--radius mm]` now does: every
+path and word within a radius of a point — page millimetres, the frame `pdf-overlay --mark` and
+`model-to-page` use — each with the fate the intake gave it, its pen, its shape and its distance.
+The ledger `pdf-inventory` sums, opened at one spot.
+
+**What it showed.** `path #15488  Read GridAxis  stroked w16pt  box 16041x0 mm`: the tendon along
+grid F, 16 pt heavy, had been read as the grid — every stroke lying on a grid axis was the grid,
+whatever its pen. On p32, 234 of 1,517 "grid axis" paths were 9, 16, 4 and 5 pt strokes lying
+along the 3 pt grid: the tendons on F and J and other linework drawn on the axes. A tendon the
+reader never saw reaches no anchor.
+
+**Rule 1 — the grid is drawn with one pen.** The pen is read where each axis enters its bubble
+(`GridBubbles.PenAtTheBubbles`: the stroked line on the bubble's rule whose end lies nearest the
+bubble's centre — a tendon stops at the slab edge, well short of the bubble; the median over the
+bubbles), carried as `SheetFurniture.Set.AxisPenPts`; a stroke on an axis heavier than
+`AxisPenHeavierBy` (2) times it is not the grid (`IsGridPen`). **It is kept apart** — fated
+`StrokeOnGrid`, held in `ExtractedGeometry.StrokesOnGrid`, read by the tendon reader alone and
+by nothing else, not exported. The first cut let those strokes into `Lines`, where the face-line
+wall reader took them for the faces of the filled walls beside them, and walls moved on five of
+the six sets; the scoped cut changes no wall (31168's p22 read, loop for loop, is byte-identical to
+the reading before). Unknown pen: as before. `TheGridIsDrawnWithOnePenTests`.
+
+**Rule 2 — a run may stop just past its anchor.** The next block `pdf-at` opened ("189 Kips"): the
+tendon, now a chain from 9,479 to 88,685, starts 632 mm *past* the block — the leader stub to the
+label drawn on the tendon's own line — so neither end lay inside it. A block the run passes
+through with an end within `EndOvershootMm` (800) of it is its anchor; one the run passes through
+and runs on past a bay is not (`TendonAnchors.EndsJustPast`; the case in
+`ATendonsAnchorIsNotAColumnTests`). **For fittings only:** the first cut stood down a 36" round
+column on 31130's west tower, sixteen storeys of it, because a chain broke at a MID mark a metre
+past it (rendered, p22); the clause now applies only to a block smaller than the set's smallest
+scheduled column, as the P/T-sheet clause does. The six-set gate caught it: 31130 lost one column
+a storey with no wall moved, and the crop said what it was.
+
+**Measured on p32:** anchors stood down **44 → 53 of 55**; tendons 220 → 244; grid axes 23 → 23.
+The two that remain are drawn with a sloped piece the axis-aligned chain does not follow — the
+stated limit. 31202 yardstick **90% → 93%** (661 of 711 judged inside her footprint), 95% held.
+Six-set gate: 31202 alone moved — 89 columns stood down across L7–L13, ROOF and PENTHOUSE, no
+wall, no plate; five sets byte-identical. Banked.
+
+**The class found on the way, and why it is NOT in this commit.** Chasing the first cut's wall
+changes with the frames registered (`model-yardstick new old`: every set's columns 99–100% within
+100 mm of the old bank's), the DXF's origin turned out to be the drawn content's length-weighted
+centroid — `Lines` included — so every sheet's frame, and every model's (its reference plan's),
+moved whenever the reading changed: 31168 by 723 x 283 mm for no change in any member. Making the
+frame the page's (`$INSBASE` = 0) fixed that and exposed the class beneath it: **the composed
+walls depend on where the origin is.** The same 36 DXFs of 31168 translated by 5 m x 3 m build a
+model whose columns match to 100% and whose walls differ by 25 lost / 11 gained — tower A's stair
+core reads as 18 walls in one frame and 8 in the other (A-L35; one sheet alone is stable in both
+frames, so the flip is in how two sheets' readings of one core are reconciled — the "earlier sheet
+drew more than half" rule on inch-snapped coordinates is the suspect, not yet proven). The old
+bank was one draw of those dice; the page frame is another and lost that core's lower walls.
+Shipping that blind is exactly what the gate is for. The page-frame change is stashed
+(`stash@{0}`), and the next step is rule 11's: a differential — *the same drawings shifted on the
+page build the same structure* — then the fix, then the page frame, then the six re-banked once
+with the frames stable.
+
+WHAT THIS DOES NOT: a tendon drawn with the grid's own pen along the grid (still the grid); a page
+whose grid is drawn with two pens (the median takes the commoner); the two sloped tendons on p32;
+the frame class (next); `ModelDiff`'s registration, which the six-set gate reports through and
+which called 177 columns lost and gained on 31065 under a pure translation the yardstick's
+registration matched to 100% — the gate's diff should register the way the yardstick does (next,
+with the frame).

@@ -61,6 +61,28 @@ public sealed class ATendonsAnchorIsNotAColumnTests
         Assert.Equal([false, true, true, false], g.ColumnIsTendonAnchor);
     }
 
+    /// <summary>
+    /// The run may stop a little past its anchor - the leader stub to the force label drawn on the tendon's
+    /// own line (31202 p32, "189 Kips": 632 mm past the block). A block the run passes through with an end
+    /// within EndOvershootMm of it is its anchor; one it passes through and runs on past a bay is not.
+    /// </summary>
+    [Fact]
+    public void ARunThatStopsJustPastTheBlockStillEndsAtIt()
+    {
+        var g = Geometry();
+        // the tendon overshoots the west anchor by 600 mm and the east one by 1.5 m
+        g.Lines[0] = [(400, 3000), (12500, 3000)];
+        var content = new VectorPageReader.PageContent(1, 3000, 2000, [Word("270", 5500, 3200), Word("Kips", 5800, 3200)], []);
+        var tendons = TendonAnchors.Read(content, g, MmPerPoint, TendonAnchors.DefaultForceWords);
+        Assert.Single(tendons);
+        // the overshoot is for fittings: without a schedule saying what the set's smallest column is, nothing is stood down by it
+        Assert.Equal(0, TendonAnchors.StandDownColumns(g, tendons));
+        // with a 12x24 scheduled, the 229x305 west block within the overshoot is the anchor; the east one is a bay short of the end;
+        // the 12x48 the run passes over is bigger than the smallest column and stays whatever the chain does
+        Assert.Equal(1, TendonAnchors.StandDownColumns(g, tendons, null, 305.0 * 610.0));
+        Assert.Equal([false, true, false, false], g.ColumnIsTendonAnchor);
+    }
+
     [Fact]
     public void ALineWithNoForceLabelIsNotATendonAndALeaderIsTooShortToBeOne()
     {

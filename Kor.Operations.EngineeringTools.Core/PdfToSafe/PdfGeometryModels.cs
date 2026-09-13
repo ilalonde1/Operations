@@ -175,6 +175,13 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         public List<bool> SlabIsAnnotation   { get; } = new();
         public List<bool> ColumnIsAnnotation { get; } = new();
         public List<bool> LineIsAnnotation   { get; } = new();
+        /// <summary>
+        /// THE GRID IS DRAWN WITH ONE PEN (intake step 53): the strokes lying along a grid axis that are heavier
+        /// than the grid's own pen - a tendon or a beam drawn on the grid line - kept APART from <see cref="Lines"/>
+        /// so that no wall reader sees them (until step 53 they were the grid, and nothing saw them at all), and
+        /// read by the tendon reader, which chains them with the lines. Not exported.
+        /// </summary>
+        public List<List<(double X, double Y)>> StrokesOnGrid { get; } = new();
         /// <summary>A TENDON'S ANCHOR IS NOT A COLUMN (intake step 48). Parallel to <see cref="Columns"/>: true when the column's footprint holds the end of a line labelled with a force (<see cref="Intake.TendonAnchors"/>); not written, not counted as a column.</summary>
         public List<bool> ColumnIsTendonAnchor { get; } = new();
         /// <summary>

@@ -193,6 +193,17 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         {
             public static Set Empty { get; } = new([], [], [], 0, [], 0);
 
+            /// <summary>The pen the grid is drawn with, in points, read at its bubbles (GridBubbles.Grid.PenPts); 0 where unknown.</summary>
+            public double AxisPenPts { get; init; }
+
+            /// <summary>
+            /// THE GRID IS DRAWN WITH ONE PEN (step 53): a stroke on a grid axis is the grid only when its pen is
+            /// no heavier than <see cref="AxisPenHeavierBy"/> times the grid's own; heavier is something drawn
+            /// along the grid - a tendon, a beam - and is read as what it is. Unknown pen: every stroke on the
+            /// axis is the grid, as before.
+            /// </summary>
+            public bool IsGridPen(double lineWidthPts) => AxisPenPts <= 0 || lineWidthPts <= AxisPenPts * AxisPenHeavierBy;
+
             /// <summary>The underlines on the sheet. A LINE matching one is an underline; a shape centred on one is not.</summary>
             public IReadOnlyList<Underline> Underlines { get; init; } = [];
             /// <summary>The lines labelled MATCH LINE, each spanning the drawing (step 22); usually none or one.</summary>
@@ -239,7 +250,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     Math.Abs(small - Math.Min(s.W, s.D)) <= SizeToleranceMm && Math.Abs(large - Math.Max(s.W, s.D)) <= SizeToleranceMm);
             }
 
-            /// <summary>Points to another unit: regions, axes and underlines scale; declared sizes are millimetres already.</summary>
+            /// <summary>Points to another unit: regions, axes and underlines scale; declared sizes are millimetres already, and the pen stays in points.</summary>
             public Set Scaled(double factor) => new Set(
                 Regions.Select(r => r.Scaled(factor)).ToList(),
                 VerticalAxesX.Select(x => x * factor).ToList(),
@@ -248,6 +259,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 DeclaredColumnSizesMm,
                 SizeToleranceMm)
             {
+                AxisPenPts = AxisPenPts,
                 Underlines = Underlines.Select(u => new Underline(u.MinX * factor, u.MaxX * factor, u.Y * factor)).ToList(),
                 MatchLines = MatchLines.Select(m => new MatchLine(m.X0 * factor, m.Y0 * factor, m.X1 * factor, m.Y1 * factor)).ToList(),
             };
@@ -258,6 +270,12 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         /// drawing: a title block runs the sheet's height (or width), a grid line runs the plan's.
         /// </summary>
         public const double TitleBlockRuleMinShare = 0.6;
+
+        /// <summary>
+        /// How much heavier than the grid's own pen a stroke on an axis may be and still be the grid (step 53).
+        /// 31202 p32: the grid at 3 pt with 2 pt pieces; the tendons along it at 9 and 16 pt. Twice.
+        /// </summary>
+        public const double AxisPenHeavierBy = 2.0;
 
         /// <summary>
         /// A title block is a strip: at most this share of the page's width (or height). A cut that
@@ -356,6 +374,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             //    underline may only ever claim the one line that IS it
             return new Set(regions, grid.VerticalAxesX, grid.HorizontalAxesY, GridBubbles.AxisTolerancePts, declared, sizeToleranceMm)
             {
+                AxisPenPts = grid.PenPts,
                 Underlines = Underlines(page, rules).ToList(),
                 MatchLines = MatchLines(page).ToList(),
             };
