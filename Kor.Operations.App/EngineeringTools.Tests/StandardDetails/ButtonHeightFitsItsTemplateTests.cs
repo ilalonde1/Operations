@@ -1,6 +1,7 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -77,8 +78,8 @@ public sealed class ButtonHeightFitsItsTemplateTests
                 var border = Regex.Match(body, @"<Border[^>]*\sBorderThickness=""\s*([\d.]+)");
                 found[style.Groups[1].Value] = new TemplatedStyle(
                     style.Groups[1].Value,
-                    double.Parse(padding.Groups[1].Value),
-                    border.Success ? double.Parse(border.Groups[1].Value) : 0,
+                    double.Parse(padding.Groups[1].Value, CultureInfo.InvariantCulture),
+                    border.Success ? double.Parse(border.Groups[1].Value, CultureInfo.InvariantCulture) : 0,
                     Path.GetFileName(path));
             }
         }
@@ -109,7 +110,7 @@ public sealed class ButtonHeightFitsItsTemplateTests
                 var height = Regex.Match(tag, @"\sHeight=""([\d.]+)""");
                 if (!height.Success) continue;   // unpinned: the template sizes it, which is the pattern that works
 
-                var value = double.Parse(height.Groups[1].Value);
+                var value = double.Parse(height.Groups[1].Value, CultureInfo.InvariantCulture);
                 if (value < style.MinimumHeight)
                 {
                     var name = Regex.Match(tag, @"x:Name=""([^""]+)""").Groups[1].Value;

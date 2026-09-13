@@ -397,7 +397,7 @@ public sealed class IntelExtractorTests
         }
 
         const long canonicalOrgId = 38918;
-        const string displayName = "R79TestPerson";
+        const string displayName = "Rseventynine Testperson";   // two words: IntelPersonNameGuard rejects a single-word name (2026-06-16); the fixture predated the guard
 
         await CleanupR79TestPersonAsync(connectionString, displayName);
         try
@@ -412,7 +412,7 @@ public sealed class IntelExtractorTests
             var result = new EnrichmentResult(
                 EnrichmentStatuses.Ok,
                 ErrorMessage: null,
-                ResultJson: "{\"keyPeople\":[{\"name\":\"R79TestPerson\",\"title\":\"Test Title\"}]}",
+                ResultJson: "{\"keyPeople\":[{\"name\":\"Rseventynine Testperson\",\"title\":\"Test Title\"}]}",
                 Notes: null);
 
             await store.RecordAttemptAsync(

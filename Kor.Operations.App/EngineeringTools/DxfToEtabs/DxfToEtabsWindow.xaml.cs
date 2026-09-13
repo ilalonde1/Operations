@@ -112,7 +112,7 @@ namespace Kor.Operations.EngineeringTools.DxfToEtabs
                 if (candidate is not null) LoadReference(candidate);
             }
             catch (IOException) { /* a suggestion that cannot be made is not an error */ }
-            catch (UnauthorizedAccessException) { }
+            catch (UnauthorizedAccessException) { /* likewise: a folder we may not list suggests nothing */ }
         }
 
         private void BrowseReference_Click(object sender, RoutedEventArgs e)

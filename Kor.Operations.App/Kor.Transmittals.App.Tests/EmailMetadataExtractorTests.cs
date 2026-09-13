@@ -84,7 +84,9 @@ Add-Type -Path '{Q(Path.Combine(baseDir, "Microsoft.Extensions.Logging.Abstracti
 $loggingAsm = [System.AppDomain]::CurrentDomain.GetAssemblies() | Where-Object {{ $_.GetName().Name -eq 'Microsoft.Extensions.Logging.Abstractions' }} | Select-Object -First 1
 $openType = $loggingAsm.GetType('Microsoft.Extensions.Logging.Abstractions.NullLogger`1')
 $closedType = $openType.MakeGenericType([Kor.EmailSearch.Core.BasicEmailMetadataExtractor])
-$logger = $closedType.GetProperty('Instance').GetValue($null)
+$instance = $closedType.GetField('Instance')
+if ($null -eq $instance) {{ $instance = $closedType.GetProperty('Instance') }}   # a field since Logging.Abstractions 10 (2026-09-12); a property before
+$logger = $instance.GetValue($null)
 $extractor = [Kor.EmailSearch.Core.BasicEmailMetadataExtractor]::new($logger)
 $result = $extractor.ExtractAsync('24001', '{Q(filePath)}').GetAwaiter().GetResult()
 [pscustomobject]@{{
