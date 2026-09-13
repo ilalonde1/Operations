@@ -27,6 +27,15 @@ public sealed record DxfSegment(string Layer, DxfPoint Start, DxfPoint End)
     /// hold no 10" arc at all. What the drawing was drawn with is not a heuristic.
     /// </summary>
     public bool FromCurve { get; init; }
+
+    /// <summary>
+    /// This segment is an edge of a CLOSED polyline - a shape the drawing finished, an outline. The
+    /// dash joiner leaves such an edge alone (intake step 56, 2026-09-13): 31168's tower A core draws
+    /// its two 30x41 returns and the 28" wall between them as three closed outlines whose bottom edges
+    /// lie on one line, and joined into one segment those edges took the wall's outline apart. A face
+    /// drawn as loose lines - a dashed edge, a face cut at a T - is still joined.
+    /// </summary>
+    public bool OfClosedOutline { get; init; }
 }
 
 /// <summary>Annotation read from the drawing at the point where the drafter placed it.</summary>

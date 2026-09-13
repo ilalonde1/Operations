@@ -44,7 +44,7 @@ public static class LoopGeometry
 
             double du = maxU - minU, dv = maxV - minV;
             double area = du * dv;
-            if (area >= bestArea) continue;
+            if (area > bestArea - 1e-6) continue;      // a rectangle's two orientations tie exactly; the first keeps it
 
             bestArea = area;
 
@@ -64,6 +64,20 @@ public static class LoopGeometry
         }
         return best;
     }
+
+    /// <summary>
+    /// Whether a distance is within a tolerance, TO THE MICRON (intake step 56, 2026-09-13). A drafted
+    /// dimension is a round number and so is a tolerance - a 12" pier width and a 12" bridge tolerance
+    /// are the same 304.8 mm - and the arithmetic that measures the one lands a few trillionths either
+    /// side of the other depending on where the drawing's origin is. 31202's LEVEL 1 outline bridged that
+    /// 12" gap in one frame and not in the other, and read a 610 mm wall as 1,069 mm for it. Both sides
+    /// are rounded to a micron before they are compared, so a gap equal to the tolerance is within it in
+    /// every frame; nothing a micron or more away from the tolerance changes.
+    /// </summary>
+    public static bool Within(double distance, double tolerance) => Math.Round(distance, 6) <= Math.Round(tolerance, 6);
+
+    /// <summary>The same, strictly: a distance clearly beyond a tolerance, to the micron.</summary>
+    public static bool Beyond(double distance, double tolerance) => Math.Round(distance, 6) > Math.Round(tolerance, 6);
 
     public static bool PointInPolygon(DxfPoint test, IReadOnlyList<DxfPoint> polygon)
     {

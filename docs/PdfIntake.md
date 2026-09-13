@@ -1,11 +1,11 @@
 # PDF intake — what it does today, and what it leaves on the page
 
-## 0. START HERE (state as of 2026-09-12, after step 55 and completion-plan WP1–WP5 — 207 of 292 sets build from the PDF alone)
+## 0. START HERE (state as of 2026-09-13, after step 56 and completion-plan WP1–WP5 — 207 of 292 sets build from the PDF alone)
 
 A session picking this up cold reads this section, then the completion plan
 (`docs/architecture/Kor.Operations.EngineeringTools.PdfIntake.plan.md` — what "complete" means, the
 packages, and where each stands), then the last three step sections (§54–§56). §1–§52 are the
-record of how each rule was arrived at, read when a rule is being changed. §62 is the latest step.
+record of how each rule was arrived at, read when a rule is being changed. §63 is the latest step.
 
 **What this is.** A PDF ingestor: one ingestion point (`DrawingIntake.ReadSheet` → `PdfOnlyBuild`)
 that reads a drawing set and hands its geometry to outlets — the ETABS `.e2k` today, the DXF as a
@@ -57,7 +57,7 @@ closing rules that a rendered view would have settled; that is the mistake this 
 | Storeys with a plate | 741 of 2,401 (31%) |
 | Against the engineers' own models (39 sets sharing a storey with columns, of 62 with a model) | 34% of our columns within 100 mm of theirs, 48% of theirs within 100 mm of ours; 31130 under 25% with 20 shared storeys — the next thing to look at |
 | 31168 against the Revit route | columns median 16 mm, 92% within 50 mm; tower plates within 0.1%; 36 of 62 storeys carry a plate; walls 1,324 vs 1,832 |
-| The four harness sets with the engineer's own model (§56–§58, after step 50; ours judged only inside her footprint) | 31138 70% / 96%; 31170 86% / 91%; 31202 **93% / 95%** (after step 53; 32 offset 12x24s are her grid-snapped columns; 28 11x14s); 31065 **73% / 76%** (231 columns of the tower she did not model, not judged); 31130 **75% / 83%** (one building since step 51; 424 columns of the tower she did not model, not judged) |
+| The four harness sets with the engineer's own model (§56–§58, after step 50; ours judged only inside her footprint) | after step 56 (§63): 31138 68% / 96%; 31202 92% / 95%; 31065 72% / 70%; 31130 76% / 83% — the matched counts unchanged, a few more returns of ours read as columns. Before: 31138 70% / 96%; 31170 86% / 91%; 31202 **93% / 95%** (after step 53; 32 offset 12x24s are her grid-snapped columns; 28 11x14s); 31065 **73% / 76%** (231 columns of the tower she did not model, not judged); 31130 **75% / 83%** (one building since step 51; 424 columns of the tower she did not model, not judged) |
 
 **The work order is the count.** 1. Storeys: the 72 sets whose plans name their storeys with
 words (step 47). 2. Views on the grid: 56% of plan views are not placed by name. 3. Plates: 69%
@@ -3090,3 +3090,142 @@ names axes in ONE direction, which could be fixed in that direction by name and 
 other (L35's by-name X and its by-members X agree to 0.5 mm, so it was not needed); the frame
 class itself — the differential *the same drawings shifted on the page build the same structure*
 is still owed, then the page frame (`stash@{0}`), then `ModelDiff`'s registration.
+
+## 63. Step 56, 2026-09-13: the same drawings shifted on the page build the same structure — a place is decided by distance, never by a cell
+
+**The differential first (rule 11).** `TheSameDrawingsShiftedOnThePageBuildTheSameStructureTests`:
+each of the six banked sets read once (`PdfOnlyBuild.WriteSheets`, no files) and composed twice —
+as it is, and with every view moved 5,000 x 3,000 mm on the page (`DxfSheet.Shifted`, a public
+`PdfOnlyBuild.Compose` over views) — and the two models compared registered (`ModelDiff`: by the
+grid labels both carry; the registration itself asserted to be the shift). Both readings and both
+models are left in `TestResults/shifted/<job>/{as-is,shifted}/`. First run: **five of six sets
+built a different structure** — 31168 walls 308 lost / 165 gained and 22 columns gained, 31138
+51 / 33 with three plates moved and a column lost, 31170 13 / 23, 31202 12 / 12, 31130 7 / 5;
+31065 alone identical. The registration was (5,000, 3,000) to the unit on all six: `ModelDiff` is
+not the frame problem §61 suspected.
+
+**The class, characterised once (rule 10).** A model is made of members from many sheets, and at
+five places the route decides that two things are *the same place*: two sheets' readings of one
+wall or column (one member per place per storey), two ends of linework that should meet (a loop's
+node), two dashes on one line, a point and the joint already written for it, a wall on this storey
+and the pier label it shares with the storey below. Every one of those decisions was made by
+**which cell of a grid anchored at the origin a point fell in** — an inch grid for members, a foot
+for plates, the join tolerance for nodes and joints, the offset tolerance for dashes, six inches for
+labels — and whether two points a millimetre apart share a cell depends on where the cell edges
+fall between them, which is to say on where the origin is. The rule that has to hold is one
+sentence: *a place is decided by distance, never by a cell; a cell is only an index for the search.*
+The contradictions, each fixed the same way (the nearest thing within the tolerance, searched over
+the cell and its neighbours; a cell holds a list, so a second occupant does not evict the first):
+
+1. `E2kGeometryComposer` — `PlacedMembers` for walls, columns, spandrels (an inch), plates (a foot)
+   and openings (0.01 unit), replacing five `HashSet<(long, long, …)>` keys; `LabelledPlaces` for
+   pier and spandrel labels (6 in). This alone took 31168 from 308 / 165 + 22 to 0 / 1.
+2. `PointAt` — returned the joint in the point's own cell before looking at the neighbours; a
+   point 0.5 mm from a joint across the edge took the one 1 mm away in its cell. 31168's LEVEL 3
+   wall along y = 6,931 joined the stack at 6,930 in one frame and at 6,932 in the other, and the
+   gap fill then gave LEVEL 2 a wall. The last 0 / 1.
+3. `PlanLoopBuilder.NodeOf` — a node was the cell; two ends a tenth of a millimetre apart either
+   side of an edge were two nodes. Found by the new `dxf-inspect --members` (every wall and column
+   the reader hands the composer, one per line, sorted) diffed sheet by sheet between the frames:
+   **9 of 31202's 44 sheets were read differently** — on LEVEL 4 a 6" wall along the tops of two
+   48" piers came out left of the first pier in one frame and right of the second in the other.
+4. `DashedLineJoiner` — dashes grouped by (angle cell, offset-from-origin cell); a run of dashes
+   either side of an offset cell edge was two lines. Grouped by distance in sorted order now.
+
+With those four in, 31168 and 31065 built the same structure shifted and four sets still did not
+(31130 20 / 13, 31138 37 / 31, 31170 20 / 28, 31202 15 / 12), and the same 8 or 9 sheets of 31202
+read differently however the composer was fixed — so the second half of the class is in the
+READER, and it is not cells. Two more shapes of the one fault, found by probing the sheets that
+differed (`dxf-inspect --members` on the as-is and shifted readings the differential now leaves on
+disk, then a probe inside the stage that differed):
+
+5. **A tie decided by rounding noise.** `WallOutlineDecomposer` offered 31202's LEVEL 4 bottom
+   edge three partners at separation 154.432 mm and overlap 5,539.232 mm — three equal 6" loops
+   along the tops of two 48" piers, their bottom edges run into one line by the dash joiner —
+   and the shifted frame computed one overlap as 5,539.232000000002: two trillionths, which
+   `overlap > bestOverlap` took for the longer face. Everywhere the reader picks *the best* of
+   candidates that can be equal by construction, a tie is now a tie (1e-6) and is broken by the
+   geometry or by the order the candidates came in, never by the arithmetic: the decomposer's
+   partner (then first along the face), `PairOpenFaces` (the same), `WallNetwork`'s corner moves
+   (distance to the micron, then axis and end), its openings, `PlanLoopBuilder`'s continuation,
+   its nearest node and the composer's nearest joint (the earlier one on a tie — the cells were
+   searched in the frame's order), `LoopGeometry`'s least-area box (a rectangle's two orientations
+   tie exactly), the keyhole vertex, and every ordering by area (rounded to 1e-3).
+6. **A threshold equal to a drafted dimension.** 31202's LEVEL 1 outline has a 12" gap where a
+   pier's top meets the run of a wall face, and `WallBridgeTolerance` is 12" — the same
+   304.8 mm; the measured gap came out 304.79999999 in one frame and 304.80000001 in the other,
+   bridged in one and not the other, and a 610 mm wall read as 1,069 mm for it. Every distance or
+   size the reader compares with a tolerance a drafter could draw — the builder's join, bridge and
+   extension, the decomposer's and the open-face pairing's thickness and overlap floors, the
+   network's snap and reach, the wall-versus-column box sizes (a 48" loop *is* 48" in every frame)
+   — is compared to the micron (`LoopGeometry.Within` / `Beyond`: both sides rounded to 1e-6
+   before `<=`). Nothing a micron or more from a threshold changes.
+
+After 5 and 6, every sheet of 31202, 31130, 31138 and 31168 read the same in both frames and the
+models of 31065, 31130, 31168 and 31202 were identical shifted; 31138 gained one 610 mm panel and
+31170 six 1,829 mm panels — spandrels over doorways of exactly 24" and 72", `MinOpeningSpan` and
+`MaxOpeningSpan` to the millimetre: shape 6 again, in `WallNetwork.FindOpenings` (`--members` did
+not list openings until then, which is why the sheets read "the same"). And the last one:
+
+7. **A probe on a drawn line.** 31170's LEVEL 2 draws a 229 mm wall with both faces and its
+   centreline; the decomposer's concrete-or-void probe sits between the faces exactly on the
+   centreline, and a ray cast at a point on an edge is the frame's coin toss — 114 mm in one
+   frame, 229 in the other. The probe now asks a hair to each side of the midline (1% of the
+   separation) and either side inside is concrete; `MaterialRun`'s probe the same. And a member
+   whose midpoint lies on its plate's edge (a perimeter wall) is on the plate: `E2kDocument`'s
+   support test takes a point within an inch of an edge as inside.
+
+What is left at the sheet level is one wall on one sheet of 31170 whose thickness is 317.5 mm and
+prints as 318 or 317 — the same wall.
+
+**And the six-set gate said which draw the old dice had made.** With the differential green the
+gate moved on all six, and 31168's tower A core read as 8 walls on L5–L15 where the bank had 18:
+the south wall (28", 9 m) gone, its two 30x41 returns read as columns. §61's "18 in one frame and
+8 in the other" — and the deterministic reading had landed on the 8. The cause was the eighth
+shape, in the joiner: the returns and the wall band draw their bottom edges on one line, and the
+`DashedLineJoiner` merged those three touching, collinear edges into one segment (its cells had
+merged them in one frame and not the other), which took the band's outline apart — it no longer
+closed, its bottom face was strung between the returns in one open chain, and its top face, 711 mm
+away, was beyond the 18" ceiling the open-face pairing keeps for ambiguous pairs. The first cut —
+"a dash has a gap", no merging of touching collinear segments at all — gave the L4-L14 plan the
+bank's 18 walls in both frames, and the gate then showed what else the merge had been doing: a
+face cut at a T is two touching pieces of one loose line, and unmerged those pieces read as stubs
+and slivers on every set (31065 L6: 250 and 300 mm walls, two returns read as columns, +1 column a
+storey that her model does not have). **An edge of a closed outline is a finished shape's edge,
+not a dash** (`DxfSegment.OfClosedOutline`, set by the reader for closed polylines): the joiner
+leaves those alone and joins loose lines as it always did. The core then reads as its outlines
+say — the 28" south wall between the returns' inner faces, and the two 30x41 returns as columns
+(under 48", her rule) — 12 walls and 26 columns, in both frames; a run of one segment is emitted
+untouched either way (rebuilding it from a projection put rounding noise on its ends). Also from
+this: `WallOutlineDecomposer.Decompose` hands back the edges no panel used, and a chain that was
+partly read offers its leftovers to the pooled pass, and `PlanLoopBuilder.PickContinuation` breaks
+a tie between two edges leaving one way by the one that closes the outline, then the shorter.
+
+`dxf-inspect` also read every millimetre sheet at inch thresholds until tonight ("-> 0 panel(s)"
+on every loop); it reads the sheet in its own unit now, as `grid-names` does, and `--members`
+prints what the reader hands the composer.
+
+**Measured.** Ninth run of the differential: **all six sets build the same structure shifted** —
+registered at (5,000, 3,000) to the unit, no plate moved, no column or wall lost or gained. Six-set
+gate against the step-55 bank, every set moved, and this is what the frame's dice had been
+deciding: 31168 walls 607 lost / 821 gained, columns 24 / 87 — tower A's core read two ways on
+different storeys (18 walls on L5–L15, 8 on L16 up, the returns as columns on some and stubs on
+others) now reads one way on all 32 (the 28" south wall, the returns as 30x41 columns); 31202
+walls 81 / 137, 31130 119 / 155, 31138 111 / 135 (columns 16 / 33), 31065 139 / 140 (columns
+9 / 38, and L2 now has two columns where it had none), 31170 75 / 90. The yardsticks say what
+the columns did: the matched counts are identical on all five sets that have one (31130 457,
+31138 415, 31202 661, 31065 236, 31168 534), and ours-judged rose by 2 to 15 a set — returns and
+short piers read as columns that she models as walls, the column-versus-pier question already
+open for WP6. Rendered (31168, every storey): one core, box and middle wall, on every tower
+storey. Banked, all six.
+
+WHAT THIS DOES NOT: a rotation; a shift that is not a whole number of millimetres — the classifier
+still keys exact duplicates at 0.1 mm (`seenEdges`) and 1 mm (`SameWall`), and a 0.05 mm shift
+would move those (a real duplicate is exact, so nothing measured turns on it); the page frame
+itself (`stash@{0}`, next); the PDF reader's own page-frame bins (`GeometryFilterService`,
+`SheetFurniture`), which a shift of the DXF cannot reach — the same drawing printed at a different
+place on its sheet is the next differential; a dependence that shows only under a different vector;
+whether a 30x41 return is a column or a pier (her 31138 has 121 piers; ask at WP6); the coverage
+fault the L4 case exposed — one long face facing three loops pairs with one of them and the other
+two are lost in either frame (`WallOutlineDecomposer`/`PairOpenFaces` consume a face on its first
+pairing) — a reading rule for a later step.

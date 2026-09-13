@@ -268,6 +268,22 @@ public static class PdfOnlyBuild
         return Compose(pdf, workDir, pages, sheets, written, options, rulesConnection, watch, views: null);
     }
 
+    /// <summary>
+    /// The composer alone over views already read - the second half of <see cref="Build"/> for a
+    /// reading made once and composed more than once: the differential of intake step 56 composes a
+    /// set's views as they are and shifted on the page, and the two models must differ by the shift
+    /// alone. <paramref name="workDir"/> takes <c>levels.csv</c>, <c>out.e2k</c> and <c>report.txt</c>;
+    /// no DXF is written.
+    /// </summary>
+    public static BuildOutcome Compose(string pdf, string workDir, int pages, SheetsResult sheets, IReadOnlyList<DxfSheet> views, PdfIntakeOptions options, string? rulesConnection = null)
+    {
+        ArgumentNullException.ThrowIfNull(sheets);
+        ArgumentNullException.ThrowIfNull(views);
+        Directory.CreateDirectory(workDir);
+        return Compose(pdf, workDir, pages, sheets, sheets.Sheets.SelectMany(s => s.DxfFiles).ToList(), options, rulesConnection,
+            System.Diagnostics.Stopwatch.StartNew(), views);
+    }
+
     /// <param name="views">The views in memory; null and the composer reads the DXF files under workDir/dxf.</param>
     private static BuildOutcome Compose(string pdf, string workDir, int pages, SheetsResult sheets, IReadOnlyList<string> written, PdfIntakeOptions options, string? rulesConnection, System.Diagnostics.Stopwatch watch,
         IReadOnlyList<DxfSheet>? views)

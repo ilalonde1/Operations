@@ -21,12 +21,19 @@ public static class DashedLineJoiner
 
         foreach (var layerGroup in segments.GroupBy(s => s.Layer))
         {
-            // Bucket by the infinite line a segment sits on: its direction, and its
-            // perpendicular distance from the origin.
-            var lines = new Dictionary<(string Layer, long Angle, long Offset), List<DxfSegment>>();
-
+            // Group by the infinite line a segment sits on: its direction, and its perpendicular
+            // distance from the origin. BY DISTANCE, NOT BY CELL (intake step 56, 2026-09-12): these
+            // were cells of the tolerance, so two dashes of one line either side of a cell boundary
+            // were two lines, and where the boundaries fell depended on where the drawing's origin
+            // was — the same drawings shifted on the page joined their dashes differently. Sorted by
+            // angle, a run of segments within the angle tolerance of its first is one direction;
+            // within it, sorted by offset, each segment within the offset tolerance of the one
+            // before continues the line. A dash gap along the line is the next loop's business.
+            var placed = new List<(double Angle, double Offset, DxfSegment Seg)>();
             foreach (var seg in layerGroup)
             {
+                // an edge of a closed outline is a finished shape's edge, not a dash: left as drawn
+                if (seg.OfClosedOutline) { result.Add(seg); continue; }
                 double dx = seg.End.X - seg.Start.X, dy = seg.End.Y - seg.Start.Y;
                 double length = Math.Sqrt(dx * dx + dy * dy);
                 if (length < 1e-9) continue;
@@ -36,16 +43,27 @@ public static class DashedLineJoiner
 
                 double angle = Math.Atan2(uy, ux) * 180.0 / Math.PI;
                 double offset = ux * seg.Start.Y - uy * seg.Start.X;
-
-                var key = (layerGroup.Key,
-                    (long)Math.Round(angle / angleToleranceDegrees),
-                    (long)Math.Round(offset / offsetTolerance));
-
-                if (!lines.TryGetValue(key, out var list)) lines[key] = list = new List<DxfSegment>();
-                list.Add(seg);
+                placed.Add((angle, offset, seg));
             }
 
-            foreach (var line in lines.Values)
+            var lines = new List<List<DxfSegment>>();
+            var byAngle = placed.OrderBy(p => p.Angle).ThenBy(p => p.Offset).ToList();
+            for (int i = 0; i < byAngle.Count;)
+            {
+                int j = i + 1;
+                while (j < byAngle.Count && byAngle[j].Angle - byAngle[i].Angle <= angleToleranceDegrees) j++;
+                var direction = byAngle.GetRange(i, j - i).OrderBy(p => p.Offset).ToList();
+                var line = new List<DxfSegment> { direction[0].Seg };
+                for (int k = 1; k < direction.Count; k++)
+                {
+                    if (direction[k].Offset - direction[k - 1].Offset > offsetTolerance) { lines.Add(line); line = new List<DxfSegment>(); }
+                    line.Add(direction[k].Seg);
+                }
+                lines.Add(line);
+                i = j;
+            }
+
+            foreach (var line in lines)
             {
                 if (line.Count == 1) { result.Add(line[0]); continue; }
 
@@ -67,9 +85,13 @@ public static class DashedLineJoiner
 
                 double runLo = spans[0].Lo, runHi = spans[0].Hi;
                 var reference = spans[0].Seg;
+                var run = new List<DxfSegment> { spans[0].Seg };
 
                 void Emit(double lo, double hi)
                 {
+                    // A run of one segment is that segment, untouched: rebuilding it from a projection puts
+                    // rounding noise on its ends, and an outline's corner has to stay the corner it was drawn.
+                    if (run.Count == 1) { result.Add(run[0]); return; }
                     // Rebuild the segment on the same line, spanning the merged run.
                     double baseProjection = Project(reference.Start);
                     var start = new DxfPoint(
@@ -83,15 +105,26 @@ public static class DashedLineJoiner
 
                 for (int i = 1; i < spans.Count; i++)
                 {
-                    if (spans[i].Lo - runHi <= maxGap)
+                    // Loose lines that touch or overlap along one line are one line drawn in pieces - a face
+                    // cut where another wall's outline crosses it - and are joined as dashes are. The edges of
+                    // closed outlines never reach here (OfClosedOutline): 31168's tower A core draws its two
+                    // 30x41 returns and the 28" wall between them as three closed shapes whose bottom edges
+                    // lie on one line, and joined into one segment they took the wall's outline apart (intake
+                    // step 56, 2026-09-13: 18 core walls in one frame and 8 in the other, on which pair the
+                    // cells merged).
+                    double gap = spans[i].Lo - runHi;
+                    if (gap <= maxGap)
                     {
                         runHi = Math.Max(runHi, spans[i].Hi);
+                        run.Add(spans[i].Seg);
                     }
                     else
                     {
                         Emit(runLo, runHi);
                         runLo = spans[i].Lo;
                         runHi = spans[i].Hi;
+                        reference = spans[i].Seg;
+                        run = new List<DxfSegment> { spans[i].Seg };
                     }
                 }
                 Emit(runLo, runHi);

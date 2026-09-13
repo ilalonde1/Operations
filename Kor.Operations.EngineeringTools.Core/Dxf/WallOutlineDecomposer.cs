@@ -22,7 +22,21 @@ public static class WallOutlineDecomposer
     private const double ThicknessSlack = 0.01;
 
     public static IReadOnlyList<WallAxis> Decompose(PlanLoop loop, PlanClassificationOptions options)
+        => Decompose(loop, options, out _);
+
+    /// <summary>
+    /// As above, and hands back the edges no panel used — the faces of the outline this pass could
+    /// not pair inside it. An OPEN chain is a shape only by accident of where the drafting broke:
+    /// 31168's tower A core draws its two 30x41 returns and the 9 m bottom face of the south wall
+    /// between them as ONE line, so the chain is a U, its returns pair inside it, and the bottom face
+    /// — whose partner, the wall's top face, is a separate segment meeting the returns' inner faces
+    /// at T-junctions — was never offered to the pooled pass because the chain had "been read". A
+    /// chain is read edge by edge, and what is left over is offered on (intake step 56, 2026-09-13).
+    /// For a CLOSED outline the leftovers are its end caps and the like, and the caller leaves them.
+    /// </summary>
+    public static IReadOnlyList<WallAxis> Decompose(PlanLoop loop, PlanClassificationOptions options, out IReadOnlyList<(DxfPoint A, DxfPoint B)> unused)
     {
+        unused = Array.Empty<(DxfPoint, DxfPoint)>();
         var pts = loop.Points;
         int n = pts.Count;
         if (n < 4) return Array.Empty<WallAxis>();
@@ -50,7 +64,7 @@ public static class WallOutlineDecomposer
             // measure — it carries them at 9, 12, 15, 23 and 27 inches, all with pier labels — so
             // the floor belongs with the other face-scale threshold, not with the wall-vs-column
             // rule. Whether a short element is a column is decided later, and on connection.
-            if (lengthI < options.MinPanelOverlap) continue;
+            if (!LoopGeometry.Within(options.MinPanelOverlap, lengthI)) continue;    // to the micron: a 12" face meets a 12" floor in every frame
 
             double ux = (bi.X - ai.X) / lengthI, uy = (bi.Y - ai.Y) / lengthI;
             double nx = -uy, ny = ux;
@@ -75,8 +89,8 @@ public static class WallOutlineDecomposer
                 if (Math.Sign(d1) != Math.Sign(d2) && Math.Abs(d1) > 1e-6 && Math.Abs(d2) > 1e-6) continue;
 
                 double separation = (Math.Abs(d1) + Math.Abs(d2)) / 2.0;
-                if (separation < options.MinWallThickness - ThicknessSlack ||
-                    separation > options.MaxWallThickness + ThicknessSlack) continue;
+                if (LoopGeometry.Beyond(options.MinWallThickness - ThicknessSlack, separation) ||
+                    LoopGeometry.Beyond(separation, options.MaxWallThickness + ThicknessSlack)) continue;
 
                 // Overlap of the two faces along edge i's direction.
                 double ta0 = 0, ta1 = lengthI;
@@ -90,7 +104,7 @@ public static class WallOutlineDecomposer
                 // How much face two walls must share to be one panel — not how long an element must
                 // be to count as a wall. Those were the same number once, and raising the second to
                 // 48" stopped every corner's short limb from decomposing.
-                if (overlap < options.MinPanelOverlap) continue;
+                if (LoopGeometry.Beyond(options.MinPanelOverlap, overlap)) continue;
 
                 // Concrete, or a void? The material between two faces of one wall lies inside
                 // the outline; the gap between walls on opposite sides of a shaft lies outside.
@@ -100,13 +114,26 @@ public static class WallOutlineDecomposer
                 var probe = new DxfPoint(
                     ai.X + ux * midT + nx * midOffset,
                     ai.Y + uy * midT + ny * midOffset);
-                if (!LoopGeometry.PointInPolygon(probe, pts)) continue;
+                // A PROBE ON A DRAWN LINE IS NOT A COIN TOSS (intake step 56, 2026-09-13). A wall drawn with both
+                // faces AND its centreline puts the probe between the faces exactly on the centreline, and a ray
+                // cast at a point on an edge answers with the rounding noise of the frame: 31170's LEVEL 2 read
+                // a 229 mm wall as 114 in one frame and 229 in the other. Concrete either side of a drawn line is
+                // concrete; the probe is asked a hair to each side, and either says so.
+                double hair = 0.01 * Math.Max(1e-9, separation);
+                if (!LoopGeometry.PointInPolygon(new DxfPoint(probe.X + nx * hair, probe.Y + ny * hair), pts)
+                    && !LoopGeometry.PointInPolygon(new DxfPoint(probe.X - nx * hair, probe.Y - ny * hair), pts)) continue;
 
-                // Prefer the longest shared face; break ties on the thinner pairing.
-                // Prefer the closest opposite face: across a wall junction several faces
-                // overlap, and the true partner is the nearest one, not the longest.
+                // Prefer the closest opposite face: across a wall junction several faces overlap, and
+                // the true partner is the nearest one, not the longest. At one separation, the longest
+                // shared face; and at ONE LENGTH TOO, the first along this face. A TIE IS A TIE, TO THE
+                // MICRON (intake step 56, 2026-09-13): three equal 6" loops along the tops of two piers,
+                // their bottom edges run into one line by the dash joiner, offered this edge three
+                // partners at 154.432 by 5,539.232 - and the same drawings shifted 5 m on the page made
+                // one overlap 5,539.232000000002, two trillionths longer, which "overlap > bestOverlap"
+                // took for the longer face. The frame decided the wall; nothing in the drawing did.
                 if (bestJ < 0 || separation < bestDistance - 1e-6 ||
-                    (Math.Abs(separation - bestDistance) < 1e-6 && overlap > bestOverlap))
+                    (Math.Abs(separation - bestDistance) < 1e-6 && (overlap > bestOverlap + 1e-6 ||
+                        (Math.Abs(overlap - bestOverlap) <= 1e-6 && t0 < bestT0 - 1e-6))))
                 {
                     bestJ = j;
                     bestOverlap = overlap;
@@ -138,7 +165,7 @@ public static class WallOutlineDecomposer
             bestT1 = runT1;
 
             double half0 = bestDistance / 2.0 * bestSide;
-            if (bestT1 - bestT0 < bestDistance * options.MinPanelAspect)
+            if (LoopGeometry.Beyond(bestDistance * options.MinPanelAspect, bestT1 - bestT0))
             {
                 // Nearly square, so it is either a leftover sliver or a limb of a bigger shape.
                 // Which one cannot be told from its own proportions — held over and decided below,
@@ -184,6 +211,9 @@ public static class WallOutlineDecomposer
             used[j] = true;
         }
 
+        // the closing edge of an open chain (last point back to the first) is not drawn; only drawn edges are left over
+        int drawn = loop.ClosedExactly ? n : n - 1;
+        unused = Enumerable.Range(0, drawn).Where(e => !used[e]).Select(e => edges[e]).ToList();
         return walls;
     }
 
@@ -234,8 +264,12 @@ public static class WallOutlineDecomposer
 
         bool Concrete(double t)
         {
+            // asked a hair to each side of the midline, as the pairing probe is: the midline of a wall drawn
+            // with its centreline lies ON that line, and a point on an edge is the frame's coin toss
+            double hair = 0.01 * Math.Max(1e-9, Math.Abs(halfOffset));
             var p = new DxfPoint(origin.X + ux * t + nx * halfOffset, origin.Y + uy * t + ny * halfOffset);
-            return LoopGeometry.PointInPolygon(p, outline);
+            return LoopGeometry.PointInPolygon(new DxfPoint(p.X + nx * hair, p.Y + ny * hair), outline)
+                || LoopGeometry.PointInPolygon(new DxfPoint(p.X - nx * hair, p.Y - ny * hair), outline);
         }
 
         double low = Math.Max(0, t0), high = Math.Min(faceLength, t1);

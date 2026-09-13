@@ -90,8 +90,11 @@ public static class WallNetwork
             moves.Add((db, j, endB, cross));
         }
 
+        // Shortest first, and a TIE is broken by the walls' order, not by the arithmetic: two equal stubs either
+        // side of a pier reach its axis at the same distance to the micron, and which "won" the sort was the
+        // rounding noise of the frame the sheet happened to be drawn in (intake step 56, 2026-09-13).
         var taken = new HashSet<(int, int)>();
-        foreach (var move in moves.OrderBy(m => m.Distance))
+        foreach (var move in moves.OrderBy(m => Math.Round(m.Distance, 6)).ThenBy(m => m.AxisIndex).ThenBy(m => m.Which))
             if (taken.Add((move.AxisIndex, move.Which)))
                 axes[move.AxisIndex].SetEnd(move.Which, move.To);
     }
@@ -134,7 +137,7 @@ public static class WallNetwork
 
         which = t < 0.5 ? 0 : 1;
         distance = cross.DistanceTo(axis.End(which));
-        return distance <= reach;
+        return LoopGeometry.Within(distance, reach);
     }
 
     /// <summary>Pass 2 — ends left within a whisker of each other become one joint.</summary>
@@ -156,7 +159,7 @@ public static class WallNetwork
 
             var p = axes[ends[i].AxisIndex].End(ends[i].Which);
             var q = axes[ends[k].AxisIndex].End(ends[k].Which);
-            if (p.DistanceTo(q) <= SnapTolerance) { int a = Find(i), b = Find(k); if (a != b) clusterOf[a] = b; }
+            if (LoopGeometry.Within(p.DistanceTo(q), SnapTolerance)) { int a = Find(i), b = Find(k); if (a != b) clusterOf[a] = b; }
         }
 
         var members = new Dictionary<int, List<int>>();
@@ -217,7 +220,7 @@ public static class WallNetwork
             if (t <= 0.001 || t >= 0.999) return false;
 
             var onAxis = new DxfPoint(axis.A.X + dx * t, axis.A.Y + dy * t);
-            return onAxis.DistanceTo(at) <= SnapTolerance;
+            return LoopGeometry.Within(onAxis.DistanceTo(at), SnapTolerance);
         }
 
         var result = new List<Axis>();
@@ -231,13 +234,13 @@ public static class WallNetwork
             var cuts = new List<double>();
             foreach (var joint in joints)
             {
-                if (joint.DistanceTo(axis.A) <= SnapTolerance || joint.DistanceTo(axis.B) <= SnapTolerance) continue;
+                if (LoopGeometry.Within(joint.DistanceTo(axis.A), SnapTolerance) || LoopGeometry.Within(joint.DistanceTo(axis.B), SnapTolerance)) continue;
 
                 double t = ((joint.X - axis.A.X) * dx + (joint.Y - axis.A.Y) * dy) / lengthSquared;
                 if (t <= 0.001 || t >= 0.999) continue;
 
                 var onAxis = new DxfPoint(axis.A.X + dx * t, axis.A.Y + dy * t);
-                if (onAxis.DistanceTo(joint) > SnapTolerance) continue;
+                if (LoopGeometry.Beyond(onAxis.DistanceTo(joint), SnapTolerance)) continue;
 
                 if (!cuts.Any(c => Math.Abs(c - t) < 1e-6)) cuts.Add(t);
             }
@@ -249,11 +252,11 @@ public static class WallNetwork
             foreach (double t in cuts)
             {
                 var at = new DxfPoint(axis.A.X + dx * t, axis.A.Y + dy * t);
-                if (from.DistanceTo(at) > SnapTolerance)
+                if (LoopGeometry.Beyond(from.DistanceTo(at), SnapTolerance))
                     result.Add(new Axis { A = from, B = at, Thickness = axis.Thickness, Layer = axis.Layer });
                 from = at;
             }
-            if (from.DistanceTo(axis.B) > SnapTolerance)
+            if (LoopGeometry.Beyond(from.DistanceTo(axis.B), SnapTolerance))
                 result.Add(new Axis { A = from, B = axis.B, Thickness = axis.Thickness, Layer = axis.Layer });
         }
 
@@ -293,20 +296,20 @@ public static class WallNetwork
             // In line with one another, not merely pointing the same way.
             if (Math.Abs(ax * by - ay * bx) / (la * lb) > 0.2) continue;
             double offset = Math.Abs((b.Start.X - a.Start.X) * (-ay / la) + (b.Start.Y - a.Start.Y) * (ax / la));
-            if (offset > 3.0) continue;
+            if (LoopGeometry.Beyond(offset, 3.0)) continue;
 
             // Similar thickness, or it is a different wall that happens to line up.
-            if (Math.Abs(a.Thickness - b.Thickness) > 4.0) continue;
+            if (LoopGeometry.Beyond(Math.Abs(a.Thickness - b.Thickness), 4.0)) continue;
 
             (DxfPoint P, DxfPoint Q, double D) best = (default, default, double.MaxValue);
             foreach (var p in new[] { a.Start, a.End })
             foreach (var q in new[] { b.Start, b.End })
             {
                 double d = p.DistanceTo(q);
-                if (d < best.D) best = (p, q, d);
+                if (d < best.D - 1e-6) best = (p, q, d);
             }
 
-            if (best.D < minSpan || best.D > maxSpan) continue;
+            if (LoopGeometry.Beyond(minSpan, best.D) || LoopGeometry.Beyond(best.D, maxSpan)) continue;   // a 24" doorway meets a 24" floor in every frame
             if (!used.Add((i, j))) continue;
 
             found.Add(new WallOpening(best.P, best.Q, Math.Min(a.Thickness, b.Thickness), a.Layer));
@@ -322,10 +325,10 @@ public static class WallNetwork
         // The tightest reading wins: the true doorway is the one between the NEAREST pair of
         // ends, and anything sharing its middle is that same gap seen from further away.
         var kept = new List<WallOpening>();
-        foreach (var opening in found.OrderBy(o => o.Start.DistanceTo(o.End)))
+        foreach (var opening in found.OrderBy(o => Math.Round(o.Start.DistanceTo(o.End), 6)))
         {
             var mid = new DxfPoint((opening.Start.X + opening.End.X) / 2, (opening.Start.Y + opening.End.Y) / 2);
-            if (kept.Any(k => DistanceToSegment(mid, k.Start, k.End) <= 6.0)) continue;
+            if (kept.Any(k => LoopGeometry.Within(DistanceToSegment(mid, k.Start, k.End), 6.0))) continue;
             kept.Add(opening);
         }
 

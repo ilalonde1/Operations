@@ -1,6 +1,6 @@
 # PDF intake → ETABS — Completion Plan
 
-**Status:** Rev 3, 2026-09-12 (steps 49–55 added to §8, 3b–3e) — WP1–WP5 landed overnight on Ian's go-ahead ("go through this all,
+**Status:** Rev 3, 2026-09-13 (steps 49–56 added to §8, 3b–3f) — WP1–WP5 landed overnight on Ian's go-ahead ("go through this all,
 step by step, and finish it overnight"): commits `8fccbc25` (WP3), `3f3f82b9` (WP2), `aba7d9ff`
 (WP4), `69e554b5` (WP5), each gated by the six byte-identical and the fast suite; WP5's remaining
 conventions are counted by a test, not by this document. §8 is what needs Ian. Rev 2 (2026-09-11)
@@ -60,6 +60,7 @@ Today's harness is 6 of those 292. The one-job yardstick (31168) is 1 of 66.
 | Yardsticks (engineers' own models, 92 exported from KOR-210) | 18 of the 39: **45% / 52%** within 100 mm | 62 sets have one, 42 share a storey with columns: **34% / 48%**; per set from 75–99% (4 sets) to 0–24% (20 sets) — more sets, more assumed storeys, a lower share |
 | run 5 (2026-09-12, step 49; `ledger-sets-2026-09-12-run5-step49.csv`) | 206 of 292 build (31168's new issue lost to a duplicate view name, fixed with step 51); 99,314 columns from 105,660 (anchors and target quadrants, 101 sets); 65 sets have a yardstick, 47 share a storey: **34% / 48%** — the corpus number is frames and scope (§58), not reading; run 6 measures steps 50–51 |
 | run 6 (2026-09-12, steps 50–52; `ledger-sets-2026-09-12-run6-step51.csv`) | **207 of 293** build (a 293rd set appeared on the share; 31168 back); 2,031 of 4,323 views on the grid by name (47%); 749 of 2,401 storeys with a plate; 66 sets have a yardstick, 48 share a storey: **49% / 53%** — the scope rule, the sheets that say what they are, and the halves through a key plan; 9 sets at 75–99% (4 in run 3) |
+| run 7 (2026-09-12 22:02 → 09-13 00:33, step 53; `ledger-sets-2026-09-12-run7-step53.csv`; DB run `9b03d0ab`) | **207 of 293** build; 1,821 of 3,968 plan views placed on the grid by name (46% — `corpus-query summary`'s count; run 6's 2,031 of 4,323 was a scratch count over sheet rows, not comparable); 749 of 2,401 storeys with a plate; 104,761 columns from 105,023 (262 more anchors and fittings stood down); 48 yardstick sets: **49% / 53%** (6,344 of 13,024 judged, from 13,053 — the same 6,344 matched, 29 fewer of ours judged) — step 53 was a precision step on 31202 and reads as one on the corpus |
 
 **The work order is a count now.** 1. Storeys: the 67 sets whose plans name their storeys with
 words, and 935 views the composer can put on no storey by name (step 47, §8 item 5). 2. Views on
@@ -250,7 +251,8 @@ Revit route.
    drawn with one pen (a heavier stroke on an axis is a tendon, kept apart for the tendon reader
    alone); a run may stop just past its anchor (fittings only). 31202 **93% / 95%**, 53 of 55
    anchors on the typical sheet; five sets byte-identical. Corpus run 6 (steps 50–52): 207 of 293
-   build, yardsticks **49% / 53%** (from 34% / 48%); run 7 on step 53 launched 22:02.
+   build, yardsticks **49% / 53%** (from 34% / 48%); run 7 on step 53 (22:02 → 00:33): 207 of 293,
+   49% / 53% — the same 6,344 matched, 29 fewer of ours judged (§1b row).
    **FOUND, NOT SHIPPED — the next step, rule 11 first:** the DXF's origin is the drawn content's
    centroid, so every model's frame moves with the reading (31168 by 723 x 283 mm for no member
    change); the page frame fixes that (stashed, `stash@{0}`) and exposes that the composed walls
@@ -270,6 +272,17 @@ Revit route.
    wall corner outvote twenty-four columns (one vote per member per bin now), and outline corners
    sit half a thickness from the panel ends the model holds (axis ends now, both sides). Five
    sets byte-identical; 31168 re-banked. The differential of 3d is still owed, then the page frame.
+3f. **Step 56, 2026-09-13, 00:00–04:00** (§63): rule 11's differential
+   (`TheSameDrawingsShiftedOnThePageBuildTheSameStructureTests`: six sets read once, composed as-is
+   and shifted 5 m x 3 m, compared registered) fired on five of six sets — 31168 308 walls lost /
+   165 gained. The class, in one sentence: *a place is decided by distance, never by a cell* — and
+   its two reader-side shapes, *a tie is a tie* and *a threshold equal to a drafted dimension is
+   met in every frame*. Eight sites fixed (composer dedup, joints, loop nodes, dashes; ties in the
+   decomposer, pairing, network, builder, box; thresholds to the micron; probes either side of a
+   drawn line; closed outlines left out of the dash joiner). Nine runs; green on all six. Gate
+   moved on all six (tower A's core one way on every storey; returns as 30x41 columns); yardstick
+   matched counts identical; banked. `dxf-inspect --members` (what the reader hands the composer)
+   is the instrument; the page frame (`stash@{0}`) next.
 4. **WP6** — one model in front of Andrea (31170's, or whichever the ledger ranks best of the
    architects' sets). Ian's call when.
 5. **Step 47**, the next reading rule, from the corpus. `takeoff corpus-query plan-titles` on the

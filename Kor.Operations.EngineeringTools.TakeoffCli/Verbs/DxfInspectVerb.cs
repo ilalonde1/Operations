@@ -5,13 +5,16 @@ internal static class DxfInspectVerb
 
     public static int Run(string[] args)
     {
-        if (args.Length < 2) { Console.Error.WriteLine("Usage: takeoff dxf-inspect <plan.dxf> [--walls] [--plates] [--loops]"); return 1; }
+        if (args.Length < 2) { Console.Error.WriteLine("Usage: takeoff dxf-inspect <plan.dxf> [--walls] [--plates] [--loops] [--members]"); return 1; }
         if (!File.Exists(args[1])) { Console.Error.WriteLine($"Not found '{args[1]}'."); return 2; }
 
         bool wallDetail = args.Any(a => a.Equals("--walls", StringComparison.OrdinalIgnoreCase));
         bool plateDetail = args.Any(a => a.Equals("--plates", StringComparison.OrdinalIgnoreCase));
         bool loopDetail = args.Any(a => a.Equals("--loops", StringComparison.OrdinalIgnoreCase));
-        var inspectOptions = new PlanClassificationOptions();
+        bool memberDetail = args.Any(a => a.Equals("--members", StringComparison.OrdinalIgnoreCase));
+        // the standing rules are stated in inches; the sheet is read in its own unit (a millimetre PDF view read at
+        // inch thresholds classified nothing - every loop "-> 0 panel(s)" - until 2026-09-13)
+        var inspectOptions = new PlanClassificationOptions().InUnitOf(DxfPlanReader.UnitInInches(args[1]) ?? 1.0);
         var inspectSegments = DxfPlanReader.ReadSegments(args[1]);
 
         // WHICH LOOPS HAVE NO HONEST CENTRE? A bow-tie's area formula puts its centre kilometres
@@ -48,6 +51,26 @@ internal static class DxfInspectVerb
                 Console.WriteLine("           " + string.Join(" ", loop.Points.Select(p => $"({p.X:0.#},{p.Y:0.#})")));
             }
             Console.WriteLine($"{changed} of {loops} wall and column loops take the vertex mean");
+            return 0;
+        }
+
+        // WHAT THE READER MADE OF THIS SHEET: every wall (axis ends, thickness) and column (centre, size) the
+        // classifier hands the composer, in the sheet's own frame and unit, one per line, sorted - so two readings
+        // of one sheet (a reissue; the same sheet shifted on the page, intake step 56) diff line for line. Read
+        // without the sheet's words and tags, as MemberPoints is.
+        if (memberDetail)
+        {
+            var made = StructuralPlanClassifier.Classify(inspectSegments, inspectOptions);
+            Console.WriteLine($"{Path.GetFileName(args[1])}: {made.Walls.Count} walls, {made.Columns.Count} columns, {made.WallOpenings.Count} wall openings");
+            var lines = made.Walls.Select(w =>
+                {
+                    var (a, b) = (w.Start.X, w.Start.Y).CompareTo((w.End.X, w.End.Y)) <= 0 ? (w.Start, w.End) : (w.End, w.Start);
+                    return $"  wall   ({a.X:0},{a.Y:0})-({b.X:0},{b.Y:0})  t {w.Thickness:0}  {w.Layer}";
+                })
+                .Concat(made.Columns.Select(c => $"  column ({c.Center.X:0},{c.Center.Y:0})  {c.Width:0}x{c.Depth:0}{(c.IsRound ? " round" : "")}{(c.FromBelow ? " below" : "")}  {c.Layer}"))
+                .Concat(made.WallOpenings.Select(o => $"  opening ({o.Start.X:0},{o.Start.Y:0})-({o.End.X:0},{o.End.Y:0})  t {o.Thickness:0}"))
+                .OrderBy(l => l, StringComparer.Ordinal);
+            foreach (string line in lines) Console.WriteLine(line);
             return 0;
         }
 

@@ -560,10 +560,15 @@ public static class E2kGeometryComposer
                                      p.Y >= minY - 24 && p.Y <= maxY + 24);
         }
 
-        var pointNames = new Dictionary<(long, long, long), string>();
+        // the joints by cell of the merge tolerance - an INDEX for the nearest-joint search in PointAt, never an
+        // identity: a cell may hold two joints (its diagonal is 1.7 tolerances), and the second must not evict the first
+        var pointNames = new Dictionary<(long, long, long), List<string>>();
         var pointCoords = new Dictionary<string, (double X, double Y, double Z)>(StringComparer.Ordinal);
-        var placedSlabs = new HashSet<(long, long, string)>();
-        var placedColumns = new HashSet<(long, long, long, long, string)>();
+        var pointOrder = new Dictionary<string, int>(StringComparer.Ordinal);
+        // one plate per place per storey: its centroid within a foot of one already placed (a foot was the cell)
+        var placedSlabs = new PlacedMembers(12.0 * inch);
+        // one column, wall or header per place per storey: within an inch, the cell that was (PlacedMembers)
+        var placedColumns = new PlacedMembers(inch);
         // ONE COLUMN, ONE JOINT. Two sheets draw the same column a few millimetres apart - each is set on
         // the grid in its own frame - and joints merged at a twentieth of an inch made two joints of it, so
         // two column stacks stood at one place, each with the storeys the other sheet drew, and the pass
@@ -586,14 +591,14 @@ public static class E2kGeometryComposer
             columnJoints.Add((made, x, y));
             return made;
         }
-        var placedWalls = new HashSet<(long, long, long, long, string)>();
+        var placedWalls = new PlacedMembers(inch);
         var storeysWithMembers = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
         // Seeded with the storeys the engineer's own model already floors. "No floor plate" has to
         // mean no floor from anyone, or a gap-fill project reports her whole building as missing.
         var storeysWithPlates = doc.StoreysWithFloors();
-        var pierNames = new Dictionary<(long, long, long, long), string>();
-        var spandrelNames = new Dictionary<(long, long, long, long), string>();
-        var placedSpandrels = new HashSet<(long, long, long, long, string)>();
+        var pierNames = new LabelledPlaces(6.0 * inch);
+        var spandrelNames = new LabelledPlaces(6.0 * inch);
+        var placedSpandrels = new PlacedMembers(inch);
         // The openings cut in each storey's floor, so a borrowed floor arrives with its holes.
         var openingsByStorey = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
 
@@ -610,7 +615,7 @@ public static class E2kGeometryComposer
         // wearing a number.
         var assumedThickness = new List<(string Storey, string Sheet)>();
         var readThickness = new List<(string Storey, string Sheet, double ThicknessInches, int? Page)>();
-        var placedOpenings = new HashSet<(long, long, string)>();
+        var placedOpenings = new PlacedMembers(0.01);   // one opening per place per storey: the same centroid, as the 1/100-unit key was
         int spandrelCounter = 0, openingCounter = 0;
 
         // Which building each member was drawn for, so a model of one building can be cut out
@@ -675,28 +680,36 @@ public static class E2kGeometryComposer
             long Q(double v) => (long)Math.Round(v / joinTolerance);
 
             var key = (Q(x), Q(y), Q(zOffset));
-            if (pointNames.TryGetValue(key, out string? existing)) return existing;
 
+            // THE NEAREST JOINT, NOT THE ONE IN THIS CELL (intake step 56, 2026-09-12). Returning the cell's
+            // own joint first, before looking at the neighbours, snapped a point to a joint 1 mm away in its
+            // cell over one 0.5 mm away across the cell's edge - and which side of the edge a point fell on
+            // was a matter of where the origin was. On 31168 the LEVEL 3 wall along y = 6,931 joined the
+            // stack at 6,930 in one frame and the stack at 6,932 in the other, and the gap fill then gave
+            // LEVEL 2 a wall it had not in the first. The cells are an index; the distance decides.
             string? nearest = null;
             double nearestDistance = joinTolerance;
             for (long dx = -1; dx <= 1; dx++)
             for (long dy = -1; dy <= 1; dy++)
             for (long dz = -1; dz <= 1; dz++)
             {
-                if (dx == 0 && dy == 0 && dz == 0) continue;
-                if (!pointNames.TryGetValue((key.Item1 + dx, key.Item2 + dy, key.Item3 + dz), out string? near)) continue;
-                if (!pointCoords.TryGetValue(near, out var at)) continue;
-
-                double d = Math.Sqrt(Math.Pow(at.X - x, 2) + Math.Pow(at.Y - y, 2) + Math.Pow(at.Z - zOffset, 2));
-                if (d < nearestDistance) { nearestDistance = d; nearest = near; }
+                if (!pointNames.TryGetValue((key.Item1 + dx, key.Item2 + dy, key.Item3 + dz), out var cell)) continue;
+                foreach (string near in cell)
+                {
+                    if (!pointCoords.TryGetValue(near, out var at)) continue;
+                    double d = Math.Sqrt(Math.Pow(at.X - x, 2) + Math.Pow(at.Y - y, 2) + Math.Pow(at.Z - zOffset, 2));
+                    // a tie between two joints goes to the earlier one, not to whichever cell was visited first
+                    if (d < nearestDistance - 1e-9 || (Math.Abs(d - nearestDistance) <= 1e-9 && nearest is not null && pointOrder[near] < pointOrder[nearest])) { nearestDistance = d; nearest = near; }
+                }
             }
             if (nearest is not null) return nearest;
 
             string name;
             do { name = $"{prefix}P{++pointCounter}"; } while (used.Contains(name));
             used.Add(name);
-            pointNames[key] = name;
+            (pointNames.TryGetValue(key, out var mine) ? mine : pointNames[key] = new List<string>()).Add(name);
             pointCoords[name] = (x, y, zOffset);
+            pointOrder[name] = pointOrder.Count;
 
             pointLines.Add(Math.Abs(zOffset) < 1e-9
                 ? $"  POINT \"{name}\"  {F(x)} {F(y)}"
@@ -712,28 +725,15 @@ public static class E2kGeometryComposer
         /// 6" before matching, which is inside the drift between one storey's drafting and the next
         /// but well under the distance to a different wall.
         /// </summary>
+        // The label is the first pier's whose ends lie within 6" of this wall's, either way round (LabelledPlaces) —
+        // by distance, not by which 6" cell the ends fall in, so the label does not depend on where the origin is
+        // (intake step 56).
         string PierFor(double x1, double y1, double x2, double y2)
-        {
-            long Q(double v) => (long)Math.Round(v / (6.0 * inch));
-            var ends = new[] { (Q(x1), Q(y1)), (Q(x2), Q(y2)) }.OrderBy(e => e.Item1).ThenBy(e => e.Item2).ToArray();
-            var key = (ends[0].Item1, ends[0].Item2, ends[1].Item1, ends[1].Item2);
-
-            if (!pierNames.TryGetValue(key, out string? pier))
-                pierNames[key] = pier = $"{prefix}PIER{pierNames.Count + 1}";
-            return pier;
-        }
+            => pierNames.LabelFor(Place.Between(x1, y1, x2, y2), () => $"{prefix}PIER{pierNames.Count + 1}");
 
         /// <summary>A spandrel label for the header at this opening, shared up the building.</summary>
         string SpandrelFor(double x1, double y1, double x2, double y2)
-        {
-            long Q(double v) => (long)Math.Round(v / (6.0 * inch));
-            var ends = new[] { (Q(x1), Q(y1)), (Q(x2), Q(y2)) }.OrderBy(e => e.Item1).ThenBy(e => e.Item2).ToArray();
-            var key = (ends[0].Item1, ends[0].Item2, ends[1].Item1, ends[1].Item2);
-
-            if (!spandrelNames.TryGetValue(key, out string? spandrel))
-                spandrelNames[key] = spandrel = $"{prefix}SPAN{spandrelNames.Count + 1}";
-            return spandrel;
-        }
+            => spandrelNames.LabelFor(Place.Between(x1, y1, x2, y2), () => $"{prefix}SPAN{spandrelNames.Count + 1}");
 
         /// <summary>
         /// The storeys this member may still be assigned to, having removed any already carrying a
@@ -746,7 +746,7 @@ public static class E2kGeometryComposer
         /// meet on A-LEVEL 33 with the same joint and section. Doubled stiffness and self-weight,
         /// invisible in every count, because two members do look like two members.
         /// </summary>
-        List<string> FreeStoreysFor(StoryLevel story, (long, long, long, long) where, HashSet<(long, long, long, long, string)> taken)
+        List<string> FreeStoreysFor(StoryLevel story, Place where, PlacedMembers taken)
         {
             var spanned = StoreysSpannedBy(story);
 
@@ -760,13 +760,13 @@ public static class E2kGeometryComposer
             // returned empty without a word. Reading the report, the walls are there. Reading the
             // model, tower A's core stops below its top storey. Whichever of the two is right, the
             // tool must not be the one keeping it quiet.
-            if (spanned.Any(s => taken.Contains((where.Item1, where.Item2, where.Item3, where.Item4, s))))
+            if (spanned.Any(s => taken.Holds(s, where)))
             {
-                droppedAsDuplicate.Add((story.Name, where.Item1, where.Item2));
+                droppedAsDuplicate.Add((story.Name, (long)Math.Round(where.X1), (long)Math.Round(where.Y1)));
                 return new List<string>();
             }
 
-            foreach (string s in spanned) taken.Add((where.Item1, where.Item2, where.Item3, where.Item4, s));
+            foreach (string s in spanned) taken.Add(s, where);
             return spanned;
         }
 
@@ -972,12 +972,10 @@ public static class E2kGeometryComposer
                 double x1 = wall.Start.X + options.OffsetX, y1 = wall.Start.Y + options.OffsetY;
                 double x2 = wall.End.X + options.OffsetX, y2 = wall.End.Y + options.OffsetY;
 
-                // Same panel from two overlapping sheets must not be modelled twice — tested against
-                // the storeys it will actually be assigned to, not the one it was placed on.
-                var ends = new[] { ((long)Math.Round(x1 / inch), (long)Math.Round(y1 / inch)), ((long)Math.Round(x2 / inch), (long)Math.Round(y2 / inch)) }
-                    .OrderBy(e => e.Item1).ThenBy(e => e.Item2).ToArray();
-                var wallWhere = (ends[0].Item1, ends[0].Item2, ends[1].Item1, ends[1].Item2);
-                var wallStoreys = FreeStoreysFor(story, wallWhere, placedWalls);
+                // Same panel from two overlapping sheets must not be modelled twice — its ends within an inch of
+                // one already placed (PlacedMembers) — tested against the storeys it will actually be assigned
+                // to, not the one it was placed on.
+                var wallStoreys = FreeStoreysFor(story, Place.Between(x1, y1, x2, y2), placedWalls);
                 if (wallStoreys.Count == 0) continue;
 
                 // A wall the engineer has already modelled runs along the same line: compare the
@@ -1066,10 +1064,9 @@ public static class E2kGeometryComposer
                 // a column within an inch of one already placed stands at that one's joint, and is keyed by it
                 if (ColumnJointNear(x, y) is { } sameColumn) { x = sameColumn.X; y = sameColumn.Y; }
 
-                // One member per place per storey, to the nearest inch. Quantising finer does not work: the// One column per location per storey — tested against the storeys it will actually
-                // be assigned to. Sheets overlap, and duplicates double the stiffness at that point.
-                var colWhere = ((long)Math.Round(x / inch), (long)Math.Round(y / inch), 0L, 0L);
-                var colStoreys = FreeStoreysFor(colStory, colWhere, placedColumns);
+                // One column per place per storey, within an inch (PlacedMembers) — tested against the storeys
+                // it will actually be assigned to. Sheets overlap, and duplicates double the stiffness at that point.
+                var colStoreys = FreeStoreysFor(colStory, Place.At(x, y), placedColumns);
                 if (colStoreys.Count == 0) continue;
 
                 if (existingColumns.TryGetValue(colStory.Name, out var already) &&
@@ -1155,11 +1152,7 @@ public static class E2kGeometryComposer
                 // the placement storey put two headers over one opening on 31168 — one from
                 // B-LEVEL 32 and one from A-LEVEL 33, both spanning A-LEVEL 33, at different depths
                 // because the two storeys are different heights.
-                var span = new[] { ((long)Math.Round(sx / inch), (long)Math.Round(sy / inch)),
-                                   ((long)Math.Round(ex / inch), (long)Math.Round(ey / inch)) }
-                    .OrderBy(e => e.Item1).ThenBy(e => e.Item2).ToArray();
-                var headerWhere = (span[0].Item1, span[0].Item2, span[1].Item1, span[1].Item2);
-                var headerStoreys = FreeStoreysFor(story, headerWhere, placedSpandrels);
+                var headerStoreys = FreeStoreysFor(story, Place.Between(sx, sy, ex, ey), placedSpandrels);
                 if (headerStoreys.Count == 0) continue;
 
                 // A header is NOT a wall for this purpose, and treating it as one shipped six
@@ -1290,9 +1283,9 @@ public static class E2kGeometryComposer
                 // twice — "every floor we have two slabs on top of each other". Walls and columns
                 // were already deduplicated; plates were not.
                 var middle = slab.Centroid();
-                var where = ((long)Math.Round((middle.X + options.OffsetX) / (12.0 * inch)),
-                             (long)Math.Round((middle.Y + options.OffsetY) / (12.0 * inch)), slabStory.Name);
-                if (!placedSlabs.Add(where)) continue;
+                var where = Place.At(middle.X + options.OffsetX, middle.Y + options.OffsetY);
+                if (placedSlabs.Holds(slabStory.Name, where)) continue;
+                placedSlabs.Add(slabStory.Name, where);
 
                 // A floor stands on something. A closed ring on a slab layer with no wall and no
                 // column anywhere inside it — ours or the engineer's, on any storey — is not a
@@ -1407,9 +1400,9 @@ public static class E2kGeometryComposer
                 if (SelfIntersects(ordered)) { skippedOpenings++; continue; }
 
                 var centre = opening.Centroid();
-                var key = ((long)Math.Round((centre.X + options.OffsetX) * 100),
-                           (long)Math.Round((centre.Y + options.OffsetY) * 100), slabStory.Name);
-                if (!placedOpenings.Add(key)) continue;
+                var key = Place.At(centre.X + options.OffsetX, centre.Y + options.OffsetY);
+                if (placedOpenings.Holds(slabStory.Name, key)) continue;
+                placedOpenings.Add(slabStory.Name, key);
 
                 string name = NextName("O", ref openingCounter);
                 buildingOfObject[name] = placement.SheetBuildingTags;
@@ -1922,6 +1915,66 @@ public static class E2kGeometryComposer
 
     private static double SnapHalfInch(double value, double inch) => Math.Round(value / inch * 2.0, MidpointRounding.AwayFromZero) / 2.0 * inch;
     private static double SnapInch(double value, double inch) => Math.Round(value / inch, MidpointRounding.AwayFromZero) * inch;
+
+    /// <summary>A member's place in plan: a column's centre twice over, a wall's or a header's two ends.</summary>
+    private readonly record struct Place(double X1, double Y1, double X2, double Y2)
+    {
+        public static Place At(double x, double y) => new(x, y, x, y);
+        public static Place Between(double x1, double y1, double x2, double y2) => new(x1, y1, x2, y2);
+    }
+
+    /// <summary>
+    /// ONE MEMBER PER PLACE PER STOREY, WITH A PLACE DECIDED BY DISTANCE (intake step 56, 2026-09-12). A
+    /// place was a cell of an inch grid anchored at the model's origin — a wall's two ends and a column's
+    /// centre each rounded to the inch — so whether two sheets' readings of one wall, a few millimetres
+    /// apart, were "the same place" depended on where the inch boundaries fell between them: on where the
+    /// origin was. The same drawings shifted 5 m x 3 m on the page built 31168 with 308 walls lost, 165
+    /// gained and 22 columns gained, and moved walls on four more of the six banked sets
+    /// (<c>TheSameDrawingsShiftedOnThePageBuildTheSameStructureTests</c>). A place is a point or a pair of
+    /// ends, and two are the same when each end lies within <see cref="_within"/> of the other's, either
+    /// way round. Nothing here depends on the frame. Only members that were placed are held, so a chain
+    /// of near-duplicates cannot walk: each newcomer is measured against what stands, not against what was
+    /// refused.
+    /// </summary>
+    /// <summary>One label per place, the place decided by distance as in <see cref="PlacedMembers"/>: a pier's or a spandrel's, shared up the building.</summary>
+    private sealed class LabelledPlaces
+    {
+        private readonly List<(Place Place, string Label)> _labels = new();
+        private readonly PlacedMembers _same;
+        public LabelledPlaces(double within) => _same = new PlacedMembers(within);
+        public int Count => _labels.Count;
+        public IEnumerable<string> Values => _labels.Select(l => l.Label);
+
+        public string LabelFor(Place place, Func<string> make)
+        {
+            foreach (var (at, label) in _labels)
+                if (_same.SamePlace(at, place)) return label;
+            string made = make();
+            _labels.Add((place, made));
+            return made;
+        }
+    }
+
+    private sealed class PlacedMembers
+    {
+        private readonly Dictionary<string, List<Place>> _byStorey = new(StringComparer.OrdinalIgnoreCase);
+        private readonly double _within;
+        public PlacedMembers(double within) => _within = within;
+
+        public bool Holds(string storey, Place place)
+            => _byStorey.TryGetValue(storey, out var list) && list.Any(t => Same(t, place));
+
+        public void Add(string storey, Place place)
+            => (_byStorey.TryGetValue(storey, out var list) ? list : _byStorey[storey] = new List<Place>()).Add(place);
+
+        private bool Same(Place a, Place b)
+            => (Near(a.X1, a.Y1, b.X1, b.Y1) && Near(a.X2, a.Y2, b.X2, b.Y2))
+            || (Near(a.X1, a.Y1, b.X2, b.Y2) && Near(a.X2, a.Y2, b.X1, b.Y1));
+        public bool SamePlace(Place a, Place b) => Same(a, b);
+
+        private bool Near(double ax, double ay, double bx, double by)
+            => Math.Abs(ax - bx) <= _within && Math.Abs(ay - by) <= _within;
+    }
     private static string Trim(double value) => value.ToString("0.###", Inv);
     private static string F(double value) => value.ToString("0.####", Inv);
 }

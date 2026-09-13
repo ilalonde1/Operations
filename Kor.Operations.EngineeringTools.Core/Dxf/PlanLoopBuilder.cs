@@ -35,18 +35,38 @@ public sealed class PlanLoopBuilder
 
         string layer = segs[0].Layer;
 
-        var nodes = new Dictionary<(long, long), int>();
+        // A NODE IS THE NEAREST NODE WITHIN THE JOIN TOLERANCE, BY DISTANCE (intake step 56, 2026-09-13). It was
+        // the cell of the tolerance a point fell in, so two ends a tenth of a millimetre apart either side of a
+        // cell's edge were two nodes and the outline did not close, and which pairs of ends straddled an edge
+        // was a matter of where the drawing's origin was: the same drawings shifted 5 m x 3 m on the page read
+        // 9 of 31202's sheets differently - a 6" wall along the tops of two 48" piers came out left of the first
+        // pier in one frame and right of the second in the other. The cells are an index for the search; the
+        // distance decides, and a cell may hold more than one node (its diagonal is 1.4 tolerances).
+        var nodes = new Dictionary<(long, long), List<int>>();
         var nodePoints = new List<DxfPoint>();
         int NodeOf(DxfPoint p)
         {
             var key = ((long)Math.Round(p.X / _joinTolerance), (long)Math.Round(p.Y / _joinTolerance));
-            if (!nodes.TryGetValue(key, out int id))
+            int nearest = -1;
+            double nearestDistance = _joinTolerance;
+            for (long dx = -1; dx <= 1; dx++)
+            for (long dy = -1; dy <= 1; dy++)
             {
-                id = nodePoints.Count;
-                nodes[key] = id;
-                nodePoints.Add(p);
+                if (!nodes.TryGetValue((key.Item1 + dx, key.Item2 + dy), out var cell)) continue;
+                foreach (int id in cell)
+                {
+                    // and a tie between two nodes goes to the earlier one, not to whichever cell the
+                    // search happened to visit first (the cells' order is the frame's)
+                    double d = nodePoints[id].DistanceTo(p);
+                    if (d < nearestDistance - 1e-9 || (Math.Abs(d - nearestDistance) <= 1e-9 && nearest >= 0 && id < nearest)) { nearestDistance = d; nearest = id; }
+                }
             }
-            return id;
+            if (nearest >= 0) return nearest;
+
+            int made = nodePoints.Count;
+            (nodes.TryGetValue(key, out var mine) ? mine : nodes[key] = new List<int>()).Add(made);
+            nodePoints.Add(p);
+            return made;
         }
 
         var edgeA = new int[segs.Count];
@@ -131,7 +151,9 @@ public sealed class PlanLoopBuilder
         var incoming = Direction(nodePoints[fromNode], nodePoints[node]);
 
         int best = -1;
-        double bestScore = double.MaxValue;
+        double bestScore = double.MaxValue, bestLength = double.MaxValue;
+        bool bestCloses = false;
+        int startNode = path.Count > 0 ? path[0] : -1;
 
         foreach (int e in candidates)
         {
@@ -141,9 +163,22 @@ public sealed class PlanLoopBuilder
 
             // 0 for dead straight, 2 for a full reversal.
             double score = 1.0 - (incoming.X * outgoing.X + incoming.Y * outgoing.Y);
-            if (score < bestScore)
+            // TWO EDGES LEAVING ONE WAY ARE A TIE, AND A TIE IS DECIDED BY THE OUTLINE, NOT BY THE ORDER THE
+            // EDGES CAME IN (intake step 56, 2026-09-13). At the outer corner of a core's 30x41 return, the
+            // return's own bottom edge and the core's 9 m bottom face leave the corner along one line; taking
+            // the long face strung both returns into one open chain that swallowed the south wall's face,
+            // and the wall was never paired (31168's tower A core: 18 walls in one order of the edges, 8 in
+            // the other). The edge that closes the outline wins; then the shorter, which stays on the shape
+            // being traced; then the first.
+            bool closes = other == startNode;
+            double length = nodePoints[node].DistanceTo(nodePoints[other]);
+            bool better = score < bestScore - 1e-9
+                || (Math.Abs(score - bestScore) <= 1e-9 && (closes && !bestCloses || (closes == bestCloses && length < bestLength - 1e-6)));
+            if (better)
             {
                 bestScore = score;
+                bestLength = length;
+                bestCloses = closes;
                 best = e;
             }
         }
@@ -214,7 +249,7 @@ public sealed class PlanLoopBuilder
         if (towards < 0) return null;
 
         double reach = Math.Max(tailTo.DistanceTo(corner), headTo.DistanceTo(corner));
-        return reach <= _extendLimit ? corner : null;
+        return LoopGeometry.Within(reach, _extendLimit) ? corner : null;
     }
 
     /// <summary>
@@ -244,7 +279,7 @@ public sealed class PlanLoopBuilder
 
         var corner = new DxfPoint(tailTo.X + r1x * s, tailTo.Y + r1y * s);
         double reach = Math.Max(tailTo.DistanceTo(corner), headTo.DistanceTo(corner));
-        return reach <= _extendLimit ? corner : null;
+        return LoopGeometry.Within(reach, _extendLimit) ? corner : null;
     }
 
     private static DxfPoint Direction(DxfPoint from, DxfPoint to)
@@ -279,10 +314,11 @@ public sealed class PlanLoopBuilder
                     var a = work[i];
                     var b = work[j];
 
-                    if (a[^1].DistanceTo(b[0]) <= _bridgeTolerance) { a.AddRange(b); }
-                    else if (a[^1].DistanceTo(b[^1]) <= _bridgeTolerance) { b.Reverse(); a.AddRange(b); }
-                    else if (a[0].DistanceTo(b[^1]) <= _bridgeTolerance) { b.AddRange(a); work[i] = b; }
-                    else if (a[0].DistanceTo(b[0]) <= _bridgeTolerance) { a.Reverse(); a.AddRange(b); }
+                    // to the micron (LoopGeometry.Within): a 12" gap meets a 12" bridge in every frame
+                    if (LoopGeometry.Within(a[^1].DistanceTo(b[0]), _bridgeTolerance)) { a.AddRange(b); }
+                    else if (LoopGeometry.Within(a[^1].DistanceTo(b[^1]), _bridgeTolerance)) { b.Reverse(); a.AddRange(b); }
+                    else if (LoopGeometry.Within(a[0].DistanceTo(b[^1]), _bridgeTolerance)) { b.AddRange(a); work[i] = b; }
+                    else if (LoopGeometry.Within(a[0].DistanceTo(b[0]), _bridgeTolerance)) { a.Reverse(); a.AddRange(b); }
                     else if (TryJoinByExtending(a, b, out var joined)) { work[i] = joined!; }
                     else continue;
 
@@ -301,13 +337,13 @@ public sealed class PlanLoopBuilder
             // interrupts an outline at a junction, so the two ends still point at their true
             // corner even though their endpoints are far apart — extending finds it, whereas
             // joining by distance would cut the corner off.
-            if (candidate.Count >= 4 && candidate[0].DistanceTo(candidate[^1]) > _joinTolerance)
+            if (candidate.Count >= 4 && LoopGeometry.Beyond(candidate[0].DistanceTo(candidate[^1]), _joinTolerance))
             {
                 var corner = ExtendToIntersection(candidate);
                 if (corner is not null) candidate = new List<DxfPoint>(candidate) { corner.Value };
             }
 
-            if (candidate.Count >= 4 && candidate[0].DistanceTo(candidate[^1]) <= _bridgeTolerance)
+            if (candidate.Count >= 4 && LoopGeometry.Within(candidate[0].DistanceTo(candidate[^1]), _bridgeTolerance))
             {
                 var pts = LoopGeometry.Simplify(candidate, _joinTolerance);
                 if (pts.Count >= 3)

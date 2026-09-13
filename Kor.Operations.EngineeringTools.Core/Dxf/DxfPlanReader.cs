@@ -441,7 +441,7 @@ public static class DxfPlanReader
         foreach (var s in body)
         {
             string on = s.Layer is "0" or "" ? layer : s.Layer;
-            segments.Add(new DxfSegment(on, Place(s.Start), Place(s.End)) { FromCurve = s.FromCurve });
+            segments.Add(new DxfSegment(on, Place(s.Start), Place(s.End)) { FromCurve = s.FromCurve, OfClosedOutline = s.OfClosedOutline });
         }
 
         return next;
@@ -722,11 +722,12 @@ public static class DxfPlanReader
 
     private static void EmitPolyline(string layer, List<DxfPoint> points, bool closed, List<DxfSegment> into)
     {
+        bool outline = closed && points.Count > 2;
         for (int k = 0; k < points.Count - 1; k++)
             if (points[k].DistanceTo(points[k + 1]) > 1e-9)
-                into.Add(new DxfSegment(layer, points[k], points[k + 1]));
+                into.Add(new DxfSegment(layer, points[k], points[k + 1]) { OfClosedOutline = outline });
 
         if (closed && points.Count > 2 && points[^1].DistanceTo(points[0]) > 1e-9)
-            into.Add(new DxfSegment(layer, points[^1], points[0]));
+            into.Add(new DxfSegment(layer, points[^1], points[0]) { OfClosedOutline = true });
     }
 }

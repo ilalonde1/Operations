@@ -799,11 +799,15 @@ public static class StructuralPlanClassifier
                 {
                     if (chain.Count < 4) { unread.Add(chain); continue; }
                     var asLoop = new PlanLoop(layer, chain, closedExactly: false);
-                    var panels = WallOutlineDecomposer.Decompose(asLoop, options);
+                    var panels = WallOutlineDecomposer.Decompose(asLoop, options, out var leftover);
                     if (panels.Count == 0) { unread.Add(chain); continue; }
 
                     result.Walls.AddRange(panels);
                     recovered += panels.Count;
+                    // the faces of this chain no panel used are offered to the pooled pass, each on its own: the
+                    // south wall's bottom face strung between a core's two returns (intake step 56)
+                    foreach (var (a, b) in leftover)
+                        if (LoopGeometry.Within(options.MinPanelOverlap, a.DistanceTo(b))) unread.Add(new[] { a, b });
                 }
 
                 // And then across the chains, not only inside each one.
@@ -1344,7 +1348,7 @@ public static class StructuralPlanClassifier
             foreach (var (layer, segs) in slabLayers)
                 if (DxfFloodFillPlateDetector.TryRecover(segs, options, out var got, out string note)
                     && got is not null
-                    && (best is null || got.Area > best.Area))
+                    && (best is null || got.Area > best.Area + 1e-6))
                 {
                     best = got; bestNote = note; bestLayer = layer;
                 }
@@ -1376,7 +1380,7 @@ public static class StructuralPlanClassifier
                 // larger would have quietly overwritten a value she has already seen and accepted.
                 var swallowed = result.Slabs
                     .Where(x => LoopGeometry.PointInPolygon(x.Centroid(), best.Points)
-                                && (x.Area < best.Area || chainRings.Contains(x)))
+                                && (x.Area < best.Area - 1e-6 || chainRings.Contains(x)))
                     .ToList();
 
                 // Swallowing MORE THAN ONE is a weld, not a floor. 31168's LEVEL 2 carries two
@@ -1619,7 +1623,7 @@ public static class StructuralPlanClassifier
         {
             var enclosed = result.EnclosedByWalls
                 .Where(l => l.Area >= options.MinPlateArea)
-                .OrderByDescending(l => l.Area)
+                .OrderByDescending(l => Math.Round(l.Area, 3))
                 .FirstOrDefault();
 
             if (enclosed is not null)
@@ -1770,7 +1774,7 @@ public static class StructuralPlanClassifier
             // caught part of it, and of what is left take the one from the narrowest bridge. Then
             // the largest of THOSE, because a floor an engineer counts is a floor, not a fragment.
             var grounds = new List<List<(PlanLoop Loop, string What, double Bridge, double Step)>>();
-            foreach (var c in candidates.OrderByDescending(c => c.Loop.Area))
+            foreach (var c in candidates.OrderByDescending(c => Math.Round(c.Loop.Area, 3)))
             {
                 var group = grounds.FirstOrDefault(g => FractionInside(c.Loop, g[0].Loop) >= 0.5
                                                      || FractionInside(g[0].Loop, c.Loop) >= 0.5);
@@ -1782,9 +1786,9 @@ public static class StructuralPlanClassifier
                 .Select(g =>
                 {
                     double whole = g.Max(x => x.Loop.Area) * 0.9;
-                    return g.Where(x => x.Loop.Area >= whole).OrderBy(x => x.Bridge).First();
+                    return g.Where(x => x.Loop.Area >= whole).OrderBy(x => Math.Round(x.Bridge, 6)).First();
                 })
-                .OrderByDescending(x => x.Loop.Area)
+                .OrderByDescending(x => Math.Round(x.Loop.Area, 3))
                 .ToList();
 
             var taken = new List<PlanLoop>();
@@ -1849,7 +1853,7 @@ public static class StructuralPlanClassifier
         // thickness is a wall whatever it is joined to; converting it made an 8x38 column that no
         // engineer would draw and threw away the shear it was drawn to carry.
         var stubs = result.Walls
-            .Where(w => w.Length < options.MinWallLength - 0.5 && !Joined(w.Start) && !Joined(w.End) && !RunsInto(w))
+            .Where(w => LoopGeometry.Beyond(options.MinWallLength - 0.5, w.Length) && !Joined(w.Start) && !Joined(w.End) && !RunsInto(w))
             .Where(w => w.Thickness <= 0 || w.Length / w.Thickness <= options.MaxColumnAspect)
             .ToList();
 
@@ -1892,7 +1896,7 @@ public static class StructuralPlanClassifier
         var overHalf = result.Openings
             .Select(hole => (Hole: hole, Floor: result.Slabs
                 .Where(s => FractionInside(hole, s) >= 0.8)
-                .OrderBy(s => s.Area)
+                .OrderBy(s => Math.Round(s.Area, 3))
                 .FirstOrDefault()))
             .Where(x => x.Floor is not null && x.Hole.Area > x.Floor.Area * 0.5)
             .ToList();
@@ -1933,7 +1937,7 @@ public static class StructuralPlanClassifier
     private static List<PlanLoop> PairConcentricWallRings(
         PlanGeometrySet result, List<PlanLoop> loops, PlanClassificationOptions options)
     {
-        var remaining = loops.OrderByDescending(l => l.Area).ToList();
+        var remaining = loops.OrderByDescending(l => Math.Round(l.Area, 3)).ToList();
         var consumed = new HashSet<PlanLoop>();
 
         foreach (var outer in remaining)
@@ -1947,7 +1951,7 @@ public static class StructuralPlanClassifier
                 if (!LoopGeometry.PointInPolygon(inner.Centroid(), outer.Points)) continue;
 
                 double band = (outer.Area - inner.Area) / ((Perimeter(outer) + Perimeter(inner)) / 2.0);
-                if (band < options.MinWallThickness || band > options.MaxWallThickness) continue;
+                if (LoopGeometry.Beyond(options.MinWallThickness, band) || LoopGeometry.Beyond(band, options.MaxWallThickness)) continue;
 
                 // Feed the decomposer both faces at once; it pairs each outer edge with the inner
                 // edge facing it, exactly as it does for a wall drawn as a single ribbon.
@@ -1998,7 +2002,7 @@ public static class StructuralPlanClassifier
         for (int j = 0; j < inner.Count; j++)
         {
             double d = outer[i].DistanceTo(inner[j]);
-            if (d < best) { best = d; bestOuter = i; bestInner = j; }
+            if (d < best - 1e-6) { best = d; bestOuter = i; bestInner = j; }
         }
 
         var points = new List<DxfPoint>();
@@ -2129,7 +2133,7 @@ public static class StructuralPlanClassifier
             for (int i = 0; i < chain.Count - 1; i++)
             {
                 double length = chain[i].DistanceTo(chain[i + 1]);
-                if (length >= options.MinPanelOverlap) faces.Add((chain[i], chain[i + 1], length, chainIndex));
+                if (LoopGeometry.Within(options.MinPanelOverlap, length)) faces.Add((chain[i], chain[i + 1], length, chainIndex));
             }
         }
 
@@ -2179,16 +2183,21 @@ public static class StructuralPlanClassifier
                 // 64% of the engineer's wall length rather than the 82% an uncapped pass reaches.
                 // That is the price of not inventing members, and it is the right way round.
                 double maxOpenFacePairThickness = Math.Min(options.MaxWallThickness, 18.0);
-                if (separation < options.MinWallThickness || separation > maxOpenFacePairThickness) continue;
+                if (LoopGeometry.Beyond(options.MinWallThickness, separation) || LoopGeometry.Beyond(separation, maxOpenFacePairThickness)) continue;
 
                 double tb0 = (aj.X - ai.X) * ux + (aj.Y - ai.Y) * uy;
                 double tb1 = (bj.X - ai.X) * ux + (bj.Y - ai.Y) * uy;
                 if (tb0 > tb1) (tb0, tb1) = (tb1, tb0);
 
                 double t0 = Math.Max(0, tb0), t1 = Math.Min(li, tb1);
-                if (t1 - t0 < options.MinPanelOverlap) continue;
+                if (LoopGeometry.Beyond(options.MinPanelOverlap, t1 - t0)) continue;
 
-                if (best < 0 || separation < bestSeparation - 1e-6)
+                // the nearest face; and among faces at ONE separation (a 6" wall drawn as three equal loops along
+                // the tops of two piers, whose bottom edges the dash joiner has run into one line), the one that
+                // starts first along this face - a tie broken by the geometry, not by the order the chains
+                // happened to come in, which the frame decided (intake step 56, 2026-09-13: 31202's LEVEL 4
+                // read that wall left of the first pier in one frame and right of the second in the other)
+                if (best < 0 || separation < bestSeparation - 1e-6 || (Math.Abs(separation - bestSeparation) <= 1e-6 && t0 < bestT0 - 1e-6))
                 {
                     best = j;
                     bestSeparation = separation;
@@ -2219,7 +2228,7 @@ public static class StructuralPlanClassifier
             // composer writes whichever it meets first, and the other is reported as a member read
             // and not modelled -- three of those on 31168's tower A level 35 plan alone.
             var mid = new DxfPoint((start.X + end.X) / 2.0, (start.Y + end.Y) / 2.0);
-            if (result.Walls.Any(w => DistanceToSegment(mid, w.Start, w.End) <= options.MinWallThickness))
+            if (result.Walls.Any(w => LoopGeometry.Within(DistanceToSegment(mid, w.Start, w.End), options.MinWallThickness)))
                 continue;
 
             result.Walls.Add(candidate);
@@ -2290,9 +2299,9 @@ public static class StructuralPlanClassifier
         const double LengthSlack = 0.5;
 
         if (simpleRectangle &&
-            box.Thickness >= options.MinWallThickness &&
-            box.Thickness <= options.MaxWallThickness &&
-            box.Length >= options.MinWallLength - LengthSlack)
+            LoopGeometry.Within(options.MinWallThickness, box.Thickness) &&      // to the micron: a 48" loop IS 48" in every frame
+            LoopGeometry.Within(box.Thickness, options.MaxWallThickness) &&
+            LoopGeometry.Within(options.MinWallLength - LengthSlack, box.Length))
         {
             result.Walls.Add(new WallAxis(box.AxisStart, box.AxisEnd, box.Thickness, loop.Layer));
             return;
@@ -2340,9 +2349,9 @@ public static class StructuralPlanClassifier
         double boxArea = box.Length * box.Thickness;
         if (decomposed.Count < 2 &&
             boxArea > 0 && loop.Area / boxArea >= options.PierFillRatio && box.Aspect < 4.0 &&
-            EffectiveWidth(loop) > options.MaxWallThickness)
+            LoopGeometry.Beyond(EffectiveWidth(loop), options.MaxWallThickness))
         {
-            if (box.Thickness <= options.MaxPierThickness && box.Length >= options.MinWallLength)
+            if (LoopGeometry.Within(box.Thickness, options.MaxPierThickness) && LoopGeometry.Within(options.MinWallLength, box.Length))
             {
                 result.Walls.Add(new WallAxis(box.AxisStart, box.AxisEnd, box.Thickness, loop.Layer));
                 return;
@@ -2350,8 +2359,8 @@ public static class StructuralPlanClassifier
 
             // A column only if it is short enough to BE one, by her own rule: "less than 48 in
             // length should be a column".
-            if (box.Length < options.MinWallLength &&
-                box.Thickness >= options.MinColumnSize && box.Length <= options.MaxColumnSize)
+            if (LoopGeometry.Beyond(options.MinWallLength, box.Length) &&
+                LoopGeometry.Within(options.MinColumnSize, box.Thickness) && LoopGeometry.Within(box.Length, options.MaxColumnSize))
             {
                 result.Columns.Add(new ColumnFootprint(loop.Centroid(), box.Thickness, box.Length, loop.Layer, AxisAngle(box)));
                 return;
@@ -2371,7 +2380,7 @@ public static class StructuralPlanClassifier
             // 31168's own walls run 10 to 16 inches, with 36 for the tower core and nothing between.
             // A footprint this stocky is not a pier drawn thick, it is a shape that is not a wall,
             // and saying so is worth more than a member nobody can account for.
-            if (box.Thickness > options.MaxPierThickness)
+            if (LoopGeometry.Beyond(box.Thickness, options.MaxPierThickness))
             {
                 result.Flags.Add(
                     $"{loop.Layer}: solid outline {box.Length:0}x{box.Thickness:0} is thicker than any wall in " +
@@ -2398,7 +2407,7 @@ public static class StructuralPlanClassifier
         // used to satisfy no branch at all and vanish without ever being modelled: 29 of them on
         // 31138 and 8 on 31168, gone silently. Anything that is concrete on a structural layer is
         // worth carrying, and the engineer's rule already says a short element is a column.
-        if (box.Thickness >= options.MinColumnSize && box.Length <= options.MaxColumnSize)
+        if (LoopGeometry.Within(options.MinColumnSize, box.Thickness) && LoopGeometry.Within(box.Length, options.MaxColumnSize))
         {
             // Too slender to be anyone's column. The most slender column in her own 31138 model is
             // 12x36, exactly 3:1, and there is nothing beyond it; the 31168 export has no concrete
@@ -2414,7 +2423,7 @@ public static class StructuralPlanClassifier
             // thing stopping it, and stopping it silently. This is wall-layer concrete a hundred
             // inches long; modelling it as a frame element throws away the in-plane shear it was
             // drawn to carry, exactly as it did for the 65x82 in the pier branch above.
-            if (box.Length >= options.MinWallLength - LengthSlack || box.Aspect > options.MaxColumnAspect)
+            if (LoopGeometry.Within(options.MinWallLength - LengthSlack, box.Length) || box.Aspect > options.MaxColumnAspect)
             {
                 result.Walls.Add(new WallAxis(box.AxisStart, box.AxisEnd, box.Thickness, loop.Layer));
                 return;
@@ -2566,7 +2575,7 @@ public static class StructuralPlanClassifier
 
     private static void SplitSlabsAndOpenings(PlanGeometrySet result, List<PlanLoop> candidates, PlanClassificationOptions options)
     {
-        var ordered = candidates.OrderByDescending(l => l.Area).ToList();
+        var ordered = candidates.OrderByDescending(l => Math.Round(l.Area, 3)).ToList();
         var slabs = new List<PlanLoop>();
 
         foreach (var loop in ordered)
@@ -2592,7 +2601,7 @@ public static class StructuralPlanClassifier
                 double band = (container.Area - loop.Area)
                               / ((Perimeter(container) + Perimeter(loop)) / 2.0);
 
-                if (band >= options.MinWallThickness && band <= options.MaxWallThickness)
+                if (LoopGeometry.Within(options.MinWallThickness, band) && LoopGeometry.Within(band, options.MaxWallThickness))
                 {
                     result.Flags.Add(
                         $"{loop.Layer}: a slab outline of {loop.Area / 144:N0} sq ft sits " +

@@ -1431,14 +1431,28 @@ public sealed class E2kDocument
                 }
         }
 
-        static bool Inside((double X, double Y) p, IReadOnlyList<(double X, double Y)> ring)
+        // ON THE EDGE IS ON THE PLATE (intake step 56, 2026-09-13). A perimeter wall's midpoint lies ON the
+        // slab edge - the plate is drawn to the wall - and a ray cast at a point on the boundary answers
+        // with the rounding noise of the frame: the same drawings shifted 5 m on the page carried six of
+        // 31170's 6'-0" piers to a storey the other frame did not. A point within an inch of an edge is
+        // on the plate, whichever side the arithmetic put it.
+        double edge = 1.0 / (LengthUnitInInches() ?? 1.0);   // one inch, in the model's unit
+        bool Inside((double X, double Y) p, IReadOnlyList<(double X, double Y)> ring)
         {
             bool inside = false;
             for (int i = 0, j = ring.Count - 1; i < ring.Count; j = i++)
                 if (ring[i].Y > p.Y != ring[j].Y > p.Y
                     && p.X < (ring[j].X - ring[i].X) * (p.Y - ring[i].Y) / (ring[j].Y - ring[i].Y + 1e-12) + ring[i].X)
                     inside = !inside;
-            return inside;
+            if (inside) return true;
+            for (int i = 0, j = ring.Count - 1; i < ring.Count; j = i++)
+            {
+                double dx = ring[i].X - ring[j].X, dy = ring[i].Y - ring[j].Y, len = dx * dx + dy * dy;
+                double t = len <= 0 ? 0 : Math.Clamp(((p.X - ring[j].X) * dx + (p.Y - ring[j].Y) * dy) / len, 0, 1);
+                double ox = p.X - (ring[j].X + t * dx), oy = p.Y - (ring[j].Y + t * dy);
+                if (ox * ox + oy * oy <= edge * edge) return true;
+            }
+            return false;
         }
 
         // ⚠ THE MIDPOINT, NOT THE FIRST POINT.
