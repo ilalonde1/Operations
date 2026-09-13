@@ -1,6 +1,6 @@
 # PDF intake → ETABS — Completion Plan
 
-**Status:** Rev 3, 2026-09-12 (steps 49–51 added to §8, 3b–3c) — WP1–WP5 landed overnight on Ian's go-ahead ("go through this all,
+**Status:** Rev 3, 2026-09-12 (steps 49–53 added to §8, 3b–3d) — WP1–WP5 landed overnight on Ian's go-ahead ("go through this all,
 step by step, and finish it overnight"): commits `8fccbc25` (WP3), `3f3f82b9` (WP2), `aba7d9ff`
 (WP4), `69e554b5` (WP5), each gated by the six byte-identical and the fast suite; WP5's remaining
 conventions are counted by a test, not by this document. §8 is what needs Ian. Rev 2 (2026-09-11)
@@ -59,6 +59,7 @@ Today's harness is 6 of those 292. The one-job yardstick (31168) is 1 of 66.
 | Storeys with a plate | 230 of 1,098 (21%) | 741 of 2,401 (31%) |
 | Yardsticks (engineers' own models, 92 exported from KOR-210) | 18 of the 39: **45% / 52%** within 100 mm | 62 sets have one, 42 share a storey with columns: **34% / 48%**; per set from 75–99% (4 sets) to 0–24% (20 sets) — more sets, more assumed storeys, a lower share |
 | run 5 (2026-09-12, step 49; `ledger-sets-2026-09-12-run5-step49.csv`) | 206 of 292 build (31168's new issue lost to a duplicate view name, fixed with step 51); 99,314 columns from 105,660 (anchors and target quadrants, 101 sets); 65 sets have a yardstick, 47 share a storey: **34% / 48%** — the corpus number is frames and scope (§58), not reading; run 6 measures steps 50–51 |
+| run 6 (2026-09-12, steps 50–52; `ledger-sets-2026-09-12-run6-step51.csv`) | **207 of 293** build (a 293rd set appeared on the share; 31168 back); 2,031 of 4,323 views on the grid by name (47%); 749 of 2,401 storeys with a plate; 66 sets have a yardstick, 48 share a storey: **49% / 53%** — the scope rule, the sheets that say what they are, and the halves through a key plan; 9 sets at 75–99% (4 in run 3) |
 
 **The work order is a count now.** 1. Storeys: the 67 sets whose plans name their storeys with
 words, and 935 views the composer can put on no storey by name (step 47, §8 item 5). 2. Views on
@@ -245,6 +246,21 @@ Revit route.
    the set (31168's 09-10 issue named one sheet twice; the in-memory handoff threw). Corpus run 5
    banked (206 build; 34% / 48%). One question for Andrea at WP6: a column drawn with its face on
    the grid — modelled where drawn, or on the grid? (31202, 32 columns.) Nothing for Ian.
+3d. **Step 53, 2026-09-12 night** (§61): `pdf-at` (what happened to the ink at a point); the grid is
+   drawn with one pen (a heavier stroke on an axis is a tendon, kept apart for the tendon reader
+   alone); a run may stop just past its anchor (fittings only). 31202 **93% / 95%**, 53 of 55
+   anchors on the typical sheet; five sets byte-identical. Corpus run 6 (steps 50–52): 207 of 293
+   build, yardsticks **49% / 53%** (from 34% / 48%); run 7 on step 53 launched 22:02.
+   **FOUND, NOT SHIPPED — the next step, rule 11 first:** the DXF's origin is the drawn content's
+   centroid, so every model's frame moves with the reading (31168 by 723 x 283 mm for no member
+   change); the page frame fixes that (stashed, `stash@{0}`) and exposes that the composed walls
+   depend on where the origin is — the same 36 DXFs of 31168 translated 5 m x 3 m: columns 100%,
+   walls 25 lost / 11 gained, tower A's stair core 18 walls in one frame and 8 in the other; one
+   sheet alone is stable, so it is in how two sheets' readings of one core are reconciled. Write
+   the differential ("the same drawings shifted on the page build the same structure"), find the
+   cause, fix, then the page frame, then re-bank the six once. Also: the gate's `ModelDiff`
+   registration called 177 columns lost and gained under a pure translation the yardstick matched
+   at 100% — register the gate's diff the way the yardstick does.
 4. **WP6** — one model in front of Andrea (31170's, or whichever the ledger ranks best of the
    architects' sets). Ian's call when.
 5. **Step 47**, the next reading rule, from the corpus. `takeoff corpus-query plan-titles` on the
