@@ -580,7 +580,7 @@ public static class E2kGeometryComposer
         (string Name, double X, double Y)? ColumnJointNear(double x, double y)
         {
             foreach (var j in columnJoints)
-                if (Math.Abs(j.X - x) <= inch && Math.Abs(j.Y - y) <= inch && Math.Sqrt((j.X - x) * (j.X - x) + (j.Y - y) * (j.Y - y)) <= inch)
+                if (LoopGeometry.Within(Math.Sqrt((j.X - x) * (j.X - x) + (j.Y - y) * (j.Y - y)), inch))
                     return j;
             return null;
         }
@@ -1973,7 +1973,7 @@ public static class E2kGeometryComposer
         public bool SamePlace(Place a, Place b) => Same(a, b);
 
         private bool Near(double ax, double ay, double bx, double by)
-            => Math.Abs(ax - bx) <= _within && Math.Abs(ay - by) <= _within;
+            => LoopGeometry.Within(Math.Abs(ax - bx), _within) && LoopGeometry.Within(Math.Abs(ay - by), _within);   // to the micron: two readings an inch apart are an inch apart in every frame
     }
     private static string Trim(double value) => value.ToString("0.###", Inv);
     private static string F(double value) => value.ToString("0.####", Inv);

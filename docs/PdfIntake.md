@@ -1,11 +1,11 @@
 # PDF intake — what it does today, and what it leaves on the page
 
-## 0. START HERE (state as of 2026-09-13, after step 56 and completion-plan WP1–WP5 — 207 of 292 sets build from the PDF alone)
+## 0. START HERE (state as of 2026-09-13, after steps 54–56 and completion-plan WP1–WP5 — 207 of 292 sets build from the PDF alone)
 
 A session picking this up cold reads this section, then the completion plan
 (`docs/architecture/Kor.Operations.EngineeringTools.PdfIntake.plan.md` — what "complete" means, the
 packages, and where each stands), then the last three step sections (§54–§56). §1–§52 are the
-record of how each rule was arrived at, read when a rule is being changed. §63 is the latest step.
+record of how each rule was arrived at, read when a rule is being changed. §64 is the latest step.
 
 **What this is.** A PDF ingestor: one ingestion point (`DrawingIntake.ReadSheet` → `PdfOnlyBuild`)
 that reads a drawing set and hands its geometry to outlets — the ETABS `.e2k` today, the DXF as a
@@ -3229,3 +3229,48 @@ whether a 30x41 return is a column or a pier (her 31138 has 121 piers; ask at WP
 fault the L4 case exposed — one long face facing three loops pairs with one of them and the other
 two are lost in either frame (`WallOutlineDecomposer`/`PairOpenFaces` consume a face on its first
 pairing) — a reading rule for a later step.
+
+## 64. Step 54, 2026-09-13: a sheet's frame is its page's
+
+**The rule.** The DXF a view is written to — and the in-memory view the composer reads — was
+recentred on the drawn content's length-weighted centroid, so every sheet's frame, and every
+model's (its reference plan's), moved whenever the reading changed: §61 measured 31168's model
+moving 723 x 283 mm for no change in any member when step 53 read the strokes along the grid as
+lines. The origin is now the page's lower-left corner (`DxfExporter`: `cx = cy = 0`,
+`$INSBASE` = 0), which nothing read can move. Held back from §61 until the differential of §63
+could say the structure would not change with it, and it did not: with the page frame every set
+builds the same structure shifted, and the six-set gate against the step-56 bank reads four sets
+as a pure translation of 40–50 m (registered by their grid labels: no plate moved, no member lost
+or gained).
+
+**Two things it found.** 31065 came back 184 columns and 185 walls "lost and gained" — every one
+3 mm from its twin. The models' grids had registered exactly; the members had moved 3 mm against
+the grids. `GridAlignment.AgreedOffset` broke a tie between two clusters of votes (the same labels,
+the same count) by *the smaller move* — the absolute offset of the fit, which is where the sheet
+happens to sit against the model's origin and not a property of the fit — and under the page frame
+the other cluster was the smaller move. A tie is a tie: the tightest cluster wins, then the first;
+the smaller move is kept for one caller only, `SheetDiff` — a reissue, where both issues share one
+page frame, one name each way is a tie, and the page is the same page until the names say
+otherwise (`AReissueIsWhatMovedTests`). With the spread first and the smaller move still last for
+every fit, 31065's L1 plan alone still moved 3 mm — which is how the rule was found to belong to
+the reissue and not to the fit. And 31170 lost one column on L2: two readings of one column
+25.9 mm apart against the inch of `PlacedMembers` — the last threshold not compared to the micron;
+it and `ColumnJointNear` are now (`LoopGeometry.Within`).
+
+`ModelDiff`'s registration, which §61 suspected of calling 177 columns lost under a pure
+translation, was right both times: the members had moved against the grids. Nothing to fix there.
+
+**Measured.** With the smaller move out of the fit, the gate against the step-56 bank reads
+31130, 31138, 31168 and 31202 as pure translations of 40–50 m; 31065's L1 plan stands 3 mm from
+where it stood (8 columns and 30 walls, each a 3 mm pair; the rest of the set a translation) and
+on 31170 one column drawn on two sheets 25.9 mm apart has its storeys split between its two stacks
+differently (5 lost, 4 gained). Neither is a frame dependence: the differential's vector was made
+fractional — (5,000.37, 3,000.61) mm, so that sub-millimetre keys and hair-fine tolerances are
+exercised, which a whole-millimetre shift never did — and it is **green on all six** in the page
+frame. The two are the new rules against the old bank: the tighter cluster chosen where the
+smaller move had been, and 25.9 mm read as more than an inch to the micron. Banked in the page
+frame; a second build is byte-identical.
+
+WHAT THIS DOES NOT: `model-to-page` and `pdf-overlay --mark` read `$INSBASE`, now (0, 0), so a
+point in a view is a point on the page directly — `TheInstrumentsShareTheReadersFramesTests`
+asserts it; a page whose media box does not start at (0, 0) (a cropped PDF) keeps its own offset.

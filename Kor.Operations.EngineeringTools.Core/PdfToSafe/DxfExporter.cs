@@ -145,8 +145,14 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 sumX += pcx * w; sumY += pcy * w; totalWeight += w;
             }
             if (totalWeight == 0.0) return;
-            double cx = sumX / totalWeight;
-            double cy = sumY / totalWeight;
+            // A SHEET'S FRAME IS ITS PAGE'S (intake step 54, 2026-09-12). This file was recentred on the drawn
+            // content's length-weighted centroid, so the frame of every sheet - and of every model, whose
+            // frame is its reference plan's - moved whenever the reading changed: step 53 read the strokes
+            // along the grid axes as lines and every one of the six banked models shifted by a few hundred
+            // millimetres (31168 by 723 x 283 mm), walls and columns alike, for no change in any member.
+            // The origin is the page's lower-left corner, which nothing read can move. The weights above
+            // still decide whether there is anything to write.
+            double cx = 0.0, cy = 0.0;   // the page's origin, not a number anyone tunes
 
             List<(double X, double Y)> Ctr(List<(double X, double Y)> pts) =>
                 pts.Select(p => (p.X - cx, p.Y - cy)).ToList();
@@ -303,11 +309,10 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             G(9, "$INSUNITS"); G(70, "4");
             G(9, "$EXTMIN"); Num(10, bMinX); Num(20, bMinY); G(30, "0.0000");
             G(9, "$EXTMAX"); Num(10, bMaxX); Num(20, bMaxY); G(30, "0.0000");
-            // THE FILE SAYS WHERE ITS ORIGIN CAME FROM. Everything below is recentred on the drawn
-            // content's weighted centroid (cx, cy); the page's own origin is at (-cx, -cy) in this
-            // frame, banked as the insertion base so a point in this file can be carried back to the
-            // page (takeoff model-to-page → pdf-overlay --mark) without a second guess. Readers of
-            // the entities ignore it; the composed model is unchanged (WP2, 2026-09-11).
+            // THE FILE SAYS WHERE ITS ORIGIN CAME FROM. The page's own origin in this frame, banked as the
+            // insertion base so a point in this file can be carried back to the page (takeoff model-to-page
+            // → pdf-overlay --mark) without a second guess; (0, 0) since step 54, when the frame became the
+            // page's. Readers of the entities ignore it (WP2, 2026-09-11).
             G(9, "$INSBASE"); Num(10, -cx); Num(20, -cy); G(30, "0.0000");
             G(0, "ENDSEC");
 

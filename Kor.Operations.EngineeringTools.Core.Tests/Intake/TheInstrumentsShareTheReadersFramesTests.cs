@@ -57,10 +57,12 @@ public sealed class TheInstrumentsShareTheReadersFramesTests
 
             var origin = DxfPlanReader.PageOriginInDrawing(path);
             Assert.NotNull(origin);
-            // one slab: the weighted centroid is its centre (20000, 26000), so the page origin sits at
-            // minus that in the recentred frame, and the slab's first corner reads back where it was drawn
-            Assert.Equal(-20000, origin!.Value.X, 1e-3);
-            Assert.Equal(-26000, origin.Value.Y, 1e-3);
+            // A SHEET'S FRAME IS ITS PAGE'S (step 54): the file is written in page millimetres, the page's
+            // origin is (0, 0) in it whatever was drawn, and the slab's first corner reads back where it
+            // was drawn. Until step 54 the frame was recentred on the drawn content's weighted centroid,
+            // and every model moved whenever the reading did.
+            Assert.Equal(0, origin!.Value.X, 1e-3);
+            Assert.Equal(0, origin.Value.Y, 1e-3);
             var corner = DxfPlanReader.ReadSegments(path).Select(s => s.Start).OrderBy(p => p.X).ThenBy(p => p.Y).First();
             Assert.Equal(10000, corner.X - origin.Value.X, 1e-3);
             Assert.Equal(20000, corner.Y - origin.Value.Y, 1e-3);

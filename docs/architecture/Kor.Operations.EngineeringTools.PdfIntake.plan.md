@@ -1,6 +1,6 @@
 # PDF intake → ETABS — Completion Plan
 
-**Status:** Rev 3, 2026-09-13 (steps 49–56 added to §8, 3b–3f) — WP1–WP5 landed overnight on Ian's go-ahead ("go through this all,
+**Status:** Rev 3, 2026-09-13 (steps 49–56 added to §8, 3b–3g) — WP1–WP5 landed overnight on Ian's go-ahead ("go through this all,
 step by step, and finish it overnight"): commits `8fccbc25` (WP3), `3f3f82b9` (WP2), `aba7d9ff`
 (WP4), `69e554b5` (WP5), each gated by the six byte-identical and the fast suite; WP5's remaining
 conventions are counted by a test, not by this document. §8 is what needs Ian. Rev 2 (2026-09-11)
@@ -283,6 +283,14 @@ Revit route.
    moved on all six (tower A's core one way on every storey; returns as 30x41 columns); yardstick
    matched counts identical; banked. `dxf-inspect --members` (what the reader hands the composer)
    is the instrument; the page frame (`stash@{0}`) next.
+3g. **Step 54, 2026-09-13, 04:00–05:00** (§64): the page frame (`DxfExporter` origin = the page's
+   corner, `$INSBASE` 0). Differential green with it; the gate read four sets as pure translations
+   of 40–50 m and found two more places the fit and the composer leaned on the frame: the by-name
+   fit's tie by "the smaller move" (now the tightest cluster, the smaller move kept for the reissue
+   diff only) and the last two inch tolerances not compared to the micron. The differential's
+   vector is fractional now (5,000.37 x 3,000.61) so sub-millimetre keys are exercised, and green
+   on all six. Banked in the page frame. `ModelDiff`'s registration was right all along (the 177 of
+   §61 were real moves). NEXT: the Codex audit of steps 44–56 (brief written), then step 47.
 4. **WP6** — one model in front of Andrea (31170's, or whichever the ledger ranks best of the
    architects' sets). Ian's call when.
 5. **Step 47**, the next reading rule, from the corpus. `takeoff corpus-query plan-titles` on the

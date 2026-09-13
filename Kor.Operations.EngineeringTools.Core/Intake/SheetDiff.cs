@@ -101,7 +101,7 @@ public static class SheetDiff
         // issues: the plan may sit elsewhere on the page, the page may be another size.
         var reference = old.GridAxes.Select(a => new GridAlignment.ReferenceGrid(a.Name, a.Vertical, a.AtMm)).ToList();
         var axes = @new.GridAxes.Select(a => new GridAlignment.NamedAxis(a.Name, a.Vertical, a.AtMm)).ToList();
-        var fit = reference.Count > 0 && axes.Count > 0 ? GridAlignment.SolveByName(axes, reference) : null;
+        var fit = reference.Count > 0 && axes.Count > 0 ? GridAlignment.SolveByName(axes, reference, preferSmallerMove: true) : null;
         Frame frame = fit?.Frame ?? new Frame(0, 0, 0);
         string frameNote = fit is null
             ? (old.GridAxes.Count == 0 || @new.GridAxes.Count == 0

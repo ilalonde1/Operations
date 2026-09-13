@@ -21,18 +21,24 @@ namespace Kor.Operations.EngineeringTools.Core.Tests.Intake;
 /// <remarks>
 /// SLOW: the six banked sets read once each (the PDF half, minutes) and composed twice.
 /// WHAT THIS COVERS: every column's and wall's placement per storey and every plate's area, on the
-/// six banked sets, under one translation of every view by (5,000, 3,000) mm - registered by the
+/// six banked sets, under one translation of every view by (5,000.37, 3,000.61) mm - not a whole
+/// number of millimetres, so sub-millimetre keys and hair-fine tolerances are exercised - registered by the
 /// grid labels both models carry (<see cref="ModelDiff"/>), and the registration itself is asserted
 /// to be the shift applied. WHAT IT DOES NOT: a rotation; a shift of one view alone (that is a
 /// different drawing); sections and materials behind a name; the report's warnings; a dependence
 /// on where the origin is that shows only under a different vector (one vector is one draw). A
-/// SAME-CLASS FAULT IT WOULD NOT CATCH: a reading that snaps to a grid the shift is a multiple of.
+/// SAME-CLASS FAULT IT WOULD NOT CATCH: a dependence on the frame that shows only under a vector this one
+/// is not (a rotation; a shift that lands a coordinate exactly on a rounding boundary).
 /// </remarks>
 [Trait("Speed", "Slow")]
 [Collection(SheetNamingVocabularyCollection.Name)]
 public sealed class TheSameDrawingsShiftedOnThePageBuildTheSameStructureTests
 {
-    private const double ShiftX = 5000, ShiftY = 3000;
+    // NOT A WHOLE NUMBER OF MILLIMETRES. Under (5,000, 3,000) every fractional part survives the shift and
+    // anything keyed below a millimetre - an exact-duplicate key at 0.1 mm, a fit's vote a hair either side
+    // of its tolerance - reads the same in both frames; the page-frame change of step 54 shifted each sheet
+    // by its own fraction and moved 31065's L1 plan 3 mm where this vector had seen nothing (section 64).
+    private const double ShiftX = 5000.37, ShiftY = 3000.61;
 
     private readonly ITestOutputHelper _out;
     public TheSameDrawingsShiftedOnThePageBuildTheSameStructureTests(ITestOutputHelper output) => _out = output;

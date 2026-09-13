@@ -281,7 +281,10 @@ public static class GridAlignment
     /// than <see cref="LeastConvincingByName"/> named lines agree on one. Tried at each quarter
     /// turn: a sheet drawn to plan north whose vertical axes carry the model's Y labels is turned.
     /// </summary>
-    public static Fit? SolveByName(IReadOnlyList<NamedAxis> axes, IReadOnlyList<ReferenceGrid> reference, double scale = 1.0)
+    /// <param name="preferSmallerMove">Break a tie between two clusters of one label each by the smaller move - for a REISSUE, where
+    /// both issues share one page frame and the page is the same page until the names say otherwise. Off for placing a sheet on a
+    /// model, where the offset is where the sheet happens to sit against the model's origin and a tie goes to the first cluster.</param>
+    public static Fit? SolveByName(IReadOnlyList<NamedAxis> axes, IReadOnlyList<ReferenceGrid> reference, double scale = 1.0, bool preferSmallerMove = false)
     {
         if (axes.Count == 0 || reference.Count == 0) return null;
         var refX = reference.Where(g => g.DirX).ToList();
@@ -302,8 +305,8 @@ public static class GridAlignment
                 180 => (vertical, -1.0, horizontal, -1.0),
                 _ => (horizontal, 1.0, vertical, -1.0),
             };
-            var (ox, mx, sx) = AgreedOffset(toX, refX, signX * scale);
-            var (oy, my, sy) = AgreedOffset(toY, refY, signY * scale);
+            var (ox, mx, sx) = AgreedOffset(toX, refX, signX * scale, preferSmallerMove);
+            var (oy, my, sy) = AgreedOffset(toY, refY, signY * scale, preferSmallerMove);
             if (mx == 0 || my == 0) continue;
             double spread = Math.Max(sx, sy);
             if (best is null || mx + my > best.MatchedX + best.MatchedY
@@ -328,7 +331,7 @@ public static class GridAlignment
     /// offset; the cross pairs scatter theirs.
     /// </summary>
     private static (double Offset, int Matched, double Spread) AgreedOffset(
-        List<NamedAxis> axes, List<ReferenceGrid> grids, double factor)
+        List<NamedAxis> axes, List<ReferenceGrid> grids, double factor, bool preferSmallerMove)
     {
         var votes = new List<(string Label, double Offset)>();
         foreach (var g in grids)
@@ -338,20 +341,30 @@ public static class GridAlignment
 
         var best = new List<(string Label, double Offset)>();
         int bestLabels = -1;
+        double bestSpread = double.MaxValue;
         foreach (var centre in votes)
         {
-            var cluster = votes.Where(v => Math.Abs(v.Offset - centre.Offset) <= NameTolerance).ToList();
+            var cluster = votes.Where(v => LoopGeometry.Within(Math.Abs(v.Offset - centre.Offset), NameTolerance)).ToList();
             int labels = cluster.Select(v => v.Label.ToUpperInvariant()).Distinct().Count();
-            // more labels wins; then more votes; then the smaller move — one name each way is a
-            // tie, and a reissue is the same page until the names say otherwise
+            double mean = cluster.Average(v => v.Offset);
+            double spread = cluster.Max(v => Math.Abs(v.Offset - mean));
+            // more labels wins; then more votes; then the TIGHTEST cluster; then the first - or, for a reissue,
+            // the smaller move. The smaller move was the rule for every fit, and it is a property of where the
+            // sheet happens to sit against the model's origin, not of the fit: with the frame the page's instead
+            // of the content's, 31065's fits chose other clusters and every member stood 3 mm off its grid, and
+            // its L1 plan still did once the spread came first (intake step 54, 2026-09-13). For a reissue both
+            // issues share one page frame, one name each way IS a tie, and the page is the same page until the
+            // names say otherwise (AReissueIsWhatMovedTests); there the smaller move stays.
             bool better = labels > bestLabels
                           || (labels == bestLabels && cluster.Count > best.Count)
-                          || (labels == bestLabels && cluster.Count == best.Count
-                              && Math.Abs(cluster.Average(v => v.Offset)) < Math.Abs(best.Average(v => v.Offset)));
+                          || (labels == bestLabels && cluster.Count == best.Count && spread < bestSpread - 1e-6)
+                          || (preferSmallerMove && labels == bestLabels && cluster.Count == best.Count && Math.Abs(spread - bestSpread) <= 1e-6
+                              && Math.Abs(mean) < Math.Abs(best.Average(v => v.Offset)) - 1e-6);
             if (better)
             {
                 best = cluster;
                 bestLabels = labels;
+                bestSpread = spread;
             }
         }
         double offset = best.Average(v => v.Offset);
