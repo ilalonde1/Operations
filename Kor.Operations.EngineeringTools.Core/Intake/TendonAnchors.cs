@@ -177,7 +177,9 @@ public static class TendonAnchors
             geometry.ColumnIsTendonAnchor.Add(anchor);
             if (anchor) stoodDown++;
 
-            bool Inside((double X, double Y) p) => Math.Abs(p.X - cx) <= Math.Max(hx, hy) && Math.Abs(p.Y - cy) <= Math.Max(hx, hy);
+            // the block's own rectangle: with the longer half-side on both axes a 305 x 914 column held an end 400 mm
+            // off its short side (Codex audit 2026-09-13, F7)
+            bool Inside((double X, double Y) p) => Math.Abs(p.X - cx) <= hx && Math.Abs(p.Y - cy) <= hy;
             // the run passes through the block (its line within the block's half-width of the centre) and one end is within the overshoot of it
             bool EndsJustPast(Tendon t)
             {

@@ -1285,7 +1285,8 @@ public static class E2kGeometryComposer
                 var middle = slab.Centroid();
                 var where = Place.At(middle.X + options.OffsetX, middle.Y + options.OffsetY);
                 if (placedSlabs.Holds(slabStory.Name, where)) continue;
-                placedSlabs.Add(slabStory.Name, where);
+                // claimed only below, once the plate stands on something: a legend panel refused as an orphan
+                // must not hold the place of the supported floor drawn at the same centre (Codex 2026-09-13, F6)
 
                 // A floor stands on something. A closed ring on a slab layer with no wall and no
                 // column anywhere inside it — ours or the engineer's, on any storey — is not a
@@ -1302,6 +1303,7 @@ public static class E2kGeometryComposer
                     orphanPlates.Add((placement.SourceSheet, slabStory.Name, Math.Round(Math.Abs(slab.SignedArea) / (144.0 * inch * inch))));
                     continue;
                 }
+                placedSlabs.Add(slabStory.Name, where);
 
                 // Claimed only once the plate is certain to be written.
                 if (!slabProps.TryGetValue(thickness, out string? propName))

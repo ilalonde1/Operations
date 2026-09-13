@@ -112,6 +112,19 @@ public sealed class ASheetIsItsViewsTests
     }
 
     [Fact]
+    public void AStoodDownAnchorStaysStoodDownInItsView()
+    {
+        // the fourth column (the first of the right-hand plan) was stood down as a tendon anchor before the split; the
+        // view did not carry the flag and the exporter, seeing none, wrote the block as a column again (Codex audit
+        // 2026-09-13, F2)
+        var g = Geometry();
+        g.ColumnIsTendonAnchor.AddRange([false, false, false, true, false]);
+        var parts = SheetViews.Split(g, SheetViews.Titles(TwoPlans()), MmPerPt, "S2.20.1", NoTitleBlock, "p22");
+        Assert.Equal([false, false, false], parts[0].Geometry.ColumnIsTendonAnchor);
+        Assert.Equal([true, false], parts[1].Geometry.ColumnIsTendonAnchor);
+    }
+
+    [Fact]
     public void AnAxisGoesToEveryViewItCrosses()
     {
         var parts = SheetViews.Split(Geometry(), SheetViews.Titles(TwoPlans()), MmPerPt, "S2.20.1", NoTitleBlock, "p22");

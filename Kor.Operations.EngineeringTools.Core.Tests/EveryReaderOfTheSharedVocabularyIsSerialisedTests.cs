@@ -48,9 +48,18 @@ public sealed class EveryReaderOfTheSharedVocabularyIsSerialisedTests
 
             // the collection's own definition names the static in its documentation
             if (Path.GetFileName(file) == "SheetNamingVocabularyCollection.cs") continue;
+            if (Path.GetFileName(file) == "GeneratedModel.cs") continue;   // a helper, not a test class: the classes that call it are held to the rule
             if (Path.GetFileName(file) == Path.GetFileName(Self)) continue;
 
-            if (!source.Contains("PlanSheetNaming.", StringComparison.Ordinal)) continue;
+            // a reader is a class that names the vocabulary - or COMPOSES a model, because DxfToEtabsService.Run
+            // writes the vocabulary from the rules (the office's words) and a composing class outside the
+            // collection overwrites another office's words under a reader mid-test: the flake of
+            // AnotherOfficesWordsTests, seen 2026-09-13 and explained by the Codex audit (F23)
+            bool composes = source.Contains("DxfToEtabsService.Run(", StringComparison.Ordinal)
+                            || source.Contains("PdfOnlyBuild.Build(", StringComparison.Ordinal)
+                            || source.Contains("PdfOnlyBuild.Compose(", StringComparison.Ordinal)
+                            || source.Contains("GeneratedModel.", StringComparison.Ordinal);   // the helper that composes for the older suites
+            if (!source.Contains("PlanSheetNaming.", StringComparison.Ordinal) && !composes) continue;
             if (source.Contains("Collection(SheetNamingVocabularyCollection.Name)", StringComparison.Ordinal))
                 continue;
 

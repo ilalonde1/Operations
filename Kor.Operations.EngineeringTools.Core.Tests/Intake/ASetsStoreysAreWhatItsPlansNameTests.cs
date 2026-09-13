@@ -87,4 +87,23 @@ public sealed class ASetsStoreysAreWhatItsPlansNameTests
         Assert.True(ladder.IsEmpty);
         Assert.StartsWith("no storeys", StoreysFromPlans.Summary(ladder), StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void PlansBelowTheFirstStatedLevelStepDownFromIt()
+    {
+        // the elevations state L1 = 0 and L2 = 3,000; the plans also name P1 and P2 beneath them. Walked up from
+        // zero they met L1 at zero and the ladder folded - P2 = 0, P1 = 3,000, L1 = 0 (Codex audit 2026-09-13, F3)
+        var chain = Chain(("L1", 0), ("L2", 3000));
+        var ladder = StoreysFromPlans.Merge(chain,
+            ["S2.02_1_LEVEL P2 PLAN.dxf", "S2.03_1_LEVEL P1 PLAN.dxf", "S2.04_1_LEVEL 1 PLAN.dxf", "S2.05_1_LEVEL 2 PLAN.dxf"],
+            assumedHeightMm: 2800);
+        Assert.Equal(["P2", "P1", "L1", "L2"], ladder.Storeys.Select(s => s.Name));
+        // the lowest is the datum, so P2 = 0, P1 = 3,000 (the set's typical), L1 = 6,000, L2 = 9,000: every storey above the last
+        var e = ladder.Storeys.Select(s => s.ElevationMm).ToList();
+        Assert.True(e[0] < e[1] && e[1] < e[2] && e[2] < e[3], string.Join(" ", e));
+        Assert.Equal(3000, e[3] - e[2], 0.5);                                        // L2 over L1 as stated
+        Assert.Equal(e[2] - e[1], e[1] - e[0], 0.5);                                 // the two assumed steps are equal
+        Assert.True(ladder.Storeys[0].Assumed && ladder.Storeys[1].Assumed && !ladder.Storeys[2].Assumed);
+        Assert.Contains("below L1", ladder.Storeys[1].From, StringComparison.Ordinal);
+    }
 }

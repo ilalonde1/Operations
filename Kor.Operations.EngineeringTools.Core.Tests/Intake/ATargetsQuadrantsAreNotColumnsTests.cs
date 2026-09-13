@@ -67,4 +67,18 @@ public sealed class ATargetsQuadrantsAreNotColumnsTests
         Assert.Equal(2, g.Columns.Count);
         Assert.Equal(2, fates.Count(f => f.Reason == PathReason.BecameColumnByDeclaredSize));
     }
+
+    [Fact]
+    public void CellsRemovedAheadOfADeclaredPairDoNotHandThePairTheirFlags()
+    {
+        // three abutting 900x1200 cells first in entity order (a pattern, removed), then the declared pair corner to
+        // corner: with the by-shape flags left uncompacted the pair inherited the cells' flags and went as a target's
+        // quadrants (Codex audit 2026-09-13, F1); the pair stands
+        var (g, fates) = Read(
+            FateFixture.Rect(900, 1200, 10000, 10000), FateFixture.Rect(900, 1200, 10900, 10000), FateFixture.Rect(900, 1200, 11800, 10000),
+            FateFixture.Rect(1800, 400, 60000, 30000), FateFixture.Rect(1800, 400, 61800, 30400));
+        Assert.Equal(2, g.Columns.Count);
+        Assert.Equal(2, fates.Count(f => f.Reason == PathReason.BecameColumnByDeclaredSize));
+        Assert.Equal(0, fates.Count(f => f.Reason == PathReason.SymbolQuadrant));
+    }
 }

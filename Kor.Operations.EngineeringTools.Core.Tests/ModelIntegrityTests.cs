@@ -34,6 +34,7 @@ namespace Kor.Operations.EngineeringTools.Core.Tests;
 /// that catches a member read on one build and lost on the next, and they may only come down.
 /// </remarks>
 [Trait("Speed", "Slow")]
+[Collection(SheetNamingVocabularyCollection.Name)]   // composes a model, which writes PlanSheetNaming.Vocabulary (Codex 2026-09-13, F23)
 public class ModelIntegrityTests
 {
     // the two live jobs, by name; where they are on the share is LiveProjects' business

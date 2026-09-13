@@ -1468,6 +1468,37 @@ public class E2kDocumentTests
     }
 
     /// <summary>
+    /// A ring refused as an orphan does not hold the place of the supported floor drawn at the same
+    /// centre. The place was claimed before the support test, so a small legend ring centred where
+    /// a real floor is centred, arriving first, kept the floor out (Codex audit 2026-09-13, F6).
+    /// </summary>
+    [Fact]
+    public void AnOrphanRingDoesNotReserveTheSupportedFloorsPlace()
+    {
+        var doc = E2kDocument.Parse(Reference);
+        var story = doc.ReadStories().Single(s => s.Name == "LEVEL 3");
+
+        var geometry = new PlanGeometrySet();
+        // the only support: a wall well outside the small ring, inside the big one
+        geometry.Walls.Add(new WallAxis(new DxfPoint(400, 0), new DxfPoint(500, 0), 12, "JBP_V-WALL"));
+        // first the small ring at the shared centre - nothing under it; then the real floor, same centre
+        geometry.Slabs.Add(new PlanLoop("JBP_C_SLABEDG", new[]
+        {
+            new DxfPoint(-300, -300), new DxfPoint(300, -300), new DxfPoint(300, 300), new DxfPoint(-300, 300),
+        }, true));
+        geometry.Slabs.Add(new PlanLoop("JBP_C_SLABEDG", new[]
+        {
+            new DxfPoint(-600, -600), new DxfPoint(600, -600), new DxfPoint(600, 600), new DxfPoint(-600, 600),
+        }, true));
+
+        var summary = E2kGeometryComposer.Compose(
+            doc, new[] { new StoryPlacement(story, geometry, "level3.dxf") });
+
+        Assert.Equal(1, summary.Floors);
+        Assert.Single(summary.Flags, f => f.Contains("not made into floor plates"));
+    }
+
+    /// <summary>
     /// A wall's return is part of the wall, even where almost none of its face shows.
     ///
     /// Tower A's core on 31168 has a 30x41 return turned up at each end of its bottom wall. Only

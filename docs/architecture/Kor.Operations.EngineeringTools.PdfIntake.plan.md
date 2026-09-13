@@ -1,6 +1,6 @@
 # PDF intake → ETABS — Completion Plan
 
-**Status:** Rev 3, 2026-09-13 (steps 49–56 added to §8, 3b–3g) — WP1–WP5 landed overnight on Ian's go-ahead ("go through this all,
+**Status:** Rev 3, 2026-09-13 (steps 49–57 added to §8, 3b–3h) — WP1–WP5 landed overnight on Ian's go-ahead ("go through this all,
 step by step, and finish it overnight"): commits `8fccbc25` (WP3), `3f3f82b9` (WP2), `aba7d9ff`
 (WP4), `69e554b5` (WP5), each gated by the six byte-identical and the fast suite; WP5's remaining
 conventions are counted by a test, not by this document. §8 is what needs Ian. Rev 2 (2026-09-11)
@@ -291,6 +291,15 @@ Revit route.
    vector is fractional now (5,000.37 x 3,000.61) so sub-millimetre keys are exercised, and green
    on all six. Banked in the page frame. `ModelDiff`'s registration was right all along (the 177 of
    §61 were real moves). NEXT: the Codex audit of steps 44–56 (brief written), then step 47.
+3h. **Step 57, 2026-09-13 morning** (§65): the Codex audit of steps 44–56 answered — 25
+   findings, 7 High all real (stale by-shape flags, anchors resurrected in split views, parkade
+   levels folding under the first stated one, a top plan fitting the wrong tower, a junction as
+   four of the quorum, an orphan ring holding a floor's place, a square footprint), each fixed
+   with its counterexample as a test; F9 and F23 (the vocabulary flake, explained: `Run` writes
+   the static) fixed with them; the rest queued with reasons. ⚠ The brief burned 75% of Ian's
+   Plus 5-hour Codex limit in 17 minutes: it named a commit range that carried 60k lines of banked
+   e2k. Briefs are sized in bytes before handover now (`feedback_codex_briefs_must_be_bounded`).
+   NEXT: step 47 (storeys by words), then F8/F10/F14 with the next reading step.
 4. **WP6** — one model in front of Andrea (31170's, or whichever the ledger ranks best of the
    architects' sets). Ian's call when.
 5. **Step 47**, the next reading rule, from the corpus. `takeoff corpus-query plan-titles` on the

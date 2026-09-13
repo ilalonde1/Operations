@@ -24,6 +24,7 @@ namespace Kor.Operations.EngineeringTools.Core.Tests;
 /// is not quantised); the reference-model route (an inch model, where every literal is right);
 /// a same-class fault it would NOT catch: a literal applied identically wrong in both units.
 /// </remarks>
+[Collection(SheetNamingVocabularyCollection.Name)]   // composes a model, which writes PlanSheetNaming.Vocabulary (Codex 2026-09-13, F23)
 public sealed class AModelIsTheSameInInchesAndMillimetresTests
 {
     private static string N(double v) => v.ToString("0.####", CultureInfo.InvariantCulture);

@@ -19,6 +19,7 @@ namespace Kor.Operations.EngineeringTools.Core.Tests.Intake;
 /// covered by the reference-route tests); several sheets disagreeing about an axis (the median is
 /// taken; not banked); the six sets (31170 27 axes, 31168 38, measured 2026-09-10).
 /// </remarks>
+[Collection(SheetNamingVocabularyCollection.Name)]   // composes a model, which writes PlanSheetNaming.Vocabulary (Codex 2026-09-13, F23)
 public sealed class TheDrawingsOwnGridIsWrittenToTheModelTests
 {
     private static string Line(string layer, double x1, double y1, double x2, double y2)

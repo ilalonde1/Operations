@@ -124,4 +124,26 @@ public sealed class ATendonsAnchorIsNotAColumnTests
         Assert.Contains("TONNES", extended.ForceWords);
         Assert.Single(TendonAnchors.Read(content, g, MmPerPoint, extended.ForceWords));
     }
+
+    [Fact]
+    public void AnEndBesideABlocksShortSideIsNotInItsFootprint()
+    {
+        // an undeclared 305 x 914 block at the origin, and a labelled tendon starting 400 mm off its SHORT side: the
+        // footprint was a square on the longer half-side and took the end as inside (Codex audit 2026-09-13, F7)
+        var g = new ExtractedGeometry();
+        g.Columns.Add((0, 0)); g.ColumnSizes.Add((305, 914));
+        g.Lines.Add([(400, 0), (5000, 0)]);
+        var content = new VectorPageReader.PageContent(1, 3000, 2000, [Word("Kips", 2000, 150)], []);
+        var tendons = TendonAnchors.Read(content, g, MmPerPoint, TendonAnchors.DefaultForceWords);
+        Assert.Single(tendons);
+        Assert.Equal(0, TendonAnchors.StandDownColumns(g, tendons));
+        Assert.Equal([false], g.ColumnIsTendonAnchor);
+        // the same end 400 mm off the LONG side (a start at (0, 500)) is 43 mm inside the 457 + 50 half-depth and is the anchor
+        var h = new ExtractedGeometry();
+        h.Columns.Add((0, 0)); h.ColumnSizes.Add((305, 914));
+        h.Lines.Add([(0, 500), (0, 5000)]);
+        var vertical = TendonAnchors.Read(new VectorPageReader.PageContent(1, 3000, 2000, [Word("Kips", 150, 2000)], []), h, MmPerPoint, TendonAnchors.DefaultForceWords);
+        Assert.Single(vertical);
+        Assert.Equal(1, TendonAnchors.StandDownColumns(h, vertical));
+    }
 }

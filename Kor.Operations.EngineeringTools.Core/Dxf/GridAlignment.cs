@@ -440,17 +440,20 @@ public static class GridAlignment
         ArgumentNullException.ThrowIfNull(sheetColumns);
         ArgumentNullException.ThrowIfNull(placedColumns);
         why = string.Empty;
-        if (sheetColumns.Count < LeastConvincingByColumns || placedColumns.Count < LeastConvincingByColumns)
-        { why = $"{sheetColumns.Count} members on the sheet, {placedColumns.Count} placed: fewer than {LeastConvincingByColumns}"; return null; }
         double bin = ColumnRegistrationMm * scale;
         // A placed member is a PLACE, however many sheets or storeys stand one there: 31168's model holds 2,056
         // wall corners for some 70 walls, one panel per storey, and a vote per PAIR let two of a top plan's
         // corners over a thirty-storey core outvote its twenty-four columns (114 pairs against 24) - the
         // first cut of this step reported "2 of 44" on a sheet whose every column stood over the model's.
-        // So the placed set is distinct to a tenth of a bin, and each sheet member votes ONCE per bin.
-        var placed = placedColumns.GroupBy(q => ((long)Math.Round(q.X / (bin * 0.1)), (long)Math.Round(q.Y / (bin * 0.1)))).Select(g => g.First()).ToList();
+        // And a sheet's member is a place too: four wall axes meeting at one junction are one point, not
+        // four of the quorum (Codex audit 2026-09-13, F5). Both sets are distinct BY DISTANCE (a tenth of a
+        // bin, the first kept) and the minimum is asked of the places, not the entries.
+        var sheet = DistinctPlaces(sheetColumns, bin * 0.1, scale);
+        var placed = DistinctPlaces(placedColumns, bin * 0.1, 1.0);
+        if (sheet.Count < LeastConvincingByColumns || placed.Count < LeastConvincingByColumns)
+        { why = $"{sheet.Count} member place(s) on the sheet, {placed.Count} placed: fewer than {LeastConvincingByColumns}"; return null; }
         var votes = new Dictionary<(long, long), int>();
-        foreach (var p in sheetColumns)
+        foreach (var p in sheet)
         {
             var mine = new HashSet<(long, long)>();
             foreach (var q in placed)
@@ -458,21 +461,49 @@ public static class GridAlignment
             foreach (var key in mine) votes[key] = votes.TryGetValue(key, out int n) ? n + 1 : 1;
         }
         if (votes.Count == 0) { why = "no pairs"; return null; }
-        var best = votes.MaxBy(kv => kv.Value).Key;
-        var coarse = (X: best.Item1 * bin, Y: best.Item2 * bin);
-        var dxs = new List<double>(); var dys = new List<double>();
-        foreach (var p in sheetColumns)
-            foreach (var q in placed)
-                if (Math.Abs(q.X - p.X * scale - coarse.X) <= 1.5 * bin && Math.Abs(q.Y - p.Y * scale - coarse.Y) <= 1.5 * bin) { dxs.Add(q.X - p.X * scale); dys.Add(q.Y - p.Y * scale); }
-        if (dxs.Count == 0) { why = "the fullest bin holds no pair"; return null; }
-        dxs.Sort(); dys.Sort();
-        var shift = (X: dxs[dxs.Count / 2], Y: dys[dys.Count / 2]);
-        int support = sheetColumns.Count(p => placed.Any(q => Math.Abs(q.X - p.X * scale - shift.X) <= bin && Math.Abs(q.Y - p.Y * scale - shift.Y) <= bin
-                                                              && (q.X - p.X * scale - shift.X) * (q.X - p.X * scale - shift.X) + (q.Y - p.Y * scale - shift.Y) * (q.Y - p.Y * scale - shift.Y) <= bin * bin));
-        if (support < LeastConvincingByColumns || support * 2 < sheetColumns.Count)
-        { why = $"the displacement most share, ({shift.X:0}, {shift.Y:0}), has {support} of {sheetColumns.Count} members standing over placed ones - a fit takes {LeastConvincingByColumns} and at least half"; return null; }
-        return new Fit(new Frame(0, shift.X, shift.Y), 0, 0,
-            $"set where {support} of its {sheetColumns.Count} columns and walls stand over members already placed (no axis named in common)");
+
+        // EVERY BIN THAT COULD WIN IS REFINED, NOT THE FULLEST ALONE. The bins are a phase the frame chose: a
+        // displacement its members share can straddle a bin edge and split three-and-two under a bin that
+        // gathers four of someone else's (Codex audit 2026-09-13, F9). Each bin within one vote of the
+        // fullest is refined to the median of the pairs around it and judged by its SUPPORT - the members
+        // it lands within a bin of a placed one - and the best support wins. Two places that fit alike are
+        // refused: a top plan of tower A over towers A and B with one core plan fits both (F4).
+        int fullest = votes.Values.Max();
+        var fits = new List<((double X, double Y) Shift, int Support)>();
+        foreach (var (key, count) in votes.Where(kv => kv.Value >= Math.Max(1, fullest - 1)).OrderByDescending(kv => kv.Value).ThenBy(kv => kv.Key.Item1).ThenBy(kv => kv.Key.Item2))
+        {
+            var coarse = (X: key.Item1 * bin, Y: key.Item2 * bin);
+            var dxs = new List<double>(); var dys = new List<double>();
+            foreach (var p in sheet)
+                foreach (var q in placed)
+                    if (Math.Abs(q.X - p.X * scale - coarse.X) <= 1.5 * bin && Math.Abs(q.Y - p.Y * scale - coarse.Y) <= 1.5 * bin) { dxs.Add(q.X - p.X * scale); dys.Add(q.Y - p.Y * scale); }
+            if (dxs.Count == 0) continue;
+            dxs.Sort(); dys.Sort();
+            var shift = (X: dxs[dxs.Count / 2], Y: dys[dys.Count / 2]);
+            int support = sheet.Count(p => placed.Any(q => LoopGeometry.Within(Math.Sqrt((q.X - p.X * scale - shift.X) * (q.X - p.X * scale - shift.X) + (q.Y - p.Y * scale - shift.Y) * (q.Y - p.Y * scale - shift.Y)), bin)));
+            if (!fits.Any(f => Math.Abs(f.Shift.X - shift.X) <= bin && Math.Abs(f.Shift.Y - shift.Y) <= bin)) fits.Add((shift, support));
+        }
+        if (fits.Count == 0) { why = "the fullest bin holds no pair"; return null; }
+        var best = fits.OrderByDescending(f => f.Support).First();
+        if (best.Support < LeastConvincingByColumns || best.Support * 2 < sheet.Count)
+        { why = $"the displacement most share, ({best.Shift.X:0}, {best.Shift.Y:0}), has {best.Support} of {sheet.Count} members standing over placed ones - a fit takes {LeastConvincingByColumns} and at least half"; return null; }
+        var rival = fits.Where(f => f.Shift != best.Shift && f.Support == best.Support).ToList();
+        if (rival.Count > 0)
+        { why = $"two places fit alike: ({best.Shift.X:0}, {best.Shift.Y:0}) and ({rival[0].Shift.X:0}, {rival[0].Shift.Y:0}) each stand {best.Support} of {sheet.Count} members over placed ones - not placed"; return null; }
+        return new Fit(new Frame(0, best.Shift.X, best.Shift.Y), 0, 0,
+            $"set where {best.Support} of its {sheet.Count} columns and walls stand over members already placed (no axis named in common)");
+    }
+
+    /// <summary>The distinct places among points, by distance: a point within <paramref name="within"/> of one already kept is that one. The scale is applied before comparing; the result is in the caller's unit.</summary>
+    private static List<DxfPoint> DistinctPlaces(IReadOnlyList<DxfPoint> points, double within, double scale)
+    {
+        var kept = new List<DxfPoint>();
+        foreach (var p in points)
+        {
+            var q = new DxfPoint(p.X * scale, p.Y * scale);
+            if (!kept.Any(k => LoopGeometry.Within(k.DistanceTo(q), within))) kept.Add(q);
+        }
+        return Math.Abs(scale - 1.0) < 1e-12 ? kept : kept.Select(k => new DxfPoint(k.X / scale, k.Y / scale)).ToList();
     }
 
     public static List<ReferenceGrid> Carried(IReadOnlyList<NamedAxis> axes, Frame frame, double scale)

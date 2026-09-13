@@ -1,11 +1,11 @@
 # PDF intake — what it does today, and what it leaves on the page
 
-## 0. START HERE (state as of 2026-09-13, after steps 54–56 and completion-plan WP1–WP5 — 207 of 292 sets build from the PDF alone)
+## 0. START HERE (state as of 2026-09-13, after steps 54–57 and completion-plan WP1–WP5 — 207 of 292 sets build from the PDF alone)
 
 A session picking this up cold reads this section, then the completion plan
 (`docs/architecture/Kor.Operations.EngineeringTools.PdfIntake.plan.md` — what "complete" means, the
 packages, and where each stands), then the last three step sections (§54–§56). §1–§52 are the
-record of how each rule was arrived at, read when a rule is being changed. §64 is the latest step.
+record of how each rule was arrived at, read when a rule is being changed. §65 is the latest step.
 
 **What this is.** A PDF ingestor: one ingestion point (`DrawingIntake.ReadSheet` → `PdfOnlyBuild`)
 that reads a drawing set and hands its geometry to outlets — the ETABS `.e2k` today, the DXF as a
@@ -3274,3 +3274,47 @@ frame; a second build is byte-identical.
 WHAT THIS DOES NOT: `model-to-page` and `pdf-overlay --mark` read `$INSBASE`, now (0, 0), so a
 point in a view is a point on the page directly — `TheInstrumentsShareTheReadersFramesTests`
 asserts it; a page whose media box does not start at (0, 0) (a cropped PDF) keeps its own offset.
+
+## 65. Step 57, 2026-09-13: the adversarial audit of steps 44–56, answered
+
+The brief is `docs/codex/CODEX-PDF-INTAKE-STEPS-44-56-ADVERSARIAL-AUDIT.md`, the response beside
+it; 25 findings, source-deduced, each checked against the cited lines (20 lines read per finding,
+not the file). Seven High, all real, all fixed with a test that encodes the counterexample:
+
+| # | The fault, verified at the source | Fixed in | Test |
+|---|---|---|---|
+| F1 | The pattern-cell pass removed columns without compacting `columnByShape`; the quadrant pass then read the survivors by stale flags and a declared pair behind three cells went as a target's quadrants | `GeometryFilterService.PatternCellsAreNotColumns` compacts the flags with the other parallel lists | `CellsRemovedAheadOfADeclaredPairDoNotHandThePairTheirFlags` |
+| F2 | `SheetViews.Split` copied a view's columns without `ColumnIsTendonAnchor`; the exporter, seeing an empty list, wrote a stood-down anchor as a column again in a split view | the view carries the flag | `AStoodDownAnchorStaysStoodDownInItsView` |
+| F3 | Plan-only parkade levels below the first stated elevation walked up from zero and met it at zero (P2 0, P1 3,000, L1 0 — the ladder folded) | `StoreysFromPlans`: storeys before the first stated one step *down* from it by the storey height | `PlansBelowTheFirstStatedLevelStepDownFromIt` |
+| F4 | Two towers with one core plan: a top plan named for A fits B just as well, and the fuller bin was whichever came first | a sheet that names a building registers on the members of sheets that name it (or none); `SolveByColumns` refuses two places that fit alike | `RepeatedSheetPointsAreOnePlaceAndTwoPlacesThatFitAlikeAreRefused` |
+| F5 | Four wall axes meeting at one junction were four of the quorum; the placed set was made distinct, the sheet's was not | both sets distinct by distance; the minimum asked of places | same test |
+| F6 | `placedSlabs.Add` ran before `AnythingStandsUnder`, so a legend ring refused as an orphan held the place of the supported floor drawn at the same centre | the place is claimed after the support test | `AnOrphanRingDoesNotReserveTheSupportedFloorsPlace` |
+| F7 | `TendonAnchors.Inside` used the longer half-side on both axes: a 305 x 914 block held an end 400 mm off its short side | the block's own rectangle | `AnEndBesideABlocksShortSideIsNotInItsFootprint` |
+
+With F4 came F9 (Medium): the fullest bin alone was refined, and a displacement straddling a bin
+edge could lose to a stray bin — every bin within one vote of the fullest is refined and judged by
+its support (`ADisplacementStraddlingABinEdgeStillWins`). And F23 (Medium) explains the vocabulary
+flake CLAUDE.md said to look for a static behind: `DxfToEtabsService.Run` *writes*
+`PlanSheetNaming.Vocabulary`, and eleven composing test classes sat outside the collection that
+serialises its readers; they are in it now, and the gate `EveryReaderOfTheSharedVocabularyIsSerialised`
+counts a class that composes as a reader.
+
+**Accepted and queued, with the reason each waits** (all Medium/Low, none moves a member on the six
+sets today — the differential and the gate are green after the fixes above):
+F8 dash offsets measured against each segment's own normal are not comparable between nearly
+parallel lines (measure against the group's first); F10 `PlacedMembers.Near` bounds X and Y
+separately, so two readings 28 mm apart diagonally are "within an inch" (make it Euclidean, as
+`ColumnJointNear` is); F11 nearest-node registration is order-dependent when three points lie
+within one tolerance (known; a differential over entity order is the check); F12 curve points
+keyed at 0.01 mm (a cell); F13 the thresholds the sweep of §63 missed (listed in the response);
+F14 two `dxf.pdf` slab rows are loaded and never passed to `Classify` (wire them and prove it by
+breaking); F15 a grid drawn heavier than its tendons; F16 the yardstick's preferred-export path
+skips the self-output guard; F17–F18 `ModelDiff` cannot see a wall turned in place and matches
+`Any` rather than one-to-one; F19–F20 yardstick summaries (a complete recall miss suppressed; "on
+her wall" by bounding box); F21 `grid-names`' self-standing clause; F22 `corpus-query plan-titles`
+splits on `;` where the writer joins with ` | ` (a counting instrument — the run-7 row already says
+its count is the verb's); F24–F25 the unit differential and the ledger round-trip test are narrower
+than their names. Each is a line of work with its own measurement; none is carried silently.
+
+**Not accepted:** none. Two findings restate limits already named (F11's order dependence, F17's
+rotation) but each adds an input the WHAT-IT-DOES-NOT lists did not, so they stand as queued.

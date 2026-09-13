@@ -22,6 +22,7 @@ namespace Kor.Operations.EngineeringTools.Core.Tests.Intake;
 /// UTF-8; memory carries the string — where that ever differs, memory is the right one and the
 /// bank moves); the time saved (measured in the plan, not asserted).
 /// </remarks>
+[Collection(SheetNamingVocabularyCollection.Name)]   // composes a model, which writes PlanSheetNaming.Vocabulary (Codex 2026-09-13, F23)
 public sealed class TheHandoffIsInMemoryAndTheModelIsTheSameTests(Xunit.Abstractions.ITestOutputHelper output)
 {
     private static string Line(string layer, double x1, double y1, double x2, double y2)

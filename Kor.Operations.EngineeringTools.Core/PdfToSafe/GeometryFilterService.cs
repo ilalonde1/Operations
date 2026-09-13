@@ -521,7 +521,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         /// two cells alone in a wall shorter than three, which still read as columns; the wall the cells
         /// filled, which this pass does not build.
         /// </summary>
-        internal static void PatternCellsAreNotColumns(ExtractedGeometry result, IReadOnlyList<bool> columnByShape, IList<PathFate>? fates, int firstFate)
+        internal static void PatternCellsAreNotColumns(ExtractedGeometry result, IList<bool> columnByShape, IList<PathFate>? fates, int firstFate)
         {
             int n = result.Columns.Count;
             if (n < 3) return;
@@ -592,6 +592,10 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 if (i < result.ColumnColors.Count) result.ColumnColors.RemoveAt(i);
                 if (i < result.ColumnIsAnnotation.Count) result.ColumnIsAnnotation.RemoveAt(i);
                 if (i < result.ColumnSizes.Count) result.ColumnSizes.RemoveAt(i);
+                // and the by-shape flags, which the quadrant pass reads next by the SURVIVORS' indexes: left
+                // uncompacted, three removed cells ahead of two declared columns handed the pair the cells'
+                // flags and the pair went as a target's quadrants (Codex audit 2026-09-13, F1)
+                if (i < columnByShape.Count) columnByShape.RemoveAt(i);
             }
             if (fates is null) return;
             for (int k = firstFate; k < fates.Count; k++)

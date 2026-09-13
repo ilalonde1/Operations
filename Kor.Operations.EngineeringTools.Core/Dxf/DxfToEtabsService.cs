@@ -1156,12 +1156,23 @@ public static class DxfToEtabsService
             for (bool placedMore = candidates.Count > 0; placedMore;)
             {
                 placedMore = false;
-                var placedColumns = alignedByName
-                    .SelectMany(kv => MembersOf(kv.Key).Select(p => kv.Value.Frame.Apply(new DxfPoint(p.X * scale, p.Y * scale))))
-                    .ToList();
+                // A SHEET NAMED FOR A BUILDING STANDS ON THAT BUILDING'S MEMBERS. Two towers with one core plan
+                // (31168's A and B) offer a top plan of A the same four columns fifty metres apart, and the
+                // fuller bin is whichever came first (Codex audit 2026-09-13, F4): a sheet that names a building
+                // is registered on the members of sheets that name it (or name none); a sheet that names none
+                // is registered on all. And SolveByColumns refuses two places that fit alike.
+                IReadOnlyList<DxfPoint> PlacedFor(string f)
+                {
+                    var mine = sheetInfoByFile[f].BuildingTags;
+                    return alignedByName
+                        .Where(kv => mine.Count == 0 || sheetInfoByFile[kv.Key].BuildingTags.Count == 0
+                                     || sheetInfoByFile[kv.Key].BuildingTags.Any(t => mine.Contains(t, StringComparer.OrdinalIgnoreCase)))
+                        .SelectMany(kv => MembersOf(kv.Key).Select(p => kv.Value.Frame.Apply(new DxfPoint(p.X * scale, p.Y * scale))))
+                        .ToList();
+                }
                 foreach (string f in candidates.Where(f => !alignedByName.ContainsKey(f)).ToList())
                 {
-                    if (GridAlignment.SolveByColumns(MembersOf(f), placedColumns, scale) is { } fit)
+                    if (GridAlignment.SolveByColumns(MembersOf(f), PlacedFor(f), scale) is { } fit)
                     {
                         alignedByName[f] = fit;
                         byColumns.Add(Path.GetFileName(f));

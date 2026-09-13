@@ -208,6 +208,7 @@ public static class SheetViews
                 g.ColumnColors.Add(i < geometry.ColumnColors.Count ? geometry.ColumnColors[i] : ((byte)0, (byte)0, (byte)0));
                 g.ColumnSizes.Add(i < geometry.ColumnSizes.Count ? geometry.ColumnSizes[i] : (0, 0));
                 g.ColumnIsAnnotation.Add(i < geometry.ColumnIsAnnotation.Count && geometry.ColumnIsAnnotation[i]);
+                g.ColumnIsTendonAnchor.Add(i < geometry.ColumnIsTendonAnchor.Count && geometry.ColumnIsTendonAnchor[i]);   // a stood-down anchor stays stood down in its view (Codex 2026-09-13, F2)
             }
 
             var wallIndex = new Dictionary<int, int>();

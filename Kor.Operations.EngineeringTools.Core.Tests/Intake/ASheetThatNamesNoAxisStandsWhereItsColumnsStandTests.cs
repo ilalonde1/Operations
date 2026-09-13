@@ -79,4 +79,33 @@ public sealed class ASheetThatNamesNoAxisStandsWhereItsColumnsStandTests
         Assert.Equal(2000 - 100000 * s, fit!.Frame.OffsetX, 1e-6);
         Assert.Equal(1500 - 60000 * s, fit.Frame.OffsetY, 1e-6);
     }
+
+    [Fact]
+    public void RepeatedSheetPointsAreOnePlaceAndTwoPlacesThatFitAlikeAreRefused()
+    {
+        // four wall axes meeting at one junction are one point of the quorum, not four (Codex audit 2026-09-13, F5)
+        var junction = Enumerable.Repeat(new DxfPoint(10000, 5000), 4).ToList();
+        var placedFour = Enumerable.Repeat(new DxfPoint(50000, 40000), 4).Concat(Grid(50000, 40000, 2, 2)).ToList();
+        Assert.Null(GridAlignment.SolveByColumns(junction, placedFour));
+        // two towers with one core plan fifty metres apart: the same four columns fit both, and neither is chosen (F4)
+        var towers = Grid(50000, 40000, 2, 2).Concat(Grid(100000, 40000, 2, 2)).ToList();
+        Assert.Null(GridAlignment.SolveByColumns(Grid(10000, 5000, 2, 2), towers, 1.0, out string why));
+        Assert.Contains("two places fit alike", why);
+    }
+
+    [Fact]
+    public void ADisplacementStraddlingABinEdgeStillWins()
+    {
+        // five columns whose displacement, (40,050, 35,000), sits on a 100 mm bin edge and splits three-and-two across
+        // it; four strays elsewhere share one whole bin. The fullest bin alone would have won for the strays (Codex
+        // audit 2026-09-13, F9); every bin near the top is refined and judged by support
+        var placed = Grid(50050, 40000, 5, 1).Concat(Grid(80000, 60000, 4, 1)).ToList();
+        var sheet = new[] { new DxfPoint(10000 - 30, 5000), new DxfPoint(18000 - 30, 5000), new DxfPoint(26000 - 30, 5000), new DxfPoint(34000 + 30, 5000), new DxfPoint(42000 + 30, 5000) }
+            .Concat(Grid(20000, 20000, 4, 1)).ToList();
+        var fit = GridAlignment.SolveByColumns(sheet, placed, 1.0, out string why);
+        Assert.NotNull(fit);
+        Assert.InRange(fit!.Frame.OffsetX, 40050 - 60, 40050 + 60);
+        Assert.Equal(35000, fit.Frame.OffsetY, 1e-6);
+        Assert.Contains("5 of its 9", fit.Note);
+    }
 }

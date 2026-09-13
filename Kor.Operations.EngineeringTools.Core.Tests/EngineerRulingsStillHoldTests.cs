@@ -17,6 +17,7 @@ namespace Kor.Operations.EngineeringTools.Core.Tests;
 /// These four are measured here. They are separate from ModelPlausibilityTests because they are
 /// not plausibility: each one is a sentence an engineer said, checked against the file.
 /// </summary>
+[Collection(SheetNamingVocabularyCollection.Name)]   // composes a model, which writes PlanSheetNaming.Vocabulary (Codex 2026-09-13, F23)
 public class EngineerRulingsStillHoldTests
 {
     private readonly ITestOutputHelper _out;

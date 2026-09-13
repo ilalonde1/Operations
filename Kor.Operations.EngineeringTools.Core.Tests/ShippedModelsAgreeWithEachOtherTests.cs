@@ -22,6 +22,7 @@ namespace Kor.Operations.EngineeringTools.Core.Tests;
 /// So the check is between the artifacts rather than inside one of them. Skipped when the share
 /// is unreachable, like every other test that needs it.
 /// </summary>
+[Collection(SheetNamingVocabularyCollection.Name)]   // composes a model, which writes PlanSheetNaming.Vocabulary (Codex 2026-09-13, F23)
 public class ShippedModelsAgreeWithEachOtherTests
 {
     private readonly ITestOutputHelper _out;

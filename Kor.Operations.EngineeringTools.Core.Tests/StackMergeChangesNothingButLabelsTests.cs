@@ -59,6 +59,7 @@ namespace Kor.Operations.EngineeringTools.Core.Tests;
 /// needs no second build.
 /// </remarks>
 [Trait("Speed", "Slow")]
+[Collection(SheetNamingVocabularyCollection.Name)]   // composes a model, which writes PlanSheetNaming.Vocabulary (Codex 2026-09-13, F23)
 public class StackMergeChangesNothingButLabelsTests
 {
     private readonly ITestOutputHelper _out;

@@ -34,6 +34,7 @@ namespace Kor.Operations.EngineeringTools.Core.Tests;
 /// SLOW: builds 31065 from its real drawings over SMB and reads a 1.4 MB reference model.
 /// </remarks>
 [Trait("Speed", "Slow")]
+[Collection(SheetNamingVocabularyCollection.Name)]   // composes a model, which writes PlanSheetNaming.Vocabulary (Codex 2026-09-13, F23)
 public class EngineerModelBenchmarkTests
 {
     private readonly ITestOutputHelper _out;

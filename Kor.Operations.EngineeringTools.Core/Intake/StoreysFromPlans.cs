@@ -124,6 +124,14 @@ public static class StoreysFromPlans
                 // re-spaced evenly between the two stated levels, so an assumption never moves a fact.
                 elevation = l.ElevationMm;
                 int between = i - lastStated - 1;
+                // BELOW THE FIRST STATED LEVEL, THE PLANS STEP DOWN FROM IT. A parkade the plans name and the
+                // elevations do not cover walked up from zero and met the first stated level at zero again -
+                // P1 = L1 = 0, and with two of them P2 = 0, P1 = 3,000, L1 = 0, the ladder folded (Codex audit
+                // 2026-09-13, F3). The storeys before the first stated one are its elevation less a storey
+                // height each, counting down.
+                if (between > 0 && lastStated < 0)
+                    for (int k = 1; k <= between; k++)
+                        storeys[i - k] = storeys[i - k] with { ElevationMm = elevation - height * k, From = $"a plan names it; {height:0} mm below {(k == 1 ? name : order[i - k + 1])} ({heightSource})", Assumed = true };
                 if (between > 0 && lastStated >= 0)
                 {
                     double from = storeys[lastStated].ElevationMm, step = (elevation - from) / (between + 1);
