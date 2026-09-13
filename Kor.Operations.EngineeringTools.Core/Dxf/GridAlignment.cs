@@ -397,6 +397,71 @@ public static class GridAlignment
         return fit is null ? null : (fit with { Note = fit.Note + $" (at its own scale, {ratio:0.###} times the plans')" }, scale * ratio);
     }
 
+    /// <summary>
+    /// Fewer of a sheet's members than this standing over placed members is a coincidence, not a fit (step 55) -
+    /// and never fewer than half of them: a small top plan has five members (31168's LEVEL 35: two columns, three
+    /// wall outlines), all of which stand over the tower's.
+    /// </summary>
+    public const int LeastConvincingByColumns = 4;
+
+    /// <summary>A column stands over a placed one when it lands within this of it, in the model's unit at 1 mm; scaled with the sheet.</summary>
+    public const double ColumnRegistrationMm = 100.0;
+
+    /// <summary>
+    /// A SHEET THAT NAMES NO AXIS STANDS WHERE ITS MEMBERS STAND (intake step 55, 2026-09-12). A small top
+    /// plan carries two bubbles or none - 31168's LEVEL 35 PLAN - BLDG A names axes 4 and 5, its LEVEL 36
+    /// names nothing - and stayed "in its own frame", which is wherever the page put it: near the tower
+    /// while the frame was the drawn content's centroid, fifty metres off once the frame was the page's.
+    /// Its columns and its core are the tower's: the displacement most of its members (column and wall
+    /// outline centres) share with the members already placed (the yardstick's own registration - votes
+    /// in 100 mm bins, the fullest bin refined to the median) is its frame, at 0 degrees, when at least
+    /// <see cref="LeastConvincingByColumns"/> of them land within <see cref="ColumnRegistrationMm"/>.
+    /// Null otherwise.
+    /// </summary>
+    public static Fit? SolveByColumns(IReadOnlyList<DxfPoint> sheetColumns, IReadOnlyList<DxfPoint> placedColumns, double scale = 1.0)
+        => SolveByColumns(sheetColumns, placedColumns, scale, out _);
+
+    /// <summary>As above, and says why when it is null: the fullest bin's support against what a fit takes.</summary>
+    public static Fit? SolveByColumns(IReadOnlyList<DxfPoint> sheetColumns, IReadOnlyList<DxfPoint> placedColumns, double scale, out string why)
+    {
+        ArgumentNullException.ThrowIfNull(sheetColumns);
+        ArgumentNullException.ThrowIfNull(placedColumns);
+        why = string.Empty;
+        if (sheetColumns.Count < LeastConvincingByColumns || placedColumns.Count < LeastConvincingByColumns)
+        { why = $"{sheetColumns.Count} members on the sheet, {placedColumns.Count} placed: fewer than {LeastConvincingByColumns}"; return null; }
+        double bin = ColumnRegistrationMm * scale;
+        // A placed member is a PLACE, however many sheets or storeys stand one there: 31168's model holds 2,056
+        // wall corners for some 70 walls, one panel per storey, and a vote per PAIR let two of a top plan's
+        // corners over a thirty-storey core outvote its twenty-four columns (114 pairs against 24) - the
+        // first cut of this step reported "2 of 44" on a sheet whose every column stood over the model's.
+        // So the placed set is distinct to a tenth of a bin, and each sheet member votes ONCE per bin.
+        var placed = placedColumns.GroupBy(q => ((long)Math.Round(q.X / (bin * 0.1)), (long)Math.Round(q.Y / (bin * 0.1)))).Select(g => g.First()).ToList();
+        var votes = new Dictionary<(long, long), int>();
+        foreach (var p in sheetColumns)
+        {
+            var mine = new HashSet<(long, long)>();
+            foreach (var q in placed)
+                mine.Add(((long)Math.Round((q.X - p.X * scale) / bin), (long)Math.Round((q.Y - p.Y * scale) / bin)));
+            foreach (var key in mine) votes[key] = votes.TryGetValue(key, out int n) ? n + 1 : 1;
+        }
+        if (votes.Count == 0) { why = "no pairs"; return null; }
+        var best = votes.MaxBy(kv => kv.Value).Key;
+        var coarse = (X: best.Item1 * bin, Y: best.Item2 * bin);
+        var dxs = new List<double>(); var dys = new List<double>();
+        foreach (var p in sheetColumns)
+            foreach (var q in placed)
+                if (Math.Abs(q.X - p.X * scale - coarse.X) <= 1.5 * bin && Math.Abs(q.Y - p.Y * scale - coarse.Y) <= 1.5 * bin) { dxs.Add(q.X - p.X * scale); dys.Add(q.Y - p.Y * scale); }
+        if (dxs.Count == 0) { why = "the fullest bin holds no pair"; return null; }
+        dxs.Sort(); dys.Sort();
+        var shift = (X: dxs[dxs.Count / 2], Y: dys[dys.Count / 2]);
+        int support = sheetColumns.Count(p => placed.Any(q => Math.Abs(q.X - p.X * scale - shift.X) <= bin && Math.Abs(q.Y - p.Y * scale - shift.Y) <= bin
+                                                              && (q.X - p.X * scale - shift.X) * (q.X - p.X * scale - shift.X) + (q.Y - p.Y * scale - shift.Y) * (q.Y - p.Y * scale - shift.Y) <= bin * bin));
+        if (support < LeastConvincingByColumns || support * 2 < sheetColumns.Count)
+        { why = $"the displacement most share, ({shift.X:0}, {shift.Y:0}), has {support} of {sheetColumns.Count} members standing over placed ones - a fit takes {LeastConvincingByColumns} and at least half"; return null; }
+        return new Fit(new Frame(0, shift.X, shift.Y), 0, 0,
+            $"set where {support} of its {sheetColumns.Count} columns and walls stand over members already placed (no axis named in common)");
+    }
+
     public static List<ReferenceGrid> Carried(IReadOnlyList<NamedAxis> axes, Frame frame, double scale)
     {
         var carried = new List<ReferenceGrid>();

@@ -194,6 +194,8 @@ public sealed class EveryReaderConstantIsTriagedTests
         ["LoopGeometry.cs:Slack"] = Tolerance("floating point: the T-touch"),
         ["MatchLineSheetJoin.cs:DefaultTolerance"] = Tolerance("two match lines that are one seam"),
         ["ModelYardstick.cs:bin"] = Tolerance("the residual histogram's bin"),
+        ["GridAlignment.cs:LeastConvincingByColumns"] = Tolerance("fewer of a sheet's members than this, or than half of them, standing over placed members is a coincidence, not a frame"),
+        ["GridAlignment.cs:ColumnRegistrationMm"] = Tolerance("a column stands over a placed one within this"),
         ["ModelYardstick.cs:FootprintMarginMm"] = Tolerance("how far past her outermost column a column of ours is still judged against her model - registration slop and a slab-edge column, not a bay"),
 
         // ---- rules: facts of geometry or of buildings, code by design ----

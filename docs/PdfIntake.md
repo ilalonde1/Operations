@@ -1,11 +1,11 @@
 # PDF intake — what it does today, and what it leaves on the page
 
-## 0. START HERE (state as of 2026-09-12, after step 53 and completion-plan WP1–WP5 — 207 of 292 sets build from the PDF alone)
+## 0. START HERE (state as of 2026-09-12, after step 55 and completion-plan WP1–WP5 — 207 of 292 sets build from the PDF alone)
 
 A session picking this up cold reads this section, then the completion plan
 (`docs/architecture/Kor.Operations.EngineeringTools.PdfIntake.plan.md` — what "complete" means, the
 packages, and where each stands), then the last three step sections (§54–§56). §1–§52 are the
-record of how each rule was arrived at, read when a rule is being changed. §61 is the latest step.
+record of how each rule was arrived at, read when a rule is being changed. §62 is the latest step.
 
 **What this is.** A PDF ingestor: one ingestion point (`DrawingIntake.ReadSheet` → `PdfOnlyBuild`)
 that reads a drawing set and hands its geometry to outlets — the ETABS `.e2k` today, the DXF as a
@@ -3031,3 +3031,62 @@ the frame class (next); `ModelDiff`'s registration, which the six-set gate repor
 which called 177 columns lost and gained on 31065 under a pure translation the yardstick's
 registration matched to 100% — the gate's diff should register the way the yardstick does (next,
 with the frame).
+
+## 62. Step 55, 2026-09-12, late: a sheet that names no axis stands where its members stand
+
+**The class, from §61.** The composed model depended on where the origin was because a sheet the
+names could not place — 31168's LEVEL 35 PLAN - BLDG A names axes 4 and 5 and nothing across, its
+LEVEL 36 names nothing — stayed "in its own frame", which is wherever the page put it: near the
+tower in one frame and fifty metres off in the other. Its members are the tower's; the model
+should not care where the page drew them.
+
+**The rule.** `GridAlignment.SolveByColumns`: the displacement most of a sheet's members share
+with the members already placed is its frame, at 0 degrees — votes in `ColumnRegistrationMm`
+(100 mm) bins, the fullest bin refined to the median of its pairs, and a fit only when at least
+`LeastConvincingByColumns` (4) of the sheet's members land within a bin of a placed one *and* at
+least half of them do. Runs after the by-name placement and the carriers, for sheets still
+unplaced, and a sheet placed this way lends its members to the next (`DxfToEtabsService`, the
+loop after the carriers). `ASheetThatNamesNoAxisStandsWhereItsColumnsStandTests`.
+
+**Two faults in the first cut, both found by the instrument, not the gate.** `grid-names` now
+prints, per sheet, its members against the model's ("members: 44 …; the model has 2425: …"), and
+on the L4-L14 plan — placed by name, twenty-four of whose columns provably stand on model
+columns (`sheet_vs_model_columns.py`: 24 of 24 within 100 mm) — it said "the displacement most
+share has **2 of 44**". Reproducing the vote in python on the same inputs gave the same answer,
+so the inputs were right and the vote was wrong:
+
+1. **A placed member is a place, however many storeys stand one there.** The model held 2,056
+   panel corners for some seventy walls — one panel per storey — and a vote per *pair* let two
+   of the sheet's corners over a thirty-storey core cast 114 votes against the twenty-four
+   columns' 24. The placed set is now distinct to a tenth of a bin and each sheet member votes
+   once per bin. `APlacedMemberOnThirtyStoreysIsOnePlace`.
+2. **Register on the joints the composer writes, not an outline's corners.** With the vote fixed,
+   L35 registered on tower B by 4 of 10 — refused by the half rule, one short of a wrong fit —
+   and on tower A by nothing, because a wall outline's corner sits half a thickness from the
+   panel's end (191 mm for the 382 mm core walls; outside the bin). Members are now
+   `StructuralPlanClassifier.MemberPoints`: each column's centre and each wall's axis ends, the
+   points the model is made from, classified in the drawing's own unit (`requested.InUnitOf(
+   drawingUnit)` — the raw segments, not the model-unit options the full classification uses)
+   and read back from the model the same way by `grid-names` (column joints, a panel's two plan
+   ends). L4-L14: 60 of 60 at (-24,974, 8,273); L35: **8 of 12 at (-25,131, 10,136)** — the X is
+   what its two named axes give to the millimetre (-25,131.5), the Y is where its core walls'
+   ends meet the L34 plan's. Its two 24x12 columns land 375 mm off the centres of the 30x41 columns
+   below them, flush at one corner (faces within 10 mm) — a non-concentric stack, and the walls
+   outvote them. `grid-names`, reading
+   a model that already holds an unplaced sheet where the composer left it, registers that sheet
+   on itself at (0, 0); it says so and prints the fit against the other members as well.
+
+**Measured.** Six-set gate: 31168 alone moved — A-L36's two columns and five walls, from
+(-4,256, -4,684) to the tower: walls at (-29,301, 12,641) 1,742 long, (-24,790, 11,936),
+(-24,778, 13,512), (-24,778, 10,565), (-20,255, 12,641), each within 3 mm of the wall below it
+(KW637, KW632, KW636, KW244, KW635). Five sets byte-identical. Banked. 31168's yardstick is
+unchanged (her model is the parkade and L1–L2; 95% / 83%). A stale `<job>-diff.txt` from an
+earlier run read as three regressions for a minute; the gate now deletes a set's diff when the
+set builds identical. 31202's two unplaced sheets are S7 SEISMIC INSTRUMENTATION plans with no
+level number, and place nothing.
+
+WHAT THIS DOES NOT: a sheet drawn a quarter turn from the model (0 degrees only); a sheet that
+names axes in ONE direction, which could be fixed in that direction by name and voted in the
+other (L35's by-name X and its by-members X agree to 0.5 mm, so it was not needed); the frame
+class itself — the differential *the same drawings shifted on the page build the same structure*
+is still owed, then the page frame (`stash@{0}`), then `ModelDiff`'s registration.

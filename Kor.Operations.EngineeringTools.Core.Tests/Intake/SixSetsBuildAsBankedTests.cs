@@ -92,14 +92,18 @@ public sealed class SixSetsBuildAsBankedTests
         {
             string line = failure ?? diff!.OneLine;
             _out.WriteLine($"{set.Job}: {line}");
+            // a diff on disk is THIS run's, or none: a set that built identical leaves no stale one from an
+            // earlier run to be read as tonight's (2026-09-12: three were, and read as three regressions)
+            string diffPath = Path.Combine(results, $"{set.Job}-diff.txt");
             if (failure is not null) moved.Add($"{set.Job}: {failure}");
             else if (!diff!.ByteIdentical)
             {
                 string report = ModelDiff.Report(diff);
                 _out.WriteLine(report);
-                File.WriteAllText(Path.Combine(results, $"{set.Job}-diff.txt"), report);
+                File.WriteAllText(diffPath, report);
                 moved.Add($"{set.Job}: {line}");
             }
+            else File.Delete(diffPath);
         }
         Assert.True(moved.Count == 0,
             "The six-set gate: these sets no longer build byte-identical to their baselines. Look at what moved (TestResults/six-sets/<job>-diff.txt, and render both models), " +

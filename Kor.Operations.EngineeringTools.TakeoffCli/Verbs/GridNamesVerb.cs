@@ -24,6 +24,25 @@ internal static class GridNamesVerb
         }
         if (grids.Count == 0) Console.WriteLine($"{Path.GetFileName(args[1])} carries no GRID lines");
 
+        // the model's members, for the registration a sheet with no shared name falls back to (step 55): its
+        // column joints and its wall panels' two plan ends (a panel's four joints are two plan points, low and
+        // high), in the model's unit; a sheet is read in its own unit and scaled to the model's
+        var modelDoc = E2kDocument.Load(args[1]);
+        double modelUnit = modelDoc.LengthUnitInInches() ?? 1.0;
+        var modelPoints = modelDoc.PlanPointsOfObjects();
+        var modelMembers = new List<DxfPoint>();
+        foreach (string raw in modelDoc.LinesOf("LINE CONNECTIVITIES"))
+        {
+            var m = System.Text.RegularExpressions.Regex.Match(raw.TrimStart(), @"^LINE\s+""([^""]+)""\s+COLUMN\b");
+            if (m.Success && modelPoints.TryGetValue(m.Groups[1].Value, out var cp) && cp.Count > 0) modelMembers.Add(new DxfPoint(cp[0].X, cp[0].Y));
+        }
+        foreach (string raw in modelDoc.LinesOf("AREA CONNECTIVITIES"))
+        {
+            var m = System.Text.RegularExpressions.Regex.Match(raw.TrimStart(), @"^AREA\s+""([^""]+)""\s+PANEL\b");
+            if (m.Success && modelPoints.TryGetValue(m.Groups[1].Value, out var wp))
+                modelMembers.AddRange(wp.Select(q => new DxfPoint(q.X, q.Y)).DistinctBy(q => (Math.Round(q.X, 3), Math.Round(q.Y, 3))));
+        }
+
         int unplaceable = 0;
         foreach (string sheet in args.Skip(2))
         {
@@ -38,6 +57,25 @@ internal static class GridNamesVerb
             Console.WriteLine($"   named by the model ({yes.Count}): {string.Join(" ", yes)}");
             Console.WriteLine($"   not named        ({no.Count}): {string.Join(" ", no)}");
             if (yes.Count < GridAlignment.LeastConvincingByName) unplaceable++;
+
+            // and where its members would stand over the model's (step 55): the second way a sheet is placed
+            // the standing rules are stated in inches; the sheet is read in its own unit
+            double sheetUnit = DxfPlanReader.UnitInInches(sheet) ?? 1.0;
+            var members = StructuralPlanClassifier.MemberPoints(DxfPlanReader.ReadSegments(sheet), new PlanClassificationOptions().InUnitOf(sheetUnit));
+            double toModel = sheetUnit / modelUnit;
+            var byMembers = GridAlignment.SolveByColumns(members, modelMembers, toModel, out string why);
+            Console.WriteLine($"   members: {members.Count} (column centres and wall axis ends); the model has {modelMembers.Count}: " +
+                (byMembers is null ? why : $"{byMembers.Note} at ({byMembers.Frame.OffsetX:0}, {byMembers.Frame.OffsetY:0}) model units"));
+            // a sheet the composer left in its own frame is in the model at (0, 0) already and registers on itself;
+            // what the composer would do is the fit against the model WITHOUT what stands where this sheet sits
+            if (byMembers is { } self && Math.Abs(self.Frame.OffsetX) <= GridAlignment.ColumnRegistrationMm * toModel && Math.Abs(self.Frame.OffsetY) <= GridAlignment.ColumnRegistrationMm * toModel)
+            {
+                double bin = GridAlignment.ColumnRegistrationMm * toModel;
+                var others = modelMembers.Where(q => !members.Any(p => Math.Abs(q.X - p.X * toModel) <= bin && Math.Abs(q.Y - p.Y * toModel) <= bin)).ToList();
+                var elsewhere = GridAlignment.SolveByColumns(members, others, toModel, out string whyNot);
+                Console.WriteLine($"   ... that is the sheet standing on itself where the composer left it; against the other {others.Count}: " +
+                    (elsewhere is null ? whyNot : $"{elsewhere.Note} at ({elsewhere.Frame.OffsetX:0}, {elsewhere.Frame.OffsetY:0}) model units"));
+            }
         }
         Console.WriteLine();
         Console.WriteLine($"{args.Length - 2} sheet(s); {unplaceable} with fewer than {GridAlignment.LeastConvincingByName} axes the model names (the fewest a fit by name takes)");

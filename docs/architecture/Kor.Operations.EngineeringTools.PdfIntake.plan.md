@@ -1,6 +1,6 @@
 # PDF intake → ETABS — Completion Plan
 
-**Status:** Rev 3, 2026-09-12 (steps 49–53 added to §8, 3b–3d) — WP1–WP5 landed overnight on Ian's go-ahead ("go through this all,
+**Status:** Rev 3, 2026-09-12 (steps 49–55 added to §8, 3b–3e) — WP1–WP5 landed overnight on Ian's go-ahead ("go through this all,
 step by step, and finish it overnight"): commits `8fccbc25` (WP3), `3f3f82b9` (WP2), `aba7d9ff`
 (WP4), `69e554b5` (WP5), each gated by the six byte-identical and the fast suite; WP5's remaining
 conventions are counted by a test, not by this document. §8 is what needs Ian. Rev 2 (2026-09-11)
@@ -261,6 +261,15 @@ Revit route.
    cause, fix, then the page frame, then re-bank the six once. Also: the gate's `ModelDiff`
    registration called 177 columns lost and gained under a pure translation the yardstick matched
    at 100% — register the gate's diff the way the yardstick does.
+3e. **Step 55, 2026-09-12, late** (§62): a sheet that names no axis stands where its members stand
+   (`GridAlignment.SolveByColumns`: the displacement most of its column centres and wall axis
+   ends share with the members already placed, 100 mm bins, at least 4 and at least half). The
+   cause of §61's frame class on 31168 — LEVEL 35 and 36 of BLDG A left in the page frame — is
+   placed: L35 at 8 of 12 members, its core walls within 3 mm of L34's. Two faults found by
+   `grid-names` before the gate saw anything: a vote per PAIR let a thirty-storey stack of one
+   wall corner outvote twenty-four columns (one vote per member per bin now), and outline corners
+   sit half a thickness from the panel ends the model holds (axis ends now, both sides). Five
+   sets byte-identical; 31168 re-banked. The differential of 3d is still owed, then the page frame.
 4. **WP6** — one model in front of Andrea (31170's, or whichever the ledger ranks best of the
    architects' sets). Ian's call when.
 5. **Step 47**, the next reading rule, from the corpus. `takeoff corpus-query plan-titles` on the

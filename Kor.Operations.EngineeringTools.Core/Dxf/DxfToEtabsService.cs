@@ -1132,6 +1132,46 @@ public static class DxfToEtabsService
             warnings.Add(
                 $"{alignedCarriers.Count} refused sheet(s) lent their named axes to the grid - read for their axes alone, never for members: " +
                 string.Join(" ", alignedCarriers.Select(kv => $"{Path.GetFileName(kv.Key)}: {kv.Value.Fit.Note}")));
+
+        // A SHEET THAT NAMES NO AXIS STANDS WHERE ITS MEMBERS STAND (intake step 55). What the names could not
+        // place, the members can: a small top plan with two bubbles or none is registered on the columns and
+        // wall outlines the placed sheets already put in the model - a tower's columns and its core stack,
+        // and the displacement most of the sheet's members share with them is its frame. A sheet placed this
+        // way lends its members to the next. 31168's LEVEL 35 PLAN - BLDG A: two columns, five walls.
+        if (request.Offset is null && alignedByName.Count > 0)
+        {
+            // the points that stack, read the way the model is made from them: a column's centre and a wall's
+            // axis ends - the joints the composer writes, so an instrument reading the model back (grid-names)
+            // registers on the same points. Not an outline's corners: those sit half a thickness from the
+            // panel the model holds, and a 382 mm core wall's corner is 191 mm from it - outside the bin.
+            // read in the drawing's own unit, as the raw segments are; the fit scales them to the model's
+            var inDrawingUnit = Math.Abs(drawingUnit.Value - 1.0) < 1e-9 ? requested : requested.InUnitOf(drawingUnit.Value);
+            // classified only when a sheet needs it: every sheet is classified in full further down, and a
+            // second pass over thirty placed sheets is owed only when one was left unplaced
+            var membersOf = new Dictionary<string, IReadOnlyList<DxfPoint>>(StringComparer.OrdinalIgnoreCase);
+            IReadOnlyList<DxfPoint> MembersOf(string f) => membersOf.TryGetValue(f, out var m) ? m
+                : membersOf[f] = StructuralPlanClassifier.MemberPoints(segmentsOf[f], inDrawingUnit);
+            var candidates = files.Where(f => !alignedByName.ContainsKey(f) && MembersOf(f).Count >= GridAlignment.LeastConvincingByColumns).ToList();
+            var byColumns = new List<string>();
+            for (bool placedMore = candidates.Count > 0; placedMore;)
+            {
+                placedMore = false;
+                var placedColumns = alignedByName
+                    .SelectMany(kv => MembersOf(kv.Key).Select(p => kv.Value.Frame.Apply(new DxfPoint(p.X * scale, p.Y * scale))))
+                    .ToList();
+                foreach (string f in candidates.Where(f => !alignedByName.ContainsKey(f)).ToList())
+                {
+                    if (GridAlignment.SolveByColumns(MembersOf(f), placedColumns, scale) is { } fit)
+                    {
+                        alignedByName[f] = fit;
+                        byColumns.Add(Path.GetFileName(f));
+                        placedMore = true;
+                    }
+                }
+            }
+            if (byColumns.Count > 0)
+                warnings.Add($"{byColumns.Count} sheet(s) named no axis the model names and were set where their columns and walls stand over members already placed: {string.Join(", ", byColumns)}");
+        }
         if (alignedByName.Count > 0)
         {
             warnings.Add(

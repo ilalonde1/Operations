@@ -524,6 +524,22 @@ public static class StructuralPlanClassifier
         return all;
     }
 
+    /// <summary>
+    /// The points of a sheet's members that stack storey on storey, read the way the model is made from
+    /// them (intake step 55): each column's centre and each wall's axis ends - the joints the composer
+    /// writes, in the sheet's own frame and unit. A sheet that names no axis is set on the model where
+    /// most of these stand over members already placed; <c>takeoff grid-names</c> reads the model's own
+    /// column joints and panel ends against them. Classified without the sheet's words or tags: what
+    /// those change (a partition left out, a dashed member sent below) does not move what is left.
+    /// </summary>
+    public static IReadOnlyList<DxfPoint> MemberPoints(IEnumerable<DxfSegment> segments, PlanClassificationOptions options)
+    {
+        var geometry = Classify(segments, options);
+        return geometry.Columns.Select(c => c.Center)
+            .Concat(geometry.Walls.SelectMany(w => new[] { w.Start, w.End }))
+            .ToList();
+    }
+
     internal const string RoleWall = "walls";
     internal const string RoleColumn = "columns";
     internal const string RoleSlab = "slab edges";
