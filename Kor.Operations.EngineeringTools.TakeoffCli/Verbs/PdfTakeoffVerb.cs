@@ -96,6 +96,8 @@ internal static class PdfTakeoffVerb
             Console.WriteLine($"{ptResult.PatternCells} column-sized shape(s) stood edge to edge in runs of three or more of a size - the cells of a fill pattern, not columns - and were not written.");
         if (ptResult.TendonAnchors > 0)
             Console.WriteLine($"{ptResult.TendonAnchors} column-sized shape(s) stood at the end of a line labelled with a force - a tendon's anchor, not a column - and were not written.");
+        if (ptResult.RenamedViews.Count > 0)
+            Console.WriteLine($"{ptResult.RenamedViews.Count} view(s) carry their page in their name because another page already took it: {string.Join(", ", ptResult.RenamedViews.Take(6))}{(ptResult.RenamedViews.Count > 6 ? ", ..." : "")}");
         if (ptResult.SymbolQuadrants > 0)
             Console.WriteLine($"{ptResult.SymbolQuadrants} column-sized shape(s) met a twin of the same size at a corner and nowhere else - the two filled quadrants of a spot-elevation target, not columns - and were not written.");
         if (ptResult.Assemblies.Count > 0)

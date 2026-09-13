@@ -364,6 +364,39 @@ public static class GridAlignment
     /// set — the model's GRIDS names only what the engineer drew, and a sheet whose letters the
     /// model lacks can still be placed by a sheet that shares them and was placed.
     /// </summary>
+    /// <summary>
+    /// A FIT AT THE SHEET'S OWN SCALE (intake step 51, 2026-09-12). A key plan or a design load plan
+    /// draws the whole grid in one view, usually smaller than the plans - 31130's DESIGN LOAD PLANS
+    /// carries axes 1-16 and 17-28 together at half the plans' scale - and that is the one sheet on
+    /// which the two halves of a building split on a bay share a frame. The ratio between the sheet's
+    /// spacing and the model's for the widest pair of named axes it shares, in each direction, is its
+    /// scale; where the two directions agree within two per cent the fit is solved at that scale and
+    /// the ratio is in the note. Null where fewer than two names are shared in either direction, the
+    /// directions disagree, or the fit at that scale is no fit.
+    /// </summary>
+    public static (Fit Fit, double Scale)? SolveByNameAtOwnScale(IReadOnlyList<NamedAxis> axes, IReadOnlyList<ReferenceGrid> reference, double scale = 1.0)
+    {
+        ArgumentNullException.ThrowIfNull(axes);
+        ArgumentNullException.ThrowIfNull(reference);
+        double? Ratio(bool vertical)
+        {
+            var mine = axes.Where(a => a.Vertical == vertical).ToList();
+            var theirs = reference.Where(g => g.DirX == vertical).ToList();
+            var shared = mine.Select(a => (a, g: theirs.FirstOrDefault(g => g.Label.Equals(a.Name, StringComparison.OrdinalIgnoreCase))))
+                             .Where(x => x.g is not null).OrderBy(x => x.a.At).ToList();
+            if (shared.Count < 2) return null;
+            var lo = shared[0]; var hi = shared[^1];
+            double mineSpan = (hi.a.At - lo.a.At) * scale, theirSpan = hi.g!.Coord - lo.g!.Coord;
+            if (Math.Abs(mineSpan) < 1e-6 || Math.Abs(theirSpan) < 1e-6) return null;
+            return Math.Abs(theirSpan / mineSpan);
+        }
+        double? rx = Ratio(true), ry = Ratio(false);
+        double ratio = rx is double a && ry is double b ? (Math.Abs(a - b) <= 0.02 * Math.Max(a, b) ? (a + b) / 2 : double.NaN) : (rx ?? ry ?? double.NaN);
+        if (double.IsNaN(ratio) || ratio <= 0) return null;
+        var fit = SolveByName(axes, reference, scale * ratio);
+        return fit is null ? null : (fit with { Note = fit.Note + $" (at its own scale, {ratio:0.###} times the plans')" }, scale * ratio);
+    }
+
     public static List<ReferenceGrid> Carried(IReadOnlyList<NamedAxis> axes, Frame frame, double scale)
     {
         var carried = new List<ReferenceGrid>();

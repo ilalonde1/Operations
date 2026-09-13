@@ -757,6 +757,11 @@ public static class DxfToEtabsService
         // Applied here rather than at the enumeration because the rule comes from KorStandards
         // and is not known until the settings are read. Named, never silent: a sheet refused is a
         // floor that will not be in the model, and whoever looks for it is owed the reason.
+        // A REFUSED SHEET'S AXES STILL PLACE THE SHEETS THAT NAME THEM (intake step 51). The key plan and
+        // the design load plan are refused as plans - rightly, their linework is a schematic - but they
+        // draw the whole grid in one view, and on a building split on a bay they are the only sheet on
+        // which both halves' axes share a frame (31130: 1-16 and 17-28, 2026-09-12). They feed no storey.
+        var frameCarriers = new List<string>();
         if (requested.NonStructuralSheetPatterns.Count > 0)
         {
             var refused = new List<string>();
@@ -775,6 +780,7 @@ public static class DxfToEtabsService
 
                 files.Remove(file);
                 sheetInfoByFile.Remove(file);
+                frameCarriers.Add(file);
                 refused.Add($"{Path.GetFileName(file)} [{hit}]");
             }
 
@@ -1043,6 +1049,11 @@ public static class DxfToEtabsService
         var tagsOf = files.ToDictionary(f => f, f => DxfPlanReader.ReadPositionedTags(LinesOf(f)), StringComparer.OrdinalIgnoreCase);
         var namedAxesOf = files.ToDictionary(f => f, f => GridAlignment.NamedAxes(segmentsOf[f], tagsOf[f]), StringComparer.OrdinalIgnoreCase);
         var alignedByName = new Dictionary<string, GridAlignment.Fit>(StringComparer.OrdinalIgnoreCase);
+        // the refused sheets' named axes (step 51): read for their grid alone, never for members
+        var carrierAxesOf = frameCarriers.ToDictionary(f => f,
+            f => { var segs = DxfPlanReader.ReadSegments(LinesOf(f)); return GridAlignment.NamedAxes(segs, DxfPlanReader.ReadPositionedTags(LinesOf(f))); },
+            StringComparer.OrdinalIgnoreCase);
+        var alignedCarriers = new Dictionary<string, (GridAlignment.Fit Fit, double Scale)>(StringComparer.OrdinalIgnoreCase);
 
         // A JOB NOBODY HAS MODELLED HAS NO GRID TO SET THE SHEETS ON, SO THE DRAWINGS' OWN REFERENCE
         // PLAN IS THE GRID. With no reference model (or a shell with no GRIDS), the sheet naming the
@@ -1088,6 +1099,11 @@ public static class DxfToEtabsService
                     foreach (var g in GridAlignment.Carried(namedAxesOf[placed], fit.Frame, scale))
                         if (!extended.Any(e => e.DirX == g.DirX && e.Label.Equals(g.Label, StringComparison.OrdinalIgnoreCase)))
                             extended.Add(g);
+                // a carrier placed by name lends the axes only it draws - at its own scale (step 51)
+                foreach (var (carrier, placed) in alignedCarriers)
+                    foreach (var g in GridAlignment.Carried(carrierAxesOf[carrier], placed.Fit.Frame, placed.Scale))
+                        if (!extended.Any(e => e.DirX == g.DirX && e.Label.Equals(g.Label, StringComparison.OrdinalIgnoreCase)))
+                            extended.Add(g);
                 foreach (string f in files.Where(f => !alignedByName.ContainsKey(f) && namedAxesOf[f].Count > 0).ToList())
                 {
                     if (GridAlignment.SolveByName(namedAxesOf[f], extended, scale) is { } fit)
@@ -1096,8 +1112,23 @@ public static class DxfToEtabsService
                         placedMore = true;
                     }
                 }
+                foreach (string c in frameCarriers.Where(c => !alignedCarriers.ContainsKey(c) && carrierAxesOf[c].Count >= GridAlignment.LeastConvincingByName).ToList())
+                {
+                    var own = GridAlignment.SolveByNameAtOwnScale(carrierAxesOf[c], extended, scale);
+                    if (own is null) continue;
+                    // worth carrying only where it names an axis no placed sheet has yet
+                    bool lends = GridAlignment.Carried(carrierAxesOf[c], own.Value.Fit.Frame, own.Value.Scale)
+                        .Any(g => !extended.Any(e => e.DirX == g.DirX && e.Label.Equals(g.Label, StringComparison.OrdinalIgnoreCase)));
+                    if (!lends) continue;
+                    alignedCarriers[c] = own.Value;
+                    placedMore = true;
+                }
             }
         }
+        if (alignedCarriers.Count > 0)
+            warnings.Add(
+                $"{alignedCarriers.Count} refused sheet(s) lent their named axes to the grid - read for their axes alone, never for members: " +
+                string.Join(" ", alignedCarriers.Select(kv => $"{Path.GetFileName(kv.Key)}: {kv.Value.Fit.Note}")));
         if (alignedByName.Count > 0)
         {
             warnings.Add(

@@ -1,11 +1,11 @@
 # PDF intake — what it does today, and what it leaves on the page
 
-## 0. START HERE (state as of 2026-09-12, after step 50 and completion-plan WP1–WP5 — 207 of 292 sets build from the PDF alone)
+## 0. START HERE (state as of 2026-09-12, after step 51 and completion-plan WP1–WP5 — 207 of 292 sets build from the PDF alone)
 
 A session picking this up cold reads this section, then the completion plan
 (`docs/architecture/Kor.Operations.EngineeringTools.PdfIntake.plan.md` — what "complete" means, the
 packages, and where each stands), then the last three step sections (§54–§56). §1–§52 are the
-record of how each rule was arrived at, read when a rule is being changed. §58 is the latest step.
+record of how each rule was arrived at, read when a rule is being changed. §59 is the latest step.
 
 **What this is.** A PDF ingestor: one ingestion point (`DrawingIntake.ReadSheet` → `PdfOnlyBuild`)
 that reads a drawing set and hands its geometry to outlets — the ETABS `.e2k` today, the DXF as a
@@ -57,7 +57,7 @@ closing rules that a rendered view would have settled; that is the mistake this 
 | Storeys with a plate | 741 of 2,401 (31%) |
 | Against the engineers' own models (39 sets sharing a storey with columns, of 62 with a model) | 34% of our columns within 100 mm of theirs, 48% of theirs within 100 mm of ours; 31130 under 25% with 20 shared storeys — the next thing to look at |
 | 31168 against the Revit route | columns median 16 mm, 92% within 50 mm; tower plates within 0.1%; 36 of 62 storeys carry a plate; walls 1,324 vs 1,832 |
-| The four harness sets with the engineer's own model (§56–§58, after step 50; ours judged only inside her footprint) | 31138 70% / 96%; 31170 86% / 91%; 31202 **90% / 95%** (42 anchors stand beyond her perimeter and are counted, not judged; 32 offset 12x24s are her grid-snapped columns; 28 11x14s); 31065 **73% / 76%** (231 columns of the tower she did not model, not judged); 31130 not a number yet — two frames (step 51) |
+| The four harness sets with the engineer's own model (§56–§58, after step 50; ours judged only inside her footprint) | 31138 70% / 96%; 31170 86% / 91%; 31202 **90% / 95%** (42 anchors stand beyond her perimeter and are counted, not judged; 32 offset 12x24s are her grid-snapped columns; 28 11x14s); 31065 **73% / 76%** (231 columns of the tower she did not model, not judged); 31130 **75% / 83%** (one building since step 51; 424 columns of the tower she did not model, not judged) |
 
 **The work order is the count.** 1. Storeys: the 72 sets whose plans name their storeys with
 words (step 47). 2. Views on the grid: 56% of plan views are not placed by name. 3. Plates: 69%
@@ -2885,3 +2885,46 @@ measurement); the sheet rule on four titles. WHAT IT DOES NOT: a title with neit
 still a structural plan (read as before); a sheet whose linework is a schematic under a CONCRETE
 OUTLINE title (none seen); the frames (step 51); 31130's `L1M` storey, which duplicates L2 (47
 columns) — read next to step 51.
+
+## 59. Step 51, 2026-09-12: a refused sheet's axes still place the sheets that name them — and 31130 is one building
+
+**The rule.** A building drawn as WEST and EAST halves on separate sheets, split on a bay, shares no
+X axis name across the seam: 31130's west sheets carry 1–16, its east sheets 17–28 (the Y axes A–Q
+are shared), and the ten east sheets stayed in their page frame on top of the west half. The set
+does draw the whole grid in one view — the DESIGN LOAD PLAN carries 1–16 AND 17–28 — and that
+sheet is refused as a plan, rightly (its zone boundaries were once cut out of a floor as a 10,245
+sq ft opening). It is also drawn at half the plans' scale. So: **a refused sheet's named axes still
+place the sheets that name them, at the sheet's own scale.** `GridAlignment.SolveByNameAtOwnScale`
+takes the ratio of the sheet's spacing to the model's over the widest pair of shared names in each
+direction (the two must agree within 2%), solves the fit at that scale, and says so in the note;
+the composer keeps the refused sheets as `frameCarriers`, reads them for their axes alone, and in
+the placement loop a carrier that fits by name and names an axis no placed sheet has yet lends its
+axes to the grid. It feeds no storey. The report names every carrier and its fit.
+`ARefusedSheetsAxesStillPlaceTheSheetsThatNameThemTests` — a key plan at half scale fits with the
+ratio in the note and lends the axes only it draws where the model has them; directions that
+disagree on the scale refuse; a direction sharing one name takes the other's ratio.
+
+**Measured.** 31130: **20 of 20** sheets on the grid by name (10 before); the DESIGN LOAD PLAN
+lent 11 X and 6 Y at "2 times the plans'" agreeing within 5 mm, and six east-tower reinforcing
+plans lent the axes past 28. The render is one building: the podium the full width, two towers
+side by side on L4–L16, the west tower on to L20. Yardstick (her model is one tower and the
+podium): **75% / 83%**, medians 1–3 mm on every one of 17 shared storeys (22% / 40% and metres
+before; 424 columns of the other tower beyond her footprint, not judged). Her unmatched: `C36` 42
+— the 36" round columns, three a storey — and ten 12x24s; ours: `KOR-C355.6x914.4` 40 and
+`KOR-C635x990.6` 25. Gate: 31130 634 columns and 239 walls relocated, the other five byte-identical.
+Banked.
+
+**Also in this commit: a view's name is unique within the set.** Corpus run 5 (step 49; 206 of
+292 build, yardsticks 34% / 48% over 47 sets, 99,314 columns from 105,660 — the anchors and the
+target quadrants across 101 sets) lost 31168: its 2026-09-10 issue names "S2.01 - LEVEL P3 PLAN
+FOUNDATIONS PLAN BLDG C" on two pages, the in-memory handoff threw on the duplicate key and the set
+built nothing in 0 s, where the disk handoff before it had silently kept only the second view.
+`UniqueViewNames`: the second of a name carries "(page N)", a form no storey word reads
+(`AViewsNameIsUniqueWithinTheSetTests` holds both spellings to the same storeys). 31168's new
+issue builds again: 63 storeys, 2,443 columns, 66 of 71 sheets placed.
+
+WHAT THIS DOES NOT: a carrier drawn a quarter turn from the model; a carrier that shares names
+with only one direction and nothing confirms the other; 31130's `L1M` storey, which carries the
+same 47 columns as L2 (a mezzanine named by the ladder that the LEVEL 2 plan also feeds — next);
+her 36" round columns, which we do not read on this set (next); the corpus, which run 6 will
+restate with steps 50–51.

@@ -45,6 +45,9 @@ public static class PdfOnlyBuild
         /// was written. The handoff between the two halves of the route.
         /// </summary>
         public IReadOnlyList<DxfSheet> Views { get; init; } = [];
+
+        /// <summary>Views written under a name with their page appended because another page already took the name.</summary>
+        public IReadOnlyList<string> RenamedViews { get; init; } = [];
     }
 
     /// <summary>How the composer receives the views: from memory (the route), or re-read from the DXF files on disk (the gate's reference, and a recompose over standing views).</summary>
@@ -88,6 +91,7 @@ public static class PdfOnlyBuild
 
         var sheets = new List<SheetOutcome>();
         var views = new List<DxfSheet>();
+        var names = new UniqueViewNames();   // a view's name is unique within the set; the second of a name carries its page
         int written = 0, empty = 0, notPlan = 0, failed = 0;
         int typed = 0, partitions = 0, untagged = 0, tags = 0, notWalls = 0, dimensionStrings = 0, patternCells = 0, tendonAnchors = 0, symbolQuadrants = 0;
         for (int p = first; p <= last; p++)
@@ -151,9 +155,10 @@ public static class PdfOnlyBuild
                         // the view is exported once, into memory; the file is the same lines, written where a DXF is wanted
                         var lines = DxfExporter.ExportLines(pg, korLayers: korLayers);
                         if (lines.Count == 0) continue;
-                        views.Add(new DxfSheet(part.FileName, lines));
-                        if (writeDxf) File.WriteAllLines(Path.Combine(dir, part.FileName), lines, DxfExporter.FileEncoding);
-                        files.Add(part.FileName);
+                        string viewName = names.Claim(part.FileName, p);
+                        views.Add(new DxfSheet(viewName, lines));
+                        if (writeDxf) File.WriteAllLines(Path.Combine(dir, viewName), lines, DxfExporter.FileEncoding);
+                        files.Add(viewName);
                         written++;
                     }
                 }
@@ -163,9 +168,10 @@ public static class PdfOnlyBuild
                     var lines = DxfExporter.ExportLines(geo, korLayers: korLayers);
                     if (lines.Count > 0)
                     {
-                        views.Add(new DxfSheet(Path.GetFileName(dxf), lines));
-                        if (writeDxf) File.WriteAllLines(dxf, lines, DxfExporter.FileEncoding);
-                        files.Add(Path.GetFileName(dxf));
+                        string viewName = names.Claim(Path.GetFileName(dxf), p);
+                        views.Add(new DxfSheet(viewName, lines));
+                        if (writeDxf) File.WriteAllLines(Path.Combine(dir, viewName), lines, DxfExporter.FileEncoding);
+                        files.Add(viewName);
                         written++;
                     }
                 }
@@ -194,7 +200,7 @@ public static class PdfOnlyBuild
             sheets.Add(outcome); onSheet?.Invoke(outcome);
         }
 
-        return new SheetsResult(sheets, assemblies, written, empty, notPlan, failed, dimensionStrings, patternCells, tags, typed, partitions, notWalls, untagged, tendonAnchors, symbolQuadrants) { Views = views };
+        return new SheetsResult(sheets, assemblies, written, empty, notPlan, failed, dimensionStrings, patternCells, tags, typed, partitions, notWalls, untagged, tendonAnchors, symbolQuadrants) { Views = views, RenamedViews = names.Renamed };
     }
 
     /// <summary>

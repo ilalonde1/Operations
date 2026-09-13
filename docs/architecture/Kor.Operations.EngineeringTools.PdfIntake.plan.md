@@ -1,6 +1,6 @@
 # PDF intake → ETABS — Completion Plan
 
-**Status:** Rev 3, 2026-09-12 (step 49 added to §8, 3b) — WP1–WP5 landed overnight on Ian's go-ahead ("go through this all,
+**Status:** Rev 3, 2026-09-12 (steps 49–51 added to §8, 3b–3c) — WP1–WP5 landed overnight on Ian's go-ahead ("go through this all,
 step by step, and finish it overnight"): commits `8fccbc25` (WP3), `3f3f82b9` (WP2), `aba7d9ff`
 (WP4), `69e554b5` (WP5), each gated by the six byte-identical and the fast suite; WP5's remaining
 conventions are counted by a test, not by this document. §8 is what needs Ian. Rev 2 (2026-09-11)
@@ -58,6 +58,7 @@ Today's harness is 6 of those 292. The one-job yardstick (31168) is 1 of 66.
 | Plan views set on the grid by name | 873 of 2,058 (42%) | 1,948 of 4,323 (45%) |
 | Storeys with a plate | 230 of 1,098 (21%) | 741 of 2,401 (31%) |
 | Yardsticks (engineers' own models, 92 exported from KOR-210) | 18 of the 39: **45% / 52%** within 100 mm | 62 sets have one, 42 share a storey with columns: **34% / 48%**; per set from 75–99% (4 sets) to 0–24% (20 sets) — more sets, more assumed storeys, a lower share |
+| run 5 (2026-09-12, step 49; `ledger-sets-2026-09-12-run5-step49.csv`) | 206 of 292 build (31168's new issue lost to a duplicate view name, fixed with step 51); 99,314 columns from 105,660 (anchors and target quadrants, 101 sets); 65 sets have a yardstick, 47 share a storey: **34% / 48%** — the corpus number is frames and scope (§58), not reading; run 6 measures steps 50–51 |
 
 **The work order is a count now.** 1. Storeys: the 67 sets whose plans name their storeys with
 words, and 935 views the composer can put on no storey by name (step 47, §8 item 5). 2. Views on
@@ -236,6 +237,14 @@ Revit route.
    `dxf-inspect --loops` lists the classifier's own loops whose centroid is the vertex mean.
    Nothing for Ian. Next: the 42 anchors the chains miss, the 32 offset 12x24s, the crossing-strip
    wall loops (9 on 31202, 1 on 31065).
+3c. **Steps 50–51, 2026-09-12 evening** (PdfIntake.md §58–§59): the yardstick judges only inside
+   her footprint (31065 73%, 31202 90%); a sheet that says CONCRETE OUTLINE is read whatever else
+   its title says (31130's fourteen tower storeys; 39 of 548 refused sheets on the corpus); a refused
+   sheet's axes still place the sheets that name them, at its own scale (31130's east half, through
+   the DESIGN LOAD PLAN at 2x): 31130 **75% / 83%** from 22% / 40%. A view's name is unique within
+   the set (31168's 09-10 issue named one sheet twice; the in-memory handoff threw). Corpus run 5
+   banked (206 build; 34% / 48%). One question for Andrea at WP6: a column drawn with its face on
+   the grid — modelled where drawn, or on the grid? (31202, 32 columns.) Nothing for Ian.
 4. **WP6** — one model in front of Andrea (31170's, or whichever the ledger ranks best of the
    architects' sets). Ian's call when.
 5. **Step 47**, the next reading rule, from the corpus. `takeoff corpus-query plan-titles` on the
