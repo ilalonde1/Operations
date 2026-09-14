@@ -301,11 +301,31 @@ public static class CorpusAnalyzer
     private static (SetRow, List<SheetRow>) Rows(PdfOnlyBuild.BuildOutcome o, StickFileCorpus.JobCensus job, StickFileCorpus.Issue issue, Guid runId, DateTime runAt, DateTime built)
     {
         var model = o.Model;
+        int? placed = model is null ? null : model.SheetsSetOnGridByName.Count;
+        var rows = SheetRows(o, runId, job.Job);
+
+        var saved = model?.SavedModel;
+        var row = new SetRow(runId, runAt, built, job.Job, job.Category, "structural", issue.Path, issue.Date, issue.DateFromName, issue.Bytes,
+            o.Pages, o.Sheets.Sheets.Count(s => s.IsPlan), o.Sheets.Written, o.Sheets.Failed, o.Sheets.NotPlan, o.Sheets.Assemblies.Count,
+            o.Levels?.Levels.Count ?? 0, model is not null, o.ModelError, placed,
+            saved?.Storeys.Count, saved?.Walls, saved?.Columns, saved?.Floors, saved?.PlatesByStorey.Count(p => p.Value > 0),
+            o.Elapsed.TotalSeconds, null);
+        return (row, rows);
+    }
+
+    /// <summary>
+    /// One set's sheet ledger from its build outcome: what the reader made of each page, and the composer's
+    /// view of each written view (which storeys it went to, its flags, whether it was set on the grid by
+    /// name). The one projection behind sheets.csv - the corpus ledger and the six-set gate's read cache
+    /// (SixSetReadCache) both write it through here, so a recompose from either reads the same rows back.
+    /// </summary>
+    internal static List<SheetRow> SheetRows(PdfOnlyBuild.BuildOutcome o, Guid runId, string job)
+    {
+        var model = o.Model;
         // the composer's view of each written view, by file name: which storeys it went to, and its flags
         var byFile = new Dictionary<string, Dxf.SheetOutcome>(StringComparer.OrdinalIgnoreCase);
         if (model is not null) foreach (var s in model.Sheets) byFile[Path.GetFileName(s.File)] = s;
         var placedFiles = new HashSet<string>(model?.SheetsSetOnGridByName ?? [], StringComparer.OrdinalIgnoreCase);
-        int? placed = model is null ? null : placedFiles.Count;
 
         var rows = new List<SheetRow>();
         foreach (var s in o.Sheets.Sheets)
@@ -319,18 +339,11 @@ public static class CorpusAnalyzer
                 foreach (var f in s.DxfFiles)
                     if (byFile.TryGetValue(f, out var c)) { storeys.AddRange(c.Stories); flags.AddRange(c.Flags); }
             }
-            rows.Add(new SheetRow(runId, job.Job, s.Page, s.SheetNumber, s.SheetType, s.Title, s.Level, s.ScaleNote, s.ScaleDenominator,
+            rows.Add(new SheetRow(runId, job, s.Page, s.SheetNumber, s.SheetType, s.Title, s.Level, s.ScaleNote, s.ScaleDenominator,
                 s.Slabs, s.Columns, s.Walls, s.Lines, s.DxfFiles.Count == 0 ? null : string.Join(DxfFileSeparator, s.DxfFiles), s.SelfCheck.Trim().Length == 0 ? null : s.SelfCheck.Trim(),
                 wasPlaced, storeys.Count == 0 ? null : string.Join(",", storeys.Distinct()), flags.Count == 0 ? null : string.Join("; ", flags.Distinct()), s.Failure));
         }
-
-        var saved = model?.SavedModel;
-        var row = new SetRow(runId, runAt, built, job.Job, job.Category, "structural", issue.Path, issue.Date, issue.DateFromName, issue.Bytes,
-            o.Pages, o.Sheets.Sheets.Count(s => s.IsPlan), o.Sheets.Written, o.Sheets.Failed, o.Sheets.NotPlan, o.Sheets.Assemblies.Count,
-            o.Levels?.Levels.Count ?? 0, model is not null, o.ModelError, placed,
-            saved?.Storeys.Count, saved?.Walls, saved?.Columns, saved?.Floors, saved?.PlatesByStorey.Count(p => p.Value > 0),
-            o.Elapsed.TotalSeconds, null);
-        return (row, rows);
+        return rows;
     }
 
     /// <summary>The corpus in one paragraph: X of Y, never a sample.</summary>

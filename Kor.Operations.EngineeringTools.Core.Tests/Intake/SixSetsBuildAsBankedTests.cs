@@ -16,7 +16,8 @@ namespace Kor.Operations.EngineeringTools.Core.Tests.Intake;
 /// (completion plan WP1).
 /// </summary>
 /// <remarks>
-/// SLOW: six PDFs (124 MB, mirrored from the share once) built in parallel, about five minutes.
+/// SLOW: six PDFs (124 MB, mirrored from the share once) built in parallel; matching reader manifests
+/// reuse the DXF views and run the ladder and composer again. A miss runs the original full build.
 /// WHAT THIS COVERS: the whole PDF-only route on five KOR sets and one architect's set, every
 /// storey, member and plate of the finished file — a change that moves any byte fails here, and the
 /// failure prints what moved (<see cref="ModelDiff"/>: plates by area, columns and walls by
@@ -28,6 +29,13 @@ namespace Kor.Operations.EngineeringTools.Core.Tests.Intake;
 /// The sources are named by their share paths: 31130's is its 2026-05-20 issue (now under "06 Old
 /// Structural Stickfiles"), 31168's its 2026-04-21 issue — the bank is a fixed drawing, not the
 /// newest one; the corpus run reads the newest.
+/// WHAT THE CACHE COVERS: PDF SHA-256, scale, the specified reader source files and serialised
+/// PdfIntakeOptions; sheets.csv and the DXF file list must still stand. The final byte comparison
+/// runs on both paths. WHAT THE CACHE DOES NOT INVALIDATE ON: E2kGeometryComposer.cs,
+/// DxfToEtabsService.cs, WallOutlineDecomposer.cs, WallNetwork.cs, ModelDiff.cs, ModelYardstick.cs
+/// or the Tests project. It can hide a composer relying on reader-side static state set only by
+/// reading: PlanSheetNaming.Vocabulary is such a dependency. PdfOnlyBuild.WriteLevels initialises
+/// it from the rows before the ladder; hashing options does not replace that recompose-time work.
 /// </remarks>
 [Trait("Speed", "Slow")]
 [Collection(SheetNamingVocabularyCollection.Name)]
@@ -65,8 +73,10 @@ public sealed class SixSetsBuildAsBankedTests
         // is one row away from banking the wrong model. Now it uses it.
         var (options, source) = PdfIntakeOptions.For(conn);
         Assert.Equal("KorStandards", source);
+        string readerHash = SixSetReadCache.ReaderHash(SixSetReadCache.RepositoryRoot(AppContext.BaseDirectory), options);
 
         var outcomes = new (Banked Set, string? Failure, ModelDiff.Result? Diff)[Sets.Count];
+        var cachePaths = new string?[Sets.Count];
         Parallel.For(0, Sets.Count, new ParallelOptions { MaxDegreeOfParallelism = Sets.Count }, i =>
         {
             var set = Sets[i];
@@ -75,7 +85,20 @@ public sealed class SixSetsBuildAsBankedTests
                 string pdf = DrawingMirror.SingleFile(set.SharePath);
                 Assert.True(File.Exists(pdf), $"{set.Job}: not mirrored from {set.SharePath}");
                 string work = Path.Combine(results, set.Job);
-                var built = PdfOnlyBuild.Build(pdf, work, set.Scale, options, rulesConnection: conn, stem: set.Job);
+                var inputs = SixSetReadCache.Inputs(pdf, set.Scale, readerHash);
+                var cached = SixSetReadCache.Read(work, inputs, out string reason);
+                PdfOnlyBuild.BuildOutcome built;
+                if (cached is not null)
+                {
+                    cachePaths[i] = $"recomposed (read cache from {cached.Manifest.ReadAtUtc:yyyy-MM-dd HH:mm} UTC)";
+                    built = PdfOnlyBuild.Recompose(pdf, work, cached.Manifest.Pages, cached.Sheets, options, conn);
+                }
+                else
+                {
+                    cachePaths[i] = $"read ({reason})";
+                    built = PdfOnlyBuild.Build(pdf, work, set.Scale, options, rulesConnection: conn, stem: set.Job);
+                    SixSetReadCache.Save(work, set.Job, inputs, built);
+                }
                 if (built.Model is null) { outcomes[i] = (set, $"no model: {built.ModelError}", null); return; }
                 string baseline = Path.Combine(baselines, $"pdf-only-{set.Job}.e2k");
                 Assert.True(File.Exists(baseline), $"{set.Job}: no baseline at {baseline}");
@@ -88,8 +111,10 @@ public sealed class SixSetsBuildAsBankedTests
         });
 
         var moved = new List<string>();
-        foreach (var (set, failure, diff) in outcomes)
+        for (int i = 0; i < outcomes.Length; i++)
         {
+            var (set, failure, diff) = outcomes[i];
+            if (cachePaths[i] is { } cachePath) _out.WriteLine($"{set.Job}: {cachePath}");
             string line = failure ?? diff!.OneLine;
             _out.WriteLine($"{set.Job}: {line}");
             // a diff on disk is THIS run's, or none: a set that built identical leaves no stale one from an
