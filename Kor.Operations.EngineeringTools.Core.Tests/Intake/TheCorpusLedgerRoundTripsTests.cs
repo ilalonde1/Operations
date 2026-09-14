@@ -47,11 +47,36 @@ public sealed class TheCorpusLedgerRoundTripsTests
             Assert.Equal("1/8\" = 1'-0\"", sf[7]);
             Assert.Equal("False", sf[15]);
             Assert.Equal("", sf[14]);
+
+            // and the TYPED readers the analyzer re-reads a kept set through give the records back equal (audit F25:
+            // the first cut parsed fields and never asked the readers), under the run they are re-read into
+            var run2 = Guid.NewGuid(); var at2 = at.AddDays(1);
+            Assert.Equal(set with { RunId = run2, RunAtUtc = at2 }, CorpusAnalyzer.ReadSetRow(sets, run2, at2));
+            Assert.Equal(sheet with { RunId = run2 }, Assert.Single(CorpusAnalyzer.ReadSheetRows(sheets, run2)));
+            Assert.Equal(set, Assert.Single(CorpusAnalyzer.ReadSets(sets)));
+            Assert.Equal(sheet, Assert.Single(CorpusAnalyzer.ReadSheets(sheets)));
         }
         finally
         {
             if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
         }
+    }
+
+    /// <summary>
+    /// Audit F22 (2026-09-13): the writer joined a sheet's DXF files with " | " and corpus-query plan-titles
+    /// split them on ";" — one view name with a ";" in it became two, and two files became one. Every reader
+    /// of the column comes through the one splitter the writer's separator is declared beside.
+    /// </summary>
+    [Fact]
+    public void ASheetsDxfFilesComeBackAsTheWriterJoinedThem()
+    {
+        string joined = string.Join(CorpusAnalyzer.DxfFileSeparator, ["S2.02_1_LEVEL 1 PLAN; BLDG A.dxf", "S2.02_2_LEVEL 1 PLAN, BLDG B.dxf"]);
+        var files = CorpusAnalyzer.DxfFilesOf(joined);
+        Assert.Equal(2, files.Count);
+        Assert.Equal("S2.02_1_LEVEL 1 PLAN; BLDG A.dxf", files[0]);            // the ";" inside a name is not a separator
+        Assert.Equal("S2.02_2_LEVEL 1 PLAN, BLDG B.dxf", files[1]);
+        Assert.Empty(CorpusAnalyzer.DxfFilesOf(null));
+        Assert.Empty(CorpusAnalyzer.DxfFilesOf(""));
     }
 
     [Fact]

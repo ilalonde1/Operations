@@ -129,4 +129,35 @@ public sealed class AModelIsMeasuredAgainstTheEngineersOwnTests
         Assert.Null(ModelYardstick.Building("L4"));
         Assert.NotEqual(ModelYardstick.Building("L4"), ModelYardstick.Building("C-LEVEL 4"));
     }
+
+
+    /// <summary>
+    /// Step 59 (2026-09-13): run 7 against run 8 found four sets whose models were identical to the member
+    /// and whose yardstick verdict had moved (31174-01: 8 of 64 supported, then 5). The frame was the fullest
+    /// bin of PAIR votes, a tie to whichever bin our columns voted first - the order the model lists them.
+    /// The frame is judged by its support now, over every bin within a vote of the fullest, a tie in support
+    /// to the tighter cluster, then to the smaller move. WHAT THIS COVERS: two frames with equal votes and
+    /// equal support give the same frame whatever order our columns come in, and it is the smaller move.
+    /// WHAT IT DOES NOT: rotation; a genuine second structure under one job number (support says "weak",
+    /// the note says so, and that is all it says).
+    /// </summary>
+    [Fact]
+    public void TheYardsticksFrameIsJudgedBySupportAndNeverByTheOrderOfOurColumns()
+    {
+        // theirs: two columns 6 m apart and a stray 30 m out; ours: the same two, and a stray 24 m out.
+        // Pair votes: shift 0 gets two (0->0, 6000->6000); shift +6000 gets two (0->6000, 24000->30000). A tie,
+        // and each frame supports two of our three readings. Listed stray-first, our stray's pairs vote first
+        // and the old MaxBy took +6000; listed stray-last it took 0.
+        var theirs = new List<(double X, double Y)> { (0, 0), (6000, 0), (30000, 0) };
+        var strayLast = new List<(double X, double Y)> { (0, 0), (6000, 0), (24000, 0) };
+        var strayFirst = new List<(double X, double Y)> { (24000, 0), (6000, 0), (0, 0) };
+
+        var a = ModelYardstick.Register([("L1", "L1", strayLast, theirs)]);
+        var b = ModelYardstick.Register([("L1", "L1", strayFirst, theirs)]);
+
+        Assert.Equal(a.Shift, b.Shift);
+        Assert.Equal(a.Support, b.Support);
+        Assert.Equal((0.0, 0.0), a.Shift);                                      // equal support, equal spread: the smaller move
+        Assert.Equal(2, a.Support);
+    }
 }

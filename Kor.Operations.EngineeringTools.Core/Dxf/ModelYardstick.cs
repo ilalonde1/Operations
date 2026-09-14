@@ -142,7 +142,7 @@ public static class ModelYardstick
         else if (fromGrids)
         {
             var s0 = shift!.Value;
-            support = shared.Sum(s => s.OurPts.Count(p => s.TheirPts.Any(q => Sq((q.X - s0.X, q.Y - s0.Y), p) <= 100.0 * 100.0)));
+            support = shared.Sum(s => s.OurPts.Count(p => s.TheirPts.Any(q => LoopGeometry.Within(Math.Sqrt(Sq((q.X - s0.X, q.Y - s0.Y), p)), 100.0))));
         }
         var sh = shift ?? (0, 0);
 
@@ -195,7 +195,7 @@ public static class ModelYardstick
                 {
                     string sec = ourSections.TryGetValue((s.Ours, p.X, p.Y), out var os) ? os : "?";
                     oursUnmatched[sec] = oursUnmatched.GetValueOrDefault(sec) + 1;
-                    if (theirWalls.TryGetValue(s.Theirs, out var panels) && panels.Any(w => DistanceToBox(p, (w.MinX - sh.X, w.MinY - sh.Y, w.MaxX - sh.X, w.MaxY - sh.Y)) <= 100))
+                    if (theirWalls.TryGetValue(s.Theirs, out var panels) && panels.Any(w => LoopGeometry.Within(DistanceToWall((p.X + sh.X, p.Y + sh.Y), w), 100)))
                     {
                         oursOnHerWalls++;
                         oursOnWallsBySection[sec] = oursOnWallsBySection.GetValueOrDefault(sec) + 1;
@@ -261,7 +261,8 @@ public static class ModelYardstick
     }
 
     /// <summary>Her wall panels by storey, each as the plan box of its joints in mm.</summary>
-    private static Dictionary<string, List<(double MinX, double MinY, double MaxX, double MaxY)>> WallsByStorey(E2kDocument doc, double unitMm)
+    /// <summary>Her walls by storey, each as its plan polyline in mm (audit F20: "on her wall" is the distance to the wall's edges, not to its box - a diagonal wall's box holds metres of nothing).</summary>
+    private static Dictionary<string, List<IReadOnlyList<(double X, double Y)>>> WallsByStorey(E2kDocument doc, double unitMm)
     {
         var kinds = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (string raw in doc.LinesOf("AREA CONNECTIVITIES"))
@@ -271,23 +272,36 @@ public static class ModelYardstick
         }
         var points = doc.PlanPointsOfObjects();
         var storeysOf = doc.StoreysByObject();
-        var result = new Dictionary<string, List<(double, double, double, double)>>(StringComparer.OrdinalIgnoreCase);
+        var result = new Dictionary<string, List<IReadOnlyList<(double X, double Y)>>>(StringComparer.OrdinalIgnoreCase);
         foreach (var (name, kind) in kinds)
         {
             if (!kind.Equals("PANEL", StringComparison.OrdinalIgnoreCase) && !kind.Equals("WALL", StringComparison.OrdinalIgnoreCase)) continue;
             if (!points.TryGetValue(name, out var pts) || pts.Count < 2) continue;
             if (!storeysOf.TryGetValue(name, out var on)) continue;
-            var box = (pts.Min(p => p.X) * unitMm, pts.Min(p => p.Y) * unitMm, pts.Max(p => p.X) * unitMm, pts.Max(p => p.Y) * unitMm);
+            var ring = pts.Select(p => (X: p.X * unitMm, Y: p.Y * unitMm)).ToList();
             foreach (var storey in on)
-                (result.TryGetValue(storey, out var list) ? list : result[storey] = new List<(double, double, double, double)>()).Add(box);
+                (result.TryGetValue(storey, out var list) ? list : result[storey] = new List<IReadOnlyList<(double X, double Y)>>()).Add(ring);
         }
         return result;
     }
 
-    private static double DistanceToBox((double X, double Y) p, (double MinX, double MinY, double MaxX, double MaxY) b)
+    /// <summary>The distance from a point to a wall drawn as its plan polyline: to the nearest edge, or zero inside a closed ring.</summary>
+    internal static double DistanceToWall((double X, double Y) p, IReadOnlyList<(double X, double Y)> ring)
     {
-        double dx = Math.Max(Math.Max(b.MinX - p.X, 0), p.X - b.MaxX), dy = Math.Max(Math.Max(b.MinY - p.Y, 0), p.Y - b.MaxY);
-        return Math.Sqrt(dx * dx + dy * dy);
+        double best = double.MaxValue;
+        bool inside = false;
+        int n = ring.Count;
+        for (int i = 0; i < n; i++)
+        {
+            var a = ring[i]; var b = ring[(i + 1) % n];
+            if (n == 2 && i == 1) break;                                        // a two-point wall is one edge
+            double vx = b.X - a.X, vy = b.Y - a.Y, len2 = vx * vx + vy * vy;
+            double t = len2 <= 0 ? 0 : Math.Clamp(((p.X - a.X) * vx + (p.Y - a.Y) * vy) / len2, 0, 1);
+            double dx = a.X + t * vx - p.X, dy = a.Y + t * vy - p.Y;
+            best = Math.Min(best, Math.Sqrt(dx * dx + dy * dy));
+            if (n >= 3 && ((a.Y > p.Y) != (b.Y > p.Y)) && p.X < a.X + (p.Y - a.Y) * (b.X - a.X) / (b.Y - a.Y)) inside = !inside;
+        }
+        return inside ? 0 : best;
     }
 
     /// <summary>Every COLUMN's section, keyed by (storey, x, y) in mm — the same key ColumnsByStorey gives a point.</summary>
@@ -324,6 +338,10 @@ public static class ModelYardstick
             foreach (var f in c.Storeys)
                 sb.AppendLine(CultureInfo.InvariantCulture, $"   {f.Storey,-10} {f.YardstickStorey,-10} {f.Ours,4} {f.Theirs,4}  {f.MedianMm,7:N0} mm  {100.0 * f.OursWithin100 / f.Ours,3:F0}%  {100.0 * f.TheirsWithin100 / Math.Max(1, f.Theirs),3:F0}%{(f.OursBeyond > 0 ? $"   beyond {f.OursBeyond}" : "")}");
         }
+        else if (c.TheirsCompared > 0)
+            // audit F19 (step 61): every column of ours beyond her footprint is a complete recall miss, not "no columns" -
+            // she modelled these and we stand none of ours near them
+            sb.AppendLine(CultureInfo.InvariantCulture, $"ours -> theirs: none of ours inside her footprint on the shared storeys ({c.OursBeyondHerModel} beyond it); theirs -> ours: {c.TheirsCompared} columns she modelled there, within 100 mm of one of ours {c.TheirsWithin100} ({100.0 * c.TheirsWithin100 / c.TheirsCompared:F0}%)");
         else sb.AppendLine("no columns on a storey both models name");
         if (c.OursUnmatchedBySection.Count > 0)
             sb.AppendLine(CultureInfo.InvariantCulture, $"ours with none of theirs within 300 mm, by section: {string.Join(", ", c.OursUnmatchedBySection.Take(8).Select(u => $"{u.Section} {u.Count}"))}{(c.OursUnmatchedBySection.Count > 8 ? " ..." : "")}");
@@ -407,17 +425,34 @@ public static class ModelYardstick
                     votes[key] = votes.TryGetValue(key, out int n) ? n + 1 : 1;
                 }
         if (votes.Count == 0) return ((0, 0), 0);
-        var best = votes.MaxBy(kv => kv.Value).Key;
-        var coarse = (X: best.Item1 * bin, Y: best.Item2 * bin);
-        // refine: the median of the pairs inside the winning bin and its neighbours
-        var dxs = new List<double>(); var dys = new List<double>();
-        foreach (var s in shared)
-            foreach (var p in s.OurPts)
-                foreach (var q in s.TheirPts)
-                    if (Math.Abs(q.X - p.X - coarse.X) <= 1.5 * bin && Math.Abs(q.Y - p.Y - coarse.Y) <= 1.5 * bin) { dxs.Add(q.X - p.X); dys.Add(q.Y - p.Y); }
-        var shift = dxs.Count == 0 ? coarse : (X: Median(dxs), Y: Median(dys));
-        int support = shared.Sum(s => s.OurPts.Count(p => s.TheirPts.Any(q => Sq((q.X - shift.X, q.Y - shift.Y), p) <= 100.0 * 100.0)));
-        return (shift, support);
+        // THE FRAME IS JUDGED BY ITS SUPPORT, NEVER BY THE ORDER OF OUR COLUMNS (step 59, 2026-09-13): the
+        // fullest bin by pair votes was taken by MaxBy, whose tie fell to whichever bin was voted first — the
+        // order our columns come in — and a bin's votes count PAIRS, so three readings of one column at one
+        // place out-voted three columns at three places. Run 7 against run 8 showed it on four sets whose
+        // models were identical to the member (31174-01: 8 of 64 supported in one run, 5 in the other; the
+        // frame had moved with the order). Now every bin within one vote of the fullest is refined to its
+        // median and judged by the support it then has; a tie in support goes to the tighter cluster, then
+        // to the smaller move — geometry, both, and the same whatever order the columns come in.
+        int fullest = votes.Values.Max();
+        (double X, double Y) shift = (0, 0); int support = -1; double spread = double.MaxValue;
+        foreach (var (key, n) in votes.Where(kv => kv.Value >= fullest - 1).OrderBy(kv => kv.Key.Item1).ThenBy(kv => kv.Key.Item2))
+        {
+            var coarse = (X: key.Item1 * bin, Y: key.Item2 * bin);
+            // refine: the median of the pairs inside the bin and its neighbours
+            var dxs = new List<double>(); var dys = new List<double>();
+            foreach (var s in shared)
+                foreach (var p in s.OurPts)
+                    foreach (var q in s.TheirPts)
+                        if (Math.Abs(q.X - p.X - coarse.X) <= 1.5 * bin && Math.Abs(q.Y - p.Y - coarse.Y) <= 1.5 * bin) { dxs.Add(q.X - p.X); dys.Add(q.Y - p.Y); }
+            var candidate = dxs.Count == 0 ? coarse : (X: Median(dxs), Y: Median(dys));
+            int sup = shared.Sum(s => s.OurPts.Count(p => s.TheirPts.Any(q => LoopGeometry.Within(Math.Sqrt(Sq((q.X - candidate.X, q.Y - candidate.Y), p)), 100.0))));
+            double spr = dxs.Count == 0 ? double.MaxValue : dxs.Select(d => Math.Abs(d - candidate.X)).Concat(dys.Select(d => Math.Abs(d - candidate.Y))).Average();
+            bool better = sup > support
+                || (sup == support && LoopGeometry.Beyond(spread, spr))
+                || (sup == support && !LoopGeometry.Beyond(spr, spread) && !LoopGeometry.Beyond(spread, spr) && LoopGeometry.Beyond(Math.Sqrt(shift.X * shift.X + shift.Y * shift.Y), Math.Sqrt(candidate.X * candidate.X + candidate.Y * candidate.Y)));
+            if (better) { shift = candidate; support = sup; spread = spr; }
+        }
+        return (shift, Math.Max(support, 0));
     }
 
     private static double Median(List<double> values)

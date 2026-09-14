@@ -61,7 +61,9 @@ public static class CorpusAnalyzer
     public static string? YardstickFor(StickFileCorpus.JobCensus job, string yardstickFolder)
     {
         string exported = Path.Combine(yardstickFolder, job.Job + ".e2k");
-        if (File.Exists(exported)) return exported;
+        // the export is judged as the model folder's files are (audit F16, step 61): a file this tool wrote, or a
+        // shell with no column in it, is no yardstick wherever it sits
+        if (File.Exists(exported) && !IsKorGenerated(exported) && HasColumns(exported)) return exported;
         if (job.ModelFolder is null || job.E2kModels == 0) return null;
         try
         {
@@ -124,6 +126,11 @@ public static class CorpusAnalyzer
 
         var jobs = census.Where(j => j.HasStickFile && (only is null || only.Contains(j.Job))).ToList();
         log($"{jobs.Count} set(s) to analyze; tool built {built:yyyy-MM-dd HH:mm} UTC; run {runId}");
+        // A STICK FILE THAT IS ANOTHER JOB'S IS NOT THIS JOB'S SET (step 60, 2026-09-13): run 8 read 39 sets with
+        // no storey, and 16 of them were one file - 01783-01's five-page stick file, byte for byte, filed under
+        // sixteen other job numbers (00904-01 ... 31237-01). Read once, under the job whose number its name
+        // carries; the other rows say whose file it is and build nothing, so the population is jobs, not copies.
+        var owners = AnotherJobsFile(jobs, log);
 
         var sets = new SetRow?[jobs.Count];
         var sheets = new List<SheetRow>[jobs.Count];
@@ -136,6 +143,15 @@ public static class CorpusAnalyzer
             string work = Path.Combine(workRoot, job.Job);
             var rows = new List<SheetRow>();
             SetRow row;
+            if (owners.TryGetValue(job.Job, out string? owner))
+            {
+                row = new SetRow(runId, runAt, built, job.Job, job.Category, "structural", issue.Path, issue.Date, issue.DateFromName, issue.Bytes,
+                    0, 0, 0, 0, 0, 0, 0, false, null, null, null, null, null, null, null, 0, $"{AnotherJobsFileReason}{owner}'s ({Path.GetFileName(issue.Path)})");
+                sets[i] = row; sheets[i] = rows;
+                int k; lock (gate) k = ++done;
+                log($"  [{k}/{jobs.Count}] {job.Job} {row.Error}");
+                return;
+            }
             try
             {
                 // the mirror is the local copy the tests use; DrawingMirror copies only when size or date differ
@@ -159,7 +175,7 @@ public static class CorpusAnalyzer
                     var keptSheets = ReadSheetRows(Path.Combine(work, "sheets.csv"), runId).ToList();
                     var sheetsResult = new PdfOnlyBuild.SheetsResult(
                         keptSheets.Select(r => new PdfOnlyBuild.SheetOutcome(r.Page, r.SheetNumber, r.SheetType, r.Title, r.Level, r.ScaleNote, r.ScaleDenominator, 0, 0, r.Slabs, r.Columns, r.Walls, 0, r.Lines,
-                            r.DxfFiles is null ? [] : r.DxfFiles.Split(" | "), r.SelfCheck ?? "", r.Failure)).ToList(),
+                            DxfFilesOf(r.DxfFiles), r.SelfCheck ?? "", r.Failure)).ToList(),
                         [], kept.SheetsWritten, 0, kept.SheetsNotPlan, kept.SheetsFailed, 0, 0, 0, 0, 0, 0, 0);
                     var outcome = PdfOnlyBuild.Recompose(pdf, work, kept.Pages, sheetsResult, options, rulesConnection);
                     (row, rows) = Rows(outcome, job, issue, runId, runAt, built);
@@ -217,6 +233,51 @@ public static class CorpusAnalyzer
         return new RunResult(runId, allSets, allSheets, rebuilt, reused, watch.Elapsed);
     }
 
+    /// <summary>The words a row's Error opens with when its stick file is another job's, byte for byte (step 60).</summary>
+    public const string AnotherJobsFileReason = "the stick file of another job: byte-identical to ";
+
+    /// <summary>
+    /// The jobs whose current stick file is byte-identical to another job's, each mapped to the job that
+    /// owns the file: the one whose number the file's name opens with when it is among them, else the
+    /// first by job number. Files are grouped by length and name first, so only a group's members are
+    /// hashed (the mirror's copies, never the share).
+    /// </summary>
+    public static IReadOnlyDictionary<string, string> AnotherJobsFile(IReadOnlyList<StickFileCorpus.JobCensus> jobs, Action<string>? log = null)
+        => AnotherJobsFile(jobs.Select(j => (j.Job, j.Newest!.Path, j.Newest!.Bytes)).ToList(), path => DrawingMirror.SingleFile(path), log);
+
+    public static IReadOnlyDictionary<string, string> AnotherJobsFile(IReadOnlyList<(string Job, string Path, long Bytes)> files, Func<string, string> localCopyOf, Action<string>? log = null)
+    {
+        ArgumentNullException.ThrowIfNull(files);
+        ArgumentNullException.ThrowIfNull(localCopyOf);
+        var owners = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var group in files.GroupBy(f => (f.Bytes, Name: Path.GetFileName(f.Path)), new SizeAndNameComparer()).Where(g => g.Count() > 1))
+        {
+            // the same length and name is a candidate; the bytes decide
+            var byHash = new Dictionary<string, List<string>>(StringComparer.Ordinal);
+            foreach (var (job, path, _) in group)
+            {
+                string hash;
+                using (var stream = File.OpenRead(localCopyOf(path))) hash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(stream));
+                if (!byHash.TryGetValue(hash, out var jobsOfHash)) byHash[hash] = jobsOfHash = [];
+                jobsOfHash.Add(job);
+            }
+            foreach (var same in byHash.Values.Where(v => v.Count > 1))
+            {
+                var ordered = same.OrderBy(j => j, StringComparer.OrdinalIgnoreCase).ToList();
+                string owner = ordered.FirstOrDefault(j => group.Key.Name.StartsWith(j, StringComparison.OrdinalIgnoreCase)) ?? ordered[0];
+                foreach (var j in ordered.Where(j => !j.Equals(owner, StringComparison.OrdinalIgnoreCase))) owners[j] = owner;
+                log?.Invoke($"  {same.Count} job(s) hold one stick file, {group.Key.Name} ({group.Key.Bytes:N0} bytes): read once as {owner}'s; {string.Join(" ", ordered.Where(j => j != owner))} say so and build nothing");
+            }
+        }
+        return owners;
+    }
+
+    private sealed class SizeAndNameComparer : IEqualityComparer<(long Bytes, string Name)>
+    {
+        public bool Equals((long Bytes, string Name) x, (long Bytes, string Name) y) => x.Bytes == y.Bytes && string.Equals(x.Name, y.Name, StringComparison.OrdinalIgnoreCase);
+        public int GetHashCode((long Bytes, string Name) o) => HashCode.Combine(o.Bytes, o.Name.ToUpperInvariant());
+    }
+
     /// <summary>The set's row with its yardstick figures, and the comparison's own summary beside the model.</summary>
     private static SetRow Measured(SetRow row, string outE2k, string yardstick, string work)
     {
@@ -259,7 +320,7 @@ public static class CorpusAnalyzer
                     if (byFile.TryGetValue(f, out var c)) { storeys.AddRange(c.Stories); flags.AddRange(c.Flags); }
             }
             rows.Add(new SheetRow(runId, job.Job, s.Page, s.SheetNumber, s.SheetType, s.Title, s.Level, s.ScaleNote, s.ScaleDenominator,
-                s.Slabs, s.Columns, s.Walls, s.Lines, s.DxfFiles.Count == 0 ? null : string.Join(" | ", s.DxfFiles), s.SelfCheck.Trim().Length == 0 ? null : s.SelfCheck.Trim(),
+                s.Slabs, s.Columns, s.Walls, s.Lines, s.DxfFiles.Count == 0 ? null : string.Join(DxfFileSeparator, s.DxfFiles), s.SelfCheck.Trim().Length == 0 ? null : s.SelfCheck.Trim(),
                 wasPlaced, storeys.Count == 0 ? null : string.Join(",", storeys.Distinct()), flags.Count == 0 ? null : string.Join("; ", flags.Distinct()), s.Failure));
         }
 
@@ -349,8 +410,12 @@ public static class CorpusAnalyzer
         File.WriteAllLines(path, lines, new UTF8Encoding(true));
     }
 
-    private static SetRow ReadSetRow(string path, Guid runId, DateTime runAt)
+    internal static SetRow ReadSetRow(string path, Guid runId, DateTime runAt)
         => ParseSetRow(File.ReadAllLines(path)[1]) with { RunId = runId, RunAtUtc = runAt };
+
+    /// <summary>The DXF files a sheet row names, as the writer joined them (" | "; a view name may hold a ";" or a ","). Every reader of the column comes through here (audit F22).</summary>
+    public static IReadOnlyList<string> DxfFilesOf(string? joined) => string.IsNullOrWhiteSpace(joined) ? [] : joined.Split(DxfFileSeparator, StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+    public const string DxfFileSeparator = " | ";
 
     /// <summary>Every set row of a ledger CSV (the analyzer's `ledger-sets.csv`, or a banked copy under docs/etabs-handoff/corpus/).</summary>
     public static IReadOnlyList<SetRow> ReadSets(string path) => File.ReadAllLines(path).Skip(1).Where(l => l.Length > 0).Select(ParseSetRow).ToList();
@@ -373,7 +438,7 @@ public static class CorpusAnalyzer
             f.Count > 37 ? I(f[32]) : null, f.Count > 37 && f[33].Length > 0 ? double.Parse(f[33], CultureInfo.InvariantCulture) : null, f.Count > 37 ? I(f[34]) : null, f.Count > 37 ? I(f[35]) : null, f.Count > 37 ? I(f[36]) : null, f.Count > 37 ? S(f[37]) : null);
     }
 
-    private static IEnumerable<SheetRow> ReadSheetRows(string path, Guid runId)
+    internal static IEnumerable<SheetRow> ReadSheetRows(string path, Guid runId)
     {
         if (!File.Exists(path)) yield break;
         foreach (var line in File.ReadAllLines(path).Skip(1))

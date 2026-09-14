@@ -8,6 +8,7 @@
 //   takeoff corpus-query plan-titles                 how the plan sheets name their storeys: with/without a level, and the words the nameless titles repeat
 //   takeoff corpus-query set <job> [<job> ...]       one set's sheets: page, number, level, scale, view written, placed
 //   takeoff corpus-query yardsticks                  every set measured against the engineer's own model, worst first
+//   takeoff corpus-query diff <before-sets.csv>      what moved between that banked run and this ledger, set by set, classed by the first thing that changed
 // Add --ledger <dir> to any of them.
 internal static class CorpusQueryVerb
 {
@@ -15,7 +16,7 @@ internal static class CorpusQueryVerb
 
     public static int Run(string[] args)
     {
-        if (args.Length < 2) { Console.Error.WriteLine("Usage: takeoff corpus-query summary|no-model|plan-titles|set <job>...|yardsticks [--ledger <dir>]"); return 1; }
+        if (args.Length < 2) { Console.Error.WriteLine("Usage: takeoff corpus-query summary|no-model|plan-titles|set <job>...|yardsticks|diff <before-sets.csv> [--ledger <dir>]"); return 1; }
         string dir = Path.Combine(DrawingMirror.Root, "corpus");
         var rest = new List<string>();
         for (int i = 2; i < args.Length; i++)
@@ -39,6 +40,7 @@ internal static class CorpusQueryVerb
             case "plan-titles": return PlanTitles(sheets);
             case "set": return Sets(rest, sheets, sets);
             case "yardsticks": return Yardsticks(sets);
+            case "diff": return Diff(rest, sets, sheets);
             default: Console.Error.WriteLine($"Unknown question '{args[1]}'."); return 1;
         }
     }
@@ -56,8 +58,10 @@ internal static class CorpusQueryVerb
         int storeys = sets.Where(s => s.HasModel).Sum(s => s.StoreysBuilt ?? 0), plated = sets.Where(s => s.HasModel).Sum(s => s.StoreysWithPlate ?? 0);
         Console.WriteLine($"  storeys built                {storeys}; with a plate {plated} ({Pct(plated, storeys)})");
         Console.WriteLine($"  walls / columns              {sets.Sum(s => s.Walls ?? 0)} / {sets.Sum(s => s.Columns ?? 0)}");
-        var y = sets.Where(s => s.OursCompared > 0).ToList();
-        Console.WriteLine($"  yardsticks                   {y.Count} sets: ours within 100 mm {Pct(y.Sum(s => s.OursWithin100 ?? 0), y.Sum(s => s.OursCompared ?? 0))}, theirs within 100 mm {Pct(y.Sum(s => s.TheirsWithin100 ?? 0), y.Sum(s => s.TheirsCompared ?? 0))}");
+        // a set where she modelled columns on a shared storey and none of ours stand inside her footprint is a complete
+        // recall miss, counted in "theirs within 100 mm" (audit F19, step 61), not filtered out with the sets that share no storey
+        var y = sets.Where(s => s.OursCompared > 0 || s.TheirsCompared > 0).ToList();
+        Console.WriteLine($"  yardsticks                   {y.Count} sets ({y.Count(s => s.OursCompared > 0)} with ours inside her footprint): ours within 100 mm {Pct(y.Sum(s => s.OursWithin100 ?? 0), y.Sum(s => s.OursCompared ?? 0))}, theirs within 100 mm {Pct(y.Sum(s => s.TheirsWithin100 ?? 0), y.Sum(s => s.TheirsCompared ?? 0))}");
         Console.WriteLine($"  time                         {TimeSpan.FromSeconds(sets.Sum(s => s.Seconds)):h\\:mm\\:ss} of building, summed");
         return 0;
     }
@@ -86,7 +90,7 @@ internal static class CorpusQueryVerb
         var plans = sheets.Where(s => s.SheetType == "plan").ToList();
         // the question is the composer's: which written views can PlanSheetNaming put on no storey at all —
         // no level number, no parkade level, not a roof, not a foundation — and what do THEIR names say
-        var views = plans.Where(s => s.DxfFiles is not null).SelectMany(s => s.DxfFiles!.Split(';').Select(f => (Sheet: s, File: f.Trim()))).Where(v => v.File.Length > 0).ToList();
+        var views = plans.Where(s => s.DxfFiles is not null).SelectMany(s => CorpusAnalyzer.DxfFilesOf(s.DxfFiles).Select(f => (Sheet: s, File: f))).Where(v => v.File.Length > 0).ToList();
         var nameless = views.Where(v =>
         {
             var info = PlanSheetNaming.Parse(v.File);
@@ -135,6 +139,45 @@ internal static class CorpusQueryVerb
         Console.WriteLine($"  {"job",-10} {"storeys",7} {"shared",6} {"frame",-8} {"ours≤100",9} {"theirs≤100",10}  note");
         foreach (var s in y)
             Console.WriteLine($"  {s.Job,-10} {s.YardstickStoreys,7} {s.SharedStoreys,6} {(s.FrameFromGrids == true ? "grids" : s.FrameFromGrids == false ? $"cols/{s.FrameSupport}" : "-"),-8} {Pct(s.OursWithin100 ?? 0, s.OursCompared ?? 0),9} {Pct(s.TheirsWithin100 ?? 0, s.TheirsCompared ?? 0),10}  {s.YardstickNote}");
+        return 0;
+    }
+
+    /// <summary>
+    /// What moved between a banked run and this ledger (step 59): every set in one class by the first thing
+    /// that changed - a model gained or lost, its storeys, which sheets stand on the grid, or with both the same
+    /// the composition - with the columns, walls and plates each class moved and the yardstick's verdict where a
+    /// set has one. Reading is judged apart, by the per-sheet column sum of the two sheet ledgers.
+    /// </summary>
+    private static int Diff(List<string> rest, IReadOnlyList<CorpusAnalyzer.SetRow> after, IReadOnlyList<CorpusAnalyzer.SheetRow> afterSheets)
+    {
+        if (rest.Count != 1 || !File.Exists(rest[0])) { Console.Error.WriteLine("Usage: takeoff corpus-query diff <before-sets.csv> [--ledger <dir|after-sets.csv>]"); return 1; }
+        var before = CorpusAnalyzer.ReadSets(rest[0]);
+        string beforeSheetsPath = Path.Combine(Path.GetDirectoryName(rest[0]) ?? ".", Path.GetFileName(rest[0]).Replace("ledger-sets", "ledger-sheets", StringComparison.OrdinalIgnoreCase));
+        var beforeSheets = File.Exists(beforeSheetsPath) ? CorpusAnalyzer.ReadSheets(beforeSheetsPath) : [];
+        var r = CorpusDiff.Compare(before, after);
+        Console.WriteLine($"  before {rest[0]}: {before.Count} sets, {before.Count(s => s.HasModel)} with a model, run {before.FirstOrDefault()?.RunAtUtc:yyyy-MM-dd HH:mm} UTC");
+        Console.WriteLine($"  after  {after.Count} sets, {after.Count(s => s.HasModel)} with a model");
+        if (r.OnlyBefore.Count > 0) Console.WriteLine($"  only before ({r.OnlyBefore.Count}): {string.Join(" ", r.OnlyBefore)}");
+        if (r.OnlyAfter.Count > 0) Console.WriteLine($"  only after ({r.OnlyAfter.Count}): {string.Join(" ", r.OnlyAfter)}");
+        if (beforeSheets.Count > 0 && afterSheets.Count > 0)
+            Console.WriteLine($"  reading (per-sheet sums over {beforeSheets.Count} -> {afterSheets.Count} sheets): columns {beforeSheets.Sum(s => s.Columns)} -> {afterSheets.Sum(s => s.Columns)}, walls {beforeSheets.Sum(s => s.Walls)} -> {afterSheets.Sum(s => s.Walls)}, placed {beforeSheets.Count(s => s.Placed == true)} -> {afterSheets.Count(s => s.Placed == true)}");
+        Console.WriteLine($"  {"class",-12} {"sets",5} {"columns",9} {"walls",8} {"plates",7}  {"yardstick better / worse / same",-32} within 100 mm before -> after");
+        foreach (var c in new[] { CorpusDiff.Change.NewModel, CorpusDiff.Change.LostModel, CorpusDiff.Change.Storeys, CorpusDiff.Change.Placement, CorpusDiff.Change.Composition, CorpusDiff.Change.Unchanged })
+        {
+            var m = r.Of(c).ToList();
+            var y = m.Where(x => x.HasYardstick).ToList();
+            string verdict = $"{y.Count(x => x.Within100 > 0)} / {y.Count(x => x.Within100 < 0)} / {y.Count(x => x.Within100 == 0)}";
+            Console.WriteLine($"  {c,-12} {m.Count,5} {m.Sum(x => x.Columns),9:+#;-#;0} {m.Sum(x => x.Walls),8:+#;-#;0} {m.Sum(x => x.Plates),7:+#;-#;0}  {verdict,-32} {y.Sum(x => x.Before.OursWithin100 ?? 0)} of {y.Sum(x => x.Before.OursCompared ?? 0)} -> {y.Sum(x => x.After.OursWithin100 ?? 0)} of {y.Sum(x => x.After.OursCompared ?? 0)}");
+        }
+        Console.WriteLine("  movers, largest column change first:");
+        Console.WriteLine($"  {"job",-10} {"class",-12} {"storeys",9} {"placed",11} {"columns",15} {"walls",15} {"plates",9}  yardstick within 100 mm");
+        foreach (var m in r.Movers.Where(m => m.Change is not CorpusDiff.Change.Unchanged).OrderByDescending(m => Math.Abs(m.Columns)).ThenBy(m => m.Job))
+        {
+            string storeys = $"{m.Before.StoreysBuilt}->{m.After.StoreysBuilt}", placed = $"{m.Before.SheetsPlaced}->{m.After.SheetsPlaced}/{m.After.SheetsWritten}";
+            string columns = $"{m.Before.Columns}->{m.After.Columns}", walls = $"{m.Before.Walls}->{m.After.Walls}", plates = $"{m.Before.StoreysWithPlate}->{m.After.StoreysWithPlate}";
+            string yard = m.HasYardstick ? $"{m.Before.OursWithin100} of {m.Before.OursCompared} -> {m.After.OursWithin100} of {m.After.OursCompared}" : "-";
+            Console.WriteLine($"  {m.Job,-10} {m.Change,-12} {storeys,9} {placed,11} {columns,15} {walls,15} {plates,9}  {yard}");
+        }
         return 0;
     }
 
