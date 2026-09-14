@@ -3555,8 +3555,13 @@ which ring a shared edge belongs to, not a sort. That is the next step, and it i
 
 **Measured.** Fast suite 1,284 green. Six-set gate byte-identical against the bank re-banked in steps 59-60 (31065, 31168, 31170-arch, each with its reason there), the shifted differential green on all six, both at 10:14 on 2026-09-14. The
 entity-order differential: red on all six, skipped with its numbers, the diffs under
-`TestResults/reversed/`. Run 9 (step 58 alone) banked (§1b). Run 10 on steps 58–61 is the next
-count. And the night itself: the gate launched at 23:35 did not run until 09:41 — the session went
+`TestResults/reversed/`. Run 9 (step 58 alone) banked (§1b). **Run 10** (steps 58–61, 10:22 → 12:39): 238 of 278 jobs
+build (15 rows are another job's file); columns 85,605 — the twin rule gave back what step 58
+had thrown away and kept the symbols out; yardsticks 58% / 52%, 4 sets at 100%+, 11 at 75–99%;
+and **walls 151,191 from 46,617**, which is the finding: 31066-01, rendered, is a wood-frame
+block over a podium whose every stud partition — a filled band, tessellated — is a wall now.
+The reader has no rule for what a filled band is a wall OF. That is the next reading step, and
+no wall of run 10 reaches an engineer before it (§1b). And the night itself: the gate launched at 23:35 did not run until 09:41 — the session went
 idle behind a queued background task and nothing after it ran; steps 59–61 sat uncommitted for ten
 hours. A background wait is not a wait if nothing wakes the session; that is now a feedback rule.
 
