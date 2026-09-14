@@ -1,11 +1,11 @@
 # PDF intake — what it does today, and what it leaves on the page
 
-## 0. START HERE (state as of 2026-09-14, after steps 47 and 54–61 and completion-plan WP1–WP5 — 207 of 292 sets build from the PDF alone)
+## 0. START HERE (state as of 2026-09-14, after steps 47 and 54–62 and completion-plan WP1–WP5 — 207 of 292 sets build from the PDF alone)
 
 A session picking this up cold reads this section, then the completion plan
 (`docs/architecture/Kor.Operations.EngineeringTools.PdfIntake.plan.md` — what "complete" means, the
 packages, and where each stands), then the last three step sections (§54–§56). §1–§52 are the
-record of how each rule was arrived at, read when a rule is being changed. §70 is the latest step.
+record of how each rule was arrived at, read when a rule is being changed. §71 is the latest step.
 
 **What this is.** A PDF ingestor: one ingestion point (`DrawingIntake.ReadSheet` → `PdfOnlyBuild`)
 that reads a drawing set and hands its geometry to outlets — the ETABS `.e2k` today, the DXF as a
@@ -3569,3 +3569,39 @@ WHAT THIS DOES NOT: F23 was closed in §65 with the collection; a permutation th
 reversal (the reversed differential is one draw); a roof plan tagged for a building whose plans
 the chain names above their highest (covered, as before); the yardstick's residual statistics
 (`<= 100` on a distribution, not a place decision).
+
+## 71. Step 62, 2026-09-14: the second audit's brief A (the instruments), answered
+
+`docs/codex/CODEX-PDF-INTAKE-STEPS-57-61-AUDIT-A-INSTRUMENTS.md` and its response beside it; 12
+findings, source-deduced, each checked at the cited lines. All twelve real; all twelve fixed with
+a test that encodes the counterexample, in the sitting after the response landed.
+
+| # | The fault, verified at the source | Fixed in | Test |
+|---|---|---|---|
+| 1 | `ModelDiff` ran one greedy pass from each side: {0, 2} against {−2, 1} read one lost, none gained, where both pair | one MAXIMUM matching (Kuhn's augmenting paths over the candidate pairs, nearest first), read both ways | `OneMatchingIsReadBothWaysAndTheTwoDiagonalsOfABoxAreTwoWalls` |
+| 2 | a triangle with two convex partners (a tessellation twin and an adjacent cell on a side) took whichever came first | the shared edge must be the LONGEST edge of both halves, as a diagonal is; two genuine hatch cells meeting on a diagonal are named as what geometry cannot tell | the fate fixture: a third triangle on the first's side stays a lone triangle |
+| 3 | the twin lookup rounded a vertex to the millimetre and looked in one cell; a shared vertex a hundredth apart across a cell edge was never presented | the vertex's cell and its eight neighbours | the fate fixture: shared vertices at .499 and .501 |
+| 4 | a wall was its centre and its extents along X and Y: the two diagonals of one box were one wall | a wall carries the angle of its longest edge (0–179°); partners match to a degree | the same test: one diagonal then the other, lost and gained |
+| 5 | the unit differential compared XY multisets and sorted a member's joints: a Z offset and a panel's perimeter order were invisible | joints carry Z; a member's joints in their own order, rotated to the least; every storey's elevation compared | `AModelIsTheSameInInchesAndMillimetresTests` |
+| 6 | it flattened every section's D and B into one multiset: sections could swap dimensions unseen | each member carries its section's own dimensions in inches | the same test |
+| 7 | `CorpusDiff` called a set with every count the same "Unchanged"; a changed `SheetsWritten` was ignored | the class is `SameCounts` (counts, not sameness) and `Views` (the sheets read differed) comes before Placement | `WhatMovedBetweenTwoRunsIsClassedByTheFirstThingThatChangedTests` |
+| 8 | a complete recall miss (none of ours inside her footprint, columns of hers there) had no yardstick verdict in `diff` | a set has a yardstick when ours OR hers were judged on both sides; the table prints theirs beside ours | the same test |
+| 9 | "better / worse / same" was by supported COUNT: 8 of 64 → 5 of 10 read as worse | the verdict is by SHARE, to half a point, and the column says so | the same test |
+| 10 | `DxfSheet.Reversed` kept a POLYLINE whole and broke an INSERT with attributes following into INSERT, ATTRIB, SEQEND | an INSERT with 66 = 1 runs through its ATTRIBs to its SEQEND | `AReversedViewHasItsEntitiesInTheOppositeOrderAndNothingElseMoved` |
+| 11 | the yardstick's last tie-break, "the smaller move", depends on where either model sits: ours at 0 between hers at ±1,000 chose −1,000; ours at 1,500 chose −500, the OTHER column | an exact tie keeps the lower bin in key order — the same correspondence whichever frame either model sits in (§64 dropped the same tie from the by-name fit for the same reason) | `TheYardsticksFrameIsJudgedBySupportAndNeverByTheOrderOfOurColumns` |
+| 12 | that test never pitted support against votes | four of hers clustered under one of ours: four pair votes, one supported; the true frame with three and three wins | the same test |
+
+The response also answered question C from the source — where entity order enters
+`PlanLoopBuilder.Build`: the seed order and global edge consumption first, then node creation
+and numbering (the first coordinate encountered is a node's representative, which can change the
+partition itself), then adjacency insertion order at a junction, then `PickContinuation`'s tie,
+then `BridgeChains` on an already order-dependent chain list. A rule for which ring owns a shared
+edge must decide seed and edge consumption, continuation at junctions, and what becomes of consumed
+edges when a walk fails; node equivalence is a separate, earlier ambiguity. That is the
+specification of the next step on the red differential, and it is recorded here so the next
+sitting starts from it, not from the symptom.
+
+**Measured.** Fast suite 1,285 green; six-set gate byte-identical and the shifted differential green at 13:30 (the twin rule tightened and the yardstick tie changed touched none of the six).
+
+WHAT THIS DOES NOT: brief B (the reading rules) is not yet run; the red differential is still red
+(§70); walls on wood-frame sets (§70's run 10) are not yet a rule.

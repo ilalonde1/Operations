@@ -136,8 +136,9 @@ public sealed class AModelIsMeasuredAgainstTheEngineersOwnTests
     /// and whose yardstick verdict had moved (31174-01: 8 of 64 supported, then 5). The frame was the fullest
     /// bin of PAIR votes, a tie to whichever bin our columns voted first - the order the model lists them.
     /// The frame is judged by its support now, over every bin within a vote of the fullest, a tie in support
-    /// to the tighter cluster, then to the smaller move. WHAT THIS COVERS: two frames with equal votes and
-    /// equal support give the same frame whatever order our columns come in, and it is the smaller move.
+    /// to the tighter cluster, then to the lower bin. WHAT THIS COVERS: two frames with equal votes and
+    /// equal support give the same frame whatever order our columns come in; support beats votes; the
+    /// tie is the same correspondence wherever either model sits.
     /// WHAT IT DOES NOT: rotation; a genuine second structure under one job number (support says "weak",
     /// the note says so, and that is all it says).
     /// </summary>
@@ -157,7 +158,22 @@ public sealed class AModelIsMeasuredAgainstTheEngineersOwnTests
 
         Assert.Equal(a.Shift, b.Shift);
         Assert.Equal(a.Support, b.Support);
-        Assert.Equal((0.0, 0.0), a.Shift);                                      // equal support, equal spread: the smaller move
+        Assert.Equal((0.0, 0.0), a.Shift);                                      // equal support, equal spread: the lower bin
         Assert.Equal(2, a.Support);
+
+        // SUPPORT BEATS VOTES (the second audit's finding 12): four of hers clustered under one of ours give the
+        // rival bin four pair votes and one supported column; the true frame has three votes and three
+        var trueTheirs = new List<(double X, double Y)> { (0, 0), (6000, 0), (12000, 0), (26950, 0), (26980, 0), (27010, 0), (27040, 0) };
+        var trueOurs = new List<(double X, double Y)> { (0, 0), (6000, 0), (12000, 0), (20000, 0) };
+        var t = ModelYardstick.Register([("L1", "L1", trueOurs, trueTheirs)]);
+        Assert.Equal(3, t.Support);
+        Assert.InRange(t.Shift.X, -1, 1);
+
+        // THE TIE DOES NOT DEPEND ON WHERE EITHER MODEL SITS (finding 11): one of ours between two of hers, then
+        // the same one of ours 1,500 mm over - the same correspondence both times, not the smaller move
+        var two = new List<(double X, double Y)> { (-1000, 0), (1000, 0) };
+        var at0 = ModelYardstick.Register([("L1", "L1", [(0.0, 0.0)], two)]);
+        var at1500 = ModelYardstick.Register([("L1", "L1", [(1500.0, 0.0)], two)]);
+        Assert.Equal(at0.Shift.X - 0, at1500.Shift.X - (-1500), 1e-9);          // the displacement to the same column of hers
     }
 }

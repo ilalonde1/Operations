@@ -13,14 +13,18 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
     /// harness, drawn with four corners, never showed (31048-01: 2,640 columns to 57 against 449 of the
     /// engineer's). Two filled triangles of one colour that share an edge (two vertices within a hair)
     /// and whose union is a convex quadrilateral are one shape: the first, in page order, carries the four
-    /// corners; the second is its other half.
+    /// corners; the second is its other half. The shared edge must be the LONGEST edge of both (the second
+    /// audit's finding 2: a triangle with two convex partners took whichever came first; a tessellation's
+    /// diagonal is the longest edge of each half, an adjacent cell's shared side is not).
     /// </summary>
     /// <remarks>
-    /// WHAT THIS COVERS: a rectangle or any convex quadrilateral drawn as two triangles on a diagonal, in
-    /// either winding, with the shared edge's vertices equal to a hundredth of a millimetre. WHAT IT DOES
-    /// NOT: a shape drawn as three or more triangles (a fan); two triangles that meet at a vertex only; a
-    /// concave union (a chevron) — those stay three-point shapes and are judged as such; triangles of two
-    /// colours.
+    /// WHAT THIS COVERS: a rectangle or any quadrilateral split on a diagonal longer than its sides, drawn as
+    /// two triangles in either winding, with the shared edge's vertices equal to a hundredth of a millimetre
+    /// wherever they fall against the lookup's millimetre cells (the neighbours are searched too). WHAT IT DOES
+    /// NOT: two hatch cells of one colour that genuinely meet on a diagonal (indistinguishable by geometry;
+    /// stated); a shape drawn as three or more triangles (a fan); a quadrilateral split on a diagonal shorter
+    /// than a side (a very oblique parallelogram); two triangles that meet at a vertex only; a concave union;
+    /// triangles of two colours.
     /// </remarks>
     public static class TriangleTwins
     {
@@ -59,12 +63,20 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 foreach (var v in mine)
                 {
                     var key = ((long)Math.Round(v.X), (long)Math.Round(v.Y));
-                    foreach (int j in byVertex.TryGetValue(key, out var near) ? near : [])
+                    // the vertex's own cell and its eight neighbours: a shared vertex a hundredth apart may round to two cells
+                    var nearby = new List<int>();
+                    for (long dx = -1; dx <= 1; dx++)
+                        for (long dy = -1; dy <= 1; dy++)
+                            if (byVertex.TryGetValue((key.Item1 + dx, key.Item2 + dy), out var cell)) nearby.AddRange(cell);
+                    foreach (int j in nearby.Distinct().OrderBy(j => j))
                     {
                         if (j <= i || otherHalfOf.ContainsKey(j) || union.ContainsKey(j) || subpaths[j].Color != subpaths[i].Color) continue;
                         var theirs = corners[j];
                         var shared = mine.Where(a => theirs.Any(b => Near(a, b))).ToList();
                         if (shared.Count != 2) continue;
+                        // the shared edge is the longest edge of both halves, as a diagonal is
+                        double sharedLength = Length(shared[0], shared[1]);
+                        if (LongestEdge(mine) > sharedLength + SameVertexMm || LongestEdge(theirs) > sharedLength + SameVertexMm) continue;
                         var apexMine = mine.Single(a => !shared.Any(sh => Near(a, sh)));
                         var apexTheirs = theirs.Single(b => !shared.Any(sh => Near(b, sh)));
                         // the two apexes must lie on opposite sides of the shared edge, and the quadrilateral must be convex
@@ -84,6 +96,10 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         }
 
         private static bool Near((double X, double Y) a, (double X, double Y) b) => Math.Abs(a.X - b.X) <= SameVertexMm && Math.Abs(a.Y - b.Y) <= SameVertexMm;
+
+        private static double Length((double X, double Y) a, (double X, double Y) b) => Math.Sqrt((a.X - b.X) * (a.X - b.X) + (a.Y - b.Y) * (a.Y - b.Y));
+
+        private static double LongestEdge(List<(double X, double Y)> c) => Math.Max(Length(c[0], c[1]), Math.Max(Length(c[1], c[2]), Length(c[2], c[0])));
 
         private static double Cross((double X, double Y) a, (double X, double Y) b, (double X, double Y) p) => (b.X - a.X) * (p.Y - a.Y) - (b.Y - a.Y) * (p.X - a.X);
 

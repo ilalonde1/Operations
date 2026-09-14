@@ -161,17 +161,17 @@ internal static class CorpusQueryVerb
         if (r.OnlyAfter.Count > 0) Console.WriteLine($"  only after ({r.OnlyAfter.Count}): {string.Join(" ", r.OnlyAfter)}");
         if (beforeSheets.Count > 0 && afterSheets.Count > 0)
             Console.WriteLine($"  reading (per-sheet sums over {beforeSheets.Count} -> {afterSheets.Count} sheets): columns {beforeSheets.Sum(s => s.Columns)} -> {afterSheets.Sum(s => s.Columns)}, walls {beforeSheets.Sum(s => s.Walls)} -> {afterSheets.Sum(s => s.Walls)}, placed {beforeSheets.Count(s => s.Placed == true)} -> {afterSheets.Count(s => s.Placed == true)}");
-        Console.WriteLine($"  {"class",-12} {"sets",5} {"columns",9} {"walls",8} {"plates",7}  {"yardstick better / worse / same",-32} within 100 mm before -> after");
-        foreach (var c in new[] { CorpusDiff.Change.NewModel, CorpusDiff.Change.LostModel, CorpusDiff.Change.Storeys, CorpusDiff.Change.Placement, CorpusDiff.Change.Composition, CorpusDiff.Change.Unchanged })
+        Console.WriteLine($"  {"class",-12} {"sets",5} {"columns",9} {"walls",8} {"plates",7}  {"yardstick by SHARE better / worse / same",-40} ours within 100 mm before -> after (theirs)");
+        foreach (var c in new[] { CorpusDiff.Change.NewModel, CorpusDiff.Change.LostModel, CorpusDiff.Change.Storeys, CorpusDiff.Change.Views, CorpusDiff.Change.Placement, CorpusDiff.Change.Composition, CorpusDiff.Change.SameCounts })
         {
             var m = r.Of(c).ToList();
             var y = m.Where(x => x.HasYardstick).ToList();
-            string verdict = $"{y.Count(x => x.Within100 > 0)} / {y.Count(x => x.Within100 < 0)} / {y.Count(x => x.Within100 == 0)}";
-            Console.WriteLine($"  {c,-12} {m.Count,5} {m.Sum(x => x.Columns),9:+#;-#;0} {m.Sum(x => x.Walls),8:+#;-#;0} {m.Sum(x => x.Plates),7:+#;-#;0}  {verdict,-32} {y.Sum(x => x.Before.OursWithin100 ?? 0)} of {y.Sum(x => x.Before.OursCompared ?? 0)} -> {y.Sum(x => x.After.OursWithin100 ?? 0)} of {y.Sum(x => x.After.OursCompared ?? 0)}");
+            string verdict = $"{y.Count(x => x.Verdict > 0)} / {y.Count(x => x.Verdict < 0)} / {y.Count(x => x.Verdict == 0)}";
+            Console.WriteLine($"  {c,-12} {m.Count,5} {m.Sum(x => x.Columns),9:+#;-#;0} {m.Sum(x => x.Walls),8:+#;-#;0} {m.Sum(x => x.Plates),7:+#;-#;0}  {verdict,-40} {y.Sum(x => x.Before.OursWithin100 ?? 0)} of {y.Sum(x => x.Before.OursCompared ?? 0)} -> {y.Sum(x => x.After.OursWithin100 ?? 0)} of {y.Sum(x => x.After.OursCompared ?? 0)} (theirs {y.Sum(x => x.Before.TheirsWithin100 ?? 0)} of {y.Sum(x => x.Before.TheirsCompared ?? 0)} -> {y.Sum(x => x.After.TheirsWithin100 ?? 0)} of {y.Sum(x => x.After.TheirsCompared ?? 0)})");
         }
         Console.WriteLine("  movers, largest column change first:");
         Console.WriteLine($"  {"job",-10} {"class",-12} {"storeys",9} {"placed",11} {"columns",15} {"walls",15} {"plates",9}  yardstick within 100 mm");
-        foreach (var m in r.Movers.Where(m => m.Change is not CorpusDiff.Change.Unchanged).OrderByDescending(m => Math.Abs(m.Columns)).ThenBy(m => m.Job))
+        foreach (var m in r.Movers.Where(m => m.Change is not CorpusDiff.Change.SameCounts).OrderByDescending(m => Math.Abs(m.Columns)).ThenBy(m => m.Job))
         {
             string storeys = $"{m.Before.StoreysBuilt}->{m.After.StoreysBuilt}", placed = $"{m.Before.SheetsPlaced}->{m.After.SheetsPlaced}/{m.After.SheetsWritten}";
             string columns = $"{m.Before.Columns}->{m.After.Columns}", walls = $"{m.Before.Walls}->{m.After.Walls}", plates = $"{m.Before.StoreysWithPlate}->{m.After.StoreysWithPlate}";

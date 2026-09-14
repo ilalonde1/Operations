@@ -175,4 +175,43 @@ public sealed class TheDifferentialAndTheRenderAreCodeTests
             if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
         }
     }
+
+    /// <summary>
+    /// The second audit (2026-09-14), findings 1 and 4: two greedy passes, one from each side, need not
+    /// describe one matching - columns at {0, 2} against {-2, 1} read as one lost and none gained where both
+    /// pair within the two units; and the two diagonals of one box have one centre and one pair of extents.
+    /// One matching is taken nearest first and read both ways; a wall carries the angle of its longest edge.
+    /// WHAT THIS COVERS: the competing-partner pair; three in a row shifted two units; the crossed diagonals.
+    /// WHAT IT DOES NOT: a wall reflected about its own axis (the same angle, the same box: the same wall).
+    /// </summary>
+    [Fact]
+    public void OneMatchingIsReadBothWaysAndTheTwoDiagonalsOfABoxAreTwoWalls()
+    {
+        string root = Path.Combine(Path.GetTempPath(), $"kor-diff-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(root);
+        try
+        {
+            string a = Path.Combine(root, "a.e2k"), b = Path.Combine(root, "b.e2k"), c = Path.Combine(root, "c.e2k"), d = Path.Combine(root, "d.e2k"), e = Path.Combine(root, "e.e2k"), f = Path.Combine(root, "f.e2k");
+            var floor = new List<(string, IReadOnlyList<(double, double)>, string, string)> { ("KF1", Box(0, 0, 6000, 6000), "L2", "FLOOR") };
+            File.WriteAllText(a, E2k(["L2"], [("KC1", 0, 0, "L2"), ("KC2", 2, 0, "L2")], floor));
+            File.WriteAllText(b, E2k(["L2"], [("KC1", -2, 0, "L2"), ("KC2", 1, 0, "L2")], floor));
+            var ab = Assert.Single(ModelDiff.Compare(a, b).Storeys);
+            Assert.Empty(ab.LostColumns); Assert.Empty(ab.GainedColumns);
+
+            File.WriteAllText(c, E2k(["L2"], [("KC1", 0, 0, "L2"), ("KC2", 1, 0, "L2"), ("KC3", 2, 0, "L2")], floor));
+            File.WriteAllText(d, E2k(["L2"], [("KC1", -2, 0, "L2"), ("KC2", -1, 0, "L2"), ("KC3", 0, 0, "L2")], floor));
+            var cd = Assert.Single(ModelDiff.Compare(c, d).Storeys);
+            Assert.Empty(cd.LostColumns); Assert.Empty(cd.GainedColumns);
+
+            // one diagonal of a 200 x 200 box, then the other: one centre, one pair of extents, two walls
+            File.WriteAllText(e, E2k(["L2"], [("KC1", 0, 0, "L2")], [("KW1", [(-100, -100), (100, 100), (100, 100), (-100, -100)], "L2", "PANEL"), ("KF1", Box(0, 0, 6000, 6000), "L2", "FLOOR")]));
+            File.WriteAllText(f, E2k(["L2"], [("KC1", 0, 0, "L2")], [("KW1", [(-100, 100), (100, -100), (100, -100), (-100, 100)], "L2", "PANEL"), ("KF1", Box(0, 0, 6000, 6000), "L2", "FLOOR")]));
+            var ef = Assert.Single(ModelDiff.Compare(e, f).Storeys);
+            Assert.Single(ef.LostWalls); Assert.Single(ef.GainedWalls);
+        }
+        finally
+        {
+            if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
+        }
+    }
 }

@@ -16,21 +16,31 @@ namespace Kor.Operations.EngineeringTools.Intake;
 /// WHAT THIS COVERS: the class of every set, the sums of columns, walls and plates each class moved,
 /// and the yardstick's verdict on the sets that have one (within 100 mm, before and after). WHAT IT
 /// DOES NOT: why a set moved (the ledger holds counts, not members - `dxf-inspect --members` on the
-/// two builds does); a set whose placement changed to the same COUNT of sheets but different sheets
-/// (SheetsPlaced is a count); the sheet rows (reading is judged by the per-sheet column sum, which the
+/// two builds does); a set whose placement or composition changed to the same COUNTS (SameCounts says
+/// counts, not sameness); the sheet rows (reading is judged by the per-sheet column sum, which the
 /// verb prints beside the classes).
 /// </remarks>
 public static class CorpusDiff
 {
-    public enum Change { NewModel, LostModel, Storeys, Placement, Composition, Unchanged }
+    /// <summary>
+    /// The classes, in the order the first change is looked for. SameCounts is what its name says (the second
+    /// audit's finding 7: a set whose one column came from another sheet at another place, with every count the
+    /// same, is here - the ledger holds counts, not members); Views is a set whose sheets read differed.
+    /// </summary>
+    public enum Change { NewModel, LostModel, Storeys, Views, Placement, Composition, SameCounts }
 
     public sealed record Mover(string Job, Change Change, CorpusAnalyzer.SetRow Before, CorpusAnalyzer.SetRow After)
     {
         public int Columns => (After.Columns ?? 0) - (Before.Columns ?? 0);
         public int Walls => (After.Walls ?? 0) - (Before.Walls ?? 0);
         public int Plates => (After.StoreysWithPlate ?? 0) - (Before.StoreysWithPlate ?? 0);
-        public bool HasYardstick => Before.OursCompared > 0 && After.OursCompared > 0;
+        /// <summary>A yardstick judged the set in both runs: columns of ours or of hers on a shared storey (a complete recall miss counts; the second audit's finding 8).</summary>
+        public bool HasYardstick => (Before.OursCompared > 0 || Before.TheirsCompared > 0) && (After.OursCompared > 0 || After.TheirsCompared > 0);
         public int Within100 => (After.OursWithin100 ?? 0) - (Before.OursWithin100 ?? 0);
+        /// <summary>The share of ours within 100 mm of one of hers, 0 where none of ours was judged (a complete recall miss).</summary>
+        public static double Share(CorpusAnalyzer.SetRow r) => r.OursCompared > 0 ? (double)(r.OursWithin100 ?? 0) / r.OursCompared.Value : 0;
+        /// <summary>The verdict is by SHARE, not by count (the second audit's finding 9: 8 of 64 -> 5 of 10 is better): +1 better, -1 worse, 0 the same to half a point.</summary>
+        public int Verdict => Share(After) - Share(Before) is double d && Math.Abs(d) < 0.005 ? 0 : Share(After) > Share(Before) ? 1 : -1;
     }
 
     public sealed record Report(IReadOnlyList<Mover> Movers, IReadOnlyList<string> OnlyBefore, IReadOnlyList<string> OnlyAfter)
@@ -55,10 +65,11 @@ public static class CorpusDiff
     {
         if (!x.HasModel && y.HasModel) return Change.NewModel;
         if (x.HasModel && !y.HasModel) return Change.LostModel;
-        if (!x.HasModel) return Change.Unchanged;
+        if (!x.HasModel) return Change.SameCounts;
         if ((x.StoreysBuilt ?? 0) != (y.StoreysBuilt ?? 0)) return Change.Storeys;
+        if (x.SheetsWritten != y.SheetsWritten || x.PlanSheets != y.PlanSheets) return Change.Views;
         if ((x.SheetsPlaced ?? 0) != (y.SheetsPlaced ?? 0)) return Change.Placement;
         if ((x.Columns ?? 0) != (y.Columns ?? 0) || (x.Walls ?? 0) != (y.Walls ?? 0) || (x.StoreysWithPlate ?? 0) != (y.StoreysWithPlate ?? 0)) return Change.Composition;
-        return Change.Unchanged;
+        return Change.SameCounts;
     }
 }

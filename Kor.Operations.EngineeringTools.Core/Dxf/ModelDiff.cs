@@ -26,8 +26,12 @@ namespace Kor.Operations.EngineeringTools.Dxf;
 /// </remarks>
 public static class ModelDiff
 {
-    /// <summary>A member's place: its centre, and for a wall its extent along X and along Y (audit F17: a wall turned in place is a different wall). Both 0 for a column.</summary>
-    public sealed record Member(long X, long Y, long AlongX, long AlongY)
+    /// <summary>
+    /// A member's place: its centre; for a wall its extent along X and along Y and the angle of its longest edge
+    /// in whole degrees, 0 to 179 (audit F17, and the second audit's finding 4: the two diagonals of one box have
+    /// one centre and one pair of extents - the angle tells them apart). Extents and angle are 0 for a column.
+    /// </summary>
+    public sealed record Member(long X, long Y, long AlongX, long AlongY, int Angle = 0)
     {
         public long Length => Math.Max(AlongX, AlongY);
     }
@@ -103,8 +107,10 @@ public static class ModelDiff
             var mb = membersB.TryGetValue(storey, out var xb) ? xb : (Columns: [], Walls: []);
             var pa = platesA.TryGetValue(storey, out var ppa) ? ppa : [];
             var pb = platesB.TryGetValue(storey, out var ppb) ? ppb : [];
+            var (lostColumns, gainedColumns) = Match(ma.Columns, mb.Columns);
+            var (lostWalls, gainedWalls) = Match(ma.Walls, mb.Walls);
             storeys.Add(new StoreyDiff(storey, ma.Columns.Count, mb.Columns.Count, ma.Walls.Count, mb.Walls.Count,
-                Unmatched(ma.Columns, mb.Columns), Unmatched(mb.Columns, ma.Columns), Unmatched(ma.Walls, mb.Walls), Unmatched(mb.Walls, ma.Walls),
+                lostColumns, gainedColumns, lostWalls, gainedWalls,
                 pa.OrderByDescending(v => v).ToList(), pb.OrderByDescending(v => v).ToList()));
         }
         return new Result(false, shift, how, storeys);
@@ -136,27 +142,57 @@ public static class ModelDiff
         static string Join(IReadOnlyList<double> plates) => plates.Count == 0 ? "-" : string.Join(" ", plates.Select(p => p.ToString("N0", CultureInfo.InvariantCulture)));
     }
 
-    // ONE TO ONE (audit F18): each member of one side takes at most one partner of the other, nearest first, so
-    // a second copy at the same place is gained, not hidden behind the first's partner; a wall's partner has its
-    // extent along each axis (F17), so a wall turned ninety degrees in place is lost and gained, not the same
-    private static List<Member> Unmatched(IReadOnlyList<Member> xs, IReadOnlyList<Member> ys)
+    // ONE MATCHING, READ BOTH WAYS (audit F18, and the second audit's finding 1: two greedy passes, one from each
+    // side, need not describe one matching - {0,2} against {-2,1} read as one lost and none gained where both pair).
+    // What the maximum matching leaves on the first side is lost, on the second gained. A wall's partner has its
+    // extent along each axis and its angle (F17).
+    private static (List<Member> Lost, List<Member> Gained) Match(IReadOnlyList<Member> xs, IReadOnlyList<Member> ys)
     {
-        var taken = new bool[ys.Count];
-        var unmatched = new List<Member>();
-        foreach (var p in xs.OrderBy(m => m.X).ThenBy(m => m.Y))
-        {
-            int best = -1; long bestD = long.MaxValue;
-            for (int i = 0; i < ys.Count; i++)
+        var pairs = new List<(long D, int I, int J)>();
+        for (int i = 0; i < xs.Count; i++)
+            for (int j = 0; j < ys.Count; j++)
             {
-                if (taken[i]) continue;
-                var q = ys[i];
-                if (Math.Abs(p.X - q.X) > 2 || Math.Abs(p.Y - q.Y) > 2 || Math.Abs(p.AlongX - q.AlongX) > 2 || Math.Abs(p.AlongY - q.AlongY) > 2) continue;
-                long d = Math.Abs(p.X - q.X) + Math.Abs(p.Y - q.Y);
-                if (d < bestD) { bestD = d; best = i; }
+                var p = xs[i]; var q = ys[j];
+                if (Math.Abs(p.X - q.X) > 2 || Math.Abs(p.Y - q.Y) > 2 || Math.Abs(p.AlongX - q.AlongX) > 2 || Math.Abs(p.AlongY - q.AlongY) > 2 || AngleApart(p.Angle, q.Angle) > 1) continue;
+                pairs.Add((Math.Abs(p.X - q.X) + Math.Abs(p.Y - q.Y), i, j));
             }
-            if (best >= 0) taken[best] = true; else unmatched.Add(p);
+        // a MAXIMUM matching, not a greedy one: nearest-first left {0, 2} against {-2, 1} with 2 unmatched (0 took 1),
+        // where 0 <-> -2 and 2 <-> 1 pair everything. Kuhn's augmenting paths over the candidate pairs, tried
+        // nearest first so the matching found is the nearest of the maximum ones the search reaches.
+        var candidates = new List<int>[xs.Count];
+        for (int i = 0; i < xs.Count; i++) candidates[i] = [];
+        foreach (var (_, i, j) in pairs.OrderBy(t => t.D).ThenBy(t => t.I).ThenBy(t => t.J)) candidates[i].Add(j);
+        var matchY = new int[ys.Count]; Array.Fill(matchY, -1);
+        bool Augment(int i, bool[] seen)
+        {
+            foreach (int j in candidates[i])
+            {
+                if (seen[j]) continue;
+                seen[j] = true;
+                if (matchY[j] < 0 || Augment(matchY[j], seen)) { matchY[j] = i; return true; }
+            }
+            return false;
         }
-        return unmatched.OrderBy(m => m.X).ThenBy(m => m.Y).ToList();
+        var matchedX = new bool[xs.Count];
+        for (int i = 0; i < xs.Count; i++) matchedX[i] = Augment(i, new bool[ys.Count]);
+        return (xs.Where((_, i) => !matchedX[i]).OrderBy(m => m.X).ThenBy(m => m.Y).ToList(),
+                ys.Where((_, j) => matchY[j] < 0).OrderBy(m => m.X).ThenBy(m => m.Y).ToList());
+    }
+
+    private static int AngleApart(int a, int b) { int d = Math.Abs(a - b) % 180; return Math.Min(d, 180 - d); }
+
+    /// <summary>The angle of a wall's longest edge, whole degrees 0 to 179.</summary>
+    private static int AngleOf(IReadOnlyList<(double X, double Y)> pts)
+    {
+        double best = 0, bx = 1, by = 0;
+        for (int i = 0; i < pts.Count; i++)
+        {
+            var a = pts[i]; var b = pts[(i + 1) % pts.Count];
+            double dx = b.X - a.X, dy = b.Y - a.Y, l = dx * dx + dy * dy;
+            if (l > best) { best = l; bx = dx; by = dy; }
+        }
+        int deg = (int)Math.Round(Math.Atan2(by, bx) * 180 / Math.PI);
+        return ((deg % 180) + 180) % 180;
     }
 
     private static (List<string> Order, Dictionary<string, (IReadOnlyList<Member> Columns, IReadOnlyList<Member> Walls)>, Dictionary<string, List<double>> Plates) Members(E2kDocument doc)
@@ -189,7 +225,7 @@ public static class ModelDiff
                 else if (kind.Equals("PANEL", StringComparison.OrdinalIgnoreCase))
                 {
                     double minX = pts.Min(p => p.X), maxX = pts.Max(p => p.X), minY = pts.Min(p => p.Y), maxY = pts.Max(p => p.Y);
-                    list.Walls.Add(new Member((long)Math.Round(pts.Average(p => p.X)), (long)Math.Round(pts.Average(p => p.Y)), (long)Math.Round(maxX - minX), (long)Math.Round(maxY - minY)));
+                    list.Walls.Add(new Member((long)Math.Round(pts.Average(p => p.X)), (long)Math.Round(pts.Average(p => p.Y)), (long)Math.Round(maxX - minX), (long)Math.Round(maxY - minY), AngleOf(pts)));
                 }
                 else if (kind.Equals("FLOOR", StringComparison.OrdinalIgnoreCase) && pts.Count >= 3)
                 {

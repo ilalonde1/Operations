@@ -1,6 +1,6 @@
 # PDF intake → ETABS — Completion Plan
 
-**Status:** Rev 3, 2026-09-14 (steps 47 and 49–61 added to §8, 3b–3m) — WP1–WP5 landed overnight on Ian's go-ahead ("go through this all,
+**Status:** Rev 3, 2026-09-14 (steps 47 and 49–62 added to §8, 3b–3n) — WP1–WP5 landed overnight on Ian's go-ahead ("go through this all,
 step by step, and finish it overnight"): commits `8fccbc25` (WP3), `3f3f82b9` (WP2), `aba7d9ff`
 (WP4), `69e554b5` (WP5), each gated by the six byte-identical and the fast suite; WP5's remaining
 conventions are counted by a test, not by this document. §8 is what needs Ian. Rev 2 (2026-09-11)
@@ -340,6 +340,12 @@ Revit route.
    (a filled stud wall is not concrete — the next reading step). NEXT: what a filled band is a
    wall OF; the ring-ownership rule for the loop builder; the title reader's failures; numbered
    buildings; the Codex audit of steps 57–61 (briefs A and B, `69ecef0c`).
+3n. **Step 62, 2026-09-14 afternoon** (§71): brief A answered — 12 findings, all real, all fixed
+   with tests (a maximum matching in `ModelDiff`; walls carry their angle; the twin rule's
+   longest-edge condition and neighbour cells; the unit differential compares Z, order, section
+   per member and elevations; `CorpusDiff` says SameCounts and judges by share; `Reversed` keeps an
+   attributed INSERT whole; the yardstick's tie is the lower bin). Gate byte-identical. NEXT: brief B;
+   what a filled band is a wall OF; the ring-ownership rule (specified in §71).
 4. **WP6** — one model in front of Andrea (31170's, or whichever the ledger ranks best of the
    architects' sets). Ian's call when.
 5. **Step 47**, the next reading rule, from the corpus. `takeoff corpus-query plan-titles` on the

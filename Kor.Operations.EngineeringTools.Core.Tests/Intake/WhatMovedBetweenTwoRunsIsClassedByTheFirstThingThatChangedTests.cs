@@ -12,10 +12,11 @@ namespace Kor.Operations.EngineeringTools.Core.Tests.Intake;
 /// stand on grids.
 /// </summary>
 /// <remarks>
-/// WHAT THIS COVERS: each class on a fixture pair, the class order (storeys before placement before
-/// composition), the sums a class reports, and the yardstick verdict per set. WHAT IT DOES NOT: the
-/// verb's printed table; a placement that changed to the same count of different sheets (the ledger
-/// carries a count, so it reads as composition); why any set moved.
+/// WHAT THIS COVERS: each class on a fixture pair, the class order (storeys before views before
+/// placement before composition), the sums a class reports, the verdict by share (worse by count and
+/// better by share reads better), and a complete recall miss judged. WHAT IT DOES NOT: the verb's
+/// printed table; a placement or composition that changed to the same counts (SameCounts: the ledger
+/// carries counts); why any set moved.
 /// </remarks>
 public sealed class WhatMovedBetweenTwoRunsIsClassedByTheFirstThingThatChangedTests
 {
@@ -39,6 +40,9 @@ public sealed class WhatMovedBetweenTwoRunsIsClassedByTheFirstThingThatChangedTe
             Row("same", true, 4, 4, 100, 50, 2),
             Row("never", false, 0, 0, 0, 0, 0),
             Row("gone", true, 1, 1, 1, 1, 1),
+            Row("views", true, 4, 4, 100, 50, 2) with { SheetsWritten = 6 },
+            Row("share", true, 4, 4, 100, 50, 2, within100: 8, compared: 64),                        // 8 of 64 -> 5 of 10: worse by count, better by share
+            Row("miss", true, 4, 4, 100, 50, 2, within100: 1, compared: 1) with { TheirsCompared = 1, TheirsWithin100 = 1 },
         };
         var after = new[]
         {
@@ -50,20 +54,30 @@ public sealed class WhatMovedBetweenTwoRunsIsClassedByTheFirstThingThatChangedTe
             Row("same", true, 4, 4, 100, 50, 2),
             Row("never", false, 0, 0, 0, 0, 0),
             Row("added", true, 1, 1, 1, 1, 1),
+            Row("views", true, 4, 4, 100, 50, 2) with { SheetsWritten = 7 },
+            Row("share", true, 4, 4, 100, 50, 2, within100: 5, compared: 10),
+            Row("miss", true, 4, 4, 100, 50, 2, within100: 0, compared: 0) with { TheirsCompared = 1, TheirsWithin100 = 0 },   // none of ours inside her footprint now: a complete recall miss
         };
 
         var r = CorpusDiff.Compare(before, after);
 
         Assert.Equal(["gone"], r.OnlyBefore);
         Assert.Equal(["added"], r.OnlyAfter);
-        Assert.Equal(7, r.Movers.Count);
+        Assert.Equal(10, r.Movers.Count);
+        Assert.Equal(CorpusDiff.Change.Views, r.Movers.Single(m => m.Job == "views").Change);
+        var share = r.Movers.Single(m => m.Job == "share");
+        Assert.Equal(-3, share.Within100);                                       // worse by count
+        Assert.Equal(1, share.Verdict);                                          // better by share: 12.5% -> 50%
+        var miss = r.Movers.Single(m => m.Job == "miss");
+        Assert.True(miss.HasYardstick);                                          // a complete recall miss is judged, not dropped
+        Assert.Equal(-1, miss.Verdict);
         Assert.Equal(CorpusDiff.Change.NewModel, r.Movers.Single(m => m.Job == "new").Change);
         Assert.Equal(CorpusDiff.Change.LostModel, r.Movers.Single(m => m.Job == "lost").Change);
         Assert.Equal(CorpusDiff.Change.Storeys, r.Movers.Single(m => m.Job == "storeys").Change);
         Assert.Equal(CorpusDiff.Change.Placement, r.Movers.Single(m => m.Job == "placed").Change);
         Assert.Equal(CorpusDiff.Change.Composition, r.Movers.Single(m => m.Job == "composed").Change);
-        Assert.Equal(CorpusDiff.Change.Unchanged, r.Movers.Single(m => m.Job == "same").Change);
-        Assert.Equal(CorpusDiff.Change.Unchanged, r.Movers.Single(m => m.Job == "never").Change);
+        Assert.Equal(CorpusDiff.Change.SameCounts, r.Movers.Single(m => m.Job == "same").Change);
+        Assert.Equal(CorpusDiff.Change.SameCounts, r.Movers.Single(m => m.Job == "never").Change);
 
         var composed = r.Movers.Single(m => m.Job == "composed");
         Assert.Equal(-20, composed.Columns);

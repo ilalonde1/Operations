@@ -20,8 +20,9 @@ namespace Kor.Operations.EngineeringTools.Core.Tests;
 /// WHAT THIS COVERS: two column outlines 1.5 mm apart on one storey (one column, read twice); a
 /// wall drawn 7.8 in thick (an 8 in wall); the same wall on two storeys drawn 2 in apart (one pier);
 /// the counts of column objects, wall objects, distinct sections and pier labels agree between the
-/// two models, and every section's size agrees once converted. WHAT IT DOES NOT: plates (their area
-/// is not quantised); the reference-model route (an inch model, where every literal is right);
+/// two models, every joint's place (X, Y and Z) to a ten-thousandth of an inch, every member's kind,
+/// storey, section dimensions and joints in their own order, and every storey's elevation. WHAT IT DOES
+/// NOT: plates' areas (not quantised); the reference-model route (an inch model, where every literal is right);
 /// a same-class fault it would NOT catch: a literal applied identically wrong in both units.
 /// </remarks>
 [Collection(SheetNamingVocabularyCollection.Name)]   // composes a model, which writes PlanSheetNaming.Vocabulary (Codex 2026-09-13, F23)
@@ -78,10 +79,26 @@ public sealed class AModelIsTheSameInInchesAndMillimetresTests
         var pointAt = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (string raw in doc.LinesOf("POINT COORDINATES"))
         {
-            var m = Regex.Match(raw.TrimStart(), @"^POINT\s+""([^""]+)""\s+(-?[\d.]+)\s+(-?[\d.]+)");
+            var m = Regex.Match(raw.TrimStart(), @"^POINT\s+""([^""]+)""\s+(-?[\d.]+)\s+(-?[\d.]+)(?:\s+(-?[\d.]+))?");
             if (!m.Success) continue;
-            string at = $"{N(double.Parse(m.Groups[2].Value, CultureInfo.InvariantCulture) / inch)},{N(double.Parse(m.Groups[3].Value, CultureInfo.InvariantCulture) / inch)}";
+            // X, Y and the Z offset where one is written (the second audit's finding 5)
+            string z = m.Groups[4].Success ? N(double.Parse(m.Groups[4].Value, CultureInfo.InvariantCulture) / inch) : "0";
+            string at = $"{N(double.Parse(m.Groups[2].Value, CultureInfo.InvariantCulture) / inch)},{N(double.Parse(m.Groups[3].Value, CultureInfo.InvariantCulture) / inch)},{z}";
             joints.Add(at); pointAt[m.Groups[1].Value] = at;
+        }
+        // each section's own dimensions, in inches, by name (finding 6: a flat multiset of D and B loses which section owns which)
+        var sectionDims = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (string raw in doc.LinesOf("FRAME SECTIONS").Concat(doc.LinesOf("WALL PROPERTIES")).Concat(doc.LinesOf("SLAB PROPERTIES")))
+        {
+            var name = Regex.Match(raw.TrimStart(), @"^\w+\s+""([^""]+)""");
+            if (!name.Success) continue;
+            sectionDims[name.Groups[1].Value] = string.Join(" ", Regex.Matches(raw, @"\b(D|B|WALLTHICKNESS|SLABTHICKNESS)\s+(-?[\d.]+)").Select(m => $"{m.Groups[1].Value} {N(double.Parse(m.Groups[2].Value, CultureInfo.InvariantCulture) / inch)}"));
+        }
+        var sectionOf = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (string raw in doc.LinesOf("LINE ASSIGNS").Concat(doc.LinesOf("AREA ASSIGNS")))
+        {
+            var m = Regex.Match(raw.TrimStart(), @"^(?:LINE|AREA)ASSIGN\s+""([^""]+)""\s+""[^""]+""\s+SECTION\s+""([^""]+)""");
+            if (m.Success) sectionOf[m.Groups[1].Value] = sectionDims.GetValueOrDefault(m.Groups[2].Value, "?");
         }
         var placements = new List<string>();
         var storeyOf = doc.StoreysByObject();
@@ -89,10 +106,15 @@ public sealed class AModelIsTheSameInInchesAndMillimetresTests
         {
             var m = Regex.Match(raw.TrimStart(), @"^(?:LINE|AREA)\s+""([^""]+)""\s+(\w+)\s+(?:\d+\s+)?((?:""[^""]+""\s*)+)");
             if (!m.Success) continue;
-            var at = Regex.Matches(m.Groups[3].Value, @"""([^""]+)""").Select(x => pointAt.GetValueOrDefault(x.Groups[1].Value, "?")).OrderBy(x => x, StringComparer.Ordinal);
+            // the joints in the member's own order (finding 5: a panel's perimeter order is its topology), rotated to start at the least
+            var ring = Regex.Matches(m.Groups[3].Value, @"""([^""]+)""").Select(x => pointAt.GetValueOrDefault(x.Groups[1].Value, "?")).ToList();
+            int least = ring.IndexOf(ring.OrderBy(x => x, StringComparer.Ordinal).First());
+            var at = ring.Skip(least).Concat(ring.Take(least));
             foreach (string storey in storeyOf.TryGetValue(m.Groups[1].Value, out var on) ? on : (IReadOnlyList<string>)["?"])
-                placements.Add($"{m.Groups[2].Value} {storey} {string.Join(" ", at)}");
+                placements.Add($"{m.Groups[2].Value} {storey} [{sectionOf.GetValueOrDefault(m.Groups[1].Value, "?")}] {string.Join(" ", at)}");
         }
+        // and the storeys' elevations, in inches
+        foreach (var st in doc.ReadStories()) placements.Add($"STOREY {st.Name} at {N(st.Elevation / inch)}");
         return new Shape(columns, walls, sections.OrderBy(s => s, StringComparer.Ordinal).ToList(), piers, joints.Count,
             joints.OrderBy(j => j, StringComparer.Ordinal).ToList(), placements.OrderBy(x => x, StringComparer.Ordinal).ToList());
     }

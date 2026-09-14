@@ -68,8 +68,8 @@ public sealed class EveryPathHasExactlyOneFateTests
                     {
                         var all = halves.SelectMany(h => h).ToList();
                         var col = geometry.Columns[fate.ObjectIndex!.Value];
-                        Assert.Equal((all.Min(q => q.X) + all.Max(q => q.X)) / 2, col.X, 1e-6);
-                        Assert.Equal((all.Min(q => q.Y) + all.Max(q => q.Y)) / 2, col.Y, 1e-6);
+                        Assert.Equal((all.Min(q => q.X) + all.Max(q => q.X)) / 2, col.X, 0.01);   // to the shared vertex's hundredth
+                        Assert.Equal((all.Min(q => q.Y) + all.Max(q => q.Y)) / 2, col.Y, 0.01);
                     }
                     else Assert.Equal(PolygonProcessor.Centroid(path.Points), geometry.Columns[fate.ObjectIndex!.Value]);
                     break;
@@ -212,6 +212,11 @@ internal static class FateFixture
         // triangle its other half (step 61); a lone triangle stays a symbol's
         (new RawSubpath([(72000, 30000), (72600, 30000), (72000, 30600)], true, (0, 0, 0), true, false, 0.5, false), PathReason.BecameColumnByShape),
         (new RawSubpath([(72600, 30000), (72600, 30600), (72000, 30600)], true, (0, 0, 0), true, false, 0.5, false), PathReason.BecameColumnByShape),
+        // the same, its shared vertices a hundredth apart across a millimetre cell edge (the second audit's finding 3),
+        // and a third triangle sharing a SIDE with the first (not its diagonal): not a twin, a lone triangle
+        (new RawSubpath([(74000.499, 30000), (74600.499, 30000), (74600.499, 30600)], true, (0, 0, 0), true, false, 0.5, false), PathReason.BecameColumnByShape),
+        (new RawSubpath([(74000.501, 30000), (74600.501, 30600), (74000.501, 30600)], true, (0, 0, 0), true, false, 0.5, false), PathReason.BecameColumnByShape),
+        (new RawSubpath([(74000.499, 30000), (74600.499, 30000), (74300, 29700)], true, (0, 0, 0), true, false, 0.5, false), PathReason.FilledTriangle),
         // a spot-elevation target's two filled quadrants, corner to corner (step 49)
         (Rect(229, 229, 66000, 30000) with { Color = (0, 0, 0) }, PathReason.SymbolQuadrant),
         (Rect(229, 229, 66229, 30229) with { Color = (0, 0, 0) }, PathReason.SymbolQuadrant),

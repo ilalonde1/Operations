@@ -115,17 +115,22 @@ public sealed class TheSameDrawingsInAnotherOrderBuildTheSameStructureTests
             "0", "VERTEX", "8", "C", "10", "9.0000", "20", "0.0000",
             "0", "SEQEND",
             "0", "LINE", "8", "B", "10", "5.0000", "20", "6.0000", "11", "7.0000", "21", "8.0000",
+            // an INSERT with attributes following (66 = 1) runs through its ATTRIBs to its SEQEND: one entity (the second audit's finding 10)
+            "0", "INSERT", "8", "D", "66", "1", "2", "TAG", "10", "1.0000", "20", "1.0000",
+            "0", "ATTRIB", "8", "D", "1", "X",
+            "0", "SEQEND",
             "0", "ENDSEC", "0", "EOF",
         ]);
         var reversed = view.Reversed();
         Assert.Equal(view.Lines.Count, reversed.Lines.Count);
         Assert.Equal(view.Lines.Take(18), reversed.Lines.Take(18));                                          // the header and the section head as they were
-        Assert.Equal(["0", "LINE", "8", "B"], reversed.Lines.Skip(18).Take(4));                              // B first now
-        Assert.Equal(["0", "POLYLINE", "8", "C", "66", "1", "70", "1", "0", "VERTEX"], reversed.Lines.Skip(30).Take(10));   // the polyline whole, its vertices in their order
-        Assert.Equal(["0", "SEQEND"], reversed.Lines.Skip(54).Take(2));
-        Assert.Equal(["0", "TEXT", "8", "GRID"], reversed.Lines.Skip(56).Take(4));
-        Assert.Equal(["0", "LINE", "8", "A"], reversed.Lines.Skip(66).Take(4));
-        Assert.Equal(["0", "ENDSEC", "0", "EOF"], reversed.Lines.Skip(78));
+        Assert.Equal(["0", "INSERT", "8", "D", "66", "1", "2", "TAG", "10", "1.0000", "20", "1.0000", "0", "ATTRIB", "8", "D", "1", "X", "0", "SEQEND"], reversed.Lines.Skip(18).Take(20));   // the insert whole, first now
+        Assert.Equal(["0", "LINE", "8", "B"], reversed.Lines.Skip(38).Take(4));
+        Assert.Equal(["0", "POLYLINE", "8", "C", "66", "1", "70", "1", "0", "VERTEX"], reversed.Lines.Skip(50).Take(10));   // the polyline whole, its vertices in their order
+        Assert.Equal(["0", "SEQEND"], reversed.Lines.Skip(74).Take(2));
+        Assert.Equal(["0", "TEXT", "8", "GRID"], reversed.Lines.Skip(76).Take(4));
+        Assert.Equal(["0", "LINE", "8", "A"], reversed.Lines.Skip(86).Take(4));
+        Assert.Equal(["0", "ENDSEC", "0", "EOF"], reversed.Lines.Skip(98));
         Assert.Equal(view.Lines, reversed.Reversed().Lines);                                                // twice is the original
     }
 }

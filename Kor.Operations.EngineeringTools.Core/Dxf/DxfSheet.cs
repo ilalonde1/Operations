@@ -61,16 +61,21 @@ public sealed record DxfSheet(string Name, IReadOnlyList<string> Lines)
             if (start >= 0 && Lines[i].Trim() == "0" && Lines[i + 1].Trim() == "ENDSEC") { end = i; break; }
         }
         if (start < 0 || end < 0) return this;
-        // an entity starts at a "0" code; a POLYLINE runs through its VERTEX entities to its SEQEND and is one entity here
+        // an entity starts at a "0" code; a POLYLINE runs through its VERTEX entities to its SEQEND, and an INSERT
+        // with attributes following (66 = 1) through its ATTRIB entities to its SEQEND: one entity each here (the
+        // second audit's finding 10 for the INSERT)
         var entities = new List<List<string>>();
-        bool inPolyline = false;
+        bool inCompound = false, inInsert = false;
         for (int i = start; i < end; i += 2)
         {
             string code = Lines[i].Trim(), value = i + 1 < end ? Lines[i + 1].Trim() : "";
-            bool opens = code == "0" && !(inPolyline && value is "VERTEX" or "SEQEND");
+            bool opens = code == "0" && !(inCompound && value is "VERTEX" or "ATTRIB" or "SEQEND");
             if (opens || entities.Count == 0) entities.Add([]);
-            if (code == "0" && value == "POLYLINE") inPolyline = true;
-            if (code == "0" && value == "SEQEND") inPolyline = false;
+            if (code == "0" && value == "POLYLINE") inCompound = true;
+            if (code == "0" && value == "INSERT") inInsert = true;
+            if (inInsert && code == "66" && value == "1") inCompound = true;
+            if (code == "0" && value != "INSERT") inInsert = false;
+            if (code == "0" && value == "SEQEND") inCompound = false;
             entities[^1].Add(Lines[i]);
             if (i + 1 < end) entities[^1].Add(Lines[i + 1]);
         }

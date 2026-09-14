@@ -431,8 +431,10 @@ public static class ModelYardstick
         // place out-voted three columns at three places. Run 7 against run 8 showed it on four sets whose
         // models were identical to the member (31174-01: 8 of 64 supported in one run, 5 in the other; the
         // frame had moved with the order). Now every bin within one vote of the fullest is refined to its
-        // median and judged by the support it then has; a tie in support goes to the tighter cluster, then
-        // to the smaller move — geometry, both, and the same whatever order the columns come in.
+        // median and judged by the support it then has; a tie in support goes to the tighter cluster, then to
+        // the lower bin in key order - which is the same correspondence whichever frame either model sits in,
+        // where "the smaller move" was not (the second audit's finding 11: ours at 0 against theirs at -1000
+        // and +1000 chose -1000; ours moved to 1500 chose -500, the OTHER column).
         int fullest = votes.Values.Max();
         (double X, double Y) shift = (0, 0); int support = -1; double spread = double.MaxValue;
         foreach (var (key, n) in votes.Where(kv => kv.Value >= fullest - 1).OrderBy(kv => kv.Key.Item1).ThenBy(kv => kv.Key.Item2))
@@ -447,9 +449,7 @@ public static class ModelYardstick
             var candidate = dxs.Count == 0 ? coarse : (X: Median(dxs), Y: Median(dys));
             int sup = shared.Sum(s => s.OurPts.Count(p => s.TheirPts.Any(q => LoopGeometry.Within(Math.Sqrt(Sq((q.X - candidate.X, q.Y - candidate.Y), p)), 100.0))));
             double spr = dxs.Count == 0 ? double.MaxValue : dxs.Select(d => Math.Abs(d - candidate.X)).Concat(dys.Select(d => Math.Abs(d - candidate.Y))).Average();
-            bool better = sup > support
-                || (sup == support && LoopGeometry.Beyond(spread, spr))
-                || (sup == support && !LoopGeometry.Beyond(spr, spread) && !LoopGeometry.Beyond(spread, spr) && LoopGeometry.Beyond(Math.Sqrt(shift.X * shift.X + shift.Y * shift.Y), Math.Sqrt(candidate.X * candidate.X + candidate.Y * candidate.Y)));
+            bool better = sup > support || (sup == support && LoopGeometry.Beyond(spread, spr));   // an exact tie keeps the first: the lower bin
             if (better) { shift = candidate; support = sup; spread = spr; }
         }
         return (shift, Math.Max(support, 0));
