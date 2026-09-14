@@ -3,7 +3,7 @@
 **Scope: this repository only, the files named below. Write a design note, code and its tests. No
 `dotnet build`, no `dotnet test`, no drawing files, no database, no network.** Reading set 58 KB measured
 with `wc -c`. Recommended reasoning: high — this is a design problem with one wrong answer already
-measured. Work on the tree as it stands (HEAD `af7b7821` on `develop` plus the uncommitted step-63 edits in the working tree — leave those files as they are); Claude wires the class in, runs the
+measured. Work on the tree as it stands (HEAD on `develop` after `22398a31` (step 63) and the gate read cache commit); Claude wires the class in, runs the
 build, the differentials and the six-set gate afterwards and reports back.
 
 ## The problem, measured
