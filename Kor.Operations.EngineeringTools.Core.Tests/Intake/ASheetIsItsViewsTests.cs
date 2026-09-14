@@ -238,4 +238,45 @@ public sealed class ASheetIsItsViewsTests
         Assert.False(SheetViews.NamesAPlan("CONTINUOUS TO MAIN FLOOR SLAB"));
         Assert.False(SheetViews.NamesAPlan("FLOOR PLANS"));                     // a notes column's heading names no floor
     }
+
+    /// <summary>
+    /// The second audit's brief B (2026-09-14), findings 7, 8 and 10 on two-line titles. WHAT THIS COVERS: an
+    /// underlined note under a title is not the title's second line (a second line begins with a floor, level,
+    /// roof, plan or framing-over word); the join reaches two heights and not more; a first line with an underline
+    /// of its own is consumed by the join, not a view of its own; a sole joined view on a sheet whose own name says
+    /// no storey is written under the view's title. WHAT IT DOES NOT: a title of three lines.
+    /// </summary>
+    [Fact]
+    public void ANoteUnderATitleIsNotItsSecondLineAndTheJoinReachesTwoHeights()
+    {
+        // LEVEL 3 PLAN, underlined; a note under it, underlined too (8 pt tokens, 12 pt apart)
+        var noted = SheetViews.Titles(Page(
+            [("LEVEL", 400, 112), ("3", 440, 112), ("PLAN", 480, 112),
+             ("CONTINUOUS", 400, 100), ("TO", 440, 100), ("MAIN", 480, 100), ("FLOOR", 520, 100), ("SLAB", 560, 100)],
+            Stroke(340, 540, 110), Stroke(340, 600, 98)));
+        var one = Assert.Single(noted);
+        Assert.Equal("LEVEL 3 PLAN", one.Title);
+        Assert.Equal(110, one.YPts, 1);
+
+        // the two lines of one title, each underlined (31089-01's way): one view, the first line consumed
+        var twoLines = SheetViews.Titles(Page(
+            [("GROUND", 1800, 112), ("FLOOR", 1840, 112), ("SHOWING", 1880, 112),
+             ("MAIN", 1800, 100), ("FLOOR", 1840, 100), ("FRAMING", 1880, 100), ("OVER", 1920, 100)],
+            Stroke(1740, 1970, 110), Stroke(1740, 1970, 98)));
+        Assert.Equal("GROUND FLOOR SHOWING MAIN FLOOR FRAMING OVER", Assert.Single(twoLines).Title);
+
+        // two heights apart joins (16 pt for 8 pt tokens); more does not
+        var atTwo = SheetViews.Titles(Page(
+            [("GROUND", 1800, 116), ("FLOOR", 1840, 116), ("SHOWING", 1880, 116), ("MAIN", 1800, 100), ("FLOOR", 1840, 100), ("FRAMING", 1880, 100), ("OVER", 1920, 100)],
+            Stroke(1740, 1970, 98)));
+        Assert.Equal("GROUND FLOOR SHOWING MAIN FLOOR FRAMING OVER", Assert.Single(atTwo).Title);
+        var beyondTwo = SheetViews.Titles(Page(
+            [("GROUND", 1800, 117), ("FLOOR", 1840, 117), ("SHOWING", 1880, 117), ("MAIN", 1800, 100), ("FLOOR", 1840, 100), ("FRAMING", 1880, 100), ("OVER", 1920, 100)],
+            Stroke(1740, 1970, 98)));
+        Assert.Empty(beyondTwo);
+
+        // a sole joined view on a sheet that names no storey itself is written under its own title (B8)
+        var parts = SheetViews.Split(Geometry(), twoLines, MmPerPt, null, NoTitleBlock, "job-p01");
+        Assert.Equal("job-p01_1_GROUND FLOOR SHOWING MAIN FLOOR FRAMING OVER.dxf", Assert.Single(parts).FileName);
+    }
 }

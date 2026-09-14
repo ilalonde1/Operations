@@ -101,7 +101,9 @@ public static partial class PlanSheetNaming
     /// <summary>The same reading under a vocabulary given outright - the set's own floor-word order (step 60) - instead of the static one.</summary>
     public static PlanSheetInfo Parse(string fileName, DrawingVocabulary vocabulary)
     {
-        string name = Path.GetFileNameWithoutExtension(fileName);
+        // only a .dxf is an extension here: "S2.01_1_MAIN FLOOR PLAN" without one keeps its title (the second audit's B9)
+        string name = Path.GetFileName(fileName);
+        if (name.EndsWith(".dxf", StringComparison.OrdinalIgnoreCase)) name = name[..^4];
         var buildings = new List<string>();
         if (vocabulary.Building.Match(name) is { Success: true } b)
         {
@@ -117,13 +119,14 @@ public static partial class PlanSheetNaming
 
         // WHAT A PLAN IS THE PLAN OF is said before its framing-over clause (step 47): "LOFT PLAN SHOWING ROOF
         // FRAMING OVER" is the loft's plan, not a roof plan, and "UPPER FLOOR PLAN SHOWING ROOF FRAMING OVER" the
-        // upper floor's. The kinds are read from that part; the numbers, which no framing-over clause carries
-        // (the plans above are named by words), from the whole name as before.
+        // upper floor's. The kinds AND the numbers are read from that part (the second audit's B1: "MAIN FLOOR
+        // PLAN SHOWING LEVEL 2 FRAMING OVER" read as level 2 while "... 2ND FLOOR FRAMING OVER" read as level 1).
         string own = vocabulary.OwnStoreyPart(TitleOf(name));
+        string ownName = vocabulary.OwnStoreyPart(name);
         bool isRoof = vocabulary.IsRoofName(own);
         bool isTopFloor = false;
 
-        var parkade = vocabulary.ParkadeLevel.Matches(name)
+        var parkade = vocabulary.ParkadeLevel.Matches(ownName)
             .Select(m => int.Parse(m.Groups[1].Value))
             .Distinct()
             .OrderBy(v => v)
@@ -131,7 +134,7 @@ public static partial class PlanSheetNaming
 
         var levels = new List<int>();
 
-        foreach (Match m in vocabulary.Range.Matches(name))
+        foreach (Match m in vocabulary.Range.Matches(ownName))
         {
             int from = int.Parse(m.Groups[1].Value);
             int to = int.Parse(m.Groups[2].Value);
@@ -146,7 +149,7 @@ public static partial class PlanSheetNaming
         {
             // Sheet identifiers such as "S2-32-1_2" precede the title; strip them so
             // their digits are not mistaken for level numbers.
-            string title = StripSheetNumber(name);
+            string title = StripSheetNumber(ownName);
 
             // A listed title first — "LEVEL 8, 9" is two floors, and reading only the 8 loses a
             // whole storey silently.
@@ -268,6 +271,10 @@ public static partial class PlanSheetNaming
             var eligible = stories
                 .Where(s => sheet.BuildingTags.Count == 0 || sheet.BuildingTags.Any(tag => StoryBelongsToBuilding(s, tag)))
                 .ToList();
+            // a sheet tagged for a building whose storeys the model does not name goes NOWHERE, not onto another
+            // building (the second audit's B3: building C's roof plan, with no C storey, landed on B-L40); a sheet
+            // tagged for nothing keeps every storey
+            if (eligible.Count == 0 && sheet.BuildingTags.Count > 0) return matches;
             if (eligible.Count == 0) eligible = stories;
 
             if (sheet.IsRoof)
@@ -426,6 +433,10 @@ public static partial class PlanSheetNaming
             var eligible = stories
                 .Where(s => sheet.BuildingTags.Count == 0 || sheet.BuildingTags.Any(tag => StoryBelongsToBuilding(s, tag)))
                 .ToList();
+            // a sheet tagged for a building whose storeys the model does not name goes NOWHERE, not onto another
+            // building (the second audit's B3: building C's roof plan, with no C storey, landed on B-L40); a sheet
+            // tagged for nothing keeps every storey
+            if (eligible.Count == 0 && sheet.BuildingTags.Count > 0) return matches;
             if (eligible.Count == 0) eligible = stories;
             if (eligible.Count == 0) return matches;
 

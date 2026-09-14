@@ -1,6 +1,6 @@
 # PDF intake → ETABS — Completion Plan
 
-**Status:** Rev 3, 2026-09-14 (steps 47 and 49–62 added to §8, 3b–3n) — WP1–WP5 landed overnight on Ian's go-ahead ("go through this all,
+**Status:** Rev 3, 2026-09-14 (steps 47 and 49–63 added to §8, 3b–3o) — WP1–WP5 landed overnight on Ian's go-ahead ("go through this all,
 step by step, and finish it overnight"): commits `8fccbc25` (WP3), `3f3f82b9` (WP2), `aba7d9ff`
 (WP4), `69e554b5` (WP5), each gated by the six byte-identical and the fast suite; WP5's remaining
 conventions are counted by a test, not by this document. §8 is what needs Ian. Rev 2 (2026-09-11)
@@ -346,6 +346,14 @@ Revit route.
    per member and elevations; `CorpusDiff` says SameCounts and judges by share; `Reversed` keeps an
    attributed INSERT whole; the yardstick's tie is the lower bin). Gate byte-identical. NEXT: brief B;
    what a filled band is a wall OF; the ring-ownership rule (specified in §71).
+3o. **Step 63, 2026-09-14 afternoon** (§72): a wall is six inches or more — `dxf.min-wall-thickness`
+   4 → 6 in on 101 engineers' models and 51,127 wall areas with none under six (migration 090, both
+   rows; `dxf.dash-offset-tolerance` seeded in the same); a band under the floor is `ThinBand`.
+   Brief B answered: 10 findings, 10 fixes with tests (numbers read before the framing-over clause;
+   the ladder and the composer both start from the office's words; a tagged roof goes nowhere without
+   its building; one chain per building; cycles refused; elevator roof above roof; a note is not a
+   title's second line; a sole view keeps its title; two heights). Six-set gate byte-identical after re-banking five (each diff looked at; one false positive named, 31170-arch KW79, the ring-ownership class); shifted differential green. NEXT: run 11 (the
+   walls); the ring-ownership rule (§71); frames without grids; the title reader's failures.
 4. **WP6** — one model in front of Andrea (31170's, or whichever the ledger ranks best of the
    architects' sets). Ian's call when.
 5. **Step 47**, the next reading rule, from the corpus. `takeoff corpus-query plan-titles` on the

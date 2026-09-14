@@ -87,6 +87,12 @@ public enum PathReason
     /// </summary>
     FilledTriangle,
     /// <summary>
+    /// A filled band of wall proportions thinner than the thinnest wall any engineer models (intake step 63,
+    /// 2026-09-14: six inches, over 101 models and 51,127 wall areas) - a stud wall on a wood-frame set, a curb,
+    /// a line drawn wide. Not a wall, not a slab.
+    /// </summary>
+    ThinBand,
+    /// <summary>
     /// A stroke lying along a grid axis and heavier than the grid's own pen (intake step 53): a tendon or a
     /// beam drawn on the grid line, not the grid. Kept apart from the lines (ExtractedGeometry.StrokesOnGrid)
     /// for the tendon reader; no wall reader sees it. 31202's L7-12 plan draws the tendons on grids F and J
@@ -112,7 +118,7 @@ public sealed record PathFate(int PathIndex, Disposition Disposition, PathReason
             or PathReason.GridLineExcluded or PathReason.ColumnTooSmall or PathReason.UnfilledSmallShape
             or PathReason.ColumnAspect or PathReason.TooShort or PathReason.TooFewPoints
             or PathReason.CollapsedByThinning or PathReason.NoInk or PathReason.PatternCell or PathReason.SymbolQuadrant
-            or PathReason.FilledTriangle => Disposition.Discarded,
+            or PathReason.FilledTriangle or PathReason.ThinBand => Disposition.Discarded,
         _ => throw new ArgumentOutOfRangeException(nameof(reason), reason, "Unknown path reason."),
     };
 }

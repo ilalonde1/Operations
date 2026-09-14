@@ -117,4 +117,53 @@ public sealed class AStoreyMayBeNamedByAWordTests
         // two stories about one floor: the row stands
         Assert.Same(voc, voc.WithFloorWordsRankedBy(["GROUND FLOOR SHOWING MAIN FLOOR FRAMING OVER", "GROUND FLOOR SHOWING UPPER FLOOR FRAMING OVER"]));
     }
+
+    /// <summary>
+    /// The second audit's brief B (2026-09-14), findings 1, 4, 5 and 9 on the words. WHAT THIS COVERS: the numbers
+    /// are read from the part before the framing-over clause ("MAIN FLOOR PLAN SHOWING LEVEL 2 FRAMING OVER" is the
+    /// main floor's, level 1, as it is with "2ND FLOOR" in the clause); "LEVEL 4" over a word anchors the chain as
+    /// "4TH FLOOR" does; two buildings' chains are two chains and must agree; a cycle with a tail and a floor shown
+    /// over itself leave the row alone; a dotted name without .dxf keeps its title. WHAT IT DOES NOT: a set whose
+    /// buildings genuinely order their floors differently (the row stands for both - stated).
+    /// </summary>
+    [Fact]
+    public void TheNumbersAreReadBeforeTheClauseAndTheChainsAreOnePerBuilding()
+    {
+        var voc = DrawingVocabulary.Default;
+        Assert.Equal([1], PlanSheetNaming.Parse("S1_1_MAIN FLOOR PLAN SHOWING LEVEL 2 FRAMING OVER.dxf", voc).Levels);
+        Assert.Equal([1], PlanSheetNaming.Parse("S1_1_MAIN FLOOR PLAN SHOWING 2ND FLOOR FRAMING OVER.dxf", voc).Levels);
+        Assert.Equal([1], PlanSheetNaming.Parse("S1_1_LEVEL 1 PLAN SHOWING LEVEL 2 FRAMING OVER.dxf", voc).Levels);
+        Assert.Equal([1], PlanSheetNaming.Parse("S2.01_1_MAIN FLOOR PLAN", voc).Levels);                     // B9: no .dxf, a dot in the number
+
+        // "LEVEL 4" over the top word anchors the chain: GROUND 2, MAIN 3
+        var anchored = voc.WithFloorWordsRankedBy(["GROUND FLOOR SHOWING MAIN FLOOR FRAMING OVER", "MAIN FLOOR SHOWING LEVEL 4 FRAMING OVER"]);
+        Assert.Equal(2, anchored.LevelOfWord("GROUND"));
+        Assert.Equal(3, anchored.LevelOfWord("MAIN"));
+
+        // two buildings, two chains: A says GROUND -> MAIN, B says MAIN -> UPPER; they disagree on MAIN, the row stands
+        Assert.Same(voc, voc.WithFloorWordsRankedBy(["GROUND FLOOR SHOWING MAIN FLOOR FRAMING OVER BLDG A", "MAIN FLOOR SHOWING UPPER FLOOR FRAMING OVER BLDG B"]));
+        // two buildings whose chains agree rank alike
+        var agree = voc.WithFloorWordsRankedBy(["GROUND FLOOR SHOWING MAIN FLOOR FRAMING OVER BLDG A", "GROUND FLOOR SHOWING MAIN FLOOR FRAMING OVER BLDG B", "MAIN FLOOR SHOWING UPPER FLOOR FRAMING OVER BLDG B"]);
+        Assert.Equal(2, agree.LevelOfWord("MAIN"));
+        // a cycle with a tail, and a floor shown over itself beside a chain: two stories, the row stands (B5)
+        Assert.Same(voc, voc.WithFloorWordsRankedBy(["GROUND FLOOR SHOWING MAIN FLOOR FRAMING OVER", "MAIN FLOOR SHOWING UPPER FLOOR FRAMING OVER", "UPPER FLOOR SHOWING MAIN FLOOR FRAMING OVER"]));
+        Assert.Same(voc, voc.WithFloorWordsRankedBy(["GROUND FLOOR SHOWING MAIN FLOOR FRAMING OVER", "MAIN FLOOR SHOWING UPPER FLOOR FRAMING OVER", "MAIN FLOOR SHOWING MAIN FLOOR FRAMING OVER"]));
+    }
+
+    /// <summary>
+    /// Brief B's findings 3 and 6 on a building's roof. WHAT THIS COVERS: a roof plan tagged for a building none
+    /// of whose storeys the model names goes NOWHERE, not onto another building; a building's elevator roof plan
+    /// names a storey above its roof, not the same one. WHAT IT DOES NOT: a set with one untagged roof plan.
+    /// </summary>
+    [Fact]
+    public void ABuildingsRoofGoesNowhereWithoutItsBuildingAndItsElevatorRoofIsAboveIt()
+    {
+        Assert.Empty(PlanSheetNaming.MatchStories(PlanSheetNaming.Parse("S2_1_ROOF PLAN BLDG C.dxf"), ["B-L39", "B-L40"], null));
+        var ladder = StoreysFromPlans.Merge(null, ["S2_1_LEVEL 1 PLAN BLDG C.dxf", "S2_2_ROOF PLAN BLDG C.dxf", "S2_3_ELEVATOR ROOF PLAN BLDG C.dxf"], 3000);
+        Assert.Equal(["L1", "C-ROOF", "C-ELEVATOR ROOF"], ladder.Storeys.Select(s => s.Name));
+        var roof = PlanSheetNaming.MatchStories(PlanSheetNaming.Parse("S2_2_ROOF PLAN BLDG C.dxf"), ["C-ELEVATOR ROOF", "C-ROOF", "L1"], null);
+        var elevator = PlanSheetNaming.MatchStories(PlanSheetNaming.Parse("S2_3_ELEVATOR ROOF PLAN BLDG C.dxf"), ["C-ELEVATOR ROOF", "C-ROOF", "L1"], null);
+        Assert.Equal(["C-ROOF"], roof);
+        Assert.Equal(["C-ELEVATOR ROOF"], elevator);
+    }
 }

@@ -320,6 +320,7 @@ public static class DxfToEtabsService
         "dxf.min-slab-area",
         "dxf.min-plate-area",
         "dxf.dash-join-gap",
+        "dxf.dash-offset-tolerance",
         "dxf.extend-limit",
         "dxf.join-tolerance",
         "dxf.bridge-tolerance",
@@ -422,6 +423,7 @@ public static class DxfToEtabsService
             ["dxf.min-slab-area"] = classification.MinSlabArea,
             ["dxf.min-plate-area"] = classification.MinPlateArea,
             ["dxf.dash-join-gap"] = classification.DashJoinGap,
+            ["dxf.dash-offset-tolerance"] = classification.DashOffsetTolerance,
             ["dxf.extend-limit"] = classification.ExtendLimit,
             ["dxf.join-tolerance"] = classification.JoinTolerance,
             ["dxf.bridge-tolerance"] = classification.BridgeTolerance,
@@ -493,6 +495,7 @@ public static class DxfToEtabsService
             MinFloorCoverage = settings.ValueOr("dxf.min-floor-coverage", options.MinFloorCoverage),
             MinPlateArea = settings.ValueOr("dxf.min-plate-area", options.MinPlateArea),
             DashJoinGap = settings.ValueOr("dxf.dash-join-gap", options.DashJoinGap),
+            DashOffsetTolerance = settings.ValueOr("dxf.dash-offset-tolerance", options.DashOffsetTolerance),
             ExtendLimit = settings.ValueOr("dxf.extend-limit", options.ExtendLimit),
             JoinTolerance = settings.ValueOr("dxf.join-tolerance", options.JoinTolerance),
             BridgeTolerance = settings.ValueOr("dxf.bridge-tolerance", options.BridgeTolerance),
@@ -515,6 +518,15 @@ public static class DxfToEtabsService
     /// every key looked up, and a rule read anywhere else is a rule that gate cannot see. It found
     /// these eight the moment they existed.
     /// </summary>
+    /// <summary>The office's words - the compiled default under the rows - as the ladder and the composer both start from (step 63, B2).</summary>
+    public static DrawingVocabulary OfficeVocabulary(string? rulesConnection)
+        => ApplyRules(DrawingVocabulary.Default, rulesConnection is null ? new Dictionary<string, RuleSetting>(StringComparer.OrdinalIgnoreCase) : RuleSettings.LoadRequired(rulesConnection, RequiredRuleKeys));
+
+    private sealed class RestoreVocabulary(DrawingVocabulary office) : IDisposable
+    {
+        public void Dispose() => PlanSheetNaming.Vocabulary = office;
+    }
+
     internal static DrawingVocabulary ApplyRules(
         DrawingVocabulary vocabulary,
         IReadOnlyDictionary<string, RuleSetting> settings)
@@ -733,10 +745,15 @@ public static class DxfToEtabsService
         // rule; what a drawing is CALLED was seven regexes compiled into the assembly, and it is
         // the one thing a practice reliably differs on.
         PlanSheetNaming.Vocabulary = ApplyRules(DrawingVocabulary.Default, banked);
+        var officeVocabulary = PlanSheetNaming.Vocabulary;
         // and the set's own order of its floor words (step 60): "GROUND FLOOR SHOWING MAIN FLOOR FRAMING OVER" then
         // "MAIN FLOOR SHOWING UPPER FLOOR FRAMING OVER" makes GROUND 1, MAIN 2, UPPER 3 for this set, whatever the
         // row says; the ladder (StoreysFromPlans) ranks them the same way from the same names
         PlanSheetNaming.Vocabulary = PlanSheetNaming.Vocabulary.WithFloorWordsRankedBy(files.Select(PlanSheetNaming.TitleOf));
+        // ... and the static holds the OFFICE's words again once this run is done, never this set's derived ranks (the
+        // second audit's B2: the next job's ladder started from the previous job's chain while its composer started
+        // from the rows). The ladder starts from the same office vocabulary: PdfOnlyBuild.WriteLevels sets it.
+        using var _ = new RestoreVocabulary(officeVocabulary);
 
         // The sheets were parsed with whatever vocabulary was in force when the folder was read,
         // which on the first run of a process is the default. Re-read them now that the office's

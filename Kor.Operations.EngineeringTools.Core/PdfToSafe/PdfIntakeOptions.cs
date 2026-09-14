@@ -77,7 +77,9 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
         // Shared KorStandards defaults, banked 2026-09-08: 4", 60", 48", aspect 2.
         // The DXF compiled maximum is narrower (36"); use the banked 60" here.
-        public const double DefaultMinWallThicknessMm = 101.6;
+        // A WALL IS SIX INCHES OR MORE (step 63, 2026-09-14, migration 090): over 101 engineers' models and 51,127 wall
+        // areas, not one is under six inches; a filled band thinner is a stud wall, a curb, a line.
+        public const double DefaultMinWallThicknessMm = 152.4;
         public const double DefaultMaxWallThicknessMm = 1524.0;
         public const double DefaultMinWallLengthMm = 1219.2;
         public const double DefaultMinWallAspect = 2.0;

@@ -59,13 +59,19 @@ public class ThinnerThanHerThinnestWallIsLineworkTests
         Assert.Equal(6.0, one.Thickness, 1);
     }
 
-    /// <summary>And the default floor is below it, which is what leaves the gap.</summary>
+    /// <summary>
+    /// And the default floor IS her thinnest wall (step 63, 2026-09-14, migration 090): the floor was left at 4 in
+    /// by 064 so that no real 5 in wall would be refused, and over 101 engineers' models and 51,127 wall areas
+    /// there is no wall under six inches - while a wood-frame set's 2x6 stud walls, 5.5 in, read as walls at 4.
+    /// A wall AT the floor is admitted (the ribbon above); a floor above it would refuse walls they model.
+    /// </summary>
     [Fact]
     public void TheFloorSitsBelowAnythingSheDraws()
     {
-        Assert.True(Rules.MinWallThickness < 6.0,
-            $"dxf.min-wall-thickness is {Rules.MinWallThickness}; her thinnest wall is 6 in, so a "
-            + "floor at or above 6 would refuse walls she models.");
+        Assert.True(Rules.MinWallThickness <= 6.0,
+            $"dxf.min-wall-thickness is {Rules.MinWallThickness}; the thinnest wall in 101 engineers' models is 6 in, so a "
+            + "floor above 6 would refuse walls they model.");
+        Assert.Equal(6.0, Rules.MinWallThickness);
 
         Assert.True(Rules.MinWallThickness > 3.4,
             $"dxf.min-wall-thickness is {Rules.MinWallThickness}; the linework it exists to refuse "

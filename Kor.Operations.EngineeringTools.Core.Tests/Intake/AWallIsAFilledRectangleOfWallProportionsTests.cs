@@ -44,7 +44,6 @@ public sealed class AWallIsAFilledRectangleOfWallProportionsTests
     [Theory]
     [InlineData(14, 38)]
     [InlineData(12, 20)]
-    [InlineData(3, 120)]
     [InlineData(61, 240)]
     public void ShapesOutsideTheBankedWindowKeepTheirFormerFate(double thickness, double length)
     {
@@ -54,6 +53,26 @@ public sealed class AWallIsAFilledRectangleOfWallProportionsTests
         Assert.Empty(actual.Walls);
         TheLedgerChangesNothingButTheLedgerTests.AssertGeometryEqual(expected, actual);
         Assert.Equal(expectedFates.ToArray(), actualFates.ToArray());
+    }
+
+    /// <summary>
+    /// A band of wall proportions THINNER than the floor is a thin band, not its former fate (step 63, 2026-09-14):
+    /// a 3 in x 120 in band was a slab candidate before; it is a stud wall, a curb or a wide line, and neither a
+    /// wall nor a slab. A 5.5 in band passes: a six-inch wall is drawn at 5.6-5.9 in on 31065, and the floor's half-inch
+    /// slack keeps it (a 2x6 stud wall with it - thickness cannot tell them apart). With the wall rule disabled it keeps
+    /// its former fate, as every shape does.
+    /// </summary>
+    [Theory]
+    [InlineData(3, 120)]
+    [InlineData(5, 120)]
+    public void ABandThinnerThanTheFloorIsAThinBand(double thickness, double length)
+    {
+        var paths = new[] { WallFixture.Rect(thickness, length) };
+        var (actual, fates) = WallFixture.Read(paths);
+        Assert.Empty(actual.Walls);
+        Assert.Equal(PathReason.ThinBand, Assert.Single(fates).Reason);
+        var (_, former) = WallFixture.Read(paths, WallFixture.Disabled);
+        Assert.NotEqual(PathReason.ThinBand, Assert.Single(former).Reason);
     }
 
     [Fact]
@@ -74,7 +93,7 @@ public sealed class AWallIsAFilledRectangleOfWallProportionsTests
     }
 
     [Theory]
-    [InlineData(4, 48)]
+    [InlineData(6, 48)]
     [InlineData(60, 120)]
     public void TheLimitsAreInclusive(double thickness, double length)
     {
@@ -118,7 +137,7 @@ public sealed class AWallIsAFilledRectangleOfWallProportionsTests
     public void DefaultsAndSharedKeysUseBankedInchesAndDimensionlessAspect()
     {
         var d = PdfIntakeOptions.Default;
-        Assert.Equal((101.6, 1524.0, 1219.2, 2.0),
+        Assert.Equal((152.4, 1524.0, 1219.2, 2.0),
             (d.MinWallThicknessMm, d.MaxWallThicknessMm, d.MinWallLengthMm, d.MinWallAspect));
         var settings = new Dictionary<string, RuleSetting>
         {

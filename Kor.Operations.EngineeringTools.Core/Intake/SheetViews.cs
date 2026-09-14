@@ -82,7 +82,13 @@ public static class SheetViews
             if (line.CentreX / page.WidthPts >= TitleRegionMinFx || NamesAPlan(line.Text)) continue;
             var under = UnderlineOf(line);
             if (under.X1 <= under.X0) continue;
-            var above = lines.Where(a => a.MinY > line.MinY && a.MinY - line.MinY <= 2.2 * line.Height
+            // a title's second line is made of title words - at least half its words are the vocabulary's, a plan
+            // kind's, a number, a tag ("CONCRETE OUTLINE - NT", "CONCRETE OUTLINE BLDG B", "MAIN FLOOR FRAMING OVER");
+            // an underlined note under a title is a sentence (the second audit's B7: "CONTINUOUS TO MAIN FLOOR SLAB"
+            // under "LEVEL 3 PLAN" made one title of the two). The first cut asked the line to BEGIN with a title word
+            // and lost 31065's and 31168's second lines, which begin with CONCRETE.
+            if (!ReadsLikeATitleLine(line.Text)) continue;
+            var above = lines.Where(a => a.MinY > line.MinY && a.MinY - line.MinY <= 2.0 * line.Height
                     && Math.Min(a.MaxX, line.MaxX) - Math.Max(a.MinX, line.MinX) >= 0.5 * Math.Min(a.MaxX - a.MinX, line.MaxX - line.MinX))
                 .OrderBy(a => a.MinY).FirstOrDefault();
             if (above.Text is null || !NamesAPlan(above.Text + " " + line.Text)) continue;
@@ -105,6 +111,27 @@ public static class SheetViews
     }
 
     private const double TitleRegionMinFx = 0.80;
+
+    /// <summary>
+    /// A line made of title words: at least half of its words are the vocabulary's (a floor, level, parkade, roof,
+    /// building, framing-over, basement or loft word, a floor noun), a plan kind's (CONCRETE OUTLINE,
+    /// FOUNDATION PLAN - the compiled structural-plan words), PLAN, FRAMING, OVER, a number, punctuation, or a tag of
+    /// one or two letters (NT, ST, A, B) that is not a word of a sentence (TO, OF, AT ...).
+    /// </summary>
+    private static bool ReadsLikeATitleLine(string text)
+    {
+        var v = PlanSheetNaming.Vocabulary;
+        var known = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "PLAN", "PLANS", "FRAMING", "OVER" };
+        foreach (string e in v.FloorWords) known.Add(e.Split('=')[0].Trim());
+        foreach (string w in v.LevelWords.Concat(v.ParkadeWords).Concat(v.RoofWords).Concat(v.FramingOverWords).Concat(v.BasementWords).Concat(v.TopFloorWords).Concat(v.BuildingWords).Concat(v.FloorNouns)) known.Add(w);   // not the range words: TO is a sentence's word first
+        foreach (string phrase in new PlanClassificationOptions().StructuralPlanWords) foreach (string w in phrase.Split(' ', StringSplitOptions.RemoveEmptyEntries)) known.Add(w);
+        var tokens = text.Split(' ', StringSplitOptions.RemoveEmptyEntries).Select(t => t.Trim('(', ')', ',', '-', ':', '.', '&')).Where(t => t.Length > 0).ToList();
+        if (tokens.Count == 0) return false;
+        // a tag is one or two letters that are not a word of a sentence (TO, OF, AT, IN, ON, BY, AS, OR, IS, IT, AN, A)
+        var notTags = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "TO", "OF", "AT", "IN", "ON", "BY", "AS", "OR", "IS", "IT", "AN", "BE", "DO", "NO", "UP", "SO", "IF", "WE", "US", "MY", "HE", "ME", "GO" };
+        int titleWords = tokens.Count(t => known.Contains(t) || t.All(c => char.IsDigit(c) || c == ',' || c == '.' || c == '-') || (t.Length <= 2 && t.All(char.IsLetter) && !notTags.Contains(t)));
+        return titleWords * 2 >= tokens.Count;
+    }
 
     private readonly record struct TextLine(string Text, double MinX, double MaxX, double MinY, double Height)
     {
@@ -173,7 +200,14 @@ public static class SheetViews
         ArgumentNullException.ThrowIfNull(geometry);
         ArgumentNullException.ThrowIfNull(views);
         if (views.Count < 2 || mmPerPt <= 0)
-            return new[] { new Part(views.Count == 1 ? views[0] : null, sheetDxfName ?? SheetDxfName.For(sheetNumber, titleBlock, fallbackStem), geometry) };
+        {
+            string name = sheetDxfName ?? SheetDxfName.For(sheetNumber, titleBlock, fallbackStem);
+            // ONE view whose sheet name says no storey is written under the view's own title (the second audit's B8: a
+            // sole "GROUND FLOOR SHOWING MAIN FLOOR FRAMING OVER" was written as "job-p01.dxf" and named no storey)
+            if (views.Count == 1 && !PlanSheetNaming.Parse(name).HasPlacement && PlanSheetNaming.Parse(views[0].Title + ".dxf").HasPlacement)
+                name = SheetDxfName.For(sheetNumber, titleBlock, fallbackStem, null, views[0].Title);
+            return new[] { new Part(views.Count == 1 ? views[0] : null, name, geometry) };
+        }
 
         // which view each thing belongs to: the title nearest below it — by the drop to the title
         // plus how far the thing sits outside the title's own span across. Plans side by side share

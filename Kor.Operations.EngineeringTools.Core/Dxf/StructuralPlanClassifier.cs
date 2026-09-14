@@ -100,7 +100,20 @@ public sealed record PlanClassificationOptions
     /// </summary>
     public double RecoveredOutlineTolerance { get; init; } = 3.0;
 
-    public double MinWallThickness { get; init; } = 4.0;
+    public double MinWallThickness { get; init; } = 6.0;   // six inches: the thinnest wall in 101 engineers' models (step 63, migration 090)
+
+    /// <summary>
+    /// How far under the wall floor a drawn thickness may measure and still be a wall: half an
+    /// inch. A six-inch wall is DRAWN at 142-150 mm (5.6-5.9 in) on 31065's tower plans and at 154
+    /// on 31168's; the floor is a rule about walls, this is a tolerance on the drawing of them, the
+    /// same half inch the PDF reader carries (GeometryFilterService.WallFloorSlackMm). Step 63: with
+    /// the floor at six and no slack here, the composer lost 67 of 31168's six-inch walls that the
+    /// reader had read. What it cannot tell: a 2x6 stud wall (5.5 in) from a thinly drawn six.
+    /// </summary>
+    public double WallFloorSlack { get; init; } = 0.5;
+
+    /// <summary>The thinnest drawn thickness admitted as a wall: the floor less its slack.</summary>
+    public double WallFloor => MinWallThickness - WallFloorSlack;
 
     /// <summary>
     /// 60", the banked row `dxf.max-wall-thickness` since migration 038: across 1,126 engineer
@@ -380,6 +393,7 @@ public sealed record PlanClassificationOptions
         return this with
         {
             MinWallThickness = MinWallThickness * f,
+            WallFloorSlack = WallFloorSlack * f,
             MaxWallThickness = MaxWallThickness * f,
             MinWallLength = MinWallLength * f,
             MinPanelOverlap = MinPanelOverlap * f,
@@ -1964,7 +1978,7 @@ public static class StructuralPlanClassifier
                 if (!LoopGeometry.PointInPolygon(inner.Centroid(), outer.Points)) continue;
 
                 double band = (outer.Area - inner.Area) / ((Perimeter(outer) + Perimeter(inner)) / 2.0);
-                if (LoopGeometry.Beyond(options.MinWallThickness, band) || LoopGeometry.Beyond(band, options.MaxWallThickness)) continue;
+                if (LoopGeometry.Beyond(options.WallFloor, band) || LoopGeometry.Beyond(band, options.MaxWallThickness)) continue;
 
                 // Feed the decomposer both faces at once; it pairs each outer edge with the inner
                 // edge facing it, exactly as it does for a wall drawn as a single ribbon.
@@ -2215,7 +2229,7 @@ public static class StructuralPlanClassifier
                 // 64% of the engineer's wall length rather than the 82% an uncapped pass reaches.
                 // That is the price of not inventing members, and it is the right way round.
                 double maxOpenFacePairThickness = Math.Min(options.MaxWallThickness, 18.0);
-                if (LoopGeometry.Beyond(options.MinWallThickness, separation) || LoopGeometry.Beyond(separation, maxOpenFacePairThickness)) continue;
+                if (LoopGeometry.Beyond(options.WallFloor, separation) || LoopGeometry.Beyond(separation, maxOpenFacePairThickness)) continue;
 
                 double tb0 = (aj.X - ai.X) * ux + (aj.Y - ai.Y) * uy;
                 double tb1 = (bj.X - ai.X) * ux + (bj.Y - ai.Y) * uy;
@@ -2331,7 +2345,7 @@ public static class StructuralPlanClassifier
         const double LengthSlack = 0.5;
 
         if (simpleRectangle &&
-            LoopGeometry.Within(options.MinWallThickness, box.Thickness) &&      // to the micron: a 48" loop IS 48" in every frame
+            LoopGeometry.Within(options.WallFloor, box.Thickness) &&            // to the micron: a 48" loop IS 48" in every frame
             LoopGeometry.Within(box.Thickness, options.MaxWallThickness) &&
             LoopGeometry.Within(options.MinWallLength - LengthSlack, box.Length))
         {

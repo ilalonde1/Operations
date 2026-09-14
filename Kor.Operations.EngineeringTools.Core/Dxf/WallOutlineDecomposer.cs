@@ -89,7 +89,8 @@ public static class WallOutlineDecomposer
                 if (Math.Sign(d1) != Math.Sign(d2) && Math.Abs(d1) > 1e-6 && Math.Abs(d2) > 1e-6) continue;
 
                 double separation = (Math.Abs(d1) + Math.Abs(d2)) / 2.0;
-                if (LoopGeometry.Beyond(options.MinWallThickness - ThicknessSlack, separation) ||
+                // the floor carries its own slack (options.WallFloor): a six-inch wall is drawn at 5.6-5.9 in
+                if (LoopGeometry.Beyond(options.WallFloor, separation) ||
                     LoopGeometry.Beyond(separation, options.MaxWallThickness + ThicknessSlack)) continue;
 
                 // Overlap of the two faces along edge i's direction.

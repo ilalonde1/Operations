@@ -211,9 +211,11 @@ public static class PdfOnlyBuild
     /// wrote it before step 45).
     /// </summary>
     public static StoreysFromPlans.Ladder WriteLevels(string pdf, string levelsCsv, PdfIntakeOptions options, out SetStoreys.Table table, out SetStoreys.Chain chain,
-        IEnumerable<string>? planFileNames = null)
+        IEnumerable<string>? planFileNames = null, string? rulesConnection = null)
     {
         ArgumentNullException.ThrowIfNull(options);
+        // the ladder reads the plans' names under the office's words - the rows - exactly as the composer will (B2)
+        if (rulesConnection is not null) PlanSheetNaming.Vocabulary = DxfToEtabsService.OfficeVocabulary(rulesConnection);
         table = SetStoreys.Read(pdf, options.LevelLabelWords, options.LevelNameWords, options.LadderMinRows);
         chain = SetStoreys.Levels(table);
         var ladder = StoreysFromPlans.Merge(chain, planFileNames ?? [], options.AssumedStoreyHeightMm);
@@ -293,7 +295,7 @@ public static class PdfOnlyBuild
         SetStoreys.Chain? chain = null;
         StoreysFromPlans.Ladder? ladder = null;
         string? levelsError = null;
-        try { ladder = WriteLevels(pdf, levelsCsv, options, out _, out chain, written); }
+        try { ladder = WriteLevels(pdf, levelsCsv, options, out _, out chain, written, rulesConnection); }
         catch (Exception ex) when (ex is InvalidOperationException or IOException or FormatException or ArgumentException) { levelsError = $"{ex.GetType().Name}: {ex.Message}"; }
 
         string outE2k = Path.Combine(workDir, "out.e2k");

@@ -131,6 +131,7 @@ public sealed class EveryReaderConstantIsTriagedTests
         ["SheetFurniture.cs:AxisPenHeavierBy"] = Tolerance("a stroke on a grid axis heavier than this many times the grid's pen at its bubble is not the grid"),
         ["DxfExporter.cs:minSeg"] = Tolerance("an alias of MinVertexDistanceMm"),
         ["GeometryFilterService.cs:WallLimitSlackMm"] = Tolerance("half an inch on the wall limits: a wall drawn at exactly the limit is a wall"),
+        ["GeometryFilterService.cs:WallFloorSlackMm"] = Tolerance("half an inch under the wall floor: a six-inch wall is drawn at 142-150 mm on 31065; an eighth refused 60 of its walls (step 63)"),
         ["GeometryFilterService.cs:RectangleCornerCos"] = Tolerance("a corner is square within 3 degrees"),
         ["GeometryFilterService.cs:RectangleFillShare"] = Tolerance("a rectangle fills its own box"),
         ["GeometryFilterService.cs:CellAbutMm"] = Tolerance("an inch of drafting"),

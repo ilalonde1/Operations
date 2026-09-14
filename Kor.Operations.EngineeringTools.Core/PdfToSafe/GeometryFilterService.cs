@@ -35,6 +35,12 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         /// limit is a statement about walls, not about floating point.
         /// </summary>
         private const double WallLimitSlackMm = 12.7;
+        // THE FLOOR IS HELD TO HALF AN INCH, LIKE THE OTHER LIMITS (intake step 63, 2026-09-14). An eighth was tried
+        // first - the gap between a 2x6 stud wall (5.5 in) and the six inches every engineer's wall measures - and it
+        // refused 60 walls on 31065's concrete tower: its 6 in walls are DRAWN at 142-150 mm (5.6-5.9 in), which is
+        // where a 2x6 stud wall lands too. Thickness alone cannot tell a thinly drawn six-inch wall from a 2x6; it can
+        // tell a 2x4 (89-115 mm), which is what the floor refuses on a wood-frame set (31066-01: 112 and 115 mm bands).
+        private const double WallFloorSlackMm = 12.7;
 
         /// <summary>A corner is square within about 3° (cos 87°).</summary>
         private const double RectangleCornerCos = 0.05;
@@ -340,7 +346,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         // a wall drawn at exactly 4" or exactly 48" measures a hair under after the
                         // export's arithmetic, and a limit is a statement about walls, not about
                         // floating point.
-                        if (box.Thickness >= minWallThicknessMm - WallLimitSlackMm && box.Thickness <= maxWallThicknessMm + WallLimitSlackMm
+                        if (box.Thickness >= minWallThicknessMm - WallFloorSlackMm && box.Thickness <= maxWallThicknessMm + WallLimitSlackMm
                             && box.Length >= minWallLengthMm - WallLimitSlackMm && box.Aspect >= minWallAspect)
                         {
                             // four points are a wall's shape when the faces are parallel and the ends are
@@ -383,6 +389,13 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                             if (pts.Count > 4) result.WallRibbonsNotSplit++;
                         }
                     }
+
+                    // A FILLED BAND THINNER THAN THE THINNEST WALL IS NOT A WALL AND NOT A SLAB (intake step 63): a 2x6 stud
+                    // wall on a wood-frame set, 140 mm, is a band of wall proportions under the six inches every engineer's
+                    // wall measures; read as a slab candidate it stood in the plate reader's way for nothing
+                    if (!sub.IsAnnotation && obox is { } thinBox && !IsPaper(color) && sub.IsFilled
+                        && thinBox.Thickness < minWallThicknessMm - WallFloorSlackMm && thinBox.Length >= minWallLengthMm - WallLimitSlackMm && thinBox.Aspect >= minWallAspect)
+                    { Fate(PathReason.ThinBand); continue; }
 
                     // A FILLED BAND THICKER THAN THE THICKEST WALL IS NOT A SLAB (intake step 21).
                     // 31168's parkade plans carry a 63"-66" grey band 127 ft long along the property
@@ -1176,7 +1189,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     // the faces may converge: by an inch, or by a third of the gap, with a wall's
                     // thickness at both ends (step 21)
                     if (Math.Abs(rel.D0 - rel.D1) > Math.Max(FaceTaperMm, FaceTaperShare * gap)) { Never($"they converge by {Math.Abs(rel.D0 - rel.D1) / 25.4:0.0}\""); continue; }
-                    if (Math.Min(Math.Abs(rel.D0), Math.Abs(rel.D1)) < minWallThicknessMm - WallLimitSlackMm
+                    if (Math.Min(Math.Abs(rel.D0), Math.Abs(rel.D1)) < minWallThicknessMm - WallFloorSlackMm
                         || Math.Max(Math.Abs(rel.D0), Math.Abs(rel.D1)) > maxWallThicknessMm + WallLimitSlackMm) { Never("the gap is outside wall thicknesses"); continue; }
                     if (rel.T1 - rel.T0 < minWallLengthMm - WallLimitSlackMm) { Never($"they overlap by only {(rel.T1 - rel.T0) / 25.4:0}\""); continue; }
                     // and a wall's proportions, as the filled rule asks: a box of lines 49" x 38"

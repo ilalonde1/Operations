@@ -48,6 +48,8 @@ public sealed class CompiledDefaultsAreTheBankedRowsTests
         ["ComposeOptions.ModelUnitInInches"]            = "a fact about the reference model, read off its UNITS line",
         ["ComposeOptions.MembersRiseToStoreyAbove"]     = "the storey convention; a statement, not a number anyone banks",
         ["PlanClassificationOptions.SpandrelDepth"]     = "superseded by dxf.spandrel-depth-floor / -ceiling; candidate for removal",
+        ["PlanClassificationOptions.WallFloorSlack"]    = "a tolerance on the DRAWING of a wall, not a rule about walls: a six-inch wall is drawn at 5.6-5.9 in; the PDF side's WallFloorSlackMm, triaged there (step 63)",
+        ["PlanClassificationOptions.WallFloor"]         = "computed: dxf.min-wall-thickness less its slack; not a number anyone banks",
         ["ComposeOptions.DefaultSlabThicknessInches"]   = "report-only copy of dxf.default-slab-thickness before model-unit conversion",
         ["ComposeOptions.OffsetX"]                      = "this run's translation onto the reference model's grid",
         ["ComposeOptions.OffsetY"]                      = "this run's translation onto the reference model's grid",

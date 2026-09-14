@@ -67,6 +67,7 @@ public static class StoreysFromPlans
         // chain reached above the plans and no ROOF was added, which hid the class). A tagged roof plan names
         // <TAG>-ROOF after that building's highest level; only an untagged roof plan names the set's ROOF.
         var roofOfBuilding = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
+        var elevatorRoofOfBuilding = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);   // above the building's roof (the second audit's B6)
         var highestOfBuilding = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         foreach (var file in names)
         {
@@ -78,7 +79,7 @@ public static class StoreysFromPlans
             if (sheet.IsRoof && sheet.Levels.Count == 0 && sheet.ParkadeLevels.Count == 0)
             {
                 if (sheet.BuildingTags.Count == 0) roof = true;
-                else foreach (string tag in sheet.BuildingTags) roofOfBuilding.Add(tag);
+                else foreach (string tag in sheet.BuildingTags) (sheet.IsElevatorRoof ? elevatorRoofOfBuilding : roofOfBuilding).Add(tag);
             }
             if (sheet.IsTopFloor && sheet.Levels.Count == 0 && sheet.ParkadeLevels.Count == 0) topFloor = true;
         }
@@ -129,18 +130,20 @@ public static class StoreysFromPlans
             order.Insert(at, name);
         }
         // each tagged roof after its building's highest level, unless the chain already reaches above that building's plans
-        foreach (string tag in roofOfBuilding)
-        {
-            if (!highestOfBuilding.TryGetValue(tag, out int highest)) continue;
-            string roofName = $"{tag}-ROOF";
-            bool chainAbove = chain is not null && chain.Levels.Any(l => string.Equals(ModelYardstick.Building(l.Name), tag, StringComparison.OrdinalIgnoreCase)
-                && ((NumberOf(l.Name) is int n && n > highest) || Stripped(l.Name).Contains("ROOF", StringComparison.OrdinalIgnoreCase)));
-            if (chainAbove || covered.Contains(roofName) || order.Contains(roofName, StringComparer.OrdinalIgnoreCase)) continue;
-            int at = -1;
-            for (int i = 0; i < order.Count; i++)
-                if (string.Equals(ModelYardstick.Building(order[i]), tag, StringComparison.OrdinalIgnoreCase) || (ModelYardstick.Building(order[i]) is null && NumberOf(order[i]) == highest)) at = i;
-            order.Insert(at < 0 ? order.Count : at + 1, roofName);
-        }
+        // an elevator roof above the building's roof (B6: two storeys, not one)
+        foreach (var (tags, suffix) in new[] { (roofOfBuilding, "ROOF"), (elevatorRoofOfBuilding, "ELEVATOR ROOF") })
+            foreach (string tag in tags)
+            {
+                if (!highestOfBuilding.TryGetValue(tag, out int highest)) continue;
+                string roofName = $"{tag}-{suffix}";
+                bool chainAbove = chain is not null && chain.Levels.Any(l => string.Equals(ModelYardstick.Building(l.Name), tag, StringComparison.OrdinalIgnoreCase)
+                    && ((NumberOf(l.Name) is int n && n > highest) || Stripped(l.Name).Contains(suffix, StringComparison.OrdinalIgnoreCase)));
+                if (chainAbove || covered.Contains(roofName) || order.Contains(roofName, StringComparer.OrdinalIgnoreCase)) continue;
+                int at = -1;
+                for (int i = 0; i < order.Count; i++)
+                    if (string.Equals(ModelYardstick.Building(order[i]), tag, StringComparison.OrdinalIgnoreCase) || (ModelYardstick.Building(order[i]) is null && NumberOf(order[i]) == highest)) at = i;
+                order.Insert(at < 0 ? order.Count : at + 1, roofName);
+            }
         if (order.Count == 0) return new Ladder([], 0, 0, 0, assumedHeightMm, "none");
 
         double height = chain?.TypicalMm is double t && t > 0 ? t : assumedHeightMm;

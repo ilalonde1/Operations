@@ -1,11 +1,11 @@
 # PDF intake — what it does today, and what it leaves on the page
 
-## 0. START HERE (state as of 2026-09-14, after steps 47 and 54–62 and completion-plan WP1–WP5 — 207 of 292 sets build from the PDF alone)
+## 0. START HERE (state as of 2026-09-14, after steps 47 and 54–63 and completion-plan WP1–WP5 — 207 of 292 sets build from the PDF alone)
 
 A session picking this up cold reads this section, then the completion plan
 (`docs/architecture/Kor.Operations.EngineeringTools.PdfIntake.plan.md` — what "complete" means, the
 packages, and where each stands), then the last three step sections (§54–§56). §1–§52 are the
-record of how each rule was arrived at, read when a rule is being changed. §71 is the latest step.
+record of how each rule was arrived at, read when a rule is being changed. §72 is the latest step.
 
 **What this is.** A PDF ingestor: one ingestion point (`DrawingIntake.ReadSheet` → `PdfOnlyBuild`)
 that reads a drawing set and hands its geometry to outlets — the ETABS `.e2k` today, the DXF as a
@@ -3605,3 +3605,90 @@ sitting starts from it, not from the symptom.
 
 WHAT THIS DOES NOT: brief B (the reading rules) is not yet run; the red differential is still red
 (§70); walls on wood-frame sets (§70's run 10) are not yet a rule.
+
+## 72. Step 63, 2026-09-14: a wall is six inches or more — and brief B answered
+
+**Measured first.** Run 10's 151,191 walls (§70) were looked at on 31066-01: every stud partition
+of a wood-frame block over a podium, a filled band a driver tessellates, read as a wall now that its
+two triangles are one shape. `dxf-inspect --members` on its L2 plan: 139, 142, 112, 115 mm thick —
+2×4 and 2×6 walls with their sheathing. Migration 064 had measured the floor on ONE model (31138:
+736 walls, thinnest 6 in) and left it at 4 in deliberately, because on the DXF side the only things
+under 6 in were 3.1–3.4 in linework and "admitting a 4-inch line produces a member the engineer can
+see and delete". Measured again over **every engineer's model on hand — 101 exports, 51,127 wall
+areas**: 6 in 684 (1.3%), 8 in 5,921, 12 in 10,133 (19.8%), 24 in 6,222 (12.2%), up to 60 in, and
+**not one under six inches**. 2,620 stud walls a set is not a cost an engineer can pay by deleting.
+
+**The rule.** *A wall is six inches or more.* `dxf.min-wall-thickness` 4 → 6 in (migration 090, on
+both rows that carry the key: the 036 convention and the 064 ruling — a ruling outranks a
+convention in `vw_RuleSetting`, and the first cut of the migration updated the convention alone
+and the reader still read 4). **What the floor can and cannot tell.** The first cut held it to an
+eighth of an inch — the gap between a 2×6 stud wall (5.5 in) and six — and the gate refused 60
+walls on 31065's concrete tower: `pdf-at` on its south-tower plan shows six-inch walls DRAWN at
+142–150 mm (5.6–5.9 in), which is where a 2×6 stud wall lands too. Thickness alone cannot tell a
+thinly drawn six-inch wall from a 2×6; it can tell a 2×4 (89–115 mm), which is what the floor
+refuses on a wood-frame set (31066-01's 112 and 115 mm bands). So the floor carries the same
+half-inch slack as the other limits (`WallFloorSlackMm`), and a filled band of wall proportions
+under it is `ThinBand` — a stud wall, a curb, a line drawn wide — not a wall and not a slab
+candidate (`ABandThinnerThanTheFloorIsAThinBand`; the fate fixture holds a 115 mm band and a
+152.4 mm one). The 2×6 stud wall needs another discriminator — the fill, the set's typology — and
+is named below as not done.
+**And the floor is applied TWICE, once per side.** The reader (`GeometryFilterService`, in mm) reads a
+band into a wall view; the composer (`StructuralPlanClassifier` and `WallOutlineDecomposer`, in the
+drawing's unit) reads that view's outline again and compares its thickness to `MinWallThickness`
+— and did so with no slack (a hundredth of an inch in the decomposer, none in the classifier). With
+the row at 4 the composer's floor never bit; at 6 the gate lost walls the reader had read: 31168
+67 (`pdf-at` at a lost wall's coordinate: `Read BecameWall #11 filled 5490x154 mm` — read, then
+gone in composition), 31065 60, 31138 49, 31202 20. The composer now carries the same half inch as
+the reader (`PlanClassificationOptions.WallFloorSlack`, converted with the other lengths;
+`WallFloor` = the row less its slack, at the decomposer's face-pair separation, the classifier's
+ribbon band, open face pairs and the filled rectangle). With the slack on both sides the gate's losses fell from 60 / 49 / 67 / 20 walls (31065 / 31138 / 31168 / 31202) to 0 / 1 / 4 / 5, and 31065's six-inch walls are all there (KOR-W152.4: 130 → 130). Two readers of one rule
+with two tolerances is the class the options merge (§0's next efficiency step) removes.
+And `dxf.dash-offset-tolerance` (0.15 in) is a row in the same migration: step 61 shipped it as a
+compiled option, which `EveryNumericOptionIsARuleOrDeclaredNotOne` refused the first time the slow
+suite ran — the fast suite had never asked.
+
+**Brief B, answered.** `docs/codex/CODEX-PDF-INTAKE-STEPS-57-61-AUDIT-B-READING.md` and its
+response; 10 findings, all real, all fixed with tests in the sitting after they landed:
+
+| # | The fault, verified at the source | Fixed in | Test |
+|---|---|---|---|
+| 1 | the numeric readers scanned the whole title: "MAIN FLOOR PLAN SHOWING LEVEL 2 FRAMING OVER" read level 2 where "… 2ND FLOOR …" read 1 | the numbers are read from the part before the framing-over clause too; "LEVEL 4" over a word anchors the chain as "4TH FLOOR" does | `TheNumbersAreReadBeforeTheClauseAndTheChainsAreOnePerBuilding` |
+| 2 | the ladder started from the STATIC vocabulary — the previous job's derived ranks — where the composer started from the rows | `PdfOnlyBuild.WriteLevels` sets the office's vocabulary (`DxfToEtabsService.OfficeVocabulary`) before the ladder; `Run` restores it after the set's chain | (the serialised collection; the class is F23's) |
+| 3 | a roof plan tagged for a building none of whose storeys the model names fell back to EVERY storey and landed on tower B's 40th floor | a tagged sheet with no storey of its building goes nowhere | `ABuildingsRoofGoesNowhereWithoutItsBuildingAndItsElevatorRoofIsAboveIt` |
+| 4 | two buildings' chains fused into one (A's GROUND → MAIN, B's MAIN → UPPER) | one chain per building tag; they must agree on every shared word or the row stands | the words test |
+| 5 | a cycle with a tail (… UPPER → MAIN) and a floor shown over itself were ranked | every clause must agree with the chain; a self-reference is two stories | the words test |
+| 6 | a building's main roof and elevator roof collapsed to one `<TAG>-ROOF` | `<TAG>-ELEVATOR ROOF` above `<TAG>-ROOF` | the roof test |
+| 7 | an underlined note under "LEVEL 3 PLAN" joined it as the title's second line | a title's second line is made of title words — at least half its words are the vocabulary's, a plan kind's, a number or a tag ("CONCRETE OUTLINE - NT"); a note is a sentence. The first cut asked the line to BEGIN with a title word and lost 31065's and 31168's second lines, which begin with CONCRETE | `ANoteUnderATitleIsNotItsSecondLineAndTheJoinReachesTwoHeights` |
+| 8 | a sole joined view on a sheet whose own name says no storey was written as `job-p01.dxf` | written under the view's title | the same test |
+| 9 | `Parse` took `.01_1_MAIN FLOOR PLAN` for an extension without `.dxf` | only a `.dxf` is an extension | the words test |
+| 10 | the join reached 2.2 heights where §69 said two; the fixture sat inside both | two heights, and the fixture sits on the boundary (16 pt joins, 17 does not) and holds the interposed-line case | the same test |
+
+**Measured.** Fast suite 1,289 green; rows test green; the gate (six sets + shifted, 15:02–15:14,
+12 min wall; the six-set test 5 m 46 s): the shifted differential green; 31130 byte-identical; the
+five others re-banked after EACH diff was looked at with `pdf-at`, `model-to-page` and
+`dxf-inspect`, by wall section (bank → now, only where changed):
+- 31138: −1 KOR-W101.6 — a 4-in face pair on the LEVEL 2 plan (two w9pt lines 101 mm apart, p24),
+  rising to L3. Refused by the rule.
+- 31202: −4 KOR-W101.6 — the same 101-mm pair along y = 61,316 on L3 and L4 (p20); and −1
+  KOR-W1219.2, a "wall" 102 mm LONG and 1,219 thick — a 4-in band read sideways — gone with it.
+- 31065: +1 KOR-W203.2, 4,881 long at L1 — the east 4.9 m of a 16.3 m, 199-mm wall outline on the
+  P1 north plan (`dxf-inspect`), which composed without that piece before; every other section
+  count identical.
+- 31168: KOR-W203.2 62 → 66 and nothing else — three long 8-in walls are each now two collinear
+  panels whose lengths sum to the old one (11,592 + 2,435 = 14,027; 19,596 + 5,686 = 25,282).
+- 31170-arch (the architect's set): −12 W101.6, −4 W114.3, −4 W127 (the partitions); three walls
+  re-measured 165.1 → 152.4 (a partition's face no longer in the pair); two overlapping 36.8 m
+  roof-line walls 127 mm apart now one; L8 (roof) 29 → 16. And ONE FALSE POSITIVE, named: KW79
+  on L3, 647.7 thick, 1,372 long at (20,370, 42,171) — a 0.6-pt line 1,372 long at y = 41,848
+  now closes a ring with a 406-mm wall's face at 42,495 (p11/p12), because the partition outline
+  that used to close a different ring through those lines is no longer in the view. Which ring a
+  loose line belongs to is the ring-ownership class (§71); it is carried to that step, not hidden
+  here.
+- Run 11 (the corpus on step 63) is next; its walls are the number to watch.
+
+WHAT THIS DOES NOT: a 2×6 stud wall (5.5 in — the same drawn thickness as a thin six-inch wall; not
+separable by thickness, the next discriminator is the fill or the set's typology); a concrete wall
+drawn under six inches by another office (none in 101 models here); a wood-frame set's model beyond
+"no concrete walls" (what it should hold is still the
+plan's question); a set whose buildings genuinely order their floor words differently (the row
+stands for both); a title of three lines.

@@ -120,39 +120,62 @@ public sealed record DrawingVocabulary
     {
         ArgumentNullException.ThrowIfNull(titles);
         var words = FloorWords.Select(e => e.Split('=')[0].Trim().ToUpperInvariant()).Where(w => w.Length > 0).ToHashSet(StringComparer.Ordinal);
-        var over = new Dictionary<string, string>(StringComparer.Ordinal);     // floor word -> the floor word or number shown over it
+        // ONE CHAIN PER BUILDING (the second audit's B4): "GROUND ... SHOWING MAIN ... BLDG A" and "MAIN ... SHOWING
+        // UPPER ... BLDG B" are two chains, not one; the buildings' chains must agree on every word they share
+        var overByBuilding = new Dictionary<string, Dictionary<string, string>>(StringComparer.Ordinal);
         foreach (string title in titles)
         {
             string t = title.ToUpperInvariant();
             string own = OwnStoreyPart(t);
             if (own.Length == t.Length) continue;                              // no framing-over clause: nothing said about order
             string ownWord = FloorWordIn(own), overWord = FloorWordIn(t[own.Length..]);
-            if (!words.Contains(ownWord) || overWord.Length == 0 || ownWord == overWord) continue;
+            if (!words.Contains(ownWord) || overWord.Length == 0) continue;
+            if (ownWord == overWord) return this;                             // a floor shown over itself: two stories, the row stands (B5)
+            string building = Building.Match(t) is { Success: true } b ? b.Groups[1].Value.ToUpperInvariant() : PrefixBuilding.Match(t) is { Success: true } pb ? pb.Groups[1].Value.ToUpperInvariant() : "";
+            if (!overByBuilding.TryGetValue(building, out var over)) overByBuilding[building] = over = new Dictionary<string, string>(StringComparer.Ordinal);
             if (over.TryGetValue(ownWord, out string? had) && had != overWord) return this;   // two stories about one floor: the row stands
             over[ownWord] = overWord;
         }
-        if (over.Count == 0) return this;
-        // the chain from its bottom: a word nothing is shown over ... up to the top word or a number
-        var shownOver = over.Values.ToHashSet(StringComparer.Ordinal);
-        var bottoms = over.Keys.Where(w => !shownOver.Contains(w)).ToList();
-        if (bottoms.Count != 1) return this;
-        var chain = new List<string>();
-        for (string? w = bottoms[0]; w is not null && words.Contains(w) && !chain.Contains(w); w = over.GetValueOrDefault(w)) chain.Add(w);
-        if (chain.Count < 2 && !(chain.Count == 1 && over.TryGetValue(chain[0], out var top) && int.TryParse(top, out _))) return this;
-        int first = 1;
-        // a numbered floor shown over the top word anchors the chain: "MAIN FLOOR SHOWING 2ND FLOOR FRAMING OVER" keeps MAIN at 1
-        if (over.TryGetValue(chain[^1], out string? above) && int.TryParse(above, out int n)) first = n - chain.Count;
-        var ranked = chain.Select((w, i) => $"{w}={first + i}").ToList();
-        var kept = FloorWords.Where(e => !chain.Contains(e.Split('=')[0].Trim().ToUpperInvariant()));
+        if (overByBuilding.Count == 0) return this;
+        var ranks = new Dictionary<string, int>(StringComparer.Ordinal);
+        foreach (var over in overByBuilding.Values)
+        {
+            // the chain from its bottom: a word nothing is shown over ... up to the top word or a number
+            var shownOver = over.Values.ToHashSet(StringComparer.Ordinal);
+            var bottoms = over.Keys.Where(w => !shownOver.Contains(w)).ToList();
+            if (bottoms.Count != 1) return this;
+            var chain = new List<string>();
+            for (string? w = bottoms[0]; w is not null && words.Contains(w) && !chain.Contains(w); w = over.GetValueOrDefault(w)) chain.Add(w);
+            // every clause must agree with the chain: a word shown over a word above it (a cycle with a tail, B5) is two stories
+            foreach (var (lower, upper) in over)
+                if (chain.Contains(upper) && (!chain.Contains(lower) || chain.IndexOf(upper) != chain.IndexOf(lower) + 1)) return this;
+            if (chain.Count < 2 && !(chain.Count == 1 && over.TryGetValue(chain[0], out var top) && int.TryParse(top, out _))) continue;
+            int first = 1;
+            // a numbered floor shown over the top word anchors the chain: "MAIN FLOOR SHOWING 2ND FLOOR FRAMING OVER" keeps MAIN at 1
+            if (over.TryGetValue(chain[^1], out string? above) && int.TryParse(above, out int n)) first = n - chain.Count;
+            for (int i = 0; i < chain.Count; i++)
+            {
+                if (ranks.TryGetValue(chain[i], out int had) && had != first + i) return this;   // two buildings disagree: the row stands
+                ranks[chain[i]] = first + i;
+            }
+        }
+        if (ranks.Count == 0) return this;
+        var ranked = ranks.Select(kv => $"{kv.Key}={kv.Value}").ToList();
+        var kept = FloorWords.Where(e => !ranks.ContainsKey(e.Split('=')[0].Trim().ToUpperInvariant()));
         return this with { FloorWords = ranked.Concat(kept).ToList() };
 
         string FloorWordIn(string s)
         {
             var m = WordFloor.Match(s);
-            if (!m.Success) return "";
-            string w = m.Groups[1].Value.ToUpperInvariant();
-            if (words.Contains(w)) return w;
-            return LevelOfWord(w) is int level ? level.ToString(System.Globalization.CultureInfo.InvariantCulture) : "";
+            if (m.Success)
+            {
+                string w = m.Groups[1].Value.ToUpperInvariant();
+                if (words.Contains(w)) return w;
+                if (LevelOfWord(w) is int level) return level.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            }
+            // "LEVEL 4" shown over a word anchors the chain as "4TH FLOOR" does (B1)
+            var n = SingleLevel.Match(s);
+            return n.Success && int.TryParse(n.Groups[1].Value, out int number) ? number.ToString(System.Globalization.CultureInfo.InvariantCulture) : "";
         }
     }
 
