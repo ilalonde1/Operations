@@ -65,6 +65,61 @@ public sealed record DrawingVocabulary
     public IReadOnlyList<string> ElevatorRoofWords { get; init; } =
         new[] { "ELEVATOR ROOF", "ELEV ROOF" };
 
+    /// <summary>
+    /// A STOREY MAY BE NAMED BY A WORD (intake step 47, 2026-09-13). KOR's small jobs name their plans
+    /// "MAIN FLOOR PLAN SHOWING 2ND FLOOR FRAMING OVER", "UPPER FLOOR PLAN", "BASEMENT FLOOR PLAN",
+    /// "LOFT PLAN" — no LEVEL, no number — and 68 of the corpus's 86 sets without a model had plans
+    /// named exactly so (383 plans). Each entry is WORD=LEVEL: the level number the word names.
+    /// <c>dxf.floor-words</c>.
+    /// </summary>
+    public IReadOnlyList<string> FloorWords { get; init; } = new[] { "MAIN=1", "GROUND=1", "UPPER=2" };
+
+    /// <summary>A word that names the storey below the main floor — a parkade level by another name. <c>dxf.basement-words</c>.</summary>
+    public IReadOnlyList<string> BasementWords { get; init; } = new[] { "BASEMENT", "LOWER", "CELLAR" };
+
+    /// <summary>A word that names the storey above the highest numbered plan, under the roof. <c>dxf.top-floor-words</c>.</summary>
+    public IReadOnlyList<string> TopFloorWords { get; init; } = new[] { "LOFT", "ATTIC" };
+
+    /// <summary>The nouns a floor word or an ordinal is followed by: "2ND FLOOR", "MAIN LEVEL". <c>dxf.floor-nouns</c>.</summary>
+    public IReadOnlyList<string> FloorNouns { get; init; } = new[] { "FLOOR", "LEVEL", "STOREY", "STORY" };
+
+    /// <summary>
+    /// The word after which a title names the framing OVER the plan, not the plan's own storey: "MAIN FLOOR
+    /// PLAN SHOWING 2ND FLOOR FRAMING OVER" is the main floor's plan. <c>dxf.framing-over-words</c>.
+    /// </summary>
+    public IReadOnlyList<string> FramingOverWords { get; init; } = new[] { "SHOWING" };
+
+    private static readonly string[] OrdinalWords =
+        { "FIRST", "SECOND", "THIRD", "FOURTH", "FIFTH", "SIXTH", "SEVENTH", "EIGHTH", "NINTH", "TENTH", "ELEVENTH", "TWELFTH" };
+
+    /// <summary>The level a word names, or null: "MAIN" is 1, "SECOND" and "2ND" are 2.</summary>
+    public int? LevelOfWord(string word)
+    {
+        string w = word.Trim().ToUpperInvariant();
+        foreach (string entry in FloorWords)
+        {
+            int eq = entry.IndexOf('=');
+            if (eq > 0 && entry[..eq].Trim().Equals(w, StringComparison.OrdinalIgnoreCase)
+                && int.TryParse(entry[(eq + 1)..].Trim(), out int level)) return level;
+        }
+        int ordinal = Array.IndexOf(OrdinalWords, w);
+        if (ordinal >= 0) return ordinal + 1;
+        var m = Regex.Match(w, @"^(\d{1,2})(?:ST|ND|RD|TH)$");
+        return m.Success ? int.Parse(m.Groups[1].Value) : null;
+    }
+
+    /// <summary>The title before its framing-over clause: what the plan is the plan OF.</summary>
+    public string OwnStoreyPart(string title)
+    {
+        foreach (string w in FramingOverWords)
+        {
+            int at = title.IndexOf(w, StringComparison.OrdinalIgnoreCase);
+            if (at > 0 && (at + w.Length == title.Length || !char.IsLetter(title[at + w.Length])) && !char.IsLetter(title[at - 1]))
+                title = title[..at];
+        }
+        return title;
+    }
+
     public static DrawingVocabulary Default { get; } = new();
 
     /// <summary>Whether a name carries any of these words, case-insensitively.</summary>
@@ -90,7 +145,18 @@ public sealed record DrawingVocabulary
     // Regex per call would be the kind of quiet cost that only shows up on a big drawing set.
     // ------------------------------------------------------------------------------------------
 
-    private Regex? _building, _prefixBuilding, _range, _levelList, _singleLevel, _parkadeLevel, _parkadeStory, _issued;
+    private Regex? _building, _prefixBuilding, _range, _levelList, _singleLevel, _parkadeLevel, _parkadeStory, _issued, _wordFloor, _basement, _topFloor;
+
+    /// <summary>"MAIN FLOOR", "2ND FLOOR", "SECOND LEVEL": a floor word or an ordinal, then a floor noun.</summary>
+    public Regex WordFloor => _wordFloor ??= new Regex(
+        $@"\b({Any(FloorWords.Select(e => e.Split('=')[0].Trim()).ToList())}|{string.Join("|", OrdinalWords)}|\d{{1,2}}(?:ST|ND|RD|TH))\s+(?:{Any(FloorNouns)})\b",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
+    /// <summary>"BASEMENT", "LOWER FLOOR": the storey below the main floor.</summary>
+    public Regex Basement => _basement ??= new Regex($@"\b(?:{Any(BasementWords)})\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
+    /// <summary>"LOFT", "ATTIC": the storey above the highest numbered plan.</summary>
+    public Regex TopFloor => _topFloor ??= new Regex($@"\b(?:{Any(TopFloorWords)})\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
     private static string Any(IReadOnlyList<string> words)
         => string.Join("|", words.Where(w => w.Length > 0)

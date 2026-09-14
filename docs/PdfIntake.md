@@ -1,11 +1,11 @@
 # PDF intake — what it does today, and what it leaves on the page
 
-## 0. START HERE (state as of 2026-09-13, after steps 54–57 and completion-plan WP1–WP5 — 207 of 292 sets build from the PDF alone)
+## 0. START HERE (state as of 2026-09-13, after steps 47 and 54–57 and completion-plan WP1–WP5 — 207 of 292 sets build from the PDF alone)
 
 A session picking this up cold reads this section, then the completion plan
 (`docs/architecture/Kor.Operations.EngineeringTools.PdfIntake.plan.md` — what "complete" means, the
 packages, and where each stands), then the last three step sections (§54–§56). §1–§52 are the
-record of how each rule was arrived at, read when a rule is being changed. §65 is the latest step.
+record of how each rule was arrived at, read when a rule is being changed. §66 is the latest step.
 
 **What this is.** A PDF ingestor: one ingestion point (`DrawingIntake.ReadSheet` → `PdfOnlyBuild`)
 that reads a drawing set and hands its geometry to outlets — the ETABS `.e2k` today, the DXF as a
@@ -3318,3 +3318,44 @@ than their names. Each is a line of work with its own measurement; none is carri
 
 **Not accepted:** none. Two findings restate limits already named (F11's order dependence, F17's
 rotation) but each adds an input the WHAT-IT-DOES-NOT lists did not, so they stand as queued.
+
+## 66. Step 47, 2026-09-13: a storey may be named by a word
+
+**Measured first.** Run 7's ledger: 68 of the 86 sets without a model read no storey ladder — "the
+elevations chained none and no plan names one". Their 383 plans: 186 with no title the page reader
+found, 64 named by a floor word or an ordinal, 43 foundations, 24 roofs, 22 numbered. And the
+named ones were small jobs — "S-7 - MAIN FLOOR PLAN SHOWING 2ND FLOOR FRAMING OVER", "S-8UPPER
+FLOOR PLAN SHOWING ROOF FRAMING OVER", "S-6 - FOUNDATION PLAN" — whose sheet number, in the
+hyphenated form, the page reader never took for one, so the view was named by the stem and page
+and the composer saw no name at all. Even "S-6 - LEVEL 1 PLAN" was lost that way.
+
+**The rule.** A storey may be named by a word. A floor word names its level (`dxf.floor-words`:
+MAIN and GROUND are 1, UPPER is 2, WORD=LEVEL); an ordinal names its level (2ND, SECOND, 7TH —
+English, compiled); a basement word names the parkade level under the main floor
+(`dxf.basement-words`); a loft word names the storey above the highest numbered plan, under the
+roof (`dxf.top-floor-words`, ranked by the ladder as that number); a word counts before a floor
+noun only (`dxf.floor-nouns`: "MAIN STREET" names nothing); and what a plan is the plan *of* is
+said before its framing-over clause (`dxf.framing-over-words`: SHOWING) — the roof, foundation
+and mezzanine kinds are read from that part too, so "LOFT PLAN SHOWING ROOF FRAMING OVER" is a
+loft, not a roof. Read only where no number names a level. Migration 089, five rows (Ian applied
+it 16:50–17:00; the first cut shared one topic across five rows and declared the units `words` —
+`names` is the reader's list unit — both corrected in the migration itself).
+
+**And step 46 completed on the way** (`SheetDxfName.For`): a title that begins with a hyphenated
+sheet number is that number and the rest; a title with no number at all still names the view,
+the stem standing where the number would. `PlanSheetNaming.Parse` reads words past the view
+name's `<number>_<n>_` prefix (an underscore is a word character; `\b` never crossed it).
+`AStoreyMayBeNamedByAWordTests`.
+
+**Measured.** The 68 sets through the analyzer with the rows: **29 build** (207 → 236 of 293 on
+that count; run 8 will say it over the whole corpus); 39 still read no storey — the class with no
+title on the page, which this step never claimed. Six-set gate byte-identical, differential green:
+none of the six names a storey by a word. What the 29 contain is the next measurement, not this
+one: "3 storeys, 0 walls, 248 columns" on a five-page house is 0 walls rightly (wood frame) and
+248 columns wrongly — a small job's filled symbols (posts, hangers, hold-downs) read as columns.
+That class now has 29 sets to be measured on.
+
+WHAT THIS DOES NOT: a plan with no title the reader found (39 sets; the page reader's business);
+another office's word for a floor (a row); two lofts; a plan named in another language; a word
+level beside a numbered level on one title (the number wins, the word is left alone); what the
+small jobs' "columns" are.

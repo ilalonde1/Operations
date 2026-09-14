@@ -25,6 +25,9 @@ public sealed record PlanSheetInfo(
     /// <summary>A foundation plan: the lowest slab, named by its job rather than by a level.</summary>
     public bool IsFoundation { get; init; }
 
+    /// <summary>A loft or attic plan (step 47): the storey above the highest numbered plan, under the roof.</summary>
+    public bool IsTopFloor { get; init; }
+
     /// <summary>
     /// The roof over the lift overrun, which stands above the main roof. A model with two roof
     /// storeys gets two roof sheets, and without telling them apart both land on the same one.
@@ -100,7 +103,13 @@ public static partial class PlanSheetNaming
 
         string? building = buildings.Count > 0 ? buildings[0] : null;
 
-        bool isRoof = Vocabulary.IsRoofName(name);
+        // WHAT A PLAN IS THE PLAN OF is said before its framing-over clause (step 47): "LOFT PLAN SHOWING ROOF
+        // FRAMING OVER" is the loft's plan, not a roof plan, and "UPPER FLOOR PLAN SHOWING ROOF FRAMING OVER" the
+        // upper floor's. The kinds are read from that part; the numbers, which no framing-over clause carries
+        // (the plans above are named by words), from the whole name as before.
+        string own = Vocabulary.OwnStoreyPart(Regex.Replace(name, @"^.*?_\d+_", string.Empty));
+        bool isRoof = Vocabulary.IsRoofName(own);
+        bool isTopFloor = false;
 
         var parkade = Vocabulary.ParkadeLevel.Matches(name)
             .Select(m => int.Parse(m.Groups[1].Value))
@@ -139,6 +148,19 @@ public static partial class PlanSheetNaming
             if (levels.Count == 0)
                 foreach (Match m in Vocabulary.SingleLevel.Matches(title))
                     levels.Add(int.Parse(m.Groups[1].Value));
+
+            // A STOREY MAY BE NAMED BY A WORD (intake step 47): "MAIN FLOOR PLAN SHOWING 2ND FLOOR FRAMING OVER"
+            // is the main floor's plan - level 1, and the framing over it is the storey above, where its members
+            // rise to; "2ND FLOOR PLAN" is level 2; "BASEMENT FLOOR PLAN" is the parkade level under the main
+            // floor; "LOFT PLAN" the storey above the highest numbered plan (ranked by the ladder). Read only
+            // where no number named a level, from the part of the title before its framing-over clause.
+            if (levels.Count == 0 && parkade.Count == 0)
+            {
+                foreach (Match m in Vocabulary.WordFloor.Matches(own))
+                    if (Vocabulary.LevelOfWord(m.Groups[1].Value) is int level) levels.Add(level);
+                if (levels.Count == 0 && Vocabulary.Basement.IsMatch(own)) parkade = [1];
+                if (levels.Count == 0 && parkade.Count == 0 && Vocabulary.TopFloor.IsMatch(own)) isTopFloor = true;
+            }
         }
 
         return new PlanSheetInfo(
@@ -148,13 +170,14 @@ public static partial class PlanSheetNaming
             isRoof,
             CleanLabel(name))
         {
-            IsFoundation = Vocabulary.IsFoundationName(name),
-            IsElevatorRoof = Vocabulary.IsElevatorRoofName(name),
-            IsMezzanine = IsMezzanineName(name),
+            IsFoundation = Vocabulary.IsFoundationName(own),
+            IsElevatorRoof = Vocabulary.IsElevatorRoofName(own),
+            IsMezzanine = IsMezzanineName(own),
             MezzanineLevels = MezzanineLevelsIn(StripSheetNumber(name)),
             ParkadeLevels = parkade,
             BuildingTags = buildings,
             IsIssuedSheet = Vocabulary.IsIssuedSheetName(name),
+            IsTopFloor = isTopFloor,
         };
     }
 

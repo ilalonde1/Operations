@@ -57,14 +57,20 @@ public static class StoreysFromPlans
         // what the plans name: parkade P{n}, numbered L{n}, the roof
         var parkade = new SortedSet<int>();
         var numbered = new SortedSet<int>();
-        bool roof = false;
+        bool roof = false, topFloor = false;
         foreach (var file in planFileNames)
         {
             var sheet = PlanSheetNaming.Parse(file);
             foreach (int p in sheet.ParkadeLevels) parkade.Add(p);
             foreach (int n in sheet.Levels) numbered.Add(n);
             if (sheet.IsRoof && sheet.Levels.Count == 0 && sheet.ParkadeLevels.Count == 0) roof = true;
+            if (sheet.IsTopFloor && sheet.Levels.Count == 0 && sheet.ParkadeLevels.Count == 0) topFloor = true;
         }
+        // A LOFT IS THE STOREY ABOVE THE HIGHEST NUMBERED PLAN (step 47): "2ND FLOOR PLAN SHOWING LOFT FRAMING
+        // OVER" then "LOFT PLAN SHOWING ROOF FRAMING OVER" - the loft is level 3 in that set and level 2 in a
+        // set whose main floor plan shows the loft over. Named as the number it ranks at, so the composer's
+        // storey names stay "L3"; its file name says LOFT.
+        if (topFloor) numbered.Add(numbered.Count == 0 ? 2 : numbered.Max + 1);
 
         // WHAT THE ELEVATIONS ALREADY COVER. A ladder names a storey its own way — "A-L27" for a tower's
         // 27th floor the plan calls LEVEL 27, "L0/P1" for one level two sheets name differently — and a

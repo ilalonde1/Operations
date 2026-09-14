@@ -1,6 +1,6 @@
 # PDF intake → ETABS — Completion Plan
 
-**Status:** Rev 3, 2026-09-13 (steps 49–57 added to §8, 3b–3h) — WP1–WP5 landed overnight on Ian's go-ahead ("go through this all,
+**Status:** Rev 3, 2026-09-13 (steps 47 and 49–57 added to §8, 3b–3i) — WP1–WP5 landed overnight on Ian's go-ahead ("go through this all,
 step by step, and finish it overnight"): commits `8fccbc25` (WP3), `3f3f82b9` (WP2), `aba7d9ff`
 (WP4), `69e554b5` (WP5), each gated by the six byte-identical and the fast suite; WP5's remaining
 conventions are counted by a test, not by this document. §8 is what needs Ian. Rev 2 (2026-09-11)
@@ -300,6 +300,12 @@ Revit route.
    Plus 5-hour Codex limit in 17 minutes: it named a commit range that carried 60k lines of banked
    e2k. Briefs are sized in bytes before handover now (`feedback_codex_briefs_must_be_bounded`).
    NEXT: step 47 (storeys by words), then F8/F10/F14 with the next reading step.
+3i. **Step 47, 2026-09-13 afternoon** (§66): a storey may be named by a word (MAIN/GROUND/UPPER,
+   ordinals, BASEMENT, LOFT; the framing-over clause is not the plan's storey) — five rows,
+   migration 089 applied; and a small job's hyphenated sheet number in its own title names the
+   view (step 46 completed). **29 of the 68 storey-less sets build** (207 → 236 of 293 on that
+   count); 39 have no title on the page. Gate byte-identical. NEXT: run 8 over the whole corpus;
+   the small jobs' "columns" (248 on a house); the 39 with no title.
 4. **WP6** — one model in front of Andrea (31170's, or whichever the ledger ranks best of the
    architects' sets). Ian's call when.
 5. **Step 47**, the next reading rule, from the corpus. `takeoff corpus-query plan-titles` on the

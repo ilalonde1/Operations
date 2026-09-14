@@ -59,8 +59,10 @@ public sealed class ASheetFromTheStickFileIsNamedLikeAViewTests
         // a field that names a level still wins over the page; a field that names none loses to a page that does
         Assert.Equal("S2.03.1_1_LEVEL 3 PLAN.dxf", SheetDxfName.For("S2.03.1", Block(("SHEET TITLE", "LEVEL 3 PLAN")), "x", null, "LEVEL 2 PLAN"));
         Assert.Equal("S2.03.1_1_LEVEL 2 PLAN.dxf", SheetDxfName.For("S2.03.1", Block(("SHEET TITLE", "GENERAL NOTES")), "x", null, "LEVEL 2 PLAN"));
-        // and with no number nothing names it, whatever the page says
-        Assert.Equal("31009-p18.dxf", SheetDxfName.For(null, Block(), "31009-p18", null, "LEVEL 2 PLAN"));
+        // and with no number the title still names it, the stem standing where the number would (step 47: the
+        // composer reads the storey from the title, never from the number; until then this was the bare stem)
+        Assert.Equal("31009-p18_1_LEVEL 2 PLAN.dxf", SheetDxfName.For(null, Block(), "31009-p18", null, "LEVEL 2 PLAN"));
+        Assert.Equal("31009-p18.dxf", SheetDxfName.For(null, Block(), "31009-p18", null, null));
     }
 
     [Fact]

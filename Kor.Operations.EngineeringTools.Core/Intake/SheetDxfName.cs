@@ -43,6 +43,18 @@ public static class SheetDxfName
         // field or bookmark to name them by (30940: 65 plans, 18 with a level; 31009: 28, 22). A name that
         // says nothing places nothing.
         string? page = string.IsNullOrWhiteSpace(titleText) ? null : titleText.Trim();
+        // A SMALL JOB'S TITLE CARRIES ITS OWN NUMBER: "S-6 - MAIN FLOOR PLAN SHOWING 2ND FLOOR FRAMING OVER",
+        // "S-5FOUNDATION PLAN". The page reads no sheet number for these (the hyphenated form is not the
+        // issued S2.20.1 form), the view fell back to the stem and page, and the composer saw no name at all:
+        // 68 of the corpus's 86 sets without a model, 383 plans, half of them small jobs named exactly so
+        // (intake step 47, 2026-09-13). The leading token IS the number; the rest is the title.
+        if (number is null && page is not null
+            && System.Text.RegularExpressions.Regex.Match(page, @"^([A-Z]{1,3}-?\d{1,3}(?:\.\d+)*)(?=\s|-|–|:|[A-Z])", System.Text.RegularExpressions.RegexOptions.IgnoreCase) is { Success: true } lead
+            && page.Length > lead.Length)
+        {
+            number = lead.Groups[1].Value.ToUpperInvariant();
+            page = page[lead.Length..].TrimStart(' ', '-', '–', ':', '_').Trim();
+        }
         if (page is not null && number is not null && page.StartsWith(number, StringComparison.OrdinalIgnoreCase))
             page = page[number.Length..].TrimStart(' ', '-', '–', ':', '_').Trim();
         if (string.IsNullOrWhiteSpace(page)) page = null;
@@ -56,6 +68,9 @@ public static class SheetDxfName
 
         string? title = NamesALevel(field) ? field : NamesALevel(bookmark) ? bookmark : NamesALevel(page) ? page : field ?? bookmark ?? page;
         if (title is not null && title.Trim().Trim('-', '–').Length == 0) title = bookmark ?? page;
+        // and a title with no number at all still names the view: the stem stands where the number would
+        // (the composer reads the storey from the title, never from the number)
+        if (number is null && title is not null) return Sanitise($"{fallbackStem}_1_{title}") + ".dxf";
         return (number is null || title is null ? fallbackStem : Sanitise($"{number}_1_{title}")) + ".dxf";
     }
 
