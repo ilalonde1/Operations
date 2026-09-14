@@ -208,4 +208,34 @@ public sealed class ASheetIsItsViewsTests
         var views = SheetViews.Titles(Page([("LEVEL", 400, 100), ("3", 440, 100), ("PLAN", 480, 100)]));
         Assert.Empty(views);
     }
+
+    /// <summary>
+    /// Step 60 (2026-09-13): 31089-01's eleven townhouse buildings draw two plans a sheet, titled "FOUNDATION
+    /// PLAN" and "GROUND FLOOR SHOWING" over "MAIN FLOOR FRAMING OVER" - the underline under the second line,
+    /// the word PLAN in neither. A title may run two lines, and a floor named by a word with a framing-over
+    /// clause names a plan. WHAT THIS COVERS: the two-line title joined and read as the ground floor's; the
+    /// single-line word-floor title; a note that mentions a floor and is underlined but names no plan.
+    /// </summary>
+    [Fact]
+    public void ATitleMayRunTwoLinesAndAWordFloorWithItsFramingOverNamesAPlan()
+    {
+        // tokens are 8 high; the first line sits 12 above the underlined second line
+        var page = Page(
+            [("FOUNDATION", 400, 100), ("PLAN", 440, 100),
+             ("GROUND", 1800, 112), ("FLOOR", 1840, 112), ("SHOWING", 1880, 112),
+             ("MAIN", 1800, 100), ("FLOOR", 1840, 100), ("FRAMING", 1880, 100), ("OVER", 1920, 100),
+             ("CONTINUOUS", 400, 600), ("TO", 440, 600), ("MAIN", 480, 600), ("FLOOR", 520, 600), ("SLAB", 560, 600)],
+            Stroke(340, 490, 98), Stroke(1740, 1970, 98), Stroke(400, 600, 598));
+        var views = SheetViews.Titles(page);
+        Assert.Equal(2, views.Count);
+        Assert.Equal("FOUNDATION PLAN", views[0].Title);
+        Assert.Equal("GROUND FLOOR SHOWING MAIN FLOOR FRAMING OVER", views[1].Title);
+        var ground = PlanSheetNaming.Parse("S2.01_2_GROUND FLOOR SHOWING MAIN FLOOR FRAMING OVER.dxf");
+        Assert.Equal([1], ground.Levels);
+        Assert.False(ground.IsRoof);
+        Assert.True(SheetViews.NamesAPlan("UPPER FLOOR SHOWING ROOF FRAMING OVER"));
+        Assert.True(SheetViews.NamesAPlan("BASEMENT FLOOR PLAN"));
+        Assert.False(SheetViews.NamesAPlan("CONTINUOUS TO MAIN FLOOR SLAB"));
+        Assert.False(SheetViews.NamesAPlan("FLOOR PLANS"));                     // a notes column's heading names no floor
+    }
 }

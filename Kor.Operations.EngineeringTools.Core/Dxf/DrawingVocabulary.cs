@@ -108,6 +108,54 @@ public sealed record DrawingVocabulary
         return m.Success ? int.Parse(m.Groups[1].Value) : null;
     }
 
+    /// <summary>
+    /// THE SET'S OWN ORDER OF ITS FLOOR WORDS (step 60, 2026-09-13). The row says MAIN and GROUND are both level
+    /// 1 - true of a set that uses one of them - but 31089-01's townhouses draw "GROUND FLOOR SHOWING MAIN FLOOR
+    /// FRAMING OVER", "MAIN FLOOR SHOWING UPPER FLOOR FRAMING OVER", "UPPER FLOOR SHOWING ROOF FRAMING OVER":
+    /// three floors, and the framing-over clauses say their order. Where the titles chain floor words that way,
+    /// the chain ranks them from 1 upward (a word that shows a numbered floor over it sits one below that
+    /// number) and those levels replace the row's; a word the chain never names keeps the row's level.
+    /// </summary>
+    public DrawingVocabulary WithFloorWordsRankedBy(IEnumerable<string> titles)
+    {
+        ArgumentNullException.ThrowIfNull(titles);
+        var words = FloorWords.Select(e => e.Split('=')[0].Trim().ToUpperInvariant()).Where(w => w.Length > 0).ToHashSet(StringComparer.Ordinal);
+        var over = new Dictionary<string, string>(StringComparer.Ordinal);     // floor word -> the floor word or number shown over it
+        foreach (string title in titles)
+        {
+            string t = title.ToUpperInvariant();
+            string own = OwnStoreyPart(t);
+            if (own.Length == t.Length) continue;                              // no framing-over clause: nothing said about order
+            string ownWord = FloorWordIn(own), overWord = FloorWordIn(t[own.Length..]);
+            if (!words.Contains(ownWord) || overWord.Length == 0 || ownWord == overWord) continue;
+            if (over.TryGetValue(ownWord, out string? had) && had != overWord) return this;   // two stories about one floor: the row stands
+            over[ownWord] = overWord;
+        }
+        if (over.Count == 0) return this;
+        // the chain from its bottom: a word nothing is shown over ... up to the top word or a number
+        var shownOver = over.Values.ToHashSet(StringComparer.Ordinal);
+        var bottoms = over.Keys.Where(w => !shownOver.Contains(w)).ToList();
+        if (bottoms.Count != 1) return this;
+        var chain = new List<string>();
+        for (string? w = bottoms[0]; w is not null && words.Contains(w) && !chain.Contains(w); w = over.GetValueOrDefault(w)) chain.Add(w);
+        if (chain.Count < 2 && !(chain.Count == 1 && over.TryGetValue(chain[0], out var top) && int.TryParse(top, out _))) return this;
+        int first = 1;
+        // a numbered floor shown over the top word anchors the chain: "MAIN FLOOR SHOWING 2ND FLOOR FRAMING OVER" keeps MAIN at 1
+        if (over.TryGetValue(chain[^1], out string? above) && int.TryParse(above, out int n)) first = n - chain.Count;
+        var ranked = chain.Select((w, i) => $"{w}={first + i}").ToList();
+        var kept = FloorWords.Where(e => !chain.Contains(e.Split('=')[0].Trim().ToUpperInvariant()));
+        return this with { FloorWords = ranked.Concat(kept).ToList() };
+
+        string FloorWordIn(string s)
+        {
+            var m = WordFloor.Match(s);
+            if (!m.Success) return "";
+            string w = m.Groups[1].Value.ToUpperInvariant();
+            if (words.Contains(w)) return w;
+            return LevelOfWord(w) is int level ? level.ToString(System.Globalization.CultureInfo.InvariantCulture) : "";
+        }
+    }
+
     /// <summary>The title before its framing-over clause: what the plan is the plan OF.</summary>
     public string OwnStoreyPart(string title)
     {

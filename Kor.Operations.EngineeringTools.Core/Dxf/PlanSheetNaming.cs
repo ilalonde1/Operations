@@ -87,16 +87,28 @@ public static partial class PlanSheetNaming
     /// </summary>
     public static DrawingVocabulary Vocabulary { get; set; } = DrawingVocabulary.Default;
 
-    public static PlanSheetInfo Parse(string fileName)
+    public static PlanSheetInfo Parse(string fileName) => Parse(fileName, Vocabulary);
+
+    /// <summary>A view name's title: what follows its "&lt;sheet&gt;_&lt;n&gt;_" prefix (an underscore is a word character, so a word boundary never crosses it).</summary>
+    public static string TitleOf(string fileName)
+    {
+        // a sheet number holds a dot ("S2.01_1_..."), so only a .dxf extension is an extension here
+        string stem = Path.GetFileName(fileName);
+        if (stem.EndsWith(".dxf", StringComparison.OrdinalIgnoreCase)) stem = stem[..^4];
+        return Regex.Replace(stem, @"^.*?_\d+_", string.Empty);
+    }
+
+    /// <summary>The same reading under a vocabulary given outright - the set's own floor-word order (step 60) - instead of the static one.</summary>
+    public static PlanSheetInfo Parse(string fileName, DrawingVocabulary vocabulary)
     {
         string name = Path.GetFileNameWithoutExtension(fileName);
         var buildings = new List<string>();
-        if (Vocabulary.Building.Match(name) is { Success: true } b)
+        if (vocabulary.Building.Match(name) is { Success: true } b)
         {
             foreach (char c in b.Groups[1].Value.ToUpperInvariant())
                 if (char.IsLetter(c)) buildings.Add(c.ToString());
         }
-        else if (Vocabulary.PrefixBuilding.Match(name) is { Success: true } p)
+        else if (vocabulary.PrefixBuilding.Match(name) is { Success: true } p)
         {
             buildings.Add(p.Groups[1].Value.ToUpperInvariant());
         }
@@ -107,11 +119,11 @@ public static partial class PlanSheetNaming
         // FRAMING OVER" is the loft's plan, not a roof plan, and "UPPER FLOOR PLAN SHOWING ROOF FRAMING OVER" the
         // upper floor's. The kinds are read from that part; the numbers, which no framing-over clause carries
         // (the plans above are named by words), from the whole name as before.
-        string own = Vocabulary.OwnStoreyPart(Regex.Replace(name, @"^.*?_\d+_", string.Empty));
-        bool isRoof = Vocabulary.IsRoofName(own);
+        string own = vocabulary.OwnStoreyPart(TitleOf(name));
+        bool isRoof = vocabulary.IsRoofName(own);
         bool isTopFloor = false;
 
-        var parkade = Vocabulary.ParkadeLevel.Matches(name)
+        var parkade = vocabulary.ParkadeLevel.Matches(name)
             .Select(m => int.Parse(m.Groups[1].Value))
             .Distinct()
             .OrderBy(v => v)
@@ -119,7 +131,7 @@ public static partial class PlanSheetNaming
 
         var levels = new List<int>();
 
-        foreach (Match m in Vocabulary.Range.Matches(name))
+        foreach (Match m in vocabulary.Range.Matches(name))
         {
             int from = int.Parse(m.Groups[1].Value);
             int to = int.Parse(m.Groups[2].Value);
@@ -138,7 +150,7 @@ public static partial class PlanSheetNaming
 
             // A listed title first — "LEVEL 8, 9" is two floors, and reading only the 8 loses a
             // whole storey silently.
-            foreach (Match m in Vocabulary.LevelList.Matches(title))
+            foreach (Match m in vocabulary.LevelList.Matches(title))
             {
                 levels.Add(int.Parse(m.Groups[1].Value));
                 foreach (Match more in Regex.Matches(m.Groups[2].Value, @"\d+"))
@@ -146,7 +158,7 @@ public static partial class PlanSheetNaming
             }
 
             if (levels.Count == 0)
-                foreach (Match m in Vocabulary.SingleLevel.Matches(title))
+                foreach (Match m in vocabulary.SingleLevel.Matches(title))
                     levels.Add(int.Parse(m.Groups[1].Value));
 
             // A STOREY MAY BE NAMED BY A WORD (intake step 47): "MAIN FLOOR PLAN SHOWING 2ND FLOOR FRAMING OVER"
@@ -156,10 +168,10 @@ public static partial class PlanSheetNaming
             // where no number named a level, from the part of the title before its framing-over clause.
             if (levels.Count == 0 && parkade.Count == 0)
             {
-                foreach (Match m in Vocabulary.WordFloor.Matches(own))
-                    if (Vocabulary.LevelOfWord(m.Groups[1].Value) is int level) levels.Add(level);
-                if (levels.Count == 0 && Vocabulary.Basement.IsMatch(own)) parkade = [1];
-                if (levels.Count == 0 && parkade.Count == 0 && Vocabulary.TopFloor.IsMatch(own)) isTopFloor = true;
+                foreach (Match m in vocabulary.WordFloor.Matches(own))
+                    if (vocabulary.LevelOfWord(m.Groups[1].Value) is int level) levels.Add(level);
+                if (levels.Count == 0 && vocabulary.Basement.IsMatch(own)) parkade = [1];
+                if (levels.Count == 0 && parkade.Count == 0 && vocabulary.TopFloor.IsMatch(own)) isTopFloor = true;
             }
         }
 
@@ -170,13 +182,13 @@ public static partial class PlanSheetNaming
             isRoof,
             CleanLabel(name))
         {
-            IsFoundation = Vocabulary.IsFoundationName(own),
-            IsElevatorRoof = Vocabulary.IsElevatorRoofName(own),
+            IsFoundation = vocabulary.IsFoundationName(own),
+            IsElevatorRoof = vocabulary.IsElevatorRoofName(own),
             IsMezzanine = IsMezzanineName(own),
             MezzanineLevels = MezzanineLevelsIn(StripSheetNumber(name)),
             ParkadeLevels = parkade,
             BuildingTags = buildings,
-            IsIssuedSheet = Vocabulary.IsIssuedSheetName(name),
+            IsIssuedSheet = vocabulary.IsIssuedSheetName(name),
             IsTopFloor = isTopFloor,
         };
     }

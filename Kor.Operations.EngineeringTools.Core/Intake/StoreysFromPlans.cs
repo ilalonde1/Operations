@@ -58,12 +58,28 @@ public static class StoreysFromPlans
         var parkade = new SortedSet<int>();
         var numbered = new SortedSet<int>();
         bool roof = false, topFloor = false;
-        foreach (var file in planFileNames)
+        // the set's own order of its floor words (step 60): GROUND, MAIN, UPPER as its framing-over clauses chain them
+        var names = planFileNames.ToList();
+        var vocabulary = PlanSheetNaming.Vocabulary.WithFloorWordsRankedBy(names.Select(PlanSheetNaming.TitleOf));
+        // A BUILDING'S ROOF PLAN NAMES THAT BUILDING'S ROOF (step 61, 2026-09-13): "ROOF PLAN CONCRETE OUTLINE BLDG C"
+        // on 31168 is the storey above C's highest plan (C-L9), not a storey above the whole set's (B-L40). The
+        // global rule below put ROOF at the top of tower B the moment a missed L40 view was read (before it, the
+        // chain reached above the plans and no ROOF was added, which hid the class). A tagged roof plan names
+        // <TAG>-ROOF after that building's highest level; only an untagged roof plan names the set's ROOF.
+        var roofOfBuilding = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
+        var highestOfBuilding = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        foreach (var file in names)
         {
-            var sheet = PlanSheetNaming.Parse(file);
+            var sheet = PlanSheetNaming.Parse(file, vocabulary);
             foreach (int p in sheet.ParkadeLevels) parkade.Add(p);
             foreach (int n in sheet.Levels) numbered.Add(n);
-            if (sheet.IsRoof && sheet.Levels.Count == 0 && sheet.ParkadeLevels.Count == 0) roof = true;
+            foreach (string tag in sheet.BuildingTags)
+                if (sheet.Levels.Count > 0 && !sheet.IsRoof) highestOfBuilding[tag] = Math.Max(highestOfBuilding.GetValueOrDefault(tag, int.MinValue), sheet.Levels.Max());
+            if (sheet.IsRoof && sheet.Levels.Count == 0 && sheet.ParkadeLevels.Count == 0)
+            {
+                if (sheet.BuildingTags.Count == 0) roof = true;
+                else foreach (string tag in sheet.BuildingTags) roofOfBuilding.Add(tag);
+            }
             if (sheet.IsTopFloor && sheet.Levels.Count == 0 && sheet.ParkadeLevels.Count == 0) topFloor = true;
         }
         // A LOFT IS THE STOREY ABOVE THE HIGHEST NUMBERED PLAN (step 47): "2ND FLOOR PLAN SHOWING LOFT FRAMING
@@ -111,6 +127,19 @@ public static class StoreysFromPlans
             for (int i = 0; i < order.Count; i++)
                 if (RankOf(order[i]) is { } r && r.CompareTo(rank) < 0) at = i + 1;
             order.Insert(at, name);
+        }
+        // each tagged roof after its building's highest level, unless the chain already reaches above that building's plans
+        foreach (string tag in roofOfBuilding)
+        {
+            if (!highestOfBuilding.TryGetValue(tag, out int highest)) continue;
+            string roofName = $"{tag}-ROOF";
+            bool chainAbove = chain is not null && chain.Levels.Any(l => string.Equals(ModelYardstick.Building(l.Name), tag, StringComparison.OrdinalIgnoreCase)
+                && ((NumberOf(l.Name) is int n && n > highest) || Stripped(l.Name).Contains("ROOF", StringComparison.OrdinalIgnoreCase)));
+            if (chainAbove || covered.Contains(roofName) || order.Contains(roofName, StringComparer.OrdinalIgnoreCase)) continue;
+            int at = -1;
+            for (int i = 0; i < order.Count; i++)
+                if (string.Equals(ModelYardstick.Building(order[i]), tag, StringComparison.OrdinalIgnoreCase) || (ModelYardstick.Building(order[i]) is null && NumberOf(order[i]) == highest)) at = i;
+            order.Insert(at < 0 ? order.Count : at + 1, roofName);
         }
         if (order.Count == 0) return new Ladder([], 0, 0, 0, assumedHeightMm, "none");
 

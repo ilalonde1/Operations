@@ -55,18 +55,48 @@ public static class SheetViews
         }
 
         var views = new List<View>();
-        foreach (var line in TextLines(page))
+        var lines = TextLines(page).ToList();
+        (double X0, double X1, double Y) UnderlineOf(TextLine line)
         {
-            if (line.CentreX / page.WidthPts >= TitleRegionMinFx) continue;
-            if (!NamesAPlan(line.Text)) continue;
-            // underlined: a stroke just under the line's bottom, covering at least half of its width
+            // underlined: a stroke just under the line's bottom, covering at least half of its width, with no
+            // other line of text between (a stroke below the NEXT line underlines that one)
             var under = strokes
                 .Where(s => s.Y <= line.MinY + 0.2 * line.Height && s.Y >= line.MinY - 1.2 * line.Height
                             && Math.Min(s.X1, line.MaxX) - Math.Max(s.X0, line.MinX) >= 0.5 * (line.MaxX - line.MinX))
                 .OrderByDescending(s => s.Y)
                 .FirstOrDefault();
+            if (under.X1 <= under.X0) return under;
+            bool interposed = lines.Any(o => !o.Equals(line) && o.MinY < line.MinY - 0.3 * line.Height && o.MinY >= under.Y - 0.3 * o.Height
+                    && Math.Min(o.MaxX, line.MaxX) - Math.Max(o.MinX, line.MinX) > 0);
+            return interposed ? default : under;
+        }
+        // A TITLE MAY RUN TWO LINES (step 60, 2026-09-13): "GROUND FLOOR SHOWING" over "MAIN FLOOR FRAMING OVER",
+        // each line underlined - 31089-01's eleven townhouse buildings, two plans a sheet, named no storey because
+        // the second line names no plan and the first alone names the wrong thing. An underlined line that names
+        // no plan by itself takes the line directly above it (within two heights, sharing its span) as its first
+        // line when the two together name one; that first line is then no title of its own.
+        var consumed = new HashSet<TextLine>();
+        var joined = new Dictionary<TextLine, string>();
+        foreach (var line in lines)
+        {
+            if (line.CentreX / page.WidthPts >= TitleRegionMinFx || NamesAPlan(line.Text)) continue;
+            var under = UnderlineOf(line);
             if (under.X1 <= under.X0) continue;
-            var view = new View(line.Text, Math.Min(under.X0, line.MinX), Math.Max(under.X1, line.MaxX), under.Y);
+            var above = lines.Where(a => a.MinY > line.MinY && a.MinY - line.MinY <= 2.2 * line.Height
+                    && Math.Min(a.MaxX, line.MaxX) - Math.Max(a.MinX, line.MinX) >= 0.5 * Math.Min(a.MaxX - a.MinX, line.MaxX - line.MinX))
+                .OrderBy(a => a.MinY).FirstOrDefault();
+            if (above.Text is null || !NamesAPlan(above.Text + " " + line.Text)) continue;
+            joined[line] = above.Text + " " + line.Text;
+            consumed.Add(above);
+        }
+        foreach (var line in lines)
+        {
+            if (line.CentreX / page.WidthPts >= TitleRegionMinFx || consumed.Contains(line)) continue;
+            string text = joined.TryGetValue(line, out var two) ? two : line.Text;
+            if (!NamesAPlan(text)) continue;
+            var under = UnderlineOf(line);
+            if (under.X1 <= under.X0) continue;
+            var view = new View(text, Math.Min(under.X0, line.MinX), Math.Max(under.X1, line.MaxX), under.Y);
             // the same title twice a point apart is one title drawn with a double stroke
             if (views.Any(v => v.Title == view.Title && Math.Abs(v.YPts - view.YPts) <= line.Height && Math.Abs(v.CentreXPts - view.CentreXPts) <= line.Height)) continue;
             views.Add(view);
@@ -104,20 +134,32 @@ public static class SheetViews
             run.Min(t => t.MinX), run.Max(t => t.MaxX), run.Min(t => t.MinY), run.Max(t => t.Height));
     }
 
-    /// <summary>A title that names what a plan is of: a level, a parkade level, a roof, a foundation — and says it is a plan.</summary>
+    /// <summary>
+    /// A title that names what a plan is of: a level, a parkade level, a roof, a foundation, a floor named by
+    /// a word (step 60: MAIN, GROUND, UPPER, a basement or a loft word) — and says it is a plan, or says what
+    /// framing it shows over the floor ("GROUND FLOOR SHOWING MAIN FLOOR FRAMING OVER" is the ground floor's
+    /// plan and never says PLAN).
+    /// </summary>
     public static bool NamesAPlan(string title)
     {
-        if (string.IsNullOrWhiteSpace(title) || !title.Contains("PLAN", StringComparison.OrdinalIgnoreCase)) return false;
+        if (string.IsNullOrWhiteSpace(title)) return false;
+        var voc = PlanSheetNaming.Vocabulary;
+        bool saysPlan = title.Contains("PLAN", StringComparison.OrdinalIgnoreCase);
+        bool saysFramingOver = voc.OwnStoreyPart(title).Length < title.Length;
+        if (!saysPlan && !saysFramingOver) return false;
         // a key plan is a picture of where the sheet's plan sits, not a plan; a schedule's key plan names the level it keys
         if (title.Contains("KEY PLAN", StringComparison.OrdinalIgnoreCase)) return false;
         // a list's heading, not a plan's title: it ends in a colon or names the list
         string t = title.Trim();
         if (t.EndsWith(':') || t.Contains("NOTES", StringComparison.OrdinalIgnoreCase) || t.Contains("LEGEND", StringComparison.OrdinalIgnoreCase)
             || t.Contains("SCHEDULE", StringComparison.OrdinalIgnoreCase)) return false;
-        var v = PlanSheetNaming.Vocabulary;
-        return v.SingleLevel.IsMatch(title) || v.ParkadeLevel.IsMatch(title)
-               || title.Contains("ROOF", StringComparison.OrdinalIgnoreCase)
-               || title.Contains("FOUNDATION", StringComparison.OrdinalIgnoreCase);
+        // what the plan is OF is said before its framing-over clause: "UPPER FLOOR SHOWING ROOF FRAMING OVER" is
+        // the upper floor's, not the roof's, and "MAIN FLOOR SHOWING 2ND FLOOR FRAMING OVER" is the main floor's
+        string own = voc.OwnStoreyPart(title);
+        return voc.SingleLevel.IsMatch(own) || voc.ParkadeLevel.IsMatch(own)
+               || own.Contains("ROOF", StringComparison.OrdinalIgnoreCase)
+               || own.Contains("FOUNDATION", StringComparison.OrdinalIgnoreCase)
+               || voc.WordFloor.IsMatch(own) || voc.Basement.IsMatch(own) || voc.TopFloor.IsMatch(own);
     }
 
     /// <summary>

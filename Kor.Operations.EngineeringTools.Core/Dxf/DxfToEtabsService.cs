@@ -733,6 +733,10 @@ public static class DxfToEtabsService
         // rule; what a drawing is CALLED was seven regexes compiled into the assembly, and it is
         // the one thing a practice reliably differs on.
         PlanSheetNaming.Vocabulary = ApplyRules(DrawingVocabulary.Default, banked);
+        // and the set's own order of its floor words (step 60): "GROUND FLOOR SHOWING MAIN FLOOR FRAMING OVER" then
+        // "MAIN FLOOR SHOWING UPPER FLOOR FRAMING OVER" makes GROUND 1, MAIN 2, UPPER 3 for this set, whatever the
+        // row says; the ladder (StoreysFromPlans) ranks them the same way from the same names
+        PlanSheetNaming.Vocabulary = PlanSheetNaming.Vocabulary.WithFloorWordsRankedBy(files.Select(PlanSheetNaming.TitleOf));
 
         // The sheets were parsed with whatever vocabulary was in force when the folder was read,
         // which on the first run of a process is the default. Re-read them now that the office's

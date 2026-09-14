@@ -81,4 +81,40 @@ public sealed class AStoreyMayBeNamedByAWordTests
         // and the page reader's own number still wins over the title's
         Assert.Equal("S2.20.1_1_LEVEL 4 PLAN.dxf", SheetDxfName.For("S2.20.1", none, "x-p03", null, "S2.20.1 - LEVEL 4 PLAN"));
     }
+
+    /// <summary>
+    /// Step 60 (2026-09-13): the row says MAIN and GROUND are both level 1, and 31089-01's townhouses draw
+    /// "GROUND FLOOR SHOWING MAIN FLOOR FRAMING OVER", "MAIN FLOOR SHOWING UPPER FLOOR FRAMING OVER", "UPPER
+    /// FLOOR SHOWING ROOF FRAMING OVER" - three floors whose order the framing-over clauses state. The set's
+    /// chain ranks its words; the ladder and the composer read the same names the same way. WHAT THIS COVERS:
+    /// the chain of three; a set that uses MAIN alone keeps the row's 1; a chain anchored by a number above it;
+    /// two stories about one word leave the row alone. WHAT IT DOES NOT: a basement in the chain (a basement
+    /// word is a parkade level, ranked below by its own rule); two buildings with different chains in one set.
+    /// </summary>
+    [Fact]
+    public void TheFramingOverClausesRankTheSetsFloorWords()
+    {
+        var voc = DrawingVocabulary.Default;
+        string[] townhouse =
+        {
+            "S2.01_1_FOUNDATION PLAN", "S2.01_2_GROUND FLOOR SHOWING MAIN FLOOR FRAMING OVER",
+            "S2.02_1_MAIN FLOOR SHOWING UPPER FLOOR FRAMING OVER", "S2.02_2_UPPER FLOOR SHOWING ROOF FRAMING OVER",
+        };
+        var ranked = voc.WithFloorWordsRankedBy(townhouse.Select(PlanSheetNaming.TitleOf));
+        Assert.Equal(1, ranked.LevelOfWord("GROUND"));
+        Assert.Equal(2, ranked.LevelOfWord("MAIN"));
+        Assert.Equal(3, ranked.LevelOfWord("UPPER"));
+        Assert.Equal([2], PlanSheetNaming.Parse(townhouse[2] + ".dxf", ranked).Levels);
+        var ladder = StoreysFromPlans.Merge(null, townhouse.Select(t => t + ".dxf"), 3000);
+        Assert.Equal(["L1", "L2", "L3"], ladder.Storeys.Select(s => s.Name));
+
+        // MAIN alone, showing a numbered floor over it: the row's 1 stands, anchored by the 2
+        var house = voc.WithFloorWordsRankedBy(["MAIN FLOOR PLAN SHOWING 2ND FLOOR FRAMING OVER", "FOUNDATION PLAN"]);
+        Assert.Equal(1, house.LevelOfWord("MAIN"));
+        Assert.Equal(1, house.LevelOfWord("GROUND"));
+        // no framing-over clause at all: nothing said, the row stands
+        Assert.Same(voc, voc.WithFloorWordsRankedBy(["MAIN FLOOR PLAN", "UPPER FLOOR PLAN"]));
+        // two stories about one floor: the row stands
+        Assert.Same(voc, voc.WithFloorWordsRankedBy(["GROUND FLOOR SHOWING MAIN FLOOR FRAMING OVER", "GROUND FLOOR SHOWING UPPER FLOOR FRAMING OVER"]));
+    }
 }
