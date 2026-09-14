@@ -94,7 +94,9 @@ internal static class Program
         cSapModel? model = etabs.SapModel;
         if (model is null) { Console.Error.WriteLine("ETABS started but gave no model object (SapModel is null)."); try { etabs.ApplicationExit(false); } catch (COMException) { } return 3; }
 
-        var rows = new List<string> { "job,edb,e2k,bytes,outcome" };
+        // edb_written: the day the engineer last saved the model, beside the drawing's issue date in the corpus ledger
+        // (CorpusAnalyzer.YardstickProvenance) - her model seldom follows the drawings, and a verdict is read with its age
+        var rows = new List<string> { "job,edb,e2k,bytes,outcome,edb_written" };
         int ok = 0, tried = 0;
         try
         {
@@ -176,7 +178,8 @@ internal static class Program
                     outcome = $"{ex.GetType().Name}: {ex.Message}";
                 }
                 Console.WriteLine($"{(edb.Length > 0 ? "" : $"  {job.Job,-10} ")}{outcome}{(bytes > 0 ? $"  ({bytes / 1024:N0} KB)  <- {Path.GetFileName(edb)}" : "")}");
-                rows.Add(string.Join(",", Q(job.Job), Q(edb), Q(e2k), bytes.ToString(CultureInfo.InvariantCulture), Q(outcome)));
+                rows.Add(string.Join(",", Q(job.Job), Q(edb), Q(e2k), bytes.ToString(CultureInfo.InvariantCulture), Q(outcome),
+                    edb.Length > 0 && File.Exists(edb) ? File.GetLastWriteTime(edb).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) : ""));
             }
         }
         finally

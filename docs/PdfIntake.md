@@ -1,11 +1,11 @@
 # PDF intake — what it does today, and what it leaves on the page
 
-## 0. START HERE (state as of 2026-09-14, after steps 47 and 54–63 and completion-plan WP1–WP5 — 207 of 292 sets build from the PDF alone)
+## 0. START HERE (state as of 2026-09-14, after steps 47 and 54–64 and completion-plan WP1–WP5 — 207 of 292 sets build from the PDF alone)
 
 A session picking this up cold reads this section, then the completion plan
 (`docs/architecture/Kor.Operations.EngineeringTools.PdfIntake.plan.md` — what "complete" means, the
 packages, and where each stands), then the last three step sections (§54–§56). §1–§52 are the
-record of how each rule was arrived at, read when a rule is being changed. §72 is the latest step.
+record of how each rule was arrived at, read when a rule is being changed. §73 is the latest step.
 
 **What this is.** A PDF ingestor: one ingestion point (`DrawingIntake.ReadSheet` → `PdfOnlyBuild`)
 that reads a drawing set and hands its geometry to outlets — the ETABS `.e2k` today, the DXF as a
@@ -3692,3 +3692,68 @@ drawn under six inches by another office (none in 101 models here); a wood-frame
 "no concrete walls" (what it should hold is still the
 plan's question); a set whose buildings genuinely order their floor words differently (the row
 stands for both); a title of three lines.
+
+## 73. Step 64, 2026-09-14 afternoon: what the yardstick's 58% is made of — her model's age
+
+**The question.** Run 10 judges 48 sets against the engineer's own model and reads 58% of our
+columns within 100 mm of one of hers; 23 sets sit under 50%. Before another reading rule: what IS
+the residual on a low set? Three instruments, each in `takeoff model-yardstick` now:
+
+1. **The rigid part of a storey's error** — the median offset VECTOR over the storey's pairs
+   within 600 mm, and the median after it is taken out. A sheet set 300 mm off the grid shows as a
+   rigid (300, 0) and a median of nil after; a storey read badly shows a rigid part near zero and a
+   spread that stays. On 31053 (28%) and 30993 (33%) the rigid parts are ≤ 44 and ≤ 73 mm and
+   removing them changes nothing: **not placement**.
+2. **Each model against the plans' grid lines** — of our columns and of hers (in our frame), how
+   many stand within 50 mm of a grid line in X, in Y, and of an intersection. Her joints are NOT on
+   the intersections: 0% on 31053 and 30993, 1–13% on six more; nor are ours. **Not a grid
+   convention** (the "face on grid or centred" question of §59 is answered: neither).
+3. **`--pairs [storey]`** — every judged column of ours with the offset to the nearest of hers and
+   both sections. On 31053's L10 the offsets scatter in every direction, 30 to 600 mm, between
+   columns of the SAME size on both sides (ours `KOR-C304.8x762`, hers `C14x30`); two of the 23
+   match to the millimetre. `pdf-at` on one: the drawn column is a filled 305 × 764 box centred at
+   (72,950, 49,378); ours is at (72,951, 49,378); hers is 366 mm west, outside the drawn box, and
+   nothing is drawn there. **Her model does not match the drawing.**
+
+**Why: the yardstick's own date.** The export manifest (`yardsticks\export-2026-09-11.csv`) names
+the .EDB each yardstick came from; its last write on the share, against the stick file's issue date,
+for every yardstick set of run 10 with both (38 of 48):
+
+| her model older than the drawing by | sets | median share of ours within 100 mm |
+|---|---|---|
+| more than 180 days | **27** | **48%** |
+| 180 days or less (either way) | 11 | 64% |
+
+The worst are the oldest: 31009 judged by a 2022-10 model against a 2026-08 drawing (1,415 days,
+34%); 70057 1,451 days (44%); 31048 1,094 (33%); 31005 938 (0%); 31053 618 days (28%, the column
+above). And ten of the 38 say by their NAME that they are not the drawing's model at all: `MASS
+MODEL`, `2NDRY ELEMS`, `Prelim Model`, `secondary elements`, `Below Grade`, `Diaphragm Check`,
+`Wind SLS`, `mass`. The exporter takes the newest .EDB in the folder, and the newest is what it is:
+the lateral model is built at design development and seldom follows the drawings.
+
+**What ships.** `CorpusAnalyzer.YardstickProvenance` reads the manifest (the `edb_written` column
+where the exporter recorded it — `EtabsExportE2k` writes it now — else one stat of the .EDB on the
+share, never a walk); three ledger columns at the end of `ledger-sets` (`yardstick_edb`,
+`yardstick_written`, `yardstick_age_days`; older ledgers read with them null); the corpus summary
+reads the share in two populations, current (≤ `CurrentYardstickDays` = 180) and older, with the
+older population's median age; `corpus-query yardsticks` prints the date and the age beside each
+verdict; each set's `yardstick.txt` opens with her model's name, date and age. The ledger's DB table
+does not carry the three columns yet (a migration; Ian's).
+
+**Measured.** `AStoreysResidualIsReadAsItsRigidPartAndWhatIsLeftAndEachModelIsPlacedAgainstTheGrid`
+(a storey 300 mm over reads rigid (300, 0) → 0 mm; a scattered one reads rigid 0 → 300 mm stays;
+hers on the intersections 16 of 16, ours 8 of 16); the ledger round trip carries the provenance
+(41 fields); fast suite green. Run 11's ledger is written by the mirror's build (before this step)
+and carries no provenance; run 12's will.
+
+**What this changes.** The 58% is not one number. On the 11 sets whose model is current the share
+is 64% and the faults there are OURS to find — 31162 (40%, 58 days), 60061 (31%, 111), 31158 (14%,
+94, a "Prelim Model"), 30989 (59%), 31108 (60%), 70064 (64%) are the next `--pairs` to look at. On
+the 27 whose model predates the drawing by a median of two years the yardstick judges a different
+building and no reading rule will move it; what would is a yardstick that IS the drawing's model —
+her current gravity model, or the model she builds from our output.
+
+WHAT THIS DOES NOT: separate a model's KIND (mass, secondary, below-grade) from its age — the names
+are read by a person here, not by the code; date a yardstick whose export has no manifest row (10 of
+48); a rotation between the models (the rigid part is a translation); tell a column she moved in
+design from one we misread on the 27 stale sets — only a current model can.

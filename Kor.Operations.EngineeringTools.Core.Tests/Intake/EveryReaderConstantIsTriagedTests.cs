@@ -197,6 +197,7 @@ public sealed class EveryReaderConstantIsTriagedTests
         ["LoopGeometry.cs:Slack"] = Tolerance("floating point: the T-touch"),
         ["MatchLineSheetJoin.cs:DefaultTolerance"] = Tolerance("two match lines that are one seam"),
         ["ModelYardstick.cs:bin"] = Tolerance("the residual histogram's bin"),
+        ["CorpusAnalyzer.cs:CurrentYardstickDays"] = Tolerance("the yardstick report's AGE bin (180 days), as 100 mm is its distance bin: it sorts the verdicts into two populations and decides nothing about a drawing"),
         ["GridAlignment.cs:LeastConvincingByColumns"] = Tolerance("fewer of a sheet's members than this, or than half of them, standing over placed members is a coincidence, not a frame"),
         ["GridAlignment.cs:ColumnRegistrationMm"] = Tolerance("a column stands over a placed one within this"),
         ["ModelYardstick.cs:FootprintMarginMm"] = Tolerance("how far past her outermost column a column of ours is still judged against her model - registration slop and a slab-edge column, not a bay"),

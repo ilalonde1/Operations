@@ -37,7 +37,16 @@ public static class CorpusAnalyzer
         int? Floors, int? StoreysWithPlate, double Seconds, string? Error,
         // the yardstick: the engineer's own model of the job, where one exists (null columns where none, or no model of ours)
         string? Yardstick = null, int? YardstickStoreys = null, int? SharedStoreys = null, bool? FrameFromGrids = null, int? FrameSupport = null,
-        int? OursCompared = null, double? OursMedianMm = null, int? OursWithin100 = null, int? TheirsCompared = null, int? TheirsWithin100 = null, string? YardstickNote = null);
+        int? OursCompared = null, double? OursMedianMm = null, int? OursWithin100 = null, int? TheirsCompared = null, int? TheirsWithin100 = null, string? YardstickNote = null,
+        // THE YARDSTICK'S OWN DATE (2026-09-14): the .EDB the export came from, the day it was last written, and how many
+        // days older than the stick file's issue it is. Her lateral model is built at design development and seldom
+        // follows the drawings: of 38 dated yardsticks in run 10, 27 were more than 180 days older than the drawing they
+        // judged (median share 48%) against 11 within 180 days (64%); 31053's columns sit where its 2026-07 plan draws
+        // them and 366 mm from where its 2024-11 model has them. A verdict is read with the age beside it.
+        string? YardstickEdb = null, DateOnly? YardstickWritten = null, int? YardstickAgeDays = null);
+
+    /// <summary>How many days older than the drawing a yardstick may be and still be read as the drawing's model.</summary>
+    public const int CurrentYardstickDays = 180;
 
     public sealed record SheetRow(
         Guid RunId, string Job, int Page, string? SheetNumber, string SheetType, string? Title, string? Level, string? ScaleNote, int? ScaleDenominator,
@@ -53,6 +62,38 @@ public static class CorpusAnalyzer
 
     /// <summary>Where the engineers' models exported on KOR-210 land: &lt;job&gt;.e2k, one per job (EtabsExportE2k).</summary>
     public static string DefaultYardstickFolder => Path.Combine(DrawingMirror.Root, "yardsticks");
+
+    /// <summary>
+    /// Where a yardstick came from and when it was written: the newest export manifest in the yardstick folder
+    /// (EtabsExportE2k writes export-&lt;date&gt;.csv: job, edb, e2k, bytes, outcome[, edb_written]) names the .EDB;
+    /// its date is the manifest's edb_written column where the exporter recorded it, else the file's own last
+    /// write on the share (one stat per set, never a walk). Null when the folder has no manifest or the job no .EDB.
+    /// </summary>
+    public static (string? Edb, DateOnly? Written) YardstickProvenance(string yardstickFolder, string job)
+    {
+        try
+        {
+            var manifest = new DirectoryInfo(yardstickFolder).EnumerateFiles("export-*.csv", SearchOption.TopDirectoryOnly).OrderByDescending(f => f.Name, StringComparer.Ordinal).FirstOrDefault();
+            if (manifest is null) return (null, null);
+            var lines = File.ReadAllLines(manifest.FullName);
+            if (lines.Length < 2) return (null, null);
+            var header = Csv.Parse(lines[0].TrimStart('\uFEFF'));
+            int jobAt = header.IndexOf("job"), edbAt = header.IndexOf("edb"), writtenAt = header.IndexOf("edb_written");
+            if (jobAt < 0 || edbAt < 0) return (null, null);
+            foreach (var line in lines.Skip(1))
+            {
+                var f = Csv.Parse(line);
+                if (f.Count <= Math.Max(jobAt, edbAt) || !f[jobAt].Equals(job, StringComparison.OrdinalIgnoreCase) || f[edbAt].Length == 0) continue;
+                if (writtenAt >= 0 && f.Count > writtenAt && DateOnly.TryParse(f[writtenAt], CultureInfo.InvariantCulture, DateTimeStyles.None, out var recorded)) return (f[edbAt], recorded);
+                return (f[edbAt], File.Exists(f[edbAt]) ? DateOnly.FromDateTime(File.GetLastWriteTime(f[edbAt])) : null);
+            }
+            return (null, null);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return (null, null);
+        }
+    }
 
     /// <summary>
     /// The engineer's model to measure a job against: the export under the yardstick folder, else the
@@ -180,7 +221,7 @@ public static class CorpusAnalyzer
                     var outcome = PdfOnlyBuild.Recompose(pdf, work, kept.Pages, sheetsResult, options, rulesConnection);
                     (row, rows) = Rows(outcome, job, issue, runId, runAt, built);
                     row = row with { AssemblyCards = kept.AssemblyCards, Seconds = kept.Seconds + outcome.Elapsed.TotalSeconds };
-                    if (yardstick is not null && outcome.Model is not null) row = Measured(row, outcome.OutputE2k, yardstick, work);
+                    if (yardstick is not null && outcome.Model is not null) row = Measured(row, outcome.OutputE2k, yardstick, work, yardstickFolder);
                     else if (yardstick is not null) row = row with { Yardstick = yardstick };
                     WriteSetCsv(Path.Combine(work, "set.csv"), [row]);
                     WriteSheetCsv(Path.Combine(work, "sheets.csv"), rows);
@@ -194,7 +235,7 @@ public static class CorpusAnalyzer
                     string outE2k = Path.Combine(work, "out.e2k");
                     if (yardstick is not null && row.HasModel && File.Exists(outE2k) && (row.OursCompared is null || reuseBuilds))
                     {
-                        row = Measured(row, outE2k, yardstick, work);
+                        row = Measured(row, outE2k, yardstick, work, yardstickFolder);
                         WriteSetCsv(Path.Combine(work, "set.csv"), [row]);
                         File.WriteAllText(manifest, stamp);
                     }
@@ -204,7 +245,7 @@ public static class CorpusAnalyzer
                 {
                     var outcome = PdfOnlyBuild.Build(pdf, work, options.FallbackScale, options, rulesConnection);
                     (row, rows) = Rows(outcome, job, issue, runId, runAt, built);
-                    if (yardstick is not null && outcome.Model is not null) row = Measured(row, outcome.OutputE2k, yardstick, work);
+                    if (yardstick is not null && outcome.Model is not null) row = Measured(row, outcome.OutputE2k, yardstick, work, yardstickFolder);
                     else if (yardstick is not null) row = row with { Yardstick = yardstick };
                     Directory.CreateDirectory(work);
                     WriteSetCsv(Path.Combine(work, "set.csv"), [row]);
@@ -279,22 +320,26 @@ public static class CorpusAnalyzer
     }
 
     /// <summary>The set's row with its yardstick figures, and the comparison's own summary beside the model.</summary>
-    private static SetRow Measured(SetRow row, string outE2k, string yardstick, string work)
+    private static SetRow Measured(SetRow row, string outE2k, string yardstick, string work, string yardstickFolder)
     {
+        var (edb, written) = YardstickProvenance(yardstickFolder, row.Job);
+        int? age = written is { } w && row.IssueDate is { } issued && DateOnly.TryParse(issued, CultureInfo.InvariantCulture, DateTimeStyles.None, out var d) ? d.DayNumber - w.DayNumber : null;
         try
         {
             var c = ModelYardstick.Compare(outE2k, yardstick);
-            File.WriteAllText(Path.Combine(work, "yardstick.txt"), ModelYardstick.Summary(c));
+            string provenance = written is null ? "" : $"her model: {Path.GetFileName(edb)}, written {written:yyyy-MM-dd}{(age is { } a ? $", {a} days before the drawing's issue" : "")}" + Environment.NewLine;
+            File.WriteAllText(Path.Combine(work, "yardstick.txt"), provenance + ModelYardstick.Summary(c));
             return row with
             {
                 Yardstick = yardstick, YardstickStoreys = c.YardstickStoreys, SharedStoreys = c.Storeys.Count, FrameFromGrids = c.ShiftFromGrids, FrameSupport = c.FrameSupport,
                 OursCompared = c.OursCompared, OursMedianMm = c.OursCompared == 0 ? null : c.OursMedianMm, OursWithin100 = c.OursWithin100,
                 TheirsCompared = c.TheirsCompared, TheirsWithin100 = c.TheirsWithin100, YardstickNote = c.Notes.Count == 0 ? null : string.Join("; ", c.Notes),
+                YardstickEdb = edb, YardstickWritten = written, YardstickAgeDays = age,
             };
         }
         catch (Exception ex) when (ex is IOException or FormatException or InvalidOperationException)
         {
-            return row with { Yardstick = yardstick, YardstickNote = $"yardstick unreadable: {ex.GetType().Name}: {ex.Message}" };
+            return row with { Yardstick = yardstick, YardstickNote = $"yardstick unreadable: {ex.GetType().Name}: {ex.Message}", YardstickEdb = edb, YardstickWritten = written, YardstickAgeDays = age };
         }
     }
 
@@ -371,6 +416,14 @@ public static class CorpusAnalyzer
             sb.AppendLine(CultureInfo.InvariantCulture, $"  yardsticks: {sets.Count(s => s.Yardstick is not null)} sets have the engineer's model; {yard.Count} share a storey with columns; frames from grids {yard.Count(s => s.FrameFromGrids == true)}, from columns {yard.Count(s => s.FrameFromGrids == false)}");
             if (oursAll > 0)
                 sb.AppendLine(CultureInfo.InvariantCulture, $"    ours -> theirs: {within} of {oursAll} of our columns within 100 mm of one of theirs ({100.0 * within / oursAll:F0}%); theirs -> ours: {theirsWithin} of {theirsAll} ({100.0 * theirsWithin / Math.Max(1, theirsAll):F0}%)");
+            // THE VERDICT BESIDE THE YARDSTICK'S AGE: her model seldom follows the drawings, so the share is read
+            // in two populations - the sets whose model is within CurrentYardstickDays of the drawing, and the rest
+            var current = yard.Where(s => s.YardstickAgeDays is { } a && a <= CurrentYardstickDays).ToList();
+            var stale = yard.Where(s => s.YardstickAgeDays is { } a && a > CurrentYardstickDays).ToList();
+            var undated = yard.Where(s => s.YardstickAgeDays is null).ToList();
+            static string Share(IReadOnlyList<SetRow> g) { int o = g.Sum(s => s.OursCompared ?? 0), w = g.Sum(s => s.OursWithin100 ?? 0); return o == 0 ? "-" : $"{w} of {o} ({100.0 * w / o:F0}%)"; }
+            if (current.Count + stale.Count > 0)
+                sb.AppendLine(CultureInfo.InvariantCulture, $"    by the yardstick's age: her model within {CurrentYardstickDays} days of the drawing's issue on {current.Count} set(s), ours within 100 mm {Share(current)}; older on {stale.Count} set(s) (median {(stale.Count == 0 ? 0 : stale.Select(s => (double)s.YardstickAgeDays!.Value).Order().ElementAt(stale.Count / 2)):F0} days older), {Share(stale)}; undated {undated.Count}");
             foreach (var g in yard.GroupBy(s => s.OursCompared is int c && c > 0 ? (100 * (s.OursWithin100 ?? 0) / c) / 25 * 25 : 0).OrderByDescending(g => g.Key))
                 sb.AppendLine(CultureInfo.InvariantCulture, $"    {g.Count()} set(s) with {g.Key}-{g.Key + 24}% of our columns within 100 mm: {string.Join(" ", g.Select(s => s.Job).Take(12))}{(g.Count() > 12 ? " ..." : "")}");
         }
@@ -400,7 +453,7 @@ public static class CorpusAnalyzer
 
     private static string Q(object? v) => v is null ? "" : "\"" + Convert.ToString(v, CultureInfo.InvariantCulture)!.Replace("\"", "\"\"", StringComparison.Ordinal) + "\"";
 
-    private static readonly string SetHeader = "run_id,run_at_utc,tool_built_at_utc,job,category,set_kind,pdf,issue_date,issue_date_from_name,bytes,pages,plan_sheets,sheets_written,sheets_failed,sheets_not_plan,assembly_cards,storeys_read,has_model,model_error,sheets_placed,storeys_built,walls,columns,floors,storeys_with_plate,seconds,error,yardstick,yardstick_storeys,shared_storeys,frame_from_grids,frame_support,ours_compared,ours_median_mm,ours_within_100,theirs_compared,theirs_within_100,yardstick_note";
+    private static readonly string SetHeader = "run_id,run_at_utc,tool_built_at_utc,job,category,set_kind,pdf,issue_date,issue_date_from_name,bytes,pages,plan_sheets,sheets_written,sheets_failed,sheets_not_plan,assembly_cards,storeys_read,has_model,model_error,sheets_placed,storeys_built,walls,columns,floors,storeys_with_plate,seconds,error,yardstick,yardstick_storeys,shared_storeys,frame_from_grids,frame_support,ours_compared,ours_median_mm,ours_within_100,theirs_compared,theirs_within_100,yardstick_note,yardstick_edb,yardstick_written,yardstick_age_days";
     private static readonly string SheetHeader = "run_id,job,page,sheet_number,sheet_type,title,level,scale_note,scale_denominator,slabs,columns,walls,lines,dxf_files,self_check,placed,storeys,flags,failure";
 
     public static void WriteSetCsv(string path, IReadOnlyList<SetRow> rows)
@@ -410,7 +463,8 @@ public static class CorpusAnalyzer
             lines.Add(string.Join(",", Q(s.RunId), Q(s.RunAtUtc.ToString("O")), Q(s.ToolBuiltAtUtc.ToString("O")), Q(s.Job), Q(s.Category), Q(s.SetKind), Q(s.Pdf), Q(s.IssueDate), Q(s.IssueDateFromName), Q(s.Bytes),
                 Q(s.Pages), Q(s.PlanSheets), Q(s.SheetsWritten), Q(s.SheetsFailed), Q(s.SheetsNotPlan), Q(s.AssemblyCards), Q(s.StoreysRead), Q(s.HasModel), Q(s.ModelError), Q(s.SheetsPlaced),
                 Q(s.StoreysBuilt), Q(s.Walls), Q(s.Columns), Q(s.Floors), Q(s.StoreysWithPlate), Q(s.Seconds), Q(s.Error),
-                Q(s.Yardstick), Q(s.YardstickStoreys), Q(s.SharedStoreys), Q(s.FrameFromGrids), Q(s.FrameSupport), Q(s.OursCompared), Q(s.OursMedianMm), Q(s.OursWithin100), Q(s.TheirsCompared), Q(s.TheirsWithin100), Q(s.YardstickNote)));
+                Q(s.Yardstick), Q(s.YardstickStoreys), Q(s.SharedStoreys), Q(s.FrameFromGrids), Q(s.FrameSupport), Q(s.OursCompared), Q(s.OursMedianMm), Q(s.OursWithin100), Q(s.TheirsCompared), Q(s.TheirsWithin100), Q(s.YardstickNote),
+                Q(s.YardstickEdb), Q(s.YardstickWritten?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)), Q(s.YardstickAgeDays)));
         File.WriteAllLines(path, lines, new UTF8Encoding(true));
     }
 
@@ -448,7 +502,8 @@ public static class CorpusAnalyzer
             int.Parse(f[14], CultureInfo.InvariantCulture), int.Parse(f[15], CultureInfo.InvariantCulture), int.Parse(f[16], CultureInfo.InvariantCulture), bool.Parse(f[17]), S(f[18]), I(f[19]), I(f[20]), I(f[21]), I(f[22]), I(f[23]), I(f[24]),
             double.Parse(f[25], CultureInfo.InvariantCulture), S(f[26]),
             f.Count > 37 ? S(f[27]) : null, f.Count > 37 ? I(f[28]) : null, f.Count > 37 ? I(f[29]) : null, f.Count > 37 && f[30].Length > 0 ? bool.Parse(f[30]) : null, f.Count > 37 ? I(f[31]) : null,
-            f.Count > 37 ? I(f[32]) : null, f.Count > 37 && f[33].Length > 0 ? double.Parse(f[33], CultureInfo.InvariantCulture) : null, f.Count > 37 ? I(f[34]) : null, f.Count > 37 ? I(f[35]) : null, f.Count > 37 ? I(f[36]) : null, f.Count > 37 ? S(f[37]) : null);
+            f.Count > 37 ? I(f[32]) : null, f.Count > 37 && f[33].Length > 0 ? double.Parse(f[33], CultureInfo.InvariantCulture) : null, f.Count > 37 ? I(f[34]) : null, f.Count > 37 ? I(f[35]) : null, f.Count > 37 ? I(f[36]) : null, f.Count > 37 ? S(f[37]) : null,
+            f.Count > 40 ? S(f[38]) : null, f.Count > 40 && f[39].Length > 0 ? DateOnly.Parse(f[39], CultureInfo.InvariantCulture) : null, f.Count > 40 ? I(f[40]) : null);
     }
 
     internal static IEnumerable<SheetRow> ReadSheetRows(string path, Guid runId)

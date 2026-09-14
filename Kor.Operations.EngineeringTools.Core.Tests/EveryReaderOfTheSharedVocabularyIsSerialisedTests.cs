@@ -59,7 +59,8 @@ public sealed class EveryReaderOfTheSharedVocabularyIsSerialisedTests
                             || source.Contains("PdfOnlyBuild.Build(", StringComparison.Ordinal)
                             || source.Contains("PdfOnlyBuild.Compose(", StringComparison.Ordinal)
                             || source.Contains("GeneratedModel.", StringComparison.Ordinal);   // the helper that composes for the older suites
-            if (!source.Contains("PlanSheetNaming.", StringComparison.Ordinal) && !composes) continue;
+            // "PlanSheetNaming.cs" is a FILE NAME (the gate read cache lists the reader's sources), not a read of the class
+            if (!source.Replace("PlanSheetNaming.cs", "", StringComparison.Ordinal).Contains("PlanSheetNaming.", StringComparison.Ordinal) && !composes) continue;
             if (source.Contains("Collection(SheetNamingVocabularyCollection.Name)", StringComparison.Ordinal))
                 continue;
 

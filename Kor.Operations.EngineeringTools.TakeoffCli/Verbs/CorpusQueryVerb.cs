@@ -136,9 +136,9 @@ internal static class CorpusQueryVerb
     {
         var y = sets.Where(s => s.Yardstick is not null).OrderBy(s => s.OursCompared > 0 ? (double)(s.OursWithin100 ?? 0) / s.OursCompared.Value : -1).ToList();
         Console.WriteLine($"  {y.Count} sets have the engineer's own model; {y.Count(s => s.OursCompared > 0)} share a storey with columns");
-        Console.WriteLine($"  {"job",-10} {"storeys",7} {"shared",6} {"frame",-8} {"ours≤100",9} {"theirs≤100",10}  note");
+        Console.WriteLine($"  {"job",-10} {"storeys",7} {"shared",6} {"frame",-8} {"ours≤100",9} {"theirs≤100",10} {"her model",-10} {"older by",8}  note");
         foreach (var s in y)
-            Console.WriteLine($"  {s.Job,-10} {s.YardstickStoreys,7} {s.SharedStoreys,6} {(s.FrameFromGrids == true ? "grids" : s.FrameFromGrids == false ? $"cols/{s.FrameSupport}" : "-"),-8} {Pct(s.OursWithin100 ?? 0, s.OursCompared ?? 0),9} {Pct(s.TheirsWithin100 ?? 0, s.TheirsCompared ?? 0),10}  {s.YardstickNote}");
+            Console.WriteLine($"  {s.Job,-10} {s.YardstickStoreys,7} {s.SharedStoreys,6} {(s.FrameFromGrids == true ? "grids" : s.FrameFromGrids == false ? $"cols/{s.FrameSupport}" : "-"),-8} {Pct(s.OursWithin100 ?? 0, s.OursCompared ?? 0),9} {Pct(s.TheirsWithin100 ?? 0, s.TheirsCompared ?? 0),10} {(s.YardstickWritten is { } w ? w.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture) : "-"),-10} {(s.YardstickAgeDays is { } d ? $"{d} d" : "-"),8}  {s.YardstickNote}");
         return 0;
     }
 

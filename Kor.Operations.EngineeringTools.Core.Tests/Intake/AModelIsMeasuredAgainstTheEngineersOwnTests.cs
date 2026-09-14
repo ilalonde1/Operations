@@ -176,4 +176,66 @@ public sealed class AModelIsMeasuredAgainstTheEngineersOwnTests
         var at1500 = ModelYardstick.Register([("L1", "L1", [(1500.0, 0.0)], two)]);
         Assert.Equal(at0.Shift.X - 0, at1500.Shift.X - (-1500), 1e-9);          // the displacement to the same column of hers
     }
+
+    /// <summary>
+    /// WHAT KIND OF ERROR A RESIDUAL IS (2026-09-14). Two storeys under one frame: on L2 every column of ours
+    /// sits 300 mm west of hers - a rigid part of (300, 0) that a placement fix would remove, after which the
+    /// median is nil; on L3 they scatter about hers by 300 mm in four directions - a rigid part near zero
+    /// and a median that stays. And against the plans' grid: hers stand on the intersections, ours do not.
+    /// WHAT THIS DOES NOT COVER: a rotation between the models (the rigid part is a translation); the
+    /// 600 mm window that keeps an unmatched column out of the median.
+    /// </summary>
+    [Fact]
+    public void AStoreysResidualIsReadAsItsRigidPartAndWhatIsLeftAndEachModelIsPlacedAgainstTheGrid()
+    {
+        string root = Path.Combine(Path.GetTempPath(), $"kor-yard-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(root);
+        try
+        {
+            // L1 anchors the frame at zero: eight columns exactly on hers (more votes than L2's four 300 mm over
+            // and L3's one - the frame is the fullest bin, and a fixture that lets L2 outvote L1 moves it)
+            var ours = new List<(string, double, double, string)>();
+            var theirs = new List<(string, double, double, string)>();
+            int n = 0;
+            foreach (var (x, y) in new[] { (0.0, 0.0), (6000.0, 0.0), (0.0, 6000.0), (6000.0, 6000.0), (12000.0, 0.0), (12000.0, 6000.0), (0.0, 12000.0), (6000.0, 12000.0) })
+            {
+                ours.Add(($"C{++n}", x, y, "L1")); theirs.Add(($"E{n}", x, y, "L1"));
+            }
+            foreach (var (x, y) in new[] { (0.0, 0.0), (6000.0, 0.0), (0.0, 6000.0), (6000.0, 6000.0) })
+            {
+                ours.Add(($"C{++n}", x - 300, y, "L2")); theirs.Add(($"E{n}", x, y, "L2"));               // ours 300 west, every one
+            }
+            var scatter = new[] { (300.0, 0.0), (-300.0, 0.0), (0.0, 300.0), (0.0, -300.0) };
+            int k = 0;
+            foreach (var (x, y) in new[] { (0.0, 0.0), (6000.0, 0.0), (0.0, 6000.0), (6000.0, 6000.0) })
+            {
+                var (dx, dy) = scatter[k++];
+                ours.Add(($"C{++n}", x + dx, y + dy, "L3")); theirs.Add(($"E{n}", x, y, "L3"));            // ours about hers, four ways
+            }
+            var grids = new List<(string, string, double)> { ("1", "X", 0), ("2", "X", 6000), ("3", "X", 12000), ("A", "Y", 0), ("B", "Y", 6000), ("C", "Y", 12000) };
+            string m = Path.Combine(root, "ours.e2k"), y2 = Path.Combine(root, "theirs.e2k");
+            File.WriteAllText(m, E2k("MM", [("L3", 3000), ("L2", 3000), ("L1", 3000)], ours, grids));
+            File.WriteAllText(y2, E2k("MM", [("L3", 3000), ("L2", 3000), ("L1", 3000)], theirs));   // her export carries no grid lines, as 85 of 104 do not
+
+            var c = ModelYardstick.Compare(m, y2);
+
+            Assert.False(c.ShiftFromGrids);
+            var l2 = Assert.Single(c.Storeys, f => f.Storey == "L2");
+            Assert.Equal(300, l2.RigidMm.X, 0.5); Assert.Equal(0, l2.RigidMm.Y, 0.5);
+            Assert.Equal(300, l2.MedianMm, 0.5); Assert.Equal(0, l2.MedianAfterRigidMm, 0.5);
+            Assert.Equal(0, l2.OursWithin100); Assert.Equal(4, l2.OursWithin100AfterRigid);
+            var l3 = Assert.Single(c.Storeys, f => f.Storey == "L3");
+            Assert.Equal(0, l3.RigidMm.X, 0.5); Assert.Equal(0, l3.RigidMm.Y, 0.5);
+            Assert.Equal(300, l3.MedianAfterRigidMm, 0.5);                                          // the scatter stays
+            // against the plans' grid (ours): hers all on an intersection, ours only L1's four
+            Assert.Equal(16, c.OnOurGrid.TheirsN); Assert.Equal(16, c.OnOurGrid.TheirsOnBoth);
+            Assert.Equal(16, c.OnOurGrid.OursN); Assert.Equal(8, c.OnOurGrid.OursOnBoth);
+            Assert.Contains("rigid (  300,     0) ->     0 mm 100%", ModelYardstick.Summary(c), StringComparison.Ordinal);
+            Assert.Contains("hers 16 / 16 / 16 of 16 (100%)", ModelYardstick.Summary(c), StringComparison.Ordinal);
+        }
+        finally
+        {
+            if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
+        }
+    }
 }

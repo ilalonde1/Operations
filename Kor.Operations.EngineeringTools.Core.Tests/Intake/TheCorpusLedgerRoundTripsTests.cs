@@ -28,7 +28,11 @@ public sealed class TheCorpusLedgerRoundTripsTests
             var run = Guid.NewGuid();
             var at = new DateTime(2026, 9, 11, 22, 0, 0, DateTimeKind.Utc);
             var set = new CorpusAnalyzer.SetRow(run, at, at.AddHours(-1), "31168-01", "03 Residential", "structural", @"\\Kor-fs01\Projects\x\31168-01 - 2026-09-10- YMCA, ""Langara"" - Stickfile.pdf",
-                "2026-09-10", true, 34254675, 63, 45, 71, 0, 18, 0, 65, true, null, 29, 63, 1127, 2497, 36, 34, 356.2, null);
+                "2026-09-10", true, 34254675, 63, 45, 71, 0, 18, 0, 65, true, null, 29, 63, 1127, 2497, 36, 34, 356.2, null,
+                // and a yardstick with its provenance (2026-09-14): the .EDB, the day it was written, and the days it predates the drawing
+                Yardstick: "31168-01.e2k", YardstickStoreys: 60, SharedStoreys: 58, FrameFromGrids: false, FrameSupport: 1311,
+                OursCompared: 1531, OursMedianMm: 10.9, OursWithin100: 1311, TheirsCompared: 1504, TheirsWithin100: 1300, YardstickNote: "frame from column registration",
+                YardstickEdb: @"\\Kor-fs01\Projects\x\31168-01 Wind SLS_Model_SG_01.EDB", YardstickWritten: new DateOnly(2023, 9, 8), YardstickAgeDays: -2);
             var sheet = new CorpusAnalyzer.SheetRow(run, "31168-01", 2, "S2.02", "plan", "S2.02 - LEVEL P3 PLAN / FOUNDATIONS PLAN, BLDG A & B", "P3", "1/8\" = 1'-0\"", 96,
                 0, 71, 35, 13641, "S2.02_1_LEVEL P3 PLAN FOUNDATIONS PLAN BLDG A - & B.dxf", null, false, null, "walls: 6 outline(s) would not close; 7 wall panel(s) read", null);
             string sets = Path.Combine(root, "set.csv"), sheets = Path.Combine(root, "sheets.csv");
@@ -37,7 +41,7 @@ public sealed class TheCorpusLedgerRoundTripsTests
 
             // the readers are private to the analyzer; the CSV parser they share is not, and its inverse is the writer's quoting
             var fields = CorpusAnalyzer.Csv.Parse(File.ReadAllLines(sets)[1]);
-            Assert.Equal(38, fields.Count);                                     // 27 of the set, 11 of its yardstick
+            Assert.Equal(41, fields.Count);                                     // 27 of the set, 11 of its yardstick, 3 of the yardstick's provenance
             Assert.Equal(set.Pdf, fields[6]);                                     // the quotes and comma inside the path survive
             Assert.Equal("", fields[18]);                                         // a null is an empty field
             Assert.Equal("356.2", fields[25]);

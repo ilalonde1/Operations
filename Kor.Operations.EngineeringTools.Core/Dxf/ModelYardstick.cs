@@ -32,7 +32,22 @@ namespace Kor.Operations.EngineeringTools.Dxf;
 /// </remarks>
 public static class ModelYardstick
 {
-    public sealed record StoreyFigure(string Storey, string YardstickStorey, int Ours, int Theirs, double MedianMm, int OursWithin100, int TheirsWithin100, int OursBeyond = 0);
+    public sealed record StoreyFigure(string Storey, string YardstickStorey, int Ours, int Theirs, double MedianMm, int OursWithin100, int TheirsWithin100, int OursBeyond = 0)
+    {
+        /// <summary>
+        /// WHAT KIND OF ERROR A STOREY'S RESIDUAL IS. The median of the offset VECTORS (ours to nearest of
+        /// hers, after the global frame) over the storey's pairs within 600 mm: a storey whose columns all
+        /// sit 300 mm east of hers has a rigid part of (300, 0) - the sheet was set on the grid 300 mm off,
+        /// or she and we place the storey's columns by different rules (face on grid, centre) - where a
+        /// storey read badly has a rigid part near zero and a spread that stays. Zero when no pair is
+        /// within 600 mm.
+        /// </summary>
+        public (double X, double Y) RigidMm { get; init; }
+        /// <summary>The storey's median residual after its rigid part is taken out; what a placement fix could reach.</summary>
+        public double MedianAfterRigidMm { get; init; }
+        /// <summary>Ours within 100 mm after the rigid part is taken out.</summary>
+        public int OursWithin100AfterRigid { get; init; }
+    }
 
     /// <summary>
     /// How far past the engineer's outermost column on a storey a column of ours may stand and still be
@@ -59,6 +74,17 @@ public static class ModelYardstick
         public IReadOnlyList<(string Section, int Count)> TheirsUnmatchedBySection { get; init; } = [];
         /// <summary>Of ours unmatched, those standing within 100 mm of one of her wall panels on that storey: modelled by her as a wall, by us as a column.</summary>
         public IReadOnlyList<(string Section, int Count)> OursOnHerWallsBySection { get; init; } = [];
+        /// <summary>
+        /// WHERE EACH MODEL PUTS A COLUMN AGAINST THE GRID (2026-09-14). On the storeys judged, of our
+        /// columns and of hers (in our frame), how many stand within 50 mm of one of OUR grid lines in X, in
+        /// Y, and of an intersection - our grid being the one the plans drew. A yardstick where hers sit on
+        /// the intersections and ours do not says she models a column at its grid intersection, not at its
+        /// drawn centre; the residual is then half a column, not a reading error. Zero when our model has
+        /// no grid lines.
+        /// </summary>
+        public (int OursOnX, int OursOnY, int OursOnBoth, int OursN, int TheirsOnX, int TheirsOnY, int TheirsOnBoth, int TheirsN) OnOurGrid { get; init; }
+        /// <summary>Every judged column of ours with the nearest of hers: the storey, our section, hers, our point (mm, our frame) and the offset to hers after the global frame - the raw material of every figure above, for looking at one column.</summary>
+        public IReadOnlyList<(string Storey, string OurSection, string TheirSection, double X, double Y, double Dx, double Dy)> Pairs { get; init; } = [];
         public double OursWithin100Share => OursCompared == 0 ? 0 : (double)OursWithin100 / OursCompared;
         public double TheirsWithin100Share => TheirsCompared == 0 ? 0 : (double)TheirsWithin100 / TheirsCompared;
     }
@@ -236,9 +262,38 @@ public static class ModelYardstick
         {
             var rs = g.Select(pr => Math.Sqrt(Sq((pr.Q.X - sh.X, pr.Q.Y - sh.Y), pr.P))).ToList();
             var trs = theirResiduals.Where(t => t.Storey.Split('+').Contains(g.Key, StringComparer.Ordinal)).Select(t => t.R).ToList();
-            storeyFigures.Add(new StoreyFigure(g.Key, g.First().Theirs, rs.Count, trs.Count, Median(rs), rs.Count(r => r <= 100), trs.Count(r => r <= 100), beyondByStorey.GetValueOrDefault(g.Key)));
+            // the rigid part of the storey's error: the median offset vector over the pairs within 600 mm
+            var near = g.Where(pr => Math.Sqrt(Sq((pr.Q.X - sh.X, pr.Q.Y - sh.Y), pr.P)) <= 600).ToList();
+            var rigid = near.Count == 0 ? (0.0, 0.0)
+                : (Median(near.Select(pr => pr.Q.X - sh.X - pr.P.X).ToList()), Median(near.Select(pr => pr.Q.Y - sh.Y - pr.P.Y).ToList()));
+            var after = g.Select(pr => Math.Sqrt(Sq((pr.Q.X - sh.X - rigid.Item1, pr.Q.Y - sh.Y - rigid.Item2), pr.P))).ToList();
+            storeyFigures.Add(new StoreyFigure(g.Key, g.First().Theirs, rs.Count, trs.Count, Median(rs), rs.Count(r => r <= 100), trs.Count(r => r <= 100), beyondByStorey.GetValueOrDefault(g.Key))
+            {
+                RigidMm = rigid,
+                MedianAfterRigidMm = Median(after),
+                OursWithin100AfterRigid = after.Count(r => r <= 100),
+            });
         }
         storeyFigures = storeyFigures.OrderByDescending(f => f.Ours).ThenBy(f => f.Storey, StringComparer.Ordinal).ToList();
+
+        // where each model's columns stand against OUR grid lines (the plans'), on the judged storeys
+        var gridX = gm.Where(g => g.Key.Dir == "X").Select(g => g.Value).Distinct().ToList();
+        var gridY = gm.Where(g => g.Key.Dir == "Y").Select(g => g.Value).Distinct().ToList();
+        (int OnX, int OnY, int OnBoth, int N) OnGrid(IEnumerable<(double X, double Y)> pts)
+        {
+            int onX = 0, onY = 0, onBoth = 0, n = 0;
+            foreach (var p in pts)
+            {
+                n++;
+                bool x = gridX.Count > 0 && gridX.Min(g => Math.Abs(g - p.X)) <= 50, y = gridY.Count > 0 && gridY.Min(g => Math.Abs(g - p.Y)) <= 50;
+                if (x) onX++;
+                if (y) onY++;
+                if (x && y) onBoth++;
+            }
+            return (onX, onY, onBoth, n);
+        }
+        var oursOnGrid = OnGrid(judged.SelectMany(s => s.OurPts));
+        var theirsOnGrid = OnGrid(judged.GroupBy(s => s.Theirs, StringComparer.OrdinalIgnoreCase).SelectMany(g => g.First().TheirPts.Select(q => (q.X - sh.X, q.Y - sh.Y))));
 
         var onlyModel = ours.Keys.Where(s => TheirsFor(s) is null).OrderBy(s => s, StringComparer.Ordinal).ToList();
         var onlyYard = theirs.Keys.Where(s => !matchedTheirs.Contains(s) && !matchedTheirs.Any(m => m.Split('+').Contains(s, StringComparer.OrdinalIgnoreCase))).OrderBy(s => s, StringComparer.Ordinal).ToList();
@@ -254,6 +309,11 @@ public static class ModelYardstick
             oursBeyond, oursOnHerWalls,
             notes)
         {
+            OnOurGrid = (oursOnGrid.OnX, oursOnGrid.OnY, oursOnGrid.OnBoth, oursOnGrid.N, theirsOnGrid.OnX, theirsOnGrid.OnY, theirsOnGrid.OnBoth, theirsOnGrid.N),
+            Pairs = pairs.Select(pr => (pr.Storey,
+                ourSections.TryGetValue((pr.Storey, pr.P.X, pr.P.Y), out var osec) ? osec : "?",
+                theirSections.TryGetValue((pr.Theirs, pr.Q.X, pr.Q.Y), out var tsec) ? tsec : "?",
+                pr.P.X, pr.P.Y, pr.Q.X - sh.X - pr.P.X, pr.Q.Y - sh.Y - pr.P.Y)).ToList(),
             OursUnmatchedBySection = oursUnmatched.OrderByDescending(kv => kv.Value).ThenBy(kv => kv.Key, StringComparer.Ordinal).Select(kv => (kv.Key, kv.Value)).ToList(),
             OursOnHerWallsBySection = oursOnWallsBySection.OrderByDescending(kv => kv.Value).ThenBy(kv => kv.Key, StringComparer.Ordinal).Select(kv => (kv.Key, kv.Value)).ToList(),
             TheirsUnmatchedBySection = theirsUnmatched.OrderByDescending(kv => kv.Value).ThenBy(kv => kv.Key, StringComparer.Ordinal).Select(kv => (kv.Key, kv.Value)).ToList(),
@@ -334,15 +394,20 @@ public static class ModelYardstick
         {
             sb.AppendLine(CultureInfo.InvariantCulture, $"ours -> theirs: {c.OursCompared} columns on shared storeys inside her footprint{(c.OursBeyondHerModel > 0 ? $" ({c.OursBeyondHerModel} beyond it, not judged)" : "")}, nearest of theirs: median {c.OursMedianMm:N0} mm; within 50 mm {c.OursWithin50} ({100.0 * c.OursWithin50 / c.OursCompared:F0}%), within 100 mm {c.OursWithin100} ({100.0 * c.OursWithin100 / c.OursCompared:F0}%), within 300 mm {c.OursWithin300} ({100.0 * c.OursWithin300 / c.OursCompared:F0}%)");
             sb.AppendLine(CultureInfo.InvariantCulture, $"theirs -> ours: {c.TheirsCompared} columns they modelled on those storeys, nearest of ours: median {c.TheirsMedianMm:N0} mm; within 100 mm {c.TheirsWithin100} ({100.0 * c.TheirsWithin100 / Math.Max(1, c.TheirsCompared):F0}%)");
-            sb.AppendLine(CultureInfo.InvariantCulture, $"{c.Storeys.Count} storeys both models name, every one (ours judged / theirs / median / ours within 100 / theirs within 100 / ours beyond her footprint):");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"{c.Storeys.Count} storeys both models name, every one (ours judged / theirs / median / ours within 100 / theirs within 100 / the rigid part of the error and the median and share after it / ours beyond her footprint):");
             foreach (var f in c.Storeys)
-                sb.AppendLine(CultureInfo.InvariantCulture, $"   {f.Storey,-10} {f.YardstickStorey,-10} {f.Ours,4} {f.Theirs,4}  {f.MedianMm,7:N0} mm  {100.0 * f.OursWithin100 / f.Ours,3:F0}%  {100.0 * f.TheirsWithin100 / Math.Max(1, f.Theirs),3:F0}%{(f.OursBeyond > 0 ? $"   beyond {f.OursBeyond}" : "")}");
+                sb.AppendLine(CultureInfo.InvariantCulture, $"   {f.Storey,-10} {f.YardstickStorey,-10} {f.Ours,4} {f.Theirs,4}  {f.MedianMm,7:N0} mm  {100.0 * f.OursWithin100 / f.Ours,3:F0}%  {100.0 * f.TheirsWithin100 / Math.Max(1, f.Theirs),3:F0}%   rigid ({f.RigidMm.X,5:N0}, {f.RigidMm.Y,5:N0}) -> {f.MedianAfterRigidMm,5:N0} mm {100.0 * f.OursWithin100AfterRigid / f.Ours,3:F0}%{(f.OursBeyond > 0 ? $"   beyond {f.OursBeyond}" : "")}");
         }
         else if (c.TheirsCompared > 0)
             // audit F19 (step 61): every column of ours beyond her footprint is a complete recall miss, not "no columns" -
             // she modelled these and we stand none of ours near them
             sb.AppendLine(CultureInfo.InvariantCulture, $"ours -> theirs: none of ours inside her footprint on the shared storeys ({c.OursBeyondHerModel} beyond it); theirs -> ours: {c.TheirsCompared} columns she modelled there, within 100 mm of one of ours {c.TheirsWithin100} ({100.0 * c.TheirsWithin100 / c.TheirsCompared:F0}%)");
         else sb.AppendLine("no columns on a storey both models name");
+        if (c.OnOurGrid.OursN > 0 && c.OnOurGrid.TheirsN > 0)
+        {
+            var g = c.OnOurGrid;
+            sb.AppendLine(CultureInfo.InvariantCulture, $"against the plans' grid lines (within 50 mm; X / Y / an intersection): ours {g.OursOnX} / {g.OursOnY} / {g.OursOnBoth} of {g.OursN} ({100.0 * g.OursOnBoth / g.OursN:F0}% on an intersection); hers {g.TheirsOnX} / {g.TheirsOnY} / {g.TheirsOnBoth} of {g.TheirsN} ({100.0 * g.TheirsOnBoth / g.TheirsN:F0}%)");
+        }
         if (c.OursUnmatchedBySection.Count > 0)
             sb.AppendLine(CultureInfo.InvariantCulture, $"ours with none of theirs within 300 mm, by section: {string.Join(", ", c.OursUnmatchedBySection.Take(8).Select(u => $"{u.Section} {u.Count}"))}{(c.OursUnmatchedBySection.Count > 8 ? " ..." : "")}");
         if (c.OursOnHerWalls > 0)

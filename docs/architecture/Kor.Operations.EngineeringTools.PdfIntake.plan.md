@@ -1,6 +1,6 @@
 # PDF intake → ETABS — Completion Plan
 
-**Status:** Rev 3, 2026-09-14 (steps 47 and 49–63 added to §8, 3b–3o) — WP1–WP5 landed overnight on Ian's go-ahead ("go through this all,
+**Status:** Rev 3, 2026-09-14 (steps 47 and 49–64 added to §8, 3b–3p) — WP1–WP5 landed overnight on Ian's go-ahead ("go through this all,
 step by step, and finish it overnight"): commits `8fccbc25` (WP3), `3f3f82b9` (WP2), `aba7d9ff`
 (WP4), `69e554b5` (WP5), each gated by the six byte-identical and the fast suite; WP5's remaining
 conventions are counted by a test, not by this document. §8 is what needs Ian. Rev 2 (2026-09-11)
@@ -354,6 +354,14 @@ Revit route.
    its building; one chain per building; cycles refused; elevator roof above roof; a note is not a
    title's second line; a sole view keeps its title; two heights). Six-set gate byte-identical after re-banking five (each diff looked at; one false positive named, 31170-arch KW79, the ring-ownership class); shifted differential green. NEXT: run 11 (the
    walls); the ring-ownership rule (§71); frames without grids; the title reader's failures.
+3p. **Step 64, 2026-09-14 afternoon** (§73): what the 58% is made of. Three yardstick instruments
+   (a storey's rigid part and what is left; each model against the plans' grid; `--pairs`) say the
+   low sets' residual is neither placement nor a grid convention: her model does not match the
+   drawing. Her .EDB's date against the drawing's issue, 38 sets: 27 older by > 180 days (median
+   share 48%), 11 current (64%); ten named MASS / 2NDRY / Prelim / Below Grade / Diaphragm / Wind.
+   The ledger carries the yardstick's provenance and age; the summary reads the share in two
+   populations. NEXT: `--pairs` on the six current sets under 65%; a yardstick that IS the drawing's
+   model.
 4. **WP6** — one model in front of Andrea (31170's, or whichever the ledger ranks best of the
    architects' sets). Ian's call when.
 5. **Step 47**, the next reading rule, from the corpus. `takeoff corpus-query plan-titles` on the
