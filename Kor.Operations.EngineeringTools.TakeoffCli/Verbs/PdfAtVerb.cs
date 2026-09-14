@@ -8,7 +8,7 @@ using Kor.Operations.EngineeringTools.PdfToSafe;
 // tendon end 1,696 mm": the page draws a 16 m tendon from that anchor (vector-lines), so the question was
 // which fate the intake gave that line, and nothing answered it at a point. The point is in the frame
 // pdf-overlay's --mark and model-to-page use: page millimetres at the sheet's scale, y up.
-//   takeoff pdf-at <pdf> <page> <x> <y> --scale N [--radius mm] [--rules-db <conn>]
+//   takeoff pdf-at <pdf> <page> <x> <y> --scale N [--radius mm] [--rules-db <conn>] [--points]
 internal static class PdfAtVerb
 {
     public static bool Matches(string[] args) => args.Length >= 1 && args[0].Equals("pdf-at", StringComparison.OrdinalIgnoreCase);
@@ -23,11 +23,13 @@ internal static class PdfAtVerb
             || !double.TryParse(args[4], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double atY))
         { Console.Error.WriteLine("x and y are page millimetres (the frame of pdf-overlay --mark)."); return 2; }
         int scale = 0; double radius = 600; string? rules = null;
+        bool points = false;   // --points: each path's vertices, in drawing millimetres (what a 4-point path that reads as three corners actually is)
         for (int i = 5; i < args.Length; i++)
         {
             if (args[i].Equals("--scale", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) int.TryParse(args[++i], out scale);
             else if (args[i].Equals("--radius", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) double.TryParse(args[++i], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out radius);
             else if (args[i].Equals("--rules-db", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) rules = args[++i];
+            else if (args[i].Equals("--points", StringComparison.OrdinalIgnoreCase)) points = true;
         }
         if (scale <= 0) { Console.Error.WriteLine("--scale <denominator> is required (1/8\" = 1'-0\" is 96)."); return 2; }
 
@@ -57,6 +59,7 @@ internal static class PdfAtVerb
             string fate = fateOf.TryGetValue(i, out var f) ? $"{f.Disposition} {f.Reason}{(f.ObjectIndex is int oi ? $" #{oi}" : "")}" : "(no fate: annotation, clip or no ink)";
             string ink = p.IsClipping ? "clip" : (p.IsFilled ? "filled" : "") + (p.IsFilled && p.IsStroked ? "+" : "") + (p.IsStroked ? $"stroked w{p.LineWidth:0.##}pt" : "") + (p.IsAnnotation ? " annotation" : "");
             Console.WriteLine($"  path #{i,-6} {fate,-42} {ink,-28} {(p.IsClosed ? "closed" : "open"),-6} {p.Points.Count,4} pts  box {p.Width * mmPerPt:0}x{p.Height * mmPerPt:0} mm at ({p.MinX * mmPerPt:0},{p.MinY * mmPerPt:0})  {d * mmPerPt:0} mm away  #{p.Color.R:X2}{p.Color.G:X2}{p.Color.B:X2}");
+            if (points) Console.WriteLine("           " + string.Join(" ", p.Points.Select(q => $"({q.X * mmPerPt:0.#},{q.Y * mmPerPt:0.#})")));
         }
         Console.WriteLine($"  {shown} of {paths.Count} paths within {radius:0} mm");
         int words = 0;

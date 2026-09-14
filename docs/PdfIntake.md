@@ -1,11 +1,11 @@
 # PDF intake — what it does today, and what it leaves on the page
 
-## 0. START HERE (state as of 2026-09-13, after steps 47 and 54–57 and completion-plan WP1–WP5 — 207 of 292 sets build from the PDF alone)
+## 0. START HERE (state as of 2026-09-13, after steps 47 and 54–58 and completion-plan WP1–WP5 — 207 of 292 sets build from the PDF alone)
 
 A session picking this up cold reads this section, then the completion plan
 (`docs/architecture/Kor.Operations.EngineeringTools.PdfIntake.plan.md` — what "complete" means, the
 packages, and where each stands), then the last three step sections (§54–§56). §1–§52 are the
-record of how each rule was arrived at, read when a rule is being changed. §66 is the latest step.
+record of how each rule was arrived at, read when a rule is being changed. §67 is the latest step.
 
 **What this is.** A PDF ingestor: one ingestion point (`DrawingIntake.ReadSheet` → `PdfOnlyBuild`)
 that reads a drawing set and hands its geometry to outlets — the ETABS `.e2k` today, the DXF as a
@@ -3359,3 +3359,37 @@ WHAT THIS DOES NOT: a plan with no title the reader found (39 sets; the page rea
 another office's word for a floor (a row); two lofts; a plan named in another language; a word
 level beside a numbered level on one title (the number wins, the word is left alone); what the
 small jobs' "columns" are.
+
+## 67. Step 58, 2026-09-13: a column is drawn with four corners
+
+**Measured first.** 01389 (a five-page house, one of step 47's 29): "3 storeys, 0 walls, 248
+columns". `dxf-render` of its main floor plan: rows of small blue squares every metre along three
+bearing walls. `pdf-at` at one of them: an unfilled 849 mm square drawn with a 10 pt pen, and
+inside it two filled shapes of **three points** — a bearing-wall symbol, a square with two
+triangles — read `BecameColumnByShape`. Over the whole page: 139 columns read, 139 of them three
+points. On 31168 p22, 31202 p32 and 31138 p12: 48, 108 and 24 columns read, every one four points.
+
+**The rule.** A column is drawn with four corners, or as a curve. A filled shape of three points
+is a symbol's triangle — a bearing-wall symbol, an arrowhead, a hatch — and is fated
+`FilledTriangle`, discarded, before the size and aspect tests (`GeometryFilterService`; the fate is
+in the fixture and the frozen-classifier differential leaves it out as it does step 49's). After
+it 01389's five plans read 0 columns and 200–541 triangles each: a wood-frame house has no concrete
+columns, and its posts are not drawn as filled squares either, so the model is honestly empty
+rather than wrong.
+
+**Measured.** Five of the six byte-identical; 31170 (the architect's set) **re-banked**: L1 lost
+five columns, 58 → 53, and every one was looked at with `pdf-at --points` and `pdf-overlay`. Two
+are the corner cell of a diagonal wall hatch — the stripes cut the wall's end into one right
+triangle, 13" and 26" on the leg, and the bank had read each as a column standing in the wall.
+Three are the arrowhead of a spot-elevation tag (450 × 325 mm) painted over a real column, which
+the bank read as a second column at the same place; the real one (six points, 1090 × 1208 mm) is
+still read. The yardstick against her model says the same: 331 of ours inside her footprint
+before and after, and "beyond it" 11 → 6. With labels normalised the bank moves by 18 lines
+removed and none added: five points, five columns, five assignments, and the three sections only
+they used. Differential green. Run 8 (the whole corpus on steps 47–57, launched 17:45, without
+this step) says what the small jobs read before it; the next run says after.
+
+WHAT THIS DOES NOT: a post drawn as a small filled square on a wood-frame plan (four points; the
+size floor decides); a column drawn as a triangle (none seen on 293 sets); a four-cornered shape
+that is a hatch cell or an arrowhead (the harness holds none, and this rule counts corners only);
+what a wood-frame house's model should hold at all — a question for the plan.

@@ -1,6 +1,6 @@
 # PDF intake → ETABS — Completion Plan
 
-**Status:** Rev 3, 2026-09-13 (steps 47 and 49–57 added to §8, 3b–3i) — WP1–WP5 landed overnight on Ian's go-ahead ("go through this all,
+**Status:** Rev 3, 2026-09-13 (steps 47 and 49–58 added to §8, 3b–3j) — WP1–WP5 landed overnight on Ian's go-ahead ("go through this all,
 step by step, and finish it overnight"): commits `8fccbc25` (WP3), `3f3f82b9` (WP2), `aba7d9ff`
 (WP4), `69e554b5` (WP5), each gated by the six byte-identical and the fast suite; WP5's remaining
 conventions are counted by a test, not by this document. §8 is what needs Ian. Rev 2 (2026-09-11)
@@ -306,6 +306,12 @@ Revit route.
    view (step 46 completed). **29 of the 68 storey-less sets build** (207 → 236 of 293 on that
    count); 39 have no title on the page. Gate byte-identical. NEXT: run 8 over the whole corpus;
    the small jobs' "columns" (248 on a house); the 39 with no title.
+3j. **Step 58, 2026-09-13 evening** (§67): a column is drawn with four corners — a filled
+   three-point shape is a symbol's triangle (01389's 139 "columns", all triangles; the harness
+   plans' 180 columns, all four points). 01389 reads 0 columns now. Five sets byte-identical;
+   31170 re-banked — five false columns off L1 (two hatch corners, three tag arrowheads on real
+   columns), inside her footprint 331/331 unchanged. Run 8 running (17:45 →, steps 47–57).
+   NEXT: bank run 8; the 39 no-title sets; F8/F10/F14.
 4. **WP6** — one model in front of Andrea (31170's, or whichever the ledger ranks best of the
    architects' sets). Ian's call when.
 5. **Step 47**, the next reading rule, from the corpus. `takeoff corpus-query plan-titles` on the

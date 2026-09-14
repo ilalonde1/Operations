@@ -79,6 +79,14 @@ public enum PathReason
     /// </summary>
     SymbolQuadrant,
     /// <summary>
+    /// A filled shape of three points (intake step 58, 2026-09-13): a symbol's triangle, never a column. A
+    /// column is drawn with four corners, or as a curve. KOR's small jobs draw a bearing-wall symbol as a
+    /// square with two filled triangles inside it, one every metre along the wall, and 01389's main floor
+    /// plan read 139 columns from them - every one three points - where the plans of 31168, 31202 and 31138
+    /// read 48, 108 and 24 columns, every one four.
+    /// </summary>
+    FilledTriangle,
+    /// <summary>
     /// A stroke lying along a grid axis and heavier than the grid's own pen (intake step 53): a tendon or a
     /// beam drawn on the grid line, not the grid. Kept apart from the lines (ExtractedGeometry.StrokesOnGrid)
     /// for the tendon reader; no wall reader sees it. 31202's L7-12 plan draws the tendons on grids F and J
@@ -103,7 +111,8 @@ public sealed record PathFate(int PathIndex, Disposition Disposition, PathReason
             or PathReason.PaperFill or PathReason.SheetFrame or PathReason.FrameEdgeLine
             or PathReason.GridLineExcluded or PathReason.ColumnTooSmall or PathReason.UnfilledSmallShape
             or PathReason.ColumnAspect or PathReason.TooShort or PathReason.TooFewPoints
-            or PathReason.CollapsedByThinning or PathReason.NoInk or PathReason.PatternCell or PathReason.SymbolQuadrant => Disposition.Discarded,
+            or PathReason.CollapsedByThinning or PathReason.NoInk or PathReason.PatternCell or PathReason.SymbolQuadrant
+            or PathReason.FilledTriangle => Disposition.Discarded,
         _ => throw new ArgumentOutOfRangeException(nameof(reason), reason, "Unknown path reason."),
     };
 }

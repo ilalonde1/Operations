@@ -196,6 +196,8 @@ internal static class FateFixture
         (Rect(900, 1200, 60000, 31200) with { Color = (0, 0, 0) }, PathReason.PatternCell),
         (Rect(900, 1200, 60000, 32400) with { Color = (0, 0, 0) }, PathReason.PatternCell),
         (Rect(600, 800, 63000, 30000), PathReason.BecameColumnByShape),
+        // a filled triangle of column size: a symbol, not a column (step 58)
+        (new RawSubpath([(70000, 30000), (70600, 30000), (70000, 30510)], true, (0, 0, 0), true, false, 0.5, false), PathReason.FilledTriangle),
         // a spot-elevation target's two filled quadrants, corner to corner (step 49)
         (Rect(229, 229, 66000, 30000) with { Color = (0, 0, 0) }, PathReason.SymbolQuadrant),
         (Rect(229, 229, 66229, 30229) with { Color = (0, 0, 0) }, PathReason.SymbolQuadrant),

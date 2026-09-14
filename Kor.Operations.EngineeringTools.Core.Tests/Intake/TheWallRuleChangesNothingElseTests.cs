@@ -90,7 +90,7 @@ public sealed class TheWallRuleChangesNothingElseTests
         // and so do step 37 (pattern cells are not columns: APatternsCellsAbutAColumnStandsAloneTests) and
         // step 49 (a target's quadrants are not columns: ATargetsQuadrantsAreNotColumnsTests), which the
         // frozen classifier predates
-        var cases = FateFixture.Cases().Where(c => c.Reason is not (PathReason.Doorway or PathReason.ClipOfWall or PathReason.BecameWallFace or PathReason.Band or PathReason.BecameSlabEdge or PathReason.PatternCell or PathReason.SymbolQuadrant)).ToList();
+        var cases = FateFixture.Cases().Where(c => c.Reason is not (PathReason.Doorway or PathReason.ClipOfWall or PathReason.BecameWallFace or PathReason.Band or PathReason.BecameSlabEdge or PathReason.PatternCell or PathReason.SymbolQuadrant or PathReason.FilledTriangle)).ToList();
         var paths = cases.Select(c => c.Path).ToList();
         var walls = cases.Select((c, i) => (c, i)).Where(x => x.c.Reason == PathReason.BecameWall).Select(x => x.i).ToHashSet();
         foreach (var rectangle in new[] { WallFixture.Rect(12, 240), WallFixture.Rect(12, 50), WallFixture.Rect(4, 48) })

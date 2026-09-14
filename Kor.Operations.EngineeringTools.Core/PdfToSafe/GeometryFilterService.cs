@@ -400,6 +400,11 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         // 2. Aspect ratio within maxColumnAspect (columns are roughly square, not elongated)
                         double minDim = Math.Min(bboxW, bboxH);
                         double maxDim = Math.Max(bboxW, bboxH);
+                        // A COLUMN IS DRAWN WITH FOUR CORNERS (intake step 58): a filled shape of three points is a
+                        // symbol's triangle - the bearing-wall symbol on a small job's plan, an arrowhead, a hatch -
+                        // and 01389's main floor plan read 139 "columns" from them (every one three points; the three
+                        // harness plans measured read 180 columns, every one four). A curve is many points and stays.
+                        if (!sub.IsAnnotation && pts.Count < 4) { Fate(PathReason.FilledTriangle); continue; }
                         if (!sub.IsAnnotation && minDim < columnMinDimMm) { Fate(PathReason.ColumnTooSmall); continue; }
 
                         // Additional filter: non-annotation, non-filled small closed shapes
