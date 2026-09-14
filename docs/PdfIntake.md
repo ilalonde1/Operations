@@ -3348,7 +3348,8 @@ name's `<number>_<n>_` prefix (an underscore is a word character; `\b` never cro
 `AStoreyMayBeNamedByAWordTests`.
 
 **Measured.** The 68 sets through the analyzer with the rows: **29 build** (207 → 236 of 293 on
-that count; run 8 will say it over the whole corpus); 39 still read no storey — the class with no
+that count; run 8 over the whole corpus, 17:45 → 20:08, says the same: **236 of 293**, 39 with
+no storey, 17 with no plan, 1 with no slab edge; §1b of the plan has the row); 39 still read no storey — the class with no
 title on the page, which this step never claimed. Six-set gate byte-identical, differential green:
 none of the six names a storey by a word. What the 29 contain is the next measurement, not this
 one: "3 storeys, 0 walls, 248 columns" on a five-page house is 0 walls rightly (wood frame) and
@@ -3386,8 +3387,12 @@ the bank read as a second column at the same place; the real one (six points, 10
 still read. The yardstick against her model says the same: 331 of ours inside her footprint
 before and after, and "beyond it" 11 → 6. With labels normalised the bank moves by 18 lines
 removed and none added: five points, five columns, five assignments, and the three sections only
-they used. Differential green. Run 8 (the whole corpus on steps 47–57, launched 17:45, without
-this step) says what the small jobs read before it; the next run says after.
+they used. Differential green. Run 8 (the whole corpus on steps 47–57, 17:45 → 20:08, without
+this step) says what the small jobs read before it: 113,069 columns from run 7's 104,761 — 7,059
+on the 29 sets step 47 brought in (01389 alone 248), and the 207 sets both runs built moved
+104,761 → 106,010, 149 of them changed by steps 54–57 (which sheets stand on the grid, so which
+columns are in the model: 30924-01 3,195 → 1,947, 30840-01 397 → 1,385). Run 9 on this step says
+after; what steps 54–57 did to those 149 is a measurement owed (§1b).
 
 WHAT THIS DOES NOT: a post drawn as a small filled square on a wood-frame plan (four points; the
 size floor decides); a column drawn as a triangle (none seen on 293 sets); a four-cornered shape

@@ -61,6 +61,7 @@ Today's harness is 6 of those 292. The one-job yardstick (31168) is 1 of 66.
 | run 5 (2026-09-12, step 49; `ledger-sets-2026-09-12-run5-step49.csv`) | 206 of 292 build (31168's new issue lost to a duplicate view name, fixed with step 51); 99,314 columns from 105,660 (anchors and target quadrants, 101 sets); 65 sets have a yardstick, 47 share a storey: **34% / 48%** — the corpus number is frames and scope (§58), not reading; run 6 measures steps 50–51 |
 | run 6 (2026-09-12, steps 50–52; `ledger-sets-2026-09-12-run6-step51.csv`) | **207 of 293** build (a 293rd set appeared on the share; 31168 back); 2,031 of 4,323 views on the grid by name (47%); 749 of 2,401 storeys with a plate; 66 sets have a yardstick, 48 share a storey: **49% / 53%** — the scope rule, the sheets that say what they are, and the halves through a key plan; 9 sets at 75–99% (4 in run 3) |
 | run 7 (2026-09-12 22:02 → 09-13 00:33, step 53; `ledger-sets-2026-09-12-run7-step53.csv`; DB run `9b03d0ab`) | **207 of 293** build; 1,821 of 3,968 plan views placed on the grid by name (46% — `corpus-query summary`'s count; run 6's 2,031 of 4,323 was a scratch count over sheet rows, not comparable); 749 of 2,401 storeys with a plate; 104,761 columns from 105,023 (262 more anchors and fittings stood down); 48 yardstick sets: **49% / 53%** (6,344 of 13,024 judged, from 13,053 — the same 6,344 matched, 29 fewer of ours judged) — step 53 was a precision step on 31202 and reads as one on the corpus |
+| run 8 (2026-09-13 17:45 → 20:08, steps 47–57, before step 58; `ledger-sets-2026-09-13-run8-step57.csv`; DB run `e1e33cc6`) | **236 of 293** build (from 207 — step 47's words; 39 still read no storey, 17 no plan with structure, 1 no slab edge); 1,892 of 3,968 plan views placed on the grid by name (48%); 910 of 2,605 storeys with a plate (35%); 46,617 walls, 113,069 columns from 104,761 — 7,059 on the 29 new sets (the small jobs' filled symbols step 58 now discards; 01389 alone 248 → 0) and +1,249 net on the 207 sets both runs built, **149 of which changed count under steps 54–57** (which sheets stand on the grid decides which columns are in the model; 30924-01 3,195 → 1,947, 30840-01 397 → 1,385 — a per-set differential over the two ledgers is owed before the next step); run 9 on step 58 is the next count; 49 yardstick sets: **50% / 55%** (6,617 of 13,312 judged; theirs 6,544 of 11,837) from 49% / 53% — the 29 new sets brought one yardstick and a slightly higher share |
 
 **The work order is a count now.** 1. Storeys: the 67 sets whose plans name their storeys with
 words, and 935 views the composer can put on no storey by name (step 47, §8 item 5). 2. Views on
@@ -310,8 +311,9 @@ Revit route.
    three-point shape is a symbol's triangle (01389's 139 "columns", all triangles; the harness
    plans' 180 columns, all four points). 01389 reads 0 columns now. Five sets byte-identical;
    31170 re-banked — five false columns off L1 (two hatch corners, three tag arrowheads on real
-   columns), inside her footprint 331/331 unchanged. Run 8 running (17:45 →, steps 47–57).
-   NEXT: bank run 8; the 39 no-title sets; F8/F10/F14.
+   columns), inside her footprint 331/331 unchanged. Run 8 banked (17:45 → 20:08, steps 47–57):
+   **236 of 293**, 50% / 55%. NEXT: the 149 sets whose column count moved under steps 54–57
+   (per-set differential of run 7 vs run 8); run 9 on step 58; the 39 no-title sets; F8/F10/F14.
 4. **WP6** — one model in front of Andrea (31170's, or whichever the ledger ranks best of the
    architects' sets). Ian's call when.
 5. **Step 47**, the next reading rule, from the corpus. `takeoff corpus-query plan-titles` on the
