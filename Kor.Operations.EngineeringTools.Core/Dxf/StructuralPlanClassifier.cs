@@ -308,6 +308,15 @@ public sealed record PlanClassificationOptions
     public double DashJoinGap { get; init; } = 14.0;
 
     /// <summary>
+    /// How far apart, across, two dashes may sit and still be one line: 0.15 INCH (a length; the joiner's
+    /// default was 0.15 of whatever the drawing counts in, so a millimetre drawing joined dashes a hair
+    /// apart and an inch drawing joined dashes 4 mm apart - the unit differential found it through two
+    /// column outlines 1.5 mm apart, one column at 112.06 in one unit and at 112.03 in the other; audit
+    /// F24, step 61).
+    /// </summary>
+    public double DashOffsetTolerance { get; init; } = 0.15;
+
+    /// <summary>
     /// How much of a slab outline may be the tool's own join rather than the drawing's line, as a
     /// fraction of the length the drawing draws. See `dxf.slab-chain-join-fraction`.
     ///
@@ -391,6 +400,7 @@ public sealed record PlanClassificationOptions
             OutlineSelfTouchTolerance = OutlineSelfTouchTolerance * f,
             RecoveredOutlineTolerance = RecoveredOutlineTolerance * f,
             DashJoinGap = DashJoinGap * f,
+            DashOffsetTolerance = DashOffsetTolerance * f,
             ExtendLimit = ExtendLimit * f,
             JoinTolerance = JoinTolerance * f,
             BridgeTolerance = BridgeTolerance * f,
@@ -456,7 +466,7 @@ public static class StructuralPlanClassifier
         var partitionSegments = new List<DxfSegment>();
         int duplicateEdges = 0;
 
-        foreach (var s in DashedLineJoiner.Join(segments, options.DashJoinGap))
+        foreach (var s in DashedLineJoiner.Join(segments, options.DashJoinGap, offsetTolerance: options.DashOffsetTolerance))
         {
             string? role = RoleOf(s.Layer, options);
             if (role is null) { unroled.Add(s); continue; }
@@ -572,11 +582,14 @@ public static class StructuralPlanClassifier
 
         // Where the drawing used an arc or a circle. A loop standing on these points was drawn as
         // a curve, and that is the only sound basis for calling a column round.
-        var curvePoints = new HashSet<(long, long)>();
+        // BY DISTANCE, NOT BY CELL (audit F12, step 61): the ends were keyed at a hundredth of a unit, so a loop
+        // vertex a curve's end had snapped to lost its curve credit when the drawing moved a hair across a
+        // cell edge (s63's class). A vertex is on a curve when a curve's end is within a hundredth of it.
+        var curvePoints = new CurveEnds();
         foreach (var s in all.Where(s => s.FromCurve))
         {
-            curvePoints.Add(Quantise(s.Start));
-            curvePoints.Add(Quantise(s.End));
+            curvePoints.Add(s.Start);
+            curvePoints.Add(s.End);
         }
 
         var result = new PlanGeometrySet();
@@ -2019,11 +2032,30 @@ public static class StructuralPlanClassifier
         return total;
     }
 
-    private static (long, long) Quantise(DxfPoint p) =>
-        ((long)Math.Round(p.X * 100), (long)Math.Round(p.Y * 100));
+    /// <summary>The ends of the drawing's arcs and circles, asked by distance: a point within a hundredth of a unit of one is on a curve.</summary>
+    private sealed class CurveEnds
+    {
+        private const double Near = 0.01;
+        private readonly Dictionary<(long, long), List<DxfPoint>> _cells = new();
+        private static (long, long) Cell(DxfPoint p) => ((long)Math.Floor(p.X), (long)Math.Floor(p.Y));
+        public void Add(DxfPoint p)
+        {
+            var c = Cell(p);
+            if (!_cells.TryGetValue(c, out var list)) _cells[c] = list = [];
+            list.Add(p);
+        }
+        public bool Contains(DxfPoint p)
+        {
+            var (cx, cy) = Cell(p);
+            for (long dx = -1; dx <= 1; dx++)
+                for (long dy = -1; dy <= 1; dy++)
+                    if (_cells.TryGetValue((cx + dx, cy + dy), out var list) && list.Any(q => LoopGeometry.Within(q.DistanceTo(p), Near))) return true;
+            return false;
+        }
+    }
 
     private static void AddColumn(
-        PlanGeometrySet result, PlanLoop loop, PlanClassificationOptions options, HashSet<(long, long)> curvePoints)
+        PlanGeometrySet result, PlanLoop loop, PlanClassificationOptions options, CurveEnds curvePoints)
     {
         var box = LoopGeometry.MinAreaBox(loop.Points);
         double longSide = Math.Max(box.Length, box.Thickness);
@@ -2056,7 +2088,7 @@ public static class StructuralPlanClassifier
         // 160 chamfered columns into 10"-diameter circles, while every arc on a column layer in
         // the whole drawing set measures 16", 24" or 30" and no 10" circle exists anywhere.
         // Whether an arc was used is a fact about the drawing, not an inference from its shape.
-        int onCurve = loop.Points.Count(p => curvePoints.Contains(Quantise(p)));
+        int onCurve = loop.Points.Count(p => curvePoints.Contains(p));
         bool round = loop.Points.Count > 0 &&
                      onCurve >= loop.Points.Count * 0.8 &&
                      longSide > 0 && (longSide - shortSide) / longSide < 0.10;

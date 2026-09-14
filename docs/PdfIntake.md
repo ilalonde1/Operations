@@ -1,11 +1,11 @@
 # PDF intake — what it does today, and what it leaves on the page
 
-## 0. START HERE (state as of 2026-09-13, after steps 47 and 54–58 and completion-plan WP1–WP5 — 207 of 292 sets build from the PDF alone)
+## 0. START HERE (state as of 2026-09-14, after steps 47 and 54–61 and completion-plan WP1–WP5 — 207 of 292 sets build from the PDF alone)
 
 A session picking this up cold reads this section, then the completion plan
 (`docs/architecture/Kor.Operations.EngineeringTools.PdfIntake.plan.md` — what "complete" means, the
 packages, and where each stands), then the last three step sections (§54–§56). §1–§52 are the
-record of how each rule was arrived at, read when a rule is being changed. §67 is the latest step.
+record of how each rule was arrived at, read when a rule is being changed. §70 is the latest step.
 
 **What this is.** A PDF ingestor: one ingestion point (`DrawingIntake.ReadSheet` → `PdfOnlyBuild`)
 that reads a drawing set and hands its geometry to outlets — the ETABS `.e2k` today, the DXF as a
@@ -3274,6 +3274,10 @@ frame; a second build is byte-identical.
 WHAT THIS DOES NOT: `model-to-page` and `pdf-overlay --mark` read `$INSBASE`, now (0, 0), so a
 point in a view is a point on the page directly — `TheInstrumentsShareTheReadersFramesTests`
 asserts it; a page whose media box does not start at (0, 0) (a cropped PDF) keeps its own offset.
+A sheet that stands on no grid stacks by its frame — so what its frame IS decides what stands under
+what, and this step changed that for every set with unplaced sheets: the six-set gate could not see
+it because all six sets stand on grids (found by run 7 against run 8, §68: 128 sets with the same
+storeys and the same placement composed differently).
 
 ## 65. Step 57, 2026-09-13: the adversarial audit of steps 44–56, answered
 
@@ -3398,3 +3402,165 @@ WHAT THIS DOES NOT: a post drawn as a small filled square on a wood-frame plan (
 size floor decides); a column drawn as a triangle (none seen on 293 sets); a four-cornered shape
 that is a hatch cell or an arrowhead (the harness holds none, and this rule counts corners only);
 what a wood-frame house's model should hold at all — a question for the plan.
+
+**Corrected by run 9 (§70).** The rule as shipped was too wide, and the six harness sets could
+not say so: run 9 over the corpus on this step alone took 113,069 columns to **65,106**, moved 144
+sets' compositions, and made ten yardsticks worse against one better (31048-01: 74 of 449 within
+100 mm → 15 of 48; 31017-01: 161 of 1,237 → 47 of 204). A PDF driver draws a filled rectangle as
+TWO triangles on its diagonal, and many sets' columns — and 01389's grey wall pieces, 560 × 152 mm,
+which is what its 139 "columns" were: not a bearing-wall symbol, as §67 first said from one look —
+arrive that way. Two filled triangles of one colour sharing an edge whose union is a convex
+quadrilateral are one shape (`TriangleTwins`, step 61); a lone triangle is a symbol's, as here.
+
+## 68. Step 59, 2026-09-13 night: what moved between two runs is classed by the first thing that changed — and the yardstick's frame is judged by support, never by the order of our columns
+
+**Measured first.** Run 8 against run 7, set by set: 236 of 293 build from 207, and the columns
+113,069 from 104,761. The 29 new sets carry 7,059; the 207 sets both runs built moved +1,249 net,
+**149 of them changed count** — while the per-sheet column sum over the 8,697 sheets moved by
+seven (271,274 → 271,267: the READING did not change; the composition did). That question needed
+an instrument, and the python that answered it was thrown away for one: `corpus-query diff
+<before-sets.csv> --ledger <after>` (`CorpusDiff`), which puts every set in ONE class by the first
+thing that changed — a model gained or lost, its storeys, which sheets stand on the grid, or with
+both the same the composition — with the columns, walls and plates each class moved and the
+yardstick's verdict where a set has one. Run 7 → run 8 reads: NewModel 29; Storeys 34 (step 47's
+words on sets that already built: 30840-01 2 → 6 storeys); Placement 11; **Composition 128**
+(−1,592 columns, +1,808 walls, +40 plates; yardsticks 14 better / 8 worse / 16 same, 5,678 of
+12,068 → 5,865 of 12,197 within 100 mm); Unchanged 91.
+
+**The class the six-set gate could not see.** The 128 are the page frame (§64): a sheet that
+stands on no grid stacks by its frame, and the frame moved from the content centroid to the page.
+All six harness sets stand on grids, so the gate read the page frame as a pure translation and it
+was — for placed sheets. §64 now says so under WHAT THIS DOES NOT. On the yardsticks the page
+frame is the better stacking (13 better, 7 worse among the 41 Composition sets with one; plates
+556 → 586 on them), and the 8 worse are named in the table for the next reading step.
+
+**And the yardstick's own ruler had moved.** Four sets were Unchanged to the member and their
+yardstick verdict differed (31174-01: 8 of 64 supported, then 5). `ModelYardstick.Register` took
+the fullest bin of PAIR votes with `MaxBy`, whose tie fell to whichever bin our columns voted first
+— the order the model lists them, which steps 54–57 changed — and a bin's votes count pairs, so
+three readings of one column out-voted three columns. It is the rule of §62 now: every bin within
+one vote of the fullest is refined to its median and judged by its SUPPORT; a tie in support goes
+to the tighter cluster, then the smaller move. `TheYardsticksFrameIsJudgedBySupportAndNeverByTheOrderOfOurColumns`
+fails on the old code (proved by running it against the stash) and passes on the new. Every corpus
+yardstick number before this step was measured with the old ruler; run 9's `--reuse` pass
+re-measures.
+
+**F22 on the way.** `corpus-query plan-titles` split a sheet's DXF files on `;` where the writer
+joins with ` | `; one splitter now (`CorpusAnalyzer.DxfFilesOf`), the writer's separator declared
+beside it, `ASheetsDxfFilesComeBackAsTheWriterJoinedThem`.
+
+WHAT THIS DOES NOT: why any one set moved (the ledger holds counts; `dxf-inspect --members` on
+two builds does); a placement that changed to the same COUNT of different sheets (reads as
+Composition); the sheet ledgers are not banked beside the set ledgers (the DB has them per run,
+`analysis.IntakeSheet`), so the reading line of `diff` prints only against a live corpus folder.
+
+## 69. Step 60, 2026-09-13 night: a stick file that is another job's; a title may run two lines; the set's own order of its floor words
+
+**Measured first.** The 39 sets that read no storey after step 47, one by one through the ledger.
+**16 are one file**: `01783-01 2026-02-23 Bean Around The World Lytton Stickfile.pdf`, 878,068
+bytes, filed under 00904-01, 00966-06, 01323-03, 01749-01 … 01811-01 and 31237-01 — someone's
+copy landed in sixteen other jobs' `05 Stickfile` folders. The census of 2026-09-11 had flagged
+exactly this (plan §1a: "one job's stick file copied into 16 others") and the analyzer built all
+seventeen anyway, for three days of runs: a flag nobody acts on is a count, not a rule. 31089-01 (Burke Mountain parcel 5) is
+eleven townhouse buildings, two sheets each, two plans a sheet, titled "FOUNDATION PLAN" and
+"GROUND FLOOR SHOWING" over "MAIN FLOOR FRAMING OVER" — the word PLAN in neither floor title,
+each line underlined, the sheet's own title "BUILDING 1 FOUNDATION AND FLOOR PLANS" naming no
+storey. 30768-01's 18 plans carry no title at all ("-"); 30888-01's and 30980-01's titles are the
+title block's other words ("HILLS ARCHITECTURE DUFFY DRAWING LANDSCAPE PERMIT…", "PLAN SLAB MIXED
+USE SEE DEVELOPMENT") — the title reader's, next step.
+
+**Three rules.** (1) *A stick file that is byte-identical to another job's is that job's.* The
+analyzer groups by length and name, hashes only a group's members (the mirror's copies), and reads
+the file once under the job whose number its name carries; the other rows say
+"the stick file of another job: byte-identical to 01783-01's (…)" and build nothing
+(`AnotherJobsFile`; `AStickFileThatIsAnotherJobsIsReadOnceTests`). The population is jobs, not
+copies: 293 − 16 = **277**. (2) *A title may run two lines, and a floor named by a word with a
+framing-over clause names a plan.* `SheetViews.Titles`: an underlined line that names no plan by
+itself takes the line directly above it (within two heights, sharing its span) as its first line
+when the two together do, and that first line is then no title of its own; a stroke with another
+line of text between it and a line underlines that other line. `NamesAPlan` judges the part before
+the framing-over clause and accepts a word floor, a basement or a loft word
+(`ATitleMayRunTwoLinesAndAWordFloorWithItsFramingOverNamesAPlan`). (3) *The set's own order of its
+floor words.* The row says MAIN and GROUND are both 1 — true of a set that uses one of them — and
+31089-01 uses GROUND, MAIN and UPPER as three floors whose order its clauses state. Where the
+titles chain floor words that way ("GROUND … SHOWING MAIN", "MAIN … SHOWING UPPER") the chain
+ranks them from 1 upward, anchored by a number shown over the top word where there is one, and a
+word the chain never names keeps the row's level; two stories about one word leave the row alone
+(`DrawingVocabulary.WithFloorWordsRankedBy`; the ladder and the composer rank from the same view
+names; `TheFramingOverClausesRankTheSetsFloorWords`). `PlanSheetNaming.Parse` takes a vocabulary
+outright now, and `TitleOf` strips only a `.dxf` (a sheet number holds a dot).
+
+**Measured.** 31089-01: 45 views written where 21 were (four a building: foundation, ground, main,
+upper), **3 storeys L1–L3** where none was, a model where none was — 0 walls, 0 columns, wood
+frame, honestly empty; its eleven buildings are numbered, which the building tag does not read
+(letters only), so they stack at one place: the next class. The 16 copies build nothing and say
+whose file they hold.
+
+WHAT THIS DOES NOT: a copy under a different NAME (grouped by name first, never hashed); numbered
+buildings (BUILDING 1 … 11); a basement in a word chain (a basement word is a parkade level by its
+own rule); a title of three lines; the title reader's failures (30768-01's "-", 30888-01's and
+30980-01's word salad) — the next step; what a wood-frame townhouse's model should hold.
+
+## 70. Step 61, 2026-09-14 early: the audit's queue closed — and what closing it found
+
+§65 queued F8, F10–F22 and F24–F25 as "a line of work with its own measurement each". Each is
+done, and three of them found something the audit had not said.
+
+| # | The fix | Test |
+|---|---|---|
+| F8 | dash offsets measured from the direction's first segment along its normal, not from the page origin along each dash's own (`DashedLineJoiner`) | `ADashedLineIsJoinedWhereverThePageOriginIsTests` |
+| F10 | `PlacedMembers.Near` by distance (Euclidean, to the micron): two readings 0.75" east and 0.75" north are two columns | `TwoReadingsOfAColumnMoreThanAnInchApartDiagonallyAreTwoColumns` |
+| F11 | **the differential over entity order**: `DxfSheet.Reversed()`; the six sets composed as they are and with every view's entities reversed must be the same structure (Slow, beside the shifted one) | `TheSameDrawingsInAnotherOrderBuildTheSameStructureTests` |
+| F12 | a loop vertex is on a curve when a curve's end is within a hundredth of it — by distance, not a cell key (`CurveEnds`) | (the frozen classifier and the six-set gate) |
+| F13 | a node, a joint or a dash gap AT the tolerance is within it (`Within`) in `PlanLoopBuilder.NodeOf`, the composer's `PointAt`, the joiner's gap; the yardstick's 100 mm likewise | (the six-set gate) |
+| F14 | the two `dxf.pdf` slab rows reach `Classify` on the one ingestion point; proved by breaking: a 25.8 sq m outline is no floor at the row's 37.16 and a floor at 1; the bridge row likewise | `ASlabRowReachesTheReaderThroughTheOneIngestionPoint` |
+| F15 | the grid is drawn with one pen EITHER way: a 1 pt tendon along a 3 pt grid is not the grid | `TheGridIsDrawnWithOnePenTests` |
+| F16 | the preferred export path refuses our own output and a columnless shell, as the model folder's did | `OurOwnOutputIsNeverTheYardstickTests` |
+| F17, F18 | `ModelDiff`: a wall carries its extent along each axis (a wall turned in place is lost and gained); every member takes ONE partner (a second copy is gained) | `ATurnedWallAndASecondCopyAreSeen` |
+| F19 | a set with none of ours inside her footprint and columns of hers on the shared storeys is a complete recall miss, said so in the summary and counted in `corpus-query summary` | — |
+| F20 | "on her wall" is the distance to the wall's edges (`DistanceToWall`), not to its box | — |
+| F21 | `grid-names`' (0, 0) clause is a question, not a diagnosis: the model does not say which sheet drew a member | — |
+| F22 | one splitter for a sheet's DXF files (§68) | `ASheetsDxfFilesComeBackAsTheWriterJoinedThem` |
+| F24 | the unit differential compares every joint's place to a ten-thousandth of an inch, every member's kind, storey and joints, and both D and B | `AModelIsTheSameInInchesAndMillimetresTests` |
+| F25 | the ledger round trip asks the typed readers and asserts record equality | `TheCorpusLedgerRoundTripsTests` |
+
+**What closing them found.** (1) *F24, the moment it compared positions*: the same two column
+outlines 1.5 mm apart made one column at 112.06" in the inch model and at 112.03" in the
+millimetre one. `DashedLineJoiner.Join`'s across-the-line tolerance was 0.15 of whatever the
+drawing counts in — 3.8 mm on an inch drawing, a hair on a millimetre one — a length written as a
+literal; it is `DashOffsetTolerance`, 0.15 INCH, converted with the rest. (2) *F11's differential,
+before it ran*: the yardstick's frame was order-dependent (§68). (3) *The two-line title of §69, on
+31168*: a view the old reader never split off — "LEVEL 40 (UPPER ROOF) PLAN CONCRETE OUTLINE
+BLDG B", drawn under a two-line title on S2.34.1, whose content had been going to the LEVEL 38
+view beside it — and with L40 named by a plan the ladder's roof rule fired: building C's "ROOF
+PLAN" put a ROOF storey above tower B's 40th floor. *A building's roof plan names that building's
+roof*: a tagged roof plan names `<TAG>-ROOF` after that building's highest level, and only an
+untagged roof plan names the set's ROOF (`StoreysFromPlans`). (4) *Run 9, banked while this ran*:
+step 58 alone over the corpus lost 47,963 columns on 144 sets and made ten yardsticks worse — a
+PDF driver draws a filled rectangle as two triangles on its diagonal (§67's correction). *Two
+filled triangles of one colour that share an edge and whose union is a convex quadrilateral are one
+shape*: the first carries the four corners, the second takes the first's fate outright — the same
+reason, the same object (`TriangleTwins`; the fixture holds a 600 mm column drawn so and a lone
+triangle beside it). (5) *F11's differential, the first time it ran honestly* (its first cut broke
+every R12 polyline into VERTEX entities and lost everything): all six sets built other walls with
+their entities reversed — 31168: 473 lost, 241 gained — because `PlanLoopBuilder` seeded its walk
+and numbered its nodes in arrival order. *The order the entities came in is not information about
+the building* — and the one cut tried, a canonical geometric order (each segment from its lesser end,
+sorted by that end then the other), was **reverted the same night**: it moved every set's walls
+against the bank (31130: 117 lost / 99 gained), was still not the same under reversal on 31065
+(6 columns), and moved a plate under the page-shift differential that had been green — an order
+keyed on floating coordinates is the frame class of §63 by another door. The differential is in
+the suite **skipped, red, with its numbers in the skip reason**; the next cut needs a rule for
+which ring a shared edge belongs to, not a sort. That is the next step, and it is not small.
+
+**Measured.** Fast suite 1,284 green. Six-set gate byte-identical against the bank re-banked in steps 59-60 (31065, 31168, 31170-arch, each with its reason there), the shifted differential green on all six, both at 10:14 on 2026-09-14. The
+entity-order differential: red on all six, skipped with its numbers, the diffs under
+`TestResults/reversed/`. Run 9 (step 58 alone) banked (§1b). Run 10 on steps 58–61 is the next
+count. And the night itself: the gate launched at 23:35 did not run until 09:41 — the session went
+idle behind a queued background task and nothing after it ran; steps 59–61 sat uncommitted for ten
+hours. A background wait is not a wait if nothing wakes the session; that is now a feedback rule.
+
+WHAT THIS DOES NOT: F23 was closed in §65 with the collection; a permutation that is not a
+reversal (the reversed differential is one draw); a roof plan tagged for a building whose plans
+the chain names above their highest (covered, as before); the yardstick's residual statistics
+(`<= 100` on a distribution, not a place decision).

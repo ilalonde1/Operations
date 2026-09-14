@@ -15,6 +15,29 @@ namespace Kor.Operations.EngineeringTools.Core.Tests.Intake;
 /// </summary>
 public sealed class DrawingIntakeTests
 {
+    /// <summary>
+    /// Audit F14 (step 61, 2026-09-13): the two slab rows (dxf.pdf's bridge and minimum plate area) were
+    /// loaded into the options and never handed to Classify on the one ingestion point, so a row could not
+    /// change a slab decision there. A closed outline of 150 pt at 1:96 (5.08 m square, 25.8 sq m) with the
+    /// fixture's column standing in it is no floor at the compiled 37.16 sq m minimum and a floor at one of
+    /// 1 sq m - through DrawingIntake, which is where the rows arrive. WHAT THIS COVERS: the minimum-area
+    /// row and the bridge row reaching the reader. WHAT IT DOES NOT: the slab reader's own rules beyond these two.
+    /// </summary>
+    [Fact]
+    public void ASlabRowReachesTheReaderThroughTheOneIngestionPoint()
+    {
+        using var doc = PdfDocument.Open(Pdf(floor: true));
+        var facts = DocumentFacts.From(doc);
+        // four separate edges with a 135 mm gap at one corner: the loop closes through the bridge row (152 mm) and is
+        // then too small for the area row (25.8 of 37.16 sq m); lowered, it is a floor; with the bridge below the gap, none
+        var byDefault = DrawingIntake.ReadSheet(doc, 1, new(96, PdfIntakeOptions.Default), facts);
+        var lowered = DrawingIntake.ReadSheet(doc, 1, new(96, PdfIntakeOptions.Default with { MinSlabAreaMm2 = 1_000_000 }), facts);
+        var unbridged = DrawingIntake.ReadSheet(doc, 1, new(96, PdfIntakeOptions.Default with { MinSlabAreaMm2 = 1_000_000, SlabEdgeBridgeMm = 100 }), facts);
+        Assert.Empty(byDefault.Geometry.Slabs);
+        Assert.Single(lowered.Geometry.Slabs);
+        Assert.Empty(unbridged.Geometry.Slabs);
+    }
+
     [Fact]
     public void TheRecordRetainsWhatTheFixtureDrewAndReportsAfterTheDocumentCloses()
     {
@@ -136,9 +159,9 @@ public sealed class DrawingIntakeTests
 
     // An ordinary PDF content stream makes the exact path order and annotation dictionaries
     // reviewable without a binary fixture or another PDF library.
-    private static byte[] Pdf(bool polygon = false)
+    private static byte[] Pdf(bool polygon = false, bool floor = false)
     {
-        const string content = """
+        string content = """
             0 G 0 g 0.5 w
             750 600 300 100 re S
             750 680 m 1050 680 l S
@@ -159,7 +182,7 @@ public sealed class DrawingIntakeTests
             200 300 m 200 780 l S
             300 300 m 500 350 l S
             1 1 1 rg 100 100 10 10 re f
-            """;
+            """ + (floor ? Environment.NewLine + "0 G 0.5 w 330 330 m 480 330 l S 480 330 m 480 480 l S 480 480 m 330 480 l S 330 476 m 330 330 l S" : "");   // four edges, a 4 pt (135 mm) gap at one corner
         string annotation = polygon
             ? "<< /Type /Annot /Subtype /Polygon /Rect [600 100 620 120] /Vertices [600 100 620 100 620 120 600 120] /C [1 0 0] /Contents (Check this column) /T (Ian) >>"
             : "<< /Type /Annot /Subtype /Text /Rect [600 100 620 120] /Contents (Check this column) /T (Ian) >>";

@@ -29,6 +29,15 @@ public sealed class PlanLoopBuilder
 
     public Result Build(IEnumerable<DxfSegment> segments)
     {
+        // KNOWN, MEASURED, NOT FIXED (audit F11, step 61, 2026-09-14): the walk is seeded in arrival order and
+        // the nodes are numbered by it, so the same drawings with their entities reversed build other walls on
+        // every one of the six sets (TheSameDrawingsInAnotherOrderBuildTheSameStructureTests, skipped red:
+        // 31168 473 walls lost / 241 gained, 31065 134 / 161). TRIED AND REVERTED THE SAME NIGHT: one canonical
+        // geometric order (each segment from its lesser end, sorted by that end then the other). It moved every
+        // set's walls (31130: 117 lost / 99 gained against the bank), was still not the same under reversal on
+        // 31065 (6 columns), and moved a plate under the page-shift differential that had been green - an order
+        // keyed on floating coordinates is the frame class of s63 by another door. The next cut needs a rule
+        // for which ring a shared edge belongs to, not a sort; see s70.
         var segs = segments.ToList();
         if (segs.Count == 0)
             return new Result(Array.Empty<PlanLoop>(), Array.Empty<IReadOnlyList<DxfPoint>>());
@@ -48,7 +57,7 @@ public sealed class PlanLoopBuilder
         {
             var key = ((long)Math.Round(p.X / _joinTolerance), (long)Math.Round(p.Y / _joinTolerance));
             int nearest = -1;
-            double nearestDistance = _joinTolerance;
+            double nearestDistance = double.MaxValue;                          // a node AT the tolerance is within it (audit F13: Within, to the micron)
             for (long dx = -1; dx <= 1; dx++)
             for (long dy = -1; dy <= 1; dy++)
             {
@@ -58,6 +67,7 @@ public sealed class PlanLoopBuilder
                     // and a tie between two nodes goes to the earlier one, not to whichever cell the
                     // search happened to visit first (the cells' order is the frame's)
                     double d = nodePoints[id].DistanceTo(p);
+                    if (!LoopGeometry.Within(d, _joinTolerance)) continue;
                     if (d < nearestDistance - 1e-9 || (Math.Abs(d - nearestDistance) <= 1e-9 && nearest >= 0 && id < nearest)) { nearestDistance = d; nearest = id; }
                 }
             }

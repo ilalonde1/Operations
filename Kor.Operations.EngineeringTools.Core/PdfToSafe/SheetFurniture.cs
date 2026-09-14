@@ -198,11 +198,12 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
             /// <summary>
             /// THE GRID IS DRAWN WITH ONE PEN (step 53): a stroke on a grid axis is the grid only when its pen is
-            /// no heavier than <see cref="AxisPenHeavierBy"/> times the grid's own; heavier is something drawn
+            /// within <see cref="AxisPenHeavierBy"/> times the grid's own, either way (audit F15, step 61: a
+            /// tendon drawn LIGHTER than a heavy grid was the grid too); heavier or lighter is something drawn
             /// along the grid - a tendon, a beam - and is read as what it is. Unknown pen: every stroke on the
             /// axis is the grid, as before.
             /// </summary>
-            public bool IsGridPen(double lineWidthPts) => AxisPenPts <= 0 || lineWidthPts <= AxisPenPts * AxisPenHeavierBy;
+            public bool IsGridPen(double lineWidthPts) => AxisPenPts <= 0 || (lineWidthPts <= AxisPenPts * AxisPenHeavierBy && lineWidthPts >= AxisPenPts / AxisPenHeavierBy);
 
             /// <summary>The underlines on the sheet. A LINE matching one is an underline; a shape centred on one is not.</summary>
             public IReadOnlyList<Underline> Underlines { get; init; } = [];

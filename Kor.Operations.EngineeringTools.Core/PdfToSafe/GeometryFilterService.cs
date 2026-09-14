@@ -202,6 +202,13 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 if (s.IsFilled && !s.IsStroked && IsPaper(s.Color)) paperFills.Add((i, s.Points));
                 else if (!s.IsFilled && !s.IsStroked && s.IsClipping && s.PathOrdinal >= 0) clipPieces.Add((i, s.PathOrdinal, s.Points));
             }
+            // A FILLED SHAPE MAY ARRIVE AS TWO TRIANGLES (intake step 61, 2026-09-14): a PDF driver tessellates a
+            // filled rectangle into two triangles sharing its diagonal, and run 9 - step 58's "a filled shape of
+            // three points is a symbol's triangle" over the whole corpus - lost 47,963 columns on 144 sets (31048-01
+            // 2,640 -> 57 against 449 of hers; 31017-01 2,175 -> 596) that the six harness sets, drawn with four
+            // corners, never showed. Two filled triangles of one colour that share an edge and whose union is a
+            // convex quadrilateral are ONE shape: the first carries the four corners, the second is its other half.
+            var twins = TriangleTwins.Pair(rawSubpaths);
             var deferredPaper = new List<int>();
             var columnByShape = new List<bool>();          // parallel to result.Columns: read by shape (a cell candidate) or by declared size
             var deferredNoInk = new List<int>();
@@ -229,7 +236,14 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     Fate(labelled ? PathReason.BecameFooting : PathReason.FootingBoxNoLabel, footingIndex);
                     continue;
                 }
-                var pts = sub.Points;
+                if (twins.OtherHalfOf.TryGetValue(pathIndex, out int firstHalf))
+                {
+                    // the other half's fate IS its first half's - the same reason, the same object: the shape was judged whole
+                    var whole = fates?.LastOrDefault(f => f.PathIndex == firstHalf);
+                    if (whole is not null) fates!.Add(whole with { PathIndex = pathIndex });
+                    continue;
+                }
+                var pts = twins.Union.TryGetValue(pathIndex, out var quad) ? quad : sub.Points;
                 var color = sub.Color;
                 bool isClosed = sub.IsClosed;
 

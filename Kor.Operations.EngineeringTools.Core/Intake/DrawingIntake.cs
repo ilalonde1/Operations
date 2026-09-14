@@ -235,7 +235,10 @@ public static class DrawingIntake
                 request.MarkupOnly, options.ColumnMaxSizeMm, options.ColumnMinDimMm, options.ColumnMaxAspect,
                 furniture.Scaled(scaleFactor), thinnedFates,
                 options.MinWallThicknessMm, options.MaxWallThicknessMm, options.MinWallLengthMm, options.MinWallAspect,
-                footingPieces);
+                footingPieces,
+                // audit F14 (step 61): the two slab rows were loaded into the options and never handed to the reader here,
+                // so a row could not change a slab decision on the one ingestion point; PdfPlanReader passed them all along
+                slabEdgeBridgeMm: options.SlabEdgeBridgeMm, minSlabAreaMm2: options.MinSlabAreaMm2);
             pathFates = RemapToPopulation(thinnedFates, thinnedKept, fullKept, content.Paths.Count, full.Paths.Count);
             if (!request.MarkupOnly)
                 geometry.GridAxes.AddRange(grid.Axes.Select(a => new GridAxis(a.Name, a.Vertical, a.At * scaleFactor)));

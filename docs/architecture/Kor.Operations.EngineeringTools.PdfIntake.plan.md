@@ -1,6 +1,6 @@
 # PDF intake → ETABS — Completion Plan
 
-**Status:** Rev 3, 2026-09-13 (steps 47 and 49–58 added to §8, 3b–3j) — WP1–WP5 landed overnight on Ian's go-ahead ("go through this all,
+**Status:** Rev 3, 2026-09-14 (steps 47 and 49–61 added to §8, 3b–3m) — WP1–WP5 landed overnight on Ian's go-ahead ("go through this all,
 step by step, and finish it overnight"): commits `8fccbc25` (WP3), `3f3f82b9` (WP2), `aba7d9ff`
 (WP4), `69e554b5` (WP5), each gated by the six byte-identical and the fast suite; WP5's remaining
 conventions are counted by a test, not by this document. §8 is what needs Ian. Rev 2 (2026-09-11)
@@ -62,6 +62,7 @@ Today's harness is 6 of those 292. The one-job yardstick (31168) is 1 of 66.
 | run 6 (2026-09-12, steps 50–52; `ledger-sets-2026-09-12-run6-step51.csv`) | **207 of 293** build (a 293rd set appeared on the share; 31168 back); 2,031 of 4,323 views on the grid by name (47%); 749 of 2,401 storeys with a plate; 66 sets have a yardstick, 48 share a storey: **49% / 53%** — the scope rule, the sheets that say what they are, and the halves through a key plan; 9 sets at 75–99% (4 in run 3) |
 | run 7 (2026-09-12 22:02 → 09-13 00:33, step 53; `ledger-sets-2026-09-12-run7-step53.csv`; DB run `9b03d0ab`) | **207 of 293** build; 1,821 of 3,968 plan views placed on the grid by name (46% — `corpus-query summary`'s count; run 6's 2,031 of 4,323 was a scratch count over sheet rows, not comparable); 749 of 2,401 storeys with a plate; 104,761 columns from 105,023 (262 more anchors and fittings stood down); 48 yardstick sets: **49% / 53%** (6,344 of 13,024 judged, from 13,053 — the same 6,344 matched, 29 fewer of ours judged) — step 53 was a precision step on 31202 and reads as one on the corpus |
 | run 8 (2026-09-13 17:45 → 20:08, steps 47–57, before step 58; `ledger-sets-2026-09-13-run8-step57.csv`; DB run `e1e33cc6`) | **236 of 293** build (from 207 — step 47's words; 39 still read no storey, 17 no plan with structure, 1 no slab edge); 1,892 of 3,968 plan views placed on the grid by name (48%); 910 of 2,605 storeys with a plate (35%); 46,617 walls, 113,069 columns from 104,761 — 7,059 on the 29 new sets (the small jobs' filled symbols step 58 now discards; 01389 alone 248 → 0) and +1,249 net on the 207 sets both runs built, **149 of which changed count under steps 54–57** (which sheets stand on the grid decides which columns are in the model; 30924-01 3,195 → 1,947, 30840-01 397 → 1,385 — a per-set differential over the two ledgers is owed before the next step); run 9 on step 58 is the next count; 49 yardstick sets: **50% / 55%** (6,617 of 13,312 judged; theirs 6,544 of 11,837) from 49% / 53% — the 29 new sets brought one yardstick and a slightly higher share |
+| run 9 (2026-09-13 20:17 → 22:37, step 58 alone on run 8's code; `ledger-sets-2026-09-13-run9-step58.csv`; DB run `67570bff`) | **236 of 293** build (the same 236); columns **65,106 from 113,069**, plates 697 of 2,605 from 910; `corpus-query diff` run 8 → 9: Composition 144 (−44,201 columns, −197 plates; yardsticks 1 better / 10 worse / 10 same, 789 of 3,487 → 521 of 1,622 judged), Placement 8, Unchanged 141; 47 yardstick sets: **56% / 52%** (6,253 of 11,226; theirs 6,200 of 11,836) — the survivors match better and 268 matched columns are gone: step 58 discarded the halves of columns a PDF driver draws as two triangles (31048-01 2,640 → 57 against 449 of hers). The six harness sets, drawn with four corners, could not show it. Corrected in step 61 (§70: two triangles that are one shape); run 10 measures it |
 
 **The work order is a count now.** 1. Storeys: the 67 sets whose plans name their storeys with
 words, and 935 views the composer can put on no storey by name (step 47, §8 item 5). 2. Views on
@@ -314,6 +315,28 @@ Revit route.
    columns), inside her footprint 331/331 unchanged. Run 8 banked (17:45 → 20:08, steps 47–57):
    **236 of 293**, 50% / 55%. NEXT: the 149 sets whose column count moved under steps 54–57
    (per-set differential of run 7 vs run 8); run 9 on step 58; the 39 no-title sets; F8/F10/F14.
+3k. **Step 59, 2026-09-13 night** (§68): `corpus-query diff` — every set in one class by the
+   first thing that changed; run 7 → 8 = NewModel 29, Storeys 34, Placement 11, **Composition 128**
+   (the page frame stacking unplaced sheets; the six-set gate cannot see it — all six stand on
+   grids; §64 says so now), Unchanged 91; per-sheet reading unchanged (271,274 → 271,267). The
+   yardstick's frame was ORDER-DEPENDENT (`MaxBy` on pair votes; four Unchanged sets' verdicts
+   moved) — judged by support now, ties to geometry; every yardstick number before this was the
+   old ruler. F22 closed. NEXT: run 9 `--reuse` to re-measure with the new ruler.
+3l. **Step 60, 2026-09-13 night** (§69): 16 of the 39 storey-less sets are ONE file (01783-01's,
+   copied into 16 jobs' folders) — read once, the copies say so; the population is **277 jobs**.
+   A title may run two lines; a word floor with a framing-over clause names a plan; the set's
+   framing-over clauses rank its floor words (GROUND 1, MAIN 2, UPPER 3 on 31089-01, which builds
+   3 storeys now). NEXT: the title reader's failures (30768-01 "-", 30888-01, 30980-01); numbered
+   buildings; run 10.
+3m. **Step 61, 2026-09-14 early** (§70): the audit's queue closed — F8, F10–F22, F24–F25, each
+   with a test; the entity-order differential (F11) beside the shifted one; F24 found a unit
+   literal (the joiner's 0.15 across-the-line tolerance); the two-line title split a missed L40
+   view off 31168 and exposed the ladder's global roof rule — a building's roof plan names that
+   building's roof now. Run 9 showed step 58 too wide (−47,963 columns): two triangles that are one
+   shape (`TriangleTwins`). The entity-order differential is RED on all six (skipped, numbers in
+   the skip reason) — the loop builder's arrival-order walk; a canonical sort was tried and
+   reverted. NEXT: run 10 on steps 58–61; the ring-ownership rule for the loop builder; the title
+   reader's failures; numbered buildings; the Codex audit of steps 57–61.
 4. **WP6** — one model in front of Andrea (31170's, or whichever the ledger ranks best of the
    architects' sets). Ian's call when.
 5. **Step 47**, the next reading rule, from the corpus. `takeoff corpus-query plan-titles` on the

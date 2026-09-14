@@ -61,7 +61,17 @@ public sealed class EveryPathHasExactlyOneFateTests
                     break;
                 case PathReason.BecameColumnByDeclaredSize:
                 case PathReason.BecameColumnByShape:
-                    Assert.Equal(PolygonProcessor.Centroid(path.Points), geometry.Columns[fate.ObjectIndex!.Value]);
+                    // a shape a PDF driver drew as two triangles (step 61): both halves are the one column, at the
+                    // centre of the shape they make together
+                    var halves = fates.Where(f => f.Reason == PathReason.BecameColumnByShape && f.ObjectIndex == fate.ObjectIndex).Select(f => cases[f.PathIndex].Path.Points).ToList();
+                    if (halves.Count == 2)
+                    {
+                        var all = halves.SelectMany(h => h).ToList();
+                        var col = geometry.Columns[fate.ObjectIndex!.Value];
+                        Assert.Equal((all.Min(q => q.X) + all.Max(q => q.X)) / 2, col.X, 1e-6);
+                        Assert.Equal((all.Min(q => q.Y) + all.Max(q => q.Y)) / 2, col.Y, 1e-6);
+                    }
+                    else Assert.Equal(PolygonProcessor.Centroid(path.Points), geometry.Columns[fate.ObjectIndex!.Value]);
                     break;
                 case PathReason.EmittedAsLine:
                     Assert.Same(path.Points, geometry.Lines[fate.ObjectIndex!.Value]);
@@ -198,6 +208,10 @@ internal static class FateFixture
         (Rect(600, 800, 63000, 30000), PathReason.BecameColumnByShape),
         // a filled triangle of column size: a symbol, not a column (step 58)
         (new RawSubpath([(70000, 30000), (70600, 30000), (70000, 30510)], true, (0, 0, 0), true, false, 0.5, false), PathReason.FilledTriangle),
+        // a 600 mm square column a PDF driver drew as two filled triangles on its diagonal: one column, the second
+        // triangle its other half (step 61); a lone triangle stays a symbol's
+        (new RawSubpath([(72000, 30000), (72600, 30000), (72000, 30600)], true, (0, 0, 0), true, false, 0.5, false), PathReason.BecameColumnByShape),
+        (new RawSubpath([(72600, 30000), (72600, 30600), (72000, 30600)], true, (0, 0, 0), true, false, 0.5, false), PathReason.BecameColumnByShape),
         // a spot-elevation target's two filled quadrants, corner to corner (step 49)
         (Rect(229, 229, 66000, 30000) with { Color = (0, 0, 0) }, PathReason.SymbolQuadrant),
         (Rect(229, 229, 66229, 30229) with { Color = (0, 0, 0) }, PathReason.SymbolQuadrant),

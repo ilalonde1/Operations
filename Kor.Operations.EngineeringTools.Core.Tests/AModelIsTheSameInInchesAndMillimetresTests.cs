@@ -48,7 +48,7 @@ public sealed class AModelIsTheSameInInchesAndMillimetresTests
         return lines;
     }
 
-    private sealed record Shape(int Columns, int Walls, IReadOnlyList<string> SectionsInInches, int Piers, int Joints);
+    private sealed record Shape(int Columns, int Walls, IReadOnlyList<string> SectionsInInches, int Piers, int Joints, IReadOnlyList<string> JointsInInches, IReadOnlyList<string> Placements);
 
     private static Shape Compose(string root, string tag, double unit, int insunits, string levelsUnit)
     {
@@ -68,12 +68,33 @@ public sealed class AModelIsTheSameInInchesAndMillimetresTests
         var sections = new List<string>();
         foreach (string raw in doc.LinesOf("FRAME SECTIONS").Concat(doc.LinesOf("WALL PROPERTIES")).Concat(doc.LinesOf("SLAB PROPERTIES")))
         {
-            var m = Regex.Match(raw, @"\b(?:D|WALLTHICKNESS|SLABTHICKNESS)\s+(-?[\d.]+)");
-            if (m.Success) sections.Add(N(double.Parse(m.Groups[1].Value, CultureInfo.InvariantCulture) / inch));
+            // every dimension the section states (audit F24: D AND B, not one of them), in inches to a ten-thousandth
+            foreach (Match m in Regex.Matches(raw, @"\b(D|B|WALLTHICKNESS|SLABTHICKNESS)\s+(-?[\d.]+)"))
+                sections.Add($"{m.Groups[1].Value} {N(double.Parse(m.Groups[2].Value, CultureInfo.InvariantCulture) / inch)}");
         }
         var piers = doc.LinesOf("AREA ASSIGNS").Select(l => Regex.Match(l, @"PIER\s+""([^""]+)""")).Where(m => m.Success).Select(m => m.Groups[1].Value).Distinct().Count();
-        int joints = doc.LinesOf("POINT COORDINATES").Count(l => l.TrimStart().StartsWith("POINT", StringComparison.Ordinal));
-        return new Shape(columns, walls, sections.OrderBy(s => s, StringComparer.Ordinal).ToList(), piers, joints);
+        // every joint's place in inches, and every member's kind, storey and joints (F24: positions and connectivity, not a count)
+        var joints = new List<string>();
+        var pointAt = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (string raw in doc.LinesOf("POINT COORDINATES"))
+        {
+            var m = Regex.Match(raw.TrimStart(), @"^POINT\s+""([^""]+)""\s+(-?[\d.]+)\s+(-?[\d.]+)");
+            if (!m.Success) continue;
+            string at = $"{N(double.Parse(m.Groups[2].Value, CultureInfo.InvariantCulture) / inch)},{N(double.Parse(m.Groups[3].Value, CultureInfo.InvariantCulture) / inch)}";
+            joints.Add(at); pointAt[m.Groups[1].Value] = at;
+        }
+        var placements = new List<string>();
+        var storeyOf = doc.StoreysByObject();
+        foreach (string raw in doc.LinesOf("LINE CONNECTIVITIES").Concat(doc.LinesOf("AREA CONNECTIVITIES")))
+        {
+            var m = Regex.Match(raw.TrimStart(), @"^(?:LINE|AREA)\s+""([^""]+)""\s+(\w+)\s+(?:\d+\s+)?((?:""[^""]+""\s*)+)");
+            if (!m.Success) continue;
+            var at = Regex.Matches(m.Groups[3].Value, @"""([^""]+)""").Select(x => pointAt.GetValueOrDefault(x.Groups[1].Value, "?")).OrderBy(x => x, StringComparer.Ordinal);
+            foreach (string storey in storeyOf.TryGetValue(m.Groups[1].Value, out var on) ? on : (IReadOnlyList<string>)["?"])
+                placements.Add($"{m.Groups[2].Value} {storey} {string.Join(" ", at)}");
+        }
+        return new Shape(columns, walls, sections.OrderBy(s => s, StringComparer.Ordinal).ToList(), piers, joints.Count,
+            joints.OrderBy(j => j, StringComparer.Ordinal).ToList(), placements.OrderBy(x => x, StringComparer.Ordinal).ToList());
     }
 
     [Fact]
@@ -90,13 +111,15 @@ public sealed class AModelIsTheSameInInchesAndMillimetresTests
             // the same column), an 8 in wall, one pier up the building
             Assert.Equal(1, inches.Columns);
             Assert.Equal(1, inches.Piers);
-            Assert.Contains("8", inches.SectionsInInches);
+            Assert.Contains("WALLTHICKNESS 8", inches.SectionsInInches);
 
             Assert.Equal(inches.Columns, millimetres.Columns);
             Assert.Equal(inches.Walls, millimetres.Walls);
             Assert.Equal(inches.Piers, millimetres.Piers);
             Assert.Equal(inches.SectionsInInches, millimetres.SectionsInInches);
             Assert.Equal(inches.Joints, millimetres.Joints);
+            Assert.Equal(inches.JointsInInches, millimetres.JointsInInches);   // every joint at the same place, to a ten-thousandth of an inch
+            Assert.Equal(inches.Placements, millimetres.Placements);          // every member the same kind on the same storey on the same joints
         }
         finally
         {

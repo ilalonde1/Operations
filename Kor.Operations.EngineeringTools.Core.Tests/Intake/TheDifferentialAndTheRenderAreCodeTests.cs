@@ -136,4 +136,43 @@ public sealed class TheDifferentialAndTheRenderAreCodeTests
             if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
         }
     }
+
+    /// <summary>
+    /// Audit F17 and F18 (step 61, 2026-09-13): a wall was its centre and its longest extent, so a wall
+    /// turned ninety degrees in place was the same wall; and each member matched ANY partner within
+    /// tolerance, so a second copy at the same place hid behind the first's partner. A wall carries its
+    /// extent along each axis and every member takes one partner. WHAT THIS COVERS: the turned wall as lost
+    /// and gained; the duplicated column as gained; the duplicated wall as gained. WHAT IT DOES NOT: a wall
+    /// moved along its own axis by less than 2 units; two members swapping places.
+    /// </summary>
+    [Fact]
+    public void ATurnedWallAndASecondCopyAreSeen()
+    {
+        string root = Path.Combine(Path.GetTempPath(), $"kor-diff-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(root);
+        try
+        {
+            var columns = new List<(string, double, double, string)> { ("KC1", 0, 0, "L2"), ("KC2", 6000, 0, "L2"), ("KC3", 0, 6000, "L2"), ("KC4", 6000, 6000, "L2") };
+            var areas = new List<(string, IReadOnlyList<(double, double)>, string, string)> { ("KW1", Box(-3000, -100, 3000, 100), "L2", "PANEL"), ("KF1", Box(0, 0, 6000, 6000), "L2", "FLOOR") };
+            string before = Path.Combine(root, "before.e2k"), turned = Path.Combine(root, "turned.e2k"), doubled = Path.Combine(root, "doubled.e2k");
+            File.WriteAllText(before, E2k(["L2"], columns, areas));
+            // the wall turned in place: the same centre, the same 6 m extent, along Y now
+            File.WriteAllText(turned, E2k(["L2"], columns, [("KW1", Box(-100, -3000, 100, 3000), "L2", "PANEL"), ("KF1", Box(0, 0, 6000, 6000), "L2", "FLOOR")]));
+            // a second copy of KC1 a millimetre away and a second copy of the wall
+            var doubledColumns = columns.Append(("KC5", 1, 0, "L2")).ToList();
+            File.WriteAllText(doubled, E2k(["L2"], doubledColumns, [("KW1", Box(-3000, -100, 3000, 100), "L2", "PANEL"), ("KW2", Box(-3000, -100, 3000, 100), "L2", "PANEL"), ("KF1", Box(0, 0, 6000, 6000), "L2", "FLOOR")]));
+
+            var t = Assert.Single(ModelDiff.Compare(before, turned).Storeys);
+            Assert.Single(t.LostWalls); Assert.Single(t.GainedWalls);
+            Assert.Empty(t.LostColumns); Assert.Empty(t.GainedColumns);
+
+            var d = Assert.Single(ModelDiff.Compare(before, doubled).Storeys);
+            Assert.Empty(d.LostColumns); Assert.Single(d.GainedColumns);
+            Assert.Empty(d.LostWalls); Assert.Single(d.GainedWalls);
+        }
+        finally
+        {
+            if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
+        }
+    }
 }

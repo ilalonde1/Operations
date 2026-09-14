@@ -26,7 +26,11 @@ namespace Kor.Operations.EngineeringTools.Dxf;
 /// </remarks>
 public static class ModelDiff
 {
-    public sealed record Member(long X, long Y, long Length);   // Length 0 for a column
+    /// <summary>A member's place: its centre, and for a wall its extent along X and along Y (audit F17: a wall turned in place is a different wall). Both 0 for a column.</summary>
+    public sealed record Member(long X, long Y, long AlongX, long AlongY)
+    {
+        public long Length => Math.Max(AlongX, AlongY);
+    }
 
     public sealed record StoreyDiff(string Storey, int ColumnsBefore, int ColumnsAfter, int WallsBefore, int WallsAfter,
         IReadOnlyList<Member> LostColumns, IReadOnlyList<Member> GainedColumns, IReadOnlyList<Member> LostWalls, IReadOnlyList<Member> GainedWalls,
@@ -132,9 +136,28 @@ public static class ModelDiff
         static string Join(IReadOnlyList<double> plates) => plates.Count == 0 ? "-" : string.Join(" ", plates.Select(p => p.ToString("N0", CultureInfo.InvariantCulture)));
     }
 
+    // ONE TO ONE (audit F18): each member of one side takes at most one partner of the other, nearest first, so
+    // a second copy at the same place is gained, not hidden behind the first's partner; a wall's partner has its
+    // extent along each axis (F17), so a wall turned ninety degrees in place is lost and gained, not the same
     private static List<Member> Unmatched(IReadOnlyList<Member> xs, IReadOnlyList<Member> ys)
-        => xs.Where(p => !ys.Any(q => Math.Abs(p.X - q.X) <= 2 && Math.Abs(p.Y - q.Y) <= 2 && Math.Abs(p.Length - q.Length) <= 2))
-             .OrderBy(m => m.X).ThenBy(m => m.Y).ToList();
+    {
+        var taken = new bool[ys.Count];
+        var unmatched = new List<Member>();
+        foreach (var p in xs.OrderBy(m => m.X).ThenBy(m => m.Y))
+        {
+            int best = -1; long bestD = long.MaxValue;
+            for (int i = 0; i < ys.Count; i++)
+            {
+                if (taken[i]) continue;
+                var q = ys[i];
+                if (Math.Abs(p.X - q.X) > 2 || Math.Abs(p.Y - q.Y) > 2 || Math.Abs(p.AlongX - q.AlongX) > 2 || Math.Abs(p.AlongY - q.AlongY) > 2) continue;
+                long d = Math.Abs(p.X - q.X) + Math.Abs(p.Y - q.Y);
+                if (d < bestD) { bestD = d; best = i; }
+            }
+            if (best >= 0) taken[best] = true; else unmatched.Add(p);
+        }
+        return unmatched.OrderBy(m => m.X).ThenBy(m => m.Y).ToList();
+    }
 
     private static (List<string> Order, Dictionary<string, (IReadOnlyList<Member> Columns, IReadOnlyList<Member> Walls)>, Dictionary<string, List<double>> Plates) Members(E2kDocument doc)
     {
@@ -162,11 +185,11 @@ public static class ModelDiff
             {
                 if (!members.TryGetValue(storey, out var list)) members[storey] = list = (new List<Member>(), new List<Member>());
                 if (kind.Equals("COLUMN", StringComparison.OrdinalIgnoreCase))
-                    list.Columns.Add(new Member((long)Math.Round(pts[0].X), (long)Math.Round(pts[0].Y), 0));
+                    list.Columns.Add(new Member((long)Math.Round(pts[0].X), (long)Math.Round(pts[0].Y), 0, 0));
                 else if (kind.Equals("PANEL", StringComparison.OrdinalIgnoreCase))
                 {
                     double minX = pts.Min(p => p.X), maxX = pts.Max(p => p.X), minY = pts.Min(p => p.Y), maxY = pts.Max(p => p.Y);
-                    list.Walls.Add(new Member((long)Math.Round(pts.Average(p => p.X)), (long)Math.Round(pts.Average(p => p.Y)), (long)Math.Round(Math.Max(maxX - minX, maxY - minY))));
+                    list.Walls.Add(new Member((long)Math.Round(pts.Average(p => p.X)), (long)Math.Round(pts.Average(p => p.Y)), (long)Math.Round(maxX - minX), (long)Math.Round(maxY - minY)));
                 }
                 else if (kind.Equals("FLOOR", StringComparison.OrdinalIgnoreCase) && pts.Count >= 3)
                 {

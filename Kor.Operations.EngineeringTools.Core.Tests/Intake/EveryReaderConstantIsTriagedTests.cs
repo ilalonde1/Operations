@@ -171,6 +171,8 @@ public sealed class EveryReaderConstantIsTriagedTests
         ["ScheduleTableBorder.cs:TitleLinesReach"] = Tolerance("a table's top rule under its title"),
         ["StickFileSlabThicknessReader.cs:TitleWrapDropPt"] = Tolerance("a title's continuation"),
         ["StickFileSlabThicknessReader.cs:TitleWrapColumnPt"] = Tolerance("a title's continuation"),
+        ["StructuralPlanClassifier.cs:Near"] = Tolerance("a hundredth of a unit: a loop vertex on a curve end (audit F12, by distance)"),
+        ["TriangleTwins.cs:SameVertexMm"] = Tolerance("a hundredth of a millimetre: two triangles share a vertex a driver wrote twice (step 61)"),
         ["StructuralPlanClassifier.cs:SizeSlack"] = Tolerance("half an inch on the size limits (DXF side)"),
         ["StructuralPlanClassifier.cs:LengthSlack"] = Tolerance("half an inch on the length (DXF side)"),
         ["WallNetwork.cs:ParallelDegrees"] = Tolerance("centrelines parallel"),

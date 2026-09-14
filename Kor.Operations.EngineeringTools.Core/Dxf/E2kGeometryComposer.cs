@@ -688,7 +688,7 @@ public static class E2kGeometryComposer
             // stack at 6,930 in one frame and the stack at 6,932 in the other, and the gap fill then gave
             // LEVEL 2 a wall it had not in the first. The cells are an index; the distance decides.
             string? nearest = null;
-            double nearestDistance = joinTolerance;
+            double nearestDistance = double.MaxValue;                          // a joint AT the tolerance is within it (audit F13)
             for (long dx = -1; dx <= 1; dx++)
             for (long dy = -1; dy <= 1; dy++)
             for (long dz = -1; dz <= 1; dz++)
@@ -698,6 +698,7 @@ public static class E2kGeometryComposer
                 {
                     if (!pointCoords.TryGetValue(near, out var at)) continue;
                     double d = Math.Sqrt(Math.Pow(at.X - x, 2) + Math.Pow(at.Y - y, 2) + Math.Pow(at.Z - zOffset, 2));
+                    if (!LoopGeometry.Within(d, joinTolerance)) continue;
                     // a tie between two joints goes to the earlier one, not to whichever cell was visited first
                     if (d < nearestDistance - 1e-9 || (Math.Abs(d - nearestDistance) <= 1e-9 && nearest is not null && pointOrder[near] < pointOrder[nearest])) { nearestDistance = d; nearest = near; }
                 }
@@ -1974,8 +1975,11 @@ public static class E2kGeometryComposer
             || (Near(a.X1, a.Y1, b.X2, b.Y2) && Near(a.X2, a.Y2, b.X1, b.Y1));
         public bool SamePlace(Place a, Place b) => Same(a, b);
 
+        // by DISTANCE, to the micron (audit F10, step 61): the first cut bounded X and Y apart, a square of two inches
+        // a side, so two readings 20 mm east and 20 mm north of each other - 28 mm apart - were one place; a place
+        // is decided by distance (s63), as ColumnJointNear decides it
         private bool Near(double ax, double ay, double bx, double by)
-            => LoopGeometry.Within(Math.Abs(ax - bx), _within) && LoopGeometry.Within(Math.Abs(ay - by), _within);   // to the micron: two readings an inch apart are an inch apart in every frame
+            => LoopGeometry.Within(Math.Sqrt((ax - bx) * (ax - bx) + (ay - by) * (ay - by)), _within);
     }
     private static string Trim(double value) => value.ToString("0.###", Inv);
     private static string F(double value) => value.ToString("0.####", Inv);

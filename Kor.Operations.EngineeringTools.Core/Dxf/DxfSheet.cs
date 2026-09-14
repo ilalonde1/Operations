@@ -44,4 +44,41 @@ public sealed record DxfSheet(string Name, IReadOnlyList<string> Lines)
         }
         return this with { Lines = moved };
     }
+
+    /// <summary>
+    /// The same view with its entities in the opposite order (audit F11, step 61): the differential
+    /// <c>TheSameDrawingsInAnotherOrderBuildTheSameStructure</c> composes a set as it is and as this,
+    /// and the two models must be the same structure — a nearest-node search, a tie, a "first" that
+    /// depends on which entity came first is a fault this finds. The ENTITIES section's entities are
+    /// reversed; everything else is left as it stands.
+    /// </summary>
+    public DxfSheet Reversed()
+    {
+        int start = -1, end = -1;
+        for (int i = 0; i + 3 < Lines.Count; i += 2)
+        {
+            if (start < 0 && Lines[i].Trim() == "0" && Lines[i + 1].Trim() == "SECTION" && Lines[i + 2].Trim() == "2" && Lines[i + 3].Trim() == "ENTITIES") { start = i + 4; i += 2; continue; }
+            if (start >= 0 && Lines[i].Trim() == "0" && Lines[i + 1].Trim() == "ENDSEC") { end = i; break; }
+        }
+        if (start < 0 || end < 0) return this;
+        // an entity starts at a "0" code; a POLYLINE runs through its VERTEX entities to its SEQEND and is one entity here
+        var entities = new List<List<string>>();
+        bool inPolyline = false;
+        for (int i = start; i < end; i += 2)
+        {
+            string code = Lines[i].Trim(), value = i + 1 < end ? Lines[i + 1].Trim() : "";
+            bool opens = code == "0" && !(inPolyline && value is "VERTEX" or "SEQEND");
+            if (opens || entities.Count == 0) entities.Add([]);
+            if (code == "0" && value == "POLYLINE") inPolyline = true;
+            if (code == "0" && value == "SEQEND") inPolyline = false;
+            entities[^1].Add(Lines[i]);
+            if (i + 1 < end) entities[^1].Add(Lines[i + 1]);
+        }
+        entities.Reverse();
+        var lines = new List<string>(Lines.Count);
+        lines.AddRange(Lines.Take(start));
+        foreach (var e in entities) lines.AddRange(e);
+        lines.AddRange(Lines.Skip(end));
+        return this with { Lines = lines };
+    }
 }

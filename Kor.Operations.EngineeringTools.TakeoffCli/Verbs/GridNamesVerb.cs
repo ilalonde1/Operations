@@ -73,7 +73,10 @@ internal static class GridNamesVerb
                 double bin = GridAlignment.ColumnRegistrationMm * toModel;
                 var others = modelMembers.Where(q => !members.Any(p => Math.Abs(q.X - p.X * toModel) <= bin && Math.Abs(q.Y - p.Y * toModel) <= bin)).ToList();
                 var elsewhere = GridAlignment.SolveByColumns(members, others, toModel, out string whyNot);
-                Console.WriteLine($"   ... that is the sheet standing on itself where the composer left it; against the other {others.Count}: " +
+                // audit F21 (step 61): a fit at (0, 0) MAY be the sheet standing on itself where the composer left it, or a
+                // sheet rightly placed over members that stand exactly under it; the members are taken out by position,
+                // not by which sheet drew them, so the second fit is a question, not a diagnosis
+                Console.WriteLine($"   ... a fit at (0, 0) is either this sheet standing on itself where the composer left it, or a sheet rightly placed over what stands under it - the model does not say which sheet drew a member; without the {modelMembers.Count - others.Count} members at its own positions, against the other {others.Count}: " +
                     (elsewhere is null ? whyNot : $"{elsewhere.Note} at ({elsewhere.Frame.OffsetX:0}, {elsewhere.Frame.OffsetY:0}) model units"));
             }
         }

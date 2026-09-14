@@ -1262,6 +1262,38 @@ public class E2kDocumentTests
     }
 
     /// <summary>
+    /// Audit F10 (step 61, 2026-09-13): "one place" is decided by distance. The first cut bounded X and Y
+    /// apart - a square two inches a side - so a second reading 0.75" east and 0.75" north (1.06" away)
+    /// of a column was the same column, while one 1.01" due east was not. Both are more than an inch
+    /// away now, and both stand. WHAT THIS COVERS: the diagonal pair and the on-axis pair against the
+    /// inch; a pair 0.5" apart diagonally still one. WHAT IT DOES NOT: walls (the same PlacedMembers,
+    /// by both ends) and plates (twelve inches, the same rule).
+    /// </summary>
+    [Fact]
+    public void TwoReadingsOfAColumnMoreThanAnInchApartDiagonallyAreTwoColumns()
+    {
+        static PlanGeometrySet Plan(double x, double y)
+        {
+            var g = new PlanGeometrySet();
+            g.Walls.Add(new WallAxis(new DxfPoint(0, 0), new DxfPoint(120, 0), 12, "JBP_V-WALL"));   // something for the storey to stand on
+            g.Columns.Add(new ColumnFootprint(new DxfPoint(x, y), 24, 24, "JBP_V_COL"));
+            return g;
+        }
+        // a fresh document each time: composing writes the members into it
+        static int ColumnsOf(double x2, double y2)
+        {
+            var doc = E2kDocument.Parse(Reference);
+            var story = doc.ReadStories().Single(s => s.Name == "LEVEL 3");
+            return E2kGeometryComposer.Compose(doc, new[] { new StoryPlacement(story, Plan(50, 50), "a.dxf"), new StoryPlacement(story, Plan(x2, y2), "b.dxf") }).Columns;
+        }
+
+        // the reference is in inches: 0.75 on each axis is within an inch on each, 1.06 apart
+        Assert.Equal(2, ColumnsOf(50.75, 50.75));
+        Assert.Equal(2, ColumnsOf(51.01, 50));
+        Assert.Equal(1, ColumnsOf(50.35, 50.35));
+    }
+
+    /// <summary>
     /// A floor plate with no wall or column on its own storey is a slab supported by air, and the
     /// run has to say so.
     ///
