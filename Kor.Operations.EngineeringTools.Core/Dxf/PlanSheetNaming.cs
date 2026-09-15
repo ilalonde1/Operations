@@ -84,8 +84,21 @@ public static partial class PlanSheetNaming
     /// Static because sheet naming is asked about from five places and threading a vocabulary
     /// through every one of them would be a larger change than the one this is worth. A run sets
     /// it before reading any sheet.
+    ///
+    /// PER EXECUTION FLOW, NOT PER PROCESS (step 71, 2026-09-15, run 15): the corpus analyzer composes
+    /// twelve sets at once in one process, and each composition sets this to ITS set's ranked words for its
+    /// duration (DxfToEtabsService.Run, step 60) - so 30992-01, whose titles rank nothing, read MAIN FLOOR
+    /// PLAN as level 2 in run 15 and level 1 in run 14, with the words of whichever set was composing
+    /// beside it. An AsyncLocal is the same static to every caller on one flow - a set's read and build,
+    /// a test and the code it calls - and invisible to the flows beside it.
     /// </summary>
-    public static DrawingVocabulary Vocabulary { get; set; } = DrawingVocabulary.Default;
+    public static DrawingVocabulary Vocabulary
+    {
+        get => _vocabulary.Value ?? DrawingVocabulary.Default;
+        set => _vocabulary.Value = value;
+    }
+
+    private static readonly System.Threading.AsyncLocal<DrawingVocabulary?> _vocabulary = new();
 
     // A leading structural sheet number ends at the first title letter, even without a space;
     // dots/dashes between digits belong to the number, and an exported _view_ belongs to its prefix.
