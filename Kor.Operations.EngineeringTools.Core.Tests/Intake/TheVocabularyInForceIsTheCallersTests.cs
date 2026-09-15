@@ -31,7 +31,7 @@ public sealed class TheVocabularyInForceIsTheCallersTests
         Task Flow(int i, DrawingVocabulary mine) => Task.Run(() =>
         {
             PlanSheetNaming.Vocabulary = mine;
-            bothSet.SignalAndWait(TimeSpan.FromSeconds(10));                // the other flow has set ITS words by now
+            Assert.True(bothSet.SignalAndWait(TimeSpan.FromSeconds(10)), "the two flows never met at the barrier");   // the other flow has set ITS words by now (the audit's finding 11: a timeout would let a plain static pass)
             wordsSeen[i] = string.Join(";", PlanSheetNaming.Vocabulary.FloorWords);
             levelSeen[i] = PlanSheetNaming.Parse("S2.02_1_MAIN FLOOR PLAN.dxf").Levels.Single();
         });

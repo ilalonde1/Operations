@@ -18,17 +18,20 @@ namespace Kor.Operations.EngineeringTools.Core.Tests.Intake;
 internal static class SixSetReadCache
 {
     internal const string ManifestName = "read-cache.json";
-    private const int Version = 1;
-    private static readonly string[] DxfReaderFiles =
+    private const int Version = 2;
+    /// <summary>
+    /// THE READER'S SOURCES ARE EVERY SOURCE OF THE CORE BUT THESE (step 72, 2026-09-15, the audit's finding 2): the
+    /// first cut listed the files the read was believed to reach - PdfToSafe/, Intake/ and eleven Dxf/ files - and
+    /// never hashed VectorPageReader.cs at the Core root, the page walk itself, so a walker change would have
+    /// recomposed a stale read and passed. A list of what the read reaches is a claim; a list of what it provably
+    /// does NOT reach is checkable: no file outside this list may reference a type in it
+    /// (NoIncludedSourceReferencesAnExcludedOne). Composer-only edits now read the six again (2-3 min); that is
+    /// the price of a cache that cannot lie.
+    /// </summary>
+    internal static readonly string[] NotReadSide =
     [
-        "PlanSheetNaming.cs", "DrawingVocabulary.cs", "DxfSheet.cs", "DxfModels.cs",
-        "LoopGeometry.cs", "PlanLoopBuilder.cs", "DashedLineJoiner.cs", "MatchLineSheetJoin.cs",
-        "GridAlignment.cs", "StructuralPlanClassifier.cs", "RuleSettings.cs",
+        "CorpusAnalyzer.cs", "CorpusDiff.cs", "SheetDiff.cs", "SetCheck.cs", "E2kModelQuery.cs", "E2kQuantityTakeoff.cs",
     ];
-    private static readonly HashSet<string> IntakeExcluded = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "CorpusAnalyzer.cs", "CorpusDiff.cs", "SheetDiff.cs", "SetCheck.cs", "StoreysFromPlans.cs",
-    };
 
     internal sealed record Fingerprint(string PdfSha256, int Scale, string ReaderSha256);
     internal sealed record Manifest(int Version, Fingerprint Inputs, DateTime ReadAtUtc, int Pages,
@@ -43,17 +46,20 @@ internal static class SixSetReadCache
         throw new DirectoryNotFoundException("Cannot find Kor.Operations.EngineeringTools.Core.Tests.csproj above the test output.");
     }
 
-    internal static string ReaderHash(string root, PdfIntakeOptions options)
+    internal static IEnumerable<string> ReaderSources(string root)
     {
         string core = Path.Combine(root, "Kor.Operations.EngineeringTools.Core");
-        var paths = Directory.EnumerateFiles(Path.Combine(core, "PdfToSafe"), "*.cs", SearchOption.AllDirectories)
-            .Concat(Directory.EnumerateFiles(Path.Combine(core, "Intake"), "*.cs", SearchOption.AllDirectories)
-                .Where(p => !IntakeExcluded.Contains(Path.GetFileName(p))))
-            .Concat(DxfReaderFiles.Select(f => Path.Combine(core, "Dxf", f)))
-            // Already in Intake; explicit inclusion makes moving/removing the wrapper fail safely.
-            .Append(Path.Combine(core, "Intake", "PdfOnlyBuild.cs"))
+        return Directory.EnumerateFiles(core, "*.cs", SearchOption.AllDirectories)
+            .Where(p => !p.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase)
+                     && !p.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase)
+                     && !NotReadSide.Contains(Path.GetFileName(p), StringComparer.OrdinalIgnoreCase))
             .Select(p => Path.GetRelativePath(root, p).Replace(Path.DirectorySeparatorChar, '/'))
             .Distinct(StringComparer.Ordinal).OrderBy(p => p, StringComparer.Ordinal);
+    }
+
+    internal static string ReaderHash(string root, PdfIntakeOptions options)
+    {
+        var paths = ReaderSources(root);
         var text = new StringBuilder();
         foreach (string path in paths)
             text.Append(path).Append('\n').Append(HashFile(Path.Combine(root, path))).Append('\n');

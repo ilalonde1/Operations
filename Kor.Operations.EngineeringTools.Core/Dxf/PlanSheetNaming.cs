@@ -124,13 +124,16 @@ public static partial class PlanSheetNaming
         string name = Path.GetFileName(fileName);
         if (name.EndsWith(".dxf", StringComparison.OrdinalIgnoreCase)) name = name[..^4];
         var buildings = new List<string>();
-        if (vocabulary.Building.Match(name) is { Success: true } b)
+        // the tag is read with the sheet number off (step 72, the audit's finding 5): "S2.3-LEVEL 2" read building 3
+        // from its own number, the dot before the 3 passing the prefix pattern's look-behind
+        string unnumbered = SheetNumberPrefix.Replace(name, string.Empty);
+        if (vocabulary.Building.Match(unnumbered) is { Success: true } b)
         {
             // "A & B" is two buildings; "1A" is one (step 69: a tag is a letter or a number with an optional letter)
             foreach (string tag in b.Groups[1].Value.ToUpperInvariant().Split('&', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
                 if (tag.Length > 0) buildings.Add(tag);
         }
-        else if (vocabulary.PrefixBuilding.Match(name) is { Success: true } p)
+        else if (vocabulary.PrefixBuilding.Match(unnumbered) is { Success: true } p)
         {
             buildings.Add(p.Groups[1].Value.ToUpperInvariant());
         }
@@ -144,7 +147,7 @@ public static partial class PlanSheetNaming
         string own = vocabulary.OwnStoreyPart(TitleOf(name));
         // Strip before ALL numeric readers, including ranges, and before word-boundary matching:
         // S-6BASEMENT must expose BASEMENT, and S2-32-1 must never supply a level range.
-        string ownName = vocabulary.OwnStoreyPart(SheetNumberPrefix.Replace(name, string.Empty));
+        string ownName = vocabulary.OwnStoreyPart(unnumbered);
         bool isRoof = vocabulary.IsRoofName(own);
         bool isTopFloor = false;
 
@@ -339,7 +342,9 @@ public static partial class PlanSheetNaming
             if (sheet.BuildingTags.Count > 0 && storeysByBuilding &&
                 !sheet.BuildingTags.Any(tag => StoryBelongsToBuilding(story, tag))) continue;
 
-            var parkadeInStory = Vocabulary.ParkadeStory.Match(story);
+            // a building-prefixed parkade (1-P1, A-P2) is matched with its prefix off - the anchored parkade pattern
+            // never matched one, so a tagged parkade plan on a building-named ladder went nowhere (step 72, the audit's finding 6)
+            var parkadeInStory = Vocabulary.ParkadeStory.Match(ModelYardstick.Stripped(story));
             if (parkadeInStory.Success)
             {
                 if (sheet.ParkadeLevels.Contains(int.Parse(parkadeInStory.Groups[1].Value))) matches.Add(story);
@@ -399,7 +404,7 @@ public static partial class PlanSheetNaming
                 // chance took them by number and tower C's storeys carried tower A's floors
                 if (NamedForAnotherBuilding(story, sheet.BuildingTags)) continue;
 
-                var parkade = Vocabulary.ParkadeStory.Match(story);
+                var parkade = Vocabulary.ParkadeStory.Match(ModelYardstick.Stripped(story));
                 if (parkade.Success)
                 {
                     if (sheet.ParkadeLevels.Contains(int.Parse(parkade.Groups[1].Value))) matches.Add(story);

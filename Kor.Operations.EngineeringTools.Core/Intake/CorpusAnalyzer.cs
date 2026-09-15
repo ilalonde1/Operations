@@ -178,7 +178,10 @@ public static class CorpusAnalyzer
         int rebuilt = 0, reused = 0, done = 0;
         var gate = new object();
         string partialLedger = Path.Combine(workRoot, "ledger-sets.partial.csv");
-        File.Delete(partialLedger);                                            // this run's, from its first set
+        // A KILLED RUN'S PARTIAL LEDGER IS EVIDENCE, NOT SCRATCH (step 72, 2026-09-15, the audit's finding 3): the first
+        // cut deleted it here, so the recovery run that followed a kill destroyed the rows the kill had spared before it
+        // had written one of its own. It is set aside under its last-write time instead; this run's starts empty.
+        SetAsidePartialLedger(partialLedger);
         Parallel.For(0, jobs.Count, new ParallelOptions { MaxDegreeOfParallelism = Math.Max(1, parallel) }, i =>
         {
             var job = jobs[i];
@@ -191,6 +194,7 @@ public static class CorpusAnalyzer
                 row = new SetRow(runId, runAt, built, job.Job, job.Category, "structural", issue.Path, issue.Date, issue.DateFromName, issue.Bytes,
                     0, 0, 0, 0, 0, 0, 0, false, null, null, null, null, null, null, null, 0, $"{AnotherJobsFileReason}{owner}'s ({Path.GetFileName(issue.Path)})");
                 sets[i] = row; sheets[i] = rows;
+                AppendSetRow(partialLedger, row, gate);                        // every row, this one too (the partial held 279 of 296 without it)
                 int k; lock (gate) k = ++done;
                 log($"  [{k}/{jobs.Count}] {job.Job} {row.Error}");
                 return;
@@ -472,6 +476,22 @@ public static class CorpusAnalyzer
     /// log. Every finished set now appends its row to ledger-sets.partial.csv (header first, one lock, flushed), and a
     /// killed run leaves a ledger of what it did; the whole ledger is still written, sorted, at the end.
     /// </summary>
+    /// <summary>
+    /// A killed run's partial ledger is set aside under its last-write time (ledger-sets.partial.20260914-231756.csv),
+    /// never deleted, so the recovery run that follows a kill cannot destroy the rows the kill spared. Returns the
+    /// name it went to, or null when there was none.
+    /// </summary>
+    public static string? SetAsidePartialLedger(string partialLedger)
+    {
+        if (!File.Exists(partialLedger)) return null;
+        string dir = Path.GetDirectoryName(partialLedger) ?? ".";
+        string stem = Path.GetFileNameWithoutExtension(partialLedger);
+        string kept = Path.Combine(dir, $"{stem}.{File.GetLastWriteTimeUtc(partialLedger):yyyyMMdd-HHmmss}.csv");
+        for (int n = 2; File.Exists(kept); n++) kept = Path.Combine(dir, $"{stem}.{File.GetLastWriteTimeUtc(partialLedger):yyyyMMdd-HHmmss}-{n}.csv");
+        File.Move(partialLedger, kept);
+        return kept;
+    }
+
     public static void AppendSetRow(string path, SetRow row, object gate)
     {
         lock (gate)

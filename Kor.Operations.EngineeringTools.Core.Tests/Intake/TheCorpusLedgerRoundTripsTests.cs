@@ -71,6 +71,19 @@ public sealed class TheCorpusLedgerRoundTripsTests
             Assert.Equal("31169-01", partialRows[0].Job);
             Assert.StartsWith("run_id,", File.ReadAllLines(partial)[0].TrimStart('﻿'), StringComparison.Ordinal);
             Assert.Equal(sheet, Assert.Single(CorpusAnalyzer.ReadSheets(sheets)));
+            // A KILLED RUN'S PARTIAL LEDGER IS SET ASIDE, NOT DELETED, when the next run starts (step 72, the audit's
+            // finding 3): its rows survive under its last-write time; a second set-aside in the same second gets its own name
+            string? kept = CorpusAnalyzer.SetAsidePartialLedger(partial);
+            Assert.NotNull(kept);
+            Assert.False(File.Exists(partial));
+            Assert.Matches(@"ledger-sets\.partial\.\d{8}-\d{6}\.csv$", kept);
+            Assert.Equal(2, CorpusAnalyzer.ReadSets(kept!).Count);
+            Assert.Null(CorpusAnalyzer.SetAsidePartialLedger(partial));
+            CorpusAnalyzer.AppendSetRow(partial, set, gate);
+            File.SetLastWriteTimeUtc(partial, File.GetLastWriteTimeUtc(kept!));
+            string? keptAgain = CorpusAnalyzer.SetAsidePartialLedger(partial);
+            Assert.NotEqual(kept, keptAgain);
+            Assert.True(File.Exists(kept) && File.Exists(keptAgain!));
         }
         finally
         {

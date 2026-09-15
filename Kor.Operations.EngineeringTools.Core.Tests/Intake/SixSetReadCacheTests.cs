@@ -6,9 +6,10 @@ using Xunit;
 namespace Kor.Operations.EngineeringTools.Core.Tests.Intake;
 
 /// <summary>
-/// WHAT THIS COVERS: reader-source and options invalidation versus composer/test edits, PDF bytes
-/// and scale, source additions/removals/renames, repository-root discovery, and a saved manifest/CSV
-/// reloaded through the analyzer's typed reader. Missing/damaged cache artifacts force a miss.
+/// WHAT THIS COVERS: every Core source invalidates (the root page walker, the composer) but the NotReadSide
+/// list, tests and build output do not; options; PDF bytes and scale; source additions/removals/renames;
+/// repository-root discovery; a saved manifest/CSV reloaded through the analyzer's typed reader; missing/damaged
+/// cache artifacts force a miss; and, in the real repository, no hashed file references an excluded one.
 /// WHAT IT DOES NOT: parse PDFs or DXFs, query rules, run the composer or prove the two-minute target;
 /// the six-set gate's two real runs do that. A fault hidden by a shared full/recompose assumption
 /// or by reader-side static state is outside these synthetic cache tests.
@@ -16,31 +17,30 @@ namespace Kor.Operations.EngineeringTools.Core.Tests.Intake;
 public sealed class SixSetReadCacheTests
 {
     [Fact]
-    public void ReaderBytesAndOptionsInvalidateButComposerAndTestEditsDoNot()
+    public void EveryCoreSourceInvalidatesButTheNotReadSideListAndTestEditsDoNot()
     {
         InTempDirectory(root =>
         {
             const string core = "Kor.Operations.EngineeringTools.Core/";
+            // every Core source counts - the page walker at the Core root above all (the audit's finding 2), the
+            // composer too (a rule the read and the composer share lives there: OfficeVocabulary, ModelYardstick.Building)
             string[] included =
             [
+                "VectorPageReader.cs", "ColumnScheduleReader.cs",
                 "PdfToSafe/GeometryFilterService.cs", "PdfToSafe/Nested/Reader.cs",
-                "Intake/SheetViews.cs", "Intake/Nested/Reader.cs", "Intake/PdfOnlyBuild.cs",
-                "Dxf/PlanSheetNaming.cs", "Dxf/DrawingVocabulary.cs", "Dxf/DxfSheet.cs", "Dxf/DxfModels.cs",
-                "Dxf/LoopGeometry.cs", "Dxf/PlanLoopBuilder.cs", "Dxf/DashedLineJoiner.cs",
-                "Dxf/MatchLineSheetJoin.cs", "Dxf/GridAlignment.cs", "Dxf/StructuralPlanClassifier.cs", "Dxf/RuleSettings.cs",
+                "Intake/SheetViews.cs", "Intake/PdfOnlyBuild.cs", "Intake/StoreysFromPlans.cs",
+                "Dxf/PlanSheetNaming.cs", "Dxf/StructuralPlanClassifier.cs", "Dxf/E2kGeometryComposer.cs",
+                "Dxf/DxfToEtabsService.cs", "Dxf/WallOutlineDecomposer.cs", "Dxf/ModelYardstick.cs",
             ];
-            string[] excluded =
-            [
-                "Intake/CorpusAnalyzer.cs", "Intake/CorpusDiff.cs", "Intake/SheetDiff.cs", "Intake/SetCheck.cs", "Intake/StoreysFromPlans.cs",
-                "Dxf/E2kGeometryComposer.cs", "Dxf/DxfToEtabsService.cs", "Dxf/WallOutlineDecomposer.cs",
-                "Dxf/WallNetwork.cs", "Dxf/ModelDiff.cs", "Dxf/ModelYardstick.cs",
-            ];
+            string[] excluded = SixSetReadCache.NotReadSide.Select(f => "Intake/" + f).ToArray();
             foreach (string file in included.Concat(excluded)) Write(root, core + file, "// source");
+            Write(root, core + "bin/Debug/Generated.cs", "// build output");
+            Write(root, core + "obj/Debug/Generated.cs", "// build output");
             const string testFile = "Kor.Operations.EngineeringTools.Core.Tests/Intake/SixSetsBuildAsBankedTests.cs";
             Write(root, testFile, "// test");
             var options = PdfIntakeOptions.Default;
             string original = SixSetReadCache.ReaderHash(root, options);
-            foreach (string file in excluded.Select(f => core + f).Append(testFile))
+            foreach (string file in excluded.Select(f => core + f).Append(testFile).Append(core + "bin/Debug/Generated.cs").Append(core + "obj/Debug/Generated.cs"))
             {
                 File.AppendAllText(Path.Combine(root, file), " ");
                 Assert.Equal(original, SixSetReadCache.ReaderHash(root, options));
@@ -52,10 +52,10 @@ public sealed class SixSetReadCacheTests
                 Assert.NotEqual(original, SixSetReadCache.ReaderHash(root, options));
                 File.WriteAllText(path, "// source");
             }
-            string added = Write(root, core + "PdfToSafe/Added.cs", "// source");
+            string added = Write(root, core + "Anywhere/Added.cs", "// source");
             string withAdded = SixSetReadCache.ReaderHash(root, options);
             Assert.NotEqual(original, withAdded);
-            string renamed = Path.Combine(root, core + "PdfToSafe/Renamed.cs");
+            string renamed = Path.Combine(root, core + "Anywhere/Renamed.cs");
             File.Move(added, renamed);
             Assert.NotEqual(withAdded, SixSetReadCache.ReaderHash(root, options));
             File.Delete(renamed);
@@ -64,10 +64,31 @@ public sealed class SixSetReadCacheTests
             var wordOptions = options with { ForceWords = new[] { "KIP" } };
             Assert.NotEqual(SixSetReadCache.ReaderHash(root, wordOptions),
                 SixSetReadCache.ReaderHash(root, wordOptions with { ForceWords = new[] { "KN" } }));
-            // A missing required source must not produce a plausible hash over an incomplete list.
-            File.Delete(Path.Combine(root, core + "Dxf/RuleSettings.cs"));
-            Assert.Throws<FileNotFoundException>(() => SixSetReadCache.ReaderHash(root, options));
         });
+    }
+
+    /// <summary>
+    /// THE EXCLUDE LIST IS CHECKABLE, THE INCLUDE LIST WAS A CLAIM (step 72): a file the cache does not hash may not be
+    /// referenced by any file it does hash - by simple name, in the real repository. Proved by breaking: add
+    /// "PlanSheetNaming.cs" to NotReadSide and this fails on the files that use it.
+    /// </summary>
+    [Fact]
+    public void NoIncludedSourceReferencesAnExcludedOne()
+    {
+        string root = SixSetReadCache.RepositoryRoot(AppContext.BaseDirectory);
+        var excludedTypes = SixSetReadCache.NotReadSide.Select(f => Path.GetFileNameWithoutExtension(f)).ToList();
+        var offenders = new List<string>();
+        foreach (string relative in SixSetReadCache.ReaderSources(root))
+        {
+            string text = File.ReadAllText(Path.Combine(root, relative));
+            foreach (string type in excludedTypes)
+                if (System.Text.RegularExpressions.Regex.IsMatch(text, $@"\b{System.Text.RegularExpressions.Regex.Escape(type)}\b"))
+                    offenders.Add($"{relative} references {type}");
+        }
+        Assert.True(offenders.Count == 0, string.Join(Environment.NewLine, offenders));
+        // and every excluded file exists, so the list cannot silently name nothing
+        foreach (string file in SixSetReadCache.NotReadSide)
+            Assert.True(Directory.EnumerateFiles(Path.Combine(root, "Kor.Operations.EngineeringTools.Core"), file, SearchOption.AllDirectories).Any(), file + " is not in the Core");
     }
 
     [Fact]

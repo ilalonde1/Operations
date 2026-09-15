@@ -262,14 +262,14 @@ public static class DrawingIntake
         // a wall is what its tag says it is (step 33): with the set's assembly schedule in hand, each
         // wall takes the nearest code tag within reach, and a partition's goes to a layer the model does not read
         if (classify && request.Assemblies is { Count: > 0 })
-            WallTypeTagging.Apply(geometry, content, furniture, request.Assemblies, options.MinWallThicknessMm);
+            WallTypeTagging.Apply(geometry, content, furniture, request.Assemblies, options.MinWallThicknessMm, options.UnfilledWallMinThicknessMm);
         else if (classify)
         {
             // no assembly schedule to tag by: every wall is what it was drawn as - and a wood plan's unfilled
             // pairs are stud walls whether or not the set tags them (step 67)
             geometry.WallTypeCodes.Clear(); geometry.WallIsPartition.Clear();
             for (int i = 0; i < geometry.Walls.Count; i++) { geometry.WallTypeCodes.Add(null); geometry.WallIsPartition.Add(false); }
-            WallTypeTagging.StudWallsOfAWoodPlan(geometry, options.MinWallThicknessMm);
+            WallTypeTagging.StudWallsOfAWoodPlan(geometry, options.MinWallThicknessMm, options.UnfilledWallMinThicknessMm);
         }
         var wordFates = WordFates(content, furniture, grid, columns.Count, footings.Count, walls.Count, titleBlockConsumed, geometry.GridAxes.Count > 0, dimensions);
         int inked = 0, noInk = 0, paper = 0, annotationPaths = 0;

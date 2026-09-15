@@ -57,6 +57,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         public IReadOnlyList<string> ForceWords { get; init; } = Intake.TendonAnchors.DefaultForceWords;
         /// <summary>A storey's height when the drawings state none (step 45): dxf.pdf.assumed-storey-height-mm, else the compiled default; always said in the levels file.</summary>
         public double AssumedStoreyHeightMm { get; init; } = Intake.StoreysFromPlans.DefaultAssumedStoreyHeightMm;
+        /// <summary>On a wood plan, the thinnest unfilled line pair that is a concrete wall - a retaining wall (step 67): dxf.pdf.unfilled-wall-min-thickness-mm (migration 091), else 8 in.</summary>
+        public double UnfilledWallMinThicknessMm { get; init; } = Intake.WallTypeTagging.DefaultUnfilledWallMinThicknessMm;
 
         // WP5 (2026-09-11): the readers' compiled conventions become rows, tier one. Three are the DXF
         // side's own rows, read here in the DXF side's unit and converted, because the two sides mean
@@ -144,6 +146,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             $"{Prefix}.agreement-tolerance-mm",
             $"{Prefix}.agreement-label-reach-mm",
             $"{Prefix}.assumed-storey-height-mm",
+            $"{Prefix}.unfilled-wall-min-thickness-mm",
             SharedBridgeTolerance,
             SharedMinPlateArea,
             SharedDashJoinGap,
@@ -175,6 +178,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 [$"{Prefix}.agreement-tolerance-mm"]   = d.AgreementToleranceMm,
                 [$"{Prefix}.agreement-label-reach-mm"] = d.AgreementLabelReachMm,
                 [$"{Prefix}.assumed-storey-height-mm"] = d.AssumedStoreyHeightMm,
+                [$"{Prefix}.unfilled-wall-min-thickness-mm"] = d.UnfilledWallMinThicknessMm,
                 [SharedBridgeTolerance]  = d.SlabEdgeBridgeMm / PrintedLength.MmPerInch,
                 [SharedMinPlateArea]     = d.MinSlabAreaMm2 / (PrintedLength.MmPerInch * PrintedLength.MmPerInch),
                 [SharedDashJoinGap]      = d.DashGapMm / PrintedLength.MmPerInch,
@@ -209,6 +213,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 AgreementToleranceMm  = settings.ValueOr($"{Prefix}.agreement-tolerance-mm", options.AgreementToleranceMm),
                 AgreementLabelReachMm = settings.ValueOr($"{Prefix}.agreement-label-reach-mm", options.AgreementLabelReachMm),
                 AssumedStoreyHeightMm = settings.ValueOr($"{Prefix}.assumed-storey-height-mm", options.AssumedStoreyHeightMm),
+                UnfilledWallMinThicknessMm = settings.ValueOr($"{Prefix}.unfilled-wall-min-thickness-mm", options.UnfilledWallMinThicknessMm),
                 SlabEdgeBridgeMm      = WallMm(SharedBridgeTolerance, options.SlabEdgeBridgeMm),
                 MinSlabAreaMm2        = settings.TryGetValue(SharedMinPlateArea, out var plate) ? plate.Value * 25.4 * 25.4 : options.MinSlabAreaMm2,
                 DashGapMm             = WallMm(SharedDashJoinGap, options.DashGapMm),

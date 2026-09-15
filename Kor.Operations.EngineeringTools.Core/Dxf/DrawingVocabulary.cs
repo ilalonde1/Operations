@@ -151,6 +151,9 @@ public sealed record DrawingVocabulary
         // every clause must agree with the chain: a word shown over a word above it (a cycle with a tail, B5) is two stories
         foreach (var (lower, upper) in over)
             if (chain.Contains(upper) && (!chain.Contains(lower) || chain.IndexOf(upper) != chain.IndexOf(lower) + 1)) return this;
+        // ... and every word with a story of its own is ON the chain: a cycle standing apart from it (MAIN over UPPER over
+        // MAIN beside GROUND -> 4) escaped the check above and re-ranked GROUND (step 72, the audit's finding 9)
+        if (over.Keys.Any(k => !chain.Contains(k))) return this;
         if (chain.Count < 2 && !(chain.Count == 1 && over.TryGetValue(chain[0], out var top) && int.TryParse(top, out _))) return this;
         int first = 1;
         // a numbered floor shown over the top word anchors the chain: "MAIN FLOOR SHOWING 2ND FLOOR FRAMING OVER" keeps MAIN at 1

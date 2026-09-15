@@ -142,7 +142,10 @@ public static class StoreysFromPlans
         foreach (var (tags, suffix) in new[] { (roofOfBuilding, "ROOF"), (elevatorRoofOfBuilding, "ELEVATOR ROOF") })
             foreach (string tag in tags)
             {
-                if (!highestOfBuilding.TryGetValue(tag, out int highest)) continue;
+                // the shared roof does not need the building to have a level plan of its own: "ROOF PLAN BLDG 1" over an
+                // untagged "LEVEL 1 PLAN" is one ROOF over L1 (step 72, the audit's finding 7); a tagged ELEVATOR ROOF on
+                // a plan-named ladder is the roof's storey too, as an untagged one is (stated: the overrun as its own
+                // storey is a rule for the sets that draw one, not yet measured)
                 if (!storeysByBuilding)
                 {
                     if (suffix == "ROOF" && !roof && !covered.Contains("ROOF") && !ladderReachesAboveThePlans && !order.Contains("ROOF", StringComparer.OrdinalIgnoreCase))
@@ -155,6 +158,7 @@ public static class StoreysFromPlans
                     }
                     continue;
                 }
+                if (!highestOfBuilding.TryGetValue(tag, out int highest)) continue;
                 string roofName = $"{tag}-{suffix}";
                 bool chainAbove = chain is not null && chain.Levels.Any(l => string.Equals(ModelYardstick.Building(l.Name), tag, StringComparison.OrdinalIgnoreCase)
                     && ((NumberOf(l.Name) is int n && n > highest) || Stripped(l.Name).Contains(suffix, StringComparison.OrdinalIgnoreCase)));

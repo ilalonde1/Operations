@@ -223,6 +223,40 @@ public sealed class AStoreyMayBeNamedByAWordTests
         // a cycle with a tail, and a floor shown over itself beside a chain: two stories, the row stands (B5)
         Assert.Same(voc, voc.WithFloorWordsRankedBy(["GROUND FLOOR SHOWING MAIN FLOOR FRAMING OVER", "MAIN FLOOR SHOWING UPPER FLOOR FRAMING OVER", "UPPER FLOOR SHOWING MAIN FLOOR FRAMING OVER"]));
         Assert.Same(voc, voc.WithFloorWordsRankedBy(["GROUND FLOOR SHOWING MAIN FLOOR FRAMING OVER", "MAIN FLOOR SHOWING UPPER FLOOR FRAMING OVER", "MAIN FLOOR SHOWING MAIN FLOOR FRAMING OVER"]));
+        // a cycle standing APART from the chain (step 72, the audit's finding 9): GROUND -> 4 walked alone while MAIN and
+        // UPPER told each other's story - GROUND was re-ranked to 3; two stories anywhere leave the row standing
+        Assert.Same(voc, voc.WithFloorWordsRankedBy(["GROUND FLOOR SHOWING LEVEL 4 FRAMING OVER", "MAIN FLOOR SHOWING UPPER FLOOR FRAMING OVER", "UPPER FLOOR SHOWING MAIN FLOOR FRAMING OVER"]));
+    }
+
+    /// <summary>
+    /// A SHEET NUMBER IS NOT A BUILDING (step 72, the audit's finding 5): "S2.3-LEVEL 2" read building 3 from its own
+    /// number - the dot before the 3 passed the prefix pattern's look-behind - while the storey reader, which strips
+    /// the number first, read level 2. The tag is read from the same stripped name.
+    /// </summary>
+    [Theory]
+    [InlineData("S2.3-LEVEL 2 PLAN.dxf", 2)]
+    [InlineData("S2.3_1_LEVEL 2 PLAN.dxf", 2)]
+    [InlineData("S-12-LEVEL 3 PLAN", 3)]
+    public void ASheetNumberBeforeTheDashIsNotABuildingTag(string name, int level)
+    {
+        var sheet = PlanSheetNaming.Parse(name);
+        Assert.Empty(sheet.BuildingTags);
+        Assert.Equal([level], sheet.Levels);
+        // and a real prefixed building still reads
+        Assert.Equal(["3"], PlanSheetNaming.Parse("S2.06_1_3-LEVEL 2 PLAN.dxf").BuildingTags);
+        Assert.Equal(["A"], PlanSheetNaming.Parse("S2.06_1_A-LEVEL 28 PLAN.dxf").BuildingTags);
+    }
+
+    /// <summary>
+    /// A BUILDING'S PARKADE IS MATCHED WITH ITS PREFIX OFF (step 72, the audit's finding 6): the parkade pattern is
+    /// anchored, so "1-P1" and "A-P2" never matched and a tagged parkade plan on a building-named ladder went nowhere.
+    /// </summary>
+    [Fact]
+    public void ATaggedParkadePlanFindsItsBuildingsParkadeStorey()
+    {
+        Assert.Equal(["1-P1"], PlanSheetNaming.MatchStories(PlanSheetNaming.Parse("S2.01_1_LEVEL P1 PLAN BLDG 1.dxf"), ["1-P1", "1-L1", "2-P1", "2-L1"]));
+        Assert.Equal(["A-P2"], PlanSheetNaming.MatchStories(PlanSheetNaming.Parse("S2.01_1_LEVEL P2 PLAN BLDG A.dxf"), ["A-P2", "A-P1", "B-P2"]));
+        Assert.Equal(["P1"], PlanSheetNaming.MatchStories(PlanSheetNaming.Parse("S2.01_1_LEVEL P1 PLAN.dxf"), ["P1", "L1"]));
     }
 
     /// <summary>
@@ -245,6 +279,10 @@ public sealed class AStoreyMayBeNamedByAWordTests
         // and on a plan-named ladder the one building's two roof plans are one ROOF (40117: BLDG 2 - MAIN ROOF PLAN, BLDG 2 - STAIR ROOF PLAN)
         var shared = StoreysFromPlans.Merge(null, ["S2.02_1_BLDG 2 - LEVEL 2 PLAN.dxf", "S2.05_1_BLDG 2 - MAIN ROOF PLAN.dxf", "S2.06_1_BLDG 2 - STAIR ROOF PLAN AND E.M.R. ROOF PLAN.dxf"], 3000);
         Assert.Equal(["L2", "ROOF"], shared.Storeys.Select(s => s.Name));
+        // ... whether or not the building has a level plan of its own (step 72, the audit's finding 7): a tagged roof over
+        // an untagged level plan is the shared ROOF, and so is a tagged elevator roof (as an untagged one is - stated)
+        Assert.Equal(["L1", "ROOF"], StoreysFromPlans.Merge(null, ["S2.01_1_LEVEL 1 PLAN.dxf", "S2.05_1_ROOF PLAN BLDG 1.dxf"], 3000).Storeys.Select(s => s.Name));
+        Assert.Equal(["L1", "ROOF"], StoreysFromPlans.Merge(null, ["S2.01_1_LEVEL 1 PLAN BLDG 1.dxf", "S2.05_1_ROOF PLAN BLDG 1.dxf", "S2.06_1_ELEVATOR ROOF PLAN BLDG 1.dxf"], 3000).Storeys.Select(s => s.Name));
         var roof = PlanSheetNaming.MatchStories(PlanSheetNaming.Parse("S2_2_ROOF PLAN BLDG C.dxf"), ["C-ELEVATOR ROOF", "C-ROOF", "L1"], null);
         var elevator = PlanSheetNaming.MatchStories(PlanSheetNaming.Parse("S2_3_ELEVATOR ROOF PLAN BLDG C.dxf"), ["C-ELEVATOR ROOF", "C-ROOF", "L1"], null);
         Assert.Equal(["C-ROOF"], roof);

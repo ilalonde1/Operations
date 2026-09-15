@@ -14,7 +14,8 @@ namespace Kor.Operations.EngineeringTools.Core.Tests.Intake;
 /// with NO slack are stud walls - partitions on the layer the model does not read.
 /// </summary>
 /// <remarks>
-/// WHAT THIS COVERS: the sheet-kind decision by share and count; both kinds of stud wall on a wood plan;
+/// WHAT THIS COVERS: the sheet-kind decision by share (at half and at two thirds exactly) and count; stood-down
+/// dimension strings counting for nothing; the 8 in read from the row; both kinds of stud wall on a wood plan;
 /// the retaining wall (an unfilled pair at 12 in) and the filled six-inch wall left alone on it; a
 /// concrete plan (few unfilled pairs) untouched even with a 140 mm filled band. WHAT IT DOES NOT: the
 /// six sets (the gate: five byte-identical, 31170-arch loses two slab-outline line pairs read as
@@ -68,5 +69,48 @@ public sealed class AWoodPlansStudWallsArePartitionsTests
         var small = Plan(4, 139.7, 1, 140);
         WallTypeTagging.StudWallsOfAWoodPlan(small, 152.4);
         Assert.DoesNotContain(true, small.WallIsPartition);
+    }
+
+    /// <summary>
+    /// THE SHARE IS TESTED AT ITS OWN LINE (step 72, the audit's finding 10): twenty unfilled pairs beside twenty
+    /// filled walls is half, not two thirds - no partition; twenty of thirty is two thirds exactly - a wood plan.
+    /// Without this the share condition could be removed and every other assertion in this file would stand.
+    /// </summary>
+    [Fact]
+    public void TheCountAloneDoesNotMakeAWoodPlanAndTwoThirdsExactlyDoes()
+    {
+        var half = Plan(20, 139.7, 20, 152.4);
+        WallTypeTagging.StudWallsOfAWoodPlan(half, 152.4);
+        Assert.DoesNotContain(true, half.WallIsPartition);
+        var twoThirds = Plan(20, 139.7, 10, 152.4);
+        WallTypeTagging.StudWallsOfAWoodPlan(twoThirds, 152.4);
+        Assert.Equal(20, twoThirds.WallIsPartition.Count(p => p));
+    }
+
+    /// <summary>
+    /// A DIMENSION STRING STOOD DOWN AS A WALL IS NOT EVIDENCE OF A WOOD PLAN (step 72, the audit's finding 4): step 35
+    /// marks the stacked strings a reader paired as walls; they stayed in WallFaceLines, so twenty of them beside one
+    /// filled 140 mm wall made the sheet "wood" and the wall a partition. They count for nothing here.
+    /// </summary>
+    [Fact]
+    public void DimensionStringsStoodDownAsWallsAreNotUnfilledPairs()
+    {
+        var g = Plan(20, 1219.2, 1, 140);
+        for (int i = 0; i < g.Walls.Count; i++) g.WallIsDimensionString.Add(i < 20);
+        WallTypeTagging.StudWallsOfAWoodPlan(g, 152.4);
+        Assert.DoesNotContain(true, g.WallIsPartition);
+    }
+
+    /// <summary>The 8 in is the row's (dxf.pdf.unfilled-wall-min-thickness-mm, migration 091): a set banking 10 in partitions a 9 in pair on a wood plan.</summary>
+    [Fact]
+    public void TheRetainingWallsThicknessIsTheRows()
+    {
+        var g = Plan(20, 228.6, 0, 0);
+        WallTypeTagging.StudWallsOfAWoodPlan(g, 152.4);
+        Assert.DoesNotContain(true, g.WallIsPartition);                            // 9 in pairs are walls at the default 8 in
+        WallTypeTagging.StudWallsOfAWoodPlan(g, 152.4, unfilledWallMinThicknessMm: 254);
+        Assert.Equal(20, g.WallIsPartition.Count(p => p));                        // and partitions where the row says 10 in
+        Assert.Contains("dxf.pdf.unfilled-wall-min-thickness-mm", PdfIntakeOptions.SettingKeys);
+        Assert.Equal(WallTypeTagging.DefaultUnfilledWallMinThicknessMm, PdfIntakeOptions.BuiltInRuleValues()["dxf.pdf.unfilled-wall-min-thickness-mm"]);
     }
 }
