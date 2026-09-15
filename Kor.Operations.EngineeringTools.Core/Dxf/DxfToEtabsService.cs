@@ -1105,11 +1105,35 @@ public static class DxfToEtabsService
             // A PLAN OF A STOREY, not a key plan or a site plan: a sheet naming every axis of every
             // building would win on names and set the set on a frame nothing structural is drawn
             // in (Codex 31, F5). The reference plan is a sheet the model places.
+            // AND THE PLAN THE MOST OTHER PLANS CAN BE SET ON, not the plan naming the most axes (step 65,
+            // 2026-09-14): 30993's EARTHQUAKE SENSOR LAYOUT LEVEL 4 PARTIAL PLAN names 45 "axes" - its sensor
+            // bubbles, read as grid labels - and once it read as a plan of L4 it won the reference on count
+            // and the 28 structural plans named nothing it named: 28 of 78 views placed in run 10, 2 in
+            // run 11. A sheet's worth as the grid is how many other sheets CAN BE SET ON IT - a fit by name
+            // that agrees on one offset (SolveByName), not a count of shared names: the sensor layout names
+            // every axis the half-plans name, at another scale, so the names agree and the fit does not.
+            // Between plans that carry the same number of sheets, the one the others match on MORE axes
+            // (31065: its north and south foundation plans both carry all 24; the sheets' fits to one differ
+            // from their fits to the other by 2 cm, and her model says which - so the anchor the most names
+            // agree on); then the count of a plan's own names; then the name, so a tie is the same every run.
+            var ownFrame = new AnnotationOverlay.Frame(0, 0, 0);
             string? referencePlan = files.Where(f => namedAxesOf[f].Count >= GridAlignment.LeastConvincingByName && storeysOfSheet[f].Count > 0)
-                .OrderByDescending(f => namedAxesOf[f].Count).FirstOrDefault();
+                .Select(f =>
+                {
+                    var carried = GridAlignment.Carried(namedAxesOf[f], ownFrame, scale);
+                    var fits = files.Where(g => !string.Equals(g, f, StringComparison.OrdinalIgnoreCase) && namedAxesOf[g].Count > 0)
+                        .Select(g => GridAlignment.SolveByName(namedAxesOf[g], carried, scale)).Where(fit => fit is not null).ToList();
+                    return (File: f, Carries: fits.Count, Matched: fits.Sum(fit => fit!.MatchedX + fit.MatchedY));
+                })
+                .OrderByDescending(c => c.Carries)
+                .ThenByDescending(c => c.Matched)
+                .ThenByDescending(c => namedAxesOf[c.File].Count)
+                .ThenBy(c => c.File, StringComparer.OrdinalIgnoreCase)
+                .Select(c => c.File)
+                .FirstOrDefault();
             if (referencePlan is not null)
             {
-                var own = new AnnotationOverlay.Frame(0, 0, 0);
+                var own = ownFrame;
                 alignedByName[referencePlan] = new GridAlignment.Fit(own, namedAxesOf[referencePlan].Count(a => a.Vertical),
                     namedAxesOf[referencePlan].Count(a => !a.Vertical),
                     $"the set's reference plan, in its own frame (no model grid to set it on; its {namedAxesOf[referencePlan].Count} named axes are the grid)");
