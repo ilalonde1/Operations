@@ -1,6 +1,6 @@
 # PDF intake → ETABS — Completion Plan
 
-**Status:** Rev 3, 2026-09-15 early (steps 47 and 49–71 added to §8, 3b–3w; runs 8–16 in §1b) — WP1–WP5 landed overnight on Ian's go-ahead ("go through this all,
+**Status:** Rev 3, 2026-09-15 morning (steps 47 and 49–72 added to §8, 3b–3x; runs 8–16 in §1b, run 17 in flight) — WP1–WP5 landed overnight on Ian's go-ahead ("go through this all,
 step by step, and finish it overnight"): commits `8fccbc25` (WP3), `3f3f82b9` (WP2), `aba7d9ff`
 (WP4), `69e554b5` (WP5), each gated by the six byte-identical and the fast suite; WP5's remaining
 conventions are counted by a test, not by this document. §8 is what needs Ian. Rev 2 (2026-09-11)
@@ -423,6 +423,14 @@ the DXF route.
    while twelve sets compose at once, leaked between sets since step 60. Now an `AsyncLocal`
    (`7975b354`); `TheVocabularyInForceIsTheCallersTests` proved by breaking it. Run 16
    (`--recompose` on `7975b354`): SameCounts 295, one mover — 30992 back to L1 L2 ROOF.
+3x. **Step 72, 2026-09-15 morning** (§82): the Codex audit of 63–71 answered — eleven findings, eight
+   fixed with fixtures (`8805acd1`): the read cache hashes every Core source but a proven-unreferenced
+   exclude list; a killed run's partial ledger is set aside, never deleted; dimension strings are not
+   unfilled pairs; a sheet number is not a building; a prefixed parkade matches; a tagged roof over an
+   untagged plan is the shared ROOF; a cycle apart from the chain leaves the row; the share tested at
+   its line; the barrier asserted. Finding 1 (the 18-inch literal at the open-face-pair gate, unconverted
+   for millimetre sets) is the next measured step. The wood rule's 8 in is the row (migration 091);
+   31202 re-banked for 091's instrumentation sheets. Run 17 = a full read on `8805acd1`.
 4. **WP6** — one model in front of Andrea (31170's, or whichever the ledger ranks best of the
    architects' sets). Ian's call when.
 5. **Step 47**, the next reading rule, from the corpus. `takeoff corpus-query plan-titles` on the

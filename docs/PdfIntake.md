@@ -1,11 +1,11 @@
 # PDF intake — what it does today, and what it leaves on the page
 
-## 0. START HERE (state as of 2026-09-15 early, after steps 47 and 54–71 and completion-plan WP1–WP5 — 253 of 296 sets build from the PDF alone, run 16)
+## 0. START HERE (state as of 2026-09-15 morning, after steps 47 and 54–72 and completion-plan WP1–WP5 — 253 of 296 sets build from the PDF alone, run 16; run 17 measures step 72)
 
 A session picking this up cold reads this section, then the completion plan
 (`docs/architecture/Kor.Operations.EngineeringTools.PdfIntake.plan.md` — what "complete" means, the
 packages, and where each stands), then the last three step sections (§54–§56). §1–§52 are the
-record of how each rule was arrived at, read when a rule is being changed. §81 is the latest step (a static leaking between sets under 12 workers, step 71); §80 has run 14 looked at; §76 is why a corpus read is 46–53 min now and how a run is launched so it outlives the session.
+record of how each rule was arrived at, read when a rule is being changed. §82 is the latest step (the audit of 63–71 answered); §81 the static that leaked between sets; §80 run 14 looked at; §76 is why a corpus read is 46–53 min now and how a run is launched so it outlives the session.
 
 **What this is.** A PDF ingestor: one ingestion point (`DrawingIntake.ReadSheet` → `PdfOnlyBuild`)
 that reads a drawing set and hands its geometry to outlets — the ETABS `.e2k` today, the DXF as a
@@ -4106,3 +4106,33 @@ WHAT THIS DOES NOT: a set whose own composition runs on more than one thread (no
 reader's `PdfOnlyBuild` setting of the office vocabulary, which is the same value for every set and
 was never the leak; the results of runs before 16 for word-named sets, which stand as measured but
 carry the noise.
+
+## 82. Step 72, 2026-09-15 morning: the audit of steps 63–71 answered — eleven findings, eight fixed, one measured next, two stated
+
+Codex's `CODEX-PDF-INTAKE-STEPS-63-69-AUDIT-RESPONSE.md` (14.5 KB, eleven source findings, no build, no
+drawings) read against the code, each with a fixture (`8805acd1`):
+
+| # | finding | what was done |
+|---|---|---|
+| 2 High | the gate's read cache never hashed `VectorPageReader.cs` at the Core root — a page-walker change would recompose a stale read and pass | the hash is **every Core source but a six-file exclude list**, and `NoIncludedSourceReferencesAnExcludedOne` proves in the real repository that no hashed file references an excluded type (proved by breaking: excluding `PlanSheetNaming.cs` names four files). Composer-only edits read the six again — ~2 min — the price of a cache that cannot lie. Cache version 2 |
+| 3 High | a recovery run deleted the killed run's partial ledger before writing a row of its own | `SetAsidePartialLedger` keeps it under its last-write time; the 17 "another job's file" rows append too (run 15's partial held 279 of 296) |
+| 4 High | stood-down dimension strings counted as unfilled pairs, so twenty of them beside one filled 140 mm wall made a concrete sheet "wood" and the wall a partition | they count for nothing in the wood-plan decision or its partitions |
+| 5 High | "S2.3-LEVEL 2" read building 3 from its own sheet number (the dot passed the look-behind) | the tag is read from the number-stripped name, as the storey already was |
+| 6 High | a building-prefixed parkade storey (1-P1, A-P2) never matched the anchored parkade pattern; a tagged parkade plan on a building-named ladder went nowhere | matched with its prefix off (`ModelYardstick.Stripped`) at both sites |
+| 7 High | a tagged roof over an UNTAGGED level plan vanished on a plan-named ladder (the shared branch sat behind "has this building a level plan") | the shared ROOF no longer needs the building's own level plan |
+| 8 Med | a tagged ELEVATOR ROOF on a plan-named ladder is the roof's storey, not a storey above it | **stated, not changed**: an untagged elevator roof plan is the roof's storey today; the overrun as its own storey is a rule for the sets that draw one, measured before it is written |
+| 9 Med | a cycle standing apart from the walked chain (MAIN ⇄ UPPER beside GROUND → 4) escaped the check and re-ranked GROUND | every word with a story of its own must be on the chain, else the row stands |
+| 10 Med | the wood rule's two-thirds share was untested at its line | half (no) and two thirds exactly (yes) |
+| 11 Med | the vocabulary test's barrier could time out and pass a plain static | `SignalAndWait`'s result is asserted |
+| 1 High | `Math.Min(options.MaxWallThickness, 18.0)` at the open-face-pair gate is a literal 18 **inches** never converted by `InUnitOf`, so in every millimetre set that branch's ceiling is 18 mm and it never yields a wall | **real, older than step 63, and it changes corpus numbers** — its own measured step (§83), not this one |
+
+Also this step: the wood rule's 8 in is the row `dxf.pdf.unfilled-wall-min-thickness-mm` (migration 091, applied
+this morning): `PdfIntakeOptions` reads it (18 setting keys), `WallTypeTagging` takes it, the triage ratchet
+49 → 48. Migration 091's INSTRUMENTATION pattern refuses 31202's two SEISMIC INSTRUMENTATION sheets: their
+nine named axes leave GRIDS (46 → 37), every member identical — looked at in the report diff, re-banked.
+
+Fast suite 1,367; six-set gate byte-identical after the re-bank. The wood-rule and tag changes are
+reader-side: run 17 is a full read.
+
+WHAT THIS DOES NOT: finding 1; the elevator-roof storey on a shared ladder (stated); question K of the brief
+(the flow-local vocabulary's setters) — Codex read the setters as out of range and made no finding.
