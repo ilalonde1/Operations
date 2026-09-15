@@ -1,6 +1,6 @@
 # PDF intake — what it does today, and what it leaves on the page
 
-## 0. START HERE (state as of 2026-09-15 early, after steps 47 and 54–71 and completion-plan WP1–WP5 — 253 of 296 sets build from the PDF alone, run 15; run 16 measures step 71)
+## 0. START HERE (state as of 2026-09-15 early, after steps 47 and 54–71 and completion-plan WP1–WP5 — 253 of 296 sets build from the PDF alone, run 16)
 
 A session picking this up cold reads this section, then the completion plan
 (`docs/architecture/Kor.Operations.EngineeringTools.PdfIntake.plan.md` — what "complete" means, the
@@ -4093,7 +4093,10 @@ beside it. No call site changed. `TheVocabularyInForceIsTheCallersTests`: two fl
 words, meet at a barrier, and each reads its own through `Parse`; **proved by breaking it** — with a
 plain static it fails every time ("Expected MAIN=1;UPPER=2, Actual GROUND=1;MAIN=2;UPPER=3"). Fast
 suite 1,359; six-set gate byte-identical (a read, 2 m 17 s). Run 16 (`--recompose` on `7975b354`)
-measures how many sets were reading a neighbour's words: every mover in the diff run 15 → 16 is one.
+measured how many sets were reading a neighbour's words: **run 16** (00:11 → 00:33, 22 min;
+`ledger-sets-2026-09-15-run16-step71.csv`; DB run `04679a26`) — `corpus-query diff` run 15 → 16:
+**Storeys 1, SameCounts 295**; 30992-01 back to L1 L2 ROOF, 31 columns, 77 walls. One set in that pair
+of runs; from run 16 the composition is deterministic.
 
 **Also measured on run 15:** `ledger-sets.partial.csv` holds 279 rows against the sorted ledger's 296
 — the 17 "stick file of another job" sets never append (they are decided before the per-set loop).
