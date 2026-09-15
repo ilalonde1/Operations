@@ -1631,6 +1631,38 @@ public static class StructuralPlanClassifier
         // their sheets -- on top of their own floors. A storey the drawing gives a slab has a slab.
         // How many floors this sheet read from its own SLAB EDGES, before any fallback. Her count
         // is checked against this and not against what a perimeter wall stood in for; see below.
+        // THE FLOOR IS THE OUTER EDGE OF THE WALLS THAT CLOSE ROUND IT (intake step 78, 2026-09-15; the engineers'
+        // rule, 25 Aug: "it should always follow the outer edge of the walls"). The perimeter-wall plate below is a
+        // fallback taken only where no slab ring exists; the PDF route now unites a parkade's interior cells into a
+        // ring bounded by curbs and the walls' inner faces (31138's P1: 14,520 sq ft inside the 18,374 the walls
+        // close), and that ring took the plate from the walls. A slab ring standing INSIDE the ring the walls close
+        // is the floor's interior - a curb, a step, a ramp - not the floor; the walls' outer edge is. A ring that
+        // reaches beyond the walls (a balcony past a perimeter wall) is larger and keeps its place.
+        // The ring the walls close is read two ways, as the fallback below reads it: the ring-in-a-ring reading of a
+        // perimeter wall drawn as one outline (EnclosedByWalls, 31168's parkades at 77,030 sq ft) or the wall panels
+        // enclosing the floor within a doorway.
+        var wallsClose = result.EnclosedByWalls.Where(l => l.Area >= options.MinPlateArea).OrderByDescending(l => l.Area).FirstOrDefault();
+        if (wallsClose is null && result.Walls.Count >= 3 && DxfFloodFillPlateDetector.EnclosedByWallPanels(result.Walls, options, out _) is { } byPanelsEarly
+            && byPanelsEarly.Area >= options.MinPlateArea)
+            wallsClose = byPanelsEarly;
+        if (options.FloorFromPerimeterWall
+            && result.Slabs.Count > 0
+            && wallsClose is { } wallRing
+            && result.Slabs.All(s => s.Area < wallRing.Area && LoopGeometry.PointInPolygon(s.Centroid(), wallRing.Points)))
+        {
+            int columnsOnSheet = result.Columns.Count;
+            int underWalls = columnsOnSheet == 0 ? 0 : result.Columns.Count(c => LoopGeometry.PointInPolygon(c.Center, wallRing.Points));
+            double wallCoverage = columnsOnSheet == 0 ? 1.0 : (double)underWalls / columnsOnSheet;
+            if (columnsOnSheet < 4 || wallCoverage >= options.MinFloorCoverage)
+            {
+                result.Flags.Add(
+                    $"{result.Slabs.Count} slab ring(s) totalling {options.SqFt(result.Slabs.Sum(s => s.Area))} sq ft stand inside the " +
+                    $"{options.SqFt(wallRing.Area)} sq ft ring the perimeter walls close, and are its interior; the floor is the walls' outer edge.");
+                result.Slabs.Clear();
+                if (!result.EnclosedByWalls.Contains(wallRing)) result.EnclosedByWalls.Add(wallRing);
+            }
+        }
+
         int fromSlabEdges = result.Slabs.Count;
 
         // A STOREY'S PLATE IS WHAT ITS WALL PANELS ENCLOSE, AT THEIR OUTER FACE. The ring-in-a-ring

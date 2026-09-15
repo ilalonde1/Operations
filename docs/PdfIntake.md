@@ -4136,3 +4136,68 @@ reader-side: run 17 is a full read.
 
 WHAT THIS DOES NOT: finding 1; the elevator-roof storey on a shared ladder (stated); question K of the brief
 (the flow-local vocabulary's setters) — Codex read the setters as out of range and made no finding.
+
+## 83. Steps 73–76 and runs 17, 18, 2026-09-15 midday: the title block's fields, the plate instrument, a dead branch measured and refused, a level list's ranges
+
+Four steps and two runs in three hours, on the road WP6a orders (plan Rev 4: the engineers' own definition of
+usable — verticals and a plate on every storey, one model per building):
+
+**Step 73** (`011117c2`, Codex from `CODEX-PDF-INTAKE-TITLE-BLOCK-FIELDS.md`, the first brief under the
+one-defect-per-prompt rule): five title-block rules from run 14's five defects — every office label ends the
+field above it (DRAWING NO, PROJ. #, JOB TITLE …), a neighbouring labelled column bounds a field's width, a lone
+digit at the column's right edge is a revision mark, a line is its tallest word's baseline and a short glyph
+joins the nearest one (the displaced dash), a block whose labels stack along X is a rotated strip read with the
+axes swapped. Re-banking exposed that 31065's LEVEL 2 had been EMPTY in every baseline since the first — two
+columns where the storey has 101 and 90 walls — because its dash sat 3.4 pt below its line and the title read
+as no level; rendered, banked.
+
+**Step 74** (`967564e7`): the instrument before the work (rule 9). `PlateCoverage` classes every storey of a
+built set — Plate / NoSheetPlaced / NoRingRead / RingsReadNoPlate — from the .e2k and the sheet ledger, and
+`takeoff corpus-query plates` sums the corpus. Run 18's 2,660 storeys: **plate 41%, no sheet placed 27%
+(placement), placed but no ring read 17% (reading), rings read but no plate 19% (composer)**. The composer class
+led straight to a fault: thirty-three messages divided areas by 144 as if every area were square inches, so
+every PDF-route report stated ring areas 645 times too small ("72,188 sq ft … too small for a floor plate" was a
+112 sq ft stair ring). `PlanClassificationOptions.UnitInInches` + `SqFt` — the words were wrong, the rules were
+right. The read cache's reference gate caught `PlateCoverage` referencing the analyzer and it joined the
+exclude list: the gate working.
+
+**Step 75** (`7cf9969f`, the audit's finding 1): the open-face-pair branch's ceiling was a literal 18.0 — inches,
+never converted — so on every millimetre set the branch was dead. Measured before choosing: alive on the six,
+five byte-identical and 31170-arch +2 walls at hatching; alive on the corpus (a recompose of run 17's read,
+`ledger-sets-2026-09-15-exp-open-face-pairs.csv`), +32 walls on 9 of 296 sets, no yardstick moved. The rule:
+`MaxOpenFacePairThickness` is converted by `InUnitOf`, and `PairOpenFaces` says which route this is — true for
+a Revit DXF (31065's exterior wall arrives as nineteen open chains), false on the PDF route, whose reader paired
+every face it could with the fill in hand.
+
+**Step 76** (`f55508c1`): the largest class without a plate was "no sheet placed" (787 storeys), and its top set
+30884-01 (35 storeys) titles its typical floors "LEVEL 13 & 14 - 27 PLAN": the list read "13 & 14" and dropped
+the range after the "&". A list is read first and each item may be a range (`RangeInList`).
+
+**Runs 17 and 18**: run 17 (53 min, a full read on `8805acd1`) was read while migration 092 (LOADING PLAN,
+LOADING DIAGRAM … are not structural plans; 50 corpus sheets carry LOADING) landed mid-run, so run 18 (30 min,
+a recompose of run 17's read with 092 throughout) is 092's honest measurement: −260 columns / −229 walls that
+had doubled their level plans, no storey and no model lost; 31057's only plan is a SITE PLAN (now no members);
+31183's real ZONE A/B plans do not place (a placement class, item 3). Run 19 (a full read on `f55508c1`) measures
+73–76.
+
+## 84. Step 77, 2026-09-15 afternoon: a line that names another sheet is a callout, not a heading
+
+The reading class (placed, no ring read) taken set by set, largest first: 31087-01 (King Rise West, 53 storeys,
+49 of 61 without a plate). Its LEVEL 2 plan read 13 walls, 8 columns and no ring where LEVEL 1 beside it reads
+55, 58 and one; `pdf-inventory` said why — **4,813 paths discarded as FurnitureRegion** (782 on LEVEL 1), and
+`sched-border` named the region: `furniture: DETAIL 29 / S1.03  x 1316..2863  y 924..2231`, 1547 × 1307 pt, a
+callout the plan writes six times at its slab steps, the slab edge above one of them taken as a notes box's top
+rule and the podium plan under it swallowed (just inside the half-sheet cap). Rendered: the blue box over the
+whole right-hand podium.
+
+The rule (`5b02abe8`): a title run that names ANOTHER sheet (`SheetTitleReader.IsSheetNumberToken`) is a callout
+to that sheet, never a heading; a run naming THIS sheet is a detail drawn here and keeps its box. After it:
+LEVEL 2 41 walls / 62 columns / 2 rings, FurnitureRegion 744. Six sets: 31138 gained 5 columns and 9 walls on
+each of L1 and L2 ("SEE DETAIL 15 / S1.06" and "DETAIL 1 / S1.05" boxes on its LEVEL 1 plan; rendered, banked);
+the other five byte-identical. Test `ACalloutToAnotherSheetIsNotATitledBoxAndADetailOnThisSheetIs`, proved by
+breaking. Fast suite 1,377.
+
+WHAT IT DOES NOT: a plan note ending in a heading word with no sheet number (31138 p22 "BUILT-UP PER DETAIL",
+173 × 608 pt) — the same class, the half-sheet cap still its only guard; the geometric statement of the class
+("a heading is at its box's top-left; a callout floats on the plan") was not written because the grid crosses
+the schedules on 31087's own sheets, so "furniture is never on the grid" is false here.

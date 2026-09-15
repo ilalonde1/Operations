@@ -1379,7 +1379,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             double slabEdgeBridgeMm = DefaultSlabEdgeBridgeMm, double minSlabAreaMm2 = DefaultMinSlabAreaMm2)
         {
             result.FirstEdgeSlab = result.Slabs.Count;
-            if (result.Lines.Count < 4) return;
+            if (result.Lines.Count + result.StrokesOnGrid.Count < 4) return;
 
             // A WALL STANDING ON THE SLAB EDGE DOES NOT REMOVE THE SLAB EDGE (intake step 28). A line
             // the drafter drew is still that line after a wall has been read from it, and a floor's
@@ -1427,13 +1427,27 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 double wallLen = Math.Sqrt(Math.Pow(w.End.X - w.Start.X, 2) + Math.Pow(w.End.Y - w.Start.Y, 2));
                 return lineLen - wallLen >= SlabEdgeChainMinMm;
             }
-            if (candidates.Count < 4) return;
+            if (candidates.Count + result.StrokesOnGrid.Count(s => s.Count == 2) < 4) return;
 
             var segments = candidates
                 .Select(i => new DxfSegment("SLABEDGE",
                     new DxfPoint(result.Lines[i][0].X, result.Lines[i][0].Y),
                     new DxfPoint(result.Lines[i][1].X, result.Lines[i][1].Y)))
                 .ToList();
+
+            // A SLAB EDGE DRAWN ALONG A GRID LINE IS STILL THE SLAB EDGE (intake step 78, 2026-09-15). Step 53
+            // keeps a stroke along a grid axis drawn heavier than the grid apart from the lines, for the tendon
+            // reader; 31087's LEVEL 6-8 plan draws the 8.6 m of slab edge between its two blocks along grid 5
+            // at 9 pt over a 2 pt grid, and the ring had a gap the width of the corridor. Those strokes are
+            // the drawing's own lines and are offered to the ARRANGEMENT below (not to the walk, whose reading of the drawn
+            // lines is step 24 and 27 verbatim: on the architect's set the strokes along its grids turned the walk into the
+            // rooms and six storeys lost their 32,076 sq ft outline); a tendon along a grid cuts a floor into cells, and
+            // the cells are united.
+            var strokes = result.StrokesOnGrid.Where(s => s.Count == 2)
+                .Select(s => new DxfSegment("SLABEDGE", new DxfPoint(s[0].X, s[0].Y), new DxfPoint(s[1].X, s[1].Y)))
+                .ToList();
+
+            // First the exact joins (step 24): what the drafter closed, closes here; the rest are open chains.
             var built = new PlanLoopBuilder(SlabEdgeJoinMm, SlabEdgeJoinMm, SlabEdgeJoinMm).Build(segments);
             var loops = built.Loops.ToList();
 
@@ -1445,9 +1459,26 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             // width (6 in) are one edge, and an edge running toward a corner it stops short of by up
             // to 4 ft is carried to it. Only chains long enough to be a piece of an edge are tried —
             // the bridge search is every pair of chains, and a hatched plan has ten thousand dashes.
+            // (Step 78 measured the same on the architect's A003: 42,501 lines arranged whole took 565 s
+            // and bridged 25,504 hatch dashes in line with each other; the long chains alone are the edge.)
             var pieces = built.OpenChains
                 .Where(c => c.Count >= 2 && ChainLength(c) >= SlabEdgeChainMinMm)
                 .ToList();
+            var pieceSegments = new List<DxfSegment>();
+            foreach (var c in pieces)
+                for (int i = 0; i + 1 < c.Count; i++)
+                    pieceSegments.Add(new DxfSegment("SLABEDGE", c[i], c[i + 1]));
+
+            // AN EDGE INTERRUPTED IN LINE IS ONE EDGE (intake step 78). The drafter draws the edge from column to
+            // column and the column's own box over the gap: 31087's north edge is eleven pieces of 29.5 ft on
+            // one line with a 36-inch gap at every 12 x 30 column, and the six-inch bridge of step 27 does not
+            // reach. Two ends on one line, each running toward the other, closer than the corner-carry limit
+            // (48 in, the same bound an edge is carried to its corner by) are one edge, whatever interrupted
+            // them. A step in the edge is not in line and stays a step; a dash is too short to be a piece.
+            // The pieces go to the arrangement, not to the walk: a bridge in line with a room wall's piece turns the walk into
+            // the room (the architect's set lost its 32,076 sq ft outline to them on six storeys, measured 2026-09-15), where
+            // in the arrangement an extra edge is one more cell boundary and the outline's own cells still unite.
+            var inLine = BridgesInLine(pieceSegments, SlabEdgeExtendMm, SlabEdgeJoinMm);
 
             // ⛔ MEASURED AND REJECTED 2026-09-10: offering the small CLOSED loops to this pass too.
             // 31168's BLDG A L4-L14 view draws its tower corners as their own 5,133 x 5,186 mm
@@ -1473,17 +1504,57 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             // shared corner and round the building. It did not close BLDG A, and it cost elsewhere:
             // 31168 37 floors -> 36, and 31065 9 floors -> 8 with columns 605 -> 601. Two attempts on
             // one symptom is where CLAUDE.md rule 10 says to stop, so the code stops here and the
-            // finding is the deliverable. Do not try a third without a differential that shows which
-            // ring each shared segment ought to belong to.
-            if (pieces.Count >= 2)
+            // finding is the deliverable. (Step 78 is the third way the paragraph above asked for: the
+            // planar arrangement, where an edge serves both faces beside it.)
+            if (pieceSegments.Count >= 2)
+                loops.AddRange(new PlanLoopBuilder(SlabEdgeJoinMm, slabEdgeBridgeMm, SlabEdgeExtendMm).Build(pieceSegments).Loops);
+
+            // A FLOOR IS THE CELLS ITS STRUCTURE STANDS IN, UNITED (intake step 78, 2026-09-15). The chain walk
+            // above spends each segment on the first ring it closes, and a tower floor is drawn with its
+            // balconies and corner blocks as boxes AGAINST the outline, sharing an edge with it: whichever box
+            // closed first took the edge, and the floor never closed. In the planar arrangement of the same
+            // lines every edge bounds the face on each side of it, so a balcony is one cell and the floor
+            // beside it another, whole, and no order decides. The cells with structure standing in them are
+            // the floor's cells - a slab step, a tendon or a construction joint drawn across the floor divides
+            // it into cells, and they are united into one plate (PlanarRings.RecoverSurfaces); a balcony's cell
+            // holds nothing and stays out, so does a dimension strip. The unions stand BESIDE the walk's rings,
+            // not instead of them: where the outline closed as a chain (the architect's set, 32,076 sq ft with
+            // every room drawn inside it) that ring contains the unions and outermost keeps it; the union only
+            // adds what no chain could close. Gated as the walk's rings are: big enough, structure standing in
+            // it, outermost. WHAT IT DOES NOT: a degenerate embedding PlanarRings will not resolve (coincident
+            // rays, an overlap left unresolved) is refused, reported on the sheet, and the walk's rings stand.
+            // AND ONLY WHERE THE WALK FOUND NO FLOOR: the arrangement is quadratic in the lines (the architect's
+            // A003, 11,127 long pieces, 91 s), and a sheet whose outline the walk closed round its structure has
+            // its floor already - the union could only add rings inside it, which outermost would drop.
+            var arranged = new List<DxfSegment>(pieceSegments.Concat(inLine).Concat(strokes));
+            foreach (var l in built.Loops)
+                for (int i = 0; i < l.Points.Count; i++)
+                    arranged.Add(new DxfSegment("SLABEDGE", l.Points[i], l.Points[(i + 1) % l.Points.Count]));
+            // The drawing's own closed paths, not a mark-up's: an engineer's mark-up polygon over the whole sheet is a
+            // slab on the mark-up route and says nothing about where the plan's floor is. WHAT THIS DOES NOT: a closed
+            // viewport rectangle round the plan is a drawn "slab" today too, and a union inside it defers to it as it did.
+            var drawn = result.Slabs.Take(result.FirstEdgeSlab)
+                .Where((s, i) => s.Count >= 3 && !(i < result.SlabIsAnnotation.Count && result.SlabIsAnnotation[i])
+                                 && Math.Abs(PolygonProcessor.PolygonAreaMm2(s)) >= minSlabAreaMm2)
+                .Select(s => s.Select(p => new DxfPoint(p.X, p.Y)).ToList())
+                .ToList();
+            // AND ONLY WHERE NOTHING DREW ONE EITHER: the architect's set closes every storey's outline as a drawn path
+            // (32,076 sq ft) and every room inside it; the union could only add cells inside that path.
+            bool walkFoundAFloor = loops.Any(l => l.Area >= minSlabAreaMm2 && StandsIn(l))
+                                   || drawn.Any(d => StandsIn(new PlanLoop("SLABEDGE", d, true)));
+            if (!walkFoundAFloor && arranged.Count >= 3)
             {
-                var chainSegments = new List<DxfSegment>();
-                foreach (var c in pieces)
-                    for (int i = 0; i + 1 < c.Count; i++)
-                        chainSegments.Add(new DxfSegment("SLABEDGE", c[i], c[i + 1]));
-                var bridged = new PlanLoopBuilder(SlabEdgeJoinMm, slabEdgeBridgeMm, SlabEdgeExtendMm).Build(chainSegments);
-                loops.AddRange(bridged.Loops);
+                try
+                {
+                    var planar = new PlanarRings(SlabEdgeJoinMm, slabEdgeBridgeMm, SlabEdgeExtendMm).Build(arranged);
+                    loops.AddRange(planar.RecoverSurfaces(_ => false, cell => Holds(cell.Outer)).Slabs.Select(f => f.Outer));
+                }
+                catch (InvalidOperationException refused)
+                {
+                    result.SlabEdgeArrangementRefused = refused.Message;
+                }
             }
+
             // big enough to be a floor, and with something standing in it
             var floors = loops
                 .Where(l => l.Area >= minSlabAreaMm2 && StandsIn(l))
@@ -1505,11 +1576,21 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             // with no plate is honest, a storey carrying its core's area as its floor is not.
             if (floors.Count == 0) return;
 
-            // and outermost: a core's ring inside a floor is a hole in it, not a second floor
+            // and outermost: a core's ring inside a floor is a hole in it, not a second floor. INSIDE A DRAWN FLOOR
+            // TOO (step 78): the architect's set closes its outline as one drawn path (31170-arch, 32,076 sq ft) and
+            // draws every room inside it; the rooms' cells united gave three more "floors" on L6 and six on L1, each
+            // inside the drawn one. A cell union standing inside a floor-sized closed path is that floor's interior,
+            // not a second floor. Judged at the centroid: a union shares its boundary with its neighbours, so a
+            // vertex is on the line and answers with rounding noise.
             var outermost = new List<PlanLoop>();
             foreach (var l in floors)
-                if (!outermost.Any(o => LoopGeometry.PointInPolygon(l.Points[0], o.Points)))
+            {
+                // inside = more than half of its vertices inside: a centroid lies outside an L- or U-shaped floor
+                // (31170's two wings round a court), and a vertex on a shared boundary answers with rounding noise
+                if (drawn.Any(d => MostlyInside(l.Points, d))) continue;
+                if (!outermost.Any(o => MostlyInside(l.Points, o.Points)))
                     outermost.Add(l);
+            }
 
             foreach (var loop in outermost)
             {
@@ -1547,6 +1628,17 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             // a 28.6 m x 6.3 m strip on 31168's BLDG C plan closed on its own with a column in it
             // and would have been the storey's plate at 1,922 sq ft where the floor is 14,988 —
             // the columns beside it, outside it, say it is a strip of the floor and not the floor.
+            // a cell is the floor's where anything stands in it, whatever its size (step 78): the halves a slab step
+            // divides a floor into are each under the floor bound and each hold their columns
+            bool Holds(PlanLoop cell)
+            {
+                foreach (var c in result.Columns)
+                    if (LoopGeometry.PointInPolygon(new DxfPoint(c.X, c.Y), cell.Points)) return true;
+                foreach (var w in result.Walls)
+                    if (LoopGeometry.PointInPolygon(new DxfPoint((w.Start.X + w.End.X) / 2, (w.Start.Y + w.End.Y) / 2), cell.Points)) return true;
+                return false;
+            }
+
             bool StandsIn(PlanLoop loop)
             {
                 double x0 = loop.Points.Min(p => p.X), x1 = loop.Points.Max(p => p.X);
@@ -1564,6 +1656,9 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 return inside > 0 && inside * 2 > near;
             }
 
+            static bool MostlyInside(IReadOnlyList<DxfPoint> ring, IReadOnlyList<DxfPoint> polygon)
+                => ring.Count > 0 && ring.Count(p => LoopGeometry.PointInPolygon(p, polygon)) * 2 > ring.Count;
+
             static bool OnRing(DxfPoint p, PlanLoop loop)
             {
                 for (int i = 0; i < loop.Points.Count; i++)
@@ -1579,18 +1674,70 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             }
         }
 
+        /// <summary>
+        /// THE PIECES THAT CARRY AN EDGE ACROSS AN INTERRUPTION IN LINE (intake step 78): for every two ends of the
+        /// given lines closer than <paramref name="maxGap"/>, on one line (each within <paramref name="collinear"/>
+        /// of the other's line) and each running toward the other, the piece between them. Nearest pairs first,
+        /// each end used once. WHAT THIS COVERS: an edge broken at a column's box, at a leader, at a note or at a
+        /// dimension's text. WHAT IT DOES NOT: a step in the edge (not in line), a gap wider than the limit, two
+        /// pieces running the same way (one behind the other, not toward each other).
+        /// </summary>
+        public static List<DxfSegment> BridgesInLine(IReadOnlyList<DxfSegment> lines, double maxGap, double collinear)
+        {
+            ArgumentNullException.ThrowIfNull(lines);
+            var ends = new List<(int Line, DxfPoint P, DxfPoint Other)>();
+            foreach (var (s, i) in lines.Select((s, i) => (s, i)))
+            {
+                if (s.Start == s.End) continue;
+                ends.Add((i, s.Start, s.End));
+                ends.Add((i, s.End, s.Start));
+            }
+            // pairs by x so that only ends within the gap of each other are compared
+            var order = Enumerable.Range(0, ends.Count).OrderBy(k => ends[k].P.X).ToList();
+            var pairs = new List<(double Gap, int A, int B)>();
+            for (int oa = 0; oa < order.Count; oa++)
+            {
+                int a = order[oa];
+                var (la, pa, qa) = ends[a];
+                for (int ob = oa + 1; ob < order.Count; ob++)
+                {
+                    int b = order[ob];
+                    var (lb, pb, qb) = ends[b];
+                    if (pb.X - pa.X > maxGap) break;
+                    if (la == lb || Math.Abs(pb.Y - pa.Y) > maxGap) continue;
+                    double gap = pa.DistanceTo(pb);
+                    if (gap > maxGap || gap <= 0) continue;
+                    if (LoopGeometry.PerpendicularDistance(pb, qa, pa) > collinear || LoopGeometry.PerpendicularDistance(pa, qb, pb) > collinear) continue;
+                    // each line runs toward the other's end: the ends face each other across the gap
+                    if ((pa.X - qa.X) * (pb.X - pa.X) + (pa.Y - qa.Y) * (pb.Y - pa.Y) <= 0) continue;
+                    if ((pb.X - qb.X) * (pa.X - pb.X) + (pb.Y - qb.Y) * (pa.Y - pb.Y) <= 0) continue;
+                    pairs.Add((gap, a, b));
+                }
+            }
+            var used = new HashSet<int>();
+            var pieces = new List<DxfSegment>();
+            foreach (var (_, a, b) in pairs.OrderBy(p => p.Gap))
+            {
+                if (used.Contains(a) || used.Contains(b)) continue;
+                used.Add(a);
+                used.Add(b);
+                pieces.Add(new DxfSegment(lines[ends[a].Line].Layer, ends[a].P, ends[b].P));
+            }
+            return pieces;
+        }
+
         /// <summary>Endpoints this close are one corner of a ring, in millimetres: the intake reads a
         /// PDF's own coordinates, which meet exactly where the drafter closed a polyline.</summary>
-        private const double SlabEdgeJoinMm = 1.0;
+        public const double SlabEdgeJoinMm = 1.0;
 
         /// <summary>Two chain ends this close are one edge broken by what crossed it: a hand's width, the DXF side's own bridge (6 in). The compiled default of dxf.bridge-tolerance (PdfIntakeOptions.SlabEdgeBridgeMm).</summary>
         public const double DefaultSlabEdgeBridgeMm = 6 * 25.4;
 
         /// <summary>An edge stopping this short of the corner the other edge's line makes is carried to it: the DXF side's own limit (48 in).</summary>
-        private const double SlabEdgeExtendMm = 48 * 25.4;
+        public const double SlabEdgeExtendMm = 48 * 25.4;
 
         /// <summary>A chain shorter than this is a tick, a dash or a letter, not a piece of a floor's edge, and is not bridged.</summary>
-        private const double SlabEdgeChainMinMm = 2000;
+        public const double SlabEdgeChainMinMm = 2000;
 
         /// <summary>The structure a ring is judged against stands within this share of the ring's own size of it.</summary>
         private const double SlabEdgeNeighbourhoodShare = 0.10;

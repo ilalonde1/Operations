@@ -140,6 +140,13 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         /// <summary>Filled loops with wall-proportioned boxes but more than four vertices; not split.</summary>
         public int WallRibbonsNotSplit { get; set; }
 
+        /// <summary>
+        /// Why the planar arrangement of the slab-edge candidates was refused (step 78), or null where it
+        /// was built: a degenerate embedding PlanarRings will not resolve by arrival order. The storey
+        /// then has whatever rings the chain walk closes, and the report says so.
+        /// </summary>
+        public string? SlabEdgeArrangementRefused { get; set; }
+
         /// <summary>Footings read as dashed rectangles of a scheduled size (Intake.FootingOutlines). Outline in mm.</summary>
         public List<FootingOutline> Footings { get; } = new();
         // Each slab: ordered list of (X,Y) in mm, ready for a closed polyline

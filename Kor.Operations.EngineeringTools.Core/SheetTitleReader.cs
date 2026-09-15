@@ -114,7 +114,7 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             // on some blocks: a label ends in a colon or is not set in capitals; a KOR sheet title is.
             // 01589-01 p7: a rotated strip uses the same reading axes as the field reader;
             // glyph-run length along the page's Y is word width, not title font height.
-            var readingTokens = Intake.TitleBlockFields.ReadingTokens(page, TitleRegionMinFx, out bool rotated);
+            var readingTokens = Intake.TitleBlockFields.ReadingTokens(page, TitleRegionMinFx, out bool rotated, dropUpright: false);   // the title may be written up the page (30941)
             var rightEdge = readingTokens
                 .Where(t => t.Height >= TitleMinH
                             && !StampTokenRx.IsMatch(t.Text.Trim()) && !SheetNumberTokenRx.IsMatch(t.Text.Trim())

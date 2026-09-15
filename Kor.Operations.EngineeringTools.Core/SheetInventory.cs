@@ -112,6 +112,8 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                 }
                 Note("filled wall-thickness shapes with more than four vertices — ribbons, not split",
                     record.Geometry.WallRibbonsNotSplit, Disposition.Unread, "GeometryFilterService: retained with their existing fate");
+                if (record.Geometry.SlabEdgeArrangementRefused is { } refused)
+                    Note($"slab-edge arrangement refused, rings from the chain walk instead (step 78): {refused}", 1, Disposition.Unaccounted, "PlanarRings");
                 // From the record, re-reading nothing (audit F9): the labels the footing reader placed
                 // and the schedule table the intake typed.
                 int marksPlaced = record.FootingLabels.Count;

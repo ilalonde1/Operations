@@ -143,7 +143,11 @@ public static class TitleBlockFields
     private static string Clean(string s) => s.Trim().TrimEnd(':').Replace(".", "").Trim().ToUpperInvariant();
 
     /// <summary>The right-edge words in one reading coordinate system, also used by TitleText's fallback.</summary>
-    internal static List<VectorPageReader.TextToken> ReadingTokens(VectorPageReader.PageContent page, double regionMinFx, out bool rotated)
+    /// <param name="dropUpright">Leave out the words drawn up the page (a rotated stamp, "SSI 021 2024-02-05 12:10 PM"): the
+    /// field reader's default. THE TITLE READER KEEPS THEM (2026-09-15, run 19): KOR's own upright strip writes the sheet
+    /// title up the page beside upright labels - 30941's "LEVEL B4 RAFT FOUNDATION PLAN" - and dropping it here left the
+    /// stamp as the title ("SSI PM") on 85 sets' storeys.</param>
+    internal static List<VectorPageReader.TextToken> ReadingTokens(VectorPageReader.PageContent page, double regionMinFx, out bool rotated, bool dropUpright = true)
     {
         var band = page.Words.Where(t => t.Cx / page.WidthPts >= RegionMinFx && t.Text.Trim().Length > 0).ToList();
         // 01589-01 p7: several tall label runs sharing an X band, spread over Y, describe a rotated
@@ -161,7 +165,7 @@ public static class TitleBlockFields
         return page.Words.Where(t => t.Cx / page.WidthPts >= regionMinFx && t.Text.Trim().Length > 0)
             // Bottom-up along Y, then left-to-right across X: inverse centres are (-Cy, Cx).
             .Select(t => swap ? new VectorPageReader.TextToken(t.Text, t.Cy, -t.Cx, t.MinY, -t.MaxX, t.MaxY, -t.MinX) : t)
-            .Where(t => !(t.Text.Trim().Length >= 3 && t.Height > 2 * t.Width)).ToList();
+            .Where(t => !dropUpright || !(t.Text.Trim().Length >= 3 && t.Height > 2 * t.Width)).ToList();
     }
 
     internal static List<List<VectorPageReader.TextToken>> ReadingLines(IReadOnlyList<VectorPageReader.TextToken> tokens)

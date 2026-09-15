@@ -28,8 +28,9 @@ public sealed class DrawingIntakeTests
     {
         using var doc = PdfDocument.Open(Pdf(floor: true));
         var facts = DocumentFacts.From(doc);
-        // four separate edges with a 135 mm gap at one corner: the loop closes through the bridge row (152 mm) and is
-        // then too small for the area row (25.8 of 37.16 sq m); lowered, it is a floor; with the bridge below the gap, none
+        // four edges, the left one jogged 140 mm between two pieces: the loop closes through the bridge row (152 mm) and is
+        // then too small for the area row (25.8 of 37.16 sq m); lowered, it is a floor; with the bridge below the gap, none.
+        // (A gap at a corner is carried to the corner by step 27's own limit and closes whatever the bridge row says - step 78.)
         var byDefault = DrawingIntake.ReadSheet(doc, 1, new(96, PdfIntakeOptions.Default), facts);
         var lowered = DrawingIntake.ReadSheet(doc, 1, new(96, PdfIntakeOptions.Default with { MinSlabAreaMm2 = 1_000_000 }), facts);
         var unbridged = DrawingIntake.ReadSheet(doc, 1, new(96, PdfIntakeOptions.Default with { MinSlabAreaMm2 = 1_000_000, SlabEdgeBridgeMm = 100 }), facts);
@@ -182,7 +183,7 @@ public sealed class DrawingIntakeTests
             200 300 m 200 780 l S
             300 300 m 500 350 l S
             1 1 1 rg 100 100 10 10 re f
-            """ + (floor ? Environment.NewLine + "0 G 0.5 w 330 330 m 480 330 l S 480 330 m 480 480 l S 480 480 m 330 480 l S 330 476 m 330 330 l S" : "");   // four edges, a 4 pt (135 mm) gap at one corner
+            """ + (floor ? Environment.NewLine + "0 G 0.5 w 330 330 m 480 330 l S 480 330 m 480 480 l S 480 480 m 330 480 l S 330 480 m 330 410 l S 331 406 m 331 330 l S" : "");   // four edges, the left one in two pieces with a 4 pt (140 mm) jog between them: neither in line nor converging on a corner, so only the bridge row closes it (step 78)
         string annotation = polygon
             ? "<< /Type /Annot /Subtype /Polygon /Rect [600 100 620 120] /Vertices [600 100 620 100 620 120 600 120] /C [1 0 0] /Contents (Check this column) /T (Ian) >>"
             : "<< /Type /Annot /Subtype /Text /Rect [600 100 620 120] /Contents (Check this column) /T (Ian) >>";

@@ -113,6 +113,73 @@ internal static class DxfInspectVerb
             return 0;
         }
 
+        // WHY DOES THIS PAGE'S EDGE NOT CLOSE? (step 78, 2026-09-15) The faces PlanarRings finds in the named
+        // layers' lines at the PDF route's own tolerances, largest first, with what stands in each; then the
+        // longest open chains with their ends and the nearest other loose end - the gap the drawing leaves.
+        if (args.Any(a => a.Equals("--faces", StringComparison.OrdinalIgnoreCase)))
+        {
+            var faceLayers = new List<string>();
+            for (int i = 2; i < args.Length - 1; i++)
+                if (args[i].Equals("--layers", StringComparison.OrdinalIgnoreCase))
+                    faceLayers.AddRange(args[i + 1].Split(',', StringSplitOptions.RemoveEmptyEntries).Select(x => x.Trim()));
+            double unitInInches = DxfPlanReader.UnitInInches(args[1]) ?? 1.0;
+            double mm = 1.0 / 25.4 / unitInInches;   // one millimetre in the drawing's unit
+            var lines = inspectSegments.Where(s => faceLayers.Count == 0 || faceLayers.Any(l => s.Layer.Equals(l, StringComparison.OrdinalIgnoreCase))).ToList();
+            var memberSegments = inspectSegments.Where(s => PlanClassificationOptions.Matches(s.Layer, inspectOptions.WallLayerPatterns) || PlanClassificationOptions.Matches(s.Layer, inspectOptions.ColumnLayerPatterns)).ToList();
+            var standing = memberSegments.Select(s => s.Start).ToList();
+            // an edge interrupted in line is one edge (step 78): the same bridging the reader applies, at the same limit
+            var memberOutlines = new PlanLoopBuilder(inspectOptions.JoinTolerance, inspectOptions.JoinTolerance, inspectOptions.JoinTolerance).Build(memberSegments).Loops.Select(l => l.Points).ToList();
+            // the reader's own policy: exact joins first, then only chains long enough to be a piece of an edge (2 m) are
+            // bridged and arranged - a hatch of dashes is neither - with the closed loops' segments beside them
+            int drawn = lines.Count;
+            var exact = new PlanLoopBuilder(GeometryFilterService.SlabEdgeJoinMm * mm, GeometryFilterService.SlabEdgeJoinMm * mm, GeometryFilterService.SlabEdgeJoinMm * mm).Build(lines);
+            lines = new List<DxfSegment>();
+            foreach (var c in exact.OpenChains.Where(c => c.Count >= 2 && Enumerable.Range(0, c.Count - 1).Sum(i => c[i].DistanceTo(c[i + 1])) >= GeometryFilterService.SlabEdgeChainMinMm * mm))
+                for (int i = 0; i + 1 < c.Count; i++) lines.Add(new DxfSegment("SLABEDGE", c[i], c[i + 1]));
+            var inLine = GeometryFilterService.BridgesInLine(lines, GeometryFilterService.SlabEdgeExtendMm * mm, GeometryFilterService.SlabEdgeJoinMm * mm);
+            lines.AddRange(inLine);
+            foreach (var l in exact.Loops)
+                for (int i = 0; i < l.Points.Count; i++) lines.Add(new DxfSegment("SLABEDGE", l.Points[i], l.Points[(i + 1) % l.Points.Count]));
+            Console.WriteLine($"{Path.GetFileName(args[1])}   {drawn} lines on [{(faceLayers.Count > 0 ? string.Join(", ", faceLayers) : "every layer")}]: {exact.Loops.Count} closed by exact joins, {exact.OpenChains.Count} open chains of which the pieces of 2 m or more give {lines.Count - inLine.Count - exact.Loops.Sum(l => l.Points.Count)} segments + {inLine.Count} across gaps in line; join {GeometryFilterService.SlabEdgeJoinMm * mm:0.###} bridge {GeometryFilterService.DefaultSlabEdgeBridgeMm * mm:0.#} extend {GeometryFilterService.SlabEdgeExtendMm * mm:0.#} (drawing units)");
+            PlanarRings.Result faces;
+            try { faces = new PlanarRings(GeometryFilterService.SlabEdgeJoinMm * mm, GeometryFilterService.DefaultSlabEdgeBridgeMm * mm, GeometryFilterService.SlabEdgeExtendMm * mm).Build(lines); }
+            catch (InvalidOperationException e) { Console.WriteLine($"  arrangement REFUSED: {e.Message}"); return 3; }
+            double sqFt = unitInInches * unitInInches / 144.0;
+            double minPlate = GeometryFilterService.DefaultMinSlabAreaMm2 * mm * mm;
+            List<PlanarRings.Face> united;
+            try { united = faces.RecoverSurfaces(_ => false, cell => standing.Any(q => LoopGeometry.PointInPolygon(q, cell.Outer.Points))).Slabs.Where(u => u.Outer.Area >= minPlate).ToList(); }
+            catch (InvalidOperationException e) { Console.WriteLine($"  union REFUSED: {e.Message}"); united = []; }
+            Console.WriteLine($"  {faces.Faces.Count} bounded face(s), {faces.OpenChains.Count} open chain(s); cells with structure in them unite into {united.Count} plate(s) of {minPlate * sqFt:N0} sq ft or more:" +
+                string.Concat(united.OrderByDescending(u => u.Outer.Area).Take(6).Select(u => $" {u.Outer.Area * sqFt:N0} sq ft ({u.Holes.Count} hole(s))")));
+            foreach (var f in faces.Faces.OrderByDescending(f => f.Outer.Area).Take(12))
+            {
+                var p = f.Outer.Points;
+                int inside = standing.Count(q => LoopGeometry.PointInPolygon(q, p));
+                Console.WriteLine($"    face {f.Outer.Area * sqFt,10:N0} sq ft  {p.Count,4} pts  holes {f.Holes.Count,2}  x {p.Min(q => q.X) * unitInInches / 12,7:0}..{p.Max(q => q.X) * unitInInches / 12,-7:0} y {p.Min(q => q.Y) * unitInInches / 12,7:0}..{p.Max(q => q.Y) * unitInInches / 12,-7:0} ft   wall/column points inside {inside}");
+            }
+            var chains = faces.OpenChains.Select(c => (Chain: c, Length: Enumerable.Range(0, c.Count - 1).Sum(i => c[i].DistanceTo(c[i + 1])))).OrderByDescending(c => c.Length).ToList();
+            var ends = faces.OpenChains.SelectMany(c => new[] { c[0], c[^1] }).ToList();
+            foreach (var (chain, length) in chains.Take(12))
+            {
+                string End(DxfPoint e)
+                {
+                    double best = ends.Where(o => o != e).Select(o => o.DistanceTo(e)).DefaultIfEmpty(double.NaN).Min();
+                    // the member beside this end, if one stands within four feet: its box and how far the end is from it
+                    string beside = "";
+                    foreach (var m in memberOutlines)
+                    {
+                        double d = Enumerable.Range(0, m.Count).Min(i => LoopGeometry.DistanceToSegment(e, m[i], m[(i + 1) % m.Count]));
+                        if (d * unitInInches > 48) continue;
+                        beside = $" member {(m.Max(p => p.X) - m.Min(p => p.X)) * unitInInches:0}x{(m.Max(p => p.Y) - m.Min(p => p.Y)) * unitInInches:0} in at x {m.Min(p => p.X) * unitInInches / 12:0.0}..{m.Max(p => p.X) * unitInInches / 12:0.0} y {m.Min(p => p.Y) * unitInInches / 12:0.0}..{m.Max(p => p.Y) * unitInInches / 12:0.0}, {d * unitInInches:0.0} in off";
+                        break;
+                    }
+                    return $"({e.X * unitInInches / 12:0.0},{e.Y * unitInInches / 12:0.0}) nearest loose end {best * unitInInches:0} in{beside}";
+                }
+                Console.WriteLine($"    chain {length * unitInInches / 12,8:0.0} ft  {chain.Count,4} pts   {End(chain[0])}  ..  {End(chain[^1])}");
+            }
+            return 0;
+        }
+
         Console.WriteLine($"{Path.GetFileName(args[1])}");
         Console.WriteLine($"segments: {inspectSegments.Count}");
         Console.WriteLine();
