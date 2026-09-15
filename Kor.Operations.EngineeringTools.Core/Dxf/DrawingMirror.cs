@@ -23,6 +23,16 @@ public static class DrawingMirror
     public static string Root { get; set; } = Path.Combine(Path.GetTempPath(), "kor-drawings");
 
     /// <summary>
+    /// Content identity of a file already selected by SingleFile. Hash once per open document and
+    /// pass the result to its page readers; Key below identifies a mirror folder, not PDF bytes.
+    /// </summary>
+    public static string FileSha256(string localFile)
+    {
+        using var stream = File.OpenRead(localFile);
+        return Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(stream));
+    }
+
+    /// <summary>
     /// A local folder holding the same sheets, or the path itself when it is already local or
     /// unreachable -- the caller's own "is it there" check then fails exactly as it did before.
     /// </summary>

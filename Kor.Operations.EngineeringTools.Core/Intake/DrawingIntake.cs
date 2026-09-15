@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.RegularExpressions;
+using DrawingMirror = Kor.Operations.EngineeringTools.Dxf.DrawingMirror;
 using Kor.Operations.EngineeringTools.PdfToSafe;
 using Kor.Operations.EngineeringTools.QuantityTakeoff;
 using UglyToad.PdfPig;
@@ -24,20 +25,25 @@ public static class DrawingIntake
     public static DrawingSetRecord Read(string pdfPath, IntakeRequest request)
     {
         using var doc = PdfDocument.Open(pdfPath);
+        string pdfSha256 = DrawingMirror.FileSha256(pdfPath);
         var facts = DocumentFacts.From(doc);
         var sheets = new List<SheetRecord>();
         for (int page = 1; page <= facts.Pages; page++)
-            sheets.Add(ReadSheet(doc, page, request, facts));
+            sheets.Add(ReadSheet(doc, page, request, facts, pdfSha256));
         return new DrawingSetRecord(facts, sheets);
     }
 
     public static SheetRecord ReadSheet(PdfDocument doc, int page, IntakeRequest request, DocumentFacts facts)
+        => ReadSheet(doc, page, request, facts, pdfSha256: null);
+
+    /// <summary>The hash is computed once by the document owner; a hashless caller does not record pages.</summary>
+    public static SheetRecord ReadSheet(PdfDocument doc, int page, IntakeRequest request, DocumentFacts facts, string? pdfSha256)
     {
         ArgumentNullException.ThrowIfNull(doc);
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(request.Options);
         ArgumentNullException.ThrowIfNull(facts);
-        return ReadPage(doc.GetPage(page), request, facts);
+        return ReadPage(doc.GetPage(page), request, facts, pdfSha256);
     }
 
     /// <summary>
@@ -95,7 +101,7 @@ public static class DrawingIntake
         return flags;
     }
 
-    private static SheetRecord ReadPage(Page page, IntakeRequest request, DocumentFacts facts)
+    private static SheetRecord ReadPage(Page page, IntakeRequest request, DocumentFacts facts, string? pdfSha256)
     {
         int pageNumber = page.Number;
         var options = request.Options;
@@ -112,8 +118,10 @@ public static class DrawingIntake
         // always did (the DXF baseline depends on it), and every fate is mapped back onto the
         // population by subpath ordinal; what the thinning removed is CollapsedByThinning.
         var fullKept = new List<int>();
-        var full = VectorPageReader.ReadPage(page, includeAnnotations: true,
-            curveSegments: PdfToSafeConstants.BezierSegments, keptSubpathOrdinals: fullKept);
+        VectorPageReader.RawPage Walk() => VectorPageReader.Walk(page, PdfToSafeConstants.BezierSegments);
+        var pageWalk = pdfSha256 is null ? Walk()
+            : new PageReadCache().GetOrWalk(pdfSha256, pageNumber, PdfToSafeConstants.BezierSegments, Walk);
+        var full = VectorPageReader.Derive(pageWalk, includeAnnotations: true, keptSubpathOrdinals: fullKept);
 
         // EVERY SHEET IS READ AT THE SCALE IT STATES (intake step 31); the request's scale is the
         // fallback for a sheet that states none. The intake read each sheet's stated scale since
@@ -131,7 +139,7 @@ public static class DrawingIntake
         var thinnedKept = new List<int>();
         List<RawSubpath> raw;
         if (classify)
-            raw = PdfPlanReader.ParsePage(page, scaleFactor, out content, thinnedKept);
+            raw = PdfPlanReader.ParsePage(pageWalk, scaleFactor, out content, thinnedKept);
         else
         {
             content = full;

@@ -75,6 +75,7 @@ public static class PdfOnlyBuild
         Directory.CreateDirectory(dir);
 
         using var doc = PdfDocument.Open(pdf);
+        string pdfSha256 = DrawingMirror.FileSha256(pdf);
         var facts = DocumentFacts.From(doc);
         // the set's assembly schedule, read once (step 32), so every plan's walls can take their tags (step 33)
         IReadOnlyList<AssemblySchedule.Assembly> assemblies = [];
@@ -97,7 +98,7 @@ public static class PdfOnlyBuild
         for (int p = first; p <= last; p++)
         {
             SheetRecord record;
-            try { record = DrawingIntake.ReadSheet(doc, p, request, facts); }
+            try { record = DrawingIntake.ReadSheet(doc, p, request, facts, pdfSha256); }
             catch (Exception ex)
             {
                 failed++;

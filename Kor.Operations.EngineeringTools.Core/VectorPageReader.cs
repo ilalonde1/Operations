@@ -63,6 +63,24 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             IReadOnlyList<TextToken> Words,
             IReadOnlyList<GeomPath> Paths);
 
+        /// <summary>A content subpath before thinning or inferred closure; ordinals include dropped subpaths.</summary>
+        public sealed record RawSubpath(
+            int PathOrdinal, int SubpathOrdinal,
+            IReadOnlyList<(double X, double Y)> Points,
+            bool HasCloseCommand, bool IsFilled, bool IsStroked,
+            double LineWidth, (byte R, byte G, byte B) Color, bool IsClipping);
+
+        /// <summary>
+        /// The fixed PDF walk at one curve tessellation. Words and annotation geometry retain the
+        /// existing extraction rules; content points have neither thinning nor inferred closure.
+        /// Changes to those walk-time rules require a PageReadCache format-version bump.
+        /// </summary>
+        public sealed record RawPage(
+            int PageNumber, double WidthPts, double HeightPts,
+            IReadOnlyList<TextToken> Words,
+            IReadOnlyList<RawSubpath> Subpaths,
+            IReadOnlyList<GeomPath> AnnotationPaths);
+
         /// <summary>One reconstructed line of text: words sharing a baseline, joined left-to-right.</summary>
         public readonly record struct TextLine(string Text, double Y, double MinX, double MaxX);
 
@@ -124,6 +142,10 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             double? minPointDistance = null,
             double? closeDistance = null,
             IList<int>? keptSubpathOrdinals = null)
+            => Derive(Walk(page, curveSegments), includeAnnotations, minPointDistance, closeDistance, keptSubpathOrdinals);
+
+        /// <summary>Walk content once, keeping all flattened points and the existing annotation paths.</summary>
+        public static RawPage Walk(Page page, int curveSegments = 0)
         {
             ArgumentNullException.ThrowIfNull(page);
 
@@ -158,7 +180,7 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             }
 
             // ── Geometry: every vector subpath, points + bbox ───────────────────
-            var paths = new List<GeomPath>();
+            var paths = new List<RawSubpath>();
             int subpathOrdinal = -1, pathOrdinal = -1;
             foreach (var pdfPath in page.ExperimentalAccess.Paths)
             {
@@ -177,10 +199,10 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                         switch (cmd)
                         {
                             case PdfSubpath.Move m:
-                                AddPoint(pts, m.Location, minPointDistance);
+                                AddPoint(pts, m.Location, null);
                                 break;
                             case PdfSubpath.Line l:
-                                AddPoint(pts, l.To, minPointDistance);
+                                AddPoint(pts, l.To, null);
                                 break;
                             case PdfSubpath.CubicBezierCurve b:
                                 if (curveSegments > 0)
@@ -197,45 +219,69 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                                                  + 3 * mt * mt * t * b.FirstControlPoint.Y
                                                  + 3 * mt * t * t * b.SecondControlPoint.Y
                                                  + t * t * t * b.EndPoint.Y;
-                                        AddPoint(pts, (x, y), minPointDistance);
+                                        AddPoint(pts, (x, y), null);
                                     }
                                 }
                                 else
                                 {
-                                    AddPoint(pts, b.EndPoint, minPointDistance);
+                                    AddPoint(pts, b.EndPoint, null);
                                 }
                                 break;
                         }
                     }
                     if (pts.Count < 2) continue;
 
-                    bool isClosed = sub.Commands.OfType<PdfSubpath.Close>().Any();
-                    // Treat a polyline whose ends nearly meet as closed (common for slab outlines).
-                    if (!isClosed && pts.Count >= 3)
-                    {
-                        if (closeDistance is double cd && Distance(pts[0], pts[^1]) < cd)
-                        {
-                            pts.RemoveAt(pts.Count - 1);
-                            isClosed = true;
-                        }
-                        else if (closeDistance is null &&
-                                 Math.Abs(pts[0].X - pts[^1].X) < 0.5 &&
-                                 Math.Abs(pts[0].Y - pts[^1].Y) < 0.5)
-                        {
-                            isClosed = true;
-                        }
-                    }
-
-                    paths.Add(ToGeomPath(pts, isClosed, isFilled, isStroked, pathColor, lineWidth, isAnnotation: false)
-                        with { IsClipping = pdfPath.IsClipping, PathOrdinal = pathOrdinal });
-                    keptSubpathOrdinals?.Add(subpathOrdinal);
+                    paths.Add(new RawSubpath(pathOrdinal, subpathOrdinal, pts,
+                        sub.Commands.OfType<PdfSubpath.Close>().Any(), isFilled, isStroked,
+                        lineWidth, pathColor, pdfPath.IsClipping));
                 }
             }
 
-            if (includeAnnotations)
-                paths.AddRange(ReadAnnotationPaths(page));
+            return new RawPage(page.Number, page.Width, page.Height, words, paths, ReadAnnotationPaths(page));
+        }
 
-            return new PageContent(page.Number, page.Width, page.Height, words, paths);
+        /// <summary>Replay the sequential point filter and closure rules without a PDF or another walk.</summary>
+        public static PageContent Derive(
+            RawPage raw,
+            bool includeAnnotations,
+            double? minPointDistance = null,
+            double? closeDistance = null,
+            IList<int>? keptSubpathOrdinals = null)
+        {
+            ArgumentNullException.ThrowIfNull(raw);
+            var paths = new List<GeomPath>();
+            foreach (var sub in raw.Subpaths)
+            {
+                var pts = new List<(double X, double Y)>(sub.Points.Count);
+                foreach (var point in sub.Points) AddPoint(pts, point, minPointDistance);
+                if (pts.Count < 2) continue;
+
+                bool isClosed = sub.HasCloseCommand;
+                // Treat a polyline whose ends nearly meet as closed (common for slab outlines).
+                if (!isClosed && pts.Count >= 3)
+                {
+                    if (closeDistance is double cd && Distance(pts[0], pts[^1]) < cd)
+                    {
+                        pts.RemoveAt(pts.Count - 1);
+                        isClosed = true;
+                    }
+                    else if (closeDistance is null &&
+                             Math.Abs(pts[0].X - pts[^1].X) < 0.5 &&
+                             Math.Abs(pts[0].Y - pts[^1].Y) < 0.5)
+                    {
+                        isClosed = true;
+                    }
+                }
+
+                paths.Add(ToGeomPath(pts, isClosed, sub.IsFilled, sub.IsStroked, sub.Color, sub.LineWidth, isAnnotation: false)
+                    with { IsClipping = sub.IsClipping, PathOrdinal = sub.PathOrdinal });
+                keptSubpathOrdinals?.Add(sub.SubpathOrdinal);
+            }
+
+            if (includeAnnotations)
+                paths.AddRange(raw.AnnotationPaths);
+
+            return new PageContent(raw.PageNumber, raw.WidthPts, raw.HeightPts, raw.Words, paths);
         }
 
         private static void AddPoint(List<(double X, double Y)> pts, PdfPoint p, double? minPointDistance)
