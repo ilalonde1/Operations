@@ -158,32 +158,36 @@ public static partial class PlanSheetNaming
             .ToList();
 
         var levels = new List<int>();
-
-        foreach (Match m in vocabulary.Range.Matches(ownName))
+        void AddItem(string from, string? to)
         {
-            int from = int.Parse(m.Groups[1].Value);
-            int to = int.Parse(m.Groups[2].Value);
-            if (to < from) (from, to) = (to, from);
-
-            // A "range" spanning the whole building is a sheet-number artefact, not a level range.
-            if (to - from > 60) continue;
-            for (int lvl = from; lvl <= to; lvl++) levels.Add(lvl);
+            int a = int.Parse(from, System.Globalization.CultureInfo.InvariantCulture);
+            if (to is null) { levels.Add(a); return; }
+            int b = int.Parse(to, System.Globalization.CultureInfo.InvariantCulture);
+            if (b < a) (a, b) = (b, a);
+            if (b - a > 60) { levels.Add(a); return; }                         // a "range" spanning the whole building is a sheet-number artefact
+            for (int lvl = a; lvl <= b; lvl++) levels.Add(lvl);
         }
+
+        // A LISTED TITLE FIRST, its items levels or ranges (step 76, 2026-09-15): "LEVEL 8, 9" is two floors, "LEVEL 13 &
+        // 14 - 27 PLAN" is 13 and 14 through 27 (30884's typical floors - fourteen storeys with no sheet placed on them
+        // when the range after the "&" was dropped), "LEVEL 14 - 27 & 30" the range and one more. A list is read before
+        // a bare range so a range inside a list is not read alone.
+        foreach (Match m in vocabulary.LevelList.Matches(ownName))
+        {
+            AddItem(m.Groups[1].Value, m.Groups[2].Success ? m.Groups[2].Value : null);
+            foreach (Match item in vocabulary.RangeInList.Matches(m.Groups[3].Value))
+                AddItem(item.Groups[1].Value, item.Groups[2].Success ? item.Groups[2].Value : null);
+        }
+
+        if (levels.Count == 0)
+            foreach (Match m in vocabulary.Range.Matches(ownName))
+                AddItem(m.Groups[1].Value, m.Groups[2].Value);
 
         if (levels.Count == 0)
         {
             // Sheet identifiers such as "S2-32-1_2" precede the title; strip them so
             // their digits are not mistaken for level numbers.
             string title = StripSheetNumber(ownName);
-
-            // A listed title first — "LEVEL 8, 9" is two floors, and reading only the 8 loses a
-            // whole storey silently.
-            foreach (Match m in vocabulary.LevelList.Matches(title))
-            {
-                levels.Add(int.Parse(m.Groups[1].Value));
-                foreach (Match more in Regex.Matches(m.Groups[2].Value, @"\d+"))
-                    levels.Add(int.Parse(more.Value));
-            }
 
             if (levels.Count == 0)
                 foreach (Match m in vocabulary.SingleLevel.Matches(title))

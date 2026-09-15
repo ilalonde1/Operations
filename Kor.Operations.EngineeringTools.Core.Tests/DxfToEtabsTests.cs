@@ -782,6 +782,12 @@ public class PlanSheetNamingTests
         // Both storeys are then filled, not just the first.
         var stories = new[] { "L07", "L08", "L09", "L10" };
         Assert.Equal(new[] { "L08", "L09" }, PlanSheetNaming.MatchStories(listed, stories));
+
+        // AN ITEM OF THE LIST MAY BE A RANGE (step 76, 2026-09-15): 30884's "LEVEL 13 & 14 - 27 PLAN" is 13 and 14 through
+        // 27 - fourteen typical storeys had no sheet placed on them while the range after the "&" was dropped
+        Assert.Equal(Enumerable.Range(13, 15), PlanSheetNaming.Parse("S2.35_1_LEVEL 13 & 14 - 27 PLAN CONCRETE OUTLINE.dxf").Levels);
+        Assert.Equal(Enumerable.Range(14, 14).Append(30), PlanSheetNaming.Parse("LEVEL 14 - 27 & 30 PLAN.dxf").Levels);
+        Assert.Equal(new[] { 5, 6, 8, 9, 10 }, PlanSheetNaming.Parse("LEVEL 5, 6 AND 8 TO 10 PLAN.dxf").Levels);
     }
 
     /// <summary>

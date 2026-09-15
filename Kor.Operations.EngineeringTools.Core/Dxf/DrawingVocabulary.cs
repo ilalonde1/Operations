@@ -256,8 +256,16 @@ public sealed record DrawingVocabulary
 
     /// <summary>"LEVEL 8, 9" — two floors on one sheet, and reading only the 8 loses a storey.</summary>
     public Regex LevelList => _levelList ??= new Regex(
-        $@"(?:{Any(LevelWords)})\s*(\d+)((?:\s*(?:,|&|and)\s*\d+)+)",
+        // "LEVEL 8, 9"; and a list whose items may be ranges - "LEVEL 13 & 14 - 27 PLAN" is 13 and 14 through 27
+        // (step 76, 2026-09-15: 30884's typical floors, 14 storeys with no sheet placed on them)
+        $@"(?:{Any(LevelWords)})\s*(\d+)(?:\s*(?:{Any(RangeWords)})\s*(?:{Any(LevelWords)})?\s*(\d+))?((?:\s*(?:,|&|and)\s*\d+(?:\s*(?:{Any(RangeWords)})\s*(?:{Any(LevelWords)})?\s*\d+)?)+)",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
+    /// <summary>A range inside a level list: "14 - 27", "14 TO 27", "14 THRU LEVEL 27".</summary>
+    public Regex RangeInList => _rangeInList ??= new Regex(
+        $@"(\d+)(?:\s*(?:{Any(RangeWords)})\s*(?:{Any(LevelWords)})?\s*(\d+))?",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+    private Regex? _rangeInList;
 
     /// <summary>"LEVEL 9".</summary>
     public Regex SingleLevel => _singleLevel ??= new Regex(
