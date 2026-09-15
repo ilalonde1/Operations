@@ -313,14 +313,51 @@ public sealed class PlanLoopBuilder
         if (_bridgeTolerance <= _joinTolerance && _extendLimit <= _joinTolerance)
             return (loops, work.Select(c => (IReadOnlyList<DxfPoint>)c).ToList());
 
+        // ONLY A PAIR WHOSE ENDS ARE NEAR CAN MERGE, so only those pairs are tried (2026-09-14): a bridge
+        // needs two ends within the bridge tolerance; an extension needs both ends to reach the corner within
+        // the extend limit, so the ends are within twice it. Every other pair fails every test below, and the
+        // search was every pair of chains, restarted after every merge - 36 of a 51-second read of 31168's
+        // 63 pages, 76%, measured with dotnet-trace; the PDF walk was 2 s. The candidates come from a grid over
+        // the chain ends, in the same ascending order the pair scan used, so the first mergeable pair - and
+        // the result - is the one it always was (the six-set gate says so, byte for byte).
+        double reach = Math.Max(_bridgeTolerance, 2 * _extendLimit) + 1e-5;
+        double cell = Math.Max(reach, 1e-6);
+        var ends = new Dictionary<(long, long), List<int>>();
+        (long, long) CellOf(DxfPoint p) => ((long)Math.Floor(p.X / cell), (long)Math.Floor(p.Y / cell));
+        void Index()
+        {
+            ends.Clear();
+            for (int k = 0; k < work.Count; k++)
+                foreach (var p in new[] { work[k][0], work[k][^1] })
+                {
+                    var c = CellOf(p);
+                    (ends.TryGetValue(c, out var list) ? list : ends[c] = []).Add(k);
+                }
+        }
+        List<int> Near(int i)
+        {
+            var found = new SortedSet<int>();
+            foreach (var p in new[] { work[i][0], work[i][^1] })
+            {
+                var (cx, cy) = CellOf(p);
+                for (long dx = -1; dx <= 1; dx++)
+                    for (long dy = -1; dy <= 1; dy++)
+                        if (ends.TryGetValue((cx + dx, cy + dy), out var list))
+                            foreach (int k in list) if (k > i) found.Add(k);
+            }
+            return found.ToList();
+        }
+
+        Index();
         bool merged = true;
         while (merged)
         {
             merged = false;
             for (int i = 0; i < work.Count && !merged; i++)
             {
-                for (int j = i + 1; j < work.Count && !merged; j++)
+                foreach (int j in Near(i))
                 {
+                    if (merged) break;
                     var a = work[i];
                     var b = work[j];
 
@@ -334,6 +371,7 @@ public sealed class PlanLoopBuilder
 
                     work.RemoveAt(j);
                     merged = true;
+                    Index();
                 }
             }
         }
