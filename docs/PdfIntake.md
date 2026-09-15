@@ -1,11 +1,11 @@
 # PDF intake — what it does today, and what it leaves on the page
 
-## 0. START HERE (state as of 2026-09-14, after steps 47 and 54–66 and completion-plan WP1–WP5 — 207 of 292 sets build from the PDF alone)
+## 0. START HERE (state as of 2026-09-14 night, after steps 47 and 54–69 and completion-plan WP1–WP5 — 251 of 296 sets build from the PDF alone, run 13; run 14 measures steps 67–69)
 
 A session picking this up cold reads this section, then the completion plan
 (`docs/architecture/Kor.Operations.EngineeringTools.PdfIntake.plan.md` — what "complete" means, the
 packages, and where each stands), then the last three step sections (§54–§56). §1–§52 are the
-record of how each rule was arrived at, read when a rule is being changed. §75 is the latest step.
+record of how each rule was arrived at, read when a rule is being changed. §79 is the latest step; §76 is why a corpus read is 46 min now and how a run is launched so it outlives the session.
 
 **What this is.** A PDF ingestor: one ingestion point (`DrawingIntake.ReadSheet` → `PdfOnlyBuild`)
 that reads a drawing set and hands its geometry to outlets — the ETABS `.e2k` today, the DXF as a
@@ -19,7 +19,7 @@ rules were written on (31065, 31130, 31138, 31168, 31202, and `31170-01-arch` �
 set for 31170, the only one from another office); `...\kor-drawings\<hash>\` mirrors every
 current stick file on the share (292 sets, 3.5 GB, mirrored once by hash); `...\corpus\<job>\`
 is each set's build (DXF views, levels.csv, out.e2k, report.txt, yardstick.txt) and
-`...\corpus\ledger-sets.csv` / `ledger-sheets.csv` the ledger of the last run (banked copies under
+`...\corpus\ledger-sets.csv` / `ledger-sheets.csv` the ledger of the last run, `ledger-sets.partial.csv` appended per set while it runs (banked copies under
 `docs/etabs-handoff/corpus/`; the same rows in `analysis.IntakeSet`/`IntakeSheet` — 083 is applied, both of 2026-09-12's runs wrote them);
 `...\yardsticks\<job>.e2k` the engineers' own models (92, exported on KOR-210). The six banked
 baselines are IN THE REPO: `Kor.Operations.EngineeringTools.Core.Tests/Baselines/pdf-only-<job>.e2k`.
@@ -3846,3 +3846,168 @@ in the main tree.
 
 WHAT THIS DOES NOT: a set of two unnamed plans; a one-plan set whose plan IS a foundation plan;
 what those 825 "columns" on 50046-07's one page are (the yardstick has no model for it).
+
+## 76. 2026-09-14 night: the read's cost — the page record, the profile, and a run that dies keeps its ledger
+
+Ian's question, verbatim: *"why do you KEEP ingesting and reading them EVERY test you run?"* Three
+answers, in the order they were found, and one of them was wrong first.
+
+**The page record (`33d6dc7e`, Codex, brief `CODEX-PDF-INTAKE-PAGE-READ-CACHE.md`).** The intake
+walked every PDF page twice (a thinned and an unthinned read). `VectorPageReader.Walk` now records
+what PdfPig saw — every flattened point, the Close command, colour, width, clipping, ordinals, words,
+annotations — and `Derive` reproduces both reads from the record through the same `AddPoint` and
+closure branches; `PageReadCache` keeps it under `kor-drawings/pages/<sha>/` as versioned gzip
+binary, written atomically. **Measured, and it was not the saving:** the six-set gate forced to
+read, byte-identical both ways, COLD (writing the record, 94 MB for six PDFs) 5 m 47 s, WARM
+6 m 30 s. The walk is not where the read's time goes. The record stays (one walk, no PDF opened on
+a warm read); the profile moved one layer down.
+
+**The profile (`ad92d305`).** `dotnet-trace` on 31168's 63 pages (51 s): WriteSheets 47.7 s →
+Classify 37.5 → SlabEdgesFromLoops 36.3 → PlanLoopBuilder.Build 36.2 → **BridgeChains 36.1**
+(TryJoinByExtending 26.9 + RayIntersection 15.2). The PDF walk was 1.9 s; the schedules 4.5 s once.
+BridgeChains tried every pair of open chains and restarted after every merge — 76% of the set's
+read. A pair can merge only if two of their ends are within the bridge tolerance, or both reach one
+corner within the extend limit, so within twice it; every other pair fails every test. The
+candidates now come from a grid over the chain ends (cell = the larger of those reaches,
+`reach = max(bridgeTolerance, 2 × extendLimit)`), scanned in the same ascending order, re-indexed
+after each merge: **the first mergeable pair is the one it always was.** 31168's set 51 s → 16 s,
+all 37 views byte-identical; the six-set gate reading plus the shifted differential 3 min (the read
+alone had been 8 m 22 s).
+
+**The gate's read cache (`203dfa44`, Codex, brief `CODEX-PDF-INTAKE-GATE-READ-CACHE.md`).**
+`SixSetsBuildAsBankedTests` keys each set's read on the PDF's hash, the scale, and a hash of the
+reader's sources (`PdfToSafe/`, `Intake/` less the analyzer files, and eleven named `Dxf/` files —
+`PlanSheetNaming.cs`, `DrawingVocabulary.cs`, `StructuralPlanClassifier.cs`, `PlanLoopBuilder.cs`
+among them) plus the options; a composer-only change recomposes the six in about a minute, a reader
+change reads them in about three. The cache is honest by construction: it cannot serve a read made
+under different reader code.
+
+**Run 13 (a full read on `ad92d305`, 12 workers, 20:14).** It built 271 of 296 in 46 minutes and
+**died with the session that launched it** — `Start-Process` from the tool is a child of the
+session, and the ledger was written once at the end, so 271 rows existed only in the log. Fixed in
+two places (`e44e76ce`): every finished set appends its row to `ledger-sets.partial.csv` (header
+first, one lock; the sorted ledger is still written at the end), and a corpus run is launched
+OUTSIDE the session's process tree (`Win32_Process.Create` with a `cmd /c "… > log 2>&1"` line),
+verified alive before anything else is said about it. Recovered with `--reuse` in 3 min, the six
+sets a KorStandards SQL outage had failed rebuilt with `--jobs … --force` in 3 min; banked as
+`ledger-sets-2026-09-14-run13-step66.csv` (§1b of the plan): 251 of 296 build, 58% / 53%, diff
+run 11 → 13 SameCounts 249 / LostModel 0 — the BridgeChains index changed nothing on 249 sets.
+CPU per set over the 239 common sets 704 → 627 min (−11%): 31168's 3× was an outlier; most sets
+are compose-bound, and the wall-time gain (2 h 20 m → ~46 min) is the worker count.
+
+WHAT THIS DOES NOT: make the read free — a full corpus read is ~46 min at 12 workers, and a reader
+change still owes one; profile the compose (the next cost); wire PlanarRings (§71, `048912f1`,
+prototype only).
+
+## 77. Step 67, 2026-09-14 night: a wall the drafter did not fill is a wall only at a retaining wall's thickness — the wood-plan rule
+
+Step 63 (§72) took the floor to six inches and 35,000 stud partitions out of the corpus; on
+31066-01, the wood-frame block over a concrete podium that run 10 had rendered at ~500 "walls" a
+storey, what was left (L2 145, L5 98) was mostly stud walls drawn as two parallel lines the drafter
+never poché'd, thick enough for the six-inch floor's slack to let through. Thickness alone cannot tell a 2×6 wall from a concrete one (a
+filled 140 mm band is a poché'd 2×6; an unfilled 203 mm pair is a retaining wall on a house plan),
+so the rule is about the SHEET:
+
+**Measured on seven plans:** wood plans read ~80% of their walls from unfilled line pairs (31066 L2
+117 of 145, L5 77 of 98); concrete plans 0–35%. **The rule** (`WallTypeTagging.StudWallsOfAWoodPlan`):
+*a sheet with two thirds or more of its walls read from unfilled pairs, and at least twenty of them,
+is a wood plan; on a wood plan an unfilled pair under 8 in and a filled band under the six-inch floor
+— without the slack, the slack being for concrete walls drawn thin — are stud walls,* moved to the
+partition layer the model does not read. Applied in `Apply` and, for a set with no assemblies, from
+`DrawingIntake.ReadPage`. The first cut (a simple majority) moved walls on four concrete sets; two
+thirds and twenty left five of the six harness sets byte-identical. 31066 p8: 312 walls to the
+partition layer; the composer's walls now 170–300 mm (the podium and the party walls); the 140 mm
+gone.
+
+**31170-arch lost 2 walls** and was not banked until looked at: `pdf-at` at the 38.7 m one on the
+architect's L6 plan found the slab edge drawn as several concentric outlines 82–91 mm apart, two of
+which the face-line rule had read as a 3-inch wall. Not a wall; re-banked (`c87d85e3`).
+`AWoodPlansStudWallsArePartitionsTests`: the sheet-kind decision by share and count, both kinds of
+stud wall partitioned, the retaining and six-inch walls left alone, a concrete plan untouched.
+
+The 8 in is compiled (`UnfilledWallMinThicknessMm` = 203.2, Convention, the ratchet's 49th);
+migration `091_ASitePlanIsNotAStructuralPlanAndAnUnfilledWallIsARetainingWall.sql` (written,
+**not yet applied**, Ian's) inserts `dxf.pdf.unfilled-wall-min-thickness-mm` and adds SITE PLAN /
+INSTRUMENTATION / SENSOR LAYOUT to `dxf.non-structural-sheet-patterns`; the code does not read
+the row yet. Built in the worktree `Operations-s66` while Codex edited the main tree.
+
+WHAT THIS DOES NOT: a wood plan whose partitions ARE filled and thicker than the floor; a concrete
+plan drawn mostly unfilled (it would read as wood — the seven plans measured had none under 35%);
+whether the 8 in is the office's line (a row, once measured on more than seven plans).
+
+## 78. Step 68, 2026-09-14 night: the small jobs' title blocks — and every composed column says what made it
+
+**Step 68 (`f5d56e79`, Codex, brief `CODEX-PDF-INTAKE-SMALL-JOB-TITLES.md`).** The nine no-storey
+sets left after step 66 were blank-titled: the small-job template labels its title block with a
+standalone TITLE, DRAWN:, CHECKED: — short labels `TitleBlockFields` did not know — and glues the
+sheet number to the title (S-6BASEMENT FLOOR PLAN). Two rules: the short labels, and a value whose
+left edge passes the column's narrow margin is no longer dropped; `PlanSheetNaming` strips a sheet
+number glued to its title (`SheetNumberPrefix`, used in `TitleOf` and the sheet's own name) before
+every numeric reader, so S-5 is no longer level 5. One fixture Codex wrote beyond the evidence (a
+hyphenated number glued to a title) was dropped until a drawing shows it. **Measured:** the nine
+re-read in 2 min — 00904, 01746, 30996-02, 31083-04 build (one plan, titled, L1); 01375's four
+plans read P1 / P1 / L1 / L2 (a 3-storey house, 0 of 4 placed — next); 31057 L1. Still blank:
+**01783** (needs migration 091's SITE PLAN pattern), **01589** (a rotated title strip — its words
+harvested to `scratchpad/01589-p7-titleblock.txt`: FOUNDATION and PLAN stacked at x 2439, the
+revision words at x 2292–2340), **01788** (foundation-only by design). Fast suite 1,340; six-set
+gate byte-identical (a read, 2 m 20 s).
+
+**The column trace (`4ffd4bba`, Codex, brief `CODEX-PDF-INTAKE-COLUMN-TRACE.md`).** Two blind
+classifier edits for 31162-01's 8-inch "columns" had moved nothing (stashed, unshipped). The
+instrument instead: every site that adds a `ColumnFootprint` names its branch
+(`column-layer-loop`, `declared-size`, `short-wall-layer-loop`, `standalone-stub`,
+`nothing-paired-up`) in `ColumnFootprint.Origin`, carried and never read by a rule;
+`dxf-inspect --columns` lists each column's layer, loop box, branch and whether a wall panel of the
+sheet contains it; `corpus-query columns <job> --ledger <dir>` sums a branch × inside-a-wall table.
+On 31162-01 the table says why the edits could not move them: 66 of 69 are `column-layer-loop`,
+1 inside a wall — the READER put them on the column layer, and the listing shows them as
+541 × 1,283 mm filled rectangles on the P1 plan, footing-sized, where her columns are 12 × 30 in.
+The class is a reader rule, not a composer branch — and on the other five current-yardstick sets
+under 65% the same table (run 13's work dir) reads:
+
+| set | column-layer-loop | inside a wall | other branches |
+|---|---|---|---|
+| 31162-01 | 66 | 1 | standalone-stub 3 |
+| 60061-03 | 216 | 0 | — |
+| 31158-01 | 24 | 6 | — |
+| 30989-01 | 408 | 2 | standalone-stub 26 |
+| 31108-01 | 164 | 13 | — |
+| 70064-01 | 60 | 2 | — |
+
+So on the six sets the composer's wall-derived branches are not the columns' source; what differs
+from her model is what the reader classes as a column on the column layer, and on 31162 those are
+footings. No rule was written from that — a footing-vs-column rule needs the per-column looks
+(`pdf-at`, `--pairs`) on more than one set, recorded here as the next reading class.
+
+WHAT THIS DOES NOT: read 01589's rotated strip or 01783 before migration 091; place 01375's four
+plans; tell a footing from a column (the trace only says which branch made each one).
+
+## 79. Step 69, 2026-09-14 night: numbered buildings — BUILDING 1, BLDG 1A, 12-LEVEL 3 are building tags
+
+Plan titles on ten corpus sets number their buildings (BUILDING 1 LEVEL 1 PLAN … BUILDING 5 ROOF
+PLAN); the vocabulary read a building tag as a letter only, so on 31185-01 the five buildings' LEVEL 1
+plans all landed on one storey. **The rules** (`be2b28f3`): `DrawingVocabulary.Building` and
+`PrefixBuilding` accept a letter or a number with an optional letter (a word boundary closes the tag,
+so BUILDING PERMIT names nothing); `PlanSheetNaming.Parse` splits the tag group on `&` (1A is one
+building, A & B two); `ModelYardstick.BuildingPrefix` — which had been `^[A-C]-`, reading building D's
+storeys as the whole job's and a numbered building's as nothing — is any tag before a storey word,
+and never 31170's own `L-1`; `NamedForAnotherBuilding` uses that one definition instead of a second
+regex.
+
+**The first cut was wrong and the recompose said so in two minutes:** with numbered tags, B3
+(a tagged sheet only matches its own building's storeys) sent every tagged sheet of 31185 nowhere
+(walls 337 → 174) and the per-building roof of step 61 stacked five roofs (`5-ROOF … 1-ROOF`) up
+the ladder. The refinement: *a tagged sheet keeps to its building's storeys only where the model
+names any storey by building* (`storeysByBuilding`); on a ladder with no building in any storey
+name — five numbered buildings on one plan-named ladder, L1 and L2 for all five — the storeys are
+shared, and when MORE THAN ONE such building has a tagged roof plan they share one ROOF over the top
+storey (`StoreysFromPlans`); one building's tagged roof over shared storeys is still one storey and
+keeps its name (31168's C-ROOF, brief B's B6). **Measured** by recompose: 31185 4 storeys / 337
+walls / 68 columns (as run 13, now on the right storeys); 31066 1,392 walls and 30978 2,153 walls
+unchanged. `NumberedBuildingsOnOnePlanNamedLadderShareItsStoreysAndItsRoof`; numbered assertions in
+`StoreyNamesMeetAcrossTheTwoRoutesSpellings`; fast suite 1,353; six-set gate green (cached read,
+recompose). Run 14 measures the ten.
+
+WHAT THIS DOES NOT: a numbered building whose OWN storeys are named on the ladder (1-L2) — the
+per-building roof still applies there, untested on a real set; two buildings sharing a ladder but not
+a roof height.

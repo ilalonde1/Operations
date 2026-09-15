@@ -1,6 +1,6 @@
 # PDF intake → ETABS — Completion Plan
 
-**Status:** Rev 3, 2026-09-14 (steps 47 and 49–66 added to §8, 3b–3r) — WP1–WP5 landed overnight on Ian's go-ahead ("go through this all,
+**Status:** Rev 3, 2026-09-14 night (steps 47 and 49–69 added to §8, 3b–3u; runs 8–13 in §1b, run 14 in flight) — WP1–WP5 landed overnight on Ian's go-ahead ("go through this all,
 step by step, and finish it overnight"): commits `8fccbc25` (WP3), `3f3f82b9` (WP2), `aba7d9ff`
 (WP4), `69e554b5` (WP5), each gated by the six byte-identical and the fast suite; WP5's remaining
 conventions are counted by a test, not by this document. §8 is what needs Ian. Rev 2 (2026-09-11)
@@ -376,6 +376,26 @@ Revit route.
    8 of 9 such sets build with their members, from the ledger's no-model list, measured by a 100 s
    recompose of the nine. Two Codex tasks in flight: the raw-walk page record (the read), the
    small-job title blocks (the other nine no-storey sets).
+3s. **The read's cost, 2026-09-14 night** (§76): the page record (`33d6dc7e`, Codex) measured and
+   NOT the saving (cold 5 m 47 s, warm 6 m 30 s); the profile found BridgeChains at 76% of a set's
+   read, a grid over the chain ends gives the same first merge (`ad92d305`; 31168 51 s → 16 s); the
+   gate's read cache (`203dfa44`, Codex; a composer step gates in ~1 min, a reader step in ~3);
+   run 13 died with the session at 271 of 296 → the per-set partial ledger and detached launches
+   (`e44e76ce`); run 13 banked (`470d85ef`): 251 of 296, 58% / 53%, SameCounts 249, −11% CPU,
+   a full read ~46 min at 12 workers.
+3t. **Steps 67 and 68, 2026-09-14 night** (§77, §78): the wood-plan rule — a sheet with two thirds
+   of its walls as unfilled pairs (and twenty) is a wood plan, its unfilled pairs under 8 in and
+   filled bands under the floor are partitions (31066 p8: 312 out; five harness sets byte-identical,
+   31170-arch's two lost "walls" looked at: the slab outline's parallel lines; `34ed3f54`,
+   `c87d85e3`; migration 091 written, NOT applied). The small jobs' title blocks (`f5d56e79`,
+   Codex): 4 more one-plan sets build; 01783 / 01589 / 01788 handed back with their words. The
+   column trace (`4ffd4bba`, Codex): every column names its branch; 31162's "columns" are the
+   reader's 541 × 1,283 mm footings on the column layer — a reading class, no rule written yet.
+3u. **Step 69, 2026-09-14 night** (§79): numbered buildings are building tags (`be2b28f3`); a
+   tagged sheet keeps to its building's storeys only where the model names storeys by building;
+   numbered buildings on one plan-named ladder share its storeys and one ROOF. 31185 on the right
+   storeys at run 13's counts; 31066, 30978 unchanged. Run 14 (a full read on `be2b28f3`, detached,
+   chained to bank its own ledger) measures steps 67–69 on the corpus.
 4. **WP6** — one model in front of Andrea (31170's, or whichever the ledger ranks best of the
    architects' sets). Ian's call when.
 5. **Step 47**, the next reading rule, from the corpus. `takeoff corpus-query plan-titles` on the
