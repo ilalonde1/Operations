@@ -1,11 +1,11 @@
 # PDF intake — what it does today, and what it leaves on the page
 
-## 0. START HERE (state as of 2026-09-14 night, after steps 47 and 54–69 and completion-plan WP1–WP5 — 251 of 296 sets build from the PDF alone, run 13; run 14 measures steps 67–69)
+## 0. START HERE (state as of 2026-09-14 night, after steps 47 and 54–70 and completion-plan WP1–WP5 — 253 of 296 sets build from the PDF alone, run 14; run 15 measures step 70)
 
 A session picking this up cold reads this section, then the completion plan
 (`docs/architecture/Kor.Operations.EngineeringTools.PdfIntake.plan.md` — what "complete" means, the
 packages, and where each stands), then the last three step sections (§54–§56). §1–§52 are the
-record of how each rule was arrived at, read when a rule is being changed. §79 is the latest step; §76 is why a corpus read is 46 min now and how a run is launched so it outlives the session.
+record of how each rule was arrived at, read when a rule is being changed. §80 is the latest step (run 14 looked at, step 70); §76 is why a corpus read is 46–53 min now and how a run is launched so it outlives the session.
 
 **What this is.** A PDF ingestor: one ingestion point (`DrawingIntake.ReadSheet` → `PdfOnlyBuild`)
 that reads a drawing set and hands its geometry to outlets — the ETABS `.e2k` today, the DXF as a
@@ -4011,3 +4011,59 @@ recompose). Run 14 measures the ten.
 WHAT THIS DOES NOT: a numbered building whose OWN storeys are named on the ladder (1-L2) — the
 per-building roof still applies there, untested on a real set; two buildings sharing a ladder but not
 a roof height.
+
+## 80. Run 14 and step 70, 2026-09-14 night: the full read after steps 67–69, its eleven storey movers looked at one by one, and three rules from them
+
+**Run 14** (a full read on `be2b28f3`, 12 workers, 22:28 → 23:21, **53 min**; launched by `run14.cmd`
+through `Win32_Process.Create`, which banked its own ledger the moment the analyzer exited;
+`ledger-sets-2026-09-14-run14-step69.csv`; DB run `4db4dcf3`): **253 of 296 build** (251 in run 13);
+walls **104,506 from 115,875** (the wood-plan rule, §77), columns 81,725; 51 yardstick sets **58% / 53%**
+(6,536 of 11,270; theirs 6,516 of 12,311 — unchanged to the column). `corpus-query diff` run 13 → 14:
+NewModel 2, LostModel 0, Storeys 11, Views 1, Placement 1, Composition 73 (yardstick 1 better / 0 worse /
+13 same), SameCounts 208.
+
+**Every storey mover was looked at**, not counted — the per-sheet rows of both runs in
+`analysis.IntakeSheet` (`Storeys`, `DxfFiles`, `Placed`, the reader's counts) say for each sheet what
+changed and whether its NAME changed (the reader, step 68) or only its storey (the composer, step 69):
+
+| set | what run 14 did | why | verdict |
+|---|---|---|---|
+| 30988-01 | L1 L2 L3 → L1 L2; every block's MAIN plan on L1 | step 68 now reads its BLDG 5/11/12/22/23/24 tags; the word chain ranked each building from 1 at its own bottom, block 22 (GROUND on an untagged sheet) said MAIN 1 against block 5's MAIN 2, and the row stood | **regression → rule 1** |
+| 40117-01 | 5 → 6 storeys: 2-ROOF under ROOF | its only building is BLDG 2; the first cut let one tagged roof keep its name | **regression → rule 2** |
+| 30919-01, 31004-01, 30925-01, 30816-02, 30878-02 | L4 / L17 / L21 / L3 / L3, L6 → ROOF | `StripSheetNumber` cut a name at LEVEL only when LEVEL was not its first word; step 68 strips the number first, so "LEVEL 4 - ROOF DECK PLAN" fell through to ROOF | **regression → rule 3** |
+| 70062-01 | A-ROOF + B-ROOF → one ROOF | two lettered buildings on a plan-named ladder share the roof | by design (§79) |
+| 30912-01 | 40 → 47 storeys, 42 → 25 placed | step 68 reads its REAL titles for the first time ("LEVEL -4 PLAN - CONCRETE OUTLINE" where run 13 had a notes paragraph): LEVEL -5 … -1 are storeys now, the CONCRETE OUTLINE sheets are the placed ones and the REINFORCING ones refused (§50's rule), "LEVEL 5 - 7" came out "LEVEL 5 7" so the range is one storey | better; two title-reader defects named below |
+| 30926-01 | 9 → 11 storeys | real titles now ("LEVEL 2 PLAN" for "ALL SLAB SLOPES AND ELEVATIONS LEVEL 2 PLAN"); "LEVEL 5 LEVEL 14 - PLAN" with the dash displaced reads L5 and L14, not the range | better; a title-reader defect |
+| 01589-01 | NewModel: 1 storey, 325 "columns" | the rotated revision strip's words became the title ("PERMIT PERMIT PERMIT BUILDING BUILDING BUILDING ISSUED … PLAN RESIDENCE ROOF …") and every plan went to ROOF | **a false model** — the title reader took a revision strip |
+| 01375-01 | NewModel: 3 storeys, 0 of 4 placed | step 68: P1 / P1 / L1 / L2 (§78) | as recorded |
+| 01379-01 | 121 → 178 sheets placed; columns 4,396 → 3,374 | its OVERALL PLANs read twice the lines (1,865 → 3,621 on L2) and are placed on every storey, 3 of 7 X and 13 of 13 Y axes by name; the part plans stand over them. **Rendered:** two towers consistent L22–L47; on L23, L24, L26, L33, L41 a "Plan B West Tower" view sits offset to the south-west (set by 2 of 7 X / 9 of 13 Y axes) — a placement fault, not shown to be new | better; one fault named |
+
+**Step 70 — three rules (`584b70c2`):**
+
+1. *The set's floor words have ONE order, whichever building's title states each step of it*
+   (`DrawingVocabulary.WithFloorWordsRankedBy`, one map instead of one chain per building). Two bottoms, a
+   cycle, a word shown over itself, two stories about one word still leave the row standing — those are
+   contradictions; a chain that is part of another is not. The second audit's B4 test now asserts the
+   joined chain; `NumberedBlocksNamingTheirFloorsByWordsHaveOneOrder` is 30988's shape.
+2. *Storeys are per building only where the model names them so*: the per-building roof (step 61) applies
+   when the ladder carries a building in a storey name (the elevations' A-L27, B-L40); on a plan-named
+   ladder every building's roof is the shared ROOF — the composer's own test (`storeysByBuilding`), now in
+   `StoreysFromPlans` too, replacing §79's "more than one" count. B6's fixture moved onto a
+   building-named chain; 40117's one building has one roof.
+3. *A title that starts with its level word keeps its level* (`StripSheetNumber`: `>= 0`, not `> 0`).
+   `ATitleThatStartsWithItsLevelWordKeepsItsLevelBesideTheRoofWord`.
+
+Fast suite 1,358; six-set gate byte-identical (a read, 2 m 13 s). All three are composer-side, so run 15
+is a `--recompose` of run 14's read.
+
+**Title-reader defects from step 68, recorded for the audit and the next brief, no code tonight:** the
+title carries the neighbouring fields ("DRAWING NO S2.02.1", a stray "1", "PROJ. # 30878-02 DRAWING
+NUMBER" on every 30878-02 title); words are joined in an order that displaces a dash ("LEVEL 5 LEVEL 14 -
+PLAN"); a rotated revision strip is taken as the title (01589); a project name replaces a title ("GALLERIA
+PART PLANS" → "1200 STEWART" on 01379 S212.9 and S402). And a landscape LOADING PLAN names storeys
+(30878-02's S1.12 "LEVEL 3, 6 & ROOF LANDSCAPE LOADING PLANS" puts L3 and L6 on a two-storey building) —
+LOADING PLAN belongs in `dxf.non-structural-sheet-patterns`.
+
+WHAT THIS DOES NOT: fix any of the title-reader defects; place 01375's plans; the offset part plans on
+01379; a set whose buildings genuinely order the same words differently (the row stands, stated in the
+test).

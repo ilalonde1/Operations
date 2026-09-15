@@ -1,7 +1,7 @@
-# Codex — adversarial audit of intake steps 63–69 and the night's infrastructure (read cache, page record, BridgeChains, partial ledger, column trace)
+# Codex — adversarial audit of intake steps 63–70 and the night's infrastructure (read cache, page record, BridgeChains, partial ledger, column trace)
 
-**Reading set: about 150 KB at HEAD on `develop` (the commit named in the paste-ready prompt), measured
-with `wc -c` before handover — 34 KB of `docs/PdfIntake.md`, 6 KB of `CLAUDE.md`, ~110 KB of source
+**Reading set: about 160 KB at HEAD on `develop` (the commit named in the paste-ready prompt), measured
+with `wc -c` before handover — 40 KB of `docs/PdfIntake.md`, 6 KB of `CLAUDE.md`, ~110 KB of source
 and tests, whole files and named line ranges as listed. No commit range. No build, no test run, no
 drawing files, no `.e2k`, no `.dxf`, no CSV, no database, no network, no other repository, nothing
 under `Baselines/`, `docs/etabs-handoff/` or `%LOCALAPPDATA%`.** Recommended reasoning: **medium**.
@@ -9,7 +9,7 @@ under `Baselines/`, `docs/etabs-handoff/` or `%LOCALAPPDATA%`.** Recommended rea
 ## What is being audited
 
 Between 2026-09-14 afternoon and night, on one session's word, the following landed on `develop`
-(each claim is in `docs/PdfIntake.md` §72–§79 with WHAT THIS COVERS / WHAT IT DOES NOT):
+(each claim is in `docs/PdfIntake.md` §72–§80 with WHAT THIS COVERS / WHAT IT DOES NOT):
 
 - **Step 63 (§72)** a wall is six inches or more, with a half-inch slack on the floor, applied on the
   PDF side (`GeometryFilterService`) and at four composer sites (`StructuralPlanClassifier` ×3,
@@ -28,6 +28,10 @@ Between 2026-09-14 afternoon and night, on one session's word, the following lan
 - **Step 69 (§79)** numbered buildings are building tags; a tagged sheet keeps to its building's
   storeys only where the model names storeys by building; numbered buildings on one plan-named
   ladder share its storeys and one ROOF.
+- **Step 70 (§80)** run 14's eleven storey movers looked at one by one; three rules from three
+  regressions: the set's floor words have ONE order whichever building states each step; storeys
+  are per building only where the model names them so (the ladder now uses the composer's test);
+  a title that starts with LEVEL keeps its level (`StripSheetNumber` `>= 0`).
 
 Your job: find where the code does not do what those sections say; where a rule called universal
 is fitted to the set it was found on (31066's wood block, 31185's five buildings, 30993's sensor
@@ -38,8 +42,8 @@ is wider than its assertions.
 ## Read, in this order (byte sizes are what you will read)
 
 1. `CLAUDE.md` — rules 10, 11 and 12 only (5.6 KB of a 15 KB file).
-2. `docs/PdfIntake.md` — §72 through §79, from the line `## 72. Step 63` to the end of the file
-   (34 KB). Do not read the rest.
+2. `docs/PdfIntake.md` — §72 through §80, from the line `## 72. Step 63` to the end of the file
+   (42 KB). Do not read the rest.
 3. Source, whole files:
    - `Kor.Operations.EngineeringTools.Core/Intake/WallTypeTagging.cs` (12 KB)
    - `Kor.Operations.EngineeringTools.Core/Intake/StoreysFromPlans.cs` (19 KB)
@@ -151,13 +155,35 @@ it the same on both routes? Any site that constructs a `ColumnFootprint` without
 (the default is `"unknown"`; the listing prints "unknown origins: 0" — is that count from the
 same default)?
 
-**J. The checks versus their names.** For each test file in the reading set, compare WHAT THIS
+**J. Step 70's three rules (§80).** (1) `WithFloorWordsRankedBy` is now one map over every title:
+a set with two buildings that use the same words in genuinely different orders — A: GROUND → MAIN,
+B: MAIN → GROUND — is a cycle and the row stands; A: GROUND → MAIN → UPPER, B: MAIN → UPPER → ROOF?
+(ROOF is not a floor word: what does `FloorWordIn` return for the over-part "ROOF FRAMING OVER - BLDG
+22", and can a building tag's NUMBER ever reach `SingleLevel` there?). (2) `StoreysFromPlans` and
+`PlanSheetNaming.MatchStories` both test `storeysByBuilding`, but on different lists — the ladder's
+`order` at that moment (the chain's names plus the plan-only storeys inserted so far) and the
+composer's `stories` (the finished model's names). Name a set where the two answers differ (a chain
+with one prefixed mezzanine? a ladder whose only building-named storey is the roof this loop is about
+to add?). (3) `StripSheetNumber` at `>= 0` on a name that starts with ROOF then names a level ("ROOF
+PLAN LEVEL 4 AREA") — which wins now, and did it before?
+
+**K. The checks versus their names.** For each test file in the reading set, compare WHAT THIS
 COVERS with the assertions. In particular `AWoodPlansStudWallsArePartitionsTests` (does any test
 put a filled band in the 12.7 mm window, and is the two-thirds boundary tested at exactly two
 thirds?) and `NumberedBuildingsOnOnePlanNamedLadderShareItsStoreysAndItsRoof` (does it assert
 where the five buildings' LEVEL 1 plans GO, or only the ladder's names?).
 
 ## Known and not to be re-found
+
+- Run 14's storey movers are looked at in §80's table; its title-reader defects from step 68 are
+  named there (neighbouring fields in the title — "DRAWING NO S2.02.1", "PROJ. # 30878-02 DRAWING
+  NUMBER"; a displaced dash — "LEVEL 5 LEVEL 14 - PLAN"; a rotated revision strip as the title on
+  01589; a project name as the title on 01379's S212.9 and S402) and are NOT findings unless you can
+  name the line in `TitleBlockFields` that produces one — the file is not in the reading set, so
+  say so rather than guess. A LOADING PLAN naming storeys (30878-02) is named there too.
+- Run 14's `ledger-sets.partial.csv` counted 280 lines by `wc -l` against 297 in the sorted ledger,
+  and the file was deleted by run 15 before it could be parsed; run 15's partial is compared to its
+  ledger in the morning message. If they differ, that is a finding for question H; if not, not.
 
 - Migration `091_ASitePlanIsNotAStructuralPlanAndAnUnfilledWallIsARetainingWall.sql` (in the
   KOR.Drafter repo) is written and NOT applied; the wood rule's 8 in is compiled and the row is not
@@ -175,7 +201,7 @@ where the five buildings' LEVEL 1 plans GO, or only the ladder's names?).
 
 ## Output
 
-`docs/codex/CODEX-PDF-INTAKE-STEPS-63-69-AUDIT-RESPONSE.md`. One finding per heading, most severe
+`docs/codex/CODEX-PDF-INTAKE-STEPS-63-69-AUDIT-RESPONSE.md` (the file keeps its name; it covers 63–70). One finding per heading, most severe
 first, each with: the sentence in `docs/PdfIntake.md` it contradicts (section and the quoted
 words), the file and line, the smallest input that shows it, and what the code does with that
 input. Findings are source deductions; say so. Do not propose fixes longer than a sentence; do not
