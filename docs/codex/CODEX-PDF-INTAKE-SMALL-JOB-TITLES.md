@@ -35,7 +35,7 @@ these too.
 
 1. In `Kor.Operations.EngineeringTools.Core/Intake/TitleBlockFields.cs` (8.6 KB, whole): the rule that
    makes `Read` return `SHEET TITLE` = `FLOOR PLAN CEILING PLAN` (two lines, in page order, top line
-   first) for 01783's column, `PLANS` for 01746, `DEMO PLAN GENERAL NOTES` for 30996, `SITE PLAN LOT C`
+   first) for 01783's column, `PLANS` for 01746, `GENERAL NOTES DEMO PLAN` for 30996 (a larger y is higher on the page: top line first), `LOT C SITE PLAN`
    for 31057 — WITHOUT breaking the 31138/31168 template the file was written for (its tests:
    `Kor.Operations.EngineeringTools.Core.Tests/Intake/TitleBlockFieldsTests.cs` if present — `grep -rl
    TitleBlockFields Kor.Operations.EngineeringTools.Core.Tests` — read them first; every existing
