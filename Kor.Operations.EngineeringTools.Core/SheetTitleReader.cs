@@ -109,8 +109,11 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             // that sits above (31138 p9: "S2.01 Location:" instead of "FOUNDATIONS").
             // And less the block's LABELS — "Location:", "REVISIONS:", "SCALE:" — which are title-size
             // on some blocks: a label ends in a colon or is not set in capitals; a KOR sheet title is.
-            var rightEdge = page.Words
-                .Where(t => t.Cx / w >= TitleRegionMinFx && t.Height >= TitleMinH
+            // 01589-01 p7: a rotated strip uses the same reading axes as the field reader;
+            // glyph-run length along the page's Y is word width, not title font height.
+            var readingTokens = Intake.TitleBlockFields.ReadingTokens(page, TitleRegionMinFx, out bool rotated);
+            var rightEdge = readingTokens
+                .Where(t => t.Height >= TitleMinH
                             && !StampTokenRx.IsMatch(t.Text.Trim()) && !SheetNumberTokenRx.IsMatch(t.Text.Trim())
                             && !t.Text.EndsWith(':') && t.Text.Any(char.IsLetter)
                             && t.Text.Trim() == t.Text.Trim().ToUpperInvariant())
@@ -128,9 +131,14 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             // Symmetric: a wrapped title stacks either way round the anchor.
             double lo = anchor.Cy - 6.0 * h, hi = anchor.Cy + 6.0 * h;
             double lineH = Math.Max(h * 0.6, 4.0);
-            var window = rightEdge.Where(t => t.Height >= 0.5 * h && t.Cy >= lo && t.Cy <= hi).ToList();
+            var window = rightEdge.Where(t => t.Height >= 0.5 * h && t.Cy >= lo && t.Cy <= hi
+                // Without a title label, a rotated title is the anchor's constant-X column;
+                // nearby revision columns are separate fields, not wrapped horizontal title lines.
+                && (!rotated || Math.Abs(t.Cy - anchor.Cy) <= Math.Max(h, t.Height) * 0.5)).ToList();
             if (window.Count == 0) return null;
-            string text = string.Join(" ", window
+            string text = rotated
+                ? string.Join(" ", Intake.TitleBlockFields.ReadingLines(window).SelectMany(l => l).Select(t => t.Text)).Trim()
+                : string.Join(" ", window
                 .GroupBy(t => Math.Round(t.Cy / lineH))
                 .OrderByDescending(g => g.Key)
                 .SelectMany(g => g.OrderBy(t => t.Cx).Select(t => t.Text))).Trim();

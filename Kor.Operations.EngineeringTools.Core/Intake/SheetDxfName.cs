@@ -32,17 +32,18 @@ public static class SheetDxfName
     {
         ArgumentNullException.ThrowIfNull(titleBlock);
         string? number = string.IsNullOrWhiteSpace(sheetNumber) ? Field(titleBlock, "SHEET NUMBER", "SHEET NO") : sheetNumber.Trim();
-        string? field = Field(titleBlock, "SHEET TITLE", "DRAWING TITLE");
+        string? field = SheetTitle(titleBlock);
         string? bookmark = string.IsNullOrWhiteSpace(bookmarkTitle) ? null : bookmarkTitle.Trim();
         if (bookmark is not null && number is not null && bookmark.StartsWith(number, StringComparison.OrdinalIgnoreCase))
             bookmark = bookmark[number.Length..].TrimStart(' ', '-', '–', ':', '_').Trim();
         if (string.IsNullOrWhiteSpace(bookmark)) bookmark = null;
+        bookmark = WithoutProjectTitle(titleBlock, bookmark);
         // THE THIRD STATEMENT: the title written on the page itself (intake step 46). The corpus analyzer's
         // second run left 72 sets with no storey ladder, and 298 of their 486 views were named by the PDF's
         // stem and page - sheets with a number, a level the storey reader had read, and no title-block
         // field or bookmark to name them by (30940: 65 plans, 18 with a level; 31009: 28, 22). A name that
         // says nothing places nothing.
-        string? page = string.IsNullOrWhiteSpace(titleText) ? null : titleText.Trim();
+        string? page = WithoutProjectTitle(titleBlock, string.IsNullOrWhiteSpace(titleText) ? null : titleText.Trim());
         // A SMALL JOB'S TITLE CARRIES ITS OWN NUMBER: "S-6 - MAIN FLOOR PLAN SHOWING 2ND FLOOR FRAMING OVER",
         // "S-5FOUNDATION PLAN". The page reads no sheet number for these (the hyphenated form is not the
         // issued S2.20.1 form), the view fell back to the stem and page, and the composer saw no name at all:
@@ -58,6 +59,7 @@ public static class SheetDxfName
         if (page is not null && number is not null && page.StartsWith(number, StringComparison.OrdinalIgnoreCase))
             page = page[number.Length..].TrimStart(' ', '-', '–', ':', '_').Trim();
         if (string.IsNullOrWhiteSpace(page)) page = null;
+        page = WithoutProjectTitle(titleBlock, page);
 
         bool NamesALevel(string? t)
         {
@@ -79,7 +81,7 @@ public static class SheetDxfName
     {
         ArgumentNullException.ThrowIfNull(titleBlock);
         string? number = string.IsNullOrWhiteSpace(sheetNumber) ? Field(titleBlock, "SHEET NUMBER", "SHEET NO") : sheetNumber.Trim();
-        string? title = Field(titleBlock, "SHEET TITLE", "DRAWING TITLE");
+        string? title = SheetTitle(titleBlock);
         return (number is null || title is null ? fallbackStem : Sanitise($"{number}_1_{title}")) + ".dxf";
     }
 
@@ -94,6 +96,23 @@ public static class SheetDxfName
         ArgumentNullException.ThrowIfNull(viewTitle);
         string? number = string.IsNullOrWhiteSpace(sheetNumber) ? null : sheetNumber.Trim();
         return (number is null || string.IsNullOrWhiteSpace(viewTitle) ? $"{fallbackStem}-v{viewIndex}" : Sanitise($"{number}_{viewIndex}_{viewTitle.Trim()}")) + ".dxf";
+    }
+
+    // 01379-01 p77: a drawing title names the sheet; a job/project title never supplies the
+    // missing sheet title, even when repeated in the heuristic text or a bookmark. Compare only
+    // stated field values; these readers cannot infer that an otherwise unlabelled name is a project.
+    private static string? SheetTitle(IReadOnlyDictionary<string, string> titleBlock) =>
+        WithoutProjectTitle(titleBlock, Field(titleBlock, "SHEET TITLE"))
+        ?? WithoutProjectTitle(titleBlock, Field(titleBlock, "DRAWING TITLE"));
+
+    private static string? WithoutProjectTitle(IReadOnlyDictionary<string, string> titleBlock, string? title)
+    {
+        if (title is null) return null;
+        string Normalise(string text) => Regex.Replace(text, @"\s+", " ").Trim();
+        foreach (string key in new[] { "JOB TITLE", "PROJECT TITLE" })
+            if (Field(titleBlock, key) is { } project
+                && Normalise(title).Equals(Normalise(project), StringComparison.OrdinalIgnoreCase)) return null;
+        return title;
     }
 
     private static string? Field(IReadOnlyDictionary<string, string> titleBlock, params string[] keys)
