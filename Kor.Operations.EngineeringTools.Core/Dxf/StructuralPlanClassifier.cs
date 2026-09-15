@@ -607,6 +607,7 @@ public static class StructuralPlanClassifier
         }
 
         var result = new PlanGeometrySet();
+        int columnSourceLoopIndex = 0;
         if (tags is not null) result.Tags.AddRange(tags);
 
         var closedByRole = new List<(string Role, IReadOnlyList<PlanLoop> Loops, string Family)>();
@@ -1136,11 +1137,11 @@ public static class StructuralPlanClassifier
             {
                 if (isColumn)
                 {
-                    AddColumn(result, loop, options, curvePoints);
+                    AddColumn(result, loop, options, curvePoints, columnSourceLoopIndex++);
                 }
                 else if (isWall)
                 {
-                    AddWallOrColumn(result, loop, options);
+                    AddWallOrColumn(result, loop, options, columnSourceLoopIndex++);
                 }
                 else if (loop.Area >= options.MinSlabArea)
                 {
@@ -1891,7 +1892,10 @@ public static class StructuralPlanClassifier
             double bearing = Math.Atan2(stub.End.Y - stub.Start.Y, stub.End.X - stub.Start.X) * 180.0 / Math.PI;
             while (bearing < 0) bearing += 180.0;
             while (bearing >= 180.0) bearing -= 180.0;
-            result.Columns.Add(new ColumnFootprint(middle, stub.Thickness, stub.Length, stub.Layer, bearing));
+            result.Columns.Add(new ColumnFootprint(middle, stub.Thickness, stub.Length, stub.Layer, bearing)
+            {
+                Origin = new ColumnOrigin(stub.Layer, -1, stub.Length, stub.Thickness, "standalone-stub"),
+            });
         }
 
         if (stubs.Count > 0)
@@ -2069,7 +2073,7 @@ public static class StructuralPlanClassifier
     }
 
     private static void AddColumn(
-        PlanGeometrySet result, PlanLoop loop, PlanClassificationOptions options, CurveEnds curvePoints)
+        PlanGeometrySet result, PlanLoop loop, PlanClassificationOptions options, CurveEnds curvePoints, int loopIndex)
     {
         var box = LoopGeometry.MinAreaBox(loop.Points);
         double longSide = Math.Max(box.Length, box.Thickness);
@@ -2129,10 +2133,11 @@ public static class StructuralPlanClassifier
                     "looks like. Modelled square — check whether it is round.");
         }
 
+        var origin = new ColumnOrigin(loop.Layer, loopIndex, box.Length, box.Thickness, "column-layer-loop");
         result.Columns.Add(round
-            ? new ColumnFootprint(loop.Centroid(), longSide, longSide, loop.Layer, 0) { IsRound = true }
+            ? new ColumnFootprint(loop.Centroid(), longSide, longSide, loop.Layer, 0) { IsRound = true, Origin = origin }
             : new ColumnFootprint(loop.Centroid(), shortSide, longSide, loop.Layer, AxisAngle(box))
-                { DrawnAsAPolygonCircle = polygonCircle });
+                { DrawnAsAPolygonCircle = polygonCircle, Origin = origin });
     }
 
     /// <summary>How far a point stands from an outline's edge, zero if it is on it.</summary>
@@ -2331,7 +2336,7 @@ public static class StructuralPlanClassifier
         return degrees;
     }
 
-    private static void AddWallOrColumn(PlanGeometrySet result, PlanLoop loop, PlanClassificationOptions options)
+    private static void AddWallOrColumn(PlanGeometrySet result, PlanLoop loop, PlanClassificationOptions options, int loopIndex)
     {
         var box = LoopGeometry.MinAreaBox(loop.Points);
 
@@ -2408,7 +2413,10 @@ public static class StructuralPlanClassifier
             if (LoopGeometry.Beyond(options.MinWallLength, box.Length) &&
                 LoopGeometry.Within(options.MinColumnSize, box.Thickness) && LoopGeometry.Within(box.Length, options.MaxColumnSize))
             {
-                result.Columns.Add(new ColumnFootprint(loop.Centroid(), box.Thickness, box.Length, loop.Layer, AxisAngle(box)));
+                result.Columns.Add(new ColumnFootprint(loop.Centroid(), box.Thickness, box.Length, loop.Layer, AxisAngle(box))
+                {
+                    Origin = new ColumnOrigin(loop.Layer, loopIndex, box.Length, box.Thickness, "short-wall-layer-loop"),
+                });
                 return;
             }
 
@@ -2475,7 +2483,10 @@ public static class StructuralPlanClassifier
                 return;
             }
 
-            result.Columns.Add(new ColumnFootprint(loop.Centroid(), box.Thickness, box.Length, loop.Layer, AxisAngle(box)));
+            result.Columns.Add(new ColumnFootprint(loop.Centroid(), box.Thickness, box.Length, loop.Layer, AxisAngle(box))
+            {
+                Origin = new ColumnOrigin(loop.Layer, loopIndex, box.Length, box.Thickness, "nothing-paired-up"),
+            });
             return;
         }
 

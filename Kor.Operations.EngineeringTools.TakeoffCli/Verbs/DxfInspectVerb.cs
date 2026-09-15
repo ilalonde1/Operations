@@ -5,10 +5,11 @@ internal static class DxfInspectVerb
 
     public static int Run(string[] args)
     {
-        if (args.Length < 2) { Console.Error.WriteLine("Usage: takeoff dxf-inspect <plan.dxf> [--walls] [--plates] [--loops] [--members]"); return 1; }
+        if (args.Length < 2) { Console.Error.WriteLine("Usage: takeoff dxf-inspect <plan.dxf> [--walls] [--columns] [--plates] [--loops] [--members]"); return 1; }
         if (!File.Exists(args[1])) { Console.Error.WriteLine($"Not found '{args[1]}'."); return 2; }
 
         bool wallDetail = args.Any(a => a.Equals("--walls", StringComparison.OrdinalIgnoreCase));
+        bool columnDetail = args.Any(a => a.Equals("--columns", StringComparison.OrdinalIgnoreCase));
         bool plateDetail = args.Any(a => a.Equals("--plates", StringComparison.OrdinalIgnoreCase));
         bool loopDetail = args.Any(a => a.Equals("--loops", StringComparison.OrdinalIgnoreCase));
         bool memberDetail = args.Any(a => a.Equals("--members", StringComparison.OrdinalIgnoreCase));
@@ -16,6 +17,12 @@ internal static class DxfInspectVerb
         // inch thresholds classified nothing - every loop "-> 0 panel(s)" - until 2026-09-13)
         var inspectOptions = new PlanClassificationOptions().InUnitOf(DxfPlanReader.UnitInInches(args[1]) ?? 1.0);
         var inspectSegments = DxfPlanReader.ReadSegments(args[1]);
+
+        if (columnDetail)
+        {
+            WriteColumns(args[1], StructuralPlanClassifier.Classify(inspectSegments, inspectOptions));
+            return 0;
+        }
 
         // WHICH LOOPS HAVE NO HONEST CENTRE? A bow-tie's area formula puts its centre kilometres
         // away (31202, 2026-09-12); a loop drawn out-and-back has no area at all. PlanLoop.Centroid
@@ -188,5 +195,33 @@ internal static class DxfInspectVerb
             }
         }
         return 0;
+    }
+
+    /// <summary>The same per-sheet classification and listing used by corpus-query columns; no PDF or model is written.</summary>
+    public static IReadOnlyList<(string Branch, bool InsideWall)> InspectColumns(string path)
+    {
+        var options = new PlanClassificationOptions().InUnitOf(DxfPlanReader.UnitInInches(path) ?? 1.0);
+        return WriteColumns(path, StructuralPlanClassifier.Classify(DxfPlanReader.ReadSegments(path), options));
+    }
+
+    private static IReadOnlyList<(string Branch, bool InsideWall)> WriteColumns(string path, PlanGeometrySet made)
+    {
+        Console.WriteLine($"{Path.GetFileName(path)}: {made.Columns.Count} columns, {made.Walls.Count} wall panels (sheet coordinates and drawing units)");
+        var rows = new List<(string Branch, bool InsideWall)>();
+        foreach (var column in made.Columns.OrderBy(c => c.Layer, StringComparer.Ordinal)
+                     .ThenBy(c => c.Center.X).ThenBy(c => c.Center.Y).ThenBy(c => c.Width).ThenBy(c => c.Depth))
+        {
+            var origin = column.Origin;
+            var walls = made.Walls.Where(w => LoopGeometry.WallContainsPoint(w, column.Center))
+                .OrderBy(w => w.Length).ThenBy(w => w.Thickness).ToList();
+            string containment = walls.Count == 0 ? "not inside a wall" : "inside wall " +
+                string.Join("; ", walls.Select(w => $"length {w.Length:0.###} thickness {w.Thickness:0.###}"));
+            Console.WriteLine($"  column ({column.Center.X:0.###},{column.Center.Y:0.###}) size {column.Width:0.###}x{column.Depth:0.###}" +
+                $" layer {origin.Layer} loop {origin.LoopIndex} box {origin.LoopLength:0.###}x{origin.LoopThickness:0.###}" +
+                $" branch {origin.Branch}{(column.FromBelow ? " below" : "")}  {containment}");
+            rows.Add((origin.Branch, walls.Count > 0));
+        }
+        Console.WriteLine($"  unknown origins: {rows.Count(r => r.Branch == "unknown")}; loop -1 denotes a wall stub (box = axis length x thickness)");
+        return rows;
     }
 }

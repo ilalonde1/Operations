@@ -195,6 +195,13 @@ public sealed record WallOpening(DxfPoint Start, DxfPoint End, double Thickness,
 }
 
 /// <summary>
+/// Diagnostic provenance, in drawing units: the loop's oriented box and the rule that made a
+/// column. LoopIndex is zero-based in the classification pass's wall/column loop traversal,
+/// after concentric-ring pairing; -1 means a wall stub, whose axis length/thickness are recorded.
+/// </summary>
+public sealed record ColumnOrigin(string Layer, int LoopIndex, double LoopLength, double LoopThickness, string Branch = "unknown");
+
+/// <summary>
 /// A column footprint reduced to a location, a size and how it is turned.
 /// <paramref name="Depth"/> is the long face and <paramref name="Width"/> the short one;
 /// <paramref name="AxisAngleDegrees"/> is the bearing of the long face from global X.
@@ -203,6 +210,34 @@ public sealed record ColumnFootprint(
     DxfPoint Center, double Width, double Depth, string Layer, double AxisAngleDegrees = 0,
     bool FromBelow = false)
 {
+    /// <summary>Carried for inspection only; excluded from geometric equality and serialized model data.</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public ColumnOrigin Origin { get; init; } = new(Layer, -1, 0, 0);
+
+    // Adding provenance must not change whether two geometrically identical columns deduplicate.
+    public bool Equals(ColumnFootprint? other) => other is not null
+        && Center.Equals(other.Center) && Width.Equals(other.Width) && Depth.Equals(other.Depth)
+        && Layer == other.Layer && AxisAngleDegrees.Equals(other.AxisAngleDegrees)
+        && FromBelow == other.FromBelow && DrawnAsAPolygonCircle == other.DrawnAsAPolygonCircle
+        && IsRound == other.IsRound;
+
+    public override int GetHashCode()
+    {
+        // Preserve the record's original field order and hash combination as well as its equality.
+        unchecked
+        {
+            int hash = EqualityComparer<Type>.Default.GetHashCode(EqualityContract);
+            hash = hash * -1521134295 + EqualityComparer<DxfPoint>.Default.GetHashCode(Center);
+            hash = hash * -1521134295 + EqualityComparer<double>.Default.GetHashCode(Width);
+            hash = hash * -1521134295 + EqualityComparer<double>.Default.GetHashCode(Depth);
+            hash = hash * -1521134295 + EqualityComparer<string>.Default.GetHashCode(Layer);
+            hash = hash * -1521134295 + EqualityComparer<double>.Default.GetHashCode(AxisAngleDegrees);
+            hash = hash * -1521134295 + EqualityComparer<bool>.Default.GetHashCode(FromBelow);
+            hash = hash * -1521134295 + EqualityComparer<bool>.Default.GetHashCode(DrawnAsAPolygonCircle);
+            return hash * -1521134295 + EqualityComparer<bool>.Default.GetHashCode(IsRound);
+        }
+    }
+
     /// <summary>
     /// Read from DASHED linework, so it stands under this sheet's slab rather than on top of it.
     /// A solid member drawn on the plan for storey N rises N -> N+1 and belongs to N+1; a dashed

@@ -194,6 +194,10 @@ public static class LoopGeometry
         return p.DistanceTo(new DxfPoint(a.X + t * dx, a.Y + t * dy));
     }
 
+    /// <summary>Diagnostic wall containment: within half its thickness of the finite axis segment, including the boundary.</summary>
+    public static bool WallContainsPoint(WallAxis wall, DxfPoint point)
+        => DistanceToSegment(point, wall.Start, wall.End) <= wall.Thickness / 2.0;
+
     /// <summary>
     /// Removes vertices where an outline doubles back along itself.
     ///
