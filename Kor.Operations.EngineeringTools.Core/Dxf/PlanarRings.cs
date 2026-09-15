@@ -134,16 +134,30 @@ public sealed class PlanarRings
             else { seen[(s.A, s.B)] = lines.Count; lines.Add(s); }
         }
         var cuts = lines.Select(s => new List<DxfPoint> { s.A, s.B }).ToArray();
-        for (int i = 0; i < lines.Count; i++)
-            for (int j = i + 1; j < lines.Count; j++)
+        // A SWEEP ALONG X, NOT EVERY PAIR (2026-09-15): the pair loop tested every two of n lines' boxes, and a wood
+        // plan's 3,754 lines or an architect's 42,501 made that 1.8 billion tests (BoxesMeet alone 78 s of a set's
+        // 330 s under dotnet-trace). Sorted by their left edge, a line's partners are the ones whose left edge lies
+        // before its right edge plus the margin; the pairs found are exactly the pairs whose boxes meet, in an order
+        // the arrangement does not depend on (every collection below is a set, and the faces are geometry's).
+        double margin = _joinTolerance + 1e-6;
+        var byLeft = Enumerable.Range(0, lines.Count).OrderBy(i => Math.Min(lines[i].A.X, lines[i].B.X)).ToArray();
+        for (int oi = 0; oi < byLeft.Length; oi++)
+        {
+            int i = byLeft[oi];
+            var a = lines[i];
+            double right = Math.Max(a.A.X, a.B.X) + margin;
+            for (int oj = oi + 1; oj < byLeft.Length; oj++)
             {
-                var a = lines[i]; var b = lines[j];
-                if (!BoxesMeet(a, b, _joinTolerance + 1e-6)) continue;
+                int j = byLeft[oj];
+                var b = lines[j];
+                if (Math.Min(b.A.X, b.B.X) > right) break;
+                if (!BoxesMeet(a, b, margin)) continue;
                 AddEnd(a.A, b, cuts[j]); AddEnd(a.B, b, cuts[j]);
                 AddEnd(b.A, a, cuts[i]); AddEnd(b.B, a, cuts[i]);
                 if (Intersection(a, b, out var p, out double t, out double u) && t >= 0 && t <= 1 && u >= 0 && u <= 1)
                 { cuts[i].Add(p); cuts[j].Add(p); }
             }
+        }
         // a computed crossing lands a billionth from the endpoint it coincides with ((0.04, 0) meets (0.04000000000000001, 0)
         // where a slanted side ends on the bottom line); one sample, not two, or the corner's centroid leans toward it.
         // A billionth cannot move a sample across a join tolerance of hundredths, so this is not the cell class.
@@ -190,14 +204,24 @@ public sealed class PlanarRings
         var mesh = new Mesh(layer, _joinTolerance, nodes, edges);
         for (int e = 0; e < edges.Count; e++) { mesh.Adjacency[edges[e].A].Add(e); mesh.Adjacency[edges[e].B].Add(e); }
         // Centroid snapping can change an embedding. Do not silently enumerate a nonplanar result.
-        for (int i = 0; i < edges.Count; i++)
-            for (int j = i + 1; j < edges.Count; j++)
+        // The same sweep along X as the pair loop above: only edges whose boxes meet can conflict.
+        var edgeSpans = edges.Select(e => new Span(nodes[e.A], nodes[e.B], false)).ToList();
+        var edgesByLeft = Enumerable.Range(0, edges.Count).OrderBy(i => Math.Min(edgeSpans[i].A.X, edgeSpans[i].B.X)).ToArray();
+        for (int oi = 0; oi < edgesByLeft.Length; oi++)
+        {
+            int i = edgesByLeft[oi];
+            var a = edges[i];
+            double right = Math.Max(edgeSpans[i].A.X, edgeSpans[i].B.X);
+            for (int oj = oi + 1; oj < edgesByLeft.Length; oj++)
             {
-                var a = edges[i]; var b = edges[j];
+                int j = edgesByLeft[oj];
+                if (Math.Min(edgeSpans[j].A.X, edgeSpans[j].B.X) > right) break;
+                var b = edges[j];
                 if (a.A == b.A || a.A == b.B || a.B == b.A || a.B == b.B) continue;
-                if (Conflicts(new Span(nodes[a.A], nodes[a.B], false), new Span(nodes[b.A], nodes[b.B], false), false))
+                if (Conflicts(edgeSpans[i], edgeSpans[j], false))
                     throw new InvalidOperationException("Centroid snapping left an unresolved crossing or contact; the embedding must be refined.");
             }
+        }
         return mesh;
 
         void AddEnd(DxfPoint p, Span s, List<DxfPoint> into)
