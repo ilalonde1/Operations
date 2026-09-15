@@ -4201,3 +4201,57 @@ WHAT IT DOES NOT: a plan note ending in a heading word with no sheet number (311
 173 × 608 pt) — the same class, the half-sheet cap still its only guard; the geometric statement of the class
 ("a heading is at its box's top-left; a callout floats on the plan") was not written because the grid crosses
 the schedules on 31087's own sheets, so "furniture is never on the grid" is false here.
+
+## 85. Step 78, 2026-09-15 afternoon: a floor is the cells its structure stands in, united — PlanarRings wired; and run 19's title regression
+
+**The class, on 31087 (King Rise, 53 storeys, 49 without a plate).** `dxf-inspect --faces` (new: the planar
+faces of a page's lines, the united plates, and the longest open chains with the member beside each loose
+end) on LEVEL 6–8 said, in one screen: the north edge is eleven pieces of 29.5 ft on one line with a
+**36-inch gap at every 12 × 30 column** (the drafter stops the edge a foot short of the column each side;
+the bridge is six inches); `pdf-at` at the joint between the two blocks found the corridor's edge, **8.6 m
+at 9 pt along grid 5**, kept apart for the tendon reader by step 53 (`StrokeOnGrid`); and the balconies are
+boxes AGAINST the outline sharing its edge, which the chain walk spends on whichever ring it closes first —
+the shape §27 named and stopped at ("a piece of linework must be allowed to serve a small loop AND the
+floor's edge, or the outer boundary must be found by something other than chaining").
+
+**Step 78 (`dafad991`), three rules and the §71 prototype wired.** The exact-join walk (step 24) and the
+bridged walk of long pieces (step 27) stand verbatim. Where they close no floor and nothing drew one:
+(a) the heavy strokes along grid axes are offered as lines; (b) two ends on one line, facing, closer than
+the corner-carry limit (48 in) are one edge (`BridgesInLine`); (c) the long pieces, those bridges and those
+strokes are arranged as a planar graph (`PlanarRings`, `048912f1`) and **the cells holding a column or a
+wall midpoint are united** (`RecoverSurfaces`) — a balcony's cell holds nothing and stays out, a slab step
+across the floor divides it into cells that unite. The unions are gated as the walk's rings are (floor
+size, structure standing in it, outermost — now by MOST VERTICES inside, since a centroid lies outside an
+L-shaped floor) and defer to a drawn floor-sized closed path (the architect's outline). A refused
+arrangement is reported on the sheet (`SlabEdgeArrangementRefused`). LEVEL 6–8 and LEVEL 10–50 close —
+rendered: the whole floor, balconies as notches, both blocks joined.
+
+**Six sets.** Plates on ~110 storeys that had none — 31138 L7–L21, 31130 L4–L20, 31065 L8–L18, 31202
+L5–L12, 31168 C-L3 / C-L4 / L1 / A-L1; members unchanged except 31138 L1 and L22, where
+`ModelDoubleHeightMembersOnBothFloors` (the engineers' "a column stands on a slab") stops extending the
+L2 columns down through a storey that now has its own plate — proven by a differential (the same DXFs with
+L1's plates stripped give the old counts, 3 minutes), after 40 minutes of reading the composer had not.
+Two regressions found by the gate and fixed: (1) a union bounded by curbs and the walls' INNER faces took a
+parkade's plate from the walls' outer edge (31138 P1 18,374 → 14,520; 31168 P1 77,030 → 2,902) — **the floor
+is the walls' outer edge where they close** (the engineers' rule, 25 Aug), a slab ring inside that ring is
+its interior (`StructuralPlanClassifier`, before the fallback); (2) the architect's set lost its 32,076 sq ft
+drawn outline to unions on six storeys — the arrangement is skipped where a drawn floor stands, and the
+strokes and in-line bridges go to the arrangement only, never to the walk.
+
+**Cost.** The arrangement is quadratic in its lines: the architect's A003 (42,501 lines) took 565 s arranged
+whole and bridged 25,504 hatch dashes in line with each other; as long pieces only, 91 s; skipped where the
+outline closes. The gate reads the six in 3 min uncontended (13 min while run 19 hogged the CPU — the
+reason a corpus run never again runs during a development session).
+
+**Run 19 (steps 73–76; banked `ledger-sets-2026-09-15-run19-step76.csv`) — a regression the six never
+showed.** 253 → 248 models, 2,660 → 2,524 storeys, 85 sets' storeys moved (30941 34 → 13, 30990 25 → 15,
+30816 5 → 2). The DB's per-page rows said why in one query: 30941 p16 read "PLAN RAFT FOUNDATION LEVEL"
+on every run until 19 and "SSI PM" on 19. Step 73's `ReadingTokens` dropped every word drawn UP the page
+(to keep a rotated stamp out of the fields), and KOR's own upright title block writes the SHEET TITLE up
+the page. The title reader keeps them (`dropUpright: false`); the field reader drops them as Codex meant.
+
+**OPEN (the next steps, in order):** a union whose boundary follows a leader or a section line is the
+wrong shape — 31130's right tower comes out a slanted hexagon over its columns (a plate where none was,
+not the drawn shape): cell selection must ask more than "holds a column"; fragment unions on parkades
+with no wall ring (31168 P2/P3, ~900 sq ft); 31087 LEVEL 4 (p28) still reads no ring; the rotated title's
+word order ("PLAN RAFT FOUNDATION LEVEL" for LEVEL B4 …) loses B4.

@@ -1,6 +1,6 @@
 # PDF intake → ETABS — Completion Plan
 
-**Status:** Rev 4, 2026-09-15 13:00 — WP6a re-plans the road on the engineers' own definition of usable (verticals + a plate on every storey; one model per building); steps 47 and 49–73 in §8, runs 8–16 in §1b, run 17 in flight — WP1–WP5 landed overnight on Ian's go-ahead ("go through this all,
+**Status:** Rev 4, 2026-09-15 17:00 (rows 3y–3aa, runs 17–19; step 78 landed: plates on ~110 six-set storeys; run 19 regression fixed) — Rev 4, 13:00 — WP6a re-plans the road on the engineers' own definition of usable (verticals + a plate on every storey; one model per building); steps 47 and 49–73 in §8, runs 8–16 in §1b, run 17 in flight — WP1–WP5 landed overnight on Ian's go-ahead ("go through this all,
 step by step, and finish it overnight"): commits `8fccbc25` (WP3), `3f3f82b9` (WP2), `aba7d9ff`
 (WP4), `69e554b5` (WP5), each gated by the six byte-identical and the fast suite; WP5's remaining
 conventions are counted by a test, not by this document. §8 is what needs Ian. Rev 2 (2026-09-11)
@@ -72,6 +72,7 @@ Today's harness is 6 of those 292. The one-job yardstick (31168) is 1 of 66.
 | run 16 (2026-09-15 00:11 → 00:33, **22 min, a `--recompose` at 12 workers on `7975b354`**, step 71; `ledger-sets-2026-09-15-run16-step71.csv`; DB run `04679a26`) | **253 of 296**; 58% / 53%; walls 104,586, columns 81,844. `corpus-query diff` run 15 → 16: **Storeys 1, SameCounts 295** — 30992-01 back to L1 L2 ROOF (31 columns, 77 walls); no other set moved, so in run 15 exactly one set was reading a neighbour's words, and from run 16 the composition is deterministic. |
 | run 17 (2026-09-15 11:32 → 12:43, **53 min, a FULL read at 12 workers on `8805acd1`**, step 72; migration 092 was applied at ~12:05, DURING the run, so its LOADING-plan refusal reached only the sets composed after it — a mixed run for 092; `ledger-sets-2026-09-15-run17-step72.csv`) | **253 of 296**; **59% / 53%** (6,536 of 11,108); walls 103,741, columns 80,808; plates 1,090 of 2,660 (41%). `corpus-query diff` run 16 → 17: Storeys 1, Placement 3, Composition 6, SameCounts 286 — step 72's fixes and 092's partial effect (30878-02 903 → 392 columns: its LANDSCAPE LOADING PLANS refused; 31183 505 → 226: its loading plans had been its ONLY placed sheets — the ZONE A/B plans do not place, a placement class; 31057: its one plan is a LOT C SITE PLAN, refused by 091 — no members, honestly). |
 | run 18 (2026-09-15 12:45 → 13:15, **30 min, a `--recompose` of run 17's read with migration 092 throughout**; `ledger-sets-2026-09-15-run18-step72-092.csv`) | **253 of 296**; 59% / 53% (6,535 of 11,106); walls 103,583, columns 80,546; plates 1,088 of 2,660 (41%). `corpus-query diff` run 17 → 18: Placement 3, Views 1, **SameCounts 292** — the four sets whose loading plans run 17 had composed before 092 landed: 30961 (1,212 → 1,028 columns, 998 → 806 walls: eight LOADING PLAN views had doubled its level plans' members at offsets beyond the dedupe reach — refused, as "each level is shown once" says), 30756, 30997, 30838. The clean measurement of 092: **−260 columns, −229 walls, no storey and no model lost.** |
+| run 19 (2026-09-15 13:57 → 15:08, **71 min, a FULL read at 12 workers on `f55508c1`**, steps 73–76; `ledger-sets-2026-09-15-run19-step76.csv`; DB run `bb82cc5f`) | **248 of 296** — A REGRESSION: 2,660 → 2,524 storeys, 85 sets' storeys moved (30941 34 → 13, 30990 25 → 15, 30816 5 → 2), 5 models lost; plates 1,024 of 2,524 (41%); 59% / 55%. Cause (one DB query on 30941 p16): step 73's `ReadingTokens` dropped every word drawn up the page and KOR's upright title block writes the SHEET TITLE up the page — "PLAN RAFT FOUNDATION LEVEL" became "SSI PM". Fixed in `dafad991` (the title reader keeps upright words; the field reader drops them). The six sets never showed it: the corpus run is the only instrument that sees every title-block layout. |
 
 **The work order is a count now.** 1. Storeys: the 67 sets whose plans name their storeys with
 words, and 935 views the composer can put on no storey by name (step 47, §8 item 5). 2. Views on
@@ -471,6 +472,28 @@ residues' cause. Not the PDF route; queued behind it.
    its line; the barrier asserted. Finding 1 (the 18-inch literal at the open-face-pair gate, unconverted
    for millimetre sets) is the next measured step. The wood rule's 8 in is the row (migration 091);
    31202 re-banked for 091's instrumentation sheets. Run 17 = a full read on `8805acd1`.
+3y. **Steps 73–76 and runs 17–18, 2026-09-15 midday** (§83): Codex's title-block rules (`011117c2`; 31065's
+   LEVEL 2 had been EMPTY in every baseline — re-banked with 101 columns); the plate instrument
+   (`967564e7`, `corpus-query plates`: plate 41% / no sheet placed 27% / no ring read 17% / rings read no
+   plate 19%; 33 area messages ÷144 in mm fixed); the dead open-face-pair branch measured (+32 walls on 9
+   sets, at hatching) and refused on the PDF route (`7cf9969f`); level lists with ranges (`f55508c1`).
+   Run 18 = migration 092's clean measurement (−260 columns / −229 walls of doubled loading plans).
+
+3z. **Step 77, 2026-09-15 afternoon** (§84): a title line naming ANOTHER sheet ("DETAIL 29 / S1.03") is a
+   callout, not a furniture heading (`5b02abe8`): 31087's LEVEL 2 had been swallowed as a notes box
+   (13 walls → 41, no ring → 2); 31138 +5 columns / +9 walls on L1 and L2. Residue: a plan note ending in a
+   heading word with no sheet number (31138 "BUILT-UP PER DETAIL").
+
+3aa. **Step 78, 2026-09-15 afternoon** (§85): **a floor is the cells its structure stands in, united** —
+   PlanarRings (§71) wired where the chain walk closes nothing and nothing drew a floor; strokes along
+   the grid offered; an edge interrupted in line is one edge (48 in); the floor is the walls' outer edge
+   where they close (`dafad991`). 31087's tower closes (rendered); ~110 storeys on the six sets gain a
+   plate; two regressions caught by the gate and fixed (parkade plate from inner faces; the architect's
+   drawn outline lost to unions). OPEN: unions of the wrong shape along leaders (31130's tower); parkade
+   fragment unions; 31087 LEVEL 4. Process (binding, [[feedback_be_the_fixer_decide_bank_batch]] third
+   instance): no corpus run during a development session; instrument before reading code; a status line
+   every 15 minutes; the reader's 4.4 s/page is a defect — profile before run 20.
+
 4. **WP6** — one model in front of Andrea (31170's, or whichever the ledger ranks best of the
    architects' sets). Ian's call when.
 5. **Step 47**, the next reading rule, from the corpus. `takeoff corpus-query plan-titles` on the
