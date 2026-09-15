@@ -1,6 +1,6 @@
 # PDF intake → ETABS — Completion Plan
 
-**Status:** Rev 3, 2026-09-15 morning (steps 47 and 49–72 added to §8, 3b–3x; runs 8–16 in §1b, run 17 in flight) — WP1–WP5 landed overnight on Ian's go-ahead ("go through this all,
+**Status:** Rev 4, 2026-09-15 13:00 — WP6a re-plans the road on the engineers' own definition of usable (verticals + a plate on every storey; one model per building); steps 47 and 49–73 in §8, runs 8–16 in §1b, run 17 in flight — WP1–WP5 landed overnight on Ian's go-ahead ("go through this all,
 step by step, and finish it overnight"): commits `8fccbc25` (WP3), `3f3f82b9` (WP2), `aba7d9ff`
 (WP4), `69e554b5` (WP5), each gated by the six byte-identical and the fast suite; WP5's remaining
 conventions are counted by a test, not by this document. §8 is what needs Ian. Rev 2 (2026-09-11)
@@ -186,6 +186,34 @@ backlog (§6) waits; it is where the last two weeks went and it is not what make
   the slab-edge extend limit (48 in here; the DXF side measured extending as harmful and banks 0).
 - Gate, met: the triage test green; `CompiledDefaultsAreTheBankedRowsTests` (085's two keys
   declared unbanked until applied); the six byte-identical.
+
+### WP6a — The road to the finish line, re-planned 2026-09-15 13:00 on the engineers' own definition of usable
+
+The engineer's definition of a usable starting point is on record (07 Aug, 24 Aug, 31 Aug; index
+`reference_andrea_answers_index`): **the verticals and the overall shape of the slab on every storey,
+one thickness per floor; one model per building; each level shown once; footings, beams, loads,
+sections and diaphragms are hers.** So the number that says "usable" is not columns within 100 mm of
+a stale model (58%) but **storeys carrying their verticals AND a plate — 1,096 of 2,658 (41%) on run 16.**
+The plan below is ordered by that number and by the two rules her answers back that the tool does not
+yet obey. Each item is one step: reproduce on the set, rule, test, gate, run, every mover looked at,
+three lines here at the commit.
+
+| # | step | done when | size |
+|---|---|---|---|
+| 1 | **Open-face pairs in millimetre sets** (audit finding 1) — the branch was dead in every PDF set; measured alive on the six (31170-arch +2 walls at hatching) | the corpus recompose says what "alive" adds; the rule written from it (likely: the PDF reader pairs faces with fill knowledge, the composer's pairing is for Revit DXFs) | ½ day |
+| 2 | **A plate on every storey** — her criterion. The ledger already counts `storeys_with_plate` and the report says why an edge would not close; the reading classes behind the 59% are the slab-edge chains that do not close, rings that depend on export order (§71, PlanarRings prototype), and edges the wall reader eats (§38's class) | `storeys_with_plate` rises run over run with no storey losing one; every storey without a plate says why in the report; the order differential green on the six | 3–5 days, the big one |
+| 3 | **Footings are not columns** (her scope; 31162's class) — on a foundation or parkade plan a filled rectangle of footing size with no column mark is a footing, and footings are not modelled | 31162's 66 column-layer rectangles gone with no column of hers lost on the six current sets; the corpus's foundation storeys lose footings only | ½ day + a run |
+| 4 | **A part plan never duplicates the overall plan** (050 "each level is shown only once"; 01379's offset part plans) — a part plan stands over the overall plan or is refused, never placed beside it | 01379 rendered with no offset block; the corpus's Placement class carries no part-plan duplicates | ½ day |
+| 5 | **The no-model residue**: 8 no-storey (run 17 measures Codex's five title rules), 17 no-plan (garbage-text sets — a plan typed by its geometry when its words are noise; 90102), 1 layer mismatch (30974) | ≥ 270 of 279 build (296 less the 17 other-job files); every remaining one names its class in the ledger | 1–2 days |
+| 6 | **The DXF route's ratchets** (§8 item 0): step 56's two residues on 31168 and 31138's two walls, rendered and fixed or re-banked with the reason | the full Core suite green | ½ day |
+| 7 | **Storeys named as the set names them** — negative levels (30912's LEVEL -5 → the parkade name the set uses), the elevator roof, LEVEL n ROOF DECK — each a stated rule | a `corpus-query` count of storey names outside the ladder's vocabulary at zero | ½ day |
+| 8 | **The engineers' review** — one model per building (050), published to the job folder, for three jobs whose engineers are current (a KOR set, a numbered-block set, the architect's set); their words become rules, as Andrea's did | three published models with reports; the feedback banked as rulings | a session per engineer |
+
+Two things the plan no longer asks anyone: the ten questions of 2026-09-15 are answered in the index
+(eight of ten) or open and low-stakes (wood buildings; which of an engineer's models is current — the
+gravity model she supplied is the reference by her own choice). One request stands, Ian's to make:
+a **current gravity model per job** for the sets under review, so the yardstick judges against the
+drawing's own model.
 
 ### WP6 — The finish line
 - The ledger's totals against §1: how many of the 292 build, how many sheets say why not, the
