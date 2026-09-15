@@ -30,7 +30,7 @@ public static class WallTypeTagging
     public const double ReachMm = 1200;
 
     public static void Apply(ExtractedGeometry geometry, VectorPageReader.PageContent content,
-        SheetFurniture.Set furniture, IReadOnlyList<AssemblySchedule.Assembly> assemblies)
+        SheetFurniture.Set furniture, IReadOnlyList<AssemblySchedule.Assembly> assemblies, double minWallThicknessMm = PdfIntakeOptions.DefaultMinWallThicknessMm)
     {
         ArgumentNullException.ThrowIfNull(geometry);
         ArgumentNullException.ThrowIfNull(content);
@@ -46,6 +46,7 @@ public static class WallTypeTagging
         if (byCode.Count == 0 || geometry.ScaleDenominator <= 0)
         {
             for (int i = 0; i < geometry.Walls.Count; i++) { geometry.WallTypeCodes.Add(null); geometry.WallIsPartition.Add(false); }
+            StudWallsOfAWoodPlan(geometry, minWallThicknessMm);
             return;
         }
 
@@ -111,7 +112,47 @@ public static class WallTypeTagging
                 : taggingSheet;                                   // untagged on a tagging sheet: not a wall, kept as a footprint
             geometry.WallIsPartition.Add(partition);
         }
+        StudWallsOfAWoodPlan(geometry, minWallThicknessMm);
     }
+
+    /// <summary>
+    /// A WALL THE DRAFTER DID NOT FILL IS A WALL ONLY AT A RETAINING WALL'S THICKNESS (step 67, 2026-09-14).
+    /// Thickness cannot tell a 2x6 stud wall (139.7 mm) from a six-inch wall drawn thin (31065: 142-150 mm) -
+    /// s72 said so - but the DRAWING can: a concrete wall is a filled band, and the one concrete wall drawn as
+    /// its two faces is a retaining wall, 12-16 in; a stud wall is two lines with nothing between. Measured on
+    /// seven plans (2026-09-14): wood plans read 81% and 79% of their walls from unfilled line pairs (31066 L2
+    /// 117 of 145, L5 77 of 98); concrete plans 0-35% (31138 0 of 15, 31168 5 of 29, 31065 10 of 51, 31202 15
+    /// of 43; the architect's 31170 4 of 38). So a sheet MOST of whose walls are unfilled pairs is a wood plan,
+    /// and on it every unfilled pair thinner than <see cref="UnfilledWallMinThicknessMm"/> is a stud wall: a
+    /// partition, kept as a footprint on the layer the model does not read (step 33), never a wall - and never
+    /// two lines the composer rebuilds into one. A concrete plan's unfilled pairs (its retaining walls) are
+    /// untouched: they are the minority there, and thicker than the floor anyway.
+    /// WHAT THIS DOES NOT: a wood plan whose stud walls are drawn filled (a hatch is a fill); a wood plan with
+    /// more filled concrete than stud walls (a podium level); the composer's own reading of a KOR DXF.
+    /// </summary>
+    internal static void StudWallsOfAWoodPlan(ExtractedGeometry geometry, double minWallThicknessMm)
+    {
+        var fromFaces = geometry.WallFaceLines.Values.ToHashSet();
+        int walls = geometry.Walls.Count;
+        // a wood plan by the measurement: two thirds or more of its walls unfilled pairs, and twenty of them - a
+        // concrete sheet with three walls, two of them a retaining wall's faces, is not a wood plan
+        if (walls == 0 || fromFaces.Count < WoodPlanMinUnfilledPairs || fromFaces.Count * 3 < walls * 2) return;
+        for (int i = 0; i < walls && i < geometry.WallIsPartition.Count; i++)
+        {
+            double t = geometry.Walls[i].ThicknessMm;
+            // an unfilled pair under a retaining wall's thickness; and a FILLED band under the wall floor with no
+            // slack - the half inch is for concrete walls drawn thin (31065's six-inch walls at 142-150 mm), and on
+            // a wood plan a filled 140 mm band is a poche'd 2x6 (31066 L2: 22 of its 28 filled bands), not a thin six
+            if ((fromFaces.Contains(i) && t < UnfilledWallMinThicknessMm) || (!fromFaces.Contains(i) && t < minWallThicknessMm))
+                geometry.WallIsPartition[i] = true;
+        }
+    }
+
+    /// <summary>The thinnest unfilled line pair that is a concrete wall on a wood plan: a retaining wall, 8 in. Compiled until it is a row (dxf.pdf.unfilled-wall-min-thickness-mm).</summary>
+    public const double UnfilledWallMinThicknessMm = 8 * 25.4;
+
+    /// <summary>A wood plan has at least this many unfilled pairs (31066's plans: 117 and 77; the concrete plans measured: 15 at most).</summary>
+    public const int WoodPlanMinUnfilledPairs = 20;
 
     /// <summary>A sheet with at least this many tags has tagged its walls, and what it left untagged is not a wall.</summary>
     public const int TaggingSheetMinTags = 10;

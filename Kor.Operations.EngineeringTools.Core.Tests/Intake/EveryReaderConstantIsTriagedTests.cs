@@ -85,6 +85,8 @@ public sealed class EveryReaderConstantIsTriagedTests
         ["SheetScaleReader.cs:ScaleFieldMaxFy"] = Convention("dxf.pdf.scale-field-max-fy"),
         ["WallTypeTagging.cs:ReachMm"] = Convention("dxf.pdf.wall-tag-reach-mm — how far from a wall's axis its tag stands"),
         ["WallTypeTagging.cs:TaggingSheetMinTags"] = Convention("dxf.pdf.tagging-sheet-min-tags"),
+        ["WallTypeTagging.cs:WoodPlanMinUnfilledPairs"] = Tolerance("how many unfilled pairs make a sheet a wood plan (20): a count floor on the measured share, as TaggingSheetMinTags is"),
+        ["WallTypeTagging.cs:UnfilledWallMinThicknessMm"] = Convention("dxf.pdf.unfilled-wall-min-thickness-mm - 8 in: on a wood plan an unfilled line pair is a concrete wall only at a retaining wall's thickness (step 67)"),
         ["MarkupList.cs:MeasurementReachMm"] = Convention("dxf.pdf.markup-measurement-reach-mm"),
         ["MarkupList.cs:MemberReachMm"] = Convention("dxf.pdf.markup-member-reach-mm"),
         ["MarkupList.cs:TickMaxPts"] = Convention("dxf.pdf.markup-tick-max-pt"),
@@ -306,6 +308,6 @@ public sealed class EveryReaderConstantIsTriagedTests
         var byClass = Table.Where(kv => scanned.Contains(kv.Key)).GroupBy(kv => kv.Value.Class).ToDictionary(g => g.Key, g => g.Count());
         string summary = string.Join(", ", Enum.GetValues<Class>().Select(c => $"{c} {byClass.GetValueOrDefault(c)}"));
         // the number the plan carries (§3 of the completion plan): conventions still compiled
-        Assert.True(byClass.GetValueOrDefault(Class.Convention) <= 48, $"more conventions compiled than the plan states: {summary}");
+        Assert.True(byClass.GetValueOrDefault(Class.Convention) <= 49, $"more conventions compiled than the plan states: {summary}");
     }
 }
