@@ -5,7 +5,7 @@
 A session picking this up cold reads this section, then the completion plan
 (`docs/architecture/Kor.Operations.EngineeringTools.PdfIntake.plan.md` — what "complete" means, the
 packages, and where each stands), then the last three step sections (§54–§56). §1–§52 are the
-record of how each rule was arrived at, read when a rule is being changed — since 2026-09-15 they live in `docs/pdf-intake/` (three parts, listed at the foot of this page; the numbering is unchanged, a new section goes at the end of the last part). §85 is the latest step (a floor is the cells its structure stands in, united — plates); §84 the callout that is not a heading; §83 steps 73–76 and runs 17–18; §82 the audit of 63–71 answered; §81 the static that leaked between sets; §80 run 14 looked at; §76 is why a corpus read is 46–53 min now and how a run is launched so it outlives the session.
+record of how each rule was arrived at, read when a rule is being changed — since 2026-09-15 they live in `docs/pdf-intake/` (three parts, listed at the foot of this page; the numbering is unchanged, a new section goes at the end of the last part). §86 is the latest step (a line ending at an arrowhead is a tendon or a section cut, not a slab edge; the PlanarRings sweep); §85 the cells united — plates; §84 the callout that is not a heading; §83 steps 73–76 and runs 17–18; §82 the audit of 63–71 answered; §81 the static that leaked between sets; §80 run 14 looked at; §76 is why a corpus read is 46–53 min now and how a run is launched so it outlives the session.
 
 **What this is.** A PDF ingestor: one ingestion point (`DrawingIntake.ReadSheet` → `PdfOnlyBuild`)
 that reads a drawing set and hands its geometry to outlets — the ETABS `.e2k` today, the DXF as a
@@ -47,22 +47,22 @@ reader (is the line there? what does the drawing call it? is the bubble drawn tw
 `takeoff grid-names` puts a sheet's axis names beside the model's. Step 27 was a day spent guessing
 closing rules that a rendered view would have settled; that is the mistake this line exists to stop.
 
-**Where the route stands, measured on the corpus** (§55, step 46):
+**Where the route stands, measured on the corpus** (run 19, 2026-09-15 15:08, steps 73–76; run 20 — steps 77–78 and run 19's title-reader fix — lands tonight):
 
 | | |
 |---|---|
-| Sets that build a model from the PDF alone | **207 of 292** (39 before step 45, 192 after it, 197 after step 46, 207 after the -MARKUP layer rule) |
-| No model | 67 no storeys read (their plans are named GROUND/MAIN/SECOND… — the vocabulary, step 47), 17 no plan the reader typed, 1 refused at the composer's gate (11 until our own -MARKUP layer was explained, §55) |
-| Plan views on the grid by name | 1,948 of 4,323 (45%) |
-| Storeys with a plate | 741 of 2,401 (31%) |
-| Against the engineers' own models (39 sets sharing a storey with columns, of 62 with a model) | 34% of our columns within 100 mm of theirs, 48% of theirs within 100 mm of ours; 31130 under 25% with 20 shared storeys — the next thing to look at |
-| 31168 against the Revit route | columns median 16 mm, 92% within 50 mm; tower plates within 0.1%; 36 of 62 storeys carry a plate; walls 1,324 vs 1,832 |
-| The four harness sets with the engineer's own model (§56–§58, after step 50; ours judged only inside her footprint) | after step 56 (§63): 31138 68% / 96%; 31202 92% / 95%; 31065 72% / 70%; 31130 76% / 83% — the matched counts unchanged, a few more returns of ours read as columns. Before: 31138 70% / 96%; 31170 86% / 91%; 31202 **93% / 95%** (after step 53; 32 offset 12x24s are her grid-snapped columns; 28 11x14s); 31065 **73% / 76%** (231 columns of the tower she did not model, not judged); 31130 **75% / 83%** (one building since step 51; 424 columns of the tower she did not model, not judged) |
+| Sets that build a model from the PDF alone | **248 of 296** on run 19 (253 on run 18; the five lost and 85 sets' storeys moved by step 73's title reader dropping words drawn up the page — fixed in `dafad991`, measured by run 20) |
+| No model | 18 no plan the reader typed, 17 the stick file of another job, 12 no storeys, 1 refused at the composer |
+| Plan views on the grid by name | 2,102 of 4,037 (52%) |
+| Storeys with a plate | **1,024 of 2,524 (41%)** — the engineers' bar (plan WP6a); step 78 (`dafad991`) closes the tower floors the chain walk could not, ~110 storeys on the six sets, measured corpus-wide by run 20 |
+| Against the engineers' own models (43 sets, 41 with ours inside her footprint) | 59% of our columns within 100 mm of theirs, 55% of theirs within 100 mm of ours |
+| The six banked sets | in the repo, byte-identical to their baselines at every commit (`SixSetsBuildAsBankedTests`, ~3 min with the cached page walk) |
 
-**The work order is the count.** 1. Storeys: the 72 sets whose plans name their storeys with
-words (step 47). 2. Views on the grid: 56% of plan views are not placed by name. 3. Plates: 69%
-of storeys have none. Each rule is universal, measured on the six (byte-identical or what moved)
-AND on the corpus before it is kept; a rule the corpus refuses is written down with its cost.
+**The work order is the engineers' definition of usable** (plan Rev 4, WP6a): the verticals and a plate on
+every storey; one model per building. Plates first (41%); then footings ≠ columns, part plans never duplicate
+the overall plan, the no-model residue, the DXF-route ratchets, storey names as the set names them, the
+engineers' review. Each rule is universal, measured on the six (byte-identical or what moved) AND on the
+corpus before it is kept; a rule the corpus refuses is written down with its cost.
 
 **The reading backlog, parked until the plan's WP6** (plan §6; each was measured on 31168 and is
 NOT one cause): the boundary walk (+13 storeys, stashed, held by one red gate and an 11% corner
@@ -176,4 +176,5 @@ a note.
 - [82. Step 72, 2026-09-15 morning: the audit of steps 63–71 answered — eleven findings, eight fixed, one measure](pdf-intake/part-3-s61-onward.md#82-step-72-2026-09-15-morning-the-audit-of-steps-6371-answered--eleven-findings-)
 - [83. Steps 73–76 and runs 17, 18, 2026-09-15 midday: the title block's fields, the plate instrument, a dead bra](pdf-intake/part-3-s61-onward.md#83-steps-7376-and-runs-17-18-2026-09-15-midday-the-title-blocks-fields-the-plate)
 - [84. Step 77, 2026-09-15 afternoon: a line that names another sheet is a callout, not a heading](pdf-intake/part-3-s61-onward.md#84-step-77-2026-09-15-afternoon-a-line-that-names-another-sheet-is-a-callout-not)
+- [86. Step 79, 2026-09-15 evening: a line ending at an arrowhead is a tendon or a section cut, not a slab edge — and the PlanarRings sweep](pdf-intake/part-3-s61-onward.md#86-step-79-2026-09-15-evening-a-line-ending-at-an-arrowhead-is-a-tendon-or-a-section-cut-not-a-slab)
 - [85. Step 78, 2026-09-15 afternoon: a floor is the cells its structure stands in, united — PlanarRings wired; a](pdf-intake/part-3-s61-onward.md#85-step-78-2026-09-15-afternoon-a-floor-is-the-cells-its-structure-stands-in-uni)

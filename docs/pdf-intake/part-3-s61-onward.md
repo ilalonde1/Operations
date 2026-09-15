@@ -1293,3 +1293,36 @@ wrong shape — 31130's right tower comes out a slanted hexagon over its columns
 not the drawn shape): cell selection must ask more than "holds a column"; fragment unions on parkades
 with no wall ring (31168 P2/P3, ~900 sq ft); 31087 LEVEL 4 (p28) still reads no ring; the rotated title's
 word order ("PLAN RAFT FOUNDATION LEVEL" for LEVEL B4 …) loses B4.
+
+## 86. Step 79, 2026-09-15 evening: a line ending at an arrowhead is a tendon or a section cut, not a slab edge — and the PlanarRings sweep
+
+**The class, on 31130 (two towers, L3–L12 typical).** Step 78's union gave the east tower a slanted hexagon for
+a plate. `dxf-render` of the page's SLABEDG and BEAM layers showed the union's boundary following long
+diagonals across the floor; `pdf-overlay --crop` at the south-west corner named them: the plan is a
+"CONCRETE OUTLINE & POST TENSION" plan and the diagonals are the **tendons**, each ending in an anchor drawn
+as a filled arrowhead ("378 KIPS", "486 KIPS", "MID" beside them). The angled edge that remains at that corner
+is the slab edge itself, labelled "8" MIN. AT SLAB EDGE" — looked at before it was believed.
+
+**The rule (step 79).** The column reader already refuses a filled shape of three points as a symbol's
+triangle (step 58, `PathReason.FilledTriangle`); those are now recorded (`ExtractedGeometry.Arrowheads`:
+centre and size). A line with an end within an arrowhead's own size of its centre is a tendon, a section cut
+or a leader, and never an edge candidate — and because a tendon or a dash-dot cut is drawn in PIECES with the
+arrowhead ending only the last (31130's: 110 dashes under a metre, 26 of one to five, 17 longer), the pieces
+in line with such a line within the in-line reach (the same `BridgesInLine` pairing the edge is bridged by)
+form a run that is dropped whole, before the two-metre gate can hide its last dash. On 31130 p35 the plate is
+the drawn outline: 26 vertices, the angled south-west edge, no tendon. Test
+`ALineEndingAtAnArrowheadIsASectionCutNotAnEdge`, proved by breaking.
+
+**The sweep (`becd7f86`).** dotnet-trace on 31101-01 (a wood set, 27 pages, 688 s in run 19):
+`PdfOnlyBuild` 330 s single-worker, of which `SlabEdgesFromLoops` 234 — `PlanarRings.Build` 179
+(`Arrange` 146: `BoxesMeet` 78, `Conflicts` 55) and `BridgeChains` 49 — `Compose` 24.5. Both pair loops in
+`Arrange` tested every two lines' boxes (1.8 billion tests on the architect's A003); sorted by the left edge,
+a line's partners are those whose left edge lies before its right edge plus the margin — the same pairs. A003
+91 s → 11 s, 31101's S2.05 ~40 s → 3 s, the set 330 s → 180 s; the gate byte-identical.
+`tools/Summarize-Speedscope.py` reads a speedscope profile so the next one is a two-line job. Also in the
+profile: `StickFileCorpus.Census` at 1,013 s of thread time on a `--jobs` run that builds one set (~90 s of
+wall clock per run, every run) — the next cost; and `RecoverSurfaces` refusing dense pages ("Face successor
+is not a permutation": selected cells meeting at a vertex), which the reader reports and survives.
+
+WHAT IT DOES NOT: an arrowhead the column reader read as something else (four points, an open outline, a
+curve); a leader ending in a dot; the parkade fragment unions (31168 P2/P3); 31087 LEVEL 4.
