@@ -227,6 +227,16 @@ below. Decision: characterise and fix them as their own step (a differential of 
 before and after `cf66a299` is the instrument), or re-bank the ratchets with each reason stated —
 never carry them. Until then, "fast suite + six-set gate" is the stated gate, and it does not see
 the DXF route.
+**Measured 2026-09-15 12:00 (the differential across `cf66a299`, 31168 composed from its Revit DXFs at
+`8ad431cb` and at `cf66a299`, `model-diff`):** step 56 moved the DXF-route model on **39 storeys — walls
+lost 120 / gained 48, columns lost 1 / gained 64** (tower A's core returns as columns on every storey, as
+the commit says it did on the PDF route; walls re-cut on tower B; L1 MEZZ 67 → 77 walls). The same rule,
+deliberately, on the route the six-set gate does not see; the coverage ratchets caught its two residues
+(one wall on nothing; one more outline dropped), not the 168 members. Her 31168 model names only three
+storeys ours does, so `model-yardstick` cannot judge it (94% both ways). One of the four reds was a fixture
+reading a new issue on the share (fixed, `82774c1a`). The step this needs: render 31168 before/after
+storey by storey, look, then re-bank the ratchets with the numbers above as the reason — or find the
+residues' cause. Not the PDF route; queued behind it.
 
 
 1. **Migrations — DONE 2026-09-12** (083, 084, 085 by Ian; then 086, because 084 and 085 had
