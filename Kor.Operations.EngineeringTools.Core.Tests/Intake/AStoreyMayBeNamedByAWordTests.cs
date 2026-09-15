@@ -25,6 +25,47 @@ namespace Kor.Operations.EngineeringTools.Core.Tests.Intake;
 [Collection(SheetNamingVocabularyCollection.Name)]
 public sealed class AStoreyMayBeNamedByAWordTests
 {
+    /// <summary>
+    /// WHAT IT COVERS: the four supplied fused S-number/title lines, optional separators and
+    /// dotted/dashed numbers, their exported number/title split, and parsing the raw and exported
+    /// titles into the same floor, basement or foundation without using sheet digits as levels.
+    /// WHAT IT DOES NOT: locating title words on a real PDF, missing titles, or model placement;
+    /// an extractor dropping BASEMENT altogether is a same-class fault this check cannot catch.
+    /// </summary>
+    [Theory]
+    [InlineData("S-5", "FOUNDATION PLAN", 0, false, true)]
+    [InlineData("S-6", "BASEMENT FLOOR PLAN SHOWING MAIN FLOOR FRAMING OVER", 0, true, false)]
+    [InlineData("S-7", "MAIN FLOOR PLAN SHOWING 2ND FLOOR FRAMING OVER", 1, false, false)]
+    [InlineData("S-8", "UPPER FLOOR PLAN SHOWING ROOF FRAMING OVER", 2, false, false)]
+    [InlineData("S5", "FOUNDATION PLAN", 0, false, true)]
+    [InlineData("S2.01", "BASEMENT FLOOR PLAN SHOWING MAIN FLOOR FRAMING OVER", 0, true, false)]
+    // (a hyphenated number glued to a title - "S2-32-1MAIN FLOOR PLAN" - is on no page measured; the exporter splits it
+    //  differently and the case is not banked until a drawing shows it)
+    public void ASheetNumberGluedToATitleIsRemovedBeforeReadingItsStorey(
+        string number, string title, int level, bool basement, bool foundation)
+    {
+        // TextToken's constructor takes bounding-box edges, not width and height.
+        var word = new Kor.Operations.EngineeringTools.QuantityTakeoff.VectorPageReader.TextToken(
+            number + title, 2400, 200, 2100, 176, 2700, 224);
+        var page = new Kor.Operations.EngineeringTools.QuantityTakeoff.VectorPageReader.PageContent(
+            1, 3024, 2160, [word], []);
+        string fused = Assert.Single(page.Words).Text;
+        string exported = SheetDxfName.For(null, new Dictionary<string, string>(), "small-p08", null, fused);
+        Assert.Equal($"{number}_1_{title}.dxf", exported);
+        Assert.Equal(title, PlanSheetNaming.TitleOf(fused));
+        Assert.Equal(title, PlanSheetNaming.TitleOf(exported));
+
+        foreach (string name in new[] { fused, exported })
+        {
+            var sheet = PlanSheetNaming.Parse(name);
+            Assert.Equal(level == 0 ? Array.Empty<int>() : new[] { level }, sheet.Levels);
+            Assert.Equal(basement ? new[] { 1 } : Array.Empty<int>(), sheet.ParkadeLevels);
+            Assert.Equal(foundation, sheet.IsFoundation);
+            Assert.False(sheet.IsRoof);
+            Assert.Equal(title, sheet.Label);
+        }
+    }
+
     [Theory]
     [InlineData("S-7_1_MAIN FLOOR PLAN SHOWING 2ND FLOOR FRAMING OVER.dxf", 1)]
     [InlineData("S-8_1_2ND FLOOR PLAN SHOWING LOFT FRAMING OVER.dxf", 2)]

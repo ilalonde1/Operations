@@ -177,6 +177,8 @@ public static class CorpusAnalyzer
         var sheets = new List<SheetRow>[jobs.Count];
         int rebuilt = 0, reused = 0, done = 0;
         var gate = new object();
+        string partialLedger = Path.Combine(workRoot, "ledger-sets.partial.csv");
+        File.Delete(partialLedger);                                            // this run's, from its first set
         Parallel.For(0, jobs.Count, new ParallelOptions { MaxDegreeOfParallelism = Math.Max(1, parallel) }, i =>
         {
             var job = jobs[i];
@@ -261,6 +263,7 @@ public static class CorpusAnalyzer
             }
             sets[i] = row;
             sheets[i] = rows;
+            AppendSetRow(partialLedger, row, gate);
             int n;
             lock (gate) n = ++done;
             string yard = row.OursCompared is int oc && oc > 0 ? $"; yardstick: {row.SharedStoreys} shared storeys, {row.OursWithin100}/{oc} of ours within 100 mm{(row.FrameFromGrids == true ? "" : " (frame from columns)")}" : row.Yardstick is not null ? "; yardstick: no shared storey with columns" : "";
@@ -459,14 +462,33 @@ public static class CorpusAnalyzer
     public static void WriteSetCsv(string path, IReadOnlyList<SetRow> rows)
     {
         var lines = new List<string> { SetHeader };
-        foreach (var s in rows)
-            lines.Add(string.Join(",", Q(s.RunId), Q(s.RunAtUtc.ToString("O")), Q(s.ToolBuiltAtUtc.ToString("O")), Q(s.Job), Q(s.Category), Q(s.SetKind), Q(s.Pdf), Q(s.IssueDate), Q(s.IssueDateFromName), Q(s.Bytes),
+        foreach (var s in rows) lines.Add(SetLine(s));
+        File.WriteAllLines(path, lines, new UTF8Encoding(true));
+    }
+
+    /// <summary>
+    /// A SET'S ROW IS WRITTEN THE MOMENT THE SET IS DONE (2026-09-14). Run 13 built 271 of 296 sets in 46 minutes and was
+    /// killed with the session that launched it; the ledger is written once, at the end, so 271 rows existed only in the
+    /// log. Every finished set now appends its row to ledger-sets.partial.csv (header first, one lock, flushed), and a
+    /// killed run leaves a ledger of what it did; the whole ledger is still written, sorted, at the end.
+    /// </summary>
+    public static void AppendSetRow(string path, SetRow row, object gate)
+    {
+        lock (gate)
+        {
+            bool fresh = !File.Exists(path) || new FileInfo(path).Length == 0;
+            using var w = new StreamWriter(path, append: true, new UTF8Encoding(fresh));
+            if (fresh) w.WriteLine(SetHeader);
+            w.WriteLine(SetLine(row));
+        }
+    }
+
+    private static string SetLine(SetRow s)
+        => string.Join(",", Q(s.RunId), Q(s.RunAtUtc.ToString("O")), Q(s.ToolBuiltAtUtc.ToString("O")), Q(s.Job), Q(s.Category), Q(s.SetKind), Q(s.Pdf), Q(s.IssueDate), Q(s.IssueDateFromName), Q(s.Bytes),
                 Q(s.Pages), Q(s.PlanSheets), Q(s.SheetsWritten), Q(s.SheetsFailed), Q(s.SheetsNotPlan), Q(s.AssemblyCards), Q(s.StoreysRead), Q(s.HasModel), Q(s.ModelError), Q(s.SheetsPlaced),
                 Q(s.StoreysBuilt), Q(s.Walls), Q(s.Columns), Q(s.Floors), Q(s.StoreysWithPlate), Q(s.Seconds), Q(s.Error),
                 Q(s.Yardstick), Q(s.YardstickStoreys), Q(s.SharedStoreys), Q(s.FrameFromGrids), Q(s.FrameSupport), Q(s.OursCompared), Q(s.OursMedianMm), Q(s.OursWithin100), Q(s.TheirsCompared), Q(s.TheirsWithin100), Q(s.YardstickNote),
-                Q(s.YardstickEdb), Q(s.YardstickWritten?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)), Q(s.YardstickAgeDays)));
-        File.WriteAllLines(path, lines, new UTF8Encoding(true));
-    }
+                Q(s.YardstickEdb), Q(s.YardstickWritten?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)), Q(s.YardstickAgeDays));
 
     public static void WriteSheetCsv(string path, IReadOnlyList<SheetRow> rows)
     {

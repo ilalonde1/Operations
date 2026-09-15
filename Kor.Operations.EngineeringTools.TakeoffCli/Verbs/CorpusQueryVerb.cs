@@ -7,6 +7,7 @@
 //   takeoff corpus-query no-model                    every set without a model, grouped by the reason it gave
 //   takeoff corpus-query plan-titles                 how the plan sheets name their storeys: with/without a level, and the words the nameless titles repeat
 //   takeoff corpus-query set <job> [<job> ...]       one set's sheets: page, number, level, scale, view written, placed
+//   takeoff corpus-query columns <job>              each composed DXF view's column origins and wall containment
 //   takeoff corpus-query yardsticks                  every set measured against the engineer's own model, worst first
 //   takeoff corpus-query diff <before-sets.csv>      what moved between that banked run and this ledger, set by set, classed by the first thing that changed
 // Add --ledger <dir> to any of them.
@@ -16,7 +17,7 @@ internal static class CorpusQueryVerb
 
     public static int Run(string[] args)
     {
-        if (args.Length < 2) { Console.Error.WriteLine("Usage: takeoff corpus-query summary|no-model|plan-titles|set <job>...|yardsticks|diff <before-sets.csv> [--ledger <dir>]"); return 1; }
+        if (args.Length < 2) { Console.Error.WriteLine("Usage: takeoff corpus-query summary|no-model|plan-titles|set <job>...|columns <job>|yardsticks|diff <before-sets.csv> [--ledger <dir>]"); return 1; }
         string dir = Path.Combine(DrawingMirror.Root, "corpus");
         var rest = new List<string>();
         for (int i = 2; i < args.Length; i++)
@@ -28,6 +29,9 @@ internal static class CorpusQueryVerb
         // whose sheets file sits beside it under the same suffix
         string setsPath = File.Exists(dir) ? dir : Path.Combine(dir, "ledger-sets.csv");
         string sheetsPath = File.Exists(dir) ? Path.Combine(Path.GetDirectoryName(dir) ?? ".", Path.GetFileName(dir).Replace("ledger-sets", "ledger-sheets", StringComparison.OrdinalIgnoreCase)) : Path.Combine(dir, "ledger-sheets.csv");
+        // Column inspection can also use a retained work folder after its ledger has been moved.
+        if (args[1].Equals("columns", StringComparison.OrdinalIgnoreCase))
+            return Columns(rest, File.Exists(dir) ? Path.GetDirectoryName(Path.GetFullPath(dir)) ?? "." : dir);
         if (!File.Exists(setsPath)) { Console.Error.WriteLine($"No ledger at {setsPath}; run corpus-analyze first, or give --ledger <dir|sets.csv>."); return 2; }
         var sets = CorpusAnalyzer.ReadSets(setsPath);
         var sheets = File.Exists(sheetsPath) ? CorpusAnalyzer.ReadSheets(sheetsPath) : [];
@@ -130,6 +134,43 @@ internal static class CorpusQueryVerb
                 Console.WriteLine($"   p{r.Page:00}  {r.SheetType,-9} {r.SheetNumber ?? "-",-10} level={r.Level ?? "-",-8} scale={r.ScaleNote ?? "-",-14} placed={(r.Placed is null ? "-" : r.Placed.Value ? "yes" : "no"),-4} {(r.DxfFiles ?? r.Title ?? "")[..Math.Min(70, (r.DxfFiles ?? r.Title ?? "").Length)]}");
         }
         return 0;
+    }
+
+    private static int Columns(List<string> jobs, string root)
+    {
+        if (jobs.Count != 1 || jobs[0].Length == 0 || !jobs[0].All(c => char.IsLetterOrDigit(c) || c is '-' or '_'))
+        {
+            Console.Error.WriteLine("Usage: takeoff corpus-query columns <job> [--ledger <dir|sets.csv>]");
+            return 1;
+        }
+        string job = jobs[0];
+        // corpus-analyze writes one work folder per job under the corpus/ledger root.
+        string dxf = Path.Combine(root, job, "dxf");
+        if (!Directory.Exists(dxf)) { Console.Error.WriteLine($"No dxf work folder at '{dxf}'."); return 2; }
+        var files = Directory.EnumerateFiles(dxf, "*.dxf", SearchOption.TopDirectoryOnly)
+            .OrderBy(p => p, StringComparer.OrdinalIgnoreCase).ToList();
+        if (files.Count == 0) { Console.Error.WriteLine($"No DXF views in '{dxf}'."); return 2; }
+
+        Console.WriteLine($"{job}: {files.Count} views from {dxf}; counts are per-sheet column footprints, before storey replication");
+        var rows = new List<(string Branch, bool InsideWall)>();
+        int failed = 0;
+        foreach (string file in files)
+        {
+            try { rows.AddRange(DxfInspectVerb.InspectColumns(file)); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or FormatException or InvalidDataException)
+            {
+                failed++;
+                Console.Error.WriteLine($"{Path.GetFileName(file)}: column inspection failed: {ex.Message}");
+            }
+        }
+        Console.WriteLine($"branch                         inside a wall    not inside    total{(failed > 0 ? " (PARTIAL)" : "")}");
+        foreach (var group in rows.GroupBy(r => r.Branch).OrderBy(g => g.Key, StringComparer.Ordinal))
+            Console.WriteLine($"{group.Key,-30} {group.Count(r => r.InsideWall),13} {group.Count(r => !r.InsideWall),13} {group.Count(),8}");
+        Console.WriteLine($"{"TOTAL",-30} {rows.Count(r => r.InsideWall),13} {rows.Count(r => !r.InsideWall),13} {rows.Count,8}");
+        int wallFragments = rows.Count(r => r.InsideWall && r.Branch is "short-wall-layer-loop" or "nothing-paired-up" or "standalone-stub");
+        Console.WriteLine($"wall-origin columns inside a wall: {wallFragments}{(failed > 0 ? " (PARTIAL)" : "")}");
+        Console.WriteLine($"unknown origins: {rows.Count(r => r.Branch == "unknown")}; failed sheets: {failed}");
+        return failed == 0 ? 0 : 2;
     }
 
     private static int Yardsticks(IReadOnlyList<CorpusAnalyzer.SetRow> sets)

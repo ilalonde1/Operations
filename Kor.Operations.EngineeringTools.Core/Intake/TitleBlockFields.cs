@@ -6,6 +6,8 @@ namespace Kor.Operations.EngineeringTools.Intake;
 /// A title block is a FORM of labelled fields, and a field's value is the text between its label
 /// and the next label, in the label's column — beside the label when the value shares its line
 /// (SCALE: 1/8" = 1'-0"), below it otherwise (SHEET TITLE over two 16 pt lines, down to SHEET NUMBER).
+/// SHEET TITLE (also labelled TITLE) reads beside its label or down its column to the next label,
+/// whatever that label is, joining value lines from larger to smaller PDF y.
 /// </summary>
 /// <remarks>
 /// Measured 2026-09-08 on 31130, 31138 and 31168, the three KOR-drafted sets: every title block
@@ -29,7 +31,7 @@ public static class TitleBlockFields
     {
         "PRIME CONSULTANT", "PROJECT TITLE", "PROJECT NUMBER", "PROJECT NO", "DRAWING TITLE", "SHEET TITLE",
         "SHEET NUMBER", "SHEET NO", "DESIGNED BY", "CHECKED BY", "CHK'D BY", "DRAWN BY", "ISSUED FOR",
-        "FILE LOCATION", "CONSULTANT", "REVISIONS", "REVISION", "CLIENT", "SCALE", "DATE", "SEAL", "REV",
+        "FILE LOCATION", "CONSULTANT", "REVISIONS", "REVISION", "CHECKED", "DRAWN", "CLIENT", "SCALE", "DATE", "SEAL", "REV", "TITLE",
     };
 
     private const double RegionMinFx = 0.80;
@@ -80,7 +82,9 @@ public static class TitleBlockFields
                 int span = 2;
                 if (hit is null) { hit = Labels.FirstOrDefault(x => x.Equals(one, StringComparison.OrdinalIgnoreCase)); span = 1; }
                 if (hit is null) continue;
-                labels.Add((hit, li, i, i + span - 1, l[i].MinX, l[i].Cy));
+                // The short title label names the same field; two-word labels were matched first,
+                // so PROJECT TITLE and DRAWING TITLE retain their own identities.
+                labels.Add((hit == "TITLE" ? "SHEET TITLE" : hit, li, i, i + span - 1, l[i].MinX, l[i].Cy));
                 i += span - 1;
             }
         }

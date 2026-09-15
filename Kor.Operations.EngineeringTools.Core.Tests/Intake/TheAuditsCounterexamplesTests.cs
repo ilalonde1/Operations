@@ -240,6 +240,59 @@ public sealed class TheAuditsCounterexamplesTests
         Assert.Equal(isMark, DrawingIntake.KindOf(mark) == "mark");
     }
 
+    /// <summary>
+    /// WHAT IT COVERS: the supplied small-job title words and label orders, the standalone TITLE
+    /// label, short CHECKED/DRAWN boundaries, top-to-bottom order, and consumed title tokens on
+    /// hand-made pages, including a conventional SCALE / SHEET TITLE / SHEET NUMBER column.
+    /// WHAT IT DOES NOT: PDF extraction, the unlisted token bounds, or corpus/model equality;
+    /// a title omitted by extraction (01788's missing label or 01589's unknown words) is not caught.
+    /// </summary>
+    [Theory]
+    [InlineData("SHEET TITLE", 220, "FLOOR PLAN", 199, "CEILING PLAN", 173, "SCALE:", 239, "FLOOR PLAN CEILING PLAN")]
+    [InlineData("SHEET TITLE", 220, "PLANS", 199, "", 173, "SCALE:", 239, "PLANS")]
+    [InlineData("SHEET TITLE", 236, "GENERAL NOTES", 215, "DEMO PLAN", 189, "DATE:", 255, "GENERAL NOTES DEMO PLAN")]
+    [InlineData("SHEET TITLE", 235, "LOT C", 214, "SITE PLAN", 189, "SCALE:", 255, "LOT C SITE PLAN")]
+    [InlineData("TITLE", 216, "PLANS", 194.4, "", 173, "SCALE:", 255, "PLANS")]
+    [InlineData("SHEET TITLE", 300, "LEVEL P1", 280, "FOUNDATION PLAN", 260, "SCALE:", 320, "LEVEL P1 FOUNDATION PLAN")]
+    [InlineData("SHEET TITLE", 220, "FLOOR PLAN", 199, "", 173, "CHECKED:", 180, "FLOOR PLAN")]
+    [InlineData("SHEET TITLE", 220, "CEILING PLAN", 199, "", 173, "DRAWN:", 180, "CEILING PLAN")]
+    public void ATitleFieldReadsDownItsColumnRegardlessOfTheSurroundingLabelOrder(
+        string label, double labelY, string top, double topY, string bottom, double bottomY,
+        string boundary, double boundaryY, string expected)
+    {
+        var words = new List<TT>();
+        static IEnumerable<TT> Line(string text, double x, double y, double height)
+        {
+            foreach (string word in text.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+            {
+                double width = word.Length * height * 0.5;
+                yield return new TT(word, x + width / 2, y, x, y - height / 2, x + width, y + height / 2);
+                x += width + height * 0.5;
+            }
+        }
+        double width = label == "TITLE" ? 3024 : 2592;
+        double labelX = label == "TITLE" ? width * 0.92 : 2330;
+        double titleX = label == "TITLE" ? width * 0.95 - 20 : 2340;
+        var titleWords = Line(top, titleX, topY, 17.3).Concat(Line(bottom, titleX, bottomY, 17.3)).ToList();
+        // Deliberately supply the lower line first: PDF content order does not set reading order.
+        words.AddRange(titleWords.AsEnumerable().Reverse());
+        words.AddRange(Line(label, labelX, labelY, 8.1));
+        words.AddRange(Line(boundary, labelX, boundaryY, 8.1));
+        words.AddRange(Line("VALUE", labelX + 100, boundaryY, 8.1));
+        words.AddRange(Line("SHEET NUMBER", labelX, 132, 8.1));
+        words.AddRange(Line("S2.01", titleX, 105, 17.3));
+        // A neighbouring column and the value under SHEET NUMBER cannot enter SHEET TITLE.
+        words.AddRange(Line("REV:", labelX + 275, topY, 8.1));
+        var page = new PC(1, width, label == "TITLE" ? 2160 : 1728, words, new List<GP>());
+
+        var fields = TitleBlockFields.Read(page, out var consumed);
+
+        Assert.Equal(expected, fields["SHEET TITLE"]);
+        Assert.Equal("S2.01", fields["SHEET NUMBER"]);
+        Assert.Equal("VALUE", fields[boundary.TrimEnd(':')]);
+        Assert.All(titleWords, t => Assert.Contains((t.Cx, t.Cy), consumed));
+    }
+
     [Fact]
     public void F11_ALabelInTheNextColumnDoesNotCutATitleBlockFieldOff()
     {

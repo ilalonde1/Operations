@@ -87,15 +87,21 @@ public static partial class PlanSheetNaming
     /// </summary>
     public static DrawingVocabulary Vocabulary { get; set; } = DrawingVocabulary.Default;
 
+    // A leading structural sheet number ends at the first title letter, even without a space;
+    // dots/dashes between digits belong to the number, and an exported _view_ belongs to its prefix.
+    private static readonly Regex SheetNumberPrefix = new(
+        """^\s*S[-._ ]?\d+(?:[.-]\d+)*(?=[A-Za-z]|\s|_|-|$)(?:_\d+_)?[ _-]*""",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
+
     public static PlanSheetInfo Parse(string fileName) => Parse(fileName, Vocabulary);
 
-    /// <summary>A view name's title: what follows its "&lt;sheet&gt;_&lt;n&gt;_" prefix (an underscore is a word character, so a word boundary never crosses it).</summary>
+    /// <summary>A view name's title: what follows its "&lt;sheet&gt;_&lt;n&gt;_" prefix or a leading sheet number glued to the first title word.</summary>
     public static string TitleOf(string fileName)
     {
         // a sheet number holds a dot ("S2.01_1_..."), so only a .dxf extension is an extension here
         string stem = Path.GetFileName(fileName);
         if (stem.EndsWith(".dxf", StringComparison.OrdinalIgnoreCase)) stem = stem[..^4];
-        return Regex.Replace(stem, @"^.*?_\d+_", string.Empty);
+        return SheetNumberPrefix.Replace(Regex.Replace(stem, @"^.*?_\d+_", string.Empty), string.Empty);
     }
 
     /// <summary>The same reading under a vocabulary given outright - the set's own floor-word order (step 60) - instead of the static one.</summary>
@@ -122,7 +128,9 @@ public static partial class PlanSheetNaming
         // upper floor's. The kinds AND the numbers are read from that part (the second audit's B1: "MAIN FLOOR
         // PLAN SHOWING LEVEL 2 FRAMING OVER" read as level 2 while "... 2ND FLOOR FRAMING OVER" read as level 1).
         string own = vocabulary.OwnStoreyPart(TitleOf(name));
-        string ownName = vocabulary.OwnStoreyPart(name);
+        // Strip before ALL numeric readers, including ranges, and before word-boundary matching:
+        // S-6BASEMENT must expose BASEMENT, and S2-32-1 must never supply a level range.
+        string ownName = vocabulary.OwnStoreyPart(SheetNumberPrefix.Replace(name, string.Empty));
         bool isRoof = vocabulary.IsRoofName(own);
         bool isTopFloor = false;
 
@@ -234,6 +242,9 @@ public static partial class PlanSheetNaming
 
     private static string StripSheetNumber(string name)
     {
+        var prefix = SheetNumberPrefix.Match(name);
+        if (prefix.Success) return name[prefix.Length..];
+
         int marker = name.IndexOf("LEVEL", StringComparison.OrdinalIgnoreCase);
         if (marker > 0) return name[marker..];
 
