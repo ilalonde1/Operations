@@ -58,6 +58,18 @@ public sealed class TheCorpusLedgerRoundTripsTests
             Assert.Equal(set with { RunId = run2, RunAtUtc = at2 }, CorpusAnalyzer.ReadSetRow(sets, run2, at2));
             Assert.Equal(sheet with { RunId = run2 }, Assert.Single(CorpusAnalyzer.ReadSheetRows(sheets, run2)));
             Assert.Equal(set, Assert.Single(CorpusAnalyzer.ReadSets(sets)));
+
+            // A SET'S ROW IS WRITTEN THE MOMENT THE SET IS DONE (2026-09-14): the partial ledger a killed run leaves reads
+            // back the same rows, header first, one row per append, whatever order the sets finished in
+            string partial = Path.Combine(root, "ledger-sets.partial.csv");
+            var gate = new object();
+            CorpusAnalyzer.AppendSetRow(partial, set with { Job = "31169-01" }, gate);
+            CorpusAnalyzer.AppendSetRow(partial, set, gate);
+            var partialRows = CorpusAnalyzer.ReadSets(partial);
+            Assert.Equal(2, partialRows.Count);
+            Assert.Equal(set, partialRows[1]);
+            Assert.Equal("31169-01", partialRows[0].Job);
+            Assert.StartsWith("run_id,", File.ReadAllLines(partial)[0].TrimStart('﻿'), StringComparison.Ordinal);
             Assert.Equal(sheet, Assert.Single(CorpusAnalyzer.ReadSheets(sheets)));
         }
         finally
