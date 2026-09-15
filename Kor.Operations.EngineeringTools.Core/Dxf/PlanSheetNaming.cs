@@ -286,6 +286,12 @@ public static partial class PlanSheetNaming
             }
 
             if (sheet.IsFoundation) return eligible.Count > 0 ? eligible.TakeLast(1).ToList() : matches;
+
+            // ONE PLAN NAMING NO STOREY IS A ONE-STOREY BUILDING (step 66, 2026-09-14), the composer's half: the
+            // ladder made the set's single unnamed plan L1 (StoreysFromPlans.Merge); the plan is that storey's.
+            // Only when the set is that one plan and the model that one storey - a second plan or a second
+            // storey and the plan's silence means what it always meant.
+            if (eligible.Count == 1 && set is { Count: 1 } && !sheet.IsRoof) return eligible;
         }
 
         foreach (string story in stories)

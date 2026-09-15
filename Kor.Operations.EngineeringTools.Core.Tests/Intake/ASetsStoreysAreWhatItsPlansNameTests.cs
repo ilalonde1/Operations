@@ -106,4 +106,23 @@ public sealed class ASetsStoreysAreWhatItsPlansNameTests
         Assert.True(ladder.Storeys[0].Assumed && ladder.Storeys[1].Assumed && !ladder.Storeys[2].Assumed);
         Assert.Contains("below L1", ladder.Storeys[1].From, StringComparison.Ordinal);
     }
+
+    /// <summary>
+    /// ONE PLAN NAMING NO STOREY IS A ONE-STOREY BUILDING (step 66, 2026-09-14): the small jobs draw the whole
+    /// structure on one plan titled PLAN, PLANS, PLAN AND DETAILS, GENERAL NOTES AND PLAN - nine of run 11's
+    /// 21 "no storeys" sets - and that plan is L1. Two unnamed plans stay unnamed (a foundation plan and a
+    /// framing plan of one storey are not two storeys). WHAT THIS DOES NOT COVER: putting the plan's members
+    /// on L1 (the composer's matching, measured on the nine sets).
+    /// </summary>
+    [Theory]
+    [InlineData("S1.01_1_GENERAL NOTES AND PLAN.dxf")]
+    [InlineData("S2.01_1_PLANS.dxf")]
+    [InlineData("S1.02_1_PLAN AND DETAILS.dxf")]
+    public void OnePlanNamingNoStoreyIsAOneStoreyBuilding(string plan)
+    {
+        var ladder = StoreysFromPlans.Merge(null, [plan], assumedHeightMm: 3000);
+        Assert.Equal(["L1"], ladder.Storeys.Select(s => s.Name));
+        Assert.Equal(1, ladder.FromPlansOnly);
+        Assert.True(StoreysFromPlans.Merge(null, ["S2.01_1_FOUNDATION PLAN.dxf", "S2.02_1_DECK FRAMING PLAN.dxf"], assumedHeightMm: 3000).IsEmpty);
+    }
 }

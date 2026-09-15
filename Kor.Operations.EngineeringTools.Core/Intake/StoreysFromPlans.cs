@@ -144,6 +144,13 @@ public static class StoreysFromPlans
                     if (string.Equals(ModelYardstick.Building(order[i]), tag, StringComparison.OrdinalIgnoreCase) || (ModelYardstick.Building(order[i]) is null && NumberOf(order[i]) == highest)) at = i;
                 order.Insert(at < 0 ? order.Count : at + 1, roofName);
             }
+        // ONE PLAN NAMING NO STOREY IS A ONE-STOREY BUILDING (step 66, 2026-09-14): the small jobs - a
+        // tenant improvement, a garage, a sales centre - draw the whole structure on one plan titled
+        // PLAN, PLANS, PLAN AND DETAILS, GENERAL NOTES AND PLAN, and nine of run 11's 21 "no storeys" sets
+        // are exactly that. The plan is the building's storey, L1. Two or more unnamed plans stay
+        // unnamed: a foundation plan and a framing plan of one storey are not two storeys. And a
+        // FOUNDATION plan alone names no storey (the standing rule below it): footings are not a floor.
+        if (order.Count == 0 && names.Count == 1 && !PlanSheetNaming.Parse(names[0], vocabulary).IsFoundation) order.Add("L1");
         if (order.Count == 0) return new Ladder([], 0, 0, 0, assumedHeightMm, "none");
 
         double height = chain?.TypicalMm is double t && t > 0 ? t : assumedHeightMm;
