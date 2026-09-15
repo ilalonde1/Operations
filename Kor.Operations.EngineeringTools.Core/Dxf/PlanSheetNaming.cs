@@ -113,8 +113,9 @@ public static partial class PlanSheetNaming
         var buildings = new List<string>();
         if (vocabulary.Building.Match(name) is { Success: true } b)
         {
-            foreach (char c in b.Groups[1].Value.ToUpperInvariant())
-                if (char.IsLetter(c)) buildings.Add(c.ToString());
+            // "A & B" is two buildings; "1A" is one (step 69: a tag is a letter or a number with an optional letter)
+            foreach (string tag in b.Groups[1].Value.ToUpperInvariant().Split('&', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                if (tag.Length > 0) buildings.Add(tag);
         }
         else if (vocabulary.PrefixBuilding.Match(name) is { Success: true } p)
         {
@@ -285,7 +286,7 @@ public static partial class PlanSheetNaming
             // a sheet tagged for a building whose storeys the model does not name goes NOWHERE, not onto another
             // building (the second audit's B3: building C's roof plan, with no C storey, landed on B-L40); a sheet
             // tagged for nothing keeps every storey
-            if (eligible.Count == 0 && sheet.BuildingTags.Count > 0) return matches;
+            if (eligible.Count == 0 && sheet.BuildingTags.Count > 0 && stories.Any(s => ModelYardstick.Building(s) is not null)) return matches;   // nowhere only where the model is organised by building (step 69: numbered buildings on one plan-named ladder share the storeys)
             if (eligible.Count == 0) eligible = stories;
 
             if (sheet.IsRoof)
@@ -305,6 +306,9 @@ public static partial class PlanSheetNaming
             if (eligible.Count == 1 && set is { Count: 1 } && !sheet.IsRoof) return eligible;
         }
 
+        // A TAGGED SHEET KEEPS TO ITS BUILDING'S STOREYS WHERE THE MODEL NAMES ANY (step 69, 2026-09-14): on a ladder
+        // with no building in any storey name - numbered buildings on one plan-named ladder - the storeys are shared
+        bool storeysByBuilding = stories.Any(s => ModelYardstick.Building(s) is not null);
         foreach (string story in stories)
         {
             // A mezzanine is a storey in its own right, not the unprefixed form of the level below
@@ -315,7 +319,7 @@ public static partial class PlanSheetNaming
             bool storeyIsMezzanine = IsMezzanineName(story);
             if (!sheet.Serves(storeyIsMezzanine)) continue;
 
-            if (sheet.BuildingTags.Count > 0 &&
+            if (sheet.BuildingTags.Count > 0 && storeysByBuilding &&
                 !sheet.BuildingTags.Any(tag => StoryBelongsToBuilding(story, tag))) continue;
 
             var parkadeInStory = Vocabulary.ParkadeStory.Match(story);
@@ -453,7 +457,7 @@ public static partial class PlanSheetNaming
             // a sheet tagged for a building whose storeys the model does not name goes NOWHERE, not onto another
             // building (the second audit's B3: building C's roof plan, with no C storey, landed on B-L40); a sheet
             // tagged for nothing keeps every storey
-            if (eligible.Count == 0 && sheet.BuildingTags.Count > 0) return matches;
+            if (eligible.Count == 0 && sheet.BuildingTags.Count > 0 && stories.Any(s => ModelYardstick.Building(s) is not null)) return matches;   // nowhere only where the model is organised by building (step 69: numbered buildings on one plan-named ladder share the storeys)
             if (eligible.Count == 0) eligible = stories;
             if (eligible.Count == 0) return matches;
 
@@ -578,14 +582,12 @@ public static partial class PlanSheetNaming
     /// <summary>A storey named for a building ("B-LEVEL 27", "C-L4") that is none of the sheet's.</summary>
     private static bool NamedForAnotherBuilding(string storyName, IReadOnlyList<string> buildingTags)
     {
-        var m = BuildingPrefix.Match(storyName.TrimStart());
-        if (!m.Success) return false;
-        string tag = m.Groups[1].Value;
+        // one definition of a building's prefix (ModelYardstick.Building): a letter or a number with an optional
+        // letter before a storey word - the copy this held read only letters (step 69)
+        string? tag = ModelYardstick.Building(storyName);
+        if (tag is null) return false;
         return !buildingTags.Any(t => string.Equals(t, tag, StringComparison.OrdinalIgnoreCase));
     }
-
-    private static readonly System.Text.RegularExpressions.Regex BuildingPrefix =
-        new(@"^([A-Z]{1,2})-(?:LEVEL|LVL|LEV|L)\s*\d", System.Text.RegularExpressions.RegexOptions.Compiled | System.Text.RegularExpressions.RegexOptions.IgnoreCase);
 
     private static bool StoryBelongsToBuilding(string storyName, string buildingTag)
     {

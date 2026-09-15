@@ -89,7 +89,11 @@ public static class ModelYardstick
         public double TheirsWithin100Share => TheirsCompared == 0 ? 0 : (double)TheirsWithin100 / TheirsCompared;
     }
 
-    private static readonly Regex BuildingPrefix = new(@"^[A-C]-", RegexOptions.Compiled);
+    // A BUILDING'S PREFIX IS ANY TAG BEFORE A STOREY WORD (step 69): A-L27, C-ROOF, 1-L2, 12-LEVEL 3 - a letter or a
+    // number with an optional letter, then the dash, then a level, parkade or roof word. It was ^[A-C]-, which read
+    // building D's storeys as the whole job's and a numbered building's as nothing; and "L-1" (31170's own model
+    // spells L-1..L-7) is a storey, not building L, because what follows its dash is a number, not a storey word.
+    private static readonly Regex BuildingPrefix = new(@"^(?:[A-Z]|\d{1,2}[A-Z]?)-(?=L\d|P\d|LEVEL|ROOF|ELEV|MEZZ)", RegexOptions.Compiled);
 
     public static Comparison Compare(string modelE2k, string yardstickE2k)
     {

@@ -1,4 +1,5 @@
 #nullable enable
+using Kor.Operations.EngineeringTools.Dxf;
 using Kor.Operations.EngineeringTools.Intake;
 using Xunit;
 
@@ -124,5 +125,32 @@ public sealed class ASetsStoreysAreWhatItsPlansNameTests
         Assert.Equal(["L1"], ladder.Storeys.Select(s => s.Name));
         Assert.Equal(1, ladder.FromPlansOnly);
         Assert.True(StoreysFromPlans.Merge(null, ["S2.01_1_FOUNDATION PLAN.dxf", "S2.02_1_DECK FRAMING PLAN.dxf"], assumedHeightMm: 3000).IsEmpty);
+    }
+
+    /// <summary>
+    /// NUMBERED BUILDINGS ON ONE PLAN-NAMED LADDER SHARE ITS STOREYS AND ITS ROOF (step 69, 2026-09-14). 31185 draws
+    /// five buildings - BUILDING 1 .. BUILDING 5 - each with a LEVEL 1, a LEVEL 2 and a roof plan; their storeys are
+    /// L1, L2, ROOF, not five roofs stacked five storeys high (which the first cut of numbered tags produced: 8
+    /// storeys, P1 L1 L2 5-ROOF 4-ROOF 3-ROOF 2-ROOF 1-ROOF). One building's tagged roof over shared storeys keeps
+    /// its name (B6: C-ROOF, C-ELEVATOR ROOF). WHAT THIS DOES NOT COVER: buildings with their own storey names
+    /// (31168's towers - the elevations name them; the roof rule of step 61 stands there).
+    /// </summary>
+    [Fact]
+    public void NumberedBuildingsOnOnePlanNamedLadderShareItsStoreysAndItsRoof()
+    {
+        var plans = new List<string>();
+        for (int b = 1; b <= 5; b++)
+        {
+            plans.Add($"S2.06_{b}_BUILDING {b} LEVEL 1 SHOWING LEVEL 2 FRAMING OVER.dxf");
+            plans.Add($"S2.07_{b}_BUILDING {b} LEVEL 2 SHOWING ROOF OVER.dxf");
+            plans.Add($"S2.08_{b}_BUILDING {b} ROOF PLAN.dxf");
+        }
+        var ladder = StoreysFromPlans.Merge(null, plans, assumedHeightMm: 3000);
+        Assert.Equal(["L1", "L2", "ROOF"], ladder.Storeys.Select(s => s.Name));
+        // and every building's sheet lands on the shared storeys (the composer's half: MatchStories)
+        var sheet = PlanSheetNaming.Parse("S2.06_3_BUILDING 3 LEVEL 1 SHOWING LEVEL 2 FRAMING OVER.dxf");
+        Assert.Equal(["3"], sheet.BuildingTags);
+        Assert.Equal(["L1"], PlanSheetNaming.MatchStories(sheet, ["L1", "L2", "ROOF"]));
+        Assert.Equal(["ROOF"], PlanSheetNaming.MatchStories(PlanSheetNaming.Parse("S2.08_3_BUILDING 3 ROOF PLAN.dxf"), ["L1", "L2", "ROOF"]));
     }
 }

@@ -135,6 +135,26 @@ public static class StoreysFromPlans
             foreach (string tag in tags)
             {
                 if (!highestOfBuilding.TryGetValue(tag, out int highest)) continue;
+                // A BUILDING WITH NO STOREY OF ITS OWN SHARES THE SET'S ROOF (step 69, 2026-09-14): the per-building roof
+                // (step 61) is for towers whose ladder names their storeys (A-L27, B-L40 on 31168); five numbered
+                // buildings on one plan-named ladder (31185: L1, L2 for all five) share L1 and L2, and their five roof
+                // plans are one ROOF over L2 - not 1-ROOF ... 5-ROOF stacked five storeys high, which is what the
+                // first cut of numbered tags produced.
+                // ... and only where MORE THAN ONE building's roof would otherwise stack on that shared ladder: one
+                // building's tagged roof over shared storeys is one storey and keeps its name (31168's C-ROOF, B6)
+                if (!order.Any(o => string.Equals(ModelYardstick.Building(o), tag, StringComparison.OrdinalIgnoreCase))
+                    && tags.Count(t => !order.Any(o => string.Equals(ModelYardstick.Building(o), t, StringComparison.OrdinalIgnoreCase))) > 1)
+                {
+                    if (suffix == "ROOF" && !roof && !covered.Contains("ROOF") && !ladderReachesAboveThePlans && !order.Contains("ROOF", StringComparer.OrdinalIgnoreCase))
+                    {
+                        var roofRank = RankOf("ROOF")!.Value;
+                        int roofAt = 0;
+                        for (int i = 0; i < order.Count; i++)
+                            if (RankOf(order[i]) is { } r && r.CompareTo(roofRank) < 0) roofAt = i + 1;
+                        order.Insert(roofAt, "ROOF");
+                    }
+                    continue;
+                }
                 string roofName = $"{tag}-{suffix}";
                 bool chainAbove = chain is not null && chain.Levels.Any(l => string.Equals(ModelYardstick.Building(l.Name), tag, StringComparison.OrdinalIgnoreCase)
                     && ((NumberOf(l.Name) is int n && n > highest) || Stripped(l.Name).Contains(suffix, StringComparison.OrdinalIgnoreCase)));

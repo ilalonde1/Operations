@@ -19,6 +19,7 @@ namespace Kor.Operations.EngineeringTools.Core.Tests.Intake;
 /// by name instead; a storey prefixed for one building meeting only that building's. WHAT IT DOES NOT: rotation between the frames (translation only); walls and
 /// plates; the real 81 exports (the corpus run's ledger has those, one row per job).
 /// </remarks>
+[Collection(SheetNamingVocabularyCollection.Name)]   // PlanSheetNaming.Parse reads the shared vocabulary (step 69 tag assertions)
 public sealed class AModelIsMeasuredAgainstTheEngineersOwnTests
 {
     private static string E2k(string unit, IReadOnlyList<(string Storey, double Height)> storeys, IReadOnlyList<(string Name, double X, double Y, string Storey)> columns,
@@ -128,6 +129,23 @@ public sealed class AModelIsMeasuredAgainstTheEngineersOwnTests
         Assert.Equal("C", ModelYardstick.Building("C-LEVEL 4"));
         Assert.Null(ModelYardstick.Building("L4"));
         Assert.NotEqual(ModelYardstick.Building("L4"), ModelYardstick.Building("C-LEVEL 4"));
+        // A BUILDING IS A LETTER OR A NUMBER (step 69, 2026-09-14): ten sets number their buildings, and the prefix
+        // was ^[A-C]- - building D read as the whole job's, building 1 as nothing; and 31170's own model spells
+        // its storeys L-1..L-7, which is a storey, not building L
+        Assert.Equal("D", ModelYardstick.Building("D-L3"));
+        Assert.Equal("1", ModelYardstick.Building("1-L2"));
+        Assert.Equal("12", ModelYardstick.Building("12-LEVEL 3"));
+        Assert.Equal("1A", ModelYardstick.Building("1A-ROOF"));
+        Assert.Null(ModelYardstick.Building("L-1"));
+        Assert.Equal("L1", ModelYardstick.Stripped("L-1"));
+        Assert.Equal("L2", ModelYardstick.Stripped("1-L2"));
+        Assert.Equal("L2", ModelYardstick.Stripped("12-LEVEL 2"));
+        var one = PlanSheetNaming.Parse("S2.07_1_BUILDING 1 - LEVEL 2 SHOWING LEVEL 3 FRAMING OVER.dxf");
+        Assert.Equal(["1"], one.BuildingTags); Assert.Equal([2], one.Levels);
+        var oneA = PlanSheetNaming.Parse("S2.11_1_LEVEL 2 PLAN SHOWING LEVEL 3 FRAMING OVER - BUILDING 1A.dxf");
+        Assert.Equal(["1A"], oneA.BuildingTags); Assert.Equal([2], oneA.Levels);
+        Assert.Equal(["A", "B"], PlanSheetNaming.Parse("S2.02_1_LEVEL P3 PLAN FOUNDATIONS PLAN BLDG A & B.dxf").BuildingTags);
+        Assert.Empty(PlanSheetNaming.Parse("S2.01_1_ISSUED FOR BUILDING PERMIT FOUNDATION PLAN.dxf").BuildingTags);
     }
 
 

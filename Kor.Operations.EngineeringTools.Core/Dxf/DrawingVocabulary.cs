@@ -234,14 +234,19 @@ public sealed record DrawingVocabulary
                                  .OrderByDescending(w => w.Length)     // LEVEL before L
                                  .Select(Regex.Escape));
 
-    /// <summary>"BLDG A", "BUILDING A &amp; B" — the buildings a sheet is drawn for.</summary>
+    /// <summary>
+    /// "BLDG A", "BUILDING A &amp; B" — and "BUILDING 1", "BUILDING 1A", "BUILDING 12" (step 69, 2026-09-14): a
+    /// building is named by a letter or a number with an optional letter. Ten sets in the corpus number their
+    /// buildings; with letters alone their tags read as nothing and 31185's five buildings' LEVEL 1 plans all
+    /// landed on one storey. A word boundary closes the tag, so "BUILDING PERMIT" names no building.
+    /// </summary>
     public Regex Building => _building ??= new Regex(
-        $@"(?:{Any(BuildingWords)})\s*([A-Z](?:\s*&\s*[A-Z])*)",
+        $@"(?:{Any(BuildingWords)})\s*((?:[A-Z]|\d{{1,2}}[A-Z]?)(?:\s*&\s*(?:[A-Z]|\d{{1,2}}[A-Z]?))*)\b",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
-    /// <summary>"A-LEVEL 28" — a building named as a prefix on the storey itself.</summary>
+    /// <summary>"A-LEVEL 28", "1-LEVEL 2" — a building named as a prefix on the storey itself.</summary>
     public Regex PrefixBuilding => _prefixBuilding ??= new Regex(
-        $@"(?<![A-Z0-9])([A-Z])-(?:{Any(LevelWords)})\s*\d",
+        $@"(?<![A-Z0-9])([A-Z]|\d{{1,2}}[A-Z]?)-(?:{Any(LevelWords)})\s*\d",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
     /// <summary>"LEVEL 4 TO 14", "L15-26".</summary>
