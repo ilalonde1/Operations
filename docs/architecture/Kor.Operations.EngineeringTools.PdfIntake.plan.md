@@ -217,6 +217,18 @@ Revit route.
 
 ## 8. What needs Ian (2026-09-12 morning)
 
+**0. (2026-09-15 01:30) The full Core suite is not green — 4 of 1,475 on HEAD, and it has not been
+green since at least 2026-09-11 23:34.** The six-set gate and the fast suite were the gates for every
+step since WP5; the slow DXF-route ratchets (`ModelCoverageTests`, `ModelIntegrityTests`, the parkade
+plans by name) were never run. Bisected on 2026-09-15 night: the 31168 pair (KW235 on LEVEL 1 MEZZ
+stands on nothing; 20 outlines dropped against 19) went red at step 56 (`cf66a299`); 31138's two
+unmodelled walls and the parkade-by-name 3 → 2 were red before `69e554b5` and are not bounded
+below. Decision: characterise and fix them as their own step (a differential of the DXF route
+before and after `cf66a299` is the instrument), or re-bank the ratchets with each reason stated —
+never carry them. Until then, "fast suite + six-set gate" is the stated gate, and it does not see
+the DXF route.
+
+
 1. **Migrations — DONE 2026-09-12** (083, 084, 085 by Ian; then 086, because 084 and 085 had
    inserted their rows `'unverified'` and `analysis.vw_RuleSetting` exposes only `replay-verified` /
    `engineer-confirmed` — the tool never saw them and the parity test, reading the same view, stayed

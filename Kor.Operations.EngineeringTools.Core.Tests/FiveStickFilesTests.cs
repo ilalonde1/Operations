@@ -115,7 +115,9 @@ public sealed class FiveStickFilesTests
             GridNamesX: "1,2,3,4,5,6,7,8", GridNamesY: "F,A,G,F,E,D,C,B,A", DimensionsTyped: 2),
         new("31202-01", 96, 0, "", 17,
             "1,2,3,4,5,6,7,8", "",
-            new Dictionary<int, int> { [17] = 23 }, WallCount: 33, GridAxes: 17,
+            // 31 since step 63 (was 33): a wall is six inches or more (the floor 4 -> 6 in, migration 090); the two
+            // bands between 3.5 and 5.5 in on p17 are no longer walls. Found by the full suite on 2026-09-15 night
+            new Dictionary<int, int> { [17] = 23 }, WallCount: 31, GridAxes: 17,
             GridNamesX: "1,2,3,4,10,13,14", GridNamesY: "4,1,N,M,L,I,F,C.2,B,A", DimensionsTyped: 186),
     };
 

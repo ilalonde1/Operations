@@ -187,6 +187,21 @@ where the five buildings' LEVEL 1 plans GO, or only the ladder's names?).
 
 ## Known and not to be re-found
 
+- **The full Core suite (no filter) is NOT green on HEAD: 4 of 1,475 fail**, and a bisect on the
+  night of 2026-09-15 bounded each: `ModelCoverageTests.EveryGeneratedMemberStandsOnLineworkFromItsOwnStorey(31168)`
+  (KW235 at (2364,3808) on LEVEL 1 MEZZ stands on nothing) and
+  `ModelIntegrityTests.NothingIsModelledTwiceAndNothingIsDroppedInSilence(31168)` (20 outlines dropped
+  against 19 recorded) went red at **step 56, `cf66a299`, 2026-09-13 03:34** — the translation-
+  invariance rework of DashedLineJoiner / PlanLoopBuilder / StructuralPlanClassifier /
+  WallOutlineDecomposer / E2kGeometryComposer, whose gate was the six PDF baselines and could not see
+  the DXF route; `ModelCoverageTests.EveryDrawnMemberIsModelledOrAlreadyThere(31138)` (two walls at
+  (34,−1065) and (34,−698) on LEVEL 1 AT 55'-0 read and not modelled, ceiling 0) and
+  `TheStickFileBuildsAModelOnItsGridTests.Langara31168ParkadePlansBuildOnTheReferencesGridByName`
+  (3 expected, 2) were already red at `69e554b5`, 2026-09-11 23:34, and are not bounded below. A
+  fifth, `FiveStickFilesTests.WallsOnTheSchedulePageAreTheBankedCount(31202)`, went red at step 63
+  (33 → 31: the two bands between 3.5 and 5.5 in on p17) and is re-banked with the reason. These are
+  not findings; they are the morning's first decision (plan §8).
+
 - Run 14's storey movers are looked at in §80's table; its title-reader defects from step 68 are
   named there (neighbouring fields in the title — "DRAWING NO S2.02.1", "PROJ. # 30878-02 DRAWING
   NUMBER"; a displaced dash — "LEVEL 5 LEVEL 14 - PLAN"; a rotated revision strip as the title on
