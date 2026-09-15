@@ -246,11 +246,15 @@ public static partial class PlanSheetNaming
         var prefix = SheetNumberPrefix.Match(name);
         if (prefix.Success) return name[prefix.Length..];
 
+        // A TITLE THAT STARTS WITH ITS LEVEL WORD KEEPS IT (step 70, 2026-09-14 night, run 14): this cut a name at
+        // LEVEL only when LEVEL was not its first word (> 0), because every name once carried a sheet number in
+        // front. Step 68 strips that number before the call, so "LEVEL 4 - ROOF DECK PLAN" started at LEVEL, fell
+        // through to ROOF, and read as a roof plan with no level - 30919 lost L4, 31004 L17, 30925 L21 on run 14.
         int marker = name.IndexOf("LEVEL", StringComparison.OrdinalIgnoreCase);
-        if (marker > 0) return name[marker..];
+        if (marker >= 0) return name[marker..];
 
         marker = name.IndexOf("ROOF", StringComparison.OrdinalIgnoreCase);
-        return marker > 0 ? name[marker..] : name;
+        return marker >= 0 ? name[marker..] : name;
     }
 
     private static string CleanLabel(string name)

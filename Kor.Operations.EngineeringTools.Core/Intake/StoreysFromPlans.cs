@@ -131,19 +131,19 @@ public static class StoreysFromPlans
         }
         // each tagged roof after its building's highest level, unless the chain already reaches above that building's plans
         // an elevator roof above the building's roof (B6: two storeys, not one)
+        // STOREYS ARE PER BUILDING ONLY WHERE THE MODEL NAMES THEM SO (step 69 and its correction, step 70, 2026-09-14
+        // night): the per-building roof (step 61) is for a ladder whose storeys carry a building - A-L27, B-L40 on
+        // 31168's elevations - and there a tagged roof plan is that building's roof (C-ROOF, B6). On a plan-named
+        // ladder every building shares the storeys, the roof included: 31185's five numbered buildings' roof plans are
+        // one ROOF over L2, and 40117's single BLDG 2 has one roof, not a 2-ROOF under a ROOF (run 14: the first
+        // correction let ONE tagged roof keep its name, and a set whose only building is numbered grew a storey).
+        // The composer applies the same test (PlanSheetNaming.MatchStories, storeysByBuilding).
+        bool storeysByBuilding = order.Any(o => ModelYardstick.Building(o) is not null);
         foreach (var (tags, suffix) in new[] { (roofOfBuilding, "ROOF"), (elevatorRoofOfBuilding, "ELEVATOR ROOF") })
             foreach (string tag in tags)
             {
                 if (!highestOfBuilding.TryGetValue(tag, out int highest)) continue;
-                // A BUILDING WITH NO STOREY OF ITS OWN SHARES THE SET'S ROOF (step 69, 2026-09-14): the per-building roof
-                // (step 61) is for towers whose ladder names their storeys (A-L27, B-L40 on 31168); five numbered
-                // buildings on one plan-named ladder (31185: L1, L2 for all five) share L1 and L2, and their five roof
-                // plans are one ROOF over L2 - not 1-ROOF ... 5-ROOF stacked five storeys high, which is what the
-                // first cut of numbered tags produced.
-                // ... and only where MORE THAN ONE building's roof would otherwise stack on that shared ladder: one
-                // building's tagged roof over shared storeys is one storey and keeps its name (31168's C-ROOF, B6)
-                if (!order.Any(o => string.Equals(ModelYardstick.Building(o), tag, StringComparison.OrdinalIgnoreCase))
-                    && tags.Count(t => !order.Any(o => string.Equals(ModelYardstick.Building(o), t, StringComparison.OrdinalIgnoreCase))) > 1)
+                if (!storeysByBuilding)
                 {
                     if (suffix == "ROOF" && !roof && !covered.Contains("ROOF") && !ladderReachesAboveThePlans && !order.Contains("ROOF", StringComparer.OrdinalIgnoreCase))
                     {

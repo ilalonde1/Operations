@@ -153,4 +153,33 @@ public sealed class ASetsStoreysAreWhatItsPlansNameTests
         Assert.Equal(["L1"], PlanSheetNaming.MatchStories(sheet, ["L1", "L2", "ROOF"]));
         Assert.Equal(["ROOF"], PlanSheetNaming.MatchStories(PlanSheetNaming.Parse("S2.08_3_BUILDING 3 ROOF PLAN.dxf"), ["L1", "L2", "ROOF"]));
     }
+
+    /// <summary>
+    /// NUMBERED BLOCKS NAMING THEIR FLOORS BY WORDS HAVE ONE ORDER (step 70, 2026-09-14 night, run 14): 30988-01's
+    /// townhouse blocks 5, 11, 12, 22, 23, 24 draw GROUND / MAIN / UPPER floors with framing-over clauses, "- BLDG n"
+    /// on most titles; block 22's GROUND plan is on an untagged sheet. Run 13 (no tags read) built L1 L2 L3; run 14
+    /// (tags read, step 68) built L1 L2 - the per-building chains "disagreed" and the row stood. WHAT THIS COVERS:
+    /// the ladder and every block's sheets on the three storeys. WHAT IT DOES NOT: the foundation plans' storey
+    /// (they go to the lowest storey, as before); a block whose words genuinely differ.
+    /// </summary>
+    [Fact]
+    public void NumberedBlocksNamingTheirFloorsByWordsHaveOneOrder()
+    {
+        string[] plans =
+        [
+            "S2.01_1_GROUND FLOOR SHOWING MAIN FLOOR FRAMING OVER - BLDG 5.dxf", "S2.01_2_FOUNDATION PLAN - BLDG 5.dxf",
+            "S2.02_1_MAIN FLOOR SHOWING UPPER FLOOR FRAMING OVER - BLDG 5.dxf", "S2.02_2_UPPER FLOOR SHOWING ROOF FRAMING OVER - BLDG 5.dxf",
+            "S2.07_1_FOUNDATION PLAN.dxf", "S2.07_2_GROUND FLOOR SHOWING MAIN FLOOR FRAMING OVER.dxf",
+            "S2.08_1_MAIN FLOOR SHOWING UPPER FLOOR FRAMING OVER - BLDG 22.dxf", "S2.08_2_UPPER FLOOR SHOWING ROOF FRAMING OVER - BLDG 22.dxf",
+        ];
+        var ladder = StoreysFromPlans.Merge(null, plans, assumedHeightMm: 3000);
+        Assert.Equal(["L1", "L2", "L3"], ladder.Storeys.Select(s => s.Name));
+        var vocabulary = DrawingVocabulary.Default.WithFloorWordsRankedBy(plans.Select(PlanSheetNaming.TitleOf));
+        var set = plans.Select(n => PlanSheetNaming.Parse(n, vocabulary)).ToList();
+        string[] names = ["L1", "L2", "L3"];
+        Assert.Equal(["L1"], PlanSheetNaming.MatchStories(PlanSheetNaming.Parse(plans[0], vocabulary), names, set));
+        Assert.Equal(["L2"], PlanSheetNaming.MatchStories(PlanSheetNaming.Parse(plans[2], vocabulary), names, set));
+        Assert.Equal(["L3"], PlanSheetNaming.MatchStories(PlanSheetNaming.Parse(plans[3], vocabulary), names, set));
+        Assert.Equal(["L2"], PlanSheetNaming.MatchStories(PlanSheetNaming.Parse(plans[6], vocabulary), names, set));   // block 22's MAIN is the set's MAIN
+    }
 }
