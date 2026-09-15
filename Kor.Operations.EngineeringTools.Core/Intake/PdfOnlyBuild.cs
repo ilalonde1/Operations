@@ -315,7 +315,8 @@ public static class PdfOnlyBuild
                     LevelsFile = levelsCsv,
                     LevelLines = views is null ? null : StoreysFromPlans.LevelsFileLines(ladder),
                     LevelsUnit = "mm",
-                    Classification = new PlanClassificationOptions(),
+                    // the reader paired the faces with the fill in hand; the composer's open-chain pairing is for Revit DXFs (step 75)
+                    Classification = new PlanClassificationOptions { PairOpenFaces = false },
                     Compose = new ComposeOptions { IncludeFloors = true, InferMissingFloors = false, MembersRiseToStoreyAbove = true },
                     RuleSettingsConnection = rulesConnection,
                     RequireRuleSettings = true,

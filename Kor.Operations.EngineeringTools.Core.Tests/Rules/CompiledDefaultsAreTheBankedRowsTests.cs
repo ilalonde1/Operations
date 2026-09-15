@@ -50,6 +50,8 @@ public sealed class CompiledDefaultsAreTheBankedRowsTests
         ["PlanClassificationOptions.SpandrelDepth"]     = "superseded by dxf.spandrel-depth-floor / -ceiling; candidate for removal",
         ["PlanClassificationOptions.UnitInInches"] = "the drawing's unit in inches, set by InUnitOf; not a rule about drawings, the thing the rules are converted by (step 74)",
         ["PlanClassificationOptions.WallFloorSlack"]    = "a tolerance on the DRAWING of a wall, not a rule about walls: a six-inch wall is drawn at 5.6-5.9 in; the PDF side's WallFloorSlackMm, triaged there (step 63)",
+        ["PlanClassificationOptions.PairOpenFaces"] = "which route this is, not a rule about drawings: the Revit route pairs wall faces across open chains, the PDF route's reader already did with the fill in hand (step 75)",
+        ["PlanClassificationOptions.MaxOpenFacePairThickness"] = "a cap on what two OPEN chains may pair into (18 in), against inventing a core wall from a corridor's two sides - a literal in the method until step 73 (the audit's finding 1); a row once the corpus has measured it in millimetre sets",
         ["PlanClassificationOptions.WallFloor"]         = "computed: dxf.min-wall-thickness less its slack; not a number anyone banks",
         ["ComposeOptions.DefaultSlabThicknessInches"]   = "report-only copy of dxf.default-slab-thickness before model-unit conversion",
         ["ComposeOptions.OffsetX"]                      = "this run's translation onto the reference model's grid",

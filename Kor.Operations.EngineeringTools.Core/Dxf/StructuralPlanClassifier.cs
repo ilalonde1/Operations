@@ -125,6 +125,26 @@ public sealed record PlanClassificationOptions
     public double MaxWallThickness { get; init; } = 60.0;
 
     /// <summary>
+    /// 18": the thickest wall two OPEN face chains may pair into (the reasoning is at the open-face-pair gate). A
+    /// literal 18.0 in the method until step 75 (2026-09-15, the audit's finding 1), so in a millimetre drawing the
+    /// ceiling was 18 mm - under the floor - and the branch never yielded a wall; every PDF-route set is in
+    /// millimetres. A property is converted by InUnitOf and guarded by RulesTravelBetweenUnitsTests; a literal is neither.
+    /// </summary>
+    public double MaxOpenFacePairThickness { get; init; } = 18.0;
+
+    /// <summary>
+    /// WHETHER TO PAIR WALL FACES ACROSS OPEN CHAINS AT ALL (step 75, 2026-09-15). True for a Revit DXF, where the
+    /// exterior wall of 31065's ground floor arrives as nineteen open chains and pairing them recovers L1 from 56% to
+    /// 82% of her wall length. False on the PDF route: its reader pairs faces itself, with the fill in hand, and
+    /// writes walls as closed panels - what reaches this branch there is what it could NOT pair, and pairing it again
+    /// with a weaker test invents walls at hatching and stairs. Measured before the choice: the branch had been dead
+    /// in every millimetre set (its 18-inch cap a literal, finding 1 of the audit of 63-71); brought alive on the
+    /// 296-set corpus it added 32 walls on 9 sets and moved no yardstick, and on the six it added 2 walls to the
+    /// architect's set where the architect drew hatching. So the PDF route says so, and the six stay as banked.
+    /// </summary>
+    public bool PairOpenFaces { get; init; } = true;
+
+    /// <summary>
     /// Shorter than this on plan and the element is a column, not a wall — the engineer's rule,
     /// given as the answer to W1: "less than 48 in length should be a column".
     ///
@@ -408,6 +428,7 @@ public sealed record PlanClassificationOptions
             MinWallThickness = MinWallThickness * f,
             WallFloorSlack = WallFloorSlack * f,
             MaxWallThickness = MaxWallThickness * f,
+            MaxOpenFacePairThickness = MaxOpenFacePairThickness * f,
             MinWallLength = MinWallLength * f,
             MinPanelOverlap = MinPanelOverlap * f,
             MinOpeningSpan = MinOpeningSpan * f,
@@ -865,7 +886,7 @@ public static class StructuralPlanClassifier
                 // at 9.8" and 11.8", the largest running 85 feet. Her own walls there are 10 to 16
                 // inches, so these are the walls, not an artefact of pairing anything with
                 // anything. L1 goes from 56% to 82%.
-                recovered += PairOpenFaces(result, unread, layer, options);
+                if (options.PairOpenFaces) recovered += PairOpenFaces(result, unread, layer, options);
             }
 
             // A slab outline broken in ONE place is still that slab's outline.
@@ -2246,7 +2267,7 @@ public static class StructuralPlanClassifier
                 // The cap costs real coverage and is known to: 31065's ground floor recovers to
                 // 64% of the engineer's wall length rather than the 82% an uncapped pass reaches.
                 // That is the price of not inventing members, and it is the right way round.
-                double maxOpenFacePairThickness = Math.Min(options.MaxWallThickness, 18.0);
+                double maxOpenFacePairThickness = Math.Min(options.MaxWallThickness, options.MaxOpenFacePairThickness);
                 if (LoopGeometry.Beyond(options.WallFloor, separation) || LoopGeometry.Beyond(separation, maxOpenFacePairThickness)) continue;
 
                 double tb0 = (aj.X - ai.X) * ux + (aj.Y - ai.Y) * uy;
