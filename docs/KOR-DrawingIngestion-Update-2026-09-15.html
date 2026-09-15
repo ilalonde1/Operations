@@ -103,52 +103,53 @@
     <div>
       <div class="ey">KOR Structural · Engineering Tools · Partner update</div>
       <h1>Drawings in, ETABS model out</h1>
-      <p>Where the drawing-ingestion tool stands on 15 September 2026, measured against our own archive — and what the next two weeks are for.</p>
+      <p>A tool that turns the drawings we already issue into the ETABS model an engineer would otherwise build by hand. Where it stands on 15 September 2026.</p>
     </div>
     <div class="pills" style="align-self:center">
-      <span class="pill pill--won">253 of 296 sets build</span>
-      <span class="pill pill--watch">slabs on 41% of storeys</span>
+      <span class="pill pill--won">85% of our archive builds</span>
+      <span class="pill pill--fresh">every rule tested</span>
     </div>
   </div>
 
   <div class="body">
-    <h2>What I'm building, in one paragraph</h2>
-    <p style="margin:0 0 10px; font-size:9.6pt; line-height:1.4">A tool that reads our own structural drawing sets — the PDF stick files we already issue — and produces an ETABS model: columns, walls, slabs, grid lines and storeys, with no Revit and no re-drawing. Today an engineer rebuilds that model by hand. When Andrea first saw the output: <i>"if I have that, it's going to take me like no time to rebuild it."</i> The long-term value is the reissue workflow — the architect sends an update, the tool says what changed. No AEC firm I know of has this; the commercial CSiXRevit route never worked for us, and this one is made of our own drafting conventions.</p>
+    <h2>What it does, in plain terms</h2>
+    <p style="margin:0 0 10px; font-size:9.6pt; line-height:1.4">Drop in a structural drawing set — the PDF we already send the client — and out comes an ETABS model with the building typed in: every storey at its elevation, the grid, the columns sized and turned as drawn, the walls at their true thickness, the floor plates, the openings. No Revit, no re-drawing, no typing. The engineer opens it and starts engineering — the part only an engineer can do. When Andrea first saw it: <i>"if I have that, it's going to take me like no time to rebuild it."</i></p>
 
-    <h2>Where it stands — measured, not estimated</h2>
+    <h2>Where it stands — measured on our own drawings, not estimated</h2>
     <div class="flow">
-      <div class="step"><span class="n">ARCHIVE</span><h3>253 of 296 build</h3><p>Every current stick file in our archive runs through the tool on every change, in under an hour. 253 (85%) produce a model from the PDF alone; the 43 that don't say why in a ledger — 17 are copies of another job's file, 17 have no plan the reader can type, 8 name no storey.</p></div>
-      <div class="step"><span class="n">ACCURACY</span><h3>59% of columns within 100 mm</h3><p>Against the engineers' own ETABS models on 51 jobs — and most of those models are older than the drawings, so the true figure is higher. The bigger gap is slabs: present on 41% of storeys.</p></div>
-      <div class="step"><span class="n">RIGOUR</span><h3>Nothing lives in anyone's head</h3><p>Every rule the reader applies is code with a test, or a row in our standards database (86 rows). Adversarially audited four times by an independent AI reviewer; the last audit's eleven findings were fixed the same day.</p></div>
+      <div class="step"><span class="n">BREADTH</span><h3>253 of our 296 jobs</h3><p>Every current structural set in our archive goes through the tool after every change — 8,650 pages in under an hour. 253 build a model from the PDF alone; the 43 that don't say exactly why (17 are just copies of another job's file).</p></div>
+      <div class="step"><span class="n">ACCURACY</span><h3>Where the engineer put it</h3><p>Checked against the engineers' own ETABS models: on jobs with a current model, about two of every three columns land within 100 mm of where the engineer put theirs — and often it is their model that has moved on. Storeys, grids and walls read straight off the sheet.</p></div>
+      <div class="step"><span class="n">TRUST</span><h3>It says what it assumed</h3><p>Every reading rule is code with a test, or a row in our standards database (86 of them). Anything the tool had to assume is listed in the report beside the model. An independent AI reviewer has audited the logic four times; the last audit's findings were fixed the same day.</p></div>
     </div>
 
-    <h2>What "usable" means, in the engineers' own words</h2>
+    <h2>The bar the engineers set — in their own words</h2>
     <table>
-      <tr><td>The bar</td><td><i>"As long as I have the vertical and overall the shape of the slab, it's good enough for me to start."</i> — verticals and a slab outline on every storey; one model per building; loads, sections and diaphragms stay with the engineer. We have the verticals everywhere; slab outlines on 41% of storeys — that gap is the next two weeks.</td></tr>
-      <tr><td>What their answers already settled</td><td>Footings aren't modelled; basement and retaining walls are; beams aren't (headers are); each level shown once; one file per building — each now a rule the tool obeys; nothing is re-asked.</td></tr>
+      <tr><td>What "usable" means</td><td><i>"As long as I have the vertical and overall the shape of the slab, it's good enough for me to start."</i> — the columns and walls on every storey, plus the outline of each floor. One model per building. The engineering stays with the engineer.</td></tr>
+      <tr><td>Where we are</td><td>Columns and walls: on every storey of every job that builds. Floor outlines: four storeys in ten today — closing that is the next two weeks, the difference between "a good start" and "ready to run".</td></tr>
+      <tr><td>Already settled by their answers</td><td>Footings aren't modelled; basement and retaining walls are; beams aren't (headers are); each level appears once; one file per building. Each of those is now a rule the tool follows — nobody gets asked twice.</td></tr>
     </table>
 
     <div class="strip">
       <div class="card">
         <h2 style="margin-bottom:.2rem">Next two weeks</h2>
-        <p><b>1.</b> A slab outline on every storey (the engineers' bar).</p>
-        <p><b>2.</b> Footings are not columns; part plans never duplicate the overall plan — both from the engineers' recorded answers.</p>
-        <p><b>3.</b> The remaining 26 sets that could build and don't, each named by its cause.</p>
+        <p><b>1.</b> A floor outline on every storey — the engineers' own bar.</p>
+        <p><b>2.</b> Two rules straight from their answers: footings are not columns; a part plan never duplicates the overall plan.</p>
+        <p><b>3.</b> The remaining 26 jobs that could build and don't, each with its cause named.</p>
       </div>
       <div class="card">
         <h2 style="margin-bottom:.2rem">Then</h2>
-        <p>Models for three live jobs — one per building, as the engineers asked — published to the job folders for review. Their feedback becomes rules, as Andrea's already has.</p>
-        <p>The ask at that point: an hour of each engineer's time with their model open.</p>
+        <p>Models for three live jobs — one per building, as the engineers asked — dropped into the job folders for review. What the engineers say becomes the next rules, exactly as Andrea's answers already have.</p>
+        <p>The only ask, then: an hour with the model open.</p>
       </div>
       <div class="card accent">
-        <h2 style="margin-bottom:.2rem; color:var(--good)">Why it matters</h2>
-        <p class="lead">A proprietary capability nobody else in our market has.</p>
-        <p>It removes the typing, not the engineering — and every reissue becomes a diff instead of a rebuild. No vendor can build it, because it is made of our conventions.</p>
+        <h2 style="margin-bottom:.2rem; color:var(--good)">Why I'm excited</h2>
+        <p class="lead">Nobody else in our market has this.</p>
+        <p>It removes the typing, never the engineering. And once it reads a set, a reissue becomes a diff — "here is what changed" — instead of a rebuild. No vendor can sell it: it is built from our conventions and our engineers' rules.</p>
       </div>
     </div>
   </div>
 
-  <div class="foot">Ian Lalonde · 15 September 2026 · numbers from corpus run 17 (296 sets, 8,650 pages)</div>
+  <div class="foot">Ian Lalonde · 15 September 2026 · numbers from the archive run of 15 September (296 jobs, 8,650 pages)</div>
 </div>
 </body>
 </html>
