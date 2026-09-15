@@ -319,7 +319,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             var anySchedule = MarkRowScheduleReader.ColumnDefaults() with { HeadingWords = Array.Empty<string>() };
             foreach (var heading in MarkRowScheduleReader.SchedulesOn(page, anySchedule))
                 AddTitledBox(regions, page, rules, "schedule: " + heading.Title, heading.TitleMinX, heading.TitleMaxX, heading.TitleMinY, heading.TitleHeight);
-            foreach (var (title, minX, maxX, minY, height) in TitledBoxes(page))
+            foreach (var (title, minX, maxX, minY, height) in TitledBoxes(page, SheetTitleReader.SheetNumberToken(page)))
                 AddTitledBox(regions, page, rules, "furniture: " + title, minX, maxX, minY, height, enclosingToo: true);
 
             // 1b. the north arrow: a compass — a stroked ring beside the word NORTH — and whatever is
@@ -409,10 +409,6 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 Math.Max(border.MaxY, titleMinY + titleHeight)));
         }
 
-        /// <summary>
-        /// Every line of text carrying one of <see cref="FurnitureHeadings"/> as a whole word: the
-        /// title, its extent and its height, found the way schedule titles are.
-        /// </summary>
         /// <summary>A compass ring is this many points across at least, and at most.</summary>
         public const double NorthArrowMinPts = 30, NorthArrowMaxPts = 200;
 
@@ -442,7 +438,17 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             }
         }
 
-        private static IEnumerable<(string Title, double MinX, double MaxX, double MinY, double Height)> TitledBoxes(VectorPageReader.PageContent page)
+        /// <summary>
+        /// Every line of text carrying one of <see cref="FurnitureHeadings"/> as a whole word: the
+        /// title, its extent and its height, found the way schedule titles are. A LINE THAT NAMES
+        /// ANOTHER SHEET IS A CALLOUT, NOT A HEADING (step 77, 2026-09-15): "DETAIL 29 / S1.03" on
+        /// 31087's LEVEL 2 plan sends the reader to sheet S1.03, and the rule found above it was the
+        /// slab edge - the box "under" that title was the podium plan, 1547 x 1307 points, and every
+        /// wall, column and ring inside it was dropped as notes (13 walls and no ring where LEVEL 1
+        /// beside it reads 55 and one). A line naming THIS sheet is a detail drawn here, and stays a
+        /// heading; <paramref name="ownSheet"/> is the sheet number the title block states, or null.
+        /// </summary>
+        private static IEnumerable<(string Title, double MinX, double MaxX, double MinY, double Height)> TitledBoxes(VectorPageReader.PageContent page, string? ownSheet)
         {
             foreach (var w in page.Words)
             {
@@ -471,6 +477,10 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
                 // a title is a short line; a sentence of notes that happens to say DETAILS is not one
                 if (run.Count > TitleMaxWords) continue;
+
+                // a line that names another sheet is a callout to it, drawn on the plan; a box is titled by what it holds
+                if (run.Any(t => SheetTitleReader.IsSheetNumberToken(t.Text)
+                                 && !string.Equals(t.Text.Trim(), ownSheet, StringComparison.OrdinalIgnoreCase))) continue;
 
                 yield return (
                     string.Join(" ", run.OrderBy(t => t.MinX).Select(t => t.Text)),

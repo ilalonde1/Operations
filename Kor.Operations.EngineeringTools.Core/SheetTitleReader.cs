@@ -62,6 +62,9 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
 
         /// <summary>A sheet number as KOR writes one (S2.01, S2.05.1, A-101), which is title-size but not a title.</summary>
         private static readonly Regex SheetNumberTokenRx = new(@"^[A-Z]{1,3}-?\d{1,3}(\.\d{1,2})*$", RegexOptions.Compiled);
+
+        /// <summary>Whether one token is written as a sheet number (S2.01, S2.05.1, A-101): the form, not whether the set has that sheet.</summary>
+        public static bool IsSheetNumberToken(string? token) => token is not null && SheetNumberTokenRx.IsMatch(token.Trim());
         private static readonly Regex PlanishDescriptorRx = new(
             @"\b(CONCRETE|OUTLINE|FRAMING|FORMWORK|REINFORCING|SLAB|DIAPHRAGM)\b",
             RegexOptions.Compiled | RegexOptions.IgnoreCase);

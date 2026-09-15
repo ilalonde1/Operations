@@ -315,6 +315,35 @@ public sealed class SheetFurnitureIsNotStructureTests
         Assert.Equal(600, notes.MinY, 0.5);
     }
 
+    /// <summary>
+    /// A LINE THAT NAMES ANOTHER SHEET IS A CALLOUT, NOT A HEADING (step 77, 2026-09-15). 31087's LEVEL 2
+    /// plan writes "DETAIL 29 / S1.03" six times at its slab steps; the slab edge above one of them was
+    /// taken as a notes box's top rule and the podium plan under it (1547 x 1307 pt, just inside the
+    /// half-sheet cap) became furniture: 13 walls and no ring where LEVEL 1 reads 55 and one. A callout
+    /// sends the reader to another sheet; a box is titled by what it holds. The same words naming THIS
+    /// sheet are a detail drawn here, and its box stays furniture. WHAT THIS COVERS: the callout refused
+    /// and the own-sheet detail kept, with the sheet number read from the title block. WHAT IT DOES
+    /// NOT: a callout with no sheet number ("SEE DETAIL 29"), which the half-sheet cap still guards.
+    /// </summary>
+    [Fact]
+    public void ACalloutToAnotherSheetIsNotATitledBoxAndADetailOnThisSheetIs()
+    {
+        var sheetNumber = new TT("S2.11", 2900, 80, 2870, 70, 2930, 90);   // large, bottom right: this is sheet S2.11
+        var plan = new List<GP>
+        {
+            HRule(400, 1500, 1300), HRule(400, 1500, 300), VRule(400, 300, 1300), VRule(1500, 300, 1300),   // the slab edge, the plan's own rectangle
+        };
+        TT[] callout = [Tok("DETAIL", 800, 1285, 6), Tok("29", 820, 1285, 6), Tok("/", 840, 1285, 6), Tok("S1.03", 860, 1285, 6)];
+        TT[] detailHere = [Tok("DETAIL", 800, 1285, 6), Tok("5", 820, 1285, 6), Tok("/", 840, 1285, 6), Tok("S2.11", 860, 1285, 6)];
+
+        var regions = SheetFurniture.On(new PC(1, W, H, [sheetNumber, .. callout], plan)).Regions;
+        Assert.DoesNotContain(regions, r => r.Kind.StartsWith("furniture", StringComparison.Ordinal));   // the plan is not notes
+
+        var detail = SheetFurniture.On(new PC(1, W, H, [sheetNumber, .. detailHere], plan)).Regions.Single(r => r.Kind.StartsWith("furniture", StringComparison.Ordinal));
+        Assert.Equal("furniture: DETAIL 5 / S2.11", detail.Kind);
+        Assert.Equal(400, detail.MinX, 0.5);
+    }
+
     /// <summary>A rule directly under a line of text, the width of that line, is its underline.</summary>
     [Fact]
     public void AnUnderlineIsARegionAndABeamUnderNothingIsNot()
