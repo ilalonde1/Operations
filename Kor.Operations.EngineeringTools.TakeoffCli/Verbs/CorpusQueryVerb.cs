@@ -8,6 +8,7 @@
 //   takeoff corpus-query plan-titles                 how the plan sheets name their storeys: with/without a level, and the words the nameless titles repeat
 //   takeoff corpus-query set <job> [<job> ...]       one set's sheets: page, number, level, scale, view written, placed
 //   takeoff corpus-query columns <job>              each composed DXF view's column origins and wall containment
+//   takeoff corpus-query plates [<job> ...]         every built set's storeys with and without a plate, and where each missing plate was lost (WP6a item 2)
 //   takeoff corpus-query yardsticks                  every set measured against the engineer's own model, worst first
 //   takeoff corpus-query diff <before-sets.csv>      what moved between that banked run and this ledger, set by set, classed by the first thing that changed
 // Add --ledger <dir> to any of them.
@@ -17,7 +18,7 @@ internal static class CorpusQueryVerb
 
     public static int Run(string[] args)
     {
-        if (args.Length < 2) { Console.Error.WriteLine("Usage: takeoff corpus-query summary|no-model|plan-titles|set <job>...|columns <job>|yardsticks|diff <before-sets.csv> [--ledger <dir>]"); return 1; }
+        if (args.Length < 2) { Console.Error.WriteLine("Usage: takeoff corpus-query summary|no-model|plan-titles|set <job>...|columns <job>|plates [<job>...]|yardsticks|diff <before-sets.csv> [--ledger <dir>]"); return 1; }
         string dir = Path.Combine(DrawingMirror.Root, "corpus");
         var rest = new List<string>();
         for (int i = 2; i < args.Length; i++)
@@ -32,6 +33,8 @@ internal static class CorpusQueryVerb
         // Column inspection can also use a retained work folder after its ledger has been moved.
         if (args[1].Equals("columns", StringComparison.OrdinalIgnoreCase))
             return Columns(rest, File.Exists(dir) ? Path.GetDirectoryName(Path.GetFullPath(dir)) ?? "." : dir);
+        if (args[1].Equals("plates", StringComparison.OrdinalIgnoreCase))
+            return Plates(rest, File.Exists(dir) ? Path.GetDirectoryName(Path.GetFullPath(dir)) ?? "." : dir);
         if (!File.Exists(setsPath)) { Console.Error.WriteLine($"No ledger at {setsPath}; run corpus-analyze first, or give --ledger <dir|sets.csv>."); return 2; }
         var sets = CorpusAnalyzer.ReadSets(setsPath);
         var sheets = File.Exists(sheetsPath) ? CorpusAnalyzer.ReadSheets(sheetsPath) : [];
@@ -133,6 +136,44 @@ internal static class CorpusQueryVerb
             foreach (var r in rs)
                 Console.WriteLine($"   p{r.Page:00}  {r.SheetType,-9} {r.SheetNumber ?? "-",-10} level={r.Level ?? "-",-8} scale={r.ScaleNote ?? "-",-14} placed={(r.Placed is null ? "-" : r.Placed.Value ? "yes" : "no"),-4} {(r.DxfFiles ?? r.Title ?? "")[..Math.Min(70, (r.DxfFiles ?? r.Title ?? "").Length)]}");
         }
+        return 0;
+    }
+
+    /// <summary>
+    /// A PLATE ON EVERY STOREY (WP6a item 2): every built set in the work folder, its storeys classed by
+    /// PlateCoverage - a plate; no sheet placed on the storey; sheets placed but no closed ring read; rings read but no
+    /// plate composed - the corpus totals first, then the sets with the most storeys without a plate.
+    /// </summary>
+    private static int Plates(List<string> jobs, string root)
+    {
+        var dirs = Directory.EnumerateDirectories(root)
+            .Where(d => File.Exists(Path.Combine(d, "out.e2k")) && File.Exists(Path.Combine(d, "sheets.csv")))
+            .Where(d => jobs.Count == 0 || jobs.Contains(Path.GetFileName(d), StringComparer.OrdinalIgnoreCase))
+            .OrderBy(d => d, StringComparer.OrdinalIgnoreCase).ToList();
+        if (dirs.Count == 0) { Console.Error.WriteLine($"No built sets under '{root}'."); return 2; }
+        var totals = new Dictionary<PlateCoverage.Class, int>();
+        var perSet = new List<(string Job, int Storeys, int Plate, int NoSheet, int NoRing, int RingsNoPlate)>();
+        foreach (string d in dirs)
+        {
+            var e2k = File.ReadLines(Path.Combine(d, "out.e2k"));
+            var sheets = CorpusAnalyzer.ReadSheets(Path.Combine(d, "sheets.csv"));
+            var storeys = PlateCoverage.Classify(e2k, sheets);
+            foreach (var st in storeys) totals[st.Class] = totals.GetValueOrDefault(st.Class) + 1;
+            perSet.Add((Path.GetFileName(d), storeys.Count, storeys.Count(s => s.Class == PlateCoverage.Class.Plate),
+                storeys.Count(s => s.Class == PlateCoverage.Class.NoSheetPlaced), storeys.Count(s => s.Class == PlateCoverage.Class.NoRingRead),
+                storeys.Count(s => s.Class == PlateCoverage.Class.RingsReadNoPlate)));
+            if (jobs.Count > 0)
+                foreach (var st in storeys)
+                    Console.WriteLine($"  {Path.GetFileName(d)} {st.Name,-14} {st.Class,-18} plates {st.Plates} sheets placed {st.PlacedSheets} rings read {st.RingsRead}");
+        }
+        int all = totals.Values.Sum();
+        Console.WriteLine($"{dirs.Count} built sets, {all} storeys:");
+        foreach (var c in new[] { PlateCoverage.Class.Plate, PlateCoverage.Class.NoSheetPlaced, PlateCoverage.Class.NoRingRead, PlateCoverage.Class.RingsReadNoPlate })
+            Console.WriteLine($"  {c,-18} {totals.GetValueOrDefault(c),6}  ({Pct(totals.GetValueOrDefault(c), all)})");
+        Console.WriteLine("  the sets with the most storeys without a plate:");
+        Console.WriteLine($"  {"job",-10} {"storeys",7} {"plate",6} {"no sheet",9} {"no ring",8} {"rings, no plate",15}");
+        foreach (var s in perSet.OrderByDescending(s => s.Storeys - s.Plate).ThenBy(s => s.Job, StringComparer.Ordinal).Take(jobs.Count > 0 ? perSet.Count : 25))
+            Console.WriteLine($"  {s.Job,-10} {s.Storeys,7} {s.Plate,6} {s.NoSheet,9} {s.NoRing,8} {s.RingsNoPlate,15}");
         return 0;
     }
 

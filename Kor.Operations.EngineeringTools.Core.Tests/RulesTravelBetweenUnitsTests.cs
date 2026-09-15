@@ -31,6 +31,7 @@ public class RulesTravelBetweenUnitsTests
     /// </summary>
     private static readonly Dictionary<string, string> NotALength = new(StringComparer.Ordinal)
     {
+        ["UnitInInches"] = "the unit itself - InUnitOf sets it, and SqFt states every area in square feet from it (step 74)",
         ["MinWallAspect"] = "a ratio",
         ["MinPanelAspect"] = "a ratio",
         ["MaxColumnAspect"] = "a ratio",

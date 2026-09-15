@@ -243,6 +243,18 @@ public sealed record PlanClassificationOptions
     public double MinPlateArea { get; init; } = 57600.0;
 
     /// <summary>
+    /// THE DRAWING'S UNIT, IN INCHES (step 74, 2026-09-15): 1 for a Revit DXF in inches, 1/25.4 for the PDF route's
+    /// millimetre views. InUnitOf sets it. Every area a message states in square feet goes through <see cref="SqFt"/>;
+    /// thirty-three messages divided the area by 144 as if it were square inches, so every PDF-route report called a
+    /// 112 sq ft ring "72,188 sq ft" and a 400 sq ft floor "too small". The rules were right (their thresholds are
+    /// converted); the words an engineer reads were 645 times wrong.
+    /// </summary>
+    public double UnitInInches { get; init; } = 1.0;
+
+    /// <summary>An area in the drawing's unit, in square feet, for a message.</summary>
+    public string SqFt(double area, string format = "N0") => (area * UnitInInches * UnitInInches / 144.0).ToString(format, System.Globalization.CultureInfo.InvariantCulture);
+
+    /// <summary>
     /// The share of a storey's columns a plate taken from its wall panels must stand over to be
     /// the floor. The banked `dxf.min-floor-coverage` (0.6), the composer's own rule for a floor
     /// that stops short of its members, applied here to the one reading that can produce a
@@ -392,6 +404,7 @@ public sealed record PlanClassificationOptions
 
         return this with
         {
+            UnitInInches = unitInInches,
             MinWallThickness = MinWallThickness * f,
             WallFloorSlack = WallFloorSlack * f,
             MaxWallThickness = MaxWallThickness * f,
@@ -730,13 +743,13 @@ public static class StructuralPlanClassifier
                     loops.Add(ring);
                     stillOpen.Remove(chain);
 
-                    double area = ring.Area / 144.0;
+                    string area = options.SqFt(ring.Area);
                     var layers = closed.Borrowed
                         .Select(b => b.Layer)
                         .Distinct(StringComparer.OrdinalIgnoreCase);
 
                     result.Flags.Add(
-                        $"slab edges: an outline of {area:n0} sq ft was completed through " +
+                        $"slab edges: an outline of {area} sq ft was completed through " +
                         $"{closed.Borrowed.Count} segment(s) on {string.Join(", ", layers)} — layer(s) this " +
                         "tool does not model. Its ends meet those segments exactly, so the edge is " +
                         "continuous on the drawing even though it is not continuous on one layer. Nothing " +
@@ -764,7 +777,7 @@ public static class StructuralPlanClassifier
 
                 foreach (var (loop, says) in named)
                     result.Flags.Add(
-                        $"A slab outline of {loop.Area / 144:N0} sq ft closed only at the interruption " +
+                        $"A slab outline of {options.SqFt(loop.Area)} sq ft closed only at the interruption " +
                         $"width ({options.FloodFillBridge:0} in), not the ordinary " +
                         $"{options.BridgeTolerance:0} in — a slab edge cut by other linework — and was " +
                         $"modelled as floor because \"{says!.Text}\" is printed inside it. " +
@@ -933,7 +946,7 @@ public static class StructuralPlanClassifier
                 {
                     var at = ring.Centroid();
                     result.Flags.Add(
-                        $"{layer}: CANDIDATE NOT MODELLED — a region of {ring.Area / 144:N0} sq ft at " +
+                        $"{layer}: CANDIDATE NOT MODELLED — a region of {options.SqFt(ring.Area)} sq ft at " +
                         $"({at.X / 12:0}, {at.Y / 12:0}) ft, {why}. If this is a floor, say so and it is " +
                         "read from here on.");
                 }
@@ -948,7 +961,7 @@ public static class StructuralPlanClassifier
                     {
                         if (ring.Area >= options.MinPlateArea / 4.0)
                         {
-                            Refused(ring, $"smaller than the {options.MinPlateArea / 144:N0} sq ft this office " +
+                            Refused(ring, $"smaller than the {options.SqFt(options.MinPlateArea)} sq ft this office " +
                                           "calls a floor plate");
                             // Kept, not just named: the engineer's count of her own storey can
                             // admit it, and a threshold measured across a corpus does not outrank
@@ -1102,11 +1115,11 @@ public static class StructuralPlanClassifier
                     // entitled to know which of her floors this tool inferred, which it read, and
                     // which word on her own drawing it believed.
                     result.Flags.Add((says is not null
-                        ? $"{layer}: a slab outline of {ring.Area / 144:N0} sq ft was closed by joining " +
+                        ? $"{layer}: a slab outline of {options.SqFt(ring.Area)} sq ft was closed by joining " +
                           "its own two loose ends — the drawing leaves it open where other linework " +
                           $"crosses it — and modelled as floor because \"{says.Text}\" is printed " +
                           "inside it. Recovered geometry: check the edge."
-                        : $"{layer}: a slab outline of {ring.Area / 144:N0} sq ft was closed by joining " +
+                        : $"{layer}: a slab outline of {options.SqFt(ring.Area)} sq ft was closed by joining " +
                           "its own two loose ends, and modelled as floor at this sheet's own field " +
                           $"thickness — \"{sheetSays.Text}\", printed elsewhere on the sheet rather than " +
                           "inside this outline. INHERITED, not read: a drafter writes the field slab " +
@@ -1169,7 +1182,7 @@ public static class StructuralPlanClassifier
                         result.Flags.Add(
                             $"{loop.Layer}: a slab outline crossed itself and was read as {kept.Count} " +
                             $"separate plate(s) rather than one ring through its own edge " +
-                            $"({string.Join(" + ", kept.Select(r => $"{r.Area / 144:0} sq ft"))}).");
+                            $"({string.Join(" + ", kept.Select(r => $"{options.SqFt(r.Area, "0")} sq ft"))}).");
 
                         if (kept.Count > 0) slabCandidates.AddRange(kept);
                         else slabCandidates.Add(loop);
@@ -1254,7 +1267,7 @@ public static class StructuralPlanClassifier
                 {
                     priced.Add(slab);
                     result.Flags.Add(
-                        $"{slab.Layer}: a floor plate of {slab.Area / 144:N0} sq ft has " +
+                        $"{slab.Layer}: a floor plate of {options.SqFt(slab.Area)} sq ft has " +
                         $"{distinct.Count} different thickness call-outs inside it and no separate " +
                         $"outline to tell them apart ({string.Join(", ", distinct.Select(d => d + "\""))}), " +
                         "so its thickness was NOT read from the drawing. Draw the thicker region as its " +
@@ -1270,7 +1283,7 @@ public static class StructuralPlanClassifier
                 string quoted = printed[0].Text;
                 if (quoted.Length > 40) quoted = quoted[..40] + "…";
                 result.Flags.Add(
-                    $"{slab.Layer}: a floor plate of {slab.Area / 144:N0} sq ft is {distinct[0]}\" thick — read " +
+                    $"{slab.Layer}: a floor plate of {options.SqFt(slab.Area)} sq ft is {distinct[0]}\" thick — read " +
                     $"from \"{quoted}\", printed inside it. Not assumed, and not taken from a stick file.");
             }
 
@@ -1419,7 +1432,7 @@ public static class StructuralPlanClassifier
                 if (swallowed.Count > 1)
                 {
                     result.Flags.Add(
-                        $"a floor of {best.Area / 144:N0} sq ft recovered from the drawn linework covers " +
+                        $"a floor of {options.SqFt(best.Area)} sq ft recovered from the drawn linework covers " +
                         $"{swallowed.Count} floors already read on this storey and was not modelled — one " +
                         "plate spanning separate structures is a diaphragm they do not share.");
                     best = null;
@@ -1452,8 +1465,8 @@ public static class StructuralPlanClassifier
                     double drawnArea = swallowed.Where(x => x.ClosedExactly).Sum(x => x.Area);
                     result.Flags.Add(
                         $"{swallowed.Count(x => x.ClosedExactly)} closed outline(s) totalling " +
-                        $"{swallowed.Where(x => x.ClosedExactly).Sum(x => x.Area) / 144:N0} sq ft were kept in " +
-                        $"place of the {best.Area / 144:N0} sq ft the flood fill recovered from the same " +
+                        $"{options.SqFt(swallowed.Where(x => x.ClosedExactly).Sum(x => x.Area))} sq ft were kept in " +
+                        $"place of the {options.SqFt(best.Area)} sq ft the flood fill recovered from the same " +
                         $"linework — {drawnArea / best.Area:P0} of it, over the " +
                         $"{options.DrawnRingBeatsFillFraction:P0} a competing reading of one floor takes. " +
                         "A fill reaches wherever the drawn edge stops — at a core wall, say, which bounds the " +
@@ -1507,8 +1520,8 @@ public static class StructuralPlanClassifier
                             "the same hole read twice, and cutting it from the surviving plate would " +
                             "take out ground the drawing never opened.");
                     result.Flags.Add(
-                        $"{swallowed.Count} closed outline(s) totalling {swallowed.Sum(x => x.Area) / 144:N0} sq ft " +
-                        $"lie inside the {best.Area / 144:N0} sq ft floor recovered from the same linework, so they " +
+                        $"{swallowed.Count} closed outline(s) totalling {options.SqFt(swallowed.Sum(x => x.Area))} sq ft " +
+                        $"lie inside the {options.SqFt(best.Area)} sq ft floor recovered from the same linework, so they " +
                         "are the same floor read twice and only the larger is modelled.");
                 }
                 // And the other way round: a floor already found may enclose the fill's plate, in
@@ -1570,7 +1583,7 @@ public static class StructuralPlanClassifier
                         };
                         if (quoted.Length > 40) quoted = quoted[..40] + "…";
                         result.Flags.Add(
-                            $"{best.Layer}: the recovered floor of {best.Area / 144:N0} sq ft is {thick}\" " +
+                            $"{best.Layer}: the recovered floor of {options.SqFt(best.Area)} sq ft is {thick}\" " +
                             $"thick — read from \"{quoted}\", printed inside it.");
                     }
                 }
@@ -1620,7 +1633,7 @@ public static class StructuralPlanClassifier
                 if (columns >= 4 && coverage < options.MinFloorCoverage)
                 {
                     result.Flags.Add(
-                        $"No slab edge on this drawing would close, and the walls enclose a ring of {byPanels.Area / 144:N0} sq ft " +
+                        $"No slab edge on this drawing would close, and the walls enclose a ring of {options.SqFt(byPanels.Area)} sq ft " +
                         $"that stands over {under} of the storey's {columns} columns ({coverage:P0}): a core, not the floor. The storey has no plate.");
                     panelNote = null;
                 }
@@ -1637,7 +1650,7 @@ public static class StructuralPlanClassifier
                 {
                     var wider = options with { MaxOpeningSpan = doorway * factor, FloodFillBridge = doorway * factor };
                     if (DxfFloodFillPlateDetector.EnclosedByWallPanels(result.Walls, wider, out _) is { } would)
-                    { closesAt = $"at a gap of {doorway * factor:0} ({would.Area / 144:N0} sq ft)"; break; }
+                    { closesAt = $"at a gap of {doorway * factor:0} ({options.SqFt(would.Area)} sq ft)"; break; }
                 }
                 result.Flags.Add(
                     $"No slab edge on this drawing would close, and the {result.Walls.Count} wall panels do not " +
@@ -1666,7 +1679,7 @@ public static class StructuralPlanClassifier
                     // don't model those."
                     result.Flags.Add(
                         $"No slab edge on this foundation drawing would close. The inside face of " +
-                        $"the perimeter wall encloses {enclosed.Area / 144:N0} sq ft, but it is not " +
+                        $"the perimeter wall encloses {options.SqFt(enclosed.Area)} sq ft, but it is not " +
                         "modelled as a floor plate because a FOUNDATION sheet can be slab-on-grade, " +
                         "and S.O.G. is not a suspended slab.");
                 }
@@ -1675,7 +1688,7 @@ public static class StructuralPlanClassifier
                     result.Slabs.Add(enclosed);
                     result.Flags.Add(!string.IsNullOrEmpty(panelNote) ? panelNote :
                         $"No slab edge on this drawing would close, so the floor is taken from the inside face of " +
-                        $"the perimeter wall — {enclosed.Area / 144:N0} sq ft, one outline, one thickness. It is an " +
+                        $"the perimeter wall — {options.SqFt(enclosed.Area)} sq ft, one outline, one thickness. It is an " +
                         "approximation offered because a storey with no plate has no diaphragm at all.");
                 }
             }
@@ -1831,7 +1844,7 @@ public static class StructuralPlanClassifier
 
                 result.Slabs.Add(c.Loop);
                 result.Flags.Add(
-                    $"a further floor of {c.Loop.Area / 144:N0} sq ft in {c.Loop.Points.Count} corners was "
+                    $"a further floor of {options.SqFt(c.Loop.Area)} sq ft in {c.Loop.Points.Count} corners was "
                     + $"recovered from {c.What} by flood-filling the drawn slab edges at a bridge of "
                     + $"{c.Bridge:0} in, {c.Step:0.#}x the {options.FloodFillBridge:0} in normally used. This "
                     + $"storey is stated to carry {wanted} slab(s) and the drawing closed "
@@ -1936,7 +1949,7 @@ public static class StructuralPlanClassifier
         {
             result.Openings.Remove(hole);
             result.Flags.Add(
-                $"slab edges: a ring of {hole.Area / 144:N0} sq ft inside a floor of {floor!.Area / 144:N0} sq ft " +
+                $"slab edges: a ring of {options.SqFt(hole.Area)} sq ft inside a floor of {options.SqFt(floor!.Area)} sq ft " +
                 "was NOT cut as an opening — it covers more than half of it, and a slab does not have a void " +
                 "through half itself. This is the floor's other edge, a step or a change of thickness, and the " +
                 "thickness is yours to set. Check it is not a real void.");
@@ -2661,8 +2674,8 @@ public static class StructuralPlanClassifier
                 if (LoopGeometry.Within(options.MinWallThickness, band) && LoopGeometry.Within(band, options.MaxWallThickness))
                 {
                     result.Flags.Add(
-                        $"{loop.Layer}: a slab outline of {loop.Area / 144:N0} sq ft sits " +
-                        $"{band:0} in inside one of {container.Area / 144:N0} sq ft — read as the two " +
+                        $"{loop.Layer}: a slab outline of {options.SqFt(loop.Area)} sq ft sits " +
+                        $"{band:0} in inside one of {options.SqFt(container.Area)} sq ft — read as the two " +
                         "faces of one edge, not as a hole. The outer face is the floor.");
                     continue;
                 }
@@ -2686,8 +2699,8 @@ public static class StructuralPlanClassifier
                 if (sharedEdge >= options.RingOnPlateEdgeFraction)
                 {
                     result.Flags.Add(
-                        $"{loop.Layer}: a ring of {loop.Area / 144:N0} sq ft inside a floor of " +
-                        $"{container.Area / 144:N0} sq ft was NOT cut as an opening — {sharedEdge:P0} of its " +
+                        $"{loop.Layer}: a ring of {options.SqFt(loop.Area)} sq ft inside a floor of " +
+                        $"{options.SqFt(container.Area)} sq ft was NOT cut as an opening — {sharedEdge:P0} of its " +
                         "edge lies on the floor's own edge, so it is that edge read a second time rather " +
                         "than a hole. A hole has floor on every side of it.");
                     continue;
@@ -2732,8 +2745,8 @@ public static class StructuralPlanClassifier
                         LoopGeometry.PointInPolygon(t.Point, loop.Points));
 
                     result.Flags.Add(
-                        $"{loop.Layer}: a ring of {loop.Area / 144:N0} sq ft inside a floor of " +
-                        $"{container.Area / 144:N0} sq ft was NOT cut as an opening — it runs " +
+                        $"{loop.Layer}: a ring of {options.SqFt(loop.Area)} sq ft inside a floor of " +
+                        $"{options.SqFt(container.Area)} sq ft was NOT cut as an opening — it runs " +
                         $"{inner.Min:0} to {inner.Max:0} in inside the outer edge the whole way round and " +
                         $"covers {loop.Area / container.Area:P0} of it, which is the same slab edge drawn " +
                         "twice rather than a hole" +
@@ -2746,8 +2759,8 @@ public static class StructuralPlanClassifier
                 // the thing an engineer spots first, and the band is what says whether it is a hole
                 // or the other face of the same edge.
                 result.Flags.Add(
-                    $"{loop.Layer}: an opening of {loop.Area / 144:N0} sq ft cut from a floor of " +
-                    $"{container.Area / 144:N0} sq ft, its edge {band:0} in inside — " +
+                    $"{loop.Layer}: an opening of {options.SqFt(loop.Area)} sq ft cut from a floor of " +
+                    $"{options.SqFt(container.Area)} sq ft, its edge {band:0} in inside — " +
                     (loop.Area > container.Area * 0.5
                         ? "MORE THAN HALF the floor, which is worth checking."
                         : "check it is a hole and not the inner face of the edge."));
@@ -2777,8 +2790,8 @@ public static class StructuralPlanClassifier
             if (clash is not null)
             {
                 result.Flags.Add(
-                    $"a floor plate of {loop.Area / 144:N0} sq ft lies over one of " +
-                    $"{clash.Area / 144:N0} sq ft already read on this storey and was not modelled — two " +
+                    $"a floor plate of {options.SqFt(loop.Area)} sq ft lies over one of " +
+                    $"{options.SqFt(clash.Area)} sq ft already read on this storey and was not modelled — two " +
                     "readings of one floor, not two floors. The larger is kept.");
                 continue;
             }
@@ -2790,7 +2803,7 @@ public static class StructuralPlanClassifier
         // it puts a scrap of slab in mid-air with nothing under it.
         foreach (var scrap in slabs.Where(s => s.Area < options.MinPlateArea))
             result.Flags.Add(
-                $"{scrap.Layer}: closed ring of {scrap.Area / 144:0} sq ft on its own — too small for a " +
+                $"{scrap.Layer}: closed ring of {options.SqFt(scrap.Area, "0")} sq ft on its own — too small for a " +
                 "floor plate and not inside one, so it is linework rather than slab; not modelled.");
 
         result.Slabs.AddRange(slabs.Where(s => s.Area >= options.MinPlateArea));
