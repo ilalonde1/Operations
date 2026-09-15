@@ -1,11 +1,11 @@
 # PDF intake — what it does today, and what it leaves on the page
 
-## 0. START HERE (state as of 2026-09-14, after steps 47 and 54–64 and completion-plan WP1–WP5 — 207 of 292 sets build from the PDF alone)
+## 0. START HERE (state as of 2026-09-14, after steps 47 and 54–66 and completion-plan WP1–WP5 — 207 of 292 sets build from the PDF alone)
 
 A session picking this up cold reads this section, then the completion plan
 (`docs/architecture/Kor.Operations.EngineeringTools.PdfIntake.plan.md` — what "complete" means, the
 packages, and where each stands), then the last three step sections (§54–§56). §1–§52 are the
-record of how each rule was arrived at, read when a rule is being changed. §73 is the latest step.
+record of how each rule was arrived at, read when a rule is being changed. §75 is the latest step.
 
 **What this is.** A PDF ingestor: one ingestion point (`DrawingIntake.ReadSheet` → `PdfOnlyBuild`)
 that reads a drawing set and hands its geometry to outlets — the ETABS `.e2k` today, the DXF as a
@@ -3757,3 +3757,92 @@ WHAT THIS DOES NOT: separate a model's KIND (mass, secondary, below-grade) from 
 are read by a person here, not by the code; date a yardstick whose export has no manifest row (10 of
 48); a rotation between the models (the rigid part is a translation); tell a column she moved in
 design from one we misread on the 27 stale sets — only a current model can.
+
+## 74. Step 65, 2026-09-14 evening: run 11, and the reference plan is the plan the others can be set on
+
+**Run 11** (15:43 → 18:04, 2 h 21 min at 6 workers; step 63; `ledger-sets-2026-09-14-run11-step63.csv`;
+DB run `42e683f8`): 239 of 295 build (two new rows in the census); **walls 115,664 from 151,191** —
+the stud partitions of the wood-frame sets, gone as §72 said; columns 81,564 from 85,605; yardsticks
+57% / 55% (6,296 of 11,130; theirs 6,272 of 11,485 — theirs up three points). `corpus-query diff`
+run 10 → 11: Composition 180 (yardstick 6 better / 2 worse / 22 same), Views 16, Placement 9,
+Storeys 4, NewModel 1 (80045-04), SameCounts 83. The read is 776 CPU-minutes — **5.4 s a page** —
+and 85% of a set's cost (30993-01: 874 s to build, 125 s to recompose from its recorded views).
+
+**One regression, looked at: 30993-01, Placement.** 28 of 78 views placed in run 10, 2 in run 11;
+yardstick 157 → 133. Its reference plan — the sheet whose axes become the grid when no model has
+one — became `S7.02 EARTHQUAKE SENSOR LAYOUT LEVEL 4 PARTIAL PLAN`: it names 45 "axes" (its sensor
+bubbles, read as grid labels), had no storey in run 10, and B1 read "LEVEL 4" in run 11, so it
+won the reference on axis COUNT. The 28 structural plans name the same axes (`grid-names`: 13 of 13
+of the LEVEL 2 NORTH SIDE plan's names are on it) at another scale — the names agree, the fit does
+not — and "could NOT be set on the grid by name".
+
+**The rule.** *The reference plan is the plan the most other plans can be set on* — a fit by name
+that agrees on one offset (`SolveByName`), counted per candidate; between plans carrying the same
+number, the one the others match on more axes; then the plan's own axis count; then the name. The
+first cut counted shared NAMES and still chose the sensor layout (the names agree; the fit does
+not) — tried on the set before anything else this time: recomposed alone, 2 minutes, still 2 of
+78; the fit-based rule: 28 of 78, reference `LEVEL P2 PLAN NORTH SIDE`, yardstick 157 of 484.
+
+**On the six.** 31130, 31138, 31202, 31170-arch byte-identical. 31065 moved — 388 columns and
+169 walls "lost and gained" — and the diff's own header says why: *the second model sits −23,139,
++0 from the first, by 13 X and 7 Y grid labels*: the reference moved from the north foundation plan
+to the south (both carry 24 of 24 sheets), and two sheets' fits to the new one differ by 16–21 mm.
+Her model is the verdict and calls it a wash: 492 → 489 of 581 within 100 mm, median 15 → 25 mm.
+Re-banked as the same members in the south sheet's frame. 31168: two P2 walls the step-63 frame
+had split into collinear pairs are one panel again (11,592 + 6,742 = 18,334; 19,596 + 5,686 =
+25,282); `pdf-at` at the junction: one filled wall 203 × 17,979 mm, nothing crossing it — the ink
+says one. Re-banked. That a 2 cm change of frame flips a wall between one panel and two is the
+ring-ownership class (§71; `PlanarRings` is the prototype, §75 when it is wired).
+
+**Measured.** `TheReferencePlanIsTheOneTheMostOtherPlansShareTheirAxesWith`; fast suite 1,305;
+six-set gate byte-identical after the re-bank; shifted differential green. Run 12 = this step over
+the corpus as a `--recompose` at 12 workers (composer-only; the views stand): **27 min 40 s** (18:58:44 → 19:26:24) for 296 sets, against 2 h 21 min for the read — the number for a composer-only pass. 240 of 296 build; views set on the grid **2,285 from 2,093** (+192, the rule); yardsticks **58% / 55%** (6,539 of 11,276; theirs 6,519 of 11,797); 15 sets at 75–99% (from 12), 14 at 25–49% (from 15). Its ledger CSV was lost to a race — a nine-set recompose of mine wrote the work folder's `ledger-sets.csv` forty seconds before run 12 finished; its rows are in the DB (run `8a174b24`) and its per-set log is whole. Never two analyzers in one work folder.
+
+**The process, corrected the same evening** (Ian: "be the fixer"). Reproduce on the failing set
+before the rule, the test and the gate — the first cut of this rule cost an 8-minute gate to learn
+what a 2-minute recompose would have said. A composer-side step recomposes the corpus; only a
+reader-side step reads it. And the read itself is being removed as a cost: the PDF walk runs twice
+a page and again on every reading-rule change, though a PDF never changes — the record of the raw
+walk, from which both reads derive to the bit, is Codex's task (`CODEX-PDF-INTAKE-PAGE-READ-CACHE.md`).
+
+WHAT THIS DOES NOT: read a sensor bubble as not-an-axis (the bubbles still become named axes; the
+rule only stops them leading); refuse an instrumentation sheet's members (a sheet-type row);
+choose between two references that carry the same sheets on the same axes by anything but the
+count of their own names and the file name; a set where no two plans share three names.
+
+**Looked at and NOT fixed, so the next sitting starts from the instrument it needs.** 31162-01 is
+one of the eleven sets whose yardstick is current (58 days), at 40%: of the 20 columns of ours her
+model lacks, six are `KOR-C203.2x254 … x558.8` — 8-inch WALL FRAGMENTS. `pdf-at` at one: the P1
+plan draws an 8-in wall through a 398 mm clip at a corner (Revit draws wall joins as clipped
+fills); the reader writes the clipped piece as a 398 mm pier (`PierMinLengthMm` is 305); the
+composer turns a 203 × 398 wall-layer loop into an 8×16 column. Two edits were tried on the
+classifier — a short wall-layer loop leaves the "nothing paired up" branch as a wall, and `RunsInto`
+meets within half of each thickness instead of one drawing unit — and 31162 recomposed byte-for-byte
+the same: the fragments come through a branch neither touches, and `dxf-inspect --walls` says the
+398 × 203 loop makes "1 panel". Both edits are stashed, not shipped. What was missing is the
+instrument: **every composed column traced to the loop and the branch that made it**
+(`dxf-inspect --columns`: layer, loop box, branch name, and the wall it stands in if any). That is
+the next step for this class, and it is built before the next edit.
+
+## 75. Step 66, 2026-09-14 evening: one plan naming no storey is a one-storey building
+
+Worked from the ledger, not from a run: `corpus-query no-model` on run 11 lists 21 "no storeys"
+sets, and nine of them are one plan — a garage, a tenant improvement, a sales centre — titled PLAN,
+PLANS, PLAN AND DETAILS, GENERAL NOTES AND PLAN. **The rule:** *a set whose single plan names no
+storey is a one-storey building; that plan is L1.* Two halves in two places: the ladder
+(`StoreysFromPlans.Merge`) adds L1 — a FOUNDATION plan alone still names no storey, and two unnamed
+plans stay unnamed, a foundation plan and a framing plan of one storey being one storey — and the
+composer (`PlanSheetNaming.MatchStories`) puts the set's one plan on the model's one storey instead
+of refusing it for having no level number (the first cut did only the first half: nine models with
+one storey and nothing on it, "0/1 placed" — the recompose said so in 100 s).
+
+**Measured** by recomposing the nine, twice, in 100 s each: 8 of 9 build with their members —
+01746 23 columns, 01569 104, 30996-02 19 walls + 28 columns, 50046-07 825 columns, 31083-04 9 + 8,
+30865-05 20 + 30, 01603 4 walls, 01715 1 wall. The ninth, 01788-01, has a blank title (the
+small-job title block; Codex brief `CODEX-PDF-INTAKE-SMALL-JOB-TITLES.md`, nine sets of that
+class with their words harvested). `OnePlanNamingNoStoreyIsAOneStoreyBuilding`; fast suite 1,308;
+six-set gate byte-identical. Built in a worktree while Codex's page-cache edits sat half-written
+in the main tree.
+
+WHAT THIS DOES NOT: a set of two unnamed plans; a one-plan set whose plan IS a foundation plan;
+what those 825 "columns" on 50046-07's one page are (the yardstick has no model for it).

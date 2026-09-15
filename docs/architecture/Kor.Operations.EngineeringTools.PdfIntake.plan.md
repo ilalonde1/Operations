@@ -1,6 +1,6 @@
 # PDF intake → ETABS — Completion Plan
 
-**Status:** Rev 3, 2026-09-14 (steps 47 and 49–64 added to §8, 3b–3p) — WP1–WP5 landed overnight on Ian's go-ahead ("go through this all,
+**Status:** Rev 3, 2026-09-14 (steps 47 and 49–66 added to §8, 3b–3r) — WP1–WP5 landed overnight on Ian's go-ahead ("go through this all,
 step by step, and finish it overnight"): commits `8fccbc25` (WP3), `3f3f82b9` (WP2), `aba7d9ff`
 (WP4), `69e554b5` (WP5), each gated by the six byte-identical and the fast suite; WP5's remaining
 conventions are counted by a test, not by this document. §8 is what needs Ian. Rev 2 (2026-09-11)
@@ -64,6 +64,8 @@ Today's harness is 6 of those 292. The one-job yardstick (31168) is 1 of 66.
 | run 8 (2026-09-13 17:45 → 20:08, steps 47–57, before step 58; `ledger-sets-2026-09-13-run8-step57.csv`; DB run `e1e33cc6`) | **236 of 293** build (from 207 — step 47's words; 39 still read no storey, 17 no plan with structure, 1 no slab edge); 1,892 of 3,968 plan views placed on the grid by name (48%); 910 of 2,605 storeys with a plate (35%); 46,617 walls, 113,069 columns from 104,761 — 7,059 on the 29 new sets (the small jobs' filled symbols step 58 now discards; 01389 alone 248 → 0) and +1,249 net on the 207 sets both runs built, **149 of which changed count under steps 54–57** (which sheets stand on the grid decides which columns are in the model; 30924-01 3,195 → 1,947, 30840-01 397 → 1,385 — a per-set differential over the two ledgers is owed before the next step); run 9 on step 58 is the next count; 49 yardstick sets: **50% / 55%** (6,617 of 13,312 judged; theirs 6,544 of 11,837) from 49% / 53% — the 29 new sets brought one yardstick and a slightly higher share |
 | run 9 (2026-09-13 20:17 → 22:37, step 58 alone on run 8's code; `ledger-sets-2026-09-13-run9-step58.csv`; DB run `67570bff`) | **236 of 293** build (the same 236); columns **65,106 from 113,069**, plates 697 of 2,605 from 910; `corpus-query diff` run 8 → 9: Composition 144 (−44,201 columns, −197 plates; yardsticks 1 better / 10 worse / 10 same, 789 of 3,487 → 521 of 1,622 judged), Placement 8, Unchanged 141; 47 yardstick sets: **56% / 52%** (6,253 of 11,226; theirs 6,200 of 11,836) — the survivors match better and 268 matched columns are gone: step 58 discarded the halves of columns a PDF driver draws as two triangles (31048-01 2,640 → 57 against 449 of hers). The six harness sets, drawn with four corners, could not show it. Corrected in step 61 (§70: two triangles that are one shape); run 10 measures it |
 | run 10 (2026-09-14 10:22 → 12:39, steps 58–61; `ledger-sets-2026-09-14-run10-step61.csv`; DB run `42308806`) | **238 of 293** build — of **278 jobs**: 15 rows say "the stick file of another job" (01783-01's file under 00904-01 and fourteen more) and build nothing; 22 read no storey (from 39: the two-line titles and the word chain), 17 no plan with structure, 1 no slab edge. `corpus-query diff` run 8 → 10: NewModel 3, LostModel 1, Storeys 6, Placement 27, Composition 147, Unchanged 109. Columns **85,605** (113,069 in run 8, 65,106 in run 9: the twin rule gave back the tessellated columns step 58 had thrown away and kept the symbols out); plates 1,128 of 2,620 (43%, from 35%); 50 yardstick sets: **58% / 52%** (6,277 of 10,735; theirs 6,242 of 12,019); 4 sets at 100%+, 11 at 75–99%, 10 at 50–74%, 16 at 25–49%, 7 at 0–24%. **Walls 151,191 from 46,617 — LOOKED AT, NOT VERIFIED**: 31066-01 (0 → 2,620) rendered is a wood-frame apartment block over a concrete podium, L3–L6 ≈500 "walls" a storey — every stud partition, drawn as a filled band a PDF driver tessellates, read as a wall now that its two triangles are one shape. The reader has no rule for what a filled band is a wall OF (concrete or wood); the fill's colour and the set's typology are the candidates, and a wall yardstick does not exist. The next reading step, before any of those walls reaches an engineer |
+| run 11 (2026-09-14 15:43 → 18:04, step 63; `ledger-sets-2026-09-14-run11-step63.csv`; DB run `42e683f8`) | **239 of 295** build (two new census rows); 21 read no storey, 17 no plan with structure, 1 no slab-edge layer. `corpus-query diff` run 10 → 11: Composition 180 (yardstick 6 better / 2 worse / 22 same), Views 16, Placement 9, Storeys 4, NewModel 1, SameCounts 83. Columns **81,564** (from 85,605); **walls 115,664 from 151,191** (the stud partitions, §72); plates 1,086 of 2,627; 48 yardstick sets with columns: **57% / 55%** (6,296 of 11,130; theirs 6,272 of 11,485). 4 sets at 100%+, 12 at 75–99%, 9 at 50–74%, 15 at 25–49%, 8 at 0–24%. The read: 776 CPU-min, 5.4 s a page, 85% of a set's cost (§74). One regression (30993, Placement) → step 65. |
+| run 12 (2026-09-14 18:58 → 19:26, **27 min 40 s, a `--recompose` at 12 workers**; step 65; DB run `8a174b24`; CSV lost to a race, log whole) | **240 of 296** build; views on the grid **2,285 from 2,093**; walls 115,666, columns 81,612; 49 yardstick sets with columns: **58% / 55%** (6,539 of 11,276; theirs 6,519 of 11,797); 4 at 100%+, 15 at 75–99%, 8 at 50–74%, 14 at 25–49%, 8 at 0–24%. The first measured cost of a composer-only pass over the corpus (§74). |
 
 **The work order is a count now.** 1. Storeys: the 67 sets whose plans name their storeys with
 words, and 935 views the composer can put on no storey by name (step 47, §8 item 5). 2. Views on
@@ -362,6 +364,17 @@ Revit route.
    The ledger carries the yardstick's provenance and age; the summary reads the share in two
    populations. NEXT: `--pairs` on the six current sets under 65%; a yardstick that IS the drawing's
    model.
+3q. **Step 65, 2026-09-14 evening** (§74): run 11 banked (239 of 295; walls 115,664 from 151,191;
+   57% / 55%); its one regression (30993, 28 → 2 placed) found the rule: the reference plan is the
+   plan the most other plans can be SET ON (fits, not name counts; the sensor layout's bubbles had
+   won on count). 31065 and 31168 re-banked with reasons (a 2 cm frame; two walls one panel again).
+   Run 12 = the corpus recomposed at 12 workers. Codex: the raw-walk page record (the 5.4 s/page read
+   walks each page twice and again on every rule change). NEXT: wire PlanarRings behind an option;
+   the current-yardstick sets under 65%.
+3r. **Step 66, 2026-09-14 evening** (§75): one plan naming no storey is a one-storey building —
+   8 of 9 such sets build with their members, from the ledger's no-model list, measured by a 100 s
+   recompose of the nine. Two Codex tasks in flight: the raw-walk page record (the read), the
+   small-job title blocks (the other nine no-storey sets).
 4. **WP6** — one model in front of Andrea (31170's, or whichever the ledger ranks best of the
    architects' sets). Ian's call when.
 5. **Step 47**, the next reading rule, from the corpus. `takeoff corpus-query plan-titles` on the
