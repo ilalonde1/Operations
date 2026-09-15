@@ -1,11 +1,11 @@
 # PDF intake — what it does today, and what it leaves on the page
 
-## 0. START HERE (state as of 2026-09-14 night, after steps 47 and 54–70 and completion-plan WP1–WP5 — 253 of 296 sets build from the PDF alone, run 14; run 15 measures step 70)
+## 0. START HERE (state as of 2026-09-15 early, after steps 47 and 54–71 and completion-plan WP1–WP5 — 253 of 296 sets build from the PDF alone, run 15; run 16 measures step 71)
 
 A session picking this up cold reads this section, then the completion plan
 (`docs/architecture/Kor.Operations.EngineeringTools.PdfIntake.plan.md` — what "complete" means, the
 packages, and where each stands), then the last three step sections (§54–§56). §1–§52 are the
-record of how each rule was arrived at, read when a rule is being changed. §80 is the latest step (run 14 looked at, step 70); §76 is why a corpus read is 46–53 min now and how a run is launched so it outlives the session.
+record of how each rule was arrived at, read when a rule is being changed. §81 is the latest step (a static leaking between sets under 12 workers, step 71); §80 has run 14 looked at; §76 is why a corpus read is 46–53 min now and how a run is launched so it outlives the session.
 
 **What this is.** A PDF ingestor: one ingestion point (`DrawingIntake.ReadSheet` → `PdfOnlyBuild`)
 that reads a drawing set and hands its geometry to outlets — the ETABS `.e2k` today, the DXF as a
@@ -4067,3 +4067,39 @@ LOADING PLAN belongs in `dxf.non-structural-sheet-patterns`.
 WHAT THIS DOES NOT: fix any of the title-reader defects; place 01375's plans; the offset part plans on
 01379; a set whose buildings genuinely order the same words differently (the row stands, stated in the
 test).
+
+## 81. Run 15 and step 71, 2026-09-15 early: a set no rule touched moved — the vocabulary was another set's
+
+**Run 15** (a `--recompose` of run 14's read on `584b70c2`, 12 workers, 23:41 → 00:03, **22 min**;
+`ledger-sets-2026-09-14-run15-step70.csv`; DB run `54c06888`): 253 of 296, 58% / 53% unchanged.
+`corpus-query diff` run 14 → 15: Storeys 9, Composition 4, SameCounts 283. Eight of the nine are the
+sets step 70 was written for, back on their storeys — 30988 L1 L2 L3, 40117 one roof, 30919 L4, 31004
+L17, 30925 L21, 30816-02 L3, 30878-02 L3 and L6, 31098 L20 — and the ninth is **30992-01**, which no
+rule of step 70 touches: MAIN FLOOR PLAN, UPPER FLOOR PLAN, ROOF PLAN, FOUNDATION PLAN, SITE PLAN —
+nothing to rank, no tag, no LEVEL — went from L1 L2 ROOF to **L2 ROOF, its MAIN plan on no storey**.
+The unit ladder for its five names is L1 L2 ROOF.
+
+**The cause is shared state, not a rule.** `PlanSheetNaming.Vocabulary` is a process-wide static.
+`DxfToEtabsService.Run` sets it to THIS set's ranked floor words for the composition's duration (step
+60, restored on dispose) — and the corpus analyzer composes twelve sets at once in one process. 30992
+read MAIN with whichever set was composing beside it (a set whose chain says MAIN = 2). Which set
+that is depends on scheduling, so every word-named set's storeys in runs 8–15 carried this noise —
+the "same set, different storeys, no rule" class that CLAUDE.md names for tests ("a test that passes
+alone and fails in the suite is shared state") holds for sets in the analyzer too.
+
+**Step 71 (`7975b354`):** the static is an `AsyncLocal` — the same static to every caller on one
+execution flow (a set's read and build; a test and the code it calls) and invisible to the flows
+beside it. No call site changed. `TheVocabularyInForceIsTheCallersTests`: two flows set different
+words, meet at a barrier, and each reads its own through `Parse`; **proved by breaking it** — with a
+plain static it fails every time ("Expected MAIN=1;UPPER=2, Actual GROUND=1;MAIN=2;UPPER=3"). Fast
+suite 1,359; six-set gate byte-identical (a read, 2 m 17 s). Run 16 (`--recompose` on `7975b354`)
+measures how many sets were reading a neighbour's words: every mover in the diff run 15 → 16 is one.
+
+**Also measured on run 15:** `ledger-sets.partial.csv` holds 279 rows against the sorted ledger's 296
+— the 17 "stick file of another job" sets never append (they are decided before the per-set loop).
+For the audit's question H; no code tonight.
+
+WHAT THIS DOES NOT: a set whose own composition runs on more than one thread (none does); the
+reader's `PdfOnlyBuild` setting of the office vocabulary, which is the same value for every set and
+was never the leak; the results of runs before 16 for word-named sets, which stand as measured but
+carry the noise.

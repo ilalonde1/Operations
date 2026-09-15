@@ -1,6 +1,6 @@
 # PDF intake → ETABS — Completion Plan
 
-**Status:** Rev 3, 2026-09-14 night (steps 47 and 49–70 added to §8, 3b–3v; runs 8–14 in §1b, run 15 in flight) — WP1–WP5 landed overnight on Ian's go-ahead ("go through this all,
+**Status:** Rev 3, 2026-09-15 early (steps 47 and 49–71 added to §8, 3b–3w; runs 8–15 in §1b, run 16 in flight) — WP1–WP5 landed overnight on Ian's go-ahead ("go through this all,
 step by step, and finish it overnight"): commits `8fccbc25` (WP3), `3f3f82b9` (WP2), `aba7d9ff`
 (WP4), `69e554b5` (WP5), each gated by the six byte-identical and the fast suite; WP5's remaining
 conventions are counted by a test, not by this document. §8 is what needs Ian. Rev 2 (2026-09-11)
@@ -68,6 +68,7 @@ Today's harness is 6 of those 292. The one-job yardstick (31168) is 1 of 66.
 | run 12 (2026-09-14 18:58 → 19:26, **27 min 40 s, a `--recompose` at 12 workers**; step 65; DB run `8a174b24`; CSV lost to a race, log whole) | **240 of 296** build; views on the grid **2,285 from 2,093**; walls 115,666, columns 81,612; 49 yardstick sets with columns: **58% / 55%** (6,539 of 11,276; theirs 6,519 of 11,797); 4 at 100%+, 15 at 75–99%, 8 at 50–74%, 14 at 25–49%, 8 at 0–24%. The first measured cost of a composer-only pass over the corpus (§74). |
 | run 13 (2026-09-14 20:14 → died with the session at 271 of 296 (~45 min at 12 workers, a FULL read on `ad92d305`); recovered 21:02 with `--reuse` in 3 min + the six sets the SQL outage failed in 3 min; `ledger-sets-2026-09-14-run13-step66.csv`; DB runs `e3065245` + `c05c617b`) | **251 of 296** build (from 239: the one-plan sets, step 66); no-storey 21 → 10; walls 115,875, columns 82,649; 51 yardstick sets: **58% / 53%** (6,539 of 11,276; theirs 6,519 of 12,331). `corpus-query diff` run 11 → 13: NewModel 11, Placement 20 (step 65: 633 → 761 within 100 mm), Composition 15, **SameCounts 249, LostModel 0** — the BridgeChains index changed nothing on 249 sets. CPU per set over the 239 common sets: 704 → 627 min (−11%; 31168's 3× was an outlier — most sets are compose-bound); the wall time is the 12 workers. The ledger now appends per set (`e44e76ce`). |
 | run 14 (2026-09-14 22:28 → 23:21, **53 min, a FULL read at 12 workers on `be2b28f3`**, steps 67–69; launched by `run14.cmd` through `Win32_Process.Create`, banked its own ledger on exit; `ledger-sets-2026-09-14-run14-step69.csv`; DB run `4db4dcf3`) | **253 of 296** build (from 251); **walls 104,506 from 115,875** (the wood-plan rule), columns 81,725; 51 yardstick sets: **58% / 53%** (6,536 of 11,270; theirs 6,516 of 12,311 — unchanged). `corpus-query diff` run 13 → 14: NewModel 2 (01589 a FALSE model from a revision strip; 01375), LostModel 0, Storeys 11, Views 1, Placement 1 (01379: 121 → 178 sheets placed, rendered), Composition 73 (yardstick 1 better / 0 worse / 13 same), SameCounts 208. **Every storey mover looked at** against run 13's per-sheet rows (§80): three regressions, each one rule (step 70) — 30988 lost L3 (the word chain per building), 40117 grew a 2-ROOF (a tagged roof on a plan-named ladder), five sets lost a level to ROOF (a title starting with LEVEL); 30912 / 30926 read their real titles for the first time (step 68) with four title-reader defects named. |
+| run 15 (2026-09-14 23:41 → 00:03, **22 min, a `--recompose` at 12 workers on `584b70c2`**, step 70; `ledger-sets-2026-09-14-run15-step70.csv`; DB run `54c06888`) | **253 of 296**; 58% / 53% unchanged. `corpus-query diff` run 14 → 15: Storeys 9, Composition 4, SameCounts 283 — eight movers are step 70's sets back on their storeys; the ninth, 30992-01 (MAIN / UPPER / ROOF, nothing to rank), lost L1 to **shared state**: `PlanSheetNaming.Vocabulary` is a process-wide static set per set while twelve sets compose at once (§81, step 71). The partial ledger holds 279 of 296 rows (the 17 "another job's file" sets never append). |
 
 **The work order is a count now.** 1. Storeys: the 67 sets whose plans name their storeys with
 words, and 935 views the composer can put on no storey by name (step 47, §8 item 5). 2. Views on
@@ -404,6 +405,11 @@ Revit route.
    keeps its level (30919, 31004, 30925, 30816-02, 30878-02). Four title-reader defects of step 68
    named for the audit (neighbouring fields in the title, a displaced dash, a revision strip as the
    title on 01589, a project name as the title on 01379). Run 15 = `--recompose` on `584b70c2`.
+3w. **Step 71, 2026-09-15 early** (§81): run 15 moved one set no rule touched (30992: L1 L2 ROOF →
+   L2 ROOF) — `PlanSheetNaming.Vocabulary`, a process-wide static set to each set's ranked words
+   while twelve sets compose at once, leaked between sets since step 60. Now an `AsyncLocal`
+   (`7975b354`); `TheVocabularyInForceIsTheCallersTests` proved by breaking it. Run 16 =
+   `--recompose` on `7975b354`: every mover run 15 → 16 was reading a neighbour's words.
 4. **WP6** — one model in front of Andrea (31170's, or whichever the ledger ranks best of the
    architects' sets). Ian's call when.
 5. **Step 47**, the next reading rule, from the corpus. `takeoff corpus-query plan-titles` on the
