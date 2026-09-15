@@ -28,14 +28,14 @@ public sealed class TheStickFileBuildsAModelOnItsGridTests
     public void Langara31168ParkadePlansBuildOnTheReferencesGridByName()
     {
         if (!LiveProjects.ShareReachable) return;
+        // THE ISSUE THIS WAS WRITTEN ON, not the newest (2026-09-15): the six-set harness pins 31168's 2026-04-21 issue
+        // (SixSetsBuildAsBankedTests), and this test read "the newest dated file" - which on 2026-09-14 became a
+        // "for shearwall" issue whose parkade plans are numbered by building (S2.01.1 .. S2.06.1), so "3 of 3" read 2
+        // and the test was red for a set it was never about. A fixture is a fixed set of drawings.
         string stickFolder = LiveProjects.Folder("31168", "05 Stickfile");
-        var dated = Directory.EnumerateFiles(stickFolder, "31168-01 - *.pdf", SearchOption.TopDirectoryOnly)
-            .Select(f => (File: f, Date: System.Text.RegularExpressions.Regex.Match(Path.GetFileName(f), @"^31168-01 - (\d{4}-\d{2}-\d{2})").Groups[1].Value))
-            .Where(t => t.Date.Length > 0)
-            .OrderByDescending(t => t.Date, StringComparer.Ordinal).ThenBy(t => t.File, StringComparer.OrdinalIgnoreCase)
-            .ToList();
-        Assert.True(dated.Count > 0, $"no dated stick file PDF under {stickFolder}");
-        string pdf = DrawingMirror.SingleFile(dated[0].File);
+        var dated = Directory.EnumerateFiles(stickFolder, "31168-01 - 2026-04-21*.pdf", SearchOption.TopDirectoryOnly).ToList();
+        Assert.True(dated.Count == 1, $"expected the one 2026-04-21 issue under {stickFolder}, found {dated.Count}");
+        string pdf = DrawingMirror.SingleFile(dated[0]);
         string reference = DrawingMirror.SingleFile(LiveProjects.File("31168", "31168-reference.e2k"));
 
         string work = Path.Combine(Path.GetTempPath(), "kor-tests", "stickfile-model-31168");
