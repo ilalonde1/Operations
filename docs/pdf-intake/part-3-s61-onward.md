@@ -1807,3 +1807,28 @@ title up the page). Run 24 measures the corpus: 30888's 13 plans and 01589's 3 s
 WHAT IT DOES NOT: a title written top-down (no page seen); the B-level vocabulary; `FromPage` (the level reader) is
 still by position — the DXF name carries the storey from `TitleText`, so placement does not need it; the word
 builder's merged tokens.
+
+## 98. Step 88, 2026-09-16 03:45: a B-level is a level below grade, as a P-level is — the row `dxf.parkade-words` P → P;B (WP6a item 7, migration 093)
+
+**Reproduced on the set.** 30941-01 (Lindley, 2024): with step 87 reading its strip right, pp17–30 still came out as
+the old salad ("PLAN SIDE REINFORCING NORTH LEVEL") because the upright reading's block — "LEVEL B4 PLAN REINFORCING
+NORTH SIDE" — was refused by `NamesAPlan`: LEVEL B4 names no storey the vocabulary knows. `ParkadeWords` is P alone
+(migration 055 wrote it so and said "a firm using B1/B2 changes this row"); 30941's ladder names its storeys B1–B4
+(`corpus-query storeys`: LetterAndCount) and 12 of its 138 plan views placed, by the accident of a salad.
+
+**The rule.** A B-level is a level counted downward from grade, as a P-level is: `dxf.parkade-words` = `P;B`, the
+compiled default with it. The set's letter stays in the storey name (the ladder already keeps it) and the plan meets
+the storey on the number (`PlanSheetNaming.MatchStories` through `ParkadeStory`, which takes any parkade letter).
+Test `ABLevelIsALevelBelowGradeAsAPLevelIs`: "LEVEL B4 RAFT FOUNDATION PLAN" → parkade 4 → storey B4 among
+L1/B1–B4; `NamesAPlan("LEVEL B4 PLAN REINFORCING NORTH SIDE")`.
+
+**Measured** (compiled default, `pdf-inventory`): 30941 pp16–30, 15 of 15 read their titles — "LEVEL B4 RAFT
+FOUNDATION PLAN", "LEVEL B4 PLAN REINFORCING NORTH SIDE", "LEVEL B3 PLAN", "LEVEL B2 PLAN CONCRETE OUTLINE", "LEVEL
+B1 PLAN DIAPHRAGM REINFORCING" … Fast suite + six-set gate 1,452 green, the six byte-identical (none names a B-level).
+
+**The row is Ian's to apply** (migration 093 in the Drafter repo's db folder). The gate and the corpus run read the
+rows from KorStandards, so until it is applied run 24 measures 30941 with P alone and this step's gain is the compiled
+default's only — the tests. Stated in the completion mail.
+
+WHAT IT DOES NOT: tell the letters apart (a set naming both P4 and B4 would put a LEVEL B4 plan on both; none of 296
+does); a set using B for a building (this route names tower B's storeys "B-LEVEL n", not "Bn").

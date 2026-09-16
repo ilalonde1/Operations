@@ -481,6 +481,25 @@ public class PlanSheetNamingTests
         Assert.Equal(new[] { 5, 6, 7 }, range.Levels);
     }
 
+    /// <summary>
+    /// A B-LEVEL IS A LEVEL BELOW GRADE, AS A P-LEVEL IS (step 88, WP6a item 7; the row `dxf.parkade-words` = P;B,
+    /// migration 093). 30941 titles its plans "LEVEL B4 RAFT FOUNDATION PLAN", "LEVEL B3 PLAN" and its ladder names
+    /// the storeys B1-B4, and with P the only parkade letter no plan of it placed (12 of 138, and those by accident).
+    /// The set's own letter stays in the storey name; the plan and the storey meet on the number. WHAT IT DOES NOT:
+    /// tell the letters apart - a set naming both P4 and B4 (none seen) would put a LEVEL B4 plan on both; a set that
+    /// uses B for a building ("B2" as a storey of tower B is "B-LEVEL 2" in this route's names).
+    /// </summary>
+    [Fact]
+    public void ABLevelIsALevelBelowGradeAsAPLevelIs()
+    {
+        var sheet = PlanSheetNaming.Parse("S2.01.1_1_LEVEL B4 RAFT FOUNDATION PLAN.dxf");
+        Assert.Equal(new[] { 4 }, sheet.ParkadeLevels);
+        Assert.Empty(sheet.Levels);
+        Assert.Equal(new[] { "B4" }, PlanSheetNaming.MatchStories(sheet, new[] { "L1", "B1", "B2", "B3", "B4" }));
+        Assert.True(Kor.Operations.EngineeringTools.Intake.SheetViews.NamesAPlan("LEVEL B4 PLAN REINFORCING NORTH SIDE"));
+        Assert.Equal(new[] { 3 }, PlanSheetNaming.Parse("S2.02_1_LEVEL B3 PLAN.dxf").ParkadeLevels);
+    }
+
     [Fact]
     public void AnUntaggedSheetPrefersTheUnprefixedStorey()
     {

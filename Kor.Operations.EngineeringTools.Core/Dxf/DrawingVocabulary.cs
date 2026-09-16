@@ -29,8 +29,10 @@ public sealed record DrawingVocabulary
     /// <summary>What it calls a building on a sheet title. `dxf.building-words`.</summary>
     public IReadOnlyList<string> BuildingWords { get; init; } = new[] { "BLDG", "BUILDING" };
 
-    /// <summary>How a below-grade storey is numbered — P1, P2. `dxf.parkade-words`.</summary>
-    public IReadOnlyList<string> ParkadeWords { get; init; } = new[] { "P" };
+    /// <summary>How a below-grade storey is numbered — P1, P2, and B1, B2 (step 88, 2026-09-16: 30941 titles its plans
+    /// LEVEL B4 and its ladder names the storeys B1–B4; the plan and the storey meet on the number). `dxf.parkade-words`,
+    /// migration 093.</summary>
+    public IReadOnlyList<string> ParkadeWords { get; init; } = new[] { "P", "B" };
 
     /// <summary>What sits between the two ends of a level range. `dxf.range-words`.</summary>
     public IReadOnlyList<string> RangeWords { get; init; } = new[] { "-", "TO", "THRU", "THROUGH" };
