@@ -36,6 +36,30 @@ public sealed class StructureStandsOnAFloorTests
     private const double SqFtPerUnit = 1.0 / 144.0;          // an inch model
 
     [Fact]
+    public void ARingMostlyInsideAnotherSheetsFloorIsTheSameFloorReadAgain()
+    {
+        // step 103 (2026-09-16): 31170-arch's enlarged part plans each close a piece of the floor the overall plan draws
+        // whole, and a balcony on the part plan pokes past the overall's drawn edge - nine of ten vertices inside is the
+        // same floor read again. A ring with more than a tenth of its vertices out stays a plate of its own, and is said.
+        var keyPlan = new PlanGeometrySet(); keyPlan.Slabs.Add(Box(0, 0, 1200, 800));
+        var part = new PlanGeometrySet();
+        part.Slabs.Add(new PlanLoop("KOR_C_SLABEDG",
+            [new DxfPoint(0, 0), new DxfPoint(600, 0), new DxfPoint(600, 400), new DxfPoint(300, 400), new DxfPoint(300, 500), new DxfPoint(200, 500),
+             new DxfPoint(200, 400), new DxfPoint(100, 400), new DxfPoint(100, -50), new DxfPoint(50, 400), new DxfPoint(0, 400)], true));   // 11 vertices, one of them 50 past the edge: ten of eleven in
+        var wing = new PlanGeometrySet();
+        wing.Slabs.Add(new PlanLoop("KOR_C_SLABEDG",
+            [new DxfPoint(1100, 0), new DxfPoint(1500, 0), new DxfPoint(1500, 400), new DxfPoint(1100, 400)], true));                                          // half of it out: its own
+        var parsed = new List<(PlanSheetInfo, PlanGeometrySet, IReadOnlyList<string>)>
+        {
+            Sheet("A104_1_LEVEL 1 PLAN.dxf", "L1", keyPlan), Sheet("A414_1_LEVEL 1 PLAN (NW).dxf", "L1", part), Sheet("A416_1_LEVEL 1 PLAN (NE).dxf", "L1", wing),
+        };
+        DxfToEtabsService.SettleFloorsAcrossSheets(parsed, Reach, SqFtPerUnit);
+        Assert.Single(keyPlan.Slabs);
+        Assert.Empty(part.Slabs);
+        Assert.Single(wing.Slabs);
+    }
+
+    [Fact]
     public void ARingInsideAnotherSheetsFloorIsNotASecondFloorAndIsNotCutEither()
     {
         var keyPlan = new PlanGeometrySet(); keyPlan.Slabs.Add(Box(0, 0, 1200, 800));         // the footprint

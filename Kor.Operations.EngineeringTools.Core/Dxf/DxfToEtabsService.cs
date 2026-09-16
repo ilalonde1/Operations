@@ -2917,11 +2917,15 @@ public static class DxfToEtabsService
             var plates = here.SelectMany(p => p.Geometry.Slabs.Select(s => (Sheet: p, Slab: s))).ToList();
             if (plates.Count == 0) continue;
 
-            // a plate wholly inside a larger plate from another sheet is not a second floor
+            // a plate wholly inside a larger plate from another sheet is not a second floor - AND ONE MOSTLY INSIDE (step 103,
+            // 2026-09-16): 31170-arch's enlarged part plans (NW, SW, NE at 1/4") each closed a piece of the same floor its
+            // overall plan draws whole, and a balcony or a step on the part plan pokes a few vertices past the overall's
+            // drawn edge, so "wholly inside" let three plates of 7,500-11,001 sq ft stand on L1 beside the 32,076 sq ft
+            // floor. Nine of ten vertices inside (on the edge is in) is the same floor read again on a part plan.
             foreach (var (sheet, slab) in plates.OrderBy(x => x.Slab.Area).ToList())
             {
                 var container = plates.FirstOrDefault(o => o.Sheet.Sheet != sheet.Sheet && o.Slab.Area > slab.Area
-                                                             && slab.Points.All(pt => LoopGeometry.InsideOrOn(pt, o.Slab.Points, reach)));   // on the edge is in (step 82): a shared edge answers with rounding noise
+                                                             && slab.Points.Count(pt => LoopGeometry.InsideOrOn(pt, o.Slab.Points, reach)) * 10 >= slab.Points.Count * 9);   // on the edge is in (step 82): a shared edge answers with rounding noise
                 if (container.Slab is null) continue;
                 sheet.Geometry.Slabs.Remove(slab);
                 notSecondFloors++;
