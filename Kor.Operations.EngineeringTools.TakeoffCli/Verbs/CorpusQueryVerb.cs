@@ -11,6 +11,7 @@
 //   takeoff corpus-query plates [<job> ...]         every built set's storeys with and without a plate, and where each missing plate was lost (WP6a item 2)
 //   takeoff corpus-query yardsticks                  every set measured against the engineer's own model, worst first
 //   takeoff corpus-query diff <before-sets.csv>      what moved between that banked run and this ledger, set by set, classed by the first thing that changed
+//   takeoff corpus-query pages <job> [--runs a,b]    one set's pages run against run, from analysis.IntakeSheet: the pages placed differently, on what storeys (default: the last two runs)
 // Add --ledger <dir> to any of them.
 internal static class CorpusQueryVerb
 {
@@ -18,7 +19,8 @@ internal static class CorpusQueryVerb
 
     public static int Run(string[] args)
     {
-        if (args.Length < 2) { Console.Error.WriteLine("Usage: takeoff corpus-query summary|no-model|plan-titles|set <job>...|columns <job>|plates [<job>...]|yardsticks|diff <before-sets.csv> [--ledger <dir>]"); return 1; }
+        if (args.Length < 2) { Console.Error.WriteLine("Usage: takeoff corpus-query summary|no-model|plan-titles|set <job>...|columns <job>|plates [<job>...]|yardsticks|diff <before-sets.csv>|pages <job> [--runs a,b] [--ledger <dir>]"); return 1; }
+        if (args[1].Equals("pages", StringComparison.OrdinalIgnoreCase)) return Pages(args.Skip(2).ToList());
         string dir = Path.Combine(DrawingMirror.Root, "corpus");
         var rest = new List<string>();
         for (int i = 2; i < args.Length; i++)
@@ -119,6 +121,49 @@ internal static class CorpusQueryVerb
         Console.WriteLine("  and the whole titles most repeated");
         foreach (var (t, n) in titles.OrderByDescending(kv => kv.Value).ThenBy(kv => kv.Key, StringComparer.Ordinal).Take(40))
             Console.WriteLine($"    {n,5}  {t}");
+        return 0;
+    }
+
+    /// <summary>
+    /// One set's pages, run against run, from the database (analysis.IntakeSheet): the pages the runs placed
+    /// differently, each run's placed flag and storeys, so "run N placed more sheets" can be read page by page.
+    /// </summary>
+    private static int Pages(List<string> rest)
+    {
+        string? job = null; var prefixes = new List<string>(); int last = 2; bool all = false;
+        for (int i = 0; i < rest.Count; i++)
+        {
+            if (rest[i].Equals("--runs", StringComparison.OrdinalIgnoreCase) && i + 1 < rest.Count) prefixes.AddRange(rest[++i].Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+            else if (rest[i].Equals("--last", StringComparison.OrdinalIgnoreCase) && i + 1 < rest.Count) last = int.Parse(rest[++i], CultureInfo.InvariantCulture);
+            else if (rest[i].Equals("--all", StringComparison.OrdinalIgnoreCase)) all = true;
+            else job ??= rest[i];
+        }
+        if (job is null) { Console.Error.WriteLine("Usage: takeoff corpus-query pages <job> [--runs <id-prefix>,<id-prefix>] [--last N] [--all]"); return 1; }
+        var rows = CorpusAnalyzer.ReadPagesAcrossRuns(job, prefixes, last, null, out string note);
+        if (rows.Count == 0) { Console.Error.WriteLine($"{job}: no page rows ({note})."); return 2; }
+        var runs = rows.Select(r => (r.RunId, r.RunAtUtc)).Distinct().OrderBy(r => r.RunAtUtc).ToList();
+        Console.WriteLine($"{job}: {note}");
+        foreach (var (id, at) in runs)
+            Console.WriteLine($"   run {id.ToString()[..8]}  {at:yyyy-MM-dd HH:mm} UTC  pages {rows.Count(r => r.RunId == id)}, placed {rows.Count(r => r.RunId == id && r.Placed == true)}");
+        var differ = CorpusAnalyzer.PagesThatDiffer(rows);
+        var differing = differ.Select(d => d.Page).ToHashSet();
+        var shown = all
+            ? rows.GroupBy(r => r.Page).OrderBy(g => g.Key).Select(g => (Page: g.Key, ByRun: (IReadOnlyList<CorpusAnalyzer.PageRun?>)runs.Select(x => g.FirstOrDefault(r => r.RunId == x.RunId)).ToList())).ToList()
+            : differ.ToList();
+        Console.WriteLine(all ? $"   every page; {differ.Count} differ between the runs (*)" : $"   {differ.Count} page(s) placed differently between the runs");
+        foreach (var (page, byRun) in shown)
+        {
+            var first = byRun.FirstOrDefault(r => r is not null);
+            string title = first?.DxfFiles ?? first?.Title ?? "";
+            Console.WriteLine($"   {(differing.Contains(page) ? "*" : " ")}p{page:00} {first?.SheetNumber ?? "-",-10} {title[..Math.Min(60, title.Length)]}");
+            for (int i = 0; i < byRun.Count; i++)
+            {
+                var r = byRun[i];
+                Console.WriteLine(r is null
+                    ? $"        {runs[i].RunId.ToString()[..8]}  absent"
+                    : $"        {runs[i].RunId.ToString()[..8]}  placed={(r.Placed is null ? "-" : r.Placed.Value ? "yes" : "no"),-4} storeys={r.Storeys ?? "-",-24} cols={r.Columns,4} walls={r.Walls,4} slabs={r.Slabs,3}  title=\"{r.Title}\"");
+            }
+        }
         return 0;
     }
 

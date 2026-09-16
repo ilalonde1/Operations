@@ -34,6 +34,7 @@ public static class TakeoffVerbs
         ("verify-e2k", VerifyE2kVerb.Matches, VerifyE2kVerb.Run),
         ("e2k-multiset", E2kMultisetVerb.Matches, E2kMultisetVerb.Run),
         ("dxf-inspect", DxfInspectVerb.Matches, DxfInspectVerb.Run),
+        ("dxf-strip", DxfStripVerb.Matches, DxfStripVerb.Run),
         ("publish", PublishVerb.Matches, PublishVerb.Run),
         ("dxf-buildings", DxfBuildingsVerb.Matches, DxfBuildingsVerb.Run),
         ("e2k-compare", E2kCompareVerb.Matches, E2kCompareVerb.Run),

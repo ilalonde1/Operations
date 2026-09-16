@@ -28,10 +28,12 @@ public static class ModelRender
     private static readonly string[] Edges = ["#2b6ca3", "#b3701a", "#2d7a45", "#7a3d8f", "#a83232", "#3a4f7a"];
 
     /// <summary>The sheet as SVG text; null when the model has nothing to draw. <paramref name="drawn"/> says how many storeys carry something.</summary>
-    public static string? Svg(string e2kPath, string title, out int drawn, int columns = 3, int cellPx = 600)
+    /// <param name="onlyStoreys">Draw these storeys only (one storey at a large cell is how ONE floor is looked at, 2026-09-15: 31202's L2 before and after step 80); null or empty draws every storey that carries something.</param>
+    public static string? Svg(string e2kPath, string title, out int drawn, int columns = 3, int cellPx = 600, IReadOnlyCollection<string>? onlyStoreys = null)
     {
         var doc = E2kDocument.Load(e2kPath);
         var order = doc.ReadStories().Select(s => s.Name).ToList();
+        if (onlyStoreys is { Count: > 0 }) order = order.Where(s => onlyStoreys.Contains(s, StringComparer.OrdinalIgnoreCase)).ToList();
         var kinds = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (string raw in doc.LinesOf("AREA CONNECTIVITIES"))
         {
@@ -107,10 +109,10 @@ public static class ModelRender
     }
 
     /// <summary>The sheet written as SVG, and as PNG through Edge when Edge is there; the paths written, and the storeys drawn.</summary>
-    public static (string Svg, string? Png, int Drawn) Write(string e2kPath, string outPngOrSvg, string title, int columns = 3, int cellPx = 600, bool png = true)
+    public static (string Svg, string? Png, int Drawn) Write(string e2kPath, string outPngOrSvg, string title, int columns = 3, int cellPx = 600, bool png = true, IReadOnlyCollection<string>? onlyStoreys = null)
     {
         string svgPath = Path.ChangeExtension(outPngOrSvg, ".svg");
-        string? svg = Svg(e2kPath, title, out int drawn, columns, cellPx);
+        string? svg = Svg(e2kPath, title, out int drawn, columns, cellPx, onlyStoreys);
         File.WriteAllText(svgPath, svg ?? "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"400\" height=\"40\"><text x=\"10\" y=\"25\">nothing to draw</text></svg>", new UTF8Encoding(false));
         if (!png) return (svgPath, null, drawn);
         string pngPath = Path.ChangeExtension(outPngOrSvg, ".png");

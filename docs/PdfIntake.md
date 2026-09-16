@@ -44,7 +44,7 @@ reader saw onto the sheet, `--mark x y --crop x y hw hh` cuts to a point; `takeo
 <e2k> <sheet.dxf> <x> <y>` carries a model point back to its sheet and page through the shared
 grid names; `takeoff vector-lines`, `vector-find`, `vector-words --band` read the PDF below every
 reader (is the line there? what does the drawing call it? is the bubble drawn twice?);
-`takeoff grid-names` puts a sheet's axis names beside the model's. Step 27 was a day spent guessing
+`takeoff grid-names` puts a sheet's axis names beside the model's; `model-render --storey L2` draws ONE floor full size, before and after a rule; `dxf-strip` + `dxf-to-etabs` twice + `model-diff` is the strip-a-layer differential (three minutes that say whether a move is the composer's or a layer's); `corpus-query pages <job> --runs a,b` reads one set's pages run against run from the database. Step 27 was a day spent guessing
 closing rules that a rendered view would have settled; that is the mistake this line exists to stop.
 
 **Where the route stands, measured on the corpus** (run 21, 2026-09-15 19:40–20:41, steps 73–79 with run 19's title fixes; step 80 is not in it — measured by the next batched run):
@@ -55,7 +55,7 @@ closing rules that a rendered view would have settled; that is the mistake this 
 | No model | 17 no plan sheet with structure on it, 17 the stick file of another job, 8 no storeys (run 21's ledger) |
 | Sheets placed on a storey | 2,325 of 4,855 written (48%) on run 21 — the rest are refused non-structural sheets, sheets no storey name fits, and the 42 sets without a model |
 | Storeys with a plate | **1,703 of 2,687 (63%)** on run 21 (41% on run 19) — the engineers' bar (plan WP6a item 2); the remaining 37%: no ring read 6%, rings read but no plate 12%, no sheet placed 19% |
-| Against the engineers' own models (49 sets compared on run 21) | 58% of our columns within 100 mm of theirs (6,663 of 11,496), 55% of theirs within 100 mm of ours (6,626 of 11,978), pooled; the matched counts did not fall between runs 18 and 21 on any set — where the share fell, the judged population grew (§86) |
+| Against the engineers' own models (51 sets on run 21, `corpus-query summary`) | 58% of our columns within 100 mm of theirs (6,663 of 11,496), 53% of theirs within 100 mm of ours (6,626 of 12,512), pooled; the matched counts did not fall between runs 18 and 21 on any set — where the share fell, the judged population grew (§86) |
 | The six banked sets | in the repo, byte-identical to their baselines at every commit (`SixSetsBuildAsBankedTests`, ~3 min with the cached page walk) |
 
 **The work order is the engineers' definition of usable** (plan Rev 4, WP6a): the verticals and a plate on

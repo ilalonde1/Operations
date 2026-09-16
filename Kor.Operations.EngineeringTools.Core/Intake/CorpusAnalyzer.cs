@@ -668,4 +668,88 @@ public static class CorpusAnalyzer
     }
 
     private static string? Trunc(string? s, int max) => s is null ? null : s.Length <= max ? s : s[..max];
+
+    // ---- one set's pages, run against run ----
+
+    /// <summary>One page of one set as one run read and placed it: the analysis.IntakeSheet row, with its run's time.</summary>
+    public sealed record PageRun(Guid RunId, DateTime RunAtUtc, int Page, string? SheetNumber, string SheetType, string? Title,
+        string? Level, bool? Placed, string? Storeys, int Slabs, int Columns, int Walls, string? DxfFiles);
+
+    /// <summary>
+    /// WHAT CHANGED BETWEEN RUNS, PAGE BY PAGE (2026-09-15). Run 20 "placed more sheets" than run 21 on four sets and
+    /// the set-level diff could not say which; these rows could - run 20 had placed slab-reinforcing sheets under
+    /// truncated titles and doubled the levels. That query was a scratch script; this is it as a verb
+    /// (`corpus-query pages`). Reads analysis.IntakeSheet for one job over the runs named by a prefix of their id, or
+    /// the last <paramref name="lastRuns"/> runs that hold the job. Empty with no connection or before migration 083.
+    /// </summary>
+    public static IReadOnlyList<PageRun> ReadPagesAcrossRuns(string job, IReadOnlyList<string> runPrefixes, int lastRuns, string? connectionString, out string note)
+    {
+        ArgumentNullException.ThrowIfNull(job);
+        ArgumentNullException.ThrowIfNull(runPrefixes);
+        connectionString ??= Environment.GetEnvironmentVariable(RuleSettings.ConnectionEnvironmentVariable);
+        if (string.IsNullOrWhiteSpace(connectionString)) { note = "no KorStandards connection (KOR_ENGINEERINGTOOLS_STANDARDSDB)"; return []; }
+        var rows = new List<PageRun>();
+        try
+        {
+            using var conn = new SqlConnection(connectionString);
+            conn.Open();
+            var sql = new StringBuilder(
+                "SELECT s.RunId, t.RunAtUtc, s.Page, s.SheetNumber, s.SheetType, s.Title, s.Level, s.Placed, s.Storeys, s.Slabs, s.Columns, s.Walls, s.DxfFiles " +
+                "FROM analysis.IntakeSheet s JOIN analysis.IntakeSet t ON t.RunId = s.RunId AND t.Job = s.Job WHERE s.Job = @job AND (");
+            using var cmd = new SqlCommand();
+            cmd.Connection = conn;
+            cmd.Parameters.AddWithValue("@job", job);
+            if (runPrefixes.Count > 0)
+            {
+                for (int i = 0; i < runPrefixes.Count; i++)
+                {
+                    if (i > 0) sql.Append(" OR ");
+                    sql.Append($"CONVERT(varchar(36), s.RunId) LIKE @p{i}");
+                    cmd.Parameters.AddWithValue($"@p{i}", runPrefixes[i].Trim().ToLowerInvariant() + "%");
+                }
+            }
+            else
+            {
+                sql.Append("s.RunId IN (SELECT TOP (@n) RunId FROM analysis.IntakeSet WHERE Job = @job ORDER BY RunAtUtc DESC)");
+                cmd.Parameters.AddWithValue("@n", Math.Max(1, lastRuns));
+            }
+            sql.Append(") ORDER BY t.RunAtUtc, s.Page");
+            cmd.CommandText = sql.ToString();
+            using var rd = cmd.ExecuteReader();
+            while (rd.Read())
+            {
+                rows.Add(new PageRun(rd.GetGuid(0), rd.GetDateTime(1), rd.GetInt32(2),
+                    rd.IsDBNull(3) ? null : rd.GetString(3), rd.GetString(4), rd.IsDBNull(5) ? null : rd.GetString(5),
+                    rd.IsDBNull(6) ? null : rd.GetString(6), rd.IsDBNull(7) ? null : rd.GetBoolean(7), rd.IsDBNull(8) ? null : rd.GetString(8),
+                    rd.GetInt32(9), rd.GetInt32(10), rd.GetInt32(11), rd.IsDBNull(12) ? null : rd.GetString(12)));
+            }
+            note = $"{rows.Count} page rows over {rows.Select(r => r.RunId).Distinct().Count()} run(s)";
+            return rows;
+        }
+        catch (Exception ex) when (ex is SqlException or InvalidOperationException or IOException)
+        {
+            note = $"{ex.GetType().Name}: {ex.Message}";
+            return [];
+        }
+    }
+
+    /// <summary>
+    /// The pages whose placement differs between the runs given: a page counts as changed when the runs disagree on
+    /// whether it was placed, on the storeys it was put on, or on its title (a title that changed is the reading
+    /// that moved). Pages every run agrees on are left out. Runs are ordered by their time.
+    /// WHAT IT DOES NOT: compare geometry counts (columns, walls) - those are the set-level diff's.
+    /// </summary>
+    public static IReadOnlyList<(int Page, IReadOnlyList<PageRun?> ByRun)> PagesThatDiffer(IReadOnlyList<PageRun> rows)
+    {
+        ArgumentNullException.ThrowIfNull(rows);
+        var runs = rows.Select(r => (r.RunId, r.RunAtUtc)).Distinct().OrderBy(r => r.RunAtUtc).Select(r => r.RunId).ToList();
+        var result = new List<(int, IReadOnlyList<PageRun?>)>();
+        foreach (var page in rows.GroupBy(r => r.Page).OrderBy(g => g.Key))
+        {
+            var byRun = runs.Select(id => page.FirstOrDefault(r => r.RunId == id)).ToList();
+            var keys = byRun.Select(r => r is null ? "<absent>" : $"{r.Placed}|{r.Storeys}|{r.Title}").Distinct().Count();
+            if (keys > 1) result.Add((page.Key, byRun));
+        }
+        return result;
+    }
 }
