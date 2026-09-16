@@ -297,6 +297,29 @@ public static class WallOutlineDecomposer
     }
 
     /// <summary>
+    /// The drawn faces a pairing may see as a nearer partner: the edges of the OUTLINES on the layer — a chain of four
+    /// points or more (one that turns twice, the least the classifier reads a wall from) and every loop. A lone line
+    /// is a two-point chain and is not an outline: a wall's centreline, a hatch stroke, a dimension line drawn on the
+    /// wall layer. Step 95, 2026-09-16 (Codex's counterexample to step 83b): a 30 in wall with its centreline on the
+    /// same layer lost its pairing, the centreline being 15 in from either face — past WallFloor, short of the
+    /// separation, parallel, overlapping — everything a face is, except drawn as one.
+    /// </summary>
+    public static IReadOnlyList<(DxfPoint A, DxfPoint B)> OutlineFaces(IEnumerable<IReadOnlyList<DxfPoint>> openChains, IEnumerable<PlanLoop> loops)
+    {
+        ArgumentNullException.ThrowIfNull(openChains);
+        ArgumentNullException.ThrowIfNull(loops);
+        var faces = new List<(DxfPoint A, DxfPoint B)>();
+        foreach (var c in openChains)
+        {
+            if (c.Count < 4) continue;
+            for (int k = 0; k + 1 < c.Count; k++) faces.Add((c[k], c[k + 1]));
+        }
+        foreach (var l in loops)
+            for (int k = 0; k < l.Points.Count; k++) faces.Add((l.Points[k], l.Points[(k + 1) % l.Points.Count]));
+        return faces;
+    }
+
+    /// <summary>
     /// Whether a wall already read stands inside the band of a candidate wall: its axis midpoint within the
     /// candidate's overlap along its direction, and nearer the candidate's axis than half the candidate's thickness
     /// less half its own - inside the band, not merely touching a face. A wall the candidate would be a re-reading

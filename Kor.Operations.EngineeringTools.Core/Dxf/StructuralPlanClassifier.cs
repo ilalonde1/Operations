@@ -889,11 +889,10 @@ public static class StructuralPlanClassifier
                 // cannot describe on its own, not a second opinion on what it could.
                 var unread = new List<IReadOnlyList<DxfPoint>>();
 
-                // every drawn face on this role's layers - the open chains' drawn edges and the loops' edges - so a
-                // chain's pairing can see a nearer partner in another chain (step 83)
-                var drawnFaces = new List<(DxfPoint A, DxfPoint B)>();
-                foreach (var c in built.OpenChains) for (int k = 0; k + 1 < c.Count; k++) drawnFaces.Add((c[k], c[k + 1]));
-                foreach (var l in built.Loops) for (int k = 0; k < l.Points.Count; k++) drawnFaces.Add((l.Points[k], l.Points[(k + 1) % l.Points.Count]));
+                // every drawn face of an OUTLINE on this role's layers - a chain that turns twice, or a loop - so a
+                // chain's pairing can see a nearer partner in another chain (step 83); a lone line (a centreline on
+                // the wall layer) is not a face and vetoes nothing (step 95, Codex's counterexample)
+                var drawnFaces = WallOutlineDecomposer.OutlineFaces(built.OpenChains, built.Loops);
 
                 foreach (var chain in built.OpenChains)
                 {

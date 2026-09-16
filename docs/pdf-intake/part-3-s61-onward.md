@@ -2038,3 +2038,15 @@ MECHANICAL ROOF LEVEL, 90101's GROUND FLOOR, PODIUM SECOND FLOOR, and the single
 gains. No elevation among them: the office titles an elevation ELEVATION, asked before this rule. Not adopted. WHAT
 THIS DOES NOT: a set that titles an elevation by a level range alone (none in 296); its refusal would be the
 composer's, on the page's geometry.
+
+## 108. Step 95, 2026-09-16 09:25: a face that vetoes a pairing belongs to an outline — Codex's counterexample to step 83b
+
+Codex: a 30 in wall drawn as an open U with its centreline on the same layer, 15 in from either face, loses its pairing
+— the centreline satisfies every condition of `AFaceLiesBetween` (parallel, on the partner's side, past WallFloor, short
+of the separation, overlapping); the 9 in test of step 83b escaped only because its centreline was nearer than
+WallFloor. Reproduced at Codex's geometry. The rule: the faces a pairing may see as a nearer partner are the outlines'
+edges — a chain of four points or more (the least the classifier reads a wall from) or a loop — and a lone line is not
+an outline (`WallOutlineDecomposer.OutlineFaces`; the classifier hands the decomposer that selection). 1,483 green
+with the DXF-route ratchets; 31168 and 31138 unchanged (their Revit exports draw no centreline on the wall layers).
+
+WHAT IT DOES NOT: a centreline drawn as part of an outline chain; a hatch drawn as a polyline of four points or more.

@@ -109,4 +109,33 @@ public sealed class TheGapThatClosesAnOpenChainIsNotAFaceTests
         var w = Assert.Single(walls);
         Assert.Equal(17, w.Thickness, 1);
     }
+
+    /// <summary>
+    /// A FACE THAT VETOES A PAIRING BELONGS TO AN OUTLINE (step 95, 2026-09-16; Codex's counterexample to step 83b): a
+    /// 30 in wall drawn as an open U with its centreline on the same layer — the centreline is 15 in from either
+    /// face, past WallFloor and short of the separation, parallel, overlapping — and `AFaceLiesBetween` took it for a
+    /// nearer partner; the wall was lost. A lone line is a two-point chain; the classifier reads no outline from
+    /// fewer than four points, and the faces it hands the decomposer as "drawn" are now the outlines' edges only:
+    /// a chain that turns twice, or a loop. `OutlineFaces` is that selection. WHAT IT DOES NOT: a centreline drawn
+    /// as part of an outline chain (it would be a face); a hatch drawn as a four-point polyline.
+    /// </summary>
+    [Fact]
+    public void ALoneLineBetweenTwoFacesIsNotANearerPartner()
+    {
+        var u = new DxfPoint[] { new(0, 0), new(0, 500), new(30, 500), new(30, 0) };
+        var centreline = new DxfPoint[] { new(15, 0), new(15, 500) };
+        var chains = new List<IReadOnlyList<DxfPoint>> { u, centreline };
+
+        // the selection: the U's three edges, and not the centreline
+        var faces = WallOutlineDecomposer.OutlineFaces(chains, []);
+        Assert.Equal(3, faces.Count);
+        Assert.DoesNotContain(faces, f => f.A.X == 15 && f.B.X == 15);
+
+        var wall = Assert.Single(WallOutlineDecomposer.Decompose(new PlanLoop("JBP_V-WALL", u, closedExactly: false), new PlanClassificationOptions(), null, faces, out _));
+        Assert.Equal(30, wall.Thickness, 1);
+
+        // handed the centreline as a face, the decomposer refuses the pairing - which is why the selection exists
+        var lone = new List<(DxfPoint A, DxfPoint B)> { (centreline[0], centreline[1]) };
+        Assert.DoesNotContain(WallOutlineDecomposer.Decompose(new PlanLoop("JBP_V-WALL", u, closedExactly: false), new PlanClassificationOptions(), null, lone, out _), w => w.Thickness > 20);
+    }
 }
