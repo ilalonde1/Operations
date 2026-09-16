@@ -29,7 +29,7 @@ internal static class PdfInventoryVerb
         Console.WriteLine($"{Path.GetFileName(ivPdf)}  pages {ivFirst}-{ivLast} of {facts.Pages}  producer: {facts.Producer}  bookmarks: {facts.Bookmarks.Count}  " +
                           $"scale: {(ivScale is int s ? $"1:{s}" : "none (geometry not classified)")}  rules: {ivRulesSource}");
         Console.WriteLine();
-        Console.WriteLine("page  type               sheet                                      words   paths |    read  discard  unread  ignore  unacct");
+        Console.WriteLine("page  type               sheet                                      words   paths |    read  discard  unread  ignore  unacct  title as read, level as read (sheet = the bookmark where there is one)");
         var ledgers = new List<SheetInventory.SheetLedger>();
         for (int p = ivFirst; p <= ivLast; p++)
         {
@@ -40,7 +40,7 @@ internal static class PdfInventoryVerb
             var t = SheetInventory.Totals(led.Rows);
             string sheet = (led.BookmarkTitle ?? led.Title ?? "").Trim();
             if (sheet.Length > 42) sheet = sheet[..42];
-            Console.WriteLine($"{p,4}  {led.SheetType,-18} {sheet,-42} {led.Words,6}  {led.Paths,6} | {t[Disposition.Read],7}  {t[Disposition.Discarded],7}  {t[Disposition.Unread],6}  {t[Disposition.Ignored],6}  {t[Disposition.Unaccounted],6}");
+            Console.WriteLine($"{p,4}  {led.SheetType,-18} {sheet,-42} {led.Words,6}  {led.Paths,6} | {t[Disposition.Read],7}  {t[Disposition.Discarded],7}  {t[Disposition.Unread],6}  {t[Disposition.Ignored],6}  {t[Disposition.Unaccounted],6}  title: {(led.TitleText ?? "-").Trim()}  level: {(led.Title ?? "-").Trim()}");
         }
         Console.WriteLine();
         var summary = SheetInventory.Summarise(ledgers);

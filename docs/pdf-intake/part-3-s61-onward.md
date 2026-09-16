@@ -1699,3 +1699,54 @@ caught it in four minutes and nothing shipped; the cost is the half hour and the
 would have to say first: which of the 220 cells' bounding lines are tendons and which are the floor's, listed from
 the page (`pdf-at`, `vector-lines`), on 31130 AND on 31168's tower plan, before any rule is written — the tendon
 plate stays open until that list exists.
+
+## 96. Step 86, 2026-09-16 03:00: a letter-spaced label is a label, and an empty title box is no title — WP6a item 5, 30980's class
+
+**Reproduced on the set.** 30980-01 (880 W 15, wood, 2025; 27 pages, no model: "no storeys"). Run 22 titled 17
+of its 27 pages from the PROJECT field — "USE MIXED DEVELOPMENT" ×11, "PLAN SLAB MIXED USE SEE DEVELOPMENT",
+"PLAN SEE SLAB, MIXED USE DEVELOPMENT", "C15M03.11" (a beam mark), "MIN. CLR. BOT." (a note) — and named no
+storey. §93 had read p11 from the rendered page and called it a field-reader bound; the text layer says otherwise.
+`vector-words --band` over the right strip of p16 (x ≥ 2300 pt of 2592), bottom to top: Checked:, Drawn:, S2.00
+(19.8 pt), Scale: 1/8"=1'-0", Job No: and **D R A W I N G  N O.** one letter per token (6.8 pt, 9.3 pt pitch),
+then NOTHING between y 140 and 205, then **S H E E T  T I T L E** at 206.8, the address, MIXED USE DEVELOPMENT
+(15.3 pt), **P R O J E C T** at 341.8, I S S U E S, R E V I S I O N S, Consultant:. `pdf-at p16 868 60 --scale 1
+--radius 15` on the empty box: **0 words, 144 stroked paths of 0–3 mm** — the sheet title is plotted as glyph
+outlines. `vector-find PLAN --pages 11-27`: 30 distinct lines, every one a note ("SEE PLAN", "SLAB REINF., SEE
+PLAN"); not one plan title exists as text anywhere on the set's plan pages. Six other 2025–26 KOR sets (30909,
+30911, 30932, 30948, 30978, 30982) read their titles as before; 30980's block is its own.
+
+**Three faults, three rules, one step.**
+1. *A letter-spaced label is a label* (`TitleBlockFields`): a run of three or more single-letter tokens on one
+   reading line is compared, joined, to each label with its spaces removed; the longest run that spells a label
+   wins. Matched token by token, none of 30980's labels was a label, so the block was unlabelled and the fallback
+   guess ran on the strip's largest capitals — the project name.
+2. *The label that closes a field from below is its floor, not a column beside it* (`TitleBlockFields`, the
+   run-19 neighbour bound): a label ON the floor line — 30980's D R A W I N G N O. under SHEET TITLE, starting to
+   the right of the title's first letter — was taken as a neighbouring column, narrowed the title column past
+   itself, and the floor was then found nowhere: the empty box ran down to the scale and the sheet number
+   ("1/8"=1'-0" S2.01.1" as a title, measured with rule 1 alone). `o.Cy >= floor` → `o.Cy > floor + 1`.
+3. *An empty title box is a title the reader cannot form, not a licence to guess* (`SheetTitleReader.TitleText`):
+   when the block labels SHEET TITLE and the field is empty, a second read keeps the words drawn up the page
+   (KOR's upright strip writes the title up the page under a horizontal label; `TitleBlockFields.Read(...,
+   keepUpright: true)`), and if that is empty too the title is null. The fallback guess runs only for a block
+   with no SHEET TITLE label at all.
+
+**Test.** `ALetterSpacedLabelIsALabelAndAnEmptyTitleBoxIsNoTitle` at p16's own positions and heights: the labels
+are found (SHEET TITLE, DRAWING NO), the title field is absent, `TitleText` is null. It failed on rule 1 alone
+with the scale as the title — the failure that found rule 2.
+
+**Measured.** `pdf-inventory` now prints the title as read and the level as read on every page row (it printed
+the level only, under the name "sheet", and a first differential read the wrong column). 30980 pp11–27 before →
+after: 17 guessed titles → 17 × none; plans by geometry 4 (S2.00, S2.01.1, S2.01.2, S4.01), where the title words
+had typed 7. 30941 pp16–22 (the upright-strip set, the risk named for rule 3): unchanged — its block has no SHEET
+TITLE label in the text layer at all; its titles are still the word-salad "PLAN LEVEL RAFT FOUNDATION SSI SA PM
+JD" (the upright title read out of order plus the stamp), a fault of its own, not touched. Fast suite + six-set
+gate 1,449 green, the six byte-identical (no set of the six letter-spaces a label). Run 24 measures the corpus.
+
+**What 30980 gets.** Nothing it can be given: its titles are outlines and its plans carry no storey word as text.
+The ledger's reason is now the true one — no title read, four plans by geometry, no storey named — instead of a
+project name in every DXF filename. A set like this is the raster route's (OCR of the title box), not this one's.
+
+WHAT IT DOES NOT: letters stacked up the page (30941's "A R C H I T E C T U R E" tagline is one letter per line
+and joins nothing — stated, not tested); a letter run spelling a label by accident (no label is an alphabetical
+run, so grid letters cannot); the upright second look is exercised by no fixture; 30941's own title order.

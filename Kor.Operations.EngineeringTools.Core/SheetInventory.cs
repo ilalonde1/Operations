@@ -30,7 +30,8 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             int Paths,
             IReadOnlyList<LedgerRow> Rows,
             IReadOnlyList<MarkupNote> Markup,
-            IReadOnlyList<GridAxisNote> GridAxes);
+            IReadOnlyList<GridAxisNote> GridAxes,
+            string? TitleText = null);
 
         /// <summary>A named grid axis on the page, in millimetres; Dir "X" is a vertical line at x = AtMm, "Y" a horizontal one.</summary>
         public sealed record GridAxisNote(string Name, string Dir, double AtMm);
@@ -228,7 +229,8 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             return new SheetLedger(record.PageNumber, record.WidthPts, record.HeightPts, record.Rotation,
                 record.BookmarkTitle, record.SheetType, title, record.ScaleNote,
                 record.Content.Words.Count, record.Content.Paths.Count, rows, record.Markup,
-                record.Geometry.GridAxes.Select(a => new GridAxisNote(a.Name, a.Vertical ? "X" : "Y", Math.Round(a.AtMm, 1))).ToList());
+                record.Geometry.GridAxes.Select(a => new GridAxisNote(a.Name, a.Vertical ? "X" : "Y", Math.Round(a.AtMm, 1))).ToList(),
+                record.TitleText);
         }
 
         /// <summary>Sum a set of page ledgers by class and disposition, primary and context kept apart.</summary>

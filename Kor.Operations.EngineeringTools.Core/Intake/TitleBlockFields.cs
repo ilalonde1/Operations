@@ -51,20 +51,39 @@ public static class TitleBlockFields
     /// the tokens that became a kept value — so the ledger can call those words read and the rest
     /// of the title block unread, rather than the whole block one or the other (audit F10).
     /// </summary>
-    public static IReadOnlyDictionary<string, string> Read(VectorPageReader.PageContent? page, out IReadOnlySet<(double X, double Y)> consumedTokens)
+    public static IReadOnlyDictionary<string, string> Read(VectorPageReader.PageContent? page, out IReadOnlySet<(double X, double Y)> consumedTokens) =>
+        Read(page, out consumedTokens, out _);
+
+    /// <summary>
+    /// As above, and the labels the block carries whether or not their fields hold a value — so a caller can tell
+    /// a block that labels SHEET TITLE over an empty box (the title drawn as outlines, 30980) from a block with no
+    /// such label (the caller may guess) — intake step 86, 2026-09-16.
+    /// </summary>
+    /// <param name="keepUpright">Read the words drawn up the page too (see <see cref="ReadingTokens"/>): the title reader's
+    /// second look at a labelled title box the first read left empty — KOR's upright strip (30941) writes the title up
+    /// the page under a horizontal label.</param>
+    public static IReadOnlyDictionary<string, string> Read(VectorPageReader.PageContent? page, out IReadOnlySet<(double X, double Y)> consumedTokens, out IReadOnlySet<string> labelsFound, bool keepUpright = false)
     {
         var consumed = new HashSet<(double X, double Y)>();
         consumedTokens = consumed;
+        var found = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        labelsFound = found;
         var fields = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         if (page is null || page.Words.Count == 0 || page.WidthPts <= 0) return fields;
 
-        var tokens = ReadingTokens(page, RegionMinFx, out bool rotated);
+        var tokens = ReadingTokens(page, RegionMinFx, out bool rotated, dropUpright: !keepUpright);
         if (tokens.Count == 0) return fields;
         (double X, double Y) OriginalCentre(VectorPageReader.TextToken t) => rotated ? (-t.Cy, t.Cx) : (t.Cx, t.Cy);
 
         var lines = ReadingLines(tokens);
 
-        // Label instances: at any position in a line, one or two tokens spelling a label.
+        // Label instances: at any position in a line, one or two tokens spelling a label — or a run of single
+        // letters spelling one. A LETTER-SPACED LABEL IS A LABEL (intake step 86, 2026-09-16): 30980's block sets
+        // its labels one letter per token, "S H E E T  T I T L E", "D R A W I N G  N O.", "P R O J E C T", and
+        // matched token by token none of them was a label, so the empty title box under SHEET TITLE was never seen
+        // and the largest capitals in the strip - the PROJECT field's "MIXED USE DEVELOPMENT" - were taken as the
+        // title of every plan. The run's letters are compared to the label with its spaces removed; three letters
+        // at least, the longest run that spells a label wins.
         var labels = new List<(string Label, int Line, int From, int To, double MinX, double Cy)>();
         for (int li = 0; li < lines.Count; li++)
         {
@@ -76,10 +95,23 @@ public static class TitleBlockFields
                 string? hit = Labels.FirstOrDefault(x => Clean(x) == two);
                 int span = 2;
                 if (hit is null) { hit = Labels.FirstOrDefault(x => Clean(x) == one); span = 1; }
+                if (hit is null && one.Length == 1 && char.IsLetter(one[0]))
+                {
+                    int end = i;
+                    while (end + 1 < l.Count && Clean(l[end + 1].Text) is { Length: 1 } c && char.IsLetter(c[0])) end++;
+                    for (int j = end; hit is null && j >= i + 2; j--)
+                    {
+                        string run = string.Concat(l.Skip(i).Take(j - i + 1).Select(t => Clean(t.Text)));
+                        hit = Labels.FirstOrDefault(x => Clean(x).Replace(" ", "") == run);
+                        span = j - i + 1;
+                    }
+                }
                 if (hit is null) continue;
                 // 01379-01 p77: match JOB/PROJECT TITLE as a pair wherever it stands, before TITLE;
                 // DRAWING TITLE is the sheet's title, while JOB/PROJECT TITLE keep their identities.
-                labels.Add((hit is "TITLE" or "DRAWING TITLE" ? "SHEET TITLE" : hit, li, i, i + span - 1, l[i].MinX, l[i].Cy));
+                string label = hit is "TITLE" or "DRAWING TITLE" ? "SHEET TITLE" : hit;
+                labels.Add((label, li, i, i + span - 1, l[i].MinX, l[i].Cy));
+                found.Add(label);
                 i += span - 1;
             }
         }
@@ -120,8 +152,12 @@ public static class TitleBlockFields
             // block. 30816's old KOR block has a revision table's SHEET column header far above DRAWING
             // TITLE, and taking it as the neighbour cut the title to one word a line ("Level (Concrete") on
             // every sheet; 82 sets' storeys went with it.
+            // AND NOT ON THE FLOOR LINE (step 86, 2026-09-16): the label that closes the field from below is its
+            // floor, not a column beside it. 30980's "D R A W I N G  N O." stands under SHEET TITLE and to the
+            // right of its first letter; taken as a neighbour it narrowed the column past itself, the floor was
+            // then found nowhere, and the empty title box ran down to the scale and the sheet number.
             double labelHeight = Math.Max(lines[lab.Line][lab.From].Height, 4.0);
-            right = labels.Where(o => o.Cy >= floor && o.Cy <= lab.Cy + 1.5 * labelHeight && o.MinX > lab.MinX + 15 && o.MinX < right)
+            right = labels.Where(o => o.Cy > floor + 1 && o.Cy <= lab.Cy + 1.5 * labelHeight && o.MinX > lab.MinX + 15 && o.MinX < right)
                 .Select(o => o.MinX).DefaultIfEmpty(right).Min();
             floor = FloorWithin(right);
             var valueLines = new List<List<VectorPageReader.TextToken>>();

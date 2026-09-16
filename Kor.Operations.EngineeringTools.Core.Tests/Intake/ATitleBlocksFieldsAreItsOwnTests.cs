@@ -267,6 +267,55 @@ public class ATitleBlocksFieldsAreItsOwnTests
         Assert.Equal("PARKADE FLOOR PLAN FOUNDATION PLAN", SheetTitleReader.TitleText(page));
     }
 
+    /// <summary>
+    /// A LETTER-SPACED LABEL IS A LABEL, AND AN EMPTY TITLE BOX IS NO TITLE (step 86, WP6a item 5). 30980-01 (880 W
+    /// 15, 2025) sets its block's labels one letter per token - "S H E E T  T I T L E" at 6.8 pt over a box that holds
+    /// the title as plotted glyph outlines and not one word - and "P R O J E C T" over MIXED USE DEVELOPMENT at 15 pt.
+    /// Token by token no label matched, so the block was unlabelled to the reader and the largest capitals in the
+    /// strip, the project name, titled 17 of the set's 27 pages "USE MIXED DEVELOPMENT". At p16's own positions
+    /// and heights (PDF y, up from the bottom): the letters spell their labels, the title box is seen empty, and
+    /// the answer is no title - not the project, not the scale, not the sheet number under it.
+    /// WHAT IT DOES NOT: letters stacked up the page (an architect's "A R C H I T E C T U R E" tagline on 30941 is
+    /// one letter per line, and joins nothing); a block whose title is written up the page under a horizontal
+    /// label (the second look with the upright words is exercised by no fixture here).
+    /// </summary>
+    [Fact]
+    public void ALetterSpacedLabelIsALabelAndAnEmptyTitleBoxIsNoTitle()
+    {
+        var words = new List<VectorPageReader.TextToken>();
+        words.AddRange(Line("Checked:", 2347, 62.6, 6.5));
+        words.AddRange(Line("Drawn:", 2342, 80.5, 6.5));
+        words.Add(At("S2.00", 2480.6, 96.7, 48, 19.8));
+        words.AddRange(Line("Scale:", 2340, 116.6, 6.5));
+        words.Add(At("1/8\"=1'-0\"", 2410, 116.0, 40, 7.5));
+        words.AddRange(Line("Job No:", 2335, 134.5, 6.5));
+        words.AddRange(Letters("DRAWING", 2441.9, 134.7, 9.3));
+        words.AddRange(Letters("NO.", 2512.6, 134.7, 11.1));
+        words.AddRange(Letters("SHEET", 2388.9, 206.8, 9.1));
+        words.AddRange(Letters("TITLE", 2439.1, 206.8, 7.8));
+        words.AddRange(Line("NORTH VANCOUVER, B.C.", 2370, 225.7, 9));
+        words.AddRange(Line("880 WEST 15 STREET", 2373, 241.6, 9));
+        words.Add(At("DEVELOPMENT", 2421.2, 291.9, 90, 15.3));
+        words.Add(At("MIXED", 2397.4, 316.8, 42, 14.9));
+        words.Add(At("USE", 2457.4, 317.0, 26, 15.3));
+        words.AddRange(Letters("PROJECT", 2401.9, 341.8, 9.2));
+        var page = Page(2592, 1728, words);
+
+        var fields = TitleBlockFields.Read(page, out _, out var labels);
+
+        Assert.Contains("SHEET TITLE", labels);
+        Assert.Contains("DRAWING NO", labels);
+        Assert.False(fields.ContainsKey("SHEET TITLE"), $"the empty title box read as \"{(fields.TryGetValue("SHEET TITLE", out var v) ? v : "")}\"");
+        Assert.Null(SheetTitleReader.TitleText(page));
+    }
+
+    /// <summary>One letter per token at a fixed pitch, as 30980's block sets its labels (6.8 pt letters).</summary>
+    private static IEnumerable<VectorPageReader.TextToken> Letters(string word, double x, double y, double pitch)
+    {
+        for (int i = 0; i < word.Length; i++)
+            yield return At(word[i].ToString(), x + i * pitch + 2.5, y, 5.0, 6.8);
+    }
+
     private static VectorPageReader.PageContent Page(double width, double height, IEnumerable<VectorPageReader.TextToken> words) =>
         new(1, width, height, words.ToList(), new List<VectorPageReader.GeomPath>());
 

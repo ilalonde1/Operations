@@ -103,9 +103,21 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             // THE FIELD FIRST. A KOR title block labels its fields; the text under SHEET TITLE is the
             // title, not a guess (Intake.TitleBlockFields). The size heuristic below is for blocks
             // without the labels.
-            var fields = Intake.TitleBlockFields.Read(page);
+            var fields = Intake.TitleBlockFields.Read(page, out _, out var labelsFound);
             if (fields.TryGetValue("SHEET TITLE", out var field) && field.Length > 0) return field;
             if (fields.TryGetValue("DRAWING TITLE", out field) && field.Length > 0) return field;
+            // AN EMPTY TITLE BOX IS A TITLE THE READER CANNOT FORM, NOT A LICENCE TO GUESS (intake step 86,
+            // 2026-09-16; WP6a item 5). 30980 labels SHEET TITLE over a box that holds 144 tiny stroked paths and
+            // no word - the title plotted as glyph outlines - and the guess below took the PROJECT field's capitals
+            // ("MIXED USE DEVELOPMENT") for every plan's title. The block said where the title is; the second look
+            // keeps the words drawn up the page (30941 writes its title up the page under the label, and the guess
+            // below had been reading it in the wrong order: "PLAN RAFT FOUNDATION LEVEL"); if there is no text there
+            // either, the answer is none.
+            if (labelsFound.Contains("SHEET TITLE"))
+            {
+                var upright = Intake.TitleBlockFields.Read(page, out _, out _, keepUpright: true);
+                return upright.TryGetValue("SHEET TITLE", out field) && field.Length > 0 ? field : null;
+            }
 
             // Title-size words on the right edge, less dates and the sheet number: the number is the
             // largest text on most title blocks, and anchoring on it looked below it for a title
