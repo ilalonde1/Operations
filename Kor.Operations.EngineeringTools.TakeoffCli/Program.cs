@@ -293,7 +293,7 @@ public static class TakeoffCliHelp
         new("vector-signals", "takeoff vector-signals <pdf> <page> [png] [scaleDenom=100] [dpi=110]", "Compare all slab-area signal candidates for a sheet."),
         new("scale-scan", "takeoff scale-scan <pdf> [first] [last]", "Scan pages for machine-readable title-block scales."),
         new("vector-words", "takeoff vector-words <pdf> <page> [needle] | --band y0 y1 [x0 x1]", "Dump PDF words by font size and position; --band lists every word in a band with how many share its spot (a bubble drawn twice)."),
-        new("vector-lines", "takeoff vector-lines <pdf> <page> [--region x0 y0 x1 y1] [--min-pt 20] [--scale 96]", "GROUND TRUTH: every long axis-aligned run the page itself draws, grouped by the line it sits on, in points and drawing mm - is the drafter's line there, before a reader is blamed."),
+        new("vector-lines", "takeoff vector-lines <pdf> <page> [--region x0 y0 x1 y1] [--min-pt 20] [--scale 96] [--pens]", "GROUND TRUTH: every long axis-aligned run the page itself draws, grouped by the line it sits on, in points and drawing mm - is the drafter's line there, before a reader is blamed."),
         new("vector-find", "takeoff vector-find <pdf> WORD [WORD ...] [--pages a-b]", "Every distinct text line of a set that mentions a word (regex, case-insensitive), most repeated first, with its pages: what does the drawing CALL this?"),
         new("vision-estimate", "takeoff vision-estimate <pages.json> <out.xlsx>", "Run the vision-assisted estimate pipeline."),
         new("estimate", "takeoff estimate <config.json> <out.xlsx>", "Run a configured raster takeoff estimate."),

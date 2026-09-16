@@ -1909,3 +1909,29 @@ it measures on run 25.
 WHAT IT DOES NOT: a project's name inside the title (90102); a mezzanine named alone; sets with no text layer (31036,
 30907, 30980) or no titles (30833, 31001, 31016, 31019, 30743, 30834) — nine sets that are the raster route's or a
 bookmark rule's, stated as such in the ledger's reason.
+
+## 101. Measurement only, 2026-09-16 04:45: the tendon shape's first column — the pens, and what 31130's sheet is called
+
+§95 asked for the characterisation before a fourth attempt: which of the plate's bounding lines are tendons, listed
+from the page, on 31130 AND 31168's tower plan. This is the first column of that list, not a rule.
+
+**The instrument.** `vector-lines … --pens`: the long axis-aligned runs of a page by the pen that drew them (line
+width, colour), with the distinct lines each pen draws and their total length.
+
+**31130 p22** — its own title, read off the sheet: "LEVEL 3–16 CONCRETE OUTLINE PLANS & POST TENSION REINFORCING —
+WEST TOWER". The tendons are on the OUTLINE sheet itself, so no sheet-level refusal (step 80's ABOUT rule, migration
+092's loading diagrams) can ever separate them; the rule has to be on the page. Rendered (`pdf-overlay`, 30 dpi): the
+slab outline is the thin closed figure; the tendons are the long lines running across it and ending in ARROWHEADS,
+each arrow labelled with its force — "108 KIPS", "142 KIPS", "162 KIPS", "234 KIPS", "334 KIPS" (six KIPS labels on
+the page). Step 79 already refuses a line ending at an arrowhead; what step 79 does not do is follow the tendon
+back from its arrow across the plate — the long diagonal it is the end of is still a line. Pens on p22 (runs ≥ 60
+pt): 5.0 pt black 28 lines 1,144 m; 2.0 pt 54 lines 861 m; 9.0 pt 25 lines; 0 pt filled 25; 10 pt 6; 4 pt 16. The
+reader on this page: 28 columns, 7 walls, 0 slabs.
+
+**31168 p12** (the tower plan the rejected family rule ate): 2.0 pt 68 lines 1,867 m; 5.0 pt 69 lines 1,696 m; 10 pt
+27; #D0D0D0 filled 46; 9 pt 44. The same pens as 31130 — the pen alone does not tell a tendon from an edge on either
+page. The next column of the list: for each long line on 31130 p22, does it END at an arrowhead with a KIPS label
+(a tendon), does it lie on the closed outline (an edge), or neither — and the same on 31168 p12, where the KIPS
+labels should be absent. That is a `pdf-at`-per-line pass, ~an hour, and the rule follows from the two lists.
+
+WHAT THIS DOES NOT: change any reader; decide the rule.
