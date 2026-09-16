@@ -1657,3 +1657,23 @@ with their own stick file" — not changed tonight. Classes B and 30888/30980/30
 
 WHAT IT DOES NOT: a right-edge note in title-size capitals that names a plan (none of the six draws one; the
 corpus run says); the rotated strip; the labelled field's bound; class B.
+
+## 94. WP6a item 3(b) looked at, 2026-09-16 small hours: 31162's "footings" are on its WOOD FRAMING plans — a rule stated, not shipped
+
+`dxf-inspect --columns` on every view of 31162's run-21 read, sizes by layer and branch: the P2 FOUNDATION plan and
+the P1 plan carry 21 columns each of **304.8 × 760 mm (12 × 30 in) on KOR_V_COL — the columns, the size her model
+has**; LEVEL 1 three of 305 × 914. The **541 × 1,283 mm (21 × 50 in)** loops — 19 of them — are on
+**S2.10 "LEVEL 2 SHOWING LEVEL 3 FRAMING OVER"**, a wood framing plan, not the foundation. §79's reading of them as
+footings was wrong; the record is corrected here. `pdf-overlay --columns --crop` at one of them (p21, 26,631 /
+59,351): a rectangle on a unit's wall line with a small filled square at its centre beside the label "B23 FB" — a
+wood beam with its post, the framing plan's symbol, read as a 21 × 50 in column because the column-layer branch
+asks only for 6–132 in a side and an aspect under 3.
+
+**The rule, stated for the morning and not shipped tonight:** her own words are "less than 48 in length should be
+a column" (W1), and the classifier applies them on WALL layers only (`MinWallLength`); on a COLUMN layer a 50 in
+block passes. The universal half of her rule — 48 in or longer is not a column, whatever layer it is drawn on — is
+one line; what a 21 × 50 in filled block on a column layer IS (a concrete pier at a wall's end, which her 31138
+model carries as WALL piers — the ask-once question in the answers index — or a wood plan's beam symbol, which is
+nobody's member) needs one look at a second wood set and her answer on the piers. Shipping the line alone would
+turn 19 phantom columns into 19 phantom 21 in walls on 31162; not better, only different. Item 3(b) stays open with
+its instrument and its shape written down.
