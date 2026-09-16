@@ -1,6 +1,6 @@
 # PDF intake — what it does today, and what it leaves on the page
 
-## 0. START HERE (state as of 2026-09-15 late evening, after steps 47 and 54–80 — 254 of 296 sets build from the PDF alone on run 21; plates on 63% of storeys; step 80 lands after run 21 and is measured by the next batched run)
+## 0. START HERE (state as of 2026-09-16 03:30, after steps 47 and 54–87 — 255 of 296 sets build from the PDF alone on run 23 (255 of 279 with a stick file of their own); plates on 63% of storeys; steps 86–87 land after run 23 and are measured by run 24)
 
 A session picking this up cold reads this section, then the completion plan
 (`docs/architecture/Kor.Operations.EngineeringTools.PdfIntake.plan.md` — what "complete" means, the
@@ -47,14 +47,14 @@ reader (is the line there? what does the drawing call it? is the bubble drawn tw
 `takeoff grid-names` puts a sheet's axis names beside the model's; `model-render --storey L2` draws ONE floor full size, before and after a rule; `dxf-strip` + `dxf-to-etabs` twice + `model-diff` is the strip-a-layer differential (three minutes that say whether a move is the composer's or a layer's); `corpus-query pages <job> --runs a,b` reads one set's pages run against run from the database. Step 27 was a day spent guessing
 closing rules that a rendered view would have settled; that is the mistake this line exists to stop.
 
-**Where the route stands, measured on the corpus** (run 21, 2026-09-15 19:40–20:41, steps 73–79 with run 19's title fixes; step 80 is not in it — measured by the next batched run):
+**Where the route stands, measured on the corpus** (run 23, 2026-09-16 02:24–03:22, steps through 85; steps 86–87 are not in it — measured by run 24):
 
 | | |
 |---|---|
-| Sets that build a model from the PDF alone | **254 of 296** on run 21 (the most yet; run 19's title regression closed — no class loses against run 18) |
-| No model | 17 no plan sheet with structure on it, 17 the stick file of another job, 8 no storeys (run 21's ledger) |
-| Sheets placed on a storey | 2,325 of 4,855 written (48%) on run 21 — the rest are refused non-structural sheets, sheets no storey name fits, and the 42 sets without a model |
-| Storeys with a plate | **1,703 of 2,687 (63%)** on run 21 (41% on run 19) — the engineers' bar (plan WP6a item 2); the remaining 37%: no ring read 6%, rings read but no plate 12%, no sheet placed 19% |
+| Sets that build a model from the PDF alone | **255 of 296** on run 23 — 255 of the 279 that hold a stick file of their own (the most yet; 30994 joined on step 85; no model lost across runs 21 → 22 → 23) |
+| No model | 17 the stick file of another job (a denominator, not a fault), 17 no plan sheet with structure on it, 7 no storeys (run 23: 01742, 01783, 01788, 30768, 30836, 30888 — step 87 reads its rotated strip — 30980 — its titles are plotted outlines, §96) |
+| Sheets placed on a storey | 2,031 of 3,937 plan views written (52%) on run 23 — the rest are refused non-structural sheets, sheets no storey name fits, and the 42 sets without a model |
+| Storeys with a plate | **1,702 of 2,688 (63%)** on run 23 (41% on run 19) — the engineers' bar (plan WP6a item 2); the remaining 37%: no ring read 6%, rings read but no plate 12%, no sheet placed 19% |
 | Against the engineers' own models (51 sets on run 21, `corpus-query summary`) | 58% of our columns within 100 mm of theirs (6,663 of 11,496), 53% of theirs within 100 mm of ours (6,626 of 12,512), pooled; the matched counts did not fall between runs 18 and 21 on any set — where the share fell, the judged population grew (§86) |
 | The six banked sets | in the repo, byte-identical to their baselines at every commit (`SixSetsBuildAsBankedTests`, ~3 min with the cached page walk) |
 
