@@ -463,6 +463,24 @@ public class PlanSheetNamingTests
         Assert.Equal(new[] { "LEVEL P2" }, PlanSheetNaming.MatchStories(sheet, stories));
     }
 
+    /// <summary>
+    /// A LEVEL COUNTED DOWNWARD FROM GRADE IS A PARKADE LEVEL (step 84, WP6a item 7): 30912 names its five parkade
+    /// plans "LEVEL -1 PLAN" to "LEVEL -5 PLAN" and its elevations the same; the ladder now names them P1-P5 and the
+    /// plans must land on them. A range ("LEVEL 5 - 7") is not a negative level.
+    /// </summary>
+    [Fact]
+    public void ANegativeLevelIsAParkadeLevel()
+    {
+        var sheet = PlanSheetNaming.Parse("S2.03.1_1_LEVEL -3 PLAN - CONCRETE 1 OUTLINE.dxf");
+        Assert.Equal(new[] { 3 }, sheet.ParkadeLevels);
+        Assert.Empty(sheet.Levels);
+        Assert.Equal(new[] { "P3" }, PlanSheetNaming.MatchStories(sheet, new[] { "L1", "P1", "P2", "P3", "P4" }));
+
+        var range = PlanSheetNaming.Parse("S2.10.1_1_LEVEL 5 - 7 PLAN - CONCRETE OUTLINE.dxf");
+        Assert.Empty(range.ParkadeLevels);
+        Assert.Equal(new[] { 5, 6, 7 }, range.Levels);
+    }
+
     [Fact]
     public void AnUntaggedSheetPrefersTheUnprefixedStorey()
     {

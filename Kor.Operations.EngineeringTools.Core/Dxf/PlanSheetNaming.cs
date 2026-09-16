@@ -153,6 +153,7 @@ public static partial class PlanSheetNaming
 
         var parkade = vocabulary.ParkadeLevel.Matches(ownName)
             .Select(m => int.Parse(m.Groups[1].Value))
+            .Concat(vocabulary.NegativeLevel.Matches(ownName).Select(m => int.Parse(m.Groups[1].Value)))   // LEVEL -3 is P3 (step 84)
             .Distinct()
             .OrderBy(v => v)
             .ToList();

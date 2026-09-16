@@ -32,6 +32,14 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             n = Regex.Replace(n, @"0*(\d+)", "$1");                  // strip zero-padding in numbers
             n = Regex.Replace(n, @"^([A-Z]{1,2}-)?(LEVEL|LVL|LEV)\s+(?=\d)", "$1L"); // LEVEL 7 → L7; B-LEVEL 37 → B-L37 (step 25: the building rides with the name)
             n = Regex.Replace(n, @"^(LEVEL|LVL|LEV)\s+(?=[A-Z])", ""); // LEVEL P1 → P1
+            // A STOREY IS NAMED AS THE SET NAMES IT (intake step 84, 2026-09-16; WP6a item 7). Two label shapes the ladder
+            // kept verbatim, so a set's elevations and its plans named one storey twice: "LEVEL (L35)" - the level in
+            // parentheses after the word - is L35 (30838's elevations; its plans' L35-L37 then took assumed heights
+            // 731 mm apart while the real ones stood 3.6 m above under the other name); and "LEVEL -3" - a level
+            // counted downward from grade - is the third parkade level, P3 (30912: LEVEL -5 to LEVEL -1 under L1,
+            // 3,048 mm apart, the set's own parkade). "LEVEL +2.0", an elevation as a name, is left as the set says it.
+            n = Regex.Replace(n, @"^(LEVEL|LVL|LEV)\s*\(\s*L(\d+)\s*\)$", "L$2");   // LEVEL (L35) → L35
+            n = Regex.Replace(n, @"^(LEVEL|LVL|LEV)\s*-\s*(\d+)$", "P$2");           // LEVEL -3 → P3
             return n;
         }
 

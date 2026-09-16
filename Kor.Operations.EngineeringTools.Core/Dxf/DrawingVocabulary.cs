@@ -216,7 +216,7 @@ public sealed record DrawingVocabulary
     // Regex per call would be the kind of quiet cost that only shows up on a big drawing set.
     // ------------------------------------------------------------------------------------------
 
-    private Regex? _building, _prefixBuilding, _range, _levelList, _singleLevel, _parkadeLevel, _parkadeStory, _issued, _wordFloor, _basement, _topFloor;
+    private Regex? _building, _prefixBuilding, _range, _levelList, _singleLevel, _parkadeLevel, _negativeLevel, _parkadeStory, _issued, _wordFloor, _basement, _topFloor;
 
     /// <summary>"MAIN FLOOR", "2ND FLOOR", "SECOND LEVEL": a floor word or an ordinal, then a floor noun.</summary>
     public Regex WordFloor => _wordFloor ??= new Regex(
@@ -270,6 +270,16 @@ public sealed record DrawingVocabulary
     /// <summary>"LEVEL 9".</summary>
     public Regex SingleLevel => _singleLevel ??= new Regex(
         $@"(?:{Any(LevelWords)})\s*(\d+)",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
+    /// <summary>
+    /// "LEVEL -3" on a sheet title: a level counted downward from grade is a parkade level (step 84, 2026-09-16;
+    /// 30912 names its five parkade plans LEVEL -1 to LEVEL -5 and its elevations the same). The minus must sit
+    /// between the word and the number and no range may follow: "LEVEL 5 - 7" is a range, "LEVEL - 1" is the first
+    /// level below grade.
+    /// </summary>
+    public Regex NegativeLevel => _negativeLevel ??= new Regex(
+        $@"(?:{Any(LevelWords)})\s*-\s*(\d+)(?!\s*-\s*\d)",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
     /// <summary>"LEVEL P2" on a sheet title.</summary>

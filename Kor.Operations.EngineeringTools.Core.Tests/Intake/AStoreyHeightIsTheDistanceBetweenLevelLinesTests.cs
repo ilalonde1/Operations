@@ -104,6 +104,26 @@ public sealed class AStoreyHeightIsTheDistanceBetweenLevelLinesTests
         Assert.Equal("L37", ScheduleTakeoff.NormalizeLevel("LEVEL 37"));
     }
 
+    /// <summary>
+    /// A STOREY IS NAMED AS THE SET NAMES IT (step 84, WP6a item 7): the level in parentheses after the word is the
+    /// level (30838's elevations "LEVEL (L35)", which had named L35 twice - once verbatim and once by the plans at an
+    /// assumed height); a level counted downward from grade is a parkade level (30912's LEVEL -1 to -5 under L1).
+    /// WHAT IT DOES NOT: an elevation as a name ("LEVEL +2.0") stays as the set says it; a building prefix on a
+    /// negative level ("B-LEVEL -1") is not read - none in the corpus names one.
+    /// </summary>
+    [Theory]
+    [InlineData("LEVEL (L35)", "L35")]
+    [InlineData("Level (L07)", "L7")]
+    [InlineData("LEVEL -3", "P3")]
+    [InlineData("LEVEL -5", "P5")]
+    [InlineData("LEVEL - 1", "P1")]
+    [InlineData("LEVEL +2.0", "LEVEL +2.0")]
+    [InlineData("LEVEL P3", "P3")]
+    public void TheParenthesisedLevelIsTheLevelAndANegativeLevelIsAParkadeLevel(string label, string storey)
+    {
+        Assert.Equal(storey, ScheduleTakeoff.NormalizeLevel(label));
+    }
+
     [Fact]
     public void AColumnOfFewerThanThreeLabelsIsACaptionNotAStrip()
     {

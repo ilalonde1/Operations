@@ -11,6 +11,7 @@
 //   takeoff corpus-query plates [<job> ...]         every built set's storeys with and without a plate, and where each missing plate was lost (WP6a item 2)
 //   takeoff corpus-query yardsticks                  every set measured against the engineer's own model, worst first
 //   takeoff corpus-query diff <before-sets.csv>      what moved between that banked run and this ledger, set by set, classed by the first thing that changed
+//   takeoff corpus-query storeys [<job> ...]       every built set's storey names classed: the ladder's shapes, roofs by word, sub-levels, elevations, GARBAGE (item 7 is done at 0)
 //   takeoff corpus-query pages <job> [--runs a,b]    one set's pages run against run, from analysis.IntakeSheet: the pages placed differently, on what storeys (default: the last two runs)
 // Add --ledger <dir> to any of them.
 internal static class CorpusQueryVerb
@@ -19,7 +20,7 @@ internal static class CorpusQueryVerb
 
     public static int Run(string[] args)
     {
-        if (args.Length < 2) { Console.Error.WriteLine("Usage: takeoff corpus-query summary|no-model|plan-titles|set <job>...|columns <job>|plates [<job>...]|yardsticks|diff <before-sets.csv>|pages <job> [--runs a,b] [--ledger <dir>]"); return 1; }
+        if (args.Length < 2) { Console.Error.WriteLine("Usage: takeoff corpus-query summary|no-model|plan-titles|set <job>...|columns <job>|plates [<job>...]|yardsticks|diff <before-sets.csv>|pages <job> [--runs a,b]|storeys [<job>...] [--ledger <dir>]"); return 1; }
         if (args[1].Equals("pages", StringComparison.OrdinalIgnoreCase)) return Pages(args.Skip(2).ToList());
         string dir = Path.Combine(DrawingMirror.Root, "corpus");
         var rest = new List<string>();
@@ -37,6 +38,8 @@ internal static class CorpusQueryVerb
             return Columns(rest, File.Exists(dir) ? Path.GetDirectoryName(Path.GetFullPath(dir)) ?? "." : dir);
         if (args[1].Equals("plates", StringComparison.OrdinalIgnoreCase))
             return Plates(rest, File.Exists(dir) ? Path.GetDirectoryName(Path.GetFullPath(dir)) ?? "." : dir);
+        if (args[1].Equals("storeys", StringComparison.OrdinalIgnoreCase))
+            return Storeys(rest, File.Exists(dir) ? Path.GetDirectoryName(Path.GetFullPath(dir)) ?? "." : dir);
         if (!File.Exists(setsPath)) { Console.Error.WriteLine($"No ledger at {setsPath}; run corpus-analyze first, or give --ledger <dir|sets.csv>."); return 2; }
         var sets = CorpusAnalyzer.ReadSets(setsPath);
         var sheets = File.Exists(sheetsPath) ? CorpusAnalyzer.ReadSheets(sheetsPath) : [];
@@ -121,6 +124,43 @@ internal static class CorpusQueryVerb
         Console.WriteLine("  and the whole titles most repeated");
         foreach (var (t, n) in titles.OrderByDescending(kv => kv.Value).ThenBy(kv => kv.Key, StringComparer.Ordinal).Take(40))
             Console.WriteLine($"    {n,5}  {t}");
+        return 0;
+    }
+
+    /// <summary>
+    /// STOREYS NAMED AS THE SET NAMES THEM (WP6a item 7): every built set's storey names in the work folder, classed
+    /// by StoreyNameClass - the ladder's own shapes, roofs and mezzanines by word, elevations as names, and garbage
+    /// (a title's words taken for a storey), the garbage listed set by set. Item 7 is done when garbage is 0.
+    /// </summary>
+    private static int Storeys(List<string> jobs, string root)
+    {
+        var dirs = Directory.EnumerateDirectories(root)
+            .Where(d => File.Exists(Path.Combine(d, "out.e2k")))
+            .Where(d => jobs.Count == 0 || jobs.Contains(Path.GetFileName(d), StringComparer.OrdinalIgnoreCase))
+            .OrderBy(d => d, StringComparer.OrdinalIgnoreCase).ToList();
+        if (dirs.Count == 0) { Console.Error.WriteLine($"No built sets under '{root}'."); return 2; }
+        var byKind = new Dictionary<StoreyNameClass.Kind, int>();
+        var examples = new Dictionary<StoreyNameClass.Kind, List<string>>();
+        var garbage = new List<(string Job, string Name)>();
+        int storeys = 0;
+        foreach (string d in dirs)
+        {
+            string job = Path.GetFileName(d);
+            foreach (var s in E2kDocument.Load(Path.Combine(d, "out.e2k")).ReadStories())
+            {
+                storeys++;
+                var kind = StoreyNameClass.Classify(s.Name);
+                byKind[kind] = byKind.GetValueOrDefault(kind) + 1;
+                var list = examples.TryGetValue(kind, out var l) ? l : examples[kind] = new List<string>();
+                if (!list.Contains(s.Name) && list.Count < 12) list.Add(s.Name);
+                if (kind == StoreyNameClass.Kind.Garbage) garbage.Add((job, s.Name));
+            }
+        }
+        Console.WriteLine($"  {dirs.Count} built sets, {storeys} storeys (Base included), by the kind of name:");
+        foreach (var kind in Enum.GetValues<StoreyNameClass.Kind>())
+            Console.WriteLine($"    {kind,-15} {byKind.GetValueOrDefault(kind),6}   {string.Join(", ", examples.GetValueOrDefault(kind) ?? [])}");
+        Console.WriteLine($"  garbage names (a title's words taken for a storey): {garbage.Count}" + (garbage.Count > 0 ? "" : " - item 7's finish line"));
+        foreach (var (job, name) in garbage) Console.WriteLine($"    {job}  \"{name}\"");
         return 0;
     }
 

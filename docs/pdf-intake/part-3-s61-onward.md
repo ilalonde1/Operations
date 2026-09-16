@@ -1587,3 +1587,34 @@ and 0 of 44 at a wall's thickness. Item 6 — the DXF-route ratchets — is clos
 WHAT IT DOES NOT: pair the inner face across chains where the pooled pass's 18 in cap refuses a real thick wall
 (the cap's known cost, 31065's ground floor at 64% of her wall length, stands); a nearer face that is not a wall's
 (a dimension line on the wall layer) — it would refuse a real pair, and the pooled pass would then have to find it.
+
+## 92. Step 84, 2026-09-16 small hours: a storey is named as the set names it — WP6a item 7, with its instrument
+
+**The instrument first.** `corpus-query storeys`: every built set's storey names in the work folder, classed by
+`StoreyNameClass` — the ladder's own shapes (L7, P3, B-L12, ROOF, Base), a roof by word (MAIN ROOF, LOW ROOF, UPPER
+ROOF, MECH. ROOF, ELEV. ROOF, ROOF LEVEL, PENTHOUSE, T.O.CORE, CANOPY), a sub-level (L1M, P1M, L4B, L16R, P1(P1A),
+L0/P1), a letter and a count (B1–B4, C1–C4, R5–R19), an elevation as a name (LEVEL +2.0), and garbage — a title's
+words taken for a storey. Over 254 built sets and 2,684 storeys: 2,635 ladder, 12 roofs by word, 16 sub-levels,
+14 letter-and-count, 1 elevation, **6 garbage** ("LEVEL -" on 30867, "DESIGN" on 30941, "AMANITY" on 30993, "LEVEL"
+on 31039, "LEVEL" and "VERTS." on 31207). Item 7's finish line is that last number at zero; the five sets are item
+5's no-model/garbage-text class and are left to it. Test `AStoreyIsNamedAsTheSetNamesItTests` at every name the
+corpus carried.
+
+**Two rules, each a stated shape.** Before this step the census showed two more shapes, 8 storeys on 2 sets, that
+were the SET's names misread rather than kinds of their own: (1) *the level in parentheses after the word is the
+level* — 30838's elevations label "LEVEL (L35)", which the ladder kept verbatim, so L35–L37 existed twice: once
+from the plans at ASSUMED heights 731 mm apart and once from the elevations at their real 3.6 m under the other
+name. `ScheduleTakeoff.NormalizeLevel`: LEVEL (L35) → L35. Recomposed: 30838 44 storeys (47), L35–L37 at
+123,527 / 127,185 / 130,237 mm with ROOF above, walls 2,023 → 2,059, columns 1,570 → 1,584. (2) *a level counted
+downward from grade is a parkade level* — 30912 names its five parkade levels LEVEL -1 to LEVEL -5 on the
+elevations AND on the plans ("LEVEL -3 PLAN - CONCRETE OUTLINE"), and neither reader read them: the ladder kept the
+label, the plan parser found "no level number in the sheet name". LEVEL -3 → P3 in both (`NormalizeLevel`;
+`DrawingVocabulary.NegativeLevel` in `PlanSheetNaming.Parse`, a minus between the word and the number and no range
+after it — "LEVEL 5 - 7" stays a range). Recomposed: 30912's five parkade plans placed on P1–P5 (placed 22 → 26 of
+27; walls 47 → 1,409, columns 1,409 → 2,073; the tower's 40 storeys had been reading against a ladder whose
+lowest names were nonsense). "LEVEL +2.0", an elevation as a name, stays as the set says it.
+
+**Measured.** Fast suite + six-set gate + ratchets: 1,446 of 1,446 green, the six byte-identical (none of them names a storey either way).
+
+WHAT IT DOES NOT: the six garbage names (item 5); a building prefix on a negative level ("B-LEVEL -1"), which no
+set names; whether a roof by word is the storey the engineer would model (item 8's question).
