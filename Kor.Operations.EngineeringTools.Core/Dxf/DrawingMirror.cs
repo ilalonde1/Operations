@@ -1,4 +1,4 @@
-namespace Kor.Operations.EngineeringTools.Dxf;
+﻿namespace Kor.Operations.EngineeringTools.Dxf;
 
 /// <summary>
 /// Drawings are read from local disk, always.
@@ -78,7 +78,14 @@ public static class DrawingMirror
     {
         if (string.IsNullOrWhiteSpace(remoteFile)) return remoteFile;
         if (!IsRemote(remoteFile)) return remoteFile;
-        if (!File.Exists(remoteFile)) return remoteFile;
+        if (!File.Exists(remoteFile))
+        {
+            // THE SHARE MOVED ON SINCE THE CENSUS (2026-09-16, run 27b): 50054-01's stick file of 2026-05-06 was gone from
+            // its folder by the afternoon and the set lost its model to "No file exists at". The mirror holds the copy
+            // the office held when the census ran; that copy is what the corpus measures until the next census.
+            string gone = Path.Combine(Path.Combine(Root, Key(Path.GetDirectoryName(remoteFile) ?? remoteFile)), Path.GetFileName(remoteFile));
+            return File.Exists(gone) ? gone : remoteFile;
+        }
 
         lock (Gate)
         {

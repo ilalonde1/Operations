@@ -230,8 +230,9 @@ public static class CorpusAnalyzer
             {
                 // the mirror is the local copy the tests use; DrawingMirror copies only when size or date differ
                 string pdf = DrawingMirror.SingleFile(issue.Path);
+                bool sourceMoved = !File.Exists(issue.Path);   // the share moved on since the census; the mirror's copy is read (DrawingMirror.SingleFile)
                 string? yardstick = YardstickFor(job, yardstickFolder, options.YardstickPrimaryModelWords, options.YardstickSecondaryModelWords);
-                string stamp = $"{issue.Bytes}|{File.GetLastWriteTimeUtc(issue.Path):O}|{built:O}|{(yardstick is null ? "-" : Path.GetFileName(yardstick) + ":" + new FileInfo(yardstick).Length)}";
+                string stamp = $"{issue.Bytes}|{File.GetLastWriteTimeUtc(sourceMoved ? pdf : issue.Path):O}|{built:O}|{(yardstick is null ? "-" : Path.GetFileName(yardstick) + ":" + new FileInfo(yardstick).Length)}";
                 string manifest = Path.Combine(work, "manifest.txt");
                 // --reuse: the builds stand whatever the tool's stamp says - for a change proven outside the
                 // build path (the six-set bank byte-identical), so the yardstick pass over 292 built models
@@ -297,8 +298,9 @@ public static class CorpusAnalyzer
             AppendSetRow(partialLedger, row, gate);
             int n;
             lock (gate) n = ++done;
-            string yard = row.OursCompared is int oc && oc > 0 ? $"; yardstick: {row.SharedStoreys} shared storeys, {row.OursWithin100}/{oc} of ours within 100 mm{(row.FrameFromGrids == true ? "" : " (frame from columns)")}" : row.Yardstick is not null ? "; yardstick: no shared storey with columns" : "";
-            log($"  [{n}/{jobs.Count}] {job.Job} {(row.Error is not null ? "ERROR " + row.Error : row.HasModel ? $"model: {row.StoreysBuilt} storeys, {row.Walls} walls, {row.Columns} columns, {row.SheetsPlaced}/{row.SheetsWritten} placed" : "no model: " + row.ModelError)}{yard}  {row.Seconds:F0} s");
+            string moved = job.Newest is null || File.Exists(job.Newest.Path) ? "" : "; the share's file is gone since the census - the mirror's copy read";
+            string yard = row.OursCompared is int oc && oc > 0 ? $"; yardstick:{row.SharedStoreys} shared storeys, {row.OursWithin100}/{oc} of ours within 100 mm{(row.FrameFromGrids == true ? "" : " (frame from columns)")}" : row.Yardstick is not null ? "; yardstick: no shared storey with columns" : "";
+            log($"  [{n}/{jobs.Count}] {job.Job} {(row.Error is not null ? "ERROR " + row.Error : row.HasModel ? $"model: {row.StoreysBuilt} storeys, {row.Walls} walls, {row.Columns} columns, {row.SheetsPlaced}/{row.SheetsWritten} placed" : "no model: " + row.ModelError)}{yard}{moved}  {row.Seconds:F0} s");
         });
 
         var allSets = sets.Where(s => s is not null).Select(s => s!).OrderBy(s => s.Job, StringComparer.Ordinal).ToList();
