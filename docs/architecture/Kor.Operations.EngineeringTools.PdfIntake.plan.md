@@ -1,6 +1,6 @@
 ﻿# PDF intake → ETABS — Completion Plan
 
-**Status:** Rev 5, 2026-09-16 11:40 (rows 3y–3ag; steps 80–97 landed and measured, runs 22–26 banked, 260 of 296 and plates 66% on run 26, step 97 not yet run on the corpus; §8 owes Ian Q1 and item 8's three picks; migration 093 applied) — Rev 4, 13:00 — WP6a re-plans the road on the engineers' own definition of usable (verticals + a plate on every storey; one model per building); steps 47 and 49–73 in §8, runs 8–16 in §1b, run 17 in flight — WP1–WP5 landed overnight on Ian's go-ahead ("go through this all,
+**Status:** Rev 6, 2026-09-16 14:20 (rows 3y–3ah; steps 80–101 landed and measured, runs 22–26 banked, run 27b in flight with steps 97–98; item 8 re-planned as the corpus's own review (`corpus-disagreements`); §8 owes Ian migrations 094 and 095; Q1 answered by the corpus's 622 piers, item 8's picks no longer what the work waits on) — Rev 4, 13:00 — WP6a re-plans the road on the engineers' own definition of usable (verticals + a plate on every storey; one model per building); steps 47 and 49–73 in §8, runs 8–16 in §1b, run 17 in flight — WP1–WP5 landed overnight on Ian's go-ahead ("go through this all,
 step by step, and finish it overnight"): commits `8fccbc25` (WP3), `3f3f82b9` (WP2), `aba7d9ff`
 (WP4), `69e554b5` (WP5), each gated by the six byte-identical and the fast suite; WP5's remaining
 conventions are counted by a test, not by this document. §8 is what needs Ian. Rev 2 (2026-09-11)
@@ -217,7 +217,7 @@ three lines here at the commit.
 | 5 | **The no-model residue** — STARTED 2026-09-16 (step 85, §93): 17 other-job files (a denominator, 279), 17 no-plan — LOOKED AT step 90 (§100): six 1–2 page sets, four with no title text, two titled by number only, two with no text layer (31036, 30907 — raster route), three titled by their storey alone (31229 8 plans, 90101, 90102) → a title that is a storey's name and nothing else is a plan (31229 0 → 8 plans; 90102's titles carry the project name, open), 8 no-storey looked at page by page: 30994 = the project name over the title (FIXED: a title names a plan); 30888 = the rotated strip — DONE step 87 (§97: words written up the page are read up the page; 30888's 13 plans, 01589's 3 and 30941's title read right; 30941's B-levels are item 7's next row); 30980 = its titles are plotted as glyph outlines and its block letter-spaces its labels (step 86, §96: the labels join, the empty box is no title, the floor label is not a neighbour — 17 guessed titles → none; a raster-route set, honestly so); 30768 details only. | ≥ 270 of 279 build; every remaining one names its class in the ledger | 1 day left |
 | 6 | **The DXF route's ratchets** — DONE 2026-09-16 (steps 82–83, §89–§91): four reds, four rules, no re-bank — a plate that came and went with the page origin (on the edge is in); an open chain's closing gap is not a face (31168's 202-ft wall on nothing); a face's partner is the nearest facing face wherever it lies + no wall stands inside a wall (31138's 57-in phantom); the outlines ratchet counts outlines at a wall's thickness (all 64 were ribbons). A thickness cap was measured and rejected (§91) | the full Core suite green: 1,453 of 1,453 | done |
 | 7 | **Storeys named as the set names them** — DONE for the named shapes 2026-09-16 (step 84, §92): LEVEL (L35) → L35; LEVEL -3 → P3 in the ladder AND the plan titles (30912's five parkade plans placed); `corpus-query storeys` classes every name (roofs by word, sub-levels, letter-and-count, elevations stay as the set says them). Residue: 6 garbage names on 5 sets = item 5's class; DONE step 88 (§98): a B-level is a level below grade — `dxf.parkade-words` P → P;B, migration 093 (IAN APPLIES; until then run 24 measures 30941 with P alone); 30941's 15 plans read their LEVEL B4…B1 titles | `corpus-query storeys`: garbage 6 → 0 (item 5) | done |
-| 8 | **The engineers' review** — one model per building (050), published to the job folder, for three jobs whose engineers are current (a KOR set, a numbered-block set, the architect's set); their words become rules, as Andrea's did | three published models with reports; the feedback banked as rulings | a session per engineer |
+| 8 | **The engineers' review** — RE-PLANNED 2026-09-16 13:12 on Ian's challenge ("with our extensive corpus we should be able to synthesize ALL of the info we have"): the review is the corpus, not a meeting. 59 sets carry the engineer's own ETABS model beside ours; `takeoff corpus-disagreements` reads every comparison across the corpus and ranks where the two disagree (§111) — the ranked list IS the backlog. First reading banked (`disagreements-2026-09-16-run26.txt`): 622 of our unmatched columns on 37 sets stand on a wall she modelled → **step 99** (piers); 31098 judged against a secondary-elements model → **step 101** (her primary model); storeys she names that we do not (MECH, EMR, UPPER, MEZZ) and 4,665 of ours beyond her one-building model → one model per building, the deliverable form. The three published models for current engineers remain the confirmation, not the input | the disagreement classes each a rule or a named residue; the yardstick share rising run over run; then three published models | rolling, with each run |
 
 Two things the plan no longer asks anyone: the ten questions of 2026-09-15 are answered in the index
 (eight of ten) or open and low-stakes (wood buildings; which of an engineer's models is current — the
@@ -577,6 +577,21 @@ residues' cause. Not the PDF route; queued behind it.
    31170-arch L3 a 1,550 sq ft part-plan plate the report flags (item 4's class). OWED TO IAN: Q1 (item 3(b)) and
    item 8's three picks, in `docs/pdf-intake/QUESTIONS.md`. Ian's design challenge on 96B ("1000's of specific
    rules?") answered by the outcome: the numbers were never the rule; the drawing's own node (the column) was.
+
+3ah. **Autonomous afternoon 2026-09-16 12:47 →** (§111–§112; Ian: "keep going until you've finished your plan ... same
+   process as last night"; mails at every step, from 14:07 through `tools/SessionMail`, C# in the repo — the two
+   PowerShell scripts in %TEMP% deleted on his "nothing ephemeral"). **Step 98** (`42746a22`): a curve drawn as short
+   strokes is one line; a cell enclosed by the floor is the floor — 31138 L7–L19 ×13, L2; 31168 L15–L26 ×12; 31202
+   L6/L7–L12 ×6/L13; 31065's east tower ×13. Instrument: `model-diff` says where every member went (nothing vanished on
+   any set; members move storeys when plates appear). **`corpus-disagreements`** (`66a4234b`): item 8 from the corpus.
+   **Step 99** (`ac76d7e8`): a rectangle no schedule declares, longer than 24 in and twice as long as wide, is a wall
+   pier — two rows, **migration 094** owed. **Step 100** (`8225315d`): a cell wrapped round the floor is the floor — 31202's
+   lower roof back, 31130's east L3–L13 half-plates back (a regression of step 98's final form, found rendering L5,
+   recorded at 13:35, fixed at 13:56). **Step 101** (`4c003e50`): the yardstick is her primary model — two vocabulary
+   rows, **migration 095** owed. Run 27 (steps 97–98) launched 13:02, interrupted at 173 of 296 by a Ctrl-C in its
+   console (cause unknown); run 27b resumed 14:17 on the same binary without --force. Parked, each measured (§112):
+   31130 p35's top half (enclosed at 60 mm, no face from PlanarRings); 31138's split level; 31202 ROOF's notch; part
+   plans; openings.
 
 4. **WP6** — one model in front of Andrea (31170's, or whichever the ledger ranks best of the
    architects' sets). Ian's call when.
