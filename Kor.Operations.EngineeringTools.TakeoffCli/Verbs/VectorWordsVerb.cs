@@ -29,11 +29,16 @@ internal static class VectorWordsVerb
             double y0 = Band(args[4]), y1 = Band(args[5]);
             double x0 = args.Length > 6 ? Band(args[6]) : double.NegativeInfinity, x1 = args.Length > 7 ? Band(args[7]) : double.PositiveInfinity;
             var band = pc.Words.Where(t => t.Cy >= y0 && t.Cy <= y1 && t.Cx >= x0 && t.Cx <= x1).OrderBy(t => t.Cx).ThenBy(t => t.Cy).ToList();
-            Console.WriteLine($"  {band.Count} words in y {y0:0}..{y1:0}" + (args.Length > 6 ? $", x {x0:0}..{x1:0}" : ""));
+            // the box and its way: a word whose box is taller than twice its width is written up the page (a
+            // rotated title strip, 30888; the upright title of KOR's strip, 30941) - the count says how much of the
+            // band is (2026-09-16, step 87's measurement)
+            int upright = band.Count(t => t.Text.Trim().Length >= 3 && t.Height > 2 * t.Width), lettered = band.Count(t => t.Text.Trim().Length >= 3);
+            Console.WriteLine($"  {band.Count} words in y {y0:0}..{y1:0}" + (args.Length > 6 ? $", x {x0:0}..{x1:0}" : "") +
+                $"; {upright} of {lettered} words of three or more letters are written up the page");
             foreach (var t in band)
             {
                 int twins = band.Count(o => Math.Abs(o.Cx - t.Cx) <= 3 && Math.Abs(o.Cy - t.Cy) <= 3) - 1;
-                Console.WriteLine($"    x {t.Cx,8:0.0}  y {t.Cy,7:0.0}  \"{t.Text}\"" + (twins > 0 ? $"   +{twins} on the same spot" : ""));
+                Console.WriteLine($"    x {t.Cx,8:0.0}  y {t.Cy,7:0.0}  w {t.Width,5:0.0} h {t.Height,5:0.0}  \"{t.Text}\"" + (twins > 0 ? $"   +{twins} on the same spot" : ""));
             }
             return 0;
         }

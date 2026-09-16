@@ -1750,3 +1750,60 @@ project name in every DXF filename. A set like this is the raster route's (OCR o
 WHAT IT DOES NOT: letters stacked up the page (30941's "A R C H I T E C T U R E" tagline is one letter per line
 and joins nothing — stated, not tested); a letter run spelling a label by accident (no label is an alphabetical
 run, so grid letters cannot); the upright second look is exercised by no fixture; 30941's own title order.
+
+## 97. Step 87, 2026-09-16 03:35: words written up the page are read up the page — 30888, 01589 and 30941 (WP6a item 5; the second instance, so the class)
+
+**Reproduced on the sets.** Three sets, one shape. **30888** (Duffy Hills, 2020; 13 plans, no storeys): every plan
+titled "HILLS ARCHITECTURE DUFFY DRAWING LANDSCAPE PERMIT REVIEW REVIEW REVIEW …" — its whole strip is written up
+the page, labels JOB NO. / DRAWING NAME at x 2369, SCALE 2397, REVISIONS 2417, DATE 2423 and 2435 (`vector-words
+--band`, which now prints each word's box and counts the band's upright words: 82 of 105). **01589** (629 E 12th;
+3 plans): "PERMIT PERMIT PERMIT BUILDING BUILDING BUILDING FOR FOR FOR ISSUED ISSUED ISSUED RESIDENCE PLAN PRIVATE
+FOUNDATION" on every plan — its labels are HORIZONTAL at the foot of the strip (SCALE:, DATE:, DRAWN BY:, JOB #:,
+w 37 h 7.1) and only the title (FOUNDATION PLAN, 20.7 pt), the project and the revision columns are upright: a
+mixed block, 81 of 101. **30941** (KOR's own strip; 34 storeys, 12 of 138 placed): "PLAN LEVEL RAFT FOUNDATION SSI
+SA PM JD" for a title written up the page in two columns 41 pt apart under horizontal labels, 57 of 279.
+
+**§80's fixture was not its page.** `ARotatedStripUsesOneReadingCoordinateSystem` sets 01589's SCALE:/DRAWN BY:/JOB
+#: as rotated tokens; on the page they are horizontal, so the page never was a rotated block, the rule never fired
+on it, and the test passed on a shape no page has been seen to draw. Found by running the page through a probe of
+`ReadingTokens` (rotated=false, two upright labels). Rule 5, again: the fixture is not the artifact. The fixture
+stays as the wholly-rotated case, its summary corrected; the page is `AMixedStripReadsItsUprightWordsUpThePage`.
+
+**The class.** A word whose box is taller than twice its width is written up the page (`TitleBlockFields.IsUpright`).
+Read as a horizontal line its height is its LENGTH — so every upright word is a title-size candidate — and a column
+of them is one "line" per y, so the guess joins them in y order into a salad. The rotated-block detection (§80)
+handled one shape only: three upright labels in one text column.
+
+**Four rules.**
+1. *Three upright labels anywhere in the strip say rotated* (`ReadingTokens`): not in one column — 30888's stand
+   6 to 27 pt apart, each in its own. 31202's upright PROJECT NAME and copyright paragraph beside a horizontal
+   block are not labels and do not count. Labels `DRAWING NAME` (→ SHEET TITLE; 30888 labels the project with a
+   second DRAWING NAME), `SHEET NAME`, `PROJECT NAME` added.
+2. *The upright words of a mixed block are read in their own frame* (`SheetTitleReader.TitleText`): swapped
+   (`TitleBlockFields.Swapped`: a column is a line, read bottom-up, the font size is the height), read as blocks the
+   same way as the horizontal words, and the blocks of both readings compete — the largest that names a plan wins.
+   A one- or two-glyph word has no shape of its own ("B4" is 1.4× as tall as wide either way): it is upright when
+   it stands in an upright word's column at that word's size.
+3. *A level token is not a sheet number*: "B4", "P1", "L12" have the letter-digit form and the form alone had put
+   30941's B4 out of its own title; a sheet number has a dot or a dash, or is the token the block sets as the number.
+4. *A block is a two-dimensional stack of runs*: a line of the block splits at a gap of twice its height along it
+   (30941's title column holds the title at y 377–525 and the architect's JWDA at 1153), and a run joins the block
+   whose last run is within two heights above it AND overlaps it along the line; two fields side by side on one
+   baseline are two blocks. Before this the blocks were consecutive lines by y alone, and 30941 p16 read "W LEVEL
+   B4 RAFT JWDA THE LYNDLEY FOUNDATION PLAN K APARTMENTS".
+
+**Measured** (`pdf-inventory`, title as read): 30888 pp13–27: 13 plans "P2 PARKADE PLAN WEST", "P1 PARKADE PLAN WEST
+(CONCRETE OUTLINE)", "MAIN FLOOR PLAN EAST", "LEVEL P1 PLAN SHOWING MAIN FLOOR FRAMING OVER", "2ND FLOOR PLAN SHOWING
+3RD FLOOR FRAMING OVER" … (p17/p19 "(REISNOISIVERNFORCING PLAN)": the PDF's word builder merges the overlapping
+upright "(REINFORCING" and "REVISIONS" into one token — not this reader's; p18 "CONRETE" is the drafter's). 01589
+pp7–9: "FOUNDATION PLAN", "MAIN FLOOR PLAN SHOWING UPPER FLOOR ROOF FRAMING OVER", "UPPER FLOOR PLAN SHOWING ROOF
+FRAMING OVER". 30941 p16: "LEVEL B4 RAFT FOUNDATION PLAN" exactly; pp17–22 unchanged ("PLAN SIDE REINFORCING NORTH
+LEVEL"): the upright reading gives "LEVEL B4 PLAN REINFORCING NORTH SIDE" and `NamesAPlan` refuses it — **LEVEL B4
+names no storey the vocabulary knows** (ParkadeWords = P only; 30941's ladder calls its storeys B1–B4, class
+LetterAndCount in `corpus-query storeys`). That is item 7's next row (B is a below-grade letter), not this step.
+30994 pp11–14 unchanged. Fast suite + six-set gate 1,451 green, the six byte-identical (none of the six writes a
+title up the page). Run 24 measures the corpus: 30888's 13 plans and 01589's 3 should place.
+
+WHAT IT DOES NOT: a title written top-down (no page seen); the B-level vocabulary; `FromPage` (the level reader) is
+still by position — the DXF name carries the storey from `TitleText`, so placement does not need it; the word
+builder's merged tokens.

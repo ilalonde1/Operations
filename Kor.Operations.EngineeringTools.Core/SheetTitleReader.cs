@@ -115,8 +115,8 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             // either, the answer is none.
             if (labelsFound.Contains("SHEET TITLE"))
             {
-                var upright = Intake.TitleBlockFields.Read(page, out _, out _, keepUpright: true);
-                return upright.TryGetValue("SHEET TITLE", out field) && field.Length > 0 ? field : null;
+                var secondLook = Intake.TitleBlockFields.Read(page, out _, out _, keepUpright: true);
+                return secondLook.TryGetValue("SHEET TITLE", out field) && field.Length > 0 ? field : null;
             }
 
             // Title-size words on the right edge, less dates and the sheet number: the number is the
@@ -135,32 +135,83 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             // plans, "no storeys: no plan names one"). Among the block's upper-case lines at any title-like size
             // (from 0.7 of the floor), adjacent lines are read as one block, and the largest block that names a plan
             // is the title. Size decides only between lines that name none.
-            var candidates = readingTokens
-                .Where(t => t.Height >= 0.7 * TitleMinH
-                            && !StampTokenRx.IsMatch(t.Text.Trim()) && !SheetNumberTokenRx.IsMatch(t.Text.Trim())
-                            && !t.Text.EndsWith(':') && t.Text.Any(char.IsLetter)
-                            && t.Text.Trim() == t.Text.Trim().ToUpperInvariant())
-                .ToList();
-            if (!rotated && candidates.Count > 0)
+            // WORDS WRITTEN UP THE PAGE ARE READ UP THE PAGE (intake step 87, 2026-09-16; WP6a item 5). A block can
+            // mix the two: 01589's labels are horizontal at the foot of the strip and its title "FOUNDATION PLAN" is
+            // written up the page above them; KOR's own strip (30941) writes "LEVEL B4 RAFT / FOUNDATION PLAN" up the
+            // page under horizontal labels. Read as horizontal lines, an upright word's height is its length and a
+            // column of them is one line per y - every plan of 01589 was titled "PERMIT PERMIT PERMIT BUILDING
+            // BUILDING BUILDING FOR FOR FOR ISSUED ...", 30941's "PLAN RAFT FOUNDATION LEVEL". So the upright words
+            // are put in their own frame (a column is a line, read bottom-up, the font size is the height) and read
+            // as blocks the same way; the blocks of both readings compete, and the largest that names a plan wins.
+            // When the whole strip is rotated the tokens already stand in that frame.
+            // A LEVEL TOKEN IS NOT A SHEET NUMBER (step 87): "B4", "P1", "L12" have the sheet number's letter-digit
+            // form, and the form alone had put 30941's B4 out of its own title ("LEVEL RAFT FOUNDATION PLAN"). A
+            // sheet number has a dot or a dash in it (S2.01, A-101), or is the token the block sets as the number.
+            string? sheetNumber = SheetNumberToken(page);
+            bool LooksLikeASheetNumber(string s) => SheetNumberTokenRx.IsMatch(s) && (s.Contains('.') || s.Contains('-') || s == sheetNumber);
+            bool IsCandidate(VectorPageReader.TextToken t) =>
+                t.Height >= 0.7 * TitleMinH
+                && !StampTokenRx.IsMatch(t.Text.Trim()) && !LooksLikeASheetNumber(t.Text.Trim())
+                && !t.Text.EndsWith(':') && t.Text.Any(char.IsLetter)
+                && t.Text.Trim() == t.Text.Trim().ToUpperInvariant();
+            // a word of one or two glyphs has no shape to say which way it is written ("B4" is 1.4 times as tall as
+            // it is wide either way): it is upright when it stands in an upright word's column at that word's size
+            var upright = readingTokens.Where(Intake.TitleBlockFields.IsUpright).ToList();
+            var uprightSet = new HashSet<VectorPageReader.TextToken>(upright);
+            foreach (var t in readingTokens.Where(t => t.Text.Trim().Length is >= 1 and <= 2 && t.Text.Any(char.IsLetterOrDigit)))
+                if (upright.Any(u => Math.Abs(u.Cx - t.Cx) <= 0.5 * u.Width && Math.Abs(u.Width - t.Width) <= 0.3 * u.Width))
+                    uprightSet.Add(t);
+            var readings = rotated
+                ? new[] { readingTokens.Where(IsCandidate).ToList() }
+                : new[]
+                {
+                    readingTokens.Where(t => !uprightSet.Contains(t)).Where(IsCandidate).ToList(),
+                    readingTokens.Where(uprightSet.Contains).Select(Intake.TitleBlockFields.Swapped).Where(IsCandidate).ToList(),
+                };
+            var blocks = new List<(string Text, double Height)>();
+            foreach (var candidates in readings.Where(c => c.Count > 0))
             {
-                var lines = Intake.TitleBlockFields.ReadingLines(candidates);       // top of the block first
-                var blocks = new List<(string Text, double Height)>();
-                var block = new List<List<VectorPageReader.TextToken>>();
-                void Close()
+                // a line of the block is one run of words: a gap of twice the line's height along it is another
+                // field on the same baseline (30941's column of words up the page holds the title at y 377-525 and
+                // the architect's name at y 1153; read as one line they were one title)
+                var lines = Intake.TitleBlockFields.ReadingLines(candidates)       // top of the block first
+                    .SelectMany(line =>
+                    {
+                        var runs = new List<List<VectorPageReader.TextToken>>();
+                        foreach (var t in line.OrderBy(t => t.Cx))
+                        {
+                            if (runs.Count > 0 && t.MinX - runs[^1].Max(o => o.MaxX) > 2.0 * Math.Max(t.Height, runs[^1].Max(o => o.Height))) runs.Add(new List<VectorPageReader.TextToken>());
+                            if (runs.Count == 0) runs.Add(new List<VectorPageReader.TextToken>());
+                            runs[^1].Add(t);
+                        }
+                        return runs;
+                    })
+                    .ToList();
+                // a block is a stack of runs: a run joins the block whose last run is within two heights above it
+                // AND overlaps it along the line (or stands within two heights of its extent) - two fields side by
+                // side on one baseline are two blocks, and a title's lines stack over one another
+                var open = new List<List<List<VectorPageReader.TextToken>>>();
+                foreach (var run in lines)
                 {
-                    if (block.Count == 0) return;
-                    blocks.Add((string.Join(" ", block.SelectMany(l => l.Select(t => t.Text))).Trim(), block.Max(l => l.Max(t => t.Height))));
-                    block = new List<List<VectorPageReader.TextToken>>();
+                    double rh = run.Max(t => t.Height), rlo = run.Min(t => t.MinX), rhi = run.Max(t => t.MaxX);
+                    var home = open.FirstOrDefault(b =>
+                    {
+                        var last = b[^1];
+                        double bh = Math.Max(rh, last.Max(t => t.Height));
+                        double gap = last[0].Cy - run[0].Cy;
+                        if (gap < -0.5 * bh || gap > 2.0 * bh) return false;
+                        if (Math.Abs(gap) <= 0.5 * bh) return false;                     // the same baseline: another field beside, not a line below
+                        double blo = b.Min(l => l.Min(t => t.MinX)), bhi = b.Max(l => l.Max(t => t.MaxX));
+                        return rlo <= bhi + 2.0 * bh && rhi >= blo - 2.0 * bh;
+                    });
+                    if (home is null) open.Add(new List<List<VectorPageReader.TextToken>> { run });
+                    else home.Add(run);
                 }
-                foreach (var line in lines)
-                {
-                    if (block.Count > 0 && block[^1][0].Cy - line[0].Cy > 2.0 * Math.Max(block[^1].Max(t => t.Height), line.Max(t => t.Height))) Close();
-                    block.Add(line);
-                }
-                Close();
-                var named = blocks.Where(b => Intake.SheetViews.NamesAPlan(b.Text)).OrderByDescending(b => b.Height).FirstOrDefault();
-                if (named.Text is { Length: > 0 }) return named.Text;
+                foreach (var b in open)
+                    blocks.Add((string.Join(" ", b.SelectMany(l => l.Select(t => t.Text))).Trim(), b.Max(l => l.Max(t => t.Height))));
             }
+            var named = blocks.Where(b => Intake.SheetViews.NamesAPlan(b.Text)).OrderByDescending(b => b.Height).FirstOrDefault();
+            if (named.Text is { Length: > 0 }) return named.Text;
 
             var rightEdge = readingTokens
                 .Where(t => t.Height >= TitleMinH

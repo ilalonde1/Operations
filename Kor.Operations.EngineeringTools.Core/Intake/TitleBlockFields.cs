@@ -31,6 +31,9 @@ public static class TitleBlockFields
     public static readonly string[] Labels =
     {
         "PRIME CONSULTANT", "PROJECT TITLE", "PROJECT NUMBER", "PROJECT NO", "DRAWING TITLE", "SHEET TITLE",
+        // 30888's rotated strip labels the title DRAWING NAME - and the project too, under a second DRAWING NAME
+        // (step 87, 2026-09-16); SHEET NAME and PROJECT NAME are the companion spellings, not measured on a page.
+        "DRAWING NAME", "SHEET NAME", "PROJECT NAME",
         "SHEET NUMBER", "SHEET NO", "DESIGNED BY", "CHECKED BY", "CHK'D BY", "DRAWN BY", "ISSUED FOR",
         // A field ends at the next office form label, not just the KOR template's labels:
         // 30878-02 p35: PROJ. # / DRAWING NUMBER; 30912-01 p20: DRAWING NO;
@@ -109,7 +112,7 @@ public static class TitleBlockFields
                 if (hit is null) continue;
                 // 01379-01 p77: match JOB/PROJECT TITLE as a pair wherever it stands, before TITLE;
                 // DRAWING TITLE is the sheet's title, while JOB/PROJECT TITLE keep their identities.
-                string label = hit is "TITLE" or "DRAWING TITLE" ? "SHEET TITLE" : hit;
+                string label = hit is "TITLE" or "DRAWING TITLE" or "DRAWING NAME" or "SHEET NAME" ? "SHEET TITLE" : hit;
                 labels.Add((label, li, i, i + span - 1, l[i].MinX, l[i].Cy));
                 found.Add(label);
                 i += span - 1;
@@ -194,23 +197,33 @@ public static class TitleBlockFields
     internal static List<VectorPageReader.TextToken> ReadingTokens(VectorPageReader.PageContent page, double regionMinFx, out bool rotated, bool dropUpright = true)
     {
         var band = page.Words.Where(t => t.Cx / page.WidthPts >= RegionMinFx && t.Text.Trim().Length > 0).ToList();
-        // 01589-01 p7: several tall label runs sharing an X band, spread over Y, describe a rotated
-        // block. Requiring three distinct labels avoids rotating a horizontal block for its lone
-        // vertical FILE LOCATION. Box shape distinguishes this from ordinary left-aligned labels.
+        // 01589-01 p7: several tall label runs, spread over Y, describe a rotated block. Requiring three
+        // distinct labels avoids rotating a horizontal block for its lone vertical FILE LOCATION. Box shape
+        // distinguishes this from ordinary left-aligned labels.
+        // IN THE STRIP, NOT IN ONE COLUMN (step 87, 2026-09-16): 01589 stacks its labels in one text column and
+        // the rule asked for that; 30888's strip writes JOB NO. / DRAWING NAME, SCALE, REVISIONS and DATE each in
+        // its own column, 6 to 27 pt apart, and was read as a horizontal block - every plan titled with the
+        // strip's words in y order ("HILLS ARCHITECTURE DUFFY DRAWING LANDSCAPE PERMIT REVIEW ..."). The labels
+        // of a rotated strip are all in the strip already (the right fifth); what says "rotated" is three of them
+        // written up the page and spread along it. 31202's upright PROJECT NAME and copyright paragraph beside a
+        // horizontal block are not labels and do not count.
         var uprightLabels = band.Where(t => t.Width > 0 && t.Height > 2 * t.Width
             && Labels.Any(l => Clean(l) == Clean(t.Text))).ToList();
-        rotated = uprightLabels.Any(a =>
-        {
-            var column = uprightLabels.Where(t => Math.Abs(t.MinX - a.MinX) <= Math.Max(t.Width, a.Width)).ToList();
-            return column.Select(t => Clean(t.Text)).Distinct().Count() >= 3
-                && column.Max(t => t.Cy) - column.Min(t => t.Cy) > 3 * column.Max(t => t.Width);
-        });
+        rotated = uprightLabels.Select(t => Clean(t.Text)).Distinct().Count() >= 3
+            && uprightLabels.Max(t => t.Cy) - uprightLabels.Min(t => t.Cy) > 3 * uprightLabels.Max(t => t.Width);
         bool swap = rotated;
         return page.Words.Where(t => t.Cx / page.WidthPts >= regionMinFx && t.Text.Trim().Length > 0)
-            // Bottom-up along Y, then left-to-right across X: inverse centres are (-Cy, Cx).
-            .Select(t => swap ? new VectorPageReader.TextToken(t.Text, t.Cy, -t.Cx, t.MinY, -t.MaxX, t.MaxY, -t.MinX) : t)
-            .Where(t => !dropUpright || !(t.Text.Trim().Length >= 3 && t.Height > 2 * t.Width)).ToList();
+            .Select(t => swap ? Swapped(t) : t)
+            .Where(t => !dropUpright || !IsUpright(t)).ToList();
     }
+
+    /// <summary>A word of three or more letters whose box is taller than twice its width is written up the page.</summary>
+    internal static bool IsUpright(VectorPageReader.TextToken t) => t.Text.Trim().Length >= 3 && t.Height > 2 * t.Width;
+
+    /// <summary>The token in the reading frame of text written up the page: bottom-up along Y, then left-to-right across
+    /// X — inverse centres are (-Cy, Cx) — so its Height is its font size and a column of words is a line.</summary>
+    internal static VectorPageReader.TextToken Swapped(VectorPageReader.TextToken t) =>
+        new(t.Text, t.Cy, -t.Cx, t.MinY, -t.MaxX, t.MaxY, -t.MinX);
 
     internal static List<List<VectorPageReader.TextToken>> ReadingLines(IReadOnlyList<VectorPageReader.TextToken> tokens)
     {

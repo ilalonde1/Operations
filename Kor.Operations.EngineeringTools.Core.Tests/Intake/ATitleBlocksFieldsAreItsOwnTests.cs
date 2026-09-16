@@ -121,11 +121,16 @@ public class ATitleBlocksFieldsAreItsOwnTests
     }
 
     /// <summary>
-    /// 01589-01 p7. WHAT THIS COVERS: tall labels establish a rotated block for both readers;
+    /// A strip written wholly up the page. WHAT THIS COVERS: tall labels establish a rotated block for both readers;
     /// the unlabelled title reads bottom-up on its own X column, away from revision/project words;
     /// consumed labels retain their original PDF centres. WHAT IT DOES NOT: infer rotation direction,
     /// top-down or wrapped unlabelled titles, or all field values from the incomplete revision boxes.
     /// Revision-row Y positions within the supplied 526..793 range are synthetic.
+    /// ⚠ THIS IS NOT 01589-01 p7 (found 2026-09-16, step 87): the page's SCALE:, DATE:, DRAWN BY:, JOB #: and SIGNED
+    /// BY: are HORIZONTAL at the foot of the strip (w 37, h 7.1) and only ISSUES: and DATE: are upright, so the page
+    /// is never a rotated block and this fixture's rotated labels are a shape no page of the corpus has been seen to
+    /// draw. The page itself is <see cref="AMixedStripReadsItsUprightWordsUpThePage"/>. Kept as the rotated-strip
+    /// fixture (30888 is the measured one, below).
     /// </summary>
     [Fact]
     public void ARotatedStripUsesOneReadingCoordinateSystem()
@@ -161,6 +166,117 @@ public class ATitleBlocksFieldsAreItsOwnTests
         Assert.Contains((2270.4, 759.3), consumed);
         Assert.Equal("FOUNDATION PLAN", SheetTitleReader.TitleText(page));
         Assert.Equal("FOUNDATION PLAN", SheetTitleReader.TitleText(Page(2592, 1728, words.AsEnumerable().Reverse())));
+    }
+
+    /// <summary>
+    /// WORDS WRITTEN UP THE PAGE ARE READ UP THE PAGE (step 87, WP6a item 5). 01589-01 p7 as the page draws it: the
+    /// labels SCALE: / DATE: / DRAWN BY: / JOB #: horizontal at the foot of the strip, the title "FOUNDATION PLAN"
+    /// (20.7 pt) and the project "PRIVATE RESIDENCE" written up the page above them, with three revision columns
+    /// (7.4 pt) between. Read as horizontal lines an upright word's height is its length, so every one was a
+    /// title-size candidate and the guess was "PERMIT PERMIT PERMIT BUILDING BUILDING BUILDING FOR FOR FOR ISSUED
+    /// ISSUED ISSUED RESIDENCE PLAN PRIVATE FOUNDATION" on every plan of the set through run 22. The upright words
+    /// are read in their own frame - a column is a line, bottom-up, the font size is the height - and the largest
+    /// block that names a plan wins. 30941's KOR strip is the other shape of the class: "LEVEL B4 RAFT" and
+    /// "FOUNDATION PLAN" up the page in two columns 41 pt apart at 26.8 pt, under horizontal labels, with "B4" too
+    /// short to have a shape of its own - it is upright because it stands in LEVEL's column at LEVEL's size.
+    /// WHAT IT DOES NOT: a title written top-down (no page seen); the level reader FromPage (still by position).
+    /// </summary>
+    [Fact]
+    public void AMixedStripReadsItsUprightWordsUpThePage()
+    {
+        var words = new List<VectorPageReader.TextToken>
+        {
+            At("SIGNED", 2278.2, 86.0, 38.2, 7.1), At("BY:", 2313.7, 86.0, 18.3, 7.1),
+            At("SCALE:", 2277.7, 111.7, 37.2, 7.1), At("1/4\"", 2341.7, 112.2, 17.4, 7.3), At("=", 2356.1, 111.1, 5.8, 5.0), At("1'-0\"", 2371.7, 112.2, 19.8, 7.2),
+            At("DATE:", 2273.6, 138.8, 29.0, 7.1), At("JUNE", 2332.7, 139.2, 26.0, 7.1), At("6,", 2352.7, 139.2, 8.3, 7.2), At("2022", 2370.7, 139.2, 22.2, 7.2),
+            At("DRAWN", 2277.3, 165.9, 36.4, 7.1), At("BY:", 2311.9, 165.9, 18.3, 7.1), At("N.Y.", 2372.0, 165.3, 19.4, 7.1),
+            At("JOB", 2270.5, 191.6, 21.6, 7.1), At("#:", 2293.9, 192.2, 10.7, 8.4), At("01589-01", 2360.7, 191.5, 42.1, 7.2),
+            At("S2.01", 2458.2, 140.6, 117.3, 27.0),
+            At("ISSUES:", 2270.3, 528.9, 8.6, 47.7), At("DATE:", 2270.4, 759.3, 7.2, 27.7),
+            At("PRIVATE", 2284.5, 275.6, 17.1, 102.5), At("RESIDENCE", 2284.2, 403.9, 17.7, 138.4),
+            At("Proposed", 2322.0, 268.1, 13.1, 81.6), At("Renovation", 2322.1, 363.3, 12.8, 96.5),
+            At("629", 2342.8, 242.4, 13.1, 29.1), At("East", 2342.9, 281.6, 12.8, 37.7), At("12th", 2342.9, 323.5, 12.9, 35.7), At("Street,", 2342.7, 374.8, 13.3, 54.5),
+            At("City", 2363.5, 244.6, 13.3, 33.6), At("of", 2363.6, 275.4, 13.1, 17.5), At("North", 2363.7, 311.9, 12.8, 46.6), At("Vancouver", 2363.7, 387.4, 12.8, 92.0),
+            At("FOUNDATION", 2439.1, 311.0, 20.7, 150.7), At("PLAN", 2439.5, 424.8, 20.0, 60.5),
+        };
+        foreach (var (x, month, year) in new[] { (2292.3, "DEC.", "2021"), (2316.3, "APR.", "2022"), (2340.2, "JUN.", "2022") })
+        {
+            words.Add(At("ISSUED", x, 526.0, 7.4, 36.6)); words.Add(At("FOR", x, 558.1, 7.4, 20.9));
+            words.Add(At("BUILDING", x, 594.6, 7.4, 46.5)); words.Add(At("PERMIT", x, 640.0, 7.1, 37.5));
+            words.Add(At(month, x, 756.9, 7.4, 22.9)); words.Add(At(year, x, 793.3, 7.3, 20.3));
+        }
+        var page = Page(2592, 1728, words);
+
+        var fields = TitleBlockFields.Read(page, out _, out var labels);
+        Assert.DoesNotContain("SHEET TITLE", labels);
+        Assert.Equal("1/4\" = 1'-0\"", fields["SCALE"]);
+        Assert.Equal("FOUNDATION PLAN", SheetTitleReader.TitleText(page));
+
+        // 30941 p16: the title up the page in two columns under horizontal labels, with a two-glyph level
+        var kor = new List<VectorPageReader.TextToken>
+        {
+            At("Scale", 2762.0, 133.6, 22, 9.0), At("3/32", 2846.8, 131.8, 20, 9), At("=", 2875.5, 129.7, 6, 6), At("S2.01.1", 2834.6, 176.5, 70, 14),
+            At("Checked", 2769.6, 232.7, 34, 9), At("By", 2800.0, 232.6, 10, 9), At("Drawn", 2763.8, 259.5, 28, 9), At("By", 2788.3, 259.5, 10, 9),
+            At("Date", 2759.8, 286.5, 20, 9), At("02/05/2024", 2877.6, 284.1, 50, 9), At("Project", 2765.2, 313.5, 33.2, 9.0), At("Number", 2803.9, 313.5, 37.9, 9.0), At("30941-01", 2884.1, 311.0, 70.4, 13.6),
+            At("LEVEL", 2778.4, 377.4, 26.8, 97.8), At("B4", 2778.4, 455.0, 26.8, 37.4), At("RAFT", 2778.4, 525.3, 26.8, 82.4),
+            At("FOUNDATION", 2819.8, 432.4, 27.8, 208.0), At("PLAN", 2820.3, 588.1, 26.8, 80.4),
+            At("CONSULTANT:", 2758.1, 854.6, 55, 8),
+        };
+        Assert.Equal("LEVEL B4 RAFT FOUNDATION PLAN", SheetTitleReader.TitleText(Page(3024, 2160, kor)));
+    }
+
+    /// <summary>
+    /// A ROTATED STRIP'S LABELS STAND IN THE STRIP, NOT IN ONE COLUMN (step 87, WP6a item 5; 30888-01 p16, Duffy
+    /// Hills, 2020). 01589 stacks its labels in one text column and the detection asked for that; 30888 writes JOB
+    /// NO. / DRAWING NAME (x 2369), SCALE (2397), REVISIONS (2417) and DATE (2423, 2435) each up the page in its
+    /// own column, 6 to 27 pt apart, and was read as a horizontal block: every plan titled "HILLS ARCHITECTURE
+    /// DUFFY DRAWING LANDSCAPE PERMIT REVIEW ..." in y order. Three upright labels spread along the strip say
+    /// rotated, wherever their columns are; DRAWING NAME is the sheet's title label and the title reads up the
+    /// page under it, across its two lines, to the REVISIONS label that closes it. At the page's own positions and
+    /// heights (6.7 pt labels, PDF y up). WHAT IT DOES NOT: the PDF word builder's own fault on p17, where
+    /// "(REINFORCING" and "REVISIONS" overlap and arrive as one token; the level reader FromPage (still by
+    /// position; the DXF name carries the storey from the field).
+    /// </summary>
+    [Fact]
+    public void ARotatedStripsLabelsStandInTheStripNotInOneColumn()
+    {
+        var words = new List<VectorPageReader.TextToken>
+        {
+            Rotated("CRAVEN", 2328.4, 100.9, 6.7), Rotated("HUSTON", 2328.4, 197.9, 6.7), Rotated("POWERS", 2328.4, 295.3, 6.7),
+            Rotated("ARCHITECTS", 2328.4, 413.7, 6.7), Rotated("ARCHITECTURE", 2328.4, 567.4, 6.7), Rotated("AND", 2328.5, 667.3, 6.7),
+            Rotated("LANDSCAPE", 2328.4, 750.8, 6.7), Rotated("ARCHITECTURE", 2328.4, 887.1, 6.7),
+            Rotated("JOB", 2369.0, 259.9, 6.7), Rotated("NO.", 2369.0, 279.2, 6.7),
+            Rotated("DRAWING", 2369.0, 496.7, 6.7), Rotated("NAME", 2369.1, 537.0, 6.7),
+            Rotated("DRAWING", 2369.0, 826.1, 6.7), Rotated("NAME", 2369.1, 866.4, 6.7),      // the page labels the project DRAWING NAME too
+            Rotated("30888-01", 2375.6, 407.4, 6.7),
+            Rotated("P1", 2389.2, 499.4, 9.0), Rotated("PARKADE", 2389.2, 575.5, 9.0), Rotated("PLAN", 2389.2, 664.4, 9.0), Rotated("WEST", 2388.8, 733.7, 9.0),
+            Rotated("SCALE", 2396.7, 266.4, 6.7),
+            Rotated("DUFFY", 2399.5, 882.6, 9.0), Rotated("HILLS", 2399.3, 979.9, 9.0), Rotated("BUILDINGS", 2399.3, 1133.1, 9.0), Rotated("E", 2399.7, 1233.6, 9.0),
+            Rotated("1/8\"", 2402.3, 394.0, 6.7), Rotated("=", 2405.0, 409.6, 6.7), Rotated("1'-0\"", 2402.8, 427.5, 6.7),
+            Rotated("(CONCRETE", 2409.7, 554.4, 9.0), Rotated("OUTLINE)", 2409.7, 681.0, 9.0),
+            Rotated("REVISIONS", 2416.8, 498.4, 6.7),
+            Rotated("DATE", 2423.2, 264.5, 6.7), Rotated("OCTOBER", 2429.7, 365.5, 6.7), Rotated("20,", 2429.8, 401.8, 6.7), Rotated("2020", 2429.8, 425.5, 6.7),
+            Rotated("S2.03.1", 2435.1, 156.4, 12.0),
+            Rotated("NO.", 2435.4, 481.3, 6.7), Rotated("DATE", 2435.5, 516.5, 6.7), Rotated("DESCRIPTION", 2435.4, 596.6, 6.7),
+        };
+        foreach (var row in new[] { (X: 2454.5, Month: "DEC.", Day: "5,", Year: "18", What: "ISSUED FOR BUILDING PERMIT"),
+                     (X: 2465.1, Month: "OCT.", Day: "10,", Year: "19", What: "RE-ISSUED FOR BUILDING PERMIT"),
+                     (X: 2475.7, Month: "APR.", Day: "30,", Year: "20", What: "ISSUED FOR CONSTRUCTION REVIEW"),
+                     (X: 2486.4, Month: "JUNE", Day: "1,", Year: "20", What: "ISSUED FOR CONSTRUCTION REVIEW") })
+        {
+            words.Add(Rotated(row.Month, row.X, 515)); words.Add(Rotated(row.Day, row.X, 534)); words.Add(Rotated(row.Year, row.X, 548));
+            double y = 584;
+            foreach (string word in row.What.Split(' ')) { words.Add(Rotated(word, row.X, y, 6.7)); y += 8 + word.Length * 3.4; }
+        }
+        var page = Page(2592, 1728, words);
+
+        var fields = TitleBlockFields.Read(page, out _, out var labels);
+
+        Assert.Contains("SHEET TITLE", labels);
+        // two DRAWING NAME labels on one strip: the first is the sheet's, and the second closes its column
+        Assert.Equal("P1 PARKADE PLAN WEST (CONCRETE OUTLINE)", fields["SHEET TITLE"]);
+        Assert.DoesNotContain("DUFFY", fields["SHEET TITLE"]);
+        Assert.Equal("P1 PARKADE PLAN WEST (CONCRETE OUTLINE)", SheetTitleReader.TitleText(page));
     }
 
     /// <summary>
