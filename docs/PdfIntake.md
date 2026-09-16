@@ -1,6 +1,6 @@
 # PDF intake — what it does today, and what it leaves on the page
 
-## 0. START HERE (state as of 2026-09-16 03:30, after steps 47 and 54–87 — 255 of 296 sets build from the PDF alone on run 23 (255 of 279 with a stick file of their own); plates on 63% of storeys; steps 86–87 land after run 23 and are measured by run 24)
+## 0. START HERE (state as of 2026-09-16 03:30, after steps 47 and 54–89 — 255 of 296 sets build from the PDF alone on run 23 (255 of 279 with a stick file of their own); plates on 63% of storeys; steps 86–89 land after run 23 and are measured by run 24 (launched 04:14))
 
 A session picking this up cold reads this section, then the completion plan
 (`docs/architecture/Kor.Operations.EngineeringTools.PdfIntake.plan.md` — what "complete" means, the
@@ -47,7 +47,7 @@ reader (is the line there? what does the drawing call it? is the bubble drawn tw
 `takeoff grid-names` puts a sheet's axis names beside the model's; `model-render --storey L2` draws ONE floor full size, before and after a rule; `dxf-strip` + `dxf-to-etabs` twice + `model-diff` is the strip-a-layer differential (three minutes that say whether a move is the composer's or a layer's); `corpus-query pages <job> --runs a,b` reads one set's pages run against run from the database. Step 27 was a day spent guessing
 closing rules that a rendered view would have settled; that is the mistake this line exists to stop.
 
-**Where the route stands, measured on the corpus** (run 23, 2026-09-16 02:24–03:22, steps through 85; steps 86–87 are not in it — measured by run 24):
+**Where the route stands, measured on the corpus** (run 23, 2026-09-16 02:24–03:22, steps through 85; steps 86–89 are not in it — measured by run 24):
 
 | | |
 |---|---|
