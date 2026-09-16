@@ -62,7 +62,10 @@ internal static class CorpusQueryVerb
         int built = sets.Count(s => s.HasModel);
         var plans = sheets.Where(s => s.SheetType == "plan").ToList();
         var views = plans.Where(s => s.DxfFiles is not null).ToList();
-        Console.WriteLine($"  sets that build a model      {built} of {sets.Count}");
+        // 17 job folders hold a byte-identical copy of another job's stick file (00904-01's): not ours to build, so the
+        // honest denominator is the sets with a stick file of their own (WP6a item 5, 2026-09-16)
+        int othersFile = sets.Count(s => !s.HasModel && (s.ModelError ?? s.Error ?? "").StartsWith(CorpusAnalyzer.AnotherJobsFileReason, StringComparison.Ordinal));
+        Console.WriteLine($"  sets that build a model      {built} of {sets.Count}" + (othersFile > 0 ? $" ({built} of {sets.Count - othersFile} with a stick file of their own; {othersFile} hold another job's)" : ""));
         foreach (var g in sets.Where(s => !s.HasModel).GroupBy(s => Reason(s)).OrderByDescending(g => g.Count()))
             Console.WriteLine($"    no model: {g.Key,-48} {g.Count()}");
         Console.WriteLine($"  pages read                   {sets.Sum(s => s.Pages)}; plans {plans.Count}; failed {sets.Sum(s => s.SheetsFailed)}");
