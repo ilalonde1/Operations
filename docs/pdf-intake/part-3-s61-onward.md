@@ -1935,3 +1935,43 @@ page. The next column of the list: for each long line on 31130 p22, does it END 
 labels should be absent. That is a `pdf-at`-per-line pass, ~an hour, and the rule follows from the two lists.
 
 WHAT THIS DOES NOT: change any reader; decide the rule.
+
+## 102. Run 24 banked, and step 91, 2026-09-16 05:25: a label's own colon is not its value; a right-aligned label's value lies to its left — two models lost on run 24, found by the diff, both back
+
+**Run 24** (04:14 → 05:10, steps 86–89 on `12831e13`; `ledger-sets-2026-09-16-run24-step89.csv`, DB run `2031dc5b`):
+**254 of 296**; 2,711 storeys, **1,735 with a plate = 64%** (63% on run 23); placed by name 2,031 → 2,083; yardsticks
+58% / 54%. Against run 23: NewModel 1 — **30888** (5 storeys, the rotated strip read, step 87; its 3,472 "columns"
+are the wood plans' beam-with-post symbols, item 3(b)'s class, Q1); **LostModel 2 — 50026 and 30985**; Storeys 13
+(30925 13 → 25 storeys and 1 → 24 plates, 30941 34 → 37, 80062, 30911, 01589 1 → 2 …); Composition 12 (30983
+1,124 → 8 columns and 930 → 174 walls: its SCALE field reads now — "1/4" = 1'-0"", 48 — where run 23 had assumed 96;
+a wood infill at its own scale drops the stud walls under 6 in and the doubled posts, as migration 090 says it
+should); SameCounts 260.
+
+**The two lost, looked at.** Both are KOR's 2022 strip, written up the page with upright labels (CONSULTANT, DESIGNED
+BY, DRAWN BY, SCALE, SHEET TITLE). Step 87's rule 1 now reads it as rotated — right — and in that frame the field
+reader found "SHEET TITLE" with ":" beside it as a SEPARATE TOKEN and took ":" as the title of every plan; TitleText
+returned ":" (non-empty, so step 86's empty-box branch never ran), the DXF names still came from the bookmarks, but
+`SetStoreys` names storeys from the page's TitleText — none. Run 23 had read the same pages as a salad that happened
+to carry the storey's word. **30985** (Rock Ridge, 2022) has a second shape on top: its labels are bracketed and
+letter-spaced — [ D R A W I N G ], [ I S S U E ], [ D A T E ], [ S C A L E ], [ P R O J E C T ], [ T I T L E ] —
+set against the strip's RIGHT edge, with the values to their LEFT ("1st Floor / Foundation Plan (West)" at 20 pt,
+starting 130 pt left of [ T I T L E ]); the column bounded at the label's left edge held only the next label's
+letters, and the title read "R O J E C T ]".
+
+**Three rules** (`TitleBlockFields`): (1) the marks before a value's first word are the form's own — ":" beside a
+label is not its value, and a value line of marks alone is not a value line; the marks inside a value stay ("LEVEL
+-4", "1/4" = 1'-0"", "LEVEL 5 - LEVEL 14" — the first cut dropped them and four tests said so); (2) a label that ends at
+the strip's right edge with nothing beside it is right-aligned, and its column runs from the strip's left; (3)
+PROJECT and ISSUE are labels (their letters end a field and are never its value). Tests
+`ALabelsOwnColonIsNotItsValue` (proved by stashing the rule: red) and `ARightAlignedLabelsValueLiesToItsLeft` at
+30985 p7's own geometry.
+
+**Measured** (`pdf-inventory`): 50026 pp9–14 "FOUNDATION PLAN / PARKING LEVEL P3", "PARKING LEVEL P1", "GROUND FLOOR
+PLAN (CONCRETE OUTLINE)", "2ND FLOOR PLAN (CONCRETE OUTLINE & POST-TENSIONING)" — exact, where run 23 had "BC LTD.
+BUILDING SURREY, HOLDINGS OFFICE STREET, PLA…"; 30985 pp7–11 "1st Floor / Foundation Plan (West)", "1st Flr. Plan
+Showing 2nd Flr. Framing Over (West)" — exact ("Flr." is not a floor noun the vocabulary knows: a row, `dxf.floor-nouns`);
+30980 unchanged (none). Fast suite + six-set gate 1,456 green, the six byte-identical. Run 25 measures.
+
+WHAT IT DOES NOT: "Flr." (a vocabulary row); the SCALE field on 50026 reads "korstructural.com" (the value box under
+a right-column label takes the consultant's words — the scale note reader still supplies the ratio); 30888's wood
+symbols (Q1).

@@ -425,6 +425,75 @@ public class ATitleBlocksFieldsAreItsOwnTests
         Assert.Null(SheetTitleReader.TitleText(page));
     }
 
+    /// <summary>
+    /// A LABEL'S OWN COLON IS NOT ITS VALUE (step 91, 2026-09-16): KOR's 2022 upright strip (50026, 30985) sets "SHEET
+    /// TITLE" and ":" as two tokens on one line, and the ":" beside the label was the title of every plan - two models
+    /// lost on run 24 the moment step 87 read the strip in its own frame (before that the guess had read a salad with
+    /// the storey's word in it). A token with no letter or digit is the form's own mark; the value is below the label.
+    /// WHAT IT DOES NOT: a value that is genuinely punctuation (none exists on a title block).
+    /// </summary>
+    [Fact]
+    public void ALabelsOwnColonIsNotItsValue()
+    {
+        var words = new List<VectorPageReader.TextToken>();
+        words.AddRange(Line("SHEET TITLE", 3209, 197, 6.5));
+        words.Add(At(":", 3272, 197, 1.9, 4.3));
+        words.AddRange(Line("FOUNDATION PLAN", 3210, 183, 11));
+        words.AddRange(Line("PARKING LEVEL P3", 3210, 167, 11));
+        words.AddRange(Line("SCALE :", 3209, 117, 6.5));
+        words.Add(At("S2.01", 3260, 88, 60, 28));
+        var page = Page(3456, 2592, words);
+
+        Assert.Equal("FOUNDATION PLAN PARKING LEVEL P3", TitleBlockFields.Read(page)["SHEET TITLE"]);
+        Assert.Equal("FOUNDATION PLAN PARKING LEVEL P3", SheetTitleReader.TitleText(page));
+    }
+
+    /// <summary>
+    /// A RIGHT-ALIGNED LABEL'S VALUE LIES TO ITS LEFT (step 91, 2026-09-16; 30985-01 p7, Rock Ridge, 2022): the block
+    /// sets its labels letter by letter in brackets against the strip's right edge — [ D R A W I N G ], [ I S S U E ],
+    /// [ D A T E ], [ S C A L E ], [ P R O J E C T ], [ T I T L E ] — and writes the values to their left: "1st Floor /
+    /// Foundation Plan (West)" at 20 pt under [ T I T L E ], starting 130 pt left of it. A column bounded at the
+    /// label's left edge held only the next bracketed label's letters ("R O J E C T ]" was the title, and the set's one
+    /// storey went with it on run 24). When a label ends at the strip's edge and nothing stands beside it, the column
+    /// runs from the strip's left; PROJECT and ISSUE are labels, so their letters end the field and are never its value.
+    /// At p7's own positions and heights. WHAT IT DOES NOT: "Flr." as a floor noun (a vocabulary row).
+    /// </summary>
+    [Fact]
+    public void ARightAlignedLabelsValueLiesToItsLeft()
+    {
+        var words = new List<VectorPageReader.TextToken>();
+        words.Add(At("S-2.01", 2479.4, 110.6, 67.4, 20.3));
+        words.AddRange(Bracketed("DRAWING", 2479.5, 146.0));
+        words.AddRange(Bracketed("ISSUE", 2494.9, 172.2));
+        words.AddRange(Line("Apr. 14, 2022", 2347, 192.8, 8.5));
+        words.AddRange(Bracketed("DATE", 2498.5, 198.1));
+        words.Add(At("1/8\"=1'-0\"", 2373.3, 217.8, 54.7, 8.6));
+        words.AddRange(Bracketed("SCALE", 2490.8, 224.1));
+        words.Add(At("30985-01", 2371.6, 244.9, 50.2, 8.5));
+        words.AddRange(Bracketed("PROJECT", 2478.8, 250.2));
+        words.Add(At("(West)", 2381.9, 279.7, 69.9, 20.3));
+        words.Add(At("Foundation", 2409.3, 308.3, 124.6, 20.0)); words.Add(At("Plan", 2502.1, 308.3, 48.3, 20.0));
+        words.Add(At("1st", 2363.5, 337.3, 33.1, 20.1)); words.Add(At("Floor", 2415.0, 337.2, 57.2, 20.0)); words.Add(At("/", 2453.2, 337.4, 6.4, 20.3));
+        words.AddRange(Bracketed("TITLE", 2494.6, 360.7));
+        words.AddRange(Line("Port Moody, BC", 2346, 380.3, 8.0));
+        var page = Page(2592, 1728, words);
+
+        var fields = TitleBlockFields.Read(page, out _, out var labels);
+        Assert.Contains("PROJECT", labels);
+        Assert.Contains("ISSUE", labels);
+        Assert.Equal("1st Floor / Foundation Plan (West)", fields["SHEET TITLE"]);
+        Assert.Equal("1st Floor / Foundation Plan (West)", SheetTitleReader.TitleText(page));
+    }
+
+    /// <summary>"[ T I T L E ]": a bracket, one letter per token at a 6.2 pt pitch, a bracket — right-aligned to x = 2528.</summary>
+    private static IEnumerable<VectorPageReader.TextToken> Bracketed(string word, double x, double y)
+    {
+        yield return At("[", x, y, 2.1, 4.5);
+        double cx = x + 5.0;
+        foreach (char c in word) { yield return At(c.ToString(), cx, y, 4.4, 4.5); cx += 6.2; }
+        yield return At("]", 2526.3, y, 2.1, 4.5);
+    }
+
     /// <summary>One letter per token at a fixed pitch, as 30980's block sets its labels (6.8 pt letters).</summary>
     private static IEnumerable<VectorPageReader.TextToken> Letters(string word, double x, double y, double pitch)
     {

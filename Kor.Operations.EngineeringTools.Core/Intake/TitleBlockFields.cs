@@ -43,6 +43,8 @@ public static class TitleBlockFields
         "DRAWING NUMBER", "DRAWING NO", "DRAWING #", "PROJ. #", "PROJECT #", "JOB NO", "JOB NUMBER",
         "JOB TITLE", "JOB #", "PLOT DATE", "FILE LOCATION", "CONSULTANT", "REVISIONS", "REVISION", "ISSUES",
         "CHECKED", "DRAWN", "CLIENT", "SCALE", "DATE", "SEAL", "REV", "TITLE", "FILE", "SHEET",
+        // 30985 (step 91) brackets its labels letter by letter: [ P R O J E C T ], [ I S S U E ], [ T I T L E ]
+        "PROJECT", "ISSUE",
     };
 
     private const double RegionMinFx = 0.80;
@@ -132,7 +134,12 @@ public static class TitleBlockFields
             for (int i = lab.From; i <= lab.To; i++) consumed.Add(OriginalCentre(line[i]));
             // beside: the tokens after the label on its line, up to the next label on that line
             int stop = labels.Where(o => o.Line == lab.Line && o.From > lab.To).Select(o => o.From).DefaultIfEmpty(line.Count).Min();
+            // A LABEL'S OWN COLON IS NOT ITS VALUE (step 91, 2026-09-16): KOR's 2022 upright strip sets "SHEET TITLE" and
+            // ":" as two tokens, and ":" beside the label read as the title of every plan of 50026 and 30985 - two models
+            // lost on run 24. The marks before the value's first word are the form's; the marks inside a value stay
+            // ("LEVEL -4", "1/4" = 1'-0"", "LEVEL 5 - LEVEL 14").
             var besideTokens = line.Skip(lab.To + 1).Take(stop - lab.To - 1).Where(t => t.Text.Trim().Length > 0).ToList();
+            while (besideTokens.Count > 0 && !IsValueToken(besideTokens[0].Text)) besideTokens.RemoveAt(0);
             if (besideTokens.Count > 0)
             {
                 if (Set(fields, lab.Label, string.Join(" ", besideTokens.Select(t => t.Text.Trim()))))
@@ -144,9 +151,16 @@ public static class TitleBlockFields
             // TITLE; PROJECT NO ends PROJECT TITLE). Tokens in the label's column only.
             // the column ends where the next label on the label's own line begins (SHEET NUMBER | REV:)
             double right = labels.Where(o => o.Line == lab.Line && o.From > lab.To).Select(o => o.MinX).DefaultIfEmpty(lab.MinX + 260).Min();
+            // A RIGHT-ALIGNED LABEL'S VALUE LIES TO ITS LEFT (step 91, 2026-09-16): 30985 sets "[ T I T L E ]" against
+            // the strip's right edge and writes "1st Floor / Foundation Plan (West)" under it, starting 130 pt to the
+            // left; a column bounded at the label's left edge held only the next label's letters. When the label ends at
+            // the strip's edge and nothing stands beside it, the column runs from the strip's left.
+            double stripRight = tokens.Max(t => t.MaxX);
+            bool rightAligned = line[lab.To].MaxX >= stripRight - 15 && !labels.Any(o => o.Line == lab.Line && o.From > lab.To);
+            double left = rightAligned ? double.NegativeInfinity : lab.MinX - 15;
             // and the field ends at the next label BELOW IN THAT COLUMN — a REV label in the next
             // column does not cut the SHEET TITLE off (audit F11, 2026-09-08)
-            double FloorWithin(double bound) => labels.Where(o => o.Cy < lab.Cy - 1 && o.MinX >= lab.MinX - 15 && o.MinX < bound).Select(o => o.Cy).DefaultIfEmpty(double.NegativeInfinity).Max();
+            double FloorWithin(double bound) => labels.Where(o => o.Cy < lab.Cy - 1 && o.MinX >= left && o.MinX < bound).Select(o => o.Cy).DefaultIfEmpty(double.NegativeInfinity).Max();
             double floor = FloorWithin(right);
             // 30912-01 p20: a neighbouring column already labelled beside this field bounds it too;
             // a short CHECKED BY column must not inherit the title column's words via the 260 pt default.
@@ -169,9 +183,9 @@ public static class TitleBlockFields
                 var l = lines[li];
                 var used = l.Select((t, i) => (t, i))
                     .Where(x => !IsLabelToken(li, x.i) && x.t.Cy < lab.Cy - 1 && x.t.Cy > floor + 1
-                        && x.t.MinX >= lab.MinX - 15 && x.t.MinX < right && x.t.Text.Trim().Length > 0)
+                        && x.t.MinX >= left && x.t.MinX < right && x.t.Text.Trim().Length > 0)
                     .Select(x => x.t).ToList();
-                if (used.Count == 0) continue;
+                if (!used.Any(t => IsValueToken(t.Text))) continue;      // a line of the form's own marks (":") is not a value line
                 valueLines.Add(used);
             }
             // 30912-01 p20: a lone digit on its own baseline in the rightmost fifth, BETWEEN
@@ -247,6 +261,9 @@ public static class TitleBlockFields
     }
 
     /// <summary>The first instance of a label wins; a block drawn twice (fake bold) repeats its labels. True when this one was kept.</summary>
+    /// <summary>A token that can be part of a field's value: it has a letter or a digit in it. ":" and "-" alone are the form's own marks.</summary>
+    private static bool IsValueToken(string text) => text.Trim().Any(char.IsLetterOrDigit);
+
     private static bool Set(Dictionary<string, string> fields, string label, string value)
     {
         if (fields.ContainsKey(label)) return false;
