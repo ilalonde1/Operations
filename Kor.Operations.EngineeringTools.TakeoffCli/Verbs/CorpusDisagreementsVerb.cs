@@ -36,6 +36,7 @@ internal static class CorpusDisagreementsVerb
         var pierToHer = new List<(string Job, int Count)>();
         var beyondFootprint = new List<(string Job, int Count)>();
         var frames = new List<(string Job, bool Grids, int Within, int Of)>();
+        var olderBy = new Dictionary<string, int>();   // her model's age against the drawing's issue, in days, where the yardstick says
         var storeyLine = new Regex(@"^\s+(\S+)\s+(\S+)\s+(\d+)\s+(\d+)\s+([\d,]+) mm\s+(\d+)%\s+(\d+)%\s+rigid \(\s*(-?[\d,]+),\s*(-?[\d,]+)\)\s*->\s*([\d,]+) mm\s+(\d+)%\s+beyond (\d+)");
         var sectionCount = new Regex(@"(\S+?) (\d+)(?:,|\s*\.\.\.|$)");
         foreach (var f in files)
@@ -65,6 +66,8 @@ internal static class CorpusDisagreementsVerb
                 if (mp.Success) { pierToHer.Add((job, N(mp.Groups[1].Value))); continue; }
                 var mb = Regex.Match(line, @"note: (\d+) of our columns stand beyond her model's footprint");
                 if (mb.Success) { beyondFootprint.Add((job, N(mb.Groups[1].Value))); continue; }
+                var ma = Regex.Match(line, @"^her model: .*?written \d{4}-\d{2}-\d{2}, (-?\d+) days before the drawing's issue");
+                if (ma.Success) { olderBy[job] = N(ma.Groups[1].Value); continue; }
                 var mf = Regex.Match(line, @"^frames matched by (column registration|grid labels).*?(\d+) of (\d+) of our columns within 100 mm");
                 if (mf.Success) { frames.Add((job, mf.Groups[1].Value.StartsWith("grid", StringComparison.Ordinal), N(mf.Groups[2].Value), N(mf.Groups[3].Value))); continue; }
             }
@@ -79,7 +82,7 @@ internal static class CorpusDisagreementsVerb
         foreach (var (name, lo, hi) in bins)
         {
             var inBin = storeys.Where(s => s.MedianMm >= lo && s.MedianMm < hi).ToList();
-            Console.WriteLine($"   {inBin.Count,4} storey pairs {name}; sets: {string.Join(" ", inBin.GroupBy(s => s.Job).OrderByDescending(g => g.Count()).Take(top).Select(g => $"{g.Key}({g.Count()})"))}");
+            Console.WriteLine($"   {inBin.Count,4} storey pairs {name}; sets: {string.Join(" ", inBin.GroupBy(s => s.Job).OrderByDescending(g => g.Count()).Take(top).Select(g => $"{g.Key}({g.Count()}{(olderBy.TryGetValue(g.Key, out int d) && d > 180 ? $", her model {d} d older" : "")})"))}");
         }
         var rigid = storeys.Where(s => Math.Abs(s.RigidX) + Math.Abs(s.RigidY) >= 150 && s.AfterMm < s.MedianMm / 2).ToList();
         Console.WriteLine($"   of these, {rigid.Count} storey pairs are a RIGID SHIFT of 150 mm or more that halves the error once removed (a frame, not a reading): {string.Join(" ", rigid.GroupBy(s => s.Job).Take(top).Select(g => $"{g.Key}({g.Count()}: {g.First().RigidX:0},{g.First().RigidY:0})"))}");
