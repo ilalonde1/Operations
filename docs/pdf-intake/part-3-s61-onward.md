@@ -1338,7 +1338,8 @@ for the anchor rule — so the labelled lines and their in-line runs were left o
 (the force labels handed to the classifier through the furniture Set). The six-set gate: 31130 L3–L19 lose
 their plates outright (4,794 sq ft → none; nothing else closes the tower), 31202 L6 goes 19,670 → 1,971 +
 1,224 and L7–L12 982 → 584 — on 31202 the force labels sit beside the slab edge's own lines, so the label's
-nearest long line IS the edge. The change is kept as `stash@{0}` ("REJECTED step 80"), not in the code. The
+nearest long line IS the edge. The change is kept as `stash@{0}` (labelled "REJECTED step 80" — the number
+went to §87's rule instead), not in the code. The
 tendon-bounded plate on 31130 is still open; the rule that separates a tendon from the edge it runs beside is
 not the label and not the pen — measured, not guessed. Two attempts on this shape (step 79's arrowheads, this):
 CLAUDE.md rule 10 says stop here and characterise before a third.
@@ -1351,3 +1352,48 @@ foundation plans' members rising to P2, 120 of ours judged against her 50 at a m
 plan's objects are not P2's columns, WP6a item 3; 31104: +35 columns on L2 from the same sheets, a composition
 change to take as a differential; her model is one tower on the two-tower sets, WP6a item 8). Not a placement
 regression. `model-yardstick <ours> <hers>` shows it per storey in a second.
+
+## 87. Step 80, 2026-09-15 late evening: a kept sheet titled as a plan the set issues, plus words, is a drawing ABOUT that plan — WP6a item 3, the 30990 class
+
+**Where it came from.** §86's yardstick look: 30990's P2 had 120 of our columns judged against her 50 at a
+median 1.8 m, and the 70 extra were not P2's. `corpus-query set 30990-01` and the composer's `report.txt`
+said which sheets fed P2 — line 56: *2 sheet(s) whose name carries a non-structural word were read anyway
+because the name says what the sheet is: `S2.01.1.2_1_TOWER A - FOUNDATION PLAN PARKING LEVEL P3 - FOOTING
+REINFORCING` [FOUNDATION PLAN] …* — and line 60: those two *could NOT be set on the grid by name … stay in
+their own frame*. So step 50's exception (a sheet that says what it is, is that — written for 31130's
+"CONCRETE OUTLINE PLANS & POST TENSION REINFORCING", one drawing) kept 30990's footing-reinforcing sheets
+as foundation plans; their footings, drawn filled for their bars, read as 54 columns on P3 in a frame no
+grid name could set; `ModelDoubleHeightMembersOnBothFloors` carried them up to P2, 1.8 m from every column
+the engineer modelled. Instrumented before any code was read: the report and the yardstick, not the composer.
+
+**The rule (step 80).** 30990 issues its foundation twice — `TOWER A - FOUNDATION PLAN PARKING LEVEL P3`
+and `… PARKING LEVEL P3 - FOOTING REINFORCING` — and the set says which is which: a kept sheet whose title
+(the name after the sheet number and view index) is another read sheet's title with words after it, at a
+word boundary, is a drawing ABOUT that plan — its reinforcing, its loading diagram — and stands down as a
+plan. Its axes still carry the frame, as a refused sheet's do.
+`PlanClassificationOptions.SheetsAboutAnotherPlan(sheetNames)` decides it from the names alone;
+`DxfToEtabsService` takes those files out of the plans and reports them (*N sheet(s) kept by a
+structural-plan word are drawings ABOUT a plan the set also issues as itself (its reinforcing, its loading
+diagram), and were not read as plans*). Test `AKeptSheetTitledAsAnotherPlanPlusWordsIsAboutThatPlanAndStandsDown`:
+30990's two pairs; 31202's pair; a set issuing ONLY the combined sheet keeps it (31130's
+outline-with-tendons, "P6 (FOOTING REINFORCING)" alone); the word boundary ("P3" is not a prefix of
+"P30") — proved by breaking the boundary clause.
+
+**Measured on the set** (`corpus-analyze --jobs 30990-01 --recompose --parallel 1`, 13 s, no read): P2
+120 judged at 38% → 56 at 82%; the set 350 of 398 within 100 mm = 88% (run 21: 76%; run 18: 88% — the
+matched 350 unchanged throughout, as §86 found).
+
+**The gate found the second instance before the run did.** 31202-01 L2: walls 89 → 44, nothing else on
+the six moved. The sheet the rule stood down there is `S2.01.5_1_FOUNDATION PLAN -LOADING DIAGRAM` (kept by
+FOUNDATION PLAN against migration 092's LOADING DIAGRAM). Rendered both models and looked (L2 cut out of
+`model-render`'s SVG at full size): the 45 lost "walls" are the diagram's four-foot load ticks drawn across
+every column, and one 13 m load line along the south edge; the cores and stair shafts are the same in
+both. A schematic's marks had been modelled as walls since the baseline was banked. Re-banked. The rule was
+first written as "the reinforcing of" — the second instance says it is wider than that, so the name and the
+report line say ABOUT: what the set issues twice under one title is the plan once and a drawing about it once.
+
+**WHAT IT DOES NOT.** The other half of item 3 — 31162's class (§79): footing-sized filled rectangles
+(541 × 1,283 mm) on the column layer of the foundation plan ITSELF, where there is no second sheet to
+tell the reader they are footings. That is a reader rule (a filled rectangle of footing size with no column
+mark on a foundation plan is a footing), not written yet; it needs the per-column looks on more than one set.
+Nor a sheet about a plan but titled unlike it ("P3 FOOTING SCHEDULE"): the refusal list's job or nobody's.

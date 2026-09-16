@@ -1,6 +1,6 @@
 # PDF intake → ETABS — Completion Plan
 
-**Status:** Rev 4, 2026-09-15 19:45 (rows 3y–3ab, runs 17–21; run 20: PLATES 41% → 62%; run 21 in flight with the second title fix) — Rev 4, 13:00 — WP6a re-plans the road on the engineers' own definition of usable (verticals + a plate on every storey; one model per building); steps 47 and 49–73 in §8, runs 8–16 in §1b, run 17 in flight — WP1–WP5 landed overnight on Ian's go-ahead ("go through this all,
+**Status:** Rev 4, 2026-09-15 22:15 (rows 3y–3ac, runs 17–21 banked: 254 of 296, PLATES 63%; step 80 = item 3(a) landed, not yet in a run) — Rev 4, 13:00 — WP6a re-plans the road on the engineers' own definition of usable (verticals + a plate on every storey; one model per building); steps 47 and 49–73 in §8, runs 8–16 in §1b, run 17 in flight — WP1–WP5 landed overnight on Ian's go-ahead ("go through this all,
 step by step, and finish it overnight"): commits `8fccbc25` (WP3), `3f3f82b9` (WP2), `aba7d9ff`
 (WP4), `69e554b5` (WP5), each gated by the six byte-identical and the fast suite; WP5's remaining
 conventions are counted by a test, not by this document. §8 is what needs Ian. Rev 2 (2026-09-11)
@@ -207,7 +207,7 @@ three lines here at the commit.
 |---|---|---|---|
 | 1 | **Open-face pairs in millimetre sets** (audit finding 1) — the branch was dead in every PDF set; measured alive on the six (31170-arch +2 walls at hatching) | the corpus recompose says what "alive" adds; the rule written from it (likely: the PDF reader pairs faces with fill knowledge, the composer's pairing is for Revit DXFs) | ½ day |
 | 2 | **A plate on every storey** — her criterion. The ledger already counts `storeys_with_plate` and the report says why an edge would not close; the reading classes behind the 59% are the slab-edge chains that do not close, rings that depend on export order (§71, PlanarRings prototype), and edges the wall reader eats (§38's class) | `storeys_with_plate` rises run over run with no storey losing one; every storey without a plate says why in the report; the order differential green on the six | 3–5 days, the big one |
-| 3 | **Footings are not columns** (her scope; 31162's class) — on a foundation or parkade plan a filled rectangle of footing size with no column mark is a footing, and footings are not modelled | 31162's 66 column-layer rectangles gone with no column of hers lost on the six current sets; the corpus's foundation storeys lose footings only | ½ day + a run |
+| 3 | **Footings are not columns** — TWO classes. (a) DONE, step 80 (§87): a kept sheet titled as a plan the set issues, plus words, is a drawing ABOUT that plan (30990's FOOTING REINFORCING sheets = 54 footings as columns rising to P2; 31202's LOADING DIAGRAM = 45 load ticks as walls on L2) — 30990 P2 120 judged @38% → 56 @82%, set 76% → 88%. (b) OPEN, 31162's class: on a foundation or parkade plan a filled rectangle of footing size with no column mark is a footing — a reader rule, needs the per-column looks on more than one set | (a) banked; (b) 31162's 66 column-layer rectangles gone with no column of hers lost on the six current sets; the corpus's foundation storeys lose footings only | (b) ½ day + a run |
 | 4 | **A part plan never duplicates the overall plan** (050 "each level is shown only once"; 01379's offset part plans) — a part plan stands over the overall plan or is refused, never placed beside it | 01379 rendered with no offset block; the corpus's Placement class carries no part-plan duplicates | ½ day |
 | 5 | **The no-model residue**: 8 no-storey (run 17 measures Codex's five title rules), 17 no-plan (garbage-text sets — a plan typed by its geometry when its words are noise; 90102), 1 layer mismatch (30974) | ≥ 270 of 279 build (296 less the 17 other-job files); every remaining one names its class in the ledger | 1–2 days |
 | 6 | **The DXF route's ratchets** (§8 item 0): step 56's two residues on 31168 and 31138's two walls, rendered and fixed or re-banked with the reason | the full Core suite green | ½ day |
@@ -505,6 +505,16 @@ residues' cause. Not the PDF route; queued behind it.
    measured by run 21). OPEN: 31130's plate bounded by tendons drawn black at 10–18 pt — hand
    `TendonAnchors`' labelled tendons to the edge pass; the double-height re-spans against the yardstick;
    `RecoverSurfaces` refusing dense pages; parkade fragment unions; 31087 LEVEL 4.
+
+3ac. **Run 21 banked, the looks, step 80, 2026-09-15 late evening** (§86–§87): run 21 = 254 of 296, plates
+   63%, run 19's regression closed (`bd8f3e21`). Run 20's "more sheets placed" was WRONG (truncated titles
+   hid REINFORCING); the yardstick "worse" sets are the judged population growing, matched counts unchanged
+   (`2142a70b`, `70bcebdf`). The force-labelled-tendon rule measured and REJECTED (`8715ccd5`, stash@{0}).
+   Step 80 = WP6a item 3(a): `PlanClassificationOptions.SheetsAboutAnotherPlan` — 30990 P2 56 @82%; the
+   six-set gate found the second instance itself (31202's loading diagram, 45 walls on L2, rendered and
+   re-banked). NOT in a corpus run yet: batched into the next detached run with whatever else lands.
+   OPEN: item 3(b) 31162's footing-sized rectangles; 31130's tendon-bounded plate (differential first);
+   `RecoverSurfaces` refusals; parkade fragment unions; 31087 LEVEL 4.
 
 4. **WP6** — one model in front of Andrea (31170's, or whichever the ledger ranks best of the
    architects' sets). Ian's call when.

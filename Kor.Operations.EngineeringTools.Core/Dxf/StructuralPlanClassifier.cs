@@ -81,6 +81,38 @@ public sealed record PlanClassificationOptions
         return StructuralPlanWords.FirstOrDefault(w => sheetName.IndexOf(w, StringComparison.OrdinalIgnoreCase) >= 0);
     }
 
+    /// <summary>
+    /// A KEPT SHEET TITLED AS A PLAN THE SET ISSUES, PLUS WORDS, IS A DRAWING ABOUT THAT PLAN, NOT A SECOND PLAN
+    /// (intake step 80, 2026-09-15). <see cref="KeptBy"/> keeps a sheet whose name says what it is - 31130's
+    /// "CONCRETE OUTLINE PLANS &amp; POST TENSION REINFORCING" is one drawing, the outline with the tendons on it.
+    /// 30990 issues its foundation twice, "TOWER A - FOUNDATION PLAN PARKING LEVEL P3" and "... PARKING LEVEL P3 -
+    /// FOOTING REINFORCING": the second is the rebar of the first, its footings drawn filled for their bars read as
+    /// 54 columns that rose to P2 and stood 1.8 m from every column the engineer modelled. 31202 issues
+    /// "FOUNDATION PLAN" and "FOUNDATION PLAN -LOADING DIAGRAM", and the diagram's load ticks across each column
+    /// were 45 four-foot walls on L2. The set says which is which: a kept sheet whose title is another read sheet's
+    /// title with words after it (at a word boundary) is about that plan - its reinforcing, its loading diagram -
+    /// and stands down. Titles are the part of the name after the sheet number and view index. WHAT IT DOES NOT:
+    /// a set that issues only the combined sheet keeps it; a sheet about a plan but titled unlike it is not seen.
+    /// </summary>
+    /// <returns>Each kept sheet that is about another plan, with the title of that plan.</returns>
+    public IReadOnlyList<(string SheetName, string PlanTitle)> SheetsAboutAnotherPlan(IReadOnlyList<string> sheetNames)
+    {
+        ArgumentNullException.ThrowIfNull(sheetNames);
+        static string TitleOf(string name) => System.Text.RegularExpressions.Regex.Replace(name, @"^.*?_\d+_", string.Empty).Trim();
+        var plans = sheetNames.Where(n => RefusedBy(n) is null && KeptBy(n) is null).Select(TitleOf).Where(t => t.Length > 0).ToList();
+        var result = new List<(string, string)>();
+        foreach (string name in sheetNames.Where(n => KeptBy(n) is not null))
+        {
+            string title = TitleOf(name);
+            string? plan = plans
+                .Where(t => title.Length > t.Length && title.StartsWith(t, StringComparison.OrdinalIgnoreCase) && !char.IsLetterOrDigit(title[t.Length]))
+                .OrderByDescending(t => t.Length)
+                .FirstOrDefault();
+            if (plan is not null) result.Add((name, plan));
+        }
+        return result;
+    }
+
     /// <summary>Thinnest printed slab call-out this believes. See `dxf.slab-callout-min-thickness`.</summary>
     public double SlabCalloutMinThickness { get; init; } = 4.0;
 

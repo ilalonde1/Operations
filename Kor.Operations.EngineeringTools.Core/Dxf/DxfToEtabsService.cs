@@ -813,7 +813,6 @@ public static class DxfToEtabsService
                 if (hit is null)
                 {
                     // a sheet that says what it is, is that (step 50): CONCRETE OUTLINE beside REINFORCING is an outline
-                    if (requested.KeptBy(name) is { } word) kept.Add($"{Path.GetFileName(file)} [{word}]");
                     continue;
                 }
 
@@ -822,6 +821,33 @@ public static class DxfToEtabsService
                 frameCarriers.Add(file);
                 refused.Add($"{Path.GetFileName(file)} [{hit}]");
             }
+
+            // A KEPT SHEET TITLED AS A PLAN THE SET ISSUES, PLUS WORDS, IS A DRAWING ABOUT THAT PLAN, NOT A SECOND
+            // PLAN (intake step 80, 2026-09-15). Step 50 keeps a sheet whose name says what it is: 31130's "CONCRETE
+            // OUTLINE PLANS & POST TENSION REINFORCING" is one drawing, the outline with the tendons on it. 30990
+            // issues its foundation twice - "TOWER A - FOUNDATION PLAN PARKING LEVEL P3" and "... PARKING LEVEL P3 -
+            // FOOTING REINFORCING" - and the second is the rebar of the first: its footings, drawn filled for their
+            // bars, read as 54 columns on P3 in a frame no grid name could set, rose to P2 and stood 1.8 m from every
+            // column the engineer modelled. 31202's "FOUNDATION PLAN -LOADING DIAGRAM" put 45 four-foot load ticks on
+            // L2 as walls. The set says which is which (PlanClassificationOptions.SheetsAboutAnotherPlan), and the
+            // sheet stands down as a plan; its axes still carry the frame, as a refused sheet's do.
+            var aboutAnotherPlan = new List<string>();
+            var fileBySheetName = files.ToDictionary(f => Path.GetFileNameWithoutExtension(f), f => f, StringComparer.OrdinalIgnoreCase);
+            foreach (var (sheetName, planTitle) in requested.SheetsAboutAnotherPlan(fileBySheetName.Keys.ToList()))
+            {
+                string file = fileBySheetName[sheetName];
+                files.Remove(file);
+                sheetInfoByFile.Remove(file);
+                frameCarriers.Add(file);
+                aboutAnotherPlan.Add($"{Path.GetFileName(file)} (about \"{planTitle}\")");
+            }
+            foreach (string file in files)
+                if (requested.KeptBy(Path.GetFileNameWithoutExtension(file)) is { } word) kept.Add($"{Path.GetFileName(file)} [{word}]");
+            if (aboutAnotherPlan.Count > 0)
+                warnings.Add(
+                    $"{aboutAnotherPlan.Count} sheet(s) kept by a structural-plan word are drawings ABOUT a plan the set also issues as itself (its reinforcing, its loading diagram), and were not read as plans: " +
+                    string.Join(", ", aboutAnotherPlan.Take(6)) +
+                    (aboutAnotherPlan.Count > 6 ? $", and {aboutAnotherPlan.Count - 6} more" : "") + ".");
 
             if (refused.Count > 0)
                 warnings.Add(

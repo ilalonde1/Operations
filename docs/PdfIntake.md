@@ -1,11 +1,11 @@
 # PDF intake — what it does today, and what it leaves on the page
 
-## 0. START HERE (state as of 2026-09-15 evening, after steps 47 and 54–78 — 248 of 296 sets build from the PDF alone on run 19, its title regression fixed in `dafad991`; plates on 41% of storeys, step 78's plates measured by run 20 tonight; run 17 measures step 72)
+## 0. START HERE (state as of 2026-09-15 late evening, after steps 47 and 54–80 — 254 of 296 sets build from the PDF alone on run 21; plates on 63% of storeys; step 80 lands after run 21 and is measured by the next batched run)
 
 A session picking this up cold reads this section, then the completion plan
 (`docs/architecture/Kor.Operations.EngineeringTools.PdfIntake.plan.md` — what "complete" means, the
 packages, and where each stands), then the last three step sections (§54–§56). §1–§52 are the
-record of how each rule was arrived at, read when a rule is being changed — since 2026-09-15 they live in `docs/pdf-intake/` (three parts, listed at the foot of this page; the numbering is unchanged, a new section goes at the end of the last part). §86 is the latest step (a line ending at an arrowhead is a tendon or a section cut, not a slab edge; the PlanarRings sweep); §85 the cells united — plates; §84 the callout that is not a heading; §83 steps 73–76 and runs 17–18; §82 the audit of 63–71 answered; §81 the static that leaked between sets; §80 run 14 looked at; §76 is why a corpus read is 46–53 min now and how a run is launched so it outlives the session.
+record of how each rule was arrived at, read when a rule is being changed — since 2026-09-15 they live in `docs/pdf-intake/` (three parts, listed at the foot of this page; the numbering is unchanged, a new section goes at the end of the last part). §87 is the latest step (a kept sheet titled as a plan the set issues, plus words, is a drawing ABOUT that plan — 30990's footing reinforcing, 31202's loading diagram; WP6a item 3's first half); §86 a line ending at an arrowhead is a tendon or a section cut, not a slab edge, the PlanarRings sweep, and the rejected force-label attempt; §85 the cells united — plates; §84 the callout that is not a heading; §83 steps 73–76 and runs 17–18; §82 the audit of 63–71 answered; §81 the static that leaked between sets; §80 run 14 looked at; §76 is why a corpus read is 46–53 min now and how a run is launched so it outlives the session.
 
 **What this is.** A PDF ingestor: one ingestion point (`DrawingIntake.ReadSheet` → `PdfOnlyBuild`)
 that reads a drawing set and hands its geometry to outlets — the ETABS `.e2k` today, the DXF as a
@@ -47,19 +47,19 @@ reader (is the line there? what does the drawing call it? is the bubble drawn tw
 `takeoff grid-names` puts a sheet's axis names beside the model's. Step 27 was a day spent guessing
 closing rules that a rendered view would have settled; that is the mistake this line exists to stop.
 
-**Where the route stands, measured on the corpus** (run 19, 2026-09-15 15:08, steps 73–76; run 20 — steps 77–78 and run 19's title-reader fix — lands tonight):
+**Where the route stands, measured on the corpus** (run 21, 2026-09-15 19:40–20:41, steps 73–79 with run 19's title fixes; step 80 is not in it — measured by the next batched run):
 
 | | |
 |---|---|
-| Sets that build a model from the PDF alone | **248 of 296** on run 19 (253 on run 18; the five lost and 85 sets' storeys moved by step 73's title reader dropping words drawn up the page — fixed in `dafad991`, measured by run 20) |
-| No model | 18 no plan the reader typed, 17 the stick file of another job, 12 no storeys, 1 refused at the composer |
-| Plan views on the grid by name | 2,102 of 4,037 (52%) |
-| Storeys with a plate | **1,024 of 2,524 (41%)** — the engineers' bar (plan WP6a); step 78 (`dafad991`) closes the tower floors the chain walk could not, ~110 storeys on the six sets, measured corpus-wide by run 20 |
-| Against the engineers' own models (43 sets, 41 with ours inside her footprint) | 59% of our columns within 100 mm of theirs, 55% of theirs within 100 mm of ours |
+| Sets that build a model from the PDF alone | **254 of 296** on run 21 (the most yet; run 19's title regression closed — no class loses against run 18) |
+| No model | 17 no plan sheet with structure on it, 17 the stick file of another job, 8 no storeys (run 21's ledger) |
+| Sheets placed on a storey | 2,325 of 4,855 written (48%) on run 21 — the rest are refused non-structural sheets, sheets no storey name fits, and the 42 sets without a model |
+| Storeys with a plate | **1,703 of 2,687 (63%)** on run 21 (41% on run 19) — the engineers' bar (plan WP6a item 2); the remaining 37%: no ring read 6%, rings read but no plate 12%, no sheet placed 19% |
+| Against the engineers' own models (49 sets compared on run 21) | 58% of our columns within 100 mm of theirs (6,663 of 11,496), 55% of theirs within 100 mm of ours (6,626 of 11,978), pooled; the matched counts did not fall between runs 18 and 21 on any set — where the share fell, the judged population grew (§86) |
 | The six banked sets | in the repo, byte-identical to their baselines at every commit (`SixSetsBuildAsBankedTests`, ~3 min with the cached page walk) |
 
 **The work order is the engineers' definition of usable** (plan Rev 4, WP6a): the verticals and a plate on
-every storey; one model per building. Plates first (41%); then footings ≠ columns, part plans never duplicate
+every storey; one model per building. Plates first (63%); then footings ≠ columns (step 80 took the sheet-level half), part plans never duplicate
 the overall plan, the no-model residue, the DXF-route ratchets, storey names as the set names them, the
 engineers' review. Each rule is universal, measured on the six (byte-identical or what moved) AND on the
 corpus before it is kept; a rule the corpus refuses is written down with its cost.
@@ -177,4 +177,5 @@ a note.
 - [83. Steps 73–76 and runs 17, 18, 2026-09-15 midday: the title block's fields, the plate instrument, a dead bra](pdf-intake/part-3-s61-onward.md#83-steps-7376-and-runs-17-18-2026-09-15-midday-the-title-blocks-fields-the-plate)
 - [84. Step 77, 2026-09-15 afternoon: a line that names another sheet is a callout, not a heading](pdf-intake/part-3-s61-onward.md#84-step-77-2026-09-15-afternoon-a-line-that-names-another-sheet-is-a-callout-not)
 - [86. Step 79, 2026-09-15 evening: a line ending at an arrowhead is a tendon or a section cut, not a slab edge — and the PlanarRings sweep](pdf-intake/part-3-s61-onward.md#86-step-79-2026-09-15-evening-a-line-ending-at-an-arrowhead-is-a-tendon-or-a-section-cut-not-a-slab)
+- [87. Step 80, 2026-09-15 late evening: a kept sheet titled as a plan the set issues, plus words, is a drawing ABOUT that plan — WP6a item 3, the 30990 class](pdf-intake/part-3-s61-onward.md#87-step-80-2026-09-15-late-evening-a-kept-sheet-titled-as-a-plan-the-set-issues-plus-words-is-a-drawing-about-that-plan--wp6a-item-3-the-30990-class)
 - [85. Step 78, 2026-09-15 afternoon: a floor is the cells its structure stands in, united — PlanarRings wired; a](pdf-intake/part-3-s61-onward.md#85-step-78-2026-09-15-afternoon-a-floor-is-the-cells-its-structure-stands-in-uni)

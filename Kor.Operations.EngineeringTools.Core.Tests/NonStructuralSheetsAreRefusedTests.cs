@@ -80,4 +80,65 @@ public class NonStructuralSheetsAreRefusedTests
         // And it is a required rule, so a run cannot quietly proceed without it.
         Assert.Contains("dxf.non-structural-sheet-patterns", DxfToEtabsService.RequiredRuleKeys);
     }
+
+    /// <summary>
+    /// A KEPT SHEET TITLED AS A PLAN THE SET ISSUES, PLUS WORDS, IS A DRAWING ABOUT THAT PLAN, NOT A
+    /// SECOND PLAN (intake step 80).
+    ///
+    /// The kept-word exception above reads "FOUNDATION PLAN ... FOOTING REINFORCING" as a plan, which
+    /// is right when it is the only foundation plan the set has and wrong when the set issues the
+    /// foundation plan on its own sheet too. 30990 does: 54 footings drawn filled for their bars read
+    /// as columns on P3, rose to P2, and stood 1.8 m from every column the engineer modelled. 31202
+    /// issues "FOUNDATION PLAN" and "FOUNDATION PLAN -LOADING DIAGRAM", and the diagram's load ticks
+    /// across each column stood on L2 as 45 four-foot walls (looked at: the baseline rendered beside
+    /// the model without them). The set says which is which - the sheet's title is the plan's title
+    /// with words after it.
+    ///
+    /// WHAT THIS COVERS: the title relation on the sheet NAMES of one set. WHAT IT DOES NOT: a set
+    /// whose reinforcing sheet is titled differently from its plan (say "P3 FOOTING SCHEDULE") is
+    /// not caught here - that is the refusal list's job or nobody's.
+    /// </summary>
+    [Fact]
+    public void AKeptSheetTitledAsAnotherPlanPlusWordsIsAboutThatPlanAndStandsDown()
+    {
+        var options = new PlanClassificationOptions { NonStructuralSheetPatterns = Patterns };
+
+        // 30990: the plan and its footing reinforcing, both on the tower A sheet, both on tower B's.
+        var names = new[]
+        {
+            "S2.01.1.1_1_TOWER A - FOUNDATION PLAN PARKING LEVEL P3",
+            "S2.01.1.2_1_TOWER A - FOUNDATION PLAN PARKING LEVEL P3 - FOOTING REINFORCING",
+            "S2.01.2.1_1_TOWER B - FOUNDATION PLAN PARKING LEVEL P3",
+            "S2.01.2.2_1_TOWER B - FOUNDATION PLAN PARKING LEVEL P3 - FOOTING REINFORCING",
+            "S2.02.1_1_TOWER A - PARKING LEVEL P2",
+        };
+        foreach (string n in names) _out.WriteLine($"{n}  ->  kept by {options.KeptBy(n) ?? "-"}");
+
+        var reinforcing = options.SheetsAboutAnotherPlan(names);
+        Assert.Equal(2, reinforcing.Count);
+        Assert.Contains(("S2.01.1.2_1_TOWER A - FOUNDATION PLAN PARKING LEVEL P3 - FOOTING REINFORCING", "TOWER A - FOUNDATION PLAN PARKING LEVEL P3"), reinforcing);
+        Assert.Contains(("S2.01.2.2_1_TOWER B - FOUNDATION PLAN PARKING LEVEL P3 - FOOTING REINFORCING", "TOWER B - FOUNDATION PLAN PARKING LEVEL P3"), reinforcing);
+
+        // 31202: the foundation plan and its loading diagram (LOADING DIAGRAM is in the banked row since
+        // migration 092; the constant above predates it).
+        var loading = new PlanClassificationOptions { NonStructuralSheetPatterns = Patterns.Append("LOADING DIAGRAM").ToArray() }
+            .SheetsAboutAnotherPlan(new[] { "S2.01.1_1_FOUNDATION PLAN", "S2.01.5_1_FOUNDATION PLAN -LOADING DIAGRAM", "S2.03.1_1_LEVEL 2 PLAN" });
+        Assert.Equal(new[] { ("S2.01.5_1_FOUNDATION PLAN -LOADING DIAGRAM", "FOUNDATION PLAN") }, loading);
+
+        // A set that issues ONLY the combined sheet keeps it: 31130's outline-with-tendons, and a
+        // foundation plan issued once with its footing bars on it.
+        Assert.Empty(options.SheetsAboutAnotherPlan(new[]
+        {
+            "S2.06.1_1_LEVEL 3 - 16 CONCRETE OUTLINE PLANS & POST TENSION REINFORCING - WEST TOWER",
+            "S2.00.2 - FOUNDATION PLAN / PARKING LEVEL P6 -SOUTH (FOOTING REINFORCING)",
+            "S2.02.1_1_TOWER A - PARKING LEVEL P2",
+        }));
+
+        // The relation is on the WORDS, not the letters: "P3" is not a prefix of "P30".
+        Assert.Empty(options.SheetsAboutAnotherPlan(new[]
+        {
+            "S2.01_1_FOUNDATION PLAN P3",
+            "S2.02_1_FOUNDATION PLAN P30 - FOOTING REINFORCING",
+        }));
+    }
 }
