@@ -2,6 +2,8 @@
 
 ## 0. START HERE (state as of 2026-09-16 06:20, after steps 47 and 54–91 — 260 of 296 sets build from the PDF alone on run 25 (260 of 279 with a stick file of their own, the most yet); plates on 65% of storeys; every step of the overnight session is in a banked run)
 
+**Questions for Ian live in one file: `docs/pdf-intake/QUESTIONS.md`** (one line each; answered ones leave it).
+
 A session picking this up cold reads this section, then the completion plan
 (`docs/architecture/Kor.Operations.EngineeringTools.PdfIntake.plan.md` — what "complete" means, the
 packages, and where each stands), then the last three step sections (§54–§56). §1–§52 are the
