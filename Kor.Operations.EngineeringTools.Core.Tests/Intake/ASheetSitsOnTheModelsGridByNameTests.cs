@@ -39,6 +39,43 @@ public sealed class ASheetSitsOnTheModelsGridByNameTests
         Assert.Contains(axes, a => a.Name == "R" && !a.Vertical && a.At == 2000);
     }
 
+    /// <summary>
+    /// A GRID NAME IS WHAT THE BUBBLE SAYS (step 89, WP6a item 4(b)), measured over every grid-layer text of the 294
+    /// read sets (`corpus-query grid-names`): the building's tag and a hyphen (31183 A1-5 … A1-C, 31103 E-P1, 01379
+    /// 0-11, 30933 A-13; 16 sets), a point for a grid between two (A.8, T1.1, C1.3, P.11), a prime for a grid beside
+    /// one (P2', 0', D'), four characters of letters and digits (MH14), and a bar between two names of one line
+    /// (1|P-1, EA|WA — the tower's grid and the parkade's are one line under two names). "Three characters at most"
+    /// refused every one of 31183's axes, so its ZONE A and ZONE B plans named no axis in common with the model and
+    /// stood on their page origins, one over the other; 86 of 294 sets carried grid text the rule refused.
+    /// WHAT IT DOES NOT: GRID, the word, a bare four-digit number (a dimension on the grid layer) and three or more
+    /// names behind bars (a bubble read with a stack of labels, 31065's "1|1'|12'|8|9") stay refused;
+    /// a tag joined by a space ("A1 5", none seen); which of a bar's two names the model's GRIDS table prefers.
+    /// </summary>
+    [Fact]
+    public void AGridNameIsWhatTheBubbleSays()
+    {
+        var axes = GridAlignment.NamedAxes(
+            [V(1000), V(4000), V(7000), V(10000), H(2000), H(5000)],
+            [T("A1-5", 1000, 20000), T("A1-10", 4000, 0), T("E-P1", 7000, 20000), T("1|P-1", 10000, 0),
+             T("A1-C", 0, 2000), T("A.8", 30000, 5000), T("GRID", 4000, 20000), T("A1-GRID", 7000, 0), T("1112", 10000, 20000)]);
+        Assert.Equal(7, axes.Count);
+        Assert.Contains(axes, a => a.Name == "A1-5" && a.Vertical && a.At == 1000);
+        Assert.Contains(axes, a => a.Name == "A1-10" && a.Vertical && a.At == 4000);
+        Assert.Contains(axes, a => a.Name == "E-P1" && a.Vertical && a.At == 7000);
+        Assert.Contains(axes, a => a.Name == "1" && a.Vertical && a.At == 10000);        // one line, two names
+        Assert.Contains(axes, a => a.Name == "P-1" && a.Vertical && a.At == 10000);
+        Assert.Contains(axes, a => a.Name == "A1-C" && !a.Vertical && a.At == 2000);
+        Assert.Contains(axes, a => a.Name == "A.8" && !a.Vertical && a.At == 5000);
+
+        foreach (string name in new[] { "A1-5", "0-11", "11-A", "1A", "A.8", "T1.1", "C1.3", "P.11", "P2'", "0'", "D'", "MH14", "19." })
+            Assert.True(GridAlignment.IsGridName(name), name);
+        foreach (string word in new[] { "GRID", "A1-GRID", "-5", "", "1112", "TYP.", "MATCH", "A1.5.2" })
+            Assert.False(GridAlignment.IsGridName(word), word);
+        Assert.Equal(new[] { "EA", "WA" }, GridAlignment.GridNamesIn("EA|WA"));
+        Assert.Empty(GridAlignment.GridNamesIn("GRID|LINE"));
+        Assert.Empty(GridAlignment.GridNamesIn("1|1'|12'|8|9"));       // a bubble the reader found five labels in (31065): a stack, not a name
+    }
+
     [Fact]
     public void AMillimetreSheetLandsOnAnInchModelByName()
     {

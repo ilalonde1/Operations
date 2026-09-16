@@ -12,6 +12,7 @@
 //   takeoff corpus-query yardsticks                  every set measured against the engineer's own model, worst first
 //   takeoff corpus-query diff <before-sets.csv>      what moved between that banked run and this ledger, set by set, classed by the first thing that changed
 //   takeoff corpus-query storeys [<job> ...]       every built set's storey names classed: the ladder's shapes, roofs by word, sub-levels, elevations, GARBAGE (item 7 is done at 0)
+//   takeoff corpus-query grid-names [<job> ...]   what the sets call their grids: every grid-layer text, taken as a name or refused (step 89: A1-5 is a name)
 //   takeoff corpus-query pages <job> [--runs a,b]    one set's pages run against run, from analysis.IntakeSheet: the pages placed differently, on what storeys (default: the last two runs)
 // Add --ledger <dir> to any of them.
 internal static class CorpusQueryVerb
@@ -20,7 +21,7 @@ internal static class CorpusQueryVerb
 
     public static int Run(string[] args)
     {
-        if (args.Length < 2) { Console.Error.WriteLine("Usage: takeoff corpus-query summary|no-model|plan-titles|set <job>...|columns <job>|plates [<job>...]|yardsticks|diff <before-sets.csv>|pages <job> [--runs a,b]|storeys [<job>...] [--ledger <dir>]"); return 1; }
+        if (args.Length < 2) { Console.Error.WriteLine("Usage: takeoff corpus-query summary|no-model|plan-titles|set <job>...|columns <job>|plates [<job>...]|yardsticks|diff <before-sets.csv>|pages <job> [--runs a,b]|storeys|grid-names [<job>...] [--ledger <dir>]"); return 1; }
         if (args[1].Equals("pages", StringComparison.OrdinalIgnoreCase)) return Pages(args.Skip(2).ToList());
         string dir = Path.Combine(DrawingMirror.Root, "corpus");
         var rest = new List<string>();
@@ -40,6 +41,8 @@ internal static class CorpusQueryVerb
             return Plates(rest, File.Exists(dir) ? Path.GetDirectoryName(Path.GetFullPath(dir)) ?? "." : dir);
         if (args[1].Equals("storeys", StringComparison.OrdinalIgnoreCase))
             return Storeys(rest, File.Exists(dir) ? Path.GetDirectoryName(Path.GetFullPath(dir)) ?? "." : dir);
+        if (args[1].Equals("grid-names", StringComparison.OrdinalIgnoreCase))
+            return GridNames(rest, File.Exists(dir) ? Path.GetDirectoryName(Path.GetFullPath(dir)) ?? "." : dir);
         if (!File.Exists(setsPath)) { Console.Error.WriteLine($"No ledger at {setsPath}; run corpus-analyze first, or give --ledger <dir|sets.csv>."); return 2; }
         var sets = CorpusAnalyzer.ReadSets(setsPath);
         var sheets = File.Exists(sheetsPath) ? CorpusAnalyzer.ReadSheets(sheetsPath) : [];
@@ -164,6 +167,47 @@ internal static class CorpusQueryVerb
             Console.WriteLine($"    {kind,-15} {byKind.GetValueOrDefault(kind),6}   {string.Join(", ", examples.GetValueOrDefault(kind) ?? [])}");
         Console.WriteLine($"  garbage names (a title's words taken for a storey): {garbage.Count}" + (garbage.Count > 0 ? "" : " - item 7's finish line"));
         foreach (var (job, name) in garbage) Console.WriteLine($"    {job}  \"{name}\"");
+        return 0;
+    }
+
+    /// <summary>
+    /// WHAT THE SETS CALL THEIR GRIDS (step 89, 2026-09-16): every grid-layer text of every written plan DXF under the
+    /// work dir, split by whether <see cref="GridAlignment.IsGridName"/> takes it as a name — per set the names taken,
+    /// the ones refused, and examples of each. The measurement behind "a grid name may carry the building's tag" (16 of
+    /// 296 sets write A1-5, E-P1, 0-11 …); the refused column is where the next class of name shows itself.
+    /// </summary>
+    private static int GridNames(List<string> jobs, string root)
+    {
+        var dirs = Directory.EnumerateDirectories(root)
+            .Where(d => Directory.Exists(Path.Combine(d, "dxf")))
+            .Where(d => jobs.Count == 0 || jobs.Contains(Path.GetFileName(d), StringComparer.OrdinalIgnoreCase))
+            .OrderBy(d => d, StringComparer.OrdinalIgnoreCase).ToList();
+        if (dirs.Count == 0) { Console.Error.WriteLine($"No read sets under '{root}'."); return 2; }
+        var rows = new List<(string Job, int Taken, int Refused, List<string> TakenNames, List<string> RefusedNames)>();
+        foreach (string d in dirs)
+        {
+            var taken = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            var refused = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            foreach (string dxf in Directory.EnumerateFiles(Path.Combine(d, "dxf"), "*.dxf"))
+                foreach (var t in DxfPlanReader.ReadPositionedTags(dxf))
+                {
+                    if (!t.Layer.Contains("GRID", StringComparison.OrdinalIgnoreCase)) continue;
+                    string text = t.Text.Trim();
+                    if (text.Length == 0) continue;
+                    var names = GridAlignment.GridNamesIn(text);
+                    if (names.Count == 0) refused[text] = refused.GetValueOrDefault(text) + 1;
+                    foreach (string name in names) taken[name] = taken.GetValueOrDefault(name) + 1;
+                }
+            if (taken.Count + refused.Count == 0) continue;
+            rows.Add((Path.GetFileName(d), taken.Values.Sum(), refused.Values.Sum(),
+                taken.Keys.OrderBy(k => k, StringComparer.OrdinalIgnoreCase).ToList(), refused.OrderByDescending(kv => kv.Value).Select(kv => kv.Key).ToList()));
+        }
+        int prefixed = rows.Count(r => r.TakenNames.Any(n => n.Contains('-')));
+        Console.WriteLine($"  {rows.Count} of {dirs.Count} read sets write text on a grid layer; {prefixed} name a grid with the building's tag (A1-5); " +
+                          $"{rows.Count(r => r.Refused > 0)} carry text the name rule refuses");
+        Console.WriteLine($"  {"job",-10} {"taken",6} {"refused",8}  names taken (first 10) | refused (most frequent first, 6)");
+        foreach (var r in rows.OrderByDescending(r => r.Refused).ThenBy(r => r.Job, StringComparer.OrdinalIgnoreCase))
+            Console.WriteLine($"  {r.Job,-10} {r.Taken,6} {r.Refused,8}  {string.Join(" ", r.TakenNames.Take(10))} | {string.Join(" ", r.RefusedNames.Take(6))}");
         return 0;
     }
 

@@ -235,6 +235,45 @@ public static class GridAlignment
     public const int LeastConvincingByName = 3;
 
     /// <summary>
+    /// A grid name is what the bubble says (intake step 89, 2026-09-16; WP6a item 4(b)). Measured over every grid-layer
+    /// text the 294 read sets write (`corpus-query grid-names`): "1", "19", "R", "AA", "1A" — three characters — and the
+    /// marks drafters put in a grid name: the building's tag and a hyphen ("A1-5", "E-P1", "0-11"; 16 sets), a point for
+    /// a grid between two ("A.8", "T1.1", "C1.3", "P.11"; 30884, 90097, 31083 …), a prime for a grid beside one ("P2'",
+    /// "0'", "D'"; 31040, 70057, 31052 …), a four-character name of letters and digits ("MH14"; 31139), and a bar
+    /// between two names of one line ("1|P-1", "EA|WA"; 31128, 30867 — the tower's grid and the parkade's are the same
+    /// line under two names). With "three characters at most" the rule, 31183's every axis (A1-5 … A1-C) was refused:
+    /// its ZONE A and ZONE B plans found no name in common with the model and stood on their own page origins, one
+    /// over the other; 86 of 294 sets carried grid text the rule refused. GRID, the word, and a bare number of four
+    /// digits (a dimension on the grid layer) are not names.
+    /// </summary>
+    public static bool IsGridName(string? text)
+    {
+        if (text is null) return false;
+        string s = text.Trim().TrimEnd('\'');            // a prime beside a name is the drafter's mark
+        if (s.EndsWith('.') && s[..^1].Any(char.IsDigit)) s = s[..^1];   // and a period after a numbered one (31150's "19."); "TYP." stays a word
+        int sep = s.IndexOfAny(['-', '.']);
+        if (sep < 0) return Plain(s);
+        return Plain(s[..sep]) && Plain(s[(sep + 1)..], allowFour: false);
+        static bool Plain(string part, bool allowFour = true) =>
+            part.Length is >= 1 and <= 3 && part.All(char.IsLetterOrDigit)
+            || allowFour && part.Length == 4 && part.All(char.IsLetterOrDigit) && part.Any(char.IsLetter) && part.Any(char.IsDigit);
+    }
+
+    /// <summary>
+    /// The names one grid-layer text gives a line: one, or two joined by a bar ("1|P-1" — the tower's name and the
+    /// parkade's for one line); none for a word. Three or more behind bars ("1|1'|12'|8|9" on 31065, "CA|CB|…|CK" on
+    /// 31083) is a bubble the reader found several labels in — a stack of tags, not a line's name — and names nothing:
+    /// taken as five names it wrote five Y grids at one coordinate into 31065's model.
+    /// </summary>
+    public static IReadOnlyList<string> GridNamesIn(string? text)
+    {
+        if (text is null) return [];
+        var parts = text.Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (parts.Length > 2) return [];
+        return parts.Where(IsGridName).ToList();
+    }
+
+    /// <summary>
     /// The drawing's named axes: each grid-layer text of a grid-name's length paired with the
     /// nearest end of a grid-layer line within reach; the axis is that line's constant coordinate.
     /// </summary>
@@ -256,9 +295,9 @@ public static class GridAlignment
         foreach (var t in tags)
         {
             if (!isGridLayer(t.Layer)) continue;
-            // a grid name is "1", "19", "R", "AA", "1A": three characters at most; GRID is a word
-            string name = t.Text.Trim();
-            if (name.Length == 0 || name.Length > 3) continue;
+            // a grid name is what the bubble says (IsGridName); a bar joins two names of one line; GRID is a word
+            var names = GridNamesIn(t.Text);
+            if (names.Count == 0) continue;
             double reach = Math.Max(NameReachFloor, NameReachHeights * t.Height);
             (bool Vertical, double At, DxfPoint A, DxfPoint B) best = default;
             double bestDistance = double.MaxValue;
@@ -268,9 +307,12 @@ public static class GridAlignment
                 if (d < bestDistance) { bestDistance = d; best = l; }
             }
             if (bestDistance > reach) continue;
-            if (axes.Any(a => a.Vertical == best.Vertical && Math.Abs(a.At - best.At) <= SamePosition
-                              && a.Name.Equals(name, StringComparison.OrdinalIgnoreCase))) continue;
-            axes.Add(new NamedAxis(name, best.Vertical, best.At));
+            foreach (string name in names)
+            {
+                if (axes.Any(a => a.Vertical == best.Vertical && Math.Abs(a.At - best.At) <= SamePosition
+                                  && a.Name.Equals(name, StringComparison.OrdinalIgnoreCase))) continue;
+                axes.Add(new NamedAxis(name, best.Vertical, best.At));
+            }
         }
         return axes;
     }

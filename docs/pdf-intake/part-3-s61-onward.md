@@ -1832,3 +1832,49 @@ default's only — the tests. Stated in the completion mail.
 
 WHAT IT DOES NOT: tell the letters apart (a set naming both P4 and B4 would put a LEVEL B4 plan on both; none of 296
 does); a set using B for a building (this route names tower B's storeys "B-LEVEL n", not "Bn").
+
+## 99. Step 89, 2026-09-16 04:15: a grid name is what the bubble says — 31183's ZONE plans, and 86 of 294 sets' grid text (WP6a item 4(b))
+
+**Reproduced on the set.** 31183-01 (3900 Cypress Bowl, 2026; 4 storeys, 0 of 12 views placed by name, yardstick
+6 of 226 within 100 mm): `grid-names` on its L1 ZONE A sheet against its model — "0 named axes, 8 grid-layer lines";
+the DXF carries TEXT "A1-5", "A1-6", "A1-8", "A1-9", "A1-B" … on its GRID layer and the model "carries no GRID lines".
+`GridAlignment.NamedAxes` took a grid name to be "three characters at most" — "A1-5" is four. So no sheet of the set
+named an axis, nothing placed by name, and ZONE A and ZONE B stood on their own page origins, one over the other.
+
+**Measured over the corpus before the rule** (`corpus-query grid-names`, new: every grid-layer text of every written
+plan DXF, taken as a name or refused): 208 of 294 read sets write text on a grid layer; **16 name their grids with the
+building's tag** (31183 A1-5…A1-C, 31103 E-L1…E-P7, 01379 0-1…0-17 with 12,566 tags, 80064, 30988 11-1, 30933
+A-1…A-13, 70064 T-1 …); **86 carry text the rule refused**, and the refused column named the classes: a point for a
+grid between two ("A.8", "T1.1", "C1.3", "P.11"; 30884, 90097, 31083), a prime for a grid beside one ("P2'", "0'",
+"D'"; 31040, 70057, 31052), four characters of letters and digits ("MH14"; 31139), a bar between two names of one line
+("1|P-1", "16|P-16", "EA|WA"; 31128, 31037, 30867 — the tower's grid and the parkade's are one line under two names),
+a period after a number ("19."; 31150).
+
+**The rule** (`GridAlignment.IsGridName`, `GridNamesIn`): a name is one to three letters or digits, or four with both;
+a tag and a hyphen or a point may join two such parts; a prime, and a period after a numbered name, are the
+drafter's marks; a bar joins the two names of one line. GRID, the word, a bare four-digit number, and three or more
+names behind bars are not names. After the rule: **9 of 294 sets carry refused text, all of it words and dimensions**
+("PGNF", "1112", "CGCH", "12"", "AREA", "F.B.", "PPPR").
+
+**The six said something.** 31065 came back with five Y grids at one coordinate: "1|1'|12'|8|9", a bubble the reader
+had found five labels in, split into five names for one line — so a bar with three or more names is a stack of tags
+and names nothing (the second cut of the rule). Then 31202 and 31168 came back with their baselines' junk gone —
+"2|3", "1|2", "3|6", "4|8" had been grid NAMES in their GRIDS tables, three characters and a bar — and 31168's 66
+joints moved by 0.025 mm as a sheet's agreed offset moved with its matched set of names. `model-diff`: plates moved
+0, columns 0/0, walls 0/0; rendered both, pixel-identical but for the title. Re-banked, both. 31130, 31138, 31065,
+31170 byte-identical.
+
+**31183 itself.** Rebuilt alone: 3 of 6 structural sheets now set on the grid by name (ZONE A's L1, P1, P2 — the
+tower's A1- system); ZONE B's three still stand in their own frame, and the reason is not a name: its grid is the
+PARKADE'S (P-10 … P-13, P-A … P-H, plus A1-15/F/G/H where the wing meets the tower) and it runs at an ANGLE — `pdf-at`
+at the P-10 bubble finds one stroked line 14 × 47 mm from it, oblique, and the GridAxis reader (axis-aligned lines
+only) takes none: "19 labelled circles without an axis". The wing's plate renders as a tilted rectangle over the
+tower's plan. A frame turned by other than a quarter turn is not something this route expresses; the model is
+unchanged to the eye (rendered run 23 against now). Item 4(b)'s residue is that, stated: an oblique wing on its own
+grid system.
+
+**Measured.** Fast suite + six-set gate 1,453 green with the two re-banked. Run 24 measures the corpus: the 16
+tagged-grid sets and the 70 with points, primes and bars now name their axes.
+
+WHAT IT DOES NOT: a wing at an angle to the tower's grid (31183 ZONE B); a tag joined by a space; which of a bar's two
+names the GRIDS table prefers when both name lines elsewhere; the DXF word builder's stacks ("CA|CB|…|CK").
