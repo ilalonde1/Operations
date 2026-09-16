@@ -20,6 +20,7 @@ public static class TakeoffVerbs
         ("pdf-at", PdfAtVerb.Matches, PdfAtVerb.Run),
         ("corpus-analyze", CorpusAnalyzeVerb.Matches, CorpusAnalyzeVerb.Run),
         ("corpus-query", CorpusQueryVerb.Matches, CorpusQueryVerb.Run),
+        ("corpus-disagreements", a => a.Length >= 1 && a[0].Equals("corpus-disagreements", StringComparison.OrdinalIgnoreCase), CorpusDisagreementsVerb.Run),
         ("corpus-ledger-db", CorpusLedgerDbVerb.Matches, CorpusLedgerDbVerb.Run),
         ("pdf-levels", PdfLevelsVerb.Matches, PdfLevelsVerb.Run),
         ("pdf-assemblies", PdfAssembliesVerb.Matches, PdfAssembliesVerb.Run),
