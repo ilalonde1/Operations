@@ -1,6 +1,6 @@
 # PDF intake → ETABS — Completion Plan
 
-**Status:** Rev 4, 2026-09-15 23:05 (rows 3y–3ad; overnight session running; steps 80–81 landed, not yet in a run) — Rev 4, 13:00 — WP6a re-plans the road on the engineers' own definition of usable (verticals + a plate on every storey; one model per building); steps 47 and 49–73 in §8, runs 8–16 in §1b, run 17 in flight — WP1–WP5 landed overnight on Ian's go-ahead ("go through this all,
+**Status:** Rev 4, 2026-09-16 06:20 (rows 3y–3af; the overnight session complete: steps 80–91 landed and measured, runs 22–25 banked, 260 of 296 on run 25; §8 owes Ian migration 093, Q1 and item 8's three picks) — Rev 4, 13:00 — WP6a re-plans the road on the engineers' own definition of usable (verticals + a plate on every storey; one model per building); steps 47 and 49–73 in §8, runs 8–16 in §1b, run 17 in flight — WP1–WP5 landed overnight on Ian's go-ahead ("go through this all,
 step by step, and finish it overnight"): commits `8fccbc25` (WP3), `3f3f82b9` (WP2), `aba7d9ff`
 (WP4), `69e554b5` (WP5), each gated by the six byte-identical and the fast suite; WP5's remaining
 conventions are counted by a test, not by this document. §8 is what needs Ian. Rev 2 (2026-09-11)
@@ -554,8 +554,9 @@ residues' cause. Not the PDF route; queued behind it.
    P). **Step 89** (`27fd9efb`, item 4(b)): a grid name is what the bubble says — measured over 294 sets with the new
    `corpus-query grid-names` (86 → 9 sets with refused grid text); 31202 and 31168 re-banked (junk bar-names gone
    from GRIDS, joints ±0.025 mm, rendered pixel-identical); 31183's residue is an oblique parkade wing on its own
-   grid. Run 24 (steps 86–89) banked `cfcb4b96` — 254, plates 64%, and TWO MODELS LOST to a colon read as a title (KOR's 2022 upright strip), **step 91** (§102) brought them back. **Step 90** (`4c87bd04`, §100): a title that is a storey's name alone is a plan (31229; item 5's class B classed set by set). `vector-lines --pens` + §101, the tendon shape's first column. **Run 25** (steps 90–91, `cfcb4b96`, 05:24 → 06:18): **260 of 296 — the most yet**, plates 65%, six new models, none lost. OWED TO IAN: migration 093; Q1
-   (item 3(b), §94) unanswered at 04:20; the three job picks for item 8; the Codex audit in the morning.
+   grid. Run 24 (steps 86–89) banked `cfcb4b96` — 254, plates 64%, and TWO MODELS LOST to a colon read as a title (KOR's 2022 upright strip), **step 91** (§102) brought them back. **Step 90** (`4c87bd04`, §100): a title that is a storey's name alone is a plan (31229; item 5's class B classed set by set). `vector-lines --pens` + §101, the tendon shape's first column. **Run 25** (steps 90–91, `cfcb4b96`, 05:24 → 06:18): **260 of 296 — the most yet**, plates 65%, six new models, none lost (banked `50d3c7fe`). Completion mail 05:25,
+   run 25's mail 06:25. OWED TO IAN: migration 093; Q1 (item 3(b), §94) unanswered at 06:20; the three job picks
+   for item 8; the Codex audit in the morning.
 
 4. **WP6** — one model in front of Andrea (31170's, or whichever the ledger ranks best of the
    architects' sets). Ian's call when.
