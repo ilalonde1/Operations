@@ -1,6 +1,6 @@
 ﻿# PDF intake — what it does today, and what it leaves on the page
 
-## 0. START HERE (state as of 2026-09-16 11:45, after steps 47 and 54–97 — 260 of 296 sets build from the PDF alone on run 26 (260 of 279 with a stick file of their own); plates on 66% of storeys; steps through 95 are in a banked run, step 97 (edges joined through their columns, +16 storeys on 31130) is banked on the six sets and awaits run 27)
+## 0. START HERE (state as of 2026-09-16 14:20, after steps 47 and 54–101 — 260 of 296 sets build from the PDF alone on run 26 (260 of 279 with a stick file of their own); plates on 66% of storeys; steps through 95 are in a banked run; steps 97–98 are in run 27b (in flight); steps 99–101 (piers, wrapped cells, her primary model) banked on the six sets; the engineers' review now comes from the corpus — `takeoff corpus-disagreements` (§111); migrations 094–095 owed by Ian)
 
 **Questions for Ian live in one file: `docs/pdf-intake/QUESTIONS.md`** (one line each; answered ones leave it).
 
