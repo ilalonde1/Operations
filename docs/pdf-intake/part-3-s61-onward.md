@@ -1331,3 +1331,14 @@ curve); a leader ending in a dot; the parkade fragment unions (31168 P2/P3); 310
 over SMB, every job folder on the share) is kept as `kor-drawings/census-<root>.json` with the time it was
 taken and reused for 12 hours; `corpus-analyze --census` retakes it. ~90 s off every run.
 `TheCensusIsTakenOnceADayTests`: kept, reused with the share gone, retaken when old or forced.
+
+**⛔ Measured and rejected (21:15): a force-labelled line out of the edge pass.** The tendons 31130 draws
+black at 10–18 pt are named by their force labels ("378 KIPS", ten on the page) — `TendonAnchors` finds them
+for the anchor rule — so the labelled lines and their in-line runs were left out of the slab-edge candidates
+(the force labels handed to the classifier through the furniture Set). The six-set gate: 31130 L3–L19 lose
+their plates outright (4,794 sq ft → none; nothing else closes the tower), 31202 L6 goes 19,670 → 1,971 +
+1,224 and L7–L12 982 → 584 — on 31202 the force labels sit beside the slab edge's own lines, so the label's
+nearest long line IS the edge. The change is kept as `stash@{0}` ("REJECTED step 80"), not in the code. The
+tendon-bounded plate on 31130 is still open; the rule that separates a tendon from the edge it runs beside is
+not the label and not the pen — measured, not guessed. Two attempts on this shape (step 79's arrowheads, this):
+CLAUDE.md rule 10 says stop here and characterise before a third.
