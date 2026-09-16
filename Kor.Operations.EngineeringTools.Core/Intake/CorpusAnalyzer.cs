@@ -1,4 +1,4 @@
-#nullable enable
+﻿#nullable enable
 using System.Globalization;
 using System.Text;
 using Kor.Operations.EngineeringTools.Dxf;
@@ -99,7 +99,24 @@ public static class CorpusAnalyzer
     /// The engineer's model to measure a job against: the export under the yardstick folder, else the
     /// newest .e2k in the job's own model folder (mirrored). Null when the job has neither.
     /// </summary>
+    /// <summary>The words of step 101, kept on the options so the reading's sources never reference the analyzer.</summary>
+    public static IReadOnlyList<string> DefaultYardstickPrimaryModelWords => PdfIntakeOptions.DefaultYardstickPrimaryModelWords;
+    public static IReadOnlyList<string> DefaultYardstickSecondaryModelWords => PdfIntakeOptions.DefaultYardstickSecondaryModelWords;
+
     public static string? YardstickFor(StickFileCorpus.JobCensus job, string yardstickFolder)
+        => YardstickFor(job, yardstickFolder, DefaultYardstickPrimaryModelWords, DefaultYardstickSecondaryModelWords);
+
+    /// <summary>
+    /// THE YARDSTICK IS HER PRIMARY MODEL (intake step 101, 2026-09-16). The engineers' review from the corpus found 31098
+    /// judged against "31098-01 - 2NDRY ELEMS.EDB" - a secondary-elements model - 21 of its 22 storeys a metre and more
+    /// off, 32 of 370 columns within 100 mm. Among the engineer's own models a job folder holds, the newest whose name
+    /// carries a primary word (FULL, GRAVITY) is the yardstick; failing that the newest whose name carries no secondary
+    /// word (2NDRY, SECONDARY, CRANE, MASS, CHECK, PRELIM, COPY, SLS); failing that the newest of the rest. A model named
+    /// for an earthquake run (EQ) is neither: it carries the building. The export under the yardstick folder, when Ian
+    /// placed one, still comes first - that is his choice of model.
+    /// </summary>
+    public static string? YardstickFor(StickFileCorpus.JobCensus job, string yardstickFolder,
+        IReadOnlyList<string> primaryWords, IReadOnlyList<string> secondaryWords)
     {
         string exported = Path.Combine(yardstickFolder, job.Job + ".e2k");
         // the export is judged as the model folder's files are (audit F16, step 61): a file this tool wrote, or a
@@ -113,7 +130,8 @@ public static class CorpusAnalyzer
             // the PDF route against it - our own output as the yardstick. Ours name their members KW/KC/KF.
             var e2ks = new DirectoryInfo(job.ModelFolder).EnumerateFiles("*.e2k", SearchOption.TopDirectoryOnly)
                 .Concat(new DirectoryInfo(job.ModelFolder).EnumerateDirectories().SelectMany(d => d.EnumerateFiles("*.e2k", SearchOption.TopDirectoryOnly)))
-                .OrderByDescending(f => f.LastWriteTimeUtc).ToList();
+                .OrderBy(f => ModelRank(f.Name, primaryWords, secondaryWords))
+                .ThenByDescending(f => f.LastWriteTimeUtc).ToList();
             foreach (var f in e2ks)
             {
                 string local = DrawingMirror.SingleFile(f.FullName);
@@ -122,6 +140,15 @@ public static class CorpusAnalyzer
             return null;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return null; }
+    }
+
+    /// <summary>0 for a primary model's name, 2 for a secondary's, 1 for the rest (step 101); whole words, any case.</summary>
+    public static int ModelRank(string fileName, IReadOnlyList<string> primaryWords, IReadOnlyList<string> secondaryWords)
+    {
+        var words = System.Text.RegularExpressions.Regex.Split(Path.GetFileNameWithoutExtension(fileName).ToUpperInvariant(), @"[^A-Z0-9]+");
+        if (words.Any(w => secondaryWords.Contains(w, StringComparer.OrdinalIgnoreCase))) return 2;
+        if (words.Any(w => primaryWords.Contains(w, StringComparer.OrdinalIgnoreCase))) return 0;
+        return 1;
     }
 
     /// <summary>An .e2k this tool wrote: its members are named KW (walls), KC (columns), KF (floors), KP (points).</summary>
@@ -203,7 +230,7 @@ public static class CorpusAnalyzer
             {
                 // the mirror is the local copy the tests use; DrawingMirror copies only when size or date differ
                 string pdf = DrawingMirror.SingleFile(issue.Path);
-                string? yardstick = YardstickFor(job, yardstickFolder);
+                string? yardstick = YardstickFor(job, yardstickFolder, options.YardstickPrimaryModelWords, options.YardstickSecondaryModelWords);
                 string stamp = $"{issue.Bytes}|{File.GetLastWriteTimeUtc(issue.Path):O}|{built:O}|{(yardstick is null ? "-" : Path.GetFileName(yardstick) + ":" + new FileInfo(yardstick).Length)}";
                 string manifest = Path.Combine(work, "manifest.txt");
                 // --reuse: the builds stand whatever the tool's stamp says - for a change proven outside the
