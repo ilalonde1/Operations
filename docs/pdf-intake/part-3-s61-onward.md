@@ -1504,3 +1504,39 @@ WHAT IT DOES NOT: the other three reds (each its own look, below); the other 42 
 `PolygonProcessor` 3, five singles) — each is this class wherever a vertex can lie on the polygon it is tested
 against; the shifted differential is the check that says which of them matter, and it is green on the six after
 this step, so the rest are not moved blind. Named here so the next one is recognised in one sentence.
+
+## 90. Step 83, 2026-09-16 small hours: the edge that closes an open chain is not drawn, so it is not a face — the first of the three DXF-route reds
+
+**Where it came from.** `EveryGeneratedMemberStandsOnLineworkFromItsOwnStorey("31168")`: *KW235 at (2364,3808) on
+LEVEL 1 MEZZ* stands on nothing — red since step 56 and carried (plan §8 item 0). Instrumented, not read: the
+DXF-route model rebuilt through the test harness to the scratch folder (the share path, the local mirror and
+the reference named in a `paths.txt`); `walls_at` on the e2k: KW235 runs (2422,5020)→(2305,2596), **2,428 in
+long, 16.5 in thick, at 2.8° off vertical**, assigned to LEVEL 1 MEZZ only; `dxf-inspect --members` on the MEZZ
+sheet: not among its 34 walls; on the LEVEL 1 sheet: *wall (2305,2596)-(2422,5020) t 17 walls* — the pooled
+two-face pass. A scan of every LINE and LWPOLYLINE in the LEVEL 1 DXF: **nothing within 12 in of the wall's
+midpoint on any layer** — a wall along a line nothing draws. The pooled chains (the dash joiner's output through
+`PlanLoopBuilder`): the basement's east chain runs (2289,2440) (2324,2440) (2312,2440) (2312,2695) (2604,2695)
+(2605,5232) (2414,5232) (2422,5232) (2422,5013) (2414,5013) (2414,5021) — eleven drawn points and a **gap of
+2,584 in between its ends**, from (2414,5021) back to (2289,2440): 2.8° off vertical. Its 255 in drawn face at
+x 2312 lies 23 in from that gap at one end and 11 at the other — 17 on average, within a wall's thickness, within
+3° — and the decomposer, handed the open chain as a loop, paired the gap with the face and walked the material
+run along the gap to its end.
+
+**The rule (step 83).** `WallOutlineDecomposer.Decompose`: when the loop is not closed exactly, the last-to-first
+edge is marked used before any pairing — it was already kept out of the leftovers (step 56 wrote that line) and
+is now kept out of the pairing too. Test `TheGapThatClosesAnOpenChainIsNotAFaceTests` at the chain's own eleven
+points: no wall's midpoint lies off every drawn edge and none runs 1,000 in; the same rule leaves a closed
+outline's last edge pairable. Proved by breaking: red without the line, green with it.
+
+**Measured.** 31168's stands-on-nothing gate GREEN — the wall is gone from LEVEL 1 and from MEZZ. The six-set
+gate: 31170-arch's three walls per storey (L3–L7) re-measured from drawn faces only (5,385 → 5,182, 1,702 →
+1,778, 2,972 → 2,743 mm — the same walls, their extents no longer reaching along a gap); 31130 gains a 101 mm
+stub on L1 and L0/P1 (two drawn faces that pair with each other now that the gap is not the nearer partner);
+31065 P2's one wall re-measured 241.3 → 254 mm thick, 2 mm over. Banked all three. The shifted differential
+green. The other two DXF-route reds stand: 31138's two walls at (34,−1065) and (34,−698) on "LEVEL 1 AT 55'-0"
+read and neither modelled nor already there (ceiling 0); 31168's 20 unresolved outlines against 19 — the list
+is nineteen 3-in slivers and thin 6-vertex shapes on LEVEL 1, MEZZ, LEVEL 2 and BLDG C, each named in the report.
+
+WHAT IT DOES NOT: pair a drawn face with the RIGHT partner where the gap was the nearer one — the pooled pass
+finds it or nothing does; a gap that is genuinely a wall the drafting broke (the chain builder's bridge
+tolerance is where that belongs, at 12 in, not at 2,584).

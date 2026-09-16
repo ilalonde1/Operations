@@ -47,6 +47,15 @@ public static class WallOutlineDecomposer
         var used = new bool[edges.Count];
         var walls = new List<WallAxis>();
 
+        // THE EDGE THAT CLOSES AN OPEN CHAIN IS NOT DRAWN, SO IT IS NOT A FACE (intake step 83, 2026-09-15). An open
+        // chain comes here as a loop for its drawn faces to pair inside it; the last-to-first edge is the gap where
+        // the drafting broke, and it was offered as a face like the others. On 31168's LEVEL 1 the basement's east
+        // chain ran (2289,2440) ... (2414,5021), a gap of 2,584 in; that gap paired with the 255 in drawn face at
+        // x 2312 (17 in apart, within 3 degrees) and the material run walked the whole gap: a 2,424 in, 17 in wall
+        // along a line nothing draws, which rose to LEVEL 1 MEZZ and stood on nothing (the coverage gate, red since
+        // step 56). The closing edge was already kept out of the leftovers (below); it is kept out of the pairing too.
+        if (!loop.ClosedExactly) used[edges.Count - 1] = true;
+
         // Pairings that are sound in every way except that they are nearly square.
         var deferred = new List<(int I, int J, DxfPoint Start, DxfPoint End, double Thickness)>();
 
