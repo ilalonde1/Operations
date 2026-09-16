@@ -2077,3 +2077,61 @@ in the working tree uncommitted; the second brief re-specifies the cut on it.
 
 WHAT THIS DOES NOT: a tendon drawn with the outline's pen (none in the two P/T sets); a force label at neither end (a
 banded tendon labelled mid-span — 31202's "20 Kips/ft." stands at both ends).
+
+## 110. Step 97, 2026-09-16 10:25–11:34: 96B rejected, the tendon shape closed, and the edge found stopping at its columns
+
+**96B on the gate.** HEAD alone, rebuilt (Core.dll 10:28:35) and gated: green at 10:31. 96B alone: red. So the
+cut was the cause, and the reason is on the page: 31130's L3–L13 plates come from the EAST tower sheet (p35,
+S2.15.1 "LEVEL 3 - 12"), not the west p22 that sections 101 and 109 characterised. On p35 the outline is drawn
+at **9 pt**; the long segments by pen are 2.0 ×133, 4.0 ×132, 9.0 ×97, 5.0 ×80 (`vector-lines --long`), the
+modal pen 2, the threshold 6, and every 9 pt edge piece with a force label within reach went with the tendons —
+the 18 pt banded tendon at (960,1682)-(1427,1682) "216 KIPS" lies 12 pt off the 9 pt top edge (969..1381 at
+y 1694). The same set draws its west outline at 2 pt. The pen is not the rule. Stashed as `96B under test`.
+
+**The slab pass, traced.** Two instruments, both C#: the slab pass reports its walk, arrangement, cells (area
+and whether they hold structure), open chains with the distance from each end to the nearest column footprint,
+and the neighbourhood gate's inside/near counts, behind `pdf-overlay --walls`; and `SlabPassTraceProbe` builds
+one banked set the way the gate builds it (`KOR_SLAB_TRACE_JOB=31202-01`), because a single page through the
+overlay reads its walls without the set's schedule and answered 19,860 sq ft for 31202 L6 where the set build
+answered 982. What they said:
+
+- 31130 p22 (west): 737 lines offered, the walk finds no floor, the arrangement 48 cells, the largest 536 sq ft,
+  19 of 28 columns in a cell — in their OWN boxes (14 sq ft each). No floor-sized cell: the ring is open. The
+  open chains' ends: **17 of the 58 ends on chains 8 ft or longer lie within a foot of a column's footprint**
+  (0.0–0.9 ft); the 45 ft top-left edge (95.0,185.0)[0.1]–(74.9,160.2)[0.7], the 61 ft right edge
+  (235.0,175.2)[0.7]–(211.0,138.4)[0.4], the 13 ft (107.9,188.5)[0.4]–(95.0,188.5)[0.4]. Tendon ends sit 3.9–18 ft
+  from any column. The edge is drawn to the column and the column's box over the corner; the box was read as the
+  column and its lines left the set.
+- Why the corner-carry did not close it: PlanarRings bridges dangling ENDS one to one, each end to its cheapest
+  mutual partner. At (211.0,138.4) the right edge's end has the 115 ft tendon's end 1.7 ft away — (209.3,138.4) —
+  and pairs with it; the bottom-right edge's end at (221.9,136.3) is left alone. The anchor ON the edge
+  (section 109) is exactly this: a third end at a corner.
+- 31130 p35 (east): 64 cells, the largest 4,791* — the bottom half; the top half's outline pieces are not lines
+  at all: **filled thin rectangles** (`--pens`: 0.0 pt filled, 30 runs, 141 m) that the overlay draws black with
+  no red, so the ring above the middle tendon is open whatever the columns do. Its own class.
+- 31202 L13 (p35): 1,088 cells, three unions 6,452 / 3,392 / 542 separated by column-less strips (728, 725,
+  722 sq ft) between tendons, and the neighbourhood gate refuses the two large ones (more columns near than
+  in); 542 is what survives. 31202 L6 at HEAD: 19,670 passing the gate at 65+ of 136 — the margin of a set
+  whose other block's columns are "near".
+
+**The rule and its forms, gated one after another (each 3 min):**
+
+| form | 31130 west | 31202 L6 | elsewhere | verdict |
+|---|---|---|---|---|
+| A. the footprints as box lines in the arrangement, ends carried to the nearest box side | 8,660 | union keyholed round each box and holding nothing → 1,328 + 557 | 31202 L7-12 refused (an overlap PlanarRings will not resolve) | rejected |
+| B. every end within 4 ft of a footprint carried to the column's centre, any direction | 9,196 | 19,860 refused by the neighbourhood gate (65 of 136) | 31138 L7–L20 gained 7,056 × 14; 31065 L1 lost 10 columns to notches | rejected |
+| C. B, with a column on a cell's boundary holding no cell | 9,197 | 13,868 + 1,868 | 31170-arch's 1,550 gone | rejected |
+| **D. an end running INTO a column (ahead of it within the corner-carry reach, no further off its line than half the column + the bridge), and two such ends at one column joined through its centre; the neighbourhood gate counts a column on the ring as in it (step 82)** | **9,200** | 19,533 → unchanged on the gate | 31065 L4 west +12,928; 31202 L13 +2,141; 31130 P1 −7 walls −4 columns; 31170-arch L3 +1,550 (part plan, flagged) | **banked `93ae2946`** |
+
+Form D's test (`TwoEdgesMeetingAtAColumnAreJoinedThroughItTests`) carries the mechanism: a tendon anchored 100 mm
+from the south edge's west end, so that without the column the corner-carry never runs; proved by breaking (the
+join disabled, the first case fails). Renders looked at before banking: 31130 L5 (west whole, east its bottom
+half plus a tendon-strip spike), 31065 L4 (the west building's real floor), 31065 L1 (a cell union at HEAD and
+now, the difference a strip at its north-west), 31130 P1 (the plate's east strip moved), 31170-arch L3.
+
+**What form D does NOT do, each measured:** 31138's tower (its edges stop BESIDE the columns, not ahead of them —
+form B closed 14 storeys there; the shape wants its own measurement, not B); 31130's east top half (fills, not
+lines); 31202 L13's strips and the gate's margin on L6 (a floor that is three unions); 31130 P1's seven walls
+(lines that lay on the new ring are the edge, not beams, and the DXF side read walls from them — whether they
+were walls is the question). Ian's challenge on 96B — "SPECIFIC one off rules … 1000's of specific rules?" — is
+answered by where this ended: the two numbers were never the rule; the drawing's own node was.

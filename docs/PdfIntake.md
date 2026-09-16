@@ -1,6 +1,6 @@
-# PDF intake — what it does today, and what it leaves on the page
+﻿# PDF intake — what it does today, and what it leaves on the page
 
-## 0. START HERE (state as of 2026-09-16 06:20, after steps 47 and 54–91 — 260 of 296 sets build from the PDF alone on run 25 (260 of 279 with a stick file of their own, the most yet); plates on 65% of storeys; every step of the overnight session is in a banked run)
+## 0. START HERE (state as of 2026-09-16 11:45, after steps 47 and 54–97 — 260 of 296 sets build from the PDF alone on run 26 (260 of 279 with a stick file of their own); plates on 66% of storeys; steps through 95 are in a banked run, step 97 (edges joined through their columns, +16 storeys on 31130) is banked on the six sets and awaits run 27)
 
 **Questions for Ian live in one file: `docs/pdf-intake/QUESTIONS.md`** (one line each; answered ones leave it).
 
@@ -49,15 +49,15 @@ reader (is the line there? what does the drawing call it? is the bubble drawn tw
 `takeoff grid-names` puts a sheet's axis names beside the model's; `model-render --storey L2` draws ONE floor full size, before and after a rule; `dxf-strip` + `dxf-to-etabs` twice + `model-diff` is the strip-a-layer differential (three minutes that say whether a move is the composer's or a layer's); `corpus-query pages <job> --runs a,b` reads one set's pages run against run from the database. Step 27 was a day spent guessing
 closing rules that a rendered view would have settled; that is the mistake this line exists to stop.
 
-**Where the route stands, measured on the corpus** (run 25, 2026-09-16 05:24–06:18, steps through 91 — the overnight session's closing run):
+**Where the route stands, measured on the corpus** (run 26, 2026-09-16 09:34–10:57, steps through 95 and migration 093; one mover against run 25, 30941):
 
 | | |
 |---|---|
-| Sets that build a model from the PDF alone | **260 of 296** on run 25 — of the 279 that hold a stick file of their own (the most yet: 50026 and 30985 back on step 91, 30768, 90101, 30834 and 31229 new; no model lost against run 24) |
+| Sets that build a model from the PDF alone | **260 of 296** on run 26 (unchanged from run 25) — of the 279 that hold a stick file of their own; no model lost |
 | No model | 17 the stick file of another job (a denominator, not a fault), 13 no plan sheet with structure on it (§100: six 1–2 page sets, four with no title text, 30743 by number only, 31036 and 30907 with no text layer, 90102 bookmark titles carrying the project's name), 6 no storeys (01742, 01783, 01788, 30836 OCR garbage, 30980 titles plotted as outlines, 30743) |
-| Sheets placed on a storey | 2,162 of 4,059 plan views written (53%) on run 25 — the rest are refused non-structural sheets, sheets no storey name fits, and the 42 sets without a model |
-| Storeys with a plate | **1,855 of 2,835 (65%)** on run 25 (41% on run 19) — the engineers' bar (plan WP6a item 2); the remaining 37%: no ring read 6%, rings read but no plate 12%, no sheet placed 19% |
-| Against the engineers' own models (51 sets on run 25, `corpus-query summary`) | 58% of our columns within 100 mm of theirs (6,779 of 11,662), 52% of theirs within 100 mm of ours (6,742 of 12,881), pooled; the matched counts did not fall between runs 18 and 21 on any set — where the share fell, the judged population grew (§86) |
+| Sheets placed on a storey | 2,162 of 4,059 plan views written (53%) on run 26, unchanged — the rest are refused non-structural sheets, sheets no storey name fits, and the 42 sets without a model |
+| Storeys with a plate | **1,858 of 2,835 (66%)** on run 26 (41% on run 19) — the engineers' bar (plan WP6a item 2); step 97 is not in this run. The classes still open, each measured on a named sheet (§110): outline pieces drawn as fills (31130 east), tendon-bounded strips splitting the union (31202 L13), edges stopping beside columns (31138), part plans adding a plate (31170-arch L3) |
+| Against the engineers' own models (51 sets on run 26, unchanged, `corpus-query summary`) | 58% of our columns within 100 mm of theirs (6,779 of 11,662), 52% of theirs within 100 mm of ours (6,742 of 12,881), pooled; the matched counts did not fall between runs 18 and 21 on any set — where the share fell, the judged population grew (§86) |
 | The six banked sets | in the repo, byte-identical to their baselines at every commit (`SixSetsBuildAsBankedTests`, ~3 min with the cached page walk) |
 
 **The work order is the engineers' definition of usable** (plan Rev 4, WP6a): the verticals and a plate on
