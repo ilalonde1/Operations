@@ -1990,3 +1990,17 @@ FOUNDATION PLAN", "FOUNDATION PLAN", checked on the pages). Fast suite + six-set
 
 WHAT IT DOES NOT: a horizontal note naming a plan on a block whose title is upright (none seen; the pre-87 rule had
 the same limit); the rotated-strip case (one reading, unchanged).
+
+## 104. Step 93, 2026-09-16 08:50: a right-aligned label's column starts where the label before it ends — Codex's counterexample to step 91
+
+**The review** (`docs/codex/CODEX-PDF-INTAKE-STEP-91-LABEL-VALUE-BOUNDS.md`): step 91 gave a right-aligned label a
+column from the strip's left. Codex traced a two-column block — SHEET TITLE | CHECKED BY on one line, CHECKED BY at
+the strip's edge — and showed CHECKED BY taking the left column's "FOUNDATION PLAN" as its value with nothing to stop
+it. Reproduced at Codex's tokens (`ARightAlignedLabelsColumnStartsWhereTheLabelBeforeItEnds`, red).
+
+**The rule.** The column of a right-aligned label begins where the previous label on its line ends; it runs from the
+strip's left only when the label stands alone on its line — 30985's bracketed [ T I T L E ] — which is the shape
+step 91 was written for. 30985 and 50026 read their titles as before. Fast suite + six-set gate 1,458 green.
+
+WHAT IT DOES NOT: a right-aligned label whose left neighbour is on the line ABOVE (a staggered two-column block; none
+seen); values that overlap the previous label's extent.

@@ -512,6 +512,28 @@ public class ATitleBlocksFieldsAreItsOwnTests
         Assert.Equal("1st Floor / Foundation Plan (West)", SheetTitleReader.TitleText(page));
     }
 
+    /// <summary>
+    /// A RIGHT-ALIGNED LABEL'S COLUMN STARTS WHERE THE LABEL BEFORE IT ON ITS LINE ENDS (step 93, 2026-09-16; Codex's
+    /// counterexample to step 91): on a two-column block — SHEET TITLE | CHECKED BY on one line, CHECKED BY ending at
+    /// the strip's edge — step 91's "left = -∞" let CHECKED BY absorb the left column's "FOUNDATION PLAN". The
+    /// column of a right-aligned label runs from the end of the previous label on its line; from the strip's left
+    /// only when it stands alone on its line (30985's [ T I T L E ]).
+    /// </summary>
+    [Fact]
+    public void ARightAlignedLabelsColumnStartsWhereTheLabelBeforeItEnds()
+    {
+        var words = new List<VectorPageReader.TextToken>
+        {
+            At("SHEET", 925, 200, 50, 8), At("TITLE", 975, 200, 50, 8), At("CHECKED", 1055, 200, 30, 8), At("BY", 1090, 200, 20, 8),
+            At("FOUNDATION", 940, 180, 80, 12), At("PLAN", 1005, 180, 30, 12),
+            At("SCALE", 1080, 140, 40, 8),
+        };
+        var fields = TitleBlockFields.Read(Page(1100, 800, words));
+
+        Assert.Equal("FOUNDATION PLAN", fields["SHEET TITLE"]);
+        Assert.False(fields.ContainsKey("CHECKED BY"), $"CHECKED BY read \"{(fields.TryGetValue("CHECKED BY", out var v) ? v : "")}\"");
+    }
+
     /// <summary>"[ T I T L E ]": a bracket, one letter per token at a 6.2 pt pitch, a bracket — right-aligned to x = 2528.</summary>
     private static IEnumerable<VectorPageReader.TextToken> Bracketed(string word, double x, double y)
     {

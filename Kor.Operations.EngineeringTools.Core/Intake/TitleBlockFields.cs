@@ -154,10 +154,15 @@ public static class TitleBlockFields
             // A RIGHT-ALIGNED LABEL'S VALUE LIES TO ITS LEFT (step 91, 2026-09-16): 30985 sets "[ T I T L E ]" against
             // the strip's right edge and writes "1st Floor / Foundation Plan (West)" under it, starting 130 pt to the
             // left; a column bounded at the label's left edge held only the next label's letters. When the label ends at
-            // the strip's edge and nothing stands beside it, the column runs from the strip's left.
+            // the strip's edge and nothing stands beside it, the column runs from the strip's left — FROM THE END OF THE
+            // LABEL BEFORE IT ON ITS LINE (step 93, 2026-09-16; Codex's counterexample to step 91): on a two-column
+            // block, SHEET TITLE | CHECKED BY on one line, a CHECKED BY that ends at the strip's edge took the left
+            // column's "FOUNDATION PLAN" as its own with nothing to stop it. The previous label on the line is where
+            // this column begins; the strip's left only when the label stands alone on its line (30985).
             double stripRight = tokens.Max(t => t.MaxX);
             bool rightAligned = line[lab.To].MaxX >= stripRight - 15 && !labels.Any(o => o.Line == lab.Line && o.From > lab.To);
-            double left = rightAligned ? double.NegativeInfinity : lab.MinX - 15;
+            double previousEnd = labels.Where(o => o.Line == lab.Line && o.To < lab.From).Select(o => line[o.To].MaxX).DefaultIfEmpty(double.NegativeInfinity).Max();
+            double left = rightAligned ? previousEnd : lab.MinX - 15;
             // and the field ends at the next label BELOW IN THAT COLUMN — a REV label in the next
             // column does not cut the SHEET TITLE off (audit F11, 2026-09-08)
             double FloorWithin(double bound) => labels.Where(o => o.Cy < lab.Cy - 1 && o.MinX >= left && o.MinX < bound).Select(o => o.Cy).DefaultIfEmpty(double.NegativeInfinity).Max();
