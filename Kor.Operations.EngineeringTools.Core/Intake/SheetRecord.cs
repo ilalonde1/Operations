@@ -119,6 +119,8 @@ public sealed record SheetContext
     public int DimensionStringsReadAsWalls { get; init; }
     /// <summary>Columns the classifier offered whose footprint holds the end of a tendon: anchors, flagged and not written (step 48).</summary>
     public int TendonAnchorsReadAsColumns { get; init; }
+    /// <summary>Columns the classifier offered that no schedule declares, longer than 24 in and twice as long as wide: wall piers, flagged and written as walls (step 99).</summary>
+    public int WallPiersReadAsColumns { get; init; }
     public int InkedPaths { get; init; }
     public IReadOnlySet<int> InkedPathIndices { get; init; } = new HashSet<int>();
 }

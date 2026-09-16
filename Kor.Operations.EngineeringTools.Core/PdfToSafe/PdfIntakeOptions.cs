@@ -1,4 +1,4 @@
-#nullable enable
+﻿#nullable enable
 
 using System;
 using System.Collections.Generic;
@@ -59,6 +59,10 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         public double AssumedStoreyHeightMm { get; init; } = Intake.StoreysFromPlans.DefaultAssumedStoreyHeightMm;
         /// <summary>On a wood plan, the thinnest unfilled line pair that is a concrete wall - a retaining wall (step 67): dxf.pdf.unfilled-wall-min-thickness-mm (migration 091), else 8 in.</summary>
         public double UnfilledWallMinThicknessMm { get; init; } = Intake.WallTypeTagging.DefaultUnfilledWallMinThicknessMm;
+        /// <summary>A filled rectangle no schedule declares is a wall pier past this on its long side (step 99, her W1): dxf.pdf.pier-min-long-side-mm (migration 094), else 24 in.</summary>
+        public double PierMinLongSideMm { get; init; } = Intake.WallPiers.DefaultPierMinLongSideMm;
+        /// <summary>... and at least this many times as long as it is thick: dxf.pdf.pier-min-aspect (migration 094), else 2.</summary>
+        public double PierMinAspect { get; init; } = Intake.WallPiers.DefaultPierMinAspect;
 
         // WP5 (2026-09-11): the readers' compiled conventions become rows, tier one. Three are the DXF
         // side's own rows, read here in the DXF side's unit and converted, because the two sides mean
@@ -147,6 +151,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             $"{Prefix}.agreement-label-reach-mm",
             $"{Prefix}.assumed-storey-height-mm",
             $"{Prefix}.unfilled-wall-min-thickness-mm",
+            $"{Prefix}.pier-min-long-side-mm",
+            $"{Prefix}.pier-min-aspect",
             SharedBridgeTolerance,
             SharedMinPlateArea,
             SharedDashJoinGap,
@@ -179,6 +185,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 [$"{Prefix}.agreement-label-reach-mm"] = d.AgreementLabelReachMm,
                 [$"{Prefix}.assumed-storey-height-mm"] = d.AssumedStoreyHeightMm,
                 [$"{Prefix}.unfilled-wall-min-thickness-mm"] = d.UnfilledWallMinThicknessMm,
+                [$"{Prefix}.pier-min-long-side-mm"] = d.PierMinLongSideMm,
+                [$"{Prefix}.pier-min-aspect"] = d.PierMinAspect,
                 [SharedBridgeTolerance]  = d.SlabEdgeBridgeMm / PrintedLength.MmPerInch,
                 [SharedMinPlateArea]     = d.MinSlabAreaMm2 / (PrintedLength.MmPerInch * PrintedLength.MmPerInch),
                 [SharedDashJoinGap]      = d.DashGapMm / PrintedLength.MmPerInch,
@@ -214,6 +222,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 AgreementLabelReachMm = settings.ValueOr($"{Prefix}.agreement-label-reach-mm", options.AgreementLabelReachMm),
                 AssumedStoreyHeightMm = settings.ValueOr($"{Prefix}.assumed-storey-height-mm", options.AssumedStoreyHeightMm),
                 UnfilledWallMinThicknessMm = settings.ValueOr($"{Prefix}.unfilled-wall-min-thickness-mm", options.UnfilledWallMinThicknessMm),
+                PierMinLongSideMm = settings.ValueOr($"{Prefix}.pier-min-long-side-mm", options.PierMinLongSideMm),
+                PierMinAspect = settings.ValueOr($"{Prefix}.pier-min-aspect", options.PierMinAspect),
                 SlabEdgeBridgeMm      = WallMm(SharedBridgeTolerance, options.SlabEdgeBridgeMm),
                 MinSlabAreaMm2        = settings.TryGetValue(SharedMinPlateArea, out var plate) ? plate.Value * 25.4 * 25.4 : options.MinSlabAreaMm2,
                 DashGapMm             = WallMm(SharedDashJoinGap, options.DashGapMm),

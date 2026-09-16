@@ -108,7 +108,7 @@ public sealed class AJobCanStateHowItIsDrawnTests
     [Fact]
     public void EverySettingIsDiscoverableByItsKey()
     {
-        Assert.Equal(18, PdfIntakeOptions.SettingKeys.Count);                    // 18 since step 72 (2026-09-15): dxf.pdf.unfilled-wall-min-thickness-mm (migration 091); 17 since WP5 tier one (2026-09-11)
+        Assert.Equal(20, PdfIntakeOptions.SettingKeys.Count);                    // 20 since step 99 (2026-09-16): dxf.pdf.pier-min-long-side-mm and dxf.pdf.pier-min-aspect (migration 094); 18 since step 72 (2026-09-15): dxf.pdf.unfilled-wall-min-thickness-mm (migration 091); 17 since WP5 tier one (2026-09-11)
         Assert.All(PdfIntakeOptions.SettingKeys,
             k => Assert.StartsWith("dxf.", k, StringComparison.Ordinal));
     }

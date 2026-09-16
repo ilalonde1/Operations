@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using System.Text.RegularExpressions;
 using DrawingMirror = Kor.Operations.EngineeringTools.Dxf.DrawingMirror;
 using Kor.Operations.EngineeringTools.PdfToSafe;
@@ -82,7 +82,8 @@ public static class DrawingIntake
     }
 
     /// <summary>Parallel to the columns: true where the sheet's own schedule, or any schedule in the set, declares the column's size.</summary>
-    private static IReadOnlyList<bool>? DeclaredSizes(ExtractedGeometry geometry, PlanScheduleAgreement? own, IReadOnlyList<ColumnScheduleRow>? set, double toleranceMm)
+    private static IReadOnlyList<bool>? DeclaredSizes(ExtractedGeometry geometry, PlanScheduleAgreement? own, IReadOnlyList<ColumnScheduleRow>? set, double toleranceMm,
+        bool variesDeclaresEverything = true)
     {
         if (own is null && (set is null || set.Count == 0)) return null;
         var flags = new List<bool>(geometry.Columns.Count);
@@ -93,8 +94,10 @@ public static class DrawingIntake
             {
                 var (w, d) = geometry.ColumnSizes[i];
                 double small = Math.Min(w, d), large = Math.Max(w, d);
-                declared = set.Any(r => r.SizeVaries
-                    || (Math.Abs(Math.Min(r.WidthMm, r.DepthMm) - small) <= toleranceMm && Math.Abs(Math.Max(r.WidthMm, r.DepthMm) - large) <= toleranceMm));
+                // a VARIES row declares every size for the tendon rule (a block a schedule might size is not an anchor);
+                // for the pier rule (step 99) a size is declared only where a row names it - VARIES names none
+                declared = set.Any(r => (variesDeclaresEverything && r.SizeVaries)
+                    || (!r.SizeVaries && Math.Abs(Math.Min(r.WidthMm, r.DepthMm) - small) <= toleranceMm && Math.Abs(Math.Max(r.WidthMm, r.DepthMm) - large) <= toleranceMm));
             }
             flags.Add(declared);
         }
@@ -342,10 +345,16 @@ public static class DrawingIntake
         // a tendon's anchor is not a column (step 48): a line labelled with a force is a tendon, and the
         // small filled block at its end is where the strand is stressed, not a column - unless the sheet's
         // own schedule declares that size, in which case it is a column a tendon happens to end at
+        var declaredSizes = DeclaredSizes(geometry, agreement, request.DeclaredColumnSizes, options.AgreementToleranceMm);
         int tendonAnchorsReadAsColumns = classify && !request.MarkupOnly
             ? TendonAnchors.StandDownColumns(geometry, TendonAnchors.Read(content, geometry, scaleFactor, options.ForceWords),
-                DeclaredSizes(geometry, agreement, request.DeclaredColumnSizes, options.AgreementToleranceMm),
-                SmallestDeclaredArea(columns, request.DeclaredColumnSizes))
+                declaredSizes, SmallestDeclaredArea(columns, request.DeclaredColumnSizes))
+            : 0;
+        // a rectangle no schedule declares, longer than 24 in and twice as long as wide, is a wall pier (step 99): her
+        // W1, measured on 37 of her models - 622 of our unmatched columns stand on a wall she modelled
+        int wallPiersReadAsColumns = classify && !request.MarkupOnly
+            ? WallPiers.StandDownColumns(geometry, DeclaredSizes(geometry, agreement, request.DeclaredColumnSizes, options.AgreementToleranceMm, variesDeclaresEverything: false),
+                options.PierMinLongSideMm, options.PierMinAspect)
             : 0;
         return new SheetRecord(pageNumber, page.Width, page.Height, page.Rotation.Value,
             SheetTitleReader.SheetNumberToken(content), bookmark, sheetType, title?.Level, title?.Zone,
@@ -365,6 +374,7 @@ public static class DrawingIntake
                 AnnotationPaths = annotationPaths, NoInkPaths = noInk, PaperPaths = paper, InkedPaths = inked,
                 ScheduleRowsNotMarks = rowsNotMarks, DimensionStringsReadAsWalls = dimensionStringsReadAsWalls,
                 TendonAnchorsReadAsColumns = tendonAnchorsReadAsColumns,
+                WallPiersReadAsColumns = wallPiersReadAsColumns,
                 InkedPathIndices = inkedPathIndices,
             },
         };

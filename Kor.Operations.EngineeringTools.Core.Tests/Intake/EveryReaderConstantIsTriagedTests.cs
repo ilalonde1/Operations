@@ -1,4 +1,4 @@
-#nullable enable
+﻿#nullable enable
 using System.Text.RegularExpressions;
 using Kor.Operations.EngineeringTools.PdfToSafe;
 using Xunit;
@@ -87,6 +87,8 @@ public sealed class EveryReaderConstantIsTriagedTests
         ["WallTypeTagging.cs:ReachMm"] = Convention("dxf.pdf.wall-tag-reach-mm — how far from a wall's axis its tag stands"),
         ["WallTypeTagging.cs:TaggingSheetMinTags"] = Convention("dxf.pdf.tagging-sheet-min-tags"),
         ["WallTypeTagging.cs:WoodPlanMinUnfilledPairs"] = Tolerance("how many unfilled pairs make a sheet a wood plan (20): a count floor on the measured share, as TaggingSheetMinTags is"),
+        ["WallPiers.cs:DefaultPierMinLongSideMm"] = Row("dxf.pdf.pier-min-long-side-mm", "24 in: her ruling W1, walls 24 in and over are walls - a filled rectangle past it that no schedule declares is a pier (migration 094)"),
+        ["WallPiers.cs:DefaultPierMinAspect"] = Row("dxf.pdf.pier-min-aspect", "twice as long as thick: a 12 x 24 is a column she schedules, a 14 x 40 is a pier (migration 094)"),
         ["WallTypeTagging.cs:DefaultUnfilledWallMinThicknessMm"] = Row("dxf.pdf.unfilled-wall-min-thickness-mm", "8 in: on a wood plan an unfilled line pair is a concrete wall only at a retaining wall's thickness (step 67; the row since migration 091, read since step 72)"),
         ["MarkupList.cs:MeasurementReachMm"] = Convention("dxf.pdf.markup-measurement-reach-mm"),
         ["MarkupList.cs:MemberReachMm"] = Convention("dxf.pdf.markup-member-reach-mm"),

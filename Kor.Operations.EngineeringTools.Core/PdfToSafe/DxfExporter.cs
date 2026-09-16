@@ -232,6 +232,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 if (excludedColumns?.Contains(i) == true) continue;
                 if (excludedColors != null && i < geometry.ColumnColors.Count && excludedColors.Contains(geometry.ColumnColors[i])) continue;
                 if (i < geometry.ColumnIsTendonAnchor.Count && geometry.ColumnIsTendonAnchor[i]) continue;   // a tendon's anchor is not a column (step 48)
+                if (i < geometry.ColumnIsWallPier.Count && geometry.ColumnIsWallPier[i]) continue;         // a wall pier is a wall (step 99), written with the walls
                 var (colX, colY) = geometry.Columns[i];
                 double px = colX - cx, py = colY - cy;
                 if (Ok(px, py))
