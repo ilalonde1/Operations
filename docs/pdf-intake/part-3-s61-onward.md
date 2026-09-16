@@ -2193,3 +2193,33 @@ east tower's top half is enclosed by lines and PlanarRings makes no face of it �
 - **Openings**: a stair or shaft drawn as a closed loop inside the floor is filled by step 98; the loop the plan labels
   an opening is owed.
 - **The yardstick's model choice**: 31098's "2NDRY ELEMS.EDB" — prefer the gravity/full model where a job holds several.
+
+## 113. Steps 102–103, run 27, and the finish line stated (2026-09-16 15:05)
+
+**Step 102 (`0466515a`)** — *a storey named with what it carries is the same storey*: the yardstick's pairing drops a
+trailing qualifier word after a numbered level (her L17 MECH, L18 ROOF, L2 AMENITY are our L17, L18, L2; MEZZ stays a
+level of its own). The words are the third row of migration 095. Measured cause: 175 storeys "only hers" and 252
+"only ours" over 59 sets in the review, most of them one storey named two ways. The X-in-a-box instrument (a cell
+crossed by both diagonals) measured the drafter's opening mark on 31138 and 31202: only 0–19 sq ft symbol boxes carry
+it; openings stay parked.
+
+**Step 103 (`58033349`)** — *a ring mostly inside another sheet's floor is the same floor read again* (nine of ten
+vertices inside): 31170-arch's part plans stopped standing as second floors on L5, L6, P1; two on L1 stay because
+those part plans sit offset from the overall (a placement of 1/4" part plans, item 4's residue).
+
+**Run 27** (13:02 → 14:56, interrupted once at 173 of 296 by a Ctrl-C in its console and resumed as 27b on the same
+binary): **plates 66% → 73%** (2,073 of 2,827; +217 on 171 sets — steps 97–98 on the corpus); 259 of 296 with one
+lost to a stick file gone from the share since the census (50054-01), read from the mirror's copy from `9c59efdb` on
+and rebuilt; yardsticks 50 sets, 58% / 52%, 9 sets better / 6 worse / 25 same by share. Run 28 (steps 99–103)
+launched 15:02.
+
+**The finish line, in the plan's own three conditions (§1), as of run 27:**
+1. *The corpus builds.* 260 of 296 (of 279 with their own stick file); the 36 without a model each say why (17 hold
+   another job's file, 13 no plan sheet with structure, 6 no storeys); totals rising — plates 41% (run 19) → 63%
+   (run 21, the overnight's start) → 66% (run 26) → 73% (run 27); no set regressed on run 27 but the moved file.
+2. *Andrea accepts one model.* Not started as a sitting; the input she would have given is now measured from the
+   corpus (`corpus-disagreements`, 59 of her own models): 622 piers → step 99, her primary model → step 101, her
+   storey names → step 102. What remains for her is three one-line confirmations (`QUESTIONS.md`).
+3. *Every instrument is code, every convention a row.* The afternoon added `corpus-disagreements`, the slab-pass
+   trace, `SlabPassTraceProbe`, `model-diff`'s member spans, `tools/SessionMail`; six new rows across migrations 094
+   and 095, each with its compiled default held by a test. Nothing the loop depends on lives outside the repo.
