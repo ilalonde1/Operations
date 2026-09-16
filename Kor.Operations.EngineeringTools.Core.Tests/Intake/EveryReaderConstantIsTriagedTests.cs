@@ -66,6 +66,7 @@ public sealed class EveryReaderConstantIsTriagedTests
         ["GeometryFilterService.cs:SheetFrameMinShare"] = Convention("dxf.pdf.sheet-frame-min-share — a closed shape over 60% of the page is the frame"),
         ["GeometryFilterService.cs:SlabEdgeChainMinMm"] = Convention("dxf.pdf.slab-edge-chain-min-mm — shorter is a tick or a letter"),
         ["GeometryFilterService.cs:FaceTraceMinOverlapMm"] = Convention("dxf.pdf.face-trace-min-overlap-mm"),
+        ["GeometryFilterService.cs:LeakRasterMm"] = Tolerance("the leak finder's raster (an instrument behind FaceTrace): where the outside gets into a ring, to two cells"),
         ["GridBubbles.cs:MinRadiusPts"] = Convention("dxf.pdf.bubble-min-radius-pt — how small a grid bubble is drawn"),
         ["GridBubbles.cs:MaxRadiusPts"] = Convention("dxf.pdf.bubble-max-radius-pt"),
         ["GridBubbles.cs:AxisMinShare"] = Convention("dxf.pdf.axis-min-share — a grid axis crosses at least a quarter of the page"),

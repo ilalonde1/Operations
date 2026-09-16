@@ -17,7 +17,8 @@ namespace Kor.Operations.EngineeringTools.Core.Tests.Intake;
 /// WHAT THIS COVERS: eight short strokes end to end becoming one nine-point path, and only strokes under the
 /// length gate (a long line stays the two-point line the wall reader pairs); a closed ring of short strokes (a
 /// grid bubble) and a node where three strokes meet (a hatch) chaining nothing; a floor whose corners are such
-/// curves closing to its area; a strip across a floor whose outline is doubled, holding nothing, joining the floor.
+/// curves closing to its area; a strip across a floor whose outline is doubled, holding nothing, joining the floor,
+/// and the doubled outline's band wrapping the floor joining it too (a cell whose hole holds structure is the floor).
 /// WHAT IT DOES NOT: a stroke claimed by a footing (its own tests); an opening drawn as a closed loop inside the
 /// floor, which this rule fills; a strip that reaches the outline (between two tendons), which touches the
 /// outside and stays out unless the outline is doubled there; the real sheets (the six-set gate). A same-class fault it would not catch: two
@@ -110,7 +111,10 @@ public sealed class ACurveDrawnAsShortStrokesIsOneLineTests
                      Line(44000, iy0, 44000, iy1), Line(44400, iy0, 44400, iy1),
                      Column(41500, 22500), Column(42500, 24500), Column(46500, 22500), Column(47000, 24500));
         var plate = Assert.Single(g.Slabs);
-        Assert.Equal((ix1 - ix0) * (iy1 - iy0), Area(plate), 1);
+        // the plate is the OUTER ring: the 100 mm band round the floor wraps a hole that holds the columns, and a cell
+        // wrapped round the floor is the floor (31202's lower roof round its penthouse) - of two parallel edge lines
+        // the outer is the edge, which is where her plate runs (the perimeter's outer face)
+        Assert.Equal((X1 - X0) * (Y1 - Y0), Area(plate), 1);
     }
 
 }

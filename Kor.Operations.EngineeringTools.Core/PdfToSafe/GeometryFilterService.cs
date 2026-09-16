@@ -1713,6 +1713,20 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         double NearestColumnFt(DxfPoint p) => result.Columns.Count == 0 ? -1
                             : result.Columns.Select((c, k) => (c, half: (k < result.ColumnSizes.Count ? Math.Max(result.ColumnSizes[k].WidthMm, result.ColumnSizes[k].DepthMm) : 400.0) / 2))
                                 .Min(t => Math.Max(Math.Abs(t.c.X - p.X) - t.half, Math.Abs(t.c.Y - p.Y) - t.half)) / 304.8;
+                        // WHERE THE OUTSIDE GETS IN (instrument, 2026-09-16): a column in no cell stands in the unbounded face, so
+                        // a path crosses no line from it to the page's edge. On a 150 mm raster of the arranged lines, the widest
+                        // such path's narrowest place is the gap the ring leaks through; a ring open without a dangling end
+                        // (both sides of the gap are junctions) shows nowhere else.
+                        var big = cells.Where(f => Math.Abs(f.Outer.Area) >= 92903.04 * 500).ToList();
+                        FaceTrace($"slab pass: {big.Count} cell(s) of 500 sq ft or more: " + string.Join(" | ", big.Select(f =>
+                            $"{Math.Abs(f.Outer.Area) / 92903.04:0} sq ft x {f.Outer.Points.Min(p => p.X) / 304.8:0}..{f.Outer.Points.Max(p => p.X) / 304.8:0} y {f.Outer.Points.Min(p => p.Y) / 304.8:0}..{f.Outer.Points.Max(p => p.Y) / 304.8:0} ft, {f.Holes.Count} hole(s)")));
+                        var outsideColumns = result.Columns.Where(c => !cells.Any(f => LoopGeometry.PointInPolygon(new DxfPoint(c.X, c.Y), f.Outer.Points))).Take(3).ToList();
+                        foreach (var col in outsideColumns)
+                        {
+                            var leak = Leak(arranged, new DxfPoint(col.X, col.Y));
+                            FaceTrace($"slab pass: column at ({col.X / 304.8:0.0},{col.Y / 304.8:0.0}) ft is in no cell; " +
+                                      (leak is null ? "no path to the page's edge found on the raster" : $"the outside reaches it through a gap {leak.Value.Width / 25.4:0} in wide at ({leak.Value.At.X / 304.8:0.0},{leak.Value.At.Y / 304.8:0.0}) ft"));
+                        }
                     }
                     // A CELL ENCLOSED BY THE FLOOR IS THE FLOOR (intake step 98, 2026-09-16). Step 78 took the cells that hold
                     // structure and united them; every line drawn across a floor - a tendon, a slab step, a curb, a curved
@@ -1724,7 +1738,14 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     // a courtyard's open side all touch the outside and stay out as they did. WHAT IT DOES NOT: an opening
                     // drawn as a closed loop inside the floor (a stair, a shaft) is enclosed too and is now filled - the
                     // reading of a loop the plan labels an opening is owed, and named in the plan.
-                    loops.AddRange(planar.RecoverSurfaces(_ => false, (i, cell) => Holds(cell) || !planar.TouchesTheOutside(i)).Slabs.Select(f => f.Outer));
+                    // AND A CELL WRAPPED ROUND THE FLOOR IS THE FLOOR (intake step 100, 2026-09-16): a lower roof drawn round a
+                    // penthouse is a ring whose hole holds the penthouse's columns and whose own band holds nothing - three of
+                    // 31202's five roof pieces went when Holds stopped looking through the hole, and 31130's east tower lost
+                    // its L3-L13 half-plates to a cell whose columns all sat in its holes. A hole that holds structure makes
+                    // its ring the floor round it; of two parallel edge lines the outer is the edge, where her plate runs.
+                    bool WrapsTheFloor(PlanarRings.Face cell) => cell.Holes.Any(h => result.Columns.Any(c => LoopGeometry.PointInPolygon(new DxfPoint(c.X, c.Y), h.Points))
+                                                                                   || result.Walls.Any(w => LoopGeometry.PointInPolygon(new DxfPoint((w.Start.X + w.End.X) / 2, (w.Start.Y + w.End.Y) / 2), h.Points)));
+                    loops.AddRange(planar.RecoverSurfaces(_ => false, (i, cell) => Holds(cell) || WrapsTheFloor(cell) || !planar.TouchesTheOutside(i)).Slabs.Select(f => f.Outer));
                 }
                 catch (InvalidOperationException refused)
                 {
@@ -1888,6 +1909,64 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 for (int i = 0; i < loop.Points.Count; i++)
                     if (LoopGeometry.DistanceToSegment(p, loop.Points[i], loop.Points[(i + 1) % loop.Points.Count]) <= SlabEdgeJoinMm) return true;
                 return false;
+            }
+
+            // the widest path from the point to the raster's border, and its narrowest place: a bottleneck (widest-path) search
+            static (double Width, DxfPoint At)? Leak(IReadOnlyList<DxfSegment> lines, DxfPoint from)
+            {
+                if (lines.Count == 0) return null;
+                const double LeakRasterMm = 60;   // the leak finder's raster: a gap two cells wide is found (an instrument, behind FaceTrace)
+                double cell = LeakRasterMm;
+                double x0 = lines.Min(l => Math.Min(l.Start.X, l.End.X)) - 2 * cell, x1 = lines.Max(l => Math.Max(l.Start.X, l.End.X)) + 2 * cell;
+                double y0 = lines.Min(l => Math.Min(l.Start.Y, l.End.Y)) - 2 * cell, y1 = lines.Max(l => Math.Max(l.Start.Y, l.End.Y)) + 2 * cell;
+                int nx = (int)Math.Ceiling((x1 - x0) / cell) + 1, ny = (int)Math.Ceiling((y1 - y0) / cell) + 1;
+                if ((long)nx * ny > 12_000_000) return null;
+                // distance from each raster cell's centre to the nearest line, capped: the passage width at that cell
+                var dist = new double[nx * ny];
+                Array.Fill(dist, 4 * cell);
+                foreach (var l in lines)
+                {
+                    int ax = (int)((Math.Min(l.Start.X, l.End.X) - x0) / cell) - 4, bx = (int)((Math.Max(l.Start.X, l.End.X) - x0) / cell) + 4;
+                    int ay = (int)((Math.Min(l.Start.Y, l.End.Y) - y0) / cell) - 4, by = (int)((Math.Max(l.Start.Y, l.End.Y) - y0) / cell) + 4;
+                    for (int iy = Math.Max(0, ay); iy <= Math.Min(ny - 1, by); iy++)
+                        for (int ix = Math.Max(0, ax); ix <= Math.Min(nx - 1, bx); ix++)
+                        {
+                            double d = LoopGeometry.DistanceToSegment(new DxfPoint(x0 + ix * cell, y0 + iy * cell), l.Start, l.End);
+                            if (d < dist[iy * nx + ix]) dist[iy * nx + ix] = d;
+                        }
+                }
+                int sx = (int)Math.Round((from.X - x0) / cell), sy = (int)Math.Round((from.Y - y0) / cell);
+                if (sx < 0 || sy < 0 || sx >= nx || sy >= ny) return null;
+                // widest path: a max-heap on the bottleneck width reached so far
+                var best = new double[nx * ny];
+                var via = new int[nx * ny];
+                var queue = new PriorityQueue<int, double>();
+                int start = sy * nx + sx;
+                best[start] = Math.Max(dist[start], cell); via[start] = -1;
+                queue.Enqueue(start, -best[start]);
+                while (queue.Count > 0)
+                {
+                    int cur = queue.Dequeue();
+                    int cx = cur % nx, cy = cur / nx;
+                    if (cx == 0 || cy == 0 || cx == nx - 1 || cy == ny - 1)
+                    {
+                        // walk back to the narrowest place on the path
+                        double narrow = double.MaxValue; int at = cur;
+                        for (int k = cur; k >= 0; k = via[k]) if (dist[k] < narrow) { narrow = dist[k]; at = k; }
+                        return (2 * narrow, new DxfPoint(x0 + (at % nx) * cell, y0 + (at / nx) * cell));
+                    }
+                    foreach (var (dx, dy) in new[] { (1, 0), (-1, 0), (0, 1), (0, -1) })
+                    {
+                        int nxi = cx + dx, nyi = cy + dy;
+                        if (nxi < 0 || nyi < 0 || nxi >= nx || nyi >= ny) continue;
+                        int n = nyi * nx + nxi;
+                        double w = Math.Min(best[cur], dist[n]);
+                        if (dist[n] <= cell / 2 || w <= best[n]) continue;   // through a line, or no wider than the way already found
+                        best[n] = w; via[n] = cur;
+                        queue.Enqueue(n, -w);
+                    }
+                }
+                return null;
             }
 
             static double ChainLength(IReadOnlyList<DxfPoint> c)
