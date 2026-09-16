@@ -5,7 +5,7 @@ internal static class DxfInspectVerb
 
     public static int Run(string[] args)
     {
-        if (args.Length < 2) { Console.Error.WriteLine("Usage: takeoff dxf-inspect <plan.dxf> [--walls] [--columns] [--plates] [--loops] [--members]"); return 1; }
+        if (args.Length < 2) { Console.Error.WriteLine("Usage: takeoff dxf-inspect <plan.dxf> [--walls] [--columns] [--plates] [--loops] [--members] [--near <x> <y> [reach]]"); return 1; }
         if (!File.Exists(args[1])) { Console.Error.WriteLine($"Not found '{args[1]}'."); return 2; }
 
         bool wallDetail = args.Any(a => a.Equals("--walls", StringComparison.OrdinalIgnoreCase));
@@ -17,6 +17,26 @@ internal static class DxfInspectVerb
         // inch thresholds classified nothing - every loop "-> 0 panel(s)" - until 2026-09-13)
         var inspectOptions = new PlanClassificationOptions().InUnitOf(DxfPlanReader.UnitInInches(args[1]) ?? 1.0);
         var inspectSegments = DxfPlanReader.ReadSegments(args[1]);
+
+        // WHAT IS DRAWN NEAR A POINT, ON ANY LAYER (2026-09-16): every segment of the file within a reach of a point,
+        // with its layer - the question that settled 31168's KW235 ("nothing within 12 in of the wall's midpoint on
+        // any layer": a wall along a line nothing draws) and was a scratch script until it was asked twice.
+        int nearAt = Array.FindIndex(args, a => a.Equals("--near", StringComparison.OrdinalIgnoreCase));
+        if (nearAt >= 0 && nearAt + 2 < args.Length)
+        {
+            double nx = double.Parse(args[nearAt + 1], CultureInfo.InvariantCulture), ny = double.Parse(args[nearAt + 2], CultureInfo.InvariantCulture);
+            double reach = nearAt + 3 < args.Length && double.TryParse(args[nearAt + 3], NumberStyles.Float, CultureInfo.InvariantCulture, out double r) ? r : 12.0;
+            var at = new DxfPoint(nx, ny);
+            var near = inspectSegments
+                .Select(s => (Segment: s, Distance: LoopGeometry.DistanceToSegment(at, s.Start, s.End)))
+                .Where(x => x.Distance <= reach)
+                .OrderBy(x => x.Distance).ToList();
+            Console.WriteLine($"{Path.GetFileName(args[1])}: {near.Count} of {inspectSegments.Count} segments within {reach} of ({nx:0.#},{ny:0.#}), by layer: " +
+                string.Join(", ", near.GroupBy(x => x.Segment.Layer).Select(g => $"{g.Key} {g.Count()}")));
+            foreach (var (s, d) in near.Take(60))
+                Console.WriteLine($"  {s.Layer,-20} ({s.Start.X:0.#},{s.Start.Y:0.#})-({s.End.X:0.#},{s.End.Y:0.#}) len {s.Start.DistanceTo(s.End):0.#}  d {d:0.##}");
+            return 0;
+        }
 
         if (columnDetail)
         {

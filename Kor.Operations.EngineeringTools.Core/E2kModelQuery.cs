@@ -27,6 +27,11 @@ public sealed record StoreySummary(
 /// <summary>A storey that is missing something the storeys around it have.</summary>
 public sealed record StoreyConcern(string Storey, string What, string Why);
 
+/// <summary>An object of the model standing near a point on plan: what it is, where it is, and the storeys it rises
+/// through. <see cref="Distance"/> is from the point to the object's nearest edge in the model's own unit, zero inside
+/// a closed area.</summary>
+public sealed record ObjectNearby(string Name, string Kind, IReadOnlyList<(double X, double Y)> Points, IReadOnlyList<string> Storeys, double Distance);
+
 /// <summary>
 /// The questions people actually ask about a generated model, answered from the model itself.
 ///
@@ -179,6 +184,44 @@ public static class E2kModelQuery
         }
 
         return result.OrderByDescending(x => x.Item3).ToList();
+    }
+
+    /// <summary>
+    /// What the model holds near a point on plan, nearest first — the question behind "what did we model at the
+    /// wall that is not on the drawing?" (2026-09-16: 31168's KW235, a wall along a line no layer draws, was found by
+    /// asking this of the model and then <c>dxf-inspect --near</c> of the drawing at the same point). Every object
+    /// with plan points is measured: walls and floors by their nearest edge (zero inside a closed floor), columns by
+    /// their joint. Objects with no assign are still listed, with no storeys.
+    /// </summary>
+    public static IReadOnlyList<ObjectNearby> Near(E2kDocument doc, double x, double y, double reach)
+    {
+        ArgumentNullException.ThrowIfNull(doc);
+        var at = new DxfPoint(x, y);
+        var kinds = ConnectivityKinds(doc);
+        var storeysOf = doc.StoreysByObject();
+        var result = new List<ObjectNearby>();
+        foreach (var (name, points) in doc.PlanPointsOfObjects())
+        {
+            var ring = points.Select(p => new DxfPoint(p.X, p.Y)).ToList();
+            double d;
+            if (ring.Count == 1) d = at.DistanceTo(ring[0]);
+            else
+            {
+                d = double.MaxValue;
+                for (int i = 0; i < ring.Count; i++)
+                    d = Math.Min(d, LoopGeometry.DistanceToSegment(at, ring[i], ring[(i + 1) % ring.Count]));
+                bool closedArea = ring.Count >= 3 && kinds.TryGetValue(name, out string? k) && k.Equals("FLOOR", StringComparison.OrdinalIgnoreCase);
+                if (closedArea && LoopGeometry.InsideOrOn(at, ring, 0)) d = 0;
+            }
+            if (d > reach) continue;
+            result.Add(new ObjectNearby(
+                name,
+                kinds.TryGetValue(name, out string? kind) ? kind : "?",
+                points,
+                storeysOf.TryGetValue(name, out var on) ? on : Array.Empty<string>(),
+                d));
+        }
+        return result.OrderBy(o => o.Distance).ThenBy(o => o.Name, StringComparer.Ordinal).ToList();
     }
 
     /// <summary>Every section the model uses, what it is, and where — the question behind

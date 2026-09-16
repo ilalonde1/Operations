@@ -524,6 +524,21 @@ residues' cause. Not the PDF route; queued behind it.
    back to the page and looked at), 31202 L13's tendon-page fragment 6,718 → 542 (item 2's open class,
    exposed), 31130 +76 sq ft. Ten more `GroupBy(Math.Round(y/bin))` instances named in §88, not moved.
 
+3ae. **Overnight session, continued, 2026-09-16 00:00 → 02:45** (§89–§95): item 6 closed — steps 82, 83, 83b
+   (`86eca0f4`, `23f4cb91`, `f7aa25ff`): on the edge is in (`LoopGeometry.InsideOrOn`), the gap that closes an
+   open chain is not a face, a pair whose band holds a wall already read is the void between two walls (with a
+   nearer-partner rule; the thickness cap tried first lost 31202's 30-in walls and is in §91 as rejected) —
+   the full suite green for the first time since 09-11. Item 7 for the named shapes — step 84 (`e63a098d`),
+   `StoreyNameClass` + `corpus-query storeys`. Item 1 was step 75 (`8e21744d`). Item 5 started — step 85
+   (`1c3cc109`): the title block's plan-naming line wins over a labelled field's notes (30994). Item 3(b)
+   characterised, not shipped (§94, Q1 to Ian). A third attempt on the tendon shape rejected in four minutes
+   (§95, stash) — rule 10 was broken to make it. Run 22 banked (`ab587213`; `corpus-ledger-db` wrote the DB
+   rows after the analyzer's write lost the connection). The night's two decisive scratch instruments are
+   verbs: `dxf-inspect --near <x> <y> [reach]` (every segment on any layer near a point) and `model-at
+   <e2k> <x> <y> [reach]` (`E2kModelQuery.Near`: what the model holds there, with storeys) — the pair that
+   settled 31168's KW235 and 31138's paired faces; tests in `WhatIsDrawnNearAPointIsCodeTests` and
+   `E2kModelQueryTests`. Run 23 (step 85, `07ca88ea`) in flight at 02:24.
+
 4. **WP6** — one model in front of Andrea (31170's, or whichever the ledger ranks best of the
    architects' sets). Ian's call when.
 5. **Step 47**, the next reading rule, from the corpus. `takeoff corpus-query plan-titles` on the

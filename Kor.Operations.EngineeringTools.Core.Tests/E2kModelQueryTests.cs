@@ -177,4 +177,40 @@ public sealed class E2kModelQueryTests
         foreach (var (storey, concrete) in byStorey.Where(kv => kv.Value > 0))
             Assert.True(byTakeoff.ContainsKey(storey), $"{storey} has concrete in the storey answer and none in the takeoff.");
     }
+
+    /// <summary>
+    /// "What did we model there?" (model-at, 2026-09-16). WHAT THIS COVERS: a wall is measured to its nearest edge, a
+    /// column to its joint, a floor is at distance zero from a point inside it; the storeys come from the assigns;
+    /// the reach excludes; nearest first. WHAT IT DOES NOT: an object whose joints are not in POINT COORDINATES
+    /// (it has no plan points and is not listed), and a unit other than the model's own.
+    /// </summary>
+    [Fact]
+    public void OutsideAFloorEverythingIsMeasuredToItsNearestEdge()
+    {
+        var doc = Building(TopAndBottom);
+
+        // (60,-10): 10 in outside the floors' edge P1-P2 and 10 in from the wall standing on it; the column is 70 away.
+        var near = E2kModelQuery.Near(doc, 60, -10, 30);
+        Assert.Equal(new[] { "F1", "F3", "W1" }, near.Select(o => o.Name));
+        Assert.All(near, o => Assert.Equal(10, o.Distance, 6));
+    }
+
+    [Fact]
+    public void AFloorIsAtNoDistanceFromAPointInsideItAndAColumnIsMeasuredToItsJoint()
+    {
+        var doc = Building(TopAndBottom);
+
+        // (60,20): inside the floors, 20 in from the wall along y = 0, 40 in from the column at (60,60).
+        var near = E2kModelQuery.Near(doc, 60, 20, 45);
+        Assert.Equal(new[] { "F1", "F3", "W1", "C1" }, near.Select(o => o.Name));
+        Assert.Equal(0, near[0].Distance, 6);
+        Assert.Equal(20, near[2].Distance, 6);
+        Assert.Equal("PANEL", near[2].Kind);
+        Assert.Equal(new[] { "LEVEL 1" }, near[2].Storeys);
+        Assert.Equal(40, near[3].Distance, 6);
+        Assert.Equal("COLUMN", near[3].Kind);
+
+        // A tighter reach leaves the column out; nothing else moves.
+        Assert.Equal(new[] { "F1", "F3", "W1" }, E2kModelQuery.Near(doc, 60, 20, 30).Select(o => o.Name));
+    }
 }
