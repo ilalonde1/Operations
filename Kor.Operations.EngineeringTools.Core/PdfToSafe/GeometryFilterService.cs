@@ -1,4 +1,4 @@
-#nullable enable
+﻿#nullable enable
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -1548,7 +1548,56 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             // AND ONLY WHERE THE WALK FOUND NO FLOOR: the arrangement is quadratic in the lines (the architect's
             // A003, 11,127 long pieces, 91 s), and a sheet whose outline the walk closed round its structure has
             // its floor already - the union could only add rings inside it, which outermost would drop.
-            var arranged = pieceSegments.Concat(inLine).Concat(strokes).ToList();
+            // TWO EDGES THAT MEET AT A COLUMN ARE JOINED THROUGH IT (intake step 97, 2026-09-16). The drafter draws
+            // the slab edge from column to column and the column's box over the corner; the box was read as the
+            // column and its lines left the set, so every edge now ends short of an empty corner (31130's west
+            // tower plan p22: 17 of 58 chain ends within a foot of a column's footprint; the east p35: 2.0-2.5 ft)
+            // and the ring is open at every corner column - fourteen storeys with no plate on 31130, and no
+            // tendon to blame: PlanarRings bridges dangling ENDS one to one, and where a tendon's anchor arrives
+            // at the same corner it takes one edge and the corner never closes. The column is the drawing's own
+            // node. An edge's end that runs INTO a column - the column ahead of it within the corner-carry reach,
+            // no further off its line than half the column and the bridge (an edge drawn flush with a column's
+            // face passes its centre at exactly half a column) - is an edge that stops at that column, and two of
+            // them meeting at one column are joined through its centre. A lone line running into a column (a
+            // beam, a room wall) is left as drawn: a spur from it into the floor is a junction the drawing does
+            // not have, and joined alone it closed a legend box against 31170-arch's L3 outline into a "floor".
+            // ⛔ MEASURED AND REJECTED THE SAME DAY, each fixing one set and breaking another: the footprints as
+            // box lines in the arrangement (an overlap PlanarRings refuses on 31202 L7-12; the floor keyholed
+            // round each box and holding nothing on 31202 L6); every end within four feet of a column carried in
+            // any direction (31065 L1 lost ten columns to notches, 31202 L6 its 19,670 sq ft to the neighbourhood
+            // gate); a column on a cell's boundary holding no cell (31202 L6 fragmented to 13,868 + 1,868).
+            var carried = new List<DxfSegment>();
+            var endsAtColumn = new Dictionary<DxfPoint, List<DxfPoint>>();   // column centre -> the edge ends that run into it
+            foreach (var c in pieces)
+                foreach (var (end, prev) in new[] { (c[0], c[1]), (c[^1], c[^2]) })
+                {
+                    double dx = end.X - prev.X, dy = end.Y - prev.Y, len = Math.Sqrt(dx * dx + dy * dy);
+                    if (!(len > 0)) continue;
+                    dx /= len; dy /= len;
+                    double bestAlong = double.MaxValue; DxfPoint centre = default;
+                    for (int k = 0; k < result.Columns.Count; k++)
+                    {
+                        var (cx, cy) = result.Columns[k];
+                        double half = Math.Max(k < result.ColumnSizes.Count ? result.ColumnSizes[k].WidthMm : 400.0,
+                                               k < result.ColumnSizes.Count ? result.ColumnSizes[k].DepthMm : 400.0) / 2;
+                        // the column AHEAD of the end, on the edge's own line: within the corner-carry reach along it,
+                        // and no further off the line than the column's own half-size and the bridge (an edge drawn
+                        // flush with the column's face passes its centre at exactly half a column)
+                        double vx = cx - end.X, vy = cy - end.Y;
+                        double along = vx * dx + vy * dy, across = Math.Abs(vx * dy - vy * dx);
+                        if (along < -half || along > SlabEdgeExtendMm + half || across > half + slabEdgeBridgeMm) continue;
+                        if (along < bestAlong) { bestAlong = along; centre = new DxfPoint(cx, cy); }
+                    }
+                    if (bestAlong < double.MaxValue && end.DistanceTo(centre) > SlabEdgeJoinMm)
+                        (endsAtColumn.TryGetValue(centre, out var at) ? at : endsAtColumn[centre] = new List<DxfPoint>()).Add(end);
+                }
+            // TWO edges meeting at a column are joined through it; a lone line running into a column (a room wall, a
+            // beam) is left as drawn - a spur from it into the floor makes junctions the drawing does not have
+            foreach (var (centre, ends) in endsAtColumn)
+                if (ends.Count >= 2)
+                    foreach (var end in ends) carried.Add(new DxfSegment("SLABEDGE", end, centre));
+            FaceTrace?.Invoke($"slab pass: {carried.Count} edge end(s) joined through {endsAtColumn.Count(e => e.Value.Count >= 2)} column(s)");
+            var arranged = pieceSegments.Concat(inLine).Concat(strokes).Concat(carried).ToList();
             foreach (var l in built.Loops)
                 for (int i = 0; i < l.Points.Count; i++)
                     arranged.Add(new DxfSegment("SLABEDGE", l.Points[i], l.Points[(i + 1) % l.Points.Count]));
@@ -1569,6 +1618,19 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 try
                 {
                     var planar = new PlanarRings(SlabEdgeJoinMm, slabEdgeBridgeMm, SlabEdgeExtendMm).Build(arranged);
+                    if (FaceTrace is not null)
+                    {
+                        var cells = planar.Faces.OrderByDescending(f => Math.Abs(f.Outer.Area)).ToList();
+                        int inACell = result.Columns.Count(c => cells.Any(f => LoopGeometry.PointInPolygon(new DxfPoint(c.X, c.Y), f.Outer.Points)));
+                        FaceTrace($"slab pass: arrangement {cells.Count} cell(s); columns in a cell {inACell} of {result.Columns.Count}; " +
+                                  $"largest (sq ft, holds): {string.Join(" ", cells.Take(10).Select(f => $"{Math.Abs(f.Outer.Area) / 92903.04:0}{(Holds(f.Outer) ? "*" : "")}"))}");
+                        var open = planar.OpenChains.Where(c => c.Count >= 2).OrderByDescending(ChainLength).ToList();
+                        FaceTrace($"slab pass: {planar.OpenChains.Count} open chain(s) in the arrangement; longest (ft, ends in ft): " +
+                                  string.Join(" | ", open.Select(c => $"{ChainLength(c) / 304.8:0} ({c[0].X / 304.8:0.0},{c[0].Y / 304.8:0.0})[{NearestColumnFt(c[0]):0.0}]-({c[^1].X / 304.8:0.0},{c[^1].Y / 304.8:0.0})[{NearestColumnFt(c[^1]):0.0}]")));
+                        double NearestColumnFt(DxfPoint p) => result.Columns.Count == 0 ? -1
+                            : result.Columns.Select((c, k) => (c, half: (k < result.ColumnSizes.Count ? Math.Max(result.ColumnSizes[k].WidthMm, result.ColumnSizes[k].DepthMm) : 400.0) / 2))
+                                .Min(t => Math.Max(Math.Abs(t.c.X - p.X) - t.half, Math.Abs(t.c.Y - p.Y) - t.half)) / 304.8;
+                    }
                     loops.AddRange(planar.RecoverSurfaces(_ => false, cell => Holds(cell.Outer)).Slabs.Select(f => f.Outer));
                 }
                 catch (InvalidOperationException refused)
@@ -1596,6 +1658,11 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             // asked for the floor is not a weaker version of the ring rule, it is a different and
             // wrong one. The tower edge stays open until the rule that closes it is known: a storey
             // with no plate is honest, a storey carrying its core's area as its floor is not.
+            FaceTrace?.Invoke($"slab pass: {candidates.Count} of {eligible.Count} lines offered; walk {built.Loops.Count} loop(s), {pieces.Count} piece(s); " +
+                              $"walk found a floor: {walkFoundAFloor}; arranged {arranged.Count}; refused: {result.SlabEdgeArrangementRefused ?? "-"}; " +
+                              $"rings {loops.Count} (sq ft: {string.Join(",", loops.OrderByDescending(l => l.Area).Take(6).Select(l => (l.Area / 92903.04).ToString("0")))}); " +
+                              $"floors (big enough, structure stands in) {floors.Count}; the three largest rings: " +
+                              string.Join(" | ", loops.OrderByDescending(l => l.Area).Take(3).Select(l => $"{l.Area / 92903.04:0} sq ft {Neighbourhood(l)}")));
             if (floors.Count == 0) return;
 
             // and outermost: a core's ring inside a floor is a hole in it, not a second floor. INSIDE A DRAWN FLOOR
@@ -1654,6 +1721,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             // divides a floor into are each under the floor bound and each hold their columns
             bool Holds(PlanLoop cell)
             {
+                // strictly inside: cells meeting only at a column's centre (a carried edge's junction, step 97) are not
+                // one floor, and uniting them pinches the union into a boundary PlanarRings refuses (measured 2026-09-16)
                 foreach (var c in result.Columns)
                     if (LoopGeometry.PointInPolygon(new DxfPoint(c.X, c.Y), cell.Points)) return true;
                 foreach (var w in result.Walls)
@@ -1661,7 +1730,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 return false;
             }
 
-            bool StandsIn(PlanLoop loop)
+            bool StandsIn(PlanLoop loop) => Neighbourhood(loop).Stands;
+            (bool Stands, int Inside, int Near) Neighbourhood(PlanLoop loop)
             {
                 double x0 = loop.Points.Min(p => p.X), x1 = loop.Points.Max(p => p.X);
                 double y0 = loop.Points.Min(p => p.Y), y1 = loop.Points.Max(p => p.Y);
@@ -1671,11 +1741,12 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 {
                     if (x < x0 - reach || x > x1 + reach || y < y0 - reach || y > y1 + reach) return;
                     near++;
-                    if (LoopGeometry.PointInPolygon(new DxfPoint(x, y), loop.Points)) inside++;
+                    // on the ring is in it (step 82): a column the edge runs through stands on this floor
+                    if (LoopGeometry.InsideOrOn(new DxfPoint(x, y), loop.Points, SlabEdgeJoinMm)) inside++;
                 }
                 foreach (var c in result.Columns) Count(c.X, c.Y);
                 foreach (var w in result.Walls) Count((w.Start.X + w.End.X) / 2, (w.Start.Y + w.End.Y) / 2);
-                return inside > 0 && inside * 2 > near;
+                return (inside > 0 && inside * 2 > near, inside, near);
             }
 
 
@@ -1699,6 +1770,13 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 var cut = new HashSet<int>();
                 for (int i = 0; i < segs.Count; i++)
                     if (EndsAtAnArrowhead(result.Lines[lines[i]])) cut.Add(Root(i));
+                if (FaceTrace is not null && cut.Count > 0)
+                {
+                    var size = new Dictionary<int, int>();
+                    for (int i = 0; i < segs.Count; i++) size[Root(i)] = size.GetValueOrDefault(Root(i)) + 1;
+                    FaceTrace($"slab pass: {cut.Count} run(s) end at an arrowhead and take {Enumerable.Range(0, segs.Count).Count(i => cut.Contains(Root(i)))} of {lines.Count} lines with them; " +
+                              $"run sizes {string.Join(",", cut.Select(r => size[r]).OrderByDescending(n => n).Take(8))}");
+                }
                 return cut.Count == 0 ? lines : lines.Where((_, i) => !cut.Contains(Root(i))).ToList();
             }
 
