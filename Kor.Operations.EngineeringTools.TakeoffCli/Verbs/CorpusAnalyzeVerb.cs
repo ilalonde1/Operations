@@ -16,7 +16,7 @@ internal static class CorpusAnalyzeVerb
         string caWork = Path.Combine(DrawingMirror.Root, "corpus");
         string? caJobs = null, caRulesDb = null, caYardsticks = null;
         int caParallel = 4;
-        bool caForce = false, caReuse = false, caRecompose = false;
+        bool caForce = false, caReuse = false, caRecompose = false, caCensusFresh = false;
         for (int i = 1; i < args.Length; i++)
         {
             if (args[i].Equals("--work", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) caWork = args[++i];
@@ -27,11 +27,12 @@ internal static class CorpusAnalyzeVerb
             else if (args[i].Equals("--force", StringComparison.OrdinalIgnoreCase)) caForce = true;
             else if (args[i].Equals("--reuse", StringComparison.OrdinalIgnoreCase)) caReuse = true;
             else if (args[i].Equals("--recompose", StringComparison.OrdinalIgnoreCase)) caRecompose = true;
+            else if (args[i].Equals("--census", StringComparison.OrdinalIgnoreCase)) caCensusFresh = true;
             else caRoot = args[i];
         }
         var caProblems = new List<string>();
         Console.WriteLine("census...");
-        var caCensus = StickFileCorpus.Census(caRoot, caProblems, parallel: 12);
+        var caCensus = StickFileCorpus.CensusCached(caRoot, caProblems, TimeSpan.FromHours(12), caCensusFresh, line => Console.WriteLine("  " + line), parallel: 12);
         Console.Write(StickFileCorpus.Summary(caCensus));
         var (caOptions, caRulesSource) = PdfIntakeOptions.For(caRulesDb ?? Environment.GetEnvironmentVariable(RuleSettings.ConnectionEnvironmentVariable));
         Console.WriteLine($"rules: {caRulesSource}; work: {caWork}");

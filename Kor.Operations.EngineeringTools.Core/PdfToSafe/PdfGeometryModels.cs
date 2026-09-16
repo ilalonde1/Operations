@@ -189,6 +189,13 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         /// read by the tendon reader, which chains them with the lines. Not exported.
         /// </summary>
         public List<List<(double X, double Y)>> StrokesOnGrid { get; } = new();
+
+        /// <summary>
+        /// The filled triangles the column reader refused as symbols (step 58): a section mark's or a leader's
+        /// arrowhead, its centre and its size in mm. A line ending at one is a section cut or a leader, not a
+        /// slab edge (step 79).
+        /// </summary>
+        public List<(double X, double Y, double SizeMm)> Arrowheads { get; } = new();
         /// <summary>A TENDON'S ANCHOR IS NOT A COLUMN (intake step 48). Parallel to <see cref="Columns"/>: true when the column's footprint holds the end of a line labelled with a force (<see cref="Intake.TendonAnchors"/>); not written, not counted as a column.</summary>
         public List<bool> ColumnIsTendonAnchor { get; } = new();
         /// <summary>

@@ -1326,3 +1326,8 @@ is not a permutation": selected cells meeting at a vertex), which the reader rep
 
 WHAT IT DOES NOT: an arrowhead the column reader read as something else (four points, an open outline, a
 curve); a leader ending in a dot; the parkade fragment unions (31168 P2/P3); 31087 LEVEL 4.
+
+**The census, once a day (same evening).** `StickFileCorpus.CensusCached`: the census (three listings a job
+over SMB, every job folder on the share) is kept as `kor-drawings/census-<root>.json` with the time it was
+taken and reused for 12 hours; `corpus-analyze --census` retakes it. ~90 s off every run.
+`TheCensusIsTakenOnceADayTests`: kept, reused with the share gone, retaken when old or forced.

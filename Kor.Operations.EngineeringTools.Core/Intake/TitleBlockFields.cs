@@ -109,13 +109,21 @@ public static class TitleBlockFields
             // TITLE; PROJECT NO ends PROJECT TITLE). Tokens in the label's column only.
             // the column ends where the next label on the label's own line begins (SHEET NUMBER | REV:)
             double right = labels.Where(o => o.Line == lab.Line && o.From > lab.To).Select(o => o.MinX).DefaultIfEmpty(lab.MinX + 260).Min();
-            // 30912-01 p20: a neighbouring column already labelled above this field bounds it too;
-            // a short CHECKED BY column must not inherit the title column's words via the 260 pt default.
-            right = labels.Where(o => o.Cy >= lab.Cy - 1 && o.MinX > lab.MinX + 15 && o.MinX < right)
-                .Select(o => o.MinX).DefaultIfEmpty(right).Min();
             // and the field ends at the next label BELOW IN THAT COLUMN — a REV label in the next
             // column does not cut the SHEET TITLE off (audit F11, 2026-09-08)
-            double floor = labels.Where(o => o.Cy < lab.Cy - 1 && o.MinX >= lab.MinX - 15 && o.MinX < right).Select(o => o.Cy).DefaultIfEmpty(double.NegativeInfinity).Max();
+            double FloorWithin(double bound) => labels.Where(o => o.Cy < lab.Cy - 1 && o.MinX >= lab.MinX - 15 && o.MinX < bound).Select(o => o.Cy).DefaultIfEmpty(double.NegativeInfinity).Max();
+            double floor = FloorWithin(right);
+            // 30912-01 p20: a neighbouring column already labelled beside this field bounds it too;
+            // a short CHECKED BY column must not inherit the title column's words via the 260 pt default.
+            // BESIDE THE FIELD, NOT ANYWHERE ABOVE IT (run 19, 2026-09-15): the label must stand within the
+            // field's own rows - from its floor up to a line above the label - or it is another part of the
+            // block. 30816's old KOR block has a revision table's SHEET column header far above DRAWING
+            // TITLE, and taking it as the neighbour cut the title to one word a line ("Level (Concrete") on
+            // every sheet; 82 sets' storeys went with it.
+            double labelHeight = Math.Max(lines[lab.Line][lab.From].Height, 4.0);
+            right = labels.Where(o => o.Cy >= floor && o.Cy <= lab.Cy + 1.5 * labelHeight && o.MinX > lab.MinX + 15 && o.MinX < right)
+                .Select(o => o.MinX).DefaultIfEmpty(right).Min();
+            floor = FloorWithin(right);
             var valueLines = new List<List<VectorPageReader.TextToken>>();
             for (int li = 0; li < lines.Count; li++)
             {

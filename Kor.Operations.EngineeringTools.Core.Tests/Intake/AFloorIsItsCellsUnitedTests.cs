@@ -94,6 +94,33 @@ public sealed class AFloorIsItsCellsUnitedTests
         Assert.Equal(1, g.FirstEdgeSlab);                                   // the drawn one, and no edge slab after it
     }
 
+    /// <summary>
+    /// A SECTION CUT LINE IS NOT A SLAB EDGE (intake step 79, 2026-09-15). 31130's tower plan draws its section marks
+    /// as long diagonals across the floor ending in filled arrowheads; united with the outline's cells they gave the
+    /// storey a slanted hexagon. A line ending at an arrowhead never bounds a floor. WHAT THIS COVERS: the outline
+    /// open on one side, a section line with an arrowhead lying where the edge would be - no floor; the same line
+    /// without the arrowhead closes the ring. WHAT IT DOES NOT: a section line
+    /// whose arrowhead the column reader read as something else (four points, or a curve).
+    /// </summary>
+    [Fact]
+    public void ALineEndingAtAnArrowheadIsASectionCutNotAnEdge()
+    {
+        // the north edge is not drawn; a section line runs along where it would be, so with it the cells would
+        // close a floor of the outline's area
+        RawSubpath[] outline = [Line(40000, 20000, 48000, 20000), Line(48000, 20000, 48000, 26000), Line(40000, 26000, 40000, 20000)];
+        RawSubpath[] columns = [Column(43000, 22000), Column(46000, 24000), Column(41000, 24500)];
+        var sectionLine = Line(40000, 26000, 48000, 26000);
+        // the arrowhead: a filled triangle 300 mm long at the line's east end, pointing east
+        var arrowhead = new RawSubpath([(47700, 25900), (48000, 26000), (47700, 26100)], true, (0, 0, 0), true, false, 0.5, false);
+
+        var withArrow = Read([.. outline, sectionLine, arrowhead, .. columns]);
+        Assert.Empty(withArrow.Slabs);
+        Assert.Single(withArrow.Arrowheads);
+
+        var without = Read([.. outline, sectionLine, .. columns]);
+        Assert.Equal(W * H, Area(Assert.Single(without.Slabs)), 1);
+    }
+
     [Fact]
     public void BridgesInLinePairEachEndOnceNearestFirstAndOnlyFacingEnds()
     {

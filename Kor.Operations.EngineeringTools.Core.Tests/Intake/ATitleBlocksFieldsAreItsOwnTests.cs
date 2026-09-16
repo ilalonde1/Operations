@@ -213,6 +213,29 @@ public class ATitleBlocksFieldsAreItsOwnTests
         }
     }
 
+    /// <summary>
+    /// 30816-01 p8 (run 19, 2026-09-15): the older KOR block writes DRAWING TITLE: with its two title lines below
+    /// it and, far above, a revision table whose SHEET column header is a label too. Taken as the neighbouring
+    /// column, that header bounded the title to one word a line ("Level (Concrete") on every sheet of 82 sets.
+    /// WHAT THIS COVERS: a label far above the field does not bound it; one beside its rows (the 30912 case,
+    /// kept above) does. WHAT IT DOES NOT: the revision table's own reading.
+    /// </summary>
+    [Fact]
+    public void ALabelFarAboveTheFieldIsNotItsNeighbouringColumn()
+    {
+        var words = new List<VectorPageReader.TextToken>();
+        words.AddRange(Line("SHEET NO.", 3243, 620, 6.0));          // the revision table's column header, high in the block
+        words.AddRange(Line("DRAWING TITLE:", 3209, 197, 6.5));
+        words.AddRange(Line("Level 1 Floor Plan", 3210, 183, 11));
+        words.AddRange(Line("(Concrete Outline)", 3210, 167, 11));
+        words.AddRange(Line("DRAWING #:", 3209, 117, 6.5));
+        words.AddRange(Line("S2.08.1", 3210, 88, 28));
+
+        var fields = TitleBlockFields.Read(Page(3456, 2592, words));
+
+        Assert.Equal("Level 1 Floor Plan (Concrete Outline)", fields["SHEET TITLE"]);
+    }
+
     private static VectorPageReader.PageContent Page(double width, double height, IEnumerable<VectorPageReader.TextToken> words) =>
         new(1, width, height, words.ToList(), new List<VectorPageReader.GeomPath>());
 

@@ -113,6 +113,54 @@ public static class StickFileCorpus
         return results.Where(r => r is not null).Select(r => r!).OrderBy(r => r.Category, StringComparer.Ordinal).ThenBy(r => r.Job, StringComparer.Ordinal).ToList();
     }
 
+    /// <summary>
+    /// THE CENSUS IS TAKEN ONCE A DAY, NOT ONCE A RUN (2026-09-15). Every corpus run walked every job folder on the
+    /// share again - three listings a job over SMB, 1,013 s of thread time under dotnet-trace on a run that built ONE
+    /// set (about 90 s of wall clock per run) - for an answer that changes when an office issues a set, not when a
+    /// rule does. The census is kept beside the drawing mirror (<c>kor-drawings/census-&lt;root&gt;.json</c>) with the
+    /// time it was taken, and reused while younger than <paramref name="maxAge"/>; <paramref name="force"/> retakes it.
+    /// WHAT THIS DOES NOT: notice a set issued since the census was taken - a run that must see today's issues passes
+    /// <c>--census</c>.
+    /// </summary>
+    public static IReadOnlyList<JobCensus> CensusCached(string root, IList<string> problems, TimeSpan maxAge, bool force, Action<string>? progress = null, int parallel = 8, string? keptUnder = null)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(root);
+        string keeper = Path.Combine(keptUnder ?? Dxf.DrawingMirror.Root, "census-" + Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(root.TrimEnd('\\', '/').ToUpperInvariant())))[..12] + ".json");
+        var options = new System.Text.Json.JsonSerializerOptions { WriteIndented = false };
+        if (!force && File.Exists(keeper))
+        {
+            try
+            {
+                var kept = System.Text.Json.JsonSerializer.Deserialize<KeptCensus>(File.ReadAllText(keeper), options);
+                if (kept is not null && kept.Root.Equals(root, StringComparison.OrdinalIgnoreCase) && DateTime.UtcNow - kept.TakenUtc <= maxAge)
+                {
+                    progress?.Invoke($"census of {kept.TakenUtc:yyyy-MM-dd HH:mm} UTC reused ({kept.Jobs.Count} job folders; --census retakes it)");
+                    return kept.Jobs;
+                }
+            }
+            catch (Exception ex) when (ex is IOException or System.Text.Json.JsonException or UnauthorizedAccessException)
+            {
+                problems.Add($"{keeper}: {ex.Message}; the census is retaken");
+            }
+        }
+        var taken = Census(root, problems, progress, parallel);
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(keeper)!);
+            string tmp = keeper + ".tmp";
+            File.WriteAllText(tmp, System.Text.Json.JsonSerializer.Serialize(new KeptCensus(root, DateTime.UtcNow, taken), options));
+            File.Move(tmp, keeper, overwrite: true);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            problems.Add($"{keeper}: {ex.Message}; the census was not kept");
+        }
+        return taken;
+    }
+
+    /// <summary>The census as kept between runs: where it was taken, when, and every job folder.</summary>
+    public sealed record KeptCensus(string Root, DateTime TakenUtc, IReadOnlyList<JobCensus> Jobs);
+
     /// <summary>One job, three bounded listings.</summary>
     public static JobCensus One(string category, string folder, IList<string> problems)
     {

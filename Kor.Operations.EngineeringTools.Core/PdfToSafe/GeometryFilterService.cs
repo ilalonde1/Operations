@@ -431,7 +431,12 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         // symbol's triangle - the bearing-wall symbol on a small job's plan, an arrowhead, a hatch -
                         // and 01389's main floor plan read 139 "columns" from them (every one three points; the three
                         // harness plans measured read 180 columns, every one four). A curve is many points and stays.
-                        if (!sub.IsAnnotation && pts.Count < 4) { Fate(PathReason.FilledTriangle); continue; }
+                        if (!sub.IsAnnotation && pts.Count < 4)
+                        {
+                            result.Arrowheads.Add(((pts.Min(p => p.X) + pts.Max(p => p.X)) / 2, (pts.Min(p => p.Y) + pts.Max(p => p.Y)) / 2, Math.Max(bboxW, bboxH)));
+                            Fate(PathReason.FilledTriangle);
+                            continue;
+                        }
                         if (!sub.IsAnnotation && minDim < columnMinDimMm) { Fate(PathReason.ColumnTooSmall); continue; }
 
                         // Additional filter: non-annotation, non-filled small closed shapes
@@ -1409,13 +1414,30 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             // The line goes to the chain WHOLE, not as its leftover: it is one line the drafter drew,
             // and a floor's edge runs along the wall standing on it — cutting the wall's stretch out
             // would leave the ring a hole exactly where the balcony band pairs.
-            var candidates = new List<int>();
+            // A SECTION CUT LINE IS NOT A SLAB EDGE (intake step 79, 2026-09-15). 31130's typical tower plan draws its
+            // section marks as long diagonals across the floor from corner to corner, each ending in a filled
+            // arrowhead; united with the outline's cells they gave the storey a slanted hexagon for a plate (step 78,
+            // rendered). A line with an end at an arrowhead - within the arrowhead's own size of its centre - is a
+            // section cut or a leader: the drawing's own convention says so, and it never bounds a floor.
+            bool EndsAtAnArrowhead(IReadOnlyList<(double X, double Y)> line)
+            {
+                foreach (var (ax, ay, size) in result.Arrowheads)
+                    foreach (var end in new[] { line[0], line[^1] })
+                        if (Math.Abs(end.X - ax) <= size && Math.Abs(end.Y - ay) <= size) return true;
+                return false;
+            }
+            var eligible = new List<int>();
             for (int i = 0; i < result.Lines.Count; i++)
             {
                 if (result.Lines[i].Count != 2 || result.LineIsAnnotation[i]) continue;
                 if (result.WallFaceLines.TryGetValue(i, out int wall) && !WallLeftPartOfIt(i, wall)) continue;
-                candidates.Add(i);
+                eligible.Add(i);
             }
+            // AND THE CUT LINE DRAWN IN PIECES: a dash-dot section cut is many collinear pieces and the arrowhead ends
+            // the last one only (31130's, 110 dashes under a metre, 26 of one to five, 17 longer). Every piece in line
+            // with a piece that ends at an arrowhead, within the in-line reach, is the cut line - the run is dropped
+            // whole, before any length gate can hide its last dash.
+            var candidates = WithoutTheRunsEndingAtAnArrowhead(eligible);
 
             // whether the wall read from this face line leaves a piece of edge over
             bool WallLeftPartOfIt(int line, int wall)
@@ -1526,7 +1548,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             // AND ONLY WHERE THE WALK FOUND NO FLOOR: the arrangement is quadratic in the lines (the architect's
             // A003, 11,127 long pieces, 91 s), and a sheet whose outline the walk closed round its structure has
             // its floor already - the union could only add rings inside it, which outermost would drop.
-            var arranged = new List<DxfSegment>(pieceSegments.Concat(inLine).Concat(strokes));
+            var arranged = pieceSegments.Concat(inLine).Concat(strokes).ToList();
             foreach (var l in built.Loops)
                 for (int i = 0; i < l.Points.Count; i++)
                     arranged.Add(new DxfSegment("SLABEDGE", l.Points[i], l.Points[(i + 1) % l.Points.Count]));
@@ -1654,6 +1676,30 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 foreach (var c in result.Columns) Count(c.X, c.Y);
                 foreach (var w in result.Walls) Count((w.Start.X + w.End.X) / 2, (w.Start.Y + w.End.Y) / 2);
                 return inside > 0 && inside * 2 > near;
+            }
+
+
+            // the lines in line with one another within the in-line reach form runs (the same pairing the edge is bridged
+            // by); a run with a line ending at an arrowhead is a section cut or a leader, every piece of it
+            List<int> WithoutTheRunsEndingAtAnArrowhead(List<int> lines)
+            {
+                if (result.Arrowheads.Count == 0 || lines.Count == 0) return lines;
+                var segs = lines.Select(i => new DxfSegment("LINE", new DxfPoint(result.Lines[i][0].X, result.Lines[i][0].Y), new DxfPoint(result.Lines[i][1].X, result.Lines[i][1].Y))).ToList();
+                var parent = Enumerable.Range(0, segs.Count).ToArray();
+                int Root(int n) { while (parent[n] != n) { parent[n] = parent[parent[n]]; n = parent[n]; } return n; }
+                var byEnd = new Dictionary<DxfPoint, int>();
+                for (int i = 0; i < segs.Count; i++)
+                    foreach (var end in new[] { segs[i].Start, segs[i].End })
+                    {
+                        if (byEnd.TryGetValue(end, out int other)) parent[Root(i)] = Root(other);
+                        else byEnd[end] = i;
+                    }
+                foreach (var bridge in BridgesInLine(segs, SlabEdgeExtendMm, SlabEdgeJoinMm))
+                    if (byEnd.TryGetValue(bridge.Start, out int a) && byEnd.TryGetValue(bridge.End, out int b)) parent[Root(a)] = Root(b);
+                var cut = new HashSet<int>();
+                for (int i = 0; i < segs.Count; i++)
+                    if (EndsAtAnArrowhead(result.Lines[lines[i]])) cut.Add(Root(i));
+                return cut.Count == 0 ? lines : lines.Where((_, i) => !cut.Contains(Root(i))).ToList();
             }
 
             static bool MostlyInside(IReadOnlyList<DxfPoint> ring, IReadOnlyList<DxfPoint> polygon)
