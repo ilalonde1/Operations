@@ -1,6 +1,6 @@
 # PDF intake → ETABS — Completion Plan
 
-**Status:** Rev 4, 2026-09-15 17:00 (rows 3y–3aa, runs 17–19; step 78 landed: plates on ~110 six-set storeys; run 19 regression fixed) — Rev 4, 13:00 — WP6a re-plans the road on the engineers' own definition of usable (verticals + a plate on every storey; one model per building); steps 47 and 49–73 in §8, runs 8–16 in §1b, run 17 in flight — WP1–WP5 landed overnight on Ian's go-ahead ("go through this all,
+**Status:** Rev 4, 2026-09-15 19:45 (rows 3y–3ab, runs 17–21; run 20: PLATES 41% → 62%; run 21 in flight with the second title fix) — Rev 4, 13:00 — WP6a re-plans the road on the engineers' own definition of usable (verticals + a plate on every storey; one model per building); steps 47 and 49–73 in §8, runs 8–16 in §1b, run 17 in flight — WP1–WP5 landed overnight on Ian's go-ahead ("go through this all,
 step by step, and finish it overnight"): commits `8fccbc25` (WP3), `3f3f82b9` (WP2), `aba7d9ff`
 (WP4), `69e554b5` (WP5), each gated by the six byte-identical and the fast suite; WP5's remaining
 conventions are counted by a test, not by this document. §8 is what needs Ian. Rev 2 (2026-09-11)
@@ -73,6 +73,8 @@ Today's harness is 6 of those 292. The one-job yardstick (31168) is 1 of 66.
 | run 17 (2026-09-15 11:32 → 12:43, **53 min, a FULL read at 12 workers on `8805acd1`**, step 72; migration 092 was applied at ~12:05, DURING the run, so its LOADING-plan refusal reached only the sets composed after it — a mixed run for 092; `ledger-sets-2026-09-15-run17-step72.csv`) | **253 of 296**; **59% / 53%** (6,536 of 11,108); walls 103,741, columns 80,808; plates 1,090 of 2,660 (41%). `corpus-query diff` run 16 → 17: Storeys 1, Placement 3, Composition 6, SameCounts 286 — step 72's fixes and 092's partial effect (30878-02 903 → 392 columns: its LANDSCAPE LOADING PLANS refused; 31183 505 → 226: its loading plans had been its ONLY placed sheets — the ZONE A/B plans do not place, a placement class; 31057: its one plan is a LOT C SITE PLAN, refused by 091 — no members, honestly). |
 | run 18 (2026-09-15 12:45 → 13:15, **30 min, a `--recompose` of run 17's read with migration 092 throughout**; `ledger-sets-2026-09-15-run18-step72-092.csv`) | **253 of 296**; 59% / 53% (6,535 of 11,106); walls 103,583, columns 80,546; plates 1,088 of 2,660 (41%). `corpus-query diff` run 17 → 18: Placement 3, Views 1, **SameCounts 292** — the four sets whose loading plans run 17 had composed before 092 landed: 30961 (1,212 → 1,028 columns, 998 → 806 walls: eight LOADING PLAN views had doubled its level plans' members at offsets beyond the dedupe reach — refused, as "each level is shown once" says), 30756, 30997, 30838. The clean measurement of 092: **−260 columns, −229 walls, no storey and no model lost.** |
 | run 19 (2026-09-15 13:57 → 15:08, **71 min, a FULL read at 12 workers on `f55508c1`**, steps 73–76; `ledger-sets-2026-09-15-run19-step76.csv`; DB run `bb82cc5f`) | **248 of 296** — A REGRESSION: 2,660 → 2,524 storeys, 85 sets' storeys moved (30941 34 → 13, 30990 25 → 15, 30816 5 → 2), 5 models lost; plates 1,024 of 2,524 (41%); 59% / 55%. Cause (one DB query on 30941 p16): step 73's `ReadingTokens` dropped every word drawn up the page and KOR's upright title block writes the SHEET TITLE up the page — "PLAN RAFT FOUNDATION LEVEL" became "SSI PM". Fixed in `dafad991` (the title reader keeps upright words; the field reader drops them). The six sets never showed it: the corpus run is the only instrument that sees every title-block layout. |
+| run 20 (2026-09-15 16:39 → 18:05, **86 min, a FULL read at 12 workers on `becd7f86`**, steps 77–78 + the PlanarRings sweep + run 19's first title fix; `ledger-sets-2026-09-15-run20-step78.csv`; DB run `0ac235c3`) | **251 of 296**; **storeys with a plate 1,573 of 2,557 = 62%** (run 19: 41%; +531 plates on 129 sets — 31087 9 → 56, 01379 6 → 52, 31130 3 → 21, 31150 1 → 11); NoRingRead 17% → 8%, RingsReadNoPlate 19% → 11%, NoSheetPlaced 27% → 20%; no model lost; 58% / 55% (11 sets worse by share, 5 better: the double-height re-spans move columns a storey — to look at). Against run 18 the Storeys class still holds 82 sets: 30941 came back (13 → 34), the rest were a SECOND step-73 cause — the older KOR block's revision-table header taken as the title's neighbouring column (30816 "Level (Concrete") — fixed in `6df7c596`, measured by run 21. |
+| run 21 (2026-09-15 19:40 → , **a FULL read at 12 workers on `6df7c596`**, step 79 + the second title fix + the census cache; `ledger-sets-2026-09-15-run21-step79.csv`) | in flight |
 
 **The work order is a count now.** 1. Storeys: the 67 sets whose plans name their storeys with
 words, and 935 views the composer can put on no storey by name (step 47, §8 item 5). 2. Views on
@@ -493,6 +495,16 @@ residues' cause. Not the PDF route; queued behind it.
    fragment unions; 31087 LEVEL 4. Process (binding, [[feedback_be_the_fixer_decide_bank_batch]] third
    instance): no corpus run during a development session; instrument before reading code; a status line
    every 15 minutes; the reader's 4.4 s/page is a defect — profile before run 20.
+
+3ab. **Step 79, the sweep, the census and run 20, 2026-09-15 evening** (§86): a line ending at an arrowhead,
+   and every piece in line with it, is a leader or a section cut, never an edge (`6df7c596`); the
+   PlanarRings arrangement swept along X (`becd7f86`: 91 s → 11 s on the architect's page; profiled with
+   dotnet-trace, `tools/Summarize-Speedscope.py`); the census kept for 12 h (`--census` retakes). Run 20:
+   **plates 41% → 62%**. Run 19's title regression had TWO causes: words drawn up the page dropped
+   (fixed `dafad991`) and a label far above a field taken as its neighbouring column (fixed `6df7c596`,
+   measured by run 21). OPEN: 31130's plate bounded by tendons drawn black at 10–18 pt — hand
+   `TendonAnchors`' labelled tendons to the edge pass; the double-height re-spans against the yardstick;
+   `RecoverSurfaces` refusing dense pages; parkade fragment unions; 31087 LEVEL 4.
 
 4. **WP6** — one model in front of Andrea (31170's, or whichever the ledger ranks best of the
    architects' sets). Ian's call when.
