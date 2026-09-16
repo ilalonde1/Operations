@@ -39,8 +39,6 @@ public sealed class CompiledDefaultsAreTheBankedRowsTests
         ["dxf.pdf.column-min-dim-mm"]        = "PDF-side size window; no corpus measurement yet",
         ["dxf.pdf.agreement-tolerance-mm"]   = "self-check tolerance; no corpus measurement yet",
         ["dxf.pdf.agreement-label-reach-mm"] = "self-check reach; measured 2026-09-10 on twelve banked pages of five sets (PlanAgreesWithItsSchedule.DefaultLabelReachMm), a row is owed",
-        ["dxf.pdf.pier-min-long-side-mm"]    = "step 99, her W1; migration 094 written 2026-09-16, awaits Ian - remove this line when it is applied",
-        ["dxf.pdf.pier-min-aspect"]          = "step 99; migration 094 written 2026-09-16, awaits Ian - remove this line when it is applied",
     };
 
     /// <summary>Public numeric properties on the option records that are facts, not rules, each with the reason.</summary>
