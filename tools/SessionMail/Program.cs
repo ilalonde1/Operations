@@ -18,6 +18,7 @@ internal static class Program
 {
     private const string DefaultAddress = "ilalonde@korstructural.com";
 
+    [MTAThread]   // a fresh pwsh reaches Outlook from either apartment (measured 2026-09-16); the runtime default
     private static int Main(string[] args)
     {
         if (args.Length == 0) { Usage(); return 1; }
@@ -45,14 +46,42 @@ internal static class Program
         string? body = opt.TryGetValue("body", out var b) ? b : opt.TryGetValue("body-file", out var f) ? File.ReadAllText(f) : null;
         if (body is null) return Usage();
         string to = opt.TryGetValue("to", out var t) ? t : DefaultAddress;
-        dynamic outlook = Outlook();
-        dynamic mail = outlook.CreateItem(0);
-        mail.To = to;
-        mail.Subject = subject;
-        mail.Body = body;
-        mail.Send();
+        try
+        {
+            dynamic outlook = Outlook();
+            dynamic mail = outlook.CreateItem(0);
+            mail.To = to;
+            mail.Subject = subject;
+            mail.Body = body;
+            mail.Send();
+        }
+        catch (COMException ex) when ((uint)ex.HResult == 0x80080005)
+        {
+            // MEASURED 2026-09-16 AND NOT YET EXPLAINED: on this PC an unpackaged .NET 8 process cannot activate Outlook's
+            // class factory (CO_E_SERVER_EXEC_FAILURE, STA or MTA, sandbox or not, ROT attach or not) while the Store
+            // pwsh (an MSIX package) can, from either apartment. Until the cause is found the send goes through a pwsh
+            // child with the same three COM calls - the same profile, the same mailbox, nothing outside this file.
+            SendThroughPwsh(to, subject, body);
+        }
         Console.WriteLine($"sent {DateTime.Now:HH:mm}: {subject}");
         return 0;
+    }
+
+    private static void SendThroughPwsh(string to, string subject, string body)
+    {
+        string bodyFile = Path.Combine(Path.GetTempPath(), $"SessionMail-{Guid.NewGuid():N}.txt");
+        File.WriteAllText(bodyFile, body);
+        try
+        {
+            string script = "$ol = New-Object -ComObject Outlook.Application; $m = $ol.CreateItem(0); $m.To = $env:SM_TO; $m.Subject = $env:SM_SUBJECT; $m.Body = Get-Content -Raw -Path $env:SM_BODY; $m.Send()";
+            var psi = new System.Diagnostics.ProcessStartInfo("pwsh", $"-NoProfile -Command \"{script}\"") { UseShellExecute = false, RedirectStandardError = true };
+            psi.Environment["SM_TO"] = to; psi.Environment["SM_SUBJECT"] = subject; psi.Environment["SM_BODY"] = bodyFile;
+            using var p = System.Diagnostics.Process.Start(psi) ?? throw new InvalidOperationException("pwsh did not start");
+            string err = p.StandardError.ReadToEnd();
+            p.WaitForExit();
+            if (p.ExitCode != 0) throw new InvalidOperationException("pwsh could not send: " + err);
+        }
+        finally { File.Delete(bodyFile); }
     }
 
     private static int Wait(Dictionary<string, string> opt)
@@ -93,9 +122,17 @@ internal static class Program
 
     private static dynamic Outlook()
     {
+        // the RUNNING Outlook, from the running object table: launching a second server instance from a .NET
+        // process answers CO_E_SERVER_EXEC_FAILURE on this PC (measured 2026-09-16) where attaching does not
+        int hr = CLSIDFromProgID("Outlook.Application", out var clsid);
+        if (hr != 0) throw new InvalidOperationException("Outlook is not installed on this PC.");
+        if (GetActiveObject(ref clsid, IntPtr.Zero, out var running) == 0 && running is not null) return running;
         var type = Type.GetTypeFromProgID("Outlook.Application") ?? throw new InvalidOperationException("Outlook is not installed on this PC.");
-        return Activator.CreateInstance(type) ?? throw new InvalidOperationException("Outlook did not start.");
+        return Activator.CreateInstance(type) ?? throw new InvalidOperationException("Outlook is not running and did not start.");
     }
+
+    [DllImport("ole32.dll")] private static extern int CLSIDFromProgID([MarshalAs(UnmanagedType.LPWStr)] string progId, out Guid clsid);
+    [DllImport("oleaut32.dll")] private static extern int GetActiveObject(ref Guid clsid, IntPtr reserved, [MarshalAs(UnmanagedType.IUnknown)] out object? obj);
 
     private static string SmtpOf(dynamic mail)
     {
