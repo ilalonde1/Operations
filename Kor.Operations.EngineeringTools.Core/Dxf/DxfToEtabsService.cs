@@ -2921,7 +2921,7 @@ public static class DxfToEtabsService
             foreach (var (sheet, slab) in plates.OrderBy(x => x.Slab.Area).ToList())
             {
                 var container = plates.FirstOrDefault(o => o.Sheet.Sheet != sheet.Sheet && o.Slab.Area > slab.Area
-                                                             && slab.Points.All(pt => LoopGeometry.PointInPolygon(pt, o.Slab.Points)));
+                                                             && slab.Points.All(pt => LoopGeometry.InsideOrOn(pt, o.Slab.Points, reach)));   // on the edge is in (step 82): a shared edge answers with rounding noise
                 if (container.Slab is null) continue;
                 sheet.Geometry.Slabs.Remove(slab);
                 notSecondFloors++;

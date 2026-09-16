@@ -1460,3 +1460,47 @@ Item 4's 01379 half is closed by a reader rule, not a placement rule.
 WHAT IT DOES NOT: place a part plan that carries only ONE copy of its grid but whose axis names are shared
 with another building's (the two-tower sets' "2-A" on both towers — item 4's second half, the composer's
 "a part plan stands over the overall plan" rule, still open); the ten instances above.
+
+## 89. Step 82, 2026-09-15 night: on the edge is in — the full suite's fourth red, a plate that came and went with the origin
+
+**Where it came from.** WP6a item 6 begins with the full Core suite, not run since 2026-09-15 12:00: four
+reds in 21 minutes (the shifted differential makes it slow now). Three are the DXF-route ratchets the plan
+names (31168's KW235 on LEVEL 1 MEZZ standing on nothing; 31168's 20 outlines dropped against 19; 31138's two
+walls drawn and not modelled). The fourth is NEW and the most important: `TheSameDrawingsShiftedOnThePageBuild
+TheSameStructureTests` — step 56's own instrument, the six read once and composed as-is and moved 5,000 × 3,001
+mm on the page — red on 31170-arch: **L5 32,076 + 1,393 → 32,076 + 3,719 + 1,393 sq ft; L2 32,076 → 32,076 +
+2,639.** The model depended on where the origin was. It is not in the fast suite; it has been red for some
+number of steps nobody can now say.
+
+**Instrumented before code.** The reader's DXFs are identical in both frames (the shift is applied to the views
+after reading; SLABEDG counts equal on every L5 and L2 view). `dxf-inspect --plates` on each L5 view: identical
+in both frames — A425 "LEVEL 5 PLAN (SE)" yields a 3,719 sq ft plate in BOTH. So the composer keeps it in one
+frame and drops it in the other. The two reports, numbers stripped, differ in two lines: *L5: a 3,719 sq ft ring
+on A425 … lies inside the 32,076 sq ft floor another sheet drew — not a second floor* (and L2's 2,639), present
+as-is, absent shifted. That rule (`SettleFloorsAcrossSheets`, step 35) asked `slab.Points.All(pt =>
+PointInPolygon(pt, floor))` — every vertex strictly inside — and the part plan's plate runs along the overall
+floor's south edge: 30 of its 60 vertices lie ON that line, where the ray test answers with the last bits of the
+coordinates. Shift the page, the bits change, the answer flips.
+
+**The rule (step 82).** `LoopGeometry.InsideOrOn(point, polygon, tolerance)`: inside by the ray test, or within
+the tolerance of an edge — on the edge is in; a place is decided by distance (step 56's sentence, now on the
+polygon test). Two callers: the composer's across-sheets rule (at the stand-down reach, 6 in) and the reader's
+`MostlyInside` (step 78's drawn-floor exclusion, at the slab-edge join tolerance), whose own comment had admitted
+"a vertex on a shared boundary answers with rounding noise" and mitigated it by majority — which a ring with half
+its vertices on the edge defeats. Test `OnTheEdgeIsInTests`: a point a tenth of a micron outside the edge and one
+on a vertex at four origins, in by distance, and the ray test ASSERTED to call the first out (so the test cannot
+pass by accident); a 60-vertex ring alternating a tenth of a micron either side of the floor's edge, wholly inside
+by distance and not by the ray test. A synthetic fixture for `MostlyInside` was tried and dropped: it could not be
+made to fail without the fix, and a test that cannot fail is worse than none — the shifted differential is the
+check that holds the two callers.
+
+**Measured.** The shifted differential is GREEN on the six (as-is and shifted byte-for-byte the same structure on
+every set). The six-set gate: only 31170-arch moves, in the as-is frame — L5 loses its 1,393 sq ft ring (the NW
+part plan's, inside the 32,076 drawn floor) and L1 a 993 sq ft one: rings that had survived the across-sheets rule
+only because a vertex on the floor's edge answered "outside". Re-banked. The fast suite 1,403 green.
+
+WHAT IT DOES NOT: the other three reds (each its own look, below); the other 42 `PointInPolygon` callers
+(`StructuralPlanClassifier` 17, `DxfToEtabsService` 9, `GeometryFilterService` 4, `WallOutlineDecomposer` 4,
+`PolygonProcessor` 3, five singles) — each is this class wherever a vertex can lie on the polygon it is tested
+against; the shifted differential is the check that says which of them matter, and it is green on the six after
+this step, so the rest are not moved blind. Named here so the next one is recognised in one sentence.

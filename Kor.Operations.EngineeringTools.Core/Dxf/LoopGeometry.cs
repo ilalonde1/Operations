@@ -96,6 +96,24 @@ public static class LoopGeometry
     }
 
     /// <summary>
+    /// ON THE EDGE IS IN (step 82, 2026-09-15). <see cref="PointInPolygon"/> answers for a point ON the polygon's
+    /// boundary with rounding noise - which side of the ray test a shared edge falls on depends on the last bits of
+    /// the coordinates, which is to say on where the origin is. A ring that shares an edge with the floor it lies in
+    /// (a part plan's plate along the overall floor's south edge, 30 of its 60 vertices on that line) was inside in
+    /// one frame and not in the other, and the model gained a plate when the page was shifted (the step-56
+    /// differential on 31170-arch). A place is decided by distance: a point within <paramref name="tolerance"/> of
+    /// an edge is on it, and on it is in it.
+    /// </summary>
+    public static bool InsideOrOn(DxfPoint test, IReadOnlyList<DxfPoint> polygon, double tolerance)
+    {
+        ArgumentNullException.ThrowIfNull(polygon);
+        if (PointInPolygon(test, polygon)) return true;
+        for (int i = 0; i < polygon.Count; i++)
+            if (Within(DistanceToSegment(test, polygon[i], polygon[(i + 1) % polygon.Count]), tolerance)) return true;
+        return false;
+    }
+
+    /// <summary>
     /// Straightens a traced outline: Ramer-Douglas-Peucker over a closed ring.
     ///
     /// <see cref="Simplify"/> asks of each vertex whether it lies on the line between its two

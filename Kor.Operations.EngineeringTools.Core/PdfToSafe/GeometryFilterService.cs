@@ -1702,8 +1702,13 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 return cut.Count == 0 ? lines : lines.Where((_, i) => !cut.Contains(Root(i))).ToList();
             }
 
+            // A VERTEX ON THE POLYGON'S EDGE IS INSIDE (step 82, 2026-09-15): a union along a drawn floor's south edge has
+            // half its 60 vertices ON that edge, and PointInPolygon answers for each with rounding noise - the shifted
+            // differential (step 56's) found 31170-arch's L5 and L2 each gaining a plate inside the drawn floor in one
+            // frame and not the other. A place is decided by distance: a vertex within the join tolerance of an edge
+            // is on it, and on it is in it.
             static bool MostlyInside(IReadOnlyList<DxfPoint> ring, IReadOnlyList<DxfPoint> polygon)
-                => ring.Count > 0 && ring.Count(p => LoopGeometry.PointInPolygon(p, polygon)) * 2 > ring.Count;
+                => ring.Count > 0 && ring.Count(p => LoopGeometry.InsideOrOn(p, polygon, SlabEdgeJoinMm)) * 2 > ring.Count;
 
             static bool OnRing(DxfPoint p, PlanLoop loop)
             {
