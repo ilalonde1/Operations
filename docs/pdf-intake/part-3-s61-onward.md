@@ -2004,3 +2004,13 @@ step 91 was written for. 30985 and 50026 read their titles as before. Fast suite
 
 WHAT IT DOES NOT: a right-aligned label whose left neighbour is on the line ABOVE (a staggered two-column block; none
 seen); values that overlap the previous label's extent.
+
+## 105. Codex's review of step 89, 2026-09-16 08:55: a decimal dimension on the grid layer would be a name — the limit stated, the fix not adopted
+
+Codex: "10.5" passes `IsGridName` (a point joins two numeric parts) and, set on a GRID layer at a grid line's end, is a
+false axis; proposed refusing all-digit dotted names, conceding it would refuse legitimate ones. They exist and are
+measured: 31040's 2.1–2.4, 31152's 1.1–2.3, 30997's 3.0–5.0, 31009's 15.2 (`corpus-query grid-names`). Text cannot
+tell the two apart; the routes can: the PDF route's GRID-layer text is `DxfExporter`'s copy of the bubble reader's
+names and nothing else, the DXF route's is Revit's grid names — a dimension stands on neither. Not adopted; the
+equivalence is asserted in `AGridNameIsWhatTheBubbleSays` with the reason. WHAT THIS DOES NOT: a hand-drawn DXF with a
+dimension on its GRID layer at a line's end.

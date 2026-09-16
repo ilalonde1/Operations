@@ -71,6 +71,12 @@ public sealed class ASheetSitsOnTheModelsGridByNameTests
             Assert.True(GridAlignment.IsGridName(name), name);
         foreach (string word in new[] { "GRID", "A1-GRID", "-5", "", "1112", "TYP.", "MATCH", "A1.5.2" })
             Assert.False(GridAlignment.IsGridName(word), word);
+        // a decimal dimension ("10.5") and a sub-grid ("2.1", 31040; "1.1", 31152; "3.0", 30997) are the same text; the
+        // rule keeps both (Codex's review of step 89, 2026-09-16, section 105): text alone cannot tell them apart, and
+        // neither route puts a dimension on the GRID layer at a line's end - the PDF route writes only the bubble
+        // reader's names there (DxfExporter), the DXF route reads Revit's grid names
+        Assert.True(GridAlignment.IsGridName("2.1"));
+        Assert.True(GridAlignment.IsGridName("10.5"));
         Assert.Equal(new[] { "EA", "WA" }, GridAlignment.GridNamesIn("EA|WA"));
         Assert.Empty(GridAlignment.GridNamesIn("GRID|LINE"));
         Assert.Empty(GridAlignment.GridNamesIn("1|1'|12'|8|9"));       // a bubble the reader found five labels in (31065): a stack, not a name
