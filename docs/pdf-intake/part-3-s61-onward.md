@@ -2135,3 +2135,61 @@ lines); 31202 L13's strips and the gate's margin on L6 (a floor that is three un
 (lines that lay on the new ring are the edge, not beams, and the DXF side read walls from them — whether they
 were walls is the question). Ian's challenge on 96B — "SPECIFIC one off rules … 1000's of specific rules?" — is
 answered by where this ended: the two numbers were never the rule; the drawing's own node was.
+
+## 111. The autonomous afternoon, 2026-09-16 12:47 onward: steps 98–100, the engineers' review from the corpus, step 99's rows
+
+Ian's go-ahead at 12:47 ("keep going until you've finished your plan ... same process as last night"); mails at every
+step (12:47, 13:04, 13:12, 13:35, 13:54, 13:58). Run 27 (steps 97–98, `42746a22`, mirror Core.dll 582f70fd…) launched
+detached 13:02.
+
+**Step 98 (`42746a22`)** — two rules. (1) *A curve drawn as short strokes is one line*: 31138's tower corners are arcs the
+PDF holds as runs of 9 pt strokes under 200 mm (`pdf-at` p34, paths #397–#403 "Discarded TooShort"); chained end to end
+(`CurvesOfShortStrokes`: only strokes under the length gate, never a footing's dash, never a closed ring or a hatch node)
+they are the path the drafter drew, and reach the readers as a polyline; the slab pass takes a path of many points as
+its pieces. (2) *A cell enclosed by the floor is the floor*: a cell that shares no edge with the unbounded outside
+(`PlanarRings.Result.TouchesTheOutside`) is floor whether or not a column stands in it. Also `Holds` judges a face with
+its holes. Gate after rendering: 31138 L7–L19 none → 9,668 × 13, L2 594 → 11,528; 31168 L15–L26 none → 9,843 + 9,841
+× 12; 31202 L6 → 26,156, L7–L12 982 → 27,078 × 6, L13 → 28,061; 31065's east tower L6–L18 none → 6,776. Four forms
+gated on the way (bands at 60 in, bands bounded by the sheet's walls, on-boundary Holds) and rejected in the code
+comment. **Instrument**: `model-diff` ends with *where the members went* — every place whose storey span changed,
+classed new / vanished / moved / shortened / lengthened. It said nothing vanished on any set; members move storeys when
+plates appear (31138's 34 columns lost L2 because its LEVEL 1 AT 55'-0 and AT 64'-1 are two drawn levels folded into
+one storey — the split-level ladder is its own class; 31138 is not in the corpus, so one instance).
+
+**The engineers' review from the corpus (`66a4234b`)** — `takeoff corpus-disagreements` reads every set's yardstick.txt
+(59 sets with her model, 38 sharing storeys with columns, 197 storey pairs) and ranks the disagreement: 90 storey pairs
+within 100 mm, 51 over a metre (31098 × 21 — her file is "2NDRY ELEMS.EDB", the wrong model), 31130 × 15 at ~400 mm;
+storeys only ours L# 162 / ROOF 27 / per-building 33, only hers MECH, EMR, UPPER, MEZZ; **622 of our unmatched columns
+over 37 sets stand on a wall she modelled** (14 × 36 × 411 on 7 sets), 4,665 beyond her model's footprint (her model
+is one building of the site); hers we miss C12x60 × 269 (30838), C14x36 × 258. Banked as
+`docs/etabs-handoff/corpus/disagreements-2026-09-16-run26.txt`. Item 8 answered from the corpus.
+
+**Step 99 (`ac76d7e8`)** — *a rectangle no schedule declares, longer than 24 in and twice as long as wide, is a wall pier*
+(her W1; 483 of the 554 on her walls with a section are 24 in or longer): a size the sheet's or the set's column schedule
+declares stays a column (31130's 14 × 36, 31098's 12 × 24); a VARIES row declares no size for this rule; the pier is
+flagged (`ColumnIsWallPier`), written as a wall panel of the rectangle's length and thickness, skipped by the column
+export. The two numbers are ROWS — `dxf.pdf.pier-min-long-side-mm` 609.6, `dxf.pdf.pier-min-aspect` 2 — through
+`PdfIntakeOptions`, declared unbanked until **migration 094** (`KOR.Drafter/db/094_ARectangleNoScheduleDeclaresIsAWallPier.sql`)
+is applied. The six sets moved little (KOR schedules its sizes); the corpus effect is run 28's. Found while rendering
+for it: step 98's final form had lost 31130's east half-plates on L3–L13 (a chained tendon-profile polyline partitions
+the bottom half into a cell holding no column strictly inside) — recorded in the commit and fixed by step 100.
+
+**Step 100 (`8225315d`)** — *a cell wrapped round the floor is the floor*: a hole that holds structure makes its ring the
+floor round it. 31202's lower roof round its penthouse (10,702 sq ft, back); 31130's east L3–L13 (back at 4,797–4,805);
+31065 P1 +3,894; of two parallel edge lines the outer is the edge, where her plate runs. **Two instruments** in the
+slab-pass trace: every cell of 500 sq ft or more with extents and holes; *where the outside gets in* — a 60 mm raster's
+widest path from a column in no cell to the page's edge and its narrowest place. On 31130 p35 it finds NO path: the
+east tower's top half is enclosed by lines and PlanarRings makes no face of it — parked as its own class (§112).
+
+## 112. Parked, each measured, for the next session
+
+- **31130 p35's top half**: enclosed at 60 mm, no face from PlanarRings (its two big cells are the bottom half, 2,521 and
+  2,263 sq ft; the three top-half columns are in no cell and the raster finds no way out). A PlanarRings question.
+- **31138's split level**: LEVEL 1 AT 55'-0 and AT 64'-1 folded into one storey; the composer lets the sheet with the
+  bigger plate own the storey's members (34 columns lost L2 on step 98). 0 plan titles carry "AT <elevation>" across the
+  corpus's 8,650 sheets; 31138 is not in the corpus.
+- **31202 ROOF**: the lower roof's triangular notch at its top (a diagonal line across it).
+- **Part plans**: 31170-arch's NW/SW/NE part plans each a plate on their storey (item 4).
+- **Openings**: a stair or shaft drawn as a closed loop inside the floor is filled by step 98; the loop the plan labels
+  an opening is owed.
+- **The yardstick's model choice**: 31098's "2NDRY ELEMS.EDB" — prefer the gravity/full model where a job holds several.
