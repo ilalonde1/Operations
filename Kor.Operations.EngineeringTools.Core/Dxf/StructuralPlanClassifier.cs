@@ -889,11 +889,19 @@ public static class StructuralPlanClassifier
                 // cannot describe on its own, not a second opinion on what it could.
                 var unread = new List<IReadOnlyList<DxfPoint>>();
 
+                // every drawn face on this role's layers - the open chains' drawn edges and the loops' edges - so a
+                // chain's pairing can see a nearer partner in another chain (step 83)
+                var drawnFaces = new List<(DxfPoint A, DxfPoint B)>();
+                foreach (var c in built.OpenChains) for (int k = 0; k + 1 < c.Count; k++) drawnFaces.Add((c[k], c[k + 1]));
+                foreach (var l in built.Loops) for (int k = 0; k < l.Points.Count; k++) drawnFaces.Add((l.Points[k], l.Points[(k + 1) % l.Points.Count]));
+
                 foreach (var chain in built.OpenChains)
                 {
                     if (chain.Count < 4) { unread.Add(chain); continue; }
                     var asLoop = new PlanLoop(layer, chain, closedExactly: false);
-                    var panels = WallOutlineDecomposer.Decompose(asLoop, options, out var leftover);
+                    // the walls read so far on this sheet: no wall stands inside a wall; and a face's partner is the
+                    // nearest face that faces it, wherever it lies (step 83)
+                    var panels = WallOutlineDecomposer.Decompose(asLoop, options, result.Walls.ToList(), drawnFaces, out var leftover);
                     if (panels.Count == 0) { unread.Add(chain); continue; }
 
                     result.Walls.AddRange(panels);
@@ -2370,6 +2378,8 @@ public static class StructuralPlanClassifier
             // read and then not modelled, which is the count the coverage ratchet watches.
             var candidate = new WallAxis(start, end, bestSeparation, layer);
             if (result.Walls.Any(w => SameWall(w, candidate))) continue;
+            // no wall stands inside a wall (step 83): a pair whose band holds a wall already read is the void between two walls
+            if (WallOutlineDecomposer.AWallStandsInside(start, end, bestSeparation, result.Walls)) continue;
 
             // Nor a second reading of a run this sheet already has. Identical endpoints are the
             // easy case; the one that costs is a pooled pair lying ALONG a panel the per-chain

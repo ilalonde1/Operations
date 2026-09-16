@@ -1540,3 +1540,50 @@ is nineteen 3-in slivers and thin 6-vertex shapes on LEVEL 1, MEZZ, LEVEL 2 and 
 WHAT IT DOES NOT: pair a drawn face with the RIGHT partner where the gap was the nearer one — the pooled pass
 finds it or nothing does; a gap that is genuinely a wall the drafting broke (the chain builder's bridge
 tolerance is where that belongs, at 12 in, not at 2,584).
+
+## 91. Step 83 (continued), 2026-09-16 small hours: a face's partner is the nearest face that faces it, wherever it lies — the second DXF-route red; and a thickness cap measured and rejected
+
+**Where it came from.** `EveryDrawnMemberIsModelledOrAlreadyThere("31138")`: two walls at (34,−1065) and (34,−698) on
+"LEVEL 1 AT 55'-0" read and neither modelled nor in her model (ceiling 0). `dxf-inspect --members`: both are
+*t 57, walls* — the pooled two-face branch — from y −1317 to −584 along x 34. The reader's own linework on that
+sheet (a probe listing every wall-layer segment, chain and loop within the band): the west wall is drawn as two
+faces, its OUTER face at x 5.6 in one chain — `(6,−1323) (6,−584) (71,−584) (71,−761) (63,−761) … (62,−596)`, a U
+through the top return that carries on down the stair walls' faces at x 71 and 63 — and its INNER face at x 17.6 in
+ANOTHER chain, `(18,−1311) (18,−596) (18,−494) (164,−412)`. The per-chain pass, seeing only its own chain, paired
+the outer face with the stair face 57 in away, walked the material run the wall's whole length, and consumed the
+face; the pooled pass, which would have paired 5.6 with 17.6 at 12 in, never got it. Her model has that wall at
+x 12 (KW9 on P4) — 12 in, where the two faces say.
+
+**Measured and rejected first: a thickness cap.** The pooled pass already caps a pair across chains at 18 in for
+exactly this ambiguity; capping an open chain's own pairs the same way made 31138 green — and lost 30 walls on
+31202 (gained 39): its 30 in tower walls are open chains too (an opening breaks each outline), their lower halves
+closing at 764 mm from a closed loop and their upper halves refused by the cap. Rendered L12 and looked: the real
+wall at x 74,396 from 42,457 to 48,260 gone. Reverted inside the hour; the record has the cost.
+
+**The rule (step 83, second half), in two parts.** (1) *No wall stands inside a wall*: a pair whose band holds a
+wall already read on the sheet, along the overlap, is the void between two walls
+(`WallOutlineDecomposer.AWallStandsInside`) — it did not fire here, since on this sheet nothing had been read at
+x 12 yet, but it is the same class and stays. (2) *A face's partner is the nearest face that faces it, wherever it
+lies*: the classifier now hands the per-chain pass every drawn face of the role's chains and loops, and a pair
+inside an open chain is refused when another face lies between the two — parallel, overlapping, at a wall's
+thickness or more from the first and short of the second (`AFaceLiesBetween`); the pooled pass then pairs the
+nearer one. A wall's own centreline drawn on the wall layer (31170-arch, step 56) lies nearer than a wall's
+thickness and does not count. Open chains only: a closed outline's polygon answers for its faces. Test
+`TheGapThatClosesAnOpenChainIsNotAFaceTests` at the two chains' own points: the 57 in pair alone, refused with
+the inner chain given, a 9 in wall with its centreline still a wall; proved by breaking. On the sheet the reader
+now gives *(12,−596)-(12,−1317) t 12* — the west wall where she has it.
+
+**Also in this step: the outlines ratchet counts what could be a member.** 31168's 20 unresolved outlines against
+19 recorded — every one of the 20, and every one of 31138's 44, is a ribbon 2 to 3.4 in wide (a finish line, a
+curb, a stringer); six inches is the thinnest wall in 101 engineers' models (step 63). The ratchet now counts
+unresolved outlines at a wall's thickness or more, prints the full count beside it, and both ceilings are 0 —
+where they may only stay.
+
+**Measured.** Fast suite + the six-set gate + the shifted differential + the four DXF-route gates in one run:
+**1,453 of 1,453 green.** The six byte-identical to their baselines (the rule changes nothing on the PDF sets);
+31138's two walls modelled as the 12 in west wall; 31168 stands-on-nothing green; the outlines ratchet 0 of 20
+and 0 of 44 at a wall's thickness. Item 6 — the DXF-route ratchets — is closed: the full suite has no red.
+
+WHAT IT DOES NOT: pair the inner face across chains where the pooled pass's 18 in cap refuses a real thick wall
+(the cap's known cost, 31065's ground floor at 64% of her wall length, stands); a nearer face that is not a wall's
+(a dimension line on the wall layer) — it would refuse a real pair, and the pooled pass would then have to find it.

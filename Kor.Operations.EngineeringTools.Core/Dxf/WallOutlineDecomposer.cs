@@ -35,6 +35,33 @@ public static class WallOutlineDecomposer
     /// For a CLOSED outline the leftovers are its end caps and the like, and the caller leaves them.
     /// </summary>
     public static IReadOnlyList<WallAxis> Decompose(PlanLoop loop, PlanClassificationOptions options, out IReadOnlyList<(DxfPoint A, DxfPoint B)> unused)
+        => Decompose(loop, options, null, out unused);
+
+    /// <summary>
+    /// NO WALL STANDS INSIDE A WALL (intake step 83, 2026-09-16). An open chain has no polygon, so the material test
+    /// below asks a polygon the undrawn closing edge made: on 31138's LEVEL 1 AT 55'-0 the west wall's outer face and
+    /// the stair's inner face, 57 in apart in one chain through a short return, answered "concrete" and became one
+    /// 57 in wall - refused downstream, and counted as a drawn member never modelled. What tells that pair from a
+    /// real 30 in wall drawn as an open chain (31202's tower walls, whose lower halves close at 764 mm) is not the
+    /// thickness: it is that the 12 in west wall, already resolved from its own closed outline, stands INSIDE the
+    /// 57 in band. Concrete has no wall inside it. <paramref name="standing"/> are the walls read so far on the sheet;
+    /// a pair whose band holds one of them, along the overlap, is a void between two walls and is not made.
+    /// Given for open chains (the per-chain pass) and the pooled pass; a closed outline's own polygon settles it.
+    ///
+    /// AND A FACE'S PARTNER IS THE NEAREST FACE THAT FACES IT, WHEREVER IT LIES (the same step). On that sheet the
+    /// west wall's inner face lay in ANOTHER chain, 12 in from the outer face; the per-chain pass, seeing only its own
+    /// chain, paired the outer face with the stair's face 57 in away and consumed it, so the pooled pass never got
+    /// to make the 12 in wall. <paramref name="otherFaces"/> are the drawn faces of the sheet's other wall chains and
+    /// loops: a pair inside an open chain is refused when another face lies between the two, parallel, overlapping,
+    /// and at a wall's thickness from one of them - a nearer partner exists, and the pooled pass will pair it. A wall's
+    /// own centreline drawn on the wall layer (31170-arch, step 56) lies nearer than a wall's thickness and does not
+    /// count.
+    /// </summary>
+    public static IReadOnlyList<WallAxis> Decompose(PlanLoop loop, PlanClassificationOptions options, IReadOnlyList<WallAxis>? standing, out IReadOnlyList<(DxfPoint A, DxfPoint B)> unused)
+        => Decompose(loop, options, standing, null, out unused);
+
+    public static IReadOnlyList<WallAxis> Decompose(PlanLoop loop, PlanClassificationOptions options, IReadOnlyList<WallAxis>? standing,
+        IReadOnlyList<(DxfPoint A, DxfPoint B)>? otherFaces, out IReadOnlyList<(DxfPoint A, DxfPoint B)> unused)
     {
         unused = Array.Empty<(DxfPoint, DxfPoint)>();
         var pts = loop.Points;
@@ -116,6 +143,13 @@ public static class WallOutlineDecomposer
                 // 48" stopped every corner's short limb from decomposing.
                 if (LoopGeometry.Beyond(options.MinPanelOverlap, overlap)) continue;
 
+                // a nearer partner in another chain: a face between these two, parallel, overlapping this one, at a
+                // wall's thickness or more from it and clearly short of j (open chains only - a closed outline's
+                // faces have its polygon to answer for them)
+                if (!loop.ClosedExactly && otherFaces is not null
+                    && AFaceLiesBetween(ai, ux, uy, nx, ny, lengthI, Math.Sign(d1 + d2) >= 0 ? 1.0 : -1.0, separation, options, otherFaces))
+                    continue;
+
                 // Concrete, or a void? The material between two faces of one wall lies inside
                 // the outline; the gap between walls on opposite sides of a shaft lies outside.
                 // Without this, a stair core reads as one 36"-thick wall spanning the opening.
@@ -191,6 +225,10 @@ public static class WallOutlineDecomposer
             var start = new DxfPoint(ai.X + ux * bestT0 + nx * half, ai.Y + uy * bestT0 + ny * half);
             var end = new DxfPoint(ai.X + ux * bestT1 + nx * half, ai.Y + uy * bestT1 + ny * half);
 
+            // no wall stands inside a wall: the band between these faces holds a wall already read, so it is
+            // the void between two walls (an open chain's polygon is the closing gap's fiction)
+            if (!loop.ClosedExactly && standing is not null && AWallStandsInside(start, end, bestDistance, standing)) continue;
+
             walls.Add(new WallAxis(start, end, bestDistance, loop.Layer));
             used[i] = true;
             used[bestJ] = true;
@@ -225,6 +263,64 @@ public static class WallOutlineDecomposer
         int drawn = loop.ClosedExactly ? n : n - 1;
         unused = Enumerable.Range(0, drawn).Where(e => !used[e]).Select(e => edges[e]).ToList();
         return walls;
+    }
+
+    /// <summary>
+    /// Whether one of <paramref name="faces"/> lies between face i (origin, direction u, normal n, length) and a
+    /// partner at <paramref name="separation"/> on <paramref name="side"/>: parallel to i within the same tolerance
+    /// as a partner, overlapping i's span by the panel overlap, and at a distance from i that is a wall's thickness
+    /// or more and short of the partner by a wall's floor - a nearer partner.
+    /// </summary>
+    public static bool AFaceLiesBetween(DxfPoint origin, double ux, double uy, double nx, double ny, double length, double side,
+        double separation, PlanClassificationOptions options, IEnumerable<(DxfPoint A, DxfPoint B)> faces)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+        ArgumentNullException.ThrowIfNull(faces);
+        foreach (var (a, b) in faces)
+        {
+            double len = a.DistanceTo(b);
+            if (len < 1e-6) continue;
+            double vx = (b.X - a.X) / len, vy = (b.Y - a.Y) / len;
+            if (Math.Abs(ux * vx + uy * vy) < ParallelDot) continue;
+            double d1 = ((a.X - origin.X) * nx + (a.Y - origin.Y) * ny) * side;
+            double d2 = ((b.X - origin.X) * nx + (b.Y - origin.Y) * ny) * side;
+            if (d1 < 0 || d2 < 0) continue;                                       // not on the partner's side
+            double d = (d1 + d2) / 2.0;
+            if (LoopGeometry.Beyond(options.WallFloor, d)) continue;              // a centreline, or a hair off the face: not a wall's face
+            if (!LoopGeometry.Beyond(separation - options.WallFloor, d)) continue; // as far as the partner: that IS the partner, or its twin
+            double t0 = (a.X - origin.X) * ux + (a.Y - origin.Y) * uy, t1 = (b.X - origin.X) * ux + (b.Y - origin.Y) * uy;
+            if (t0 > t1) (t0, t1) = (t1, t0);
+            if (LoopGeometry.Beyond(options.MinPanelOverlap, Math.Min(length, t1) - Math.Max(0, t0))) continue;
+            return true;
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Whether a wall already read stands inside the band of a candidate wall: its axis midpoint within the
+    /// candidate's overlap along its direction, and nearer the candidate's axis than half the candidate's thickness
+    /// less half its own - inside the band, not merely touching a face. A wall the candidate would be a re-reading
+    /// of (the same axis, a thickness apart at most) is not "inside": that is the duplicate rule's business.
+    /// </summary>
+    public static bool AWallStandsInside(DxfPoint start, DxfPoint end, double thickness, IEnumerable<WallAxis> standing)
+    {
+        ArgumentNullException.ThrowIfNull(standing);
+        double dx = end.X - start.X, dy = end.Y - start.Y, len = Math.Sqrt(dx * dx + dy * dy);
+        if (len < 1e-9) return false;
+        double ux = dx / len, uy = dy / len, nx = -uy, ny = ux;
+        foreach (var w in standing)
+        {
+            double mx = (w.Start.X + w.End.X) / 2.0, my = (w.Start.Y + w.End.Y) / 2.0;
+            double t = (mx - start.X) * ux + (my - start.Y) * uy;
+            if (t < 0 || t > len) continue;
+            double v = Math.Abs((mx - start.X) * nx + (my - start.Y) * ny);
+            // inside the band with room for its own thickness: a wall whose axis sits within half the candidate's
+            // thickness less half its own, and not so near the axis that the two are one wall read twice
+            double room = thickness / 2.0 - w.Thickness / 2.0;
+            if (room <= 0) continue;
+            if (LoopGeometry.Within(v, room) && LoopGeometry.Beyond(v, Math.Min(w.Thickness, thickness) / 2.0)) return true;
+        }
+        return false;
     }
 
     /// <summary>

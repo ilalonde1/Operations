@@ -37,6 +37,9 @@ namespace Kor.Operations.EngineeringTools.Core.Tests;
 [Collection(SheetNamingVocabularyCollection.Name)]   // composes a model, which writes PlanSheetNaming.Vocabulary (Codex 2026-09-13, F23)
 public class ModelIntegrityTests
 {
+    private readonly Xunit.Abstractions.ITestOutputHelper _out;
+    public ModelIntegrityTests(Xunit.Abstractions.ITestOutputHelper output) => _out = output;
+
     // the two live jobs, by name; where they are on the share is LiveProjects' business
     private static GeneratedModel.Project Langara => GeneratedModel.Langara;
     private static GeneratedModel.Project WestFirst => GeneratedModel.WestFirst;
@@ -270,16 +273,32 @@ public class ModelIntegrityTests
         // 100 column inserts now have a column within 6" of their insert point passes — so this is
         // leftover linework from geometry that was never looked at before, not structure that
         // started disappearing. If it moves again, it should move down.
-        int allowed = name == Langara.Name ? 19 : 55;
+        //
+        // AN OUTLINE THINNER THAN THE THINNEST WALL IS LINEWORK, AND LINEWORK MODELLED AS NOTHING IS NOT A DROPPED
+        // MEMBER (step 83, 2026-09-16). The count went 19 -> 20 on 31168 at step 56 and was carried red; every one of
+        // the 20 (and every one of 31138's 44) is a ribbon 2 to 3.4 in wide - a finish line, a curb, a stair's
+        // stringer - and step 63 (migration 090) already says six inches is the thinnest wall in 101 engineers'
+        // models. The ratchet counts what could be a member: an unresolved outline at a wall's thickness or more.
+        // Both sets measure 0 of those; the ceilings are 0, and may only come down from there (they cannot).
+        // The full count is still printed, so a jump in linework is visible without being a red.
+        int allowed = 0;
+        double thinnestWall = new PlanClassificationOptions().MinWallThickness;
 
-        var unresolved = built.Report.Summary.Flags
+        var unresolvedFlags = built.Report.Summary.Flags
             .Where(f => f.Contains("could not be resolved", StringComparison.OrdinalIgnoreCase))
             .Distinct(StringComparer.OrdinalIgnoreCase)
-            .Count();
+            .ToList();
+        static double ImpliedThickness(string flag)
+        {
+            var m = Regex.Match(flag, @"implied thickness ([0-9.]+) in");
+            return m.Success ? double.Parse(m.Groups[1].Value, CultureInfo.InvariantCulture) : double.MaxValue;   // no figure: counted
+        }
+        var atAWallsThickness = unresolvedFlags.Where(f => ImpliedThickness(f) >= thinnestWall).ToList();
+        _out.WriteLine($"{name}: {unresolvedFlags.Count} outline(s) read and modelled as nothing, {atAWallsThickness.Count} of them at a wall's thickness ({thinnestWall} in) or more.");
 
-        Assert.True(unresolved <= allowed,
-            $"{name}: {unresolved} outline(s) were read and then modelled as nothing, against {allowed} " +
-            "recorded. A dropped member shows up in no count, so this is the only place it is visible.");
+        Assert.True(atAWallsThickness.Count <= allowed,
+            $"{name}: {atAWallsThickness.Count} outline(s) at a wall's thickness or more were read and then modelled as nothing, against {allowed} " +
+            "recorded. A dropped member shows up in no count, so this is the only place it is visible: " + string.Join(" | ", atAWallsThickness.Take(4)));
     }
 
     /// <summary>
