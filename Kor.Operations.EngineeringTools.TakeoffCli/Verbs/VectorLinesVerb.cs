@@ -5,14 +5,14 @@
 // Ported from docs/etabs-handoff/pdf_lines.py (WP2, 2026-09-11); reads the page through
 // VectorPageReader, the same extraction every reader starts from (extraction is not the weak link, §30).
 // Coordinates are PDF points with y UP (the reader's frame, as vector-words prints them).
-//   takeoff vector-lines <pdf> <page> [--region x0 y0 x1 y1] [--min-pt 20] [--scale 96] [--pens]
+//   takeoff vector-lines <pdf> <page> [--region x0 y0 x1 y1] [--min-pt 20] [--scale 96] [--pens] [--long]
 internal static class VectorLinesVerb
 {
     public static bool Matches(string[] args) => args.Length >= 1 && args[0].Equals("vector-lines", StringComparison.OrdinalIgnoreCase);
 
     public static int Run(string[] args)
     {
-        if (args.Length < 3) { Console.Error.WriteLine("Usage: takeoff vector-lines <pdf> <page> [--region x0 y0 x1 y1] [--min-pt 20] [--scale 96] [--pens]"); return 1; }
+        if (args.Length < 3) { Console.Error.WriteLine("Usage: takeoff vector-lines <pdf> <page> [--region x0 y0 x1 y1] [--min-pt 20] [--scale 96] [--pens] [--long]"); return 1; }
         if (!File.Exists(args[1])) { Console.Error.WriteLine($"PDF not found '{args[1]}'."); return 2; }
         if (!int.TryParse(args[2], out int page) || page < 1) { Console.Error.WriteLine("Page must be a positive integer."); return 2; }
         double x0 = double.NegativeInfinity, y0 = double.NegativeInfinity, x1 = double.PositiveInfinity, y1 = double.PositiveInfinity;
@@ -30,6 +30,35 @@ internal static class VectorLinesVerb
         double mm = scale * PdfToSafeConstants.PointsToMm;     // one point on the paper, in drawing millimetres at this scale
 
         var pc = VectorPageReader.ReadPage(args[1], page);
+        // --long (2026-09-16, the tendon characterisation's second column): EVERY long segment on the page, at any angle,
+        // one line each - its ends, its length, its pen, and at each end the nearest small filled shape within 12 pt (an
+        // arrowhead is a filled triangle) and the nearest word within 40 pt - so a tendon (a long line ending at an
+        // arrowhead labelled in KIPS) and a slab edge (a long line ending at another edge) are told apart from the page,
+        // line by line, before any rule is written. Sorted longest first.
+        if (args.Any(a => a.Equals("--long", StringComparison.OrdinalIgnoreCase)))
+        {
+            var fills = pc.Paths.Where(p => p.IsFilled && !p.IsClipping && p.MaxX - p.MinX <= 20 && p.MaxY - p.MinY <= 20).ToList();
+            var rows = new List<(double Len, string Line)>();
+            foreach (var path in pc.Paths)
+            {
+                if (path.IsClipping || path.IsFilled || !path.IsStroked || path.Points.Count != 2) continue;
+                var a = path.Points[0]; var b = path.Points[1];
+                if (a.X < x0 || a.X > x1 || a.Y < y0 || a.Y > y1) continue;
+                double len = Math.Sqrt((b.X - a.X) * (b.X - a.X) + (b.Y - a.Y) * (b.Y - a.Y));
+                if (len < minPt) continue;
+                string End((double X, double Y) e)
+                {
+                    var fill = fills.Where(f => Math.Abs((f.MinX + f.MaxX) / 2 - e.X) <= 12 && Math.Abs((f.MinY + f.MaxY) / 2 - e.Y) <= 12).OrderBy(f => Math.Abs((f.MinX + f.MaxX) / 2 - e.X) + Math.Abs((f.MinY + f.MaxY) / 2 - e.Y)).FirstOrDefault();
+                    var word = pc.Words.Where(w => Math.Abs(w.Cx - e.X) <= 40 && Math.Abs(w.Cy - e.Y) <= 40).OrderBy(w => Math.Abs(w.Cx - e.X) + Math.Abs(w.Cy - e.Y)).Take(2).Select(w => w.Text).ToList();
+                    return (fill.Points is { Count: > 0 } ? $"fill {fill.Points.Count}pt {fill.MaxX - fill.MinX:0}x{fill.MaxY - fill.MinY:0}" : "-") + (word.Count > 0 ? " \"" + string.Join(" ", word) + "\"" : "");
+                }
+                double angle = Math.Abs(Math.Atan2(b.Y - a.Y, b.X - a.X) * 180 / Math.PI);
+                rows.Add((len, $"  ({a.X,7:0},{a.Y,7:0})-({b.X,7:0},{b.Y,7:0}) {len * mm,8:0} mm {angle,5:0}° w{path.LineWidth,4:0.0} #{path.Color.R:X2}{path.Color.G:X2}{path.Color.B:X2}  A: {End(a),-28} B: {End(b)}"));
+            }
+            Console.WriteLine($"{Path.GetFileName(args[1])} p{page}: {rows.Count} stroked two-point segments >= {minPt:0} pt ({minPt * mm:0} mm at 1:{scale:0}), longest first; at each end the nearest small fill (an arrowhead) and word:");
+            foreach (var (_, line) in rows.OrderByDescending(r => r.Len)) Console.WriteLine(line);
+            return 0;
+        }
         var hor = new SortedDictionary<double, List<(double A, double B)>>();
         var ver = new SortedDictionary<double, List<(double A, double B)>>();
         // --pens (2026-09-16, the tendon characterisation's first column): the long axis-aligned runs by the pen that drew
