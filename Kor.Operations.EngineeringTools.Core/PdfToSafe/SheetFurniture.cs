@@ -497,25 +497,10 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         /// </summary>
         private static IEnumerable<Underline> Underlines(VectorPageReader.PageContent page, ScheduleTableBorder.Rules rules)
         {
-            // text lines: tokens on one baseline, contiguous within two heights
-            var lines = new List<(double MinX, double MaxX, double MinY, double Height)>();
-            foreach (var group in page.Words.OrderByDescending(t => t.Cy).GroupBy(t => Math.Round(t.Cy)))
-            {
-                double? left = null, right = null, minY = null, height = null;
-                foreach (var t in group.OrderBy(t => t.MinX))
-                {
-                    if (left is not null && right is not null && t.MinX - right.Value > 2 * Math.Max(t.Height, height ?? 0))
-                    {
-                        lines.Add((left.Value, right.Value, minY!.Value, height!.Value));
-                        left = right = minY = height = null;
-                    }
-                    left ??= t.MinX;
-                    right = Math.Max(right ?? t.MaxX, t.MaxX);
-                    minY = Math.Min(minY ?? t.MinY, t.MinY);
-                    height = Math.Max(height ?? t.Height, t.Height);
-                }
-                if (left is not null) lines.Add((left.Value, right!.Value, minY!.Value, height!.Value));
-            }
+            // text lines: tokens on one baseline (TextBaselines, step 81 - by closeness, not by rounding), contiguous within two heights
+            var lines = TextBaselines.Lines(page.Words)
+                .Select(run => (MinX: run.Min(t => t.MinX), MaxX: run.Max(t => t.MaxX), MinY: run.Min(t => t.MinY), Height: run.Max(t => t.Height)))
+                .ToList();
 
             foreach (var h in rules.Horizontal)
             {

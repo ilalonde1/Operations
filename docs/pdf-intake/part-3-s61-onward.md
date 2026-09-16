@@ -1397,3 +1397,66 @@ report line say ABOUT: what the set issues twice under one title is the plan onc
 tell the reader they are footings. That is a reader rule (a filled rectangle of footing size with no column
 mark on a foundation plan is a footing), not written yet; it needs the per-column looks on more than one set.
 Nor a sheet about a plan but titled unlike it ("P3 FOOTING SCHEDULE"): the refusal list's job or nobody's.
+
+## 88. Step 81, 2026-09-15 night: words are on one baseline when their baselines are close, not when they round to the same point — WP6a item 4's cause on 01379
+
+**Where it came from.** Item 4 (a part plan never duplicates the overall plan) was opened on 01379's offset
+"Plan B West Tower" views on L23, L24, L26, L33, L41 (§80, run 14). Instrumented before any code was read:
+`model-render --storey L22,L23` on run 21's model shows L23 with the west tower twice, the second copy
+south-west; the composer's report says the L22 and L23 west-tower sheets were set on the grid by the same
+"2 of 7 X and 9 of 13 Y axes, agreeing within 3"; `grid-names` names the same 13 axes on both; and a scan of
+the two DXFs' grid layer shows every axis name TWICE on the L23 file — 0-6 at x 18,028 and at 63,882, 0-L at
+y 37,088 and at 74,704 — the offset (45,854, 37,616) mm being exactly the displacement `grid-names` reports
+for the overall plan's members. The page (S231.3, p138) draws the plan twice: "Reinforcing – Level 23 Plan
+B – West Tower" bottom-left and "Concrete Outline – Level 23 Plan B – West Tower" top-right, same scale,
+same grid. On S230.3 (L22, p135) the reader wrote two views; on S231.3 it wrote ONE, holding both plans and
+both grids, and the by-name fit took whichever copy of each axis it found — 37.6 m off.
+
+**The cause, to the hundredth of a point.** `SheetViews.TextLines` grouped a page's words into lines by
+`Math.Round(Cy)`. On p138 the title's "23" sits at 1201.506 pt and "Level … Tower" at 1201.478 — 0.03 pt
+apart, either side of 1201.5 — so the line became "Concrete Outline 23" and "Level Plan B West Tower",
+neither names a plan, and the second view was never titled. On p135 the same words all rounded to 1201, by
+luck; its first title lost "Reinforcing" the same way (89.556 → 90 against 89.437 → 89). `SheetFurniture`'s
+underline finder carried a copy of the same grouping.
+
+**The rule (step 81).** `TextBaselines.Lines`: two tokens are on one baseline when their baselines differ by
+less than a quarter of the taller one's height (`SameLineFraction` 0.25 — a dash is drawn a quarter-height up
+and stays its own line, as it did before, so no view title changes its words); a run is split at a gap of two
+heights as before. Both readers on it. Test `WordsOnOneBaselineAreOneLineTests` at the page's own numbers:
+the straddling title joins; the dashes stay apart; a wide gap splits; `SheetViews.Titles` finds both of
+S231.3's views from those tokens and their underlines.
+
+**The class has ten more instances**, each a `GroupBy(Math.Round(y / bin))`: the schedule readers at a 6 pt
+bin (`MarkRowScheduleReader`, `ScheduleGridReader` ×3, `VectorPageReader` line 96), the grid reader at 12 pt
+(`StructuralGridReader`), `ScheduleGridReader`'s rules at 1 pt, and the title reader at a line height
+(`SheetTitleReader` ×3). A wider bin straddles less often, not never. They are not changed tonight — each
+sits under a banked schedule or title fixture and moving them is its own step with its own look — and are
+named here so the next straddle is recognised as this class in one sentence.
+
+**Measured on the six, every mover looked at.** Three sets moved. **31065**: L2 gains the north tower's
+13,512 sq ft plate (p28's "LEVEL 2 PLAN - CONCRETE OUTLINE - NORTH TOWER" now closes) beside its 4,628; three
+"columns" gone — one carried back to the page with `model-to-page` sits in empty paper beside C10 (a phantom);
+twelve "walls" gone — the stair flights' and elevator shaft's long edges (7.6 m, 2.8 m apart, through the
+stair on p28), which were walls by the two-face-lines rule only because the tread rules under the "150 / 300 /
+500" dimension texts had been eaten as their "underlines"; L3 gains six walls that are L2's re-spanning to
+the storey they rise to now that L2 has a plate (the step-78 mechanism); the roof sheet's third view "ROOF PLAN
+(L20) - CONCRETE OUTLINE - NT" is found and its 2,168 sq ft plate moves from the elevator roof's storey to
+L20, where it belongs, and L20 loses the same stair edges. **31130**: L19's plate 5,973 → 6,049 sq ft.
+**31202**: L13's plate 6,718 → 542 sq ft on p35, a post-tensioned page: 44 rules that were "underlines" —
+ticks and leaders under "3.75"", "10.5"" and note numbers, each its own line under the rounding — are geometry
+now, and the arrangement on this tendon-drawn page unites a different fragment; neither the old blob (with a
+spike) nor the new box is the floor. That is item 2's open tendon-page class, exposed, not caused. The
+underline count on p35: 570 → 535, and the probe listed every one of the 44 with the text it had been
+"under" — none was a heading. Banked all three.
+
+**Measured on 01379** (a full re-read of the set, 272 pages, 209 s at 12 workers): S231.3 now writes
+`_1_Reinforcing Level 23 Plan B West Tower` (refused, REINFORC) and `_2_Concrete Outline Level 23 Plan B West
+Tower` (read); S230.3's first view is named with its "Reinforcing" too. `model-render --storey L22,L23`: L23 is
+61 walls / 36 columns like L22, the west tower once; every tower storey L12–L46 carries 59–61 walls (run 21:
+L23 130, and L24, L26, L33, L41 doubled). `corpus-query pages 01379-01 --last 2`: 0 pages placed differently
+(178 of 272 both runs); the report's placed VIEWS 175 → 169 are the reinforcing views now named and refused.
+Item 4's 01379 half is closed by a reader rule, not a placement rule.
+
+WHAT IT DOES NOT: place a part plan that carries only ONE copy of its grid but whose axis names are shared
+with another building's (the two-tower sets' "2-A" on both towers — item 4's second half, the composer's
+"a part plan stands over the overall plan" rule, still open); the ten instances above.

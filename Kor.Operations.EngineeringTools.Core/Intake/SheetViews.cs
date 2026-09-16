@@ -138,25 +138,13 @@ public static class SheetViews
         public double CentreX => (MinX + MaxX) / 2;
     }
 
-    /// <summary>The page's lines of text: tokens on one baseline, contiguous within two heights.</summary>
+    /// <summary>The page's lines of text: tokens on one baseline (<see cref="TextBaselines"/>, step 81 - by closeness, not
+    /// by rounding), contiguous within two heights.</summary>
     private static IEnumerable<TextLine> TextLines(VectorPageReader.PageContent page)
     {
-        foreach (var group in page.Words.OrderByDescending(t => t.Cy).GroupBy(t => Math.Round(t.Cy)))
-        {
-            var run = new List<VectorPageReader.TextToken>();
-            foreach (var t in group.OrderBy(t => t.MinX))
-            {
-                if (run.Count > 0 && t.MinX - run[^1].MaxX > 2 * Math.Max(t.Height, run.Max(r => r.Height)))
-                {
-                    yield return Line(run);
-                    run.Clear();
-                }
-                run.Add(t);
-            }
-            if (run.Count > 0) yield return Line(run);
-        }
+        foreach (var run in TextBaselines.Lines(page.Words)) yield return Line(run);
 
-        static TextLine Line(List<VectorPageReader.TextToken> run) => new(
+        static TextLine Line(IReadOnlyList<VectorPageReader.TextToken> run) => new(
             string.Join(" ", run.Select(t => t.Text.Trim()).Where(s => s.Length > 0)),
             run.Min(t => t.MinX), run.Max(t => t.MaxX), run.Min(t => t.MinY), run.Max(t => t.Height));
     }

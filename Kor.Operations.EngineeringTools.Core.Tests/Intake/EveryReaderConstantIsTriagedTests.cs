@@ -70,6 +70,7 @@ public sealed class EveryReaderConstantIsTriagedTests
         ["GridBubbles.cs:MaxRadiusPts"] = Convention("dxf.pdf.bubble-max-radius-pt"),
         ["GridBubbles.cs:AxisMinShare"] = Convention("dxf.pdf.axis-min-share — a grid axis crosses at least a quarter of the page"),
         ["SheetViews.cs:AxisReachMm"] = Convention("dxf.pdf.axis-reach-mm — the bubble stands off the plan by up to 3 m"),
+        ["TextBaselines.cs:SameLineFraction"] = Tolerance("two words are on one baseline within a quarter of their height (step 81): a typesetting fact, not a drafting convention - a dash sits a quarter-height up and stays its own line"),
         ["SheetFurniture.cs:MatchLineMinSpanShare"] = Convention("dxf.pdf.match-line-min-span-share"),
         ["SheetFurniture.cs:MatchLineLabelReachHeights"] = Convention("dxf.pdf.match-line-label-reach-heights"),
         ["SheetFurniture.cs:TitleBlockRuleMinShare"] = Convention("dxf.pdf.title-block-rule-min-share"),
