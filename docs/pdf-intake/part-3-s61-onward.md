@@ -2026,3 +2026,15 @@ next letter starts within two heights of the last (30980: 9.3 pt apart at 6.8; 3
 WHAT IT DOES NOT: a bubble row inside a field's value box still joins the value (a stray token in a box always has —
 not a shape a block draws); the brief omitted `Labels`' declaration, so Codex could not check the list itself — noted
 for the next brief.
+
+## 107. Codex's review of step 90, 2026-09-16 09:15: a level range alone could title an elevation — the limit stated and measured, no change
+
+Codex: "LEVEL 2 - 5" alone types plan; an elevation sheet so titled would be a plan; the title alone cannot tell them
+apart ("LEVEL 3 LOADS" is refused). Measured on run 25's sheets: **116 pages on 26 sets** are typed plan by a
+storey-only title — 30807's S-2.02 LEVEL P3 … S-2.20 LEVEL 32, 30823's S2.13 LEVEL 1 MEZZANINE … S2.52 ROOF, 30878's
+LEVEL P1 … LEVEL 15 / ROOF, 30804's PARKING P3 … FLOOR 9, ROOF, 50046's Parking Level P5 … P2, 60061's LEVEL 03,
+MECHANICAL ROOF LEVEL, 90101's GROUND FLOOR, PODIUM SECOND FLOOR, and the single PARKING LEVEL P1 sheets of 30841,
+30848, 30894, 30908, 30924, 30931, 30949, 30982, 40102, 50026 — every one a plan, and the whole of run 25's storey
+gains. No elevation among them: the office titles an elevation ELEVATION, asked before this rule. Not adopted. WHAT
+THIS DOES NOT: a set that titles an elevation by a level range alone (none in 296); its refusal would be the
+composer's, on the page's geometry.
