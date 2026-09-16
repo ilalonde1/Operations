@@ -1,4 +1,4 @@
-#nullable enable
+﻿#nullable enable
 using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -44,8 +44,23 @@ public static class ModelDiff
         public bool PlatesMoved => !PlatesBefore.Select(p => Math.Round(p)).SequenceEqual(PlatesAfter.Select(p => Math.Round(p)));
     }
 
+    /// <summary>
+    /// WHERE A MEMBER WENT (2026-09-16, the second instance of "members vanish when a plate appears" - step 97's
+    /// 31130 P1 walls, step 98's 34 columns off 31138 L2): a member is one place on the plan and a SPAN of storeys
+    /// it is assigned to; the storey diff counts it on each storey and cannot say whether a column left the model
+    /// or only lost one storey of its stack. This pairs each place across the two models and names the span
+    /// before and after. Kind: "column" or "wall"; Before/After: the storeys, bottom first, empty when absent.
+    /// </summary>
+    public sealed record SpanChange(string Kind, Member Place, IReadOnlyList<string> Before, IReadOnlyList<string> After)
+    {
+        public string Class => Before.Count == 0 ? "new" : After.Count == 0 ? "vanished"
+            : Before.Except(After, StringComparer.OrdinalIgnoreCase).Any() && After.Except(Before, StringComparer.OrdinalIgnoreCase).Any() ? "moved"
+            : After.Count < Before.Count ? "shortened" : "lengthened";
+    }
+
     public sealed record Result(bool ByteIdentical, (long X, long Y) Shift, string ShiftHow, IReadOnlyList<StoreyDiff> Storeys)
     {
+        public IReadOnlyList<SpanChange> Spans { get; init; } = [];
         public int LostColumns => Storeys.Sum(s => s.LostColumns.Count);
         public int GainedColumns => Storeys.Sum(s => s.GainedColumns.Count);
         public int LostWalls => Storeys.Sum(s => s.LostWalls.Count);
@@ -113,7 +128,33 @@ public static class ModelDiff
                 lostColumns, gainedColumns, lostWalls, gainedWalls,
                 pa.OrderByDescending(v => v).ToList(), pb.OrderByDescending(v => v).ToList()));
         }
-        return new Result(false, shift, how, storeys);
+        return new Result(false, shift, how, storeys) { Spans = Spans(order, membersA, membersB) };
+    }
+
+    // each place's storeys in each model; a place is the member's key (centre, extents, angle) after the frame shift
+    private static List<SpanChange> Spans(List<string> order,
+        Dictionary<string, (IReadOnlyList<Member> Columns, IReadOnlyList<Member> Walls)> a,
+        Dictionary<string, (IReadOnlyList<Member> Columns, IReadOnlyList<Member> Walls)> b)
+    {
+        var changes = new List<SpanChange>();
+        foreach (var (kind, pick) in new (string, Func<(IReadOnlyList<Member> Columns, IReadOnlyList<Member> Walls), IReadOnlyList<Member>>)[]
+                 { ("column", m => m.Columns), ("wall", m => m.Walls) })
+        {
+            var before = new Dictionary<Member, List<string>>();
+            var after = new Dictionary<Member, List<string>>();
+            foreach (var storey in order)
+            {
+                if (a.TryGetValue(storey, out var ma)) foreach (var m in pick(ma)) (before.TryGetValue(m, out var l) ? l : before[m] = new List<string>()).Add(storey);
+                if (b.TryGetValue(storey, out var mb)) foreach (var m in pick(mb)) (after.TryGetValue(m, out var l) ? l : after[m] = new List<string>()).Add(storey);
+            }
+            foreach (var place in before.Keys.Union(after.Keys))
+            {
+                var x = before.TryGetValue(place, out var xb) ? xb : new List<string>();
+                var y = after.TryGetValue(place, out var yb) ? yb : new List<string>();
+                if (!x.SequenceEqual(y, StringComparer.OrdinalIgnoreCase)) changes.Add(new SpanChange(kind, place, x, y));
+            }
+        }
+        return changes.OrderBy(c => c.Kind).ThenBy(c => c.Class).ThenBy(c => c.Place.X).ThenBy(c => c.Place.Y).ToList();
     }
 
     /// <summary>The report, as the scripts printed it: storeys that changed, counts on the storey line, a sample of positions under it.</summary>
@@ -134,6 +175,19 @@ public static class ModelDiff
                 foreach (var m in items.Take(sample))
                     sb.AppendLine($"   {tag,-14} at ({m.X.ToString("N0", CultureInfo.InvariantCulture)}, {m.Y.ToString("N0", CultureInfo.InvariantCulture)})" + (m.Length > 0 ? $" {m.Length.ToString("N0", CultureInfo.InvariantCulture)} long" : ""));
                 if (items.Count > sample) sb.AppendLine(CultureInfo.InvariantCulture, $"   ... and {items.Count - sample} more (a sample is printed; the count is in the storey line)");
+            }
+        }
+        if (r.Spans.Count > 0)
+        {
+            sb.AppendLine($"where the members went ({r.Spans.Count} place(s) whose storeys changed):");
+            foreach (var g in r.Spans.GroupBy(c => (c.Kind, c.Class)).OrderBy(g => g.Key.Kind).ThenBy(g => g.Key.Class))
+            {
+                sb.AppendLine($"  {g.Key.Kind} {g.Key.Class}: {g.Count()}");
+                foreach (var c in g.Take(sample))
+                    sb.AppendLine($"     at ({c.Place.X.ToString("N0", CultureInfo.InvariantCulture)}, {c.Place.Y.ToString("N0", CultureInfo.InvariantCulture)})" +
+                                  (c.Place.Length > 0 ? $" {c.Place.Length.ToString("N0", CultureInfo.InvariantCulture)} long" : "") +
+                                  $": {(c.Before.Count == 0 ? "-" : string.Join(" ", c.Before))} -> {(c.After.Count == 0 ? "-" : string.Join(" ", c.After))}");
+                if (g.Count() > sample) sb.AppendLine(CultureInfo.InvariantCulture, $"     ... and {g.Count() - sample} more");
             }
         }
         sb.AppendLine(r.OneLine);

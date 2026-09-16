@@ -224,11 +224,25 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             void FateAt(int index, PathReason reason, int? objectIndex = null)
                 => fates?.Add(new PathFate(index, PathFate.DispositionOf(reason), reason, objectIndex));
 
-            for (int pathIndex = 0; pathIndex < rawSubpaths.Count; pathIndex++)
+            // A CURVE DRAWN AS SHORT STROKES IS ONE LINE (intake step 98, 2026-09-16). 31138's tower outline turns
+            // its corners as arcs, and the PDF holds each arc as a run of 9 pt strokes under 200 mm long, end to end;
+            // every one was TooShort, the ring was open at every rounded corner, and fourteen storeys carried no
+            // plate. The strokes that meet end to end exactly, one pen, are one path; the path is what the length
+            // gate judges, and it reaches the readers as the polyline the drafter drew. Only strokes under the length
+            // gate are chained: a long line stays the two-point line the wall reader pairs.
+            var curves = CurvesOfShortStrokes(rawSubpaths, lineMinLengthMm, footingPieces);   // a footing's dashes are the footing's (step 44), whatever they touch
+            var curveMembers = new HashSet<int>(curves.SelectMany(c => c.Members));
+            for (int pathIndex = 0; pathIndex < rawSubpaths.Count + curves.Count; pathIndex++)
             {
-                var sub = rawSubpaths[pathIndex];
+                bool isCurve = pathIndex >= rawSubpaths.Count;
+                var sub = isCurve ? curves[pathIndex - rawSubpaths.Count].Path : rawSubpaths[pathIndex];
                 void Fate(PathReason reason, int? objectIndex = null)
-                    => fates?.Add(new PathFate(pathIndex, PathFate.DispositionOf(reason), reason, objectIndex));
+                {
+                    if (fates is null) return;
+                    if (isCurve) foreach (int m in curves[pathIndex - rawSubpaths.Count].Members) fates.Add(new PathFate(m, PathFate.DispositionOf(reason), reason, objectIndex));
+                    else fates.Add(new PathFate(pathIndex, PathFate.DispositionOf(reason), reason, objectIndex));
+                }
+                if (!isCurve && curveMembers.Contains(pathIndex)) continue;   // its fate is its curve's
 
                 // A DASH OF A FOOTING OUTLINE IS THE FOOTING'S. FootingOutlines read the page's dashed
                 // rectangles against the foundation schedule before this loop; a piece it claimed is
@@ -519,7 +533,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             PatternStripesAreNotWalls(result, fates, firstFate);
             AFaceInPiecesIsOneFace(result, fates, firstFate);
             WallsFromFaceLines(result, fates, firstFate, minWallThicknessMm, maxWallThicknessMm, minWallLengthMm, minWallAspect);
-            SlabEdgesFromLoops(result, fates, firstFate, slabEdgeBridgeMm, minSlabAreaMm2);
+            SlabEdgesFromLoops(result, fates, firstFate, slabEdgeBridgeMm, minSlabAreaMm2, minWallThicknessMm, maxWallThicknessMm);
 
             if (fates is not null && (deferredPaper.Count > 0 || deferredNoInk.Count > 0))
             {
@@ -558,6 +572,68 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         /// two cells alone in a wall shorter than three, which still read as columns; the wall the cells
         /// filled, which this pass does not build.
         /// </summary>
+        /// <summary>
+        /// Open two-point strokes shorter than the length gate that meet end to end exactly, drawn with one pen and
+        /// one colour, chained into one path each (step 98). A node where three or more such strokes meet is a
+        /// hatch or a symbol, not a curve, and its group is left as it was; so is a chain of one.
+        /// </summary>
+        internal static List<(RawSubpath Path, List<int> Members)> CurvesOfShortStrokes(IReadOnlyList<RawSubpath> paths, double lineMinLengthMm, IReadOnlyDictionary<int, int>? claimed = null)
+        {
+            var curves = new List<(RawSubpath, List<int>)>();
+            var byEnd = new Dictionary<(long, long, double, (byte, byte, byte)), List<int>>();
+            (long, long, double, (byte, byte, byte)) Key((double X, double Y) p, RawSubpath s) => ((long)Math.Round(p.X * 10), (long)Math.Round(p.Y * 10), s.LineWidth, s.Color);
+            var eligible = new List<int>();
+            for (int i = 0; i < paths.Count; i++)
+            {
+                var s = paths[i];
+                if (s.IsClosed || s.IsAnnotation || s.IsFilled || !s.IsStroked || s.Points.Count != 2 || (claimed is not null && claimed.ContainsKey(i))) continue;
+                if (PolygonProcessor.PathLength(s.Points) >= lineMinLengthMm) continue;
+                eligible.Add(i);
+                foreach (var e in s.Points)
+                    (byEnd.TryGetValue(Key(e, s), out var at) ? at : byEnd[Key(e, s)] = new List<int>()).Add(i);
+            }
+            if (eligible.Count < 2) return curves;
+            var seen = new HashSet<int>();
+            foreach (int start in eligible)
+            {
+                if (seen.Contains(start)) continue;
+                // the connected group through shared ends
+                var group = new List<int>(); var stack = new Stack<int>(); stack.Push(start); seen.Add(start);
+                bool simple = true;
+                while (stack.Count > 0)
+                {
+                    int i = stack.Pop(); group.Add(i);
+                    foreach (var e in paths[i].Points)
+                    {
+                        var at = byEnd[Key(e, paths[i])];
+                        if (at.Count > 2) simple = false;
+                        foreach (int j in at) if (seen.Add(j)) stack.Push(j);
+                    }
+                }
+                if (!simple || group.Count < 2) continue;
+                // walk it from an end (a node with one stroke); a closed loop of short strokes has none and is a bubble, not a curve
+                int first = group.FirstOrDefault(i => paths[i].Points.Any(e => byEnd[Key(e, paths[i])].Count == 1), -1);
+                if (first < 0) continue;
+                var pts = new List<(double X, double Y)>();
+                var used = new HashSet<int>();
+                int cur = first;
+                var from = paths[first].Points.First(e => byEnd[Key(e, paths[first])].Count == 1);
+                pts.Add(from);
+                while (cur >= 0 && used.Add(cur))
+                {
+                    var next = paths[cur].Points[0] == from ? paths[cur].Points[1] : paths[cur].Points[0];
+                    pts.Add(next);
+                    var at = byEnd[Key(next, paths[cur])];
+                    int following = at.FirstOrDefault(j => j != cur && !used.Contains(j), -1);
+                    from = next; cur = following;
+                }
+                if (used.Count != group.Count) continue;
+                var s0 = paths[first];
+                curves.Add((new RawSubpath(pts, false, s0.Color, false, true, s0.LineWidth, false), group.OrderBy(i => i).ToList()));
+            }
+            return curves;
+        }
+
         internal static void PatternCellsAreNotColumns(ExtractedGeometry result, IList<bool> columnByShape, IList<PathFate>? fates, int firstFate)
         {
             int n = result.Columns.Count;
@@ -1381,7 +1457,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         /// finds nothing and the storey keeps having no plate, which the DXF side already reports.
         /// </summary>
         internal static void SlabEdgesFromLoops(ExtractedGeometry result, IList<PathFate>? fates, int firstFate,
-            double slabEdgeBridgeMm = DefaultSlabEdgeBridgeMm, double minSlabAreaMm2 = DefaultMinSlabAreaMm2)
+            double slabEdgeBridgeMm = DefaultSlabEdgeBridgeMm, double minSlabAreaMm2 = DefaultMinSlabAreaMm2,
+            double minWallThicknessMm = PdfIntakeOptions.DefaultMinWallThicknessMm, double maxWallThicknessMm = PdfIntakeOptions.DefaultMaxWallThicknessMm)
         {
             result.FirstEdgeSlab = result.Slabs.Count;
             if (result.Lines.Count + result.StrokesOnGrid.Count < 4) return;
@@ -1429,7 +1506,10 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             var eligible = new List<int>();
             for (int i = 0; i < result.Lines.Count; i++)
             {
-                if (result.Lines[i].Count != 2 || result.LineIsAnnotation[i]) continue;
+                // A CURVE IS ITS PIECES (PROTOTYPE step 98, 2026-09-16): 31138's tower outline turns its corners as arcs -
+                // 33-point paths five feet long - and a pass that took two-point lines only left the ring open at every
+                // rounded corner on fourteen storeys
+                if (result.Lines[i].Count < 2 || result.LineIsAnnotation[i]) continue;
                 if (result.WallFaceLines.TryGetValue(i, out int wall) && !WallLeftPartOfIt(i, wall)) continue;
                 eligible.Add(i);
             }
@@ -1451,11 +1531,14 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             }
             if (candidates.Count + result.StrokesOnGrid.Count(s => s.Count == 2) < 4) return;
 
-            var segments = candidates
-                .Select(i => new DxfSegment("SLABEDGE",
-                    new DxfPoint(result.Lines[i][0].X, result.Lines[i][0].Y),
-                    new DxfPoint(result.Lines[i][1].X, result.Lines[i][1].Y)))
-                .ToList();
+            var segments = candidates.SelectMany(Pieces).ToList();
+            // a two-point line is one piece; a path of more points is each consecutive pair
+            IEnumerable<DxfSegment> Pieces(int i)
+            {
+                var l = result.Lines[i];
+                for (int k = 1; k < l.Count; k++)
+                    yield return new DxfSegment("SLABEDGE", new DxfPoint(l[k - 1].X, l[k - 1].Y), new DxfPoint(l[k].X, l[k].Y));
+            }
 
             // A SLAB EDGE DRAWN ALONG A GRID LINE IS STILL THE SLAB EDGE (intake step 78, 2026-09-15). Step 53
             // keeps a stroke along a grid axis drawn heavier than the grid apart from the lines, for the tendon
@@ -1623,7 +1706,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         var cells = planar.Faces.OrderByDescending(f => Math.Abs(f.Outer.Area)).ToList();
                         int inACell = result.Columns.Count(c => cells.Any(f => LoopGeometry.PointInPolygon(new DxfPoint(c.X, c.Y), f.Outer.Points)));
                         FaceTrace($"slab pass: arrangement {cells.Count} cell(s); columns in a cell {inACell} of {result.Columns.Count}; " +
-                                  $"largest (sq ft, holds): {string.Join(" ", cells.Take(10).Select(f => $"{Math.Abs(f.Outer.Area) / 92903.04:0}{(Holds(f.Outer) ? "*" : "")}"))}");
+                                  $"largest (sq ft, holds): {string.Join(" ", cells.Take(10).Select(f => $"{Math.Abs(f.Outer.Area) / 92903.04:0}{(Holds(f) ? "*" : "")}"))}");
                         var open = planar.OpenChains.Where(c => c.Count >= 2).OrderByDescending(ChainLength).ToList();
                         FaceTrace($"slab pass: {planar.OpenChains.Count} open chain(s) in the arrangement; longest (ft, ends in ft): " +
                                   string.Join(" | ", open.Select(c => $"{ChainLength(c) / 304.8:0} ({c[0].X / 304.8:0.0},{c[0].Y / 304.8:0.0})[{NearestColumnFt(c[0]):0.0}]-({c[^1].X / 304.8:0.0},{c[^1].Y / 304.8:0.0})[{NearestColumnFt(c[^1]):0.0}]")));
@@ -1631,7 +1714,17 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                             : result.Columns.Select((c, k) => (c, half: (k < result.ColumnSizes.Count ? Math.Max(result.ColumnSizes[k].WidthMm, result.ColumnSizes[k].DepthMm) : 400.0) / 2))
                                 .Min(t => Math.Max(Math.Abs(t.c.X - p.X) - t.half, Math.Abs(t.c.Y - p.Y) - t.half)) / 304.8;
                     }
-                    loops.AddRange(planar.RecoverSurfaces(_ => false, cell => Holds(cell.Outer)).Slabs.Select(f => f.Outer));
+                    // A CELL ENCLOSED BY THE FLOOR IS THE FLOOR (intake step 98, 2026-09-16). Step 78 took the cells that hold
+                    // structure and united them; every line drawn across a floor - a tendon, a slab step, a curb, a curved
+                    // wall's two faces once curves read as lines - makes cells that hold nothing, and each one breaks the
+                    // union where it lies: 31202 L13 was three unions and 542 sq ft (section 110), L6 split at a curved
+                    // wall's band, 31138's L1 fell to pieces. Where the floor's cell holds nothing it is still the floor if
+                    // it is not open to the page: a cell that shares no edge with the unbounded outside is enclosed by the
+                    // linework on every side, and enclosed by the floor is the floor. A balcony box, a dimension strip and
+                    // a courtyard's open side all touch the outside and stay out as they did. WHAT IT DOES NOT: an opening
+                    // drawn as a closed loop inside the floor (a stair, a shaft) is enclosed too and is now filled - the
+                    // reading of a loop the plan labels an opening is owed, and named in the plan.
+                    loops.AddRange(planar.RecoverSurfaces(_ => false, (i, cell) => Holds(cell) || !planar.TouchesTheOutside(i)).Slabs.Select(f => f.Outer));
                 }
                 catch (InvalidOperationException refused)
                 {
@@ -1692,9 +1785,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 foreach (int i in candidates)
                 {
                     if (result.SlabEdgeLines.ContainsKey(i)) continue;
-                    var a = new DxfPoint(result.Lines[i][0].X, result.Lines[i][0].Y);
-                    var b = new DxfPoint(result.Lines[i][1].X, result.Lines[i][1].Y);
-                    if (!OnRing(a, loop) || !OnRing(b, loop)) continue;
+                    if (!result.Lines[i].All(p => OnRing(new DxfPoint(p.X, p.Y), loop))) continue;
                     result.SlabEdgeLines[i] = slabIndex;
                 }
             }
@@ -1719,14 +1810,18 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             // the columns beside it, outside it, say it is a strip of the floor and not the floor.
             // a cell is the floor's where anything stands in it, whatever its size (step 78): the halves a slab step
             // divides a floor into are each under the floor bound and each hold their columns
-            bool Holds(PlanLoop cell)
+            bool Holds(PlanarRings.Face cell)
             {
                 // strictly inside: cells meeting only at a column's centre (a carried edge's junction, step 97) are not
-                // one floor, and uniting them pinches the union into a boundary PlanarRings refuses (measured 2026-09-16)
+                // one floor, and uniting them pinches the union into a boundary PlanarRings refuses (measured 2026-09-16).
+                // AND NOT IN A HOLE OF IT (step 98): a band round the floor - the outline drawn twice - is a cell whose
+                // outer ring is the whole floor and whose hole is the floor; judged by its outer ring it "held" every
+                // column, and the band was the plate
+                bool In(DxfPoint p) => LoopGeometry.PointInPolygon(p, cell.Outer.Points) && !cell.Holes.Any(h => LoopGeometry.PointInPolygon(p, h.Points));
                 foreach (var c in result.Columns)
-                    if (LoopGeometry.PointInPolygon(new DxfPoint(c.X, c.Y), cell.Points)) return true;
+                    if (In(new DxfPoint(c.X, c.Y))) return true;
                 foreach (var w in result.Walls)
-                    if (LoopGeometry.PointInPolygon(new DxfPoint((w.Start.X + w.End.X) / 2, (w.Start.Y + w.End.Y) / 2), cell.Points)) return true;
+                    if (In(new DxfPoint((w.Start.X + w.End.X) / 2, (w.Start.Y + w.End.Y) / 2))) return true;
                 return false;
             }
 
@@ -1755,7 +1850,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             List<int> WithoutTheRunsEndingAtAnArrowhead(List<int> lines)
             {
                 if (result.Arrowheads.Count == 0 || lines.Count == 0) return lines;
-                var segs = lines.Select(i => new DxfSegment("LINE", new DxfPoint(result.Lines[i][0].X, result.Lines[i][0].Y), new DxfPoint(result.Lines[i][1].X, result.Lines[i][1].Y))).ToList();
+                var segs = lines.Select(i => new DxfSegment("LINE", new DxfPoint(result.Lines[i][0].X, result.Lines[i][0].Y), new DxfPoint(result.Lines[i][^1].X, result.Lines[i][^1].Y))).ToList();
                 var parent = Enumerable.Range(0, segs.Count).ToArray();
                 int Root(int n) { while (parent[n] != n) { parent[n] = parent[parent[n]]; n = parent[n]; } return n; }
                 var byEnd = new Dictionary<DxfPoint, int>();

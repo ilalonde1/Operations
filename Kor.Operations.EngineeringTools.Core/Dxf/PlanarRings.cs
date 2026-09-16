@@ -1,4 +1,4 @@
-#nullable enable
+﻿#nullable enable
 namespace Kor.Operations.EngineeringTools.Dxf;
 
 /// <summary>
@@ -37,16 +37,36 @@ public sealed class PlanarRings
         internal Mesh? Topology { get; init; }
 
         /// <summary>
+        /// Whether the face at this index shares an edge with the unbounded outside (2026-09-16, the PDF route's
+        /// step 99): a cell on the rim of the linework is open to the page; a cell that is not is enclosed by
+        /// other cells on every side. A half-edge owned by no face is the outside's.
+        /// </summary>
+        public bool TouchesTheOutside(int faceIndex)
+        {
+            var mesh = Topology ?? throw new InvalidOperationException("Rim queries require a Build result.");
+            for (int h = 0; h < mesh.Owner.Length; h++)
+                if (mesh.Owner[h] == faceIndex && mesh.Owner[h ^ 1] < 0) return true;
+            return false;
+        }
+
+        /// <summary>
         /// Two independent interpretations of the same cells. Selecting slab cells on BOTH sides
         /// of a wall and the band itself recovers one plate; excluding the band makes a slot.
         /// The caller must identify void cells. Topology cannot distinguish a hole from a room.
         /// </summary>
         public Surfaces RecoverSurfaces(Func<Face, bool> isWallBand, Func<Face, bool> isSlabCell)
         {
-            ArgumentNullException.ThrowIfNull(isWallBand);
             ArgumentNullException.ThrowIfNull(isSlabCell);
+            return RecoverSurfaces(isWallBand, (_, face) => isSlabCell(face));
+        }
+
+        /// <summary>The same selection with the face's index in hand, for a caller that asks the topology about it.</summary>
+        public Surfaces RecoverSurfaces(Func<Face, bool> isWallBand, Func<int, Face, bool> isSlabCellAt)
+        {
+            ArgumentNullException.ThrowIfNull(isWallBand);
+            ArgumentNullException.ThrowIfNull(isSlabCellAt);
             var mesh = Topology ?? throw new InvalidOperationException("Surface recovery requires a Build result.");
-            var selected = Faces.Select(isSlabCell).ToArray();
+            var selected = Faces.Select((f, i) => isSlabCellAt(i, f)).ToArray();
             bool Filled(int h) => mesh.Owner[h] >= 0 && selected[mesh.Owner[h]];
             var boundary = Enumerable.Range(0, mesh.Owner.Length).Select(h => Filled(h) && !Filled(h ^ 1)).ToArray();
             var cycles = Walk(mesh, boundary);
