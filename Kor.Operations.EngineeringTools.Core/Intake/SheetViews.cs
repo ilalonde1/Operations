@@ -150,6 +150,41 @@ public static class SheetViews
     }
 
     /// <summary>
+    /// A TITLE THAT IS A STOREY'S NAME AND NOTHING ELSE IS THAT STOREY'S PLAN (intake step 90, 2026-09-16; WP6a item 5's
+    /// class B). 31229 (Quadra East, 2026) titles its eight sheets "LEVEL P2", "LEVEL 1", "LEVEL 3 &amp; 4", "LEVEL 6 - 21",
+    /// "LEVEL 22 MECH"; 90101 "GROUND FLOOR", "PODIUM SECOND FLOOR" — no PLAN, no descriptor — and every one typed
+    /// "other", so the sets built nothing: "no plan sheet with structure on it". A level word alone does not make a
+    /// plan (31168's wall elevations and typical details name storeys in their titles), so the rule is stricter than a
+    /// level word: EVERY word of the title is a storey word — the vocabulary's level, parkade, floor, range, basement,
+    /// top-floor, roof and mezzanine words, a floor noun, an ordinal, a number, a level token (P2, L12, B4), "AND",
+    /// "&amp;", "PODIUM", "PARKING", "MECH" — and at least one of them names a storey. "LEVEL 2 WALL ELEVATIONS" is not.
+    /// </summary>
+    public static bool NamesAStoreyAlone(string? title)
+    {
+        if (string.IsNullOrWhiteSpace(title)) return false;
+        var voc = PlanSheetNaming.Vocabulary;
+        var words = title.ToUpperInvariant().Split([' ', ',', '/', '(', ')'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
+        // a bookmark writes the sheet's number before its title ("S-2.01 - GROUND FLOOR"): the number is not a word of the title
+        while (words.Count > 0 && (words[0] == "-" || (words[0].IndexOfAny(['.', '-']) > 0 && SheetTitleReader.IsSheetNumberToken(words[0].Replace(" ", ""))))) words.RemoveAt(0);
+        if (words.Count == 0) return false;
+        bool namesOne = false;
+        foreach (string w in words)
+        {
+            bool storeyToken = System.Text.RegularExpressions.Regex.IsMatch(w, @"^(?:[A-Z]{1,2})?\d{1,2}[A-Z]?$") && (char.IsDigit(w[0]) || voc.ParkadeWords.Concat(voc.LevelWords).Any(p => w.StartsWith(p, StringComparison.Ordinal)))
+                || voc.LevelOfWord(w) is not null
+                || voc.BasementWords.Contains(w, StringComparer.OrdinalIgnoreCase) || voc.TopFloorWords.Contains(w, StringComparer.OrdinalIgnoreCase)
+                || voc.RoofWords.Contains(w, StringComparer.OrdinalIgnoreCase);
+            bool joiningWord = voc.LevelWords.Contains(w, StringComparer.OrdinalIgnoreCase) || voc.ParkadeWords.Contains(w, StringComparer.OrdinalIgnoreCase)
+                || voc.FloorNouns.Contains(w, StringComparer.OrdinalIgnoreCase) || voc.RangeWords.Contains(w, StringComparer.OrdinalIgnoreCase)
+                || voc.MezzanineWords.Any(m => w.StartsWith(m, StringComparison.OrdinalIgnoreCase))
+                || w is "&" or "AND" or "PODIUM" or "PARKING" or "PARKADE" or "MECH" or "MECHANICAL" or "-";
+            if (storeyToken) namesOne = true;
+            else if (!joiningWord) return false;
+        }
+        return namesOne;
+    }
+
+    /// <summary>
     /// A title that names what a plan is of: a level, a parkade level, a roof, a foundation, a floor named by
     /// a word (step 60: MAIN, GROUND, UPPER, a basement or a loft word) — and says it is a plan, or says what
     /// framing it shows over the floor ("GROUND FLOOR SHOWING MAIN FLOOR FRAMING OVER" is the ground floor's

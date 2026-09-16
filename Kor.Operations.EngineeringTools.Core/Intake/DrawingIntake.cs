@@ -611,6 +611,9 @@ public static class DrawingIntake
         if (string.IsNullOrWhiteSpace(title)) return "unknown";
         foreach (var (type, rx) in SheetTypes)
             if (rx.IsMatch(title)) return type;
+        // a title that is a storey's name and nothing else is that storey's plan (step 90: 31229's "LEVEL P2",
+        // "LEVEL 6 - 21"; 90101's "GROUND FLOOR") - after the kinds above, so "LEVEL 2 WALL ELEVATIONS" stays what it says
+        if (SheetViews.NamesAStoreyAlone(title)) return "plan";
         return "other";
     }
 

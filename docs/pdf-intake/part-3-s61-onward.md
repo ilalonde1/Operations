@@ -1878,3 +1878,34 @@ tagged-grid sets and the 70 with points, primes and bars now name their axes.
 
 WHAT IT DOES NOT: a wing at an angle to the tower's grid (31183 ZONE B); a tag joined by a space; which of a bar's two
 names the GRIDS table prefers when both name lines elsewhere; the DXF word builder's stacks ("CA|CB|…|CK").
+
+## 100. Step 90, 2026-09-16 04:30: a title that is a storey's name and nothing else is that storey's plan — WP6a item 5's class B, looked at
+
+**Class B, counted from run 23** (`corpus-query no-model`): 17 sets "no plan sheet with structure on it". Looked at
+by their pages (`corpus-query set`, `pdf-inventory`, `vector-find PLAN`): **six** are one- or two-page sets (01195,
+01631, 01744, 30780-08, 30780-10, 80065); **four** carry no title text at all (30833, 31001, 31016, 31019 — blank
+titles on every page); **two** title their sheets by number only (30743 "S-1", 30834 "S-3A -"); **31036** (18 pages,
+Bluebeam) has no text layer on its plan pages (pp6–18: 90,000–115,000 paths, 200 words, not one line mentions PLAN in
+the set) and **30907** (2021, pdfplot) 18 words a page — the raster route's, like 30980; **three** are titled by
+their storey and nothing else: **31229** (Quadra East, 2026; 8 pages "LEVEL P2", "LEVEL P1", "LEVEL 1", "LEVEL 2",
+"LEVEL 3 & 4", "LEVEL 5", "LEVEL 6 - 21", "LEVEL 22 MECH"), **90101** ("GROUND FLOOR", "PODIUM SECOND FLOOR",
+"PODIUM MEZZANINE" — bookmarked with the sheet number first) and **90102** (bookmarks "Parking P4 SUTTON - P4 (1)",
+"Level 1 SUTTON - L1 (1)": the project's name inside the title; no page title text).
+
+**The rule** (`SheetViews.NamesAStoreyAlone`, `DrawingIntake.SheetTypeOf`): after the sheet kinds by their words
+(SCHEDULE, PLAN, SECTION/ELEVATION, DETAIL, NOTES, COVER), a title whose EVERY word is a storey word — the vocabulary's
+level, parkade, floor, range, basement, top-floor, roof and mezzanine words, a floor noun, an ordinal, a number, a
+level token (P2, L12, B4), AND, &, PODIUM, PARKING, MECH — and that names at least one storey, is a plan. A
+bookmark's leading sheet number is not a word of the title. The level rule of 2026-09-08 ("a level word alone typed
+14 of 31168's 41 sheets plan") is not undone: "LEVEL 2 WALL ELEVATIONS" has ELEVATIONS and is an elevation before
+this rule is asked; "SHEAR WALL SCHEDULE LEVEL 3" a schedule. Test `ATitleThatIsAStoreysNameAloneIsThatStoreysPlan`.
+
+**Measured** (`pdf-inventory`): 31229 8 of 8 pages plan (was 0); 90101 2 plans + 5 details + 2 other (PODIUM
+MEZZANINE names no storey the vocabulary knows; a mezzanine row is item 7's); 90102 unchanged (23 unknown — its
+titles live only in bookmarks that carry the project's name; its own class). Fast suite + six-set gate 1,454 green,
+the six byte-identical (none of the six titles a plan by its storey alone). Run 24 was launched before this landed;
+it measures on run 25.
+
+WHAT IT DOES NOT: a project's name inside the title (90102); a mezzanine named alone; sets with no text layer (31036,
+30907, 30980) or no titles (30833, 31001, 31016, 31019, 30743, 30834) — nine sets that are the raster route's or a
+bookmark rule's, stated as such in the ledger's reason.

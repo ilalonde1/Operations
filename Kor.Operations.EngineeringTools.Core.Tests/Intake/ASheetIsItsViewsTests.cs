@@ -279,4 +279,28 @@ public sealed class ASheetIsItsViewsTests
         var parts = SheetViews.Split(Geometry(), twoLines, MmPerPt, null, NoTitleBlock, "job-p01");
         Assert.Equal("job-p01_1_GROUND FLOOR SHOWING MAIN FLOOR FRAMING OVER.dxf", Assert.Single(parts).FileName);
     }
+
+    /// <summary>
+    /// A TITLE THAT IS A STOREY'S NAME AND NOTHING ELSE IS THAT STOREY'S PLAN (step 90, WP6a item 5's class B): 31229's
+    /// eight sheets "LEVEL P2" … "LEVEL 22 MECH" and 90101's "GROUND FLOOR", "PODIUM SECOND FLOOR" typed "other" for
+    /// want of the word PLAN, and the sets built nothing. WHAT THIS COVERS: the storey-only titles type plan, with a
+    /// bookmark's sheet-number prefix ignored; a title with any other word keeps its kind (an elevation, a detail, a
+    /// schedule, a note); a title with no storey in it is not a plan. WHAT IT DOES NOT: what the plan's geometry holds
+    /// (the composer still refuses a "plan" with no structure); a storey named in a language the vocabulary lacks.
+    /// </summary>
+    [Fact]
+    public void ATitleThatIsAStoreysNameAloneIsThatStoreysPlan()
+    {
+        foreach (string t in new[] { "LEVEL P2", "LEVEL 1", "LEVEL 3 & 4", "LEVEL 6 - 21", "LEVEL 22 MECH", "GROUND FLOOR", "PODIUM SECOND FLOOR",
+                                     "S-2.01  -  GROUND FLOOR", "PARKING P4", "LEVEL B3", "ROOF", "2ND FLOOR", "L12" })
+        {
+            Assert.True(SheetViews.NamesAStoreyAlone(t), t);
+            Assert.Equal("plan", DrawingIntake.SheetTypeOf(t));
+        }
+        foreach (string t in new[] { "LEVEL 2 WALL ELEVATIONS", "LEVEL 2 - 5 TYPICAL DETAILS", "SHEAR WALL SCHEDULE LEVEL 3", "PODIUM MEZZANINE",
+                                     "GENERAL NOTES", "SW1", "S-2.01", "MIXED USE DEVELOPMENT", "" })
+            Assert.False(SheetViews.NamesAStoreyAlone(t), t);
+        Assert.Equal("section/elevation", DrawingIntake.SheetTypeOf("LEVEL 2 WALL ELEVATIONS"));
+        Assert.Equal("other", DrawingIntake.SheetTypeOf("PODIUM MEZZANINE"));
+    }
 }
