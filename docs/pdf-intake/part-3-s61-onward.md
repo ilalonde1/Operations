@@ -1342,3 +1342,12 @@ nearest long line IS the edge. The change is kept as `stash@{0}` ("REJECTED step
 tendon-bounded plate on 31130 is still open; the rule that separates a tendon from the edge it runs beside is
 not the label and not the pen — measured, not guessed. Two attempts on this shape (step 79's arrowheads, this):
 CLAUDE.md rule 10 says stop here and characterise before a third.
+
+**The yardstick "worse" sets looked at (21:10).** Eleven sets' share of our columns within 100 mm of hers fell
+between runs 18 and 21 (30990 88% → 76%, 31003 91% → 78%, 31104 73% → 67%, 31101 76% → 68% …). In every one
+the MATCHED count is unchanged (30990 350 → 350, 31003 62 → 62, 31104 184 → 184): no column moved away from
+hers; the judged population grew — more of the set is composed now (30990: tower B's 25 storeys and the
+foundation plans' members rising to P2, 120 of ours judged against her 50 at a median 1.8 m — a foundation
+plan's objects are not P2's columns, WP6a item 3; 31104: +35 columns on L2 from the same sheets, a composition
+change to take as a differential; her model is one tower on the two-tower sets, WP6a item 8). Not a placement
+regression. `model-yardstick <ours> <hers>` shows it per storey in a second.
