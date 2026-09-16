@@ -19,6 +19,7 @@ public static class TakeoffVerbs
         ("pdf-at", PdfAtVerb.Matches, PdfAtVerb.Run),
         ("corpus-analyze", CorpusAnalyzeVerb.Matches, CorpusAnalyzeVerb.Run),
         ("corpus-query", CorpusQueryVerb.Matches, CorpusQueryVerb.Run),
+        ("corpus-ledger-db", CorpusLedgerDbVerb.Matches, CorpusLedgerDbVerb.Run),
         ("pdf-levels", PdfLevelsVerb.Matches, PdfLevelsVerb.Run),
         ("pdf-assemblies", PdfAssembliesVerb.Matches, PdfAssembliesVerb.Run),
         ("storeys-check", StoreysCheckVerb.Matches, StoreysCheckVerb.Run),
