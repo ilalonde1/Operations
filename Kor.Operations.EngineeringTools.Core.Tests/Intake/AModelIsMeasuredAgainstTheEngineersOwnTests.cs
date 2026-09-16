@@ -1,4 +1,4 @@
-#nullable enable
+﻿#nullable enable
 using System.Globalization;
 using Kor.Operations.EngineeringTools.Dxf;
 using Xunit;
@@ -124,6 +124,12 @@ public sealed class AModelIsMeasuredAgainstTheEngineersOwnTests
         Assert.Equal("P2", ModelYardstick.Stripped("P2"));
         Assert.Equal("L1 MEZZ", ModelYardstick.Stripped("LEVEL 1 MEZZ"));
         Assert.NotEqual(ModelYardstick.Stripped("L1"), ModelYardstick.Stripped("L1 MEZZ"));
+        // a storey named with what it carries is the same storey (step 102): her L17 MECH is our L17, her L18 ROOF our L18;
+        // a mezzanine is a level of its own
+        Assert.Equal("L17", ModelYardstick.Stripped("L17 MECH"));
+        Assert.Equal("L18", ModelYardstick.Stripped("LEVEL 18 - ROOF"));
+        Assert.Equal("L2", ModelYardstick.Stripped("L2 AMENITY"));
+        Assert.Equal("L1 MEZZ", ModelYardstick.Stripped("L1 MEZZ"));
         // and a storey named for one building never meets another's, nor the whole job's: our L4 met
         // their C-LEVEL 4 at 33 m on 31168 before this (2026-09-11)
         Assert.Equal("C", ModelYardstick.Building("C-LEVEL 4"));

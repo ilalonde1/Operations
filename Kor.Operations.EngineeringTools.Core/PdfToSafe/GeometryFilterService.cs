@@ -1717,6 +1717,16 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         // a path crosses no line from it to the page's edge. On a 150 mm raster of the arranged lines, the widest
                         // such path's narrowest place is the gap the ring leaks through; a ring open without a dangling end
                         // (both sides of the gap are junctions) shows nowhere else.
+                        // A BOX CROSSED BY ITS OWN DIAGONALS (instrument, 2026-09-16): the drafter's mark for an opening - a shaft,
+                        // a stair, open to below - is an X across the box. Counted here before any rule: cells whose two diagonals
+                        // are both drawn as lines (each end within the join tolerance of opposite corners).
+                        var crossed = cells.Where(f => f.Outer.Points.Count == 4 && Enumerable.Range(0, 2).All(k =>
+                            result.Lines.Any(l => l.Count == 2 && (
+                                (Near(l[0], f.Outer.Points[k]) && Near(l[1], f.Outer.Points[k + 2])) ||
+                                (Near(l[1], f.Outer.Points[k]) && Near(l[0], f.Outer.Points[k + 2])))))).ToList();
+                        FaceTrace($"slab pass: {crossed.Count} four-sided cell(s) crossed by both diagonals (an opening's mark): " +
+                                  string.Join(" ", crossed.Select(f => $"{Math.Abs(f.Outer.Area) / 92903.04:0}{(Holds(f) ? "*" : "")}")));
+                        bool Near((double X, double Y) a, DxfPoint b) => Math.Abs(a.X - b.X) <= 25 && Math.Abs(a.Y - b.Y) <= 25;
                         var big = cells.Where(f => Math.Abs(f.Outer.Area) >= 92903.04 * 500).ToList();
                         FaceTrace($"slab pass: {big.Count} cell(s) of 500 sq ft or more: " + string.Join(" | ", big.Select(f =>
                             $"{Math.Abs(f.Outer.Area) / 92903.04:0} sq ft x {f.Outer.Points.Min(p => p.X) / 304.8:0}..{f.Outer.Points.Max(p => p.X) / 304.8:0} y {f.Outer.Points.Min(p => p.Y) / 304.8:0}..{f.Outer.Points.Max(p => p.Y) / 304.8:0} ft, {f.Holes.Count} hole(s)")));

@@ -59,6 +59,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         public IReadOnlyList<string> YardstickPrimaryModelWords { get; init; } = DefaultYardstickPrimaryModelWords;
         /// <summary>The words that mark a model that is NOT the building - secondary elements, a crane beam, a mass or check model (step 101): dxf.pdf.yardstick-secondary-model-words (migration 095), else the compiled defaults.</summary>
         public IReadOnlyList<string> YardstickSecondaryModelWords { get; init; } = DefaultYardstickSecondaryModelWords;
+        /// <summary>The words a storey is named with for what it carries (step 102) - her L17 MECH is our L17: dxf.pdf.yardstick-storey-qualifier-words (migration 095), else the compiled defaults.</summary>
+        public IReadOnlyList<string> YardstickStoreyQualifierWords { get; init; } = Dxf.ModelYardstick.DefaultStoreyQualifierWords;
         /// <summary>Her primary model's words (step 101): the whole building's gravity model. The row dxf.pdf.yardstick-primary-model-words extends these. Here, not in the analyzer, because the read cache's sources may not reference the analyzer.</summary>
         public static readonly IReadOnlyList<string> DefaultYardstickPrimaryModelWords = ["FULL", "GRAVITY"];
         /// <summary>The words of a model that is not the building (step 101): 31098's "2NDRY ELEMS.EDB" judged 21 storeys a metre off; 31029's "Crane Beam"; mass, check and preliminary models. The row dxf.pdf.yardstick-secondary-model-words extends these.</summary>
@@ -246,6 +248,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 ForceWords              = Extended($"{Prefix}.force-words", options.ForceWords),
                 YardstickPrimaryModelWords   = Extended($"{Prefix}.yardstick-primary-model-words", options.YardstickPrimaryModelWords),
                 YardstickSecondaryModelWords = Extended($"{Prefix}.yardstick-secondary-model-words", options.YardstickSecondaryModelWords),
+                YardstickStoreyQualifierWords = Extended($"{Prefix}.yardstick-storey-qualifier-words", options.YardstickStoreyQualifierWords),
             };
 
             IReadOnlyList<string> Extended(string key, IReadOnlyList<string> defaults)

@@ -1,4 +1,4 @@
-#nullable enable
+﻿#nullable enable
 using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -95,7 +95,12 @@ public static class ModelYardstick
     // spells L-1..L-7) is a storey, not building L, because what follows its dash is a number, not a storey word.
     private static readonly Regex BuildingPrefix = new(@"^(?:[A-Z]|\d{1,2}[A-Z]?)-(?=L\d|P\d|LEVEL|ROOF|ELEV|MEZZ)", RegexOptions.Compiled);
 
-    public static Comparison Compare(string modelE2k, string yardstickE2k)
+    public static Comparison Compare(string modelE2k, string yardstickE2k) => Compare(modelE2k, yardstickE2k, DefaultStoreyQualifierWords);
+
+    /// <summary>The words a storey is named with for what it carries (step 102): her L17 MECH is our L17. The row dxf.pdf.yardstick-storey-qualifier-words extends these; MEZZ is a level of its own and never here.</summary>
+    public static readonly IReadOnlyList<string> DefaultStoreyQualifierWords = ["MECH", "MECHANICAL", "ROOF", "PH", "PENTHOUSE", "AMENITY", "MAIN", "UPPER", "LOWER", "EMR", "TYP", "TYPICAL"];
+
+    public static Comparison Compare(string modelE2k, string yardstickE2k, IReadOnlyList<string> storeyQualifierWords)
     {
         var model = E2kDocument.Load(modelE2k);
         var yard = E2kDocument.Load(yardstickE2k);
@@ -128,7 +133,7 @@ public static class ModelYardstick
         var theirsByStripped = new Dictionary<string, (string Name, List<(double X, double Y)> Points)>(StringComparer.Ordinal);
         foreach (var (name, pts) in theirs)
         {
-            string k = Stripped(name);
+            string k = Stripped(name, storeyQualifierWords);
             if (theirsByStripped.TryGetValue(k, out var had)) { had.Points.AddRange(pts); theirsByStripped[k] = (had.Name + "+" + name, had.Points); }
             else theirsByStripped[k] = (name, new List<(double X, double Y)>(pts));
         }
@@ -137,7 +142,7 @@ public static class ModelYardstick
             if (theirsByFull.TryGetValue(storey.ToUpperInvariant(), out var full)) return (full.Name, full.Points);
             // the stripped name meets only within the same building: our unprefixed L4 met their C-LEVEL 4
             // at 33 m on 31168 (2026-09-11) - a different tower's fourth floor
-            if (theirsByStripped.TryGetValue(Stripped(storey), out var s) && s.Name.Split('+').All(n => Building(n) == Building(storey))) return (s.Name, s.Points);
+            if (theirsByStripped.TryGetValue(Stripped(storey, storeyQualifierWords), out var s) && s.Name.Split('+').All(n => Building(n) == Building(storey))) return (s.Name, s.Points);
             return null;
         }
 
@@ -455,14 +460,24 @@ public static class ModelYardstick
     /// level is P-something, not L-P-something — the first port left "LEVEL P1" and "P1" unmatched on
     /// 31168), "LEVEL 1 MEZZ" is "L1 MEZZ".
     /// </summary>
-    internal static string Stripped(string storey)
+    internal static string Stripped(string storey) => Stripped(storey, DefaultStoreyQualifierWords);
+
+    internal static string Stripped(string storey, IReadOnlyList<string> qualifierWords)
     {
         string s = BuildingPrefix.Replace(storey.Trim().ToUpperInvariant(), "");
         s = ParkadeLevel.Replace(s, "$1");
         s = LevelWord.Replace(s, "L");
         // an engineer's model spells a storey L-1, L01 or LEVEL 01 as readily as L1 (31170's model names
         // L-1..L-7, 31138's L01..L09, 2026-09-12): the letter, no hyphen, no leading zero, is the name
-        return NumberedLevel.Replace(s, "$1$2");
+        s = NumberedLevel.Replace(s, "$1$2");
+        // AND A STOREY NAMED WITH WHAT IT CARRIES IS THE SAME STOREY (step 102, 2026-09-16): her "L17 MECH", "L18 ROOF",
+        // "L2 AMENITY" are our L17, L18, L2 - the engineers' review counted 175 storeys "only hers" and 252 "only ours"
+        // across 59 sets, MECH, ROOF, UPPER, MAIN among the shapes, and every one of them a storey the two models
+        // both have and the comparison skipped. A trailing word after the number is dropped; MEZZ is not a qualifier
+        // but a level of its own, and stays.
+        var qualified = Regex.Match(s, @"^([A-Z]+\d+)\s*[- ]\s*([A-Z]+)\b");
+        if (qualified.Success && qualifierWords.Contains(qualified.Groups[2].Value, StringComparer.OrdinalIgnoreCase)) return qualified.Groups[1].Value;
+        return s;
     }
 
     private static readonly Regex NumberedLevel = new(@"^([A-Z]+)-?0*(\d+)$", RegexOptions.Compiled);

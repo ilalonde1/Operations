@@ -254,7 +254,7 @@ public static class CorpusAnalyzer
                     var outcome = PdfOnlyBuild.Recompose(pdf, work, kept.Pages, sheetsResult, options, rulesConnection);
                     (row, rows) = Rows(outcome, job, issue, runId, runAt, built);
                     row = row with { AssemblyCards = kept.AssemblyCards, Seconds = kept.Seconds + outcome.Elapsed.TotalSeconds };
-                    if (yardstick is not null && outcome.Model is not null) row = Measured(row, outcome.OutputE2k, yardstick, work, yardstickFolder);
+                    if (yardstick is not null && outcome.Model is not null) row = Measured(row, outcome.OutputE2k, yardstick, work, yardstickFolder, options.YardstickStoreyQualifierWords);
                     else if (yardstick is not null) row = row with { Yardstick = yardstick };
                     WriteSetCsv(Path.Combine(work, "set.csv"), [row]);
                     WriteSheetCsv(Path.Combine(work, "sheets.csv"), rows);
@@ -268,7 +268,7 @@ public static class CorpusAnalyzer
                     string outE2k = Path.Combine(work, "out.e2k");
                     if (yardstick is not null && row.HasModel && File.Exists(outE2k) && (row.OursCompared is null || reuseBuilds))
                     {
-                        row = Measured(row, outE2k, yardstick, work, yardstickFolder);
+                        row = Measured(row, outE2k, yardstick, work, yardstickFolder, options.YardstickStoreyQualifierWords);
                         WriteSetCsv(Path.Combine(work, "set.csv"), [row]);
                         File.WriteAllText(manifest, stamp);
                     }
@@ -278,7 +278,7 @@ public static class CorpusAnalyzer
                 {
                     var outcome = PdfOnlyBuild.Build(pdf, work, options.FallbackScale, options, rulesConnection);
                     (row, rows) = Rows(outcome, job, issue, runId, runAt, built);
-                    if (yardstick is not null && outcome.Model is not null) row = Measured(row, outcome.OutputE2k, yardstick, work, yardstickFolder);
+                    if (yardstick is not null && outcome.Model is not null) row = Measured(row, outcome.OutputE2k, yardstick, work, yardstickFolder, options.YardstickStoreyQualifierWords);
                     else if (yardstick is not null) row = row with { Yardstick = yardstick };
                     Directory.CreateDirectory(work);
                     WriteSetCsv(Path.Combine(work, "set.csv"), [row]);
@@ -354,13 +354,13 @@ public static class CorpusAnalyzer
     }
 
     /// <summary>The set's row with its yardstick figures, and the comparison's own summary beside the model.</summary>
-    private static SetRow Measured(SetRow row, string outE2k, string yardstick, string work, string yardstickFolder)
+    private static SetRow Measured(SetRow row, string outE2k, string yardstick, string work, string yardstickFolder, IReadOnlyList<string> storeyQualifierWords)
     {
         var (edb, written) = YardstickProvenance(yardstickFolder, row.Job);
         int? age = written is { } w && row.IssueDate is { } issued && DateOnly.TryParse(issued, CultureInfo.InvariantCulture, DateTimeStyles.None, out var d) ? d.DayNumber - w.DayNumber : null;
         try
         {
-            var c = ModelYardstick.Compare(outE2k, yardstick);
+            var c = ModelYardstick.Compare(outE2k, yardstick, storeyQualifierWords);
             string provenance = written is null ? "" : $"her model: {Path.GetFileName(edb)}, written {written:yyyy-MM-dd}{(age is { } a ? $", {a} days before the drawing's issue" : "")}" + Environment.NewLine;
             File.WriteAllText(Path.Combine(work, "yardstick.txt"), provenance + ModelYardstick.Summary(c));
             return row with
