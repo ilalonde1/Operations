@@ -1618,3 +1618,42 @@ lowest names were nonsense). "LEVEL +2.0", an elevation as a name, stays as the 
 
 WHAT IT DOES NOT: the six garbage names (item 5); a building prefix on a negative level ("B-LEVEL -1"), which no
 set names; whether a roof by word is the storey the engineer would model (item 8's question).
+
+## 93. Step 85, 2026-09-16 small hours: a title names a plan; a project name does not — WP6a item 5's first class, and the residue named
+
+**The residue, counted from run 21's ledger** (`corpus-query no-model`): 42 sets without a model in three classes.
+(A) **17 "the stick file of another job"** — 17 job folders hold a byte-identical copy of 00904-01's file; not
+ours to build, and the honest denominator is 279. (B) **17 "no plan sheet with structure on it"** — six are one- or
+two-page sets (01195, 01631, 01744, 30780-08, 30780-10, 80065), the rest 8–43 pages typed as no plan (30743, 30833,
+30834, 30907, 31001, 31016, 31019, 31036, 31229, 90101, 90102). (C) **8 "no storeys: the elevations chained none and
+no plan names one"** — 01742, 01783, 01788, 30768, 30836, 30888, 30980, 30994, holding 57 plans between them.
+
+**Class C looked at, page by page** (`corpus-query pages … --runs D1FBF6E5 --all`, then the pages themselves):
+- **30994** (26 pages, Calgary, 2024, the older KOR block): every plan titled "BELVEDERE PLACE" — the PROJECT name.
+  The block labels no field and stacks the project box over the title box; on p11 "BELVEDERE PLACE" is set at
+  11.5 pt and "PARKADE FLOOR PLAN / FOUNDATION PLAN (west)" under it at 10.1 — below the reader's 11 pt title
+  floor — so the largest title-size text won. **The rule (step 85):** among the block's upper-case lines at any
+  title-like size (from 0.7 of the floor), adjacent lines read as one block, and the largest block that NAMES A PLAN
+  (`SheetViews.NamesAPlan`) is the title; size decides only between lines that name none; the labelled field still
+  wins first. On 30994's pages now: "PARKADE FLOOR PLAN FOUNDATION PLAN", "GROUND FLOOR PLAN", "GROUND FLOOR PLAN
+  SHOWING 2ND FLOOR FRAMING OVER" — storey names. Test `ATitleNamesAPlanAndAProjectNameDoesNot` at the page's own
+  positions and heights (the "/" and the lower-case "(west)" fall to the token rules as before — the zone word is a
+  stated limit of the upper-case rule).
+- **30888** (Duffy Hills E, 2020): every plan titled "HILLS ARCHITECTURE DUFFY DRAWING LANDSCAPE PERMIT REVIEW
+  REVIEW REVIEW PLAN PERMIT AND BUILDING …" — a ROTATED strip (issues, consultants) read as the title, with the
+  title's own words ("LEVEL", "OUTLINE)", "WEST", "EAST") scattered inside it: 01589's class (§80, "the rotated
+  revision strip's words became the title"). The rule above is skipped on a rotated block on purpose; the rotated
+  reader needs its own step.
+- **30980** (880 W 15, wood, 2025): p11 is a details sheet — "TYPICAL SECTION AT SHEAR WALLS" — with a LABELLED
+  block: PROJECT "MIXED USE DEVELOPMENT", SHEET TITLE "WOOD FRAMING SHEAR WALL / HOLD DOWN TYPICAL DETAILS". The
+  field reader gave "PLAN SLAB MIXED USE SEE DEVELOPMENT": the SHEET TITLE value taken from the general notes at
+  the bottom of the page ("SEE PLAN … SLAB"), the neighbouring-column bound of step 79 not tight enough here. A
+  field-reader fault, its own step.
+- **30768** (Riva 5, 2026): pages 6–11 are details; the title reads "-". Not looked at further.
+
+**Measured.** Fast suite + six-set gate + ratchets 1,447 green, byte-identical (no set of the six has an
+unlabelled block). 30994 is measured by run 23. Class A is a denominator: `corpus-query summary` should say "of 279
+with their own stick file" — not changed tonight. Classes B and 30888/30980/30768 are the residue of item 5.
+
+WHAT IT DOES NOT: a right-edge note in title-size capitals that names a plan (none of the six draws one; the
+corpus run says); the rotated strip; the labelled field's bound; class B.

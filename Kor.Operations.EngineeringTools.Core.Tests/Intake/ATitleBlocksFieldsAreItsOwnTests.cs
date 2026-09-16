@@ -236,6 +236,37 @@ public class ATitleBlocksFieldsAreItsOwnTests
         Assert.Equal("Level 1 Floor Plan (Concrete Outline)", fields["SHEET TITLE"]);
     }
 
+    /// <summary>
+    /// A TITLE NAMES A PLAN; A PROJECT NAME DOES NOT (step 85, WP6a item 5). The older KOR block (30994-01, Calgary,
+    /// 2024) labels no field and stacks the project name over the title: "BELVEDERE PLACE" at 11.5 pt, then
+    /// KINGSLAND and the address at 9, then "PARKADE FLOOR PLAN / FOUNDATION PLAN (west)" at 10.1 - under the 11 pt
+    /// title floor - so the reader titled every plan with the project and the set named no storey. The block that
+    /// names a plan is the title whatever its size; the project name is not. At the page's own positions and heights.
+    /// WHAT IT DOES NOT: a block with a SHEET TITLE label (the field wins first); a rotated block; a note on the
+    /// right edge that names a plan in title-size capitals - none of the six draws one.
+    /// </summary>
+    [Fact]
+    public void ATitleNamesAPlanAndAProjectNameDoesNot()
+    {
+        var words = new List<VectorPageReader.TextToken>();
+        words.AddRange(Line("BELVEDERE PLACE", 2800, 301.3, 11.5));
+        words.AddRange(Line("KINGSLAND", 2830, 280.2, 9.0));
+        words.AddRange(Line("555 73A AVENUE SW", 2792, 256.3, 9.0));
+        words.AddRange(Line("CALGARY, ALBERTA", 2808, 245.4, 9.0));
+        words.AddRange(Line("PARKADE FLOOR PLAN", 2764, 195.8, 10.1));
+        words.AddRange(Line("/ FOUNDATION PLAN (west)", 2733, 178.8, 10.3));
+        words.AddRange(Line("Scale", 2738, 153.3, 6.0));
+        words.AddRange(Line("1/8\" = 1'-0\"", 2782, 152.4, 6.0));
+        words.AddRange(Line("Date", 2736, 129.4, 6.0));
+        words.AddRange(Line("DEC. 7, 22", 2785, 129.2, 6.0));
+        words.AddRange(Line("S2.01", 2882, 108, 14));
+        var page = Page(3024, 1728, words);
+
+        // the "/" carries no letter and "(west)" is not set in capitals: both fall to the block's own token rules, as
+        // they did before this step - the zone is a known limit of the upper-case rule, stated here
+        Assert.Equal("PARKADE FLOOR PLAN FOUNDATION PLAN", SheetTitleReader.TitleText(page));
+    }
+
     private static VectorPageReader.PageContent Page(double width, double height, IEnumerable<VectorPageReader.TextToken> words) =>
         new(1, width, height, words.ToList(), new List<VectorPageReader.GeomPath>());
 

@@ -115,6 +115,41 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
             // 01589-01 p7: a rotated strip uses the same reading axes as the field reader;
             // glyph-run length along the page's Y is word width, not title font height.
             var readingTokens = Intake.TitleBlockFields.ReadingTokens(page, TitleRegionMinFx, out bool rotated, dropUpright: false);   // the title may be written up the page (30941)
+
+            // A TITLE NAMES A PLAN; A PROJECT NAME DOES NOT (intake step 85, 2026-09-16; WP6a item 5). The older KOR
+            // block labels no field and stacks the project name box over the title box; on 30994 "BELVEDERE PLACE" is
+            // set at 11.5 pt and "PARKADE FLOOR PLAN / FOUNDATION PLAN (west)" under it at 10.1 - below the 11 pt
+            // title floor - so every plan in the set was titled with the project and named no storey (8 sets, 61
+            // plans, "no storeys: no plan names one"). Among the block's upper-case lines at any title-like size
+            // (from 0.7 of the floor), adjacent lines are read as one block, and the largest block that names a plan
+            // is the title. Size decides only between lines that name none.
+            var candidates = readingTokens
+                .Where(t => t.Height >= 0.7 * TitleMinH
+                            && !StampTokenRx.IsMatch(t.Text.Trim()) && !SheetNumberTokenRx.IsMatch(t.Text.Trim())
+                            && !t.Text.EndsWith(':') && t.Text.Any(char.IsLetter)
+                            && t.Text.Trim() == t.Text.Trim().ToUpperInvariant())
+                .ToList();
+            if (!rotated && candidates.Count > 0)
+            {
+                var lines = Intake.TitleBlockFields.ReadingLines(candidates);       // top of the block first
+                var blocks = new List<(string Text, double Height)>();
+                var block = new List<List<VectorPageReader.TextToken>>();
+                void Close()
+                {
+                    if (block.Count == 0) return;
+                    blocks.Add((string.Join(" ", block.SelectMany(l => l.Select(t => t.Text))).Trim(), block.Max(l => l.Max(t => t.Height))));
+                    block = new List<List<VectorPageReader.TextToken>>();
+                }
+                foreach (var line in lines)
+                {
+                    if (block.Count > 0 && block[^1][0].Cy - line[0].Cy > 2.0 * Math.Max(block[^1].Max(t => t.Height), line.Max(t => t.Height))) Close();
+                    block.Add(line);
+                }
+                Close();
+                var named = blocks.Where(b => Intake.SheetViews.NamesAPlan(b.Text)).OrderByDescending(b => b.Height).FirstOrDefault();
+                if (named.Text is { Length: > 0 }) return named.Text;
+            }
+
             var rightEdge = readingTokens
                 .Where(t => t.Height >= TitleMinH
                             && !StampTokenRx.IsMatch(t.Text.Trim()) && !SheetNumberTokenRx.IsMatch(t.Text.Trim())
