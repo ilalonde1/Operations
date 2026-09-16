@@ -540,6 +540,21 @@ residues' cause. Not the PDF route; queued behind it.
    settled 31168's KW235 and 31138's paired faces; tests in `WhatIsDrawnNearAPointIsCodeTests` and
    `E2kModelQueryTests`. Run 23 (step 85, `07ca88ea`) in flight at 02:24.
 
+3af. **Overnight session, the last hours, 2026-09-16 02:45 → 05:15** (§96–§99): run 23 banked (`8ca17df4`: 255 of
+   296, 30994 in, no model lost). Item 5's residue, page by page: **step 86** (`69b806b7`) 30980's titles are plotted
+   glyph outlines and its block letter-spaces its labels — a letter-spaced label is a label, the floor label is not a
+   neighbour column, an empty labelled title box is no title (17 project-name titles → none, honestly; a raster-route
+   set). **Step 87** (`c84b9efe`) words written up the page are read up the page — three upright labels anywhere in
+   the strip say rotated; a mixed block's upright words are read as columns, bottom-up, and compete; a level token is
+   not a sheet number; a block is a 2-D stack of runs — 30888's 13 plans, 01589's 3 and 30941's title read right, and
+   §80's fixture was found NOT to be its page (its labels are horizontal; corrected). **Step 88** (`50ccac6e`) a
+   B-level is a level below grade: `dxf.parkade-words` P → P;B, migration 093 (IAN APPLIES; run 24 reads the row as
+   P). **Step 89** (`27fd9efb`, item 4(b)): a grid name is what the bubble says — measured over 294 sets with the new
+   `corpus-query grid-names` (86 → 9 sets with refused grid text); 31202 and 31168 re-banked (junk bar-names gone
+   from GRIDS, joints ±0.025 mm, rendered pixel-identical); 31183's residue is an oblique parkade wing on its own
+   grid. Run 24 (steps 86–89, `12831e13`) launched 04:14, banked by its own script. OWED TO IAN: migration 093; Q1
+   (item 3(b), §94) unanswered at 04:20; the three job picks for item 8; the Codex audit in the morning.
+
 4. **WP6** — one model in front of Andrea (31170's, or whichever the ledger ranks best of the
    architects' sets). Ian's call when.
 5. **Step 47**, the next reading rule, from the corpus. `takeoff corpus-query plan-titles` on the
