@@ -2050,3 +2050,30 @@ an outline (`WallOutlineDecomposer.OutlineFaces`; the classifier hands the decom
 with the DXF-route ratchets; 31168 and 31138 unchanged (their Revit exports draw no centreline on the wall layers).
 
 WHAT IT DOES NOT: a centreline drawn as part of an outline chain; a hatch drawn as a polyline of four points or more.
+
+## 109. Step 96, first cut, 2026-09-16 10:15: a line pointing into its force label — the gate said no, and the mechanism is on record (the fourth attempt on the tendon shape)
+
+**Rule 10, obeyed this time.** The fourth attempt on the tendon shape (79 arrowheads; 80 force labels, rejected; §95 families,
+rejected; 96 labels ahead of the end) was written by Codex from a brief that GAVE the shape — and the six-set gate rejected
+it the same way it rejected step 80: 31130's L3–L13 plates gone, 31202's L6 fragmented. Before a fifth, the mechanism:
+
+1. The labels ARE found — six on 31130 p22, reach 24.5 pt — and the tendon ends stand 26–68 pt from them (4.3–11 label
+   heights), the 9 pt lines pointing at them within 2–6°, the 16 pt lines within 24–32°, the 18 pt lines at 90–111° (the
+   label beside a wide arrowhead). At 4 heights / 30° the tendons are mostly OUT of reach; widened to 12 heights / 35°
+   the plates still vanish. So it is not the constants.
+2. **A tendon's anchor sits ON the slab edge.** The edge is drawn in pieces; the piece that ends at the anchor ends within
+   reach of the same label, and — being short — can point into it. One such piece condemns the edge, because the run
+   helper (right for a dash-dot section cut) drops the whole collinear run. The ring loses a side; no plate.
+3. What the page draws differently is the PEN: 31130 tendons 9, 16, 18 pt against a 2 pt outline (54 lines);
+   31202 p32 tendons 16 and 9 pt (31 and 76 runs) against a 2 pt outline (204 runs), each tendon end carrying a 7×9 pt
+   anchor fill and "Kips 270" / "20 Kips/ft." beside it. 31168 p12, which has no tendons and no force labels, also draws
+   9–10 pt lines (71 runs) — so the pen alone is the family rule's mistake again; the pen WITH a force label at an end is
+   the pair no edge and no balcony line has.
+
+**The rule the numbers support** (brief #2): a line is a tendon when its pen is at least three times the modal pen of the
+slab-edge candidates on its page AND a force label stands within twelve label heights of either of its ends, at any
+angle; the tendon is dropped ALONE — never its collinear run — from the slab-edge candidates. Codex's step-96 code stands
+in the working tree uncommitted; the second brief re-specifies the cut on it.
+
+WHAT THIS DOES NOT: a tendon drawn with the outline's pen (none in the two P/T sets); a force label at neither end (a
+banded tendon labelled mid-span — 31202's "20 Kips/ft." stands at both ends).
