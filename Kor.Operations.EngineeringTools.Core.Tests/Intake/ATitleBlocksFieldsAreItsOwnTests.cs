@@ -226,6 +226,33 @@ public class ATitleBlocksFieldsAreItsOwnTests
     }
 
     /// <summary>
+    /// THE BLOCK'S OWN WAY OF WRITING COMES FIRST (step 92, 2026-09-16; Codex's counterexample to step 87): a
+    /// horizontal title "ROOF PLAN" at 12 pt beside an upright section marker "FOUNDATION PLAN" at 24 pt — step 87
+    /// let the two readings compete by font size alone, and the marker won. The horizontal reading is the block's
+    /// own; the upright reading is asked only when the horizontal names no plan (30941 and 01589: their horizontal
+    /// words are labels and a number, and their titles are upright). WHAT IT DOES NOT: a horizontal note that names
+    /// a plan on a block whose title is upright (none seen; the old rule had the same limit).
+    /// </summary>
+    [Fact]
+    public void TheHorizontalTitleOutranksALargerUprightMarker()
+    {
+        var page = Page(2592, 1728, new List<VectorPageReader.TextToken>
+        {
+            At("ROOF", 2280, 200, 40, 12), At("PLAN", 2330, 200, 40, 12),
+            At("FOUNDATION", 2440, 500, 24, 168), At("PLAN", 2440, 630, 24, 72),
+        });
+        Assert.Equal("ROOF PLAN", SheetTitleReader.TitleText(page));
+
+        // and with no horizontal plan-naming block the upright one still reads (30941's shape)
+        var upright = Page(2592, 1728, new List<VectorPageReader.TextToken>
+        {
+            At("Checked", 2280, 200, 34, 9), At("By", 2320, 200, 10, 9),
+            At("FOUNDATION", 2440, 500, 24, 168), At("PLAN", 2440, 630, 24, 72),
+        });
+        Assert.Equal("FOUNDATION PLAN", SheetTitleReader.TitleText(upright));
+    }
+
+    /// <summary>
     /// A ROTATED STRIP'S LABELS STAND IN THE STRIP, NOT IN ONE COLUMN (step 87, WP6a item 5; 30888-01 p16, Duffy
     /// Hills, 2020). 01589 stacks its labels in one text column and the detection asked for that; 30888 writes JOB
     /// NO. / DRAWING NAME (x 2369), SCALE (2397), REVISIONS (2417) and DATE (2423, 2435) each up the page in its

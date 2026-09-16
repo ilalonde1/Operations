@@ -1975,3 +1975,18 @@ Showing 2nd Flr. Framing Over (West)" — exact ("Flr." is not a floor noun the 
 WHAT IT DOES NOT: "Flr." (a vocabulary row); the SCALE field on 50026 reads "korstructural.com" (the value box under
 a right-column label takes the consultant's words — the scale note reader still supplies the ratio); 30888's wood
 symbols (Q1).
+
+## 103. Step 92, 2026-09-16 08:40: the block's own way of writing comes first — Codex's counterexample to step 87
+
+**The review** (`docs/codex/CODEX-PDF-INTAKE-STEP-87-UPRIGHT-TITLES.md`, one rule, 20 lines): step 87 let the horizontal
+and the upright readings compete by font size alone. Codex's counterexample: a horizontal "ROOF PLAN" at 12 pt beside
+an upright section marker "FOUNDATION PLAN" at 24 pt — the marker wins. Reproduced at Codex's own tokens
+(`TheHorizontalTitleOutranksALargerUprightMarker`, red: "FOUNDATION PLAN").
+
+**The rule.** The readings are asked in order — the horizontal words first, the upright only when the horizontal
+names no plan — and the first reading with a plan-naming block answers. That is the block's own way of writing:
+30941 and 01589 have horizontal labels and a number, no plan, so their upright titles still read ("LEVEL B4 RAFT
+FOUNDATION PLAN", "FOUNDATION PLAN", checked on the pages). Fast suite + six-set gate 1,457 green, byte-identical.
+
+WHAT IT DOES NOT: a horizontal note naming a plan on a block whose title is upright (none seen; the pre-87 rule had
+the same limit); the rotated-strip case (one reading, unchanged).

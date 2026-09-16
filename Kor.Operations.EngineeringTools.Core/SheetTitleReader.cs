@@ -168,9 +168,14 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                     readingTokens.Where(t => !uprightSet.Contains(t)).Where(IsCandidate).ToList(),
                     readingTokens.Where(uprightSet.Contains).Select(Intake.TitleBlockFields.Swapped).Where(IsCandidate).ToList(),
                 };
-            var blocks = new List<(string Text, double Height)>();
+            // THE BLOCK'S OWN WAY OF WRITING COMES FIRST (step 92, 2026-09-16; Codex's counterexample to step 87): the
+            // readings are asked IN ORDER - the horizontal words, then the upright ones - and the first reading with a
+            // block that names a plan answers. Left to compete by font size alone, an upright section marker
+            // "FOUNDATION PLAN" at 24 pt beat the sheet's own horizontal title "ROOF PLAN" at 12 pt. 30941 and 01589
+            // still read their upright titles: their horizontal words are labels and a sheet number, naming no plan.
             foreach (var candidates in readings.Where(c => c.Count > 0))
             {
+            var blocks = new List<(string Text, double Height)>();
                 // a line of the block is one run of words: a gap of twice the line's height along it is another
                 // field on the same baseline (30941's column of words up the page holds the title at y 377-525 and
                 // the architect's name at y 1153; read as one line they were one title)
@@ -209,9 +214,9 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                 }
                 foreach (var b in open)
                     blocks.Add((string.Join(" ", b.SelectMany(l => l.Select(t => t.Text))).Trim(), b.Max(l => l.Max(t => t.Height))));
-            }
             var named = blocks.Where(b => Intake.SheetViews.NamesAPlan(b.Text)).OrderByDescending(b => b.Height).FirstOrDefault();
             if (named.Text is { Length: > 0 }) return named.Text;
+            }
 
             var rightEdge = readingTokens
                 .Where(t => t.Height >= TitleMinH
