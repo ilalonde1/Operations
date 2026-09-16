@@ -2014,3 +2014,15 @@ tell the two apart; the routes can: the PDF route's GRID-layer text is `DxfExpor
 names and nothing else, the DXF route's is Revit's grid names — a dimension stands on neither. Not adopted; the
 equivalence is asserted in `AGridNameIsWhatTheBubbleSays` with the reason. WHAT THIS DOES NOT: a hand-drawn DXF with a
 dimension on its GRID layer at a line's end.
+
+## 106. Step 94, 2026-09-16 09:05: a letter-spaced label's letters stand within a letter of each other — Codex's review of step 86
+
+Codex: the run of single letters (step 86) checked no distance between the letters, so a row of grid bubbles that
+happens to read D A T E — in the right fifth of a wide sheet, a bay apart — is a DATE label and a false floor for the
+field above it. Reproduced (`ARowOfGridBubblesIsNotALetterSpacedLabel`, red). The rule: the run extends only while the
+next letter starts within two heights of the last (30980: 9.3 pt apart at 6.8; 30985: 6.2 at 4.5; a bubble row at
+1:96: 90 pt apart at 11). 30980 and 30985 read their labels as before; 1,459 green, six byte-identical.
+
+WHAT IT DOES NOT: a bubble row inside a field's value box still joins the value (a stray token in a box always has —
+not a shape a block draws); the brief omitted `Labels`' declaration, so Codex could not check the list itself — noted
+for the next brief.

@@ -102,8 +102,12 @@ public static class TitleBlockFields
                 if (hit is null) { hit = Labels.FirstOrDefault(x => Clean(x) == one); span = 1; }
                 if (hit is null && one.Length == 1 && char.IsLetter(one[0]))
                 {
+                    // the letters of a letter-spaced label stand within two heights of each other (30980: 9.3 pt apart
+                    // at 6.8 pt; 30985: 6.2 at 4.5); a row of grid bubbles a bay apart that happens to read D A T E is
+                    // not a label (step 94, 2026-09-16, Codex's review of step 86)
                     int end = i;
-                    while (end + 1 < l.Count && Clean(l[end + 1].Text) is { Length: 1 } c && char.IsLetter(c[0])) end++;
+                    while (end + 1 < l.Count && Clean(l[end + 1].Text) is { Length: 1 } c && char.IsLetter(c[0])
+                           && l[end + 1].MinX - l[end].MaxX <= 2.0 * Math.Max(l[end].Height, l[end + 1].Height)) end++;
                     for (int j = end; hit is null && j >= i + 2; j--)
                     {
                         string run = string.Concat(l.Skip(i).Take(j - i + 1).Select(t => Clean(t.Text)));

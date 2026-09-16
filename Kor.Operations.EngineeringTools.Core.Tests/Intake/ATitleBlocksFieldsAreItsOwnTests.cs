@@ -543,6 +543,30 @@ public class ATitleBlocksFieldsAreItsOwnTests
         yield return At("]", 2526.3, y, 2.1, 4.5);
     }
 
+    /// <summary>
+    /// A LETTER-SPACED LABEL'S LETTERS STAND WITHIN A LETTER OF EACH OTHER (step 94, 2026-09-16; Codex's review of step
+    /// 86): the run of single letters checked no distance between them, so a row of grid bubbles that happens to read
+    /// D A T E - bubbles a bay apart, in the right fifth of a wide sheet - would be a DATE label and the floor of the
+    /// field above it. 30980 sets its letters 9.3 pt apart at 6.8 pt, 30985 6.2 apart at 4.5; a bubble row at 1:96
+    /// sits 90 pt apart at 11 pt. A run extends only while the next letter starts within two heights of the last.
+    /// </summary>
+    [Fact]
+    public void ARowOfGridBubblesIsNotALetterSpacedLabel()
+    {
+        var words = new List<VectorPageReader.TextToken>();
+        words.AddRange(Line("SHEET TITLE", 3209, 197, 6.5));
+        words.AddRange(Line("FOUNDATION PLAN", 3210, 183, 11));
+        words.AddRange(Line("PARKING LEVEL P3", 3210, 167, 11));
+        words.AddRange(Line("SCALE :", 3209, 117, 6.5));
+        // a row of bubbles reading D A T E, 90 pt apart at 11 pt, in the strip under the block
+        foreach (var (c, x) in new[] { ("D", 3200.0), ("A", 3290.0), ("T", 3380.0), ("E", 3470.0) }) words.Add(At(c, x, 100, 8, 11));
+        var page = Page(3456, 2592, words);
+
+        var fields = TitleBlockFields.Read(page, out _, out var labels);
+        Assert.DoesNotContain("DATE", labels);
+        Assert.Equal("FOUNDATION PLAN PARKING LEVEL P3", fields["SHEET TITLE"]);
+    }
+
     /// <summary>One letter per token at a fixed pitch, as 30980's block sets its labels (6.8 pt letters).</summary>
     private static IEnumerable<VectorPageReader.TextToken> Letters(string word, double x, double y, double pitch)
     {
