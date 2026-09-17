@@ -159,6 +159,12 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         public List<(double X0, double Y0, double X1, double Y1, int Treads)> StairFlights { get; } = new();
         /// <summary>The treads of those flights that are lines (31138 draws a stroke per tread), as segments: the well's arrangement leaves them out.</summary>
         public List<((double X, double Y) A, (double X, double Y) B)> TreadLines { get; } = new();
+        /// <summary>
+        /// The page's words in mm (step 106): what the sheet says where. The slab pass reads them for what a region is -
+        /// an X over 30 ft with OPEN TO BELOW inside it is a void (31202 L6-L13, 31 x 8.7 m), with 9" SLAB inside it a
+        /// slab (its ROOF). Filled by the sheet reader before Classify; the DXF outlet does not write them.
+        /// </summary>
+        public List<(string Text, double X, double Y)> PageWords { get; } = new();
         // Each column: centroid (X,Y) in mm
         public List<(double X, double Y)> Columns { get; } = new();
         // Each line element: list of (X,Y) in mm (open polyline)

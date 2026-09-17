@@ -175,7 +175,9 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             double minWallAspect = PdfIntakeOptions.DefaultMinWallAspect,
             IReadOnlyDictionary<int, int>? footingPieces = null,
             double slabEdgeBridgeMm = DefaultSlabEdgeBridgeMm,
-            double minSlabAreaMm2 = DefaultMinSlabAreaMm2)
+            double minSlabAreaMm2 = DefaultMinSlabAreaMm2,
+            IReadOnlyList<string>? voidWords = null,
+            IReadOnlyList<string>? slabWords = null)
         {
             double gridThreshMm = Math.Max(pageWidthMm, pageHeightMm) * 0.6;
             furniture ??= SheetFurniture.Set.Empty;
@@ -538,7 +540,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             result.StairFlights.AddRange(StairFlights(deferredPaper.Where(i => !doorwayOf.ContainsKey(i)).Select(i => rawSubpaths[i].Points),
                                                      result.Lines.Where((l, i) => !result.LineIsAnnotation[i]), result.TreadLines));
 
-            SlabEdgesFromLoops(result, fates, firstFate, slabEdgeBridgeMm, minSlabAreaMm2, minWallThicknessMm, maxWallThicknessMm);
+            SlabEdgesFromLoops(result, fates, firstFate, slabEdgeBridgeMm, minSlabAreaMm2, minWallThicknessMm, maxWallThicknessMm, voidWords ?? PdfIntakeOptions.DefaultVoidWords, slabWords ?? PdfIntakeOptions.DefaultSlabWords);
 
             if (fates is not null && (deferredPaper.Count > 0 || deferredNoInk.Count > 0))
             {
@@ -1600,8 +1602,10 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
         internal static void SlabEdgesFromLoops(ExtractedGeometry result, IList<PathFate>? fates, int firstFate,
             double slabEdgeBridgeMm = DefaultSlabEdgeBridgeMm, double minSlabAreaMm2 = DefaultMinSlabAreaMm2,
-            double minWallThicknessMm = PdfIntakeOptions.DefaultMinWallThicknessMm, double maxWallThicknessMm = PdfIntakeOptions.DefaultMaxWallThicknessMm)
+            double minWallThicknessMm = PdfIntakeOptions.DefaultMinWallThicknessMm, double maxWallThicknessMm = PdfIntakeOptions.DefaultMaxWallThicknessMm,
+            IReadOnlyList<string>? voidWords = null, IReadOnlyList<string>? slabWords = null)
         {
+            voidWords ??= PdfIntakeOptions.DefaultVoidWords; slabWords ??= PdfIntakeOptions.DefaultSlabWords;
             result.FirstEdgeSlab = result.Slabs.Count;
             if (result.Lines.Count + result.StrokesOnGrid.Count < 4) return;
 
@@ -1849,9 +1853,26 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             // a tendon - both arms must be over 10 degrees off the axes); arms of unequal length (a leader over a line).
             // and never an X with structure in it: a box with an X is also how a column above or below is drawn (31168:
             // 561 "openings" on 37 storeys, one per column, before this)
-            var xMarks = XMarks(result).Where(x => x.Reach <= XMarkMaxArmMm
+            // A BIG X WITH THE WORDS OF A VOID INSIDE IT IS A VOID (step 106): 31202's L6-L13 draw a 31 x 8.7 m region open to
+            // the deck below as an X of 105 ft arms with OPEN TO BELOW inside it - the shape XMarkMaxArmMm refused at 16:00
+            // because the same set's ROOF draws a 109 ft X over a region labelled 9" SLAB. The words decide: a void word
+            // inside the region and no slab word makes it an opening; a slab word makes it a slab whatever else it says;
+            // neither, nothing. The X's of a shaft's size need no words.
+            var allX = XMarks(result);
+            // the words that name the region sit at the X's crossing, where the drafter puts them (31202 L6: OPEN TO BELOW at the
+            // centre); a word near the region's edge names something beside it (its ROOF: OPEN BELOW ten metres off the centre,
+            // a stair's, and the roof's 109 ft X is no void - her model roofs it; the first form cut 916 sq ft from it, 19:35)
+            bool SaysAny(XMark x, IReadOnlyList<string> words) => result.PageWords.Any(w =>
+                Math.Abs(w.X - x.Centre.X) <= 0.25 * x.Reach && Math.Abs(w.Y - x.Centre.Y) <= 0.25 * x.Reach
+                && LoopGeometry.PointInPolygon(new DxfPoint(w.X, w.Y), x.Region)
+                && words.Any(v => string.Equals(v, w.Text.Trim().TrimEnd(',', '.', ':'), StringComparison.OrdinalIgnoreCase)));
+            var voids = allX.Where(x => x.Reach > XMarkMaxArmMm && SaysAny(x, voidWords) && !SaysAny(x, slabWords)).ToList();
+            var xMarks = allX.Where(x => x.Reach <= XMarkMaxArmMm
                 && !result.Columns.Any(c => LoopGeometry.PointInPolygon(new DxfPoint(c.X, c.Y), x.Region))
-                && !result.Walls.Any(w => LoopGeometry.PointInPolygon(new DxfPoint((w.Start.X + w.End.X) / 2, (w.Start.Y + w.End.Y) / 2), x.Region))).ToList();
+                && !result.Walls.Any(w => LoopGeometry.PointInPolygon(new DxfPoint((w.Start.X + w.End.X) / 2, (w.Start.Y + w.End.Y) / 2), x.Region))).Concat(voids).ToList();
+            FaceTrace?.Invoke($"slab pass: {voids.Count} void(s) by their words (step 106): " + string.Join(" ", voids.Select(x => $"{x.Reach / 304.8:0} ft at ({x.Centre.X / 304.8:0},{x.Centre.Y / 304.8:0}) [" +
+                string.Join(" ", result.PageWords.Where(w => LoopGeometry.PointInPolygon(new DxfPoint(w.X, w.Y), x.Region) && voidWords.Concat(slabWords).Any(v => string.Equals(v, w.Text.Trim().TrimEnd(',', '.', ':'), StringComparison.OrdinalIgnoreCase)))
+                    .Select(w => $"{w.Text}@({(w.X - x.Centre.X) / 304.8:0},{(w.Y - x.Centre.Y) / 304.8:0})ft")) + "]")));
 
             // the stair wells (step 105): the arrangement's cell holding all of a stair's flights, built here for the walk path
             // too - the walk finds the floor and builds no arrangement, and the wells are cells of it

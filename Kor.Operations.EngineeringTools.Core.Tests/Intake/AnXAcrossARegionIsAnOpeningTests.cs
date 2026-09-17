@@ -65,6 +65,30 @@ public sealed class AnXAcrossARegionIsAnOpeningTests
         Assert.Equal((sx1 - sx0) * (sy1 - sy0), Area(g.Slabs[1]), 1);
     }
 
+    [Fact]
+    public void ABigXWithTheWordsOfAVoidInsideItIsAVoid_WithASlabWordASlab_WithNeitherNothing()
+    {
+        // step 106: 31202's L6-L13 draw a 31 x 8.7 m region open to the deck below as an X of 105 ft arms with OPEN TO
+        // BELOW inside it; its ROOF draws a 109 ft X over a region labelled 9" SLAB. A 40 m X over a 45 x 45 m floor here.
+        const double fx0 = 0, fy0 = 0, fx1 = 45000, fy1 = 35000;   // 35 m tall: a line 60% of the fixture page's 70 m is read as the sheet's frame
+        ExtractedGeometry Floor(params (string Text, double X, double Y)[] words)
+        {
+            var g = new ExtractedGeometry();
+            foreach (var w in words) g.PageWords.Add(w);
+            return FateFixture.Classify(
+            [
+                Line(fx0, fy0, fx1, fy0), Line(fx1, fy0, fx1, fy1), Line(fx1, fy1, fx0, fy1), Line(fx0, fy1, fx0, fy0),
+                Line(8000, 8000, 37000, 27000), Line(8000, 27000, 37000, 8000),   // the big X, arms of 35 m over a third of the floor (over half is no hole)
+                Column(2000, 2000), Column(43000, 2000), Column(2000, 33000), Column(43000, 33000), Column(22000, 33000),
+            ], new List<PathFate>(), result: g);
+        }
+        Assert.Equal(2, Floor(("OPEN", 22000, 17500), ("TO", 23500, 17500), ("BELOW", 25500, 17500)).Slabs.Count);   // the plate and the void
+        Assert.Single(Floor(("9\"", 22000, 17500), ("SLAB", 23500, 17500)).Slabs);                                     // a region mark: the plate alone
+        Assert.Single(Floor(("OPEN", 22000, 17500), ("BELOW", 23500, 17500), ("SLAB", 25500, 17500)).Slabs);          // a slab word wins
+        Assert.Single(Floor().Slabs);                                                                                  // no words: nothing
+        Assert.Single(Floor(("OPEN", 44000, 34000)).Slabs);                                                            // the word outside the X: nothing
+    }
+
     // ⛔ MEASURED AND REJECTED BY HER OWN MODELS (step 104, 16:00-16:55): "an X-box on the plate's edge is no shaft" (a corner
     // within 300 mm of the boundary) and "an X-box abutting a column is no shaft" - both written for 31168's L15-26, where a
     // 3.6 x 1.5 m X-box flanks every perimeter column on storeys no model of hers covers. On the storeys she does cover

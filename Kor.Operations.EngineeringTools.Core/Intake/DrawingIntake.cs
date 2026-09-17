@@ -239,6 +239,8 @@ public static class DrawingIntake
                 (s.IsClosed && GeometryFilterService.BoundingBoxDiagonal(s.Points) > 10.0));
             geometry.IsVectorPdf = meaningfulCount >= 5;
             var thinnedFates = new List<PathFate>();
+            // the page's words, in mm, for what a region says it is (step 106)
+            foreach (var w in content.Words) geometry.PageWords.Add((w.Text, w.Cx * scaleFactor, w.Cy * scaleFactor));
             var footingPieces = PdfPlanReader.ReadFootings(raw, content, geometry, request.MarkupOnly, scaleFactor, furniture, out footingLabels, options.DashGapMm);
             GeometryFilterService.Classify(raw, geometry,
                 options.SlabMinDiagonalMm, options.LineMinLengthMm, false,
@@ -249,7 +251,8 @@ public static class DrawingIntake
                 footingPieces,
                 // audit F14 (step 61): the two slab rows were loaded into the options and never handed to the reader here,
                 // so a row could not change a slab decision on the one ingestion point; PdfPlanReader passed them all along
-                slabEdgeBridgeMm: options.SlabEdgeBridgeMm, minSlabAreaMm2: options.MinSlabAreaMm2);
+                slabEdgeBridgeMm: options.SlabEdgeBridgeMm, minSlabAreaMm2: options.MinSlabAreaMm2,
+                voidWords: options.VoidWords, slabWords: options.SlabWords);
             pathFates = RemapToPopulation(thinnedFates, thinnedKept, fullKept, content.Paths.Count, full.Paths.Count);
             if (!request.MarkupOnly)
                 geometry.GridAxes.AddRange(grid.Axes.Select(a => new GridAxis(a.Name, a.Vertical, a.At * scaleFactor)));
