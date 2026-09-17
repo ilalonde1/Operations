@@ -234,6 +234,14 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             // gate are chained: a long line stays the two-point line the wall reader pairs.
             var curves = CurvesOfShortStrokes(rawSubpaths, lineMinLengthMm, footingPieces);   // a footing's dashes are the footing's (step 44), whatever they touch
             var curveMembers = new HashSet<int>(curves.SelectMany(c => c.Members));
+            // A SHORT STROKE BETWEEN TWO LONG LINES OF ONE PEN IS A JOG OF THE EDGE (intake step 110, 2026-09-16 22:00).
+            // 30838's concrete-outline plans step their slab edge sideways by 150 mm at grid 2: an 8 pt stroke 150 mm long
+            // between two 8 pt verticals of 3.9 m and 2.1 m, end to end. Step 98 chains short strokes with each other and
+            // leaves a long line alone, so the jog alone was TooShort, the ring stood open by 150 mm on every tower storey,
+            // and the plate those storeys carried came from the slab-reinforcing plan drawn beside it - gone the moment the
+            // page's two views were told apart (step 109). A stroke under the gate whose BOTH ends meet an end of a long
+            // line drawn with the same pen and colour is that line's jog, and is kept as the two-point line it is.
+            var jogs = JogsBetweenLongLines(rawSubpaths, lineMinLengthMm, curveMembers, footingPieces);
             for (int pathIndex = 0; pathIndex < rawSubpaths.Count + curves.Count; pathIndex++)
             {
                 bool isCurve = pathIndex >= rawSubpaths.Count;
@@ -479,7 +487,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 else
                 {
                     double len = PolygonProcessor.PathLength(pts);
-                    if (len >= lineMinLengthMm)
+                    if (len >= lineMinLengthMm || (!isCurve && jogs.Contains(pathIndex)))
                     {
                         if (excludeGridLines && pts.Count == 2 && len > gridThreshMm)
                         { Fate(PathReason.GridLineExcluded); continue; }
@@ -584,6 +592,44 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         /// one colour, chained into one path each (step 98). A node where three or more such strokes meet is a
         /// hatch or a symbol, not a curve, and its group is left as it was; so is a chain of one.
         /// </summary>
+        /// <summary>
+        /// The open two-point strokes shorter than the length gate whose both ends meet, exactly, an end of a long open
+        /// two-point stroke drawn with the same pen and colour (step 110): a jog in the drawn linework, kept as the line
+        /// it is - a step in an edge, a notch round a column. A stroke a curve claimed (step 98) or a footing claimed
+        /// (step 44) is not one.
+        /// </summary>
+        internal static HashSet<int> JogsBetweenLongLines(IReadOnlyList<RawSubpath> paths, double lineMinLengthMm, IReadOnlySet<int> curveMembers, IReadOnlyDictionary<int, int>? claimed = null)
+        {
+            // every long line's ends, with the direction the line leaves that end in
+            var longEnds = new Dictionary<(long, long, double, (byte, byte, byte)), List<(double X, double Y)>>();
+            (long, long, double, (byte, byte, byte)) Key((double X, double Y) p, RawSubpath s) => ((long)Math.Round(p.X * 10), (long)Math.Round(p.Y * 10), s.LineWidth, s.Color);
+            for (int i = 0; i < paths.Count; i++)
+            {
+                var s = paths[i];
+                if (s.IsClosed || s.IsAnnotation || s.IsFilled || !s.IsStroked || s.Points.Count != 2) continue;
+                double len = PolygonProcessor.PathLength(s.Points);
+                if (len < lineMinLengthMm) continue;
+                var a = s.Points[0]; var b = s.Points[1];
+                (longEnds.TryGetValue(Key(a, s), out var la) ? la : longEnds[Key(a, s)] = new()).Add(((b.X - a.X) / len, (b.Y - a.Y) / len));
+                (longEnds.TryGetValue(Key(b, s), out var lb) ? lb : longEnds[Key(b, s)] = new()).Add(((a.X - b.X) / len, (a.Y - b.Y) / len));
+            }
+            var jogs = new HashSet<int>();
+            if (longEnds.Count == 0) return jogs;
+            for (int i = 0; i < paths.Count; i++)
+            {
+                var s = paths[i];
+                if (s.IsClosed || s.IsAnnotation || s.IsFilled || !s.IsStroked || s.Points.Count != 2 || curveMembers.Contains(i) || (claimed is not null && claimed.ContainsKey(i))) continue;
+                if (PolygonProcessor.PathLength(s.Points) >= lineMinLengthMm) continue;
+                if (!longEnds.TryGetValue(Key(s.Points[0], s), out var atA) || !longEnds.TryGetValue(Key(s.Points[1], s), out var atB)) continue;
+                // FORM A, the one kept (22:30): both ends on long lines' ends, whichever way the long lines leave. Form B asked the
+                // two long lines to leave the jog in OPPOSITE directions (a step, not a U) to spare 31065's stair wells, and lost
+                // 31130 L17's plate at once - its outline notches round a column as a U (126 mm down, 354 mm along the column's
+                // face, 914 mm down again). The U in the well is the well rule's to read (step 105d), not this rule's to refuse.
+                jogs.Add(i); _ = atA; _ = atB;
+            }
+            return jogs;
+        }
+
         internal static List<(RawSubpath Path, List<int> Members)> CurvesOfShortStrokes(IReadOnlyList<RawSubpath> paths, double lineMinLengthMm, IReadOnlyDictionary<int, int>? claimed = null)
         {
             var curves = new List<(RawSubpath, List<int>)>();
@@ -1952,6 +1998,19 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         var cells = new HashSet<int>(Enumerable.Range(0, planarForWells.Faces.Count).Where(i => centres.Any(p => LoopGeometry.PointInPolygon(p, planarForWells.Faces[i].Outer.Points))));
                         if (cells.Count == 0) continue;
                         double boxArea = (stair.Max(f => f.X1) - stair.Min(f => f.X0)) * (stair.Max(f => f.Y1) - stair.Min(f => f.Y0));
+                        // THE LANDING BETWEEN THE FLIGHTS IS THE WELL'S (step 105d, 2026-09-16 22:35): a break line drawn across a
+                        // stair as a zig-zag of short strokes closes once step 110 keeps its pieces, and the cell between two
+                        // flights - the landing, no flight's centre in it - fell out of the well (31065's L7-L17 wells 2.4 x 7.1 m
+                        // -> 2.4 x 3.3). A cell no bigger than the stair's box whose centroid lies inside that box is the well's too.
+                        double sx0 = stair.Min(f => f.X0), sx1 = stair.Max(f => f.X1), sy0 = stair.Min(f => f.Y0), sy1 = stair.Max(f => f.Y1);
+                        for (int i = 0; i < planarForWells.Faces.Count; i++)
+                        {
+                            if (cells.Contains(i)) continue;
+                            var outer = planarForWells.Faces[i].Outer;
+                            if (Math.Abs(outer.Area) > boxArea) continue;
+                            var c = outer.Centroid();
+                            if (c.X > sx0 && c.X < sx1 && c.Y > sy0 && c.Y < sy1) cells.Add(i);
+                        }
                         var rings = planarForWells.RecoverSurfaces(_ => false, (i, _) => cells.Contains(i)).Slabs.Select(s => s.Outer).ToList();
                         FaceTrace?.Invoke($"slab pass: stair at ({centres.Average(p => p.X) / 304.8:0},{centres.Average(p => p.Y) / 304.8:0}) ft: {stair.Count} flight(s), box {boxArea / 92903.04:0} sq ft, {cells.Count} of {planarForWells.Faces.Count} cell(s) hold a flight (arranged {arranged.Count} + wall edges {wallEdges.Count()} + door edges {doorEdges.Count()}), ring(s) sq ft: {string.Join(" ", rings.Select(r => $"{Math.Abs(r.Area) / 92903.04:0}"))}");
                         foreach (var ring in rings)
