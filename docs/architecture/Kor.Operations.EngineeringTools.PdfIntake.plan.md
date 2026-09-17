@@ -234,7 +234,7 @@ drawing's own model.
   for the next plan, not this one.
 - Gate: §1's three conditions, each with its evidence in the commit.
 
-### WP7 — The profession's knowledge as rows — APPROVED 2026-09-16 18:1x (Ian: "go to the internal egbc brain"); first block after run 29
+### WP7 — The profession's knowledge as rows — APPROVED 2026-09-16 18:1x (Ian: "go to the internal egbc brain"); FIRST BLOCK LANDED 18:45 (§116): migration 096 applied, the ingestor, 24 sources / 879 clause rows, the gate; blocked on the Library site's codes and the PPMP
 - **The three layers.** The intake has two: the OFFICE's conventions (`analysis.FormatConvention` / `analysis.Ruling` —
   what KOR draws and models) and the READING rules (C# with tests). The PROFESSION's knowledge — NBC/BCBC, CSA A23.3 /
   S16 / O86, EGBC's Professional Practice Guidelines and Quality Management Guides, KOR's own PPMP — was cited only in
