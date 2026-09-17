@@ -686,6 +686,18 @@ residues' cause. Not the PDF route; queued behind it.
    26 sources / 959 clause rows from EGBC's public documents, the gate `EveryRuleCitesItsAuthorityTests`. Run 29 (104+105)
    relaunched 18:19 after a second ^C death (corpus-analyze refuses Ctrl-C now, `c6763975`); run 30 (105b/c, 106) follows it.
 
+3ak. **Autonomous evening 2026-09-16 20:05 → 21:20** (§120–§121). Run 29 banked (`a959d277`): plates 74%, the corpus openings
+   figure 60% / 17% decomposed into her empty models (31039, set aside by section 6), the 31168-class X-box (31017, 31032),
+   and the DXF route's ring rule (30933). **Step 107** (`8cb9176e`) + **107b** (`d4de4c7e`): a hole with a column in it is no
+   hole — the corpus asked FIRST (`takeoff e2k-ask <folder> openings-with-columns`, `18972b74`: 39 of her 2,793 openings hold
+   a column, 1.4%); on the six sets every opening removed was one she does not have; five sets ours judged 203, hers 167
+   (82%). **The shape census** (`3ac006c7`, `openings-shapes`): her 4,967 openings — 504 strips ≥ 10:1, 503 of them
+   sub-metre sleeves ≤ 10 m, ONE longer — so "a strip is no hole" was refused by her practice before it was written.
+   **Step 108** (branch `step-108`, `f64bb53a`): a strip ≥ 10× longer than wide AND > 10 m is a pour strip, not cut,
+   flagged (30933 L0's 0.3 × 44 m slits, rendered and looked at); two REQUIRED rows = **migration 098** (probed 21:13),
+   the debt ratchet refused the compiled form; merges on "098 done". Run 30 (105b/c, 106) in flight since 20:04; run 31
+   (107/107b) launches on its bank.
+
 4. **WP6** — one model in front of Andrea (31170's, or whichever the ledger ranks best of the
    architects' sets). Ian's call when.
 5. **Step 47**, the next reading rule, from the corpus. `takeoff corpus-query plan-titles` on the
