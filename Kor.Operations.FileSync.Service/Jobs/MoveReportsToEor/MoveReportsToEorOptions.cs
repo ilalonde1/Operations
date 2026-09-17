@@ -13,6 +13,7 @@ internal sealed record MoveReportsToEorOptions(
     string AuditLogDir,
     string SenderAddress,
     string GlobalCc,
+    string CatchAllReportTo,
     string ShadowOutputDir)
 {
     public const string DefaultEorRootRelativePath = "_FIELD REVIEWS TO INITIAL";
@@ -24,6 +25,10 @@ internal sealed record MoveReportsToEorOptions(
     public const string DefaultAuditLogDir = @"\\KOR-FS01\Projects\Reporting\Number Of Reports";
     public const string DefaultSenderAddress = "ilalonde@korstructural.com";
     public const string DefaultGlobalCc = "ilalonde@korstructural.com";
+    // Who fixes EOR.csv. Gets one mail per run listing every project whose
+    // reports went to CatchAll and why; same inbox the 5th-of-month summary
+    // already goes to.
+    public const string DefaultCatchAllReportTo = "admin@korstructural.com";
 
     public static string DefaultShadowOutputDir { get; } = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
@@ -44,6 +49,7 @@ internal sealed record MoveReportsToEorOptions(
             AuditLogDir: Get("AuditLogDir", DefaultAuditLogDir),
             SenderAddress: Get("SenderAddress", DefaultSenderAddress),
             GlobalCc: Get("GlobalCc", DefaultGlobalCc),
+            CatchAllReportTo: Get("CatchAllReportTo", DefaultCatchAllReportTo),
             ShadowOutputDir: Get("ShadowOutputDir", DefaultShadowOutputDir));
     }
 }

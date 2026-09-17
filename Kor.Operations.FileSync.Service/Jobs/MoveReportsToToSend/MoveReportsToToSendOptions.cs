@@ -7,6 +7,7 @@ namespace Kor.Operations.FileSync.Service.Jobs.MoveReportsToToSend;
 // QuartzInstaller and reflected in the FileSync.Jobs seed/backfill).
 internal sealed record MoveReportsToToSendOptions(
     string EorRootRelativePath,
+    string CatchAllFolderName,
     string ProjectsRootPath,
     string CategoryFolderExcludePrefix,
     string ToSendRelativePath,
@@ -19,6 +20,9 @@ internal sealed record MoveReportsToToSendOptions(
     string ShadowOutputDir)
 {
     public const string DefaultEorRootRelativePath = "_FIELD REVIEWS TO INITIAL";
+    // Must equal MoveReportsToEorOptions.CatchAllFolderName: the folder nobody
+    // is asked to initial, which this job therefore never sweeps.
+    public const string DefaultCatchAllFolderName = "CatchAll";
     public const string DefaultProjectsRootPath = @"\\KOR-FS01\Projects\Projects";
     public const string DefaultCategoryFolderExcludePrefix = "00";
     public const string DefaultToSendRelativePath = @"04 Construction Admin\01 Inspection Reports\To Send";
@@ -46,6 +50,7 @@ internal sealed record MoveReportsToToSendOptions(
 
         return new MoveReportsToToSendOptions(
             EorRootRelativePath: Get("EorRootRelativePath", DefaultEorRootRelativePath),
+            CatchAllFolderName: Get("CatchAllFolderName", DefaultCatchAllFolderName),
             ProjectsRootPath: Get("ProjectsRootPath", DefaultProjectsRootPath),
             CategoryFolderExcludePrefix: Get("CategoryFolderExcludePrefix", DefaultCategoryFolderExcludePrefix),
             ToSendRelativePath: Get("ToSendRelativePath", DefaultToSendRelativePath),
