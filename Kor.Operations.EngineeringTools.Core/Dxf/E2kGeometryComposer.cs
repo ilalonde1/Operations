@@ -567,6 +567,7 @@ public static class E2kGeometryComposer
         var pointOrder = new Dictionary<string, int>(StringComparer.Ordinal);
         // one plate per place per storey: its centroid within a foot of one already placed (a foot was the cell)
         var placedSlabs = new PlacedMembers(12.0 * inch);
+        var placedPlatePolygons = new Dictionary<string, List<IReadOnlyList<DxfPoint>>>(StringComparer.OrdinalIgnoreCase);   // step 113b: the plates written on each storey, shifted
         // one column, wall or header per place per storey: within an inch, the cell that was (PlacedMembers)
         var placedColumns = new PlacedMembers(inch);
         // ONE COLUMN, ONE JOINT. Two sheets draw the same column a few millimetres apart - each is set on
@@ -1286,6 +1287,36 @@ public static class E2kGeometryComposer
                 var middle = slab.Centroid();
                 var where = Place.At(middle.X + options.OffsetX, middle.Y + options.OffsetY);
                 if (placedSlabs.Holds(slabStory.Name, where)) continue;
+                // TWO PLATES OF ONE STOREY COVERING EACH OTHER ARE ONE FLOOR (step 113b, 2026-09-17 02:10). The place test above
+                // holds one centre; two readings of one floor from two sheets (31202's L1: the foundation plan's ring, 34,590 sq
+                // ft, and the L1 plan's arrangement, 34,145) sit with their centres more than a foot apart and were both written
+                // - "every floor we have two slabs on top of each other". A plate nine of whose ten vertices stand inside a plate
+                // already written on the storey is that plate read again; the first reading stands.
+                var shiftedPts = slab.Points.Select(p => new DxfPoint(p.X + options.OffsetX, p.Y + options.OffsetY)).ToList();
+                // by the ground they share, not by their vertices: two readings of one floor differ at their edges (31202's L1:
+                // the foundation plan's ring and the L1 plan's, each beyond the other somewhere, 22 of 55 vertices inside), so
+                // the smaller's ground is sampled on a grid and the share of it inside the other is the measure - nine tenths
+                static double GroundShared(IReadOnlyList<DxfPoint> a, IReadOnlyList<DxfPoint> b)
+                {
+                    double x0 = a.Min(p => p.X), x1 = a.Max(p => p.X), y0 = a.Min(p => p.Y), y1 = a.Max(p => p.Y);
+                    if (x1 <= x0 || y1 <= y0) return 0;
+                    int inA = 0, inBoth = 0;
+                    for (int i = 0; i < 40; i++)
+                        for (int j = 0; j < 40; j++)
+                        {
+                            var q = new DxfPoint(x0 + (x1 - x0) * (i + 0.5) / 40, y0 + (y1 - y0) * (j + 0.5) / 40);
+                            if (!LoopGeometry.PointInPolygon(q, a)) continue;
+                            inA++;
+                            if (LoopGeometry.PointInPolygon(q, b)) inBoth++;
+                        }
+                    return inA == 0 ? 0 : (double)inBoth / inA;
+                }
+                if (placedPlatePolygons.TryGetValue(slabStory.Name, out var earlier)
+                    && earlier.Any(e => GroundShared(shiftedPts, e) >= 0.9 || GroundShared(e, shiftedPts) >= 0.9))
+                {
+                    flags.Add($"{placement.SourceSheet}: a plate of {slab.Area / 144:N0} sq ft on {slabStory.Name} lies inside one already written from another reading of the storey and was not modelled - one floor, not two");
+                    continue;
+                }
                 // claimed only below, once the plate stands on something: a legend panel refused as an orphan
                 // must not hold the place of the supported floor drawn at the same centre (Codex 2026-09-13, F6)
 
@@ -1305,6 +1336,7 @@ public static class E2kGeometryComposer
                     continue;
                 }
                 placedSlabs.Add(slabStory.Name, where);
+                (placedPlatePolygons.TryGetValue(slabStory.Name, out var written) ? written : placedPlatePolygons[slabStory.Name] = new()).Add(shiftedPts);
 
                 // Claimed only once the plate is certain to be written.
                 if (!slabProps.TryGetValue(thickness, out string? propName))
