@@ -97,4 +97,27 @@ public sealed class AStairIsARunOfTreadsTests
         double well = Area(withStair.Slabs[1]);
         Assert.InRange(well, 0.8 * (wx1 - wx0) * (wy1 - wy0), 1.3 * (wx1 - wx0) * (wy1 - wy0));
     }
+
+    [Fact]
+    public void ADoorDrawnAsAGapBetweenTwoWallPiecesStillClosesTheWell()
+    {
+        // 31065: the stair's near wall stops either side of the door - two pieces, a 900 mm gap, no paper fill over a
+        // wall for the doorway reader (step 14) to see; the well leaked into the plate (6,700 sq ft) until the gap was
+        // closed for the well's arrangement. The same well as above with the near wall in two pieces.
+        // (a wall is 1,219 mm and longer - dxf.min-wall-length - so the well is 4 m wide here: two 1.5 m pieces and a 1 m door)
+        double wx0 = 42000, wy0 = 21500, wx1 = 46000, wy1 = 25500;
+        RawSubpath[] Room() =>
+        [
+            Line(X0, Y0, X1, Y0), Line(X1, Y0, X1, Y1), Line(X1, Y1, X0, Y1), Line(X0, Y1, X0, Y0),
+            Wall(200, wy1 - wy0, wx0 - 200, wy0), Wall(200, wy1 - wy0, wx1, wy0),
+            Wall(wx1 - wx0 + 400, 200, wx0 - 200, wy1),
+            Wall(1700, 200, wx0 - 200, wy0 - 200), Wall(1700, 200, wx0 - 200 + 1700 + 1000, wy0 - 200),   // the near wall in two pieces, a 1,000 mm door between them
+            Column(41000, 21000), Column(46500, 21000), Column(41000, 25000), Column(46500, 25000),
+        ];
+        var flights = Flight(wx0 + 100, wy0 + 300, 8).Concat(Flight(wx1 - 100 - 1187, wy0 + 300, 8)).ToArray();
+        var withStair = Read(Room().Concat(flights).ToArray());
+        Assert.Equal(2, withStair.Slabs.Count);
+        double well = Area(withStair.Slabs[1]);
+        Assert.InRange(well, 0.8 * (wx1 - wx0) * (wy1 - wy0), 1.3 * (wx1 - wx0) * (wy1 - wy0));
+    }
 }
