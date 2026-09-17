@@ -2322,7 +2322,7 @@ with the floor — the arrangement's way with overlaps, known since step 97.
 31138 L10 at her A24 and not found where the frame put it); their 2 × 5.5 m wells stay in the openings figure as
 the residue, counted on every set from run 29 on.
 
-**Step 105b, parked on branch `step-105b-line-treads` (`1bb5c08c`, 18:06).** 31138 draws a stroke per tread, twelve to
+**Step 105b, parked on a branch at 18:06 and banked at 18:58 (§117).** 31138 draws a stroke per tread, twelve to
 a flight (looked at on its L10 sheet at a DN label). Read as flights with their lines left out of the well's
 arrangement: 31138's hers-we-have 17 → 39 of 208, ours-she-has 17 of 21 → 23 of 27 — and 31202's 25 → 17 both ways,
 eight of its sixteen paper-tread wells lost (line "flights" appear near the paper ones and the wells leak to
@@ -2377,3 +2377,22 @@ within thirty days or the test fails until it is. Proved by breaking.
 here and not reachable without a Graph token — sync it, or drop the PDFs in the knowledge mirror's `codes` folder;
 the stair clauses get their pages and their values checked against the book within minutes of that. Also the EGBC
 portal itself (Ian's screenshot of the account dashboard, 18:12): a registrant's account, nothing for the brain.
+
+## 117. Step 105b — treads drawn as lines, and a sheet draws its treads one way (2026-09-16 18:46–18:58)
+
+31138 draws a stroke per tread, twelve to a flight, no fill (looked at on its L10 sheet at a DN label). Read as
+flights — an axis-aligned two-point line of a tread's width is a tread of no depth, its pitch the going, 220–340 mm —
+with the flight's own strokes left out of the well's arrangement (`ExtractedGeometry.TreadLines`; a stroke across the
+flight inside its box would cut the well into slivers), 31138's hers-we-have went 17 → 39. And 31202's 25 → 17: rule
+10's second set, parked on a branch at 18:06 with the numbers.
+
+**Characterised at 18:10** on 31202's p29 trace: its treads are drawn BOTH as a paper fill and as a riser stroke on
+the fill's edge, and the strokes, read as treads, joined the fills' runs and broke them (one flight of 14 where the
+fills make two of 8). Dropping a riser stroke that sits on a fill's edge did not restore it (17 → 10). The rule that
+holds: **a sheet draws its treads one way** — where paper treads are found on the sheet, the strokes are the fills'
+edges and the stair's outline, not treads. Measured on the five sets with her export: 31202 back to 25 of 25; 31138
+hers-we-have 17 → 37 of 208, ours-she-has 22 of 26 (85%); 31168 70 of 90; 31130 12 of 25; 31065 5 of 11 — over the
+five, ours judged 165 → 177, hers among them 129 → 134 (76%), hers we have 118 → 138. Plates unchanged on all six.
+Test `TwelveStrokesAcrossTheFlightAtAGoingsPitchAreAFlightToo_UnlessTheSheetDrawsPaperTreads` (twelve strokes at a
+going's pitch are a flight; at 600 mm they are a hatch; four are a step; beside paper treads they are nothing),
+proved by breaking. Banked `0f23e293`; the branch closed. Run 29 carries 104 + 105; 105b waits for run 30.
