@@ -87,7 +87,22 @@ public static class ModelYardstick
         public IReadOnlyList<(string Storey, string OurSection, string TheirSection, double X, double Y, double Dx, double Dy)> Pairs { get; init; } = [];
         public double OursWithin100Share => OursCompared == 0 ? 0 : (double)OursWithin100 / OursCompared;
         public double TheirsWithin100Share => TheirsCompared == 0 ? 0 : (double)TheirsWithin100 / TheirsCompared;
+        /// <summary>
+        /// OPENINGS AGAINST HERS (step 104, 2026-09-16). On the storeys both models name: our openings (an
+        /// AREA assigned OPENING "Yes"), hers, ours with the centre of one of hers within
+        /// <see cref="OpeningMatchMm"/> of our centre after the frame, and hers with one of ours. Step 104
+        /// read the drafter's X as an opening and 31168 came out with 561 where her export carries 64 - this
+        /// is the figure that says which of our openings she has, set by set, before any X rule is banked.
+        /// </summary>
+        public (int Ours, int Theirs, int OursMatched, int TheirsMatched, int OursBeyond) Openings { get; init; }
+        /// <summary>Our openings on shared storeys with none of hers near, by plan size (metres, to the half): what we cut that she did not.</summary>
+        public IReadOnlyList<(string Size, int Count)> OursOpeningsUnmatchedBySize { get; init; } = [];
+        /// <summary>Her openings on shared storeys with none of ours near, by plan size: what she cut that we did not.</summary>
+        public IReadOnlyList<(string Size, int Count)> TheirsOpeningsUnmatchedBySize { get; init; } = [];
     }
+
+    /// <summary>How far apart the centres of our opening and hers may be and still be one opening: a shaft is 2-3 m across and the frame carries registration slop.</summary>
+    public const double OpeningMatchMm = 1500;
 
     // A BUILDING'S PREFIX IS ANY TAG BEFORE A STOREY WORD (step 69): A-L27, C-ROOF, 1-L2, 12-LEVEL 3 - a letter or a
     // number with an optional letter, then the dash, then a level, parkade or roof word. It was ^[A-C]-, which read
@@ -266,6 +281,54 @@ public static class ModelYardstick
             }
         }
 
+        // OPENINGS, OURS AGAINST HERS, on the storeys both name (step 104): an opening of ours is hers when the
+        // centre of one of hers lies within OpeningMatchMm of ours after the frame; the unmatched are counted
+        // by plan size, which is what says WHAT they are (31168: 72 of 3.5 x 1.5 m at the perimeter beside
+        // every column - not a shaft's shape).
+        var ourOpenings = OpeningsByStorey(model, mu);
+        var theirOpenings = OpeningsByStorey(yard, yu);
+        int oursOpeningsJudged = 0, oursOpeningsMatched = 0, theirsOpeningsJudged = 0, theirsOpeningsMatched = 0;
+        var oursOpeningsUnmatched = new Dictionary<string, int>(StringComparer.Ordinal);
+        var theirsOpeningsUnmatched = new Dictionary<string, int>(StringComparer.Ordinal);
+        // hers are judged on every storey both models name (the shared list), not only where we cut something: a storey
+        // where we read no opening and she cut nine is the finding
+        var theirOpeningStoreysMet = new HashSet<string>(shared.SelectMany(s => s.Theirs.Split('+')), StringComparer.OrdinalIgnoreCase);
+        int oursOpeningsBeyond = 0;
+        foreach (var (storey, mine) in ourOpenings)
+        {
+            var t = TheirsFor(storey);
+            if (t is null) continue;
+            var hers = t.Value.Name.Split('+').SelectMany(n => theirOpenings.TryGetValue(n, out var h) ? h : []).ToList();
+            // judged only inside her footprint on the storey, as the columns are: 31130's West tower is not in her East model
+            var footprint = shared.FirstOrDefault(s => s.Ours.Equals(storey, StringComparison.OrdinalIgnoreCase)).TheirPts;
+            foreach (var o in mine)
+            {
+                if (footprint is { Count: > 0 } && (o.Centre.X < footprint.Min(q => q.X) - sh.X - FootprintMarginMm || o.Centre.X > footprint.Max(q => q.X) - sh.X + FootprintMarginMm
+                                                    || o.Centre.Y < footprint.Min(q => q.Y) - sh.Y - FootprintMarginMm || o.Centre.Y > footprint.Max(q => q.Y) - sh.Y + FootprintMarginMm))
+                { oursOpeningsBeyond++; continue; }
+                oursOpeningsJudged++;
+                if (hers.Any(h => Math.Sqrt(Sq((h.Centre.X - sh.X, h.Centre.Y - sh.Y), o.Centre)) <= OpeningMatchMm)) oursOpeningsMatched++;
+                else oursOpeningsUnmatched[SizeClass(o.W, o.H)] = oursOpeningsUnmatched.GetValueOrDefault(SizeClass(o.W, o.H)) + 1;
+            }
+        }
+        foreach (var (storey, hers) in theirOpenings)
+        {
+            if (!theirOpeningStoreysMet.Contains(storey)) continue;
+            var mine = ourOpenings.Where(kv => TheirsFor(kv.Key) is { } tt && tt.Name.Split('+').Contains(storey, StringComparer.OrdinalIgnoreCase)).SelectMany(kv => kv.Value).ToList();
+            foreach (var h in hers)
+            {
+                theirsOpeningsJudged++;
+                var hh = (h.Centre.X - sh.X, h.Centre.Y - sh.Y);
+                if (mine.Any(o => Math.Sqrt(Sq(hh, o.Centre)) <= OpeningMatchMm)) theirsOpeningsMatched++;
+                else theirsOpeningsUnmatched[SizeClass(h.W, h.H)] = theirsOpeningsUnmatched.GetValueOrDefault(SizeClass(h.W, h.H)) + 1;
+            }
+        }
+        static string SizeClass(double w, double h)
+        {
+            double a = Math.Round(Math.Min(w, h) / 500) / 2, b = Math.Round(Math.Max(w, h) / 500) / 2;
+            return $"{a:0.#}x{b:0.#} m";
+        }
+
         var storeyFigures = new List<StoreyFigure>();
         foreach (var g in pairs.GroupBy(pr => pr.Storey))
         {
@@ -326,7 +389,34 @@ public static class ModelYardstick
             OursUnmatchedBySection = oursUnmatched.OrderByDescending(kv => kv.Value).ThenBy(kv => kv.Key, StringComparer.Ordinal).Select(kv => (kv.Key, kv.Value)).ToList(),
             OursOnHerWallsBySection = oursOnWallsBySection.OrderByDescending(kv => kv.Value).ThenBy(kv => kv.Key, StringComparer.Ordinal).Select(kv => (kv.Key, kv.Value)).ToList(),
             TheirsUnmatchedBySection = theirsUnmatched.OrderByDescending(kv => kv.Value).ThenBy(kv => kv.Key, StringComparer.Ordinal).Select(kv => (kv.Key, kv.Value)).ToList(),
+            Openings = (oursOpeningsJudged, theirsOpeningsJudged, oursOpeningsMatched, theirsOpeningsMatched, oursOpeningsBeyond),
+            OursOpeningsUnmatchedBySize = oursOpeningsUnmatched.OrderByDescending(kv => kv.Value).ThenBy(kv => kv.Key, StringComparer.Ordinal).Select(kv => (kv.Key, kv.Value)).ToList(),
+            TheirsOpeningsUnmatchedBySize = theirsOpeningsUnmatched.OrderByDescending(kv => kv.Value).ThenBy(kv => kv.Key, StringComparer.Ordinal).Select(kv => (kv.Key, kv.Value)).ToList(),
         };
+    }
+
+    /// <summary>Every AREA assigned OPENING "Yes", by storey: its plan centre and box in mm.</summary>
+    private static Dictionary<string, List<((double X, double Y) Centre, double W, double H)>> OpeningsByStorey(E2kDocument doc, double unitMm)
+    {
+        var names = new HashSet<string>(StringComparer.Ordinal);
+        foreach (string raw in doc.LinesOf("AREA ASSIGNS"))
+        {
+            var m = Regex.Match(raw.TrimStart(), @"^AREAASSIGN\s+""([^""]+)""\s+""[^""]*""\s+OPENING\s+""Yes""");
+            if (m.Success) names.Add(m.Groups[1].Value);
+        }
+        var points = doc.PlanPointsOfObjects();
+        var storeysOf = doc.StoreysByObject();
+        var result = new Dictionary<string, List<((double X, double Y) Centre, double W, double H)>>(StringComparer.OrdinalIgnoreCase);
+        foreach (string name in names)
+        {
+            if (!points.TryGetValue(name, out var pts) || pts.Count < 3) continue;
+            if (!storeysOf.TryGetValue(name, out var on)) continue;
+            double x0 = pts.Min(p => p.X) * unitMm, x1 = pts.Max(p => p.X) * unitMm, y0 = pts.Min(p => p.Y) * unitMm, y1 = pts.Max(p => p.Y) * unitMm;
+            var o = (Centre: ((x0 + x1) / 2, (y0 + y1) / 2), W: x1 - x0, H: y1 - y0);
+            foreach (var storey in on)
+                (result.TryGetValue(storey, out var list) ? list : result[storey] = new List<((double X, double Y) Centre, double W, double H)>()).Add(o);
+        }
+        return result;
     }
 
     /// <summary>Her wall panels by storey, each as the plan box of its joints in mm.</summary>
@@ -423,6 +513,15 @@ public static class ModelYardstick
             sb.AppendLine(CultureInfo.InvariantCulture, $"  of which {c.OursOnHerWalls} stand on a wall she modelled (a column to us, a pier to her): {string.Join(", ", c.OursOnHerWallsBySection.Take(8).Select(u => $"{u.Section} {u.Count}"))}");
         if (c.TheirsUnmatchedBySection.Count > 0)
             sb.AppendLine(CultureInfo.InvariantCulture, $"theirs with none of ours within 300 mm, by their section: {string.Join(", ", c.TheirsUnmatchedBySection.Take(8).Select(u => $"{u.Section} {u.Count}"))}{(c.TheirsUnmatchedBySection.Count > 8 ? " ..." : "")}");
+        if (c.Openings.Ours > 0 || c.Openings.Theirs > 0 || c.Openings.OursBeyond > 0)
+        {
+            var o = c.Openings;
+            sb.AppendLine(CultureInfo.InvariantCulture, $"openings on the shared storeys: ours {o.Ours} inside her footprint{(o.OursBeyond > 0 ? $" ({o.OursBeyond} beyond it, not judged)" : "")}, hers {o.Theirs}; ours with one of hers within {OpeningMatchMm / 1000:0.#} m {o.OursMatched} ({100.0 * o.OursMatched / Math.Max(1, o.Ours):F0}%); hers with one of ours {o.TheirsMatched} ({100.0 * o.TheirsMatched / Math.Max(1, o.Theirs):F0}%)");
+            if (c.OursOpeningsUnmatchedBySize.Count > 0)
+                sb.AppendLine(CultureInfo.InvariantCulture, $"  ours she has not, by size: {string.Join(", ", c.OursOpeningsUnmatchedBySize.Take(8).Select(u => $"{u.Size} {u.Count}"))}{(c.OursOpeningsUnmatchedBySize.Count > 8 ? " ..." : "")}");
+            if (c.TheirsOpeningsUnmatchedBySize.Count > 0)
+                sb.AppendLine(CultureInfo.InvariantCulture, $"  hers we have not, by size: {string.Join(", ", c.TheirsOpeningsUnmatchedBySize.Take(8).Select(u => $"{u.Size} {u.Count}"))}{(c.TheirsOpeningsUnmatchedBySize.Count > 8 ? " ..." : "")}");
+        }
         foreach (var n in c.Notes) sb.AppendLine("  note: " + n);
         return sb.ToString();
     }

@@ -67,6 +67,8 @@ public sealed class EveryReaderConstantIsTriagedTests
         ["GeometryFilterService.cs:SlabEdgeChainMinMm"] = Convention("dxf.pdf.slab-edge-chain-min-mm — shorter is a tick or a letter"),
         ["GeometryFilterService.cs:FaceTraceMinOverlapMm"] = Convention("dxf.pdf.face-trace-min-overlap-mm"),
         ["GeometryFilterService.cs:LeakRasterMm"] = Tolerance("the leak finder's raster (an instrument behind FaceTrace): where the outside gets into a ring, to two cells"),
+        ["GeometryFilterService.cs:XMarkMinArmMm"] = Rule("an X that marks an opening has arms of 2 m or more: a shaft's are 11-12 ft on 31130, 31138 and 31202; a symbol's are under a metre (step 104)"),
+        ["GeometryFilterService.cs:XMarkMaxArmMm"] = Rule("an X that marks an opening has arms of 30 ft or less: 31202's 109 ft X spans a region labelled 9 in SLAB, a region mark (step 104)"),
         ["GridBubbles.cs:MinRadiusPts"] = Convention("dxf.pdf.bubble-min-radius-pt — how small a grid bubble is drawn"),
         ["GridBubbles.cs:MaxRadiusPts"] = Convention("dxf.pdf.bubble-max-radius-pt"),
         ["GridBubbles.cs:AxisMinShare"] = Convention("dxf.pdf.axis-min-share — a grid axis crosses at least a quarter of the page"),
@@ -207,6 +209,7 @@ public sealed class EveryReaderConstantIsTriagedTests
         ["GridAlignment.cs:LeastConvincingByColumns"] = Tolerance("fewer of a sheet's members than this, or than half of them, standing over placed members is a coincidence, not a frame"),
         ["GridAlignment.cs:ColumnRegistrationMm"] = Tolerance("a column stands over a placed one within this"),
         ["ModelYardstick.cs:FootprintMarginMm"] = Tolerance("how far past her outermost column a column of ours is still judged against her model - registration slop and a slab-edge column, not a bay"),
+        ["ModelYardstick.cs:OpeningMatchMm"] = Tolerance("how far apart the centres of our opening and hers may be and still be one opening: a shaft is 2-3 m across and the frame carries registration slop (step 104)"),
 
         // ---- rules: facts of geometry or of buildings, code by design ----
         ["GeometryFilterService.cs:WallShapeTaperShare"] = Rule("a retaining wall's faces converge by up to a quarter"),

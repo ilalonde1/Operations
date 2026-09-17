@@ -1,4 +1,4 @@
-# PdfIntake — sections §61–§85
+﻿# PdfIntake — sections §61–§85
 
 Part of `docs/PdfIntake.md` (start there: §0 is the state; this file is the record for these steps).
 
@@ -2223,3 +2223,72 @@ launched 15:02.
 3. *Every instrument is code, every convention a row.* The afternoon added `corpus-disagreements`, the slab-pass
    trace, `SlabPassTraceProbe`, `model-diff`'s member spans, `tools/SessionMail`; six new rows across migrations 094
    and 095, each with its compiled default held by a test. Nothing the loop depends on lives outside the repo.
+
+## 114. Step 104, migrations 094–095 applied, and the corpus judging openings (2026-09-16 15:38–16:30)
+
+**Migrations 094 and 095** failed on Ian's first run (~15:30): 094's two rows shared one Topic (the natural key is
+App+Format+Topic) and the aspect row carried no units; 095's three vocabulary rows carried no units (`names`, as
+`dxf.parkade-words` does) and two shared a topic. Row 1 of 094 had gone in. Both files corrected, each batch probed
+in a rolled-back transaction, re-run by Ian ~15:50: five rows live, read back from `vw_RuleSetting`; the two pier keys
+left `UnbankedByDesign` (`f5616a25`). What this cost: the migrations were written from the earlier files' shape without
+the constraints in front of me, and Ian found out by running them. The next migration is probed before it is handed over.
+
+**Step 104 — an X across a shaft is an opening.** The drafter's mark for a shaft or a stair is two oblique lines of
+one length crossing at their midpoints (`XMarks`: over 10° off both axes, lengths within a fifth, crossing within a
+tenth of both midpoints, and an arm crossing more than one partner is hatch, not a mark). A region of one inside a
+plate is written as a loop of its own, which the DXF side reads as an opening and the composer cuts. First form's gate:
+31065 0→22, 31130 4→46, 31138 3→23, 31202 0→11 — and **31168 0→561**, unexplained.
+
+**The check was built before the rule was touched** (rule 11): `ModelYardstick` now judges openings against her export
+— ours on the shared storeys inside her footprint, hers, ours with the centre of one of hers within 1.5 m, hers with
+one of ours, the unmatched of each by plan size (`Openings`, `OursOpeningsUnmatchedBySize`,
+`TheirsOpeningsUnmatchedBySize`, one line of `Summary`, so every `yardstick.txt` of run 29 carries it). And
+`model-render` draws openings (white, dashed, an X), since a count of 561 was not something anyone had looked at.
+
+**What the corpus said, five gate sets with her export, her storeys only:**
+
+| set | ours judged | hers | ours she has | hers we have | ours she has not (size) | hers we have not (size) |
+|---|---|---|---|---|---|---|
+| 31168 | 84 (4 beyond) | 64 | 70 (83%) | 60 (94%) | 2.5×2.5 m ×12 | 2×5.5 ×2, small ×2 |
+| 31138 | 21 | 127 | 17 (81%) | 17 (13%) | four, one each | 0×4.5 slits ×60, sleeves ≤1 m ×42 |
+| 31202 | 9 | 53 | 9 (100%) | 9 (17%) | – | 2.5×3.5 ×9, 2.5×4 ×9 (shafts, no X), 8.5×31 ×8 |
+| 31130 | 20 (17 beyond) | 33 | 12 (60%) | 6 (18%) | 2.5×2.5 ×4, 2×5.5 ×2 | 1×2.5 ×15, 2×5.5 ×11 |
+| 31065 | 8 (12 beyond) | 129 | 3 (38%) | 3 (2%) | 3×3 ×2 | slits ×60, sleeves ×46, 2×5.5 ×13 |
+
+111 of 142 (78%) of the X-openings are hers where she modelled. The recall side is the next steps' list: her slits
+and sleeves are under a metre (not ours to read from a concrete outline), her shafts drawn without an X (31202's
+2.5×3.5 on nine storeys, its 8.5×31 m void) are.
+
+**The 561.** Her export of 31168 is the podium and building C (13 storeys); the towers' L5–L40 are judged by nothing.
+Rendered: on L15–26 the plan draws a 3.6 × 1.5 m X-box either side of every perimeter column, 0–700 mm in from the
+slab edge — 72 of them — plus the three elevator X's in each core (real). The drafter's own DXF puts the arms on
+layer `JBP_G_EXISTING`, not the slab layer; the DXF route cut none of them. What the boxes are, the sheet does not say
+(no legend; the notes are column and slab-reinforcing notes). The slab-pass trace now prints every X with the nearest
+column footprint and the nearest wall to its region: the twelve boxes on a view all read column 0.0 ft; the core's
+elevator X's 18–21 ft from any column, 0.6 ft from their walls.
+
+**Two rules to refuse the boxes, each MEASURED AND REJECTED by her own models the same hour** — the openings figure was
+built first, so each rule was judged on the storeys she covers before it could be banked:
+
+| form | ours judged (5 sets) | hers among them | 31168 ours judged / hers / of her 64 ours |
+|---|---|---|---|
+| the X alone | 142 | 111 (78%) | 84 / 70 / 60 |
+| + a shaft stands 300 mm clear of the plate's edge | 87 | 60 (69%) | 33 / 20 / 10 |
+| + a shaft stands 150 mm clear of any column | ~90 | — | 33 / 20 / 10 |
+
+Her shafts on 31168's podium and building C stand within 300 mm of OUR plate's boundary (our podium plates are pieces)
+and have columns in their corner walls; each rule took fifty of the seventy of ours she has to remove boxes no model
+of hers judges. The corpus judges: **the X alone is banked**, the boxes stay on the towers' storeys, and the engineer's
+line is in `QUESTIONS.md` (what is a 3.6 × 1.5 m X-box beside every perimeter column?). Also rejected, at rule 10's
+second set: "an X's four triangles are one region" (a triangle open to the page made floor when its three siblings
+are) filled the open side of a stair or elevator core on a leaking plate and lifted the core's box over the 400 sq ft
+gate — 31065's south tower L7–L17 gained a 408 sq ft "floor", 31202's L2–L4 a 443 sq ft one. Kept: a ring lying wholly
+in X regions is a shaft's own box, never a floor of its own. Banked on the six sets: plates unchanged but four
+storeys' areas by 25–72 sq ft where an opening loop re-settled the plate; openings 31130 4 → 46, 31138 3 → 23,
+31065 0 → 22, 31202 0 → 11, 31168 0 → 561.
+
+**Run 28** (15:02 → 16:32 on `9c59efdb`, steps 99–103 + the mirror fallback): 260 of 296 (50054 back), **plates 74%**
+(2,088 of 2,835), and step 99 on the corpus — **−2,496 columns, +2,506 walls over 158 sets**, one for one; yardsticks
+7 better / 1 worse / 27 same. Its disagreements: 579 of ours still stand on a wall she modelled (606 before) — step 99
+took 27; the rest are scheduled sizes she models as piers (31087's 36×44, 31017's 18×30, 31053's 24×36) where 31130
+schedules 14×36 and models a column. Two practices; the engineer's line is in `QUESTIONS.md`, not in the code.

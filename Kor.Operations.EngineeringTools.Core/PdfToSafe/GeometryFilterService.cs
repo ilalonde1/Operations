@@ -1456,6 +1456,59 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         /// WHAT IT IS NOT: a fill, a hatch or a flood. Where the drawing's edge does not close, this
         /// finds nothing and the storey keeps having no plate, which the DXF side already reports.
         /// </summary>
+        /// <summary>An X mark's centre, its reach (the longer arm) and its region (the four ends in order round the crossing).</summary>
+        internal sealed record XMark(DxfPoint Centre, double Reach, IReadOnlyList<DxfPoint> Region)
+        {
+            /// <summary>The two lines, by index into the geometry's lines.</summary>
+            public (int A, int B) Arms { get; init; }
+        }
+
+        /// <summary>The minimum arm of an X that marks an opening: a shaft's X is 11-12 ft; a symbol's is under a metre.</summary>
+        internal const double XMarkMinArmMm = 2000;
+        /// <summary>The longest arm of an X that marks an opening: a stair's is under 30 ft; 31202's 109 ft X spans a region labelled 9" SLAB.</summary>
+        internal const double XMarkMaxArmMm = 9144;
+
+        /// <summary>
+        /// Every X on the page (step 104): two two-point lines of at least <see cref="XMarkMinArmMm"/>, each over 10 degrees
+        /// off both axes, of one length within a fifth, crossing within a tenth of the length of both midpoints.
+        /// </summary>
+        internal static List<XMark> XMarks(ExtractedGeometry result)
+        {
+            var marks = new List<XMark>();
+            var longLines = new List<(int I, double Lx, double Ly, double Len)>();
+            for (int i = 0; i < result.Lines.Count; i++)
+            {
+                var l = result.Lines[i];
+                if (l.Count != 2 || result.LineIsAnnotation[i]) continue;
+                double dx = l[1].X - l[0].X, dy = l[1].Y - l[0].Y, len = Math.Sqrt(dx * dx + dy * dy);
+                if (len < XMarkMinArmMm || Math.Min(Math.Abs(dx), Math.Abs(dy)) / len <= 0.17) continue;   // 10 degrees off both axes
+                longLines.Add((i, dx, dy, len));
+            }
+            for (int a = 0; a < longLines.Count; a++)
+                for (int b = a + 1; b < longLines.Count; b++)
+                {
+                    var (ia, rx, ry, lp) = longLines[a]; var (ib, sx, sy, lq) = longLines[b];
+                    if (Math.Abs(lp - lq) > 0.2 * Math.Max(lp, lq)) continue;
+                    var p = result.Lines[ia]; var q = result.Lines[ib];
+                    double cross = rx * sy - ry * sx;
+                    if (Math.Abs(cross) < 1e-9) continue;
+                    double qpx = q[0].X - p[0].X, qpy = q[0].Y - p[0].Y;
+                    double t = (qpx * sy - qpy * sx) / cross, u = (qpx * ry - qpy * rx) / cross;
+                    if (Math.Abs(t - 0.5) > 0.1 || Math.Abs(u - 0.5) > 0.1) continue;
+                    var centre = new DxfPoint(p[0].X + t * rx, p[0].Y + t * ry);
+                    var ends = new[] { p[0], p[1], q[0], q[1] }.Select(e => new DxfPoint(e.X, e.Y))
+                        .OrderBy(e => Math.Atan2(e.Y - centre.Y, e.X - centre.X)).ToList();
+                    marks.Add(new XMark(centre, Math.Max(lp, lq), ends) { Arms = (ia, ib) });
+                }
+            // AN X STANDS ALONE: a cross-hatch is diagonals in two directions crossing each other at their middles by
+            // the hundred (31130's L17 sheet: 100 "X marks" of 19 ft within a metre of one another), and none of them
+            // is a shaft. An arm that crosses more than one partner is hatch; only a pair whose arms cross nothing else
+            // this way is the mark.
+            var partners = new Dictionary<int, int>();
+            foreach (var m in marks) { partners[m.Arms.A] = partners.GetValueOrDefault(m.Arms.A) + 1; partners[m.Arms.B] = partners.GetValueOrDefault(m.Arms.B) + 1; }
+            return marks.Where(m => partners[m.Arms.A] == 1 && partners[m.Arms.B] == 1).ToList();
+        }
+
         internal static void SlabEdgesFromLoops(ExtractedGeometry result, IList<PathFate>? fates, int firstFate,
             double slabEdgeBridgeMm = DefaultSlabEdgeBridgeMm, double minSlabAreaMm2 = DefaultMinSlabAreaMm2,
             double minWallThicknessMm = PdfIntakeOptions.DefaultMinWallThicknessMm, double maxWallThicknessMm = PdfIntakeOptions.DefaultMaxWallThicknessMm)
@@ -1696,6 +1749,29 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             // (32,076 sq ft) and every room inside it; the union could only add cells inside that path.
             bool walkFoundAFloor = loops.Any(l => l.Area >= minSlabAreaMm2 && StandsIn(l))
                                    || drawn.Any(d => StandsIn(new PlanLoop("SLABEDGE", d, true)));
+            // AN X ACROSS A SHAFT IS AN OPENING (intake step 104, 2026-09-16). The drafter's mark for a shaft or a stair is
+            // two oblique lines of one length crossing at their midpoints - the X. 31202's elevator shafts carry 12 ft
+            // ones on every plan, 31130's and 31138's 11 ft ones. The X's region is the quadrilateral of its four ends;
+            // one inside a plate is written as an opening loop the DXF side cuts. The plate itself is left as the union
+            // finds it: MEASURED AND REJECTED the same hour - keeping the X's cells out of the union took 31202's
+            // 10,702 sq ft lower roof (its 109 ft X spans a region labelled 9" SLAB - a region mark, not a void), 31130's
+            // L2 plate, and a rim off 31065 and 31168. An X longer than a stair is not an opening's mark (XMarkMaxArmMm).
+            // WHAT IT DOES NOT: a box crossed by ONE diagonal (a section mark, step 79); axis-aligned crossings (a grid,
+            // a tendon - both arms must be over 10 degrees off the axes); arms of unequal length (a leader over a line).
+            // and never an X with structure in it: a box with an X is also how a column above or below is drawn (31168:
+            // 561 "openings" on 37 storeys, one per column, before this)
+            var xMarks = XMarks(result).Where(x => x.Reach <= XMarkMaxArmMm
+                && !result.Columns.Any(c => LoopGeometry.PointInPolygon(new DxfPoint(c.X, c.Y), x.Region))
+                && !result.Walls.Any(w => LoopGeometry.PointInPolygon(new DxfPoint((w.Start.X + w.End.X) / 2, (w.Start.Y + w.End.Y) / 2), x.Region))).ToList();
+
+            double NearestColumnFootprintFt(DxfPoint p) => result.Columns.Count == 0 ? -1
+                : result.Columns.Select((c, k) => (c, half: (k < result.ColumnSizes.Count ? Math.Max(result.ColumnSizes[k].WidthMm, result.ColumnSizes[k].DepthMm) : 400.0) / 2))
+                    .Min(t => Math.Max(Math.Abs(t.c.X - p.X) - t.half, Math.Abs(t.c.Y - p.Y) - t.half)) / 304.8;
+            // each X with the nearest column footprint and the nearest wall to its region's edge, in ft: a shaft is
+            // bounded by walls; 31168's edge boxes flank a column
+            FaceTrace?.Invoke($"slab pass: {xMarks.Count} X mark(s) (an opening's mark, step 104; reach ft at centre ft [column ft, wall ft]): " +
+                      string.Join(" ", xMarks.OrderByDescending(x => x.Reach).Take(20).Select(x =>
+                          $"{x.Reach / 304.8:0} ({x.Centre.X / 304.8:0},{x.Centre.Y / 304.8:0})[{x.Region.Min(NearestColumnFootprintFt):0.0},{(result.Walls.Count == 0 ? -1 : x.Region.Min(p => result.Walls.Min(w => LoopGeometry.DistanceToSegment(p, new DxfPoint(w.Start.X, w.Start.Y), new DxfPoint(w.End.X, w.End.Y)))) / 304.8):0.0}]")));
             if (!walkFoundAFloor && arranged.Count >= 3)
             {
                 try
@@ -1717,16 +1793,6 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         // a path crosses no line from it to the page's edge. On a 150 mm raster of the arranged lines, the widest
                         // such path's narrowest place is the gap the ring leaks through; a ring open without a dangling end
                         // (both sides of the gap are junctions) shows nowhere else.
-                        // A BOX CROSSED BY ITS OWN DIAGONALS (instrument, 2026-09-16): the drafter's mark for an opening - a shaft,
-                        // a stair, open to below - is an X across the box. Counted here before any rule: cells whose two diagonals
-                        // are both drawn as lines (each end within the join tolerance of opposite corners).
-                        var crossed = cells.Where(f => f.Outer.Points.Count == 4 && Enumerable.Range(0, 2).All(k =>
-                            result.Lines.Any(l => l.Count == 2 && (
-                                (Near(l[0], f.Outer.Points[k]) && Near(l[1], f.Outer.Points[k + 2])) ||
-                                (Near(l[1], f.Outer.Points[k]) && Near(l[0], f.Outer.Points[k + 2])))))).ToList();
-                        FaceTrace($"slab pass: {crossed.Count} four-sided cell(s) crossed by both diagonals (an opening's mark): " +
-                                  string.Join(" ", crossed.Select(f => $"{Math.Abs(f.Outer.Area) / 92903.04:0}{(Holds(f) ? "*" : "")}")));
-                        bool Near((double X, double Y) a, DxfPoint b) => Math.Abs(a.X - b.X) <= 25 && Math.Abs(a.Y - b.Y) <= 25;
                         var big = cells.Where(f => Math.Abs(f.Outer.Area) >= 92903.04 * 500).ToList();
                         FaceTrace($"slab pass: {big.Count} cell(s) of 500 sq ft or more: " + string.Join(" | ", big.Select(f =>
                             $"{Math.Abs(f.Outer.Area) / 92903.04:0} sq ft x {f.Outer.Points.Min(p => p.X) / 304.8:0}..{f.Outer.Points.Max(p => p.X) / 304.8:0} y {f.Outer.Points.Min(p => p.Y) / 304.8:0}..{f.Outer.Points.Max(p => p.Y) / 304.8:0} ft, {f.Holes.Count} hole(s)")));
@@ -1755,6 +1821,13 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     // its ring the floor round it; of two parallel edge lines the outer is the edge, where her plate runs.
                     bool WrapsTheFloor(PlanarRings.Face cell) => cell.Holes.Any(h => result.Columns.Any(c => LoopGeometry.PointInPolygon(new DxfPoint(c.X, c.Y), h.Points))
                                                                                    || result.Walls.Any(w => LoopGeometry.PointInPolygon(new DxfPoint((w.Start.X + w.End.X) / 2, (w.Start.Y + w.End.Y) / 2), h.Points)));
+                    // ⛔ MEASURED AND REJECTED (step 104, 16:10-16:30): "an X's four triangles are one region" - a triangle of an
+                    // X touching the outside made floor when the X's other three are, so that an X-box on the plate's edge
+                    // (31168's L15-26, whole by the walk) would not notch an arrangement-built plate. Two of six sets broke
+                    // the same way: on a leaking plate the rule filled the open side of a stair or elevator core and lifted
+                    // the core's box over the 400 sq ft floor gate - 31065's south tower L7-L17 gained a 408 sq ft "floor",
+                    // 31202's L2-L4 a 443 sq ft one. An edge X-box in the arrangement path keeps its notch (no real set
+                    // shows one yet; the fixture in AnXAcrossARegionIsAnOpeningTests takes the walk path, as 31168 does).
                     loops.AddRange(planar.RecoverSurfaces(_ => false, (i, cell) => Holds(cell) || WrapsTheFloor(cell) || !planar.TouchesTheOutside(i)).Slabs.Select(f => f.Outer));
                 }
                 catch (InvalidOperationException refused)
@@ -1763,9 +1836,12 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 }
             }
 
-            // big enough to be a floor, and with something standing in it
+            // big enough to be a floor, and with something standing in it - and not a shaft's own box: a ring that lies
+            // wholly in an X's region is the opening the X marks, never a floor of its own (step 104: 31065's south
+            // tower on a leaking plate, the two elevator shafts' box at 408 sq ft was the storey's only "floor")
             var floors = loops
                 .Where(l => l.Area >= minSlabAreaMm2 && StandsIn(l))
+                .Where(l => xMarks.Count == 0 || !l.Points.All(p => xMarks.Any(x => LoopGeometry.InsideOrOn(p, x.Region, SlabEdgeJoinMm))))   // two shafts side by side are one ring over two X's
                 .OrderByDescending(l => l.Area)
                 .ToList();
 
@@ -1786,7 +1862,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                               $"walk found a floor: {walkFoundAFloor}; arranged {arranged.Count}; refused: {result.SlabEdgeArrangementRefused ?? "-"}; " +
                               $"rings {loops.Count} (sq ft: {string.Join(",", loops.OrderByDescending(l => l.Area).Take(6).Select(l => (l.Area / 92903.04).ToString("0")))}); " +
                               $"floors (big enough, structure stands in) {floors.Count}; the three largest rings: " +
-                              string.Join(" | ", loops.OrderByDescending(l => l.Area).Take(3).Select(l => $"{l.Area / 92903.04:0} sq ft {Neighbourhood(l)}")));
+                              string.Join(" | ", loops.OrderByDescending(l => l.Area).Take(3).Select(l => $"{l.Area / 92903.04:0} sq ft {Neighbourhood(l)}, {l.Points.Count(p => xMarks.Any(x => LoopGeometry.InsideOrOn(p, x.Region, SlabEdgeJoinMm)))} of {l.Points.Count} vertices in an X, extent x {l.Points.Min(p => p.X) / 304.8:0.0}..{l.Points.Max(p => p.X) / 304.8:0.0} y {l.Points.Min(p => p.Y) / 304.8:0.0}..{l.Points.Max(p => p.Y) / 304.8:0.0} ft")));
             if (floors.Count == 0) return;
 
             // and outermost: a core's ring inside a floor is a hole in it, not a second floor. INSIDE A DRAWN FLOOR
@@ -1811,6 +1887,29 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 result.Slabs.Add(loop.Points.Select(p => (p.X, p.Y)).ToList());
                 result.SlabColors.Add(((byte)0, (byte)0, (byte)0));
                 result.SlabIsAnnotation.Add(false);
+                // the X regions inside this plate, written as loops of their own: the DXF side reads a ring inside a floor
+                // as an opening (StructuralPlanClassifier), and the composer cuts it from the plate (step 104)
+                foreach (var x in xMarks)
+                {
+                    if (!x.Region.All(p => LoopGeometry.InsideOrOn(p, loop.Points, SlabEdgeJoinMm))) continue;
+                    double regionArea = Math.Abs(PolygonProcessor.PolygonAreaMm2(x.Region.Select(p => (p.X, p.Y)).ToList()));
+                    if (regionArea >= 0.5 * loop.Area) continue;   // more than half the floor is not a hole in it
+                    // ⛔ MEASURED AND REJECTED, TWICE, BY HER OWN MODELS (step 104, 16:00-16:55). 31168's L15-26 plans draw a
+                    // 3.6 x 1.5 m (and 1.5 x 4.8 m) X-box either side of every perimeter column, 0-700 mm in from the slab
+                    // edge - 72 of them, 561 "openings" on the towers, on storeys no model of hers covers. Two rules to refuse
+                    // them, each judged by ModelYardstick.Openings on the five sets with her export (her storeys only):
+                    //   none            ours judged 142, hers among them 111 (78%); 31168: 84 judged, 70 hers, 60 of her 64 ours
+                    //   edge clear 300  ours judged  87, hers among them  60 (69%); 31168: 33 judged, 20 hers, 10 of her 64 ours
+                    //   column clear    ours judged  ~90, ...              31168: 33 judged, 20 hers, 10 of her 64
+                    // Her shafts on 31168's podium and building C stand within 300 mm of OUR plate's boundary (our podium
+                    // plates are pieces) and have columns in their corner walls: both rules took fifty of hers to remove the
+                    // boxes. The corpus judges; the boxes stay until a model of hers covers L15-26 or an engineer says what
+                    // they are (QUESTIONS.md). What the boxes are, the sheet does not say; their arms sit on the drafter's
+                    // layer JBP_G_EXISTING, not the slab layer.
+                    result.Slabs.Add(x.Region.Select(p => (p.X, p.Y)).ToList());
+                    result.SlabColors.Add(((byte)0, (byte)0, (byte)0));
+                    result.SlabIsAnnotation.Add(false);
+                }
 
                 // the lines that lie on it are its edge, not beams
                 foreach (int i in candidates)

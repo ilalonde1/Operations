@@ -18,8 +18,10 @@ namespace Kor.Operations.EngineeringTools.Dxf;
 /// The SVG is the artefact; the PNG is Edge's screenshot of it (headless, its own profile — a
 /// running Edge swallows the call otherwise — forward-slash file URL, one retry), for the terminal
 /// and the deliverable. Storeys with nothing on them are not drawn, and the sheet says how many
-/// were. WHAT THIS DOES NOT DRAW: beams and braces (thin purple, as the script did), openings,
-/// sections' thicknesses; and it does not judge — it shows.
+/// were. Openings (an AREA assigned OPENING "Yes") are drawn white over the plate with a dashed
+/// edge and an X through them, since step 104 (2026-09-16) reads the drafter's X as one and 31168
+/// came out with 561 of them - counted, not seen. WHAT THIS DOES NOT DRAW: beams and braces (thin
+/// purple, as the script did), sections' thicknesses; and it does not judge — it shows.
 /// </remarks>
 public static class ModelRender
 {
@@ -44,6 +46,12 @@ public static class ModelRender
         {
             var m = Regex.Match(raw.TrimStart(), @"^LINE\s+""([^""]+)""\s+(\w+)\b");
             if (m.Success) kinds[m.Groups[1].Value] = m.Groups[2].Value;
+        }
+        var openings = new HashSet<string>(StringComparer.Ordinal);
+        foreach (string raw in doc.LinesOf("AREA ASSIGNS"))
+        {
+            var m = Regex.Match(raw.TrimStart(), @"^AREAASSIGN\s+""([^""]+)""\s+""[^""]*""\s+OPENING\s+""Yes""");
+            if (m.Success) openings.Add(m.Groups[1].Value);
         }
         var points = doc.PlanPointsOfObjects();
         var storeysOf = doc.StoreysByObject();
@@ -75,7 +83,8 @@ public static class ModelRender
             int nf = objs.Count(o => kinds.TryGetValue(o, out var k) && k == "FLOOR");
             int nw = objs.Count(o => kinds.TryGetValue(o, out var k) && k == "PANEL");
             int nc = objs.Count(o => kinds.TryGetValue(o, out var k) && k == "COLUMN");
-            sb.Append(CultureInfo.InvariantCulture, $"<text x=\"{ox}\" y=\"{oy - 6}\" font-family=\"monospace\" font-size=\"11\">{Escape(storey)}  {nf}f {nw}w {nc}c</text>\n");
+            int no = objs.Count(openings.Contains);
+            sb.Append(CultureInfo.InvariantCulture, $"<text x=\"{ox}\" y=\"{oy - 6}\" font-family=\"monospace\" font-size=\"11\">{Escape(storey)}  {nf}f {nw}w {nc}c{(no > 0 ? $" {no}o" : "")}</text>\n");
             sb.Append(CultureInfo.InvariantCulture, $"<rect x=\"{ox}\" y=\"{oy}\" width=\"{cellPx}\" height=\"{cellPx}\" fill=\"none\" stroke=\"#ddd\"/>\n");
             (double X, double Y) Xy((double X, double Y) p) => (ox + (p.X - minX) * sc, oy + cellPx - (p.Y - minY) * sc);
             string Pts(IEnumerable<(double X, double Y)> ps) => string.Join(" ", ps.Select(Xy).Select(q => $"{q.X.ToString("F1", CultureInfo.InvariantCulture)},{q.Y.ToString("F1", CultureInfo.InvariantCulture)}"));
@@ -86,6 +95,14 @@ public static class ModelRender
                 {
                     sb.Append(CultureInfo.InvariantCulture, $"<polygon points=\"{Pts(ps)}\" fill=\"{Shades[nth % Shades.Length]}\" fill-opacity=\"0.5\" stroke=\"{Edges[nth % Edges.Length]}\" stroke-width=\"1.1\"/>\n");
                     nth++;
+                }
+            foreach (var o in objs)
+                if (openings.Contains(o) && points.TryGetValue(o, out var ps) && ps.Count >= 3)
+                {
+                    sb.Append(CultureInfo.InvariantCulture, $"<polygon points=\"{Pts(ps)}\" fill=\"#fff\" stroke=\"#333\" stroke-width=\"0.9\" stroke-dasharray=\"3,2\"/>\n");
+                    double xa = ps.Min(p => p.X), xb = ps.Max(p => p.X), ya = ps.Min(p => p.Y), yb = ps.Max(p => p.Y);
+                    var c1 = Xy((xa, ya)); var c2 = Xy((xb, yb)); var c3 = Xy((xa, yb)); var c4 = Xy((xb, ya));
+                    sb.Append(CultureInfo.InvariantCulture, $"<path d=\"M{c1.X:F1},{c1.Y:F1} L{c2.X:F1},{c2.Y:F1} M{c3.X:F1},{c3.Y:F1} L{c4.X:F1},{c4.Y:F1}\" stroke=\"#333\" stroke-width=\"0.6\"/>\n");
                 }
             foreach (var o in objs)
             {
