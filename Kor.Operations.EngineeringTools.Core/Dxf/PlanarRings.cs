@@ -112,10 +112,16 @@ public sealed class PlanarRings
                     throw new ArgumentException("PlanarRings requires finite coordinates within +/-1e9 drawing units.", nameof(segments));
         // This is a TEXT provenance label, not a geometric ordering or a selection of structural roles.
         string layer = input.Select(s => s.Layer).OrderBy(s => s, StringComparer.Ordinal).FirstOrDefault() ?? "";
-        var mesh = Arrange(input.Select(s => new Span(s.Start, s.End, false)).ToList(), layer);
-        var additions = Bridges(mesh);
+        var first = Arrange(input.Select(s => new Span(s.Start, s.End, false)).ToList(), layer);
+        var additions = Bridges(first, out var split);
+        return Finish(first, additions, split, layer);
+    }
+
+    private Result Finish(Mesh first, List<Span> additions, HashSet<int> split, string layer)
+    {
+        var mesh = first;
         if (additions.Count > 0)
-            mesh = Arrange(mesh.Edges.Select(e => new Span(mesh.Points[e.A], mesh.Points[e.B], e.Inserted)).Concat(additions).ToList(), layer);
+            mesh = Arrange(first.Edges.Select((e, i) => (e, i)).Where(t => !split.Contains(t.i)).Select(t => new Span(first.Points[t.e.A], first.Points[t.e.B], t.e.Inserted)).Concat(additions).ToList(), layer);
         mesh.Cut = CutEdges(mesh);
         mesh.Stars = Stars(mesh);
         var cycles = Walk(mesh, Enumerable.Range(0, mesh.Edges.Count * 2).Select(h => !mesh.Cut[h / 2]).ToArray());
@@ -130,6 +136,8 @@ public sealed class PlanarRings
     {
         /// <summary>B is the edge the end is carried onto, not another end (step 112): only A has a choice to make.</summary>
         public bool ToEdge { get; init; }
+        /// <summary>The foot of the carry: the edge B is split there, so the foot is a vertex of the mesh and not a contact.</summary>
+        public DxfPoint Foot { get; init; }
     }
     internal sealed class Mesh(string layer, double tolerance, List<DxfPoint> points, List<Edge> edges)
     {
@@ -256,8 +264,9 @@ public sealed class PlanarRings
         }
     }
 
-    private List<Span> Bridges(Mesh mesh)
+    private List<Span> Bridges(Mesh mesh, out HashSet<int> split)
     {
+        split = new HashSet<int>();
         if (_bridgeTolerance <= _joinTolerance && _extendLimit <= _joinTolerance) return [];
         var ends = Enumerable.Range(0, mesh.Points.Count).Where(i => mesh.Adjacency[i].Count == 1).ToList();
         var candidates = new List<Proposal>();
@@ -307,7 +316,8 @@ public sealed class PlanarRings
                 if (bestE < 0) continue;
                 var carry = new Span(p, foot, true);
                 if (Enumerable.Range(0, mesh.Edges.Count).Any(e => e != bestE && Conflicts(carry, new Span(mesh.Points[mesh.Edges[e].A], mesh.Points[mesh.Edges[e].B], false), true))) continue;
-                candidates.Add(new Proposal(a, bestE, Math.Round(bestD, 6), [carry]) { ToEdge = true });
+                var ea = mesh.Points[mesh.Edges[bestE].A]; var eb = mesh.Points[mesh.Edges[bestE].B]; bool ins = mesh.Edges[bestE].Inserted;
+                candidates.Add(new Proposal(a, bestE, Math.Round(bestD, 6), [carry, new Span(ea, foot, ins), new Span(foot, eb, ins)]) { ToEdge = true, Foot = foot });
             }
         var unique = new Dictionary<int, Proposal>();
         foreach (int end in ends)
@@ -320,9 +330,13 @@ public sealed class PlanarRings
         }
         var agreed = candidates.Where(c => unique.GetValueOrDefault(c.A) == c && (c.ToEdge || unique.GetValueOrDefault(c.B) == c)).ToList();
         // Crossing proposals are BOTH refused; processing one first would reintroduce ownership by arrival.
-        return agreed.Where(c => !agreed.Any(o => !ReferenceEquals(c, o)
-                && c.Spans.Any(a => o.Spans.Any(b => Conflicts(a, b, false)))))
-            .SelectMany(c => c.Spans).ToList();
+        // an edge carried onto twice would be split twice: only the cheapest carry onto each edge stands
+        var onEdge = agreed.Where(c => c.ToEdge).GroupBy(c => c.B).SelectMany(g => g.OrderBy(c => c.Cost).Skip(1)).ToHashSet();
+        agreed = agreed.Where(c => !onEdge.Contains(c)).ToList();
+        var kept = agreed.Where(c => !agreed.Any(o => !ReferenceEquals(c, o)
+                && c.Spans.Any(a => o.Spans.Any(b => Conflicts(a, b, false))))).ToList();
+        foreach (var c in kept.Where(c => c.ToEdge)) split.Add(c.B);
+        return kept.SelectMany(c => c.Spans).ToList();
     }
 
     private static bool[] CutEdges(Mesh mesh)
