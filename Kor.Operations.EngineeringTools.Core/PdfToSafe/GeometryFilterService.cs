@@ -1898,6 +1898,10 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             foreach (var (centre, ends) in endsAtColumn)
                 if (ends.Count >= 2)
                     foreach (var end in ends) carried.Add(new DxfSegment("SLABEDGE", end, centre));
+            // the trace says which columns took two ends and which were run into by one end alone (the edge-beside-a-column
+            // class, 30838's 12/F and 31138's tower: the other edge starts at the column's far corner and runs away from it)
+            FaceTrace?.Invoke($"slab pass: ends at columns (step 97; centre ft: ends): " + string.Join(" ", endsAtColumn.OrderByDescending(e => e.Value.Count)
+                .Select(e => $"({e.Key.X / 304.8:0.0},{e.Key.Y / 304.8:0.0}):{e.Value.Count}{(e.Value.Count < 2 ? "-lone" : "")}")));
             FaceTrace?.Invoke($"slab pass: {carried.Count} edge end(s) joined through {endsAtColumn.Count(e => e.Value.Count >= 2)} column(s)");
             var arranged = pieceSegments.Concat(inLine).Concat(strokes).Concat(carried).ToList();
             foreach (var l in built.Loops)
@@ -2074,6 +2078,42 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     var planar = new PlanarRings(SlabEdgeJoinMm, slabEdgeBridgeMm, SlabEdgeExtendMm).Build(arranged);
                     if (FaceTrace is not null)
                     {
+                        // WHAT THE ARRANGEMENT HOLDS ROUND A COLUMN ONE EDGE ALONE RUNS INTO (the edge-beside-a-column class,
+                        // 23:40): its mesh points within 1.5 m of each such column, with their degree, offset in inches from
+                        // the column's centre - so the next rule is written on what the arrangement sees, not on a picture
+                        if (planar.Topology is { } mesh)
+                            foreach (var (centre, ends) in endsAtColumn.Where(e => e.Value.Count == 1).Take(4))
+                            {
+                                var near = Enumerable.Range(0, mesh.Points.Count)
+                                    .Where(i => mesh.Points[i].DistanceTo(centre) <= 1500)
+                                    .OrderBy(i => mesh.Points[i].DistanceTo(centre))
+                                    .Select(i => $"({(mesh.Points[i].X - centre.X) / 25.4:0},{(mesh.Points[i].Y - centre.Y) / 25.4:0})d{mesh.Adjacency[i].Count}");
+                                FaceTrace($"slab pass: lone column at ({centre.X / 304.8:0.0},{centre.Y / 304.8:0.0}) ft: arrangement points within 1.5 m (offset in, degree): {string.Join(" ", near)}");
+                            }
+                        // AND THE ENDS LEFT DANGLING A HAND'S WIDTH FROM ANOTHER EDGE'S MIDDLE (23:45): the arrangement bridges an
+                        // end to an end, and joins an end ON a span within the join tolerance; an end short of a span by up to
+                        // the bridge (a T drawn short) is neither, and closes on the raster (150 mm) but not here
+                        if (planar.Topology is { } m2)
+                        {
+                            var tees = new List<string>();
+                            for (int i = 0; i < m2.Points.Count && tees.Count < 12; i++)
+                            {
+                                if (m2.Adjacency[i].Count != 1) continue;
+                                var p = m2.Points[i]; int own = m2.Adjacency[i][0];
+                                for (int e = 0; e < m2.Edges.Count; e++)
+                                {
+                                    if (e == own) continue;
+                                    var a = m2.Points[m2.Edges[e].A]; var b = m2.Points[m2.Edges[e].B];
+                                    double ex = b.X - a.X, ey = b.Y - a.Y, len2 = ex * ex + ey * ey;
+                                    if (len2 <= 0) continue;
+                                    double t = ((p.X - a.X) * ex + (p.Y - a.Y) * ey) / len2;
+                                    if (t <= 0.02 || t >= 0.98) continue;
+                                    double fx = a.X + t * ex - p.X, fy = a.Y + t * ey - p.Y, d = Math.Sqrt(fx * fx + fy * fy);
+                                    if (d > SlabEdgeJoinMm && d <= slabEdgeBridgeMm) { tees.Add($"({p.X / 304.8:0.0},{p.Y / 304.8:0.0})ft {d / 25.4:0.0}in"); break; }
+                                }
+                            }
+                            FaceTrace($"slab pass: {tees.Count}{(tees.Count >= 12 ? "+" : "")} end(s) short of another edge's middle by under the bridge (a T drawn short): {string.Join(" ", tees)}");
+                        }
                         var cells = planar.Faces.OrderByDescending(f => Math.Abs(f.Outer.Area)).ToList();
                         int inACell = result.Columns.Count(c => cells.Any(f => LoopGeometry.PointInPolygon(new DxfPoint(c.X, c.Y), f.Outer.Points)));
                         FaceTrace($"slab pass: arrangement {cells.Count} cell(s); columns in a cell {inACell} of {result.Columns.Count}; " +
