@@ -187,6 +187,38 @@ public static class E2kModelQuery
     }
 
     /// <summary>
+    /// Every opening a metre and more across each way, with how many of the storey's columns stand strictly inside it
+    /// (step 107b, 2026-09-16): the question "does an engineer ever cut a hole with a column in it" - asked of her 106
+    /// exported models before the rule was written: 37 of 2,615 do (1.4%), nineteen of them on one set. A column is its
+    /// COLUMN line's first joint on the storey the opening's assign names.
+    /// </summary>
+    public static IReadOnlyList<(string Storey, string Object, double AreaSqFt, int ColumnsInside)> OpeningsWithColumnsInside(E2kDocument doc, double minSideMm = 1000)
+    {
+        ArgumentNullException.ThrowIfNull(doc);
+        double u = doc.LengthUnitInInches() ?? 1.0;
+        var plan = doc.PlanPointsOfObjects();
+        var storeysOf = doc.StoreysByObject();
+        var columnsByStorey = new Dictionary<string, List<(double X, double Y)>>(StringComparer.OrdinalIgnoreCase);
+        foreach (string raw in doc.LinesOf("LINE CONNECTIVITIES"))
+        {
+            var m = System.Text.RegularExpressions.Regex.Match(raw.TrimStart(), @"^LINE\s+""([^""]+)""\s+COLUMN\b");
+            if (!m.Success || !plan.TryGetValue(m.Groups[1].Value, out var pts) || pts.Count == 0 || !storeysOf.TryGetValue(m.Groups[1].Value, out var on)) continue;
+            foreach (var st in on) (columnsByStorey.TryGetValue(st, out var l) ? l : columnsByStorey[st] = new List<(double, double)>()).Add(pts[0]);
+        }
+        var result = new List<(string, string, double, int)>();
+        foreach (var (obj, storeyOfRow, _, isOpening) in AreaSections(doc))
+        {
+            if (!isOpening || !plan.TryGetValue(obj, out var pts) || pts.Count < 3) continue;
+            double w = (pts.Max(p => p.X) - pts.Min(p => p.X)) * u * 25.4, h = (pts.Max(p => p.Y) - pts.Min(p => p.Y)) * u * 25.4;
+            if (Math.Min(w, h) < minSideMm) continue;
+            var poly = pts.Select(p => new DxfPoint(p.X, p.Y)).ToList();
+            int inside = columnsByStorey.TryGetValue(storeyOfRow, out var cols) ? cols.Count(c => LoopGeometry.PointInPolygon(new DxfPoint(c.X, c.Y), poly)) : 0;
+            result.Add((storeyOfRow, obj, PolygonAreaSqFt(pts, u), inside));
+        }
+        return result.OrderByDescending(x => x.Item4).ThenByDescending(x => x.Item3).ToList();
+    }
+
+    /// <summary>
     /// What the model holds near a point on plan, nearest first — the question behind "what did we model at the
     /// wall that is not on the drawing?" (2026-09-16: 31168's KW235, a wall along a line no layer draws, was found by
     /// asking this of the model and then <c>dxf-inspect --near</c> of the drawing at the same point). Every object

@@ -279,7 +279,7 @@ public static class TakeoffCliHelp
         new("e2k-takeoff", "takeoff e2k-takeoff <model.e2k> <out.xlsx> [--metric]", "Price the concrete in a generated ETABS model."),
         new("revit-takeoff", "takeoff revit-takeoff <folder|schedule.csv> [more.csv ...] <out.xlsx>", "Price the concrete straight off Revit schedule exports."),
         new("sco-schedule", "takeoff sco-schedule <folder|file.SCO> [more...] <out.xlsx>", "Read a project's column demands out of its S-Concrete files."),
-        new("e2k-ask", "takeoff e2k-ask <model.e2k> [storeys|look|openings|sections|concrete] [storey]", "Ask a finished ETABS model about itself."),
+        new("e2k-ask", "takeoff e2k-ask <model.e2k | folder> [storeys|look|openings|sections|concrete] [storey]", "Ask a finished ETABS model about itself."),
         new("vector-takeoff", "takeoff vector-takeoff <pdf> <pngDir> <out.xlsx> [first] [last] [scale] [heightsJson] [--deterministic] [--fresh]", "Run the vector PDF quantity takeoff pipeline."),
         new("vector-plate", "takeoff vector-plate <pdf> <page> <png>", "Ask the vision layer for one slab plate box."),
         new("vector-zones", "takeoff vector-zones <pdf> <png> <page> <modalThk>", "Read thickened slab zones inside a plate."),

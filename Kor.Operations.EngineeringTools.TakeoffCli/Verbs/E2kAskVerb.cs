@@ -7,7 +7,28 @@ internal static class E2kAskVerb
 
     public static int Run(string[] args)
     {
-        if (args.Length < 2) { Console.Error.WriteLine("Usage: takeoff e2k-ask <model.e2k> [storeys|look|openings|sections|concrete] [storey]"); return 1; }
+        if (args.Length < 2) { Console.Error.WriteLine("Usage: takeoff e2k-ask <model.e2k | folder> [storeys|look|openings|openings-with-columns|sections|concrete] [storey]"); return 1; }
+        // A FOLDER OF MODELS ANSWERS AS A CORPUS (step 107b, 2026-09-16): the yardsticks folder holds 106 of the engineers'
+        // own exports, and a question put to all of them judges a rule before it is banked - summed, then the sets that say otherwise
+        if (Directory.Exists(args[1]) && args.Length >= 3 && args[2].Equals("openings-with-columns", StringComparison.OrdinalIgnoreCase))
+        {
+            int total = 0, with = 0, models = 0;
+            var bySet = new List<(string Model, int Holes, int With)>();
+            foreach (string e2k in Directory.EnumerateFiles(args[1], "*.e2k", SearchOption.TopDirectoryOnly).OrderBy(f => f, StringComparer.Ordinal))
+            {
+                try
+                {
+                    var holes = E2kModelQuery.OpeningsWithColumnsInside(E2kDocument.Load(e2k));
+                    if (holes.Count == 0) continue;
+                    models++; total += holes.Count; int w = holes.Count(h => h.ColumnsInside > 0); with += w;
+                    if (w > 0) bySet.Add((Path.GetFileNameWithoutExtension(e2k), holes.Count, w));
+                }
+                catch (Exception ex) { Console.Error.WriteLine($"  {Path.GetFileName(e2k)}: {ex.Message}"); }
+            }
+            Console.WriteLine($"{models} model(s) with openings a metre and more across: {total} opening(s), {with} hold a column of the storey inside ({(total == 0 ? 0 : 100.0 * with / total):F1}%)");
+            foreach (var (m, h, w) in bySet.OrderByDescending(x => x.With)) Console.WriteLine($"   {m,-14} {w,3} of {h,4}");
+            return 0;
+        }
         if (!File.Exists(args[1])) { Console.Error.WriteLine($"Model not found '{args[1]}'."); return 2; }
 
         var askDoc = E2kDocument.Load(args[1]);
@@ -53,6 +74,18 @@ internal static class E2kAskVerb
                 Console.WriteLine($"\n{holes.Count} opening(s), biggest first:");
                 foreach (var (st, obj, area) in holes.Where(h => askStorey is null || h.Storey.Contains(askStorey, StringComparison.OrdinalIgnoreCase)))
                     Console.WriteLine($"   {st,-16} {obj,-8} {area,9:N0} sq ft");
+                break;
+            }
+
+            case "openings-with-columns":
+            {
+                // step 107b's question: does the engineer cut a hole with a column in it? Ask one model, or every .e2k in a
+                // folder (takeoff e2k-ask <folder> openings-with-columns) - the corpus of her models judges a rule before it is banked
+                var holes = E2kModelQuery.OpeningsWithColumnsInside(askDoc);
+                int with = holes.Count(h => h.ColumnsInside > 0);
+                Console.WriteLine($"\n{holes.Count} opening(s) a metre and more across; {with} hold a column of the storey inside ({(holes.Count == 0 ? 0 : 100.0 * with / holes.Count):F1}%):");
+                foreach (var (st, obj, area, n) in holes.Where(h => h.ColumnsInside > 0).Take(20))
+                    Console.WriteLine($"   {st,-16} {obj,-8} {area,9:N0} sq ft  {n} column(s) inside");
                 break;
             }
 
