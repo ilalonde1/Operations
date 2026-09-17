@@ -2465,3 +2465,14 @@ another sheet is not cut, one a bay away is, the flag names sheet and storey), p
 EQ case with no openings at all, so "12 of ours, none hers" judged nothing. Section 6 now leaves a set whose model
 cuts no opening on the shared storeys off the list and counts it aside (`b…`). 31017 (37 of 63 not hers, her model
 cuts 42 we lack) is the next look.
+
+**107b (20:45–20:54).** 30933's worst were the DXF route's old "ring inside a floor" openings: a 21 × 22 m box with an X
+and FIVE columns in it, six 0.5 × 44 m slivers between parallel lines. Before widening 107 from "a column at the
+centre" to "a column anywhere inside, any size", the corpus was asked — `takeoff e2k-ask <folder> openings-with-columns`
+over the 106 exported models: 96 carry openings a metre and more across, 2,793 of them, and 39 (1.4%) hold a column of
+the storey inside, nineteen on one set (31148). So "a hole with a column standing in it is no hole" holds 98.6% of the
+time in her own work, and it is banked (`d4de4c7e`, `PlacedMembers.AnyInside`): on the six sets every opening it removed
+was one she does not have — 31130 48% → 55%, 31065 77% → 87%, 31138 91%; over the five, ours judged 203, hers among
+them 167 (82%). The question is an instrument now (`18972b74`; a folder of models answers as a corpus), the scratch
+script that first asked it is gone. What it does not catch: the 0.5 × 44 m slivers (no column in a half-metre strip) —
+"an opening narrower than a metre is no shaft" is the next candidate, and the corpus can be asked the same way.
