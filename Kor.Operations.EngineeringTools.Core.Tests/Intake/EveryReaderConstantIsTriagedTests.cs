@@ -37,6 +37,10 @@ public sealed class EveryReaderConstantIsTriagedTests
     private static Triage Dead(string why) => new(Class.Dead, why);
 
     // THE TABLE. File:Name → what it is. A convention names the row it should become.
+    /// <summary>The constants classed Rule that name a code or standard (NBC, BCBC, CSA): WP7's gate holds each to a knowledge.RuleClause row.</summary>
+    internal static IReadOnlyList<(string Name, string Why)> RulesNamingACode()
+        => Table.Where(kv => kv.Value.Class == Class.Rule && Regex.IsMatch(kv.Value.Why, @"\b(NBC|BCBC|CSA)\b")).Select(kv => (kv.Key, kv.Value.Why)).ToList();
+
     private static readonly IReadOnlyDictionary<string, Triage> Table = new Dictionary<string, Triage>(StringComparer.Ordinal)
     {
         // ---- rows already (the value in code is the compiled default of a banked or declared row) ----
