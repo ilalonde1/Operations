@@ -656,6 +656,16 @@ residues' cause. Not the PDF route; queued behind it.
    arrangement, the stair's symbol out): 31202 her wells 16 of 16, hers we have 13% → 37%; over five sets ours judged 165, hers
    129 (78%). Residue: 31138/31130/31065 draw treads another way. Run 29 (step 104) launched 17:02, banks ~18:30.
 
+3aj. **Autonomous evening 2026-09-16 17:46 → 20:00** (§115–§119). **Step 105** (`fa1eabaf`): a stair is a run of paper-fill treads and the
+   well is the cell they stand in (walls' outlines and closed doorways in the arrangement) — 31202 her wells 16 of 16. **105b**
+   (`0f23e293`): treads drawn as lines, and a sheet draws its treads one way — 31138 17 → 37 of hers. **105c** (`2cdab09f`): a
+   door drawn as a gap between two wall pieces closed for the well — 31065 10 → 70, 31138 → 77. **106** (`1eb67a7b`): a big X
+   is what its words say (OPEN at the crossing = a void; SLAB = a slab) — 31202 33 of 33, her big voids 7 of 8; migration 097
+   written and probed. Openings on the five sets since 16:00: ours judged 142 → 209, hers among them 111 → 166 (79%); hers we
+   have 95 → 246. **WP7** approved and its first block landed (§116): migration 096 applied 18:27, `takeoff knowledge-ingest`,
+   26 sources / 959 clause rows from EGBC's public documents, the gate `EveryRuleCitesItsAuthorityTests`. Run 29 (104+105)
+   relaunched 18:19 after a second ^C death (corpus-analyze refuses Ctrl-C now, `c6763975`); run 30 (105b/c, 106) follows it.
+
 4. **WP6** — one model in front of Andrea (31170's, or whichever the ledger ranks best of the
    architects' sets). Ian's call when.
 5. **Step 47**, the next reading rule, from the corpus. `takeoff corpus-query plan-titles` on the
