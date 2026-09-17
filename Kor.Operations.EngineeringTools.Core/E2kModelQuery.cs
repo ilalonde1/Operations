@@ -219,6 +219,25 @@ public static class E2kModelQuery
     }
 
     /// <summary>
+    /// Every opening's plan box (mm) with the storey: the raw material of a shape census over the engineers' models -
+    /// how thin, how long, how small the holes they cut are - so a reader rule about a shape is judged before it is
+    /// written (step 107b's method). Zero-width boxes are her modelling artefacts (a slit of no area) and are listed as such.
+    /// </summary>
+    public static IReadOnlyList<(string Storey, string Object, double WidthMm, double HeightMm)> OpeningBoxes(E2kDocument doc)
+    {
+        ArgumentNullException.ThrowIfNull(doc);
+        double u = doc.LengthUnitInInches() ?? 1.0;
+        var plan = doc.PlanPointsOfObjects();
+        var result = new List<(string, string, double, double)>();
+        foreach (var (obj, storeyOfRow, _, isOpening) in AreaSections(doc))
+        {
+            if (!isOpening || !plan.TryGetValue(obj, out var pts) || pts.Count < 3) continue;
+            result.Add((storeyOfRow, obj, (pts.Max(p => p.X) - pts.Min(p => p.X)) * u * 25.4, (pts.Max(p => p.Y) - pts.Min(p => p.Y)) * u * 25.4));
+        }
+        return result;
+    }
+
+    /// <summary>
     /// What the model holds near a point on plan, nearest first — the question behind "what did we model at the
     /// wall that is not on the drawing?" (2026-09-16: 31168's KW235, a wall along a line no layer draws, was found by
     /// asking this of the model and then <c>dxf-inspect --near</c> of the drawing at the same point). Every object

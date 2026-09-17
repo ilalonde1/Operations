@@ -1,4 +1,4 @@
-// The takeoff verb `e2k-ask`, as it stood in Program.cs before the split (WP3, 2026-09-11); its body is unchanged.
+﻿// The takeoff verb `e2k-ask`, as it stood in Program.cs before the split (WP3, 2026-09-11); its body is unchanged.
 // Ask a finished model about itself. The query surface an /ask tool will wrap later, driven from a
 // terminal today. Usage: takeoff e2k-ask <model.e2k> [storeys|look|openings|sections|concrete] [storey]
 internal static class E2kAskVerb
@@ -27,6 +27,34 @@ internal static class E2kAskVerb
             }
             Console.WriteLine($"{models} model(s) with openings a metre and more across: {total} opening(s), {with} hold a column of the storey inside ({(total == 0 ? 0 : 100.0 * with / total):F1}%)");
             foreach (var (m, h, w) in bySet.OrderByDescending(x => x.With)) Console.WriteLine($"   {m,-14} {w,3} of {h,4}");
+            return 0;
+        }
+        // the shape census over a folder: how thin, how long, how small the holes the engineers cut are, counted by class,
+        // so a reader rule about a shape ("a strip narrower than a metre is no hole") is judged before it is written
+        if (Directory.Exists(args[1]) && args.Length >= 3 && args[2].Equals("openings-shapes", StringComparison.OrdinalIgnoreCase))
+        {
+            int models = 0, total = 0, zero = 0, subMetre = 0, strips = 0, stripsWide = 0, stripsLong = 0, shafts = 0, big = 0;
+            var stripSets = new Dictionary<string, int>(StringComparer.Ordinal);
+            foreach (string e2k in Directory.EnumerateFiles(args[1], "*.e2k", SearchOption.TopDirectoryOnly).OrderBy(f => f, StringComparer.Ordinal))
+            {
+                IReadOnlyList<(string Storey, string Object, double WidthMm, double HeightMm)> boxes;
+                try { boxes = E2kModelQuery.OpeningBoxes(E2kDocument.Load(e2k)); } catch (Exception ex) { Console.Error.WriteLine($"  {Path.GetFileName(e2k)}: {ex.Message}"); continue; }
+                if (boxes.Count == 0) continue;
+                models++;
+                foreach (var (_, _, w, h) in boxes)
+                {
+                    total++;
+                    double lo = Math.Min(w, h), hi = Math.Max(w, h);
+                    if (lo < 50) { zero++; continue; }                       // a slit of no area: an artefact
+                    if (lo < 1000) subMetre++;                                 // sleeves, chases
+                    if (hi >= 10 * lo && lo >= 50) { strips++; if (lo >= 1000) stripsWide++; if (hi > 10000) stripsLong++; stripSets[Path.GetFileNameWithoutExtension(e2k)] = stripSets.GetValueOrDefault(Path.GetFileNameWithoutExtension(e2k)) + 1; }
+                    if (lo >= 1000 && hi <= 12000) shafts++;
+                    if (hi > 12000) big++;
+                }
+            }
+            Console.WriteLine($"{models} model(s), {total} opening(s): {zero} slits of no width (artefacts), {subMetre} under a metre on their short side, " +
+                              $"{strips} strips ten times longer than wide (of which {stripsWide} a metre and wider, {stripsLong} longer than 10 m), {shafts} a metre and wider and under 12 m long (shafts, stairs), {big} over 12 m long (voids)");
+            Console.WriteLine("   strips by set: " + string.Join(" ", stripSets.OrderByDescending(kv => kv.Value).Take(12).Select(kv => $"{kv.Key}({kv.Value})")));
             return 0;
         }
         if (!File.Exists(args[1])) { Console.Error.WriteLine($"Model not found '{args[1]}'."); return 2; }
@@ -71,9 +99,13 @@ internal static class E2kAskVerb
             case "openings":
             {
                 var holes = E2kModelQuery.Openings(askDoc);
-                Console.WriteLine($"\n{holes.Count} opening(s), biggest first:");
+                var boxes = E2kModelQuery.OpeningBoxes(askDoc).ToDictionary(b => (b.Storey, b.Object), b => (b.WidthMm, b.HeightMm));
+                Console.WriteLine($"\n{holes.Count} opening(s), biggest first (area, then the box in metres):");
                 foreach (var (st, obj, area) in holes.Where(h => askStorey is null || h.Storey.Contains(askStorey, StringComparison.OrdinalIgnoreCase)))
-                    Console.WriteLine($"   {st,-16} {obj,-8} {area,9:N0} sq ft");
+                {
+                    string box = boxes.TryGetValue((st, obj), out var b) ? $"{b.WidthMm / 1000:N1} x {b.HeightMm / 1000:N1} m" : "";
+                    Console.WriteLine($"   {st,-16} {obj,-8} {area,9:N0} sq ft   {box}");
+                }
                 break;
             }
 
