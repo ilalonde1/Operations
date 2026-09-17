@@ -312,7 +312,12 @@ rings and moved nothing: reverted, unbanked. **Read again 23:25 by size:** ours 
 we have not are 37 of 1.5 × 5 m — the same stairs, our X spanning the two flights and the landing (8.9 m), her opening
 the flights alone (5 m), so the centres sit ~2 m apart and neither matches: on 31017 her practice keeps the landing
 as slab, the opposite of 31065's 2.4 × 7.1 m wells (step 105d). Two practices, or a scissor stair's landing — the
-engineer's line, not a rule; the matching within 1.5 m could also judge by overlap instead of by centre. 30933 (20:40): its bad openings are OLD — a 21 × 22 m rectangle with an X
+engineer's line, not a rule; the matching within 1.5 m could also judge by overlap instead of by centre (it does
+since 00:46 — §125). **31087 (01:40, the best current model: two days after the drawing; hers we have 167 of 248):**
+the 81 we lack are on the podium L3–L5 (ours 0 openings — L4 has NO plate: "no slab edge would close … the ring
+closes at a gap of 7,315"; the trace says a 19 in gap in the outline at y 288.6 ft and eight Ts drawn short of
+1.3–5.6 in — step 112's class) and the parkade P1–P5 (her 11 a storey: four zero-width slits, two sleeves, a stair,
+two shafts, two 5.5 m voids; ours 3). So 31087's opening misses are plate misses; 112 reaches it too. 30933 (20:40): its bad openings are OLD — a 21 × 22 m rectangle with an X
 and five columns in it, and six 0.5 × 44 m slivers between parallel lines — both from the DXF route's original "a ring
 inside a floor is an opening" rule (StructuralPlanClassifier), which the openings figure judges for the first time.
 **So the corpus figure's 60% has three parts: sets whose model judges nothing, the 31168-class X-box, and the old ring
