@@ -1,4 +1,4 @@
-using Kor.Operations.EngineeringTools.Dxf;
+﻿using Kor.Operations.EngineeringTools.Dxf;
 using Kor.Operations.EngineeringTools.Intake;
 using Kor.Operations.EngineeringTools.PdfToSafe;
 using Xunit;
@@ -52,7 +52,9 @@ public sealed class SlabPassTraceProbe
             {
                 lock (buffer)
                 {
-                    var slab = buffer.Where(l => l.StartsWith("slab pass", StringComparison.Ordinal)).ToList();
+                    // KOR_SLAB_TRACE_LINES=1 keeps every line's fate too (a pen's lines refused as walls, 30838's 8 pt outline, 21:50)
+                    bool everyLine = Environment.GetEnvironmentVariable("KOR_SLAB_TRACE_LINES") == "1";
+                    var slab = buffer.Where(l => l.StartsWith("slab pass", StringComparison.Ordinal) || (everyLine && l.StartsWith("line ", StringComparison.Ordinal))).ToList();
                     if (slab.Count > 0)
                     {
                         lines.Add($"== p{o.Page} {o.SheetNumber} {o.Title} | slabs {o.Slabs} columns {o.Columns} walls {o.Walls}");
