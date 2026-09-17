@@ -52,6 +52,26 @@ public sealed class AStairIsARunOfTreadsTests
     }
 
     [Fact]
+    public void TwelveStrokesAcrossTheFlightAtAGoingsPitchAreAFlightToo_UnlessTheSheetDrawsPaperTreads()
+    {
+        // 31138 draws a stroke per tread, twelve to a flight, no fill: a line tread has no depth and its pitch is the going
+        static List<(double X, double Y)> Stroke(double x, double y, double w) => [(x, y), (x + w, y)];
+        var strokes = Enumerable.Range(0, 12).Select(i => Stroke(0, i * 280, 1200)).ToList();
+        var f = Assert.Single(GeometryFilterService.StairFlights([], strokes));
+        Assert.Equal(12, f.Treads);
+        Assert.Equal(11 * 280, f.Y1 - f.Y0, 1);
+        // at a pitch no going has (600 mm) they are a hatch, not a flight; four at the right pitch are a step
+        Assert.Empty(GeometryFilterService.StairFlights([], Enumerable.Range(0, 12).Select(i => Stroke(0, i * 600, 1200)).ToList()));
+        Assert.Empty(GeometryFilterService.StairFlights([], Enumerable.Range(0, 4).Select(i => Stroke(0, i * 280, 1200)).ToList()));
+        // a sheet draws its treads one way: beside paper treads, strokes are the fills' edges and the outline, not treads
+        // (31202 draws both; read as treads its strokes broke every paper run - eight of sixteen wells lost)
+        var paper = Flight(5000, 0, 8).Select(p => p.Points).ToList();
+        var both = GeometryFilterService.StairFlights(paper, strokes);
+        Assert.Single(both);
+        Assert.Equal(8, both[0].Treads);
+    }
+
+    [Fact]
     public void AFloorWithAWalledStairWellIsThePlateAndTheWellsLoop()
     {
         // the floor (the walk finds its ring) with a stair well in its middle: four 200 mm walls round a 2.6 x 4 m well,

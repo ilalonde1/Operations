@@ -535,7 +535,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             WallsFromFaceLines(result, fates, firstFate, minWallThicknessMm, maxWallThicknessMm, minWallLengthMm, minWallAspect);
             // A STAIR IS A RUN OF TREADS (intake step 105): the paper fills that are not doorways, read as flights before the
             // slab pass, which cuts the well they stand in
-            result.StairFlights.AddRange(StairFlights(deferredPaper.Where(i => !doorwayOf.ContainsKey(i)).Select(i => rawSubpaths[i].Points)));
+            result.StairFlights.AddRange(StairFlights(deferredPaper.Where(i => !doorwayOf.ContainsKey(i)).Select(i => rawSubpaths[i].Points),
+                                                     result.Lines.Where((l, i) => !result.LineIsAnnotation[i]), result.TreadLines));
 
             SlabEdgesFromLoops(result, fates, firstFate, slabEdgeBridgeMm, minSlabAreaMm2, minWallThicknessMm, maxWallThicknessMm);
 
@@ -1473,8 +1474,9 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         /// rectangles of one tread size (width across the flight, depth along it) stacked along the flight at their own depth
         /// (a gap under half a depth between neighbours). Each flight as its extent and its tread count.
         /// </summary>
-        internal static List<(double X0, double Y0, double X1, double Y1, int Treads)> StairFlights(IEnumerable<List<(double X, double Y)>> paperFills)
+        internal static List<(double X0, double Y0, double X1, double Y1, int Treads)> StairFlights(IEnumerable<List<(double X, double Y)>> paperFills, IEnumerable<List<(double X, double Y)>>? treadLines = null, List<((double X, double Y) A, (double X, double Y) B)>? flightLines = null)
         {
+            treadLines ??= [];
             var treads = new List<(double X0, double Y0, double X1, double Y1, bool AlongY)>();
             foreach (var pts in paperFills)
             {
@@ -1485,6 +1487,27 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 if (!pts.All(p => Math.Abs(p.X - x0) < 2 || Math.Abs(p.X - x1) < 2 || Math.Abs(p.Y - y0) < 2 || Math.Abs(p.Y - y1) < 2)) continue;
                 if (w >= TreadMinWidthMm && w <= TreadMaxWidthMm && h >= TreadMinDepthMm && h <= TreadMaxDepthMm) treads.Add((x0, y0, x1, y1, true));    // stacked along Y
                 else if (h >= TreadMinWidthMm && h <= TreadMaxWidthMm && w >= TreadMinDepthMm && w <= TreadMaxDepthMm) treads.Add((x0, y0, x1, y1, false));
+            }
+            // treads drawn as LINES (31138, 31130: a stroke across the flight per tread, twelve to a flight, no fill): an
+            // axis-aligned two-point line of a tread's width is a tread of no depth; its depth is the pitch to the next.
+            // A SHEET DRAWS ITS TREADS ONE WAY: where paper-filled treads were found, the lines are the fills' own edges
+            // and the stair's outline, not treads (31202 draws both, and read as treads its lines broke every paper run -
+            // eight of sixteen wells lost, 18:00-18:15; the riser-on-a-fill exclusion alone did not restore them).
+            int paperTreads = treads.Count;
+            foreach (var pts in paperTreads > 0 ? [] : treadLines)
+            {
+                if (pts.Count != 2) continue;
+                double x0 = Math.Min(pts[0].X, pts[1].X), x1 = Math.Max(pts[0].X, pts[1].X), y0 = Math.Min(pts[0].Y, pts[1].Y), y1 = Math.Max(pts[0].Y, pts[1].Y);
+                double w = x1 - x0, h = y1 - y0;
+                bool alongY = h < 2 && w >= TreadMinWidthMm && w <= TreadMaxWidthMm, alongX = w < 2 && h >= TreadMinWidthMm && h <= TreadMaxWidthMm;
+                if (!alongY && !alongX) continue;
+                // A RISER LINE ON A FILLED TREAD IS THE TREAD'S OWN EDGE, not another tread (31202 draws both, the fill and a
+                // stroke on its edge; taken as treads too they broke every run - characterised 18:10 on p29, a flight of 14)
+                bool onAFill = treads.Any(t => t.AlongY == alongY && (alongY
+                    ? Math.Abs(t.X0 - x0) <= 5 && Math.Abs(t.X1 - x1) <= 5 && (Math.Abs(t.Y0 - y0) <= 5 || Math.Abs(t.Y1 - y0) <= 5)
+                    : Math.Abs(t.Y0 - y0) <= 5 && Math.Abs(t.Y1 - y1) <= 5 && (Math.Abs(t.X0 - x0) <= 5 || Math.Abs(t.X1 - x0) <= 5)));
+                if (onAFill) continue;
+                treads.Add((x0, y0, x1, y1, alongY));
             }
             var flights = new List<(double X0, double Y0, double X1, double Y1, int Treads)>();
             foreach (bool alongY in new[] { true, false })
@@ -1498,13 +1521,23 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     int start = 0;
                     for (int i = 1; i <= run.Count; i++)
                     {
-                        bool breaks = i == run.Count
-                            || (alongY ? run[i].Y0 - run[i - 1].Y1 : run[i].X0 - run[i - 1].X1) > 0.5 * (alongY ? run[i - 1].Y1 - run[i - 1].Y0 : run[i - 1].X1 - run[i - 1].X0);
+                        bool breaks = true;
+                        if (i < run.Count)
+                        {
+                            double depth = alongY ? run[i - 1].Y1 - run[i - 1].Y0 : run[i - 1].X1 - run[i - 1].X0;
+                            double gap = alongY ? run[i].Y0 - run[i - 1].Y1 : run[i].X0 - run[i - 1].X1;
+                            // a filled tread's neighbour follows within half a depth; a line tread's at a going's pitch
+                            breaks = depth >= TreadMinDepthMm ? gap > 0.5 * depth : gap < TreadMinDepthMm || gap > TreadMaxDepthMm;
+                        }
                         if (!breaks) continue;
                         if (i - start >= FlightMinTreads)
                         {
                             var f = run.Skip(start).Take(i - start).ToList();
                             flights.Add((f.Min(t => t.X0), f.Min(t => t.Y0), f.Max(t => t.X1), f.Max(t => t.Y1), f.Count));
+                            // the treads that are lines, for the well's arrangement to leave out
+                            if (flightLines is not null)
+                                foreach (var t in f.Where(t => (alongY ? t.Y1 - t.Y0 : t.X1 - t.X0) < 2))
+                                    flightLines.Add(alongY ? ((t.X0, t.Y0), (t.X1, t.Y0)) : ((t.X0, t.Y0), (t.X0, t.Y1)));
                         }
                         start = i;
                     }
@@ -1836,8 +1869,15 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     }
                     // the stair's own symbol - the flights' outlines, the break line, the arrow - lies inside the flights' box and
                     // would cut the well into slivers; the well is bounded by what stands OUTSIDE the box: its walls
-                    // strictly inside the flights' box (150 mm in): the well's own outline runs along the flights' edges and stays
+                    // the stair's own symbol - the break line, the arrow, anything strictly inside the flights' box by 150 mm -
+                    // and the treads themselves where they are lines (31138: twelve strokes across the flight, ending on its
+                    // edges, each of which would cut the well into a sliver) are left out of the well's arrangement; the well's
+                    // own outline runs along and across the flights' edges (31202's ends where the fills end) and stays -
+                    // "any line across the flight inside its box" took eight of 31202's sixteen wells (measured 17:55-18:00)
                     bool InAStair(DxfPoint p) => stairs.Any(s => p.X > s.Min(f => f.X0) + 150 && p.X < s.Max(f => f.X1) - 150 && p.Y > s.Min(f => f.Y0) + 150 && p.Y < s.Max(f => f.Y1) - 150);
+                    bool ATreadOf(DxfSegment seg) => (InAStair(seg.Start) && InAStair(seg.End))
+                        || result.TreadLines.Any(t => (Near(seg.Start, t.A) && Near(seg.End, t.B)) || (Near(seg.Start, t.B) && Near(seg.End, t.A)));
+                    static bool Near(DxfPoint p, (double X, double Y) q) => Math.Abs(p.X - q.X) <= 5 && Math.Abs(p.Y - q.Y) <= 5;
                     // and the walls are in it as their outlines: a filled wall left no line for the slab pass (its faces are the
                     // fill's edges), and the stair's walls are what bound the well
                     var wallEdges = result.Walls.Where(w => !result.WallIsAnnotation[result.Walls.IndexOf(w)]).SelectMany(w =>
@@ -1856,7 +1896,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                             new DxfSegment("DOOR", new DxfPoint(d.Start.X - nx, d.Start.Y - ny), new DxfPoint(d.End.X - nx, d.End.Y - ny)),
                         };
                     });
-                    var planarForWells = new PlanarRings(SlabEdgeJoinMm, slabEdgeBridgeMm, SlabEdgeExtendMm).Build(arranged.Concat(wallEdges).Concat(doorEdges).Where(s => !(InAStair(s.Start) && InAStair(s.End))));
+                    var planarForWells = new PlanarRings(SlabEdgeJoinMm, slabEdgeBridgeMm, SlabEdgeExtendMm).Build(arranged.Concat(wallEdges).Concat(doorEdges).Where(s => !ATreadOf(s)));
                     foreach (var stair in stairs)
                     {
                         // the cells the flights' centres stand in, joined: two flights of one stair sit either side of a line

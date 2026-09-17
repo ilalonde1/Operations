@@ -1,4 +1,4 @@
-#nullable enable
+﻿#nullable enable
 using System.Collections.Generic;
 
 namespace Kor.Operations.EngineeringTools.PdfToSafe
@@ -157,6 +157,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         /// is the flight's extent in mm; the slab pass reads the cell the flight stands in as the stair well's opening.
         /// </summary>
         public List<(double X0, double Y0, double X1, double Y1, int Treads)> StairFlights { get; } = new();
+        /// <summary>The treads of those flights that are lines (31138 draws a stroke per tread), as segments: the well's arrangement leaves them out.</summary>
+        public List<((double X, double Y) A, (double X, double Y) B)> TreadLines { get; } = new();
         // Each column: centroid (X,Y) in mm
         public List<(double X, double Y)> Columns { get; } = new();
         // Each line element: list of (X,Y) in mm (open polyline)
