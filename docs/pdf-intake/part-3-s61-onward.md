@@ -2476,3 +2476,36 @@ was one she does not have — 31130 48% → 55%, 31065 77% → 87%, 31138 91%; o
 them 167 (82%). The question is an instrument now (`18972b74`; a folder of models answers as a corpus), the scratch
 script that first asked it is gone. What it does not catch: the 0.5 × 44 m slivers (no column in a half-metre strip) —
 "an opening narrower than a metre is no shaft" is the next candidate, and the corpus can be asked the same way.
+
+## 121. Step 108 — a strip longer than ten metres is a pour strip, not a hole (2026-09-16 20:56–21:20)
+
+**The corpus was asked before the rule was written.** "An opening narrower than a metre is no shaft" was the candidate
+at the end of §120; `takeoff e2k-ask <folder> openings-shapes` (`3ac006c7`, with the box beside every opening on the
+single-model `openings` answer) put the shape to her 96 exported models with openings — 4,967 of them: 279 slits of no
+width (artefacts), 1,895 under a metre on their short side, **504 strips ten times longer than wide, of which 503 are
+sub-metre sleeves under 10 m long and ONE is longer than 10 m**, 2,731 a metre and wider under 12 m (shafts, stairs),
+62 over 12 m (voids). So a blind "narrower than a metre" or "a strip is no hole" would refuse 503 holes she cuts; the
+shape she does not cut is *both* — ten to one and longer than 10 m — once in 4,967.
+
+**30933's L0, rendered and looked at:** two 0.3 × 43.9 m slits down the middle of the plate and two 1.0 × 32 m bands
+along its left edge, pour strips drawn as closed loops on KOR_C_SLABEDG, cut by the DXF route's ring-inside-a-floor
+rule (`SplitSlabsAndOpenings`: "an opening of 138 sq ft cut from a floor of 58,758 sq ft … check it is a hole"). The
+same picture shows the 21 × 22 m box with five columns and the 8.6 × 9.6 m box with one — 107b's, gone in run 31.
+Over the corpus's current yardsticks the long-strip class among "ours she has not" is six openings, all 30933's (a
+sample: each set's line prints its top eight size classes), so 108 is a small lever — banked because it is universal,
+cheap, and her practice says so 4,966 to 1.
+
+**The rule, in the composer (both routes), beside 107b:** the least box round the opening (`LoopGeometry.MinAreaBox`,
+so a strip at an angle reads the same) longer than `dxf.pour-strip-min-length-mm` (10,000) and at least
+`dxf.pour-strip-aspect` (10) times longer than wide → not cut, flagged with the sheet, storey and size in metres.
+Two REQUIRED rows — migration 098 (`KOR.Drafter/db/098_AStripLongerThanTenMetresIsAPourStrip.sql`, probed 21:13 in a
+rolled-back transaction with the app login, two rows read back) — because the DXF side's rows have no fallback by
+design; the length is millimetres in every drawing unit (`RulesTravelBetweenUnitsTests.NotALength`). The debt ratchet
+(`EveryReaderConstantIsTriagedTests.TheDebtIsCounted`, ≤ 48 conventions) refused the compiled-constant form first,
+which is what it is for. Test `AStripLongerThanTenMetresIsNoHoleTests`: the slit on the axes and turned 30° not cut
+and flagged; a 0.5 × 5 m sleeve and a 2 × 12 m void cut; proved by breaking (`if (false && …)` → 1 of 3 red).
+
+**Where it sits:** branch `step-108` (`f64bb53a`) until Ian applies 098 — on the branch the fast suite is 1,481 of
+1,485 green, the four red being the row gates (`ModelQuestionnaireTests` ×2, `EngineerRulingsStillHoldTests` ×2) that
+say exactly "KorStandards is missing rule setting(s) … dxf.pour-strip-aspect, dxf.pour-strip-min-length-mm". Run 31
+goes ahead on develop with 107/107b; run 32 carries 108 once the rows exist and the six-set gate has run on it.
