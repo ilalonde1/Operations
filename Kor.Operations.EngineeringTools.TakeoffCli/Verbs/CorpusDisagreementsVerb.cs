@@ -37,6 +37,11 @@ internal static class CorpusDisagreementsVerb
         var beyondFootprint = new List<(string Job, int Count)>();
         var frames = new List<(string Job, bool Grids, int Within, int Of)>();
         var olderBy = new Dictionary<string, int>();   // her model's age against the drawing's issue, in days, where the yardstick says
+        // openings, ours against hers (step 104's yardstick line): judged, hers, matched each way; the unmatched by plan size
+        var openings = new List<(string Job, int Ours, int Theirs, int OursMatched, int TheirsMatched)>();
+        var oursOpeningsNotHers = new List<(string Job, string Size, int Count)>();
+        var hersOpeningsNotOurs = new List<(string Job, string Size, int Count)>();
+        var openingSize = new Regex(@"(\S+x\S+ m) (\d+)");
         var storeyLine = new Regex(@"^\s+(\S+)\s+(\S+)\s+(\d+)\s+(\d+)\s+([\d,]+) mm\s+(\d+)%\s+(\d+)%\s+rigid \(\s*(-?[\d,]+),\s*(-?[\d,]+)\)\s*->\s*([\d,]+) mm\s+(\d+)%\s+beyond (\d+)");
         var sectionCount = new Regex(@"(\S+?) (\d+)(?:,|\s*\.\.\.|$)");
         foreach (var f in files)
@@ -70,6 +75,12 @@ internal static class CorpusDisagreementsVerb
                 if (ma.Success) { olderBy[job] = N(ma.Groups[1].Value); continue; }
                 var mf = Regex.Match(line, @"^frames matched by (column registration|grid labels).*?(\d+) of (\d+) of our columns within 100 mm");
                 if (mf.Success) { frames.Add((job, mf.Groups[1].Value.StartsWith("grid", StringComparison.Ordinal), N(mf.Groups[2].Value), N(mf.Groups[3].Value))); continue; }
+                var mop = Regex.Match(line, @"^openings on the shared storeys: ours (\d+) inside her footprint.*?, hers (\d+); ours with one of hers within [\d.]+ m (\d+) \(\d+%\); hers with one of ours (\d+)");
+                if (mop.Success) { openings.Add((job, N(mop.Groups[1].Value), N(mop.Groups[2].Value), N(mop.Groups[3].Value), N(mop.Groups[4].Value))); continue; }
+                if (line.StartsWith("  ours she has not, by size:", StringComparison.Ordinal))
+                { foreach (Match s in openingSize.Matches(line)) oursOpeningsNotHers.Add((job, s.Groups[1].Value, N(s.Groups[2].Value))); continue; }
+                if (line.StartsWith("  hers we have not, by size:", StringComparison.Ordinal))
+                { foreach (Match s in openingSize.Matches(line)) hersOpeningsNotOurs.Add((job, s.Groups[1].Value, N(s.Groups[2].Value))); continue; }
             }
         }
 
@@ -114,6 +125,19 @@ internal static class CorpusDisagreementsVerb
         {
             var fr = frames.FirstOrDefault(x => x.Job == g.Key);
             Console.WriteLine($"   {g.Key,-10} {g.Sum(x => x.Count),5} of hers unmatched; frame {(fr.Job is null ? "-" : fr.Grids ? "grids" : "columns")}, ours within 100 mm {(fr.Of > 0 ? $"{fr.Within} of {fr.Of}" : "-")}; her top sections: {string.Join(" ", g.OrderByDescending(x => x.Count).Take(3).Select(x => $"{x.Section}({x.Count})"))}");
+        }
+
+        // 6. openings, ours against hers (step 104): the X rule's precision where she modelled, and what she cuts that we do not
+        if (openings.Count > 0)
+        {
+            Console.WriteLine();
+            Console.WriteLine("6. OPENINGS, OURS AGAINST HERS on the storeys both models name (an opening is hers when the centre of one of hers lies within 1.5 m of ours):");
+            int ours = openings.Sum(o => o.Ours), hers = openings.Sum(o => o.Theirs), om = openings.Sum(o => o.OursMatched), tm = openings.Sum(o => o.TheirsMatched);
+            Console.WriteLine($"   over {openings.Count} sets: ours judged {ours}, hers {hers}; ours she has {om} ({(ours == 0 ? 0 : 100.0 * om / ours):F0}%); hers we have {tm} ({(hers == 0 ? 0 : 100.0 * tm / hers):F0}%)");
+            Console.WriteLine($"   ours she has not, by plan size: {string.Join(", ", oursOpeningsNotHers.GroupBy(o => o.Size).OrderByDescending(g => g.Sum(x => x.Count)).Take(top).Select(g => $"{g.Key} {g.Sum(x => x.Count)} on {g.Select(x => x.Job).Distinct().Count()} sets"))}");
+            Console.WriteLine($"   hers we have not, by plan size: {string.Join(", ", hersOpeningsNotOurs.GroupBy(o => o.Size).OrderByDescending(g => g.Sum(x => x.Count)).Take(top).Select(g => $"{g.Key} {g.Sum(x => x.Count)} on {g.Select(x => x.Job).Distinct().Count()} sets"))}");
+            Console.WriteLine("   sets to open first (ours she has not, most first): " + string.Join(" ", openings.Where(o => o.Ours - o.OursMatched > 0).OrderByDescending(o => o.Ours - o.OursMatched).Take(top).Select(o => $"{o.Job}({o.Ours - o.OursMatched} of {o.Ours})")));
+            Console.WriteLine("   sets to open first (hers we have not, a metre and more across, most first): " + string.Join(" ", hersOpeningsNotOurs.Where(h => !h.Size.StartsWith("0x", StringComparison.Ordinal) && !h.Size.StartsWith("0.5x", StringComparison.Ordinal)).GroupBy(h => h.Job).OrderByDescending(g => g.Sum(x => x.Count)).Take(top).Select(g => $"{g.Key}({g.Sum(x => x.Count)})")));
         }
         return 0;
 
