@@ -307,6 +307,16 @@ public sealed record ComposeOptions
     /// </summary>
     public double SameGroundCentreTolerance { get; init; } = 24.0;
 
+    /// <summary>
+    /// An opening at least this long, in millimetres, and at least <see cref="PourStripAspect"/> times longer than wide
+    /// is a pour strip drawn as a closed loop, not a hole (step 108; her 4,967 openings hold one such). Millimetres in
+    /// every drawing unit: the composer measures the loop in millimetres before comparing. See `dxf.pour-strip-min-length-mm`.
+    /// </summary>
+    public double PourStripMinLengthMm { get; init; } = 10000.0;
+
+    /// <summary>How many times longer than wide a strip must be. See `dxf.pour-strip-aspect`.</summary>
+    public double PourStripAspect { get; init; } = 10.0;
+
     public double SpandrelDepthFloor { get; init; } = 18.0;
 
     public double SpandrelDepthCeiling { get; init; } = 60.0;
@@ -1400,6 +1410,24 @@ public static class E2kGeometryComposer
                     if (placedColumns.AnyInside(slabStory.Name, shifted) || placedColumns.AnyWithin(slabStory.Name, c0.X + options.OffsetX, c0.Y + options.OffsetY, reach))
                     {
                         flags.Add($"{placement.SourceSheet}: an opening of {opening.Area / 144:N0} sq ft on {slabStory.Name} was NOT cut - a column stands in it; an X or a ring round a column marks the column (a footing, a drop, a bay), not a hole");
+                        skippedOpenings++;
+                        continue;
+                    }
+                }
+
+                // A STRIP LONGER THAN TEN METRES IS A POUR STRIP, NOT A HOLE (step 108, 2026-09-16 21:05). 30933's L0 went out
+                // with two 0.3 x 44 m slits down the middle of the plate and two 1 x 33 m bands along its edge cut as openings -
+                // pour strips drawn as closed loops on the slab-edge layer, and the DXF route's ring rule cuts a ring inside a
+                // floor. The corpus of her own models judged the shape before the rule was written (e2k-ask openings-shapes over
+                // 96 exported models, 4,967 openings): 504 are strips ten times longer than wide, 503 of them sub-metre sleeves
+                // under 10 m long - real holes - and ONE is longer than 10 m. So the shape is both: ten times longer than wide
+                // AND longer than 10 m, measured on the least box round the loop so a strip at an angle reads the same.
+                {
+                    var box = LoopGeometry.MinAreaBox(opening.Points);
+                    double lengthMm = box.Length / inch * 25.4, widthMm = box.Thickness / inch * 25.4;
+                    if (lengthMm > options.PourStripMinLengthMm && widthMm > 0 && lengthMm >= options.PourStripAspect * widthMm)
+                    {
+                        flags.Add($"{placement.SourceSheet}: an opening {widthMm / 1000:N1} x {lengthMm / 1000:N1} m on {slabStory.Name} was NOT cut - a strip {lengthMm / widthMm:N0} times longer than wide and longer than {options.PourStripMinLengthMm / 1000:N0} m is a pour strip or a band drawn as a closed loop, not a hole (her models cut one such in 4,967)");
                         skippedOpenings++;
                         continue;
                     }
