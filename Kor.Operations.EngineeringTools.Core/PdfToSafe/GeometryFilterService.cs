@@ -1598,10 +1598,18 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         {
             /// <summary>The two lines, by index into the geometry's lines.</summary>
             public (int A, int B) Arms { get; init; }
+            /// <summary>The four arm ends are the corners of a drawn rectangle: the drafter's sleeve (step 111).</summary>
+            public bool Boxed { get; init; }
         }
 
         /// <summary>The minimum arm of an X that marks an opening: a shaft's X is 11-12 ft; a symbol's is under a metre.</summary>
         internal const double XMarkMinArmMm = 2000;
+        /// <summary>
+        /// The minimum arm of a BOXED X (step 111): a sleeve drawn as a rectangle with its two diagonals - 31202's 1,118 x 382 mm
+        /// chases (arms 1.18 m) on twelve storeys, 31065's 0.5 x 0.5 m sleeves (arms 0.7 m); 1,895 of her 4,967 exported
+        /// openings are under a metre on the short side. A box under this is a symbol's (a column mark, a north arrow).
+        /// </summary>
+        internal const double XMarkBoxedMinArmMm = 600;
         /// <summary>The longest arm of an X that marks an opening: a stair's is under 30 ft; 31202's 109 ft X spans a region labelled 9" SLAB.</summary>
         internal const double XMarkMaxArmMm = 9144;
 
@@ -1618,8 +1626,25 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 var l = result.Lines[i];
                 if (l.Count != 2 || result.LineIsAnnotation[i]) continue;
                 double dx = l[1].X - l[0].X, dy = l[1].Y - l[0].Y, len = Math.Sqrt(dx * dx + dy * dy);
-                if (len < XMarkMinArmMm || Math.Min(Math.Abs(dx), Math.Abs(dy)) / len <= 0.17) continue;   // 10 degrees off both axes
+                if (len < XMarkBoxedMinArmMm || Math.Min(Math.Abs(dx), Math.Abs(dy)) / len <= 0.17) continue;   // 10 degrees off both axes
                 longLines.Add((i, dx, dy, len));
+            }
+            // A SLEEVE IS A BOX WITH ITS DIAGONALS (step 111, 2026-09-16 23:00): the drafter's mark for a small opening is the
+            // shaft's mark at a sleeve's size - a rectangle with an X in it. Step 104 asked an X for arms of 2 m or more because a
+            // symbol's are under a metre; her sleeves' are 0.7-1.2 m. So an X of a symbol's size is a mark only when its four
+            // arm ends are the corners of a rectangle the page draws: a two-point line between each pair of neighbouring ends.
+            var lineEnds = new List<(DxfPoint A, DxfPoint B)>();
+            for (int i = 0; i < result.Lines.Count; i++)
+                if (result.Lines[i].Count == 2 && !result.LineIsAnnotation[i]) lineEnds.Add((new DxfPoint(result.Lines[i][0].X, result.Lines[i][0].Y), new DxfPoint(result.Lines[i][1].X, result.Lines[i][1].Y)));
+            static bool At(DxfPoint p, DxfPoint q) => Math.Abs(p.X - q.X) <= 50 && Math.Abs(p.Y - q.Y) <= 50;
+            bool Boxed(IReadOnlyList<DxfPoint> corners)
+            {
+                for (int k = 0; k < corners.Count; k++)
+                {
+                    var a = corners[k]; var b = corners[(k + 1) % corners.Count];
+                    if (!lineEnds.Any(l => (At(l.A, a) && At(l.B, b)) || (At(l.A, b) && At(l.B, a)))) return false;
+                }
+                return true;
             }
             for (int a = 0; a < longLines.Count; a++)
                 for (int b = a + 1; b < longLines.Count; b++)
@@ -1635,7 +1660,9 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     var centre = new DxfPoint(p[0].X + t * rx, p[0].Y + t * ry);
                     var ends = new[] { p[0], p[1], q[0], q[1] }.Select(e => new DxfPoint(e.X, e.Y))
                         .OrderBy(e => Math.Atan2(e.Y - centre.Y, e.X - centre.X)).ToList();
-                    marks.Add(new XMark(centre, Math.Max(lp, lq), ends) { Arms = (ia, ib) });
+                    bool boxed = Boxed(ends);
+                    if (Math.Max(lp, lq) < XMarkMinArmMm && !boxed) continue;   // a symbol's X, and no box drawn round it
+                    marks.Add(new XMark(centre, Math.Max(lp, lq), ends) { Arms = (ia, ib), Boxed = boxed });
                 }
             // AN X STANDS ALONE: a cross-hatch is diagonals in two directions crossing each other at their middles by
             // the hundred (31130's L17 sheet: 100 "X marks" of 19 ft within a metre of one another), and none of them

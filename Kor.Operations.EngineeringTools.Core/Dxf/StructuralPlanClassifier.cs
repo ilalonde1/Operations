@@ -1216,7 +1216,7 @@ public static class StructuralPlanClassifier
                 {
                     AddWallOrColumn(result, loop, options, columnSourceLoopIndex++);
                 }
-                else if (loop.Area >= options.MinSlabArea)
+                else if (loop.Area >= options.MinSlabArea || IsSleeve(loop, options))
                 {
                     // A slab edge that closed through its own linework is a figure of eight, and
                     // it is two floors, not one. 31168's LEVEL 2 podium came back as a single
@@ -2735,6 +2735,22 @@ public static class StructuralPlanClassifier
         }
 
         return best == double.MaxValue ? 0.0 : best;
+    }
+
+    /// <summary>
+    /// A SLEEVE IS A SMALL RECTANGLE ON THE SLAB LAYER (step 111, 2026-09-16). The minimum slab area (50 sq ft) is a plate's,
+    /// and it dropped every sleeve: her exported models cut 757 openings under 300 mm and 1,895 under a metre on the short
+    /// side, of 4,967. A ring under that area whose least box it fills (a rectangle, not the sliver an interrupted edge
+    /// closes into), at least 4 in on its short side and no more than five times longer than wide, is a sleeve - an
+    /// opening when it stands inside a floor (SplitSlabsAndOpenings), linework when it does not.
+    /// </summary>
+    internal static bool IsSleeve(PlanLoop loop, PlanClassificationOptions options)
+    {
+        if (loop.Area >= options.MinSlabArea || loop.Points.Count < 4 || loop.Points.Count > 6) return false;
+        var box = LoopGeometry.MinAreaBox(loop.Points);
+        if (box.Thickness <= 0 || box.Length <= 0) return false;
+        double minSide = 4.0 / options.UnitInInches;                    // 4 in, in the drawing's unit
+        return box.Thickness >= minSide && box.Length <= 5 * box.Thickness && loop.Area >= 0.9 * box.Length * box.Thickness;
     }
 
     private static void SplitSlabsAndOpenings(PlanGeometrySet result, List<PlanLoop> candidates, PlanClassificationOptions options)

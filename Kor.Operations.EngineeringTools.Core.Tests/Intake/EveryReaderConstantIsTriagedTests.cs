@@ -72,6 +72,7 @@ public sealed class EveryReaderConstantIsTriagedTests
         ["GeometryFilterService.cs:FaceTraceMinOverlapMm"] = Convention("dxf.pdf.face-trace-min-overlap-mm"),
         ["GeometryFilterService.cs:LeakRasterMm"] = Tolerance("the leak finder's raster (an instrument behind FaceTrace): where the outside gets into a ring, to two cells"),
         ["GeometryFilterService.cs:XMarkMinArmMm"] = Rule("an X that marks an opening has arms of 2 m or more: a shaft's are 11-12 ft on 31130, 31138 and 31202; a symbol's are under a metre (step 104)"),
+        ["GeometryFilterService.cs:XMarkBoxedMinArmMm"] = Rule("a boxed X (a rectangle with its diagonals) marks a sleeve down to 600 mm arms: her sleeves' arms are 0.7-1.2 m, a symbol's under that (step 111)"),
         ["GeometryFilterService.cs:XMarkMaxArmMm"] = Rule("an X that marks an opening has arms of 30 ft or less: 31202's 109 ft X spans a region labelled 9 in SLAB, a region mark (step 104)"),
         ["GeometryFilterService.cs:TreadMinWidthMm"] = Rule("a stair flight is 900 mm and more wide - the building code's stair (NBC 9.8.2: 860 mm in a dwelling, 1,100 mm elsewhere), not a drafting choice; 31202 draws its treads 1,166-1,187 mm (step 105)"),
         ["GeometryFilterService.cs:TreadMaxWidthMm"] = Rule("and 1,700 mm and less: wider is a corridor or a ramp, not a flight (step 105)"),
