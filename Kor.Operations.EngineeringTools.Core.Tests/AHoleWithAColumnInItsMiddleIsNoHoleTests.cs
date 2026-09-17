@@ -50,6 +50,7 @@ public sealed class AHoleWithAColumnInItsMiddleIsNoHoleTests
         // the column sheet: one column at (240, 240) in, and the plate's frame to stand on
         var columns = new PlanGeometrySet();
         columns.Columns.Add(new ColumnFootprint(new DxfPoint(240, 240), 24, 24, "JBP_V_COL"));
+        columns.Columns.Add(new ColumnFootprint(new DxfPoint(60, 60), 24, 24, "JBP_V_COL"));
         columns.Walls.Add(new WallAxis(new DxfPoint(0, 0), new DxfPoint(480, 0), 12, "JBP_V-WALL"));
         // the plan sheet: a 40 x 40 ft plate, an X-box 10 ft square centred on the column (a footing's mark) and one a bay
         // away with nothing in it (a shaft); the sheet draws no column of its own
@@ -57,6 +58,7 @@ public sealed class AHoleWithAColumnInItsMiddleIsNoHoleTests
         plan.Slabs.Add(Box("JBP_C_SLABEDG", 0, 0, 480, 480));
         plan.Openings.Add(Box("JBP_C_SLABEDG", 180, 180, 300, 300));   // centred on (240, 240): the column
         plan.Openings.Add(Box("JBP_C_SLABEDG", 380, 380, 440, 440));   // centred on (410, 410): open field
+        plan.Openings.Add(Box("JBP_C_SLABEDG", 20, 20, 260, 140));     // 20 x 10 ft with a column at (60, 60) in its corner: 30933's box round a bay
 
         var summary = E2kGeometryComposer.Compose(doc, new[]
         {
@@ -66,8 +68,8 @@ public sealed class AHoleWithAColumnInItsMiddleIsNoHoleTests
 
         int cut = doc.LinesOf("AREA ASSIGNS").Count(l => l.Contains("OPENING \"Yes\"", StringComparison.Ordinal));
         Assert.Equal(1, cut);
-        string flag = Assert.Single(summary.Flags, f => f.Contains("a column stands in its middle", StringComparison.Ordinal));
-        Assert.Contains("plan.dxf", flag);
-        Assert.Contains("LEVEL 3", flag);
+        var flagged = summary.Flags.Where(f => f.Contains("a column stands in it", StringComparison.Ordinal)).ToList();
+        Assert.Equal(2, flagged.Count);
+        Assert.All(flagged, f => { Assert.Contains("plan.dxf", f); Assert.Contains("LEVEL 3", f); });
     }
 }

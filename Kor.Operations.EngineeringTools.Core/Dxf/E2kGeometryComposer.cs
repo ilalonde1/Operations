@@ -1389,12 +1389,17 @@ public static class E2kGeometryComposer
                 // not see them; here every column the set placed on the storey is known. An opening of a shaft's size (under
                 // 40 sq m) whose centroid stands within 300 mm of a column's centre on this storey is a mark on the column,
                 // not cut, and the flag says so. A void larger than that may hold a column (an atrium's) and is left alone.
+                // Generalised the same evening (20:45): a column STRICTLY INSIDE the opening's polygon, any size - the corpus
+                // judged it: of her 2,615 openings a metre and more across on 106 exported models, 37 (1.4%) hold a column of
+                // hers inside (19 of them on one set, 31148), so a hole with a column standing in it is no hole 98.6% of the
+                // time; 30933's 21 x 22 m X-box with five columns in it, the DXF route's old ring rule's, is the shape.
                 {
                     var c0 = opening.Centroid();
-                    double reach = 300 / 25.4 * inch, areaSqM = Math.Abs(opening.Area) / (inch * inch) * 645.16 / 1e6;   // model units -> sq in -> sq m
-                    if (areaSqM < 40 && placedColumns.AnyWithin(slabStory.Name, c0.X + options.OffsetX, c0.Y + options.OffsetY, reach))
+                    double reach = 300 / 25.4 * inch;
+                    var shifted = opening.Points.Select(p => new DxfPoint(p.X + options.OffsetX, p.Y + options.OffsetY)).ToList();
+                    if (placedColumns.AnyInside(slabStory.Name, shifted) || placedColumns.AnyWithin(slabStory.Name, c0.X + options.OffsetX, c0.Y + options.OffsetY, reach))
                     {
-                        flags.Add($"{placement.SourceSheet}: an opening of {opening.Area / 144:N0} sq ft on {slabStory.Name} was NOT cut - a column stands in its middle; an X centred on a column marks the column (a footing, a drop), not a hole");
+                        flags.Add($"{placement.SourceSheet}: an opening of {opening.Area / 144:N0} sq ft on {slabStory.Name} was NOT cut - a column stands in it; an X or a ring round a column marks the column (a footing, a drop, a bay), not a hole");
                         skippedOpenings++;
                         continue;
                     }
@@ -1990,6 +1995,10 @@ public static class E2kGeometryComposer
         /// <summary>Whether a member placed on the storey stands within <paramref name="reach"/> of a point (model units).</summary>
         public bool AnyWithin(string storey, double x, double y, double reach)
             => _byStorey.TryGetValue(storey, out var list) && list.Any(t => Math.Sqrt((t.X1 - x) * (t.X1 - x) + (t.Y1 - y) * (t.Y1 - y)) <= reach);
+
+        /// <summary>Whether a member placed on the storey stands strictly inside a polygon (model units).</summary>
+        public bool AnyInside(string storey, IReadOnlyList<DxfPoint> polygon)
+            => _byStorey.TryGetValue(storey, out var list) && list.Any(t => LoopGeometry.PointInPolygon(new DxfPoint(t.X1, t.Y1), polygon));
 
         private bool Same(Place a, Place b)
             => (Near(a.X1, a.Y1, b.X1, b.Y1) && Near(a.X2, a.Y2, b.X2, b.Y2))
