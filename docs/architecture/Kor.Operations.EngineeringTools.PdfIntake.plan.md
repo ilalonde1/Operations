@@ -255,6 +255,19 @@ It does not promise a storey count, a wall count, or "31168 = Revit". Those are 
 harness reports; the contract is §1. It does not touch the app (WPF), the Drafter bridge, or the
 Revit route.
 
+**Proposed, awaiting Ian's go (2026-09-16 18:08, on his question): WP7 — the profession's knowledge as rows.**
+The app has two layers today: the OFFICE's conventions (KorStandards `analysis` rows: what KOR draws and models) and
+the READING rules (code with tests). The PROFESSION's knowledge — NBC/BCBC, CSA A23.3 / S16 / O86, the EGBC
+competencies — is cited only in prose (step 105's stair sizes cite NBC 9.8 in the triage). WP7 adds a `knowledge`
+schema: `Source` (code, edition, licence), `Clause` (id, page, the requirement as a value or our paraphrase), and
+`Rule → Clause` links, so every reading rule and every design check names its authority as a row this app, the ETABS
+tools and the /ask AI on APP01 can query. The constraint is copyright, not code: the store holds citations, tables of
+values and paraphrases, never the licensed prose; the EGBC syllabus is public, textbooks are not. Sequence: by need,
+not by bulk — the dozen clauses the code already leans on (stair geometry, storey heights, minimum wall and column
+sizes, the live loads the load plans carry), one migration, a verb `takeoff knowledge-ingest <pdf> --source <id>`
+with the page on every row, and the triage's `Rule` entries converted to clause ids. Grows one clause per step, the
+way the conventions did. After the sitting (WP6); the next autonomous block if Ian says go.
+
 ## 8. What needs Ian (2026-09-12 morning)
 
 **0. (2026-09-15 01:30) The full Core suite is not green — 4 of 1,475 on HEAD, and it has not been
