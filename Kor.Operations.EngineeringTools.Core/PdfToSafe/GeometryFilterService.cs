@@ -2093,6 +2093,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         // AND THE ENDS LEFT DANGLING A HAND'S WIDTH FROM ANOTHER EDGE'S MIDDLE (23:45): the arrangement bridges an
                         // end to an end, and joins an end ON a span within the join tolerance; an end short of a span by up to
                         // the bridge (a T drawn short) is neither, and closes on the raster (150 mm) but not here
+                        FaceTrace($"slab pass: {planar.Carries.Count} T(s) carried short (step 112; end ft -> foot ft): " + string.Join(" ", planar.Carries.Take(40).Select(c => $"({c.End.X / 304.8:0.0},{c.End.Y / 304.8:0.0})->({c.Foot.X / 304.8:0.0},{c.Foot.Y / 304.8:0.0})")));
                         if (planar.Topology is { } m2)
                         {
                             var tees = new List<string>();

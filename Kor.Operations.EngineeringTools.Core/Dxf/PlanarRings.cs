@@ -35,6 +35,8 @@ public sealed class PlanarRings
     {
         public IReadOnlyList<Face> Faces { get; init; } = [];
         internal Mesh? Topology { get; init; }
+        /// <summary>The Ts carried short (step 112): each end and the foot it was carried to, for the trace.</summary>
+        public IReadOnlyList<(DxfPoint End, DxfPoint Foot)> Carries { get; init; } = [];
 
         /// <summary>
         /// Whether the face at this index shares an edge with the unbounded outside (2026-09-16, the PDF route's
@@ -114,8 +116,11 @@ public sealed class PlanarRings
         string layer = input.Select(s => s.Layer).OrderBy(s => s, StringComparer.Ordinal).FirstOrDefault() ?? "";
         var first = Arrange(input.Select(s => new Span(s.Start, s.End, false)).ToList(), layer);
         var additions = Bridges(first, out var split);
-        return Finish(first, additions, split, layer);
+        var carried = additions.Where(a => LastCarries.Contains(a)).Select(a => (a.A, a.B)).ToList();
+        return Finish(first, additions, split, layer) with { Carries = carried };
     }
+
+    private readonly HashSet<Span> LastCarries = new();
 
     private Result Finish(Mesh first, List<Span> additions, HashSet<int> split, string layer)
     {
@@ -300,17 +305,21 @@ public sealed class PlanarRings
             foreach (int a in ends)
             {
                 var p = mesh.Points[a]; int own = mesh.Adjacency[a][0];
+                // FORWARD, along its own line (third form, 00:35): the edge runs INTO the line it stops short of, so the carry
+                // is the end's own ray to where it meets the span. The perpendicular foot of the first two forms could lie back
+                // along the end's own edge, and two half-edges at one angle is what "Face successor is not a permutation" is.
+                var pa = mesh.Points[mesh.Other(own, a)];
+                var ray = new Span(p, Add(p, Sub(p, pa)), true);
                 int bestE = -1; double bestD = double.MaxValue; DxfPoint foot = default;
                 for (int e = 0; e < mesh.Edges.Count; e++)
                 {
                     if (e == own) continue;
                     var sa = mesh.Points[mesh.Edges[e].A]; var sb = mesh.Points[mesh.Edges[e].B];
                     var span = new Span(sa, sb, false);
-                    double t = Parameter(p, span);
-                    if (!(t > 0) || !(t < 1)) continue;
-                    var f = At(span, t);
+                    if (!Intersection(ray, span, out var f, out double s, out double t)) continue;
+                    if (!(s > 0) || !(t > 0.01) || !(t < 0.99)) continue;
                     double d = p.DistanceTo(f);
-                    if (d <= _joinTolerance || d > _bridgeTolerance) continue;
+                    if (d <= 3 * _joinTolerance || d > _bridgeTolerance) continue;
                     if (d < bestD) { bestD = d; bestE = e; foot = f; }
                 }
                 if (bestE < 0) continue;
@@ -335,7 +344,7 @@ public sealed class PlanarRings
         agreed = agreed.Where(c => !onEdge.Contains(c)).ToList();
         var kept = agreed.Where(c => !agreed.Any(o => !ReferenceEquals(c, o)
                 && c.Spans.Any(a => o.Spans.Any(b => Conflicts(a, b, false))))).ToList();
-        foreach (var c in kept.Where(c => c.ToEdge)) split.Add(c.B);
+        foreach (var c in kept.Where(c => c.ToEdge)) { split.Add(c.B); LastCarries.Add(c.Spans[0]); }
         return kept.SelectMany(c => c.Spans).ToList();
     }
 
