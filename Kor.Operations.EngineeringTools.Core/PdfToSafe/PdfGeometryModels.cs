@@ -151,6 +151,12 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         public List<FootingOutline> Footings { get; } = new();
         // Each slab: ordered list of (X,Y) in mm, ready for a closed polyline
         public List<List<(double X, double Y)>> Slabs { get; } = new();
+        /// <summary>
+        /// The stair flights on the sheet (intake step 105): each a run of five or more paper-filled tread rectangles of one
+        /// size stacked at their own depth - 31202 draws a tread as a 1,187 x 280 mm paper fill, eight to a flight. The box
+        /// is the flight's extent in mm; the slab pass reads the cell the flight stands in as the stair well's opening.
+        /// </summary>
+        public List<(double X0, double Y0, double X1, double Y1, int Treads)> StairFlights { get; } = new();
         // Each column: centroid (X,Y) in mm
         public List<(double X, double Y)> Columns { get; } = new();
         // Each line element: list of (X,Y) in mm (open polyline)

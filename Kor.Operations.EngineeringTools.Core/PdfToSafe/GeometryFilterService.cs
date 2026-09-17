@@ -533,6 +533,10 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             PatternStripesAreNotWalls(result, fates, firstFate);
             AFaceInPiecesIsOneFace(result, fates, firstFate);
             WallsFromFaceLines(result, fates, firstFate, minWallThicknessMm, maxWallThicknessMm, minWallLengthMm, minWallAspect);
+            // A STAIR IS A RUN OF TREADS (intake step 105): the paper fills that are not doorways, read as flights before the
+            // slab pass, which cuts the well they stand in
+            result.StairFlights.AddRange(StairFlights(deferredPaper.Where(i => !doorwayOf.ContainsKey(i)).Select(i => rawSubpaths[i].Points)));
+
             SlabEdgesFromLoops(result, fates, firstFate, slabEdgeBridgeMm, minSlabAreaMm2, minWallThicknessMm, maxWallThicknessMm);
 
             if (fates is not null && (deferredPaper.Count > 0 || deferredNoInk.Count > 0))
@@ -1457,6 +1461,58 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         /// finds nothing and the storey keeps having no plate, which the DXF side already reports.
         /// </summary>
         /// <summary>An X mark's centre, its reach (the longer arm) and its region (the four ends in order round the crossing).</summary>
+        /// <summary>A tread is a paper-filled rectangle this wide across the flight (a stair is 1 m and more wide, 1.6 m and less on a plan drawn in concrete).</summary>
+        internal const double TreadMinWidthMm = 900, TreadMaxWidthMm = 1700;
+        /// <summary>A tread is this deep along the flight: 250-300 mm is a going; the paper fill is drawn to it (31202: 280 mm).</summary>
+        internal const double TreadMinDepthMm = 220, TreadMaxDepthMm = 340;
+        /// <summary>A flight is this many treads and more; fewer is a step or a symbol.</summary>
+        internal const int FlightMinTreads = 5;
+
+        /// <summary>
+        /// The stair flights among the sheet's paper fills (step 105): runs of <see cref="FlightMinTreads"/> or more axis-aligned
+        /// rectangles of one tread size (width across the flight, depth along it) stacked along the flight at their own depth
+        /// (a gap under half a depth between neighbours). Each flight as its extent and its tread count.
+        /// </summary>
+        internal static List<(double X0, double Y0, double X1, double Y1, int Treads)> StairFlights(IEnumerable<List<(double X, double Y)>> paperFills)
+        {
+            var treads = new List<(double X0, double Y0, double X1, double Y1, bool AlongY)>();
+            foreach (var pts in paperFills)
+            {
+                if (pts.Count is < 4 or > 5) continue;
+                double x0 = pts.Min(p => p.X), x1 = pts.Max(p => p.X), y0 = pts.Min(p => p.Y), y1 = pts.Max(p => p.Y);
+                double w = x1 - x0, h = y1 - y0;
+                // axis-aligned: every vertex on the box's edges
+                if (!pts.All(p => Math.Abs(p.X - x0) < 2 || Math.Abs(p.X - x1) < 2 || Math.Abs(p.Y - y0) < 2 || Math.Abs(p.Y - y1) < 2)) continue;
+                if (w >= TreadMinWidthMm && w <= TreadMaxWidthMm && h >= TreadMinDepthMm && h <= TreadMaxDepthMm) treads.Add((x0, y0, x1, y1, true));    // stacked along Y
+                else if (h >= TreadMinWidthMm && h <= TreadMaxWidthMm && w >= TreadMinDepthMm && w <= TreadMaxDepthMm) treads.Add((x0, y0, x1, y1, false));
+            }
+            var flights = new List<(double X0, double Y0, double X1, double Y1, int Treads)>();
+            foreach (bool alongY in new[] { true, false })
+            {
+                // one column of treads: the same extent across the flight (within a tenth), sorted along it
+                var groups = treads.Where(t => t.AlongY == alongY)
+                    .GroupBy(t => alongY ? (Math.Round(t.X0 / 100), Math.Round(t.X1 / 100)) : (Math.Round(t.Y0 / 100), Math.Round(t.Y1 / 100)));
+                foreach (var g in groups)
+                {
+                    var run = g.OrderBy(t => alongY ? t.Y0 : t.X0).ToList();
+                    int start = 0;
+                    for (int i = 1; i <= run.Count; i++)
+                    {
+                        bool breaks = i == run.Count
+                            || (alongY ? run[i].Y0 - run[i - 1].Y1 : run[i].X0 - run[i - 1].X1) > 0.5 * (alongY ? run[i - 1].Y1 - run[i - 1].Y0 : run[i - 1].X1 - run[i - 1].X0);
+                        if (!breaks) continue;
+                        if (i - start >= FlightMinTreads)
+                        {
+                            var f = run.Skip(start).Take(i - start).ToList();
+                            flights.Add((f.Min(t => t.X0), f.Min(t => t.Y0), f.Max(t => t.X1), f.Max(t => t.Y1), f.Count));
+                        }
+                        start = i;
+                    }
+                }
+            }
+            return flights;
+        }
+
         internal sealed record XMark(DxfPoint Centre, double Reach, IReadOnlyList<DxfPoint> Region)
         {
             /// <summary>The two lines, by index into the geometry's lines.</summary>
@@ -1764,6 +1820,66 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 && !result.Columns.Any(c => LoopGeometry.PointInPolygon(new DxfPoint(c.X, c.Y), x.Region))
                 && !result.Walls.Any(w => LoopGeometry.PointInPolygon(new DxfPoint((w.Start.X + w.End.X) / 2, (w.Start.Y + w.End.Y) / 2), x.Region))).ToList();
 
+            // the stair wells (step 105): the arrangement's cell holding all of a stair's flights, built here for the walk path
+            // too - the walk finds the floor and builds no arrangement, and the wells are cells of it
+            var stairWells = new List<PlanLoop>();
+            if (result.StairFlights.Count > 0 && arranged.Count >= 3)
+            {
+                try
+                {
+                    // a stair is its flights within 1.5 m of one another
+                    var stairs = new List<List<(double X0, double Y0, double X1, double Y1, int Treads)>>();
+                    foreach (var f in result.StairFlights)
+                    {
+                        var near = stairs.FirstOrDefault(s => s.Any(g => f.X0 <= g.X1 + 1500 && g.X0 <= f.X1 + 1500 && f.Y0 <= g.Y1 + 1500 && g.Y0 <= f.Y1 + 1500));
+                        if (near is null) stairs.Add(new List<(double, double, double, double, int)> { f }); else near.Add(f);
+                    }
+                    // the stair's own symbol - the flights' outlines, the break line, the arrow - lies inside the flights' box and
+                    // would cut the well into slivers; the well is bounded by what stands OUTSIDE the box: its walls
+                    // strictly inside the flights' box (150 mm in): the well's own outline runs along the flights' edges and stays
+                    bool InAStair(DxfPoint p) => stairs.Any(s => p.X > s.Min(f => f.X0) + 150 && p.X < s.Max(f => f.X1) - 150 && p.Y > s.Min(f => f.Y0) + 150 && p.Y < s.Max(f => f.Y1) - 150);
+                    // and the walls are in it as their outlines: a filled wall left no line for the slab pass (its faces are the
+                    // fill's edges), and the stair's walls are what bound the well
+                    var wallEdges = result.Walls.Where(w => !result.WallIsAnnotation[result.Walls.IndexOf(w)]).SelectMany(w =>
+                        Enumerable.Range(0, w.Outline.Count).Select(k => new DxfSegment("WALL", new DxfPoint(w.Outline[k].X, w.Outline[k].Y), new DxfPoint(w.Outline[(k + 1) % w.Outline.Count].X, w.Outline[(k + 1) % w.Outline.Count].Y))));
+                    // a stair well has a door: the doorway knocked out of its wall (step 14) is closed again here, across the
+                    // opening on both faces, so the well does not leak into the corridor (31202: the cell holding the flights
+                    // was the whole floor, 14,000-33,000 sq ft, on nine of seventeen sheets before this)
+                    var doorEdges = result.Doorways.SelectMany(d =>
+                    {
+                        double dx = d.End.X - d.Start.X, dy = d.End.Y - d.Start.Y, len = Math.Sqrt(dx * dx + dy * dy);
+                        if (len < 1) return Enumerable.Empty<DxfSegment>();
+                        double nx = -dy / len * d.ThicknessMm / 2, ny = dx / len * d.ThicknessMm / 2;
+                        return new[]
+                        {
+                            new DxfSegment("DOOR", new DxfPoint(d.Start.X + nx, d.Start.Y + ny), new DxfPoint(d.End.X + nx, d.End.Y + ny)),
+                            new DxfSegment("DOOR", new DxfPoint(d.Start.X - nx, d.Start.Y - ny), new DxfPoint(d.End.X - nx, d.End.Y - ny)),
+                        };
+                    });
+                    var planarForWells = new PlanarRings(SlabEdgeJoinMm, slabEdgeBridgeMm, SlabEdgeExtendMm).Build(arranged.Concat(wallEdges).Concat(doorEdges).Where(s => !(InAStair(s.Start) && InAStair(s.End))));
+                    foreach (var stair in stairs)
+                    {
+                        // the cells the flights' centres stand in, joined: two flights of one stair sit either side of a line
+                        // (the stringer between them, a break line), in two cells that make one well
+                        var centres = stair.Select(f => new DxfPoint((f.X0 + f.X1) / 2, (f.Y0 + f.Y1) / 2)).ToList();
+                        var cells = new HashSet<int>(Enumerable.Range(0, planarForWells.Faces.Count).Where(i => centres.Any(p => LoopGeometry.PointInPolygon(p, planarForWells.Faces[i].Outer.Points))));
+                        if (cells.Count == 0) continue;
+                        double boxArea = (stair.Max(f => f.X1) - stair.Min(f => f.X0)) * (stair.Max(f => f.Y1) - stair.Min(f => f.Y0));
+                        var rings = planarForWells.RecoverSurfaces(_ => false, (i, _) => cells.Contains(i)).Slabs.Select(s => s.Outer).ToList();
+                        FaceTrace?.Invoke($"slab pass: stair at ({centres.Average(p => p.X) / 304.8:0},{centres.Average(p => p.Y) / 304.8:0}) ft: {stair.Count} flight(s), box {boxArea / 92903.04:0} sq ft, {cells.Count} of {planarForWells.Faces.Count} cell(s) hold a flight (arranged {arranged.Count} + wall edges {wallEdges.Count()} + door edges {doorEdges.Count()}), ring(s) sq ft: {string.Join(" ", rings.Select(r => $"{Math.Abs(r.Area) / 92903.04:0}"))}");
+                        foreach (var ring in rings)
+                        {
+                            double wellArea = Math.Abs(ring.Area);
+                            if (wellArea > 4 * boxArea || wellArea > 60 * 1e6) continue;   // an open stair in a lobby: the lobby is not the well
+                            stairWells.Add(ring);
+                        }
+                    }
+                }
+                catch (InvalidOperationException) { /* the arrangement refused: no wells this sheet, the trace says so through the slab pass */ }
+            }
+            FaceTrace?.Invoke($"slab pass: {stairWells.Count} stair well(s) (step 105; sq ft at centre ft): " +
+                              string.Join(" ", stairWells.Select(w => $"{Math.Abs(w.Area) / 92903.04:0} ({w.Points.Average(p => p.X) / 304.8:0},{w.Points.Average(p => p.Y) / 304.8:0})")));
+
             double NearestColumnFootprintFt(DxfPoint p) => result.Columns.Count == 0 ? -1
                 : result.Columns.Select((c, k) => (c, half: (k < result.ColumnSizes.Count ? Math.Max(result.ColumnSizes[k].WidthMm, result.ColumnSizes[k].DepthMm) : 400.0) / 2))
                     .Min(t => Math.Max(Math.Abs(t.c.X - p.X) - t.half, Math.Abs(t.c.Y - p.Y) - t.half)) / 304.8;
@@ -1772,6 +1888,12 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             FaceTrace?.Invoke($"slab pass: {xMarks.Count} X mark(s) (an opening's mark, step 104; reach ft at centre ft [column ft, wall ft]): " +
                       string.Join(" ", xMarks.OrderByDescending(x => x.Reach).Take(20).Select(x =>
                           $"{x.Reach / 304.8:0} ({x.Centre.X / 304.8:0},{x.Centre.Y / 304.8:0})[{x.Region.Min(NearestColumnFootprintFt):0.0},{(result.Walls.Count == 0 ? -1 : x.Region.Min(p => result.Walls.Min(w => LoopGeometry.DistanceToSegment(p, new DxfPoint(w.Start.X, w.Start.Y), new DxfPoint(w.End.X, w.End.Y)))) / 304.8):0.0}]")));
+            FaceTrace?.Invoke($"slab pass: {result.StairFlights.Count} stair flight(s) (step 105; treads, extent ft, centre ft [column ft, wall ft]): " +
+                              string.Join(" ", result.StairFlights.Select(f =>
+                              {
+                                  var c = new DxfPoint((f.X0 + f.X1) / 2, (f.Y0 + f.Y1) / 2);
+                                  return $"{f.Treads} {(f.X1 - f.X0) / 304.8:0.0}x{(f.Y1 - f.Y0) / 304.8:0.0} ({c.X / 304.8:0},{c.Y / 304.8:0})[{NearestColumnFootprintFt(c):0.0},{(result.Walls.Count == 0 ? -1 : result.Walls.Min(w => LoopGeometry.DistanceToSegment(c, new DxfPoint(w.Start.X, w.Start.Y), new DxfPoint(w.End.X, w.End.Y))) / 304.8):0.0}]";
+                              })));
             if (!walkFoundAFloor && arranged.Count >= 3)
             {
                 try
@@ -1907,6 +2029,19 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     // they are (QUESTIONS.md). What the boxes are, the sheet does not say; their arms sit on the drafter's
                     // layer JBP_G_EXISTING, not the slab layer.
                     result.Slabs.Add(x.Region.Select(p => (p.X, p.Y)).ToList());
+                    result.SlabColors.Add(((byte)0, (byte)0, (byte)0));
+                    result.SlabIsAnnotation.Add(false);
+                }
+                // A STAIR WELL IS THE CELL ITS FLIGHTS STAND IN (step 105): the drafter draws a stair as its treads (paper-filled
+                // rectangles, eight to a flight on 31202) between the stair's walls, and no X; her model cuts the well - two
+                // flights and the landing, 2 x 5.5 m, 44 of them on four sets that the X rule could not see. The well is the
+                // arrangement's cell holding the flights' centres, when one cell holds them all and is no more than four times
+                // the flights' own box (an open stair in a lobby would take the lobby).
+                foreach (var well in stairWells)
+                {
+                    if (!well.Points.All(p => LoopGeometry.InsideOrOn(p, loop.Points, SlabEdgeJoinMm))) continue;
+                    if (well.Area >= 0.5 * loop.Area) continue;
+                    result.Slabs.Add(well.Points.Select(p => (p.X, p.Y)).ToList());
                     result.SlabColors.Add(((byte)0, (byte)0, (byte)0));
                     result.SlabIsAnnotation.Add(false);
                 }
