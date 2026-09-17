@@ -285,6 +285,16 @@ collinear copies across sheets (§51); 31202's PENTHOUSE stated twice; 31065 ROO
 the harness's 31168 moved to the 09-10 reissue (re-banks every 31168 baseline — Ian's call);
 the 57 EDB-only yardsticks exported to `.e2k` on a machine with ETABS.
 
+**Openings, the residue after steps 104–105b (2026-09-16 19:00, from `ModelYardstick.Openings` on the five gate sets
+with her export — the figure every yardstick carries from run 29 on, and `corpus-disagreements` section 6 sums):**
+of hers we do not cut, a metre and more across — 31065's 2 × 5.5 m stairs ×22 (a third way of drawing treads; not
+paper fills, not strokes at a going's pitch — look at one), 31202's 2.5 × 3.5 m elevators ×12 and its 8.5 × 31 m void
+×8 (drawn without an X — what mark?), 31130's 1 × 2.5 m ×15 (a chase?), 31138's 1 × 1 m ×20 (mechanical); under a
+metre — her slits (0 × 4.5 m ×196 on two sets, a modelling artefact) and sleeves (0.5 × 1 ×51, 0.5 × 0.5 ×48) are not
+ours to read from a concrete outline. Of ours she does not have — 31168's 2.5 × 2.5 m ×12 on building C and the 72
+X-boxes beside its perimeter columns on the towers' storeys no model of hers covers (the engineer's line in
+QUESTIONS.md).
+
 ## 7. What this plan does not do
 It does not promise a storey count, a wall count, or "31168 = Revit". Those are measurements the
 harness reports; the contract is §1. It does not touch the app (WPF), the Drafter bridge, or the
