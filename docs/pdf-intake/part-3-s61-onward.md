@@ -2646,3 +2646,10 @@ written, a wing beside it and the same ground on another storey written — each
 assertion in the first test made a differential test running beside it fail once (the static is shared across the
 suite's parallel classes — CLAUDE.md's 08-29 lesson): the test reads the outcome instead. **Run 33** (113 + 113b on
 the corpus) launched 02:49.
+
+**Step 114, tried and REJECTED (03:05).** "A walled cell holding a stair's word (UP, DN, DOWN) is a stair well, flights
+or none" — written for 31170 (her model ten days old; 8 shafts of 2.5 × 3.5 m and 3 stairs of 2 × 5.5 m we lack draw
+no X and no treads the readers take; at one, walls and the word DN). On the six it cut rooms: 31202's openings ours
+she has 53 → 22 of 55, hers we have 52 → 21 of 68, its L6 plate −1,674 sq ft; 31138 hers 128 → 123. A word stands in
+a corridor as readily as in a well; without the flights' box there is nothing to bound it. Reverted whole, nothing
+kept. 31170's cores stay the engineer's line (a shaft drawn as walls alone).
