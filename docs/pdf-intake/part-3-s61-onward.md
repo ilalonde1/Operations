@@ -2328,3 +2328,52 @@ arrangement: 31138's hers-we-have 17 → 39 of 208, ours-she-has 17 of 21 → 23
 eight of its sixteen paper-tread wells lost (line "flights" appear near the paper ones and the wells leak to
 13,000–25,000 sq ft; three forms of the exclusion tried in the half hour, the same loss each time). Two behaviours on
 one shape: rule 10, not banked; the 31202 loss is characterised before the next form, on the branch.
+
+## 116. WP7 — the profession's knowledge as rows: the first block (2026-09-16 18:08–18:45)
+
+Ian's question at 18:05 — a component that ingests the P.Eng texts and requirements into an internal repository for
+this app and others — and his go at 18:1x ("Damn rights I say go to the internal egbc brain"). The answer, and what
+landed in the forty minutes after it:
+
+**The three layers.** The intake had two: the OFFICE's conventions (`analysis.FormatConvention` / `analysis.Ruling`)
+and the READING rules (C# with tests). The PROFESSION's knowledge was cited only in prose — step 105's stair sizes
+cite NBC 9.8 in a test comment. **Migration 096** (`096_TheProfessionsKnowledgeIsRows.sql`, applied by Ian 18:27)
+adds the third: `knowledge.Source` (code, title, publisher, edition, LICENCE — `licensed-cite-only` for the NBC/BCBC/
+CSA texts, `published-free` for EGBC's guidelines, `ours` for the PPMP — where KOR's copy lives, a public URL),
+`knowledge.Clause` (the clause id as the source numbers it, a topic slug, the requirement as a VALUE with units or
+OUR PARAPHRASE, the page in KOR's copy, CONFIDENCE `read-from-source` / `from-memory-unverified` /
+`human-confirmed`, who read it), `knowledge.RuleClause` (a rule by its triage name or SettingKey → the clause and HOW
+it uses it — the proprietary layer, what KOR's practice does with the code), and `vw_RuleAuthority`. Probed as far as
+the app's login allows before hand-over (it caught a column named `Rule`, a reserved word). First rows: six sources,
+the four NBC 9.8 stair clauses the tread finder leans on (860/900 mm width, 125–200 rise, 255–355 run) as
+`from-memory-unverified` with no page, the four links from `TreadMin/MaxWidthMm`, `TreadMin/MaxDepthMm`.
+
+**The ingestor** (`b552d268`): `Core/Knowledge/ClauseIngest.cs` and `takeoff knowledge-ingest <pdf> --source <code>
+[--register <title> <publisher> <licence> --url <u>] [--index] [--clause <ref> ...] [--dry-run]`. `Find` locates a
+clause at the head of a sentence (not in a contents page, not as part of a longer ref), takes its page and, where it
+states a number in the row's units, its value — and CORRECTS a remembered value the source contradicts, saying so.
+`IndexSections` reads a document's numbered headings with their pages (two-column lines split at the inner number;
+a heading set in capitals ended where the capitals end and joined over a line break; the contents page — eight
+headings and more — skipped). `ReadEdition` reads "Version 4.0" or a year off the first pages. Nothing licensed is
+stored as text.
+
+**What is in the store at 18:45:** 24 sources, 879 clause rows. EGBC's eighteen public documents, fetched from
+egbc.ca by URL into the local knowledge mirror under `%LOCALAPPDATA%` (`Temp/kor-knowledge/egbc`, never the repo):
+the structural Professional Practice Guidelines (Part 3 buildings v4.0 — 47 sections; Tall Concrete 2022 — 96;
+Guards v2.0 — 49; Condition Assessment 2020 — 56; Issued for Building Permit v2.0; Retention and Disclosure v2.0;
+Part 9 High Snow v1.0 — 8; the joint Letters of Assurance guideline — 12), the Quality Management Guides (Documented
+Checks v4.0 — 52; Field Reviews v4.0 — 66; Direct Supervision v4.0 — 54; Independent Review of Structural Designs
+v4.0 — 63; IR of High-Risk Work v3 — 77; Retention v4.0 — 55; Authentication v5.0 — 89; Risk Assessments v1.0 — 69;
+Use of PPGs v3.0 — 39), and the Province's Guide to the Letters of Assurance (BCBC 2024 / VBBL 2025 — 38). One
+(Professional Structural Engineering Services for Part 9 Buildings) is a scanned PDF with no text layer; its row says
+so. What the index gives: "field reviews during construction — Part 3 guideline §3.3.6.3, page 27" for the app and
+the /ask AI. What it does not: the prose behind the heading (a person opens the page).
+
+**The gate** (`f91a3450`): `EveryRuleCitesItsAuthorityTests` — every reader constant the triage classes `Rule` and
+explains by a code (NBC, BCBC, CSA) has a live `RuleClause` row; a clause written from memory is read from the source
+within thirty days or the test fails until it is. Proved by breaking.
+
+**Blocked on Ian, one line:** the NBC/BCBC/CSA copies and the PPMP live on the Library SharePoint site, not synced
+here and not reachable without a Graph token — sync it, or drop the PDFs in the knowledge mirror's `codes` folder;
+the stair clauses get their pages and their values checked against the book within minutes of that. Also the EGBC
+portal itself (Ian's screenshot of the account dashboard, 18:12): a registrant's account, nothing for the brain.

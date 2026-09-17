@@ -3,14 +3,16 @@
 One file, one line per question, newest first. Answer by editing the line or by mail; a question leaves this file
 the day it is answered (its answer goes where it belongs: a rule, a row, a section). Nothing here blocks the work.
 
-## Open (2026-09-16 18:25)
+## Open (2026-09-16 18:45)
 
-- **Migration 096** — `KOR.Drafter/db/096_TheProfessionsKnowledgeIsRows.sql` (WP7: the `knowledge` schema — Source,
-  Clause, RuleClause, the view — six sources, the four NBC 9.8 stair clauses and their links). Idempotent, after 095.
-  Parse-probed with the app's login, which cannot create a schema, so its first live run is yours; the closing SELECT
-  shows four rule-to-clause rows. Tell me when it is in.
 - **Item 8 — three live jobs for a current engineer's look.** No longer what the work waits on: the corpus's own
   review (`takeoff corpus-disagreements`, §111) is the input; your picks are the confirmation at the end.
+
+- **The Library site's codes and the PPMP (WP7).** The NBC/BCBC/CSA copies and `KOR PPMP.pdf` live on
+  `bmzse.sharepoint.com/sites/Library`, not synced to this PC and not reachable without a Graph token here. Sync the
+  site (OneDrive "Add shortcut" on Building Codes and PPMP) or drop the PDFs in the knowledge mirror's `codes` folder
+  (under `%LOCALAPPDATA%`, `Temp/kor-knowledge/codes`); the NBC stair clauses get their pages and their values checked
+  against the book within minutes of that.
 
 ## For an engineer, when one is asked (few, each backed by a measurement)
 
@@ -30,6 +32,7 @@ the day it is answered (its answer goes where it belongs: a rule, a row, a secti
 
 ## Answered
 
+- **Migration 096** — applied by Ian 2026-09-16 18:27; 24 sources and 879 clause rows by 18:45 (§116).
 - **Migrations 094 and 095** — applied by Ian 2026-09-16 ~15:50 (a first run ~15:30 failed on a duplicate Topic and
   NULL SettingUnits in both files; corrected and probed in a rolled-back transaction first). Five rows live, read back
   from `vw_RuleSetting`; the pier keys left `UnbankedByDesign` in `f5616a25`.
