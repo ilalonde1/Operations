@@ -87,7 +87,14 @@ public static class SheetViews
             // an underlined note under a title is a sentence (the second audit's B7: "CONTINUOUS TO MAIN FLOOR SLAB"
             // under "LEVEL 3 PLAN" made one title of the two). The first cut asked the line to BEGIN with a title word
             // and lost 31065's and 31168's second lines, which begin with CONCRETE.
-            if (!ReadsLikeATitleLine(line.Text)) continue;
+            // A SECOND LINE THAT BEGINS WITH A CONJUNCTION CONTINUES THE FIRST (step 109, 2026-09-16 21:40): 30838's S2.26
+            // titles its concrete-outline plan "LEVEL 20 PLAN - CONCRETE OUTLINE" over "AND DIAPHRAGM REINFORCING", the
+            // underline under the second line only, and none of that line's three words is a title word - so the page's
+            // two plans of LEVEL 20 (the slab-reinforcing plan below it is underlined on one line) were one view, and
+            // every wall and column of the storey stood twice, 30 m apart, on all 33 tower storeys (44 columns where her
+            // model has 22; half of ours beyond her footprint; the frame registration spoiled). A line that opens with
+            // AND, &, OR or WITH is the tail of the line above it whatever its other words: a note does not begin so.
+            if (!ReadsLikeATitleLine(line.Text) && !BeginsWithAConjunction(line.Text)) continue;
             var above = lines.Where(a => a.MinY > line.MinY && a.MinY - line.MinY <= 2.0 * line.Height
                     && Math.Min(a.MaxX, line.MaxX) - Math.Max(a.MinX, line.MinX) >= 0.5 * Math.Min(a.MaxX - a.MinX, line.MaxX - line.MinX))
                 .OrderBy(a => a.MinY).FirstOrDefault();
@@ -111,6 +118,46 @@ public static class SheetViews
     }
 
     private const double TitleRegionMinFx = 0.80;
+
+    /// <summary>A line whose first word is AND, &amp;, OR or WITH: the tail of the line above it (step 109).</summary>
+    public static bool BeginsWithAConjunction(string text)
+    {
+        string first = (text ?? "").Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? "";
+        return first.Equals("AND", StringComparison.OrdinalIgnoreCase) || first == "&"
+               || first.Equals("OR", StringComparison.OrdinalIgnoreCase) || first.Equals("WITH", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>One line of the page as the title reader saw it: the words, where, and what it made of them.</summary>
+    public sealed record LineReading(string Text, double XPts, double YPts, bool InTitleBlock, bool Underlined, bool NamesPlan);
+
+    /// <summary>
+    /// The title reader's trace (step 109's instrument, `takeoff sheet-views`): every line of the page that names a
+    /// plan and every underlined line (a title's second line is one), with whether it sits in the title block's
+    /// fifth and whether a stroke underlines it - so "why is this page one view?" is answered by the reader, not by
+    /// a guess. 30838's S2.26: "LEVEL 20 PLAN CONCRETE OUTLINE" no underline, "AND DIAPHRAGM REINFORCING" underlined.
+    /// </summary>
+    public static IReadOnlyList<LineReading> Explain(VectorPageReader.PageContent page)
+    {
+        ArgumentNullException.ThrowIfNull(page);
+        var strokes = new List<(double X0, double X1, double Y)>();
+        foreach (var p in page.Paths)
+        {
+            if (!p.IsStroked || p.IsFilled || p.IsAnnotation || p.Points.Count != 2) continue;
+            var a = p.Points[0]; var b = p.Points[1];
+            if (Math.Abs(b.Y - a.Y) > 1.0 || Math.Abs(b.X - a.X) < 20) continue;
+            strokes.Add((Math.Min(a.X, b.X), Math.Max(a.X, b.X), (a.Y + b.Y) / 2));
+        }
+        var result = new List<LineReading>();
+        foreach (var line in TextLines(page))
+        {
+            bool plan = NamesAPlan(line.Text);
+            bool underlined = strokes.Any(s => s.Y <= line.MinY + 0.2 * line.Height && s.Y >= line.MinY - 1.2 * line.Height
+                                               && Math.Min(s.X1, line.MaxX) - Math.Max(s.X0, line.MinX) >= 0.5 * (line.MaxX - line.MinX));
+            if (!plan && !underlined) continue;
+            result.Add(new LineReading(line.Text, line.MinX, line.MinY, line.CentreX / page.WidthPts >= TitleRegionMinFx, underlined, plan));
+        }
+        return result.OrderByDescending(r => r.YPts).ToList();
+    }
 
     /// <summary>
     /// A line made of title words: at least half of its words are the vocabulary's (a floor, level, parkade, roof,

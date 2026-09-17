@@ -303,4 +303,31 @@ public sealed class ASheetIsItsViewsTests
         Assert.Equal("section/elevation", DrawingIntake.SheetTypeOf("LEVEL 2 WALL ELEVATIONS"));
         Assert.Equal("other", DrawingIntake.SheetTypeOf("PODIUM MEZZANINE"));
     }
+
+    /// <summary>
+    /// A SECOND LINE THAT BEGINS WITH A CONJUNCTION CONTINUES THE FIRST (step 109, 2026-09-16). 30838's S2.26 draws
+    /// LEVEL 20 twice - "LEVEL 20 PLAN - CONCRETE OUTLINE" over "AND DIAPHRAGM REINFORCING" (the underline under the
+    /// second line only, none of whose words is a title word) and "LEVEL 20 PLAN - SLAB REINFORCING" - and was read as
+    /// one view, so every wall and column stood twice on 33 storeys. WHAT THIS COVERS: a second line opening with AND
+    /// joins the plan title above it, and the page is two views; a note opening with any other word still does not
+    /// (the case above); the conjunctions. WHAT IT DOES NOT: the real page (30838 in run 32); a title of three lines;
+    /// a second line "AND ..." whose first line names no plan (no view, as before).
+    /// </summary>
+    [Fact]
+    public void ASecondLineThatBeginsWithAConjunctionContinuesTheTitle()
+    {
+        var page = Page(
+            [("LEVEL", 900, 1144), ("20", 940, 1144), ("PLAN", 980, 1144), ("CONCRETE", 1020, 1144), ("OUTLINE", 1060, 1144),
+             ("AND", 900, 1132), ("DIAPHRAGM", 940, 1132), ("REINFORCING", 980, 1132),
+             ("LEVEL", 900, 128), ("20", 940, 128), ("PLAN", 980, 128), ("SLAB", 1020, 128), ("REINFORCING", 1060, 128)],
+            Stroke(880, 1180, 1130), Stroke(880, 1180, 126));
+        var views = SheetViews.Titles(page);
+        Assert.Equal(2, views.Count);
+        Assert.Contains(views, v => v.Title == "LEVEL 20 PLAN CONCRETE OUTLINE AND DIAPHRAGM REINFORCING" && Math.Abs(v.YPts - 1130) < 1);
+        Assert.Contains(views, v => v.Title == "LEVEL 20 PLAN SLAB REINFORCING");
+        Assert.True(SheetViews.BeginsWithAConjunction("& DIAPHRAGM REINFORCING"));
+        Assert.True(SheetViews.BeginsWithAConjunction("with shear reinforcing"));
+        Assert.False(SheetViews.BeginsWithAConjunction("CONTINUOUS TO MAIN FLOOR SLAB"));
+        Assert.False(SheetViews.BeginsWithAConjunction("ANDERSON"));
+    }
 }
