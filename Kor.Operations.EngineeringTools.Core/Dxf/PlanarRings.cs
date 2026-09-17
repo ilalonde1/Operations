@@ -126,7 +126,11 @@ public sealed class PlanarRings
     internal sealed record Edge(int A, int B, bool Inserted);
     private sealed record Span(DxfPoint A, DxfPoint B, bool Inserted);
     private sealed record Cycle(List<int> Halves, PlanLoop Loop, double Area, int Component);
-    private sealed record Proposal(int A, int B, double Cost, List<Span> Spans);
+    private sealed record Proposal(int A, int B, double Cost, List<Span> Spans)
+    {
+        /// <summary>B is the edge the end is carried onto, not another end (step 112): only A has a choice to make.</summary>
+        public bool ToEdge { get; init; }
+    }
     internal sealed class Mesh(string layer, double tolerance, List<DxfPoint> points, List<Edge> edges)
     {
         internal readonly string Layer = layer;
@@ -275,16 +279,46 @@ public sealed class PlanarRings
                 if (pieces.Count == 0 || pieces.Any(s => mesh.Edges.Any(e => Conflicts(s, new Span(mesh.Points[e.A], mesh.Points[e.B], false), true)))) continue;
                 candidates.Add(new Proposal(a, b, Math.Round(pieces.Sum(s => s.A.DistanceTo(s.B)), 6), pieces));
             }
+        // A T DRAWN SHORT (step 112, 2026-09-16 23:45). An end is bridged to another END within the bridge, carried to the
+        // corner its ray makes with another end's, and joined ON a span it already touches within the join tolerance;
+        // an end that stops SHORT of a span's middle by up to the bridge was none of these, and the ring stayed open
+        // there while a 150 mm raster closed it. 30838's concrete-outline plans stop twelve and more edges 0.6-5 in short
+        // of the edge they run into on every tower storey (the slab-pass trace, 23:44) and had no plate; 31138's tower
+        // is the same class ("edges stop beside columns"). Such an end is carried perpendicularly to its foot on the
+        // nearest span within the bridge; the span has no choice to make, so the end's unique cheapest proposal decides,
+        // and a carry that crosses an edge is refused as every other proposal is.
+        if (_bridgeTolerance > _joinTolerance)
+            foreach (int a in ends)
+            {
+                var p = mesh.Points[a]; int own = mesh.Adjacency[a][0];
+                int bestE = -1; double bestD = double.MaxValue; DxfPoint foot = default;
+                for (int e = 0; e < mesh.Edges.Count; e++)
+                {
+                    if (e == own) continue;
+                    var sa = mesh.Points[mesh.Edges[e].A]; var sb = mesh.Points[mesh.Edges[e].B];
+                    var span = new Span(sa, sb, false);
+                    double t = Parameter(p, span);
+                    if (!(t > 0) || !(t < 1)) continue;
+                    var f = At(span, t);
+                    double d = p.DistanceTo(f);
+                    if (d <= _joinTolerance || d > _bridgeTolerance) continue;
+                    if (d < bestD) { bestD = d; bestE = e; foot = f; }
+                }
+                if (bestE < 0) continue;
+                var carry = new Span(p, foot, true);
+                if (Enumerable.Range(0, mesh.Edges.Count).Any(e => e != bestE && Conflicts(carry, new Span(mesh.Points[mesh.Edges[e].A], mesh.Points[mesh.Edges[e].B], false), true))) continue;
+                candidates.Add(new Proposal(a, bestE, Math.Round(bestD, 6), [carry]) { ToEdge = true });
+            }
         var unique = new Dictionary<int, Proposal>();
         foreach (int end in ends)
         {
-            var choices = candidates.Where(c => c.A == end || c.B == end).ToList();
+            var choices = candidates.Where(c => c.A == end || (c.B == end && !c.ToEdge)).ToList();
             if (choices.Count == 0) continue;
             double best = choices.Min(c => c.Cost);
             var tied = choices.Where(c => c.Cost == best).ToList();
             if (tied.Count == 1) unique[end] = tied[0];
         }
-        var agreed = candidates.Where(c => unique.GetValueOrDefault(c.A) == c && unique.GetValueOrDefault(c.B) == c).ToList();
+        var agreed = candidates.Where(c => unique.GetValueOrDefault(c.A) == c && (c.ToEdge || unique.GetValueOrDefault(c.B) == c)).ToList();
         // Crossing proposals are BOTH refused; processing one first would reintroduce ownership by arrival.
         return agreed.Where(c => !agreed.Any(o => !ReferenceEquals(c, o)
                 && c.Spans.Any(a => o.Spans.Any(b => Conflicts(a, b, false)))))
