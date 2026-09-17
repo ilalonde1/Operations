@@ -739,7 +739,10 @@ residues' cause. Not the PDF route; queued behind it.
    half the page's columns is not the page's floor — the arrangement is built as well; where its floor holds more the
    walk's stands down) + **113b** (two plates of one storey covering nine tenths of each other's ground are one floor —
    the composer) BANKED `66ebfd5a`/`b5fbe19c`: 31138 17 → 20 plated storeys, 31130 +45,625 sq ft, 31168 +7,558, 31202 L1
-   one floor; nothing lost. **Run 33** (113 + 113b) launched 02:49.
+   one floor; nothing lost. **Run 33** (113 + 113b) launched 02:49, **banked 04:07** (`069690e4`): plates 2,087 → 2,105 (74%),
+   96 sets moved, yardsticks 3 better / 1 worse; 60061-03 plates 1,953 → 5,804–9,443 sq ft a storey, its openings 4 → 23;
+   the corpus openings figure: hers we have 33% (722 of 2,161), ours she has 38%; on the 22 current-model sets 70% / 41%.
+   A rule tried and refused by the six the same hour (a walled cell holding UP/DN is a well — it cut rooms on 31202).
 
 4. **WP6** — one model in front of Andrea (31170's, or whichever the ledger ranks best of the
    architects' sets). Ian's call when.
