@@ -120,4 +120,36 @@ public sealed class AStairIsARunOfTreadsTests
         double well = Area(withStair.Slabs[1]);
         Assert.InRange(well, 0.8 * (wx1 - wx0) * (wy1 - wy0), 1.3 * (wx1 - wx0) * (wy1 - wy0));
     }
+
+    /// <summary>
+    /// THE LANDING BETWEEN THE FLIGHTS IS THE WELL'S (step 105d, 2026-09-16). 31065's L7-L17 draw a break line across the
+    /// stair as a zig-zag of short strokes; once step 110 keeps its pieces the line closes, and the cell between the two
+    /// pairs of flights - the landing, no flight's centre in it - fell out of the well (2.4 x 7.1 m -> 2.4 x 3.3). A cell no
+    /// bigger than the stair's box whose centroid lies inside that box is the well's. WHAT THIS COVERS: a walled well with
+    /// flights at both ends and two lines across it wall to wall between them (a break line drawn twice), the landing cell
+    /// between joining the well into one loop of the well's area. WHAT IT DOES NOT: a line across the flights themselves
+    /// (a tread, excluded before this); a landing outside the flights' box (an L-shaped well's turn); the real sheets.
+    /// </summary>
+    [Fact]
+    public void TheLandingBetweenTheFlightsIsTheWells()
+    {
+        double wx0 = 43000, wy0 = 21500, wx1 = 45600, wy1 = 25500;
+        RawSubpath[] Room() =>
+        [
+            Line(X0, Y0, X1, Y0), Line(X1, Y0, X1, Y1), Line(X1, Y1, X0, Y1), Line(X0, Y1, X0, Y0),
+            Wall(200, wy1 - wy0, wx0 - 200, wy0), Wall(200, wy1 - wy0, wx1, wy0),
+            Wall(wx1 - wx0 + 400, 200, wx0 - 200, wy1), Wall(wx1 - wx0 + 400, 200, wx0 - 200, wy0 - 200),
+            Tread(1040, 240, wx0 + 300, wy0 - 220),
+            Column(41000, 21000), Column(46500, 21000), Column(41000, 25000), Column(46500, 25000),
+            Line(wx0, 23400, wx1, 23400), Line(wx0, 23900, wx1, 23900),   // the break line, drawn twice, wall to wall
+        ];
+        // two flights of five at the bottom of the well, two at the top: the landing between holds no flight's centre
+        var flights = Flight(wx0 + 100, wy0 + 300, 5).Concat(Flight(wx1 - 100 - 1187, wy0 + 300, 5))
+            .Concat(Flight(wx0 + 100, 24100, 5)).Concat(Flight(wx1 - 100 - 1187, 24100, 5)).ToArray();
+        var g = Read(Room().Concat(flights).ToArray());
+        Assert.Equal(4, g.StairFlights.Count);
+        Assert.Equal(2, g.Slabs.Count);                                  // the plate and ONE well, the landing in it
+        double well = Area(g.Slabs[1]);
+        Assert.InRange(well, 0.8 * (wx1 - wx0) * (wy1 - wy0), 1.3 * (wx1 - wx0) * (wy1 - wy0));
+    }
 }

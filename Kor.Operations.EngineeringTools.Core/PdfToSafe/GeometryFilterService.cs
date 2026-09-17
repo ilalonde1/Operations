@@ -1998,6 +1998,19 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         var cells = new HashSet<int>(Enumerable.Range(0, planarForWells.Faces.Count).Where(i => centres.Any(p => LoopGeometry.PointInPolygon(p, planarForWells.Faces[i].Outer.Points))));
                         if (cells.Count == 0) continue;
                         double boxArea = (stair.Max(f => f.X1) - stair.Min(f => f.X0)) * (stair.Max(f => f.Y1) - stair.Min(f => f.Y0));
+                        // THE LANDING BETWEEN THE FLIGHTS IS THE WELL'S (step 105d, 2026-09-16 22:35): a break line drawn across a
+                        // stair as a zig-zag of short strokes closes once step 110 keeps its pieces, and the cell between two
+                        // flights - the landing, no flight's centre in it - fell out of the well (31065's L7-L17 wells 2.4 x 7.1 m
+                        // -> 2.4 x 3.3). A cell no bigger than the stair's box whose centroid lies inside that box is the well's too.
+                        double sx0 = stair.Min(f => f.X0), sx1 = stair.Max(f => f.X1), sy0 = stair.Min(f => f.Y0), sy1 = stair.Max(f => f.Y1);
+                        for (int i = 0; i < planarForWells.Faces.Count; i++)
+                        {
+                            if (cells.Contains(i)) continue;
+                            var outer = planarForWells.Faces[i].Outer;
+                            if (Math.Abs(outer.Area) > boxArea) continue;
+                            var c = outer.Centroid();
+                            if (c.X > sx0 && c.X < sx1 && c.Y > sy0 && c.Y < sy1) cells.Add(i);
+                        }
                         var rings = planarForWells.RecoverSurfaces(_ => false, (i, _) => cells.Contains(i)).Slabs.Select(s => s.Outer).ToList();
                         FaceTrace?.Invoke($"slab pass: stair at ({centres.Average(p => p.X) / 304.8:0},{centres.Average(p => p.Y) / 304.8:0}) ft: {stair.Count} flight(s), box {boxArea / 92903.04:0} sq ft, {cells.Count} of {planarForWells.Faces.Count} cell(s) hold a flight (arranged {arranged.Count} + wall edges {wallEdges.Count()} + door edges {doorEdges.Count()}), ring(s) sq ft: {string.Join(" ", rings.Select(r => $"{Math.Abs(r.Area) / 92903.04:0}"))}");
                         foreach (var ring in rings)
