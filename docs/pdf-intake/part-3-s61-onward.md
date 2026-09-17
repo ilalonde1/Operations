@@ -2415,3 +2415,31 @@ precision held at 76–79%. Plates unchanged on all six. Test `ADoorDrawnAsAGapB
 1,050 mm pieces were read as nothing), proved by breaking. Banked `2cdab09f`. What it does not close: a door wider
 than 1.3 m (a double door), a gap between a wall and a column, the flights still in two cells where the break line
 runs (31065's 180 + 6,760 on one stair).
+
+## 119. Step 106 — a big X is what its words say (2026-09-16 19:19–19:48)
+
+Found by looking at 31202's largest miss on the openings figure: her 31 × 8.7 m void on L6–L13 (8.5 × 31 m ×8 in the
+"hers we have not" list). Cropped on L6: a region of the plate drawn as an X of 105 ft arms with **OPEN TO BELOW** at
+the crossing — the shape `XMarkMaxArmMm` refused at 16:00 because the same set's ROOF draws a 109 ft X over what I
+took for a region labelled 9" SLAB. The words decide, not the size.
+
+**The rule.** An X longer than a stair (over 30 ft) is a void when a void word — OPEN, OPENING, VOID, ATRIUM — sits
+at its crossing, within a quarter of the arm's length of it (where the drafter puts a region's label), and no slab
+word does; a slab word (SLAB) makes it a slab whatever else it says; neither, nothing. The sheet reader hands the
+page's words to the geometry (`ExtractedGeometry.PageWords`, in mm — the DXF outlet does not write them); the
+vocabularies are options, `dxf.pdf.void-words` and `dxf.pdf.slab-words`, extended by **migration 097**'s rows
+(each with its own topic and units, probed in a rolled-back transaction before hand-over — the two faults 094 and
+095 were first written with). The void is written as an opening loop inside the plate as a shaft's X is.
+
+**Measured by her models:** 31202 ours-she-has 33 of 33 (100%), hers-we-have 25 → 33 of 68 (49%; 7 of her 8 big
+voids); 31168, 31138, 31130, 31065 unchanged. The first form — any void word anywhere inside the region — cut 916 sq
+ft from 31202's ROOF, and the trace of the words that made each void showed why the second form is the crossing:
+`OPEN@(-0,1)ft` on the roof too. **So the roof reads open:** the roof plan carries the same X with OPEN at its
+crossing — the drawing says the atrium is open through the roof; her model roofs it (the roof plate 10,702 → 9,786
+sq ft here). We follow the drawing; the engineer's line is in `QUESTIONS.md`. Test: a 35 m X with OPEN TO BELOW at
+its crossing = the plate + the void; with 9" SLAB the plate alone; a slab word wins; no words nothing; a word
+outside the X nothing — proved by breaking. Banked `1eb67a7b`.
+
+**The day's openings figure, five sets with her export, 16:00 → 19:48:** ours judged 142 → 209, hers among them
+111 → 166 (78% → 79%); hers we have 95 → 246 — of her openings a metre and more across, 16% → 49% on 31202, 37%
+on 31138, 33% on 31065. What is left, by set and size, is in the plan's §6.

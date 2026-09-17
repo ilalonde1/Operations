@@ -3,11 +3,14 @@
 One file, one line per question, newest first. Answer by editing the line or by mail; a question leaves this file
 the day it is answered (its answer goes where it belongs: a rule, a row, a section). Nothing here blocks the work.
 
-## Open (2026-09-16 18:45)
+## Open (2026-09-16 19:50)
 
 - **Item 8 — three live jobs for a current engineer's look.** No longer what the work waits on: the corpus's own
   review (`takeoff corpus-disagreements`, §111) is the input; your picks are the confirmation at the end.
 
+- **Migration 097** — `KOR.Drafter/db/097_ABigXIsWhatItsWordsSay.sql` (two vocabulary rows: `dxf.pdf.void-words`,
+  `dxf.pdf.slab-words`; own topics, units `names`; probed in a rolled-back transaction, two rows). Idempotent, after
+  096. Nothing waits on it — the compiled defaults carry the same words.
 - **The Library site's codes and the PPMP (WP7).** The NBC/BCBC/CSA copies and `KOR PPMP.pdf` live on
   `bmzse.sharepoint.com/sites/Library`, not synced to this PC and not reachable without a Graph token here. Sync the
   site (OneDrive "Add shortcut" on Building Codes and PPMP) or drop the PDFs in the knowledge mirror's `codes` folder
@@ -26,7 +29,10 @@ the day it is answered (its answer goes where it belongs: a rule, a row, a secti
   where she modelled (111 of 142 on five sets). Two things the plan does not say: (a) 31168's L15–26 draw a
   3.6 × 1.5 m X-box either side of every perimeter column, 0–700 mm in from the slab edge — what is it (a recess, a
   step, a drop)? It is not cut. (b) Her shafts drawn WITHOUT an X (31202's 2.5 × 3.5 m elevators on nine storeys, its
-  8.5 × 31 m void) — by what mark on the plan should those be read (a hatch, a word, a layer)?
+  8.5 × 31 m void) — by what mark on the plan should those be read (a hatch, a word, a layer)? (The void is read now,
+  step 106: a big X with OPEN TO BELOW at its crossing.) (c) **31202's ROOF over the atrium:** the roof plan carries the
+  same X with OPEN at its crossing, so the drawing says the atrium is open through the roof; your model roofs it.
+  Which is built?
 - **Her primary model per job.** The yardstick now prefers a model named FULL/GRAVITY over the newest file and
   never a 2NDRY/CRANE/MASS/CHECK one (step 101). Is that the office's practice for naming the main model?
 
