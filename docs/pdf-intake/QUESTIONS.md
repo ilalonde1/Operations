@@ -3,8 +3,12 @@
 One file, one line per question, newest first. Answer by editing the line or by mail; a question leaves this file
 the day it is answered (its answer goes where it belongs: a rule, a row, a section). Nothing here blocks the work.
 
-## Open (2026-09-16 16:45)
+## Open (2026-09-16 18:25)
 
+- **Migration 096** — `KOR.Drafter/db/096_TheProfessionsKnowledgeIsRows.sql` (WP7: the `knowledge` schema — Source,
+  Clause, RuleClause, the view — six sources, the four NBC 9.8 stair clauses and their links). Idempotent, after 095.
+  Parse-probed with the app's login, which cannot create a schema, so its first live run is yours; the closing SELECT
+  shows four rule-to-clause rows. Tell me when it is in.
 - **Item 8 — three live jobs for a current engineer's look.** No longer what the work waits on: the corpus's own
   review (`takeoff corpus-disagreements`, §111) is the input; your picks are the confirmation at the end.
 

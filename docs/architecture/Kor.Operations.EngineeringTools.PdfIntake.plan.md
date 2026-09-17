@@ -234,6 +234,41 @@ drawing's own model.
   for the next plan, not this one.
 - Gate: §1's three conditions, each with its evidence in the commit.
 
+### WP7 — The profession's knowledge as rows — APPROVED 2026-09-16 18:1x (Ian: "go to the internal egbc brain"); first block after run 29
+- **The three layers.** The intake has two: the OFFICE's conventions (`analysis.FormatConvention` / `analysis.Ruling` —
+  what KOR draws and models) and the READING rules (C# with tests). The PROFESSION's knowledge — NBC/BCBC, CSA A23.3 /
+  S16 / O86, EGBC's Professional Practice Guidelines and Quality Management Guides, KOR's own PPMP — was cited only in
+  prose (step 105's stair sizes cite NBC 9.8 in the triage). WP7 makes it rows an app version of an engineer can reason
+  from, and this app, the ETABS tools and the /ask AI on APP01 can query.
+- **The schema — migration 096 (`096_TheProfessionsKnowledgeIsRows.sql`, written 18:22, parse-probed; Ian applies):**
+  `knowledge.Source` (code, title, publisher, edition, LICENCE, where KOR's copy lives, a public URL where one exists),
+  `knowledge.Clause` (the clause id as the source numbers it, a topic slug, the requirement as a VALUE with units where
+  it is one and as OUR PARAPHRASE where it is not — never the source's prose —, the page in KOR's copy, CONFIDENCE:
+  `read-from-source` / `from-memory-unverified` / `human-confirmed`, who read it), `knowledge.RuleClause` (a compiled
+  rule by its triage name or a SettingKey → the clause it cites, and HOW it uses it — the proprietary layer: what KOR's
+  practice does with the code, not the code), and `knowledge.vw_RuleAuthority`. First rows: six sources; the four NBC 9.8
+  clauses the tread finder leans on (860/900 mm width, 125–200 rise, 255–355 run), `from-memory-unverified`, page NULL
+  until read; the four links from `TreadMin/MaxWidthMm`, `TreadMin/MaxDepthMm`.
+- **Copyright is the constraint, not code.** `Licence` on every source: `licensed-cite-only` (NBC/BCBC/CSA: ids, pages,
+  values, paraphrases), `published-free` (EGBC's guidelines: citable and quotable with attribution), `ours` (the PPMP).
+  Nothing licensed is stored as text; nothing licensed goes in the repo.
+- **The sources Ian named (18:15–18:16):** the Library site's Building Codes folder
+  (`bmzse.sharepoint.com/sites/Library/Shared Documents/Building Codes` — the licensed copies; read for pages and values
+  through the FileSync app registration's Graph access, which already reads SharePoint); `KOR PPMP.pdf` under
+  `.../Shared Documents/PPMP` (ours, ingested whole); the EGBC portal itself holds nothing for the brain (a registrant's
+  account) — EGBC's guidelines and QM guides are public on egbc.ca and are fetched by URL.
+- **The ingestor — `takeoff knowledge-ingest <pdf> --source <code> [--clause <ref> ...]`:** reads a document's text
+  through the same PDF reader the drawings use (`VectorPageReader` words), finds each named clause's page and, where the
+  requirement is a number, its value; writes or lifts the `Clause` row to `read-from-source` with the page and its own
+  name in `ReadBy`; never writes prose. For a `published-free` or `ours` source it may also store a quoted requirement.
+- **The gate — `EveryRuleCitesItsAuthorityTests`:** every triage line classed `Rule` that names a code (the tread
+  sizes today) has a `RuleClause` row whose clause exists; a `from-memory-unverified` clause older than 30 days fails
+  the test until read. A `CompiledDefaultsAreTheBankedRowsTests` twin for the knowledge rows is not needed — the rule's
+  value is not the clause's value (drafting slack sits between them, recorded in `HowUsed`).
+- **Sequence:** by need, not by bulk — one clause per rule that leans on one; the first dozen are the stair sizes, the
+  storey heights, the minimum wall and column sizes (CSA A23.3 for walls and columns), the live loads the load plans
+  carry. Grows the way the conventions did. After run 29 banks (~20:45): migration 096 to Ian, the verb, the gate.
+
 ## 5. Process rules that become code, not prose
 - **A red test blocks the bank.** WP1's verdict includes the full suite; red = no bank, no
   commit of a rule. There is no "known red".
@@ -255,18 +290,8 @@ It does not promise a storey count, a wall count, or "31168 = Revit". Those are 
 harness reports; the contract is §1. It does not touch the app (WPF), the Drafter bridge, or the
 Revit route.
 
-**Proposed, awaiting Ian's go (2026-09-16 18:08, on his question): WP7 — the profession's knowledge as rows.**
-The app has two layers today: the OFFICE's conventions (KorStandards `analysis` rows: what KOR draws and models) and
-the READING rules (code with tests). The PROFESSION's knowledge — NBC/BCBC, CSA A23.3 / S16 / O86, the EGBC
-competencies — is cited only in prose (step 105's stair sizes cite NBC 9.8 in the triage). WP7 adds a `knowledge`
-schema: `Source` (code, edition, licence), `Clause` (id, page, the requirement as a value or our paraphrase), and
-`Rule → Clause` links, so every reading rule and every design check names its authority as a row this app, the ETABS
-tools and the /ask AI on APP01 can query. The constraint is copyright, not code: the store holds citations, tables of
-values and paraphrases, never the licensed prose; the EGBC syllabus is public, textbooks are not. Sequence: by need,
-not by bulk — the dozen clauses the code already leans on (stair geometry, storey heights, minimum wall and column
-sizes, the live loads the load plans carry), one migration, a verb `takeoff knowledge-ingest <pdf> --source <id>`
-with the page on every row, and the triage's `Rule` entries converted to clause ids. Grows one clause per step, the
-way the conventions did. After the sitting (WP6); the next autonomous block if Ian says go.
+WP7 (the profession's knowledge as rows) was proposed here at 18:08 on Ian's question and approved by him at 18:1x; it is
+§4's WP7 now.
 
 ## 8. What needs Ian (2026-09-12 morning)
 
