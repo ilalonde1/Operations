@@ -2596,3 +2596,22 @@ it moves every set** (it is the arrangement both routes build rings with): 31168
 31130 −2,976, 31065 P3 +13,634 and **P1 −9,143 (a plate lost)**, its tower rings 6,776 → 6,656 (closing at their T's
 instead of round them), the architect's set −11,078. Not banked: a lost plate is explained before it is traded; run
 33 judges the corpus form. Step 109 waits behind it.
+
+## 125. The yardstick's second and third openings figures; the S2.17 puzzle closed (2026-09-17 00:45–01:10)
+
+**A match by cover.** 31065 and 31017 cut a stair as its flights (2 × 5.5 m each, 68 on 13 sets of "hers we have
+not") where our well spans the flights and the landing (2.4 × 7.1 m), so by centre the second flight is 2 m off and
+"unmatched" — and step 105d's landing looked like the wrong practice. The yardstick now says both: her openings
+whose centre stands INSIDE one of ours (`TheirsOpeningsCovered`, `a5d99517`/`5aa10406`) beside the match by centre
+within 1.5 m. On the five sets: 31065 76 → 107 of 209 (36% → 51%); 31130 31, 31138 104 unchanged; 31202 51; 31168
+52 of 64 by cover against 62 by centre (our shafts there are smaller than hers). `corpus-disagreements` section 6
+sums it. **And a third:** of ours she has not, how many stand where she cuts on another storey — 31168 8 of 30,
+31138 2 of 7, the other three none: the unmatched X-boxes are marks her model has nowhere, not a storey mapping's
+miss. Nothing re-baselined; the gate compares models, not yardsticks.
+
+**The S2.17 puzzle** (30838's L11 page: two views in run 30, one in run 31, no reader change between): not the
+reader. The set's stick file was re-issued (2026-09-15 over 09-14) and the 12-hour census refresh brought it in
+between the runs — the yardstick header moved from 880 to 881 days after her model — and 30838 alone builds
+identically twice (`f22287ec`). A run's inputs can move under it; the ledger's yardstick header carries the issue.
+
+**Run 32** (110, 105d, 111 on the corpus) launched 00:05 on the mirror; the first openings figure since run 30's.
