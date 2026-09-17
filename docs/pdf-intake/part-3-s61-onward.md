@@ -2321,3 +2321,10 @@ with the floor — the arrangement's way with overlaps, known since step 97.
 **What it does not read:** 31138, 31130 and 31065 draw their treads another way (not paper fills — looked for on
 31138 L10 at her A24 and not found where the frame put it); their 2 × 5.5 m wells stay in the openings figure as
 the residue, counted on every set from run 29 on.
+
+**Step 105b, parked on branch `step-105b-line-treads` (`1bb5c08c`, 18:06).** 31138 draws a stroke per tread, twelve to
+a flight (looked at on its L10 sheet at a DN label). Read as flights with their lines left out of the well's
+arrangement: 31138's hers-we-have 17 → 39 of 208, ours-she-has 17 of 21 → 23 of 27 — and 31202's 25 → 17 both ways,
+eight of its sixteen paper-tread wells lost (line "flights" appear near the paper ones and the wells leak to
+13,000–25,000 sq ft; three forms of the exclusion tried in the half hour, the same loss each time). Two behaviours on
+one shape: rule 10, not banked; the 31202 loss is characterised before the next form, on the branch.
