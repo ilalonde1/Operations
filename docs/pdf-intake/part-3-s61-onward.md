@@ -2292,3 +2292,32 @@ storeys' areas by 25–72 sq ft where an opening loop re-settled the plate; open
 7 better / 1 worse / 27 same. Its disagreements: 579 of ours still stand on a wall she modelled (606 before) — step 99
 took 27; the rest are scheduled sizes she models as piers (31087's 36×44, 31017's 18×30, 31053's 24×36) where 31130
 schedules 14×36 and models a column. Two practices; the engineer's line is in `QUESTIONS.md`, not in the code.
+
+## 115. Step 105 — a stair is a run of treads (2026-09-16 17:05–17:46)
+
+The recall side of openings, from step 104's own figure: her 2 × 5.5 m wells (44 on four sets) that carry no X. Looked
+at on 31202 L6 at her A9 (`pdf-overlay --crop`, then `pdf-at`): the stair is drawn as its treads — a paper-filled
+rectangle 1,187 × 280 mm, eight to a flight, `Discarded PaperFill` before this — between its walls, with UP and DN.
+
+**The rule.** A flight is five or more paper fills of one tread size stacked along the flight at their own depth (a
+gap under half a depth between neighbours); the sizes are the building code's stair, not a drafting choice (NBC 9.8:
+860–1,100 mm wide and more, a run of 255 mm — read as 900–1,700 by 220–340 mm), so they are `Rule` in the triage, not
+conventions owing rows. The well is the arrangement's cell(s) holding the flights' centres — built with the walls'
+outlines in it (a filled wall leaves the slab pass no line) and the doorways knocked out of them closed again on both
+faces, and the stair's own symbol (the break line, the arrow: anything strictly inside the flights' box by 150 mm) out
+of it, since it cut the well into slivers — no more than four times the flights' box (an open stair in a lobby would
+take the lobby), written as an opening loop inside the plate as the X regions are. Instruments: the slab-pass trace
+prints every flight (treads, extent, centre, nearest column and wall) and every stair's cells and rings.
+
+**Measured by her models** (the five gate sets, her storeys): 31202 her stair wells found 16 of 16 — ours she has 25
+of 25 (was 9 of 9), hers we have 25 of 68 (13% → 37%); 31168 and 31138 unchanged; 31130 +4 and 31065 +3 wells, five
+of the seven not hers. Over the five: ours judged 142 → 165, of them hers 111 → 129 (78%); hers we have 95 → 118.
+Plates unchanged on all six. Rendered 31202 L6: the elevator bank and two stair wells, the east one a rough ring
+along the treads' edges with the right area — recorded, not asserted. Tests `AStairIsARunOfTreadsTests` (the
+finder's cases; a walled well with a doorway holding two flights = the plate + the well's loop), proved by breaking.
+The fixture's walls meet corner to corner without overlapping: overlapping wall rectangles left the well one cell
+with the floor — the arrangement's way with overlaps, known since step 97.
+
+**What it does not read:** 31138, 31130 and 31065 draw their treads another way (not paper fills — looked for on
+31138 L10 at her A24 and not found where the frame put it); their 2 × 5.5 m wells stay in the openings figure as
+the residue, counted on every set from run 29 on.

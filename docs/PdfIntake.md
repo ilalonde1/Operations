@@ -1,6 +1,6 @@
 ﻿# PDF intake — what it does today, and what it leaves on the page
 
-## 0. START HERE (state as of 2026-09-16 16:45, after steps 47 and 54–104 — 260 of 296 sets build from the PDF alone on run 28 (260 of 279 with a stick file of their own); plates on 74% of storeys; steps through 103 are in a banked run (run 28, `9c59efdb`); step 104 (the drafter's X is a shaft's opening; the yardstick judges openings against her export — 78% of ours are hers where she modelled) banked on the six sets and awaits run 29; migrations 094–095 LIVE; the engineers' review comes from the corpus — `takeoff corpus-disagreements` (§111, §114); three lines for an engineer in `docs/pdf-intake/QUESTIONS.md`)
+## 0. START HERE (state as of 2026-09-16 17:50, after steps 47 and 54–105 — 260 of 296 sets build from the PDF alone on run 28 (260 of 279 with a stick file of their own); plates on 74% of storeys; steps through 103 are in a banked run (run 28, `9c59efdb`); steps 104–105 (the drafter's X is a shaft's opening; a stair is a run of treads; the yardstick judges openings against her export — 78% of ours are hers where she modelled, 31202's stair wells 16 of 16) banked on the six sets; 104 is in run 29 (in flight, ~18:30), 105 awaits run 30; migrations 094–095 LIVE; the engineers' review comes from the corpus — `takeoff corpus-disagreements` (§111, §114); three lines for an engineer in `docs/pdf-intake/QUESTIONS.md`)
 
 **Questions for Ian live in one file: `docs/pdf-intake/QUESTIONS.md`** (one line each; answered ones leave it).
 

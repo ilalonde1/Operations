@@ -595,6 +595,19 @@ residues' cause. Not the PDF route; queued behind it.
    31130 p35's top half (enclosed at 60 mm, no face from PlanarRings); 31138's split level; 31202 ROOF's notch; part
    plans; openings.
 
+3ai. **Autonomous afternoon, the second half, 2026-09-16 15:38 → 17:50** (§113–§115). Migrations 094–095 LIVE after a first run of Ian's
+   failed on the natural key and NULL units (fixed, probed in a rolled-back transaction, re-run ~15:50; `f5616a25`). **Step 104**
+   (`ba9597fa`): the drafter's X is a shaft's opening — and THE CHECK FIRST: `ModelYardstick` judges openings against her export
+   (ours judged inside her footprint, hers on every shared storey, matched within 1.5 m, the unmatched by plan size; a line of
+   every yardstick.txt from run 29; `corpus-disagreements` section 6, `459a1156`); `model-render` draws openings. Judged on five
+   sets: 111 of 142 of ours are hers (78%). 31168's 561 = 72 X-boxes flanking every perimeter column on L15–26 (storeys no model
+   of hers covers) + the real shafts; two refusal rules (edge-clear, column-clear) each took fifty of her seventy on the storeys
+   she covers — MEASURED AND REJECTED, the boxes stay, the question is the engineer's (QUESTIONS.md). **Run 28** banked (`c495424f`,
+   plates 74%, step 99 on the corpus −2,496 columns / +2,506 walls). **Step 105** (`fa1eabaf`): a stair is a run of treads (paper
+   fills, five and more, code sizes) and the well is the cell they stand in (walls' outlines and closed doorways in the
+   arrangement, the stair's symbol out): 31202 her wells 16 of 16, hers we have 13% → 37%; over five sets ours judged 165, hers
+   129 (78%). Residue: 31138/31130/31065 draw treads another way. Run 29 (step 104) launched 17:02, banks ~18:30.
+
 4. **WP6** — one model in front of Andrea (31170's, or whichever the ledger ranks best of the
    architects' sets). Ian's call when.
 5. **Step 47**, the next reading rule, from the corpus. `takeoff corpus-query plan-titles` on the
