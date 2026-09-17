@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using System.Text.RegularExpressions;
 
 
@@ -136,7 +136,10 @@ internal static class CorpusDisagreementsVerb
             Console.WriteLine($"   over {openings.Count} sets: ours judged {ours}, hers {hers}; ours she has {om} ({(ours == 0 ? 0 : 100.0 * om / ours):F0}%); hers we have {tm} ({(hers == 0 ? 0 : 100.0 * tm / hers):F0}%)");
             Console.WriteLine($"   ours she has not, by plan size: {string.Join(", ", oursOpeningsNotHers.GroupBy(o => o.Size).OrderByDescending(g => g.Sum(x => x.Count)).Take(top).Select(g => $"{g.Key} {g.Sum(x => x.Count)} on {g.Select(x => x.Job).Distinct().Count()} sets"))}");
             Console.WriteLine($"   hers we have not, by plan size: {string.Join(", ", hersOpeningsNotOurs.GroupBy(o => o.Size).OrderByDescending(g => g.Sum(x => x.Count)).Take(top).Select(g => $"{g.Key} {g.Sum(x => x.Count)} on {g.Select(x => x.Job).Distinct().Count()} sets"))}");
-            Console.WriteLine("   sets to open first (ours she has not, most first): " + string.Join(" ", openings.Where(o => o.Ours - o.OursMatched > 0).OrderByDescending(o => o.Ours - o.OursMatched).Take(top).Select(o => $"{o.Job}({o.Ours - o.OursMatched} of {o.Ours})")));
+            // a set whose model cuts no opening on the shared storeys judges nothing (31039: her EQ townhouse case, 0 openings, 12 of ours "not hers")
+            int noHers = openings.Count(o => o.Theirs == 0 && o.Ours > 0);
+            Console.WriteLine("   sets to open first (ours she has not, where her model cuts openings at all, most first): " + string.Join(" ", openings.Where(o => o.Theirs > 0 && o.Ours - o.OursMatched > 0).OrderByDescending(o => o.Ours - o.OursMatched).Take(top).Select(o => $"{o.Job}({o.Ours - o.OursMatched} of {o.Ours})"))
+                + (noHers > 0 ? $"; {noHers} set(s) where her model cuts none are not judged" : ""));
             Console.WriteLine("   sets to open first (hers we have not, a metre and more across, most first): " + string.Join(" ", hersOpeningsNotOurs.Where(h => !h.Size.StartsWith("0x", StringComparison.Ordinal) && !h.Size.StartsWith("0.5x", StringComparison.Ordinal)).GroupBy(h => h.Job).OrderByDescending(g => g.Sum(x => x.Count)).Take(top).Select(g => $"{g.Key}({g.Sum(x => x.Count)})")));
         }
         return 0;
