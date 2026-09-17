@@ -302,6 +302,13 @@ exclusion looks for a column centre inside the X on the SAME sheet; the composed
 The next rule: an X whose crossing is a column's centre on the composed storey is a mark on the column (a footing, a
 drop), never a shaft — done where the storey's columns are all known (the composer), judged on 31032, 31039, 31017,
 31108, 30933 by the figure. `SlabPassTraceProbe` reads any corpus job now (the cached census's newest issue).
+Done as step 107 (20:27; 31032 14 → 5). 31039 was the figure's artefact (her EQ townhouse case cuts no opening; section
+6 leaves such sets off the list now). 31017 (20:34, scratch build with 105–107): ours judged 68, hers 30 (44%), hers
+we have 67 of 230 (29%); ours she has not: **1.5 × 9 m ×21** — the same unexplained X-box as 31168's perimeter
+1.5 × 4.8 m ones (31017 is the other set whose scheduled 18 × 30 columns she models as piers: one office's practice,
+the engineer's question), and its L4 is a storey with no columns and no walls under three overlapping plates — a
+placement failure of its own, not an openings one. A "well fills 60% of its box" guard was tried against its jagged
+rings and moved nothing: reverted, unbanked.
 
 ## 7. What this plan does not do
 It does not promise a storey count, a wall count, or "31168 = Revit". Those are measurements the
