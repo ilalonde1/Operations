@@ -308,7 +308,11 @@ we have 67 of 230 (29%); ours she has not: **1.5 × 9 m ×21** — the same unex
 1.5 × 4.8 m ones (31017 is the other set whose scheduled 18 × 30 columns she models as piers: one office's practice,
 the engineer's question), and its L4 is a storey with no columns and no walls under three overlapping plates — a
 placement failure of its own, not an openings one. A "well fills 60% of its box" guard was tried against its jagged
-rings and moved nothing: reverted, unbanked. 30933 (20:40): its bad openings are OLD — a 21 × 22 m rectangle with an X
+rings and moved nothing: reverted, unbanked. **Read again 23:25 by size:** ours are 41 X-boxes of 1.7 × 8.9 m and hers
+we have not are 37 of 1.5 × 5 m — the same stairs, our X spanning the two flights and the landing (8.9 m), her opening
+the flights alone (5 m), so the centres sit ~2 m apart and neither matches: on 31017 her practice keeps the landing
+as slab, the opposite of 31065's 2.4 × 7.1 m wells (step 105d). Two practices, or a scissor stair's landing — the
+engineer's line, not a rule; the matching within 1.5 m could also judge by overlap instead of by centre. 30933 (20:40): its bad openings are OLD — a 21 × 22 m rectangle with an X
 and five columns in it, and six 0.5 × 44 m slivers between parallel lines — both from the DXF route's original "a ring
 inside a floor is an opening" rule (StructuralPlanClassifier), which the openings figure judges for the first time.
 **So the corpus figure's 60% has three parts: sets whose model judges nothing, the 31168-class X-box, and the old ring
