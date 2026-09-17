@@ -317,7 +317,13 @@ since 00:46 — §125). **31087 (01:40, the best current model: two days after t
 the 81 we lack are on the podium L3–L5 (ours 0 openings — L4 has NO plate: "no slab edge would close … the ring
 closes at a gap of 7,315"; the trace says a 19 in gap in the outline at y 288.6 ft and eight Ts drawn short of
 1.3–5.6 in — step 112's class) and the parkade P1–P5 (her 11 a storey: four zero-width slits, two sleeves, a stair,
-two shafts, two 5.5 m voids; ours 3). So 31087's opening misses are plate misses; 112 reaches it too. 30933 (20:40): its bad openings are OLD — a 21 × 22 m rectangle with an X
+two shafts, two 5.5 m voids; ours 3). So 31087's opening misses are plate misses; 112 reaches it too. **60061-03
+(01:50; her model 111 days old, 259 openings, we have 4):** the Hyatt Place hotel's typical plan (S2.04, LEVEL 04–10)
+is one dense reinforcing plan with the outline under the bars and "OPENING FOR EXHAUST 18 × 18" sleeves by the
+dozen — her 25 a storey; ours read a 1,953 sq ft plate on every storey of a ~10,000 sq ft floor (rendered p14), so
+its opening misses are a plate miss too: the next plate look, with 31087's podium. The current-model sets ranked by
+her openings we lack: 60061-03 (255), 31087 (81), 30989 (24), 31170 (22), 31202 (16), 31183 (14) — the two largest
+are plates, not openings. 30933 (20:40): its bad openings are OLD — a 21 × 22 m rectangle with an X
 and five columns in it, and six 0.5 × 44 m slivers between parallel lines — both from the DXF route's original "a ring
 inside a floor is an opening" rule (StructuralPlanClassifier), which the openings figure judges for the first time.
 **So the corpus figure's 60% has three parts: sets whose model judges nothing, the 31168-class X-box, and the old ring
