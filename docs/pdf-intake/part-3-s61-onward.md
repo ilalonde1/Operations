@@ -2443,3 +2443,25 @@ outside the X nothing — proved by breaking. Banked `1eb67a7b`.
 **The day's openings figure, five sets with her export, 16:00 → 19:48:** ours judged 142 → 209, hers among them
 111 → 166 (78% → 79%); hers we have 95 → 246 — of her openings a metre and more across, 16% → 49% on 31202, 37%
 on 31138, 33% on 31065. What is left, by set and size, is in the plan's §6.
+
+## 120. Step 107 — a hole with a column in its middle is no hole (2026-09-16 20:06–20:31)
+
+Run 29's openings figure over the corpus: ours judged 516, hers among them 309 (60%) — against 79% on the five gate
+sets. The sets where none of ours were hers were named by the figure (31032 14 of 14, 31039 12 of 12, 31017 37 of 63)
+and the first was looked at: `SlabPassTraceProbe` reads any corpus job now (the cached census's newest issue at the
+fallback scale, as the analyzer builds it), and `model-render` of 31032's P1 showed every X-opening a 5 × 5 m or
+5 × 3.6 m box **centred on a column** — a footing or a drop panel marked with an X — on a sheet that draws no columns of
+its own (the trace: the nearest column read on that sheet 40–170 ft away). Step 104's exclusion looks for a column
+read on the same sheet inside the X; the composed storey has the column from another sheet.
+
+**The rule, in the composer, where every column the set placed on the storey is known:** an opening under 40 sq m
+whose centroid stands within 300 mm of a column's centre is a mark on the column, not cut, and the flag says so
+(`PlacedMembers.AnyWithin`). A void larger than that may hold a column (an atrium's) and is left alone. 31032 in a
+scratch build (`--work` elsewhere; run 30 owns the corpus folder): 14 → 5 openings, P1 8 → 1. The six banked sets
+byte-identical — none has one. Test `AHoleWithAColumnInItsMiddleIsNoHoleTests` (an opening centred on a column from
+another sheet is not cut, one a bay away is, the flag names sheet and storey), proved by breaking. Banked `8cb9176e`.
+
+**31039 was an artefact of the figure, not of the reader:** her model is `31039 EQ - TH-B - CASE1.EDB`, a townhouse
+EQ case with no openings at all, so "12 of ours, none hers" judged nothing. Section 6 now leaves a set whose model
+cuts no opening on the shared storeys off the list and counts it aside (`b…`). 31017 (37 of 63 not hers, her model
+cuts 42 we lack) is the next look.
