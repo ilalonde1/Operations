@@ -2553,3 +2553,26 @@ plate appeared (31130 L3's two columns and a wall now rise from L4; 31065 L3's s
 **Run 31 died at 22:04:04** at 73 of 296, exit −1073741510 (STATUS_CONTROL_C_EXIT) with no Ctrl-C logged — a console
 close or kill, the third detached run to die today, each while a `dotnet test` gate ran in this session. Resumed 22:22
 as run 31b by build stamp; `corpus-analyze` logs `ProcessExit` with its time now (`702ca49f`).
+
+## 123. Step 111 — a sleeve is a box with its diagonals (2026-09-16 22:55–23:18)
+
+**Found the same way as 107 and 108: her model → our page.** Of her 2,161 openings on the storeys both models name,
+367 are sleeves under a metre (0.5 × 1 m on 11 sets, 0.5 × 0.5 m on 4; 60061-03 alone 207, 30838 33, 31005 16, 31202
+12), and the census over her 96 models now counts them: **757 of 4,967 under 300 mm on the short side, 1,895 under a
+metre**. 31202's is one 1,118 × 382 mm chase per storey, L2–L13. `open_centres` → the yardstick's frame shift →
+`model-to-page` → `pdf-at` on S2.06.1: a 9 pt rectangle with its two 4 pt diagonals — the shaft's mark at a sleeve's
+size — and step 104's X wants arms of 2 m (a symbol's are under a metre); these are 1.18 m.
+
+**The rule, in two halves.** `XMarks`: an X with arms from 600 mm is a mark when its four arm ends are the corners of a
+rectangle the page draws (a two-point line between each pair of neighbouring ends, within 50 mm) — `XMark.Boxed`; an
+unboxed X under 2 m is still a symbol. `StructuralPlanClassifier.IsSleeve`: the DXF side's `dxf.min-slab-area` (50 sq
+ft) is a plate's minimum and dropped every sleeve ring; a ring under it that fills its least box (area ≥ 0.9 × box, 4–6
+points), at least 4 in on its short side and under five times longer than wide, is a sleeve — an opening inside a
+floor, linework outside one. Tests (the boxed X found and its floor cut with the sleeve as a loop; unboxed and 400 mm
+boxes not) proved by breaking.
+
+**Judged on the five sets with her model (`66478bca`):** her openings we have 256 → 325 of 582 (44% → 56%): 31130
+17 → 31 of 33 (94%), 31138 73 → 104 of 208 (50%), 31202 33 → 52 of 68 (76%), 31168 60 → 62 (97%), 31065 73 → 76.
+Ours she has 189 of 228 → 257 of 342 (83% → 75%): 31065 adds seventeen boxed X's of 0.5 × 0.5 m and four of 0.5 × 1
+she has not at those places (she cuts 48 such elsewhere on the set — a look owed: what the drafter's small X-boxes
+are where her model has none), 31168 adds ten. Plates, columns and walls byte-identical on all six.
