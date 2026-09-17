@@ -31,6 +31,16 @@ internal static class CorpusAnalyzeVerb
             else caRoot = args[i];
         }
         var caProblems = new List<string>();
+        // A CORPUS RUN DOES NOT DIE ON A CONSOLE SIGNAL IT DID NOT ASK FOR (2026-09-16). Runs 27 and 29, launched detached
+        // (Win32_Process.Create, their own console), each stopped mid-corpus with "^C" in the log - 13:47:31 and 17:33:57,
+        // the second while a `dotnet test` gate ran in the session that launched it; who sends the Ctrl-C is not known.
+        // The run resumes by stamp, but an hour of a two-hour run was lost twice. The signal is refused and RECORDED with
+        // its time, so the next one says when it came and what else was running.
+        Console.CancelKeyPress += (_, e) =>
+        {
+            e.Cancel = true;
+            Console.WriteLine($"  Ctrl-C at {DateTime.Now:HH:mm:ss} ignored: a corpus run finishes or is killed, it is not interrupted");
+        };
         Console.WriteLine("census...");
         var caCensus = StickFileCorpus.CensusCached(caRoot, caProblems, TimeSpan.FromHours(12), caCensusFresh, line => Console.WriteLine("  " + line), parallel: 12);
         Console.Write(StickFileCorpus.Summary(caCensus));
