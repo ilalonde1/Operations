@@ -2615,3 +2615,34 @@ between the runs — the yardstick header moved from 880 to 881 days after her m
 identically twice (`f22287ec`). A run's inputs can move under it; the ledger's yardstick header carries the issue.
 
 **Run 32** (110, 105d, 111 on the corpus) launched 00:05 on the mirror; the first openings figure since run 30's.
+
+## 126. Steps 113 and 113b — a walk floor holding few columns is not the page's floor; two plates covering each other are one (2026-09-17 01:45–02:50)
+
+**Found from the corpus ranked by her model's age.** Of the 22 sets whose model is within a year of the drawing, the
+two where we lack most of her openings — 60061-03 (255 of 259) and 31087 (81 of 248) — are plate misses: 31087's
+podium L4 is a progress drawing ("ARCH ADD ADJUST SLAB EDGE", a 19 in break in the outline, eight Ts drawn short —
+step 112's class); 60061-03's typical plan LEVEL 04–10 is a hotel's outline under a dense reinforcing plan, and we
+read a 1,953 sq ft plate on every storey of a ~10,000 sq ft floor. Its slab-pass trace: **the walk found a floor —
+the stud-rail schedule's border at the page's foot, a 53 × 37 ft rectangle holding none of the 29 columns — and
+"only where the walk found no floor" is the arrangement built**, so the real outline was never arranged.
+
+**Step 113:** a walk floor holding fewer than half the page's columns (six or more on the page) is not the page's
+floor: the arrangement is built as well, and where its floors hold more columns than the walk's, the walk's stand
+down. 60061-03: the arrangement's 4,484 sq ft ring holds 26 of 28. On the six (first form): 31138 gains three plated
+storeys (its tower's L17, L18, L20), 31130 P3 a 24,420 sq ft plate over two slivers, 31168 L2 a second wing — and
+31202 L1 carried its slab twice (the foundation plan's ring, 34,590, and the L1 plan's, 34,145): the composer's "one
+plate per place per storey" holds one centre, and these two readings' centres sit further apart than that.
+
+**Step 113b (the composer):** two plates of one storey covering nine tenths of each other's ground are one floor —
+the smaller's ground sampled on a 40 × 40 grid (a vertex test missed it: 22 of 55 vertices inside, the rest on the
+shared edge); the first reading stands, the second is flagged. 31202 L1: one floor, 34,145.
+
+**Banked `66ebfd5a` / merged `b5fbe19c`, gate green on the re-banked six, fast suite 1,489:** 31130 489,492 →
+535,117 sq ft; 31138 17 → 20 storeys with a plate, 185,382 → 211,364 sq ft; 31168 +7,558; 31202 −4,591 (one floor
+where there were a floor and a sliver); 31065 and the architect's set unchanged; stack ends move a storey where
+plates appeared, nothing lost. Tests: a schedule box beside a floor the walk cannot close and the arrangement's
+enclosed cells unite (a 1 ft gap in the middle of an edge, two lines across); a second reading a foot off not
+written, a wing beside it and the same ground on another storey written — each proved by breaking. A `FaceTrace`
+assertion in the first test made a differential test running beside it fail once (the static is shared across the
+suite's parallel classes — CLAUDE.md's 08-29 lesson): the test reads the outcome instead. **Run 33** (113 + 113b on
+the corpus) launched 02:49.
