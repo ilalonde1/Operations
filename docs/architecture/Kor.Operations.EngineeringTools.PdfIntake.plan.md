@@ -294,7 +294,14 @@ paper fills, not strokes at a going's pitch — look at one), 31202's 2.5 × 3.5
 metre — her slits (0 × 4.5 m ×196 on two sets, a modelling artefact) and sleeves (0.5 × 1 ×51, 0.5 × 0.5 ×48) are not
 ours to read from a concrete outline. Of ours she does not have — 31168's 2.5 × 2.5 m ×12 on building C and the 72
 X-boxes beside its perimeter columns on the towers' storeys no model of hers covers (the engineer's line in
-QUESTIONS.md).
+QUESTIONS.md). **Run 29's corpus figure (20:03, 52 sets): ours judged 516, hers 309 (60%); hers we have 361 of 2,161
+(17%).** Looked at 20:10 — 31032 (14 of ours, none hers): on P1, L1 and L6 the X-boxes are 5 × 5 m and 5 × 3.6 m squares
+CENTRED ON A COLUMN (rendered: a column dot at every X's crossing) — footings or drop panels drawn with an X on a sheet
+that draws no columns of its own (the trace: column 40–170 ft, i.e. none read on that sheet; wall 0.3–2 ft). Step 104's
+exclusion looks for a column centre inside the X on the SAME sheet; the composed storey has one from another sheet.
+The next rule: an X whose crossing is a column's centre on the composed storey is a mark on the column (a footing, a
+drop), never a shaft — done where the storey's columns are all known (the composer), judged on 31032, 31039, 31017,
+31108, 30933 by the figure. `SlabPassTraceProbe` reads any corpus job now (the cached census's newest issue).
 
 ## 7. What this plan does not do
 It does not promise a storey count, a wall count, or "31168 = Revit". Those are measurements the

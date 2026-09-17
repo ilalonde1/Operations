@@ -6,7 +6,8 @@ using Xunit;
 namespace Kor.Operations.EngineeringTools.Core.Tests.Intake;
 
 /// <summary>
-/// AN INSTRUMENT, NOT A GATE (2026-09-16): builds ONE of the six banked sets exactly as the gate does and
+/// AN INSTRUMENT, NOT A GATE (2026-09-16): builds ONE of the six banked sets exactly as the gate does - or any corpus job
+/// by the cached census's newest issue, as the analyzer builds it (20:10) - and
 /// writes the slab pass's trace per sheet to <c>TestResults/slab-trace/&lt;job&gt;/slab-trace.txt</c>.
 /// A single page through <c>takeoff pdf-overlay --walls</c> reads its walls without the set's schedule
 /// and can find a floor the set build does not (31202 L6, measured 2026-09-16: 19,860 sq ft alone,
@@ -25,8 +26,20 @@ public sealed class SlabPassTraceProbe
         if (string.IsNullOrWhiteSpace(job)) return;
         string? conn = Environment.GetEnvironmentVariable(RuleSettings.ConnectionEnvironmentVariable);
         Assert.False(string.IsNullOrWhiteSpace(conn), $"{RuleSettings.ConnectionEnvironmentVariable} is not set");
-        var set = Assert.Single(SixSetsBuildAsBankedTests.Sets, s => s.Job.Equals(job, StringComparison.OrdinalIgnoreCase));
         var (options, _) = PdfIntakeOptions.For(conn);
+        // one of the six banked sets by its banked path and scale; any other corpus job by the cached census's newest
+        // issue (the mirror's copy, no share walk) at the options' fallback scale, as the analyzer builds it (20:10)
+        var banked = SixSetsBuildAsBankedTests.Sets.FirstOrDefault(s => s.Job.Equals(job, StringComparison.OrdinalIgnoreCase));
+        string sharePath; int scale;
+        if (banked is not null) { sharePath = banked.SharePath; scale = banked.Scale; }
+        else
+        {
+            var census = StickFileCorpus.CensusCached(PublishDiscovery.ProjectsRoot, new List<string>(), TimeSpan.FromDays(30), false);
+            var jc = Assert.Single(census, c => c.Job.Equals(job, StringComparison.OrdinalIgnoreCase));
+            sharePath = jc.NewestIssue ?? throw new InvalidOperationException($"{job} has no stick file in the census");
+            scale = options.FallbackScale;
+        }
+        var set = (Job: job!, SharePath: sharePath, Scale: scale);
         string pdf = DrawingMirror.SingleFile(set.SharePath);
         string work = Path.Combine(AppContext.BaseDirectory, "TestResults", "slab-trace", set.Job);
 
