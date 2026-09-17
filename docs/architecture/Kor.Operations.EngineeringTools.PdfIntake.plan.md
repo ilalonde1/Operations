@@ -711,6 +711,17 @@ residues' cause. Not the PDF route; queued behind it.
    (the west tower's half plates whole — item 2's class), 31065 +14,613, 31168 +1 storey; her openings we have on 31130
    6 → 17. Run 31 died at 22:04 (a console close, third today; `ProcessExit` logged now), resumed as 31b 22:22.
 
+3am. **Autonomous night 2026-09-16 22:55 → 2026-09-17 01:35** (§123–§125). **Step 111** (a sleeve is a box with its
+   diagonals; the DXF side's 50 sq ft minimum no longer drops a rectangle sleeve) banked `66478bca`: her openings we
+   have on the five sets 44% → 56%. Run 31 banked `abb5939c` (74%; 30838's S2.17 difference = a new stick-file issue
+   through the census refresh, not the reader). **Run 32** (110 + 105d + 111 on the corpus) banked `a521ac41`: plates
+   2,087 (+2), walls −242 / columns −52 over 66 sets, yardsticks 5 better / 0 worse; **openings: hers we have 25% → 31%
+   (673 of 2,161), ours she has 60% → 41%** — the sleeve cuts both ways (30993's chases beside its core are two boxed
+   X's where her model has one slot; 31017's stair X vs her flights) — the engineer's line in QUESTIONS.md. **Step
+   112** (a T drawn short) closes 30838's concrete-outline plans in `PlanarRings` and is refused by `RecoverSurfaces`
+   on 31065's P1 in three forms → branch `step-112` + Codex brief `CODEX-PDF-INTAKE-STEP-112-A-T-DRAWN-SHORT-REFUSES-A-PAGE.md`
+   (Ian runs it); step 109 waits behind it. The yardstick gained a match by cover and an "elsewhere" count (§125).
+
 4. **WP6** — one model in front of Andrea (31170's, or whichever the ledger ranks best of the
    architects' sets). Ian's call when.
 5. **Step 47**, the next reading rule, from the corpus. `takeoff corpus-query plan-titles` on the
