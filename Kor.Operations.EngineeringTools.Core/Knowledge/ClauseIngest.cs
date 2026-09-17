@@ -126,6 +126,59 @@ public static class ClauseIngest
         return sections;
     }
 
+    /// <summary>
+    /// The numbered ITEMS of a short document that numbers its requirements 1., 2., 3. (EGBC's Code of Ethics: fourteen
+    /// principles on one page): each item's text from its number to the next number, joined over its lines, at most
+    /// 500 characters. For a published-free or KOR's own source only - the text is stored as the requirement, so the
+    /// caller checks the licence first. Two columns read as two runs of numbers; the first occurrence of a number wins.
+    /// </summary>
+    public static IReadOnlyList<Section> IndexNumberedItems(string pdfPath)
+    {
+        var item = new Regex(@"^(\d{1,2})\.\s+(\S.*)$", RegexOptions.Compiled);
+        var items = new List<Section>();
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        using var doc = UglyToad.PdfPig.PdfDocument.Open(pdfPath);
+        int pageNo = 0;
+        foreach (var page in doc.GetPages())
+        {
+            pageNo++;
+            var content = VectorPageReader.ReadPage(page);
+            // two columns read as one line each by the page's line reader (item 1's text ran into item 9's): the words
+            // are split at the page's middle where item numbers stand on both sides of it, and lines are built per column
+            var itemXs = content.Words.Where(w => Regex.IsMatch(w.Text, @"^\d{1,2}\.$")).Select(w => w.MinX).ToList();
+            double mid = content.WidthPts / 2;
+            bool twoColumns = itemXs.Any(x => x < mid) && itemXs.Any(x => x > mid);
+            var lines = new List<string>();
+            foreach (var column in twoColumns ? new[] { content.Words.Where(w => w.Cx < mid), content.Words.Where(w => w.Cx >= mid) } : new[] { content.Words.AsEnumerable() })
+            {
+                var ordered = column.OrderByDescending(w => w.Cy).ThenBy(w => w.Cx).ToList();
+                var line = new List<VectorPageReader.TextToken>();
+                foreach (var w in ordered)
+                {
+                    if (line.Count > 0 && Math.Abs(line[0].Cy - w.Cy) > 3) { lines.Add(string.Join(" ", line.OrderBy(t => t.Cx).Select(t => t.Text))); line.Clear(); }
+                    line.Add(w);
+                }
+                if (line.Count > 0) lines.Add(string.Join(" ", line.OrderBy(t => t.Cx).Select(t => t.Text)));
+            }
+            string? number = null; var text = new System.Text.StringBuilder();
+            void Close()
+            {
+                if (number is not null && seen.Add(number) && text.Length >= 8) items.Add(new Section(number, text.ToString().Trim(), pageNo));
+                number = null; text.Clear();
+            }
+            foreach (string line in lines)
+            {
+                var m = item.Match(line);
+                if (m.Success) { Close(); number = m.Groups[1].Value; text.Append(m.Groups[2].Value); continue; }
+                if (number is null) continue;
+                if (line.Length == 0 || text.Length > 500) { Close(); continue; }
+                text.Append(' ').Append(line);
+            }
+            Close();
+        }
+        return items.Select(i => i with { Title = i.Title.Length > 500 ? i.Title[..500] : i.Title }).ToList();
+    }
+
     /// <summary>The document's edition as its first pages state it: "Version 2.1", "V4", a year - the first found.</summary>
     public static string? ReadEdition(IReadOnlyList<string> pagesText)
     {

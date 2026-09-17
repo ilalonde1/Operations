@@ -1,4 +1,4 @@
-using Kor.Operations.EngineeringTools.Dxf;
+﻿using Kor.Operations.EngineeringTools.Dxf;
 using Kor.Operations.EngineeringTools.Knowledge;
 
 // THE PROFESSION'S KNOWLEDGE, INGESTED (WP7, 2026-09-16). Reads KOR's copy of a code, a standard or a guideline and
@@ -15,7 +15,7 @@ internal static class KnowledgeIngestVerb
         if (args.Length < 4) { Console.Error.WriteLine("Usage: takeoff knowledge-ingest <pdf> --source <code> [--clause <ref> ...] [--rules-db <conn>] [--dry-run]"); return 1; }
         string pdf = args[1];
         if (!File.Exists(pdf)) { Console.Error.WriteLine($"PDF not found '{pdf}'."); return 2; }
-        string? source = null, rulesDb = null, title = null, publisher = null, licence = null, url = null; bool dry = false, index = false; var only = new List<string>();
+        string? source = null, rulesDb = null, title = null, publisher = null, licence = null, url = null; bool dry = false, index = false, items = false; var only = new List<string>();
         for (int i = 2; i < args.Length; i++)
         {
             if (args[i].Equals("--source", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) source = args[++i];
@@ -26,6 +26,8 @@ internal static class KnowledgeIngestVerb
             else if (args[i].Equals("--register", StringComparison.OrdinalIgnoreCase) && i + 3 < args.Length) { title = args[++i]; publisher = args[++i]; licence = args[++i]; }
             else if (args[i].Equals("--url", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) url = args[++i];
             else if (args[i].Equals("--index", StringComparison.OrdinalIgnoreCase)) index = true;
+            // --items: a short document numbered 1., 2., 3. (the Code of Ethics) - each item's text as the requirement; published-free or ours only
+            else if (args[i].Equals("--items", StringComparison.OrdinalIgnoreCase)) items = true;
         }
         if (source is null) { Console.Error.WriteLine("--source <code> is required (a knowledge.Source.Code: NBC-2020, BCBC-2024, KOR-PPMP ...)."); return 1; }
         rulesDb ??= Environment.GetEnvironmentVariable(RuleSettings.ConnectionEnvironmentVariable);
@@ -43,6 +45,14 @@ internal static class KnowledgeIngestVerb
                 Console.WriteLine($"{source}: {(isNew ? "registered" : "refreshed")} \"{title}\" ({publisher}, {licence}, edition {edition ?? "-"})");
             }
         }
+        if (items)
+        {
+            if (licence is not null && licence.Equals("licensed-cite-only", StringComparison.OrdinalIgnoreCase)) { Console.Error.WriteLine("--items stores the items' text: not for a licensed-cite-only source."); return 1; }
+            var numbered = ClauseIngest.IndexNumberedItems(pdf);
+            Console.WriteLine($"{source}: {numbered.Count} numbered item(s){(dry ? " (dry run)" : "")}");
+            foreach (var s in numbered) Console.WriteLine($"  {s.Ref,-4} p.{s.Page,-3} {(s.Title.Length > 110 ? s.Title[..110] + "..." : s.Title)}");
+            if (!dry) Console.WriteLine($"  {ClauseIngest.WriteSections(rulesDb, source, numbered, $"takeoff knowledge-ingest {DateTime.Now:yyyy-MM-dd} {Path.GetFileName(pdf)}")} clause row(s) written (items as requirements, read-from-source)");
+        }
         if (index)
         {
             var sections = ClauseIngest.IndexSections(pdf);
@@ -56,7 +66,7 @@ internal static class KnowledgeIngestVerb
             }
             if (only.Count == 0) return 0;
         }
-        if (title is not null && only.Count == 0 && !index) return 0;
+        if ((title is not null || items) && only.Count == 0 && !index) return 0;
 
         var clauses = ClauseIngest.LoadClauses(rulesDb, source);
         if (only.Count > 0) clauses = clauses.Where(c => only.Contains(c.ClauseRef, StringComparer.OrdinalIgnoreCase)).ToList();
