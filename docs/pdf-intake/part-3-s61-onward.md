@@ -2509,3 +2509,47 @@ and flagged; a 0.5 × 5 m sleeve and a 2 × 12 m void cut; proved by breaking (`
 1,485 green, the four red being the row gates (`ModelQuestionnaireTests` ×2, `EngineerRulingsStillHoldTests` ×2) that
 say exactly "KorStandards is missing rule setting(s) … dxf.pour-strip-aspect, dxf.pour-strip-min-length-mm". Run 31
 goes ahead on develop with 107/107b; run 32 carries 108 once the rows exist and the six-set gate has run on it.
+
+## 122. Steps 109, 110 and 105d — 30838 characterised; the jog and the landing banked; the split parked (2026-09-16 21:20–22:50)
+
+**30838 (Onyx), the set where we miss most of her openings (118), rendered and looked at.** Its L20 held every wall
+and column twice, 30 m apart (44 columns where her model has 22; 657 of ours beyond her footprint; the frame
+registration spoiled). The page draws LEVEL 20 twice — a concrete-outline plan above a slab-reinforcing plan — and
+the title reader took one view. `takeoff sheet-views <pdf> <page>` (new: every line that names a plan or is
+underlined, and what `SheetViews.Titles` made of it) said why in one line: "LEVEL 20 PLAN CONCRETE OUTLINE" has no
+underline; "AND DIAPHRAGM REINFORCING" under it is underlined and none of its three words is a title word, so step
+60's two-line join refused it. **Step 109:** a second line that begins with AND, &, OR or WITH continues the first
+(`BeginsWithAConjunction`). Test proved by breaking; 30838 alone: tower storeys 44 → 22 columns, 113 beyond her
+footprint, her openings we have 6 → 21. **And parked** (branch `step-109`, `bea1134a`): with the views told apart the
+slab-reinforcing view stands down (step 80, rightly) and the concrete-outline plan's own edge does not close, so
+L20–L32 and L2 lose the plates the reinforcing view had given them. Two faults in that edge: a 150 mm jog at grid 2
+(TooShort — step 110 below) and the edge stopping beside its corner column at 12/F (`pdf-overlay --crop` at the
+chain's end: the F edge ends at C27's face, the next edge starts at its far corner) — the class item 2 named this
+morning on 31138. Rule 10: the split waits for that class, not for a patch.
+
+**Step 110 — a short stroke between two long lines' ends of one pen is a jog of the linework, kept as a line.** Step
+98 chains short strokes with each other and leaves a long line alone; the jog alone was TooShort. `JogsBetweenLongLines`:
+both ends exactly (0.1 mm, pen and colour) on ends of strokes over the length gate. Measured on the six — it moved every
+set, and the gate found both regressions in turn: **form A** (any such stroke) halved 31065's stair wells on six odd
+storeys (a break line drawn across the stair as a zig-zag of short strokes closed, and the landing cell between two
+pairs of flights — no flight's centre in it — fell out of the well; her matched openings 46 → 31); **form B** (the two
+long lines must leave the jog in opposite directions — a step, not a U) spared the wells and lost 31130 L17's 9,222 sq
+ft plate outright (its outline notches round a column as a U: 126 mm down, 354 mm along the column's face, 914 mm
+down). Two regressions on one shape → STOP (rule 10): the rule is form A — a jog is linework, whichever way it turns —
+and the landing is the well rule's.
+
+**Step 105d — the landing between the flights is the well's:** a cell no bigger than the stair's box whose centroid
+lies inside that box joins the cells the flights' centres stand in. Test: a walled well with flights at both ends and a
+break line drawn twice across it, one loop of the well's area; proved by breaking.
+
+**Banked together (`0a5916a9`, merged `07ac10af`), gate green on the re-banked six, fast suite 1,485:** 31130 419,623 →
+489,492 sq ft of plate over 24 storeys (the west tower's L3–L16 4,797 → 9,727 each — item 2's "outline pieces" class
+was a jog; L19 6,195 → 8,130; L17 kept at 9,746); her openings we have 6 → 17 of 33, ours she has 12 → 34 of 47. 31065
+246,752 → 261,365 (L3's west block 14,153); wells whole (L7 2.4 × 7.1 m); hers we have 70 → 73. 31168 56 → 57 storeys
+with a plate (B-L37, 9,636). 31138 L22 +414 / L2 −428. 31202 +27 sq ft. The architect's set −7,463 sq ft of double
+cover (three overlapping L1 plates → two). The member "losses" the gate lists are stack bases moving a storey where a
+plate appeared (31130 L3's two columns and a wall now rise from L4; 31065 L3's six walls likewise).
+
+**Run 31 died at 22:04:04** at 73 of 296, exit −1073741510 (STATUS_CONTROL_C_EXIT) with no Ctrl-C logged — a console
+close or kill, the third detached run to die today, each while a `dotnet test` gate ran in this session. Resumed 22:22
+as run 31b by build stamp; `corpus-analyze` logs `ProcessExit` with its time now (`702ca49f`).
