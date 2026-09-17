@@ -25,6 +25,14 @@ the day it is answered (its answer goes where it belongs: a rule, a row, a secti
 
 ## For an engineer, when one is asked (few, each backed by a measurement)
 
+- **Small sleeves the drawing marks and the model does not cut (step 111, 23:20).** 31065's S2.15.1 (L4, south
+  tower) draws a 313 × 584 mm box with an X free in the slab beside a wall ("2190mm CLR. TO HEADER ABOVE"); her
+  model has no opening there on any storey, though it cuts 48 sleeves of 0.5 × 0.5 m elsewhere on the set. After
+  step 111 we cut 21 such on 31065 and 10 on 31168 that her model has not, while on 31130/31138/31202 the same rule
+  takes her sleeves we had missed (17 → 31 of 33, 73 → 104 of 208, 33 → 52 of 68). Is a sleeve under some size
+  (0.2 m²? a duct's?) left out of the ETABS model by practice, or are these simply not in her model yet? The
+  reader follows the drawing until told otherwise.
+
 - **Piers.** A filled rectangle no column schedule declares, longer than 24 in and twice as long as thick, is now
   modelled as a wall pier (step 99, rows live in 094; run 28: 2,496 columns became walls over 158 sets). A SCHEDULED
   size stays a column — and there the office has two practices: 31130 schedules 14×36 and models it as a column;
