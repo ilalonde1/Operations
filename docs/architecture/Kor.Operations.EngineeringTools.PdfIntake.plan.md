@@ -733,6 +733,14 @@ residues' cause. Not the PDF route; queued behind it.
    on 31065's P1 in three forms → branch `step-112` + Codex brief `CODEX-PDF-INTAKE-STEP-112-A-T-DRAWN-SHORT-REFUSES-A-PAGE.md`
    (Ian runs it); step 109 waits behind it. The yardstick gained a match by cover and an "elsewhere" count (§125).
 
+3an. **Autonomous night 2026-09-17 01:35 → 02:50** (§126). The 22 current-model sets ranked by her openings we lack: the two
+   largest (60061-03, 31087) are PLATE misses. 60061-03's trace: the walk found the stud-rail schedule's border as a 1,953
+   sq ft floor holding none of 29 columns, and the arrangement was never built. **Step 113** (a walk floor holding under
+   half the page's columns is not the page's floor — the arrangement is built as well; where its floor holds more the
+   walk's stands down) + **113b** (two plates of one storey covering nine tenths of each other's ground are one floor —
+   the composer) BANKED `66ebfd5a`/`b5fbe19c`: 31138 17 → 20 plated storeys, 31130 +45,625 sq ft, 31168 +7,558, 31202 L1
+   one floor; nothing lost. **Run 33** (113 + 113b) launched 02:49.
+
 4. **WP6** — one model in front of Andrea (31170's, or whichever the ledger ranks best of the
    architects' sets). Ian's call when.
 5. **Step 47**, the next reading rule, from the corpus. `takeoff corpus-query plan-titles` on the
