@@ -2576,3 +2576,23 @@ boxes not) proved by breaking.
 Ours she has 189 of 228 → 257 of 342 (83% → 75%): 31065 adds seventeen boxed X's of 0.5 × 0.5 m and four of 0.5 × 1
 she has not at those places (she cuts 48 such elsewhere on the set — a look owed: what the drafter's small X-boxes
 are where her model has none), 31168 adds ten. Plates, columns and walls byte-identical on all six.
+
+## 124. Step 112 — a T drawn short, named by the trace and parked (2026-09-16 23:20–23:58)
+
+The edge-beside-a-column class (item 2 since the morning; 30838's 13 plates; step 109's unlock) was chased by
+picture twice tonight — "an edge's corner inside a column is an end at that column" joined some columns and not the
+corners; the corners' outline runs 250 mm off the column's face — and then instrumented instead: the slab-pass trace
+prints the ends at every column (step 97's pairs and the lone ones), what the arrangement holds within 1.5 m of a lone
+column (offset, degree), and **the ends that stop short of another edge's middle by under the bridge**. On 30838's
+L20 the corners are connected (the lone "end" is a 25 mm end-cap stub beside a degree-2 junction) and **twelve and
+more ends stop 0.6–5 in short of the edge they run into** — the arrangement bridges an end to an END (6 in, or the
+corner two rays make within 4 ft) and joins an end ON a span within 1 mm, and an end SHORT of a span's middle was
+neither; a 150 mm raster closed it, `PlanarRings` did not.
+
+**Step 112 (branch `step-112`, `d519778d`):** such an end is carried to its foot on the nearest span within the bridge
+(`ToEdge` proposals; the end's cheapest unique proposal decides; a carry crossing an edge refused). 30838's L20: the
+concrete-outline plan's ring closes (a 9,025 sq ft cell, two floors on the page, the short ends 12+ → 2). **On the six
+it moves every set** (it is the arrangement both routes build rings with): 31168 +875 sq ft, 31202 +35, 31138 +91,
+31130 −2,976, 31065 P3 +13,634 and **P1 −9,143 (a plate lost)**, its tower rings 6,776 → 6,656 (closing at their T's
+instead of round them), the architect's set −11,078. Not banked: a lost plate is explained before it is traded; run
+33 judges the corpus form. Step 109 waits behind it.
