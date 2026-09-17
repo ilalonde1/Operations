@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using System.Text.RegularExpressions;
 
 namespace Kor.Operations.EngineeringTools.Dxf;
@@ -1383,6 +1383,23 @@ public static class E2kGeometryComposer
                     continue;
                 }
 
+                // A HOLE WITH A COLUMN IN ITS MIDDLE IS NO HOLE (step 107, 2026-09-16 20:15). 31032 draws 5 x 5 m X-boxes centred
+                // on its columns on P1, L1 and L6 - footings or drop panels marked with an X - on a sheet that draws no
+                // columns of its own, so the slab pass's own exclusion (a column read on the same sheet inside the X) could
+                // not see them; here every column the set placed on the storey is known. An opening of a shaft's size (under
+                // 40 sq m) whose centroid stands within 300 mm of a column's centre on this storey is a mark on the column,
+                // not cut, and the flag says so. A void larger than that may hold a column (an atrium's) and is left alone.
+                {
+                    var c0 = opening.Centroid();
+                    double reach = 300 / 25.4 * inch, areaSqM = Math.Abs(opening.Area) / (inch * inch) * 645.16 / 1e6;   // model units -> sq in -> sq m
+                    if (areaSqM < 40 && placedColumns.AnyWithin(slabStory.Name, c0.X + options.OffsetX, c0.Y + options.OffsetY, reach))
+                    {
+                        flags.Add($"{placement.SourceSheet}: an opening of {opening.Area / 144:N0} sq ft on {slabStory.Name} was NOT cut - a column stands in its middle; an X centred on a column marks the column (a footing, a drop), not a hole");
+                        skippedOpenings++;
+                        continue;
+                    }
+                }
+
                 // IN PERIMETER ORDER, or ETABS refuses the area and ignores its assign.
                 //
                 // The loop's points do not arrive walked round the shape, so writing them as they
@@ -1969,6 +1986,10 @@ public static class E2kGeometryComposer
 
         public void Add(string storey, Place place)
             => (_byStorey.TryGetValue(storey, out var list) ? list : _byStorey[storey] = new List<Place>()).Add(place);
+
+        /// <summary>Whether a member placed on the storey stands within <paramref name="reach"/> of a point (model units).</summary>
+        public bool AnyWithin(string storey, double x, double y, double reach)
+            => _byStorey.TryGetValue(storey, out var list) && list.Any(t => Math.Sqrt((t.X1 - x) * (t.X1 - x) + (t.Y1 - y) * (t.Y1 - y)) <= reach);
 
         private bool Same(Place a, Place b)
             => (Near(a.X1, a.Y1, b.X1, b.Y1) && Near(a.X2, a.Y2, b.X2, b.Y2))
