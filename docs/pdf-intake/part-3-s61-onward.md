@@ -2396,3 +2396,22 @@ five, ours judged 165 → 177, hers among them 129 → 134 (76%), hers we have 1
 Test `TwelveStrokesAcrossTheFlightAtAGoingsPitchAreAFlightToo_UnlessTheSheetDrawsPaperTreads` (twelve strokes at a
 going's pitch are a flight; at 600 mm they are a hatch; four are a step; beside paper treads they are nothing),
 proved by breaking. Banked `0f23e293`; the branch closed. Run 29 carries 104 + 105; 105b waits for run 30.
+
+## 118. Step 105c — a door drawn as a gap between two wall pieces (2026-09-16 19:02–19:17)
+
+31065's stairs were the next residue (22 of her 2 × 5.5 m wells on the five-set figure). Looked at on its L6–18 sheet
+at a DN label: the treads are strokes at a going's pitch — step 105b's shape — and the trace showed the flights FOUND
+(eight on the sheet) but every well leaking: "the cell holding the flights: 6,760 sq ft", the whole plate. The stair's
+walls stop either side of the door, two pieces with a metre between them and no paper fill over a wall for step 14's
+doorway reader to see; the well's arrangement had the walls' outlines and the read doorways in it, and this gap in
+neither. **The rule:** two walls on one line (within half a thickness of it) a door's width apart (500–1,300 mm) are
+closed across the gap on both faces, for the well's arrangement only — the plates are untouched.
+
+**Measured by her models:** 31138 hers-we-have 37 → 77 of 208 (ours-she-has 32 of 36, 89%); 31065 10 → 70 of 209
+(20 of 26, 77%); 31202, 31168 and 31130 unchanged. Over the five sets: ours judged 177 → 202, hers among them 159
+(79%); hers we have 138 → 238. Since 16:00, recall of her openings a metre and more across went 16% → 37% with
+precision held at 76–79%. Plates unchanged on all six. Test `ADoorDrawnAsAGapBetweenTwoWallPiecesStillClosesTheWell`
+(the fixture's wall pieces are 1.7 m — a wall is 1,219 mm and longer, `dxf.min-wall-length`, and the first fixture's
+1,050 mm pieces were read as nothing), proved by breaking. Banked `2cdab09f`. What it does not close: a door wider
+than 1.3 m (a double door), a gap between a wall and a column, the flights still in two cells where the break line
+runs (31065's 180 + 6,760 on one stair).
