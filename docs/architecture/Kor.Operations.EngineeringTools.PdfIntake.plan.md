@@ -698,6 +698,15 @@ residues' cause. Not the PDF route; queued behind it.
    the debt ratchet refused the compiled form; merges on "098 done". Run 30 (105b/c, 106) in flight since 20:04; run 31
    (107/107b) launches on its bank.
 
+3al. **Autonomous evening 2026-09-16 21:20 → 22:55** (§122). Run 30 banked (`e4efbf17`): plates 74%; hers we have 17% →
+   25%. 30838 characterised (rendered; `takeoff sheet-views`): the page draws the storey twice and one view was read —
+   **step 109** (a title's second line beginning with AND continues it) on branch `step-109`, parked because the
+   concrete-outline plan's edge does not close (a jog, and the edge-beside-a-column class). **Step 110** (a short stroke
+   between two long lines' ends is a jog, kept) + **105d** (the landing between the flights is the well's) BANKED
+   (`0a5916a9`/`07ac10af`) after both half-forms were measured and refused by the gate: 31130 +69,869 sq ft of plate
+   (the west tower's half plates whole — item 2's class), 31065 +14,613, 31168 +1 storey; her openings we have on 31130
+   6 → 17. Run 31 died at 22:04 (a console close, third today; `ProcessExit` logged now), resumed as 31b 22:22.
+
 4. **WP6** — one model in front of Andrea (31170's, or whichever the ledger ranks best of the
    architects' sets). Ian's call when.
 5. **Step 47**, the next reading rule, from the corpus. `takeoff corpus-query plan-titles` on the
