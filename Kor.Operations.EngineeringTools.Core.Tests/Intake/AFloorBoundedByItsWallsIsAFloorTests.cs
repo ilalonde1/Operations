@@ -16,7 +16,7 @@ namespace Kor.Operations.EngineeringTools.Core.Tests.Intake;
 /// aside - a slab edge stopping at a wall's face meets the outline there and would otherwise be no end at all.
 /// WHAT THIS COVERS: a 16 x 10 m floor whose north and south edges are drawn lines stopping at the inner faces of two
 /// filled walls on its west and east; the walk cannot close it (two sides have no line) and the arrangement without
-/// the walls holds nothing; with them the floor is one plate to the walls' outer faces, 16.5 x 10 m.
+/// the walls holds nothing; with them the floor is one plate to the walls' outer faces, 16 x 10 m (15.5 to the inner faces).
 /// WHAT IT DOES NOT: the real sets (the six-set gate, the corpus); a floor with walls on every side (its slab edges
 /// are then the walls' faces alone); the bridge across a wall and the end at a wall's face on a drawn outline that
 /// continues past the wall - judged on 31065's L3 north by the gate, not here.
@@ -36,10 +36,11 @@ public sealed class AFloorBoundedByItsWallsIsAFloorTests
     {
         var g = Read(
             Line(X0 + T, Y1, X1 - T, Y1), Line(X0 + T, Y0, X1 - T, Y0),      // north and south edges, stopping at the walls' inner faces
+            Line(48000, Y0, 48000, Y1), Line(X0 + T, 23000, X1 - T, 23000),  // a step and a band across the floor (the slab pass wants four lines to start; each cell holds a column)
             Wall(X0, Y0, T, Y1 - Y0), Wall(X1 - T, Y0, T, Y1 - Y0),          // the west and east walls, filled
             Column(43000, 20000), Column(52000, 20000), Column(43000, 25500), Column(52000, 25500));
         Assert.Equal(2, g.Walls.Count);
         var plate = Assert.Single(g.Slabs);
-        Assert.InRange(AreaM2(plate), 165 * 0.97, 165 * 1.03);   // 16.5 x 10 m: to the walls' outer faces
+        Assert.InRange(AreaM2(plate), 160 * 0.99, 160 * 1.01);   // 16 x 10 m: to the walls' outer faces (155 to their inner faces)
     }
 }
