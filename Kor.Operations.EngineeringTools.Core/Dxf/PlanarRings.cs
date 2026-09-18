@@ -136,7 +136,7 @@ public sealed class PlanarRings
                     throw new ArgumentException("PlanarRings requires finite coordinates within +/-1e9 drawing units.", nameof(segments));
         // This is a TEXT provenance label, not a geometric ordering or a selection of structural roles.
         string layer = input.Select(s => s.Layer).OrderBy(s => s, StringComparer.Ordinal).FirstOrDefault() ?? "";
-        var mesh = Arrange(input.Select(s => new Span(s.Start, s.End, false) { Wall = s.Layer == "WALL" }).ToList(), layer);
+        var mesh = Arrange(input.Select(s => new Span(s.Start, s.End, false) { Wall = s.Layer is "WALL" or "DOOR" }).ToList(), layer);
         var additions = Bridges(mesh);
         if (additions.Count > 0)
             mesh = Arrange(mesh.Edges.Select(e => new Span(mesh.Points[e.A], mesh.Points[e.B], e.Inserted) { Wall = e.Wall }).Concat(additions).ToList(), layer);
