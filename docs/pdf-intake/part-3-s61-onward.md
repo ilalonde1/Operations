@@ -2653,3 +2653,23 @@ no X and no treads the readers take; at one, walls and the word DN). On the six 
 she has 53 → 22 of 55, hers we have 52 → 21 of 68, its L6 plate −1,674 sq ft; 31138 hers 128 → 123. A word stands in
 a corridor as readily as in a well; without the flights' box there is nothing to bound it. Reverted whole, nothing
 kept. 31170's cores stay the engineer's line (a shaft drawn as walls alone).
+
+## 127. Step 108 merged — 098 live; eight strips off 31170 that were never holes; the pdf-only report told half (2026-09-17 16:45–17:15)
+
+**Ian applied 097 and 098 (16:43).** `step-108` merged onto develop: the fast suite 1,492 green (the four row gates
+of §121 now find `dxf.pour-strip-min-length-mm` and `dxf.pour-strip-aspect`); the six-set gate: five sets
+byte-identical and **31170-01-arch moved — 8 of its 628 openings are no longer cut**, on L1 69 × 4.2 m, 75 × 1.9 m,
+70 × 1.7 m, 70 × 0.46 m, 70 × 1.9 m, 38 × 0.6 m and 1.6 × 33 m, on L7 66 × 5 m. Rendered L1 and L7 before and after
+(`takeoff model-render … --storey L1,L7`): L7's was a wedge cut clean through a row of twelve columns; L1's ran the
+length of the building along its south edge. **Her 31170 model (ten days old): 37 openings, longest 7.4 m, no strip
+of 10 m** — so the eight were ours alone, and the rule 4,966-to-1 of §121 held on the seventh set too. Re-banked
+`pdf-only-31170-01-arch.e2k`, gate green on the six.
+
+**Found on the way, fixed in the same commit:** `PdfOnlyBuild`'s `report.txt` printed the composer's *warnings* and
+not its *flags* — the "NOT cut - a pour strip" lines, the "one floor, not two" lines of 113b, were written into
+`Summary.Flags` and never reached the pdf-only route's report, so eight openings vanished from a set with no line
+saying why (the DXF route's report prints both). Now the report carries the flags after the warnings. A count that
+moves with no sentence beside it is a report telling half; "the WHY for every count in the ledger" was the promise in
+the comment above the writer.
+
+QUESTIONS.md: the 097/098 items are gone. Run 34 carries 108 with whatever of 112 stands by then.

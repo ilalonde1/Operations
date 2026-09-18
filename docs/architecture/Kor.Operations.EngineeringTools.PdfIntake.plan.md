@@ -744,6 +744,13 @@ residues' cause. Not the PDF route; queued behind it.
    the corpus openings figure: hers we have 33% (722 of 2,161), ours she has 38%; on the 22 current-model sets 70% / 41%.
    A rule tried and refused by the six the same hour (a walled cell holding UP/DN is a well — it cut rooms on 31202).
 
+3ao. **Afternoon 2026-09-17 16:45 → 17:15** (§127). Ian applied 097 + 098 (16:43). **Step 108 merged** onto develop
+   (the pour-strip rows live): fast suite 1,492; six-set gate five byte-identical, **31170-01-arch −8 openings** (strips
+   33–75 m long, one a wedge through a row of twelve columns; her ten-day-old model has 37 openings, longest 7.4 m) —
+   re-banked. Found on the way: the pdf-only `report.txt` printed the composer's warnings, not its flags, so eight openings
+   left a set with no line saying why — the report carries the flags now. Codex's step-112 guard (a carry's foot within
+   the join tolerance of the target edge's end is refused) is next on the real sheet, 31065 p20.
+
 4. **WP6** — one model in front of Andrea (31170's, or whichever the ledger ranks best of the
    architects' sets). Ian's call when.
 5. **Step 47**, the next reading rule, from the corpus. `takeoff corpus-query plan-titles` on the
