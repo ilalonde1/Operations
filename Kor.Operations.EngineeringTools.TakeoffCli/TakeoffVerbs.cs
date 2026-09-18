@@ -63,6 +63,7 @@ public static class TakeoffVerbs
         ("vector-signals", VectorSignalsVerb.Matches, VectorSignalsVerb.Run),
         ("scale-scan", ScaleScanVerb.Matches, ScaleScanVerb.Run),
         ("vector-words", VectorWordsVerb.Matches, VectorWordsVerb.Run),
+        ("sheet-views", SheetViewsVerb.Matches, SheetViewsVerb.Run),
         ("vector-lines", VectorLinesVerb.Matches, VectorLinesVerb.Run),
         ("vector-find", VectorFindVerb.Matches, VectorFindVerb.Run),
         ("vision-estimate", VisionEstimateVerb.Matches, VisionEstimateVerb.Run),
