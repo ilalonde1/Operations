@@ -2948,3 +2948,69 @@ across the 22:01 servicing window and resumed. Plates: 74% → 77% of storeys; *
 measured tonight, 73% → 76% over 49 sets.** Parked with reasons: `step-112` (the carries, onto their own pen), `step-109`
 (the corner-column class). Named for the morning: 31017's outline drawn lighter than the beams on it; 70061-01's L1
 north; 31202's undrawn L2–L4; WP6 is Ian's call.
+
+## 138. Step 118 — the slab callout reaches the plate (2026-09-18 11:50–12:45)
+
+Ian, 11:50: *"attack any other outstanding deficiencies with super intelligence … That's who this is for — Engineers."*
+The honest list had five items; the first is the one an engineer sees in the first minute: **every plate of every
+model was the 12-in default.** The reader had read «8" SLAB» off every plan since the zoner (August), and the DXF route
+had priced a plate by the tag printed inside it since 2026-08-26 — and the PDF route never handed the one to the
+other. Four rules, four tests, each proved by breaking (the test red on the broken rule, green on the mended one):
+
+1. **The callout leaves the page as the tag it is** (`DrawingIntake`): each `SlabThicknessZoner` callout that is not
+   furniture goes out as `TextAnnotation("N\" SLAB", x, y)` in the plan's frame; `DxfExporter` writes it as TEXT,
+   `DxfPlanReader.ReadPositionedTags` reads it, `StructuralPlanClassifier` gives the smallest plate containing it the
+   thickness. Test `ASlabCalloutOnThePageReachesThePlateAsItsThickness` — the chain end to end on the fixture's floor.
+2. **A qualifier between the number and SLAB is still the callout** (`SlabThicknessZoner`): «8" P/T SLAB» four times a
+   plan on 31202's typical floors, «10" CONC. SLAB», «200 THK SLAB» — P/T, PT, CONC., CONCRETE, THK, THICK, SUSPENDED,
+   FLAT, R/C are stripped from the tail; a word that says where or what else (DP., ABOVE, BAND) is not, and «42" DP.
+   SLAB» stays unread. Test `A_qualifier_between_the_number_and_SLAB_is_still_the_callout`.
+3. **The callout printed most often is the plate's** (`StructuralPlanClassifier`): a plan prints its field thickness
+   beside every bay and a thickened zone without an outline of its own once — 31138's P3 «10" SLAB» ×13 against «8"»
+   ×1, P1 ×12 against «12"» ×4 — and the engineer's own rule is one thickness per floor. Majority by count; **a tie
+   still refuses** (the flag names both). Test `TheCallOutPrintedMostOftenIsThePlatesThickness`.
+4. **A note printed in a view is that view's** (`SheetViews.Split`) — found this hour, on the first measurement:
+   31138's typical floors L7, L10, L13, L15–L21 and 31065's L10–L16 stayed the default while the one-plan sheets read
+   theirs. Every one is a **two-plan sheet**, and the view split built each view's geometry fresh without ever
+   copying `TextAnnotations` — the callout reached neither plan. A note belongs where a column does, by `Owner(x, y)`.
+   Test `ANotePrintedInAViewIsThatViews`.
+
+**The yardstick judges thickness now** (`ModelYardstick.Thickness`, the line `slab thickness on the shared storeys
+(the thickness under most of the plate area, ours/hers in): N storeys both plate, M agree within half an inch (P%);
+off: …`): each model's `SLAB PROPERTIES` / `DECK PROPERTIES` give a section its thickness (× the model's inches per
+unit), each `AREAASSIGN … SECTION` gives a plate its section, the modal thickness by area on each shared storey is
+the storey's. And `corpus-disagreements` **§8 SLAB THICKNESS** sums the line across the corpus with the ours/hers
+pairs that differ, most often first (0 lines on run 37's yardsticks, which predate the line; 95% on 31138's new one).
+
+**Measured on the five, before → form 1 (rules 1–3) → form 2 (+ rule 4), storeys both plate agreeing within ½ in:**
+
+| set | before | form 1 | form 2 | still off (ours/hers in) |
+|---|---|---|---|---|
+| 31202 | 1/12 (8%) | 25% | **10/12 (83%)** | L2 12/10, L13 8/10 |
+| 31130 | 0/18 (0%) | 67% | **14/18 (78%)** | P2 12/10, L14 12/9, L16 9/18, L2 12/36 |
+| 31138 | 1/19 (5%) | 32% | **18/19 (95%)** | L22 12/8 |
+| 31065 | 0/20 (0%) | 15% | **18/20 (90%)** | L1 12/35.4 (the transfer), L19 12/9.8 |
+| 31168 | 3/11 (27%) | 18% | **9/11 (82%)** | P2 10/12, C-L3 8/14 |
+
+(form 1's figures are the first measurement, mid-morning, and 31168's 18% there was P2 read 10 against her 12.)
+Six-set gate: five sets moved with **0 plates, 0 columns, 0 walls moved** — the sections and their assignments only;
+31170-01-arch byte-identical. Fast suite 1,499 → 1,500 green. Re-banked; gate green on the new baselines (below).
+
+**What is still off, by class — every one named from the reports, none guessed:**
+- **A tie.** Two callouts printed once each and no outline between them: 31130 P2 (10", 12"; she 10), L2 (9", 12";
+  she 36 — a transfer slab whose callout reads some other way), L14 (9", 16"; she 9), L16 (10", 12", 18"; she 18);
+  31138 L22 (8", 10"; she 8); 31065 L1 (12", 20", 24", 35"; she 35.4); 31168 C-L3 (8" won a majority; she 14) and
+  B-L39 (8", 12"). Seven plates on the five. "The thinner is the field" fits four of the six she plates and is wrong
+  on L16 and L1: **not a rule yet** — run 38's §8 says what the pairs are across 49 models before a rule is written.
+- **Her model, not the drawing.** 31168 P2: the plan prints «10" SLAB» once on each of its two P2 sheets and nothing
+  else; her plate is `Rvt-Floor0`, a Revit import at 12. 31065 L19: both towers' L19 plans print «12" SLAB»; she models
+  250 mm. The reader reads what the page says. Left as they are.
+- **Metric rounds to whole inches.** 200 mm → 8" (7.87), 250 → 10 (9.84): within the half-inch, and the model's section
+  is named in the model's unit (`KOR-S203.2`). Acceptable; noted.
+
+**Not covered by the four tests, stated:** a callout in a title block or schedule (the furniture keeps it out; not
+tested here), a callout printed outside every plate (no plate takes it — the report's ASSUMED line says so), a
+one-view sheet (the geometry passes through whole — rule 4's test does not exercise it), and the composer writing the
+section (the six-set gate does).
+
+**Commits:** step 118 `b95e45c0` on `step-118`, fast-forwarded to develop; the CLI mirror refreshed (Core.dll 46A41A58…); **run 38** (118) launched detached 12:43:01, clear of 22:00 (~2 h).
