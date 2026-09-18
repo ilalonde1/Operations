@@ -51,11 +51,13 @@ public sealed class AnXAcrossARegionIsAnOpeningTests
     [Fact]
     public void AFloorWithAnXMarkedShaftIsTheWholePlateAndTheShaftsLoop()
     {
-        // step 78's floor (a balcony box against the south edge so the arrangement decides) with a 3 x 3 m shaft box
+        // step 78's floor (a balcony box against the south edge so the arrangement decides; its own sides at a lighter
+        // pen than the outline's, since step 115 reads a box at the outline's pen as slab) with a 3 x 3 m shaft box
         // inside it crossed by its X: the plate is whole, and the shaft comes out as a second loop of its own extent
         double bx0 = 43000, bx1 = 45000, by = 18500;
         double sx0 = 42000, sy0 = 22000, sx1 = 45000, sy1 = 25000;
-        var g = Read(Line(bx0, Y0, bx0, by), Line(bx0, by, bx1, by), Line(bx1, by, bx1, Y0), Line(bx1, Y0, bx0, Y0),
+        RawSubpath Thin(double x0, double y0, double x1, double y1) => Line(x0, y0, x1, y1) with { LineWidth = 0.25 };
+        var g = Read(Thin(bx0, Y0, bx0, by), Thin(bx0, by, bx1, by), Thin(bx1, by, bx1, Y0), Line(bx1, Y0, bx0, Y0),
                      Line(X0, Y0, bx0, Y0), Line(bx1, Y0, X1, Y0), Line(X1, Y0, X1, Y1), Line(X1, Y1, X0, Y1), Line(X0, Y1, X0, Y0),
                      Line(sx0, sy0, sx1, sy0), Line(sx1, sy0, sx1, sy1), Line(sx1, sy1, sx0, sy1), Line(sx0, sy1, sx0, sy0),
                      Line(sx0, sy0, sx1, sy1), Line(sx0, sy1, sx1, sy0),

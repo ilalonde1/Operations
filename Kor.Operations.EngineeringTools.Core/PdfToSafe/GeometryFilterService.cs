@@ -2181,7 +2181,82 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     // the core's box over the 400 sq ft floor gate - 31065's south tower L7-L17 gained a 408 sq ft "floor",
                     // 31202's L2-L4 a 443 sq ft one. An edge X-box in the arrangement path keeps its notch (no real set
                     // shows one yet; the fixture in AnXAcrossARegionIsAnOpeningTests takes the walk path, as 31168 does).
-                    var fromArrangement = planar.RecoverSurfaces(_ => false, (i, cell) => Holds(cell) || WrapsTheFloor(cell) || !planar.TouchesTheOutside(i)).Slabs.Select(f => f.Outer).ToList();
+                    // A RIM CELL FACING THE PAGE THROUGH THE OUTLINE'S OWN PEN IS INSIDE THE OUTLINE (intake step 115, 2026-09-17).
+                    // The rim rule above - a cell touching the outside is not the floor unless it holds structure - was written
+                    // for the balcony box, the dimension strip and the courtyard's open side, all OUTSIDE the outline. A line
+                    // drawn across the floor that reaches the slab edge closes a cell at the rim too, inside the outline, and
+                    // that cell held nothing and was dropped: 31065's typical tower plan lost a 1.5 x 2.3 m box under column
+                    // C10 against its west edge (her model has slab there) the moment step 112's carry made the box's lines
+                    // reach the edge; 31130's L1 lost 3,257 sq ft the same way; and every interior line drawn exactly to the
+                    // edge has done this all along (31065 L7: ours 6,690 sq ft, hers 7,766). The drawing itself says which side
+                    // of the outline a rim cell is on: the outline is drawn with ONE pen, and a cell inside it faces the page
+                    // through the outline's strokes, while a balcony box or a dimension strip faces the page through its own.
+                    // The outline's pen is the pen the structure-holding cells OF A FLOOR'S SIZE face the page with (the mode over
+                    // their outward edges - a core box holding a column is not the outline, and on a page whose outline never
+                    // closed it would have named its own pen and stood as a 671 sq ft plate, 31065's south tower L7); a rim cell
+                    // whose every outward edge lies on a line of that pen is inside the outline, and floor.
+                    var pieces115 = candidates.Select(i => (Line: result.Lines[i], Width: i < result.LineWidths.Count ? result.LineWidths[i] : 0.0)).ToList();
+                    double? PenAlong(DxfPoint a, DxfPoint b)
+                    {
+                        double minX = Math.Min(a.X, b.X) - SlabEdgeJoinMm, maxX = Math.Max(a.X, b.X) + SlabEdgeJoinMm;
+                        double minY = Math.Min(a.Y, b.Y) - SlabEdgeJoinMm, maxY = Math.Max(a.Y, b.Y) + SlabEdgeJoinMm;
+                        foreach (var (line, width) in pieces115)
+                            for (int k = 1; k < line.Count; k++)
+                            {
+                                var p = new DxfPoint(line[k - 1].X, line[k - 1].Y); var q = new DxfPoint(line[k].X, line[k].Y);
+                                if (Math.Max(p.X, q.X) < minX || Math.Min(p.X, q.X) > maxX || Math.Max(p.Y, q.Y) < minY || Math.Min(p.Y, q.Y) > maxY) continue;
+                                if (LoopGeometry.DistanceToSegment(a, p, q) <= SlabEdgeJoinMm && LoopGeometry.DistanceToSegment(b, p, q) <= SlabEdgeJoinMm) return width;
+                            }
+                        return null;
+                    }
+                    var outlinePens = new List<double>();
+                    for (int i = 0; i < planar.Faces.Count; i++)
+                        if (Holds(planar.Faces[i]) && Math.Abs(planar.Faces[i].Outer.Area) >= minSlabAreaMm2)
+                            foreach (var (a, b) in planar.OutwardEdges(i))
+                                if (PenAlong(a, b) is double w) outlinePens.Add(Math.Round(w, 2));
+                    double? outlinePen = outlinePens.Count == 0 ? null : outlinePens.GroupBy(w => w).OrderByDescending(g => g.Count()).ThenByDescending(g => g.Key).First().Key;
+                    bool FacesThePageThroughTheOutlinePen(int i)
+                    {
+                        if (outlinePen is null) return false;
+                        var outward = planar.OutwardEdges(i);
+                        if (outward.Count == 0) return false;
+                        foreach (var (a, b) in outward)
+                            if (PenAlong(a, b) is not double w || Math.Abs(Math.Round(w, 2) - outlinePen.Value) > 0.01) return false;
+                        return true;
+                    }
+                    // AND BESIDE THE FLOOR: a rim cell is inside the outline only where it is reached from a floor-sized
+                    // structure-holding cell across shared edges, through cells that are floor themselves (enclosed ones, or
+                    // rim cells facing the page through the outline's pen). A core box on a view whose outline never closed
+                    // (31065's south tower L7, drawn on the same page as L6 whose floor names the pen) faces the page through
+                    // wall lines of that pen and stood as a 671 sq ft plate; it touches no floor and now stands out.
+                    var insideTheOutline = new HashSet<int>();
+                    if (outlinePen is not null)
+                    {
+                        var queue = new Queue<int>();
+                        var reached = new HashSet<int>();
+                        for (int i = 0; i < planar.Faces.Count; i++)
+                            if (Holds(planar.Faces[i]) && Math.Abs(planar.Faces[i].Outer.Area) >= minSlabAreaMm2) { reached.Add(i); queue.Enqueue(i); }
+                        while (queue.Count > 0)
+                        {
+                            int at = queue.Dequeue();
+                            foreach (int n in planar.Neighbours(at))
+                            {
+                                if (reached.Contains(n)) continue;
+                                bool floorAlready = Holds(planar.Faces[n]) || WrapsTheFloor(planar.Faces[n]) || !planar.TouchesTheOutside(n);
+                                bool byPen = !floorAlready && FacesThePageThroughTheOutlinePen(n);
+                                if (!floorAlready && !byPen) continue;
+                                reached.Add(n); queue.Enqueue(n);
+                                if (byPen) insideTheOutline.Add(n);
+                            }
+                        }
+                    }
+                    bool InsideTheOutline(int i) => insideTheOutline.Contains(i);
+                    if (outlinePen is not null)
+                    {
+                        int insideCount = insideTheOutline.Count;
+                        FaceTrace?.Invoke($"slab pass: the outline's pen is {outlinePen.Value:0.00} mm ({outlinePens.Count} outward edge(s) of the structure-holding cells); {insideCount} rim cell(s) face the page through it alone and are inside the outline (step 115)");
+                    }
+                    var fromArrangement = planar.RecoverSurfaces(_ => false, (i, cell) => Holds(cell) || WrapsTheFloor(cell) || !planar.TouchesTheOutside(i) || InsideTheOutline(i)).Slabs.Select(f => f.Outer).ToList();
                     // step 113: the arrangement was built although the walk had a floor, because that floor held under half the
                     // page's columns; where the arrangement finds a floor holding more, the walk's stands down (31202's L1 carried
                     // the same slab twice, 34,590 and 34,145 sq ft, when both stayed)

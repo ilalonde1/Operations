@@ -50,6 +50,30 @@ public sealed class PlanarRings
         }
 
         /// <summary>
+        /// The edges through which this face touches the unbounded outside (the PDF route's step 115, 2026-09-17): each
+        /// as the two points of the mesh edge, in the drawing's coordinates. A rim cell inside the outline faces the page
+        /// through the outline's own strokes; a balcony box or a dimension strip through its own.
+        /// </summary>
+        public IReadOnlyList<(DxfPoint A, DxfPoint B)> OutwardEdges(int faceIndex)
+        {
+            var mesh = Topology ?? throw new InvalidOperationException("Rim queries require a Build result.");
+            var edges = new List<(DxfPoint, DxfPoint)>();
+            for (int h = 0; h < mesh.Owner.Length; h++)
+                if (mesh.Owner[h] == faceIndex && mesh.Owner[h ^ 1] < 0) edges.Add((mesh.Points[mesh.From(h)], mesh.Points[mesh.To(h)]));
+            return edges;
+        }
+
+        /// <summary>The faces sharing an edge with this one (step 115: a rim cell is inside the outline only beside the floor).</summary>
+        public IReadOnlyList<int> Neighbours(int faceIndex)
+        {
+            var mesh = Topology ?? throw new InvalidOperationException("Rim queries require a Build result.");
+            var seen = new HashSet<int>();
+            for (int h = 0; h < mesh.Owner.Length; h++)
+                if (mesh.Owner[h] == faceIndex && mesh.Owner[h ^ 1] >= 0 && mesh.Owner[h ^ 1] != faceIndex) seen.Add(mesh.Owner[h ^ 1]);
+            return seen.ToList();
+        }
+
+        /// <summary>
         /// Two independent interpretations of the same cells. Selecting slab cells on BOTH sides
         /// of a wall and the band itself recovers one plate; excluding the band makes a slot.
         /// The caller must identify void cells. Topology cannot distinguish a hole from a room.
