@@ -39,6 +39,7 @@ internal static class CorpusDisagreementsVerb
         var olderBy = new Dictionary<string, int>();   // her model's age against the drawing's issue, in days, where the yardstick says
         // openings, ours against hers (step 104's yardstick line): judged, hers, matched each way; the unmatched by plan size
         var openings = new List<(string Job, int Ours, int Theirs, int OursMatched, int TheirsMatched)>();
+        var plates = new List<(string Job, double Ours, double Theirs, int Under, string UnderList)>();
         var covered = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);   // her openings whose centre stands inside one of ours (a match by cover)
         var oursOpeningsNotHers = new List<(string Job, string Size, int Count)>();
         var hersOpeningsNotOurs = new List<(string Job, string Size, int Count)>();
@@ -84,6 +85,9 @@ internal static class CorpusDisagreementsVerb
                 { foreach (Match s in openingSize.Matches(line)) hersOpeningsNotOurs.Add((job, s.Groups[1].Value, N(s.Groups[2].Value))); continue; }
                 var mc = Regex.Match(line, @"^  hers whose centre stands inside one of ours: (\d+)");
                 if (mc.Success) { covered[job] = N(mc.Groups[1].Value); continue; }
+                // PLATES, OURS AGAINST HERS (2026-09-17 20:55): the yardstick's plate line, summed across the corpus below
+                var mpl = Regex.Match(line, @"^plates on the shared storeys: ours ([\d,]+) sq ft, hers ([\d,]+) \((\d+)%\); storeys where ours is under half of hers: (\d+) \(([^)]*)\)");
+                if (mpl.Success) { plates.Add((job, D(mpl.Groups[1].Value), D(mpl.Groups[2].Value), N(mpl.Groups[4].Value), mpl.Groups[5].Value.Trim())); continue; }
             }
         }
 
@@ -158,6 +162,21 @@ internal static class CorpusDisagreementsVerb
             Console.WriteLine("   sets to open first (ours she has not, where her model cuts openings at all, most first): " + string.Join(" ", openings.Where(o => o.Theirs > 0 && o.Ours - o.OursMatched > 0).OrderByDescending(o => o.Ours - o.OursMatched).Take(top).Select(o => $"{o.Job}({o.Ours - o.OursMatched} of {o.Ours})"))
                 + (noHers > 0 ? $"; {noHers} set(s) where her model cuts none are not judged" : ""));
             Console.WriteLine("   sets to open first (hers we have not, a metre and more across, most first): " + string.Join(" ", hersOpeningsNotOurs.Where(h => !h.Size.StartsWith("0x", StringComparison.Ordinal) && !h.Size.StartsWith("0.5x", StringComparison.Ordinal)).GroupBy(h => h.Job).OrderByDescending(g => g.Sum(x => x.Count)).Take(top).Select(g => $"{g.Key}({g.Sum(x => x.Count)})")));
+        }
+        if (plates.Count > 0)
+        {
+            Console.WriteLine();
+            Console.WriteLine("7. PLATES, OURS AGAINST HERS on the storeys both models name (sq ft; the engineer's own measure of a usable start: the verticals AND the slab's shape on every storey):");
+            double po = plates.Sum(p => p.Ours), pt = plates.Sum(p => p.Theirs);
+            Console.WriteLine($"   over {plates.Count} sets: ours {po:N0} sq ft, hers {pt:N0} ({(pt == 0 ? 0 : 100.0 * po / pt):F0}%); storeys where ours is under half of hers: {plates.Sum(p => p.Under)}");
+            var current = plates.Where(p => olderBy.TryGetValue(p.Job, out int d) && d <= 365).ToList();
+            if (current.Count > 0)
+            {
+                double co = current.Sum(p => p.Ours), ct = current.Sum(p => p.Theirs);
+                Console.WriteLine($"   over the {current.Count} sets whose model is within a year of the drawing: ours {co:N0}, hers {ct:N0} ({(ct == 0 ? 0 : 100.0 * co / ct):F0}%)");
+            }
+            Console.WriteLine("   sets to open first (hers minus ours, most first): " + string.Join(" ", plates.Where(p => p.Theirs > 0).OrderByDescending(p => p.Theirs - p.Ours).Take(top)
+                .Select(p => $"{p.Job}({100.0 * p.Ours / p.Theirs:F0}%: {p.UnderList})")));
         }
         return 0;
 
