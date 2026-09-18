@@ -1,0 +1,71 @@
+the engineers' review from the corpus: 59 sets carry her model; 39 share storeys with columns (197 storey pairs)
+
+1. WHERE THE COLUMNS SIT, storey by storey (median distance from each of ours to the nearest of hers):
+     90 storey pairs within 100 mm - the same reading; sets: 31065-01(21) 30838-01(12, her model 881 d older) 30990-01(10) 30972-01(6, her model 424 d older) 30849-01(5, her model 623 d older) 31174-01(5) 31224-01(4) 31130-01(3, her model 350 d older) 30989-01(2) 31003-01(2) 31032-01(2, her model 840 d older) 31037-01(2, her model 375 d older)
+     39 storey pairs 100-300 mm - a centroid against a grid point; sets: 30838-01(21, her model 881 d older) 31009-01(6, her model 1415 d older) 30972-01(3, her model 424 d older) 30993-01(3) 31053-01(3, her model 618 d older) 30989-01(1) 31017-01(1) 31162-01(1)
+     20 storey pairs 300 mm-1 m - a reading apart; sets: 31130-01(14, her model 350 d older) 30838-01(1, her model 881 d older) 30989-01(1) 31009-01(1, her model 1415 d older) 31017-01(1) 31143-01(1, her model 361 d older) 31158-01(1)
+     48 storey pairs over 1 m - another frame or another floor; sets: 31098-01(21, her model 479 d older) 31005-01(9, her model 938 d older) 30819-01(5, her model 755 d older) 30986-02(4, her model 428 d older) 31017-01(2) 31048-01(2, her model 1094 d older) 31183-01(2) 31104-01(1) 31158-01(1) 31224-01(1)
+   of these, 0 storey pairs are a RIGID SHIFT of 150 mm or more that halves the error once removed (a frame, not a reading): 
+
+2. STOREYS ONE MODEL NAMES AND THE OTHER DOES NOT:
+   only ours (249 over 59 sets), by name shape: L#(159) ROOF(27) B-L#(14) A-L#(11) -(9) C-L#(8) P#(7) C#(4) L#R(3) C-ROOF(2) LEVEL(1) L#/P#(1)
+   only hers (171 over 59 sets), by name shape: L#(92) -(27) P#(8) ROOF(7) EMR(4) MECH(4) UPPER(4) L-#(4) B#(3) #(3) MEZZ(2) LEVEL(2)
+
+3. OURS WITH NONE OF HERS WITHIN 300 mm, by our section (a wall she models as a pier, an anchor read as a column, a column she left out):
+      421  KOR-C355.6x914.4       on 8 sets: 31098-01(146) 31130-01(100) 30838-01(78) 31087-01(68) 31005-01(16)
+      270  KOR-C304.8x762         on 16 sets: 31053-01(72) 30993-01(34) 31009-01(22) 31048-01(20) 30933-01(19)
+      250  KOR-C304.8x609.6       on 13 sets: 31104-01(52) 31098-01(45) 31083-01(44) 31202-01(32) 31093-01(24)
+      182  KOR-C355.6x762         on 6 sets: 31048-01(91) 31053-01(56) 31017-01(25) 30989-01(5) 31065-01(3)
+      159  KOR-C609.6x609.6       on 7 sets: 30838-01(62) 31098-01(40) 31130-01(39) 30993-01(11) 31009-01(4)
+       90  KOR-C457.2x762         on 6 sets: 31017-01(70) 30838-01(7) 30989-01(7) 30990-01(3) 70061-01(2)
+       87  KOR-C914.4x1117.6      on 2 sets: 31087-01(56) 30993-01(31)
+       60  KOR-C304.8x914.4       on 8 sets: 30933-01(29) 31143-01(12) 31158-01(8) 31098-01(5) 30849-01(2)
+       56  KOR-C609.6x914.4       on 3 sets: 31053-01(36) 30838-01(12) 31005-01(8)
+       50  KOR-C609.6x1219.2      on 2 sets: 30838-01(49) 31101-01(1)
+       48  KOR-C406.4x914.4       on 3 sets: 31098-01(39) 31053-01(7) 31009-01(2)
+       44  KOR-C254x762           on 2 sets: 60061-03(35) 31009-01(9)
+   of all of ours she has no partner for, 574 stand on a wall she modelled (a column to us, a pier to her) over 37 sets: 31087-01(130) 31053-01(75) 30838-01(47) 30993-01(47) 30849-01(41) 30933-01(22) 30990-01(21) 31130-01(19) 30972-01(17) 31065-01(16) 30819-01(15) 30989-01(15)
+   and 4701 of ours stand beyond her model's footprint on their storey over 46 sets (another building on the sheet, or her model is one building of several): 30990-01(1019) 30838-01(658) 30864-01(616) 31065-01(546) 31130-01(509) 31098-01(278) 31083-01(274) 31053-01(106) 31005-01(63) 31168-01(50) 31048-01(48) 30819-01(44)
+
+4. HERS WITH NONE OF OURS WITHIN 300 mm, by her section (what the drawing reader misses or misplaces):
+      268  C12x60(c50MPa)         on 1 sets: 30838-01(268)
+      268  65Mpa                  on 1 sets: 30864-01(70) 30864-01(56) 30864-01(51) 30864-01(41) 30864-01(28)
+      264  C14x36(c55MPa)         on 3 sets: 31098-01(164) 31130-01(92) 31053-01(8)
+      196  14X30                  on 2 sets: 31083-01(105) 31048-01(91)
+      104  12x36                  on 5 sets: 31155-01(51) 70061-01(46) 31032-01(4) 31006-01(2) 31101-01(1)
+      102  C12X24(55MPa)          on 1 sets: 31098-01(102)
+      100  C14x30(c45MPa)         on 2 sets: 31053-01(97) 30989-01(3)
+       90  C14x36(c50MPa)         on 1 sets: 30838-01(90)
+       88  W24X68                 on 1 sets: 70057-01(88)
+       84  55Mpa                  on 1 sets: 30864-01(45) 30864-01(39)
+       74  12x30-35MPa            on 1 sets: 31048-01(74)
+       73  C12x36(C45MPa)         on 1 sets: 31087-01(73)
+
+5. THE SETS TO OPEN FIRST (her columns we have no partner for, most first):
+   30838-01     536 of hers unmatched; frame columns, ours within 100 mm 407 of 892; her top sections: C12x60(c50MPa)(268) C14x36(c50MPa)(90) C24x48(c50MPa)(69)
+   31098-01     457 of hers unmatched; frame columns, ours within 100 mm 32 of 381; her top sections: C14x36(c55MPa)(164) C12X24(55MPa)(102) C24X24(55MPa)(52)
+   30864-01     352 of hers unmatched; frame -, ours within 100 mm -; her top sections: 65Mpa(70) 65Mpa(56) 65Mpa(51)
+   30993-01     284 of hers unmatched; frame columns, ours within 100 mm 187 of 577; her top sections: Beam(56) C12x60(c8ksi)(47) C12x30(c8ksi)(37)
+   31083-01     250 of hers unmatched; frame columns, ours within 100 mm 114 of 205; her top sections: 14X30(105) 22x22(64) 12x24(54)
+   31130-01     242 of hers unmatched; frame columns, ours within 100 mm 259 of 624; her top sections: C14x36(c55MPa)(92) C36(c65MPa)(57) C18x24(c55MPa)(40)
+   30990-01     241 of hers unmatched; frame columns, ours within 100 mm 349 of 397; her top sections: C300x750(c35MPa)(66) C360x900(c35MPa)(44) C600d(c35MPa)(44)
+   31017-01     212 of hers unmatched; frame columns, ours within 100 mm 176 of 653; her top sections: C12X30-45MPA(58) C18X30-45MPA(46) 45MPa(34)
+   70057-01     201 of hers unmatched; frame columns, ours within 100 mm 4 of 15; her top sections: W24X68(88) W24X84(30) HSS8X8X3/8(24)
+   31048-01     165 of hers unmatched; frame columns, ours within 100 mm 74 of 217; her top sections: 14X30(91) 12x30-35MPa(74)
+   31053-01     165 of hers unmatched; frame columns, ours within 100 mm 131 of 465; her top sections: C14x30(c45MPa)(97) C14x30(c35MPa)(40) C14x36(c55MPa)(8)
+   31005-01     149 of hers unmatched; frame -, ours within 100 mm -; her top sections: C12x48(C8ksi)(48) C14x36(C8ksi)(40) C10x117(C8ksi)(16)
+
+6. OPENINGS, OURS AGAINST HERS on the storeys both models name (an opening is hers when the centre of one of hers lies within 1.5 m of ours):
+   over 53 sets: ours judged 1531, hers 2161; ours she has 568 (37%); hers we have 754 (35%)
+   hers whose centre stands inside one of ours (a match by cover: a flight inside our well): 661 (31%)
+   over the 22 sets whose model is within a year of the drawing: ours judged 407, hers 764; ours she has 280 (69%); hers we have 329 (43%)
+   sets whose model is over a year older than the drawing (the design moved; not the reader's to answer): 30864-01(1146 d, hers 0 of 98) 30838-01(881 d, hers 74 of 157) 31005-01(938 d, hers 0 of 61) 31053-01(618 d, hers 35 of 82) 30849-01(623 d, hers 9 of 47) 30819-01(755 d, hers 6 of 37) 30933-01(961 d, hers 20 of 46) 31009-01(1415 d, hers 4 of 29) 31098-01(479 d, hers 0 of 24) 31083-01(575 d, hers 1 of 21) 30972-01(424 d, hers 28 of 45) 30986-02(428 d, hers 0 of 16)
+   ours she has not, by plan size: 0.5x1.5 m 131 on 11 sets, 2x2.5 m 94 on 11 sets, 1x1.5 m 88 on 15 sets, 0.5x1 m 79 on 5 sets, 0.5x2 m 63 on 13 sets, 1.5x1.5 m 57 on 8 sets, 1x2 m 43 on 5 sets, 0.5x0.5 m 35 on 8 sets, 1x2.5 m 25 on 7 sets, 1.5x9 m 21 on 1 sets, 0x0.5 m 19 on 2 sets, 2.5x3.5 m 19 on 8 sets
+   hers we have not, by plan size: 0.5x1 m 170 on 11 sets, 0.5x0.5 m 169 on 4 sets, 0x4.5 m 95 on 4 sets, 0.5x2.5 m 78 on 2 sets, 2x5.5 m 63 on 12 sets, 1x2 m 56 on 9 sets, 1x1 m 52 on 10 sets, 0.5x2 m 51 on 4 sets, 2.5x3.5 m 49 on 8 sets, 1.5x5 m 45 on 4 sets, 1x1.5 m 44 on 10 sets, 2x5 m 41 on 4 sets
+   sets to open first (ours she has not, where her model cuts openings at all, most first): 30993-01(243 of 318) 30838-01(75 of 128) 31017-01(62 of 91) 31006-01(54 of 54) 31003-01(47 of 57) 30972-01(44 of 71) 30933-01(37 of 55) 31037-01(29 of 32) 31065-01(29 of 52) 31098-01(24 of 24) 30990-01(22 of 26) 30986-02(21 of 21); 3 set(s) where her model cuts none are not judged
+   sets to open first (hers we have not, a metre and more across, most first): 30864-01(73) 30838-01(50) 31017-01(41) 31005-01(37) 31087-01(32) 31065-01(27) 31009-01(25) 31098-01(24) 31104-01(24) 30990-01(22) 30933-01(21) 30989-01(20)
+
+7. PLATES, OURS AGAINST HERS on the storeys both models name (sq ft; the engineer's own measure of a usable start: the verticals AND the slab's shape on every storey):
+   over 49 sets: ours 4,959,886 sq ft, hers 6,737,466 (74%); storeys where ours is under half of hers: 96
+   over the 21 sets whose model is within a year of the drawing: ours 1,885,077, hers 2,395,046 (79%)
+   sets to open first (hers minus ours, most first): 31017-01(45%: L3 6,025/58,282 L1 1,347/64,354 L2 1,314/58,283 L6 0/13,144) 31202-01(59%: L2 571/33,572 L3 1,437/38,105 L4 1,407/38,105) 70061-01(17%: L1 28,531/70,913 P1 7,941/59,027 L2 0/88,314) 31087-01(83%: L2 14,713/31,574 L3 4,611/28,781 L4 413/32,383 L5 2,081/24,058) 31048-01(15%: L3 17,323/77,760 L2 5,828/72,341) 30990-01(51%: L1 3,719/46,464 L3 958/13,323 L4 958/13,323 L5 1,161/14,103 L6 958/12,305 L7 4,182/14,263 L8 1,093/8,411 L2 1,032/12,422) 31009-01(31%: L4 0/15,832 L7 1,387/16,148 L5 0/15,892 L6 0/15,842 L8 0/14,026) 31083-01(5%: L3 3,987/33,661 L4 0/40,498) 30993-01(89%: ) 31183-01(47%: L1 30,496/62,327 P1 21,963/49,965) 30849-01(56%: L2 4,151/11,743 L3 3,618/9,327 L4 409/8,920 L11 1,255/5,015 ROOF 0/4,633) 31098-01(74%: L2 5,267/14,320 L3 5,267/13,621 L4 0/13,274 L5 0/11,811)
