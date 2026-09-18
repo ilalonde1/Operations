@@ -108,6 +108,12 @@ public static class ModelYardstick
         /// <summary>Of ours she has not on the storey, how many stand where she cuts an opening on SOME other storey (00:58): a
         /// storey mapping's miss rather than a mark's, when it is many.</summary>
         public int OursOpeningsHersElsewhere { get; init; }
+        /// <summary>
+        /// PLATES, OURS AGAINST HERS, on the storeys both name (2026-09-17 20:50): the plate area each model carries on
+        /// the storey, in sq ft - the engineer's own definition of a usable start is the verticals AND the overall
+        /// shape of the slab on every storey, and the column figures above say nothing about the slab.
+        /// </summary>
+        public IReadOnlyList<(string Storey, string YardstickStorey, double OursSqFt, double TheirsSqFt)> Plates { get; init; } = [];
     }
 
     /// <summary>How far apart the centres of our opening and hers may be and still be one opening: a shaft is 2-3 m across and the frame carries registration slop.</summary>
@@ -405,7 +411,21 @@ public static class ModelYardstick
             TheirsOpeningsUnmatchedBySize = theirsOpeningsUnmatched.OrderByDescending(kv => kv.Value).ThenBy(kv => kv.Key, StringComparer.Ordinal).Select(kv => (kv.Key, kv.Value)).ToList(),
             TheirsOpeningsCovered = theirsOpeningsCovered,
             OursOpeningsHersElsewhere = oursHersElsewhere,
+            Plates = PlatesOnSharedStoreys(model, yard, storeyFigures),
         };
+    }
+
+    /// <summary>The plate area of each model on each shared storey, in sq ft (E2kModelQuery.Storeys's own figure).</summary>
+    private static IReadOnlyList<(string Storey, string YardstickStorey, double OursSqFt, double TheirsSqFt)> PlatesOnSharedStoreys(E2kDocument model, E2kDocument yard, IReadOnlyList<StoreyFigure> storeys)
+    {
+        Dictionary<string, double> ours, theirs;
+        try
+        {
+            ours = E2kModelQuery.Storeys(model).GroupBy(x => x.Name, StringComparer.OrdinalIgnoreCase).ToDictionary(g => g.Key, g => g.Sum(x => x.SlabAreaSqFt), StringComparer.OrdinalIgnoreCase);
+            theirs = E2kModelQuery.Storeys(yard).GroupBy(x => x.Name, StringComparer.OrdinalIgnoreCase).ToDictionary(g => g.Key, g => g.Sum(x => x.SlabAreaSqFt), StringComparer.OrdinalIgnoreCase);
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or FormatException or ArgumentException) { return []; }
+        return storeys.Select(f => (f.Storey, f.YardstickStorey, ours.GetValueOrDefault(f.Storey), theirs.GetValueOrDefault(f.YardstickStorey))).ToList();
     }
 
     /// <summary>Every AREA assigned OPENING "Yes", by storey: its plan centre and box in mm.</summary>
@@ -526,6 +546,13 @@ public static class ModelYardstick
             sb.AppendLine(CultureInfo.InvariantCulture, $"  of which {c.OursOnHerWalls} stand on a wall she modelled (a column to us, a pier to her): {string.Join(", ", c.OursOnHerWallsBySection.Take(8).Select(u => $"{u.Section} {u.Count}"))}");
         if (c.TheirsUnmatchedBySection.Count > 0)
             sb.AppendLine(CultureInfo.InvariantCulture, $"theirs with none of ours within 300 mm, by their section: {string.Join(", ", c.TheirsUnmatchedBySection.Take(8).Select(u => $"{u.Section} {u.Count}"))}{(c.TheirsUnmatchedBySection.Count > 8 ? " ..." : "")}");
+        if (c.Plates.Count > 0)
+        {
+            double po = c.Plates.Sum(p => p.OursSqFt), pt = c.Plates.Sum(p => p.TheirsSqFt);
+            var under = c.Plates.Where(p => p.TheirsSqFt > 0 && p.OursSqFt < 0.5 * p.TheirsSqFt).ToList();
+            var over = c.Plates.Where(p => p.OursSqFt > 1.5 * Math.Max(p.TheirsSqFt, 1)).ToList();
+            sb.AppendLine(CultureInfo.InvariantCulture, $"plates on the shared storeys: ours {po:N0} sq ft, hers {pt:N0} ({(pt == 0 ? 0 : 100.0 * po / pt):F0}%); storeys where ours is under half of hers: {under.Count} ({string.Join(" ", under.Take(8).Select(p => $"{p.Storey} {p.OursSqFt:N0}/{p.TheirsSqFt:N0}"))}{(under.Count > 8 ? " ..." : "")}); ours over half again hers: {over.Count}{(over.Count == 0 ? "" : " (" + string.Join(" ", over.Take(6).Select(p => $"{p.Storey} {p.OursSqFt:N0}/{p.TheirsSqFt:N0}")) + ")")}");
+        }
         if (c.Openings.Ours > 0 || c.Openings.Theirs > 0 || c.Openings.OursBeyond > 0)
         {
             var o = c.Openings;
