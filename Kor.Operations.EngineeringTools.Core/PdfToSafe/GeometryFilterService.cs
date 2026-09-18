@@ -2260,6 +2260,21 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         int insideCount = insideTheOutline.Count;
                         FaceTrace?.Invoke($"slab pass: the outline's pen is {outlinePen.Value:0.00} mm ({outlinePens.Count} outward edge(s) of the structure-holding cells); {insideCount} rim cell(s) face the page through it alone and are inside the outline (step 115)");
                     }
+                    if (FaceTrace is not null)
+                    {
+                        int nHolds = 0, nEnclosed = 0, nOutside = 0, nWrap = 0; double aHolds = 0, aEnclosed = 0, aOutside = 0;
+                        for (int i = 0; i < planar.Faces.Count; i++)
+                        {
+                            var c = planar.Faces[i]; double a = Math.Abs(c.Outer.Area) / 92903.04;
+                            if (Holds(c)) { nHolds++; aHolds += a; }
+                            else if (WrapsTheFloor(c)) { nWrap++; FaceTrace($"slab pass: wrapping cell {a:0} sq ft with {c.Holes.Count} hole(s) of {c.Holes.Sum(h => Math.Abs(h.Area)) / 92903.04:0} sq ft (step 116 study)"); }
+                            else if (!planar.TouchesTheOutside(i)) { nEnclosed++; aEnclosed += a; }
+                            else { nOutside++; aOutside += a; }
+                        }
+                        var biggest = planar.Faces.Select((f, i) => (i, a: Math.Abs(f.Outer.Area) / 92903.04)).OrderByDescending(x => x.a).Take(3).ToList();
+                        FaceTrace("slab pass: biggest cells (step 116 study): " + string.Join(" | ", biggest.Select(x => $"{x.a:0} sq ft holds {Holds(planar.Faces[x.i])} wraps {WrapsTheFloor(planar.Faces[x.i])} outside {planar.TouchesTheOutside(x.i)} holes {planar.Faces[x.i].Holes.Count}")));
+                        FaceTrace($"slab pass: cells by selection (step 116 study): holding structure {nHolds} ({aHolds:0} sq ft), wrapping {nWrap}, enclosed {nEnclosed} ({aEnclosed:0} sq ft), open to the page {nOutside} ({aOutside:0} sq ft)");
+                    }
                     var fromArrangement = planar.RecoverSurfaces(_ => false, (i, cell) => Holds(cell) || WrapsTheFloor(cell) || !planar.TouchesTheOutside(i) || InsideTheOutline(i)).Slabs.Select(f => f.Outer).ToList();
                     // step 113: the arrangement was built although the walk had a floor, because that floor held under half the
                     // page's columns; where the arrangement finds a floor holding more, the walk's stands down (31202's L1 carried
