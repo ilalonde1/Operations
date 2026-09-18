@@ -220,6 +220,8 @@ public sealed class EveryReaderConstantIsTriagedTests
         ["GridAlignment.cs:ColumnRegistrationMm"] = Tolerance("a column stands over a placed one within this"),
         ["ModelYardstick.cs:FootprintMarginMm"] = Tolerance("how far past her outermost column a column of ours is still judged against her model - registration slop and a slab-edge column, not a bay"),
         ["ModelYardstick.cs:OpeningMatchMm"] = Tolerance("how far apart the centres of our opening and hers may be and still be one opening: a shaft is 2-3 m across and the frame carries registration slop (step 104)"),
+        ["ModelYardstick.cs:SliverMm"] = Tolerance("an opening of hers narrower than this across is a modelling release along a wall (31065: 0.0-0.1 x 4.5 m, 88 of her 209), not a hole a drafter draws; counted, judged nowhere (2026-09-18)"),
+        ["ModelYardstick.cs:VoidNeedsOurPlateFraction"] = Tolerance("her opening off every plate of ours is a void we left out of the plate only when we carry the floor - our plate area on the storey at least this much of hers (31017's missing podium plates are not voids we left out) (2026-09-18)"),
 
         // ---- rules: facts of geometry or of buildings, code by design ----
         ["GeometryFilterService.cs:WallShapeTaperShare"] = Rule("a retaining wall's faces converge by up to a quarter"),

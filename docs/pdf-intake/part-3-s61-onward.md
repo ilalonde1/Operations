@@ -3014,3 +3014,68 @@ one-view sheet (the geometry passes through whole — rule 4's test does not exe
 section (the six-set gate does).
 
 **Commits:** step 118 `b95e45c0` on `step-118`, fast-forwarded to develop; the CLI mirror refreshed (Core.dll 46A41A58…); **run 38** (118) launched detached 12:43:01, clear of 22:00 (~2 h).
+
+## 139. Step 119 — two rings sharing an edge are two rings; the openings figure made honest (2026-09-18 12:50–13:45)
+
+Deficiency 2 on Ian's list is openings: ours she has 36%, hers we have 35% over 53 sets (run 37). Before any rule,
+**the instrument the figure lacked:** `takeoff model-yardstick <ours> <hers> --openings [storey]` lists every opening
+of ours and hers on a storey in ONE frame — centre, plan box, the nearest of the other side's, and for hers whether
+one of ours covers it and whether it stands on a plate of ours at all (`ModelYardstick.OpeningRows`). On 31065 L10 it
+said in six lines what the 40% never could:
+
+    L10  ours (   243, 37,463)  2.4 x 7.1 m  nearest      96
+    L10  hers (  -769, 34,073)  0.3 x 0.3 m  nearest   3,538  covered on our plate
+    L10  hers ( 2,653, 38,274)  1.8 x 5.4 m  nearest   2,542          on our plate
+
+Her 1.8 × 5.4 m — which §-past logs had called her stair as flights — is the **elevator shaft**, 2.4 m east of our
+stair well, and we cut nothing there on any of her 22 storeys. `pdf-overlay --crop` on S2.10.1 at the core: the stair
+on the left (treads, UP/DN), the elevator on the right as two X'd cabs with the divider beam «S200x27.4» between.
+
+**Reproduced on the view's own DXF** with a second instrument, `ClassifyProbe` (`KOR_CLASSIFY_DXF=<view.dxf>`: the
+classifier on one view under the banked rules, every slab, opening and flag printed, then the slab layer's loops as
+the builder makes them): the DXF holds the two cabs as two closed rectangles on `KOR_C_SLABEDG`, 1.8 × 2.7 m each,
+sharing the beam's edge (drawn once per cab, meeting at the left end, 12.7 mm apart at the right); the loop builder
+walked both as ONE eight-point loop — round the first, along the shared edge, round the second, back along it —
+whose signed area is 53 − 53 ≈ 0 sq ft, so it fell under the 50 sq ft minimum and was dropped **without a flag**.
+The self-touch split that already turns a figure of eight into its two rings (31168's hourglass) ran only on loops
+already over the minimum. Three things it took to make the fixture the sheet: the layer's five rings verbatim (three
+alone come out as the union and an open chain), full precision, and `OfClosedOutline` on the edges — the dash joiner
+leaves a closed polyline's edges alone and joins loose ones, which is why loose lines make the union instead.
+
+**The rule (`StructuralPlanClassifier`, step 119): a loop that touches itself is its rings, each judged on its own
+size, BEFORE anything judges the walk's size** — the walk's area was never the drawing's. Test
+`TwoRingsSharingAnEdgeAreTwoRingsTests`: the sheet's five rings → the two cabs are two openings of 4.9 m² (red before,
+green after); the same cabs as loose lines → one opening the size of both (the dash-joined path), no slab over either.
+WHAT IT DOES NOT COVER: a cab under the minimum (dropped as any small ring is), wall and column rings (their own
+paths), the reader that wrote the rings.
+
+**Measured.** Six-set gate: 31065 105 → 150 openings (11 sheets' cab pairs onto 22 storeys; 0 plates / columns /
+walls moved), 31170-01-arch 620 → 622, the other four byte-identical. 31065 against her model: **hers we have 41 →
+62 of 109 (38% → 57%)**; L10 rendered: the stair well and the two X'd cabs beside it.
+
+**The figure itself was lying both ways** (`ModelYardstick`, the openings block):
+- 88 of her 209 "openings" on 31065 are 0.0–0.1 × 4.5 m slivers along the core walls (`A1/A2/A6/A7` × 22 storeys), a
+  modelling release, not a hole a drafter draws — and they matched our stair well by centre, so "hers with one of
+  ours 40%" was mostly slivers. **Slivers under `SliverMm` = 150 mm across are counted and judged nowhere** (31065:
+  100 of 209; 31017: 176 of 230).
+- **Hers we have = by centre OR by cover OR a void we carry no plate over** (`TheirsOpeningsHad`): a flight inside our
+  well is had by cover; 30993's two courtyards she cuts as 17.5 × 19 m openings from one plate and we leave out of
+  the plate — no slab either way — are had as voids, but only where we carry the floor (`VoidNeedsOurPlateFraction`:
+  our plate area on the storey ≥ 80% of hers; 31017's missing podium plates are not voids we left out).
+- The line: `hers we have, by centre or cover or as a void we carry no plate over: N of M (P%; by centre a, by cover
+  b, off our plate c); hers under 150 mm across, a release not a hole, not judged: S`; `corpus-disagreements` §6 sums
+  it over the corpus and over the current-model sets. Both constants triaged in `EveryReaderConstantIsTriagedTests`.
+
+**What the listing named next, not yet a rule:** her 0.3 × 0.3 m sleeves at the well's corners (had by cover); her
+1.8 × 0.3 m slot at the elevator's sill (`A5` × 22, on our plate, nothing drawn as an X there — a modelling detail,
+left); 30993's 318 openings of ours against her 154 (her model 2025-10; the small 0.5 × 1–1.5 m class of ours she has
+not, 129 of 318 — to open with `--openings` on one storey next).
+
+**The full suite, run because the classifier is the DXF route's too** (13:31 → 14:26 under run 38's twelve workers,
+54 min): 1,616 green, 1 skipped, **1 red — `LiveProjectBaselineTests` "31138 2170 W 1st" (the Revit-DXF route): walls
+204 against a baseline of 228 ± 23.** Not step 119's: a worktree at `f84b6a10` (develop before 119) fails identically,
+204. The baseline was set at step 57 (09-13) and the full suite last ran green at 83b (09-16, 1,453); thirty-odd steps
+landed between without it. Rule 10: **`git bisect` between `f7aa25ff` and `f84b6a10` is running in the worktree**
+(`Operations-check/bisect-31138.ps1`, one build and the nine live baselines a step, ~3 min each); the step it names
+gets characterised in §140, not patched. Step 119 commits on its own evidence: its tests, the fast suite, the gate,
+and the full suite's other 1,616.

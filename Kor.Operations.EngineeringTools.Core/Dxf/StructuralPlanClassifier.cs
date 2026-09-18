@@ -1216,7 +1216,7 @@ public static class StructuralPlanClassifier
                 {
                     AddWallOrColumn(result, loop, options, columnSourceLoopIndex++);
                 }
-                else if (loop.Area >= options.MinSlabArea || IsSleeve(loop, options))
+                else
                 {
                     // A slab edge that closed through its own linework is a figure of eight, and
                     // it is two floors, not one. 31168's LEVEL 2 podium came back as a single
@@ -1226,26 +1226,34 @@ public static class StructuralPlanClassifier
                     //
                     // Slabs only. Wall and column rings go through their own paths above, and a
                     // wall outline that touches itself means something different there.
+                    //
+                    // BEFORE ITS SIZE IS JUDGED (intake step 119, 2026-09-18). 31065's elevator shaft is two
+                    // cabs drawn as two closed rectangles sharing an edge; the builder walked both as ONE
+                    // eight-point loop - round the first, along the shared edge, round the second, back
+                    // along it - whose signed area cancelled to nothing, so it fell under the minimum here
+                    // and was dropped without a word: 22 storeys with no elevator opening. The split ran only
+                    // on loops already big enough. A loop that touches itself is its rings, each judged on
+                    // its own size; the walk's area was never the drawing's.
                     var rings = LoopGeometry.SplitSelfCrossings(loop.Points, options.OutlineSelfTouchTolerance);
                     if (rings.Count == 1)
                     {
-                        slabCandidates.Add(loop);
+                        if (loop.Area >= options.MinSlabArea || IsSleeve(loop, options)) slabCandidates.Add(loop);
                     }
                     else
                     {
                         var kept = rings
                             .Select(r => new PlanLoop(loop.Layer, r, closedExactly: true))
-                            .Where(r => r.Area >= options.MinSlabArea)
+                            .Where(r => r.Area >= options.MinSlabArea || IsSleeve(r, options))
                             .ToList();
 
                         // Never silently. If splitting loses the floor, the whole storey changes.
                         result.Flags.Add(
                             $"{loop.Layer}: a slab outline crossed itself and was read as {kept.Count} " +
-                            $"separate plate(s) rather than one ring through its own edge " +
+                            $"separate ring(s) rather than one ring through its own edge " +
                             $"({string.Join(" + ", kept.Select(r => $"{options.SqFt(r.Area, "0")} sq ft"))}).");
 
                         if (kept.Count > 0) slabCandidates.AddRange(kept);
-                        else slabCandidates.Add(loop);
+                        else if (loop.Area >= options.MinSlabArea) slabCandidates.Add(loop);
                     }
                 }
             }

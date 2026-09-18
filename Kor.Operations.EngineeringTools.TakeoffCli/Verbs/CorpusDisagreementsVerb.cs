@@ -42,6 +42,7 @@ internal static class CorpusDisagreementsVerb
         var plates = new List<(string Job, double Ours, double Theirs, int Under, string UnderList)>();
         var thickness = new List<(string Job, int Judged, int Agree, string OffList)>();
         var covered = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);   // her openings whose centre stands inside one of ours (a match by cover)
+        var had = new Dictionary<string, (int Had, int Of, int OffPlate, int Slivers)>(StringComparer.OrdinalIgnoreCase);   // hers we have by centre, cover or a void we carry no plate over; her slivers set aside
         var oursOpeningsNotHers = new List<(string Job, string Size, int Count)>();
         var hersOpeningsNotOurs = new List<(string Job, string Size, int Count)>();
         var openingSize = new Regex(@"(\S+x\S+ m) (\d+)");
@@ -86,6 +87,9 @@ internal static class CorpusDisagreementsVerb
                 { foreach (Match s in openingSize.Matches(line)) hersOpeningsNotOurs.Add((job, s.Groups[1].Value, N(s.Groups[2].Value))); continue; }
                 var mc = Regex.Match(line, @"^  hers whose centre stands inside one of ours: (\d+)");
                 if (mc.Success) { covered[job] = N(mc.Groups[1].Value); continue; }
+                // HER OPENINGS WE HAVE, honestly (2026-09-18 13:00): by centre or cover or as a void we carry no plate over, slivers set aside
+                var mh = Regex.Match(line, @"^  hers we have, by centre or cover or as a void we carry no plate over: (\d+) of (\d+) \(\d+%; by centre (\d+), by cover (\d+), off our plate (\d+)\)(?:; hers under \d+ mm across, a release not a hole, not judged: (\d+))?");
+                if (mh.Success) { had[job] = (N(mh.Groups[1].Value), N(mh.Groups[2].Value), N(mh.Groups[5].Value), mh.Groups[6].Success ? N(mh.Groups[6].Value) : 0); continue; }
                 // PLATES, OURS AGAINST HERS (2026-09-17 20:55): the yardstick's plate line, summed across the corpus below
                 var mpl = Regex.Match(line, @"^plates on the shared storeys: ours ([\d,]+) sq ft, hers ([\d,]+) \((\d+)%\); storeys where ours is under half of hers: (\d+) \(([^)]*)\)");
                 if (mpl.Success) { plates.Add((job, D(mpl.Groups[1].Value), D(mpl.Groups[2].Value), N(mpl.Groups[4].Value), mpl.Groups[5].Value.Trim())); continue; }
@@ -147,6 +151,13 @@ internal static class CorpusDisagreementsVerb
             Console.WriteLine($"   over {openings.Count} sets: ours judged {ours}, hers {hers}; ours she has {om} ({(ours == 0 ? 0 : 100.0 * om / ours):F0}%); hers we have {tm} ({(hers == 0 ? 0 : 100.0 * tm / hers):F0}%)");
             int tc = openings.Sum(o => covered.GetValueOrDefault(o.Job));
             if (tc > 0) Console.WriteLine($"   hers whose centre stands inside one of ours (a match by cover: a flight inside our well): {tc} ({(hers == 0 ? 0 : 100.0 * tc / hers):F0}%)");
+            if (had.Count > 0)
+            {
+                int hh = had.Values.Sum(h => h.Had), ho = had.Values.Sum(h => h.Of), hp = had.Values.Sum(h => h.OffPlate), hs = had.Values.Sum(h => h.Slivers);
+                Console.WriteLine($"   hers we have, by centre or cover or as a void we carry no plate over (slivers under 150 mm set aside): {hh} of {ho} ({(ho == 0 ? 0 : 100.0 * hh / ho):F0}%) over {had.Count} sets; off our plate {hp}; her slivers not judged {hs}");
+                var hc = had.Where(kv => olderBy.TryGetValue(kv.Key, out int d) && d <= 365).ToList();
+                if (hc.Count > 0) Console.WriteLine($"   over the {hc.Count} current-model sets: {hc.Sum(kv => kv.Value.Had)} of {hc.Sum(kv => kv.Value.Of)} ({(hc.Sum(kv => kv.Value.Of) == 0 ? 0 : 100.0 * hc.Sum(kv => kv.Value.Had) / hc.Sum(kv => kv.Value.Of)):F0}%)");
+            }
             // A MODEL A YEAR OLDER THAN THE DRAWING JUDGES A DESIGN THAT HAS MOVED (01:45): 31005's model is 938 days before its
             // drawing and shares none of its openings within 1.5 m; 31009's 1,415 days, 4 of 29; 31087's is two days AFTER and
             // shares 167 of 248. The figure over the sets whose model is within a year of the drawing is the reader's; the rest

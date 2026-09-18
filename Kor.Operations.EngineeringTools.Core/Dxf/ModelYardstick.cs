@@ -109,6 +109,22 @@ public static class ModelYardstick
         /// storey mapping's miss rather than a mark's, when it is many.</summary>
         public int OursOpeningsHersElsewhere { get; init; }
         /// <summary>
+        /// HER OPENINGS WE HAVE, honestly counted (2026-09-18 13:00): by centre (within OpeningMatchMm), by cover (her centre
+        /// inside one of ours - a flight inside our well), or as a VOID WE CARRY NO PLATE OVER (her centre outside every floor
+        /// plate of ours on the storey: 30993's two courtyards she cuts as 17.5 x 19 m openings in one plate where we leave
+        /// them out of the plate - no slab either way). Each way counted, and the union.
+        /// </summary>
+        public (int ByCentre, int ByCover, int OffOurPlate, int Had) TheirsOpeningsHad { get; init; }
+        /// <summary>Her openings under <see cref="SliverMm"/> across (0.0 x 4.5 m along a core wall on 31065, 88 of her 209): a modelling
+        /// release, not a hole a drafter draws. Counted here and judged nowhere.</summary>
+        public int TheirsOpeningsSlivers { get; init; }
+        /// <summary>
+        /// Every opening on the shared storeys, ours and hers, in our frame (mm): where it is, its plan box, the nearest of the
+        /// other side's on the storey, whether her centre stands inside one of ours, and whether it stands on a plate of ours
+        /// at all. The raw material behind the openings figure, for looking at what an unmatched one IS.
+        /// </summary>
+        public IReadOnlyList<(string Storey, bool Ours, double X, double Y, double W, double H, double NearestMm, bool Covered, bool OnOurPlate)> OpeningRows { get; init; } = [];
+        /// <summary>
         /// PLATES, OURS AGAINST HERS, on the storeys both name (2026-09-17 20:50): the plate area each model carries on
         /// the storey, in sq ft - the engineer's own definition of a usable start is the verticals AND the overall
         /// shape of the slab on every storey, and the column figures above say nothing about the slab.
@@ -315,7 +331,13 @@ public static class ModelYardstick
         // hers are judged on every storey both models name (the shared list), not only where we cut something: a storey
         // where we read no opening and she cut nine is the finding
         var theirOpeningStoreysMet = new HashSet<string>(shared.SelectMany(s => s.Theirs.Split('+')), StringComparer.OrdinalIgnoreCase);
-        int oursOpeningsBeyond = 0;
+        int oursOpeningsBeyond = 0, theirsSlivers = 0, theirsOffPlate = 0, theirsHad = 0;
+        var openingRows = new List<(string Storey, bool Ours, double X, double Y, double W, double H, double NearestMm, bool Covered, bool OnOurPlate)>();
+        var ourPlates = PlatePolygonsByStorey(model, mu);
+        // a void we carry no plate over is only that when we carry the floor: our plate area on the storey at least
+        // VoidNeedsOurPlateFraction of hers (31017's podium reads 1-6k of 58-64k sq ft, and her openings there stand
+        // off our plate because the plate is missing, not because we left the void out)
+        var ourPlateArea = PlatesByStorey(model); var theirPlateArea = PlatesByStorey(yard);
         foreach (var (storey, mine) in ourOpenings)
         {
             var t = TheirsFor(storey);
@@ -329,6 +351,8 @@ public static class ModelYardstick
                                                     || o.Centre.Y < footprint.Min(q => q.Y) - sh.Y - FootprintMarginMm || o.Centre.Y > footprint.Max(q => q.Y) - sh.Y + FootprintMarginMm))
                 { oursOpeningsBeyond++; continue; }
                 oursOpeningsJudged++;
+                double nearestOfHers = hers.Count == 0 ? double.NaN : hers.Min(h => Math.Sqrt(Sq((h.Centre.X - sh.X, h.Centre.Y - sh.Y), o.Centre)));
+                openingRows.Add((storey, true, o.Centre.X, o.Centre.Y, o.W, o.H, nearestOfHers, false, true));
                 if (hers.Any(h => Math.Sqrt(Sq((h.Centre.X - sh.X, h.Centre.Y - sh.Y), o.Centre)) <= OpeningMatchMm)) oursOpeningsMatched++;
                 else if (theirOpenings.Values.SelectMany(v => v).Any(h => Math.Sqrt(Sq((h.Centre.X - sh.X, h.Centre.Y - sh.Y), o.Centre)) <= OpeningMatchMm)) oursHersElsewhere++;
                 else oursOpeningsUnmatched[SizeClass(o.W, o.H)] = oursOpeningsUnmatched.GetValueOrDefault(SizeClass(o.W, o.H)) + 1;
@@ -338,13 +362,27 @@ public static class ModelYardstick
         {
             if (!theirOpeningStoreysMet.Contains(storey)) continue;
             var mine = ourOpenings.Where(kv => TheirsFor(kv.Key) is { } tt && tt.Name.Split('+').Contains(storey, StringComparer.OrdinalIgnoreCase)).SelectMany(kv => kv.Value).ToList();
+            // our storeys that meet this one of hers, for the plates she may stand off
+            var ourStoreysHere = ourOpenings.Keys.Concat(ourPlates.Keys).Distinct(StringComparer.OrdinalIgnoreCase)
+                .Where(k => TheirsFor(k) is { } t2 && t2.Name.Split('+').Contains(storey, StringComparer.OrdinalIgnoreCase)).ToList();
+            var platesHere = ourStoreysHere.SelectMany(k => ourPlates.TryGetValue(k, out var pl) ? pl : []).ToList();
+            double oursSqFtHere = ourStoreysHere.Sum(k => ourPlateArea.GetValueOrDefault(k).SqFt), theirsSqFtHere = theirPlateArea.GetValueOrDefault(storey).SqFt;
+            bool weCarryTheFloor = theirsSqFtHere > 0 && oursSqFtHere >= VoidNeedsOurPlateFraction * theirsSqFtHere;
             foreach (var h in hers)
             {
+                if (Math.Min(h.W, h.H) < SliverMm) { theirsSlivers++; continue; }
                 theirsOpeningsJudged++;
                 var hh = (h.Centre.X - sh.X, h.Centre.Y - sh.Y);
-                if (mine.Any(o => Math.Sqrt(Sq(hh, o.Centre)) <= OpeningMatchMm)) theirsOpeningsMatched++;
+                bool byCentre = mine.Any(o => Math.Sqrt(Sq(hh, o.Centre)) <= OpeningMatchMm);
+                bool byCover = mine.Any(o => Math.Abs(hh.Item1 - o.Centre.X) <= o.W / 2 && Math.Abs(hh.Item2 - o.Centre.Y) <= o.H / 2);
+                bool onPlate = !weCarryTheFloor || platesHere.Count == 0 || platesHere.Any(pl => Inside(hh, pl));
+                double nearestOfOurs = mine.Count == 0 ? double.NaN : mine.Min(o => Math.Sqrt(Sq(hh, o.Centre)));
+                openingRows.Add((storey, false, hh.Item1, hh.Item2, h.W, h.H, nearestOfOurs, byCover, onPlate));
+                if (byCentre) theirsOpeningsMatched++;
                 else theirsOpeningsUnmatched[SizeClass(h.W, h.H)] = theirsOpeningsUnmatched.GetValueOrDefault(SizeClass(h.W, h.H)) + 1;
-                if (mine.Any(o => Math.Abs(hh.Item1 - o.Centre.X) <= o.W / 2 && Math.Abs(hh.Item2 - o.Centre.Y) <= o.H / 2)) theirsOpeningsCovered++;
+                if (byCover) theirsOpeningsCovered++;
+                if (!onPlate) theirsOffPlate++;
+                if (byCentre || byCover || !onPlate) theirsHad++;
             }
         }
         static string SizeClass(double w, double h)
@@ -418,6 +456,9 @@ public static class ModelYardstick
             TheirsOpeningsUnmatchedBySize = theirsOpeningsUnmatched.OrderByDescending(kv => kv.Value).ThenBy(kv => kv.Key, StringComparer.Ordinal).Select(kv => (kv.Key, kv.Value)).ToList(),
             TheirsOpeningsCovered = theirsOpeningsCovered,
             OursOpeningsHersElsewhere = oursHersElsewhere,
+            TheirsOpeningsHad = (theirsOpeningsMatched, theirsOpeningsCovered, theirsOffPlate, theirsHad),
+            TheirsOpeningsSlivers = theirsSlivers,
+            OpeningRows = openingRows,
             Plates = PlatesOnSharedStoreys(model, yard, storeyFigures),
             Thickness = ThicknessOnSharedStoreys(model, yard, storeyFigures),
         };
@@ -632,6 +673,7 @@ public static class ModelYardstick
             if (c.TheirsOpeningsUnmatchedBySize.Count > 0)
                 sb.AppendLine(CultureInfo.InvariantCulture, $"  hers we have not, by size: {string.Join(", ", c.TheirsOpeningsUnmatchedBySize.Take(8).Select(u => $"{u.Size} {u.Count}"))}{(c.TheirsOpeningsUnmatchedBySize.Count > 8 ? " ..." : "")}");
                 sb.AppendLine(CultureInfo.InvariantCulture, $"  hers whose centre stands inside one of ours: {c.TheirsOpeningsCovered} ({100.0 * c.TheirsOpeningsCovered / Math.Max(1, o.Theirs):F0}%)");
+                sb.AppendLine(CultureInfo.InvariantCulture, $"  hers we have, by centre or cover or as a void we carry no plate over: {c.TheirsOpeningsHad.Had} of {o.Theirs} ({100.0 * c.TheirsOpeningsHad.Had / Math.Max(1, o.Theirs):F0}%; by centre {c.TheirsOpeningsHad.ByCentre}, by cover {c.TheirsOpeningsHad.ByCover}, off our plate {c.TheirsOpeningsHad.OffOurPlate}){(c.TheirsOpeningsSlivers > 0 ? $"; hers under {SliverMm} mm across, a release not a hole, not judged: {c.TheirsOpeningsSlivers}" : "")}");
                 if (c.OursOpeningsHersElsewhere > 0) sb.AppendLine(CultureInfo.InvariantCulture, $"  of ours she has not, {c.OursOpeningsHersElsewhere} stand where she cuts on another storey");
         }
         foreach (var n in c.Notes) sb.AppendLine("  note: " + n);
@@ -705,6 +747,53 @@ public static class ModelYardstick
     }
 
     private static double Sq((double X, double Y) a, (double X, double Y) b) => (a.X - b.X) * (a.X - b.X) + (a.Y - b.Y) * (a.Y - b.Y);
+
+    /// <summary>An opening narrower than this across is a modelling release along a wall, not a hole (31065: 0.0-0.1 x 4.5 m, 88 of 209).</summary>
+    public const double SliverMm = 150;
+    /// <summary>Her opening off every plate of ours counts as a void we left out of the plate only when our plate area on the storey is this much of hers.</summary>
+    public const double VoidNeedsOurPlateFraction = 0.8;
+
+    /// <summary>The floor plates (FLOOR areas not assigned OPENING) by storey, each as its plan polygon in mm.</summary>
+    private static Dictionary<string, List<IReadOnlyList<(double X, double Y)>>> PlatePolygonsByStorey(E2kDocument doc, double unitMm)
+    {
+        var floors = new HashSet<string>(StringComparer.Ordinal);
+        foreach (string raw in doc.LinesOf("AREA CONNECTIVITIES"))
+        {
+            var m = Regex.Match(raw.Trim(), @"^AREA\s+""([^""]+)""\s+FLOOR\b", RegexOptions.IgnoreCase);
+            if (m.Success) floors.Add(m.Groups[1].Value);
+        }
+        var openings = new HashSet<string>(StringComparer.Ordinal);
+        foreach (string raw in doc.LinesOf("AREA ASSIGNS"))
+        {
+            var mo = Regex.Match(raw.TrimStart(), @"^AREAASSIGN\s+""([^""]+)""\s+""[^""]*""\s+OPENING\s+""Yes""");
+            if (mo.Success) openings.Add(mo.Groups[1].Value);
+        }
+        var points = doc.PlanPointsOfObjects();
+        var storeysOf = doc.StoreysByObject();
+        var result = new Dictionary<string, List<IReadOnlyList<(double X, double Y)>>>(StringComparer.OrdinalIgnoreCase);
+        foreach (string name in floors)
+        {
+            if (openings.Contains(name)) continue;
+            if (!points.TryGetValue(name, out var pts) || pts.Count < 3) continue;
+            if (!storeysOf.TryGetValue(name, out var on)) continue;
+            var poly = pts.Select(p => (p.X * unitMm, p.Y * unitMm)).ToList();
+            foreach (var storey in on)
+                (result.TryGetValue(storey, out var list) ? list : result[storey] = new List<IReadOnlyList<(double X, double Y)>>()).Add(poly);
+        }
+        return result;
+    }
+
+    /// <summary>Even-odd point in polygon.</summary>
+    private static bool Inside((double X, double Y) p, IReadOnlyList<(double X, double Y)> poly)
+    {
+        bool inside = false;
+        for (int i = 0, j = poly.Count - 1; i < poly.Count; j = i++)
+        {
+            var a = poly[i]; var b = poly[j];
+            if ((a.Y > p.Y) != (b.Y > p.Y) && p.X < (b.X - a.X) * (p.Y - a.Y) / (b.Y - a.Y) + a.X) inside = !inside;
+        }
+        return inside;
+    }
 
     /// <summary>The translation (theirs = ours + shift) most of the column pairs agree on, and how many of our columns it places within 100 mm of one of theirs.</summary>
     internal static ((double X, double Y) Shift, int Support) Register(
