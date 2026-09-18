@@ -1261,116 +1261,8 @@ public static class StructuralPlanClassifier
 
         SplitSlabsAndOpenings(result, slabCandidates, options);
 
-        // THE THICKNESS THE DRAWING PRINTS INSIDE THE PLATE.
-        //
-        // Her rule, banked as a-tag-inside-a-region-means-slab: "the tag is always inside the
-        // slab". It already decides slab-versus-hole; this is the rest of the same sentence --
-        // the tag does not just say THAT it is a slab, it says how thick.
-        //
-        // WALKED TAG-FIRST, and it has to be. Walking plate-first read "the smallest plate wins"
-        // as `slab.Area < smallest` inside a loop where slab.Area never changes, so the first tag
-        // encountered won and the order of result.Tags decided a plate's thickness. It looked
-        // right and was arbitrary. Found by an adversarial audit on 2026-08-26, not by a test.
-        //
-        // A tag belongs to the SMALLEST plate that contains it, because a thicker slab drawn
-        // inside a floor carries its own call-out and 31168's LEVEL 1 draws a 56 inch mat inside
-        // a 14 inch slab. Assigning the outer plate's number to both is the wrong answer twice.
-        if (result.Tags.Count > 0 && result.Slabs.Count > 0)
-        {
-            var claimed = new Dictionary<PlanLoop, List<(int Inches, string Text)>>();
-
-            foreach (var tag in result.Tags)
-            {
-                // Either order -- "14\" SLAB" and "SLAB 14\"" are the same call-out -- and note
-                // numbering ("5. SLABS") is screened out by the parser rather than by us.
-                var parsed = SlabThicknessCallout.MatchAnyOrderText(tag.Text);
-                if (parsed is not { } value) continue;
-
-                // A plate is not one inch thick and not ten feet thick. Outside that a number
-                // inside a region is a bar mark, a room number or a level datum that happens to
-                // be followed by an inch symbol.
-                int inches = value.ValueIn;
-                if (inches < 4 || inches > 120) continue;
-
-                // A TAG STANDING IN A HOLE SAYS NOTHING ABOUT THE FLOOR ROUND IT.
-                //
-                // Where a thicker region is drawn as its own ring and that ring is read as an
-                // opening rather than as a plate, its call-out is still printed inside it -- and
-                // geometrically it is also inside the floor the hole is cut from. Counting it
-                // there gives that floor two different numbers and no way to choose, so a plate
-                // with one honest call-out of its own loses it.
-                if (result.Openings.Any(o => LoopGeometry.PointInPolygon(tag.Point, o.Points)))
-                    continue;
-
-                PlanLoop? smallest = null;
-                foreach (var slab in result.Slabs)
-                {
-                    if (!LoopGeometry.PointInPolygon(tag.Point, slab.Points)) continue;
-                    if (smallest is null || slab.Area < smallest.Area) smallest = slab;
-                }
-
-                if (smallest is null) continue;
-
-                if (!claimed.TryGetValue(smallest, out var list)) claimed[smallest] = list = new();
-                list.Add((inches, tag.Text.Replace('\n', ' ').Replace('\r', ' ').Trim()));
-            }
-
-            var priced = new List<PlanLoop>(result.Slabs.Count);
-
-            foreach (var slab in result.Slabs)
-            {
-                if (!claimed.TryGetValue(slab, out var printed) || printed.Count == 0)
-                {
-                    priced.Add(slab);
-                    continue;
-                }
-
-                var distinct = printed.Select(t => t.Inches).Distinct().OrderBy(v => v).ToList();
-
-                // TWO DIFFERENT NUMBERS AND NOTHING TO SEPARATE THEM. Not a case to guess at:
-                // the thinner understates stiffness and the thicker overstates it, and neither is
-                // the drawing's answer. It stays on the default and is named, which is a question
-                // worth an engineer's minute.
-                //
-                // UNLESS THE DRAWING SAYS ONE OF THEM MORE OFTEN (intake step 118, 2026-09-18). A plan prints
-                // its field thickness beside every bay - «8" P/T SLAB» four times across 31202's L13 - and a
-                // thickened zone without an outline of its own once; the engineer's own rule is one thickness
-                // per floor, and the one under most of the floor is the one printed most. A tie is still a
-                // question (31168's 14" slab and 56" mat, one call-out each, keep the default and the flag).
-                var byCount = printed.GroupBy(t => t.Inches).Select(g => (Inches: g.Key, Count: g.Count(), Text: g.First().Text))
-                    .OrderByDescending(g => g.Count).ThenBy(g => g.Inches).ToList();
-                if (distinct.Count > 1 && byCount[0].Count == byCount[1].Count)
-                {
-                    priced.Add(slab);
-                    result.Flags.Add(
-                        $"{slab.Layer}: a floor plate of {options.SqFt(slab.Area)} sq ft has " +
-                        $"{distinct.Count} different thickness call-outs inside it and no separate " +
-                        $"outline to tell them apart ({string.Join(", ", distinct.Select(d => d + "\""))}), " +
-                        "so its thickness was NOT read from the drawing. Draw the thicker region as its " +
-                        "own outline and it will be.");
-                    continue;
-                }
-
-                int chosen = byCount[0].Inches;
-                priced.Add(new PlanLoop(slab.Layer, slab.Points, slab.ClosedExactly)
-                {
-                    ThicknessInchesFromTag = chosen
-                });
-
-                string quoted = byCount[0].Text;
-                if (quoted.Length > 40) quoted = quoted[..40] + "…";
-                result.Flags.Add(distinct.Count > 1
-                    ? $"{slab.Layer}: a floor plate of {options.SqFt(slab.Area)} sq ft is {chosen}\" thick — read from " +
-                      $"\"{quoted}\", printed inside it {byCount[0].Count} times against " +
-                      string.Join(", ", byCount.Skip(1).Select(b => $"{b.Inches}\" {b.Count}x")) +
-                      " (a thickened zone with no outline of its own; the thickness under most of the plate is the plate's)."
-                    : $"{slab.Layer}: a floor plate of {options.SqFt(slab.Area)} sq ft is {chosen}\" thick — read " +
-                      $"from \"{quoted}\", printed inside it. Not assumed, and not taken from a stick file.");
-            }
-
-            result.Slabs.Clear();
-            result.Slabs.AddRange(priced);
-        }
+        PriceSlabsByTheCalloutsInsideThem(result, options);
+        var pricedOnce = new HashSet<PlanLoop>(result.Slabs);
 
         // A WALL ENCLOSURE INSIDE A FLOOR IS NOT AUTOMATICALLY A SHAFT. Tried and withdrawn.
         //
@@ -2070,6 +1962,9 @@ public static class StructuralPlanClassifier
 
         // the partitions' footprints (step 34): each closed outline the intake wrote on the partition
         // layer, exactly as drawn, for the stand-down between sheets — never a member, never an edge
+        // THE PLATES THE LATER RULES MADE ARE PRICED TOO (step 120): the walls' outer edge, the panel fill, the recovery
+        PriceSlabsByTheCalloutsInsideThem(result, options, pricedOnce);
+
         if (partitionSegments.Count > 0)
         {
             var built = new PlanLoopBuilder(options.JoinTolerance, options.JoinTolerance, options.JoinTolerance).Build(partitionSegments);
@@ -2772,6 +2667,129 @@ public static class StructuralPlanClassifier
         if (box.Thickness <= 0 || box.Length <= 0) return false;
         double minSide = 4.0 / options.UnitInInches;                    // 4 in, in the drawing's unit
         return box.Thickness >= minSide && box.Length <= 5 * box.Thickness && loop.Area >= 0.9 * box.Length * box.Thickness;
+    }
+
+    /// <summary>
+    /// THE THICKNESS THE DRAWING PRINTS INSIDE THE PLATE, as a pass over the slabs (intake step 120, 2026-09-18): run once
+    /// where it always ran, and once more at the end for the plates the later rules make - the floor taken from the walls'
+    /// outer edge, the panel fill, the recovery - which were never priced: 31087's P1 prints «10" SLAB» twelve times and
+    /// its plate, the walls' ring, went to the model at the 12-in default with 51 others. <paramref name="skip"/> are the
+    /// slabs a first pass already judged, priced or refused; they are not judged twice.
+    /// </summary>
+    private static void PriceSlabsByTheCalloutsInsideThem(PlanGeometrySet result, PlanClassificationOptions options, IReadOnlySet<PlanLoop>? skip = null)
+    {
+        // inches as printed on a flag: 8, 8.5, 7.87 - never a culture's comma
+        static string In(double inches) => inches.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+        // THE THICKNESS THE DRAWING PRINTS INSIDE THE PLATE.
+        //
+        // Her rule, banked as a-tag-inside-a-region-means-slab: "the tag is always inside the
+        // slab". It already decides slab-versus-hole; this is the rest of the same sentence --
+        // the tag does not just say THAT it is a slab, it says how thick.
+        //
+        // WALKED TAG-FIRST, and it has to be. Walking plate-first read "the smallest plate wins"
+        // as `slab.Area < smallest` inside a loop where slab.Area never changes, so the first tag
+        // encountered won and the order of result.Tags decided a plate's thickness. It looked
+        // right and was arbitrary. Found by an adversarial audit on 2026-08-26, not by a test.
+        //
+        // A tag belongs to the SMALLEST plate that contains it, because a thicker slab drawn
+        // inside a floor carries its own call-out and 31168's LEVEL 1 draws a 56 inch mat inside
+        // a 14 inch slab. Assigning the outer plate's number to both is the wrong answer twice.
+        if (result.Tags.Count > 0 && result.Slabs.Count > 0)
+        {
+            var claimed = new Dictionary<PlanLoop, List<(double Inches, string Text)>>();
+
+            foreach (var tag in result.Tags)
+            {
+                // Either order -- "14\" SLAB" and "SLAB 14\"" are the same call-out -- and note
+                // numbering ("5. SLABS") is screened out by the parser rather than by us.
+                var parsed = SlabThicknessCallout.MatchAnyOrderText(tag.Text);
+                if (parsed is not { } value) continue;
+
+                // A plate is not one inch thick and not ten feet thick. Outside that a number
+                // inside a region is a bar mark, a room number or a level datum that happens to
+                // be followed by an inch symbol.
+                double inches = value.ExactIn;   // as printed (step 121): 8.5 is 8.5, 200 mm is 7.874
+                if (inches < 4 || inches > 120) continue;
+
+                // A TAG STANDING IN A HOLE SAYS NOTHING ABOUT THE FLOOR ROUND IT.
+                //
+                // Where a thicker region is drawn as its own ring and that ring is read as an
+                // opening rather than as a plate, its call-out is still printed inside it -- and
+                // geometrically it is also inside the floor the hole is cut from. Counting it
+                // there gives that floor two different numbers and no way to choose, so a plate
+                // with one honest call-out of its own loses it.
+                if (result.Openings.Any(o => LoopGeometry.PointInPolygon(tag.Point, o.Points)))
+                    continue;
+
+                PlanLoop? smallest = null;
+                foreach (var slab in result.Slabs)
+                {
+                    if (!LoopGeometry.PointInPolygon(tag.Point, slab.Points)) continue;
+                    if (smallest is null || slab.Area < smallest.Area) smallest = slab;
+                }
+
+                if (smallest is null) continue;
+
+                if (!claimed.TryGetValue(smallest, out var list)) claimed[smallest] = list = new();
+                list.Add((inches, tag.Text.Replace('\n', ' ').Replace('\r', ' ').Trim()));
+            }
+
+            var priced = new List<PlanLoop>(result.Slabs.Count);
+
+            foreach (var slab in result.Slabs)
+            {
+                if (skip?.Contains(slab) == true || !claimed.TryGetValue(slab, out var printed) || printed.Count == 0)
+                {
+                    priced.Add(slab);
+                    continue;
+                }
+
+                var distinct = printed.Select(t => t.Inches).Distinct().OrderBy(v => v).ToList();
+
+                // TWO DIFFERENT NUMBERS AND NOTHING TO SEPARATE THEM. Not a case to guess at:
+                // the thinner understates stiffness and the thicker overstates it, and neither is
+                // the drawing's answer. It stays on the default and is named, which is a question
+                // worth an engineer's minute.
+                //
+                // UNLESS THE DRAWING SAYS ONE OF THEM MORE OFTEN (intake step 118, 2026-09-18). A plan prints
+                // its field thickness beside every bay - «8" P/T SLAB» four times across 31202's L13 - and a
+                // thickened zone without an outline of its own once; the engineer's own rule is one thickness
+                // per floor, and the one under most of the floor is the one printed most. A tie is still a
+                // question (31168's 14" slab and 56" mat, one call-out each, keep the default and the flag).
+                var byCount = printed.GroupBy(t => t.Inches).Select(g => (Inches: g.Key, Count: g.Count(), Text: g.First().Text))
+                    .OrderByDescending(g => g.Count).ThenBy(g => g.Inches).ToList();
+                if (distinct.Count > 1 && byCount[0].Count == byCount[1].Count)
+                {
+                    priced.Add(slab);
+                    result.Flags.Add(
+                        $"{slab.Layer}: a floor plate of {options.SqFt(slab.Area)} sq ft has " +
+                        $"{distinct.Count} different thickness call-outs inside it and no separate " +
+                        $"outline to tell them apart ({string.Join(", ", distinct.Select(d => In(d) + "\""))}), " +
+                        "so its thickness was NOT read from the drawing. Draw the thicker region as its " +
+                        "own outline and it will be.");
+                    continue;
+                }
+
+                double chosen = byCount[0].Inches;
+                priced.Add(new PlanLoop(slab.Layer, slab.Points, slab.ClosedExactly)
+                {
+                    ThicknessInchesFromTag = chosen
+                });
+
+                string quoted = byCount[0].Text;
+                if (quoted.Length > 40) quoted = quoted[..40] + "…";
+                result.Flags.Add(distinct.Count > 1
+                    ? $"{slab.Layer}: a floor plate of {options.SqFt(slab.Area)} sq ft is {In(chosen)}\" thick — read from " +
+                      $"\"{quoted}\", printed inside it {byCount[0].Count} times against " +
+                      string.Join(", ", byCount.Skip(1).Select(b => $"{In(b.Inches)}\" {b.Count}x")) +
+                      " (a thickened zone with no outline of its own; the thickness under most of the plate is the plate's)."
+                    : $"{slab.Layer}: a floor plate of {options.SqFt(slab.Area)} sq ft is {In(chosen)}\" thick — read " +
+                      $"from \"{quoted}\", printed inside it. Not assumed, and not taken from a stick file.");
+            }
+
+            result.Slabs.Clear();
+            result.Slabs.AddRange(priced);
+        }
     }
 
     private static void SplitSlabsAndOpenings(PlanGeometrySet result, List<PlanLoop> candidates, PlanClassificationOptions options)

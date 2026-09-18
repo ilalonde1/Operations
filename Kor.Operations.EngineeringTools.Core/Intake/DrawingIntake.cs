@@ -249,7 +249,7 @@ public static class DrawingIntake
             // The callouts go out as TEXT on the view, in the plan's own frame, where the classifier reads them.
             foreach (var c in callouts)
                 if (!furniture.IsFurniture(c.Cx, c.Cy))
-                    geometry.TextAnnotations.Add(new TextAnnotation($"{c.ValueIn}\" SLAB", c.Cx * scaleFactor, c.Cy * scaleFactor));
+                    geometry.TextAnnotations.Add(new TextAnnotation(c.IsMetric ? $"{c.ExactMm} SLAB" : $"{c.ExactIn.ToString("0.##", CultureInfo.InvariantCulture)}\" SLAB", c.Cx * scaleFactor, c.Cy * scaleFactor));   // as printed (step 121): 200 mm stays 200, 8.5 stays 8.5
             var footingPieces = PdfPlanReader.ReadFootings(raw, content, geometry, request.MarkupOnly, scaleFactor, furniture, out footingLabels, options.DashGapMm);
             GeometryFilterService.Classify(raw, geometry,
                 options.SlabMinDiagonalMm, options.LineMinLengthMm, false,

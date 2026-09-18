@@ -1,4 +1,4 @@
-#nullable enable
+﻿#nullable enable
 
 using System;
 using System.Collections.Generic;
@@ -22,25 +22,29 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
     {
         // IMPERIAL: "<n>" SLAB" - a storey number, a 1-2 char inch mark (the glyph varies on CAD sheets),
         // then SLAB. The inch mark is REQUIRED, which is what keeps a metric "200 SLAB" out of this pool.
-        private static readonly Regex NumberFirstImperialTextRe = new(@"(\d{1,2})\s*[^\w\s]{1,2}\s*SLAB",
+        // A WHOLE, A DECIMAL OR A FRACTION (intake step 121, 2026-09-18): «8.5" P/T SLAB» on 30993 read as 5" - the tail
+        // of the number - on nine storeys; «8 1/2" SLAB» and «8-1/2" SLAB» are the same call-out in another office's hand.
+        // A QUALIFIER BETWEEN THE NUMBER AND THE WORD IS STILL THE CALLOUT (steps 118 and 121): «8.5" P/T SLAB», «10" CONC. SLAB»,
+        // «200 THK SLAB» - the zoner strips these from its tail and the text forms admit them here, so a tag on a DXF reads too.
+        private static readonly Regex NumberFirstImperialTextRe = new(@"(?<w>\d{1,2})(?:(?<dec>\.\d{1,2})|[\s-]+(?<n>\d)/(?<d>\d{1,2}))?\s*[^\w\s]{1,2}(?:\s*(?:P/T|PT|P\.T\.|CONC\.?|CONCRETE|THK\.?|THICK|SUSPENDED|FLAT|R/C|RC))?\s*SLAB",
             RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
         // METRIC: "<mm> SLAB" - a 2-3 digit millimetre depth directly before SLAB (no inch mark). The
         // required adjacency keeps an imperial «10" SLAB» (inch mark intervenes) and note-numbering
         // («5. SLABS») out of this pool. Metric drawings (e.g. 5380 Heather) call out "200 SLAB".
-        private static readonly Regex NumberFirstMetricTextRe = new(@"(\d{2,3})\s*SLAB",
+        private static readonly Regex NumberFirstMetricTextRe = new(@"(\d{2,3})(?:\s*(?:P/T|PT|P\.T\.|CONC\.?|CONCRETE|THK\.?|THICK|SUSPENDED|FLAT|R/C|RC))?\s*SLAB",
             RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
         // Words immediately left of SLAB on the same baseline, ending in «<n>" » - the same tight shape
         // SlabThicknessReader uses, so "UNREINFORCED SLAB" / "PC3 ... SLAB" are skipped (a word intervenes).
-        private static readonly Regex NumberFirstImperialTailRe = new(@"(\d{1,2})\s*[^\w\s]{1,2}\s*$",
+        private static readonly Regex NumberFirstImperialTailRe = new(@"(?<w>\d{1,2})(?:(?<dec>\.\d{1,2})|[\s-]+(?<n>\d)/(?<d>\d{1,2}))?\s*[^\w\s]{1,2}\s*$",
             RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
         // Metric tail: a 2-3 digit millimetre depth directly before SLAB (no inch mark) - "200 SLAB",
         // "900 SLAB". Mirrors SlabThicknessReader's metric handling so a metric set zones too.
         private static readonly Regex NumberFirstMetricTailRe = new(@"(\d{2,3})\s*$", RegexOptions.Compiled);
 
-        private static readonly Regex SlabFirstImperialTextRe = new(@"\bSLABS?\s*(\d{1,2})\s*(?!\.)[^\w\s]{1,2}",
+        private static readonly Regex SlabFirstImperialTextRe = new(@"\bSLABS?\s*(?<w>\d{1,2})(?:(?<dec>\.\d{1,2})|[\s-]+(?<n>\d)/(?<d>\d{1,2}))?\s*(?!\.)[^\w\s]{1,2}",
             RegexOptions.Compiled | RegexOptions.IgnoreCase);
         private static readonly Regex SlabFirstMetricTextRe = new(@"\bSLABS?\s*(\d{2,3})(?![\d.])",
             RegexOptions.Compiled | RegexOptions.IgnoreCase);
@@ -71,18 +75,32 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
         public const double PdfToSafeMinMm = 50;   // PdfToSafe's existing recognisable annotation range
         public const double PdfToSafeMaxMm = 2000; // PdfToSafe's existing recognisable annotation range
 
-        public readonly record struct Parsed(int Value, bool IsMetric)
+        /// <summary>The call-out's number: <see cref="Value"/> whole (the legacy reading, an int), <see cref="Exact"/> as printed
+        /// (8.5, 200) - step 121. <see cref="ValueIn"/> rounds; <see cref="ExactIn"/> does not (200 mm is 7.874 in).</summary>
+        public readonly record struct Parsed(int Value, bool IsMetric, double Exact)
         {
+            public Parsed(int Value, bool IsMetric) : this(Value, IsMetric, Value) { }   // the legacy shape, its arguments named as the callers name them
             public int ValueIn =>
                 IsMetric ? (int)Math.Round(Value / MmPerInch, MidpointRounding.AwayFromZero) : Value;
+            public double ExactIn => IsMetric ? Exact / MmPerInch : Exact;
         }
+
+        /// <summary>The inches an imperial match names: the whole, plus its decimal or its fraction (8.5, 8 1/2, 8-1/2).</summary>
+        private static double InchesOf(Match m)
+        {
+            double v = int.Parse(m.Groups["w"].Value, CultureInfo.InvariantCulture);
+            if (m.Groups["dec"].Success) v += double.Parse("0" + m.Groups["dec"].Value, CultureInfo.InvariantCulture);
+            else if (m.Groups["n"].Success) v += (double)int.Parse(m.Groups["n"].Value, CultureInfo.InvariantCulture) / int.Parse(m.Groups["d"].Value, CultureInfo.InvariantCulture);
+            return v;
+        }
+        private static Parsed Imperial(Match m) => new((int)Math.Round(InchesOf(m), MidpointRounding.AwayFromZero), IsMetric: false, InchesOf(m));
 
         public static IEnumerable<Parsed> MatchNumberFirstText(string text)
         {
             if (string.IsNullOrEmpty(text)) yield break;
 
             foreach (Match m in NumberFirstImperialTextRe.Matches(text))
-                yield return new Parsed(int.Parse(m.Groups[1].Value, CultureInfo.InvariantCulture), IsMetric: false);
+                yield return Imperial(m);
 
             foreach (Match m in NumberFirstMetricTextRe.Matches(text))
                 yield return new Parsed(int.Parse(m.Groups[1].Value, CultureInfo.InvariantCulture), IsMetric: true);
@@ -94,7 +112,7 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
 
             var m = NumberFirstImperialTailRe.Match(text);
             if (m.Success)
-                return new Parsed(int.Parse(m.Groups[1].Value, CultureInfo.InvariantCulture), IsMetric: false);
+                return Imperial(m);
 
             m = NumberFirstMetricTailRe.Match(text);
             return m.Success
@@ -117,7 +135,7 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
 
             var m = SlabFirstImperialTextRe.Match(text);
             if (m.Success)
-                return new Parsed(int.Parse(m.Groups[1].Value, CultureInfo.InvariantCulture), IsMetric: false);
+                return Imperial(m);
 
             m = SlabFirstMetricTextRe.Match(text);
             return m.Success

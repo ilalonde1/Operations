@@ -72,6 +72,28 @@ public sealed class SlabThicknessZonerTests
         Assert.DoesNotContain(callouts, c => c.ValueIn == 42);
     }
 
+    /// <summary>
+    /// THE NUMBER IS READ WHOLE (step 121, 2026-09-18): «8.5" P/T SLAB» on 30993 read as 5" on nine storeys. The callout
+    /// carries the exact inches beside the whole ones, and a metric callout keeps its millimetres (200 stays 200 mm,
+    /// 7.874 in, while the whole reading rounds to 8).
+    /// </summary>
+    [Fact]
+    public void The_number_is_read_whole_decimal_fraction_and_millimetres_kept()
+    {
+        var page = Page(
+            Word("8.5\"", 100, 600), Word("P/T", 135, 600), Word("SLAB", 170, 600),
+            Word("8", 95, 500), Word("1/2\"", 120, 500), Word("SLAB", 160, 500),
+            Word("200", 100, 400), Word("SLAB", 140, 400));
+        var callouts = SlabThicknessZoner.ReadCallouts(page);
+        Assert.Equal(3, callouts.Count);
+        var decimalOne = Assert.Single(callouts, c => c.Cy == 600);
+        Assert.Equal(8.5, decimalOne.ExactIn, 3); Assert.Equal(9, decimalOne.ValueIn); Assert.False(decimalOne.IsMetric);
+        var fraction = Assert.Single(callouts, c => c.Cy == 500);
+        Assert.Equal(8.5, fraction.ExactIn, 3);
+        var metric = Assert.Single(callouts, c => c.Cy == 400);
+        Assert.True(metric.IsMetric); Assert.Equal(200, metric.ExactMm); Assert.Equal(200 / 25.4, metric.ExactIn, 3); Assert.Equal(8, metric.ValueIn);
+    }
+
     [Fact]
     public void Skips_slab_on_grade_and_column_callouts_like_the_reader_does()
     {

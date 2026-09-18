@@ -186,6 +186,28 @@ public class PlateThicknessFromTheDrawingTests
         Assert.Equal(14, Assert.Single(set.Slabs).ThicknessInchesFromTag);
     }
 
+    /// <summary>
+    /// A WHOLE, A DECIMAL OR A FRACTION (intake step 121, 2026-09-18): «8.5" P/T SLAB» on 30993's typical floors read as
+    /// 5" - the tail of the number - on nine storeys, against her 8.5. The number before the inch mark is read whole,
+    /// its decimal or its fraction included, and a metric call-out is the millimetres it says (200 mm is 7.874 in, not
+    /// 8). WHAT THIS COVERS: the four spellings through the classifier. WHAT IT DOES NOT: the zoner's own tail
+    /// (SlabThicknessZonerTests), the intake writing the callout as printed.
+    /// </summary>
+    [Theory]
+    [InlineData("8.5\" P/T SLAB", 8.5)]
+    [InlineData("8 1/2\" SLAB", 8.5)]
+    [InlineData("8-1/2\" SLAB", 8.5)]
+    [InlineData("SLAB 7.5\"", 7.5)]
+    [InlineData("200 SLAB", 200 / 25.4)]
+    public void TheNumberIsReadWholeDecimalAndFractionIncluded(string text, double inches)
+    {
+        var set = StructuralPlanClassifier.Classify(
+            Ring(0, 0, 1200, 900).ToList(), Options(), sheet: null,
+            tags: new[] { Tag(text, 600, 450) });
+
+        Assert.Equal(inches, Assert.Single(set.Slabs).ThicknessInchesFromTag!.Value, 3);
+    }
+
     /// <summary>Note numbering is not a thickness, whichever way round it reads.</summary>
     [Fact]
     public void NoteNumberingIsNotAThickness()

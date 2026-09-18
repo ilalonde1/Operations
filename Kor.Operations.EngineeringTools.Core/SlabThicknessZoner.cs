@@ -23,7 +23,10 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
     public static class SlabThicknessZoner
     {
         /// <summary>One slab-thickness callout: its value (inches) and its anchor in PDF points (y-up).</summary>
-        public readonly record struct Callout(double Cx, double Cy, int ValueIn);
+        public readonly record struct Callout(double Cx, double Cy, int ValueIn, double ExactIn, bool IsMetric, int ExactMm)
+        {
+            public Callout(double cx, double cy, int valueIn) : this(cx, cy, valueIn, valueIn, false, 0) { }
+        }
 
         private const int MinIn = SlabThicknessCallout.ZonerMinIn;
         private const int MaxIn = SlabThicknessCallout.ZonerMaxIn;
@@ -83,7 +86,8 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                     v = parsed.Value.Value;
                 }
                 if (v < MinIn || v > MaxIn) continue;
-                callouts.Add(new Callout(slab.Cx, slab.Cy, v));
+                // the exact reading beside the whole one (step 121): 8.5 stays 8.5, and a metric 200 stays 200 mm
+                callouts.Add(new Callout(slab.Cx, slab.Cy, v, parsed.Value.ExactIn, parsed.Value.IsMetric, parsed.Value.IsMetric ? parsed.Value.Value : 0));
             }
             return callouts;
         }

@@ -3079,3 +3079,69 @@ landed between without it. Rule 10: **`git bisect` between `f7aa25ff` and `f84b6
 (`Operations-check/bisect-31138.ps1`, one build and the nine live baselines a step, ~3 min each); the step it names
 gets characterised in §140, not patched. Step 119 commits on its own evidence: its tests, the fast suite, the gate,
 and the full suite's other 1,616.
+
+## 140. Run 38 banked; the DXF-route red bisected to step 83 and re-baselined; steps 120 and 121 — the plates the callouts never reached (2026-09-18 14:40–15:50)
+
+**Run 38 (118), banked `8a084f37`** (12:43 → 15:01): 259 of 294, 2,829 storeys, **2,175 with a plate (77%, +9)**,
+walls 115,576 / columns 90,651. The callouts reaching the DXF as tags also fed the composer's own old rule — an
+outline closed by joining its loose ends is floor when a callout is printed inside it — so 14 sets moved in
+composition (+9 plates; 30816 −430 of 5,833 columns and −66 walls as members re-attributed to the plates that
+appeared — no model of hers to judge it; yardsticks 1 better / 1 worse / 48 same). **Plates against hers over 49
+sets: 5,313,194 of 6,737,466 sq ft — 79%, from 76%; the 21 current 80%.** Openings ours she has 575 of 1,603 (36%),
+hers we have 771 of 2,161 (36%) — the old figure; the honest one needs run 39's yardsticks. **§8, the first
+corpus-wide slab-thickness figure: 174 of 378 shared plated storeys agree within half an inch (46%; the current 21:
+57 of 134, 43%).** The pairs that differ, most often: **12/10 × 33, 12/8 × 26** (no callout reached the plate — the
+default stands), 5/8.5 × 8 (30993 — a wrong read), 12/14 × 7, 12/16 × 5, 12/7.5 × 5, 12/2.5 × 3. To open first:
+31087 (5 of 55 agree), 30993 (4 of 35). So the next thickness work was the callouts that never reach the plate,
+not the ties — and both of the two classes below came from that line.
+
+**The DXF-route red, characterised (rule 10) and closed.** The first bisect's "good" end was wrong:
+`LiveProjectBaselineTests` returns without asserting when the projects share is unreachable, and at 83b it was —
+the "full suite green" of 09-16 01:45 never ran that test, and the walls had already fallen. Re-bisected from step 57
+(220 walls, green) with a new instrument, **`LiveBaselineProbe`** (`KOR_LIVE_BASELINE=31138`: the Revit-DXF model the
+test builds, KEPT with the composer's report under `TestResults/live-baseline/`): the first bad commit is **step 83
+itself** (`23f4cb91`, 09-16 00:28, "the edge that closes an open chain is not drawn, so it is not a face"): walls 223
+→ 204, columns 303 → 308. `model-diff` of the two kept models and `dxf-inspect --near` on the Revit DXF at each lost
+wall: on P1–P4 the lost walls at x 884 (111 and 174 in long) were a drawn face at x 860.6 paired with the UNDRAWN
+closing edge of its open chain — 46 in thick, along nothing — the exact phantom class step 83 named; on Mezz and L02
+the core's walls re-measured from drawn faces (lost and gained at the same points); the two 30-in column-sized boxes
+at (1170, −724) and (1170, −639) stand as one column instead of two stubs. 19 fewer walls, none a wall the drawing
+draws. **Re-baselined 228 → 204 (columns 307 → 308) with that written in the test.** Not a regression: a rule that
+worked and a test that could not see. The worktree `Operations-check` served the control and the bisect and is
+removed.
+
+**Step 120 — a plate taken from the walls is priced by the callout inside it** (`StructuralPlanClassifier`). 31087's
+P1 prints «10" SLAB» twelve times; `ClassifyProbe` on the view: its plate is *walls' outer edge* — the floor taken from
+the perimeter wall's ring when no slab edge closes — and that rule (and the panel fill, and the recovery) runs AFTER
+the callout pricing, so those plates were never priced: 52 of 31087's 61 plates, and much of §8's 12/10 and 12/8.
+The pricing is now `PriceSlabsByTheCalloutsInsideThem`, run where it always ran and once more at the end for the
+plates the later rules made (the first pass's slabs are not judged twice). Test
+`APlateTakenFromTheWallsIsPricedByItsCalloutTests` (a perimeter wall's two faces, no slab edge, «10" SLAB» inside →
+the walls' ring at 10) — red before, green after. WHAT IT DOES NOT COVER: two callouts in a wall-made plate (the
+same majority/tie rule applies), a callout outside every plate.
+
+**Step 121 — the number before the inch mark is read whole** (`SlabThicknessCallout`, `SlabThicknessZoner`,
+`DrawingIntake`, the classifier). 30993's typical floors print «8.5" P/T SLAB» and the reader took 5" — the tail of
+the number — on nine storeys (§8's 5/8.5 × 8); «8 1/2" SLAB» and «8-1/2" SLAB» are the same call-out in another
+office's hand. `Parsed` carries `Exact` beside the whole `Value` (the legacy int reading is untouched for the SAFE
+side); the imperial forms admit a decimal or a fraction; the zoner's callout carries `ExactIn`, `IsMetric`,
+`ExactMm`; the intake writes the callout to the model AS PRINTED — «8.5" SLAB», and a metric one as its millimetres
+(«200 SLAB»), so 200 mm reaches the model as 200.0, not 203.2; the classifier prices with the exact inches; the
+qualifier forms (P/T, CONC., THK) are admitted in the parser's text regexes too, so a tag on a DXF reads. Tests:
+`TheNumberIsReadWholeDecimalAndFractionIncluded` (five spellings through the classifier) and
+`The_number_is_read_whole_decimal_fraction_and_millimetres_kept` (the zoner) — three cases red on the broken rule,
+green mended.
+
+**Measured on the six** (steps 120 + 121 together):
+five sets byte-identical; 31065 moved with 0 plates / columns / walls moved — its sections are now the millimetres the
+plan prints (`KOR-S200`, `KOR-S250`, `KOR-S300` beside the default `KOR-S304.8`), its P1 plates priced from «250 SLAB»
+printed nine and four times (9.84 in), L19 from «300 SLAB» (11.8 in, where she models 250). Thickness agreement on
+31065 unchanged at 18 of 20 (the two off are the transfer and L19). None of the other five prints a decimal or takes
+its floor from the walls. Re-banked. Fast suite 1,511 green; the DXF-route live baselines 9 green (with 31138's
+re-baseline); the first gate run of the afternoon aborted with "test host process crashed" after the nine live
+baselines, under run 39's twelve workers, and ran clean the second time — noted, not understood. The full suite is
+owed once tonight for 120 and 121 together.
+
+**What §8 says next, after runs 39 and 40 carry these:** the 12/10 and 12/8 pairs should fall to the callouts the
+zoner still cannot read (a form not yet seen — to list from the ASSUMED lines of the reports), the ties (31130 P2,
+L14; 31138 L22) stand until the corpus says which way, and 30993's 5/8.5 goes to 8.5/8.5.

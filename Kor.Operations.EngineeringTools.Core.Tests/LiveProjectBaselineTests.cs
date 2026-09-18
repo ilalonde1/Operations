@@ -150,7 +150,20 @@ public class LiveProjectBaselineTests
         // where the drawings carry the whole building. Measured on both before it shipped -- an
         // uncapped version of the same rule took this job to 455 walls and 587 columns, and that is
         // what the second building is for.
-        Storeys: 29, Walls: 228, Columns: 307, Floors: 15);
+        // Rebaselined 2026-09-18, walls 228 -> 204 and columns 307 -> 308, and the count FALLING is the
+        // point: step 83 (23f4cb91, 09-16 00:28: the edge that closes an open chain is not drawn, so
+        // it is not a face) took this job from 223 to 204 the night it landed, and nobody saw - the
+        // share was not reachable from that session, so this test skipped, and the full suite was
+        // written up green. Found by the first full run since (09-18), bisected with LiveBaselineProbe
+        // (the same build, its model kept). What went: on P1-P4 the two "walls" at x 884 (111 and
+        // 174 in long) were a drawn face at x 860.6 paired with the undrawn closing edge of its open
+        // chain, 46 in thick and along nothing - the phantom class step 83 named; on Mezz and L02
+        // the core's walls re-measured from drawn faces only (lost and gained at the same points);
+        // and the two 30 in boxes at (1170, -724) and (1170, -639) - column-sized piers on the wall
+        // layer - stand as one column instead of two stubs. 19 fewer walls, every one either a
+        // phantom or the same wall re-measured. The four DXF-route reds of steps 83-83b were judged
+        // on 31168 and 31138's stands-on-nothing gates, never on this count.
+        Storeys: 29, Walls: 204, Columns: 308, Floors: 15);
 
     /// <summary>Counts may drift a little as rules improve; a real regression moves them further.</summary>
     private const double Tolerance = 0.10;
