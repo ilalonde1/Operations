@@ -2436,12 +2436,26 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 double y0 = loop.Points.Min(p => p.Y), y1 = loop.Points.Max(p => p.Y);
                 double reach = Math.Max(x1 - x0, y1 - y0) * SlabEdgeNeighbourhoodShare;
                 int inside = 0, near = 0;
+                // NEAR IS NEAR THE RING'S EDGE, NOT INSIDE ITS BOX (step 116, 2026-09-17 23:05): a union ring is seldom a
+                // rectangle, and its bounding box took in the roofs beside it - 31202's ROOF, 9,677 sq ft holding 22 columns,
+                // was refused with 49 "near", 27 of them under the upper roof and the penthouse a box-width away. What
+                // stands within the reach of the ring's own edge is its neighbourhood.
+                double NearestEdge(DxfPoint p)
+                {
+                    double best = double.MaxValue;
+                    for (int i = 0; i < loop.Points.Count; i++)
+                        best = Math.Min(best, LoopGeometry.DistanceToSegment(p, loop.Points[i], loop.Points[(i + 1) % loop.Points.Count]));
+                    return best;
+                }
                 void Count(double x, double y)
                 {
                     if (x < x0 - reach || x > x1 + reach || y < y0 - reach || y > y1 + reach) return;
-                    near++;
+                    var p = new DxfPoint(x, y);
                     // on the ring is in it (step 82): a column the edge runs through stands on this floor
-                    if (LoopGeometry.InsideOrOn(new DxfPoint(x, y), loop.Points, SlabEdgeJoinMm)) inside++;
+                    bool inRing = LoopGeometry.InsideOrOn(p, loop.Points, SlabEdgeJoinMm);
+                    if (!inRing && NearestEdge(p) > reach) return;
+                    near++;
+                    if (inRing) inside++;
                 }
                 foreach (var c in result.Columns) Count(c.X, c.Y);
                 foreach (var w in result.Walls) Count((w.Start.X + w.End.X) / 2, (w.Start.Y + w.End.Y) / 2);
