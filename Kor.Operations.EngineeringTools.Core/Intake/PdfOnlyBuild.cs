@@ -334,6 +334,10 @@ public static class PdfOnlyBuild
                 report.Add($"Sheets read   : {model.SheetsRead}   placed: {model.SheetsPlaced}   set on the grid by name: {model.SheetsSetOnGridByName.Count}");
                 report.Add($"Storeys built : {model.SavedModel.Storeys.Count}   Walls: {model.SavedModel.Walls}   Columns: {model.SavedModel.Columns}   Floors: {model.SavedModel.Floors}");
                 report.AddRange(model.Warnings.Select(w => "  - " + w));
+                // and the composer's own flags - what it did NOT write and why (a strip not cut as a hole, a floor read
+                // twice): the six-set gate's report was silent on eight openings step 108 stopped cutting on 31170
+                // (2026-09-17 17:05), and a count that moves with no line saying why is a report telling half of it
+                report.AddRange(model.Summary.Flags.Where(f => !model.Warnings.Contains(f)).Select(f => "  - " + f));
             }
             else report.Add(modelError ?? "");
             File.WriteAllLines(Path.Combine(workDir, "report.txt"), report);

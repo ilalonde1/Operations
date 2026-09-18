@@ -33,7 +33,7 @@ internal static class E2kAskVerb
         // so a reader rule about a shape ("a strip narrower than a metre is no hole") is judged before it is written
         if (Directory.Exists(args[1]) && args.Length >= 3 && args[2].Equals("openings-shapes", StringComparison.OrdinalIgnoreCase))
         {
-            int models = 0, total = 0, zero = 0, subMetre = 0, strips = 0, stripsWide = 0, stripsLong = 0, shafts = 0, big = 0;
+            int models = 0, total = 0, zero = 0, tiny = 0, subMetre = 0, strips = 0, stripsWide = 0, stripsLong = 0, shafts = 0, big = 0;
             var stripSets = new Dictionary<string, int>(StringComparer.Ordinal);
             foreach (string e2k in Directory.EnumerateFiles(args[1], "*.e2k", SearchOption.TopDirectoryOnly).OrderBy(f => f, StringComparer.Ordinal))
             {
@@ -46,13 +46,14 @@ internal static class E2kAskVerb
                     total++;
                     double lo = Math.Min(w, h), hi = Math.Max(w, h);
                     if (lo < 50) { zero++; continue; }                       // a slit of no area: an artefact
+                    if (lo < 300) tiny++;                                      // a pipe's sleeve: under 12 in on the short side
                     if (lo < 1000) subMetre++;                                 // sleeves, chases
                     if (hi >= 10 * lo && lo >= 50) { strips++; if (lo >= 1000) stripsWide++; if (hi > 10000) stripsLong++; stripSets[Path.GetFileNameWithoutExtension(e2k)] = stripSets.GetValueOrDefault(Path.GetFileNameWithoutExtension(e2k)) + 1; }
                     if (lo >= 1000 && hi <= 12000) shafts++;
                     if (hi > 12000) big++;
                 }
             }
-            Console.WriteLine($"{models} model(s), {total} opening(s): {zero} slits of no width (artefacts), {subMetre} under a metre on their short side, " +
+            Console.WriteLine($"{models} model(s), {total} opening(s): {zero} slits of no width (artefacts), {tiny} under 300 mm on their short side, {subMetre} under a metre on their short side, " +
                               $"{strips} strips ten times longer than wide (of which {stripsWide} a metre and wider, {stripsLong} longer than 10 m), {shafts} a metre and wider and under 12 m long (shafts, stairs), {big} over 12 m long (voids)");
             Console.WriteLine("   strips by set: " + string.Join(" ", stripSets.OrderByDescending(kv => kv.Value).Take(12).Select(kv => $"{kv.Key}({kv.Value})")));
             return 0;

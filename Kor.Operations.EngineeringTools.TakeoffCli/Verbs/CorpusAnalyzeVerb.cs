@@ -41,6 +41,11 @@ internal static class CorpusAnalyzeVerb
             e.Cancel = true;
             Console.WriteLine($"  Ctrl-C at {DateTime.Now:HH:mm:ss} ignored: a corpus run finishes or is killed, it is not interrupted");
         };
+        // THE THIRD DEATH (run 31, 22:04:04): exit -1073741510 = STATUS_CONTROL_C_EXIT with no Ctrl-C logged, so a console
+        // CLOSE, log-off or shutdown - the events the handler above cannot refuse. .NET runs ProcessExit on them with a few
+        // seconds' grace: the time and the kind are written to the log, so the next one says what it was and when.
+        AppDomain.CurrentDomain.ProcessExit += (_, _) =>
+            Console.WriteLine($"  process exit at {DateTime.Now:HH:mm:ss}: a console close, a log-off or a kill (not a Ctrl-C, which is refused above)");
         Console.WriteLine("census...");
         var caCensus = StickFileCorpus.CensusCached(caRoot, caProblems, TimeSpan.FromHours(12), caCensusFresh, line => Console.WriteLine("  " + line), parallel: 12);
         Console.Write(StickFileCorpus.Summary(caCensus));

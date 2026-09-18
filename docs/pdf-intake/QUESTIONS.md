@@ -3,20 +3,11 @@
 One file, one line per question, newest first. Answer by editing the line or by mail; a question leaves this file
 the day it is answered (its answer goes where it belongs: a rule, a row, a section). Nothing here blocks the work.
 
-## Open (2026-09-16 21:18)
+## Open (2026-09-17 17:02)
 
 - **Item 8 — three live jobs for a current engineer's look.** No longer what the work waits on: the corpus's own
   review (`takeoff corpus-disagreements`, §111) is the input; your picks are the confirmation at the end.
 
-- **Migration 098 — BLOCKS step 108.** `KOR.Drafter/db/098_AStripLongerThanTenMetresIsAPourStrip.sql` (two
-  REQUIRED rows: `dxf.pour-strip-min-length-mm = 10000 mm`, `dxf.pour-strip-aspect = 10`; own topics; probed 21:13 in a
-  rolled-back transaction, two rows). Idempotent, after 097. Step 108 (a strip longer than 10 m is a pour strip, not a
-  hole — 30933's 0.3 × 44 m slits; her 4,967 openings hold one such) sits on branch `step-108` (`f64bb53a`) because
-  the DXF side's rows are required by design: without them the six-set gate and every corpus run refuse to start. On
-  "098 done": fast suite + six-set gate on the branch, merge to develop, run 32 carries it.
-- **Migration 097** — `KOR.Drafter/db/097_ABigXIsWhatItsWordsSay.sql` (two vocabulary rows: `dxf.pdf.void-words`,
-  `dxf.pdf.slab-words`; own topics, units `names`; probed in a rolled-back transaction, two rows). Idempotent, after
-  096. Nothing waits on it — the compiled defaults carry the same words.
 - **The Library site's codes and the PPMP (WP7).** The NBC/BCBC/CSA copies and `KOR PPMP.pdf` live on
   `bmzse.sharepoint.com/sites/Library`, not synced to this PC and not reachable without a Graph token here. Sync the
   site (OneDrive "Add shortcut" on Building Codes and PPMP) or drop the PDFs in the knowledge mirror's `codes` folder
@@ -24,6 +15,14 @@ the day it is answered (its answer goes where it belongs: a rule, a row, a secti
   against the book within minutes of that.
 
 ## For an engineer, when one is asked (few, each backed by a measurement)
+
+- **Small sleeves the drawing marks and the model does not cut (step 111, 23:20).** 31065's S2.15.1 (L4, south
+  tower) draws a 313 × 584 mm box with an X free in the slab beside a wall ("2190mm CLR. TO HEADER ABOVE"); her
+  model has no opening there on any storey, though it cuts 48 sleeves of 0.5 × 0.5 m elsewhere on the set. After
+  step 111 we cut 21 such on 31065 and 10 on 31168 that her model has not, while on 31130/31138/31202 the same rule
+  takes her sleeves we had missed (17 → 31 of 33, 73 → 104 of 208, 33 → 52 of 68). Is a sleeve under some size
+  (0.2 m²? a duct's?) left out of the ETABS model by practice, or are these simply not in her model yet? The
+  reader follows the drawing until told otherwise.
 
 - **Piers.** A filled rectangle no column schedule declares, longer than 24 in and twice as long as thick, is now
   modelled as a wall pier (step 99, rows live in 094; run 28: 2,496 columns became walls over 158 sets). A SCHEDULED

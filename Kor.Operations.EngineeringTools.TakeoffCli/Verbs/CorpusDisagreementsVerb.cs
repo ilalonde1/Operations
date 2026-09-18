@@ -39,6 +39,7 @@ internal static class CorpusDisagreementsVerb
         var olderBy = new Dictionary<string, int>();   // her model's age against the drawing's issue, in days, where the yardstick says
         // openings, ours against hers (step 104's yardstick line): judged, hers, matched each way; the unmatched by plan size
         var openings = new List<(string Job, int Ours, int Theirs, int OursMatched, int TheirsMatched)>();
+        var covered = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);   // her openings whose centre stands inside one of ours (a match by cover)
         var oursOpeningsNotHers = new List<(string Job, string Size, int Count)>();
         var hersOpeningsNotOurs = new List<(string Job, string Size, int Count)>();
         var openingSize = new Regex(@"(\S+x\S+ m) (\d+)");
@@ -81,6 +82,8 @@ internal static class CorpusDisagreementsVerb
                 { foreach (Match s in openingSize.Matches(line)) oursOpeningsNotHers.Add((job, s.Groups[1].Value, N(s.Groups[2].Value))); continue; }
                 if (line.StartsWith("  hers we have not, by size:", StringComparison.Ordinal))
                 { foreach (Match s in openingSize.Matches(line)) hersOpeningsNotOurs.Add((job, s.Groups[1].Value, N(s.Groups[2].Value))); continue; }
+                var mc = Regex.Match(line, @"^  hers whose centre stands inside one of ours: (\d+)");
+                if (mc.Success) { covered[job] = N(mc.Groups[1].Value); continue; }
             }
         }
 
@@ -134,6 +137,20 @@ internal static class CorpusDisagreementsVerb
             Console.WriteLine("6. OPENINGS, OURS AGAINST HERS on the storeys both models name (an opening is hers when the centre of one of hers lies within 1.5 m of ours):");
             int ours = openings.Sum(o => o.Ours), hers = openings.Sum(o => o.Theirs), om = openings.Sum(o => o.OursMatched), tm = openings.Sum(o => o.TheirsMatched);
             Console.WriteLine($"   over {openings.Count} sets: ours judged {ours}, hers {hers}; ours she has {om} ({(ours == 0 ? 0 : 100.0 * om / ours):F0}%); hers we have {tm} ({(hers == 0 ? 0 : 100.0 * tm / hers):F0}%)");
+            int tc = openings.Sum(o => covered.GetValueOrDefault(o.Job));
+            if (tc > 0) Console.WriteLine($"   hers whose centre stands inside one of ours (a match by cover: a flight inside our well): {tc} ({(hers == 0 ? 0 : 100.0 * tc / hers):F0}%)");
+            // A MODEL A YEAR OLDER THAN THE DRAWING JUDGES A DESIGN THAT HAS MOVED (01:45): 31005's model is 938 days before its
+            // drawing and shares none of its openings within 1.5 m; 31009's 1,415 days, 4 of 29; 31087's is two days AFTER and
+            // shares 167 of 248. The figure over the sets whose model is within a year of the drawing is the reader's; the rest
+            // is the design's.
+            var current = openings.Where(o => olderBy.TryGetValue(o.Job, out int d) && d <= 365).ToList();
+            if (current.Count > 0)
+            {
+                int cOurs = current.Sum(o => o.Ours), cHers = current.Sum(o => o.Theirs), cOm = current.Sum(o => o.OursMatched), cTm = current.Sum(o => o.TheirsMatched);
+                Console.WriteLine($"   over the {current.Count} sets whose model is within a year of the drawing: ours judged {cOurs}, hers {cHers}; ours she has {cOm} ({(cOurs == 0 ? 0 : 100.0 * cOm / cOurs):F0}%); hers we have {cTm} ({(cHers == 0 ? 0 : 100.0 * cTm / cHers):F0}%)");
+                var stale = openings.Where(o => olderBy.TryGetValue(o.Job, out int d) && d > 365).OrderByDescending(o => o.Theirs - o.TheirsMatched).Take(top).ToList();
+                if (stale.Count > 0) Console.WriteLine($"   sets whose model is over a year older than the drawing (the design moved; not the reader's to answer): {string.Join(" ", stale.Select(o => $"{o.Job}({olderBy[o.Job]} d, hers {o.TheirsMatched} of {o.Theirs})"))}");
+            }
             Console.WriteLine($"   ours she has not, by plan size: {string.Join(", ", oursOpeningsNotHers.GroupBy(o => o.Size).OrderByDescending(g => g.Sum(x => x.Count)).Take(top).Select(g => $"{g.Key} {g.Sum(x => x.Count)} on {g.Select(x => x.Job).Distinct().Count()} sets"))}");
             Console.WriteLine($"   hers we have not, by plan size: {string.Join(", ", hersOpeningsNotOurs.GroupBy(o => o.Size).OrderByDescending(g => g.Sum(x => x.Count)).Take(top).Select(g => $"{g.Key} {g.Sum(x => x.Count)} on {g.Select(x => x.Job).Distinct().Count()} sets"))}");
             // a set whose model cuts no opening on the shared storeys judges nothing (31039: her EQ townhouse case, 0 openings, 12 of ours "not hers")

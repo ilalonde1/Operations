@@ -234,6 +234,14 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             // gate are chained: a long line stays the two-point line the wall reader pairs.
             var curves = CurvesOfShortStrokes(rawSubpaths, lineMinLengthMm, footingPieces);   // a footing's dashes are the footing's (step 44), whatever they touch
             var curveMembers = new HashSet<int>(curves.SelectMany(c => c.Members));
+            // A SHORT STROKE BETWEEN TWO LONG LINES OF ONE PEN IS A JOG OF THE EDGE (intake step 110, 2026-09-16 22:00).
+            // 30838's concrete-outline plans step their slab edge sideways by 150 mm at grid 2: an 8 pt stroke 150 mm long
+            // between two 8 pt verticals of 3.9 m and 2.1 m, end to end. Step 98 chains short strokes with each other and
+            // leaves a long line alone, so the jog alone was TooShort, the ring stood open by 150 mm on every tower storey,
+            // and the plate those storeys carried came from the slab-reinforcing plan drawn beside it - gone the moment the
+            // page's two views were told apart (step 109). A stroke under the gate whose BOTH ends meet an end of a long
+            // line drawn with the same pen and colour is that line's jog, and is kept as the two-point line it is.
+            var jogs = JogsBetweenLongLines(rawSubpaths, lineMinLengthMm, curveMembers, footingPieces);
             for (int pathIndex = 0; pathIndex < rawSubpaths.Count + curves.Count; pathIndex++)
             {
                 bool isCurve = pathIndex >= rawSubpaths.Count;
@@ -479,7 +487,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 else
                 {
                     double len = PolygonProcessor.PathLength(pts);
-                    if (len >= lineMinLengthMm)
+                    if (len >= lineMinLengthMm || (!isCurve && jogs.Contains(pathIndex)))
                     {
                         if (excludeGridLines && pts.Count == 2 && len > gridThreshMm)
                         { Fate(PathReason.GridLineExcluded); continue; }
@@ -584,6 +592,44 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         /// one colour, chained into one path each (step 98). A node where three or more such strokes meet is a
         /// hatch or a symbol, not a curve, and its group is left as it was; so is a chain of one.
         /// </summary>
+        /// <summary>
+        /// The open two-point strokes shorter than the length gate whose both ends meet, exactly, an end of a long open
+        /// two-point stroke drawn with the same pen and colour (step 110): a jog in the drawn linework, kept as the line
+        /// it is - a step in an edge, a notch round a column. A stroke a curve claimed (step 98) or a footing claimed
+        /// (step 44) is not one.
+        /// </summary>
+        internal static HashSet<int> JogsBetweenLongLines(IReadOnlyList<RawSubpath> paths, double lineMinLengthMm, IReadOnlySet<int> curveMembers, IReadOnlyDictionary<int, int>? claimed = null)
+        {
+            // every long line's ends, with the direction the line leaves that end in
+            var longEnds = new Dictionary<(long, long, double, (byte, byte, byte)), List<(double X, double Y)>>();
+            (long, long, double, (byte, byte, byte)) Key((double X, double Y) p, RawSubpath s) => ((long)Math.Round(p.X * 10), (long)Math.Round(p.Y * 10), s.LineWidth, s.Color);
+            for (int i = 0; i < paths.Count; i++)
+            {
+                var s = paths[i];
+                if (s.IsClosed || s.IsAnnotation || s.IsFilled || !s.IsStroked || s.Points.Count != 2) continue;
+                double len = PolygonProcessor.PathLength(s.Points);
+                if (len < lineMinLengthMm) continue;
+                var a = s.Points[0]; var b = s.Points[1];
+                (longEnds.TryGetValue(Key(a, s), out var la) ? la : longEnds[Key(a, s)] = new()).Add(((b.X - a.X) / len, (b.Y - a.Y) / len));
+                (longEnds.TryGetValue(Key(b, s), out var lb) ? lb : longEnds[Key(b, s)] = new()).Add(((a.X - b.X) / len, (a.Y - b.Y) / len));
+            }
+            var jogs = new HashSet<int>();
+            if (longEnds.Count == 0) return jogs;
+            for (int i = 0; i < paths.Count; i++)
+            {
+                var s = paths[i];
+                if (s.IsClosed || s.IsAnnotation || s.IsFilled || !s.IsStroked || s.Points.Count != 2 || curveMembers.Contains(i) || (claimed is not null && claimed.ContainsKey(i))) continue;
+                if (PolygonProcessor.PathLength(s.Points) >= lineMinLengthMm) continue;
+                if (!longEnds.TryGetValue(Key(s.Points[0], s), out var atA) || !longEnds.TryGetValue(Key(s.Points[1], s), out var atB)) continue;
+                // FORM A, the one kept (22:30): both ends on long lines' ends, whichever way the long lines leave. Form B asked the
+                // two long lines to leave the jog in OPPOSITE directions (a step, not a U) to spare 31065's stair wells, and lost
+                // 31130 L17's plate at once - its outline notches round a column as a U (126 mm down, 354 mm along the column's
+                // face, 914 mm down again). The U in the well is the well rule's to read (step 105d), not this rule's to refuse.
+                jogs.Add(i); _ = atA; _ = atB;
+            }
+            return jogs;
+        }
+
         internal static List<(RawSubpath Path, List<int> Members)> CurvesOfShortStrokes(IReadOnlyList<RawSubpath> paths, double lineMinLengthMm, IReadOnlyDictionary<int, int>? claimed = null)
         {
             var curves = new List<(RawSubpath, List<int>)>();
@@ -1552,10 +1598,18 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         {
             /// <summary>The two lines, by index into the geometry's lines.</summary>
             public (int A, int B) Arms { get; init; }
+            /// <summary>The four arm ends are the corners of a drawn rectangle: the drafter's sleeve (step 111).</summary>
+            public bool Boxed { get; init; }
         }
 
         /// <summary>The minimum arm of an X that marks an opening: a shaft's X is 11-12 ft; a symbol's is under a metre.</summary>
         internal const double XMarkMinArmMm = 2000;
+        /// <summary>
+        /// The minimum arm of a BOXED X (step 111): a sleeve drawn as a rectangle with its two diagonals - 31202's 1,118 x 382 mm
+        /// chases (arms 1.18 m) on twelve storeys, 31065's 0.5 x 0.5 m sleeves (arms 0.7 m); 1,895 of her 4,967 exported
+        /// openings are under a metre on the short side. A box under this is a symbol's (a column mark, a north arrow).
+        /// </summary>
+        internal const double XMarkBoxedMinArmMm = 600;
         /// <summary>The longest arm of an X that marks an opening: a stair's is under 30 ft; 31202's 109 ft X spans a region labelled 9" SLAB.</summary>
         internal const double XMarkMaxArmMm = 9144;
 
@@ -1572,8 +1626,25 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 var l = result.Lines[i];
                 if (l.Count != 2 || result.LineIsAnnotation[i]) continue;
                 double dx = l[1].X - l[0].X, dy = l[1].Y - l[0].Y, len = Math.Sqrt(dx * dx + dy * dy);
-                if (len < XMarkMinArmMm || Math.Min(Math.Abs(dx), Math.Abs(dy)) / len <= 0.17) continue;   // 10 degrees off both axes
+                if (len < XMarkBoxedMinArmMm || Math.Min(Math.Abs(dx), Math.Abs(dy)) / len <= 0.17) continue;   // 10 degrees off both axes
                 longLines.Add((i, dx, dy, len));
+            }
+            // A SLEEVE IS A BOX WITH ITS DIAGONALS (step 111, 2026-09-16 23:00): the drafter's mark for a small opening is the
+            // shaft's mark at a sleeve's size - a rectangle with an X in it. Step 104 asked an X for arms of 2 m or more because a
+            // symbol's are under a metre; her sleeves' are 0.7-1.2 m. So an X of a symbol's size is a mark only when its four
+            // arm ends are the corners of a rectangle the page draws: a two-point line between each pair of neighbouring ends.
+            var lineEnds = new List<(DxfPoint A, DxfPoint B)>();
+            for (int i = 0; i < result.Lines.Count; i++)
+                if (result.Lines[i].Count == 2 && !result.LineIsAnnotation[i]) lineEnds.Add((new DxfPoint(result.Lines[i][0].X, result.Lines[i][0].Y), new DxfPoint(result.Lines[i][1].X, result.Lines[i][1].Y)));
+            static bool At(DxfPoint p, DxfPoint q) => Math.Abs(p.X - q.X) <= 50 && Math.Abs(p.Y - q.Y) <= 50;
+            bool Boxed(IReadOnlyList<DxfPoint> corners)
+            {
+                for (int k = 0; k < corners.Count; k++)
+                {
+                    var a = corners[k]; var b = corners[(k + 1) % corners.Count];
+                    if (!lineEnds.Any(l => (At(l.A, a) && At(l.B, b)) || (At(l.A, b) && At(l.B, a)))) return false;
+                }
+                return true;
             }
             for (int a = 0; a < longLines.Count; a++)
                 for (int b = a + 1; b < longLines.Count; b++)
@@ -1589,7 +1660,9 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     var centre = new DxfPoint(p[0].X + t * rx, p[0].Y + t * ry);
                     var ends = new[] { p[0], p[1], q[0], q[1] }.Select(e => new DxfPoint(e.X, e.Y))
                         .OrderBy(e => Math.Atan2(e.Y - centre.Y, e.X - centre.X)).ToList();
-                    marks.Add(new XMark(centre, Math.Max(lp, lq), ends) { Arms = (ia, ib) });
+                    bool boxed = Boxed(ends);
+                    if (Math.Max(lp, lq) < XMarkMinArmMm && !boxed) continue;   // a symbol's X, and no box drawn round it
+                    marks.Add(new XMark(centre, Math.Max(lp, lq), ends) { Arms = (ia, ib), Boxed = boxed });
                 }
             // AN X STANDS ALONE: a cross-hatch is diagonals in two directions crossing each other at their middles by
             // the hundred (31130's L17 sheet: 100 "X marks" of 19 ft within a metre of one another), and none of them
@@ -1825,6 +1898,10 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             foreach (var (centre, ends) in endsAtColumn)
                 if (ends.Count >= 2)
                     foreach (var end in ends) carried.Add(new DxfSegment("SLABEDGE", end, centre));
+            // the trace says which columns took two ends and which were run into by one end alone (the edge-beside-a-column
+            // class, 30838's 12/F and 31138's tower: the other edge starts at the column's far corner and runs away from it)
+            FaceTrace?.Invoke($"slab pass: ends at columns (step 97; centre ft: ends): " + string.Join(" ", endsAtColumn.OrderByDescending(e => e.Value.Count)
+                .Select(e => $"({e.Key.X / 304.8:0.0},{e.Key.Y / 304.8:0.0}):{e.Value.Count}{(e.Value.Count < 2 ? "-lone" : "")}")));
             FaceTrace?.Invoke($"slab pass: {carried.Count} edge end(s) joined through {endsAtColumn.Count(e => e.Value.Count >= 2)} column(s)");
             var arranged = pieceSegments.Concat(inLine).Concat(strokes).Concat(carried).ToList();
             foreach (var l in built.Loops)
@@ -1842,6 +1919,24 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             // (32,076 sq ft) and every room inside it; the union could only add cells inside that path.
             bool walkFoundAFloor = loops.Any(l => l.Area >= minSlabAreaMm2 && StandsIn(l))
                                    || drawn.Any(d => StandsIn(new PlanLoop("SLABEDGE", d, true)));
+            var walkFloorsToReplace = new List<PlanLoop>();   // step 113: the walk's floors the arrangement's supersede when it finds one
+            // A FLOOR THE WALK FOUND THAT HOLDS UNDER HALF THE PAGE'S COLUMNS IS NOT THE PAGE'S FLOOR (step 113, 2026-09-17 01:50).
+            // 60061-03's typical plan (a hotel's, the outline under a dense reinforcing plan) walked a 53 x 37 ft rectangle at
+            // the page's foot - the stud-rail schedule's border, three of its symbols read as columns - into a 1,953 sq ft
+            // "floor" on every storey of a 10,000 sq ft floor, and the arrangement, which reads the real outline, was never
+            // built ("only where the walk found no floor"). A ring that stands in structure is a floor; a ring holding
+            // fewer than half the page's columns is not the whole of it, and the arrangement is built as well.
+            if (walkFoundAFloor && result.Columns.Count >= 6)
+            {
+                var walkFloors = loops.Where(l => l.Area >= minSlabAreaMm2 && StandsIn(l)).Select(l => l.Points).Concat(drawn.Where(d => StandsIn(new PlanLoop("SLABEDGE", d, true)))).ToList();
+                int held = result.Columns.Count(c => walkFloors.Any(f => LoopGeometry.PointInPolygon(new DxfPoint(c.X, c.Y), f)));
+                if (held * 2 < result.Columns.Count)
+                {
+                    FaceTrace?.Invoke($"slab pass: the walk's floor holds {held} of {result.Columns.Count} columns - under half: the arrangement is built as well (step 113)");
+                    walkFoundAFloor = false;
+                    walkFloorsToReplace = loops.Where(l => l.Area >= minSlabAreaMm2 && StandsIn(l)).ToList();
+                }
+            }
             // AN X ACROSS A SHAFT IS AN OPENING (intake step 104, 2026-09-16). The drafter's mark for a shaft or a stair is
             // two oblique lines of one length crossing at their midpoints - the X. 31202's elevator shafts carry 12 ft
             // ones on every plan, 31130's and 31138's 11 ft ones. The X's region is the quadrilateral of its four ends;
@@ -1952,6 +2047,19 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         var cells = new HashSet<int>(Enumerable.Range(0, planarForWells.Faces.Count).Where(i => centres.Any(p => LoopGeometry.PointInPolygon(p, planarForWells.Faces[i].Outer.Points))));
                         if (cells.Count == 0) continue;
                         double boxArea = (stair.Max(f => f.X1) - stair.Min(f => f.X0)) * (stair.Max(f => f.Y1) - stair.Min(f => f.Y0));
+                        // THE LANDING BETWEEN THE FLIGHTS IS THE WELL'S (step 105d, 2026-09-16 22:35): a break line drawn across a
+                        // stair as a zig-zag of short strokes closes once step 110 keeps its pieces, and the cell between two
+                        // flights - the landing, no flight's centre in it - fell out of the well (31065's L7-L17 wells 2.4 x 7.1 m
+                        // -> 2.4 x 3.3). A cell no bigger than the stair's box whose centroid lies inside that box is the well's too.
+                        double sx0 = stair.Min(f => f.X0), sx1 = stair.Max(f => f.X1), sy0 = stair.Min(f => f.Y0), sy1 = stair.Max(f => f.Y1);
+                        for (int i = 0; i < planarForWells.Faces.Count; i++)
+                        {
+                            if (cells.Contains(i)) continue;
+                            var outer = planarForWells.Faces[i].Outer;
+                            if (Math.Abs(outer.Area) > boxArea) continue;
+                            var c = outer.Centroid();
+                            if (c.X > sx0 && c.X < sx1 && c.Y > sy0 && c.Y < sy1) cells.Add(i);
+                        }
                         var rings = planarForWells.RecoverSurfaces(_ => false, (i, _) => cells.Contains(i)).Slabs.Select(s => s.Outer).ToList();
                         FaceTrace?.Invoke($"slab pass: stair at ({centres.Average(p => p.X) / 304.8:0},{centres.Average(p => p.Y) / 304.8:0}) ft: {stair.Count} flight(s), box {boxArea / 92903.04:0} sq ft, {cells.Count} of {planarForWells.Faces.Count} cell(s) hold a flight (arranged {arranged.Count} + wall edges {wallEdges.Count()} + door edges {doorEdges.Count()}), ring(s) sq ft: {string.Join(" ", rings.Select(r => $"{Math.Abs(r.Area) / 92903.04:0}"))}");
                         foreach (var ring in rings)
@@ -1988,6 +2096,42 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     var planar = new PlanarRings(SlabEdgeJoinMm, slabEdgeBridgeMm, SlabEdgeExtendMm).Build(arranged);
                     if (FaceTrace is not null)
                     {
+                        // WHAT THE ARRANGEMENT HOLDS ROUND A COLUMN ONE EDGE ALONE RUNS INTO (the edge-beside-a-column class,
+                        // 23:40): its mesh points within 1.5 m of each such column, with their degree, offset in inches from
+                        // the column's centre - so the next rule is written on what the arrangement sees, not on a picture
+                        if (planar.Topology is { } mesh)
+                            foreach (var (centre, ends) in endsAtColumn.Where(e => e.Value.Count == 1).Take(4))
+                            {
+                                var near = Enumerable.Range(0, mesh.Points.Count)
+                                    .Where(i => mesh.Points[i].DistanceTo(centre) <= 1500)
+                                    .OrderBy(i => mesh.Points[i].DistanceTo(centre))
+                                    .Select(i => $"({(mesh.Points[i].X - centre.X) / 25.4:0},{(mesh.Points[i].Y - centre.Y) / 25.4:0})d{mesh.Adjacency[i].Count}");
+                                FaceTrace($"slab pass: lone column at ({centre.X / 304.8:0.0},{centre.Y / 304.8:0.0}) ft: arrangement points within 1.5 m (offset in, degree): {string.Join(" ", near)}");
+                            }
+                        // AND THE ENDS LEFT DANGLING A HAND'S WIDTH FROM ANOTHER EDGE'S MIDDLE (23:45): the arrangement bridges an
+                        // end to an end, and joins an end ON a span within the join tolerance; an end short of a span by up to
+                        // the bridge (a T drawn short) is neither, and closes on the raster (150 mm) but not here
+                        if (planar.Topology is { } m2)
+                        {
+                            var tees = new List<string>();
+                            for (int i = 0; i < m2.Points.Count && tees.Count < 12; i++)
+                            {
+                                if (m2.Adjacency[i].Count != 1) continue;
+                                var p = m2.Points[i]; int own = m2.Adjacency[i][0];
+                                for (int e = 0; e < m2.Edges.Count; e++)
+                                {
+                                    if (e == own) continue;
+                                    var a = m2.Points[m2.Edges[e].A]; var b = m2.Points[m2.Edges[e].B];
+                                    double ex = b.X - a.X, ey = b.Y - a.Y, len2 = ex * ex + ey * ey;
+                                    if (len2 <= 0) continue;
+                                    double t = ((p.X - a.X) * ex + (p.Y - a.Y) * ey) / len2;
+                                    if (t <= 0.02 || t >= 0.98) continue;
+                                    double fx = a.X + t * ex - p.X, fy = a.Y + t * ey - p.Y, d = Math.Sqrt(fx * fx + fy * fy);
+                                    if (d > SlabEdgeJoinMm && d <= slabEdgeBridgeMm) { tees.Add($"({p.X / 304.8:0.0},{p.Y / 304.8:0.0})ft {d / 25.4:0.0}in"); break; }
+                                }
+                            }
+                            FaceTrace($"slab pass: {tees.Count}{(tees.Count >= 12 ? "+" : "")} end(s) short of another edge's middle by under the bridge (a T drawn short): {string.Join(" ", tees)}");
+                        }
                         var cells = planar.Faces.OrderByDescending(f => Math.Abs(f.Outer.Area)).ToList();
                         int inACell = result.Columns.Count(c => cells.Any(f => LoopGeometry.PointInPolygon(new DxfPoint(c.X, c.Y), f.Outer.Points)));
                         FaceTrace($"slab pass: arrangement {cells.Count} cell(s); columns in a cell {inACell} of {result.Columns.Count}; " +
@@ -2037,7 +2181,21 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     // the core's box over the 400 sq ft floor gate - 31065's south tower L7-L17 gained a 408 sq ft "floor",
                     // 31202's L2-L4 a 443 sq ft one. An edge X-box in the arrangement path keeps its notch (no real set
                     // shows one yet; the fixture in AnXAcrossARegionIsAnOpeningTests takes the walk path, as 31168 does).
-                    loops.AddRange(planar.RecoverSurfaces(_ => false, (i, cell) => Holds(cell) || WrapsTheFloor(cell) || !planar.TouchesTheOutside(i)).Slabs.Select(f => f.Outer));
+                    var fromArrangement = planar.RecoverSurfaces(_ => false, (i, cell) => Holds(cell) || WrapsTheFloor(cell) || !planar.TouchesTheOutside(i)).Slabs.Select(f => f.Outer).ToList();
+                    // step 113: the arrangement was built although the walk had a floor, because that floor held under half the
+                    // page's columns; where the arrangement finds a floor holding more, the walk's stands down (31202's L1 carried
+                    // the same slab twice, 34,590 and 34,145 sq ft, when both stayed)
+                    if (walkFloorsToReplace.Count > 0 && fromArrangement.Count > 0)
+                    {
+                        int Held(PlanLoop l) => result.Columns.Count(c => LoopGeometry.PointInPolygon(new DxfPoint(c.X, c.Y), l.Points));
+                        int walkHeld = walkFloorsToReplace.Sum(Held), arrangementHeld = fromArrangement.Sum(Held);
+                        if (arrangementHeld > walkHeld)
+                        {
+                            foreach (var w in walkFloorsToReplace) loops.Remove(w);
+                            FaceTrace?.Invoke($"slab pass: the arrangement's floor(s) hold {arrangementHeld} columns to the walk's {walkHeld}: the walk's {walkFloorsToReplace.Count} stand down (step 113)");
+                        }
+                    }
+                    loops.AddRange(fromArrangement);
                 }
                 catch (InvalidOperationException refused)
                 {

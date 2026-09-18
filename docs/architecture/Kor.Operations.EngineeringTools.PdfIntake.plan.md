@@ -1,6 +1,6 @@
 ﻿# PDF intake → ETABS — Completion Plan
 
-**Status:** Rev 9, 2026-09-16 20:05 (rows 3y–3aj; steps 80–106 landed and measured, runs 22–29 banked — **run 29: plates 74%** (2,087 of 2,835), 260 of 296, and the OPENINGS figure on 52 sets with her model: ours judged 516, hers among them 309 (60%), hers we have 361 of 2,161 (17%) — the five gate sets say 79% / 37–49%, the corpus says the X rule reads something else on 31017, 31032, 31039, 31108 (all of ours there are not hers): the next session's first look; WP7 landed its first block (the EGBC brain: migration 096, 26 sources / 959 clause rows, the ingestor, the gate); run 30 (105b/c, 106) launched 20:04; migration 097 awaits Ian) — Rev 8, 16:45 (run 28: plates 74%; step 99's piers on the corpus: −2,496 columns / +2,506 walls over 158 sets, yardsticks 7 better / 1 worse; migrations 094 and 095 LIVE (Ian, ~15:50, after a first run failed on the natural key and NULL units); step 104 reads the drafter's X as a shaft and the yardstick now judges openings against her export — 78% of ours are hers where she modelled; §8 owes Ian nothing but the engineer's three lines in QUESTIONS.md) — Rev 7, 15:02 (run 27: plates 73%; item 8 re-planned as the corpus's own review (`corpus-disagreements`); Q1 answered by the corpus's 622 piers) — Rev 4, 13:00 — WP6a re-plans the road on the engineers' own definition of usable (verticals + a plate on every storey; one model per building); steps 47 and 49–73 in §8, runs 8–16 in §1b, run 17 in flight — WP1–WP5 landed overnight on Ian's go-ahead ("go through this all,
+**Status:** Rev 10, 2026-09-17 00:45 (rows 3y–3al; steps 80–111 landed and measured, runs 22–31 banked, run 32 in flight — **run 31: plates 74%** (2,085 of 2,835), 260 of 296; **run 30's openings figure: hers we have 17% → 25%** (537 of 2,161), ours she has 60%; steps 110 (a jog of the linework), 105d (the landing is the well's) and 111 (a sleeve is a box with its diagonals) banked on the six — 31130 +69,869 sq ft of plate, her openings we have on the five sets 44% → 56% — and on the corpus in run 32 (00:05 → ~01:45); parked on branches: 108 (migration 098, probed, awaits Ian), 109 (30838's two-view page; needs 112), 112 (a T drawn short: closes 30838's plans, refused by RecoverSurfaces on 31065's P1 — Codex brief `CODEX-PDF-INTAKE-STEP-112-A-T-DRAWN-SHORT-REFUSES-A-PAGE.md`); three detached runs died today (a console close each, exit STATUS_CONTROL_C_EXIT; ProcessExit logged now); 30838's S2.17 read as two views in run 30 and one in run 31: NOT the reader — a new issue of its stick file (2026-09-15, 881 days after her model, where run 30 read the 09-14 issue at 880) came through the census refresh between the runs; 30838 alone builds the same twice, 00:52) — Rev 9, 2026-09-16 20:05 (rows 3y–3aj; steps 80–106 landed and measured, runs 22–29 banked — **run 29: plates 74%** (2,087 of 2,835), 260 of 296, and the OPENINGS figure on 52 sets with her model: ours judged 516, hers among them 309 (60%), hers we have 361 of 2,161 (17%) — the five gate sets say 79% / 37–49%, the corpus says the X rule reads something else on 31017, 31032, 31039, 31108 (all of ours there are not hers): the next session's first look; WP7 landed its first block (the EGBC brain: migration 096, 26 sources / 959 clause rows, the ingestor, the gate); run 30 (105b/c, 106) launched 20:04; migration 097 awaits Ian) — Rev 8, 16:45 (run 28: plates 74%; step 99's piers on the corpus: −2,496 columns / +2,506 walls over 158 sets, yardsticks 7 better / 1 worse; migrations 094 and 095 LIVE (Ian, ~15:50, after a first run failed on the natural key and NULL units); step 104 reads the drafter's X as a shaft and the yardstick now judges openings against her export — 78% of ours are hers where she modelled; §8 owes Ian nothing but the engineer's three lines in QUESTIONS.md) — Rev 7, 15:02 (run 27: plates 73%; item 8 re-planned as the corpus's own review (`corpus-disagreements`); Q1 answered by the corpus's 622 piers) — Rev 4, 13:00 — WP6a re-plans the road on the engineers' own definition of usable (verticals + a plate on every storey; one model per building); steps 47 and 49–73 in §8, runs 8–16 in §1b, run 17 in flight — WP1–WP5 landed overnight on Ian's go-ahead ("go through this all,
 step by step, and finish it overnight"): commits `8fccbc25` (WP3), `3f3f82b9` (WP2), `aba7d9ff`
 (WP4), `69e554b5` (WP5), each gated by the six byte-identical and the fast suite; WP5's remaining
 conventions are counted by a test, not by this document. §8 is what needs Ian. Rev 2 (2026-09-11)
@@ -308,7 +308,22 @@ we have 67 of 230 (29%); ours she has not: **1.5 × 9 m ×21** — the same unex
 1.5 × 4.8 m ones (31017 is the other set whose scheduled 18 × 30 columns she models as piers: one office's practice,
 the engineer's question), and its L4 is a storey with no columns and no walls under three overlapping plates — a
 placement failure of its own, not an openings one. A "well fills 60% of its box" guard was tried against its jagged
-rings and moved nothing: reverted, unbanked. 30933 (20:40): its bad openings are OLD — a 21 × 22 m rectangle with an X
+rings and moved nothing: reverted, unbanked. **Read again 23:25 by size:** ours are 41 X-boxes of 1.7 × 8.9 m and hers
+we have not are 37 of 1.5 × 5 m — the same stairs, our X spanning the two flights and the landing (8.9 m), her opening
+the flights alone (5 m), so the centres sit ~2 m apart and neither matches: on 31017 her practice keeps the landing
+as slab, the opposite of 31065's 2.4 × 7.1 m wells (step 105d). Two practices, or a scissor stair's landing — the
+engineer's line, not a rule; the matching within 1.5 m could also judge by overlap instead of by centre (it does
+since 00:46 — §125). **31087 (01:40, the best current model: two days after the drawing; hers we have 167 of 248):**
+the 81 we lack are on the podium L3–L5 (ours 0 openings — L4 has NO plate: "no slab edge would close … the ring
+closes at a gap of 7,315"; the trace says a 19 in gap in the outline at y 288.6 ft and eight Ts drawn short of
+1.3–5.6 in — step 112's class) and the parkade P1–P5 (her 11 a storey: four zero-width slits, two sleeves, a stair,
+two shafts, two 5.5 m voids; ours 3). So 31087's opening misses are plate misses; 112 reaches it too. **60061-03
+(01:50; her model 111 days old, 259 openings, we have 4):** the Hyatt Place hotel's typical plan (S2.04, LEVEL 04–10)
+is one dense reinforcing plan with the outline under the bars and "OPENING FOR EXHAUST 18 × 18" sleeves by the
+dozen — her 25 a storey; ours read a 1,953 sq ft plate on every storey of a ~10,000 sq ft floor (rendered p14), so
+its opening misses are a plate miss too: the next plate look, with 31087's podium. The current-model sets ranked by
+her openings we lack: 60061-03 (255), 31087 (81), 30989 (24), 31170 (22), 31202 (16), 31183 (14) — the two largest
+are plates, not openings. 30933 (20:40): its bad openings are OLD — a 21 × 22 m rectangle with an X
 and five columns in it, and six 0.5 × 44 m slivers between parallel lines — both from the DXF route's original "a ring
 inside a floor is an opening" rule (StructuralPlanClassifier), which the openings figure judges for the first time.
 **So the corpus figure's 60% has three parts: sets whose model judges nothing, the 31168-class X-box, and the old ring
@@ -697,6 +712,54 @@ residues' cause. Not the PDF route; queued behind it.
    flagged (30933 L0's 0.3 × 44 m slits, rendered and looked at); two REQUIRED rows = **migration 098** (probed 21:13),
    the debt ratchet refused the compiled form; merges on "098 done". Run 30 (105b/c, 106) in flight since 20:04; run 31
    (107/107b) launches on its bank.
+
+3al. **Autonomous evening 2026-09-16 21:20 → 22:55** (§122). Run 30 banked (`e4efbf17`): plates 74%; hers we have 17% →
+   25%. 30838 characterised (rendered; `takeoff sheet-views`): the page draws the storey twice and one view was read —
+   **step 109** (a title's second line beginning with AND continues it) on branch `step-109`, parked because the
+   concrete-outline plan's edge does not close (a jog, and the edge-beside-a-column class). **Step 110** (a short stroke
+   between two long lines' ends is a jog, kept) + **105d** (the landing between the flights is the well's) BANKED
+   (`0a5916a9`/`07ac10af`) after both half-forms were measured and refused by the gate: 31130 +69,869 sq ft of plate
+   (the west tower's half plates whole — item 2's class), 31065 +14,613, 31168 +1 storey; her openings we have on 31130
+   6 → 17. Run 31 died at 22:04 (a console close, third today; `ProcessExit` logged now), resumed as 31b 22:22.
+
+3am. **Autonomous night 2026-09-16 22:55 → 2026-09-17 01:35** (§123–§125). **Step 111** (a sleeve is a box with its
+   diagonals; the DXF side's 50 sq ft minimum no longer drops a rectangle sleeve) banked `66478bca`: her openings we
+   have on the five sets 44% → 56%. Run 31 banked `abb5939c` (74%; 30838's S2.17 difference = a new stick-file issue
+   through the census refresh, not the reader). **Run 32** (110 + 105d + 111 on the corpus) banked `a521ac41`: plates
+   2,087 (+2), walls −242 / columns −52 over 66 sets, yardsticks 5 better / 0 worse; **openings: hers we have 25% → 31%
+   (673 of 2,161), ours she has 60% → 41%** — the sleeve cuts both ways (30993's chases beside its core are two boxed
+   X's where her model has one slot; 31017's stair X vs her flights) — the engineer's line in QUESTIONS.md. **Step
+   112** (a T drawn short) closes 30838's concrete-outline plans in `PlanarRings` and is refused by `RecoverSurfaces`
+   on 31065's P1 in three forms → branch `step-112` + Codex brief `CODEX-PDF-INTAKE-STEP-112-A-T-DRAWN-SHORT-REFUSES-A-PAGE.md`
+   (Ian runs it); step 109 waits behind it. The yardstick gained a match by cover and an "elsewhere" count (§125).
+
+3an. **Autonomous night 2026-09-17 01:35 → 02:50** (§126). The 22 current-model sets ranked by her openings we lack: the two
+   largest (60061-03, 31087) are PLATE misses. 60061-03's trace: the walk found the stud-rail schedule's border as a 1,953
+   sq ft floor holding none of 29 columns, and the arrangement was never built. **Step 113** (a walk floor holding under
+   half the page's columns is not the page's floor — the arrangement is built as well; where its floor holds more the
+   walk's stands down) + **113b** (two plates of one storey covering nine tenths of each other's ground are one floor —
+   the composer) BANKED `66ebfd5a`/`b5fbe19c`: 31138 17 → 20 plated storeys, 31130 +45,625 sq ft, 31168 +7,558, 31202 L1
+   one floor; nothing lost. **Run 33** (113 + 113b) launched 02:49, **banked 04:07** (`069690e4`): plates 2,087 → 2,105 (74%),
+   96 sets moved, yardsticks 3 better / 1 worse; 60061-03 plates 1,953 → 5,804–9,443 sq ft a storey, its openings 4 → 23;
+   the corpus openings figure: hers we have 33% (722 of 2,161), ours she has 38%; on the 22 current-model sets 70% / 41%.
+   A rule tried and refused by the six the same hour (a walled cell holding UP/DN is a well — it cut rooms on 31202).
+
+3ao. **Afternoon 2026-09-17 16:45 → 17:15** (§127). Ian applied 097 + 098 (16:43). **Step 108 merged** onto develop
+   (the pour-strip rows live): fast suite 1,492; six-set gate five byte-identical, **31170-01-arch −8 openings** (strips
+   33–75 m long, one a wedge through a row of twelve columns; her ten-day-old model has 37 openings, longest 7.4 m) —
+   re-banked. Found on the way: the pdf-only `report.txt` printed the composer's warnings, not its flags, so eight openings
+   left a set with no line saying why — the report carries the flags now. Codex's step-112 guard (a carry's foot within
+   the join tolerance of the target edge's end is refused) is next on the real sheet, 31065 p20.
+
+3ap. **Afternoon 2026-09-17 17:10 → 18:10** (§128). Step 112's "Face successor is not a permutation" characterised: a
+   hole touching its face's boundary at a vertex was owned by nobody (one walk split at the pinch; same-component
+   containment excluded) — develop refused 31065's p7 and p12 the same way WITHOUT the carries. **Fixed in `Regions`
+   and banked alone** (`AHoleTouchingItsFaceAtAVertexIsItsHoleTests`, proved by breaking; the exception now names the
+   vertex and the owners): 31065 71 of 71 pages arrange. **The carries judged by the six and PARKED:** P1 +2,310 sq ft,
+   31168 P2 +1,218, against 31130 L1/L1M −3,257, 31065 L3 −620, L7–L17 −41 × 6, 31130 L17 −301, 31202 L13 −141 — one
+   shape: a T carried onto the edge closes a rim cell that the rim rule drops. **NEXT CANDIDATE (step 115): the rim
+   rule — a rim cell whose outward edges are slab-edge strokes is inside the outline and is floor**; needs the stroke
+   class carried through `Arrange` to the mesh's edges; corpus-judged. Then the carries return.
 
 4. **WP6** — one model in front of Andrea (31170's, or whichever the ledger ranks best of the
    architects' sets). Ian's call when.

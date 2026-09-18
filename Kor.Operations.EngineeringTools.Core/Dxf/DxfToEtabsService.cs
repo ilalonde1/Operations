@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -356,6 +356,8 @@ public static class DxfToEtabsService
         "dxf.storeys-at-one-level-gap",
         "dxf.same-ground-area-tolerance",
         "dxf.same-ground-centre-tolerance",
+        "dxf.pour-strip-min-length-mm",
+        "dxf.pour-strip-aspect",
         "dxf.doubled-edge-parallel-ratio",
         "dxf.flood-fill-bridge",
         "dxf.joint-merge-tolerance",
@@ -448,6 +450,8 @@ public static class DxfToEtabsService
             ["dxf.storeys-at-one-level-gap"] = compose.StoreysAtOneLevelGap,
             ["dxf.same-ground-area-tolerance"] = compose.SameGroundAreaTolerance,
             ["dxf.same-ground-centre-tolerance"] = compose.SameGroundCentreTolerance,
+            ["dxf.pour-strip-min-length-mm"] = compose.PourStripMinLengthMm,
+            ["dxf.pour-strip-aspect"] = compose.PourStripAspect,
             ["dxf.doubled-edge-parallel-ratio"] = classification.DoubledEdgeParallelRatio,
             ["dxf.flood-fill-bridge"] = classification.FloodFillBridge,
             ["dxf.joint-merge-tolerance"] = compose.JointMergeTolerance,
@@ -568,6 +572,8 @@ public static class DxfToEtabsService
             StoreysAtOneLevelGap = settings.ValueOr("dxf.storeys-at-one-level-gap", options.StoreysAtOneLevelGap),
             SameGroundAreaTolerance = settings.ValueOr("dxf.same-ground-area-tolerance", options.SameGroundAreaTolerance),
             SameGroundCentreTolerance = settings.ValueOr("dxf.same-ground-centre-tolerance", options.SameGroundCentreTolerance),
+            PourStripMinLengthMm = settings.ValueOr("dxf.pour-strip-min-length-mm", options.PourStripMinLengthMm),
+            PourStripAspect = settings.ValueOr("dxf.pour-strip-aspect", options.PourStripAspect),
         };
 
     /// <summary>

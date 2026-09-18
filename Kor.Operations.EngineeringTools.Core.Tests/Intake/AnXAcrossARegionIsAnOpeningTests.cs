@@ -95,4 +95,38 @@ public sealed class AnXAcrossARegionIsAnOpeningTests
     // (ModelYardstick.Openings, five sets), each rule took fifty of the seventy openings of ours she has: her shafts on
     // 31168's podium and building C stand within 300 mm of our plate's boundary and have columns in their corner walls.
     // The tests that held them are gone with them; the numbers are in §114 and beside the slab pass.
+
+    /// <summary>
+    /// A SLEEVE IS A BOX WITH ITS DIAGONALS (step 111, 2026-09-16). 31202's 1,118 x 382 mm chase, one a storey on L2-L13, is
+    /// drawn as a 9 pt rectangle with its two diagonals - a shaft's mark at a sleeve's size - and step 104's 2 m arm minimum
+    /// (a symbol's arms are under a metre) refused it; 1,895 of her 4,967 exported openings are under a metre on the short
+    /// side. An X of a symbol's size is a mark when its four arm ends are the corners of a rectangle the page draws.
+    /// WHAT THIS COVERS: the small X with its box found, Boxed, its region the box; the same X without the box not found;
+    /// the box's floor cut with the sleeve as a loop; a box under 600 mm arms (a symbol's) not found. WHAT IT DOES NOT: a
+    /// box drawn as one closed polyline (its sides are not two-point lines here: a rectangle of the slab layer is read as
+    /// a ring by the ring rule instead); a sleeve with a column under it (step 107); the real sheets (the six-set gate).
+    /// </summary>
+    [Fact]
+    public void ASmallXInsideADrawnBoxIsASleeve_AndWithoutTheBoxASymbol()
+    {
+        // a 1,118 x 382 mm box with its diagonals (arms 1,181 mm)
+        double bx0 = 43000, by0 = 22000, bx1 = 44118, by1 = 22382;
+        var boxed = GeometryFilterService.XMarks(Lines((bx0, by0, bx1, by1), (bx0, by1, bx1, by0),
+            (bx0, by0, bx1, by0), (bx1, by0, bx1, by1), (bx1, by1, bx0, by1), (bx0, by1, bx0, by0)));
+        var mark = Assert.Single(boxed);
+        Assert.True(mark.Boxed);
+        Assert.InRange(mark.Reach, 1170, 1190);
+        Assert.Empty(GeometryFilterService.XMarks(Lines((bx0, by0, bx1, by1), (bx0, by1, bx1, by0))));   // the same X, no box: a symbol
+        Assert.Empty(GeometryFilterService.XMarks(Lines((0, 0, 400, 400), (0, 400, 400, 0),                   // a 400 mm box with its X: a symbol's size
+            (0, 0, 400, 0), (400, 0, 400, 400), (400, 400, 0, 400), (0, 400, 0, 0))));
+
+        // the floor with the sleeve in it: the plate whole and the sleeve as a loop of its own
+        var g = Read(Line(X0, Y0, X1, Y0), Line(X1, Y0, X1, Y1), Line(X1, Y1, X0, Y1), Line(X0, Y1, X0, Y0),
+                     Line(bx0, by0, bx1, by0), Line(bx1, by0, bx1, by1), Line(bx1, by1, bx0, by1), Line(bx0, by1, bx0, by0),
+                     Line(bx0, by0, bx1, by1), Line(bx0, by1, bx1, by0),
+                     Column(41000, 21000), Column(46500, 21000), Column(41000, 25500), Column(46500, 25500));
+        Assert.Equal(2, g.Slabs.Count);
+        Assert.Equal((X1 - X0) * (Y1 - Y0), Area(g.Slabs[0]), 1);
+        Assert.Equal((bx1 - bx0) * (by1 - by0), Area(g.Slabs[1]), 1);
+    }
 }

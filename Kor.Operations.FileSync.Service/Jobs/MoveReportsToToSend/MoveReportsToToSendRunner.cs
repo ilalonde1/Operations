@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
 using Kor.Operations.FileSync.Service.ControlPlane;
+using Kor.Operations.FileSync.Service.Jobs.Shared;
 using Kor.Operations.FileSync.Service.Options;
 using Kor.Operations.Graph;
 using Microsoft.Extensions.Logging;
@@ -21,10 +22,15 @@ namespace Kor.Operations.FileSync.Service.Jobs.MoveReportsToToSend;
 // KOR-APP01. EORs are expected to delete the "Acknowledge..." control file
 // from their SharePoint folder during the first few days of the month.
 //
-// Behavior parity vs PS1:
+// Behaviour (changed 2026-09-17; the PS1 and the first port swept any folder
+// with no control file, which emptied CatchAll -- where nobody is ever asked
+// to initial anything -- onto the server every month; see EorRouting):
 //   - Lists every EOR folder under _FIELD REVIEWS TO INITIAL.
-//   - If the EOR's monthly control file STILL exists, that EOR has not
-//     acknowledged this month -> skip the folder entirely.
+//   - CatchAll is never swept. It is reported.
+//   - A folder is swept only if MoveReportsToEor recorded a control file for
+//     it THIS period (FileSync.EorControlFiles) and that file is now gone.
+//     Still there -> not acknowledged -> skip. No record -> nothing was asked
+//     of that engineer -> skip, and say so.
 //   - For every file whose name matches ^\d{5}-\d{2}, derives the 8-char
 //     project number and finds the matching project folder under
 //     \\KOR-FS01\Projects\Projects\<category>\<project>* (categories whose
@@ -74,13 +80,29 @@ internal sealed class MoveReportsToToSendRunner : IJobRunner
         var isShadow = string.Equals(config.Mode, "Shadow", StringComparison.OrdinalIgnoreCase);
         var now = DateTimeOffset.Now;
         var monthTag = now.ToString("MM-yyyy", CultureInfo.InvariantCulture);
-        var monthName = now.ToString("MMMM", CultureInfo.InvariantCulture);
-        var controlFileName = $"Acknowledge and Move To Server {monthName}.txt";
+        var periodKey = EorRouting.PeriodKey(now);
         var nameRegex = new Regex(opts.ProjectFilenameRegex, RegexOptions.Compiled);
 
+        // Which folders were actually given a note this period. Read before
+        // touching SharePoint: with no records there is nothing to sweep, and
+        // a store failure must not degrade into "sweep everything".
+        IReadOnlyDictionary<string, string> pending;
+        try
+        {
+            pending = await _store.GetEorControlFilesAsync(periodKey, ct).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            return new JobRunResult(false, $"Could not read FileSync.EorControlFiles for {periodKey}: {ex.Message}. Refusing to sweep.");
+        }
+
         _logger.LogInformation(
-            "Starting MoveReportsToToSend (mode={Mode}, source={Source}). Looking for ack'd EORs (control file '{Ctrl}' missing).",
-            config.Mode, triggerSource, controlFileName);
+            "Starting MoveReportsToToSend (mode={Mode}, source={Source}, period={Period}). {Count} EOR folder(s) were given a note this period: {Eors}.",
+            config.Mode, triggerSource, periodKey, pending.Count, string.Join(", ", pending.Keys.OrderBy(k => k, StringComparer.OrdinalIgnoreCase)));
 
         // Cache project-number -> ToSend folder path so we don't rescan categories per file.
         var projectFolderCache = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
@@ -148,6 +170,10 @@ internal sealed class MoveReportsToToSendRunner : IJobRunner
 
         var results = new List<ToSendMoveResult>();
         int eorsScanned = 0, eorsSkippedAck = 0;
+        // folder -> project-file count left behind, by reason, for the summary
+        var leftNotAcked = new SortedDictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        var leftNoBatch = new SortedDictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        var catchAllLeft = new List<string>();
 
         foreach (var eor in eorFolders)
         {
@@ -173,19 +199,33 @@ internal sealed class MoveReportsToToSendRunner : IJobRunner
                 continue;
             }
 
-            var controlPresent = children.Any(c =>
-                c.Folder is null && string.Equals(c.Name, controlFileName, StringComparison.OrdinalIgnoreCase));
-            if (controlPresent)
-            {
-                _logger.LogInformation("Control file present for '{Eor}' -- not yet acknowledged. Skipping.", eorName);
-                eorsSkippedAck++;
-                continue;
-            }
-
-            eorsScanned++;
             var dataFiles = children
                 .Where(c => c.Folder is null && !string.IsNullOrWhiteSpace(c.Name) && !string.IsNullOrWhiteSpace(c.Id))
                 .ToList();
+            var projectFileCount = dataFiles.Count(f => f.Name!.Length >= opts.ProjectNumberLength && nameRegex.IsMatch(f.Name!));
+
+            var decision = EorRouting.DecideSweep(eorName, opts.CatchAllFolderName, pending, dataFiles.Select(f => f.Name!).ToList());
+            switch (decision.Action)
+            {
+                case EorRouting.SweepAction.SkipCatchAll:
+                    catchAllLeft.AddRange(dataFiles.Select(f => f.Name!));
+                    _logger.LogInformation("'{Eor}' is the catch-all: {Count} file(s) left in place, never swept.", eorName, dataFiles.Count);
+                    continue;
+                case EorRouting.SweepAction.SkipNoBatch:
+                    if (projectFileCount > 0) leftNoBatch[eorName] = projectFileCount;
+                    _logger.LogInformation("No note was dropped in '{Eor}' this period ({Period}); {Count} project file(s) left in place.", eorName, periodKey, projectFileCount);
+                    continue;
+                case EorRouting.SweepAction.SkipNotAcked:
+                    eorsSkippedAck++;
+                    if (projectFileCount > 0) leftNotAcked[eorName] = projectFileCount;
+                    _logger.LogInformation("Control file '{Ctrl}' still present for '{Eor}' -- not yet acknowledged. Skipping.", decision.ControlFileName, eorName);
+                    continue;
+                case EorRouting.SweepAction.Sweep:
+                    _logger.LogInformation("'{Eor}' acknowledged ('{Ctrl}' is gone); sweeping {Count} file(s).", eorName, decision.ControlFileName, dataFiles.Count);
+                    break;
+            }
+
+            eorsScanned++;
 
             foreach (var file in dataFiles)
             {
@@ -258,14 +298,16 @@ internal sealed class MoveReportsToToSendRunner : IJobRunner
             _logger.LogWarning(ex, "Failed to write audit CSV at '{Path}'.", auditPath);
         }
 
-        // Summary email (Live + at least one moved).
+        // Summary email (Live; whenever something moved OR something was left
+        // behind that a person should know about).
         var movedRows = results.Where(r => r.Status == ToSendMoveStatus.Moved).ToList();
         bool emailed = false;
-        if (!isShadow && movedRows.Count > 0)
+        bool anythingToSay = movedRows.Count > 0 || leftNotAcked.Count > 0 || leftNoBatch.Count > 0 || catchAllLeft.Count > 0;
+        if (!isShadow && anythingToSay)
         {
             try
             {
-                await SendSummaryAsync(opts, movedRows, ct).ConfigureAwait(false);
+                await SendSummaryAsync(opts, movedRows, leftNotAcked, leftNoBatch, catchAllLeft, periodKey, ct).ConfigureAwait(false);
                 emailed = true;
                 _logger.LogInformation("Summary emailed To={To}, Cc={Cc} ({Count} file(s)).", opts.SummaryTo, opts.GlobalCc, movedRows.Count);
             }
@@ -288,8 +330,10 @@ internal sealed class MoveReportsToToSendRunner : IJobRunner
 
         return new JobRunResult(
             Success: failed == 0,
-            Summary: $"{verb} {(isShadow ? wouldMove : moved)} file(s) across {eorsScanned} acknowledged EOR(s); " +
-                     $"skipped {eorsSkippedAck} EOR(s) (control file present), " +
+            Summary: $"{verb} {(isShadow ? wouldMove : moved)} file(s) across {eorsScanned} acknowledged EOR(s) of {pending.Count} given a note for {periodKey}; " +
+                     $"not acknowledged: {eorsSkippedAck} ({leftNotAcked.Values.Sum()} file(s) waiting); " +
+                     $"no note this period but holding files: {leftNoBatch.Count} ({leftNoBatch.Values.Sum()} file(s)); " +
+                     $"{opts.CatchAllFolderName}: {catchAllLeft.Count} file(s) left in place; " +
                      $"{skippedName} bad name(s), {skippedNoProj} no-project, {failed} failed. " +
                      $"Audit: {auditPath}. {(isShadow ? "Email skipped (Shadow)." : emailed ? "Summary email sent." : "No summary email.")}");
     }
@@ -354,14 +398,53 @@ internal sealed class MoveReportsToToSendRunner : IJobRunner
         return needsQuote ? "\"" + escaped + "\"" : escaped;
     }
 
-    private async Task SendSummaryAsync(MoveReportsToToSendOptions opts, IReadOnlyList<ToSendMoveResult> moved, CancellationToken ct)
+    private async Task SendSummaryAsync(
+        MoveReportsToToSendOptions opts,
+        IReadOnlyList<ToSendMoveResult> moved,
+        IReadOnlyDictionary<string, int> leftNotAcked,
+        IReadOnlyDictionary<string, int> leftNoBatch,
+        IReadOnlyList<string> catchAllLeft,
+        string periodKey,
+        CancellationToken ct)
     {
         var sb = new StringBuilder();
         sb.AppendLine("Hello,");
         sb.AppendLine();
-        sb.AppendLine("The following files have been moved to the project server:");
-        foreach (var r in moved)
-            sb.AppendLine($"- {r.FileName} => {r.DestinationPath}");
+        if (moved.Count > 0)
+        {
+            sb.AppendLine("The following files have been moved to the project server (their engineer acknowledged them):");
+            foreach (var r in moved)
+                sb.AppendLine($"- {r.FileName} => {r.DestinationPath}");
+        }
+        else
+        {
+            sb.AppendLine("No files were moved to the project server this run.");
+        }
+
+        if (leftNotAcked.Count > 0)
+        {
+            sb.AppendLine();
+            sb.AppendLine("Still waiting for the engineer to initial and delete the note (nothing moved):");
+            foreach (var (eor, n) in leftNotAcked)
+                sb.AppendLine($"- {eor}: {n} report(s)");
+        }
+
+        if (leftNoBatch.Count > 0)
+        {
+            sb.AppendLine();
+            sb.AppendLine($"Holding reports but were not given a note on the 1st ({periodKey}) -- these will not move until that engineer gets a batch, or they are initialled and moved by hand:");
+            foreach (var (eor, n) in leftNoBatch)
+                sb.AppendLine($"- {eor}: {n} report(s)");
+        }
+
+        if (catchAllLeft.Count > 0)
+        {
+            sb.AppendLine();
+            sb.AppendLine($"{opts.CatchAllFolderName} holds {catchAllLeft.Count} file(s) with no engineer. They are never moved automatically; fix EOR.csv and re-file them:");
+            foreach (var name in catchAllLeft.OrderBy(n => n, StringComparer.OrdinalIgnoreCase))
+                sb.AppendLine($"- {name}");
+        }
+
         sb.AppendLine();
         sb.AppendLine("Thank you.");
 
