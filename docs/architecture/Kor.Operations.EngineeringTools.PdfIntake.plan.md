@@ -780,6 +780,12 @@ residues' cause. Not the PDF route; queued behind it.
    columns in 64 of 103). QUESTIONS.md: one question left. **NEXT: run 35's figures; the reader looks the disagreements
    name (30993, 31017); WP6 is Ian's call.**
 
+3as. **Evening 2026-09-17 20:35 → 21:15** (§131). The yardstick judges PLATES per storey (`c44dbf9c`, `ed0210d8`;
+   disagreements section 7): 31202 56%, 31065 93%, 31138 70%, 31168 40%. 31202's L2–L4: the outline is not drawn (a
+   class of its own). **Step 116 tried and parked** (`step-116`): the walls' outlines in the floor's arrangement —
+   31168's parkades 897 → 44,470 sq ft a storey, 31202 L5 +4,198 — against 31065 L3 25,875 → 10,952 (a closed floor
+   fragmented by its walls' outlines). Rule 10; the next reader step, the biggest plate class left.
+
 4. **WP6** — one model in front of Andrea (31170's, or whichever the ledger ranks best of the
    architects' sets). Ian's call when.
 5. **Step 47**, the next reading rule, from the corpus. `takeoff corpus-query plan-titles` on the

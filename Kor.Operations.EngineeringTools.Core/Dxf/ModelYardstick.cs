@@ -415,17 +415,47 @@ public static class ModelYardstick
         };
     }
 
-    /// <summary>The plate area of each model on each shared storey, in sq ft (E2kModelQuery.Storeys's own figure).</summary>
+    /// <summary>
+    /// The plate area of each model on each shared storey, in sq ft: every AREA of kind FLOOR assigned to the storey
+    /// and not an opening, its plan polygon's area. Read here, not through the query class (that file is not read-side
+    /// and this one is - SixSetReadCacheTests.NoIncludedSourceReferencesAnExcludedOne).
+    /// </summary>
     private static IReadOnlyList<(string Storey, string YardstickStorey, double OursSqFt, double TheirsSqFt)> PlatesOnSharedStoreys(E2kDocument model, E2kDocument yard, IReadOnlyList<StoreyFigure> storeys)
     {
-        Dictionary<string, double> ours, theirs;
-        try
-        {
-            ours = E2kModelQuery.Storeys(model).GroupBy(x => x.Name, StringComparer.OrdinalIgnoreCase).ToDictionary(g => g.Key, g => g.Sum(x => x.SlabAreaSqFt), StringComparer.OrdinalIgnoreCase);
-            theirs = E2kModelQuery.Storeys(yard).GroupBy(x => x.Name, StringComparer.OrdinalIgnoreCase).ToDictionary(g => g.Key, g => g.Sum(x => x.SlabAreaSqFt), StringComparer.OrdinalIgnoreCase);
-        }
-        catch (Exception ex) when (ex is InvalidOperationException or FormatException or ArgumentException) { return []; }
+        var ours = PlatesByStorey(model); var theirs = PlatesByStorey(yard);
         return storeys.Select(f => (f.Storey, f.YardstickStorey, ours.GetValueOrDefault(f.Storey), theirs.GetValueOrDefault(f.YardstickStorey))).ToList();
+    }
+
+    private static Dictionary<string, double> PlatesByStorey(E2kDocument doc)
+    {
+        double inchesPerUnit = doc.LengthUnitInInches() ?? 1.0;
+        var floors = new HashSet<string>(StringComparer.Ordinal);
+        foreach (string raw in doc.LinesOf("AREA CONNECTIVITIES"))
+        {
+            var m = Regex.Match(raw.Trim(), @"^AREA\s+""([^""]+)""\s+FLOOR\b", RegexOptions.IgnoreCase);
+            if (m.Success) floors.Add(m.Groups[1].Value);
+        }
+        var openings = new HashSet<string>(StringComparer.Ordinal);
+        var assigned = new List<(string Name, string Storey)>();
+        foreach (string raw in doc.LinesOf("AREA ASSIGNS"))
+        {
+            var mo = Regex.Match(raw.TrimStart(), @"^AREAASSIGN\s+""([^""]+)""\s+""[^""]*""\s+OPENING\s+""Yes""");
+            if (mo.Success) { openings.Add(mo.Groups[1].Value); continue; }
+            var ms = Regex.Match(raw.TrimStart(), @"^AREAASSIGN\s+""([^""]+)""\s+""([^""]*)""\s+SECTION\s+""");
+            if (ms.Success) assigned.Add((ms.Groups[1].Value, ms.Groups[2].Value));
+        }
+        var points = doc.PlanPointsOfObjects();
+        var result = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (name, storey) in assigned)
+        {
+            if (!floors.Contains(name) || openings.Contains(name)) continue;
+            if (!points.TryGetValue(name, out var pts) || pts.Count < 3) continue;
+            double sum = 0;
+            for (int i = 0; i < pts.Count; i++) { var a = pts[i]; var b = pts[(i + 1) % pts.Count]; sum += a.X * b.Y - b.X * a.Y; }
+            double sqFt = Math.Abs(sum) / 2 * inchesPerUnit * inchesPerUnit / 144.0;
+            result[storey] = result.GetValueOrDefault(storey) + sqFt;
+        }
+        return result;
     }
 
     /// <summary>Every AREA assigned OPENING "Yes", by storey: its plan centre and box in mm.</summary>
