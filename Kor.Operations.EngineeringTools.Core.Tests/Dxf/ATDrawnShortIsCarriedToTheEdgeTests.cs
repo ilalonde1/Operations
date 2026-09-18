@@ -1,4 +1,4 @@
-#nullable enable
+﻿#nullable enable
 using Kor.Operations.EngineeringTools.Dxf;
 using Xunit;
 
@@ -7,13 +7,24 @@ namespace Kor.Operations.EngineeringTools.Core.Tests.Dxf;
 /// <summary>
 /// WHAT IT COVERS: a T drawn four inches short, a foot two millimetres from a target
 /// vertex, and two ends proposing carries onto the same span.
+/// A stem of another pen than the edge it runs into is not carried (a dimension line's end, 31130's L1).
 /// WHAT IT DOES NOT: the real sheet; a carry the agreement refuses is not recovered.
 /// These shapes already recovered before the fix; the near-vertex assertion gates
 /// rejection of a sub-tolerance split, not the real sheet's permutation exception.
 /// </summary>
 public sealed class PlanarRingsATDrawnShortIsCarriedToTheEdgeTests
 {
-    private static DxfSegment S(double ax, double ay, double bx, double by) => new("L", new(ax, ay), new(bx, by));
+    private static DxfSegment S(double ax, double ay, double bx, double by) => new("L", new(ax, ay), new(bx, by)) { Pen = 1.0 };
+
+    [Fact]
+    public void AStemOfAnotherPenIsNotCarried()
+    {
+        // the same T drawn four inches short, its stem a dimension line's pen: no carry, no slab (the U stays open)
+        var lines = new[] { S(0, 1000, 0, 0), S(0, 0, 1000, 0), S(1000, 0, 1000, 500), S(1000, 500, 101.6, 500) with { Pen = 0.25 } };
+        var result = new PlanarRings(3, 152.4, 3).Build(lines);
+        Assert.Empty(result.Carries);
+        Assert.Empty(result.Faces);
+    }
 
     [Fact]
     public void TDrawnFourInchesShortRecoversOneSlab()

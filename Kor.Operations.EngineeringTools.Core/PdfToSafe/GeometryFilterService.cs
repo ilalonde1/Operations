@@ -1755,8 +1755,9 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             IEnumerable<DxfSegment> Pieces(int i)
             {
                 var l = result.Lines[i];
+                double pen = i < result.LineWidths.Count ? result.LineWidths[i] : 0.0;
                 for (int k = 1; k < l.Count; k++)
-                    yield return new DxfSegment("SLABEDGE", new DxfPoint(l[k - 1].X, l[k - 1].Y), new DxfPoint(l[k].X, l[k].Y));
+                    yield return new DxfSegment("SLABEDGE", new DxfPoint(l[k - 1].X, l[k - 1].Y), new DxfPoint(l[k].X, l[k].Y)) { Pen = pen };
             }
 
             // A SLAB EDGE DRAWN ALONG A GRID LINE IS STILL THE SLAB EDGE (intake step 78, 2026-09-15). Step 53

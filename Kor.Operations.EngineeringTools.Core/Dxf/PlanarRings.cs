@@ -138,7 +138,7 @@ public sealed class PlanarRings
                     throw new ArgumentException("PlanarRings requires finite coordinates within +/-1e9 drawing units.", nameof(segments));
         // This is a TEXT provenance label, not a geometric ordering or a selection of structural roles.
         string layer = input.Select(s => s.Layer).OrderBy(s => s, StringComparer.Ordinal).FirstOrDefault() ?? "";
-        var first = Arrange(input.Select(s => new Span(s.Start, s.End, false)).ToList(), layer);
+        var first = Arrange(input.Select(s => new Span(s.Start, s.End, false) { Pen = s.Pen }).ToList(), layer);
         var additions = Bridges(first, out var split);
         var carried = additions.Where(a => LastCarries.Contains(a)).Select(a => (a.A, a.B)).ToList();
         return Finish(first, additions, split, layer) with { Carries = carried };
@@ -150,7 +150,7 @@ public sealed class PlanarRings
     {
         var mesh = first;
         if (additions.Count > 0)
-            mesh = Arrange(first.Edges.Select((e, i) => (e, i)).Where(t => !split.Contains(t.i)).Select(t => new Span(first.Points[t.e.A], first.Points[t.e.B], t.e.Inserted)).Concat(additions).ToList(), layer);
+            mesh = Arrange(first.Edges.Select((e, i) => (e, i)).Where(t => !split.Contains(t.i)).Select(t => new Span(first.Points[t.e.A], first.Points[t.e.B], t.e.Inserted) { Pen = t.e.Pen }).Concat(additions).ToList(), layer);
         mesh.Cut = CutEdges(mesh);
         mesh.Stars = Stars(mesh);
         var cycles = Walk(mesh, Enumerable.Range(0, mesh.Edges.Count * 2).Select(h => !mesh.Cut[h / 2]).ToArray());
@@ -158,8 +158,15 @@ public sealed class PlanarRings
         return new Result(faces.Select(f => f.Outer).ToList(), Chains(mesh)) { Faces = faces, Topology = mesh };
     }
 
-    internal sealed record Edge(int A, int B, bool Inserted);
-    private sealed record Span(DxfPoint A, DxfPoint B, bool Inserted);
+    internal sealed record Edge(int A, int B, bool Inserted)
+    {
+        /// <summary>The pen of the drawn line this edge lies on; 0 where not known or inserted (step 112).</summary>
+        public double Pen { get; init; }
+    }
+    private sealed record Span(DxfPoint A, DxfPoint B, bool Inserted)
+    {
+        public double Pen { get; init; }
+    }
     private sealed record Cycle(List<int> Halves, PlanLoop Loop, double Area, int Component, int WalkId);
     private sealed record Proposal(int A, int B, double Cost, List<Span> Spans)
     {
@@ -259,7 +266,7 @@ public sealed class PlanarRings
                     throw new InvalidOperationException("Distinct nodes occupy the same position along a segment after snapping.");
                 var key = (Math.Min(a, b), Math.Max(a, b)); // Undirected identity only; IDs never break geometry ties.
                 if (edgeIndex.TryGetValue(key, out int e)) edges[e] = edges[e] with { Inserted = edges[e].Inserted && s.Inserted };
-                else { edgeIndex[key] = edges.Count; edges.Add(new Edge(a, b, s.Inserted)); }
+                else { edgeIndex[key] = edges.Count; edges.Add(new Edge(a, b, s.Inserted) { Pen = s.Pen }); }
             }
         }
         var mesh = new Mesh(layer, _joinTolerance, nodes, edges);
@@ -343,6 +350,11 @@ public sealed class PlanarRings
                     var span = new Span(sa, sb, false);
                     if (!Intersection(ray, span, out var f, out double s, out double t)) continue;
                     if (!(s > 0) || !(t > 0.01) || !(t < 0.99)) continue;
+                    // ONTO AN EDGE OF ITS OWN PEN (2026-09-17 20:05): a T drawn short is a slab edge stopping short of the slab
+                    // edge it runs into - one pen. 31130's L1 lost 2,625 sq ft to a dimension line's end carried 5 in onto the
+                    // slab edge, which then cut the floor's east end into cells; a line of another pen, or of no known pen,
+                    // is not carried. Step 110's jog reads the same way: the pieces of one line share a pen.
+                    if (mesh.Edges[own].Pen <= 0 || mesh.Edges[e].Pen <= 0 || Math.Abs(mesh.Edges[own].Pen - mesh.Edges[e].Pen) > 0.01) continue;
                     if (LoopGeometry.Within(f.DistanceTo(sa), _joinTolerance)
                         || LoopGeometry.Within(f.DistanceTo(sb), _joinTolerance)) continue;
                     double d = p.DistanceTo(f);
@@ -352,8 +364,8 @@ public sealed class PlanarRings
                 if (bestE < 0) continue;
                 var carry = new Span(p, foot, true);
                 if (Enumerable.Range(0, mesh.Edges.Count).Any(e => e != bestE && Conflicts(carry, new Span(mesh.Points[mesh.Edges[e].A], mesh.Points[mesh.Edges[e].B], false), true))) continue;
-                var ea = mesh.Points[mesh.Edges[bestE].A]; var eb = mesh.Points[mesh.Edges[bestE].B]; bool ins = mesh.Edges[bestE].Inserted;
-                candidates.Add(new Proposal(a, bestE, Math.Round(bestD, 6), [carry, new Span(ea, foot, ins), new Span(foot, eb, ins)]) { ToEdge = true, Foot = foot });
+                var ea = mesh.Points[mesh.Edges[bestE].A]; var eb = mesh.Points[mesh.Edges[bestE].B]; bool ins = mesh.Edges[bestE].Inserted; double pen = mesh.Edges[bestE].Pen;
+                candidates.Add(new Proposal(a, bestE, Math.Round(bestD, 6), [carry with { Pen = pen }, new Span(ea, foot, ins) { Pen = pen }, new Span(foot, eb, ins) { Pen = pen }]) { ToEdge = true, Foot = foot });
             }
         var unique = new Dictionary<int, Proposal>();
         foreach (int end in ends)

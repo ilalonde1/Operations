@@ -1,4 +1,4 @@
-namespace Kor.Operations.EngineeringTools.Dxf;
+﻿namespace Kor.Operations.EngineeringTools.Dxf;
 
 /// <summary>A point in drawing units (whatever the DXF header declares — typically inches).</summary>
 public readonly record struct DxfPoint(double X, double Y)
@@ -17,6 +17,12 @@ public readonly record struct DxfPoint(double X, double Y)
 public sealed record DxfSegment(string Layer, DxfPoint Start, DxfPoint End)
 {
     public double Length => Start.DistanceTo(End);
+
+    /// <summary>
+    /// The pen the line was drawn with, in the drawing's stroke-width unit; 0 where not known (a DXF, a chain built
+    /// from pieces). PlanarRings carries a T drawn short onto an edge of its own pen only (step 112, 2026-09-17).
+    /// </summary>
+    public double Pen { get; init; }
 
     /// <summary>
     /// This segment came from an arc or a circle rather than from a straight line.
