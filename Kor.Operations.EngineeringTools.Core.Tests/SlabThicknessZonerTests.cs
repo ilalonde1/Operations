@@ -1,4 +1,4 @@
-#nullable enable
+﻿#nullable enable
 
 using System.Collections.Generic;
 using System.Linq;
@@ -51,6 +51,25 @@ public sealed class SlabThicknessZonerTests
         Assert.Contains(callouts, c => c.ValueIn == 8);    // 200mm
         Assert.Contains(callouts, c => c.ValueIn == 35);   // 900mm band
         Assert.Contains(callouts, c => c.ValueIn == 18);   // 450mm band
+    }
+
+    /// <summary>
+    /// A QUALIFIER BETWEEN THE NUMBER AND THE WORD IS STILL THE CALLOUT (step 118, 2026-09-18): 31202's typical
+    /// floors print «8" P/T SLAB» four times a plan and read no thickness while P/T stood between; a word that says
+    /// where or what else (DP., ABOVE) still is not one.
+    /// </summary>
+    [Fact]
+    public void A_qualifier_between_the_number_and_SLAB_is_still_the_callout()
+    {
+        var page = Page(
+            Word("8\"", 100, 600), Word("P/T", 130, 600), Word("SLAB", 170, 600),
+            Word("200", 100, 500), Word("THK", 135, 500), Word("SLAB", 170, 500),
+            Word("42\"", 100, 400), Word("DP.", 135, 400), Word("SLAB", 170, 400));   // the number sits within the zoner's 60 pt reach of SLAB, as on a plan
+        var callouts = SlabThicknessZoner.ReadCallouts(page);
+        Assert.Equal(2, callouts.Count);
+        Assert.Contains(callouts, c => c.ValueIn == 8);
+        Assert.Contains(callouts, c => c.ValueIn == 8 && c.Cy == 500);   // 200 mm
+        Assert.DoesNotContain(callouts, c => c.ValueIn == 42);
     }
 
     [Fact]

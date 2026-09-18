@@ -265,6 +265,7 @@ public static class SheetViews
         var lineOwner = geometry.Lines.Select(l => Owner(Centroid(l).X, Centroid(l).Y)).ToList();
         var footingOwner = geometry.Footings.Select(f => Owner(Centroid(f.Outline).X, Centroid(f.Outline).Y)).ToList();
         var dropOwner = geometry.DropPanelCandidates.Select(d => Owner(Centroid(d).X, Centroid(d).Y)).ToList();
+        var noteOwner = geometry.TextAnnotations.Select(t => Owner(t.X, t.Y)).ToList();
 
         // each view's extent, from what it owns, for the axes that cross it
         var extent = new (double MinX, double MinY, double MaxX, double MaxY, bool Any)[views.Count];
@@ -344,6 +345,11 @@ public static class SheetViews
 
             for (int i = 0; i < geometry.Footings.Count; i++) if (footingOwner[i] == k) g.Footings.Add(geometry.Footings[i]);
             for (int i = 0; i < geometry.DropPanelCandidates.Count; i++) if (dropOwner[i] == k) g.DropPanelCandidates.Add(geometry.DropPanelCandidates[i]);
+            // A NOTE PRINTED IN A VIEW IS THAT VIEW'S (intake step 118, 2026-09-18): the slab callout goes to the model as
+            // a TEXT at its position, and a two-plan sheet carried none of them - 31138's «8" SLAB», printed in each of
+            // the LEVEL 7 and LEVEL 8, 9 plans of S2.26, reached neither, and both plates stayed the 12-in default while
+            // the one-plan sheets read theirs. A note belongs where a column does: to the view it stands in.
+            for (int i = 0; i < geometry.TextAnnotations.Count; i++) if (noteOwner[i] == k) g.TextAnnotations.Add(geometry.TextAnnotations[i]);
             // THE SHEET TAGS ITS WALLS, NOT THE VIEW. The tagging decision (step 34: ten tags or more and
             // an untagged wall is no wall) was taken on the whole sheet at intake, and the composer takes
             // it again on each DXF it is handed by counting that DXF's tags — a sheet of two views with six

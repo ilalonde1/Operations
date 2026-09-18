@@ -124,6 +124,24 @@ public sealed class ASheetIsItsViewsTests
         Assert.Equal([true, false], parts[1].Geometry.ColumnIsTendonAnchor);
     }
 
+    /// <summary>
+    /// A NOTE PRINTED IN A VIEW IS THAT VIEW'S (intake step 118, 2026-09-18). The slab callout leaves the page as a TEXT
+    /// at its position, and the split carried none: on 31138's S2.26 the «8" SLAB» printed in each of the two plans
+    /// reached neither, and both plates stayed the 12-in default while the one-plan sheets read theirs. WHAT THIS
+    /// COVERS: a note goes to the view it stands in, by the same rule as a column. WHAT IT DOES NOT: the one-view
+    /// sheet (the geometry passes through whole), a note between two plans (the nearest title below takes it).
+    /// </summary>
+    [Fact]
+    public void ANotePrintedInAViewIsThatViews()
+    {
+        var g = Geometry();
+        g.TextAnnotations.Add(new TextAnnotation("10\" SLAB", 500 * MmPerPt, 850 * MmPerPt));    // in the left plan
+        g.TextAnnotations.Add(new TextAnnotation("8\" SLAB", 1800 * MmPerPt, 850 * MmPerPt));    // in the right plan
+        var parts = SheetViews.Split(g, SheetViews.Titles(TwoPlans()), MmPerPt, "S2.20.1", NoTitleBlock, "p22");
+        Assert.Equal("10\" SLAB", Assert.Single(parts[0].Geometry.TextAnnotations).Text);
+        Assert.Equal("8\" SLAB", Assert.Single(parts[1].Geometry.TextAnnotations).Text);
+    }
+
     [Fact]
     public void AnAxisGoesToEveryViewItCrosses()
     {

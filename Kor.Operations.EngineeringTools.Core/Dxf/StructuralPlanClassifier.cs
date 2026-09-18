@@ -1,4 +1,4 @@
-using Kor.Operations.EngineeringTools.QuantityTakeoff;
+﻿using Kor.Operations.EngineeringTools.QuantityTakeoff;
 
 namespace Kor.Operations.EngineeringTools.Dxf;
 
@@ -1323,7 +1323,15 @@ public static class StructuralPlanClassifier
                 // the thinner understates stiffness and the thicker overstates it, and neither is
                 // the drawing's answer. It stays on the default and is named, which is a question
                 // worth an engineer's minute.
-                if (distinct.Count > 1)
+                //
+                // UNLESS THE DRAWING SAYS ONE OF THEM MORE OFTEN (intake step 118, 2026-09-18). A plan prints
+                // its field thickness beside every bay - «8" P/T SLAB» four times across 31202's L13 - and a
+                // thickened zone without an outline of its own once; the engineer's own rule is one thickness
+                // per floor, and the one under most of the floor is the one printed most. A tie is still a
+                // question (31168's 14" slab and 56" mat, one call-out each, keep the default and the flag).
+                var byCount = printed.GroupBy(t => t.Inches).Select(g => (Inches: g.Key, Count: g.Count(), Text: g.First().Text))
+                    .OrderByDescending(g => g.Count).ThenBy(g => g.Inches).ToList();
+                if (distinct.Count > 1 && byCount[0].Count == byCount[1].Count)
                 {
                     priced.Add(slab);
                     result.Flags.Add(
@@ -1335,16 +1343,21 @@ public static class StructuralPlanClassifier
                     continue;
                 }
 
+                int chosen = byCount[0].Inches;
                 priced.Add(new PlanLoop(slab.Layer, slab.Points, slab.ClosedExactly)
                 {
-                    ThicknessInchesFromTag = distinct[0]
+                    ThicknessInchesFromTag = chosen
                 });
 
-                string quoted = printed[0].Text;
+                string quoted = byCount[0].Text;
                 if (quoted.Length > 40) quoted = quoted[..40] + "…";
-                result.Flags.Add(
-                    $"{slab.Layer}: a floor plate of {options.SqFt(slab.Area)} sq ft is {distinct[0]}\" thick — read " +
-                    $"from \"{quoted}\", printed inside it. Not assumed, and not taken from a stick file.");
+                result.Flags.Add(distinct.Count > 1
+                    ? $"{slab.Layer}: a floor plate of {options.SqFt(slab.Area)} sq ft is {chosen}\" thick — read from " +
+                      $"\"{quoted}\", printed inside it {byCount[0].Count} times against " +
+                      string.Join(", ", byCount.Skip(1).Select(b => $"{b.Inches}\" {b.Count}x")) +
+                      " (a thickened zone with no outline of its own; the thickness under most of the plate is the plate's)."
+                    : $"{slab.Layer}: a floor plate of {options.SqFt(slab.Area)} sq ft is {chosen}\" thick — read " +
+                      $"from \"{quoted}\", printed inside it. Not assumed, and not taken from a stick file.");
             }
 
             result.Slabs.Clear();

@@ -114,6 +114,13 @@ public static class ModelYardstick
         /// shape of the slab on every storey, and the column figures above say nothing about the slab.
         /// </summary>
         public IReadOnlyList<(string Storey, string YardstickStorey, double OursSqFt, double TheirsSqFt)> Plates { get; init; } = [];
+        /// <summary>
+        /// SLAB THICKNESS, OURS AGAINST HERS, on the storeys both name (step 118, 2026-09-18): the thickness carried by
+        /// most of each model's plate area on the storey, in inches (0 where the storey has no plate). The engineer's
+        /// own words: one thickness per floor; and every plate of ours was the 12-in default until the plan's callout
+        /// reached the model.
+        /// </summary>
+        public IReadOnlyList<(string Storey, string YardstickStorey, double OursIn, double TheirsIn)> Thickness { get; init; } = [];
     }
 
     /// <summary>How far apart the centres of our opening and hers may be and still be one opening: a shaft is 2-3 m across and the frame carries registration slop.</summary>
@@ -412,6 +419,7 @@ public static class ModelYardstick
             TheirsOpeningsCovered = theirsOpeningsCovered,
             OursOpeningsHersElsewhere = oursHersElsewhere,
             Plates = PlatesOnSharedStoreys(model, yard, storeyFigures),
+            Thickness = ThicknessOnSharedStoreys(model, yard, storeyFigures),
         };
     }
 
@@ -423,12 +431,27 @@ public static class ModelYardstick
     private static IReadOnlyList<(string Storey, string YardstickStorey, double OursSqFt, double TheirsSqFt)> PlatesOnSharedStoreys(E2kDocument model, E2kDocument yard, IReadOnlyList<StoreyFigure> storeys)
     {
         var ours = PlatesByStorey(model); var theirs = PlatesByStorey(yard);
-        return storeys.Select(f => (f.Storey, f.YardstickStorey, ours.GetValueOrDefault(f.Storey), theirs.GetValueOrDefault(f.YardstickStorey))).ToList();
+        return storeys.Select(f => (f.Storey, f.YardstickStorey, ours.GetValueOrDefault(f.Storey).SqFt, theirs.GetValueOrDefault(f.YardstickStorey).SqFt)).ToList();
     }
 
-    private static Dictionary<string, double> PlatesByStorey(E2kDocument doc)
+    private static IReadOnlyList<(string Storey, string YardstickStorey, double OursIn, double TheirsIn)> ThicknessOnSharedStoreys(E2kDocument model, E2kDocument yard, IReadOnlyList<StoreyFigure> storeys)
+    {
+        var ours = PlatesByStorey(model); var theirs = PlatesByStorey(yard);
+        return storeys.Select(f => (f.Storey, f.YardstickStorey, ours.GetValueOrDefault(f.Storey).ModalIn, theirs.GetValueOrDefault(f.YardstickStorey).ModalIn)).ToList();
+    }
+
+    private static Dictionary<string, (double SqFt, double ModalIn)> PlatesByStorey(E2kDocument doc)
     {
         double inchesPerUnit = doc.LengthUnitInInches() ?? 1.0;
+        // the thickness of each slab section, in inches (SLABTHICKNESS is in the model's length unit)
+        var thicknessOf = new Dictionary<string, double>(StringComparer.Ordinal);
+        foreach (string header in new[] { "SLAB PROPERTIES", "DECK PROPERTIES" })
+            foreach (string raw in doc.LinesOf(header))
+            {
+                var m = Regex.Match(raw.Trim(), @"^SHELLPROP\s+""([^""]+)""", RegexOptions.IgnoreCase);
+                var t = Regex.Match(raw, @"(?:SLABTHICKNESS|DECKSLABDEPTH)\s+(-?[\d.eE+]+)", RegexOptions.IgnoreCase);
+                if (m.Success && t.Success && double.TryParse(t.Groups[1].Value, NumberStyles.Float, CultureInfo.InvariantCulture, out double v)) thicknessOf[m.Groups[1].Value] = v * inchesPerUnit;
+            }
         var floors = new HashSet<string>(StringComparer.Ordinal);
         foreach (string raw in doc.LinesOf("AREA CONNECTIVITIES"))
         {
@@ -436,25 +459,35 @@ public static class ModelYardstick
             if (m.Success) floors.Add(m.Groups[1].Value);
         }
         var openings = new HashSet<string>(StringComparer.Ordinal);
-        var assigned = new List<(string Name, string Storey)>();
+        var assigned = new List<(string Name, string Storey, string Section)>();
         foreach (string raw in doc.LinesOf("AREA ASSIGNS"))
         {
             var mo = Regex.Match(raw.TrimStart(), @"^AREAASSIGN\s+""([^""]+)""\s+""[^""]*""\s+OPENING\s+""Yes""");
             if (mo.Success) { openings.Add(mo.Groups[1].Value); continue; }
-            var ms = Regex.Match(raw.TrimStart(), @"^AREAASSIGN\s+""([^""]+)""\s+""([^""]*)""\s+SECTION\s+""");
-            if (ms.Success) assigned.Add((ms.Groups[1].Value, ms.Groups[2].Value));
+            var ms = Regex.Match(raw.TrimStart(), @"^AREAASSIGN\s+""([^""]+)""\s+""([^""]*)""\s+SECTION\s+""([^""]*)""");
+            if (ms.Success) assigned.Add((ms.Groups[1].Value, ms.Groups[2].Value, ms.Groups[3].Value));
         }
         var points = doc.PlanPointsOfObjects();
-        var result = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
-        foreach (var (name, storey) in assigned)
+        var area = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+        var byThickness = new Dictionary<string, Dictionary<double, double>>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (name, storey, section) in assigned)
         {
             if (!floors.Contains(name) || openings.Contains(name)) continue;
             if (!points.TryGetValue(name, out var pts) || pts.Count < 3) continue;
             double sum = 0;
             for (int i = 0; i < pts.Count; i++) { var a = pts[i]; var b = pts[(i + 1) % pts.Count]; sum += a.X * b.Y - b.X * a.Y; }
             double sqFt = Math.Abs(sum) / 2 * inchesPerUnit * inchesPerUnit / 144.0;
-            result[storey] = result.GetValueOrDefault(storey) + sqFt;
+            area[storey] = area.GetValueOrDefault(storey) + sqFt;
+            if (thicknessOf.TryGetValue(section, out double thick))
+            {
+                if (!byThickness.TryGetValue(storey, out var d)) byThickness[storey] = d = new Dictionary<double, double>();
+                double key = Math.Round(thick, 2);
+                d[key] = d.GetValueOrDefault(key) + sqFt;
+            }
         }
+        var result = new Dictionary<string, (double SqFt, double ModalIn)>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (storey, sqFt) in area)
+            result[storey] = (sqFt, byThickness.TryGetValue(storey, out var d) && d.Count > 0 ? d.OrderByDescending(kv => kv.Value).ThenBy(kv => kv.Key).First().Key : 0);
         return result;
     }
 
@@ -582,6 +615,13 @@ public static class ModelYardstick
             var under = c.Plates.Where(p => p.TheirsSqFt > 0 && p.OursSqFt < 0.5 * p.TheirsSqFt).ToList();
             var over = c.Plates.Where(p => p.OursSqFt > 1.5 * Math.Max(p.TheirsSqFt, 1)).ToList();
             sb.AppendLine(CultureInfo.InvariantCulture, $"plates on the shared storeys: ours {po:N0} sq ft, hers {pt:N0} ({(pt == 0 ? 0 : 100.0 * po / pt):F0}%); storeys where ours is under half of hers: {under.Count} ({string.Join(" ", under.Take(8).Select(p => $"{p.Storey} {p.OursSqFt:N0}/{p.TheirsSqFt:N0}"))}{(under.Count > 8 ? " ..." : "")}); ours over half again hers: {over.Count}{(over.Count == 0 ? "" : " (" + string.Join(" ", over.Take(6).Select(p => $"{p.Storey} {p.OursSqFt:N0}/{p.TheirsSqFt:N0}")) + ")")}");
+        }
+        if (c.Thickness.Count > 0)
+        {
+            var judged = c.Thickness.Where(t => t.OursIn > 0 && t.TheirsIn > 0).ToList();
+            int agree = judged.Count(t => Math.Abs(t.OursIn - t.TheirsIn) <= 0.5);
+            var off = judged.Where(t => Math.Abs(t.OursIn - t.TheirsIn) > 0.5).Take(8).Select(t => $"{t.Storey} {t.OursIn:0.#}/{t.TheirsIn:0.#}").ToList();
+            sb.AppendLine(CultureInfo.InvariantCulture, $"slab thickness on the shared storeys (the thickness under most of the plate area, ours/hers in): {judged.Count} storeys both plate, {agree} agree within half an inch ({(judged.Count == 0 ? 0 : 100.0 * agree / judged.Count):F0}%){(off.Count > 0 ? "; off: " + string.Join(" ", off) : "")}");
         }
         if (c.Openings.Ours > 0 || c.Openings.Theirs > 0 || c.Openings.OursBeyond > 0)
         {

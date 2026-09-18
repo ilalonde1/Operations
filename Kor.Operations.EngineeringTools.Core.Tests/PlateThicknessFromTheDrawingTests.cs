@@ -1,4 +1,4 @@
-using Kor.Operations.EngineeringTools.Dxf;
+﻿using Kor.Operations.EngineeringTools.Dxf;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -151,6 +151,23 @@ public class PlateThicknessFromTheDrawingTests
         Assert.Null(plate.ThicknessInchesFromTag);
         Assert.Contains(set.Flags, f =>
             f.Contains("different thickness call-outs", StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>
+    /// THE ONE THE DRAWING SAYS MORE OFTEN IS THE PLATE'S (step 118, 2026-09-18). A plan prints its field thickness
+    /// beside every bay and a thickened zone without an outline of its own once: 31202's L13, «8" P/T SLAB» four times
+    /// and «5"» once, read no thickness under the two-numbers rule. The thickness under most of the floor is the
+    /// one printed most; a tie stays a question (the test above).
+    /// </summary>
+    [Fact]
+    public void TheCallOutPrintedMostOftenIsThePlatesThickness()
+    {
+        var set = StructuralPlanClassifier.Classify(
+            Ring(0, 0, 3000, 2400).ToList(), Options(), sheet: null,
+            tags: new[] { Tag("8\" SLAB", 600, 600), Tag("8\" SLAB", 1800, 600), Tag("8\" SLAB", 600, 1800), Tag("12\" SLAB", 2100, 1600) });
+
+        Assert.Equal(8, Assert.Single(set.Slabs).ThicknessInchesFromTag);
+        Assert.Contains(set.Flags, f => f.Contains("printed inside it 3 times against 12\" 1x", StringComparison.Ordinal));
     }
 
     /// <summary>

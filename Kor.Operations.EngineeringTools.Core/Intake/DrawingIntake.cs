@@ -241,6 +241,15 @@ public static class DrawingIntake
             var thinnedFates = new List<PathFate>();
             // the page's words, in mm, for what a region says it is (step 106)
             foreach (var w in content.Words) geometry.PageWords.Add((w.Text, w.Cx * scaleFactor, w.Cy * scaleFactor));
+            // THE SLAB CALLOUT THE PAGE PRINTS GOES TO THE MODEL AS THE TAG IT IS (intake step 118, 2026-09-18). The
+            // reader has read «8" SLAB» / «200 SLAB» off every plan since the zoner, and the DXF route has priced a plate
+            // by the tag printed inside it since 2026-08-26 (StructuralPlanClassifier: a tag belongs to the smallest
+            // plate containing it; two numbers in one plate and it is named, not guessed) - and the PDF route never
+            // handed the one to the other, so every plate of every model was the 12-in default and the report said so.
+            // The callouts go out as TEXT on the view, in the plan's own frame, where the classifier reads them.
+            foreach (var c in callouts)
+                if (!furniture.IsFurniture(c.Cx, c.Cy))
+                    geometry.TextAnnotations.Add(new TextAnnotation($"{c.ValueIn}\" SLAB", c.Cx * scaleFactor, c.Cy * scaleFactor));
             var footingPieces = PdfPlanReader.ReadFootings(raw, content, geometry, request.MarkupOnly, scaleFactor, furniture, out footingLabels, options.DashGapMm);
             GeometryFilterService.Classify(raw, geometry,
                 options.SlabMinDiagonalMm, options.LineMinLengthMm, false,

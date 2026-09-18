@@ -1,4 +1,4 @@
-#nullable enable
+﻿#nullable enable
 
 using System;
 using System.Collections.Generic;
@@ -61,6 +61,11 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                     .ToList();
                 if (left.Count == 0) continue;
                 string ctx = string.Join(" ", left.Select(w => w.Text));
+                // A QUALIFIER BETWEEN THE NUMBER AND THE WORD IS STILL THE CALLOUT (step 118, 2026-09-18): «8" P/T SLAB»
+                // on 31202's typical floors, «10" CONC. SLAB», «200 THK SLAB» - the number is the thickness whatever the
+                // word between says about the slab's kind. A word that says WHERE (ABOVE, BELOW) or WHAT ELSE (BAND,
+                // STEP, EDGE, DP.) is not one of these and the tail stays untouched.
+                ctx = System.Text.RegularExpressions.Regex.Replace(ctx, @"\s+(P/T|PT|P\.T\.|CONC\.?|CONCRETE|THK\.?|THICK|SUSPENDED|FLAT|R/C|RC)\s*$", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
 
                 // Imperial («10" SLAB») first; if there is no inch mark, try a metric mm tail («200 SLAB»).
                 var parsed = SlabThicknessCallout.MatchNumberFirstTail(ctx);

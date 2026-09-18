@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using System.Text;
 using Kor.Operations.EngineeringTools.Intake;
 using Kor.Operations.EngineeringTools.PdfToSafe;
@@ -37,6 +37,31 @@ public sealed class DrawingIntakeTests
         Assert.Empty(byDefault.Geometry.Slabs);
         Assert.Single(lowered.Geometry.Slabs);
         Assert.Empty(unbridged.Geometry.Slabs);
+    }
+
+    /// <summary>
+    /// THE SLAB CALLOUT THE PAGE PRINTS GOES TO THE MODEL AS THE TAG IT IS (intake step 118, 2026-09-18). The reader
+    /// read «8" SLAB» off every plan since the zoner and the DXF route priced a plate by the tag printed inside it, and
+    /// the PDF route never handed the one to the other: every plate of every model was the 12-in default. The callout
+    /// leaves the page as a TEXT on the view in the plan's frame, the DXF reader takes it as a positioned tag, and the
+    /// classifier gives the plate its thickness. WHAT THIS COVERS: the chain end to end on the fixture's floor. WHAT IT
+    /// DOES NOT: the composer writing the section (the six-set gate), several callouts in one plate (the classifier's
+    /// own tests), a callout in the title block (the furniture keeps it out).
+    /// </summary>
+    [Fact]
+    public void ASlabCalloutOnThePageReachesThePlateAsItsThickness()
+    {
+        using var doc = PdfDocument.Open(Pdf(floor: true, callout: true));
+        var sheet = DrawingIntake.ReadSheet(doc, 1, new(96, PdfIntakeOptions.Default with { MinSlabAreaMm2 = 1_000_000 }), DocumentFacts.From(doc));
+        var note = Assert.Single(sheet.Geometry.TextAnnotations);
+        Assert.Equal("8\" SLAB", note.Text);
+
+        var lines = DxfExporter.ExportLines(sheet.Geometry, korLayers: true);
+        var tags = Kor.Operations.EngineeringTools.Dxf.DxfPlanReader.ReadPositionedTags(lines);
+        Assert.Contains(tags, t => t.Text == "8\" SLAB");
+        var segments = Kor.Operations.EngineeringTools.Dxf.DxfPlanReader.ReadSegments(lines);
+        var set = Kor.Operations.EngineeringTools.Dxf.StructuralPlanClassifier.Classify(segments, new Kor.Operations.EngineeringTools.Dxf.PlanClassificationOptions { SlabLayerPatterns = new[] { "KOR_C_SLABEDG" }, MinSlabArea = 1_000_000 }, sheet: null, tags: tags);
+        Assert.Equal(8, Assert.Single(set.Slabs).ThicknessInchesFromTag);
     }
 
     [Fact]
@@ -160,7 +185,7 @@ public sealed class DrawingIntakeTests
 
     // An ordinary PDF content stream makes the exact path order and annotation dictionaries
     // reviewable without a binary fixture or another PDF library.
-    private static byte[] Pdf(bool polygon = false, bool floor = false)
+    private static byte[] Pdf(bool polygon = false, bool floor = false, bool callout = false)
     {
         string content = """
             0 G 0 g 0.5 w
@@ -183,7 +208,8 @@ public sealed class DrawingIntakeTests
             200 300 m 200 780 l S
             300 300 m 500 350 l S
             1 1 1 rg 100 100 10 10 re f
-            """ + (floor ? Environment.NewLine + "0 G 0.5 w 330 330 m 480 330 l S 480 330 m 480 480 l S 480 480 m 330 480 l S 330 480 m 330 410 l S 331 406 m 331 330 l S" : "");   // four edges, the left one in two pieces with a 4 pt (140 mm) jog between them: neither in line nor converging on a corner, so only the bridge row closes it (step 78)
+            """ + (floor ? Environment.NewLine + "0 G 0.5 w 330 330 m 480 330 l S 480 330 m 480 480 l S 480 480 m 330 480 l S 330 480 m 330 410 l S 331 406 m 331 330 l S" : "")
+            + (callout ? Environment.NewLine + "BT /F1 10 Tf 380 440 Td (8\" SLAB) Tj ET" : "");   // the plan's thickness callout printed inside the floor (step 118); the floor: four edges, the left one in two pieces with a 4 pt (140 mm) jog between them: neither in line nor converging on a corner, so only the bridge row closes it (step 78)
         string annotation = polygon
             ? "<< /Type /Annot /Subtype /Polygon /Rect [600 100 620 120] /Vertices [600 100 620 100 620 120 600 120] /C [1 0 0] /Contents (Check this column) /T (Ian) >>"
             : "<< /Type /Annot /Subtype /Text /Rect [600 100 620 120] /Contents (Check this column) /T (Ian) >>";

@@ -40,6 +40,7 @@ internal static class CorpusDisagreementsVerb
         // openings, ours against hers (step 104's yardstick line): judged, hers, matched each way; the unmatched by plan size
         var openings = new List<(string Job, int Ours, int Theirs, int OursMatched, int TheirsMatched)>();
         var plates = new List<(string Job, double Ours, double Theirs, int Under, string UnderList)>();
+        var thickness = new List<(string Job, int Judged, int Agree, string OffList)>();
         var covered = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);   // her openings whose centre stands inside one of ours (a match by cover)
         var oursOpeningsNotHers = new List<(string Job, string Size, int Count)>();
         var hersOpeningsNotOurs = new List<(string Job, string Size, int Count)>();
@@ -88,6 +89,9 @@ internal static class CorpusDisagreementsVerb
                 // PLATES, OURS AGAINST HERS (2026-09-17 20:55): the yardstick's plate line, summed across the corpus below
                 var mpl = Regex.Match(line, @"^plates on the shared storeys: ours ([\d,]+) sq ft, hers ([\d,]+) \((\d+)%\); storeys where ours is under half of hers: (\d+) \(([^)]*)\)");
                 if (mpl.Success) { plates.Add((job, D(mpl.Groups[1].Value), D(mpl.Groups[2].Value), N(mpl.Groups[4].Value), mpl.Groups[5].Value.Trim())); continue; }
+                // SLAB THICKNESS, OURS AGAINST HERS (step 118, 2026-09-18): the yardstick's thickness line, summed below
+                var mth = Regex.Match(line, @"^slab thickness on the shared storeys .*: (\d+) storeys both plate, (\d+) agree within half an inch \((\d+)%\)(?:; off: (.*))?$");
+                if (mth.Success) { thickness.Add((job, N(mth.Groups[1].Value), N(mth.Groups[2].Value), (mth.Groups[4].Value ?? "").Trim())); continue; }
             }
         }
 
@@ -177,6 +181,27 @@ internal static class CorpusDisagreementsVerb
             }
             Console.WriteLine("   sets to open first (hers minus ours, most first): " + string.Join(" ", plates.Where(p => p.Theirs > 0).OrderByDescending(p => p.Theirs - p.Ours).Take(top)
                 .Select(p => $"{p.Job}({100.0 * p.Ours / p.Theirs:F0}%: {p.UnderList})")));
+        }
+        if (thickness.Count > 0)
+        {
+            Console.WriteLine();
+            Console.WriteLine("8. SLAB THICKNESS, OURS AGAINST HERS on the storeys both models plate (the thickness under most of the plate area; agree = within half an inch):");
+            int tj = thickness.Sum(t => t.Judged), ta = thickness.Sum(t => t.Agree);
+            Console.WriteLine($"   over {thickness.Count} sets: {tj} storeys both plate, {ta} agree ({(tj == 0 ? 0 : 100.0 * ta / tj):F0}%)");
+            var current = thickness.Where(t => olderBy.TryGetValue(t.Job, out int d) && d <= 365).ToList();
+            if (current.Count > 0)
+            {
+                int cj = current.Sum(t => t.Judged), ca = current.Sum(t => t.Agree);
+                Console.WriteLine($"   over the {current.Count} sets whose model is within a year of the drawing: {cj} storeys, {ca} agree ({(cj == 0 ? 0 : 100.0 * ca / cj):F0}%)");
+            }
+            // the pairs that disagree, ours/hers in inches, counted across the corpus: what we print against what she models
+            var pair = new Regex(@"^\d+(?:\.\d+)?/\d+(?:\.\d+)?$");
+            var pairs = thickness.SelectMany(t => t.OffList.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+                .Where(s => pair.IsMatch(s))
+                .GroupBy(s => s).OrderByDescending(g => g.Count()).Take(top).Select(g => $"{g.Key}({g.Count()})");
+            Console.WriteLine("   ours/hers where they differ (in; the yardstick names the first eight a set), most often first: " + string.Join(" ", pairs));
+            Console.WriteLine("   sets to open first (storeys that differ, most first): " + string.Join(" ", thickness.OrderByDescending(t => t.Judged - t.Agree).Take(top)
+                .Select(t => $"{t.Job}({t.Agree}/{t.Judged}: {t.OffList})")));
         }
         return 0;
 
