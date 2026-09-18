@@ -2892,3 +2892,23 @@ box as a 671 sq ft plate on the typical floors (her 7,766 against our 7,662 says
 launched 23:08 on `4ae38776`'s mirror (Core.dll C4D64D59…), the first run of 116 — and the first not to cross 22:00.
 Four findings in one step, each read off a trace line the step added: cells by selection, the biggest cells, the
 wrapping cells. They stay in the trace.
+
+## 135. Step 117 — a match line closes the outline of a part plan (2026-09-17 23:10–23:35)
+
+**70061-01 opened** (her model current; ours 9% of her plate area: P1 5,578 of 59,027, L1 14,575 of 70,913, L2 0 of
+88,314). Its plans are drawn as north and south halves cut on MATCH LINES. P1 north's outline (rendered): its west
+and north are retaining walls (step 116 has those), its east and south are the match lines — no slab edge is drawn
+there because the floor continues on the other sheet — so no cell closed and the half read 507 sq ft. The reader
+already knew the match lines (the furniture reads the words MATCH LINE and the line under them; lines on it take the
+`MatchLine` fate and leave the slab pass) and the composer already joins floors across the seam
+(`MatchLineSheetJoin`, from the DXF route); the arrangement had never seen the line.
+
+**Step 117:** the match line is in the floor's arrangement as an edge (`matchEdges` from `result.MatchLines`). On
+70061-01: P1 north 507 → 31,093 sq ft, P1 south 30,106 — 61,199 against her 59,027; L1 south 29,935, L1 north
+9,868 (partial, the next look); L2 south 29,317 (its north half's outline sheet reads no title — a class of its own).
+**On the six:** 31065 P1 14,154 → 33,255 (hers 39,828), P2 1,351 → 35,440 (hers 36,029), P3 4,764 → 35,734 (she has
+none there; 172 of 175 parking storeys in her models do); 31168 P1/P2/P3 44–48k → 81–84k (hers 78,631 / 87,035), A-L1
++16,568 — 31168 64% → 83% of her plate area, 31065 94% → 113%; the other four byte-identical. Members "lost" at 31065
+P1 are storey shifts (the P2 plate exists now). Test `AMatchLineClosesAPartPlansOutlineTests` (a floor whose north
+side is the fixture's match line, cut by one line: nothing without the rule, 12 × 8 m to the seam with it), proved by
+breaking. **Banked `b2671b5a`**, two re-banked, gate green, fast 1,496. Run 37 (116 + 117) follows run 36.
