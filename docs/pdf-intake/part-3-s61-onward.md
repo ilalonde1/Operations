@@ -2793,3 +2793,30 @@ under 0.5 m are cut in 4 of 95 models with openings — 31065 (48) and 60061-03 
 models, plus two with 2 — so step 111 stays with the drawing and the newest models; stair-sized openings in 45 of 95
 (a split practice; the reader keeps a flight's box as a well); pier-proportioned column sections in use in 64 of 103
 (a scheduled size stays a column, as the tool does). QUESTIONS.md holds one question for her: usability, yes or no.
+
+## 131. The yardstick judges plates; step 116 tried and parked; the outline that is not drawn (2026-09-17 20:35–21:15)
+
+**The yardstick judges plates now** (`c44dbf9c`, `ed0210d8`): per shared storey, ours against hers in sq ft, the
+storeys where ours is under half of hers, and where ours is over half again — the engineer's own measure of a
+usable start is the verticals AND the slab's shape on every storey, and the yardstick judged columns and openings
+only; the per-storey figures that judged steps 112 and 115 were a scratch script. On the six: 31202 56% (L2–L4 at
+1–4% of hers), 31065 93% (P1/P2 at 7–36%; L2–L4 over half again — her model is one tower), 31130 142% (her model the
+east tower), 31138 70% (eight storeys of hers at 0), 31168 40% (P1/P2 at 1–9%). `corpus-disagreements` section 7 sums
+it over the corpus with the current-model share. The first form reached into the query class and
+`SixSetReadCacheTests.NoIncludedSourceReferencesAnExcludedOne` refused it (the yardstick is read-side; the query
+class is not): the plates are read in the yardstick itself.
+
+**31202's L2–L4, looked at** (her 33,572 sq ft a storey; ours 501): the concrete-outline plan draws NO slab edge on
+the podium levels — columns, beams, the core, an OPEN TO BELOW X, "10" SLAB" labels, and the perimeter is not a line;
+the reinforcing sheet reads nine slab pieces and stands down behind the outline sheet (step 80). A class of its own:
+the outline that is not drawn.
+
+**Step 116, tried and PARKED (`step-116`):** the walls' outlines, doors closed, in the floor's arrangement as they are
+in the wells' (a parkade behind retaining walls has its plate at the walls' outer face — her own rule). On the six
+over 115: 31168 P1/P2/P3 7,283 / 897 / 3,402 → 48,064 / 44,470 / 44,471 sq ft (hers 78,631 / 87,035), L2 20,175 →
+33,438; 31202 L5 +4,198, L6 +2,131, L7–L12 +614; 31138 L21 +2,274 and a plate on P4; 31130 L1 +1,085 — **and 31065 L3
+25,875 → 10,952**, the north tower's 14,924 sq ft floor fragmented by its own walls' outlines (the trace: 234 cells,
+the largest 537 sq ft, floors 0 where one cell of 14,924 stood), P1 14,443 → 10,195, P2 −1,327, the L7 core box back
+as a plate. Rule 10: two regressions of one shape — a closed floor cut by wall outlines into cells whose union no
+longer makes it — characterise before banking. The parkade storeys are the biggest plate class left, so it is the
+next reader step.
