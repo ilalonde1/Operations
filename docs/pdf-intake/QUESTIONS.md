@@ -3,7 +3,7 @@
 One file, one line per question, newest first. Answer by editing the line or by mail; a question leaves this file
 the day it is answered (its answer goes where it belongs: a rule, a row, a section). Nothing here blocks the work.
 
-## Open (2026-09-17 17:02)
+## Open (2026-09-17 20:35)
 
 - **Item 8 — three live jobs for a current engineer's look.** No longer what the work waits on: the corpus's own
   review (`takeoff corpus-disagreements`, §111) is the input; your picks are the confirmation at the end.
@@ -14,32 +14,32 @@ the day it is answered (its answer goes where it belongs: a rule, a row, a secti
   (under `%LOCALAPPDATA%`, `Temp/kor-knowledge/codes`); the NBC stair clauses get their pages and their values checked
   against the book within minutes of that.
 
-## For an engineer, when one is asked (few, each backed by a measurement)
+## For an engineer — one question left (2026-09-17 20:35)
 
-- **Small sleeves the drawing marks and the model does not cut (step 111, 23:20).** 31065's S2.15.1 (L4, south
-  tower) draws a 313 × 584 mm box with an X free in the slab beside a wall ("2190mm CLR. TO HEADER ABOVE"); her
-  model has no opening there on any storey, though it cuts 48 sleeves of 0.5 × 0.5 m elsewhere on the set. After
-  step 111 we cut 21 such on 31065 and 10 on 31168 that her model has not, while on 31130/31138/31202 the same rule
-  takes her sleeves we had missed (17 → 31 of 33, 73 → 104 of 208, 33 → 52 of 68). Is a sleeve under some size
-  (0.2 m²? a duct's?) left out of the ETABS model by practice, or are these simply not in her model yet? The
-  reader follows the drawing until told otherwise.
+- **Usability, yes or no.** Whether starting from a model built this way saves her time or costs it — a judgement
+  the corpus cannot make (it measures likeness to her models, not the minutes to fix a plate at 90% of its outline).
+  The set to put in front of her: the best-ranked with a current model (31202 or 31170). Ian's call when.
 
-- **Piers.** A filled rectangle no column schedule declares, longer than 24 in and twice as long as thick, is now
-  modelled as a wall pier (step 99, rows live in 094; run 28: 2,496 columns became walls over 158 sets). A SCHEDULED
-  size stays a column — and there the office has two practices: 31130 schedules 14×36 and models it as a column;
-  31087 schedules 36×44 (×56), 31017 18×30 (×70), 31053 24×36 (×36) and model them as wall piers (579 of ours still
-  stand on a wall of hers after step 99, run 28's disagreements). Which is the rule — the schedule, or the 24-in
-  line whatever the schedule says? One line.
-- **Openings.** The drafter's X across a box is now read as a shaft's opening (step 104), and 78% of ours are hers
-  where she modelled (111 of 142 on five sets). Two things the plan does not say: (a) 31168's L15–26 draw a
-  3.6 × 1.5 m X-box either side of every perimeter column, 0–700 mm in from the slab edge — what is it (a recess, a
-  step, a drop)? It is not cut. (b) Her shafts drawn WITHOUT an X (31202's 2.5 × 3.5 m elevators on nine storeys, its
-  8.5 × 31 m void) — by what mark on the plan should those be read (a hatch, a word, a layer)? (The void is read now,
-  step 106: a big X with OPEN TO BELOW at its crossing.) (c) **31202's ROOF over the atrium:** the roof plan carries the
-  same X with OPEN at its crossing, so the drawing says the atrium is open through the roof; your model roofs it.
-  Which is built?
-- **Her primary model per job.** The yardstick now prefers a model named FULL/GRAVITY over the newest file and
-  never a 2NDRY/CRANE/MASS/CHECK one (step 101). Is that the office's practice for naming the main model?
+## Answered by the corpus — `takeoff e2k-ask <folder> practice` over her 103 models (2026-09-17 20:30)
+
+Ian, 20:20: *"what are you waiting for from her verdict? Exactly?"* — the lines that stood here as an engineer's
+were measurable, and the majority of her own models is the answer.
+
+- **Slab on grade / parking storeys carry a plate: 101 of 103 models plate their lowest storey; 172 of 175 parking
+  storeys (P1, P2, LEVEL −1 …) with members carry a plate.** So a P-level plate is right in kind (the 31168 answer
+  "P3 = no plate" was one set's), and the fragments we read on 31065's P3 are incomplete, not wrong.
+- **Sleeves (under 0.5 m on both sides) are cut in 4 of 95 models with openings** — 31065 (48), 60061-03 (148),
+  31085 (2), 50055 (2): the two thorough current models cut them, 91 do not. Step 111 stays: the reader follows the
+  drawing, and the two models built most recently follow it too; the older models simply left them out. The
+  openings figure "ours she has not" carries the 91's omission, and the small-size classes in the disagreements
+  report (0.5 × 1 m, 0.5 × 0.5 m) are that, not a reader fault.
+- **Stair-sized openings (2–3.5 m by 4–7 m) are cut in 45 of 95 models with openings (810)** — a split practice
+  (31030 145, 30993 76, 31055 32); the reader keeps step 105 (a flight's box is a well) and does not fill stairs.
+- **Piers: pier-proportioned COLUMN sections (24 in and more, twice as long as thick) are in use in 64 of 103 models**
+  — a scheduled size stays a column, which is what the tool does; the 24-in rule (step 99) applies to rectangles no
+  schedule declares, as written. 31087/31017/31053's pier walls are those sets' own practice, a minority.
+- **31168's X-boxes either side of every perimeter column, 31202's roof over the atrium, her primary model's name**
+  — not measurable from the models; left as read (the X-boxes not cut; the roof as drawn; FULL/GRAVITY preferred).
 
 ## Answered
 

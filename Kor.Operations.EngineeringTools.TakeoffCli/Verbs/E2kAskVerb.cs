@@ -58,6 +58,68 @@ internal static class E2kAskVerb
             Console.WriteLine("   strips by set: " + string.Join(" ", stripSets.OrderByDescending(kv => kv.Value).Take(12).Select(kv => $"{kv.Key}({kv.Value})")));
             return 0;
         }
+        // THE ENGINEER'S PRACTICE, COUNTED (2026-09-17 20:30, Ian: "what are you waiting for from her verdict? Exactly?"): the
+        // questions in QUESTIONS.md that were waiting for an engineer are answered by the majority of her own models -
+        // one line per question, X of Y models, and the sets that say otherwise. Only the usability yes/no stays hers.
+        if (Directory.Exists(args[1]) && args.Length >= 3 && args[2].Equals("practice", StringComparison.OrdinalIgnoreCase))
+        {
+            int models = 0;
+            // 1. the lowest storey (slab on grade): a plate, or none
+            int lowestWithPlate = 0, lowestJudged = 0; var lowestPlated = new List<string>();
+            // 2. parking storeys (P1, P2, LEVEL -1, PARKING): plates
+            int parkingStoreys = 0, parkingWithPlate = 0;
+            // 3. sleeves: openings under 0.25 sq m (both sides under 0.5 m)
+            int modelsWithOpenings = 0, modelsWithSleeves = 0, sleeves = 0; var sleeveCounts = new List<int>(); var sleeveSets = new List<string>();
+            // 4. stair-sized openings (2-3.5 m by 4-7 m): stairs cut as holes
+            int modelsWithStairHoles = 0, stairHoles = 0; var stairSets = new List<string>();
+            // 5. pier-proportioned COLUMN sections (the long side 24 in and more, twice the short side) in use
+            int modelsWithPierColumns = 0; var pierSets = new List<string>();
+            foreach (string e2k in Directory.EnumerateFiles(args[1], "*.e2k", SearchOption.TopDirectoryOnly).OrderBy(f => f, StringComparer.Ordinal))
+            {
+                E2kDocument doc;
+                IReadOnlyList<StoreySummary> storeys;
+                try { doc = E2kDocument.Load(e2k); storeys = E2kModelQuery.Storeys(doc); }
+                catch (Exception ex) { Console.Error.WriteLine($"  {Path.GetFileName(e2k)}: {ex.Message}"); continue; }
+                var withMembers = storeys.Where(s => s.Walls + s.Columns + s.Slabs > 0 && !s.Name.Equals("Base", StringComparison.OrdinalIgnoreCase)).ToList();
+                if (withMembers.Count == 0) continue;
+                models++;
+                string set = Path.GetFileNameWithoutExtension(e2k);
+                var lowest = withMembers.OrderBy(s => s.Elevation).First();
+                lowestJudged++;
+                if (lowest.Slabs > 0) { lowestWithPlate++; lowestPlated.Add(set); }
+                foreach (var s in storeys)
+                    if (Regex.IsMatch(s.Name, @"^(P\s*-?\d|PARK|LEVEL\s*-\s*\d|L\s*-\d|B\d|PARKING)", RegexOptions.IgnoreCase) && s.Walls + s.Columns > 0)
+                    { parkingStoreys++; if (s.Slabs > 0) parkingWithPlate++; }
+                IReadOnlyList<(string Storey, string Object, double WidthMm, double HeightMm)> boxes;
+                try { boxes = E2kModelQuery.OpeningBoxes(doc); } catch (Exception) { boxes = []; }
+                if (boxes.Count > 0)
+                {
+                    modelsWithOpenings++;
+                    int sl = boxes.Count(b => Math.Min(b.WidthMm, b.HeightMm) >= 50 && Math.Max(b.WidthMm, b.HeightMm) < 500);
+                    int st = boxes.Count(b => Math.Min(b.WidthMm, b.HeightMm) is >= 2000 and <= 3500 && Math.Max(b.WidthMm, b.HeightMm) is >= 4000 and <= 7000);
+                    if (sl > 0) { modelsWithSleeves++; sleeves += sl; sleeveCounts.Add(sl); sleeveSets.Add($"{set}({sl})"); }
+                    if (st > 0) { modelsWithStairHoles++; stairHoles += st; stairSets.Add($"{set}({st})"); }
+                }
+                bool pier = false;
+                foreach (var (_, kind, size, used, _) in E2kModelQuery.Sections(doc))
+                {
+                    if (!kind.Equals("Column", StringComparison.OrdinalIgnoreCase) || used == 0) continue;
+                    var m = Regex.Match(size, @"^([\d.]+)""\s*x\s*([\d.]+)""");
+                    if (!m.Success) continue;
+                    double a = double.Parse(m.Groups[1].Value, CultureInfo.InvariantCulture), b = double.Parse(m.Groups[2].Value, CultureInfo.InvariantCulture);
+                    double lo = Math.Min(a, b), hi = Math.Max(a, b);
+                    if (hi >= 24 && hi >= 2 * lo) { pier = true; break; }
+                }
+                if (pier) { modelsWithPierColumns++; pierSets.Add(set); }
+            }
+            Console.WriteLine($"{models} model(s) with members; the engineer's practice, by majority:");
+            Console.WriteLine($"  1. the lowest storey carries a plate in {lowestWithPlate} of {lowestJudged} ({(lowestJudged == 0 ? 0 : 100.0 * lowestWithPlate / lowestJudged):F0}%) - slab on grade modelled as a plate: " + string.Join(" ", lowestPlated.Take(12)) + (lowestPlated.Count > 12 ? " ..." : ""));
+            Console.WriteLine($"  2. parking storeys (P1, P2, LEVEL -1 ...) with members: {parkingStoreys}; with a plate {parkingWithPlate} ({(parkingStoreys == 0 ? 0 : 100.0 * parkingWithPlate / parkingStoreys):F0}%)");
+            Console.WriteLine($"  3. sleeves (openings under 0.5 m on both sides) are cut in {modelsWithSleeves} of {modelsWithOpenings} models with openings ({sleeves} sleeves; median {(sleeveCounts.Count == 0 ? 0 : sleeveCounts.OrderBy(c => c).ElementAt(sleeveCounts.Count / 2))} per model that cuts them): " + string.Join(" ", sleeveSets));
+            Console.WriteLine($"  4. stair-sized openings (2-3.5 m by 4-7 m) are cut in {modelsWithStairHoles} of {modelsWithOpenings} models with openings ({stairHoles} openings) - a stair is a hole in the plate where they are: " + string.Join(" ", stairSets.Take(20)) + (stairSets.Count > 20 ? " ..." : ""));
+            Console.WriteLine($"  5. pier-proportioned COLUMN sections (24 in and more, twice as long as thick) are in use in {modelsWithPierColumns} of {models} models: " + string.Join(" ", pierSets.Take(16)) + (pierSets.Count > 16 ? " ..." : ""));
+            return 0;
+        }
         if (!File.Exists(args[1])) { Console.Error.WriteLine($"Model not found '{args[1]}'."); return 2; }
 
         var askDoc = E2kDocument.Load(args[1]);
