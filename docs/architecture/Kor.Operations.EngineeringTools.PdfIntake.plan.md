@@ -751,6 +751,24 @@ residues' cause. Not the PDF route; queued behind it.
    left a set with no line saying why — the report carries the flags now. Codex's step-112 guard (a carry's foot within
    the join tolerance of the target edge's end is refused) is next on the real sheet, 31065 p20.
 
+3ap. **Afternoon 2026-09-17 17:10 → 18:10** (§128). Step 112's "Face successor is not a permutation" characterised: a
+   hole touching its face's boundary at a vertex was owned by nobody (one walk split at the pinch; same-component
+   containment excluded) — develop refused 31065's p7 and p12 the same way WITHOUT the carries. **Fixed in `Regions`
+   and banked alone** (`AHoleTouchingItsFaceAtAVertexIsItsHoleTests`, proved by breaking; the exception now names the
+   vertex and the owners): 31065 71 of 71 pages arrange. **The carries judged by the six and PARKED:** P1 +2,310 sq ft,
+   31168 P2 +1,218, against 31130 L1/L1M −3,257, 31065 L3 −620, L7–L17 −41 × 6, 31130 L17 −301, 31202 L13 −141 — one
+   shape: a T carried onto the edge closes a rim cell that the rim rule drops. **NEXT CANDIDATE (step 115): the rim
+   rule — a rim cell whose outward edges are slab-edge strokes is inside the outline and is floor**; needs the stroke
+   class carried through `Arrange` to the mesh's edges; corpus-judged. Then the carries return.
+
+3aq. **Evening 2026-09-17 18:15 → 19:10** (§129). **Step 115 written and judged by the six:** a rim cell whose every
+   outward edge lies on a line of the outline's pen (read from the page: the mode over the structure-holding cells of a
+   floor's size) is inside the outline and floor. 31065 L7–L17 6,690 → 7,662 sq ft (hers 7,766), P1 +946, L1 +3,924;
+   31130 every storey +500–3,000; 31138 L17/L18 +1,072; 31202 L6–L13 +1,050–1,350; 31168 L1 +3,170; yardsticks flat or
+   better; one loss (31168 P2 −965 on a storey read at 1%). Open: a balcony drawn with the outline's pen is slab — 31087
+   (her model 2 days old) judges it on run 35. Run 34 (108 + the pinch fix) launched 18:12. NEXT: bank 115, run 35, then
+   112's carries on top of 115 (the rim losses should be gone), then 30838's corner-column edge (109's unlock).
+
 4. **WP6** — one model in front of Andrea (31170's, or whichever the ledger ranks best of the
    architects' sets). Ian's call when.
 5. **Step 47**, the next reading rule, from the corpus. `takeoff corpus-query plan-titles` on the

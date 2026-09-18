@@ -1,4 +1,4 @@
-// The takeoff verb `corpus-analyze`, as it stood in Program.cs before the split (WP3, 2026-09-11); its body is unchanged.
+﻿// The takeoff verb `corpus-analyze`, as it stood in Program.cs before the split (WP3, 2026-09-11); its body is unchanged.
 // THE ANALYZER: the whole corpus through the one ingestion point, into the ledger (completion plan
 // WP1, 2026-09-11). Every job's current stick file, mirrored once, built exactly as the verbs build
 // one (PdfOnlyBuild), one row per set and per sheet into analysis.IntakeSet / IntakeSheet (migration
@@ -44,8 +44,13 @@ internal static class CorpusAnalyzeVerb
         // THE THIRD DEATH (run 31, 22:04:04): exit -1073741510 = STATUS_CONTROL_C_EXIT with no Ctrl-C logged, so a console
         // CLOSE, log-off or shutdown - the events the handler above cannot refuse. .NET runs ProcessExit on them with a few
         // seconds' grace: the time and the kind are written to the log, so the next one says what it was and when.
+        // (and a run that FINISHED says so - the handler fires on every exit, and run 34's scratch sibling read "a console
+        // close, a log-off or a kill" at the end of a normal run, 18:18)
+        bool caFinished = false;
         AppDomain.CurrentDomain.ProcessExit += (_, _) =>
-            Console.WriteLine($"  process exit at {DateTime.Now:HH:mm:ss}: a console close, a log-off or a kill (not a Ctrl-C, which is refused above)");
+            Console.WriteLine(caFinished
+                ? $"  process exit at {DateTime.Now:HH:mm:ss}: the run finished"
+                : $"  process exit at {DateTime.Now:HH:mm:ss}: a console close, a log-off or a kill (not a Ctrl-C, which is refused above)");
         Console.WriteLine("census...");
         var caCensus = StickFileCorpus.CensusCached(caRoot, caProblems, TimeSpan.FromHours(12), caCensusFresh, line => Console.WriteLine("  " + line), parallel: 12);
         Console.Write(StickFileCorpus.Summary(caCensus));
@@ -56,6 +61,7 @@ internal static class CorpusAnalyzeVerb
         Console.Write(CorpusAnalyzer.Summary(caRun));
         Console.WriteLine("  " + CorpusAnalyzer.WriteLedger(caRun, caRulesDb));
         Console.WriteLine($"  csv: {Path.Combine(caWork, "ledger-sets.csv")}, {Path.Combine(caWork, "ledger-sheets.csv")}");
+        caFinished = true;
         return 0;
     }
 }

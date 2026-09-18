@@ -1,4 +1,4 @@
-#nullable enable
+﻿#nullable enable
 using Kor.Operations.EngineeringTools.Dxf;
 using Kor.Operations.EngineeringTools.Intake;
 using Kor.Operations.EngineeringTools.PdfToSafe;
@@ -26,6 +26,7 @@ public sealed class AFloorIsItsCellsUnitedTests
     private static RawSubpath Line(double x0, double y0, double x1, double y1) => FateFixture.Line(x0, y0, x1, y1);
     private static RawSubpath Column(double x, double y) => FateFixture.Rect(600, 800, x, y);
     private static RawSubpath Heavy(double x0, double y0, double x1, double y1) => FateFixture.Line(x0, y0, x1, y1) with { LineWidth = 2.0 };
+    private static RawSubpath Thin(double x0, double y0, double x1, double y1) => FateFixture.Line(x0, y0, x1, y1) with { LineWidth = 0.25 };
 
     private static ExtractedGeometry Read(params RawSubpath[] paths) => FateFixture.Classify(paths.ToList(), new List<PathFate>());
 
@@ -71,9 +72,11 @@ public sealed class AFloorIsItsCellsUnitedTests
     public void ABalconyBoxAgainstTheOutlineLeavesTheFloorWholeAndStaysOut()
     {
         // the balcony is a closed box below the south edge sharing that edge's piece, drawn FIRST so a walk that
-        // spends a segment on the first ring it closes would give the edge to the box; its cell holds nothing
+        // spends a segment on the first ring it closes would give the edge to the box; its cell holds nothing. Its own
+        // three sides are drawn with a lighter pen than the outline's: a box facing the page with the outline's pen is
+        // slab by the drawing's own word (step 115, ARimCellFacingThePageThroughTheOutlinesPenIsInsideTheOutlineTests)
         double bx0 = 43000, bx1 = 45000, by = 18500;
-        var g = Read(Line(bx0, 20000, bx0, by), Line(bx0, by, bx1, by), Line(bx1, by, bx1, 20000), Line(bx1, 20000, bx0, 20000),
+        var g = Read(Thin(bx0, 20000, bx0, by), Thin(bx0, by, bx1, by), Thin(bx1, by, bx1, 20000), Line(bx1, 20000, bx0, 20000),
                      Line(40000, 20000, bx0, 20000), Line(bx1, 20000, 48000, 20000),
                      Line(48000, 20000, 48000, 26000), Line(48000, 26000, 40000, 26000), Line(40000, 26000, 40000, 20000),
                      Column(43000, 22000), Column(46000, 24000), Column(41000, 24000));

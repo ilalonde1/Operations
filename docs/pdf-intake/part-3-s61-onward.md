@@ -2673,3 +2673,86 @@ moves with no sentence beside it is a report telling half; "the WHY for every co
 the comment above the writer.
 
 QUESTIONS.md: the 097/098 items are gone. Run 34 carries 108 with whatever of 112 stands by then.
+
+## 128. Step 112 characterised — the refusal was a pinched hole, never the carries; the carries judged and parked (2026-09-17 17:10–18:10)
+
+**Codex's run (16:43):** shape (a) of the brief — a carry whose foot lands within the join tolerance of the target
+edge's end is refused — with three tests; "all three shapes recovered before this change, so this guard is not yet a
+verified fix for the sheet failure." True: with the guard, 31065's p7 and p20 were refused exactly as before.
+
+**The trace on develop WITHOUT 112 refuses two pages of 31065 too** (p7 the typical details, p12 the design-load
+plan); the carries moved which pages hit it (p12 cured, p20 hit). One class, three instances — rule 11. The exception
+was made to say where and whose: *"at (57705,24663) two boundary half-edges (owners 40/none and 39/none, twins) share a
+successor"*. Read off the wedges round the vertex, that is one face whose walk passes the vertex twice — a box drawn
+inside a floor with a corner ON the floor's edge — split at the pinch into the face's ring and the hole's ring, and the
+hole's ring, being in the face's own component, excluded from the containment that `Regions` reserved for the
+outside's rings: owned by nobody. The face had no hole; the walk that recovered the face and its neighbour met two
+half-edges with one successor at the corner. **Fix in `Regions`: a ring split from a walk that also made a positive
+ring holding it is that ring's hole** (`Cycle.WalkId`). `AHoleTouchingItsFaceAtAVertexIsItsHoleTests`: a 10 × 10 m
+floor with a 1 × 1 m diamond inside it, corner on the south edge, in three line orders — the floor carries the diamond
+as a hole; both cells recover as one slab with no hole; the floor alone as one slab with one hole; red without the
+rule. 31065 on the branch: **71 of 71 pages arrange** (from 69); P1 north reads an 11,442 sq ft floor holding 37
+columns and 62 walls that the walk never found.
+
+**Then the six judged the carries (112 + the fix, develop merged in): gains 31065 P1 +2,310 sq ft (toward her
+39,828), 31168 P2 +1,218; losses of ONE shape — 31130 L1/L1M 30,916 → 27,659 (hers 55,387), 31065 L3 −620 with a
+column left outside the plate, 31065 L7–L17 −41 × 6 (a 1.5 × 2.3 m box under column C10 against the west edge, three
+lines drawn an inch short of it — her model has slab there; `pdf-overlay --crop` p36), 31130 L17 −301, 31202 L13 −141.
+Column and opening yardsticks unmoved (31138 hers-we-have 128 → 132).** Rule 10: a T carried onto the plate's edge
+closes a cell at the RIM, and the rim rule (step 98's converse — a cell touching the outside is not the floor unless
+it holds structure) drops what was part of the big cell while the line stopped short. Any interior line drawn exactly
+to the edge does the same today; the carries make more of them. The fix belongs to the rim rule, not the carries: **a
+rim cell whose outward edges are slab-edge strokes lies inside the outline and is floor** (a balcony box or a
+dimension strip faces the page with thin lines) — which needs each stroke's class (`segments`/pieces/loops are the
+slab-edge pen; `StrokesOnGrid` are not) carried through `Arrange`'s merges and splits to the mesh's edges. A step of
+its own, corpus-judged (plan row 3ap).
+
+**Banked alone (`pinched-hole` → develop): the pinch fix and the diagnostic exception, without the carries.** The
+carries stay on `step-112` (`8d3afd4c` + the develop merge) with this section as the reason. Codex's guard and tests
+stay on the branch with them.
+
+## 129. Step 115 — a rim cell facing the page through the outline's own pen is inside the outline (2026-09-17 18:15–19:10)
+
+**From §128's shape.** The rim rule (step 78/98's converse: a cell touching the outside is not the floor unless it
+holds structure) was written for the balcony box, the dimension strip and the courtyard's open side — all OUTSIDE the
+outline. A line drawn across the floor that reaches the slab edge closes a cell at the rim INSIDE the outline, and
+that cell, holding nothing, was dropped with them: 31065's typical tower plate read 6,690 sq ft of her 7,766, and every
+interior line drawn exactly to the edge has done this all along — the carries of step 112 only made more of them.
+
+**The drawing says which side of the outline a rim cell is on: the outline is drawn with ONE pen.** A rim cell whose
+every outward edge (the mesh edges through which it touches the unbounded outside — `PlanarRings.Result.OutwardEdges`)
+lies on a line of the outline's pen is inside the outline, and floor; a balcony box or a dimension strip faces the page
+through its own lines. No pen is hard-coded: the outline's pen is read from the page each time — the mode over the
+outward edges of the structure-holding cells of a floor's size (400 sq ft and more; a core box holding a column named
+its wall pen on 31065's south tower L7, whose outline never closes, and stood as a 671 sq ft plate until the size
+gate). 0.96 mm on 31065's tower plans, 8 mm on its parkade plans, 9 mm on 31168's. The trace line: "the outline's pen
+is 0.96 mm (55 outward edges of the structure-holding cells); 7 rim cells face the page through it alone".
+
+**Judged by the six and her models (plates per storey):** 31065 L7–L17 6,690 → 7,662 (hers 7,766; the balconies along
+the north and south edges, drawn with the outline's pen, rendered and looked at), P1 13,861 → 14,807, L1 27,527 →
+31,451, L2–L4 +800 to +1,550; 31130 (her model the east tower) every storey +500 to +3,000, L2 9,241 → 10,580 (hers
+12,291); 31138 L2 11,100 → 12,132, L17/L18 8,266 → 9,338 (hers 11,598); 31202 L6–L13 +1,050 to +1,350; 31168 L1
+26,647 → 29,817, P1 5,500 → 7,326; column and opening yardsticks flat or a point better (31168 ours-she-has 71 → 73%).
+One loss: 31168 P2 965 → 0 sq ft, a parkade storey read at 897 of her 87,035.
+
+**The honest question the step carries:** a balcony box drawn with the outline's pen is slab by this rule; one drawn
+lighter is not. Two fixture tests (`AFloorIsItsCellsUnitedTests.ABalconyBoxAgainstTheOutline…`,
+`AnXAcrossARegionIsAnOpeningTests.AFloorWithAnXMarkedShaft…`) drew their balconies at the fixture's one pen and went
+red; their balconies are drawn lighter now, with the reason in each. 31087's balconies (the origin of that fixture; her
+model two days old) are the corpus's test — run 35. Test
+`ARimCellFacingThePageThroughTheOutlinesPenIsInsideTheOutlineTests`: a 20 × 10 m floor open on its east edge, a west
+strip holding nothing (rim, the outline's pen: floor), a thin balcony (not floor), an outline-pen balcony (floor);
+proved by breaking (80 m² without the rule, 148 with). A fixture lesson on the way: the fixture's grid axes stand at
+30,000 — an outline edge drawn on one becomes a stroke on grid and the test reads a different page.
+
+**The second half, from the second look (19:10–19:35).** 31065's south tower L7 view shares its page with the L6 view;
+L6's floor closes and names the outline's pen, L7's never closes, and L7's core box — walls drawn with that pen —
+faced the page "through the outline's pen" and stood as a 671 sq ft plate. A pen alone cannot tell a wall line from a
+slab edge on a set that draws both with one pen. So: **a rim cell is inside the outline only where it is reached from
+a floor-sized structure-holding cell across shared edges (`PlanarRings.Result.Neighbours`), through cells that are
+floor themselves** — enclosed cells, or rim cells facing the page through the outline's pen. The core box touches no
+floor and stands out (that page 9 → 5 slabs); the balconies and the strips along the edge touch the floor and stay in.
+On the six with both halves: 31065 L7–L17 6,690 → 6,991 (hers 7,766; one plate, not two), P1 → 14,443, L1 → 31,451;
+the rest as above; 31168 P2 still −965. This half a fixture cannot isolate (a detached box at the pen holding nothing
+is dropped by the neighbourhood gate anyway; one holding a wall is a plate by the holding) — the test says so, and the
+six judge it. Banked with the six re-banked.
