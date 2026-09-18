@@ -136,10 +136,10 @@ public sealed class PlanarRings
                     throw new ArgumentException("PlanarRings requires finite coordinates within +/-1e9 drawing units.", nameof(segments));
         // This is a TEXT provenance label, not a geometric ordering or a selection of structural roles.
         string layer = input.Select(s => s.Layer).OrderBy(s => s, StringComparer.Ordinal).FirstOrDefault() ?? "";
-        var mesh = Arrange(input.Select(s => new Span(s.Start, s.End, false)).ToList(), layer);
+        var mesh = Arrange(input.Select(s => new Span(s.Start, s.End, false) { Wall = s.Layer is "WALL" or "DOOR" }).ToList(), layer);
         var additions = Bridges(mesh);
         if (additions.Count > 0)
-            mesh = Arrange(mesh.Edges.Select(e => new Span(mesh.Points[e.A], mesh.Points[e.B], e.Inserted)).Concat(additions).ToList(), layer);
+            mesh = Arrange(mesh.Edges.Select(e => new Span(mesh.Points[e.A], mesh.Points[e.B], e.Inserted) { Wall = e.Wall }).Concat(additions).ToList(), layer);
         mesh.Cut = CutEdges(mesh);
         mesh.Stars = Stars(mesh);
         var cycles = Walk(mesh, Enumerable.Range(0, mesh.Edges.Count * 2).Select(h => !mesh.Cut[h / 2]).ToArray());
@@ -147,8 +147,15 @@ public sealed class PlanarRings
         return new Result(faces.Select(f => f.Outer).ToList(), Chains(mesh)) { Faces = faces, Topology = mesh };
     }
 
-    internal sealed record Edge(int A, int B, bool Inserted);
-    private sealed record Span(DxfPoint A, DxfPoint B, bool Inserted);
+    internal sealed record Edge(int A, int B, bool Inserted)
+    {
+        /// <summary>A wall's outline edge (step 116): a slab edge's bridge may cross it - the slab runs under the wall.</summary>
+        public bool Wall { get; init; }
+    }
+    private sealed record Span(DxfPoint A, DxfPoint B, bool Inserted)
+    {
+        public bool Wall { get; init; }
+    }
     private sealed record Cycle(List<int> Halves, PlanLoop Loop, double Area, int Component, int WalkId);
     private sealed record Proposal(int A, int B, double Cost, List<Span> Spans);
     internal sealed class Mesh(string layer, double tolerance, List<DxfPoint> points, List<Edge> edges)
@@ -242,7 +249,7 @@ public sealed class PlanarRings
                     throw new InvalidOperationException("Distinct nodes occupy the same position along a segment after snapping.");
                 var key = (Math.Min(a, b), Math.Max(a, b)); // Undirected identity only; IDs never break geometry ties.
                 if (edgeIndex.TryGetValue(key, out int e)) edges[e] = edges[e] with { Inserted = edges[e].Inserted && s.Inserted };
-                else { edgeIndex[key] = edges.Count; edges.Add(new Edge(a, b, s.Inserted)); }
+                else { edgeIndex[key] = edges.Count; edges.Add(new Edge(a, b, s.Inserted) { Wall = s.Wall }); }
             }
         }
         var mesh = new Mesh(layer, _joinTolerance, nodes, edges);
@@ -279,16 +286,21 @@ public sealed class PlanarRings
     private List<Span> Bridges(Mesh mesh)
     {
         if (_bridgeTolerance <= _joinTolerance && _extendLimit <= _joinTolerance) return [];
-        var ends = Enumerable.Range(0, mesh.Points.Count).Where(i => mesh.Adjacency[i].Count == 1).ToList();
+        // AN END IS AN END OF THE DRAWN LINES, WALLS ASIDE (step 116, 2026-09-17 22:05): a slab edge stopping at a wall's face
+        // meets the wall's outline there and is no longer a vertex of degree one, so no bridge was proposed across the wall
+        // to the edge continuing on its far side and the outline stood open - 31065's L3 north, 14,924 sq ft, fell to the
+        // page the moment the walls came in. A vertex with exactly one non-wall edge is an end; that edge is its own.
+        int Own(int v) { int own = -1; foreach (int e in mesh.Adjacency[v]) { if (mesh.Edges[e].Wall) continue; if (own >= 0) return -1; own = e; } return own; }
+        var ends = Enumerable.Range(0, mesh.Points.Count).Where(i => Own(i) >= 0).ToList();
         var candidates = new List<Proposal>();
         for (int i = 0; i < ends.Count; i++)
             for (int j = i + 1; j < ends.Count; j++)
             {
                 int a = ends[i], b = ends[j];
-                if (mesh.Adjacency[a][0] == mesh.Adjacency[b][0]) continue;
+                if (Own(a) == Own(b)) continue;
                 var p = mesh.Points[a]; var q = mesh.Points[b];
-                var pa = mesh.Points[mesh.Other(mesh.Adjacency[a][0], a)];
-                var qb = mesh.Points[mesh.Other(mesh.Adjacency[b][0], b)];
+                var pa = mesh.Points[mesh.Other(Own(a), a)];
+                var qb = mesh.Points[mesh.Other(Own(b), b)];
                 var ra = new Span(p, Add(p, Sub(p, pa)), true);
                 var rb = new Span(q, Add(q, Sub(q, qb)), true);
                 var pieces = new List<Span>();
@@ -296,7 +308,11 @@ public sealed class PlanarRings
                     && LoopGeometry.Within(Math.Max(p.DistanceTo(corner), q.DistanceTo(corner)), _extendLimit))
                 { if (p != corner) pieces.Add(new Span(p, corner, true)); if (q != corner) pieces.Add(new Span(corner, q, true)); }
                 else if (LoopGeometry.Within(p.DistanceTo(q), _bridgeTolerance)) pieces.Add(new Span(p, q, true));
-                if (pieces.Count == 0 || pieces.Any(s => mesh.Edges.Any(e => Conflicts(s, new Span(mesh.Points[e.A], mesh.Points[e.B], false), true)))) continue;
+                // A BRIDGE MAY CROSS A WALL'S OUTLINE (step 116, 2026-09-17 21:35): the slab edge stops at the wall's face and
+                // the next edge starts at its far face; the bridge between them runs through the wall, which is structure the
+                // slab runs under, not a line it may not cross. 31065's L3 north lost its 14,924 sq ft floor to this the moment
+                // the walls' outlines came into the arrangement (the cells-by-selection study: 2,767 sq ft of cells in all).
+                if (pieces.Count == 0 || pieces.Any(s => mesh.Edges.Any(e => !e.Wall && Conflicts(s, new Span(mesh.Points[e.A], mesh.Points[e.B], false), true)))) continue;
                 candidates.Add(new Proposal(a, b, Math.Round(pieces.Sum(s => s.A.DistanceTo(s.B)), 6), pieces));
             }
         var unique = new Dictionary<int, Proposal>();

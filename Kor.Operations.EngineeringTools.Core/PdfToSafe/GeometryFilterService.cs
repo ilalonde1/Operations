@@ -1971,6 +1971,54 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
             // the stair wells (step 105): the arrangement's cell holding all of a stair's flights, built here for the walk path
             // too - the walk finds the floor and builds no arrangement, and the wells are cells of it
+            // THE WALLS ARE IN THE ARRANGEMENT AS THEIR OUTLINES (the wells since step 105; the floor since step 116, 2026-09-17
+            // 20:50): a filled wall left no line for the slab pass - its faces are the fill's edges - so a floor bounded by its
+            // walls (a parkade behind retaining walls: 31202's L2-L4 read 501 of her 33,572 sq ft; 31065's P1/P2, 31168's P1/P2
+            // at 1-9% of hers) had no outline where the walls stand. The engineer's own rule: the plate runs to the
+            // perimeter walls' OUTER face. A wall's outline makes a band cell that holds the wall (Holds), so the floor's
+            // ring runs along the outer face.
+            var wallEdges = result.Walls.Where(w => !result.WallIsAnnotation[result.Walls.IndexOf(w)]).SelectMany(w =>
+                Enumerable.Range(0, w.Outline.Count).Select(k => new DxfSegment("WALL", new DxfPoint(w.Outline[k].X, w.Outline[k].Y), new DxfPoint(w.Outline[(k + 1) % w.Outline.Count].X, w.Outline[(k + 1) % w.Outline.Count].Y))));
+            // a stair well has a door: the doorway knocked out of its wall (step 14) is closed again here, across the
+            // opening on both faces, so the well does not leak into the corridor (31202: the cell holding the flights
+            // was the whole floor, 14,000-33,000 sq ft, on nine of seventeen sheets before this)
+            var doorEdges = result.Doorways.SelectMany(d =>
+            {
+                double dx = d.End.X - d.Start.X, dy = d.End.Y - d.Start.Y, len = Math.Sqrt(dx * dx + dy * dy);
+                if (len < 1) return Enumerable.Empty<DxfSegment>();
+                double nx = -dy / len * d.ThicknessMm / 2, ny = dx / len * d.ThicknessMm / 2;
+                return new[]
+                {
+                    new DxfSegment("DOOR", new DxfPoint(d.Start.X + nx, d.Start.Y + ny), new DxfPoint(d.End.X + nx, d.End.Y + ny)),
+                    new DxfSegment("DOOR", new DxfPoint(d.Start.X - nx, d.Start.Y - ny), new DxfPoint(d.End.X - nx, d.End.Y - ny)),
+                };
+            });
+            // A DOOR DRAWN AS A GAP BETWEEN TWO WALL PIECES (31065: the stair's walls stop either side of the door, no
+            // paper fill over a wall for step 14 to read): two walls on one line, a door's width apart (500-1,300 mm),
+            // are closed across the gap on both faces for the well's arrangement - the cell holding 31065's flights
+            // was the whole plate, 6,700 sq ft, before this (19:05)
+            var gapEdges = new List<DxfSegment>();
+            var wallsForGaps = result.Walls.Where((w, i) => !result.WallIsAnnotation[i]).ToList();
+            for (int a = 0; a < wallsForGaps.Count; a++)
+                for (int b = a + 1; b < wallsForGaps.Count; b++)
+                {
+                    var wa = wallsForGaps[a]; var wb = wallsForGaps[b];
+                    double ax = wa.End.X - wa.Start.X, ay = wa.End.Y - wa.Start.Y, la = Math.Sqrt(ax * ax + ay * ay);
+                    if (la < 1) continue;
+                    double ux = ax / la, uy = ay / la;
+                    // parallel and on one line: b's ends lie within half a thickness of a's line
+                    double Off((double X, double Y) p) => Math.Abs((p.X - wa.Start.X) * -uy + (p.Y - wa.Start.Y) * ux);
+                    if (Off(wb.Start) > Math.Max(wa.ThicknessMm, wb.ThicknessMm) / 2 || Off(wb.End) > Math.Max(wa.ThicknessMm, wb.ThicknessMm) / 2) continue;
+                    double Along((double X, double Y) p) => (p.X - wa.Start.X) * ux + (p.Y - wa.Start.Y) * uy;
+                    double a0 = 0, a1 = la, b0 = Math.Min(Along(wb.Start), Along(wb.End)), b1 = Math.Max(Along(wb.Start), Along(wb.End));
+                    double gap = Math.Max(b0 - a1, a0 - b1);
+                    if (gap < 500 || gap > 1300) continue;
+                    double from = b0 > a1 ? a1 : b1, to = b0 > a1 ? b0 : a0;
+                    double t = Math.Min(wa.ThicknessMm, wb.ThicknessMm) / 2;
+                    var p0 = new DxfPoint(wa.Start.X + ux * from, wa.Start.Y + uy * from); var p1 = new DxfPoint(wa.Start.X + ux * to, wa.Start.Y + uy * to);
+                    gapEdges.Add(new DxfSegment("DOOR", new DxfPoint(p0.X - uy * t, p0.Y + ux * t), new DxfPoint(p1.X - uy * t, p1.Y + ux * t)));
+                    gapEdges.Add(new DxfSegment("DOOR", new DxfPoint(p0.X + uy * t, p0.Y - ux * t), new DxfPoint(p1.X + uy * t, p1.Y - ux * t)));
+                }
             var stairWells = new List<PlanLoop>();
             if (result.StairFlights.Count > 0 && arranged.Count >= 3)
             {
@@ -1994,50 +2042,6 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     bool ATreadOf(DxfSegment seg) => (InAStair(seg.Start) && InAStair(seg.End))
                         || result.TreadLines.Any(t => (Near(seg.Start, t.A) && Near(seg.End, t.B)) || (Near(seg.Start, t.B) && Near(seg.End, t.A)));
                     static bool Near(DxfPoint p, (double X, double Y) q) => Math.Abs(p.X - q.X) <= 5 && Math.Abs(p.Y - q.Y) <= 5;
-                    // and the walls are in it as their outlines: a filled wall left no line for the slab pass (its faces are the
-                    // fill's edges), and the stair's walls are what bound the well
-                    var wallEdges = result.Walls.Where(w => !result.WallIsAnnotation[result.Walls.IndexOf(w)]).SelectMany(w =>
-                        Enumerable.Range(0, w.Outline.Count).Select(k => new DxfSegment("WALL", new DxfPoint(w.Outline[k].X, w.Outline[k].Y), new DxfPoint(w.Outline[(k + 1) % w.Outline.Count].X, w.Outline[(k + 1) % w.Outline.Count].Y))));
-                    // a stair well has a door: the doorway knocked out of its wall (step 14) is closed again here, across the
-                    // opening on both faces, so the well does not leak into the corridor (31202: the cell holding the flights
-                    // was the whole floor, 14,000-33,000 sq ft, on nine of seventeen sheets before this)
-                    var doorEdges = result.Doorways.SelectMany(d =>
-                    {
-                        double dx = d.End.X - d.Start.X, dy = d.End.Y - d.Start.Y, len = Math.Sqrt(dx * dx + dy * dy);
-                        if (len < 1) return Enumerable.Empty<DxfSegment>();
-                        double nx = -dy / len * d.ThicknessMm / 2, ny = dx / len * d.ThicknessMm / 2;
-                        return new[]
-                        {
-                            new DxfSegment("DOOR", new DxfPoint(d.Start.X + nx, d.Start.Y + ny), new DxfPoint(d.End.X + nx, d.End.Y + ny)),
-                            new DxfSegment("DOOR", new DxfPoint(d.Start.X - nx, d.Start.Y - ny), new DxfPoint(d.End.X - nx, d.End.Y - ny)),
-                        };
-                    });
-                    // A DOOR DRAWN AS A GAP BETWEEN TWO WALL PIECES (31065: the stair's walls stop either side of the door, no
-                    // paper fill over a wall for step 14 to read): two walls on one line, a door's width apart (500-1,300 mm),
-                    // are closed across the gap on both faces for the well's arrangement - the cell holding 31065's flights
-                    // was the whole plate, 6,700 sq ft, before this (19:05)
-                    var gapEdges = new List<DxfSegment>();
-                    var wallsForGaps = result.Walls.Where((w, i) => !result.WallIsAnnotation[i]).ToList();
-                    for (int a = 0; a < wallsForGaps.Count; a++)
-                        for (int b = a + 1; b < wallsForGaps.Count; b++)
-                        {
-                            var wa = wallsForGaps[a]; var wb = wallsForGaps[b];
-                            double ax = wa.End.X - wa.Start.X, ay = wa.End.Y - wa.Start.Y, la = Math.Sqrt(ax * ax + ay * ay);
-                            if (la < 1) continue;
-                            double ux = ax / la, uy = ay / la;
-                            // parallel and on one line: b's ends lie within half a thickness of a's line
-                            double Off((double X, double Y) p) => Math.Abs((p.X - wa.Start.X) * -uy + (p.Y - wa.Start.Y) * ux);
-                            if (Off(wb.Start) > Math.Max(wa.ThicknessMm, wb.ThicknessMm) / 2 || Off(wb.End) > Math.Max(wa.ThicknessMm, wb.ThicknessMm) / 2) continue;
-                            double Along((double X, double Y) p) => (p.X - wa.Start.X) * ux + (p.Y - wa.Start.Y) * uy;
-                            double a0 = 0, a1 = la, b0 = Math.Min(Along(wb.Start), Along(wb.End)), b1 = Math.Max(Along(wb.Start), Along(wb.End));
-                            double gap = Math.Max(b0 - a1, a0 - b1);
-                            if (gap < 500 || gap > 1300) continue;
-                            double from = b0 > a1 ? a1 : b1, to = b0 > a1 ? b0 : a0;
-                            double t = Math.Min(wa.ThicknessMm, wb.ThicknessMm) / 2;
-                            var p0 = new DxfPoint(wa.Start.X + ux * from, wa.Start.Y + uy * from); var p1 = new DxfPoint(wa.Start.X + ux * to, wa.Start.Y + uy * to);
-                            gapEdges.Add(new DxfSegment("DOOR", new DxfPoint(p0.X - uy * t, p0.Y + ux * t), new DxfPoint(p1.X - uy * t, p1.Y + ux * t)));
-                            gapEdges.Add(new DxfSegment("DOOR", new DxfPoint(p0.X + uy * t, p0.Y - ux * t), new DxfPoint(p1.X + uy * t, p1.Y - ux * t)));
-                        }
                     var planarForWells = new PlanarRings(SlabEdgeJoinMm, slabEdgeBridgeMm, SlabEdgeExtendMm).Build(arranged.Concat(wallEdges).Concat(doorEdges).Concat(gapEdges).Where(s => !ATreadOf(s)));
                     foreach (var stair in stairs)
                     {
@@ -2093,7 +2097,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             {
                 try
                 {
-                    var planar = new PlanarRings(SlabEdgeJoinMm, slabEdgeBridgeMm, SlabEdgeExtendMm).Build(arranged);
+                    var planar = new PlanarRings(SlabEdgeJoinMm, slabEdgeBridgeMm, SlabEdgeExtendMm).Build(arranged.Concat(wallEdges).Concat(doorEdges).Concat(gapEdges));
                     if (FaceTrace is not null)
                     {
                         // WHAT THE ARRANGEMENT HOLDS ROUND A COLUMN ONE EDGE ALONE RUNS INTO (the edge-beside-a-column class,
@@ -2256,6 +2260,21 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         int insideCount = insideTheOutline.Count;
                         FaceTrace?.Invoke($"slab pass: the outline's pen is {outlinePen.Value:0.00} mm ({outlinePens.Count} outward edge(s) of the structure-holding cells); {insideCount} rim cell(s) face the page through it alone and are inside the outline (step 115)");
                     }
+                    if (FaceTrace is not null)
+                    {
+                        int nHolds = 0, nEnclosed = 0, nOutside = 0, nWrap = 0; double aHolds = 0, aEnclosed = 0, aOutside = 0;
+                        for (int i = 0; i < planar.Faces.Count; i++)
+                        {
+                            var c = planar.Faces[i]; double a = Math.Abs(c.Outer.Area) / 92903.04;
+                            if (Holds(c)) { nHolds++; aHolds += a; }
+                            else if (WrapsTheFloor(c)) { nWrap++; FaceTrace($"slab pass: wrapping cell {a:0} sq ft with {c.Holes.Count} hole(s) of {c.Holes.Sum(h => Math.Abs(h.Area)) / 92903.04:0} sq ft (step 116 study)"); }
+                            else if (!planar.TouchesTheOutside(i)) { nEnclosed++; aEnclosed += a; }
+                            else { nOutside++; aOutside += a; }
+                        }
+                        var biggest = planar.Faces.Select((f, i) => (i, a: Math.Abs(f.Outer.Area) / 92903.04)).OrderByDescending(x => x.a).Take(3).ToList();
+                        FaceTrace("slab pass: biggest cells (step 116 study): " + string.Join(" | ", biggest.Select(x => $"{x.a:0} sq ft holds {Holds(planar.Faces[x.i])} wraps {WrapsTheFloor(planar.Faces[x.i])} outside {planar.TouchesTheOutside(x.i)} holes {planar.Faces[x.i].Holes.Count}")));
+                        FaceTrace($"slab pass: cells by selection (step 116 study): holding structure {nHolds} ({aHolds:0} sq ft), wrapping {nWrap}, enclosed {nEnclosed} ({aEnclosed:0} sq ft), open to the page {nOutside} ({aOutside:0} sq ft)");
+                    }
                     var fromArrangement = planar.RecoverSurfaces(_ => false, (i, cell) => Holds(cell) || WrapsTheFloor(cell) || !planar.TouchesTheOutside(i) || InsideTheOutline(i)).Slabs.Select(f => f.Outer).ToList();
                     // step 113: the arrangement was built although the walk had a floor, because that floor held under half the
                     // page's columns; where the arrangement finds a floor holding more, the walk's stands down (31202's L1 carried
@@ -2417,12 +2436,26 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 double y0 = loop.Points.Min(p => p.Y), y1 = loop.Points.Max(p => p.Y);
                 double reach = Math.Max(x1 - x0, y1 - y0) * SlabEdgeNeighbourhoodShare;
                 int inside = 0, near = 0;
+                // NEAR IS NEAR THE RING'S EDGE, NOT INSIDE ITS BOX (step 116, 2026-09-17 23:05): a union ring is seldom a
+                // rectangle, and its bounding box took in the roofs beside it - 31202's ROOF, 9,677 sq ft holding 22 columns,
+                // was refused with 49 "near", 27 of them under the upper roof and the penthouse a box-width away. What
+                // stands within the reach of the ring's own edge is its neighbourhood.
+                double NearestEdge(DxfPoint p)
+                {
+                    double best = double.MaxValue;
+                    for (int i = 0; i < loop.Points.Count; i++)
+                        best = Math.Min(best, LoopGeometry.DistanceToSegment(p, loop.Points[i], loop.Points[(i + 1) % loop.Points.Count]));
+                    return best;
+                }
                 void Count(double x, double y)
                 {
                     if (x < x0 - reach || x > x1 + reach || y < y0 - reach || y > y1 + reach) return;
-                    near++;
+                    var p = new DxfPoint(x, y);
                     // on the ring is in it (step 82): a column the edge runs through stands on this floor
-                    if (LoopGeometry.InsideOrOn(new DxfPoint(x, y), loop.Points, SlabEdgeJoinMm)) inside++;
+                    bool inRing = LoopGeometry.InsideOrOn(p, loop.Points, SlabEdgeJoinMm);
+                    if (!inRing && NearestEdge(p) > reach) return;
+                    near++;
+                    if (inRing) inside++;
                 }
                 foreach (var c in result.Columns) Count(c.X, c.Y);
                 foreach (var w in result.Walls) Count((w.Start.X + w.End.X) / 2, (w.Start.Y + w.End.Y) / 2);
