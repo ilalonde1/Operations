@@ -2756,3 +2756,40 @@ On the six with both halves: 31065 L7–L17 6,690 → 6,991 (hers 7,766; one pla
 the rest as above; 31168 P2 still −965. This half a fixture cannot isolate (a detached box at the pen holding nothing
 is dropped by the neighbourhood gate anyway; one holding a wall is a plate by the holding) — the test says so, and the
 six judge it. Banked with the six re-banked.
+
+## 130. Run 34 banked; the carries onto an edge of their own pen; the engineer's questions answered by her models (2026-09-17 19:40–20:35)
+
+**Run 34 (108 + the pinched hole), banked `de4ca990`:** 259 of 294 build (two sets left the census since run 33 —
+01323-03 and 90108-01 are no longer listed on the share; not the reader), 2,829 storeys, **2,137 with a plate (76%,
++32 over run 33)**; 10 sets moved in composition, +33 plates; yardsticks by share 0 better / 0 worse / 50 same;
+openings over 53 sets ours she has 540 of 1,400 (39%), hers we have 719 of 2,161 (33%); the 22 current-model sets 70%
+/ 41%. **Run 35** (step 115) launched 20:23 on `de4ca990`'s mirror (Core.dll E661A619…).
+
+**Step 112's carries over 115, judged by the six:** the typical-floor notches gone (the rim rule holds them), P1
++2,370 — and 31130 L1/L1M still −2,625, 31065 L3 −620. `pdf-overlay --crop` on 31130's L1 sheet where the carry cuts:
+the end carried 5 in onto the slab edge is **the end of a 4'-0" DIMENSION LINE beside a column capital** — a thin
+line, not a slab edge — and once it reached the edge it partitioned the floor's east end into cells the rim rule
+cannot hold (their outward edge is a slab step at another pen). The class: a T drawn short is a slab edge stopping
+short of the slab edge it runs into — ONE pen. So the pen travels with every drawn line through the arrangement
+(`DxfSegment.Pen` → `Span` → `Edge`, through `Arrange`'s merges and `Finish`'s re-arrangement), and an end is carried
+onto an edge of its own pen only; a line of another pen, or of no known pen (a DXF, a chain built from pieces), is not
+carried — step 110's jog reads the same way. Codex's three tests hold with the lines at one pen; a fourth says a stem
+of a dimension pen is not carried. **On the six over 115: byte-identical — the carries fire on none of them.** On
+30838 with 109 (a scratch one-set analysis): columns 1,598 → 1,050 (the doubled tower gone), plates on 41 → 28
+storeys — one more than 109 alone (27), not thirteen: its outline stops beside its corner column at 12/F, the
+edge-beside-a-column class (the trace: the F edge's end one inch from a d2 vertex of the next edge — a carry's shape,
+but the vertex is on the column's far corner and the end's own ray does not meet the next edge within the bridge).
+The carries are an honest rule that earns nothing yet; they stay on `step-112` (`ff6faa06`, with 109 merged for the
+measurement). 109 stays parked on the corner-column class.
+
+**Ian, 20:17: "This has been going for days now. Where do we stand in the grand plan?"** — answered against §1's
+three conditions (mail 20:18): (1) 260 of 296 build, plates on storeys 41% (09-15) → 76%; (2) Andrea accepts one
+model — not done, Ian's gate; (3) instruments as code/rows — done in form. **20:20: "But what are you waiting for
+from her 'verdict'? Exactly?"** — two things: the usability yes/no only a user gives, and tie-breaks where her models
+disagree — and the second is measurable. **`takeoff e2k-ask <folder> practice` (`f8f1d698`)** over her 103 models,
+one line per question that stood in QUESTIONS.md as an engineer's: 101 of 103 plate their lowest storey and 172 of
+175 parking storeys carry a plate (a P-level plate is right in kind; "P3 = no plate" was one set's answer); sleeves
+under 0.5 m are cut in 4 of 95 models with openings — 31065 (48) and 60061-03 (148), the two thorough current
+models, plus two with 2 — so step 111 stays with the drawing and the newest models; stair-sized openings in 45 of 95
+(a split practice; the reader keeps a flight's box as a well); pier-proportioned column sections in use in 64 of 103
+(a scheduled size stays a column, as the tool does). QUESTIONS.md holds one question for her: usability, yes or no.
