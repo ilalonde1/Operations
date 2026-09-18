@@ -810,6 +810,11 @@ residues' cause. Not the PDF route; queued behind it.
    (hers 36,029), P1 → 33,255; 31168 64% → 83% of her plate area. **NEXT: run 36 (116) banks → run 37 (116 + 117);
    70061-01's L1 north (9,868, partial) and L2 north (no title); 31017 (45%); WP6 = Ian.**
 
+3ax. **Night 2026-09-17 23:35 → 2026-09-18 01:10** (§136). 70061-01 with 116 + 117: 9% → 60% of her plates. 31017
+   looked at: the outline drawn lighter than the beams and walls on it — a class of its own. **Run 36 (116) banked
+   `18954093`: plates 77% of storeys (+28); plate area 74% of hers over 49 sets, 79% on the 21 current.** **Run 37
+   (117) launched 01:08.** NEXT: run 37's figures; 31017's thin outline; 70061-01's L1 north; 31202's undrawn L2–L4.
+
 4. **WP6** — one model in front of Andrea (31170's, or whichever the ledger ranks best of the
    architects' sets). Ian's call when.
 5. **Step 47**, the next reading rule, from the corpus. `takeoff corpus-query plan-titles` on the

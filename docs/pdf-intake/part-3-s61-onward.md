@@ -2912,3 +2912,21 @@ none there; 172 of 175 parking storeys in her models do); 31168 P1/P2/P3 44–48
 P1 are storey shifts (the P2 plate exists now). Test `AMatchLineClosesAPartPlansOutlineTests` (a floor whose north
 side is the fixture's match line, cut by one line: nothing without the rule, 12 × 8 m to the seam with it), proved by
 breaking. **Banked `b2671b5a`**, two re-banked, gate green, fast 1,496. Run 37 (116 + 117) follows run 36.
+
+## 136. Run 36 banked; 70061-01 and 31017 measured; run 37 launched (2026-09-17 23:35 – 2026-09-18 01:10)
+
+**70061-01 under develop with 116 + 117** (a scratch one-set read): 9% → 60% of her plate area — P1 61,199 of her
+59,027, L1 39,803 of 70,913 (the north half 9,868, partial: its south part below a hatched loading area leaks through
+the seam's gap), L2 29,317 of 88,314 (the north half's outline sheet reads "2 NORTH" for a title and a small outline).
+**31017 (45%, her model current), looked at:** its L1–L3 podium floors of 58–64k sq ft read 1–6k; rendered, a dense
+plan where the beams and the walls carry the heavy pen and the slab edge is a thin line among hundreds — the
+arrangement finds no cell over 500 sq ft on L1 and one of 563 on L2; neither the walls nor the match line move it. A
+class of its own: the outline drawn lighter than the structure on it. For the morning.
+
+**Run 36 (116), banked `18954093`** (23:08 → 01:07, clear of 22:00): 259 of 294, **2,166 of 2,829 storeys with a plate
+(77%, +28)**, walls 115,552 / columns 91,140; 161 sets moved in composition; yardsticks by share 4 better / 5 worse /
+42 same — each a handful of columns judged or not as members' storeys shift with the plates (31032 72 → 65 judged,
+31185 62 → 72), the within-100 counts unmoved; openings ours she has 568 of 1,531 (37%), hers we have 754 of 2,161
+(35%). **Plates against hers over 49 sets: 4,959,886 of 6,737,466 sq ft (74%, from 73%); over the 21 current 79%
+(from 77%).** To open first: 31017 (45%), 31202 (59%), 70061-01 (17% — before 117). **Run 37 (116 + 117) launched
+01:08:32** on develop's mirror (Core.dll 87F47081…); ~2 h.
