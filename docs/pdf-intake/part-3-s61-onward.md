@@ -2915,7 +2915,7 @@ breaking. **Banked `b2671b5a`**, two re-banked, gate green, fast 1,496. Run 37 (
 
 ## 136. Run 36 banked; 70061-01 and 31017 measured; run 37 launched (2026-09-17 23:35 – 2026-09-18 01:10)
 
-**70061-01 under develop with 116 + 117** (a scratch one-set read): 9% → 60% of her plate area — P1 61,199 of her
+**70061-01 under develop with 116 + 117** (a scratch one-set read; her model is 742 days old, §137): 9% → 60% of her plate area — P1 61,199 of her
 59,027, L1 39,803 of 70,913 (the north half 9,868, partial: its south part below a hatched loading area leaks through
 the seam's gap), L2 29,317 of 88,314 (the north half's outline sheet reads "2 NORTH" for a title and a small outline).
 **31017 (45%, her model current), looked at:** its L1–L3 podium floors of 58–64k sq ft read 1–6k; rendered, a dense
@@ -2930,3 +2930,21 @@ class of its own: the outline drawn lighter than the structure on it. For the mo
 (35%). **Plates against hers over 49 sets: 4,959,886 of 6,737,466 sq ft (74%, from 73%); over the 21 current 79%
 (from 77%).** To open first: 31017 (45%), 31202 (59%), 70061-01 (17% — before 117). **Run 37 (116 + 117) launched
 01:08:32** on develop's mirror (Core.dll 87F47081…); ~2 h.
+
+## 137. Run 37 banked — the night's last figure (2026-09-18 01:10–02:40)
+
+**Run 37 (116 + 117), banked `1f133102`** (01:08 → 02:33): 259 of 294, 2,166 of 2,829 storeys with a plate (77%,
+unchanged — the match line widens halves that already had a plate), walls 115,642 / columns 91,117; 10 sets moved;
+yardsticks 0 better / 2 worse / 49 same (31093: five columns changed storey with a plate and left the judged set);
+openings ours she has 575 of 1,588 (36%), hers we have 766 of 2,161 (35%). **Plates against hers over 49 sets:
+5,133,911 of 6,737,466 sq ft — 76%, from 74% (+174,025 sq ft); the 21 current-model sets 79%, unchanged** —
+70061-01's model is 742 days old and is not among them (§135–§136 called it current; it is not). To open first: 31017
+(45%), 31202 (59%), 31087 (83%).
+
+**The day, 16:43 → 02:40, in one line each:** 108 merged (098 live); the pinched hole (the "not a permutation" refusal
+was never the carries'); 115 the rim rule; the practice census that answered the engineer's questions from her 103
+models; the yardstick that judges plates; 116 the walls (four findings); 117 the match line; runs 34–37 banked, run 35
+across the 22:01 servicing window and resumed. Plates: 74% → 77% of storeys; **the plate area against her models, first
+measured tonight, 73% → 76% over 49 sets.** Parked with reasons: `step-112` (the carries, onto their own pen), `step-109`
+(the corner-column class). Named for the morning: 31017's outline drawn lighter than the beams on it; 70061-01's L1
+north; 31202's undrawn L2–L4; WP6 is Ian's call.
