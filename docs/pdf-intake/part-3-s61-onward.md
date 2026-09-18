@@ -2820,3 +2820,36 @@ the largest 537 sq ft, floors 0 where one cell of 14,924 stood), P1 14,443 → 1
 as a plate. Rule 10: two regressions of one shape — a closed floor cut by wall outlines into cells whose union no
 longer makes it — characterise before banking. The parkade storeys are the biggest plate class left, so it is the
 next reader step.
+
+## 132. Run 35 banked after the fourth detached death; the corpus's first plate figure; step 116's second half (2026-09-17 21:15–22:45)
+
+**Step 116's fragmentation, characterised in two lines of the trace.** *Cells by selection* on 31065's L3 north under
+the first form: holding structure 66 cells (1,014 sq ft), enclosed 74 (335), open to the page 93 (1,418) — 2,767 sq ft
+of cells where one cell of 14,924 stood, and *biggest cells* showed the floor was no cell at all: its interior had
+fallen to the page. First guess (a bridge may not cross a wall's outline) changed nothing. Second, read off the mesh:
+a slab edge stopping at a wall's face now MEETS the wall's outline there and is no longer a vertex of degree one; the
+arrangement's bridges and corner carries are proposed between ends only, so nothing bridged across the wall to the
+edge continuing on its far side. **The second half: an end is an end of the DRAWN lines, walls aside** — a vertex
+with exactly one non-wall edge, that edge its own for the ray (the wall flag travels with each edge through `Arrange`
+and the re-arrangement) — and a bridge may cross a wall's outline. L3 north back whole: 14,923 sq ft, the biggest cell
+13,179 with 42 holes (the rooms' walls). On the six over 115: 31168 P1/P2/P3 +41–44k sq ft each (hers 78,631 /
+87,035), L2 +13k; 31202 L5 +4,198, L6 +2,131, L7–L12 +614; 31138 L21 +2,274, a plate on P4 — **still** 31065 P1
+14,443 → 10,198, P2 −1,327, 31130 L1/L1M 31,434 → 28,451, 31202 ROOF 12,772 → 4,269, the L7 core box as a plate.
+Test `AFloorBoundedByItsWallsIsAFloorTests` (a floor whose west and east are filled walls: one plate to the walls'
+outer faces, 16 × 10 m; red without the walls in the arrangement). On `step-116` (`e3db0f79`), one characterisation
+from banking: the ROOF loss is the largest.
+
+**Run 35 died at 22:01:35 at set 258 of 294** — "a console close, a log-off or a kill"; the System log on both nights:
+the Windows Modules Installer service switched to auto start at 22:01:13 (09-16) and 22:01:14 (09-17), and run 31 died
+at 22:04:04 the night before. Windows servicing at 22:01; nothing of ours. **Resumed by stamp as 35b** (22:12 →
+22:33, no `--force`) and banked `a81dd884`: 259 of 294, plates 2,138 of 2,829 (76%, +1 — the rim rule widens plates,
+it seldom makes one), columns +692 (stack ends moving with the wider plates), 81 sets moved in composition,
+yardsticks 1 better / 2 worse / 48 same (each a column at the footprint's edge, ±1), openings ours she has 542 of
+1,409 (38%), hers we have 721 of 2,161 (33%). A corpus run does not cross 22:00 on this PC until the servicing window
+moves — Ian's line.
+
+**The corpus's first plate figure** (the yardsticks re-measured with the plates yardstick, `corpus-analyze --reuse`,
+`037e73fe`): over the 49 sets that carry her model, **our plates cover 4,894,553 sq ft of her 6,737,466 — 73%; over
+the 21 current-model sets 77%**; 92 storeys stand under half of hers. To open first, by area missing: 70061-01 (9%:
+three storeys of 60–88k sq ft), 31202 (56%: L2–L4, the outline that is not drawn), 31017 (45%), 31087 (82%), 31048
+(15%), 30990 (45%). That is §1's condition 1 in the engineer's own unit for the first time.
