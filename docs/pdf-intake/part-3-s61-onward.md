@@ -2875,3 +2875,20 @@ its test and the study lines in the trace, one class (the roof's neighbourhood) 
 six by the instrument, the losses named (31065 P1/P2, 31130 L1, 31202 ROOF). `step-112` and `step-109` as §130 left
 them. No run in flight; the next run does not cross 22:00. Ian's three questions of the evening answered in §130
 and §132 and by mail (20:18, 20:21, 22:41).
+
+## 134. Step 116 banked — the fourth class was the neighbourhood gate's box (2026-09-17 23:00–23:10)
+
+**The fourth class, fixed:** the neighbourhood gate counted "near" inside the ring's BOUNDING BOX widened by a tenth
+of its size; a union ring is seldom a rectangle, and 31202's ROOF ring (9,677 sq ft, 22 columns inside) took in 27
+more under the upper roof and the penthouse a box-width away — 49 near, refused. **Near is near the ring's own edge**:
+what stands within the reach of the ring's boundary (`DistanceToSegment` over its edges), the rule otherwise as
+written (inside more than half of near). ROOF 12,772 → 12,409; 31065 P1 14,443 → 14,154 (was 10,198).
+
+**Banked `4ae38776` (merge of `step-116`), the six re-banked, gate green, fast 1,495.** By the plates yardstick
+against her models: 31168 40% → 64% (+97,622 sq ft — P1/P2/P3 897–7,283 → 44,470–48,064, L2 +13,263), 31202 56% →
+59% (+10,286), 31138 70% → 71% (+2,366), 31065 93% → 94% (+3,465), 31130 142% → 141% (−3,332; her model is one tower).
+Losses named and left: 31130 L1/L1M 31,434 → 28,451, 31065 P2 2,678 → 1,351 (a storey at 7% of hers), the L7 core
+box as a 671 sq ft plate on the typical floors (her 7,766 against our 7,662 says it may well be slab). **Run 36**
+launched 23:08 on `4ae38776`'s mirror (Core.dll C4D64D59…), the first run of 116 — and the first not to cross 22:00.
+Four findings in one step, each read off a trace line the step added: cells by selection, the biggest cells, the
+wrapping cells. They stay in the trace.
