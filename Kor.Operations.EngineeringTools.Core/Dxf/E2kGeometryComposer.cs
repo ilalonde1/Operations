@@ -307,6 +307,16 @@ public sealed record ComposeOptions
     /// </summary>
     public double SameGroundCentreTolerance { get; init; } = 24.0;
 
+    /// <summary>
+    /// An opening at least this long, in millimetres, and at least <see cref="PourStripAspect"/> times longer than wide
+    /// is a pour strip drawn as a closed loop, not a hole (step 108; her 4,967 openings hold one such). Millimetres in
+    /// every drawing unit: the composer measures the loop in millimetres before comparing. See `dxf.pour-strip-min-length-mm`.
+    /// </summary>
+    public double PourStripMinLengthMm { get; init; } = 10000.0;
+
+    /// <summary>How many times longer than wide a strip must be. See `dxf.pour-strip-aspect`.</summary>
+    public double PourStripAspect { get; init; } = 10.0;
+
     public double SpandrelDepthFloor { get; init; } = 18.0;
 
     public double SpandrelDepthCeiling { get; init; } = 60.0;
@@ -567,6 +577,7 @@ public static class E2kGeometryComposer
         var pointOrder = new Dictionary<string, int>(StringComparer.Ordinal);
         // one plate per place per storey: its centroid within a foot of one already placed (a foot was the cell)
         var placedSlabs = new PlacedMembers(12.0 * inch);
+        var placedPlatePolygons = new Dictionary<string, List<IReadOnlyList<DxfPoint>>>(StringComparer.OrdinalIgnoreCase);   // step 113b: the plates written on each storey, shifted
         // one column, wall or header per place per storey: within an inch, the cell that was (PlacedMembers)
         var placedColumns = new PlacedMembers(inch);
         // ONE COLUMN, ONE JOINT. Two sheets draw the same column a few millimetres apart - each is set on
@@ -1286,6 +1297,36 @@ public static class E2kGeometryComposer
                 var middle = slab.Centroid();
                 var where = Place.At(middle.X + options.OffsetX, middle.Y + options.OffsetY);
                 if (placedSlabs.Holds(slabStory.Name, where)) continue;
+                // TWO PLATES OF ONE STOREY COVERING EACH OTHER ARE ONE FLOOR (step 113b, 2026-09-17 02:10). The place test above
+                // holds one centre; two readings of one floor from two sheets (31202's L1: the foundation plan's ring, 34,590 sq
+                // ft, and the L1 plan's arrangement, 34,145) sit with their centres more than a foot apart and were both written
+                // - "every floor we have two slabs on top of each other". A plate nine of whose ten vertices stand inside a plate
+                // already written on the storey is that plate read again; the first reading stands.
+                var shiftedPts = slab.Points.Select(p => new DxfPoint(p.X + options.OffsetX, p.Y + options.OffsetY)).ToList();
+                // by the ground they share, not by their vertices: two readings of one floor differ at their edges (31202's L1:
+                // the foundation plan's ring and the L1 plan's, each beyond the other somewhere, 22 of 55 vertices inside), so
+                // the smaller's ground is sampled on a grid and the share of it inside the other is the measure - nine tenths
+                static double GroundShared(IReadOnlyList<DxfPoint> a, IReadOnlyList<DxfPoint> b)
+                {
+                    double x0 = a.Min(p => p.X), x1 = a.Max(p => p.X), y0 = a.Min(p => p.Y), y1 = a.Max(p => p.Y);
+                    if (x1 <= x0 || y1 <= y0) return 0;
+                    int inA = 0, inBoth = 0;
+                    for (int i = 0; i < 40; i++)
+                        for (int j = 0; j < 40; j++)
+                        {
+                            var q = new DxfPoint(x0 + (x1 - x0) * (i + 0.5) / 40, y0 + (y1 - y0) * (j + 0.5) / 40);
+                            if (!LoopGeometry.PointInPolygon(q, a)) continue;
+                            inA++;
+                            if (LoopGeometry.PointInPolygon(q, b)) inBoth++;
+                        }
+                    return inA == 0 ? 0 : (double)inBoth / inA;
+                }
+                if (placedPlatePolygons.TryGetValue(slabStory.Name, out var earlier)
+                    && earlier.Any(e => GroundShared(shiftedPts, e) >= 0.9 || GroundShared(e, shiftedPts) >= 0.9))
+                {
+                    flags.Add($"{placement.SourceSheet}: a plate of {slab.Area / 144:N0} sq ft on {slabStory.Name} lies inside one already written from another reading of the storey and was not modelled - one floor, not two");
+                    continue;
+                }
                 // claimed only below, once the plate stands on something: a legend panel refused as an orphan
                 // must not hold the place of the supported floor drawn at the same centre (Codex 2026-09-13, F6)
 
@@ -1305,6 +1346,7 @@ public static class E2kGeometryComposer
                     continue;
                 }
                 placedSlabs.Add(slabStory.Name, where);
+                (placedPlatePolygons.TryGetValue(slabStory.Name, out var written) ? written : placedPlatePolygons[slabStory.Name] = new()).Add(shiftedPts);
 
                 // Claimed only once the plate is certain to be written.
                 if (!slabProps.TryGetValue(thickness, out string? propName))
@@ -1400,6 +1442,24 @@ public static class E2kGeometryComposer
                     if (placedColumns.AnyInside(slabStory.Name, shifted) || placedColumns.AnyWithin(slabStory.Name, c0.X + options.OffsetX, c0.Y + options.OffsetY, reach))
                     {
                         flags.Add($"{placement.SourceSheet}: an opening of {opening.Area / 144:N0} sq ft on {slabStory.Name} was NOT cut - a column stands in it; an X or a ring round a column marks the column (a footing, a drop, a bay), not a hole");
+                        skippedOpenings++;
+                        continue;
+                    }
+                }
+
+                // A STRIP LONGER THAN TEN METRES IS A POUR STRIP, NOT A HOLE (step 108, 2026-09-16 21:05). 30933's L0 went out
+                // with two 0.3 x 44 m slits down the middle of the plate and two 1 x 33 m bands along its edge cut as openings -
+                // pour strips drawn as closed loops on the slab-edge layer, and the DXF route's ring rule cuts a ring inside a
+                // floor. The corpus of her own models judged the shape before the rule was written (e2k-ask openings-shapes over
+                // 96 exported models, 4,967 openings): 504 are strips ten times longer than wide, 503 of them sub-metre sleeves
+                // under 10 m long - real holes - and ONE is longer than 10 m. So the shape is both: ten times longer than wide
+                // AND longer than 10 m, measured on the least box round the loop so a strip at an angle reads the same.
+                {
+                    var box = LoopGeometry.MinAreaBox(opening.Points);
+                    double lengthMm = box.Length / inch * 25.4, widthMm = box.Thickness / inch * 25.4;
+                    if (lengthMm > options.PourStripMinLengthMm && widthMm > 0 && lengthMm >= options.PourStripAspect * widthMm)
+                    {
+                        flags.Add($"{placement.SourceSheet}: an opening {widthMm / 1000:N1} x {lengthMm / 1000:N1} m on {slabStory.Name} was NOT cut - a strip {lengthMm / widthMm:N0} times longer than wide and longer than {options.PourStripMinLengthMm / 1000:N0} m is a pour strip or a band drawn as a closed loop, not a hole (her models cut one such in 4,967)");
                         skippedOpenings++;
                         continue;
                     }

@@ -1919,6 +1919,24 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             // (32,076 sq ft) and every room inside it; the union could only add cells inside that path.
             bool walkFoundAFloor = loops.Any(l => l.Area >= minSlabAreaMm2 && StandsIn(l))
                                    || drawn.Any(d => StandsIn(new PlanLoop("SLABEDGE", d, true)));
+            var walkFloorsToReplace = new List<PlanLoop>();   // step 113: the walk's floors the arrangement's supersede when it finds one
+            // A FLOOR THE WALK FOUND THAT HOLDS UNDER HALF THE PAGE'S COLUMNS IS NOT THE PAGE'S FLOOR (step 113, 2026-09-17 01:50).
+            // 60061-03's typical plan (a hotel's, the outline under a dense reinforcing plan) walked a 53 x 37 ft rectangle at
+            // the page's foot - the stud-rail schedule's border, three of its symbols read as columns - into a 1,953 sq ft
+            // "floor" on every storey of a 10,000 sq ft floor, and the arrangement, which reads the real outline, was never
+            // built ("only where the walk found no floor"). A ring that stands in structure is a floor; a ring holding
+            // fewer than half the page's columns is not the whole of it, and the arrangement is built as well.
+            if (walkFoundAFloor && result.Columns.Count >= 6)
+            {
+                var walkFloors = loops.Where(l => l.Area >= minSlabAreaMm2 && StandsIn(l)).Select(l => l.Points).Concat(drawn.Where(d => StandsIn(new PlanLoop("SLABEDGE", d, true)))).ToList();
+                int held = result.Columns.Count(c => walkFloors.Any(f => LoopGeometry.PointInPolygon(new DxfPoint(c.X, c.Y), f)));
+                if (held * 2 < result.Columns.Count)
+                {
+                    FaceTrace?.Invoke($"slab pass: the walk's floor holds {held} of {result.Columns.Count} columns - under half: the arrangement is built as well (step 113)");
+                    walkFoundAFloor = false;
+                    walkFloorsToReplace = loops.Where(l => l.Area >= minSlabAreaMm2 && StandsIn(l)).ToList();
+                }
+            }
             // AN X ACROSS A SHAFT IS AN OPENING (intake step 104, 2026-09-16). The drafter's mark for a shaft or a stair is
             // two oblique lines of one length crossing at their midpoints - the X. 31202's elevator shafts carry 12 ft
             // ones on every plan, 31130's and 31138's 11 ft ones. The X's region is the quadrilateral of its four ends;
@@ -2164,7 +2182,21 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     // the core's box over the 400 sq ft floor gate - 31065's south tower L7-L17 gained a 408 sq ft "floor",
                     // 31202's L2-L4 a 443 sq ft one. An edge X-box in the arrangement path keeps its notch (no real set
                     // shows one yet; the fixture in AnXAcrossARegionIsAnOpeningTests takes the walk path, as 31168 does).
-                    loops.AddRange(planar.RecoverSurfaces(_ => false, (i, cell) => Holds(cell) || WrapsTheFloor(cell) || !planar.TouchesTheOutside(i)).Slabs.Select(f => f.Outer));
+                    var fromArrangement = planar.RecoverSurfaces(_ => false, (i, cell) => Holds(cell) || WrapsTheFloor(cell) || !planar.TouchesTheOutside(i)).Slabs.Select(f => f.Outer).ToList();
+                    // step 113: the arrangement was built although the walk had a floor, because that floor held under half the
+                    // page's columns; where the arrangement finds a floor holding more, the walk's stands down (31202's L1 carried
+                    // the same slab twice, 34,590 and 34,145 sq ft, when both stayed)
+                    if (walkFloorsToReplace.Count > 0 && fromArrangement.Count > 0)
+                    {
+                        int Held(PlanLoop l) => result.Columns.Count(c => LoopGeometry.PointInPolygon(new DxfPoint(c.X, c.Y), l.Points));
+                        int walkHeld = walkFloorsToReplace.Sum(Held), arrangementHeld = fromArrangement.Sum(Held);
+                        if (arrangementHeld > walkHeld)
+                        {
+                            foreach (var w in walkFloorsToReplace) loops.Remove(w);
+                            FaceTrace?.Invoke($"slab pass: the arrangement's floor(s) hold {arrangementHeld} columns to the walk's {walkHeld}: the walk's {walkFloorsToReplace.Count} stand down (step 113)");
+                        }
+                    }
+                    loops.AddRange(fromArrangement);
                 }
                 catch (InvalidOperationException refused)
                 {

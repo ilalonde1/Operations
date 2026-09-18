@@ -53,4 +53,13 @@ internal interface IControlPlaneStore
     // claim is older than the heartbeat cutoff. Returns the number of rows
     // reset to Pending.
     Task<int> RecoverDeadHostClaimsAsync(TimeSpan heartbeatStaleAfter, CancellationToken ct);
+
+    // Field-review round trip (FileSync.EorControlFiles). MoveReportsToEor
+    // records every "Acknowledge and Move To Server <Month>.txt" it drops,
+    // keyed by period ('yyyy-MM') and EOR folder; MoveReportsToToSend sweeps
+    // a folder only when a record exists for the period and the file is gone.
+    // Absence of a record means nothing was asked of that engineer -> no sweep.
+    Task RecordEorControlFileAsync(string periodKey, string eorFolder, string controlFileName, CancellationToken ct);
+
+    Task<IReadOnlyDictionary<string, string>> GetEorControlFilesAsync(string periodKey, CancellationToken ct);
 }

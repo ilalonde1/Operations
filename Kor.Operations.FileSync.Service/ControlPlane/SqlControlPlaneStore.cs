@@ -289,4 +289,45 @@ WHERE  jt.Status = 'Claimed'
         cmd.Parameters.Add("@cutoff", SqlDbType.DateTimeOffset).Value = cutoff;
         return await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
     }
+
+    public async Task RecordEorControlFileAsync(string periodKey, string eorFolder, string controlFileName, CancellationToken ct)
+    {
+        // Upsert: a re-fired 1st-of-month run must not fail on the key, and
+        // the newest control-file name wins.
+        const string sql = @"
+MERGE FileSync.EorControlFiles AS t
+USING (SELECT @period AS PeriodKey, @eor AS EorFolder) AS s
+    ON t.PeriodKey = s.PeriodKey AND t.EorFolder = s.EorFolder
+WHEN MATCHED THEN
+    UPDATE SET ControlFileName = @ctrl, DroppedAt = sysdatetimeoffset()
+WHEN NOT MATCHED THEN
+    INSERT (PeriodKey, EorFolder, ControlFileName) VALUES (@period, @eor, @ctrl);";
+
+        await using var con = new SqlConnection(_cs);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@period", SqlDbType.Char, 7).Value = periodKey;
+        cmd.Parameters.Add("@eor", SqlDbType.NVarChar, 255).Value = eorFolder;
+        cmd.Parameters.Add("@ctrl", SqlDbType.NVarChar, 255).Value = controlFileName;
+        await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+    }
+
+    public async Task<IReadOnlyDictionary<string, string>> GetEorControlFilesAsync(string periodKey, CancellationToken ct)
+    {
+        const string sql = @"
+SELECT EorFolder, ControlFileName
+FROM   FileSync.EorControlFiles
+WHERE  PeriodKey = @period;";
+
+        var dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        await using var con = new SqlConnection(_cs);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@period", SqlDbType.Char, 7).Value = periodKey;
+        await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        while (await r.ReadAsync(ct).ConfigureAwait(false))
+            dict[r.GetString(0)] = r.GetString(1);
+
+        return dict;
+    }
 }

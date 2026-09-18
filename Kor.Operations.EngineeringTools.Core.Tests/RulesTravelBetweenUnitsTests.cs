@@ -1,4 +1,4 @@
-using System.Reflection;
+﻿using System.Reflection;
 using Kor.Operations.EngineeringTools.Dxf;
 using Xunit;
 using Xunit.Abstractions;
@@ -47,6 +47,8 @@ public class RulesTravelBetweenUnitsTests
                                     "on a 2,504 in one, in inches or millimetres alike",
         ["MinFloorCoverage"] = "a fraction of an area",
         ["DonorPlateLikenessMargin"] = "a ratio",
+        ["PourStripMinLengthMm"] = "millimetres by name in every drawing unit: the composer measures the loop's least box in millimetres before comparing (step 108)",
+        ["PourStripAspect"] = "a ratio",
         ["OffsetX"] = "a position in the drawing's own units, applied after conversion",
         ["OffsetY"] = "a position in the drawing's own units, applied after conversion",
         ["ModelUnitInInches"] = "what a unit MEASURES, not a length measured in one — scaling it " +

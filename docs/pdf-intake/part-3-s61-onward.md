@@ -2576,3 +2576,100 @@ boxes not) proved by breaking.
 Ours she has 189 of 228 → 257 of 342 (83% → 75%): 31065 adds seventeen boxed X's of 0.5 × 0.5 m and four of 0.5 × 1
 she has not at those places (she cuts 48 such elsewhere on the set — a look owed: what the drafter's small X-boxes
 are where her model has none), 31168 adds ten. Plates, columns and walls byte-identical on all six.
+
+## 124. Step 112 — a T drawn short, named by the trace and parked (2026-09-16 23:20–23:58)
+
+The edge-beside-a-column class (item 2 since the morning; 30838's 13 plates; step 109's unlock) was chased by
+picture twice tonight — "an edge's corner inside a column is an end at that column" joined some columns and not the
+corners; the corners' outline runs 250 mm off the column's face — and then instrumented instead: the slab-pass trace
+prints the ends at every column (step 97's pairs and the lone ones), what the arrangement holds within 1.5 m of a lone
+column (offset, degree), and **the ends that stop short of another edge's middle by under the bridge**. On 30838's
+L20 the corners are connected (the lone "end" is a 25 mm end-cap stub beside a degree-2 junction) and **twelve and
+more ends stop 0.6–5 in short of the edge they run into** — the arrangement bridges an end to an END (6 in, or the
+corner two rays make within 4 ft) and joins an end ON a span within 1 mm, and an end SHORT of a span's middle was
+neither; a 150 mm raster closed it, `PlanarRings` did not.
+
+**Step 112 (branch `step-112`, `d519778d`):** such an end is carried to its foot on the nearest span within the bridge
+(`ToEdge` proposals; the end's cheapest unique proposal decides; a carry crossing an edge refused). 30838's L20: the
+concrete-outline plan's ring closes (a 9,025 sq ft cell, two floors on the page, the short ends 12+ → 2). **On the six
+it moves every set** (it is the arrangement both routes build rings with): 31168 +875 sq ft, 31202 +35, 31138 +91,
+31130 −2,976, 31065 P3 +13,634 and **P1 −9,143 (a plate lost)**, its tower rings 6,776 → 6,656 (closing at their T's
+instead of round them), the architect's set −11,078. Not banked: a lost plate is explained before it is traded; run
+33 judges the corpus form. Step 109 waits behind it.
+
+## 125. The yardstick's second and third openings figures; the S2.17 puzzle closed (2026-09-17 00:45–01:10)
+
+**A match by cover.** 31065 and 31017 cut a stair as its flights (2 × 5.5 m each, 68 on 13 sets of "hers we have
+not") where our well spans the flights and the landing (2.4 × 7.1 m), so by centre the second flight is 2 m off and
+"unmatched" — and step 105d's landing looked like the wrong practice. The yardstick now says both: her openings
+whose centre stands INSIDE one of ours (`TheirsOpeningsCovered`, `a5d99517`/`5aa10406`) beside the match by centre
+within 1.5 m. On the five sets: 31065 76 → 107 of 209 (36% → 51%); 31130 31, 31138 104 unchanged; 31202 51; 31168
+52 of 64 by cover against 62 by centre (our shafts there are smaller than hers). `corpus-disagreements` section 6
+sums it. **And a third:** of ours she has not, how many stand where she cuts on another storey — 31168 8 of 30,
+31138 2 of 7, the other three none: the unmatched X-boxes are marks her model has nowhere, not a storey mapping's
+miss. Nothing re-baselined; the gate compares models, not yardsticks.
+
+**The S2.17 puzzle** (30838's L11 page: two views in run 30, one in run 31, no reader change between): not the
+reader. The set's stick file was re-issued (2026-09-15 over 09-14) and the 12-hour census refresh brought it in
+between the runs — the yardstick header moved from 880 to 881 days after her model — and 30838 alone builds
+identically twice (`f22287ec`). A run's inputs can move under it; the ledger's yardstick header carries the issue.
+
+**Run 32** (110, 105d, 111 on the corpus) launched 00:05 on the mirror; the first openings figure since run 30's.
+
+## 126. Steps 113 and 113b — a walk floor holding few columns is not the page's floor; two plates covering each other are one (2026-09-17 01:45–02:50)
+
+**Found from the corpus ranked by her model's age.** Of the 22 sets whose model is within a year of the drawing, the
+two where we lack most of her openings — 60061-03 (255 of 259) and 31087 (81 of 248) — are plate misses: 31087's
+podium L4 is a progress drawing ("ARCH ADD ADJUST SLAB EDGE", a 19 in break in the outline, eight Ts drawn short —
+step 112's class); 60061-03's typical plan LEVEL 04–10 is a hotel's outline under a dense reinforcing plan, and we
+read a 1,953 sq ft plate on every storey of a ~10,000 sq ft floor. Its slab-pass trace: **the walk found a floor —
+the stud-rail schedule's border at the page's foot, a 53 × 37 ft rectangle holding none of the 29 columns — and
+"only where the walk found no floor" is the arrangement built**, so the real outline was never arranged.
+
+**Step 113:** a walk floor holding fewer than half the page's columns (six or more on the page) is not the page's
+floor: the arrangement is built as well, and where its floors hold more columns than the walk's, the walk's stand
+down. 60061-03: the arrangement's 4,484 sq ft ring holds 26 of 28. On the six (first form): 31138 gains three plated
+storeys (its tower's L17, L18, L20), 31130 P3 a 24,420 sq ft plate over two slivers, 31168 L2 a second wing — and
+31202 L1 carried its slab twice (the foundation plan's ring, 34,590, and the L1 plan's, 34,145): the composer's "one
+plate per place per storey" holds one centre, and these two readings' centres sit further apart than that.
+
+**Step 113b (the composer):** two plates of one storey covering nine tenths of each other's ground are one floor —
+the smaller's ground sampled on a 40 × 40 grid (a vertex test missed it: 22 of 55 vertices inside, the rest on the
+shared edge); the first reading stands, the second is flagged. 31202 L1: one floor, 34,145.
+
+**Banked `66ebfd5a` / merged `b5fbe19c`, gate green on the re-banked six, fast suite 1,489:** 31130 489,492 →
+535,117 sq ft; 31138 17 → 20 storeys with a plate, 185,382 → 211,364 sq ft; 31168 +7,558; 31202 −4,591 (one floor
+where there were a floor and a sliver); 31065 and the architect's set unchanged; stack ends move a storey where
+plates appeared, nothing lost. Tests: a schedule box beside a floor the walk cannot close and the arrangement's
+enclosed cells unite (a 1 ft gap in the middle of an edge, two lines across); a second reading a foot off not
+written, a wing beside it and the same ground on another storey written — each proved by breaking. A `FaceTrace`
+assertion in the first test made a differential test running beside it fail once (the static is shared across the
+suite's parallel classes — CLAUDE.md's 08-29 lesson): the test reads the outcome instead. **Run 33** (113 + 113b on
+the corpus) launched 02:49.
+
+**Step 114, tried and REJECTED (03:05).** "A walled cell holding a stair's word (UP, DN, DOWN) is a stair well, flights
+or none" — written for 31170 (her model ten days old; 8 shafts of 2.5 × 3.5 m and 3 stairs of 2 × 5.5 m we lack draw
+no X and no treads the readers take; at one, walls and the word DN). On the six it cut rooms: 31202's openings ours
+she has 53 → 22 of 55, hers we have 52 → 21 of 68, its L6 plate −1,674 sq ft; 31138 hers 128 → 123. A word stands in
+a corridor as readily as in a well; without the flights' box there is nothing to bound it. Reverted whole, nothing
+kept. 31170's cores stay the engineer's line (a shaft drawn as walls alone).
+
+## 127. Step 108 merged — 098 live; eight strips off 31170 that were never holes; the pdf-only report told half (2026-09-17 16:45–17:15)
+
+**Ian applied 097 and 098 (16:43).** `step-108` merged onto develop: the fast suite 1,492 green (the four row gates
+of §121 now find `dxf.pour-strip-min-length-mm` and `dxf.pour-strip-aspect`); the six-set gate: five sets
+byte-identical and **31170-01-arch moved — 8 of its 628 openings are no longer cut**, on L1 69 × 4.2 m, 75 × 1.9 m,
+70 × 1.7 m, 70 × 0.46 m, 70 × 1.9 m, 38 × 0.6 m and 1.6 × 33 m, on L7 66 × 5 m. Rendered L1 and L7 before and after
+(`takeoff model-render … --storey L1,L7`): L7's was a wedge cut clean through a row of twelve columns; L1's ran the
+length of the building along its south edge. **Her 31170 model (ten days old): 37 openings, longest 7.4 m, no strip
+of 10 m** — so the eight were ours alone, and the rule 4,966-to-1 of §121 held on the seventh set too. Re-banked
+`pdf-only-31170-01-arch.e2k`, gate green on the six.
+
+**Found on the way, fixed in the same commit:** `PdfOnlyBuild`'s `report.txt` printed the composer's *warnings* and
+not its *flags* — the "NOT cut - a pour strip" lines, the "one floor, not two" lines of 113b, were written into
+`Summary.Flags` and never reached the pdf-only route's report, so eight openings vanished from a set with no line
+saying why (the DXF route's report prints both). Now the report carries the flags after the warnings. A count that
+moves with no sentence beside it is a report telling half; "the WHY for every count in the ledger" was the promise in
+the comment above the writer.
+
+QUESTIONS.md: the 097/098 items are gone. Run 34 carries 108 with whatever of 112 stands by then.

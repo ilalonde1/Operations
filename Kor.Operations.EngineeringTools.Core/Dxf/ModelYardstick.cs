@@ -99,6 +99,15 @@ public static class ModelYardstick
         public IReadOnlyList<(string Size, int Count)> OursOpeningsUnmatchedBySize { get; init; } = [];
         /// <summary>Her openings on shared storeys with none of ours near, by plan size: what she cut that we did not.</summary>
         public IReadOnlyList<(string Size, int Count)> TheirsOpeningsUnmatchedBySize { get; init; } = [];
+        /// <summary>
+        /// Her openings whose centre stands INSIDE one of ours on the storey (2026-09-17 00:50): a match by cover, beside the
+        /// match by centre. 31065 and 31017 cut a stair as its flights (2 x 5.5 m each) where our well spans flights and
+        /// landing (2.4 x 7.1 m): by centre the second flight is 2 m off and unmatched, by cover both are had.
+        /// </summary>
+        public int TheirsOpeningsCovered { get; init; }
+        /// <summary>Of ours she has not on the storey, how many stand where she cuts an opening on SOME other storey (00:58): a
+        /// storey mapping's miss rather than a mark's, when it is many.</summary>
+        public int OursOpeningsHersElsewhere { get; init; }
     }
 
     /// <summary>How far apart the centres of our opening and hers may be and still be one opening: a shaft is 2-3 m across and the frame carries registration slop.</summary>
@@ -287,7 +296,7 @@ public static class ModelYardstick
         // every column - not a shaft's shape).
         var ourOpenings = OpeningsByStorey(model, mu);
         var theirOpenings = OpeningsByStorey(yard, yu);
-        int oursOpeningsJudged = 0, oursOpeningsMatched = 0, theirsOpeningsJudged = 0, theirsOpeningsMatched = 0;
+        int oursOpeningsJudged = 0, oursOpeningsMatched = 0, theirsOpeningsJudged = 0, theirsOpeningsMatched = 0, theirsOpeningsCovered = 0, oursHersElsewhere = 0;
         var oursOpeningsUnmatched = new Dictionary<string, int>(StringComparer.Ordinal);
         var theirsOpeningsUnmatched = new Dictionary<string, int>(StringComparer.Ordinal);
         // hers are judged on every storey both models name (the shared list), not only where we cut something: a storey
@@ -308,6 +317,7 @@ public static class ModelYardstick
                 { oursOpeningsBeyond++; continue; }
                 oursOpeningsJudged++;
                 if (hers.Any(h => Math.Sqrt(Sq((h.Centre.X - sh.X, h.Centre.Y - sh.Y), o.Centre)) <= OpeningMatchMm)) oursOpeningsMatched++;
+                else if (theirOpenings.Values.SelectMany(v => v).Any(h => Math.Sqrt(Sq((h.Centre.X - sh.X, h.Centre.Y - sh.Y), o.Centre)) <= OpeningMatchMm)) oursHersElsewhere++;
                 else oursOpeningsUnmatched[SizeClass(o.W, o.H)] = oursOpeningsUnmatched.GetValueOrDefault(SizeClass(o.W, o.H)) + 1;
             }
         }
@@ -321,6 +331,7 @@ public static class ModelYardstick
                 var hh = (h.Centre.X - sh.X, h.Centre.Y - sh.Y);
                 if (mine.Any(o => Math.Sqrt(Sq(hh, o.Centre)) <= OpeningMatchMm)) theirsOpeningsMatched++;
                 else theirsOpeningsUnmatched[SizeClass(h.W, h.H)] = theirsOpeningsUnmatched.GetValueOrDefault(SizeClass(h.W, h.H)) + 1;
+                if (mine.Any(o => Math.Abs(hh.Item1 - o.Centre.X) <= o.W / 2 && Math.Abs(hh.Item2 - o.Centre.Y) <= o.H / 2)) theirsOpeningsCovered++;
             }
         }
         static string SizeClass(double w, double h)
@@ -392,6 +403,8 @@ public static class ModelYardstick
             Openings = (oursOpeningsJudged, theirsOpeningsJudged, oursOpeningsMatched, theirsOpeningsMatched, oursOpeningsBeyond),
             OursOpeningsUnmatchedBySize = oursOpeningsUnmatched.OrderByDescending(kv => kv.Value).ThenBy(kv => kv.Key, StringComparer.Ordinal).Select(kv => (kv.Key, kv.Value)).ToList(),
             TheirsOpeningsUnmatchedBySize = theirsOpeningsUnmatched.OrderByDescending(kv => kv.Value).ThenBy(kv => kv.Key, StringComparer.Ordinal).Select(kv => (kv.Key, kv.Value)).ToList(),
+            TheirsOpeningsCovered = theirsOpeningsCovered,
+            OursOpeningsHersElsewhere = oursHersElsewhere,
         };
     }
 
@@ -521,6 +534,8 @@ public static class ModelYardstick
                 sb.AppendLine(CultureInfo.InvariantCulture, $"  ours she has not, by size: {string.Join(", ", c.OursOpeningsUnmatchedBySize.Take(8).Select(u => $"{u.Size} {u.Count}"))}{(c.OursOpeningsUnmatchedBySize.Count > 8 ? " ..." : "")}");
             if (c.TheirsOpeningsUnmatchedBySize.Count > 0)
                 sb.AppendLine(CultureInfo.InvariantCulture, $"  hers we have not, by size: {string.Join(", ", c.TheirsOpeningsUnmatchedBySize.Take(8).Select(u => $"{u.Size} {u.Count}"))}{(c.TheirsOpeningsUnmatchedBySize.Count > 8 ? " ..." : "")}");
+                sb.AppendLine(CultureInfo.InvariantCulture, $"  hers whose centre stands inside one of ours: {c.TheirsOpeningsCovered} ({100.0 * c.TheirsOpeningsCovered / Math.Max(1, o.Theirs):F0}%)");
+                if (c.OursOpeningsHersElsewhere > 0) sb.AppendLine(CultureInfo.InvariantCulture, $"  of ours she has not, {c.OursOpeningsHersElsewhere} stand where she cuts on another storey");
         }
         foreach (var n in c.Notes) sb.AppendLine("  note: " + n);
         return sb.ToString();

@@ -27,7 +27,12 @@ namespace Kor.Operations.FileSync.Service.Jobs.MoveReportsToEor;
 //     (same 3-step PS1 sequence, identical visible end state).
 //   - On first successful upload to a non-CatchAll EOR, drops a control file
 //     "Acknowledge and Move To Server <Month>.txt" once per EOR (de-duped here;
-//     PS1 was per-project and idempotent via PUT-replace).
+//     PS1 was per-project and idempotent via PUT-replace) AND records it in
+//     FileSync.EorControlFiles -- that record is what lets MoveReportsToToSend
+//     sweep the folder on the 5th. No record, no sweep (see EorRouting).
+//   - Every file that lands in CatchAll is reported to CatchAllReportTo with
+//     the reason (not in EOR.csv / name matches no folder), so an unrouted
+//     report is somebody's to-do on the 1st instead of a silent pile.
 //   - Writes audit CSV Move_Reports_Audit_<MM-yyyy>.csv to AuditLogDir on the
 //     file server (Live) or ShadowOutputDir on the local box (Shadow).
 //   - Emails each notified EOR a plain-text body with file count and the
@@ -88,7 +93,7 @@ internal sealed class MoveReportsToEorRunner : IJobRunner
             using var csvStream = await _facade.DownloadByPathAsync(driveId, csvPath, ct).ConfigureAwait(false);
             using var reader = new StreamReader(csvStream, Encoding.UTF8);
             var csvText = await reader.ReadToEndAsync(ct).ConfigureAwait(false);
-            eorMap = ParseEorCsv(csvText);
+            eorMap = EorRouting.ParseEorCsv(csvText);
             _logger.LogInformation("Loaded {Count} EOR mapping(s) from {Path}.", eorMap.Count, csvPath);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
@@ -107,17 +112,6 @@ internal sealed class MoveReportsToEorRunner : IJobRunner
         {
             if (child.Folder is not null && !string.IsNullOrWhiteSpace(child.Name))
                 eorFolders.Add(child.Name);
-        }
-
-        var eorFolderMap = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
-        foreach (var folder in eorFolders)
-        {
-            foreach (var word in folder.Split(' ', StringSplitOptions.RemoveEmptyEntries))
-            {
-                if (!eorFolderMap.TryGetValue(word, out var list))
-                    eorFolderMap[word] = list = new List<string>();
-                list.Add(folder);
-            }
         }
 
         _logger.LogInformation("Discovered {Count} EOR folder(s) under '{Root}'.", eorFolders.Count, opts.EorRootRelativePath);
@@ -162,6 +156,10 @@ internal sealed class MoveReportsToEorRunner : IJobRunner
         var results = new List<ReportMoveResult>();
         var notifiedEors = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         var controlFileCreatedFor = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var controlFileRecordedFor = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var periodKey = EorRouting.PeriodKey(now);
+        // project folder -> (why it fell through, how many files) for the CatchAll report
+        var catchAll = new Dictionary<string, (EorRouting.EorResolution Why, int Files)>(StringComparer.OrdinalIgnoreCase);
 
         // 4) Walk each project's Reports/ folder.
         foreach (var project in projects)
@@ -169,7 +167,8 @@ internal sealed class MoveReportsToEorRunner : IJobRunner
             ct.ThrowIfCancellationRequested();
             var projectName = project.Name!;
             var projectNumber = projectName.Split(' ', 2)[0];
-            var eorName = ResolveEorName(projectNumber, eorMap, eorFolderMap, opts.CatchAllFolderName);
+            var resolution = EorRouting.ResolveEor(projectNumber, eorMap, eorFolders, opts.CatchAllFolderName);
+            var eorName = resolution.Folder;
 
             var reportsPath = $"{projectName}/{opts.ReportsSubfolderName}";
             List<DriveItem> files;
@@ -196,6 +195,13 @@ internal sealed class MoveReportsToEorRunner : IJobRunner
             {
                 _logger.LogDebug("No files in Reports folder for '{Project}'.", projectName);
                 continue;
+            }
+
+            if (resolution.IsCatchAll)
+            {
+                catchAll[projectName] = (resolution, files.Count);
+                _logger.LogWarning("'{Project}' -> {CatchAll}: {Reason} (EOR.csv says '{Name}').",
+                    projectName, eorName, resolution.Reason, resolution.CsvName ?? "<none>");
             }
 
             string? eorFolderId = null;
@@ -228,7 +234,9 @@ internal sealed class MoveReportsToEorRunner : IJobRunner
                         if (!string.Equals(eorName, opts.CatchAllFolderName, StringComparison.OrdinalIgnoreCase)
                             && controlFileCreatedFor.Add(eorName))
                         {
-                            await TryCreateControlFileAsync(eorFolderId, controlFileName, ct).ConfigureAwait(false);
+                            var dropped = await TryCreateControlFileAsync(eorFolderId, controlFileName, ct).ConfigureAwait(false);
+                            if (dropped && await TryRecordControlFileAsync(periodKey, eorName, controlFileName, ct).ConfigureAwait(false))
+                                controlFileRecordedFor.Add(eorName);
                         }
                     }
                     catch (OperationCanceledException) when (ct.IsCancellationRequested)
@@ -300,6 +308,32 @@ internal sealed class MoveReportsToEorRunner : IJobRunner
             }
         }
 
+        // 7) CatchAll report (Live only). The pile nobody is asked to initial
+        //    has to be somebody's to-do on the 1st, while there is time to fix
+        //    EOR.csv before the 5th.
+        int catchAllFiles = catchAll.Values.Sum(v => v.Files);
+        bool catchAllReported = false;
+        if (!isShadow && catchAll.Count > 0)
+        {
+            try
+            {
+                await SendMailAsync(opts.SenderAddress, opts.CatchAllReportTo, opts.GlobalCc,
+                    $"{catchAllFiles} field-review report(s) have no engineer to initial them ({monthTag})",
+                    BuildCatchAllReport(catchAll, opts, monthTag), ct).ConfigureAwait(false);
+                catchAllReported = true;
+                _logger.LogInformation("CatchAll report emailed To={To}: {Projects} project(s), {Files} file(s).",
+                    opts.CatchAllReportTo, catchAll.Count, catchAllFiles);
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "CatchAll report email failed To={To}", opts.CatchAllReportTo);
+            }
+        }
+
         int moved = results.Count(r => r.Status == ReportMoveStatus.Moved);
         int wouldMove = results.Count(r => r.Status == ReportMoveStatus.WouldMove);
         int failed = results.Count(r => r.Status == ReportMoveStatus.Failed);
@@ -307,24 +341,57 @@ internal sealed class MoveReportsToEorRunner : IJobRunner
         var verb = isShadow ? "Would move" : "Moved";
         var emailVerb = isShadow ? "Would email" : "Emailed";
         var emailCount = isShadow ? notifiedEors.Count : emailedCount;
+        var routedEors = notifiedEors.Count;
+        var recordedNote = isShadow ? "(Shadow: no notes dropped, nothing recorded)" :
+            $"notes dropped+recorded for {controlFileRecordedFor.Count} of {routedEors} EOR(s)";
+        var catchAllNote = catchAll.Count == 0
+            ? "CatchAll: 0."
+            : $"CatchAll: {catchAllFiles} file(s) from {catchAll.Count} project(s) " +
+              $"({catchAll.Values.Count(v => v.Why.Reason == EorRouting.EorReason.NotInCsv)} not in EOR.csv, " +
+              $"{catchAll.Values.Count(v => v.Why.Reason == EorRouting.EorReason.NoFolderForName)} name matches no folder)" +
+              (isShadow ? "." : catchAllReported ? "; reported." : "; REPORT EMAIL FAILED.");
         return new JobRunResult(
             Success: failed == 0,
             Summary: $"{verb} {(isShadow ? wouldMove : moved)} file(s) across {projects.Count} project(s) for {monthTag}; " +
-                     $"failed={failed}. {emailVerb} {emailCount} EOR(s); skipped {skippedNoEmail} (no email mapping). " +
-                     $"Audit: {auditPath}");
+                     $"failed={failed}. {emailVerb} {emailCount} EOR(s); skipped {skippedNoEmail} (no email mapping); {recordedNote}. " +
+                     $"{catchAllNote} Audit: {auditPath}");
     }
 
-    private static string ResolveEorName(
-        string projectNumber,
-        Dictionary<string, string> eorMap,
-        Dictionary<string, List<string>> eorFolderMap,
-        string catchAllName)
+    private static string BuildCatchAllReport(
+        IReadOnlyDictionary<string, (EorRouting.EorResolution Why, int Files)> catchAll,
+        MoveReportsToEorOptions opts,
+        string monthTag)
     {
-        if (!eorMap.TryGetValue(projectNumber, out var lastName) || string.IsNullOrWhiteSpace(lastName))
-            return catchAllName;
-        if (eorFolderMap.TryGetValue(lastName, out var folders) && folders.Count > 0)
-            return folders[0];
-        return catchAllName;
+        var sb = new StringBuilder();
+        sb.AppendLine("Hello,");
+        sb.AppendLine();
+        sb.AppendLine($"On the 1st the field-review reports below were filed to {opts.EorRootRelativePath}\\{opts.CatchAllFolderName} because no engineer could be found for the project.");
+        sb.AppendLine("Nobody is asked to initial the CatchAll folder and nothing is moved out of it automatically.");
+        sb.AppendLine();
+        sb.AppendLine($"To fix: edit {opts.EorRootRelativePath}\\{opts.EorCsvFileName} (ProjectNumber,EOR - the engineer's surname, spelled as their folder is) and then move the files from {opts.CatchAllFolderName} into that engineer's folder, or re-run the job.");
+        sb.AppendLine();
+        foreach (var group in catchAll.OrderBy(kv => kv.Key, StringComparer.OrdinalIgnoreCase)
+                                      .GroupBy(kv => kv.Value.Why.Reason))
+        {
+            var heading = group.Key switch
+            {
+                EorRouting.EorReason.NotInCsv => "Not in EOR.csv:",
+                EorRouting.EorReason.EmptyName => "In EOR.csv with a blank engineer:",
+                EorRouting.EorReason.NoFolderForName => "Named in EOR.csv but there is no folder with that name:",
+                _ => group.Key.ToString(),
+            };
+            sb.AppendLine(heading);
+            foreach (var (project, (why, files)) in group)
+            {
+                var who = why.CsvName is null ? string.Empty : $"  (EOR.csv says '{why.CsvName.Trim()}')";
+                sb.AppendLine($"  - {project}: {files} file(s){who}");
+            }
+            sb.AppendLine();
+        }
+        sb.AppendLine($"Period: {monthTag}.");
+        sb.AppendLine();
+        sb.AppendLine("Thank you.");
+        return sb.ToString();
     }
 
     private async Task MoveOneAsync(string driveId, DriveItem file, string destFolderId, CancellationToken ct)
@@ -347,7 +414,9 @@ internal sealed class MoveReportsToEorRunner : IJobRunner
         }
     }
 
-    private async Task TryCreateControlFileAsync(string eorFolderId, string controlFileName, CancellationToken ct)
+    // True only when the note is actually in the folder. A failed drop is
+    // logged and NOT recorded, so the 5th leaves that folder alone.
+    private async Task<bool> TryCreateControlFileAsync(string eorFolderId, string controlFileName, CancellationToken ct)
     {
         var temp = Path.Combine(Path.GetTempPath(), $"ctrl_{Guid.NewGuid():N}_{controlFileName}");
         try
@@ -359,6 +428,7 @@ internal sealed class MoveReportsToEorRunner : IJobRunner
                 ct).ConfigureAwait(false);
             await _facade.UploadToFolderAsync(eorFolderId, controlFileName, temp, progress: null, ct).ConfigureAwait(false);
             _logger.LogInformation("Dropped control file '{Name}' into EOR folder.", controlFileName);
+            return true;
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
@@ -367,6 +437,7 @@ internal sealed class MoveReportsToEorRunner : IJobRunner
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Failed to drop control file '{Name}'.", controlFileName);
+            return false;
         }
         finally
         {
@@ -374,64 +445,26 @@ internal sealed class MoveReportsToEorRunner : IJobRunner
         }
     }
 
-    private static Dictionary<string, string> ParseEorCsv(string csv)
+    private async Task<bool> TryRecordControlFileAsync(string periodKey, string eorName, string controlFileName, CancellationToken ct)
     {
-        var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        using var reader = new StringReader(csv);
-        var header = reader.ReadLine();
-        if (header is null) return map;
-
-        var cols = SplitCsvLine(header);
-        int projIdx = -1, eorIdx = -1;
-        for (int i = 0; i < cols.Length; i++)
+        try
         {
-            var h = cols[i].Trim().Trim('"');
-            if (string.Equals(h, "ProjectNumber", StringComparison.OrdinalIgnoreCase)) projIdx = i;
-            else if (string.Equals(h, "EOR", StringComparison.OrdinalIgnoreCase)) eorIdx = i;
+            await _store.RecordEorControlFileAsync(periodKey, eorName, controlFileName, ct).ConfigureAwait(false);
+            return true;
         }
-
-        if (projIdx < 0 || eorIdx < 0) return map;
-
-        string? line;
-        while ((line = reader.ReadLine()) is not null)
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
-            if (string.IsNullOrWhiteSpace(line)) continue;
-            var parts = SplitCsvLine(line);
-            if (parts.Length <= Math.Max(projIdx, eorIdx)) continue;
-            var p = parts[projIdx].Trim().Trim('"');
-            var e = parts[eorIdx].Trim().Trim('"');
-            if (!string.IsNullOrWhiteSpace(p) && !map.ContainsKey(p))
-                map[p] = e;
+            throw;
         }
-
-        return map;
-    }
-
-    private static string[] SplitCsvLine(string line)
-    {
-        var result = new List<string>();
-        var sb = new StringBuilder();
-        var inQuote = false;
-        foreach (var c in line)
+        catch (Exception ex)
         {
-            if (c == '"')
-            {
-                inQuote = !inQuote;
-                sb.Append(c);
-            }
-            else if (c == ',' && !inQuote)
-            {
-                result.Add(sb.ToString());
-                sb.Clear();
-            }
-            else
-            {
-                sb.Append(c);
-            }
+            // The note is in the folder but the 5th will not know to look for
+            // it, so that EOR's reports stay on SharePoint until someone
+            // re-fires this job. Loud, not fatal.
+            _logger.LogError(ex, "Control file '{Name}' dropped for '{Eor}' but FileSync.EorControlFiles was not updated ({Period}).",
+                controlFileName, eorName, periodKey);
+            return false;
         }
-
-        result.Add(sb.ToString());
-        return result.ToArray();
     }
 
     private static void WriteAuditCsv(string path, IReadOnlyList<ReportMoveResult> rows, bool isShadow)
