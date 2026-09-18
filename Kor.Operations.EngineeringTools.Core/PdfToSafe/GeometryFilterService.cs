@@ -2097,7 +2097,14 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             {
                 try
                 {
-                    var planar = new PlanarRings(SlabEdgeJoinMm, slabEdgeBridgeMm, SlabEdgeExtendMm).Build(arranged.Concat(wallEdges).Concat(doorEdges).Concat(gapEdges));
+                    // A MATCH LINE CLOSES THE OUTLINE OF A PART PLAN (intake step 117, 2026-09-17 23:25). A plan too wide for one
+                    // sheet is cut on a match line and drawn as a north and a south half; the floor's outline on each half is open
+                    // where the seam runs, so no cell closed there and the half read no plate - 70061-01's P1 north (its west and
+                    // north are walls, its east and south the match lines; her 59,027 sq ft, ours 5,578), 31065's P1 and P2 the
+                    // same. The match line is the drafter's own statement that the floor continues: it bounds the half's cells,
+                    // and the composer joins the halves across the seam (MatchLineSheetJoin) as it has since the DXF route.
+                    var matchEdges = result.MatchLines.Select(m => new DxfSegment("MATCH", new DxfPoint(m.Start.X, m.Start.Y), new DxfPoint(m.End.X, m.End.Y))).ToList();
+                    var planar = new PlanarRings(SlabEdgeJoinMm, slabEdgeBridgeMm, SlabEdgeExtendMm).Build(arranged.Concat(wallEdges).Concat(doorEdges).Concat(gapEdges).Concat(matchEdges));
                     if (FaceTrace is not null)
                     {
                         // WHAT THE ARRANGEMENT HOLDS ROUND A COLUMN ONE EDGE ALONE RUNS INTO (the edge-beside-a-column class,
