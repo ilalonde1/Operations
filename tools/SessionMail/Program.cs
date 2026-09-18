@@ -9,7 +9,7 @@ using System.Text.RegularExpressions;
 // secrets, no Graph app: the COM object is bound late so the tool builds without an Outlook reference.
 //
 //   SessionMail send --subject "..." (--body "..." | --body-file <path>) [--to <address>]
-//   SessionMail wait --ticket Q1 --since <ISO time> [--timeout-minutes 480] [--poll-seconds 60] [--from <address>]
+//   SessionMail wait --ticket Q1 --since <ISO time> [--timeout-minutes 480] [--poll-seconds 60] [--from <address>] [--tag PDF-INTAKE]
 //
 // wait prints "ANSWER <ticket> at HH:mm:ss: <first non-quoted line of the reply>" and exits 0, or
 // "TIMEOUT" and exits 2. Only a REPLY (RE:/AW:/SV:/R:) from the named sender carrying "[PDF-INTAKE <ticket>]"
@@ -91,7 +91,8 @@ internal static class Program
         int timeoutMinutes = opt.TryGetValue("timeout-minutes", out var tm) ? int.Parse(tm, CultureInfo.InvariantCulture) : 480;
         int pollSeconds = opt.TryGetValue("poll-seconds", out var ps) ? int.Parse(ps, CultureInfo.InvariantCulture) : 60;
         string from = opt.TryGetValue("from", out var fr) ? fr : DefaultAddress;
-        string tag = $"[PDF-INTAKE {ticket}]";
+        // the ticket tag this session puts in its subjects: "[PDF-INTAKE Q1]" by default; "--tag JOEBRAIN" for "[JOEBRAIN Q1]"
+        string tag = $"[{(opt.TryGetValue("tag", out var tg) ? tg : "PDF-INTAKE")} {ticket}]";
         var deadline = DateTime.Now.AddMinutes(timeoutMinutes);
         var reply = new Regex(@"^\s*(RE|AW|SV|R)\s*:", RegexOptions.IgnoreCase);
         while (DateTime.Now < deadline)
