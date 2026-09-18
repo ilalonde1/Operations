@@ -794,6 +794,12 @@ residues' cause. Not the PDF route; queued behind it.
    = 73% over 49 sets, 77% on the 21 current; 92 storeys under half.** To open first: 70061-01 (9%), 31202 (56%),
    31017 (45%), 31087 (82%), 31048 (15%), 30990 (45%). NEXT: 116's last characterisation (the ROOF), then 70061-01.
 
+3au. **Night 2026-09-17 22:45 → 23:10** (§133). 116's third finding (a doorway's closure is wall); by the plates
+   yardstick the step is net +106,451 sq ft toward hers on the five sets (31168 40% → 64%) with three named losses;
+   a fourth class found (a roof's union ring refused by the neighbourhood gate: 22 columns inside, 49 near, on a
+   storey drawn in several roofs) and left for the morning. `step-116` `e83dcdfe`. **NEXT: the neighbourhood gate on
+   a storey of several roofs; bank 116; run 36 (not across 22:00); 70061-01.**
+
 4. **WP6** — one model in front of Andrea (31170's, or whichever the ledger ranks best of the
    architects' sets). Ian's call when.
 5. **Step 47**, the next reading rule, from the corpus. `takeoff corpus-query plan-titles` on the

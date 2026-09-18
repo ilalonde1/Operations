@@ -2853,3 +2853,25 @@ moves — Ian's line.
 the 21 current-model sets 77%**; 92 storeys stand under half of hers. To open first, by area missing: 70061-01 (9%:
 three storeys of 60–88k sq ft), 31202 (56%: L2–L4, the outline that is not drawn), 31017 (45%), 31087 (82%), 31048
 (15%), 30990 (45%). That is §1's condition 1 in the engineer's own unit for the first time.
+
+## 133. Step 116's third finding and the fourth class; where the night stops (2026-09-17 22:45–23:10)
+
+**Third finding:** 31202's ROOF plan read 2,216 sq ft with the doorway closures as lines and 9,677 with them as
+wall — a closure's ends had been bridged and carried like a slab edge's. A doorway's closure is wall too (`Wall =
+Layer is "WALL" or "DOOR"`). **The instrument's verdict on 116 with the three findings, the plates yardstick on the
+five sets with her model:** 31168 40% → 64% (+97,622 sq ft: P1/P2/P3 and L2), 31202 56% → 59% (+10,286), 31138 70% →
+71% (+2,366), 31065 93% → 93% (−491: P1 −4,245 and P2 −1,327 against L1 +1,244 and the core box on the typical
+floors), 31130 142% → 141% (−3,332; her model is one tower) — net +106,451 sq ft toward hers; fast suite 1,495.
+
+**The fourth class, found and not fixed:** 31202's ROOF storey still 12,772 → 4,269 in the model. The trace says the
+9,677 sq ft ring is read and then refused by the neighbourhood gate — *(False, 22, 49)*: 22 columns inside, 49 near,
+"structure stands in" false — because a roof plan draws the columns of the roofs beside it (the upper roof, the
+penthouse) within the ring's reach, and a ring holding under half of what stands near it is a partial reading by
+that gate's rule. Under develop the three ROOF pieces were each small enough to pass. The gate and the union now
+disagree on what "near" means for a storey drawn in several roofs. Not tonight.
+
+**Where the night stops (23:10):** develop `9aa55eda` + this section; `step-116` (`e83dcdfe`) with the three findings,
+its test and the study lines in the trace, one class (the roof's neighbourhood) from banking — net +106k sq ft on the
+six by the instrument, the losses named (31065 P1/P2, 31130 L1, 31202 ROOF). `step-112` and `step-109` as §130 left
+them. No run in flight; the next run does not cross 22:00. Ian's three questions of the evening answered in §130
+and §132 and by mail (20:18, 20:21, 22:41).
