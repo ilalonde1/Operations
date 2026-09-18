@@ -53,3 +53,15 @@ the invariant hold.
 
 Summary lines on the new test: WHAT IT COVERS (the three shapes) and WHAT IT DOES NOT (the real sheet; a carry the
 agreement refuses).
+
+## Outcome (2026-09-17 17:40, after Codex's run)
+
+Codex delivered shape (a): the foot within the join tolerance of the target edge's end is refused, with three tests,
+and said plainly the guard was unproven on the sheet — it was not the sheet's fault. The exception, made to name the
+vertex and the owners of the colliding half-edges, read: *"at (57705,24663) two boundary half-edges (owners 40/none and
+39/none, twins) share a successor"* — a face whose walk passes one vertex twice (a box inside a floor with a corner ON
+the floor's edge), split at the pinch into the face's ring and the hole's ring, the hole's ring owned by nobody because
+`Regions` reserved same-component containment for the outside's rings. develop refused two pages of 31065 the same way
+WITHOUT the carries (p7, p12); the carries moved which pages hit it. Fixed in `Regions`: a ring split from a walk that
+also made a positive ring holding it is that ring's hole (`AHoleTouchingItsFaceAtAVertexIsItsHoleTests`, proved by
+breaking). 31065: 71 of 71 pages arrange; P1 north reads its 11,442 sq ft floor. Codex's guard and tests kept.

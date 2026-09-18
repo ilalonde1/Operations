@@ -2673,3 +2673,40 @@ moves with no sentence beside it is a report telling half; "the WHY for every co
 the comment above the writer.
 
 QUESTIONS.md: the 097/098 items are gone. Run 34 carries 108 with whatever of 112 stands by then.
+
+## 128. Step 112 characterised — the refusal was a pinched hole, never the carries; the carries judged and parked (2026-09-17 17:10–18:10)
+
+**Codex's run (16:43):** shape (a) of the brief — a carry whose foot lands within the join tolerance of the target
+edge's end is refused — with three tests; "all three shapes recovered before this change, so this guard is not yet a
+verified fix for the sheet failure." True: with the guard, 31065's p7 and p20 were refused exactly as before.
+
+**The trace on develop WITHOUT 112 refuses two pages of 31065 too** (p7 the typical details, p12 the design-load
+plan); the carries moved which pages hit it (p12 cured, p20 hit). One class, three instances — rule 11. The exception
+was made to say where and whose: *"at (57705,24663) two boundary half-edges (owners 40/none and 39/none, twins) share a
+successor"*. Read off the wedges round the vertex, that is one face whose walk passes the vertex twice — a box drawn
+inside a floor with a corner ON the floor's edge — split at the pinch into the face's ring and the hole's ring, and the
+hole's ring, being in the face's own component, excluded from the containment that `Regions` reserved for the
+outside's rings: owned by nobody. The face had no hole; the walk that recovered the face and its neighbour met two
+half-edges with one successor at the corner. **Fix in `Regions`: a ring split from a walk that also made a positive
+ring holding it is that ring's hole** (`Cycle.WalkId`). `AHoleTouchingItsFaceAtAVertexIsItsHoleTests`: a 10 × 10 m
+floor with a 1 × 1 m diamond inside it, corner on the south edge, in three line orders — the floor carries the diamond
+as a hole; both cells recover as one slab with no hole; the floor alone as one slab with one hole; red without the
+rule. 31065 on the branch: **71 of 71 pages arrange** (from 69); P1 north reads an 11,442 sq ft floor holding 37
+columns and 62 walls that the walk never found.
+
+**Then the six judged the carries (112 + the fix, develop merged in): gains 31065 P1 +2,310 sq ft (toward her
+39,828), 31168 P2 +1,218; losses of ONE shape — 31130 L1/L1M 30,916 → 27,659 (hers 55,387), 31065 L3 −620 with a
+column left outside the plate, 31065 L7–L17 −41 × 6 (a 1.5 × 2.3 m box under column C10 against the west edge, three
+lines drawn an inch short of it — her model has slab there; `pdf-overlay --crop` p36), 31130 L17 −301, 31202 L13 −141.
+Column and opening yardsticks unmoved (31138 hers-we-have 128 → 132).** Rule 10: a T carried onto the plate's edge
+closes a cell at the RIM, and the rim rule (step 98's converse — a cell touching the outside is not the floor unless
+it holds structure) drops what was part of the big cell while the line stopped short. Any interior line drawn exactly
+to the edge does the same today; the carries make more of them. The fix belongs to the rim rule, not the carries: **a
+rim cell whose outward edges are slab-edge strokes lies inside the outline and is floor** (a balcony box or a
+dimension strip faces the page with thin lines) — which needs each stroke's class (`segments`/pieces/loops are the
+slab-edge pen; `StrokesOnGrid` are not) carried through `Arrange`'s merges and splits to the mesh's edges. A step of
+its own, corpus-judged (plan row 3ap).
+
+**Banked alone (`pinched-hole` → develop): the pinch fix and the diagnostic exception, without the carries.** The
+carries stay on `step-112` (`8d3afd4c` + the develop merge) with this section as the reason. Codex's guard and tests
+stay on the branch with them.
