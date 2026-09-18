@@ -136,7 +136,7 @@ public sealed class PlanarRings
 
     internal sealed record Edge(int A, int B, bool Inserted);
     private sealed record Span(DxfPoint A, DxfPoint B, bool Inserted);
-    private sealed record Cycle(List<int> Halves, PlanLoop Loop, double Area, int Component);
+    private sealed record Cycle(List<int> Halves, PlanLoop Loop, double Area, int Component, int WalkId);
     private sealed record Proposal(int A, int B, double Cost, List<Span> Spans)
     {
         /// <summary>B is the edge the end is carried onto, not another end (step 112): only A has a choice to make.</summary>
@@ -301,6 +301,7 @@ public sealed class PlanarRings
         // is the same class ("edges stop beside columns"). Such an end is carried perpendicularly to its foot on the
         // nearest span within the bridge; the span has no choice to make, so the end's unique cheapest proposal decides,
         // and a carry that crosses an edge is refused as every other proposal is.
+        // A carry's split foot must be farther than the join tolerance from both target-edge endpoints.
         if (_bridgeTolerance > _joinTolerance)
             foreach (int a in ends)
             {
@@ -318,6 +319,8 @@ public sealed class PlanarRings
                     var span = new Span(sa, sb, false);
                     if (!Intersection(ray, span, out var f, out double s, out double t)) continue;
                     if (!(s > 0) || !(t > 0.01) || !(t < 0.99)) continue;
+                    if (LoopGeometry.Within(f.DistanceTo(sa), _joinTolerance)
+                        || LoopGeometry.Within(f.DistanceTo(sb), _joinTolerance)) continue;
                     double d = p.DistanceTo(f);
                     if (d <= 3 * _joinTolerance || d > _bridgeTolerance) continue;
                     if (d < bestD) { bestD = d; bestE = e; foot = f; }
@@ -417,6 +420,23 @@ public sealed class PlanarRings
             }
             if (next[h] < 0) throw new InvalidOperationException("A selected face boundary is open.");
         }
+        // Two active half-edges with one successor is the walk's only way of failing: say WHERE and WHOSE they are,
+        // so the fault reads from the sheet (a vertex in mm, the owners of the two half-edges and of their twins)
+        // instead of from a permutation (2026-09-17 17:25).
+        var seen = new Dictionary<int, int>();
+        for (int h = 0; h < active.Length; h++)
+        {
+            if (!active[h]) continue;
+            if (seen.TryGetValue(next[h], out int other))
+            {
+                var v = mesh.Points[mesh.To(h)];
+                string Own(int e) => mesh.Owner.Length > e && mesh.Owner[e] >= 0 ? mesh.Owner[e].ToString(System.Globalization.CultureInfo.InvariantCulture) : "none";
+                throw new InvalidOperationException(
+                    $"Face successor is not a permutation: at ({v.X:0},{v.Y:0}) two boundary half-edges (owners {Own(other)}/{Own(other ^ 1)} " +
+                    $"and {Own(h)}/{Own(h ^ 1)}, twins) share a successor (owner {Own(next[h])}/{Own(next[h] ^ 1)}).");
+            }
+            seen[next[h]] = h;
+        }
         var component = Enumerable.Repeat(-1, mesh.Points.Count).ToArray();
         int label = 0;
         for (int v = 0; v < component.Length; v++)
@@ -453,7 +473,7 @@ public sealed class PlanarRings
                 double area = SignedArea(points);
                 if (area == 0) throw new InvalidOperationException("A zero-area cycle has no bounded side.");
                 var loop = new PlanLoop(mesh.Layer, Simplified(points, mesh.Tolerance), !ring.Any(e => mesh.Edges[e / 2].Inserted));
-                cycles.Add(new Cycle(ring, loop, area, component[mesh.From(ring[0])]));
+                cycles.Add(new Cycle(ring, loop, area, component[mesh.From(ring[0])], seed));
             }
             if (path.Count != 0) throw new InvalidOperationException("A face walk left unaccounted edges.");
         }
@@ -470,7 +490,16 @@ public sealed class PlanarRings
         {
             int h = cycle.Halves[0];
             var probe = Mean([mesh.Points[mesh.From(h)], mesh.Points[mesh.To(h)]]);
-            var containing = Enumerable.Range(0, outer.Count)
+            // A HOLE TOUCHING ITS FACE'S BOUNDARY AT A VERTEX IS THAT FACE'S HOLE (2026-09-17 17:40). One walk passes
+            // the pinch vertex twice and is split there into the face's ring and the hole's ring; the hole's ring is in
+            // the face's own component, which the containment rule below excludes (the outside's rings are), so it
+            // was owned by nobody - and a boundary walk that selected the face then met two half-edges with one
+            // successor at the pinch ("Face successor is not a permutation": 31065's P1 north with step 112's
+            // carries, its design-load plan without them). The ring split from a walk that also made a positive
+            // ring holding it is that ring's hole.
+            var own = Enumerable.Range(0, outer.Count)
+                .Where(i => outer[i].WalkId == cycle.WalkId && LoopGeometry.PointInPolygon(probe, outer[i].Loop.Points)).ToList();
+            var containing = own.Count > 0 ? own : Enumerable.Range(0, outer.Count)
                 .Where(i => (!separateComponents || outer[i].Component != cycle.Component)
                     && LoopGeometry.PointInPolygon(probe, outer[i].Loop.Points)).ToList();
             if (containing.Count == 0) continue; // Unbounded face, not a hole.
