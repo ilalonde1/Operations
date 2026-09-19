@@ -3519,3 +3519,54 @@ so the verb's form must ask more — the ring stands OUTSIDE the storey's larges
 draw one. Either way the "storeys with a plate" figure (2,176 of 2,829) counts some of these 476 as plated, and §8
 prices them at the default. The rule that parts the wrapped title takes 30838's; the verb says how many of the 64
 are the same shape.
+
+## 148. Step 125 tried, measured on its own set, PARKED (rule 10); the full suite's silent crash named (2026-09-18 21:30)
+
+**Step 125 — a title's underline underlines every line of the title** (`step-125`, `bbf680e0`): the join in
+`SheetViews.Titles` takes a plan-naming first line with no underline of its own as the first line of the underlined
+line beneath it, at the same size and left edge, whatever the second line's words. Test
+`ATitlesUnderlineUnderlinesEveryLineOfTheTitle` (30838's S2.28 shape: two views stacked, the upper title in two lines;
+a larger-type title over an underlined note stays apart) — red with the rule broken (1 view), green mended (2, parted
+by the drop). Fast suite 1,517 green; the six-set gate identical (none of the six wraps a title). A new instrument,
+`SheetViewsProbe` (`KOR_VIEWS_PDF`, `KOR_VIEWS_PAGE` → `TestResults/sheet-views/<pdf>-p<page>.txt`), lists a page's
+views and every underline-shaped stroke with the words above it; on the real page 49 it finds the two views under
+the build's own vocabulary. A one-page trace (`KOR_SLAB_TRACE_PAGES=49`) does NOT exercise the split — `PdfOnlyBuild`
+parts views only on a page RANGE (`if (range)`), a single page is written whole — so the trace was run on 48-49: the
+views part, `S2.28_1_…CONCRETE OUTLINE AND DIAPHRAGM REINFORCING.dxf` and `S2.28_2_…SLAB REINFORCING.dxf`, and the
+second is refused [REINFORC] as intended.
+
+**Then the whole set (95 s) against her model** — the rule that helps the page hurts the set:
+
+| 30838 | run 40 (124) | step 125 |
+|---|---|---|
+| plates, ours/hers | 532,447 / 586,053 = **91%** | 385,828 / 586,053 = **66%** |
+| storeys under half of hers | 11 (L22 1,294/10,702 … the phantoms) | 17 (L2 0, L20 0, L21 0, L22 0, L25–L27 0 …) |
+| thickness agree | 28 of 39 (72%) | 21 of 25 (84% — of fewer storeys) |
+| her openings we have | 86 of 157 (55%) | 71 of 157 (45%) |
+
+Why: the whole-sheet read had closed L21's 9,204 sq ft floor (and L2, L20, L22, L25–L27, …) from the **SLAB
+REINFORCING view's outline** — the same floor drawn a second time on the sheet, cleanly, without the bar runs (the
+whole-sheet DXF: 190 SLABEDG segments, 5 closed loops; parted, the outline view holds 32 segments and 1 loop, the
+reinforcing view 158 and 4). Parted, the reinforcing view is refused and the outline view's own rim, with the
+diaphragm bars drawn over it (31017's class, §143), closes nothing: "No slab edge on this drawing would close … the
+ring closes at a gap of 7315 (4,745 sq ft)". The phantoms do go (L22 0 instead of 1,294), and that is the only gain.
+**The rule that banks is two-part:** this join, AND either (i) the rebar-over-outline rule, so the outline view's rim
+closes on its own — the cleaner one, since it also mends 31017 — or (ii) a reinforcing view of the same storey on the
+same sheet lending its slab edges (never its bars) to the outline view. Parked as `step-125`; run 41 goes with 124.
+The lesson is §144's again, one step wider: a rule right on the page is judged on the SET, and "her models judge it
+before it is banked" caught this in ninety seconds where the six-set gate (identical) could not — **a rule aimed at a
+set outside the six needs that set built and yardsticked before banking, every time.**
+
+**The full suite's silent aborts, named.** Three today ("Test host process crashed", no dump, no event-log entry):
+15:26, 15:52, and 20:47 (through the PowerShell tool's `2>&1 | Out-File` pipeline — not the cause). The detached
+re-run at 20:49 crashed at 12 m 50 s with 1,609 of the assembly's 1,631 tests reported (`--list-tests` counts 1,631)
+— 22 never ran; the `--blame-crash --blame-hang` run at 21:06 crashed at 3 m 52 s with 1,487 reported, still no dump
+(the crash-dump utility attached and wrote nothing), and named the test running: **`ModelCoverageTests.
+EveryGeneratedMemberStandsOnLineworkFromItsOwnStorey`** (31138, 31168), with `LiveProjectBaselineTests` (the DXF
+route's reference builds) the classes in flight beside it. No `Environment.Exit`/`FailFast` anywhere in Core or the
+CLI; the events at 20:53 are JoeBrain's Kestrel, not ours. A crash with no dump and no WER entry in the DXF route's
+reference builds, intermittent under parallel classes, points at a native fault or a stack overflow in a thread-pool
+thread — the morning runs those two classes ALONE with blame (`--filter "FullyQualifiedName~ModelCoverageTests|
+FullyQualifiedName~LiveProjectBaselineTests"`), then with `xunit.parallelizeTestCollections=false`, to see whether it
+is the race or the geometry. Until it is found the full suite's verdict is partial: 1,609 green covers everything
+but ~22 tests in that region, twice.
