@@ -3740,7 +3740,7 @@ of hers, thickness 61%, honest openings 44%), the test host's killer found and f
 lines the hook rule ate — the rule's shape is right for the bars and wrong for something else on that page, and the
 trace names it.
 
-**One look before bed (01:27):** the 365 lines step 127 ate are not on page 49 (three there); set-wide they are the
+**One look before bed (01:24):** the 365 lines step 127 ate are not on page 49 (three there); set-wide they are the
 outline's own pen — w8, 100–300 in long ×162, plus 43 short w8 ticks and 18 w4 lines of 1,000 in and more — the rim
 segments between two slab-edge jogs. The jog next to a rim piece shorter than 400 mm (`HookTickMaxMm`) has that
 piece not among the "long ends", so the jog reads as a FREE tick, and a rim segment with such a jog at each end reads
