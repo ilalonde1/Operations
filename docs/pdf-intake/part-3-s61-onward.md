@@ -3493,7 +3493,7 @@ Order for the morning, by what it moves: bank run 41 → A (instrument, then the
 the phantom on every set that stacks views) → B (honesty, half an hour) → C (step 125, the four sets and the 361 empty
 DXFs) → 31017's rebar rule (shares A's page) → D → the shifted knife-edge (31138 L21) → the ties.
 
-**A, corrected on the page's own text (20:55; `page_titles.py` over PyMuPDF, an instrument for tonight only — the
+**A, corrected on the page's own text (20:52; `page_titles.py` over PyMuPDF, an instrument for tonight only — the
 verb is the morning's):** `SheetViews.Split` already parts views stacked one above the other ("plans stacked … share
 a span, so the drop decides" — 31168's tower C sheet). The fault on 30838's S2.28 is upstream, in `Titles`: the upper
 view's title is WRAPPED onto two lines — "LEVEL 22 PLAN - CONCRETE OUTLINE" at y 849.7 pt and "AND DIAPHRAGM
