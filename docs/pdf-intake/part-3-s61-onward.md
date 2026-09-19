@@ -3507,3 +3507,15 @@ and is a view, the sheet has two, the drop parts them, and step 50 (CONCRETE OUT
 outline) keeps the upper one and the [REINFORC] refusal drops the lower with its phantom box. Test: a page with two
 views stacked, the upper title in two lines with the underline under the second — red today (one part), green
 mended (two). Then the six-set gate and 30838 on its own (`KOR_SLAB_TRACE_JOB=30838-01`, pages 49 and 48).
+
+**E. How far class A reaches — an upper bound from run 40's models (20:57; scratch `repeat_rings.py`, to become a
+section of `corpus-disagreements` in the morning):** a plate under 3,000 sq ft whose bbox (to 250 mm) repeats on
+three or more storeys of one set — the signature of a box in a second view, a key plan or a detail read as a floor
+on every sheet — stands in **64 of 260 sets, on 476 storeys** (30783: 840 sq ft on 32 of 52 storeys; 01379: 1,363 on
+31 of 54; 30924: 31 of 37; 30807: 29 of 38; 30838: 12 of 42). An UPPER bound: a small building whose real floor
+repeats (a townhouse block, 1,171 sq ft on six storeys, appears under six job numbers) matches the same signature,
+so the verb's form must ask more — the ring stands OUTSIDE the storey's largest plate (30838's phantom sits at y
+−4,580..13,944 under floors at 27,729+), or the set's storeys with the ring carry no other plate while its sheets
+draw one. Either way the "storeys with a plate" figure (2,176 of 2,829) counts some of these 476 as plated, and §8
+prices them at the default. The rule that parts the wrapped title takes 30838's; the verb says how many of the 64
+are the same shape.
