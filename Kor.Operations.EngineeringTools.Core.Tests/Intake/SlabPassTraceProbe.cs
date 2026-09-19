@@ -27,6 +27,10 @@ public sealed class SlabPassTraceProbe
         string? conn = Environment.GetEnvironmentVariable(RuleSettings.ConnectionEnvironmentVariable);
         Assert.False(string.IsNullOrWhiteSpace(conn), $"{RuleSettings.ConnectionEnvironmentVariable} is not set");
         var (options, _) = PdfIntakeOptions.For(conn);
+        // KOR_SLAB_TRACE_BRIDGE_MM=914 traces the pass at another bridge (an experiment's knob, the banked row untouched):
+        // does the interruption width close 31202's rim where the ordinary bridge does not (2026-09-18 19:50)?
+        if (Environment.GetEnvironmentVariable("KOR_SLAB_TRACE_BRIDGE_MM") is { Length: > 0 } bridge)
+            options = options with { SlabEdgeBridgeMm = double.Parse(bridge, System.Globalization.CultureInfo.InvariantCulture) };
         // one of the six banked sets by its banked path and scale; any other corpus job by the cached census's newest
         // issue (the mirror's copy, no share walk) at the options' fallback scale, as the analyzer builds it (20:10)
         var banked = SixSetsBuildAsBankedTests.Sets.FirstOrDefault(s => s.Job.Equals(job, StringComparison.OrdinalIgnoreCase));

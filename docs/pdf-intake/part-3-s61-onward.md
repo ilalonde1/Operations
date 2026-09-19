@@ -3355,3 +3355,12 @@ Engineers"):
   composer's rescue); 31017's reinforcing drawn on the outline (by pen and end-mark); the shifted knife-edge on
   31138 L21; the ties (12/14, 12/16); the drawing-index pages; "ours she has" where she cuts none; two test-host
   crashes with no dump. **Run 41 (123) at 22:05, clear of the servicing window.**
+
+**The rim-gap hypothesis, tested before it is a rule** (19:50–20:00; `KOR_SLAB_TRACE_BRIDGE_MM`, a knob on the trace
+probe, the banked row untouched): 31202's L3 page traced at the ordinary 152-mm bridge and at the interruption width,
+914 mm — **the same leak at both** ("the outside reaches it through a gap 17 in wide at (44.3, 224.4) ft"; cells of
+500 sq ft or more: 0 at both). So the bridge is not the instrument that closes this corner: the leak's passage is 17
+in wide — the wall's thickness, not the notch's 610 mm — which says the outside comes in between the north wall's
+panel and the slab edge 150 mm south of its inner face, along the band the panel and the edge leave between them,
+and the notch is where that band opens to the page. The morning starts by tracing the leak's path (the raster leak
+finder's route), not by widening anything.
