@@ -3312,3 +3312,15 @@ parts of each face beyond the panel's extent along the wall's axis (the outer fa
 corner), which never coincide with the outline; and before that, the corner itself line by line, because
 `WallLeftPartOfIt` should already have kept an outer face that long — the 17-in gap may be a break in the outer
 face at the corner, not the panel's doing. The parked branch carries the test and the measurement.
+
+**The corner, line by line** (18:52, `dxf-inspect --near 13503 68397` on the L3 view): the north wall panel runs along
+y 68,763–69,190 (a 427-mm wall, the "17 in"); the west wall panel's outline turns at (12,111–13,257, 68,003); the
+slab edge (`KOR_C_SLABEDG`) runs along y 68,612.5 from x 12,110.7 eastward and along x 13,256.8 from y 68,002.9
+southward, with a short (12,110.7–13,256.8, 68,002.9) between — **a corner notch 1,146 × 610 mm whose west side, at
+x 12,110.7 from y 68,003 to 68,613, is not drawn on any layer.** The outline is open by 610 mm at the rim; the slab
+pass bridges 152 mm. Not the panels' doing and not the faces' — step 124 closed it by accident. **The class: a gap in
+the rim under the interruption width (36 in, the DXF side's `FloodFillBridge`) that the drawing leaves where a corner
+notch meets a column, closed when a callout stands inside** — the PDF side's equivalent of the composer's "closed at
+the interruption width, modelled as floor because «10" SLAB» is printed inside it" (`ExtendLimit`/`FloodFillBridge`
+on the DXF side; `SlabEdgeBridgeMm` on this side). The morning's rule, with the gate — and step 124's branch stays
+parked; its test and fixture are for that rule, not this one.
