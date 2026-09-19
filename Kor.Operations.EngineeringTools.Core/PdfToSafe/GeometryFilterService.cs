@@ -243,6 +243,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             // page's two views were told apart (step 109). A stroke under the gate whose BOTH ends meet an end of a long
             // line drawn with the same pen and colour is that line's jog, and is kept as the two-point line it is.
             var jogs = JogsBetweenLongLines(rawSubpaths, lineMinLengthMm, curveMembers, footingPieces);
+            // A BAR IS KNOWN BY ITS HOOKS (intake step 127): the runs hooked at both ends, judged once for the page
+            var hooked = HookedRuns(rawSubpaths, result);
             for (int pathIndex = 0; pathIndex < rawSubpaths.Count + curves.Count; pathIndex++)
             {
                 bool isCurve = pathIndex >= rawSubpaths.Count;
@@ -492,6 +494,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     {
                         if (excludeGridLines && pts.Count == 2 && len > gridThreshMm)
                         { Fate(PathReason.GridLineExcluded); continue; }
+                        if (!isCurve && !sub.IsAnnotation && hooked.Contains(pathIndex)) { Fate(PathReason.BarRun); continue; }
 
                         // the sheet's frame, drawn as four separate strokes rather than one closed
                         // rectangle, is a line the length of the paper: not a beam
@@ -1699,6 +1702,121 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         internal const double BarMarkOnLineHeights = 0.8;
         /// <summary>A bar run is at least this long (step 126); a mark beside a shorter stroke labels a tick or a leader.</summary>
         internal const double BarRunMinMm = 600;
+
+        /// <summary>
+        /// A BAR IS KNOWN BY ITS HOOKS (intake step 127, 2026-09-19): the runs whose both ends turn into a short stroke at a
+        /// right angle - the hook the drafter draws at each end of a reinforcing bar. Two forms: a polyline of three or
+        /// four points, short-long-short (31017 draws 63 on one outline sheet); and a two-point run with a separate
+        /// short stroke touching each end (30838: 291 on S2.28). The hook is FREE - its other end touches no long line -
+        /// which parts a bar from a wall's face with its end caps (the cap's other end is the other face) and from a
+        /// slab edge's jog between two long lines (step 110). A DIMENSION line has the bar's shape, a tick at each end,
+        /// and its number sits on it: a run with a dimension string on it stays a line. Returns the path indices.
+        /// </summary>
+        internal static HashSet<int> HookedRuns(IReadOnlyList<RawSubpath> paths, ExtractedGeometry result)
+        {
+            var hooked = new HashSet<int>();
+            (long, long) Key((double X, double Y) p) => ((long)Math.Round(p.X / HookTouchMm), (long)Math.Round(p.Y / HookTouchMm));
+            static double Len((double X, double Y) a, (double X, double Y) b) => Math.Sqrt((b.X - a.X) * (b.X - a.X) + (b.Y - a.Y) * (b.Y - a.Y));
+            static bool Perpendicular((double X, double Y) a, (double X, double Y) b, (double X, double Y) c, (double X, double Y) d)
+            {
+                double l1 = Len(a, b), l2 = Len(c, d);
+                if (l1 <= 0 || l2 <= 0) return false;
+                return Math.Abs(((b.X - a.X) * (d.X - c.X) + (b.Y - a.Y) * (d.Y - c.Y)) / (l1 * l2)) < HookCosine;
+            }
+            bool Straight(RawSubpath s) => !s.IsClosed && !s.IsAnnotation && !s.IsFilled && s.IsStroked;
+            // the long runs' ends, and every long line's ends (a cap or a jog touches one of these with its other end)
+            var longEnds = new HashSet<(long, long)>();
+            var runs = new List<int>();
+            for (int i = 0; i < paths.Count; i++)
+            {
+                var s = paths[i];
+                if (!Straight(s) || s.Points.Count != 2) continue;
+                double len = Len(s.Points[0], s.Points[1]);
+                if (len < HookTickMaxMm) continue;               // a short stroke is a tick candidate, never an anchor
+                longEnds.Add(Key(s.Points[0])); longEnds.Add(Key(s.Points[1]));
+                if (len >= HookedRunMinMm) runs.Add(i);
+            }
+            // the free ticks: a short stroke with exactly one end on a long line's end
+            var freeTicks = new Dictionary<(long, long), List<int>>();
+            for (int i = 0; i < paths.Count; i++)
+            {
+                var s = paths[i];
+                if (!Straight(s) || s.Points.Count != 2 || Len(s.Points[0], s.Points[1]) > HookTickMaxMm) continue;
+                bool a = longEnds.Contains(Key(s.Points[0])), b = longEnds.Contains(Key(s.Points[1]));
+                if (a == b) continue;                              // both ends on long lines (a cap, a jog) or neither
+                var k = Key(a ? s.Points[0] : s.Points[1]);
+                (freeTicks.TryGetValue(k, out var l) ? l : freeTicks[k] = new()).Add(i);
+            }
+            int TickAt((double X, double Y) runA, (double X, double Y) runB, (double X, double Y) end)
+            {
+                if (!freeTicks.TryGetValue(Key(end), out var ticks)) return -1;
+                foreach (int t in ticks) if (Perpendicular(runA, runB, paths[t].Points[0], paths[t].Points[1])) return t;
+                return -1;
+            }
+            foreach (int i in runs)
+            {
+                var p = paths[i].Points;
+                int ta = TickAt(p[0], p[1], p[0]), tb = TickAt(p[0], p[1], p[1]);
+                if (ta >= 0 && tb >= 0 && !CarriesADimension(result, p[0], p[1])) { hooked.Add(i); hooked.Add(ta); hooked.Add(tb); }   // the hooks go with the bar
+            }
+            // the polyline form: short-long-short, or short-long, long-short at the run's own pen
+            for (int i = 0; i < paths.Count; i++)
+            {
+                var s = paths[i];
+                if (!Straight(s) || s.Points.Count is not (3 or 4)) continue;
+                var q = s.Points;
+                int n = q.Count - 1;                                // segments
+                double first = Len(q[0], q[1]), last = Len(q[n - 1], q[n]);
+                if (n == 3)
+                {
+                    double mid = Len(q[1], q[2]);
+                    if (first <= HookTickMaxMm && last <= HookTickMaxMm && mid >= HookedRunMinMm
+                        && Perpendicular(q[0], q[1], q[1], q[2]) && Perpendicular(q[1], q[2], q[2], q[3])
+                        && !CarriesADimension(result, q[1], q[2])) hooked.Add(i);
+                }
+                else
+                {
+                    // two segments: the run and one hook - the other end's hook may be a separate stroke
+                    bool firstIsHook = first <= HookTickMaxMm && last >= HookedRunMinMm, lastIsHook = last <= HookTickMaxMm && first >= HookedRunMinMm;
+                    if (!(firstIsHook ^ lastIsHook) || !Perpendicular(q[0], q[1], q[1], q[2])) continue;
+                    var runA = firstIsHook ? q[1] : q[0]; var runB = firstIsHook ? q[2] : q[1];
+                    var freeEnd = firstIsHook ? q[2] : q[0];
+                    int t = TickAt(runA, runB, freeEnd);
+                    if (t >= 0 && !CarriesADimension(result, runA, runB)) { hooked.Add(i); hooked.Add(t); }
+                }
+            }
+            return hooked;
+        }
+
+        /// <summary>A dimension string (12'-6", 8", a bare millimetre number) sitting on the run, centre within 1.5 heights: a dimension line, not a bar.</summary>
+        internal static bool CarriesADimension(ExtractedGeometry result, (double X, double Y) a, (double X, double Y) b)
+        {
+            double dx = b.X - a.X, dy = b.Y - a.Y, len = Math.Sqrt(dx * dx + dy * dy);
+            if (len <= 0) return false;
+            double ux = dx / len, uy = dy / len;
+            foreach (var w in result.PageWordBoxes)
+            {
+                if (DimensionStrings.Parse(w.Text) is null) continue;
+                double h = Math.Min(w.MaxX - w.MinX, w.MaxY - w.MinY);
+                if (h <= 0) continue;
+                double cx = (w.MinX + w.MaxX) / 2, cy = (w.MinY + w.MaxY) / 2;
+                double t = (cx - a.X) * ux + (cy - a.Y) * uy;
+                if (t < 0 || t > len) continue;
+                if (Math.Abs((cx - a.X) * uy - (cy - a.Y) * ux) <= DimensionOnLineHeights * h) return true;
+            }
+            return false;
+        }
+
+        /// <summary>A hook is a stroke this long or shorter (step 127): 31017's and 30838's hooks are 150-300 mm at 1:96.</summary>
+        internal const double HookTickMaxMm = 400;
+        /// <summary>A hooked run is this long or longer (step 127): a slab edge's notch is short-long-short too, and its run is under this.</summary>
+        internal const double HookedRunMinMm = 1500;
+        /// <summary>A hook's end and the run's end are one point within this (step 127); the jog rule keys at 0.1 mm, the hooks are drawn to the run.</summary>
+        internal const double HookTouchMm = 10;
+        /// <summary>A hook turns within 15 degrees of a right angle (the cosine, step 127).</summary>
+        internal const double HookCosine = 0.26;
+        /// <summary>A dimension's number sits on its line: centre within this many text heights (step 127).</summary>
+        internal const double DimensionOnLineHeights = 1.5;
 
         /// <summary>
         /// Every X on the page (step 104): two two-point lines of at least <see cref="XMarkMinArmMm"/>, each over 10 degrees
