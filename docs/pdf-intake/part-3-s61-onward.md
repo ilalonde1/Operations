@@ -3430,3 +3430,18 @@ the mirror refreshed from `c41fd197` (Core.dll CD9C1B579BAA, 20:24) for **run 41
 **Still open from §144–145:** the arrangement's `SlabEdgeChainMinMm` threshold is why a 610-mm leftover was not
 already a slab-edge candidate — this rule hands the leftover to the arrangement directly, which is the right place
 (the chain is for the walk). 31202's L2 (571 of 33,572) did not move: a different class, for the morning's trace.
+
+**31202's L2, traced while the full suite ran** (20:35–20:50; `KOR_SLAB_TRACE_PAGES=17`, lines kept): not the L3/L4
+class. The page's 432 lines by pen and fate: w9 (the plan's own pen) 80 emitted, **25 refused as strokes on grid** —
+among them the rim itself: 2,812 in along row M (the whole south edge, y 24,282), 718 in along grid 2 (the west
+edge, x 11,631), 530 in on the north (y 68,174), 491 in on the east (x 85,446); step 78 offers those to the
+arrangement, so they are there. The north rim's other 1,864-in line (y 68,275) is refused as **furniture** — it
+passes through the region of the "8" CMU WALLS" note or the ramp's box (to check). The arrangement: 387 cells, none of
+500 sq ft; 236 open chains, the longest 52 ft along the south rim at y 79.7 ft from x 61.4 to 113.7 ft with its
+west end 23.4 in from anything — **the south rim is open west of grid 4**, where the purple south wall begins; the
+crops at 200 dpi show the SW bay (grids 1–2, rows K–M) crossed by a page-wide X with two 18-in "EM7" wall stubs and
+no slab-edge line along row M between grids 2 and 4. The leak finder's narrowest passage, "19 in at (60.4, 52.5)
+ft", lies in blank paper south of the rim — that instrument reports the route's pinch, not the rim's gap, on a page
+whose rim is open. **The morning's question is what bounds the L2 slab on the south-west** (the ramp comes in there:
+"10" SLAB PLUS SLOPE TO SUIT RAMP", "RAMP DN") — her model has 33,572 sq ft on L2, so she drew a floor to the rim;
+the answer is on the page between grids 2 and 4 at row M, and `QUESTIONS.md` gets it if the page does not say.
