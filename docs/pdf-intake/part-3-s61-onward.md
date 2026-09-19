@@ -3581,3 +3581,21 @@ to the test host's stderr, which VSTest swallows, and aborts before the dumper c
 the full suite once with `--diag <file>` (VSTest's diagnostic log keeps the host's stderr, so the frames appear) —
 and if it is a recursion, the class whose static the parallel collection corrupts is in those frames. Until then
 the suite's verdict stands as 1,609 of 1,631 green with the DXF-route region green on its own.
+
+**The `--diag` run (21:37 → 21:39, crashed at 1 m 3 s with 1,468 reported):** VSTest's log has the fact the console
+never shows — `TestHostManagerCallbacks.ExitCallBack: Testhost processId: 37032 exited with exitcode: -1 error: ''`.
+**Exit code −1 with an empty stderr is not a stack overflow (0xC00000FD), not an unhandled exception (0xE0434352), not
+a fail-fast; it is the code `TerminateProcess`/`Process.Kill` leaves, or `Environment.Exit(-1)` — and no
+`Environment.Exit`, `FailFast`, `.Kill(` or `taskkill` exists in Core, the CLI or the tests** (grepped). The host's
+own log ends with five seconds of idle polling after its last result (FiveStickFilesTests' footing totals,
+LiveProjectBaselineTests' 31138 rows in flight) and then the exit. So the process was ended from outside, or by a
+runtime path that returns −1 silently. Candidates for the morning, in order: (1) the endpoint protection on
+KOR-1001 (Webroot/OpenText — the KOR-308 story: unsigned KOR binaries flagged "undetermined"; a monitored process
+doing tens of thousands of file writes in a minute is what its heuristics watch; `WRLog.log` shows nothing, but its
+process terminations are not written there — the OpenText console's activity log is); (2) `ModelRender.Screenshot`
+launching headless Edge with both streams redirected and never read (a hang risk, not a killer, but Edge's own
+job-object handling of a parent is worth ruling out); (3) a runtime abort with a −1 code (`dotnet-dump collect` on
+a `DOTNET_DbgEnableMiniDump=1` run gives the dump the blame utility did not). The four crashes sit at 1 m 3 s,
+3 m 52 s, 12 m 50 s and ~23 min — no fixed point, always during the slow set builds. **Morning: run once with
+`DOTNET_DbgEnableMiniDump=1 DOTNET_DbgMiniDumpType=4 DOTNET_DbgMiniDumpName=<scratch>\testhost.dmp`; if no dump lands
+the kill is external, and the OpenText console's activity for KOR-1001 at these minutes says whose.**
