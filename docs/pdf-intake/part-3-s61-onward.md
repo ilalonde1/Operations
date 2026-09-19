@@ -3606,3 +3606,23 @@ disconnected" at 21:39:02.21 and reads the exit code −1 at 21:39:02.25. So the
 one-second polls with nothing written — an abrupt end from outside the managed runtime, not an abort it reported.
 Defender is off on KOR-1001 (real-time and the service; Webroot is the AV), the System log carries nothing for the
 minute, and the Defender operational log nothing at all. The dump-enabled run in the morning is the next fact.
+
+## 149. Run 41 launched; the rebar-over-outline rule's shape, measured on two pages while it reads (2026-09-18 22:09)
+
+**Run 41** (123 + 124; mirror Core.dll CD9C1B579BAA from `c41fd197`) launched 22:05:14 through `launch41.ps1`
+(Win32_Process, pwsh's full path), one `takeoff.exe` at 12 workers, 32 of 294 sets read by 22:09; it banks its own
+ledgers as `ledger-sets/-sheets-2026-09-18-run41-step124.csv` and `bank41.sh` diffs it against run 40.
+
+**The rebar rule is not a pen rule.** §143 read 31017's page 18 as "w21, the heaviest pen, 91 bar runs"; 30838's
+page 49 (`bars_on_lines.py` over PyMuPDF, scratch): 128 bar-mark words (`12-15M12.6`, `C15M18.0`, `15M`), and the
+long straight strokes with a mark within 1.5 line-heights are **146, spread over five pens — 1.2 pt ×46, 0.24 ×43
+(the grid's pen), 0.48 ×34, 0.96 ×12, 0.6 ×11**; page 48 the same shape (139 over the same pens). So on 30838 the
+bars share pens with everything else, and a loose "label near a line" catches grid lines passing under labels. The
+rule for the morning: **a line that carries its bar mark is a bar** — the label's baseline within half a line-height
+of the stroke, the stroke the label's NEAREST long line, the label a bar mark by the office's grammar (Canadian `NN-
+CNNMNN.N`, `NNM @ NN"`, US `#N @ NN"`) — the fate `BarRun`, kept out of the slab pass and the wall reader alike; and
+the end tick/hook (a short stroke at the run's end, within a bar diameter, at an angle) as the second witness where
+the label sits off the bar. Fixture: an outline at one pen and a bar run at the SAME pen with "12-15M12.6" on it —
+the floor closes with the rule, not without. Judge on 31017 p18 and 30838 pp48–49 (`KOR_SLAB_TRACE_PAGES`), then the
+whole of both sets against her models, then the six. With it in, step 125 (the wrapped title) re-enters: 30838's
+outline views close on their own and the reinforcing views' phantoms go.
