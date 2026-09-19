@@ -3376,3 +3376,57 @@ extent along the wall's axis goes into the arrangement as a line** (never the fa
 the outline and refused 31130's P2), and `WallLeftPartOfIt`'s threshold (`SlabEdgeChainMinMm`) is why a 610-mm
 leftover was not already kept as a slab-edge candidate. "Not the faces" in §144 was wrong; the bridge experiment
 was right for the wrong reason (no bridge closes a gap whose other side is a line the pass was not given).
+
+## 146. Step 124 BANKED in its second form — a face's leftover beyond its panel enters the arrangement; the "lost" members were invented ones (2026-09-18 20:25)
+
+**The rule** (`GeometryFilterService.FaceLeftovers`, `FaceLeftoverMinMm = 50`, commit `c41fd197`, develop): for each face
+line the reader gave a wall, the pieces of it before the panel's start and after its end along the wall's axis go into
+the slab pass's `wallEdges` as two-point `FACE` segments; the part over the panel never does (it lies on the panel's own
+outline, and a segment on a segment is what made the arrangement refuse 31130's P2 EAST under the first form, §144).
+Pieces under 50 mm are the join tolerance's. **Test:** `TheWallsDrawnFacesCloseTheCornerTheirPanelsLeaveOpen` — three
+walls whose rim faces run 432 mm past their panels, the faces at the cut pen; red with the rule broken (no plate),
+green mended (one plate of 157–161 sq m). `AWallThatUsedTheWholeLineKeepsIt` REVISED with its reason in the file: the
+edge's two 500-mm pieces beyond the band close an 8 × 6 m ring holding three columns, and that is a floor; the chevron
+it guarded against is the walk's, held by the gate on 31168's LEVEL 2.
+
+**Her models, before → after, the five** (`model-yardstick` against the cached primaries):
+
+| set | plates, ours/hers | what moved | thickness agree | her openings we have |
+|---|---|---|---|---|
+| 31202 | 59% → **74%** | L3 1,437 → 35,914; L4 1,407 → 35,897; L5 33,913 → 35,323 | 10/12 same | 52 → **60 of 68 (88%)** |
+| 31168 | 83% → **86%** | L2 12,567 → 22,824 and 8,364 → 12,384 | 9/11 same | 64/64 same |
+| 31138 | 71% → **72%** | L5 8,453 → 12,685 (whole; 8" from «8" SLAB» ×5) | 18/19 same | 64/108 same |
+| 31130 | 141% → 143% | L2 + the West Tower's 36" transfer plate, 4,910 sq ft | 14/18 same | 33/33 same |
+| 31065 | 113% same | L1 + 22 sq ft | 18/20 same | 62/109 same |
+
+31170-arch (no model of hers): L5 + a 4,108 sq ft wing, L6 + a 7,515 sq ft wing, L1 + 59.
+
+**The gate's losses, characterised BEFORE banking (rule 10 asked; the answer was no regression):**
+- **31138 L5, walls 29 → 14.** The 15 are KW304–KW322: four pairs of parallel blade walls at the tower's corners
+  (5,462 / 5,779 / 7,201 mm long, 687 and 1,130 mm apart), drawn on the LEVEL 5 sheet only — so they rise to **L6**,
+  and L6 keeps all 29. Before, each was ALSO assigned at L5 by the composer's *"a member does not end in mid-air"*
+  (`E2kDocument`, one-storey carry-down: unsupported at its base row, supported one row lower) — because the L5 floor
+  under their feet was 8,453 sq ft of the 17,497 she models and did not reach the corners. Now the L5 plate is the whole
+  floor, `Supported(L5)` is true, and the carry-down does not fire. **They were invented; now they stand on the slab
+  they stand on.** The after model's L5 = the LEVEL 4 sheet's 14 walls, as it should.
+- **31130 L2, columns 71 → 54, walls 57 → 55.** The 17 columns' stacks read L20…L3 → L20…L2 before and L20…L3 after;
+  the same carry-down, no longer firing for columns whose base now lands on the West Tower's transfer plate (the
+  report: "11 of 58 columns stand beyond every plate", the other 47 on one — these 17 among them).
+- **31202 ROOF, plates 8,620 1,672 1,309 809 → 8,620 1,309 1,260 809.** The 412 sq ft is a strip 3.5 m wide beside the
+  stair core (x 71,246–74,778) that the main roof ring KF14 already covers (`inside.py`: (73,000, 42,000) inside KF14
+  in both models, inside KF15 before, outside KF16 after) — a double read, now single. A 6 sq ft slot (353 × 1,524 mm)
+  that was cut from the duplicate plate is gone with it; the other two openings in the strip (19, 14 sq ft) stay.
+- **31170-arch L5, 7,449 → 6,773 + a new 4,108.** A 2,185-mm band at the SE wing's top moved from KF11 into the new
+  wing plate KF12 whose region it borders; no area left the storey.
+
+So: every set gained floor; the members "lost" are members the composer had extended into storeys because our floor
+was missing there. **The carry-down is behaving exactly as written** — and this is the second time a plate read whole
+has un-invented members (31065's parkade at step 117 was the first). Worth remembering when a gate says "walls lost":
+read the diff's *"where the members went"* block before the report — "L6 L5 → L6" is a shortening, not a removal.
+
+Fast suite 1,516 green; gate green on the re-banked six; the full suite running once for 122–124 (started 20:24);
+the mirror refreshed from `c41fd197` (Core.dll CD9C1B579BAA, 20:24) for **run 41 at 22:05**.
+
+**Still open from §144–145:** the arrangement's `SlabEdgeChainMinMm` threshold is why a 610-mm leftover was not
+already a slab-edge candidate — this rule hands the leftover to the arrangement directly, which is the right place
+(the chain is for the walk). 31202's L2 (571 of 33,572) did not move: a different class, for the morning's trace.
