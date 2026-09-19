@@ -3710,3 +3710,32 @@ both sets — and a DIMENSION line has the same shape (a long stroke with a tick
 are those), so the hook rule needs the dimension's own witness (a number centred on it, the dimension reader's
 `WallIsDimensionString` class) to tell them apart. That is the morning's rule, step 127; 126 is banked as the
 first witness and the plumbing (word boxes on the geometry, the fate, the grammar). No corpus run for 126 alone.
+
+## 153. The full suite green but the known knife-edge; step 127 (the hook form) tried and PARKED — 30838 92% → 58% (2026-09-19 01:22)
+
+**The full suite, uninterrupted at last** (00:37 → 01:16, 37 m 50 s on the idle box, no kill): **1,656 passed, 1
+skipped** (`EveryBankedSetBuildsTheSameStructureWithItsEntitiesReversed`, by its own gate), **1 failed — the known
+red:** `TheSameDrawingsShiftedOnThePageBuildTheSameStructureShifted`, 31138 shifted by (5,000, 3,001) gains one wall
+of 914 mm at L21 (45,048, 45,653) — §141's shifted knife-edge (the 305 × 914 BEAM-layer pier box on both L21 sheets,
+the 152-mm already-filled dedup), named on 09-18 and still the morning's. Nothing else. So the day's steps 118–126
+stand on a full suite: one red, known, named, unchanged.
+
+**Step 127, the hook form** (`step-127`, `04c46229`): `HookedRuns` — a short-long-short polyline, or a two-point run
+of 1,500 mm+ with a FREE perpendicular tick (400 mm or less, its other end on no long line) at each end, is a bar with
+its ticks; a run with a dimension string on it stays a line. Seven fixture tests (the polyline, the double-ticked run
+and its ticks, one hook only, a wall's faces with their caps, a jog between long lines, a dimension line, a notch's
+short run) — red on the rule broken, green mended; fast suite 1,546 green. **Judged on its targets first:** 31017
+45% → 46% (105 runs found on the set; L2 1,314 → 5,530 sq ft, L1 1,768 → 1,347, L3 6,025 → 5,781 — a wash); **30838
+92% → 58%** (365 runs found; floors 64 → 49, 24 storeys under half of hers, thickness agreement 72% → 41%, her
+openings we have 55% → 36%). The hook shape catches lines that close 30838's floors — a rim segment between two
+short strokes whose other ends do not key to a long line within 10 mm (drawn through the corner, or to a stroke
+under 400 mm), or the rim itself where its ends carry the slab edge's own short returns. Which, exactly, is the
+morning's first trace: the 365 `BarRun` lines in `slab-trace/30838-01/slab-trace.txt` against page 49's rim (the
+`bar_hooks.py` measure said 291 double-ticked strokes on that page, and the floor closed from them). Parked, like
+124's first form and 125; 126 stays. Rule 10 asked; the answer came in ninety seconds of the target set, twice tonight.
+
+**Where the night ends (01:22):** develop `7032e056` — steps 118–124 and 126 banked, runs 38–41 banked (plates 81%
+of hers, thickness 61%, honest openings 44%), the test host's killer found and fixed at source; `step-124`, `step-125`,
+`step-127` hold the parked forms with their numbers. The morning starts with the trace that says which of 30838's
+lines the hook rule ate — the rule's shape is right for the bars and wrong for something else on that page, and the
+trace names it.
