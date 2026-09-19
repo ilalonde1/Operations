@@ -3626,3 +3626,32 @@ the label sits off the bar. Fixture: an outline at one pen and a bar run at the 
 the floor closes with the rule, not without. Judge on 31017 p18 and 30838 pp48–49 (`KOR_SLAB_TRACE_PAGES`), then the
 whole of both sets against her models, then the six. With it in, step 125 (the wrapped title) re-enters: 30838's
 outline views close on their own and the reinforcing views' phantoms go.
+
+## 150. Run 41 banked — plates 81% of hers (from 79%), the day's figures closed (2026-09-18 23:45)
+
+**Run 41** (`96dac32a`): 294 sets at 12 workers, 22:05:14 → 23:44:18 (1 h 39 on an idle box, against run 40's 2 h 11
+under load), on `c41fd197` = run 40 + step 123 (a crosshatch is not a field of X marks) + step 124 (a wall face's
+leftover beyond its panel enters the arrangement). 259 of 294 build; 8,632 pages, 4,061 plans, 0 failed; 2,829
+storeys, **2,184 with a plate (77%, +8)**; walls 115,833 (+240), columns 90,852 (+158). The diff against run 40:
+57 sets moved in composition, no model or plate lost, 8 plates gained (30961-01 16 → 19, 30852-01 5 → 7, 30941-01
+15 → 16, 31149-01 3 → 4); yardsticks by share 1 better / 1 worse / 14 same; column registration 3,216 of 5,981
+judged (was 6,000: 30838's 892 → 880 and 31087's 1,582 → 1,574 — columns beyond a plate no longer judged).
+
+| figure (49 sets with hers; the 21 current) | run 38 | run 39 | run 40 | **run 41** |
+|---|---|---|---|---|
+| plates, ours as % of hers (§7) | 79% | 79% | 79% (80%) | **81% (84%)** |
+| slab thickness agree within ½" (§8) | 46% | — | 60% (49%) | **61% (51%)** |
+| her openings we have, honest (§6) | 36% (dishonest) | 43% | 43% | **44%** (726 of 1,638; current 44%) |
+| ours she has (§6) | — | 38% | 38% | 40% |
+| storeys with a plate | — | — | 2,176 (77%) | 2,184 (77%) |
+
+The day, 11:50 → 23:45: seven steps banked (118–124), one parked twice in its two forms (124's first, 125), four
+corpus runs banked (38–41), plates 76% → 81% of hers, thickness 46% → 61%, openings made honest and 36% → 44%.
+**Sets to open first, by her missing plate area (§7):** 31017 (45%: the rebar-over-outline class, §143/§149), 31048
+(15%: L2 5,828 of 72,341, L3 17,323 of 77,760 — unopened), 31202 (74%: L2 571 of 33,572, §146), 30990 (51%). By
+thickness (§8): 31087 (11 of 55 storeys differ, eight of them 12/8), 31017 — both the "floor not read, priced at the
+default" shape of §147 B until the honest line lands.
+
+The morning's order stands as §147 wrote it, with §149's rule first: the rebar-over-outline rule (a line that
+carries its bar mark is a bar) → step 125 re-entered behind it → the thickness line judged only where our plate is
+half of hers → the drawing-index pages → 31048 opened (15%, never looked at) → 31202's L2 → the test host's killer.
