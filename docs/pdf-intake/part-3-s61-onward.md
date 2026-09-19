@@ -3287,3 +3287,28 @@ close it — the drawn faces of a wall stay in the arrangement as lines (the out
 corner whatever the panel does), or a rim pair over the plan's edge is not a wall at all. The first is the smaller
 and the more general (31168's step 116 put the walls' outlines in; this puts their drawn faces in). The morning's,
 with the gate and the corpus.
+
+## 144. Step 124 tried, measured on the six, and PARKED — rule 10 (2026-09-18 18:30–18:55)
+
+The rule as first written — `GeometryFilterService`: every line the face-pair reader took as a wall's face goes into
+the floor's arrangement beside the wall's outline (`FACE` segments in `wallEdges`) — with the test
+`TheWallsDrawnFacesCloseTheCornerTheirPanelsLeaveOpen` (two rim face pairs whose inner faces stop 432 mm short of the
+corner, a filled stair wall to set the cut pen): the floor was 121 of 160 m² with the corner open, 158 with it
+closed. Fast 1,515 + 1 red: `AWallThatUsedTheWholeLineKeepsIt` (step 78-era: a band that consumed 7 m of an 8 m edge
+leaves no floor — written against 31168 L2's slanted walls chaining into a chevron through the walk) now finds the
+8 × 6 m plate with three columns that the fixture is.
+
+**The six-set gate — every set moved, and against her models:** 31202 **59% → 74%** (L3 1,437 → 38k, L4 read; L2
+still 619); 31168 83% → 86%; 31138 71% → 72% (L5 over half now); 31065 113% → 113%; **31130 141% → 134% — P2 EAST's
+27,321 sq ft floor GONE** (the report: a 166 sq ft ring "too small for a floor plate", 29 of 48 walls and 40 of 94
+columns beyond every plate), and L2 lost 17 columns / gained a 4,910 sq ft second plate; 31130 also +15 walls, 31138
+−15 walls. The one-page trace on P2 EAST (page 14): **"refused: Centroid snapping left an unresolved crossing or
+contact; the embedding must be refined"** — the arrangement itself refuses the page. The raw face lines duplicate
+the panel outline's long edges over their overlap, and `PlanarRings` cannot embed a segment lying on another.
+
+Two regressions of one shape (a floor lost, an arrangement refused) beside the gain: **stopped, parked on branch
+`step-124` (`e81c5226`), not merged.** The second form, for the morning: not the faces raw but their LEFTOVERS — the
+parts of each face beyond the panel's extent along the wall's axis (the outer face's last 45 + 17 in at 31202's
+corner), which never coincide with the outline; and before that, the corner itself line by line, because
+`WallLeftPartOfIt` should already have kept an outer face that long — the 17-in gap may be a break in the outer
+face at the corner, not the panel's doing. The parked branch carries the test and the measurement.
