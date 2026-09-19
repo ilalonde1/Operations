@@ -3570,3 +3570,14 @@ thread — the morning runs those two classes ALONE with blame (`--filter "Fully
 FullyQualifiedName~LiveProjectBaselineTests"`), then with `xunit.parallelizeTestCollections=false`, to see whether it
 is the race or the geometry. Until it is found the full suite's verdict is partial: 1,609 green covers everything
 but ~22 tests in that region, twice.
+
+**The crash isolated one step further (21:37):** `ModelCoverageTests` and `LiveProjectBaselineTests` run ALONE, with
+`--blame-crash --blame-crash-dump-type full` — 20 tests, 3 m 52 s, green, no crash. So the fault is not the geometry
+of those builds; it is the suite's parallelism around them (CLAUDE.md's own line: a test that passes alone and
+fails in the suite is shared state). Core carries no native package — PdfPig, ClosedXML, OpenXml, SqlClient, all
+managed — and Docnet's PDFium lives in the CLI, which no Core test renders through; a managed process that dies with
+no dump and no WER entry is most often a STACK OVERFLOW (the runtime prints "Stack overflow." and the repeating frames
+to the test host's stderr, which VSTest swallows, and aborts before the dumper can act). **The morning's instrument:**
+the full suite once with `--diag <file>` (VSTest's diagnostic log keeps the host's stderr, so the frames appear) —
+and if it is a recursion, the class whose static the parallel collection corrupts is in those frames. Until then
+the suite's verdict stands as 1,609 of 1,631 green with the DXF-route region green on its own.
