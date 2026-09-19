@@ -1670,7 +1670,33 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             // this way is the mark.
             var partners = new Dictionary<int, int>();
             foreach (var m in marks) { partners[m.Arms.A] = partners.GetValueOrDefault(m.Arms.A) + 1; partners[m.Arms.B] = partners.GetValueOrDefault(m.Arms.B) + 1; }
-            return marks.Where(m => partners[m.Arms.A] == 1 && partners[m.Arms.B] == 1).ToList();
+
+            // A CROSSHATCH IS NOT A FIELD OF X MARKS (intake step 123, 2026-09-18). 30993's L3 hatches a region beside the
+            // core with diagonals at a fifth of their length; each pair crossing at both midpoints was an X, and eight
+            // 1.4 x 1.5 m "openings" stood in a stack 0.4 m apart - on nine sets, 100 of the 557 openings of ours she
+            // has not stand inside another of ours. An X's arm has no companion: no other long line within 5 degrees
+            // of it, closer than a quarter of its length across, running beside it for half its length or more. A hatch line
+            // has one on each side. A box's sides are along the axes and never a companion to an arm 10 degrees off them.
+            bool HasCompanion(int arm)
+            {
+                var (_, ax, ay, alen) = longLines.First(l => l.I == arm);
+                var a0 = result.Lines[arm][0];
+                double ux = ax / alen, uy = ay / alen;   // along the arm
+                foreach (var (i, bx, by, blen) in longLines)
+                {
+                    if (i == arm) continue;
+                    double cosine = Math.Abs(bx * ux + by * uy) / blen;
+                    if (cosine < 0.9962) continue;   // more than 5 degrees off the arm's direction
+                    var b0 = result.Lines[i][0]; var b1 = result.Lines[i][1];
+                    double across = Math.Abs((b0.X - a0.X) * uy - (b0.Y - a0.Y) * ux);
+                    if (across < 1 || across > alen / 4) continue;   // on the arm itself, or too far to be its hatch neighbour (two elevator cabs side by side, each with its X, sit a cab's width apart - near half the arm)
+                    double s0 = (b0.X - a0.X) * ux + (b0.Y - a0.Y) * uy, s1 = (b1.X - a0.X) * ux + (b1.Y - a0.Y) * uy;
+                    double overlap = Math.Min(Math.Max(s0, s1), alen) - Math.Max(Math.Min(s0, s1), 0);
+                    if (overlap >= alen / 2) return true;
+                }
+                return false;
+            }
+            return marks.Where(m => partners[m.Arms.A] == 1 && partners[m.Arms.B] == 1 && !HasCompanion(m.Arms.A) && !HasCompanion(m.Arms.B)).ToList();
         }
 
         internal static void SlabEdgesFromLoops(ExtractedGeometry result, IList<PathFate>? fates, int firstFate,

@@ -48,6 +48,38 @@ public sealed class AnXAcrossARegionIsAnOpeningTests
         Assert.True(GeometryFilterService.XMarks(Lines((0, 0, 30000, 30000), (0, 30000, 30000, 0))).Single().Reach > GeometryFilterService.XMarkMaxArmMm);   // found, but over the arm maximum: a region mark the slab pass ignores
     }
 
+    /// <summary>
+    /// A CROSSHATCH IS NOT A FIELD OF X MARKS (intake step 123, 2026-09-18). 30993's L3 hatches a region beside the core
+    /// with diagonals at a regular pitch; every pair of them that crosses at both midpoints was an X, so eight 1.4 x 1.5 m
+    /// "openings" stood in a stack 0.4 m apart - 100 of the 557 openings of ours she has not, on nine sets, stand inside
+    /// another of ours. An X's arm has no companion running beside it; a hatch line has one on each side. WHAT THIS
+    /// COVERS: a crosshatch of five and five, and a lone X beside it. WHAT IT DOES NOT: a hatch of one direction (no X
+    /// forms), a hatch drawn as polylines (not two-point lines - never an X).
+    /// </summary>
+    [Fact]
+    public void ACrosshatchIsNotAFieldOfXMarks()
+    {
+        var lines = new List<(double, double, double, double)>();
+        // five diagonals each way at a 700 mm pitch across a 3 m square - a hatch (a 400 pitch already fails the
+        // midpoint test against the neighbours; 30993 hatches at a fifth of the arm, where only the mirror partner crosses at the middle)
+        for (int k = -2; k <= 2; k++)
+        {
+            double o = k * 700;
+            lines.Add((0 + o, 0, 3000 + o, 3000));
+            lines.Add((0 + o, 3000, 3000 + o, 0));
+        }
+        // and a lone X 20 m away, a shaft's mark
+        lines.Add((20000, 0, 23000, 3000)); lines.Add((20000, 3000, 23000, 0));
+        // and two elevator cabs side by side 40 m away, 1.8 x 2.7 m each with its own X (31065's core): two marks, not a hatch
+        lines.Add((40000, 0, 41825, 2709)); lines.Add((40000, 2709, 41825, 0));
+        lines.Add((41825, 0, 43650, 2709)); lines.Add((41825, 2709, 43650, 0));
+        var marks = GeometryFilterService.XMarks(Lines(lines.ToArray()));
+        Assert.Equal(3, marks.Count);
+        Assert.Contains(marks, m => Math.Abs(m.Centre.X - 21500) < 1);
+        Assert.Contains(marks, m => Math.Abs(m.Centre.X - 40912.5) < 1);
+        Assert.Contains(marks, m => Math.Abs(m.Centre.X - 42737.5) < 1);
+    }
+
     [Fact]
     public void AFloorWithAnXMarkedShaftIsTheWholePlateAndTheShaftsLoop()
     {

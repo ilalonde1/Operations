@@ -3203,3 +3203,31 @@ same 305 × 914 mm box on the BEAM layer of both, drawn as four corner pieces wi
 Named, not fixed: a rule wants the class stated first (a member drawn on two sheets of one storey is one member,
 whatever the frame — the dedup should key on the drawn geometry, not on where the sheet landed), and this evening
 belongs to run 40. The diff and both models stay under `TestResults/shifted/31138-01/`.
+
+## 142. Step 123 — a crosshatch is not a field of X marks (2026-09-18 17:40–18:15)
+
+Openings, the next class, from the instruments step 119 left: `--openings L3` on 30993 listed eight openings of ours
+at one x, 1.4 × 1.5 m, in a stack 0.4 m apart (and each twice, 2 mm apart); `overlap_openings.py` (scratchpad) over
+eleven sets with her model: **of our 557 openings she has not, 100 stand inside another of ours** — 31017 31 of 62,
+31006 28 of 54, 30993 26 of 243, 30972 14 of 44, none on 31065, 31130, 31168, 31087. `model-to-page` + `pdf-overlay
+--crop` on 30993's L3 north sheet (S2.07.1, page 53): the marks sit on a **crosshatched region beside the core** —
+diagonals at a fifth of their length, and every pair crossing at both midpoints read as an X (step 104's finder asks
+for one partner at the midpoints; a 400-mm pitch fails the midpoint test against its neighbours, a 430-on-2100 pitch
+does not).
+
+**The rule (`GeometryFilterService.XMarks`, step 123): an X's arm has no companion** — no other long line within 5° of
+its direction, closer than a quarter of its length across, running beside it for half its length or more; a hatch
+line has one on each side. Held to the case that must survive it: **two elevator cabs side by side, each with its own
+X** (31065's core: 1.8 × 2.7 m cabs, their diagonals a cab's width apart — near half the arm, well over a quarter)
+stay two marks. Test `ACrosshatchIsNotAFieldOfXMarks` (a five-by-five hatch at a 700 pitch, a lone X, the two cabs):
+six marks before the rule, three after. Fast 1,515.
+
+**Measured on the six:** 31130 130 → 127 openings — three on L14 (2.3 × 2.3 twice, 2.7 × 2.7), each on a crosshatched
+slab band («SG1»), looked at in the crop; her model has none there; ours she has 72% → 75%, hers we have 33 of 33
+unchanged. The other five byte-identical. Re-banked. WHAT IT DOES NOT COVER: a hatch of one direction (no X forms), a
+hatch drawn as polylines (never an X), a hatch at a pitch over a quarter of the arm.
+
+**Named beside it, not fixed:** 30993's page 1 is the DRAWING INDEX, read as a plan with 67 views (each index line an
+underlined title) — it places nothing in the model but writes 67 empty DXFs; sets where her model cuts almost no
+openings (31006: one) should not judge "ours she has". Run 41 (123) cannot start after run 40 without crossing 22:00;
+it goes at 22:05 if the session is still up, else the morning.
