@@ -2004,7 +2004,14 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             // perimeter walls' OUTER face. A wall's outline makes a band cell that holds the wall (Holds), so the floor's
             // ring runs along the outer face.
             var wallEdges = result.Walls.Where(w => !result.WallIsAnnotation[result.Walls.IndexOf(w)]).SelectMany(w =>
-                Enumerable.Range(0, w.Outline.Count).Select(k => new DxfSegment("WALL", new DxfPoint(w.Outline[k].X, w.Outline[k].Y), new DxfPoint(w.Outline[(k + 1) % w.Outline.Count].X, w.Outline[(k + 1) % w.Outline.Count].Y))));
+                Enumerable.Range(0, w.Outline.Count).Select(k => new DxfSegment("WALL", new DxfPoint(w.Outline[k].X, w.Outline[k].Y), new DxfPoint(w.Outline[(k + 1) % w.Outline.Count].X, w.Outline[(k + 1) % w.Outline.Count].Y))))
+                // AND AS THEIR DRAWN FACES (intake step 124, 2026-09-18): a wall read from two face lines is a panel over
+                // the faces' overlap, and at a corner where the inner faces stop short the two panels do not meet - 31202's
+                // L2-L4 rims, 45-in face pairs, left a 17-in gap at (44, 224) ft through which the outside reached every
+                // cell, 1,437 of her 38,105 sq ft. The drawn faces are the slab pass's too: the outer face is the rim and
+                // closes the corner whatever the panel does.
+                .Concat(result.WallFaceLines.Keys.Where(i => i < result.Lines.Count && result.Lines[i].Count == 2 && !result.LineIsAnnotation[i])
+                    .Select(i => new DxfSegment("FACE", new DxfPoint(result.Lines[i][0].X, result.Lines[i][0].Y), new DxfPoint(result.Lines[i][1].X, result.Lines[i][1].Y))));
             // a stair well has a door: the doorway knocked out of its wall (step 14) is closed again here, across the
             // opening on both faces, so the well does not leak into the corridor (31202: the cell holding the flights
             // was the whole floor, 14,000-33,000 sq ft, on nine of seventeen sheets before this)
