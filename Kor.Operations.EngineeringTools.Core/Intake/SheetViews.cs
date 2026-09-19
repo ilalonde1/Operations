@@ -82,16 +82,29 @@ public static class SheetViews
             if (line.CentreX / page.WidthPts >= TitleRegionMinFx || NamesAPlan(line.Text)) continue;
             var under = UnderlineOf(line);
             if (under.X1 <= under.X0) continue;
-            // a title's second line is made of title words - at least half its words are the vocabulary's, a plan
+            var above = lines.Where(a => a.MinY > line.MinY && a.MinY - line.MinY <= 2.0 * line.Height
+                    && Math.Min(a.MaxX, line.MaxX) - Math.Max(a.MinX, line.MinX) >= 0.5 * Math.Min(a.MaxX - a.MinX, line.MaxX - line.MinX))
+                .OrderBy(a => a.MinY).FirstOrDefault();
+            if (above.Text is null) continue;
+            // A TITLE'S UNDERLINE UNDERLINES EVERY LINE OF THE TITLE (intake step 125, 2026-09-18). 30838's S2.28 titles
+            // its upper view "LEVEL 22 PLAN - CONCRETE OUTLINE" over "AND DIAPHRAGM REINFORCING", the stroke under the
+            // second line only; the first names a plan by itself and has no stroke of its own, the second reads like no
+            // title (AND, DIAPHRAGM), so neither was a view, the sheet was one part named for its title block, and the
+            // lower view's SLAB REINFORCING box stood as a 1,300 sq ft plate on every storey of the set. A line that
+            // names a plan, with no underline of its own, at the same size and left edge as the underlined line under
+            // it, is that title's first line - whatever the second line's words. A title with its own underline keeps
+            // an underlined note beneath it apart (B7 below still holds: its LEVEL 3 PLAN is underlined).
+            var aboveUnder = UnderlineOf(above);
+            bool wrapped = NamesAPlan(above.Text) && aboveUnder.X1 <= aboveUnder.X0
+                           && Math.Abs(above.Height - line.Height) <= 0.2 * line.Height
+                           && Math.Abs(above.MinX - line.MinX) <= line.Height;
+            // else a title's second line is made of title words - at least half its words are the vocabulary's, a plan
             // kind's, a number, a tag ("CONCRETE OUTLINE - NT", "CONCRETE OUTLINE BLDG B", "MAIN FLOOR FRAMING OVER");
             // an underlined note under a title is a sentence (the second audit's B7: "CONTINUOUS TO MAIN FLOOR SLAB"
             // under "LEVEL 3 PLAN" made one title of the two). The first cut asked the line to BEGIN with a title word
             // and lost 31065's and 31168's second lines, which begin with CONCRETE.
-            if (!ReadsLikeATitleLine(line.Text)) continue;
-            var above = lines.Where(a => a.MinY > line.MinY && a.MinY - line.MinY <= 2.0 * line.Height
-                    && Math.Min(a.MaxX, line.MaxX) - Math.Max(a.MinX, line.MinX) >= 0.5 * Math.Min(a.MaxX - a.MinX, line.MaxX - line.MinX))
-                .OrderBy(a => a.MinY).FirstOrDefault();
-            if (above.Text is null || !NamesAPlan(above.Text + " " + line.Text)) continue;
+            if (!wrapped && !ReadsLikeATitleLine(line.Text)) continue;
+            if (!NamesAPlan(above.Text + " " + line.Text)) continue;
             joined[line] = above.Text + " " + line.Text;
             consumed.Add(above);
         }

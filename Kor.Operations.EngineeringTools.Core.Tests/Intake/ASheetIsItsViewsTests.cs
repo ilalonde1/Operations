@@ -321,4 +321,39 @@ public sealed class ASheetIsItsViewsTests
         Assert.Equal("section/elevation", DrawingIntake.SheetTypeOf("LEVEL 2 WALL ELEVATIONS"));
         Assert.Equal("other", DrawingIntake.SheetTypeOf("PODIUM MEZZANINE"));
     }
+
+    /// <summary>
+    /// A TITLE'S UNDERLINE UNDERLINES EVERY LINE OF THE TITLE (intake step 125, 2026-09-18). 30838's S2.28 stacks two
+    /// views of LEVEL 22: the upper titled "LEVEL 22 PLAN - CONCRETE OUTLINE" over "AND DIAPHRAGM REINFORCING" with the
+    /// stroke under the second line only, the lower "LEVEL 22 PLAN - SLAB REINFORCING". One view was found, the sheet
+    /// was one part, and the lower view's box stood as a 1,300 sq ft plate on every storey of the set. WHAT THIS
+    /// COVERS: a line that names a plan, with no underline of its own, at the size and left edge of the underlined line
+    /// under it, is that title's first line whatever the second line's words; the two views part by the drop; a title
+    /// in larger type over an underlined note, with no stroke of its own, is neither joined nor a view. WHAT IT DOES
+    /// NOT: a title of three lines; a second line that names a plan alone (that is its own title).
+    /// </summary>
+    [Fact]
+    public void ATitlesUnderlineUnderlinesEveryLineOfTheTitle()
+    {
+        var views = SheetViews.Titles(Page(
+            [("LEVEL", 1800, 712), ("22", 1840, 712), ("PLAN", 1880, 712), ("-", 1920, 712), ("CONCRETE", 1960, 712), ("OUTLINE", 2000, 712),
+             ("AND", 1800, 700), ("DIAPHRAGM", 1840, 700), ("REINFORCING", 1880, 700),
+             ("LEVEL", 1800, 100), ("22", 1840, 100), ("PLAN", 1880, 100), ("-", 1920, 100), ("SLAB", 1960, 100), ("REINFORCING", 2000, 100)],
+            Stroke(1740, 2050, 698), Stroke(1740, 2050, 98)));
+        Assert.Equal(2, views.Count);
+        Assert.Contains(views, v => v.Title == "LEVEL 22 PLAN - CONCRETE OUTLINE AND DIAPHRAGM REINFORCING" && Math.Abs(v.YPts - 698) < 1);
+        Assert.Contains(views, v => v.Title == "LEVEL 22 PLAN - SLAB REINFORCING" && Math.Abs(v.YPts - 98) < 1);
+        // the two views part by the drop: what is drawn above the upper title is the upper view's
+        var parts = SheetViews.Split(Geometry(), views, MmPerPt, "S2.28", NoTitleBlock, "job-p49");
+        Assert.Equal(2, parts.Count);
+        Assert.Contains(parts, p => p.FileName.Contains("CONCRETE OUTLINE AND DIAPHRAGM REINFORCING", StringComparison.Ordinal));
+        Assert.Contains(parts, p => p.FileName.Contains("SLAB REINFORCING.dxf", StringComparison.Ordinal));
+
+        // a title in larger type (12 pt over 8 pt tokens) with no stroke of its own, over an underlined note: not one title, not a view
+        var noted = SheetViews.Titles(new PC(1, W, H,
+            [new TT("LEVEL", 420, 118, 400, 112, 440, 124), new TT("3", 460, 118, 440, 112, 480, 124), new TT("PLAN", 500, 118, 480, 112, 520, 124),
+             Tok("CONTINUOUS", 400, 100), Tok("TO", 440, 100), Tok("MAIN", 480, 100), Tok("FLOOR", 520, 100), Tok("SLAB", 560, 100)],
+            [Stroke(340, 600, 98)]));
+        Assert.Empty(noted);
+    }
 }
