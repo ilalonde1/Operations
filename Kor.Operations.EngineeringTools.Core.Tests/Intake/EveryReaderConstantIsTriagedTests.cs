@@ -70,6 +70,7 @@ public sealed class EveryReaderConstantIsTriagedTests
         ["GeometryFilterService.cs:SheetFrameMinShare"] = Convention("dxf.pdf.sheet-frame-min-share — a closed shape over 60% of the page is the frame"),
         ["GeometryFilterService.cs:SlabEdgeChainMinMm"] = Convention("dxf.pdf.slab-edge-chain-min-mm — shorter is a tick or a letter"),
         ["GeometryFilterService.cs:FaceTraceMinOverlapMm"] = Convention("dxf.pdf.face-trace-min-overlap-mm"),
+        ["GeometryFilterService.cs:FaceLeftoverMinMm"] = Tolerance("a wall face's piece beyond its panel shorter than this stays the join tolerance's business, not the arrangement's (step 124)"),
         ["GeometryFilterService.cs:LeakRasterMm"] = Tolerance("the leak finder's raster (an instrument behind FaceTrace): where the outside gets into a ring, to two cells"),
         ["GeometryFilterService.cs:XMarkMinArmMm"] = Rule("an X that marks an opening has arms of 2 m or more: a shaft's are 11-12 ft on 31130, 31138 and 31202; a symbol's are under a metre (step 104)"),
         ["GeometryFilterService.cs:XMarkBoxedMinArmMm"] = Rule("a boxed X (a rectangle with its diagonals) marks a sleeve down to 600 mm arms: her sleeves' arms are 0.7-1.2 m, a symbol's under that (step 111)"),

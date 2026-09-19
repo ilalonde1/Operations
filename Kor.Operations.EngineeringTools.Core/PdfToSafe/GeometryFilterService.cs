@@ -1614,6 +1614,44 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         internal const double XMarkMaxArmMm = 9144;
 
         /// <summary>
+        /// The pieces of a wall's drawn face lines that run on past the wall's panel along its axis (step 124): for each face
+        /// line the reader gave a wall, the parts of it before the panel's start and after its end, as two-point segments,
+        /// pieces shorter than <see cref="FaceLeftoverMinMm"/> left out. Never the part over the panel - that lies on the
+        /// panel's own outline.
+        /// </summary>
+        internal static IEnumerable<DxfSegment> FaceLeftovers(ExtractedGeometry result)
+        {
+            foreach (var (line, wall) in result.WallFaceLines)
+            {
+                if (line < 0 || line >= result.Lines.Count || wall < 0 || wall >= result.Walls.Count) continue;
+                if (result.Lines[line].Count != 2 || result.LineIsAnnotation[line]) continue;
+                var w = result.Walls[wall];
+                double ax = w.End.X - w.Start.X, ay = w.End.Y - w.Start.Y, al = Math.Sqrt(ax * ax + ay * ay);
+                if (al <= 0) continue;
+                ax /= al; ay /= al;
+                var l = result.Lines[line];
+                double t0 = (l[0].X - w.Start.X) * ax + (l[0].Y - w.Start.Y) * ay, t1 = (l[1].X - w.Start.X) * ax + (l[1].Y - w.Start.Y) * ay;
+                double lo = Math.Min(t0, t1), hi = Math.Max(t0, t1);
+                // the face's own foot: its point at the wall's start, projected onto the face line's direction is the face itself
+                (double X, double Y) At(double t) => (l[0].X + (l[1].X - l[0].X) * (t - t0) / (t1 - t0), l[0].Y + (l[1].Y - l[0].Y) * (t - t0) / (t1 - t0));
+                if (Math.Abs(t1 - t0) < 1) continue;
+                if (lo < -FaceLeftoverMinMm)
+                {
+                    var (x0, y0) = At(lo); var (x1, y1) = At(Math.Min(0, hi));
+                    yield return new DxfSegment("FACE", new DxfPoint(x0, y0), new DxfPoint(x1, y1));
+                }
+                if (hi > al + FaceLeftoverMinMm)
+                {
+                    var (x0, y0) = At(Math.Max(al, lo)); var (x1, y1) = At(hi);
+                    yield return new DxfSegment("FACE", new DxfPoint(x0, y0), new DxfPoint(x1, y1));
+                }
+            }
+        }
+
+        /// <summary>A face's piece beyond its panel shorter than this is the join tolerance's business, not the arrangement's (step 124).</summary>
+        internal const double FaceLeftoverMinMm = 50;
+
+        /// <summary>
         /// Every X on the page (step 104): two two-point lines of at least <see cref="XMarkMinArmMm"/>, each over 10 degrees
         /// off both axes, of one length within a fifth, crossing within a tenth of the length of both midpoints.
         /// </summary>
@@ -2004,7 +2042,17 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             // perimeter walls' OUTER face. A wall's outline makes a band cell that holds the wall (Holds), so the floor's
             // ring runs along the outer face.
             var wallEdges = result.Walls.Where(w => !result.WallIsAnnotation[result.Walls.IndexOf(w)]).SelectMany(w =>
-                Enumerable.Range(0, w.Outline.Count).Select(k => new DxfSegment("WALL", new DxfPoint(w.Outline[k].X, w.Outline[k].Y), new DxfPoint(w.Outline[(k + 1) % w.Outline.Count].X, w.Outline[(k + 1) % w.Outline.Count].Y))));
+                Enumerable.Range(0, w.Outline.Count).Select(k => new DxfSegment("WALL", new DxfPoint(w.Outline[k].X, w.Outline[k].Y), new DxfPoint(w.Outline[(k + 1) % w.Outline.Count].X, w.Outline[(k + 1) % w.Outline.Count].Y))))
+                // AND A FACE'S LEFTOVER BEYOND ITS PANEL (intake step 124, 2026-09-18). A wall read from two face lines is
+                // a panel over the faces' OVERLAP, and the reader keeps both faces out of the slab pass as the wall's. Where
+                // the outer face runs on past the panel - 31202's L2-L4 rims: the 45-in wall's inner face stops 610 mm
+                // short of the north rim, so the panel does, and the outer face's last 610 mm is drawn and given to no
+                // one - the outside enters the plan there and every cell is "open to the page" (1,437 of her 38,105 sq ft
+                // on L3). The leftover pieces of each face, beyond the panel's extent along the wall's axis, are the slab
+                // pass's: lines that close what the drawing closes. NEVER THE FACE WHOLE: a face lies on the panel's own
+                // outline over the overlap, and the arrangement refuses a segment on a segment (31130's P2 EAST lost its
+                // 27,321 sq ft floor to that form of this rule).
+                .Concat(FaceLeftovers(result));
             // a stair well has a door: the doorway knocked out of its wall (step 14) is closed again here, across the
             // opening on both faces, so the well does not leak into the corridor (31202: the cell holding the flights
             // was the whole floor, 14,000-33,000 sq ft, on nine of seventeen sheets before this)

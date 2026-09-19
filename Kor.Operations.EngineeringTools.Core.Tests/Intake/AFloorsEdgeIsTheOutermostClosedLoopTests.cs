@@ -250,8 +250,14 @@ public sealed class AFloorsEdgeIsTheOutermostClosedLoopTests
     /// <summary>
     /// And the test is whether the wall used the whole line. A band running 7 m of the 8 m edge
     /// leaves 1 m over — shorter than the 2 m a piece of an edge has to be — so the line stays the
-    /// wall's and no floor is read. Without this, slanted walls' own faces chained into a
-    /// 12,391 sq ft chevron on 31168's LEVEL 2 sheet that the rendered storey showed was no floor.
+    /// wall's as a slab-edge CANDIDATE, and the walk reads no floor from it. Without this, slanted
+    /// walls' own faces chained into a 12,391 sq ft chevron on 31168's LEVEL 2 sheet that the
+    /// rendered storey showed was no floor.
+    /// REVISED at step 124 (2026-09-18): the two 500-mm pieces of the edge beyond the band's panel go
+    /// into the floor's ARRANGEMENT as lines (a face's leftover beyond its panel - 31202's rims), and
+    /// with them the 8 x 6 m ring with three columns in it is a floor, which is what the fixture draws:
+    /// a plate bounded on its south by a wall. The chevron this test was written against is the
+    /// walk's, not the arrangement's, and 31168's LEVEL 2 is held by the six-set gate.
     /// </summary>
     [Fact]
     public void AWallThatUsedTheWholeLineKeepsIt()
@@ -264,6 +270,7 @@ public sealed class AFloorsEdgeIsTheOutermostClosedLoopTests
             Column(43000, 22000), Column(46000, 24000), Column(41000, 24000));
 
         Assert.Equal(2, fates.Count(f => f.Reason == PathReason.BecameWallFace));
-        Assert.Empty(g.Slabs);
+        var floor = Assert.Single(g.Slabs);                                                   // step 124: the arrangement's floor, to the edge's own line
+        Assert.InRange(Math.Abs(PolygonProcessor.PolygonAreaMm2(floor)) / 1e6, 8 * 6 * 0.95, 8 * 6 * 1.01);
     }
 }
