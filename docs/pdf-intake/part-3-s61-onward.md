@@ -3231,3 +3231,38 @@ hatch drawn as polylines (never an X), a hatch at a pitch over a quarter of the 
 underlined title) — it places nothing in the model but writes 67 empty DXFs; sets where her model cuts almost no
 openings (31006: one) should not judge "ours she has". Run 41 (123) cannot start after run 40 without crossing 22:00;
 it goes at 22:05 if the session is still up, else the morning.
+
+## 143. The two plate classes on the current sets, looked at and named for the morning (2026-09-18 18:10–18:40)
+
+Ian's item 3, the plate classes, on the two current-model sets §7 names first. Neither is a ninety-minute rule; both
+are characterised here from the instruments, so the morning starts at the rule.
+
+**31017 (45% of her plates; L1–L3 read 1–6k of 58–64k sq ft) — a plan that draws the reinforcing on the concrete
+outline fragments the arrangement.** `KOR_SLAB_TRACE_JOB=31017-01` on S2.05 (Level 1 Plan Tower A, page 18): 1,339 of
+1,623 lines offered; the arrangement makes 1,194 cells, **0 of 500 sq ft or more** — holding structure 43 cells (923 sq
+ft), enclosed 88 (255), open to the page 343 (2,010); rings 192, the largest 374 sq ft; no outline pen found (no
+floor-sized cell to take it from). Rendered: the sheet is "Level 1 Plan" with the slab reinforcing ON it — bar runs
+(«15M @ 16" EACH WAY», «R/W 20M @ 16"») drawn as long lines across the field, slab bands as heavy strips, the slab
+edge a thin line among them. The bars cut the floor into a mesh of cells the size of a bay's corner. Step 79 (a
+line ending at an arrowhead is a tendon or a section cut) takes 39 runs and 63 lines; the bar runs end in hooks and
+ticks, not arrowheads. **The rule wanted: a reinforcing run is not a slab edge** — a line whose ends carry a bar's
+tick or hook, or that carries a bar mark on its baseline («15M», «20M», «#5», «@ 16"»), or that runs at the
+reinforcing pen — and it does not enter the arrangement. To measure first: on the corpus, how many plan sheets carry
+bar marks on their plan (the office draws "CONCRETE OUTLINE" and "REINFORCING" as separate sheets on 31138, 31065,
+31202; 31017 and 31006 draw them together).
+
+**31202 (59%; L2 571, L3 1,437, L4 1,407 of 33–38k sq ft) — the edge band read as a wall.** S2.04.1 (L3, page 20)
+rendered whole and cropped at its west edge: the plan's rim is two parallel lines 45 in apart running the height of
+the plan; the reader takes them as **a wall from two face lines — 45 in thick, 1,674 in long** ("walls from two face
+lines 15 (purple)"), and with the rim gone to the walls the slab edge closes nothing (32 of 39 walls and 60 of 67
+columns "stand beyond every plate read for the storey"). The pair is the slab edge and the inner edge of the P/T edge
+band beside it — a thickened strip along the rim, not a wall. **The rule wanted:** a face pair on the plan's rim whose
+outer line is the outermost linework of the drawing there, at the outline's pen, is the slab edge and its band, not
+a wall; a wall's faces carry the wall's fill or its thickness tag. To measure first: how many face-pair walls over
+24 in thick stand on a plan's rim across the corpus (§3 of `corpus-disagreements` counts our sections she has not).
+
+**Named in passing:** four sets' drawing-index pages read as plans of 19–207 views (01379 page 2, 30941, 30993, 31005
+page 1) — placed nowhere, so nothing reaches the model, but 361 empty DXFs are written; `--openings` on 31006 shows her
+model cuts one opening in the whole building — "ours she has" should judge only where she cuts openings at all
+(the threshold today is "none"); and `SlabPassTraceProbe` builds the whole set to trace one sheet — a `--page`
+argument would make it a one-minute instrument.
