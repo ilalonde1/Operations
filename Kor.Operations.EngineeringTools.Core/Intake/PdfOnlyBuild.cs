@@ -1,4 +1,4 @@
-#nullable enable
+﻿#nullable enable
 using System.Globalization;
 using Kor.Operations.EngineeringTools.Dxf;
 using Kor.Operations.EngineeringTools.PdfToSafe;
@@ -240,8 +240,10 @@ public static class PdfOnlyBuild
     /// </summary>
     /// <param name="stem">The name a view takes when the sheet gives it none ("&lt;stem&gt;-pNN"); the PDF's own name by default. The six-set bank was built with the job number, and its models are byte-identical only under it.</param>
     /// <param name="handoff">Memory (the route: the composer takes the views the intake holds) or Disk (the composer re-reads the DXF files this build wrote — the gate's reference).</param>
+    /// <param name="firstPage">With <paramref name="lastPage"/>, the pages to read - an instrument's narrowing (the slab-pass trace on
+    /// one sheet, 2026-09-18); the set is read whole when both are null.</param>
     public static BuildOutcome Build(string pdf, string workDir, int scale, PdfIntakeOptions options, string? rulesConnection = null,
-        Action<SheetOutcome>? onSheet = null, string? stem = null, Handoff handoff = Handoff.Memory)
+        Action<SheetOutcome>? onSheet = null, string? stem = null, Handoff handoff = Handoff.Memory, int? firstPage = null, int? lastPage = null)
     {
         var watch = System.Diagnostics.Stopwatch.StartNew();
         if (Directory.Exists(workDir)) Directory.Delete(workDir, recursive: true);
@@ -251,7 +253,7 @@ public static class PdfOnlyBuild
         using (var doc = PdfDocument.Open(pdf)) pages = doc.NumberOfPages;
 
         stem ??= Path.GetFileNameWithoutExtension(pdf);
-        var sheets = WriteSheets(pdf, Path.Combine(dxfDir, stem + ".dxf"), 1, pages, scale, markup: false, korLayers: true, options, onSheet);
+        var sheets = WriteSheets(pdf, Path.Combine(dxfDir, stem + ".dxf"), Math.Max(1, firstPage ?? 1), Math.Min(pages, lastPage ?? pages), scale, markup: false, korLayers: true, options, onSheet);
         return Compose(pdf, workDir, pages, sheets, sheets.Sheets.SelectMany(s => s.DxfFiles).ToList(), options, rulesConnection, watch,
             handoff == Handoff.Memory ? sheets.Views : null);
     }

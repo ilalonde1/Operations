@@ -12,7 +12,7 @@ namespace Kor.Operations.EngineeringTools.Core.Tests.Intake;
 /// A single page through <c>takeoff pdf-overlay --walls</c> reads its walls without the set's schedule
 /// and can find a floor the set build does not (31202 L6, measured 2026-09-16: 19,860 sq ft alone,
 /// 982 in the set); what the gate sees is only measurable the way the gate builds. Runs only when
-/// <c>KOR_SLAB_TRACE_JOB</c> names a set:
+/// <c>KOR_SLAB_TRACE_JOB</c> names a set; <c>KOR_SLAB_TRACE_PAGES=18</c> (or <c>18-20</c>) reads those pages alone:
 /// <code>KOR_SLAB_TRACE_JOB=31202-01 dotnet test --filter FullyQualifiedName~SlabPassTraceProbe</code>
 /// </summary>
 [Trait("Speed", "Slow")]
@@ -48,7 +48,14 @@ public sealed class SlabPassTraceProbe
         GeometryFilterService.FaceTrace = s => { lock (buffer) buffer.Add(s); };
         try
         {
-            PdfOnlyBuild.Build(pdf, work, set.Scale, options, rulesConnection: conn, stem: set.Job, onSheet: o =>
+            // KOR_SLAB_TRACE_PAGES=18 or 18-20 reads those pages alone: one sheet's trace in a minute, not the set's (2026-09-18)
+            int? firstPage = null, lastPage = null;
+            if (Environment.GetEnvironmentVariable("KOR_SLAB_TRACE_PAGES") is { Length: > 0 } span)
+            {
+                var parts = span.Split('-');
+                firstPage = int.Parse(parts[0]); lastPage = int.Parse(parts[^1]);
+            }
+            PdfOnlyBuild.Build(pdf, work, set.Scale, options, rulesConnection: conn, stem: set.Job, firstPage: firstPage, lastPage: lastPage, onSheet: o =>
             {
                 lock (buffer)
                 {
