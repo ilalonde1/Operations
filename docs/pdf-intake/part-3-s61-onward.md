@@ -3492,3 +3492,18 @@ TO BELOW; what bounds the slab between grids 2 and 4 at row M is the question.
 Order for the morning, by what it moves: bank run 41 → A (instrument, then the parting rule: 30838's 11 storeys and
 the phantom on every set that stacks views) → B (honesty, half an hour) → C (step 125, the four sets and the 361 empty
 DXFs) → 31017's rebar rule (shares A's page) → D → the shifted knife-edge (31138 L21) → the ties.
+
+**A, corrected on the page's own text (20:55; `page_titles.py` over PyMuPDF, an instrument for tonight only — the
+verb is the morning's):** `SheetViews.Split` already parts views stacked one above the other ("plans stacked … share
+a span, so the drop decides" — 31168's tower C sheet). The fault on 30838's S2.28 is upstream, in `Titles`: the upper
+view's title is WRAPPED onto two lines — "LEVEL 22 PLAN - CONCRETE OUTLINE" at y 849.7 pt and "AND DIAPHRAGM
+REINFORCING" at 865.3 — and its underline (926..1188 pt, at 881.8) sits under the second line, which names no plan;
+the first line, which does, has no underline of its own. So one title is found (the lower view's, "LEVEL 22 PLAN -
+SLAB REINFORCING", underlined at 1881.2), `views.Count == 1`, the sheet is one part named for the title block's
+"LEVEL 22 PLAN", and both views' ink goes into it. **The rule (step 125): a title's underline underlines every line
+of the title** — the text lines stacked immediately above the underlined line, at its left edge and its size, one
+line-height apart, are one title; "LEVEL 22 PLAN - CONCRETE OUTLINE AND DIAPHRAGM REINFORCING" then names a plan
+and is a view, the sheet has two, the drop parts them, and step 50 (CONCRETE OUTLINE beside REINFORCING is an
+outline) keeps the upper one and the [REINFORC] refusal drops the lower with its phantom box. Test: a page with two
+views stacked, the upper title in two lines with the underline under the second — red today (one part), green
+mended (two). Then the six-set gate and 30838 on its own (`KOR_SLAB_TRACE_JOB=30838-01`, pages 49 and 48).
