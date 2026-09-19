@@ -3364,3 +3364,15 @@ in wide — the wall's thickness, not the notch's 610 mm — which says the outs
 panel and the slab edge 150 mm south of its inner face, along the band the panel and the edge leave between them,
 and the notch is where that band opens to the page. The morning starts by tracing the leak's path (the raster leak
 finder's route), not by widening anything.
+
+**Correction to §144, from a 300-dpi crop of the notch** (20:00): the notch's west side at x 12,110.7 IS drawn — a thin
+black line running from the north rim down past the corner — and it is the 45-in wall's OUTER face (the pair at x
+12,110.7 and 13,256.8), which the reader took for the wall and kept out of the slab pass; the wall's panel is the
+faces' overlap, and the inner face at 13,256.8 stops at y 68,002.9, so the panel stops there too, 610 mm short of
+the north rim at 68,612.5. So the class is the one step 124 named after all — a wall's drawn face reaching beyond
+its panel — and the leak is through the 610 mm between the panel's top and the rim, where the face is drawn and the
+panel is not. **The rule for the morning is step 124's second form, exactly: a face's LEFTOVER beyond the panel's
+extent along the wall's axis goes into the arrangement as a line** (never the face whole — the whole face lies on
+the outline and refused 31130's P2), and `WallLeftPartOfIt`'s threshold (`SlabEdgeChainMinMm`) is why a 610-mm
+leftover was not already kept as a slab-edge candidate. "Not the faces" in §144 was wrong; the bridge experiment
+was right for the wrong reason (no bridge closes a gap whose other side is a line the pass was not given).
