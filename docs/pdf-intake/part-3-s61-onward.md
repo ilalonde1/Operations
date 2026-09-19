@@ -3599,3 +3599,10 @@ a `DOTNET_DbgEnableMiniDump=1` run gives the dump the blame utility did not). Th
 3 m 52 s, 12 m 50 s and ~23 min — no fixed point, always during the slow set builds. **Morning: run once with
 `DOTNET_DbgEnableMiniDump=1 DOTNET_DbgMiniDumpType=4 DOTNET_DbgMiniDumpName=<scratch>\testhost.dmp`; if no dump lands
 the kill is external, and the OpenText console's activity for KOR-1001 at these minutes says whose.**
+
+**One more fact from the diag pair (21:53):** the order of events is host-first. The host's own log stops mid-poll at
+21:39:01.28 ("MessageLoopAsync: Polling … after 1000 ms", no error, no result); the console notes "Client has
+disconnected" at 21:39:02.21 and reads the exit code −1 at 21:39:02.25. So the host process vanished between two
+one-second polls with nothing written — an abrupt end from outside the managed runtime, not an abort it reported.
+Defender is off on KOR-1001 (real-time and the service; Webroot is the AV), the System log carries nothing for the
+minute, and the Defender operational log nothing at all. The dump-enabled run in the morning is the next fact.
