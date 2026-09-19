@@ -3266,3 +3266,12 @@ page 1) — placed nowhere, so nothing reaches the model, but 361 empty DXFs are
 model cuts one opening in the whole building — "ours she has" should judge only where she cuts openings at all
 (the threshold today is "none"); and `SlabPassTraceProbe` builds the whole set to trace one sheet — a `--page`
 argument would make it a one-minute instrument.
+
+**31017, one step further** (18:15–18:25, with the new one-page trace: `KOR_SLAB_TRACE_PAGES=18`, 24 s): the page's
+345 two-point lines by pen and fate — **w21 (the heaviest pen on the sheet): 91 emitted as lines, 31 furniture; w10:
+65 furniture, 22 lines; w18: 17 lines, 14 strokes on grid; w6: 86 grid axes.** The bar runs are the 91 heavy lines;
+the slab edge is among the 22 at w10 and the 17 at w18. A survey of bar-mark words («15M», «#5», «@ 16"») in the plan
+region of the current sets' outline pages (scratchpad `barmark_survey.py`) does not separate the class by count —
+31065's and 31168's outline sheets carry 10–22 such words a page from their wall and column schedules — so the rule
+will be geometric and by pen, not by words: a run at the heaviest pen, longer than a bay, that carries a bar's tick
+or hook at its ends, is reinforcing and stays out of the arrangement.
