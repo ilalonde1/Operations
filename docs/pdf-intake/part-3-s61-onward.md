@@ -3648,10 +3648,10 @@ judged (was 6,000: 30838's 892 → 880 and 31087's 1,582 → 1,574 — columns b
 The day, 11:50 → 23:45: seven steps banked (118–124), one parked twice in its two forms (124's first, 125), four
 corpus runs banked (38–41), plates 76% → 81% of hers, thickness 46% → 61%, openings made honest and 36% → 44%.
 **Sets to open first, by her missing plate area (§7):** 31017 (45%: the rebar-over-outline class, §143/§149), 31048
-(15%: L2 5,828 of 72,341, L3 17,323 of 77,760 — unopened), 31202 (74%: L2 571 of 33,572, §146), 30990 (51%). By
+(15%: L2 5,828 of 72,341, L3 17,323 of 77,760 — unopened; her model is 1,094 days older than the drawing, so part of the 15% is the design moving, not the reader), 31202 (74%: L2 571 of 33,572, §146), 30990 (51%). By
 thickness (§8): 31087 (11 of 55 storeys differ, eight of them 12/8), 31017 — both the "floor not read, priced at the
 default" shape of §147 B until the honest line lands.
 
 The morning's order stands as §147 wrote it, with §149's rule first: the rebar-over-outline rule (a line that
 carries its bar mark is a bar) → step 125 re-entered behind it → the thickness line judged only where our plate is
-half of hers → the drawing-index pages → 31048 opened (15%, never looked at) → 31202's L2 → the test host's killer.
+half of hers → the drawing-index pages → 31048 opened (15%, never looked at; her model 3 years older) → 31202's L2 → the test host's killer.
