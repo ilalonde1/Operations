@@ -3445,3 +3445,50 @@ ft", lies in blank paper south of the rim — that instrument reports the route'
 whose rim is open. **The morning's question is what bounds the L2 slab on the south-west** (the ramp comes in there:
 "10" SLAB PLUS SLOPE TO SUIT RAMP", "RAMP DN") — her model has 33,572 sq ft on L2, so she drew a floor to the rim;
 the answer is on the page between grids 2 and 4 at row M, and `QUESTIONS.md` gets it if the page does not say.
+
+## 147. Three classes named while the full suite ran — the morning's queue with its evidence (2026-09-18 20:50)
+
+**A. Two views of one storey stacked on a sheet; the reinforcing one leaves a phantom plate on every storey
+(30838).** Opening the thickness figure's biggest pair, 12/8 ×33: on 30838 (11 storeys at 12/8, 28 of 39 agree)
+L22's "plate" is a 1,294 sq ft ring at bbox (15,678, −4,580)–(27,895, 13,944) — BELOW the plan, whose five «8" SLAB»
+callouts sit at y 23,756–60,657 — and 36 of 40 walls, 38 of 44 columns stand beyond it. The page rendered (S2.28,
+page 49): two views of the same storey, one above the other — **"LEVEL 22 PLAN - CONCRETE OUTLINE AND DIAPHRAGM
+REINFORCING"** on top (the floor, with the bar runs drawn over its outline: 31017's class, §143) and **"LEVEL 22 PLAN -
+SLAB REINFORCING"** below. The set wrote ONE view (`S2.28_1_LEVEL 22 PLAN.dxf`): `SheetViews` parts a sheet's views by
+the distance ACROSS ("what is drawn belongs to the title nearest below it, by the distance across") — views side by
+side, as 31168 draws them — so two views stacked are one view, and a box in the lower (reinforcing) view is read as a
+plate. The same ~1,300–1,400 sq ft ring at the same bbox stands on L3, L4, L6, L19, L22, L25, L27, L28, L30, L31 (the
+storeys listed; L3 and L4 also carry the real 10,344 / 10,195 sq ft floor from the top view). So on 30838 the phantom
+inflates "storeys with a plate" and hands §8 a 12/8 pair that is a missing floor, not a thickness. **Two rules:** (a)
+views stacked vertically are parted by height — the title directly below whose x-range spans the drawing; a view
+titled REINFORCING is refused as the sheet-level REINFORC rule refuses a sheet; (b) 31017's rebar-over-outline rule.
+**Instrument first:** a `sheet-views <pdf> <page>` verb (none exists; `pdf-overlay` shows walls and slabs, not the
+titles found), then the trace on page 49. The corpus count of stacked same-storey views is not readable from the
+ledger (its title is the sheet's) — the verb counts it.
+
+**B. The thickness line judges phantoms.** `ModelYardstick.Thickness` takes "the thickness under most of the plate
+area" on every storey both models plate — a 1,294 sq ft box against her 9,000 sq ft floor is "12/8". The honest
+line judges thickness only where our plate area on the storey is at least half of hers (the plates line's own
+"under half" bound, already computed); the figure drops, and the pairs left (12/10 ×15, 12/14 ×7, 12/16 ×5, 12/36)
+are the misreads to open. Not verified beyond 30838 L22: 31087 (8 storeys), 31017 (8, its fragmented plates), 30990,
+30819, 30972, 31098, 30849 are to be opened the same way (`plates_on.py`-style: our plate's bbox against the plan's
+callouts) before the class is called theirs.
+
+**C. The drawing-index pages, corrected.** §143 said "placed nowhere" — wrong for one: **01379-01 page 2, "S100-TITLE
+SHEET", is typed plan, read as 207 views (15,309 lines), and PLACED at L20 with a 47 sq ft plate, 5 columns and 2
+walls.** 30941 p1, 30993 p1 and 31005 p1 (S0.00, 68 / 67 / 19 views, no title read) are typed plan by a later source
+— `SheetTitleReader` finds a "LEVEL n PLAN" among the index's own rows, or the title text does — and are placed
+nowhere. `DrawingIntake.SheetTypes` tries "plan" before "cover/index", and "cover/index" has no TITLE SHEET (TITLE
+alone was refused because every title block says SHEET TITLE; the two-word phrase is safe only when it is not
+"DRAWING TITLE / SHEET NO." read across two fields — guard it). **The rule (step 125):** the page with the most
+distinct sheet-number tokens in the set (`RebarCalloutExtractor.BuildTitles` already finds "the drawing-index page
+has the most distinct sheet tokens"), when that count is ten or more and no title-block field names a storey, is the
+index — typed cover/index before any other source is asked. Measure across the corpus first: pages typed plan with
+≥ 10 distinct S-numbers, and whether any true plan (section callouts carry sheet tokens) trips it.
+
+**D. 31202's L2** — §146's addendum: the rim is on the grid, the south rim is open west of grid 4, the SW bay is OPEN
+TO BELOW; what bounds the slab between grids 2 and 4 at row M is the question.
+
+Order for the morning, by what it moves: bank run 41 → A (instrument, then the parting rule: 30838's 11 storeys and
+the phantom on every set that stacks views) → B (honesty, half an hour) → C (step 125, the four sets and the 361 empty
+DXFs) → 31017's rebar rule (shares A's page) → D → the shifted knife-edge (31138 L21) → the ties.
