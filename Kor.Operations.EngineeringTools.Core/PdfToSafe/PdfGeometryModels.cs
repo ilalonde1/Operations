@@ -165,6 +165,12 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         /// slab (its ROOF). Filled by the sheet reader before Classify; the DXF outlet does not write them.
         /// </summary>
         public List<(string Text, double X, double Y)> PageWords { get; } = new();
+        /// <summary>
+        /// The page's words with their boxes in mm (intake step 126): a bar mark is known by the line it sits ON, and that
+        /// needs the word's box, not its centre - a label a line-height off a line is a leader's, a label touching it is
+        /// the bar's. Filled beside <see cref="PageWords"/> by the sheet reader; the DXF outlet does not write them.
+        /// </summary>
+        public List<(string Text, double MinX, double MinY, double MaxX, double MaxY)> PageWordBoxes { get; } = new();
         // Each column: centroid (X,Y) in mm
         public List<(double X, double Y)> Columns { get; } = new();
         // Each line element: list of (X,Y) in mm (open polyline)

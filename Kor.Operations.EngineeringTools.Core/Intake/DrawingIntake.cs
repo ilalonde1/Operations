@@ -240,7 +240,11 @@ public static class DrawingIntake
             geometry.IsVectorPdf = meaningfulCount >= 5;
             var thinnedFates = new List<PathFate>();
             // the page's words, in mm, for what a region says it is (step 106)
-            foreach (var w in content.Words) geometry.PageWords.Add((w.Text, w.Cx * scaleFactor, w.Cy * scaleFactor));
+            foreach (var w in content.Words)
+            {
+                geometry.PageWords.Add((w.Text, w.Cx * scaleFactor, w.Cy * scaleFactor));
+                geometry.PageWordBoxes.Add((w.Text, w.MinX * scaleFactor, w.MinY * scaleFactor, w.MaxX * scaleFactor, w.MaxY * scaleFactor));   // step 126: the box, for the bar a mark sits on
+            }
             // THE SLAB CALLOUT THE PAGE PRINTS GOES TO THE MODEL AS THE TAG IT IS (intake step 118, 2026-09-18). The
             // reader has read «8" SLAB» / «200 SLAB» off every plan since the zoner, and the DXF route has priced a plate
             // by the tag printed inside it since 2026-08-26 (StructuralPlanClassifier: a tag belongs to the smallest

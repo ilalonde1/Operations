@@ -111,7 +111,8 @@ public sealed class EveryPathHasExactlyOneFateTests
             // runs, and DrawingIntake.RemapToPopulation assigns it (ThePopulationIsTheUnthinnedReadTests).
             // BecameFooting is recorded only for a piece FootingOutlines claimed (AFootingIsADashedRectangleTheScheduleSizesTests).
             // FootingBoxNoLabel likewise, for a claimed piece of a box no label names (ABoxNoLabelNamesIsEmittedFlaggedAndItsPiecesAreUnaccounted).
-            .Append(PathReason.MarkupOnlyMode).Append(PathReason.GridLineExcluded).Append(PathReason.CollapsedByThinning).Append(PathReason.BecameFooting).Append(PathReason.FootingBoxNoLabel).Distinct().OrderBy(r => r);
+            // BarRun needs the page's word boxes on the geometry (ABarCarryingItsMarkIsABarTests).
+            .Append(PathReason.MarkupOnlyMode).Append(PathReason.GridLineExcluded).Append(PathReason.CollapsedByThinning).Append(PathReason.BecameFooting).Append(PathReason.FootingBoxNoLabel).Append(PathReason.BarRun).Distinct().OrderBy(r => r);
         Assert.Equal(Enum.GetValues<PathReason>().OrderBy(r => r), reached);
     }
 

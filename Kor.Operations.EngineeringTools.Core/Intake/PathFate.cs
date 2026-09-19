@@ -99,6 +99,15 @@ public enum PathReason
     /// at 9 and 16 pt where the grid is 3 pt, and eleven anchors at their ends were columns for it.
     /// </summary>
     StrokeOnGrid,
+    /// <summary>
+    /// A straight line that carries its bar mark (intake step 126, 2026-09-18): a word in the office's bar grammar
+    /// («12-15M12.6», «C15M18.0», «15M», «#5@12») sitting ON the line - its box touching or within half its height of
+    /// it, over the line's length - is the bar's label, and the line is reinforcing drawn on the plan, not an edge.
+    /// 31017's outline sheets and 30838's "CONCRETE OUTLINE AND DIAPHRAGM REINFORCING" views draw the bars over the
+    /// slab edge at the same pens as everything else (five pens on one page), and every bar reaching the rim cut
+    /// the floor's arrangement into cells. Discarded: read for what it is, and no slab or wall reader sees it.
+    /// </summary>
+    BarRun,
 }
 
 /// <summary>Input path index and its decision; ObjectIndex is zero-based in the corresponding geometry list.</summary>
@@ -118,7 +127,7 @@ public sealed record PathFate(int PathIndex, Disposition Disposition, PathReason
             or PathReason.GridLineExcluded or PathReason.ColumnTooSmall or PathReason.UnfilledSmallShape
             or PathReason.ColumnAspect or PathReason.TooShort or PathReason.TooFewPoints
             or PathReason.CollapsedByThinning or PathReason.NoInk or PathReason.PatternCell or PathReason.SymbolQuadrant
-            or PathReason.FilledTriangle or PathReason.ThinBand => Disposition.Discarded,
+            or PathReason.FilledTriangle or PathReason.ThinBand or PathReason.BarRun => Disposition.Discarded,
         _ => throw new ArgumentOutOfRangeException(nameof(reason), reason, "Unknown path reason."),
     };
 }

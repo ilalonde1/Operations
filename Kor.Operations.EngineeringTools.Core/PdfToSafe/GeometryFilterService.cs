@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using Kor.Operations.EngineeringTools.Intake;
 using Kor.Operations.EngineeringTools.Dxf;
 
@@ -499,6 +500,14 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                             double dx = Math.Abs(pts[1].X - pts[0].X), dy = Math.Abs(pts[1].Y - pts[0].Y);
                             if (dx >= SheetFrameMinShare * pageWidthMm && dy < dx * 0.01) { Fate(PathReason.FrameEdgeLine); continue; }
                             if (dy >= SheetFrameMinShare * pageHeightMm && dx < dy * 0.01) { Fate(PathReason.FrameEdgeLine); continue; }
+                            // A LINE THAT CARRIES ITS BAR MARK IS A BAR (intake step 126, 2026-09-18). 31017's outline sheets
+                            // draw the diaphragm bars over the slab edge - 140 bar-mark words on page 18 - and 30838's
+                            // "CONCRETE OUTLINE AND DIAPHRAGM REINFORCING" views the same (128 on S2.28); the bars share
+                            // their pens with the edge and the grid (five pens on one page), so no pen names them. The
+                            // label does: a word in the bar grammar whose box sits on the line, over the line's length.
+                            // Every bar that reached the rim cut the floor's arrangement into cells (31017: 1,768 of her
+                            // 64,354 sq ft on L1). The bar is read for what it is and offered to no reader.
+                            if (CarriesABarMark(result, pts)) { Fate(PathReason.BarRun); continue; }
                         }
                         result.Lines.Add(pts); result.LineColors.Add(color); result.LineWidths.Add(sub.LineWidth);
                         result.LineIsAnnotation.Add(sub.IsAnnotation);
@@ -1650,6 +1659,46 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
         /// <summary>A face's piece beyond its panel shorter than this is the join tolerance's business, not the arrangement's (step 124).</summary>
         internal const double FaceLeftoverMinMm = 50;
+
+        /// <summary>
+        /// Whether a two-point line carries a bar mark (step 126): a word in the bar grammar whose box sits ON the line -
+        /// its centre within <see cref="BarMarkOnLineHeights"/> text heights of the line and over the line's length. The
+        /// text height is the box's short side, so a label along a vertical bar reads the same as one along a horizontal.
+        /// Lines under <see cref="BarRunMinMm"/> are not bar runs - a mark beside a short stroke is a leader's or a tick's.
+        /// </summary>
+        internal static bool CarriesABarMark(ExtractedGeometry result, IReadOnlyList<(double X, double Y)> pts)
+        {
+            if (pts.Count != 2 || result.PageWordBoxes.Count == 0) return false;
+            double ax = pts[0].X, ay = pts[0].Y, dx = pts[1].X - ax, dy = pts[1].Y - ay;
+            double len = Math.Sqrt(dx * dx + dy * dy);
+            if (len < BarRunMinMm) return false;
+            double ux = dx / len, uy = dy / len;
+            foreach (var w in result.PageWordBoxes)
+            {
+                if (!BarMark.IsMatch(w.Text)) continue;
+                double bw = w.MaxX - w.MinX, bh = w.MaxY - w.MinY;
+                double h = Math.Min(bw, bh);                                  // the text height, whichever way the label runs
+                if (h <= 0) continue;
+                double cx = (w.MinX + w.MaxX) / 2, cy = (w.MinY + w.MaxY) / 2;
+                double t = (cx - ax) * ux + (cy - ay) * uy;                   // along the line
+                if (t < 0 || t > len) continue;
+                double d = Math.Abs((cx - ax) * uy - (cy - ay) * ux);         // off the line
+                if (d <= BarMarkOnLineHeights * h) return true;
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// The office's bar grammar: a Canadian mark - an optional count, an optional C, the size and M, an optional
+        /// length and spacing («15M», «12-15M12.6», «C15M18.0», «6-C15M21.4», «15M@12») - or a US size WITH its spacing
+        /// («#5@12»). A bare «#5» is not a mark: the architect's plans keynote with «#1»–«#4» (31170's, 82 of them),
+        /// and one on a leader took a plate's edge with it.
+        /// </summary>
+        internal static readonly Regex BarMark = new(@"^(?:(?:\d{1,3}-)?C?\d{2}M(?:\d{1,2}(?:\.\d)?)?(?:@\d{1,3}""?)?|#\d{1,2}@\d{1,3}""?)$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+        /// <summary>A bar's label sits on its bar: the label's centre within this many text heights of the line (step 126).</summary>
+        internal const double BarMarkOnLineHeights = 0.8;
+        /// <summary>A bar run is at least this long (step 126); a mark beside a shorter stroke labels a tick or a leader.</summary>
+        internal const double BarRunMinMm = 600;
 
         /// <summary>
         /// Every X on the page (step 104): two two-point lines of at least <see cref="XMarkMinArmMm"/>, each over 10 degrees
