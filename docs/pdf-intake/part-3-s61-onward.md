@@ -3275,3 +3275,15 @@ region of the current sets' outline pages (scratchpad `barmark_survey.py`) does 
 31065's and 31168's outline sheets carry 10–22 such words a page from their wall and column schedules — so the rule
 will be geometric and by pen, not by words: a run at the heaviest pen, longer than a bay, that carries a bar's tick
 or hook at its ends, is reinforcing and stays out of the arrangement.
+
+**31202, one step further** (18:30–18:40, the one-page trace on page 20): the arrangement makes 446 cells, none of 500 sq
+ft; **"column at (153.3,140.3) ft is in no cell; the outside reaches it through a gap 17 in wide at (44.3, 224.4) ft"**
+— the plan's north-west corner. Cropped there: the top rim and the west rim are each a face pair read as a 45-in
+wall; the two wall PANELS meet at the corner as rectangles that do not overlap, and the drawn faces — the slab edge
+among them — are the walls' now, not the slab pass's. The outside enters the plan through the unpanelled corner
+square, and every cell is "open to the page". So the class is sharper than "the band read as a wall": **a face pair
+on the rim takes the slab edge out of the arrangement, and its panel leaves the corner open.** Two rules would each
+close it — the drawn faces of a wall stay in the arrangement as lines (the outer face is the rim and closes the
+corner whatever the panel does), or a rim pair over the plan's edge is not a wall at all. The first is the smaller
+and the more general (31168's step 116 put the walls' outlines in; this puts their drawn faces in). The morning's,
+with the gate and the corpus.
