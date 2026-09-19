@@ -26,13 +26,13 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
         // of the number - on nine storeys; «8 1/2" SLAB» and «8-1/2" SLAB» are the same call-out in another office's hand.
         // A QUALIFIER BETWEEN THE NUMBER AND THE WORD IS STILL THE CALLOUT (steps 118 and 121): «8.5" P/T SLAB», «10" CONC. SLAB»,
         // «200 THK SLAB» - the zoner strips these from its tail and the text forms admit them here, so a tag on a DXF reads too.
-        private static readonly Regex NumberFirstImperialTextRe = new(@"(?<w>\d{1,2})(?:(?<dec>\.\d{1,2})|[\s-]+(?<n>\d)/(?<d>\d{1,2}))?\s*[^\w\s]{1,2}(?:\s*(?:P/T|PT|P\.T\.|CONC\.?|CONCRETE|THK\.?|THICK|SUSPENDED|FLAT|R/C|RC))?\s*SLAB",
+        private static readonly Regex NumberFirstImperialTextRe = new(@"(?<w>\d{1,2})(?:(?<dec>\.\d{1,2})|[\s-]+(?<n>\d)/(?<d>\d{1,2}))?\s*[^\w\s]{1,2}(?:\s*(?:(?:DP\.?|DEEP)\s+)?(?:RAFT|MAT|P/T|PT|P\.T\.|CONC\.?|CONCRETE|THK\.?|THICK|SUSPENDED|FLAT|R/C|RC))?\s*SLAB",
             RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
         // METRIC: "<mm> SLAB" - a 2-3 digit millimetre depth directly before SLAB (no inch mark). The
         // required adjacency keeps an imperial «10" SLAB» (inch mark intervenes) and note-numbering
         // («5. SLABS») out of this pool. Metric drawings (e.g. 5380 Heather) call out "200 SLAB".
-        private static readonly Regex NumberFirstMetricTextRe = new(@"(\d{2,3})(?:\s*(?:P/T|PT|P\.T\.|CONC\.?|CONCRETE|THK\.?|THICK|SUSPENDED|FLAT|R/C|RC))?\s*SLAB",
+        private static readonly Regex NumberFirstMetricTextRe = new(@"(\d{2,3})(?:\s*(?:(?:DP\.?|DEEP)\s+)?(?:RAFT|MAT|P/T|PT|P\.T\.|CONC\.?|CONCRETE|THK\.?|THICK|SUSPENDED|FLAT|R/C|RC))?\s*SLAB",
             RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
         // Words immediately left of SLAB on the same baseline, ending in «<n>" » - the same tight shape
@@ -65,10 +65,10 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
         public const int FieldMaxMm = 600;   // ~24" - above this is a transfer/mat, not a field slab
 
         public const int ZonerMinIn = 4;        // thinner is a topping/SOG, not a structural slab
-        public const int ZonerMaxIn = 48;       // capture up to a thickening/band so the decision can see it
+        public const int ZonerMaxIn = 120;      // the classifier's banked ceiling (dxf.slab-callout-max-thickness); a 84 in raft is a plate (step 122)
         public const int ZonerFieldMaxIn = 16;  // a true field slab; above this is a localized thickening/mat
         public const int ZonerMinMm = 100;  // lower metric counterpart to the 4" topping/SOG cutoff
-        public const int ZonerMaxMm = 1200; // lets a metric deep band/mat reach the zoner decision
+        public const int ZonerMaxMm = 3048; // the same ceiling in millimetres (step 122)
 
         public const double MmPerInch = 25.4;
 

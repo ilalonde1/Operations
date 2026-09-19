@@ -194,6 +194,8 @@ public class PlateThicknessFromTheDrawingTests
     /// (SlabThicknessZonerTests), the intake writing the callout as printed.
     /// </summary>
     [Theory]
+    [InlineData("48\" DP. RAFT SLAB", 48)]   // step 122: a raft is a plate of its depth
+    [InlineData("84\" DP. RAFT SLAB", 84)]   // over the old 48-in zoner ceiling; the classifier's is the banked 120
     [InlineData("8.5\" P/T SLAB", 8.5)]
     [InlineData("8 1/2\" SLAB", 8.5)]
     [InlineData("8-1/2\" SLAB", 8.5)]

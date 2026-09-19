@@ -1,4 +1,4 @@
-#nullable enable
+﻿#nullable enable
 using Kor.Operations.EngineeringTools.Dxf;
 using Kor.Operations.EngineeringTools.Intake;
 using Kor.Operations.EngineeringTools.PdfToSafe;
@@ -33,8 +33,13 @@ public sealed class TheStickFileBuildsAModelOnItsGridTests
         // "for shearwall" issue whose parkade plans are numbered by building (S2.01.1 .. S2.06.1), so "3 of 3" read 2
         // and the test was red for a set it was never about. A fixture is a fixed set of drawings.
         string stickFolder = LiveProjects.Folder("31168", "05 Stickfile");
-        var dated = Directory.EnumerateFiles(stickFolder, "31168-01 - 2026-04-21*.pdf", SearchOption.TopDirectoryOnly).ToList();
-        Assert.True(dated.Count == 1, $"expected the one 2026-04-21 issue under {stickFolder}, found {dated.Count}");
+        // the office moves a superseded issue into "06 Old Structural Stickfiles" (31130's went 09-13, 31168's on 09-18 once
+        // the 09-14/17/18 issues existed); the fixture is the drawing, wherever the office keeps it
+        var dated = new[] { stickFolder, Path.Combine(stickFolder, "06 Old Structural Stickfiles") }
+            .Where(Directory.Exists)
+            .SelectMany(d => Directory.EnumerateFiles(d, "31168-01 - 2026-04-21*.pdf", SearchOption.TopDirectoryOnly))
+            .ToList();
+        Assert.True(dated.Count == 1, $"expected the one 2026-04-21 issue under {stickFolder} or its Old Structural Stickfiles, found {dated.Count}");
         string pdf = DrawingMirror.SingleFile(dated[0]);
         string reference = DrawingMirror.SingleFile(LiveProjects.File("31168", "31168-reference.e2k"));
 

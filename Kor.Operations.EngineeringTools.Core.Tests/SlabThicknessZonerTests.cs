@@ -73,6 +73,24 @@ public sealed class SlabThicknessZonerTests
     }
 
     /// <summary>
+    /// A RAFT OR A MAT IS A PLATE OF ITS DEPTH (step 122, 2026-09-18): «48" DP. RAFT SLAB» (30783), «60" DP RAFT SLAB» (30933),
+    /// «24" RAFT SLAB» (30911), «84" DP. RAFT SLAB» over the old 48-in ceiling - read as the raft's thickness; «42" DP. SLAB»
+    /// alone is still not one (a slab band's depth on 31168).
+    /// </summary>
+    [Fact]
+    public void A_raft_or_a_mat_is_a_plate_of_its_depth()
+    {
+        var page = Page(
+            Word("48\"", 100, 600), Word("DP.", 122, 600), Word("RAFT", 146, 600), Word("SLAB", 172, 600),   // the number within the zoner's 60 pt reach of SLAB, as printed at h 6
+            Word("60\"", 100, 500), Word("DP", 121, 500), Word("RAFT", 145, 500), Word("SLAB", 171, 500),
+            Word("24\"", 100, 400), Word("RAFT", 135, 400), Word("SLAB", 170, 400),
+            Word("84\"", 100, 300), Word("DP.", 122, 300), Word("RAFT", 146, 300), Word("SLAB", 172, 300),
+            Word("42\"", 100, 200), Word("DP.", 135, 200), Word("SLAB", 170, 200));
+        var callouts = SlabThicknessZoner.ReadCallouts(page);
+        Assert.Equal(new[] { 84, 60, 48, 24 }, callouts.Select(c => c.ValueIn).OrderByDescending(v => v).ToArray());
+    }
+
+    /// <summary>
     /// THE NUMBER IS READ WHOLE (step 121, 2026-09-18): «8.5" P/T SLAB» on 30993 read as 5" on nine storeys. The callout
     /// carries the exact inches beside the whole ones, and a metric callout keeps its millimetres (200 stays 200 mm,
     /// 7.874 in, while the whole reading rounds to 8).

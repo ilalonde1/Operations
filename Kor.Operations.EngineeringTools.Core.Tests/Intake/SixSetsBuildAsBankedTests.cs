@@ -27,7 +27,7 @@ namespace Kor.Operations.EngineeringTools.Core.Tests.Intake;
 /// A SAME-CLASS FAULT IT WOULD NOT CATCH: a change that is wrong in the same way on the banked
 /// model and the new one — the yardsticks are the second gate for that.
 /// The sources are named by their share paths: 31130's is its 2026-05-20 issue (now under "06 Old
-/// Structural Stickfiles"), 31168's its 2026-04-21 issue — the bank is a fixed drawing, not the
+/// Structural Stickfiles"), 31168's its 2026-04-21 issue (moved there by the office on 2026-09-18) — the bank is a fixed drawing, not the
 /// newest one; the corpus run reads the newest.
 /// WHAT THE CACHE COVERS: PDF SHA-256, scale, the specified reader source files and serialised
 /// PdfIntakeOptions; sheets.csv and the DXF file list must still stand. The final byte comparison
@@ -49,7 +49,7 @@ public sealed class SixSetsBuildAsBankedTests
         new("31138-01", @"\\Kor-fs01\Projects\Projects\03 Residential\31138-01 (2170 W 1st Ave Vancouver BC)\05 Stickfile\31138-01 2026-09-01_2170 W 1st Ave_Str Set.pdf", 96),
         new("31065-01", @"\\Kor-fs01\Projects\Projects\03 Residential\31065-01 (5350 5430 Heather Street Vancouver)\05 Stickfile\31065-01 - 2026-07-08 - 5380-Heather Street - Stickfile (up to SSI-04)-OAP.pdf", 100),
         new("31202-01", @"\\Kor-fs01\Projects\Projects\03 Residential\31202-01 (1650 N Hotel Circle San Diego)\05 Stickfile\31202-01 2026-09-04 Hotel Circle North StickSet  - FULL SET.pdf", 96),
-        new("31168-01", @"\\Kor-fs01\Projects\Projects\03 Residential\31168-01 (YMCA Langara Vancouver)\05 Stickfile\31168-01 - 2026-04-21- YMCA Langara - Stickfile.pdf", 96),
+        new("31168-01", @"\\Kor-fs01\Projects\Projects\03 Residential\31168-01 (YMCA Langara Vancouver)\05 Stickfile\06 Old Structural Stickfiles\31168-01 - 2026-04-21- YMCA Langara - Stickfile.pdf", 96),
         new("31170-01-arch", @"\\Kor-fs01\Projects\Projects\03 Residential\31170-01 (2005-2045 West 49 Ave Vancouer)\05 Stickfile\01 Architectural\260723_W49th_75% BP Draft.pdf", 96),
     ];
 

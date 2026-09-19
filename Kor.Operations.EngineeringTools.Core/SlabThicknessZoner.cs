@@ -68,7 +68,10 @@ namespace Kor.Operations.EngineeringTools.QuantityTakeoff
                 // on 31202's typical floors, «10" CONC. SLAB», «200 THK SLAB» - the number is the thickness whatever the
                 // word between says about the slab's kind. A word that says WHERE (ABOVE, BELOW) or WHAT ELSE (BAND,
                 // STEP, EDGE, DP.) is not one of these and the tail stays untouched.
-                ctx = System.Text.RegularExpressions.Regex.Replace(ctx, @"\s+(P/T|PT|P\.T\.|CONC\.?|CONCRETE|THK\.?|THICK|SUSPENDED|FLAT|R/C|RC)\s*$", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                // A RAFT OR A MAT IS A PLATE OF ITS DEPTH (step 122, 2026-09-18): «48" DP. RAFT SLAB» on 30783, «60" DP RAFT SLAB» on 30933,
+                // «24" RAFT SLAB» on 30911 - the depth of a raft is its thickness, and she models the mats (30933: 72 and 90 in sections).
+                // «42" DP. SLAB» alone stays unread: on 31168 it is a slab BAND's depth (24" x 42" DP. SLAB BAND), not a plate's.
+                ctx = System.Text.RegularExpressions.Regex.Replace(ctx, @"\s+(?:(?:DP\.?|DEEP)\s+)?(?:RAFT|MAT|P/T|PT|P\.T\.|CONC\.?|CONCRETE|THK\.?|THICK|SUSPENDED|FLAT|R/C|RC)\s*$", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
 
                 // Imperial («10" SLAB») first; if there is no inch mark, try a metric mm tail («200 SLAB»).
                 var parsed = SlabThicknessCallout.MatchNumberFirstTail(ctx);
