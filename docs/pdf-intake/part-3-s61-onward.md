@@ -3324,3 +3324,34 @@ notch meets a column, closed when a callout stands inside** — the PDF side's e
 the interruption width, modelled as floor because «10" SLAB» is printed inside it" (`ExtendLimit`/`FloodFillBridge`
 on the DXF side; `SlabEdgeBridgeMm` on this side). The morning's rule, with the gate — and step 124's branch stays
 parked; its test and fixture are for that rule, not this one.
+
+## 145. Run 40 banked — the thickness figure after 120–122: 46% → 60%; the day 11:50 → 19:50 in one place (2026-09-18 19:45)
+
+**Run 40 (120 + 121 + 122), banked `3ea4a7cf`** (17:32 → 19:43): 259 of 294, 2,176 of 2,829 storeys with a plate (77%),
+walls 115,593 / columns 90,694; one set moved in composition (31118: +43 columns, +17 walls, +1 plate — a raft priced
+makes a plate the composer places members on); yardsticks 51 same. **§8: 228 of 378 shared plated storeys agree
+within half an inch — 60%, from 46% this morning and 0–27% on the five before step 118; the 21 current-model sets
+66 of 134 (49%, from 43%).** The pairs that differ now: 12/8 × 33 (31017's fragmented plates and 31087's tower
+floors — the default stands where no plate holds the callout), 12/10 × 15 (from 33), 12/14 × 7, 12/16 × 5 (transfer
+levels — the ties), 12/2.5 × 3 (a deck she models at 2.5 in); 30993's 5/8.5 × 8 is gone. Plates 79% of hers and the
+honest openings 43% unchanged (123 is run 41's).
+
+**The day, 11:50 → 19:50, one line each** (Ian: "attack any other outstanding deficiencies with super intelligence …
+Engineers"):
+- **118** the slab callout reaches the plate (four rules; her thicknesses on the five 0–27% → 78–95%) `b95e45c0`
+- **119** two rings sharing an edge are two rings — 31065's elevator on 22 storeys; the openings figure made honest
+  (slivers set aside; centre, cover or void) `074ba8f8`
+- **120** a plate taken from the walls is priced by the callout inside it `89764700`
+- **121** the number before the inch mark is read whole — 8.5, 8 1/2, 200 mm as 200 `89764700`
+- **122** a raft or a mat is a plate of its depth `b029fd86`
+- **123** a crosshatch is not a field of X marks `ef0f40d2`
+- **124** a wall's drawn faces in the arrangement — tried, measured, PARKED (`step-124`); the class turned out to be a
+  610-mm notch in 31202's rim with one side undrawn (§144)
+- runs 38, 39, 40 banked: plates 76% → 79% of hers over 49 sets; thickness 46% → 60%; openings 36% (dishonest) →
+  43% (honest); the DXF-route red bisected to step 83 and re-baselined with the reason; 31168's moved stick file
+  followed; instruments: `model-yardstick --openings`, `ClassifyProbe`, `LiveBaselineProbe`, the one-page slab trace,
+  `corpus-disagreements` §8 and the honest §6 line.
+- **Open, named, for the morning:** 31202's rim gap under the interruption width (the PDF side's equivalent of the
+  composer's rescue); 31017's reinforcing drawn on the outline (by pen and end-mark); the shifted knife-edge on
+  31138 L21; the ties (12/14, 12/16); the drawing-index pages; "ours she has" where she cuts none; two test-host
+  crashes with no dump. **Run 41 (123) at 22:05, clear of the servicing window.**
