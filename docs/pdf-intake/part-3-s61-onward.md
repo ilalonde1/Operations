@@ -3679,3 +3679,34 @@ and now kill by command line, and one banked the rule in its own memory and the 
 standing: **1,609 of 1,631 green before a kill, the DXF-route region green alone (20 tests, 3 m 52 s); the fast
 suite 1,537 green at 23:56 between two kills.** The morning's "dump-enabled run" and "OpenText console" items are
 struck; a full run once, uninterrupted, is owed and is the first thing after the rebar rule.
+
+## 152. Step 126: a line that carries its bar mark is a bar — banked as the first witness; the second (the hooks) measured (2026-09-19 00:35)
+
+**The rule** (`GeometryFilterService.CarriesABarMark`, fate `PathReason.BarRun`, `BarMarkOnLineHeights = 0.8`,
+`BarRunMinMm = 600`; the page's word BOXES now travel on the geometry as `PageWordBoxes`, filled beside `PageWords`):
+a two-point line 600 mm or longer with a word in the office's bar grammar whose box sits on it — centre within 0.8
+text heights, projecting within the line's length — is a bar, read for what it is and offered to no reader. The
+grammar (`BarMark`): a Canadian mark with optional count, C, length and spacing («15M», «12-15M12.6», «C15M18.0»,
+«6-C15M21.4», «15M@12») or a US size WITH its spacing («#5@12»). **Not a bare «#5»:** the first form let «#1»–«#4»
+through, and 31170-arch's plans keynote with them (82 on the set) — one on a leader moved a plate's edge 1.1 m.
+Tests: `ABarCarryingItsMarkIsABarTests` — the bar with its label on it is BarRun and reaches no line (red with the
+rule broken, green mended); a label along a vertical bar reads by its short side; a label a height off, a non-bar
+word, a label beyond the end, a stroke under 600 mm all stay lines; the grammar's fourteen rows. Fast suite 1,539
+green; the gate: 31130 alone moved — 22 lines with bar marks on its P1 pages («2-15M» on lintels and beams) out of
+the wall reader, and a 2,288-mm "wall" that lay wholly on the axis of a 7,419-mm one (KW209 inside KW127, the same
+y) is gone, KW127 now stands on P1 and L1, one wall of 3,211 mm formed at L1 where a bar line had blocked its faces;
+re-banked. The other five identical.
+
+**Judged on its target sets first** (the binding rule of §148): 31017 **unchanged** (45% of her plates, 0 of 22
+thickness), 30838 **92% → 93%** (+2,311 sq ft; openings 55%, thickness 72% unchanged). The label form catches
+almost none of the bars that fragment those floors — measured on the pages with the rule's own geometry
+(`bar_geometry.py`): 31017 p18 has 726 two-point strokes of 600 mm+ and 140 bar words, and **9** strokes carry a
+mark within 0.8 heights; 30838 p49, 1,524 strokes, 128 words, **7**. The labels sit 1–6 heights off, with leaders,
+over groups of bars. **The second witness, measured:** the END HOOKS. 31017 p18 draws 776 polylines, 63 of them a
+long run with a perpendicular tick at one or both ends (58 at pen 1.26, the heavy w21 of §143), plus 23 two-point
+strokes ticked at both ends by separate short strokes and 52 at one end; 30838 p49 draws no polylines and **291 long
+strokes ticked at both ends** (pens 0.96 ×126, 0.48 ×110, 0.24 ×43, 0.6 ×11). The hooks are the bars' signature on
+both sets — and a DIMENSION line has the same shape (a long stroke with a tick at each end; the 0.24-pen 43 on 30838
+are those), so the hook rule needs the dimension's own witness (a number centred on it, the dimension reader's
+`WallIsDimensionString` class) to tell them apart. That is the morning's rule, step 127; 126 is banked as the
+first witness and the plumbing (word boxes on the geometry, the fate, the grammar). No corpus run for 126 alone.
