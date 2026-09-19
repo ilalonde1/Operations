@@ -3145,3 +3145,61 @@ owed once tonight for 120 and 121 together.
 **What §8 says next, after runs 39 and 40 carry these:** the 12/10 and 12/8 pairs should fall to the callouts the
 zoner still cannot read (a form not yet seen — to list from the ASSUMED lines of the reports), the ties (31130 P2,
 L14; 31138 L22) stand until the corpus says which way, and 30993's 5/8.5 goes to 8.5/8.5.
+
+## 141. Run 39 banked — the honest openings figure; step 122 (a raft is a plate of its depth); the census of the plates still on the default; the full suite's two reds (2026-09-18 15:55–17:45)
+
+**Run 39 (119), banked `a71d3062`** (15:03 → 17:30): 259 of 294, 2,175 of 2,829 storeys with a plate (77%); no set moved
+in walls, columns or plates — step 119 adds openings only; yardsticks 51 same. **The honest openings figure, first
+time across the corpus (§6): hers we have, by centre or cover or as a void we carry no plate over, her slivers under
+150 mm set aside — 707 of 1,638 (43%) over 53 sets; the 22 current-model sets 250 of 605 (41%); her slivers not
+judged 523 (of the 2,161 the old figure counted as openings); ours she has 626 of 1,660 (38%).** The old figure said
+36% of 2,161 — a quarter of "her openings" were releases along core walls, and they matched our stair wells.
+
+**The census of the plates still on the default** (run 38's reports, `assumed_census.py` in the scratchpad — a
+study, its classes here, its rule in code): **1,583 of 2,533 plates on 101 sets**. For each set its first three plan
+pages' words, SLAB words and callout-shaped phrases. The classes:
+1. **Lettering that is not vector** — 30924 (104 of 105 plates on the default; 279 words on three plan pages, the
+   title block only), 30925 (0 SLAB words), 30941: the linework is vector, the text is not. Unreadable by this route
+   without OCR. Counted; not fixed; to be stated in the report (a set whose plans carry no text at all).
+2. **Rafts and mats** — «48" / 84" / 108" DP. RAFT SLAB» (30783, ten on one sheet), «60" DP RAFT SLAB» (30933), «24"
+   RAFT SLAB» (30911), «26" DP. RAFT SLAB» (30768), «84" DP MAT SLAB» (30912): the depth of a raft is its thickness,
+   and she models the mats (30933's model carries 72 and 90 in sections). **Step 122.**
+3. **Wall-made plates** (31087 and the like) — step 120, banked; run 40 measures it.
+4. **Framing plans** — 31143's "LEVEL 2 PLAN SHOWING LEVEL 3 FRAMING OVER": a joisted floor, no concrete callout, 18 of
+   19 plates on the default and honestly so; not a concrete building for ETABS.
+5. **Slab-on-grade callouts** — «4" SLAB» on foundation sheets (31118, 31015, 31073, 31106) read where no suspended
+   plate is; the classifier's floor of 4 in admits them. To measure before a rule: what her models carry at grade.
+
+**Step 122 — a raft or a mat is a plate of its depth** (`SlabThicknessZoner`, `SlabThicknessCallout`): DP./DEEP before
+RAFT/MAT is a qualifier the zoner strips and the parser's text forms admit; the zoner's ceiling rises from 48 in to
+the classifier's banked 120 (`dxf.slab-callout-max-thickness`), so an 84-in raft reaches the plate. «42" DP. SLAB»
+alone stays unread — on 31168 it is a slab band's depth («24" x 42" DP. SLAB BAND»), not a plate's. Tests
+`A_raft_or_a_mat_is_a_plate_of_its_depth` (the zoner: 84, 60, 48, 24 read; 42 not) and two spellings through the
+classifier — red before the rule, green after. Fast 1,514; six-set gate byte-identical (no raft on the six).
+Committed `b029fd86`.
+
+**The full suite for 120 + 121** (15:55 → 17:12, `--blame-crash`, 1 h 17 under run 39's load; no crash this time —
+the two earlier "test host process crashed" aborts left no dump and no event, and stay unexplained): 1,627 green, 1
+skipped, **two reds**:
+- `TheStickFileBuildsAModelOnItsGridTests.Langara31168…`: "expected the one 2026-04-21 issue under …\05 Stickfile,
+  found 0" — **the office moved 31168's 2026-04-21 stick file into "06 Old Structural Stickfiles" today** (the 09-14,
+  09-17 and 09-18 issues now stand in the folder). The six-set path and the test follow it; the mirror had served
+  the cached copy meanwhile. Fixed in `b029fd86`.
+- `TheSameDrawingsShiftedOnThePageBuildTheSameStructureTests`: **31138 L21 gains one 914-mm wall at (45,048, 45,653)
+  when the page is shifted by (5,000, 3,001)** — the "drawn on a sheet in a place another sheet had already filled"
+  dedup takes five members on L21 in one frame and four in the other: a tolerance knife-edge (the 152-mm
+  already-modelled tolerance) that the shift tips. Green at 13:31 with 119; red with 120 + 121 — which change no
+  wall, so what moved is the tie-break the knife-edge sits on. **Open; characterised next, not patched.**
+
+**Run 40** (120 + 121 + 122) launched 17:32:39 on the refreshed mirror (Core.dll 730CB688…); ends ~19:50, clear of 22:00.
+
+**The shifted red, looked at** (17:35–17:50). `walls_near.py` on the two kept models: the shifted one holds `KW526` at
+x 50,047.8, 914.4 long, 305 thick, and the as-is one holds no wall within 600 mm of the same place; `model-to-page`
++ `dxf-inspect --near` on both L21 sheets (S2.36_1 LEVEL 21 AMENITY, S2.37_1 LEVEL 20 & 21 REINFORCING SLABS): the
+same 305 × 914 mm box on the BEAM layer of both, drawn as four corner pieces with 98-mm gaps in its short sides — a
+12 × 36 in pier. Both sheets carry it; the as-is build drops one copy as "a place another sheet had already filled"
+(L21: 5 duplicates) and the shifted build keeps it as a wall (4). The knife-edge is in whether the two copies are
+"the same place" — both endpoints within the 152-mm already-modelled tolerance — after each frame's rounding.
+Named, not fixed: a rule wants the class stated first (a member drawn on two sheets of one storey is one member,
+whatever the frame — the dedup should key on the drawn geometry, not on where the sheet landed), and this evening
+belongs to run 40. The diff and both models stay under `TestResults/shifted/31138-01/`.
