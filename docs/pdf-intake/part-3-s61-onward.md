@@ -3655,3 +3655,27 @@ default" shape of §147 B until the honest line lands.
 The morning's order stands as §147 wrote it, with §149's rule first: the rebar-over-outline rule (a line that
 carries its bar mark is a bar) → step 125 re-entered behind it → the thickness line judged only where our plate is
 half of hers → the drawing-index pages → 31048 opened (15%, never looked at; her model 3 years older) → 31202's L2 → the test host's killer.
+
+## 151. The test host's killer found: another session on the box, killing `testhost` by name (2026-09-19 00:03)
+
+§148 left the fact — `testhost exited with exitcode: -1 error: ''`, TerminateProcess's code, nothing in our code
+that exits or kills — and three hypotheses. The answer came when the FAST suite died too (23:55, 1,429 of 1,537
+reported, 5 s in) and the six-set gate right after it (23:57, before its first result): `Win32_Process` showed two
+`testhost.exe` of `JoeBrain.Tests` and a `dotnet test tests/JoeBrain.Tests` started at 23:57:50 — **another Claude
+session on KOR-1001** (Ian's JoeBrain work, run from the Operations and JoeBrain-trader directories). Its transcripts
+(`~/.claude/projects/*/*.jsonl`) hold `Get-Process JoeBrain.Web, testhost* | Stop-Process -Force` and
+`taskkill //F //IM testhost.exe` before every one of its builds — twenty-four kills between 15:06 and 23:58 PDT — and
+**every abort of ours matches one to the second:** 15:26 gate ← 22:25:36Z, 15:52 full ← 22:53:58Z, 21:10 blame run
+← 04:10:09Z, 21:39 `--diag` run ← 04:39:00Z (the host's log ends 21:39:01.28), 23:55 fast ← 06:55:44Z, 23:57 gate ←
+06:57:45Z. The advice came from this project's own memory — "kill lingering testhost before building" in two files,
+written for the App-tests hang of June — and a session following it on a box where three sessions run suites kills
+everyone's. Not a stack overflow, not Webroot, not the DXF route; two hours of hypotheses for a `grep` of the
+neighbours' transcripts.
+
+**Fixed at source:** the two memory lines corrected; a binding feedback memory (`never-kill-testhost-by-name`: kill
+only your own host, by command line — `Win32_Process` where `CommandLine -like '*<your project>*'`); the live sessions
+told through `SendMessage` — the JoeBrain-trader session and the Operations session (operations-d5) both acknowledged
+and now kill by command line, and one banked the rule in its own memory and the JoeBrain deploy script. The suite's
+standing: **1,609 of 1,631 green before a kill, the DXF-route region green alone (20 tests, 3 m 52 s); the fast
+suite 1,537 green at 23:56 between two kills.** The morning's "dump-enabled run" and "OpenText console" items are
+struck; a full run once, uninterrupted, is owed and is the first thing after the rebar rule.
