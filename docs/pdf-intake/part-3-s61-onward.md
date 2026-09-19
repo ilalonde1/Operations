@@ -3431,7 +3431,7 @@ the mirror refreshed from `c41fd197` (Core.dll CD9C1B579BAA, 20:24) for **run 41
 already a slab-edge candidate — this rule hands the leftover to the arrangement directly, which is the right place
 (the chain is for the walk). 31202's L2 (571 of 33,572) did not move: a different class, for the morning's trace.
 
-**31202's L2, traced while the full suite ran** (20:35–20:50; `KOR_SLAB_TRACE_PAGES=17`, lines kept): not the L3/L4
+**31202's L2, traced while the full suite ran** (20:28–20:35; `KOR_SLAB_TRACE_PAGES=17`, lines kept): not the L3/L4
 class. The page's 432 lines by pen and fate: w9 (the plan's own pen) 80 emitted, **25 refused as strokes on grid** —
 among them the rim itself: 2,812 in along row M (the whole south edge, y 24,282), 718 in along grid 2 (the west
 edge, x 11,631), 530 in on the north (y 68,174), 491 in on the east (x 85,446); step 78 offers those to the
