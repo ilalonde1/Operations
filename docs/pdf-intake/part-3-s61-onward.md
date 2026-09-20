@@ -3840,3 +3840,14 @@ under them are read (§146's class). The gate runs under the corpus run; the six
 115% (its parkade plates grew — P1 18,605 → 22,646; the over-read on L2–L4 is the older class), 31202 75% → 76%, 31130
 the same (P3 −406); 31170-arch's quadrant duplicates on L2, L3 and L6 gone (the 32,076 floor stands on every storey) and
 a 1,359-mm wall on L2–L6 vanished — a face pair changed by a long line the wall reader now sees. The six re-banked.
+
+**30990's Tower A, read from the files while run 42 kept the box (20:11):** S2.06.1 (LEVEL 3 & 4, 1:100) reads 516
+sq ft of her 13,323, four typical floors the same. The page draws no polylines; its 0.96-pt strokes 2 m and longer (54)
+do not appear among the line fates at all — the trace lists every two-point stroke over the face-trace floor with its
+fate, and these have none — so they went to the WALL reader before the lines: the tower's rim drawn as two parallel
+lines (the slab edge and its thickened band, 200 mm apart) read as twelve perimeter "walls", whose panels do not chain
+into a ring (§143's class on 31202 L3, which step 124's leftovers happened to close). The 0.60-pt long strokes are
+the frame, the key plan and the schedule. Step 131, when the box is free: a face pair on the plan's rim whose outer
+line is the outermost linework there, at the outline's pen, is the slab edge and its band — not a wall; 31202's L3
+(the same drawing convention, closed by accident) is its second set, and §3's wall sections she has not is the corpus
+measure. Not touched tonight: the one-page trace and the build both cost CPU the run needs before 22:00.
