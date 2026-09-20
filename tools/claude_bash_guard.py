@@ -67,6 +67,8 @@ RULES = [
 ]
 
 BUILD = re.compile(r"dotnet\s+(?:test|build)")
+# a command whose path names a checkout other than Operations under "VIsual Studio Projects" (JoeBrain, KOR.Drafter, ...)
+OTHER_REPO = re.compile(r"(?i)VIsual Studio Projects[\\/](?!Operations(?:[\\/\"' ]|$))[A-Za-z0-9_.-]+")
 
 
 def testhost_running():
@@ -108,7 +110,10 @@ def main():
 
     # CLAUDE.md: "Do not start one and then keep editing" -- it holds the build output
     # lock. This fired for real on 2026-08-25 and cost a ten-minute wait.
-    if BUILD.search(cmd) and testhost_running():
+    # Only for a build OF THIS REPO: a command that names another repo's checkout ("cd .../JoeBrain && dotnet build")
+    # touches none of our output, and on 2026-09-19 this held the JoeBrain session for twenty minutes while the
+    # drawing pipeline's suite ran - the lock it feared was not the one the command would take.
+    if BUILD.search(cmd) and not OTHER_REPO.search(cmd) and testhost_running():
         deny("A testhost is already running and holds the build output lock -- this will "
              "fail with MSB3027. Wait for it to finish first.")
 

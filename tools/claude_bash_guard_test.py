@@ -39,8 +39,31 @@ CASES = [
 ]
 
 
+def other_repo_cases():
+    """The build-lock rule is only for a build OF THIS REPO (2026-09-19): the pattern that says a command
+    targets another checkout, proved on both sides without a live testhost."""
+    sys.path.insert(0, os.path.dirname(GUARD))
+    import claude_bash_guard as g
+    yes = [
+        'cd "/c/VIsual Studio Projects/JoeBrain" && dotnet build -c Release',
+        'Set-Location "C:\\VIsual Studio Projects\\JoeBrain-trader"; dotnet test tests/JoeBrain.Tests',
+        'dotnet build "C:\\VIsual Studio Projects\\KOR.Drafter\\KOR.Drafter.sln"',
+    ]
+    no = [
+        'cd "/c/VIsual Studio Projects/Operations" && dotnet test --filter "Speed!=Slow"',
+        'dotnet build -c Release',
+        'dotnet test "C:\\VIsual Studio Projects\\Operations\\Kor.Operations.sln"',
+    ]
+    return [(c, "other") for c in yes if g.OTHER_REPO.search(c)] + [(c, "FAIL other") for c in yes if not g.OTHER_REPO.search(c)] \
+         + [(c, "ours") for c in no if not g.OTHER_REPO.search(c)] + [(c, "FAIL ours") for c in no if g.OTHER_REPO.search(c)]
+
+
 def main():
     failed = 0
+    for command, expected in other_repo_cases():
+        if expected.startswith("FAIL"):
+            failed += 1
+        print(f"{'FAIL' if expected.startswith('FAIL') else 'ok  '} {expected:5} | {command[:90]}")
     for command, expected in CASES:
         got = verdict(command)
         mark = "ok  " if got == expected else "FAIL"
