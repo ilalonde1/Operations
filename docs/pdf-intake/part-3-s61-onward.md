@@ -3746,3 +3746,40 @@ segments between two slab-edge jogs. The jog next to a rim piece shorter than 40
 piece not among the "long ends", so the jog reads as a FREE tick, and a rim segment with such a jog at each end reads
 as a hooked bar. The mend is the tick's freedom: its other end touches no stroke at all, of any length, not "no long
 line". That is the morning's first edit on `step-127`, judged again on 30838, 31017 and the six.
+
+## 154. Pushed, guarded, and step 128: a slab edge at twice the grid's pen was the grid — 31009 30% → 56% (2026-09-19 18:52)
+
+**First, what Ian asked (17:55):** pushed — develop (323 commits, `bff21760..1f36cc69`), the parked `step-124/125/127`,
+the old `step-109/112` for the record; the merged step branches deleted locally, the stale `step-112` worktree removed,
+four "throwaway" stashes dropped (17 named ones remain; the financials/access branches untouched — Ian's merges).
+**Guards for what broke** (`ce7dacca`): the repo hook denies a kill by process name (testhost/dotnet/takeoff/vstest)
+on Bash AND the PowerShell tool, with the by-command-line form in the reason; its "a testhost holds the build lock"
+check reads the host's command line (ours only) instead of blocking our builds whenever another repo's suite runs;
+the six-set gate reads its baselines from the source tree (the stale-copy trap of 00:33); 13 hook tests, each rule
+proved by a command it denies and a neighbour it allows.
+
+**Step 127 mended and still parked** (`step-127` `7ba914fa`): a hook is free only when its far end touches no
+stroke at all and lands on no body — 30838 back to 93% (nothing over 126), 31017 45% → 45% (L2's 1,314 fragment
+gone). Neutral on its targets: no rule that helps nothing goes in.
+
+**Then where the square feet are.** §7 by her missing area: 31017 (190k), 31048 (old model), 30990 (110k), 31009
+(75k: five typical floors at 0), 30989, 31083. 31009: L3 reads, L4 does not, the same drawing. A new instrument in
+the trace (`slab pass: chain … start … body/end …` and `arranged within 1 m of …`: the longest open chains' ends,
+their nearest arranged segment's body and end, and everything arranged within a metre of them) showed L4's
+arrangement missing the WEST EDGE entirely — present in the PDF, present in the DXF as a BEAM line, absent from the
+arrangement: it is drawn at 0.48 pt along grid line 1, the grid is 0.24 pt, and step 53's window ("a stroke on the
+axis within twice the grid's pen is the grid") took the slab edge for the grid — five long w4 lines a page, `GridAxis`.
+**Step 128** (`SheetFurniture.AxisPenHeavierBy` 2.0 → 1.4, `AxisPenLighterBy` = 2.0 kept for 31202's 2 pt pieces on
+a 3 pt grid): an office's pens double — 0.24, 0.48, 0.96 — so the next pen up is another pen. Test
+`AStrokeOnTheAxisAtTheNextPenUpIsNotTheGrid` (3 pt grid: 4 is the grid, 4.5 and 6 are not; 0.24/0.48 is not). Fast
+suite 1,539 green. **31009 whole: plates 30% → 56%** (L4 0 → 15,832-class, L7 1,405 → read; L5, L6, L8 still 0 — a
+second class on the same set), thickness 4 of 4, her openings we have 14% → 28%. **The gate:** 31202 L7–L12 +605 sq ft
+each (an edge on a grid line, 28,572), L6 −174 and one 10,026-mm wall "lost" at L6 = the carry-down of §146 not
+firing (it stands on L6's plate now), 31130 +4, 31168 +1; **31170-arch L5 lost its 4,108 sq ft SE quadrant plate — and
+that is right:** the arch set's SLAB PLANS (A202/A206/A208) draw the whole floor, 32,076 sq ft (229'-7½" × ~140' on
+A206, the unit table's 23,861 sf of units inside it), and the enlarged quarter plans (A422–A425) draw the same floor
+in parts; the reader refuses a ring "inside the floor another sheet drew" as the duplicate it is — sixteen of them on
+the set — and under 124 the SE ring (4,108, now 4,124) had slipped past that test by a sliver. The four moved sets
+re-banked.
+
+**Corrected in passing:** the arch set's 32,076 "page frame" of §144/§146 is not a frame; it is the floor.
