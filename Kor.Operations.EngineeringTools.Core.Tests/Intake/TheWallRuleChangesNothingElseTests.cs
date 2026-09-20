@@ -1,4 +1,4 @@
-using Kor.Operations.EngineeringTools.Intake;
+﻿using Kor.Operations.EngineeringTools.Intake;
 using Kor.Operations.EngineeringTools.PdfToSafe;
 using Xunit;
 
@@ -328,8 +328,11 @@ internal static class PreWallClassifier
                     if (!sub.IsAnnotation && pts.Count == 2)
                     {
                         double dx = Math.Abs(pts[1].X - pts[0].X), dy = Math.Abs(pts[1].Y - pts[0].Y);
-                        if (dx >= SheetFrameMinShare * pageWidthMm && dy < dx * 0.01) { Fate(PathReason.FrameEdgeLine); continue; }
-                        if (dy >= SheetFrameMinShare * pageHeightMm && dx < dy * 0.01) { Fate(PathReason.FrameEdgeLine); continue; }
+                        // ...AND AT THE PAPER'S MARGIN (intake step 130, 2026-09-19): 31009's L5 draws its east edge 43.9 m tall on a
+                        // 58.5 m page - 84% of the height, in the middle of the sheet - and it was the frame; the floor was the page.
+                        // A frame edge runs within a tenth of the page of its edge; a building's edge stands where the drawing is.
+                        if (dx >= SheetFrameMinShare * pageWidthMm && dy < dx * 0.01 && GeometryFilterService.AtTheMargin((pts[0].Y + pts[1].Y) / 2, pageHeightMm)) { Fate(PathReason.FrameEdgeLine); continue; }
+                        if (dy >= SheetFrameMinShare * pageHeightMm && dx < dy * 0.01 && GeometryFilterService.AtTheMargin((pts[0].X + pts[1].X) / 2, pageWidthMm)) { Fate(PathReason.FrameEdgeLine); continue; }
                     }
                     // the pen recorded with the line (step 20) is a fact about the path, not the
                     // wall rule; the pre-wall copy records it too so the comparator can hold it

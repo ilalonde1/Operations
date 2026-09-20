@@ -68,6 +68,7 @@ public sealed class EveryReaderConstantIsTriagedTests
         ["GeometryFilterService.cs:DoorwayMinLengthMm"] = Convention("dxf.pdf.doorway-min-length-mm — 18 in: narrower is a slot or a text mask"),
         ["GeometryFilterService.cs:PierMinLengthMm"] = Convention("dxf.pdf.pier-min-length-mm — 12 in; the DXF side's panel floor"),
         ["GeometryFilterService.cs:SheetFrameMinShare"] = Convention("dxf.pdf.sheet-frame-min-share — a closed shape over 60% of the page is the frame"),
+        ["GeometryFilterService.cs:SheetFrameMarginShare"] = Rule("a frame edge runs within a tenth of the page of the paper's edge; a line as long as the paper at mid-page is the building's (31009's 43.9 m east edge, step 130)"),
         ["GeometryFilterService.cs:SlabEdgeChainMinMm"] = Convention("dxf.pdf.slab-edge-chain-min-mm — shorter is a tick or a letter"),
         ["GeometryFilterService.cs:FaceTraceMinOverlapMm"] = Convention("dxf.pdf.face-trace-min-overlap-mm"),
         ["GeometryFilterService.cs:FaceLeftoverMinMm"] = Tolerance("a wall face's piece beyond its panel shorter than this stays the join tolerance's business, not the arrangement's (step 124)"),

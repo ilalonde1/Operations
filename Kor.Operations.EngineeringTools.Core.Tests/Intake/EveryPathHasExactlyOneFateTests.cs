@@ -173,6 +173,8 @@ internal static class FateFixture
         (Rect(70000, 50000), PathReason.SheetFrame),
         (Line(0, 0, 70000, 0), PathReason.FrameEdgeLine),
         (Line(0, 0, 0, 50000), PathReason.FrameEdgeLine),
+        // as long as the paper but at mid-page: a building's edge, not the frame (step 130 - 31009's 43.9 m east edge)
+        (Line(50000, 5000, 50000, 65000), PathReason.EmittedAsLine),
         (Rect(100, 500), PathReason.ColumnTooSmall),
         (Rect(600, 600) with { IsFilled = false, IsStroked = true, Color = (0, 0, 0) }, PathReason.UnfilledSmallShape),
         (Rect(250, 1000), PathReason.ColumnAspect),

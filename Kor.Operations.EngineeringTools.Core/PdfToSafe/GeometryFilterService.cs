@@ -139,6 +139,11 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         /// frame, not a slab: no floor plate is drawn the size of the paper.
         /// </summary>
         public const double SheetFrameMinShare = 0.6;
+        /// <summary>A frame edge runs within this share of the page of the paper's edge (step 130); a line at mid-page as long as the paper is the building's.</summary>
+        public const double SheetFrameMarginShare = 0.1;
+        /// <summary>Whether a line's centre, across its run, lies within <see cref="SheetFrameMarginShare"/> of the page of either edge (step 130).</summary>
+        internal static bool AtTheMargin(double centreMm, double pageExtentMm)
+            => pageExtentMm <= 0 || centreMm <= SheetFrameMarginShare * pageExtentMm || centreMm >= (1 - SheetFrameMarginShare) * pageExtentMm;
 
         /// <summary>
         /// A fill this light, on every channel, is the paper. A shape filled with it and drawn with
@@ -498,8 +503,11 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         if (!sub.IsAnnotation && pts.Count == 2)
                         {
                             double dx = Math.Abs(pts[1].X - pts[0].X), dy = Math.Abs(pts[1].Y - pts[0].Y);
-                            if (dx >= SheetFrameMinShare * pageWidthMm && dy < dx * 0.01) { Fate(PathReason.FrameEdgeLine); continue; }
-                            if (dy >= SheetFrameMinShare * pageHeightMm && dx < dy * 0.01) { Fate(PathReason.FrameEdgeLine); continue; }
+                            // ...AND AT THE PAPER'S MARGIN (intake step 130, 2026-09-19): 31009's L5 draws its east edge 43.9 m tall on a
+                            // 58.5 m page - 84% of the height, in the middle of the sheet - and it was the frame; the floor was the page.
+                            // A frame edge runs within a tenth of the page of its edge; a building's edge stands where the drawing is.
+                            if (dx >= SheetFrameMinShare * pageWidthMm && dy < dx * 0.01 && GeometryFilterService.AtTheMargin((pts[0].Y + pts[1].Y) / 2, pageHeightMm)) { Fate(PathReason.FrameEdgeLine); continue; }
+                            if (dy >= SheetFrameMinShare * pageHeightMm && dx < dy * 0.01 && GeometryFilterService.AtTheMargin((pts[0].X + pts[1].X) / 2, pageWidthMm)) { Fate(PathReason.FrameEdgeLine); continue; }
                             // A LINE THAT CARRIES ITS BAR MARK IS A BAR (intake step 126, 2026-09-18). 31017's outline sheets
                             // draw the diaphragm bars over the slab edge - 140 bar-mark words on page 18 - and 30838's
                             // "CONCRETE OUTLINE AND DIAPHRAGM REINFORCING" views the same (128 on S2.28); the bars share
@@ -2347,7 +2355,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                                 {
                                     var atBreak = everything.Where(s => Math.Min(Math.Min(Math.Sqrt(Math.Pow(br.X - s.Start.X, 2) + Math.Pow(br.Y - s.Start.Y, 2)), Math.Sqrt(Math.Pow(br.X - s.End.X, 2) + Math.Pow(br.Y - s.End.Y, 2))), BodyDistanceMm(br, s)) <= 600)
                                         .Select(s => $"{s.Layer} ({s.Start.X:0},{s.Start.Y:0})-({s.End.X:0},{s.End.Y:0})").ToList();
-                                    FaceTrace($"slab pass: the route's break - its pinch nearest a line's end - at ({br.X / 304.8:0.0},{br.Y / 304.8:0.0}) ft = ({br.X:0},{br.Y:0}) mm; arranged within 600 mm: {atBreak.Count}: {string.Join(" | ", atBreak.Take(12))}");
+                                    FaceTrace($"slab pass: the route's ENTRY - where it first passes a line coming in from the page's edge - at ({br.X / 304.8:0.0},{br.Y / 304.8:0.0}) ft = ({br.X:0},{br.Y:0}) mm; arranged within 600 mm: {atBreak.Count}: {string.Join(" | ", atBreak.Take(12))}");
                                 }
                             }
                             static double BodyDistanceMm(DxfPoint p, DxfSegment s)
@@ -2753,18 +2761,12 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         double narrow = double.MaxValue; int at = cur;
                         var path = new List<int>();
                         for (int k = cur; k >= 0; k = via[k]) { path.Add(k); if (dist[k] < narrow) { narrow = dist[k]; at = k; } }
-                        int atBreak = -1; double breakNear = double.MaxValue;
+                        // THE ENTRY: walking the route from the page's edge inward, the first cell that passes beside a line
+                        // (within two cells) is where the outside comes through the drawing - the interior pinches are after it.
+                        // `path` runs from the border (first) back to the column (last).
+                        int atBreak = -1;
                         foreach (int k in path)
-                        {
-                            if (dist[k] > 5 * cell) continue;                                   // wide open: not beside anything
-                            var p = new DxfPoint(x0 + (k % nx) * cell, y0 + (k / nx) * cell);
-                            foreach (var l in lines)
-                                foreach (var e in new[] { l.Start, l.End })
-                                {
-                                    double d = p.DistanceTo(e);
-                                    if (d <= 4 * cell && d < breakNear) { breakNear = d; atBreak = k; }
-                                }
-                        }
+                            if (dist[k] <= 2 * cell) { atBreak = k; break; }
                         LastBreak = atBreak < 0 ? null : new DxfPoint(x0 + (atBreak % nx) * cell, y0 + (atBreak / nx) * cell);
                         return (2 * narrow, new DxfPoint(x0 + (at % nx) * cell, y0 + (at / nx) * cell));
                     }
