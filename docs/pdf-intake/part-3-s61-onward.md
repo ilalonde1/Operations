@@ -3783,3 +3783,32 @@ the set — and under 124 the SE ring (4,108, now 4,124) had slipped past that t
 re-banked.
 
 **Corrected in passing:** the arch set's 32,076 "page frame" of §144/§146 is not a frame; it is the floor.
+
+## 155. Step 129: a T drawn short is a T — 31009 56% → 72%; the instruments that found it; the corner that remains (2026-09-19 19:16)
+
+**The instruments first**, because they are what made the evening move: (1) the leak finder now rasterises EVERYTHING
+the arrangement had (walls, doors, gaps, match lines) — rasterising the slab edges alone found "gaps" between the
+outline and the walls that close it, a pinch on a route the walls never allowed; (2) it reports the route's BREAK —
+the pinch nearest a line's end — beside the narrowest place, since a ring leaks where a line stops, not where two
+lines run close; (3) both points come with everything arranged within 600 mm, and the longest open chains' ends with
+their nearest segment's body and end. On 31009's L5 (page 28) the break sat at the north cap of a 12-in wall on the
+east edge: the north-east edge (0.48 pt, x 55,819) starts at y 14,147, **25 mm above the cap at 14,122**; L3 draws
+the same edge to 14,122 exactly, and closes.
+
+**The rule** (`PlanarRings.Bridges`): the arrangement bridged an end to an end and joined an end ON a body within the
+join (1 mm); an end short of a body by up to the bridge (152 mm) was neither — a gap the code had named on 09-17 ("a T
+drawn short … closes on the raster but not here") and only traced. Now an end whose perpendicular foot lies inside
+another edge's body, farther than the join and within the bridge, is joined to the foot; the body may be a wall's;
+the same body drawn twice (a wall's face as a line beside its outline) is where the T lands, not a bar across it; the
+proposal is the end's own (B = −1), needing no second end's agreement. Test
+`AnEndShortOfAnotherEdgesBodyByUnderTheBridgeIsJoinedToIt` in the arrangement's order-independent harness — red
+with the rule broken, green mended; fast suite 1,540 green. **31009 whole: 56% → 72%** (L6 read; thickness 4 of 5 —
+L2 now plated at the default 12" against her 20").
+
+**The corner that remains** (`ATDrawnShortOntoAWallProbe`, a probe test that asserts the truth as it stands): at
+the same wall, the SOUTH edge (0.60 pt, x 55,494) runs 134 mm west of the wall's corner (55,628, 10,794) and ends
+in air at y 15,626; the north edge now joins the cap, but a wall's corner is no "end" — `Own(v)` counts a vertex's
+non-wall edges, and the corner has none of its own (or two, where the faces are drawn as lines too) — so nothing
+bridges the 134 mm, the perimeter is one open chain from (55,494, 15,626) round to the cap, and L5 and L8 stay at 0.
+The rule for that: a wall standing beside a slab edge closer than the bridge, at its corner — the morning's, with the
+probe as its fixture. L4 and L6 (both edges drawn to the wall) close.
