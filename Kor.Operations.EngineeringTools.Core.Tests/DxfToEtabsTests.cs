@@ -256,6 +256,35 @@ public class PlanLoopBuilderTests
         Assert.False(loop.ClosedExactly);
     }
 
+    /// <summary>
+    /// A RUN IS ONE CHAIN WHICHEVER SEGMENT SEEDS THE WALK (intake step 132, 2026-09-19). The walk ran forward from its
+    /// seed's far end only, so a run seeded in the middle left the pieces before the seed to be seeded on their own:
+    /// 30990's LEVEL 5 south edge was seeded at the foot of a 343 mm riser and the riser became a chain of its own,
+    /// under the piece minimum, gone - the floor leaked there on L5 and L8 and not on L3/4, where the seed fell on the
+    /// riser. WHAT THIS COVERS: an open run of three drawn in the order long-first is one chain of four points either
+    /// way round; a loop still closes; a dead end still ends. WHAT IT DOES NOT: the junction choice (PickContinuation).
+    /// </summary>
+    [Fact]
+    public void AnOpenRunIsOneChainWhicheverSegmentSeedsTheWalk()
+    {
+        var longFirst = new[] { Seg(0, 10, 100, 10), Seg(0, 0, 0, 10), Seg(100, 10, 100, 0) };   // the riser after the long piece
+        var riserFirst = new[] { Seg(0, 0, 0, 10), Seg(0, 10, 100, 10), Seg(100, 10, 100, 0) };
+        foreach (var segs in new[] { longFirst, riserFirst })
+            foreach (var builder in new[] { new PlanLoopBuilder(), new PlanLoopBuilder(0.05, 0.05, 0.05) })   // bridging, and the slab pass's exact joins
+            {
+                var result = builder.Build(segs);
+                Assert.Empty(result.Loops);
+                var chain = Assert.Single(result.OpenChains);
+                Assert.Contains(chain, p => p == new DxfPoint(0, 0));
+                Assert.Contains(chain, p => p == new DxfPoint(100, 0));
+            }
+        // the exact-join walk is one chain of four points either way round; the bridging builder rejoins the halves in
+        // BridgeChains (with the shared node doubled) and the both-ways walk is not asked of it (it changed only which
+        // seed's luck decided the DXF route's corners)
+        foreach (var segs in new[] { longFirst, riserFirst })
+            Assert.Equal(4, Assert.Single(new PlanLoopBuilder(0.05, 0.05, 0.05).Build(segs).OpenChains).Count);
+    }
+
     [Fact]
     public void ReportsAnOutlineThatCannotBeClosed()
     {

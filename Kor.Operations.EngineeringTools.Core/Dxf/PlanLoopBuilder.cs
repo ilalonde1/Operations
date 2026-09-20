@@ -125,6 +125,43 @@ public sealed class PlanLoopBuilder
                 previousEdge = nextEdge;
             }
 
+            // THE WALK RUNS BOTH WAYS FROM ITS SEED (intake step 132, 2026-09-19). It ran forward from the seed's far
+            // end only, so a run seeded in the middle left the pieces before the seed to be seeded on their own, as a
+            // chain of their own: 30990's LEVEL 5 south edge was seeded at the foot of a 343 mm riser, the riser
+            // became a chain under the slab pass's piece minimum, and the floor leaked there (L3/4 seeded on the riser
+            // and closed). An open run is extended backward from the seed's start through its PLAIN continuations only -
+            // a node with exactly one other edge left - to a dead end, a junction, or the forward end (which closes it).
+            // Not through a junction: choosing there would take an edge from a ring another seed would have closed
+            // (the DXF route's benchmark lost 5 of 8 openings to a backward walk that chose at junctions, 22:52).
+            // AND ONLY WHERE NOTHING ELSE WILL JOIN THE HALVES: a builder that bridges rejoins two halves sharing a node
+            // (a bridge of no length) in BridgeChains, so there the both-ways walk changed nothing but which seed's luck
+            // decided the corners - 31138's DXF route closed three band strips along its edges as plates (L03-L05, 684 sq
+            // ft each, over the floor she modelled) and 31202's LEVEL 13 perimeter-wall loop stopped closing (00:50).
+            // The exact-join walk - the slab pass's - has no BridgeChains behind it, and is where the rule holds.
+            bool exact = _bridgeTolerance <= _joinTolerance && _extendLimit <= _joinTolerance;
+            if (exact && currentNode != startNode && Environment.GetEnvironmentVariable("KOR_STEP132_OFF") != "1")   // the bisect's knob (2026-09-19 23:25)
+            {
+                int backNode = startNode, backEdge = seed;
+                var back = new List<int>();
+                while (true)
+                {
+                    if (!adjacency.TryGetValue(backNode, out var atBack) || atBack.Count(e => !used[e]) != 1) break;
+                    int nextEdge = PickContinuation(backNode, backEdge, adjacency, used, edgeA, edgeB, nodePoints, path);
+                    if (nextEdge < 0) break;
+                    used[nextEdge] = true;
+                    backNode = edgeA[nextEdge] == backNode ? edgeB[nextEdge] : edgeA[nextEdge];
+                    back.Add(backNode);
+                    backEdge = nextEdge;
+                    if (backNode == currentNode) break;
+                }
+                if (back.Count > 0)
+                {
+                    back.Reverse();
+                    path.InsertRange(0, back);
+                    startNode = path[0];
+                }
+            }
+
             var points = path.Select(n => nodePoints[n]).ToList();
             bool closed = points.Count > 3 && path[^1] == startNode;
 
