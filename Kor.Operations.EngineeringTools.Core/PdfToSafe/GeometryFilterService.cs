@@ -1203,6 +1203,8 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         /// <c>pdf-overlay --walls</c> sets it; nothing in production does.
         /// </summary>
         internal static Action<string>? FaceTrace;
+        /// <summary>The leak finder's last break - the pinch on its route nearest a line's end (an instrument behind FaceTrace, 2026-09-19).</summary>
+        [ThreadStatic] private static DxfPoint? LastBreak;
         internal const double FaceTraceMinOverlapMm = 2400;
 
         internal static void WallsFromFaceLines(ExtractedGeometry result, IList<PathFate>? fates, int firstFate,
@@ -2330,7 +2332,31 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         var outsideColumns = result.Columns.Where(c => !cells.Any(f => LoopGeometry.PointInPolygon(new DxfPoint(c.X, c.Y), f.Outer.Points))).Take(3).ToList();
                         foreach (var col in outsideColumns)
                         {
-                            var leak = Leak(arranged, new DxfPoint(col.X, col.Y));
+                            // on EVERYTHING the arrangement had (2026-09-19): rasterising the slab edges alone found "gaps" between the
+                            // outline and the walls that close it (31009 L4: an 8-in pinch beside a 12-in wall) - a pinch on a route the
+                            // walls never allowed. The finder's raster is the arrangement's own edge set.
+                            var everything = arranged.Concat(wallEdges).Concat(doorEdges).Concat(gapEdges).Concat(matchEdges).ToList();
+                            var leak = Leak(everything, new DxfPoint(col.X, col.Y));
+                            if (leak is { } lk)
+                            {
+                                // and what is arranged around the pinch, so the gap is seen: the two sides of it, or the one side and nothing
+                                var around = everything.Where(s => Math.Min(Math.Min(Math.Sqrt(Math.Pow(lk.At.X - s.Start.X, 2) + Math.Pow(lk.At.Y - s.Start.Y, 2)), Math.Sqrt(Math.Pow(lk.At.X - s.End.X, 2) + Math.Pow(lk.At.Y - s.End.Y, 2))), BodyDistanceMm(lk.At, s)) <= 600)
+                                    .Select(s => $"{s.Layer} ({s.Start.X:0},{s.Start.Y:0})-({s.End.X:0},{s.End.Y:0})").ToList();
+                                FaceTrace($"slab pass: arranged within 600 mm of the pinch ({lk.At.X:0},{lk.At.Y:0}) mm: {around.Count}: {string.Join(" | ", around.Take(12))}");
+                                if (LastBreak is { } br)
+                                {
+                                    var atBreak = everything.Where(s => Math.Min(Math.Min(Math.Sqrt(Math.Pow(br.X - s.Start.X, 2) + Math.Pow(br.Y - s.Start.Y, 2)), Math.Sqrt(Math.Pow(br.X - s.End.X, 2) + Math.Pow(br.Y - s.End.Y, 2))), BodyDistanceMm(br, s)) <= 600)
+                                        .Select(s => $"{s.Layer} ({s.Start.X:0},{s.Start.Y:0})-({s.End.X:0},{s.End.Y:0})").ToList();
+                                    FaceTrace($"slab pass: the route's break - its pinch nearest a line's end - at ({br.X / 304.8:0.0},{br.Y / 304.8:0.0}) ft = ({br.X:0},{br.Y:0}) mm; arranged within 600 mm: {atBreak.Count}: {string.Join(" | ", atBreak.Take(12))}");
+                                }
+                            }
+                            static double BodyDistanceMm(DxfPoint p, DxfSegment s)
+                            {
+                                double ex = s.End.X - s.Start.X, ey = s.End.Y - s.Start.Y, len2 = ex * ex + ey * ey;
+                                if (len2 <= 0) return double.MaxValue;
+                                double t = Math.Clamp(((p.X - s.Start.X) * ex + (p.Y - s.Start.Y) * ey) / len2, 0, 1);
+                                return Math.Sqrt(Math.Pow(s.Start.X + t * ex - p.X, 2) + Math.Pow(s.Start.Y + t * ey - p.Y, 2));
+                            }
                             FaceTrace($"slab pass: column at ({col.X / 304.8:0.0},{col.Y / 304.8:0.0}) ft is in no cell; " +
                                       (leak is null ? "no path to the page's edge found on the raster" : $"the outside reaches it through a gap {leak.Value.Width / 25.4:0} in wide at ({leak.Value.At.X / 304.8:0.0},{leak.Value.At.Y / 304.8:0.0}) ft"));
                         }
@@ -2721,9 +2747,25 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     int cx = cur % nx, cy = cur / nx;
                     if (cx == 0 || cy == 0 || cx == nx - 1 || cy == ny - 1)
                     {
-                        // walk back to the narrowest place on the path
+                        // walk back to the narrowest place on the path - and THE BREAK: the pinch nearest a line's END, since a
+                        // ring leaks where a line stops, not where two lines run close (2026-09-19: 31009's channel between its
+                        // east edge and a wall face was the narrowest place on every route and no gap at all)
                         double narrow = double.MaxValue; int at = cur;
-                        for (int k = cur; k >= 0; k = via[k]) if (dist[k] < narrow) { narrow = dist[k]; at = k; }
+                        var path = new List<int>();
+                        for (int k = cur; k >= 0; k = via[k]) { path.Add(k); if (dist[k] < narrow) { narrow = dist[k]; at = k; } }
+                        int atBreak = -1; double breakNear = double.MaxValue;
+                        foreach (int k in path)
+                        {
+                            if (dist[k] > 5 * cell) continue;                                   // wide open: not beside anything
+                            var p = new DxfPoint(x0 + (k % nx) * cell, y0 + (k / nx) * cell);
+                            foreach (var l in lines)
+                                foreach (var e in new[] { l.Start, l.End })
+                                {
+                                    double d = p.DistanceTo(e);
+                                    if (d <= 4 * cell && d < breakNear) { breakNear = d; atBreak = k; }
+                                }
+                        }
+                        LastBreak = atBreak < 0 ? null : new DxfPoint(x0 + (atBreak % nx) * cell, y0 + (atBreak / nx) * cell);
                         return (2 * narrow, new DxfPoint(x0 + (at % nx) * cell, y0 + (at / nx) * cell));
                     }
                     foreach (var (dx, dy) in new[] { (1, 0), (-1, 0), (0, 1), (0, -1) })

@@ -178,6 +178,34 @@ public sealed class PlanarRingsBuildTheSameRingsInAnyOrderTests
         });
     }
 
+    /// <summary>
+    /// A T DRAWN SHORT IS A T (intake step 129, 2026-09-19). 31009's L5 draws its north-east edge to 25 mm above the wall it
+    /// meets; the arrangement bridged end to end and joined an end ON a body, never an end SHORT of a body, so the end
+    /// dangled and the floor was the page (L3 draws the same edge to the wall, and closes). WHAT THIS COVERS: an end short
+    /// of another edge's body by under the bridge is joined at the foot of its perpendicular and the face closes; the
+    /// body may be a wall's; an end short by more than the bridge stays open; an end within the join is the old exact
+    /// contact. WHAT IT DOES NOT: two ends short of the same body (each joins on its own); a T onto an inserted bridge.
+    /// </summary>
+    [Fact]
+    public void AnEndShortOfAnotherEdgesBodyByUnderTheBridgeIsJoinedToIt()
+    {
+        // a square whose right side is drawn from (10,1) up to (10,10): its bottom end stops 1 short of the bottom edge's
+        // body (the bottom edge runs on to (12,0)) - a T drawn short. Bridge 1.5: the foot at (10,0) joins it.
+        Check([S(0, 0, 12, 0), S(10, 1, 10, 10), S(10, 10, 0, 10), S(0, 10, 0, 0)], new(0.05, 1.5, 0), r =>
+        {
+            var loop = Assert.Single(r.Loops);
+            Assert.Equal(100, loop.Area, 6);
+            Assert.False(loop.ClosedExactly);
+        });
+        // the same with the bottom edge a WALL's outline edge: the slab edge runs to the wall (a wall span is one whose
+        // layer the arrangement is told is a wall's; here the builder has no such knowledge, so the plain form suffices)
+        // two short by more than the bridge stays open
+        Check([S(0, 0, 12, 0), S(10, 2, 10, 10), S(10, 10, 0, 10), S(0, 10, 0, 0)], new(0.05, 1.5, 0), r =>
+        {
+            Assert.Empty(r.Loops);
+        });
+    }
+
     [Fact]
     public void EquallyGoodBridgesAreLeftOpenInsteadOfPickingAnArrival()
     {

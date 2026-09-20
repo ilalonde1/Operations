@@ -315,6 +315,43 @@ public sealed class PlanarRings
                 if (pieces.Count == 0 || pieces.Any(s => mesh.Edges.Any(e => !e.Wall && Conflicts(s, new Span(mesh.Points[e.A], mesh.Points[e.B], false), true)))) continue;
                 candidates.Add(new Proposal(a, b, Math.Round(pieces.Sum(s => s.A.DistanceTo(s.B)), 6), pieces));
             }
+        // A T DRAWN SHORT IS A T (intake step 129, 2026-09-19): an end that stops short of another edge's BODY by up to the
+        // bridge - and not within the join, where the arrangement already puts it on the edge - is joined to that body at
+        // the foot of its perpendicular. 31009's L5 draws its north-east edge to 25 mm above the wall it meets (L3 draws it
+        // to the wall, and closes); the end was a dangling vertex, no other end within reach, and the floor was the page.
+        // The body may be a wall's outline: the slab edge runs to the wall (step 116 lets a bridge cross one). Proposed
+        // with B = -1: the end's own choice, needing no agreement from a second end.
+        for (int i = 0; i < ends.Count; i++)
+        {
+            int a = ends[i]; var p = mesh.Points[a];
+            int own = Own(a);
+            for (int e = 0; e < mesh.Edges.Count; e++)
+            {
+                if (e == own || mesh.Edges[e].A == a || mesh.Edges[e].B == a) continue;
+                var ea = mesh.Points[mesh.Edges[e].A]; var eb = mesh.Points[mesh.Edges[e].B];
+                if (p.X < Math.Min(ea.X, eb.X) - _bridgeTolerance || p.X > Math.Max(ea.X, eb.X) + _bridgeTolerance
+                    || p.Y < Math.Min(ea.Y, eb.Y) - _bridgeTolerance || p.Y > Math.Max(ea.Y, eb.Y) + _bridgeTolerance) continue;
+                var s = new Span(ea, eb, false);
+                double t = Parameter(p, s);
+                if (t <= 0 || t >= 1) continue;
+                var foot = At(s, t);
+                double d = p.DistanceTo(foot);
+                if (LoopGeometry.Within(d, _joinTolerance) || !LoopGeometry.Within(d, _bridgeTolerance)) continue;
+                var piece = new Span(p, foot, true);
+                bool blocked = false;
+                for (int o = 0; o < mesh.Edges.Count && !blocked; o++)
+                {
+                    if (o == e || mesh.Edges[o].Wall) continue;
+                    var os = new Span(mesh.Points[mesh.Edges[o].A], mesh.Points[mesh.Edges[o].B], false);
+                    // the same body drawn twice - a wall's face as a line beside its outline - is where the T lands, not a bar across it
+                    double ot = Parameter(foot, os);
+                    if (ot >= 0 && ot <= 1 && LoopGeometry.Within(foot.DistanceTo(At(os, ot)), _joinTolerance)) continue;
+                    if (Conflicts(piece, os, true)) blocked = true;
+                }
+                if (blocked) continue;
+                candidates.Add(new Proposal(a, -1, Math.Round(d, 6), [piece]));
+            }
+        }
         var unique = new Dictionary<int, Proposal>();
         foreach (int end in ends)
         {
@@ -324,7 +361,7 @@ public sealed class PlanarRings
             var tied = choices.Where(c => c.Cost == best).ToList();
             if (tied.Count == 1) unique[end] = tied[0];
         }
-        var agreed = candidates.Where(c => unique.GetValueOrDefault(c.A) == c && unique.GetValueOrDefault(c.B) == c).ToList();
+        var agreed = candidates.Where(c => unique.GetValueOrDefault(c.A) == c && (c.B < 0 || unique.GetValueOrDefault(c.B) == c)).ToList();
         // Crossing proposals are BOTH refused; processing one first would reintroduce ownership by arrival.
         return agreed.Where(c => !agreed.Any(o => !ReferenceEquals(c, o)
                 && c.Spans.Any(a => o.Spans.Any(b => Conflicts(a, b, false)))))
