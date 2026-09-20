@@ -4045,3 +4045,5 @@ read whole; her openings we have 59 → 81%), 31065 85 → 85% (its L5 and +2 on
 76 → 76% (L13 28,287 back, the roof 8,736 as banked), 31168 83 → 83%, 31170-arch 180 → 173% (three quadrant
 duplicates gone); 30990 54 → 70% honest (L5 stays at 516 until 132 re-enters). Fast suite 1,546 green; the gate green
 on the re-banked six; commit `80bb3367`; 132 on `step-132` (`b59cff71`).
+
+**The full suite on the banked develop (03:17 → 04:09, 51 min beside two other sessions' hosts): 1,663 green, 1 skipped by its own gate, 1 red — the known knife-edge (`TheSameDrawingsShiftedOnThePage…`, 31138 L21, one 914 mm wall gained under the shift; §141, §153). No new red; the DXF baselines (31138 15 floors, 31168) and the six-set gate green inside it.**
