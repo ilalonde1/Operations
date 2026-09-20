@@ -15,6 +15,17 @@
             "statusMessage": "Checking against the repo's hard rules"
           }
         ]
+      },
+      {
+        "matcher": "PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$CLAUDE_PROJECT_DIR/tools/claude_bash_guard.py\"",
+            "timeout": 20,
+            "statusMessage": "Checking against the repo's hard rules"
+          }
+        ]
       }
     ],
     "PostToolUse": [

@@ -63,7 +63,11 @@ public sealed class SixSetsBuildAsBankedTests
         Assert.False(string.IsNullOrWhiteSpace(conn), $"{RuleSettings.ConnectionEnvironmentVariable} is not set; the route reads its rules from KorStandards and never skips.");
         Assert.True(LiveProjects.ShareReachable, "the projects share is not reachable; the six sources are mirrored from it");
 
-        string baselines = Path.Combine(AppContext.BaseDirectory, "Baselines");
+        // THE BASELINE IS THE ONE IN THE SOURCE TREE, not the build's copy of it. A `--no-build` run after re-banking
+        // compared against the bin's stale copy and said "moved" for a set that was byte-identical to the file just
+        // banked (2026-09-19 00:33); the source tree is what the commit carries, so it is what the gate reads.
+        string baselines = Path.Combine(SixSetReadCache.RepositoryRoot(AppContext.BaseDirectory), "Kor.Operations.EngineeringTools.Core.Tests", "Baselines");
+        if (!Directory.Exists(baselines)) baselines = Path.Combine(AppContext.BaseDirectory, "Baselines");
         string results = Path.Combine(AppContext.BaseDirectory, "TestResults", "six-sets");
         Directory.CreateDirectory(results);
         // THE BANK IS BUILT THE WAY PRODUCTION BUILDS: with the rows, and it says so. Until 2026-09-12

@@ -50,18 +50,38 @@ RULES = [
     (re.compile(r"<<\s*['\"]?(?:EOF|PY|SH)\b[\s\S]*\\[A-Za-z]"),
      "A backslash-letter sequence inside a heredoc. Repo rule 7: this is how \\P, \\03 and "
      "a lost UNC prefix happened. Use the Write or Edit tool for a Windows path or regex."),
+
+    # 4. KILLING A PROCESS BY NAME. Several Claude sessions run test suites on this box at once.
+    #    On 2026-09-18 a session's pre-build `Get-Process testhost* | Stop-Process -Force` and
+    #    `taskkill /F /IM testhost.exe` ended the PDF-intake suite six times (exit code -1, no
+    #    dump, "Test host process crashed"); two hours went to crash hypotheses before the
+    #    neighbours' transcripts named it. Kill only your own, by its command line.
+    #    The verb must stand where a command stands (the start, or after ; & | ( or a newline), so a
+    #    commit message or a comment that NAMES the mistake is not the mistake.
+    (re.compile(r"(?i)(?:^|[;&|(\n]\s*)(?:Stop-Process|taskkill|pkill|killall)[^|;\n]*\b(?:testhost|dotnet|takeoff|vstest)\b"
+                r"|(?:^|[;&|(\n]\s*)Get-Process\s+[^|;\n]*\b(?:testhost|dotnet|takeoff|vstest)[^|;\n]*\|\s*Stop-Process"),
+     "A kill by process NAME (testhost/dotnet/takeoff/vstest). Other Claude sessions run suites on "
+     "this machine; a name-wide kill ends theirs too (six runs lost on 2026-09-18). Kill only your own, "
+     "by command line: Get-CimInstance Win32_Process -Filter \"Name='testhost.exe'\" | "
+     "Where-Object { $_.CommandLine -like '*<your test project>*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }"),
 ]
 
 BUILD = re.compile(r"dotnet\s+(?:test|build)")
 
 
 def testhost_running():
-    """A test run holds the build output lock; a second one fails with MSB3027."""
+    """A test run OF THIS REPO holds the build output lock; a second one fails with MSB3027.
+
+    By command line, not by name: other Claude sessions run other repos' suites on this box
+    (JoeBrain's, FileSync's), and their hosts hold none of our locks (2026-09-19)."""
     try:
-        out = subprocess.run(["tasklist"], capture_output=True, text=True, timeout=10).stdout
+        out = subprocess.run(
+            ["powershell", "-NoProfile", "-NonInteractive", "-Command",
+             "Get-CimInstance Win32_Process -Filter \"Name='testhost.exe'\" | Select-Object -ExpandProperty CommandLine"],
+            capture_output=True, text=True, timeout=15).stdout
     except Exception:
         return False
-    return "testhost" in out.lower()
+    return "kor.operations" in out.lower()
 
 
 def deny(reason):
