@@ -3851,3 +3851,48 @@ the frame, the key plan and the schedule. Step 131, when the box is free: a face
 line is the outermost linework there, at the outline's pen, is the slab edge and its band — not a wall; 31202's L3
 (the same drawing convention, closed by accident) is its second set, and §3's wall sections she has not is the corpus
 measure. Not touched tonight: the one-page trace and the build both cost CPU the run needs before 22:00.
+
+## 157. Step 131: a stroke on the grid is a piece of the edge — 30990 54% → 74% (2026-09-19 21:26)
+
+**Where §156's addendum was wrong.** It read 30990's typical floor from the files as "the rim drawn as two parallel
+lines read as twelve walls". The twelve walls are the core's (x 72–99 ft, y 104–134 ft, the 601 × 9,106 and
+749-thick pairs), and the 516 sq ft floor was the core's box. The rim is drawn — and 37 of its 54 long 0.96-pt
+strokes stand in the DXF as lines. The other 17 lie ON the grid axes: the west edge along grid 2a in four pieces
+(5,491 / 5,072 / 2,908 / 2,815 mm) with a 600 mm column box between each, the top edge along grid C in pieces, the
+SW leg along grid 3a (6,621), the east edge along grid 8a. `strokes_vs_dxf.py` (scratchpad) listed every stroke at
+the pen with SAME / ALONG GRID / NONE against the DXF; `arranged_look.py` drew what the pass is offered — the DXF's
+lines black, the strokes on an axis heavier than the grid green, walls red — and the rim was whole to the eye, green
+and black end to end.
+
+**The class.** Step 78 kept a stroke along a grid axis heavier than the grid apart from the lines (for the tendon
+reader) and offered it to the arrangement AS DRAWN. Only the drawn lines' chains were bridged in line across a
+column's box (step 78's own `BridgesInLine`, 48 in) and carried through a column two edges meet at (step 97). A
+600 mm gap between two grid strokes at a column is over the arrangement's bridge (6 in), and two collinear ends
+facing each other have no corner to extend to — so the floor was open at every column standing on a grid line.
+The re-entrant corner at grid 7a made the same gap in another shape: the grid stroke (46486, 40576→41982), a 34 mm
+drawn piece to the column's box at 46520, the box's top face (597 mm, a chain under the 2,000 mm piece minimum —
+dropped), and the edge on from 47117: the 597 mm between the 34 mm piece's end and the edge's end bridged nowhere.
+
+**Step 131** (`GeometryFilterService`, the slab pass): the strokes on the grid join `pieces` as two-point chains —
+bridged in line and carried to a column with the rest — and are no longer concatenated separately into
+`arranged`. Not gated by the chain minimum: the piece that closes the corner is 34 mm. Test
+`AHeavyStrokeAlongAGridLineInterruptedAtItsColumnsIsOneEdge` (the step-78 fixture: the axis edge in three pieces
+with a 900 mm gap at each column, the columns centred on the axis as 30990 draws them) — red with the strokes on
+the old route, green mended; fast suite 1,541 green. A first cut of the fixture put the columns 300 mm off the
+axis (`Column(x, y)` places a corner) and the carry through their centres notched the ring by two triangles of
+135,000 mm² — step 97's V, not this rule's; the fixture says so.
+
+**Judged on its target, same code either side of the rule** (the whole set, 125 s; `model-yardstick` against her
+30990-01.e2k): plates **54% → 74%** of hers (117,369 → 161,704 of 217,922 sq ft); L3 / L4 / L6 1,032 → ~11,150 each
+of 13,323 / 13,323 / 12,305, L2 and L7 over half; storeys under half of hers 7 → 3 (L1 8,361 of 46,464, L5 1,161 of
+14,103, L8 1,093 of 8,411 — other sheets, the next trace); slab thickness agreement 6 → 9 of 11 (the 200 SLAB
+callout now sits inside a floor: L3 / L4 / L6 12/8 → 8/8); her openings we have 12 of 25 either way. P30 alone: the
+core's 516 sq ft → an 11,152 sq ft floor holding 41 of 42 columns, rendered and looked at (`30990-p30-dxf131.png`).
+
+**The six-set gate under step 131 (21:25 → 21:43, detached): green — the six build exactly as banked.** No set on the
+gate draws its rim on its grid lines with a column box in the way, or already closed there; the rule is neutral on
+them and helps its target. Committed `6639e34f`. Run 42 was stopped at 133 of 293 at 20:47 (1.25 sets/min beside
+two other sessions' test hosts; it could not land before 22:00); run 43 (126–131) launches at ~22:05 and banks in
+the morning (`bank43.sh`, diff vs run 41). Left on 30990: L1 8,361 of 46,464 (S2.04.1, p26), L5 1,161 of 14,103
+(S2.07.1, p32 — the same rim as p30 to the eye, with section marks and a continuous balcony band; unchanged by 131,
+so its leak is another), L8 1,093 of 8,411 (S2.09.1's second view / S2.10).
