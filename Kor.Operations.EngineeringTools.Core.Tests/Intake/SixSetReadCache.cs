@@ -65,6 +65,9 @@ internal static class SixSetReadCache
             text.Append(path).Append('\n').Append(HashFile(Path.Combine(root, path))).Append('\n');
         // Record.ToString() prints collection types, not their words. JSON includes every list value.
         text.Append("options\n").Append(JsonSerializer.Serialize(options));
+        // a bisect's knob (KOR_STEP<n>_OFF=1) reads the sets another way: a read under it is not a read without it (2026-09-20 01:07)
+        foreach (var knob in Environment.GetEnvironmentVariables().Keys.Cast<string>().Where(k => k.StartsWith("KOR_STEP", StringComparison.Ordinal) && k.EndsWith("_OFF", StringComparison.Ordinal)).OrderBy(k => k, StringComparer.Ordinal))
+            text.Append(knob).Append('=').Append(Environment.GetEnvironmentVariable(knob)).Append('\n');
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(text.ToString())));
     }
 

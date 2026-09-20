@@ -60,6 +60,43 @@ public sealed class AFloorIsItsCellsUnitedTests
                              Column(33000, 22000), Column(36000, 24000), FateFixture.Rect(600, 800, 29700, 21600), FateFixture.Rect(600, 800, 29700, 23600)];
         var g = Read([Heavy(30000, 26000, 30000, 24450), Heavy(30000, 23550, 30000, 22450), Heavy(30000, 21550, 30000, 20000), .. rest]);
         Assert.Equal(W * H, Area(Assert.Single(g.Slabs)), 1);
+
+        // a run of dashes along the axis (31202's LEVEL 13: 1,380 of 4 mm at 1.5x the grid's pen, crossing at every
+        // intersection) stays as drawn under StrokeOnGridPieceMinMm - the first cut bridged them dash to dash into an
+        // arrangement the embedding refused and the storey's 28,200 sq ft outline was lost. NOT WITNESSED HERE: 300 dashes
+        // on two crossing axes of this fixture arrange fine either way; the witness is 31202's page in its set's context
+        // (the trace probe, KOR_STEP131_OFF, 2026-09-20 02:35), and the six-set gate.
+    }
+
+    /// <summary>
+    /// A FLOOR'S WORTH OF COLUMNS OUTSIDE THE WALK'S FLOOR IS ANOTHER FLOOR (intake step 135, 2026-09-20): a page of two
+    /// views draws two floors; the walk closes the one drawn exactly and the other, closed only by the arrangement's
+    /// bridges, was unread whenever the first held half the page's columns (31065's LEVEL 6 / LEVEL 7 NT page, six
+    /// storeys). WHAT THIS COVERS: two outlines side by side with four columns each, the right one interrupted at a
+    /// column - two floors; the same page with two columns on the right - one floor (a canopy's or a stair's, not a
+    /// floor's worth). WHAT IT DOES NOT: the real page (the six-set gate).
+    /// </summary>
+    [Fact]
+    public void AFloorsWorthOfColumnsOutsideTheWalksFloorIsAnotherFloor()
+    {
+        RawSubpath[] left = [Line(20000, 20000, 28000, 20000), Line(28000, 20000, 28000, 26000), Line(28000, 26000, 20000, 26000), Line(20000, 26000, 20000, 20000),
+                             Column(22000, 22000), Column(24000, 22000), Column(26000, 22000), Column(22000, 24500), Column(24000, 24500), Column(26000, 24500)];   // six: the walk's floor holds over half the page's
+        // the right outline's south edge in two pieces with a 900 mm gap at a column: closed by the arrangement, not the walk
+        RawSubpath[] rightEdges = [Line(40000, 20000, 43000, 20000), Line(43900, 20000, 48000, 20000), Line(48000, 20000, 48000, 26000), Line(48000, 26000, 40000, 26000), Line(40000, 26000, 40000, 20000)];
+        var two = Read([.. left, .. rightEdges, Column(43000, 20000 - 400), Column(42000, 22000), Column(46000, 22000), Column(42000, 24500), Column(46000, 24500)]);
+        Assert.Equal(2, two.Slabs.Count);
+        Assert.All(two.Slabs, s => Assert.Equal(W * H, Area(s), 1));
+
+        var few = Read([.. left, .. rightEdges, Column(43000, 20000 - 400), Column(42000, 22000), Column(46000, 24500)]);   // three outside: not a floor's worth
+        Assert.Equal(W * H, Area(Assert.Single(few.Slabs)), 1);
+
+        // AND A WALK FLOOR STANDS DOWN ONLY TO AN ARRANGEMENT FLOOR OVER IT: the exact outline under four columns beside the
+        // interrupted one under six - the arrangement's floor holds more of the page's columns and lies nowhere near the
+        // walk's, which stays (31202's LEVEL 13 outline stood down to cells over the column schedule beside it)
+        RawSubpath[] leftFour = [.. left.Take(4), Column(22000, 22000), Column(26000, 22000), Column(22000, 24500), Column(26000, 24500)];
+        var walkKept = Read([.. leftFour, .. rightEdges, Column(43000, 20000 - 400), Column(42000, 22000), Column(44000, 22000), Column(46000, 22000), Column(42000, 24500), Column(46000, 24500)]);
+        Assert.Equal(2, walkKept.Slabs.Count);
+        Assert.All(walkKept.Slabs, s => Assert.Equal(W * H, Area(s), 1));
     }
 
     [Fact]

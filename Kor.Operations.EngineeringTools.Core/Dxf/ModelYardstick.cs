@@ -429,6 +429,24 @@ public static class ModelYardstick
         var oursOnGrid = OnGrid(judged.SelectMany(s => s.OurPts));
         var theirsOnGrid = OnGrid(judged.GroupBy(s => s.Theirs, StringComparer.OrdinalIgnoreCase).SelectMany(g => g.First().TheirPts.Select(q => (q.X - sh.X, q.Y - sh.Y))));
 
+        // our plates judged only inside her footprint on the storey, as the columns and the openings are (30990: her model is
+        // Tower A on the podium; Tower B's floors are ours to read and hers to have left out). Her footprint for a PLATE is
+        // the box of her columns AND her plates on that storey: a mechanical level she models with four columns under a
+        // whole floor of slab is a floor, and 31202's L13 (44,553 sq ft, a handful of columns) fell out of a columns-only box.
+        var theirPlatePoints = PlatePointsByStorey(yard, yu);
+        bool PlateJudged(string storey, (double X, double Y) centreMm)
+        {
+            var s = shared.FirstOrDefault(s => s.Ours.Equals(storey, StringComparison.OrdinalIgnoreCase));
+            if (s.TheirPts is not { Count: > 0 }) return true;
+            var footprint = s.TheirPts.Concat(s.Theirs.Split('+').SelectMany(n => theirPlatePoints.TryGetValue(n, out var pp) ? pp : [])).ToList();
+            return !(centreMm.X < footprint.Min(q => q.X) - sh.X - FootprintMarginMm || centreMm.X > footprint.Max(q => q.X) - sh.X + FootprintMarginMm
+                     || centreMm.Y < footprint.Min(q => q.Y) - sh.Y - FootprintMarginMm || centreMm.Y > footprint.Max(q => q.Y) - sh.Y + FootprintMarginMm);
+        }
+        var platesBeyond = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+        var plates = PlatesOnSharedStoreys(model, yard, storeyFigures, PlateJudged, platesBeyond);
+        if (platesBeyond.Count > 0)
+            notes.Add($"{platesBeyond.Values.Sum():N0} sq ft of our plates stand beyond her model's footprint on their storey (a plate whose centroid is more than {FootprintMarginMm / 1000:0.#} m past her outermost column) and are not judged: {string.Join(", ", platesBeyond.OrderByDescending(kv => kv.Value).Select(kv => $"{kv.Key} {kv.Value:N0}"))}");
+
         var onlyModel = ours.Keys.Where(s => TheirsFor(s) is null).OrderBy(s => s, StringComparer.Ordinal).ToList();
         var onlyYard = theirs.Keys.Where(s => !matchedTheirs.Contains(s) && !matchedTheirs.Any(m => m.Split('+').Contains(s, StringComparer.OrdinalIgnoreCase))).OrderBy(s => s, StringComparer.Ordinal).ToList();
 
@@ -459,8 +477,8 @@ public static class ModelYardstick
             TheirsOpeningsHad = (theirsOpeningsMatched, theirsOpeningsCovered, theirsOffPlate, theirsHad),
             TheirsOpeningsSlivers = theirsSlivers,
             OpeningRows = openingRows,
-            Plates = PlatesOnSharedStoreys(model, yard, storeyFigures),
-            Thickness = ThicknessOnSharedStoreys(model, yard, storeyFigures),
+            Plates = plates,
+            Thickness = ThicknessOnSharedStoreys(model, yard, storeyFigures, PlateJudged),
         };
     }
 
@@ -469,19 +487,30 @@ public static class ModelYardstick
     /// and not an opening, its plan polygon's area. Read here, not through the query class (that file is not read-side
     /// and this one is - SixSetReadCacheTests.NoIncludedSourceReferencesAnExcludedOne).
     /// </summary>
-    private static IReadOnlyList<(string Storey, string YardstickStorey, double OursSqFt, double TheirsSqFt)> PlatesOnSharedStoreys(E2kDocument model, E2kDocument yard, IReadOnlyList<StoreyFigure> storeys)
+    /// <summary>
+    /// A PLATE BEYOND HER FOOTPRINT IS NOT JUDGED (2026-09-19), as a column or an opening there is not: her model of
+    /// 30990 is Tower A on the shared podium, ours is both towers, and the moment Tower B's typical floors read
+    /// (step 131) every shared storey stood at 170% of hers - a building she did not model, counted against her.
+    /// A plate whose centroid lies more than <see cref="FootprintMarginMm"/> past the box of her columns on that
+    /// storey is beyond her model: its area is counted and named, judged by nothing. Hers are all judged.
+    /// </summary>
+    private static IReadOnlyList<(string Storey, string YardstickStorey, double OursSqFt, double TheirsSqFt)> PlatesOnSharedStoreys(E2kDocument model, E2kDocument yard, IReadOnlyList<StoreyFigure> storeys,
+        Func<string, (double X, double Y), bool>? judged = null, Dictionary<string, double>? beyondSqFt = null)
     {
-        var ours = PlatesByStorey(model); var theirs = PlatesByStorey(yard);
+        var ours = PlatesByStorey(model, judged, beyondSqFt); var theirs = PlatesByStorey(yard);
         return storeys.Select(f => (f.Storey, f.YardstickStorey, ours.GetValueOrDefault(f.Storey).SqFt, theirs.GetValueOrDefault(f.YardstickStorey).SqFt)).ToList();
     }
 
-    private static IReadOnlyList<(string Storey, string YardstickStorey, double OursIn, double TheirsIn)> ThicknessOnSharedStoreys(E2kDocument model, E2kDocument yard, IReadOnlyList<StoreyFigure> storeys)
+    private static IReadOnlyList<(string Storey, string YardstickStorey, double OursIn, double TheirsIn)> ThicknessOnSharedStoreys(E2kDocument model, E2kDocument yard, IReadOnlyList<StoreyFigure> storeys,
+        Func<string, (double X, double Y), bool>? judged = null)
     {
-        var ours = PlatesByStorey(model); var theirs = PlatesByStorey(yard);
+        var ours = PlatesByStorey(model, judged); var theirs = PlatesByStorey(yard);
         return storeys.Select(f => (f.Storey, f.YardstickStorey, ours.GetValueOrDefault(f.Storey).ModalIn, theirs.GetValueOrDefault(f.YardstickStorey).ModalIn)).ToList();
     }
 
-    private static Dictionary<string, (double SqFt, double ModalIn)> PlatesByStorey(E2kDocument doc)
+    /// <param name="judged">Whether a plate (by its storey and its centroid in mm) is judged; null judges every plate.</param>
+    /// <param name="beyondSqFt">Where given, the area of the plates not judged, by storey.</param>
+    private static Dictionary<string, (double SqFt, double ModalIn)> PlatesByStorey(E2kDocument doc, Func<string, (double X, double Y), bool>? judged = null, Dictionary<string, double>? beyondSqFt = null)
     {
         double inchesPerUnit = doc.LengthUnitInInches() ?? 1.0;
         // the thickness of each slab section, in inches (SLABTHICKNESS is in the model's length unit)
@@ -518,6 +547,11 @@ public static class ModelYardstick
             double sum = 0;
             for (int i = 0; i < pts.Count; i++) { var a = pts[i]; var b = pts[(i + 1) % pts.Count]; sum += a.X * b.Y - b.X * a.Y; }
             double sqFt = Math.Abs(sum) / 2 * inchesPerUnit * inchesPerUnit / 144.0;
+            if (judged is not null && !judged(storey, (pts.Average(p => p.X) * inchesPerUnit * 25.4, pts.Average(p => p.Y) * inchesPerUnit * 25.4)))
+            {
+                if (beyondSqFt is not null) beyondSqFt[storey] = beyondSqFt.GetValueOrDefault(storey) + sqFt;
+                continue;
+            }
             area[storey] = area.GetValueOrDefault(storey) + sqFt;
             if (thicknessOf.TryGetValue(section, out double thick))
             {
@@ -529,6 +563,34 @@ public static class ModelYardstick
         var result = new Dictionary<string, (double SqFt, double ModalIn)>(StringComparer.OrdinalIgnoreCase);
         foreach (var (storey, sqFt) in area)
             result[storey] = (sqFt, byThickness.TryGetValue(storey, out var d) && d.Count > 0 ? d.OrderByDescending(kv => kv.Value).ThenBy(kv => kv.Key).First().Key : 0);
+        return result;
+    }
+
+    /// <summary>Every FLOOR area's vertices (not an opening's), by storey, in mm: the plates' own footprint.</summary>
+    private static Dictionary<string, List<(double X, double Y)>> PlatePointsByStorey(E2kDocument doc, double unitMm)
+    {
+        var floors = new HashSet<string>(StringComparer.Ordinal);
+        foreach (string raw in doc.LinesOf("AREA CONNECTIVITIES"))
+        {
+            var m = Regex.Match(raw.Trim(), @"^AREA\s+""([^""]+)""\s+FLOOR\b", RegexOptions.IgnoreCase);
+            if (m.Success) floors.Add(m.Groups[1].Value);
+        }
+        var openings = new HashSet<string>(StringComparer.Ordinal);
+        var assigned = new List<(string Name, string Storey)>();
+        foreach (string raw in doc.LinesOf("AREA ASSIGNS"))
+        {
+            var mo = Regex.Match(raw.TrimStart(), @"^AREAASSIGN\s+""([^""]+)""\s+""[^""]*""\s+OPENING\s+""Yes""");
+            if (mo.Success) { openings.Add(mo.Groups[1].Value); continue; }
+            var ms = Regex.Match(raw.TrimStart(), @"^AREAASSIGN\s+""([^""]+)""\s+""([^""]*)""\s+SECTION\s+");
+            if (ms.Success) assigned.Add((ms.Groups[1].Value, ms.Groups[2].Value));
+        }
+        var points = doc.PlanPointsOfObjects();
+        var result = new Dictionary<string, List<(double X, double Y)>>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (name, storey) in assigned)
+        {
+            if (!floors.Contains(name) || openings.Contains(name) || !points.TryGetValue(name, out var pts) || pts.Count < 3) continue;
+            (result.TryGetValue(storey, out var list) ? list : result[storey] = new List<(double X, double Y)>()).AddRange(pts.Select(p => (p.X * unitMm, p.Y * unitMm)));
+        }
         return result;
     }
 

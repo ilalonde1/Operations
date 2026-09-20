@@ -352,19 +352,44 @@ public sealed class PlanarRings
                 candidates.Add(new Proposal(a, -1, Math.Round(d, 6), [piece]));
             }
         }
+        // AN END'S T IS NOT SPENT BY ITS BRIDGE (intake step 134, 2026-09-19): an end short of a body within the bridge joins
+        // that body whether or not the same end also bridges to another end. 30990's LEVEL 5 draws a corner as three near
+        // misses - the edge 97 mm short of the vertical it turns down, 45 mm from the foot of a third line rising from the
+        // corner; the end's one choice was the nearer end, the T went unmade, and the floor leaked through the 2 in left.
+        // An end-to-end bridge is still each end's single best and needs both ends' agreement; the T is the end's own,
+        // judged among the T's alone.
         var unique = new Dictionary<int, Proposal>();
+        var uniqueT = new Dictionary<int, Proposal>();
         foreach (int end in ends)
         {
-            var choices = candidates.Where(c => c.A == end || c.B == end).ToList();
-            if (choices.Count == 0) continue;
-            double best = choices.Min(c => c.Cost);
-            var tied = choices.Where(c => c.Cost == best).ToList();
-            if (tied.Count == 1) unique[end] = tied[0];
+            foreach (var (pool, into) in new[] { (candidates.Where(c => c.B >= 0 && (c.A == end || c.B == end)).ToList(), unique), (candidates.Where(c => c.B < 0 && c.A == end).ToList(), uniqueT) })
+            {
+                if (pool.Count == 0) continue;
+                double best = pool.Min(c => c.Cost);
+                var tied = pool.Where(c => c.Cost == best).ToList();
+                if (tied.Count == 1) into[end] = tied[0];
+            }
         }
-        var agreed = candidates.Where(c => unique.GetValueOrDefault(c.A) == c && (c.B < 0 || unique.GetValueOrDefault(c.B) == c)).ToList();
-        // Crossing proposals are BOTH refused; processing one first would reintroduce ownership by arrival.
+        bool off134 = Environment.GetEnvironmentVariable("KOR_STEP134_OFF") == "1";   // the bisect's knob (2026-09-19 23:25): the T judged among every proposal, as before
+        if (off134)
+        {
+            unique.Clear();
+            foreach (int end in ends)
+            {
+                var choices = candidates.Where(c => c.A == end || c.B == end).ToList();
+                if (choices.Count == 0) continue;
+                double best = choices.Min(c => c.Cost);
+                var tied = choices.Where(c => c.Cost == best).ToList();
+                if (tied.Count == 1) unique[end] = tied[0];
+            }
+        }
+        var agreed = off134
+            ? candidates.Where(c => unique.GetValueOrDefault(c.A) == c && (c.B < 0 || unique.GetValueOrDefault(c.B) == c)).ToList()
+            : candidates.Where(c => c.B < 0 ? uniqueT.GetValueOrDefault(c.A) == c : unique.GetValueOrDefault(c.A) == c && unique.GetValueOrDefault(c.B) == c).ToList();
+        // Crossing proposals are BOTH refused; processing one first would reintroduce ownership by arrival. A T and a
+        // bridge leaving one end share that end and do not cross (step 134).
         return agreed.Where(c => !agreed.Any(o => !ReferenceEquals(c, o)
-                && c.Spans.Any(a => o.Spans.Any(b => Conflicts(a, b, false)))))
+                && c.Spans.Any(a => o.Spans.Any(b => Conflicts(a, b, !off134 && (c.B < 0 || o.B < 0))))))
             .SelectMany(c => c.Spans).ToList();
     }
 

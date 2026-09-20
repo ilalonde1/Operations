@@ -552,8 +552,13 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     var s = rawSubpaths[f.PathIndex];
                     if (s.Points.Count != 2 || !s.IsStroked || s.IsFilled) continue;
                     double ln = Math.Sqrt(Math.Pow(s.Points[1].X - s.Points[0].X, 2) + Math.Pow(s.Points[1].Y - s.Points[0].Y, 2));
-                    if (ln >= FaceTraceMinOverlapMm)
-                        FaceTrace($"line {ln / 25.4:0}\" w{s.LineWidth:0.00} at ({(s.Points[0].X + s.Points[1].X) / 2:0},{(s.Points[0].Y + s.Points[1].Y) / 2:0}) mm: {f.Reason}");
+                    double mx = (s.Points[0].X + s.Points[1].X) / 2, my = (s.Points[0].Y + s.Points[1].Y) / 2;
+                    // and every stroke, whatever its length, within 400 mm of KOR_SLAB_TRACE_AT=x,y (a piece missing from the arrangement is found by its fate)
+                    bool near = Environment.GetEnvironmentVariable("KOR_SLAB_TRACE_AT") is { Length: > 0 } at && at.Split(',') is [var ax, var ay]
+                                && double.TryParse(ax, out double qx) && double.TryParse(ay, out double qy)
+                                && s.Points.Any(q => Math.Abs(q.X - qx) < 400 && Math.Abs(q.Y - qy) < 400);
+                    if (ln >= FaceTraceMinOverlapMm || near)
+                        FaceTrace($"line {ln / 25.4:0}\" w{s.LineWidth:0.00} at ({mx:0},{my:0}) mm{(near ? $" ({s.Points[0].X:0},{s.Points[0].Y:0})-({s.Points[1].X:0},{s.Points[1].Y:0})" : "")}: {f.Reason}");
                 }
             PatternCellsAreNotColumns(result, columnByShape, fates, firstFate);
             ATargetsQuadrantsAreNotColumns(result, columnByShape, fates, firstFate);
@@ -632,17 +637,25 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             }
             var jogs = new HashSet<int>();
             if (longEnds.Count == 0) return jogs;
+            // A JOG LANDS ON WHATEVER LINE IT REACHES (intake step 133, 2026-09-19): the far end may meet a long line of
+            // another pen, the same colour. 30990's LEVEL 5 turns its east edge (0.96 pt) onto the stair's band (0.60 pt)
+            // by a 191 mm stroke at the edge's pen; LEVEL 3/4 draw the same turn 250 mm long and it passes the gate on
+            // its own. The jog's own pen must still be one of the two: a stroke of a pen neither line has is not theirs.
+            var anyEnds = new HashSet<(long, long, (byte, byte, byte))>(longEnds.Keys.Select(k => (k.Item1, k.Item2, k.Item4)));
             for (int i = 0; i < paths.Count; i++)
             {
                 var s = paths[i];
                 if (s.IsClosed || s.IsAnnotation || s.IsFilled || !s.IsStroked || s.Points.Count != 2 || curveMembers.Contains(i) || (claimed is not null && claimed.ContainsKey(i))) continue;
                 if (PolygonProcessor.PathLength(s.Points) >= lineMinLengthMm) continue;
-                if (!longEnds.TryGetValue(Key(s.Points[0], s), out var atA) || !longEnds.TryGetValue(Key(s.Points[1], s), out var atB)) continue;
+                bool ownA = longEnds.ContainsKey(Key(s.Points[0], s)), ownB = longEnds.ContainsKey(Key(s.Points[1], s));
+                bool anyA = anyEnds.Contains(((long)Math.Round(s.Points[0].X * 10), (long)Math.Round(s.Points[0].Y * 10), s.Color));
+                bool anyB = anyEnds.Contains(((long)Math.Round(s.Points[1].X * 10), (long)Math.Round(s.Points[1].Y * 10), s.Color));
+                if (Environment.GetEnvironmentVariable("KOR_STEP133_OFF") == "1" ? !(ownA && ownB) : !((ownA && anyB) || (anyA && ownB))) continue;   // the bisect's knob (2026-09-19 23:25)
                 // FORM A, the one kept (22:30): both ends on long lines' ends, whichever way the long lines leave. Form B asked the
                 // two long lines to leave the jog in OPPOSITE directions (a step, not a U) to spare 31065's stair wells, and lost
                 // 31130 L17's plate at once - its outline notches round a column as a U (126 mm down, 354 mm along the column's
                 // face, 914 mm down again). The U in the well is the well rule's to read (step 105d), not this rule's to refuse.
-                jogs.Add(i); _ = atA; _ = atB;
+                jogs.Add(i);
             }
             return jogs;
         }
@@ -1213,6 +1226,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         internal static Action<string>? FaceTrace;
         /// <summary>The leak finder's last break - the pinch on its route nearest a line's end (an instrument behind FaceTrace, 2026-09-19).</summary>
         [ThreadStatic] private static DxfPoint? LastBreak;
+        [ThreadStatic] private static List<DxfPoint>? RoutePasses;   // the leak route's passages beside a line, border first (instrument)
         internal const double FaceTraceMinOverlapMm = 2400;
 
         internal static void WallsFromFaceLines(ExtractedGeometry result, IList<PathFate>? fates, int firstFate,
@@ -1860,6 +1874,16 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             // with a piece that ends at an arrowhead, within the in-line reach, is the cut line - the run is dropped
             // whole, before any length gate can hide its last dash.
             var candidates = WithoutTheRunsEndingAtAnArrowhead(eligible);
+            // THE LINES THE PASS DOES NOT OFFER (instrument, 2026-09-19 21:55): a wall took the whole line, or it is a section
+            // cut's run - by their ends, so a rim piece missing from the arrangement is found here and not inferred
+            if (FaceTrace is not null)
+            {
+                string Ends(int i) => $"({result.Lines[i][0].X:0},{result.Lines[i][0].Y:0})-({result.Lines[i][^1].X:0},{result.Lines[i][^1].Y:0})";
+                var byAWall = Enumerable.Range(0, result.Lines.Count).Where(i => result.Lines[i].Count >= 2 && !result.LineIsAnnotation[i] && result.WallFaceLines.TryGetValue(i, out int w) && !WallLeftPartOfIt(i, w)).ToList();
+                var asACut = eligible.Except(candidates).ToList();
+                FaceTrace($"slab pass: not offered - a wall's whole face {byAWall.Count}: {string.Join(" ", byAWall.Take(40).Select(Ends))}");
+                FaceTrace($"slab pass: not offered - a section cut's run {asACut.Count}: {string.Join(" ", asACut.Take(40).Select(Ends))}");
+            }
 
             // whether the wall read from this face line leaves a piece of edge over
             bool WallLeftPartOfIt(int line, int wall)
@@ -1917,10 +1941,17 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             // rim ON its grid lines: the west edge along grid 2a in four pieces with a 600 mm column box between each,
             // the re-entrant corner where the edge on grid 7a meets the edge at y 41,982 through a column's box - and
             // the floor was open at every column standing on a grid line, 516 sq ft of her 13,323 on four typical
-            // floors. The strokes are pieces: bridged in line and carried through a column with the rest. Not gated
-            // by the chain minimum: the piece that closes 30990's corner is 34 mm long, the drawn line between the
-            // axis and the column's box.
-            foreach (var s in strokes) pieces.Add(new[] { s.Start, s.End });
+            // floors. The strokes are pieces: bridged in line and carried through a column with the rest - those a
+            // column's width and longer (StrokeOnGridPieceMinMm); the shorter stay offered as drawn (step 78). The
+            // first cut took every stroke, and 31202's LEVEL 13 page - 1,380 dashes of 4 mm along its grid axes at
+            // 1.5x the grid's pen - was bridged in line dash to dash into an arrangement of 5,400 segments that the
+            // embedding refused, and the storey lost the 28,200 sq ft outline the walk had found (02:40). 30990's
+            // corner closes without its 34 mm piece: the grid stroke's end and the edge's end both run into the
+            // column's box there and are carried through it (step 97).
+            bool off131 = Environment.GetEnvironmentVariable("KOR_STEP131_OFF") == "1";   // the bisect's knob (2026-09-20 01:33): the strokes offered as drawn, as step 78 had them
+            var bareStrokes = new List<DxfSegment>();
+            foreach (var s in strokes)
+                if (!off131 && s.Start.DistanceTo(s.End) >= StrokeOnGridPieceMinMm) pieces.Add(new[] { s.Start, s.End }); else bareStrokes.Add(s);
             var pieceSegments = new List<DxfSegment>();
             foreach (var c in pieces)
                 for (int i = 0; i + 1 < c.Count; i++)
@@ -2036,7 +2067,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             FaceTrace?.Invoke($"slab pass: ends at columns (step 97; centre ft: ends): " + string.Join(" ", endsAtColumn.OrderByDescending(e => e.Value.Count)
                 .Select(e => $"({e.Key.X / 304.8:0.0},{e.Key.Y / 304.8:0.0}):{e.Value.Count}{(e.Value.Count < 2 ? "-lone" : "")}")));
             FaceTrace?.Invoke($"slab pass: {carried.Count} edge end(s) joined through {endsAtColumn.Count(e => e.Value.Count >= 2)} column(s)");
-            var arranged = pieceSegments.Concat(inLine).Concat(carried).ToList();   // the strokes on the grid are among the pieces (step 131)
+            var arranged = pieceSegments.Concat(inLine).Concat(bareStrokes).Concat(carried).ToList();   // the strokes on the grid a column's width and longer are among the pieces (step 131)
             foreach (var l in built.Loops)
                 for (int i = 0; i < l.Points.Count; i++)
                     arranged.Add(new DxfSegment("SLABEDGE", l.Points[i], l.Points[(i + 1) % l.Points.Count]));
@@ -2063,9 +2094,14 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             {
                 var walkFloors = loops.Where(l => l.Area >= minSlabAreaMm2 && StandsIn(l)).Select(l => l.Points).Concat(drawn.Where(d => StandsIn(new PlanLoop("SLABEDGE", d, true)))).ToList();
                 int held = result.Columns.Count(c => walkFloors.Any(f => LoopGeometry.PointInPolygon(new DxfPoint(c.X, c.Y), f)));
-                if (held * 2 < result.Columns.Count)
+                // AND A FLOOR'S WORTH OF COLUMNS OUTSIDE IT IS ANOTHER FLOOR (step 135, 2026-09-20): a page of two views draws two
+                // floors, and the walk closing one of them exactly (31065's LEVEL 6 NT, once step 132's walk ran both ways) left the
+                // other - LEVEL 7 NT beside it, closed only by the arrangement's bridges - unread on six storeys: 32 of 42 columns
+                // held is over half. Columns the walk's floors leave outside, enough of them to stand under a floor of their own,
+                // are the arrangement's to read.
+                if (held * 2 < result.Columns.Count || (result.Columns.Count - held >= ColumnsOutsideTheWalksFloorForAnother && Environment.GetEnvironmentVariable("KOR_STEP135_OFF") != "1"))   // the bisect's knob (01:38)
                 {
-                    FaceTrace?.Invoke($"slab pass: the walk's floor holds {held} of {result.Columns.Count} columns - under half: the arrangement is built as well (step 113)");
+                    FaceTrace?.Invoke($"slab pass: the walk's floor holds {held} of {result.Columns.Count} columns - {(held * 2 < result.Columns.Count ? "under half" : $"{result.Columns.Count - held} outside it")}: the arrangement is built as well (step 113 / 135)");
                     walkFoundAFloor = false;
                     walkFloorsToReplace = loops.Where(l => l.Area >= minSlabAreaMm2 && StandsIn(l)).ToList();
                 }
@@ -2285,6 +2321,36 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                                 }
                             }
                             FaceTrace($"slab pass: {tees.Count}{(tees.Count >= 12 ? "+" : "")} end(s) short of another edge's middle by under the bridge (a T drawn short): {string.Join(" ", tees)}");
+                            // EVERY DANGLING END (instrument, 2026-09-19 21:50): the vertices of degree one after the bridges, each with
+                            // the distance to the nearest other edge's body - the whole population, where the chains above name three.
+                            // A floor open with no cell of its size leaks at one of these or at a stretch nothing was drawn on.
+                            var dangling = new List<string>();
+                            for (int i = 0; i < m2.Points.Count; i++)
+                            {
+                                if (m2.Adjacency[i].Count != 1) continue;
+                                var p = m2.Points[i]; int own = m2.Adjacency[i][0]; double nearest = double.MaxValue;
+                                for (int e = 0; e < m2.Edges.Count; e++)
+                                {
+                                    if (e == own) continue;
+                                    double d = LoopGeometry.DistanceToSegment(p, m2.Points[m2.Edges[e].A], m2.Points[m2.Edges[e].B]);
+                                    if (d < nearest) nearest = d;
+                                }
+                                dangling.Add($"({p.X:0},{p.Y:0})mm {(nearest == double.MaxValue ? "-" : (nearest / 25.4).ToString("0.0"))}in");
+                                // KOR_SLAB_TRACE_AT=x,y (mm): what was OFFERED within 400 mm of one dangling end - the pieces, the
+                                // strokes on the grid, the walk's loops, the bridges - so a piece missing from the arrangement is
+                                // seen at the stage it went missing
+                                if (Environment.GetEnvironmentVariable("KOR_SLAB_TRACE_AT") is { Length: > 0 } at && at.Split(',') is [var ax, var ay]
+                                    && double.TryParse(ax, out double qx) && double.TryParse(ay, out double qy) && Math.Abs(p.X - qx) < 400 && Math.Abs(p.Y - qy) < 400)
+                                {
+                                    string Near(IEnumerable<DxfSegment> set) => string.Join(" ", set.Where(s => LoopGeometry.DistanceToSegment(p, s.Start, s.End) <= 400).Select(s => $"({s.Start.X:0},{s.Start.Y:0})-({s.End.X:0},{s.End.Y:0})"));
+                                    FaceTrace($"slab pass: at ({p.X:0},{p.Y:0}): pieces {Near(pieceSegments)} | in line {Near(inLine)} | carried {Near(carried)} | loops {Near(built.Loops.SelectMany(l => l.Points.Select((q, k) => new DxfSegment("L", q, l.Points[(k + 1) % l.Points.Count]))))} | candidates {string.Join(" ", candidates.Where(ci => result.Lines[ci].Any(q => Math.Abs(q.X - p.X) < 400 && Math.Abs(q.Y - p.Y) < 400)).Select(ci => $"{result.Lines[ci].Count}pt ({result.Lines[ci][0].X:0},{result.Lines[ci][0].Y:0})-({result.Lines[ci][^1].X:0},{result.Lines[ci][^1].Y:0})"))} | open chains {string.Join(" ", built.OpenChains.Where(c => c.Any(q => Math.Abs(q.X - p.X) < 400 && Math.Abs(q.Y - p.Y) < 400)).Select(c => $"{c.Count}pt {ChainLength(c):0}mm ({c[0].X:0},{c[0].Y:0})-({c[^1].X:0},{c[^1].Y:0})"))}");
+                                }
+                            }
+                            FaceTrace($"slab pass: {dangling.Count} dangling end(s) (degree one; nearest other body): {string.Join(" ", dangling)}");
+                            // KOR_SLAB_TRACE_EDGES=1: the arrangement's every edge after the bridges, one line each, to be drawn and looked at
+                            if (Environment.GetEnvironmentVariable("KOR_SLAB_TRACE_EDGES") == "1")
+                                for (int e = 0; e < m2.Edges.Count; e++)
+                                    FaceTrace($"arranged edge{(m2.Edges[e].Wall ? " wall" : m2.Edges[e].Inserted ? " bridge" : "")}: ({m2.Points[m2.Edges[e].A].X:0},{m2.Points[m2.Edges[e].A].Y:0})-({m2.Points[m2.Edges[e].B].X:0},{m2.Points[m2.Edges[e].B].Y:0})");
                         }
                         var cells = planar.Faces.OrderByDescending(f => Math.Abs(f.Outer.Area)).ToList();
                         int inACell = result.Columns.Count(c => cells.Any(f => LoopGeometry.PointInPolygon(new DxfPoint(c.X, c.Y), f.Outer.Points)));
@@ -2367,6 +2433,9 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                                         .Select(s => $"{s.Layer} ({s.Start.X:0},{s.Start.Y:0})-({s.End.X:0},{s.End.Y:0})").ToList();
                                     FaceTrace($"slab pass: the route's ENTRY - where it first passes a line coming in from the page's edge - at ({br.X / 304.8:0.0},{br.Y / 304.8:0.0}) ft = ({br.X:0},{br.Y:0}) mm; arranged within 600 mm: {atBreak.Count}: {string.Join(" | ", atBreak.Take(12))}");
                                 }
+                                if (RoutePasses is { Count: > 1 } passes)
+                                    FaceTrace($"slab pass: the route's {passes.Count} passage(s) beside a line, border first (mm; arranged within 400 mm): " + string.Join(" || ", passes.Take(8).Select(q =>
+                                        $"({q.X:0},{q.Y:0}): " + string.Join(" | ", everything.Where(s => BodyDistanceMm(q, s) <= 400).Take(6).Select(s => $"({s.Start.X:0},{s.Start.Y:0})-({s.End.X:0},{s.End.Y:0})")))));
                             }
                             static double BodyDistanceMm(DxfPoint p, DxfSegment s)
                             {
@@ -2499,13 +2568,22 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                     // the same slab twice, 34,590 and 34,145 sq ft, when both stayed)
                     if (walkFloorsToReplace.Count > 0 && fromArrangement.Count > 0)
                     {
+                        // A WALK FLOOR STANDS DOWN ONLY TO AN ARRANGEMENT FLOOR OVER IT (step 135, 2026-09-20 02:00): the two are the same
+                        // slab read twice (31202's L1, 34,590 and 34,145 sq ft) when one lies over the other; a walk floor no arrangement
+                        // floor covers has nothing to stand down to. Judged by the page's column total, 31202's LEVEL 13 outline (28,211
+                        // sq ft, the walk's, exact) stood down to arrangement cells elsewhere on the page that held more of the page's
+                        // "columns" - the column schedule's symbols beside the plan - and the storey went to the DXF side's wall fallback.
                         int Held(PlanLoop l) => result.Columns.Count(c => LoopGeometry.PointInPolygon(new DxfPoint(c.X, c.Y), l.Points));
-                        int walkHeld = walkFloorsToReplace.Sum(Held), arrangementHeld = fromArrangement.Sum(Held);
-                        if (arrangementHeld > walkHeld)
+                        static DxfPoint Centroid(PlanLoop l) => new(l.Points.Average(p => p.X), l.Points.Average(p => p.Y));
+                        bool Over(PlanLoop a, PlanLoop b) => LoopGeometry.PointInPolygon(Centroid(a), b.Points) || LoopGeometry.PointInPolygon(Centroid(b), a.Points);
+                        int stoodDown = 0;
+                        foreach (var w in walkFloorsToReplace)
                         {
-                            foreach (var w in walkFloorsToReplace) loops.Remove(w);
-                            FaceTrace?.Invoke($"slab pass: the arrangement's floor(s) hold {arrangementHeld} columns to the walk's {walkHeld}: the walk's {walkFloorsToReplace.Count} stand down (step 113)");
+                            var over = fromArrangement.Where(f => Over(f, w)).ToList();
+                            if (over.Count > 0 && over.Sum(Held) >= Held(w)) { loops.Remove(w); stoodDown++; }
                         }
+                        if (stoodDown > 0)
+                            FaceTrace?.Invoke($"slab pass: {stoodDown} of the walk's {walkFloorsToReplace.Count} floor(s) stand down to the arrangement's floor(s) over them (step 113 / 135)");
                     }
                     loops.AddRange(fromArrangement);
                 }
@@ -2778,6 +2856,17 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         foreach (int k in path)
                             if (dist[k] <= 2 * cell) { atBreak = k; break; }
                         LastBreak = atBreak < 0 ? null : new DxfPoint(x0 + (atBreak % nx) * cell, y0 + (atBreak / nx) * cell);
+                        // AND EVERY PASSAGE (2026-09-19 22:00): the first line the route passes may be a finger sticking out of
+                        // the floor (30990 L5: a 0.48 pt line past the east edge), so each stretch of the route beside a line,
+                        // border first, is kept with its narrowest cell - the gap is one of them
+                        var passes = new List<DxfPoint>(); int inPass = -1; double passNarrow = double.MaxValue;
+                        foreach (int k in path)
+                        {
+                            if (dist[k] <= 2 * cell) { if (dist[k] < passNarrow) { passNarrow = dist[k]; inPass = k; } }
+                            else if (inPass >= 0) { passes.Add(new DxfPoint(x0 + (inPass % nx) * cell, y0 + (inPass / nx) * cell)); inPass = -1; passNarrow = double.MaxValue; }
+                        }
+                        if (inPass >= 0) passes.Add(new DxfPoint(x0 + (inPass % nx) * cell, y0 + (inPass / nx) * cell));
+                        RoutePasses = passes;
                         return (2 * narrow, new DxfPoint(x0 + (at % nx) * cell, y0 + (at / nx) * cell));
                     }
                     foreach (var (dx, dy) in new[] { (1, 0), (-1, 0), (0, 1), (0, -1) })
@@ -2866,6 +2955,19 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
         /// <summary>A chain shorter than this is a tick, a dash or a letter, not a piece of a floor's edge, and is not bridged.</summary>
         public const double SlabEdgeChainMinMm = 2000;
+
+        /// <summary>
+        /// A stroke on a grid axis this long and longer is a piece of the edge (bridged in line, carried through a column); a
+        /// shorter one is offered as drawn (step 131). A column's width: the gap a piece bridges is a column's box, and 31202's
+        /// 4 mm dashes along its axes are not pieces.
+        /// </summary>
+        public const double StrokeOnGridPieceMinMm = 300;
+
+        /// <summary>
+        /// This many of the page's columns outside every floor the walk found are a floor's worth: the arrangement is built as
+        /// well (step 135). Four: the fewest columns a floor of its own stands on (a bay); three are a stair's, a canopy's.
+        /// </summary>
+        public const int ColumnsOutsideTheWalksFloorForAnother = 4;
 
         /// <summary>The structure a ring is judged against stands within this share of the ring's own size of it.</summary>
         private const double SlabEdgeNeighbourhoodShare = 0.10;

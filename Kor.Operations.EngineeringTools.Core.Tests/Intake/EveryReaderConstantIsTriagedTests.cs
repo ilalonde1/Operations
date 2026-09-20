@@ -70,6 +70,8 @@ public sealed class EveryReaderConstantIsTriagedTests
         ["GeometryFilterService.cs:SheetFrameMinShare"] = Convention("dxf.pdf.sheet-frame-min-share — a closed shape over 60% of the page is the frame"),
         ["GeometryFilterService.cs:SheetFrameMarginShare"] = Rule("a frame edge runs within a tenth of the page of the paper's edge; a line as long as the paper at mid-page is the building's (31009's 43.9 m east edge, step 130)"),
         ["GeometryFilterService.cs:SlabEdgeChainMinMm"] = Convention("dxf.pdf.slab-edge-chain-min-mm — shorter is a tick or a letter"),
+        ["GeometryFilterService.cs:StrokeOnGridPieceMinMm"] = Rule("a stroke on a grid axis a column's width (300 mm) and longer is a piece of the edge, bridged and carried; a dash along the axis stays as drawn (31202's 1,380 dashes of 4 mm, step 131)"),
+        ["GeometryFilterService.cs:ColumnsOutsideTheWalksFloorForAnother"] = Rule("four of the page's columns outside every floor the walk found are a floor's worth, and the arrangement is built as well (31065's two-view LEVEL 6 / LEVEL 7 page, step 135)"),
         ["GeometryFilterService.cs:FaceTraceMinOverlapMm"] = Convention("dxf.pdf.face-trace-min-overlap-mm"),
         ["GeometryFilterService.cs:FaceLeftoverMinMm"] = Tolerance("a wall face's piece beyond its panel shorter than this stays the join tolerance's business, not the arrangement's (step 124)"),
         ["GeometryFilterService.cs:BarMarkOnLineHeights"] = Tolerance("a bar's label sits on its bar: the label's centre within this many text heights of the line; a leader's or a dimension's text stands a height or more off (step 126)"),

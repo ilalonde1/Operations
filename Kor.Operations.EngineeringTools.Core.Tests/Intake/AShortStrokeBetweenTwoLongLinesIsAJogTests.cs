@@ -54,6 +54,32 @@ public sealed class AShortStrokeBetweenTwoLongLinesIsAJogTests
         Assert.Equal([8], GeometryFilterService.JogsBetweenLongLines(paths, Gate, new HashSet<int>()).Order());   // the jog of another pen is gone, the notch stays
     }
 
+    /// <summary>
+    /// A JOG LANDS ON WHATEVER LINE IT REACHES (intake step 133, 2026-09-19): a short stroke of a long line's pen, end
+    /// to end with that line, whose other end meets an end of a long line of ANOTHER pen is that line's jog. 30990's
+    /// LEVEL 5 turns its east edge (0.96 pt) onto the stair's band (0.60 pt) by a 191 mm stroke at the edge's pen: on
+    /// LEVEL 3/4 the same stroke is 250 mm and passes the length gate on its own; on LEVEL 5 it was TooShort, the
+    /// jog rule asked both ends for the jog's pen, and the floor leaked through the 191 mm. WHAT THIS COVERS: the jog
+    /// found with one side of another pen; a short stroke of a pen NEITHER line has, still not one. WHAT IT DOES NOT:
+    /// another colour (a mark-up's stroke landing on the outline stays out).
+    /// </summary>
+    [Fact]
+    public void AJogOfOneLinesPenLandingOnALineOfAnotherPenIsAJog()
+    {
+        double ym = (Y0 + Y1) / 2;
+        var band = FateFixture.Line(X0 + Jog, ym, X0 + Jog, Y1) with { LineWidth = FateFixture.Line(0, 0, 1, 0).LineWidth / 2 };   // the upper run, a lighter pen
+        var paths = new List<RawSubpath>
+        {
+            Line(X0, Y0, X0, ym),                 // 0: the lower edge, the outline's pen
+            Line(X0, ym, X0 + Jog, ym),           // 1: the jog, the outline's pen
+            band,                                 // 2: the band it lands on, another pen
+        };
+        Assert.Equal([1], GeometryFilterService.JogsBetweenLongLines(paths, Gate, new HashSet<int>()).Order());
+
+        paths[1] = paths[1] with { LineWidth = paths[0].LineWidth + 3 };   // a pen neither line has
+        Assert.Empty(GeometryFilterService.JogsBetweenLongLines(paths, Gate, new HashSet<int>()));
+    }
+
     [Fact]
     public void AFloorWhoseEdgeStepsByAJogCloses()
     {

@@ -23,7 +23,7 @@ namespace Kor.Operations.EngineeringTools.Core.Tests.Intake;
 public sealed class AModelIsMeasuredAgainstTheEngineersOwnTests
 {
     private static string E2k(string unit, IReadOnlyList<(string Storey, double Height)> storeys, IReadOnlyList<(string Name, double X, double Y, string Storey)> columns,
-        IReadOnlyList<(string Label, string Dir, double Coord)>? grids = null)
+        IReadOnlyList<(string Label, string Dir, double Coord)>? grids = null, IReadOnlyList<(string Name, double X, double Y)>? points = null)
     {
         var l = new List<string> { "$ CONTROLS", $"  UNITS  \"LB\"  \"{unit}\"  \"F\"", "", "$ STORIES - IN SEQUENCE FROM TOP" };
         foreach (var (s, h) in storeys) l.Add($"  STORY \"{s}\"  HEIGHT {h.ToString(CultureInfo.InvariantCulture)}");
@@ -35,6 +35,7 @@ public sealed class AModelIsMeasuredAgainstTheEngineersOwnTests
         }
         l.Add(""); l.Add("$ POINT COORDINATES");
         foreach (var (n, x, y, _) in columns) l.Add($"  POINT \"P{n}\"  {x.ToString(CultureInfo.InvariantCulture)}  {y.ToString(CultureInfo.InvariantCulture)}");
+        foreach (var (n, x, y) in points ?? []) l.Add($"  POINT \"{n}\"  {x.ToString(CultureInfo.InvariantCulture)}  {y.ToString(CultureInfo.InvariantCulture)}");
         l.Add(""); l.Add("$ LINE CONNECTIVITIES");
         foreach (var (n, _, _, _) in columns) l.Add($"  LINE \"{n}\"  COLUMN  \"P{n}\"  \"P{n}\"  1");
         l.Add(""); l.Add("$ LINE ASSIGNS");
@@ -261,5 +262,66 @@ public sealed class AModelIsMeasuredAgainstTheEngineersOwnTests
         {
             if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
         }
+    }
+
+    /// <summary>
+    /// A PLATE BEYOND HER FOOTPRINT IS NOT JUDGED (2026-09-19), as a column or an opening there is not. 30990's model
+    /// is Tower A on the shared podium; ours reads both towers, and once Tower B's floors read (step 131) every
+    /// shared storey stood at 170% of hers. WHAT THIS COVERS: our plate over her columns counted, our plate over a
+    /// building 40 m from her outermost column not counted and named in a note. WHAT IT DOES NOT: a plate
+    /// straddling her footprint (its centroid decides, whole).
+    /// </summary>
+    [Fact]
+    public void APlateBeyondHerFootprintIsNotJudged()
+    {
+        string root = Path.Combine(Path.GetTempPath(), $"kor-yard-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(root);
+        try
+        {
+            var hers = new List<(string, double, double, string)> { ("E1", 0, 0, "L3"), ("E2", 10000, 0, "L3"), ("E3", 10000, 8000, "L3"), ("E4", 0, 8000, "L3") };
+            var ours = new List<(string, double, double, string)>(hers.Select(h => ("C" + h.Item1[1..], h.Item2, h.Item3, h.Item4)))
+            {
+                ("C5", 50000, 0, "L3"), ("C6", 60000, 0, "L3"), ("C7", 60000, 8000, "L3"), ("C8", 50000, 8000, "L3"),   // the other tower
+            };
+            string m = Path.Combine(root, "ours.e2k"), y = Path.Combine(root, "theirs.e2k");
+            (double, double, double, double)[] ourBoxes = [(0, 0, 10000, 8000), (50000, 0, 60000, 8000)], herBoxes = [(0, 0, 10000, 8000)];
+            File.WriteAllText(m, E2k("MM", [("L3", 3000)], ours, points: PlatePoints(ourBoxes)) + Plates("L3", ourBoxes));
+            File.WriteAllText(y, E2k("MM", [("L3", 3000)], hers, points: PlatePoints(herBoxes)) + Plates("L3", herBoxes));
+
+            var c = ModelYardstick.Compare(m, y);
+
+            var plate = Assert.Single(c.Plates);
+            Assert.Equal(plate.TheirsSqFt, plate.OursSqFt, 1);                  // the tower she modelled, not both
+            Assert.InRange(plate.OursSqFt, 860, 862);                           // 80 sq m
+            Assert.Contains(c.Notes, n => n.Contains("sq ft of our plates stand beyond her model's footprint", StringComparison.Ordinal) && n.Contains("L3 861", StringComparison.Ordinal));
+        }
+        finally
+        {
+            if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
+        }
+    }
+
+    /// <summary>The four corner points of each box, named F&lt;box&gt;&lt;corner&gt;, for <see cref="E2k"/>'s point section.</summary>
+    private static List<(string Name, double X, double Y)> PlatePoints(IReadOnlyList<(double X0, double Y0, double X1, double Y1)> boxes)
+    {
+        var pts = new List<(string, double, double)>();
+        for (int i = 0; i < boxes.Count; i++)
+        {
+            var (x0, y0, x1, y1) = boxes[i];
+            foreach (var (k, x, yy) in new[] { (0, x0, y0), (1, x1, y0), (2, x1, y1), (3, x0, y1) }) pts.Add(($"F{i}{k}", x, yy));
+        }
+        return pts;
+    }
+
+    /// <summary>A FLOOR area per box, on one storey, 200 thick, appended to <see cref="E2k"/>'s text (its points from <see cref="PlatePoints"/>).</summary>
+    private static string Plates(string storey, IReadOnlyList<(double X0, double Y0, double X1, double Y1)> boxes)
+    {
+        var l = new List<string> { "$ SLAB PROPERTIES", "  SHELLPROP  \"S200\"  PROPTYPE  \"Slab\"  MATERIAL \"C\"  MODELINGTYPE \"ShellThin\"  SLABTYPE \"Slab\"  SLABTHICKNESS 200" };
+        l.Add(""); l.Add("$ AREA CONNECTIVITIES");
+        for (int i = 0; i < boxes.Count; i++) l.Add($"  AREA \"F{i}\"  FLOOR  4  \"F{i}0\"  \"F{i}1\"  \"F{i}2\"  \"F{i}3\"  1  1  1  1");
+        l.Add(""); l.Add("$ AREA ASSIGNS");
+        for (int i = 0; i < boxes.Count; i++) l.Add($"  AREAASSIGN  \"F{i}\"  \"{storey}\"  SECTION \"S200\"");
+        l.Add("");
+        return "\n" + string.Join("\n", l);
     }
 }

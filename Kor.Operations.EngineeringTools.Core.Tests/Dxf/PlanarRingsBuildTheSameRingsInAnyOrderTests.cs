@@ -206,6 +206,27 @@ public sealed class PlanarRingsBuildTheSameRingsInAnyOrderTests
         });
     }
 
+    /// <summary>
+    /// AN END'S T IS NOT SPENT BY ITS BRIDGE (intake step 134, 2026-09-19): an end short of a body within the bridge joins
+    /// that body even when the same end also bridges to another end - a sloppy junction of three. 30990's LEVEL 5 draws
+    /// its south-west corner as three near misses: the edge stops 97 mm short of the vertical it turns down, 45 mm from
+    /// the foot of another vertical rising from the corner; the end took the nearer end and the T went unmade, and the
+    /// floor leaked through the 2 in that remained. WHAT THIS COVERS: the square closing through the T with the third
+    /// line present; without the third line it closed already (AnEndShortOfAnotherEdgesBodyByUnderTheBridgeIsJoinedToIt).
+    /// WHAT IT DOES NOT: an end-to-end bridge, which still needs both ends' agreement.
+    /// </summary>
+    [Fact]
+    public void AnEndShortOfABodyJoinsItEvenWhenItAlsoBridgesToAnotherEnd()
+    {
+        // the square's bottom edge stops at (9,0), one short of the right side's body at x 10 (the right side runs from
+        // (10,-0.4) up); a third line rises from (8.6,0.45) - its foot 0.6 from the bottom edge's end, nearer than the T
+        // (bridge 1.2: the third line's top at 1.4 from the right side stays clear of it)
+        Check([S(0, 0, 9, 0), S(10, -0.4, 10, 10), S(10, 10, 0, 10), S(0, 10, 0, 0), S(8.6, 0.45, 8.6, 4)], new(0.05, 1.2, 0), r =>
+        {
+            Assert.Contains(r.Loops, l => Math.Abs(l.Area - 100) < 1.5);   // the square, less the sliver at the third line's foot
+        });
+    }
+
     [Fact]
     public void EquallyGoodBridgesAreLeftOpenInsteadOfPickingAnArrival()
     {
