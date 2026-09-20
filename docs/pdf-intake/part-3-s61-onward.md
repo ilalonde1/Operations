@@ -3812,3 +3812,31 @@ non-wall edges, and the corner has none of its own (or two, where the faces are 
 bridges the 134 mm, the perimeter is one open chain from (55,494, 15,626) round to the cap, and L5 and L8 stay at 0.
 The rule for that: a wall standing beside a slab edge closer than the bridge, at its corner — the morning's, with the
 probe as its fixture. L4 and L6 (both edges drawn to the wall) close.
+
+## 156. Step 130: a frame edge is at the paper's margin — 31009 72% → 101%; the instrument's last turn (2026-09-19 19:48)
+
+**The instrument's last turn:** the leak finder's "pinch" was never the entry — the narrowest cell on a route is a
+channel between two lines that run close (31009's east edge beside a wall face, 134 mm), inside the building. Walking
+the route from the page's edge INWARD, the first cell that passes beside any arranged line is where the outside comes
+through the drawing. On 31009's L5 that point, (55,888, 9,861) mm, had three arranged lines within 600 mm and none of
+them the building's east edge — the 43.9 m line at 0.96 pt at x 57,160 that the crop at 200 dpi shows plainly. The
+line fates said why in one word: `FrameEdgeLine`. "The sheet's frame, drawn as four separate strokes, is a line the
+length of the paper" — 60% of the page's height and more — and a building 43.9 m tall on a 58.5 m page is 84% of it,
+standing in the middle of the sheet.
+
+**Step 130** (`GeometryFilterService.AtTheMargin`, `SheetFrameMarginShare = 0.1`): a frame edge is long AND at the
+paper's margin — its centre within a tenth of the page of either edge; a line as long as the paper at mid-page is
+the building's. Both copies of the rule (the reader's and the wall-rule differential's replica) changed together.
+Test: the fate ledger's case — a vertical 60,000 mm at x 50,000 of a 100,000 mm page is `EmittedAsLine`, the two at
+the margin stay `FrameEdgeLine`; red with the witness broken, green mended; fast suite 1,541 green.
+
+**31009 whole: 72% → 101% of her plates** — L4–L8 all read now (30% at 18:00; three rules — the grid's pen, the T
+drawn short, the frame at the margin — one set, one evening); her openings we have 14% → 48% (14 of 29); thickness 5
+of 7 (L7 12/7.5, L8 12/8.5: the 7.5" callouts on those sheets sit on the other view or outside the plate — a
+pricing class, next). Walls 285 → 254 and columns 499 → 439: the carry-down's invented members, gone as the floors
+under them are read (§146's class). The gate runs under the corpus run; the six re-banked if it says so.
+
+**The gate under step 130:** 31168 86% → 90% of her plates (L1 32,354 → 36,291; P1–P3 36,360 → 41,299 each), 31065 113% →
+115% (its parkade plates grew — P1 18,605 → 22,646; the over-read on L2–L4 is the older class), 31202 75% → 76%, 31130
+the same (P3 −406); 31170-arch's quadrant duplicates on L2, L3 and L6 gone (the 32,076 floor stands on every storey) and
+a 1,359-mm wall on L2–L6 vanished — a face pair changed by a long line the wall reader now sees. The six re-banked.
