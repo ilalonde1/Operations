@@ -3896,3 +3896,152 @@ two other sessions' test hosts; it could not land before 22:00); run 43 (126–1
 the morning (`bank43.sh`, diff vs run 41). Left on 30990: L1 8,361 of 46,464 (S2.04.1, p26), L5 1,161 of 14,103
 (S2.07.1, p32 — the same rim as p30 to the eye, with section marks and a continuous balcony band; unchanged by 131,
 so its leak is another), L8 1,093 of 8,411 (S2.09.1's second view / S2.10).
+
+## 158. 30990's LEVEL 5: steps 133, 134 and 135 banked, 132 parked, 131 gated at a column's width; the yardstick judging plates inside her footprint (2026-09-19 22:51 → 2026-09-20 03:20)
+
+**Where the instruments went next.** LEVEL 5 (p32) draws the same rim as LEVEL 3/4 and read 1,161 sq ft after
+step 131, so its leak was another. Three instruments were added to the trace tonight, each because the one
+before it stopped short: **every dangling end** of the arrangement (degree one, with the nearest other body —
+the population, where the chain lines name three); **what was OFFERED within 400 mm of a point**
+(`KOR_SLAB_TRACE_AT=x,y`: the pieces, the in-line bridges, the carries, the walk's loops, the candidate lines,
+the open chains — so a piece missing from the arrangement is seen at the stage it went missing, and the
+fates of every stroke there whatever its length); **every passage of the leak route** beside a line, border
+first (`RoutePasses`; the ENTRY named a 0.48 pt finger sticking out past the east edge, which is not where
+the outside came in); and **the arrangement's every edge** (`KOR_SLAB_TRACE_EDGES=1`, drawn by
+`draw_edges.py` in the scratchpad: drawn black, bridges red, walls blue, dangling ends green, passages orange).
+Three gaps, three rules:
+
+**Step 132 — the walk runs both ways from its seed** (`PlanLoopBuilder.Build`). The chain walk ran forward
+from the seed's far end only; a run seeded in the middle left the pieces before the seed to be seeded on
+their own, as a chain of their own. LEVEL 5's south edge was seeded at the foot of a 343 mm riser at its
+step; the riser became a 343 mm chain, under the slab pass's 2,000 mm piece minimum, gone. LEVEL 3/4 seeded
+on the riser and closed. An open run now extends backward from the seed's start through its PLAIN continuations
+only — a node with exactly one other edge left — to a dead end, a junction, or the forward end. The first cut
+chose at junctions too (`PickContinuation`, as the forward walk does) and the DXF route's benchmark said no at
+once: 31168's openings fell from 8 to 3, a backward walk taking an edge from a ring another seed would have
+closed (`OpeningsAreCutWhereTheEngineerCutsThem`, 22:52) — the plain form keeps the riser and the benchmark. Test
+`AnOpenRunIsOneChainWhicheverSegmentSeedsTheWalk` (both builder modes: bridging, where the old walk re-joined
+the halves with a doubled point, and the slab pass's exact joins, where it did not) — red 5 ≠ 4 / two chains,
+green mended. This is the DXF route's builder too: the full suite is owed and running.
+
+**Step 133 — a jog lands on whatever line it reaches** (`JogsBetweenLongLines`). Step 110 asked both of a
+short stroke's ends for a long line of the jog's own pen. LEVEL 5 turns its east edge (0.96 pt) onto the
+stair's band (0.60 pt) by a 191 mm stroke at the edge's pen — `TooShort` on its own, and not a jog because
+the far end's line was another pen; LEVEL 3/4 draw the same turn 250 mm long and it passes the length gate.
+The jog's own pen must still be one of the two lines' (a stroke of a pen neither has is not theirs); the far
+end may meet any long line of the same colour. Test `AJogOfOneLinesPenLandingOnALineOfAnotherPenIsAJog` — red
+empty, green [1]; the pen-neither case stays out.
+
+**Step 134 — an end's T is not spent by its bridge** (`PlanarRings.Bridges`). LEVEL 5's south-west corner is
+three near misses: the edge stops 97 mm short of the vertical it turns down, 45 mm from the foot of a third
+line rising from the corner. An end had ONE proposal — its cheapest — so the end took the 45 mm end-to-end
+bridge and the 97 mm T (step 129) went unmade; the outside came through the 2 in left. A T is now the end's
+own, judged among the T's alone; an end-to-end bridge is still each end's single best and needs both ends'
+agreement; and a T and a bridge leaving one end share that end and do not "cross". Test
+`AnEndShortOfABodyJoinsItEvenWhenItAlsoBridgesToAnotherEnd` (the square with a third line at its corner) —
+red, green; the first cut of the fixture put the third line 1.2 from the right side under a 1.5 bridge and it
+T'd onto it at the top — the fixture's artefact, not the rule's; the fixture says so.
+
+**LEVEL 5 alone:** 516 → **11,654 sq ft**, 28 of 28 columns in a cell. 30990 whole with 131–134 (238 s under
+the corpus run): the yardstick said **108%** — L3 22,959 of her 13,323 — and that number is wrong, not the
+reader: her model is Tower A on the shared podium and ours reads both towers (the "1016 of our columns beyond
+her footprint" the yardstick already named, 70 a storey on L9–L18); once Tower B's floors read, every shared
+storey stood at 170% of hers. **A plate beyond her footprint is not judged** (`ModelYardstick`), as a column
+or an opening there is not: a plate whose centroid lies more than 1.5 m past the box of her columns on that
+storey is counted, named in a note and judged by nothing; hers are all judged. Test
+`APlateBeyondHerFootprintIsNotJudged` (two towers of ours, one of hers) — red 2× / green. The corpus's §7
+figure (81% in run 41) carried this over-count for every two-tower set with a one-tower model; run 43's
+disagreements will be the first honest one.
+
+**30990 judged inside her footprint (131–134): 70% of her plates** (151,487 of 217,922): L3 11,433 / L4 11,433 /
+L5 11,644 / L6 10,813 of 13,323 / 13,323 / 14,103 / 12,305 (Tower A's typical floor at 84–86% of hers — the
+balconies and the two north bays are the rest, boxes against the outline that the arrangement keeps out);
+under half: L1 8,019 of 46,464, L7 3,814 of 14,263 (S2.09.1's LEVEL 7 view on a two-view page — the next
+trace, with a page RANGE so the split runs), L8 0 of 8,411 (S2.10's LEVEL 8 (9–18 SIM.) page). Thickness 8 of
+10 agree. **And a class named, not touched:** S2.10 / S2.20 (LEVEL 8, 9–18 SIM.) each carry the outline view
+and the reinforcing view side by side under the SAME title, no underline under either — the page is read as
+one view, the reinforcing view's outline closes (as 30838's did in §147 A), and L9–L18 carry four plates in
+two pairs shifted by the second view's grid (25,698 sq ft a storey where one tower's floor is ~12,800).
+That is step 125's page (a title the split does not find) behind the rebar rule (the second view's lines are
+bars, step 126's `BarRun`), and it is the largest thing left on this set: L8–L18 are ten storeys.
+
+**Rule 10 fired at 23:23.** The full suite under 132–134 (1,655 green, 25 min beside the corpus run): two reds — the
+six-set gate (every set moved) and 31138's DXF-route baseline (floors 15 → 18, `LiveProjectBaselineTests`). Judged
+against her models (`judge6.sh`: the banked baseline and the new build, each through `model-yardstick`): 31130 88% →
+91% (thickness 76 → 82%), 31138 72 → 73%, 30990 +16 — and **31065 85% → 73%** (L7, L9, L11, L13, L15, L17 to 0 of
+7,834), **31202 76% → 68%** (L13 44,553 → 1,040), **31168 83% → 80%** (C-L3 to 0). Stop; characterise.
+
+**First suspicion, wrong:** that 31202's L13 and 31168's C-L3 had fallen outside a columns-only footprint box
+(her L13 is 44,553 sq ft over a handful of columns). Her footprint for a plate is now the box of her columns AND
+her plates on that storey (`PlatePointsByStorey`) — right in itself, and it changed neither number: the gate's
+diff has L13 28,200 → 1,040 and C-L3 11,885 → none. All three losses were real. **31065's first, and it was not
+132's fault.** The gate's diff
+said L7's 6,991 sq ft plate (the west tower, hers) was gone and the east tower's 6,993 had come; the page is
+S2.10.1 — LEVEL 7 NT and LEVEL 6 NT side by side — and the one-page trace with the knobs in (`KOR_STEP132_OFF`
+etc., env-gated for the bisect) said: 132 on, rings [6980 …], "walk found a floor: True"; 132 off, rings [6991,
+6980], "walk found a floor: False". Step 132's walk now closes LEVEL 6's outline EXACTLY, the walk's floor held 32
+of the page's 42 columns — over half — and step 113's gate ("a floor the walk found that holds under half the
+page's columns is not the page's floor; the arrangement is built as well") skipped the arrangement whose bridges
+close LEVEL 7's. A gate written for one-view pages (60061's schedule border), met by a two-view page.
+
+**Step 135 — a floor's worth of columns outside the walk's floor is another floor**
+(`ColumnsOutsideTheWalksFloorForAnother = 4`): columns the walk's floors leave outside, four or more, are the
+arrangement's to read, whatever share the walk's floor holds. Test `AFloorsWorthOfColumnsOutsideTheWalksFloorIsAnotherFloor`
+(two outlines side by side, six columns under the exact one, five under the interrupted one → two floors; three
+under the interrupted one → one) — the first cut of the fixture put four under each and the old half-rule already
+built the arrangement (green while broken; the fixture says six); red with the rule broken, green mended. Fast
+suite 1,547 green; p36 reads both floors (6,991 + 6,980). The six-set gate under 132–135 runs as this is written.
+
+**The gate under 132–135 (00:27 → 00:38):** 31130 88 → 91%, **31138 72 → 91%** (six typical storeys at 0 read whole;
+her openings we have 59 → 81%), **31065 85 → 88%** (L5 read; the six odd floors back), 31168 83 → 83% (C-L3's 11,885
+back), 31170-arch the same — and 31202 76 → 68% still: L13 28,200 → 1,040. The one-page trace could not reproduce
+even the banked 28,200 on p35 in ANY knob state, which was the finding: that plate was never the slab pass's. The
+composer's line for S2.09.1 reads "No slab edge on this drawing would close, so the floor is taken from the inside
+face of the perimeter wall" — the DXF-side fallback, and the perimeter WALL loop is built by the bridging
+PlanLoopBuilder, whose corners the seed's luck decides (audit F11). Step 132's both-ways walk shifted that luck:
+the wall loop stopped closing on 31202's p35, and on 31138's DXF route three band strips along the floor's edges
+closed as plates over the floor she modelled (L03–L05, ~684 sq ft each, the LiveProjectBaseline's 15 → 18). In a
+builder that bridges, BridgeChains rejoins two halves sharing a node anyway — a bridge of no length — so the
+both-ways walk changed nothing there but the luck. **Scoped: the walk runs both ways only in the exact-join
+builder** (the slab pass's, where nothing else rejoins the halves). The DXF baselines are green again (31138 15
+floors, 31168), the fixtures green, LEVEL 5 still 11,652; the gate re-runs under the scoped 132.
+
+**The gate under the scoped 132 + 133–135 (00:52 → 01:02):** 31202's L13 still 1,040, and its ROOF 8,736 → gone. Four
+more gate runs with the knobs (`KOR_STEP<n>_OFF`, now part of the read cache's fingerprint — a read under a knob is
+not a read without it) said the L13 loss was none of 132, 133, 134 — and the one-page trace could not reproduce
+even the banked page: **a page needs its set's context** (the grid's pen and the furniture are the set's), so the
+probe was run on the whole set (`fullset_page.ps1`) and p35 said it at once: *2,622 lines offered; 1,994 pieces;
+arranged 5,398; refused: centroid snapping left an unresolved crossing*. With 131 off: 337 pieces, arranged 3,593,
+the 28,211 sq ft outline. **31202's LEVEL 13 draws 1,380 dashes of 4 mm along its grid axes at 1.5× the grid's pen**
+(a hidden line, dashed, on the axis): step 128 made them strokes on the grid, step 131 made every stroke a piece, the
+in-line bridging stitched them dash to dash, and PlanarRings refused the arrangement. The gate of 21:43 was green
+under 131 because — this is the part to remember — the walk had found that page's outline exactly and step 113
+never built the arrangement; step 135 built it as well (the column schedule beside the plan reads as 62 "columns"
+outside the walk's floor), and the refusal followed. **131 gated: a stroke on the grid a column's width (300 mm,
+`StrokeOnGridPieceMinMm`) and longer is a piece; the shorter stay offered as drawn.** 30990's corner closes without
+its 34 mm piece (the grid stroke's end and the edge's end both run into the column's box and are carried through
+it, step 97): L3/4 11,454, L5 11,651; 31087's two views both read; 31202's L13 28,287 in the set's context. The
+dashes could not be made a fixture (300 dashes on two crossing axes of the step-78 fixture arrange fine either
+way): the test says so, and the witness is the set.
+
+**And run 43's own finding (banked 01:22: 258 of 293 models; plates 80% of hers, the first figure judged inside her
+footprint; slab thickness 61 → 70%, 76% on the current-model sets; her openings we have 40%):** the diff against
+run 41 has one large mover — **31087 plates 59 → 18 storeys.** Its LEVEL 10 TO 50 page (41 storeys) shares its
+sheet with LEVEL 51's view; under 131 the walk closed LEVEL 51's outline exactly (47 of 54 columns held) and step
+113 skipped the arrangement that closes LEVEL 10–50's by its bridges — the same class as 31065's L7, on the set step
+78 was written for, and the corpus caught it because 31087 is not on the gate. Step 135 reads both (8,794 + 7,635).
+
+**Step 132 parked** (`step-132`): the exact-join walk both ways closes 30990's L5 riser (516 → 11,651) and loses
+31202's ROOF — the walk then closes a ring of 11,610 sq ft (her roof is 14,944) that the DXF side refuses as "a thin
+or hooked shape, 48% of its own box under the 55% a solid floor holds", where the banked walk's 8,736 passed. The
+truer ring is refused by a gate about box fill; that gate is the next thing to look at on hooked roofs, and 132
+re-enters behind it. On its own 30990's L5 falls back to 516 without 132 (133 and 134 do not suffice).
+
+**Banked (the six re-banked in the same commit):** 131 gated, 133, 134, 135 (both halves: four columns outside the
+walk's floors build the arrangement as well; a walk floor stands down only to an arrangement floor over it), the
+yardstick's footprint (her columns and her plates), the instruments and the bisect's knobs. The six against her
+models, banked → now (the gate of 03:03, without 132): 31130 88 → 89%, **31138 72 → 91%** (six typical storeys at 0
+read whole; her openings we have 59 → 81%), 31065 85 → 85% (its L5 and +2 on 31130 were 132's, parked with it), 31202
+76 → 76% (L13 28,287 back, the roof 8,736 as banked), 31168 83 → 83%, 31170-arch 180 → 173% (three quadrant
+duplicates gone); 30990 54 → 70% honest (L5 stays at 516 until 132 re-enters). Fast suite 1,546 green; the gate green
+on the re-banked six; commit `80bb3367`; 132 on `step-132` (`b59cff71`).
