@@ -2276,6 +2276,50 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         double NearestColumnFt(DxfPoint p) => result.Columns.Count == 0 ? -1
                             : result.Columns.Select((c, k) => (c, half: (k < result.ColumnSizes.Count ? Math.Max(result.ColumnSizes[k].WidthMm, result.ColumnSizes[k].DepthMm) : 400.0) / 2))
                                 .Min(t => Math.Max(Math.Abs(t.c.X - p.X) - t.half, Math.Abs(t.c.Y - p.Y) - t.half)) / 304.8;
+                        // THE DANGLING ENDS' NEIGHBOURS (instrument, 2026-09-19): for the longest open chains, each end's nearest
+                        // arranged segment - the distance to its BODY and to its nearer END, and the segment itself. An end on a
+                        // body at no distance is a contact the arrangement did not split; an end a hand from an end is a gap the
+                        // bridge did not take; an end far from everything is the drawing's own opening. 31009's L4-L8 read no
+                        // floor with every edge present in the DXF, and the raster finder named a pinch, not the entry.
+                        {
+                            var all = arranged.Concat(wallEdges).Concat(doorEdges).Concat(gapEdges).Concat(matchEdges).ToList();
+                            string Neighbours(DxfPoint p, IReadOnlyList<DxfPoint> own)
+                            {
+                                double bestBody = double.MaxValue, bestEnd = double.MaxValue; DxfSegment? atBody = null, atEnd = null;
+                                foreach (var s in all)
+                                {
+                                    // not the chain's own pieces
+                                    if (own.Any(q => (Math.Abs(q.X - s.Start.X) < 0.5 && Math.Abs(q.Y - s.Start.Y) < 0.5)) && own.Any(q => Math.Abs(q.X - s.End.X) < 0.5 && Math.Abs(q.Y - s.End.Y) < 0.5)) continue;
+                                    double ex = s.End.X - s.Start.X, ey = s.End.Y - s.Start.Y, len2 = ex * ex + ey * ey;
+                                    double de = Math.Min(Math.Sqrt(Math.Pow(p.X - s.Start.X, 2) + Math.Pow(p.Y - s.Start.Y, 2)), Math.Sqrt(Math.Pow(p.X - s.End.X, 2) + Math.Pow(p.Y - s.End.Y, 2)));
+                                    if (de < bestEnd) { bestEnd = de; atEnd = s; }
+                                    if (len2 <= 0) continue;
+                                    double t = ((p.X - s.Start.X) * ex + (p.Y - s.Start.Y) * ey) / len2;
+                                    if (t <= 0 || t >= 1) continue;
+                                    double fx = s.Start.X + t * ex - p.X, fy = s.Start.Y + t * ey - p.Y, db = Math.Sqrt(fx * fx + fy * fy);
+                                    if (db < bestBody) { bestBody = db; atBody = s; }
+                                }
+                                string Seg(DxfSegment? s) => s is null ? "-" : $"{s.Layer} ({s.Start.X / 304.8:0.0},{s.Start.Y / 304.8:0.0})-({s.End.X / 304.8:0.0},{s.End.Y / 304.8:0.0})";
+                                return $"body {(bestBody == double.MaxValue ? "-" : (bestBody / 25.4).ToString("0.0"))}in on {Seg(atBody)}; end {(bestEnd == double.MaxValue ? "-" : (bestEnd / 25.4).ToString("0.0"))}in of {Seg(atEnd)}";
+                            }
+                            foreach (var c in open.Take(3))
+                                FaceTrace($"slab pass: chain {ChainLength(c) / 304.8:0} ft: start ({c[0].X / 304.8:0.0},{c[0].Y / 304.8:0.0}) {Neighbours(c[0], c)} | end ({c[^1].X / 304.8:0.0},{c[^1].Y / 304.8:0.0}) {Neighbours(c[^1], c)}");
+                            // and everything arranged within a metre of the longest chain's two ends, so the opening is seen, not inferred
+                            if (open.Count > 0)
+                                foreach (var p in new[] { open[0][0], open[0][^1] })
+                                {
+                                    var near = all.Where(s => Math.Min(Math.Min(Math.Sqrt(Math.Pow(p.X - s.Start.X, 2) + Math.Pow(p.Y - s.Start.Y, 2)), Math.Sqrt(Math.Pow(p.X - s.End.X, 2) + Math.Pow(p.Y - s.End.Y, 2))), BodyDistance(p, s)) <= 1000)
+                                        .Select(s => $"{s.Layer} ({s.Start.X:0},{s.Start.Y:0})-({s.End.X:0},{s.End.Y:0})").ToList();
+                                    FaceTrace($"slab pass: arranged within 1 m of ({p.X:0},{p.Y:0}) mm: {near.Count}: {string.Join(" | ", near.Take(14))}");
+                                }
+                            static double BodyDistance(DxfPoint p, DxfSegment s)
+                            {
+                                double ex = s.End.X - s.Start.X, ey = s.End.Y - s.Start.Y, len2 = ex * ex + ey * ey;
+                                if (len2 <= 0) return double.MaxValue;
+                                double t = Math.Clamp(((p.X - s.Start.X) * ex + (p.Y - s.Start.Y) * ey) / len2, 0, 1);
+                                return Math.Sqrt(Math.Pow(s.Start.X + t * ex - p.X, 2) + Math.Pow(s.Start.Y + t * ey - p.Y, 2));
+                            }
+                        }
                         // WHERE THE OUTSIDE GETS IN (instrument, 2026-09-16): a column in no cell stands in the unbounded face, so
                         // a path crosses no line from it to the page's edge. On a 150 mm raster of the arranged lines, the widest
                         // such path's narrowest place is the gap the ring leaks through; a ring open without a dangling end

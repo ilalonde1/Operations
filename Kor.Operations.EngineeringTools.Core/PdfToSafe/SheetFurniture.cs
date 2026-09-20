@@ -203,7 +203,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             /// along the grid - a tendon, a beam - and is read as what it is. Unknown pen: every stroke on the
             /// axis is the grid, as before.
             /// </summary>
-            public bool IsGridPen(double lineWidthPts) => AxisPenPts <= 0 || (lineWidthPts <= AxisPenPts * AxisPenHeavierBy && lineWidthPts >= AxisPenPts / AxisPenHeavierBy);
+            public bool IsGridPen(double lineWidthPts) => AxisPenPts <= 0 || (lineWidthPts <= AxisPenPts * AxisPenHeavierBy && lineWidthPts >= AxisPenPts / AxisPenLighterBy);
 
             /// <summary>The underlines on the sheet. A LINE matching one is an underline; a shape centred on one is not.</summary>
             public IReadOnlyList<Underline> Underlines { get; init; } = [];
@@ -274,9 +274,15 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
         /// <summary>
         /// How much heavier than the grid's own pen a stroke on an axis may be and still be the grid (step 53).
-        /// 31202 p32: the grid at 3 pt with 2 pt pieces; the tendons along it at 9 and 16 pt. Twice.
+        /// 31202 p32: the grid at 3 pt with 2 pt pieces; the tendons along it at 9 and 16 pt. Was twice; THE NEXT PEN
+        /// UP IS ANOTHER PEN (intake step 128, 2026-09-19): an office's pens double - 0.24, 0.48, 0.96 - and 31009 draws
+        /// its slab edge at 0.48 along grid lines drawn at 0.24, so five storeys' edges (L4-L8, 79,000 sq ft of hers)
+        /// were the grid at exactly twice its pen. A grid's own variation is a few percent (a 3 pt grid with 2 pt
+        /// pieces is the one case seen, 1.5 apart), so the window is 1.4 either way: 2 pt to 4.2 pt for a 3 pt grid.
         /// </summary>
-        public const double AxisPenHeavierBy = 2.0;
+        public const double AxisPenHeavierBy = 1.4;
+        /// <summary>How much lighter than the grid's pen a stroke on the axis may be and still be the grid: 31202's 3 pt grid has 2 pt pieces (step 53), so twice, as before.</summary>
+        public const double AxisPenLighterBy = 2.0;
 
         /// <summary>
         /// A title block is a strip: at most this share of the page's width (or height). A cut that
