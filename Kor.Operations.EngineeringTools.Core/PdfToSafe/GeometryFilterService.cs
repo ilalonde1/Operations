@@ -1889,7 +1889,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             // the drawing's own lines and are offered to the ARRANGEMENT below (not to the walk, whose reading of the drawn
             // lines is step 24 and 27 verbatim: on the architect's set the strokes along its grids turned the walk into the
             // rooms and six storeys lost their 32,076 sq ft outline); a tendon along a grid cuts a floor into cells, and
-            // the cells are united.
+            // the cells are united. They are pieces of the edge among the others (step 131, below).
             var strokes = result.StrokesOnGrid.Where(s => s.Count == 2)
                 .Select(s => new DxfSegment("SLABEDGE", new DxfPoint(s[0].X, s[0].Y), new DxfPoint(s[1].X, s[1].Y)))
                 .ToList();
@@ -1911,6 +1911,16 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             var pieces = built.OpenChains
                 .Where(c => c.Count >= 2 && ChainLength(c) >= SlabEdgeChainMinMm)
                 .ToList();
+            // A STROKE ON THE GRID IS A PIECE OF THE EDGE (intake step 131, 2026-09-19). Step 78 offered the strokes along
+            // a grid axis to the arrangement as drawn, and only the drawn lines' chains were bridged in line across a
+            // column's box (step 78) and carried through a column two edges meet at (step 97). 30990's tower draws its
+            // rim ON its grid lines: the west edge along grid 2a in four pieces with a 600 mm column box between each,
+            // the re-entrant corner where the edge on grid 7a meets the edge at y 41,982 through a column's box - and
+            // the floor was open at every column standing on a grid line, 516 sq ft of her 13,323 on four typical
+            // floors. The strokes are pieces: bridged in line and carried through a column with the rest. Not gated
+            // by the chain minimum: the piece that closes 30990's corner is 34 mm long, the drawn line between the
+            // axis and the column's box.
+            foreach (var s in strokes) pieces.Add(new[] { s.Start, s.End });
             var pieceSegments = new List<DxfSegment>();
             foreach (var c in pieces)
                 for (int i = 0; i + 1 < c.Count; i++)
@@ -2026,7 +2036,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             FaceTrace?.Invoke($"slab pass: ends at columns (step 97; centre ft: ends): " + string.Join(" ", endsAtColumn.OrderByDescending(e => e.Value.Count)
                 .Select(e => $"({e.Key.X / 304.8:0.0},{e.Key.Y / 304.8:0.0}):{e.Value.Count}{(e.Value.Count < 2 ? "-lone" : "")}")));
             FaceTrace?.Invoke($"slab pass: {carried.Count} edge end(s) joined through {endsAtColumn.Count(e => e.Value.Count >= 2)} column(s)");
-            var arranged = pieceSegments.Concat(inLine).Concat(strokes).Concat(carried).ToList();
+            var arranged = pieceSegments.Concat(inLine).Concat(carried).ToList();   // the strokes on the grid are among the pieces (step 131)
             foreach (var l in built.Loops)
                 for (int i = 0; i < l.Points.Count; i++)
                     arranged.Add(new DxfSegment("SLABEDGE", l.Points[i], l.Points[(i + 1) % l.Points.Count]));

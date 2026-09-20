@@ -44,6 +44,24 @@ public sealed class AFloorIsItsCellsUnitedTests
         Assert.Empty(gridPen.Slabs);
     }
 
+    /// <summary>
+    /// A STROKE ON THE GRID IS A PIECE OF THE EDGE (intake step 131, 2026-09-19): the heavy stroke along the axis is
+    /// bridged in line across a column's box and carried through a column like any piece of the drawn lines. 30990's
+    /// tower draws its rim ON its grid lines, the west edge in four pieces with a column's box between each, and the
+    /// floor was open at every column on a grid line. WHAT THIS COVERS: the axis edge in three pieces with a 900 mm
+    /// gap at each column closing at the floor's full area. WHAT IT DOES NOT: a gap over the corner-carry limit (the
+    /// same bound as the drawn lines', AnEdgeInterruptedInLineIsOneEdgeUpToTheCornerCarryLimit).
+    /// </summary>
+    [Fact]
+    public void AHeavyStrokeAlongAGridLineInterruptedAtItsColumnsIsOneEdge()
+    {
+        // the columns on the axis stand centred on it, as 30990 draws them (Column(x, y) puts a box's corner at x, y)
+        RawSubpath[] rest = [Line(30000, 20000, 38000, 20000), Line(38000, 20000, 38000, 26000), Line(38000, 26000, 30000, 26000),
+                             Column(33000, 22000), Column(36000, 24000), FateFixture.Rect(600, 800, 29700, 21600), FateFixture.Rect(600, 800, 29700, 23600)];
+        var g = Read([Heavy(30000, 26000, 30000, 24450), Heavy(30000, 23550, 30000, 22450), Heavy(30000, 21550, 30000, 20000), .. rest]);
+        Assert.Equal(W * H, Area(Assert.Single(g.Slabs)), 1);
+    }
+
     [Fact]
     public void AnEdgeInterruptedInLineIsOneEdgeUpToTheCornerCarryLimit()
     {
