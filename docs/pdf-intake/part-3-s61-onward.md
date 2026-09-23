@@ -4455,3 +4455,98 @@ It is not a rule to rip out on one set's evidence: step 131 EARNED 30990 54% →
 landed, and gating it at a column's width is what gave 31087 its sixty plates back. It pays on some sets and
 takes a whole building on another, and **nobody has ever asked the balance** — the six-set gate cannot see it and
 the corpus gate did not exist when 131 was banked.
+
+## 164. Step 131 characterised: the code contradicted its own comment; and ten sets are now a human's problem (2026-09-23 13:00–15:0X)
+
+### The migrations landed, and four ratchets moved
+
+Ian applied 099 and 100. The list-rule gate written the night before caught the divergence on its first run
+after, by name and by value — `dxf.floor-nouns: row [FLOOR; LEVEL; STOREY; STORY; FLR], compiled [FLOOR; LEVEL;
+STOREY; STORY]` — and `ListRowsUnbankedByDesign` is now EMPTY for the first time.
+
+**Four ratchets went red and all four were moved, not weakened**, which is the whole point of banking what a
+reader does TODAY: a fix has to come and say so. The three "1st Flr." titles read L1, L2 and L3; the count fell
+from nine titles and 1,888 slabs to six and 967 and the test is renamed for it; the FLR test keeps its teeth by
+asserting the three read NOTHING with the word taken back out; and the copy-fault test used FLR as its "word
+this office does not have", which FLR no longer is, so it uses DECK. **The ratchet is what noticed that test
+had stopped proving anything.**
+
+### Step 131's 322,000 square feet, characterised — and the fault was not step 131's
+
+The judgement said step 131 is net-negative over her 57 models: ~99,000 sq ft earned on ten sets against
+~325,000 lost on four, 321,957 of it on 30993-01 alone. Before narrowing or reverting anything, the trace —
+one page of the loser and one of a winner, both ways round:
+
+| | pieces | **walk found a floor** | result |
+|---|---|---|---|
+| 30993 p68, 131 off | 108 | **False** | the arrangement closes **10,084 sq ft**, x 109.0–216.0 ft |
+| 30993 p68, 131 on | 115 | **True** | the pieces close 9,094 sq ft, x **96.0–222.7 ft** |
+| 30990 p30, 131 off | 83 | False | the arrangement closes 516 sq ft |
+| 30990 p30, 131 on | 129 | False | the arrangement closes **11,150 sq ft** |
+
+The ON arm of 30993 is **missing fifteen trace lines** the OFF arm has — every one of the arrangement's own
+diagnostics, its cells, its dangling ends, its open chains. **The arrangement never runs.** The ring that
+replaces its floor is six metres wider and a thousand square feet smaller, running out along the grid lines
+instead of stopping at the slab edge. Nine sheets, 31 storeys, every one with the same signature: the plate
+gone, its seven openings left as free-standing rings refused as linework, the duplicate-edge count 2 → 11.
+
+**The fault.** `GeometryFilterService` has said at the top of that pass since step 78 that strokes on a grid
+axis are offered *"to the ARRANGEMENT below, not to the walk"*. Sixty lines down, every PIECE is bridged into
+loops and those loops are added to the walk's own list — which is what `walkFoundAFloor` is computed from, and
+a walk floor makes the arrangement stand down ENTIRELY. **A ring inferred by bridging silently outranked the
+arrangement's reading of what the drafter actually drew.** The intent was right and the code did the opposite,
+and had since step 78; step 131 only put grid strokes among the pieces, which is what made it visible.
+
+That is the whole difference between the set 131 saves and the set it destroys. On 30990 the bridged pieces
+close nothing that stands in structure, so the arrangement runs and 516 sq ft becomes 11,150. On 30993 they
+close a ring that does, and a correct 10,084 sq ft floor is thrown away.
+
+**Step 138** (`bc8e3b88`): `walkFoundAFloor` is computed from the loops the drafter DREW and the drawn paths.
+The bridged rings stay — still floors where nothing else reads one — and where the arrangement is now built
+beside one, that ring goes into `walkFloorsToReplace` explicitly rather than being left to the downstream
+"larger is kept" tie-break, which would keep the wrong one wherever the inferred ring is the bigger. On the
+page it was designed from, with 131 still ON, the floor is back to 10,084 sq ft and the trace is identical to
+the 131-off arm. Fast suite 1,568; six-set gate GREEN, byte-identical, 10 m 15 s. Prediction banked before the
+judge ran (`docs/pdf-intake/step138-prediction.md`).
+
+### `judge.ps1`, and why it re-publishes the mirror every time
+
+Twice on 2026-09-23 a judgement ran code that had already been mended in the repo, because a mirror published
+earlier was never re-published — once voiding a whole verdict, once crashing both readings of the step-131
+run. The judgement is a script now: two arms of ONE binary, **built at the moment of the run**, both arms'
+SET and SHEET ledgers banked, and the verdict read BOTH WAYS ROUND because "what it costs" and "what it earns"
+are different questions that one net figure hides.
+
+### Rule 9, finally: the models drawn and looked at
+
+Nothing had been rendered all session. Six banked models, every storey on a sheet:
+
+- **The picture over-stated one thing and it is worth recording.** 31168's A-storeys looked empty — A-L35 `0f
+  10w 2c`, A-L36 `0f 5w 2c` — and the eye said building A was missing. The count says **4 of its 62 storeys**
+  have no floor. A render is for finding what to check, not for concluding.
+- Across the six: **9 of 161 storeys carry no floor and 8 of those carry columns.** That condition is already
+  a declared disclosure in `ShippedModelInvariants` ("a storey carrying members with no floor is a disclosure,
+  not a refusal") — known and reported, not silent. The render found it; the check already existed.
+- **31202's ROOF is four separate plates with a peaked outline** where every storey below it is one clean
+  rectangle. That is the exact storey that parked step 132, and it is now the before-picture for judging it.
+
+### Where the remaining gap actually is
+
+Of the 47 sets where her area and ours can be compared (best arm, 4,744,809 of 6,278,461 = **76%**):
+
+| share we read | sets | gap |
+|---|---:|---:|
+| **90% and over** | **10** | 17,672 sq ft |
+| 75–90% | 12 | 392,731 |
+| 50–75% | 11 | 529,067 |
+| 25–50% | 8 | 404,963 |
+| under 25% | 6 | 189,217 |
+
+**The gap is 1,533,651 sq ft and it takes SIXTEEN sets to account for three-quarters of it.** The largest
+single miss is 30990 at 122,364 sq ft — eight per cent. There is no 322,000 sq ft rule left to find.
+
+And **ten sets read 90% or more of what she modelled by hand**: 30933, 30993, 31006, 31076, 31101, 31155,
+31170, 31171, 70057, 70064. On those the measurement has gone as far as it can. Ninety per cent of her area is
+not the same as the RIGHT ninety per cent, and no computation says whether the slab edges are where she would
+put them. **That is an engineer opening one in ETABS beside her own, and it is the first time this work has
+been able to name which ten.**
