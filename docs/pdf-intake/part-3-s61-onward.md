@@ -4367,3 +4367,91 @@ sheets the ledger calls levelless.
 is "a vocabulary that can only widen", and this is one abbreviation). The prediction, written before the run:
 30985-01 goes from 1 storey to 3, and no other set moves — 6 plan sheets in 1 set of 293 are the whole of the
 corpus's use of it, and none of them reads a storey today, so nothing that reads one can lose it.
+
+## 163. Run 44, step 136 judged, and the rule that costs one building 322,000 sq ft (2026-09-23 03:00–04:0X)
+
+**Run 44 banked at 03:00:14** — 3 h 49 m, 294 sets, 8,595 sheet rows. (The estimate said 01:46 and the last 28
+sets took 85 minutes; the big sets were at the end and an average was never going to see them.) The corpus: 259
+of 294 build a model; 2,814 storeys, 2,149 with a plate (76%); 4,053 plan views written, 2,156 placed on the grid
+by name (53%); 49 sets have her model, ours within 100 mm on 57% (6,085 of 10,749).
+
+**The one number it was launched for:**
+
+| | run 43 (step 131) | run 44 (steps 132–135) | |
+|---|---|---|---|
+| 31087-01 | 19 plates, 18 storeys-with-plate | **60, 59** | recovered — run 41 had 61/59 |
+| 30993-01 | 19 plates, 9 storeys-with-plate | **19, 9** | not recovered |
+
+So what looked like one fault is two, and the bisect had one set to answer for instead of two.
+
+### Three instruments mended before anything was believed
+
+**A re-issued stick file is not a regression.** The diff named 31039-01 the corpus's biggest loser — 35 plates to
+7, placed sheets 39 of 40 down to 20 of 40, 1,271 columns to 797 — and it had been re-drawn that week:
+`31039-01 2026-09-14 skyliving Stickfile.pdf`, 77 pages and 32 MB, became the 2026-09-22 issue at 68 and 23.
+**Eleven of the 292 sets in both runs read a different file**, one of them (31130-01) a six-set gate set. Neither
+the diff nor the gate could say so. `CorpusDiff.Change.ReIssued` is asked FIRST and prints the two file names
+before the movers; `CorpusGate` reports it, excludes it from the losses and still says what it would have cost —
+a gate that goes red for the drafting office's week is a gate that gets ignored. Both say what they cannot see: a
+file rewritten under the same name AND the same byte count.
+
+**The first step-136 judgement was VOID and the gate now says so in those words.** It ran in four minutes — 58
+sets, `--recompose`, against the hour a full read takes — and reported "0 set(s) judged" and then six sets LOST
+for over-reading. One cause for both: run 44's ledger was written by a mirror published 46 minutes before
+`plates_over_half_again` existed, so it carried 49 columns, `ReadSets` refuses the last ten figures when a row is
+short, every "before" was null, and any "after" above zero read as an over-read. It shouted, which beats a green,
+but it shouted a fault that was not there and hid the one that was.
+
+**The six-set gate was green on a file the share no longer had.** Chasing why 31202-01 left the corpus between
+runs: on 2026-09-21 its stick-file folder was tidied, every StickSet went into `06 Old Structural Stickfiles`, and
+the file left at the top level is called "… Struct Dwgs - Building Permit 3 …" — no Stickfile, no StickSet — so
+the census stopped recognising it and the job dropped out of the 294 without a word. And the gate's own declared
+path for 31202 stopped existing. It stayed green because the sets are mirrored locally and the reader falls back
+to the mirror when the source has moved: **the gate asserted the share was REACHABLE, never that its six files
+were THERE.** `EverySourceIsWhereThisFileSaysItIs` was written first and run to watch it fail — five ok, one
+MISSING, exactly the one — then the path was mended to where the file went.
+
+### Step 136: judged, banked, and worth an eighth of what I predicted
+
+Two `--recompose` arms of ONE binary over run 44's own views, `KOR_STEP136_OFF=1` for the step-135 baseline (the
+knob step 136 should have had from the start) and off for the rule. **Arm one matched run 44 on 57 of 57 sets to
+the square foot**, which measures two things I had only argued from the code: that the knob restores step 135
+exactly, and that `--recompose` reproduces a full read for a composer-side rule.
+
+> **no set lost. No thickness lost, no opening lost, NO OVER-READ** — Codex's U-shaped courtyard void, the one way
+> a rule that can only ADD can be wrong, appeared on none of the 57.
+> Her plates we read **4,500,947 → 4,519,496 sq ft of 6,278,461**; thickness agreement 191 → 192 of 318.
+> **One set moved: 31083-01, 1,183 → 19,732 sq ft**, 2% of her area to 27%, plates 5 → 6, with a thickness
+> call-out gained.
+
+**And the prediction was wrong by a factor of eight, which is the more useful half.** Written at 00:01 from run
+43's own flags: the 55% box-fill test refused 188 rings across 55 sets, 487,499 sq ft, of which 14 sets with her
+model held 145,813. It named 31083 at 18,509 and the rule delivered **18,549** — right to four figures — and
+nothing at all on the other thirteen. 30993 was the biggest name on that list at 49,526 and moved by zero.
+
+> **A count of what a gate refused is not a measure of what removing it returns.**
+
+Those rings were refused by the 55% test AND by something after it — the invention share, the thickness call-out,
+the neighbourhood test, the ring-in-ring logic — so lifting the first refusal changed nothing. The flag said
+"this gate refused it"; it was read as "this gate is why we do not have it". Only 31083's rings had no second
+objection.
+
+### The rule that costs one building 322,000 square feet
+
+30993-01, three arms, and the arms are cheap because `PageReadCache` holds only the RAW PDF WALK — keyed by
+content hash, page and tessellation, with every reader rule running after it — so a knob re-runs the rules
+without re-walking 123 pages. Two and a half minutes an arm, not twenty-five.
+
+| arm | plates | storeys with a plate | her area we read |
+|---|---|---|---|
+| as it stands | 19 | 9 of 40 | 188,493 of 560,266 — **34%** |
+| `KOR_STEP130_OFF` | 19 | 9 of 40 | 188,493 — step 130 is innocent |
+| `KOR_STEP131_OFF` | **50** | **39 of 40** | **510,450 of 560,266 — 91%** |
+
+**Step 131 costs that one set 321,957 square feet**, fifty-seven points of her building, and the off arm lands
+exactly on run 41's figures — where it was before step 131 was banked on 2026-09-20.
+
+It is not a rule to rip out on one set's evidence: step 131 EARNED 30990 54% → 74% of her plates the day it
+landed, and gating it at a column's width is what gave 31087 its sixty plates back. It pays on some sets and
+takes a whole building on another, and **nobody has ever asked the balance** — the six-set gate cannot see it and
+the corpus gate did not exist when 131 was banked.
