@@ -40,7 +40,19 @@ was being built. **The Okanagan is 0 of 8** despite being named a primary market
 | Municipality | Population | Source | Volume |
 |---|---:|---|---|
 | **Vancouver** | 662,248 | shapeyourcity.ca (EngagementHQ) | 88 live, 20 name the architect |
-| **Surrey** | 568,322 | ArcGIS Online, city org | 13,848 total, **1,267 active, 890 held** |
+| **Surrey** | 568,322 | ArcGIS Online, city org | 13,848 total, 1,267 active, **891 pass the gate, 890 held** |
+| **Kamloops** | 97,902 | maps.kamloops.ca (Tempest behind ArcGIS) | 151 rows -> 115 applications, **42 held**, 2018-11-08 to 2026-09-21 |
+
+**Updated 2026-09-23.** Coverage is now **13 of 56**. Kamloops was found by
+`tools/ArcGisFingerprint`, which classified 137 layers across five municipal
+servers and returned exactly one genuine application table. Its layer cannot
+page (`supportsPagination: false`), which the adapter could not express until
+`arcgis.supportsPagination` was added — before that it read zero rows from a
+live layer of 151 and reported a clean partial.
+
+**Kelowna has no public development-application layer.** Its twelve keyword hits
+are zoning overlays and Cityworks ROAD USE permits. That is a finding, not a
+search failure.
 
 Surrey is the largest single addition we have made. For scale, the entire Vancouver
 Island programme is ~3,000 applications across fourteen feeds.

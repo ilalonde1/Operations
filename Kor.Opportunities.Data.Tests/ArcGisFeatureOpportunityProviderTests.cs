@@ -7,6 +7,7 @@ using System.Net.Http;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using Kor.Opportunities.Core.Ingestion;
 using Kor.Opportunities.Core.Models;
 using Kor.Opportunities.Data.Ingestion.Providers;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -407,6 +408,77 @@ public sealed class ArcGisFeatureOpportunityProviderTests
         handler.Add("?f=json", metaJson);
         handler.Add("resultOffset=0", pageJson);
         return await RunAsync(handler, cfg);
+    }
+
+    // ---- pagination, added 2026-09-23 ----
+    //
+    // Kamloops publishes its planning applications on a MapServer layer whose
+    // own metadata says supportsPagination: false. Any request carrying
+    // resultOffset gets {"code":400,"message":"Pagination is not supported."}
+    // inside an HTTP 200, and the adapter read ZERO rows from a live layer of
+    // 151. These three assert the escape hatch and, just as importantly, that
+    // every layer wired before it still pages.
+
+    [Fact]
+    public async Task ALayerThatCannotPageIsQueriedWithoutPagingParameters()
+    {
+        var cfg = new Dictionary<string, string>(VictoriaConfig, StringComparer.OrdinalIgnoreCase)
+        {
+            ["arcgis.supportsPagination"] = "false",
+        };
+
+        var handler = new StubHandler();
+        handler.Add("?f=json", Meta(1000));
+        handler.Add("/query", Response(exceeded: false,
+            Row("REZ00901", "846 Broughton Street", "Rezoning", "ACTIVE", "846", "BROUGHTON ST", Aug2025Ms, "x")));
+
+        var results = await RunAsync(handler, cfg);
+
+        Assert.Single(results);
+        var query = handler.Requested.Single(u => u.Contains("/query", StringComparison.Ordinal));
+        Assert.DoesNotContain("resultOffset", query, StringComparison.Ordinal);
+        Assert.DoesNotContain("resultRecordCount", query, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ByDefaultALayerIsStillPaged()
+    {
+        // The differential. Nine sources were wired before this key existed and
+        // every one of them must keep paging.
+        var handler = new StubHandler();
+        handler.Add("?f=json", Meta(1000));
+        handler.Add("/query", Response(exceeded: false,
+            Row("REZ00901", "846 Broughton Street", "Rezoning", "ACTIVE", "846", "BROUGHTON ST", Aug2025Ms, "x")));
+
+        await RunAsync(handler, VictoriaConfig);
+
+        var query = handler.Requested.Single(u => u.Contains("/query", StringComparison.Ordinal));
+        Assert.Contains("resultOffset=0", query, StringComparison.Ordinal);
+        Assert.Contains("resultRecordCount=", query, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ANonPagingLayerWithMoreRowsThanItWillGiveIsReportedAsPartial()
+    {
+        // A layer that cannot page AND holds more than maxRecordCount cannot be
+        // read in full at all. Keeping the first slice quietly is how a source
+        // looks healthy while going stale, so the run must carry the warning.
+        var cfg = new Dictionary<string, string>(VictoriaConfig, StringComparer.OrdinalIgnoreCase)
+        {
+            ["arcgis.supportsPagination"] = "false",
+        };
+
+        var handler = new StubHandler();
+        handler.Add("?f=json", Meta(1000));
+        handler.Add("/query", Response(exceeded: true,
+            Row("REZ00901", "846 Broughton Street", "Rezoning", "ACTIVE", "846", "BROUGHTON ST", Aug2025Ms, "x")));
+
+        IngestionRunDiagnostics.BeginRun();
+        await RunAsync(handler, cfg);
+
+        Assert.Contains(
+            IngestionRunDiagnostics.Drain(),
+            w => w.Contains("partial read", StringComparison.OrdinalIgnoreCase));
     }
 
     private static async Task<IReadOnlyList<Core.Ingestion.OpportunityCandidate>> RunAsync(

@@ -89,7 +89,7 @@ public sealed class ArcGisFeatureOpportunityProvider : IOpportunityProvider
 
         while (pages < map.MaxPagesPerRun && !ct.IsCancellationRequested)
         {
-            var url = BuildQueryUrl(layerUrl, map.Where, map.OutFields, offset, pageSize);
+            var url = BuildQueryUrl(layerUrl, map.Where, map.OutFields, offset, pageSize, map.Paginate);
             using var doc = await GetJsonAsync(url, source, ct).ConfigureAwait(false);
             if (doc is null)
             {
@@ -135,6 +135,21 @@ public sealed class ArcGisFeatureOpportunityProvider : IOpportunityProvider
 
             var more = root.TryGetProperty("exceededTransferLimit", out var xfer)
                        && xfer.ValueKind == JsonValueKind.True;
+
+            if (!map.Paginate)
+            {
+                // One shot is all this layer offers. If the service still says
+                // there was more, the read IS short and must say so — a layer
+                // that cannot page and holds more than maxRecordCount cannot be
+                // fully read at all, and silently keeping the first slice is how
+                // a source looks healthy while going stale.
+                if (more)
+                {
+                    truncated = true;
+                }
+
+                break;
+            }
 
             if (!more || countThisPage == 0)
             {
@@ -535,12 +550,27 @@ public sealed class ArcGisFeatureOpportunityProvider : IOpportunityProvider
         return false;
     }
 
-    private static string BuildQueryUrl(string layerUrl, string where, string outFields, int offset, int pageSize)
-        => $"{layerUrl}/query?where={Uri.EscapeDataString(where)}" +
-           $"&outFields={Uri.EscapeDataString(outFields)}" +
-           "&returnGeometry=false&f=json" +
-           $"&resultOffset={offset.ToString(CultureInfo.InvariantCulture)}" +
-           $"&resultRecordCount={pageSize.ToString(CultureInfo.InvariantCulture)}";
+    /// <summary>
+    /// ⚠ Not every ArcGIS layer can page. Older MapServer layers answer
+    /// <c>{"code":400,"message":"Pagination is not supported."}</c> — inside an
+    /// HTTP 200 — to any request carrying resultOffset, and the read comes back
+    /// EMPTY rather than failing. Kamloops publishes its planning applications
+    /// on exactly such a layer: <c>supportsPagination: false</c>,
+    /// <c>maxRecordCount: 1000</c>, 151 rows. One plain query returns all of it.
+    /// </summary>
+    private static string BuildQueryUrl(
+        string layerUrl, string where, string outFields, int offset, int pageSize, bool paginate)
+    {
+        var url = $"{layerUrl}/query?where={Uri.EscapeDataString(where)}" +
+                  $"&outFields={Uri.EscapeDataString(outFields)}" +
+                  "&returnGeometry=false&f=json";
+
+        return paginate
+            ? url +
+              $"&resultOffset={offset.ToString(CultureInfo.InvariantCulture)}" +
+              $"&resultRecordCount={pageSize.ToString(CultureInfo.InvariantCulture)}"
+            : url;
+    }
 
     private async Task<int?> ReadMaxRecordCountAsync(string layerUrl, OpportunitySource source, CancellationToken ct)
     {
@@ -618,7 +648,10 @@ public sealed class ArcGisFeatureOpportunityProvider : IOpportunityProvider
         string? DetailUrlTemplate,
         string? FallbackUrl,
         string? CityOverride,
-        string? ProvinceOverride)
+        string? ProvinceOverride,
+        // Default TRUE: every layer wired before 2026-09-23 pages, and a source
+        // that silently stopped paging would look healthy while going short.
+        bool Paginate = true)
     {
         public static ArcGisMapping Build(IReadOnlyDictionary<string, string> cfg)
         {
@@ -647,7 +680,12 @@ public sealed class ArcGisFeatureOpportunityProvider : IOpportunityProvider
                 Get(cfg, "arcgis.detailUrlTemplate"),
                 Get(cfg, "arcgis.fallbackUrl"),
                 Get(cfg, "arcgis.cityOverride"),
-                Get(cfg, "arcgis.provinceOverride"));
+                Get(cfg, "arcgis.provinceOverride"),
+                // "arcgis.supportsPagination = false" for a layer whose own
+                // metadata says supportsPagination: false. Check the layer
+                // before setting it — a paginating layer read in one shot is
+                // capped at maxRecordCount and loses the rest in silence.
+                !string.Equals(Get(cfg, "arcgis.supportsPagination"), "false", StringComparison.OrdinalIgnoreCase));
         }
 
         private static string? Get(IReadOnlyDictionary<string, string> cfg, string key)
