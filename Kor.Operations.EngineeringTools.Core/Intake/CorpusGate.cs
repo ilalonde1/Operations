@@ -1,4 +1,4 @@
-#nullable enable
+﻿#nullable enable
 using System.Globalization;
 
 namespace Kor.Operations.EngineeringTools.Intake;
@@ -35,25 +35,72 @@ public static class CorpusGate
     /// <summary>The share of her plate area a set may lose before the gate calls it a loss (0.005 = half a percent).</summary>
     public const double PlateLossShare = 0.005;
 
+    /// <summary>
+    /// How far past her own plate area on a storey a set may go before the gate calls it an over-read: half again.
+    /// A rule that only ADDS area (step 136 removed a refusal) cannot lose, and a gate that only watches losses
+    /// would pass it however much rubbish it added - a courtyard void read as a floor is a gain here (Codex's
+    /// audit of 2026-09-22, finding 4, which named the U-shaped void that passes every other gate).
+    /// </summary>
+    public const double OverReadShare = 1.5;
+
     /// <summary>One set's verdict: what it was at the bank, what it is now, and whether that is a loss.</summary>
     public sealed record Verdict(
         string Job, double? BeforeSqFt, double? AfterSqFt, double? HersSqFt,
         int? ThicknessAgreeBefore, int? ThicknessAgreeAfter, int? ThicknessStoreys,
-        int? OpeningsWeHaveBefore, int? OpeningsWeHaveAfter, int? OpeningsHers)
+        int? OpeningsWeHaveBefore, int? OpeningsWeHaveAfter, int? OpeningsHers,
+        // WHAT THE BANK MUST NOT BE ABLE TO MISS (Codex's audit, 2026-09-22): a set that was judged at the bank and
+        // is not judged now - it failed to build, its yardstick would not load, its row is gone - is not "unchanged",
+        // it is EVIDENCE MISSING, and evidence missing can conceal any loss at all. It stops the bank like a loss.
+        bool WasJudged = false, bool IsJudged = false,
+        double? BeforeHersSqFt = null, int? OverHalfAgainBefore = null, int? OverHalfAgainAfter = null)
     {
         /// <summary>The change in her square feet we read, or null where the set was not judged both times.</summary>
-        public double? MovedSqFt => BeforeSqFt is { } b && AfterSqFt is { } a ? a - b : null;
+        public double? MovedSqFt => BeforeSqFt is { } b && AfterSqFt is { } a && !double.IsNaN(b) && !double.IsNaN(a) ? a - b : null;
 
         /// <summary>How much of her plate area we read now, as a share (null where she plates nothing on the shared storeys).</summary>
         public double? ShareNow => HersSqFt is { } h && h > 0 && AfterSqFt is { } a ? a / h : null;
 
+        /// <summary>
+        /// The tolerance, in her square feet, taken from what SHE had AT THE BANK. Reading it from the newer run lets a
+        /// yardstick that changed between runs inflate it - 10,000/10,000 becoming 9,000/1,000,000 bought a 5,000 sq ft
+        /// tolerance and concealed a 1,000 sq ft loss (Codex's audit, finding 1). A NaN or missing figure buys nothing.
+        /// </summary>
+        public double Tolerance
+        {
+            get
+            {
+                double hers = BeforeHersSqFt ?? HersSqFt ?? 0;
+                if (double.IsNaN(hers) || double.IsInfinity(hers)) hers = 0;
+                return Math.Max(PlateLossFloorSqFt, PlateLossShare * hers);
+            }
+        }
+
         /// <summary>A fall past the tolerance: the thing that stops a bank.</summary>
-        public bool LostPlate => MovedSqFt is { } m && m < -Math.Max(PlateLossFloorSqFt, PlateLossShare * (HersSqFt ?? 0));
+        public bool LostPlate => MovedSqFt is { } m && m < -Tolerance;
 
-        /// <summary>Her thicknesses we agreed with and no longer do.</summary>
-        public bool LostThickness => ThicknessAgreeBefore is { } b && ThicknessAgreeAfter is { } a && a < b;
+        /// <summary>Her thicknesses we agreed with and no longer do - a figure that goes missing counts as gone.</summary>
+        public bool LostThickness => ThicknessAgreeBefore is { } b && (ThicknessAgreeAfter ?? 0) < b;
 
-        public bool Lost => LostPlate || LostThickness;
+        /// <summary>Her openings we had and no longer have (the gate computed them and judged nothing by them until now).</summary>
+        public bool LostOpenings => OpeningsWeHaveBefore is { } b && (OpeningsWeHaveAfter ?? 0) < b;
+
+        /// <summary>A figure we cannot compare because the set stopped being judged: it hides everything else.</summary>
+        public bool EvidenceMissing => WasJudged && !IsJudged;
+
+        /// <summary>More storeys carrying half again her area than before: a rule adding what she does not have.</summary>
+        public bool OverRead => (OverHalfAgainAfter ?? 0) > (OverHalfAgainBefore ?? 0);
+
+        public bool Lost => LostPlate || LostThickness || LostOpenings || EvidenceMissing || OverRead;
+
+        /// <summary>Why this set stops the bank, in the engineer's own terms.</summary>
+        public string Why => !Lost ? "" : string.Join(", ", new[]
+        {
+            EvidenceMissing ? "judged at the bank, not judged now" : null,
+            LostPlate ? $"her plate area fell {-(MovedSqFt ?? 0):N0} sq ft (tolerance {Tolerance:N0})" : null,
+            LostThickness ? $"her thicknesses we agree with fell {ThicknessAgreeBefore} -> {ThicknessAgreeAfter?.ToString(CultureInfo.InvariantCulture) ?? "none"}" : null,
+            LostOpenings ? $"her openings we have fell {OpeningsWeHaveBefore} -> {OpeningsWeHaveAfter?.ToString(CultureInfo.InvariantCulture) ?? "none"}" : null,
+            OverRead ? $"storeys over half again her area {OverHalfAgainBefore ?? 0} -> {OverHalfAgainAfter ?? 0}" : null,
+        }.Where(s => s is not null));
     }
 
     /// <summary>Every set judged, the losses first, then the largest gains; with the totals across the sets judged both times.</summary>
@@ -74,19 +121,27 @@ public static class CorpusGate
     {
         ArgumentNullException.ThrowIfNull(before);
         ArgumentNullException.ThrowIfNull(after);
-        var b = Judgeable(before);
-        var a = Judgeable(after);
+        var b = Newest(before);
+        var a = Newest(after);
         var verdicts = new List<Verdict>();
         foreach (string job in b.Keys.Concat(a.Keys).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(j => j, StringComparer.Ordinal))
         {
             b.TryGetValue(job, out var was); a.TryGetValue(job, out var now);
+            bool wasJudged = Figured(was), isJudged = Figured(now);
             verdicts.Add(new Verdict(job,
-                was?.PlatesOursSqFt, now?.PlatesOursSqFt, now?.PlatesHersSqFt ?? was?.PlatesHersSqFt,
-                was?.ThicknessAgree, now?.ThicknessAgree, now?.ThicknessStoreys ?? was?.ThicknessStoreys,
-                was?.OpeningsHersWeHave, now?.OpeningsHersWeHave, now?.OpeningsHers ?? was?.OpeningsHers));
+                wasJudged ? was!.PlatesOursSqFt : null, isJudged ? now!.PlatesOursSqFt : null,
+                (isJudged ? now!.PlatesHersSqFt : null) ?? (wasJudged ? was!.PlatesHersSqFt : null),
+                wasJudged ? was!.ThicknessAgree : null, isJudged ? now!.ThicknessAgree : null,
+                (isJudged ? now!.ThicknessStoreys : null) ?? (wasJudged ? was!.ThicknessStoreys : null),
+                wasJudged ? was!.OpeningsHersWeHave : null, isJudged ? now!.OpeningsHersWeHave : null,
+                (isJudged ? now!.OpeningsHers : null) ?? (wasJudged ? was!.OpeningsHers : null),
+                wasJudged, isJudged,
+                wasJudged ? was!.PlatesHersSqFt : null,
+                wasJudged ? was!.PlatesOverHalfAgain : null, isJudged ? now!.PlatesOverHalfAgain : null));
         }
-        // the losses first (worst square feet first), then everything else by the size of its move
-        var ordered = verdicts.OrderByDescending(v => v.Lost).ThenBy(v => v.MovedSqFt ?? 0).ToList();
+        // the losses first and worst-first; then everything else by the SIZE of its move, either way (a gain of 1,000
+        // before a gain of 100 - ascending put them the other way round, Codex's audit 2026-09-22)
+        var ordered = verdicts.OrderByDescending(v => v.Lost).ThenBy(v => v.Lost ? v.MovedSqFt ?? double.MinValue : -Math.Abs(v.MovedSqFt ?? 0)).ToList();
         var both = ordered.Where(v => v.BeforeSqFt is not null && v.AfterSqFt is not null).ToList();
         return new Report(ordered,
             both.Sum(v => v.BeforeSqFt ?? 0), both.Sum(v => v.AfterSqFt ?? 0), both.Sum(v => v.HersSqFt ?? 0),
@@ -94,17 +149,29 @@ public static class CorpusGate
             both.Sum(v => v.OpeningsWeHaveBefore ?? 0), both.Sum(v => v.OpeningsWeHaveAfter ?? 0), both.Sum(v => v.OpeningsHers ?? 0));
     }
 
-    /// <summary>The jobs of a ledger that carry a yardstick figure: the newest row per job (a ledger may hold several runs).</summary>
-    private static Dictionary<string, CorpusAnalyzer.SetRow> Judgeable(IReadOnlyList<CorpusAnalyzer.SetRow> rows)
-        => rows.Where(r => r.PlatesOursSqFt is not null || r.PlatesHersSqFt is not null)
-               .GroupBy(r => r.Job, StringComparer.OrdinalIgnoreCase)
+    /// <summary>
+    /// THE NEWEST ROW PER JOB, WHETHER OR NOT IT CARRIES FIGURES (Codex's audit, 2026-09-22, finding 1). Filtering to
+    /// rows that HAVE the figures and then taking the newest lets an older successful row stand in for a newer failed
+    /// one - the set reads as unchanged while the run that matters measured nothing at all.
+    /// </summary>
+    private static Dictionary<string, CorpusAnalyzer.SetRow> Newest(IReadOnlyList<CorpusAnalyzer.SetRow> rows)
+        => rows.GroupBy(r => r.Job, StringComparer.OrdinalIgnoreCase)
                .ToDictionary(g => g.Key, g => g.OrderByDescending(r => r.RunAtUtc).First(), StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Whether a row was actually measured against her model: a figure, and a figure that is a number.</summary>
+    private static bool Figured(CorpusAnalyzer.SetRow? r)
+        => r is not null
+           && (r.PlatesOursSqFt is not null || r.PlatesHersSqFt is not null)
+           && !double.IsNaN(r.PlatesOursSqFt ?? 0) && !double.IsNaN(r.PlatesHersSqFt ?? 0)
+           && !double.IsInfinity(r.PlatesOursSqFt ?? 0) && !double.IsInfinity(r.PlatesHersSqFt ?? 0);
 
     /// <summary>The jobs worth running: every set of a ledger that has the engineer's model, newest row per job.</summary>
     public static IReadOnlyList<string> JobsWithAYardstick(IReadOnlyList<CorpusAnalyzer.SetRow> rows)
     {
         ArgumentNullException.ThrowIfNull(rows);
-        return rows.Where(r => !string.IsNullOrWhiteSpace(r.Yardstick))
+        // the NEWEST row per job decides, as everywhere else here: an older row naming a yardstick does not keep a job
+        // in the gate after a later run found none (Codex's audit, 2026-09-22)
+        return Newest(rows).Values.Where(r => !string.IsNullOrWhiteSpace(r.Yardstick))
                    .Select(r => r.Job).Distinct(StringComparer.OrdinalIgnoreCase)
                    .OrderBy(j => j, StringComparer.Ordinal).ToList();
     }
@@ -130,9 +197,15 @@ public static class CorpusGate
             $"  totals: her plates we read {r.BeforeSqFt:N0} -> {r.AfterSqFt:N0} sq ft of {r.HersSqFt:N0} " +
             $"({(r.HersSqFt > 0 ? 100 * r.BeforeSqFt / r.HersSqFt : 0):F0}% -> {(r.HersSqFt > 0 ? 100 * r.AfterSqFt / r.HersSqFt : 0):F0}%); " +
             $"thickness {r.ThicknessAgreeBefore} -> {r.ThicknessAgreeAfter} of {r.ThicknessStoreys}; her openings we have {r.OpeningsWeHaveBefore} -> {r.OpeningsWeHaveAfter} of {r.OpeningsHers}");
-        sb.AppendLine(r.Losses.Count == 0
-            ? "  no set lost: the bank may take this."
-            : $"  {r.Losses.Count} set(s) LOST against the bank - look at each before banking: {string.Join(", ", r.Losses.Select(v => v.Job))}");
+        if (r.Losses.Count == 0)
+        {
+            sb.AppendLine("  no set lost: the bank may take this.");
+        }
+        else
+        {
+            sb.AppendLine(CultureInfo.InvariantCulture, $"  {r.Losses.Count} set(s) STOP THE BANK - each with its reason:");
+            foreach (var v in r.Losses) sb.AppendLine(CultureInfo.InvariantCulture, $"    {v.Job}: {v.Why}");
+        }
         return sb.ToString();
     }
 }

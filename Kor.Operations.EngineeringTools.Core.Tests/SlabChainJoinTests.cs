@@ -1,4 +1,4 @@
-using Kor.Operations.EngineeringTools.Dxf;
+﻿using Kor.Operations.EngineeringTools.Dxf;
 using Xunit;
 
 namespace Kor.Operations.EngineeringTools.Core.Tests;
@@ -85,5 +85,48 @@ public class SlabChainJoinTests
 
         Assert.Single(big.Slabs);       // 300 of 16,500 drawn — an interruption
         Assert.Empty(small.Slabs);      // 300 of  1,800 drawn — an edge
+    }
+
+    /// <summary>An L, drawn whole: a tower floor notched round a podium, filling 50% of its own box.</summary>
+    private static List<DxfSegment> Ell(double gap)
+    {
+        // 4,800 x 3,600 with a 3,600 x 2,400 bite out of the north-east corner: 8.64M of a 17.28M box, 50% - under
+        // the 55% the shape gate asked for, and a perfectly ordinary tower floor notched round a podium
+        DxfPoint[] p =
+        [
+            new(0, 0), new(4800, 0), new(4800, 1200), new(1200, 1200), new(1200, 3600), new(0, 3600),
+        ];
+        var segs = new List<DxfSegment>();
+        for (int i = 0; i + 1 < p.Length; i++) segs.Add(new DxfSegment(SlabLayer, p[i], p[i + 1]));
+        // the closing side, north to south, interrupted by `gap` at its middle
+        segs.Add(new DxfSegment(SlabLayer, p[^1], new DxfPoint(0, 1800 + gap / 2)));
+        segs.Add(new DxfSegment(SlabLayer, new DxfPoint(0, 1800 - gap / 2), p[0]));
+        return segs;
+    }
+
+    /// <summary>
+    /// A RING'S SHAPE DOES NOT JUDGE IT; HOW MUCH OF IT THE DRAWING DREW DOES (intake step 136, 2026-09-22).
+    /// A candidate that filled under 55% of its own bounding box was refused as "a thin or hooked shape, which is
+    /// what a slab edge looks like when its two ends are joined across the wrong gap" - a PROXY for the fault the
+    /// next gate measures directly (the share of the ring nobody drew, 10%, with its match-line exception). The
+    /// proxy cannot tell an L-shaped tower floor from an invented one, and it refused 487,499 sq ft over 55 sets
+    /// in run 43 - 188 rings, fifty of them between 50% and 55% - among them 30993's LEVEL 33-35 (7 storeys at
+    /// zero, her 11,727 sq ft each) and 31202's ROOF, whose refusal is what parked step 132.
+    /// WHAT THIS COVERS: an L drawn whole (50% of its box) is a floor; the same L closed across a quarter of its
+    /// own perimeter is still refused, by the gate that measures the invention. WHAT IT DOES NOT: whether a thin
+    /// ring that IS drawn whole should be a plate (a balcony band, a corridor strip - the corpus gate judges that
+    /// against her models, and the render shows it).
+    /// </summary>
+    [Fact]
+    public void AnLShapedFloorDrawnWholeIsAFloorAndOneInventedAcrossItsPerimeterIsNot()
+    {
+        var drawn = StructuralPlanClassifier.Classify(
+            Ell(120), Options(), sheet: null, tags: new[] { Slab14(600, 600) });      // 120 in of 16,800 drawn: under 1%
+        var plate = Assert.Single(drawn.Slabs);
+        Assert.Equal(60_000, plate.Area / 144, 0);                                     // the L's own area, 50% of its box
+
+        var invented = StructuralPlanClassifier.Classify(
+            Ell(3600), Options(), sheet: null, tags: new[] { Slab14(600, 600) });      // 3,600 in against 13,200 drawn: 27%
+        Assert.Empty(invented.Slabs);
     }
 }

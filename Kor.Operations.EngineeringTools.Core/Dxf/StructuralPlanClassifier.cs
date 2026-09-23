@@ -1031,13 +1031,21 @@ public static class StructuralPlanClassifier
                         continue;
                     }
 
+                    // A RING'S SHAPE DOES NOT JUDGE IT; HOW MUCH OF IT THE DRAWING DREW DOES (intake step 136, 2026-09-22).
+                    // What stood here refused any candidate filling under 55% of its own bounding box, as "a thin or hooked
+                    // shape, which is what a slab edge looks like when its two ends are joined across the wrong gap". That
+                    // is a PROXY for the fault the next gate measures directly - the share of the ring nobody drew - and the
+                    // proxy cannot tell an L-shaped tower floor from an invention. Measured on run 43: it refused 188 rings
+                    // of 400 sq ft or more across 55 sets, 487,499 sq ft, fifty of them between 50% and 55%; among them
+                    // 30993's LEVEL 33-35 (seven storeys reading ZERO against her 11,727 sq ft each) and 31202's ROOF,
+                    // whose refusal is what parked step 132. A floor notched round a podium is the ordinary shape of a
+                    // tower. The invention gate below keeps its own evidence and its match-line exception, and a hooked
+                    // ring closed across the wrong gap is still refused there - by the measurement, not by the silhouette.
                     var (minX, minY, maxX, maxY) = ring.Bounds();
                     double box = (maxX - minX) * (maxY - minY);
-                    if (box <= 0 || ring.Area / box < 0.55)
+                    if (box <= 0)
                     {
-                        Refused(ring, $"filling {(box <= 0 ? 0 : ring.Area / box):P0} of its own box, under the " +
-                                      "55% a solid floor holds — a thin or hooked shape, which is what a slab " +
-                                      "edge looks like when its two ends are joined across the wrong gap");
+                        Refused(ring, "a ring with no extent in one direction: a line, not a floor");
                         continue;
                     }
 
@@ -1124,8 +1132,9 @@ public static class StructuralPlanClassifier
                     //
                     // Everything that stopped this pass inventing floors is untouched: the chain
                     // must have two loose ends and no more, enclose at least a whole plate, and
-                    // fill 55 per cent of its own box. What is relaxed is only WHERE the thickness
-                    // was written.
+                    // be closed across a small enough share of its own perimeter (step 136 took
+                    // the box-fill proxy out of that list; the invention is what is measured).
+                    // What is relaxed is only WHERE the thickness was written.
                     // AND ONLY A THICKNESS THIS SHEET HAS ALREADY PROVED.
                     //
                     // Not any call-out anywhere on the drawing: one that stands inside an outline

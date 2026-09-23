@@ -1,4 +1,4 @@
-#nullable enable
+﻿#nullable enable
 using Kor.Operations.EngineeringTools.Intake;
 using Xunit;
 
@@ -12,9 +12,11 @@ namespace Kor.Operations.EngineeringTools.Core.Tests.Intake;
 /// her openings.
 ///
 /// WHAT THIS COVERS: a set whose plate area falls past the tolerance is LOST and named (31087's shape, in its own
-/// numbers); a fall under the tolerance is drift and is not; a fall in thickness agreement alone is a loss; a set
-/// only one ledger judged is reported and left out of the totals; the totals are the sets judged both times; a
-/// ledger banked before the figures existed (41 columns) reads as nulls and is judged on nothing.
+/// numbers); a fall under the tolerance is drift and is not; a fall in thickness agreement, or in her openings we
+/// have, alone; EVIDENCE MISSING (the set gone from the new ledger, its yardstick failed, an older row standing in
+/// for a newer failed one, a NaN, a tolerance inflated by her own figure changing - every one of them silent until
+/// Codex's audit of 2026-09-22); an OVER-READ, because a rule that only adds area cannot lose; the totals are the
+/// sets judged both times; a ledger banked before the figures existed (41 columns) reads as nulls, judged on nothing.
 /// WHAT IT DOES NOT: the walk (CorpusAnalyzer's own tests), whether a GAIN is right (the render and the six-set
 /// gate), the 203 sets she has no model of. A same-class fault it would not catch: a rule that swaps her plate
 /// area for someone else's on the same storey, area for area.
@@ -22,12 +24,15 @@ namespace Kor.Operations.EngineeringTools.Core.Tests.Intake;
 public sealed class TheGateJudgesEverySetTheEngineerModelledTests
 {
     private static CorpusAnalyzer.SetRow Row(string job, double? oursSqFt, double hersSqFt = 100_000,
-        int? thicknessAgree = 8, int? thicknessStoreys = 10, int? openingsWeHave = 20, int? openingsHers = 30, string? yardstick = "hers.e2k")
+        int? thicknessAgree = 8, int? thicknessStoreys = 10, int? openingsWeHave = 20, int? openingsHers = 30, string? yardstick = "hers.e2k",
+        int? overHalfAgain = 0)
         => new(Guid.NewGuid(), DateTime.UtcNow, DateTime.UtcNow, job, "03 Residential", "structural", job + ".pdf",
             "2026-01-01", false, 1, 1, 1, 1, 0, 0, 0, 1, true, null, 1, 1, 0, 0, 0, 0, 1.0, null,
             Yardstick: yardstick,
-            PlatesOursSqFt: oursSqFt, PlatesHersSqFt: oursSqFt is null ? null : hersSqFt, PlatesUnderHalf: 0, PlatesBeyondSqFt: 0,
-            ThicknessStoreys: thicknessStoreys, ThicknessAgree: thicknessAgree, OpeningsHers: openingsHers, OpeningsHersWeHave: openingsWeHave);
+            PlatesOursSqFt: oursSqFt, PlatesHersSqFt: oursSqFt is null ? null : hersSqFt, PlatesUnderHalf: 0,
+            PlatesOverHalfAgain: oursSqFt is null ? null : overHalfAgain, PlatesBeyondSqFt: 0,
+            ThicknessStoreys: oursSqFt is null ? null : thicknessStoreys, ThicknessAgree: oursSqFt is null ? null : thicknessAgree,
+            OpeningsHers: oursSqFt is null ? null : openingsHers, OpeningsHersWeHave: oursSqFt is null ? null : openingsWeHave);
 
     [Fact]
     public void ASetThatLosesHerPlateAreaIsNamedAndTheBankIsStopped()
@@ -62,13 +67,85 @@ public sealed class TheGateJudgesEverySetTheEngineerModelledTests
         var real = CorpusGate.Judge([Row("31130-01", 250_000)], [Row("31130-01", 249_200)]);
         Assert.Single(real.Losses);
 
-        // a set the new ledger never judged (she has no model, or the run skipped it) is reported, never a loss, never a total
+        // a set judged at the bank and NOT judged now is evidence missing: out of the totals, and it stops the bank.
+        // (This read "never a loss" when it was written, which is the silence Codex's audit found the same night.)
         var gone = CorpusGate.Judge([Row("31065-01", 246_673), Row("31130-01", 250_000)], [Row("31130-01", 250_000)]);
-        Assert.Empty(gone.Losses);
+        Assert.Equal("31065-01", Assert.Single(gone.Losses).Job);
         Assert.Equal(250_000, gone.BeforeSqFt, 0);
         Assert.Equal(250_000, gone.AfterSqFt, 0);
         Assert.Equal(2, gone.Verdicts.Count);
         Assert.Single(gone.Judged);
+
+        // a set NEW in this run (never judged at the bank) is not a loss: there is nothing it could have lost
+        Assert.Empty(CorpusGate.Judge([Row("31130-01", 250_000)], [Row("31130-01", 250_000), Row("31065-01", 246_673)]).Losses);
+    }
+
+    /// <summary>
+    /// EVIDENCE MISSING IS A LOSS (Codex's audit of the gate, 2026-09-22, finding 1). Every one of these read GREEN
+    /// before: a set that vanished from the new run, a set whose yardstick failed to load so its figures are null, an
+    /// older successful row standing in for a newer failed one, a NaN that made the comparison false, and a yardstick
+    /// that changed between runs and bought a tolerance big enough to hide a real fall. A gate that goes quiet when
+    /// the evidence goes missing is worse than no gate, because it is believed.
+    /// </summary>
+    [Fact]
+    public void AGateIsNeverSilentWhenTheEvidenceGoesMissing()
+    {
+        var bank = new[] { Row("31087-01", 727_473, 817_386), Row("31138-01", 224_136, 309_507) };
+
+        // (a) the set is not in the new ledger at all - it failed to build, or the run skipped it
+        var gone = CorpusGate.Judge(bank, [Row("31138-01", 224_136, 309_507)]);
+        var lostGone = Assert.Single(gone.Losses);
+        Assert.Equal("31087-01", lostGone.Job);
+        Assert.Contains("not judged now", lostGone.Why, StringComparison.Ordinal);
+
+        // (b) the set is there and its yardstick would not load: figures null
+        var failed = CorpusGate.Judge(bank, [Row("31087-01", null), Row("31138-01", 224_136, 309_507)]);
+        Assert.Equal("31087-01", Assert.Single(failed.Losses).Job);
+
+        // (c) an OLDER successful row and a NEWER failed one in the same ledger: the newest decides
+        var older = Row("31087-01", 727_473, 817_386) with { RunAtUtc = DateTime.UtcNow.AddHours(-2) };
+        var newerFailed = Row("31087-01", null) with { RunAtUtc = DateTime.UtcNow };
+        Assert.Equal("31087-01", Assert.Single(CorpusGate.Judge(bank, [older, newerFailed, Row("31138-01", 224_136, 309_507)]).Losses).Job);
+
+        // (d) NaN: half the area gone and the comparison quietly false
+        Assert.Single(CorpusGate.Judge([Row("31202-01", 10_000, 10_000)], [Row("31202-01", 5_000, double.NaN)]).Losses);
+
+        // (e) her figure changing between runs must not buy a bigger tolerance: 1,000 sq ft lost is still a loss
+        var inflated = CorpusGate.Judge([Row("31202-01", 10_000, 10_000)], [Row("31202-01", 9_000, 1_000_000)]);
+        var lostInflated = Assert.Single(inflated.Losses);
+        Assert.Equal(200, lostInflated.Tolerance, 0);                          // hers AT THE BANK, not hers now
+    }
+
+    /// <summary>
+    /// A RULE THAT ONLY ADDS AREA CANNOT LOSE, SO THE GATE WATCHES WHAT IT ADDS (2026-09-22). Step 136 removes a
+    /// refusal: every set can only gain, and a gate that watched losses alone would pass it however much rubbish it
+    /// added - Codex's U-shaped courtyard void, read as a floor, is a GAIN here. More storeys carrying half again her
+    /// own area than before is the shape of that fault, and it stops the bank.
+    /// </summary>
+    [Fact]
+    public void ASetThatStartsReadingHalfAgainHerAreaOnAStoreyStopsTheBank()
+    {
+        var before = new[] { Row("31130-01", 250_000, 277_000, overHalfAgain: 0) };
+        var after = new[] { Row("31130-01", 262_000, 277_000, overHalfAgain: 2) };
+
+        var lost = Assert.Single(CorpusGate.Judge(before, after).Losses);
+        Assert.True(lost.OverRead);
+        Assert.False(lost.LostPlate);                                          // it GAINED 12,000 sq ft
+        Assert.Contains("over half again her area 0 -> 2", lost.Why, StringComparison.Ordinal);
+
+        // a gain that lands where she has area too is not an over-read
+        Assert.Empty(CorpusGate.Judge(before, [Row("31130-01", 262_000, 277_000, overHalfAgain: 0)]).Losses);
+    }
+
+    /// <summary>Her openings falling was computed and judged by nothing until Codex's audit named it.</summary>
+    [Fact]
+    public void HerOpeningsFallingStopsTheBankToo()
+    {
+        var lost = Assert.Single(CorpusGate.Judge(
+            [Row("31065-01", 246_673, 291_705, openingsWeHave: 62)],
+            [Row("31065-01", 246_673, 291_705, openingsWeHave: 40)]).Losses);
+        Assert.True(lost.LostOpenings);
+        Assert.Contains("her openings we have fell 62 -> 40", lost.Why, StringComparison.Ordinal);
     }
 
     [Fact]

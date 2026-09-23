@@ -1,4 +1,4 @@
-#nullable enable
+﻿#nullable enable
 using Kor.Operations.EngineeringTools.Intake;
 using Xunit;
 
@@ -34,7 +34,7 @@ public sealed class TheCorpusLedgerRoundTripsTests
                 OursCompared: 1531, OursMedianMm: 10.9, OursWithin100: 1311, TheirsCompared: 1504, TheirsWithin100: 1300, YardstickNote: "frame from column registration",
                 YardstickEdb: @"\\Kor-fs01\Projects\x\31168-01 Wind SLS_Model_SG_01.EDB", YardstickWritten: new DateOnly(2023, 9, 8), YardstickAgeDays: -2,
                 // and the figures the work is steered by (2026-09-22): her plate area, her thicknesses, her openings
-                PlatesOursSqFt: 332631.5, PlatesHersSqFt: 403049.25, PlatesUnderHalf: 3, PlatesBeyondSqFt: 1480,
+                PlatesOursSqFt: 332631.5, PlatesHersSqFt: 403049.25, PlatesUnderHalf: 3, PlatesOverHalfAgain: 2, PlatesBeyondSqFt: 1480,
                 ThicknessStoreys: 11, ThicknessAgree: 8, OpeningsHers: 64, OpeningsHersWeHave: 63);
             var sheet = new CorpusAnalyzer.SheetRow(run, "31168-01", 2, "S2.02", "plan", "S2.02 - LEVEL P3 PLAN / FOUNDATIONS PLAN, BLDG A & B", "P3", "1/8\" = 1'-0\"", 96,
                 0, 71, 35, 13641, "S2.02_1_LEVEL P3 PLAN FOUNDATIONS PLAN BLDG A - & B.dxf", null, false, null, "walls: 6 outline(s) would not close; 7 wall panel(s) read", null);
@@ -44,9 +44,25 @@ public sealed class TheCorpusLedgerRoundTripsTests
 
             // the readers are private to the analyzer; the CSV parser they share is not, and its inverse is the writer's quoting
             var fields = CorpusAnalyzer.Csv.Parse(File.ReadAllLines(sets)[1]);
-            Assert.Equal(49, fields.Count);                                     // 27 of the set, 11 of its yardstick, 3 of its provenance, 8 of her figures
+            Assert.Equal(50, fields.Count);                                     // 27 of the set, 11 of its yardstick, 3 of its provenance, 9 of her figures
             Assert.Equal("332631.5", fields[41]);                                 // her plate area we read: a column, not a line of prose to re-parse
-            Assert.Equal("8", fields[46]);                                        // her thicknesses we agree with
+
+            // AND EVERY ONE OF HER FIGURES COMES BACK AS ITSELF (2026-09-22, after Codex's audit asked whether the
+            // header, the writer and the parser agree index by index): nine distinct values in, nine out. A column one
+            // place out would be a number that judges every rule and means something else - the round trip is the only
+            // thing that can say so, and by eye it read as aligned while the record had them in another order.
+            var back = Assert.Single(CorpusAnalyzer.ReadSets(sets));
+            Assert.Equal(set.PlatesOursSqFt, back.PlatesOursSqFt);
+            Assert.Equal(set.PlatesHersSqFt, back.PlatesHersSqFt);
+            Assert.Equal(set.PlatesUnderHalf, back.PlatesUnderHalf);
+            Assert.Equal(set.PlatesOverHalfAgain, back.PlatesOverHalfAgain);
+            Assert.Equal(set.PlatesBeyondSqFt, back.PlatesBeyondSqFt);
+            Assert.Equal(set.ThicknessStoreys, back.ThicknessStoreys);
+            Assert.Equal(set.ThicknessAgree, back.ThicknessAgree);
+            Assert.Equal(set.OpeningsHers, back.OpeningsHers);
+            Assert.Equal(set.OpeningsHersWeHave, back.OpeningsHersWeHave);
+            Assert.Equal(set.Yardstick, back.Yardstick);
+            Assert.Equal(set.YardstickAgeDays, back.YardstickAgeDays);
             Assert.Equal(set.Pdf, fields[6]);                                     // the quotes and comma inside the path survive
             Assert.Equal("", fields[18]);                                         // a null is an empty field
             Assert.Equal("356.2", fields[25]);
