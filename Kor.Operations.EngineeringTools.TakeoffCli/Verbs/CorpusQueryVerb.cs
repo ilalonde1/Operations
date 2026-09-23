@@ -375,6 +375,11 @@ internal static class CorpusQueryVerb
         if (r.OnlyAfter.Count > 0) Console.WriteLine($"  only after ({r.OnlyAfter.Count}): {string.Join(" ", r.OnlyAfter)}");
         if (beforeSheets.Count > 0 && afterSheets.Count > 0)
             Console.WriteLine($"  reading (per-sheet sums over {beforeSheets.Count} -> {afterSheets.Count} sheets): columns {beforeSheets.Sum(s => s.Columns)} -> {afterSheets.Sum(s => s.Columns)}, walls {beforeSheets.Sum(s => s.Walls)} -> {afterSheets.Sum(s => s.Walls)}, placed {beforeSheets.Count(s => s.Placed == true)} -> {afterSheets.Count(s => s.Placed == true)}");
+        // HER SQUARE FEET, FIRST AND BY NAME (2026-09-22): the same judgement the gate makes, so a set that lost her
+        // plate area cannot hide in a sixty-row table again - 31087 fell 89% -> 47% in run 43 and was read a day late.
+        var gate = CorpusGate.Judge(before, after);
+        if (gate.Judged.Count > 0) Console.Write(CorpusGate.Summary(gate));
+        else Console.WriteLine("  (neither ledger carries her plate figures: one of them was banked before 2026-09-22)");
         Console.WriteLine($"  {"class",-12} {"sets",5} {"columns",9} {"walls",8} {"plates",7}  {"yardstick by SHARE better / worse / same",-40} ours within 100 mm before -> after (theirs)");
         foreach (var c in new[] { CorpusDiff.Change.NewModel, CorpusDiff.Change.LostModel, CorpusDiff.Change.Storeys, CorpusDiff.Change.Views, CorpusDiff.Change.Placement, CorpusDiff.Change.Composition, CorpusDiff.Change.SameCounts })
         {

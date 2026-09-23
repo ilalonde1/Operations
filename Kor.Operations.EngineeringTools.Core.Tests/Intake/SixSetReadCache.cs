@@ -30,7 +30,7 @@ internal static class SixSetReadCache
     /// </summary>
     internal static readonly string[] NotReadSide =
     [
-        "CorpusAnalyzer.cs", "CorpusDiff.cs", "SheetDiff.cs", "SetCheck.cs", "E2kModelQuery.cs", "E2kQuantityTakeoff.cs", "PlateCoverage.cs", "StickFileCorpus.cs", "DxfLayerStrip.cs",
+        "CorpusAnalyzer.cs", "CorpusGate.cs", "CorpusDiff.cs", "SheetDiff.cs", "SetCheck.cs", "E2kModelQuery.cs", "E2kQuantityTakeoff.cs", "PlateCoverage.cs", "StickFileCorpus.cs", "DxfLayerStrip.cs",
     ];
 
     internal sealed record Fingerprint(string PdfSha256, int Scale, string ReaderSha256);

@@ -137,6 +137,9 @@ public static class ModelYardstick
         /// reached the model.
         /// </summary>
         public IReadOnlyList<(string Storey, string YardstickStorey, double OursIn, double TheirsIn)> Thickness { get; init; } = [];
+
+        /// <summary>Our plate area beyond her model's footprint on its storey, in sq ft: counted, named in a note, judged by nothing.</summary>
+        public double PlatesBeyondSqFt { get; init; }
     }
 
     /// <summary>How far apart the centres of our opening and hers may be and still be one opening: a shaft is 2-3 m across and the frame carries registration slop.</summary>
@@ -479,6 +482,7 @@ public static class ModelYardstick
             OpeningRows = openingRows,
             Plates = plates,
             Thickness = ThicknessOnSharedStoreys(model, yard, storeyFigures, PlateJudged),
+            PlatesBeyondSqFt = platesBeyond.Values.Sum(),
         };
     }
 

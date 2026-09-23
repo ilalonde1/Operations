@@ -1,4 +1,4 @@
-if (TakeoffCliHelp.IsHelpRequest(args))
+﻿if (TakeoffCliHelp.IsHelpRequest(args))
 {
     TakeoffCliHelp.WriteTo(Console.Out);
     return 0;
@@ -321,6 +321,7 @@ public static class TakeoffCliHelp
         new("corpus-ledger-db", "takeoff corpus-ledger-db <ledger-sets.csv> [<ledger-sheets.csv>]", "A banked ledger pair into analysis.IntakeSet/IntakeSheet (the rows carry their run id), for a run whose analyzer lost the database on its final write; refuses a run already there."),
         new("knowledge-ingest", "takeoff knowledge-ingest <pdf> --source <code> [--clause <ref> ...] [--rules-db <conn>] [--dry-run]", "WP7: read KOR's copy of a code, standard or guideline and lift its knowledge.Clause rows (migration 096) from what was remembered to the page each clause stands on and the value it states - never the prose."),
         new("corpus-disagreements", "takeoff corpus-disagreements [--ledger <dir>] [--top N]", "The engineers' review from the corpus: every set that carries her ETABS model beside ours, read across the corpus - where the columns sit storey by storey, the storeys one names and the other does not, the sections we place that she does not and hers we miss, and the sets to open first. The backlog for the next rules, from the drawings and her models, no meeting."),
+        new("corpus-gate", "takeoff corpus-gate [--baseline <ledger-sets.csv>] [--jobs a,b] [--parallel N] [--out <csv>] [--no-build]", "THE GATE BETWEEN A RULE AND ITS BANK: builds the sets the engineer has a model of and judges them against a banked ledger on HER figures - plate area, slab thickness, openings - naming every set that LOST. The six-set gate says a rule broke nothing; this says whether it is good. Exit 1 on a loss."),
         new("corpus-query", "takeoff corpus-query summary|no-model|plan-titles|set <job>...|plates|yardsticks|diff <before-sets.csv>|pages <job> [--runs a,b]|storeys|grid-names [--ledger <dir>]", "Questions to the corpus ledger, no PDF opened: the population in one table, every set without a model by its reason, how plan sheets name their storeys, one set's sheets, the yardsticks worst first."),
         new("corpus-census", "takeoff corpus-census [<projectsRoot>] [--out census.csv] [--parallel N]", "Every job on the projects share and what it holds for the intake to learn from: dated structural stick files, architects' sets, the engineer's ETABS models; X of Y, one row per job. Read-only, bounded listings."),
         new("pdf-levels", "takeoff pdf-levels <stickfile.pdf> [levels.csv] [--plans <dxfDir>]", "The drawings' storeys as a levels file (level, elevation mm from the lowest stated level), read off the wall elevations — what dxf-to-etabs takes in place of a reference .e2k for a job nobody has modelled."),

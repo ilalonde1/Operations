@@ -70,6 +70,8 @@ public sealed class EveryReaderConstantIsTriagedTests
         ["GeometryFilterService.cs:SheetFrameMinShare"] = Convention("dxf.pdf.sheet-frame-min-share — a closed shape over 60% of the page is the frame"),
         ["GeometryFilterService.cs:SheetFrameMarginShare"] = Rule("a frame edge runs within a tenth of the page of the paper's edge; a line as long as the paper at mid-page is the building's (31009's 43.9 m east edge, step 130)"),
         ["GeometryFilterService.cs:SlabEdgeChainMinMm"] = Convention("dxf.pdf.slab-edge-chain-min-mm — shorter is a tick or a letter"),
+        ["CorpusGate.cs:PlateLossFloorSqFt"] = Rule("a set's plate area may fall 200 sq ft and still be a corner moving, not a loss; below that the gate does not stop a bank (2026-09-22)"),
+        ["CorpusGate.cs:PlateLossShare"] = Rule("and half a percent of HER plate area on that set: the losses worth stopping for are storeys, not square feet (31087 lost 42% of hers unseen)"),
         ["GeometryFilterService.cs:StrokeOnGridPieceMinMm"] = Rule("a stroke on a grid axis a column's width (300 mm) and longer is a piece of the edge, bridged and carried; a dash along the axis stays as drawn (31202's 1,380 dashes of 4 mm, step 131)"),
         ["GeometryFilterService.cs:ColumnsOutsideTheWalksFloorForAnother"] = Rule("four of the page's columns outside every floor the walk found are a floor's worth, and the arrangement is built as well (31065's two-view LEVEL 6 / LEVEL 7 page, step 135)"),
         ["GeometryFilterService.cs:FaceTraceMinOverlapMm"] = Convention("dxf.pdf.face-trace-min-overlap-mm"),
