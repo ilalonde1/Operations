@@ -4095,3 +4095,49 @@ Two things measured before being chased, which is the point of the evening: 3098
 "floor" never reached the model (a later gate refused it — the warning was honest); and part plans are 82 of
 8,617 sheet views, ~1% — but CONCENTRATED: 31048 writes 36 of them and sits at 45% of her plates with 48k missing.
 "A storey drawn as several part plans is one storey" is a real candidate, worth an hour, not a night.
+
+## 160. Codex audits the judge, and the judge was quiet in five places (2026-09-22 23:44 → 23:52)
+
+Ian: *"no stopping until all 7 steps are complete and tested and audited — you can run one in embedded codex."* The
+highest-value thing Codex could do was not write a rule: it was to attack the **instrument** that is now trusted to
+judge every rule. Brief: `docs/codex/CODEX-CORPUS-GATE-AND-STEP-136-AUDIT.md` (one topic, the files named, read-only,
+the questions ordered by what a bad answer would cost). Its sandbox could not spawn processes on this box, so the
+brief and the code went in on stdin; the response is banked beside it as
+`CODEX-CORPUS-GATE-AND-STEP-136-AUDIT-RESPONSE.md`.
+
+**It found five ways the gate could report GREEN while a set lost** — every one of them a silence, which is the worst
+kind of fault in a judge, because a green is believed:
+
+1. **The set is absent from the new ledger.** It failed to build, the run skipped it: `Judged` drops it, `Losses` is
+   empty, "the bank may take this."
+2. **Its yardstick failed to load**, so its figures are null: same silence, while `YardstickNote` records the failure
+   three lines away.
+3. **An older successful row stands in for a newer failed one.** `Judgeable` filtered to rows WITH figures and then
+   took the newest of those — so the run that matters measured nothing and the set read as unchanged.
+4. **NaN.** `5,000 of NaN` made the tolerance NaN and the comparison false: half the area gone, no loss reported.
+5. **Her own figure changing between runs bought a bigger tolerance**: 10,000/10,000 → 9,000/1,000,000 gave a
+   5,000 sq ft tolerance and concealed a 1,000 sq ft fall.
+
+And three more: **her openings falling was computed and judged by nothing**; a thickness figure going missing left the
+totals quietly smaller without a loss; the "largest gains first" comment was false (ascending put 100 before 1,000).
+It verified what was sound and said so in one line each — the eight columns line up index by index across header,
+writer and parser (it tabulated all eight), the case-insensitive job match, the rounding.
+
+**All of it is fixed, each with the case that would have passed before** (`AGateIsNeverSilentWhenTheEvidenceGoesMissing`,
+five cases; `HerOpeningsFallingStopsTheBankToo`). **Evidence missing is now a loss**: a set judged at the bank and not
+judged now stops the bank exactly as a fall does, and the summary prints WHY for each — "judged at the bank, not judged
+now", "her plate area fell 346,703 sq ft (tolerance 4,087)". One of my own tests from two hours earlier had asserted the
+wrong behaviour in so many words ("a set the new ledger never judged is reported, **never a loss**"); it is flipped, with
+the note that this was the silence.
+
+**The audit also changed step 136's judgement.** Finding 4 is a concrete counterexample: a **U-shaped courtyard void**,
+2,800 sq ft, 28% box fill, closed across one foot of 679 drawn — the removed 55% gate refused it; the invention gate
+passes it at 0.147%; the size gate passes it; two loose ends cannot tell it from a slab boundary; a thickness call-out
+inside the ring would confirm it. So step 136 can read a courtyard as a floor, and **the gate as written could not have
+told me**, because that is a GAIN, and the gate watched only losses.
+
+So the gate now watches what a rule ADDS: `plates_over_half_again` is a tenth ledger column (storeys where we read half
+again her own area), and **an over-read stops the bank** — `ASetThatStartsReadingHalfAgainHerAreaOnAStoreyStopsTheBank`.
+A rule like 136, which can only add, is now judgeable at all. That column was added at index 44 and the first cut put it
+in the record in another order — the exact "column one place out" fault the audit had just verified was absent — caught
+within a minute by making the round-trip test read every figure back through the parser instead of eyeballing the header.
