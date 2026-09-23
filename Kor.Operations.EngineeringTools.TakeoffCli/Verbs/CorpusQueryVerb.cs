@@ -10,6 +10,7 @@
 //   takeoff corpus-query columns <job>              each composed DXF view's column origins and wall containment
 //   takeoff corpus-query plates [<job> ...]         every built set's storeys with and without a plate, and where each missing plate was lost (WP6a item 2)
 //   takeoff corpus-query yardsticks                  every set measured against the engineer's own model, worst first
+//   takeoff corpus-query frames                      what stacks by its page frame and not by a grid: the F11 blast radius, upper bound
 //   takeoff corpus-query diff <before-sets.csv>      what moved between that banked run and this ledger, set by set, classed by the first thing that changed
 //   takeoff corpus-query storeys [<job> ...]       every built set's storey names classed: the ladder's shapes, roofs by word, sub-levels, elevations, GARBAGE (item 7 is done at 0)
 //   takeoff corpus-query grid-names [<job> ...]   what the sets call their grids: every grid-layer text, taken as a name or refused (step 89: A1-5 is a name)
@@ -21,7 +22,7 @@ internal static class CorpusQueryVerb
 
     public static int Run(string[] args)
     {
-        if (args.Length < 2) { Console.Error.WriteLine("Usage: takeoff corpus-query summary|no-model|plan-titles|set <job>...|columns <job>|plates [<job>...]|yardsticks|diff <before-sets.csv>|pages <job> [--runs a,b]|storeys|grid-names [<job>...] [--ledger <dir>]"); return 1; }
+        if (args.Length < 2) { Console.Error.WriteLine("Usage: takeoff corpus-query summary|no-model|plan-titles|set <job>...|columns <job>|plates [<job>...]|yardsticks|frames|diff <before-sets.csv>|pages <job> [--runs a,b]|storeys|grid-names [<job>...] [--ledger <dir>]"); return 1; }
         if (args[1].Equals("pages", StringComparison.OrdinalIgnoreCase)) return Pages(args.Skip(2).ToList());
         string dir = Path.Combine(DrawingMirror.Root, "corpus");
         var rest = new List<string>();
@@ -55,6 +56,7 @@ internal static class CorpusQueryVerb
             case "plan-titles": return PlanTitles(sheets);
             case "set": return Sets(rest, sheets, sets);
             case "yardsticks": return Yardsticks(sets);
+            case "frames": return Frames(sets, sheets);
             case "diff": return Diff(rest, sets, sheets);
             default: Console.Error.WriteLine($"Unknown question '{args[1]}'."); return 1;
         }
@@ -353,6 +355,54 @@ internal static class CorpusQueryVerb
         Console.WriteLine($"  {"job",-10} {"storeys",7} {"shared",6} {"frame",-8} {"ours≤100",9} {"theirs≤100",10} {"her model",-10} {"older by",8}  note");
         foreach (var s in y)
             Console.WriteLine($"  {s.Job,-10} {s.YardstickStoreys,7} {s.SharedStoreys,6} {(s.FrameFromGrids == true ? "grids" : s.FrameFromGrids == false ? $"cols/{s.FrameSupport}" : "-"),-8} {Pct(s.OursWithin100 ?? 0, s.OursCompared ?? 0),9} {Pct(s.TheirsWithin100 ?? 0, s.TheirsCompared ?? 0),10} {(s.YardstickWritten is { } w ? w.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture) : "-"),-10} {(s.YardstickAgeDays is { } d ? $"{d} d" : "-"),8}  {s.YardstickNote}");
+        return 0;
+    }
+
+    /// <summary>
+    /// THE F11 BLAST RADIUS (2026-09-23). A sheet that stands on no grid is stacked by the frame its page is
+    /// drawn in, so what that frame IS decides what stands under what - and step 64 moved it, when $INSBASE
+    /// became (0, 0) so that a point in a view is a point on the page. The six-set gate cannot see that change:
+    /// all six of its sets stand on grids. This counts who can.
+    ///
+    /// WHAT IT SAYS: how many written sheets stood on a grid and how many did not, set by set, with the storeys
+    /// and plates those sets carry and whether the engineer's own model is there to judge them.
+    ///
+    /// WHAT IT DOES NOT SAY: it counts sheets that stand on NO GRID, not sheets whose frame DIFFERS from the
+    /// set's placed sheets. A set whose unplaced pages share one media box with its placed ones stacks the same
+    /// either way. So this is the UPPER BOUND of the radius, not the radius: the population that could have
+    /// moved. It also cannot see a set that failed to build at all, which has no sheets to count.
+    /// </summary>
+    private static int Frames(IReadOnlyList<CorpusAnalyzer.SetRow> sets, IReadOnlyList<CorpusAnalyzer.SheetRow> sheets)
+    {
+        var bySet = sheets.Where(s => s.Placed is not null).GroupBy(s => s.Job, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => (Placed: g.Count(s => s.Placed == true), Off: g.Count(s => s.Placed == false)), StringComparer.OrdinalIgnoreCase);
+        int written = bySet.Sum(kv => kv.Value.Placed + kv.Value.Off), placed = bySet.Sum(kv => kv.Value.Placed), off = bySet.Sum(kv => kv.Value.Off);
+        Console.WriteLine("  THE F11 BLAST RADIUS - what stacks by its page frame, not by a grid (upper bound)");
+        Console.WriteLine($"  sheets with a verdict        {written,6}");
+        Console.WriteLine($"    stood on a grid            {placed,6}  {Pct(placed, written)}");
+        Console.WriteLine($"    stood on no grid           {off,6}  {Pct(off, written)}   <- stacked by the page frame");
+
+        var withSheets = sets.Where(s => bySet.ContainsKey(s.Job)).ToList();
+        var allOn = withSheets.Where(s => bySet[s.Job].Off == 0).ToList();
+        var someOff = withSheets.Where(s => bySet[s.Job].Off > 0 && bySet[s.Job].Placed > 0).ToList();
+        var noneOn = withSheets.Where(s => bySet[s.Job].Placed == 0).ToList();
+        Console.WriteLine($"  sets with sheets judged      {withSheets.Count,6}  of {sets.Count} in the ledger");
+        Console.WriteLine($"    every sheet on a grid      {allOn.Count,6}");
+        Console.WriteLine($"    some sheet off the grid    {someOff.Count,6}   {someOff.Sum(s => s.StoreysBuilt ?? 0)} storeys, {someOff.Sum(s => s.Floors ?? 0)} plates, {someOff.Count(s => s.Yardstick is not null)} with her model");
+        Console.WriteLine($"    no sheet on a grid         {noneOn.Count,6}   {noneOn.Sum(s => s.StoreysBuilt ?? 0)} storeys, {noneOn.Sum(s => s.Floors ?? 0)} plates, {noneOn.Count(s => s.Yardstick is not null)} with her model");
+
+        var gateSets = new[] { "31130-01", "31138-01", "31065-01", "31202-01", "31168-01", "31170-01-arch" };
+        Console.WriteLine("  the six-set gate's own sets:");
+        foreach (string j in gateSets)
+            Console.WriteLine($"    {j,-14} {(bySet.TryGetValue(j, out var g) ? $"{g.Placed} on the grid, {g.Off} off" : "not in this ledger")}");
+
+        var radius = someOff.Concat(noneOn).OrderByDescending(s => bySet[s.Job].Off).ThenByDescending(s => s.Floors ?? 0).ToList();
+        Console.WriteLine($"  worst first ({radius.Count} sets stack something by a page frame):");
+        Console.WriteLine($"  {"job",-14} {"off",4} {"on",4} {"storeys",7} {"plates",6} {"her model",-9}  her sq ft");
+        foreach (var s in radius.Take(40))
+            Console.WriteLine($"  {s.Job,-14} {bySet[s.Job].Off,4} {bySet[s.Job].Placed,4} {s.StoreysBuilt,7} {s.Floors,6} {(s.Yardstick is not null ? "yes" : "-"),-9}  {(s.PlatesHersSqFt is { } h && !double.IsNaN(h) ? h.ToString("N0", System.Globalization.CultureInfo.InvariantCulture) : "-")}");
+        if (radius.Count > 40) Console.WriteLine($"  ... and {radius.Count - 40} more");
+        Console.WriteLine("  THIS IS THE UPPER BOUND: a set whose unplaced pages share one media box with its placed ones stacks the same either way.");
         return 0;
     }
 

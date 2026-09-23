@@ -141,9 +141,28 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
         public const double SheetFrameMinShare = 0.6;
         /// <summary>A frame edge runs within this share of the page of the paper's edge (step 130); a line at mid-page as long as the paper is the building's.</summary>
         public const double SheetFrameMarginShare = 0.1;
+        /// <summary>
+        /// The bisect's knob for step 130 (2026-09-23). With KOR_STEP130_OFF=1 every long line is a frame edge
+        /// again, as it was before step 130 - which is what a run before 2026-09-17 20:00 read. Added because
+        /// run 41 -> run 43 lost the plate on 79 storeys across 10 sets, 71 of them on 31087-01 (59 -> 18) and
+        /// 30993-01 (39 -> 9), and run 42's partial ledger still had 30993 whole at step 129: so the fall arrived
+        /// at step 130 or step 131, and only 131 had a knob to ask with.
+        ///
+        /// READ EVERY TIME, NEVER CACHED IN A STATIC: `corpus-gate --bisect` sets the knob and re-reads inside the
+        /// SAME process, so a static readonly would freeze whatever the process started with and every bisect arm
+        /// would answer the same - a silent one, which is the fault Codex found five of in the gate itself. This is
+        /// only reached by a line already 60% of the page long, so the lookup costs nothing that matters.
+        /// </summary>
+        internal static bool Step130Off => Environment.GetEnvironmentVariable("KOR_STEP130_OFF") == "1";
         /// <summary>Whether a line's centre, across its run, lies within <see cref="SheetFrameMarginShare"/> of the page of either edge (step 130).</summary>
-        internal static bool AtTheMargin(double centreMm, double pageExtentMm)
-            => pageExtentMm <= 0 || centreMm <= SheetFrameMarginShare * pageExtentMm || centreMm >= (1 - SheetFrameMarginShare) * pageExtentMm;
+        internal static bool AtTheMargin(double centreMm, double pageExtentMm) => AtTheMargin(centreMm, pageExtentMm, Step130Off);
+        /// <summary>
+        /// The same question with the knob HANDED IN, so a test can put the rule both ways without touching a
+        /// process-wide environment variable while other classes are reading PDFs beside it - the shared-static
+        /// hazard SheetNamingVocabularyCollection was written for.
+        /// </summary>
+        internal static bool AtTheMargin(double centreMm, double pageExtentMm, bool step130Off)
+            => step130Off || pageExtentMm <= 0 || centreMm <= SheetFrameMarginShare * pageExtentMm || centreMm >= (1 - SheetFrameMarginShare) * pageExtentMm;
 
         /// <summary>
         /// A fill this light, on every channel, is the paper. A shape filled with it and drawn with
@@ -2574,8 +2593,17 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                         // sq ft, the walk's, exact) stood down to arrangement cells elsewhere on the page that held more of the page's
                         // "columns" - the column schedule's symbols beside the plan - and the storey went to the DXF side's wall fallback.
                         int Held(PlanLoop l) => result.Columns.Count(c => LoopGeometry.PointInPolygon(new DxfPoint(c.X, c.Y), l.Points));
-                        static DxfPoint Centroid(PlanLoop l) => new(l.Points.Average(p => p.X), l.Points.Average(p => p.Y));
-                        bool Over(PlanLoop a, PlanLoop b) => LoopGeometry.PointInPolygon(Centroid(a), b.Points) || LoopGeometry.PointInPolygon(Centroid(b), a.Points);
+                        // OVER MEANS THE RINGS ACTUALLY LIE ON EACH OTHER, NOT THAT A MEAN POINT DOES (2026-09-23 00:05, Codex's
+                        // audit of step 135). The first cut asked whether the AVERAGE of one ring's vertices fell inside the other.
+                        // The average of a concave floor's vertices is not inside it: a C-shaped floor of 2,800 sq m -
+                        // (0,0) (60,0) (60,20) (20,20) (20,40) (60,40) (60,60) (0,60) - averages to (35,30), which is in the notch.
+                        // A schedule's border drawn in that notch, 120 sq m, then "contained" the floor's mean point and the real
+                        // floor stood down to it - a swap of the storey for a table, with ZERO overlap between them. And step 136
+                        // has just made concave floors ordinary. Vertices both ways: two readings of one slab each have corners
+                        // inside the other; two rings that miss each other have none. (It does not see two rings that cross with
+                        // no vertex inside either - a plus sign - which no pair of readings of one floor makes.)
+                        static bool AnyCornerInside(PlanLoop a, PlanLoop b) => a.Points.Any(p => LoopGeometry.PointInPolygon(p, b.Points));
+                        static bool Over(PlanLoop a, PlanLoop b) => AnyCornerInside(a, b) || AnyCornerInside(b, a);
                         int stoodDown = 0;
                         foreach (var w in walkFloorsToReplace)
                         {

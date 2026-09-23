@@ -9,8 +9,15 @@ namespace Kor.Operations.EngineeringTools.Intake;
 /// was read that way: 29 sets new, 27 with more storeys (step 47's words), 13 with a different
 /// placement, and 117 with the same storeys and the same placement whose columns, walls or plates
 /// moved - the page frame (step 54) stacking the sheets that stand on no grid where the drafter put
-/// them on the page, where the content centroid had stacked them before. The six-set gate could not
-/// see that class: all six sets stand on grids.
+/// them on the page, where the content centroid had stacked them before.
+///
+/// ⚠ THIS PARAGRAPH USED TO END "the six-set gate could not see that class: all six sets stand on
+/// grids", AND THAT IS NOT TRUE (measured 2026-09-23 by `corpus-query frames`, on run 43's ledger).
+/// Of the four gate sets the corpus reads, 31202-01 has 23 of its 34 plan sheets standing on no grid,
+/// 31065-01 19 of 40, 31130-01 14 of 33 and 31168-01 13 of 45. Every one of them stacks something by
+/// a page frame, so the gate DOES touch this class - it simply blesses whatever it finds, because a
+/// deliberate change is re-banked. Corpus-wide the class is 1,901 of 4,053 judged sheets (47%) across
+/// 204 of the 258 sets with a verdict; 74 of those sets place no sheet on a grid at all.
 /// </summary>
 /// <remarks>
 /// WHAT THIS COVERS: the class of every set, the sums of columns, walls and plates each class moved,

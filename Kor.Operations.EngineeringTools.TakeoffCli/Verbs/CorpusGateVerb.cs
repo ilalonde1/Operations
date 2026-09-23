@@ -123,7 +123,7 @@ internal static class CorpusGateVerb
         }
         else if (report.Losses.Count > 0 && bisect is null)
         {
-            Console.WriteLine("  to find which rule took them: --bisect KOR_STEP131_OFF,KOR_STEP133_OFF,KOR_STEP134_OFF,KOR_STEP135_OFF");
+            Console.WriteLine("  to find which rule took them: --bisect KOR_STEP130_OFF,KOR_STEP131_OFF,KOR_STEP133_OFF,KOR_STEP134_OFF,KOR_STEP135_OFF");
         }
         if (outCsv is not null)
         {

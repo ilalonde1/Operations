@@ -99,6 +99,35 @@ public sealed class AFloorIsItsCellsUnitedTests
         Assert.All(walkKept.Slabs, s => Assert.Equal(W * H, Area(s), 1));
     }
 
+    /// <summary>
+    /// A WALK FLOOR STANDS DOWN ONLY TO A RING THAT LIES ON IT (intake step 135's second half, mended 2026-09-23 after
+    /// Codex's audit). The test was whether the AVERAGE of one ring's vertices fell inside the other, and the average of
+    /// a concave floor's vertices is not inside the floor: Codex's C-shaped storey - (0,0) (60,0) (60,20) (20,20)
+    /// (20,40) (60,40) (60,60) (0,60) in metres, 2,800 sq m - averages to (35,30), in the notch. A schedule's border
+    /// drawn in that notch then "contained" the floor's mean point, and the storey stood down to a 120 sq m table with
+    /// no overlap between them at all. Step 136 has just made concave floors ordinary, so this was about to matter.
+    /// WHAT THIS COVERS: the C and the rectangle in its notch, at the drawing's own scale - the floor stays, the table
+    /// does not replace it. WHAT IT DOES NOT: two rings that cross with no corner inside either (a plus sign), which no
+    /// two readings of one floor make.
+    /// </summary>
+    [Fact]
+    public void AConcaveFloorDoesNotStandDownToARingDrawnInItsNotch()
+    {
+        // the C, in mm: the notch is the empty right-middle, and the vertex average (35,30) m lands in it
+        (double X, double Y)[] c = [(0, 0), (60000, 0), (60000, 20000), (20000, 20000), (20000, 40000), (60000, 40000), (60000, 60000), (0, 60000)];
+        var walk = new PlanLoop("SLABEDGE", c.Select(p => new DxfPoint(p.X, p.Y)).ToList(), closedExactly: true);
+        var table = new PlanLoop("SLABEDGE", new List<DxfPoint> { new(30000, 24000), new(40000, 24000), new(40000, 36000), new(30000, 36000) }, closedExactly: true);
+
+        Assert.True(LoopGeometry.PointInPolygon(new DxfPoint(walk.Points.Average(p => p.X), walk.Points.Average(p => p.Y)), table.Points),
+            "the fixture only bites if the C's vertex average really does fall inside the table");
+        Assert.False(LoopGeometry.PointInPolygon(new DxfPoint(walk.Points.Average(p => p.X), walk.Points.Average(p => p.Y)), walk.Points),
+            "and outside the C itself");
+
+        // no corner of either ring lies inside the other: they do not lie on each other, whatever their averages do
+        Assert.DoesNotContain(table.Points, p => LoopGeometry.PointInPolygon(p, walk.Points));
+        Assert.DoesNotContain(walk.Points, p => LoopGeometry.PointInPolygon(p, table.Points));
+    }
+
     [Fact]
     public void AnEdgeInterruptedInLineIsOneEdgeUpToTheCornerCarryLimit()
     {
