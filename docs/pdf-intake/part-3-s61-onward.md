@@ -4047,3 +4047,51 @@ duplicates gone); 30990 54 → 70% honest (L5 stays at 516 until 132 re-enters).
 on the re-banked six; commit `80bb3367`; 132 on `step-132` (`b59cff71`).
 
 **The full suite on the banked develop (03:17 → 04:09, 51 min beside two other sessions' hosts): 1,663 green, 1 skipped by its own gate, 1 red — the known knife-edge (`TheSameDrawingsShiftedOnThePage…`, 31138 L21, one 914 mm wall gained under the shift; §141, §153). No new red; the DXF baselines (31138 15 floors, 31168) and the six-set gate green inside it.**
+
+## 159. The judge, not another rule: what the loop was costing, and the corpus gate that closes it (2026-09-22 22:49 → 23:25)
+
+**Ian's question, and the honest answer.** *"Is the process working? Are you working as intelligently as possible?"*
+The rules were right — each of 126–135 was proved red/green on its target and against her models. The LOOP was a
+generation behind, and three things from 09-19 name the cost:
+
+1. **A six-set judge over a 293-set population.** Step 131 banked on a green six-set gate cost 31087 forty-one
+   storeys (89% → 47% of her plates) and 31083 (7% → 2%); both were read a day later, by eye, out of run 43's diff.
+2. **A bisect by hand.** Four rules landed together, one took 31202's LEVEL 13; finding which took six serial
+   six-set gates — seventy minutes — plus forty minutes of one-page traces that could not reproduce the fault at
+   all (the page needs its set's context).
+3. **The number we steer by was prose.** The yardstick has computed her plate area, her thicknesses and her
+   openings since step 118, and they reached nobody but a human reading `yardstick.txt`; `corpus-disagreements`
+   re-parsed them out of that prose with regexes, and the per-set before/after was `judge6.sh`, a bash script
+   written by hand at 23:20 on 09-19 — against the rule that instruments ship as code.
+
+**So tonight built the judge, not another rule.**
+
+- **Eight columns on the set ledger** (`plates_ours_sqft`, `plates_hers_sqft`, `plates_under_half`,
+  `plates_beyond_sqft`, `thickness_storeys`, `thickness_agree`, `openings_hers`, `openings_hers_we_have`), filled
+  from the comparison the yardstick already makes; `ModelYardstick.PlatesBeyondSqFt` beside them. A ledger banked
+  before tonight has 41 fields and reads as nulls — judged on nothing, never a false loss.
+- **`CorpusGate.Judge`** (Core, tested on 31087's own numbers, proved by breaking the comparison): every set either
+  ledger judged, losses first. A set LOSES when its plate area falls by more than the larger of 200 sq ft and half
+  a percent of hers, or when her thicknesses we agreed with fall.
+- **`takeoff corpus-gate`** builds the ~50 sets she has modelled (the analyzer's own walk, `--jobs`) and judges
+  them against the banked ledger; exit 1 on a loss, `--out` for the CSV, `--no-build` to judge a run that just
+  finished. ~35 min: it fits between a rule and its bank, where a 3 h 17 m full run cannot.
+- **`--bisect KOR_STEP131_OFF,…`** re-reads the LOST sets only, one knob at a time, and names the rule that took
+  them — eight single-set reads where 09-19 took seventy minutes of serial gates.
+- **`corpus-query diff` prints that same judgement FIRST**, so a loss can never again hide in a sixty-row table.
+
+Four of the repo's own guards fired while this landed and were answered rather than silenced: the ledger
+round-trip (49 fields now, with two of the new values asserted), the help list, the constant triage, and the read
+cache's excluded-source rule (`CorpusGate.cs` is not read-side). Fast suite 1,549 green; `0a57b079`, `c1d393b8`.
+
+**And the grinding is now ranked, not chosen.** From run 43's ledger and disagreements (`rank_classes.py`), her
+square feet we do not read, biggest first: 30993 91k (7 storeys at ZERO), 31017 90k, 31087 82k (7 at zero — step
+135's class, banked but not yet measured), 31202 77k, 31083 73k, 70061 59k, 30990 58k, 30989 56k (4 at zero),
+31048 48k, 31104 38k, 31005 36k (4 at zero). **Of the top 736k, about 353k sits on storeys that read NOTHING** —
+and the composer says why in one sentence per sheet: *"No slab edge on this drawing would close."* That is the
+biggest single lever left, and it is a trace per set, not a guess.
+
+Two things measured before being chased, which is the point of the evening: 30989's alarming 451,289 sq ft
+"floor" never reached the model (a later gate refused it — the warning was honest); and part plans are 82 of
+8,617 sheet views, ~1% — but CONCENTRATED: 31048 writes 36 of them and sits at 45% of her plates with 48k missing.
+"A storey drawn as several part plans is one storey" is a real candidate, worth an hour, not a night.
