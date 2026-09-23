@@ -2013,8 +2013,33 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
             // one symptom is where CLAUDE.md rule 10 says to stop, so the code stops here and the
             // finding is the deliverable. (Step 78 is the third way the paragraph above asked for: the
             // planar arrangement, where an edge serves both faces beside it.)
+            // A FLOOR THE DRAFTER DREW STANDS THE ARRANGEMENT DOWN; A FLOOR BRIDGED OUT OF PIECES DOES NOT
+            // (intake step 138, 2026-09-23). These loops are closed from the PIECES - open chains bridged and
+            // extended, and since step 131 the strokes along a grid axis among them - and they were added to the
+            // walk's own list, which is what `walkFoundAFloor` is computed from sixty lines below. A walk floor
+            // makes the arrangement stand down ENTIRELY, so a ring inferred by bridging silently outranked the
+            // arrangement's reading of what the drafter actually drew. The comment at the top of this pass has
+            // said the opposite since step 78 - the strokes are "offered to the ARRANGEMENT below, not to the
+            // walk" - and it was true of the intent and false of the code.
+            //
+            // MEASURED ON 30993-01, which step 131 costs 321,957 sq ft of her 560,266 (34% against 91% with the
+            // knob off), nine sheets and 31 storeys, every sheet with the same signature. Page 68, both ways:
+            //   131 off  108 pieces  walk found a floor FALSE  ->  the arrangement closes 10,084 sq ft, x 109.0..216.0 ft
+            //   131 on   115 pieces  walk found a floor TRUE   ->  the pieces close  9,094 sq ft, x  96.0..222.7 ft
+            // - six metres wider and a thousand square feet smaller, running out along the grid lines, and the
+            // arrangement never built at all: the ON arm's trace is missing every one of the arrangement's
+            // fifteen diagnostic lines. On 30990-01, which step 131 EARNS 44,219 sq ft, the pieces close nothing
+            // that stands in structure, the walk still finds no floor, the arrangement runs and 516 sq ft becomes
+            // 11,150. That is the whole difference between the set 131 saves and the set it destroys.
+            //
+            // The pieces' loops are still loops - still floors where nothing else reads one, still replaced by
+            // the arrangement's under step 113/135 - they simply no longer decide, by themselves, that the
+            // arrangement need not be built.
+            int drawnLoops = loops.Count;
             if (pieceSegments.Count >= 2)
                 loops.AddRange(new PlanLoopBuilder(SlabEdgeJoinMm, slabEdgeBridgeMm, SlabEdgeExtendMm).Build(pieceSegments).Loops);
+            // the bisect's knob: with KOR_STEP138_OFF=1 a bridged ring stands the arrangement down as it did before
+            var loopsTheDrafterDrew = Environment.GetEnvironmentVariable("KOR_STEP138_OFF") == "1" ? loops : loops.Take(drawnLoops).ToList();
 
             // A FLOOR IS THE CELLS ITS STRUCTURE STANDS IN, UNITED (intake step 78, 2026-09-15). The chain walk
             // above spends each segment on the first ring it closes, and a tower floor is drawn with its
@@ -2100,9 +2125,17 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 .ToList();
             // AND ONLY WHERE NOTHING DREW ONE EITHER: the architect's set closes every storey's outline as a drawn path
             // (32,076 sq ft) and every room inside it; the union could only add cells inside that path.
-            bool walkFoundAFloor = loops.Any(l => l.Area >= minSlabAreaMm2 && StandsIn(l))
+            // step 138: the loops THE DRAFTER DREW, not the ones bridged out of pieces - see the note at the
+            // AddRange above for what a bridged ring cost 30993-01
+            bool walkFoundAFloor = loopsTheDrafterDrew.Any(l => l.Area >= minSlabAreaMm2 && StandsIn(l))
                                    || drawn.Any(d => StandsIn(new PlanLoop("SLABEDGE", d, true)));
             var walkFloorsToReplace = new List<PlanLoop>();   // step 113: the walk's floors the arrangement's supersede when it finds one
+            // AND A BRIDGED RING THE ARRANGEMENT NOW OUTRANKS IS ONE OF THEM (step 138). Where the only floor was
+            // closed out of pieces, the arrangement is built beside it - and the bridged ring must be offered for
+            // replacement explicitly, not left to the downstream "two readings of one floor, the larger is kept"
+            // tie-break, which would keep the WRONG one wherever the inferred ring is the bigger of the two.
+            if (!walkFoundAFloor)
+                walkFloorsToReplace = loops.Skip(drawnLoops).Where(l => l.Area >= minSlabAreaMm2 && StandsIn(l)).ToList();
             // A FLOOR THE WALK FOUND THAT HOLDS UNDER HALF THE PAGE'S COLUMNS IS NOT THE PAGE'S FLOOR (step 113, 2026-09-17 01:50).
             // 60061-03's typical plan (a hotel's, the outline under a dense reinforcing plan) walked a 53 x 37 ft rectangle at
             // the page's foot - the stud-rail schedule's border, three of its symbols read as columns - into a 1,953 sq ft
