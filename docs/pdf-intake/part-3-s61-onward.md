@@ -4141,3 +4141,121 @@ again her own area), and **an over-read stops the bank** — `ASetThatStartsRead
 A rule like 136, which can only add, is now judgeable at all. That column was added at index 44 and the first cut put it
 in the record in another order — the exact "column one place out" fault the audit had just verified was absent — caught
 within a minute by making the round-trip test read every figure back through the parser instead of eyeballing the header.
+
+## 161. What the six-set gate cost, in one number; and a storey named by two sheets keeps one of them (2026-09-23 00:00–00:35)
+
+Run 44 held the box all night, so this hour was spent on questions the BANKED ledgers already answer
+and had never been asked. Three of them, and the third is the night's finding.
+
+**Step 135's stand-down, mended.** Codex's audit (§160's brief's companion,
+`docs/codex/CODEX-INTAKE-STEPS-131-135-AUDIT.md`) returned five findings on steps 131/133/134/135.
+Two are answered by naming a file: a schedule's border read as a floor, and its symbols read as
+columns, are refused at `GeometryFilterService.cs:306`, where any path whose centre falls inside a
+ruled schedule, notes box, legend or title block takes the fate `FurnitureRegion` before the
+classifier sees it (`SheetFurnitureIsNotStructureTests`). Codex could not see that file. What
+survives is narrower and `SheetFurniture`'s own summary already names it: a legend or table that is
+NOT ruled.
+
+The defect underneath the schedule was real. Step 135's stand-down asked whether the **average of
+one ring's vertices** fell inside the other — and the average of a concave floor's vertices is not
+inside it. Codex's C-shape, `(0,0) (60,0) (60,20) (20,20) (20,40) (60,40) (60,60) (0,60)`, 2,800 m²,
+averages to (35,30), in its own notch; a 120 m² ring drawn there "contained" the floor and evicted
+it, **with zero overlap between them**. Step 136 has just made concave floors ordinary. It now asks
+whether either ring has a corner inside the other —
+`AConcaveFloorDoesNotStandDownToARingDrawnInItsNotch`, Codex's exact geometry. Six-set gate
+**green**, the six byte-identical; fast suite 1,557. Committed `d034d968`.
+
+**What the six-set gate cost, from banked data.** Run 41 (step 124) against run 43 (step 131), over
+the 293 sets both read: **51 sets LOST plates, −211; 61 gained, +171; 146 unchanged; net −40.** By
+storey it is sharper — **10 sets lost the plate on 79 storeys**, and 71 of those are two sets that
+both have the engineer's own model: **31087-01 59 → 18** and **30993-01 39 → 9**. The gate was green
+through every step in between. That is the six-set loop's price in one line, and it is why the
+corpus gate exists.
+
+And the reading did not fall: 30993 read MORE slabs after (1,147 → 1,183 over the same 123 sheets;
+31087 517 → 512 over 51). **What was lost was lost after the read.** Run 42's partial ledger — 133
+sets, written 09-19 20:44, never read — still has 30993 at 50 plates at step 129, so the fall
+arrived at **step 130 or step 131**. Step 131 had a bisect knob. Step 130 did not, so the question
+could not be asked: `KOR_STEP130_OFF` now exists, read on every call and never cached in a static,
+because `--bisect` sets it and re-reads in the SAME process and a frozen field would answer the same
+on every arm — a silent green, the class Codex found five of in the gate.
+`ABisectKnobActuallyTurnsItsRuleOffTests` holds it both ways and states which knobs it does not
+cover (131, 133, 134, 135 have none).
+
+**What stacks by a page frame is a verb now** — `takeoff corpus-query frames`, the F11 blast radius
+(§64: a sheet that stands on no grid stacks by the frame its page is drawn in, and step 64 moved
+that frame). On run 43: **1,901 of 4,053 judged sheets (47%) stand on no grid**, across 204 of the
+258 sets with a verdict; 74 sets place no sheet on a grid at all (477 storeys, 1,363 plates, 5 with
+her model); only 54 sets place every sheet. It prints what it does NOT say — it counts sheets off
+the grid, not sheets whose frame DIFFERS from their set's placed ones, so it is the upper bound.
+
+That measurement contradicts a comment this repo has steered by for ten days. `CorpusDiff` said *"the
+six-set gate could not see that class: all six sets stand on grids."* Of the four gate sets the
+corpus reads, **31202-01 stands 23 of its 34 plan sheets on no grid, 31065-01 19 of 40, 31130-01 14
+of 33, 31168-01 13 of 45.** Every one of them stacks something by a page frame. Corrected where it
+lives.
+
+### A storey named by two sheets keeps one of them
+
+The sentence, and it took one query to write:
+
+> **When two or more plan sheets name the same storey, ONE takes it and the rest are dropped with
+> everything they read.**
+
+Run 43, 4,073 plan sheets. 1,269 read at least one slab and gave the model no storey — 28,839 slabs.
+`takeoff corpus-query dropped` classes them:
+
+| class | sheets | slabs |
+|---|---:|---:|
+| stood on no grid | 1,049 | 24,920 |
+| placed, states no level | 75 | 1,003 |
+| placed, states a level, nobody took it | 35 | 456 |
+| **placed, states a level, A TWIN TOOK IT** | **110** | **2,460** |
+
+The last class is the fault: the sheet stands on the model's own grid, it says which level it is, it
+reads its slabs, and another sheet of the same job naming the SAME level took the storey — so this
+one gives the model nothing.
+
+**It is one fault wearing three faces, and three separate items on the list were chasing them apart.**
+30990-01 draws each parkade level twice, Tower A and Tower B:
+
+```
+S2.01.1.1  TOWER A - FOUNDATION PLAN PARKING LEVEL P3   placed   9 slabs  ->  P3
+S2.01.2.1  TOWER B - FOUNDATION PLAN PARKING LEVEL P3   placed   9 slabs  ->  nothing
+S2.02.1.1  TOWER A - PARKING LEVEL P2 - CONCRETE OUTLINE placed  9 slabs  ->  P2
+S2.02.2.1  TOWER B - PARKING LEVEL P2 - CONCRETE OUTLINE placed  8 slabs  ->  nothing
+```
+
+— the same at P1, and at Level 1 where Tower B's sheet read 31 slabs and vanished. Above the podium
+both towers place: S2.05.1 and S2.15.1 both take L2, S2.10 and S2.20 both take L9–L18. So **Tower B
+loses exactly the levels the two towers share a name for**, and nothing else. The reinforcing sheets
+(`*.2`) stand down already, which is correct and was the other half of the 30990 item.
+
+01379-01 loses 7 sheets the same way as PLAN B and PLAN C of a level whose PLAN A took it, and two
+more — its P1 and Level 1 MEZZANINE overall plans, **182 slabs** — in the class where nobody took the
+level at all. 31093-01 loses 452 slabs over 6 sheets, 31230-01 214 over 4, 31048-01 103 on one sheet
+(which is the part-plan item). **Two of the six gate sets carry it**: 31168-01 loses 7 sheets and 142
+slabs, 31065-01 4 and 34 — and the six-set gate cannot see a fault that was already in the baseline
+when it was banked, because it proves nothing MOVED and a standing defect never moves.
+
+**Where it happens is already named in the code.** `DxfToEtabsService.cs:1588`: a sheet whose
+`MatchStories` comes back empty is warned about and added to `readButNotPlaced`, under a comment
+written about *31168's parkade sheets* — "A DRAWING FULL OF STRUCTURE THAT LANDS NOWHERE IS THE
+LOUDEST FAULT THERE IS. It was the quietest." So the REPORTING of it was fixed. The matching was
+not, and nothing counted the population until tonight.
+
+⚠ **What is NOT yet established, and the experiment that settles it.** Reading the code, 30990's
+ladder carries no building in any storey name (`P3 P2 P1 L1 L1A L2 … L20 ROOF`, 25 names, none
+matching `BuildingPrefix = ^(?:[A-Z]|\d{1,2}[A-Z]?)-(?=L\d|P\d|…)`), so `storeysByBuilding` is false
+and the building filter at `PlanSheetNaming.cs:347` should NOT fire — both towers' sheets should
+match P2. They do not. The dropped sheets carry **no flags at all** while the kept ones carry
+thousands of characters of them, which says their geometry never reached the classifier. The next
+move is one set, not a corpus: build 30990-01 alone and read `readButNotPlaced` and the warning line
+for `S2.02.2.1`, which says in its own words which of the two branches took it. Blocked only on run
+44 having the box.
+
+`corpus-query dropped` says in its own summary what it does not cover: it cannot tell a twin that
+drew a DIFFERENT floor from a second print of the same one; it counts slabs read, not square feet,
+because the sheet row holds no area; a sheet that read no slab is left out though it may still have
+had a floor to give; and two sheets naming one storey where BOTH are dropped have no twin that took
+it, so they land in the class above. Committed `5e333a40`.
