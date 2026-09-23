@@ -11,6 +11,7 @@
 //   takeoff corpus-query plates [<job> ...]         every built set's storeys with and without a plate, and where each missing plate was lost (WP6a item 2)
 //   takeoff corpus-query yardsticks                  every set measured against the engineer's own model, worst first
 //   takeoff corpus-query frames                      what stacks by its page frame and not by a grid: the F11 blast radius, upper bound
+//   takeoff corpus-query dropped [<job> ...]         every plan sheet that read slabs and gave the model no storey, classed by why - the twins first
 //   takeoff corpus-query diff <before-sets.csv>      what moved between that banked run and this ledger, set by set, classed by the first thing that changed
 //   takeoff corpus-query storeys [<job> ...]       every built set's storey names classed: the ladder's shapes, roofs by word, sub-levels, elevations, GARBAGE (item 7 is done at 0)
 //   takeoff corpus-query grid-names [<job> ...]   what the sets call their grids: every grid-layer text, taken as a name or refused (step 89: A1-5 is a name)
@@ -22,7 +23,7 @@ internal static class CorpusQueryVerb
 
     public static int Run(string[] args)
     {
-        if (args.Length < 2) { Console.Error.WriteLine("Usage: takeoff corpus-query summary|no-model|plan-titles|set <job>...|columns <job>|plates [<job>...]|yardsticks|frames|diff <before-sets.csv>|pages <job> [--runs a,b]|storeys|grid-names [<job>...] [--ledger <dir>]"); return 1; }
+        if (args.Length < 2) { Console.Error.WriteLine("Usage: takeoff corpus-query summary|no-model|plan-titles|set <job>...|columns <job>|plates [<job>...]|yardsticks|frames|dropped [<job>...]|diff <before-sets.csv>|pages <job> [--runs a,b]|storeys|grid-names [<job>...] [--ledger <dir>]"); return 1; }
         if (args[1].Equals("pages", StringComparison.OrdinalIgnoreCase)) return Pages(args.Skip(2).ToList());
         string dir = Path.Combine(DrawingMirror.Root, "corpus");
         var rest = new List<string>();
@@ -57,6 +58,7 @@ internal static class CorpusQueryVerb
             case "set": return Sets(rest, sheets, sets);
             case "yardsticks": return Yardsticks(sets);
             case "frames": return Frames(sets, sheets);
+            case "dropped": return Dropped(rest, sheets);
             case "diff": return Diff(rest, sets, sheets);
             default: Console.Error.WriteLine($"Unknown question '{args[1]}'."); return 1;
         }
@@ -355,6 +357,55 @@ internal static class CorpusQueryVerb
         Console.WriteLine($"  {"job",-10} {"storeys",7} {"shared",6} {"frame",-8} {"ours≤100",9} {"theirs≤100",10} {"her model",-10} {"older by",8}  note");
         foreach (var s in y)
             Console.WriteLine($"  {s.Job,-10} {s.YardstickStoreys,7} {s.SharedStoreys,6} {(s.FrameFromGrids == true ? "grids" : s.FrameFromGrids == false ? $"cols/{s.FrameSupport}" : "-"),-8} {Pct(s.OursWithin100 ?? 0, s.OursCompared ?? 0),9} {Pct(s.TheirsWithin100 ?? 0, s.TheirsCompared ?? 0),10} {(s.YardstickWritten is { } w ? w.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture) : "-"),-10} {(s.YardstickAgeDays is { } d ? $"{d} d" : "-"),8}  {s.YardstickNote}");
+        return 0;
+    }
+
+    /// <summary>
+    /// A STOREY NAMED BY TWO SHEETS KEEPS ONE OF THEM (2026-09-23). This lists every plan sheet that read at
+    /// least one slab and gave the model no storey, and classes it by why - the class that matters last, so it
+    /// is what the eye lands on: the sheet stood on the model's grid, it states its level, and ANOTHER sheet of
+    /// the same job states that same level and took the storey. On run 43 that is 110 sheets and 2,460 slabs.
+    ///
+    /// It is one fault wearing three faces: 30990-01 draws each parkade level twice, Tower A and Tower B, and
+    /// Tower B's outline sheet is placed, reads its slabs and vanishes because Tower A named P3 first; 01379-01
+    /// loses 16 sheets the same way, as PLAN B and PLAN C of a level whose PLAN A took it; and the "storeys that
+    /// read nothing" gap is partly made of both.
+    ///
+    /// WHAT THIS COVERS: plan sheets, per job, from the sheet ledger alone - no PDF opened, no DXF read.
+    /// WHAT IT DOES NOT: it cannot say the twin's floor was DIFFERENT from the one that was kept (two prints of
+    /// one plan are a twin here and losing one costs nothing); it counts slabs read, not square feet, because
+    /// the sheet row holds no area; and a sheet that read no slab at all is left out, though it may still have
+    /// had a floor to give. A same-class fault it would NOT catch: two sheets naming one storey where BOTH are
+    /// dropped, since neither has a twin that took it - those land in the "nobody took that level" class below.
+    /// </summary>
+    private static int Dropped(List<string> jobs, IReadOnlyList<CorpusAnalyzer.SheetRow> sheets)
+    {
+        var plans = sheets.Where(s => string.Equals(s.SheetType, "plan", StringComparison.OrdinalIgnoreCase))
+            .Where(s => jobs.Count == 0 || jobs.Any(j => string.Equals(j, s.Job, StringComparison.OrdinalIgnoreCase))).ToList();
+        static string Level(CorpusAnalyzer.SheetRow s) => (s.Level ?? string.Empty).Trim();
+        static bool GaveAStorey(CorpusAnalyzer.SheetRow s) => !string.IsNullOrWhiteSpace(s.Storeys);
+        var tookTheLevel = plans.Where(GaveAStorey).Select(s => (s.Job, Level: Level(s)))
+            .Where(k => k.Level.Length > 0).ToHashSet();
+
+        var gaveNothing = plans.Where(s => !GaveAStorey(s) && s.Slabs > 0).ToList();
+        var notPlaced = gaveNothing.Where(s => s.Placed != true).ToList();
+        var placed = gaveNothing.Where(s => s.Placed == true).ToList();
+        var noLevel = placed.Where(s => Level(s).Length == 0).ToList();
+        var levelled = placed.Where(s => Level(s).Length > 0).ToList();
+        var twins = levelled.Where(s => tookTheLevel.Contains((s.Job, Level(s)))).ToList();
+        var orphans = levelled.Where(s => !tookTheLevel.Contains((s.Job, Level(s)))).ToList();
+
+        Console.WriteLine($"  {plans.Count} plan sheets; {gaveNothing.Count} read a slab and gave the model no storey ({gaveNothing.Sum(s => s.Slabs)} slabs)");
+        Console.WriteLine($"    stood on no grid                       {notPlaced.Count,5}  {notPlaced.Sum(s => s.Slabs),6} slabs");
+        Console.WriteLine($"    placed, states no level                {noLevel.Count,5}  {noLevel.Sum(s => s.Slabs),6} slabs");
+        Console.WriteLine($"    placed, states a level, nobody took it {orphans.Count,5}  {orphans.Sum(s => s.Slabs),6} slabs");
+        Console.WriteLine($"    placed, states a level, A TWIN TOOK IT {twins.Count,5}  {twins.Sum(s => s.Slabs),6} slabs   <- one storey, two sheets, one kept");
+        foreach (var (name, list) in new[] { ("A TWIN TOOK ITS LEVEL", twins), ("NOBODY TOOK ITS LEVEL", orphans) })
+        {
+            Console.WriteLine($"  {name}, by set:");
+            foreach (var g in list.GroupBy(s => s.Job, StringComparer.OrdinalIgnoreCase).OrderByDescending(g => g.Sum(s => s.Slabs)).Take(20))
+                Console.WriteLine($"    {g.Key,-14} {g.Count(),3} sheets {g.Sum(s => s.Slabs),5} slabs   {string.Join(", ", g.OrderByDescending(s => s.Slabs).Take(4).Select(s => $"{s.SheetNumber}[{Level(s)}] {s.Slabs}"))}");
+        }
         return 0;
     }
 
