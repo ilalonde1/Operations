@@ -301,4 +301,29 @@ public sealed record DrawingVocabulary
     /// </summary>
     public Regex ParkadeStory => Of(
         $@"^\s*(?:(?:{Any(LevelWords)})\s*)?(?:{Any(ParkadeWords)})\s*(\d+)\s*$");
+
+    /// <summary>
+    /// A PARKADE LEVEL THAT ARRIVES LAST, AFTER A DASH, OR IS THE WHOLE TITLE (intake step 137, 2026-09-23).
+    ///
+    /// "Phase 2a &amp; 2b Parkade Plan - P1" and "Phase 2a &amp; 2b Floor Plan - P0(Concrete Outline)" name their
+    /// level exactly the way this office's "… Floor Plan - L2" does, and the L form reads because L is a level
+    /// word while the P form reads by neither <see cref="ParkadeLevel"/> (which wants LEVEL before the P) nor
+    /// <see cref="ParkadeStory"/> (which is anchored to the WHOLE string, because it was written for a MODEL's
+    /// storey name). Measured on run 43: 13 plan sheets and 1,664 slabs across 30824-01, 30827-01 and 30864-01
+    /// read nothing from it, and 30824-01's model has no parkade AT ALL — four levels of it — while its one
+    /// "Parkade Plan - P3 … Foundation Plan" sheet landed on L1. A view named for nothing but its storey,
+    /// "S2.01.1_1_P2.dxf", is the same shape with the separator at the start: 30905-01, 2 sheets, 78 slabs.
+    ///
+    /// ⚠ THE ANCHOR IS WHY THIS IS SAFE, AND IT IS NOT AN ORNAMENT. <see cref="ParkadeWords"/> are P and B, so a
+    /// pattern that would read a parkade word anywhere reads "SLAB 2" as parkade level 2. This one earns only the
+    /// END of a title, and only at the very start of it or after a dash WITH A SPACE ON BOTH SIDES. A trailing
+    /// parenthesis is allowed through because a drafter writes "- P0(Concrete Outline)".
+    ///
+    /// ⚠⚠ THE SPACES ON THE DASH ARE NOT TIDINESS EITHER, and the suite is what said so. The first cut took any
+    /// dash, and a sheet named for its PAGE — "job-p01", or the corpus's "…Stickfile-p07" — read as parkade level
+    /// 1. A drafter's level arrives as " - P1"; a page number arrives welded to the word. `ASheetIsItsViewsTests`
+    /// failed within a minute of the change and is the reason this line reads the way it does.
+    /// </summary>
+    public Regex TrailingParkade => Of(
+        $@"(?:^|(?<=\s)[-–—]\s+)(?:{Any(ParkadeWords)})\s*(\d+)\s*(?:\([^)]*\))?\s*$");
 }

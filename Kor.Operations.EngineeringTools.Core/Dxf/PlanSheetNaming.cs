@@ -208,6 +208,15 @@ public static partial class PlanSheetNaming
             }
         }
 
+        // A PARKADE LEVEL THAT ARRIVES LAST IS STILL THE SHEET'S LEVEL (intake step 137, 2026-09-23), and it is
+        // read ONLY when nothing else named one - a fallback of last resort, so a title that already says what it
+        // is cannot be talked out of it by a trailing token. "Phase 2a & 2b Parkade Plan - P1" and the view named
+        // nothing but "P2" are the two shapes; see DrawingVocabulary.TrailingParkade for why the anchor is what
+        // keeps "SLAB 2" out of it.
+        if (levels.Count == 0 && parkade.Count == 0 && !isRoof && !isTopFloor
+            && vocabulary.TrailingParkade.Match(ownName) is { Success: true } tail)
+            parkade = [int.Parse(tail.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture)];
+
         return new PlanSheetInfo(
             Path.GetFileName(fileName),
             building,

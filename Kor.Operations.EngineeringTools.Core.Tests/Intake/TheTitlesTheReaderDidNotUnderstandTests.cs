@@ -13,13 +13,17 @@ namespace Kor.Operations.EngineeringTools.Core.Tests.Intake;
 /// the sheet ledger, and they separate the fault in two:
 ///
 ///   NINE read NOTHING off their own title (1,888 slabs), in exactly two shapes —
-///     "1st Flr. Plan Showing 2nd Flr. Framing Over"   FLR is not one of the FloorNouns (FLOOR, LEVEL, STOREY, STORY)
+///     "1st Flr. Plan Showing 2nd Flr. Framing Over"   FLR is not one of the FloorNouns (FLOOR, LEVEL, STOREY,
+///                                                    STORY). Still true; migration 099 is Ian's to apply.
 ///     "Phase 2a &amp; 2b Parkade Plan - P1", and a view named just "P2"
-///                                                    ParkadeStory is anchored to the WHOLE title (^…$) and
+///                                                    ParkadeStory was anchored to the WHOLE title (^…$) and
 ///                                                    ParkadeLevel demands the word LEVEL before the P, so a level
-///                                                    that arrives last, after a dash, is read by neither.
+///                                                    that arrived last, after a dash, was read by neither.
+///                                                    ✅ MENDED by intake step 137 (DrawingVocabulary
+///                                                    .TrailingParkade): six of the nine now read, 967 slabs, and
+///                                                    their expectations below have been moved. Three are left.
 ///     ⚠ The anchor is not an oversight: ParkadeWords are P and B, so an unanchored "B\s*\d" reads "SLAB 2" as
-///       parkade level 2. Any mend has to earn the end of a title without earning the middle of a word.
+///       parkade level 2. Step 137 earns the END of a title, after a dash or at the very start, and nothing else.
 ///
 ///   SEVEN read their level CORRECTLY and still gave the model no storey (320 slabs) — "HOTEL FOURTH FLOOR PLAN
 ///   SHOWING FIFTH FLOOR FRAMING OVER" reads L4, "MAIN FLOOR SHOWING UPPER FLOOR FRAMING OVER - BLDG 10" reads L1
@@ -69,14 +73,14 @@ public sealed class TheTitlesTheReaderDidNotUnderstandTests
         new("01389-01", "01389 Struc Stickfile 2019-07-04-p09_1_S-9 - LOFT PLAN SHOWING ROOF FRAMING OVER.dxf", "the loft, under the roof", 36, "top floor"),
 
         // 2. A PHASE IS NOT A LEVEL, and the level arrives last, after a dash.
-        new("30824-01", "S2.04.1_1_Phase 2a & 2b Floor Plan - P0(Concrete Outline).dxf", "parkade level 0", 317, Nothing),
-        new("30824-01", "S2.03_1_Phase 2a & 2b Parkade Plan - P1.dxf", "parkade level 1", 281, Nothing),
-        new("30824-01", "S2.02_1_Phase 2a & 2b Parkade Plan - P2.dxf", "parkade level 2", 174, Nothing),
-        new("30827-01", "S2.22_1_Phase 2c Parkade Plan - P2.dxf", "parkade level 2", 117, Nothing),
+        new("30824-01", "S2.04.1_1_Phase 2a & 2b Floor Plan - P0(Concrete Outline).dxf", "parkade level 0", 317, "P0"),
+        new("30824-01", "S2.03_1_Phase 2a & 2b Parkade Plan - P1.dxf", "parkade level 1", 281, "P1"),
+        new("30824-01", "S2.02_1_Phase 2a & 2b Parkade Plan - P2.dxf", "parkade level 2", 174, "P2"),
+        new("30827-01", "S2.22_1_Phase 2c Parkade Plan - P2.dxf", "parkade level 2", 117, "P2"),
 
         // 3. THE VIEW IS NAMED FOR ITS STOREY AND NOTHING ELSE - and the sheet number in front of it defeats the anchor.
-        new("30905-01", "S2.01.1_1_P2.dxf", "parkade level 2", 42, Nothing),
-        new("30905-01", "S2.01.2_1_P2.dxf", "parkade level 2", 36, Nothing),
+        new("30905-01", "S2.01.1_1_P2.dxf", "parkade level 2", 42, "P2"),
+        new("30905-01", "S2.01.2_1_P2.dxf", "parkade level 2", 36, "P2"),
 
         // 4. READ CORRECTLY AND STILL DROPPED: the mezzanine over a parkade level, on a part plan.
         new("01379-01", "S207.2_1_LEVEL P1 MEZZANINE CONCRETE OUTLINE PLAN B.dxf", "the mezzanine over parkade level 1", 30, "P1, mezzanine"),
@@ -100,16 +104,44 @@ public sealed class TheTitlesTheReaderDidNotUnderstandTests
     }
 
     /// <summary>
-    /// The ratchet's number, in the build rather than in a note: nine of these sixteen titles say a level and the
-    /// reader takes none of it, and 1,888 slabs were read on those nine sheets. It may go down; a rise is a fault.
+    /// The ratchet's number, in the build rather than in a note. It was NINE of these sixteen titles and 1,888
+    /// slabs when this was written at 00:45; intake step 137 took six of them, and what is left is the three
+    /// "1st Flr." sheets and 921 slabs, waiting on migration 099. It may go down; a rise is a fault.
     /// </summary>
     [Fact]
-    public void NineOfThemReadNothingAndThatMayOnlyGoDown()
+    public void ThreeOfThemReadNothingAndThatMayOnlyGoDown()
     {
         var blind = FromTheCorpus.Where(t => t.ReaderMakes == Nothing).ToList();
         Assert.Equal(blind.Count, FromTheCorpus.Count(t => Describe(PlanSheetNaming.Parse(t.FileName)) == Nothing));
-        Assert.True(blind.Count <= 9, $"{blind.Count} titles read nothing; the banked count is 9 and it may only fall.");
-        Assert.True(blind.Sum(t => t.Slabs) <= 1888, $"{blind.Sum(t => t.Slabs)} slabs sit behind a title that reads nothing; the banked figure is 1,888.");
+        Assert.True(blind.Count <= 3, $"{blind.Count} titles read nothing; the banked count is 3 and it may only fall.");
+        Assert.True(blind.Sum(t => t.Slabs) <= 921, $"{blind.Sum(t => t.Slabs)} slabs sit behind a title that reads nothing; the banked figure is 921.");
+    }
+
+    /// <summary>
+    /// INTAKE STEP 137's own case, and the word it must NOT read. The anchor is the whole rule: a parkade word is
+    /// P or B, so anything looser reads "SLAB 2" as parkade level 2 and puts a floor underground.
+    /// </summary>
+    [Fact]
+    public void ALevelThatArrivesLastIsReadAndTheMiddleOfAWordIsNot()
+    {
+        Assert.Equal([1], PlanSheetNaming.Parse("S2.03_1_Phase 2a & 2b Parkade Plan - P1.dxf").ParkadeLevels);
+        Assert.Equal([0], PlanSheetNaming.Parse("S2.04.1_1_Phase 2a & 2b Floor Plan - P0(Concrete Outline).dxf").ParkadeLevels);
+        Assert.Equal([2], PlanSheetNaming.Parse("S2.01.1_1_P2.dxf").ParkadeLevels);
+
+        // A PAGE NUMBER WELDED TO THE NAME IS NOT A PARKADE LEVEL. The first cut of step 137 took any dash and read
+        // "job-p01" - and every "…Stickfile-p07" in the corpus - as parkade level 1. ASheetIsItsViewsTests failed
+        // within a minute and is why the dash must carry a space on both sides.
+        Assert.Empty(PlanSheetNaming.Parse("job-p01").ParkadeLevels);
+        Assert.Empty(PlanSheetNaming.Parse("30985-01 2022-06-24 Rock Ridge Stickfile-p07").ParkadeLevels);
+
+        // the middle of a word, the middle of a title, and a trailing token that is not a parkade word
+        Assert.Empty(PlanSheetNaming.Parse("S2.09_1_TYPICAL SLAB 2 DETAIL PLAN.dxf").ParkadeLevels);
+        Assert.Empty(PlanSheetNaming.Parse("S2.09_1_PLAN - P1 TO P3 TYPICAL DETAILS AND NOTES.dxf").ParkadeLevels);
+        Assert.Empty(PlanSheetNaming.Parse("S2.09_1_FOUNDATION PLAN - SOUTH.dxf").ParkadeLevels);
+
+        // and it never speaks over a title that already said what it is
+        Assert.Equal([4], PlanSheetNaming.Parse("S2.09_1_LEVEL 4 PLAN - P2.dxf").Levels);
+        Assert.Empty(PlanSheetNaming.Parse("S2.09_1_LEVEL 4 PLAN - P2.dxf").ParkadeLevels);
     }
 
     /// <summary>
