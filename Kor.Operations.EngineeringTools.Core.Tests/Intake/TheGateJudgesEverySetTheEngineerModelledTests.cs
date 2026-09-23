@@ -34,6 +34,60 @@ public sealed class TheGateJudgesEverySetTheEngineerModelledTests
             ThicknessStoreys: oursSqFt is null ? null : thicknessStoreys, ThicknessAgree: oursSqFt is null ? null : thicknessAgree,
             OpeningsHers: oursSqFt is null ? null : openingsHers, OpeningsHersWeHave: oursSqFt is null ? null : openingsWeHave);
 
+    /// <summary>
+    /// A SET WHOSE DRAWINGS CHANGED UNDER THE GATE DOES NOT STOP THE BANK, AND IS SAID OUT LOUD (2026-09-23).
+    ///
+    /// The gate judges a RULE. A re-issued stick file moves for reasons no rule is answerable for: 31039-01 fell
+    /// from 35 plates to 7 between runs 43 and 44 and had simply been re-drawn that week, 77 pages becoming 68.
+    /// Eleven of the 292 sets changed file in that fortnight, so this is too common to leave to judgement — and a
+    /// gate that goes red for the drafting office's week is a gate that gets ignored.
+    /// </summary>
+    [Fact]
+    public void ASetThatReadADifferentStickFileIsReportedAndDoesNotStopTheBank()
+    {
+        var before = new[] { Row("31039-01", 300_000, 400_000), Row("31138-01", 224_136, 309_507) };
+        var after = new[]
+        {
+            Row("31039-01", 60_000, 400_000) with { Pdf = "31039-01 2026-09-22.pdf" },
+            Row("31138-01", 281_400, 309_507),
+        };
+
+        var report = CorpusGate.Judge(before, after);
+
+        var reissued = Assert.Single(report.Verdicts, v => v.ReIssued);
+        Assert.Equal("31039-01", reissued.Job);
+        Assert.True(reissued.WouldHaveLost, "it fell 240,000 sq ft; the point is not that it was fine");
+        Assert.False(reissued.Lost);
+        Assert.Empty(report.Losses);
+        string summary = CorpusGate.Summary(report);
+        Assert.Contains("READ A DIFFERENT STICK FILE", summary, StringComparison.Ordinal);
+        Assert.Contains("would otherwise have stopped the bank", summary, StringComparison.Ordinal);
+        Assert.Contains("RE-ISSUED, so no rule is answerable", reissued.Why, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A BASELINE THAT CARRIES NO FIGURES IS A BROKEN INSTRUMENT, NOT A VERDICT (2026-09-23).
+    ///
+    /// The first real run of this gate reported "0 set(s) judged" and then six sets LOST for over-reading. Both
+    /// came from one cause: run 44's ledger was written by a mirror published before plates_over_half_again
+    /// existed, so it carried 49 columns, the parser refused her figures whole, and every "before" was null —
+    /// against which any "after" above zero is an over-read. It shouted, which beats a green, but it shouted a
+    /// fault that was not there and hid the one that was.
+    /// </summary>
+    [Fact]
+    public void ABaselineWithNoFiguresAtAllIsCalledVoidRatherThanReadAsOverReading()
+    {
+        var before = new[] { Row("31087-01", null), Row("31138-01", null) };
+        var after = new[] { Row("31087-01", 380_770, 817_386, overHalfAgain: 2), Row("31138-01", 281_400, 309_507) };
+
+        var report = CorpusGate.Judge(before, after);
+
+        Assert.Empty(report.Judged);
+        string summary = CorpusGate.Summary(report);
+        Assert.Contains("THE BASELINE CARRIES NO FIGURES AND THIS JUDGEMENT IS VOID", summary, StringComparison.Ordinal);
+        Assert.Contains("a short row is refused whole", summary, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void ASetThatLosesHerPlateAreaIsNamedAndTheBankIsStopped()
     {

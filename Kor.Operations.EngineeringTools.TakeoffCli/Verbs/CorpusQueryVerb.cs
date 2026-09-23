@@ -509,16 +509,27 @@ internal static class CorpusQueryVerb
         if (gate.Judged.Count > 0) Console.Write(CorpusGate.Summary(gate));
         else Console.WriteLine("  (neither ledger carries her plate figures: one of them was banked before 2026-09-22)");
         Console.WriteLine($"  {"class",-12} {"sets",5} {"columns",9} {"walls",8} {"plates",7}  {"yardstick by SHARE better / worse / same",-40} ours within 100 mm before -> after (theirs)");
-        foreach (var c in new[] { CorpusDiff.Change.NewModel, CorpusDiff.Change.LostModel, CorpusDiff.Change.Storeys, CorpusDiff.Change.Views, CorpusDiff.Change.Placement, CorpusDiff.Change.Composition, CorpusDiff.Change.SameCounts })
+        foreach (var c in new[] { CorpusDiff.Change.ReIssued, CorpusDiff.Change.NewModel, CorpusDiff.Change.LostModel, CorpusDiff.Change.Storeys, CorpusDiff.Change.Views, CorpusDiff.Change.Placement, CorpusDiff.Change.Composition, CorpusDiff.Change.SameCounts })
         {
             var m = r.Of(c).ToList();
             var y = m.Where(x => x.HasYardstick).ToList();
             string verdict = $"{y.Count(x => x.Verdict > 0)} / {y.Count(x => x.Verdict < 0)} / {y.Count(x => x.Verdict == 0)}";
             Console.WriteLine($"  {c,-12} {m.Count,5} {m.Sum(x => x.Columns),9:+#;-#;0} {m.Sum(x => x.Walls),8:+#;-#;0} {m.Sum(x => x.Plates),7:+#;-#;0}  {verdict,-40} {y.Sum(x => x.Before.OursWithin100 ?? 0)} of {y.Sum(x => x.Before.OursCompared ?? 0)} -> {y.Sum(x => x.After.OursWithin100 ?? 0)} of {y.Sum(x => x.After.OursCompared ?? 0)} (theirs {y.Sum(x => x.Before.TheirsWithin100 ?? 0)} of {y.Sum(x => x.Before.TheirsCompared ?? 0)} -> {y.Sum(x => x.After.TheirsWithin100 ?? 0)} of {y.Sum(x => x.After.TheirsCompared ?? 0)})");
         }
+        // THE RE-ISSUES BY NAME, BEFORE THE MOVERS, because they are not movement at all. On 2026-09-23 the run
+        // 43 -> 44 diff named 31039-01 the corpus's biggest loser - 35 plates to 7 - and it had simply been
+        // re-issued that week, 77 pages and 32 MB becoming 68 and 23. Whoever reads this table next should not
+        // have to find that out by opening the two stick files.
+        var reissued = r.Movers.Where(m => m.Change is CorpusDiff.Change.ReIssued).ToList();
+        if (reissued.Count > 0)
+        {
+            Console.WriteLine($"  {reissued.Count} set(s) READ A DIFFERENT STICK FILE in the two runs - nothing in the pipeline explains what moved on them:");
+            foreach (var m in reissued.OrderBy(m => m.Job, StringComparer.OrdinalIgnoreCase))
+                Console.WriteLine($"    {m.Job,-12} {Path.GetFileName(m.Before.Pdf),-58} {m.Before.Pages,4} pp  ->  {Path.GetFileName(m.After.Pdf),-58} {m.After.Pages,4} pp");
+        }
         Console.WriteLine("  movers, largest column change first:");
         Console.WriteLine($"  {"job",-10} {"class",-12} {"storeys",9} {"placed",11} {"columns",15} {"walls",15} {"plates",9}  yardstick within 100 mm");
-        foreach (var m in r.Movers.Where(m => m.Change is not CorpusDiff.Change.SameCounts).OrderByDescending(m => Math.Abs(m.Columns)).ThenBy(m => m.Job))
+        foreach (var m in r.Movers.Where(m => m.Change is not CorpusDiff.Change.SameCounts and not CorpusDiff.Change.ReIssued).OrderByDescending(m => Math.Abs(m.Columns)).ThenBy(m => m.Job))
         {
             string storeys = $"{m.Before.StoreysBuilt}->{m.After.StoreysBuilt}", placed = $"{m.Before.SheetsPlaced}->{m.After.SheetsPlaced}/{m.After.SheetsWritten}";
             string columns = $"{m.Before.Columns}->{m.After.Columns}", walls = $"{m.Before.Walls}->{m.After.Walls}", plates = $"{m.Before.StoreysWithPlate}->{m.After.StoreysWithPlate}";

@@ -1048,6 +1048,20 @@ public static class StructuralPlanClassifier
                         Refused(ring, "a ring with no extent in one direction: a line, not a floor");
                         continue;
                     }
+                    // THE BISECT'S KNOB (2026-09-23). With KOR_STEP136_OFF=1 the 55% box-fill refusal is back, which
+                    // is what every run before this step read. It exists because the judgement needs two arms from
+                    // ONE binary: run 44's ledger was written by a mirror published before the tenth ledger column
+                    // existed, so the gate's baseline parsed to no figures at all and its first verdict was void.
+                    // Two recompose passes of the same build, knob on and knob off, differ by the rule and by
+                    // nothing else - not even the compiler. Read every call, never cached: --bisect sets it and
+                    // re-reads in the same process.
+                    if (Environment.GetEnvironmentVariable("KOR_STEP136_OFF") == "1" && ring.Area / box < 0.55)
+                    {
+                        Refused(ring, $"filling {ring.Area / box:P0} of its own box, under the " +
+                                      "55% a solid floor holds — a thin or hooked shape, which is what a slab " +
+                                      "edge looks like when its two ends are joined across the wrong gap");
+                        continue;
+                    }
 
                     // AND THE JOIN MUST BE AN INTERRUPTION, NOT AN EDGE.
                     //

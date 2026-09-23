@@ -90,10 +90,16 @@ public static class CorpusGate
         /// <summary>More storeys carrying half again her area than before: a rule adding what she does not have.</summary>
         public bool OverRead => (OverHalfAgainAfter ?? 0) > (OverHalfAgainBefore ?? 0);
 
-        public bool Lost => LostPlate || LostThickness || LostOpenings || EvidenceMissing || OverRead;
+        /// <summary>The set read a DIFFERENT stick file in the two runs, so no rule is answerable for what moved.</summary>
+        public bool ReIssued { get; init; }
+
+        /// <summary>What would have stopped the bank had the drawings not changed under it.</summary>
+        public bool WouldHaveLost => LostPlate || LostThickness || LostOpenings || EvidenceMissing || OverRead;
+
+        public bool Lost => WouldHaveLost && !ReIssued;
 
         /// <summary>Why this set stops the bank, in the engineer's own terms.</summary>
-        public string Why => !Lost ? "" : string.Join(", ", new[]
+        public string Why => !WouldHaveLost ? "" : (ReIssued ? "RE-ISSUED, so no rule is answerable: " : "") + string.Join(", ", new[]
         {
             EvidenceMissing ? "judged at the bank, not judged now" : null,
             LostPlate ? $"her plate area fell {-(MovedSqFt ?? 0):N0} sq ft (tolerance {Tolerance:N0})" : null,
@@ -137,7 +143,17 @@ public static class CorpusGate
                 (isJudged ? now!.OpeningsHers : null) ?? (wasJudged ? was!.OpeningsHers : null),
                 wasJudged, isJudged,
                 wasJudged ? was!.PlatesHersSqFt : null,
-                wasJudged ? was!.PlatesOverHalfAgain : null, isJudged ? now!.PlatesOverHalfAgain : null));
+                wasJudged ? was!.PlatesOverHalfAgain : null, isJudged ? now!.PlatesOverHalfAgain : null)
+            {
+                // A SET THAT READ A DIFFERENT STICK FILE IS NOT A LOSS (2026-09-23). The gate judges a RULE, and a
+                // re-issued drawing set moves for reasons no rule can be blamed for: 31039-01 fell from 35 plates
+                // to 7 between runs 43 and 44 and had simply been re-drawn that week, 77 pages becoming 68. Eleven
+                // of 292 sets changed file in that fortnight, so this is not rare enough to leave to judgement. It
+                // is REPORTED, loudly, and it does not stop the bank - because the alternative is a gate that goes
+                // red for the drafting office's work and gets ignored.
+                ReIssued = was is not null && now is not null
+                    && (!string.Equals(was.Pdf, now.Pdf, StringComparison.OrdinalIgnoreCase) || was.Bytes != now.Bytes),
+            });
         }
         // the losses first and worst-first; then everything else by the SIZE of its move, either way (a gain of 1,000
         // before a gain of 100 - ascending put them the other way round, Codex's audit 2026-09-22)
@@ -183,6 +199,25 @@ public static class CorpusGate
         var sb = new System.Text.StringBuilder();
         sb.AppendLine(CultureInfo.InvariantCulture,
             $"the gate: {r.Judged.Count} set(s) the engineer has a model of, judged against the bank");
+
+        // ⚠ A BASELINE WITH NO FIGURES AT ALL IS NOT A JUDGEMENT, AND MUST NOT READ LIKE ONE (2026-09-23).
+        //
+        // The first real run of this gate reported "0 set(s) judged" and then SIX SETS LOST for over-reading.
+        // Both came from the same cause: run 44's ledger was written by a mirror published before
+        // plates_over_half_again existed, so it carried 49 columns, the parser refused the last ten figures, and
+        // every "before" was null - against which any "after" above zero is an over-read. The gate shouted, which
+        // is better than a green, but it shouted a fault that was not there and hid the one that was.
+        //
+        // So the condition is NAMED, first, and the verdicts that follow are declared void. A baseline nobody can
+        // read is a broken instrument, not evidence about a rule.
+        if (r.Judged.Count == 0 && r.Verdicts.Any(v => v.IsJudged))
+        {
+            sb.AppendLine("  ⚠ THE BASELINE CARRIES NO FIGURES AND THIS JUDGEMENT IS VOID. Every 'before' is blank while");
+            sb.AppendLine("    the new ledger has them, so nothing below compares anything - a LOST line here means only that");
+            sb.AppendLine("    a figure was read now and none was read at the bank. The usual cause is a ledger banked by an");
+            sb.AppendLine("    older build: her figures are the last ten columns and a short row is refused whole. Re-bank the");
+            sb.AppendLine("    baseline with this build, or judge two arms of ONE build against each other (KOR_STEP<n>_OFF).");
+        }
         sb.AppendLine("  job         her plates we read: was -> now (of hers)        thickness agree   her openings we have");
         foreach (var v in r.Verdicts)
         {
@@ -191,12 +226,23 @@ public static class CorpusGate
             string share = v.ShareNow is { } s ? $"{100 * s:F0}%" : "-";
             string moved = v.MovedSqFt is { } m ? (m >= 0 ? "+" : "") + m.ToString("N0", CultureInfo.InvariantCulture) : "";
             sb.AppendLine(CultureInfo.InvariantCulture,
-                $"  {(v.Lost ? "LOST " : "     ")}{v.Job,-13}{was,12} -> {now,12} ({share,4}) {moved,10}   {v.ThicknessAgreeBefore,3} -> {v.ThicknessAgreeAfter,3} of {v.ThicknessStoreys,3}   {v.OpeningsWeHaveBefore,4} -> {v.OpeningsWeHaveAfter,4} of {v.OpeningsHers,4}");
+                $"  {(v.Lost ? "LOST " : v.ReIssued ? "REISS" : "     ")}{v.Job,-13}{was,12} -> {now,12} ({share,4}) {moved,10}   {v.ThicknessAgreeBefore,3} -> {v.ThicknessAgreeAfter,3} of {v.ThicknessStoreys,3}   {v.OpeningsWeHaveBefore,4} -> {v.OpeningsWeHaveAfter,4} of {v.OpeningsHers,4}");
         }
         sb.AppendLine(CultureInfo.InvariantCulture,
             $"  totals: her plates we read {r.BeforeSqFt:N0} -> {r.AfterSqFt:N0} sq ft of {r.HersSqFt:N0} " +
             $"({(r.HersSqFt > 0 ? 100 * r.BeforeSqFt / r.HersSqFt : 0):F0}% -> {(r.HersSqFt > 0 ? 100 * r.AfterSqFt / r.HersSqFt : 0):F0}%); " +
             $"thickness {r.ThicknessAgreeBefore} -> {r.ThicknessAgreeAfter} of {r.ThicknessStoreys}; her openings we have {r.OpeningsWeHaveBefore} -> {r.OpeningsWeHaveAfter} of {r.OpeningsHers}");
+        // Said whether or not anything lost: a set whose drawings changed under the gate is not evidence either way,
+        // and a reader who does not know that will read its movement as the rule's doing.
+        var reissued = r.Verdicts.Where(v => v.ReIssued).ToList();
+        if (reissued.Count > 0)
+        {
+            int wouldHave = reissued.Count(v => v.WouldHaveLost);
+            string head = $"  {reissued.Count} set(s) READ A DIFFERENT STICK FILE than the bank did, so no rule is answerable for them"
+                + (wouldHave > 0 ? $" ({wouldHave} of them would otherwise have stopped the bank)" : string.Empty) + ":";
+            sb.AppendLine(head);
+            foreach (var v in reissued) sb.AppendLine("    " + v.Job + (v.Why.Length > 0 ? ": " + v.Why : string.Empty));
+        }
         if (r.Losses.Count == 0)
         {
             sb.AppendLine("  no set lost: the bank may take this.");

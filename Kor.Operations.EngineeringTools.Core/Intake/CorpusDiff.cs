@@ -20,9 +20,12 @@ namespace Kor.Operations.EngineeringTools.Intake;
 /// 204 of the 258 sets with a verdict; 74 of those sets place no sheet on a grid at all.
 /// </summary>
 /// <remarks>
-/// WHAT THIS COVERS: the class of every set, the sums of columns, walls and plates each class moved,
+/// WHAT THIS COVERS: the class of every set, WHETHER IT READ THE SAME STICK FILE IN BOTH RUNS, the sums
+/// of columns, walls and plates each class moved,
 /// and the yardstick's verdict on the sets that have one (within 100 mm, before and after). WHAT IT
-/// DOES NOT: why a set moved (the ledger holds counts, not members - `dxf-inspect --members` on the
+/// DOES NOT: tell a re-issue whose file was rewritten under the same name AND the same byte count (the
+/// two runs then look identical to it); why a set moved (the ledger holds counts, not members -
+/// `dxf-inspect --members` on the
 /// two builds does); a set whose placement or composition changed to the same COUNTS (SameCounts says
 /// counts, not sameness); the sheet rows (reading is judged by the per-sheet column sum, which the
 /// verb prints beside the classes).
@@ -34,7 +37,19 @@ public static class CorpusDiff
     /// audit's finding 7: a set whose one column came from another sheet at another place, with every count the
     /// same, is here - the ledger holds counts, not members); Views is a set whose sheets read differed.
     /// </summary>
-    public enum Change { NewModel, LostModel, Storeys, Views, Placement, Composition, SameCounts }
+    /// <summary>
+    /// ReIssued is FIRST and it is not a code change at all: the set read a DIFFERENT stick file in the two runs,
+    /// so nothing about the pipeline explains what moved (2026-09-23).
+    ///
+    /// Found the hard way an hour after it would have cost an hour: run 43 against run 44 named 31039-01 the
+    /// biggest loser in the corpus - 35 plates down to 7, its placed sheets 39 of 40 down to 20 of 40, 1,271
+    /// columns down to 797 - and it was on the list as a regression to chase. It had simply been re-issued:
+    /// "31039-01 2026-09-14 skyliving Stickfile.pdf", 77 pages and 32 MB, became "31039-01 2026-09-22 ...", 68
+    /// pages and 23 MB. Eleven of the 292 sets in both runs read a different file, and one of them (31130-01) is
+    /// a six-set gate set. The diff had no way to say so, which is the same kind of silence as a gate that reports
+    /// green because it measured nothing.
+    /// </summary>
+    public enum Change { ReIssued, NewModel, LostModel, Storeys, Views, Placement, Composition, SameCounts }
 
     public sealed record Mover(string Job, Change Change, CorpusAnalyzer.SetRow Before, CorpusAnalyzer.SetRow After)
     {
@@ -70,6 +85,10 @@ public static class CorpusDiff
 
     public static Change Classify(CorpusAnalyzer.SetRow x, CorpusAnalyzer.SetRow y)
     {
+        // A DIFFERENT DRAWING SET EXPLAINS ITSELF, and it is asked FIRST so nothing downstream reads as a
+        // regression. The stick file is identified by the path the census chose and by its size: a re-issue
+        // changes both, and a file rewritten at the same size with the same name is the one case this misses.
+        if (!string.Equals(x.Pdf, y.Pdf, StringComparison.OrdinalIgnoreCase) || x.Bytes != y.Bytes) return Change.ReIssued;
         if (!x.HasModel && y.HasModel) return Change.NewModel;
         if (x.HasModel && !y.HasModel) return Change.LostModel;
         if (!x.HasModel) return Change.SameCounts;

@@ -27,6 +27,38 @@ public sealed class WhatMovedBetweenTwoRunsIsClassedByTheFirstThingThatChangedTe
             model ? placed : null, model ? storeys : null, model ? walls : null, model ? columns : null, null, model ? plates : null, 1.0, null,
             within100 is null ? null : "y.e2k", null, null, null, null, compared, null, within100, null, null, null);
 
+    /// <summary>
+    /// A SET THAT READ A DIFFERENT STICK FILE IS NOT A MOVER (2026-09-23), and it is asked first so nothing
+    /// downstream reads as a regression.
+    ///
+    /// The run 43 -> run 44 diff named 31039-01 the corpus's biggest loser — 35 plates down to 7, its placed
+    /// sheets 39 of 40 down to 20 of 40, 1,271 columns down to 797 — and it was on the list as a regression to
+    /// chase. It had been re-issued that week: "31039-01 2026-09-14 skyliving Stickfile.pdf", 77 pages and 32 MB,
+    /// became the 2026-09-22 issue at 68 pages and 23 MB. ELEVEN of the 292 sets in both runs read a different
+    /// file, and one of them (31130-01) is a six-set gate set.
+    ///
+    /// WHAT THIS COVERS: a different path, and the same path at a different size. WHAT IT DOES NOT: a file
+    /// rewritten under the same name AND the same byte count, which looks identical to the ledger.
+    /// </summary>
+    [Fact]
+    public void ASetThatReadADifferentStickFileIsClassedAsReIssuedBeforeAnythingElse()
+    {
+        var was = Row("reissued", true, 36, 39, 1271, 733, 35);
+        var now = Row("reissued", true, 35, 20, 797, 415, 7) with { Pdf = @"\\fs\reissued 2026-09-22.pdf" };
+        Assert.Equal(CorpusDiff.Change.ReIssued, CorpusDiff.Classify(was, now));
+
+        // the same name, a different size: a re-issue that kept its file name
+        var resized = Row("reissued", true, 35, 20, 797, 415, 7) with { Bytes = was.Bytes + 1 };
+        Assert.Equal(CorpusDiff.Change.ReIssued, CorpusDiff.Classify(was, resized));
+
+        // and the same file is judged on its counts as before - the class must not swallow real movement
+        Assert.Equal(CorpusDiff.Change.Storeys, CorpusDiff.Classify(was, Row("reissued", true, 35, 39, 1271, 733, 35)));
+
+        // ⚠ the one it cannot see, said out loud rather than left to be discovered
+        var rewrittenSameSize = Row("reissued", true, 35, 20, 797, 415, 7);
+        Assert.NotEqual(CorpusDiff.Change.ReIssued, CorpusDiff.Classify(was, rewrittenSameSize));
+    }
+
     [Fact]
     public void EverySetFallsInOneClassAndTheFirstChangeNamesIt()
     {
