@@ -4259,3 +4259,111 @@ drew a DIFFERENT floor from a second print of the same one; it counts slabs read
 because the sheet row holds no area; a sheet that read no slab is left out though it may still have
 had a floor to give; and two sheets naming one storey where BOTH are dropped have no twin that took
 it, so they land in the class above. Committed `5e333a40`.
+
+## 162. A test that passed alone and failed beside its neighbour: the banked vocabulary can be ignored in silence (2026-09-23 00:40–01:11)
+
+`corpus-query dropped` had left 57 sheets (3,117 slabs) whose own title names a level, that are not a reinforcing
+or a load plan, and that gave the model no storey. Sixteen of the real names went into
+`TheTitlesTheReaderDidNotUnderstandTests` and through `PlanSheetNaming.Parse`, and the answer **split the class in
+two, which is the whole value of the half hour**:
+
+- **Nine read NOTHING** — 1,888 slabs — in exactly two shapes. *"1st Flr. Plan Showing 2nd Flr. Framing Over"*:
+  FLR is not one of the `FloorNouns`, which are FLOOR, LEVEL, STOREY, STORY (30985-01, 3 of the 6 sheets here,
+  921 slabs). *"Phase 2a & 2b Parkade Plan - P1"*, and a view named just *"P2"*: `ParkadeStory` is anchored to the
+  WHOLE title and `ParkadeLevel` demands the word LEVEL before the P, so a level that arrives last, after a dash,
+  is read by neither (30824, 30827, 30905, 967 slabs). ⚠ The anchor is **not** an oversight and the test says so:
+  `ParkadeWords` are P and B, so an unanchored `B\s*\d` reads "SLAB 2" as parkade level 2. A mend has to earn the
+  end of a title without earning the middle of a word.
+- **Seven read their level CORRECTLY and were dropped anyway** — 320 slabs. "HOTEL FOURTH FLOOR PLAN SHOWING FIFTH
+  FLOOR FRAMING OVER" reads L4; "MAIN FLOOR SHOWING UPPER FLOOR FRAMING OVER - BLDG 10" reads L1 of building 10;
+  "3RD FLOOR HOLD DOWN PLAN - EAST" reads L3. For those the title reader is innocent and the composer is not —
+  the storey they name was taken by another sheet, or is not in the model under that name. **That is the 110
+  twins' fault**, and without the split the night would have gone into the title reader for half of them.
+
+It is banked as a **ratchet**: every name asserts what it reads TODAY, the nine may only shrink, nothing joins
+them quietly, and the numbers are in the build rather than in a note.
+
+**And the ladder is built from what the plans name, so a title that reads nothing costs the STOREY too.**
+30824-01's model has L1–L13 and ROOF and **no parkade at all** — its P3, P2, P1 and P0 plans all read nothing;
+its one "Parkade Plan - P3 … Foundation Plan" sheet that did read, read **L1**. 30827-01 the same. 30905-01 has P1
+and no P2. 30985-01 is a three-storey building modelled with **one storey**.
+
+### The fault under the fixture
+
+The FLR proof — build a widened vocabulary in code, assert the three titles read 1, 2 and 3 — **passed on its own
+and failed beside the other two tests in its class.** This file already has the rule for that: *a test that passes
+alone and fails in the suite is shared state, not luck; look for a static before looking anywhere else.*
+
+`DrawingVocabulary` is a **record**, and its patterns were cached in **fields** on it. `with` copies fields as
+well as properties, so a copy carrying NEW words also carried the previous instance's compiled pattern — built
+before those words existed. And that is exactly how the office's vocabulary is loaded:
+
+```
+PlanSheetNaming.Vocabulary          => _vocabulary.Value ?? DrawingVocabulary.Default     // until something assigns it
+DxfToEtabsService.ApplyRules(DrawingVocabulary.Default, banked)                            // a `with` over Default
+```
+
+So any title parsed before the rules are read warms `Default`'s patterns, and the configured copy then reads with
+the DEFAULTS. **Every KorStandards vocabulary row — `dxf.level-words`, `dxf.parkade-words`, `dxf.floor-nouns`,
+`dxf.building-words`, `dxf.range-words` — can be silently ignored that way.** The row loads. The property holds
+it. The regex that does the work was built without it. Nothing says a word: it is the same shape as the five
+silences Codex found in the gate on 09-22, sitting in the rule-loading path.
+
+**Mended** by keying each pattern on its own TEXT in a static cache, so a cache cannot outlive the words it was
+built from: different words spell a different pattern and get a different `Regex`. Building the pattern string per
+call is a join over a handful of words; building the `Regex` is what costs, and that is still done once.
+
+**The same mistake one level up, found beside it:** `Parse(name, vocabulary)` read the SHARED static for the
+mezzanine words while every line around it read the vocabulary it was handed — so Parse with another office's
+words answered half of it in ours. Threaded through, with a test in another office's word for a mezzanine
+(ENTRESOL). ⚠ And a third of the kind, found and left alone: `StripSheetNumber` hard-codes the strings "LEVEL" and
+"ROOF" rather than reading `LevelWords` and `RoofWords`. That one is a behaviour change on every set, so it wants
+its own gate run and is written down rather than mended in passing.
+
+### The check that would have found the class at once
+
+`CompiledDefaultsAreTheBankedRowsTests` says in its own remarks that it does **not** cover *"list-valued rows
+(layer vocabularies, words)"* — and nothing else did either. There are **nineteen** of them, and they decide what
+a storey is called, what a slab is drawn on, and which sheets stand down. The copy fault could only BITE where a
+row differs from its default, and nothing in the repo could say whether one did.
+
+So `EveryCompiledWordListEqualsItsRow` holds all nineteen against KorStandards, with a declared-difference list
+for the ones that are meant to differ — and, because a broad name on a narrow check is the failure mode this repo
+has already been bitten by, `EveryListRuleTheCodeReadsIsInThatList` reads the Core source for every key passed to
+`settings.ListOr` and refuses a list rule that `BuiltInRuleLists` does not name.
+
+**It found four things on its first run**, and they are declared with their reasons rather than silenced:
+
+| key | the row | the code |
+|---|---|---|
+| `dxf.match-line-layer-patterns` | **no row at all** — no migration banks it, no run requires it | the single word `MATCH` |
+| `dxf.column-layer-patterns` | `_COL; -COL; S-COL` | `_COL` |
+| `dxf.slab-layer-patterns` | `SLABEDG; A-FLOR; S-FLOR` | `SLABEDG` |
+| `dxf.non-structural-sheet-patterns` | sixteen patterns | **none** |
+
+The last is the sharpest: **a default-mode run — the tests, the WPF window, every instrument in the intake —
+stands NO sheet down, while production stands down sixteen kinds.** It is the 2026-09-08 numeric split again
+(`dxf.max-wall-thickness` 60 in the row and 36 in the code), found in the layer vocabularies. The compiled
+defaults are NOT brought up to the rows here: that changes what every default-mode run reads, including test
+fixtures, so it is a gate-worthy change and not a quiet edit at one in the morning.
+
+**And the honest limit of the fault that was mended: none of the sixteen `DrawingVocabulary` WORD rows differs
+from its default today**, so the copy fault changes nothing in production as it stands — it is a trap, not a live
+fault. It would have bitten the moment migration 099 added FLR to `dxf.floor-nouns`, which is the change it was
+found while preparing.
+
+Six-set gate **green**, the six byte-identical; fast suite 1,565. `4a6d0c73`.
+
+Two smaller things in the same commit. `corpus-gate --recompose` keeps the last run's views and runs only the
+ladder and the composer again: step 136 is one file on the composer's side, so its judgement becomes a proper
+differential — same views, different composer — at minutes a set instead of an hour. The flag says in its own
+help that it is WRONG for a reader-side rule, whose rule would never run and would be reported as having done
+nothing. And `corpus-query dropped` prints how many of its "states no level" class the composer's own reader
+does read a level for: **29 of 75, 511 slabs** — because the ledger's level is `SheetTitleReader` on the page and
+the composer places by `PlanSheetNaming.Parse` on the DXF name, and the two disagree on **750 of the 1,289** plan
+sheets the ledger calls levelless.
+
+**Migration `099_AFloorNounMayBeAbbreviated.sql` is written and is Ian's to apply** (089's own test for a row here
+is "a vocabulary that can only widen", and this is one abbreviation). The prediction, written before the run:
+30985-01 goes from 1 storey to 3, and no other set moves — 6 plan sheets in 1 set of 293 are the whole of the
+corpus's use of it, and none of them reads a storey today, so nothing that reads one can lose it.
