@@ -130,14 +130,14 @@ public sealed class CompiledDefaultsAreTheBankedRowsTests
     };
 
     /// <summary>Keys read as a list that have no row yet, each with the reason.</summary>
-    private static readonly IReadOnlyDictionary<string, string> ListRowsUnbankedByDesign = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-    {
-        // Found by this gate on its first run, 2026-09-23. No migration in KOR.Drafter/db mentions the key, and
-        // DxfToEtabsService.RequiredRuleKeys does not name it either, so a run without the row does not stop: the
-        // reader falls back to the one compiled word, MATCH. It is a rule the office should own — what a match
-        // line is drawn on — and until it is banked this is where that is written down.
-        ["dxf.match-line-layer-patterns"] = "no migration banks it and no run requires it; the compiled default is the single word MATCH (MatchLineSheetJoin.DefaultLayerPatterns), a row is owed",
-    };
+    /// <remarks>
+    /// EMPTY, AND IT TOOK FOUR HOURS TO GET THERE. This gate's first run on 2026-09-23 found that
+    /// <c>dxf.match-line-layer-patterns</c> had no row at all — no migration banked it, no run required it, and
+    /// every run fell back to the one compiled word MATCH. Migration 100 banked it the same morning and this
+    /// entry came straight back out, which is what the assert below is for: a declaration must not outlive the
+    /// fact it describes.
+    /// </remarks>
+    private static readonly IReadOnlyDictionary<string, string> ListRowsUnbankedByDesign = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
     /// THE WORDS AND THE LAYER PATTERNS, AGAINST THEIR COMPILED DEFAULTS (2026-09-23).

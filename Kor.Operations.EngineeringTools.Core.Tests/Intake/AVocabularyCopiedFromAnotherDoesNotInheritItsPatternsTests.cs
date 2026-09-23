@@ -38,10 +38,13 @@ public sealed class AVocabularyCopiedFromAnotherDoesNotInheritItsPatternsTests
         // warm the original, exactly as any parse before the rules load does
         Assert.Equal([1], PlanSheetNaming.Parse("p07_1_1st Floor Plan.dxf", DrawingVocabulary.Default).Levels);
 
-        var widened = DrawingVocabulary.Default with { FloorNouns = ["FLOOR", "LEVEL", "STOREY", "STORY", "FLR"] };
-        Assert.Equal([2], PlanSheetNaming.Parse("p12_1_2nd Flr. Plan Showing 3rd Flr. Framing Over (West).dxf", widened).Levels);
+        // DECK, not FLR: this test used FLR until migration 099 banked it on 2026-09-23 and the compiled default
+        // followed, at which point the "added" word was in the original and the test proved nothing. A word this
+        // office does not use is what the case needs, and the ratchet is what said so.
+        var widened = DrawingVocabulary.Default with { FloorNouns = [.. DrawingVocabulary.Default.FloorNouns, "DECK"] };
+        Assert.Equal([2], PlanSheetNaming.Parse("p12_1_2nd Deck Plan Showing 3rd Deck Framing Over (West).dxf", widened).Levels);
         // and the original is untouched by its copy
-        Assert.Empty(PlanSheetNaming.Parse("p12_1_2nd Flr. Plan Showing 3rd Flr. Framing Over (West).dxf", DrawingVocabulary.Default).Levels);
+        Assert.Empty(PlanSheetNaming.Parse("p12_1_2nd Deck Plan Showing 3rd Deck Framing Over (West).dxf", DrawingVocabulary.Default).Levels);
     }
 
     [Fact]

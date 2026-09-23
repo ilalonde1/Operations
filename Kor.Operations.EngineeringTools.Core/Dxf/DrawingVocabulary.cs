@@ -82,8 +82,16 @@ public sealed record DrawingVocabulary
     /// <summary>A word that names the storey above the highest numbered plan, under the roof. <c>dxf.top-floor-words</c>.</summary>
     public IReadOnlyList<string> TopFloorWords { get; init; } = new[] { "LOFT", "ATTIC" };
 
-    /// <summary>The nouns a floor word or an ordinal is followed by: "2ND FLOOR", "MAIN LEVEL". <c>dxf.floor-nouns</c>.</summary>
-    public IReadOnlyList<string> FloorNouns { get; init; } = new[] { "FLOOR", "LEVEL", "STOREY", "STORY" };
+    /// <summary>
+    /// The nouns a floor word or an ordinal is followed by: "2ND FLOOR", "MAIN LEVEL". <c>dxf.floor-nouns</c>.
+    ///
+    /// FLR was added by migration 099 (applied 2026-09-23) and the compiled default follows it, so a default-mode
+    /// run - the tests, the WPF window, the intake's instruments - reads the same words production does. 30985-01
+    /// titles all six of its plans "1st Flr. Plan Showing 2nd Flr. Framing Over" and read no storey from any of
+    /// them, so a three-storey building was modelled with one. It is the whole of the corpus's use of the
+    /// abbreviation: six plan sheets in one set of 293, none of which read a storey before.
+    /// </summary>
+    public IReadOnlyList<string> FloorNouns { get; init; } = new[] { "FLOOR", "LEVEL", "STOREY", "STORY", "FLR" };
 
     /// <summary>
     /// The word after which a title names the framing OVER the plan, not the plan's own storey: "MAIN FLOOR

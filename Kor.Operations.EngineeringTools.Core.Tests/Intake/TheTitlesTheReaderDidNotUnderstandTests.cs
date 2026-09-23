@@ -58,9 +58,9 @@ public sealed class TheTitlesTheReaderDidNotUnderstandTests
     public static readonly IReadOnlyList<Title> FromTheCorpus =
     [
         // 1. A FLOOR PLAN SHOWING THE FLOOR ABOVE'S FRAMING is the LOWER floor's plan. "Flr." is not a floor noun.
-        new("30985-01", "30985-01 2022-06-24 Rock Ridge Stickfile-p10_1_1st Flr. Plan Showing 2nd Flr. Framing Over (West).dxf", "level 1", 330, Nothing),
-        new("30985-01", "30985-01 2022-06-24 Rock Ridge Stickfile-p12_1_2nd Flr. Plan Showing 3rd Flr. Framing Over (West).dxf", "level 2", 293, Nothing),
-        new("30985-01", "30985-01 2022-06-24 Rock Ridge Stickfile-p14_1_3rd Flr. Plan Showing Roof Framing Over (West).dxf", "level 3", 298, Nothing),
+        new("30985-01", "30985-01 2022-06-24 Rock Ridge Stickfile-p10_1_1st Flr. Plan Showing 2nd Flr. Framing Over (West).dxf", "level 1", 330, "L1"),
+        new("30985-01", "30985-01 2022-06-24 Rock Ridge Stickfile-p12_1_2nd Flr. Plan Showing 3rd Flr. Framing Over (West).dxf", "level 2", 293, "L2"),
+        new("30985-01", "30985-01 2022-06-24 Rock Ridge Stickfile-p14_1_3rd Flr. Plan Showing Roof Framing Over (West).dxf", "level 3", 298, "L3"),
         // the same shape spelled out in full, which the reader DOES understand - the level it takes is the first named, correctly
         new("60065-01", "60065-01 2026-07-23 - Vaughan - Stickfile-p14_1_S-9 - HOTEL FOURTH FLOOR PLAN SHOWING FIFTH FLOOR FRAMING OVER.dxf", "level 4", 76, "L4"),
         new("60065-01", "60065-01 2026-07-23 - Vaughan - Stickfile-p12_1_S-7 - HOTEL SECOND FLOOR PLAN SHOWING THIRD FLOOR FRAMING OVER.dxf", "level 2", 61, "L2"),
@@ -100,35 +100,40 @@ public sealed class TheTitlesTheReaderDidNotUnderstandTests
     }
 
     /// <summary>
-    /// The ratchet's number, in the build rather than in a note: nine of these sixteen titles say a level and the
-    /// reader takes none of it, and 1,888 slabs were read on those nine sheets. It may go down; a rise is a fault.
+    /// The ratchet's number, in the build rather than in a note. It was NINE of these sixteen and 1,888 slabs when
+    /// this was written at 00:45 on 2026-09-23; migration 099 banked FLR as a floor noun that morning and took
+    /// three of them, 921 slabs. What is left is the six that need a rule rather than a word — the parkade level
+    /// that arrives last, which is intake step 137 on its own branch. It may go down; a rise is a fault.
     /// </summary>
     [Fact]
-    public void NineOfThemReadNothingAndThatMayOnlyGoDown()
+    public void SixOfThemReadNothingAndThatMayOnlyGoDown()
     {
         var blind = FromTheCorpus.Where(t => t.ReaderMakes == Nothing).ToList();
         Assert.Equal(blind.Count, FromTheCorpus.Count(t => Describe(PlanSheetNaming.Parse(t.FileName)) == Nothing));
-        Assert.True(blind.Count <= 9, $"{blind.Count} titles read nothing; the banked count is 9 and it may only fall.");
-        Assert.True(blind.Sum(t => t.Slabs) <= 1888, $"{blind.Sum(t => t.Slabs)} slabs sit behind a title that reads nothing; the banked figure is 1,888.");
+        Assert.True(blind.Count <= 6, $"{blind.Count} titles read nothing; the banked count is 6 and it may only fall.");
+        Assert.True(blind.Sum(t => t.Slabs) <= 967, $"{blind.Sum(t => t.Slabs)} slabs sit behind a title that reads nothing; the banked figure is 967.");
     }
 
     /// <summary>
-    /// THE ROW THAT WOULD READ THE FIRST SIX (migration 099, `dxf.floor-nouns` gains FLR — Ian's to apply).
+    /// FLR IS A FLOOR NOUN — migration 099, written 2026-09-23 00:57 and applied the same day.
     ///
     /// 089 banked the rule that a storey may be named by a word, for exactly this grammar: "MAIN FLOOR PLAN
-    /// SHOWING 2ND FLOOR FRAMING OVER". Its own test for a row is "a vocabulary that can only widen", and this is
-    /// that: one abbreviation. 30985-01 writes every one of its plans "1st Flr. Plan Showing 2nd Flr. Framing
-    /// Over", so its 3-storey building is modelled with ONE storey, L1 — the two sheets that spell "1st Floor" in
-    /// full are the only ones that read. Six sheets and 1,805 slabs, the whole of the corpus's use of it.
+    /// SHOWING 2ND FLOOR FRAMING OVER". Its own test for a row is "a vocabulary that can only widen", and this
+    /// was that: one abbreviation. 30985-01 writes every one of its plans "1st Flr. Plan Showing 2nd Flr. Framing
+    /// Over", so its 3-storey building was modelled with ONE storey, L1 — the two sheets that spell "1st Floor"
+    /// in full were the only ones that read. Six sheets and 1,805 slabs, the whole of the corpus's use of it.
     ///
-    /// This proves the reader WOULD read them, against the widened vocabulary and without the database. What it
-    /// cannot prove is the corpus effect, which needs the row: the prediction is 30985-01 going from 1 storey to
-    /// 3, and nothing else moving, since no other set in run 43 writes an ordinal against FLR.
+    /// The three read now, and the assertion that they read NOTHING without FLR is what keeps the row honest: if
+    /// somebody takes the word back out, this says which sheets pay for it. The corpus effect is a separate
+    /// claim with its own prediction — 30985-01 from 1 storey to 3, and nothing else moving, since no other set
+    /// in run 43 writes an ordinal against FLR — and it is checked on the ledger, not here.
     /// </summary>
     [Fact]
-    public void WithFlrAsAFloorNounTheThirtyNineEightyFiveSheetsRead()
+    public void FlrIsAFloorNounAndTheThirtyNineEightyFiveSheetsRead()
     {
-        var widened = DrawingVocabulary.Default with { FloorNouns = ["FLOOR", "LEVEL", "STOREY", "STORY", "FLR"] };
+        var withoutFlr = DrawingVocabulary.Default with { FloorNouns = DrawingVocabulary.Default.FloorNouns.Where(w => w != "FLR").ToList() };
+        var widened = DrawingVocabulary.Default;
+        Assert.Contains("FLR", widened.FloorNouns);
         var expected = new (string Name, int Level)[]
         {
             ("30985-01 2022-06-24 Rock Ridge Stickfile-p10_1_1st Flr. Plan Showing 2nd Flr. Framing Over (West).dxf", 1),
@@ -137,7 +142,7 @@ public sealed class TheTitlesTheReaderDidNotUnderstandTests
         };
         foreach (var (name, level) in expected)
         {
-            Assert.Empty(PlanSheetNaming.Parse(name, DrawingVocabulary.Default).Levels);
+            Assert.Empty(PlanSheetNaming.Parse(name, withoutFlr).Levels);
             Assert.Equal([level], PlanSheetNaming.Parse(name, widened).Levels);
         }
         // and it stays a widening: the words that read today still read the same
