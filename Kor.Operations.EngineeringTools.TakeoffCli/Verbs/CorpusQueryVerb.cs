@@ -35,7 +35,12 @@ internal static class CorpusQueryVerb
         // --ledger names the analyzer's folder, or a banked sets CSV (docs/etabs-handoff/corpus/ledger-sets-<date>-<run>.csv)
         // whose sheets file sits beside it under the same suffix
         string setsPath = File.Exists(dir) ? dir : Path.Combine(dir, "ledger-sets.csv");
-        string sheetsPath = File.Exists(dir) ? Path.Combine(Path.GetDirectoryName(dir) ?? ".", Path.GetFileName(dir).Replace("ledger-sets", "ledger-sheets", StringComparison.OrdinalIgnoreCase)) : Path.Combine(dir, "ledger-sheets.csv");
+        // ⚠ AND A SETS FILE WHOSE NAME DOES NOT SAY "ledger-sets" IS NOT ITS OWN SHEET LEDGER (2026-09-23). The
+        // replace below returns the SAME path when the name does not carry that word, so `--ledger gate-...csv`
+        // handed a sets file to the sheet parser and it threw on the first date it met. Named files are what the
+        // gate's arms are called, so this is not a corner: the sibling must differ from the file itself.
+        string sheetsGuess = File.Exists(dir) ? Path.Combine(Path.GetDirectoryName(dir) ?? ".", Path.GetFileName(dir).Replace("ledger-sets", "ledger-sheets", StringComparison.OrdinalIgnoreCase)) : Path.Combine(dir, "ledger-sheets.csv");
+        string sheetsPath = string.Equals(sheetsGuess, dir, StringComparison.OrdinalIgnoreCase) ? string.Empty : sheetsGuess;
         // Column inspection can also use a retained work folder after its ledger has been moved.
         if (args[1].Equals("columns", StringComparison.OrdinalIgnoreCase))
             return Columns(rest, File.Exists(dir) ? Path.GetDirectoryName(Path.GetFullPath(dir)) ?? "." : dir);
@@ -494,8 +499,10 @@ internal static class CorpusQueryVerb
     {
         if (rest.Count != 1 || !File.Exists(rest[0])) { Console.Error.WriteLine("Usage: takeoff corpus-query diff <before-sets.csv> [--ledger <dir|after-sets.csv>]"); return 1; }
         var before = CorpusAnalyzer.ReadSets(rest[0]);
+        // the same guard as the --ledger side: a name that does not carry "ledger-sets" is not its own sheet ledger
         string beforeSheetsPath = Path.Combine(Path.GetDirectoryName(rest[0]) ?? ".", Path.GetFileName(rest[0]).Replace("ledger-sets", "ledger-sheets", StringComparison.OrdinalIgnoreCase));
-        var beforeSheets = File.Exists(beforeSheetsPath) ? CorpusAnalyzer.ReadSheets(beforeSheetsPath) : [];
+        var beforeSheets = File.Exists(beforeSheetsPath) && !string.Equals(beforeSheetsPath, rest[0], StringComparison.OrdinalIgnoreCase)
+            ? CorpusAnalyzer.ReadSheets(beforeSheetsPath) : [];
         var r = CorpusDiff.Compare(before, after);
         Console.WriteLine($"  before {rest[0]}: {before.Count} sets, {before.Count(s => s.HasModel)} with a model, run {before.FirstOrDefault()?.RunAtUtc:yyyy-MM-dd HH:mm} UTC");
         Console.WriteLine($"  after  {after.Count} sets, {after.Count(s => s.HasModel)} with a model");
