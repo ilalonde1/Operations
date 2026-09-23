@@ -107,6 +107,118 @@ public sealed class CompiledDefaultsAreTheBankedRowsTests
         Assert.True(banked.Count == 0, "Declared unbanked but a row exists now — remove from UnbankedByDesign: " + string.Join(", ", banked));
     }
 
+    /// <summary>
+    /// A list-valued row that differs from its compiled default, each with the reason it differs. Empty is not
+    /// the goal here — the row is the authority — but a DIFFERENCE NOBODY DECLARED is a fault, because it means
+    /// the code and the office disagree about words and no one decided that.
+    /// </summary>
+    private static readonly IReadOnlyDictionary<string, string> ListRowsThatDifferByDesign = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+    {
+        // ⚠ THE THREE THIS GATE FOUND ON ITS FIRST RUN, 2026-09-23. All three are on PlanClassificationOptions,
+        // where the row is RICHER than the code, so a production run reads more than a default-mode run — the
+        // same split the numeric gate was written for on 2026-09-08, in the layer vocabularies instead of the
+        // numbers. Declared, not silenced: bringing the compiled defaults up to the rows changes what every
+        // default-mode run reads (tests, the WPF window, the intake's instruments), so it is a change that wants
+        // its own gate run and not a quiet edit.
+        //
+        // NONE of the sixteen DrawingVocabulary rows differs, which is the honest limit of the record-copy fault
+        // mended the same day: it could only bite where a row differs from its default, and today none of the
+        // WORD rows does. It would have bitten the moment migration 099 added FLR to dxf.floor-nouns.
+        ["dxf.column-layer-patterns"] = "row [_COL; -COL; S-COL], code [_COL]: the row carries two more layer spellings than the compiled default",
+        ["dxf.slab-layer-patterns"] = "row [SLABEDG; A-FLOR; S-FLOR], code [SLABEDG]: the same, for slabs",
+        ["dxf.non-structural-sheet-patterns"] = "row carries sixteen patterns (REINFORC, KEY PLAN, DESIGN LOAD, SITE PLAN, LOADING DIAGRAM …), code carries NONE: a default-mode run stands no sheet down at all",
+    };
+
+    /// <summary>Keys read as a list that have no row yet, each with the reason.</summary>
+    private static readonly IReadOnlyDictionary<string, string> ListRowsUnbankedByDesign = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+    {
+        // Found by this gate on its first run, 2026-09-23. No migration in KOR.Drafter/db mentions the key, and
+        // DxfToEtabsService.RequiredRuleKeys does not name it either, so a run without the row does not stop: the
+        // reader falls back to the one compiled word, MATCH. It is a rule the office should own — what a match
+        // line is drawn on — and until it is banked this is where that is written down.
+        ["dxf.match-line-layer-patterns"] = "no migration banks it and no run requires it; the compiled default is the single word MATCH (MatchLineSheetJoin.DefaultLayerPatterns), a row is owed",
+    };
+
+    /// <summary>
+    /// THE WORDS AND THE LAYER PATTERNS, AGAINST THEIR COMPILED DEFAULTS (2026-09-23).
+    ///
+    /// The numeric gate above says in its own remarks that it does NOT cover "list-valued rows (layer
+    /// vocabularies, words)" — nineteen of them — and nothing else did either. They matter as much as the
+    /// numbers: dxf.level-words decides what a storey is called, dxf.slab-layer-patterns decides what a slab is
+    /// drawn on, dxf.non-structural-sheet-patterns decides which sheets stand down. A row that quietly differs
+    /// from the code means a production run and every default-mode run — tests, the WPF window, the intake's
+    /// instruments — read different words, which is the fault the numeric gate was written for in the first place.
+    ///
+    /// Written the day the record-copy fault was found (a `with` over a used vocabulary kept the old patterns),
+    /// because that fault could only bite where a row differs from its default, and NOTHING COULD SAY WHETHER ONE
+    /// DID.
+    ///
+    /// WHAT THIS COVERS: every key the code reads through `ListOr`, by the words it holds, in order-insensitive
+    /// comparison, case-insensitively. WHAT IT DOES NOT: whether a row is RIGHT (the corpus measurement's job);
+    /// whether a reader honours the row it loads; and a word the code never reads through ListOr at all.
+    /// </summary>
+    [Fact]
+    public void EveryCompiledWordListEqualsItsRow()
+    {
+        var rows = Rows();
+        var compiled = DxfToEtabsService.BuiltInRuleLists();
+
+        var wrong = new StringBuilder();
+        var unbankedNotDeclared = new List<string>();
+        foreach (var (key, words) in compiled.OrderBy(kv => kv.Key, StringComparer.OrdinalIgnoreCase))
+        {
+            if (!rows.TryGetValue(key, out var row))
+            {
+                if (!ListRowsUnbankedByDesign.ContainsKey(key)) unbankedNotDeclared.Add(key);
+                continue;
+            }
+            var banked = row.Text.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            if (banked.OrderBy(w => w, StringComparer.OrdinalIgnoreCase).SequenceEqual(words.OrderBy(w => w, StringComparer.OrdinalIgnoreCase), StringComparer.OrdinalIgnoreCase)) continue;
+            if (ListRowsThatDifferByDesign.ContainsKey(key)) continue;
+            wrong.AppendLine($"  {key}: row [{string.Join("; ", banked)}], compiled [{string.Join("; ", words)}]");
+        }
+
+        Assert.True(unbankedNotDeclared.Count == 0,
+            "List rules the code reads with no row and no declared reason: " + string.Join(", ", unbankedNotDeclared));
+        Assert.True(wrong.Length == 0,
+            "Compiled word lists that are not their rows. Either bank the row or declare the difference in ListRowsThatDifferByDesign with the reason:\n" + wrong);
+
+        var banked2 = ListRowsUnbankedByDesign.Keys.Where(rows.ContainsKey).ToList();
+        Assert.True(banked2.Count == 0, "Declared unbanked but a row exists now — remove from ListRowsUnbankedByDesign: " + string.Join(", ", banked2));
+    }
+
+    /// <summary>
+    /// ⚠ A BROAD NAME ON A NARROW CHECK IS WORSE THAN NO CHECK. The gate above only sees the keys
+    /// <see cref="DxfToEtabsService.BuiltInRuleLists"/> names, so a list rule added without a line there would
+    /// read its row in production and be compared to nothing — while the gate's name says every word list is
+    /// covered. This reads the source for every key passed to <c>settings.ListOr</c> and holds the two together.
+    /// </summary>
+    [Fact]
+    public void EveryListRuleTheCodeReadsIsInThatList()
+    {
+        string core = Path.Combine(RepositoryRoot(), "Kor.Operations.EngineeringTools.Core");
+        Assert.True(Directory.Exists(core), $"the Core project is not where this test looked: {core}");
+        var inSource = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (string file in Directory.EnumerateFiles(core, "*.cs", SearchOption.AllDirectories))
+            foreach (Match m in Regex.Matches(File.ReadAllText(file), "ListOr\\(\"([^\"]+)\""))
+                inSource.Add(m.Groups[1].Value);
+
+        Assert.True(inSource.Count > 0, "no ListOr call was found in the Core project; this guard is reading the wrong place");
+        var missing = inSource.Except(DxfToEtabsService.BuiltInRuleLists().Keys, StringComparer.OrdinalIgnoreCase).ToList();
+        Assert.True(missing.Count == 0,
+            "List rules the code reads that BuiltInRuleLists does not name, so nothing compares them with their rows: " + string.Join(", ", missing));
+        var stale = DxfToEtabsService.BuiltInRuleLists().Keys.Except(inSource, StringComparer.OrdinalIgnoreCase).ToList();
+        Assert.True(stale.Count == 0, "BuiltInRuleLists names keys the code no longer reads as a list: " + string.Join(", ", stale));
+    }
+
+    /// <summary>The repository root, from the test binary's own folder.</summary>
+    private static string RepositoryRoot()
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir is not null && !Directory.Exists(Path.Combine(dir.FullName, "Kor.Operations.EngineeringTools.Core"))) dir = dir.Parent;
+        return dir?.FullName ?? AppContext.BaseDirectory;
+    }
+
     [Fact]
     public void EveryNumericOptionIsARuleOrDeclaredNotOne()
     {

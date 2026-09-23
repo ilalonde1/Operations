@@ -217,8 +217,12 @@ public static partial class PlanSheetNaming
         {
             IsFoundation = vocabulary.IsFoundationName(own),
             IsElevatorRoof = vocabulary.IsElevatorRoofName(own),
-            IsMezzanine = IsMezzanineName(own),
-            MezzanineLevels = MezzanineLevelsIn(StripSheetNumber(name)),
+            // THE CALLER'S VOCABULARY, NOT THE STATIC (2026-09-23). These two read the shared
+            // PlanSheetNaming.Vocabulary while every line around them reads the one handed in, so
+            // Parse(name, anotherOfficesWords) answered half in this office's words. Found beside
+            // the record-copy fault in DrawingVocabulary, and it is the same mistake one level up.
+            IsMezzanine = vocabulary.IsMezzanineName(own),
+            MezzanineLevels = MezzanineLevelsIn(StripSheetNumber(name), vocabulary),
             ParkadeLevels = parkade,
             BuildingTags = buildings,
             IsIssuedSheet = vocabulary.IsIssuedSheetName(name),
@@ -237,7 +241,7 @@ public static partial class PlanSheetNaming
     /// would take a plan for two towers apart. Returns empty unless the title genuinely mixes the
     /// two kinds, so a sheet that is wholly a mezzanine is untouched.
     /// </summary>
-    private static IReadOnlyList<int> MezzanineLevelsIn(string title)
+    private static IReadOnlyList<int> MezzanineLevelsIn(string title, DrawingVocabulary vocabulary)
     {
         var parts = Regex.Split(title, @"\s+AND\s+", RegexOptions.IgnoreCase);
         if (parts.Length < 2) return Array.Empty<int>();
@@ -247,10 +251,10 @@ public static partial class PlanSheetNaming
 
         foreach (string part in parts)
         {
-            var levels = Vocabulary.SingleLevel.Matches(part).Select(m => int.Parse(m.Groups[1].Value)).ToList();
+            var levels = vocabulary.SingleLevel.Matches(part).Select(m => int.Parse(m.Groups[1].Value)).ToList();
             if (levels.Count == 0) continue;
 
-            if (IsMezzanineName(part)) mezzanine.AddRange(levels);
+            if (vocabulary.IsMezzanineName(part)) mezzanine.AddRange(levels);
             else anyPlain = true;
         }
 

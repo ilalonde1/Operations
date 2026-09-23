@@ -29,10 +29,18 @@ namespace Kor.Operations.EngineeringTools.Core.Tests.Intake;
 /// THIS IS A RATCHET. Every name is asserted to read exactly what it reads TODAY. A fix makes this test fail until
 /// its expectation is moved — which is the point: the nine may only shrink, and nothing may join them quietly.
 ///
+/// ⚠ TWO READERS READ THESE TITLES AND THEY DISAGREE. The corpus ledger's `level` column is
+/// <c>SheetTitleReader</c>'s reading of the PAGE's printed title; the composer places by this one,
+/// <see cref="PlanSheetNaming.Parse(string)"/> on the DXF FILE NAME. Every one of the seven below that reads a
+/// level here is BLANK in the ledger — so `corpus-query dropped` put them in its "states no level" class while
+/// the composer knew exactly which storey they were. One reader is reported and the other is obeyed, and until
+/// this test existed nothing compared them.
+///
 /// WHAT THIS COVERS: <see cref="PlanSheetNaming.Parse(string)"/> on the file name, which is what the composer
 /// matches storeys with. WHAT IT DOES NOT: whether a level that IS read reaches a storey (the seven prove it need
-/// not); the 460 sheets whose titles name no level at all; and it is this office's vocabulary only, since Parse
-/// reads the static <see cref="PlanSheetNaming.Vocabulary"/> — which is why this class sits in the collection that
+/// not); <c>SheetTitleReader</c>, the other half of the disagreement, which is not exercised here at all; the 460
+/// sheets whose titles name no level at all; and it is this office's vocabulary only, since Parse reads the
+/// static <see cref="PlanSheetNaming.Vocabulary"/> — which is why this class sits in the collection that
 /// serialises every test touching it.
 /// </summary>
 [Collection(SheetNamingVocabularyCollection.Name)]
@@ -102,6 +110,39 @@ public sealed class TheTitlesTheReaderDidNotUnderstandTests
         Assert.Equal(blind.Count, FromTheCorpus.Count(t => Describe(PlanSheetNaming.Parse(t.FileName)) == Nothing));
         Assert.True(blind.Count <= 9, $"{blind.Count} titles read nothing; the banked count is 9 and it may only fall.");
         Assert.True(blind.Sum(t => t.Slabs) <= 1888, $"{blind.Sum(t => t.Slabs)} slabs sit behind a title that reads nothing; the banked figure is 1,888.");
+    }
+
+    /// <summary>
+    /// THE ROW THAT WOULD READ THE FIRST SIX (migration 099, `dxf.floor-nouns` gains FLR — Ian's to apply).
+    ///
+    /// 089 banked the rule that a storey may be named by a word, for exactly this grammar: "MAIN FLOOR PLAN
+    /// SHOWING 2ND FLOOR FRAMING OVER". Its own test for a row is "a vocabulary that can only widen", and this is
+    /// that: one abbreviation. 30985-01 writes every one of its plans "1st Flr. Plan Showing 2nd Flr. Framing
+    /// Over", so its 3-storey building is modelled with ONE storey, L1 — the two sheets that spell "1st Floor" in
+    /// full are the only ones that read. Six sheets and 1,805 slabs, the whole of the corpus's use of it.
+    ///
+    /// This proves the reader WOULD read them, against the widened vocabulary and without the database. What it
+    /// cannot prove is the corpus effect, which needs the row: the prediction is 30985-01 going from 1 storey to
+    /// 3, and nothing else moving, since no other set in run 43 writes an ordinal against FLR.
+    /// </summary>
+    [Fact]
+    public void WithFlrAsAFloorNounTheThirtyNineEightyFiveSheetsRead()
+    {
+        var widened = DrawingVocabulary.Default with { FloorNouns = ["FLOOR", "LEVEL", "STOREY", "STORY", "FLR"] };
+        var expected = new (string Name, int Level)[]
+        {
+            ("30985-01 2022-06-24 Rock Ridge Stickfile-p10_1_1st Flr. Plan Showing 2nd Flr. Framing Over (West).dxf", 1),
+            ("30985-01 2022-06-24 Rock Ridge Stickfile-p12_1_2nd Flr. Plan Showing 3rd Flr. Framing Over (West).dxf", 2),
+            ("30985-01 2022-06-24 Rock Ridge Stickfile-p14_1_3rd Flr. Plan Showing Roof Framing Over (West).dxf", 3),
+        };
+        foreach (var (name, level) in expected)
+        {
+            Assert.Empty(PlanSheetNaming.Parse(name, DrawingVocabulary.Default).Levels);
+            Assert.Equal([level], PlanSheetNaming.Parse(name, widened).Levels);
+        }
+        // and it stays a widening: the words that read today still read the same
+        Assert.Equal([1], PlanSheetNaming.Parse("30985-01 2022-06-24 Rock Ridge Stickfile-p07_1_1st Floor Plan.dxf", widened).Levels);
+        Assert.Equal([4], PlanSheetNaming.Parse("S-9 - HOTEL FOURTH FLOOR PLAN SHOWING FIFTH FLOOR FRAMING OVER.dxf", widened).Levels);
     }
 
     private static string Describe(PlanSheetInfo s)

@@ -206,30 +206,44 @@ public sealed record DrawingVocabulary
 
     /// <summary>Whether a drawing title carries a sheet number, and so is an issued drawing.</summary>
     public bool IsIssuedSheetName(string name)
-        => !string.IsNullOrWhiteSpace(SheetNumberPattern)
-           && (_issued ??= new Regex(SheetNumberPattern, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
-               .IsMatch(name);
+        => !string.IsNullOrWhiteSpace(SheetNumberPattern) && Of(SheetNumberPattern).IsMatch(name);
     public bool IsElevatorRoofName(string name) => Mentions(name, ElevatorRoofWords);
 
     // ------------------------------------------------------------------------------------------
-    // The patterns, built once per vocabulary rather than compiled into the assembly.
+    // The patterns, built once PER PATTERN and never held on the record.
     //
-    // Cached on the record because Parse runs per sheet and a job has scores of them; building a
-    // Regex per call would be the kind of quiet cost that only shows up on a big drawing set.
+    // ⚠ THEY USED TO BE CACHED IN FIELDS ON THE RECORD, AND `with` COPIED THEM (found 2026-09-23).
+    // This is a record, so `Default with { FloorNouns = [... "FLR"] }` copies every FIELD as well as
+    // every property — including a regex already built from the OLD words. That is exactly how the
+    // banked vocabulary reaches the reader: `DxfToEtabsService.ApplyRules(DrawingVocabulary.Default,
+    // banked)` is a `with` over Default, and `PlanSheetNaming.Vocabulary` falls back to Default
+    // until something assigns it, so ANY title parsed before the rules load warms Default's patterns
+    // and the configured copy then reads with the DEFAULTS. Every KorStandards vocabulary row —
+    // dxf.level-words, dxf.parkade-words, dxf.floor-nouns, dxf.building-words and the rest — can be
+    // silently ignored that way, and nothing says so: the row is loaded, the property holds it, and
+    // the pattern that does the work was built before it arrived.
+    //
+    // Keyed on the pattern TEXT in a static, the cache cannot outlive the words it was built from:
+    // different words spell a different pattern and get a different Regex. Building the pattern
+    // string per call is a join over a handful of words; building the Regex is what costs, and that
+    // is still done once. `AVocabularyCopiedFromAnotherDoesNotInheritItsPatternsTests` holds it.
     // ------------------------------------------------------------------------------------------
 
-    private Regex? _building, _prefixBuilding, _range, _levelList, _singleLevel, _parkadeLevel, _negativeLevel, _parkadeStory, _issued, _wordFloor, _basement, _topFloor;
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, Regex> Patterns = new(StringComparer.Ordinal);
+
+    /// <summary>The compiled form of this pattern, built once for the process and shared by every vocabulary that spells it the same.</summary>
+    private static Regex Of(string pattern)
+        => Patterns.GetOrAdd(pattern, p => new Regex(p, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant));
 
     /// <summary>"MAIN FLOOR", "2ND FLOOR", "SECOND LEVEL": a floor word or an ordinal, then a floor noun.</summary>
-    public Regex WordFloor => _wordFloor ??= new Regex(
-        $@"\b({Any(FloorWords.Select(e => e.Split('=')[0].Trim()).ToList())}|{string.Join("|", OrdinalWords)}|\d{{1,2}}(?:ST|ND|RD|TH))\s+(?:{Any(FloorNouns)})\b",
-        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+    public Regex WordFloor => Of(
+        $@"\b({Any(FloorWords.Select(e => e.Split('=')[0].Trim()).ToList())}|{string.Join("|", OrdinalWords)}|\d{{1,2}}(?:ST|ND|RD|TH))\s+(?:{Any(FloorNouns)})\b");
 
     /// <summary>"BASEMENT", "LOWER FLOOR": the storey below the main floor.</summary>
-    public Regex Basement => _basement ??= new Regex($@"\b(?:{Any(BasementWords)})\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+    public Regex Basement => Of($@"\b(?:{Any(BasementWords)})\b");
 
     /// <summary>"LOFT", "ATTIC": the storey above the highest numbered plan.</summary>
-    public Regex TopFloor => _topFloor ??= new Regex($@"\b(?:{Any(TopFloorWords)})\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+    public Regex TopFloor => Of($@"\b(?:{Any(TopFloorWords)})\b");
 
     private static string Any(IReadOnlyList<string> words)
         => string.Join("|", words.Where(w => w.Length > 0)
@@ -242,37 +256,30 @@ public sealed record DrawingVocabulary
     /// buildings; with letters alone their tags read as nothing and 31185's five buildings' LEVEL 1 plans all
     /// landed on one storey. A word boundary closes the tag, so "BUILDING PERMIT" names no building.
     /// </summary>
-    public Regex Building => _building ??= new Regex(
-        $@"(?:{Any(BuildingWords)})\s*((?:[A-Z]|\d{{1,2}}[A-Z]?)(?:\s*&\s*(?:[A-Z]|\d{{1,2}}[A-Z]?))*)\b",
-        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+    public Regex Building => Of(
+        $@"(?:{Any(BuildingWords)})\s*((?:[A-Z]|\d{{1,2}}[A-Z]?)(?:\s*&\s*(?:[A-Z]|\d{{1,2}}[A-Z]?))*)\b");
 
     /// <summary>"A-LEVEL 28", "1-LEVEL 2" — a building named as a prefix on the storey itself.</summary>
-    public Regex PrefixBuilding => _prefixBuilding ??= new Regex(
-        $@"(?<![A-Z0-9])([A-Z]|\d{{1,2}}[A-Z]?)-(?:{Any(LevelWords)})\s*\d",
-        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+    public Regex PrefixBuilding => Of(
+        $@"(?<![A-Z0-9])([A-Z]|\d{{1,2}}[A-Z]?)-(?:{Any(LevelWords)})\s*\d");
 
     /// <summary>"LEVEL 4 TO 14", "L15-26".</summary>
-    public Regex Range => _range ??= new Regex(
-        $@"(?:{Any(LevelWords)})\s*(\d+)\s*(?:{Any(RangeWords)})\s*(?:{Any(LevelWords)})?\s*(\d+)",
-        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+    public Regex Range => Of(
+        $@"(?:{Any(LevelWords)})\s*(\d+)\s*(?:{Any(RangeWords)})\s*(?:{Any(LevelWords)})?\s*(\d+)");
 
     /// <summary>"LEVEL 8, 9" — two floors on one sheet, and reading only the 8 loses a storey.</summary>
-    public Regex LevelList => _levelList ??= new Regex(
+    public Regex LevelList => Of(
         // "LEVEL 8, 9"; and a list whose items may be ranges - "LEVEL 13 & 14 - 27 PLAN" is 13 and 14 through 27
         // (step 76, 2026-09-15: 30884's typical floors, 14 storeys with no sheet placed on them)
-        $@"(?:{Any(LevelWords)})\s*(\d+)(?:\s*(?:{Any(RangeWords)})\s*(?:{Any(LevelWords)})?\s*(\d+))?((?:\s*(?:,|&|and)\s*\d+(?:\s*(?:{Any(RangeWords)})\s*(?:{Any(LevelWords)})?\s*\d+)?)+)",
-        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        $@"(?:{Any(LevelWords)})\s*(\d+)(?:\s*(?:{Any(RangeWords)})\s*(?:{Any(LevelWords)})?\s*(\d+))?((?:\s*(?:,|&|and)\s*\d+(?:\s*(?:{Any(RangeWords)})\s*(?:{Any(LevelWords)})?\s*\d+)?)+)");
 
     /// <summary>A range inside a level list: "14 - 27", "14 TO 27", "14 THRU LEVEL 27".</summary>
-    public Regex RangeInList => _rangeInList ??= new Regex(
-        $@"(\d+)(?:\s*(?:{Any(RangeWords)})\s*(?:{Any(LevelWords)})?\s*(\d+))?",
-        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
-    private Regex? _rangeInList;
+    public Regex RangeInList => Of(
+        $@"(\d+)(?:\s*(?:{Any(RangeWords)})\s*(?:{Any(LevelWords)})?\s*(\d+))?");
 
     /// <summary>"LEVEL 9".</summary>
-    public Regex SingleLevel => _singleLevel ??= new Regex(
-        $@"(?:{Any(LevelWords)})\s*(\d+)",
-        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+    public Regex SingleLevel => Of(
+        $@"(?:{Any(LevelWords)})\s*(\d+)");
 
     /// <summary>
     /// "LEVEL -3" on a sheet title: a level counted downward from grade is a parkade level (step 84, 2026-09-16;
@@ -280,21 +287,18 @@ public sealed record DrawingVocabulary
     /// between the word and the number and no range may follow: "LEVEL 5 - 7" is a range, "LEVEL - 1" is the first
     /// level below grade.
     /// </summary>
-    public Regex NegativeLevel => _negativeLevel ??= new Regex(
-        $@"(?:{Any(LevelWords)})\s*-\s*(\d+)(?!\s*-\s*\d)",
-        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+    public Regex NegativeLevel => Of(
+        $@"(?:{Any(LevelWords)})\s*-\s*(\d+)(?!\s*-\s*\d)");
 
     /// <summary>"LEVEL P2" on a sheet title.</summary>
-    public Regex ParkadeLevel => _parkadeLevel ??= new Regex(
-        $@"(?:{Any(LevelWords)})\s*(?:{Any(ParkadeWords)})\s*(\d+)",
-        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+    public Regex ParkadeLevel => Of(
+        $@"(?:{Any(LevelWords)})\s*(?:{Any(ParkadeWords)})\s*(\d+)");
 
     /// <summary>
     /// "P2" as a MODEL names the storey. Drafting titles a sheet "LEVEL P2" and a model may call
     /// the storey just "P2" — 31138 does, and because the pattern demanded the word LEVEL, every
     /// below-grade sheet in that project matched no storey and the whole parkade went missing.
     /// </summary>
-    public Regex ParkadeStory => _parkadeStory ??= new Regex(
-        $@"^\s*(?:(?:{Any(LevelWords)})\s*)?(?:{Any(ParkadeWords)})\s*(\d+)\s*$",
-        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+    public Regex ParkadeStory => Of(
+        $@"^\s*(?:(?:{Any(LevelWords)})\s*)?(?:{Any(ParkadeWords)})\s*(\d+)\s*$");
 }

@@ -397,6 +397,42 @@ public static class DxfToEtabsService
     ];
 
     /// <summary>
+    /// Every rule key this generator reads AS A LIST, with the words the compiled default supplies for it —
+    /// the nineteen the numeric gate says in its own remarks that it does not cover (2026-09-23). Internal so
+    /// that CompiledDefaultsAreTheBankedRowsTests can hold each one against its row.
+    ///
+    /// ⚠ It must name every key passed to <c>settings.ListOr</c>. A list rule added without a line here reads
+    /// its row in production and is compared to nothing.
+    /// </summary>
+    internal static IReadOnlyDictionary<string, IReadOnlyList<string>> BuiltInRuleLists()
+    {
+        var c = new PlanClassificationOptions();
+        var v = DrawingVocabulary.Default;
+        return new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["dxf.wall-layer-patterns"] = c.WallLayerPatterns,
+            ["dxf.column-layer-patterns"] = c.ColumnLayerPatterns,
+            ["dxf.slab-layer-patterns"] = c.SlabLayerPatterns,
+            ["dxf.non-structural-sheet-patterns"] = c.NonStructuralSheetPatterns,
+            ["dxf.structural-plan-words"] = c.StructuralPlanWords,
+            ["dxf.match-line-layer-patterns"] = MatchLineSheetJoin.DefaultLayerPatterns,
+            ["dxf.level-words"] = v.LevelWords,
+            ["dxf.building-words"] = v.BuildingWords,
+            ["dxf.parkade-words"] = v.ParkadeWords,
+            ["dxf.range-words"] = v.RangeWords,
+            ["dxf.roof-words"] = v.RoofWords,
+            ["dxf.mezzanine-words"] = v.MezzanineWords,
+            ["dxf.foundation-words"] = v.FoundationWords,
+            ["dxf.elevator-roof-words"] = v.ElevatorRoofWords,
+            ["dxf.floor-words"] = v.FloorWords,
+            ["dxf.basement-words"] = v.BasementWords,
+            ["dxf.top-floor-words"] = v.TopFloorWords,
+            ["dxf.floor-nouns"] = v.FloorNouns,
+            ["dxf.framing-over-words"] = v.FramingOverWords,
+        };
+    }
+
+    /// <summary>
     /// Every rule key this generator reads, with the value the compiled default supplies for it.
     /// Internal so that CompiledDefaultsAreTheBankedRowsTests can hold each one against its row.
     /// </summary>

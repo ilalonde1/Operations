@@ -377,6 +377,14 @@ internal static class CorpusQueryVerb
     /// the sheet row holds no area; and a sheet that read no slab at all is left out, though it may still have
     /// had a floor to give. A same-class fault it would NOT catch: two sheets naming one storey where BOTH are
     /// dropped, since neither has a twin that took it - those land in the "nobody took that level" class below.
+    ///
+    /// ⚠ AND THE LEVEL IT CLASSES BY IS NOT THE LEVEL THE COMPOSER PLACED BY (2026-09-23). The ledger's `level`
+    /// is <c>SheetTitleReader</c>'s reading of the PAGE's printed title; the composer places by
+    /// <c>PlanSheetNaming.Parse</c> on the DXF FILE NAME. They disagree: 60065-01's "HOTEL FOURTH FLOOR PLAN
+    /// SHOWING FIFTH FLOOR FRAMING OVER" is blank in the ledger and reads L4 to the composer, and so are the
+    /// other six that TheTitlesTheReaderDidNotUnderstandTests shows reading correctly. So "states no level" here
+    /// means the REPORTED level is blank, and a sheet in that class may have been placed by a level the composer
+    /// read perfectly well. Two readers of one title, one of them reported and the other obeyed.
     /// </summary>
     private static int Dropped(List<string> jobs, IReadOnlyList<CorpusAnalyzer.SheetRow> sheets)
     {
@@ -386,6 +394,20 @@ internal static class CorpusQueryVerb
         static bool GaveAStorey(CorpusAnalyzer.SheetRow s) => !string.IsNullOrWhiteSpace(s.Storeys);
         var tookTheLevel = plans.Where(GaveAStorey).Select(s => (s.Job, Level: Level(s)))
             .Where(k => k.Level.Length > 0).ToHashSet();
+
+        // What the COMPOSER's reader makes of the sheet's DXF name, for the sheets the page-title reader left blank.
+        // It reads the built-in vocabulary, not the office's rows, so it is a floor under the disagreement, not a
+        // measure of it: a row that widened the words could only make the number bigger.
+        static string? ComposerLevel(CorpusAnalyzer.SheetRow s)
+        {
+            foreach (string f in CorpusAnalyzer.DxfFilesOf(s.DxfFiles))
+            {
+                var info = PlanSheetNaming.Parse(f);
+                if (info.Levels.Count > 0) return "L" + string.Join("+", info.Levels);
+                if (info.ParkadeLevels.Count > 0) return "P" + string.Join("+", info.ParkadeLevels);
+            }
+            return null;
+        }
 
         var gaveNothing = plans.Where(s => !GaveAStorey(s) && s.Slabs > 0).ToList();
         var notPlaced = gaveNothing.Where(s => s.Placed != true).ToList();
@@ -397,7 +419,12 @@ internal static class CorpusQueryVerb
 
         Console.WriteLine($"  {plans.Count} plan sheets; {gaveNothing.Count} read a slab and gave the model no storey ({gaveNothing.Sum(s => s.Slabs)} slabs)");
         Console.WriteLine($"    stood on no grid                       {notPlaced.Count,5}  {notPlaced.Sum(s => s.Slabs),6} slabs");
-        Console.WriteLine($"    placed, states no level                {noLevel.Count,5}  {noLevel.Sum(s => s.Slabs),6} slabs");
+        // THE OTHER READER, ON THE SAME SHEETS. "States no level" is the PAGE title reader's verdict; the composer
+        // places by PlanSheetNaming.Parse on the DXF file name. Where that one DOES read a level, the sheet was
+        // never levelless to the code that placed it, and the class above is mis-named for it.
+        var composerReads = noLevel.Where(s => ComposerLevel(s) is not null).ToList();
+        Console.WriteLine($"    placed, states no level                {noLevel.Count,5}  {noLevel.Sum(s => s.Slabs),6} slabs"
+            + (composerReads.Count > 0 ? $"   ({composerReads.Count} of them, {composerReads.Sum(s => s.Slabs)} slabs, DO read a level to the composer's own reader)" : ""));
         Console.WriteLine($"    placed, states a level, nobody took it {orphans.Count,5}  {orphans.Sum(s => s.Slabs),6} slabs");
         Console.WriteLine($"    placed, states a level, A TWIN TOOK IT {twins.Count,5}  {twins.Sum(s => s.Slabs),6} slabs   <- one storey, two sheets, one kept");
         foreach (var (name, list) in new[] { ("A TWIN TOOK ITS LEVEL", twins), ("NOBODY TOOK ITS LEVEL", orphans) })

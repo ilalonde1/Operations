@@ -12,6 +12,9 @@
 //   --baseline   the banked ledger to judge against (default: the newest docs/etabs-handoff/corpus/ledger-sets-*.csv)
 //   --jobs       judge these sets instead of every set of the baseline that has her model
 //   --no-build   judge the ledger already in the work dir (a run that has just finished), building nothing
+//   --recompose  keep the views the last run wrote and run only the ladder and the composer again - right for a
+//                rule on the COMPOSER's side (StructuralPlanClassifier, the storey match), WRONG for a reader-side
+//                one under PdfToSafe/, whose rule would never run and would be reported as having done nothing
 // Exit 1 if any set lost, so it can gate a commit; the table is written beside the work as gate-sets.csv.
 
 internal static class CorpusGateVerb
@@ -24,7 +27,7 @@ internal static class CorpusGateVerb
         string work = Path.Combine(DrawingMirror.Root, "corpus");
         string? baseline = null, jobs = null, rulesDb = null, yardsticks = null, outCsv = null, bisect = null;
         int parallel = 12;
-        bool build = true;
+        bool build = true, recompose = false;
         for (int i = 1; i < args.Length; i++)
         {
             if (args[i].Equals("--baseline", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) baseline = args[++i];
@@ -36,6 +39,7 @@ internal static class CorpusGateVerb
             else if (args[i].Equals("--out", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) outCsv = args[++i];
             else if (args[i].Equals("--bisect", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length) bisect = args[++i];
             else if (args[i].Equals("--no-build", StringComparison.OrdinalIgnoreCase)) build = false;
+            else if (args[i].Equals("--recompose", StringComparison.OrdinalIgnoreCase)) recompose = true;
             else root = args[i];
         }
 
@@ -70,8 +74,15 @@ internal static class CorpusGateVerb
             var census = StickFileCorpus.CensusCached(root, problems, TimeSpan.FromHours(12), false, line => Console.WriteLine("  " + line), parallel: 12);
             var (options, rulesSource) = PdfIntakeOptions.For(rulesDb ?? Environment.GetEnvironmentVariable(RuleSettings.ConnectionEnvironmentVariable));
             Console.WriteLine($"rules: {rulesSource}; work: {work}");
-            var run = CorpusAnalyzer.Run(census, work, options, rulesDb, parallel, force: true, line => Console.WriteLine(line),
-                string.Join(",", wanted), yardsticks, reuseBuilds: false, recompose: false);
+            // --recompose: THE VIEWS OF THE LAST RUN STAND AND ONLY THE COMPOSER RUNS AGAIN (2026-09-23). A rule on
+            // the composer's side - StructuralPlanClassifier, the ladder, the storey match - cannot change what the
+            // reader wrote to the DXFs, so re-reading fifty sets' PDFs to judge it is an hour spent proving the
+            // reader is deterministic. Step 136 is one file, StructuralPlanClassifier.cs, and this is exactly its
+            // shape. ⚠ IT IS WRONG FOR A READER-SIDE RULE: anything under PdfToSafe/ (GeometryFilterService and its
+            // neighbours) changes the views themselves and MUST have the full read, or the gate will report that a
+            // rule did nothing because the rule never ran.
+            var run = CorpusAnalyzer.Run(census, work, options, rulesDb, parallel, force: !recompose, line => Console.WriteLine(line),
+                string.Join(",", wanted), yardsticks, reuseBuilds: false, recompose: recompose);
             Console.WriteLine();
             Console.Write(CorpusAnalyzer.Summary(run));
             // the gate's own ledger, so a run's ledger-sets.csv is never half-written by it
