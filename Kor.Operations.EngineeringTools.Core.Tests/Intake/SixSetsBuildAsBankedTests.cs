@@ -48,13 +48,45 @@ public sealed class SixSetsBuildAsBankedTests
         new("31130-01", @"\\Kor-fs01\Projects\Projects\03 Residential\31130-01 (Uplands Area 6 Lot 12 West Vancouver)\05 Stickfile\06 Old Structural Stickfiles\31130-01 UPLANDS LOT 12 2026-05-20 Stick file.pdf", 96),
         new("31138-01", @"\\Kor-fs01\Projects\Projects\03 Residential\31138-01 (2170 W 1st Ave Vancouver BC)\05 Stickfile\31138-01 2026-09-01_2170 W 1st Ave_Str Set.pdf", 96),
         new("31065-01", @"\\Kor-fs01\Projects\Projects\03 Residential\31065-01 (5350 5430 Heather Street Vancouver)\05 Stickfile\31065-01 - 2026-07-08 - 5380-Heather Street - Stickfile (up to SSI-04)-OAP.pdf", 100),
-        new("31202-01", @"\\Kor-fs01\Projects\Projects\03 Residential\31202-01 (1650 N Hotel Circle San Diego)\05 Stickfile\31202-01 2026-09-04 Hotel Circle North StickSet  - FULL SET.pdf", 96),
+        // moved into "06 Old Structural Stickfiles" on 2026-09-21 with the rest of 31202's StickSets, where 31130's
+        // and 31168's already live; the file is the same one, 21,606,315 bytes, and EverySourceIsWhereThisFileSaysItIs
+        // is what noticed - the gate had been green on the mirror's copy while the share no longer had it here
+        new("31202-01", @"\\Kor-fs01\Projects\Projects\03 Residential\31202-01 (1650 N Hotel Circle San Diego)\05 Stickfile\06 Old Structural Stickfiles\31202-01 2026-09-04 Hotel Circle North StickSet  - FULL SET.pdf", 96),
         new("31168-01", @"\\Kor-fs01\Projects\Projects\03 Residential\31168-01 (YMCA Langara Vancouver)\05 Stickfile\06 Old Structural Stickfiles\31168-01 - 2026-04-21- YMCA Langara - Stickfile.pdf", 96),
         new("31170-01-arch", @"\\Kor-fs01\Projects\Projects\03 Residential\31170-01 (2005-2045 West 49 Ave Vancouer)\05 Stickfile\01 Architectural\260723_W49th_75% BP Draft.pdf", 96),
     ];
 
     private readonly ITestOutputHelper _out;
     public SixSetsBuildAsBankedTests(ITestOutputHelper output) => _out = output;
+
+    /// <summary>
+    /// EVERY ONE OF THE SIX SOURCES IS STILL WHERE THIS FILE SAYS IT IS (2026-09-23).
+    ///
+    /// The gate asserted that the share was REACHABLE and never that its six files were THERE, and on 2026-09-21
+    /// somebody tidied 31202-01's stick-file folder: every StickSet went into "06 Old Structural Stickfiles" and
+    /// the file this class names stopped existing at the path it names. THE GATE STAYED GREEN, because the sets
+    /// are mirrored locally and the reader falls back to the mirror when the source has moved. So the thing every
+    /// rule is measured against was passing on a copy of a file the share no longer had where it was declared —
+    /// and the same tidy-up took 31202 out of the corpus census entirely, because the file left behind is called
+    /// "... Struct Dwgs - Building Permit 3 ..." and carries neither Stickfile nor StickSet in its name.
+    ///
+    /// A stale mirror is a fine thing to BUILD from — it is what makes the gate reproducible — but it must not be
+    /// the reason nobody notices the drawings moved.
+    ///
+    /// WHAT THIS COVERS: that each declared path resolves on the share today. WHAT IT DOES NOT: whether the file
+    /// there is the same file it was (the baselines say that, byte for byte); whether a NEWER issue exists beside
+    /// it, which is the census's job and not this gate's.
+    /// </summary>
+    [Fact]
+    public void EverySourceIsWhereThisFileSaysItIs()
+    {
+        Assert.True(LiveProjects.ShareReachable, "the projects share is not reachable; this gate cannot check its sources");
+        var missing = Sets.Where(s => !File.Exists(s.SharePath)).ToList();
+        foreach (var s in Sets) _out.WriteLine($"{(File.Exists(s.SharePath) ? "ok     " : "MISSING")} {s.Job,-14} {s.SharePath}");
+        Assert.True(missing.Count == 0,
+            "The gate names sources the share does not have. Find where each went and mend the path here - the mirror will keep the gate green while the drawings move out from under it:\n  "
+            + string.Join("\n  ", missing.Select(s => $"{s.Job}: {s.SharePath}")));
+    }
 
     [Fact]
     public void EveryBankedSetBuildsByteIdenticalToItsBaseline()
