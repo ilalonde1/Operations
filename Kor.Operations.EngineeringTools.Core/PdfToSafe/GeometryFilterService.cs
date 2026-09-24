@@ -1938,7 +1938,10 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
                 .ToList();
 
             // First the exact joins (step 24): what the drafter closed, closes here; the rest are open chains.
-            var built = new PlanLoopBuilder(SlabEdgeJoinMm, SlabEdgeJoinMm, SlabEdgeJoinMm).Build(segments);
+            // step 132b: the both-ways walk extends a run backward only where the run is ALREADY long enough to
+            // be a piece of an edge - the same minimum the pieces are filtered on below, so a short run cannot
+            // buy its way into the arrangement with an extension and cut the floor finer than the drawing did
+            var built = new PlanLoopBuilder(SlabEdgeJoinMm, SlabEdgeJoinMm, SlabEdgeJoinMm, SlabEdgeChainMinMm).Build(segments);
             var loops = built.Loops.ToList();
 
             // AN EDGE INTERRUPTED IS STILL ONE EDGE (intake step 27). A slab edge is broken where a

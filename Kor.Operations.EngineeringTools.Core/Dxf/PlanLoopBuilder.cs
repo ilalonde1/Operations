@@ -18,11 +18,35 @@ public sealed class PlanLoopBuilder
     /// <param name="joinTolerance">Endpoints closer than this are the same node (drawing units).</param>
     /// <param name="bridgeTolerance">How far apart two chain ends may be and still be joined.</param>
     /// <param name="extendLimit">How far an interrupted edge may be carried forward to its corner.</param>
-    public PlanLoopBuilder(double joinTolerance = 0.05, double bridgeTolerance = 6.0, double extendLimit = 48.0)
+    /// <summary>
+    /// <paramref name="backwardOnlyIfAlreadyThisLong"/> is step 132b (2026-09-23): the both-ways walk extends a
+    /// run backward ONLY when the forward run is already this long. Zero, the default, extends every run.
+    ///
+    /// WHY IT EXISTS. Step 132's backward walk makes open chains longer, and the slab pass admits a chain to the
+    /// arrangement when it is long enough to be a piece of an edge. So a chain UNDER that minimum can be carried
+    /// over it by its backward extension, and the drawn linework it brings in cuts the floor into finer cells -
+    /// where a cell that holds no structure and touches the outside is not part of the floor. Measured on
+    /// 60061-03's S2.04, a page serving levels 6 to 10: the arrangement goes from 778 cells to 921, its 554 sq ft
+    /// cell becomes 372, the largest ring falls 4,894 -> 3,686 sq ft, and the set loses 8,306 of her square feet.
+    /// A run that was already a piece keeps its extension; a run that was not cannot buy its way in with one.
+    /// </summary>
+    public PlanLoopBuilder(double joinTolerance = 0.05, double bridgeTolerance = 6.0, double extendLimit = 48.0,
+                           double backwardOnlyIfAlreadyThisLong = 0)
     {
         _joinTolerance = joinTolerance;
         _bridgeTolerance = bridgeTolerance;
         _extendLimit = extendLimit;
+        _backwardOnlyIfAlreadyThisLong = backwardOnlyIfAlreadyThisLong;
+    }
+
+    private readonly double _backwardOnlyIfAlreadyThisLong;
+
+    /// <summary>The run's length along its own nodes, for step 132b's test of whether it is already a piece.</summary>
+    private static double PathLength(IReadOnlyList<int> path, IReadOnlyList<DxfPoint> nodePoints)
+    {
+        double total = 0;
+        for (int i = 0; i + 1 < path.Count; i++) total += nodePoints[path[i]].DistanceTo(nodePoints[path[i + 1]]);
+        return total;
     }
 
     public sealed record Result(IReadOnlyList<PlanLoop> Loops, IReadOnlyList<IReadOnlyList<DxfPoint>> OpenChains);
@@ -139,7 +163,13 @@ public sealed class PlanLoopBuilder
             // ft each, over the floor she modelled) and 31202's LEVEL 13 perimeter-wall loop stopped closing (00:50).
             // The exact-join walk - the slab pass's - has no BridgeChains behind it, and is where the rule holds.
             bool exact = _bridgeTolerance <= _joinTolerance && _extendLimit <= _joinTolerance;
-            if (exact && currentNode != startNode && Environment.GetEnvironmentVariable("KOR_STEP132_OFF") != "1")   // the bisect's knob (2026-09-19 23:25)
+            // step 132b: a run that is not already a piece cannot buy its way into the arrangement with a
+            // backward extension - see the note on backwardOnlyIfAlreadyThisLong. Measured before the walk runs,
+            // on the forward path alone, which is the whole point.
+            bool longEnoughAlready = _backwardOnlyIfAlreadyThisLong <= 0
+                || Environment.GetEnvironmentVariable("KOR_STEP132B_OFF") == "1"
+                || PathLength(path, nodePoints) >= _backwardOnlyIfAlreadyThisLong;
+            if (exact && longEnoughAlready && currentNode != startNode && Environment.GetEnvironmentVariable("KOR_STEP132_OFF") != "1")   // the bisect's knob (2026-09-19 23:25)
             {
                 int backNode = startNode, backEdge = seed;
                 var back = new List<int>();
