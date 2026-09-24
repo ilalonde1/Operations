@@ -73,6 +73,17 @@ public sealed record PlanClassificationOptions
         return StructuralPlanWords.Any(w => sheetName.IndexOf(w, StringComparison.OrdinalIgnoreCase) >= 0) ? null : hit;
     }
 
+    /// <summary>The "(...)" a title ends in, without its brackets - the drafter's own last word on what the sheet is.</summary>
+    internal static string TrailingParenthesis(string sheetName)
+    {
+        ArgumentNullException.ThrowIfNull(sheetName);
+        string s = sheetName.Trim();
+        if (s.EndsWith(".dxf", StringComparison.OrdinalIgnoreCase)) s = s[..^4].TrimEnd();
+        if (!s.EndsWith(')')) return string.Empty;
+        int open = s.LastIndexOf('(');
+        return open < 0 ? string.Empty : s[(open + 1)..^1];
+    }
+
     /// <summary>The structural-plan word that kept a sheet a non-structural pattern would have refused, or null.</summary>
     public string? KeptBy(string sheetName)
     {
@@ -91,27 +102,71 @@ public sealed record PlanClassificationOptions
     /// "FOUNDATION PLAN" and "FOUNDATION PLAN -LOADING DIAGRAM", and the diagram's load ticks across each column
     /// were 45 four-foot walls on L2. The set says which is which: a kept sheet whose title is another read sheet's
     /// title with words after it (at a word boundary) is about that plan - its reinforcing, its loading diagram -
-    /// and stands down. Titles are the part of the name after the sheet number and view index. WHAT IT DOES NOT:
-    /// a set that issues only the combined sheet keeps it; a sheet about a plan but titled unlike it is not seen.
+    /// and stands down. Titles are the part of the name after the sheet number and view index.
+    ///
+    /// AND WHERE BOTH SHEETS ARE KEPT, THE BRACKETS SAY WHICH IS THE PLAN (intake step 139, 2026-09-23). The rule
+    /// above needs the plan to be issued plainly, as a sheet no non-structural word touches. 31017-01 issues it in
+    /// brackets instead, and issues the rebar in brackets beside it:
+    ///     S2.01.1_1_Foundation Plan Parking Level P2 - Tower A (Concrete Outline &amp; Shear Reinforcing)
+    ///     S2.01.2_1_Foundation Plan Parking Level P2 - Tower A (Footing Reinforcing)
+    /// Both carry REINFORC, so both are kept by FOUNDATION PLAN in the stem, and neither is in the plain list the
+    /// match is made against - so the rebar sheet was read as a floor. What it read is not subtle: a flood-filled
+    /// plate of 14,639,164 sq ft on P1 and 1,562,283 sq ft on P2, both thrown away downstream as "inside one
+    /// already written", and 240,992 drawing units of slab edge that would not close. 31017-01 is the largest
+    /// reading gap in the corpus, 120,656 sq ft of the engineer's area.
+    ///
+    /// So a kept sheet whose trailing "(...)" names a structural plan offers its STEM - the title without those
+    /// brackets - as a plan too, and a sibling on that stem whose own brackets say reinforcing stands down.
+    ///
+    /// WHAT THIS COVERS: the title before a trailing "(...)", against the office's own two word lists. WHAT IT
+    /// DOES NOT: a set that issues ONLY the combined sheet keeps it, brackets or not - there is no sibling saying
+    /// it is the rebar of anything; a sheet about a plan but titled unlike it is not seen; a parenthesis that names
+    /// a building, a quadrant or a phase says nothing here, because it carries no word from either list; and where
+    /// BOTH siblings' brackets say reinforcing, neither is the plan and neither stands down.
     /// </summary>
     /// <returns>Each kept sheet that is about another plan, with the title of that plan.</returns>
     public IReadOnlyList<(string SheetName, string PlanTitle)> SheetsAboutAnotherPlan(IReadOnlyList<string> sheetNames)
     {
         ArgumentNullException.ThrowIfNull(sheetNames);
         static string TitleOf(string name) => System.Text.RegularExpressions.Regex.Replace(name, @"^.*?_\d+_", string.Empty).Trim();
+        static bool Follows(string title, string plan)
+            => title.Length > plan.Length && title.StartsWith(plan, StringComparison.OrdinalIgnoreCase) && !char.IsLetterOrDigit(title[plan.Length]);
+
         var plans = sheetNames.Where(n => RefusedBy(n) is null && KeptBy(n) is null).Select(TitleOf).Where(t => t.Length > 0).ToList();
+
+        bool step139 = Environment.GetEnvironmentVariable("KOR_STEP139_OFF") != "1";
+        var stems = step139
+            ? sheetNames.Where(n => KeptBy(n) is not null && SaysAPlan(TrailingParenthesis(n)))
+                        .Select(n => StemOf(TitleOf(n))).Where(s => s.Length > 0).ToList()
+            : new List<string>();
+
         var result = new List<(string, string)>();
         foreach (string name in sheetNames.Where(n => KeptBy(n) is not null))
         {
             string title = TitleOf(name);
-            string? plan = plans
-                .Where(t => title.Length > t.Length && title.StartsWith(t, StringComparison.OrdinalIgnoreCase) && !char.IsLetterOrDigit(title[t.Length]))
-                .OrderByDescending(t => t.Length)
-                .FirstOrDefault();
+            string? plan = plans.Where(t => Follows(title, t)).OrderByDescending(t => t.Length).FirstOrDefault();
+            if (plan is null && SaysNotAPlan(TrailingParenthesis(name)) && !SaysAPlan(TrailingParenthesis(name)))
+                plan = stems.Where(t => Follows(title, t)).OrderByDescending(t => t.Length).FirstOrDefault();
             if (plan is not null) result.Add((name, plan));
         }
         return result;
     }
+
+    /// <summary>The title with its trailing "(...)" taken off - what two sheets of one plan share.</summary>
+    private static string StemOf(string title)
+    {
+        string s = title.Trim();
+        if (s.EndsWith(".dxf", StringComparison.OrdinalIgnoreCase)) s = s[..^4].TrimEnd();
+        if (!s.EndsWith(')')) return string.Empty;
+        int open = s.LastIndexOf('(');
+        return open <= 0 ? string.Empty : s[..open].TrimEnd(' ', '-', '–', '—');
+    }
+
+    private bool SaysAPlan(string bracketed)
+        => bracketed.Length > 0 && StructuralPlanWords.Any(w => bracketed.IndexOf(w, StringComparison.OrdinalIgnoreCase) >= 0);
+
+    private bool SaysNotAPlan(string bracketed)
+        => bracketed.Length > 0 && NonStructuralSheetPatterns.Any(p => bracketed.IndexOf(p, StringComparison.OrdinalIgnoreCase) >= 0);
 
     /// <summary>Thinnest printed slab call-out this believes. See `dxf.slab-callout-min-thickness`.</summary>
     public double SlabCalloutMinThickness { get; init; } = 4.0;
