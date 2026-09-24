@@ -5024,3 +5024,27 @@ quarter of an outline invented, and the 10% is there for a reason. That is a rul
 from a commit message written at the time of the first failure, and never re-derived from the artifact. The
 refusal message says exactly which gate refuses the ring, in the report, on disk. **Read the refusal, do not
 remember it.**
+
+### …and then the roof sheet was rendered, and it is not the limit's fault either
+
+Before touching `SlabChainJoinFraction`, the drawing itself was drawn: `takeoff dxf-render` of
+`S2.10.1_1_ROOF PLAN -CONCRETE OUTLINE.dxf`.
+
+**The sheet carries two large triangles with apexes, on the slab-edge layer. They are roof slope lines.**
+The "gable" plate the 132-off arm writes is a slope diagram closed as a slab edge — which is exactly why it
+is shaped like a house in plan, and why it is 8,736 sq ft of her 14,944.
+
+`dxf-inspect` on the same sheet: `KOR_C_SLABEDG` has 109 segments, 7 closed loops and 3 open chains, and the
+**DXF plate recovery finds 0 plates at every bridge width** (914 in through 3,658 in). So neither reading comes
+from the chain walk at all; both come from the arrangement.
+
+This is the same family as the rule already in the classifier — *"an X or a ring round a column marks the
+column, not a hole"* — linework that means something other than an edge. **So the interruption limit is not the
+rule to write.** Relaxing a limit to admit a ring built partly from slope lines would buy 31202's roof with a
+worse reading, and would do it corpus-wide.
+
+What is owed first is a question for the engineer: on a KOR roof plan, are hip and slope lines drawn on
+`KOR_C_SLABEDG`, and is there a layer or convention that distinguishes them? That is one sentence to Andrea and
+it decides whether this is a layer rule (cheap, a `KorStandards` row) or a geometry rule (expensive).
+
+**Step 132's +70,722 sq ft is waiting behind that answer**, and it is the largest single thing parked.
