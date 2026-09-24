@@ -5048,3 +5048,32 @@ What is owed first is a question for the engineer: on a KOR roof plan, are hip a
 it decides whether this is a layer rule (cheap, a `KorStandards` row) or a geometry rule (expensive).
 
 **Step 132's +70,722 sq ft is waiting behind that answer**, and it is the largest single thing parked.
+
+### And the interruption limit itself, measured — it is not the lever either
+
+Before relaxing `SlabChainJoinFraction`, its whole reach was counted: **117 candidates refused across 40 of
+296 sets, 360,244 sq ft in total**, with the bridge share of the ring running **median 23%, quartiles 17% and
+34%, max 88%**. Twenty-four of the 117 are on roof sheets.
+
+Then the only question that matters — WHOSE sets:
+
+| set | refused | of her area it already reads |
+|---|---:|---:|
+| 31155-01 | 32,746 sq ft | **106%** |
+| 31032-01 | 11,389 | 83% |
+| 31048-01 | 9,942 | **34%** |
+| 31162-01 | 5,941 | 81% |
+| 31171-01 | 5,289 | 96% |
+| 31076-01 | 5,256 | 91% |
+| 31129-01 | 5,142 | 55% |
+| 31143-01 | 2,965 | 4% |
+| 31017-01 | **439** | **65%** |
+
+**Relaxing the limit would hand area to the sets that need it least and push the over-readers further over.**
+31155-01, the largest single beneficiary, already reads 106% of what the engineer modelled; 31171-01 96%,
+31076-01 91%. The two sets that actually hold the corpus's gap — 31017-01 at 120,656 sq ft short and 31048-01
+at 98,804 — have 439 and 9,942 sq ft refused between them.
+
+So the limit stands. That is the third rule this session killed by counting before writing it, after the
+48"-mat rule and step 141, and the pattern in all three is the same: **the measurement that decides a rule is
+not "how much does it touch" but "whose sets does it touch, and do they need it".**
