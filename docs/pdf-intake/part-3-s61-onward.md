@@ -4550,3 +4550,279 @@ And **ten sets read 90% or more of what she modelled by hand**: 30933, 30993, 31
 not the same as the RIGHT ninety per cent, and no computation says whether the slab edges are where she would
 put them. **That is an engineer opening one in ETABS beside her own, and it is the first time this work has
 been able to name which ten.**
+
+## 165. Step 138 banked, step 132 judged twice and 132b dropped, step 139; two instruments built on the second instance; and 31017 read end to end (2026-09-23 15:00 → 21:5X)
+
+Everything here is measured with `judge.ps1`: two arms of ONE binary, the mirror re-published from the commit
+under test, both arms' set and sheet ledgers banked in `docs/etabs-handoff/corpus/`, and the verdict read both
+ways round. The one measure throughout is **her plate area we read, across the 47 sets where both figures
+exist** — 6,278,461 sq ft of floor the engineer modelled by hand.
+
+### Step 138, banked: a floor the drafter DREW stands the arrangement down; a floor bridged out of pieces does not
+
+| | her plate area we read | |
+|---|---:|---|
+| before | 4,519,495 of 6,278,461 | 71.98% |
+| after | **4,840,310** | **77.09%** |
+
+**+320,814 sq ft, and 322,036 of it is one set.** 30993-01 went from 34% of her area to 91%. Three sets
+regress, and each in a different way: **31076-01 −1,466 sq ft** (its bridged ring read 101.5% of hers where the
+arrangement read 91% — the inferred one was closer, a refinement candidate, not a defect), **70063-01 −172**,
+and **30989-01, which GAINS 416 sq ft and loses one of her openings** (6 of its 30 down to 5). 1,638 sq ft of
+plate against 320,814.
+
+### Step 132 judged twice, and 132b dropped
+
+Step 132 lets the exact-join chain walk run both ways from its seed. It was parked on 2026-09-19 (log 158)
+behind the box-fill gate on hooked roofs, which became step 136 and was removed and judged clean this morning.
+It re-enters on a base that now includes step 138 — the branch rebased first, because a rule judged against a
+stale base measures a question nobody asked.
+
+| arm | her plate area we read | | net |
+|---|---:|---|---:|
+| develop (both off) | 4,840,310 | 77.09% | — |
+| **132 alone** | **4,911,032** | **78.22%** | **+70,722** |
+| 132 + 132b | 4,870,467 | 77.57% | +30,157 |
+
+Step 132b — "a run that is not already a piece cannot buy its way into the arrangement with a backward
+extension" — was written to answer 132's single worst loss, 60061-03 at −8,306 sq ft. It does answer it: that
+loss becomes −2,316, and 31032-01's −3,075 becomes +72. **It buys back about 10,400 sq ft and gives up about
+51,000**: 31009-01 −14,948, 30838-01 −12,684, 31065-01 −8,657, 30990-01 −8,259, 30849-01 −2,566, 31130-01
+−1,326. **132b is dropped.**
+
+Judged both ways round, as the rule requires — "what it costs" and "what it earns" are different questions:
+
+| | sets that regress | her plate | thickness storeys | her openings |
+|---|---:|---:|---:|---:|
+| 132 alone | 13 | 14,163 sq ft | 1 | 10 |
+| 132 + 132b | 10 | 4,218 sq ft | 1 | 6 |
+
+Step 132 alone gains 84,885 and loses 14,163 — **six to one** — and hits all three of the target sets its
+prediction named (30990 +18,682, 31065 +8,838, 31130 +3,045).
+
+**Judged against the prediction banked before the run**, which is the point of banking it:
+
+| predicted | outcome |
+|---|---|
+| 30990-01 64% → 75–85% | **72.7%** — right direction, under the range |
+| 31065-01 85% → high 80s | **87.6%** ✓ |
+| 31130-01 about +3,300 | **+3,045** ✓ |
+| the corpus rises by roughly the sum of those three (30,565) | **+70,722** — more than double |
+
+The prediction named that last case in advance and told me what to do about it: *"30990 gains far MORE than the
+riser: the rule reached further than its measurement, which is the shape that cost 31202 its ROOF the first
+time. Worth understanding before banking, not celebrating."* So it was understood before banking.
+
+**Where the other 45,545 sq ft came from.** Three sets nobody predicted: 30838-01 +15,451, 31083-01 +15,104,
+31009-01 +14,990. Two facts settle them. First, only **31009-01 crosses her total** — 88.7% → **101.9%** — and
+70057-01, the other set over 100%, was at 144.3% before this rule existed and is a scope mismatch, not 132's
+doing. Second, the sheet ledgers of the two arms say exactly what moved:
+
+    31009-01  S2.09.3  page 35, storey L8    slabs  0 -> 6     ← its yardstick: "L8 0 / 14,026 sq ft"
+    31065-01  S2.09.1  page 34, storey L5    slabs  0 -> 6
+    30838-01  S2.25    page 46, storey L19   slabs  7 -> 13    ← its yardstick: "L19 0 / 10,623 sq ft"
+    30990-01  thirteen sheets, S2.18.1 (L6) 6 -> 9, S2.16.1 (L4,L3) 6 -> 9, S1.21 4 -> 7 …
+
+**Every mover is the same shape the rule was written for** — an outline that did not close now closes — and on
+31009's L8, 31065's L5 and 30838's L19 it is a storey that read NOTHING now reading its floor. The rule reached
+further to more instances of its own shape, not to a different behaviour. 31009 at 101.9% is its L8 plate coming
+in a little larger than hers, on a storey where hers was the only one there.
+
+The losses stand and are named: 60061-03 −8,306 is the worst and is the one 132b was built to answer and
+failed. That is a refinement target, the same standing this file gave 31076-01's −1,467 under step 138.
+
+**And step 132 is PARKED anyway, on branch `step-132-banked` (`b95a16ef`), because its own prediction set two
+preconditions and neither is met.** The six-set gate is red on all six, which the prediction expected and
+which is fine where her figures can judge the movement — 31065-01 and 31130-01 both improve against her. Two
+sets have NO yardstick, so nothing but a render can judge them, and both moved:
+
+- **31168-01 `A-L1`: 40,842 → 34,724 sq ft.** A 6,118 sq ft plate shrank and nothing in the corpus can say
+  whether that is right. (Its other two moves are small: `B-L28` 6,606 → 6,518, `L2` 12,573 → 12,507.)
+- **31202-01's ROOF moved — 10 plates and 9 walls gained.** This is the storey that parked step 132 on
+  2026-09-19 and it is no longer in the census, so the corpus gate cannot see it. The prediction is explicit:
+  *"build 31202 by name and look at that storey before calling the blocker gone. The gate's word is not
+  enough for the set the gate cannot see."*
+
+31065-01's own red is the rule working — `L5: plates - -> 8,539 sq ft`, the exact figure the parked commit
+measured — with 4 columns and 16 walls re-read on that storey, which is plausible (an edge drawn as line
+pairs becoming the edge) and is an inference, not a look.
+
+**So the two named tasks that unpark it are renders, not runs:** `takeoff model-render` of 31202-01's ROOF and
+of 31168-01's A-L1, both ways. Everything else about the rule is judged and banked.
+
+### Two instruments, both built on the SECOND instance rather than the eighth
+
+**A bisect knob that is not live, and one the gate does not name.** Symptom one was step 135's knob cached in
+a `static readonly`, so every arm of a bisect inside one process read the same value and the report said "no
+single rule explains it" — a green that means nothing. The old test guarded exactly one knob and named its own
+blind spot: *"a knob spelled one way in the code and another way in the bisect's list, since both sides of
+that pairing are named here in one place."* They were not in one place. So the class, in one sentence:
+
+> A BISECT KNOB IS ONLY AN INSTRUMENT IF THE VARIABLE IS READ LIVE AT EVERY CALL, AND IF IT IS NAMED WHERE
+> THE GATE TELLS THE OPERATOR TO SET IT.
+
+The check is a scan of both projects a bisect runs through — 8 knob reads — and it found symptom two within
+seconds of existing: the gate advertised 130, 131, 133, 134, 135 and the engine had grown **136 and 138**. It
+then caught a third an hour later, when the step-139 branch rebased onto it and brought a knob the gate did
+not name. Proved by breaking it, with a temporary frozen knob in Core that made it red by file and name.
+
+**A ladder that claims a height it did not use.** 31017-01's `levels.csv` contradicts itself: the header says
+twenty storey heights were *"ASSUMED … taken as the set's typical storey, 3050 mm"*, and the elevations put
+L5 at 15,222 and L24 at 18,347 — **164 mm a storey. A 24-storey tower eighteen metres tall.**
+
+The spacing rule is not at fault. A storey the plans name and no elevation places, standing between two STATED
+levels, is given an even share of that gap so an assumption never moves a fact. The fault is WHICH two levels:
+31017-01 draws a tower (L1..L24) and a commercial podium (C1..C4) on one set, the elevations state L4 at
+15,057 and C4 at 18,512, and twenty tower storeys were shared out over the podium's last 3,455 mm. **One
+column of elevations for two buildings** — the same question the whole-system audit characterises.
+
+Scanned every ladder on disk before writing anything: **278 sets, 204 claim an assumed height, 3 stand a
+claimed storey at less than half of it** — 31004-01 at 33 mm of 2,945, 31017-01 at 164 of 3,050, and 31168-01
+at 1,125 of 2,945, whose one storey is a roof overrun and is plausible. Two real instances.
+
+No storey moved. The file stops lying about them:
+
+    # SPACED EVENLY: 20 storey(s) the plans name and no elevation places — L5..L24, between L4 and C4, at
+    165 mm a storey. ⚠ FAR UNDER the set's typical storey, 3050 mm: check that L4 and C4 are levels of the
+    SAME building — a tower's storeys shared out over a podium's last gap is what this looks like.
+
+### Step 139: where both sheets of one plan are kept, the brackets say which is the plan
+
+31017-01 issues its foundation plans twice and puts the kind in brackets on both halves:
+
+    S2.01.1_1_Foundation Plan Parking Level P2 - Tower A (Concrete Outline & Shear Reinforcing)
+    S2.01.2_1_Foundation Plan Parking Level P2 - Tower A (Footing Reinforcing)
+
+Both carry REINFORC, so step 50 keeps both by FOUNDATION PLAN in the stem, and neither is in the plain list
+step 80 matches against — so the rebar sheet is read as a floor. What it reads is not subtle: a flood-filled
+plate of 14,639,164 sq ft on P1 and 1,562,283 on P2, both thrown away downstream, and 20,681 of the set's
+240,992 drawing units of slab edge that would not close. (The 240,992 is 31017-01's total across every sheet;
+the two rebar sheets carry a twelfth of it. I had attributed the whole figure to them and the run said
+otherwise.)
+
+The first attempt was in `RefusedBy` and was **wrong**: it refused
+`S2.00.2 - FOUNDATION PLAN / PARKING LEVEL P6 -SOUTH (FOOTING REINFORCING)`, which is banked as READ because
+that set issues only the combined sheet. The banked case is right — a sheet with nothing to be ranked against
+is the plan — so the rule belongs in step 80, where the SET decides, not in the name.
+
+Reach, measured over the run-44 sheet ledger before the rule was written: **5,018 sheet files across 265 sets;
+step 80 alone stands down 2, step 139 stands down 2 more, both in 31017-01.** Exactly one set in the corpus
+can change its judgement.
+
+**The verdict — judged on all 58 sets, two arms of one binary, a recompose over the same views** (a composer-side
+rule: nothing under `PdfToSafe/`, so the reader's output cannot move and re-reading it would prove only that
+the reader is deterministic).
+
+⚠ **Which side a rule is on is not decided by which folder its file is in**, and the consequence for THIS
+judgement is worth stating. `PlanLoopBuilder` is constructed in two places — five times in
+`Dxf/StructuralPlanClassifier.cs`, the composer, and twice in `PdfToSafe/GeometryFilterService.cs`, the
+reader — so step 132 is a READER-side rule and was judged with a full read, as it had to be. Step 139 is not:
+`PlanClassificationOptions` is reached only from `DxfToEtabsService`. But because 132 is reader-side, the views
+this recompose stood on were the ones the 132+132b arm wrote, so **step 139's two arms share a base that is not
+develop's.** The differential is sound — both arms read the same views — but the absolute **77.57% below is the
+132+132b base, not develop's 77.09%**.
+
+| | her plate area we read |
+|---|---:|
+| 139 OFF | 4,870,467 of 6,278,461 — 77.57% |
+| 139 ON | 4,870,467 — 77.57% |
+
+**Not one figure moves, on any of 58 sets, except the two sheets standing down.** 31017-01's `sheets_placed`
+goes 26 → 24 and both `(Footing Reinforcing)` sheets go `placed=True → False`. Nothing regresses anywhere.
+
+Judged against the prediction banked before the run, which is the point of banking it:
+
+| # | predicted | outcome |
+|---|---|---|
+| 1 | 31017 places two fewer sheets, 26 → 24, nothing else | **right, exactly** |
+| 2 | the 14,639,164 and 1,562,283 sq ft flood plates go | **right** — plates discarded as "inside one already written" fall 3 → 1 |
+| 3 | columns fall on P1 and P2, "tens, not hundreds" | **WRONG.** 1,034 → 1,034. The footings' columns were already being deduped against the outline sheets' |
+| 4 | the unclosed slab edge falls by most of 240,992 units | **overstated.** 240,992 → 220,311: the two sheets carried 20,681 of it, not most. The 240,992 was the set's total and I had attributed it to them |
+| 5 | our plate area does not fall | **right** — it does not move at all |
+| 7 | no other set moves | **right, all 57 of them** |
+| 8 | the six-set gate stays green | see below |
+
+So the rule earns nothing on the one measure and costs nothing either. What it is worth is that the report an
+engineer reads stops asserting that two reinforcing sheets are floors, and stops generating a fourteen-million
+square foot plate to throw away. Banked on that, not on the number.
+
+### 31017-01 read end to end — the largest reading gap in the corpus
+
+227,331 of her 347,987 sq ft, **65%**, a gap of 120,656 — the biggest single one left. (Step 132 moves it by
+40 sq ft; step 139 by none. Nothing here is about either.) Built, rendered, and read against her model storey
+by storey:
+
+- **L6 carries no floor at all** — checked in the e2k, not in a count. 13,144 sq ft of hers.
+  `S2.15 Level 6 Plan Tower A` yields one 2,359 sq ft ring carrying a real `5" SLAB` call-out, refused for
+  having no wall or column anywhere beneath it. The refusal looks right: a ring of **exactly** 2,359 sq ft
+  also arrives on L4 from `S2.12.1`, and one of exactly 495 sq ft on both L2 and L6 from two more — the
+  signature of a repeated detail box, not of a floor. `S2.24 Level 6 Plan Commercial` **cannot be set on the
+  grid at all** ("its axes name nothing the model or a placed sheet names"), and its slab edges did not close
+  as vectors, so a flood fill recovered 319,354 sq ft in four corners and was thrown away.
+- **L3 reads 24,307 of her 58,282.** The e2k carries exactly two plates there — 19,162 sq ft from
+  `S2.10 Level 3 Plan Tower A`, and a **four-point 5,144 sq ft rectangle that arrives identically on L3 and
+  L4** and which no "a floor plate of …" line in the report accounts for, so what drew it is itself a question
+  (`S2.21 Level 3 Plan Commercial` produced no plate at all, only three rings under 320 sq ft). Meanwhile
+  `S2.11 Level 3 Plan Tower B`'s real
+  15,926 sq ft floor, whose 10" call-out the reader read correctly, is **not in the model**. Rendered beside
+  L4, where the two towers stand as separate articulated plates, L3's single plate is a plain rectangle
+  spanning both. The report already says why it is suspect: *"19,162 sq ft has 2 different thickness call-outs
+  inside it and no separate outline to tell them apart (10", 12")"*. **The cause is not yet established** — see
+  the correction below.
+- **Thickness: 22 storeys where both models plate, 1 agrees within half an inch.** 30 of 31017's 37 plates
+  carry the 12" default because no call-out is printed inside them. Hers are 8" and 10".
+- **Two footing-reinforcing sheets were read as floors** — step 139, above.
+- **Its tower is eighteen metres tall** — the ladder, above.
+
+### Three corpus-wide counts, measured not assumed
+
+**A plate with two thickness call-outs and no outline to separate them** — the reader's own words for "this
+outline may have swallowed a second floor". **52 of them, in 40 of 296 built sets.** The 11 that also have her
+model hold **697,955 sq ft of the corpus's 1,438,151 sq ft gap** — 49% — and they are the top three of the
+work list: 31017, 31048, 70061. A lead, not a finding: 31087 and 30993 each carry one and still read 90%.
+
+**⚠ A correction made by counting instead of reading one line.** I wrote that 31017's Tower B plate was
+"dropped as inside one already written". It was not. Every plate the corpus has ever discarded under that
+rule — **122 of them, in 61 of 296 sets — is over 200,000 sq ft, median 6.4 million**. Every one is a flood
+fill. That rule has never eaten a real floor, and what took Tower B's L3 plate is still open.
+
+**Slab thickness is a default more often than it is read.** Across the 112 sets that report it, **1,586 of
+2,763 floor plates — 57% — carry the engineer's 12" default because no thickness call-out is printed inside
+the outline.** More than half of every slab thickness in the corpus is an assumption the drawing did not
+state, and no amount of geometry work changes that number.
+
+**552 outlines closed and were refused for want of a call-out.** In 67 of 296 sets, an outline that closed at
+the interruption width was NOT modelled as a floor because no thickness call-out sits inside it — "nothing was
+invented where the drawing does not say what the shape is". Of the 13 such sets that have her model, the gap
+is 337,077 sq ft, and **31048-01 alone carries 55 of these outlines and misses 98,804 sq ft at 34%** — the
+number two set on the work list.
+
+### 31048-01, the number two set — and which of its two faults is actually the bigger
+
+Counted, not guessed: **36 plan sheets, all 36 naming a quadrant or a part plan, 4,981 slab outlines read —
+and only 6 of the 36 set on the grid.** Thirty stand where the page put them, not where the grid does, for
+the one stated reason: *"their axes name nothing the model or a placed sheet names."* Beside that, **all 18 of
+its 18 refused-outline messages** are on those quadrant sheets, 55 outlines that closed at the interruption
+width and were turned away for carrying no thickness call-out.
+
+So there are two candidate rules and the placement one is the larger:
+
+> **(a)** FOUR QUADRANTS OF ONE STOREY REGISTER TO EACH OTHER, NOT TO THE MODEL GRID — by their shared axes
+> and their match line — and a quadrant that names no axis the model knows is still placeable against its
+> siblings. `dxf.match-line-layer-patterns` was only banked on migration 100, at the single word MATCH, and
+> 31048-01's report says no match line was found on it at all.
+>
+> **(b)** AN OUTLINE THAT CLOSES AT THE INTERRUPTION WIDTH, ON A SHEET THAT NAMES A QUADRANT OR A PART PLAN,
+> IS A QUARTER OF A FLOOR; WHERE A SIBLING QUARTER OF THE SAME STOREY CARRIES A CALL-OUT, ITS THICKNESS IS
+> THE QUARTER'S TOO.
+
+(a) first, because a sheet that is not on the grid contributes nothing an engineer can use even when its
+outlines close. Both judged on the corpus and the six-set gate before banking, with the reach counted against
+the sheet ledger first, as step 139 was. Note that step 139 leaves a parenthesis naming a quadrant alone
+deliberately, and this set's own sheet names are why that case is tested in
+`TheParenthesisSaysWhatTheSheetIsTests`.
+
+⚠ And the superimposition hypothesis this file carried for 31048 — *"four quadrants that stand on no grid
+stack by their own PAGE FRAME and therefore SUPERIMPOSE instead of tiling"* — is **dead**: the model/sum ratio
+is 0.97 for columns and 0.85 for walls, which is tiling, not stacking. The 30 unplaced sheets are still the
+fault; superimposing is not how it shows.
