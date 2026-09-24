@@ -94,6 +94,9 @@ public sealed class ABisectKnobActuallyTurnsItsRuleOffTests
     private static readonly Regex Advertised =
         new(@"--bisect\s+((?:KOR_STEP[0-9A-Za-z]+_OFF,?)+)", RegexOptions.Compiled);
 
+    /// <summary>A line comment or a block comment — prose, stripped before the head is read as code.</summary>
+    private static readonly Regex Comment = new(@"//[^\n]*|/\*.*?\*/", RegexOptions.Compiled | RegexOptions.Singleline);
+
     /// <summary>Words that only appear at member scope; a read behind one of them, with no `=&gt;`, is frozen.</summary>
     private static readonly string[] MemberScope =
         ["public", "private", "internal", "protected", "static", "readonly", "const"];
@@ -120,7 +123,11 @@ public sealed class ABisectKnobActuallyTurnsItsRuleOffTests
                 reads++;
                 // the declaration this read sits in: back to the end of the previous statement or brace
                 int start = text.LastIndexOfAny([';', '{', '}'], m.Index) + 1;
-                string head = text[start..m.Index];
+                // ⚠ COMMENTS ARE PROSE, NOT CODE, and this guard read them as code until 2026-09-24: step 137's
+                // knob carries the comment "never a static, or every arm of a bisect answers the same", and the
+                // word `static` in that sentence made the guard call a live read frozen. A check that can be
+                // fooled by a comment about itself is worse than no check, so the head is stripped first.
+                string head = Comment.Replace(text[start..m.Index], " ");
                 if (head.Contains("=>", StringComparison.Ordinal)) continue;         // expression-bodied: read at every call
                 if (!MemberScope.Any(w => Regex.IsMatch(head, $@"\b{w}\b"))) continue; // a local inside a method
                 frozen.Add($"{Path.GetFileName(file)}: {m.Groups[1].Value} — {Collapse(head)} …");

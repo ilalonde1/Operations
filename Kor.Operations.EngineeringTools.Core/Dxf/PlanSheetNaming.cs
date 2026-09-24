@@ -213,7 +213,10 @@ public static partial class PlanSheetNaming
         // is cannot be talked out of it by a trailing token. "Phase 2a & 2b Parkade Plan - P1" and the view named
         // nothing but "P2" are the two shapes; see DrawingVocabulary.TrailingParkade for why the anchor is what
         // keeps "SLAB 2" out of it.
+        // Knob KOR_STEP137_OFF, read live at every call - never a static, or every arm of a bisect answers the
+        // same (ABisectKnobActuallyTurnsItsRuleOffTests).
         if (levels.Count == 0 && parkade.Count == 0 && !isRoof && !isTopFloor
+            && Environment.GetEnvironmentVariable("KOR_STEP137_OFF") != "1"
             && vocabulary.TrailingParkade.Match(ownName) is { Success: true } tail)
             parkade = [int.Parse(tail.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture)];
 
