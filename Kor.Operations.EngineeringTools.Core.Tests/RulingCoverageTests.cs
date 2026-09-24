@@ -282,6 +282,13 @@ public class RulingCoverageTests
                 "a.dxf: slab edges: 4 outline(s) would not close (10 units of edge ignored).",
                 "a.dxf: JBP_V-WALL: outline 256x70 with 6 vertices could not be resolved into wall " +
                 "panels — check this location. [implied thickness 14.0 in]",
+                // J8, the set that could not say which storey its sheets draw (intake step 143).
+                // Every row that CAN appear has to appear here or this audit stops covering it, and
+                // a fixture that claims to hold every fault and quietly holds all but one is the
+                // same failure as a check named wider than it is.
+                "THIS SET'S DRAWINGS NAME 24 STOREYS AND ONLY 8 OF THEM RECEIVED A FLOOR, so what " +
+                "shipped is a fraction of the building and should be read as one. The storeys with " +
+                "no floor plate at all: X, Y. This is not a count of drawings that failed.",
             }),
             (0, 0),
             Array.Empty<SheetOutcome>(),

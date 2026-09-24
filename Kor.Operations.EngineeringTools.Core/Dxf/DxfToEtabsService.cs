@@ -2674,6 +2674,7 @@ public static class DxfToEtabsService
                     $"it: {string.Join(", ", floorGaps.PlatesWithNoSupport)}. The plan placed there draws no vertical " +
                     "structure, so either the structure stops below that level or another sheet holds it.",
                 })
+                .Concat(MostOfTheLadderGotNoFloor(saved))
                 .ToList(),
         };
 
@@ -3237,6 +3238,75 @@ public static class DxfToEtabsService
         }
 
         return count;
+    }
+
+    /// <summary>
+    /// The set's own ladder against the floors it got: where half or more of the storeys this
+    /// building HAS never received a plate, what shipped is a fraction of the building and says so.
+    ///
+    /// A SET THIS BROKEN IS HANDED BACK, NOT FIXED (intake step 143, 2026-09-24). Ian: "if there's
+    /// an anomalous project drawing that is so broken you can't do it - ignore it and move on to the
+    /// other 95% we CAN build. If something is SO garbled and shitty - just reject it with the list
+    /// of questions we would usually present to the engineer."
+    ///
+    /// 31005-01 is the witness and the reason this is said rather than repaired: its title block
+    /// writes the sheet title UP the page in three columns — "LEVEL / L01 / PLAN", "CONCRETE /
+    /// OUTLINE", "CONSTRUCTION / CHANGE" — and the reader assembles it across the columns instead of
+    /// down them, so five sheets share the name "OUTLINE PLAN CHANGE LEVEL CONCRETE CONSTRUCTION"
+    /// and the L01 is lost. It builds 10 storeys where her model has 23 and reads 11% of her plate
+    /// area. Its siblings 30940-01 and 30941-01 use the same title block and do not print the level
+    /// as text AT ALL, so no reader can recover it there at any effort.
+    ///
+    /// ⚠ THE SIGNAL IS THE LADDER, NOT THE SHEETS, and the difference was measured before this was
+    /// written. "Most of the plan views name no storey" looks like the same test and is not one:
+    /// 30993-01 has 121 of its 148 views naming none and reads 91% of her plate area, because a
+    /// reinforcing sheet correctly stood down names no storey and neither does a typical-floor sheet
+    /// serving fifteen. What a set cannot fake is its own elevations — the ladder is what its
+    /// drawings say the building IS, and a storey on it that never receives a floor is one the tool
+    /// did not build.
+    ///
+    /// Measured on run 45 at the half mark: it fires on 20 of the 190 sets whose ladder has four or
+    /// more storeys, and on 3 of the 48 sets where her own model can be compared — 31005-01, 31224-01
+    /// and 30989-01, reading 10.6%, 23.4% and 53.9% of her plate area. Nothing that reads well trips
+    /// it: the best-reading set it fires on is that 53.9%, and 31155-01 reads 106% of her area while
+    /// leaving 38% of its ladder unfloored, under the cut.
+    ///
+    /// ⚠ WHAT IT DOES NOT COVER, said here so the next reader does not stop looking (rule 11), and
+    /// measured rather than guessed. IT IS PRECISE AND IT IS NARROW. It is a COUNT of storeys, so it
+    /// cannot see a storey given a plate that is the wrong shape, in the wrong place, or a tenth of
+    /// the area it should be, and it says nothing about walls, columns, thickness or openings.
+    ///
+    /// The witnesses are in the same ledger. 31143-01 floors 7 of its 7 storeys and reads 3.9% of her
+    /// plate area; 31064-01 floors 3 of 3 and reads 21.4%; 31117-01 and 31048-01 floor every storey
+    /// they have and read 32.6% and 34.2%. The worst-reading comparable set in the corpus, 31174-01
+    /// at 0.0%, floors 6 of its 7 and is silent here. So of the sets that badly under-read her, this
+    /// catches the ones that could not NAME a storey and none of the ones that named every storey and
+    /// then drew the wrong thing on it. Those are a different class with a different fix, and the
+    /// yardstick against her model — not this — is what finds them.
+    /// </summary>
+    internal static IReadOnlyList<string> MostOfTheLadderGotNoFloor(E2kModelContents saved)
+    {
+        // The ladder of the file that SHIPPED, after every cut. A tower-only model of a three-
+        // building site has had the other two buildings' storeys removed, and asking this of the
+        // pre-cut ladder would report two thirds of it unfloored on a model that is exactly right.
+        var unfloored = saved.Storeys
+            .Where(s => !saved.PlatesByStorey.TryGetValue(s, out int plates) || plates == 0)
+            .ToList();
+
+        // FOUR, because three storeys and one missing is a building with a question, not a set that
+        // could not be read. The smallest sets in the corpus are parkade-only and would trip on one.
+        if (saved.Storeys.Count < 4 || unfloored.Count * 2 < saved.Storeys.Count)
+            return Array.Empty<string>();
+
+        return new[]
+        {
+            $"THIS SET'S DRAWINGS NAME {saved.Storeys.Count} STOREYS AND ONLY " +
+            $"{saved.Storeys.Count - unfloored.Count} OF THEM RECEIVED A FLOOR, so what shipped is a " +
+            "fraction of the building and should be read as one. The storeys with no floor plate at " +
+            $"all: {string.Join(", ", unfloored)}. This is not a count of drawings that failed — the " +
+            "sheets were read and their structure is in the file; what could not be established is " +
+            "which storey each of them draws.",
+        };
     }
 
     private static IReadOnlyList<string> FloorsWiderThanTheirStructure(E2kDocument doc)

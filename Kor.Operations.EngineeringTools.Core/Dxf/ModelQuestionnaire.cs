@@ -578,6 +578,90 @@ public static class ModelQuestionnaire
         string? Flag(string contains) => report.Summary.Flags
             .FirstOrDefault(f => f.Contains(contains, StringComparison.OrdinalIgnoreCase));
 
+        // THE SET WE COULD NOT READ, HANDED BACK AS A QUESTION RATHER THAN SHIPPED QUIETLY.
+        //
+        // This goes first because it governs how every other row on the sheet is read: if half the
+        // building has no floor, then the wall counts, the slab counts and the thicknesses below are
+        // all counts of a fraction, and each of them looks perfectly reasonable on its own.
+        //
+        // Ian, 2026-09-24, giving the tool permission to fail out loud: "if there's an anomalous
+        // project drawing that is so broken you can't do it - ignore it and move on to the other 95%
+        // we CAN build. If something is SO garbled and shitty - just reject it with the list of
+        // questions we would usually present to the engineer." And the reason it is a QUESTION and
+        // not a warning, which is the whole design of this workbook: "the machine does as MUCH as it
+        // possibly can (and it gets better every time with the gained knowledge of answered
+        // questions)." A warning is read once and decays. An answer is banked and never asked again.
+        //
+        // It fires on 20 of the 190 corpus sets whose ladder has four or more storeys — 11%. The run
+        // measures it; this does no geometry of its own.
+        if (Flag("OF THEM RECEIVED A FLOOR") is { } fraction)
+        {
+            // NOT `IndexOf(...) + 7` UNGUARDED. A missing marker returns -1, the slice starts at 6,
+            // and the row ships with the middle of a sentence where the storey names should be —
+            // wrong quietly, which is the only kind of wrong that reaches an engineer.
+            int at = fraction.IndexOf("at all:", StringComparison.Ordinal);
+            string unfloored = at < 0
+                ? "named in the report"
+                : fraction[(at + "at all:".Length)..].Split(". This is not")[0].Trim();
+
+            // THE DRAWINGS WHOSE TITLE NAMED NO STOREY, which is the thing she can actually answer.
+            //
+            // Not the ones that failed to read — those have their own rows. These were read, their
+            // walls and columns are in the file, and the only thing missing is which level they are.
+            // 31005-01 is five sheets all titled "OUTLINE PLAN CHANGE LEVEL CONCRETE CONSTRUCTION",
+            // because its title block runs UP the page in three columns and the reader took it
+            // across. One line back from her — "that one is L01" — is worth more than any amount of
+            // work on the title parser, and unlike the parser it cannot be wrong.
+            // ⚠ NOT BY HOW MUCH STRUCTURE THE SHEET CARRIES, because on these sheets that is always
+            // ZERO. SheetOutcome's Walls/Columns/Slabs are read back from the finished file after the
+            // cut, and a sheet that reached no storey contributed no objects — so `Walls + Columns >
+            // 0` silently excluded every sheet this question exists to list, and 31005-01, the
+            // witness, came out saying "none of this set's drawings is waiting on a level". Caught by
+            // opening the workbook. The same trap as the sheet ledger's `slabs` column, which the
+            // Codex audit caught a day earlier: A COUNT IS NOT A MEASUREMENT UNTIL YOU KNOW WHAT IT
+            // COUNTS, and this one counts what SURVIVED.
+            //
+            // SET ON THE GRID is the honest filter and needs no counts. A sheet placed on the model's
+            // grid by its own axis names was read and positioned — the drawing is fine and the tool
+            // understood it — and the only thing missing is the level. A details or sections sheet
+            // names no storey either and is not on the grid, so it stays out of a list she is being
+            // asked to work through.
+            var setOnGrid = new HashSet<string>(
+                report.SheetsSetOnGridByName.Select(f => Path.GetFileName(f) ?? f),
+                StringComparer.OrdinalIgnoreCase);
+
+            var unnamed = report.Sheets
+                .Where(s => s.NamedStories.Count == 0)
+                .Select(s => Path.GetFileName(s.File) ?? s.File)
+                .Where(f => f.Length > 0 && setOnGrid.Contains(f))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(f => f, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            string drawings = unnamed.Count == 0
+                ? "None of this set's drawings is waiting on a level — the storeys below are empty for " +
+                  "another reason, and the rows further down say which."
+                : $"WHICH LEVEL DOES EACH OF THESE {unnamed.Count} DRAWINGS SHOW? Each one was set on your " +
+                  "grid by its own axis names, so it was read and positioned correctly — the only thing " +
+                  "missing is which level it draws: " +
+                  string.Join("  ·  ", unnamed.Take(12)) +
+                  (unnamed.Count > 12 ? $", and {unnamed.Count - 12} more" : "");
+
+            yield return new ModelQuestion("J8", "This model is a fraction of your building",
+                fraction.Split(". The storeys with no floor")[0] + ". Those storeys are: " +
+                $"{unfloored}. {drawings}",
+                "The drawings were read and their structure is in the file — nothing failed and nothing " +
+                "was dropped. What could not be established is which storey each of them draws, and " +
+                "nothing was guessed onto a nearby level: a floor put on the wrong storey looks exactly " +
+                "like a floor you drew.",
+                "Every other number in this workbook is a count of the fraction that did build, so they " +
+                "all look right. This row is the one that says they are counts of part of a building.",
+                "Measured from the finished file after every cut: the storeys this set's own drawings " +
+                "name, against the storeys that received a floor plate. Your answer names the level for " +
+                "a drawing this tool could not name, and is banked against this job.")
+                { RuleTopic = "a-set-whose-sheets-will-not-say-which-storey", Defect = true };
+        }
+
         if (Flag("carry walls or columns and no floor plate") is { } plateless)
         {
             string storeys = plateless[(plateless.IndexOf(':') + 1)..].Split('.')[0].Trim();

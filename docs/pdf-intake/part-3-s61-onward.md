@@ -5232,3 +5232,111 @@ coded, and the next step is the threshold measured against her plate areas set b
 25 August, banked as a `Ruling` row, and declared unobeyed by a test in this repo. ⭐**GREP THE ANSWER INDEX
 BY THE SUBJECT, NOT BY YOUR OWN WORDING** — I searched for "slope" and "hip" because that is what I was
 looking at, and her answer is filed under the slab edge, which is what it is about.
+
+## 169. The tool can now say "I could not build this one" — step 143, as a question and not a warning (2026-09-24 12:00 → 13:4X)
+
+The step that was missing was not a reading rule. It is the first thing in this pipeline that lets the tool
+**refuse**, and Ian had to say so twice before I built the right shape.
+
+First:
+
+> *"if there's an anomolous project drawing that is so broken you can't do it - ignore it and move on to the
+> other 95% we CAN build. If something is SO garbled and shitty - just reject it with the list of questions we
+> would usually present to the engineer"*
+
+I built that as a warning in `DxfToEtabsService`. Then:
+
+> *"You weren't even AWARE of the questionaire???? That's the whol model of this app - the machine does as
+> MUCH as it possibly can (and it gets better every time with the gained knowledge of answered questions.
+> THAT'S THE WHOLE POINT?!??!?!"*
+
+That is the correction, and it is architectural, not cosmetic. **A warning is read once and decays. An answer
+is banked and the question is never asked again.** `ModelQuestionnaire` — 1,582 lines, 39 codes — is where a
+thing the tool could not settle turns into a rule. The warning was deleted before it ever ran and the same
+fact came back as **J8**, topic `a-set-whose-sheets-will-not-say-which-storey`.
+
+### The signal that looked right and was not
+
+**"Most of the plan views name no storey."** It is the obvious test. `30993-01` has **121 of its 148 views
+naming none** and reads **91%** of the engineer's plate area — because a reinforcing sheet correctly stood
+down names no storey, and neither does a typical-floor sheet serving fifteen. Two thresholds were tried on
+that shape and both put a good set in the reject pile.
+
+**What a set cannot fake is its own elevations.** The ladder is what the drawings say the building *is*, and a
+storey on it that never receives a plate is one the tool did not build. Measured from the finished file after
+every cut, so a tower-only model is judged on the storeys it actually ships.
+
+| | |
+|---|---:|
+| sets in run 45's ledger | 295 |
+| with a ladder of ≥ 4 storeys | 190 |
+| **fires** | **20 — 11%** |
+| of the 48 where her model can be compared | **3** |
+
+| job | floored | reads of her plate area |
+|---|---|---:|
+| 31005-01 | 8 of 24 | **10.6%** |
+| 31224-01 | 3 of 6 | **23.4%** |
+| 30989-01 | 7 of 27 | **53.9%** |
+
+The best-reading set it fires on is that 53.9%. `31155-01` reads **106%** of her area and sits at 38%
+unfloored, under the cut. **Nothing that reads well trips it.**
+
+### ⚠ It is precise and it is NARROW, and the narrowness is measured
+
+Working rule 11's requirement, and the ledger gives real witnesses rather than a hypothetical:
+
+| job | floored | reads | |
+|---|---|---:|---|
+| 31174-01 | 6 of 7 | **0.0%** | the worst-reading comparable set in the corpus — **silent here** |
+| 31143-01 | 7 of 7 | **3.9%** | floored every storey it has |
+| 31064-01 | 3 of 3 | 21.4% | |
+| 31117-01 | 7 of 7 | 32.6% | |
+| 31048-01 | 7 of 7 | 34.2% | |
+
+So of the sets that badly under-read her, this catches the ones that could not **name** a storey and **none**
+of the ones that named every storey and drew the wrong thing on it. Different class, different fix, and the
+yardstick against her model — not this — is what finds them. That list is in the method's own summary, because
+a broad name on a narrow check is worse than no check.
+
+### The defect it shipped, found by opening the workbook
+
+Every test green, the report flag correct, and the workbook said:
+
+> *"None of this set's drawings is waiting on a level."*
+
+— on **31005-01**, the set the question was written for.
+
+The list of unreadable drawings was ordered by `Walls + Columns + Slabs > 0`, to put the ones carrying the
+most structure in front of her. **On these sheets that sum is always zero.** `SheetOutcome`'s counts are read
+back from the finished file *after the cut*, and a sheet that reached no storey contributed no objects. The
+filter removed precisely the sheets the question exists to list.
+
+⭐ **This is the same trap the Codex audit caught the day before**, on the sheet ledger's `slabs` column, and
+it is the same sentence: **a count is not a measurement until you know what it counts** — and this one counts
+what SURVIVED. I wrote that lesson into the brief's correction at 07:0X and walked into it again at 13:0X, in
+the same file, on the same record. Knowing the sentence is not the same as having the check.
+
+Fixed by dropping the counts and filtering on `SheetsSetOnGridByName` instead: a sheet set on the model's grid
+by its own axis names **was read and positioned correctly**, and the only thing missing is the level. Details
+and sections sheets name no storey either, are not on the grid, and stay out of a list she is asked to work
+through. The regression fixture is built with **every count zero**, so that filter cannot come back green.
+
+### What she now gets on 31005-01
+
+> THIS SET'S DRAWINGS NAME 24 STOREYS AND ONLY 8 OF THEM RECEIVED A FLOOR … Those storeys are: L22, L21, L20,
+> L19, L18, L17, L15, L14, L13, L12, L11, L10, L8, L5, L2, L1. **WHICH LEVEL DOES EACH OF THESE 10 DRAWINGS
+> SHOW?** Each one was set on your grid by its own axis names, so it was read and positioned correctly — the
+> only thing missing is which level it draws: … `S2.02.1_1_OUTLINE PLAN CHANGE LEVEL CONCRETE CONSTRUCTION` ·
+> `S2.04.1_1_OUTLINE PLAN CHANGE LEVEL CONCRETE CONSTRUCTION` · `S2.06.1_1_OUTLINE PLAN CHANGE LEVEL CONCRETE
+> CONSTRUCTION` · …
+
+**The fault is visible in the answer.** Five sheets share one scrambled title because 31005-01's title block
+writes it UP the page in three columns — `LEVEL`/`L01`/`PLAN`, `CONCRETE`/`OUTLINE`, `CONSTRUCTION`/`CHANGE` —
+and the reader assembles it across instead of down, losing the `L01`. Its sibling `LEVEL L03-04 PLAN CONCRETE
+OUTLINE` parses correctly, so the parser half works. She answers by sheet number in one line each.
+
+`30940-01` and `30941-01` use the same title block and **do not print the level as text at all**. No reader
+recovers that at any effort — which is exactly the case this step exists for.
+
+Details: `docs/pdf-intake/step143-prediction.md`.
