@@ -4826,3 +4826,157 @@ deliberately, and this set's own sheet names are why that case is tested in
 stack by their own PAGE FRAME and therefore SUPERIMPOSE instead of tiling"* — is **dead**: the model/sum ratio
 is 0.97 for columns and 0.85 for walls, which is tiling, not stacking. The 30 unplaced sheets are still the
 fault; superimposing is not how it shows.
+
+## 166. Slab thickness was readable all along: step 140 banked, and the bigger source found behind it (2026-09-23 22:00 → 23:3X)
+
+Ian, on reading that 57% of the corpus's slab thicknesses were the engineer's 12" default and that this was
+"a drawings question, not a reading defect":
+
+> *You can read slab thickness*
+
+He was right, and the first thing to do was stop arguing and count.
+
+### What the report had been saying, and what was actually true
+
+The report tells an engineer that a plate carries the default *"because no thickness call-out is printed inside
+them on the drawing"*. Every word of that is true and the impression it gives is false — **inside them** is the
+whole of it, and the reader has never looked anywhere else.
+
+| counted over the built corpus, before any code | |
+|---|---:|
+| floor plates carrying the 12" default | **1,586 of 2,763 — 57%** |
+| sets that default at least one plate | 112 |
+| **of those, sets whose drawings print NO thickness call-out at all** | **0 of 112** |
+
+Not one of the 1,586 is in a set where the drawing is silent.
+
+Of the **1,433 plan sheets that produced a floor plate**:
+
+| what the sheet prints | sheets |
+|---|---:|
+| no field call-out at all | 456 |
+| exactly one, and a plate took it | 448 |
+| **exactly one, and NO plate took it** | **46** |
+| several, and a plate took one | 414 |
+| several, and none was taken | 69 |
+
+### Step 140: a sheet that prints one field thickness prints it for the sheet
+
+A plate that claimed no call-out of its own, on a sheet whose field call-outs (≤ 16", so a mat or transfer slab
+is not collected) are all one number, takes that number — and the flag says it was printed OUTSIDE the plate,
+so a reader can tell it from a plate's own reading. Knob `KOR_STEP140_OFF`.
+
+⚠ **The first cut overrode two things it had no business touching and the banked tests caught both in a
+minute**: a plate the pass above REFUSED for carrying two different numbers (31168's 14" slab and 56" mat, one
+call-out each — a drawing contradicting itself is an engineer's question, not a default to fill), and a plate a
+previous pass had already settled and passed in as `skip`. Both guards are explicit now and say why.
+
+**The verdict**, both arms of one binary over all 58 sets, `--recompose` (composer-side, `StructuralPlanClassifier`
+only):
+
+| | |
+|---|---|
+| geometry fields differing across 58 sets | **0** |
+| thickness agreements with her | **223 → 248, net +25** of the 349 storeys both models plate |
+| sets losing an agreement | **none** |
+| **31017-01** | **1 of 22 → 19 of 22** |
+
+Judged against the prediction banked before the run:
+
+| predicted | outcome |
+|---|---|
+| geometry identical in both arms | **right** — 0 fields of 58 sets. The rule rebuilds the loop with the same layer, points and closed flag, so this was structurally guaranteed and is really a check on the harness |
+| between 2 and 10 more storeys agreeing | **WRONG, and low again: 25.** Third magnitude estimate of the day to come in under, every one of them under |
+| no set loses an agreement | **right** |
+
+**31017-01 is why the number is 25 and not 8.** Eight plates were priced, and one of them is
+`S2.16_1_LEVEL 8 TO 22 PLANS` — one sheet, one `8" SLAB`, fifteen storeys. Her own model has 8" on L7–L12
+where ours had the 12" default. The set I read end to end earlier tonight had **1 of 22** storeys agreeing on
+thickness; it now has **19 of 22**, and that was the thing I had written down as a question for the engineer.
+
+**The six-set gate and the bank.** Three of the six moved and three were byte-identical, and every changed
+line in every file is an `AREAASSIGN SECTION` — 31130-01 one line (`KF3` on P2, `KOR-S304.8` → `KOR-S254`),
+31202-01 one, 31065-01 eight (a METRIC set: `KOR-S250`, `KOR-S200`). Not one point, joint, area object, wall
+or column. The gate says the same in its own words: plates moved 0, columns lost 0 / gained 0, walls lost 0 /
+gained 0, on all three. Baselines re-banked in the same commit and the gate re-run green.
+
+⚠ **The limit of the "no set loses" check, stated because the count cannot show it.** A set whose agreement
+count stayed flat could hide a one-for-one swap: a plate that agreed with her at the 12" default moving to a
+read value that does not. The ledgers carry counts, not per-storey values. On 31017-01, checked storey by
+storey, the three remaining disagreements are the two that were already there — **L1 and L3, where we read 12"
+from the drawing's own call-out printed twice against 10" once, and the engineer used 10"** — plus L23, where
+the storey carries two plates and only one of them read.
+
+### And behind it, the bigger source — already in the code, asked the wrong question
+
+`E2kGeometryComposer` has a second source under the call-out: `placement.SlabThickness`, *"read from the stick
+file PDF by sheet title"*. It fires in **114 of 296 sets** and prints per-STOREY values —
+`P4: 10", P3: 10", L2: 12", L7: 8"…`. But a plate takes it only when its SHEET matched a page.
+
+> **221 of the 881 storeys that carry a defaulted plate — 25% — are storeys the stick file already names a
+> thickness for.**
+
+30990-01 has 17 such storeys, 01379-01 17, 30694-01 17, 30867-01 12, 30838-01 12, 60061-03 10. That is **step
+141**: ask by storey, not by sheet title, for plates that read nothing. ⚠ And the fault it cannot catch, which
+has to be declared with it: a storey carrying two buildings with different slabs — 31017's L2 is Tower A at 12"
+and Tower B at 10" — would get one number for both, so it applies only where the stick file names ONE value
+for that storey.
+
+The other two candidates were measured and are thin by comparison: of 599 plate-bearing sheets that read no
+thickness of their own, only **97 (16%)** have a sibling sheet on the same storey that did (88 of them
+agreeing); and the set's own most-printed call-out has a median share of just **39%**, which is a guess dressed
+as a reading.
+
+### Step 141 built, judged, and PARKED — it earns nothing, and the reason is a method fault of mine
+
+Step 141 was written and judged: a plate whose own sheet matched no stick-file page takes the thickness the
+stick file gave its STOREY, where the matched sheets agree. Branch `step-141-the-stick-file-by-storey`
+(`0bb45a1e`). The verdict, both arms of one binary over 58 sets:
+
+| | |
+|---|---|
+| geometry fields differing | **0** |
+| thickness agreements | **248 → 248, net 0** |
+
+And then, because "nothing moved" is either a neutral rule or a rule that never ran, it was checked on the two
+sets where its own prediction promised the most — 30990-01 (17 storeys) and 01379-01 (17), the second of
+which the corpus gate never sees. Built both ways with the knob:
+
+    30990-01   141 OFF   7 of 61 plates assumed      141 ON   7 of 61
+    01379-01   141 OFF  11 of 111 plates assumed     141 ON  11 of 111
+
+**Identical. Step 141 does nothing, anywhere.**
+
+**The fault is mine and it is worth naming.** I measured 141's reach — *"221 of the 881 storeys that carry a
+defaulted plate are storeys the stick file names a thickness for"* — **against the corpus as it stood before
+step 140 landed**. Step 140 then took almost exactly those plates, from the sheet's own single call-out, which
+is the better evidence anyway. A sheet that failed to match a stick-file page still usually PRINTS its one
+field number.
+
+> **Re-measure a rule's reach AFTER the previous step lands, not before.** Two rules aimed at one pool will
+> both look large when each is sized against the untouched pool.
+
+What step 140 actually did, on the sets there are before-figures for:
+
+| set | defaulted plates, before → after |
+|---|---|
+| 01379-01 | **96 → 11** of 111 |
+| 31017-01 | **30 → 10** of 37 |
+| 30990-01 | **20 → 7** of 61 |
+| 30838-01 | **17 → 2** of 75 |
+| 60061-03 | **10 → 1** of 21 |
+| 31087-01 | 45 → **45** of 60 — untouched |
+| 31076-01 | 19 → **19** of 20 — untouched |
+
+The untouched ones name the next target exactly: sheets printing SEVERAL field thicknesses where no plate took
+any — **69 of the 1,433**, plus 31087-01's 45 plates and 31076-01's 19. That is a harder rule than step 140,
+because choosing between two numbers printed on one sheet is the ambiguity the original pass refuses on
+purpose, and it will need a reason better than "the most common one".
+
+### A rule killed by counting before writing it
+
+31017's L4 gives an 11,636 sq ft floor **48"**, read from a call-out, and it looked plainly wrong. It is not.
+Of the 1,016 plates that read a thickness from a drawing, **50 read above 16" and 42 of those cover more than
+5,000 sq ft** — 58,758 sq ft at 36", 30,487 at 84". Rafts and transfer slabs are like that, and L4 is the
+storey where 31017's towers start. No rule, and the ten minutes that found this out were the cheapest of the
+night.
