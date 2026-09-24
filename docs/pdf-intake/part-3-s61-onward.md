@@ -5144,3 +5144,91 @@ mentions `static` and `readonly`. Still caught, by file and knob name; the prose
 
 That is the fifth thing the knob scan has found since it was written this evening — 136, 138, 139, 140, 141 —
 and the first fault it found in itself.
+
+## 168. The question had already been answered, and her answer names 81% of the gap (2026-09-24 05:20 → 06:0X)
+
+I was about to send Ian a question for the engineer: *on a KOR roof plan, are hip and slope lines drawn on
+`KOR_C_SLABEDG`?* Ian: **"She's already answered that as well."**
+
+He was right, and my grep was lazy. I searched the memory files for `slope` and `hip`, got a hit on
+`project_etabs_andrea_rulings` for the word **roof**, and never read it. The answer is in
+`reference_andrea_answers_index` under **Standing answers (do NOT ask again)**:
+
+> **Thickenings/steps inside a slab: she models them herself** (25 Aug [82]–[86], 31 Aug). **A step line is
+> not the slab edge; the outer continuous line is.**
+>
+> **Floor plate where slab edges do not close = the perimeter walls' OUTER edge.** 25 Aug call [20]:
+> *"it should always follow the outer edge of the walls."*
+
+### What that makes of 31202's roof — and it is not what I had
+
+The triangles are interior lines. Her rule is that an interior line is not the slab edge and the outer
+continuous line is; where it does not close, follow the perimeter walls' outer edge. So the 8,736 sq ft gable
+is wrong by her own ruling, and the fix is not slope-line detection and certainly not relaxing the
+interruption limit — **it is that her fallback never gets to run.**
+
+`RulingCoverageTests` already says so, in the repo, in its own words:
+
+    ["floor-from-perimeter-wall"] =
+        "The fallback exists and runs where a sheet closes no slab at all, but no test asserts it fires
+         from HER rule -- \"we can even have just one thickness per floor, general outline at first\" --
+         rather than from ours. It also changed twice on 24-25 August, widened and narrowed again, with
+         nothing red either time."
+
+**The fallback fires only where a sheet closes NOTHING.** 31202's roof closes *something* — an interior ring
+off a slope line — so the sheet counts as closed and her rule is never reached, while **33 of 44 walls stand
+outside the plate that was written.**
+
+### The class, measured
+
+The reader already prints the signal, on every storey: *"N of M wall(s) and N of M column(s) stand beyond
+every plate read for the storey — strays, or a floor the tool did not read whole."*
+
+| across the built corpus | |
+|---|---:|
+| storeys reporting walls beyond every plate | 1,519 |
+| **leaving MORE THAN HALF the storey's walls outside** | **431 — 28%** |
+| the worst | **182 of 182 walls, and 100% on ten storeys** |
+
+A storey where every one of 182 walls stands outside the plate is not a plate with strays around it. It is not
+the floor those walls hold up.
+
+### And it passes the test that killed the last three rules
+
+The measurement that decides a rule is not how much it touches but **whose sets**, and this is the mirror
+image of the interruption limit:
+
+| | sets with her model | share of the corpus gap |
+|---|---:|---:|
+| storeys leaving most walls outside | **32** | **1,160,990 of 1,436,461 — 81%** |
+
+| set | such storeys | worst | her gap | reads |
+|---|---:|---:|---:|---:|
+| 31017-01 | 1 | **100%** | 120,656 | 65% |
+| 30838-01 | 4 | 85% | 106,104 | 82% |
+| 31048-01 | 4 | 88% | 98,804 | **34%** |
+| 70061-01 | 1 | 57% | 87,052 | 60% |
+| 31087-01 | 1 | 65% | 79,286 | 90% |
+| 30990-01 | 4 | 75% | 78,145 | 64% |
+| 31005-01 | 1 | 56% | 67,659 | **11%** |
+| 31083-01 | 1 | **96%** | 54,426 | **27%** |
+
+These are the top of the work list, not the bottom. The interruption limit's biggest beneficiary was a set
+already reading 106% of her area; this one's are the sets reading 11%, 27% and 34%.
+
+### The rule, in her words
+
+> **A PLATE THAT LEAVES MOST OF ITS STOREY'S WALLS OUTSIDE IT HAS NOT READ THE FLOOR.** Where the ring a sheet
+> closes leaves the majority of that sheet's own walls beyond it, the sheet has closed an interior line — a
+> step, a slope, a zone — and not the slab edge. Her rule then applies as if nothing closed: the floor is the
+> perimeter walls' OUTER edge.
+
+⚠ It needs a threshold and a guard before it is written, and the guard matters more than the threshold: a
+storey CAN legitimately carry walls beyond its floor — a parkade ramp, a retaining wall, a screen. The banked
+ruling `plate-with-nothing-beneath` is the same family from the other side. So this is characterised, not
+coded, and the next step is the threshold measured against her plate areas set by set.
+
+**And the lesson is the one this file keeps relearning.** The question I nearly sent had been answered on
+25 August, banked as a `Ruling` row, and declared unobeyed by a test in this repo. ⭐**GREP THE ANSWER INDEX
+BY THE SUBJECT, NOT BY YOUR OWN WORDING** — I searched for "slope" and "hip" because that is what I was
+looking at, and her answer is filed under the slab edge, which is what it is about.
