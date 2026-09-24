@@ -134,7 +134,13 @@ internal static class CorpusGateVerb
         }
         else if (report.Losses.Count > 0 && bisect is null)
         {
-            Console.WriteLine("  to find which rule took them: --bisect KOR_STEP130_OFF,KOR_STEP131_OFF,KOR_STEP133_OFF,KOR_STEP134_OFF,KOR_STEP135_OFF");
+            // Every knob the engine reads belongs on this line, and ABisectKnobActuallyTurnsItsRuleOffTests
+            // .TheKnobsTheCodeReadsAndTheKnobsTheGateAdvertisesAreTheSameSet fails the build if one drifts off it:
+            // 136 and 138 had, and a loss either caused could not be attributed by the instrument built to
+            // attribute it.
+            // ⚠ ONE literal, not a concatenation: the guard reads this line as source text and a `" + "` between
+            // two knobs hides everything after it.
+            Console.WriteLine("  to find which rule took them: --bisect KOR_STEP130_OFF,KOR_STEP131_OFF,KOR_STEP133_OFF,KOR_STEP134_OFF,KOR_STEP135_OFF,KOR_STEP136_OFF,KOR_STEP138_OFF");
         }
         if (outCsv is not null)
         {
