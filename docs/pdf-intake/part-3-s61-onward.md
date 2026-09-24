@@ -4980,3 +4980,47 @@ Of the 1,016 plates that read a thickness from a drawing, **50 read above 16" an
 5,000 sq ft** — 58,758 sq ft at 36", 30,487 at 84". Rafts and transfer slabs are like that, and L4 is the
 storey where 31017's towers start. No rule, and the ten minutes that found this out were the cheapest of the
 night.
+
+### The two renders that step 132 was parked on — and the blocker was never step 136
+
+Step 132's own prediction named two preconditions: 31202-01's ROOF and 31168-01's `A-L1` both moved, neither
+set has one of the engineer's models, and *"the gate's word is not enough for the set the gate cannot see."*
+Both were built with the knob each way and drawn.
+
+**31168-01 `A-L1` is BETTER with step 132, and its "loss" is the rule working.** 40,842 sq ft at **15 points**
+becomes 34,724 at **104 points**. The outline steps up into the notch on the left, follows the stepped right
+edge instead of cutting across it, and a recess at the bottom that was being cut out as an interior HOLE
+becomes what it is — boundary. Openings fall 17 → 14 for the same reason. The 6,118 sq ft is slab that was
+never there.
+
+**31202-01's ROOF is BROKEN by step 132, and that is the stop.**
+
+| | ROOF total | its largest plate |
+|---|---:|---|
+| 132 off | 12,159 sq ft (4 plates) | `KF14` **8,736 sq ft**, 47 points |
+| 132 on | **3,387 sq ft** (3 plates) | `KF14` **gone** |
+| hers | **14,944 sq ft** | |
+
+8,736 is the exact figure the 2026-09-19 parking commit named, so the same thing is happening. But the report
+now says precisely WHY, and it is not what that commit assumed:
+
+    S2.10.1_1_ROOF PLAN -CONCRETE OUTLINE.dxf: slab edges: CANDIDATE NOT MODELLED — a region of 11,610 sq ft
+    at (3853, 2956) ft, closed only by joining its two loose ends across 48,356 in against the 212,997 in the
+    drawing draws (23% of the ring, over the 10% an interruption takes) — that is a slab edge this tool would
+    be inventing, not one the drawing leaves open where something crosses it.
+
+**With step 132 on, the walk finds a BETTER roof — 11,610 sq ft is 78% of her 14,944, against the gable's
+8,736 at 58% — and the 10% INTERRUPTION LIMIT refuses it.** Step 136, the 55% box-fill gate, was removed and
+judged clean on 2026-09-23 on the belief that it was step 132's blocker. **It was the wrong blocker.** The
+parked commit said *"the box-fill gate on hooked roofs is the next thing; this re-enters behind it"*, and that
+sentence was a hypothesis nobody had checked against the refusal message.
+
+So step 132 stays parked, and the next rule is the interruption limit itself, with 31202's ROOF as its target
+set and a real question to answer: a roof plan's slab edge is genuinely interrupted more often than a floor's —
+parapets, overhangs, mechanical wells drawn on other layers — but bridging 23% of a ring's perimeter is a
+quarter of an outline invented, and the 10% is there for a reason. That is a rule to measure, not to relax.
+
+⚠ **And the method note, because it cost three weeks of "132 re-enters behind 136":** the blocker was named
+from a commit message written at the time of the first failure, and never re-derived from the artifact. The
+refusal message says exactly which gate refuses the ring, in the report, on disk. **Read the refusal, do not
+remember it.**
