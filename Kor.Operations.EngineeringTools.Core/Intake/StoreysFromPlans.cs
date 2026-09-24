@@ -32,7 +32,13 @@ namespace Kor.Operations.EngineeringTools.Intake;
 public static class StoreysFromPlans
 {
     /// <summary>A storey in the merged ladder: where it came from says whether its elevation was stated or assumed.</summary>
-    public sealed record Storey(string Name, double ElevationMm, string From, bool Assumed);
+    /// <param name="Spaced">
+    /// Set where this storey's elevation was not the assumed height above the one below but an even share of the
+    /// gap between two STATED levels. It is a different provenance from <paramref name="Assumed"/> and the levels
+    /// file says so separately, because on 31017-01 the two were conflated and the file contradicted itself:
+    /// twenty storeys listed as "ASSUMED … taken as the set's typical storey, 3050 mm" stood 164 mm apart.
+    /// </param>
+    public sealed record Storey(string Name, double ElevationMm, string From, bool Assumed, bool Spaced = false);
 
     public sealed record Ladder(IReadOnlyList<Storey> Storeys, int FromElevations, int FromPlansOnly, int Assumed, double HeightUsedMm, string HeightSource)
     {
@@ -205,7 +211,7 @@ public static class StoreysFromPlans
                 {
                     double from = storeys[lastStated].ElevationMm, step = (elevation - from) / (between + 1);
                     for (int k = 1; k <= between; k++)
-                        storeys[lastStated + k] = storeys[lastStated + k] with { ElevationMm = from + step * k, From = $"a plan names it; spaced evenly between {order[lastStated]} and {name} ({step:0} mm a storey)" };
+                        storeys[lastStated + k] = storeys[lastStated + k] with { ElevationMm = from + step * k, Spaced = true, From = $"a plan names it; spaced evenly between {order[lastStated]} and {name} ({step:0} mm a storey)" };
                 }
                 storeys.Add(new Storey(name, elevation, l.From, Assumed: false));
                 fromElev++;
@@ -263,16 +269,63 @@ public static class StoreysFromPlans
             "# unit: mm",
             "# level,elevation mm — the storeys the set's plans name and its elevations state; the lowest is 0",
         };
-        if (ladder.Assumed > 0)
-            lines.Add($"# ASSUMED: {ladder.Assumed} storey height(s) not stated by the drawings, taken as {ladder.HeightSource}: " +
-                      string.Join(", ", ladder.Storeys.Where(s => s.Assumed).Select(s => s.Name)));
+        var atTheHeight = ladder.Storeys.Where(s => s.Assumed && !s.Spaced).Select(s => s.Name).ToList();
+        if (atTheHeight.Count > 0)
+            lines.Add($"# ASSUMED: {atTheHeight.Count} storey height(s) not stated by the drawings, taken as {ladder.HeightSource}: " +
+                      string.Join(", ", atTheHeight));
+        lines.AddRange(SpacingNotes(ladder));
         foreach (var s in ladder.Storeys) lines.Add($"{s.Name},{s.ElevationMm.ToString("0", CultureInfo.InvariantCulture)}");
         return lines;
+    }
+
+    /// <summary>
+    /// A LADDER MUST STATE THE HEIGHT IT ACTUALLY USED (2026-09-23). A storey the plans name and no elevation
+    /// places, standing between two STATED levels, is given an even share of that gap — the assumed height never
+    /// moves a fact. But it was then listed under the ASSUMED header, which names the assumed height, and on two
+    /// sets of the corpus the two numbers were nothing like each other:
+    ///
+    ///   31017-01  twenty storeys "ASSUMED … taken as the set's typical storey, 3050 mm", standing 164 mm apart
+    ///   31004-01  five storeys claiming 2945 mm, standing 33 mm apart
+    ///
+    /// 31017-01's model is a 24-storey tower 18 m tall, and it is the largest reading gap in the corpus. The
+    /// cause is not the spacing rule: it is that the level ABOVE the run belongs to another building. 31017-01
+    /// draws a tower (L1..L24) and a commercial podium (C1..C4) on one set, the elevations state L4 at 15,057
+    /// and C4 at 18,512, and twenty tower storeys were shared out over the podium's last 3,455 mm.
+    ///
+    /// Naming the brackets and the step is what makes an engineer look at it. Fixing whose building a level
+    /// belongs to is a larger job and is NOT done here.
+    /// </summary>
+    public static IReadOnlyList<string> SpacingNotes(Ladder ladder)
+    {
+        ArgumentNullException.ThrowIfNull(ladder);
+        var notes = new List<string>();
+        var s = ladder.Storeys;
+        for (int i = 0; i < s.Count; i++)
+        {
+            if (!s[i].Spaced) continue;
+            int last = i;
+            while (last + 1 < s.Count && s[last + 1].Spaced) last++;
+            string below = i > 0 ? s[i - 1].Name : "the datum";
+            string above = last + 1 < s.Count ? s[last + 1].Name : "the top";
+            double step = s[i].ElevationMm - (i > 0 ? s[i - 1].ElevationMm : 0);
+            string run = last == i ? s[i].Name : $"{s[i].Name}..{s[last].Name}";
+            string note = $"# SPACED EVENLY: {last - i + 1} storey(s) the plans name and no elevation places — "
+                        + $"{run}, between {below} and {above}, at {step.ToString("0", CultureInfo.InvariantCulture)} mm a storey.";
+            if (step < ladder.HeightUsedMm / 2)
+                note += $" ⚠ FAR UNDER {ladder.HeightSource}: check that {below} and {above} are levels of the SAME building"
+                      + " — a tower's storeys shared out over a podium's last gap is what this looks like.";
+            notes.Add(note);
+            i = last;
+        }
+        return notes;
     }
 
     /// <summary>One line for the report.</summary>
     public static string Summary(Ladder ladder) => ladder.IsEmpty
         ? "no storeys: the elevations chained none and no plan names one"
         : $"{ladder.Storeys.Count} storeys ({string.Join(" ", ladder.Storeys.Select(s => s.Name))}): {ladder.FromElevations} with a stated elevation, {ladder.FromPlansOnly} named by plans only" +
-          (ladder.Assumed > 0 ? $", {ladder.Assumed} height(s) ASSUMED at {ladder.HeightSource}" : "");
+          (ladder.Assumed > 0 ? $", {ladder.Assumed} height(s) ASSUMED at {ladder.HeightSource}" : "") +
+          // the spacing carries its own warning where the step is nothing like the height claimed above
+          string.Concat(SpacingNotes(ladder).Where(n => n.Contains('⚠', StringComparison.Ordinal))
+              .Select(n => ". " + n["# ".Length..]));
 }
