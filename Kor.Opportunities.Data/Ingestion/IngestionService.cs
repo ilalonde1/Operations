@@ -140,9 +140,7 @@ public sealed class IngestionService : IIngestionService
                         relevance.RejectReason);
                     await _gateRejectStore.RecordAsync(
                         source.Name,
-                        candidate.Title,
-                        candidate.Buyer,
-                        candidate.Url,
+                        candidate,
                         relevance.RejectReason ?? "unspecified",
                         ct).ConfigureAwait(false);
                     await RunRejectedAckAsync(source, candidate, ct).ConfigureAwait(false);

@@ -9,6 +9,12 @@ namespace Kor.Opportunities.Core.Ingestion;
 /// vocabulary gap, a word-trap like "Coal Harbour" vs \bcoal\b) can be
 /// reviewed periodically instead of evaporating with the log files.
 /// One row per (source, title); repeat rejections bump a counter.
+///
+/// ⚠ It takes the whole CANDIDATE, not a handful of strings. The provider has
+///   already parsed the file number, the filing date, the address and the
+///   description by this point, and throwing them away here makes the log
+///   unreviewable: a reject with no date cannot be told from a stale one, and
+///   a reject with no reference cannot be found again at the source.
 /// </summary>
 public interface IRelevanceGateRejectStore
 {
@@ -18,9 +24,7 @@ public interface IRelevanceGateRejectStore
     /// </summary>
     Task RecordAsync(
         string sourceName,
-        string title,
-        string? buyer,
-        string? url,
+        OpportunityCandidate candidate,
         string rejectReason,
         CancellationToken ct);
 }
