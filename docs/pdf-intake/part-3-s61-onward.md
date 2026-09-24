@@ -5077,3 +5077,70 @@ at 98,804 — have 439 and 9,942 sq ft refused between them.
 So the limit stands. That is the third rule this session killed by counting before writing it, after the
 48"-mat rule and step 141, and the pattern in all three is the same: **the measurement that decides a rule is
 not "how much does it touch" but "whose sets does it touch, and do they need it".**
+
+## 167. Step 137 judged and banked — six parkade storeys that had no home, and a guard that read its own comment (2026-09-24 01:00 → 01:4X)
+
+Step 137 was written on 2026-09-23 and sat finished and unjudged on its branch for a day. Picking it up found
+two things worth more than the rule.
+
+### The rule
+
+Where a title names no level at all, and is not a roof or a top floor, a trailing parkade token is the sheet's
+level: `Phase 2a & 2b Parkade Plan - P1`, and a view named nothing but `P2`. A fallback of last resort only, so
+a title that already says what it is cannot be talked out of it. The anchor is the whole rule — `^` or a dash
+**with a space on both sides** — because the first cut took any dash and read `job-p01`, and every
+`…Stickfile-p07` in the corpus, as parkade level 1.
+
+### The title ratchet reads ZERO
+
+`TheTitlesTheReaderDidNotUnderstandTests` tracks the sixteen real corpus titles the reader could not parse:
+
+| | titles reading nothing | slabs behind them |
+|---|---:|---:|
+| 2026-09-23 00:45, when it was written | 9 | 1,888 |
+| after migration 099 banked FLR as a floor noun | 6 | 967 |
+| **with step 137 in** | **0** | **0** |
+
+The rebase conflict was between develop's ratchet at 6 and the branch's at 3 — the branch was written when 099
+had not landed and assumed 137 would take six of the nine. They compose rather than conflict, and the resolved
+number is **measured, not predicted**: the method is now `NoneOfThemReadsNothingAndThatMayOnlyStay`.
+
+### The verdict, against the prediction banked before the run
+
+Its target sets have none of the engineer's models, so the 2026-09-18 rule applies: build the target set and
+judge there. Two arms of one binary, FULL READ — not a recompose, because this changes how views are NAMED.
+
+| set | predicted | off → on |
+|---|---|---|
+| 30824-01 | gains 3–5 storeys | **14 → 17** ✓ |
+| 30827-01 | gains P1 and P2 | **9 → 11** ✓ |
+| 30905-01 | gains its missing P2 | **8 → 9** ✓ |
+| 30864-01 | little or nothing | **41 → 41** ✓ |
+| any set LOSING a storey | a stop | **none** ✓ |
+
+**Every one hit, to the storey** — the first prediction this session that did. And the new storeys carry
+floors, not just members: plated storeys go 14 → 17, 9 → 11 and 7 → 8. 30824-01 gains 319 walls and 402
+columns that previously belonged to no storey at all.
+
+30864-01 is the only one the corpus can judge and it is **identical on every judged figure**: storeys 41 → 41,
+plated 20 → 20, walls 548 → 548, columns 698 → 698, thickness 0 → 0, her openings 39 → 39.
+
+### And the knob guard was reading its own comment
+
+Step 137 predates the knob scan and had none, so a bisect could never have attributed a loss to it.
+`KOR_STEP137_OFF` now — and adding it made the guard written three hours earlier go red on a read that is
+perfectly live.
+
+The guard walks back from the read to the previous `;`, `{` or `}` and asks whether a member-scope word stands
+in front of it. That head included **comment prose**, and step 137's knob carries the comment *"never a static,
+or every arm of a bisect answers the same"*. The word `static`, in a sentence about the very fault, made the
+guard call a live read frozen.
+
+> **A check that can be fooled by a comment about itself is worse than no check.**
+
+Comments are stripped from the head now, and the fix was proved the way the guard itself was: a temporary
+`internal static readonly bool Frozen = Environment.GetEnvironmentVariable(...)` carrying a comment that
+mentions `static` and `readonly`. Still caught, by file and knob name; the prose alone no longer trips it.
+
+That is the fifth thing the knob scan has found since it was written this evening — 136, 138, 139, 140, 141 —
+and the first fault it found in itself.
