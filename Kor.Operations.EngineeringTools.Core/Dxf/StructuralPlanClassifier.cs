@@ -2775,6 +2775,10 @@ public static class StructuralPlanClassifier
         if (result.Tags.Count > 0 && result.Slabs.Count > 0)
         {
             var claimed = new Dictionary<PlanLoop, List<(double Inches, string Text)>>();
+            // THE FIELD THICKNESSES THIS SHEET PRINTS ANYWHERE (intake step 140, 2026-09-23) - see the
+            // fallback below. Collected here because a call-out that lands in NO plate never reaches the
+            // loop's end, and that is exactly the call-out this rule is for.
+            var sheetFieldCallouts = new Dictionary<double, string>();
 
             foreach (var tag in result.Tags)
             {
@@ -2799,6 +2803,10 @@ public static class StructuralPlanClassifier
                 if (result.Openings.Any(o => LoopGeometry.PointInPolygon(tag.Point, o.Points)))
                     continue;
 
+                // A FIELD thickness only: a mat or a transfer slab is not what the rest of this sheet is.
+                if (inches <= SlabThicknessCallout.ZonerFieldMaxIn)
+                    sheetFieldCallouts.TryAdd(inches, tag.Text.Replace('\n', ' ').Replace('\r', ' ').Trim());
+
                 PlanLoop? smallest = null;
                 foreach (var slab in result.Slabs)
                 {
@@ -2818,6 +2826,43 @@ public static class StructuralPlanClassifier
             {
                 if (skip?.Contains(slab) == true || !claimed.TryGetValue(slab, out var printed) || printed.Count == 0)
                 {
+                    // A SHEET THAT PRINTS ONE FIELD THICKNESS PRINTS IT FOR THE SHEET (intake step 140, 2026-09-23).
+                    //
+                    // The pass above asks only what is printed INSIDE a plate, and a plate with nothing inside it
+                    // falls all the way through to the engineer's 12" default. Measured over the built corpus before
+                    // this was written: 1,586 of 2,763 floor plates - 57% - carry that default, and NOT ONE of them
+                    // is in a set whose drawings are silent: all 112 sets that default a plate print thickness
+                    // call-outs on their own sheets. "The drawing does not say" was never the reason.
+                    //
+                    // Of the 1,433 plan sheets that produced a plate: 448 print exactly one field thickness and a
+                    // plate took it; 46 print exactly one and NO plate took it - the call-out sits outside every
+                    // closed outline, over a part the ring never reached (01379-01 does it on eleven OVERALL PLAN
+                    // sheets, each printing "8" SLAB" once). Those 46 are this rule, and only those: a sheet with
+                    // ONE field number has given its answer, and a plate on it that read nothing is that thickness.
+                    //
+                    // ⚠ NOT applied to a plate the pass above REFUSED for ambiguity - two numbers inside it is the
+                    // drawing contradicting itself and stays an engineer's question - nor to a mat or transfer slab,
+                    // because only call-outs at or under the field maximum are collected above.
+                    // ⚠ ONLY a plate this pass is actually judging, that claimed nothing, and that carries no
+                    // thickness yet. `skip` means "a pass already settled this one, leave it alone", and the
+                    // plate the tie above refused comes back through here on the second call - neither is this
+                    // rule's business, and the first cut of it quietly overrode both.
+                    if (sheetFieldCallouts.Count == 1
+                        && skip?.Contains(slab) != true
+                        && slab.ThicknessInchesFromTag is null
+                        && !claimed.ContainsKey(slab)
+                        && Environment.GetEnvironmentVariable("KOR_STEP140_OFF") != "1")
+                    {
+                        var (only, text) = (sheetFieldCallouts.Keys.First(), sheetFieldCallouts.Values.First());
+                        priced.Add(new PlanLoop(slab.Layer, slab.Points, slab.ClosedExactly) { ThicknessInchesFromTag = only });
+                        if (text.Length > 40) text = text[..40] + "…";
+                        result.Flags.Add(
+                            $"{slab.Layer}: a floor plate of {options.SqFt(slab.Area)} sq ft is {In(only)}\" thick — " +
+                            $"read from \"{text}\", the only field thickness this sheet prints. Printed OUTSIDE this " +
+                            "plate, so it is the sheet's answer rather than the plate's own; a sheet that prints two " +
+                            "field thicknesses says nothing here and the plate keeps the default.");
+                        continue;
+                    }
                     priced.Add(slab);
                     continue;
                 }
