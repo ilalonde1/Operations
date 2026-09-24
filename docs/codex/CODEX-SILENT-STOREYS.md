@@ -117,3 +117,60 @@ is the fault is exactly what we do not know — it was assumed once already toni
 - The remaining gap is **1,436,461 sq ft**, and **1,046,910 of it — 73% — sits in the 72 storeys where our
   plate reads under half of hers.** The 43 zero-plate storeys are 384,522 of that.
 - Narrative: `docs/pdf-intake/part-3-s61-onward.md`, logs 164–168.
+
+---
+
+# ⚠ CORRECTION, 2026-09-24 07:0X — the audit broke this brief's witness, and it was right to
+
+Codex's answer (`CODEX-SILENT-STOREYS-RESULT.md`) refused to name a cause without evidence and challenged
+the one number this brief was built on:
+
+> *"the final sheet table overwrites that count with floor objects attributed to the sheet at
+> `DxfToEtabsService.cs:2754`. Thus '111 outlines read' cannot safely be treated as 111 raw candidates."*
+
+**Verified and correct.** `DxfToEtabsService.cs:2754` is `s with { … Slabs = kept.Floors }` — the ledger's
+`slabs` column is floor objects attributed to the sheet after the building cut, **not outlines read**. §2's
+headline was built on a misread column.
+
+Checking it properly then broke the rest of the brief, and the finding is better than the one it replaces.
+
+## 31093-01 L2 is not silent. It has a floor, in the wrong place.
+
+The model has **13,658 sq ft on L2 — two identical 6,829 sq ft rectangles of FOUR points each**, and the same
+two rectangles appear again on L3 and on L4. The yardstick's own note says why it scored zero:
+
+> *"13,659 sq ft of our plates stand beyond her model's footprint on their storey."*
+
+So "reads nothing" in §3 did not mean *no plate*. It meant **no plate area inside her footprint**, which
+conflates two unrelated faults. (Her 31093 model is also dated **712 days before the drawing's issue**.)
+
+## Re-measured against the models, the 43 split cleanly in two
+
+| | storeys | her area |
+|---|---:|---:|
+| **genuinely no floor object on that storey** | **19** | **205,589 sq ft** |
+| **floors exist but land outside her building** | **24** | **178,933 sq ft** |
+
+They are different problems with different fixes:
+
+- **The empty 19** — 30989 L1 (32,344), 31104 L2 (23,609), 30986-02 L1 (20,509), 31009 L8 (14,026), 31098 L4
+  (13,274), 31017 L6 (13,144), 31065 L5 (10,870), 31005 L1/L5/L8/L10 — is the class the perimeter-wall
+  ruling is for, and step 132 already takes 31009 L8 and 31065 L5 from zero to a floor.
+- **The misplaced 24** are a registration or a shape fault, not a closure one. 31093's twin 4-point
+  rectangles on three consecutive storeys are the witness, and they look like a bounding box rather than a
+  floor.
+
+## So the brief stands, narrowed
+
+**Question 1 is withdrawn** — 31093-01 L2 is answered. **Question 2 (the five zero-outline sheets) and
+question 3 (the per-sheet gating of the perimeter-wall fallback) stand**, and question 3 gained weight:
+Codex's own §6 says the enclosure comparison at `StructuralPlanClassifier.cs:1678` sees only ONE sheet's
+walls and slabs, that a perimeter assembled from several sheets is unavailable there, and that merely
+swapping `Slabs.Count == 0` for a storey-wide count would still accept a wrong small ring. That is the
+architectural limitation, stated without overclaiming a cause, and it is the right next thing.
+
+**The witness for a re-run should be one of the empty 19 — 30989-01 L1, 32,344 sq ft — not 31093-01 L2.**
+
+⭐ **And the lesson, which is this repo's oldest: a count is not a measurement until you know what it counts.**
+`slabs` in the sheet ledger means two different things depending on where you read it, and I built a brief on
+the wrong one. The audit that refused to guess is what caught it.
