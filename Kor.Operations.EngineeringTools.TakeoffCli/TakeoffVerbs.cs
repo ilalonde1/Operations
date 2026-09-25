@@ -4,6 +4,10 @@ public static class TakeoffVerbs
 {
     public static readonly IReadOnlyList<(string Name, Func<string[], bool> Matches, Func<string[], int> Run)> All =
     [
+        // ONE STICK FILE IN, EVERY OUTPUT OUT. First in the list because it is the product: the
+        // model, the report, the workbook and the render from one command. Everything below it is
+        // an instrument for working on the pipeline; this is the pipeline being used.
+        ("stickfile", StickfileVerb.Matches, StickfileVerb.Run),
         ("estimate", EstimateUsageVerb.Matches, EstimateUsageVerb.Run),
         ("measure", MeasureUsageVerb.Matches, MeasureUsageVerb.Run),
         ("vision-estimate", VisionEstimateUsageVerb.Matches, VisionEstimateUsageVerb.Run),
