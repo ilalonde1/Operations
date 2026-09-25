@@ -103,6 +103,42 @@ Witness: `30989-01`, page 21, view `S2.15_1_LEVEL 4 19 PLAN CONCRETE OUTLINE.dxf
 | relax `SlabChainJoinFraction` | biggest beneficiary is a set already at **106%** of her area |
 | step 141 | earned nothing — sized against a pool step 140 had consumed |
 | step 142 | earned nothing — and its "null means it does not close" was NOT established |
+| **step 146 — seal the pinches** | **WRITTEN, MEASURED, REVERTED.** See below. |
+
+#### Step 146: sealing the leak does not close the floor (tried 2026-09-24 23:5X)
+
+Implemented: when the walk finds no floor, run the existing leak finder from every column in no
+cell, seal any pinch narrower than 6 in with a connecting segment, rebuild the arrangement, repeat
+up to four rounds. Safe by construction — the block only runs when the sheet would otherwise
+produce nothing, so the guard sets never reach it.
+
+On the witness it seals happily and **changes nothing**:
+
+```
+step 146 round 1: 161 face(s), largest 136 sq ft; 20 column(s) in no cell;  0 seal(s)
+step 146 round 2: 163 face(s), largest 136 sq ft; 19 column(s) in no cell;  7 seal(s)
+step 146 round 3: 163 face(s), largest 136 sq ft; 19 column(s) in no cell; 13 seal(s)
+step 146 round 4: 163 face(s), largest 136 sq ft; 19 column(s) in no cell; 19 seal(s)
+```
+
+⭐ **AND THE TRACE SAYS WHY THE WHOLE LEAK THEORY IS WRONG:**
+
+```
+cells by selection: holding structure 50 (413 sq ft), wrapping 0, enclosed 20 (241 sq ft),
+                    open to the page 91 (1419 sq ft)
+```
+
+**Fifty cells hold structure and they total 413 sq ft.** The floor is not one region leaking through
+one pinch — it is **shredded into 161 slivers** by interior linework, and the biggest is 136 sq ft
+against a storey of ~4,246. Sealing the boundary cannot help when the interior is already cut to
+pieces. The "2 in gap" is real and is a symptom, not the cause.
+
+The work is in `git stash` (not discarded) if the cell-subdivision problem is ever solved and the
+seal becomes useful on top of it.
+
+**So the next question is the subdivision, not the boundary:** why do 847 offered lines produce 161
+cells on a floor that should be one or two? Interior detail — dimensions, leaders, hatching, grid
+strokes — is reaching the arrangement as if it were slab edge.
 
 ### The population, and what is NOT yet known
 
