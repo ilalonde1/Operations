@@ -50,6 +50,63 @@ public static class PdfOnlyBuild
         public IReadOnlyList<string> RenamedViews { get; init; } = [];
     }
 
+    /// <summary>
+    /// WHY NO MODEL CAME OUT, in the words of what was actually read (2026-09-24).
+    ///
+    /// Ian: "I want EXPLICIT reasons a model didn't run and how to fix it in the error message."
+    ///
+    /// This used to be the four words "no plan sheet with structure on it", and it is the error on
+    /// **13 of the 295 corpus sets** — every one of which produced no model at all. The words are
+    /// also wrong for most of them: 31019-01 has 43 pages, none of which reached the structure
+    /// stage, because none was taken for a PLAN. Its sheets.csv shows all 43 typed "other" with
+    /// every title and sheet number blank — the title reader got nothing off any page, so nothing
+    /// was a plan, so no view was written, so there was no model. "No structure" describes none of
+    /// that, and sends whoever reads it to the wrong place.
+    ///
+    /// So the reason is assembled from the counts the intake already has and never printed.
+    /// </summary>
+    internal static string NoPlanSheetReason(SheetsResult sheets)
+    {
+        var all = sheets.Sheets;
+        int pages = all.Count;
+        if (pages == 0)
+            return "the PDF yielded no pages at all. TO FIX: check the file opens and is "
+                 + "a vector PDF rather than a scan — a scanned drawing has no linework to read.";
+
+        int plans = all.Count(s => s.IsPlan);
+        int titled = all.Count(s => !string.IsNullOrWhiteSpace(s.Title));
+        int numbered = all.Count(s => !string.IsNullOrWhiteSpace(s.SheetNumber));
+        int failed = all.Count(s => !string.IsNullOrWhiteSpace(s.Failure));
+        var types = all.GroupBy(s => s.SheetType, StringComparer.OrdinalIgnoreCase)
+            .OrderByDescending(g => g.Count())
+            .Select(g => $"{g.Key} {g.Count()}")
+            .ToList();
+
+        string what = $"{pages} page(s) were read and none produced a structural view. " +
+                      $"They typed as {string.Join(", ", types)}; {titled} carried a readable title and " +
+                      $"{numbered} a sheet number" + (failed > 0 ? $"; {failed} failed to read" : "") + ".";
+
+        // The three causes are distinguishable from these counts alone, and each has its own fix.
+        if (plans == 0 && titled == 0)
+            return what + " NO PAGE HAS A READABLE TITLE, and a page is taken for a structural plan "
+                 + "from its title, so nothing could be. TO FIX: this is a title-block the reader "
+                 + "cannot read — the words may be drawn as linework rather than text, or set out in "
+                 + "columns it assembles in the wrong order. Send one page and it becomes a rule for "
+                 + "every set from this office; or name the plan pages for this run with --pages.";
+
+        if (plans == 0)
+            return what + " TITLES WERE READ BUT NONE SAYS 'PLAN', so no page was taken for a "
+                 + "structural plan. TO FIX: if this office calls its plans something else, say the "
+                 + "word and it is banked as dxf.plan-words for every future set; if the set really "
+                 + "holds only details, sections and schedules, then there is no model to build and "
+                 + "nothing is wrong.";
+
+        return what + $" {plans} page(s) WERE taken for plans and none carried structure on a layer "
+             + "this reader models. TO FIX: the layer names are the usual cause — give them for this "
+             + "run with --wall-layers / --column-layers / --slab-layers, or bank them once as "
+             + "dxf.wall-layer-patterns and the rest, so every set from this office reads.";
+    }
+
     /// <summary>How the composer receives the views: from memory (the route), or re-read from the DXF files on disk (the gate's reference, and a recompose over standing views).</summary>
     public enum Handoff { Memory, Disk }
 
@@ -344,7 +401,7 @@ public static class PdfOnlyBuild
             else report.Add(modelError ?? "");
             File.WriteAllLines(Path.Combine(workDir, "report.txt"), report);
         }
-        else modelError = written.Count == 0 ? "no plan sheet with structure on it" : levelsError ?? "no storeys: the elevations chained none and no plan names one";
+        else modelError = written.Count == 0 ? NoPlanSheetReason(sheets) : levelsError ?? "no storeys: the elevations chained none and no plan names one";
 
         return new BuildOutcome(pdf, pages, sheets, chain, levelsError, model, modelError, outE2k, watch.Elapsed) { Ladder = ladder };
     }
