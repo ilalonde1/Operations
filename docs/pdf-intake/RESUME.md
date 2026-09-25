@@ -82,6 +82,32 @@ against 474 / 1,318 off — five columns, no shift at all.
 10's trigger: the model in my head is wrong and every further patch is a coin flip. It goes to the
 audit as question 2 with all of this, which is worth more than a fourth guess at midnight.
 
+### ⭐ AND THE FIFTH ATTEMPT FOUND WHY IT CANNOT BE SEPARATED (2026-09-25 morning)
+
+The right characterisation was written and built: **a slab-only sheet contributes GEOMETRY and must
+never influence PLACEMENT**, so keep it out of `files` entirely and read its slab back AFTER every
+placement decision closes, through the frame it earned as a frame carrier.
+
+It took **nothing**, and the instrumented reason is the answer to the whole thread:
+
+    step 147 took nothing from 7 reinforcing sheet(s):
+      S2.04_1_LEVEL P3 SLAB REINFORCING PM.dxf: no frame
+      S2.06_1_LEVEL P2 SLAB REINFORCING PM.dxf: no frame   ... all seven, no frame
+
+**A reinforcing sheet does not name enough grid axes to place itself.** So the version that WORKED
+last night placed those sheets by **column registration on their own rebar** — which is precisely
+the mechanism that moved 31130-01 by 69 metres. The win and the regression are the same mechanism.
+You cannot keep one and drop the other by subtraction, which is why three patches failed.
+
+⛔ **Both attempts are in `git stash`** (`stash@{0}` structural, `stash@{1}` the working-but-shifting
+one). Neither is on develop. Five attempts on one symptom is well past rule 10's trigger.
+
+**What would actually unblock it** — and this is the question for the audit, not another patch:
+a reinforcing sheet needs a frame that does NOT come from its own bars. Candidates nobody has
+measured: the frame of the sibling view on the same PDF page; a fit solved against the storey's
+already-placed outline sheet; or the page's own extraction frame carried through
+`SheetViews.Split`, which currently keeps title, filename and geometry but no page provenance.
+
 ### What it is worth, so nobody drops it
 
     30989-01:  7 floors -> 45,  7 of 27 storeys floored -> 25 of 27,  columns 594 -> 594
