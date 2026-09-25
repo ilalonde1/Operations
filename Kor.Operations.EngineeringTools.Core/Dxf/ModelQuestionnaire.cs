@@ -48,6 +48,19 @@ public sealed record ModelQuestion(
 
     public string RuleScope { get; init; } = "etabs-modelling";
     public string RuleTopic { get; init; } = string.Empty;
+
+    /// <summary>
+    /// True where the answer is a FACT ABOUT THIS BUILDING rather than a rule about how KOR draws,
+    /// so it is banked under a key carrying the job and never reaches another set.
+    /// </summary>
+    /// <remarks>
+    /// "Sheet S2.06 is level 5" is true of one job. S2.06 is a sheet number that recurs across
+    /// dozens of sets, so the same answer applied anywhere else would put a drawing in the wrong
+    /// building — and a wrongly-placed floor looks exactly like one she drew. A rule about how the
+    /// office draws is the opposite: it is learned on one job precisely so the next one can use it.
+    /// </remarks>
+    public bool PerJob { get; init; }
+
     public string? SettingKey { get; init; }
     public string? SettingUnits { get; init; }
     public string Confidence { get; init; } = "engineer-confirmed";
@@ -608,7 +621,16 @@ public static class ModelQuestionnaire
                 "Measured before it was trusted: over 1,776 drawings whose titles DID name a level, " +
                 "hiding the level and recovering it this way was right 480 times out of 481. The " +
                 "looser version of the same rule measured 59% and was deleted rather than shipped.")
-                { RuleTopic = "a-level-taken-from-where-the-sheet-sits" };
+                {
+                    RuleTopic = "a-level-taken-from-where-the-sheet-sits",
+                    // Her answer is read at the top of the level pass in DxfToEtabsService and
+                    // outranks both the guess below it and a title that parsed. Before 2026-09-25
+                    // this row had no setting key, so a correction was banked as prose and the next
+                    // run put the drawing straight back where she had moved it from.
+                    SettingKey = "dxf.sheet-levels",
+                    SettingUnits = RuleSettings.TextUnits,
+                    PerJob = true,
+                };
         }
 
         // THE SET WE COULD NOT READ, HANDED BACK AS A QUESTION RATHER THAN SHIPPED QUIETLY.
@@ -1560,9 +1582,18 @@ public static class ModelQuestionnaire
                 answer.Style.Fill.BackgroundColor = XLColor.FromArgb(238, 238, 238);
             }
             sheet.Cell(row, 6).Value = q.Evidence;
-            sheet.Cell(row, 7).Value = q.RuleScope;
+
+            // A FACT ABOUT THIS BUILDING IS BANKED UNDER THIS BUILDING. Everything else is a rule
+            // about how KOR draws and is banked for the office, which is what makes it available to
+            // the next job at all. The two must not be confused: an unscoped "S2.06 is level 5"
+            // would place a drawing in the wrong building on every set that has an S2.06.
+            sheet.Cell(row, 7).Value = q.PerJob && !string.IsNullOrWhiteSpace(projectName)
+                ? RuleSettings.JobScope(projectName)
+                : q.RuleScope;
             sheet.Cell(row, 8).Value = string.IsNullOrWhiteSpace(q.RuleTopic) ? q.Topic : q.RuleTopic;
-            sheet.Cell(row, 9).Value = q.SettingKey ?? string.Empty;
+            sheet.Cell(row, 9).Value = q.PerJob && !string.IsNullOrWhiteSpace(q.SettingKey)
+                ? RuleSettings.KeyForJob(q.SettingKey, projectName)
+                : q.SettingKey ?? string.Empty;
             sheet.Cell(row, 10).Value = q.SettingUnits ?? string.Empty;
             sheet.Cell(row, 11).Value = q.Confidence;
             row++;

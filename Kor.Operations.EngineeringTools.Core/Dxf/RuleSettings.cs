@@ -42,6 +42,24 @@ public sealed record QuestionAnswerRule(
 public sealed record RuleImportResult(int RowsRead, int AnswersFound, int RulesWritten, int SettingsWritten, IReadOnlyList<string> Skipped);
 
 /// <summary>
+/// An answer given on a DIFFERENT job, offered as evidence beside the same question on this one.
+/// </summary>
+/// <param name="Job">The job it was answered for, without the "job:" prefix.</param>
+public sealed record PriorAnswer(
+    string Topic,
+    string Job,
+    string Engineer,
+    string Ruling,
+    DateTime DecidedOn,
+    string? SettingKey,
+    string? SettingValue)
+{
+    /// <summary>One line for the workbook: who settled this, on what job, and when.</summary>
+    public string Attribution =>
+        $"{Job}: \"{Ruling}\" — {Engineer}, {DecidedOn:yyyy-MM-dd}";
+}
+
+/// <summary>
 /// The rules this tool applies, read from KorStandards rather than compiled into it.
 /// </summary>
 public static class RuleSettings
@@ -77,6 +95,168 @@ public static class RuleSettings
     {
         var (settings, _) = TryLoad(connectionString);
         return settings;
+    }
+
+    /// <summary>
+    /// The scope that marks a ruling as true of ONE JOB rather than of the office: "job:31005-01".
+    /// </summary>
+    public static string JobScope(string job) => "job:" + job.Trim();
+
+    /// <summary>
+    /// Every setting a build of <paramref name="job"/> should apply: the office's conventions with
+    /// that job's own answers laid over the top.
+    /// </summary>
+    /// <remarks>
+    /// WHY THIS EXISTS. On 2026-09-25 the store held 88 rulings and NOT ONE was about a job. Half
+    /// the questions the workbook asks cannot be answered any other way — "the parkade on this set
+    /// is shared with the tower next door" is true of 31005-01 and is not how KOR draws — so those
+    /// questions had been given no setting key at all, and the engineer's answer was banked as
+    /// prose that no later run read. S5, S7, S4 and A2 are the four that matter most; between them
+    /// they name most of the 1.5 million sq ft the corpus is short.
+    ///
+    /// A JOB'S OWN ANSWER WINS, whatever its confidence, because it is a statement about this
+    /// building and the convention is a statement about the office. A ruling scoped to a DIFFERENT
+    /// job is not loaded at all — that is what <see cref="PriorAnswers"/> is for, and it belongs in
+    /// the workbook as evidence, never silently in the model.
+    ///
+    /// This reads <c>analysis.Ruling</c> directly rather than through <c>vw_RuleSetting</c>. The
+    /// view has no Scope column and altering it needs rights the application login does not have;
+    /// the login can read the table and INSERT into it, which is the whole of what the loop needs.
+    /// </remarks>
+    public static IReadOnlyDictionary<string, RuleSetting> LoadForJob(string? connectionString, string? job)
+    {
+        var (settings, _) = TryLoad(connectionString);
+        if (string.IsNullOrWhiteSpace(job)) return settings;
+
+        var merged = new Dictionary<string, RuleSetting>(settings, StringComparer.OrdinalIgnoreCase);
+        foreach (var row in JobScopedRulings(connectionString, job))
+            merged[row.Key] = row;
+
+        return merged;
+    }
+
+    /// <summary>
+    /// What THIS job has already been told, read straight off the rulings table. Empty — never an
+    /// exception — where the database is unreachable: a job that has never been answered and a
+    /// database that is down look the same to a build, and both mean "apply the conventions".
+    /// </summary>
+    private static List<RuleSetting> JobScopedRulings(string? connectionString, string job)
+    {
+        var found = new List<RuleSetting>();
+        connectionString ??= Environment.GetEnvironmentVariable(ConnectionEnvironmentVariable);
+        if (string.IsNullOrWhiteSpace(connectionString)) return found;
+
+        try
+        {
+            using var connection = new SqlConnection(connectionString);
+            connection.Open();
+
+            using var command = connection.CreateCommand();
+            command.CommandText =
+                "SELECT SettingKey, SettingValue, SettingUnits, Confidence, Engineer, Ruling, " +
+                "       COALESCE(RuledOn, CreatedAtUtc) AS DecidedOn " +
+                "FROM   analysis.Ruling " +
+                "WHERE  RetiredAtUtc IS NULL AND SettingKey IS NOT NULL AND ActionType <> 'REFER' " +
+                "  AND  Scope = @scope " +
+                "ORDER BY COALESCE(RuledOn, CreatedAtUtc)";
+            command.Parameters.AddWithValue("@scope", JobScope(job));
+            command.CommandTimeout = 15;
+
+            using var reader = command.ExecuteReader();
+            while (reader.Read())
+            {
+                string key = reader.GetString(0);
+                if (reader.IsDBNull(1)) continue;
+
+                string units = reader.IsDBNull(2) ? string.Empty : reader.GetString(2);
+                string text = Convert.ToString(reader.GetValue(1), CultureInfo.InvariantCulture) ?? string.Empty;
+
+                bool isList = IsListUnits(units);
+                double value = double.NaN;
+                if (!isList && !TryParseSettingValue(reader.GetValue(1), units, out value)) continue;
+                if (isList && text.Trim().Length == 0) continue;
+
+                // The attribution Ian asked for on 2026-09-24 — "built on the assumption made by x
+                // on xyz date" — is carried in Because, where every reader of a setting already
+                // looks, rather than in a field only a new reader would find.
+                string who = reader.IsDBNull(4) ? "unattributed" : reader.GetString(4);
+                string said = reader.IsDBNull(5) ? string.Empty : reader.GetString(5);
+                string when = reader.IsDBNull(6) ? "an unrecorded date" : reader.GetDateTime(6).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+
+                found.Add(new RuleSetting(
+                    key, value, units,
+                    reader.IsDBNull(3) ? "engineer-confirmed" : reader.GetString(3),
+                    who,
+                    $"{said} (answered for {job} by {who} on {when})")
+                {
+                    Text = text,
+                });
+            }
+        }
+        catch
+        {
+            return new List<RuleSetting>();
+        }
+
+        return found;
+    }
+
+    /// <summary>
+    /// What somebody answered about this same topic on ANOTHER job, most recent first.
+    /// </summary>
+    /// <remarks>
+    /// This is the half of Ian's 2026-09-24 ask that is not about applying an answer: "all the
+    /// answers are recorded in our db and then parsed in future projects to see if it's seen this
+    /// particular issue before." It never changes a model. It goes in the workbook beside the
+    /// question, so the engineer answering S5 on 31202-01 can see that the same question was put on
+    /// 31138-01 and what was said — and can disagree, because the two jobs are different buildings.
+    /// </remarks>
+    public static IReadOnlyList<PriorAnswer> PriorAnswers(string? connectionString, string? exceptJob, int limitPerTopic = 3)
+    {
+        var found = new List<PriorAnswer>();
+        connectionString ??= Environment.GetEnvironmentVariable(ConnectionEnvironmentVariable);
+        if (string.IsNullOrWhiteSpace(connectionString)) return found;
+
+        try
+        {
+            using var connection = new SqlConnection(connectionString);
+            connection.Open();
+
+            using var command = connection.CreateCommand();
+            command.CommandText =
+                "SELECT Topic, Scope, Engineer, Ruling, COALESCE(RuledOn, CreatedAtUtc) AS DecidedOn, SettingKey, SettingValue " +
+                "FROM   analysis.Ruling " +
+                "WHERE  RetiredAtUtc IS NULL AND Scope LIKE 'job:%' AND Scope <> @thisJob " +
+                "ORDER BY Topic, COALESCE(RuledOn, CreatedAtUtc) DESC";
+            command.Parameters.AddWithValue("@thisJob", string.IsNullOrWhiteSpace(exceptJob) ? "job:" : JobScope(exceptJob));
+            command.CommandTimeout = 15;
+
+            using var reader = command.ExecuteReader();
+            var perTopic = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            while (reader.Read())
+            {
+                string topic = reader.GetString(0);
+                perTopic.TryGetValue(topic, out int seen);
+                if (seen >= limitPerTopic) continue;
+                perTopic[topic] = seen + 1;
+
+                string scope = reader.GetString(1);
+                found.Add(new PriorAnswer(
+                    topic,
+                    scope.StartsWith("job:", StringComparison.OrdinalIgnoreCase) ? scope[4..] : scope,
+                    reader.IsDBNull(2) ? "unattributed" : reader.GetString(2),
+                    reader.IsDBNull(3) ? string.Empty : reader.GetString(3),
+                    reader.GetDateTime(4),
+                    reader.IsDBNull(5) ? null : reader.GetString(5),
+                    reader.IsDBNull(6) ? null : Convert.ToString(reader.GetValue(6), CultureInfo.InvariantCulture)));
+            }
+        }
+        catch
+        {
+            return new List<PriorAnswer>();
+        }
+
+        return found;
     }
 
     /// <summary>Load the rules a production run requires, or fail before any model is written.</summary>
@@ -210,6 +390,60 @@ public static class RuleSettings
             .ToList();
 
         return parts.Count > 0 ? parts : fallback;
+    }
+
+    /// <summary>The key one job's answer is banked under: "dxf.sheet-levels@31005-01".</summary>
+    public static string KeyForJob(string key, string? job)
+        => string.IsNullOrWhiteSpace(job) ? key : key + "@" + job.Trim();
+
+    /// <summary>
+    /// An answer only a JOB can give, as the pairs the engineer wrote: "S2.06=5; S2.07=6".
+    /// Empty where nobody has answered, which is every job until somebody does.
+    /// </summary>
+    /// <remarks>
+    /// WHY THIS IS NOT <see cref="ListOr"/>. Every other accessor here asks "what does the office
+    /// say, and what do I use if it has not said?" — there is a compiled default behind each one,
+    /// <c>BuiltInRuleLists</c> names them all, and <c>CompiledDefaultsAreTheBankedRowsTests</c>
+    /// holds each against its banked row. A rule like "sheet S2.06 is level 5" has no office
+    /// default and never will: it is not how KOR draws, it is what is true of one building, and
+    /// there is nothing for the compiled-defaults gate to compare it against.
+    ///
+    /// Ian, 2026-09-25, on why this class of rule has to exist at all: "A rule should be JUST
+    /// applicable to a specific project. That's how something gets wise." Until today the store
+    /// could only hold conventions, so every question about a building had been given no setting
+    /// key at all — thirteen of them, including every question that names the corpus gap.
+    ///
+    /// The separate name is also what keeps the questionnaire gate honest: it scans for the
+    /// accessors, so a key that reaches the build through this one is READ, and a key that reaches
+    /// it through nothing still fails.
+    ///
+    /// ⚠ A RULE AND A FACT ARE NOT THE SAME THING, and this accessor is for the second.
+    /// "A wall thinner than 6 inches is linework" is a RULE: learned on one job, offered to the
+    /// next, and it gets wiser about where it holds. "On 31005-01, sheet S2.06 is level 5" is a
+    /// FACT about one building. It is not transferable and must never be offered anywhere else —
+    /// S2.06 is a sheet number that recurs across dozens of sets, so a fact banked without its job
+    /// would place a drawing in the wrong building and look exactly like a drawing that parsed.
+    /// That is why the key carries the job: see <see cref="KeyForJob"/>.
+    /// </remarks>
+    public static IReadOnlyList<KeyValuePair<string, string>> JobAnswer(
+        this IReadOnlyDictionary<string, RuleSetting> settings, string key, string? job = null)
+    {
+        // NO FALLBACK TO THE BARE KEY when a job is named. An unscoped answer reaching every job is
+        // the exact failure this accessor exists to prevent.
+        if (!settings.TryGetValue(KeyForJob(key, job), out var s)) return [];
+
+        var pairs = new List<KeyValuePair<string, string>>();
+        foreach (string part in s.Text.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            int at = part.IndexOf('=');
+            // A bare value with no "=" is her answering a question that has only one subject, and
+            // refusing it would mean refusing the commonest way anyone writes an answer.
+            if (at < 0) pairs.Add(new KeyValuePair<string, string>(string.Empty, part.Trim()));
+            else if (at > 0 && at < part.Length - 1)
+                pairs.Add(new KeyValuePair<string, string>(part[..at].Trim(), part[(at + 1)..].Trim()));
+        }
+
+        return pairs;
     }
 
     public static RuleImportResult ImportQuestionAnswers(

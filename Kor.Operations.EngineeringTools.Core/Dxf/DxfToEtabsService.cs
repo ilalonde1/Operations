@@ -988,6 +988,61 @@ public static class DxfToEtabsService
         // Set on the sheet's own Levels, so everything downstream — MatchStories, the storey shift,
         // the building cut — treats it exactly as it treats a title that parsed. A separate path for
         // assumed levels would be a second set of rules to keep in step with the first.
+        // WHAT SHE ANSWERED LAST TIME, APPLIED BEFORE ANY GUESS IS MADE (2026-09-25).
+        //
+        // This is the other end of question A2 — "these drawings do not say which level they show,
+        // and the model put them somewhere anyway … correct any that are wrong; naming the level is
+        // enough." Until today there was no end to answer INTO: A2 carried no setting key, so her
+        // correction was banked as prose and the next run put the drawing back where it had been.
+        //
+        // Her answer outranks the inference below AND a title that parsed. She is not adding a
+        // hint; she is correcting the model, and a correction that loses to the thing it corrects
+        // is not a correction.
+        var placedByHand = new List<string>();
+        var sheetLevelsUnmatched = new List<string>();
+        string answerJob = request.Job
+            ?? JobNumberIn(request.StickFilePdf, request.DxfFolder, request.ReferenceE2k, request.OutputE2k)
+            ?? string.Empty;
+
+        foreach (var said in banked.JobAnswer("dxf.sheet-levels", answerJob))
+        {
+            if (said.Key.Length == 0 || !int.TryParse(said.Value.Where(char.IsAsciiDigit).ToArray(), out int level))
+            {
+                sheetLevelsUnmatched.Add($"'{said.Key}={said.Value}' (no level number in it)");
+                continue;
+            }
+
+            var hit = sheetInfoByFile.Keys
+                .Where(f => Path.GetFileName(f).Contains(said.Key, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+            if (hit.Count == 0) { sheetLevelsUnmatched.Add($"'{said.Key}' (no drawing's name contains it)"); continue; }
+
+            foreach (string file in hit)
+            {
+                sheetInfoByFile[file] = sheetInfoByFile[file] with { Levels = [level] };
+                placedByHand.Add($"{Path.GetFileName(file)} → level {level}");
+            }
+        }
+
+        if (placedByHand.Count > 0)
+            warnings.Add(
+                $"✔ YOUR ANSWER APPLIED: {placedByHand.Count} drawing(s) were placed where you said rather " +
+                "than where this tool would have put them — " + string.Join("; ", placedByHand) +
+                $". Banked as {RuleSettings.KeyForJob("dxf.sheet-levels", answerJob)} by " +
+                $"{banked[RuleSettings.KeyForJob("dxf.sheet-levels", answerJob)].Authority}. To change it, " +
+                "answer A2 again in the workbook and re-import.");
+
+        // A NAME THAT MATCHED NOTHING IS SILENCE, AND SILENCE LOOKS EXACTLY LIKE AGREEMENT.
+        if (sheetLevelsUnmatched.Count > 0)
+            warnings.Add(
+                $"⚠ YOUR ANSWER WAS NOT APPLIED for {sheetLevelsUnmatched.Count} entry(s) in dxf.sheet-levels: " +
+                string.Join("; ", sheetLevelsUnmatched) +
+                ". TO FIX: answer A2 as '<part of the drawing's file name>=<level number>', separated by " +
+                "semicolons, for example 'S2.06=5; S2.07=6'. The drawings in this set are named: " +
+                string.Join(", ", sheetInfoByFile.Keys.Select(Path.GetFileName).Take(12)) +
+                (sheetInfoByFile.Count > 12 ? $", and {sheetInfoByFile.Count - 12} more" : string.Empty) + ".");
+
         var assumedLevels = new List<LevelsFromSheetOrder.Inferred>();
         if (Environment.GetEnvironmentVariable("KOR_STEP144_OFF") != "1")
             foreach (var guess in LevelsFromSheetOrder.Infer(sheetInfoByFile.Values.ToList()))
