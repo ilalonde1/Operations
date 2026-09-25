@@ -61,6 +61,26 @@ public sealed record ModelQuestion(
     /// </remarks>
     public bool PerJob { get; init; }
 
+    /// <summary>
+    /// WHAT THE TOOL PUT THERE INSTEAD, in her terms — or null where it left a hole and only asked.
+    /// </summary>
+    /// <remarks>
+    /// Ian, 2026-09-24: "rather than skipping an unknown completely (like a slab) or not running
+    /// the thing at all if there's a question (there will ALWAYS be questions) - can AI please make
+    /// a best guess, then LOOK at the result as a sanity check, then proceed - whilst showing
+    /// clearly in the question workbook that this was an assumption."
+    ///
+    /// A question that reports missing structure and builds nothing is the failure that instruction
+    /// was aimed at, and on 2026-09-25 five of the eight questions that can ever be asked were
+    /// exactly that: S7, S4, J7, J3 and J5 name what is not in the model and leave it not in the
+    /// model. Between them they hold most of the corpus shortfall.
+    ///
+    /// This is not the same as <see cref="WhatWeDid"/>, which every row has. This says a GUESS was
+    /// made and is standing in the file right now — so the workbook can mark it, and so a gate can
+    /// tell the difference between a tool that tried and one that shrugged.
+    /// </remarks>
+    public string? Assumed { get; init; }
+
     public string? SettingKey { get; init; }
     public string? SettingUnits { get; init; }
     public string Confidence { get; init; } = "engineer-confirmed";
@@ -622,6 +642,8 @@ public static class ModelQuestionnaire
                 "hiding the level and recovering it this way was right 480 times out of 481. The " +
                 "looser version of the same rule measured 59% and was deleted rather than shipped.")
                 {
+                    Assumed = "The level was guessed and the floor IS in your model, on that storey. " +
+                              "Nothing here is a hole — it is a floor that may be on the wrong shelf.",
                     RuleTopic = "a-level-taken-from-where-the-sheet-sits",
                     // Her answer is read at the top of the level pass in DxfToEtabsService and
                     // outranks both the guess below it and a title that parsed. Before 2026-09-25
@@ -1008,7 +1030,12 @@ public static class ModelQuestionnaire
                 "behaves laterally, and no count in this workbook can see it.",
                 "The parkade is drawn per building at P1, P2 and P3 — BLDG C and WEST — but neither of " +
                 "those sheets closes a slab outline, so the only floor available is the undivided one.")
-                { RuleTopic = "shared-floors-under-one-building" };
+                {
+                    Assumed = "The WHOLE site-wide slab is in this building's model. Nothing was dropped " +
+                              "and nothing was cut: if the answer is this building's share only, the model " +
+                              "currently carries more floor than it should, not less.",
+                    RuleTopic = "shared-floors-under-one-building",
+                };
         }
 
         // A DRAWING FULL OF STRUCTURE THAT IS NOT IN THE MODEL. The one question worth asking
@@ -1097,7 +1124,12 @@ public static class ModelQuestionnaire
                 "Measured on this job: the slab edge on those sheets arrives as sixty-odd open chains, " +
                 "and at every tolerance from 0.05 to 72 inches the largest region it encloses is 119 sq " +
                 "ft. There is nothing there to close, so no tolerance produces that floor.")
-                { RuleTopic = "floors-taken-from-below" };
+                {
+                    Assumed = "The floor IS in your model on those storeys, copied from the storey below. " +
+                              "It is a real plate with a real thickness; what is assumed is that the storey " +
+                              "below is the right donor.",
+                    RuleTopic = "floors-taken-from-below",
+                };
         }
 
         // A floor that stops short of the structure standing on it. She has to answer this one --
@@ -1602,17 +1634,37 @@ public static class ModelQuestionnaire
             // one colour said yes to seven rows where writing in the answer column does nothing —
             // the sheet invited an answer it could not act on, and only a sentence at the top,
             // which nobody reads twice, said otherwise.
+            // ASSUMED is not NEEDS YOU, and the difference is the whole of what she does next.
+            // NEEDS YOU is a hole: something is not in the model and no answer of the tool's could
+            // put it there. ASSUMED is a guess already standing in the file — she is checking work,
+            // not supplying it. Ian, 2026-09-24: "make a best guess, then LOOK at the result as a
+            // sanity check, then proceed - whilst showing clearly in the question workbook that
+            // this was an assumption."
             var status = sheet.Cell(row, 2);
             status.Value = q.Defect ? "DEFECT"
-                : !q.Decided ? "NEEDS YOU"
+                : !q.Decided ? (q.Assumed is null ? "NEEDS YOU" : "ASSUMED")
                 : Changeable(q) ? "DECIDED" : "SCOPE";
             status.Style.Font.Bold = true;
-            status.Style.Font.FontColor = q.Defect || !q.Decided
+            status.Style.Font.FontColor = q.Defect || (!q.Decided && q.Assumed is null)
                 ? XLColor.FromArgb(169, 58, 51)
+                : !q.Decided ? XLColor.FromArgb(156, 101, 0)
                 : Changeable(q) ? XLColor.FromArgb(44, 115, 85) : XLColor.FromArgb(110, 110, 110);
 
+            // ⚠ YELLOW MEANS I GUESSED HERE. Ian, 2026-09-25: "make an educated guess on any of
+            // your questions ... and build the model and mark anything you did guess at as yellow
+            // - i.e. I guessed here - so if it's fucked up that's why. Otherwise NOTHING will ever
+            // build."
+            //
+            // The whole row, not the status word. An engineer scanning a page does not read a
+            // column; she sees a band of colour and stops on it. This is the same amber Excel uses
+            // for "Neutral", so it needs no key.
+            if (q.Assumed is not null)
+                sheet.Range(row, 1, row, 6).Style.Fill.BackgroundColor = XLColor.FromArgb(255, 242, 204);
+
             sheet.Cell(row, 3).Value = q.Question;
-            sheet.Cell(row, 4).Value = q.WhatWeDid;
+            sheet.Cell(row, 4).Value = q.Assumed is null
+                ? q.WhatWeDid
+                : "ASSUMED, AND IT IS IN YOUR MODEL NOW: " + q.Assumed + " " + q.WhatWeDid;
 
             // Only a row an answer can act on gets the cream box. A SCOPE row gets a struck-through
             // grey cell, so it never reads as an empty field waiting to be filled in.
