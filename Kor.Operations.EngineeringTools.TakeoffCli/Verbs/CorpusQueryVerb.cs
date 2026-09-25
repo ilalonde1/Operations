@@ -4,6 +4,7 @@
 // docs/etabs-handoff/corpus/ given with --ledger <dir>); analysis.IntakeSet/IntakeSheet hold the same rows
 // once migration 083 is applied.
 //   takeoff corpus-query summary                     the population in one table: built, why not, views on the grid, plates, yardsticks
+//   takeoff corpus-query gap                         WHAT THE GAP IS: missing floor vs scope vs registration, and the work list
 //   takeoff corpus-query no-model                    every set without a model, grouped by the reason it gave
 //   takeoff corpus-query plan-titles                 how the plan sheets name their storeys: with/without a level, and the words the nameless titles repeat
 //   takeoff corpus-query set <job> [<job> ...]       one set's sheets: page, number, level, scale, view written, placed
@@ -61,6 +62,7 @@ internal static class CorpusQueryVerb
             case "no-model": return NoModel(sets);
             case "plan-titles": return PlanTitles(sheets);
             case "set": return Sets(rest, sheets, sets);
+            case "gap": return Gap(sets);
             case "yardsticks": return Yardsticks(sets);
             case "frames": return Frames(sets, sheets);
             case "dropped": return Dropped(rest, sheets);
@@ -353,6 +355,99 @@ internal static class CorpusQueryVerb
         Console.WriteLine($"wall-origin columns inside a wall: {wallFragments}{(failed > 0 ? " (PARTIAL)" : "")}");
         Console.WriteLine($"unknown origins: {rows.Count(r => r.Branch == "unknown")}; failed sheets: {failed}");
         return failed == 0 ? 0 : 2;
+    }
+
+    /// <summary>
+    /// WHAT THE GAP ACTUALLY IS, not how big it is (2026-09-25).
+    ///
+    /// Ian: "What kind of system do we have if 'oh, we already had that answer sitting there and
+    /// nobody looked'." He is right, and this is the answer to it rather than an apology. The
+    /// discriminator had been written to the ledger for days and never read: `plates_beyond_sqft`
+    /// is plate WE BUILT whose centroid lies outside the box of HER columns on that storey.
+    ///
+    /// Read once across the corpus, it splits a single number that was misleading in both
+    /// directions into three things that need completely different work:
+    ///
+    ///     C. genuinely missing floor                     22 sets   831,235 sq ft   55%
+    ///     B. scope - we build more building than she did 16 sets   463,040 sq ft   30%
+    ///     A. registration broken                          6 sets   225,286 sq ft   15%
+    ///
+    /// ⚠ CLASS B IS NOT A DEFECT. In sixteen well-registered sets the tool builds MORE plate
+    /// outside her footprint than the whole gap - 395,842 sq ft against 273,923. The engineer
+    /// modelled one building; the tool builds the site. 30990-01 reads 64% of her area with 88%
+    /// registration and 168,272 sq ft standing beyond her model, and the raw ratio calls that a
+    /// failure. So "77.4% of her plate area" UNDERSTATES the tool, and no rule should be judged on
+    /// that ratio again without splitting scope and registration out of it first.
+    ///
+    /// ⚠ WHAT THIS DOES NOT DO. It classifies a SET by its totals, not a storey by its own
+    /// evidence, so a set that is genuinely short on one storey and over-scoped on another lands in
+    /// one bucket. It reads registration from the ledger's column agreement, which is itself a
+    /// measure and not a truth. And it says nothing about WHY a floor is missing - that is the work
+    /// list it hands you, not an answer it gives.
+    /// </summary>
+    private static int Gap(IReadOnlyList<CorpusAnalyzer.SetRow> sets)
+    {
+        var judged = sets.Where(s => (s.PlatesHersSqFt ?? 0) > 0).ToList();
+        if (judged.Count == 0)
+        {
+            Console.WriteLine("  no set in this ledger carries the engineer's model, so there is nothing to compare.");
+            return 0;
+        }
+
+        static double Reg(CorpusAnalyzer.SetRow s) =>
+            s.OursCompared is > 0 ? 100.0 * (s.OursWithin100 ?? 0) / s.OursCompared.Value : -1;
+
+        string Class(CorpusAnalyzer.SetRow s)
+        {
+            double gap = (s.PlatesHersSqFt ?? 0) - (s.PlatesOursSqFt ?? 0);
+            double beyond = s.PlatesBeyondSqFt ?? 0, reg = Reg(s);
+            if (gap <= 0) return "D at or over her area";
+            if (reg >= 0 && reg < 25) return "A registration broken";
+            if (beyond >= gap * 0.5) return "B scope - we build more than she modelled";
+
+            // ⚠ AND A STOREY WITH A FLOOR ON IT IS A DIFFERENT FAULT FROM ONE WITHOUT (2026-09-25).
+            // The first cut of this called both "genuinely missing floor" and the work list said
+            // otherwise the moment it was printed: 31048-01 is short 98,804 sq ft with a floor on
+            // 7 of 7 storeys, 31087-01 short 79,287 with 59 of 60, 30972-01 short 36,688 with 20 of
+            // 20. Those floors are not missing, they are TOO SMALL - an outline read short, not a
+            // storey the reader never reached - and no rule that finds a missing plate will touch
+            // them. Splitting the two is the difference between one work list and two.
+            return s.StoreysBuilt is > 0 && s.StoreysWithPlate < s.StoreysBuilt
+                ? "C1 a storey carries NO floor"
+                : "C2 every storey floored, the floors are TOO SMALL";
+        }
+
+        var byClass = judged.GroupBy(Class).OrderBy(g => g.Key, StringComparer.Ordinal).ToList();
+        double total = judged.Sum(s => Math.Max(0, (s.PlatesHersSqFt ?? 0) - (s.PlatesOursSqFt ?? 0)));
+
+        Console.WriteLine($"  {judged.Count} set(s) carry the engineer's model. What their shortfall IS:");
+        Console.WriteLine();
+        Console.WriteLine($"  {"what the gap is",-46} {"sets",4} {"sq ft",12} {"share",6}");
+        foreach (var g in byClass)
+        {
+            double sq = g.Sum(s => Math.Max(0, (s.PlatesHersSqFt ?? 0) - (s.PlatesOursSqFt ?? 0)));
+            Console.WriteLine($"  {g.Key,-46} {g.Count(),4} {sq,12:N0} {(total > 0 ? sq / total : 0),6:P0}");
+        }
+        Console.WriteLine($"  {"TOTAL",-46} {judged.Count,4} {total,12:N0}");
+
+        double beyondAll = judged.Sum(s => s.PlatesBeyondSqFt ?? 0);
+        Console.WriteLine();
+        Console.WriteLine($"  Plate we BUILT that stands outside her footprint: {beyondAll:N0} sq ft. Where that is");
+        Console.WriteLine("  large and registration is good, she modelled one building and the tool built the site —");
+        Console.WriteLine("  the raw ratio counts that as our failure and it is not one.");
+
+        var work = judged.Where(s => Class(s).StartsWith("C ", StringComparison.Ordinal))
+            .OrderByDescending(s => (s.PlatesHersSqFt ?? 0) - (s.PlatesOursSqFt ?? 0))
+            .ToList();
+
+        Console.WriteLine();
+        Console.WriteLine($"  THE WORK LIST — floors genuinely missing ({work.Count} sets):");
+        Console.WriteLine($"  {"job",-11} {"gap sq ft",10} {"beyond",9} {"reg",5} {"floored",8}");
+        foreach (var s in work.Take(25))
+            Console.WriteLine($"  {s.Job,-11} {(s.PlatesHersSqFt ?? 0) - (s.PlatesOursSqFt ?? 0),10:N0} " +
+                              $"{s.PlatesBeyondSqFt ?? 0,9:N0} {(Reg(s) < 0 ? "-" : $"{Reg(s):0}%"),5} " +
+                              $"{$"{s.StoreysWithPlate}/{s.StoreysBuilt}",8}");
+        return 0;
     }
 
     private static int Yardsticks(IReadOnlyList<CorpusAnalyzer.SetRow> sets)
