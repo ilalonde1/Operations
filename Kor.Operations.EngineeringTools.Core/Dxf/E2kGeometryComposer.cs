@@ -1324,7 +1324,7 @@ public static class E2kGeometryComposer
                 if (placedPlatePolygons.TryGetValue(slabStory.Name, out var earlier)
                     && earlier.Any(e => GroundShared(shiftedPts, e) >= 0.9 || GroundShared(e, shiftedPts) >= 0.9))
                 {
-                    flags.Add($"{placement.SourceSheet}: a plate of {slab.Area / 144:N0} sq ft on {slabStory.Name} lies inside one already written from another reading of the storey and was not modelled - one floor, not two");
+                    flags.Add($"{placement.SourceSheet}: a plate of {slab.Area / 144:N0} sq ft on {slabStory.Name} lies inside one already written from another reading of the storey and was not modelled - one floor, not two. TO FIX: nothing, unless this storey genuinely has a second slab inside the first - a mezzanine or a pit lid - in which case say so in the workbook and both are kept for this job.");
                     continue;
                 }
                 // claimed only below, once the plate stands on something: a legend panel refused as an orphan

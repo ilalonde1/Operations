@@ -1485,7 +1485,10 @@ public static class StructuralPlanClassifier
                     result.Flags.Add(
                         $"a floor of {options.SqFt(best.Area)} sq ft recovered from the drawn linework covers " +
                         $"{swallowed.Count} floors already read on this storey and was not modelled — one " +
-                        "plate spanning separate structures is a diaphragm they do not share.");
+                        "plate spanning separate structures is a diaphragm they do not share. TO FIX: if " +
+                        "this storey really is one floor across all of them, say so in the workbook and the " +
+                        "single plate is kept for this job; otherwise the separate plates already read are " +
+                        "what ships and nothing is missing.");
                     best = null;
                 }
                 // WHICH OF TWO READINGS SURVIVES IS NOT A QUESTION OF SIZE. IT IS A QUESTION OF
@@ -3079,7 +3082,9 @@ public static class StructuralPlanClassifier
                 result.Flags.Add(
                     $"a floor plate of {options.SqFt(loop.Area)} sq ft lies over one of " +
                     $"{options.SqFt(clash.Area)} sq ft already read on this storey and was not modelled — two " +
-                    "readings of one floor, not two floors. The larger is kept.");
+                    "readings of one floor, not two floors. The larger is kept. TO FIX: nothing, unless " +
+                    "the storey genuinely carries two overlapping slabs at different levels — say so in the " +
+                    "workbook and both are kept for this job.");
                 continue;
             }
 

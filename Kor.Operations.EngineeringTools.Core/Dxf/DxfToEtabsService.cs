@@ -1679,9 +1679,26 @@ public static class DxfToEtabsService
                     continue;
                 }
 
+                // BOTH OF THESE DROP A WHOLE DRAWING, so both say what would change it.
+                // The two faults are opposite and the fix is opposite with them: the first is a
+                // title this reader could not get a level out of, the second is a level it read
+                // correctly that the model's own storey list does not contain.
                 warnings.Add(!sheet.HasPlacement
-                    ? $"{sheet.FileName}: no level number in the sheet name — not placed."
-                    : $"{sheet.FileName}: levels {string.Join(",", sheet.Levels.Select(l => l.ToString()).Concat(sheet.ParkadeLevels.Select(p => "P" + p)))} match no storey in the model — not placed.");
+                    ? $"{sheet.FileName}: NOT PLACED — nothing in this sheet's title says which level " +
+                      "it draws, so its structure reached no storey. The reader looks for a level " +
+                      "number, a range (\"LEVEL 9-19\"), a parkade level, the roof, or a storey named " +
+                      "by a word. TO FIX: tell us the level for this drawing in the workbook — the " +
+                      "question is already there and your answer is banked against this job, so it is " +
+                      "asked once. If the title does name a level in a form this reader does not know, " +
+                      "say which and it becomes a rule for every set."
+                    : $"{sheet.FileName}: NOT PLACED — its title reads level(s) " +
+                      $"{string.Join(",", sheet.Levels.Select(l => l.ToString()).Concat(sheet.ParkadeLevels.Select(p => "P" + p)))}, " +
+                      $"and this model has no such storey. The model's storeys are: {string.Join(", ", storyNames.Take(12))}" +
+                      (storyNames.Count > 12 ? $", and {storyNames.Count - 12} more" : "") + ". " +
+                      "TO FIX: either the model needs that storey adding, or the drawings and the " +
+                      "model name the same floor differently — say which name is right and the reader " +
+                      "will match it. Nothing was moved onto a nearby storey in its place, because a " +
+                      "floor put on the wrong one looks exactly like a floor you drew.");
 
                 // A DRAWING FULL OF STRUCTURE THAT LANDS NOWHERE IS THE LOUDEST FAULT THERE IS.
                 //
@@ -1709,7 +1726,45 @@ public static class DxfToEtabsService
                 // the model (Codex audit 2026-09-11, F8). It is admitted for what it says; it places nothing.
                 if (geometry.Partitions.Count == 0 && geometry.Tags.Count == 0)
                 {
-                    warnings.Add($"{sheet.FileName}: no structural outlines found on the expected layers — not placed.");
+                    // EVERY REFUSAL SAYS WHY AND WHAT TO DO ABOUT IT (2026-09-24). Ian: "I want
+                    // EXPLICIT reasons a model didn't run and how to fix it in the error message.
+                    // Everything needs to be explicit - questions / errors - everything."
+                    //
+                    // This line used to read "no structural outlines found on the expected layers —
+                    // not placed." and it appears 59 times across the corpus. It names no layer the
+                    // tool wanted, no layer the drawing has, and nothing anybody could do about it.
+                    // A whole drawing is dropped on that sentence.
+                    //
+                    // The two facts that turn it into an instruction are both to hand: the layers
+                    // this drawing actually draws on, and the patterns the reader was looking for.
+                    var drawn = segments
+                        .GroupBy(s => s.Layer, StringComparer.OrdinalIgnoreCase)
+                        .OrderByDescending(g => g.Count())
+                        .ToList();
+
+                    string has = drawn.Count == 0
+                        ? "it draws nothing at all"
+                        : $"it draws {segments.Count:N0} line(s) on {drawn.Count} layer(s): " +
+                          string.Join(", ", drawn.Take(6).Select(g => $"{g.Key} ({g.Count():N0})")) +
+                          (drawn.Count > 6 ? $", and {drawn.Count - 6} more" : "");
+
+                    string wanted = string.Join("; ", new[]
+                    {
+                        ("walls", classification.WallLayerPatterns),
+                        ("columns", classification.ColumnLayerPatterns),
+                        ("slab edges", classification.SlabLayerPatterns),
+                    }.Select(x => $"{x.Item1} on {string.Join(" or ", x.Item2)}"));
+
+                    warnings.Add(
+                        $"{sheet.FileName}: NOT PLACED — nothing on this drawing sits on a layer this reader " +
+                        $"models, so none of its structure reached the model. {char.ToUpperInvariant(has[0])}{has[1..]}. " +
+                        $"It was looking for {wanted}. " +
+                        "TO FIX: if this office names its layers differently, give them for this run with " +
+                        "--wall-layers / --column-layers / --slab-layers, or bank them once as " +
+                        "dxf.wall-layer-patterns, dxf.column-layer-patterns and dxf.slab-layer-patterns in " +
+                        "KorStandards so every future set of theirs reads. If this sheet genuinely draws no " +
+                        "structure — a notes, schedule or detail sheet — then nothing is wrong and this line " +
+                        "is only a record of what was skipped.");
                     continue;
                 }
                 warnings.Add($"{sheet.FileName}: no structural outlines, but {geometry.Partitions.Count} partition footprint(s) and {geometry.Tags.Count} wall-type tag(s) — kept for what it says about the storey's walls; it places nothing of its own.");
@@ -1774,7 +1829,10 @@ public static class DxfToEtabsService
                     $"column at: {string.Join(", ", outOfFamily.Select(c => $"{c.Width:0}\"").Distinct().OrderBy(x => x))} " +
                     $"against {string.Join(", ", drawnWithArcs.Select(d => $"{d:0}\"").Distinct().OrderBy(x => x))} " +
                     "drawn with arcs. A circle drawn as a polygon at a size the set does use is still modelled, " +
-                    "and so is every column drawn with an arc, whatever its size.");
+                    "and so is every column drawn with an arc, whatever its size. TO FIX: if these are real " +
+                    "columns, say so in the workbook and the diameter is banked for this job so they are read " +
+                    "from here on; if they are furniture, a detail bubble or a bollard drawn on a column " +
+                    "layer, nothing is wrong and this line is a record of what was left out.");
         }
 
         if (readButNotPlaced.Count > 0)
@@ -1898,7 +1956,9 @@ public static class DxfToEtabsService
 
         if (sheetsCutAway > 0)
             warnings.Add($"{sheetsCutAway} sheet(s) draw storeys this run removed and were not placed. " +
-                         "That is the cut doing its job, not a drawing that failed to read.");
+                         "That is the cut doing its job, not a drawing that failed to read. TO FIX: " +
+                         "nothing, unless you did not mean to drop those storeys — re-run without " +
+                         "--drop-storeys and they come back with their drawings.");
 
         // A rigid diaphragm spread across storeys is what ETABS warns about the moment the model
         // opens: "Horizontal rigid diaphragm connection found between joints at different
@@ -2850,7 +2910,7 @@ public static class DxfToEtabsService
                 if (reference > 0)
                 {
                     total += reference;
-                    warnings.Add($"{storey}: {reference} wall(s) on sheet(s) that tag no walls were not modelled - a sheet that tags its walls names this storey, and the storey's walls are its.");
+                    warnings.Add($"{storey}: {reference} wall(s) on sheet(s) that tag no walls were not modelled - a sheet that tags its walls names this storey, and the storey's walls are its. TO FIX: if the untagged sheet draws walls the tagged one does not, tag them on the drawing or say so in the workbook and they are kept for this job.");
                 }
             }
 
@@ -2880,7 +2940,9 @@ public static class DxfToEtabsService
             {
                 total += removed;
                 warnings.Add($"{storey}: {removed} wall(s) drawn untagged on one sheet lie inside a partition another sheet " +
-                             "tags (stud or gypsum per the set's assembly schedule) and were not modelled - the sheet that says what a wall is wins.");
+                             "tags (stud or gypsum per the set's assembly schedule) and were not modelled - TO FIX: if any " +
+                             "of these are concrete, correct the tag on the drawing or say so in the workbook, and they are " +
+                             "read from here on - the sheet that says what a wall is wins.");
             }
 
             // AND TWO SHEETS DRAWING ONE WALL IN ONE PLACE DRAW ONE WALL. A set that draws a storey
