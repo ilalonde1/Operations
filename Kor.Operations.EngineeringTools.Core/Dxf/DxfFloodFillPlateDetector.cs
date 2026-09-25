@@ -44,7 +44,7 @@ internal static class DxfFloodFillPlateDetector
         out string note)
     {
         note = string.Empty;
-        if (walls.Count < 3) return null;
+        if (walls.Count < 3) { note = $"only {walls.Count} wall panel(s); three are needed to enclose anything"; return null; }
 
         var corners = new List<DxfPoint[]>();
         foreach (var w in walls)
@@ -58,23 +58,23 @@ internal static class DxfFloodFillPlateDetector
                 new DxfPoint(w.End.X - nx, w.End.Y - ny), new DxfPoint(w.Start.X - nx, w.Start.Y - ny),
             });
         }
-        if (corners.Count < 3) return null;
+        if (corners.Count < 3) { note = $"only {corners.Count} wall footprint(s) after zero-length walls were dropped"; return null; }
 
         double minX = corners.Min(c => c.Min(p => p.X)), minY = corners.Min(c => c.Min(p => p.Y));
         double maxX = corners.Max(c => c.Max(p => p.X)), maxY = corners.Max(c => c.Max(p => p.Y));
         double spanX = maxX - minX, spanY = maxY - minY;
-        if (spanX <= 0 || spanY <= 0 || spanX * spanY < options.MinPlateArea) return null;
+        if (spanX <= 0 || spanY <= 0 || spanX * spanY < options.MinPlateArea) { note = $"the walls' whole bounding box is {options.SqFt(Math.Max(0, spanX * spanY))} sq ft, under the smallest plate"; return null; }
 
         const int maxEdgePixels = 1800;
         double bridge = Math.Max(options.MaxOpeningSpan, options.FloodFillBridge);
         double pixelSize = Math.Max(options.MinPanelOverlap / 2.0, Math.Max(spanX, spanY) / (maxEdgePixels - 2.0));
-        if (pixelSize <= 0 || double.IsNaN(pixelSize) || double.IsInfinity(pixelSize)) return null;
+        if (pixelSize <= 0 || double.IsNaN(pixelSize) || double.IsInfinity(pixelSize)) { note = "the raster scale came out invalid"; return null; }
         // the margin is the closing radius plus a border, so the outside can always be reached
         int radius = Math.Max(1, (int)Math.Ceiling(bridge / (2.0 * pixelSize)));
         int margin = radius + 4;
         int width = (int)Math.Ceiling(spanX / pixelSize) + margin * 2 + 1;
         int height = (int)Math.Ceiling(spanY / pixelSize) + margin * 2 + 1;
-        if ((long)width * height > 6_000_000) return null;
+        if ((long)width * height > 6_000_000) { note = $"the raster would need {(long)width * height:N0} cells, over the six million limit"; return null; }
 
         // 1. the panels, painted solid
         var solid = new bool[width * height];
@@ -125,15 +125,15 @@ internal static class DxfFloodFillPlateDetector
 
         // 3. what is not outside is the walls and what they enclose; the largest piece is the floor
         var component = SolidComponents(solid, outside, width, height).FirstOrDefault();
-        if (component is null || component.Count == 0) return null;
+        if (component is null || component.Count == 0) { note = $"the outside flooded everything: the walls do not enclose a region at a bridge of {bridge:0} in"; return null; }
         var loops = BoundaryLoops(component, width, height);
         var pixelLoop = loops.OrderByDescending(AbsArea).FirstOrDefault();
-        if (pixelLoop is null || pixelLoop.Count < 4) return null;
+        if (pixelLoop is null || pixelLoop.Count < 4) { note = "the enclosed region has no traceable boundary"; return null; }
 
         var points = Simplify(pixelLoop
             .Select(p => new DxfPoint(minX + (p.X - margin) * pixelSize, minY + (p.Y - margin) * pixelSize))
             .ToList(), pixelSize * 1.5);
-        if (points.Count < 3) return null;
+        if (points.Count < 3) { note = "the traced boundary came out with fewer than three points"; return null; }
         double straightenAt = Math.Max(options.RecoveredOutlineTolerance, pixelSize * 1.5);
         var straightened = LoopGeometry.Straighten(points, straightenAt);
         if (straightened.Count >= 3)
@@ -152,11 +152,11 @@ internal static class DxfFloodFillPlateDetector
         points = SnapToPanelEdges(points, corners, pixelSize * 1.5);
 
         var plate = new PlanLoop("walls' outer edge", points, closedExactly: false);
-        if (plate.Area < options.MinPlateArea) return null;
+        if (plate.Area < options.MinPlateArea) { note = $"the region the walls enclose is {options.SqFt(plate.Area)} sq ft, under the smallest plate"; return null; }
         // the walls did not close and the outside flooded through: the paint left is the walls alone
         double painted = component.Count * pixelSize * pixelSize;
         double wallArea = walls.Sum(w => w.Length * w.Thickness);
-        if (painted < 2 * wallArea) return null;
+        if (painted < 2 * wallArea) { note = $"PAINT-TO-WALL: the enclosed paint is {options.SqFt(painted)} sq ft against {options.SqFt(wallArea)} sq ft of summed wall, under the 2x floor. ⚠ wallArea SUMS EVERY WALL HANDED IN, so the same wall supplied twice doubles this threshold without adding paint"; return null; }
 
         note = $"No slab edge on this drawing would close, so the floor is taken from the OUTER face of "
              + $"the walls it stands on — {plate.Area / 144:N0} sq ft, one outline, one thickness, closed "

@@ -1735,9 +1735,24 @@ public static class StructuralPlanClassifier
                     if (DxfFloodFillPlateDetector.EnclosedByWallPanels(result.Walls, wider, out _) is { } would)
                     { closesAt = $"at a gap of {doorway * factor:0} ({options.SqFt(would.Area)} sq ft)"; break; }
                 }
+                // ⚠ AND WHY IT DID NOT CLOSE, WHICH USED TO BE UNRECORDED (2026-09-24).
+                //
+                // The Codex audit of this fault: "null is not a diagnosis of an open perimeter."
+                // EnclosedByWallPanels has TEN return-null paths — too few panels, a bounding box
+                // under the smallest plate, a raster over six million cells, no traceable boundary,
+                // and the paint-to-wall comparison — and every one of them reached this line as the
+                // same sentence. Step 142 pooled a storey's walls, got null on all 42, and I recorded
+                // "the union does not close" as a finding. It was never established: one of those ten
+                // is that `wallArea` SUMS EVERY WALL HANDED IN, so supplying the same wall twice —
+                // which is exactly what pooling across a key plan and its enlargement does — doubles
+                // the rejection threshold without adding any paint.
+                //
+                // So the reason is now carried through. This changes no behaviour; it makes the 96%
+                // of the corpus gap that sits behind this line countable instead of anecdotal.
                 result.Flags.Add(
                     $"No slab edge on this drawing would close, and the {result.Walls.Count} wall panels do not " +
-                    $"enclose the floor within a doorway ({doorway:0}): the ring closes {closesAt}. The storey has no plate.");
+                    $"enclose the floor within a doorway ({doorway:0}): the ring closes {closesAt}. The storey has no plate." +
+                    (string.IsNullOrEmpty(panelNote) ? "" : $" REFUSED BECAUSE: {panelNote}"));
             }
         }
 
