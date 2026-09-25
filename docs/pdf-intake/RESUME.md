@@ -105,6 +105,29 @@ Witness: `30989-01`, page 21, view `S2.15_1_LEVEL 4 19 PLAN CONCRETE OUTLINE.dxf
   either the outline is on a sibling view of the same storey, or the page genuinely does not draw
   one there.
 
+### ⭐ AND THEN THE SIBLING CHECK KILLED THE WHOLE THREAD (2026-09-24 23:0X)
+
+For each of the 132, does another view of the SAME STOREY carry a slab edge?
+
+| | views |
+|---|---:|
+| ✅ a sibling view does carry it — the empty view is harmless | **115 (87%)** |
+| ❌ no sibling carries it — the storey is genuinely lost | **13 (10%)** |
+| no storey readable from the title | 4 |
+
+**The empty-outline population is 87% a non-problem.** The real loss is **13 views in 5 sets**:
+31005-01 (5), 30941-01 (4), 31168-01 (2), 31007-01 (1), 31104-01 (1). The worst by linework is
+`31104-01 S2.05.1_1_LEVEL 2 PLAN - CONCRETE OUTLINE.dxf` — 5,154 BEAM entities, fully drawn, no
+sibling, storey lost.
+
+⚠ **So `CODEX-THE-OUTLINE-SHEET-WITH-NO-OUTLINE.md` is answered and closed.** Its count was right
+and its significance was wrong: 13 views, not 132, and that cannot be the 96%. Likewise the 38-view
+pinch class — most of those have siblings too.
+
+⚠ **THE 96% IS THEREFORE STILL UNLOCALISED.** It lives in the 72 storeys reading under half across
+34 sets, and it is NOT mainly the empty-outline path. The next question has to start from those 72
+storeys directly — what does each one HAVE — rather than from a sheet-level symptom.
+
 ### Guard sets — if either moves, the change is wrong
 
 `30972-01` (20 of 20 storeys floored, 85% of her area) and `30993-01` (39 of 40, 91%).
