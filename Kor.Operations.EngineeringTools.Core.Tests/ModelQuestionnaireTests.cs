@@ -29,11 +29,12 @@ public class ModelQuestionnaireTests
             Assert.True(sheet.Column(scope).IsHidden);
             Assert.True(sheet.Column(Col(sheet, "Confidence")).IsHidden);
             Assert.False(sheet.Column(Col(sheet, "YOUR ANSWER")).IsHidden);
-            var topics = sheet.RowsUsed().Select(r => r.Cell(topic).GetString()).ToList();
+            var rows = AnswerRows(workbook);
+            var topics = rows.Values.Select(r => r.Cell(topic).GetString()).ToList();
             Assert.Contains("header-depth-from-opening-height", topics);
             Assert.DoesNotContain("corner-limbs-vs-stocky-pier", topics);
             Assert.Contains("dxf.opening-height;dxf.spandrel-depth-floor;dxf.spandrel-depth-ceiling",
-                sheet.RowsUsed().Select(r => r.Cell(key).GetString()));
+                rows.Values.Select(r => r.Cell(key).GetString()));
         }
         finally
         {
@@ -145,7 +146,7 @@ public class ModelQuestionnaireTests
 
             using (var workbook = new XLWorkbook(path))
             {
-                var sheet = workbook.Worksheet("Questions");
+                var sheet = SheetWith(workbook, "H1");
                 var h1 = sheet.RowsUsed().Single(r => r.Cell(1).GetString() == "H1");
                 h1.Cell(Col(sheet, "YOUR ANSWER")).Value = "Opening height 90, clamp 18-60";
                 workbook.Save();
@@ -176,7 +177,7 @@ public class ModelQuestionnaireTests
 
             using (var workbook = new XLWorkbook(path))
             {
-                var sheet = workbook.Worksheet("Questions");
+                var sheet = SheetWith(workbook, "S1");
                 var s1 = sheet.RowsUsed().Single(r => r.Cell(1).GetString() == "S1");
                 s1.Cell(Col(sheet, "YOUR ANSWER")).Value = "Use 450 sq ft";
                 workbook.Save();
@@ -204,7 +205,7 @@ public class ModelQuestionnaireTests
 
             using (var workbook = new XLWorkbook(path))
             {
-                var sheet = workbook.Worksheet("Questions");
+                var sheet = SheetWith(workbook, "W1");
                 var w1 = sheet.RowsUsed().Single(r => r.Cell(1).GetString() == "W1");
                 w1.Cell(Col(sheet, "YOUR ANSWER")).Value = "ask Andrea";
                 workbook.Save();
@@ -234,7 +235,7 @@ public class ModelQuestionnaireTests
 
             using (var workbook = new XLWorkbook(path))
             {
-                var sheet = workbook.Worksheet("Questions");
+                var sheet = SheetWith(workbook, "W1");
                 var w1 = sheet.RowsUsed().Single(r => r.Cell(1).GetString() == "W1");
                 w1.Cell(Col(sheet, "YOUR ANSWER")).Value = "48";
                 w1.Cell(Col(sheet, "Setting units")).Value = "in;ft";
@@ -265,7 +266,7 @@ public class ModelQuestionnaireTests
 
             using (var workbook = new XLWorkbook(path))
             {
-                var sheet = workbook.Worksheet("Questions");
+                var sheet = SheetWith(workbook, "W1");
                 var w1 = sheet.RowsUsed().Single(r => r.Cell(1).GetString() == "W1");
                 var a1 = sheet.RowsUsed().Single(r => r.Cell(1).GetString() == "A1");
                 int answer = Col(sheet, "YOUR ANSWER");
@@ -331,8 +332,8 @@ public class ModelQuestionnaireTests
             int status = Col(sheet, "Status");
             Assert.False(sheet.Column(status).IsHidden);
 
-            var byCode = sheet.RowsUsed().Where(r => r.RowNumber() > 4)
-                .ToDictionary(r => r.Cell(1).GetString(), r => r.Cell(status).GetString());
+            var byCode = AnswerRows(workbook)
+                .ToDictionary(kv => kv.Key, kv => kv.Value.Cell(status).GetString());
 
             var questions = ModelQuestionnaire
                 .StandingQuestions(report.ClassificationUsed, report.ComposeUsed, report)
@@ -388,7 +389,7 @@ public class ModelQuestionnaireTests
 
             using (var workbook = new XLWorkbook(path))
             {
-                var sheet = workbook.Worksheet("Questions");
+                var sheet = SheetWith(workbook, "A1");
                 var a1 = sheet.RowsUsed().Single(r => r.Cell(1).GetString() == "A1");
                 Assert.Equal("DECIDED", a1.Cell(Col(sheet, "Status")).GetString());
                 a1.Cell(Col(sheet, "YOUR ANSWER")).Value = "2.5";
@@ -461,8 +462,7 @@ public class ModelQuestionnaireTests
             var sheet = workbook.Worksheet("Questions");
             int status = Col(sheet, "Status"), answer = Col(sheet, "YOUR ANSWER");
 
-            var rows = sheet.RowsUsed().Where(r => r.RowNumber() > 4)
-                .ToDictionary(r => r.Cell(1).GetString(), r => r);
+            var rows = AnswerRows(workbook);
 
             var questions = ModelQuestionnaire
                 .StandingQuestions(report.ClassificationUsed, report.ComposeUsed, report)
@@ -546,7 +546,7 @@ public class ModelQuestionnaireTests
 
             using (var workbook = new XLWorkbook(path))
             {
-                var sheet = workbook.Worksheet("Questions");
+                var sheet = SheetWith(workbook, "W1");
                 var w1 = sheet.RowsUsed().Single(r => r.Cell(1).GetString() == "W1");
                 w1.Cell(Col(sheet, "YOUR ANSWER")).Value = "—";
                 workbook.Save();
@@ -599,7 +599,7 @@ public class ModelQuestionnaireTests
 
             using (var workbook = new XLWorkbook(path))
             {
-                var sheet = workbook.Worksheet("Questions");
+                var sheet = SheetWith(workbook, "W1");
                 var w1 = sheet.RowsUsed().Single(r => r.Cell(1).GetString() == "W1");
                 w1.Cell(Col(sheet, "Rule topic")).Value = "something-i-typed-in-the-wrong-column";
                 workbook.Save();
@@ -674,13 +674,33 @@ public class ModelQuestionnaireTests
             foreach (string code in record)
                 Assert.DoesNotContain(code, shown);
 
-            Assert.Equal(all.Count - record.Count, shown.Count);
+            // ⚠ AND NOT ONE SETTLED ROW EITHER. Ian, 2026-09-25: "I don't want settled answers in
+            // the workbook. Or put them in a separate tab - settled questions. I want any REAL
+            // questions presented clearly." Twenty-seven of the 41 codes are decisions the tool
+            // took; they were on this page and they are the reason the handful that need her got
+            // missed.
+            var settled = all.Where(q => q.Decided && !q.Defect && !q.ForTheRecord).Select(q => q.Code).ToList();
+            Assert.NotEmpty(settled);
+            foreach (string code in settled)
+                Assert.DoesNotContain(code, shown);
+
+            Assert.Equal(all.Count - record.Count - settled.Count, shown.Count);
 
             // Kept off, not hidden: the sheet has to say they exist and where they are.
             string note = string.Join(" ", sheet.RowsUsed().Select(r => r.Cell(1).GetString()));
             Assert.Contains("Rules in force", note, StringComparison.Ordinal);
+            Assert.Contains(ModelQuestionnaire.SettledSheetName, note, StringComparison.Ordinal);
             foreach (string code in record)
                 Assert.Contains(code, note, StringComparison.Ordinal);
+
+            // Every settled row is on its own tab, with a cell she can still answer in.
+            var settledSheet = workbook.Worksheet(ModelQuestionnaire.SettledSheetName);
+            var onSettled = settledSheet.RowsUsed().Where(r => r.RowNumber() > 4)
+                .Select(r => r.Cell(1).GetString())
+                .ToList();
+            foreach (string code in settled)
+                Assert.Contains(code, onSettled);
+            Assert.Equal("YOUR ANSWER", settledSheet.Cell(4, Col(sheet, "YOUR ANSWER")).GetString());
 
             // And every one of them is still in the full rule set, not dropped.
             var rules = workbook.Worksheet("Rules in force");
@@ -729,6 +749,45 @@ public class ModelQuestionnaireTests
         => sheet.Row(4).CellsUsed()
             .Single(c => c.GetString().Trim().Equals(header, StringComparison.OrdinalIgnoreCase))
             .Address.ColumnNumber;
+
+    /// <summary>
+    /// The tab carrying a given question.
+    /// </summary>
+    /// <remarks>
+    /// Since 2026-09-25 the Questions tab holds only what needs an engineer, and a DECIDED row —
+    /// W1, H1, S1, A1 and twenty-odd others — is on ‘Settled questions’, with the same answer cell.
+    /// These tests are about what a row DOES when answered, not about which tab it sits on, so they
+    /// ask for the row and let this say where it lives.
+    /// </remarks>
+    /// <summary>
+    /// Every answerable row in the workbook, by question code, across BOTH tabs that carry them.
+    /// </summary>
+    /// <remarks>
+    /// A check that asserts something of every question has to look where every question is. When
+    /// the settled rows moved to their own tab on 2026-09-25, three checks of exactly that kind
+    /// kept reading one tab — and each would have gone on passing while saying nothing about the
+    /// twenty-seven rows it had stopped seeing.
+    /// </remarks>
+    private static Dictionary<string, IXLRow> AnswerRows(XLWorkbook workbook)
+    {
+        var rows = new Dictionary<string, IXLRow>(StringComparer.Ordinal);
+        foreach (var sheet in workbook.Worksheets.Where(w =>
+                     w.Name.Equals("Questions", StringComparison.OrdinalIgnoreCase) ||
+                     w.Name.Equals(ModelQuestionnaire.SettledSheetName, StringComparison.OrdinalIgnoreCase)))
+        foreach (var row in sheet.RowsUsed().Where(r => r.RowNumber() > 4))
+        {
+            string code = row.Cell(1).GetString().Trim();
+            if (code.Length > 0 && code.Length <= 4) rows[code] = row;
+        }
+
+        return rows;
+    }
+
+    private static IXLWorksheet SheetWith(XLWorkbook workbook, string code) =>
+        workbook.Worksheets.FirstOrDefault(w => w.RowsUsed().Any(r => r.Cell(1).GetString() == code))
+        ?? throw new InvalidOperationException(
+            $"No tab in this workbook carries question {code}. It has: " +
+            string.Join(", ", workbook.Worksheets.Select(w => w.Name)));
 
     private static DxfToEtabsReport MinimalReport(string path)
         => new(

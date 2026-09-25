@@ -1249,6 +1249,7 @@ public static class ModelQuestionnaire
         using var workbook = new XLWorkbook();
         WriteStartHere(workbook, report, options, compose, projectName);
         WriteQuestions(workbook, report, options, compose, projectName);
+        WriteQuestions(workbook, report, options, compose, projectName, settledTab: true);
         WriteRulesInForce(workbook, report, options, compose);
         WriteFlags(workbook, report);
 
@@ -1287,8 +1288,12 @@ public static class ModelQuestionnaire
     {
         if (!File.Exists(path)) return Array.Empty<string>();
 
+        // ‘Settled questions’ is here because those rows were on ‘Questions’ until 2026-09-25 and
+        // say exactly what they said then — "Applied: 48\"." is a claim about this model. Splitting
+        // the tab without adding it here would have dropped 27 rows out of every publish check
+        // while every one of those checks stayed green.
         var aboutThisModel = new HashSet<string>(
-            new[] { "Start here", "Questions", "If something looks wrong" },
+            new[] { "Start here", "Questions", SettledSheetName, "If something looks wrong" },
             StringComparer.OrdinalIgnoreCase);
 
         using var workbook = new XLWorkbook(path);
@@ -1496,9 +1501,23 @@ public static class ModelQuestionnaire
     /// </summary>
     public const string JobCellPrefix = "Job: ";
 
-    private static void WriteQuestions(XLWorkbook workbook, DxfToEtabsReport report, PlanClassificationOptions options, ComposeOptions compose, string projectName)
+    /// <summary>The tab holding the decisions the tool took for her, which are not waiting on anybody.</summary>
+    public const string SettledSheetName = "Settled questions";
+
+    /// <param name="settledTab">
+    /// True for the second tab: the decisions the tool took for her, which are not waiting on
+    /// anybody. Ian, 2026-09-25: "I don't want settled answers in the workbook. Or put them in a
+    /// separate tab - settled questions. I want any REAL questions presented clearly."
+    ///
+    /// Both tabs are written by this one method so a settled row and an open one are the SAME cell
+    /// in the same column with the same cream answer box. Two writers would drift, and the drift
+    /// would land on the tab nobody checks — which, by design, is the settled one. A decision the
+    /// tool took has to stay answerable: the note on <see cref="ModelQuestion.Decided"/> says an
+    /// engineer disagreeing with one is worth more than one answering eight open questions.
+    /// </param>
+    private static void WriteQuestions(XLWorkbook workbook, DxfToEtabsReport report, PlanClassificationOptions options, ComposeOptions compose, string projectName, bool settledTab = false)
     {
-        var sheet = workbook.Worksheets.Add("Questions");
+        var sheet = workbook.Worksheets.Add(settledTab ? SettledSheetName : "Questions");
         // Ordered by what it asks of her, not alphabetically.
         //
         // Sorting by reference put A1 first because it starts with an A, and buried the rows she
@@ -1510,29 +1529,42 @@ public static class ModelQuestionnaire
             .ThenBy(q => q.Code, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        // The front page is what an engineer has to read. Everything else is on "Rules in force",
-        // which is the whole set, read-only, and always has been. Handing her all of it twice put
-        // fixed bugs and this office's own layer names in the same list as the decisions that
-        // actually shape her model.
-        var questions = all.Where(q => !q.ForTheRecord).ToList();
+        // ⚠ THE QUESTIONS TAB HOLDS ONLY WHAT NEEDS HER.
+        //
+        // It used to carry every judgement the tool made — 27 of the 41 codes are DECIDED rows,
+        // written so an engineer could disagree with one. That is worth keeping and it was the
+        // wrong thing to put on the page she opens: the handful that need her sat among twenty-odd
+        // that did not, and those are the ones that get missed. Bugs already fixed and the
+        // layer-name defaults have been on ‘Rules in force’ for a while; the settled decisions now
+        // have their own tab, with the same answer cell.
+        var questions = settledTab
+            ? all.Where(q => q.Decided && !q.Defect && !q.ForTheRecord).ToList()
+            : all.Where(q => !q.ForTheRecord && (!q.Decided || q.Defect)).ToList();
+
         int open = questions.Count(q => !q.Decided && !q.Defect);
         int defects = questions.Count(q => q.Defect);
 
         // A page that says "decisions" while the report below it says ETABS may refuse eighteen of
         // her floors is a page that has misled her. Both numbers go in the title, and the title
         // says nothing reassuring unless both are zero.
-        string headline = (open, defects) switch
-        {
-            (0, 0) => $"{projectName} — decisions",
-            (_, 0) => $"{projectName} — decisions, and {open} thing(s) only you can settle",
-            (0, _) => $"{projectName} — decisions, and {defects} FAULT(S) IN THIS MODEL",
-            _ => $"{projectName} — {open} thing(s) only you can settle, and {defects} FAULT(S) IN THIS MODEL",
-        };
+        string headline = settledTab
+            ? $"{projectName} — {questions.Count} decision(s) this tool took for you"
+            : (open, defects) switch
+            {
+                (0, 0) => $"{projectName} — nothing is waiting on you",
+                (_, 0) => $"{projectName} — {open} thing(s) only you can settle",
+                (0, _) => $"{projectName} — {defects} FAULT(S) IN THIS MODEL",
+                _ => $"{projectName} — {open} thing(s) only you can settle, and {defects} FAULT(S) IN THIS MODEL",
+            };
         sheet.Cell(1, 1).Value = headline;
         sheet.Cell(1, 1).Style.Font.Bold = true;
         sheet.Cell(1, 1).Style.Font.FontSize = 13;
 
-        sheet.Cell(2, 1).Value = Introduction(open, questions.Count(Changeable), defects);
+        sheet.Cell(2, 1).Value = settledTab
+            ? "Nothing here is waiting on you. Each row is a judgement this tool made and the reason it " +
+              "made it. If one is wrong for this building, write the correction in its answer cell — it is " +
+              "read and banked exactly as an answer on the Questions tab."
+            : Introduction(open, questions.Count(Changeable), defects);
         sheet.Cell(2, 1).Style.Font.Italic = true;
 
         // WHICH JOB THIS WAS ANSWERED ON, in the file rather than in the file NAME.
@@ -1615,15 +1647,23 @@ public static class ModelQuestionnaire
             row++;
         }
 
-        // The rows kept off the front page are named, not hidden. An engineer who wants the fixed
-        // bugs and the standing defaults should be able to find them without being told they exist.
-        int kept = all.Count - questions.Count;
-        if (kept > 0)
+        // WHAT IS NOT ON THIS PAGE IS NAMED, NOT HIDDEN. An engineer who wants a decision the tool
+        // took for her, or a bug it already fixed, must be able to find it without being told it
+        // exists.
+        if (!settledTab)
         {
+            int settled = all.Count(q => q.Decided && !q.Defect && !q.ForTheRecord);
+            var forTheRecord = all.Where(q => q.ForTheRecord).Select(q => q.Code).ToList();
+
             var note = sheet.Cell(row + 1, 1);
-            note.Value = $"{kept} further row(s) — bugs already fixed, and the layer-name defaults — are on " +
-                         "the ‘Rules in force’ sheet with the rest of the rule set: " +
-                         string.Join(", ", all.Where(q => q.ForTheRecord).Select(q => q.Code));
+            note.Value =
+                $"{settled} decision(s) this tool took for you are on ‘{SettledSheetName}’ — disagree with " +
+                "any of them by writing in its answer cell, exactly as on this page" +
+                (forTheRecord.Count > 0
+                    ? $". {forTheRecord.Count} further row(s) — bugs already fixed, and the layer-name " +
+                      "defaults — are on ‘Rules in force’ with the rest of the rule set: " +
+                      string.Join(", ", forTheRecord)
+                    : string.Empty) + ".";
             note.Style.Font.Italic = true;
             note.Style.Font.FontColor = XLColor.FromArgb(130, 130, 130);
         }

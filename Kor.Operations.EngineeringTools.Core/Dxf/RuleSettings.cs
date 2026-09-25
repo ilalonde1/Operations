@@ -510,14 +510,39 @@ ORDER BY r.Topic, a.DecidedAtUtc DESC
         };
     }
 
+    /// <summary>
+    /// Every answer in the workbook, from BOTH tabs that can carry one.
+    /// </summary>
+    /// <remarks>
+    /// ⚠ THE SETTLED TAB IS NOT OPTIONAL. Since 2026-09-25 the Questions tab holds only what needs
+    /// her, and the decisions the tool took for itself are on ‘Settled questions’ — with the same
+    /// cream answer cell, because the note on <c>ModelQuestion.Decided</c> says an engineer
+    /// disagreeing with one of those is worth more than one answering eight open questions.
+    /// Reading only the first tab would take her disagreement, show it accepted, and discard it.
+    /// </remarks>
     public static List<QuestionAnswerRule> ReadQuestionAnswers(string workbookPath, List<string>? skipped = null)
     {
         skipped ??= new List<string>();
         using var workbook = new XLWorkbook(workbookPath);
-        var sheet = workbook.Worksheets.FirstOrDefault(w =>
-            w.Name.Equals("Questions", StringComparison.OrdinalIgnoreCase))
-            ?? throw new InvalidOperationException("The workbook has no 'Questions' sheet.");
 
+        var answerable = workbook.Worksheets
+            .Where(w => w.Name.Equals("Questions", StringComparison.OrdinalIgnoreCase)
+                        || w.Name.Equals(ModelQuestionnaire.SettledSheetName, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        if (answerable.Count == 0)
+            throw new InvalidOperationException(
+                $"The workbook has no 'Questions' sheet and no '{ModelQuestionnaire.SettledSheetName}' sheet. " +
+                "It carries: " + string.Join(", ", workbook.Worksheets.Select(w => w.Name)) +
+                ". TO FIX: produce it with `takeoff stickfile`, which writes both.");
+
+        var answers = new List<QuestionAnswerRule>();
+        foreach (var tab in answerable) answers.AddRange(ReadAnswersOn(tab, skipped));
+        return answers;
+    }
+
+    private static List<QuestionAnswerRule> ReadAnswersOn(IXLWorksheet sheet, List<string> skipped)
+    {
         var headerRow = sheet.Row(4);
         var headers = headerRow.CellsUsed()
             .ToDictionary(c => c.GetString().Trim(), c => c.Address.ColumnNumber, StringComparer.OrdinalIgnoreCase);

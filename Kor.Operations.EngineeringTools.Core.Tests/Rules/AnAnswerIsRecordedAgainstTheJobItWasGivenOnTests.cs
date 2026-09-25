@@ -172,13 +172,22 @@ public sealed class AnAnswerIsRecordedAgainstTheJobItWasGivenOnTests : IDisposab
 
         using (var workbook = new XLWorkbook(path))
         {
-            var sheet = workbook.Worksheet("Questions");
+            // C4 is a DECIDED row, so since 2026-09-25 it lives on ‘Settled questions’ rather than
+            // on the page she opens. Answering it there MUST still import — that tab exists so a
+            // decision the tool took can be overruled, and a tab whose answers are silently
+            // discarded is worse than no tab.
+            var sheet = workbook.Worksheets
+                .FirstOrDefault(w => w.Name.Equals(ModelQuestionnaire.SettledSheetName, StringComparison.OrdinalIgnoreCase))
+                ?? workbook.Worksheet("Questions");
+
             int lastRow = sheet.LastRowUsed()?.RowNumber() ?? 4;
 
             int row = Enumerable.Range(5, lastRow - 4)
                 .FirstOrDefault(r => sheet.Cell(r, 1).GetString().Trim().Equals(Code, StringComparison.OrdinalIgnoreCase));
 
-            Assert.True(row >= 5, $"question {Code} is not on the front page of the workbook any more; pick another that is.");
+            Assert.True(row >= 5,
+                $"question {Code} is on neither '{ModelQuestionnaire.SettledSheetName}' nor 'Questions'; pick another.");
+            Assert.Equal(ModelQuestionnaire.SettledSheetName, sheet.Name);
 
             // Her answer, and a topic nothing else in the store uses so the cleanup below cannot
             // reach a real ruling.
