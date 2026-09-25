@@ -123,6 +123,40 @@ re-banked, or a byte-identical gate is the wrong instrument for a rule that inte
 every model.** Put to `docs/codex/CODEX-WHOLE-SYSTEM-AUDIT.md` question 2 rather than decided here,
 because re-banking baselines quietly is how a gate stops meaning anything.
 
+## ⭐⭐ WHAT THE GAP ACTUALLY IS (2026-09-25) — 45% of it is not a missing floor
+
+Every set with her model, classified by what its shortfall IS rather than how big it is. The
+discriminator nobody had read is `plates_beyond_sqft`: plate WE BUILT whose centroid lies outside
+the box of HER columns on that storey.
+
+| what the gap is | sets | sq ft | share |
+|---|---:|---:|---:|
+| **C. genuinely missing floor** | **22** | **831,235** | **55%** |
+| **B. scope — we build more building than she modelled** | **16** | **463,040** | **30%** |
+| A. registration broken (<25% of columns within 100 mm) | 6 | 225,286 | 15% |
+| D. at or over her area | 4 | 0 | — |
+| | | **1,519,561** | |
+
+**Class B is not a defect.** In sixteen well-registered sets we build MORE plate outside her
+footprint than the entire gap — 395,842 sq ft against 273,923. The engineer modelled one building;
+the tool builds the site. `30990-01` reads 64% of her area with 88% registration and 168,272 sq ft
+standing beyond her model. The yardstick scores that as our failure and it is not one.
+
+⚠ **So "77.4% of her plate area" understates the tool**, and no rule should ever be judged on the
+raw ratio again without splitting scope and registration out of it first.
+
+### ⭐ THE REAL WORK LIST — floors genuinely missing
+
+    31017-01  120,657      31104-01   45,742      30972-01   36,688
+    31048-01   98,804      30849-01   39,405      31003-01   34,942
+    70061-01   87,052      31037-01   39,004
+    31087-01   79,287      60061-03   38,392
+    30989-01   52,811
+    30993-01   49,736   <- step 147 takes this one to 98% (stashed)
+
+Twenty-two sets, 831,235 sq ft. That is the number to move, and it is 55% of the headline rather
+than all of it.
+
 ## ⭐ THE WHOLE-SYSTEM TRIAGE — four fault classes, not one problem
 
 Every set with the engineer's model, classified from its OWN yardstick.txt. This is the map: "get
