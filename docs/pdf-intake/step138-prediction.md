@@ -1,5 +1,9 @@
 # Step 138's prediction, written BEFORE the judge ran (2026-09-23 13:35)
 
+**Target set:** **1 of the 48 sets with the engineer's model** (30993-01, which recovers nine
+sheets and 31 storeys: 188,493 -> about 510,450 sq ft, 34% -> 91%), reached by reverting step 131,
+which was net-negative across those 48. Measured before the rule was written.
+
 ## What was measured first
 
 Step 131 is net-negative over the 57 sets she has modelled: it earns ~99,000 sq ft on ten sets and loses

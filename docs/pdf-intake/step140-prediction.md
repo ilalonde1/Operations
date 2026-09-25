@@ -1,5 +1,8 @@
 # Step 140 — a sheet that prints one field thickness prints it for the sheet
 
+**Target set:** **46 plan sheets** that print exactly one field thickness no plate took, across the
+**112 of 297 corpus sets** that default a plate. Measured before the rule was written.
+
 Written 2026-09-23 23:0X PDT, **before** anything was built. Judged against this file.
 
 ## Why this rule exists

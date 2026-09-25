@@ -184,6 +184,32 @@ public static partial class PlanSheetNaming
             foreach (Match m in vocabulary.Range.Matches(ownName))
                 AddItem(m.Groups[1].Value, m.Groups[2].Value);
 
+        // A TYPICAL-FLOOR RANGE WHOSE DASH DID NOT SURVIVE EXTRACTION (step 145, 2026-09-24).
+        // "LEVEL 9 19 PLAN" is L9 through L19 — eleven storeys on one drawing — and with nothing
+        // between the numbers it read as two. See DrawingVocabulary.BareRange for why it hid: at two
+        // wide, endpoints and range are the same answer, so every narrow case looked right.
+        //
+        // Taken LAST of the numeric readings and only when nothing else matched, because two numbers
+        // with no separator are genuinely ambiguous. Declined outright where the sheet says ODD or
+        // EVEN: 30864-01 draws "LEVEL 7 25 ODD NUMBERS" and "LEVEL 6 26 EVEN NUMBERS" for the same
+        // tower, and a contiguous expansion would put a floor on ten storeys neither drawing serves.
+        // A wrong floor is worse than a missing one; those go to the engineer as step 143's question.
+        if (levels.Count == 0
+            && Environment.GetEnvironmentVariable("KOR_STEP145_OFF") != "1"
+            && !vocabulary.AlternatingFloors.IsMatch(ownName))
+            foreach (Match m in vocabulary.BareRange.Matches(ownName))
+            {
+                int lo = int.Parse(m.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture);
+                int hi = int.Parse(m.Groups[2].Value, System.Globalization.CultureInfo.InvariantCulture);
+
+                // ANY WIDTH, INCLUDING ONE. The first cut of this required a gap of two or more, on
+                // the assumption that "LEVEL 6 7" already read as 6 and 7 either way and there was
+                // nothing to win. Its own test proved otherwise: the reader matches only the number
+                // that FOLLOWS the level word, so "LEVEL 6 7" was reading as [6] and losing the 7.
+                // A dash lost at one wide costs a storey exactly like a dash lost at eleven.
+                if (hi != lo) AddItem(m.Groups[1].Value, m.Groups[2].Value);
+            }
+
         if (levels.Count == 0)
         {
             // Sheet identifiers such as "S2-32-1_2" precede the title; strip them so

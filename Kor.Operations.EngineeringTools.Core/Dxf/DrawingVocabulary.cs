@@ -285,6 +285,38 @@ public sealed record DrawingVocabulary
     public Regex RangeInList => Of(
         $@"(\d+)(?:\s*(?:{Any(RangeWords)})\s*(?:{Any(LevelWords)})?\s*(\d+))?");
 
+    /// <summary>
+    /// "LEVEL 9 19 PLAN" — a typical-floor range whose DASH WAS LOST ON THE WAY OUT OF THE PDF
+    /// (step 145, 2026-09-24). `dxf.bare-range` is not a setting; this is a reading rule.
+    ///
+    /// 31005-01 draws L9 through L19 on one sheet. The index series writes it `LEVEL L09-19` and the
+    /// issued sheet comes out of extraction as `LEVEL 9 19 PLAN`, with nothing between the numbers.
+    /// <see cref="Range"/> needs a range word, <see cref="LevelList"/> needs a comma or an ampersand,
+    /// so the title falls through to two <see cref="SingleLevel"/> matches and the nine storeys
+    /// between them are never drawn.
+    ///
+    /// It hid because at two wide the two readings are identical: `LEVEL L03-04` is 3 and 4 whether
+    /// you read endpoints or a range. Only a wide range shows the difference, and then it is nine
+    /// storeys at a time.
+    ///
+    /// ⚠ TWO NUMBERS AND NOTHING BETWEEN THEM IS AMBIGUOUS, so the reading is deliberately narrow:
+    /// the caller takes it only when no other reading matched, only when the gap is two or more (at
+    /// one wide there is nothing to gain and the list reading is as good), and never on a sheet that
+    /// says ODD or EVEN — see <see cref="AlternatingFloors"/>.
+    /// </summary>
+    public Regex BareRange => Of(
+        $@"(?:{Any(LevelWords)})\s*L?(\d{{1,2}})\s+L?(\d{{1,2}})(?!\s*\d)");
+
+    /// <summary>
+    /// "LEVEL 7 25 PLAN ODD NUMBERS" — a typical-floor sheet serving every OTHER storey.
+    ///
+    /// 30864-01 draws its market tower twice, "LEVEL 7 25 ODD NUMBERS" and "LEVEL 6 26 EVEN
+    /// NUMBERS"; 31103-01 and 30972-01 do the same. Expanding either as a contiguous range puts a
+    /// floor on ten storeys the drawing does not serve, which is the wrong-floor fault this pipeline
+    /// treats as worse than a missing one. Read as a range they are declined; the engineer is asked.
+    /// </summary>
+    public Regex AlternatingFloors => Of(@"\b(?:ODD|EVEN)\b");
+
     /// <summary>"LEVEL 9".</summary>
     public Regex SingleLevel => Of(
         $@"(?:{Any(LevelWords)})\s*(\d+)");

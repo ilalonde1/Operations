@@ -1,5 +1,8 @@
 # Step 139 — the brackets say which of two kept sheets is the plan
 
+**Target set:** measured over the run-44 sheet ledger — **5,018 sheet files across 265 sets**, of
+which this rule changes the reading of the bracketed pairs only. Measured before the rule was written.
+
 Written 2026-09-23 20:55 PDT, **before** anything was built. Judged against this file, not against a
 reading of the result.
 

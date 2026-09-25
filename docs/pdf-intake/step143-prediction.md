@@ -55,6 +55,9 @@ on the storeys it actually ships.
 
 Fires when the ladder has **≥ 4 storeys** and **half or more** carry no plate.
 
+**Target set:** **20 of the 190 corpus sets** whose ladder has four or more storeys (11%), and
+**3 of the 48** with the engineer's model. Measured on run 45's ledger BEFORE the rule was written.
+
 ## What it catches, counted on run 45
 
 | | |

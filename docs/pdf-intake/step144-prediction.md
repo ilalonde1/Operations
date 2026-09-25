@@ -39,6 +39,18 @@ The set as its own ledger has it:
     S2.09  L9 - L16  anchor
     S2.11  ROOF      anchor
 
+**Target set:** **2 of 297 corpus sets**, and **1 of the 48** with the engineer's model
+(`31005-01`, `90105-01`) — **6 drawings** in the whole corpus.
+
+⚠ Measured AFTER the rule was written, which is the wrong order and is why
+`EveryRuleStatesItsTargetSetBeforeItIsBankedTests` now exists. The 99.8% below says the inference is
+RIGHT; it says nothing about whether anything needs it. Both numbers are required before building,
+and only one of them was taken.
+
+On its target set it is worth having: 31005-01 goes from 8 storeys floored to 10, and from
+**8,034 to 23,468 sq ft** against the engineer's 75,694 — **10.6% to 31.0%**, the worst comparable
+set in the corpus nearly tripling. That is a good outcome reached by a bad method.
+
 ## The measurement that decided it
 
 Leave-one-out over run 45's sheet ledger: hide the level of a drawing whose title **did** parse,

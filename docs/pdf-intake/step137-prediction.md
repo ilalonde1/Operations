@@ -1,5 +1,9 @@
 # Step 137 — a parkade level that arrives last is still the sheet's level
 
+**Target set:** **3 of 297 corpus sets** (30824-01, 30827-01, 30905-01), and **0 of the 48**
+with the engineer's model. Measured before the rule was written; judged on a model yardstick it does
+not have, which is why its prediction is stated as sheets and slabs rather than plate area.
+
 Written 2026-09-24 01:1X PDT, **before** the judgement ran. The rule itself was written 2026-09-23 and has sat
 unjudged on its branch since.
 
