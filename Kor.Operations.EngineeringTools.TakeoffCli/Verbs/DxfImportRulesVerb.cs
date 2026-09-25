@@ -35,6 +35,18 @@ internal static class DxfImportRulesVerb
         Console.WriteLine($"answers found : {import.AnswersFound}");
         Console.WriteLine($"rules written : {import.RulesWritten}");
         Console.WriteLine($"settings      : {import.SettingsWritten}");
+
+        // WHICH BUILDING SHE WAS LOOKING AT. The rule goes to the office; the record that she
+        // settled it HERE is what lets the next job be told who decided it and when, instead of
+        // being asked the same question from nothing.
+        if (string.IsNullOrWhiteSpace(import.Job))
+            Console.WriteLine(
+                "job           : NOT RECORDED - this workbook does not name one, so nothing can say " +
+                "where these answers were settled or carry them to another job with their provenance. " +
+                "TO FIX: re-run `takeoff stickfile` to produce the workbook; it writes the job into " +
+                "cell A3 of the Questions sheet.");
+        else
+            Console.WriteLine($"job           : {import.Job}   ({import.ApplicationsWritten} answer(s) recorded as settled there)");
         foreach (string skipped in import.Skipped) Console.WriteLine("skipped: " + skipped);
         return 0;
     }

@@ -39,7 +39,18 @@ public sealed record QuestionAnswerRule(
     string? SettingUnits,
     string Confidence);
 
-public sealed record RuleImportResult(int RowsRead, int AnswersFound, int RulesWritten, int SettingsWritten, IReadOnlyList<string> Skipped);
+public sealed record RuleImportResult(int RowsRead, int AnswersFound, int RulesWritten, int SettingsWritten, IReadOnlyList<string> Skipped)
+{
+    /// <summary>The job the workbook was written for, or null where it does not say.</summary>
+    public string? Job { get; init; }
+
+    /// <summary>
+    /// How many answers were recorded as settled ON THAT JOB, in analysis.RuleApplication. Zero
+    /// where the workbook names no job — the rules still bank, but nothing later can say where
+    /// they were decided or carry them anywhere with their provenance.
+    /// </summary>
+    public int ApplicationsWritten { get; init; }
+}
 
 /// <summary>
 /// An answer given on a DIFFERENT job, offered as evidence beside the same question on this one.
@@ -102,6 +113,108 @@ public static class RuleSettings
     /// </summary>
     public static string JobScope(string job) => "job:" + job.Trim();
 
+
+    /// <summary>
+    /// The rules settled on OTHER jobs that nobody has decided about on this one — offered to it
+    /// as assumptions with their provenance, never applied silently.
+    /// </summary>
+    /// <remarks>
+    /// This is the wise-arbiter step, in Ian's words on 2026-09-25: "Oh, I've seen that rule on
+    /// another project, but it's applicable to this project as well - apply." The rule itself is
+    /// one row and is already in force office-wide; what this adds is the SENTENCE the engineer
+    /// sees beside the question — who settled it, on which building, on what date — so she can
+    /// accept it in one cell or reject it and have the rejection remembered.
+    ///
+    /// A rule REJECTED on this job is not carried and not offered. A rule already confirmed here
+    /// is not offered either: it has stopped being a question.
+    /// </remarks>
+    public static IReadOnlyList<PriorAnswer> CarriedRules(string? connectionString, string? job)
+    {
+        var found = new List<PriorAnswer>();
+        connectionString ??= Environment.GetEnvironmentVariable(ConnectionEnvironmentVariable);
+        if (string.IsNullOrWhiteSpace(connectionString) || string.IsNullOrWhiteSpace(job)) return found;
+
+        try
+        {
+            using var connection = new SqlConnection(connectionString);
+            connection.Open();
+
+            using var command = connection.CreateCommand();
+            command.CommandText = """
+SELECT   r.Topic, a.Job, a.DecidedBy, r.Ruling, a.DecidedAtUtc, r.SettingKey, r.SettingValue
+FROM     analysis.RuleApplication a
+JOIN     analysis.Ruling r ON r.Id = a.RulingId
+WHERE    a.Decision = 'confirmed'
+  AND    a.Job <> @job
+  AND    r.RetiredAtUtc IS NULL
+  AND    NOT EXISTS (SELECT 1 FROM analysis.RuleApplication mine
+                      WHERE mine.RulingId = a.RulingId AND mine.Job = @job)
+ORDER BY r.Topic, a.DecidedAtUtc DESC
+""";
+            command.Parameters.AddWithValue("@job", job);
+            command.CommandTimeout = 15;
+
+            using var reader = command.ExecuteReader();
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            while (reader.Read())
+            {
+                string topic = reader.GetString(0);
+                // The most recent confirmation of a topic is the one worth showing; a list of every
+                // job that ever agreed is a wall of text she will not read.
+                if (!seen.Add(topic)) continue;
+
+                found.Add(new PriorAnswer(
+                    topic,
+                    reader.GetString(1),
+                    reader.IsDBNull(2) ? "unattributed" : reader.GetString(2),
+                    reader.IsDBNull(3) ? string.Empty : reader.GetString(3),
+                    reader.GetDateTime(4),
+                    reader.IsDBNull(5) ? null : reader.GetString(5),
+                    reader.IsDBNull(6) ? null : Convert.ToString(reader.GetValue(6), CultureInfo.InvariantCulture)));
+            }
+        }
+        catch
+        {
+            return new List<PriorAnswer>();
+        }
+
+        return found;
+    }
+
+    /// <summary>
+    /// The setting keys this job has REFUSED. A rule rejected here is withheld from the build here,
+    /// however firmly the office holds it elsewhere — that refusal is the engineer's, and a system
+    /// that forgets it will make her give it again on every run.
+    /// </summary>
+    public static IReadOnlyCollection<string> WithheldFor(string? connectionString, string? job)
+    {
+        var withheld = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        connectionString ??= Environment.GetEnvironmentVariable(ConnectionEnvironmentVariable);
+        if (string.IsNullOrWhiteSpace(connectionString) || string.IsNullOrWhiteSpace(job)) return withheld;
+
+        try
+        {
+            using var connection = new SqlConnection(connectionString);
+            connection.Open();
+
+            using var command = connection.CreateCommand();
+            command.CommandText =
+                "SELECT r.SettingKey FROM analysis.RuleApplication a " +
+                "JOIN analysis.Ruling r ON r.Id = a.RulingId " +
+                "WHERE a.Decision = 'rejected' AND a.Job = @job AND r.SettingKey IS NOT NULL AND r.RetiredAtUtc IS NULL";
+            command.Parameters.AddWithValue("@job", job);
+            command.CommandTimeout = 15;
+
+            using var reader = command.ExecuteReader();
+            while (reader.Read()) withheld.Add(reader.GetString(0));
+        }
+        catch
+        {
+            return new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        }
+
+        return withheld;
+    }
 
     /// <summary>
     /// What somebody answered about this same topic on ANOTHER job, most recent first.
@@ -363,7 +476,12 @@ public static class RuleSettings
 
         var skipped = new List<string>();
         var answers = ReadQuestionAnswers(workbookPath, skipped);
-        int written = 0, settings = 0;
+        int written = 0, settings = 0, applied = 0;
+
+        // WHOSE BUILDING SHE WAS LOOKING AT WHEN SHE ANSWERED. The rule goes to the office; the
+        // record that she settled it HERE goes to the job, and that pairing is the whole of what
+        // makes the next job able to say "31138-01 answered this, and here is who and when".
+        string? job = JobIn(workbookPath);
 
         using var connection = new SqlConnection(connectionString);
         connection.Open();
@@ -372,13 +490,24 @@ public static class RuleSettings
         foreach (var answer in answers)
         {
             Guid rulingId = UpsertRuling(connection, transaction, engineer, answer);
-            InsertEvidence(connection, transaction, rulingId, sourcePath ?? workbookPath, answer);
+            InsertEvidence(connection, transaction, rulingId, sourcePath ?? workbookPath, answer, job);
             written++;
             if (!string.IsNullOrWhiteSpace(answer.SettingKey)) settings++;
+
+            if (!string.IsNullOrWhiteSpace(job))
+            {
+                RecordApplication(connection, transaction, rulingId, job!, "confirmed", engineer,
+                    $"{answer.Code}: {answer.Answer}");
+                applied++;
+            }
         }
 
         transaction.Commit();
-        return new RuleImportResult(answers.Count + skipped.Count, answers.Count, written, settings, skipped);
+        return new RuleImportResult(answers.Count + skipped.Count, answers.Count, written, settings, skipped)
+        {
+            Job = job,
+            ApplicationsWritten = applied,
+        };
     }
 
     public static List<QuestionAnswerRule> ReadQuestionAnswers(string workbookPath, List<string>? skipped = null)
@@ -602,12 +731,70 @@ SELECT @id;
         return (Guid)command.ExecuteScalar()!;
     }
 
+    /// <summary>
+    /// The job a questions workbook was written for, read from cell A3 of its Questions sheet.
+    /// Null where the sheet predates that cell or the file cannot be opened.
+    /// </summary>
+    public static string? JobIn(string workbookPath)
+    {
+        try
+        {
+            using var workbook = new XLWorkbook(workbookPath);
+            var sheet = workbook.Worksheets.FirstOrDefault(w =>
+                w.Name.Equals("Questions", StringComparison.OrdinalIgnoreCase));
+
+            string cell = sheet?.Cell(3, 1).GetString().Trim() ?? string.Empty;
+            if (!cell.StartsWith(ModelQuestionnaire.JobCellPrefix, StringComparison.OrdinalIgnoreCase)) return null;
+
+            string job = cell[ModelQuestionnaire.JobCellPrefix.Length..].Trim();
+            return job.Length > 0 ? job : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Records that a rule was settled, assumed or refused ON ONE JOB. One standing decision per
+    /// rule per job: answering again replaces it, because what a build needs is what she thinks
+    /// now, and RulingHistory is where a change of mind is kept.
+    /// </summary>
+    private static void RecordApplication(
+        SqlConnection connection,
+        SqlTransaction transaction,
+        Guid rulingId,
+        string job,
+        string decision,
+        string decidedBy,
+        string because)
+    {
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = """
+UPDATE analysis.RuleApplication
+   SET Decision = @Decision, DecidedBy = @DecidedBy, DecidedAtUtc = SYSUTCDATETIME(), Because = @Because
+ WHERE RulingId = @RulingId AND Job = @Job;
+
+IF @@ROWCOUNT = 0
+    INSERT INTO analysis.RuleApplication (RulingId, Job, Decision, DecidedBy, Because)
+    VALUES (@RulingId, @Job, @Decision, @DecidedBy, @Because);
+""";
+        Add(command, "@RulingId", rulingId);
+        Add(command, "@Job", job);
+        Add(command, "@Decision", decision);
+        Add(command, "@DecidedBy", decidedBy);
+        Add(command, "@Because", because);
+        command.ExecuteNonQuery();
+    }
+
     private static void InsertEvidence(
         SqlConnection connection,
         SqlTransaction transaction,
         Guid rulingId,
         string sourcePath,
-        QuestionAnswerRule answer)
+        QuestionAnswerRule answer,
+        string? job)
     {
         using var command = connection.CreateCommand();
         command.Transaction = transaction;
@@ -616,14 +803,17 @@ IF NOT EXISTS (
     SELECT 1 FROM analysis.RulingEvidence
      WHERE RulingId = @RulingId AND SourcePath = @SourcePath AND Excerpt = @Excerpt)
 BEGIN
-    INSERT INTO analysis.RulingEvidence (RulingId, SourcePath, Excerpt, ObservedAtUtc)
-    VALUES (@RulingId, @SourcePath, @Excerpt, SYSDATETIMEOFFSET());
+    INSERT INTO analysis.RulingEvidence (RulingId, SourcePath, Excerpt, JobNumber, ObservedAtUtc)
+    VALUES (@RulingId, @SourcePath, @Excerpt, @JobNumber, SYSDATETIMEOFFSET());
 END
 """;
         Add(command, "@RulingId", rulingId);
         Add(command, "@SourcePath", sourcePath);
         Add(command, "@Excerpt",
             $"{answer.Code}: {answer.Question} Tool did: {answer.WhatTheToolDid} Answer: {answer.Answer}");
+        // The column has been there since the table was made and nothing ever filled it, so every
+        // piece of evidence banked before today is a quote with no building attached to it.
+        Add(command, "@JobNumber", job);
         command.ExecuteNonQuery();
     }
 

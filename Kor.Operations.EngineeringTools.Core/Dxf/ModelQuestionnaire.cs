@@ -1491,6 +1491,11 @@ public static class ModelQuestionnaire
               dials);
     }
 
+    /// <summary>
+    /// How the job is labelled in cell A3 of the Questions sheet, so the importer can read it back.
+    /// </summary>
+    public const string JobCellPrefix = "Job: ";
+
     private static void WriteQuestions(XLWorkbook workbook, DxfToEtabsReport report, PlanClassificationOptions options, ComposeOptions compose, string projectName)
     {
         var sheet = workbook.Worksheets.Add("Questions");
@@ -1529,6 +1534,17 @@ public static class ModelQuestionnaire
 
         sheet.Cell(2, 1).Value = Introduction(open, questions.Count(Changeable), defects);
         sheet.Cell(2, 1).Style.Font.Italic = true;
+
+        // WHICH JOB THIS WAS ANSWERED ON, in the file rather than in the file NAME.
+        //
+        // The import banks each answer as a rule for the office and records, separately, that this
+        // job is where it was settled — which is what lets the next job be told "31138-01 answered
+        // this, Andrea, 2026-09-02" instead of being asked from scratch. Before this cell existed
+        // the importer had no way to know whose building it was reading, and the workbook can be
+        // renamed, emailed and saved anywhere between here and there.
+        sheet.Cell(3, 1).Value = JobCellPrefix + projectName;
+        sheet.Cell(3, 1).Style.Font.FontSize = 9;
+        sheet.Cell(3, 1).Style.Font.FontColor = XLColor.FromArgb(120, 120, 120);
 
         string[] headers =
         {
