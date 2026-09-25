@@ -84,8 +84,26 @@ Witness: `30989-01`, page 21, view `S2.15_1_LEVEL 4 19 PLAN CONCRETE OUTLINE.dxf
 - **132 of 1,047** outline-titled views have no exported slab edge, across **30 of 297** sets.
 - All 132 carry BEAM linework; **44 substantially** (500+ entities). **123 of 130 recover nothing**
   from BEAM alone under `dxf-inspect`.
-- ⚠ **Unknown: how many of the 132 fail for the PINCH reason** versus another. The trace prints the
-  gap width per page, so it is countable — that is the measurement to run before any code.
+- ⚠ **MEASURED 2026-09-24 22:4X — the pinch is 29%, not the story.** Categorised by
+  `dxf-inspect --faces --layers BEAM` over all 132:
+
+| signature | views | share |
+|---|---:|---:|
+| **C. LEAK — lots of linework, many bounded faces, no plate ≥400 sq ft** | **38** | 29% |
+| **B. too little BEAM linework to be a perimeter at all** | **78** | **59%** |
+| A. BEAM alone already recovers a plate | 7 | 5% |
+| D. linework present, almost no bounded face | 7 | 5% |
+| E. no face summary | 2 | 2% |
+
+  The LEAK class is 8 sets: 30989-01 (6 views), 31224-01 (5), 30820-01 (4), 31065-01 (3),
+  30852-01 (2), then one each in 01379-01, 30784-01, 30864-01. Of those, three have her model —
+  30989-01 (54%), 31224-01 (23%), 31065-01 (85%).
+
+  ⚠ **So the witness is in the MINORITY class.** Building pinch-sealing off 30989-01 alone would
+  address 29% of a sub-population that is itself only part of the 96% gap. The 78 views that carry
+  too little linework to be a perimeter are the bigger question and have no explanation yet:
+  either the outline is on a sibling view of the same storey, or the page genuinely does not draw
+  one there.
 
 ### Guard sets — if either moves, the change is wrong
 
