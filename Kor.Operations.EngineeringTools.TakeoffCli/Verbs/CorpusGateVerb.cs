@@ -140,7 +140,7 @@ internal static class CorpusGateVerb
             // attribute it.
             // ⚠ ONE literal, not a concatenation: the guard reads this line as source text and a `" + "` between
             // two knobs hides everything after it.
-            Console.WriteLine("  to find which rule took them: --bisect KOR_STEP130_OFF,KOR_STEP131_OFF,KOR_STEP133_OFF,KOR_STEP134_OFF,KOR_STEP135_OFF,KOR_STEP136_OFF,KOR_STEP137_OFF,KOR_STEP138_OFF,KOR_STEP139_OFF,KOR_STEP140_OFF,KOR_STEP144_OFF,KOR_STEP145_OFF");
+            Console.WriteLine("  to find which rule took them: --bisect KOR_STEP130_OFF,KOR_STEP131_OFF,KOR_STEP133_OFF,KOR_STEP134_OFF,KOR_STEP135_OFF,KOR_STEP136_OFF,KOR_STEP137_OFF,KOR_STEP138_OFF,KOR_STEP139_OFF,KOR_STEP140_OFF,KOR_STEP144_OFF,KOR_STEP145_OFF,KOR_STEP147_OFF");
         }
         if (outCsv is not null)
         {

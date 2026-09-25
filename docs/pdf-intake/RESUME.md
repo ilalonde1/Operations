@@ -28,6 +28,109 @@ claimed about "before" is not measurable.
 **Step 145 is the win:** +239 storeys carrying a floor across 16 sets, **0 lost**. 31005-01 went
 8 → 19 of 24 storeys, 14 → 26 floors, 204 → 375 walls, 103 → 237 columns.
 
+## ⚠ STEP 147 — THE BIGGEST WIN, AND THE ONE OPEN DECISION
+
+**A reinforcing sheet is refused as a plan and still draws the slab.** `CONCRETE OUTLINE` sheets
+often close no slab at all while the `SLAB REINFORCING` sheet of the same storeys does — rebar is
+drawn INSIDE a bounded slab. The slab edge only is taken; walls, columns, partitions and tags stay
+refused, because 30990's footings drawn filled for their bars once read as 54 columns on P3.
+
+    30989-01:  7 floors -> 45,  7 of 27 storeys floored -> 25 of 27,  columns 594 -> 594
+    30993-01 (guard):  ours 510,530 -> 551,272 sq ft on the SAME denominator — 91% -> 98%
+    31130-01:  32 of 33 sheets placed (was 19), columns 1,313 (was 1,318), ours +1,784 sq ft
+
+Corpus reach, measured before the rule was written: **1,032 of 1,201 reinforcing views carry slab
+edges across 129 of 297 sets**; the 68 sets that also have unplated storeys hold **479 of them** and
+**965,538 sq ft** of gap where she has a model.
+
+⚠ Two regressions were caught by the six-set gate and fixed, both the same cause — a slab-only sheet
+must never influence WHERE the model sits:
+
+1. it must not be the **reference plan** (the frame every other sheet is set on);
+2. it must not **register by columns**, nor be registered against — `MembersOf` reads the RAW
+   segments, so its rebar comes back as columns, which is the very fault its refusal exists to stop.
+   Before that fix 31130-01's whole model moved **69 metres** in X.
+
+### ⛔ STASHED, NOT BANKED — and the exact reason
+
+`git stash` holds it: *"step 147: reinforcing sheets slab-only (blocked on 31130-01 registration)"*.
+
+**It is NOT on develop.** The six-set gate fails on it, and running that gate with
+`KOR_STEP147_OFF=1` **passes**, which proves step 147 is the cause rather than anything banked
+earlier. The fault is always the same and always only 31130-01:
+
+    31130-01: plates moved 4, columns lost 600 / gained 600, walls lost 258 / gained 261
+    (the second model sits -69,375, +0 from the first)
+
+**The whole model moves 69 metres in X.** The other three sets are clean or better — 31138-01 has
+identical columns and walls with plates 12,405 -> 12,652 sq ft, which is exactly what 147 is for.
+
+⚠ **Three fixes were tried and none of them worked**, each closing one place a slab-only sheet could
+influence where the model sits:
+
+1. it must not be the **reference plan** — the frame every other sheet is set on;
+2. it must not **register by columns**, nor be registered against (`MembersOf` reads the RAW
+   segments, so its rebar comes back as columns — the very fault its refusal exists to stop);
+3. it must **lend no axes** to the extended grid other sheets are then solved against.
+
+All three are in the stash and all three are right in principle. **The shift survives all of them**,
+so there is a fourth path not yet found, and it only shows in the REFERENCE-MODEL build: a two-arm
+differential through `stickfile` (no reference model) gives 473 walls / 1,313 columns with 147 on
+against 474 / 1,318 off — five columns, no shift at all.
+
+⛔ **Stopped there rather than trying a fourth patch.** Three failed fixes on one symptom is rule
+10's trigger: the model in my head is wrong and every further patch is a coin flip. It goes to the
+audit as question 2 with all of this, which is worth more than a fourth guess at midnight.
+
+### What it is worth, so nobody drops it
+
+    30989-01:  7 floors -> 45,  7 of 27 storeys floored -> 25 of 27,  columns 594 -> 594
+    30993-01 (guard):  ours 510,530 -> 551,272 sq ft, SAME denominator — 91% -> 98%
+    31138-01:  columns and walls identical, plates 12,405 -> 12,652 sq ft
+
+### ⏸ The decision that was deliberately not made alone
+
+`SixSetsBuildAsBankedTests` is byte-identical against stored baselines and now fails on 31130-01,
+31138-01, 31065-01 and 31202-01 — because 147 deliberately changes every model with reinforcing
+sheets. The two-arm differential says the change is good on every axis. **Either the baselines are
+re-banked, or a byte-identical gate is the wrong instrument for a rule that intentionally moves
+every model.** Put to `docs/codex/CODEX-WHOLE-SYSTEM-AUDIT.md` question 2 rather than decided here,
+because re-banking baselines quietly is how a gate stops meaning anything.
+
+## ⭐ THE WHOLE-SYSTEM TRIAGE — four fault classes, not one problem
+
+Every set with the engineer's model, classified from its OWN yardstick.txt. This is the map: "get
+it working on nearly everything" is four different pieces of work, and a rule for one class does
+nothing for the other three.
+
+| class | sets | gap sq ft | what it needs |
+|---|---:|---:|---|
+| **D. good — 85%+ of her plate area** | **18** | 216,762 | nothing; these work |
+| **C. plates short — 50-84%** | **16** | **815,462** | the biggest pool; step 147 moves some |
+| **B. plates short — registration fine, under 50%** | 9 | 315,808 | floors, as C |
+| **A. REGISTRATION — under 25% of columns within 100 mm** | **7** | 232,506 | the model is in the WRONG PLACE |
+
+**36% of sets are already at 85%+.** Baseline, before step 147.
+
+### Class A is a different fault entirely, and 31005-01 is its witness
+
+```
+frames matched on 2 X and 2 Y grid labels both models name;
+offset (-14,185, -44,708) mm, the labels' own disagreement up to 28,753 mm
+ours -> theirs: median 3,919 mm; within 100 mm 0 (0%)
+```
+
+The building is **14 m by 44 m out**, and the grid labels both models name disagree by **28.7
+metres**. Since step 147 it builds 21 floored storeys — and 17 of them score 0 against her because
+they do not overlap her footprint. **No floor rule can ever fix a class A set.** Its 14% is not a
+floor problem and must not be read as one.
+
+Worst of class A: `31005-01` 0%, `50054-01` 0%, `31183-01` 3%, `31098-01` 9%, `30986-02` 11%,
+`30819-01` 16%, `31158-01` 17%.
+
+⚠ Note `70057-01` reads **144%** of her area with 27% registration — over-reading and mis-registered
+at once. A percentage above 100 is a fault, not a success.
+
 ## ⚠ READ THIS BEFORE QUOTING ANY PERCENTAGE
 
 **The percentage is NOT comparable across runs, because the denominator moves.** Re-running the 34

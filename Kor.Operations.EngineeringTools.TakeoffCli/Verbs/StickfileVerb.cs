@@ -15,7 +15,7 @@ using Kor.Operations.EngineeringTools.PdfToSafe;
 //
 // WHAT IT WRITES, all into <outDir>:
 //
-//     <job>.e2k         the ETABS model
+//     out.e2k           the ETABS model
 //     report.txt        the WHY for every count - what was read, assumed, refused, and how to fix it
 //     questions.xlsx    the engineer's workbook: what the tool could not settle, one row per question
 //     model.png         every storey drawn on one sheet, so the model is LOOKED at, not counted
@@ -87,6 +87,24 @@ internal static class StickfileVerb
         var built = PdfOnlyBuild.Build(pdf, outDir, useScale, options, rulesDb,
             onSheet: null, stem: job, firstPage: first, lastPage: last);
 
+        // WHAT EVERY PAGE GAVE, one row each. PdfOnlyBuild does not write this - the corpus analyzer
+        // builds its own ledger and the verbs never did - so a single set had no way to see its own
+        // sheet table except by reading 30 KB of report. It is the first thing anyone asks for when a
+        // storey is empty: which drawing was supposed to draw it, and what did that drawing give?
+        string sheetsCsv = Path.Combine(outDir, "sheets.csv");
+        using (var w = new StreamWriter(sheetsCsv))
+        {
+            w.WriteLine("page,sheet_number,sheet_type,title,level,scale_note,scale_denominator,slabs,columns,walls,footings,lines,dxf_files,failure");
+            foreach (var s in built.Sheets.Sheets.OrderBy(s => s.Page))
+                w.WriteLine(string.Join(",", new[]
+                {
+                    s.Page.ToString(), Csv(s.SheetNumber), Csv(s.SheetType), Csv(s.Title), Csv(s.Level),
+                    Csv(s.ScaleNote), s.ScaleDenominator?.ToString() ?? "",
+                    s.Slabs.ToString(), s.Columns.ToString(), s.Walls.ToString(), s.Footings.ToString(),
+                    s.Lines.ToString(), Csv(string.Join(" | ", s.DxfFiles)), Csv(s.Failure),
+                }));
+        }
+
         Console.WriteLine();
         Console.WriteLine($"pages read: {built.Pages}   plan sheets: {built.Sheets.Sheets.Count(s => s.IsPlan)}   views written: {built.Sheets.Written}");
 
@@ -107,6 +125,7 @@ internal static class StickfileVerb
         Console.WriteLine($"  model   : {built.OutputE2k}");
         Console.WriteLine($"  report  : {Path.Combine(outDir, "report.txt")}");
         Console.WriteLine($"  levels  : {Path.Combine(outDir, "levels.csv")}");
+        Console.WriteLine($"  sheets  : {sheetsCsv}");
 
         if (questions)
         {
@@ -159,6 +178,13 @@ internal static class StickfileVerb
 
         return 0;
     }
+
+    /// <summary>One CSV field, quoted where it has to be: a sheet title carries commas and quotes.</summary>
+    private static string Csv(string? v) =>
+        string.IsNullOrEmpty(v) ? "" :
+        v.Contains(',') || v.Contains('"') || v.Contains('\n') || v.Contains('\r')
+            ? "\"" + v.Replace("\"", "\"\"") + "\""
+            : v;
 
     /// <summary>The five-digit job and its suffix out of a file name: "31005-01 2025-06-13 ….pdf".</summary>
     private static string? JobNumberIn(string name)
