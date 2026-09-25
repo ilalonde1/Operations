@@ -252,6 +252,7 @@ public static class TakeoffCliHelp
 {
     public static IReadOnlyList<TakeoffCliCommand> Commands { get; } =
     [
+        new("stickfile", "takeoff stickfile <stickfile.pdf> <outDir> [--scale N] [--job 31005-01] [--pages A-B] [--rules-db <conn>] [--no-render] [--no-questions]", "ONE STICK FILE IN, EVERY OUTPUT OUT: the .e2k model, report.txt, questions.xlsx, model.png with every storey drawn, levels.csv, sheets.csv and the dxf/ views."),
         new("pdf-readable", "takeoff pdf-readable <pdf> [first] [last]", "Check whether a PDF has readable vector text."),
         new("pdf-takeoff", "takeoff pdf-takeoff <pdf> <out.dxf> [--page N] [--pages A-B] [--scale 96] [--markup] [--kor-layers] [--rules-db <conn>]", "Take a drawing PDF's structure off to DXF, reading the drawing itself unless --markup."),
         new("pdf-inventory", "takeoff pdf-inventory <pdf> [--pages A-B] [--scale N] [--rules-db <conn>] [--json out.json]", "Ledger every content class on each page: read, discarded, unread, ignored, unaccounted."),
