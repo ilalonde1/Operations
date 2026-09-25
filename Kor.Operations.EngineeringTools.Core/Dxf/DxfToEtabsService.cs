@@ -975,6 +975,45 @@ public static class DxfToEtabsService
         // A sheet whose own storey has been cut belongs nowhere, and says so.
         var matchNames = cutStoreys.Count == 0 ? storyNames : storiesBeforeCuts;
 
+        // A DRAWING THE TITLE WOULD NOT NAME TAKES ITS LEVEL FROM WHERE IT SITS (intake step 144).
+        //
+        // Ian, 2026-09-24: "rather than skipping an unknown completely … make a best guess, then LOOK
+        // at the result as a sanity check, then proceed - whilst showing clearly in the question
+        // workbook that this was an assumption."
+        //
+        // The inference is in LevelsFromSheetOrder and answers ONLY where the arithmetic leaves no
+        // choice — measured at 99.8% over 1,776 drawings, against 58.9% for the looser guess, which
+        // was written and deleted. What it declines is step 143's question, which is still asked.
+        //
+        // Set on the sheet's own Levels, so everything downstream — MatchStories, the storey shift,
+        // the building cut — treats it exactly as it treats a title that parsed. A separate path for
+        // assumed levels would be a second set of rules to keep in step with the first.
+        var assumedLevels = new List<LevelsFromSheetOrder.Inferred>();
+        if (Environment.GetEnvironmentVariable("KOR_STEP144_OFF") != "1")
+            foreach (var guess in LevelsFromSheetOrder.Infer(sheetInfoByFile.Values.ToList()))
+            {
+                string file = sheetInfoByFile.Keys.FirstOrDefault(f =>
+                    string.Equals(Path.GetFileName(f), Path.GetFileName(guess.FileName), StringComparison.OrdinalIgnoreCase))
+                    ?? guess.FileName;
+
+                if (!sheetInfoByFile.TryGetValue(file, out var info) || info.Levels.Count > 0) continue;
+
+                sheetInfoByFile[file] = info with { Levels = guess.Levels };
+                assumedLevels.Add(guess);
+            }
+
+        if (assumedLevels.Count > 0)
+            warnings.Add(
+                $"⚠ ASSUMED, NOT READ: {assumedLevels.Count} drawing(s) do not say which level they " +
+                "draw, and were given one from where they sit between the drawings that do. Each is a " +
+                "guess this tool would rather make than leave a storey empty, and each is listed here " +
+                "so it can be overruled in one line: " +
+                string.Join("; ", assumedLevels
+                    .Select(a => $"{Path.GetFileName(a.FileName)} → level " +
+                                 $"{string.Join(", ", a.Levels)} ({a.Because})")) +
+                ". Where the count of drawings and the count of missing levels did not agree, nothing " +
+                "was assumed and the question is asked instead.");
+
         var outcomes = new List<SheetOutcome>();
         var readButNotPlaced = new List<(string Sheet, int Walls, int Columns, int Slabs)>();
         string? unplacedNote = null;

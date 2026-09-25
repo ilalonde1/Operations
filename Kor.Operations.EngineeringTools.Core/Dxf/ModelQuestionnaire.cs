@@ -578,6 +578,39 @@ public static class ModelQuestionnaire
         string? Flag(string contains) => report.Summary.Flags
             .FirstOrDefault(f => f.Contains(contains, StringComparison.OrdinalIgnoreCase));
 
+        // WHAT THE TOOL ASSUMED, SAID PLAINLY, WITH ITS WORKING (intake step 144, 2026-09-24).
+        //
+        // This is the other half of J8 and it comes first, because it is the row that is ALREADY IN
+        // THE MODEL. A storey she is asked about is a hole she can see; a level the tool decided for
+        // itself is a floor sitting in her file looking exactly like one she drew. The second needs
+        // saying more loudly than the first.
+        //
+        // It shows the working rather than the answer — "S2.06 sits between S2.05 (level 4) and
+        // S2.07 (level 6), and level 5 is the only one between them that no drawing claims" — because
+        // she can check that sentence in seconds against a drawing she knows, and cannot check a
+        // bare "we think this is level 5" at all.
+        if (Flag("ASSUMED, NOT READ") is { } assumed)
+        {
+            string working = assumed[(assumed.IndexOf("in one line:", StringComparison.Ordinal) is var k && k >= 0
+                ? k + "in one line:".Length
+                : 0)..].Split(". Where the count")[0].Trim();
+
+            yield return new ModelQuestion("A2", "Levels this tool assumed rather than read",
+                "THESE DRAWINGS DO NOT SAY WHICH LEVEL THEY SHOW, AND THE MODEL PUT THEM SOMEWHERE " +
+                $"ANYWAY — {working}. Each one is a floor in your file now. Correct any that are " +
+                "wrong; naming the level is enough.",
+                "The alternative was to leave those storeys with no floor at all, which is worse: a " +
+                "missing floor and a wrongly-placed one look the same in every count, and only this " +
+                "row tells them apart. A level was assumed ONLY where the drawings either side of it " +
+                "leave exactly one level unaccounted for — never where there was a choice to make.",
+                "A floor on the wrong storey looks exactly like a floor you drew, so nothing about it " +
+                "would ask you to check it. This row is that check.",
+                "Measured before it was trusted: over 1,776 drawings whose titles DID name a level, " +
+                "hiding the level and recovering it this way was right 480 times out of 481. The " +
+                "looser version of the same rule measured 59% and was deleted rather than shipped.")
+                { RuleTopic = "a-level-taken-from-where-the-sheet-sits" };
+        }
+
         // THE SET WE COULD NOT READ, HANDED BACK AS A QUESTION RATHER THAN SHIPPED QUIETLY.
         //
         // This goes first because it governs how every other row on the sheet is read: if half the

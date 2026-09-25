@@ -34,6 +34,7 @@ namespace Kor.Operations.EngineeringTools.Core.Tests;
 /// no integer names, so the count comes out wrong and the run is declined — or, worse, comes out
 /// right for the wrong reason and places a floor one storey off.
 /// </summary>
+[Collection(SheetNamingVocabularyCollection.Name)]   // names PlanSheetNaming, which reads the shared mutable static
 public class ALevelIsTakenFromWhereTheSheetSitsTests
 {
     private static PlanSheetInfo Sheet(string file, params int[] levels) =>
@@ -131,6 +132,33 @@ public class ALevelIsTakenFromWhereTheSheetSitsTests
 
         // Not a sheet number at all.
         Assert.Null(LevelsFromSheetOrder.StemOf("some drawing.dxf"));
+    }
+
+    [Fact]
+    public void AFullPathIsReadTheSameAsABareName()
+    {
+        // ⚠ THIS IS THE TEST THAT WAS MISSING, and its absence cost the whole rule. Every other test
+        // in this file hands over a bare file name; the PIPELINE hands over a full path, because
+        // PlanSheetInfo.FileName is whatever PlanSheetNaming.Parse was given. The sheet-number
+        // pattern is anchored at ^, so against a path it matched nothing, Infer returned an empty
+        // list on every real set, and all eight tests here stayed green.
+        //
+        // Found by rebuilding 31005-01 and reading the report — the assumption line was simply not
+        // there — which is the same lesson as the last two defects in this pair of steps: the
+        // artifact is the check, not the test.
+        Assert.Equal("S2.06", LevelsFromSheetOrder.StemOf(
+            @"C:\Users\x\AppData\Local\Temp\kor-drawings\corpus\31005-01\dxf\S2.06.1_1_OUTLINE PLAN.dxf"));
+
+        var sheets = new List<PlanSheetInfo>
+        {
+            Sheet(@"C:\d\S2.01_1_LEVEL 1 PLAN.dxf", 1),
+            Sheet(@"C:\d\S2.02_1_OUTLINE PLAN CHANGE LEVEL.dxf"),
+            Sheet(@"C:\d\S2.03_1_LEVEL 3 PLAN.dxf", 3),
+        };
+
+        var one = Assert.Single(LevelsFromSheetOrder.Infer(sheets));
+        Assert.Equal([2], one.Levels);
+        Assert.Equal(@"C:\d\S2.02_1_OUTLINE PLAN CHANGE LEVEL.dxf", one.FileName);
     }
 
     [Fact]

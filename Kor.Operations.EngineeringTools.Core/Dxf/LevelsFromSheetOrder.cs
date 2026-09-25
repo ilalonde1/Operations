@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using System.Text.RegularExpressions;
 
 namespace Kor.Operations.EngineeringTools.Dxf;
@@ -101,7 +101,13 @@ public static class LevelsFromSheetOrder
     /// </summary>
     internal static string? StemOf(string fileName)
     {
-        var m = SheetNumber.Match(fileName);
+        // ⚠ THE BASE NAME, because PlanSheetInfo.FileName is whatever Parse was handed, and in the
+        // pipeline that is a FULL PATH. This pattern is anchored at ^, so against
+        // "C:\…\dxf\S2.06.1_1_….dxf" it matched nothing and the whole rule silently did nothing on
+        // every real set while all eight unit tests — written with bare names — stayed green.
+        // Caught by rebuilding 31005-01 and reading the report, not by the tests.
+        // PlanSheetNaming.Parse and TitleOf both take the base name first; so does this now.
+        var m = SheetNumber.Match(Path.GetFileName(fileName));
         if (!m.Success) return null;
 
         string[] parts = m.Groups[1].Value.Split('.');
@@ -116,12 +122,29 @@ public static class LevelsFromSheetOrder
                 NumberStyles.Integer, CultureInfo.InvariantCulture, out int n) ? n : 0))
             .ToArray();
 
+    /// <summary>
+    /// The sheet SERIES: S2 from S2.05, S0 from S0.00.
+    ///
+    /// ⚠ THE SERIES IS THE WHOLE FIRST COMPONENT, NOT JUST THE LETTER, and 31005-01 is why. That set
+    /// holds two views of every drawing: S0.00_3 "LEVEL L01 PLAN CONCRETE OUTLINE", whose title reads
+    /// perfectly but which carries NO STRUCTURAL OUTLINES and never places, and S2.02.1, which
+    /// carries the structure under a title the block scrambled. Taking only the letter put both in
+    /// one sequence, so the empty S0 views CLAIMED every level in the building and the S2 gaps had
+    /// nothing left to be — the rule found nothing on the set it was written for.
+    ///
+    /// A level claimed by a view that draws nothing is not claimed. Scoping ordering AND claims to
+    /// the series keeps an index or general-notes series from speaking for the plan series, which is
+    /// also how the drawings are actually organised: S0 general, S1 notes and diagrams, S2 plans.
+    /// </summary>
+    internal static string SeriesOf(string stem)
+    {
+        int dot = stem.IndexOf('.');
+        return dot < 0 ? stem : stem[..dot];
+    }
+
     private static int Compare(string a, string b)
     {
-        // The letter prefix first — S1.21 is a different series from S2.01 and they do not interleave.
-        string pa = new(a.TakeWhile(char.IsLetter).ToArray());
-        string pb = new(b.TakeWhile(char.IsLetter).ToArray());
-        int byPrefix = string.Compare(pa, pb, StringComparison.OrdinalIgnoreCase);
+        int byPrefix = string.Compare(SeriesOf(a), SeriesOf(b), StringComparison.OrdinalIgnoreCase);
         if (byPrefix != 0) return byPrefix;
 
         var ka = SortKey(a);
@@ -153,27 +176,41 @@ public static class LevelsFromSheetOrder
                 list.Add(sheet);
             }
 
-        var order = byStem.Keys.ToList();
-        order.Sort(Compare);
+        var allStems = byStem.Keys.ToList();
+        allStems.Sort(Compare);
 
         // A stem's levels are its views' together: the half that parsed speaks for the drawing.
-        var levelsOf = order.ToDictionary(
+        var levelsOf = allStems.ToDictionary(
             s => s,
             s => byStem[s].SelectMany(v => v.Levels).Distinct().OrderBy(n => n).ToList(),
             StringComparer.OrdinalIgnoreCase);
 
+        var found = new List<Inferred>();
+
+        // ONE SERIES AT A TIME. See SeriesOf: an index series whose views draw nothing must not claim
+        // the levels the plan series is trying to account for.
+        foreach (var series in allStems.GroupBy(SeriesOf, StringComparer.OrdinalIgnoreCase))
+            InferWithin(series.ToList(), byStem, levelsOf, found);
+
+        return found;
+    }
+
+    private static void InferWithin(
+        List<string> order,
+        IReadOnlyDictionary<string, List<PlanSheetInfo>> byStem,
+        IReadOnlyDictionary<string, List<int>> levelsOf,
+        List<Inferred> found)
+    {
         // ANY sheet's claim counts here, not just the anchors either side. A level drawn on a sheet
-        // somewhere else in the set is not unaccounted for, and handing it to a gap would put two
+        // somewhere else in the SERIES is not unaccounted for, and handing it to a gap would put two
         // drawings on one storey.
-        var claimed = new HashSet<int>(levelsOf.Values.SelectMany(l => l));
+        var claimed = new HashSet<int>(order.SelectMany(s => levelsOf[s]));
 
         // A stem that names a parkade level, the roof, the foundation or nothing but a word is not an
         // anchor in the numbered sequence and cannot bound a run.
         bool IsNumberedAnchor(string stem) =>
             levelsOf[stem].Count > 0
             && byStem[stem].All(v => v.ParkadeLevels.Count == 0 && !v.IsRoof && !v.IsFoundation);
-
-        var found = new List<Inferred>();
 
         for (int i = 0; i < order.Count; i++)
         {
@@ -217,7 +254,5 @@ public static class LevelsFromSheetOrder
 
             i = j - 1;
         }
-
-        return found;
     }
 }

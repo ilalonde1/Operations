@@ -77,18 +77,61 @@ This is the rule Ian asked for, bounded by what the corpus says it is worth.
   drawings this runs on in anger are ones that did NOT. They are not guaranteed to be the same
   population. It is the best estimate available and it is a strong one, but it is an estimate.
 
-## The prediction, for when it is wired into placement
+## The prediction
 
-Not yet done — `LevelsFromSheetOrder` currently has **no callers**, so nothing in the pipeline has
-changed and the six-set gate cannot see it.
-
-1. **31005-01 gains L5 and L8**, taking it from 8 of 24 storeys floored to 10 of 24, and its plate
-   area up from 10.6% of hers.
+1. **31005-01 gains L5 and L8**, taking it from 8 of 24 storeys floored to 10 of 24.
 2. **No set that reads well loses anything.** A sheet whose title named a level is never overwritten.
 3. **The six-set gate moves only where a banked set has a gap sheet**, and if it moves at all the
    change must be a storey gaining a floor — never a storey losing one.
-4. Every inferred level appears in the workbook as an **assumption**, with its working
-   (`sheet S2.06 sits between S2.05 (level 4) and S2.07 (level 6) …`), not just its answer.
+4. Every inferred level appears in the workbook as an **assumption**, with its working, not just its
+   answer.
+
+## What happened — and the two defects the unit tests could not see
+
+Prediction 1 holds, **after two faults that were both invisible to the ten tests in this rule's own
+file and both found by rebuilding 31005-01 and reading the report.**
+
+    BEFORE   THIS SET'S DRAWINGS NAME 24 STOREYS AND ONLY  8 OF THEM RECEIVED A FLOOR
+    AFTER    THIS SET'S DRAWINGS NAME 24 STOREYS AND ONLY 10 OF THEM RECEIVED A FLOOR
+
+    ⚠ ASSUMED, NOT READ: 2 drawing(s) … S2.06.1 → level 5 (sheet S2.06 sits between S2.05
+    (level 4) and S2.07 (level 6), and level 5 is the only one between them that no drawing
+    claims); S2.08.1 → level 8 (…).
+
+### 1. The sheet-number pattern is anchored at `^`, and the pipeline passes a FULL PATH
+
+`PlanSheetInfo.FileName` is whatever `PlanSheetNaming.Parse` was handed, which in the pipeline is
+`C:\…\dxf\S2.06.1_1_….dxf`. Every unit test here passed a bare name. So `StemOf` matched nothing,
+`Infer` returned an empty list on every real set, and **all eight tests stayed green.**
+`PlanSheetNaming.Parse` and `TitleOf` both take the base name first; now so does this.
+
+### 2. ⭐ An empty index series had already CLAIMED every level
+
+This is the one worth remembering. 31005-01 holds **two views of every drawing**:
+
+    S0.00_3_LEVEL L01 PLAN CONCRETE OUTLINE.dxf          title reads perfectly
+    S2.02.1_1_OUTLINE PLAN CHANGE LEVEL CONCRETE …       title scrambled, carries the structure
+
+The `S0.00` views are an index series. Their titles are clean and they contain **nothing**:
+
+> `S0.00_3_LEVEL L01 PLAN CONCRETE OUTLINE.dxf: no structural outlines found on the expected
+> layers — not placed.`
+
+Ordering by the letter prefix alone put both series in one sequence, so those empty views claimed
+levels 1 through 22 and the `S2` gaps had nothing left to be. **A level claimed by a view that draws
+nothing is not claimed.** Scoping both the ordering and the claims to the SERIES — the whole first
+component, `S0` / `S1` / `S2` — fixes it, and matches how the drawings are actually organised: S0
+general, S1 notes and diagrams, S2 plans.
+
+Re-measured after the change, the back-test **improved**: 485 right, 1 wrong — five more recovered,
+no new errors.
+
+### And it corrects the 143 diagnosis
+
+31005-01's problem was never *"the title block is unreadable."* The set contains a perfectly
+readable title for every drawing — on views that carry no geometry and never place. The readable
+copy and the usable copy are different files. That is a different fault from the one 143 names, and
+it is still open.
 
 ## What would stop the bank
 
