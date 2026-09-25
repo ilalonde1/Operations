@@ -28,7 +28,32 @@ claimed about "before" is not measurable.
 **Step 145 is the win:** +239 storeys carrying a floor across 16 sets, **0 lost**. 31005-01 went
 8 → 19 of 24 storeys, 14 → 26 floors, 204 → 375 walls, 103 → 237 columns.
 
-## THE OPEN QUESTION — where 96% of the gap is
+## ⚠ READ THIS BEFORE QUOTING ANY PERCENTAGE
+
+**The percentage is NOT comparable across runs, because the denominator moves.** Re-running the 34
+under-half sets with 143+144+145 banked:
+
+| | run 45 | now |
+|---|---:|---:|
+| storeys reading under half | 72 | **95** |
+| **our** plate area on them | 3,713,619 | **3,729,302** sq ft |
+| **her** plate area on them | 5,093,137 | **5,293,613** sq ft |
+| reads | 72.9% | 70.4% |
+
+Ours went UP and the percentage went DOWN. Steps 144 and 145 build storeys we did not have before,
+so more of HER storeys are now shared and comparable — the denominator grew by 200,476 sq ft. The
+model is strictly better and the ratio is worse.
+
+- `31005-01` — shared storeys 9 → 19, ours **8,035 → 23,468**, hers 75,694 → 160,245.
+- `30989-01` — ours unchanged at 61,823, hers **114,633 → 230,558**, under-half 4 → **19**. Step 145
+  gave it the `LEVEL 4 19` range, so fifteen storeys now exist and match hers **and every one is
+  empty**. The range fix created the storeys; the floor is still missing.
+
+⭐ This is the same fault as reading `slabs` in the sheet ledger, or a `null`, or a bare layer count:
+**a number means nothing until you know what it counts.** Quote areas, not ratios, unless both runs
+share a denominator.
+
+## THE OPEN QUESTION — where the gap is
 
 **1,379,518 of the 1,436,462 sq ft gap** sits in the **34 of 48** sets that have at least one storey
 reading under half of hers — **72 storeys**.
