@@ -318,6 +318,51 @@ pinch class — most of those have siblings too.
 34 sets, and it is NOT mainly the empty-outline path. The next question has to start from those 72
 storeys directly — what does each one HAVE — rather than from a sheet-level symptom.
 
+### ⭐ CLASS C CHARACTERISED (2026-09-25) — it is not a separate fault, and the podium is where it lives
+
+Class C was framed as "plates short, 50-84%" — implying a systematic under-read on every storey.
+**That was wrong, and measuring it rather than assuming it is the whole point.**
+
+| | |
+|---|---:|
+| class C gap | 815,462 sq ft |
+| **held in under-half storeys** | **537,224 — 66%** |
+| spread across every other storey | 278,238 — 34% |
+
+So class C is the SAME fault as class B — a storey with no plate or a tiny one — occurring in sets
+that are otherwise fine. Two thirds of it sits in **34 storeys across 13 sets**, and **17 of the 34
+are completely empty**.
+
+#### And those 34 are not spread through the building — they are the PODIUM
+
+| band | storeys | gap sq ft | share | avg her area |
+|---|---:|---:|---:|---:|
+| **L1-L3 (podium)** | **16** | **338,588** | **63%** | **27,970** |
+| L4-L9 | 10 | 96,251 | 18% | 10,841 |
+| L10+ | 5 | 82,403 | 15% | 17,808 |
+| ROOF | 3 | 19,982 | 4% | 6,957 |
+
+**Podium floors are 2.6x the area of a typical storey and that is where the tool fails.** The single
+largest holes in the corpus are all low: 70061-01 L2 (58,995), 31202-01 L13 (44,553, empty),
+30990-01 L1 (38,642), 31017-01 L3 (33,975), 30989-01 L1 (32,344, empty), 31202-01 L2 (32,014).
+
+#### The 16 podium storeys decompose into three causes, from their own view names
+
+- **Several plans for one storey, one per building.** `Level 3 Plan Tower A` + `Level 3 Plan Tower
+  B` (31017-01); `Level 6 Plan Tower A` + `Level 6 Plan Commercial`; `TOWER A - LEVEL 1 PLAN`
+  (30990-01). The podium spans both towers and the commercial block, and we take one of them.
+  12 of the 16 are drawn by more than one view.
+- **The outline sheet closes nothing and the reinforcing sheet does** — 31202-01 L13 is
+  `LEVEL 13 PLAN -CONCRETE OUTLINE` + `LEVEL 13 PLAN -REINFORCING`, and it is EMPTY. That is step
+  147's fault, which is stashed and blocked.
+- **A single sheet whose outline simply does not close.** `31104-01 L2` is the cleanest witness in
+  the corpus: ONE view, `S2.05.1_1_LEVEL 2 PLAN - CONCRETE OUTLINE.dxf`, **5,154 BEAM entities,
+  ZERO on KOR_C_SLABEDG**, 23,609 sq ft missing. Rendered, the perimeter is there in fragments —
+  left edge, part of the top, a long bottom run — with large gaps between, and it never closes.
+
+⭐ **So the next rule is about the PODIUM and about a storey drawn by several building plans** —
+not about closure thresholds, and not about any of the five candidates already measured dead.
+
 ### Guard sets — if either moves, the change is wrong
 
 `30972-01` (20 of 20 storeys floored, 85% of her area) and `30993-01` (39 of 40, 91%).
