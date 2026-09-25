@@ -1712,6 +1712,22 @@ public static class DxfToEtabsService
 
             slabThicknessBySheet.TryGetValue(sheet.FileName, out var slabThickness);
 
+            // A DRAWING THAT GAVE NOTHING AND SAID NOTHING (2026-09-25).
+            //
+            // Of the 26 plan sheets in the corpus that were placed and produced no floor, 14 gave
+            // no reason at all: walls 0, columns 0, slabs 0, flags empty. Seven are ROOF plans.
+            // Nothing anywhere said whether the drawing was empty, drawn on layers this office does
+            // not use, or read and discarded — so the only way to find out was to open the DXF.
+            //
+            // The repo's rule is that a refusal states what it saw and how to change it. A sheet
+            // that produced no member of ANY kind is the loudest refusal there is and it was the
+            // one making no sound.
+            if (geometry.Walls.Count == 0 && geometry.Columns.Count == 0 && geometry.Slabs.Count == 0
+                && geometry.Partitions.Count == 0 && geometry.Flags.Count == 0)
+            {
+                geometry.Flags.Add(NothingWasReadFrom(sheet.FileName, request.DxfFolder, classification));
+            }
+
             outcomes.Add(new SheetOutcome(
                 sheet.FileName, sheet.Label, sheet.BuildingTag, sheet.Levels, matched,
                 geometry.Walls.Count, geometry.Columns.Count, geometry.Slabs.Count, geometry.Flags)
@@ -3470,6 +3486,53 @@ public static class DxfToEtabsService
             "sheets were read and their structure is in the file; what could not be established is " +
             "which storey each of them draws.",
         };
+    }
+
+    /// <summary>
+    /// Why a placed drawing produced no wall, column, partition or slab — with what IS on it.
+    /// </summary>
+    /// <remarks>
+    /// Fourteen sheets in the corpus came out this way and said nothing at all, so the only way to
+    /// learn anything was to open the DXF. Three causes look identical from the outside and the
+    /// layer census tells them apart: the drawing is genuinely empty of structure (a roof plan
+    /// often is); it carries structure on layer names this office's patterns do not match; or it
+    /// carries them and every candidate was refused, in which case there would be other flags and
+    /// this never runs.
+    /// </remarks>
+    private static string NothingWasReadFrom(string file, string? dxfFolder, PlanClassificationOptions classification)
+    {
+        var layers = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        try
+        {
+            string path = File.Exists(file) ? file : Path.Combine(dxfFolder ?? string.Empty, Path.GetFileName(file));
+            if (File.Exists(path)) layers = DxfLayerCensus.OfFile(path).ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase);
+        }
+        catch (IOException)
+        {
+            // The census is the nice-to-have; the sentence saying nothing was read is the point.
+        }
+
+        if (layers.Count == 0)
+            return "NOTHING WAS READ FROM THIS DRAWING — no wall, column, partition or slab, and no " +
+                   "candidate was refused either. Its layers could not be counted, so this is as much " +
+                   "as can be said from here. TO FIX: open the DXF and check it carries structural " +
+                   "linework at all; a key plan or a note sheet placed as a plan reads exactly like this.";
+
+        var biggest = layers.OrderByDescending(kv => kv.Value).Take(8)
+            .Select(kv => $"{kv.Key} ({kv.Value})")
+            .ToList();
+
+        return "NOTHING WAS READ FROM THIS DRAWING — no wall, column, partition or slab, and no " +
+               $"candidate was refused either, so nothing else in this report mentions it. It carries " +
+               $"{layers.Values.Sum()} entities on {layers.Count} layer(s), the busiest being: " +
+               string.Join(", ", biggest) +
+               ". TO FIX: if structure is drawn on one of those layers, add its name to the layer " +
+               "patterns — walls " + string.Join(";", classification.WallLayerPatterns.Take(4)) +
+               ", columns " + string.Join(";", classification.ColumnLayerPatterns.Take(4)) +
+               ", slab edges " + string.Join(";", classification.SlabLayerPatterns.Take(4)) +
+               " — with --wall-layers/--column-layers/--slab-layers or the banked " +
+               "dxf.wall-layer-patterns rule. If it is a key plan or a notes sheet, it is not a plan " +
+               "and the sheet-name patterns should say so.";
     }
 
     private static IReadOnlyList<string> FloorsWiderThanTheirStructure(E2kDocument doc)
