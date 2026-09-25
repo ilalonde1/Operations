@@ -116,3 +116,58 @@ ledger is the evidence, if it survives to where anyone can read it.
 - The closure characterisation and its dead ends:
   `docs/codex/CODEX-THE-FLOOR-THE-WALLS-DO-NOT-CLOSE.md` and its RESPONSE.
 - Narrative: `docs/pdf-intake/part-3-s61-onward.md`, log 170.
+
+---
+
+# ⚠ CORRECTION, 2026-09-24 21:2X — the audit broke this brief's central claim, and was right
+
+Codex refused to name the failed condition and challenged the one inference the brief was built on:
+
+> *"zero entities on `KOR_C_SLABEDG` does not prove zero outline strokes reached the PDF classifier:
+> this exporter normally puts completed slab polygons on that layer, while unsuccessful outline
+> linework can remain on `BEAM`."*
+
+**Verified, and the brief's §1 is wrong.** The witness DXF holds **1,756 `BEAM` occurrences** against
+205 walls and 121 columns. Rendered on its own (`dxf-render --layers BEAM`, 531 segments), the BEAM
+layer is **the entire building perimeter** — a near-closed outline of the floor plate, with the core,
+the stair and the shaft X-marks inside it.
+
+**The outline is not missing. It is drawn, it is in the DXF, and slab-edge classification did not
+claim it.** My first render showed only the structural layers — 136 walls, 80 columns — and I read
+that emptiness as the drawing's, not the reader's.
+
+So the defect is real and the direction was wrong:
+
+| | the brief said | what is true |
+|---|---|---|
+| the outline | missing from the drawing | present, on `BEAM`, near-closed |
+| the fix | upstream extraction is losing it | classification is not claiming it |
+| the engineer's ruling | cannot apply, no perimeter walls | still cannot apply — but a perimeter EXISTS to read |
+
+⭐ **And this is the SECOND time today the same mistake.** Step 142 read a `null` from
+`EnclosedByWallPanels` as "the union does not close"; this read zero entities on a layer as "the
+outline is missing". Both are **an absence in our own output read as an absence in the drawing.**
+That is the class, and the discipline against it is the one this repo already has: *look at the
+artifact*. The first render did not disprove it because I rendered only the layers I expected the
+answer to be on.
+
+## What the audit establishes that stands
+
+The rest of the response is not affected and is the map for the next attempt:
+
+- **`GeometryFilterService.cs:2764` is bookkeeping after recovery, not the slab-edge classifier.**
+  There are two routes to an exported slab — a closed path taken directly (`BecameSlab`) and the
+  assembled-line route — so counting `BecameSlabEdge` fates misses the first entirely.
+- **`PathFate` survives intake but not the split.** `SheetRecord` keeps the ledger; `SheetViews.Part`
+  carries title, filename and geometry only, and `DxfExporter` never receives it. So the evidence
+  that would name the failed gate exists on the page and is dropped before the view.
+- **The safe check is set-level, not per view.** An outline-titled view with no exported slab
+  outline, where no sibling view serving the same storey supplies one. It must count exported slab
+  polygons rather than fates, and 30993-01 — 21 empty outline views and 91% of her area — is the
+  set that proves per-view warning would be wrong.
+
+## The next question, which is a different one
+
+Not *"where did the outline go"* but **"why does a drawn, near-closed perimeter on BEAM not become a
+slab edge?"** — with the path ledger carried as far as the view so the failed gate can be named
+rather than guessed.
