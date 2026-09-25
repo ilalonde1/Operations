@@ -376,7 +376,38 @@ public static class PdfOnlyBuild
                     LevelsUnit = "mm",
                     // the reader paired the faces with the fill in hand; the composer's open-chain pairing is for Revit DXFs (step 75)
                     Classification = new PlanClassificationOptions { PairOpenFaces = false },
-                    Compose = new ComposeOptions { IncludeFloors = true, InferMissingFloors = false, MembersRiseToStoreyAbove = true },
+                    // A STOREY WITH NO DRAWING TAKES A FLOOR FROM ITS NEAREST LIKE-SHAPED NEIGHBOUR
+                    // (step 148, 2026-09-25). Measured target set in docs/pdf-intake/step148-prediction.md:
+                    // 32 sets, 130 unfloored storeys, 112 of which had NO drawing placed on them at all.
+                    //
+                    // The rule is not new — E2kGeometryComposer has carried it since before step 100,
+                    // shape-matched, carrying the donor's openings, writing its own warning naming every
+                    // storey and its donor. This line hardcoded it OFF for the only route a stick file
+                    // takes, so a ladder of 35 storeys drawn with 20 plans shipped with 28 empty.
+                    //
+                    // Ian, 2026-09-25: "make an educated guess on any of your questions - and build the
+                    // model and mark anything you did guess at as yellow - i.e. I guessed here - so if
+                    // it's fucked up that's why. Otherwise NOTHING will ever build."
+                    Compose = new ComposeOptions
+                    {
+                        IncludeFloors = true,
+                        // ⚠ MEASURED 2026-09-25 AND LEFT OFF. Turning it on and rendering both arms of
+                        // 31065-01 showed what it actually does on a two-tower site: ten storeys each
+                        // gained ONE ~22,646 sq ft plate spanning the whole site — the podium footprint —
+                        // while the right-hand tower, which is the storey that actually has no floor,
+                        // still had none. About 226,000 sq ft of plate the engineer does not have, and
+                        // the real hole untouched.
+                        //
+                        // The cause is an ORDER, not a threshold. Donor selection scores a candidate
+                        // against what STANDS on the storey, and on a two-tower storey the walls and
+                        // columns span both towers, so the site-wide plate resembles that extent
+                        // perfectly. The repo's own rule — compose the site once, CUT AFTER — is being
+                        // broken here: the donor is picked before the building cut.
+                        //
+                        // Opt in with KOR_STEP148_ON=1 to measure it; see docs/pdf-intake/step148-prediction.md.
+                        InferMissingFloors = Environment.GetEnvironmentVariable("KOR_STEP148_ON") == "1",
+                        MembersRiseToStoreyAbove = true,
+                    },
                     RuleSettingsConnection = rulesConnection,
                     RequireRuleSettings = true,
                 });
