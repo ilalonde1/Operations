@@ -5340,3 +5340,83 @@ OUTLINE` parses correctly, so the parser half works. She answers by sheet number
 recovers that at any effort — which is exactly the case this step exists for.
 
 Details: `docs/pdf-intake/step143-prediction.md`.
+
+## 170. One lost dash was costing 239 storeys; and the closure fault is 96% of what is left (2026-09-24 15:00 → 20:0X)
+
+### Step 145 — "LEVEL 9 19 PLAN" is eleven storeys
+
+`S2.09.1_1_LEVEL 9 19 PLAN.dxf` draws L9 through L19. The dash did not survive extraction, so nothing
+sits between the numbers: `Range` needs a range word, `LevelList` needs a comma or ampersand, and the
+title fell through to two `SingleLevel` matches. L10 to L18 were never drawn.
+
+**It hid because at two wide the two readings are the same answer.** `LEVEL L03-04` is 3 and 4 whether
+you read the endpoints or the range, and every narrow case in the corpus looked right. Only a wide
+range separates them — and then by nine storeys at a time.
+
+Corroboration that it is a range and not a list: the set's own index series writes the same drawing as
+`S0.00_14_LEVEL L09-19`, with the dash.
+
+Measured over the 16 affected sets, rebuilt both ways:
+
+| job | storeys floored | | job | storeys floored | |
+|---|---|---|---|---|---|
+| 30820-01 | 14 → **51** | +37 | 30694-01 | 38 → **61** | +23 |
+| 30971-01 | 23 → **57** | +34 | 30961-01 | 19 → **36** | +17 |
+| 30884-01 | 25 → **58** | +33 | 30867-01 | 35 → **50** | +15 |
+| 30892-01 | 21 → **53** | +32 | 31005-01 | 8 → **19** | +11 |
+| 31007-01 | 22 → **52** | +30 | 30756-01 | 10 → **17** | +7 |
+
+**10 of 16 gained, 0 lost, +239 storeys carrying a floor and +273 floor objects.** The guard sets did
+not move: 30972-01 still 20 of 20, 30993-01 still 39 of 40. The three unchanged sets are the ODD/EVEN
+alternating-floor ones the rule declines on purpose — 30864-01 draws "LEVEL 7 25 ODD NUMBERS" and
+"LEVEL 6 26 EVEN NUMBERS" for one tower, and a contiguous expansion would put a floor on ten storeys
+neither drawing serves.
+
+⚠ The rule first required a gap of two or more, on the assumption that "LEVEL 6 7" already read as
+both. **Its own test proved otherwise**: the reader matches only the number FOLLOWING the level word,
+so that title was reading as `[6]` and losing the 7. The narrow case was never harmless — it was the
+same fault one storey at a time, which is exactly why nobody had caught it.
+
+### ⭐ And a gate, because this class has now cost three rules
+
+`EveryRuleStatesItsTargetSetBeforeItIsBankedTests`. The class, in one sentence:
+
+> **A RULE MEASURED FOR HOW OFTEN IT IS RIGHT, AND NEVER FOR HOW MANY SETS IT TOUCHES, IS BUILT
+> BEFORE ANYONE KNOWS WHETHER IT IS WORTH BUILDING.**
+
+Step 141 earned nothing — sized against a pool step 140 had already consumed. Step 142 earned nothing
+— the shape was measured and the mechanism never was. Step 144 is **99.8% accurate over 1,776
+drawings and reaches two sets of 297**: the back-test was leave-one-out, which measures whether the
+inference is RIGHT and cannot measure whether anything NEEDS it.
+
+The rule against this already existed — `project_rule_judged_on_its_target_set_2026_09_18`, BINDING,
+"build the target set and the model yardstick, or park" — and it lost to momentum. Which is this
+file's oldest lesson: **a rule that lives only in prose loses; the gate is what changes the next
+action.** Every bisect knob now names a prediction doc stating its reach as a number, or the build is
+red. Six knobs predate the gate and are listed; that list may only shrink.
+
+### The closure fault: 96% of everything left, and two triggers measured dead
+
+| | |
+|---|---:|
+| total gap to her, 48 comparable sets | **1,436,462 sq ft** |
+| sets with a storey reading under half | **34 of 48** |
+| **their share of the gap** | **1,379,518 sq ft — 96%** |
+
+30989-01 is the witness: **27 storeys, 7 floors**. Its sheets place, and since 145 they name their
+storeys — and still no plate, because *"No slab edge on this drawing would close, and the walls
+enclose a ring of 625 sq ft … a core, not the floor."*
+
+Two candidate triggers, both now measured and both dead:
+
+- **Widen the bridge until the ring closes.** The code already computes this and discards it. 12 ft:
+  38 sheets, 51,066 sq ft. 24 ft: 58 sheets, 187,792. 48 ft: 22 sheets, 53,973. Only the 12-ft tier
+  is defensible — at 24 and 48 the "opening" is a missing building face — and on sets with her model
+  it is worth **16,296 sq ft against a 583,781 sq ft gap. 2.8%.**
+- **"Most of the storey's walls stand outside the plate."** Precision never exceeds 30% at any
+  threshold; at ≥90% walls-outside only 7 of 45 storeys read under half of hers.
+
+Two dead ends on one question is rule 10's trigger: stop guessing and characterise. Handed to a fresh
+reader as `docs/codex/CODEX-THE-FLOOR-THE-WALLS-DO-NOT-CLOSE.md`, with both dead ends written down so
+they are not re-walked, and with step 142's negative result stated plainly — combining a storey's
+walls across its sheets returned null on all 42 combined walls, so the union does not close either.
