@@ -360,7 +360,29 @@ largest holes in the corpus are all low: 70061-01 L2 (58,995), 31202-01 L13 (44,
   ZERO on KOR_C_SLABEDG**, 23,609 sq ft missing. Rendered, the perimeter is there in fragments —
   left edge, part of the top, a long bottom run — with large gaps between, and it never closes.
 
-⭐ **So the next rule is about the PODIUM and about a storey drawn by several building plans** —
+#### ⛔ AND THE "WE TAKE ONE BUILDING" HYPOTHESIS IS FALSE — checked before it was built
+
+`31017-01 L3` reads 24,307 of her 58,282 and is drawn by `Level 3 Plan Tower A` and
+`Level 3 Plan Tower B`. The obvious story is that we take one tower. **We do not.** Three sheets
+name L3 and all three are placed and read — S2.10 gives 33 slab outlines, S2.11 gives 13, S2.21
+gives 15. Sixty-one outlines for a storey that scores 24,307.
+
+The report says what actually happens:
+
+    L3: a 15,926 sq ft plate stands beyond the storey's 19,162 sq ft floor - another building,
+        a ramp, a canopy, a podium edge, or a floor read twice; left as read for the engineer
+    L3: a 5,144 sq ft plate stands beyond the storey's 19,162 sq ft floor - ...
+
+The model HOLDS all three plates: 19,162 + 15,926 + 5,144 = **40,232 sq ft**. The yardstick counts
+**24,307** because it counts only area INSIDE HER FOOTPRINT — so those plates sit outside the
+building she modelled. 31017-01 has two towers and **her model may hold only one of them.**
+
+⚠ **That means part of class C's "gap" is a measurement artefact, not a missing floor**, and the
+size of that part is NOT yet known. Before any podium rule is written, the thing to measure is: of
+the 34 storeys, how many have OUR plates present but outside her footprint, versus genuinely no
+plate at all? The yardstick already prints `ours beyond` per storey — it has not been read.
+
+⭐ **The next rule is about the PODIUM and about a storey drawn by several building plans** —
 not about closure thresholds, and not about any of the five candidates already measured dead.
 
 ### Guard sets — if either moves, the change is wrong
