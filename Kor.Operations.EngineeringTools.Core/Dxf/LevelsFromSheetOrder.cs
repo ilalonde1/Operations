@@ -142,6 +142,20 @@ public static class LevelsFromSheetOrder
         return dot < 0 ? stem : stem[..dot];
     }
 
+    /// <summary>
+    /// Whether a drawing already says what it is by some means other than a level number: a parkade
+    /// level, the roof, the lift-overrun roof, the foundation, or a top floor named by a word.
+    ///
+    /// Each of these leaves <see cref="PlanSheetInfo.Levels"/> empty and is emphatically NOT an
+    /// unnamed drawing. <see cref="PlanSheetNaming"/> keeps them as separate flags rather than as
+    /// levels, so anything reasoning about "did this sheet say where it goes" has to ask all of
+    /// them — the Codex audit's finding, and the repo's own <c>HasPlacement</c> omits
+    /// <c>IsTopFloor</c>, which is why this asks directly rather than borrowing it.
+    /// </summary>
+    private static bool NamesSomethingElse(IEnumerable<PlanSheetInfo> views) =>
+        views.Any(v => v.ParkadeLevels.Count > 0 || v.IsRoof || v.IsElevatorRoof
+                       || v.IsFoundation || v.IsTopFloor);
+
     private static int Compare(string a, string b)
     {
         int byPrefix = string.Compare(SeriesOf(a), SeriesOf(b), StringComparison.OrdinalIgnoreCase);
@@ -221,8 +235,20 @@ public static class LevelsFromSheetOrder
             while (j < order.Count && !IsNumberedAnchor(order[j])) j++;
             if (j >= order.Count) break;
 
+            // ⚠ A GAP IS A DRAWING THAT NAMES NOTHING — NOT MERELY ONE WITH NO LEVEL NUMBER.
+            //
+            // Found by the Codex audit, 2026-09-24: "Preserve every already parsed placement,
+            // including parkade, roof, foundation, and top-floor meanings; checking only
+            // Levels.Count is insufficient." A ROOF plan has no Levels. So does a foundation, a
+            // parkade plan and a loft. One of those sitting BETWEEN two numbered anchors read as a
+            // gap and was handed a storey number, which is the precise fault this rule was written
+            // to avoid committing — a floor on a storey the engineer never drew.
+            //
+            // The run then fails the "every stem between the anchors is a gap" test below and is
+            // declined entirely, which is right: a stretch with a roof in the middle is not a clean
+            // sequence of numbered storeys and nothing about it is arithmetic.
             var gaps = order[(i + 1)..j]
-                .Where(s => levelsOf[s].Count == 0)
+                .Where(s => levelsOf[s].Count == 0 && !NamesSomethingElse(byStem[s]))
                 .ToList();
 
             // A stem in the run that DOES name something — a parkade level, the roof — is not a gap,

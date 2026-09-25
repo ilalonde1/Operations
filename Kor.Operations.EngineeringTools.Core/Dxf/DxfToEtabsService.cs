@@ -996,7 +996,14 @@ public static class DxfToEtabsService
                     string.Equals(Path.GetFileName(f), Path.GetFileName(guess.FileName), StringComparison.OrdinalIgnoreCase))
                     ?? guess.FileName;
 
-                if (!sheetInfoByFile.TryGetValue(file, out var info) || info.Levels.Count > 0) continue;
+                // ⚠ NEVER OVER A SHEET THAT ALREADY SAYS WHERE IT GOES, by any means — not just by a
+                // level number. A roof, a parkade level, the foundation and a top floor named by a
+                // word all leave Levels empty and all mean something. Codex audit, 2026-09-24.
+                // Belt and braces with the same test inside Infer: this is the line that WRITES.
+                if (!sheetInfoByFile.TryGetValue(file, out var info)
+                    || info.Levels.Count > 0
+                    || info.ParkadeLevels.Count > 0
+                    || info.IsRoof || info.IsElevatorRoof || info.IsFoundation || info.IsTopFloor) continue;
 
                 sheetInfoByFile[file] = info with { Levels = guess.Levels };
                 assumedLevels.Add(guess);

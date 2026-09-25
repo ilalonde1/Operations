@@ -182,6 +182,37 @@ public class ALevelIsTakenFromWhereTheSheetSitsTests
     }
 
     [Fact]
+    public void ASheetThatNamesTheROOFOrAPARKADEIsNeverGivenAStoreyNumber()
+    {
+        // ⚠ FOUND BY THE CODEX AUDIT, 2026-09-24, and it is the exact fault this rule promised not
+        // to commit. A gap was "a stem with no Levels" — but a ROOF sheet has no Levels either, and
+        // neither does a foundation, a parkade or a top-floor plan. One sitting BETWEEN two numbered
+        // anchors therefore read as a gap and was handed a storey number, overwriting what the
+        // drawing actually says it is. The audit's words: "checking only Levels.Count is
+        // insufficient."
+        //
+        // The earlier test only caught the case where the parkade BOUNDS the run. In the middle it
+        // was invisible, and a roof given level 2 is a floor on a storey the engineer never drew.
+        foreach (var odd in new[]
+                 {
+                     Roof("S2.02_1_ROOF PLAN.dxf"),
+                     Parkade("S2.02_1_PARKADE P1 PLAN.dxf", 1),
+                     new PlanSheetInfo("S2.02_1_FOUNDATION PLAN.dxf", null, [], false, "f") { IsFoundation = true },
+                     new PlanSheetInfo("S2.02_1_LOFT PLAN.dxf", null, [], false, "l") { IsTopFloor = true },
+                 })
+        {
+            var sheets = new List<PlanSheetInfo>
+            {
+                Sheet("S2.01_1_LEVEL 1 PLAN.dxf", 1),
+                odd,
+                Sheet("S2.03_1_LEVEL 3 PLAN.dxf", 3),
+            };
+
+            Assert.Empty(LevelsFromSheetOrder.Infer(sheets));
+        }
+    }
+
+    [Fact]
     public void WhereTheCountsDisagreeNothingIsGuessed()
     {
         // ⭐ THE MEASUREMENT DECIDED THIS, NOT TASTE. Leave-one-out over run 45's 1,776 drawings:
