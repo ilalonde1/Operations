@@ -131,3 +131,4 @@ __pycache__/
 # committing ~2.5 MB of binary per draw would bloat the repo within a fortnight.
 docs/architecture/v[0-9][0-9][0-9]/
 TestResults/
+tools/BdOpportunityDedup/output/
