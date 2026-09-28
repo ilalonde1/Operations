@@ -33,8 +33,20 @@ LastErrorMessage, LastEventCount";
     {
         ArgumentNullException.ThrowIfNull(seed);
 
+        // ⚠ KEYED ON NAME, NOT CalendarUrl. It used to key on the URL, and that
+        //   made a corrected URL indistinguishable from a brand-new source: on
+        //   2026-09-23 a migration fixed VICA's dead domain (vica.bc.ca does not
+        //   resolve) and the very next Worker start could not find the old URL,
+        //   so it INSERTED A SECOND VICA. No error, no warning, just two rows —
+        //   and it would have done the same to ACEC-BC after its feed URL moved
+        //   to ?ical=1. The name is the source's identity; the URL is a fact
+        //   about it that is expected to change.
+        //
+        //   The seed is still the FLOOR, not the master: an existing row keeps
+        //   whatever it has, so a deliberate change made in the database is not
+        //   stamped back to the seeded value on the next restart.
         var sql = $@"
-IF NOT EXISTS (SELECT 1 FROM opportunities.IndustryEventSource WHERE CalendarUrl = @calendarUrl)
+IF NOT EXISTS (SELECT 1 FROM opportunities.IndustryEventSource WHERE Name = @name)
 BEGIN
     INSERT INTO opportunities.IndustryEventSource
         (Name, Organizer, CalendarUrl, SiteUrl, ParserKey, Region, DefaultMarket,
@@ -46,7 +58,7 @@ END;
 
 SELECT {AllColumns}
 FROM opportunities.IndustryEventSource
-WHERE CalendarUrl = @calendarUrl;";
+WHERE Name = @name;";
 
         await using var con = new SqlConnection(_connectionString);
         await con.OpenAsync(ct).ConfigureAwait(false);

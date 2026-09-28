@@ -307,6 +307,10 @@ builder.Services.AddSingleton<Kor.Opportunities.Data.IndustryEvents.IEventMarket
 
 builder.Services.AddSingleton<Kor.Opportunities.Data.IndustryEvents.IIndustryEventCalendarParser,
     Kor.Opportunities.Data.IndustryEvents.IcbaCardCalendarParser>();
+// RFC 5545. One format instead of one bespoke reader per association — a new
+// association that publishes iCal is a config row, not a parser.
+builder.Services.AddSingleton<Kor.Opportunities.Data.IndustryEvents.IIndustryEventCalendarParser,
+    Kor.Opportunities.Data.IndustryEvents.IcalCalendarParser>();
 
 builder.Services.AddHttpClient(nameof(Kor.Opportunities.Data.IndustryEvents.IndustryEventIngestService), c =>
 {

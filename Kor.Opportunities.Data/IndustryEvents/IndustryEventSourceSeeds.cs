@@ -55,9 +55,9 @@ public static class IndustryEventSourceSeeds
         new IndustryEventSourceSeed(
             Name: "VICA",
             Organizer: "Vancouver Island Construction Association (VICA)",
-            CalendarUrl: "https://www.vica.bc.ca/events/",
+            CalendarUrl: "https://www.vicabc.ca/events/",
             ParserKey: Unmapped,
-            SiteUrl: "https://www.vica.bc.ca/",
+            SiteUrl: "https://www.vicabc.ca/",
             Region: "CA-BC",
             DefaultMarket: "Vancouver Island",
             DefaultEventType: "association",
@@ -88,12 +88,17 @@ public static class IndustryEventSourceSeeds
         new IndustryEventSourceSeed(
             Name: "ACEC-BC",
             Organizer: "Association of Consulting Engineering Companies BC (ACEC-BC)",
-            CalendarUrl: "https://www.acec-bc.ca/events/",
-            ParserKey: Unmapped,
-            SiteUrl: "https://www.acec-bc.ca/",
+            // The Events Calendar serves RFC 5545 here. Verified 2026-09-28.
+            CalendarUrl: "https://www.acec-bc.ca/events/?ical=1",
+            ParserKey: IcalCalendarParser.Key,
+            SiteUrl: "https://www.acec-bc.ca/events/",
             Region: "CA-BC",
             DefaultMarket: "British Columbia",
             DefaultEventType: "association",
-            IsActive: false),
+            KorRelevance:
+                "The consulting-engineering association: KOR's own peers and the firms it "
+                + "subs to. Its client-engagement evenings put municipal directors of "
+                + "engineering and development services in a room.",
+            IsActive: true),
     ];
 }
