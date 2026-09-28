@@ -24,7 +24,12 @@ internal static class DetailReconciler
     internal static async Task<ReconcileReport> CompareAsync(
         DetailIntake intake, KorStandardsReadRepository catalogue, TimeSpan bridgeTimeout)
     {
-        var snapshot = await intake.ListDetailViewsAsync(bridgeTimeout);
+        // An EMPTY known-set on purpose: reconcile exists to check the catalogue, so it reads the
+        // View Prefix on every view rather than trusting the catalogue's own record of which views
+        // it holds. That is the slow path (~25s against the 1,079-view standards model) and it is
+        // the right one here — the fast path is for the Add screen, which only needs the views
+        // nobody has catalogued yet.
+        var snapshot = await intake.ListDetailViewsAsync(new HashSet<long>(), bridgeTimeout);
         var rows = await catalogue.LoadCatalogueBindingAsync();
 
         var byViewId = snapshot.Views.ToDictionary(x => x.Id);

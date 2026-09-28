@@ -718,8 +718,10 @@ public partial class StandardDetailsWindow
             return;
         }
 
+        if (_korStandardsRepo == null) { MessageBox.Show(this, "KorStandards catalog is not configured.", "Standard Details — Add detail", MessageBoxButton.OK, MessageBoxImage.Warning); return; }
+
         var intake = new DetailIntake(new DrafterBridgeClient(options.BridgeRoot), options);
-        var dlg = new AddDetailWindow(_promoterRepo, intake, _userIdentity) { Owner = this };
+        var dlg = new AddDetailWindow(_promoterRepo, _korStandardsRepo, intake, _userIdentity) { Owner = this };
         dlg.ShowDialog();
 
         if (dlg.AddedDetailNumbers.Count > 0)

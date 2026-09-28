@@ -25,6 +25,7 @@ public partial class AddDetailWindow : Window
     private static readonly TimeSpan StampTimeout = TimeSpan.FromSeconds(30);
 
     private readonly KorStandardsPromoterRepository _promoter;
+    private readonly KorStandardsReadRepository _catalogue;
     private readonly DetailIntake _intake;
     private readonly string _actor;
 
@@ -34,10 +35,12 @@ public partial class AddDetailWindow : Window
     /// <summary>The numbers minted in this sitting, so the caller can report and refresh.</summary>
     internal List<string> AddedDetailNumbers { get; } = [];
 
-    internal AddDetailWindow(KorStandardsPromoterRepository promoter, DetailIntake intake, string actor)
+    internal AddDetailWindow(KorStandardsPromoterRepository promoter, KorStandardsReadRepository catalogue,
+        DetailIntake intake, string actor)
     {
         InitializeComponent();
         _promoter = promoter ?? throw new ArgumentNullException(nameof(promoter));
+        _catalogue = catalogue ?? throw new ArgumentNullException(nameof(catalogue));
         _intake = intake ?? throw new ArgumentNullException(nameof(intake));
         _actor = string.IsNullOrWhiteSpace(actor) ? Environment.UserName : actor;
     }
@@ -56,7 +59,14 @@ public partial class AddDetailWindow : Window
         SetBusy(true, "Asking the Revit session which views exist...");
         try
         {
-            var snapshot = await _intake.ListDetailViewsAsync(ListTimeout);
+            // The catalogue's own view ids first, because that read is milliseconds and it spares
+            // the bridge from reporting 46 parameters each for a thousand views it already knows.
+            var known = (await _catalogue.LoadCatalogueBindingAsync())
+                .Where(x => x.ViewElementId.HasValue)
+                .Select(x => x.ViewElementId!.Value)
+                .ToHashSet();
+
+            var snapshot = await _intake.ListDetailViewsAsync(known, ListTimeout);
             _uncatalogued = snapshot.Uncatalogued;
 
             ApplyFilter();

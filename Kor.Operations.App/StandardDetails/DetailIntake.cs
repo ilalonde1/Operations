@@ -9,10 +9,18 @@ using static Kor.Operations.StandardDetails.BridgeJson;
 namespace Kor.Operations.StandardDetails;
 
 /// <summary>One drafting view or legend in the standards model, and the KOR-D number it carries (if any).</summary>
-internal sealed record ViewInModel(long Id, string Name, string Kind, string Prefix)
+/// <param name="KnownToCatalogue">
+/// True when the catalogue already holds an occurrence for this view id. When it does, the View
+/// Prefix is not read at all and <see cref="Prefix"/> stays empty — see
+/// <see cref="DetailIntake.ListDetailViewsAsync"/> for why.
+/// </param>
+internal sealed record ViewInModel(long Id, string Name, string Kind, string Prefix, bool KnownToCatalogue)
 {
-    /// <summary>True when this drawing is already in the catalogue.</summary>
-    internal bool IsCatalogued => IsDetailNumber(Prefix);
+    /// <summary>
+    /// True when this drawing is already a standard — either the catalogue knows the view, or the
+    /// view itself carries a KOR-D number somebody typed in without telling the catalogue.
+    /// </summary>
+    internal bool IsCatalogued => KnownToCatalogue || IsDetailNumber(Prefix);
 }
 
 /// <summary>What the model said, and whether the bridge was reachable at all.</summary>
@@ -62,10 +70,24 @@ internal sealed class DetailIntake
     internal string DocumentName => Path.GetFileName(_options.AuthoringPath);
 
     /// <summary>
-    /// Every drafting view and legend in the open model, with the View Prefix each one carries.
-    /// Views that carry no KOR-D are the candidates for "make this a standard detail".
+    /// Every drafting view and legend in the open model. Views that are not already standards are
+    /// the candidates for "make this a standard detail".
+    ///
+    /// WHY <paramref name="knownViewIds"/> EXISTS. getparams returns EVERY parameter on an element
+    /// — 46 of them on a drafting view — and there is no way to ask for one by name. Reading the
+    /// View Prefix on all 1,079 views in the standards model measured 25.1 seconds against the live
+    /// bridge on 2026-09-28, in four batches of 300. That is the same "takes far too long with no
+    /// visual cue" the sheet composer was pulled up for.
+    ///
+    /// But the catalogue already knows which view ids it holds, and that read is milliseconds. So
+    /// the prefix is only read for views the catalogue has NEVER heard of — which is the handful a
+    /// gatekeeper just drew, plus anything somebody numbered by hand. On the live model today that
+    /// is 0 of 1,079, and the screen opens instantly.
+    ///
+    /// Pass an empty set to force the slow, complete read (what reconcile wants when it is checking
+    /// the catalogue rather than trusting it).
     /// </summary>
-    internal async Task<ModelViewSnapshot> ListDetailViewsAsync(TimeSpan bridgeTimeout)
+    internal async Task<ModelViewSnapshot> ListDetailViewsAsync(IReadOnlySet<long> knownViewIds, TimeSpan bridgeTimeout)
     {
         var reply = await _bridge.SendAsync(new { verb = "query", kind = "views" }, bridgeTimeout);
         if (!reply.Ok)
@@ -105,10 +127,14 @@ internal sealed class DetailIntake
                 "The open model reports no drafting views or legends. Open AUTHORING in the Revit session the bridge is watching, then try again.");
         }
 
-        var prefixes = await ReadViewPrefixesAsync(candidates.Select(x => x.Id).ToList(), bridgeTimeout);
+        var unknown = candidates.Where(x => !knownViewIds.Contains(x.Id)).Select(x => x.Id).ToList();
+        var prefixes = await ReadViewPrefixesAsync(unknown, bridgeTimeout);
 
         var views = candidates
-            .Select(x => new ViewInModel(x.Id, x.Name, x.Kind, prefixes.TryGetValue(x.Id, out var p) ? p : ""))
+            .Select(x => new ViewInModel(
+                x.Id, x.Name, x.Kind,
+                prefixes.TryGetValue(x.Id, out var p) ? p : "",
+                knownViewIds.Contains(x.Id)))
             .OrderBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
@@ -167,6 +193,10 @@ internal sealed class DetailIntake
     private async Task<IReadOnlyDictionary<long, string>> ReadViewPrefixesAsync(IReadOnlyList<long> viewIds, TimeSpan bridgeTimeout)
     {
         var prefixes = new Dictionary<long, string>();
+        if (viewIds.Count == 0)
+        {
+            return prefixes;
+        }
 
         for (var index = 0; index < viewIds.Count; index += ParameterBatchSize)
         {
