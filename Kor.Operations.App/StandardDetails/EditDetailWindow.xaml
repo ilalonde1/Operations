@@ -35,8 +35,10 @@
                      ToolTip="Recorded in the governance log beside the change."/>
 
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,14,0,0">
-                <Button Width="90" Height="32" Margin="0,0,8,0" Content="Cancel" Style="{StaticResource Button.Secondary}" Click="Cancel_Click"/>
-                <Button Width="90" Height="32" Content="Save" Click="Save_Click"/>
+                <Button Width="90" Height="34" Margin="0,0,8,0" Content="Cancel" Style="{StaticResource Button.Secondary}" Click="Cancel_Click"/>
+                <!-- Explicitly Primary: the theme's implicit Button style is Secondary, so an
+                     unstyled Save was indistinguishable from Cancel. -->
+                <Button Width="90" Height="34" Content="Save" Style="{StaticResource Button.Primary}" Click="Save_Click"/>
             </StackPanel>
         </StackPanel>
     </Border>

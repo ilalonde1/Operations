@@ -87,8 +87,11 @@
                               SelectionChanged="ViewsGrid_SelectionChanged"
                               MouseDoubleClick="ViewsGrid_MouseDoubleClick">
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="View name" Binding="{Binding Name}" Width="*"/>
-                            <DataGridTextColumn Header="Kind" Binding="{Binding Kind}" Width="110"/>
+                            <!-- MinWidth, not just star: rendered before any rows exist the star
+                                 column collapsed to about 20px and the header read "Vi". The view
+                                 name is the only thing being chosen from, so it may never squeeze. -->
+                            <DataGridTextColumn Header="View name" Binding="{Binding Name}" Width="*" MinWidth="280"/>
+                            <DataGridTextColumn Header="Kind" Binding="{Binding Kind}" Width="110" MinWidth="80"/>
                         </DataGrid.Columns>
                     </DataGrid>
 

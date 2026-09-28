@@ -26,8 +26,14 @@
                      ToolTip="Required. Example: superseded by KOR-D-00417, or withdrawn after the 2026 CSA update."/>
 
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,14,0,0">
-                <Button Width="90" Height="32" Margin="0,0,8,0" Content="Cancel" Style="{StaticResource Button.Secondary}" Click="Cancel_Click"/>
-                <Button x:Name="RetireButton" Width="110" Height="32" Content="Retire" Style="{StaticResource Button.Secondary}" Click="Retire_Click"/>
+                <Button Width="90" Height="34" Margin="0,0,8,0" Content="Cancel" Style="{StaticResource Button.Secondary}" Click="Cancel_Click"/>
+                <!-- Button.Primary, and NOT the default. The theme makes Secondary the implicit
+                     style for every Button, so leaving this unstyled rendered Retire and Cancel as
+                     the same control down to the pixel - and one of them withdraws a standard
+                     detail from every drafter. Height 34, because the style's 10,6 padding plus
+                     borders plus a line of text needs exactly 32 and leaves nothing spare. -->
+                <Button x:Name="RetireButton" Width="110" Height="34" Content="Retire"
+                        Style="{StaticResource Button.Primary}" Click="Retire_Click"/>
             </StackPanel>
         </StackPanel>
     </Border>
