@@ -92,6 +92,47 @@ public sealed class BucketSyncNameSafetyTests
         Assert.Empty(fake.Deleted);
     }
 
+    // A file renamed between the folder listing and its upload (2026-09-28: a
+    // '- Copy.pdf' renamed to '(unsigned).pdf' mid-run) is not a failure: the
+    // rename fires its own watcher event. Before the fix it counted failed=1 and
+    // emailed an alert for a folder that was already correct.
+    [Fact]
+    public async Task File_renamed_after_listing_is_deferred_not_failed()
+    {
+        var root = MakeStickfileRoot("stays.pdf", "renamed-mid-run.pdf");
+        var fake = new FakeGraphFacade
+        {
+            BeforeUpload = path =>
+            {
+                if (Path.GetFileName(path) == "renamed-mid-run.pdf")
+                    File.Move(path, Path.Combine(Path.GetDirectoryName(path)!, "renamed-mid-run (unsigned).pdf"));
+            },
+        };
+        var r = await NewOp(fake).RunAsync(SyncBucket.ByName("Stickfile")!, root, isShadow: false, CancellationToken.None);
+
+        Assert.Equal(0, r.Failed);
+        Assert.Equal(1, r.Deferred);
+        Assert.Equal(1, r.Uploaded);
+        Assert.Equal(new[] { "stays.pdf" }, fake.StoreNames);
+    }
+
+    // The other side of the same rule: a missing-path error for a file that is
+    // STILL on disk is a real fault and must keep failing the run.
+    [Fact]
+    public async Task File_not_found_for_a_file_that_still_exists_still_fails()
+    {
+        var root = MakeStickfileRoot("present.pdf");
+        var fake = new FakeGraphFacade
+        {
+            BeforeUpload = path => throw new FileNotFoundException("simulated: a path the upload needs is missing", path),
+        };
+        var r = await NewOp(fake).RunAsync(SyncBucket.ByName("Stickfile")!, root, isShadow: false, CancellationToken.None);
+
+        Assert.True(File.Exists(Path.Combine(root, "present.pdf")));
+        Assert.Equal(1, r.Failed);
+        Assert.Equal(0, r.Deferred);
+    }
+
     // ---- Fake Graph drive: an in-memory folder keyed by item name. Only the
     // members BucketSyncOp calls do real work; the rest are not on this path.
     private sealed class FakeGraphFacade : IGraphFacade
@@ -99,6 +140,9 @@ public sealed class BucketSyncNameSafetyTests
         private readonly Dictionary<string, DriveItem> _store = new(StringComparer.OrdinalIgnoreCase);
         public List<string> Deleted { get; } = new();
         public IEnumerable<string> StoreNames => _store.Keys;
+        // Runs before an upload reads the local file -- lets a test rename or
+        // remove it in the window between the folder listing and the upload.
+        public Action<string>? BeforeUpload { get; init; }
 
         public Task<string> EnsureFolderAsync(string folderRelativePath, CancellationToken ct) => Task.FromResult("folder1");
 
@@ -112,6 +156,7 @@ public sealed class BucketSyncNameSafetyTests
 
         public Task<DriveItem> UploadSimpleAsync(string driveId, string folderId, string fileName, string localFilePath, CancellationToken ct)
         {
+            BeforeUpload?.Invoke(localFilePath);
             var fi = new FileInfo(localFilePath);
             var item = new DriveItem
             {

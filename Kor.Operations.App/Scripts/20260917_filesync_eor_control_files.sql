@@ -14,6 +14,9 @@
 -- Runs against KorTransmittals on KOR-APP01\SQLEXPRESS. Idempotent.
 -- =============================================================================
 
+USE KorTransmittals;   -- SSMS opens on master; without this the FileSync schema is "not found"
+GO
+
 IF NOT EXISTS (SELECT 1 FROM sys.tables t JOIN sys.schemas s ON s.schema_id = t.schema_id
                WHERE s.name = 'FileSync' AND t.name = 'EorControlFiles')
 BEGIN

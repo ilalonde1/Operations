@@ -171,6 +171,16 @@ internal sealed class BucketSyncOp
                 _logger.LogWarning("Deferred '{Name}' -> '{Sp}' (access denied: {Msg})", f.Name, spTargetFolder, ua.Message);
                 deferred++;
             }
+            catch (IOException io) when (io is FileNotFoundException or DirectoryNotFoundException && !File.Exists(f.FullName))
+            {
+                // Renamed, moved or deleted between the folder listing and this upload
+                // ('x - Copy.pdf' renamed to 'x (unsigned).pdf' mid-run, 2026-09-28).
+                // Nothing is lost: the rename or delete raises its own watcher event and
+                // the next pass syncs whatever the file became. Only when the file is
+                // really gone -- a missing path for a file that still exists is a fault.
+                _logger.LogInformation("Deferred '{Name}' -> '{Sp}': renamed, moved or deleted after the folder was listed.", f.Name, spTargetFolder);
+                deferred++;
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Upload failed '{Name}' -> '{Sp}'", f.Name, spTargetFolder);
