@@ -266,6 +266,143 @@ internal sealed class KorStandardsPromoterRepository
         return returnValue.Value is int value ? value : Convert.ToInt32(returnValue.Value ?? 0);
     }
 
+    // ------------------------------------------------------------------------------------ intake
+    // Everything above this line edits a detail that already exists. Until migration 102 there was
+    // nothing below it: the catalogue could be curated but never added to, and all 612 rows carried
+    // CreatedBy = 'mint-018 (matcher collapse)' from the August crawl.
+
+    /// <summary>
+    /// Mints the next KOR-D number and binds it to a Revit drafting view, in one act. The detail and
+    /// its occurrence are written together because every consumer joins them — a detail with no
+    /// occurrence exists in the register and nowhere a drafter can reach.
+    /// </summary>
+    internal async Task<(bool ok, string detailNumber, string message)> AddDetailAsync(
+        NewDetailRequest request, string changedBy, string basis)
+    {
+        try
+        {
+            await using var cn = new SqlConnection(_connectionString);
+            await cn.OpenAsync();
+            await using var cmd = new SqlCommand("detail.AddDetail", cn);
+            cmd.CommandType = CommandType.StoredProcedure;
+            cmd.CommandTimeout = SqlTimeouts.UiFacing;
+            AddGovernanceParameters(cmd, changedBy, basis);
+            AddNVarChar(cmd, "@Title", 400, request.Title);
+            AddNVarChar(cmd, "@Discipline", 32, request.Discipline ?? string.Empty);
+            AddNVarChar(cmd, "@Kind", 16, request.Kind ?? string.Empty);
+            cmd.Parameters.Add("@IsSheet", SqlDbType.Bit).Value = request.IsSheet;
+            AddNVarChar(cmd, "@DocumentName", 260, request.DocumentName);
+            cmd.Parameters.Add("@ViewElementId", SqlDbType.BigInt).Value = request.ViewElementId;
+            AddNVarChar(cmd, "@ViewName", 400, request.ViewName);
+            AddNVarChar(cmd, "@ViewKind", 32, request.ViewKind);
+
+            await using var r = await cmd.ExecuteReaderAsync();
+            if (!await r.ReadAsync())
+            {
+                return (false, string.Empty, "The catalogue accepted the detail but did not return its number; nothing was confirmed.");
+            }
+
+            var number = r.GetStringOrEmpty(0);
+            return (true, number, $"{number} added as unverified. Capture its drawing, then approve it.");
+        }
+        catch (SqlException ex)
+        {
+            return (false, string.Empty, ex.Message);
+        }
+    }
+
+    /// <summary>Retires a detail. The reason is not optional — see KOR-D-00003.</summary>
+    internal async Task<(bool ok, string message)> RetireDetailAsync(string detailNumber, string reason, string changedBy)
+        => await CallAndReportAsync("detail.RetireDetail", $"{detailNumber} retired.", cmd =>
+        {
+            AddNVarChar(cmd, "@DetailNumber", 24, detailNumber);
+            AddNVarChar(cmd, "@Reason", 400, reason);
+            AddNVarChar(cmd, "@ChangedBy", 150, changedBy);
+        });
+
+    internal async Task<(bool ok, string message)> RestoreDetailAsync(string detailNumber, string basis, string changedBy)
+        => await CallAndReportAsync("detail.RestoreDetail", $"{detailNumber} restored.", cmd =>
+        {
+            AddNVarChar(cmd, "@DetailNumber", 24, detailNumber);
+            AddNVarChar(cmd, "@Basis", 1000, basis);
+            AddNVarChar(cmd, "@ChangedBy", 150, changedBy);
+        });
+
+    /// <summary>
+    /// Kind and IsSheet had setters; the title and the discipline did not, so a typo in either was
+    /// an sa job. Pass null to leave a field alone; pass "" for the discipline to clear it.
+    /// </summary>
+    internal async Task<(bool ok, string message)> SetDetailTitleDisciplineAsync(
+        string detailNumber, string? title, string? discipline, string changedBy, string basis)
+        => await CallAndReportAsync("detail.SetDetailTitleDiscipline", $"{detailNumber} updated.", cmd =>
+        {
+            AddGovernanceParameters(cmd, changedBy, basis);
+            AddNVarChar(cmd, "@DetailNumber", 24, detailNumber);
+            AddNVarChar(cmd, "@Title", 400, title ?? string.Empty);
+            // NOT AddNVarChar: it folds "" to NULL, and here the two mean different things —
+            // NULL leaves the discipline as it is, "" clears it.
+            AddNVarCharDistinguishingEmpty(cmd, "@Discipline", 32, discipline);
+        });
+
+    /// <summary>Upsert on (DocumentName, ViewElementId) — how reconcile heals a renamed view.</summary>
+    internal async Task<(bool ok, string message)> RecordOccurrenceAsync(
+        string documentName, long viewElementId, string viewName, string viewKind,
+        string? detailNumber, string changedBy, string basis)
+        => await CallAndReportAsync("detail.RecordOccurrence", "Occurrence recorded.", cmd =>
+        {
+            AddGovernanceParameters(cmd, changedBy, basis);
+            AddNVarChar(cmd, "@DocumentName", 260, documentName);
+            cmd.Parameters.Add("@ViewElementId", SqlDbType.BigInt).Value = viewElementId;
+            AddNVarChar(cmd, "@ViewName", 400, viewName);
+            AddNVarChar(cmd, "@ViewKind", 32, viewKind);
+            AddNVarChar(cmd, "@DetailNumber", 24, detailNumber ?? string.Empty);
+        });
+
+    internal async Task<(bool ok, string message)> RemoveOccurrenceAsync(
+        string documentName, long viewElementId, string basis, string changedBy)
+        => await CallAndReportAsync("detail.RemoveOccurrence", "Occurrence removed.", cmd =>
+        {
+            AddNVarChar(cmd, "@DocumentName", 260, documentName);
+            cmd.Parameters.Add("@ViewElementId", SqlDbType.BigInt).Value = viewElementId;
+            AddNVarChar(cmd, "@Basis", 1000, basis);
+            AddNVarChar(cmd, "@ChangedBy", 150, changedBy);
+        });
+
+    /// <summary>
+    /// The shape every intake proc shares: it returns RowsAffected first, and a Message second when
+    /// it has something more specific to say than "done". Zero rows is reported as a failure — the
+    /// proc found nothing to change, and telling the gatekeeper it worked would be a lie.
+    /// </summary>
+    private async Task<(bool ok, string message)> CallAndReportAsync(
+        string proc, string successMessage, Action<SqlCommand> bind)
+    {
+        try
+        {
+            await using var cn = new SqlConnection(_connectionString);
+            await cn.OpenAsync();
+            await using var cmd = new SqlCommand(proc, cn);
+            cmd.CommandType = CommandType.StoredProcedure;
+            cmd.CommandTimeout = SqlTimeouts.UiFacing;
+            bind(cmd);
+
+            await using var r = await cmd.ExecuteReaderAsync();
+            if (!await r.ReadAsync())
+            {
+                return (true, successMessage);
+            }
+
+            var affected = r.IsDBNull(0) ? 0 : r.GetInt32(0);
+            var reported = r.FieldCount > 1 && !r.IsDBNull(1) ? r.GetString(1) : null;
+            return affected > 0
+                ? (true, reported ?? successMessage)
+                : (false, reported ?? "Nothing was changed.");
+        }
+        catch (SqlException ex)
+        {
+            return (false, ex.Message);
+        }
+    }
+
     internal static void AddGovernanceParameters(SqlCommand cmd, string changedBy, string basis)
     {
         AddNVarChar(cmd, "@Basis", 1000, basis);
@@ -277,4 +414,24 @@ internal sealed class KorStandardsPromoterRepository
         var p = cmd.Parameters.Add(name, SqlDbType.NVarChar, size);
         p.Value = string.IsNullOrWhiteSpace(value) ? DBNull.Value : value;
     }
+
+    private static void AddNVarCharDistinguishingEmpty(SqlCommand cmd, string name, int size, string? value)
+    {
+        var p = cmd.Parameters.Add(name, SqlDbType.NVarChar, size);
+        p.Value = value is null ? DBNull.Value : value;
+    }
 }
+
+/// <summary>
+/// One drawing being made a standard: what the gatekeeper picked in the model, plus what they typed
+/// about it. The view id and document name are the binding the number is minted against.
+/// </summary>
+internal sealed record NewDetailRequest(
+    string Title,
+    string? Discipline,
+    string? Kind,
+    bool IsSheet,
+    string DocumentName,
+    long ViewElementId,
+    string ViewName,
+    string ViewKind);

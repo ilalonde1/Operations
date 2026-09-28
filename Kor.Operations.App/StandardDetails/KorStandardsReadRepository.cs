@@ -11,6 +11,7 @@ namespace Kor.Operations.StandardDetails;
 internal sealed record PaletteDetailRow(string DetailNumber, string Title, string Discipline, string Kind, bool IsSheet, string ViewGroup, string Confidence, bool IsPlaceable, bool VariantsDiverge, int VariantCount);
 internal sealed record SheetComposerDetailRow(string DetailNumber, string Title, string Discipline, string Kind, string CanonicalViewName);
 internal sealed record PublishedDetailViewRow(string DetailNumber, long ViewElementId);
+internal sealed record CatalogueBindingRow(string DetailNumber, string Title, string DocumentName, long? ViewElementId, string ViewName);
 internal sealed record ComponentRegisterRow(string Palette, string Label, string FamilyName, string TypeName, string Origin, bool IsRetired, int InstanceCount, int UsedInDetails);
 // The Quick Insert catalog: the placeable, governed parts (family+type) production reads. Same
 // confidence ladder as details, so a part is Approved/Pending exactly like a detail.
@@ -182,6 +183,42 @@ ORDER BY DetailNumber;";
             {
                 rows.Add(new PublishedDetailViewRow(detailNumber, r.GetInt64(1)));
             }
+        }
+
+        return rows;
+    }
+
+    /// <summary>
+    /// The catalogue half of reconcile: every live detail with the Revit view it claims to live in.
+    /// Reads detail.vw_CatalogueBinding (migration 102) so the join is written once, in the database,
+    /// rather than re-derived by each caller. Retired details are excluded — a retired detail whose
+    /// view is gone is not drift, it is the expected end state.
+    /// </summary>
+    internal async Task<IReadOnlyList<CatalogueBindingRow>> LoadCatalogueBindingAsync()
+    {
+        const string sql = @"
+SELECT DetailNumber, Title, ISNULL(DocumentName, N''), ViewElementId, ISNULL(ViewName, N'')
+FROM detail.vw_CatalogueBinding
+WHERE RetiredAtUtc IS NULL
+ORDER BY DetailNumber;";
+
+        var rows = new List<CatalogueBindingRow>();
+        await using var cn = new SqlConnection(_connectionString);
+        await cn.OpenAsync();
+        await using var cmd = new SqlCommand(sql, cn);
+        cmd.CommandTimeout = SqlTimeouts.UiFacing;
+
+        await using var r = await cmd.ExecuteReaderAsync();
+        while (await r.ReadAsync())
+        {
+            rows.Add(new CatalogueBindingRow(
+                r.GetStringOrEmpty(0).Trim(),
+                r.GetStringOrEmpty(1),
+                r.GetStringOrEmpty(2),
+                // NULL when a detail has no occurrence at all — itself a finding, so it is carried
+                // through as null rather than dropped.
+                r.IsDBNull(3) ? null : r.GetInt64(3),
+                r.GetStringOrEmpty(4)));
         }
 
         return rows;

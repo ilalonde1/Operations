@@ -180,21 +180,37 @@
                         <TextBlock Text="Approve the details drafters are allowed to place." Foreground="#FFAEB6BF" FontSize="12" Margin="0,1,0,0"/>
                     </StackPanel>
                 </StackPanel>
-                <Button x:Name="ToolsButton" HorizontalAlignment="Right" VerticalAlignment="Center"
-                        Style="{StaticResource ToolsButtonStyle}" Click="ToolsButton_Click"
-                        ToolTip="Advanced actions: compose a sheet, publish to master, refresh">
-                    <TextBlock Text="Tools  &#9662;" Foreground="#FFE8ECEF" FontSize="13"/>
-                    <Button.ContextMenu>
-                        <ContextMenu>
-                            <MenuItem Header="Compose Sheet..." Click="ComposeSheet_Click"/>
-                            <MenuItem Header="Publish to Master..." Click="PublishToMaster_Click"/>
-                            <Separator/>
-                            <MenuItem Header="Sync Part Images" Click="SyncPartImages_Click"/>
-                            <Separator/>
-                            <MenuItem Header="Refresh" Click="Refresh_Click"/>
-                        </ContextMenu>
-                    </Button.ContextMenu>
-                </Button>
+                <StackPanel HorizontalAlignment="Right" VerticalAlignment="Center" Orientation="Horizontal">
+                    <!-- Adding a detail is the gatekeeper's main verb, so it is a button, not a
+                         menu item buried under Tools. Until migration 102 there was no way to do
+                         it at all and the app could only curate the 612 rows the August crawl
+                         inserted. -->
+                    <Button x:Name="AddDetailButton" Margin="0,0,10,0"
+                            Style="{StaticResource ToolsButtonStyle}" Click="AddDetail_Click"
+                            ToolTip="Take a drawing from the AUTHORING model and make it a numbered standard detail">
+                        <TextBlock Text="&#43;  Add detail" Foreground="#FFE8ECEF" FontSize="13"/>
+                    </Button>
+                    <Button x:Name="ToolsButton"
+                            Style="{StaticResource ToolsButtonStyle}" Click="ToolsButton_Click"
+                            ToolTip="Advanced actions: edit, retire, reconcile, compose a sheet, publish to master">
+                        <TextBlock Text="Tools  &#9662;" Foreground="#FFE8ECEF" FontSize="13"/>
+                        <Button.ContextMenu>
+                            <ContextMenu>
+                                <MenuItem x:Name="EditDetailMenuItem" Header="Edit title / discipline..." Click="EditDetail_Click"/>
+                                <MenuItem x:Name="RetireDetailMenuItem" Header="Retire detail..." Click="RetireDetail_Click"/>
+                                <Separator/>
+                                <MenuItem x:Name="ReconcileMenuItem" Header="Reconcile with the model..." Click="Reconcile_Click"/>
+                                <Separator/>
+                                <MenuItem Header="Compose Sheet..." Click="ComposeSheet_Click"/>
+                                <MenuItem Header="Publish to Master..." Click="PublishToMaster_Click"/>
+                                <Separator/>
+                                <MenuItem Header="Sync Part Images" Click="SyncPartImages_Click"/>
+                                <Separator/>
+                                <MenuItem Header="Refresh" Click="Refresh_Click"/>
+                            </ContextMenu>
+                        </Button.ContextMenu>
+                    </Button>
+                </StackPanel>
             </Grid>
         </Border>
 

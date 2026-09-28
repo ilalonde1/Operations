@@ -228,6 +228,7 @@ public partial class StandardDetailsWindow
                         Title = d.Title,
                         DetailNumber = d.DetailNumber,
                         Kind = d.Kind,
+                        Discipline = d.Discipline ?? string.Empty,
                         ViewGroup = d.ViewGroup,
                         GroupName = _sheetsMode ? SheetCollectionDisplay(d.ViewGroup) : string.IsNullOrWhiteSpace(d.Discipline) ? "Ungrouped" : d.Discipline,
                         CurrentOfficialText = d.IsPlaceable ? "Yes" : (d.VariantsDiverge ? "Diverges" : "No"),
@@ -699,6 +700,105 @@ public partial class StandardDetailsWindow
         {
             SetActivityMessage("Composed Standard Details sheet and created governance record.", BannerTone.Success);
             await LoadDocumentsUiAsync();
+        }
+    }
+
+    // ------------------------------------------------------------------------------------ intake
+    // Until migration 102 the app could curate the catalogue but never add to it: all 612 rows came
+    // from one migration in August, and the seven procedures it could call all edited rows that
+    // already existed. These four handlers are the missing verbs.
+
+    private async void AddDetail_Click(object sender, RoutedEventArgs e)
+    {
+        if (!EnsureCanApproveReject("add a standard detail")) return;
+        if (_promoterRepo == null) { MessageBox.Show(this, "KorStandards promoter is not configured (App.config: KorStandardsPromoterDb).", "Standard Details — Add detail", MessageBoxButton.OK, MessageBoxImage.Warning); return; }
+        if (_masterPublishOptions is not { IsConfigured: true } options)
+        {
+            MessageBox.Show(this, "App.config must define StandardDetails.AuthoringPath, StandardDetails.MasterPath and StandardDetails.BridgeRoot before a detail can be added — the number is bound to a Revit view, so the model has to be reachable.", "Standard Details — Add detail", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        var intake = new DetailIntake(new DrafterBridgeClient(options.BridgeRoot), options);
+        var dlg = new AddDetailWindow(_promoterRepo, intake, _userIdentity) { Owner = this };
+        dlg.ShowDialog();
+
+        if (dlg.AddedDetailNumbers.Count > 0)
+        {
+            SetActivityMessage(dlg.AddedDetailNumbers.Count == 1
+                ? $"Added {dlg.AddedDetailNumbers[0]}. It is unverified until its drawing is captured and approved."
+                : $"Added {dlg.AddedDetailNumbers.Count} details: {string.Join(", ", dlg.AddedDetailNumbers)}.", BannerTone.Success);
+            await LoadDocumentsUiAsync();
+        }
+    }
+
+    private async void EditDetail_Click(object sender, RoutedEventArgs e)
+    {
+        if (!EnsureCanApproveReject("edit a detail")) return;
+        if (_promoterRepo == null) { MessageBox.Show(this, "KorStandards promoter is not configured.", "Standard Details — Edit", MessageBoxButton.OK, MessageBoxImage.Warning); return; }
+        if (DocumentsGrid.SelectedItem is not DocumentRow { IsDetail: true } detail || string.IsNullOrWhiteSpace(detail.DetailNumber))
+        {
+            MessageBox.Show(this, "Select a detail first.", "Standard Details — Edit", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var dlg = new EditDetailWindow(detail.DetailNumber, detail.Title, detail.Discipline) { Owner = this };
+        if (dlg.ShowDialog() != true) return;
+
+        var (ok, message) = await _promoterRepo.SetDetailTitleDisciplineAsync(
+            detail.DetailNumber, dlg.NewTitle, dlg.NewDiscipline, _userIdentity, dlg.Why);
+
+        SetActivityMessage(message, ok ? BannerTone.Success : BannerTone.Error);
+        if (!ok) { MessageBox.Show(this, message, "Standard Details — Edit", MessageBoxButton.OK, MessageBoxImage.Error); return; }
+        await LoadDocumentsUiAsync();
+    }
+
+    private async void RetireDetail_Click(object sender, RoutedEventArgs e)
+    {
+        if (!EnsureCanApproveReject("retire a detail")) return;
+        if (_promoterRepo == null) { MessageBox.Show(this, "KorStandards promoter is not configured.", "Standard Details — Retire", MessageBoxButton.OK, MessageBoxImage.Warning); return; }
+        if (DocumentsGrid.SelectedItem is not DocumentRow { IsDetail: true } detail || string.IsNullOrWhiteSpace(detail.DetailNumber))
+        {
+            MessageBox.Show(this, "Select a detail first.", "Standard Details — Retire", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        // The reason is required by detail.RetireDetail, not merely requested here. KOR-D-00003 was
+        // retired by a hand-edit with no reason recorded and nobody can now say why.
+        var dlg = new RetireDetailWindow(detail.DetailNumber, detail.Title) { Owner = this };
+        if (dlg.ShowDialog() != true) return;
+
+        var (ok, message) = await _promoterRepo.RetireDetailAsync(detail.DetailNumber, dlg.Reason, _userIdentity);
+        SetActivityMessage(message, ok ? BannerTone.Success : BannerTone.Error);
+        if (!ok) { MessageBox.Show(this, message, "Standard Details — Retire", MessageBoxButton.OK, MessageBoxImage.Error); return; }
+        await LoadDocumentsUiAsync();
+    }
+
+    private async void Reconcile_Click(object sender, RoutedEventArgs e)
+    {
+        if (_korStandardsRepo == null) { MessageBox.Show(this, "KorStandards catalog is not configured.", "Standard Details — Reconcile", MessageBoxButton.OK, MessageBoxImage.Warning); return; }
+        if (_masterPublishOptions is not { IsConfigured: true } options)
+        {
+            MessageBox.Show(this, "App.config must define StandardDetails.BridgeRoot before the catalogue can be compared with the model.", "Standard Details — Reconcile", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        SetActivityMessage("Comparing the catalogue against the open model...", BannerTone.Info);
+        try
+        {
+            var intake = new DetailIntake(new DrafterBridgeClient(options.BridgeRoot), options);
+            var report = await DetailReconciler.CompareAsync(intake, _korStandardsRepo, TimeSpan.FromSeconds(120));
+
+            SetActivityMessage(report.Headline, report.IsClean ? BannerTone.Success : BannerTone.Warning);
+            MessageBox.Show(this, report.ToText(), "Standard Details — Reconcile", MessageBoxButton.OK,
+                report.IsClean ? MessageBoxImage.Information : MessageBoxImage.Warning);
+        }
+        catch (Exception ex)
+        {
+            SetActivityMessage("Reconcile could not read the model. Nothing was changed.", BannerTone.Error);
+            Log.Warning(ex, "Standard Details: reconcile failed.");
+            MessageBox.Show(this, ex.Message + Environment.NewLine + Environment.NewLine
+                + "AUTHORING has to be open in the Revit session the bridge is watching.",
+                "Standard Details — Reconcile", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
@@ -1451,6 +1551,10 @@ public partial class StandardDetailsWindow
         public string StatusLabel { get; set; } = "";
         public string RightSubtitle { get; set; } = "";
         public string Kind { get; set; } = string.Empty;
+        // Carried so Edit can show the current discipline. GroupName holds it too, but only as a
+        // display bucket — it reads "Ungrouped" when the discipline is null, and in sheets mode it
+        // is the sheet collection instead. Editing off that would write the wrong value.
+        public string Discipline { get; set; } = string.Empty;
         public bool IsSheet { get; set; }
         public string ViewGroup { get; set; } = string.Empty;
         public bool IsDetail { get; set; }
