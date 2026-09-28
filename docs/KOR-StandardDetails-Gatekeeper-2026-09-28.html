@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<title>KOR Standard Details — How It Works</title>
+<!--
+  For Lindsay Finnigan, who is taking over as standard-details gatekeeper.
+  Design system copied from KOR-StandardDetails-DrafterQuickStart-2026-09-09.html so the set reads
+  as one family. Render with tools\Format-BdWebPdf.ps1 (headless Edge, which caches file:// URLs -
+  that script renders through a fresh name to beat it).
+
+  Counts are live as at 2026-09-28: 603 placeable of 608 live details, 156 of them sheets.
+-->
+<style>
+  :root {
+    --ground:#FBFAF9; --surface:#FFFFFF; --surface-2:#F4F2F0;
+    --ink:#1C2530; --ink-soft:#55636F; --ink-faint:#8A97A2;
+    --line:#E5E4E1; --line-strong:#D3D2CE; --slate:#3F5364; --slate-deep:#2C3A47;
+    --accent:#FF5B35; --accent-ink:#C6360F;
+    --good:#1E7D3A; --good-bg:#E7F3EB; --warn:#A9741A; --crit:#C0392B;
+    --sans:"Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+    --mono:"Cascadia Code", Consolas, ui-monospace, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --ground:#13171C; --surface:#1A2027; --surface-2:#212A33;
+      --ink:#E9ECEF; --ink-soft:#A6B2BC; --ink-faint:#6E7C87;
+      --line:#29323B; --line-strong:#38434E; --slate:#7E97AC; --slate-deep:#C4D3DF;
+      --accent:#FF7150; --accent-ink:#FF9276; }
+  }
+  :root[data-theme="dark"] { --ground:#13171C; --surface:#1A2027; --surface-2:#212A33;
+    --ink:#E9ECEF; --ink-soft:#A6B2BC; --ink-faint:#6E7C87; --line:#29323B; --line-strong:#38434E;
+    --slate:#7E97AC; --slate-deep:#C4D3DF; --accent:#FF7150; --accent-ink:#FF9276; }
+
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--ground); color:var(--ink);
+    font-family:var(--sans); font-size:10.3pt; line-height:1.36; -webkit-font-smoothing:antialiased; }
+  .page { max-width: 8.1in; margin: 0 auto; padding: 0; }
+
+  .top { background: linear-gradient(180deg,var(--slate-deep),var(--slate));
+    color:#EAF0F5; border-bottom:2.5px solid var(--accent); padding: 13px 22px; }
+  .top h1 { margin:0; font-size:19pt; font-weight:700; letter-spacing:-.01em; color:#fff; }
+  .top .ey { font-family:var(--mono); font-size:7.5pt; letter-spacing:.2em; text-transform:uppercase; color:#FFB59F; }
+  .top p { margin:.15rem 0 0; font-size:9.6pt; color:#CBD8E2; max-width:44rem; }
+
+  .body { padding: 13px 22px 0; }
+  h2 { font-family:var(--mono); font-size:8pt; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--accent-ink); margin: 2px 0 .5rem; font-weight:700; }
+
+  .flow { display:grid; grid-template-columns:repeat(3,1fr); gap:.5rem; margin:0 0 13px; }
+  .step { background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:.5rem .65rem;
+    border-left:3px solid var(--accent); }
+  .step .n { font-family:var(--mono); font-weight:700; color:var(--accent-ink); font-size:8.5pt; }
+  .step h3 { margin:.1rem 0 .2rem; font-size:11pt; }
+  .step p { margin:0; font-size:8.7pt; color:var(--ink-soft); line-height:1.35; }
+
+  table { border-collapse:collapse; width:100%; font-size:9.4pt; margin-bottom:13px; }
+  td { padding:.28rem .5rem; border-bottom:1px solid var(--line); vertical-align:top; }
+  tr td:first-child { font-weight:650; white-space:nowrap; width:10.5rem; color:var(--ink); }
+  tr:nth-child(even) { background:var(--surface-2); }
+
+  .btn { font-family:var(--mono); font-size:8.6pt; background:var(--slate); color:#fff;
+    border-radius:5px; padding:.05em .4em; white-space:nowrap; }
+  .path b { color:var(--accent-ink); font-family:var(--mono); font-size:8.6pt; }
+
+  .strip { display:grid; grid-template-columns: 1fr 1fr; gap:.6rem; }
+  .card { background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:.6rem .75rem; }
+  .card.accent { border-left:3px solid var(--good); background: color-mix(in srgb, var(--good) 8%, var(--surface)); }
+  .card.gate { border-left:3px solid var(--accent); background: color-mix(in srgb, var(--accent) 7%, var(--surface)); }
+  .card.note { border-left:3px solid var(--warn); background: color-mix(in srgb, var(--warn) 8%, var(--surface)); }
+  .card p { margin:.25rem 0 0; font-size:8.7pt; color:var(--ink-soft); line-height:1.4; }
+  .card .lead { color:var(--ink); font-weight:600; font-size:9.5pt; }
+  .live { display:flex; flex-direction:column; gap:.28rem; margin-top:.3rem; }
+  .live div { font-size:8.7pt; line-height:1.34; }
+  .live .k { font-family:var(--sans); font-weight:650; color:var(--ink); font-size:8.9pt; }
+
+  .rolehdr { font-family:var(--mono); font-size:8pt; letter-spacing:.14em; text-transform:uppercase;
+             color:#fff; background:var(--slate); border-radius:5px; padding:.2em .6em; display:inline-block; }
+  .foot { padding: 10px 22px 0; font-size:8pt; color:var(--ink-faint); font-family:var(--mono); }
+
+  @page { size: Letter; margin: 10mm 11mm; }
+  @media print {
+    :root { --ground:#FFFFFF; --surface:#FFFFFF; --surface-2:#F5F3F1;
+      --ink:#1C2530; --ink-soft:#55636F; --ink-faint:#8A97A2; --line:#E5E4E1; --line-strong:#D3D2CE;
+      --slate:#3F5364; --slate-deep:#2C3A47; --accent:#FF5B35; --accent-ink:#C6360F; --good:#1E7D3A; }
+    body { background:#fff; -webkit-print-color-adjust:exact; print-color-adjust:exact; color-scheme:light; }
+    .page { max-width:none; }
+    .btn { color:#fff !important; }
+    .flow, .step, table, tr, .strip, .card { break-inside:avoid; }
+    /* A heading stranded at the foot of a page with its table overleaf reads as a missing section.
+       Keep each one with what it introduces. */
+    h2 { break-after:avoid; page-break-after:avoid; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+  <div class="top">
+    <div class="ey">KOR Structural · Standard Details</div>
+    <h1>How it works</h1>
+    <p>One governed set of standard details: 603 of them, approved, numbered, and the same for
+       everybody. This is what it is, what you do with it as a drafter, and what you do as the
+       person who keeps it right.</p>
+  </div>
+
+  <div class="body">
+    <h2>The idea, in three sentences</h2>
+    <div class="flow">
+      <div class="step"><span class="n">1 · ONE SET</span><h3>One place, not ten jobs</h3><p>Every standard detail lives in one numbered catalogue and one Revit master template. No hunting through old jobs, no copy of a copy with somebody else's project name still on it.</p></div>
+      <div class="step"><span class="n">2 · ONE DECIDER</span><h3>One person says what's in</h3><p>A detail is in the master only if the gatekeeper approved it. That is the whole point: what a drafter can place is what the firm has agreed to stand behind.</p></div>
+      <div class="step"><span class="n">3 · ONE FIX</span><h3>Fixed once, for everyone</h3><p>A detail that is wrong gets corrected once, in the master, by the gatekeeper. Everybody picks it up on their next job. Nobody patches it locally and forgets.</p></div>
+    </div>
+
+    <h2>Your first hat — drafting</h2>
+    <table>
+      <tr><td>Start a job</td><td>Open <b style="color:var(--ink)">KOR-Standards-Master-R25.rvt</b> from <span class="path"><b>I:\KOR-Standards\template\MASTER\</b></span> → <b style="color:var(--ink)">Save As</b> into the job → delete the disciplines the job doesn't need. Don't start from an old job.</td></tr>
+      <tr><td>Use a detail</td><td>It's already in your file — you copied the master. Every one is numbered <b style="color:var(--ink)">KOR-D-#####</b> on the view. Quote that number whenever you talk about one.</td></tr>
+      <tr><td>A detail is wrong</td><td>You're the gatekeeper now, so it's yours to fix — see over the page. Anyone else tells you, with the number.</td></tr>
+      <tr><td>You need one that isn't there</td><td>Draw it in the job as you would today, and carry on. Making it a <i>standard</i> is a separate, deliberate act — and it is now yours to perform. See over the page.</td></tr>
+      <tr><td>The Revit tools</td><td>There's a KOR toolbar that pulls a single approved detail straight into an open job, and places the standard parts. <b style="color:var(--ink)">It is not on your machine and won't be until you ask for it.</b> Say the word and it takes about ten minutes; your existing tools are untouched either way, and it can be taken off again just as cleanly.</td></tr>
+    </table>
+
+    <div class="strip">
+      <div class="card">
+        <h2 style="margin-bottom:.2rem">What the words mean</h2>
+        <div class="live">
+          <div><span class="k">Master</span> — the Revit template every job starts from. Approved details only.</div>
+          <div><span class="k">KOR-D-#####</span> — a detail's permanent number. It never changes, and a retired one is never reused.</div>
+          <div><span class="k">Approved</span> — the gatekeeper has said it is a KOR standard.</div>
+          <div><span class="k">Gatekeeper</span> — one person decides what is in the master. That is now you.</div>
+          <div><span class="k">The app</span> — KOR Operations → Standard Details. Where the deciding happens.</div>
+        </div>
+      </div>
+      <div class="card">
+        <h2 style="margin-bottom:.2rem">Where it lives</h2>
+        <div class="live">
+          <div><span class="k">The master template</span><br><span class="path"><b>I:\KOR-Standards\template\MASTER\</b></span></div>
+          <div><span class="k">The standards model you edit</span><br><span class="path"><b>I:\KOR-Standards\template\AUTHORING\</b></span> — the only place a detail is ever drawn or changed.</div>
+          <div><span class="k">The catalogue + the drawings</span><br>In the KOR Operations app, on the server. Nothing to install, nothing to keep a copy of.</div>
+        </div>
+        <p style="margin-top:.4rem">The master is <b style="color:var(--ink)">read-only</b> to everyone but you. Copying it always works.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="page" style="break-before:page">
+  <div class="body" style="padding-top:16px">
+    <div class="rolehdr">Your second hat — gatekeeper</div>
+    <h2 style="margin-top:10px">What the job actually is</h2>
+    <p style="margin:0 0 12px; font-size:9.6pt; color:var(--ink-soft); max-width:46rem">Engineers
+       review the details and tell you what they want changed. You decide, you make the change in
+       Revit, and you publish. Nothing reaches the drafters until you publish. It is a few minutes a
+       week, not a project.</p>
+
+    <h2>How work reaches you, and what you do with it</h2>
+    <table>
+      <tr><td>An engineer reviews</td><td>In the app they open a whole set as one PDF and mark it up in Bluebeam — the same way they redline a drawing. You get the marked-up PDF back.</td></tr>
+      <tr><td>A detail is good</td><td>In the app: pick it → <span class="btn">Approve</span>. It becomes placeable and goes into the master at the next publish.</td></tr>
+      <tr><td>A detail is wrong</td><td><span class="btn">Reject</span> it. It drops out of the master and stays out until it's fixed. <b style="color:var(--ink)">Nothing is deleted</b> — it keeps its number and its history.</td></tr>
+      <tr><td>Fixing it</td><td>You fix the drawing in Revit, in the standards model — not in a job. That's the one place a detail is ever edited.</td></tr>
+      <tr><td>Its title is wrong</td><td><span class="btn">Tools ▾</span> → <span class="btn">Edit title / discipline…</span>. Both are recorded with your name and the reason you give.</td></tr>
+      <tr><td>It should go away</td><td><span class="btn">Tools ▾</span> → <span class="btn">Retire detail…</span>. It needs a reason — the app won't let you skip it — and it can be restored if you change your mind.</td></tr>
+      <tr><td>Publishing</td><td>In the app: <span class="btn">Tools ▾</span> → <span class="btn">Publish to Master…</span>. It rebuilds the master from the approved set and keeps the previous one. That's the moment a change reaches the office.</td></tr>
+    </table>
+
+    <h2>Adding a brand-new detail</h2>
+    <table>
+      <tr><td>1 · Draw it</td><td>In the standards model (<span class="path"><b>AUTHORING</b></span>), as an ordinary drafting view. Draw it the way you'd draw anything.</td></tr>
+      <tr><td>2 · Add it</td><td>In the app: <span class="btn">+ Add detail</span>. It lists the drawings in the model that aren't standards yet. Pick yours, type a title, choose discipline and type.</td></tr>
+      <tr><td>3 · It gets a number</td><td>The app takes the next <b style="color:var(--ink)">KOR-D-#####</b>, records the detail against that exact Revit view, and writes the number onto the view for you — so the model and the catalogue can't drift apart.</td></tr>
+      <tr><td>4 · Approve and publish</td><td>It starts <i>unverified</i>: it's in the catalogue but no drafter can place it. Capture its drawing, <span class="btn">Approve</span> it, then <span class="btn">Publish to Master…</span>. Now everybody has it.</td></tr>
+    </table>
+
+    <div class="strip">
+      <div class="card gate">
+        <h2 style="margin-bottom:.2rem; color:var(--accent-ink)">How an engineer gets a new detail in</h2>
+        <p>Through you — there is no "submit a detail" button, and deliberately so. An engineer who
+           wants a new standard sends you a markup, a sketch, or a detail out of a live job, and says
+           what it's for.</p>
+        <p style="margin-top:.35rem">You draw it in the standards model, add it, and approve it. That
+           is the whole point of one decider: a detail becomes a KOR standard because a person chose
+           to make it one, not because somebody uploaded it.</p>
+      </div>
+      <div class="card">
+        <h2 style="margin-bottom:.2rem">What an engineer can do on their own</h2>
+        <div class="live">
+          <div><span class="k">Find any detail in seconds</span> and open it as a PDF in Bluebeam.</div>
+          <div><span class="k">Open a whole set</span> — all the concrete details, say — as one PDF to mark up.</div>
+          <div><span class="k">Build their own sheet</span> from approved details and get a PDF of it, for their own use. It is stamped an uncontrolled working copy, so it can never be mistaken for the standard.</div>
+          <div><span class="k">Approve or reject</span>, if they're one of the named engineers.</div>
+        </div>
+      </div>
+    </div>
+
+    <h2 style="margin-top:13px">What you need, and what you already have</h2>
+    <table>
+      <tr><td>To decide</td><td>The KOR Operations app, with your name on the approver and publisher lists. <b style="color:var(--ink)">That's done</b> — it arrives with the next version of the app.</td></tr>
+      <tr><td>To fix and draw</td><td>Revit with the standards model. You already have Revit.</td></tr>
+      <tr><td>To add and publish</td><td>A small add-in that lets the app drive your Revit for the few seconds an add or a publish takes. It does nothing the rest of the time. <b style="color:var(--ink)">Not on your machine yet</b> — it goes on when you say so.</td></tr>
+      <tr><td>To place details</td><td>The KOR toolbar, only if and when you want it. Nothing here depends on it.</td></tr>
+    </table>
+
+    <div class="card accent">
+      <h2 style="margin-bottom:.2rem; color:var(--good)">The one habit</h2>
+      <p class="lead">Everything comes from the master. Everything goes back through you.</p>
+      <p>If a detail is wrong, it gets fixed once and published — not patched in a job. That single
+         habit is what makes the set worth trusting, and it is the whole reason the job exists.</p>
+    </div>
+  </div>
+  <div class="foot">KOR Structural · Standard Details · for Lindsay Finnigan · 2026-09-28 ·
+     603 placeable details of 608, 156 of them sheets</div>
+</div>
+
+</body></html>
