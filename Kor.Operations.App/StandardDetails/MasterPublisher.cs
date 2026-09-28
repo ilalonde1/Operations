@@ -6,6 +6,9 @@ using System.Linq;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+// The bridge-reply readers and the KOR-D pattern live in BridgeJson, imported unqualified so the
+// call sites below read exactly as they did when this class carried its own private copies.
+using static Kor.Operations.StandardDetails.BridgeJson;
 
 namespace Kor.Operations.StandardDetails;
 
@@ -68,7 +71,6 @@ internal sealed class MasterPublisher
 {
     private const int ParameterBatchSize = 300;
     private const int PdfCaptureBatchSize = 125;
-    private static readonly Regex DetailPrefixPattern = new("^KOR-D-\\d{5}$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
     private readonly DrafterBridgeClient _bridge;
     private readonly KorStandardsReadRepository _standardsRepository;
@@ -660,7 +662,7 @@ internal sealed class MasterPublisher
     {
         var viewNames = views.ToDictionary(x => x.Id, x => x.Name);
         return prefixes
-            .Where(x => DetailPrefixPattern.IsMatch(x.Value))
+            .Where(x => IsDetailNumber(x.Value))
             .Select(x => new MasterPublishRemovedView(
                 x.Key,
                 x.Value.ToUpperInvariant(),
@@ -785,150 +787,6 @@ internal sealed class MasterPublisher
         }
 
         return null;
-    }
-
-    private static bool TryGetBool(JsonElement element, string name, out bool value)
-    {
-        value = false;
-        if (!TryGetProperty(element, name, out var property))
-        {
-            return false;
-        }
-
-        if (property.ValueKind == JsonValueKind.True || property.ValueKind == JsonValueKind.False)
-        {
-            value = property.GetBoolean();
-            return true;
-        }
-
-        return property.ValueKind == JsonValueKind.String && bool.TryParse(property.GetString(), out value);
-    }
-
-    private static bool TryReadViewPrefix(JsonElement item, out string prefix)
-    {
-        prefix = "";
-        if (!TryGetProperty(item, "parameters", out var parameters))
-        {
-            return false;
-        }
-
-        if (parameters.ValueKind == JsonValueKind.Array)
-        {
-            foreach (var parameter in parameters.EnumerateArray())
-            {
-                var name = TryGetString(parameter, "name");
-                if (!string.Equals(name, "View Prefix", StringComparison.OrdinalIgnoreCase))
-                {
-                    continue;
-                }
-
-                prefix = TryGetString(parameter, "displayValue")
-                    ?? TryGetString(parameter, "display")
-                    ?? TryGetString(parameter, "value")
-                    ?? TryGetString(parameter, "stringValue")
-                    ?? "";
-                prefix = prefix.Trim();
-                return true;
-            }
-        }
-        else if (parameters.ValueKind == JsonValueKind.Object && TryGetProperty(parameters, "View Prefix", out var value))
-        {
-            prefix = ReadScalarOrDisplayValue(value).Trim();
-            return true;
-        }
-
-        return false;
-    }
-
-    private static string ReadScalarOrDisplayValue(JsonElement value)
-    {
-        if (value.ValueKind == JsonValueKind.String)
-        {
-            return value.GetString() ?? "";
-        }
-
-        if (value.ValueKind == JsonValueKind.Object)
-        {
-            return TryGetString(value, "displayValue")
-                ?? TryGetString(value, "display")
-                ?? TryGetString(value, "value")
-                ?? TryGetString(value, "stringValue")
-                ?? "";
-        }
-
-        return "";
-    }
-
-    private static IEnumerable<JsonElement> EnumerateResultItems(JsonElement result, params string[] arrayPropertyNames)
-    {
-        if (result.ValueKind == JsonValueKind.Array)
-        {
-            foreach (var item in result.EnumerateArray())
-            {
-                yield return item;
-            }
-
-            yield break;
-        }
-
-        if (result.ValueKind != JsonValueKind.Object)
-        {
-            yield break;
-        }
-
-        foreach (var propertyName in arrayPropertyNames)
-        {
-            if (!TryGetProperty(result, propertyName, out var array) || array.ValueKind != JsonValueKind.Array)
-            {
-                continue;
-            }
-
-            foreach (var item in array.EnumerateArray())
-            {
-                yield return item;
-            }
-
-            yield break;
-        }
-    }
-
-    private static bool TryGetProperty(JsonElement element, string name, out JsonElement value)
-    {
-        if (element.ValueKind == JsonValueKind.Object)
-        {
-            foreach (var property in element.EnumerateObject())
-            {
-                if (string.Equals(property.Name, name, StringComparison.OrdinalIgnoreCase))
-                {
-                    value = property.Value;
-                    return true;
-                }
-            }
-        }
-
-        value = default;
-        return false;
-    }
-
-    private static string? TryGetString(JsonElement element, string name)
-        => TryGetProperty(element, name, out var value) && value.ValueKind == JsonValueKind.String
-            ? value.GetString()
-            : null;
-
-    private static bool TryGetInt64(JsonElement element, string name, out long value)
-    {
-        value = 0;
-        if (!TryGetProperty(element, name, out var property))
-        {
-            return false;
-        }
-
-        if (property.ValueKind == JsonValueKind.Number && property.TryGetInt64(out value))
-        {
-            return true;
-        }
-
-        return property.ValueKind == JsonValueKind.String && long.TryParse(property.GetString(), out value);
     }
 
     private sealed record BridgeView(long Id, string Name);

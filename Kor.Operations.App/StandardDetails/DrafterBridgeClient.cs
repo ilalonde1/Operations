@@ -5,6 +5,9 @@ using System.IO;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Threading.Tasks;
+// Reading a bridge reply is BridgeJson's job — this class used to carry byte-identical copies of
+// TryGetProperty and TryGetString, which made it the third reader of the same payload.
+using static Kor.Operations.StandardDetails.BridgeJson;
 
 namespace Kor.Operations.StandardDetails;
 
@@ -128,7 +131,9 @@ internal sealed class DrafterBridgeClient
         var root = document.RootElement;
         var id = TryGetString(root, "id") ?? expectedId;
         var verb = TryGetString(root, "verb") ?? fallbackVerb;
-        var ok = TryGetBool(root, "ok");
+        // Absent or unparseable "ok" means not ok — a reply that does not say it succeeded never
+        // counts as success.
+        var ok = TryGetBool(root, "ok", out var reportedOk) && reportedOk;
         var error = TryGetString(root, "error");
         var activeDoc = TryGetString(root, "activeDoc");
         var result = TryGetProperty(root, "result", out var resultElement)
@@ -174,44 +179,6 @@ internal sealed class DrafterBridgeClient
         return dialogs;
     }
 
-    private static bool TryGetProperty(JsonElement element, string name, out JsonElement value)
-    {
-        if (element.ValueKind == JsonValueKind.Object)
-        {
-            foreach (var property in element.EnumerateObject())
-            {
-                if (string.Equals(property.Name, name, StringComparison.OrdinalIgnoreCase))
-                {
-                    value = property.Value;
-                    return true;
-                }
-            }
-        }
-
-        value = default;
-        return false;
-    }
-
-    private static string? TryGetString(JsonElement element, string name)
-        => TryGetProperty(element, name, out var value) && value.ValueKind == JsonValueKind.String
-            ? value.GetString()
-            : null;
-
-    private static bool TryGetBool(JsonElement element, string name)
-    {
-        if (!TryGetProperty(element, name, out var value))
-        {
-            return false;
-        }
-
-        return value.ValueKind switch
-        {
-            JsonValueKind.True => true,
-            JsonValueKind.False => false,
-            JsonValueKind.String when bool.TryParse(value.GetString(), out var parsed) => parsed,
-            _ => false
-        };
-    }
 
     private static void TryDelete(string path)
     {

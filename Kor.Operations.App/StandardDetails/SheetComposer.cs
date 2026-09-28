@@ -8,6 +8,9 @@ using System.Linq;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+// The bridge-reply readers and the KOR-D pattern live in BridgeJson, imported unqualified so the
+// call sites below read exactly as they did when this class carried its own private copies.
+using static Kor.Operations.StandardDetails.BridgeJson;
 
 namespace Kor.Operations.StandardDetails;
 
@@ -45,8 +48,9 @@ internal sealed class StandardDetailsSheetComposer
     private const int ParameterBatchSize = 300;
     private static readonly TimeSpan TempPdfRetention = TimeSpan.FromDays(1);
     // The KOR-D identity lives in a view's "View Prefix" parameter, not necessarily in its name.
-    // Match occupancy on that, the same way MasterPublisher does.
-    private static readonly Regex DetailPrefixPattern = new(@"^KOR-D-\d{5}$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    // Occupancy matches on that, via BridgeJson.IsDetailNumber — which MasterPublisher and the
+    // detail intake also call. This class used to carry its own copy of the pattern AND its own
+    // copy of the parameter reader, and the copy had already drifted from MasterPublisher's.
 
     private readonly DrafterBridgeClient _bridge;
     private readonly StandardDetailsMasterPublishOptions _options;
@@ -79,7 +83,7 @@ internal sealed class StandardDetailsSheetComposer
         {
             foreach (var view in sheet.Views)
             {
-                var isDetail = prefixes.TryGetValue(view.Id, out var prefix) && DetailPrefixPattern.IsMatch(prefix);
+                var isDetail = prefixes.TryGetValue(view.Id, out var prefix) && IsDetailNumber(prefix);
                 var detailNumber = isDetail ? NormalizeDetailNumber(prefix) : "";
                 var record = new SheetComposerOccupiedDetail(detailNumber, view.Name, sheet.Number, sheet.Name);
 
@@ -828,35 +832,6 @@ internal sealed class StandardDetailsSheetComposer
         }
     }
 
-    private static bool TryReadViewPrefix(JsonElement item, out string prefix)
-    {
-        prefix = "";
-        if (!TryGetProperty(item, "parameters", out var parameters) || parameters.ValueKind != JsonValueKind.Array)
-        {
-            return false;
-        }
-
-        foreach (var parameter in parameters.EnumerateArray())
-        {
-            if (!string.Equals(TryGetString(parameter, "name"), "View Prefix", StringComparison.OrdinalIgnoreCase))
-            {
-                continue;
-            }
-
-            prefix = (TryGetString(parameter, "displayValue")
-                ?? TryGetString(parameter, "display")
-                ?? TryGetString(parameter, "value")
-                ?? TryGetString(parameter, "stringValue")
-                ?? "").Trim();
-            return true;
-        }
-
-        return false;
-    }
-
-    private static string NormalizeDetailNumber(string? detailNumber)
-        => (detailNumber ?? "").Trim().ToUpperInvariant();
-
     private static void AssertPlacedCenter(SheetComposerPlacement placement, JsonElement result)
     {
         if (!TryGetDouble(result, "x_mm", out var actualX) || !TryGetDouble(result, "y_mm", out var actualY))
@@ -888,136 +863,6 @@ internal sealed class StandardDetailsSheetComposer
         return text.Length <= GovernanceDescriptionMax
             ? text
             : text[..(GovernanceDescriptionMax - suffix.Length)] + suffix;
-    }
-
-    private static IEnumerable<JsonElement> EnumerateResultItems(JsonElement result, params string[] arrayPropertyNames)
-    {
-        if (result.ValueKind == JsonValueKind.Array)
-        {
-            foreach (var item in result.EnumerateArray())
-            {
-                yield return item;
-            }
-
-            yield break;
-        }
-
-        if (result.ValueKind != JsonValueKind.Object)
-        {
-            yield break;
-        }
-
-        foreach (var propertyName in arrayPropertyNames)
-        {
-            if (!TryGetProperty(result, propertyName, out var array) || array.ValueKind != JsonValueKind.Array)
-            {
-                continue;
-            }
-
-            foreach (var item in array.EnumerateArray())
-            {
-                yield return item;
-            }
-
-            yield break;
-        }
-    }
-
-    private static bool TryGetProperty(JsonElement element, string name, out JsonElement value)
-    {
-        if (element.ValueKind == JsonValueKind.Object)
-        {
-            foreach (var property in element.EnumerateObject())
-            {
-                if (string.Equals(property.Name, name, StringComparison.OrdinalIgnoreCase))
-                {
-                    value = property.Value;
-                    return true;
-                }
-            }
-        }
-
-        value = default;
-        return false;
-    }
-
-    private static string? TryGetString(JsonElement element, string name)
-        => TryGetProperty(element, name, out var value) && value.ValueKind == JsonValueKind.String
-            ? value.GetString()
-            : null;
-
-    private static bool TryGetInt64(JsonElement element, string name, out long value)
-    {
-        value = 0;
-        if (!TryGetProperty(element, name, out var property))
-        {
-            return false;
-        }
-
-        if (property.ValueKind == JsonValueKind.Number && property.TryGetInt64(out value))
-        {
-            return true;
-        }
-
-        return property.ValueKind == JsonValueKind.String
-               && long.TryParse(property.GetString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out value);
-    }
-
-    private static bool TryGetInt32(JsonElement element, string name, out int value)
-    {
-        value = 0;
-        if (!TryGetProperty(element, name, out var property))
-        {
-            return false;
-        }
-
-        if (property.ValueKind == JsonValueKind.Number && property.TryGetInt32(out value))
-        {
-            return true;
-        }
-
-        return property.ValueKind == JsonValueKind.String
-               && int.TryParse(property.GetString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out value);
-    }
-
-    private static bool TryGetBool(JsonElement element, string name, out bool value)
-    {
-        value = false;
-        if (!TryGetProperty(element, name, out var property))
-        {
-            return false;
-        }
-
-        return property.ValueKind switch
-        {
-            JsonValueKind.True => SetBool(out value, true),
-            JsonValueKind.False => SetBool(out value, false),
-            JsonValueKind.String when bool.TryParse(property.GetString(), out var parsed) => SetBool(out value, parsed),
-            _ => false
-        };
-    }
-
-    private static bool SetBool(out bool value, bool parsed)
-    {
-        value = parsed;
-        return true;
-    }
-
-    private static bool TryGetDouble(JsonElement element, string name, out double value)
-    {
-        value = 0;
-        if (!TryGetProperty(element, name, out var property))
-        {
-            return false;
-        }
-
-        if (property.ValueKind == JsonValueKind.Number && property.TryGetDouble(out value))
-        {
-            return true;
-        }
-
-        return property.ValueKind == JsonValueKind.String
-               && double.TryParse(property.GetString(), NumberStyles.Float, CultureInfo.InvariantCulture, out value);
     }
 
     private sealed record BridgeSheet(long Id, string Number, string Name, IReadOnlyList<BridgeSheetView> Views);
