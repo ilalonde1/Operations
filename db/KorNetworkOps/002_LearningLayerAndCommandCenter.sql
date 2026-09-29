@@ -13,8 +13,8 @@ What each table is for:
   Metrics             numbers over time per PC (drive free space, SSD wear, hang/crash counts,
                       boot time ...) -- the trend lines that let problems be predicted before they
                       happen. Narrow on purpose: one number per row.
-  Insights            what the fleet comparison found: "gpu-hangs: 4 of 4 on driver 32.0.15.8142
-                      vs 11 of 26 elsewhere". One active row per (rule family, fact, value).
+  Insights            what the fleet comparison found: "gpu-hangs: 9 of 10 PCs with hw.model =
+                      ThinkStation P340, against 6 of 19 without". One active row per (problem, fact, value).
   FindingResolutions  when a finding clears, what changed on that PC around it -- the evidence
                       the fix ranking learns from.
   JobTriggers         "run a health check on this PC now" from the Command Center; the service

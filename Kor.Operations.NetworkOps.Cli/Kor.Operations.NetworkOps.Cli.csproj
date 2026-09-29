@@ -10,6 +10,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- `netops watchdog` reads the service heartbeat; same version as the service. -->
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.4" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Kor.Operations.NetworkOps.Core\Kor.Operations.NetworkOps.Core.csproj" />
     <ProjectReference Include="..\Kor.Operations.NetworkOps.Transport\Kor.Operations.NetworkOps.Transport.csproj" />
   </ItemGroup>

@@ -5,6 +5,7 @@
 //   netops run      --script probe.ps1 [--hosts A,B | all] [--timeout 600] [--out dir] [--repeat n]
 //   netops hardware [--hosts A,B | all]                      CPU, board, DIMM slots, GPU, disks
 //   netops health   [--hosts A,B | all] [--out dir]          the health probe + rules: findings per machine
+//   netops watchdog [--dry-run | --test] ...                 the dead-man switch (WatchdogVerb.cs), run on KOR-FS01
 //
 // Every verb does its reading ON the target (one service call + one small file over the VPN),
 // never a chatty remote walk: Ian is on the VPN almost all the time, and a remote registry /s
@@ -21,11 +22,17 @@ using Kor.Operations.NetworkOps.Transport;
 
 if (args.Length == 0 || args[0] is "-h" or "--help" or "help")
 {
+    Console.WriteLine("netops watchdog [--dry-run|--test] [--to addr] [--silent-min 15] [--remind-min 60]");
     Console.WriteLine("netops census|run|hardware|health [--hosts A,B|all] [--script f.ps1] [--timeout s] [--out dir] [--parallel n] [--repeat n]");
     return 2;
 }
 
 var verb = args[0].ToLowerInvariant();
+
+// The dead-man watcher touches no workstation and takes its own options.
+if (verb == "watchdog")
+    return await Kor.Operations.NetworkOps.Cli.WatchdogVerb.RunAsync(args);
+
 string? hostsArg = null, script = null, outDir = null;
 var timeout = 600;
 var parallel = 16;
