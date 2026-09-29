@@ -118,6 +118,11 @@ internal sealed partial class NetworkOpsStore
         await using var cmd = Cmd(c, """
             INSERT NetworkOps.Observations (DeviceId, Probe, ProbeVersion, CollectedUtc, Status, PayloadJson, Error)
             VALUES (@d, @p, @v, @at, @s, @json, @err);
+            -- A probe that got past reachability is proof the PC answered, just as the census is: without
+            -- this, "check this PC now" succeeds while the page still says it was last seen an hour ago.
+            IF @s <> 'Offline'
+                UPDATE NetworkOps.Devices SET LastReachableUtc = @at
+                WHERE DeviceId = @d AND (LastReachableUtc IS NULL OR LastReachableUtc < @at);
             """);
         cmd.Parameters.Add("@d", SqlDbType.Int).Value = deviceId;
         cmd.Parameters.Add("@p", SqlDbType.VarChar, 32).Value = probe;

@@ -295,8 +295,9 @@ public sealed class NetworkOpsDeviceViewModel : ObservableObject
         {
             await write(f).ConfigureAwait(true);
             ActionNote = string.Empty;
-            StatusMessage = $"{verb}: {f.Title}.";
             await ReloadAsync(ct).ConfigureAwait(true);
+            // After the reload, which reports its own "Loaded at": the confirmation is what Ian needs to see.
+            StatusMessage = $"{verb}: {f.Title}.";
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -311,8 +312,8 @@ public sealed class NetworkOpsDeviceViewModel : ObservableObject
         {
             await _reader.AddNoteAsync(_device.DeviceId, _currentUser, NewNoteText, ct).ConfigureAwait(true);
             NewNoteText = string.Empty;
-            StatusMessage = "Note added.";
             await LoadHistoryAsync(ct).ConfigureAwait(true);
+            StatusMessage = "Note added.";
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
