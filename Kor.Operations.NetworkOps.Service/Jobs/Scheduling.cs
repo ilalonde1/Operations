@@ -23,6 +23,8 @@ internal static class SchedulingCatalog
             "every working hour: faults show up within the hour and trend lines get a point each hour the PC is on; about 70 s for the fleet"),
         new(typeof(MaintenanceJob), MaintenanceJob.JobName, "0 0 3 * * ?",
             "nightly observation purge; nothing else runs then"),
+        new(typeof(UniFiBackupJob), UniFiBackupJob.JobName, "0 0 4 * * ?",
+            "nightly: UniFi auto-backs up at 01:00, KOR-UNIFI01 stages the files at 03:15, this pulls them to FS01"),
     ];
 }
 

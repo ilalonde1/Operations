@@ -1,6 +1,7 @@
 #nullable enable
 using Kor.Operations.NetworkOps.Service.Jobs;
 using Kor.Operations.NetworkOps.Service.Store;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
@@ -10,7 +11,7 @@ namespace Kor.Operations.NetworkOps.Service.Sweep;
 // NetworkOps.JobTriggers; this claims it within seconds, runs it through the same dispatch path
 // as the schedule (so it is recorded as a run like any other), and writes the result back for the
 // page to show. A trigger left Running by a service that died is requeued at startup.
-internal sealed class TriggerPoller(NetworkOpsStore store, HealthSweeper sweeper, FleetCensusJob census, JobDispatcher dispatcher, ILogger<TriggerPoller> log)
+internal sealed class TriggerPoller(NetworkOpsStore store, HealthSweeper sweeper, JobDispatcher dispatcher, IServiceProvider services, ILogger<TriggerPoller> log)
     : BackgroundService
 {
     public static readonly TimeSpan Interval = TimeSpan.FromSeconds(5);
@@ -34,12 +35,13 @@ internal sealed class TriggerPoller(NetworkOpsStore store, HealthSweeper sweeper
             if (t is null) continue;
 
             log.LogInformation("Trigger {Id}: {Job} {Device} requested by {By}", t.TriggerId, t.JobName, t.DeviceName ?? "(fleet)", t.RequestedBy);
-            Func<CancellationToken, Task<string>>? work = t.JobName switch
-            {
-                HealthSweepJob.JobName => c => sweeper.SweepAsync(t.DeviceName is null ? null : [t.DeviceName], c),
-                FleetCensusJob.JobName => census.RunAsync,
-                _ => null,
-            };
+            // A health check of named PCs has its own path; any other trigger runs that catalog job whole
+            // (so every scheduled job can also be run on demand, and a new job needs no change here).
+            Func<CancellationToken, Task<string>>? work = t.JobName == HealthSweepJob.JobName
+                ? c => sweeper.SweepAsync(t.DeviceName is null ? null : [t.DeviceName], c)
+                : SchedulingCatalog.All.FirstOrDefault(s => s.Name.Equals(t.JobName, StringComparison.OrdinalIgnoreCase)) is { } entry
+                    ? ((INetworkOpsJob)services.GetRequiredService(entry.JobType)).RunAsync
+                    : null;
             if (work is null)
             {
                 await store.CompleteTriggerAsync(t.TriggerId, false, $"unknown job '{t.JobName}'");

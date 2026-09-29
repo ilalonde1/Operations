@@ -7,7 +7,7 @@
     <AssemblyName>Kor.Operations.NetworkOps.Service</AssemblyName>
     <!-- Bump on every meaningful service-side change: the heartbeat row carries it, so a
          redeploy can be confirmed from the database, not assumed. -->
-    <Version>0.3.0</Version>
+    <Version>0.4.0</Version>
   </PropertyGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="Kor.Operations.NetworkOps.Tests" />
@@ -28,6 +28,8 @@
     <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.4" />
     <!-- The Command Center API (Api/ApiHost.cs): Entra bearer tokens. -->
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.11" />
+    <!-- UniFi backup pull (Jobs/UniFiBackupJob.cs): SFTP with a pinned host key. -->
+    <PackageReference Include="SSH.NET" Version="2026.0.0" />
   </ItemGroup>
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />

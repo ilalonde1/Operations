@@ -43,4 +43,16 @@ public sealed class NetworkOpsOptions
 
     /// <summary>App (client) id of "KOR NetworkOps API".</summary>
     public string ApiAudience { get; set; } = "";
+
+    // ---- UniFi controller backups (Jobs/UniFiBackupJob.cs): pulled nightly from KOR-UNIFI01's read-only
+    // SFTP drop to FS01. Off unless UniFiBackupHost is set. The key file is on APP01 only.
+    public string UniFiBackupHost { get; set; } = "";
+    public string UniFiBackupUser { get; set; } = "korbackup";
+    /// <summary>OpenSSH private key (KOR_NETWORKOPS_UNIFIBACKUPKEYPATH): readable by the service account only.</summary>
+    public string UniFiBackupKeyPath { get; set; } = "";
+    /// <summary>The controller's ED25519 host key, "SHA256:..." as ssh-keygen -lf prints it: pinned, never learned.</summary>
+    public string UniFiBackupHostKeySha256 { get; set; } = "";
+    public string UniFiBackupDestination { get; set; } = "";
+    public int UniFiBackupKeepDays { get; set; } = 90;
+    public int UniFiBackupStaleHours { get; set; } = 48;
 }
