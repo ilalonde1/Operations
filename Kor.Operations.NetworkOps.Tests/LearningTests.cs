@@ -210,18 +210,69 @@ public sealed class LearningTests
     }
 
     [Fact]
-    public void The_gpu_pattern_of_28_september_is_found_automatically()
+    public void Four_of_four_when_half_the_fleet_has_it_is_too_weak_to_report()
     {
-        // 4 PCs on Quadro driver 8142, all hang; 26 others on other drivers, 11 hang (the real counts that night).
+        // The 28 Sep hand analysis: driver 8142 hung on 4 of 4 while 11 of 26 others hung too. With 15
+        // of 30 affected, 4 of 4 happens by chance about 1 time in 20 (p ≈ 0.05) -- below the bar, and
+        // the engine must say nothing rather than repeat an overclaim.
         var fleet = new List<FleetMember>();
         for (var i = 0; i < 4; i++) fleet.Add(Member($"Q{i}", "32.0.15.8142", hangs: true));
         for (var i = 0; i < 26; i++) fleet.Add(Member($"O{i}", i % 2 == 0 ? "32.0.15.9651" : "32.0.16.1088", hangs: i < 11));
-        var ins = FleetCorrelation.Find(fleet).Single(x => x.Family == "gpu-hangs" && x.Fact == Facts.GpuDriver);
-        Assert.Equal("32.0.15.8142", ins.Value);
-        Assert.Equal((4, 4, 11, 26), (ins.AffectedWith, ins.TotalWith, ins.AffectedWithout, ins.TotalWithout));
-        Assert.True(ins.PValue < 0.05, $"p = {ins.PValue}");
-        Assert.StartsWith("gpu-hangs: 4 of 4 PCs with gpu.driver = 32.0.15.8142 have it, against 11 of 26 without", ins.Summary);
+        Assert.InRange(FleetCorrelation.FisherOneSided(4, 0, 11, 15), 0.01, 0.06);
+        Assert.Empty(FleetCorrelation.Find(fleet));
     }
+
+    [Fact]
+    public void The_real_p340_pattern_is_found_and_named_by_model_not_by_board_code()
+    {
+        // The live run: 9 of 10 ThinkStation P340s hang against 6 of 20 other PCs. "Board 1048" picks out
+        // the same ten machines; the engine reports one explanation, the readable one.
+        var fleet = new List<FleetMember>();
+        for (var i = 0; i < 10; i++) fleet.Add(Pc($"P{i}", "Lenovo ThinkStation P340", "LENOVO 1048", i < 9 ? ["gpu-hangs"] : []));
+        for (var i = 0; i < 20; i++) fleet.Add(Pc($"O{i}", i % 2 == 0 ? "Lenovo ThinkStation P3 Tower" : "ASUSTeK PRIME Z390-A", $"B{i % 2}", i < 6 ? ["gpu-hangs"] : []));
+        var ins = FleetCorrelation.Find(fleet).Single();
+        Assert.Equal((Facts.Model, "Lenovo ThinkStation P340"), (ins.Fact, ins.Value));
+        Assert.Equal((9, 10, 6, 20), (ins.AffectedWith, ins.TotalWith, ins.AffectedWithout, ins.TotalWithout));
+        Assert.True(ins.PValue < 0.01, $"p = {ins.PValue}");
+    }
+
+    [Fact]
+    public void Behaviour_is_never_explained_by_hardware()
+    {
+        // Every PC with unbacked data shares a model -- still no insight: where people keep files is
+        // behaviour, and the family has no plausible explainers.
+        var fleet = Enumerable.Range(0, 20).Select(i => Pc($"P{i}", i < 8 ? "Model A" : "Model B", "x", i < 8 ? ["unbacked-data"] : [])).ToList();
+        Assert.Empty(FleetCorrelation.Find(fleet));
+    }
+
+    [Fact]
+    public void Crashing_programs_are_compared_one_program_at_a_time()
+    {
+        Assert.Equal("crash-loop:opushutil.exe", FleetCorrelation.ProblemOf("crash-loop:opushutil.exe"));
+        Assert.Equal("disk-aging", FleetCorrelation.ProblemOf("disk-aging:st4000dm004-2cv104"));
+    }
+
+    [Fact]
+    public void The_july_access_engine_finding_is_found_when_only_the_affected_pcs_have_the_engine()
+    {
+        // July 2026 by hand: Office's opushutil crashed on the PCs with the Access Database Engine and on
+        // none without it. The engine is an installed-software fact: PCs that do not list it are the
+        // comparison group, so 8 of 8 against 0 of 12 must be found -- not lost for want of a "without".
+        var fleet = new List<FleetMember>();
+        for (var i = 0; i < 20; i++)
+        {
+            var ace = i < 8;
+            var facts = new Dictionary<string, string> { [Facts.Model] = i % 2 == 0 ? "M1" : "M2" };
+            if (ace) facts["access.engine.2016"] = "16.0.5044.1000";
+            fleet.Add(new FleetMember($"P{i}", facts, ace ? new HashSet<string> { "crash-loop:opushutil.exe" } : []));
+        }
+        var ins = FleetCorrelation.Find(fleet).Single();
+        Assert.Equal(("crash-loop:opushutil.exe", "access.engine.2016"), (ins.Family, ins.Fact));
+        Assert.Equal((8, 8, 0, 12), (ins.AffectedWith, ins.TotalWith, ins.AffectedWithout, ins.TotalWithout));
+    }
+
+    private static FleetMember Pc(string name, string model, string board, string[] problems)
+        => new(name, new Dictionary<string, string> { [Facts.Model] = model, [Facts.Board] = board }, new HashSet<string>(problems));
 
     [Fact]
     public void Two_pcs_sharing_a_value_by_chance_is_not_a_pattern()

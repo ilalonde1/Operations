@@ -63,11 +63,13 @@ try
     builder.Services.AddSingleton<IDigestSender, DigestSender>();
     builder.Services.AddSingleton<NetworkOpsStore>();
     builder.Services.AddSingleton<JobDispatcher>();
+    builder.Services.AddSingleton<Kor.Operations.NetworkOps.Service.Sweep.HealthSweeper>();
 
     if (runOnce is null)
     {
         builder.Services.AddNetworkOpsScheduling();
         builder.Services.AddHostedService<HeartbeatService>();
+        builder.Services.AddHostedService<Kor.Operations.NetworkOps.Service.Sweep.TriggerPoller>();
     }
     else
     {
@@ -79,16 +81,27 @@ try
     Log.Information("NetworkOps {Version} on {Host}: alerts {Alerts}, {Jobs} scheduled jobs", JobDispatcher.Version, Environment.MachineName,
         opts.AlertsEnabled ? "ON" : "off (digests written to " + DigestSender.DigestDirectory + ")", SchedulingCatalog.All.Count);
 
+    // The learning layer needs migration 002. Say so plainly and stop, rather than fail mid-sweep.
+    if (!await host.Services.GetRequiredService<NetworkOpsStore>().LearningSchemaPresentAsync(CancellationToken.None))
+    {
+        Log.Fatal("KorNetworkOps is missing the learning-layer tables: run db/KorNetworkOps/002_LearningLayerAndCommandCenter.sql as sa, then start the service again.");
+        return 2;
+    }
+
     if (runOnce is not null)
     {
         var entry = SchedulingCatalog.All.FirstOrDefault(s => s.Name.Equals(runOnce, StringComparison.OrdinalIgnoreCase))
             ?? throw new ArgumentException($"No job '{runOnce}'. Jobs: {string.Join(", ", SchedulingCatalog.All.Select(s => s.Name))}");
         var job = (INetworkOpsJob)host.Services.GetRequiredService(entry.JobType);
         await host.Services.GetRequiredService<JobDispatcher>().RunAsync(job, CancellationToken.None);
+        await Kor.Operations.NetworkOps.Transport.OnTargetChannel.DrainAsync();
         return 0;
     }
 
     await host.RunAsync();
+    // One-shot services still being released by remote SCMs: let them finish (bounded) so a
+    // restart never strands a KorRun service on a workstation.
+    await Task.WhenAny(Kor.Operations.NetworkOps.Transport.OnTargetChannel.DrainAsync(), Task.Delay(TimeSpan.FromSeconds(45)));
     return 0;
 }
 catch (Exception ex)

@@ -1,4 +1,5 @@
 #nullable enable
+using System.Collections.Concurrent;
 using System.ComponentModel;
 using Kor.Operations.NetworkOps.Core.OnTarget;
 
@@ -26,8 +27,16 @@ public sealed class OnTargetChannel
 
     public async Task<OnTargetRun> RunAsync(string computer, string script, CancellationToken ct = default)
     {
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        var run = await RunCoreAsync(computer, script, clock, ct).ConfigureAwait(false);
+        return run with { TotalMs = (int)clock.ElapsedMilliseconds };
+    }
+
+    private async Task<OnTargetRun> RunCoreAsync(string computer, string script, System.Diagnostics.Stopwatch clock, CancellationToken ct)
+    {
         var reach = await SmbReachability.ProbeAsync(computer, ct: ct).ConfigureAwait(false);
         if (!reach.Reachable) return OnTargetRun.Failed(computer, OnTargetStatus.Offline, "port 445 not answering on any address");
+        var reachMs = (int)clock.ElapsedMilliseconds;
 
         var id = Guid.NewGuid().ToString("N")[..8];
         var serviceName = "KorRun" + id;
@@ -45,10 +54,12 @@ public sealed class OnTargetChannel
             return OnTargetRun.Failed(computer, OnTargetStatus.NoAdminShare, ex.Message);
         }
 
+        var stagedMs = (int)clock.ElapsedMilliseconds;
         try
         {
-            var launch = await Task.Run(() => Launch(computer, serviceName, localScript), ct).ConfigureAwait(false);
+            var launch = await LaunchAsync(computer, serviceName, localScript).ConfigureAwait(false);
             if (launch is not null) return OnTargetRun.Failed(computer, OnTargetStatus.LaunchFailed, launch);
+            var launchedMs = (int)clock.ElapsedMilliseconds;
 
             var deadline = DateTime.UtcNow + _timeout;
             while (!File.Exists(uncResult))
@@ -57,9 +68,10 @@ public sealed class OnTargetChannel
                 await Task.Delay(_poll, ct).ConfigureAwait(false);
             }
             var result = OnTargetPayload.ParseResult(await File.ReadAllTextAsync(uncResult, ct).ConfigureAwait(false));
+            var stages = $"reach {reachMs} ms, staged {stagedMs - reachMs} ms, launch {launchedMs - stagedMs} ms, result after {(int)clock.ElapsedMilliseconds - launchedMs} ms";
             return result.Ok
-                ? new OnTargetRun(computer, OnTargetStatus.Ok, result.OutputJson, null)
-                : OnTargetRun.Failed(computer, OnTargetStatus.ScriptError, $"line {result.Line}: {result.Error}");
+                ? new OnTargetRun(computer, OnTargetStatus.Ok, result.OutputJson, null) { Stages = stages }
+                : OnTargetRun.Failed(computer, OnTargetStatus.ScriptError, $"line {result.Line}: {result.Error}") with { Stages = stages };
         }
         finally
         {
@@ -68,31 +80,50 @@ public sealed class OnTargetChannel
         }
     }
 
-    /// <summary>Create, start, delete. Returns an error message, or null when the probe was launched.</summary>
-    private static string? Launch(string computer, string serviceName, string localScript)
+    // StartService on a one-shot blocks until the SCM gives up with 1053 -- while the probe itself
+    // started in the first moment. So the start runs in the
+    // background, the result file is read as soon as it lands, and the service is deleted when the
+    // SCM lets go. That is the difference between a "check now" that answers in ~10 s and ~45 s.
+    // Pending cleanups are tracked so a process can wait for them before it exits (DrainAsync).
+    private static readonly ConcurrentDictionary<Task, byte> PendingCleanups = new();
+
+    /// <summary>Waits for every one-shot service still being cleaned up. Call before the process exits.</summary>
+    public static Task DrainAsync() => Task.WhenAll(PendingCleanups.Keys.ToArray());
+
+    /// <summary>Creates and starts the one-shot service. Returns an error message, or null when the probe is running.</summary>
+    private static async Task<string?> LaunchAsync(string computer, string serviceName, string localScript)
     {
         var binPath = $"cmd.exe /c start \"\" powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File {localScript}";
+        ServiceControlManager.ScmHandle service;
         try
         {
-            using var manager = ServiceControlManager.OpenManager(computer, forCreate: true);
-            using var service = ServiceControlManager.Create(manager, serviceName, binPath);
-            try
-            {
-                var err = ServiceControlManager.Start(service);
-                // 1053: cmd is not a service, the SCM gives up waiting -- powershell is already running.
-                if (err != 0 && err != ServiceControlManager.ErrorServiceRequestTimeout)
-                    return $"StartService failed: {new Win32Exception(err).Message} ({err})";
-                return null;
-            }
-            finally
-            {
-                ServiceControlManager.MarkForDelete(service);
-            }
+            // The manager handle is pooled (see ServiceControlManager): the connection is the expensive part.
+            service = await Task.Run(() => ServiceControlManager.WithPooledManager(computer, m => ServiceControlManager.Create(m, serviceName, binPath))).ConfigureAwait(false);
         }
         catch (Win32Exception ex)
         {
             return $"{ex.Message} ({ex.NativeErrorCode})";
         }
+
+        var svc = service;
+        var start = Task.Run(() => ServiceControlManager.Start(svc));
+        var cleanup = start.ContinueWith(_ =>
+        {
+            try { ServiceControlManager.MarkForDelete(svc); }
+            finally { svc.Dispose(); }
+        }, TaskScheduler.Default);
+        PendingCleanups.TryAdd(cleanup, 0);
+        _ = cleanup.ContinueWith(t => PendingCleanups.TryRemove(t, out byte _), TaskScheduler.Default);
+
+        // A start that fails outright (access denied, bad path) says so at once; 1053 comes ~21 s later
+        // and only means "cmd is not a service" -- powershell is already running by then.
+        if (await Task.WhenAny(start, Task.Delay(1500)).ConfigureAwait(false) == start)
+        {
+            var err = start.Result;
+            if (err != 0 && err != ServiceControlManager.ErrorServiceRequestTimeout)
+                return $"StartService failed: {new Win32Exception(err).Message} ({err})";
+        }
+        return null;
     }
 
     private static void TryDelete(string path)
@@ -107,5 +138,9 @@ public enum OnTargetStatus { Ok, Offline, NoAdminShare, LaunchFailed, Timeout, S
 /// <param name="OutputJson">The probe's output as a JSON array, when <see cref="Status"/> is Ok.</param>
 public sealed record OnTargetRun(string Computer, OnTargetStatus Status, string? OutputJson, string? Error)
 {
+    /// <summary>Wall time of the whole run, and where it went -- "check now" has to answer in seconds.</summary>
+    public int TotalMs { get; init; }
+    public string? Stages { get; init; }
+
     public static OnTargetRun Failed(string computer, OnTargetStatus status, string error) => new(computer, status, null, error);
 }

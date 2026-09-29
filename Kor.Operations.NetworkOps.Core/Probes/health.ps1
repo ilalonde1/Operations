@@ -10,8 +10,13 @@
 $now = Get-Date
 $since14 = $now.AddDays(-14)
 $errors = New-Object System.Collections.Generic.List[string]
+# Milliseconds per block: "check this PC now" has to answer in seconds, so what is slow must be visible.
+$timings = [ordered]@{}
+$probeClock = [Diagnostics.Stopwatch]::StartNew()
 function Try-Block([string]$name, [scriptblock]$body) {
+    $sw = [Diagnostics.Stopwatch]::StartNew()
     try { & $body } catch { $errors.Add("${name}: $($_.Exception.Message)"); $null }
+    finally { $timings[$name] = [int]$sw.ElapsedMilliseconds }
 }
 function Count-Events($log, [hashtable]$filter) {
     $filter['LogName'] = $log
@@ -278,4 +283,6 @@ $dataOutside = Try-Block 'dataOutside' {
     # touches CIM said "Invalid class". Reported as a fact so a rule can raise it.
     WmiHealthy    = [bool](Try-Block 'wmi' { Get-CimInstance Win32_OperatingSystem -ErrorAction Stop })
     ProbeErrors   = @($errors)
+    ProbeMs       = [int]$probeClock.ElapsedMilliseconds
+    BlockMs       = [pscustomobject]$timings
 }

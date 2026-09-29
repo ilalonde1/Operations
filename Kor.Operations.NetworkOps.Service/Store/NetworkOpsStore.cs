@@ -10,7 +10,7 @@ namespace Kor.Operations.NetworkOps.Service.Store;
 // Everything NetworkOps persists, in KorNetworkOps (db/KorNetworkOps/001_CreateDatabaseAndSchema.sql).
 // Raw ADO.NET, typed parameters, a fresh connection per call -- the FileSync control-plane pattern.
 // All times are UTC.
-internal sealed class NetworkOpsStore
+internal sealed partial class NetworkOpsStore
 {
     private readonly string _cs;
 
@@ -151,7 +151,7 @@ internal sealed class NetworkOpsStore
     {
         await using var c = await OpenAsync(ct).ConfigureAwait(false);
         await using var cmd = Cmd(c, """
-            SELECT FindingId, RuleKey, Severity, FirstSeenUtc, NotifiedSeverity
+            SELECT FindingId, RuleKey, Severity, FirstSeenUtc, NotifiedSeverity, LastSeenUtc
             FROM NetworkOps.Findings
             WHERE DeviceId = @d AND ClearedUtc IS NULL AND (@ex IS NULL OR RuleKey NOT LIKE @ex + '%');
             """);
@@ -161,7 +161,7 @@ internal sealed class NetworkOpsStore
         await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
         while (await r.ReadAsync(ct).ConfigureAwait(false))
             list.Add(new OpenFinding(r.GetInt64(0), r.GetString(1), (Severity)r.GetByte(2), r.GetDateTime(3),
-                r.IsDBNull(4) ? null : (Severity)r.GetByte(4)));
+                r.IsDBNull(4) ? null : (Severity)r.GetByte(4)) { LastSeenUtc = r.GetDateTime(5) });
         return list;
     }
 

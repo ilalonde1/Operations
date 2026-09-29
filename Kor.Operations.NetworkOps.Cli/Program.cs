@@ -2,7 +2,7 @@
 // netops -- the hands-on half of KOR NetworkOps (docs/KOR-NetworkOps-Design-2026-09-28.md, Phase 1).
 //
 //   netops census   [--hosts A,B | all]                      which channel answers on which machine
-//   netops run      --script probe.ps1 [--hosts A,B | all] [--timeout 600] [--out dir]
+//   netops run      --script probe.ps1 [--hosts A,B | all] [--timeout 600] [--out dir] [--repeat n]
 //   netops hardware [--hosts A,B | all]                      CPU, board, DIMM slots, GPU, disks
 //   netops health   [--hosts A,B | all] [--out dir]          the health probe + rules: findings per machine
 //
@@ -21,7 +21,7 @@ using Kor.Operations.NetworkOps.Transport;
 
 if (args.Length == 0 || args[0] is "-h" or "--help" or "help")
 {
-    Console.WriteLine("netops census|run|hardware|health [--hosts A,B|all] [--script f.ps1] [--timeout s] [--out dir] [--parallel n]");
+    Console.WriteLine("netops census|run|hardware|health [--hosts A,B|all] [--script f.ps1] [--timeout s] [--out dir] [--parallel n] [--repeat n]");
     return 2;
 }
 
@@ -29,6 +29,7 @@ var verb = args[0].ToLowerInvariant();
 string? hostsArg = null, script = null, outDir = null;
 var timeout = 600;
 var parallel = 16;
+var repeat = 1;
 for (var i = 1; i < args.Length; i++)
 {
     switch (args[i])
@@ -38,6 +39,7 @@ for (var i = 1; i < args.Length; i++)
         case "--out" when i + 1 < args.Length: outDir = args[++i]; break;
         case "--timeout" when i + 1 < args.Length && int.TryParse(args[i + 1], out var t): timeout = t; i++; break;
         case "--parallel" when i + 1 < args.Length && int.TryParse(args[i + 1], out var p): parallel = p; i++; break;
+        case "--repeat" when i + 1 < args.Length && int.TryParse(args[i + 1], out var n) && n >= 1: repeat = n; i++; break;
         default: Console.Error.WriteLine($"Unknown argument: {args[i]}"); return 2;
     }
 }
@@ -69,9 +71,12 @@ switch (verb)
     {
         if (script is null || !File.Exists(script)) { Console.Error.WriteLine("--script <file.ps1> is required and must exist."); return 2; }
         var body = await File.ReadAllTextAsync(script);
-        var runs = await RunEverywhere(hosts, body, timeout, options);
+        // --repeat runs the script again in the same process: the later passes show what "check now"
+        // costs once the SCM connection to each machine is already open.
+        var runs = new List<OnTargetRun>();
+        for (var pass = 0; pass < repeat; pass++) runs.AddRange(await RunEverywhere(hosts, body, timeout, options));
         foreach (var r in runs)
-            Console.WriteLine($"=== {r.Computer} [{r.Status}] {r.Error}{Environment.NewLine}{(r.OutputJson is null ? "" : Pretty(r.OutputJson))}");
+            Console.WriteLine($"=== {r.Computer} [{r.Status}] {r.TotalMs} ms ({r.Stages}) {r.Error}{Environment.NewLine}{(r.OutputJson is null ? "" : Pretty(r.OutputJson))}");
         Summarise(runs);
         WriteJson(outDir, "run", runs);
         return runs.All(r => r.Status == OnTargetStatus.Ok) ? 0 : 1;
@@ -140,6 +145,7 @@ static async Task<List<OnTargetRun>> RunEverywhere(IReadOnlyList<string> hosts, 
     var channel = new OnTargetChannel(TimeSpan.FromSeconds(timeoutSeconds));
     var bag = new System.Collections.Concurrent.ConcurrentBag<OnTargetRun>();
     await Parallel.ForEachAsync(hosts, options, async (h, ct) => bag.Add(await channel.RunAsync(h, body, ct)));
+    await OnTargetChannel.DrainAsync();   // the one-shot services are deleted as the SCM lets go; never exit with any left behind
     return bag.OrderBy(r => r.Computer, StringComparer.OrdinalIgnoreCase).ToList();
 }
 

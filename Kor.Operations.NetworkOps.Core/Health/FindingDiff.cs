@@ -2,7 +2,11 @@
 namespace Kor.Operations.NetworkOps.Core.Health;
 
 /// <summary>A finding already open for a device, as the store holds it.</summary>
-public sealed record OpenFinding(long FindingId, string RuleKey, Severity Severity, DateTime FirstSeenUtc, Severity? NotifiedSeverity);
+public sealed record OpenFinding(long FindingId, string RuleKey, Severity Severity, DateTime FirstSeenUtc, Severity? NotifiedSeverity)
+{
+    /// <summary>The last sweep that still saw it -- the start of the window in which whatever fixed it happened.</summary>
+    public DateTime? LastSeenUtc { get; init; }
+}
 
 public enum ChangeKind { New, Escalated, Unchanged, Cleared }
 

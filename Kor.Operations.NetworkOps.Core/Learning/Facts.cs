@@ -33,7 +33,8 @@ public static partial class Facts
     /// unique per machine and would "explain" everything -- they are recorded, never correlated.
     /// </summary>
     public static bool IsCorrelatable(string key) =>
-        key is Model or Board or Bios or Cpu or RamGb or OsRelease or OfficeBuild or OfficeChannel or GpuName or GpuDriver or AccessEngine
+        key is Model or Board or Bios or Cpu or RamGb or OsRelease or OfficeBuild or OfficeChannel or GpuName or GpuDriver
+        || key.StartsWith(AccessEngine, StringComparison.Ordinal)            // access.engine.2016 -- stored per version
         || key.StartsWith(AppPrefix, StringComparison.Ordinal);
 
     /// <summary>

@@ -55,7 +55,7 @@ internal sealed class FleetCensusJob(NetworkOpsStore store, IDigestSender digest
             var mailable = changes.Where(FindingDiff.IsNotifiable).ToList();
             if (mailable.Count > 0) notify.Add((id, new DeviceChanges(name, mailable)));
         }
-        if (notify.Count > 0 && await digest.SendAsync(notify.Select(n => n.Changes).ToList(), DateTime.Now, ct))
+        if (notify.Count > 0 && await digest.SendAsync(notify.Select(n => n.Changes).ToList(), [], DateTime.Now, ct))
             foreach (var (id, dc) in notify)
                 await store.MarkNotifiedAsync(id, dc.Changes.Where(c => c.Kind != ChangeKind.Cleared).Select(c => c.RuleKey), now, ct);
 
@@ -65,70 +65,17 @@ internal sealed class FleetCensusJob(NetworkOpsStore store, IDigestSender digest
     }
 }
 
-// Twice a working day: the health probe ON every directory machine, the rules, the findings diff,
-// and one digest of what is new, worse or cleared.
-internal sealed class HealthSweepJob(NetworkOpsStore store, IDigestSender digest, IOptions<NetworkOpsOptions> options, ILogger<HealthSweepJob> log) : INetworkOpsJob
+// Every hour of the working day: the full health sweep (Sweep/HealthSweeper) -- probe, facts,
+// metrics, rules + predictions, learning from what cleared, fleet patterns, one digest.
+internal sealed class HealthSweepJob(Sweep.HealthSweeper sweeper) : INetworkOpsJob
 {
     public const string JobName = "HealthSweep";
     public string Name => JobName;
 
-    public async Task<string> RunAsync(CancellationToken ct)
-    {
-        var o = options.Value;
-        var devices = await store.DirectoryDevicesAsync(ct);
-        var channel = new OnTargetChannel(TimeSpan.FromSeconds(o.ProbeTimeoutSeconds));
-        var script = ProbeLibrary.Get(ProbeLibrary.Health);
-
-        var runs = new ConcurrentBag<OnTargetRun>();
-        await Parallel.ForEachAsync(devices.Keys, new ParallelOptions { MaxDegreeOfParallelism = o.ParallelProbes, CancellationToken = ct },
-            async (h, c) => runs.Add(await channel.RunAsync(h, script, c)));
-
-        var now = DateTime.UtcNow;
-        var notify = new List<(int DeviceId, DeviceChanges Changes)>();
-        int ok = 0, unreadable = 0, findings = 0;
-        foreach (var r in runs.OrderBy(r => r.Computer, StringComparer.OrdinalIgnoreCase))
-        {
-            var id = devices[r.Computer];
-            if (r.Status != OnTargetStatus.Ok)
-            {
-                // Offline/timeout: record it, but leave the machine's findings exactly as they were.
-                // Not seeing a fault is not the fault being fixed.
-                await store.RecordObservationAsync(id, ProbeLibrary.Health, null, now, r.Status.ToString(), null, r.Error, ct);
-                continue;
-            }
-            HealthSnapshot snap;
-            try { snap = HealthSnapshot.Parse(r.OutputJson!); }
-            catch (System.Text.Json.JsonException ex)
-            {
-                unreadable++;
-                await store.RecordObservationAsync(id, ProbeLibrary.Health, null, now, "Unreadable", r.OutputJson, ex.Message, ct);
-                continue;
-            }
-            ok++;
-            await store.RecordObservationAsync(id, ProbeLibrary.Health, snap.ProbeVersion, now, "Ok", r.OutputJson, null, ct);
-
-            var raised = HealthRules.Evaluate(snap);
-            findings += raised.Count;
-            var open = await store.OpenFindingsAsync(id, FleetCensusJob.SilentRule, ct);
-            var changes = FindingDiff.Compute(open, raised);
-            await store.ApplyChangesAsync(id, changes, now, ct);
-            var mailable = changes.Where(FindingDiff.IsNotifiable).ToList();
-            if (mailable.Count > 0) notify.Add((id, new DeviceChanges(r.Computer, mailable)));
-        }
-
-        var sent = await digest.SendAsync(notify.Select(n => n.Changes).ToList(), DateTime.Now, ct);
-        if (sent)
-            foreach (var (id, dc) in notify)
-                await store.MarkNotifiedAsync(id, dc.Changes.Where(c => c.Kind != ChangeKind.Cleared).Select(c => c.RuleKey), now, ct);
-
-        var summary = $"probed {ok} of {devices.Count}, {findings} findings, {notify.Sum(n => n.Changes.Changes.Count)} notifiable changes on {notify.Count} machines" +
-                      (unreadable > 0 ? $", {unreadable} unreadable" : "") + (sent ? ", digest mailed" : "");
-        log.LogInformation("Health sweep: {Summary}", summary);
-        return summary;
-    }
+    public Task<string> RunAsync(CancellationToken ct) => sweeper.SweepAsync(null, ct);
 }
 
-// Nightly: keep the observation history bounded (SQL Express caps a database at 10 GB).
+// Nightly: keep the history bounded (SQL Express caps a database at 10 GB).
 internal sealed class MaintenanceJob(NetworkOpsStore store, IOptions<NetworkOpsOptions> options) : INetworkOpsJob
 {
     public const string JobName = "Maintenance";
@@ -136,7 +83,9 @@ internal sealed class MaintenanceJob(NetworkOpsStore store, IOptions<NetworkOpsO
 
     public async Task<string> RunAsync(CancellationToken ct)
     {
-        var n = await store.PurgeObservationsAsync(options.Value.ObservationRetentionDays, DateTime.UtcNow, ct);
-        return $"purged {n} observations older than {options.Value.ObservationRetentionDays} days";
+        var keep = options.Value.ObservationRetentionDays;
+        var obs = await store.PurgeObservationsAsync(keep, DateTime.UtcNow, ct);
+        var metrics = await store.PurgeMetricsAsync(keep, DateTime.UtcNow, ct);
+        return $"purged {obs} observations and {metrics} metric points older than {keep} days";
     }
 }

@@ -19,8 +19,8 @@ internal static class SchedulingCatalog
     [
         new(typeof(FleetCensusJob), FleetCensusJob.JobName, "0 5 7-18 ? * MON-FRI",
             "hourly in business hours; PCs are off at night, so a night census only proves they are off"),
-        new(typeof(HealthSweepJob), HealthSweepJob.JobName, "0 30 10,14 ? * MON-FRI",
-            "mid-morning and mid-afternoon, when the fleet is on and users have been working long enough to show faults"),
+        new(typeof(HealthSweepJob), HealthSweepJob.JobName, "0 30 7-18 ? * MON-FRI",
+            "every working hour: faults show up within the hour and trend lines get a point each hour the PC is on; about 70 s for the fleet"),
         new(typeof(MaintenanceJob), MaintenanceJob.JobName, "0 0 3 * * ?",
             "nightly observation purge; nothing else runs then"),
     ];
@@ -32,16 +32,24 @@ internal sealed class JobDispatcher(NetworkOpsStore store, IDigestSender alerts,
 {
     public static readonly string Version = typeof(JobDispatcher).Assembly.GetName().Version?.ToString(3) ?? "0.0.0";
 
-    public async Task RunAsync(INetworkOpsJob job, CancellationToken ct)
+    public Task RunAsync(INetworkOpsJob job, CancellationToken ct) => RunAsync(job.Name, job.RunAsync, ct);
+
+    /// <summary>Records, runs and alerts on one unit of work; returns whether it succeeded and its summary or error.</summary>
+    public async Task<(bool Success, string Result)> RunAsync(string jobName, Func<CancellationToken, Task<string>> work, CancellationToken ct)
     {
         long runId;
-        try { runId = await store.StartRunAsync(job.Name, Environment.MachineName, Version, ct); }
-        catch (Exception ex) { log.LogError(ex, "Could not record the start of {Job}; running it unrecorded is worse than skipping it", job.Name); return; }
+        try { runId = await store.StartRunAsync(jobName, Environment.MachineName, Version, ct); }
+        catch (Exception ex)
+        {
+            log.LogError(ex, "Could not record the start of {Job}; running it unrecorded is worse than skipping it", jobName);
+            return (false, "could not record the run start: " + ex.Message);
+        }
 
         try
         {
-            var summary = await job.RunAsync(ct);
+            var summary = await work(ct);
             await store.FinishRunAsync(runId, true, summary, null);
+            return (true, summary);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
@@ -50,10 +58,11 @@ internal sealed class JobDispatcher(NetworkOpsStore store, IDigestSender alerts,
         }
         catch (Exception ex)
         {
-            log.LogError(ex, "{Job} run {RunId} failed", job.Name, runId);
+            log.LogError(ex, "{Job} run {RunId} failed", jobName, runId);
             await store.FinishRunAsync(runId, false, ex.Message, ex.ToString());
             using var cap = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-            await alerts.SendAlertAsync($"[NetworkOps] '{job.Name}' run {runId} FAILED on {Environment.MachineName}", ex.ToString(), cap.Token);
+            await alerts.SendAlertAsync($"[NetworkOps] '{jobName}' run {runId} FAILED on {Environment.MachineName}", ex.ToString(), cap.Token);
+            return (false, ex.Message);
         }
     }
 }

@@ -15,18 +15,32 @@ public sealed record DigestMessage(string Subject, string HtmlBody);
 public static class AlertDigest
 {
     public static DigestMessage? Compose(IReadOnlyList<DeviceChanges> devices, DateTime sweptAtLocal)
+        => Compose(devices, [], sweptAtLocal);
+
+    /// <param name="newPatterns">Fleet patterns found for the first time this sweep (the "knows about other PCs" layer).</param>
+    public static DigestMessage? Compose(IReadOnlyList<DeviceChanges> devices, IReadOnlyList<Learning.FleetInsight> newPatterns, DateTime sweptAtLocal)
     {
         var raised = devices.SelectMany(d => d.Changes.Where(c => c.Kind is ChangeKind.New or ChangeKind.Escalated).Select(c => (d.Device, c))).ToList();
         var cleared = devices.SelectMany(d => d.Changes.Where(c => c.Kind == ChangeKind.Cleared).Select(c => (d.Device, c))).ToList();
-        if (raised.Count == 0 && cleared.Count == 0) return null;
+        if (raised.Count == 0 && cleared.Count == 0 && newPatterns.Count == 0) return null;
 
         var critical = raised.Count(x => x.c.Current!.Severity == Severity.Critical);
         var subject = new StringBuilder("[NetworkOps] ");
         if (critical > 0) subject.Append($"{critical} critical, ");
-        subject.Append($"{raised.Count} new or worse, {cleared.Count} cleared -- {sweptAtLocal:ddd d MMM HH:mm}");
+        subject.Append($"{raised.Count} new or worse, {cleared.Count} cleared");
+        if (newPatterns.Count > 0) subject.Append($", {newPatterns.Count} fleet pattern{(newPatterns.Count == 1 ? "" : "s")}");
+        subject.Append($" -- {sweptAtLocal:ddd d MMM HH:mm}");
 
         var html = new StringBuilder();
         html.Append("<div style=\"font-family:Segoe UI,Arial,sans-serif;font-size:14px\">");
+        if (newPatterns.Count > 0)
+        {
+            html.Append("<h3 style=\"margin:16px 0 6px\">Fleet patterns</h3><ul style=\"margin:0\">");
+            foreach (var p in newPatterns.OrderBy(p => p.PValue))
+                html.Append("<li>").Append(Enc(p.Summary)).Append(" <span style=\"color:#555\">(")
+                    .Append(Enc(string.Join(", ", p.Devices))).Append(")</span></li>");
+            html.Append("</ul>");
+        }
         foreach (var group in raised.OrderByDescending(x => x.c.Current!.Severity).ThenBy(x => x.Device, StringComparer.OrdinalIgnoreCase)
                                     .GroupBy(x => x.c.Current!.Severity))
         {

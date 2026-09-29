@@ -11,7 +11,7 @@ namespace Kor.Operations.NetworkOps.Service.Alerting;
 internal interface IDigestSender
 {
     /// <returns>True only when the digest was actually MAILED -- findings are marked notified on that and nothing else.</returns>
-    Task<bool> SendAsync(IReadOnlyList<DeviceChanges> changes, DateTime sweptAtLocal, CancellationToken ct);
+    Task<bool> SendAsync(IReadOnlyList<DeviceChanges> changes, IReadOnlyList<Kor.Operations.NetworkOps.Core.Learning.FleetInsight> newPatterns, DateTime sweptAtLocal, CancellationToken ct);
 
     /// <summary>A plain alert about the service itself (a failed run).</summary>
     Task SendAlertAsync(string subject, string body, CancellationToken ct);
@@ -26,9 +26,9 @@ internal sealed class DigestSender(GraphServiceClient graph, IOptions<NetworkOps
     public static readonly string DigestDirectory =
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "KorOperations", "NetworkOps", "digests");
 
-    public async Task<bool> SendAsync(IReadOnlyList<DeviceChanges> changes, DateTime sweptAtLocal, CancellationToken ct)
+    public async Task<bool> SendAsync(IReadOnlyList<DeviceChanges> changes, IReadOnlyList<Kor.Operations.NetworkOps.Core.Learning.FleetInsight> newPatterns, DateTime sweptAtLocal, CancellationToken ct)
     {
-        var msg = AlertDigest.Compose(changes, sweptAtLocal);
+        var msg = AlertDigest.Compose(changes, newPatterns, sweptAtLocal);
         if (msg is null) return false;
 
         if (!options.Value.AlertsEnabled)

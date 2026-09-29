@@ -24,6 +24,39 @@ internal static class ServiceControlManager
     public const int ErrorServiceDoesNotExist = 1060;
     public const int ErrorServiceMarkedForDelete = 1072;
 
+    // ---- connection reuse
+    //
+    // Opening a workstation's SCM costs ~21 s here, every time: since Windows 10 1709 the client tries
+    // RPC over TCP first -- port 135 answers, the dynamic port it is sent to is blocked, and only after
+    // TCP gives up does it fall back to named pipes over SMB (measured 2026-09-28: KOR-216 and KOR-305
+    // 21,471 ms per call; KOR-APP01, where the dynamic range is open, 315 ms). The cost is paid when the
+    // handle is opened, not per call, so one handle per machine is kept and reused: a long-running
+    // service pays it once per PC, and "check this PC now" answers in seconds after that.
+    // A handle that has gone stale (the PC rebooted, the pipe dropped) is reopened once.
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, Lazy<ScmHandle>> Pool = new(StringComparer.OrdinalIgnoreCase);
+
+    private static readonly int[] StaleHandleErrors = [6 /* invalid handle */, 1722 /* RPC server unavailable */, 1726 /* RPC call failed */, 1727 /* RPC call failed, did not execute */];
+
+    /// <summary>
+    /// Runs <paramref name="use"/> against a pooled manager handle for <paramref name="machine"/> (opened with
+    /// create rights), reopening once if the pooled handle has gone stale.
+    /// </summary>
+    public static T WithPooledManager<T>(string machine, Func<ScmHandle, T> use)
+    {
+        for (var attempt = 0; ; attempt++)
+        {
+            var lazy = Pool.GetOrAdd(machine, m => new Lazy<ScmHandle>(() => OpenManager(m, forCreate: true)));
+            ScmHandle handle;
+            try { handle = lazy.Value; }
+            catch { Pool.TryRemove(new KeyValuePair<string, Lazy<ScmHandle>>(machine, lazy)); throw; }
+            try { return use(handle); }
+            catch (Win32Exception ex) when (attempt == 0 && StaleHandleErrors.Contains(ex.NativeErrorCode))
+            {
+                if (Pool.TryRemove(new KeyValuePair<string, Lazy<ScmHandle>>(machine, lazy))) handle.Dispose();
+            }
+        }
+    }
+
     public static ScmHandle OpenManager(string machine, bool forCreate)
     {
         var access = ScManagerConnect | (forCreate ? ScManagerCreateService : 0);
