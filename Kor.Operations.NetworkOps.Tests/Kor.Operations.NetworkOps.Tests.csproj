@@ -16,6 +16,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Kor.Operations.NetworkOps.Core\Kor.Operations.NetworkOps.Core.csproj" />
     <ProjectReference Include="..\Kor.Operations.NetworkOps.Transport\Kor.Operations.NetworkOps.Transport.csproj" />
+    <ProjectReference Include="..\Kor.Operations.NetworkOps.Service\Kor.Operations.NetworkOps.Service.csproj" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Fixtures\**" CopyToOutputDirectory="PreserveNewest" />

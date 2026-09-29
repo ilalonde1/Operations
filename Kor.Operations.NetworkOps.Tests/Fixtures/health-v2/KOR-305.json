@@ -1,0 +1,269 @@
+{
+  "ProbeVersion": 2,
+  "CollectedAt": "2026-09-28T21:51:04",
+  "Computer": "KOR-305",
+  "Os": {
+    "Product": "Windows 11 Pro",
+    "DisplayVersion": "25H2",
+    "Build": 26200,
+    "Ubr": 9550,
+    "LastBoot": "2026-09-27T19:01:04",
+    "UptimeHours": 27
+  },
+  "PendingReboot": {
+    "ComponentServicing": false,
+    "WindowsUpdate": false,
+    "FileRename": true
+  },
+  "Volumes": [
+    {
+      "Letter": "C",
+      "Label": "Windows",
+      "SizeGB": 951.6,
+      "FreeGB": 285
+    }
+  ],
+  "PhysicalDisks": [
+    {
+      "Name": "SAMSUNG MZVL21T0HDLU-00BLL",
+      "Media": "SSD",
+      "Bus": "NVMe",
+      "SizeGB": 954,
+      "Health": "Healthy",
+      "Operational": "OK"
+    }
+  ],
+  "MissingDisks": [],
+  "OrphanDriveLetters": [
+    "D"
+  ],
+  "Events14d": {
+    "DiskBadBlock": {
+      "Count": 0,
+      "Last": null
+    },
+    "DiskResets": {
+      "Count": 0,
+      "Last": null
+    },
+    "NtfsCorruption": {
+      "Count": 0,
+      "Last": null
+    },
+    "Whea": {
+      "Count": 0,
+      "Last": null
+    },
+    "UnexpectedShutdown": {
+      "Count": 0,
+      "Last": null
+    },
+    "GpuHang": {
+      "Count": 222,
+      "Last": "2026-09-28T21:11:42"
+    },
+    "ResourceExhaustion": {
+      "Count": 0,
+      "Last": null
+    },
+    "UpdateFailures": {
+      "Count": 13,
+      "Last": "2026-09-25T00:54:24"
+    },
+    "AppHangs": {
+      "Count": 0,
+      "Last": null
+    }
+  },
+  "AppCrashes14d": [],
+  "OutlookIndex60d": [],
+  "Office": {
+    "C2rMso": "16.0.20326.20072",
+    "DownlevelMso": null,
+    "AccessEngine": false
+  },
+  "Update": {
+    "MicrosoftUpdate": true,
+    "NoAutoUpdate": 1,
+    "LastInstall": "2026-09-28T00:17:06",
+    "LastInstallTitle": "Update for Windows (KB5124010)",
+    "LastInstallBy": "wusa"
+  },
+  "CoolingMode": "Balance mode",
+  "DisplayAdapters": [
+    {
+      "Name": "NVIDIA RTX A2000 12GB",
+      "Driver": "32.0.15.9651",
+      "ErrorCode": 0
+    },
+    {
+      "Name": "Microsoft Remote Display Adapter",
+      "Driver": "10.0.26100.9549",
+      "ErrorCode": 0
+    },
+    {
+      "Name": "Intel(R) UHD Graphics 770",
+      "Driver": "32.0.101.7088",
+      "ErrorCode": 0
+    }
+  ],
+  "Residue": {
+    "NewformaProfiles": 0,
+    "NewformaInstalled": []
+  },
+  "RemoteTools": [
+    {
+      "Name": "ncstreamer",
+      "State": "Running",
+      "StartMode": "Auto"
+    },
+    {
+      "Name": "ScreenConnect Client (f626167a716ce0b9)",
+      "State": "Running",
+      "StartMode": "Auto"
+    },
+    {
+      "Name": "TeamViewer",
+      "State": "Running",
+      "StartMode": "Auto"
+    }
+  ],
+  "DataOutsideSystemDrive": [],
+  "DiskReliability": [
+    {
+      "Name": "SAMSUNG MZVL21T0HDLU-00BLL",
+      "Serial": "0025_38BB_31B2_8BB8.",
+      "WearPct": 0,
+      "TemperatureC": 28,
+      "TemperatureMaxC": 83,
+      "ReadErrors": null,
+      "ReadErrorsUncorrected": null,
+      "WriteErrors": null,
+      "PowerOnHours": null
+    }
+  ],
+  "Inventory": {
+    "Manufacturer": "LENOVO",
+    "Model": "ThinkStation P3 Tower",
+    "MachineType": "30GS002UUS",
+    "Serial": "SERIAL-REDACTED",
+    "BoardMaker": "LENOVO",
+    "BoardProduct": "1064",
+    "BiosVersion": "S0IKT7DA",
+    "BiosDate": "2026-03-29",
+    "Cpu": "13th Gen Intel(R) Core(TM) i9-13900K",
+    "Cores": 24,
+    "RamGB": 32,
+    "LoggedOnUser": null,
+    "OfficeBuild": "16.0.20326.20158",
+    "OfficeChannel": "492350f6-3a01-4f97-b9c0-c7c6ddf67d60",
+    "Apps": [
+      {
+        "Name": "Adobe Acrobat (64-bit)",
+        "Version": "26.002.21931"
+      },
+      {
+        "Name": "Autodesk Revit 2019",
+        "Version": ""
+      },
+      {
+        "Name": "Autodesk Revit 2019 MEP Fabrication Configuration - Imperial",
+        "Version": "2.2"
+      },
+      {
+        "Name": "Autodesk Revit 2019 MEP Fabrication Configuration - Metric",
+        "Version": "2.2"
+      },
+      {
+        "Name": "Autodesk Revit 2020",
+        "Version": "20.0.0.377"
+      },
+      {
+        "Name": "Autodesk Revit 2020 Revit MEP Imperial Content",
+        "Version": "2.2"
+      },
+      {
+        "Name": "Autodesk Revit 2020 Revit MEP Metric Content",
+        "Version": "2.2"
+      },
+      {
+        "Name": "Autodesk Revit 2021",
+        "Version": "21.1.90.15"
+      },
+      {
+        "Name": "Autodesk Revit 2021.1.9",
+        "Version": "21.1.90.15"
+      },
+      {
+        "Name": "Autodesk Revit 2022",
+        "Version": "22.1.50.17"
+      },
+      {
+        "Name": "Autodesk Revit 2022.1.5 Hotfix",
+        "Version": "22.1.50.17"
+      },
+      {
+        "Name": "Autodesk Revit 2023",
+        "Version": "23.1.90.15"
+      },
+      {
+        "Name": "Autodesk Revit 2023.1.9 Update",
+        "Version": "23.1.90.15"
+      },
+      {
+        "Name": "Autodesk Revit 2024",
+        "Version": "24.3.60.12"
+      },
+      {
+        "Name": "Autodesk Revit 2024.3.6 Update",
+        "Version": "24.3.60.12"
+      },
+      {
+        "Name": "Autodesk Revit 2025",
+        "Version": "25.4.60.9"
+      },
+      {
+        "Name": "Autodesk Revit 2026",
+        "Version": "26.5.0.55"
+      },
+      {
+        "Name": "Autodesk Revit 2027",
+        "Version": "27.2.0.39"
+      },
+      {
+        "Name": "Bluebeam Revu x64",
+        "Version": "21.11.0"
+      },
+      {
+        "Name": "Microsoft Teams Meeting Add-in for Microsoft Office",
+        "Version": "1.26.21803"
+      },
+      {
+        "Name": "NVIDIA Graphics Driver 596.51",
+        "Version": "596.51"
+      }
+    ]
+  },
+  "MailStores": [
+    {
+      "Profile": "cford",
+      "Name": "cford@korstructural.com.ost",
+      "GB": 6.43,
+      "LastWrite": "2026-09-28T21:37:40"
+    },
+    {
+      "Profile": "chris ford",
+      "Name": "cford@korstructural.com.ost",
+      "GB": 6.07,
+      "LastWrite": "2025-08-29T17:25:33"
+    }
+  ],
+  "Boot": {
+    "LastBootMs": 44934,
+    "MedianBootMs": 41484,
+    "Samples": 10
+  },
+  "Battery": null,
+  "WmiHealthy": true,
+  "ProbeErrors": []
+}

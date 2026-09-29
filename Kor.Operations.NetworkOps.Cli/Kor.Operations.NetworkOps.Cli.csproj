@@ -14,8 +14,4 @@
     <ProjectReference Include="..\Kor.Operations.NetworkOps.Transport\Kor.Operations.NetworkOps.Transport.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <None Include="Probes\**" CopyToOutputDirectory="PreserveNewest" />
-  </ItemGroup>
-
 </Project>

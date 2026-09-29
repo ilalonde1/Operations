@@ -1,0 +1,260 @@
+{
+  "ProbeVersion": 2,
+  "CollectedAt": "2026-09-28T21:51:04",
+  "Computer": "KOR-206-N",
+  "Os": {
+    "Product": "Windows 11 Pro",
+    "DisplayVersion": "25H2",
+    "Build": 26200,
+    "Ubr": 9550,
+    "LastBoot": "2026-09-28T17:29:46",
+    "UptimeHours": 4
+  },
+  "PendingReboot": {
+    "ComponentServicing": false,
+    "WindowsUpdate": false,
+    "FileRename": false
+  },
+  "Volumes": [
+    {
+      "Letter": "C",
+      "Label": "Windows",
+      "SizeGB": 474.7,
+      "FreeGB": 110.3
+    }
+  ],
+  "PhysicalDisks": [
+    {
+      "Name": "SAMSUNG MZVL2512HDJD-00BLL",
+      "Media": "SSD",
+      "Bus": "NVMe",
+      "SizeGB": 477,
+      "Health": "Healthy",
+      "Operational": "OK"
+    }
+  ],
+  "MissingDisks": [
+    {
+      "Name": "Samsung SSD 870 EVO 500GB",
+      "InstanceId": "SCSI\\DISK&VEN_SAMSUNG&PROD_SSD_870_EVO_500G\\4&15BD03DF&0&070000"
+    }
+  ],
+  "OrphanDriveLetters": [
+    "D"
+  ],
+  "Events14d": {
+    "DiskBadBlock": {
+      "Count": 0,
+      "Last": null
+    },
+    "DiskResets": {
+      "Count": 20,
+      "Last": "2026-09-28T17:30:47"
+    },
+    "NtfsCorruption": {
+      "Count": 0,
+      "Last": null
+    },
+    "Whea": {
+      "Count": 5,
+      "Last": "2026-09-28T17:30:22"
+    },
+    "UnexpectedShutdown": {
+      "Count": 1,
+      "Last": "2026-09-25T20:48:38"
+    },
+    "GpuHang": {
+      "Count": 244,
+      "Last": "2026-09-28T21:48:18"
+    },
+    "ResourceExhaustion": {
+      "Count": 0,
+      "Last": null
+    },
+    "UpdateFailures": {
+      "Count": 14,
+      "Last": "2026-09-25T16:14:33"
+    },
+    "AppHangs": {
+      "Count": 7,
+      "Last": "2026-09-25T04:23:11"
+    }
+  },
+  "AppCrashes14d": [
+    {
+      "Process": "opushutil.exe",
+      "Count": 23,
+      "Last": "2026-09-28T14:39:42"
+    }
+  ],
+  "OutlookIndex60d": [
+    {
+      "Store": "C:\\Users\\kevinw\\AppData\\Local\\Microsoft\\Outlook\\kevinw@korstructural.com.ost",
+      "Count": 4,
+      "Last": "2026-09-19T14:23:06"
+    },
+    {
+      "Store": "C:\\Users\\kevinw\\AppData\\Local\\Microsoft\\Outlook\\kevinw@korstructural.com(2).nst",
+      "Count": 1,
+      "Last": "2026-08-12T18:52:17"
+    }
+  ],
+  "Office": {
+    "C2rMso": "16.0.20326.20072",
+    "DownlevelMso": "16.0.5495.1002",
+    "AccessEngine": true
+  },
+  "Update": {
+    "MicrosoftUpdate": true,
+    "NoAutoUpdate": 1,
+    "LastInstall": "2026-09-28T00:11:12",
+    "LastInstallTitle": "Update for Windows (KB5124010)",
+    "LastInstallBy": "wusa"
+  },
+  "CoolingMode": "Balance mode",
+  "DisplayAdapters": [
+    {
+      "Name": "Intel(R) UHD Graphics 770",
+      "Driver": "32.0.101.7088",
+      "ErrorCode": 0
+    },
+    {
+      "Name": "NVIDIA T400 4GB",
+      "Driver": "32.0.15.9651",
+      "ErrorCode": 0
+    }
+  ],
+  "Residue": {
+    "NewformaProfiles": 0,
+    "NewformaInstalled": []
+  },
+  "RemoteTools": [
+    {
+      "Name": "ncstreamer",
+      "State": "Running",
+      "StartMode": "Auto"
+    },
+    {
+      "Name": "ScreenConnect Client (f626167a716ce0b9)",
+      "State": "Running",
+      "StartMode": "Auto"
+    },
+    {
+      "Name": "TeamViewer",
+      "State": "Running",
+      "StartMode": "Auto"
+    }
+  ],
+  "DataOutsideSystemDrive": [],
+  "DiskReliability": [
+    {
+      "Name": "SAMSUNG MZVL2512HDJD-00BLL",
+      "Serial": "0025_38BA_31BC_AC3D.",
+      "WearPct": 0,
+      "TemperatureC": 26,
+      "TemperatureMaxC": 83,
+      "ReadErrors": null,
+      "ReadErrorsUncorrected": null,
+      "WriteErrors": null,
+      "PowerOnHours": null
+    }
+  ],
+  "Inventory": {
+    "Manufacturer": "LENOVO",
+    "Model": "ThinkStation P3 Tower",
+    "MachineType": "30GS0031US",
+    "Serial": "SERIAL-REDACTED",
+    "BoardMaker": "LENOVO",
+    "BoardProduct": "1064",
+    "BiosVersion": "S0IKT7CA",
+    "BiosDate": "2025-12-18",
+    "Cpu": "13th Gen Intel(R) Core(TM) i7-13700",
+    "Cores": 16,
+    "RamGB": 96,
+    "LoggedOnUser": null,
+    "OfficeBuild": "16.0.20326.20158",
+    "OfficeChannel": "492350f6-3a01-4f97-b9c0-c7c6ddf67d60",
+    "Apps": [
+      {
+        "Name": "Autodesk Revit 2021",
+        "Version": "21.1.21.45"
+      },
+      {
+        "Name": "Autodesk Revit 2022",
+        "Version": "22.0.2.392"
+      },
+      {
+        "Name": "Autodesk Revit 2024",
+        "Version": "24.2.10.64"
+      },
+      {
+        "Name": "Autodesk Revit 2024.2.1 Update",
+        "Version": "24.2.10.64"
+      },
+      {
+        "Name": "Autodesk Revit 2025",
+        "Version": "25.3.0.46"
+      },
+      {
+        "Name": "Bluebeam Revu x64",
+        "Version": "21.10.0"
+      },
+      {
+        "Name": "ETABS 21",
+        "Version": "21.2.0"
+      },
+      {
+        "Name": "ETABS 22",
+        "Version": "22.4.0"
+      },
+      {
+        "Name": "ETABS 23",
+        "Version": "23.2.0"
+      },
+      {
+        "Name": "Microsoft Access database engine 2016 (English)",
+        "Version": "16.0.5044.1000"
+      },
+      {
+        "Name": "Microsoft Teams Meeting Add-in for Microsoft Office",
+        "Version": "1.26.21803"
+      },
+      {
+        "Name": "NVIDIA Graphics Driver 596.51",
+        "Version": "596.51"
+      },
+      {
+        "Name": "SAFE 2016",
+        "Version": "16.0.2"
+      },
+      {
+        "Name": "SAFE 21",
+        "Version": "21.2.0"
+      },
+      {
+        "Name": "SAFE 22",
+        "Version": "22.7.0"
+      },
+      {
+        "Name": "SAFE 23",
+        "Version": "23.3.0"
+      }
+    ]
+  },
+  "MailStores": [
+    {
+      "Profile": "kevinw",
+      "Name": "kevinw@korstructural.com.ost",
+      "GB": 12.27,
+      "LastWrite": "2026-09-28T17:28:02"
+    }
+  ],
+  "Boot": {
+    "LastBootMs": 56406,
+    "MedianBootMs": 39362,
+    "Samples": 10
+  },
+  "Battery": null,
+  "WmiHealthy": true,
+  "ProbeErrors": []
+}

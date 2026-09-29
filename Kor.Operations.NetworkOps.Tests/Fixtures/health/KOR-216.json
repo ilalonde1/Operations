@@ -1,0 +1,162 @@
+{
+  "ProbeVersion": 1,
+  "CollectedAt": "2026-09-28T21:05:00",
+  "Computer": "KOR-216",
+  "Os": {
+    "Product": "Windows 11 Pro",
+    "DisplayVersion": "25H2",
+    "Build": 26200,
+    "Ubr": 9550,
+    "LastBoot": "2026-09-28T12:46:56",
+    "UptimeHours": 8
+  },
+  "PendingReboot": {
+    "ComponentServicing": false,
+    "WindowsUpdate": false,
+    "FileRename": true
+  },
+  "Volumes": [
+    {
+      "Letter": "C",
+      "Label": "Windows",
+      "SizeGB": 951.6,
+      "FreeGB": 155.7
+    },
+    {
+      "Letter": "D",
+      "Label": "Data",
+      "SizeGB": 953.9,
+      "FreeGB": 834.8
+    }
+  ],
+  "PhysicalDisks": [
+    {
+      "Name": "NVMe SAMSUNG MZVL21T0HCLR-00BL7",
+      "Media": "SSD",
+      "Bus": "NVMe",
+      "SizeGB": 954,
+      "Health": "Healthy",
+      "Operational": "OK"
+    },
+    {
+      "Name": "KINGSTON SKC6001024G",
+      "Media": "SSD",
+      "Bus": "SATA",
+      "SizeGB": 954,
+      "Health": "Healthy",
+      "Operational": "OK"
+    }
+  ],
+  "MissingDisks": [],
+  "OrphanDriveLetters": [
+    "E"
+  ],
+  "Events14d": {
+    "DiskBadBlock": {
+      "Count": 0,
+      "Last": null
+    },
+    "DiskResets": {
+      "Count": 0,
+      "Last": null
+    },
+    "NtfsCorruption": {
+      "Count": 0,
+      "Last": null
+    },
+    "Whea": {
+      "Count": 0,
+      "Last": null
+    },
+    "UnexpectedShutdown": {
+      "Count": 0,
+      "Last": null
+    },
+    "GpuHang": {
+      "Count": 0,
+      "Last": null
+    }
+  },
+  "AppCrashes14d": [
+    {
+      "Process": "opushutil.exe",
+      "Count": 15,
+      "Last": "2026-09-21T13:24:50"
+    },
+    {
+      "Process": "BackgroundTaskHost.exe",
+      "Count": 1,
+      "Last": "2026-09-18T06:15:36"
+    },
+    {
+      "Process": "ipf_helper.exe",
+      "Count": 1,
+      "Last": "2026-09-17T17:21:40"
+    },
+    {
+      "Process": "Revu.exe",
+      "Count": 1,
+      "Last": "2026-09-17T11:28:13"
+    }
+  ],
+  "OutlookIndex60d": [],
+  "Office": {
+    "C2rMso": "16.0.20430.20032",
+    "DownlevelMso": "16.0.5495.1002",
+    "AccessEngine": true
+  },
+  "Update": {
+    "MicrosoftUpdate": true,
+    "NoAutoUpdate": 1,
+    "LastInstall": "2026-09-28T00:11:06",
+    "LastInstallTitle": "Update for Windows (KB5124010)",
+    "LastInstallBy": "wusa"
+  },
+  "CoolingMode": "Performance mode",
+  "DisplayAdapters": [
+    {
+      "Name": "NVIDIA RTX A4000",
+      "Driver": "32.0.15.9651",
+      "ErrorCode": 0
+    },
+    {
+      "Name": "Intel(R) UHD Graphics 770",
+      "Driver": "32.0.101.7088",
+      "ErrorCode": 0
+    }
+  ],
+  "Residue": {
+    "NewformaProfiles": 0,
+    "NewformaInstalled": []
+  },
+  "RemoteTools": [
+    {
+      "Name": "ncstreamer",
+      "State": "Running",
+      "StartMode": "Auto"
+    },
+    {
+      "Name": "ScreenConnect Client (5058618ac801adce)",
+      "State": "Running",
+      "StartMode": "Auto"
+    },
+    {
+      "Name": "ScreenConnect Client (f626167a716ce0b9)",
+      "State": "Running",
+      "StartMode": "Auto"
+    },
+    {
+      "Name": "TeamViewer",
+      "State": "Running",
+      "StartMode": "Auto"
+    }
+  ],
+  "DataOutsideSystemDrive": [
+    {
+      "Letter": "D",
+      "UsedGB": 119.1
+    }
+  ],
+  "WmiHealthy": true,
+  "ProbeErrors": []
+}

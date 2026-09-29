@@ -13,4 +13,10 @@
     <InternalsVisibleTo Include="Kor.Operations.NetworkOps.Tests" />
   </ItemGroup>
 
+  <!-- The PowerShell that runs ON the workstations. Embedded so the CLI and the service ship
+       the exact same probe as the rules were tested against; never loose files beside an exe. -->
+  <ItemGroup>
+    <EmbeddedResource Include="Probes\*.ps1" LogicalName="Probes.%(Filename).ps1" />
+  </ItemGroup>
+
 </Project>

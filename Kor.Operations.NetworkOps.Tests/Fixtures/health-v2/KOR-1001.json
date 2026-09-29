@@ -1,0 +1,200 @@
+{
+  "ProbeVersion": 2,
+  "CollectedAt": "2026-09-28T21:50:43",
+  "Computer": "KOR-1001",
+  "Os": {
+    "Product": "Windows 11 Pro",
+    "DisplayVersion": "25H2",
+    "Build": 26200,
+    "Ubr": 9445,
+    "LastBoot": "2026-09-26T23:27:14",
+    "UptimeHours": 46
+  },
+  "PendingReboot": {
+    "ComponentServicing": true,
+    "WindowsUpdate": false,
+    "FileRename": false
+  },
+  "Volumes": [
+    {
+      "Letter": "C",
+      "Label": "Local Disk",
+      "SizeGB": 951.5,
+      "FreeGB": 472.7
+    }
+  ],
+  "PhysicalDisks": [
+    {
+      "Name": "KBG6AZNV1T02 LA KIOXIA",
+      "Media": "SSD",
+      "Bus": "NVMe",
+      "SizeGB": 954,
+      "Health": "Healthy",
+      "Operational": "OK"
+    }
+  ],
+  "MissingDisks": [
+    {
+      "Name": "Linux File-Stor Gadget USB Device",
+      "InstanceId": "USBSTOR\\DISK&VEN_LINUX&PROD_FILE-STOR_GADGET&REV_0401\\N249111019487&0"
+    }
+  ],
+  "OrphanDriveLetters": [
+    "E",
+    "D"
+  ],
+  "Events14d": {
+    "DiskBadBlock": {
+      "Count": 0,
+      "Last": null
+    },
+    "DiskResets": {
+      "Count": 0,
+      "Last": null
+    },
+    "NtfsCorruption": {
+      "Count": 0,
+      "Last": null
+    },
+    "Whea": {
+      "Count": 0,
+      "Last": null
+    },
+    "UnexpectedShutdown": {
+      "Count": 0,
+      "Last": null
+    },
+    "GpuHang": {
+      "Count": 0,
+      "Last": null
+    },
+    "ResourceExhaustion": {
+      "Count": 0,
+      "Last": null
+    },
+    "UpdateFailures": {
+      "Count": 21,
+      "Last": "2026-09-27T17:40:18"
+    },
+    "AppHangs": {
+      "Count": 3,
+      "Last": "2026-09-24T02:59:39"
+    }
+  },
+  "AppCrashes14d": [
+    {
+      "Process": "brain.exe",
+      "Count": 1,
+      "Last": "2026-09-28T10:11:25"
+    },
+    {
+      "Process": "takeoff.exe",
+      "Count": 3,
+      "Last": "2026-09-23T04:36:16"
+    },
+    {
+      "Process": "OUTLOOK.EXE",
+      "Count": 1,
+      "Last": "2026-09-21T18:18:07"
+    },
+    {
+      "Process": "JoeBrain.Web.exe",
+      "Count": 2,
+      "Last": "2026-09-21T00:20:38"
+    },
+    {
+      "Process": "svchost.exe_wuauserv",
+      "Count": 1,
+      "Last": "2026-09-20T17:14:04"
+    }
+  ],
+  "OutlookIndex60d": [],
+  "Office": {
+    "C2rMso": "16.0.20326.20072",
+    "DownlevelMso": null,
+    "AccessEngine": false
+  },
+  "Update": {
+    "MicrosoftUpdate": true,
+    "NoAutoUpdate": 1,
+    "LastInstall": "2026-09-29T01:27:56",
+    "LastInstallTitle": "Silicon Laboratories Inc. - Ports - 11.2.0.167",
+    "LastInstallBy": "<<PROCESS>>: pwsh.exe: Microsoft.PowerShell_7.6.6.0_x64__8wekyb3d8bbwe"
+  },
+  "CoolingMode": null,
+  "DisplayAdapters": [
+    {
+      "Name": "Intel(R) Graphics",
+      "Driver": "32.0.101.8826",
+      "ErrorCode": 0
+    }
+  ],
+  "Residue": {
+    "NewformaProfiles": 0,
+    "NewformaInstalled": []
+  },
+  "RemoteTools": [
+    {
+      "Name": "ScreenConnect Client (f626167a716ce0b9)",
+      "State": "Running",
+      "StartMode": "Auto"
+    }
+  ],
+  "DataOutsideSystemDrive": [],
+  "DiskReliability": [
+    {
+      "Name": "KBG6AZNV1T02 LA KIOXIA",
+      "Serial": "8CE3_8E04_0624_1DA7.",
+      "WearPct": 0,
+      "TemperatureC": 39,
+      "TemperatureMaxC": 83,
+      "ReadErrors": null,
+      "ReadErrorsUncorrected": null,
+      "WriteErrors": null,
+      "PowerOnHours": null
+    }
+  ],
+  "Inventory": {
+    "Manufacturer": "LENOVO",
+    "Model": "ThinkPad T16 Gen 4",
+    "MachineType": "21QE005QUS",
+    "Serial": "SERIAL-REDACTED",
+    "BoardMaker": "LENOVO",
+    "BoardProduct": "21QE005QUS",
+    "BiosVersion": "N4JET28W (1.18 )",
+    "BiosDate": "2026-06-15",
+    "Cpu": "Intel(R) Core(TM) Ultra 7 265U",
+    "Cores": 12,
+    "RamGB": 63,
+    "LoggedOnUser": "kor\\ilalonde",
+    "OfficeBuild": "16.0.20326.20158",
+    "OfficeChannel": "492350f6-3a01-4f97-b9c0-c7c6ddf67d60",
+    "Apps": [
+      {
+        "Name": "Microsoft Teams Meeting Add-in for Microsoft Office",
+        "Version": "1.26.25904"
+      }
+    ]
+  },
+  "MailStores": [
+    {
+      "Profile": "ilalonde",
+      "Name": "ilalonde@korstructural.com.ost",
+      "GB": 4.85,
+      "LastWrite": "2026-09-28T21:46:36"
+    }
+  ],
+  "Boot": {
+    "LastBootMs": 50664,
+    "MedianBootMs": 77770,
+    "Samples": 10
+  },
+  "Battery": {
+    "DesignMWh": 87380,
+    "FullChargeMWh": 88800,
+    "HealthPct": 102,
+    "CycleCount": 8
+  },
+  "WmiHealthy": true,
+  "ProbeErrors": []
+}

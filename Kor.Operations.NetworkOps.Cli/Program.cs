@@ -4,6 +4,7 @@
 //   netops census   [--hosts A,B | all]                      which channel answers on which machine
 //   netops run      --script probe.ps1 [--hosts A,B | all] [--timeout 600] [--out dir]
 //   netops hardware [--hosts A,B | all]                      CPU, board, DIMM slots, GPU, disks
+//   netops health   [--hosts A,B | all] [--out dir]          the health probe + rules: findings per machine
 //
 // Every verb does its reading ON the target (one service call + one small file over the VPN),
 // never a chatty remote walk: Ian is on the VPN almost all the time, and a remote registry /s
@@ -13,12 +14,14 @@
 // Read-only except `run`, which does whatever its script does. Exit codes: 0 ok, 1 some hosts
 // failed, 2 bad arguments.
 using System.Text.Json;
+using Kor.Operations.NetworkOps.Core.Health;
+using Kor.Operations.NetworkOps.Core.Probes;
 using Kor.Operations.NetworkOps.Core.Smbios;
 using Kor.Operations.NetworkOps.Transport;
 
 if (args.Length == 0 || args[0] is "-h" or "--help" or "help")
 {
-    Console.WriteLine("netops census|run|hardware [--hosts A,B|all] [--script f.ps1] [--timeout s] [--out dir] [--parallel n]");
+    Console.WriteLine("netops census|run|hardware|health [--hosts A,B|all] [--script f.ps1] [--timeout s] [--out dir] [--parallel n]");
     return 2;
 }
 
@@ -76,8 +79,7 @@ switch (verb)
 
     case "hardware":
     {
-        var body = await File.ReadAllTextAsync(Path.Combine(AppContext.BaseDirectory, "Probes", "hardware.ps1"));
-        var runs = await RunEverywhere(hosts, body, timeout, options);
+        var runs = await RunEverywhere(hosts, ProbeLibrary.Get(ProbeLibrary.Hardware), timeout, options);
         var profiles = new List<object>();
         foreach (var r in runs)
         {
@@ -97,8 +99,39 @@ switch (verb)
         return runs.All(r => r.Status == OnTargetStatus.Ok) ? 0 : 1;
     }
 
+    case "health":
+    {
+        var runs = await RunEverywhere(hosts, ProbeLibrary.Get(ProbeLibrary.Health), timeout, options);
+        var report = new List<object>();
+        var byRule = new Dictionary<string, List<string>>();
+        foreach (var r in runs)
+        {
+            if (r.Status != OnTargetStatus.Ok) { Console.WriteLine($"{r.Computer,-16} [{r.Status}] {r.Error}"); continue; }
+            HealthSnapshot snap;
+            try { snap = HealthSnapshot.Parse(r.OutputJson!); }
+            catch (JsonException ex) { Console.WriteLine($"{r.Computer,-16} [Unreadable] {ex.Message}"); continue; }   // one bad machine never sinks the fleet report
+            var findings = HealthRules.Evaluate(snap).OrderByDescending(x => x.Severity).ToList();
+            Console.WriteLine(findings.Count == 0 ? $"{r.Computer,-16} healthy" : $"{r.Computer,-16} {findings.Count} finding(s)");
+            foreach (var x in findings)
+            {
+                Console.WriteLine($"{"",-16}   {x.Severity,-8} {x.Title} -- {x.Evidence}");
+                var family = x.RuleKey.Split(':')[0];
+                (byRule.TryGetValue(family, out var list) ? list : byRule[family] = new List<string>()).Add(r.Computer);
+            }
+            report.Add(new { r.Computer, Findings = findings, Snapshot = snap });
+        }
+        var ok = runs.Count(r => r.Status == OnTargetStatus.Ok);
+        Console.WriteLine();
+        Console.WriteLine($"Across the {ok} machines that answered:");
+        foreach (var (rule, machines) in byRule.OrderByDescending(kv => kv.Value.Distinct().Count()))
+            Console.WriteLine($"  {rule,-28} {machines.Distinct().Count(),3} of {ok}  {string.Join(", ", machines.Distinct())}");
+        Summarise(runs);
+        WriteJson(outDir, "health", report);
+        return runs.All(r => r.Status == OnTargetStatus.Ok) ? 0 : 1;
+    }
+
     default:
-        Console.Error.WriteLine($"Unknown verb '{verb}'. Use census, run or hardware.");
+        Console.Error.WriteLine($"Unknown verb '{verb}'. Use census, run, hardware or health.");
         return 2;
 }
 

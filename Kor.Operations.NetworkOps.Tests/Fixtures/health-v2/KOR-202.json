@@ -1,0 +1,275 @@
+{
+  "ProbeVersion": 2,
+  "CollectedAt": "2026-09-28T21:51:04",
+  "Computer": "KOR-202",
+  "Os": {
+    "Product": "Windows 11 Pro",
+    "DisplayVersion": "25H2",
+    "Build": 26200,
+    "Ubr": 9550,
+    "LastBoot": "2026-09-27T18:58:44",
+    "UptimeHours": 27
+  },
+  "PendingReboot": {
+    "ComponentServicing": false,
+    "WindowsUpdate": false,
+    "FileRename": true
+  },
+  "Volumes": [
+    {
+      "Letter": "C",
+      "Label": "",
+      "SizeGB": 930.1,
+      "FreeGB": 362
+    },
+    {
+      "Letter": "D",
+      "Label": "DATA",
+      "SizeGB": 3726,
+      "FreeGB": 3672.9
+    }
+  ],
+  "PhysicalDisks": [
+    {
+      "Name": "WDS100T3X0C-00SJG0",
+      "Media": "SSD",
+      "Bus": "NVMe",
+      "SizeGB": 932,
+      "Health": "Healthy",
+      "Operational": "OK"
+    },
+    {
+      "Name": "ST4000DM004-2CV104",
+      "Media": "HDD",
+      "Bus": "SATA",
+      "SizeGB": 3726,
+      "Health": "Healthy",
+      "Operational": "OK"
+    }
+  ],
+  "MissingDisks": [],
+  "OrphanDriveLetters": [
+    "E",
+    "F"
+  ],
+  "Events14d": {
+    "DiskBadBlock": {
+      "Count": 0,
+      "Last": null
+    },
+    "DiskResets": {
+      "Count": 0,
+      "Last": null
+    },
+    "NtfsCorruption": {
+      "Count": 0,
+      "Last": null
+    },
+    "Whea": {
+      "Count": 0,
+      "Last": null
+    },
+    "UnexpectedShutdown": {
+      "Count": 0,
+      "Last": null
+    },
+    "GpuHang": {
+      "Count": 0,
+      "Last": null
+    },
+    "ResourceExhaustion": {
+      "Count": 0,
+      "Last": null
+    },
+    "UpdateFailures": {
+      "Count": 6,
+      "Last": "2026-09-15T22:17:46"
+    },
+    "AppHangs": {
+      "Count": 0,
+      "Last": null
+    }
+  },
+  "AppCrashes14d": [
+    {
+      "Process": "prevhost.exe",
+      "Count": 6,
+      "Last": "2026-09-28T14:18:40"
+    },
+    {
+      "Process": "KamoSvc.exe",
+      "Count": 12,
+      "Last": "2026-09-27T19:39:32"
+    },
+    {
+      "Process": "opushutil.exe",
+      "Count": 25,
+      "Last": "2026-09-27T08:42:35"
+    }
+  ],
+  "OutlookIndex60d": [
+    {
+      "Store": "C:\\Users\\jmarkulin\\AppData\\Local\\Microsoft\\Outlook\\jmarkulin@korstructural.com.ost",
+      "Count": 1,
+      "Last": "2026-09-16T09:00:53"
+    }
+  ],
+  "Office": {
+    "C2rMso": "16.0.20430.20032",
+    "DownlevelMso": "16.0.5495.1002",
+    "AccessEngine": true
+  },
+  "Update": {
+    "MicrosoftUpdate": true,
+    "NoAutoUpdate": 1,
+    "LastInstall": "2026-09-28T00:10:29",
+    "LastInstallTitle": "Update for Windows (KB5124010)",
+    "LastInstallBy": "wusa"
+  },
+  "CoolingMode": "n/a",
+  "DisplayAdapters": [
+    {
+      "Name": "NVIDIA GeForce GTX 1660 Ti",
+      "Driver": "32.0.16.1692",
+      "ErrorCode": 0
+    }
+  ],
+  "Residue": {
+    "NewformaProfiles": 0,
+    "NewformaInstalled": []
+  },
+  "RemoteTools": [
+    {
+      "Name": "ncstreamer",
+      "State": "Running",
+      "StartMode": "Auto"
+    },
+    {
+      "Name": "ScreenConnect Client (f626167a716ce0b9)",
+      "State": "Stopped",
+      "StartMode": "Disabled"
+    }
+  ],
+  "DataOutsideSystemDrive": [
+    {
+      "Letter": "D",
+      "UsedGB": 53.1
+    }
+  ],
+  "DiskReliability": [
+    {
+      "Name": "WDS100T3X0C-00SJG0",
+      "Serial": "1906_7080_2438_0001_001B_448B_44B9_60C9.",
+      "WearPct": 0,
+      "TemperatureC": 37,
+      "TemperatureMaxC": 80,
+      "ReadErrors": null,
+      "ReadErrorsUncorrected": null,
+      "WriteErrors": null,
+      "PowerOnHours": null
+    },
+    {
+      "Name": "ST4000DM004-2CV104",
+      "Serial": "ZFN1TCNH",
+      "WearPct": 0,
+      "TemperatureC": 35,
+      "TemperatureMaxC": null,
+      "ReadErrors": 0,
+      "ReadErrorsUncorrected": 0,
+      "WriteErrors": null,
+      "PowerOnHours": 65298
+    }
+  ],
+  "Inventory": {
+    "Manufacturer": "System manufacturer",
+    "Model": "System Product Name",
+    "MachineType": "System Product Name",
+    "Serial": "SERIAL-REDACTED",
+    "BoardMaker": "ASUSTeK COMPUTER INC.",
+    "BoardProduct": "PRIME Z390-A",
+    "BiosVersion": "0802",
+    "BiosDate": "2019-01-03",
+    "Cpu": "Intel(R) Core(TM) i9-9900K CPU @ 3.60GHz",
+    "Cores": 8,
+    "RamGB": 32,
+    "LoggedOnUser": "kor\\jmarkulin",
+    "OfficeBuild": "16.0.20430.20092",
+    "OfficeChannel": "492350f6-3a01-4f97-b9c0-c7c6ddf67d60",
+    "Apps": [
+      {
+        "Name": "Adobe Acrobat Reader",
+        "Version": "26.002.21901"
+      },
+      {
+        "Name": "Bluebeam Revu eXtreme x64 20.3",
+        "Version": "20.3.30"
+      },
+      {
+        "Name": "ETABS 21",
+        "Version": "21.2.0"
+      },
+      {
+        "Name": "Microsoft Access database engine 2010 (English)",
+        "Version": "14.0.7015.1000"
+      },
+      {
+        "Name": "Microsoft Access database engine 2016 (English)",
+        "Version": "16.0.5044.1000"
+      },
+      {
+        "Name": "Microsoft Teams Meeting Add-in for Microsoft Office",
+        "Version": "1.26.21803"
+      },
+      {
+        "Name": "NVIDIA Graphics Driver 536.23",
+        "Version": "536.23"
+      },
+      {
+        "Name": "SAFE 20",
+        "Version": "20.3.0"
+      },
+      {
+        "Name": "SAFE 2016",
+        "Version": "16.0.1"
+      },
+      {
+        "Name": "SAFE 22",
+        "Version": "22.7.0"
+      },
+      {
+        "Name": "SketchUp 2020 Checkup",
+        "Version": "20.2.0"
+      },
+      {
+        "Name": "SketchUp Viewer",
+        "Version": "18.0.16975"
+      },
+      {
+        "Name": "SketchUp Viewer 2020",
+        "Version": "20.2.172"
+      }
+    ]
+  },
+  "MailStores": [
+    {
+      "Profile": "jmarkulin",
+      "Name": "jmarkulin@korstructural.com.ost",
+      "GB": 39.49,
+      "LastWrite": "2026-09-28T21:40:06"
+    },
+    {
+      "Profile": "john markulin",
+      "Name": "jmarkulin@korstructural.com - JM.ost",
+      "GB": 45.82,
+      "LastWrite": "2025-08-30T12:46:46"
+    }
+  ],
+  "Boot": {
+    "LastBootMs": 78031,
+    "MedianBootMs": 78031,
+    "Samples": 1
+  },
+  "Battery": null,
+  "WmiHealthy": true,
+  "ProbeErrors": []
+}

@@ -1,0 +1,206 @@
+{
+  "ProbeVersion": 2,
+  "CollectedAt": "2026-09-28T21:51:06",
+  "Computer": "KOR-104N",
+  "Os": {
+    "Product": "Windows 11 Pro",
+    "DisplayVersion": "25H2",
+    "Build": 26200,
+    "Ubr": 9550,
+    "LastBoot": "2026-09-27T18:58:29",
+    "UptimeHours": 27
+  },
+  "PendingReboot": {
+    "ComponentServicing": false,
+    "WindowsUpdate": false,
+    "FileRename": true
+  },
+  "Volumes": [
+    {
+      "Letter": "C",
+      "Label": "Windows",
+      "SizeGB": 952.5,
+      "FreeGB": 758.9
+    }
+  ],
+  "PhysicalDisks": [
+    {
+      "Name": "NVMe SKHynix_HFS001TDE9X081N",
+      "Media": "SSD",
+      "Bus": "RAID",
+      "SizeGB": 954,
+      "Health": "Healthy",
+      "Operational": "OK"
+    }
+  ],
+  "MissingDisks": [
+    {
+      "Name": "WD My Passport 25E2 USB Device",
+      "InstanceId": "USBSTOR\\DISK&VEN_WD&PROD_MY_PASSPORT_25E2&REV_4003\\575842314138363854594630&0"
+    }
+  ],
+  "OrphanDriveLetters": [
+    "E"
+  ],
+  "Events14d": {
+    "DiskBadBlock": {
+      "Count": 0,
+      "Last": null
+    },
+    "DiskResets": {
+      "Count": 0,
+      "Last": null
+    },
+    "NtfsCorruption": {
+      "Count": 0,
+      "Last": null
+    },
+    "Whea": {
+      "Count": 0,
+      "Last": null
+    },
+    "UnexpectedShutdown": {
+      "Count": 0,
+      "Last": null
+    },
+    "GpuHang": {
+      "Count": 6419,
+      "Last": "2026-09-28T21:17:02"
+    },
+    "ResourceExhaustion": {
+      "Count": 0,
+      "Last": null
+    },
+    "UpdateFailures": {
+      "Count": 7,
+      "Last": "2026-09-23T09:58:56"
+    },
+    "AppHangs": {
+      "Count": 5,
+      "Last": "2026-09-25T03:44:33"
+    }
+  },
+  "AppCrashes14d": [
+    {
+      "Process": "WRSkyCommandsClient.exe",
+      "Count": 1,
+      "Last": "2026-09-21T12:24:14"
+    }
+  ],
+  "OutlookIndex60d": [
+    {
+      "Store": "C:\\Users\\dsingh\\AppData\\Local\\Microsoft\\Outlook\\dsingh@korstructural.com.ost",
+      "Count": 1,
+      "Last": "2026-09-27T12:03:19"
+    }
+  ],
+  "Office": {
+    "C2rMso": "16.0.20430.20032",
+    "DownlevelMso": "16.0.5495.1002",
+    "AccessEngine": true
+  },
+  "Update": {
+    "MicrosoftUpdate": true,
+    "NoAutoUpdate": 1,
+    "LastInstall": "2026-09-28T00:10:32",
+    "LastInstallTitle": "Update for Windows (KB5124010)",
+    "LastInstallBy": "wusa"
+  },
+  "CoolingMode": "Best Performance",
+  "DisplayAdapters": [
+    {
+      "Name": "Intel(R) UHD Graphics 630",
+      "Driver": "31.0.101.2115",
+      "ErrorCode": 0
+    }
+  ],
+  "Residue": {
+    "NewformaProfiles": 0,
+    "NewformaInstalled": []
+  },
+  "RemoteTools": [
+    {
+      "Name": "ncstreamer",
+      "State": "Running",
+      "StartMode": "Auto"
+    },
+    {
+      "Name": "ScreenConnect Client (f626167a716ce0b9)",
+      "State": "Running",
+      "StartMode": "Auto"
+    },
+    {
+      "Name": "TeamViewer",
+      "State": "Running",
+      "StartMode": "Auto"
+    }
+  ],
+  "DataOutsideSystemDrive": [],
+  "DiskReliability": [
+    {
+      "Name": "NVMe SKHynix_HFS001TDE9X081N",
+      "Serial": "ACE4_2E00_1523_8E15_2EE4_AC00_0000_0001.",
+      "WearPct": 0,
+      "TemperatureC": 60,
+      "TemperatureMaxC": null,
+      "ReadErrors": null,
+      "ReadErrorsUncorrected": null,
+      "WriteErrors": null,
+      "PowerOnHours": null
+    }
+  ],
+  "Inventory": {
+    "Manufacturer": "LENOVO",
+    "Model": "ThinkStation P340",
+    "MachineType": "30DK003UUS",
+    "Serial": "SERIAL-REDACTED",
+    "BoardMaker": "LENOVO",
+    "BoardProduct": "1048",
+    "BiosVersion": "S08KT5EA",
+    "BiosDate": "2025-03-20",
+    "Cpu": "Intel(R) Core(TM) i7-10700 CPU @ 2.90GHz",
+    "Cores": 8,
+    "RamGB": 32,
+    "LoggedOnUser": "kor\\dsingh",
+    "OfficeBuild": "16.0.20430.20048",
+    "OfficeChannel": "492350f6-3a01-4f97-b9c0-c7c6ddf67d60",
+    "Apps": [
+      {
+        "Name": "Adobe Acrobat (64-bit)",
+        "Version": "26.002.21931"
+      },
+      {
+        "Name": "Bluebeam Revu x64 21",
+        "Version": "21.6.1"
+      },
+      {
+        "Name": "Microsoft Access database engine 2010 (English)",
+        "Version": "14.0.7015.1000"
+      },
+      {
+        "Name": "Microsoft Access database engine 2016 (English)",
+        "Version": "16.0.5044.1000"
+      },
+      {
+        "Name": "Microsoft Teams Meeting Add-in for Microsoft Office",
+        "Version": "1.26.21803"
+      }
+    ]
+  },
+  "MailStores": [
+    {
+      "Profile": "dsingh",
+      "Name": "dsingh@korstructural.com.ost",
+      "GB": 25.2,
+      "LastWrite": "2026-09-28T17:46:22"
+    }
+  ],
+  "Boot": {
+    "LastBootMs": 51990,
+    "MedianBootMs": 85060,
+    "Samples": 10
+  },
+  "Battery": null,
+  "WmiHealthy": true,
+  "ProbeErrors": []
+}

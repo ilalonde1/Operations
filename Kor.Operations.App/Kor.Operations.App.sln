@@ -76,6 +76,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Kor.Operations.NetworkOps.C
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Kor.Operations.NetworkOps.Tests", "..\Kor.Operations.NetworkOps.Tests\Kor.Operations.NetworkOps.Tests.csproj", "{BAAC242F-3B52-41F5-BEB1-D0838F7DAB07}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Kor.Operations.NetworkOps.Service", "..\Kor.Operations.NetworkOps.Service\Kor.Operations.NetworkOps.Service.csproj", "{84275C6B-593E-4CBB-9632-B205081484FC}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -222,6 +224,10 @@ Global
 		{BAAC242F-3B52-41F5-BEB1-D0838F7DAB07}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{BAAC242F-3B52-41F5-BEB1-D0838F7DAB07}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{BAAC242F-3B52-41F5-BEB1-D0838F7DAB07}.Release|Any CPU.Build.0 = Release|Any CPU
+		{84275C6B-593E-4CBB-9632-B205081484FC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{84275C6B-593E-4CBB-9632-B205081484FC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{84275C6B-593E-4CBB-9632-B205081484FC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{84275C6B-593E-4CBB-9632-B205081484FC}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

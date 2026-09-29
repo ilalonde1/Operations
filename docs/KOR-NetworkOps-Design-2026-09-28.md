@@ -158,6 +158,42 @@ watch its freshness); a web front end (the command center is a page in the WPF a
 **A same-class fault it would not catch at Phase 2:** anything on a machine that is off during
 the sweep and never reachable agentlessly — the reason Phase 4 exists.
 
+## 8. The intelligence layer and the overnight build (planned 2026-09-28, for Ian's review)
+
+Ian's vision, 2026-09-28: *"an app that tracks all issues with a PC so it knows the history, and
+it also knows about issues on OTHER PCs — a learning, intelligent app."* Five capabilities:
+
+1. **History** — every observation and every finding kept per PC (opened / worsened / cleared),
+   plus a daily **inventory** snapshot (hardware, drivers, BIOS, Office build, key app versions),
+   so a PC's timeline shows what it was *and* what went wrong.
+2. **Knows about other PCs** — on every sweep, for every problem type, compare the affected
+   machines with the unaffected across the inventory and surface the attribute that explains it
+   (the GPU analysis done by hand on 09-28: driver 32.0.15.8142 → 4 of 4 hang, GeForce 0 of 5).
+   Each finding shows "same problem on N other PCs".
+3. **Change tracking** — what changed on a PC (driver, app, Windows build, BIOS) lined up against
+   when findings started or cleared: "started after X", "cleared after Y".
+4. **Learning what fixes things** — a knowledge base per problem type (explanation + known fixes,
+   seeded from 2026's diagnoses). When a finding clears, what changed around it is recorded and
+   fixes are ranked by what actually worked; the best one is suggested on the next PC.
+5. **Baselines** — each PC against its own history (spikes) and against its peers (drift).
+
+Overnight order (each step ends with a proof; milestone commits on develop):
+1. Prove the DB + service: run-once census and health sweep against KorNetworkOps; start the
+   service with alerts OFF; heartbeat fresh.
+2. Dead-man watcher on FS01: `netops watchdog`, self-contained exe, scheduled task every 10 min,
+   mails via Microsoft 365 direct send (no credentials stored on FS01) if the heartbeat is stale.
+3. All-C# probe: the health + hardware probes as one C# program on .NET Framework 4.8 (built into
+   every Windows 10/11 PC), run the same way. Switched over only after a differential run on the
+   whole fleet shows identical snapshots from the PowerShell and C# probes.
+4. The intelligence layer, capabilities 1–5 above, in Core (pure, tested) + the store.
+5. The Command Center page in Kor.Operations.App (FileSync Command Center pattern; tile visible to
+   Ian only): fleet grid, PC window (Ninja's layout plus history, "same on other PCs", likely
+   cause, what fixed it before, "run health check now"), fleet insights. Connect → MeshCentral later.
+6. Morning report.
+
+Not overnight without Ian: alerts on (other than the dead-man); any change to a PC; GPO or
+firewall changes; MeshCentral or agent installs; pushing or merging; releasing the Ops app.
+
 ## 7. Needs Ian (everything else proceeds)
 
 1. **Code-signing certificate** for KOR (agent + the Revit suite) — a purchase.

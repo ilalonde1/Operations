@@ -1,0 +1,129 @@
+{
+  "ProbeVersion": 1,
+  "CollectedAt": "2026-09-28T21:04:58",
+  "Computer": "KOR-104N",
+  "Os": {
+    "Product": "Windows 11 Pro",
+    "DisplayVersion": "25H2",
+    "Build": 26200,
+    "Ubr": 9550,
+    "LastBoot": "2026-09-27T18:58:29",
+    "UptimeHours": 26
+  },
+  "PendingReboot": {
+    "ComponentServicing": false,
+    "WindowsUpdate": false,
+    "FileRename": true
+  },
+  "Volumes": [
+    {
+      "Letter": "C",
+      "Label": "Windows",
+      "SizeGB": 952.5,
+      "FreeGB": 758.9
+    }
+  ],
+  "PhysicalDisks": [
+    {
+      "Name": "NVMe SKHynix_HFS001TDE9X081N",
+      "Media": "SSD",
+      "Bus": "RAID",
+      "SizeGB": 954,
+      "Health": "Healthy",
+      "Operational": "OK"
+    }
+  ],
+  "MissingDisks": [
+    {
+      "Name": "WD My Passport 25E2 USB Device",
+      "InstanceId": "USBSTOR\\DISK&VEN_WD&PROD_MY_PASSPORT_25E2&REV_4003\\575842314138363854594630&0"
+    }
+  ],
+  "OrphanDriveLetters": [
+    "E"
+  ],
+  "Events14d": {
+    "DiskBadBlock": {
+      "Count": 0,
+      "Last": null
+    },
+    "DiskResets": {
+      "Count": 0,
+      "Last": null
+    },
+    "NtfsCorruption": {
+      "Count": 0,
+      "Last": null
+    },
+    "Whea": {
+      "Count": 0,
+      "Last": null
+    },
+    "UnexpectedShutdown": {
+      "Count": 0,
+      "Last": null
+    },
+    "GpuHang": {
+      "Count": 6418,
+      "Last": "2026-09-28T17:57:07"
+    }
+  },
+  "AppCrashes14d": [
+    {
+      "Process": "WRSkyCommandsClient.exe",
+      "Count": 1,
+      "Last": "2026-09-21T12:24:14"
+    }
+  ],
+  "OutlookIndex60d": [
+    {
+      "Store": "C:\\Users\\dsingh\\AppData\\Local\\Microsoft\\Outlook\\dsingh@korstructural.com.ost",
+      "Count": 1,
+      "Last": "2026-09-27T12:03:19"
+    }
+  ],
+  "Office": {
+    "C2rMso": "16.0.20430.20032",
+    "DownlevelMso": "16.0.5495.1002",
+    "AccessEngine": true
+  },
+  "Update": {
+    "MicrosoftUpdate": true,
+    "NoAutoUpdate": 1,
+    "LastInstall": "2026-09-28T00:10:32",
+    "LastInstallTitle": "Update for Windows (KB5124010)",
+    "LastInstallBy": "wusa"
+  },
+  "CoolingMode": "Best Performance",
+  "DisplayAdapters": [
+    {
+      "Name": "Intel(R) UHD Graphics 630",
+      "Driver": "31.0.101.2115",
+      "ErrorCode": 0
+    }
+  ],
+  "Residue": {
+    "NewformaProfiles": 0,
+    "NewformaInstalled": []
+  },
+  "RemoteTools": [
+    {
+      "Name": "ncstreamer",
+      "State": "Running",
+      "StartMode": "Auto"
+    },
+    {
+      "Name": "ScreenConnect Client (f626167a716ce0b9)",
+      "State": "Running",
+      "StartMode": "Auto"
+    },
+    {
+      "Name": "TeamViewer",
+      "State": "Running",
+      "StartMode": "Auto"
+    }
+  ],
+  "DataOutsideSystemDrive": [],
+  "WmiHealthy": true,
+  "ProbeErrors": []
+}

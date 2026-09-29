@@ -1,0 +1,105 @@
+{
+  "ProbeVersion": 2,
+  "CollectedAt": "2026-09-28T21:50:43",
+  "Computer": "KOR-213",
+  "Os": null,
+  "PendingReboot": {
+    "ComponentServicing": false,
+    "WindowsUpdate": false,
+    "FileRename": true
+  },
+  "Volumes": [],
+  "PhysicalDisks": [],
+  "MissingDisks": [],
+  "OrphanDriveLetters": [],
+  "Events14d": {
+    "DiskBadBlock": {
+      "Count": 0,
+      "Last": null
+    },
+    "DiskResets": {
+      "Count": 0,
+      "Last": null
+    },
+    "NtfsCorruption": {
+      "Count": 0,
+      "Last": null
+    },
+    "Whea": {
+      "Count": 0,
+      "Last": null
+    },
+    "UnexpectedShutdown": {
+      "Count": 0,
+      "Last": null
+    },
+    "GpuHang": {
+      "Count": 0,
+      "Last": null
+    },
+    "ResourceExhaustion": {
+      "Count": 0,
+      "Last": null
+    },
+    "UpdateFailures": {
+      "Count": 3,
+      "Last": "2026-09-20T18:44:48"
+    },
+    "AppHangs": {
+      "Count": 0,
+      "Last": null
+    }
+  },
+  "AppCrashes14d": [],
+  "OutlookIndex60d": [],
+  "Office": {
+    "C2rMso": "16.0.20326.20072",
+    "DownlevelMso": "16.0.5495.1002",
+    "AccessEngine": true
+  },
+  "Update": {
+    "MicrosoftUpdate": true,
+    "NoAutoUpdate": 1,
+    "LastInstall": "2026-09-21T00:00:20",
+    "LastInstallTitle": "2026-09 Extended Security Updates (ESU) Licensing Preparation Package for Windows 10 Version 22H2 for x64-based Systems (KB5126256)",
+    "LastInstallBy": "NinjaRMM Scheduled Update"
+  },
+  "CoolingMode": null,
+  "DisplayAdapters": [],
+  "Residue": {
+    "NewformaProfiles": 0,
+    "NewformaInstalled": []
+  },
+  "RemoteTools": [],
+  "DataOutsideSystemDrive": [],
+  "DiskReliability": [],
+  "Inventory": null,
+  "MailStores": [
+    {
+      "Profile": "cmurtagh",
+      "Name": "cmurtagh@korstructural.com.ost",
+      "GB": 11.4,
+      "LastWrite": "2026-07-06T08:42:01"
+    }
+  ],
+  "Boot": {
+    "LastBootMs": 82711,
+    "MedianBootMs": 116936,
+    "Samples": 10
+  },
+  "Battery": null,
+  "WmiHealthy": false,
+  "ProbeErrors": [
+    "os: Invalid class ",
+    "volumes: Invalid class ",
+    "physicalDisks: Exception calling \"MoveNext\" with \"0\" argument(s): \"Invalid namespace \"",
+    "missingDisks: Invalid class ",
+    "orphanLetters: Invalid class ",
+    "reliability: Exception calling \"MoveNext\" with \"0\" argument(s): \"Invalid namespace \"",
+    "inventory: Invalid class ",
+    "cooling: Invalid class ",
+    "display: Invalid class ",
+    "remoteTools: Invalid class ",
+    "wmi: Invalid class "
+  ]
+}

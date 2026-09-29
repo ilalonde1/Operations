@@ -1,0 +1,296 @@
+{
+  "ProbeVersion": 2,
+  "CollectedAt": "2026-09-28T21:51:04",
+  "Computer": "KOR-216",
+  "Os": {
+    "Product": "Windows 11 Pro",
+    "DisplayVersion": "25H2",
+    "Build": 26200,
+    "Ubr": 9550,
+    "LastBoot": "2026-09-28T12:46:56",
+    "UptimeHours": 9
+  },
+  "PendingReboot": {
+    "ComponentServicing": false,
+    "WindowsUpdate": false,
+    "FileRename": true
+  },
+  "Volumes": [
+    {
+      "Letter": "C",
+      "Label": "Windows",
+      "SizeGB": 951.6,
+      "FreeGB": 155.7
+    },
+    {
+      "Letter": "D",
+      "Label": "Data",
+      "SizeGB": 953.9,
+      "FreeGB": 834.8
+    }
+  ],
+  "PhysicalDisks": [
+    {
+      "Name": "NVMe SAMSUNG MZVL21T0HCLR-00BL7",
+      "Media": "SSD",
+      "Bus": "NVMe",
+      "SizeGB": 954,
+      "Health": "Healthy",
+      "Operational": "OK"
+    },
+    {
+      "Name": "KINGSTON SKC6001024G",
+      "Media": "SSD",
+      "Bus": "SATA",
+      "SizeGB": 954,
+      "Health": "Healthy",
+      "Operational": "OK"
+    }
+  ],
+  "MissingDisks": [],
+  "OrphanDriveLetters": [
+    "E"
+  ],
+  "Events14d": {
+    "DiskBadBlock": {
+      "Count": 0,
+      "Last": null
+    },
+    "DiskResets": {
+      "Count": 0,
+      "Last": null
+    },
+    "NtfsCorruption": {
+      "Count": 0,
+      "Last": null
+    },
+    "Whea": {
+      "Count": 0,
+      "Last": null
+    },
+    "UnexpectedShutdown": {
+      "Count": 0,
+      "Last": null
+    },
+    "GpuHang": {
+      "Count": 0,
+      "Last": null
+    },
+    "ResourceExhaustion": {
+      "Count": 0,
+      "Last": null
+    },
+    "UpdateFailures": {
+      "Count": 24,
+      "Last": "2026-09-26T09:05:10"
+    },
+    "AppHangs": {
+      "Count": 7,
+      "Last": "2026-09-26T09:43:53"
+    }
+  },
+  "AppCrashes14d": [
+    {
+      "Process": "opushutil.exe",
+      "Count": 15,
+      "Last": "2026-09-21T13:24:50"
+    },
+    {
+      "Process": "BackgroundTaskHost.exe",
+      "Count": 1,
+      "Last": "2026-09-18T06:15:36"
+    },
+    {
+      "Process": "ipf_helper.exe",
+      "Count": 1,
+      "Last": "2026-09-17T17:21:40"
+    },
+    {
+      "Process": "Revu.exe",
+      "Count": 1,
+      "Last": "2026-09-17T11:28:13"
+    }
+  ],
+  "OutlookIndex60d": [],
+  "Office": {
+    "C2rMso": "16.0.20430.20032",
+    "DownlevelMso": "16.0.5495.1002",
+    "AccessEngine": true
+  },
+  "Update": {
+    "MicrosoftUpdate": true,
+    "NoAutoUpdate": 1,
+    "LastInstall": "2026-09-28T00:11:06",
+    "LastInstallTitle": "Update for Windows (KB5124010)",
+    "LastInstallBy": "wusa"
+  },
+  "CoolingMode": "Performance mode",
+  "DisplayAdapters": [
+    {
+      "Name": "NVIDIA RTX A4000",
+      "Driver": "32.0.15.9651",
+      "ErrorCode": 0
+    },
+    {
+      "Name": "Intel(R) UHD Graphics 770",
+      "Driver": "32.0.101.7088",
+      "ErrorCode": 0
+    }
+  ],
+  "Residue": {
+    "NewformaProfiles": 0,
+    "NewformaInstalled": []
+  },
+  "RemoteTools": [
+    {
+      "Name": "ncstreamer",
+      "State": "Running",
+      "StartMode": "Auto"
+    },
+    {
+      "Name": "ScreenConnect Client (5058618ac801adce)",
+      "State": "Running",
+      "StartMode": "Auto"
+    },
+    {
+      "Name": "ScreenConnect Client (f626167a716ce0b9)",
+      "State": "Running",
+      "StartMode": "Auto"
+    },
+    {
+      "Name": "TeamViewer",
+      "State": "Running",
+      "StartMode": "Auto"
+    }
+  ],
+  "DataOutsideSystemDrive": [
+    {
+      "Letter": "D",
+      "UsedGB": 119.1
+    }
+  ],
+  "DiskReliability": [
+    {
+      "Name": "NVMe SAMSUNG MZVL21T0HCLR-00BL7",
+      "Serial": "0025_38B8_31B2_8AB3.",
+      "WearPct": 0,
+      "TemperatureC": 60,
+      "TemperatureMaxC": null,
+      "ReadErrors": null,
+      "ReadErrorsUncorrected": null,
+      "WriteErrors": null,
+      "PowerOnHours": null
+    },
+    {
+      "Name": "KINGSTON SKC6001024G",
+      "Serial": "50026B77858E522B",
+      "WearPct": 0,
+      "TemperatureC": 25,
+      "TemperatureMaxC": null,
+      "ReadErrors": 0,
+      "ReadErrorsUncorrected": null,
+      "WriteErrors": null,
+      "PowerOnHours": 21553
+    }
+  ],
+  "Inventory": {
+    "Manufacturer": "LENOVO",
+    "Model": "ThinkStation P360 Tower",
+    "MachineType": "30FM0015US",
+    "Serial": "SERIAL-REDACTED",
+    "BoardMaker": "LENOVO",
+    "BoardProduct": "1057",
+    "BiosVersion": "S0EKT5DA",
+    "BiosDate": "2025-02-13",
+    "Cpu": "12th Gen Intel(R) Core(TM) i7-12700",
+    "Cores": 12,
+    "RamGB": 32,
+    "LoggedOnUser": "kor\\gdow",
+    "OfficeBuild": "16.0.20430.20092",
+    "OfficeChannel": "492350f6-3a01-4f97-b9c0-c7c6ddf67d60",
+    "Apps": [
+      {
+        "Name": "Adobe Acrobat (64-bit)",
+        "Version": "26.002.21931"
+      },
+      {
+        "Name": "Autodesk Revit 2025",
+        "Version": "25.3.0.46"
+      },
+      {
+        "Name": "Bluebeam Revu x64",
+        "Version": "21.11.0"
+      },
+      {
+        "Name": "ETABS 19",
+        "Version": "19.1.0"
+      },
+      {
+        "Name": "ETABS 21",
+        "Version": "21.2.0"
+      },
+      {
+        "Name": "ETABS 22",
+        "Version": "22.7.0"
+      },
+      {
+        "Name": "ETABS 23",
+        "Version": "23.2.0"
+      },
+      {
+        "Name": "Microsoft Access database engine 2016 (English)",
+        "Version": "16.0.5044.1000"
+      },
+      {
+        "Name": "Microsoft Teams Meeting Add-in for Microsoft Office",
+        "Version": "1.26.21803"
+      },
+      {
+        "Name": "NVIDIA Graphics Driver 596.51",
+        "Version": "596.51"
+      },
+      {
+        "Name": "SAFE 2016",
+        "Version": "16.0.2"
+      },
+      {
+        "Name": "SAFE 21",
+        "Version": "21.2.0"
+      },
+      {
+        "Name": "SAFE 22",
+        "Version": "22.5.1"
+      },
+      {
+        "Name": "SAFE 23",
+        "Version": "23.2.0"
+      },
+      {
+        "Name": "SAFE Transfer Builder",
+        "Version": "0.9.0"
+      }
+    ]
+  },
+  "MailStores": [
+    {
+      "Profile": "gdow",
+      "Name": "gdow@korstructural.com.ost",
+      "GB": 6.56,
+      "LastWrite": "2026-09-28T21:50:28"
+    },
+    {
+      "Profile": "griffin dow",
+      "Name": "gdow@korstructural.com.ost",
+      "GB": 5.87,
+      "LastWrite": "2025-08-30T10:36:01"
+    }
+  ],
+  "Boot": {
+    "LastBootMs": 21689,
+    "MedianBootMs": 40787,
+    "Samples": 10
+  },
+  "Battery": null,
+  "WmiHealthy": true,
+  "ProbeErrors": []
+}
