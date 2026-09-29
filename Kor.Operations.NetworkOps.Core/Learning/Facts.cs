@@ -6,7 +6,7 @@ namespace Kor.Operations.NetworkOps.Core.Learning;
 
 // What a PC IS, as stable key/value facts. Everything the learning layer knows about a machine's
 // identity flows through here: its history ("the GPU driver changed on 30 Sep"), the fleet
-// comparison ("4 of 4 PCs on this driver hang") and what fixed a fault ("cleared after the BIOS
+// comparison ("9 of 10 P340s hang") and what fixed a fault ("cleared after the BIOS
 // update"). Keys are stable and lower-case; values are exactly as the machine reports them.
 //
 // Deliberately NOT facts: things that change by the hour (logged-on user, free space, uptime) --

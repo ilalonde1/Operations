@@ -15,6 +15,7 @@ internal static class KnownRoles
     public const string StandardDetailsPublishers = "StandardDetailsPublishers";
     internal const string EngineeringTools = "EngineeringTools";
     internal const string FileSyncCommandCenter = "FileSyncCommandCenter";
+    internal const string NetworkOps = "NetworkOps";
     internal const string Opportunities = "Opportunities";
     internal const string BusinessDevelopment = "BusinessDevelopment";
 }

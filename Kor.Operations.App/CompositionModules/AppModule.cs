@@ -214,6 +214,12 @@ internal static class AppModule
         services.AddTransient<FileSyncCommandCenterViewModel>();
         services.AddTransient<FileSyncCommandCenterWindow>();
 
+        // NetworkOps reads its connection from KOR_NETWORKOPS_UIDB on the PC that runs it (never App.config,
+        // which ships to every PC). Unset, the page opens and says so rather than failing.
+        services.AddSingleton(_ => App.NetworkOps.NetworkOpsReader.FromEnvironment());
+        services.AddTransient<App.NetworkOps.NetworkOpsCommandCenterViewModel>();
+        services.AddTransient<App.NetworkOps.NetworkOpsCommandCenterWindow>();
+
         // The legacy BusinessDevelopmentWindow hub was retired 2026-07-07 with
         // CrmWindow (fix F6): it had no remaining callers (BdWorkspaceWindow is
         // the BD front door) and its CRM button reached the divergent twin.

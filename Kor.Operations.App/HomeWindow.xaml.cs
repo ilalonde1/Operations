@@ -182,6 +182,13 @@ namespace Kor.Operations
             win.Show();
         }
 
+        private void OpenNetworkOps_Click(object sender, RoutedEventArgs e)
+        {
+            var win = _services.GetRequiredService<App.NetworkOps.NetworkOpsCommandCenterWindow>();
+            win.Owner = this;
+            win.Show();
+        }
+
         private void OpenOpportunities_Click(object sender, RoutedEventArgs e)
         {
             var win = _services.GetRequiredService<App.Opportunities.OpportunitiesWindow>();
@@ -256,6 +263,9 @@ namespace Kor.Operations
                 var canSeeFileSyncCommandCenter = SecurityGroupAccess.IsUserInGroup(KnownRoles.FileSyncCommandCenter, userIdentity);
                 FileSyncCommandCenterTileHost.Visibility = canSeeFileSyncCommandCenter ? Visibility.Visible : Visibility.Collapsed;
 
+                var canSeeNetworkOps = SecurityGroupAccess.IsUserInGroup(KnownRoles.NetworkOps, userIdentity);
+                NetworkOpsTileHost.Visibility = canSeeNetworkOps ? Visibility.Visible : Visibility.Collapsed;
+
                 var canSeeBriefing = string.Equals(
                     global::Kor.Operations.OperationsApp.SignedInUserUpn,
                     "ilalonde@korstructural.com",
@@ -310,6 +320,7 @@ namespace Kor.Operations
             FeeProposalBuilderCard.Visibility = state.FeeProposalBuilder;
             EngineeringToolsTileHost.Visibility = state.EngineeringTools;
             FileSyncCommandCenterTileHost.Visibility = state.FileSyncCommandCenter;
+            NetworkOpsTileHost.Visibility = state.NetworkOps;
             MondayBriefingCard.Visibility = state.MondayBriefing;
             CooCardCard.Visibility = state.CooCard;
             OpportunitiesTileHost.Visibility = state.Opportunities;
@@ -341,6 +352,7 @@ namespace Kor.Operations
                 OpportunitiesTileHost,
                 EngineeringToolsTileHost,
                 FileSyncCommandCenterTileHost,
+                NetworkOpsTileHost,
                 PreferencesCard
             };
 

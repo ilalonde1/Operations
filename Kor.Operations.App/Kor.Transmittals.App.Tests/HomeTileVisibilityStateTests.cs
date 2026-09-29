@@ -19,6 +19,16 @@ public sealed class HomeTileVisibilityStateTests
     }
 
     [Fact]
+    public void Security_lookup_failure_collapses_the_infrastructure_consoles()
+    {
+        // FileSync and NetworkOps can queue work against production machines; a failed lookup must not show them.
+        var state = HomeTileVisibilityState.ForSecurityLookupFailure();
+
+        Assert.Equal(Visibility.Collapsed, state.FileSyncCommandCenter);
+        Assert.Equal(Visibility.Collapsed, state.NetworkOps);
+    }
+
+    [Fact]
     public void Security_lookup_failure_keeps_non_sensitive_fallback_tiles_visible()
     {
         var state = HomeTileVisibilityState.ForSecurityLookupFailure();

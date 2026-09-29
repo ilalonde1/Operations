@@ -308,6 +308,9 @@
     <ProjectReference Include="..\Kor.Operations.Core\Kor.Operations.Core.csproj" />
     <ProjectReference Include="..\Kor.Operations.Data\Kor.Operations.Data.csproj" />
     <ProjectReference Include="..\Kor.Operations.Graph\Kor.Operations.Graph.csproj" />
+    <!-- The NetworkOps page reads what the service stores through the same pure rules and knowledge
+         the service wrote it with (no I/O in Core), so the two can never disagree about a finding. -->
+    <ProjectReference Include="..\Kor.Operations.NetworkOps.Core\Kor.Operations.NetworkOps.Core.csproj" />
     <ProjectReference Include="..\Kor.Operations.Rendering\Kor.Operations.Rendering.csproj" />
     <ProjectReference Include="..\Kor.Opportunities.Core\Kor.Opportunities.Core.csproj" />
     <ProjectReference Include="..\Kor.Opportunities.Data\Kor.Opportunities.Data.csproj" />
