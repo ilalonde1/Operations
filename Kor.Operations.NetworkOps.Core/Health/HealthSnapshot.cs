@@ -37,6 +37,10 @@ public sealed record HealthSnapshot
     public IReadOnlyList<MailStoreInfo> MailStores { get; init; } = [];
     public BootInfo? Boot { get; init; }
     public BatteryInfo? Battery { get; init; }
+    /// <summary>v3: each memory module (slot, size, rated and actual speed).</summary>
+    public IReadOnlyList<MemoryModuleInfo> Memory { get; init; } = [];
+    /// <summary>v3: how many memory slots the board has.</summary>
+    public int? MemorySlots { get; init; }
 
     private static readonly JsonSerializerOptions Json = new()
     {
@@ -80,14 +84,15 @@ public sealed record HealthSnapshot
             OutlookIndex60d = Clean(s.OutlookIndex60d), DisplayAdapters = Clean(s.DisplayAdapters),
             RemoteTools = Clean(s.RemoteTools), DataOutsideSystemDrive = Clean(s.DataOutsideSystemDrive),
             ProbeErrors = Clean(s.ProbeErrors), DiskReliability = Clean(s.DiskReliability), MailStores = Clean(s.MailStores),
-            Inventory = s.Inventory is null ? null : s.Inventory with { Apps = Clean(s.Inventory.Apps) },
+            Memory = Clean(s.Memory),
+            Inventory =s.Inventory is null ? null : s.Inventory with { Apps = Clean(s.Inventory.Apps) },
         };
     }
 
     private static readonly string[] ListProperties =
     [
         nameof(Volumes), nameof(PhysicalDisks), nameof(MissingDisks), nameof(OrphanDriveLetters), nameof(AppCrashes14d),
-        nameof(OutlookIndex60d), nameof(DisplayAdapters), nameof(RemoteTools), nameof(DataOutsideSystemDrive), nameof(ProbeErrors),
+        nameof(OutlookIndex60d), nameof(DisplayAdapters), nameof(RemoteTools), nameof(DataOutsideSystemDrive), nameof(ProbeErrors), nameof(Memory),
         nameof(DiskReliability), nameof(MailStores),
     ];
 
@@ -120,6 +125,7 @@ public sealed record MailStoreInfo(string Profile, string Name, double GB, DateT
 public sealed record BootInfo(int LastBootMs, int MedianBootMs, int Samples);
 
 public sealed record BatteryInfo(int DesignMWh, int FullChargeMWh, int HealthPct, int? CycleCount);
+public sealed record MemoryModuleInfo(string? Slot, string? Bank, int SizeGB, int RatedMTs, int ConfiguredMTs, string? Maker, string? Part);
 public sealed record CrashCount(string Process, int Count, DateTime? Last);
 public sealed record StoreIndexFailures(string Store, int Count, DateTime? Last);
 public sealed record OfficeInfo(string? C2rMso, string? DownlevelMso, bool AccessEngine);

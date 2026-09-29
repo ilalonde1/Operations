@@ -86,7 +86,10 @@ $gpuWer = @($wer | Where-Object { $_.Message -match 'LiveKernelEvent' -and $_.Me
         DiskBadBlock       = Summ (Count-Events 'System' @{ ProviderName = 'disk'; Id = 7 })
         DiskResets         = Summ (@(Count-Events 'System' @{ ProviderName = 'storahci'; Id = 129 }) + @(Count-Events 'System' @{ ProviderName = 'stornvme'; Id = 129 }))
         NtfsCorruption     = Summ (Count-Events 'System' @{ ProviderName = 'Ntfs'; Id = 55 })
-        Whea               = Summ (Count-Events 'System' @{ ProviderName = 'Microsoft-Windows-WHEA-Logger' })
+        # v3: warnings and errors only (corrected 17/19/47 are Warning, fatal are Error). WHEA also logs
+        # Information-level notices (event 3, "an informational record", vendor data) -- all five of
+        # 206-N's "hardware errors" on 2026-09-29 were those, i.e. not errors at all.
+        Whea               = Summ (Count-Events 'System' @{ ProviderName = 'Microsoft-Windows-WHEA-Logger'; Level = 1, 2, 3 })
         UnexpectedShutdown = Summ (Count-Events 'System' @{ ProviderName = 'Microsoft-Windows-Kernel-Power'; Id = 41 })
         # v3: one GPU reset = one DISTINCT WER report. Windows re-logs event 1001 for the same report on
         # every retry to send it -- ~100 entries per reset measured 2026-09-29 (KOR-104N 6,339 entries =
@@ -254,6 +257,19 @@ $remoteTools = Try-Block 'remoteTools' {
         ForEach-Object { [pscustomobject]@{ Name = $_.Name; State = $_.State; StartMode = $_.StartMode } })
 }
 
+# --- v3: memory modules -- which slot, how big, rated vs the speed it actually runs at. An odd module
+# count or unequal channels runs part of the RAM single-channel; two modules on a DDR5 channel drop
+# the whole set's speed (206-N, 2026-09-29: 3 x 32 GB, 32 GB on channel A and 64 GB on B, 4800 rated
+# running at 3600). Plain values only.
+$memory = Try-Block 'memory' {
+    @(Get-CimInstance Win32_PhysicalMemory -ErrorAction Stop | ForEach-Object {
+        [pscustomobject]@{
+            Slot = "$($_.DeviceLocator)"; Bank = "$($_.BankLabel)"; SizeGB = [int][math]::Round($_.Capacity / 1GB)
+            RatedMTs = [int]$_.Speed; ConfiguredMTs = [int]$_.ConfiguredClockSpeed
+            Maker = "$("$($_.Manufacturer)".Trim())"; Part = "$("$($_.PartNumber)".Trim())" } })
+}
+$memorySlots = Try-Block 'memorySlots' { [int](@(Get-CimInstance Win32_PhysicalMemoryArray -ErrorAction Stop) | Measure-Object MemoryDevices -Sum).Sum }
+
 # --- data that no backup covers: fixed volumes other than C: holding real data (206-N's D:)
 $dataOutside = Try-Block 'dataOutside' {
     @($volumes | Where-Object { $_.Letter -ne 'C' -and ($_.SizeGB - $_.FreeGB) -ge 1 } |
@@ -285,6 +301,8 @@ $dataOutside = Try-Block 'dataOutside' {
     MailStores    = Arr $mailStores
     Boot          = $boot
     Battery       = $battery
+    Memory        = Arr $memory
+    MemorySlots   = $memorySlots
     # WMI itself broken: the core CIM classes fail. KOR-213, 2026-09-28 -- every block that
     # touches CIM said "Invalid class". Reported as a fact so a rule can raise it.
     WmiHealthy    = [bool](Try-Block 'wmi' { Get-CimInstance Win32_OperatingSystem -ErrorAction Stop })

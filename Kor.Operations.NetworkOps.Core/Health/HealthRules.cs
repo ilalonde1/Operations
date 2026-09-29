@@ -60,6 +60,9 @@ public static class HealthRules
                 (noDiscrete ? " | no discrete card visible: check it is present and seated" : "")));
         }
 
+        if (MemoryLayout(s) is { } mem)
+            f.Add(new("memory-layout", Severity.Info, "Memory is not running at full speed", mem));
+
         var shutdowns = e?.UnexpectedShutdown?.Count ?? 0;
         if (shutdowns >= 2)
             f.Add(new("unexpected-shutdowns", Severity.Warning, "Machine keeps losing power or crashing",
@@ -135,5 +138,56 @@ public static class HealthRules
                 string.Join(" | ", s.ProbeErrors)));
 
         return f;
+    }
+
+    /// <summary>
+    /// Null when the memory runs as it should; otherwise one line saying how it doesn't. Two things cost
+    /// real speed: channels holding different amounts (the surplus runs single-channel), and modules
+    /// running well below their rating (on DDR5, two modules on one channel does that by itself).
+    /// 206-N, 2026-09-29: 32 GB on channel A, 64 GB on channel B, rated 4800, running 3600.
+    /// </summary>
+    internal static string? MemoryLayout(HealthSnapshot s)
+    {
+        var mods = s.Memory.Where(m => m.SizeGB > 0).ToList();
+        if (mods.Count == 0) return null;
+        var problems = new List<string>();
+
+        // Channel = the slot name up to "-DIMM" ("Controller0-ChannelA-DIMM1" -> "Controller0-ChannelA").
+        // Boards that don't name channels are left alone rather than guessed at.
+        string? ChannelOf(string? slot)
+        {
+            if (slot is null) return null;
+            var i = slot.IndexOf("-DIMM", StringComparison.OrdinalIgnoreCase);
+            return i > 0 && slot.Contains("Channel", StringComparison.OrdinalIgnoreCase) ? slot[..i] : null;
+        }
+        var channels = mods.Select(m => (Channel: ChannelOf(m.Slot), m.SizeGB)).ToList();
+        if (channels.All(c => c.Channel is not null))
+        {
+            var perChannel = channels.GroupBy(c => c.Channel!).Select(g => (Name: g.Key, GB: g.Sum(c => c.SizeGB))).OrderBy(c => c.Name).ToList();
+            if (perChannel.Count > 1 && perChannel.Select(c => c.GB).Distinct().Count() > 1)
+            {
+                var surplus = perChannel.Max(c => c.GB) - perChannel.Min(c => c.GB);
+                problems.Add($"channels unbalanced ({string.Join(", ", perChannel.Select(c => $"{ShortChannel(c.Name)} {c.GB} GB"))}): {surplus} GB runs single-channel");
+            }
+            else if (perChannel.Count == 1 && (s.MemorySlots ?? 0) >= 2)
+                problems.Add("every module is on one channel: all of it runs single-channel");
+        }
+        else if (mods.Count == 1 && (s.MemorySlots ?? 0) >= 2)
+            problems.Add("a single module in a multi-slot board: it runs single-channel");
+
+        var rated = mods.Where(m => m.RatedMTs > 0).Select(m => m.RatedMTs).DefaultIfEmpty(0).Min();
+        var running = mods.Where(m => m.ConfiguredMTs > 0).Select(m => m.ConfiguredMTs).DefaultIfEmpty(0).Min();
+        if (rated > 0 && running > 0 && running < rated * 0.85)
+            problems.Add($"rated {rated}, running {running} MT/s");
+
+        if (problems.Count == 0) return null;
+        var sizes = string.Join(" + ", mods.GroupBy(m => m.SizeGB).OrderByDescending(g => g.Key).Select(g => $"{g.Count()} x {g.Key} GB"));
+        return $"{sizes} = {mods.Sum(m => m.SizeGB)} GB in {mods.Count} of {s.MemorySlots?.ToString() ?? "?"} slots | {string.Join(" | ", problems)}";
+    }
+
+    private static string ShortChannel(string c)
+    {
+        var i = c.IndexOf("Channel", StringComparison.OrdinalIgnoreCase);
+        return i >= 0 ? c[i..].Replace("Channel", "channel ", StringComparison.OrdinalIgnoreCase) : c;
     }
 }
