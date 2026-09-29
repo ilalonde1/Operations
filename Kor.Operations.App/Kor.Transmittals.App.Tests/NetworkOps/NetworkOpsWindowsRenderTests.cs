@@ -7,6 +7,7 @@ using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Kor.Operations.App.NetworkOps;
+using Kor.Operations.NetworkOps.Core.Learning;
 using Xunit;
 
 namespace Kor.Operations.App.Tests.NetworkOps;
@@ -16,8 +17,8 @@ namespace Kor.Operations.App.Tests.NetworkOps;
 /// (%TEMP%\kor-networkops-screens). The pattern is IntakeScreensRenderTests'.
 ///
 /// WHAT IT COVERS: that each window constructs, that every StaticResource it names resolves, and that
-/// it lays out non-blank with data bound -- the fixture fleet always, and the real one as well when
-/// KOR_NETWORKOPS_UIDB is set on the machine running the test.
+/// it lays out non-blank with data bound -- the fixture fleet always, and the real one through the API
+/// only when KOR_NETWORKOPS_RENDER_LIVE=1 is set (it signs in, so never during an ordinary test run).
 /// WHAT IT DOES NOT COVER: whether it looks GOOD (that is what the PNGs are for), anything behind
 /// Loaded (the windows are never shown, so no timer starts and no check is queued), or interaction.
 /// A same-class fault it would NOT catch: text painted in the colour of its background renders,
@@ -45,12 +46,12 @@ public sealed class NetworkOpsWindowsRenderTests
                     Source = new Uri("pack://application:,,,/Kor.Operations.App;component/Themes/KorTheme.xaml", UriKind.Absolute),
                 });
 
-                written += RenderFleet(NetworkOpsViewModelTests.Fleet(), new NetworkOpsReader(null), outputDirectory, "fixture");
+                written += RenderFleet(NetworkOpsViewModelTests.Fleet(), NetworkOpsClient.Unconfigured("fixture"), outputDirectory, "fixture");
 
                 // The real fleet, when this machine can read it: the fixture shows the layout works,
                 // only real data shows whether it reads well at 38 PCs and real finding text.
-                var real = NetworkOpsReader.FromEnvironment();
-                if (real.IsConfigured)
+                var real = NetworkOpsClient.FromAppConfig();
+                if (Environment.GetEnvironmentVariable("KOR_NETWORKOPS_RENDER_LIVE") == "1" && real.IsConfigured)
                     written += RenderFleet(real.GetFleetAsync(CancellationToken.None).GetAwaiter().GetResult(), real, outputDirectory, "live");
             }
             catch (Exception ex)
@@ -66,7 +67,7 @@ public sealed class NetworkOpsWindowsRenderTests
         Assert.True(written >= 2, $"Expected at least 2 renders, got {written}.");
     }
 
-    private static int RenderFleet(FleetSnapshot snapshot, NetworkOpsReader reader, string dir, string label)
+    private static int RenderFleet(FleetSnapshot snapshot, NetworkOpsClient reader, string dir, string label)
     {
         var center = new NetworkOpsCommandCenterViewModel(reader);
         center.Apply(snapshot, DateTime.UtcNow);
@@ -74,7 +75,7 @@ public sealed class NetworkOpsWindowsRenderTests
 
         // The PC window on the worst PC: the one with the most to explain.
         var worst = center.Fleet.First();
-        var device = new NetworkOpsDeviceViewModel(reader, snapshot, worst.Device, "ilalonde@korstructural.com");
+        var device = new NetworkOpsDeviceViewModel(reader, snapshot, worst.Device);
         if (reader.IsConfigured) device.LoadHistoryAsync(CancellationToken.None).GetAwaiter().GetResult();
         written += Render(new NetworkOpsDeviceWindow(device), Path.Combine(dir, $"{label}-pc-{worst.Name}.png"));
         return written;

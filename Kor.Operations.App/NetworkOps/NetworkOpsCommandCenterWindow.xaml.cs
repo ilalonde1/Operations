@@ -11,7 +11,7 @@ namespace Kor.Operations.App.NetworkOps;
 
 public partial class NetworkOpsCommandCenterWindow : Window
 {
-    // Same cadence as the FileSync Command Center: fresh enough to watch a check land, light on SQL.
+    // Same cadence as the FileSync Command Center: fresh enough to watch a check land, light on the service.
     private static readonly TimeSpan AutoRefreshInterval = TimeSpan.FromSeconds(15);
 
     private readonly NetworkOpsCommandCenterViewModel _vm;
@@ -80,7 +80,7 @@ public partial class NetworkOpsCommandCenterWindow : Window
     private void OpenSelected()
     {
         if (FleetGrid.SelectedItem is not FleetRow row || _vm.Snapshot is not { } snapshot) return;
-        var vm = new NetworkOpsDeviceViewModel(_vm.Reader, snapshot, row.Device, $"{Environment.UserName}@korstructural.com");
+        var vm = new NetworkOpsDeviceViewModel(_vm.Client, snapshot, row.Device);
         new NetworkOpsDeviceWindow(vm) { Owner = this }.Show();
     }
 

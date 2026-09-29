@@ -33,6 +33,13 @@ Log.Logger = new LoggerConfiguration()
 
 try
 {
+    // A service inherits services.exe's environment, read at BOOT: a KOR_NETWORKOPS_* machine variable
+    // set later is invisible until APP01 restarts. Take any the process is missing from the machine
+    // store itself, so a setting applies on a service restart, not a server reboot.
+    foreach (System.Collections.DictionaryEntry e in Environment.GetEnvironmentVariables(EnvironmentVariableTarget.Machine))
+        if (e.Key is string k && k.StartsWith("KOR_NETWORKOPS_", StringComparison.OrdinalIgnoreCase) && Environment.GetEnvironmentVariable(k) is null)
+            Environment.SetEnvironmentVariable(k, e.Value as string);
+
     var runOnce = args.Length >= 2 && args[0].Equals("run-once", StringComparison.OrdinalIgnoreCase) ? args[1] : null;
 
     var builder = Host.CreateApplicationBuilder(args);
@@ -70,6 +77,7 @@ try
         builder.Services.AddNetworkOpsScheduling();
         builder.Services.AddHostedService<HeartbeatService>();
         builder.Services.AddHostedService<Kor.Operations.NetworkOps.Service.Sweep.TriggerPoller>();
+        builder.Services.AddHostedService<Kor.Operations.NetworkOps.Service.Api.ApiHost>();
     }
     else
     {

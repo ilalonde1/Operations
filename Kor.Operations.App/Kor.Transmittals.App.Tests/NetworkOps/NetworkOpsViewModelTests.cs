@@ -15,10 +15,10 @@ namespace Kor.Operations.App.Tests.NetworkOps;
 // acknowledged finding stops a PC showing red, the filter and problems-only toggle, the KPI tiles and
 // a silent service, pattern members; on one PC, the explanation of the selected finding (knowledge,
 // other PCs, the fleet pattern it belongs to, the empty-state texts) and the history tabs.
-// WHAT IT DOES NOT: the SQL (NetworkOpsReader) or the permissions of the networkops_ui login -- those
-// are proven against the rehearsal database -- nor how the windows look. A SAME-CLASS FAULT IT WOULD
-// NOT CATCH: a DateTime read back from SQL as Local instead of UTC would shift every "ago" by the UTC
-// offset; the fixture is built in UTC, so only the reader running against a real database shows that.
+// WHAT IT DOES NOT: the API it talks to (NetworkOpsClient; the service side is ApiAccessTests plus a
+// live signed-in call), nor how the windows look (NetworkOpsWindowsRenderTests). A SAME-CLASS FAULT IT
+// WOULD NOT CATCH: a DateTime that crosses the API as Local instead of UTC would shift every "ago" by the
+// UTC offset; the fixture is built in UTC, so only a live call against the real service shows that.
 public sealed class NetworkOpsViewModelTests
 {
     private static readonly DateTime Now = DateTime.UtcNow;
@@ -63,7 +63,7 @@ public sealed class NetworkOpsViewModelTests
 
     private static NetworkOpsCommandCenterViewModel Center(FleetSnapshot? s = null)
     {
-        var vm = new NetworkOpsCommandCenterViewModel(new NetworkOpsReader(null));
+        var vm = new NetworkOpsCommandCenterViewModel(NetworkOpsClient.Unconfigured("test: no service"));
         vm.Apply(s ?? Fleet(), Now);
         return vm;
     }
@@ -131,7 +131,7 @@ public sealed class NetworkOpsViewModelTests
     private static NetworkOpsDeviceViewModel Device(string name)
     {
         var s = Fleet();
-        return new NetworkOpsDeviceViewModel(new NetworkOpsReader(null), s, s.Devices.Single(d => d.Name == name), "ian@korstructural.com");
+        return new NetworkOpsDeviceViewModel(NetworkOpsClient.Unconfigured("test: no service"), s, s.Devices.Single(d => d.Name == name));
     }
 
     [Fact]
@@ -184,12 +184,12 @@ public sealed class NetworkOpsViewModelTests
     }
 
     [Fact]
-    public async System.Threading.Tasks.Task Without_the_environment_variable_the_page_says_what_is_missing()
+    public async System.Threading.Tasks.Task Without_the_api_settings_the_page_says_what_is_missing()
     {
-        var vm = new NetworkOpsCommandCenterViewModel(new NetworkOpsReader(null));
+        var vm = new NetworkOpsCommandCenterViewModel(NetworkOpsClient.Unconfigured($"App.config is missing {NetworkOpsClient.BaseUrlKey}"));
         await vm.RefreshAsync(default);
 
         Assert.True(vm.IsConnectionLost);
-        Assert.Contains(NetworkOpsReader.ConnectionVariable, vm.ConnectionLostMessage);
+        Assert.Contains(NetworkOpsClient.BaseUrlKey, vm.ConnectionLostMessage);
     }
 }

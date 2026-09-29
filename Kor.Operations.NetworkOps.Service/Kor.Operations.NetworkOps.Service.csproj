@@ -7,7 +7,7 @@
     <AssemblyName>Kor.Operations.NetworkOps.Service</AssemblyName>
     <!-- Bump on every meaningful service-side change: the heartbeat row carries it, so a
          redeploy can be confirmed from the database, not assumed. -->
-    <Version>0.2.0</Version>
+    <Version>0.3.0</Version>
   </PropertyGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="Kor.Operations.NetworkOps.Tests" />
@@ -26,6 +26,11 @@
     <PackageReference Include="Microsoft.Identity.Client" Version="4.82.1" />
     <PackageReference Include="Microsoft.Graph" Version="5.103.0" />
     <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.4" />
+    <!-- The Command Center API (Api/ApiHost.cs): Entra bearer tokens. -->
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.11" />
+  </ItemGroup>
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Kor.Operations.NetworkOps.Core\Kor.Operations.NetworkOps.Core.csproj" />

@@ -214,9 +214,9 @@ internal static class AppModule
         services.AddTransient<FileSyncCommandCenterViewModel>();
         services.AddTransient<FileSyncCommandCenterWindow>();
 
-        // NetworkOps reads its connection from KOR_NETWORKOPS_UIDB on the PC that runs it (never App.config,
-        // which ships to every PC). Unset, the page opens and says so rather than failing.
-        services.AddSingleton(_ => App.NetworkOps.NetworkOpsReader.FromEnvironment());
+        // NetworkOps talks only to its API on KOR-APP01 (Entra + MFA, pinned certificate); the PC holds no
+        // database credential. Unconfigured, the page opens and says so rather than failing.
+        services.AddSingleton(_ => App.NetworkOps.NetworkOpsClient.FromAppConfig());
         services.AddTransient<App.NetworkOps.NetworkOpsCommandCenterViewModel>();
         services.AddTransient<App.NetworkOps.NetworkOpsCommandCenterWindow>();
 

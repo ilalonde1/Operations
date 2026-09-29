@@ -213,6 +213,16 @@ firewall changes; MeshCentral or agent installs; pushing or merging; releasing t
    (self-contained, no .NET needed); scheduled task as SYSTEM every 10 minutes running
    `netops watchdog`; then `netops watchdog --test` to prove the mail lands in the inbox.
 
+**Entra (created 2026-09-29 on Ian's GO; verified by reading back):**
+
+| Object | Value |
+|---|---|
+| Group "NetworkOps Admins" (cloud-only) | `d74eb7e8-a87e-4dcd-93c2-06a02ce63b59`, member: Ian |
+| App "KOR NetworkOps API" | appId `1ba6790b-5f6b-4538-aad5-5d6949720385`, `api://1ba6790b-…/NetworkOps.Access`, role `NetworkOps.Admin`, v2 tokens |
+| Its service principal | `daf32544-1888-4093-a590-79ee6b305078`, assignment REQUIRED, group → NetworkOps.Admin |
+| Pre-authorised client | Kor.Operations.App `69b68cd2-a051-4782-a45e-4f1276942c06` (no consent prompt) |
+| CA "NetworkOps API - require MFA" | `5fba24d8-a6d5-4eab-9d51-4a9690296efe`, enabled: this app only, all users, MFA always (no location exemption), sign-in every 12 h, `CA-BreakGlass-Exclude` excluded |
+
 **Writing a probe: return PLAIN values.** A probe runs on the PC and its output is serialised with
 `ConvertTo-Json -Depth 8`. PowerShell's rich objects (a string from `Get-Content`, a `FileInfo`, a
 service object) carry hidden PSPath/PSDrive/PSProvider graphs that serialise too: on 2026-09-29 a probe

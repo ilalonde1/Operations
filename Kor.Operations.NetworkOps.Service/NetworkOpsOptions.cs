@@ -28,4 +28,19 @@ public sealed class NetworkOpsOptions
 
     /// <summary>A directory machine not reachable for this long is itself a finding: silence is a finding.</summary>
     public int SilentAfterDays { get; set; } = 7;
+
+    // ---- the Command Center API (Api/ApiHost.cs). Off unless ApiPort AND ApiCertThumbprint are set.
+    // Entra: every request needs a token for ApiAudience from ApiTenantId carrying scope
+    // NetworkOps.Access and role NetworkOps.Admin; Conditional Access requires MFA to get one.
+
+    /// <summary>HTTPS port on all interfaces; 0 = no API. The Windows firewall rule limits who can reach it.</summary>
+    public int ApiPort { get; set; }
+
+    /// <summary>SHA-1 thumbprint of the certificate in LocalMachine\My (KOR_NETWORKOPS_APICERTTHUMBPRINT: it is per machine).</summary>
+    public string ApiCertThumbprint { get; set; } = "";
+
+    public string ApiTenantId { get; set; } = "";
+
+    /// <summary>App (client) id of "KOR NetworkOps API".</summary>
+    public string ApiAudience { get; set; } = "";
 }

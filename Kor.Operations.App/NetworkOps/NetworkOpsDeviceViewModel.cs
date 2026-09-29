@@ -22,8 +22,7 @@ public sealed class NetworkOpsDeviceViewModel : ObservableObject
     /// <summary>A check still unanswered after this is reported as such (the probe itself takes ~10 s on a PC).</summary>
     private static readonly TimeSpan CheckGiveUp = TimeSpan.FromMinutes(3);
 
-    private readonly NetworkOpsReader _reader;
-    private readonly string _currentUser;
+    private readonly NetworkOpsClient _client;
     private FleetSnapshot _snapshot;
     private DeviceRow _device;
     private IReadOnlyList<Resolution> _resolutions = [];
@@ -34,12 +33,11 @@ public sealed class NetworkOpsDeviceViewModel : ObservableObject
     private string _newNoteText = string.Empty;
     private string _actionNote = string.Empty;
 
-    public NetworkOpsDeviceViewModel(NetworkOpsReader reader, FleetSnapshot snapshot, DeviceRow device, string currentUser)
+    public NetworkOpsDeviceViewModel(NetworkOpsClient client, FleetSnapshot snapshot, DeviceRow device)
     {
-        _reader = reader;
+        _client = client;
         _snapshot = snapshot;
         _device = device;
-        _currentUser = currentUser;
         ApplySnapshot(DateTime.UtcNow);
     }
 
@@ -120,8 +118,8 @@ public sealed class NetworkOpsDeviceViewModel : ObservableObject
     {
         try
         {
-            var history = await _reader.GetDeviceHistoryAsync(_device.DeviceId, ct).ConfigureAwait(true);
-            _resolutions = await _reader.GetResolutionsAsync(ct).ConfigureAwait(true);
+            var history = await _client.GetDeviceHistoryAsync(_device.DeviceId, ct).ConfigureAwait(true);
+            _resolutions = await _client.GetResolutionsAsync(ct).ConfigureAwait(true);
             ApplyHistory(history);
             Explain();
             StatusMessage = $"Loaded at {DateTime.Now:HH:mm:ss}.";
@@ -134,13 +132,13 @@ public sealed class NetworkOpsDeviceViewModel : ObservableObject
 
     private async Task ReloadAsync(CancellationToken ct)
     {
-        _snapshot = await _reader.GetFleetAsync(ct).ConfigureAwait(true);
+        _snapshot = await _client.GetFleetAsync(ct).ConfigureAwait(true);
         _device = _snapshot.Devices.FirstOrDefault(d => d.DeviceId == _device.DeviceId) ?? _device;
         ApplySnapshot(DateTime.UtcNow);
         await LoadHistoryAsync(ct).ConfigureAwait(true);
     }
 
-    /// <summary>Internal so tests can drive the page from a fixture snapshot without a database.</summary>
+    /// <summary>Internal so tests can drive the page from a fixture snapshot without the service.</summary>
     internal void ApplySnapshot(DateTime nowUtc)
     {
         var facts = _snapshot.FactsOf(_device.Name);
@@ -233,13 +231,13 @@ public sealed class NetworkOpsDeviceViewModel : ObservableObject
         IsChecking = true;
         try
         {
-            var id = await _reader.QueueCheckAsync(_device.Name, _currentUser, ct).ConfigureAwait(true);
+            var id = await _client.QueueCheckAsync(_device.Name, ct).ConfigureAwait(true);
             CheckStatus = "Queued — waiting for the service to pick it up...";
             var started = DateTime.UtcNow;
             while (true)
             {
                 await Task.Delay(CheckPoll, ct).ConfigureAwait(true);
-                var t = await _reader.GetTriggerAsync(id, ct).ConfigureAwait(true);
+                var t = await _client.GetTriggerAsync(id, ct).ConfigureAwait(true);
                 if (t is null) { CheckStatus = "The check request has disappeared from the queue."; return; }
                 var waited = (int)(DateTime.UtcNow - started).TotalSeconds;
                 switch (t.Status)
@@ -260,7 +258,7 @@ public sealed class NetworkOpsDeviceViewModel : ObservableObject
                 }
                 if (DateTime.UtcNow - started > CheckGiveUp)
                 {
-                    var cancelled = t.Status == "Pending" && await _reader.CancelCheckAsync(id, ct).ConfigureAwait(true);
+                    var cancelled = t.Status == "Pending" && await _client.CancelCheckAsync(id, ct).ConfigureAwait(true);
                     CheckStatus = cancelled
                         ? "No answer in 3 minutes: the service never picked the check up, so it was withdrawn. Is the service running?"
                         : "No answer in 3 minutes: the check is still running on the service. The page will show the result on the next refresh.";
@@ -279,14 +277,14 @@ public sealed class NetworkOpsDeviceViewModel : ObservableObject
     }
 
     public Task AcknowledgeAsync(CancellationToken ct)
-        => Annotate("Acknowledged", f => _reader.AcknowledgeAsync(f.FindingId, _currentUser, ActionNote, ct), ct);
+        => Annotate("Acknowledged", f => _client.AcknowledgeAsync(f.FindingId, ActionNote, ct), ct);
 
     public Task SnoozeAsync(TimeSpan duration, CancellationToken ct)
         => Annotate($"Snoozed for {(duration.TotalDays >= 1 ? $"{duration.TotalDays:0} day(s)" : $"{duration.TotalHours:0} hour(s)")}",
-            f => _reader.SnoozeAsync(f.FindingId, DateTime.UtcNow + duration, _currentUser, ActionNote, ct), ct);
+            f => _client.SnoozeAsync(f.FindingId, DateTime.UtcNow + duration, ActionNote, ct), ct);
 
     public Task ReopenAsync(CancellationToken ct)
-        => Annotate("Reopened", f => _reader.ReopenAsync(f.FindingId, _currentUser, ct), ct);
+        => Annotate("Reopened", f => _client.ReopenAsync(f.FindingId, ct), ct);
 
     private async Task Annotate(string verb, Func<FleetFinding, Task> write, CancellationToken ct)
     {
@@ -310,7 +308,7 @@ public sealed class NetworkOpsDeviceViewModel : ObservableObject
         if (string.IsNullOrWhiteSpace(NewNoteText)) return;
         try
         {
-            await _reader.AddNoteAsync(_device.DeviceId, _currentUser, NewNoteText, ct).ConfigureAwait(true);
+            await _client.AddNoteAsync(_device.DeviceId, NewNoteText, ct).ConfigureAwait(true);
             NewNoteText = string.Empty;
             await LoadHistoryAsync(ct).ConfigureAwait(true);
             StatusMessage = "Note added.";

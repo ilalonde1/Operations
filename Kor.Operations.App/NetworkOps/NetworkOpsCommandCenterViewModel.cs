@@ -22,7 +22,7 @@ public sealed class NetworkOpsCommandCenterViewModel : ObservableObject
     /// <summary>A heartbeat older than this means the service is not running.</summary>
     private static readonly TimeSpan ServiceSilentAfter = TimeSpan.FromMinutes(3);
 
-    private readonly NetworkOpsReader _reader;
+    private readonly NetworkOpsClient _client;
     private readonly List<FleetRow> _allRows = new();
     private string _statusMessage = "Ready.";
     private bool _isLoading;
@@ -33,12 +33,12 @@ public sealed class NetworkOpsCommandCenterViewModel : ObservableObject
     private string _connectionLostMessage = string.Empty;
     private DateTimeOffset? _lastSuccessfulRefreshAt;
 
-    public NetworkOpsCommandCenterViewModel(NetworkOpsReader reader)
+    public NetworkOpsCommandCenterViewModel(NetworkOpsClient client)
     {
-        _reader = reader;
+        _client = client;
     }
 
-    public NetworkOpsReader Reader => _reader;
+    public NetworkOpsClient Client => _client;
 
     /// <summary>The last fleet read, handed to a PC's window so it opens on the same data.</summary>
     public FleetSnapshot? Snapshot { get; private set; }
@@ -115,7 +115,7 @@ public sealed class NetworkOpsCommandCenterViewModel : ObservableObject
         StatusMessage = "Loading...";
         try
         {
-            var snapshot = await _reader.GetFleetAsync(ct).ConfigureAwait(true);
+            var snapshot = await _client.GetFleetAsync(ct).ConfigureAwait(true);
             Apply(snapshot, DateTime.UtcNow);
             StatusMessage = $"Loaded at {DateTime.Now:HH:mm:ss}. {snapshot.Devices.Count} PCs, {snapshot.OpenFindings.Count} open findings, {snapshot.Patterns.Count} fleet patterns.";
             _lastSuccessfulRefreshAt = DateTimeOffset.Now;
@@ -127,7 +127,7 @@ public sealed class NetworkOpsCommandCenterViewModel : ObservableObject
             var since = _lastSuccessfulRefreshAt.HasValue
                 ? $"last good data from {_lastSuccessfulRefreshAt.Value.LocalDateTime:HH:mm:ss}"
                 : "no data has loaded yet";
-            ConnectionLostMessage = _reader.IsConfigured
+            ConnectionLostMessage = _client.IsConfigured
                 ? $"Connection lost — {since} — auto-retry in ~15s. ({ex.GetType().Name}: {ex.Message})"
                 : ex.Message;
             IsConnectionLost = true;
@@ -138,7 +138,7 @@ public sealed class NetworkOpsCommandCenterViewModel : ObservableObject
         }
     }
 
-    /// <summary>Builds every row, tile and pattern from one fleet read. Internal so tests can drive it without a database.</summary>
+    /// <summary>Builds every row, tile and pattern from one fleet read. Internal so tests can drive it without the service.</summary>
     internal void Apply(FleetSnapshot snapshot, DateTime nowUtc)
     {
         Snapshot = snapshot;
