@@ -88,4 +88,34 @@ public sealed class OnTargetPayloadTests
         }
         finally { Directory.Delete(dir, recursive: true); }
     }
+
+    // The 2026-09-29 fault: a probe published 105 MB. Here a plain 200 KB value stands in for the
+    // blob -- a real rich object (Get-Item) takes minutes of CPU just to serialise at depth 8, which
+    // is its own reason probes must return plain values. Under a 64 KB limit the target must publish
+    // a short error, not the blob.
+    [Fact]
+    [Trait("Speed", "Slow")]
+    public void An_oversized_result_is_replaced_by_an_error_on_the_target()
+    {
+        var ps = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), @"WindowsPowerShell\v1.0\powershell.exe");
+        if (!File.Exists(ps)) return;
+
+        var dir = Path.Combine(Path.GetTempPath(), "kor-ontarget-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            var result = Path.Combine(dir, "result.json");
+            var script = Path.Combine(dir, "payload.ps1");
+            File.WriteAllText(script, OnTargetPayload.Build("[pscustomobject]@{ Big = 'x' * 200000 }", result, maxResultChars: 64 * 1024), OnTargetPayload.ScriptEncoding);
+            using var proc = Process.Start(new ProcessStartInfo(ps, $"-NoProfile -NonInteractive -ExecutionPolicy Bypass -File \"{script}\"")
+            { UseShellExecute = false, CreateNoWindow = true })!;
+            Assert.True(proc.WaitForExit(60_000), "payload did not finish in 60s");
+
+            Assert.True(new FileInfo(result).Length < 4096, $"published {new FileInfo(result).Length} bytes: the limit did not hold");
+            var r = OnTargetPayload.ParseResult(File.ReadAllText(result));
+            Assert.False(r.Ok);
+            Assert.StartsWith("result too large:", r.Error);
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
 }

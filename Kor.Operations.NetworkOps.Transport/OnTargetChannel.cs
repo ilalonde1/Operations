@@ -67,6 +67,11 @@ public sealed class OnTargetChannel
                 if (DateTime.UtcNow >= deadline) return OnTargetRun.Failed(computer, OnTargetStatus.Timeout, $"no result after {_timeout.TotalSeconds:0}s");
                 await Task.Delay(_poll, ct).ConfigureAwait(false);
             }
+            // Second line of defence behind the payload's own limit (a target running an older payload,
+            // or one whose script was altered): never pull an oversized file across the VPN.
+            var size = new FileInfo(uncResult).Length;
+            if (size > (long)OnTargetPayload.MaxResultChars * 4)   // UTF-8: at most 4 bytes a character
+                return OnTargetRun.Failed(computer, OnTargetStatus.ScriptError, $"result file is {size / 1048576.0:N1} MB; refused without reading it");
             var result = OnTargetPayload.ParseResult(await File.ReadAllTextAsync(uncResult, ct).ConfigureAwait(false));
             var stages = $"reach {reachMs} ms, staged {stagedMs - reachMs} ms, launch {launchedMs - stagedMs} ms, result after {(int)clock.ElapsedMilliseconds - launchedMs} ms";
             return result.Ok

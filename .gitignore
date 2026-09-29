@@ -72,6 +72,10 @@ Kor.Operations.App/EngineeringTools/.claude/
 # Local-only env-var setup scripts (contain client secret + SQL password)
 set-filesync-env*.ps1
 
+# A migration with its password filled in, sitting beside the original for Ian to run in SSMS.
+# Deleted once run; never committed.
+db/**/*.FILLED.sql
+
 # Codex-era scratch build outputs (untracked 2026-06-10, m-cleanup)
 ._codex_obj/
 .codex_builds/

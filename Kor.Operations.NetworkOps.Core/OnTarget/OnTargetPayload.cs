@@ -24,11 +24,21 @@ public static class OnTargetPayload
     /// </summary>
     public static readonly Encoding ScriptEncoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: true);
 
-    public static string Build(string body, string resultPath)
+    /// <summary>
+    /// The largest result, in JSON characters, that is ever sent back. The health probe's is ~100 KB.
+    /// A probe that emits PowerShell's rich objects instead of plain values -- a string from
+    /// Get-Content, a FileInfo -- serialises their hidden PSDrive/PSProvider graph too: on 2026-09-29
+    /// a probe meant to return 1 KB published 105 MB, and the client sat reading it over the VPN.
+    /// Over the limit, the target replaces the result with an error saying so; nothing large crosses.
+    /// </summary>
+    public const int MaxResultChars = 8 * 1024 * 1024;
+
+    public static string Build(string body, string resultPath, int maxResultChars = MaxResultChars)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(body);
         ArgumentException.ThrowIfNullOrWhiteSpace(resultPath);
         if (resultPath.Contains('\'')) throw new ArgumentException("Result path may not contain a single quote.", nameof(resultPath));
+        ArgumentOutOfRangeException.ThrowIfLessThan(maxResultChars, 1024);
 
         var tmp = resultPath + ".tmp";
         return $$"""
@@ -41,7 +51,11 @@ public static class OnTargetPayload
             } catch {
                 [pscustomobject]@{ Ok = $false; Error = $_.Exception.Message; Line = $_.InvocationInfo.ScriptLineNumber }
             }
-            [IO.File]::WriteAllText('{{tmp}}', ($r | ConvertTo-Json -Depth 8), [Text.UTF8Encoding]::new($false))
+            $json = $r | ConvertTo-Json -Depth 8
+            if ($json.Length -gt {{maxResultChars}}) {
+                $json = [pscustomobject]@{ Ok = $false; Line = 0; Error = ('result too large: {0:N1} MB of JSON, the limit is {1:N1} MB. The probe returned rich PowerShell objects; return plain values instead ([string] casts, or Select-Object with only the properties needed).' -f ($json.Length / 1MB), ({{maxResultChars}} / 1MB)) } | ConvertTo-Json
+            }
+            [IO.File]::WriteAllText('{{tmp}}', $json, [Text.UTF8Encoding]::new($false))
             Move-Item -LiteralPath '{{tmp}}' -Destination '{{resultPath}}' -Force
             """;
     }

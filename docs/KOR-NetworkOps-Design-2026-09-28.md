@@ -199,16 +199,27 @@ firewall changes; MeshCentral or agent installs; pushing or merging; releasing t
 1. **Code-signing certificate** for KOR (agent + the Revit suite) — a purchase.
 2. **MeshCentral on APP01** — an infrastructure install (port, TLS name, firewall scope).
 3. **T-Net timeline** — when the contract ends decides how early Phases 5–7 must land.
-4. **SPF for the dead-man mail** (measured 2026-09-28 from KOR-FS01): port 25 to
+4. **SPF for the dead-man mail** — ✅ NOT NEEDED: the watcher's test mail from FS01 landed in Ian's
+   inbox on 2026-09-29 (as the UPS cards' direct-send mail had). Adding the office IP stays good
+   hygiene, not a requirement. Measured 2026-09-28 from KOR-FS01: port 25 to
    `korstructural-com.mail.protection.outlook.com` is open and answers, but the office's public
    address, 184.71.160.54, is not in `v=spf1 a include:spf.protection.outlook.com -all` (the `a` is
    the website host, 104.244.120.38). DMARC is `p=none`, so the mail is not rejected, but a hard SPF
    fail on our own domain will most likely land in Junk. Fix: add `ip4:184.71.160.54` to the SPF
    record — one DNS edit, which also covers any other device in the office that mails by direct send.
-5. **Installing the watcher on FS01**: run `003_WatchdogLogin.sql`; set machine variable
+5. ✅ **Watcher INSTALLED on FS01 2026-09-29** (task "KOR NetworkOps Watchdog", SYSTEM, every 10 min;
+   `C:\Program Files\KorOperations\NetworkOps\netops.exe`). The steps were: run `003_WatchdogLogin.sql`; set machine variable
    `KOR_NETWORKOPS_WATCHDB` on FS01 (networkops_watch); copy the single-file `netops.exe`
    (self-contained, no .NET needed); scheduled task as SYSTEM every 10 minutes running
    `netops watchdog`; then `netops watchdog --test` to prove the mail lands in the inbox.
+
+**Writing a probe: return PLAIN values.** A probe runs on the PC and its output is serialised with
+`ConvertTo-Json -Depth 8`. PowerShell's rich objects (a string from `Get-Content`, a `FileInfo`, a
+service object) carry hidden PSPath/PSDrive/PSProvider graphs that serialise too: on 2026-09-29 a probe
+meant to return 1 KB published 105 MB, and a `Get-Item` result takes minutes of CPU on the PC just to
+serialise. Build new strings (`"$(...)"`, `-join`), numbers and `[pscustomobject]`s of those. The payload
+now refuses any result over 8 MB on the target (`OnTargetPayload.MaxResultChars`), and the client refuses
+to read an oversized file -- but a probe that trips the limit has still burned the PC's CPU.
 
 Known, not NetworkOps: `EngineeringTools.Tests` finishes all its tests and then its testhost never
 exits (the same on a clean checkout of `54a8e97f`). Run it with `--blame-hang-timeout 90s` until found.
