@@ -12,6 +12,12 @@ namespace Kor.Operations.NetworkOps.Service.Jobs;
 // \\KOR-FS01\Library\ADMIN\UNIFI\BACKUPS (inheritance broken: admins + this service only -- the files
 // hold Wi-Fi keys and device credentials). The VM holds no Windows credential at all.
 //
+// ⚠ OFF since 2026-09-29 (UniFiBackupHost = ""): on UniFi OS Server with a UI account the system backups
+// go to Ubiquiti's CLOUD (weekly), not to disk, so the drop never fills and this would alarm nightly for
+// nothing. Local copies would need a no-MFA local controller admin whose password sits on APP01 -- Ian's
+// call was no; KOR-UNIFI01 goes into Veeam instead. To turn this on: set UniFiBackupHost back to
+// kor-unifi01.int.korstructural.com once something writes .unf files to the drop.
+//
 // The host key is PINNED: an SFTP server that is not KOR-UNIFI01 is refused before authentication.
 // "No backup newer than 48 h" THROWS, so the dispatcher records the run as failed and alerts: a backup
 // that silently stopped is the failure this job exists to catch.
