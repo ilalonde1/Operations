@@ -199,3 +199,16 @@ firewall changes; MeshCentral or agent installs; pushing or merging; releasing t
 1. **Code-signing certificate** for KOR (agent + the Revit suite) — a purchase.
 2. **MeshCentral on APP01** — an infrastructure install (port, TLS name, firewall scope).
 3. **T-Net timeline** — when the contract ends decides how early Phases 5–7 must land.
+4. **SPF for the dead-man mail** (measured 2026-09-28 from KOR-FS01): port 25 to
+   `korstructural-com.mail.protection.outlook.com` is open and answers, but the office's public
+   address, 184.71.160.54, is not in `v=spf1 a include:spf.protection.outlook.com -all` (the `a` is
+   the website host, 104.244.120.38). DMARC is `p=none`, so the mail is not rejected, but a hard SPF
+   fail on our own domain will most likely land in Junk. Fix: add `ip4:184.71.160.54` to the SPF
+   record — one DNS edit, which also covers any other device in the office that mails by direct send.
+5. **Installing the watcher on FS01**: run `003_WatchdogLogin.sql`; set machine variable
+   `KOR_NETWORKOPS_WATCHDB` on FS01 (networkops_watch); copy the single-file `netops.exe`
+   (self-contained, no .NET needed); scheduled task as SYSTEM every 10 minutes running
+   `netops watchdog`; then `netops watchdog --test` to prove the mail lands in the inbox.
+
+Known, not NetworkOps: `EngineeringTools.Tests` finishes all its tests and then its testhost never
+exits (the same on a clean checkout of `54a8e97f`). Run it with `--blame-hang-timeout 90s` until found.
