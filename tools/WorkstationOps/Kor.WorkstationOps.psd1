@@ -1,6 +1,6 @@
 @{
     RootModule        = 'Kor.WorkstationOps.psm1'
-    ModuleVersion     = '1.0.0'
+    ModuleVersion     = '1.1.0'
     GUID              = 'b7f4e2a1-5c3d-4e8b-9a1f-2d6c8e4b7a30'
     Author            = 'Ian Lalonde'
     CompanyName       = 'KOR Structural'
@@ -22,6 +22,9 @@
         'ConvertFrom-KorSmbios'
         'Get-KorThermalProfile'
         'Get-KorInstalledSoftware'
+        'Invoke-KorOnTarget'
+        'Test-KorSmbReachable'
+        'New-KorOnTargetPayload'
     )
     CmdletsToExport   = @()
     VariablesToExport = @()

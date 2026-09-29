@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The Windows half of NetworkOps: the channels that actually reach a machine. Kept apart
+       from Core so the diagnosis logic stays testable without Windows APIs or a network. -->
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.DirectoryServices" Version="8.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Kor.Operations.NetworkOps.Core\Kor.Operations.NetworkOps.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Kor.Operations.NetworkOps.Tests" />
+  </ItemGroup>
+
+</Project>

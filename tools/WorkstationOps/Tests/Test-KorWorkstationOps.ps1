@@ -96,5 +96,46 @@ $corrupt[9] = 1        # first structure claims a 1-byte formatted area, shorter
 $r2 = ConvertFrom-KorSmbios -Bytes $corrupt
 Assert-Equal 0 $r2.Memory.Dimms.Count 'a corrupt structure length halts the walk instead of inventing DIMMs'
 
+Write-Host "`nNew-KorOnTargetPayload - the script that runs as SYSTEM on the target" -ForegroundColor Cyan
+# The wrapper is the one piece of run-on-target that can be proven without a machine. A
+# payload that does not parse fails silently on the target (no result file, just a timeout),
+# so parse it here with PowerShell's own parser, including a body carrying non-ASCII -- the
+# em-dash that broke a staged script under Windows PowerShell 5.1.
+$body = @'
+$note = 'renamed -- or deleted' + [char]0x2014 + ' mid-run'
+Get-Item C:\Windows | Select-Object Name
+'@
+$payload = New-KorOnTargetPayload -Script $body -OutputPath 'C:\Windows\Temp\korrun-test.json'
+$tokens = $null; $errors = $null
+[void][Management.Automation.Language.Parser]::ParseInput($payload, [ref]$tokens, [ref]$errors)
+Assert-Equal 0 @($errors).Count 'the generated payload parses with no errors'
+Assert-Equal $true ($payload.Contains($body)) 'the caller''s body is embedded verbatim'
+Assert-Equal $true ($payload -match [regex]::Escape("'C:\Windows\Temp\korrun-test.json.tmp'")) 'the result is written to .tmp first'
+Assert-Equal $true ($payload -match "Move-Item -LiteralPath 'C:\\Windows\\Temp\\korrun-test\.json\.tmp' -Destination 'C:\\Windows\\Temp\\korrun-test\.json'") 'then renamed into place, so a half-written file is never read'
+Assert-Equal $true ($payload -match 'Ok = \$false; Error =') 'a throwing body reports its error instead of producing no file'
+
+# Run the payload for real, locally, against a temp path: it must publish exactly one JSON
+# result with Ok=true and the body's output inside -- the contract Invoke-KorOnTarget reads.
+$tmpOut = Join-Path ([IO.Path]::GetTempPath()) ("korrun-selftest-{0}.json" -f [guid]::NewGuid().ToString('N'))
+$okPayload = New-KorOnTargetPayload -Script "[pscustomobject]@{ Answer = 42 }" -OutputPath $tmpOut
+& ([scriptblock]::Create($okPayload))
+$res = Get-Content $tmpOut -Raw | ConvertFrom-Json
+Assert-Equal $true $res.Ok 'a clean body reports Ok'
+Assert-Equal 42 $res.Output[0].Answer 'the body''s output round-trips through the JSON file'
+Assert-Equal $false (Test-Path "$tmpOut.tmp") 'no .tmp file is left behind'
+Remove-Item $tmpOut -Force
+
+$errOut = Join-Path ([IO.Path]::GetTempPath()) ("korrun-selftest-{0}.json" -f [guid]::NewGuid().ToString('N'))
+& ([scriptblock]::Create((New-KorOnTargetPayload -Script "throw 'deliberate'" -OutputPath $errOut)))
+$er = Get-Content $errOut -Raw | ConvertFrom-Json
+Assert-Equal $false $er.Ok 'a throwing body reports Ok = false'
+Assert-Equal 'deliberate' $er.Error 'and carries its error message back'
+Remove-Item $errOut -Force
+
+Write-Host "`nTest-KorSmbReachable - port 445, never ping" -ForegroundColor Cyan
+Assert-Equal $false (Test-KorSmbReachable -ComputerName 'kor-no-such-host.invalid' -TimeoutMs 1500) 'an unresolvable host is unreachable, not an exception'
+# 'localhost' resolves to 127.0.0.1 and this box serves SMB, so it must read reachable.
+Assert-Equal $true (Test-KorSmbReachable -ComputerName 'localhost') 'a host serving SMB on any of its addresses is reachable'
+
 Write-Host ("`n{0} passed, {1} failed`n" -f $script:Pass, $script:Fail) -ForegroundColor $(if ($script:Fail) { 'Red' } else { 'Green' })
 exit $(if ($script:Fail) { 1 } else { 0 })

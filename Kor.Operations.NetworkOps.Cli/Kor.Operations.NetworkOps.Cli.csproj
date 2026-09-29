@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>netops</AssemblyName>
+    <RootNamespace>Kor.Operations.NetworkOps.Cli</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Kor.Operations.NetworkOps.Core\Kor.Operations.NetworkOps.Core.csproj" />
+    <ProjectReference Include="..\Kor.Operations.NetworkOps.Transport\Kor.Operations.NetworkOps.Transport.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="Probes\**" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

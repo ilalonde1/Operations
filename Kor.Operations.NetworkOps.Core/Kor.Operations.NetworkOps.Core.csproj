@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The pure half of NetworkOps: models, parsers, rules and the run-on-target payload.
+       No I/O and no Windows-only APIs, so every diagnosis can be tested against a captured
+       fixture without a machine to point at (docs/KOR-NetworkOps-Design-2026-09-28.md §4.1). -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Kor.Operations.NetworkOps.Tests" />
+  </ItemGroup>
+
+</Project>

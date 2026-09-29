@@ -28,6 +28,151 @@ function Invoke-KorSc {
     [PSCustomObject]@{ ExitCode = $LASTEXITCODE; Output = ($out | Out-String) }
 }
 
+function Test-KorSmbReachable {
+    <#  Reachability for this fleet is port 445, never ICMP: EDMONTON-01 drops ping while
+        serving SMB, and a ping gate reports a running workstation as offline. #>
+    #   Every A record is tried at once. The dual-homed boxes (KOR-218N, EDMONTON-01, KOR-210,
+    #   SPARE9) register an address on the isolated Perform net 192.168.55.x as well as their
+    #   office one; DNS may hand the .55 address first, and a single connect to the host NAME
+    #   spends the whole timeout on it. That reported KOR-218N "offline" all of 2026-09-28
+    #   while it was up on 192.168.1.45 and Ian was connected to it.
+    param([Parameter(Mandatory)][string]$ComputerName, [int]$TimeoutMs = 3000)
+    try { $addrs = @([Net.Dns]::GetHostAddresses($ComputerName) | Where-Object AddressFamily -eq 'InterNetwork') }
+    catch { return $false }
+    if (-not $addrs.Count) { return $false }
+    $clients = @($addrs | ForEach-Object { [Net.Sockets.TcpClient]::new() })
+    try {
+        $tasks = for ($i = 0; $i -lt $addrs.Count; $i++) { $clients[$i].ConnectAsync($addrs[$i], 445) }
+        $deadline = [DateTime]::UtcNow.AddMilliseconds($TimeoutMs)
+        while ([DateTime]::UtcNow -lt $deadline) {
+            if (@($clients | Where-Object Connected).Count) { return $true }
+            if (-not @($tasks | Where-Object { -not $_.IsCompleted }).Count) { break }
+            Start-Sleep -Milliseconds 50
+        }
+        [bool]@($clients | Where-Object Connected).Count
+    }
+    finally { $clients | ForEach-Object { $_.Dispose() } }
+}
+
+# ---------------------------------------------------------------------------
+# Run ON the target
+#
+# Anything that walks a registry hive, a file tree or an event log is one network round
+# trip per key/file/record. Over the VPN that is minutes per machine (reg.exe /s against
+# one uninstall hive: 5+ minutes; the same query run locally: under a second). So the
+# work runs on the workstation as SYSTEM and only two things cross the wire: one service
+# call over svcctl and one small JSON file back over c$.
+#
+# Mechanics, each learned the hard way:
+#   * the script travels as a FILE -- a service command line caps near 8k characters;
+#   * the file is written UTF-8 WITH a BOM -- targets run Windows PowerShell 5.1, which
+#     reads a BOM-less file as ANSI, so one em-dash turns the whole script into a parse
+#     error and nothing runs;
+#   * cmd /c start detaches powershell so the SCM's 1053 "did not respond" (cmd is not a
+#     service) cannot kill it -- that error is expected and is not a failure;
+#   * the result is written to .tmp then renamed, so a half-written file is never read;
+#   * the one-shot service is deleted in a finally, and the staged files after reading.
+# ---------------------------------------------------------------------------
+
+$script:Utf8Bom = [Text.UTF8Encoding]::new($true)
+
+function New-KorOnTargetPayload {
+    <#  The script that actually runs on the target: the caller's body, its output captured
+        (or its error), serialised to JSON and published atomically. Pure -- no I/O -- so the
+        wrapper can be tested without a machine. #>
+    param(
+        [Parameter(Mandatory)][string]$Script,
+        [Parameter(Mandatory)][string]$OutputPath
+    )
+    $tmp = "$OutputPath.tmp"
+    @"
+`$ErrorActionPreference = 'Stop'
+`$r = try {
+    `$o = & {
+$Script
+    }
+    [pscustomobject]@{ Ok = `$true; Output = @(`$o) }
+} catch {
+    [pscustomobject]@{ Ok = `$false; Error = `$_.Exception.Message; Line = `$_.InvocationInfo.ScriptLineNumber }
+}
+[IO.File]::WriteAllText('$tmp', (`$r | ConvertTo-Json -Depth 8), [Text.UTF8Encoding]::new(`$false))
+Move-Item -LiteralPath '$tmp' -Destination '$OutputPath' -Force
+"@
+}
+
+function Invoke-KorOnTarget {
+    <#
+    .SYNOPSIS
+        Run a script ON one or more workstations as SYSTEM and get its output back as objects.
+    .DESCRIPTION
+        Uses only svcctl (sc.exe) and c$ -- the two channels that work on every machine here.
+        Several computers run in parallel; an unreachable or failing one comes back as a row
+        with Status set, it never stops the others.
+    .EXAMPLE
+        Invoke-KorOnTarget -ComputerName KOR-216 -Script 'Get-Service Spooler | Select Name, Status'
+    .EXAMPLE
+        'KOR-206-N','KOR-216' | Invoke-KorOnTarget -Script (Get-Content .\probe.ps1 -Raw) -ThrottleLimit 16
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory, ValueFromPipeline)][string[]]$ComputerName,
+        [Parameter(Mandatory)][string]$Script,
+        [int]$TimeoutSeconds = 600,
+        [int]$ThrottleLimit = 16
+    )
+    begin { $all = [Collections.Generic.List[string]]::new() }
+    process { foreach ($c in $ComputerName) { $all.Add($c) } }
+    end {
+        if ($all.Count -eq 1) { return Invoke-KorOnTargetOne -ComputerName $all[0] -Script $Script -TimeoutSeconds $TimeoutSeconds }
+        $module = (Get-Module Kor.WorkstationOps).Path
+        $all | ForEach-Object -ThrottleLimit $ThrottleLimit -Parallel {
+            Import-Module $using:module
+            & (Get-Module Kor.WorkstationOps) { param($h, $s, $t) Invoke-KorOnTargetOne -ComputerName $h -Script $s -TimeoutSeconds $t } $_ $using:Script $using:TimeoutSeconds
+        }
+    }
+}
+
+function Invoke-KorOnTargetOne {
+    param(
+        [Parameter(Mandatory)][string]$ComputerName,
+        [Parameter(Mandatory)][string]$Script,
+        [int]$TimeoutSeconds = 600
+    )
+    $row = { param($status, $out, $err) [pscustomobject]@{ ComputerName = $ComputerName; Status = $status; Output = $out; Error = $err } }
+
+    if (-not (Test-KorSmbReachable -ComputerName $ComputerName)) { return & $row 'Offline' $null 'port 445 not answering' }
+
+    $id = [guid]::NewGuid().ToString('N').Substring(0, 8)
+    $svc = "KorRun$id"
+    $psLocal = "C:\Windows\Temp\korrun-$id.ps1"
+    $outLocal = "C:\Windows\Temp\korrun-$id.json"
+    $psUnc = Resolve-KorAdminShare $ComputerName "Windows\Temp\korrun-$id.ps1"
+    $outUnc = Resolve-KorAdminShare $ComputerName "Windows\Temp\korrun-$id.json"
+
+    try {
+        [IO.File]::WriteAllText($psUnc, (New-KorOnTargetPayload -Script $Script -OutputPath $outLocal), $script:Utf8Bom)
+    } catch { return & $row 'NoAdminShare' $null $_.Exception.Message }
+
+    try {
+        $bin = "cmd.exe /c start `"`" powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $psLocal"
+        $created = Invoke-KorSc -ComputerName $ComputerName -Arguments @('create', $svc, 'binPath=', $bin, 'start=', 'demand', 'obj=', 'LocalSystem')
+        if ($created.ExitCode -ne 0) { return & $row 'ServiceCreateFailed' $null $created.Output.Trim() }
+        try { Invoke-KorSc -ComputerName $ComputerName -Arguments @('start', $svc) | Out-Null }   # 1053 expected
+        finally { Invoke-KorSc -ComputerName $ComputerName -Arguments @('delete', $svc) | Out-Null }
+
+        $sw = [Diagnostics.Stopwatch]::StartNew()
+        while (-not (Test-Path -LiteralPath $outUnc)) {
+            if ($sw.Elapsed.TotalSeconds -ge $TimeoutSeconds) { return & $row 'Timeout' $null "no result after ${TimeoutSeconds}s" }
+            Start-Sleep -Milliseconds 1500
+        }
+        $r = [IO.File]::ReadAllText($outUnc) | ConvertFrom-Json
+        if ($r.Ok) { & $row 'Ok' $r.Output $null } else { & $row 'ScriptError' $null "line $($r.Line): $($r.Error)" }
+    }
+    finally {
+        foreach ($p in $psUnc, $outUnc) { if (Test-Path -LiteralPath $p) { Remove-Item -LiteralPath $p -Force -ErrorAction SilentlyContinue } }
+    }
+}
+
 function Get-KorServiceState {
     param([Parameter(Mandatory)][string]$ComputerName, [Parameter(Mandatory)][string]$Name)
     $r = Invoke-KorSc -ComputerName $ComputerName -Arguments @('query', $Name)
@@ -64,7 +209,8 @@ function Test-KorWorkstationChannel {
 
     process {
         foreach ($cn in $ComputerName) {
-            $online = Test-Connection -ComputerName $cn -Count 1 -Quiet -ErrorAction SilentlyContinue
+            # Port 445, not ping: EDMONTON-01 drops ICMP and serves SMB (2026-08-13).
+            $online = Test-KorSmbReachable -ComputerName $cn
             if (-not $online) {
                 [PSCustomObject]@{ ComputerName = $cn; Online = $false; AdminShare = $false
                     AdminWrite = $false; ServiceControl = $false; RemoteRegistry = 'n/a'; WinRM = $false; Rdp = $false }
@@ -1067,4 +1213,4 @@ Export-ModuleMember -Function Test-KorWorkstationChannel, Use-KorRemoteRegistry,
     Get-KorOutlookAddin, Get-KorOutlookStore, Get-KorOfficeHealth, Set-KorOutlookAddinState,
     Invoke-KorSearchIndexRebuild, Get-KorWorkstationHealth, Get-KorServiceState, Wait-KorServiceState,
     Invoke-KorSc, Resolve-KorAdminShare, Get-KorHardwareProfile, ConvertFrom-KorSmbios,
-    Get-KorThermalProfile, Get-KorInstalledSoftware
+    Get-KorThermalProfile, Get-KorInstalledSoftware, Invoke-KorOnTarget, Test-KorSmbReachable, New-KorOnTargetPayload
