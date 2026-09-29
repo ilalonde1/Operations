@@ -23,6 +23,34 @@ public sealed class HealthRulesTests
     private static IReadOnlyDictionary<string, Finding> Findings(string host)
         => HealthRules.Evaluate(Fixture(host)).ToDictionary(f => f.RuleKey);
 
+    // Probe v3 counts distinct GPU resets. Real counts measured 2026-09-29 on the same machines:
+    // 206-N 2 (was 236 log entries), 104N 52 (was 6,339), 308 10 (was 1,060).
+    private static HealthSnapshot AsV3(string host, int resets)
+    {
+        var s = Fixture(host);
+        return s with { ProbeVersion = 3, Events14d = s.Events14d! with { GpuHang = new EventSummary(resets, DateTime.UtcNow) } };
+    }
+
+    [Fact]
+    public void V3_two_resets_in_two_weeks_is_not_a_finding()
+        => Assert.DoesNotContain(HealthRules.Evaluate(AsV3("KOR-206-N", 2)), x => x.RuleKey == "gpu-hangs");
+
+    [Fact]
+    public void V3_ten_resets_is_a_warning_and_the_evidence_says_resets()
+    {
+        var g = HealthRules.Evaluate(AsV3("KOR-305", 10)).Single(x => x.RuleKey == "gpu-hangs");
+        Assert.Equal(Severity.Warning, g.Severity);
+        Assert.StartsWith("10 GPU resets in 14 d", g.Evidence);
+    }
+
+    [Fact]
+    public void V3_fifty_two_resets_with_no_discrete_card_is_critical_and_says_check_the_card()
+    {
+        var g = HealthRules.Evaluate(AsV3("KOR-104N", 52)).Single(x => x.RuleKey == "gpu-hangs");
+        Assert.Equal(Severity.Critical, g.Severity);
+        Assert.Contains("no discrete card visible", g.Evidence);
+    }
+
     [Fact]
     public void Kor206N_the_failing_data_drive_and_the_gpu_hangs_are_all_raised()
     {

@@ -43,14 +43,21 @@ public static class HealthRules
                 $"14 d: {badBlocks} bad-block, {resets} controller resets, {ntfs} NTFS corruption" +
                 (unhealthy.Count > 0 ? $" | unhealthy: {string.Join("; ", unhealthy.Select(d => $"{d.Name} {d.Health}"))}" : "")));
 
-        // GPU hangs (LiveKernelEvent 0x141). 10 in 14 days is well past a one-off; 500 is a machine
-        // the user is fighting all day (fleet 2026-09-28: 104N 6,418, 213-N 5,332).
+        // GPU hangs (LiveKernelEvent 0x141 = the video engine timed out and was reset).
+        // Probe v3 counts DISTINCT resets: 5 in 14 days is a pattern, 25 is a machine the user is fighting
+        // (measured 2026-09-29: 104N 52, SPARE2 46, 213-N 43, 308 10, 206-N 2). Probe v2 counted raw WER
+        // log entries, ~100 per reset, so its thresholds were 10 / 500 and its numbers read two orders too high.
         var gpu = e?.GpuHang?.Count ?? 0;
-        if (gpu >= 10)
+        var distinct = s.ProbeVersion >= 3;
+        var (warnAt, criticalAt) = distinct ? (5, 25) : (10, 500);
+        if (gpu >= warnAt)
         {
             var cards = s.DisplayAdapters.Where(a => a.Name is not null && !a.Name.Contains("Remote Display", StringComparison.OrdinalIgnoreCase)).Select(a => $"{a.Name} {a.Driver}").ToList();
-            f.Add(new("gpu-hangs", gpu >= 500 ? Severity.Critical : Severity.Warning, "Graphics driver keeps hanging",
-                $"{gpu} video-engine timeouts in 14 d | adapters: {(cards.Count > 0 ? string.Join("; ", cards) : "none reported")}"));
+            var noDiscrete = cards.Count > 0 && cards.All(c => c.StartsWith("Intel", StringComparison.OrdinalIgnoreCase) || c.StartsWith("Microsoft", StringComparison.OrdinalIgnoreCase));
+            f.Add(new("gpu-hangs", gpu >= criticalAt ? Severity.Critical : Severity.Warning, "Graphics driver keeps hanging",
+                (distinct ? $"{gpu} GPU resets in 14 d" : $"{gpu} video-engine timeout log entries in 14 d (not resets)") +
+                $" | adapters: {(cards.Count > 0 ? string.Join("; ", cards) : "none reported")}" +
+                (noDiscrete ? " | no discrete card visible: check it is present and seated" : "")));
         }
 
         var shutdowns = e?.UnexpectedShutdown?.Count ?? 0;

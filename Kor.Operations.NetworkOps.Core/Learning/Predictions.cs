@@ -106,7 +106,9 @@ public static class Predictions
         }
 
         // ---- counts that are climbing: the same fault getting worse week on week
-        Worsening(f, h, now, Metrics.GpuHangs14d, "", 10, "gpu-hangs-rising", "Graphics hangs are increasing");
+        // Distinct resets (probe v3). The v2 raw-entry series (gpu.hangs.14d) is no longer fed and is not
+        // judged: its stale tail must not raise a second "getting worse" beside the real one.
+        Worsening(f, h, now, Metrics.GpuResets14d, "", 3, "gpu-hangs-rising", "Graphics hangs are increasing");
         Worsening(f, h, now, Metrics.AppHangs14d, "", 5, "app-hangs-rising", "Programs are freezing more often");
         Worsening(f, h, now, Metrics.ResourceExhaustion14d, "", 1, "memory-pressure-rising", "The PC is running out of memory more often");
         Worsening(f, h, now, Metrics.DiskResets14d, "", 3, "disk-resets-rising", "Drive resets are increasing");

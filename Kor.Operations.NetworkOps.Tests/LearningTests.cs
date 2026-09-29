@@ -154,13 +154,23 @@ public sealed class LearningTests
     }
 
     [Fact]
-    public void Gpu_hangs_doubling_in_a_week_is_raised_as_getting_worse()
+    public void Gpu_resets_doubling_in_a_week_is_raised_as_getting_worse()
     {
         var h = new MetricHistory();
-        h.Add(Metrics.GpuHangs14d, "", T0, 20);
-        h.Add(Metrics.GpuHangs14d, "", T0.AddDays(7), 55);
+        h.Add(Metrics.GpuResets14d, "", T0, 4);
+        h.Add(Metrics.GpuResets14d, "", T0.AddDays(7), 11);
         var f = Predictions.Evaluate(At(T0.AddDays(7)), h).Single(x => x.RuleKey == "gpu-hangs-rising");
-        Assert.Contains("20 → 55", f.Evidence);
+        Assert.Contains("4 → 11", f.Evidence);
+    }
+
+    [Fact]
+    public void The_retired_raw_entry_series_is_no_longer_judged()
+    {
+        // Probe v2's raw WER entries (~100 per reset) must not raise "getting worse" from a stale tail.
+        var h = new MetricHistory();
+        h.Add(Metrics.GpuHangs14d, "", T0, 200);
+        h.Add(Metrics.GpuHangs14d, "", T0.AddDays(7), 900);
+        Assert.DoesNotContain(Predictions.Evaluate(At(T0.AddDays(7)), h), x => x.RuleKey == "gpu-hangs-rising");
     }
 
     [Fact]

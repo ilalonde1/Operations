@@ -81,13 +81,19 @@ $orphanLetters = Try-Block 'orphanLetters' {
 # --- hardware and stability events, last 14 days
 $events = Try-Block 'events' {
     $wer = Count-Events 'Application' @{ ProviderName = 'Windows Error Reporting'; Id = 1001 }
+$gpuWer = @($wer | Where-Object { $_.Message -match 'LiveKernelEvent' -and $_.Message -match 'P1: 141\b' })
     [pscustomobject]@{
         DiskBadBlock       = Summ (Count-Events 'System' @{ ProviderName = 'disk'; Id = 7 })
         DiskResets         = Summ (@(Count-Events 'System' @{ ProviderName = 'storahci'; Id = 129 }) + @(Count-Events 'System' @{ ProviderName = 'stornvme'; Id = 129 }))
         NtfsCorruption     = Summ (Count-Events 'System' @{ ProviderName = 'Ntfs'; Id = 55 })
         Whea               = Summ (Count-Events 'System' @{ ProviderName = 'Microsoft-Windows-WHEA-Logger' })
         UnexpectedShutdown = Summ (Count-Events 'System' @{ ProviderName = 'Microsoft-Windows-Kernel-Power'; Id = 41 })
-        GpuHang            = Summ ($wer | Where-Object { $_.Message -match 'LiveKernelEvent' -and $_.Message -match 'P1: 141\b' })
+        # v3: one GPU reset = one DISTINCT WER report. Windows re-logs event 1001 for the same report on
+        # every retry to send it -- ~100 entries per reset measured 2026-09-29 (KOR-104N 6,339 entries =
+        # 52 resets) -- so counting entries overstated every PC's GPU problem by two orders of magnitude.
+        GpuHang            = Summ ($gpuWer | Group-Object { if ($_.Message -match 'Report Id:\s*([0-9a-fA-F-]{36})') { $Matches[1] } else { "$($_.RecordId)" } } |
+                                   ForEach-Object { $_.Group | Sort-Object TimeCreated | Select-Object -First 1 })
+        GpuHangLogEntries  = Summ $gpuWer
         # v2 -- early-warning signals, each rising before the failure it predicts:
         ResourceExhaustion = Summ (Count-Events 'System' @{ ProviderName = 'Microsoft-Windows-Resource-Exhaustion-Detector'; Id = 2004 })
         UpdateFailures     = Summ (Count-Events 'System' @{ ProviderName = 'Microsoft-Windows-WindowsUpdateClient'; Id = 20 })
@@ -255,7 +261,7 @@ $dataOutside = Try-Block 'dataOutside' {
 }
 
 [pscustomobject]@{
-    ProbeVersion  = 2
+    ProbeVersion  = 3
     CollectedAt   = $now.ToString('s')
     Computer      = $env:COMPUTERNAME
     Os            = $osInfo

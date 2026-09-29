@@ -103,7 +103,8 @@ public sealed record MissingDiskInfo(string? Name, string? InstanceId);
 public sealed record EventSummary(int Count, DateTime? Last);
 public sealed record EventCounts(EventSummary? DiskBadBlock, EventSummary? DiskResets, EventSummary? NtfsCorruption,
     EventSummary? Whea, EventSummary? UnexpectedShutdown, EventSummary? GpuHang,
-    EventSummary? ResourceExhaustion = null, EventSummary? UpdateFailures = null, EventSummary? AppHangs = null);
+    EventSummary? ResourceExhaustion = null, EventSummary? UpdateFailures = null, EventSummary? AppHangs = null,
+    EventSummary? GpuHangLogEntries = null);   // v3: GpuHang = distinct reports; this = the raw WER entries behind them
 
 public sealed record DiskReliabilityInfo(string? Name, string? Serial, int? WearPct, int? TemperatureC, int? TemperatureMaxC,
     long? ReadErrors, long? ReadErrorsUncorrected, long? WriteErrors, long? PowerOnHours);

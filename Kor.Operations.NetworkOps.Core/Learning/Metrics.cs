@@ -17,7 +17,8 @@ public static class Metrics
     public const string DiskReadErrors = "disk.read.errors";
     public const string DiskWriteErrors = "disk.write.errors";
     public const string DiskPowerOnHours = "disk.poweron.hours";
-    public const string GpuHangs14d = "gpu.hangs.14d";
+    public const string GpuHangs14d = "gpu.hangs.14d";      // probe v2: raw WER log entries (legacy)
+    public const string GpuResets14d = "gpu.resets.14d";    // probe v3: distinct GPU resets
     public const string DiskResets14d = "disk.resets.14d";
     public const string DiskBadBlocks14d = "disk.badblocks.14d";
     public const string Whea14d = "whea.14d";
@@ -52,7 +53,9 @@ public static class Metrics
         }
         if (s.Events14d is { } e)
         {
-            Add(GpuHangs14d, "", e.GpuHang?.Count);
+            // v3 counts distinct resets; v2 counted raw log entries (~100x more). Separate series, so the switch
+        // never reads as a hundredfold improvement or feeds one trend line two different units.
+        Add(s.ProbeVersion >= 3 ? GpuResets14d : GpuHangs14d, "", e.GpuHang?.Count);
             Add(DiskResets14d, "", e.DiskResets?.Count);
             Add(DiskBadBlocks14d, "", e.DiskBadBlock?.Count);
             Add(Whea14d, "", e.Whea?.Count);
