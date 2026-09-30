@@ -221,7 +221,7 @@ public sealed class NetworkOpsCommandCenterViewModel : ObservableObject
     internal void ApplyRack(FleetSnapshot rack, DateTime nowUtc)
     {
         RackSnapshot = rack;
-        string[] order = ["Internet", "Host", "Storage", "Backup", "UPS", "Network"];
+        string[] order = ["Internet", "Host", "Storage", "Server", "Backup", "UPS", "Network"];
         var rows = rack.Devices.Select(d => FleetRow.From(d, rack, nowUtc))
             .OrderByDescending(r => r.State).ThenBy(r => Array.IndexOf(order, r.Kind) is var i && i >= 0 ? i : 99).ThenBy(r => r.Name, StringComparer.OrdinalIgnoreCase).ToList();
         _allRack.Clear();

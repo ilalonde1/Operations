@@ -1,0 +1,134 @@
+[
+  {
+    "ProbeVersion": 1,
+    "Computer": "KOR-APP01",
+    "OsCaption": "Microsoft Windows Server 2025 Standard",
+    "OsBuild": "10.0.26100",
+    "UptimeHours": 100.5,
+    "Disks": [
+      {
+        "Drive": "C:",
+        "SizeGB": 198.2,
+        "FreeGB": 50.1
+      },
+      {
+        "Drive": "D:",
+        "SizeGB": 200,
+        "FreeGB": 168.7
+      }
+    ],
+    "VssWriters": [
+      {
+        "Name": "Task Scheduler Writer",
+        "State": "Stable",
+        "LastError": "No error"
+      },
+      {
+        "Name": "VSS Metadata Store Writer",
+        "State": "Stable",
+        "LastError": "No error"
+      },
+      {
+        "Name": "Performance Counters Writer",
+        "State": "Stable",
+        "LastError": "No error"
+      },
+      {
+        "Name": "System Writer",
+        "State": "Stable",
+        "LastError": "No error"
+      },
+      {
+        "Name": "SqlServerWriter",
+        "State": "Stable",
+        "LastError": "No error"
+      },
+      {
+        "Name": "Shadow Copy Optimization Writer",
+        "State": "Stable",
+        "LastError": "No error"
+      },
+      {
+        "Name": "ASR Writer",
+        "State": "Stable",
+        "LastError": "No error"
+      },
+      {
+        "Name": "WMI Writer",
+        "State": "Stable",
+        "LastError": "No error"
+      },
+      {
+        "Name": "BITS Writer",
+        "State": "Stable",
+        "LastError": "No error"
+      },
+      {
+        "Name": "Dedup Writer",
+        "State": "Stable",
+        "LastError": "No error"
+      },
+      {
+        "Name": "IIS Config Writer",
+        "State": "Stable",
+        "LastError": "No error"
+      },
+      {
+        "Name": "Registry Writer",
+        "State": "Stable",
+        "LastError": "No error"
+      },
+      {
+        "Name": "NPS VSS Writer",
+        "State": "Stable",
+        "LastError": "No error"
+      },
+      {
+        "Name": "COM\u002B REGDB Writer",
+        "State": "Stable",
+        "LastError": "No error"
+      }
+    ],
+    "StoppedAutoServices": [
+      {
+        "Name": "Certify.Service",
+        "Display": "Certify Certificate Manager Service"
+      },
+      {
+        "Name": "hasplms",
+        "Display": "Sentinel LDK License Manager"
+      },
+      {
+        "Name": "Kor.Operations.Mcp",
+        "Display": "KOR Operations MCP Server"
+      },
+      {
+        "Name": "PADJavaSyncService",
+        "Display": "Power Automate Java sync service"
+      },
+      {
+        "Name": "UIFlowAgentLauncherService",
+        "Display": "Power Automate agent launcher service"
+      },
+      {
+        "Name": "UIFlowLogShipper",
+        "Display": "Power Automate log shipper service"
+      },
+      {
+        "Name": "UIFlowService",
+        "Display": "Power Automate service"
+      },
+      {
+        "Name": "UIFlowUpdateService",
+        "Display": "Power Automate update service"
+      },
+      {
+        "Name": "VeeamThreatHunterSvc",
+        "Display": "Veeam Threat Hunter Service"
+      }
+    ],
+    "PendingReboot": true,
+    "LastUpdateDays": 71,
+    "StorageErrors24h": []
+  }
+]

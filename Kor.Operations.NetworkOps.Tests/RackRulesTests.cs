@@ -168,6 +168,29 @@ public sealed class RackRulesTests
     }
 
     [Fact]
+    public void APP01_as_read_raises_its_stopped_services_and_71_days_unpatched()
+    {
+        var r = ServerRules.Evaluate(Fx("server-app01.json"));
+        Assert.Contains(r.Findings, f => f.RuleKey == "server.service-stopped:Kor.Operations.Mcp");
+        Assert.Contains(r.Findings, f => f.RuleKey == "server.service-stopped:Certify.Service");
+        Assert.Contains(r.Findings, f => f.RuleKey == "server.unpatched");
+        Assert.DoesNotContain(r.Findings, f => f.RuleKey.StartsWith("server.vss-writer:"));   // all 14 writers were stable
+        Assert.DoesNotContain(r.Findings, f => f.RuleKey.Contains("AppXSvc") || f.RuleKey.Contains("ncstreamer"));   // demand-start noise
+    }
+
+    [Fact]
+    public void A_VSS_writer_in_error_is_critical_but_one_mid_snapshot_is_not()
+    {
+        var j = System.Text.Json.Nodes.JsonNode.Parse(Fx("server-app01.json"))!;
+        var writers = j[0]!["VssWriters"]!.AsArray();
+        writers[0]!["State"] = "Failed"; writers[0]!["LastError"] = "Timed out";                 // FS01, 30 Sep 2026
+        writers[1]!["State"] = "Waiting for completion"; writers[1]!["LastError"] = "No error";  // a backup in progress
+        var f = ServerRules.Evaluate(j.ToJsonString()).Findings.Where(x => x.RuleKey.StartsWith("server.vss-writer:")).ToList();
+        Assert.Single(f);
+        Assert.Equal(Severity.Critical, f[0].Severity);
+    }
+
+    [Fact]
     public void Traffic_leaving_by_any_address_but_the_static_is_critical()
     {
         var pings = new Dictionary<string, (int, int, double)> { ["192.168.1.1"] = (4, 4, 1), ["1.1.1.1"] = (4, 4, 9) };
@@ -211,9 +234,9 @@ public sealed class RackRulesTests
     public void The_shipped_rack_configuration_is_complete_and_every_channel_is_pinned()
     {
         var o = PowerTests.Shipped();
-        var collectors = new[] { "Esxi", "Synology", "Veeam", "UniFi", "Internet", "CoreSwitch", "Ups" };
-        var kinds = new[] { RackKinds.Host, RackKinds.Storage, RackKinds.Ups, RackKinds.Backup, RackKinds.Network, RackKinds.Internet };
-        Assert.Equal(11, o.Rack.Count);
+        var collectors = new[] { "Esxi", "Synology", "Veeam", "UniFi", "Internet", "CoreSwitch", "Ups", "WindowsServer" };
+        var kinds = new[] { RackKinds.Host, RackKinds.Storage, RackKinds.Ups, RackKinds.Backup, RackKinds.Network, RackKinds.Internet, RackKinds.Server };
+        Assert.Equal(13, o.Rack.Count);
         Assert.Equal(o.Rack.Count, o.Rack.Select(d => d.Name).Distinct(StringComparer.OrdinalIgnoreCase).Count());
         foreach (var d in o.Rack)
         {

@@ -37,6 +37,7 @@ internal sealed class RackCollector(IOptions<NetworkOpsOptions> options, PowerSt
                 "Internet" => await InternetAsync(cap.Token).ConfigureAwait(false),
                 "CoreSwitch" => await CoreSwitchAsync(d, previousFacts, cap.Token).ConfigureAwait(false),
                 "Ups" => Ups(d),
+                "WindowsServer" => await ServerAsync(d, cap.Token).ConfigureAwait(false),
                 _ => RackResult.Unreachable($"no collector named '{d.Collector}'"),
             };
         }
@@ -128,6 +129,16 @@ internal sealed class RackCollector(IOptions<NetworkOpsOptions> options, PowerSt
         var sys = await SnmpChannel.GetAsync(d.Address, creds, [EdgeSwitchRules.SysDescr, EdgeSwitchRules.SysUpTime], TimeSpan.FromSeconds(8), ct).ConfigureAwait(false);
         var tables = await SnmpChannel.WalkAsync(d.Address, creds, EdgeSwitchRules.Tables, TimeSpan.FromSeconds(8), ct).ConfigureAwait(false);
         return EdgeSwitchRules.Evaluate(sys.Concat(tables).ToDictionary(kv => kv.Key, kv => kv.Value), previousFacts);
+    }
+
+    /// <summary>A Windows server: Probes/server.ps1 through the same one-shot SCM channel the PC probes use (needs the
+    /// service account in the server's local Administrators -- true today for APP01 and DC01).</summary>
+    private static async Task<RackResult> ServerAsync(RackDevice d, CancellationToken ct)
+    {
+        var run = await new OnTargetChannel(TimeSpan.FromSeconds(90)).RunAsync(d.Address, Kor.Operations.NetworkOps.Core.Probes.ProbeLibrary.Get("server"), ct).ConfigureAwait(false);
+        return run.Status == OnTargetStatus.Ok && run.OutputJson is { } json
+            ? ServerRules.Evaluate(json)
+            : RackResult.Unreachable($"{run.Status}: {run.Error}");
     }
 
     private RackResult Ups(RackDevice d)

@@ -14,6 +14,7 @@ public static class RackKinds
     public const string Backup = "Backup";       // Veeam
     public const string Network = "Network";     // UniFi site, core switch
     public const string Internet = "Internet";   // the line out, through the firewall
+    public const string Server = "Server";       // a Windows server VM (APP01, DC01, ...)
     public const string Workstation = "Workstation";
 
     public static bool IsRack(string? kind) => kind is not null && kind != Workstation;
