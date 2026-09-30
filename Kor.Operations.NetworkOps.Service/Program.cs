@@ -82,6 +82,7 @@ try
         builder.Services.AddHostedService<Kor.Operations.NetworkOps.Service.Sweep.TriggerPoller>();
         builder.Services.AddHostedService<Kor.Operations.NetworkOps.Service.Api.ApiHost>();
         builder.Services.AddHostedService<Kor.Operations.NetworkOps.Service.Power.PowerWatchService>();
+        builder.Services.AddHostedService<Kor.Operations.NetworkOps.Service.Sweep.ActionRunner>();
     }
     else
     {

@@ -23,6 +23,7 @@
   <ItemGroup>
     <EmbeddedResource Include="Power\*.py" LogicalName="Power.%(Filename).py" />
     <EmbeddedResource Include="Rack\*.py" LogicalName="Rack.%(Filename).py" />
+    <EmbeddedResource Include="Actions\*.ps1" LogicalName="Actions.%(Filename).ps1" />
   </ItemGroup>
 
 </Project>

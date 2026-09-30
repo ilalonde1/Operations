@@ -41,6 +41,8 @@ public sealed record HealthSnapshot
     public IReadOnlyList<MemoryModuleInfo> Memory { get; init; } = [];
     /// <summary>v3: how many memory slots the board has.</summary>
     public int? MemorySlots { get; init; }
+    /// <summary>v4: who is on the PC at probe time -- active, locked, remote, nobody.</summary>
+    public SessionInfo? Session { get; init; }
 
     private static readonly JsonSerializerOptions Json = new()
     {
@@ -125,6 +127,8 @@ public sealed record MailStoreInfo(string Profile, string Name, double GB, DateT
 public sealed record BootInfo(int LastBootMs, int MedianBootMs, int Samples);
 
 public sealed record BatteryInfo(int DesignMWh, int FullChargeMWh, int HealthPct, int? CycleCount);
+/// <param name="State">Active | Locked | RemoteOnly | Nobody.</param>
+public sealed record SessionInfo(string? ConsoleUser, string State, string? LockedSince, string Summary);
 public sealed record MemoryModuleInfo(string? Slot, string? Bank, int SizeGB, int RatedMTs, int ConfiguredMTs, string? Maker, string? Part);
 public sealed record CrashCount(string Process, int Count, DateTime? Last);
 public sealed record StoreIndexFailures(string Store, int Count, DateTime? Last);

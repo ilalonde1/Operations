@@ -276,8 +276,49 @@ $dataOutside = Try-Block 'dataOutside' {
         ForEach-Object { [pscustomobject]@{ Letter = $_.Letter; UsedGB = [math]::Round($_.SizeGB - $_.FreeGB, 1) } })
 }
 
+# --- who is on the PC right now (v4): the console user, whether the console is LOCKED (the lock screen,
+# LogonUI.exe, is up while a user is signed in), since when (Security 4800 -- only where lock auditing is on),
+# and any remote sessions with their idle time. The console's own idle time is NOT readable from here: only
+# the user's session knows it (GetLastInputInfo), and quser reports console idle unreliably -- that is the
+# agent's job. Read before a disruptive fix: never restart a PC someone is working on without being told.
+$session = Try-Block 'session' {
+    $console = "$((Get-CimInstance Win32_ComputerSystem -ErrorAction Stop).UserName)"
+    $locked = [bool]($console -and (Get-Process -Name LogonUI -ErrorAction SilentlyContinue))
+    $lockedSince = $null
+    if ($locked) {
+        $e = Get-WinEvent -FilterHashtable @{ LogName = 'Security'; Id = 4800; StartTime = $now.AddDays(-3) } -MaxEvents 1 -ErrorAction SilentlyContinue
+        if ($e) { $lockedSince = $e.TimeCreated.ToString('s') }
+    }
+    # quser: USERNAME SESSIONNAME ID STATE IDLE-TIME LOGON-TIME; a disconnected session has no SESSIONNAME.
+    $remote = @(quser 2>$null | Select-Object -Skip 1 | ForEach-Object {
+        $f = ($_.Trim() -replace '^>', '') -split '\s{2,}'
+        if ($f.Count -ge 6) { $u = $f[0]; $name = $f[1]; $state = $f[3]; $idle = $f[4] }
+        elseif ($f.Count -eq 5) { $u = $f[0]; $name = ''; $state = $f[2]; $idle = $f[3] }
+        else { return }
+        if ($name -eq 'console') { return }
+        [pscustomobject]@{ User = "$u"; State = "$state"; Idle = "$idle" }
+    })
+    $state = if ($console) { if ($locked) { 'Locked' } else { 'Active' } } elseif ($remote.Count -gt 0) { 'RemoteOnly' } else { 'Nobody' }
+    $who = if ($console) { ($console -split '\\')[-1] } else { '' }
+    $summary = switch ($state) {
+        'Active' { "$who · active" }
+        'Locked' { "$who · locked" + $(if ($lockedSince) { " since $(([datetime]$lockedSince).ToString('HH:mm'))" } else { '' }) }
+        'RemoteOnly' { 'nobody at the console' }
+        default { 'nobody signed in' }
+    }
+    # quser idle is h:mm, d+h:mm, a bare minute count, or '.'/'none' for none.
+    $idleText = { param($i) if ($i -match '^\d+\+\d+:\d+$') { "idle $($i -replace '\+', ' d ') h" } elseif ($i -match '^\d+:\d+$') { "idle $i h" } elseif ($i -match '^\d+$') { "idle $i min" } else { 'not idle' } }
+    if ($remote.Count -gt 0) {
+        $summary += ' · ' + (($remote | ForEach-Object {
+            if ($_.State -match '^Disc') { "$($_.User) signed in but disconnected, $(& $idleText $_.Idle)" } else { "$($_.User) on a remote session, $(& $idleText $_.Idle)" }
+        }) -join '; ')
+    }
+    [pscustomobject]@{ ConsoleUser = $console; State = $state; LockedSince = $lockedSince; Remote = $remote; Summary = $summary }
+}
+
 [pscustomobject]@{
-    ProbeVersion  = 3
+    ProbeVersion  = 4
+    Session       = $session
     CollectedAt   = $now.ToString('s')
     Computer      = $env:COMPUTERNAME
     Os            = $osInfo

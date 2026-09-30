@@ -26,14 +26,19 @@ internal sealed partial class NetworkOpsStore
                      WHERE o.DeviceId = d.DeviceId AND o.Probe IN ('health', 'rack') AND o.Status = 'Ok') AS LastCheckedUtc,
                    d.Kind,
                    (SELECT TOP (1) JSON_VALUE(o.PayloadJson, '$.summary') FROM NetworkOps.Observations o
-                     WHERE o.DeviceId = d.DeviceId AND o.Probe = 'rack' ORDER BY o.CollectedUtc DESC) AS Summary
+                     WHERE o.DeviceId = d.DeviceId AND o.Probe = 'rack' ORDER BY o.CollectedUtc DESC) AS Summary,
+                   p.Presence, p.PresenceState
             FROM NetworkOps.Devices d
+            OUTER APPLY (SELECT TOP (1) JSON_VALUE(o.PayloadJson, '$[0].Session.Summary') AS Presence, JSON_VALUE(o.PayloadJson, '$[0].Session.State') AS PresenceState
+                         FROM NetworkOps.Observations o WHERE o.DeviceId = d.DeviceId AND o.Probe = 'health' AND o.Status = 'Ok'
+                         ORDER BY o.CollectedUtc DESC) p
             WHERE {which}
             ORDER BY d.Name;
             """))
         await using (var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false))
             while (await r.ReadAsync(ct).ConfigureAwait(false))
-                devices.Add(new DeviceRow(r.GetInt32(0), r.GetString(1), Utc(r, 2), Utc(r, 3), r.GetString(4), r.IsDBNull(5) ? null : r.GetString(5)));
+                devices.Add(new DeviceRow(r.GetInt32(0), r.GetString(1), Utc(r, 2), Utc(r, 3), r.GetString(4), r.IsDBNull(5) ? null : r.GetString(5),
+                    r.IsDBNull(6) ? null : r.GetString(6), r.IsDBNull(7) ? null : r.GetString(7)));
 
         var facts = new Dictionary<string, IReadOnlyDictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
         await using (var cmd = Cmd(c, $"""
@@ -116,7 +121,121 @@ internal sealed partial class NetworkOpsStore
                 notes.Add(new NoteRow(r.GetString(0), Utc(r, 1)!.Value, r.GetString(2)));
         }
 
-        return new DeviceHistory(cleared, facts, notes);
+        var actions = new List<ActionRow>();
+        await using (var cmd = Cmd(c, """
+            SELECT TOP (50) ActionId, Kind, RequestedBy, RequestedUtc, CompletedUtc, Status, Detail, AfterJson
+            FROM NetworkOps.Actions WHERE DeviceId = @d ORDER BY ActionId DESC;
+            """))
+        {
+            cmd.Parameters.Add("@d", SqlDbType.Int).Value = deviceId;
+            await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+            while (await r.ReadAsync(ct).ConfigureAwait(false))
+                actions.Add(ReadAction(r));
+        }
+
+        return new DeviceHistory(cleared, facts, notes, actions);
+    }
+
+    private static ActionRow ReadAction(SqlDataReader r) => new(r.GetInt64(0), r.GetString(1), r.GetString(2), Utc(r, 3)!.Value, Utc(r, 4), r.GetString(5),
+        r.IsDBNull(6) ? null : r.GetString(6), r.IsDBNull(7) ? null : r.GetString(7));
+
+    // ------------------------------------------------------------------ fixes (NetworkOps.Actions is the queue AND the audit)
+
+    /// <param name="requestJson">What was asked: the fix, its input (for run-command, the script), the finding, the note.</param>
+    public async Task<long> QueueActionAsync(int deviceId, string kind, string by, string requestJson, CancellationToken ct)
+    {
+        await using var c = await OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = Cmd(c, """
+            INSERT NetworkOps.Actions (DeviceId, Kind, RequestedBy, Status, BeforeJson) OUTPUT inserted.ActionId VALUES (@d, @k, @by, 'Requested', @req);
+            """);
+        cmd.Parameters.Add("@d", SqlDbType.Int).Value = deviceId;
+        cmd.Parameters.Add("@k", SqlDbType.VarChar, 48).Value = kind;
+        cmd.Parameters.Add("@by", SqlDbType.NVarChar, 128).Value = by;
+        cmd.Parameters.Add("@req", SqlDbType.NVarChar, -1).Value = requestJson;
+        return (long)(await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false))!;
+    }
+
+    /// <summary>A refused request is recorded too: the audit shows what was attempted, not just what ran.</summary>
+    public async Task<long> RecordRefusedActionAsync(int deviceId, string kind, string by, string requestJson, string why, CancellationToken ct)
+    {
+        await using var c = await OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = Cmd(c, """
+            INSERT NetworkOps.Actions (DeviceId, Kind, RequestedBy, Status, BeforeJson, Detail, CompletedUtc) OUTPUT inserted.ActionId
+            VALUES (@d, @k, @by, 'Refused', @req, @why, SYSUTCDATETIME());
+            """);
+        cmd.Parameters.Add("@d", SqlDbType.Int).Value = deviceId;
+        cmd.Parameters.Add("@k", SqlDbType.VarChar, 48).Value = kind;
+        cmd.Parameters.Add("@by", SqlDbType.NVarChar, 128).Value = by;
+        cmd.Parameters.Add("@req", SqlDbType.NVarChar, -1).Value = requestJson;
+        cmd.Parameters.Add("@why", SqlDbType.NVarChar, 2000).Value = Truncate(why, 2000)!;
+        return (long)(await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false))!;
+    }
+
+    public sealed record ClaimedAction(long ActionId, int DeviceId, string DeviceName, string Kind, string RequestJson, string RequestedBy);
+
+    public async Task<ClaimedAction?> ClaimActionAsync(CancellationToken ct)
+    {
+        await using var c = await OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = Cmd(c, """
+            WITH next AS (SELECT TOP (1) * FROM NetworkOps.Actions WITH (UPDLOCK, READPAST, ROWLOCK) WHERE Status = 'Requested' ORDER BY ActionId)
+            UPDATE next SET Status = 'Running'
+            OUTPUT inserted.ActionId, inserted.DeviceId, inserted.Kind, inserted.BeforeJson, inserted.RequestedBy;
+            """);
+        long id; int device; string kind, req, by;
+        await using (var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false))
+        {
+            if (!await r.ReadAsync(ct).ConfigureAwait(false)) return null;
+            (id, device, kind, req, by) = (r.GetInt64(0), r.GetInt32(1), r.GetString(2), r.IsDBNull(3) ? "{}" : r.GetString(3), r.GetString(4));
+        }
+        await using var n = Cmd(c, "SELECT Name FROM NetworkOps.Devices WHERE DeviceId = @d;");
+        n.Parameters.Add("@d", SqlDbType.Int).Value = device;
+        return new ClaimedAction(id, device, (string)(await n.ExecuteScalarAsync(ct).ConfigureAwait(false))!, kind, req, by);
+    }
+
+    /// <summary>CancellationToken.None: a fix's outcome is recorded even while the service stops.</summary>
+    public async Task CompleteActionAsync(long actionId, bool ok, string detail, string? outputJson)
+    {
+        await using var c = await OpenAsync(CancellationToken.None).ConfigureAwait(false);
+        await using var cmd = Cmd(c, "UPDATE NetworkOps.Actions SET Status = @s, Detail = @det, AfterJson = @out, CompletedUtc = SYSUTCDATETIME() WHERE ActionId = @id;");
+        cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = actionId;
+        cmd.Parameters.Add("@s", SqlDbType.VarChar, 16).Value = ok ? "Done" : "Failed";
+        cmd.Parameters.Add("@det", SqlDbType.NVarChar, 2000).Value = Truncate(detail, 2000)!;
+        cmd.Parameters.Add("@out", SqlDbType.NVarChar, -1).Value = (object?)outputJson ?? DBNull.Value;
+        await cmd.ExecuteNonQueryAsync(CancellationToken.None).ConfigureAwait(false);
+    }
+
+    public async Task<ActionRow?> ActionAsync(long actionId, CancellationToken ct)
+    {
+        await using var c = await OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = Cmd(c, "SELECT ActionId, Kind, RequestedBy, RequestedUtc, CompletedUtc, Status, Detail, AfterJson FROM NetworkOps.Actions WHERE ActionId = @id;");
+        cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = actionId;
+        await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        return await r.ReadAsync(ct).ConfigureAwait(false) ? ReadAction(r) : null;
+    }
+
+    /// <summary>A running fix left behind by a service that stopped is marked failed at startup (never re-run: a fix is not idempotent).</summary>
+    public async Task<int> AbandonRunningActionsAsync(CancellationToken ct)
+    {
+        await using var c = await OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = Cmd(c, "UPDATE NetworkOps.Actions SET Status = 'Failed', Detail = 'the service stopped while it ran; its outcome is unknown', CompletedUtc = SYSUTCDATETIME() WHERE Status = 'Running';");
+        return await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+    }
+
+    /// <summary>The device's name, kind and last known presence, for the API's checks.</summary>
+    public async Task<(string Name, string Kind, string Source, string? PresenceState, string? Presence)?> DeviceForActionAsync(int deviceId, CancellationToken ct)
+    {
+        await using var c = await OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = Cmd(c, """
+            SELECT d.Name, d.Kind, d.Source, p.S, p.P FROM NetworkOps.Devices d
+            OUTER APPLY (SELECT TOP (1) JSON_VALUE(o.PayloadJson, '$[0].Session.State') AS S, JSON_VALUE(o.PayloadJson, '$[0].Session.Summary') AS P
+                         FROM NetworkOps.Observations o WHERE o.DeviceId = d.DeviceId AND o.Probe = 'health' AND o.Status = 'Ok' ORDER BY o.CollectedUtc DESC) p
+            WHERE d.DeviceId = @d AND d.RetiredUtc IS NULL;
+            """);
+        cmd.Parameters.Add("@d", SqlDbType.Int).Value = deviceId;
+        await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        return await r.ReadAsync(ct).ConfigureAwait(false)
+            ? (r.GetString(0), r.GetString(1), r.GetString(2), r.IsDBNull(3) ? null : r.GetString(3), r.IsDBNull(4) ? null : r.GetString(4))
+            : null;
     }
 
     public async Task<IReadOnlyList<ResolutionRow>> ResolutionRowsAsync(CancellationToken ct)

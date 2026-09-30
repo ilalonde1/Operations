@@ -9,7 +9,10 @@ namespace Kor.Operations.NetworkOps.Core.Learning;
 
 /// <param name="Kind">Workstation for PCs; a Core.Rack.RackKinds value for the rack.</param>
 /// <param name="Summary">Rack devices: the last read's one-line summary ("5 of 6 VMs running · 181 sensors ...").</param>
-public sealed record DeviceRow(int DeviceId, string Name, DateTime? LastReachableUtc, DateTime? LastCheckedUtc, string Kind = "Workstation", string? Summary = null);
+/// <param name="Presence">PCs: who was on it at the last check ("kevinw · active", "nobody signed in").</param>
+/// <param name="PresenceState">Active | Locked | RemoteOnly | Nobody -- what a disruptive fix checks before it runs.</param>
+public sealed record DeviceRow(int DeviceId, string Name, DateTime? LastReachableUtc, DateTime? LastCheckedUtc, string Kind = "Workstation", string? Summary = null,
+    string? Presence = null, string? PresenceState = null);
 
 public sealed record ServiceBeat(string Host, DateTime StartedUtc, DateTime LastBeatUtc, string? Version);
 
@@ -37,7 +40,19 @@ public sealed record FactHistoryRow(string Fact, string Value, DateTime FirstSee
 
 public sealed record NoteRow(string Author, DateTime CreatedUtc, string Body);
 
-public sealed record DeviceHistory(IReadOnlyList<ClearedFinding> Cleared, IReadOnlyList<FactHistoryRow> Facts, IReadOnlyList<NoteRow> Notes);
+public sealed record DeviceHistory(IReadOnlyList<ClearedFinding> Cleared, IReadOnlyList<FactHistoryRow> Facts, IReadOnlyList<NoteRow> Notes,
+    IReadOnlyList<ActionRow>? Actions = null);
+
+// ---- fixes: what the page may run on a machine (Core/Actions/FixCatalog), and what became of each run.
+
+/// <summary>A fix as the page offers it.</summary>
+public sealed record FixOption(string Id, string Title, string Explain, bool Disruptive, string? ParamLabel, string? PrefilledParam);
+
+/// <param name="Confirmed">Set by the person after being told someone is actively using the machine (a disruptive fix is refused otherwise).</param>
+public sealed record FixRequest(string ActionId, string? Param, string? FindingKey, string? Note, bool Confirmed);
+
+/// <summary>One fix run: Requested -> Running -> Done | Failed | Refused.</summary>
+public sealed record ActionRow(long ActionId, string Kind, string RequestedBy, DateTime RequestedUtc, DateTime? CompletedUtc, string Status, string? Detail, string? Output);
 
 public sealed record TriggerState(string Status, string? Result, DateTime RequestedUtc, DateTime? ClaimedUtc, DateTime? CompletedUtc);
 

@@ -128,6 +128,34 @@ internal sealed class ApiHost(IOptions<NetworkOpsOptions> options, NetworkOpsSto
         api.MapPost("/power/rehearse", async (HttpContext h, NetworkOpsStore s, CancellationToken ct) =>
             Results.Accepted(null, new { triggerId = await s.QueueJobAsync(Jobs.PowerRehearsalJob.JobName, ApiAccess.UserOf(h.User), ct) }));
 
+        // ---- fixes. The catalog is the whole list of what can run; a request names one fix. A DISRUPTIVE fix (a
+        // restart) is refused while the last check saw someone actively using the machine, unless the person
+        // confirmed after being told -- enforced here, not only in the page. Refusals are recorded like runs.
+        api.MapGet("/fixes", (string ruleKey) => Results.Ok(Kor.Operations.NetworkOps.Core.Actions.FixCatalog.For(ruleKey)
+            .Select(f => new FixOption(f.Id, f.Title, f.Explain, f.Disruptive, f.ParamLabel, Kor.Operations.NetworkOps.Core.Actions.FixCatalog.ParamFromFinding(f, ruleKey)))));
+        api.MapPost("/devices/{id:int}/fixes", async (int id, FixRequest body, HttpContext h, NetworkOpsStore s, IOptions<NetworkOpsOptions> o, CancellationToken ct) =>
+        {
+            var fix = Kor.Operations.NetworkOps.Core.Actions.FixCatalog.Get(body.ActionId);
+            if (fix is null) return Results.BadRequest(new { error = $"'{body.ActionId}' is not a fix NetworkOps knows" });
+            if (await s.DeviceForActionAsync(id, ct) is not { } dev) return Results.NotFound();
+            var by = ApiAccess.UserOf(h.User);
+            var request = System.Text.Json.JsonSerializer.Serialize(new { param = body.Param, finding = body.FindingKey, note = body.Note, confirmed = body.Confirmed, presence = dev.Presence });
+            string? refuse = Kor.Operations.NetworkOps.Core.Actions.FixCatalog.Invalid(fix, body.Param)
+                ?? (dev.Source == "Rack" && !o.Value.Rack.Any(r => r.Name.Equals(dev.Name, StringComparison.OrdinalIgnoreCase) && r.Collector == "WindowsServer")
+                    ? $"{dev.Name} is not a Windows machine: fixes run through Windows' service manager" : null)
+                ?? (fix.Disruptive && dev.PresenceState == "Active" && !body.Confirmed
+                    ? $"someone is using {dev.Name} right now ({dev.Presence}): confirm to go ahead" : null);
+            if (refuse is not null)
+            {
+                await s.RecordRefusedActionAsync(id, fix.Id, by, request, refuse, ct);
+                return Results.Conflict(new { error = refuse, needsConfirmation = fix.Disruptive && dev.PresenceState == "Active" && !body.Confirmed });
+            }
+            var runId = await s.QueueActionAsync(id, fix.Id, by, request, ct);
+            return Results.Accepted($"/api/actions/{runId}", new { actionId = runId });
+        });
+        api.MapGet("/actions/{id:long}", async (long id, NetworkOpsStore s, CancellationToken ct) =>
+            await s.ActionAsync(id, ct) is { } a ? Results.Ok(a) : Results.NotFound());
+
         api.MapPost("/devices/{id:int}/notes", async (int id, NoteRequest body, HttpContext h, NetworkOpsStore s, CancellationToken ct) =>
             string.IsNullOrWhiteSpace(body.Body) ? Results.BadRequest(new { error = "a note needs text" })
             : await s.AddNoteAsync(id, ApiAccess.UserOf(h.User), body.Body, ct) ? Results.NoContent() : Results.NotFound());
