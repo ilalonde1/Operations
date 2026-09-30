@@ -37,6 +37,16 @@
 .PARAMETER SkipPublish
     Reuse an existing _Publish\_Ops\V<N> folder instead of re-publishing.
 
+.PARAMETER AddinPublishDir
+    A fresh ClickOnce publish of EmailFilerv2 (setup.exe, EmailFilerv2.vsto,
+    Application Files\EmailFilerv2_<ver>\). Copied in BEFORE the graft, so the new
+    setup.exe and .vsto win and the older Application Files\EmailFilerv2_* folders
+    still carry forward. Omit it and the add-in carries forward unchanged.
+
+.PARAMETER StageOnly
+    Build, zip and parity-check, but do not copy to the share - so the staged exe can
+    be launched and checked first. Re-run with -SkipPublish (same -AddinPublishDir) to ship.
+
 .EXAMPLE
     .\tools\deploy-newerforma-app.ps1 -Version 14
 #>
@@ -45,7 +55,9 @@ param(
     [Parameter(Mandatory)] [int]$Version,
     [string]$ShareNewDir = '\\KOR-FS01\Library\11 IT\_Applications\Newerforma\New',
     [string]$PublishRoot = 'C:\VIsual Studio Projects\_Publish\_Ops',
-    [switch]$SkipPublish
+    [switch]$SkipPublish,
+    [string]$AddinPublishDir,
+    [switch]$StageOnly
 )
 
 $ErrorActionPreference = 'Stop'
@@ -92,7 +104,17 @@ if (Test-Path $pw) {
     Write-Host ("Culled .playwright: " + $b + " MB -> " + (Folder-SizeMB $stageDir) + " MB") -ForegroundColor Green
 }
 
-# --- 3. Graft EmailFilerv2 add-in forward from the previous zip (unchanged, minus .playwright) ---
+# --- 3a. A freshly published add-in, if given, goes in first so the graft cannot overwrite it ---
+if ($AddinPublishDir) {
+    foreach ($required in 'setup.exe', 'EmailFilerv2.vsto', 'Application Files') {
+        if (-not (Test-Path (Join-Path $AddinPublishDir $required))) { throw "AddinPublishDir is missing '$required': $AddinPublishDir" }
+    }
+    Copy-Item (Join-Path $AddinPublishDir '*') $stageDir -Recurse -Force
+    $addinVersion = ([xml](Get-Content (Join-Path $AddinPublishDir 'EmailFilerv2.vsto') -Raw)).assembly.assemblyIdentity.version
+    Write-Host "EmailFilerv2 $addinVersion copied in from $AddinPublishDir" -ForegroundColor Cyan
+}
+
+# --- 3b. Graft carry-forward files from the previous zip (add-in, minus .playwright) ---
 $existing = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
 Get-ChildItem $stageDir -Recurse -File | ForEach-Object { [void]$existing.Add($_.FullName.Substring($stageDir.Length + 1).Replace('\','/')) }
 $zip = [System.IO.Compression.ZipFile]::OpenRead($prevZip.FullName)
@@ -132,6 +154,11 @@ if ($missingOther.Count -gt 0) {
     throw "Parity check failed; not copying to share."
 }
 Write-Host "Parity OK: only the intended .playwright cull differs from $($prevZip.Name)." -ForegroundColor Green
+
+if ($StageOnly) {
+    Write-Host "StageOnly: $localZip is built and NOT on the share. Launch $stageDir\Kor.Operations.App.exe, then re-run with -SkipPublish to ship." -ForegroundColor Yellow
+    return
+}
 
 # --- 5. Copy to share + verify SHA256 ---
 $srcHash = (Get-FileHash $localZip -Algorithm SHA256).Hash
