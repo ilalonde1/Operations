@@ -106,10 +106,11 @@ workstation checks already exist as code.
   `OnTargetScmChannel` until the agent is on a machine — one probe library, two transports.
 - **Acts only from an allow-list.** Typed commands (restart service, reboot with warning, set
   add-in LoadBehavior, rebuild search index, uninstall product X…), each with a rollback
-  record. Arbitrary scripts only when signed by KOR's code-signing key.
+  record. Arbitrary commands only from a Command Center admin (Entra role + MFA), recorded in full.
 - **Budget:** < 1 % CPU averaged, < 60 MB RAM, idle between polls; self-updating from APP01.
-- **Signed** with a KOR code-signing certificate — also the durable fix for the Webroot
-  "undetermined software" class (unsigned KOR tools).
+- **Unsigned, by decision (2026-09-30).** Installs under `C:\Program Files\KorOperations\`, which only
+  administrators can write, and which carries a Webroot Global Folder ALLOW override with "Detect if
+  Malicious" off. Self-update is trusted through the pinned APP01 TLS certificate and a SHA-256 check.
 
 ### 4.3 Remote screen
 
@@ -137,7 +138,7 @@ removed — that's the cliff (24 of 25 machines lose remote support the same day
 | **1** ✅ 09-28 | Core + Transport + `netops` CLI: channel census, run-on-target via the SCM API, hardware probe (SMBIOS port with its fixture) | 16/16 xUnit, incl. the payload run under real PowerShell 5.1 (break-tested). First census: **30 of 38 reachable, 30 of 30 run-on-target ready, WinRM open on 5, dual-homed 3**, 52 s. `hardware` on 3 PCs in 31 s, zero leftovers. Rules engine moves to Phase 2 with the store it writes to. |
 | **2** | Service on APP01: nightly sweep → SQL → rules → Graph alerts; freshness; external dead-man check | Runs alongside Ninja for a **comparison month**; every finding it raises is logged against what Ninja showed |
 | **3** ◐ 09-30 | The rack: UPS/SAN/NAS SNMP, ESXi/vCenter, Veeam freshness, firewall + switches; **graceful shutdown chain** | ✅ 11 rack devices watched every 5 min (§9), first sweep 11 of 11 and it caught a failing backup. ✅ Chain built, dry run proven end to end, rehearsed daily. ⬜ Chain proven by a pulled plug, then armed |
-| **4** | KOR agent (signed), GPO startup-script deploy, allow-listed actions | Agent on all 38, < 1 % CPU; offline machines report when they reappear |
+| **4** | KOR agent (Webroot folder override, no cert), GPO startup-script deploy, allow-listed actions | Agent on all 38, < 1 % CPU; offline machines report when they reappear |
 | **5** | Command Center page + MeshCentral + Connect | Ian runs a day of support from it without opening Ninja |
 | **6** | Patching cutover: WUfB policy via GPO **first**, remove Ninja's `NoAutoUpdate=1`, verify a full patch cycle | A Patch Tuesday lands fleet-wide with Ninja disabled |
 | **7** | Retire T-Net stack: Ninja, ScreenConnect (all three generations), TeamViewer where unused | Nothing phones home to tenacious.support |
@@ -196,7 +197,9 @@ firewall changes; MeshCentral or agent installs; pushing or merging; releasing t
 
 ## 7. Needs Ian (everything else proceeds)
 
-1. **Code-signing certificate** for KOR (agent + the Revit suite) — a purchase.
+1. ~~Code-signing certificate~~ — **decided 2026-09-30: no certificate.** Webroot Global Folder ALLOW
+   overrides on the admin-only install folders instead (`C:\Program Files\KorOperations\`,
+   `C:\ProgramData\2015_RevitCommands\`).
 2. **MeshCentral on APP01** — an infrastructure install (port, TLS name, firewall scope).
 3. **T-Net timeline** — when the contract ends decides how early Phases 5–7 must land.
 4. **SPF for the dead-man mail** — ✅ NOT NEEDED: the watcher's test mail from FS01 landed in Ian's
