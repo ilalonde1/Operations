@@ -73,6 +73,7 @@ try
     builder.Services.AddSingleton<Kor.Operations.NetworkOps.Service.Sweep.HealthSweeper>();
     builder.Services.AddSingleton<Kor.Operations.NetworkOps.Service.Power.PowerState>();
     builder.Services.AddSingleton<Kor.Operations.NetworkOps.Service.Power.PowerChainRunner>();
+    builder.Services.AddSingleton<Kor.Operations.NetworkOps.Service.Rack.RackCollector>();
 
     if (runOnce is null)
     {

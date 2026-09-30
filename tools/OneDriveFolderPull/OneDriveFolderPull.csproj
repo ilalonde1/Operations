@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Pulls one folder of a user's OneDrive down to a local disk, app-only (Files.Read.All), with a manifest
+       of every file for a differential. Built for recovering KOR-206-N's D: (2026-09-29); runs ON the file
+       server as a self-contained single file (FS01 has no .NET runtime):
+       dotnet publish -c Release -r win-x64 -self-contained -p:PublishSingleFile=true -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Kor.OneDriveFolderPull</RootNamespace>
+    <AssemblyName>OneDriveFolderPull</AssemblyName>
+    <IsPackable>false</IsPackable>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="8.0.0" />
+  </ItemGroup>
+</Project>

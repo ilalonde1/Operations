@@ -74,7 +74,15 @@ public sealed class NetworkOpsWindowsRenderTests
         center.ApplyPower(reader.IsConfigured && label == "live"
             ? reader.GetPowerAsync(CancellationToken.None).GetAwaiter().GetResult()
             : NetworkOpsPowerCardTests.OneOnBattery(), DateTime.UtcNow);
+        var rack = reader.IsConfigured && label == "live" ? reader.GetRackAsync(CancellationToken.None).GetAwaiter().GetResult() : NetworkOpsRackTests.Rack(DateTime.UtcNow);
+        center.ApplyRack(rack, DateTime.UtcNow);
         var written = Render(new NetworkOpsCommandCenterWindow(center), Path.Combine(dir, $"{label}-fleet.png"));
+
+        // A rack device's own window, on the worst one (the failed backup in the fixture).
+        var worstRack = center.Rack.First();
+        var rackDevice = new NetworkOpsDeviceViewModel(reader, rack, worstRack.Device);
+        if (reader.IsConfigured) rackDevice.LoadHistoryAsync(CancellationToken.None).GetAwaiter().GetResult();
+        written += Render(new NetworkOpsDeviceWindow(rackDevice), Path.Combine(dir, $"{label}-rack-device.png"));
 
         // The PC window on the worst PC: the one with the most to explain.
         var worst = center.Fleet.First();

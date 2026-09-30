@@ -22,6 +22,7 @@
   <!-- The UPS chain's last step, run ON the ESXi host (Power/HostScript.cs): embedded for the same reason. -->
   <ItemGroup>
     <EmbeddedResource Include="Power\*.py" LogicalName="Power.%(Filename).py" />
+    <EmbeddedResource Include="Rack\*.py" LogicalName="Rack.%(Filename).py" />
   </ItemGroup>
 
 </Project>

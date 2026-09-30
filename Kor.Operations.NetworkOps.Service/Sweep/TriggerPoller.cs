@@ -39,6 +39,8 @@ internal sealed class TriggerPoller(NetworkOpsStore store, HealthSweeper sweeper
             // (so every scheduled job can also be run on demand, and a new job needs no change here).
             Func<CancellationToken, Task<string>>? work = t.JobName == HealthSweepJob.JobName
                 ? c => sweeper.SweepAsync(t.DeviceName is null ? null : [t.DeviceName], c)
+                : t.JobName == RackSweepJob.JobName && t.DeviceName is not null
+                ? c => services.GetRequiredService<RackSweepJob>().SweepAsync(t.DeviceName, c)
                 : SchedulingCatalog.All.FirstOrDefault(s => s.Name.Equals(t.JobName, StringComparison.OrdinalIgnoreCase)) is { } entry
                     ? ((INetworkOpsJob)services.GetRequiredService(entry.JobType)).RunAsync
                     : null;

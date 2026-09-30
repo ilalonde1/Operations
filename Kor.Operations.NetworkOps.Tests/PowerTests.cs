@@ -164,7 +164,7 @@ public sealed class PowerTests
         new("192.168.1.16", 2, "Kor-BK01", true), new("192.168.1.16", 22, "KOR-UNIFI01", true),
     ];
 
-    private static NetworkOpsOptions Shipped()
+    internal static NetworkOpsOptions Shipped()
     {
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
         while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "Kor.Operations.NetworkOps.Service", "appsettings.json"))) dir = dir.Parent;

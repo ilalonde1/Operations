@@ -8,57 +8,84 @@ using Lextm.SharpSnmpLib.Security;
 namespace Kor.Operations.NetworkOps.Transport;
 
 /// <summary>SNMPv3 read-only credentials: one user for every device (KOR_NETWORKOPS_SNMP* on APP01).</summary>
-/// <param name="AuthSha256">True for SHA-256 (the Eaton card); false for SHA-1 (APC, Synology).</param>
-public sealed record SnmpV3Credentials(string User, string AuthPassword, string PrivPassword, bool AuthSha256);
+/// <param name="AuthSha256">True for SHA-256 (the Eaton card); false for SHA-1 (APC, Synology, the core switch).</param>
+/// <param name="PrivDes">True for DES privacy -- the core switch's firmware offers nothing else; everything else is AES.</param>
+public sealed record SnmpV3Credentials(string User, string AuthPassword, string PrivPassword, bool AuthSha256, bool PrivDes = false);
 
-// SNMPv3 GET, authPriv only (never v1/v2c: the cards have them switched off). Values come back as
-// decimal strings, TimeTicks as hundredths of a second, and an OID the device does not have is simply
-// left out -- the Core parsers decide what a missing value means.
+// SNMPv3 GET and WALK, authPriv only (never v1/v2c: every device has them off). Values come back as decimal
+// strings, TimeTicks as hundredths of a second, and an OID the device does not have is simply left out --
+// the Core parsers decide what a missing value means.
 public static class SnmpChannel
 {
     public static async Task<IReadOnlyDictionary<string, string>> GetAsync(string host, SnmpV3Credentials creds, IReadOnlyList<string> oids,
         TimeSpan timeout, CancellationToken ct)
     {
-        var address = IPAddress.TryParse(host, out var ip) ? ip : (await Dns.GetHostAddressesAsync(host, ct).ConfigureAwait(false)).First();
-        var endpoint = new IPEndPoint(address, 161);
+        var endpoint = await EndpointAsync(host, ct).ConfigureAwait(false);
         var ms = (int)timeout.TotalMilliseconds;
         return await Task.Run(() =>
         {
             // The v3 handshake: a discovery report carries the engine id and time the request is keyed to.
-            var discovery = Messenger.GetNextDiscovery(SnmpType.GetRequestPdu);
-            var report = discovery.GetResponse(ms, endpoint);
-            // SHA-1 only where the device offers nothing better: the APC NMC3 and DSM accept SHA or MD5 and
-            // nothing else (checked on both, 2026-09-29). HMAC-SHA-1 in the SNMPv3 USM is not what SHA-1's
-            // collision attacks break, and every message is AES-encrypted besides. The Eaton gets SHA-256.
-#pragma warning disable CS0618
-            IAuthenticationProvider auth = creds.AuthSha256
-                ? new SHA256AuthenticationProvider(new OctetString(creds.AuthPassword))
-                : new SHA1AuthenticationProvider(new OctetString(creds.AuthPassword));
-#pragma warning restore CS0618
-            var privacy = new AESPrivacyProvider(new OctetString(creds.PrivPassword), auth);
+            var report = Messenger.GetNextDiscovery(SnmpType.GetRequestPdu).GetResponse(ms, endpoint);
             var request = new GetRequestMessage(VersionCode.V3, Messenger.NextMessageId, Messenger.NextRequestId,
                 new OctetString(creds.User), OctetString.Empty, oids.Select(o => new Variable(new ObjectIdentifier(o))).ToList(),
-                privacy, Messenger.MaxMessageSize, report);
-            var reply = request.GetResponse(ms, endpoint);
-            var pdu = reply.Pdu();
+                Privacy(creds), Messenger.MaxMessageSize, report);
+            var pdu = request.GetResponse(ms, endpoint).Pdu();
             if (pdu.ErrorStatus.ToInt32() != 0)
                 throw new InvalidOperationException($"{host} answered SNMP error {pdu.ErrorStatus.ToInt32()} at index {pdu.ErrorIndex.ToInt32()}");
-
             var values = new Dictionary<string, string>();
-            foreach (var v in pdu.Variables)
+            foreach (var v in pdu.Variables) if (Text(v.Data) is { } t) values[v.Id.ToString()] = t;
+            return (IReadOnlyDictionary<string, string>)values;
+        }, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>Every value under each table OID (GETBULK walk, within the subtree).</summary>
+    public static async Task<IReadOnlyDictionary<string, string>> WalkAsync(string host, SnmpV3Credentials creds, IReadOnlyList<string> tables,
+        TimeSpan timeout, CancellationToken ct)
+    {
+        var endpoint = await EndpointAsync(host, ct).ConfigureAwait(false);
+        var ms = (int)timeout.TotalMilliseconds;
+        return await Task.Run(() =>
+        {
+            var values = new Dictionary<string, string>();
+            foreach (var table in tables)
             {
-                var text = v.Data switch
-                {
-                    NoSuchObject or NoSuchInstance or EndOfMibView => null,
-                    TimeTicks t => t.ToUInt32().ToString(CultureInfo.InvariantCulture),
-                    Integer32 i => i.ToInt32().ToString(CultureInfo.InvariantCulture),
-                    Gauge32 g => g.ToUInt32().ToString(CultureInfo.InvariantCulture),
-                    Counter32 c => c.ToUInt32().ToString(CultureInfo.InvariantCulture),
-                    _ => v.Data.ToString(),
-                };
-                if (text is not null) values[v.Id.ToString()] = text;
+                var report = Messenger.GetNextDiscovery(SnmpType.GetBulkRequestPdu).GetResponse(ms, endpoint);
+                var list = new List<Variable>();
+                Messenger.BulkWalk(VersionCode.V3, endpoint, new OctetString(creds.User), OctetString.Empty, new ObjectIdentifier(table), list,
+                    ms, 20, WalkMode.WithinSubtree, Privacy(creds), report);
+                foreach (var v in list) if (Text(v.Data) is { } t) values[v.Id.ToString()] = t;
             }
             return (IReadOnlyDictionary<string, string>)values;
         }, ct).ConfigureAwait(false);
     }
+
+    private static async Task<IPEndPoint> EndpointAsync(string host, CancellationToken ct)
+        => new(IPAddress.TryParse(host, out var ip) ? ip : (await Dns.GetHostAddressesAsync(host, ct).ConfigureAwait(false)).First(), 161);
+
+    // SHA-1 and DES only where the device offers nothing better: the APC NMC3 and DSM accept SHA or MD5 and
+    // nothing else, and the core switch's firmware (EdgeSwitch 1.8.1) offers DES as its only privacy (checked on
+    // each, 2026-09-29/30). HMAC-SHA-1 in the SNMPv3 USM is not what SHA-1's collision attacks break. The Eaton
+    // gets SHA-256, everything but the core switch gets AES.
+    private static IPrivacyProvider Privacy(SnmpV3Credentials creds)
+    {
+#pragma warning disable CS0618
+        IAuthenticationProvider auth = creds.AuthSha256
+            ? new SHA256AuthenticationProvider(new OctetString(creds.AuthPassword))
+            : new SHA1AuthenticationProvider(new OctetString(creds.AuthPassword));
+        return creds.PrivDes
+            ? new DESPrivacyProvider(new OctetString(creds.PrivPassword), auth)
+            : new AESPrivacyProvider(new OctetString(creds.PrivPassword), auth);
+#pragma warning restore CS0618
+    }
+
+    private static string? Text(ISnmpData data) => data switch
+    {
+        NoSuchObject or NoSuchInstance or EndOfMibView => null,
+        TimeTicks t => t.ToUInt32().ToString(CultureInfo.InvariantCulture),
+        Integer32 i => i.ToInt32().ToString(CultureInfo.InvariantCulture),
+        Gauge32 g => g.ToUInt32().ToString(CultureInfo.InvariantCulture),
+        Counter32 c => c.ToUInt32().ToString(CultureInfo.InvariantCulture),
+        Counter64 c => c.ToUInt64().ToString(CultureInfo.InvariantCulture),
+        _ => data.ToString(),
+    };
 }

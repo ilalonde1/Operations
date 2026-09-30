@@ -15,13 +15,17 @@ public sealed class EsxiShell : IDisposable
 
     /// <param name="pinnedSha256">Accepted host-key fingerprints, "SHA256:..." as ssh-keygen -lf prints them (padding optional).</param>
     public static EsxiShell Connect(string host, string keyPath, IReadOnlyCollection<string> pinnedSha256, TimeSpan timeout)
+        => Connect(host, "root", keyPath, pinnedSha256, timeout);
+
+    /// <summary>The same pinned, key-only SSH as another user (KOR-UNIFI01's forced-command `netops`).</summary>
+    public static EsxiShell Connect(string host, string user, string keyPath, IReadOnlyCollection<string> pinnedSha256, TimeSpan timeout)
     {
         if (!File.Exists(keyPath)) throw new InvalidOperationException($"ESXi key not found at '{keyPath}'");
         var pins = pinnedSha256.Select(Normalise).ToHashSet(StringComparer.Ordinal);
         if (pins.Count == 0) throw new InvalidOperationException($"no host key is pinned for {host}: refusing to connect to whatever answers");
 
         var key = new PrivateKeyFile(keyPath);
-        var ssh = new SshClient(new ConnectionInfo(host, "root", new PrivateKeyAuthenticationMethod("root", key)) { Timeout = timeout });
+        var ssh = new SshClient(new ConnectionInfo(host, user, new PrivateKeyAuthenticationMethod(user, key)) { Timeout = timeout });
         string? seen = null;
         ssh.HostKeyReceived += (_, e) => { seen = Normalise(e.FingerPrintSHA256); e.CanTrust = pins.Contains(seen); };
         try { ssh.Connect(); }

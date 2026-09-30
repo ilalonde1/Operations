@@ -91,11 +91,16 @@ internal sealed class ApiHost(IOptions<NetworkOpsOptions> options, NetworkOpsSto
 
         var api = app.MapGroup("/api").RequireAuthorization("CommandCenter");
         api.MapGet("/fleet", (NetworkOpsStore s, CancellationToken ct) => s.FleetSnapshotAsync(ct));
+        // The rack (hosts, storage, UPSes, backup, network, internet): the same shape as /fleet, served apart so a
+        // page that predates the rack never lists a host or a UPS as a PC.
+        api.MapGet("/rack", (NetworkOpsStore s, CancellationToken ct) => s.FleetSnapshotAsync(ct, rack: true));
         api.MapGet("/devices/{id:int}/history", (int id, NetworkOpsStore s, CancellationToken ct) => s.DeviceHistoryAsync(id, ct));
         api.MapGet("/resolutions", (NetworkOpsStore s, CancellationToken ct) => s.ResolutionRowsAsync(ct));
 
         api.MapPost("/devices/{name}/check", async (string name, HttpContext h, NetworkOpsStore s, CancellationToken ct) =>
-            await s.QueueCheckAsync(name, ApiAccess.UserOf(h.User), ct) is { } id ? Results.Accepted($"/api/triggers/{id}", new { triggerId = id }) : Results.NotFound());
+            // A rack device's "check now" re-reads that device through the rack sweep; a PC's runs its health probe.
+            (await s.IsRackDeviceAsync(name, ct) ? await s.QueueRackCheckAsync(name, ApiAccess.UserOf(h.User), ct) : await s.QueueCheckAsync(name, ApiAccess.UserOf(h.User), ct))
+                is { } id ? Results.Accepted($"/api/triggers/{id}", new { triggerId = id }) : Results.NotFound());
         api.MapGet("/triggers/{id:long}", async (long id, NetworkOpsStore s, CancellationToken ct) =>
             await s.TriggerStateAsync(id, ct) is { } t ? Results.Ok(t) : Results.NotFound());
         api.MapPost("/triggers/{id:long}/cancel", async (long id, HttpContext h, NetworkOpsStore s, CancellationToken ct) =>

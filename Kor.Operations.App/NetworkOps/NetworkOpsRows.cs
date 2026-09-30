@@ -24,6 +24,10 @@ public sealed class FleetRow
     public required bool IsStale { get; init; }
     public required DeviceRow Device { get; init; }
 
+    /// <summary>Workstation, or what the rack device is (Host, Storage, UPS, Backup, Network, Internet).</summary>
+    public string Kind => Device.Kind;
+    public bool IsRack => Kor.Operations.NetworkOps.Core.Rack.RackKinds.IsRack(Device.Kind);
+
     public string StateLabel => NetworkOpsText.Label(State);
 
     /// <summary>Most urgent first: worst state, then most live findings, then name.</summary>
@@ -36,10 +40,13 @@ public sealed class FleetRow
         var live = open.Where(f => !f.IsQuiet(nowUtc)).OrderByDescending(f => f.Severity).ThenBy(f => f.FirstSeenUtc).ToList();
         var quiet = open.Count - live.Count;
         var state = DeviceStatus.Of(d.LastCheckedUtc is not null, open.Select(f => f.AsView()), nowUtc);
+        var rack = Kor.Operations.NetworkOps.Core.Rack.RackKinds.IsRack(d.Kind);
         var headline = state switch
         {
             HealthState.Unknown => d.LastReachableUtc is null ? "Never reached" : "Not checked yet",
-            _ when live.Count == 0 => quiet == 0 ? "No problems found" : $"Nothing new ({quiet} acknowledged or snoozed)",
+            // A healthy rack device says what it is doing ("5 of 6 VMs running ..."), not just "no problems".
+            _ when live.Count == 0 => rack && d.Summary is { Length: > 0 } sum ? sum
+                                    : quiet == 0 ? "No problems found" : $"Nothing new ({quiet} acknowledged or snoozed)",
             _ => live.Count == 1 ? live[0].Title : $"{live[0].Title}  (+{live.Count - 1} more)",
         };
         var facts = s.FactsOf(d.Name);
@@ -53,7 +60,10 @@ public sealed class FleetRow
             LiveCount = live.Count,
             LastCheckedText = CommandCenterView.Ago(d.LastCheckedUtc, nowUtc),
             LastSeenText = CommandCenterView.Ago(d.LastReachableUtc, nowUtc),
-            IsStale = CommandCenterView.FreshnessOf(d.LastCheckedUtc, nowUtc) == Freshness.Stale,
+            // The rack is read every 5 minutes: 15 minutes without a good read is stale. PCs are checked hourly
+            // in business hours, so theirs is days.
+            IsStale = rack ? d.LastCheckedUtc is not { } lc || nowUtc - lc > TimeSpan.FromMinutes(15)
+                           : CommandCenterView.FreshnessOf(d.LastCheckedUtc, nowUtc) == Freshness.Stale,
             Device = d,
         };
     }

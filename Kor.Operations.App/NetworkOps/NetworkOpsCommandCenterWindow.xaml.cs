@@ -49,13 +49,17 @@ public partial class NetworkOpsCommandCenterWindow : Window
 
     private async Task RefreshAsync(CancellationToken ct)
     {
-        // The grid is rebuilt on every read; keep the PC Ian had selected selected.
+        // The grids are rebuilt on every read; keep what Ian had selected selected.
         var selected = (FleetGrid.SelectedItem as FleetRow)?.Name;
+        var selectedRack = (RackGrid.SelectedItem as FleetRow)?.Name;
         try
         {
             await _vm.RefreshAsync(ct).ConfigureAwait(true);
         }
         catch (OperationCanceledException) { /* superseded */ }
+        if (selectedRack is not null)
+            foreach (var row in _vm.Rack)
+                if (row.Name == selectedRack) { RackGrid.SelectedItem = row; break; }
         if (selected is null) return;
         foreach (var row in _vm.Fleet)
             if (row.Name == selected) { FleetGrid.SelectedItem = row; break; }
@@ -76,6 +80,27 @@ public partial class NetworkOpsCommandCenterWindow : Window
     }
 
     private void OpenPc_Click(object sender, RoutedEventArgs e) => OpenSelected();
+
+    private void RackGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (e.OriginalSource is DependencyObject d && ItemsControl.ContainerFromElement(RackGrid, d) is not DataGridRow) return;
+        OpenRackSelected();
+    }
+
+    private void RackGrid_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Enter) return;
+        e.Handled = true;
+        OpenRackSelected();
+    }
+
+    /// <summary>A rack device opens in the same window as a PC: its findings, what they mean, history, notes.</summary>
+    private void OpenRackSelected()
+    {
+        if (RackGrid.SelectedItem is not FleetRow row || _vm.RackSnapshot is not { } rack) return;
+        var vm = new NetworkOpsDeviceViewModel(_vm.Client, rack, row.Device);
+        new NetworkOpsDeviceWindow(vm) { Owner = this }.Show();
+    }
 
     private async void RehearseBtn_Click(object sender, RoutedEventArgs e)
     {

@@ -12,28 +12,34 @@ namespace Kor.Operations.NetworkOps.Service.Store;
 // "by" on every write is the SIGNED-IN user from the Entra token, never something the caller claims.
 internal sealed partial class NetworkOpsStore
 {
-    public async Task<FleetSnapshot> FleetSnapshotAsync(CancellationToken ct)
+    /// <param name="rack">False: the PCs (the directory fleet), as /api/fleet has always served. True: the rack devices,
+    /// served separately (/api/rack) so a page that predates the rack never shows a host or a UPS as a PC.</param>
+    public async Task<FleetSnapshot> FleetSnapshotAsync(CancellationToken ct, bool rack = false)
     {
         await using var c = await OpenAsync(ct).ConfigureAwait(false);
+        var which = rack ? "d.Source = 'Rack' AND d.RetiredUtc IS NULL" : "d.InDirectory = 1 AND d.RetiredUtc IS NULL";
 
         var devices = new List<DeviceRow>();
-        await using (var cmd = Cmd(c, """
+        await using (var cmd = Cmd(c, $"""
             SELECT d.DeviceId, d.Name, d.LastReachableUtc,
                    (SELECT MAX(o.CollectedUtc) FROM NetworkOps.Observations o
-                     WHERE o.DeviceId = d.DeviceId AND o.Probe = 'health' AND o.Status = 'Ok') AS LastCheckedUtc
+                     WHERE o.DeviceId = d.DeviceId AND o.Probe IN ('health', 'rack') AND o.Status = 'Ok') AS LastCheckedUtc,
+                   d.Kind,
+                   (SELECT TOP (1) JSON_VALUE(o.PayloadJson, '$.summary') FROM NetworkOps.Observations o
+                     WHERE o.DeviceId = d.DeviceId AND o.Probe = 'rack' ORDER BY o.CollectedUtc DESC) AS Summary
             FROM NetworkOps.Devices d
-            WHERE d.InDirectory = 1 AND d.RetiredUtc IS NULL
+            WHERE {which}
             ORDER BY d.Name;
             """))
         await using (var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false))
             while (await r.ReadAsync(ct).ConfigureAwait(false))
-                devices.Add(new DeviceRow(r.GetInt32(0), r.GetString(1), Utc(r, 2), Utc(r, 3)));
+                devices.Add(new DeviceRow(r.GetInt32(0), r.GetString(1), Utc(r, 2), Utc(r, 3), r.GetString(4), r.IsDBNull(5) ? null : r.GetString(5)));
 
         var facts = new Dictionary<string, IReadOnlyDictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
-        await using (var cmd = Cmd(c, """
+        await using (var cmd = Cmd(c, $"""
             SELECT d.Name, f.Fact, f.Value
             FROM NetworkOps.DeviceFacts f JOIN NetworkOps.Devices d ON d.DeviceId = f.DeviceId
-            WHERE f.SupersededUtc IS NULL AND d.InDirectory = 1 AND d.RetiredUtc IS NULL;
+            WHERE f.SupersededUtc IS NULL AND {which};
             """))
         await using (var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false))
             while (await r.ReadAsync(ct).ConfigureAwait(false))
@@ -43,21 +49,21 @@ internal sealed partial class NetworkOpsStore
             }
 
         var open = new List<FleetFinding>();
-        await using (var cmd = Cmd(c, """
+        await using (var cmd = Cmd(c, $"""
             SELECT f.FindingId, d.Name, f.RuleKey, f.Severity, f.Title, f.Evidence, f.FirstSeenUtc, f.LastSeenUtc,
                    f.AcknowledgedUtc, f.AcknowledgedBy, f.SnoozedUntilUtc, f.AckNote
             FROM NetworkOps.Findings f JOIN NetworkOps.Devices d ON d.DeviceId = f.DeviceId
-            WHERE f.ClearedUtc IS NULL AND d.InDirectory = 1 AND d.RetiredUtc IS NULL;
+            WHERE f.ClearedUtc IS NULL AND {which};
             """))
         await using (var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false))
             while (await r.ReadAsync(ct).ConfigureAwait(false))
                 open.Add(new FleetFinding(r.GetInt64(0), r.GetString(1), r.GetString(2), (Severity)r.GetByte(3), r.GetString(4), r.GetString(5),
                     Utc(r, 6)!.Value, Utc(r, 7)!.Value, Utc(r, 8), r.IsDBNull(9) ? null : r.GetString(9), Utc(r, 10), r.IsDBNull(11) ? null : r.GetString(11)));
 
-        var patterns = new List<ActivePattern>();
-        await using (var cmd = Cmd(c, """
+        var patterns = new List<ActivePattern>();   // fleet patterns are about PCs: none for the rack
+        await using (var cmd = Cmd(c, $"""
             SELECT RuleFamily, Fact, Value, AffectedWith, TotalWith, AffectedWithout, TotalWithout, Summary, FirstSeenUtc
-            FROM NetworkOps.Insights WHERE ClearedUtc IS NULL ORDER BY AffectedWith DESC;
+            FROM NetworkOps.Insights WHERE ClearedUtc IS NULL AND {(rack ? "1 = 0" : "1 = 1")} ORDER BY AffectedWith DESC;
             """))
         await using (var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false))
             while (await r.ReadAsync(ct).ConfigureAwait(false))

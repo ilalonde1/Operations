@@ -1,0 +1,142 @@
+#nullable enable
+using System.Net.Http.Headers;
+using System.Net.NetworkInformation;
+using Kor.Operations.NetworkOps.Core.Power;
+using Kor.Operations.NetworkOps.Core.Rack;
+using Kor.Operations.NetworkOps.Service.Power;
+using Kor.Operations.NetworkOps.Transport;
+using Microsoft.Extensions.Options;
+
+namespace Kor.Operations.NetworkOps.Service.Rack;
+
+// Reads one rack device through its own least-privilege channel and hands the raw answer to its Core rule set:
+//   Esxi       SSH key (from APP01 only) -> Rack/esxi-health.py run in hostd with a local ticket
+//   Synology   SNMPv3 SHA/AES walk of the Synology MIBs
+//   Veeam      REST as a Backup Viewer (cannot start a job)
+//   UniFi      SSH as `netops`, whose ONLY permitted command prints the controller's status
+//   Internet   from APP01 itself: public IP, DNS, pings through the firewall
+//   CoreSwitch SNMPv3 SHA/DES (all the EdgeSwitch firmware offers)
+//   Ups        the in-process UPS watcher's latest reading
+// No collector writes to any device. A device that cannot be read comes back Unreachable with the reason.
+internal sealed class RackCollector(IOptions<NetworkOpsOptions> options, PowerState power)
+{
+    private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(60);
+
+    public async Task<RackResult> CollectAsync(RackDevice d, IReadOnlyDictionary<string, string> previousFacts, CancellationToken ct)
+    {
+        try
+        {
+            using var cap = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            cap.CancelAfter(TimeSpan.FromSeconds(120));
+            return d.Collector switch
+            {
+                "Esxi" => await EsxiAsync(d, cap.Token).ConfigureAwait(false),
+                "Synology" => SynologyRules.Evaluate(await SnmpChannel.WalkAsync(d.Address, Snmp(sha256: false, des: false), SynologyRules.Tables, TimeSpan.FromSeconds(8), cap.Token).ConfigureAwait(false), d.VolumeFreeWarnPct),
+                "Veeam" => await VeeamAsync(d, cap.Token).ConfigureAwait(false),
+                "UniFi" => await UniFiAsync(d, cap.Token).ConfigureAwait(false),
+                "Internet" => await InternetAsync(cap.Token).ConfigureAwait(false),
+                "CoreSwitch" => await CoreSwitchAsync(d, previousFacts, cap.Token).ConfigureAwait(false),
+                "Ups" => Ups(d),
+                _ => RackResult.Unreachable($"no collector named '{d.Collector}'"),
+            };
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
+        {
+            return RackResult.Unreachable(ex is OperationCanceledException ? "timed out" : ex.GetType().Name + ": " + ex.Message);
+        }
+    }
+
+    private SnmpV3Credentials Snmp(bool sha256, bool des)
+    {
+        var o = options.Value;
+        return new SnmpV3Credentials(o.SnmpUser, o.SnmpAuthPassword, o.SnmpPrivPassword, sha256, des);
+    }
+
+    private async Task<RackResult> EsxiAsync(RackDevice d, CancellationToken ct)
+    {
+        var o = options.Value;
+        using var sh = EsxiShell.Connect(d.Address, o.EsxiKeyPath, d.HostKeys.Count > 0 ? d.HostKeys : o.EsxiHostKeys.GetValueOrDefault(d.Address) ?? [], TimeSpan.FromSeconds(20));
+        var (w, _, we) = await sh.RunWithInputAsync(HostScript.WriteStdinTo("/tmp/kor-health.py"), EsxiRules.Script, Timeout, ct).ConfigureAwait(false);
+        if (w != 0) throw new InvalidOperationException("could not write the health script: " + we.Trim());
+        var (exit, json, err) = await sh.RunAsync("python /tmp/kor-health.py", Timeout, ct).ConfigureAwait(false);
+        if (exit != 0) throw new InvalidOperationException("health script failed: " + err.Trim());
+        var production = o.PowerChain.Waves.SelectMany(x => x).Append(o.PowerChain.ControllerVm).Where(x => x.Length > 0).ToList();
+        return EsxiRules.Evaluate(json, production, DateTime.UtcNow);
+    }
+
+    private async Task<RackResult> VeeamAsync(RackDevice d, CancellationToken ct)
+    {
+        var o = options.Value;
+        if (string.IsNullOrWhiteSpace(o.VeeamUser) || string.IsNullOrWhiteSpace(o.VeeamPassword)) return RackResult.Unreachable("KOR_NETWORKOPS_VEEAMUSER / _VEEAMPASSWORD not set");
+        // BK01's REST certificate is Veeam's self-signed one on a workgroup box with no CA, so it is PINNED by its
+        // SHA-256: the viewer password is only ever sent to that exact certificate.
+        if (string.IsNullOrWhiteSpace(d.CertSha256)) return RackResult.Unreachable("no CertSha256 pinned for the Veeam REST API");
+        using var http = new HttpClient(new HttpClientHandler
+        {
+            ServerCertificateCustomValidationCallback = (_, cert, _, _) =>
+                cert is not null && Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(cert.RawData)).Equals(d.CertSha256, StringComparison.OrdinalIgnoreCase),
+        }) { BaseAddress = new Uri($"https://{d.Address}:9419/"), Timeout = Timeout };
+        http.DefaultRequestHeaders.Add("x-api-version", "1.2-rev0");
+        using var tokRes = await http.PostAsync("api/oauth2/token", new FormUrlEncodedContent(new Dictionary<string, string>
+            { ["grant_type"] = "password", ["username"] = o.VeeamUser, ["password"] = o.VeeamPassword }), ct).ConfigureAwait(false);
+        var tokJson = await tokRes.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+        if (!tokRes.IsSuccessStatusCode) throw new InvalidOperationException($"Veeam login {(int)tokRes.StatusCode}");
+        using var tok = System.Text.Json.JsonDocument.Parse(tokJson);
+        http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tok.RootElement.GetProperty("access_token").GetString());
+        var jobs = await http.GetStringAsync("api/v1/jobs/states", ct).ConfigureAwait(false);
+        var repos = await http.GetStringAsync("api/v1/backupInfrastructure/repositories/states", ct).ConfigureAwait(false);
+        return VeeamRules.Evaluate(jobs, repos, DateTime.UtcNow);
+    }
+
+    private async Task<RackResult> UniFiAsync(RackDevice d, CancellationToken ct)
+    {
+        var o = options.Value;
+        if (string.IsNullOrWhiteSpace(o.UniFiStatusKeyPath)) return RackResult.Unreachable("KOR_NETWORKOPS_UNIFISTATUSKEYPATH not set");
+        using var sh = EsxiShell.Connect(d.Address, "netops", o.UniFiStatusKeyPath, d.HostKeys, TimeSpan.FromSeconds(20));
+        var (exit, json, err) = await sh.RunAsync("status", Timeout, ct).ConfigureAwait(false);   // the forced command runs whatever is asked
+        if (exit != 0 || json.Length == 0) throw new InvalidOperationException("UniFi status command failed: " + err.Trim());
+        return UniFiRules.Evaluate(json);
+    }
+
+    private async Task<RackResult> InternetAsync(CancellationToken ct)
+    {
+        var o = options.Value;
+        string? ip = null;
+        try { using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(15) }; ip = (await http.GetStringAsync("https://api.ipify.org", ct).ConfigureAwait(false)).Trim(); }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException) { }
+        var dns = false;
+        try { dns = (await System.Net.Dns.GetHostAddressesAsync("www.microsoft.com", ct).ConfigureAwait(false)).Length > 0; }
+        catch (System.Net.Sockets.SocketException) { }
+        var pings = new Dictionary<string, (int, int, double)>();
+        foreach (var target in o.InternetPingTargets)
+        {
+            using var ping = new Ping();
+            int got = 0; double total = 0;
+            for (var i = 0; i < 5; i++)
+            {
+                try { var r = await ping.SendPingAsync(target, 2000).ConfigureAwait(false); if (r.Status == IPStatus.Success) { got++; total += r.RoundtripTime; } }
+                catch (PingException) { }
+            }
+            pings[target] = (5, got, got == 0 ? 0 : total / got);
+        }
+        return InternetRules.Evaluate(new InternetCheck(ip, o.ExpectedPublicIp, dns, pings));
+    }
+
+    private async Task<RackResult> CoreSwitchAsync(RackDevice d, IReadOnlyDictionary<string, string> previousFacts, CancellationToken ct)
+    {
+        var creds = Snmp(sha256: false, des: true);
+        var sys = await SnmpChannel.GetAsync(d.Address, creds, [EdgeSwitchRules.SysDescr, EdgeSwitchRules.SysUpTime], TimeSpan.FromSeconds(8), ct).ConfigureAwait(false);
+        var tables = await SnmpChannel.WalkAsync(d.Address, creds, EdgeSwitchRules.Tables, TimeSpan.FromSeconds(8), ct).ConfigureAwait(false);
+        return EdgeSwitchRules.Evaluate(sys.Concat(tables).ToDictionary(kv => kv.Key, kv => kv.Value), previousFacts);
+    }
+
+    private RackResult Ups(RackDevice d)
+    {
+        if (!power.Configured) return RackResult.Unreachable("the UPS watcher is not running");
+        var view = power.Views().FirstOrDefault(v => v.Latest.Ups.Equals(d.UpsName, StringComparison.OrdinalIgnoreCase));
+        if (view is null) return RackResult.Unreachable("no reading yet");
+        if (!view.Latest.Reachable) return RackResult.Unreachable(view.Latest.Error ?? "not answering");
+        if (DateTime.UtcNow - view.Latest.AtUtc > TimeSpan.FromMinutes(3)) return RackResult.Unreachable($"no answer since {view.Latest.AtUtc.ToLocalTime():HH:mm}");
+        return UpsRules.Evaluate(view.Latest);
+    }
+}

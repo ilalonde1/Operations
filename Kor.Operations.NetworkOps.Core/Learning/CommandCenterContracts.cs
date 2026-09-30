@@ -7,7 +7,9 @@ namespace Kor.Operations.NetworkOps.Core.Learning;
 // fills it and the page that draws it, so the two can never drift. Plain records, JSON both ways
 // (web defaults: camelCase, case-insensitive).
 
-public sealed record DeviceRow(int DeviceId, string Name, DateTime? LastReachableUtc, DateTime? LastCheckedUtc);
+/// <param name="Kind">Workstation for PCs; a Core.Rack.RackKinds value for the rack.</param>
+/// <param name="Summary">Rack devices: the last read's one-line summary ("5 of 6 VMs running · 181 sensors ...").</param>
+public sealed record DeviceRow(int DeviceId, string Name, DateTime? LastReachableUtc, DateTime? LastCheckedUtc, string Kind = "Workstation", string? Summary = null);
 
 public sealed record ServiceBeat(string Host, DateTime StartedUtc, DateTime LastBeatUtc, string? Version);
 

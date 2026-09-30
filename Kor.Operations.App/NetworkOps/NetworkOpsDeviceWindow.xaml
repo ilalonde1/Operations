@@ -31,7 +31,7 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- Who this PC is, and how fresh that is. -->
+        <!-- Who this PC or rack device is, and how fresh that is. -->
         <Border Grid.Row="0" Style="{StaticResource Card}" Margin="12,12,12,8" Padding="16,12">
             <Grid>
                 <Grid.ColumnDefinitions>
@@ -50,9 +50,9 @@
                     <TextBlock Text="{Binding FreshnessLine}" Foreground="{StaticResource Text.Secondary}" FontSize="11" Margin="0,2,0,0"/>
                 </StackPanel>
                 <StackPanel Grid.Column="1" VerticalAlignment="Center" MaxWidth="420">
-                    <Button x:Name="CheckNowBtn" Content="Check this PC now" Padding="16,6" HorizontalAlignment="Right"
+                    <Button x:Name="CheckNowBtn" Content="{Binding CheckButtonText}" Padding="16,6" HorizontalAlignment="Right"
                             IsEnabled="{Binding CanCheck}" Click="CheckNow_Click"
-                            ToolTip="Runs the health probe on this PC through the service, then reloads this page. About 10-40 seconds."/>
+                            ToolTip="{Binding CheckButtonTip}"/>
                     <TextBlock Text="{Binding CheckStatus}" TextWrapping="Wrap" Margin="0,6,0,0" HorizontalAlignment="Right" TextAlignment="Right"/>
                 </StackPanel>
             </Grid>
@@ -118,7 +118,7 @@
                                  ToolTip="Optional reason, saved with an acknowledge or snooze: 'new drive ordered', 'user is away'."/>
                         <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="8,0,0,0">
                             <Button Content="Acknowledge" Padding="10,4" Margin="0,0,6,0" Click="Acknowledge_Click"
-                                    ToolTip="Known and accepted: stops counting against this PC until it clears and comes back."/>
+                                    ToolTip="Known and accepted: stops counting against this device until it clears and comes back."/>
                             <Button Content="Snooze 1 day" Padding="10,4" Margin="0,0,6,0" Click="SnoozeDay_Click"/>
                             <Button Content="Snooze 1 week" Padding="10,4" Margin="0,0,6,0" Click="SnoozeWeek_Click"/>
                             <Button Content="Reopen" Padding="10,4" Click="Reopen_Click"
@@ -136,11 +136,14 @@
                         <TextBlock Text="What it means" FontSize="14" FontWeight="SemiBold"/>
                         <TextBlock Text="{Binding Meaning}" TextWrapping="Wrap" Margin="0,4,0,0"/>
 
-                        <TextBlock Text="Other PCs" Style="{StaticResource SectionHeading}"/>
+                        <TextBlock Text="{Binding OthersHeading}" Style="{StaticResource SectionHeading}"/>
                         <TextBlock Text="{Binding ElsewhereText}" TextWrapping="Wrap"/>
 
-                        <TextBlock Text="Fleet pattern" Style="{StaticResource SectionHeading}"/>
-                        <ItemsControl ItemsSource="{Binding PatternTexts}" ItemTemplate="{StaticResource Bullet}"/>
+                        <!-- Fleet patterns compare PCs: the section is hidden on a rack device. -->
+                        <StackPanel Visibility="{Binding ShowsPatterns, Converter={StaticResource BoolToVis}}">
+                            <TextBlock Text="Fleet pattern" Style="{StaticResource SectionHeading}"/>
+                            <ItemsControl ItemsSource="{Binding PatternTexts}" ItemTemplate="{StaticResource Bullet}"/>
+                        </StackPanel>
 
                         <TextBlock Text="Likely causes" Style="{StaticResource SectionHeading}"/>
                         <ItemsControl ItemsSource="{Binding Causes}" ItemTemplate="{StaticResource Bullet}"/>

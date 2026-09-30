@@ -4,8 +4,10 @@
         xmlns:controls="clr-namespace:Kor.Operations.Controls"
         xmlns:nops="clr-namespace:Kor.Operations.App.NetworkOps"
         Title="NetworkOps Command Center"
-        Width="1400"
-        Height="820"
+        Width="1440"
+        Height="960"
+        MinWidth="1100"
+        MinHeight="720"
         WindowStartupLocation="CenterScreen"
         Background="{StaticResource App.Background}"
         FontFamily="Mulish, Segoe UI"
@@ -28,7 +30,7 @@
                             Grid.Row="0"
                             Margin="2,0,2,8"
                             HeaderText="NetworkOps Command Center"
-                            SubtitleText="Every PC's health, what is coming, and what has fixed it before"
+                            SubtitleText="The rack, the network and every PC: what is wrong, what is coming, and what has fixed it before"
                             AvatarDiameter="64"
                             AvatarBorderThickness="2"/>
 
@@ -44,38 +46,47 @@
         <!-- KPI strip: one number each, computed from the same read as the grid. -->
         <Grid Grid.Row="2" Margin="12,0,12,8">
             <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="2*"/>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="2*"/>
             </Grid.ColumnDefinitions>
-            <Border Grid.Column="0" Style="{StaticResource Card}" Margin="0,0,4,0" Padding="16,10">
+            <!-- The rack first: when it is down, nothing else matters. Its colour is its worst device's. -->
+            <Border Grid.Column="0" Style="{StaticResource Card}" Margin="0,0,4,0" Padding="16,10"
+                    ToolTip="Healthy rack devices of all of them: hosts, storage, backups, UPSes, network, internet. The colour is the worst device's.">
                 <StackPanel>
-                    <TextBlock Text="{Binding CriticalHeadline}" Foreground="#C11E1E" FontSize="28" FontWeight="Bold"/>
-                    <TextBlock Text="Critical" Foreground="{StaticResource Text.Secondary}" FontSize="11"/>
+                    <TextBlock Text="{Binding RackHeadline}" Foreground="{Binding RackBrush}" FontSize="28" FontWeight="Bold"/>
+                    <TextBlock Text="{Binding RackSubline}" Foreground="{StaticResource Text.Secondary}" FontSize="11" TextTrimming="CharacterEllipsis"/>
                 </StackPanel>
             </Border>
             <Border Grid.Column="1" Style="{StaticResource Card}" Margin="4,0,4,0" Padding="16,10">
                 <StackPanel>
-                    <TextBlock Text="{Binding AttentionHeadline}" Foreground="#E5A800" FontSize="28" FontWeight="Bold"/>
-                    <TextBlock Text="Need attention" Foreground="{StaticResource Text.Secondary}" FontSize="11"/>
+                    <TextBlock Text="{Binding CriticalHeadline}" Foreground="#C11E1E" FontSize="28" FontWeight="Bold"/>
+                    <TextBlock Text="PCs critical" Foreground="{StaticResource Text.Secondary}" FontSize="11"/>
                 </StackPanel>
             </Border>
             <Border Grid.Column="2" Style="{StaticResource Card}" Margin="4,0,4,0" Padding="16,10">
                 <StackPanel>
-                    <TextBlock Text="{Binding HealthyHeadline}" Foreground="#228B22" FontSize="28" FontWeight="Bold"/>
-                    <TextBlock Text="Healthy" Foreground="{StaticResource Text.Secondary}" FontSize="11"/>
+                    <TextBlock Text="{Binding AttentionHeadline}" Foreground="#E5A800" FontSize="28" FontWeight="Bold"/>
+                    <TextBlock Text="PCs need attention" Foreground="{StaticResource Text.Secondary}" FontSize="11"/>
                 </StackPanel>
             </Border>
-            <Border Grid.Column="3" Style="{StaticResource Card}" Margin="4,0,4,0" Padding="16,10"
+            <Border Grid.Column="3" Style="{StaticResource Card}" Margin="4,0,4,0" Padding="16,10">
+                <StackPanel>
+                    <TextBlock Text="{Binding HealthyHeadline}" Foreground="#228B22" FontSize="28" FontWeight="Bold"/>
+                    <TextBlock Text="PCs healthy" Foreground="{StaticResource Text.Secondary}" FontSize="11"/>
+                </StackPanel>
+            </Border>
+            <Border Grid.Column="4" Style="{StaticResource Card}" Margin="4,0,4,0" Padding="16,10"
                     ToolTip="PCs with no health check in the last 3 days, or never: what the page shows for them may be out of date.">
                 <StackPanel>
                     <TextBlock Text="{Binding StaleHeadline}" Foreground="#808080" FontSize="28" FontWeight="Bold"/>
-                    <TextBlock Text="Not checked in 3 days" Foreground="{StaticResource Text.Secondary}" FontSize="11"/>
+                    <TextBlock Text="PCs not checked in 3 days" Foreground="{StaticResource Text.Secondary}" FontSize="11" TextTrimming="CharacterEllipsis"/>
                 </StackPanel>
             </Border>
-            <Border Grid.Column="4" Style="{StaticResource Card}" Margin="4,0,0,0" Padding="16,10">
+            <Border Grid.Column="5" Style="{StaticResource Card}" Margin="4,0,0,0" Padding="16,10">
                 <StackPanel>
                     <TextBlock Text="{Binding ServiceHeadline}" Foreground="{Binding ServiceBrush}" FontSize="28" FontWeight="Bold"/>
                     <TextBlock Text="{Binding ServiceSubline}" Foreground="{StaticResource Text.Secondary}" FontSize="11" TextTrimming="CharacterEllipsis"/>
@@ -118,8 +129,68 @@
                 <ColumnDefinition Width="400"/>
             </Grid.ColumnDefinitions>
 
+            <Grid Grid.Column="0" Margin="0,0,4,0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+            <!-- The rack: every piece of infrastructure, worst first, read every 5 minutes. -->
+            <Border Grid.Row="0" Style="{StaticResource Card}" Margin="0,0,0,8" Padding="12">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <StackPanel Grid.Row="0" Orientation="Horizontal">
+                        <TextBlock Text="Rack" FontSize="14" FontWeight="SemiBold"/>
+                        <TextBlock Text="  ·  hosts, storage, backups, power, network and the internet line — read every 5 minutes; double-click one to see why"
+                                   Foreground="{StaticResource Text.Secondary}" FontSize="11" VerticalAlignment="Bottom" Margin="0,0,0,1"/>
+                    </StackPanel>
+                    <DataGrid Grid.Row="1"
+                              x:Name="RackGrid"
+                              ItemsSource="{Binding Rack}"
+                              AutoGenerateColumns="False"
+                              IsReadOnly="True"
+                              SelectionMode="Single"
+                              HeadersVisibility="Column"
+                              GridLinesVisibility="Horizontal"
+                              Margin="0,8,0,0"
+                              MouseDoubleClick="RackGrid_MouseDoubleClick"
+                              PreviewKeyDown="RackGrid_PreviewKeyDown">
+                        <DataGrid.RowStyle>
+                            <Style TargetType="DataGridRow" BasedOn="{StaticResource {x:Type DataGridRow}}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsStale}" Value="True">
+                                        <Setter Property="Foreground" Value="#808080"/>
+                                        <Setter Property="ToolTip" Value="Not read in the last 15 minutes: this may be out of date."/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </DataGrid.RowStyle>
+                        <DataGrid.Columns>
+                            <DataGridTemplateColumn Header="State" Width="140" SortMemberPath="State">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Border CornerRadius="9" Padding="8,2" HorizontalAlignment="Left" VerticalAlignment="Center"
+                                                Background="{Binding State, Converter={StaticResource StateToBrush}}">
+                                            <TextBlock Text="{Binding StateLabel}" Foreground="White" FontWeight="SemiBold" FontSize="11"/>
+                                        </Border>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="Kind"         Binding="{Binding Kind}"            Width="80"/>
+                            <DataGridTextColumn Header="Device"       Binding="{Binding Name}"            Width="230"/>
+                            <DataGridTextColumn Header="What matters" Binding="{Binding Headline}"        Width="*"/>
+                            <DataGridTextColumn Header="Open"         Binding="{Binding LiveCount}"       Width="50"/>
+                            <DataGridTextColumn Header="Read"         Binding="{Binding LastCheckedText}" Width="90"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </Border>
+
             <!-- The fleet: most urgent first. -->
-            <Border Grid.Column="0" Style="{StaticResource Card}" Margin="0,0,4,0" Padding="12">
+            <Border Grid.Row="1" Style="{StaticResource Card}" Padding="12">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -168,6 +239,7 @@
                     </DataGrid>
                 </Grid>
             </Border>
+            </Grid>
 
             <Grid Grid.Column="1" Margin="4,0,0,0">
                 <Grid.RowDefinitions>
@@ -183,7 +255,7 @@
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="Rack power" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="0" Text="Power &amp; shutdown chain" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center"/>
                         <Border Grid.Column="1" CornerRadius="9" Padding="8,2" Background="{Binding PowerBrush}" VerticalAlignment="Center">
                             <TextBlock Text="{Binding PowerHeadline}" Foreground="White" FontWeight="SemiBold" FontSize="11"/>
                         </Border>

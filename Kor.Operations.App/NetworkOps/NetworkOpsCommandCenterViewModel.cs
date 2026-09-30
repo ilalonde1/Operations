@@ -47,6 +47,13 @@ public sealed class NetworkOpsCommandCenterViewModel : ObservableObject
 
     public ObservableCollection<PatternRow> Patterns { get; } = new();
 
+    // ---- The rack: hosts, storage, UPSes, backups, network, internet -- one row each, worst first.
+    public ObservableCollection<FleetRow> Rack { get; } = new();
+    public FleetSnapshot? RackSnapshot { get; private set; }
+    public string RackHeadline { get; private set; } = "—";
+    public string RackSubline { get; private set; } = "Rack";
+    public Brush RackBrush { get; private set; } = NetworkOpsBrushes.Unknown;
+
     // ---- Rack power: both UPSes, the verdict, the chain.
     public ObservableCollection<UpsLine> Ups { get; } = new();
     public string PowerHeadline { get; private set; } = "—";
@@ -125,13 +132,21 @@ public sealed class NetworkOpsCommandCenterViewModel : ObservableObject
         {
             var snapshot = await _client.GetFleetAsync(ct).ConfigureAwait(true);
             Apply(snapshot, DateTime.UtcNow);
-            // Power is its own read: a service without the rack configured must not blank the PCs.
+            // The rack and power are their own reads: a service without them must not blank the PCs.
+            try { ApplyRack(await _client.GetRackAsync(ct).ConfigureAwait(true), DateTime.UtcNow); }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                RackSnapshot = null; Rack.Clear();
+                (RackHeadline, RackSubline, RackBrush) = ("—", $"Rack not available: {ex.Message}", NetworkOpsBrushes.Unknown);
+                foreach (var name in new[] { nameof(RackHeadline), nameof(RackSubline), nameof(RackBrush) }) OnPropertyChanged(name);
+            }
             try { ApplyPower(await _client.GetPowerAsync(ct).ConfigureAwait(true), DateTime.UtcNow); }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 ApplyPower(new PowerSnapshot([], "Off", $"Could not read rack power: {ex.Message}", null, false, []), DateTime.UtcNow);
             }
-            StatusMessage = $"Loaded at {DateTime.Now:HH:mm:ss}. {snapshot.Devices.Count} PCs, {snapshot.OpenFindings.Count} open findings, {snapshot.Patterns.Count} fleet patterns.";
+            StatusMessage = $"Loaded at {DateTime.Now:HH:mm:ss}. {Rack.Count} rack devices, {snapshot.Devices.Count} PCs, " +
+                            $"{snapshot.OpenFindings.Count + (RackSnapshot?.OpenFindings.Count ?? 0)} open findings, {snapshot.Patterns.Count} fleet patterns.";
             _lastSuccessfulRefreshAt = DateTimeOffset.Now;
             IsConnectionLost = false;
         }
@@ -194,6 +209,33 @@ public sealed class NetworkOpsCommandCenterViewModel : ObservableObject
 
         foreach (var name in new[] { nameof(CriticalHeadline), nameof(AttentionHeadline), nameof(HealthyHeadline), nameof(StaleHeadline),
                                      nameof(ServiceHeadline), nameof(ServiceSubline), nameof(ServiceBrush), nameof(Snapshot) })
+            OnPropertyChanged(name);
+    }
+
+    /// <summary>
+    /// Fills the Rack section and its tile. The tile's colour is the WORST device's, so one red host makes the rack
+    /// red however many are green. Worst first, then in the order an outage travels: the line in, the hosts, the
+    /// storage under them, the backups, the power, the network. Internal so tests can drive it without the service.
+    /// </summary>
+    internal void ApplyRack(FleetSnapshot rack, DateTime nowUtc)
+    {
+        RackSnapshot = rack;
+        string[] order = ["Internet", "Host", "Storage", "Backup", "UPS", "Network"];
+        var rows = rack.Devices.Select(d => FleetRow.From(d, rack, nowUtc))
+            .OrderByDescending(r => r.State).ThenBy(r => Array.IndexOf(order, r.Kind) is var i && i >= 0 ? i : 99).ThenBy(r => r.Name, StringComparer.OrdinalIgnoreCase).ToList();
+        Rack.Clear();
+        foreach (var r in rows) Rack.Add(r);
+
+        var healthy = rows.Count(r => r.State is HealthState.Healthy or HealthState.Watch);
+        var worst = rows.Count == 0 ? HealthState.Unknown : rows.Max(r => r.State);
+        var stale = rows.Count(r => r.IsStale);
+        RackHeadline = rows.Count == 0 ? "—" : $"{healthy} / {rows.Count}";
+        RackSubline = rows.Count == 0 ? "Rack: nothing read yet"
+            : worst is HealthState.Critical or HealthState.Attention
+                ? $"Rack: {rows.Count(r => r.State == HealthState.Critical)} critical, {rows.Count(r => r.State == HealthState.Attention)} need attention"
+                : "Rack healthy" + (stale > 0 ? $" · {stale} not read recently" : "");
+        RackBrush = rows.Count == 0 ? NetworkOpsBrushes.Unknown : NetworkOpsBrushes.For(worst);
+        foreach (var name in new[] { nameof(RackHeadline), nameof(RackSubline), nameof(RackBrush), nameof(RackSnapshot) })
             OnPropertyChanged(name);
     }
 

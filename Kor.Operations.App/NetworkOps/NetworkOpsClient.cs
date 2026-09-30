@@ -78,6 +78,9 @@ public sealed class NetworkOpsClient
 
     public Task<FleetSnapshot> GetFleetAsync(CancellationToken ct) => GetAsync<FleetSnapshot>("api/fleet", ct)!;
 
+    /// <summary>The rack: hosts, storage, UPSes, backups, network, internet -- in the same shape as the fleet.</summary>
+    public Task<FleetSnapshot> GetRackAsync(CancellationToken ct) => GetAsync<FleetSnapshot>("api/rack", ct)!;
+
     public Task<DeviceHistory> GetDeviceHistoryAsync(int deviceId, CancellationToken ct) => GetAsync<DeviceHistory>($"api/devices/{deviceId}/history", ct)!;
 
     public async Task<IReadOnlyList<Resolution>> GetResolutionsAsync(CancellationToken ct)

@@ -43,6 +43,15 @@ public sealed class NetworkOpsDeviceViewModel : ObservableObject
 
     public string DeviceName => _device.Name;
 
+    /// <summary>A rack device (host, storage, UPS, backup, network, internet) rather than a PC.</summary>
+    public bool IsRack => Kor.Operations.NetworkOps.Core.Rack.RackKinds.IsRack(_device.Kind);
+    public string CheckButtonText => IsRack ? "Read this device now" : "Check this PC now";
+    public string CheckButtonTip => IsRack
+        ? "Re-reads this device through the rack sweep (read-only), then reloads this page. A few seconds to a minute."
+        : "Runs the health probe on this PC through the service, then reloads this page. About 10-40 seconds.";
+    public string OthersHeading => IsRack ? "Other devices" : "Other PCs";
+    public bool ShowsPatterns => !IsRack;
+
     public string StateLabel { get; private set; } = string.Empty;
     public Brush StateBrush { get; private set; } = NetworkOpsBrushes.Unknown;
     public string IdentityLine { get; private set; } = string.Empty;
@@ -132,7 +141,7 @@ public sealed class NetworkOpsDeviceViewModel : ObservableObject
 
     private async Task ReloadAsync(CancellationToken ct)
     {
-        _snapshot = await _client.GetFleetAsync(ct).ConfigureAwait(true);
+        _snapshot = IsRack ? await _client.GetRackAsync(ct).ConfigureAwait(true) : await _client.GetFleetAsync(ct).ConfigureAwait(true);
         _device = _snapshot.Devices.FirstOrDefault(d => d.DeviceId == _device.DeviceId) ?? _device;
         ApplySnapshot(DateTime.UtcNow);
         await LoadHistoryAsync(ct).ConfigureAwait(true);
@@ -148,11 +157,24 @@ public sealed class NetworkOpsDeviceViewModel : ObservableObject
 
         StateLabel = NetworkOpsText.Label(state);
         StateBrush = NetworkOpsBrushes.For(state);
-        IdentityLine = Join(" · ", F(Facts.Model), string.IsNullOrEmpty(F(Facts.OsRelease)) ? "" : $"Windows {F(Facts.OsRelease)} ({F(Facts.OsBuild)})");
-        HardwareLine = Join(" · ", F(Facts.Cpu), string.IsNullOrEmpty(F(Facts.RamGb)) ? "" : $"{F(Facts.RamGb)} GB RAM",
-            string.IsNullOrEmpty(F(Facts.GpuName)) ? "" : $"{F(Facts.GpuName)} (driver {F(Facts.GpuDriver)})", string.IsNullOrEmpty(F(Facts.Bios)) ? "" : $"BIOS {F(Facts.Bios)}");
-        FreshnessLine = $"Last checked {CommandCenterView.Ago(_device.LastCheckedUtc, nowUtc)} · last answered the network {CommandCenterView.Ago(_device.LastReachableUtc, nowUtc)}"
-            + (CommandCenterView.FreshnessOf(_device.LastCheckedUtc, nowUtc) == Freshness.Stale ? " · STALE: what is shown here may be out of date" : "");
+        if (IsRack)
+        {
+            // What it is, what it runs, and what it is doing right now.
+            IdentityLine = Join(" · ", _device.Kind, F(Facts.Model), F("esxi.version"), F("dsm.version"), string.IsNullOrEmpty(F("fw.version")) ? "" : $"firmware {F("fw.version")}",
+                string.IsNullOrEmpty(F("wan.public-ip")) ? "" : $"public IP {F("wan.public-ip")}", F("unifi.site"));
+            HardwareLine = Join(" · ", _device.Summary ?? "", string.IsNullOrEmpty(F("hw.serial")) ? "" : $"S/N {F("hw.serial")}");
+            var stale = _device.LastCheckedUtc is not { } lc || nowUtc - lc > TimeSpan.FromMinutes(15);
+            FreshnessLine = $"Read every 5 minutes · last good read {CommandCenterView.Ago(_device.LastCheckedUtc, nowUtc)}"
+                + (stale ? " · STALE: it has not answered recently" : "");
+        }
+        else
+        {
+            IdentityLine = Join(" · ", F(Facts.Model), string.IsNullOrEmpty(F(Facts.OsRelease)) ? "" : $"Windows {F(Facts.OsRelease)} ({F(Facts.OsBuild)})");
+            HardwareLine = Join(" · ", F(Facts.Cpu), string.IsNullOrEmpty(F(Facts.RamGb)) ? "" : $"{F(Facts.RamGb)} GB RAM",
+                string.IsNullOrEmpty(F(Facts.GpuName)) ? "" : $"{F(Facts.GpuName)} (driver {F(Facts.GpuDriver)})", string.IsNullOrEmpty(F(Facts.Bios)) ? "" : $"BIOS {F(Facts.Bios)}");
+            FreshnessLine = $"Last checked {CommandCenterView.Ago(_device.LastCheckedUtc, nowUtc)} · last answered the network {CommandCenterView.Ago(_device.LastReachableUtc, nowUtc)}"
+                + (CommandCenterView.FreshnessOf(_device.LastCheckedUtc, nowUtc) == Freshness.Stale ? " · STALE: what is shown here may be out of date" : "");
+        }
 
         var selectedId = _selectedFinding?.Finding.FindingId;
         OpenFindings.Clear();
@@ -212,9 +234,12 @@ public sealed class NetworkOpsDeviceViewModel : ObservableObject
         else
         {
             var others = CommandCenterView.SameProblemElsewhere(f, _snapshot.OpenFindings);
-            ElsewhereText = others.Count == 0 ? "Only this PC has it right now." : $"Also open on {others.Count} other PC(s): {string.Join(", ", others)}";
+            var what = IsRack ? "device" : "PC";
+            ElsewhereText = others.Count == 0 ? $"Only this {what} has it right now." : $"Also open on {others.Count} other {what}(s): {string.Join(", ", others)}";
             var patterns = CommandCenterView.PatternsFor(f.RuleKey, _snapshot.FactsOf(_device.Name), _snapshot.Patterns).Select(p => p.Summary).ToList();
-            PatternTexts = patterns.Count > 0 ? patterns : ["None: nothing this PC has in common with the others that have it stands out."];
+            PatternTexts = patterns.Count > 0 ? patterns
+                : IsRack ? ["Not applicable: fleet patterns compare PCs."]
+                : ["None: nothing this PC has in common with the others that have it stands out."];
         }
 
         foreach (var name in new[] { nameof(Meaning), nameof(Causes), nameof(KnownFixes), nameof(IfIgnored), nameof(LearnedFixes),

@@ -86,6 +86,41 @@ public sealed class NetworkOpsOptions
     public Dictionary<string, List<string>> EsxiHostKeys { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 
     public Kor.Operations.NetworkOps.Core.Power.ShutdownPlanOptions PowerChain { get; set; } = new();
+
+    // ---- the rack (Rack/*): every piece of infrastructure as a device with facts, metrics and findings,
+    // read every 5 minutes by RackSweepJob through a least-privilege channel each.
+
+    public List<RackDevice> Rack { get; set; } = [];
+
+    /// <summary>Veeam Backup Viewer account on KOR-BK01 (KOR_NETWORKOPS_VEEAMUSER / _VEEAMPASSWORD): read-only, cannot start a job.</summary>
+    public string VeeamUser { get; set; } = "";
+    public string VeeamPassword { get; set; } = "";
+
+    /// <summary>Key for `netops@KOR-UNIFI01`, whose only permitted command prints the UniFi status (KOR_NETWORKOPS_UNIFISTATUSKEYPATH).</summary>
+    public string UniFiStatusKeyPath { get; set; } = "";
+
+    /// <summary>The office's Shaw STATIC address: traffic leaving by any other means the firewall is on the wrong WAN.</summary>
+    public string ExpectedPublicIp { get; set; } = "";
+    public List<string> InternetPingTargets { get; set; } = [];
+}
+
+/// <summary>One rack device and how to read it.</summary>
+public sealed class RackDevice
+{
+    public string Name { get; set; } = "";
+    /// <summary>Core.Rack.RackKinds: Host, Storage, UPS, Backup, Network, Internet.</summary>
+    public string Kind { get; set; } = "";
+    /// <summary>Esxi | Synology | Veeam | UniFi | Internet | CoreSwitch | Ups.</summary>
+    public string Collector { get; set; } = "";
+    public string Address { get; set; } = "";
+    /// <summary>Synology only: warn below this % free on a volume; 0 for boxes holding thick LUNs (their volume is full by design).</summary>
+    public int VolumeFreeWarnPct { get; set; } = 10;
+    /// <summary>Ups only: the Ups[] card this device shows.</summary>
+    public string UpsName { get; set; } = "";
+    /// <summary>SSH host-key pins for Esxi/UniFi collectors ("SHA256:...").</summary>
+    public List<string> HostKeys { get; set; } = [];
+    /// <summary>Veeam only: SHA-256 (hex) of BK01's REST certificate. Pinned: the password never goes to anything else.</summary>
+    public string CertSha256 { get; set; } = "";
 }
 
 public sealed class UpsCard
