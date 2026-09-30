@@ -55,4 +55,45 @@ public sealed class NetworkOpsOptions
     public string UniFiBackupDestination { get; set; } = "";
     public int UniFiBackupKeepDays { get; set; } = 90;
     public int UniFiBackupStaleHours { get; set; } = 48;
+
+    // ---- rack power (Power/*): watch both UPS cards over SNMPv3; on a real outage run the shutdown
+    // chain. Off unless Ups is configured and the SNMP credentials are set.
+
+    public List<UpsCard> Ups { get; set; } = [];
+
+    /// <summary>SNMPv3 read-only user for every device: KOR_NETWORKOPS_SNMPUSER / _SNMPAUTHPASSWORD / _SNMPPRIVPASSWORD.</summary>
+    public string SnmpUser { get; set; } = "";
+    public string SnmpAuthPassword { get; set; } = "";
+    public string SnmpPrivPassword { get; set; } = "";
+
+    public int PowerPollSeconds { get; set; } = 10;
+    /// <summary>A reading is stored this often, and on every change of source or reachability.</summary>
+    public int PowerRecordSeconds { get; set; } = 60;
+    public int PowerOnBatteryMinutes { get; set; } = 5;
+    public int PowerRuntimeFloorMinutes { get; set; } = 15;
+    public int PowerBlindAfterSeconds { get; set; } = 120;
+
+    /// <summary>
+    /// FALSE until the chain has been proven by pulling the plug in a maintenance window. While false, a
+    /// real outage runs the chain as a DRY RUN: every step is checked and logged, nothing is shut down.
+    /// </summary>
+    public bool PowerChainArmed { get; set; }
+
+    /// <summary>OpenSSH private key for root on the ESXi hosts (KOR_NETWORKOPS_ESXIKEYPATH): readable by the service account only.</summary>
+    public string EsxiKeyPath { get; set; } = "";
+
+    /// <summary>Host address -> its pinned host-key fingerprints ("SHA256:..."). A host that presents anything else is refused.</summary>
+    public Dictionary<string, List<string>> EsxiHostKeys { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+
+    public Kor.Operations.NetworkOps.Core.Power.ShutdownPlanOptions PowerChain { get; set; } = new();
+}
+
+public sealed class UpsCard
+{
+    public string Name { get; set; } = "";
+    public string Address { get; set; } = "";
+    /// <summary>UpsMib (RFC 1628, the Eaton) or PowerNet (the APC).</summary>
+    public string Mib { get; set; } = Kor.Operations.NetworkOps.Core.Power.UpsMibs.UpsMib;
+    /// <summary>SHA-256 authentication (the Eaton); false = SHA-1, all the APC offers.</summary>
+    public bool AuthSha256 { get; set; }
 }

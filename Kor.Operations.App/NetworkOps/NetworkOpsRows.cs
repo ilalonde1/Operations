@@ -72,6 +72,39 @@ public sealed class PatternRow
     public required string SinceText { get; init; }
 }
 
+/// <summary>One UPS on the Rack power card: one colour and one line.</summary>
+public sealed class UpsLine
+{
+    public required string Name { get; init; }
+    public required string Detail { get; init; }
+    public required Brush Brush { get; init; }
+
+    /// <summary>Mains = healthy; battery or a low/replace battery = critical/attention; not answering = grey.</summary>
+    internal static UpsLine From(UpsRow u, DateTime nowUtc)
+    {
+        var source = !u.Reachable ? "NOT ANSWERING" : u.Source switch
+        {
+            "Mains" => "On mains",
+            "Battery" => $"ON BATTERY {(u.SecondsOnBattery ?? 0) / 60} min",
+            "Bypass" => "Bypass (mains, unprotected)",
+            "Off" => "OUTPUT OFF",
+            _ => "state unknown",
+        };
+        var parts = new List<string> { source };
+        if (u.MinutesRemaining is { } m) parts.Add($"{m} min runtime");
+        if (u.ChargePercent is { } c) parts.Add($"{c}% charged");
+        if (u.LoadPercent is { } l) parts.Add($"load {l}%");
+        if (u.BatteryLow) parts.Add("LOW BATTERY");
+        if (u.ReplaceBattery) parts.Add("replace battery");
+        parts.Add($"read {CommandCenterView.Ago(u.AtUtc, nowUtc)}");
+        var brush = !u.Reachable ? NetworkOpsBrushes.Unknown
+            : u.Source is "Battery" or "Off" || u.BatteryLow ? NetworkOpsBrushes.Critical
+            : u.ReplaceBattery || u.Source == "Bypass" ? NetworkOpsBrushes.Attention
+            : u.Source == "Mains" ? NetworkOpsBrushes.Healthy : NetworkOpsBrushes.Unknown;
+        return new UpsLine { Name = $"{u.Name}  ({u.Address})", Detail = string.Join(" · ", parts), Brush = brush };
+    }
+}
+
 /// <summary>An open finding on one PC.</summary>
 public sealed class FindingRow
 {

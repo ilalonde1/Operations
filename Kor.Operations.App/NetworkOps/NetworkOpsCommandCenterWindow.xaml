@@ -169,8 +169,53 @@
                 </Grid>
             </Border>
 
+            <Grid Grid.Column="1" Margin="4,0,0,0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+            <!-- Rack power: both UPSes, the verdict, whether the shutdown chain is armed, its last run. -->
+            <Border Grid.Row="0" Style="{StaticResource Card}" Margin="0,0,0,8" Padding="12">
+                <StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="Rack power" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                        <Border Grid.Column="1" CornerRadius="9" Padding="8,2" Background="{Binding PowerBrush}" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding PowerHeadline}" Foreground="White" FontWeight="SemiBold" FontSize="11"/>
+                        </Border>
+                    </Grid>
+                    <ItemsControl ItemsSource="{Binding Ups}" Margin="0,8,0,0">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Margin="0,0,0,6">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Ellipse Grid.Column="0" Width="10" Height="10" Fill="{Binding Brush}" Margin="0,4,8,0" VerticalAlignment="Top"/>
+                                    <StackPanel Grid.Column="1">
+                                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
+                                        <TextBlock Text="{Binding Detail}" TextWrapping="Wrap" FontSize="11"/>
+                                    </StackPanel>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <TextBlock Text="{Binding PowerReason}" TextWrapping="Wrap" FontSize="11" Margin="0,2,0,0"/>
+                    <TextBlock Text="{Binding ChainText}" TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Text.Secondary}" Margin="0,6,0,0"/>
+                    <TextBlock Text="{Binding LastRehearsalText}" TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Text.Secondary}" Margin="0,4,0,0"/>
+                    <Button x:Name="RehearseBtn" Content="Rehearse the shutdown now (dry run)" HorizontalAlignment="Left" Padding="12,4" Margin="0,8,0,0"
+                            Click="RehearseBtn_Click"
+                            ToolTip="Runs every step of the UPS shutdown chain against the live rack WITHOUT shutting anything down: proves each host, VM, Synology and the final script still line up. Runs by itself every morning at 06:45."/>
+                </StackPanel>
+            </Border>
+
             <!-- Fleet patterns: what the PCs with a problem have in common that the others do not. -->
-            <Border Grid.Column="1" Style="{StaticResource Card}" Margin="4,0,0,0" Padding="12">
+            <Border Grid.Row="1" Style="{StaticResource Card}" Padding="12">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -197,6 +242,7 @@
                     </ScrollViewer>
                 </Grid>
             </Border>
+            </Grid>
         </Grid>
 
         <Border Grid.Row="5" Background="{StaticResource Panel.Background}" BorderBrush="{StaticResource Panel.Border}" BorderThickness="0,1,0,0" Padding="12,6">

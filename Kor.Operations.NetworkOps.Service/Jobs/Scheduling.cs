@@ -25,6 +25,8 @@ internal static class SchedulingCatalog
             "nightly observation purge; nothing else runs then"),
         new(typeof(UniFiBackupJob), UniFiBackupJob.JobName, "0 0 4 * * ?",
             "nightly: UniFi auto-backs up at 01:00, KOR-UNIFI01 stages the files at 03:15, this pulls them to FS01"),
+        new(typeof(PowerRehearsalJob), PowerRehearsalJob.JobName, "0 45 6 * * ?",
+            "daily dry run of the UPS shutdown chain against the live rack: drift is found with the lights on; before the workday, clear of the 17:00 Veeam run"),
     ];
 }
 

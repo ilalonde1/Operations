@@ -83,6 +83,18 @@ public sealed class NetworkOpsClient
     public async Task<IReadOnlyList<Resolution>> GetResolutionsAsync(CancellationToken ct)
         => (await GetAsync<List<ResolutionRow>>("api/resolutions", ct).ConfigureAwait(false)).Select(r => r.ToResolution()).ToList();
 
+    /// <summary>Both UPSes, the power verdict, whether the shutdown chain is armed, and the recent power timeline.</summary>
+    public Task<PowerSnapshot> GetPowerAsync(CancellationToken ct) => GetAsync<PowerSnapshot>("api/power", ct)!;
+
+    /// <summary>Queues a DRY RUN of the whole shutdown chain against the live rack (nothing is shut down).</summary>
+    public async Task<long> QueuePowerRehearsalAsync(CancellationToken ct)
+    {
+        using var res = await SendAsync(HttpMethod.Post, "api/power/rehearse", null, ct).ConfigureAwait(false);
+        await EnsureOkAsync(res).ConfigureAwait(false);
+        using var doc = JsonDocument.Parse(await res.Content.ReadAsStringAsync(ct).ConfigureAwait(false));
+        return doc.RootElement.GetProperty("triggerId").GetInt64();
+    }
+
     public async Task<TriggerState?> GetTriggerAsync(long triggerId, CancellationToken ct)
     {
         using var res = await SendAsync(HttpMethod.Get, $"api/triggers/{triggerId}", null, ct).ConfigureAwait(false);

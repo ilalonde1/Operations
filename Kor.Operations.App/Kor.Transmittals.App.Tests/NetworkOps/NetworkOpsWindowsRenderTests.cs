@@ -71,6 +71,9 @@ public sealed class NetworkOpsWindowsRenderTests
     {
         var center = new NetworkOpsCommandCenterViewModel(reader);
         center.Apply(snapshot, DateTime.UtcNow);
+        center.ApplyPower(reader.IsConfigured && label == "live"
+            ? reader.GetPowerAsync(CancellationToken.None).GetAwaiter().GetResult()
+            : NetworkOpsPowerCardTests.OneOnBattery(), DateTime.UtcNow);
         var written = Render(new NetworkOpsCommandCenterWindow(center), Path.Combine(dir, $"{label}-fleet.png"));
 
         // The PC window on the worst PC: the one with the most to explain.

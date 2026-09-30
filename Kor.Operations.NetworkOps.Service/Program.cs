@@ -71,6 +71,8 @@ try
     builder.Services.AddSingleton<NetworkOpsStore>();
     builder.Services.AddSingleton<JobDispatcher>();
     builder.Services.AddSingleton<Kor.Operations.NetworkOps.Service.Sweep.HealthSweeper>();
+    builder.Services.AddSingleton<Kor.Operations.NetworkOps.Service.Power.PowerState>();
+    builder.Services.AddSingleton<Kor.Operations.NetworkOps.Service.Power.PowerChainRunner>();
 
     if (runOnce is null)
     {
@@ -78,6 +80,7 @@ try
         builder.Services.AddHostedService<HeartbeatService>();
         builder.Services.AddHostedService<Kor.Operations.NetworkOps.Service.Sweep.TriggerPoller>();
         builder.Services.AddHostedService<Kor.Operations.NetworkOps.Service.Api.ApiHost>();
+        builder.Services.AddHostedService<Kor.Operations.NetworkOps.Service.Power.PowerWatchService>();
     }
     else
     {

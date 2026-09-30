@@ -44,6 +44,18 @@ public sealed record AnnotateRequest(string? Note, DateTime? UntilUtc);
 
 public sealed record NoteRequest(string Body);
 
+// ---- rack power: what GET /api/power returns.
+
+public sealed record UpsRow(string Name, string Address, DateTime AtUtc, bool Reachable, string Source, int? SecondsOnBattery,
+    int? MinutesRemaining, int? ChargePercent, int? LoadPercent, bool BatteryLow, bool ReplaceBattery, string? Error);
+
+public sealed record PowerEventRow(DateTime AtUtc, string Kind, bool DryRun, bool Ok, string Text);
+
+/// <param name="Level">Normal | Degraded | Trigger, or Off when the watcher is not configured.</param>
+/// <param name="Armed">False: a real outage runs the chain as a dry run only.</param>
+public sealed record PowerSnapshot(IReadOnlyList<UpsRow> Ups, string Level, string Reason, DateTime? LevelSinceUtc, bool Armed,
+    IReadOnlyList<PowerEventRow> RecentEvents);
+
 /// <summary>A resolution as the page needs it for fix learning (Resolution itself carries computed members).</summary>
 public sealed record ResolutionRow(string RuleKey, DateTime ClearedUtc, bool Rebooted, IReadOnlyList<FactChange> ChangedFacts, IReadOnlyList<string> Actions)
 {

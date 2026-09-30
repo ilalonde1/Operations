@@ -10,6 +10,9 @@
 
   <ItemGroup>
     <PackageReference Include="System.DirectoryServices" Version="8.0.0" />
+    <!-- The rack channels: SNMPv3 to the UPS cards (SHA-256/AES, MIT), SSH to the ESXi hosts. -->
+    <PackageReference Include="Lextm.SharpSnmpLib" Version="12.5.7" />
+    <PackageReference Include="SSH.NET" Version="2026.0.0" />
   </ItemGroup>
 
   <ItemGroup>

@@ -77,6 +77,14 @@ public partial class NetworkOpsCommandCenterWindow : Window
 
     private void OpenPc_Click(object sender, RoutedEventArgs e) => OpenSelected();
 
+    private async void RehearseBtn_Click(object sender, RoutedEventArgs e)
+    {
+        RehearseBtn.IsEnabled = false;
+        try { await _vm.RehearseAsync(ResetToken()).ConfigureAwait(true); }
+        catch (OperationCanceledException) { /* superseded */ }
+        finally { RehearseBtn.IsEnabled = true; }
+    }
+
     private void OpenSelected()
     {
         if (FleetGrid.SelectedItem is not FleetRow row || _vm.Snapshot is not { } snapshot) return;

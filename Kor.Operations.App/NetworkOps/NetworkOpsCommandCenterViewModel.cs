@@ -47,6 +47,14 @@ public sealed class NetworkOpsCommandCenterViewModel : ObservableObject
 
     public ObservableCollection<PatternRow> Patterns { get; } = new();
 
+    // ---- Rack power: both UPSes, the verdict, the chain.
+    public ObservableCollection<UpsLine> Ups { get; } = new();
+    public string PowerHeadline { get; private set; } = "—";
+    public Brush PowerBrush { get; private set; } = NetworkOpsBrushes.Unknown;
+    public string PowerReason { get; private set; } = "";
+    public string ChainText { get; private set; } = "";
+    public string LastRehearsalText { get; private set; } = "";
+
     public string CriticalHeadline { get; private set; } = "—";
     public string AttentionHeadline { get; private set; } = "—";
     public string HealthyHeadline { get; private set; } = "—";
@@ -117,6 +125,12 @@ public sealed class NetworkOpsCommandCenterViewModel : ObservableObject
         {
             var snapshot = await _client.GetFleetAsync(ct).ConfigureAwait(true);
             Apply(snapshot, DateTime.UtcNow);
+            // Power is its own read: a service without the rack configured must not blank the PCs.
+            try { ApplyPower(await _client.GetPowerAsync(ct).ConfigureAwait(true), DateTime.UtcNow); }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                ApplyPower(new PowerSnapshot([], "Off", $"Could not read rack power: {ex.Message}", null, false, []), DateTime.UtcNow);
+            }
             StatusMessage = $"Loaded at {DateTime.Now:HH:mm:ss}. {snapshot.Devices.Count} PCs, {snapshot.OpenFindings.Count} open findings, {snapshot.Patterns.Count} fleet patterns.";
             _lastSuccessfulRefreshAt = DateTimeOffset.Now;
             IsConnectionLost = false;
@@ -181,6 +195,46 @@ public sealed class NetworkOpsCommandCenterViewModel : ObservableObject
         foreach (var name in new[] { nameof(CriticalHeadline), nameof(AttentionHeadline), nameof(HealthyHeadline), nameof(StaleHeadline),
                                      nameof(ServiceHeadline), nameof(ServiceSubline), nameof(ServiceBrush), nameof(Snapshot) })
             OnPropertyChanged(name);
+    }
+
+    /// <summary>Fills the Rack power card. Internal so tests can drive it without the service.</summary>
+    internal void ApplyPower(PowerSnapshot p, DateTime nowUtc)
+    {
+        Ups.Clear();
+        foreach (var u in p.Ups) Ups.Add(UpsLine.From(u, nowUtc));
+
+        (PowerHeadline, PowerBrush) = p.Level switch
+        {
+            "Normal" => ("Mains OK", NetworkOpsBrushes.Healthy),
+            "Degraded" => ("Needs attention", NetworkOpsBrushes.Attention),
+            "Trigger" => ("SHUTTING DOWN", NetworkOpsBrushes.Critical),
+            _ => ("Not watched", NetworkOpsBrushes.Unknown),
+        };
+        PowerReason = p.LevelSinceUtc is { } since ? $"{p.Reason} (since {NetworkOpsText.When(since)})" : p.Reason;
+        ChainText = p.Armed
+            ? "Shutdown chain ARMED: a real outage shuts the rack down cleanly."
+            : "Shutdown chain NOT armed: a real outage runs it as a dry run only (until the live test passes).";
+        var rehearsal = p.RecentEvents.FirstOrDefault(e => e.Kind == "ChainEnd");
+        LastRehearsalText = rehearsal is null
+            ? "No chain run recorded yet."
+            : $"Last chain run {NetworkOpsText.When(rehearsal.AtUtc)}{(rehearsal.DryRun ? " (dry run)" : "")}: {(rehearsal.Ok ? "" : "PROBLEMS — ")}{rehearsal.Text}";
+
+        foreach (var name in new[] { nameof(PowerHeadline), nameof(PowerBrush), nameof(PowerReason), nameof(ChainText), nameof(LastRehearsalText) })
+            OnPropertyChanged(name);
+    }
+
+    /// <summary>Queues a dry run of the shutdown chain; its result shows on the card within a few minutes.</summary>
+    public async Task RehearseAsync(CancellationToken ct)
+    {
+        try
+        {
+            await _client.QueuePowerRehearsalAsync(ct).ConfigureAwait(true);
+            StatusMessage = "Rehearsal queued: a dry run of the whole chain against the live rack (nothing is shut down). The result shows on the Rack power card in about 2 minutes.";
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            StatusMessage = $"Rehearsal not queued: {ex.Message}";
+        }
     }
 
     private void RebuildFleet()

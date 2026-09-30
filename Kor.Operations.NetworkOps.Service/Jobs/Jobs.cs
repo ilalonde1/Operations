@@ -86,6 +86,7 @@ internal sealed class MaintenanceJob(NetworkOpsStore store, IOptions<NetworkOpsO
         var keep = options.Value.ObservationRetentionDays;
         var obs = await store.PurgeObservationsAsync(keep, DateTime.UtcNow, ct);
         var metrics = await store.PurgeMetricsAsync(keep, DateTime.UtcNow, ct);
-        return $"purged {obs} observations and {metrics} metric points older than {keep} days";
+        var power = await store.PowerSchemaPresentAsync(ct) ? await store.PurgePowerReadingsAsync(keep, DateTime.UtcNow, ct) : 0;
+        return $"purged {obs} observations, {metrics} metric points and {power} UPS readings older than {keep} days";
     }
 }

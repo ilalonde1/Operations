@@ -21,7 +21,7 @@ namespace Kor.Operations.NetworkOps.Service.Api;
 //
 // Reachable only from the LAN and the VPN (Windows firewall rule on APP01), and the page pins this
 // certificate by its SHA-256 hash: there is no internal CA, and a pin is stricter than one.
-internal sealed class ApiHost(IOptions<NetworkOpsOptions> options, NetworkOpsStore store, ILoggerFactory loggers, ILogger<ApiHost> log) : BackgroundService
+internal sealed class ApiHost(IOptions<NetworkOpsOptions> options, NetworkOpsStore store, Power.PowerState power, ILoggerFactory loggers, ILogger<ApiHost> log) : BackgroundService
 {
     private static readonly TimeSpan MaxSnooze = TimeSpan.FromDays(90);
 
@@ -42,6 +42,8 @@ internal sealed class ApiHost(IOptions<NetworkOpsOptions> options, NetworkOpsSto
         builder.Services.AddSingleton(loggers);
         builder.Services.AddSingleton(typeof(ILogger<>), typeof(Logger<>));
         builder.Services.AddSingleton(store);
+        builder.Services.AddSingleton(power);
+        builder.Services.AddSingleton(options);
         builder.WebHost.ConfigureKestrel(k =>
         {
             k.AddServerHeader = false;
@@ -107,6 +109,19 @@ internal sealed class ApiHost(IOptions<NetworkOpsOptions> options, NetworkOpsSto
                 : Annotate(s, id, NetworkOpsStore.Annotation.Snooze, h, body.Note, DateTime.SpecifyKind(until, DateTimeKind.Utc), ct));
         api.MapPost("/findings/{id:long}/reopen", (long id, HttpContext h, NetworkOpsStore s, CancellationToken ct) =>
             Annotate(s, id, NetworkOpsStore.Annotation.Reopen, h, null, null, ct));
+
+        // Rack power: the live UPS readings, the verdict, whether the chain is armed, and the recent timeline.
+        api.MapGet("/power", async (Power.PowerState ps, IOptions<NetworkOpsOptions> o, NetworkOpsStore s, CancellationToken ct) =>
+        {
+            IReadOnlyList<PowerEventRow> events;
+            try { events = await s.RecentPowerEventsAsync(40, ct); }
+            catch (Microsoft.Data.SqlClient.SqlException) { events = []; }   // before 004 has run
+            return ps.Snapshot(o.Value.PowerChainArmed, events);
+        });
+        // Rehearse the chain now (a dry run, same as the 06:45 one). Arming is NOT an API: it is a
+        // configuration change on APP01, made after the live test -- never a button.
+        api.MapPost("/power/rehearse", async (HttpContext h, NetworkOpsStore s, CancellationToken ct) =>
+            Results.Accepted(null, new { triggerId = await s.QueueJobAsync(Jobs.PowerRehearsalJob.JobName, ApiAccess.UserOf(h.User), ct) }));
 
         api.MapPost("/devices/{id:int}/notes", async (int id, NoteRequest body, HttpContext h, NetworkOpsStore s, CancellationToken ct) =>
             string.IsNullOrWhiteSpace(body.Body) ? Results.BadRequest(new { error = "a note needs text" })
