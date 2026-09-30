@@ -36,7 +36,29 @@ if `V<N>.zip` already exists (no clobber) and leaves the prior version as rollba
   executables a Windows app cannot run. V12 shipped all 445 MB as dead weight.
 - **Graft the EmailFilerv2 Outlook add-in.** V12 bundled it alongside the main app
   (`setup.exe`, `EmailFilerv2.vsto`, `Application Files\EmailFilerv2_1_0_0_49\` — 90 files).
-  It's a separate product; carry it forward unchanged from the previous zip, don't rebuild it.
+  It's a separate product; by default it carries forward unchanged from the previous zip.
+
+## Shipping a new add-in version
+
+Only when the add-in code changed. ClickOnce-publish it with MSBuild (it is .NET Framework VSTO,
+not `dotnet`), everything into a scratch folder, one revision above the newest
+`Application Files\EmailFilerv2_*` in the previous zip:
+
+```powershell
+& "<VS>\MSBuild\Current\Bin\MSBuild.exe" EmailFiler\EmailFilerv2\EmailFilerv2.csproj -t:Publish `
+  -p:Configuration=Release -p:ApplicationVersion=1.0.0.<N> `
+  -p:OutputPath=<scratch>\bin\ -p:IntermediateOutputPath=<scratch>\obj\ -p:PublishDir=<scratch>\pub\
+.\tools\deploy-newerforma-app.ps1 -Version <V> -AddinPublishDir <scratch>\pub -StageOnly   # launch-test the staged exe
+.\tools\deploy-newerforma-app.ps1 -Version <V> -AddinPublishDir <scratch>\pub -SkipPublish # then ship
+```
+
+- **Signing:** the manifests are signed with the `CN=kor\ilalonde` certificate (thumbprint
+  `A33EA299…`) in Ian's `CurrentUser\My`. Installed copies accept an update only from the same key —
+  confirm the new `.vsto` carries `publicKeyToken="3f873ecfce7c1aa9"`, as every prior version does.
+- **The build re-registers Outlook's add-in** (`HKCU\Software\Microsoft\Office\Outlook\Addins\EmailFilerv2`
+  `Manifest`) to the scratch output. Snapshot it before and put it back after.
+- **Check the package, not the source:** diff the new `.vsto` / `.dll.manifest` against the previous
+  version's (only the version should differ) and confirm the new types are in `EmailFilerv2.dll.deploy`.
 - **Version number is an operator decision** — history is non-sequential (V8 → V12 → V13).
   The app's assembly FileVersion is `0.0.0.0`; `V<N>` is a package counter. `-Version` is mandatory.
 
@@ -47,6 +69,9 @@ A build that compiles can still fail to launch. Before trusting a deploy, launch
 (the single-click typeahead commit and DB-backed brief exercise the real runtime path).
 
 ## History
+
+- **V21 (2026-09-30)** — EmailFilerv2 **1.0.0.51**: Outlook-folder filing records the sender's SMTP
+  address and the Message-ID. Jim DesRoches restored to Financials. Built from a clean worktree.
 
 - **V16 (2026-08-24)** — PMTools security group expanded to 17 (six drafters added); dead
   `SecurityGroup.Financials` placeholder removed; includes DXF->ETABS work. `.playwright` culled
