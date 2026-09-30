@@ -181,7 +181,7 @@
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
                             <DataGridTextColumn Header="Kind"         Binding="{Binding Kind}"            Width="80"/>
-                            <DataGridTextColumn Header="Device"       Binding="{Binding Name}"            Width="230"/>
+                            <DataGridTextColumn Header="Device"       Binding="{Binding Name}"            Width="280"/>
                             <DataGridTextColumn Header="What matters" Binding="{Binding Headline}"        Width="*"/>
                             <DataGridTextColumn Header="Open"         Binding="{Binding LiveCount}"       Width="50"/>
                             <DataGridTextColumn Header="Read"         Binding="{Binding LastCheckedText}" Width="90"/>

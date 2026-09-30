@@ -37,6 +37,8 @@ public sealed class NetworkOpsRackTests
             D(109, "UniFi network", "Network", "11 of 13 devices checking in"),
             D(110, "Core switch (EdgeSwitch 10G)", "Network", "10 ports up · up 4.2 days"),
             D(111, "Internet (Netgate + Shaw)", "Internet", "out via 184.71.160.54 · worst loss 0%"),
+            D(112, "KOR-APP01 (apps, SQL, NetworkOps)", "Server", "up 4.2 days · C: 50 GB free, D: 169 GB free"),
+            D(113, "KOR-DC01 (domain controller, DNS, DHCP)", "Server", "up 4.2 days · C: 49 GB free"),
         };
         FleetFinding F(long id, string device, string rule, Severity s, string title, string evidence)
             => new(id, device, rule, s, title, evidence, nowUtc.AddHours(-6), read, null, null, null, null);
@@ -47,6 +49,7 @@ public sealed class NetworkOpsRackTests
             F(3, "UniFi network", "unifi.offline:f4:92:bf:ae:1f:23", Severity.Warning, "USF5P 192.168.1.53 is offline", "USF5P at 192.168.1.53 last checked in 87 days ago"),
             F(4, "UniFi network", "unifi.offline:74:83:c2:07:f0:b7", Severity.Warning, "USF5P 192.168.1.59 is offline", "USF5P at 192.168.1.59 has never checked in to this controller"),
             F(5, "UC3200 SAN", "syno.update", Severity.Info, "A DSM update is available", "running DSM 6.2-23036; install it in a maintenance window, not live"),
+            F(6, "KOR-DC01 (domain controller, DNS, DHCP)", "server.unpatched", Severity.Warning, "Server has not been patched", "last update installed 71 days ago"),
         };
         var facts = new Dictionary<string, IReadOnlyDictionary<string, string>>
         {
@@ -65,8 +68,8 @@ public sealed class NetworkOpsRackTests
         Assert.Equal("Veeam backups (BK01)", vm.Rack[0].Name);                 // the critical one first
         Assert.Equal(HealthState.Critical, vm.Rack[0].State);
         Assert.Same(NetworkOpsBrushes.Critical, vm.RackBrush);
-        Assert.Equal("9 / 11", vm.RackHeadline);                              // Veeam critical, UniFi attention
-        Assert.StartsWith("Rack: 1 critical, 1 need attention", vm.RackSubline);
+        Assert.Equal("10 / 13", vm.RackHeadline);                             // Veeam critical, UniFi and DC01 attention
+        Assert.StartsWith("Rack: 1 critical, 2 need attention", vm.RackSubline);
         var healthy = vm.Rack.Where(r => r.State == HealthState.Healthy).Select(r => r.Kind).ToList();
         Assert.Equal("Internet", healthy[0]);                                  // the line in leads the healthy ones
         Assert.Equal("5 of 6 VMs running · 314 sensors · CPU 12% · RAM 78%", vm.Rack.Single(r => r.Name.StartsWith("ESXi host .10")).Headline);
@@ -94,7 +97,7 @@ public sealed class NetworkOpsRackTests
         Assert.Equal(["UC3200 SAN", "NAS01 (Veeam repository)", "Synology02 (Veeam repository)"], vm.Rack.Select(r => r.Name));
         vm.FilterText = "";
         vm.ProblemsOnly = true;
-        Assert.Equal(["Veeam backups (BK01)", "UniFi network", "UC3200 SAN"], vm.Rack.Select(r => r.Name));
+        Assert.Equal(["Veeam backups (BK01)", "KOR-DC01 (domain controller, DNS, DHCP)", "UniFi network", "UC3200 SAN"], vm.Rack.Select(r => r.Name));
     }
 
     [Fact]
