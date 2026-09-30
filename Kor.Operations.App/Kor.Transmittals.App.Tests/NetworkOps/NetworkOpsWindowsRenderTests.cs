@@ -89,6 +89,19 @@ public sealed class NetworkOpsWindowsRenderTests
         var device = new NetworkOpsDeviceViewModel(reader, snapshot, worst.Device);
         if (reader.IsConfigured) device.LoadHistoryAsync(CancellationToken.None).GetAwaiter().GetResult();
         written += Render(new NetworkOpsDeviceWindow(device), Path.Combine(dir, $"{label}-pc-{worst.Name}.png"));
+        if (label != "fixture") return written;
+
+        // The Fix dialog on a PC someone is actively using, with the restart chosen: the case with the most on it
+        // (the warning, the relabelled button). It sizes to its content, so it is given a height to render into.
+        FixOption[] fixes =
+        [
+            new("start-service", "Start a service", "Starts a stopped Windows service and sets it to start on its own.", false, "Service name", "Spooler"),
+            new("restart-pc", "Restart the PC", "Restarts in 5 minutes, with a message on screen so whoever is on it can save.", true, null, null),
+            new("run-command", "Run a command", "Runs PowerShell on the PC as SYSTEM. What ran and what it printed are recorded.", false, "PowerShell", null),
+        ];
+        var fix = new NetworkOpsFixWindow("Not restarted in 21 days", worst.Name, worst.Presence, someoneActive: true, fixes) { Height = 560 };
+        fix.FixList.SelectedIndex = 1;
+        written += Render(fix, Path.Combine(dir, $"{label}-fix-dialog.png"));
         return written;
     }
 

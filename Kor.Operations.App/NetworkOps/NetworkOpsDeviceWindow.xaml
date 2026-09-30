@@ -48,6 +48,7 @@
                     <TextBlock Text="{Binding IdentityLine}" Margin="0,4,0,0"/>
                     <TextBlock Text="{Binding HardwareLine}" Foreground="{StaticResource Text.Secondary}" TextWrapping="Wrap"/>
                     <TextBlock Text="{Binding FreshnessLine}" Foreground="{StaticResource Text.Secondary}" FontSize="11" Margin="0,2,0,0"/>
+                    <TextBlock Text="{Binding PresenceLine}" FontWeight="SemiBold" Margin="0,4,0,0"/>
                 </StackPanel>
                 <StackPanel Grid.Column="1" VerticalAlignment="Center" MaxWidth="420">
                     <Button x:Name="CheckNowBtn" Content="{Binding CheckButtonText}" Padding="16,6" HorizontalAlignment="Right"
@@ -70,6 +71,7 @@
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
                     <TextBlock Grid.Row="0" Text="Open now" FontSize="14" FontWeight="SemiBold"/>
@@ -117,6 +119,9 @@
                         <TextBox Grid.Column="0" Text="{Binding ActionNote, UpdateSourceTrigger=PropertyChanged}" VerticalContentAlignment="Center"
                                  ToolTip="Optional reason, saved with an acknowledge or snooze: 'new drive ordered', 'user is away'."/>
                         <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="8,0,0,0">
+                            <Button x:Name="FixBtn" Content="Fix…" Padding="14,4" Margin="0,0,10,0" FontWeight="SemiBold" Click="Fix_Click"
+                                    IsEnabled="{Binding CanFix}"
+                                    ToolTip="Run a fix for the selected finding on this machine (as SYSTEM, through the service, recorded). It is re-checked afterwards."/>
                             <Button Content="Acknowledge" Padding="10,4" Margin="0,0,6,0" Click="Acknowledge_Click"
                                     ToolTip="Known and accepted: stops counting against this device until it clears and comes back."/>
                             <Button Content="Snooze 1 day" Padding="10,4" Margin="0,0,6,0" Click="SnoozeDay_Click"/>
@@ -126,6 +131,7 @@
                                     ToolTip="Undo an acknowledge or snooze: it counts again at once."/>
                         </StackPanel>
                     </Grid>
+                    <TextBlock Grid.Row="3" Text="{Binding FixStatus}" TextWrapping="Wrap" FontWeight="SemiBold" Margin="0,6,0,0"/>
                 </Grid>
             </Border>
 
@@ -179,6 +185,17 @@
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="When"   Binding="{Binding WhenText}"    Width="150"/>
                         <DataGridTextColumn Header="Change" Binding="{Binding Description}" Width="*"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </TabItem>
+            <TabItem Header="Fixes run">
+                <DataGrid ItemsSource="{Binding ActionsTaken}" AutoGenerateColumns="False" IsReadOnly="True" HeadersVisibility="Column" GridLinesVisibility="Horizontal">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="When"   Binding="{Binding WhenText}" Width="140"/>
+                        <DataGridTextColumn Header="Fix"    Binding="{Binding Fix}"      Width="220"/>
+                        <DataGridTextColumn Header="By"     Binding="{Binding By}"       Width="220"/>
+                        <DataGridTextColumn Header="Status" Binding="{Binding Status}"   Width="80"/>
+                        <DataGridTextColumn Header="What it said" Binding="{Binding Result}" Width="*"/>
                     </DataGrid.Columns>
                 </DataGrid>
             </TabItem>

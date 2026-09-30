@@ -26,6 +26,23 @@ public partial class NetworkOpsDeviceWindow : Window
 
     private async void Acknowledge_Click(object sender, RoutedEventArgs e) => await Run(_vm.AcknowledgeAsync).ConfigureAwait(true);
 
+    /// <summary>Choose a fix for the selected finding, run it, follow it to the re-check. A restart on a PC someone is
+    /// actively using is refused by the service until it is confirmed here.</summary>
+    private async void Fix_Click(object sender, RoutedEventArgs e)
+    {
+        if (_vm.SelectedFinding is not { } row) return;
+        await Run(async ct =>
+        {
+            var fixes = await _vm.FixesForSelectedAsync(ct).ConfigureAwait(true);
+            var dlg = new NetworkOpsFixWindow(row.Title, _vm.DeviceName, _vm.Device.Presence ?? "", _vm.SomeoneActive, fixes) { Owner = this };
+            if (dlg.ShowDialog() != true || dlg.Chosen is not { } fix) return;
+            var (refused, needsConfirmation) = await _vm.RunFixAsync(fix, dlg.Param, confirmed: false, ct).ConfigureAwait(true);
+            if (needsConfirmation && MessageBox.Show(this, $"{refused}\n\nRestart it anyway? They get a 5-minute warning on screen.", "Someone is using this PC",
+                    MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) == MessageBoxResult.Yes)
+                await _vm.RunFixAsync(fix, dlg.Param, confirmed: true, ct).ConfigureAwait(true);
+        }).ConfigureAwait(true);
+    }
+
     private async void SnoozeDay_Click(object sender, RoutedEventArgs e) => await Run(ct => _vm.SnoozeAsync(TimeSpan.FromDays(1), ct)).ConfigureAwait(true);
 
     private async void SnoozeWeek_Click(object sender, RoutedEventArgs e) => await Run(ct => _vm.SnoozeAsync(TimeSpan.FromDays(7), ct)).ConfigureAwait(true);

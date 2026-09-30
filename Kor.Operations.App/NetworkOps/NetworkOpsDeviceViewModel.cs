@@ -52,6 +52,18 @@ public sealed class NetworkOpsDeviceViewModel : ObservableObject
     public string OthersHeading => IsRack ? "Other devices" : "Other PCs";
     public bool ShowsPatterns => !IsRack;
 
+    /// <summary>PCs: who was on it at the last check. Empty for the rack.</summary>
+    public string PresenceLine => IsRack || _device.Presence is null ? "" : $"On it at the last check: {_device.Presence}";
+    public bool SomeoneActive => _device.PresenceState == "Active";
+
+    // ---- fixes
+    public ObservableCollection<ActionLine> ActionsTaken { get; } = new();
+    private string _fixStatus = string.Empty;
+    private bool _isFixing;
+    public string FixStatus { get => _fixStatus; private set => SetField(ref _fixStatus, value); }
+    public bool CanFix => _selectedFinding is not null && !_isFixing;
+    public DeviceRow Device => _device;
+
     public string StateLabel { get; private set; } = string.Empty;
     public Brush StateBrush { get; private set; } = NetworkOpsBrushes.Unknown;
     public string IdentityLine { get; private set; } = string.Empty;
@@ -80,7 +92,10 @@ public sealed class NetworkOpsDeviceViewModel : ObservableObject
         set
         {
             if (SetField(ref _selectedFinding, value))
+            {
                 Explain();
+                OnPropertyChanged(nameof(CanFix));
+            }
         }
     }
 
@@ -189,7 +204,8 @@ public sealed class NetworkOpsDeviceViewModel : ObservableObject
             });
         _selectedFinding = OpenFindings.FirstOrDefault(r => r.Finding.FindingId == selectedId) ?? OpenFindings.FirstOrDefault();
 
-        foreach (var name in new[] { nameof(StateLabel), nameof(StateBrush), nameof(IdentityLine), nameof(HardwareLine), nameof(FreshnessLine), nameof(SelectedFinding) })
+        foreach (var name in new[] { nameof(StateLabel), nameof(StateBrush), nameof(IdentityLine), nameof(HardwareLine), nameof(FreshnessLine), nameof(SelectedFinding),
+                                     nameof(PresenceLine), nameof(SomeoneActive), nameof(CanFix) })
             OnPropertyChanged(name);
         Explain();
     }
@@ -212,6 +228,10 @@ public sealed class NetworkOpsDeviceViewModel : ObservableObject
         Notes.Clear();
         foreach (var n in history.Notes)
             Notes.Add(new NoteLine { Header = $"{n.Author} · {NetworkOpsText.When(n.CreatedUtc)}", Body = n.Body });
+
+        ActionsTaken.Clear();
+        foreach (var a in history.Actions ?? [])
+            ActionsTaken.Add(ActionLine.From(a));
     }
 
     private void Explain()
@@ -299,6 +319,53 @@ public sealed class NetworkOpsDeviceViewModel : ObservableObject
         {
             IsChecking = false;
         }
+    }
+
+    /// <summary>The fixes the service offers for the selected finding.</summary>
+    public async Task<IReadOnlyList<FixOption>> FixesForSelectedAsync(CancellationToken ct)
+        => _selectedFinding?.Finding is { } f ? await _client.GetFixesAsync(f.RuleKey, ct).ConfigureAwait(true) : [];
+
+    /// <summary>
+    /// Asks the service to run one fix and follows it to the end: queued, running, the fix's own verdict, then the
+    /// re-check the service queues, then a reload -- so what the page shows afterwards is the machine as it now is.
+    /// Returns the refusal when the service says someone is using the machine and it needs confirming.
+    /// </summary>
+    public async Task<(string? Refused, bool NeedsConfirmation)> RunFixAsync(FixOption fix, string? param, bool confirmed, CancellationToken ct)
+    {
+        if (_isFixing) return (null, false);
+        _isFixing = true; OnPropertyChanged(nameof(CanFix));
+        try
+        {
+            var (id, refused, needsConfirmation) = await _client.RequestFixAsync(_device.DeviceId,
+                new FixRequest(fix.Id, string.IsNullOrWhiteSpace(param) ? null : param, _selectedFinding?.Finding.RuleKey, ActionNote, confirmed), ct).ConfigureAwait(true);
+            if (id is null) { FixStatus = $"Not run: {refused}"; return (refused, needsConfirmation); }
+            FixStatus = $"{fix.Title}: queued…";
+            var started = DateTime.UtcNow;
+            ActionRow? a = null;
+            while (DateTime.UtcNow - started < TimeSpan.FromMinutes(60))
+            {
+                await Task.Delay(TimeSpan.FromSeconds(3), ct).ConfigureAwait(true);
+                a = await _client.GetActionAsync(id.Value, ct).ConfigureAwait(true);
+                if (a is null) break;
+                if (a.Status is "Done" or "Failed" or "Refused") break;
+                FixStatus = $"{fix.Title}: {(a.Status == "Running" ? "running on the machine" : "queued")} ({(int)(DateTime.UtcNow - started).TotalSeconds}s)…";
+            }
+            FixStatus = a is null ? $"{fix.Title}: the run record disappeared." : $"{fix.Title} — {a.Status}: {a.Detail}";
+            ActionNote = string.Empty;
+            if (a?.Status == "Done" && fix.Id != "restart-pc")
+            {
+                FixStatus += " · re-checking…";
+                await Task.Delay(TimeSpan.FromSeconds(35), ct).ConfigureAwait(true);   // the re-check the service queued
+            }
+            await ReloadAsync(ct).ConfigureAwait(true);
+            return (null, false);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            FixStatus = $"Fix failed: {ex.Message}";
+            return (null, false);
+        }
+        finally { _isFixing = false; OnPropertyChanged(nameof(CanFix)); }
     }
 
     public Task AcknowledgeAsync(CancellationToken ct)

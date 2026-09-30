@@ -98,6 +98,35 @@ public sealed class NetworkOpsClient
         return doc.RootElement.GetProperty("triggerId").GetInt64();
     }
 
+    // ------------------------------------------------------------------ fixes
+
+    /// <summary>The fixes offered for a finding: the specific ones first, "Run a command" last.</summary>
+    public async Task<IReadOnlyList<FixOption>> GetFixesAsync(string ruleKey, CancellationToken ct)
+        => await GetAsync<List<FixOption>>($"api/fixes?ruleKey={Uri.EscapeDataString(ruleKey)}", ct).ConfigureAwait(false);
+
+    /// <summary>Asks the service to run a fix. Returns the run's id; or, when refused, why -- and whether confirming would let it run.</summary>
+    public async Task<(long? ActionId, string? Refused, bool NeedsConfirmation)> RequestFixAsync(int deviceId, FixRequest request, CancellationToken ct)
+    {
+        using var res = await SendAsync(HttpMethod.Post, $"api/devices/{deviceId}/fixes", request, ct).ConfigureAwait(false);
+        if (res.StatusCode == HttpStatusCode.Conflict)
+        {
+            using var doc = JsonDocument.Parse(await res.Content.ReadAsStringAsync(ct).ConfigureAwait(false));
+            return (null, doc.RootElement.GetProperty("error").GetString(),
+                doc.RootElement.TryGetProperty("needsConfirmation", out var n) && n.GetBoolean());
+        }
+        await EnsureOkAsync(res).ConfigureAwait(false);
+        using var ok = JsonDocument.Parse(await res.Content.ReadAsStringAsync(ct).ConfigureAwait(false));
+        return (ok.RootElement.GetProperty("actionId").GetInt64(), null, false);
+    }
+
+    public async Task<ActionRow?> GetActionAsync(long actionId, CancellationToken ct)
+    {
+        using var res = await SendAsync(HttpMethod.Get, $"api/actions/{actionId}", null, ct).ConfigureAwait(false);
+        if (res.StatusCode == HttpStatusCode.NotFound) return null;
+        await EnsureOkAsync(res).ConfigureAwait(false);
+        return await res.Content.ReadFromJsonAsync<ActionRow>(Json, ct).ConfigureAwait(false);
+    }
+
     public async Task<TriggerState?> GetTriggerAsync(long triggerId, CancellationToken ct)
     {
         using var res = await SendAsync(HttpMethod.Get, $"api/triggers/{triggerId}", null, ct).ConfigureAwait(false);

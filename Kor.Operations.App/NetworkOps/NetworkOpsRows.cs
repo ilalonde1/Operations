@@ -26,6 +26,8 @@ public sealed class FleetRow
 
     /// <summary>Workstation, or what the rack device is (Host, Storage, UPS, Backup, Network, Internet).</summary>
     public string Kind => Device.Kind;
+    /// <summary>Who was on the PC at the last check ("kevinw · active", "nobody signed in").</summary>
+    public string Presence => Device.Presence ?? "";
     public bool IsRack => Kor.Operations.NetworkOps.Core.Rack.RackKinds.IsRack(Device.Kind);
 
     public string StateLabel => NetworkOpsText.Label(State);
@@ -139,6 +141,25 @@ public sealed class ChangeRow
 {
     public required string WhenText { get; init; }
     public required string Description { get; init; }
+}
+
+/// <summary>A fix run on this machine: when, what, who, and what it said.</summary>
+public sealed class ActionLine
+{
+    public required string WhenText { get; init; }
+    public required string Fix { get; init; }
+    public required string By { get; init; }
+    public required string Status { get; init; }
+    public required string Result { get; init; }
+
+    internal static ActionLine From(ActionRow a) => new()
+    {
+        WhenText = NetworkOpsText.When(a.RequestedUtc),
+        Fix = Kor.Operations.NetworkOps.Core.Actions.FixCatalog.Get(a.Kind)?.Title ?? a.Kind,
+        By = a.RequestedBy,
+        Status = a.Status,
+        Result = a.Detail ?? "",
+    };
 }
 
 public sealed class NoteLine

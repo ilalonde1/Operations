@@ -30,10 +30,10 @@ public sealed class NetworkOpsViewModelTests
     {
         var devices = new List<DeviceRow>
         {
-            new(1, "KOR-101", Now.AddMinutes(-3), Now.AddMinutes(-30)),
-            new(2, "KOR-216", Now.AddMinutes(-3), Now.AddMinutes(-30)),
-            new(3, "KOR-305", Now.AddMinutes(-3), Now.AddMinutes(-30)),
-            new(4, "KOR-208-N", Now.AddMinutes(-3), Now.AddMinutes(-30)),
+            new(1, "KOR-101", Now.AddMinutes(-3), Now.AddMinutes(-30), Presence: "nobody signed in", PresenceState: "Nobody"),
+            new(2, "KOR-216", Now.AddMinutes(-3), Now.AddMinutes(-30), Presence: "rchan · locked since 12:10", PresenceState: "Locked"),
+            new(3, "KOR-305", Now.AddMinutes(-3), Now.AddMinutes(-30), Presence: "nobody at the console · jli on a remote session, idle 12 min", PresenceState: "RemoteOnly"),
+            new(4, "KOR-208-N", Now.AddMinutes(-3), Now.AddMinutes(-30), Presence: "kwurmlinger · active", PresenceState: "Active"),
             new(5, "SPARE8", null, null),
         };
         var engine = new Dictionary<string, string> { [Facts.Model] = "Lenovo 30DH", ["access.engine.2016"] = "16.0.5044.1000" };
@@ -164,6 +164,20 @@ public sealed class NetworkOpsViewModelTests
         var row = Assert.Single(vm.OpenFindings);
         Assert.Equal("Acknowledged by ian", row.QuietText);
         Assert.True(vm.SelectedIsQuiet);
+    }
+
+    [Fact]
+    public void Who_is_on_the_pc_shows_on_the_row_and_the_page_and_only_active_counts_as_in_use()
+    {
+        var vm = Center();
+        Assert.Equal("kwurmlinger · active", vm.Fleet.Single(r => r.Name == "KOR-208-N").Presence);
+        Assert.Equal("", vm.Fleet.Single(r => r.Name == "SPARE8").Presence);
+
+        Assert.Equal("On it at the last check: kwurmlinger · active", Device("KOR-208-N").PresenceLine);
+        Assert.True(Device("KOR-208-N").SomeoneActive);
+        Assert.False(Device("KOR-216").SomeoneActive);   // locked: a restart needs no confirmation
+        Assert.False(Device("KOR-305").SomeoneActive);   // remote-only: nobody at the keyboard
+        Assert.Equal("", Device("SPARE8").PresenceLine);
     }
 
     [Fact]

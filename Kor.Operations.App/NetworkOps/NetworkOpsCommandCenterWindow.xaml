@@ -230,10 +230,11 @@
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
-                            <DataGridTextColumn Header="PC"           Binding="{Binding Name}"            Width="120"/>
-                            <DataGridTextColumn Header="What matters" Binding="{Binding Headline}"        Width="*"/>
+                            <DataGridTextColumn Header="PC"           Binding="{Binding Name}"            Width="100"/>
+                            <DataGridTextColumn Header="What matters" Binding="{Binding Headline}"        Width="2*" MinWidth="220"/>
                             <DataGridTextColumn Header="Open"         Binding="{Binding LiveCount}"       Width="50"/>
-                            <DataGridTextColumn Header="Model"        Binding="{Binding Model}"           Width="200"/>
+                            <DataGridTextColumn Header="On it now"    Binding="{Binding Presence}"        Width="*" MinWidth="160"/>
+                            <DataGridTextColumn Header="Model"        Binding="{Binding Model}"           Width="130"/>
                             <DataGridTextColumn Header="Checked"      Binding="{Binding LastCheckedText}" Width="90"/>
                             <DataGridTextColumn Header="Last seen"    Binding="{Binding LastSeenText}"    Width="90"/>
                         </DataGrid.Columns>

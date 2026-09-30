@@ -1,0 +1,45 @@
+<Window x:Class="Kor.Operations.App.NetworkOps.NetworkOpsFixWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Fix"
+        Width="720"
+        SizeToContent="Height"
+        MaxHeight="820"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="CanResize"
+        Background="{StaticResource App.Background}"
+        FontFamily="Mulish, Segoe UI">
+    <!-- Choose a fix for one finding. Everything here runs on the machine as SYSTEM, through the service, and is
+         recorded (who, what, the output). A restart is refused by the service while someone is active unless confirmed. -->
+    <Border Style="{StaticResource Card}" Margin="12" Padding="16">
+        <StackPanel>
+            <TextBlock x:Name="FindingTitle" FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap"/>
+            <TextBlock x:Name="PresenceText" Foreground="{StaticResource Text.Secondary}" Margin="0,4,0,0" TextWrapping="Wrap"/>
+
+            <TextBlock Text="Fixes" FontWeight="SemiBold" Margin="0,14,0,4"/>
+            <ListBox x:Name="FixList" SelectionChanged="FixList_SelectionChanged" MaxHeight="320">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel Margin="2,4,2,6">
+                            <TextBlock Text="{Binding Title}" FontWeight="SemiBold"/>
+                            <TextBlock Text="{Binding Explain}" TextWrapping="Wrap" MaxWidth="620" Foreground="{StaticResource Text.Secondary}"/>
+                        </StackPanel>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+
+            <StackPanel x:Name="ParamPanel" Visibility="Collapsed" Margin="0,10,0,0">
+                <TextBlock x:Name="ParamLabel" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                <TextBox x:Name="ParamBox" AcceptsReturn="True" TextWrapping="NoWrap" FontFamily="Consolas" MinHeight="32"
+                         VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" MaxHeight="220"/>
+            </StackPanel>
+
+            <TextBlock x:Name="WarningText" Foreground="#C11E1E" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,10,0,0" Visibility="Collapsed"/>
+
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,14,0,0">
+                <Button x:Name="RunBtn" Content="Run fix" Padding="18,6" Margin="0,0,8,0" IsEnabled="False" Click="Run_Click" IsDefault="True"/>
+                <Button Content="Cancel" Padding="18,6" IsCancel="True"/>
+            </StackPanel>
+        </StackPanel>
+    </Border>
+</Window>
