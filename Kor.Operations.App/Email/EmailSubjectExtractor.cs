@@ -71,7 +71,7 @@ internal sealed class EmailSubjectExtractor
             if (ext.Equals(".msg", StringComparison.OrdinalIgnoreCase))
             {
                 using var msg = new Storage.Message(emailPath);
-                return msg.Attachments != null && msg.Attachments.Count > 0;
+                return Kor.EmailCommon.EmailParser.CountRealAttachments(msg) > 0;
             }
             else if (ext.Equals(".eml", StringComparison.OrdinalIgnoreCase))
             {

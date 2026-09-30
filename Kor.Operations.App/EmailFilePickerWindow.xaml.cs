@@ -70,6 +70,10 @@ namespace Kor.Operations
         public bool FiledSuccessfully { get; private set; }
         public IReadOnlyList<string> FiledSourcePaths { get; private set; } = Array.Empty<string>();
 
+        // --file-picker: the add-in only wants a project chosen (file-on-send files the Sent Items
+        // copy itself, after the email has actually gone). Choosing a project closes with OK.
+        internal bool ProjectOnlyMode { get; set; }
+
         private readonly EmailSubjectExtractor _subjectExtractor;
         private readonly ProjectFolderCatalogService _catalogService;
         private readonly EmailFilingService _filingService;
@@ -395,6 +399,12 @@ namespace Kor.Operations
             }
 
             var selectedProject = _selectedProject;
+
+            if (ProjectOnlyMode)
+            {
+                DialogResult = true;
+                return;
+            }
 
             if (_incomingFiles.Count == 0)
             {

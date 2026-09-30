@@ -33,7 +33,7 @@ public static class EmailParser
         var joined = string.Join("; ", allRecips);
 
         DateTime? sentUtc = TryGetSentOnUtc(msg);
-        var attachmentCount = msg.Attachments?.Count ?? 0;
+        var attachmentCount = CountRealAttachments(msg);
         var messageId = TryGetMsgMessageId(msg);
 
         return new ParsedEmail(
@@ -80,6 +80,29 @@ public static class EmailParser
             mime.Attachments.Any(),
             string.IsNullOrWhiteSpace(mime.MessageId) ? null : mime.MessageId
         );
+    }
+
+    // What a person calls an attachment: a file or an attached email. Images embedded in the body
+    // (signature logos, pasted screenshots) are inline and do not count -- counting them made nearly
+    // every email "have attachments" (2026-09-30, Kevin's search). Hidden attachments (Outlook does not
+    // show them; e.g. the icons in Teams notification emails) do not count either -- the add-in applies
+    // the same rule to the live MailItem, and the two agree. .eml needs no equivalent: MimeKit's
+    // Attachments already excludes inline-disposition parts.
+    public static int CountRealAttachments(Storage.Message msg)
+    {
+        if (msg.Attachments == null)
+            return 0;
+
+        var n = 0;
+        foreach (var a in msg.Attachments)
+        {
+            if (a is Storage.Message)
+                n++;
+            else if (a is Storage.Attachment att && !att.IsInline && !att.Hidden)
+                n++;
+        }
+
+        return n;
     }
 
     private static string HtmlToText(string html)

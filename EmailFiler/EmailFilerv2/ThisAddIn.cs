@@ -21,6 +21,9 @@ namespace EmailFilerv2
         // Items-To-File processor (background filing on Outlook close)
         private ItemsToFileProcessor _itemsToFileProcessor;
 
+        // Files "file on send" emails from Sent Items once they have actually gone.
+        private FileOnSend _fileOnSend;
+
         private void ThisAddIn_Startup(object sender, EventArgs e)
         {
             // Initial load (not strictly required now, but harmless)
@@ -33,6 +36,17 @@ namespace EmailFilerv2
             {
                 _itemsToFileProcessor = new ItemsToFileProcessor(this.Application);
                 _itemsToFileProcessor.SyncFolders(); // respects ItemsToFileEnabled and favorites
+
+                try
+                {
+                    _fileOnSend = new FileOnSend(this.Application, _itemsToFileProcessor);
+                    _fileOnSend.Start();
+                }
+                catch
+                {
+                    // Without the Sent Items hook, file-on-send falls back to filing before sending.
+                    _fileOnSend = null;
+                }
 
                 // CORRECT way to subscribe to Quit
                 ((Outlook.ApplicationEvents_11_Event)this.Application).Quit
@@ -106,7 +120,22 @@ namespace EmailFilerv2
                     return;
                 }
 
-                // result == DialogResult.Yes -> reuse the same WPF-based flow as manual filing
+                // result == DialogResult.Yes: choose the project now, file the Sent Items copy once it
+                // has gone (FileOnSend). No project chosen -> don't send, exactly as before.
+                if (_fileOnSend != null)
+                {
+                    string projectNo = EmailFilerRibbon.PickProject();
+                    if (string.IsNullOrEmpty(projectNo))
+                    {
+                        cancel = true;
+                        return;
+                    }
+
+                    if (_fileOnSend.Arm(mailItem, projectNo))
+                        return;
+                }
+
+                // Fallback (hook unavailable or the email could not be marked): file now, as before.
                 var mails = new List<Outlook.MailItem> { mailItem };
                 bool filed = EmailFilerRibbon.FileMailItems(this.Application, mails);
 

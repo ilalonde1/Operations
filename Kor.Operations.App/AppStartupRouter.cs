@@ -154,6 +154,7 @@ namespace Kor.Operations
 
                 var picker = _services.GetRequiredService<EmailFilePickerWindow>();
                 picker.SetIncomingFiles(Array.Empty<string>());
+                picker.ProjectOnlyMode = true;
                 var ok = picker.ShowDialog();
 
                 string? projectNo = null;

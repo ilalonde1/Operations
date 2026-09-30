@@ -401,6 +401,7 @@
   -->
   <ItemGroup>
     <Compile Include="EmailFilerRibbon.cs" />
+    <Compile Include="FileOnSend.cs" />
     <Compile Include="HostExeResolver.cs" />
     <Compile Include="ItemsToFileProcessor.cs" />
     <Compile Include="OutlookDateGuard.cs" />

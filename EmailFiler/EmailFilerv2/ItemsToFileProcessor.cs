@@ -433,18 +433,18 @@ namespace EmailFilerv2
         private Dictionary<string, ProjectEntry> ResolveProjectsForFavorites(
             List<SqlFavoritesRepository.FavoriteProject> favorites)
         {
+            return ResolveProjectsForCodes(favorites.Select(f => f.ProjectNo ?? string.Empty));
+        }
+
+        private Dictionary<string, ProjectEntry> ResolveProjectsForCodes(IEnumerable<string> codes)
+        {
             var result = new Dictionary<string, ProjectEntry>(StringComparer.OrdinalIgnoreCase);
 
-            if (!Directory.Exists(ProjectsRoot) || favorites.Count == 0)
-                return result;
-
             var codesNeeded = new HashSet<string>(
-                favorites
-                    .Select(f => f.ProjectNo ?? string.Empty)
-                    .Where(p => !string.IsNullOrWhiteSpace(p)),
+                codes.Where(p => !string.IsNullOrWhiteSpace(p)),
                 StringComparer.OrdinalIgnoreCase);
 
-            if (codesNeeded.Count == 0)
+            if (!Directory.Exists(ProjectsRoot) || codesNeeded.Count == 0)
                 return result;
 
             try
@@ -664,8 +664,8 @@ namespace EmailFilerv2
                 DateTime? sentUtc = ToUtcOrNull(mail.SentOn);
                 DateTime? receivedUtc = ToUtcOrNull(mail.ReceivedTime);
 
-                bool hasAttachments = mail.Attachments != null && mail.Attachments.Count > 0;
-                int attachmentCount = mail.Attachments != null ? mail.Attachments.Count : 0;
+                int attachmentCount = OutlookMailIdentity.CountRealAttachments(mail);
+                bool hasAttachments = attachmentCount > 0;
 
                 // Body text (plain text; matches how EmailSearch currently works with BodyText)
                 string bodyText = mail.Body;
@@ -818,6 +818,46 @@ namespace EmailFilerv2
                 return user.Substring(idx + 1);
 
             return user;
+        }
+
+        /// <summary>
+        /// FILE ON SEND: files the Sent Items copy of an email the user chose to file when sending,
+        /// so the filed .msg has its real sent date and Message-ID (filing before send produced an
+        /// unsent draft with no date that sorted last and opened as a draft). Any project, not just
+        /// favourites. Tags "Filed in &lt;project&gt;"; the email stays in Sent Items.
+        /// </summary>
+        public bool FileSentItemToProject(string projectNo, Outlook.MailItem mail)
+        {
+            if (string.IsNullOrWhiteSpace(projectNo) || mail == null)
+                return false;
+
+            var projectMap = ResolveProjectsForCodes(new[] { projectNo.Trim() });
+            if (!projectMap.TryGetValue(projectNo.Trim(), out var proj))
+            {
+                SafeLog("FILE-ON-SEND: project folder not found for " + projectNo);
+                return false;
+            }
+
+            if (!FileMailToProject(mail, proj))
+                return false;
+
+            try
+            {
+                string tag = "Filed in " + projectNo.Trim();
+                string cats = mail.Categories ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(cats))
+                    mail.Categories = tag;
+                else if (cats.IndexOf(tag, StringComparison.OrdinalIgnoreCase) < 0)
+                    mail.Categories = cats + "; " + tag;
+                mail.Save();
+            }
+            catch
+            {
+                // Filed; the tag is cosmetic.
+            }
+
+            SafeLog("FILE-ON-SEND: filed sent item to " + projectNo);
+            return true;
         }
 
         /// <summary>

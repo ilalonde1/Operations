@@ -420,6 +420,56 @@ namespace EmailFilerv2
             return true;
         }
 
+        /// <summary>
+        /// Opens the KOR project picker in project-only mode (--file-picker) and returns the chosen
+        /// project number, or null if the user cancelled or the app could not be started.
+        /// </summary>
+        internal static string PickProject()
+        {
+            string exePath = HostExeResolver.Resolve();
+            if (string.IsNullOrEmpty(exePath))
+            {
+                MessageBox.Show(
+                    "Filed Email app is not installed or the path is incorrect.\n\n" +
+                    "Kor.Operations.App.exe was not found next to the add-in or in the KorTransmittalsAppPath setting.",
+                    "File Email",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+                return null;
+            }
+
+            string dir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "KorEmailFiler");
+            Directory.CreateDirectory(dir);
+            string resultPath = Path.Combine(dir, "PickProjectResult.txt");
+            try { if (File.Exists(resultPath)) File.Delete(resultPath); } catch { }
+
+            try
+            {
+                var psi = new ProcessStartInfo
+                {
+                    FileName = exePath,
+                    Arguments = "--file-picker --picker-result=\"" + resultPath + "\"",
+                    UseShellExecute = false
+                };
+
+                using (var proc = Process.Start(psi))
+                {
+                    if (proc != null)
+                        proc.WaitForExit();
+                }
+
+                string projectNo = File.Exists(resultPath) ? File.ReadAllText(resultPath, Encoding.UTF8).Trim() : string.Empty;
+                return string.IsNullOrEmpty(projectNo) ? null : projectNo;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Could not open the project picker:\n\n" + ex.Message,
+                    "File Email", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return null;
+            }
+        }
+
         // Same log directory as ItemsToFileProcessor / EmailProcessor so all
         // filing events end up in one place. Rolled monthly
         // (EmailFilingLog_YYYY-MM.txt) — mirrors GetFilingLogPath() in

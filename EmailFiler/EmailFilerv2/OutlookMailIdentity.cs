@@ -73,6 +73,73 @@ namespace EmailFilerv2
             return id.Length > 512 ? id.Substring(0, 512) : id;
         }
 
+        private const string PrAttachmentHidden = "http://schemas.microsoft.com/mapi/proptag/0x7FFE000B";
+        private const string PrAttachContentId = "http://schemas.microsoft.com/mapi/proptag/0x3712001F";
+        private const string PrAttachFlags = "http://schemas.microsoft.com/mapi/proptag/0x37140003";
+        private const int AttMhtmlRef = 0x4;
+
+        /// <summary>
+        /// Files and attached emails only: images embedded in the body (signature logos, pasted
+        /// screenshots) are not attachments to a person. Same rule as EmailParser.CountRealAttachments
+        /// on the picker path; an inline image is hidden, or carries a content id the body refers to.
+        /// </summary>
+        internal static int CountRealAttachments(Outlook.MailItem mail)
+        {
+            Outlook.Attachments list = null;
+            try { list = mail?.Attachments; } catch { }
+            if (list == null)
+                return 0;
+
+            int n = 0;
+            for (int i = 1; i <= list.Count; i++)
+            {
+                Outlook.Attachment a = null;
+                try { a = list[i]; } catch { }
+                if (a == null)
+                    continue;
+
+                if (!IsInline(a))
+                    n++;
+            }
+
+            return n;
+        }
+
+        private static bool IsInline(Outlook.Attachment a)
+        {
+            try
+            {
+                if (a.Type == Outlook.OlAttachmentType.olEmbeddeditem)
+                    return false;
+            }
+            catch { }
+
+            try
+            {
+                var pa = a.PropertyAccessor;
+                object hidden = null;
+                try { hidden = pa.GetProperty(PrAttachmentHidden); } catch { }
+                if (hidden is bool h && h)
+                    return true;
+
+                string cid = null;
+                try { cid = pa.GetProperty(PrAttachContentId) as string; } catch { }
+                if (!string.IsNullOrWhiteSpace(cid))
+                {
+                    object flags = null;
+                    try { flags = pa.GetProperty(PrAttachFlags); } catch { }
+                    if (flags is int f && (f & AttMhtmlRef) != 0)
+                        return true;
+                }
+            }
+            catch
+            {
+                // Unreadable: count it rather than hide a real attachment.
+            }
+
+            return false;
+        }
+
         private static string TryGetStringProperty(Outlook.MailItem mail, string schemaName)
         {
             try
