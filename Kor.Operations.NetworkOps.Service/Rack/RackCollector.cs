@@ -32,7 +32,7 @@ internal sealed class RackCollector(IOptions<NetworkOpsOptions> options, PowerSt
             {
                 "Esxi" => await EsxiAsync(d, cap.Token).ConfigureAwait(false),
                 "Synology" => SynologyRules.Evaluate(await SnmpChannel.WalkAsync(d.Address, Snmp(sha256: false, des: false), SynologyRules.Tables, TimeSpan.FromSeconds(8), cap.Token).ConfigureAwait(false), d.VolumeFreeWarnPct),
-                "Veeam" => await VeeamAsync(d, cap.Token).ConfigureAwait(false),
+                "Veeam" => await VeeamAsync(d, previousFacts, cap.Token).ConfigureAwait(false),
                 "UniFi" => await UniFiAsync(d, cap.Token).ConfigureAwait(false),
                 "Internet" => await InternetAsync(cap.Token).ConfigureAwait(false),
                 "CoreSwitch" => await CoreSwitchAsync(d, previousFacts, cap.Token).ConfigureAwait(false),
@@ -64,7 +64,7 @@ internal sealed class RackCollector(IOptions<NetworkOpsOptions> options, PowerSt
         return EsxiRules.Evaluate(json, production, DateTime.UtcNow);
     }
 
-    private async Task<RackResult> VeeamAsync(RackDevice d, CancellationToken ct)
+    private async Task<RackResult> VeeamAsync(RackDevice d, IReadOnlyDictionary<string, string> previousFacts, CancellationToken ct)
     {
         var o = options.Value;
         if (string.IsNullOrWhiteSpace(o.VeeamUser) || string.IsNullOrWhiteSpace(o.VeeamPassword)) return RackResult.Unreachable("KOR_NETWORKOPS_VEEAMUSER / _VEEAMPASSWORD not set");
@@ -85,7 +85,7 @@ internal sealed class RackCollector(IOptions<NetworkOpsOptions> options, PowerSt
         http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tok.RootElement.GetProperty("access_token").GetString());
         var jobs = await http.GetStringAsync("api/v1/jobs/states", ct).ConfigureAwait(false);
         var repos = await http.GetStringAsync("api/v1/backupInfrastructure/repositories/states", ct).ConfigureAwait(false);
-        return VeeamRules.Evaluate(jobs, repos, DateTime.UtcNow);
+        return VeeamRules.Evaluate(jobs, repos, DateTime.UtcNow, previousFacts);
     }
 
     private async Task<RackResult> UniFiAsync(RackDevice d, CancellationToken ct)

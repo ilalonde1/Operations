@@ -130,6 +130,23 @@ public sealed class RackRulesTests
     }
 
     [Fact]
+    public void A_failed_job_stays_failed_while_its_retry_runs_and_clears_only_when_a_run_finishes_well()
+    {
+        var at = DateTime.Parse("2026-09-30T10:00:00Z", CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal);
+        string Jobs(string status, string result) => Fx("veeam-jobs.json")
+            .Replace("\"status\":\"running\",\"lastResult\":\"None\"", $"\"status\":\"{status}\",\"lastResult\":\"{result}\"");
+        // 1. It failed and is idle: critical, and the result is remembered.
+        var failed = VeeamRules.Evaluate(Jobs("inactive", "Failed"), Fx("veeam-repos.json"), at);
+        Assert.Contains(failed.Findings, f => f.RuleKey == "veeam.failed:Kor-FS01");
+        // 2. The retry is running ("None"): STILL failed (THE bug this guards: it used to clear here, then re-alert).
+        var retrying = VeeamRules.Evaluate(Jobs("running", "None"), Fx("veeam-repos.json"), at, failed.Facts);
+        Assert.Contains(retrying.Findings, f => f.RuleKey == "veeam.failed:Kor-FS01" && f.Evidence.Contains("in progress"));
+        // 3. The retry finished well: cleared.
+        var good = VeeamRules.Evaluate(Jobs("inactive", "Success"), Fx("veeam-repos.json"), at, retrying.Facts);
+        Assert.DoesNotContain(good.Findings, f => f.RuleKey == "veeam.failed:Kor-FS01");
+    }
+
+    [Fact]
     public void Eight_days_without_a_run_is_the_silent_failure_and_is_critical()
     {
         var r = VeeamRules.Evaluate(Fx("veeam-jobs.json"), Fx("veeam-repos.json"), DateTime.Parse("2026-10-08T09:50:00Z", CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal));

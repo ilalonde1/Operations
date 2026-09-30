@@ -12,7 +12,13 @@ namespace Kor.Operations.NetworkOps.Core.Rack;
 /// </summary>
 public static class VeeamRules
 {
-    public static RackResult Evaluate(string jobsJson, string reposJson, DateTime nowUtc, int staleHours = 36, int repoFreeWarnPct = 15)
+    /// <param name="previousFacts">
+    /// The device's facts from the last read. While a job RUNS, Veeam reports its last result as "None": the
+    /// finished result is kept as a fact (veeam.result:JOB) and judged instead, so a failed job does not look
+    /// healthy -- and then re-alert -- every time its retry starts (Kor-FS01, 30 Sep 2026).
+    /// </param>
+    public static RackResult Evaluate(string jobsJson, string reposJson, DateTime nowUtc, IReadOnlyDictionary<string, string>? previousFacts = null,
+        int staleHours = 36, int repoFreeWarnPct = 15)
     {
         var b = new RackBuilder();
         using var jobs = JsonDocument.Parse(jobsJson);
@@ -30,10 +36,17 @@ public static class VeeamRules
             if (lastRun is { } lrun) b.Metric("job.age.hours", Math.Round((nowUtc - lrun).TotalHours, 1), name);
 
             if (disabled) { b.Raise($"veeam.disabled:{name}", Severity.Warning, $"Backup job {name} is disabled", "it will not run until re-enabled"); continue; }
-            if (result.Equals("Failed", StringComparison.OrdinalIgnoreCase))
-                b.Raise($"veeam.failed:{name}", Severity.Critical, $"Backup job {name} FAILED", $"last run {Local(lastRun)} ended Failed");
-            else if (result.Equals("Warning", StringComparison.OrdinalIgnoreCase))
-                b.Raise($"veeam.warning:{name}", Severity.Warning, $"Backup job {name} finished with warnings", $"last run {Local(lastRun)} ended Warning");
+            var running = status.Equals("running", StringComparison.OrdinalIgnoreCase);
+            var finished = !running && result is { Length: > 0 } && !result.Equals("None", StringComparison.OrdinalIgnoreCase);
+            // The last FINISHED result: this read's if the job is idle, else the one remembered from before it started.
+            var judged = finished ? result : previousFacts?.GetValueOrDefault($"veeam.result:{name}") ?? result;
+            if (finished) b.Fact($"veeam.result:{name}", result);
+            else if (previousFacts?.GetValueOrDefault($"veeam.result:{name}") is { } kept) b.Fact($"veeam.result:{name}", kept);
+            var retrying = running ? " (a new run is in progress now)" : "";
+            if (judged.Equals("Failed", StringComparison.OrdinalIgnoreCase))
+                b.Raise($"veeam.failed:{name}", Severity.Critical, $"Backup job {name} FAILED", $"its last finished run ended Failed{retrying}");
+            else if (judged.Equals("Warning", StringComparison.OrdinalIgnoreCase))
+                b.Raise($"veeam.warning:{name}", Severity.Warning, $"Backup job {name} finished with warnings", $"its last finished run ended Warning{retrying}");
             else ok++;
 
             // Freshness: a scheduled job whose last run is older than staleHours has silently stopped. A running job is fresh.
