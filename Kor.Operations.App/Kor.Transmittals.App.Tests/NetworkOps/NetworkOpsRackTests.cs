@@ -86,6 +86,18 @@ public sealed class NetworkOpsRackTests
     }
 
     [Fact]
+    public void Find_and_only_problems_filter_the_rack_too()
+    {
+        var vm = new NetworkOpsCommandCenterViewModel(NetworkOpsClient.Unconfigured("test"));
+        vm.ApplyRack(Rack(Now), Now);
+        vm.FilterText = "storage";   // by kind: the SAN and both Synologys
+        Assert.Equal(["UC3200 SAN", "NAS01 (Veeam repository)", "Synology02 (Veeam repository)"], vm.Rack.Select(r => r.Name));
+        vm.FilterText = "";
+        vm.ProblemsOnly = true;
+        Assert.Equal(["Veeam backups (BK01)", "UniFi network", "UC3200 SAN"], vm.Rack.Select(r => r.Name));
+    }
+
+    [Fact]
     public void A_rack_that_has_not_been_read_for_15_minutes_is_stale()
     {
         var old = Rack(Now.AddMinutes(-30));

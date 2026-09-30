@@ -24,6 +24,7 @@ public sealed class NetworkOpsCommandCenterViewModel : ObservableObject
 
     private readonly NetworkOpsClient _client;
     private readonly List<FleetRow> _allRows = new();
+    private readonly List<FleetRow> _allRack = new();
     private string _statusMessage = "Ready.";
     private bool _isLoading;
     private bool _autoRefresh = true;
@@ -136,7 +137,7 @@ public sealed class NetworkOpsCommandCenterViewModel : ObservableObject
             try { ApplyRack(await _client.GetRackAsync(ct).ConfigureAwait(true), DateTime.UtcNow); }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                RackSnapshot = null; Rack.Clear();
+                RackSnapshot = null; _allRack.Clear(); Rack.Clear();
                 (RackHeadline, RackSubline, RackBrush) = ("—", $"Rack not available: {ex.Message}", NetworkOpsBrushes.Unknown);
                 foreach (var name in new[] { nameof(RackHeadline), nameof(RackSubline), nameof(RackBrush) }) OnPropertyChanged(name);
             }
@@ -223,8 +224,9 @@ public sealed class NetworkOpsCommandCenterViewModel : ObservableObject
         string[] order = ["Internet", "Host", "Storage", "Backup", "UPS", "Network"];
         var rows = rack.Devices.Select(d => FleetRow.From(d, rack, nowUtc))
             .OrderByDescending(r => r.State).ThenBy(r => Array.IndexOf(order, r.Kind) is var i && i >= 0 ? i : 99).ThenBy(r => r.Name, StringComparer.OrdinalIgnoreCase).ToList();
-        Rack.Clear();
-        foreach (var r in rows) Rack.Add(r);
+        _allRack.Clear();
+        _allRack.AddRange(rows);
+        RebuildRack();
 
         var healthy = rows.Count(r => r.State is HealthState.Healthy or HealthState.Watch);
         var worst = rows.Count == 0 ? HealthState.Unknown : rows.Max(r => r.State);
@@ -279,8 +281,22 @@ public sealed class NetworkOpsCommandCenterViewModel : ObservableObject
         }
     }
 
+    /// <summary>The same Find box filters the rack ("veeam", "ups", "host .10") -- and "problems only" hides healthy devices.</summary>
+    private void RebuildRack()
+    {
+        var filter = _filterText.Trim();
+        Rack.Clear();
+        foreach (var row in _allRack)
+        {
+            if (_problemsOnly && row.LiveCount == 0) continue;
+            if (filter.Length > 0 && !(row.Matches(filter) || row.Kind.Contains(filter, StringComparison.OrdinalIgnoreCase))) continue;
+            Rack.Add(row);
+        }
+    }
+
     private void RebuildFleet()
     {
+        RebuildRack();
         var filter = _filterText.Trim();
         Fleet.Clear();
         foreach (var row in _allRows)

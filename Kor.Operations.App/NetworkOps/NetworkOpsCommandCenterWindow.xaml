@@ -106,9 +106,10 @@
             <TextBox Grid.Column="1" x:Name="FilterBox"
                      Text="{Binding FilterText, UpdateSourceTrigger=PropertyChanged}"
                      VerticalContentAlignment="Center"
-                     ToolTip="PC name, model or what is wrong: 'KOR-2', 'P340', 'disk'."/>
+                     ToolTip="Searches the rack and the PCs: a name, a model, a kind or what is wrong -- 'veeam', 'UPS', 'KOR-2', 'P340', 'disk'."/>
             <StackPanel Grid.Column="3" Orientation="Horizontal">
-                <CheckBox Content="Only PCs with problems"
+                <CheckBox Content="Only problems"
+                          ToolTip="Hide rack devices and PCs with nothing open."
                           IsChecked="{Binding ProblemsOnly}"
                           VerticalAlignment="Center"
                           Margin="0,0,16,0"/>
