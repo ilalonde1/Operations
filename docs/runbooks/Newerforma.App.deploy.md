@@ -70,6 +70,10 @@ A build that compiles can still fail to launch. Before trusting a deploy, launch
 
 ## History
 
+- **V22 (2026-09-30)** — EmailFilerv2 **1.0.0.52**: attachment counts ignore inline/hidden images;
+  file-on-send files the Sent Items copy; the app's `--file-picker` project-only mode works. Built from a
+  clean worktree at f1158ef4 (the add-in from the main tree, its inputs uncommitted-free: a fresh worktree
+  has no `Kor.Operations.App\packages` for the add-in's packages.config references).
 - **V21 (2026-09-30)** — EmailFilerv2 **1.0.0.51**: Outlook-folder filing records the sender's SMTP
   address and the Message-ID. Jim DesRoches restored to Financials. Built from a clean worktree.
 
