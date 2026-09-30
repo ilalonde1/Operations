@@ -2,7 +2,7 @@
 004_RackPower.sql
 
 The rack's power, for the UPS watcher and the shutdown chain (Kor.Operations.NetworkOps.Service,
-Power/*). Run as sa in SSMS on KOR-APP01\SQLEXPRESS after 002. Idempotent. No logins change: the
+the Power folder). Run as sa in SSMS on KOR-APP01\SQLEXPRESS after 002. Idempotent. No logins change: the
 schema-wide grants in 001 (networkops_app) and 002 (networkops_ui, read) already cover new tables.
 
 What each table is for:
