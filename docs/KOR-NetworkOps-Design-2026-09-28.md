@@ -136,7 +136,7 @@ removed — that's the cliff (24 of 25 machines lose remote support the same day
 | **0** ✅ 09-28 | `Invoke-KorOnTarget` in WorkstationOps; reachability tries every A record | 54/54 PS tests; live on 3 PCs incl. a dual-homed one; zero leftovers |
 | **1** ✅ 09-28 | Core + Transport + `netops` CLI: channel census, run-on-target via the SCM API, hardware probe (SMBIOS port with its fixture) | 16/16 xUnit, incl. the payload run under real PowerShell 5.1 (break-tested). First census: **30 of 38 reachable, 30 of 30 run-on-target ready, WinRM open on 5, dual-homed 3**, 52 s. `hardware` on 3 PCs in 31 s, zero leftovers. Rules engine moves to Phase 2 with the store it writes to. |
 | **2** | Service on APP01: nightly sweep → SQL → rules → Graph alerts; freshness; external dead-man check | Runs alongside Ninja for a **comparison month**; every finding it raises is logged against what Ninja showed |
-| **3** | The rack: UPS/SAN/NAS SNMP, ESXi/vCenter, Veeam freshness, firewall + switches; **graceful shutdown chain** | Each §4 roadmap row flips "silent" → watched; shutdown chain proven in a window |
+| **3** ◐ 09-30 | The rack: UPS/SAN/NAS SNMP, ESXi/vCenter, Veeam freshness, firewall + switches; **graceful shutdown chain** | ✅ 11 rack devices watched every 5 min (§9), first sweep 11 of 11 and it caught a failing backup. ✅ Chain built, dry run proven end to end, rehearsed daily. ⬜ Chain proven by a pulled plug, then armed |
 | **4** | KOR agent (signed), GPO startup-script deploy, allow-listed actions | Agent on all 38, < 1 % CPU; offline machines report when they reappear |
 | **5** | Command Center page + MeshCentral + Connect | Ian runs a day of support from it without opening Ninja |
 | **6** | Patching cutover: WUfB policy via GPO **first**, remove Ninja's `NoAutoUpdate=1`, verify a full patch cycle | A Patch Tuesday lands fleet-wide with Ninja disabled |
@@ -233,3 +233,37 @@ to read an oversized file -- but a probe that trips the limit has still burned t
 
 Known, not NetworkOps: `EngineeringTools.Tests` finishes all its tests and then its testhost never
 exits (the same on a clean checkout of `54a8e97f`). Run it with `--blame-hang-timeout 90s` until found.
+
+## 9. The rack, as built (2026-09-29/30)
+
+Every piece of infrastructure is a device in `NetworkOps.Devices` (Source `Rack`, a Kind), read every 5 minutes by
+`RackSweepJob` and written through the SAME facts / metrics / findings / digest path as a PC, so acknowledge,
+snooze, notes, history and learned fixes work on the rack unchanged. Served at `/api/rack`, separate from
+`/api/fleet` so an app that predates the rack never lists a host as a PC. Each device is read through its own
+least-privilege channel; nothing NetworkOps holds can change a device.
+
+| Device | Channel | Credential / pin |
+|---|---|---|
+| ESXi .10, .16 | SSH, then `Core/Rack/esxi-health.py` in hostd with a LOCAL TICKET | key `keys\esxi-root` (authorized_keys `from="192.168.1.32"`); host keys pinned |
+| UC3200, NAS01, Synology02 | SNMPv3 walk, Synology MIBs | `networkops` SHA/AES |
+| Veeam (BK01) | REST :9419, jobs + repositories state | local non-admin `KOR-BK01\netops-veeam`, Veeam role **BackupViewer only** (a job start is refused, 403); certificate SHA-256 pinned |
+| UniFi (13 devices) | SSH as `netops@KOR-UNIFI01`, whose ONLY command prints the controller's status | key `keys\unifi-status`, forced command + `from=`; sudo allows that one script |
+| Core switch (ES-16-XG) | SNMPv3 | `networkops` SHA/**DES** (all firmware 1.8.1 offers); the open `public` v2c community was removed |
+| UPS ×2 | the in-process watcher (§ Power) | — |
+| Internet line | from APP01: public IP must be the Shaw static, DNS, pings | — |
+
+**What it covers:** hardware sensors (PSU, fans, temps), clock/NTP/PTP, datastore space and access, production VMs
+running with Tools, maintenance mode; Synology system, power, fans, disks, RAID, volumes, DSM updates; Veeam
+failed / warning / **stale** (the silent-failure class) jobs and repository space; UniFi devices that stop checking
+in, firmware, open alarms; core-switch reboots and ports that drop; UPS battery, bypass, output, runtime; traffic
+leaving by the wrong WAN, loss, DNS.
+
+**What it does not cover:** the Netgate firewall box itself (CPU, states, its own gateways) -- that needs its admin
+login or an API package on it; vCenter; the Windows servers' own OS health (the PC probe could run on them);
+per-port switch error RATES (counters are recorded as metrics, not yet a rule). **A same-class fault it would not
+catch:** a device that answers with stale data (a hung UniFi controller still serving its last database state).
+
+**Found by building it (2026-09-29/30):** host .10's clock 35 min slow with PTP on (fixed: NTP, persisted); host .16
+blind to its hardware, CIM off (fixed: 0 → 249 sensors); the core switch answering `public` to anyone (fixed);
+Veeam `Kor-FS01` failing three times on stuck VSS writers on FS01 (the writers' services were restarted at 03:17 and
+the stalled retry started moving; its result is the proof).
