@@ -656,7 +656,7 @@ namespace EmailFilerv2
                 // Mail-based metadata
                 string subject = mail.Subject;
                 string fromDisplay = mail.SenderName;
-                string fromEmail = mail.SenderEmailAddress;
+                string fromEmail = OutlookMailIdentity.GetSenderEmail(mail);
                 string toList = BuildRecipientList(mail.Recipients, Outlook.OlMailRecipientType.olTo);
                 string ccList = BuildRecipientList(mail.Recipients, Outlook.OlMailRecipientType.olCC);
                 string bccList = BuildRecipientList(mail.Recipients, Outlook.OlMailRecipientType.olBCC);
@@ -670,11 +670,8 @@ namespace EmailFilerv2
                 // Body text (plain text; matches how EmailSearch currently works with BodyText)
                 string bodyText = mail.Body;
 
-                // Older PIAs may not expose InternetMessageID; keep this nullable.
-                string messageId = null;
-
-                if (!string.IsNullOrEmpty(messageId) && messageId.Length > 512)
-                    messageId = messageId.Substring(0, 512);
+                // Null when the item has no Internet Message-ID (e.g. never sent).
+                string messageId = OutlookMailIdentity.GetInternetMessageId(mail);
 
                 // Source='VSTO' so this writer is distinguishable from the WPF
                 // picker (which passes 'WPF-PICKER') in the audit log. The proc

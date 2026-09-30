@@ -404,6 +404,7 @@
     <Compile Include="HostExeResolver.cs" />
     <Compile Include="ItemsToFileProcessor.cs" />
     <Compile Include="OutlookDateGuard.cs" />
+    <Compile Include="OutlookMailIdentity.cs" />
     <Compile Include="Properties\AssemblyInfo.cs">
       <SubType>Code</SubType>
     </Compile>
