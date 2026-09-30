@@ -3,6 +3,7 @@ using Kor.Operations.FileSync.Service.Jobs.ConcreteTestReports;
 using Kor.Operations.FileSync.Service.Jobs.KorMapSync;
 using Kor.Operations.FileSync.Service.Jobs.MoveReportsToEor;
 using Kor.Operations.FileSync.Service.Jobs.MoveReportsToToSend;
+using Kor.Operations.FileSync.Service.Jobs.ProjectFolderWatch;
 using Kor.Operations.FileSync.Service.Jobs.RenameReportsUploads;
 using Kor.Operations.FileSync.Service.Jobs.WeeklyPmDeadlines;
 using Microsoft.Extensions.DependencyInjection;
@@ -73,6 +74,10 @@ internal static class QuartzInstaller
         else if (schedule.JobType == typeof(KorMapSyncJob))
         {
             AddScheduledJob<KorMapSyncJob>(q, schedule);
+        }
+        else if (schedule.JobType == typeof(ProjectFolderWatchJob))
+        {
+            AddScheduledJob<ProjectFolderWatchJob>(q, schedule);
         }
         else
         {

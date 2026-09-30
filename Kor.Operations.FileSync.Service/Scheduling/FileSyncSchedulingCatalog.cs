@@ -4,6 +4,7 @@ using Kor.Operations.FileSync.Service.Jobs.ConcreteTestReports;
 using Kor.Operations.FileSync.Service.Jobs.KorMapSync;
 using Kor.Operations.FileSync.Service.Jobs.MoveReportsToEor;
 using Kor.Operations.FileSync.Service.Jobs.MoveReportsToToSend;
+using Kor.Operations.FileSync.Service.Jobs.ProjectFolderWatch;
 using Kor.Operations.FileSync.Service.Jobs.RenameReportsUploads;
 using Kor.Operations.FileSync.Service.Jobs.Watcher;
 using Kor.Operations.FileSync.Service.Jobs.WeeklyPmDeadlines;
@@ -59,6 +60,12 @@ internal static class FileSyncSchedulingCatalog
             typeof(KorMapSyncJob),
             KorMapSyncRunner.Name + "-trigger",
             "0 15 2 * * ?"),
+        new(
+            typeof(ProjectFolderWatchRunner),
+            ProjectFolderWatchRunner.Name,
+            typeof(ProjectFolderWatchJob),
+            ProjectFolderWatchRunner.Name + "-trigger",
+            "0 0 6 * * ?"),
     ];
 
     internal static IReadOnlyList<JobRunnerSchedulingExemption> SchedulingExemptions { get; } =

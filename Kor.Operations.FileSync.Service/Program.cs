@@ -88,6 +88,7 @@ builder.Services.AddSingleton<IJobRunner, MoveReportsToEorRunner>();
 builder.Services.AddSingleton<IJobRunner, MoveReportsToToSendRunner>();
 builder.Services.AddSingleton<IJobRunner, RenameReportsUploadsRunner>();
 builder.Services.AddSingleton<IJobRunner, KorMapSyncRunner>();
+builder.Services.AddSingleton<IJobRunner, Kor.Operations.FileSync.Service.Jobs.ProjectFolderWatch.ProjectFolderWatchRunner>();
 builder.Services.AddSingleton<IJobRunner, WatcherSyncRunner>();
 builder.Services.AddSingleton<IWatcherState, WatcherState>();
 builder.Services.AddSingleton<JobRunnerRegistry>();
