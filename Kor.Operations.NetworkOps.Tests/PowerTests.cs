@@ -162,6 +162,7 @@ public sealed class PowerTests
         new("192.168.1.10", 2, "vCLS-97bf60c5-12a5-49a5-bbf1-1e70c261e918", false),
         new("192.168.1.16", 1, "vCLS-a54c6c75-5601-4d7c-876c-b8314670b0cc", false), new("192.168.1.16", 11, "Kor-Lab01_proxy", false),
         new("192.168.1.16", 2, "Kor-BK01", true), new("192.168.1.16", 22, "KOR-UNIFI01", true),
+        new("192.168.1.16", 23, "KOR-MESH01", true),   // built 2026-09-30 (MeshCentral), wave 1 beside KOR-UNIFI01
     ];
 
     internal static NetworkOpsOptions Shipped()
@@ -185,7 +186,7 @@ public sealed class PowerTests
         var plan = ShutdownPlan.Build(Shipped().PowerChain, Live20260929);
         var s = plan.Steps;
         Assert.Equal([ChainStepKind.GuestShutdown, ChainStepKind.GuestShutdown, ChainStepKind.GuestShutdown, ChainStepKind.HostPowerOff, ChainStepKind.Handoff], s.Select(x => x.Kind));
-        Assert.Equal(["Kor-RDS01", "Kor-FS01", "KOR-UNIFI01", "Kor-BK01"], s[0].Vms.Select(v => v.Vm));
+        Assert.Equal(["Kor-RDS01", "Kor-FS01", "KOR-UNIFI01", "KOR-MESH01", "Kor-BK01"], s[0].Vms.Select(v => v.Vm));
         Assert.Equal("Kor-DC01", s[1].Vms.Single().Vm);
         Assert.Equal("vcenter", s[2].Vms.Single().Vm);
         Assert.Equal("192.168.1.16", s[3].Host);
