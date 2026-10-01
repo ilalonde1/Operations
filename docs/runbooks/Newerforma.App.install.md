@@ -85,6 +85,31 @@ The install script must, in this order:
 
 Verify afterwards on the folder **date**, not the file count.
 
+## Fleet rollout with the email add-in (V22, 2026-09-30)
+
+Scripts in `tools/workstation-install/fleet-rollout/`, run with NetworkOps from the dev box:
+`netops run --hosts <A,B,..> --script <file>.ps1 --timeout 900 --parallel 8 --out <dir>` (SYSTEM on each PC).
+
+1. `probe-newerforma.ps1` — read-only: folder version, signed-in users, Outlook running, add-in registration.
+2. `prestage-v22.ps1` — any time: pull + hash-check the zip, extract to `C:\Newerforma_new`. Nothing live touched.
+3. `swap-v22.ps1` — after hours: close the app + Outlook (+ only the web views they own), uninstall the add-in
+   as each signed-in user, swap the folder, install the new add-in as each user, register Active Setup so
+   everyone else gets it at next sign-in. **Prove on one PC first.** Update the version, hash and key inside.
+4. `user-install-now.ps1` — re-run just the per-user install for whoever is signed in.
+
+V22 result: 28 PCs swapped, 20 of 20 signed-in users on add-in 1.0.0.52, 9 offline, 8 to finish at sign-in.
+
+**The add-in is a per-user ClickOnce install** (`HKCU\...\Outlook\Addins\EmailFilerv2`, Manifest
+`file:///C:/Newerforma/EmailFilerv2.vsto`), and it checks for updates only every 7 days: replacing the folder
+is not enough, it must be reinstalled AS THE USER (a transient interactive scheduled task from SYSTEM).
+
+⚠ **Uninstalling removes the user's VSTO trust entry** (`HKCU\Software\Microsoft\VSTO\Security\Inclusion\{guid}`,
+Url + PublicKey), and a `/silent` install cannot ask, so it fails with **exit -300**. The user step recreates
+that entry first: same Url, the RSAKeyValue from the signed `.vsto` (identical to the key users already trust).
+
+⚠ Never name a PowerShell function `R` (or any other built-in alias): aliases win over functions, so `R` ran
+`Invoke-History` and the step's logging silently wrote nothing on the first proof run.
+
 ## Gotchas
 
 - **Outlook locks the install folder.** Proven on KOR-204 during the V16 rollout: the delete
