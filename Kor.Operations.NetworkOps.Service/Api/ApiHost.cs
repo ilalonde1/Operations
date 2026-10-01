@@ -53,8 +53,7 @@ internal sealed class ApiHost(IOptions<NetworkOpsOptions> options, NetworkOpsSto
         builder.WebHost.ConfigureKestrel(k =>
         {
             k.AddServerHeader = false;
-            // An agent's result can be as large as the network route allows (8 M characters of JSON).
-            k.Limits.MaxRequestBodySize = 40L * 1024 * 1024;
+            // Body limits stay at Kestrel's default here; the agent gate raises it for an authenticated agent's result only.
             k.ListenAnyIP(o.ApiPort, l => l.UseHttps(cert));
         });
         builder.Services.ConfigureHttpJsonOptions(j => j.SerializerOptions.PropertyNameCaseInsensitive = true);
@@ -85,6 +84,7 @@ internal sealed class ApiHost(IOptions<NetworkOpsOptions> options, NetworkOpsSto
             var why = http.Response.StatusCode is 401 or 403 ? ApiAccess.Deny(http.User, o.ApiTenantId) : null;
             audit.LogInformation("API {Who} {Method} {Path} -> {Status}{Why}", who, http.Request.Method, http.Request.Path, http.Response.StatusCode, why is null ? "" : $" ({why})");
         });
+        Agents.AgentApi.UseAgentGate(app);   // /agent: key checked before any body is read
         app.UseAuthentication();
         app.UseAuthorization();
         Map(app);
@@ -198,7 +198,7 @@ internal sealed class ApiHost(IOptions<NetworkOpsOptions> options, NetworkOpsSto
                 {
                     AgentVersion = live?.Version is { Length: > 0 } v ? v : rec.LastVersion ?? rec.Version,
                     AgentConnected = live?.Connected == true,
-                    AgentLastContactUtc = live?.LastPollUtc ?? rec.LastContactUtc,
+                    AgentLastContactUtc = new[] { live is { LastPollUtc: var p } && p != default ? p : (DateTime?)null, rec.LastContactUtc }.Max(),
                 };
             }).ToList(),
         };

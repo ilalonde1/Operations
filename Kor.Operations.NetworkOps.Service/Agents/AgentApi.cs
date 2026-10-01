@@ -6,6 +6,7 @@ using Kor.Operations.NetworkOps.Service.Store;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace Kor.Operations.NetworkOps.Service.Agents;
@@ -37,18 +38,56 @@ internal static class AgentApi
     /// <summary>Health checked within this long needs no catch-up when a PC's agent comes back.</summary>
     public static readonly TimeSpan CatchUpAfter = TimeSpan.FromMinutes(60);
 
+    /// <summary>Agent requests in flight at once, whoever sends them: ~40 agents each hold one poll; the rest is headroom.</summary>
+    public const int MaxInFlight = 256;
+    /// <summary>A poll is a few hundred bytes; a result can be as large as the network route allows (8 M characters of JSON).</summary>
+    public const long MaxPollBytes = 16 * 1024, MaxResultBytes = 40L * 1024 * 1024;
+    private static readonly SemaphoreSlim InFlight = new(MaxInFlight, MaxInFlight);
+    private const string Caller = "kor.agent";
+
+    /// <summary>
+    /// In front of every /agent request, BEFORE its body is read (Codex audit 2026-09-30, finding 9): cap what is in
+    /// flight, set the body limit for that route, and check the key. Only an authenticated request reaches an endpoint.
+    /// </summary>
+    public static void UseAgentGate(IApplicationBuilder app)
+        => app.UseWhen(h => h.Request.Path.StartsWithSegments("/agent"), branch => branch.Use(async (HttpContext h, RequestDelegate next) =>
+        {
+            if (h.Features.Get<Microsoft.AspNetCore.Http.Features.IHttpMaxRequestBodySizeFeature>() is { IsReadOnly: false } size)
+                size.MaxRequestBodySize = h.Request.Path.Value?.EndsWith("/result", StringComparison.Ordinal) == true ? MaxResultBytes : MaxPollBytes;
+            if (!InFlight.Wait(0)) { h.Response.StatusCode = StatusCodes.Status503ServiceUnavailable; return; }
+            try
+            {
+                var who = await AuthenticateAsync(h, h.RequestServices.GetRequiredService<IAgentDirectory>(), h.RequestAborted).ConfigureAwait(false);
+                if (who is null) { h.Response.StatusCode = StatusCodes.Status401Unauthorized; return; }
+                h.Items[Caller] = who;
+                await next(h).ConfigureAwait(false);
+            }
+            finally { InFlight.Release(); }
+        }));
+
+    private static NetworkOpsStore.AgentCredential Who(HttpContext h) => (NetworkOpsStore.AgentCredential)h.Items[Caller]!;
+
+    /// <summary>
+    /// A work folder as the agent reports it: a plain local path, ASCII only. It is spliced into the script the agent
+    /// runs, so anything that could close a PowerShell string -- including the typographic quotes PowerShell also
+    /// accepts -- is refused here, not trusted (Codex audit 2026-09-30, work-directory finding).
+    /// </summary>
+    internal static bool IsSafeWorkDir(string? path)
+        => path is { Length: > 3 and <= 200 } && System.Text.RegularExpressions.Regex.IsMatch(path, @"^[A-Za-z]:\\[A-Za-z0-9 _.()\\-]+$") && !path.Contains("..", StringComparison.Ordinal);
+
     public static void Map(IEndpointRouteBuilder app)
     {
         var agent = app.MapGroup("/agent/v1");
 
         agent.MapPost("/poll", async (AgentPoll body, HttpContext h, IAgentDirectory store, AgentHub hub, ILoggerFactory logs, CancellationToken ct) =>
         {
-            var who = await AuthenticateAsync(h, store, ct).ConfigureAwait(false);
-            if (who is null) return Results.Unauthorized();
+            var who = Who(h);
+            if (!IsSafeWorkDir(body.WorkDir) || body.Version is not { Length: > 0 and <= 32 })
+                return Results.BadRequest(new { error = "workDir must be a plain local path, version 1-32 characters" });
             var log = logs.CreateLogger("NetworkOps.Agents");
 
             var address = h.Connection.RemoteIpAddress?.ToString();
-            var seen = hub.Seen(who.DeviceName, body.Version, body.WorkDir, address);
+            var seen = hub.Seen(who.DeviceName, body.Version, address, Convert.ToHexString(who.SecretSha256));
             if (seen.CameBack)
             {
                 log.LogInformation("Agent {Device} {Version} connected from {Address}{Away}", who.DeviceName, body.Version, address,
@@ -58,26 +97,22 @@ internal static class AgentApi
                     log.LogInformation("Agent {Device}: last health check older than {Min} min, check {Trigger} queued", who.DeviceName, CatchUpAfter.TotalMinutes, trigger);
             }
             var now = DateTime.UtcNow;
-            if (!LastTouch.TryGetValue(who.DeviceId, out var last) || now - last > TouchEvery)
+            if (seen.CameBack || !LastTouch.TryGetValue(who.DeviceId, out var last) || now - last > TouchEvery)
             {
                 LastTouch[who.DeviceId] = now;
                 await store.TouchAgentAsync(who.DeviceId, body.Version, address, now, ct).ConfigureAwait(false);
             }
 
             AgentJobMessage? job;
-            try { job = await hub.NextJobAsync(who.DeviceName, AgentHub.PollHold, ct).ConfigureAwait(false); }
+            try { job = await hub.NextJobAsync(who.DeviceName, body.WorkDir, AgentHub.PollHold, ct).ConfigureAwait(false); }
             catch (OperationCanceledException) { return Results.NoContent(); }   // the agent hung up, or the service is stopping
             if (job is null) return Results.NoContent();
             log.LogInformation("Agent {Device}: job {Job} handed over", who.DeviceName, job.JobId);
             return Results.Ok(job);
         });
 
-        agent.MapPost("/jobs/{jobId}/result", async (string jobId, AgentJobOutcome body, HttpContext h, IAgentDirectory store, AgentHub hub, CancellationToken ct) =>
-        {
-            var who = await AuthenticateAsync(h, store, ct).ConfigureAwait(false);
-            if (who is null) return Results.Unauthorized();
-            return hub.Complete(who.DeviceName, jobId, body) ? Results.NoContent() : Results.NotFound();
-        });
+        agent.MapPost("/jobs/{jobId}/result", (string jobId, AgentJobOutcome body, HttpContext h, AgentHub hub)
+            => hub.Complete(Who(h).DeviceName, jobId, body) ? Results.NoContent() : Results.NotFound());
     }
 
     /// <summary>The PC the request is from, or null. Refused: no or malformed headers, a PC with no agent row, a removed agent, a wrong key.</summary>
@@ -85,7 +120,7 @@ internal static class AgentApi
     {
         var device = h.Request.Headers[DeviceHeader].ToString();
         var auth = h.Request.Headers.Authorization.ToString();
-        if (device.Length is 0 or > 64 || !auth.StartsWith(Scheme + " ", StringComparison.Ordinal)) return null;
+        if (!System.Text.RegularExpressions.Regex.IsMatch(device, "^[A-Za-z0-9-]{1,64}$") || !auth.StartsWith(Scheme + " ", StringComparison.Ordinal)) return null;
         var key = auth[(Scheme.Length + 1)..].Trim();
         if (key.Length is < 32 or > 256) return null;
 

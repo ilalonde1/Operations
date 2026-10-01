@@ -32,14 +32,19 @@ internal sealed partial class NetworkOpsStore : Agents.IAgentDirectory
             : null;
     }
 
-    /// <summary>Records an install or upgrade: the new key's hash replaces any old one, so the old key stops working.</summary>
+    /// <summary>
+    /// Records an install or upgrade: the new key's hash replaces any old one, so the old key stops working. Contact is
+    /// cleared: until the installer confirms a poll with the new key, this install is unconfirmed, and the rollout
+    /// retries it (Codex audit 2026-09-30, finding 7).
+    /// </summary>
     public async Task SaveAgentAsync(int deviceId, byte[] secretSha256, string version, string by, CancellationToken ct)
     {
         await using var c = await OpenAsync(ct).ConfigureAwait(false);
         await using var cmd = Cmd(c, """
             MERGE NetworkOps.Agents WITH (HOLDLOCK) AS t
             USING (SELECT @d AS DeviceId) AS s ON t.DeviceId = s.DeviceId
-            WHEN MATCHED THEN UPDATE SET SecretSha256 = @h, Version = @v, InstalledUtc = SYSUTCDATETIME(), InstalledBy = @by, RemovedUtc = NULL
+            WHEN MATCHED THEN UPDATE SET SecretSha256 = @h, Version = @v, InstalledUtc = SYSUTCDATETIME(), InstalledBy = @by, RemovedUtc = NULL,
+                                         LastContactUtc = NULL, LastVersion = NULL, LastAddress = NULL
             WHEN NOT MATCHED THEN INSERT (DeviceId, SecretSha256, Version, InstalledUtc, InstalledBy) VALUES (@d, @h, @v, SYSUTCDATETIME(), @by);
             """);
         cmd.Parameters.Add("@d", SqlDbType.Int).Value = deviceId;
@@ -69,7 +74,7 @@ internal sealed partial class NetworkOpsStore : Agents.IAgentDirectory
         await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
     }
 
-    public sealed record AgentRecord(string DeviceName, string Version, string? LastVersion, DateTime? LastContactUtc);
+    public sealed record AgentRecord(string DeviceName, string Version, string? LastVersion, DateTime? LastContactUtc, DateTime? InstalledUtc = null);
 
     /// <summary>Every PC with an agent, for the Command Center. Empty before 005 has run, never an error.</summary>
     public async Task<IReadOnlyDictionary<string, AgentRecord>> AgentRecordsAsync(CancellationToken ct)
@@ -79,13 +84,13 @@ internal sealed partial class NetworkOpsStore : Agents.IAgentDirectory
         {
             await using var c = await OpenAsync(ct).ConfigureAwait(false);
             await using var cmd = Cmd(c, """
-                SELECT d.Name, a.Version, a.LastVersion, a.LastContactUtc
+                SELECT d.Name, a.Version, a.LastVersion, a.LastContactUtc, a.InstalledUtc
                 FROM NetworkOps.Agents a JOIN NetworkOps.Devices d ON d.DeviceId = a.DeviceId
                 WHERE a.RemovedUtc IS NULL;
                 """);
             await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
             while (await r.ReadAsync(ct).ConfigureAwait(false))
-                map[r.GetString(0)] = new AgentRecord(r.GetString(0), r.GetString(1), r.IsDBNull(2) ? null : r.GetString(2), Utc(r, 3));
+                map[r.GetString(0)] = new AgentRecord(r.GetString(0), r.GetString(1), r.IsDBNull(2) ? null : r.GetString(2), Utc(r, 3), Utc(r, 4));
         }
         catch (SqlException ex) when (ex.Number == 208)   // invalid object name: 005 has not run
         {
@@ -96,16 +101,20 @@ internal sealed partial class NetworkOpsStore : Agents.IAgentDirectory
     public sealed record RolloutCandidate(int DeviceId, string Name, string? AgentVersion);
 
     /// <summary>
-    /// The PCs a rollout would touch next, in name order: in the directory, answering the network recently, and either
-    /// without an agent or with one older than <paramref name="shippedVersion"/> (by what was installed).
+    /// The PCs a rollout would touch next, in name order: in the directory, answering the network recently, and one of
+    /// never had an agent / has one older than <paramref name="shippedVersion"/> / was installed but never confirmed
+    /// (no contact since that install). A PC whose agent was REMOVED is left alone: removal is a decision, and only an
+    /// install from that PC's own window undoes it (Codex audit 2026-09-30, finding 11).
     /// </summary>
     public async Task<IReadOnlyList<RolloutCandidate>> AgentRolloutCandidatesAsync(DateTime reachableSinceUtc, string shippedVersion, CancellationToken ct)
     {
         await using var c = await OpenAsync(ct).ConfigureAwait(false);
         await using var cmd = Cmd(c, """
-            SELECT d.DeviceId, d.Name, CASE WHEN a.RemovedUtc IS NULL THEN a.Version END
+            SELECT d.DeviceId, d.Name, a.Version,
+                   CASE WHEN a.DeviceId IS NOT NULL AND (a.LastContactUtc IS NULL OR a.LastContactUtc < a.InstalledUtc) THEN 1 ELSE 0 END AS Unconfirmed
             FROM NetworkOps.Devices d LEFT JOIN NetworkOps.Agents a ON a.DeviceId = d.DeviceId
             WHERE d.InDirectory = 1 AND d.RetiredUtc IS NULL AND d.Source = 'AD' AND d.LastReachableUtc >= @since
+              AND a.RemovedUtc IS NULL
             ORDER BY d.Name;
             """);
         cmd.Parameters.Add("@since", SqlDbType.DateTime2).Value = reachableSinceUtc;
@@ -114,7 +123,7 @@ internal sealed partial class NetworkOpsStore : Agents.IAgentDirectory
         while (await r.ReadAsync(ct).ConfigureAwait(false))
         {
             var v = r.IsDBNull(2) ? null : r.GetString(2);
-            if (v is null || !Version.TryParse(v, out var have) || !Version.TryParse(shippedVersion, out var ship) || have < ship)
+            if (v is null || r.GetInt32(3) == 1 || Kor.Operations.NetworkOps.Core.Health.AgentRules.IsOlder(v, shippedVersion))
                 list.Add(new RolloutCandidate(r.GetInt32(0), r.GetString(1), v));
         }
         return list;

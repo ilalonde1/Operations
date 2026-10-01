@@ -54,6 +54,25 @@ public sealed class AgentRulesTests
     }
 
     [Fact]
+    public void A_just_installed_agent_gets_the_grace_period_before_it_is_called_silent()
+    {
+        // Never heard from, installed 5 minutes ago: not yet silent. Installed 2 hours ago and still never heard: silent.
+        Assert.Empty(AgentRules.Evaluate(new AgentState("1.0.0", null, false, null, Now.AddMinutes(-5)), true, "1.0.0", Now));
+        var f = Assert.Single(AgentRules.Evaluate(new AgentState("1.0.0", null, false, null, Now.AddHours(-2)), true, "1.0.0", Now));
+        Assert.Contains("last heard never", f.Evidence);
+    }
+
+    [Theory]
+    [InlineData("1.0.0", "1.0.1", true)]
+    [InlineData("1.0.1", "1.0.1", false)]
+    [InlineData("1.1.0", "1.0.1", false)]
+    [InlineData("garbage", "1.0.1", true)]    // unreadable is treated as older: reinstalling fixes it, nothing hides it
+    [InlineData(null, "1.0.1", true)]
+    [InlineData("1.0.0", "unknown", false)]   // an unreadable package claims nothing
+    public void One_version_comparison_for_rules_and_rollout(string? have, string shipped, bool older)
+        => Assert.Equal(older, AgentRules.IsOlder(have, shipped));
+
+    [Fact]
     public void A_pc_without_an_agent_has_no_agent_findings()
         => Assert.Empty(AgentRules.Evaluate(null, true, "1.0.0", Now));
 
@@ -70,13 +89,13 @@ public sealed class AgentRulesTests
         // A name that cannot resolve: the network route answers Offline at once, which is how we know it was taken.
         const string pc = "KOR-NO-SUCH-PC-0001";
         var hub = new AgentHub(TimeProvider.System);
-        hub.Seen(pc, "1.0.0", @"C:\w", null);
+        hub.Seen(pc, "1.0.0", null, "KEY");
         var runner = new MachineRunner(hub, Options.Create(new NetworkOpsOptions { AgentsEnabled = false }), NullLogger<MachineRunner>.Instance);
 
         Assert.False(runner.ViaAgent(pc));
         var run = await runner.RunAsync(pc, "'x'", TimeSpan.FromSeconds(30), false, default);
         Assert.Equal(OnTargetStatus.Offline, run.Status);
-        Assert.Null(await hub.NextJobAsync(pc, TimeSpan.FromMilliseconds(200), default));   // nothing was queued for the agent
+        Assert.Null(await hub.NextJobAsync(pc, @"C:\w\work", TimeSpan.FromMilliseconds(200), default));   // nothing was queued for the agent
     }
 
     [Fact]
@@ -91,7 +110,7 @@ public sealed class AgentRulesTests
             ["KOR-216"] = new("KOR-216", "1.0.0", "0.9.0", Now.AddHours(-5)),
         };
         var hub = new AgentHub(TimeProvider.System);
-        hub.Seen("KOR-104N", "1.0.1", @"C:\w", null);
+        hub.Seen("KOR-104N", "1.0.1", null, "KEY");
 
         var rows = ApiHost.WithAgents(fleet, installed, hub).Devices.ToDictionary(d => d.Name);
 

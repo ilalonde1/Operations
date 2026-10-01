@@ -8,7 +8,7 @@ the same health probe and fix scripts the network route runs, as SYSTEM. Design:
 |---|---|
 | Service | `KorNetworkOpsAgent` — "KOR NetworkOps Agent", LocalSystem, Automatic, restarts a minute after a crash |
 | Program | `C:\Program Files\KorOperations\Agent\` (under the Webroot Global Folder ALLOW override) |
-| Key, work folder, log | `C:\ProgramData\KorOperations\Agent\` — SYSTEM and Administrators only, inheritance cut |
+| Key, work folder, log | `C:\Program Files\KorOperations\Agent\data\` — SYSTEM and Administrators only, inheritance cut, re-made at every agent start. Under Program Files because only an administrator can create anything there (in ProgramData any user could pre-create the folder and own it — Codex audit 2026-09-30). Agent 1.0.0 used `C:\ProgramData\KorOperations\Agent\`; every install and removal deletes that. |
 | Log | `agent.log` there, rolled to `agent.log.1` at 1 MB |
 
 | On APP01 | |
@@ -74,4 +74,11 @@ many are left. Run it again for the next batch. The first batch is the canary: l
   When that certificate is replaced, ship an agent with the new pin BEFORE swapping the certificate, then reinstall.
 * A PC's key is readable by that PC's local Administrators. Someone who is local admin on their own PC can pose as
   that one PC (and so fake its health results), and nothing more: every other PC's key is unknown to them.
-* Idle time needs someone at the console: the agent starts a copy of itself in that session to read it.
+* Idle time needs someone at the console: the agent starts a copy of itself in that session to read it; the copy's
+  exit code is the answer (no pipe, nothing inherited from SYSTEM).
+* Every job's process tree runs in a Windows job object: stopping, upgrading or removing the agent (or the agent
+  crashing) ends every script it started. A PC runs at most 3 jobs at once from APP01 (either route); the agent
+  refuses a 5th outright.
+* One install or removal per PC at a time. An install is confirmed only by a poll made with its NEW key; replacing or
+  removing a key cuts any connection held open with the old one at once.
+* Hardened after the Codex audit of 2026-09-30 (`docs/codex/CODEX-NETWORKOPS-AGENT-AUDIT-RESPONSE.md`).

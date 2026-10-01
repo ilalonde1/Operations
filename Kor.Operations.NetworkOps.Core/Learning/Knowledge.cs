@@ -239,7 +239,7 @@ public static class Knowledge
         E("agent-silent", "This PC has the NetworkOps agent, and the PC is on, but the agent is not calling in to APP01. Checks fall back to the network route.",
             ["The agent service was stopped or crashed (it restarts itself a minute after a crash, three times a day)", "Something on the PC is blocking it: antivirus, or the firewall to APP01 port 8445",
              "Its key no longer matches (it was reinstalled from somewhere else, or removed)"],
-            ["Read C:\\ProgramData\\KorOperations\\Agent\\agent.log on the PC (it says why it cannot reach the server)", "Reinstall the agent from this window"],
+            ["Read C:\\Program Files\\KorOperations\\Agent\\data\\agent.log on the PC (it says why it cannot reach the server)", "Reinstall the agent from this window"],
             "Checks still run over the network while the PC is reachable; when it is off the network at sweep time nothing is learned, and idle time is not read."),
         E("agent-outdated", "This PC's NetworkOps agent is older than the version APP01 ships.",
             ["APP01 was updated and this PC has not been reinstalled since"],

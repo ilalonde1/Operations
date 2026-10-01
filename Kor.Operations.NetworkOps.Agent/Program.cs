@@ -12,7 +12,7 @@
 //
 //   Kor.Operations.NetworkOps.Agent.exe                          as the Windows service (installed by APP01)
 //   Kor.Operations.NetworkOps.Agent.exe --console [overrides]    in a console, for tests
-//   Kor.Operations.NetworkOps.Agent.exe --idle                   print this session's idle seconds (the service
+//   Kor.Operations.NetworkOps.Agent.exe --idle                   exit with this session's idle seconds (the service
 //                                                                 starts it in the signed-in user's session)
 using System;
 using System.Linq;
@@ -27,11 +27,8 @@ internal static class Program
 
     public static int Main(string[] args)
     {
-        if (args.Length > 0 && args[0] == "--idle")
-        {
-            Console.Out.Write(ConsoleIdle.ForThisSession());
-            return 0;
-        }
+        // Started by the agent in the console user's session: the exit code IS the answer (ConsoleIdle).
+        if (args.Length > 0 && args[0] == "--idle") return ConsoleIdle.ForThisSession();
 
         var settings = AgentSettings.Load(args);
         if (!args.Contains("--console"))

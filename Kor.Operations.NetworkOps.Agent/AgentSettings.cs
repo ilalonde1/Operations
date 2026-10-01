@@ -14,8 +14,13 @@ internal sealed class AgentSettings
     public string ServerUrl { get; private set; } = "";
     public string ServerCertSha256 { get; private set; } = "";
     public string Device { get; private set; } = Environment.MachineName;
-    /// <summary>Holds the key, the work folder and the log. Readable by SYSTEM and Administrators only.</summary>
-    public string DataDir { get; private set; } = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "KorOperations", "Agent");
+    /// <summary>
+    /// Holds the key, the work folder and the log: "data" beside the exe, i.e. C:\Program Files\KorOperations\Agent\data.
+    /// Under Program Files, not ProgramData, on purpose: an ordinary user can create folders in ProgramData, so could
+    /// pre-create this one before the install and own it (Codex audit 2026-09-30, finding 1). Under Program Files only
+    /// an administrator can create anything. Readable by SYSTEM and Administrators only.
+    /// </summary>
+    public string DataDir { get; private set; } = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data");
     public string KeyPath => Path.Combine(DataDir, "agent.key");
     public string WorkDir => Path.Combine(DataDir, "work");
 
@@ -41,7 +46,7 @@ internal sealed class AgentSettings
         }
         s.ServerUrl = s.ServerUrl.TrimEnd('/');
         s.ServerCertSha256 = s.ServerCertSha256.Replace(" ", "").Replace(":", "").ToUpperInvariant();
-        if (s.ServerUrl.Length == 0) throw new ConfigurationErrorsException("ServerUrl is not set");
+        if (!s.ServerUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase)) throw new ConfigurationErrorsException("ServerUrl must be https://");
         if (s.ServerCertSha256.Length != 64) throw new ConfigurationErrorsException("ServerCertSha256 must be the 64-character SHA-256 of the server's certificate");
         return s;
     }

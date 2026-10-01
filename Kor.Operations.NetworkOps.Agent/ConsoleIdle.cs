@@ -10,16 +10,22 @@ namespace Kor.Operations.NetworkOps.Agent;
 /// <summary>
 /// How long the person at the keyboard has been idle. Windows only tells a process in that person's own session
 /// (GetLastInputInfo); the agent runs as SYSTEM in session 0, which sees nothing. So the agent starts a copy of
-/// itself, with --idle, in the console user's session, reads the one number it prints, and it exits. Nothing
-/// stays running in the user's session, and it happens only when the health probe asks for it.
+/// itself, with --idle, in the console user's session; that copy's EXIT CODE is the number of idle seconds.
+///
+/// The exit code, not a pipe, on purpose (Codex audit 2026-09-30, finding 8): nothing is inherited from the SYSTEM
+/// process (bInheritHandles = false), and there is no read that a user holding the child could stall. The user owns
+/// that child and could make it lie about their own idle time -- which they could do anyway by moving the mouse.
 /// </summary>
 internal static class ConsoleIdle
 {
-    /// <summary>Seconds since the last keyboard or mouse input in the session this process runs in.</summary>
+    /// <summary>The exit code meaning "could not read it".</summary>
+    public const int Unknown = -1;
+
+    /// <summary>Seconds since the last keyboard or mouse input in the session this process runs in; -1 if unreadable.</summary>
     public static int ForThisSession()
     {
         var info = new LastInputInfo { cbSize = (uint)Marshal.SizeOf<LastInputInfo>() };
-        if (!GetLastInputInfo(ref info)) return -1;
+        if (!GetLastInputInfo(ref info)) return Unknown;
         // Both are milliseconds since boot, wrapping at 49.7 days: unsigned subtraction is right across the wrap.
         return (int)(unchecked((uint)Environment.TickCount - info.dwTime) / 1000);
     }
@@ -36,7 +42,7 @@ internal static class ConsoleIdle
         using (token)
         {
             try { return Run(token); }
-            catch (Exception ex) when (ex is Win32Exception or IOException or FormatException)
+            catch (Exception ex) when (ex is Win32Exception or IOException)
             {
                 log.Warn("could not read the console user's idle time: " + ex.Message);
                 return null;
@@ -46,57 +52,37 @@ internal static class ConsoleIdle
 
     private static int? Run(SafeAccessTokenHandle token)
     {
-        var sa = new SecurityAttributes { nLength = Marshal.SizeOf<SecurityAttributes>(), bInheritHandle = true };
-        if (!CreatePipe(out var read, out var write, ref sa, 0)) throw new Win32Exception();
-        using (read)
+        var exe = typeof(ConsoleIdle).Assembly.Location;
+        var si = new StartupInfo
         {
-            // Only the write end is inherited by the child.
-            SetHandleInformation(read, HandleFlagInherit, 0);
-            var exe = typeof(ConsoleIdle).Assembly.Location;
-            var si = new StartupInfo
-            {
-                cb = Marshal.SizeOf<StartupInfo>(),
-                lpDesktop = @"winsta0\default",
-                dwFlags = StartfUseStdHandles | StartfUseShowWindow,
-                wShowWindow = 0,   // SW_HIDE
-                hStdOutput = write.DangerousGetHandle(),
-                hStdError = write.DangerousGetHandle(),
-            };
-            var cmd = new StringBuilder($"\"{exe}\" --idle");
-            bool ok;
-            ProcessInformation pi;
-            using (write)
-            {
-                ok = CreateProcessAsUser(token, null, cmd, IntPtr.Zero, IntPtr.Zero, true, CreateNoWindow, IntPtr.Zero,
-                    Path.GetDirectoryName(exe), ref si, out pi);
-                if (!ok) throw new Win32Exception();
-            }   // the parent's copy of the write end closes here, so the read below ends when the child exits
-            try
-            {
-                if (WaitForSingleObject(pi.hProcess, 10000) != 0) { TerminateProcess(pi.hProcess, 1); return null; }
-                using var fs = new FileStream(read, FileAccess.Read);
-                using var sr = new StreamReader(fs);
-                var text = sr.ReadToEnd().Trim();
-                return int.TryParse(text, out var seconds) && seconds >= 0 ? seconds : null;
-            }
-            finally
-            {
-                CloseHandle(pi.hThread);
-                CloseHandle(pi.hProcess);
-            }
+            cb = Marshal.SizeOf<StartupInfo>(),
+            lpDesktop = @"winsta0\default",
+            dwFlags = StartfUseShowWindow,
+            wShowWindow = 0,   // SW_HIDE
+        };
+        var cmd = new StringBuilder($"\"{exe}\" --idle");
+        if (!CreateProcessAsUser(token, null, cmd, IntPtr.Zero, IntPtr.Zero, false, CreateNoWindow, IntPtr.Zero,
+                Path.GetDirectoryName(exe), ref si, out var pi))
+            throw new Win32Exception();
+        try
+        {
+            if (WaitForSingleObject(pi.hProcess, 10000) != 0) { TerminateProcess(pi.hProcess, 1); return null; }
+            if (!GetExitCodeProcess(pi.hProcess, out var code)) throw new Win32Exception();
+            var seconds = unchecked((int)code);
+            return seconds >= 0 ? seconds : null;
+        }
+        finally
+        {
+            CloseHandle(pi.hThread);
+            CloseHandle(pi.hProcess);
         }
     }
 
-    private const uint HandleFlagInherit = 0x1;
-    private const int StartfUseStdHandles = 0x100;
     private const int StartfUseShowWindow = 0x1;
     private const uint CreateNoWindow = 0x08000000;
 
     [StructLayout(LayoutKind.Sequential)]
     private struct LastInputInfo { public uint cbSize; public uint dwTime; }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct SecurityAttributes { public int nLength; public IntPtr lpSecurityDescriptor; public bool bInheritHandle; }
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
     private struct StartupInfo
@@ -122,12 +108,6 @@ internal static class ConsoleIdle
     [DllImport("wtsapi32.dll", SetLastError = true)]
     private static extern bool WTSQueryUserToken(uint sessionId, out SafeAccessTokenHandle token);
 
-    [DllImport("kernel32.dll", SetLastError = true)]
-    private static extern bool CreatePipe(out SafeFileHandle read, out SafeFileHandle write, ref SecurityAttributes sa, uint size);
-
-    [DllImport("kernel32.dll", SetLastError = true)]
-    private static extern bool SetHandleInformation(SafeFileHandle handle, uint mask, uint flags);
-
     [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
     private static extern bool CreateProcessAsUser(SafeAccessTokenHandle token, string? application, StringBuilder commandLine,
         IntPtr processAttributes, IntPtr threadAttributes, bool inheritHandles, uint creationFlags, IntPtr environment,
@@ -135,6 +115,9 @@ internal static class ConsoleIdle
 
     [DllImport("kernel32.dll", SetLastError = true)]
     private static extern uint WaitForSingleObject(IntPtr handle, uint milliseconds);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern bool GetExitCodeProcess(IntPtr process, out uint exitCode);
 
     [DllImport("kernel32.dll", SetLastError = true)]
     private static extern bool TerminateProcess(IntPtr process, uint exitCode);

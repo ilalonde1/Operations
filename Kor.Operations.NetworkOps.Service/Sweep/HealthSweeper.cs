@@ -127,6 +127,8 @@ internal sealed class HealthSweeper(NetworkOpsStore store, IDigestSender digest,
     {
         if (!installed.TryGetValue(device, out var rec)) return null;
         var live = agents.Status(device);
-        return new AgentState(rec.Version, live?.Version is { Length: > 0 } v ? v : rec.LastVersion, live?.Connected == true, live?.LastPollUtc ?? rec.LastContactUtc);
+        var lastPoll = live is { LastPollUtc: var p } && p != default ? p : (DateTime?)null;
+        return new AgentState(rec.Version, live?.Version is { Length: > 0 } v ? v : rec.LastVersion, live?.Connected == true,
+            new[] { lastPoll, rec.LastContactUtc }.Max(), rec.InstalledUtc);
     }
 }

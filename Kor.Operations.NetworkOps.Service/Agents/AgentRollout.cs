@@ -28,8 +28,15 @@ internal sealed class AgentRollout(NetworkOpsStore store, AgentInstaller install
         if (batch.Count == 0) return $"nothing to do: every PC seen in the last {ReachableWithin.TotalHours:0} h has agent {shipped}";
 
         var done = new List<string>();
+        var skipped = new List<string>();
         foreach (var pc in batch)
         {
+            // Off since the census: not a failure, nothing to stop for. It comes back into the next run's list.
+            if (!(await Kor.Operations.NetworkOps.Transport.SmbReachability.ProbeAsync(pc.Name, ct: ct).ConfigureAwait(false)).Reachable)
+            {
+                skipped.Add(pc.Name);
+                continue;
+            }
             var actionId = await store.StartActionAsync(pc.DeviceId, AgentInstaller.InstallKind, requestedBy,
                 System.Text.Json.JsonSerializer.Serialize(new { action = "install", rollout = true, from = pc.AgentVersion }), ct).ConfigureAwait(false);
             bool ok;
@@ -40,9 +47,11 @@ internal sealed class AgentRollout(NetworkOpsStore store, AgentInstaller install
             log.LogWarning("ROLLOUT {Pc}: {Outcome} -- {Detail}", pc.Name, ok ? "done" : "FAILED", detail);
             if (!ok)
                 return $"stopped at {pc.Name} (action {actionId}): {detail}. Done before it: {(done.Count == 0 ? "none" : string.Join(", ", done))}. " +
-                       $"{candidates.Count - done.Count} PCs still to do.";
+                       Skipped(skipped) + $"{candidates.Count - done.Count} PCs still to do.";
             done.Add(pc.Name);
         }
-        return $"agent {shipped} on {done.Count} PCs ({string.Join(", ", done)}); {candidates.Count - done.Count} still to do";
+        return $"agent {shipped} on {done.Count} PCs ({(done.Count == 0 ? "none" : string.Join(", ", done))}); " + Skipped(skipped) + $"{candidates.Count - done.Count} still to do";
     }
+
+    private static string Skipped(List<string> s) => s.Count == 0 ? "" : $"skipped as offline: {string.Join(", ", s)}. ";
 }

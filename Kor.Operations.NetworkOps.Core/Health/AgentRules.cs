@@ -5,7 +5,8 @@ namespace Kor.Operations.NetworkOps.Core.Health;
 /// <param name="ReportedVersion">What the agent itself last said it is (null: never heard from).</param>
 /// <param name="Connected">Calling in right now.</param>
 /// <param name="LastContactUtc">When it was last heard from.</param>
-public sealed record AgentState(string InstalledVersion, string? ReportedVersion, bool Connected, DateTime? LastContactUtc);
+/// <param name="InstalledUtc">When it was (re)installed: a fresh install is given the same grace as a fresh restart.</param>
+public sealed record AgentState(string InstalledVersion, string? ReportedVersion, bool Connected, DateTime? LastContactUtc, DateTime? InstalledUtc = null);
 
 // The endpoint agent's own health, judged on each health check of a PC that has one. Pure: the sweep supplies
 // what it knows (the agent record, whether the hub hears it, whether the PC answered this check over the network).
@@ -25,16 +26,24 @@ public static class AgentRules
     {
         if (agent is null) return [];
         var found = new List<Finding>();
-        if (!agent.Connected && answeredOverNetwork && (agent.LastContactUtc is not { } last || nowUtc - last > SilentAfter))
+        // Quiet since the later of its last contact and its (re)install: a just-installed agent is not "silent".
+        var since = new[] { agent.LastContactUtc, agent.InstalledUtc }.Max();
+        if (!agent.Connected && answeredOverNetwork && (since is not { } s || nowUtc - s > SilentAfter))
             found.Add(new("agent-silent", Severity.Warning, "The NetworkOps agent is not calling in",
                 $"agent {agent.InstalledVersion} is installed, last heard {(agent.LastContactUtc is { } t ? Ago(nowUtc - t) + " ago" : "never")}, " +
                 "but the PC answered this check over the network"));
-        if (agent.Connected && packageVersion is not null && agent.ReportedVersion is { } reported
-            && Version.TryParse(reported, out var have) && Version.TryParse(packageVersion, out var ship) && have < ship)
+        if (agent.Connected && packageVersion is not null && agent.ReportedVersion is { } reported && IsOlder(reported, packageVersion))
             found.Add(new("agent-outdated", Severity.Info, "The NetworkOps agent is out of date",
                 $"running {reported}; APP01 ships {packageVersion}"));
         return found;
     }
+
+    /// <summary>
+    /// The one version comparison (the rollout uses it too): older than <paramref name="shipped"/>. A version that does
+    /// not parse is treated as older -- reinstalling fixes it -- rather than silently passing as current.
+    /// </summary>
+    public static bool IsOlder(string? have, string shipped)
+        => !Version.TryParse(shipped, out var ship) ? false : !Version.TryParse(have, out var v) || v < ship;
 
     private static string Ago(TimeSpan d) => d < TimeSpan.FromHours(1) ? $"{(int)d.TotalMinutes} min" : d < TimeSpan.FromDays(2) ? $"{(int)d.TotalHours} h" : $"{(int)d.TotalDays} days";
 }

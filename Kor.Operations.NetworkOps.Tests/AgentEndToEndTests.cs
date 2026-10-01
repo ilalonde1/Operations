@@ -102,6 +102,7 @@ public sealed class AgentEndToEndTests : IAsyncLifetime
         builder.Services.ConfigureHttpJsonOptions(j => j.SerializerOptions.PropertyNameCaseInsensitive = true);
         builder.WebHost.ConfigureKestrel(k => k.Listen(IPAddress.Loopback, 0, l => l.UseHttps(_cert)));
         _app = builder.Build();
+        AgentApi.UseAgentGate(_app);   // as ApiHost does: the key is checked before any body is read
         AgentApi.Map(_app);
         await _app.StartAsync();
         var address = _app.Services.GetRequiredService<IServer>().Features.Get<IServerAddressesFeature>()!.Addresses.First();

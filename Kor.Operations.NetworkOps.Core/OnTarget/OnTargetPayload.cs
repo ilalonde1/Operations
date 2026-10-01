@@ -37,7 +37,9 @@ public static class OnTargetPayload
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(body);
         ArgumentException.ThrowIfNullOrWhiteSpace(resultPath);
-        if (resultPath.Contains('\'')) throw new ArgumentException("Result path may not contain a single quote.", nameof(resultPath));
+        // PowerShell closes a single-quoted string on the typographic quotes too (U+2018-U+201B), not only on '.
+        if (resultPath.IndexOfAny(['\'', '‘', '’', '‚', '‛']) >= 0)
+            throw new ArgumentException("Result path may not contain a quote of any kind.", nameof(resultPath));
         ArgumentOutOfRangeException.ThrowIfLessThan(maxResultChars, 1024);
 
         var tmp = resultPath + ".tmp";

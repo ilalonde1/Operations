@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -15,16 +16,23 @@ namespace Kor.Operations.NetworkOps.Agent;
 /// <summary>
 /// Ask APP01 for work, forever. The server holds each poll open for up to ~25 s and answers the moment it has
 /// something, so a "check now" or a fix reaches the PC in about a second without the PC listening on anything.
-/// Jobs run alongside the polling: a 40-minute repair on this PC never stops a health check from arriving.
+/// Jobs run alongside the polling (a 40-minute repair never stops a health check arriving), at most
+/// <see cref="MaxConcurrentJobs"/> at once; and every job dies with the agent -- stopping, upgrading or removing it
+/// never leaves a SYSTEM PowerShell running behind it (Codex audit 2026-09-30, finding 3).
 /// </summary>
 internal sealed class AgentLoop
 {
     /// <summary>The largest result ever sent back, in bytes: the same limit the network route applies (8 M characters, UTF-8).</summary>
     public const long MaxResultBytes = 8L * 1024 * 1024 * 4;
 
+    /// <summary>A PC runs at most this many jobs at once; beyond it the agent answers "busy" at once (the server limits too).</summary>
+    public const int MaxConcurrentJobs = 4;
+
     private readonly AgentSettings _s;
     private readonly AgentLog _log;
     private readonly HttpClient _http;
+    private readonly SemaphoreSlim _slots = new(MaxConcurrentJobs, MaxConcurrentJobs);
+    private readonly ConcurrentDictionary<Task, byte> _running = new();
 
     public AgentLoop(AgentSettings settings, AgentLog log)
     {
@@ -36,6 +44,8 @@ internal sealed class AgentLoop
             // machine that only claims to be APP01 never hands this PC a script.
             ServerCertificateCustomValidationCallback = (_, cert, _, _) => cert is not null && Sha256Hex(cert.RawData) == _s.ServerCertSha256,
             UseProxy = false,
+            // Never followed: a redirect is the one way a pinned conversation could be pointed somewhere else.
+            AllowAutoRedirect = false,
         };
         _http = new HttpClient(handler) { BaseAddress = new Uri(_s.ServerUrl + "/"), Timeout = TimeSpan.FromSeconds(75) };
         _http.DefaultRequestHeaders.UserAgent.ParseAdd("KorNetworkOpsAgent/" + AgentSettings.Version);
@@ -53,28 +63,48 @@ internal sealed class AgentLoop
 
         var backoff = 5;
         string? lastProblem = null;
-        while (!ct.IsCancellationRequested)
+        try
         {
-            try
+            while (!ct.IsCancellationRequested)
             {
-                var job = await PollAsync(ct).ConfigureAwait(false);
-                if (lastProblem is not null) _log.Info("connected to the server again");
-                lastProblem = null;
-                backoff = 5;
-                if (job is not null) _ = Task.Run(() => RunJobAsync(job, ct));
-            }
-            catch (OperationCanceledException) when (ct.IsCancellationRequested) { break; }
-            catch (Exception ex)
-            {
-                // Off the network, APP01 down, or refused: wait, longer each time, and say so once, not every minute.
-                var problem = Describe(ex);
-                if (problem != lastProblem) _log.Warn($"cannot reach the server: {problem} (retrying, up to every 2 min)");
-                lastProblem = problem;
-                try { await Task.Delay(TimeSpan.FromSeconds(backoff), ct).ConfigureAwait(false); }
-                catch (OperationCanceledException) { break; }
-                backoff = Math.Min(backoff * 2, 120);
+                try
+                {
+                    var job = await PollAsync(ct).ConfigureAwait(false);
+                    if (lastProblem is not null) _log.Info("connected to the server again");
+                    lastProblem = null;
+                    backoff = 5;
+                    if (job is not null) Track(Task.Run(() => RunJobAsync(job, ct)));
+                }
+                catch (OperationCanceledException) when (ct.IsCancellationRequested) { break; }
+                catch (Exception ex)
+                {
+                    // Off the network, APP01 down, or refused: wait, longer each time, and say so once, not every minute.
+                    var problem = Describe(ex);
+                    if (problem != lastProblem) _log.Warn($"cannot reach the server: {problem} (retrying, up to every 2 min)");
+                    lastProblem = problem;
+                    try { await Task.Delay(TimeSpan.FromSeconds(backoff), ct).ConfigureAwait(false); }
+                    catch (OperationCanceledException) { break; }
+                    backoff = Math.Min(backoff * 2, 120);
+                }
             }
         }
+        finally
+        {
+            // Stopping: every running job has been told (ct) and kills its own process tree; wait for them to finish
+            // doing so, so the service is not reported stopped while a SYSTEM PowerShell is still running.
+            var left = _running.Keys.ToArray();
+            if (left.Length > 0)
+            {
+                _log.Info($"stopping: ending {left.Length} running job(s)");
+                await Task.WhenAny(Task.WhenAll(left), Task.Delay(TimeSpan.FromSeconds(15))).ConfigureAwait(false);
+            }
+        }
+    }
+
+    private void Track(Task t)
+    {
+        _running.TryAdd(t, 0);
+        _ = t.ContinueWith(done => _running.TryRemove(done, out _), TaskScheduler.Default);
     }
 
     private async Task<Job?> PollAsync(CancellationToken ct)
@@ -84,7 +114,7 @@ internal sealed class AgentLoop
         content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
         using var response = await _http.PostAsync("agent/v1/poll", content, ct).ConfigureAwait(false);
         if (response.StatusCode == HttpStatusCode.NoContent) return null;
-        if (!response.IsSuccessStatusCode) throw new HttpRequestException($"the server answered {(int)response.StatusCode} {response.ReasonPhrase}");
+        if (response.StatusCode != HttpStatusCode.OK) throw new HttpRequestException($"the server answered {(int)response.StatusCode} {response.ReasonPhrase}");
         return Json.Read<Job>(await response.Content.ReadAsByteArrayAsync().ConfigureAwait(false));
     }
 
@@ -92,14 +122,27 @@ internal sealed class AgentLoop
     {
         var clock = Stopwatch.StartNew();
         JobResult result;
-        try
+        if (!_slots.Wait(0))
         {
-            int? idle = job.WantsIdle ? ConsoleIdle.ForConsoleUser(_log) : null;
-            result = await JobRunner.RunAsync(job, _s.WorkDir, idle, ct).ConfigureAwait(false);
+            result = new JobResult { Status = "error", Error = $"agent busy: {MaxConcurrentJobs} jobs already running on this PC" };
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        else
         {
-            result = new JobResult { Status = "error", Error = ex.Message };
+            try
+            {
+                int? idle = job.WantsIdle ? ConsoleIdle.ForConsoleUser(_log) : null;
+                result = await JobRunner.RunAsync(job, _s.WorkDir, idle, ct).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                _log.Info($"job {job.JobId}: ended because the agent is stopping");
+                return;   // the server's wait times out and reports it; nothing is sent from a stopping agent
+            }
+            catch (Exception ex)
+            {
+                result = new JobResult { Status = "error", Error = ex.Message };
+            }
+            finally { _slots.Release(); }
         }
         result.ElapsedMs = clock.ElapsedMilliseconds;
         _log.Info($"job {job.JobId}: {result.Status} in {result.ElapsedMs} ms{(result.Error is null ? "" : " -- " + result.Error)}");
@@ -169,11 +212,17 @@ internal static class JobRunner
             };
             if (consoleIdleSeconds is { } idle) psi.EnvironmentVariables["KOR_CONSOLE_IDLE_SECONDS"] = idle.ToString(System.Globalization.CultureInfo.InvariantCulture);
 
+            // The job's whole process tree lives in a Windows job object that is killed when this ends -- by finishing,
+            // by timing out, by the agent stopping, or by the agent crashing (the OS closes the handle).
+            using var tree = new ProcessTree();
             using var p = Process.Start(psi) ?? throw new InvalidOperationException("powershell did not start");
-            var exited = await WaitForExitAsync(p, TimeSpan.FromSeconds(Math.Max(10, job.TimeoutSeconds)), ct).ConfigureAwait(false);
+            tree.Add(p);
+            bool exited;
+            try { exited = await WaitForExitAsync(p, TimeSpan.FromSeconds(Math.Max(10, job.TimeoutSeconds)), ct).ConfigureAwait(false); }
+            catch (OperationCanceledException) { tree.Kill(); throw; }
             if (!exited)
             {
-                KillTree(p.Id);
+                tree.Kill();
                 return new JobResult { Status = "timeout", Error = $"no result after {job.TimeoutSeconds} s" };
             }
             if (!File.Exists(result)) return new JobResult { Status = "error", Error = $"powershell exited {p.ExitCode} without publishing a result" };
@@ -198,18 +247,6 @@ internal static class JobRunner
             await Task.Delay(250, ct).ConfigureAwait(false);
         }
         return true;
-    }
-
-    /// <summary>A fix may have started sfc or DISM: stop those with it, not only powershell.</summary>
-    private static void KillTree(int pid)
-    {
-        try
-        {
-            using var k = Process.Start(new ProcessStartInfo(Path.Combine(Environment.SystemDirectory, "taskkill.exe"), $"/T /F /PID {pid}")
-            { UseShellExecute = false, CreateNoWindow = true });
-            k?.WaitForExit(15000);
-        }
-        catch (System.ComponentModel.Win32Exception) { /* already gone */ }
     }
 
     private static void TryDelete(string path)
