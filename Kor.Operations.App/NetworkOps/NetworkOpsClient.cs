@@ -119,6 +119,27 @@ public sealed class NetworkOpsClient
         return (ok.RootElement.GetProperty("actionId").GetInt64(), null, false);
     }
 
+    /// <summary>Asks the service to install remote control (the Mesh agent) on a PC or a Windows server. Returns the run's id.</summary>
+    public async Task<long> RequestMeshAsync(int deviceId, CancellationToken ct)
+    {
+        using var res = await SendAsync(HttpMethod.Post, $"api/devices/{deviceId}/mesh", new MeshRequest("install"), ct).ConfigureAwait(false);
+        await EnsureOkAsync(res).ConfigureAwait(false);
+        using var ok = JsonDocument.Parse(await res.Content.ReadAsStringAsync(ct).ConfigureAwait(false));
+        return ok.RootElement.GetProperty("actionId").GetInt64();
+    }
+
+    /// <summary>KOR-MESH01's address: what NetworkOps.MeshUrl in App.config says, and what it says when absent.</summary>
+    public const string DefaultMeshUrl = "https://kor-mesh01.int.korstructural.com";
+
+    /// <summary>The MeshCentral server the Connect button opens (App.config NetworkOps.MeshUrl).</summary>
+    public static string? MeshUrl => (ConfigurationManager.AppSettings["NetworkOps.MeshUrl"] is { Length: > 0 } v ? v.Trim() : DefaultMeshUrl).TrimEnd('/');
+
+    /// <summary>A device's remote-control page: MeshCentral opened straight on that device's desktop tab.</summary>
+    public static string? ConnectUrl(string? meshNodeId)
+        => MeshUrl is { } baseUrl && meshNodeId is { Length: > 0 }
+            ? $"{baseUrl}/?gotonode={Uri.EscapeDataString(meshNodeId.StartsWith("node//", StringComparison.Ordinal) ? meshNodeId[6..] : meshNodeId)}&viewmode=11"
+            : null;
+
     /// <summary>Asks the service to install (or reinstall, which is the upgrade) or remove a PC's agent. Returns the run's id.</summary>
     public async Task<long> RequestAgentAsync(int deviceId, string action, CancellationToken ct)
     {

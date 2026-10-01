@@ -15,7 +15,13 @@ namespace Kor.Operations.NetworkOps.Core.Learning;
 /// <param name="AgentConnected">The agent is calling in right now, so checks and fixes reach the PC through it.</param>
 /// <param name="AgentLastContactUtc">When the agent was last heard from.</param>
 public sealed record DeviceRow(int DeviceId, string Name, DateTime? LastReachableUtc, DateTime? LastCheckedUtc, string Kind = "Workstation", string? Summary = null,
-    string? Presence = null, string? PresenceState = null, string? AgentVersion = null, bool AgentConnected = false, DateTime? AgentLastContactUtc = null);
+    string? Presence = null, string? PresenceState = null, string? AgentVersion = null, bool AgentConnected = false, DateTime? AgentLastContactUtc = null,
+    string? MeshNodeId = null, bool MeshConnected = false);
+// MeshNodeId: remote control (MeshCentral) -- the device's node id ("node//..."), null when it has no Mesh agent;
+// the Command Center's Connect button opens it. MeshConnected: its Mesh agent was connected at the last read.
+
+/// <param name="Action">install (remote control: the Mesh agent)</param>
+public sealed record MeshRequest(string Action);
 
 public sealed record ServiceBeat(string Host, DateTime StartedUtc, DateTime LastBeatUtc, string? Version);
 

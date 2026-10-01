@@ -25,7 +25,7 @@ namespace Kor.Operations.NetworkOps.Service.Api;
 // The endpoint agents call in on the same listener (/agent/v1, Agents/AgentApi.cs) with their own per-PC keys;
 // neither kind of caller can use the other's routes.
 internal sealed class ApiHost(IOptions<NetworkOpsOptions> options, NetworkOpsStore store, Power.PowerState power, Agents.AgentHub agents,
-    ILoggerFactory loggers, ILogger<ApiHost> log) : BackgroundService
+    Mesh.MeshState mesh, ILoggerFactory loggers, ILogger<ApiHost> log) : BackgroundService
 {
     private static readonly TimeSpan MaxSnooze = TimeSpan.FromDays(90);
 
@@ -49,6 +49,7 @@ internal sealed class ApiHost(IOptions<NetworkOpsOptions> options, NetworkOpsSto
         builder.Services.AddSingleton(power);
         builder.Services.AddSingleton(options);
         builder.Services.AddSingleton(agents);
+        builder.Services.AddSingleton(mesh);
         builder.Services.AddSingleton<Agents.IAgentDirectory>(store);
         builder.WebHost.ConfigureKestrel(k =>
         {
@@ -101,11 +102,12 @@ internal sealed class ApiHost(IOptions<NetworkOpsOptions> options, NetworkOpsSto
         app.MapGet("/api/ping", () => Results.Ok(new { status = "ok", version = Jobs.JobDispatcher.Version }));
 
         var api = app.MapGroup("/api").RequireAuthorization("CommandCenter");
-        api.MapGet("/fleet", async (NetworkOpsStore s, Agents.AgentHub hub, CancellationToken ct) =>
-            WithAgents(await s.FleetSnapshotAsync(ct), await s.AgentRecordsAsync(ct), hub));
+        api.MapGet("/fleet", async (NetworkOpsStore s, Agents.AgentHub hub, Mesh.MeshState m, CancellationToken ct) =>
+            WithMesh(WithAgents(await s.FleetSnapshotAsync(ct), await s.AgentRecordsAsync(ct), hub), m, await s.MeshRecordsAsync(ct)));
         // The rack (hosts, storage, UPSes, backup, network, internet): the same shape as /fleet, served apart so a
         // page that predates the rack never lists a host or a UPS as a PC.
-        api.MapGet("/rack", (NetworkOpsStore s, CancellationToken ct) => s.FleetSnapshotAsync(ct, rack: true));
+        api.MapGet("/rack", async (NetworkOpsStore s, Mesh.MeshState m, CancellationToken ct) =>
+            WithMesh(await s.FleetSnapshotAsync(ct, rack: true), m, await s.MeshRecordsAsync(ct)));
         api.MapGet("/devices/{id:int}/history", (int id, NetworkOpsStore s, CancellationToken ct) => s.DeviceHistoryAsync(id, ct));
         api.MapGet("/resolutions", (NetworkOpsStore s, CancellationToken ct) => s.ResolutionRowsAsync(ct));
 
@@ -175,6 +177,16 @@ internal sealed class ApiHost(IOptions<NetworkOpsOptions> options, NetworkOpsSto
             var runId = await s.QueueActionAsync(id, kind, ApiAccess.UserOf(h.User), System.Text.Json.JsonSerializer.Serialize(new { action = body.Action }), ct);
             return Results.Accepted($"/api/actions/{runId}", new { actionId = runId });
         });
+        // Remote control: install the Mesh agent on a PC or a Windows rack server, queued and audited like a fix.
+        api.MapPost("/devices/{id:int}/mesh", async (int id, MeshRequest body, HttpContext h, NetworkOpsStore s, IOptions<NetworkOpsOptions> o, CancellationToken ct) =>
+        {
+            if (body.Action != "install") return Results.BadRequest(new { error = "action must be install" });
+            if (await s.DeviceForActionAsync(id, ct) is not { } dev) return Results.NotFound();
+            if (dev.Source == "Rack" && !o.Value.Rack.Any(r => r.Name.Equals(dev.Name, StringComparison.OrdinalIgnoreCase) && r.Collector == "WindowsServer"))
+                return Results.BadRequest(new { error = $"{dev.Name} is not a Windows machine: remote control installs on PCs and Windows servers" });
+            var runId = await s.QueueActionAsync(id, Mesh.MeshInstaller.InstallKind, ApiAccess.UserOf(h.User), System.Text.Json.JsonSerializer.Serialize(new { action = "install" }), ct);
+            return Results.Accepted($"/api/actions/{runId}", new { actionId = runId });
+        });
         // The next batch of the fleet rollout (Agents/AgentRollout.cs): one at a time, stops at the first failure.
         api.MapPost("/agents/rollout", async (HttpContext h, NetworkOpsStore s, CancellationToken ct) =>
             Results.Accepted(null, new { triggerId = await s.QueueJobAsync(Agents.AgentRollout.JobName, ApiAccess.UserOf(h.User), ct) }));
@@ -201,6 +213,16 @@ internal sealed class ApiHost(IOptions<NetworkOpsOptions> options, NetworkOpsSto
                     AgentLastContactUtc = new[] { live is { LastPollUtc: var p } && p != default ? p : (DateTime?)null, rec.LastContactUtc }.Max(),
                 };
             }).ToList(),
+        };
+
+    /// <summary>Each device's remote control: the live read when it is fresh, else what was stored (just after a restart).</summary>
+    internal static FleetSnapshot WithMesh(FleetSnapshot fleet, Mesh.MeshState live, IReadOnlyDictionary<int, NetworkOpsStore.MeshRecord> stored)
+        => fleet with
+        {
+            Devices = fleet.Devices.Select(d =>
+                live.Fresh
+                    ? live.For(d.DeviceId) is { } l ? d with { MeshNodeId = l.Node.Id, MeshConnected = l.Node.AgentConnected } : d
+                    : stored.TryGetValue(d.DeviceId, out var r) ? d with { MeshNodeId = r.NodeId, MeshConnected = r.Connected } : d).ToList(),
         };
 
     private static async Task<IResult> Annotate(NetworkOpsStore s, long id, NetworkOpsStore.Annotation kind, HttpContext h, string? note, DateTime? until, CancellationToken ct)

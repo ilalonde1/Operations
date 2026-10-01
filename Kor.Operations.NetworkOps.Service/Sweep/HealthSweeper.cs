@@ -25,7 +25,7 @@ namespace Kor.Operations.NetworkOps.Service.Sweep;
 // A PC that could not be probed keeps its findings exactly as they were: not seeing a fault is
 // not the fault being fixed.
 internal sealed class HealthSweeper(NetworkOpsStore store, IDigestSender digest, Agents.MachineRunner runner, Agents.AgentHub agents,
-    IOptions<NetworkOpsOptions> options, ILogger<HealthSweeper> log)
+    Mesh.MeshState mesh, IOptions<NetworkOpsOptions> options, ILogger<HealthSweeper> log)
 {
     public const int HistoryDays = 90;
 
@@ -82,6 +82,7 @@ internal sealed class HealthSweeper(NetworkOpsStore store, IDigestSender digest,
             // 4. findings: rules on the snapshot, predictions on the trends
             var raised = HealthRules.Evaluate(snap).Concat(Predictions.Evaluate(snap with { CollectedAt = now }, history))
                 .Concat(AgentRules.Evaluate(AgentStateOf(r.Computer, installed), answeredOverNetwork: r.Stages?.StartsWith("agent:", StringComparison.Ordinal) != true, shipped, now))
+                .Concat(MeshRules.Evaluate(o.MeshEnabled ? mesh.PresenceOf(id) : null, answered: true))
                 .GroupBy(f => f.RuleKey).Select(g => g.OrderByDescending(f => f.Severity).First()).ToList();
             findings += raised.Count;
 

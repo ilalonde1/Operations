@@ -27,6 +27,8 @@ internal static class SchedulingCatalog
             "nightly: UniFi auto-backs up at 01:00, KOR-UNIFI01 stages the files at 03:15, this pulls them to FS01"),
         new(typeof(RackSweepJob), RackSweepJob.JobName, "0 0/5 * * * ?",
             "every 5 minutes, day and night: the rack is on when the office is not, and a dead PSU or a stopped backup must be news within minutes"),
+        new(typeof(Mesh.MeshSweepJob), Mesh.MeshSweepJob.JobName, "0 1/5 * * * ?",
+            "every 5 minutes, offset a minute from the rack sweep: which PCs and servers remote control can reach, for the Connect button and its findings"),
         new(typeof(PowerRehearsalJob), PowerRehearsalJob.JobName, "0 45 6 * * ?",
             "daily dry run of the UPS shutdown chain against the live rack: drift is found with the lights on; before the workday, clear of the 17:00 Veeam run"),
     ];

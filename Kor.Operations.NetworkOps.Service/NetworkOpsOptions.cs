@@ -114,6 +114,21 @@ public sealed class NetworkOpsOptions
     /// <summary>The office's Shaw STATIC address: traffic leaving by any other means the firewall is on the wrong WAN.</summary>
     public string ExpectedPublicIp { get; set; } = "";
     public List<string> InternetPingTargets { get; set; } = [];
+
+    // ---- remote control: MeshCentral on KOR-MESH01 (Mesh/*). Off unless MeshUrl, MeshCertSha256 and the password are set.
+
+    /// <summary>The MeshCentral server, e.g. https://kor-mesh01.int.korstructural.com. The Connect button opens pages on it.</summary>
+    public string MeshUrl { get; set; } = "";
+    /// <summary>SHA-256 (hex) of MESH01's self-signed certificate: the only thing the service will talk to as MeshCentral.</summary>
+    public string MeshCertSha256 { get; set; } = "";
+    /// <summary>The read-only MeshCentral account (group membership, no device rights). Password: KOR_NETWORKOPS_MESHPASSWORD.</summary>
+    public string MeshUser { get; set; } = "";
+    public string MeshPassword { get; set; } = "";
+    /// <summary>Device group ids ("mesh//..."): which group a PC's and a server's Mesh agent is installed into.</summary>
+    public string MeshPcGroup { get; set; } = "";
+    public string MeshServerGroup { get; set; } = "";
+
+    public bool MeshEnabled => MeshUrl.Length > 0 && MeshCertSha256.Length > 0 && MeshUser.Length > 0 && MeshPassword.Length > 0;
 }
 
 /// <summary>One rack device and how to read it.</summary>
@@ -133,6 +148,8 @@ public sealed class RackDevice
     public List<string> HostKeys { get; set; } = [];
     /// <summary>Veeam only: SHA-256 (hex) of BK01's REST certificate. Pinned: the password never goes to anything else.</summary>
     public string CertSha256 { get; set; } = "";
+    /// <summary>Its name in MeshCentral when that is not its Address (BK01 is read at 192.168.1.18, known to Mesh as KOR-BK01).</summary>
+    public string MeshName { get; set; } = "";
 }
 
 public sealed class UpsCard

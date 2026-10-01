@@ -67,6 +67,46 @@ public sealed class NetworkOpsDeviceViewModel : ObservableObject
     public string AgentButtonText => HasAgent ? "Reinstall agent" : "Install agent";
     public bool CanChangeAgent => !_isFixing;
 
+    // ---- remote control (MeshCentral on KOR-MESH01): PCs and Windows servers
+    // Any device MeshCentral knows can be connected to (BK01 is filed as "Backup" but is a Windows box with a Mesh agent);
+    // installing is offered for PCs and Windows servers only.
+    private bool Installable => !IsRack || _device.Kind == Kor.Operations.NetworkOps.Core.Rack.RackKinds.Server;
+    public bool ShowsRemote => Installable || _device.MeshNodeId is not null;
+    public string? ConnectUrl => NetworkOpsClient.ConnectUrl(_device.MeshNodeId);
+    public bool CanConnect => ShowsRemote && ConnectUrl is not null;
+    public bool CanInstallRemote => Installable && _device.MeshNodeId is null && !_isFixing;
+    public string RemoteLine => !ShowsRemote ? ""
+        : _device.MeshNodeId is null ? "Remote control: not installed"
+        : _device.MeshConnected ? "Remote control: connected (Connect opens its screen in KOR Remote)"
+        : "Remote control: installed, not connected right now";
+
+    /// <summary>Installs remote control through the service and follows it until MeshCentral lists the device as connected.</summary>
+    public async Task InstallRemoteAsync(CancellationToken ct)
+    {
+        if (_isFixing || !ShowsRemote) return;
+        _isFixing = true; OnPropertyChanged(nameof(CanFix)); OnPropertyChanged(nameof(CanInstallRemote)); OnPropertyChanged(nameof(CanChangeAgent));
+        try
+        {
+            var id = await _client.RequestMeshAsync(_device.DeviceId, ct).ConfigureAwait(true);
+            var started = DateTime.UtcNow;
+            ActionRow? a = null;
+            while (DateTime.UtcNow - started < TimeSpan.FromMinutes(8))
+            {
+                FixStatus = $"Installing remote control: {(a?.Status == "Running" ? "working on the machine" : "queued")} ({(int)(DateTime.UtcNow - started).TotalSeconds}s)…";
+                await Task.Delay(TimeSpan.FromSeconds(3), ct).ConfigureAwait(true);
+                a = await _client.GetActionAsync(id, ct).ConfigureAwait(true);
+                if (a is null || a.Status is "Done" or "Failed" or "Refused") break;
+            }
+            FixStatus = a is null ? "Installing remote control: the run record disappeared." : $"Installing remote control — {a.Status}: {a.Detail}";
+            await ReloadAsync(ct).ConfigureAwait(true);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            FixStatus = $"Installing remote control failed: {ex.Message}";
+        }
+        finally { _isFixing = false; OnPropertyChanged(nameof(CanFix)); OnPropertyChanged(nameof(CanInstallRemote)); OnPropertyChanged(nameof(CanChangeAgent)); }
+    }
+
     // ---- fixes
     public ObservableCollection<ActionLine> ActionsTaken { get; } = new();
     private string _fixStatus = string.Empty;
@@ -217,7 +257,8 @@ public sealed class NetworkOpsDeviceViewModel : ObservableObject
 
         foreach (var name in new[] { nameof(StateLabel), nameof(StateBrush), nameof(IdentityLine), nameof(HardwareLine), nameof(FreshnessLine), nameof(SelectedFinding),
                                      nameof(PresenceLine), nameof(SomeoneActive), nameof(CanFix),
-                                     nameof(AgentLine), nameof(HasAgent), nameof(AgentButtonText), nameof(CanChangeAgent) })
+                                     nameof(AgentLine), nameof(HasAgent), nameof(AgentButtonText), nameof(CanChangeAgent),
+                                     nameof(RemoteLine), nameof(ConnectUrl), nameof(CanConnect), nameof(CanInstallRemote) })
             OnPropertyChanged(name);
         Explain();
     }

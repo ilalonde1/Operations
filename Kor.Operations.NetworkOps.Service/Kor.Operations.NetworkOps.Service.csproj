@@ -7,7 +7,7 @@
     <AssemblyName>Kor.Operations.NetworkOps.Service</AssemblyName>
     <!-- Bump on every meaningful service-side change: the heartbeat row carries it, so a
          redeploy can be confirmed from the database, not assumed. -->
-    <Version>0.8.5</Version>
+    <Version>0.9.0</Version>
   </PropertyGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="Kor.Operations.NetworkOps.Tests" />
@@ -37,6 +37,10 @@
   <ItemGroup>
     <ProjectReference Include="..\Kor.Operations.NetworkOps.Core\Kor.Operations.NetworkOps.Core.csproj" />
     <ProjectReference Include="..\Kor.Operations.NetworkOps.Transport\Kor.Operations.NetworkOps.Transport.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Remote control's install script ships inside the service: generated per deployment by Mesh/MeshInstaller.cs. -->
+    <EmbeddedResource Include="Mesh\install-mesh.ps1" LogicalName="Kor.Operations.NetworkOps.Service.Mesh.install-mesh.ps1" />
   </ItemGroup>
   <ItemGroup>
     <None Update="appsettings.json">

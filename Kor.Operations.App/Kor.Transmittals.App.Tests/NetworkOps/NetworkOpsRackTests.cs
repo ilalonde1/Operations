@@ -31,7 +31,7 @@ public sealed class NetworkOpsRackTests
             D(103, "UC3200 SAN", "Storage", "UC3200 · 12 disks · all healthy"),
             D(104, "NAS01 (Veeam repository)", "Storage", "DS1621+ · 6 disks · all healthy"),
             D(105, "Synology02 (Veeam repository)", "Storage", "DS1522+ · 5 disks · all healthy"),
-            D(106, "Veeam backups (BK01)", "Backup", "1 of 3 jobs OK"),
+            D(106, "Veeam backups (BK01)", "Backup", "1 of 3 jobs OK") with { MeshNodeId = "node//BK01node", MeshConnected = true },
             D(107, "Eaton 5PX UPS", "UPS", "Mains · 27 min · load 34%"),
             D(108, "APC SRT1500 UPS", "UPS", "Mains · 52 min · load 24%"),
             D(109, "UniFi network", "Network", "11 of 13 devices checking in"),

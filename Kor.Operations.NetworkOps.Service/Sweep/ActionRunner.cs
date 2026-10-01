@@ -15,8 +15,8 @@ namespace Kor.Operations.NetworkOps.Service.Sweep;
 // machine as SYSTEM (through its agent, or the one-shot SCM channel), records the output, and then queues a re-check of the
 // machine, so the page shows whether the finding actually cleared. Only FixCatalog's fixes run. A fix left
 // Running by a stopped service is marked failed at startup, never re-run: a fix is not idempotent.
-internal sealed class ActionRunner(NetworkOpsStore store, MachineRunner runner, AgentInstaller installer, IOptions<NetworkOpsOptions> options, ILogger<ActionRunner> log)
-    : BackgroundService
+internal sealed class ActionRunner(NetworkOpsStore store, MachineRunner runner, AgentInstaller installer, Mesh.MeshInstaller mesh,
+    IOptions<NetworkOpsOptions> options, ILogger<ActionRunner> log) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken ct)
     {
@@ -51,6 +51,18 @@ internal sealed class ActionRunner(NetworkOpsStore store, MachineRunner runner, 
                 var (ok, detail) = await installer.RunAsync(a.Kind, a.DeviceId, a.DeviceName, a.RequestedBy, ct);
                 await store.CompleteActionAsync(a.ActionId, ok, detail, null);
                 log.LogWarning("AGENT {Id} {Kind} on {Host}: {Detail}", a.ActionId, a.Kind, a.DeviceName, detail);
+                return;
+            }
+
+            if (a.Kind == Mesh.MeshInstaller.InstallKind)
+            {
+                // Remote control: PCs into "KOR PCs", Windows rack servers (by their Address) into "KOR Servers".
+                var server = IsRack(a.DeviceName);
+                var target = HostOf(a.DeviceName) ?? throw new InvalidOperationException($"{a.DeviceName} is not a Windows machine remote control can be installed on");
+                log.LogWarning("MESH {Id} install on {Host} requested by {By}", a.ActionId, target, a.RequestedBy);
+                var (meshOk, meshDetail) = await mesh.RunAsync(a.DeviceId, target, server, ct);
+                await store.CompleteActionAsync(a.ActionId, meshOk, meshDetail, null);
+                log.LogWarning("MESH {Id} install on {Host}: {Detail}", a.ActionId, target, meshDetail);
                 return;
             }
 

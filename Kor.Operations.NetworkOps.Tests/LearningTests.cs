@@ -345,6 +345,7 @@ public sealed class LearningTests
             Path.Combine(root, "Kor.Operations.NetworkOps.Core", "Learning", "Predictions.cs"),
             Path.Combine(root, "Kor.Operations.NetworkOps.Service", "Jobs", "Jobs.cs"),
             Path.Combine(root, "Kor.Operations.NetworkOps.Core", "Health", "AgentRules.cs"),
+            Path.Combine(root, "Kor.Operations.NetworkOps.Core", "Health", "MeshRules.cs"),
         };
         var families = new SortedSet<string>(StringComparer.Ordinal);
         var created = new Regex(@"new\(\$?""([a-z]+(?:-[a-z]+)+)[:""]");                        // new("disk-missing", … / new($"low-disk:{…}", …

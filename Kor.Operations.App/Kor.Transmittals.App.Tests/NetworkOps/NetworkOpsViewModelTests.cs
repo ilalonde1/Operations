@@ -35,7 +35,8 @@ public sealed class NetworkOpsViewModelTests
                 AgentVersion: "1.0.0", AgentConnected: false, AgentLastContactUtc: Now.AddHours(-3)),
             new(3, "KOR-305", Now.AddMinutes(-3), Now.AddMinutes(-30), Presence: "nobody at the console · jli on a remote session, idle 12 min", PresenceState: "RemoteOnly"),
             new(4, "KOR-208-N", Now.AddMinutes(-3), Now.AddMinutes(-30), Presence: "kwurmlinger · active, idle 12 min", PresenceState: "Active",
-                AgentVersion: "1.0.0", AgentConnected: true, AgentLastContactUtc: Now.AddSeconds(-10)),
+                AgentVersion: "1.0.0", AgentConnected: true, AgentLastContactUtc: Now.AddSeconds(-10),
+                MeshNodeId: "node//bJ@yhUBjIF4c8rS8MThrje0BENzyV5SCkrj4lZqrwPu4cOg3pq3Qj5YQwtqot2NX", MeshConnected: true),
             new(5, "SPARE8", null, null),
         };
         var engine = new Dictionary<string, string> { [Facts.Model] = "Lenovo 30DH", ["access.engine.2016"] = "16.0.5044.1000" };
@@ -191,6 +192,22 @@ public sealed class NetworkOpsViewModelTests
         Assert.Equal("Reinstall agent", Device("KOR-208-N").AgentButtonText);
         Assert.Equal("Install agent", Device("KOR-101").AgentButtonText);
         Assert.False(Device("KOR-101").HasAgent);
+    }
+
+    [Fact]
+    public void Connect_opens_the_devices_desktop_in_KOR_Remote_and_is_offered_only_with_a_mesh_agent()
+    {
+        var pc = Device("KOR-208-N");
+        Assert.True(pc.CanConnect);
+        // MeshCentral's own deep link: the node id without "node//", URL-encoded, straight onto the desktop tab.
+        Assert.Equal("https://kor-mesh01.int.korstructural.com/?gotonode=bJ%40yhUBjIF4c8rS8MThrje0BENzyV5SCkrj4lZqrwPu4cOg3pq3Qj5YQwtqot2NX&viewmode=11", pc.ConnectUrl);
+        Assert.StartsWith("Remote control: connected", pc.RemoteLine);
+        Assert.False(pc.CanInstallRemote);
+
+        var none = Device("KOR-101");
+        Assert.False(none.CanConnect);
+        Assert.True(none.CanInstallRemote);
+        Assert.Equal("Remote control: not installed", none.RemoteLine);
     }
 
     [Fact]

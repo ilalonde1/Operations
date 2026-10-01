@@ -33,6 +33,7 @@ public sealed class PrivilegedPathTests
         var files = new TheoryData<string>();
         foreach (var f in Directory.GetFiles(Path.Combine(root, "Kor.Operations.NetworkOps.Agent"), "*.cs")) files.Add(Path.GetRelativePath(root, f));
         files.Add(Path.Combine("Kor.Operations.NetworkOps.Transport", "RemoteAgentInstall.cs"));
+        files.Add(Path.Combine("Kor.Operations.NetworkOps.Service", "Mesh", "install-mesh.ps1"));   // runs as SYSTEM on every PC
         return files;
     }
 
