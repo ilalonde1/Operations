@@ -72,6 +72,14 @@
                                 IsEnabled="{Binding CanCheck}" Click="CheckNow_Click"
                                 ToolTip="{Binding CheckButtonTip}"/>
                     </StackPanel>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,6,0,0">
+                        <Button Content="Wake" Padding="12,4" Margin="0,0,6,0" Click="Wake_Click"
+                                IsEnabled="{Binding CanWake}" Visibility="{Binding ShowsWake, Converter={StaticResource BoolToVis}}"
+                                ToolTip="Sends a Wake-on-LAN magic packet from APP01 and waits (up to 6 minutes) for the PC to answer."/>
+                        <Button Content="Web-RDP…" Padding="12,4" Click="WebRdp_Click"
+                                IsEnabled="{Binding CanConnect}" Visibility="{Binding ShowsRemote, Converter={StaticResource BoolToVis}}"
+                                ToolTip="Opens this machine's page in KOR Remote; click Web-RDP there for a full-size, sharp session. Best for a PC with no monitor (it otherwise shows 1024x768)."/>
+                    </StackPanel>
                     <TextBlock Text="{Binding CheckStatus}" TextWrapping="Wrap" Margin="0,6,0,0" HorizontalAlignment="Right" TextAlignment="Right"/>
                 </StackPanel>
             </Grid>

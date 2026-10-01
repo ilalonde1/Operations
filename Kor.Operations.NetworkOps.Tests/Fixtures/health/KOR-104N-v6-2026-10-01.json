@@ -1,0 +1,283 @@
+[
+                   {
+                       "ProbeVersion":  6,
+                       "Wake":  {
+                                    "FastStartup":  1,
+                                    "Nics":  [
+                                                 {
+                                                     "Mac":  "D8:BB:C1:2C:E8:D6",
+                                                     "Description":  "Intel(R) Ethernet Connection (11) I219-LM",
+                                                     "Up":  true,
+                                                     "MagicPacket":  true,
+                                                     "Armed":  true,
+                                                     "Pme":  "Enabled"
+                                                 }
+                                             ],
+                                    "LenovoWakeOnLan":  "Automatic"
+                                },
+                       "Session":  {
+                                       "ConsoleUser":  "kor\\dsingh",
+                                       "State":  "Active",
+                                       "LockedSince":  null,
+                                       "IdleSeconds":  null,
+                                       "Remote":  [
+
+                                                  ],
+                                       "Summary":  "dsingh · active"
+                                   },
+                       "CollectedAt":  "2026-10-01T14:36:41",
+                       "Computer":  "KOR-104N",
+                       "Os":  {
+                                  "Product":  "Windows 11 Pro",
+                                  "DisplayVersion":  "25H2",
+                                  "Build":  26200,
+                                  "Ubr":  9550,
+                                  "LastBoot":  "2026-10-01T09:03:39",
+                                  "UptimeHours":  6
+                              },
+                       "PendingReboot":  {
+                                             "ComponentServicing":  false,
+                                             "WindowsUpdate":  false,
+                                             "FileRename":  true
+                                         },
+                       "Volumes":  [
+                                       {
+                                           "Letter":  "C",
+                                           "Label":  "Windows",
+                                           "SizeGB":  952.5,
+                                           "FreeGB":  760.2
+                                       }
+                                   ],
+                       "PhysicalDisks":  [
+                                             {
+                                                 "Name":  "NVMe SKHynix_HFS001TDE9X081N",
+                                                 "Media":  "SSD",
+                                                 "Bus":  "RAID",
+                                                 "SizeGB":  954,
+                                                 "Health":  "Healthy",
+                                                 "Operational":  "OK"
+                                             }
+                                         ],
+                       "MissingDisks":  [
+                                            {
+                                                "Name":  "WD My Passport 25E2 USB Device",
+                                                "InstanceId":  "USBSTOR\\DISK\u0026VEN_WD\u0026PROD_MY_PASSPORT_25E2\u0026REV_4003\\575842314138363854594630\u00260"
+                                            }
+                                        ],
+                       "OrphanDriveLetters":  [
+                                                  "E"
+                                              ],
+                       "Events14d":  {
+                                         "DiskBadBlock":  {
+                                                              "Count":  0,
+                                                              "Last":  null
+                                                          },
+                                         "DiskResets":  {
+                                                            "Count":  0,
+                                                            "Last":  null
+                                                        },
+                                         "NtfsCorruption":  {
+                                                                "Count":  0,
+                                                                "Last":  null
+                                                            },
+                                         "Whea":  {
+                                                      "Count":  0,
+                                                      "Last":  null
+                                                  },
+                                         "UnexpectedShutdown":  {
+                                                                    "Count":  0,
+                                                                    "Last":  null
+                                                                },
+                                         "GpuHang":  {
+                                                         "Count":  53,
+                                                         "Last":  "2026-09-29T17:49:47"
+                                                     },
+                                         "GpuHangLogEntries":  {
+                                                                   "Count":  6766,
+                                                                   "Last":  "2026-10-01T13:24:29"
+                                                               },
+                                         "ResourceExhaustion":  {
+                                                                    "Count":  0,
+                                                                    "Last":  null
+                                                                },
+                                         "UpdateFailures":  {
+                                                                "Count":  7,
+                                                                "Last":  "2026-10-01T07:26:31"
+                                                            },
+                                         "AppHangs":  {
+                                                          "Count":  3,
+                                                          "Last":  "2026-09-25T03:44:33"
+                                                      }
+                                     },
+                       "AppCrashes14d":  [
+                                             {
+                                                 "Process":  "WRSkyCommandsClient.exe",
+                                                 "Count":  1,
+                                                 "Last":  "2026-09-21T12:24:14"
+                                             }
+                                         ],
+                       "OutlookIndex60d":  [
+                                               {
+                                                   "Store":  "C:\\Users\\dsingh\\AppData\\Local\\Microsoft\\Outlook\\dsingh@korstructural.com.ost",
+                                                   "Count":  1,
+                                                   "Last":  "2026-09-27T12:03:19"
+                                               }
+                                           ],
+                       "Office":  {
+                                      "C2rMso":  "16.0.20430.20032",
+                                      "DownlevelMso":  "16.0.5495.1002",
+                                      "AccessEngine":  true
+                                  },
+                       "Update":  {
+                                      "MicrosoftUpdate":  true,
+                                      "NoAutoUpdate":  1,
+                                      "LastInstall":  "2026-10-01T18:26:01",
+                                      "LastInstallTitle":  "Security Update for Microsoft Office 2016 (KB5002917) 64-Bit Edition",
+                                      "LastInstallBy":  "KOR NetworkOps"
+                                  },
+                       "CoolingMode":  "Best Performance",
+                       "DisplayAdapters":  [
+                                               {
+                                                   "Name":  "Intel(R) UHD Graphics 630",
+                                                   "Driver":  "31.0.101.2115",
+                                                   "ErrorCode":  0
+                                               }
+                                           ],
+                       "Residue":  {
+                                       "NewformaProfiles":  0,
+                                       "NewformaInstalled":  [
+
+                                                             ]
+                                   },
+                       "RemoteTools":  [
+                                           {
+                                               "Name":  "ncstreamer",
+                                               "State":  "Running",
+                                               "StartMode":  "Auto"
+                                           },
+                                           {
+                                               "Name":  "ScreenConnect Client (f626167a716ce0b9)",
+                                               "State":  "Running",
+                                               "StartMode":  "Auto"
+                                           },
+                                           {
+                                               "Name":  "TeamViewer",
+                                               "State":  "Running",
+                                               "StartMode":  "Auto"
+                                           }
+                                       ],
+                       "DataOutsideSystemDrive":  [
+
+                                                  ],
+                       "DiskReliability":  [
+                                               {
+                                                   "Name":  "NVMe SKHynix_HFS001TDE9X081N",
+                                                   "Serial":  "ACE4_2E00_1523_8E15_2EE4_AC00_0000_0001.",
+                                                   "WearPct":  0,
+                                                   "TemperatureC":  60,
+                                                   "TemperatureMaxC":  null,
+                                                   "ReadErrors":  null,
+                                                   "ReadErrorsUncorrected":  null,
+                                                   "WriteErrors":  null,
+                                                   "PowerOnHours":  null
+                                               }
+                                           ],
+                       "Inventory":  {
+                                         "Manufacturer":  "LENOVO",
+                                         "Model":  "ThinkStation P340",
+                                         "MachineType":  "30DK003UUS",
+                                         "Serial":  "MJ0F06D5",
+                                         "BoardMaker":  "LENOVO",
+                                         "BoardProduct":  "1048",
+                                         "BiosVersion":  "S08KT5EA",
+                                         "BiosDate":  "2025-03-20",
+                                         "Cpu":  "Intel(R) Core(TM) i7-10700 CPU @ 2.90GHz",
+                                         "Cores":  8,
+                                         "RamGB":  32,
+                                         "LoggedOnUser":  "kor\\dsingh",
+                                         "OfficeBuild":  "16.0.20430.20118",
+                                         "OfficeChannel":  "492350f6-3a01-4f97-b9c0-c7c6ddf67d60",
+                                         "Apps":  [
+                                                      {
+                                                          "Name":  "Adobe Acrobat (64-bit)",
+                                                          "Version":  "26.002.21931"
+                                                      },
+                                                      {
+                                                          "Name":  "Bluebeam Revu x64 21",
+                                                          "Version":  "21.6.1"
+                                                      },
+                                                      {
+                                                          "Name":  "Microsoft Access database engine 2010 (English)",
+                                                          "Version":  "14.0.7015.1000"
+                                                      },
+                                                      {
+                                                          "Name":  "Microsoft Access database engine 2016 (English)",
+                                                          "Version":  "16.0.5044.1000"
+                                                      },
+                                                      {
+                                                          "Name":  "Microsoft Teams Meeting Add-in for Microsoft Office",
+                                                          "Version":  "1.26.21803"
+                                                      }
+                                                  ]
+                                     },
+                       "MailStores":  [
+                                          {
+                                              "Profile":  "dsingh",
+                                              "Name":  "dsingh@korstructural.com.ost",
+                                              "GB":  25.2,
+                                              "LastWrite":  "2026-10-01T14:36:25"
+                                          }
+                                      ],
+                       "Boot":  {
+                                    "LastBootMs":  54175,
+                                    "MedianBootMs":  81957,
+                                    "Samples":  10
+                                },
+                       "Battery":  null,
+                       "Memory":  [
+                                      {
+                                          "Slot":  "ChannelA-DIMM1",
+                                          "Bank":  "BANK 1",
+                                          "SizeGB":  32,
+                                          "RatedMTs":  2933,
+                                          "ConfiguredMTs":  2933,
+                                          "Maker":  "Samsung",
+                                          "Part":  "M378A4G43AB2-CVF"
+                                      }
+                                  ],
+                       "MemorySlots":  4,
+                       "WmiHealthy":  true,
+                       "ProbeErrors":  [
+
+                                       ],
+                       "ProbeMs":  11058,
+                       "BlockMs":  {
+                                       "os":  236,
+                                       "pendingReboot":  73,
+                                       "volumes":  27,
+                                       "physicalDisks":  1704,
+                                       "missingDisks":  216,
+                                       "orphanLetters":  28,
+                                       "events":  4409,
+                                       "reliability":  126,
+                                       "inventory":  1354,
+                                       "mailStores":  20,
+                                       "boot":  61,
+                                       "battery":  8,
+                                       "appCrashes":  69,
+                                       "outlookIndex":  154,
+                                       "office":  10,
+                                       "update":  183,
+                                       "cooling":  189,
+                                       "display":  29,
+                                       "residue":  268,
+                                       "remoteTools":  411,
+                                       "memory":  20,
+                                       "memorySlots":  12,
+                                       "dataOutside":  4,
+                                       "session":  67,
+                                       "wake":  1275,
+                                       "wmi":  85
+                                   }
+                   }
+               ]

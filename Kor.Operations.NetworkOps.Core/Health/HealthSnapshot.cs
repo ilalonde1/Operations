@@ -43,6 +43,8 @@ public sealed record HealthSnapshot
     public int? MemorySlots { get; init; }
     /// <summary>v4: who is on the PC at probe time -- active, locked, remote, nobody.</summary>
     public SessionInfo? Session { get; init; }
+    /// <summary>v6: whether a magic packet can wake it, and the wired MAC to send one to.</summary>
+    public WakeInfo? Wake { get; init; }
 
     private static readonly JsonSerializerOptions Json = new()
     {
@@ -130,6 +132,15 @@ public sealed record BatteryInfo(int DesignMWh, int FullChargeMWh, int HealthPct
 /// <param name="State">Active | Locked | RemoteOnly | Nobody.</param>
 /// <param name="IdleSeconds">Since the console user last touched the keyboard or mouse (v5; only when the agent ran the probe).</param>
 public sealed record SessionInfo(string? ConsoleUser, string State, string? LockedSince, string Summary, int? IdleSeconds = null);
+/// <param name="Pme">The NIC's "PME" (power-management event) setting as the driver shows it; null when the driver has none.</param>
+public sealed record WakeNic(string Mac, string? Description, bool Up, bool MagicPacket, bool Armed, string? Pme);
+/// <param name="FastStartup">HiberbootEnabled: 1 = on (blocks wake from shutdown on many NICs), 0 = off.</param>
+/// <param name="LenovoWakeOnLan">The BIOS WakeOnLAN value on Lenovo (Disabled | Primary | Automatic | Boot Order | AC Only…); null elsewhere.</param>
+public sealed record WakeInfo(int FastStartup, IReadOnlyList<WakeNic>? Nics, string? LenovoWakeOnLan)
+{
+    /// <summary>The wired NIC a magic packet goes to: the connected one, else the first.</summary>
+    public WakeNic? Wired => (Nics ?? []).Where(n => n is not null).OrderByDescending(n => n.Up).FirstOrDefault();
+}
 public sealed record MemoryModuleInfo(string? Slot, string? Bank, int SizeGB, int RatedMTs, int ConfiguredMTs, string? Maker, string? Part);
 public sealed record CrashCount(string Process, int Count, DateTime? Last);
 public sealed record StoreIndexFailures(string Store, int Count, DateTime? Last);

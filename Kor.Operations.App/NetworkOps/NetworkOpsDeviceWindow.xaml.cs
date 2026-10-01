@@ -58,6 +58,19 @@ public partial class NetworkOpsDeviceWindow : Window
     private void SolveWithClaude_Click(object sender, RoutedEventArgs e)
         => new PromptLibraryWindow(_vm.Client, _vm.ClaudeRequest) { Owner = this }.Show();
 
+    private async void Wake_Click(object sender, RoutedEventArgs e) => await Run(_vm.WakeAsync).ConfigureAwait(true);
+
+    /// <summary>KOR Remote's page for this machine, where Web-RDP gives a full-size session (a PC with no monitor shows 1024x768 otherwise).</summary>
+    private void WebRdp_Click(object sender, RoutedEventArgs e)
+    {
+        if (_vm.RdpPageUrl is not { } url) return;
+        try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(url) { UseShellExecute = true }); }
+        catch (System.ComponentModel.Win32Exception ex)
+        {
+            MessageBox.Show(this, $"Could not open the browser: {ex.Message}\n\n{url}", "Web-RDP", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
     private async void InstallRemote_Click(object sender, RoutedEventArgs e) => await Run(_vm.InstallRemoteAsync).ConfigureAwait(true);
 
     private async void InstallAgent_Click(object sender, RoutedEventArgs e) => await Run(ct => _vm.ChangeAgentAsync("install", ct)).ConfigureAwait(true);

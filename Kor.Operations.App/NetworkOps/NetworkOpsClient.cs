@@ -197,6 +197,15 @@ public sealed class NetworkOpsClient
     public Task AddNoteAsync(int deviceId, string body, CancellationToken ct)
         => PostAsync($"api/devices/{deviceId}/notes", new NoteRequest(body), ct);
 
+    /// <summary>Wake-on-LAN from APP01. Returns the run's id; the run finishes when the PC answers, or after 6 minutes.</summary>
+    public async Task<long> WakeAsync(int deviceId, CancellationToken ct)
+    {
+        using var res = await SendAsync(HttpMethod.Post, $"api/devices/{deviceId}/wake", null, ct).ConfigureAwait(false);
+        await EnsureOkAsync(res).ConfigureAwait(false);
+        using var ok = JsonDocument.Parse(await res.Content.ReadAsStringAsync(ct).ConfigureAwait(false));
+        return ok.RootElement.GetProperty("actionId").GetInt64();
+    }
+
     // ------------------------------------------------------------------ Windows updates
 
     /// <summary>Every PC and Windows server: what is waiting, what is due, the last install.</summary>

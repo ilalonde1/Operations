@@ -321,8 +321,37 @@ $session = Try-Block 'session' {
     [pscustomobject]@{ ConsoleUser = $console; State = $state; LockedSince = $lockedSince; IdleSeconds = $(if ($console) { $consoleIdle } else { $null }); Remote = $remote; Summary = $summary }
 }
 
+# --- v6: can a magic packet wake it? Three things must all hold (measured fleet-wide 2026-10-01: Fast Startup was
+# ON on 29 of 29, which is why PERFORM3 ignored two correct magic packets): the wired NIC armed to wake with its
+# PME signal on, Fast Startup off (a "shutdown" with it on is a hybrid hibernation many NICs do not wake from), and
+# the firmware allowing it -- readable through WMI on Lenovo only. The wired MAC is what the Wake button sends to.
+$wake = Try-Block 'wake' {
+    $armed = @(powercfg /devicequery wake_armed)
+    $nics = @(Get-NetAdapter -Physical -ErrorAction Stop | Where-Object { $_.MediaType -eq '802.3' -and $_.InterfaceDescription -notmatch 'Wi-?Fi|Wireless|Bluetooth|Virtual' } | ForEach-Object {
+        $a = $_
+        $pm = Get-NetAdapterPowerManagement -Name $a.Name -ErrorAction SilentlyContinue
+        $pme = Get-NetAdapterAdvancedProperty -Name $a.Name -RegistryKeyword EnablePME -ErrorAction SilentlyContinue
+        [pscustomobject]@{
+            Mac = ($a.MacAddress -replace '-', ':').ToUpperInvariant(); Description = $a.InterfaceDescription; Up = [string]$a.Status -eq 'Up'
+            MagicPacket = [bool]($pm -and [string]$pm.WakeOnMagicPacket -eq 'Enabled')
+            Armed = [bool]($armed -contains $a.InterfaceDescription)
+            Pme = if ($pme) { [string]$pme.DisplayValue } else { $null }
+        } })
+    $bios = $null
+    if ((Get-CimInstance Win32_ComputerSystem).Manufacturer -match 'LENOVO') {
+        $s = Get-CimInstance -Namespace root\wmi -ClassName Lenovo_BiosSetting -ErrorAction SilentlyContinue | Where-Object { $_.CurrentSetting -match '^WakeOnLAN,' } | Select-Object -First 1
+        if ($s) { $bios = (($s.CurrentSetting -split ';')[0] -split ',', 2)[1] }
+    }
+    [pscustomobject]@{
+        FastStartup = [int](Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Power' -Name HiberbootEnabled -ErrorAction SilentlyContinue).HiberbootEnabled
+        Nics = Arr $nics
+        LenovoWakeOnLan = $bios
+    }
+}
+
 [pscustomobject]@{
-    ProbeVersion  = 5
+    ProbeVersion  = 6
+    Wake          = $wake
     Session       = $session
     CollectedAt   = $now.ToString('s')
     Computer      = $env:COMPUTERNAME

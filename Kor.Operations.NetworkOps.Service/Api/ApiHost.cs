@@ -230,6 +230,14 @@ internal sealed class ApiHost(IOptions<NetworkOpsOptions> options, NetworkOpsSto
             var runId = await s.QueueActionAsync(id, Mesh.MeshInstaller.InstallKind, ApiAccess.UserOf(h.User), System.Text.Json.JsonSerializer.Serialize(new { action = "install" }), ct);
             return Results.Accepted($"/api/actions/{runId}", new { actionId = runId });
         });
+        // Wake-on-LAN: a magic packet from APP01, queued and audited like a fix; the run waits for the PC to answer.
+        api.MapPost("/devices/{id:int}/wake", async (int id, HttpContext h, NetworkOpsStore s, CancellationToken ct) =>
+        {
+            if (await s.DeviceForActionAsync(id, ct) is not { } dev) return Results.NotFound();
+            if (dev.Source == "Rack") return Results.BadRequest(new { error = "Wake is for PCs: the rack is never shut down" });
+            var runId = await s.QueueActionAsync(id, Kor.Operations.NetworkOps.Core.Actions.MagicPacket.Kind, ApiAccess.UserOf(h.User), "{}", ct);
+            return Results.Accepted($"/api/actions/{runId}", new { actionId = runId });
+        });
         // The next batch of the fleet rollout (Agents/AgentRollout.cs): one at a time, stops at the first failure.
         api.MapPost("/agents/rollout", async (HttpContext h, NetworkOpsStore s, CancellationToken ct) =>
             Results.Accepted(null, new { triggerId = await s.QueueJobAsync(Agents.AgentRollout.JobName, ApiAccess.UserOf(h.User), ct) }));

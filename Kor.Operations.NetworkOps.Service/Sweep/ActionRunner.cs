@@ -16,7 +16,7 @@ namespace Kor.Operations.NetworkOps.Service.Sweep;
 // machine, so the page shows whether the finding actually cleared. Only FixCatalog's fixes run. A fix left
 // Running by a stopped service is marked failed at startup, never re-run: a fix is not idempotent.
 internal sealed class ActionRunner(NetworkOpsStore store, MachineRunner runner, AgentInstaller installer, Mesh.MeshInstaller mesh,
-    Updates.UpdateScanner updates, IOptions<NetworkOpsOptions> options, ILogger<ActionRunner> log) : BackgroundService
+    Updates.UpdateScanner updates, AgentHub agents, IOptions<NetworkOpsOptions> options, ILogger<ActionRunner> log) : BackgroundService
 {
     // Update installs each pull hundreds of MB through the office's internet line: a batch of 30 runs a few at a time.
     private readonly SemaphoreSlim _installs = new(Math.Max(1, options.Value.UpdateInstallParallel));
@@ -69,6 +69,15 @@ internal sealed class ActionRunner(NetworkOpsStore store, MachineRunner runner, 
                 return;
             }
 
+            if (a.Kind == MagicPacket.Kind)
+            {
+                var (woke, detail) = await WakeAsync(a, ct);
+                await store.CompleteActionAsync(a.ActionId, woke, detail, null);
+                log.LogWarning("WAKE {Id} {Host}: {Detail}", a.ActionId, a.DeviceName, detail);
+                if (woke) await store.QueueCheckAsync(a.DeviceName, $"wake {a.ActionId}", CancellationToken.None);
+                return;
+            }
+
             var fix = FixCatalog.Get(a.Kind) ?? throw new InvalidOperationException($"'{a.Kind}' is not in the fix catalog");
             using var req = JsonDocument.Parse(a.RequestJson);
             var param = req.RootElement.TryGetProperty("param", out var p) && p.ValueKind == JsonValueKind.String ? p.GetString() : null;
@@ -111,6 +120,51 @@ internal sealed class ActionRunner(NetworkOpsStore store, MachineRunner runner, 
             log.LogError(ex, "FIX {Id} failed", a.ActionId);
             await store.CompleteActionAsync(a.ActionId, false, ex.Message, null);
         }
+    }
+
+    /// <summary>
+    /// Wake-on-LAN: a magic packet from APP01 to the PC's wired MAC (the net.mac fact its health probe recorded), then
+    /// up to 6 minutes for it to come back -- its agent calling in, or SMB answering. "Done" means it woke, not that a
+    /// packet was sent: a packet nobody answers is the finding (BIOS or Fast Startup), and the run says so.
+    /// </summary>
+    private async Task<(bool Woke, string Detail)> WakeAsync(NetworkOpsStore.ClaimedAction a, CancellationToken ct)
+    {
+        if (IsRack(a.DeviceName)) return (false, "Wake is for PCs: the rack is never shut down");
+        var facts = await store.CurrentFactsAsync(a.DeviceId, ct);
+        if (MagicPacket.ParseMac(facts.GetValueOrDefault(Kor.Operations.NetworkOps.Core.Learning.Facts.WiredMac)) is not { } mac)
+            return (false, "no wired MAC on record for it yet: it needs one health check while it is on (probe v6)");
+        if (await AnswersAsync(a.DeviceName, ct)) return (true, "it was already on");
+
+        var macText = facts[Kor.Operations.NetworkOps.Core.Learning.Facts.WiredMac];
+        var broadcasts = options.Value.WakeBroadcasts.Select(System.Net.IPAddress.Parse).ToList();
+        log.LogWarning("WAKE {Id} {Host} ({Mac}) requested by {By}", a.ActionId, a.DeviceName, macText, a.RequestedBy);
+        var started = DateTime.UtcNow;
+        for (var attempt = 1; attempt <= 2; attempt++)
+        {
+            await WakeSender.SendAsync(mac, broadcasts, ct);
+            var until = DateTime.UtcNow.AddMinutes(3);
+            while (DateTime.UtcNow < until)
+            {
+                await Task.Delay(TimeSpan.FromSeconds(10), ct);
+                if (await AnswersAsync(a.DeviceName, ct))
+                    return (true, $"woke: magic packet to {macText}, answering after {(int)(DateTime.UtcNow - started).TotalSeconds} s");
+            }
+        }
+        return (false, $"magic packet sent twice to {macText}, no answer in 6 minutes: check Wake-on-LAN in its BIOS (and that it has power and a network cable)");
+    }
+
+    private async Task<bool> AnswersAsync(string host, CancellationToken ct)
+    {
+        if (agents.IsConnected(host)) return true;
+        try
+        {
+            using var tcp = new System.Net.Sockets.TcpClient();
+            using var cap = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            cap.CancelAfter(TimeSpan.FromSeconds(2));
+            await tcp.ConnectAsync(host, 445, cap.Token);
+            return true;
+        }
+        catch (Exception ex) when (ex is System.Net.Sockets.SocketException or OperationCanceledException && !ct.IsCancellationRequested) { return false; }
     }
 
     /// <summary>The machine a fix runs on: a PC by its name; a rack device only if it is a Windows server (the others have no SCM).

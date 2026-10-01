@@ -26,6 +26,7 @@ public static partial class Facts
     public const string GpuName = "gpu.name";
     public const string GpuDriver = "gpu.driver";
     public const string AccessEngine = "access.engine";
+    public const string WiredMac = "net.mac";
     public const string AppPrefix = "app.";          // app.revit.2025 = 25.4.60.9, app.bluebeam = 21.11.0 ...
 
     /// <summary>
@@ -66,6 +67,8 @@ public static partial class Facts
         if (gpu is not null) { Put(GpuName, gpu.Name); Put(GpuDriver, gpu.Driver); }
 
         foreach (var (key, version) in AppFacts(inv.Apps ?? [])) Put(key, version);
+        // The wired MAC: what the Wake button sends a magic packet to. Recorded (it changes with a NIC swap), never correlated.
+        Put(WiredMac, s.Wake?.Wired?.Mac);
         return f;
     }
 

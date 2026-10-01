@@ -80,6 +80,41 @@ public sealed class NetworkOpsDeviceViewModel : ObservableObject
         : _device.MeshConnected ? "Remote control: connected (Connect opens its screen in KOR Remote)"
         : "Remote control: installed, not connected right now";
 
+    /// <summary>MeshCentral's page for this device (General tab), where "Web-RDP" opens a sharp, full-size RDP session in the
+    /// browser -- the way to work on a PC with no monitor, which otherwise runs at 1024x768.</summary>
+    public string? RdpPageUrl => NetworkOpsClient.ConnectUrl(_device.MeshNodeId)?.Replace("&viewmode=11", "&viewmode=10", StringComparison.Ordinal);
+
+    // ---- Wake-on-LAN: PCs only (the rack is never shut down)
+    public bool ShowsWake => !IsRack;
+    public bool CanWake => ShowsWake && !_isFixing;
+
+    /// <summary>Sends a magic packet from APP01 and follows the run until the PC answers (or 6 minutes pass).</summary>
+    public async Task WakeAsync(CancellationToken ct)
+    {
+        if (_isFixing || !ShowsWake) return;
+        _isFixing = true; OnPropertyChanged(nameof(CanFix)); OnPropertyChanged(nameof(CanWake)); OnPropertyChanged(nameof(CanChangeAgent));
+        try
+        {
+            var id = await _client.WakeAsync(_device.DeviceId, ct).ConfigureAwait(true);
+            var started = DateTime.UtcNow;
+            ActionRow? a = null;
+            while (DateTime.UtcNow - started < TimeSpan.FromMinutes(7))
+            {
+                FixStatus = $"Waking {DeviceName}: {(a?.Status == "Running" ? "magic packet sent, waiting for it to answer" : "queued")} ({(int)(DateTime.UtcNow - started).TotalSeconds}s)…";
+                await Task.Delay(TimeSpan.FromSeconds(5), ct).ConfigureAwait(true);
+                a = await _client.GetActionAsync(id, ct).ConfigureAwait(true);
+                if (a is null || a.Status is "Done" or "Failed" or "Refused") break;
+            }
+            FixStatus = a is null ? "Wake: the run record disappeared." : $"Wake — {(a.Status == "Done" ? "" : a.Status + ": ")}{a.Detail}";
+            await ReloadAsync(ct).ConfigureAwait(true);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            FixStatus = $"Wake failed: {ex.Message}";
+        }
+        finally { _isFixing = false; OnPropertyChanged(nameof(CanFix)); OnPropertyChanged(nameof(CanWake)); OnPropertyChanged(nameof(CanChangeAgent)); }
+    }
+
     /// <summary>Installs remote control through the service and follows it until MeshCentral lists the device as connected.</summary>
     public async Task InstallRemoteAsync(CancellationToken ct)
     {

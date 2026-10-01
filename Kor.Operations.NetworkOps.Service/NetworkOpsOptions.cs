@@ -38,6 +38,9 @@ public sealed class NetworkOpsOptions
     /// </summary>
     public bool AgentsEnabled { get; set; } = true;
 
+    /// <summary>Where APP01 sends Wake-on-LAN magic packets: the limited broadcast and the office subnet's.</summary>
+    public List<string> WakeBroadcasts { get; set; } = ["255.255.255.255", "192.168.1.255"];
+
     // ---- Windows updates (Updates/*): searched twice a working day, installed only when someone asks.
 
     /// <summary>Machines searched at once. A search is 30 s to a few minutes and talks to Microsoft, not to APP01.</summary>

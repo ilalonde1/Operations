@@ -111,6 +111,9 @@ public static class HealthRules
             f.Add(new("microsoft-update-off", Severity.Info, "Office security updates are not being offered",
                 "Microsoft Update is not registered, so Office MSI patches (Access Database Engine) never arrive"));
 
+        if (WakeProblems(s.Wake) is { Count: > 0 } wake)
+            f.Add(new("wake-not-ready", Severity.Info, "A magic packet won't wake it", string.Join("; ", wake)));
+
         // A BIOS fan curve that holds the fans high at idle (KOR-305, KOR-206-N).
         if (s.CoolingMode is { } mode && System.Text.RegularExpressions.Regex.IsMatch(mode, "Performance|Full Speed", System.Text.RegularExpressions.RegexOptions.IgnoreCase))
             f.Add(new("fan-profile-loud", Severity.Info, "Fans are set to a loud profile",
@@ -183,6 +186,24 @@ public static class HealthRules
         if (problems.Count == 0) return null;
         var sizes = string.Join(" + ", mods.GroupBy(m => m.SizeGB).OrderByDescending(g => g.Key).Select(g => $"{g.Count()} x {g.Key} GB"));
         return $"{sizes} = {mods.Sum(m => m.SizeGB)} GB in {mods.Count} of {s.MemorySlots?.ToString() ?? "?"} slots | {string.Join(" | ", problems)}";
+    }
+
+    /// <summary>
+    /// Why a magic packet would not wake this PC from shutdown; empty when nothing is known to stop it. Fast Startup
+    /// first: it was on 29 of 29 PCs on 2026-10-01 and is the common blocker. The BIOS is judged only where it can be
+    /// read (Lenovo); elsewhere it is unknown, not wrong -- a failed wake test is how that one shows.
+    /// </summary>
+    internal static List<string> WakeProblems(WakeInfo? w)
+    {
+        var p = new List<string>();
+        if (w is null) return p;
+        if (w.FastStartup == 1) p.Add("Fast Startup is on (shutdown is a hybrid hibernation the network card does not wake from)");
+        if (w.Wired is not { } nic) { p.Add("no wired network card"); return p; }
+        if (!nic.MagicPacket) p.Add($"{nic.Description}: Wake on Magic Packet is off");
+        if (!nic.Armed) p.Add($"{nic.Description}: not allowed to wake the computer");
+        if (nic.Pme is { } pme && pme.Equals("Disabled", StringComparison.OrdinalIgnoreCase)) p.Add($"{nic.Description}: its wake signal (PME) is disabled");
+        if (w.LenovoWakeOnLan is { } bios && bios.Equals("Disabled", StringComparison.OrdinalIgnoreCase)) p.Add("BIOS Wake on LAN is Disabled");
+        return p;
     }
 
     private static string ShortChannel(string c)
