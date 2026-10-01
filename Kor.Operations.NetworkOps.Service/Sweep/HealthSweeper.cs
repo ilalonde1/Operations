@@ -14,7 +14,7 @@ namespace Kor.Operations.NetworkOps.Service.Sweep;
 
 // One health sweep, for the whole fleet or named PCs (the Command Center's "check now"). Per PC,
 // in this order, because each step feeds the next:
-//   1. probe it (on the machine; one file back)
+//   1. probe it (on the machine, through its agent or the network route; one result back)
 //   2. facts: what it is now vs what was on record -> history + change tracking
 //   3. metrics: this sweep's numbers -> the trend lines
 //   4. findings: the rules on the snapshot + the predictions on the trend lines
@@ -24,7 +24,7 @@ namespace Kor.Operations.NetworkOps.Service.Sweep;
 //
 // A PC that could not be probed keeps its findings exactly as they were: not seeing a fault is
 // not the fault being fixed.
-internal sealed class HealthSweeper(NetworkOpsStore store, IDigestSender digest, IOptions<NetworkOpsOptions> options, ILogger<HealthSweeper> log)
+internal sealed class HealthSweeper(NetworkOpsStore store, IDigestSender digest, Agents.MachineRunner runner, IOptions<NetworkOpsOptions> options, ILogger<HealthSweeper> log)
 {
     public const int HistoryDays = 90;
 
@@ -37,11 +37,11 @@ internal sealed class HealthSweeper(NetworkOpsStore store, IDigestSender digest,
             : all.Where(kv => only.Contains(kv.Key, StringComparer.OrdinalIgnoreCase)).ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase);
         if (only is not null && devices.Count == 0) return $"no directory device named {string.Join(", ", only)}";
 
-        var channel = new OnTargetChannel(TimeSpan.FromSeconds(o.ProbeTimeoutSeconds));
+        var timeout = TimeSpan.FromSeconds(o.ProbeTimeoutSeconds);
         var script = ProbeLibrary.Get(ProbeLibrary.Health);
         var runs = new ConcurrentBag<OnTargetRun>();
         await Parallel.ForEachAsync(devices.Keys, new ParallelOptions { MaxDegreeOfParallelism = o.ParallelProbes, CancellationToken = ct },
-            async (h, c) => runs.Add(await channel.RunAsync(h, script, c)));
+            async (h, c) => runs.Add(await runner.RunAsync(h, script, timeout, wantsIdle: true, c)));
 
         var now = DateTime.UtcNow;
         var notify = new List<(int DeviceId, DeviceChanges Changes)>();

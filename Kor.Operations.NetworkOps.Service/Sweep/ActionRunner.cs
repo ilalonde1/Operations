@@ -1,6 +1,7 @@
 #nullable enable
 using System.Text.Json;
 using Kor.Operations.NetworkOps.Core.Actions;
+using Kor.Operations.NetworkOps.Service.Agents;
 using Kor.Operations.NetworkOps.Service.Store;
 using Kor.Operations.NetworkOps.Transport;
 using Microsoft.Extensions.Hosting;
@@ -11,10 +12,11 @@ namespace Kor.Operations.NetworkOps.Service.Sweep;
 
 // Runs the fixes the Command Center asks for. NetworkOps.Actions is the queue AND the audit: the API writes a
 // Requested row (who, which fix, its input); this claims it within seconds, runs the catalog's script ON the
-// machine as SYSTEM through the one-shot SCM channel, records the output, and then queues a re-check of the
+// machine as SYSTEM (through its agent, or the one-shot SCM channel), records the output, and then queues a re-check of the
 // machine, so the page shows whether the finding actually cleared. Only FixCatalog's fixes run. A fix left
 // Running by a stopped service is marked failed at startup, never re-run: a fix is not idempotent.
-internal sealed class ActionRunner(NetworkOpsStore store, IOptions<NetworkOpsOptions> options, ILogger<ActionRunner> log) : BackgroundService
+internal sealed class ActionRunner(NetworkOpsStore store, MachineRunner runner, AgentInstaller installer, IOptions<NetworkOpsOptions> options, ILogger<ActionRunner> log)
+    : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken ct)
     {
@@ -42,6 +44,16 @@ internal sealed class ActionRunner(NetworkOpsStore store, IOptions<NetworkOpsOpt
     {
         try
         {
+            if (AgentInstaller.IsAgentKind(a.Kind))
+            {
+                if (IsRack(a.DeviceName)) throw new InvalidOperationException("the agent is for PCs; the rack is read by the rack sweep");
+                log.LogWarning("AGENT {Id} {Kind} on {Host} requested by {By}", a.ActionId, a.Kind, a.DeviceName, a.RequestedBy);
+                var (ok, detail) = await installer.RunAsync(a.Kind, a.DeviceId, a.DeviceName, a.RequestedBy, ct);
+                await store.CompleteActionAsync(a.ActionId, ok, detail, null);
+                log.LogWarning("AGENT {Id} {Kind} on {Host}: {Detail}", a.ActionId, a.Kind, a.DeviceName, detail);
+                return;
+            }
+
             var fix = FixCatalog.Get(a.Kind) ?? throw new InvalidOperationException($"'{a.Kind}' is not in the fix catalog");
             using var req = JsonDocument.Parse(a.RequestJson);
             var param = req.RootElement.TryGetProperty("param", out var p) && p.ValueKind == JsonValueKind.String ? p.GetString() : null;
@@ -49,7 +61,7 @@ internal sealed class ActionRunner(NetworkOpsStore store, IOptions<NetworkOpsOpt
             var host = HostOf(a.DeviceName) ?? throw new InvalidOperationException($"{a.DeviceName} is not a machine fixes can run on");
 
             log.LogWarning("FIX {Id} {Fix} on {Host} requested by {By}", a.ActionId, fix.Id, host, a.RequestedBy);
-            var run = await new OnTargetChannel(TimeSpan.FromSeconds(fix.TimeoutSeconds)).RunAsync(host, FixCatalog.Script(fix, param), ct);
+            var run = await runner.RunAsync(host, FixCatalog.Script(fix, param), TimeSpan.FromSeconds(fix.TimeoutSeconds), wantsIdle: false, ct);
             if (run.Status != OnTargetStatus.Ok)
             {
                 await store.CompleteActionAsync(a.ActionId, false, $"{run.Status}: {run.Error}", run.OutputJson);

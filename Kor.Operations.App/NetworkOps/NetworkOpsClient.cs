@@ -119,6 +119,15 @@ public sealed class NetworkOpsClient
         return (ok.RootElement.GetProperty("actionId").GetInt64(), null, false);
     }
 
+    /// <summary>Asks the service to install (or reinstall, which is the upgrade) or remove a PC's agent. Returns the run's id.</summary>
+    public async Task<long> RequestAgentAsync(int deviceId, string action, CancellationToken ct)
+    {
+        using var res = await SendAsync(HttpMethod.Post, $"api/devices/{deviceId}/agent", new AgentRequest(action), ct).ConfigureAwait(false);
+        await EnsureOkAsync(res).ConfigureAwait(false);
+        using var ok = JsonDocument.Parse(await res.Content.ReadAsStringAsync(ct).ConfigureAwait(false));
+        return ok.RootElement.GetProperty("actionId").GetInt64();
+    }
+
     public async Task<ActionRow?> GetActionAsync(long actionId, CancellationToken ct)
     {
         using var res = await SendAsync(HttpMethod.Get, $"api/actions/{actionId}", null, ct).ConfigureAwait(false);

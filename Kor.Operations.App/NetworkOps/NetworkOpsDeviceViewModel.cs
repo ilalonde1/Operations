@@ -56,6 +56,17 @@ public sealed class NetworkOpsDeviceViewModel : ObservableObject
     public string PresenceLine => IsRack || _device.Presence is null ? "" : $"On it at the last check: {_device.Presence}";
     public bool SomeoneActive => _device.PresenceState == "Active";
 
+    // ---- the endpoint agent
+    /// <summary>PCs: whether checks and fixes reach it through its agent or over the network. Empty for the rack.</summary>
+    public string AgentLine => IsRack ? ""
+        : _device.AgentVersion is null ? "No agent: checks and fixes reach this PC over the network, when it is on and reachable."
+        : _device.AgentConnected ? $"Agent {_device.AgentVersion} · connected: checks and fixes go through it"
+        : $"Agent {_device.AgentVersion} · not connected, last heard {CommandCenterView.Ago(_device.AgentLastContactUtc, DateTime.UtcNow)}: checks use the network until it is back";
+    public bool HasAgent => _device.AgentVersion is not null;
+    public bool ShowsAgent => !IsRack;
+    public string AgentButtonText => HasAgent ? "Reinstall agent" : "Install agent";
+    public bool CanChangeAgent => !_isFixing;
+
     // ---- fixes
     public ObservableCollection<ActionLine> ActionsTaken { get; } = new();
     private string _fixStatus = string.Empty;
@@ -205,7 +216,8 @@ public sealed class NetworkOpsDeviceViewModel : ObservableObject
         _selectedFinding = OpenFindings.FirstOrDefault(r => r.Finding.FindingId == selectedId) ?? OpenFindings.FirstOrDefault();
 
         foreach (var name in new[] { nameof(StateLabel), nameof(StateBrush), nameof(IdentityLine), nameof(HardwareLine), nameof(FreshnessLine), nameof(SelectedFinding),
-                                     nameof(PresenceLine), nameof(SomeoneActive), nameof(CanFix) })
+                                     nameof(PresenceLine), nameof(SomeoneActive), nameof(CanFix),
+                                     nameof(AgentLine), nameof(HasAgent), nameof(AgentButtonText), nameof(CanChangeAgent) })
             OnPropertyChanged(name);
         Explain();
     }
@@ -366,6 +378,37 @@ public sealed class NetworkOpsDeviceViewModel : ObservableObject
             return (null, false);
         }
         finally { _isFixing = false; OnPropertyChanged(nameof(CanFix)); }
+    }
+
+    /// <summary>
+    /// Installs (or reinstalls: the upgrade) or removes this PC's agent through the service, and follows it to the
+    /// end. Done means the agent is running AND has called in to APP01, not just that files were copied.
+    /// </summary>
+    public async Task ChangeAgentAsync(string action, CancellationToken ct)
+    {
+        if (_isFixing || IsRack) return;
+        _isFixing = true; OnPropertyChanged(nameof(CanFix)); OnPropertyChanged(nameof(CanChangeAgent));
+        var what = action == "remove" ? "Removing the agent" : HasAgent ? "Reinstalling the agent" : "Installing the agent";
+        try
+        {
+            var id = await _client.RequestAgentAsync(_device.DeviceId, action, ct).ConfigureAwait(true);
+            var started = DateTime.UtcNow;
+            ActionRow? a = null;
+            while (DateTime.UtcNow - started < TimeSpan.FromMinutes(5))
+            {
+                FixStatus = $"{what}: {(a?.Status == "Running" ? "working on the PC" : "queued")} ({(int)(DateTime.UtcNow - started).TotalSeconds}s)…";
+                await Task.Delay(TimeSpan.FromSeconds(3), ct).ConfigureAwait(true);
+                a = await _client.GetActionAsync(id, ct).ConfigureAwait(true);
+                if (a is null || a.Status is "Done" or "Failed" or "Refused") break;
+            }
+            FixStatus = a is null ? $"{what}: the run record disappeared." : $"{what} — {a.Status}: {a.Detail}";
+            await ReloadAsync(ct).ConfigureAwait(true);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            FixStatus = $"{what} failed: {ex.Message}";
+        }
+        finally { _isFixing = false; OnPropertyChanged(nameof(CanFix)); OnPropertyChanged(nameof(CanChangeAgent)); }
     }
 
     public Task AcknowledgeAsync(CancellationToken ct)

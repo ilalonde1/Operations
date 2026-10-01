@@ -96,6 +96,100 @@ internal static class ServiceControlManager
         return (ServiceState)status.dwCurrentState;
     }
 
+    // ---- a long-lived service (the endpoint agent), as opposed to the one-shots above
+
+    private const uint ServiceAllAccess = 0x000F01FF;
+    private const uint ServiceAutoStart = 0x00000002;
+    private const uint ServiceErrorNormal = 0x00000001;
+    private const uint ServiceNoChange = 0xFFFFFFFF;
+    private const uint ServiceControlStop = 0x00000001;
+    private const uint ServiceConfigDescription = 1;
+    private const uint ServiceConfigFailureActions = 2;
+    public const int ErrorServiceNotActive = 1062;
+    public const int ErrorServiceAlreadyRunning = 1056;
+    public const int ErrorServiceExists = 1073;
+
+    /// <summary>Opens a named service for full control, or null when it does not exist.</summary>
+    public static ScmHandle? OpenForControl(ScmHandle manager, string name)
+    {
+        var h = OpenServiceW(manager, name, ServiceAllAccess);
+        if (!h.IsInvalid) return h;
+        var err = Marshal.GetLastWin32Error();
+        h.Dispose();
+        if (err == ErrorServiceDoesNotExist) return null;
+        throw new Win32Exception(err, $"OpenService '{name}' failed");
+    }
+
+    /// <summary>Creates an automatic-start service running as LocalSystem.</summary>
+    public static ScmHandle CreateAutoStart(ScmHandle manager, string name, string displayName, string binaryPath)
+    {
+        var h = CreateServiceW(manager, name, displayName, ServiceAllAccess, ServiceWin32OwnProcess, ServiceAutoStart, ServiceErrorNormal,
+            binaryPath, null, IntPtr.Zero, null, null /* LocalSystem */, null);
+        if (h.IsInvalid) throw new Win32Exception(Marshal.GetLastWin32Error(), $"CreateService '{name}' failed");
+        return h;
+    }
+
+    /// <summary>Points an existing service at <paramref name="binaryPath"/> and makes it start automatically.</summary>
+    public static void Reconfigure(ScmHandle service, string displayName, string binaryPath)
+    {
+        if (!ChangeServiceConfigW(service, ServiceNoChange, ServiceAutoStart, ServiceErrorNormal, binaryPath, null, IntPtr.Zero, null, null, null, displayName))
+            throw new Win32Exception(Marshal.GetLastWin32Error(), "ChangeServiceConfig failed");
+    }
+
+    /// <summary>The description shown in services.msc, and: restart after a crash, a minute later, every time.</summary>
+    public static void Describe(ScmHandle service, string description)
+    {
+        var text = Marshal.StringToHGlobalUni(description);
+        var actions = Marshal.AllocHGlobal(Marshal.SizeOf<ScAction>() * 3);
+        try
+        {
+            if (!ChangeServiceConfig2W(service, ServiceConfigDescription, ref text))
+                throw new Win32Exception(Marshal.GetLastWin32Error(), "setting the service description failed");
+            for (var i = 0; i < 3; i++)
+                Marshal.StructureToPtr(new ScAction { Type = 1 /* SC_ACTION_RESTART */, Delay = 60_000 }, actions + i * Marshal.SizeOf<ScAction>(), false);
+            var failure = new ServiceFailureActions { dwResetPeriod = 86_400, cActions = 3, lpsaActions = actions };
+            if (!ChangeServiceConfig2W(service, ServiceConfigFailureActions, ref failure))
+                throw new Win32Exception(Marshal.GetLastWin32Error(), "setting the service's restart-on-failure failed");
+        }
+        finally
+        {
+            Marshal.FreeHGlobal(text);
+            Marshal.FreeHGlobal(actions);
+        }
+    }
+
+    /// <summary>Asks a service to stop; returns the Win32 error (0 on success, 1062 if it was not running).</summary>
+    public static int Stop(ScmHandle service)
+        => ControlService(service, ServiceControlStop, out _) ? 0 : Marshal.GetLastWin32Error();
+
+    public static ServiceState State(ScmHandle service)
+        => QueryServiceStatus(service, out var s) ? (ServiceState)s.dwCurrentState : throw new Win32Exception(Marshal.GetLastWin32Error(), "QueryServiceStatus failed");
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct ScAction { public int Type; public uint Delay; }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct ServiceFailureActions
+    {
+        public uint dwResetPeriod;
+        public IntPtr lpRebootMsg, lpCommand;
+        public uint cActions;
+        public IntPtr lpsaActions;
+    }
+
+    [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+    private static extern bool ChangeServiceConfigW(ScmHandle service, uint serviceType, uint startType, uint errorControl, string? binaryPathName,
+        string? loadOrderGroup, IntPtr tagId, string? dependencies, string? serviceStartName, string? password, string? displayName);
+
+    [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+    private static extern bool ChangeServiceConfig2W(ScmHandle service, uint infoLevel, ref IntPtr info);
+
+    [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+    private static extern bool ChangeServiceConfig2W(ScmHandle service, uint infoLevel, ref ServiceFailureActions info);
+
+    [DllImport("advapi32.dll", SetLastError = true)]
+    private static extern bool ControlService(ScmHandle service, uint control, out ServiceStatus status);
+
     public sealed class ScmHandle : SafeHandleZeroOrMinusOneIsInvalid
     {
         public ScmHandle() : base(ownsHandle: true) { }

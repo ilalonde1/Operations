@@ -31,9 +31,11 @@ public sealed class NetworkOpsViewModelTests
         var devices = new List<DeviceRow>
         {
             new(1, "KOR-101", Now.AddMinutes(-3), Now.AddMinutes(-30), Presence: "nobody signed in", PresenceState: "Nobody"),
-            new(2, "KOR-216", Now.AddMinutes(-3), Now.AddMinutes(-30), Presence: "rchan · locked since 12:10", PresenceState: "Locked"),
+            new(2, "KOR-216", Now.AddMinutes(-3), Now.AddMinutes(-30), Presence: "rchan · locked since 12:10", PresenceState: "Locked",
+                AgentVersion: "1.0.0", AgentConnected: false, AgentLastContactUtc: Now.AddHours(-3)),
             new(3, "KOR-305", Now.AddMinutes(-3), Now.AddMinutes(-30), Presence: "nobody at the console · jli on a remote session, idle 12 min", PresenceState: "RemoteOnly"),
-            new(4, "KOR-208-N", Now.AddMinutes(-3), Now.AddMinutes(-30), Presence: "kwurmlinger · active", PresenceState: "Active"),
+            new(4, "KOR-208-N", Now.AddMinutes(-3), Now.AddMinutes(-30), Presence: "kwurmlinger · active, idle 12 min", PresenceState: "Active",
+                AgentVersion: "1.0.0", AgentConnected: true, AgentLastContactUtc: Now.AddSeconds(-10)),
             new(5, "SPARE8", null, null),
         };
         var engine = new Dictionary<string, string> { [Facts.Model] = "Lenovo 30DH", ["access.engine.2016"] = "16.0.5044.1000" };
@@ -170,14 +172,25 @@ public sealed class NetworkOpsViewModelTests
     public void Who_is_on_the_pc_shows_on_the_row_and_the_page_and_only_active_counts_as_in_use()
     {
         var vm = Center();
-        Assert.Equal("kwurmlinger · active", vm.Fleet.Single(r => r.Name == "KOR-208-N").Presence);
+        Assert.Equal("kwurmlinger · active, idle 12 min", vm.Fleet.Single(r => r.Name == "KOR-208-N").Presence);
         Assert.Equal("", vm.Fleet.Single(r => r.Name == "SPARE8").Presence);
 
-        Assert.Equal("On it at the last check: kwurmlinger · active", Device("KOR-208-N").PresenceLine);
+        Assert.Equal("On it at the last check: kwurmlinger · active, idle 12 min", Device("KOR-208-N").PresenceLine);
         Assert.True(Device("KOR-208-N").SomeoneActive);
         Assert.False(Device("KOR-216").SomeoneActive);   // locked: a restart needs no confirmation
         Assert.False(Device("KOR-305").SomeoneActive);   // remote-only: nobody at the keyboard
         Assert.Equal("", Device("SPARE8").PresenceLine);
+    }
+
+    [Fact]
+    public void The_agent_line_says_which_route_checks_take()
+    {
+        Assert.StartsWith("Agent 1.0.0 · connected", Device("KOR-208-N").AgentLine);
+        Assert.Contains("not connected, last heard 3 h", Device("KOR-216").AgentLine);
+        Assert.StartsWith("No agent", Device("KOR-101").AgentLine);
+        Assert.Equal("Reinstall agent", Device("KOR-208-N").AgentButtonText);
+        Assert.Equal("Install agent", Device("KOR-101").AgentButtonText);
+        Assert.False(Device("KOR-101").HasAgent);
     }
 
     [Fact]

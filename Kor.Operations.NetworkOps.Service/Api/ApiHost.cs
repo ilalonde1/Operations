@@ -21,7 +21,11 @@ namespace Kor.Operations.NetworkOps.Service.Api;
 //
 // Reachable only from the LAN and the VPN (Windows firewall rule on APP01), and the page pins this
 // certificate by its SHA-256 hash: there is no internal CA, and a pin is stricter than one.
-internal sealed class ApiHost(IOptions<NetworkOpsOptions> options, NetworkOpsStore store, Power.PowerState power, ILoggerFactory loggers, ILogger<ApiHost> log) : BackgroundService
+//
+// The endpoint agents call in on the same listener (/agent/v1, Agents/AgentApi.cs) with their own per-PC keys;
+// neither kind of caller can use the other's routes.
+internal sealed class ApiHost(IOptions<NetworkOpsOptions> options, NetworkOpsStore store, Power.PowerState power, Agents.AgentHub agents,
+    ILoggerFactory loggers, ILogger<ApiHost> log) : BackgroundService
 {
     private static readonly TimeSpan MaxSnooze = TimeSpan.FromDays(90);
 
@@ -44,9 +48,13 @@ internal sealed class ApiHost(IOptions<NetworkOpsOptions> options, NetworkOpsSto
         builder.Services.AddSingleton(store);
         builder.Services.AddSingleton(power);
         builder.Services.AddSingleton(options);
+        builder.Services.AddSingleton(agents);
+        builder.Services.AddSingleton<Agents.IAgentDirectory>(store);
         builder.WebHost.ConfigureKestrel(k =>
         {
             k.AddServerHeader = false;
+            // An agent's result can be as large as the network route allows (8 M characters of JSON).
+            k.Limits.MaxRequestBodySize = 40L * 1024 * 1024;
             k.ListenAnyIP(o.ApiPort, l => l.UseHttps(cert));
         });
         builder.Services.ConfigureHttpJsonOptions(j => j.SerializerOptions.PropertyNameCaseInsensitive = true);
@@ -71,6 +79,8 @@ internal sealed class ApiHost(IOptions<NetworkOpsOptions> options, NetworkOpsSto
         app.Use(async (http, next) =>
         {
             await next(http);
+            // Agents poll around the clock: only their refusals and failures are worth a line (their jobs are logged by AgentApi).
+            if (http.Request.Path.StartsWithSegments("/agent") && http.Response.StatusCode < 400) return;
             var who = http.User.Identity?.IsAuthenticated == true ? ApiAccess.UserOf(http.User) : "anonymous";
             var why = http.Response.StatusCode is 401 or 403 ? ApiAccess.Deny(http.User, o.ApiTenantId) : null;
             audit.LogInformation("API {Who} {Method} {Path} -> {Status}{Why}", who, http.Request.Method, http.Request.Path, http.Response.StatusCode, why is null ? "" : $" ({why})");
@@ -78,6 +88,7 @@ internal sealed class ApiHost(IOptions<NetworkOpsOptions> options, NetworkOpsSto
         app.UseAuthentication();
         app.UseAuthorization();
         Map(app);
+        Agents.AgentApi.Map(app);
 
         log.LogInformation("Command Center API listening on https://*:{Port} (certificate {Subject}, expires {Expiry:yyyy-MM-dd})", o.ApiPort, cert.Subject, cert.NotAfter);
         await app.RunAsync(ct).ConfigureAwait(false);
@@ -90,7 +101,8 @@ internal sealed class ApiHost(IOptions<NetworkOpsOptions> options, NetworkOpsSto
         app.MapGet("/api/ping", () => Results.Ok(new { status = "ok", version = Jobs.JobDispatcher.Version }));
 
         var api = app.MapGroup("/api").RequireAuthorization("CommandCenter");
-        api.MapGet("/fleet", (NetworkOpsStore s, CancellationToken ct) => s.FleetSnapshotAsync(ct));
+        api.MapGet("/fleet", async (NetworkOpsStore s, Agents.AgentHub hub, CancellationToken ct) =>
+            WithAgents(await s.FleetSnapshotAsync(ct), await s.AgentRecordsAsync(ct), hub));
         // The rack (hosts, storage, UPSes, backup, network, internet): the same shape as /fleet, served apart so a
         // page that predates the rack never lists a host or a UPS as a PC.
         api.MapGet("/rack", (NetworkOpsStore s, CancellationToken ct) => s.FleetSnapshotAsync(ct, rack: true));
@@ -153,6 +165,16 @@ internal sealed class ApiHost(IOptions<NetworkOpsOptions> options, NetworkOpsSto
             var runId = await s.QueueActionAsync(id, fix.Id, by, request, ct);
             return Results.Accepted($"/api/actions/{runId}", new { actionId = runId });
         });
+        // ---- the endpoint agent: install (or upgrade, which is installing again) and remove, queued and audited like a fix.
+        api.MapPost("/devices/{id:int}/agent", async (int id, AgentRequest body, HttpContext h, NetworkOpsStore s, CancellationToken ct) =>
+        {
+            var kind = body.Action switch { "install" => Agents.AgentInstaller.InstallKind, "remove" => Agents.AgentInstaller.RemoveKind, _ => null };
+            if (kind is null) return Results.BadRequest(new { error = "action must be install or remove" });
+            if (await s.DeviceForActionAsync(id, ct) is not { } dev) return Results.NotFound();
+            if (dev.Source == "Rack") return Results.BadRequest(new { error = "the agent is for PCs; the rack is read by the rack sweep" });
+            var runId = await s.QueueActionAsync(id, kind, ApiAccess.UserOf(h.User), System.Text.Json.JsonSerializer.Serialize(new { action = body.Action }), ct);
+            return Results.Accepted($"/api/actions/{runId}", new { actionId = runId });
+        });
         api.MapGet("/actions/{id:long}", async (long id, NetworkOpsStore s, CancellationToken ct) =>
             await s.ActionAsync(id, ct) is { } a ? Results.Ok(a) : Results.NotFound());
 
@@ -160,6 +182,23 @@ internal sealed class ApiHost(IOptions<NetworkOpsOptions> options, NetworkOpsSto
             string.IsNullOrWhiteSpace(body.Body) ? Results.BadRequest(new { error = "a note needs text" })
             : await s.AddNoteAsync(id, ApiAccess.UserOf(h.User), body.Body, ct) ? Results.NoContent() : Results.NotFound());
     }
+
+    /// <summary>Each PC's agent: installed (SQL) and live (the hub, which knows within seconds; SQL is written every few minutes).</summary>
+    internal static FleetSnapshot WithAgents(FleetSnapshot fleet, IReadOnlyDictionary<string, NetworkOpsStore.AgentRecord> installed, Agents.AgentHub hub)
+        => fleet with
+        {
+            Devices = fleet.Devices.Select(d =>
+            {
+                if (!installed.TryGetValue(d.Name, out var rec)) return d;
+                var live = hub.Status(d.Name);
+                return d with
+                {
+                    AgentVersion = live?.Version is { Length: > 0 } v ? v : rec.LastVersion ?? rec.Version,
+                    AgentConnected = live?.Connected == true,
+                    AgentLastContactUtc = live?.LastPollUtc ?? rec.LastContactUtc,
+                };
+            }).ToList(),
+        };
 
     private static async Task<IResult> Annotate(NetworkOpsStore s, long id, NetworkOpsStore.Annotation kind, HttpContext h, string? note, DateTime? until, CancellationToken ct)
         => await s.AnnotateAsync(id, kind, ApiAccess.UserOf(h.User), note, until, ct).ConfigureAwait(false)

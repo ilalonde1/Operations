@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    The NetworkOps endpoint agent (docs/KOR-NetworkOps-Design-2026-09-28.md, section 4.2). .NET Framework 4.8
+    because every Windows 10 and 11 PC already has it: the agent is a few files, not a 70 MB runtime pushed
+    over the VPN to 38 machines. No package references, on purpose: JSON, HTTP and the service host are all
+    in the framework, so nothing but these files ever needs to be on a PC.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <RootNamespace>Kor.Operations.NetworkOps.Agent</RootNamespace>
+    <AssemblyName>Kor.Operations.NetworkOps.Agent</AssemblyName>
+    <!-- Reported on every call to APP01, and shown in the Command Center: an upgrade is confirmed from there. -->
+    <Version>1.0.0</Version>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <Prefer32Bit>false</Prefer32Bit>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System.Configuration" />
+    <Reference Include="System.Net.Http" />
+    <Reference Include="System.Runtime.Serialization" />
+    <Reference Include="System.ServiceProcess" />
+  </ItemGroup>
+</Project>

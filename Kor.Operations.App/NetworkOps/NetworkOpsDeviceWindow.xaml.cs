@@ -43,6 +43,15 @@ public partial class NetworkOpsDeviceWindow : Window
         }).ConfigureAwait(true);
     }
 
+    private async void InstallAgent_Click(object sender, RoutedEventArgs e) => await Run(ct => _vm.ChangeAgentAsync("install", ct)).ConfigureAwait(true);
+
+    private async void RemoveAgent_Click(object sender, RoutedEventArgs e)
+    {
+        if (MessageBox.Show(this, $"Remove the NetworkOps agent from {_vm.DeviceName}? Checks and fixes go back to reaching it over the network.",
+                "Remove agent", MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No) != MessageBoxResult.Yes) return;
+        await Run(ct => _vm.ChangeAgentAsync("remove", ct)).ConfigureAwait(true);
+    }
+
     private async void SnoozeDay_Click(object sender, RoutedEventArgs e) => await Run(ct => _vm.SnoozeAsync(TimeSpan.FromDays(1), ct)).ConfigureAwait(true);
 
     private async void SnoozeWeek_Click(object sender, RoutedEventArgs e) => await Run(ct => _vm.SnoozeAsync(TimeSpan.FromDays(7), ct)).ConfigureAwait(true);

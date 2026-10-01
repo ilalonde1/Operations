@@ -279,9 +279,13 @@ $dataOutside = Try-Block 'dataOutside' {
 # --- who is on the PC right now (v4): the console user, whether the console is LOCKED (the lock screen,
 # LogonUI.exe, is up while a user is signed in), since when (Security 4800 -- only where lock auditing is on),
 # and any remote sessions with their idle time. The console's own idle time is NOT readable from here: only
-# the user's session knows it (GetLastInputInfo), and quser reports console idle unreliably -- that is the
-# agent's job. Read before a disruptive fix: never restart a PC someone is working on without being told.
+# the user's session knows it (GetLastInputInfo), and quser reports console idle unreliably -- so the agent
+# reads it in the user's session and hands it over as KOR_CONSOLE_IDLE_SECONDS (v5). Run over the network
+# there is no agent and no idle time. Read before a disruptive fix: never restart a PC someone is working on
+# without being told.
 $session = Try-Block 'session' {
+    $consoleIdle = if ("$env:KOR_CONSOLE_IDLE_SECONDS" -match '^\d+$') { [int]$env:KOR_CONSOLE_IDLE_SECONDS } else { $null }
+    $idleFor = { param([int]$s) if ($s -ge 86400) { '{0} d {1} h' -f [math]::Floor($s / 86400), [math]::Floor(($s % 86400) / 3600) } elseif ($s -ge 3600) { '{0} h {1} min' -f [math]::Floor($s / 3600), [math]::Floor(($s % 3600) / 60) } else { '{0} min' -f [math]::Floor($s / 60) } }
     $console = "$((Get-CimInstance Win32_ComputerSystem -ErrorAction Stop).UserName)"
     $locked = [bool]($console -and (Get-Process -Name LogonUI -ErrorAction SilentlyContinue))
     $lockedSince = $null
@@ -301,7 +305,8 @@ $session = Try-Block 'session' {
     $state = if ($console) { if ($locked) { 'Locked' } else { 'Active' } } elseif ($remote.Count -gt 0) { 'RemoteOnly' } else { 'Nobody' }
     $who = if ($console) { ($console -split '\\')[-1] } else { '' }
     $summary = switch ($state) {
-        'Active' { "$who · active" }
+        # Under two minutes is someone working; past that, say how long the keyboard has been untouched.
+        'Active' { "$who · active" + $(if ($null -ne $consoleIdle -and $consoleIdle -ge 120) { ", idle $(& $idleFor $consoleIdle)" } else { '' }) }
         'Locked' { "$who · locked" + $(if ($lockedSince) { " since $(([datetime]$lockedSince).ToString('HH:mm'))" } else { '' }) }
         'RemoteOnly' { 'nobody at the console' }
         default { 'nobody signed in' }
@@ -313,11 +318,11 @@ $session = Try-Block 'session' {
             if ($_.State -match '^Disc') { "$($_.User) signed in but disconnected, $(& $idleText $_.Idle)" } else { "$($_.User) on a remote session, $(& $idleText $_.Idle)" }
         }) -join '; ')
     }
-    [pscustomobject]@{ ConsoleUser = $console; State = $state; LockedSince = $lockedSince; Remote = $remote; Summary = $summary }
+    [pscustomobject]@{ ConsoleUser = $console; State = $state; LockedSince = $lockedSince; IdleSeconds = $(if ($console) { $consoleIdle } else { $null }); Remote = $remote; Summary = $summary }
 }
 
 [pscustomobject]@{
-    ProbeVersion  = 4
+    ProbeVersion  = 5
     Session       = $session
     CollectedAt   = $now.ToString('s')
     Computer      = $env:COMPUTERNAME

@@ -128,7 +128,8 @@ public sealed record BootInfo(int LastBootMs, int MedianBootMs, int Samples);
 
 public sealed record BatteryInfo(int DesignMWh, int FullChargeMWh, int HealthPct, int? CycleCount);
 /// <param name="State">Active | Locked | RemoteOnly | Nobody.</param>
-public sealed record SessionInfo(string? ConsoleUser, string State, string? LockedSince, string Summary);
+/// <param name="IdleSeconds">Since the console user last touched the keyboard or mouse (v5; only when the agent ran the probe).</param>
+public sealed record SessionInfo(string? ConsoleUser, string State, string? LockedSince, string Summary, int? IdleSeconds = null);
 public sealed record MemoryModuleInfo(string? Slot, string? Bank, int SizeGB, int RatedMTs, int ConfiguredMTs, string? Maker, string? Part);
 public sealed record CrashCount(string Process, int Count, DateTime? Last);
 public sealed record StoreIndexFailures(string Store, int Count, DateTime? Last);

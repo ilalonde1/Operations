@@ -11,8 +11,11 @@ namespace Kor.Operations.NetworkOps.Core.Learning;
 /// <param name="Summary">Rack devices: the last read's one-line summary ("5 of 6 VMs running · 181 sensors ...").</param>
 /// <param name="Presence">PCs: who was on it at the last check ("kevinw · active", "nobody signed in").</param>
 /// <param name="PresenceState">Active | Locked | RemoteOnly | Nobody -- what a disruptive fix checks before it runs.</param>
+/// <param name="AgentVersion">PCs with the endpoint agent installed: its version (null = no agent; checks use the network route).</param>
+/// <param name="AgentConnected">The agent is calling in right now, so checks and fixes reach the PC through it.</param>
+/// <param name="AgentLastContactUtc">When the agent was last heard from.</param>
 public sealed record DeviceRow(int DeviceId, string Name, DateTime? LastReachableUtc, DateTime? LastCheckedUtc, string Kind = "Workstation", string? Summary = null,
-    string? Presence = null, string? PresenceState = null);
+    string? Presence = null, string? PresenceState = null, string? AgentVersion = null, bool AgentConnected = false, DateTime? AgentLastContactUtc = null);
 
 public sealed record ServiceBeat(string Host, DateTime StartedUtc, DateTime LastBeatUtc, string? Version);
 
@@ -60,6 +63,9 @@ public sealed record TriggerState(string Status, string? Result, DateTime Reques
 public sealed record AnnotateRequest(string? Note, DateTime? UntilUtc);
 
 public sealed record NoteRequest(string Body);
+
+/// <param name="Action">install (also the upgrade) | remove</param>
+public sealed record AgentRequest(string Action);
 
 // ---- rack power: what GET /api/power returns.
 

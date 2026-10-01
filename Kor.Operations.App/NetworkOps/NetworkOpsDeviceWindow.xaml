@@ -49,11 +49,21 @@
                     <TextBlock Text="{Binding HardwareLine}" Foreground="{StaticResource Text.Secondary}" TextWrapping="Wrap"/>
                     <TextBlock Text="{Binding FreshnessLine}" Foreground="{StaticResource Text.Secondary}" FontSize="11" Margin="0,2,0,0"/>
                     <TextBlock Text="{Binding PresenceLine}" FontWeight="SemiBold" Margin="0,4,0,0"/>
+                    <TextBlock Text="{Binding AgentLine}" Foreground="{StaticResource Text.Secondary}" FontSize="11" Margin="0,2,0,0"
+                               Visibility="{Binding ShowsAgent, Converter={StaticResource BoolToVis}}"/>
                 </StackPanel>
                 <StackPanel Grid.Column="1" VerticalAlignment="Center" MaxWidth="420">
-                    <Button x:Name="CheckNowBtn" Content="{Binding CheckButtonText}" Padding="16,6" HorizontalAlignment="Right"
-                            IsEnabled="{Binding CanCheck}" Click="CheckNow_Click"
-                            ToolTip="{Binding CheckButtonTip}"/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Content="{Binding AgentButtonText}" Padding="12,6" Margin="0,0,6,0" Click="InstallAgent_Click"
+                                IsEnabled="{Binding CanChangeAgent}" Visibility="{Binding ShowsAgent, Converter={StaticResource BoolToVis}}"
+                                ToolTip="Puts the NetworkOps agent on this PC from APP01 (or replaces it with the version APP01 has). Done once the agent has called in."/>
+                        <Button Content="Remove agent" Padding="12,6" Margin="0,0,6,0" Click="RemoveAgent_Click"
+                                IsEnabled="{Binding CanChangeAgent}" Visibility="{Binding HasAgent, Converter={StaticResource BoolToVis}}"
+                                ToolTip="Stops and deletes the agent on this PC; checks go back to the network route."/>
+                        <Button x:Name="CheckNowBtn" Content="{Binding CheckButtonText}" Padding="16,6"
+                                IsEnabled="{Binding CanCheck}" Click="CheckNow_Click"
+                                ToolTip="{Binding CheckButtonTip}"/>
+                    </StackPanel>
                     <TextBlock Text="{Binding CheckStatus}" TextWrapping="Wrap" Margin="0,6,0,0" HorizontalAlignment="Right" TextAlignment="Right"/>
                 </StackPanel>
             </Grid>

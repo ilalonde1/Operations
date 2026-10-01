@@ -74,6 +74,10 @@ try
     builder.Services.AddSingleton<Kor.Operations.NetworkOps.Service.Power.PowerState>();
     builder.Services.AddSingleton<Kor.Operations.NetworkOps.Service.Power.PowerChainRunner>();
     builder.Services.AddSingleton<Kor.Operations.NetworkOps.Service.Rack.RackCollector>();
+    builder.Services.AddSingleton(TimeProvider.System);
+    builder.Services.AddSingleton<Kor.Operations.NetworkOps.Service.Agents.AgentHub>();
+    builder.Services.AddSingleton<Kor.Operations.NetworkOps.Service.Agents.MachineRunner>();
+    builder.Services.AddSingleton<Kor.Operations.NetworkOps.Service.Agents.AgentInstaller>();
 
     if (runOnce is null)
     {
