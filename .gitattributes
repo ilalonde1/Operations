@@ -1,0 +1,5 @@
+# Files that run on Linux keep Unix line endings in every checkout, whatever core.autocrlf says: a CRLF in a bash
+# script or a cloud-init file breaks it on the VM (the VM build kits in infra/, and anything else that goes to Linux).
+*.sh            text eol=lf
+infra/**/*.yaml text eol=lf
+infra/**/*.json text eol=lf
