@@ -1,0 +1,394 @@
+[
+                   {
+                       "ProbeVersion":  7,
+                       "Console":  {
+                                       "DisplayOffAfterSeconds":  900,
+                                       "Keyboards":  0,
+                                       "Mice":  0
+                                   },
+                       "Wake":  {
+                                    "FastStartup":  1,
+                                    "Nics":  [
+                                                 {
+                                                     "Mac":  "0C:9D:92:C2:34:C5",
+                                                     "Description":  "Intel(R) Ethernet Connection (7) I219-V",
+                                                     "Up":  true,
+                                                     "MagicPacket":  true,
+                                                     "Armed":  true,
+                                                     "Pme":  "Enabled"
+                                                 }
+                                             ],
+                                    "LenovoWakeOnLan":  null
+                                },
+                       "Session":  {
+                                       "ConsoleUser":  "kor\\Administrator",
+                                       "State":  "Active",
+                                       "LockedSince":  null,
+                                       "IdleSeconds":  null,
+                                       "Remote":  [
+
+                                                  ],
+                                       "Summary":  "Administrator · active"
+                                   },
+                       "CollectedAt":  "2026-10-01T15:55:36",
+                       "Computer":  "KOR-210",
+                       "Os":  {
+                                  "Product":  "Windows 11 Pro",
+                                  "DisplayVersion":  "25H2",
+                                  "Build":  26200,
+                                  "Ubr":  9550,
+                                  "LastBoot":  "2026-09-29T21:21:59",
+                                  "UptimeHours":  43
+                              },
+                       "PendingReboot":  {
+                                             "ComponentServicing":  false,
+                                             "WindowsUpdate":  false,
+                                             "FileRename":  true
+                                         },
+                       "Volumes":  [
+                                       {
+                                           "Letter":  "C",
+                                           "Label":  "",
+                                           "SizeGB":  930,
+                                           "FreeGB":  595.7
+                                       },
+                                       {
+                                           "Letter":  "D",
+                                           "Label":  "Data",
+                                           "SizeGB":  894.3,
+                                           "FreeGB":  577.4
+                                       },
+                                       {
+                                           "Letter":  "E",
+                                           "Label":  "Backup",
+                                           "SizeGB":  1863,
+                                           "FreeGB":  1725
+                                       }
+                                   ],
+                       "PhysicalDisks":  [
+                                             {
+                                                 "Name":  "WDS100T3X0C-00SJG0",
+                                                 "Media":  "SSD",
+                                                 "Bus":  "NVMe",
+                                                 "SizeGB":  932,
+                                                 "Health":  "Healthy",
+                                                 "Operational":  "OK"
+                                             },
+                                             {
+                                                 "Name":  "Seagate BUP Slim SL",
+                                                 "Media":  "Unspecified",
+                                                 "Bus":  "USB",
+                                                 "SizeGB":  1863,
+                                                 "Health":  "Healthy",
+                                                 "Operational":  "OK"
+                                             },
+                                             {
+                                                 "Name":  "INTEL SSDSC2KB960G8",
+                                                 "Media":  "SSD",
+                                                 "Bus":  "SATA",
+                                                 "SizeGB":  894,
+                                                 "Health":  "Healthy",
+                                                 "Operational":  "OK"
+                                             }
+                                         ],
+                       "MissingDisks":  [
+
+                                        ],
+                       "OrphanDriveLetters":  [
+                                                  "F"
+                                              ],
+                       "Events14d":  {
+                                         "DiskBadBlock":  {
+                                                              "Count":  0,
+                                                              "Last":  null
+                                                          },
+                                         "DiskResets":  {
+                                                            "Count":  0,
+                                                            "Last":  null
+                                                        },
+                                         "NtfsCorruption":  {
+                                                                "Count":  0,
+                                                                "Last":  null
+                                                            },
+                                         "Whea":  {
+                                                      "Count":  0,
+                                                      "Last":  null
+                                                  },
+                                         "UnexpectedShutdown":  {
+                                                                    "Count":  2,
+                                                                    "Last":  "2026-09-29T21:22:11"
+                                                                },
+                                         "GpuHang":  {
+                                                         "Count":  0,
+                                                         "Last":  null
+                                                     },
+                                         "GpuHangLogEntries":  {
+                                                                   "Count":  0,
+                                                                   "Last":  null
+                                                               },
+                                         "ResourceExhaustion":  {
+                                                                    "Count":  0,
+                                                                    "Last":  null
+                                                                },
+                                         "UpdateFailures":  {
+                                                                "Count":  0,
+                                                                "Last":  null
+                                                            },
+                                         "AppHangs":  {
+                                                          "Count":  0,
+                                                          "Last":  null
+                                                      }
+                                     },
+                       "AppCrashes14d":  [
+                                             {
+                                                 "Process":  "opushutil.exe",
+                                                 "Count":  7,
+                                                 "Last":  "2026-09-29T20:37:54"
+                                             },
+                                             {
+                                                 "Process":  "CtxTime2.exe",
+                                                 "Count":  1,
+                                                 "Last":  "2026-09-27T11:39:01"
+                                             },
+                                             {
+                                                 "Process":  "CtxTime.exe",
+                                                 "Count":  1,
+                                                 "Last":  "2026-09-26T23:12:52"
+                                             }
+                                         ],
+                       "OutlookIndex60d":  [
+
+                                           ],
+                       "Office":  {
+                                      "C2rMso":  "16.0.20430.20032",
+                                      "DownlevelMso":  "16.0.5495.1002",
+                                      "AccessEngine":  true
+                                  },
+                       "Update":  {
+                                      "MicrosoftUpdate":  true,
+                                      "NoAutoUpdate":  1,
+                                      "LastInstall":  "2026-09-30T04:00:17",
+                                      "LastInstallTitle":  "Intel Corporation Display Driver Update (31.0.101.2140)",
+                                      "LastInstallBy":  "Device Driver Retrieval Client"
+                                  },
+                       "CoolingMode":  "n/a",
+                       "DisplayAdapters":  [
+                                               {
+                                                   "Name":  "NVIDIA GeForce GTX 1660 Ti",
+                                                   "Driver":  "32.0.16.1088",
+                                                   "ErrorCode":  0
+                                               }
+                                           ],
+                       "Residue":  {
+                                       "NewformaProfiles":  0,
+                                       "NewformaInstalled":  [
+
+                                                             ]
+                                   },
+                       "RemoteTools":  [
+                                           {
+                                               "Name":  "ncstreamer",
+                                               "State":  "Running",
+                                               "StartMode":  "Auto"
+                                           },
+                                           {
+                                               "Name":  "ScreenConnect Client (f626167a716ce0b9)",
+                                               "State":  "Running",
+                                               "StartMode":  "Auto"
+                                           },
+                                           {
+                                               "Name":  "TeamViewer",
+                                               "State":  "Running",
+                                               "StartMode":  "Auto"
+                                           }
+                                       ],
+                       "DataOutsideSystemDrive":  [
+                                                      {
+                                                          "Letter":  "D",
+                                                          "UsedGB":  316.9
+                                                      },
+                                                      {
+                                                          "Letter":  "E",
+                                                          "UsedGB":  138
+                                                      }
+                                                  ],
+                       "DiskReliability":  [
+                                               {
+                                                   "Name":  "WDS100T3X0C-00SJG0",
+                                                   "Serial":  "1906_6480_0430_0001_001B_448B_44B6_FE29.",
+                                                   "WearPct":  0,
+                                                   "TemperatureC":  40,
+                                                   "TemperatureMaxC":  80,
+                                                   "ReadErrors":  null,
+                                                   "ReadErrorsUncorrected":  null,
+                                                   "WriteErrors":  null,
+                                                   "PowerOnHours":  null
+                                               },
+                                               {
+                                                   "Name":  "Seagate BUP Slim SL",
+                                                   "Serial":  "NA7YYTBJ",
+                                                   "WearPct":  0,
+                                                   "TemperatureC":  35,
+                                                   "TemperatureMaxC":  null,
+                                                   "ReadErrors":  0,
+                                                   "ReadErrorsUncorrected":  0,
+                                                   "WriteErrors":  null,
+                                                   "PowerOnHours":  6473
+                                               },
+                                               {
+                                                   "Name":  "INTEL SSDSC2KB960G8",
+                                                   "Serial":  "BTYF01420KTQ960CGN",
+                                                   "WearPct":  0,
+                                                   "TemperatureC":  26,
+                                                   "TemperatureMaxC":  null,
+                                                   "ReadErrors":  0,
+                                                   "ReadErrorsUncorrected":  0,
+                                                   "WriteErrors":  null,
+                                                   "PowerOnHours":  53739
+                                               }
+                                           ],
+                       "Inventory":  {
+                                         "Manufacturer":  "System manufacturer",
+                                         "Model":  "System Product Name",
+                                         "MachineType":  "System Product Name",
+                                         "Serial":  "System Serial Number",
+                                         "BoardMaker":  "ASUSTeK COMPUTER INC.",
+                                         "BoardProduct":  "PRIME Z390-A",
+                                         "BiosVersion":  "0805",
+                                         "BiosDate":  "2019-01-28",
+                                         "Cpu":  "Intel(R) Core(TM) i9-9900K CPU @ 3.60GHz",
+                                         "Cores":  8,
+                                         "RamGB":  32,
+                                         "LoggedOnUser":  "kor\\Administrator",
+                                         "OfficeBuild":  "16.0.20430.20092",
+                                         "OfficeChannel":  "492350f6-3a01-4f97-b9c0-c7c6ddf67d60",
+                                         "Apps":  [
+                                                      {
+                                                          "Name":  "Autodesk Revit 2024",
+                                                          "Version":  "24.1.11.26"
+                                                      },
+                                                      {
+                                                          "Name":  "Bluebeam Revu CAD x64 20.3",
+                                                          "Version":  "20.3.30"
+                                                      },
+                                                      {
+                                                          "Name":  "ETABS 20",
+                                                          "Version":  "20.3.0"
+                                                      },
+                                                      {
+                                                          "Name":  "ETABS 21",
+                                                          "Version":  "21.2.0"
+                                                      },
+                                                      {
+                                                          "Name":  "ETABS 22",
+                                                          "Version":  "22.6.0"
+                                                      },
+                                                      {
+                                                          "Name":  "ETABS 23",
+                                                          "Version":  "23.3.1"
+                                                      },
+                                                      {
+                                                          "Name":  "Microsoft Access database engine 2016 (English)",
+                                                          "Version":  "16.0.5044.1000"
+                                                      },
+                                                      {
+                                                          "Name":  "Microsoft Teams Meeting Add-in for Microsoft Office",
+                                                          "Version":  "1.26.21803"
+                                                      },
+                                                      {
+                                                          "Name":  "NVIDIA Graphics Driver 610.88",
+                                                          "Version":  "610.88"
+                                                      },
+                                                      {
+                                                          "Name":  "SAFE 2016",
+                                                          "Version":  "16.0.2"
+                                                      },
+                                                      {
+                                                          "Name":  "SAFE 21",
+                                                          "Version":  "21.2.0"
+                                                      },
+                                                      {
+                                                          "Name":  "SAFE 22",
+                                                          "Version":  "22.0.0"
+                                                      }
+                                                  ]
+                                     },
+                       "MailStores":  [
+                                          {
+                                              "Profile":  "administrator",
+                                              "Name":  "jatkinson@korstructural.com.ost",
+                                              "GB":  2.95,
+                                              "LastWrite":  "2026-08-21T16:00:12"
+                                          },
+                                          {
+                                              "Profile":  "jatkinson",
+                                              "Name":  "jatkinson@korstructural.com.ost",
+                                              "GB":  1.13,
+                                              "LastWrite":  "2026-08-03T11:44:08"
+                                          },
+                                          {
+                                              "Profile":  "jeremy atkinson",
+                                              "Name":  "jatkinson@korstructural.com.ost",
+                                              "GB":  8.96,
+                                              "LastWrite":  "2025-08-09T22:58:56"
+                                          }
+                                      ],
+                       "Boot":  null,
+                       "Battery":  null,
+                       "Memory":  [
+                                      {
+                                          "Slot":  "ChannelA-DIMM2",
+                                          "Bank":  "BANK 1",
+                                          "SizeGB":  16,
+                                          "RatedMTs":  2666,
+                                          "ConfiguredMTs":  2666,
+                                          "Maker":  "Kingston",
+                                          "Part":  "KF3200C16D4/16GX"
+                                      },
+                                      {
+                                          "Slot":  "ChannelB-DIMM2",
+                                          "Bank":  "BANK 3",
+                                          "SizeGB":  16,
+                                          "RatedMTs":  2666,
+                                          "ConfiguredMTs":  2666,
+                                          "Maker":  "Kingston",
+                                          "Part":  "KF3200C16D4/16GX"
+                                      }
+                                  ],
+                       "MemorySlots":  4,
+                       "WmiHealthy":  true,
+                       "ProbeErrors":  [
+
+                                       ],
+                       "ProbeMs":  14727,
+                       "BlockMs":  {
+                                       "os":  187,
+                                       "pendingReboot":  52,
+                                       "volumes":  23,
+                                       "physicalDisks":  1628,
+                                       "missingDisks":  434,
+                                       "orphanLetters":  18,
+                                       "events":  1052,
+                                       "reliability":  248,
+                                       "inventory":  1519,
+                                       "mailStores":  28,
+                                       "boot":  9,
+                                       "battery":  5,
+                                       "appCrashes":  106,
+                                       "outlookIndex":  144,
+                                       "office":  9,
+                                       "update":  286,
+                                       "cooling":  15,
+                                       "display":  61,
+                                       "residue":  466,
+                                       "remoteTools":  329,
+                                       "memory":  16,
+                                       "memorySlots":  9,
+                                       "dataOutside":  5,
+                                       "session":  45,
+                                       "wake":  7344,
+                                       "console":  626,
+                                       "wmi":  35
+                                   }
+                   }
+               ]

@@ -45,6 +45,8 @@ public sealed record HealthSnapshot
     public SessionInfo? Session { get; init; }
     /// <summary>v6: whether a magic packet can wake it, and the wired MAC to send one to.</summary>
     public WakeInfo? Wake { get; init; }
+    /// <summary>v7: keyboards and mice attached, and when the display switches itself off (0 = never).</summary>
+    public ConsoleInfo? Console { get; init; }
 
     private static readonly JsonSerializerOptions Json = new()
     {
@@ -132,6 +134,7 @@ public sealed record BatteryInfo(int DesignMWh, int FullChargeMWh, int HealthPct
 /// <param name="State">Active | Locked | RemoteOnly | Nobody.</param>
 /// <param name="IdleSeconds">Since the console user last touched the keyboard or mouse (v5; only when the agent ran the probe).</param>
 public sealed record SessionInfo(string? ConsoleUser, string State, string? LockedSince, string Summary, int? IdleSeconds = null);
+public sealed record ConsoleInfo(int? DisplayOffAfterSeconds, int Keyboards, int Mice);
 /// <param name="Pme">The NIC's "PME" (power-management event) setting as the driver shows it; null when the driver has none.</param>
 public sealed record WakeNic(string Mac, string? Description, bool Up, bool MagicPacket, bool Armed, string? Pme);
 /// <param name="FastStartup">HiberbootEnabled: 1 = on (blocks wake from shutdown on many NICs), 0 = off.</param>

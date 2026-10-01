@@ -55,7 +55,10 @@ public sealed class NetworkOpsLiveFleetFix
             return;
         }
         var now = DateTime.UtcNow;
-        var on = fleet.Devices.Where(d => d.AgentConnected || d.LastReachableUtc is { } r && now - r < TimeSpan.FromHours(2)).OrderBy(d => d.Name).ToList();
+        // KOR_NETWORKOPS_FIX_HOSTS narrows the run to the PCs named (comma-separated); otherwise every PC that is on.
+        var only = (Environment.GetEnvironmentVariable("KOR_NETWORKOPS_FIX_HOSTS") ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var on = fleet.Devices.Where(d => d.AgentConnected || d.LastReachableUtc is { } r && now - r < TimeSpan.FromHours(2))
+            .Where(d => only.Length == 0 || only.Contains(d.Name, StringComparer.OrdinalIgnoreCase)).OrderBy(d => d.Name).ToList();
         if (!string.IsNullOrEmpty(fixId)) await FixFleetAsync(client, fixId, on, fleet.Devices.Count, report, path, ct);
         foreach (var name in (wakeTest ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
             await WakeTestAsync(client, on.Single(d => d.Name.Equals(name, StringComparison.OrdinalIgnoreCase)), report, path, ct);

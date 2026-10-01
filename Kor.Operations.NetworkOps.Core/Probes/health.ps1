@@ -349,8 +349,21 @@ $wake = Try-Block 'wake' {
     }
 }
 
+# --- v7: a PC with no keyboard and no mouse whose display still switches off when idle. Nothing can ever wake that
+# display, so a monitor plugged in later stays black while remote sessions work (KOR-210, PERFORM2/3, 2026-10-01:
+# "it WILL NOT display anything on a monitor"). OffAfterSeconds 0 = never.
+$console = Try-Block 'console' {
+    $idx = @(powercfg /q SCHEME_CURRENT SUB_VIDEO VIDEOIDLE | Select-String 'Current AC Power Setting Index:\s*0x([0-9a-fA-F]+)' | ForEach-Object { $_.Matches[0].Groups[1].Value })
+    [pscustomobject]@{
+        DisplayOffAfterSeconds = if ($idx.Count) { [Convert]::ToInt32($idx[0], 16) } else { $null }
+        Keyboards = @(Get-PnpDevice -Class Keyboard -PresentOnly -ErrorAction SilentlyContinue).Count
+        Mice = @(Get-PnpDevice -Class Mouse -PresentOnly -ErrorAction SilentlyContinue).Count
+    }
+}
+
 [pscustomobject]@{
-    ProbeVersion  = 6
+    ProbeVersion  = 7
+    Console       = $console
     Wake          = $wake
     Session       = $session
     CollectedAt   = $now.ToString('s')

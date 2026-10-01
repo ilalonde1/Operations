@@ -111,6 +111,12 @@ public static class HealthRules
             f.Add(new("microsoft-update-off", Severity.Info, "Office security updates are not being offered",
                 "Microsoft Update is not registered, so Office MSI patches (Access Database Engine) never arrive"));
 
+        // No keyboard, no mouse, and a display that switches off when idle: nothing can ever wake it, so a monitor
+        // plugged in later stays black while remote sessions work (KOR-210, 2026-10-01).
+        if (s.Console is { Keyboards: 0, Mice: 0, DisplayOffAfterSeconds: > 0 } con)
+            f.Add(new("display-sleeps-headless", Severity.Info, "Its display goes dark and nothing can wake it",
+                $"no keyboard or mouse attached, and Windows turns the display off after {con.DisplayOffAfterSeconds / 60} min: a monitor plugged in later shows nothing"));
+
         if (WakeProblems(s.Wake) is { Count: > 0 } wake)
             f.Add(new("wake-not-ready", Severity.Info, "A magic packet won't wake it", string.Join("; ", wake)));
 
