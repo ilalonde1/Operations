@@ -29,7 +29,10 @@ public sealed class NetworkOpsLiveFleetFix
     [Fact]
     public async Task Live_fix_the_fleet_and_optionally_prove_wake()
     {
-        if (Environment.GetEnvironmentVariable("KOR_NETWORKOPS_FLEET_FIX") is not { Length: > 0 } fixId) return;
+        var fixId = Environment.GetEnvironmentVariable("KOR_NETWORKOPS_FLEET_FIX");
+        var wakeTest = Environment.GetEnvironmentVariable("KOR_NETWORKOPS_WAKE_TEST");
+        var wakeOnly = Environment.GetEnvironmentVariable("KOR_NETWORKOPS_WAKE_ONLY");   // press Wake on one PC, nothing else
+        if (string.IsNullOrEmpty(fixId) && string.IsNullOrEmpty(wakeTest) && string.IsNullOrEmpty(wakeOnly)) return;
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
         while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "Kor.Operations.App", "App.config"))) dir = dir.Parent;
         var settings = System.Xml.Linq.XDocument.Load(Path.Combine(dir!.FullName, "Kor.Operations.App", "App.config"))
@@ -41,9 +44,26 @@ public sealed class NetworkOpsLiveFleetFix
         var path = Path.Combine(Path.GetTempPath(), "kor-networkops-fleetfix-live.txt");
 
         var fleet = await client.GetFleetAsync(ct);
+        if (!string.IsNullOrEmpty(wakeOnly))
+        {
+            var target = fleet.Devices.Single(d => d.Name.Equals(wakeOnly, StringComparison.OrdinalIgnoreCase));
+            var started = DateTime.UtcNow;
+            var id = await client.WakeAsync(target.DeviceId, ct);
+            ActionRow? w = null;
+            for (var i = 0; i < 90 && w?.Status is not ("Done" or "Failed" or "Refused"); i++) { await Task.Delay(5000); w = await client.GetActionAsync(id, ct); }
+            File.WriteAllText(path, $"wake {target.Name} (action {id}): {w?.Status} | {w?.Detail} | {(int)(DateTime.UtcNow - started).TotalSeconds} s{Environment.NewLine}");
+            return;
+        }
         var now = DateTime.UtcNow;
         var on = fleet.Devices.Where(d => d.AgentConnected || d.LastReachableUtc is { } r && now - r < TimeSpan.FromHours(2)).OrderBy(d => d.Name).ToList();
-        report.AppendLine($"{fixId} on {on.Count} of {fleet.Devices.Count} PCs (on now)");
+        if (!string.IsNullOrEmpty(fixId)) await FixFleetAsync(client, fixId, on, fleet.Devices.Count, report, path, ct);
+        foreach (var name in (wakeTest ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            await WakeTestAsync(client, on.Single(d => d.Name.Equals(name, StringComparison.OrdinalIgnoreCase)), report, path, ct);
+    }
+
+    private static async Task FixFleetAsync(NetworkOpsClient client, string fixId, List<DeviceRow> on, int total, StringBuilder report, string path, CancellationToken ct)
+    {
+        report.AppendLine($"{fixId} on {on.Count} of {total} PCs (on now)");
         var runs = new Dictionary<long, DeviceRow>();
         foreach (var d in on)
         {
@@ -60,9 +80,10 @@ public sealed class NetworkOpsLiveFleetFix
         foreach (var (id, d) in runs.OrderBy(r => r.Value.Name))
             report.AppendLine($"{d.Name}: {results.GetValueOrDefault(id)?.Status} | {results.GetValueOrDefault(id)?.Detail}");
         File.WriteAllText(path, report.ToString());
+    }
 
-        if (Environment.GetEnvironmentVariable("KOR_NETWORKOPS_WAKE_TEST") is not { Length: > 0 } name) return;
-        var pc = on.Single(d => d.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+    private static async Task WakeTestAsync(NetworkOpsClient client, DeviceRow pc, StringBuilder report, string path, CancellationToken ct)
+    {
         report.AppendLine($"WAKE TEST on {pc.Name} ({pc.Presence})");
         if (pc.PresenceState is "Active" or "Locked" or "RemoteOnly")
         {
@@ -71,7 +92,7 @@ public sealed class NetworkOpsLiveFleetFix
             return;
         }
         var (stop, why, _) = await client.RequestFixAsync(pc.DeviceId,
-            new FixRequest(Kor.Operations.NetworkOps.Core.Actions.FixCatalog.RunCommand, "Start-Process shutdown.exe -ArgumentList '/s','/t','20','/d','p:4:1','/c','KOR IT: Wake-on-LAN test, back in a few minutes'; 'shutdown in 20 s'", null, "Wake-on-LAN test", false), ct);
+            new FixRequest(Kor.Operations.NetworkOps.Core.Actions.FixCatalog.RunCommand, "& shutdown.exe /s /t 20 /d p:4:1 /c 'KOR IT: Wake-on-LAN test, back in a few minutes'; if ($LASTEXITCODE -eq 0) { 'shutdown in 20 s' } else { \"shutdown.exe refused: exit $LASTEXITCODE\" }", null, "Wake-on-LAN test", false), ct);
         report.AppendLine($"shutdown: action {stop} {why}");
         var off = DateTime.UtcNow;
         var gone = false;
