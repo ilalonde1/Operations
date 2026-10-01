@@ -15,7 +15,12 @@ namespace Kor.Operations.NetworkOps.Service.Agents;
 internal sealed class AgentRollout(NetworkOpsStore store, AgentInstaller installer, IOptions<NetworkOpsOptions> options, ILogger<AgentRollout> log)
 {
     public const string JobName = "AgentRollout";
-    public static readonly TimeSpan ReachableWithin = TimeSpan.FromHours(2);
+    /// <summary>
+    /// PCs the census has reached this recently are considered; whether each is online NOW is checked right before its
+    /// install. Seven days, not two hours: the census runs in business hours only, so an evening rollout with a 2-hour
+    /// window found no PC at all and reported "nothing to do" (canary, 2026-09-30 20:34).
+    /// </summary>
+    public static readonly TimeSpan ReachableWithin = TimeSpan.FromDays(7);
 
     public async Task<string> RunAsync(string requestedBy, CancellationToken ct)
     {
@@ -25,7 +30,7 @@ internal sealed class AgentRollout(NetworkOpsStore store, AgentInstaller install
                       ?? throw new InvalidOperationException($"no agent package with a readable version at {AgentInstaller.PackageDir}");
 
         var candidates = await store.AgentRolloutCandidatesAsync(DateTime.UtcNow - ReachableWithin, shipped, ct).ConfigureAwait(false);
-        if (candidates.Count == 0) return $"nothing to do: every PC seen in the last {ReachableWithin.TotalHours:0} h has agent {shipped}";
+        if (candidates.Count == 0) return $"nothing to do: no PC the census reached in the last {ReachableWithin.TotalDays:0} days is without agent {shipped} (removed agents are left alone)";
         var batch = Math.Max(1, o.AgentRolloutBatch);
 
         var done = new List<string>();

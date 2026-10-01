@@ -38,8 +38,10 @@ up to 60 s for it to call in.
 ## Roll out to the fleet
 
 Never scheduled: a rollout runs only when someone asks. Each run installs or upgrades the next
-`AgentRolloutBatch` PCs (default 5) that answered the network in the last 2 hours and have no agent or an older
-one — ONE AT A TIME, stopping at the first failure. Each PC gets its own audited `install-agent` row.
+`AgentRolloutBatch` PCs (default 5) that the census reached in the last 7 days, that are online at that moment (offline
+ones are skipped, not counted), and that have no agent, an older one, or one never confirmed — ONE AT A TIME,
+stopping at the first failure. A PC whose agent was removed is left alone. Each PC gets its own audited
+`install-agent` row.
 
 ```sql
 INSERT NetworkOps.JobTriggers (JobName, RequestedBy) VALUES ('AgentRollout', N'<your name>');
