@@ -29,6 +29,8 @@ internal static class SchedulingCatalog
             "every 5 minutes, day and night: the rack is on when the office is not, and a dead PSU or a stopped backup must be news within minutes"),
         new(typeof(Mesh.MeshSweepJob), Mesh.MeshSweepJob.JobName, "0 1/5 * * * ?",
             "every 5 minutes, offset a minute from the rack sweep: which PCs and servers remote control can reach, for the Connect button and its findings"),
+        new(typeof(Updates.UpdateScanJob), Updates.UpdateScanJob.JobName, "0 0 8,13 ? * MON-FRI",
+            "twice a working day, when the PCs are on: what Windows Update has waiting on every PC and server (searched, never installed -- installs are on demand); the 08:00 run after Patch Tuesday mails the month's arrivals"),
         new(typeof(PowerRehearsalJob), PowerRehearsalJob.JobName, "0 45 6 * * ?",
             "daily dry run of the UPS shutdown chain against the live rack: drift is found with the lights on; before the workday, clear of the 17:00 Veeam run"),
     ];

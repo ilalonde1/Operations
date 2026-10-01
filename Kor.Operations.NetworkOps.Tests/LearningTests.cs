@@ -346,11 +346,12 @@ public sealed class LearningTests
             Path.Combine(root, "Kor.Operations.NetworkOps.Service", "Jobs", "Jobs.cs"),
             Path.Combine(root, "Kor.Operations.NetworkOps.Core", "Health", "AgentRules.cs"),
             Path.Combine(root, "Kor.Operations.NetworkOps.Core", "Health", "MeshRules.cs"),
+            Path.Combine(root, "Kor.Operations.NetworkOps.Core", "Updates", "UpdateRules.cs"),
         };
         var families = new SortedSet<string>(StringComparer.Ordinal);
         var created = new Regex(@"new\(\$?""([a-z]+(?:-[a-z]+)+)[:""]");                        // new("disk-missing", … / new($"low-disk:{…}", …
         var worsening = new Regex(@"Worsening\([^;]*?,\s*\$?""([a-z]+(?:-[a-z]+)+)[:""]");      // Worsening(…, "gpu-hangs-rising", … / $"crashes-rising:{…}"
-        var constKey = new Regex(@"SilentRule\s*=\s*""([a-z-]+)""");
+        var constKey = new Regex(@"\b(?:SilentRule|Rule)\s*=\s*""([a-z-]+)""");
         foreach (var f in files)
         {
             var src = File.ReadAllText(f);

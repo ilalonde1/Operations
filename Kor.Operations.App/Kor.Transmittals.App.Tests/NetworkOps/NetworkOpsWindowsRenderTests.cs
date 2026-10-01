@@ -110,6 +110,16 @@ public sealed class NetworkOpsWindowsRenderTests
         library.Apply(catalog, PromptLibraryTests.Runs(),
             new RenderedPrompt(42, $"Claude: {finding.Title} on {worst.Name}", "claude-x.md", $"# Solve \"{finding.Title}\" on {worst.Name}\n\nWritten by NetworkOps at 2026-09-30 23:00 UTC from its live database..."));
         written += Render(library, Path.Combine(dir, $"{label}-prompt-library.png"));
+
+        // The Updates view: overdue, due, held, failed, the special servers, one that cannot be reached; two ticked, one selected.
+        var updates = new NetworkOpsUpdatesWindow(reader);
+        updates.Apply(NetworkOpsUpdatesTests.Rows(), new DateTime(2026, 10, 1, 17, 0, 0, DateTimeKind.Utc));
+        updates.OnlyWaitingBox.IsChecked = false;
+        var views = ((System.Collections.IEnumerable)updates.Grid.ItemsSource).Cast<UpdateRowView>().ToList();
+        views[0].IsTicked = true;
+        views[1].IsTicked = true;
+        updates.Grid.SelectedItem = views[0];
+        written += Render(updates, Path.Combine(dir, $"{label}-updates.png"));
         return written;
     }
 

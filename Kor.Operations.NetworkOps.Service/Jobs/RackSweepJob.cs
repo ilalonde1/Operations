@@ -49,7 +49,8 @@ internal sealed class RackSweepJob(NetworkOpsStore store, RackCollector collecto
             var payload = JsonSerializer.Serialize(new { summary = r.Summary, error = r.Error, findings = r.Findings.Count });
             await store.RecordObservationAsync(id, "rack", 1, now, r.Reachable ? "Ok" : "Offline", payload, r.Error, ct);
 
-            var open = await store.OpenFindingsAsync(id, null, ct);
+            // The update scan owns "updates-due" (Updates/UpdateScanner): this sweep never raises it, so must never clear it.
+            var open = (await store.OpenFindingsAsync(id, null, ct)).Where(f => !Core.Updates.UpdateRules.Owns(f.RuleKey)).ToList();
             IReadOnlyList<FindingChange> changes;
             if (r.Reachable)
             {

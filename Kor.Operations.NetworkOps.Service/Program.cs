@@ -81,6 +81,7 @@ try
     builder.Services.AddSingleton<Kor.Operations.NetworkOps.Service.Agents.AgentRollout>();
     builder.Services.AddSingleton<Kor.Operations.NetworkOps.Service.Mesh.MeshState>();
     builder.Services.AddSingleton<Kor.Operations.NetworkOps.Service.Prompts.PromptLibrary>();
+    builder.Services.AddSingleton<Kor.Operations.NetworkOps.Service.Updates.UpdateScanner>();
     builder.Services.AddSingleton<Kor.Operations.NetworkOps.Service.Mesh.MeshInstaller>();
 
     if (runOnce is null)

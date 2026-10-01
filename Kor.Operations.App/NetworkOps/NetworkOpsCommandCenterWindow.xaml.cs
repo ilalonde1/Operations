@@ -81,6 +81,8 @@ public partial class NetworkOpsCommandCenterWindow : Window
 
     private void OpenPc_Click(object sender, RoutedEventArgs e) => OpenSelected();
 
+    private void Updates_Click(object sender, RoutedEventArgs e) => new NetworkOpsUpdatesWindow(_vm.Client) { Owner = this }.Show();
+
     private void PromptLibrary_Click(object sender, RoutedEventArgs e) => new PromptLibraryWindow(_vm.Client) { Owner = this }.Show();
 
     private void RackGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)

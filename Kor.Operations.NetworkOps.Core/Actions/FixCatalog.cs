@@ -18,6 +18,10 @@ public static class FixCatalog
 {
     public const string RunCommand = "run-command";
     public const string StartService = "start-service";
+    public const string InstallUpdates = "install-updates";
+    public const string InstallUpdatesRestart = "install-updates-restart";
+
+    public static bool IsUpdateInstall(string id) => id is InstallUpdates or InstallUpdatesRestart;
 
     public static readonly IReadOnlyList<FixAction> All =
     [
@@ -37,6 +41,12 @@ public static class FixCatalog
         new("turn-on-microsoft-update", "Turn on Microsoft Update",
             "Opts Windows Update into Microsoft Update, so Office and other Microsoft products get their patches too (done fleet-wide 28 Sep 2026).",
             Disruptive: false, TimeoutSeconds: 120, ["microsoft-update-off"]),
+        new(InstallUpdates, "Install updates (no restart)",
+            "Installs what Windows Update has waiting, now, as SYSTEM: security and other software updates, never drivers, previews or feature upgrades. Does not restart: the machine shows 'restart pending' until someone restarts it.",
+            Disruptive: false, TimeoutSeconds: 5400, [Updates.UpdateRules.Rule, "not-patched"]),
+        new(InstallUpdatesRestart, "Install updates and restart if needed",
+            "The same install, then -- only if an update needs it -- a restart in 5 minutes with a warning on screen, so whoever is there can save.",
+            Disruptive: true, TimeoutSeconds: 5400, [Updates.UpdateRules.Rule, "not-patched"]),
         new(StartService, "Start the stopped service",
             "Starts the service and sets it to restart itself if it fails again (3 x 60 s) -- the MCP server and Certify on APP01 stayed down for days without that.",
             Disruptive: false, TimeoutSeconds: 180, ["server.service-stopped"], ParamLabel: "Service name"),
@@ -72,6 +82,8 @@ public static class FixCatalog
     public static string Script(FixAction a, string? param)
     {
         if (a.Id == RunCommand) return param!;   // the operator's own script, as typed (audited)
+        // The two update installs are one script; the restart variant only sets its switch.
+        if (a.Id == InstallUpdatesRestart) return "$RestartIfNeeded = $true\n" + Script(Get(InstallUpdates)!, null);
         using var s = typeof(FixCatalog).Assembly.GetManifestResourceStream($"Actions.{a.Id}.ps1")
             ?? throw new InvalidOperationException($"no embedded script for {a.Id}");
         using var r = new StreamReader(s);

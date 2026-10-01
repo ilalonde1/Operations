@@ -23,6 +23,25 @@ public sealed record DeviceRow(int DeviceId, string Name, DateTime? LastReachabl
 /// <param name="Action">install (remote control: the Mesh agent)</param>
 public sealed record MeshRequest(string Action);
 
+// ---- Windows updates (Core/Updates): what is waiting on each machine, and installing it on many at once, on demand.
+
+/// <param name="Target">False when NetworkOps cannot run anything on it (Why says why): it is listed, never silently left out.</param>
+/// <param name="Guard">Alone (only in a batch by itself: the domain controller) | NoRestart (never restarted from here: the machine running NetworkOps).</param>
+/// <param name="ScanStatus">Ok | the reason the last search failed | null = never searched.</param>
+/// <param name="Pending">What the last search found waiting; empty when nothing is.</param>
+/// <param name="LastInstall">The last "Install updates" run on it: status and result line.</param>
+public sealed record UpdateRow(int DeviceId, string Name, string Kind, bool IsServer, bool Target, string? Why, string? Guard,
+    string? Presence, string? PresenceState, DateTime? ScannedUtc, string? ScanStatus, bool RebootPending,
+    IReadOnlyList<Updates.PendingUpdate> Pending, Health.Severity? Due, string? DueTitle, string? LastInstall, DateTime? LastInstallUtc);
+
+/// <param name="Restart">none | if-needed</param>
+/// <param name="Confirmed">Set after being told someone is actively using one of the machines (a restart is refused otherwise).</param>
+public sealed record UpdateInstallRequest(IReadOnlyList<int> DeviceIds, string Restart, bool Confirmed);
+
+/// <summary>Per machine: queued (ActionId) or refused (why), and whether confirming would let it run.</summary>
+/// <param name="Note">Queued, but not quite as asked (APP01: installed without the restart).</param>
+public sealed record UpdateInstallOutcome(int DeviceId, string Name, long? ActionId, string? Refused, bool NeedsConfirmation, string? Note = null);
+
 // ---- the Prompt Library: Claude prompts generated from the live database when opened (Core/Prompts/PromptComposer).
 
 public sealed record PromptTool(string Id, string Title, string Summary);

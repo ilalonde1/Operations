@@ -78,8 +78,8 @@ public sealed class FixCatalogTests
     }
 
     [Fact]
-    public void Only_the_restart_is_disruptive()
-        => Assert.Equal(["restart-pc"], FixCatalog.All.Where(f => f.Disruptive).Select(f => f.Id));
+    public void Only_the_restarts_are_disruptive()
+        => Assert.Equal(["restart-pc", FixCatalog.InstallUpdatesRestart], FixCatalog.All.Where(f => f.Disruptive).Select(f => f.Id));
 
     [Theory]
     [InlineData("[{\"Result\":\"Freed 3.2 GB on C:\",\"Steps\":[]}]", "Freed 3.2 GB on C:")]

@@ -38,6 +38,20 @@ public sealed class NetworkOpsOptions
     /// </summary>
     public bool AgentsEnabled { get; set; } = true;
 
+    // ---- Windows updates (Updates/*): searched twice a working day, installed only when someone asks.
+
+    /// <summary>Machines searched at once. A search is 30 s to a few minutes and talks to Microsoft, not to APP01.</summary>
+    public int UpdateScanParallel { get; set; } = 8;
+
+    /// <summary>Installs running at once: each downloads hundreds of MB through the office's internet line.</summary>
+    public int UpdateInstallParallel { get; set; } = 4;
+
+    /// <summary>Hosts that may only be patched in a batch of their own (the only domain controller: DNS, DHCP and sign-in go with it).</summary>
+    public List<string> UpdateAloneHosts { get; set; } = ["KOR-DC01"];
+
+    /// <summary>Hosts never restarted from here (APP01 runs NetworkOps: it cannot restart itself and watch it come back).</summary>
+    public List<string> UpdateNoRestartHosts { get; set; } = ["KOR-APP01"];
+
     /// <summary>How many PCs one rollout run installs or upgrades, one at a time, stopping at the first failure.</summary>
     public int AgentRolloutBatch { get; set; } = 5;
 

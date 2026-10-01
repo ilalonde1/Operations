@@ -16,8 +16,11 @@ namespace Kor.Operations.NetworkOps.Service.Sweep;
 // machine, so the page shows whether the finding actually cleared. Only FixCatalog's fixes run. A fix left
 // Running by a stopped service is marked failed at startup, never re-run: a fix is not idempotent.
 internal sealed class ActionRunner(NetworkOpsStore store, MachineRunner runner, AgentInstaller installer, Mesh.MeshInstaller mesh,
-    IOptions<NetworkOpsOptions> options, ILogger<ActionRunner> log) : BackgroundService
+    Updates.UpdateScanner updates, IOptions<NetworkOpsOptions> options, ILogger<ActionRunner> log) : BackgroundService
 {
+    // Update installs each pull hundreds of MB through the office's internet line: a batch of 30 runs a few at a time.
+    private readonly SemaphoreSlim _installs = new(Math.Max(1, options.Value.UpdateInstallParallel));
+
     protected override async Task ExecuteAsync(CancellationToken ct)
     {
         try
@@ -73,7 +76,11 @@ internal sealed class ActionRunner(NetworkOpsStore store, MachineRunner runner, 
             var host = HostOf(a.DeviceName) ?? throw new InvalidOperationException($"{a.DeviceName} is not a machine fixes can run on");
 
             log.LogWarning("FIX {Id} {Fix} on {Host} requested by {By}", a.ActionId, fix.Id, host, a.RequestedBy);
-            var run = await runner.RunAsync(host, FixCatalog.Script(fix, param), TimeSpan.FromSeconds(fix.TimeoutSeconds), wantsIdle: false, ct);
+            var install = FixCatalog.IsUpdateInstall(fix.Id);
+            if (install) await _installs.WaitAsync(ct);
+            OnTargetRun run;
+            try { run = await runner.RunAsync(host, FixCatalog.Script(fix, param), TimeSpan.FromSeconds(fix.TimeoutSeconds), wantsIdle: false, ct); }
+            finally { if (install) _installs.Release(); }
             if (run.Status != OnTargetStatus.Ok)
             {
                 await store.CompleteActionAsync(a.ActionId, false, $"{run.Status}: {run.Error}", run.OutputJson);
@@ -82,6 +89,14 @@ internal sealed class ActionRunner(NetworkOpsStore store, MachineRunner runner, 
             var result = ResultLine(run.OutputJson) ?? "ran; see the output";
             await store.CompleteActionAsync(a.ActionId, true, result, run.OutputJson);
             log.LogWarning("FIX {Id} {Fix} on {Host}: {Result}", a.ActionId, fix.Id, host, result);
+
+            // After an install, search again at once: the Updates view shows what is left (or "restart pending") without
+            // waiting for the next scheduled search.
+            if (install)
+            {
+                try { await updates.ScanAsync([a.DeviceId], patchTuesdayNotice: false, CancellationToken.None); }
+                catch (Exception ex) when (ex is not OperationCanceledException) { log.LogWarning(ex, "Re-scan after install {Id} failed", a.ActionId); }
+            }
 
             // Re-check, so the page shows whether it cleared. Not after a restart: the PC is going down, and the
             // hourly sweep sees it when it is back.
@@ -98,11 +113,13 @@ internal sealed class ActionRunner(NetworkOpsStore store, MachineRunner runner, 
         }
     }
 
-    /// <summary>The machine a fix runs on: a PC by its name; a rack device only if it is a Windows server (the others have no SCM).</summary>
+    /// <summary>The machine a fix runs on: a PC by its name; a rack device only if it is a Windows server (the others have no SCM).
+    /// "Mesh" servers (FS01, RDS01) are Windows too, read through remote control only because APP01's account is not an
+    /// administrator there yet: a fix is attempted and fails with that reason rather than being hidden.</summary>
     private string? HostOf(string deviceName)
     {
         var rack = options.Value.Rack.FirstOrDefault(d => d.Name.Equals(deviceName, StringComparison.OrdinalIgnoreCase));
-        return rack is null ? deviceName : rack.Collector == "WindowsServer" ? rack.Address : null;
+        return rack is null ? deviceName : rack.Collector is "WindowsServer" or "Mesh" ? rack.Address : null;
     }
 
     private bool IsRack(string deviceName) => options.Value.Rack.Any(d => d.Name.Equals(deviceName, StringComparison.OrdinalIgnoreCase));

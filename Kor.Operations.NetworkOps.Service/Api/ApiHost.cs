@@ -25,7 +25,7 @@ namespace Kor.Operations.NetworkOps.Service.Api;
 // The endpoint agents call in on the same listener (/agent/v1, Agents/AgentApi.cs) with their own per-PC keys;
 // neither kind of caller can use the other's routes.
 internal sealed class ApiHost(IOptions<NetworkOpsOptions> options, NetworkOpsStore store, Power.PowerState power, Agents.AgentHub agents,
-    Mesh.MeshState mesh, Prompts.PromptLibrary prompts, ILoggerFactory loggers, ILogger<ApiHost> log) : BackgroundService
+    Mesh.MeshState mesh, Prompts.PromptLibrary prompts, Updates.UpdateScanner updates, ILoggerFactory loggers, ILogger<ApiHost> log) : BackgroundService
 {
     private static readonly TimeSpan MaxSnooze = TimeSpan.FromDays(90);
 
@@ -51,6 +51,7 @@ internal sealed class ApiHost(IOptions<NetworkOpsOptions> options, NetworkOpsSto
         builder.Services.AddSingleton(agents);
         builder.Services.AddSingleton(mesh);
         builder.Services.AddSingleton(prompts);
+        builder.Services.AddSingleton(updates);
         builder.Services.AddSingleton<Agents.IAgentDirectory>(store);
         builder.WebHost.ConfigureKestrel(k =>
         {
@@ -125,6 +126,9 @@ internal sealed class ApiHost(IOptions<NetworkOpsOptions> options, NetworkOpsSto
         });
 
         var api = app.MapGroup("/api").RequireAuthorization("CommandCenter");
+
+        // ---- Windows updates: what is waiting where, and installing it on many machines at once (Updates/UpdatesApi.cs).
+        Updates.UpdatesApi.Map(api);
 
         // ---- the Prompt Library: prompts written from the live database when opened; their runs and what came back.
         api.MapGet("/prompts", (Prompts.PromptLibrary p, CancellationToken ct) => p.CatalogAsync(ct));

@@ -120,6 +120,8 @@
                           ToolTip="Re-read the fleet every 15 seconds."/>
                 <Button x:Name="OpenPcBtn" Content="Open PC..." Padding="14,4" Margin="0,0,8,0" Click="OpenPc_Click"
                         ToolTip="Open the selected PC (or double-click a row)."/>
+                <Button Content="Updates" Padding="14,4" Margin="0,0,8,0" Click="Updates_Click"
+                        ToolTip="What Windows Update has waiting on every PC and server, and installing it on many at once."/>
                 <Button Content="Prompt Library" Padding="14,4" Margin="0,0,8,0" Click="PromptLibrary_Click"
                         ToolTip="Claude prompts for any tool, device or problem, written from the live database when opened; and what sessions reported back."/>
                 <Button x:Name="RefreshBtn" Content="Refresh" Padding="14,4" Click="RefreshBtn_Click"/>

@@ -87,7 +87,8 @@ internal sealed class HealthSweeper(NetworkOpsStore store, IDigestSender digest,
             findings += raised.Count;
 
             // 5. diff; learn from what cleared
-            var open = await store.OpenFindingsAsync(id, FleetCensusJob.SilentRule, ct);
+            // The update scan owns "updates-due" (Updates/UpdateScanner): this sweep never raises it, so must never clear it.
+            var open = (await store.OpenFindingsAsync(id, FleetCensusJob.SilentRule, ct)).Where(f => !Core.Updates.UpdateRules.Owns(f.RuleKey)).ToList();
             var changes = FindingDiff.Compute(open, raised);
             await store.ApplyChangesAsync(id, changes, now, ct);
             foreach (var cleared in changes.Where(c => c.Kind == ChangeKind.Cleared && c.Previous is not null))

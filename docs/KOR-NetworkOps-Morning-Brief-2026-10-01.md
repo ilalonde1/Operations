@@ -4,7 +4,7 @@ Measured overnight on the machines themselves. Every read was read-only, and **n
 
 | # | Topic | The one-line answer | Your decision |
 |---|---|---|---|
-| 1 | Patching | Updates are switched off by **local leftovers** (29 of 29 PCs), not by a GPO, so one new GPO turns them on. Servers last patched **2026-07-21**. | GPO + pilot on 104N and 1001, then the fleet; server window with DC01 last |
+| 1 | Patching | Updates are switched off by **local leftovers** (29 of 29 PCs), not by a GPO. Servers last patched **2026-07-21**. Patching is on demand from the Command Center's **Updates** view: no GPO, no schedule. | Tick the machines that are due and install |
 | 2 | Veeam | All three jobs back up. The shared Warning is BK01's **guest catalog**, failing since **09-10**. FS01 also has VSS and indexing failures. | Restart the catalog service; turn off FS01 guest indexing |
 | 3 | Local admins | On **25 of 29 PCs** the signed-in user is an administrator (INTERACTIVE on 16). Six leftover local accounts. | Remove the leftovers; one GPO for admins; LAPS |
 | 4 | MeshCentral SSO | Exact app-registration values and config, checked against the installed 1.2.5 code. | Create the app registration |
@@ -12,7 +12,7 @@ Measured overnight on the machines themselves. Every read was read-only, and **n
 
 Also built overnight: the **Prompt Library** (NetworkOps 0.9.2/0.9.3, live). It needs `db/KorNetworkOps/007_PromptLibrary.sql` run before sessions can report back.
 
-## Patching: switching it on
+## Patching
 
 Measured 2026-09-30 22:28–22:35, on the targets (netops run, one call each; read-only).
 
@@ -32,34 +32,27 @@ Measured 2026-09-30 22:28–22:35, on the targets (netops run, one call each; re
 - **Windows 10 22H2 on 2 of 29: KOR-224 and KOR-SPARE8.** Windows 10 went out of support on 2025-10-14. Upgrade or retire them; patching will not make them supported.
 - **Servers:** the last OS update on APP01, DC01, FS01 and RDS01 is **2026-07-21**, 71 days ago. Only Defender intelligence and Store app updates have landed since. Uptime 4–5 days. Pending: file-rename only on each.
 
-### The plan (nothing below is done; every step needs Ian's OK)
+### How patching works: on demand, from the Command Center (NetworkOps 0.10)
 
-**1. Workstation GPO "KOR Workstation Updates" (Windows Update for Business, no WSUS).** *Ian's OK needed.*
-Link it at the domain root and add a **WMI filter `SELECT * FROM Win32_OperatingSystem WHERE ProductType = 1`** so it reaches workstations only (servers and the DC are excluded). Computer Configuration > Administrative Templates > Windows Components > Windows Update:
-- *Configure Automatic Updates* = Enabled, option **4 – Auto download and schedule the install**, every day, 12:00 (lunch), plus "Install updates for other Microsoft products". Enabling this policy rewrites `NoAutoUpdate=0` and `AUOptions=4`, which overrides the leftovers. No registry cleanup script is needed.
-- *Manage end user experience > Specify deadlines for automatic updates and restarts:* quality **3 days**, feature **14 days**, grace period **2 days**, *Don't auto-restart until end of grace period* = on. People get two days' warning to save open models before a forced restart.
-- *Turn off auto-restart for updates during active hours* = **07:00–19:00**. Engineers work late, and a restart outside that range is fine.
-- *Select when Quality Updates are received* = defer **3 days**, so a bad Patch Tuesday update is pulled before it lands. *Select when Preview Builds and Feature Updates are received* = defer **60 days**.
-- *Select the target Feature Update version* = Windows 11 **25H2**, the version the fleet runs today (26200). This stops 26H2 arriving unplanned.
-- *Do not include drivers with Windows Updates* = **Enabled**. GPU and Revit-certified drivers stay deliberate; 722 TDRs on 206-N are a reason not to let drivers float.
+Nothing installs on a schedule. The leftover "updates off" setting stays as it is: it stops Windows from acting by itself, but it does not stop an install NetworkOps starts. So **no GPO is needed**.
 
-**2. Pilot ring first.** *Ian's OK needed.*
-Use security filtering on a group **"WU Pilot"** containing KOR-104N and KOR-1001 (Authenticated Users removed from the GPO's Apply). Run it for one cycle: `gpupdate`, confirm RSoP shows the GPO, `AUOptions=4`, and an install plus scheduled restart that honours active hours. NetworkOps' health probe already reads `NoAutoUpdate` and the last install, so the Command Center shows it.
-
-**3. Fleet.** *Ian's OK needed.*
-Add Authenticated Users back to the GPO's security filtering, keeping the WMI filter. The 10 offline PCs pick it up whenever they next see a DC: the VPN for the laptops, a power-on for the rest. Separately, decide on KOR-224 and KOR-SPARE8 (Windows 10).
-
-**4. Servers: a monthly window, by hand at first, DC01 last.** *Ian's OK needed for the window and each step.*
-Leave servers at `AUOptions=3` (download, notify) under a separate GPO "KOR Server Updates" filtered to `ProductType = 2 OR 3`, so a server never installs or restarts by itself. Then run a monthly window, e.g. the Saturday after Patch Tuesday, 20:00, in this order:
-1. **BK01** (Veeam). Take nothing else down while a backup runs; check the job schedule first.
-2. **RDS01**. Warn remote users first.
-3. **FS01**. Off-hours only: every PC maps its drives from it.
-4. **APP01**. It runs NetworkOps, SQL Express (KorStandards, KorNetworkOps), FileSync, the MCP and IIS sites. Its reboot stops NetworkOps' sweeps and the UPS watcher for its duration, so confirm the service comes back (`/api/ping`) and the 5-minute rack sweep resumes. Never patch it during a power event.
-5. **DC01 LAST**, alone, after the others are back. It is the only DC, so DNS, DHCP and authentication are out while it reboots. Take a fresh Veeam restore point of DC01 before starting.
-6. ESXi hosts, vCenter and the Synology boxes are outside Windows Update. They need their own plan; the firmware discussion is in the rack-maintenance memory.
-
-**5. Cleanup, after step 3 is verified.** *Ian's OK needed.*
-Delete the unlinked "Ninja" GPO. Optionally create OUs ("KOR Workstations", "KOR Servers") and move computers out of `CN=Computers`, so later policy can be linked properly instead of filtered. Moving them is a visible change: every GPO's scope needs re-checking afterwards.
+- **Knowing when.** At 08:00 and 13:00 on working days, every PC and Windows server asks Windows Update what it has waiting. It searches; it installs nothing. Each machine gets one "updates-due" finding:
+  - **held:** a security update in its first 3 days (in case Microsoft pulls it);
+  - **due:** a security update out 3 days or more;
+  - **overdue:** out 14 days or more, or an out-of-band update Microsoft rates Critical, at once.
+  - Drivers and feature upgrades are never offered.
+- **Being told.** Due and overdue machines go in the email digest. The 08:00 run on the day after Patch Tuesday mails a list of what arrived. The digest is still off until you switch AlertsEnabled on.
+- **Installing.** Command Center → **Updates**. Tick the machines (or "Tick everything due"), then choose:
+  - **Install:** no restart; the machine shows "restart pending".
+  - **Install and restart if needed:** a 5-minute warning on screen, and it asks first if someone is using the PC.
+  - Installs run a few at a time. Each machine is searched again as soon as its install finishes, and every install is recorded in that machine's history.
+- **The servers' rules, enforced by the service:**
+  - DC01 only goes in a batch of its own.
+  - APP01 installs but is never restarted from here; restart it yourself.
+  - BK01 is listed but can't be reached (445 is closed to APP01).
+  - FS01 and RDS01 fail with "access denied" until KOR\app-admin is an administrator on them.
+- **Order for the servers, by hand:** BK01 (through Connect), RDS01, FS01, APP01, then DC01 last and alone, after a fresh Veeam restore point of it.
+- **Separately:** KOR-224 and KOR-SPARE8 run Windows 10, which is out of support. Upgrade or retire them. The unlinked "Ninja" GPO can be deleted.
 
 ## Veeam: why the three jobs are Warning
 

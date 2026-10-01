@@ -197,6 +197,29 @@ public sealed class NetworkOpsClient
     public Task AddNoteAsync(int deviceId, string body, CancellationToken ct)
         => PostAsync($"api/devices/{deviceId}/notes", new NoteRequest(body), ct);
 
+    // ------------------------------------------------------------------ Windows updates
+
+    /// <summary>Every PC and Windows server: what is waiting, what is due, the last install.</summary>
+    public async Task<IReadOnlyList<UpdateRow>> GetUpdatesAsync(CancellationToken ct)
+        => await GetAsync<List<UpdateRow>>("api/updates", ct).ConfigureAwait(false);
+
+    /// <summary>Searches every machine again now (a few minutes); returns the trigger to follow.</summary>
+    public async Task<long> QueueUpdateScanAsync(CancellationToken ct)
+    {
+        using var res = await SendAsync(HttpMethod.Post, "api/updates/scan", null, ct).ConfigureAwait(false);
+        await EnsureOkAsync(res).ConfigureAwait(false);
+        using var doc = JsonDocument.Parse(await res.Content.ReadAsStringAsync(ct).ConfigureAwait(false));
+        return doc.RootElement.GetProperty("triggerId").GetInt64();
+    }
+
+    /// <summary>Installs on the ticked machines at once. Per machine: queued, or refused and why.</summary>
+    public async Task<IReadOnlyList<UpdateInstallOutcome>> InstallUpdatesAsync(UpdateInstallRequest request, CancellationToken ct)
+    {
+        using var res = await SendAsync(HttpMethod.Post, "api/updates/install", request, ct).ConfigureAwait(false);
+        await EnsureOkAsync(res).ConfigureAwait(false);
+        return (await res.Content.ReadFromJsonAsync<List<UpdateInstallOutcome>>(Json, ct).ConfigureAwait(false))!;
+    }
+
     // ------------------------------------------------------------------ the Prompt Library
 
     /// <summary>What a Claude prompt can be opened for: the tools, and every device with its open findings.</summary>

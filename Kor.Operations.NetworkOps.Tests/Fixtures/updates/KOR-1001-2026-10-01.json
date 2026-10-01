@@ -1,0 +1,31 @@
+﻿{
+    "ScanVersion":  1,
+    "ScannedAt":  "2026-10-01T09:58:56",
+    "Computer":  "KOR-1001",
+    "Updates":  [
+                    {
+                        "Kb":  "5126104",
+                        "Title":  "2026-09 .NET 8.0.31 Security Update for x64 Client (KB5126104)",
+                        "Categories":  ".NET 8.0; Security Updates",
+                        "Security":  true,
+                        "Severity":  "Important",
+                        "Released":  "2026-09-08T00:00:00",
+                        "SizeMB":  215.1,
+                        "Downloaded":  false,
+                        "NeedsReboot":  true
+                    },
+                    {
+                        "Kb":  "5129195",
+                        "Title":  "2026-09 Security Update (KB5129195) (26200.9457)",
+                        "Categories":  "Security Updates",
+                        "Security":  true,
+                        "Severity":  "",
+                        "Released":  "2026-09-14T00:00:00",
+                        "SizeMB":  92399.7,
+                        "Downloaded":  false,
+                        "NeedsReboot":  true
+                    }
+                ],
+    "RebootPending":  true,
+    "SearchMs":  11892
+}
