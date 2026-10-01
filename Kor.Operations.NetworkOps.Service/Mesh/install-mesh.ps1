@@ -16,11 +16,19 @@ New-Item -ItemType Directory -Force $stage | Out-Null
     $hash = [BitConverter]::ToString([Security.Cryptography.SHA256]::Create().ComputeHash($cert.GetRawCertData())) -replace '-', ''
     $hash -eq '{{CERTSHA256}}'
 }
-try { (New-Object Net.WebClient).DownloadFile($url, $exe) }
-finally { [Net.ServicePointManager]::ServerCertificateValidationCallback = $null }
-$r = Start-Process $exe -ArgumentList '-fullinstall', '--installPath="C:\Program Files\KorOperations\MeshAgent"' -Wait -PassThru -WindowStyle Hidden
-Start-Sleep -Seconds 5
-[IO.File]::Delete($exe)
+try
+{
+    try { (New-Object Net.WebClient).DownloadFile($url, $exe) }
+    finally { [Net.ServicePointManager]::ServerCertificateValidationCallback = $null }
+    $r = Start-Process $exe -ArgumentList '-fullinstall', '--installPath="C:\Program Files\KorOperations\MeshAgent"' -Wait -PassThru -WindowStyle Hidden
+    Start-Sleep -Seconds 5
+}
+finally
+{
+    # The installer never stays behind, whether the install worked or not; nor does the folder it came in.
+    if ([IO.File]::Exists($exe)) { [IO.File]::Delete($exe) }
+    if (-not [IO.Directory]::EnumerateFileSystemEntries($stage).GetEnumerator().MoveNext()) { [IO.Directory]::Delete($stage) }
+}
 $s = Get-CimInstance Win32_Service -Filter "Name='Mesh Agent'"
 if (-not $s -or $s.State -ne 'Running') { throw ('installer exited {0}, but the Mesh Agent service is {1}' -f $r.ExitCode, $(if ($s) { [string]$s.State } else { 'not there' })) }
 'installed; service {0} {1}; runs from {2}' -f [string]$s.State, [string]$s.StartMode, [string]$s.PathName
