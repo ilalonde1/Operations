@@ -25,7 +25,7 @@ namespace Kor.Operations.NetworkOps.Service.Api;
 // The endpoint agents call in on the same listener (/agent/v1, Agents/AgentApi.cs) with their own per-PC keys;
 // neither kind of caller can use the other's routes.
 internal sealed class ApiHost(IOptions<NetworkOpsOptions> options, NetworkOpsStore store, Power.PowerState power, Agents.AgentHub agents,
-    Mesh.MeshState mesh, ILoggerFactory loggers, ILogger<ApiHost> log) : BackgroundService
+    Mesh.MeshState mesh, Prompts.PromptLibrary prompts, ILoggerFactory loggers, ILogger<ApiHost> log) : BackgroundService
 {
     private static readonly TimeSpan MaxSnooze = TimeSpan.FromDays(90);
 
@@ -50,6 +50,7 @@ internal sealed class ApiHost(IOptions<NetworkOpsOptions> options, NetworkOpsSto
         builder.Services.AddSingleton(options);
         builder.Services.AddSingleton(agents);
         builder.Services.AddSingleton(mesh);
+        builder.Services.AddSingleton(prompts);
         builder.Services.AddSingleton<Agents.IAgentDirectory>(store);
         builder.WebHost.ConfigureKestrel(k =>
         {
@@ -101,7 +102,45 @@ internal sealed class ApiHost(IOptions<NetworkOpsOptions> options, NetworkOpsSto
         // the certificate can be checked without a token.
         app.MapGet("/api/ping", () => Results.Ok(new { status = "ok", version = Jobs.JobDispatcher.Version }));
 
+        // A Claude session reporting its outcome (Prompts/PromptLibrary.cs). It has no Entra token -- it runs in a
+        // terminal -- so it is outside the group: the run's own one-time token is the credential, checked in SQL
+        // against its hash, and the body is small and read only after the token header is present.
+        app.MapPost("/api/prompt-runs/{id:long}/outcome", async (long id, HttpContext h, NetworkOpsStore s, CancellationToken ct) =>
+        {
+            if (h.Request.Headers["X-Prompt-Token"].ToString() is not { Length: >= 20 and <= 100 } token) return Results.Unauthorized();
+            if (h.Request.ContentLength is null or > 16_384) return Results.StatusCode(StatusCodes.Status413PayloadTooLarge);
+            PromptOutcome? body;
+            try { body = await h.Request.ReadFromJsonAsync<PromptOutcome>(ct); }
+            catch (System.Text.Json.JsonException) { return Results.BadRequest(new { error = "the body must be JSON: outcome, summary, learned" }); }
+            if (body is null || !Prompts.PromptLibrary.Outcomes.Contains(body.Outcome ?? ""))
+                return Results.BadRequest(new { error = "outcome must be solved, partly, not-solved or no-action" });
+            if (string.IsNullOrWhiteSpace(body.Summary)) return Results.BadRequest(new { error = "summary: say what was wrong and what was done" });
+            if (!await s.PromptRunsAvailableAsync(ct)) return NoPromptRuns();
+            var run = await s.RecordPromptOutcomeAsync(id, Prompts.PromptLibrary.HashToken(token), body.Outcome!, body.Summary.Trim(), body.Learned, ct);
+            if (run is null) return Results.Unauthorized();   // unknown run, wrong token, or already reported: the same answer for all three
+            if (run.DeviceId is { } device)
+                await s.AddNoteAsync(device, $"Claude session (run {run.RunId}, {run.CreatedBy})",
+                    $"[{body.Outcome}] {body.Summary.Trim()}{(string.IsNullOrWhiteSpace(body.Learned) ? "" : $" -- proposed learning: {body.Learned.Trim()}")}", ct);
+            return Results.Ok(new { recorded = run.RunId });
+        });
+
         var api = app.MapGroup("/api").RequireAuthorization("CommandCenter");
+
+        // ---- the Prompt Library: prompts written from the live database when opened; their runs and what came back.
+        api.MapGet("/prompts", (Prompts.PromptLibrary p, CancellationToken ct) => p.CatalogAsync(ct));
+        api.MapPost("/prompts/render", async (PromptRequest body, HttpContext h, Prompts.PromptLibrary p, CancellationToken ct) =>
+            await p.RenderAsync(body, ApiAccess.UserOf(h.User), ct) switch
+            {
+                (Prompts.PromptLibrary.Refusal.None, _, { } prompt) => Results.Ok(prompt),
+                (Prompts.PromptLibrary.Refusal.NotFound, var e, _) => Results.NotFound(new { error = e }),
+                (_, var e, _) => Results.BadRequest(new { error = e }),
+            });
+        api.MapGet("/prompt-runs", (NetworkOpsStore s, CancellationToken ct) => s.PromptRunsAsync(100, ct));
+        api.MapPost("/prompt-runs/{id:long}/learned", async (long id, LearnedDecision body, NetworkOpsStore s, CancellationToken ct) =>
+            body.Decision is not ("accept" or "reject") ? Results.BadRequest(new { error = "decision must be accept or reject" })
+            : !await s.PromptRunsAvailableAsync(ct) ? NoPromptRuns()
+            : await s.DecideLearnedAsync(id, body.Decision == "accept", ct) ? Results.NoContent()
+            : Results.Conflict(new { error = "that run has no learning waiting for a decision" }));
         api.MapGet("/fleet", async (NetworkOpsStore s, Agents.AgentHub hub, Mesh.MeshState m, CancellationToken ct) =>
             WithMesh(WithAgents(await s.FleetSnapshotAsync(ct), await s.AgentRecordsAsync(ct), hub), m, await s.MeshRecordsAsync(ct)));
         // The rack (hosts, storage, UPSes, backup, network, internet): the same shape as /fleet, served apart so a
@@ -224,6 +263,9 @@ internal sealed class ApiHost(IOptions<NetworkOpsOptions> options, NetworkOpsSto
                     ? live.For(d.DeviceId) is { } l ? d with { MeshNodeId = l.Node.Id, MeshConnected = l.Node.AgentConnected } : d
                     : stored.TryGetValue(d.DeviceId, out var r) ? d with { MeshNodeId = r.NodeId, MeshConnected = r.Connected } : d).ToList(),
         };
+
+    private static IResult NoPromptRuns()
+        => Results.Json(new { error = "reporting is not switched on: run db/KorNetworkOps/007_PromptLibrary.sql" }, statusCode: StatusCodes.Status503ServiceUnavailable);
 
     private static async Task<IResult> Annotate(NetworkOpsStore s, long id, NetworkOpsStore.Annotation kind, HttpContext h, string? note, DateTime? until, CancellationToken ct)
         => await s.AnnotateAsync(id, kind, ApiAccess.UserOf(h.User), note, until, ct).ConfigureAwait(false)

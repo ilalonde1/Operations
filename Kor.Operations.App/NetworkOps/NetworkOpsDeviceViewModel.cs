@@ -114,6 +114,12 @@ public sealed class NetworkOpsDeviceViewModel : ObservableObject
     public string FixStatus { get => _fixStatus; private set => SetField(ref _fixStatus, value); }
     public bool CanFix => _selectedFinding is not null && !_isFixing;
     public DeviceRow Device => _device;
+    public NetworkOpsClient Client => _client;
+
+    /// <summary>The Prompt Library line for this window: the selected finding, else the device.</summary>
+    public PromptRequest ClaudeRequest => _selectedFinding is { } f
+        ? new PromptRequest("finding", null, _device.DeviceId, f.Finding.FindingId)
+        : new PromptRequest("device", null, _device.DeviceId, null);
 
     public string StateLabel { get; private set; } = string.Empty;
     public Brush StateBrush { get; private set; } = NetworkOpsBrushes.Unknown;

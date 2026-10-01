@@ -56,6 +56,9 @@ public sealed class NetworkOpsOptions
     /// <summary>App (client) id of "KOR NetworkOps API".</summary>
     public string ApiAudience { get; set; } = "";
 
+    /// <summary>The address a Claude session (on a KOR PC) reports its Prompt Library outcome to: this API, by its certificate's name.</summary>
+    public string ApiPublicUrl { get; set; } = "https://KOR-APP01.int.korstructural.com:8445";
+
     // ---- UniFi controller backups (Jobs/UniFiBackupJob.cs): pulled nightly from KOR-UNIFI01's read-only
     // SFTP drop to FS01. Off unless UniFiBackupHost is set. The key file is on APP01 only.
     public string UniFiBackupHost { get; set; } = "";

@@ -197,6 +197,26 @@ public sealed class NetworkOpsClient
     public Task AddNoteAsync(int deviceId, string body, CancellationToken ct)
         => PostAsync($"api/devices/{deviceId}/notes", new NoteRequest(body), ct);
 
+    // ------------------------------------------------------------------ the Prompt Library
+
+    /// <summary>What a Claude prompt can be opened for: the tools, and every device with its open findings.</summary>
+    public Task<PromptCatalog> GetPromptCatalogAsync(CancellationToken ct) => GetAsync<PromptCatalog>("api/prompts", ct)!;
+
+    /// <summary>Writes a prompt from the live database now (and records the run its session reports back to).</summary>
+    public async Task<RenderedPrompt> RenderPromptAsync(PromptRequest request, CancellationToken ct)
+    {
+        using var res = await SendAsync(HttpMethod.Post, "api/prompts/render", request, ct).ConfigureAwait(false);
+        await EnsureOkAsync(res).ConfigureAwait(false);
+        return (await res.Content.ReadFromJsonAsync<RenderedPrompt>(Json, ct).ConfigureAwait(false))!;
+    }
+
+    public async Task<IReadOnlyList<PromptRunRow>> GetPromptRunsAsync(CancellationToken ct)
+        => await GetAsync<List<PromptRunRow>>("api/prompt-runs", ct).ConfigureAwait(false);
+
+    /// <summary>Accepts or rejects what a session proposed NetworkOps should learn. Accepted, it goes into every later prompt about that kind of problem.</summary>
+    public Task DecideLearnedAsync(long runId, bool accept, CancellationToken ct)
+        => PostAsync($"api/prompt-runs/{runId}/learned", new LearnedDecision(accept ? "accept" : "reject"), ct);
+
     // ------------------------------------------------------------------ plumbing
 
     private async Task<T> GetAsync<T>(string path, CancellationToken ct)

@@ -54,6 +54,10 @@ public partial class NetworkOpsDeviceWindow : Window
         }
     }
 
+    /// <summary>The Prompt Library, on the selected finding (or this device): the prompt is written when it is opened there.</summary>
+    private void SolveWithClaude_Click(object sender, RoutedEventArgs e)
+        => new PromptLibraryWindow(_vm.Client, _vm.ClaudeRequest) { Owner = this }.Show();
+
     private async void InstallRemote_Click(object sender, RoutedEventArgs e) => await Run(_vm.InstallRemoteAsync).ConfigureAwait(true);
 
     private async void InstallAgent_Click(object sender, RoutedEventArgs e) => await Run(ct => _vm.ChangeAgentAsync("install", ct)).ConfigureAwait(true);

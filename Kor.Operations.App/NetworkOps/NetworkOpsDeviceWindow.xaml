@@ -140,6 +140,8 @@
                             <Button x:Name="FixBtn" Content="Fix…" Padding="14,4" Margin="0,0,10,0" FontWeight="SemiBold" Click="Fix_Click"
                                     IsEnabled="{Binding CanFix}"
                                     ToolTip="Run a fix for the selected finding on this machine (as SYSTEM, through the service, recorded). It is re-checked afterwards."/>
+                            <Button Content="Solve with Claude…" Padding="10,4" Margin="0,0,10,0" Click="SolveWithClaude_Click"
+                                    ToolTip="Open the Prompt Library on this finding: a Claude prompt written from everything NetworkOps knows about it right now."/>
                             <Button Content="Acknowledge" Padding="10,4" Margin="0,0,6,0" Click="Acknowledge_Click"
                                     ToolTip="Known and accepted: stops counting against this device until it clears and comes back."/>
                             <Button Content="Snooze 1 day" Padding="10,4" Margin="0,0,6,0" Click="SnoozeDay_Click"/>

@@ -102,6 +102,14 @@ public sealed class NetworkOpsWindowsRenderTests
         var fix = new NetworkOpsFixWindow("Not restarted in 21 days", worst.Name, worst.Presence, someoneActive: true, fixes) { Height = 560 };
         fix.FixList.SelectedIndex = 1;
         written += Render(fix, Path.Combine(dir, $"{label}-fix-dialog.png"));
+
+        // The Prompt Library, opened from a finding, with a prompt written and one session waiting for a decision.
+        var finding = snapshot.OpenFindings.First(f => f.Device == worst.Name);
+        var catalog = PromptLibraryTests.Catalog(snapshot);
+        var library = new PromptLibraryWindow(reader, new PromptRequest("finding", null, worst.Device.DeviceId, finding.FindingId));
+        library.Apply(catalog, PromptLibraryTests.Runs(),
+            new RenderedPrompt(42, $"Claude: {finding.Title} on {worst.Name}", "claude-x.md", $"# Solve \"{finding.Title}\" on {worst.Name}\n\nWritten by NetworkOps at 2026-09-30 23:00 UTC from its live database..."));
+        written += Render(library, Path.Combine(dir, $"{label}-prompt-library.png"));
         return written;
     }
 

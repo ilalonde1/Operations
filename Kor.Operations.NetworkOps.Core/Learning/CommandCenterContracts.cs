@@ -23,6 +23,28 @@ public sealed record DeviceRow(int DeviceId, string Name, DateTime? LastReachabl
 /// <param name="Action">install (remote control: the Mesh agent)</param>
 public sealed record MeshRequest(string Action);
 
+// ---- the Prompt Library: Claude prompts generated from the live database when opened (Core/Prompts/PromptComposer).
+
+public sealed record PromptTool(string Id, string Title, string Summary);
+public sealed record PromptFinding(long FindingId, string RuleKey, string Title, Health.Severity Severity);
+public sealed record PromptSubject(int DeviceId, string Device, string Kind, IReadOnlyList<PromptFinding> Findings);
+public sealed record PromptCatalog(IReadOnlyList<PromptTool> Tools, IReadOnlyList<PromptSubject> Devices, bool Reporting);
+
+/// <param name="Kind">tool | device | finding</param>
+public sealed record PromptRequest(string Kind, string? ToolId, int? DeviceId, long? FindingId);
+
+/// <param name="RunId">The recorded run the session reports back to; null when reporting is not available (migration 007).</param>
+public sealed record RenderedPrompt(long? RunId, string Title, string FileName, string Markdown);
+
+/// <param name="Outcome">solved | partly | not-solved | no-action</param>
+public sealed record PromptOutcome(string Outcome, string Summary, string? Learned);
+
+public sealed record PromptRunRow(long RunId, string Kind, string Subject, string CreatedBy, DateTime CreatedUtc, DateTime? OutcomeUtc,
+    string? Outcome, string? Summary, string? LearnedText, string? LearnedStatus);
+
+/// <param name="Decision">accept | reject</param>
+public sealed record LearnedDecision(string Decision);
+
 public sealed record ServiceBeat(string Host, DateTime StartedUtc, DateTime LastBeatUtc, string? Version);
 
 public sealed record FleetSnapshot(
