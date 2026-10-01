@@ -13,7 +13,7 @@
     <RootNamespace>Kor.Operations.NetworkOps.Agent</RootNamespace>
     <AssemblyName>Kor.Operations.NetworkOps.Agent</AssemblyName>
     <!-- Reported on every call to APP01, and shown in the Command Center: an upgrade is confirmed from there. -->
-    <Version>1.0.1</Version>
+    <Version>1.0.2</Version>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
     <Prefer32Bit>false</Prefer32Bit>
     <PlatformTarget>AnyCPU</PlatformTarget>

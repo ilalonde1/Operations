@@ -176,7 +176,7 @@ public sealed class AgentEndToEndTests : IAsyncLifetime
         public Task<NetworkOpsStore.AgentCredential?> AgentCredentialAsync(string deviceName, CancellationToken ct)
             => Task.FromResult(deviceName == Pc ? new NetworkOpsStore.AgentCredential(1, Pc, hash, false) : null);
 
-        public Task TouchAgentAsync(int deviceId, string version, string? address, DateTime nowUtc, CancellationToken ct) => Task.CompletedTask;
+        public Task TouchAgentAsync(int deviceId, byte[] secretSha256, string version, string? address, DateTime nowUtc, CancellationToken ct) => Task.CompletedTask;
 
         public Task<long?> QueueCheckIfStaleAsync(string deviceName, TimeSpan maxAge, string by, CancellationToken ct) => Task.FromResult<long?>(null);
     }

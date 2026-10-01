@@ -21,16 +21,19 @@ internal sealed class AgentRollout(NetworkOpsStore store, AgentInstaller install
     {
         var o = options.Value;
         if (!o.AgentsEnabled) return "agents are switched off on APP01 (AgentsEnabled = false): nothing installed";
-        var shipped = AgentInstaller.PackageVersionOrNull() ?? throw new InvalidOperationException($"no agent package at {AgentInstaller.PackageDir}");
+        var shipped = AgentInstaller.PackageVersionOrNull()
+                      ?? throw new InvalidOperationException($"no agent package with a readable version at {AgentInstaller.PackageDir}");
 
         var candidates = await store.AgentRolloutCandidatesAsync(DateTime.UtcNow - ReachableWithin, shipped, ct).ConfigureAwait(false);
-        var batch = candidates.Take(Math.Max(1, o.AgentRolloutBatch)).ToList();
-        if (batch.Count == 0) return $"nothing to do: every PC seen in the last {ReachableWithin.TotalHours:0} h has agent {shipped}";
+        if (candidates.Count == 0) return $"nothing to do: every PC seen in the last {ReachableWithin.TotalHours:0} h has agent {shipped}";
+        var batch = Math.Max(1, o.AgentRolloutBatch);
 
         var done = new List<string>();
         var skipped = new List<string>();
-        foreach (var pc in batch)
+        // The batch counts PCs actually attempted: offline ones at the top of the list never starve the rest (Codex re-check).
+        foreach (var pc in candidates)
         {
+            if (done.Count >= batch) break;
             // Off since the census: not a failure, nothing to stop for. It comes back into the next run's list.
             if (!(await Kor.Operations.NetworkOps.Transport.SmbReachability.ProbeAsync(pc.Name, ct: ct).ConfigureAwait(false)).Reachable)
             {
@@ -41,8 +44,14 @@ internal sealed class AgentRollout(NetworkOpsStore store, AgentInstaller install
                 System.Text.Json.JsonSerializer.Serialize(new { action = "install", rollout = true, from = pc.AgentVersion }), ct).ConfigureAwait(false);
             bool ok;
             string detail;
-            try { (ok, detail) = await installer.RunAsync(AgentInstaller.InstallKind, pc.DeviceId, pc.Name, requestedBy, ct).ConfigureAwait(false); }
-            catch (Exception ex) when (ex is not OperationCanceledException) { (ok, detail) = (false, ex.Message); }
+            try { (ok, detail) = await installer.RunAsync(AgentInstaller.InstallKind, pc.DeviceId, pc.Name, requestedBy, ct, fromRollout: true).ConfigureAwait(false); }
+            catch (OperationCanceledException)
+            {
+                // The service is stopping: the action is closed as what it is, not left Running.
+                await store.CompleteActionAsync(actionId, false, "the rollout was stopped (service shutdown) while this install ran; reinstall to be sure", null).ConfigureAwait(false);
+                throw;
+            }
+            catch (Exception ex) { (ok, detail) = (false, ex.Message); }
             await store.CompleteActionAsync(actionId, ok, detail, null).ConfigureAwait(false);
             log.LogWarning("ROLLOUT {Pc}: {Outcome} -- {Detail}", pc.Name, ok ? "done" : "FAILED", detail);
             if (!ok)

@@ -29,17 +29,26 @@ internal sealed class AgentInstaller(NetworkOpsStore store, AgentHub hub, IOptio
     public static string PackageVersion
         => FileVersionInfo.GetVersionInfo(Path.Combine(PackageDir, RemoteAgentInstall.ExeName)).ProductVersion?.Split('+')[0] ?? "unknown";
 
-    /// <summary>The shipped version, or null when the package is missing (a test host, a broken deploy).</summary>
-    public static string? PackageVersionOrNull() => File.Exists(Path.Combine(PackageDir, RemoteAgentInstall.ExeName)) ? PackageVersion : null;
+    /// <summary>The shipped version, or null when the package is missing or its version does not parse (a test host, a broken deploy).</summary>
+    public static string? PackageVersionOrNull()
+        => File.Exists(Path.Combine(PackageDir, RemoteAgentInstall.ExeName)) && PackageVersion is var v && Version.TryParse(v, out _) ? v : null;
 
     public static bool IsAgentKind(string kind) => kind is InstallKind or RemoveKind;
 
+    /// <param name="fromRollout">A rollout picked this PC earlier: re-check, under this PC's lock, that its agent was not
+    /// removed meanwhile (removal is a decision only that PC's own window undoes).</param>
     /// <returns>(ok, what happened) for the action's Detail.</returns>
-    public async Task<(bool Ok, string Detail)> RunAsync(string kind, int deviceId, string device, string requestedBy, CancellationToken ct)
+    public async Task<(bool Ok, string Detail)> RunAsync(string kind, int deviceId, string device, string requestedBy, CancellationToken ct, bool fromRollout = false)
     {
         var gate = PerPc.GetOrAdd(device, _ => new SemaphoreSlim(1, 1));
         await gate.WaitAsync(ct).ConfigureAwait(false);
-        try { return kind == RemoveKind ? await RemoveAsync(deviceId, device, ct).ConfigureAwait(false) : await InstallAsync(deviceId, device, requestedBy, ct).ConfigureAwait(false); }
+        try
+        {
+            if (kind == RemoveKind) return await RemoveAsync(deviceId, device, ct).ConfigureAwait(false);
+            if (fromRollout && await store.AgentCredentialAsync(device, ct).ConfigureAwait(false) is { Removed: true })
+                return (true, "skipped: its agent was removed since the rollout picked it");
+            return await InstallAsync(deviceId, device, requestedBy, ct).ConfigureAwait(false);
+        }
         finally { gate.Release(); }
     }
 
@@ -47,7 +56,7 @@ internal sealed class AgentInstaller(NetworkOpsStore store, AgentHub hub, IOptio
     {
         // Refused from now on -- the record AND any poll held open right now -- even if the remote delete below fails.
         await store.RemoveAgentAsync(deviceId, ct).ConfigureAwait(false);
-        hub.Revoke(device);
+        hub.Revoke(device, currentKeyHash: null);
         return (true, await RemoteAgentInstall.RemoveAsync(device, ct).ConfigureAwait(false));
     }
 
@@ -56,15 +65,16 @@ internal sealed class AgentInstaller(NetworkOpsStore store, AgentHub hub, IOptio
         // Removing is always allowed (it is how you back out); installing is not while agents are switched off.
         if (!options.Value.AgentsEnabled)
             return (false, "agents are switched off on APP01 (AgentsEnabled = false): nothing was installed");
-        var version = PackageVersion;
+        var version = PackageVersionOrNull() ?? throw new InvalidOperationException($"the agent package at {PackageDir} is missing or has no readable version");
         var key = AgentApi.NewKey();
         var hash = AgentApi.Hash(key);
         var hashHex = Convert.ToHexString(hash);
         DateTime revokedAt = default;
+        await store.MarkAgentInstallPendingAsync(deviceId, ct).ConfigureAwait(false);   // not confirmed until it calls in
         var done = await RemoteAgentInstall.InstallAsync(device, PackageDir, key, async () =>
         {
             await store.SaveAgentAsync(deviceId, hash, version, requestedBy, ct).ConfigureAwait(false);
-            hub.Revoke(device);   // any poll still held with the old key is cut; only the new key counts from here
+            hub.Revoke(device, hashHex);   // from here this process accepts only the new key; polls held with the old one are cut
             revokedAt = DateTime.UtcNow;
         }, ct).ConfigureAwait(false);
 
@@ -75,7 +85,7 @@ internal sealed class AgentInstaller(NetworkOpsStore store, AgentHub hub, IOptio
         {
             if (hub.Status(device) is { Connected: true } s && s.KeyHash == hashHex && s.LastPollUtc >= revokedAt)
             {
-                await store.TouchAgentAsync(deviceId, s.Version, s.Address, DateTime.UtcNow, ct).ConfigureAwait(false);   // confirmed: the record says so
+                await store.TouchAgentAsync(deviceId, hash, s.Version, s.Address, DateTime.UtcNow, ct).ConfigureAwait(false);   // confirmed: the record says so
                 return (true, $"agent {version} {done}; it called in with its new key from {s.Address}");
             }
             await Task.Delay(1000, ct).ConfigureAwait(false);

@@ -46,14 +46,16 @@ internal sealed class AgentHub(TimeProvider clock)
 
     /// <summary>
     /// Records that the agent is here, authenticated with the key hashing to <paramref name="keyHash"/>. Returns whether
-    /// it had been away (never seen by this process, revoked since, or silent 10+ minutes).
+    /// it had been away (never seen by this process, revoked since, or silent 10+ minutes) -- or NULL when that key is no
+    /// longer the PC's: it authenticated against SQL before a revocation and reached here after it (Codex re-check).
     /// </summary>
-    public PollSeen Seen(string device, string version, string? address, string keyHash)
+    public PollSeen? Seen(string device, string version, string? address, string keyHash)
     {
         var now = clock.GetUtcNow().UtcDateTime;
         var a = _agents.GetOrAdd(device, _ => new Connection());
         lock (a)
         {
+            if (!a.Accepts(keyHash)) return null;
             var previous = a.LastPollUtc == default ? (DateTime?)null : a.LastPollUtc;
             a.LastPollUtc = now;
             a.Version = version;
@@ -64,18 +66,20 @@ internal sealed class AgentHub(TimeProvider clock)
     }
 
     /// <summary>
-    /// The PC's key has just been replaced or removed: every poll held open with the old one is cut at once (it can no
-    /// longer be handed a job), and the PC counts as not connected until a poll with a valid key arrives
-    /// (Codex audit 2026-09-30, finding 6). Jobs already queued wait for that poll, or fall back to the network route.
+    /// The PC's key has just been replaced (<paramref name="currentKeyHash"/> = the new key's hash) or removed (null).
+    /// From here only that key is accepted by THIS process, whatever a request authenticated with earlier; every poll held
+    /// open with another key is cut at once; and the PC counts as not connected until a poll with the current key
+    /// arrives (Codex audit 2026-09-30, finding 6, and its re-check). Queued jobs wait for that poll or fall back.
     /// </summary>
-    public void Revoke(string device)
+    public void Revoke(string device, string? currentKeyHash)
     {
-        if (!_agents.TryGetValue(device, out var a)) return;
+        var a = _agents.GetOrAdd(device, _ => new Connection());
         CancellationTokenSource old;
         lock (a)
         {
             old = a.Revoked;
             a.Revoked = new CancellationTokenSource();
+            a.Authorized = currentKeyHash ?? "";
             a.LastPollUtc = default;
             a.KeyHash = "";
         }
@@ -84,15 +88,20 @@ internal sealed class AgentHub(TimeProvider clock)
     }
 
     /// <summary>
-    /// The agent's held-open poll: the next job for it, or null once <paramref name="hold"/> passes with nothing to do
-    /// (or the PC's key is revoked meanwhile). The job comes back as the complete script, wrapped to publish its result
-    /// into <paramref name="workDir"/> -- the folder THIS poll reported, never one left behind by another request.
+    /// The agent's held-open poll, made with the key hashing to <paramref name="keyHash"/>: the next job for it, or null
+    /// once <paramref name="hold"/> passes with nothing to do, or that key is revoked meanwhile. The job comes back as the
+    /// complete script, wrapped to publish its result into <paramref name="workDir"/> -- the folder THIS poll reported.
+    /// The key is checked again, under the lock revocation takes, after a job is dequeued and before it is handed over.
     /// </summary>
-    public async Task<AgentJobMessage?> NextJobAsync(string device, string workDir, TimeSpan hold, CancellationToken ct)
+    public async Task<AgentJobMessage?> NextJobAsync(string device, string keyHash, string workDir, TimeSpan hold, CancellationToken ct)
     {
         if (!_agents.TryGetValue(device, out var a)) return null;
         CancellationToken revoked;
-        lock (a) revoked = a.Revoked.Token;
+        lock (a)
+        {
+            if (!a.Accepts(keyHash)) return null;
+            revoked = a.Revoked.Token;
+        }
         using var held = CancellationTokenSource.CreateLinkedTokenSource(ct, revoked);
         held.CancelAfter(hold);
         try
@@ -100,6 +109,13 @@ internal sealed class AgentHub(TimeProvider clock)
             while (true)
             {
                 var job = await a.Queue.Reader.ReadAsync(held.Token).ConfigureAwait(false);
+                bool stale;
+                lock (a) stale = revoked.IsCancellationRequested || !a.Accepts(keyHash);
+                if (stale)
+                {
+                    a.Queue.Writer.TryWrite(job);   // back in the queue, unclaimed, for a poll with the current key
+                    return null;
+                }
                 // A job its caller already gave up on is skipped, never run late.
                 if (Interlocked.Exchange(ref job.Claimed, 1) != 0) continue;
                 string script;
@@ -110,6 +126,7 @@ internal sealed class AgentHub(TimeProvider clock)
                     job.PickedUp.TrySetResult();
                     continue;
                 }
+                job.HandedToKey = keyHash;
                 job.PickedUp.TrySetResult();
                 return new AgentJobMessage(job.Id, script, (int)job.Timeout.TotalSeconds, job.WantsIdle);
             }
@@ -125,9 +142,13 @@ internal sealed class AgentHub(TimeProvider clock)
         }
     }
 
-    /// <summary>The agent's result. False when nobody is waiting for that job (unknown, someone else's, or given up).</summary>
-    public bool Complete(string device, string jobId, AgentJobOutcome outcome)
-        => _jobs.TryGetValue(jobId, out var job) && job.Device.Equals(device, StringComparison.OrdinalIgnoreCase) && job.Done.TrySetResult(outcome);
+    /// <summary>
+    /// The agent's result. False when nobody is waiting for that job (unknown, given up), or it was not handed to a poll
+    /// made with this same key on this same PC.
+    /// </summary>
+    public bool Complete(string device, string keyHash, string jobId, AgentJobOutcome outcome)
+        => _jobs.TryGetValue(jobId, out var job) && job.Device.Equals(device, StringComparison.OrdinalIgnoreCase)
+           && job.HandedToKey == keyHash && job.Done.TrySetResult(outcome);
 
     /// <summary>
     /// Runs <paramref name="body"/> on <paramref name="device"/> through its agent. Null when the agent is not
@@ -198,8 +219,16 @@ internal sealed class AgentHub(TimeProvider clock)
         public string Version = "";
         public string? Address;
         public string KeyHash = "";
+        /// <summary>
+        /// The one key hash this process accepts for the PC once an install or removal has run here (null: nothing has
+        /// since the service started, so SQL's answer at authentication is the authority; "": removed, accept none).
+        /// </summary>
+        public string? Authorized;
         /// <summary>Cancelled (and replaced) when the PC's key is replaced or removed: cuts polls held with the old key.</summary>
         public CancellationTokenSource Revoked = new();
+
+        /// <summary>Call under lock(this).</summary>
+        public bool Accepts(string keyHash) => Authorized is null || (Authorized.Length > 0 && Authorized == keyHash);
         public readonly Channel<PendingJob> Queue = Channel.CreateUnbounded<PendingJob>();
     }
 
@@ -211,6 +240,8 @@ internal sealed class AgentHub(TimeProvider clock)
         public TimeSpan Timeout { get; } = timeout;
         public bool WantsIdle { get; } = wantsIdle;
         public int Claimed;
+        /// <summary>The key hash of the poll it was handed to: only a result sent with that key completes it.</summary>
+        public volatile string? HandedToKey;
         public TaskCompletionSource PickedUp { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public TaskCompletionSource<AgentJobOutcome> Done { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
     }

@@ -8,7 +8,7 @@ the same health probe and fix scripts the network route runs, as SYSTEM. Design:
 |---|---|
 | Service | `KorNetworkOpsAgent` — "KOR NetworkOps Agent", LocalSystem, Automatic, restarts a minute after a crash |
 | Program | `C:\Program Files\KorOperations\Agent\` (under the Webroot Global Folder ALLOW override) |
-| Key, work folder, log | `C:\Program Files\KorOperations\Agent\data\` — SYSTEM and Administrators only, inheritance cut, re-made at every agent start. Under Program Files because only an administrator can create anything there (in ProgramData any user could pre-create the folder and own it — Codex audit 2026-09-30). Agent 1.0.0 used `C:\ProgramData\KorOperations\Agent\`; every install and removal deletes that. |
+| Key, work folder, log | `C:\Program Files\KorOperations\Agent\data\` — SYSTEM and Administrators only, inheritance cut, re-made at every agent start. Under Program Files because only an administrator can create anything there (in ProgramData any user could pre-create the folder and own it — Codex audit 2026-09-30). Agent 1.0.0 used `C:\ProgramData\KorOperations\Agent\` (KOR-104N only, removed there). Nothing cleans that path up automatically, on purpose: the installer runs as an administrator, and a user can turn any part of a ProgramData path into a junction pointing somewhere else (Codex re-check 2026-09-30). |
 | Log | `agent.log` there, rolled to `agent.log.1` at 1 MB |
 
 | On APP01 | |
@@ -81,4 +81,12 @@ many are left. Run it again for the next batch. The first batch is the canary: l
   refuses a 5th outright.
 * One install or removal per PC at a time. An install is confirmed only by a poll made with its NEW key; replacing or
   removing a key cuts any connection held open with the old one at once.
-* Hardened after the Codex audit of 2026-09-30 (`docs/codex/CODEX-NETWORKOPS-AGENT-AUDIT-RESPONSE.md`).
+* The agent puts itself in a kill-on-close job object at start: everything it ever starts is contained from birth.
+* ⛔ **The rule this agent lives by** (gated by `PrivilegedPathTests`): code running as SYSTEM or as an administrator
+  never acts on a path a non-administrator can create or replace, at any level. ProgramData, TEMP, user profiles and
+  Public are out; Program Files and the Windows folder are in. The gate fails the build on the agent's and the
+  installer's source if that changes.
+* Every key check is against the key APP01 last installed: a request that authenticated with an older key before a
+  reinstall is refused after it, and contact is recorded only for the current key.
+* Hardened after the Codex audit of 2026-09-30 and its re-check (`docs/codex/CODEX-NETWORKOPS-AGENT-AUDIT-RESPONSE.md`,
+  `...-RECHECK-RESPONSE.md`).

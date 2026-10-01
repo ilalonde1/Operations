@@ -61,7 +61,8 @@ internal static class ConsoleIdle
             wShowWindow = 0,   // SW_HIDE
         };
         var cmd = new StringBuilder($"\"{exe}\" --idle");
-        if (!CreateProcessAsUser(token, null, cmd, IntPtr.Zero, IntPtr.Zero, false, CreateNoWindow, IntPtr.Zero,
+        // Out of the agent's job (ProcessTree.ContainSelf): it runs in another session, and its life is bounded here.
+        if (!CreateProcessAsUser(token, null, cmd, IntPtr.Zero, IntPtr.Zero, false, CreateNoWindow | CreateBreakawayFromJob, IntPtr.Zero,
                 Path.GetDirectoryName(exe), ref si, out var pi))
             throw new Win32Exception();
         try
@@ -80,6 +81,7 @@ internal static class ConsoleIdle
 
     private const int StartfUseShowWindow = 0x1;
     private const uint CreateNoWindow = 0x08000000;
+    private const uint CreateBreakawayFromJob = 0x01000000;
 
     [StructLayout(LayoutKind.Sequential)]
     private struct LastInputInfo { public uint cbSize; public uint dwTime; }

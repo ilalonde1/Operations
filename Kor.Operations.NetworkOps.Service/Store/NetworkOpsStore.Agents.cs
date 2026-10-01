@@ -54,14 +54,29 @@ internal sealed partial class NetworkOpsStore : Agents.IAgentDirectory
         await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
     }
 
-    public async Task TouchAgentAsync(int deviceId, string version, string? address, DateTime nowUtc, CancellationToken ct)
+    /// <summary>Contact, recorded only against the key it came with (Codex re-check 2026-09-30): a request made with a key that
+    /// has since been replaced updates nothing, so it can never make a failed reinstall look confirmed.</summary>
+    public async Task TouchAgentAsync(int deviceId, byte[] secretSha256, string version, string? address, DateTime nowUtc, CancellationToken ct)
     {
         await using var c = await OpenAsync(ct).ConfigureAwait(false);
-        await using var cmd = Cmd(c, "UPDATE NetworkOps.Agents SET LastContactUtc = @now, LastVersion = @v, LastAddress = @a WHERE DeviceId = @d;");
+        await using var cmd = Cmd(c, "UPDATE NetworkOps.Agents SET LastContactUtc = @now, LastVersion = @v, LastAddress = @a WHERE DeviceId = @d AND SecretSha256 = @h AND RemovedUtc IS NULL;");
         cmd.Parameters.Add("@d", SqlDbType.Int).Value = deviceId;
+        cmd.Parameters.Add("@h", SqlDbType.Binary, 32).Value = secretSha256;
         cmd.Parameters.Add("@now", SqlDbType.DateTime2).Value = nowUtc;
         cmd.Parameters.Add("@v", SqlDbType.VarChar, 32).Value = version;
         cmd.Parameters.Add("@a", SqlDbType.VarChar, 45).Value = (object?)address ?? DBNull.Value;
+        await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// An install is starting: until it confirms, the record says "not confirmed", so a failure part-way -- even a
+    /// same-version repair that dies during the copy -- is retried by the rollout rather than looking done (Codex re-check).
+    /// </summary>
+    public async Task MarkAgentInstallPendingAsync(int deviceId, CancellationToken ct)
+    {
+        await using var c = await OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = Cmd(c, "UPDATE NetworkOps.Agents SET LastContactUtc = NULL, InstalledUtc = SYSUTCDATETIME() WHERE DeviceId = @d;");
+        cmd.Parameters.Add("@d", SqlDbType.Int).Value = deviceId;
         await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
     }
 

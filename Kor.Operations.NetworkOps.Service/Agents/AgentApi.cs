@@ -22,7 +22,8 @@ namespace Kor.Operations.NetworkOps.Service.Agents;
 internal interface IAgentDirectory
 {
     Task<NetworkOpsStore.AgentCredential?> AgentCredentialAsync(string deviceName, CancellationToken ct);
-    Task TouchAgentAsync(int deviceId, string version, string? address, DateTime nowUtc, CancellationToken ct);
+    /// <summary>Records contact for the agent holding THIS key: an old key's request can never mark a new install confirmed.</summary>
+    Task TouchAgentAsync(int deviceId, byte[] secretSha256, string version, string? address, DateTime nowUtc, CancellationToken ct);
     Task<long?> QueueCheckIfStaleAsync(string deviceName, TimeSpan maxAge, string by, CancellationToken ct);
 }
 
@@ -42,23 +43,40 @@ internal static class AgentApi
     public const int MaxInFlight = 256;
     /// <summary>A poll is a few hundred bytes; a result can be as large as the network route allows (8 M characters of JSON).</summary>
     public const long MaxPollBytes = 16 * 1024, MaxResultBytes = 40L * 1024 * 1024;
+    /// <summary>
+    /// Key look-ups (one SQL read each) running at once. Separate from <see cref="MaxInFlight"/> and released as soon as
+    /// the look-up ends, so bogus keys -- however many, however slow -- can only ever wait here, never take a slot a
+    /// real agent's held poll or result needs (Codex re-check 2026-09-30, finding 9).
+    /// </summary>
+    public const int MaxAuthenticating = 16;
     private static readonly SemaphoreSlim InFlight = new(MaxInFlight, MaxInFlight);
+    private static readonly SemaphoreSlim Authenticating = new(MaxAuthenticating, MaxAuthenticating);
     private const string Caller = "kor.agent";
 
     /// <summary>
-    /// In front of every /agent request, BEFORE its body is read (Codex audit 2026-09-30, finding 9): cap what is in
-    /// flight, set the body limit for that route, and check the key. Only an authenticated request reaches an endpoint.
+    /// In front of every /agent request, BEFORE its body is read (Codex audit 2026-09-30, finding 9): set the body limit
+    /// for that route, check the key within the look-up budget, and only then take a working slot. Only an authenticated
+    /// request reaches an endpoint, and only authenticated requests hold slots.
     /// </summary>
     public static void UseAgentGate(IApplicationBuilder app)
         => app.UseWhen(h => h.Request.Path.StartsWithSegments("/agent"), branch => branch.Use(async (HttpContext h, RequestDelegate next) =>
         {
             if (h.Features.Get<Microsoft.AspNetCore.Http.Features.IHttpMaxRequestBodySizeFeature>() is { IsReadOnly: false } size)
                 size.MaxRequestBodySize = h.Request.Path.Value?.EndsWith("/result", StringComparison.Ordinal) == true ? MaxResultBytes : MaxPollBytes;
+
+            if (!await Authenticating.WaitAsync(TimeSpan.FromSeconds(5), h.RequestAborted).ConfigureAwait(false))
+            {
+                h.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+                return;
+            }
+            NetworkOpsStore.AgentCredential? who;
+            try { who = await AuthenticateAsync(h, h.RequestServices.GetRequiredService<IAgentDirectory>(), h.RequestAborted).ConfigureAwait(false); }
+            finally { Authenticating.Release(); }
+            if (who is null) { h.Response.StatusCode = StatusCodes.Status401Unauthorized; return; }
+
             if (!InFlight.Wait(0)) { h.Response.StatusCode = StatusCodes.Status503ServiceUnavailable; return; }
             try
             {
-                var who = await AuthenticateAsync(h, h.RequestServices.GetRequiredService<IAgentDirectory>(), h.RequestAborted).ConfigureAwait(false);
-                if (who is null) { h.Response.StatusCode = StatusCodes.Status401Unauthorized; return; }
                 h.Items[Caller] = who;
                 await next(h).ConfigureAwait(false);
             }
@@ -66,6 +84,8 @@ internal static class AgentApi
         }));
 
     private static NetworkOpsStore.AgentCredential Who(HttpContext h) => (NetworkOpsStore.AgentCredential)h.Items[Caller]!;
+
+    private static string KeyOf(NetworkOpsStore.AgentCredential who) => Convert.ToHexString(who.SecretSha256);
 
     /// <summary>
     /// A work folder as the agent reports it: a plain local path, ASCII only. It is spliced into the script the agent
@@ -87,7 +107,9 @@ internal static class AgentApi
             var log = logs.CreateLogger("NetworkOps.Agents");
 
             var address = h.Connection.RemoteIpAddress?.ToString();
-            var seen = hub.Seen(who.DeviceName, body.Version, address, Convert.ToHexString(who.SecretSha256));
+            var key = KeyOf(who);
+            // Null: this key was replaced or removed after it authenticated (the hub, not SQL, has the last word now).
+            if (hub.Seen(who.DeviceName, body.Version, address, key) is not { } seen) return Results.Unauthorized();
             if (seen.CameBack)
             {
                 log.LogInformation("Agent {Device} {Version} connected from {Address}{Away}", who.DeviceName, body.Version, address,
@@ -100,11 +122,11 @@ internal static class AgentApi
             if (seen.CameBack || !LastTouch.TryGetValue(who.DeviceId, out var last) || now - last > TouchEvery)
             {
                 LastTouch[who.DeviceId] = now;
-                await store.TouchAgentAsync(who.DeviceId, body.Version, address, now, ct).ConfigureAwait(false);
+                await store.TouchAgentAsync(who.DeviceId, who.SecretSha256, body.Version, address, now, ct).ConfigureAwait(false);
             }
 
             AgentJobMessage? job;
-            try { job = await hub.NextJobAsync(who.DeviceName, body.WorkDir, AgentHub.PollHold, ct).ConfigureAwait(false); }
+            try { job = await hub.NextJobAsync(who.DeviceName, key, body.WorkDir, AgentHub.PollHold, ct).ConfigureAwait(false); }
             catch (OperationCanceledException) { return Results.NoContent(); }   // the agent hung up, or the service is stopping
             if (job is null) return Results.NoContent();
             log.LogInformation("Agent {Device}: job {Job} handed over", who.DeviceName, job.JobId);
@@ -112,7 +134,7 @@ internal static class AgentApi
         });
 
         agent.MapPost("/jobs/{jobId}/result", (string jobId, AgentJobOutcome body, HttpContext h, AgentHub hub)
-            => hub.Complete(Who(h).DeviceName, jobId, body) ? Results.NoContent() : Results.NotFound());
+            => hub.Complete(Who(h).DeviceName, KeyOf(Who(h)), jobId, body) ? Results.NoContent() : Results.NotFound());
     }
 
     /// <summary>The PC the request is from, or null. Refused: no or malformed headers, a PC with no agent row, a removed agent, a wrong key.</summary>

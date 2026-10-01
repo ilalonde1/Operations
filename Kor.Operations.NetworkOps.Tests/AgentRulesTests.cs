@@ -95,7 +95,7 @@ public sealed class AgentRulesTests
         Assert.False(runner.ViaAgent(pc));
         var run = await runner.RunAsync(pc, "'x'", TimeSpan.FromSeconds(30), false, default);
         Assert.Equal(OnTargetStatus.Offline, run.Status);
-        Assert.Null(await hub.NextJobAsync(pc, @"C:\w\work", TimeSpan.FromMilliseconds(200), default));   // nothing was queued for the agent
+        Assert.Null(await hub.NextJobAsync(pc, "KEY", @"C:\w\work", TimeSpan.FromMilliseconds(200), default));   // nothing was queued for the agent
     }
 
     [Fact]

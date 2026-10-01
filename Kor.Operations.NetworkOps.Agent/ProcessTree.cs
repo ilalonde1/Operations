@@ -14,26 +14,64 @@ internal sealed class ProcessTree : IDisposable
 {
     private const int JobObjectExtendedLimitInformation = 9;
     private const uint JobObjectLimitKillOnJobClose = 0x00002000;
+    private const uint JobObjectLimitBreakawayOk = 0x00000800;
     private readonly IntPtr _job;
 
-    public ProcessTree()
+    /// <summary>The agent's own job (see <see cref="ContainSelf"/>); held for the life of the process, never closed by us.</summary>
+    private static IntPtr _self;
+
+    public ProcessTree() => _job = Create(JobObjectLimitKillOnJobClose);
+
+    /// <summary>
+    /// Puts the agent process itself in a kill-on-close job. Every process it starts from then on is born inside it --
+    /// no window between start and containment (Codex re-check 2026-09-30) -- and when the agent exits for any reason
+    /// the OS closes the handle and everything still running dies with it. Breakaway is allowed only for the idle helper,
+    /// which runs in the user's session and is bounded by its own 10-second wait.
+    /// </summary>
+    public static void ContainSelf()
     {
-        _job = CreateJobObject(IntPtr.Zero, null);
-        if (_job == IntPtr.Zero) throw new Win32Exception();
-        var info = new ExtendedLimitInformation { BasicLimitInformation = new BasicLimitInformation { LimitFlags = JobObjectLimitKillOnJobClose } };
+        if (_self != IntPtr.Zero) return;
+        var job = Create(JobObjectLimitKillOnJobClose | JobObjectLimitBreakawayOk);
+        if (!AssignProcessToJobObject(job, Process.GetCurrentProcess().Handle))
+        {
+            var err = Marshal.GetLastWin32Error();
+            CloseHandle(job);
+            throw new Win32Exception(err, "could not put the agent in its job object");
+        }
+        _self = job;
+    }
+
+    /// <summary>
+    /// Adds a just-started process (and so its future children) to this job, for per-job timeouts. If that fails the
+    /// process is killed, not left running uncounted. A process that has already exited is fine as it is.
+    /// </summary>
+    public void Add(Process p)
+    {
+        if (AssignProcessToJobObject(_job, p.Handle) || p.HasExited) return;
+        var err = Marshal.GetLastWin32Error();
+        try { p.Kill(); } catch (InvalidOperationException) { } catch (Win32Exception) { }
+        throw new Win32Exception(err, "could not contain the job's PowerShell; it was stopped");
+    }
+
+    private static IntPtr Create(uint limits)
+    {
+        var job = CreateJobObject(IntPtr.Zero, null);
+        if (job == IntPtr.Zero) throw new Win32Exception();
+        var info = new ExtendedLimitInformation { BasicLimitInformation = new BasicLimitInformation { LimitFlags = limits } };
         var size = Marshal.SizeOf<ExtendedLimitInformation>();
         var ptr = Marshal.AllocHGlobal(size);
         try
         {
             Marshal.StructureToPtr(info, ptr, false);
-            if (!SetInformationJobObject(_job, JobObjectExtendedLimitInformation, ptr, (uint)size)) throw new Win32Exception();
+            if (!SetInformationJobObject(job, JobObjectExtendedLimitInformation, ptr, (uint)size))
+            {
+                var err = Marshal.GetLastWin32Error();
+                CloseHandle(job);   // never leak the handle of a job that could not be set up
+                throw new Win32Exception(err);
+            }
+            return job;
         }
         finally { Marshal.FreeHGlobal(ptr); }
-    }
-
-    public void Add(Process p)
-    {
-        if (!AssignProcessToJobObject(_job, p.Handle)) throw new Win32Exception();
     }
 
     public void Kill() => TerminateJobObject(_job, 1);

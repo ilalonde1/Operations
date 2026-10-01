@@ -31,6 +31,8 @@ internal static class Program
         if (args.Length > 0 && args[0] == "--idle") return ConsoleIdle.ForThisSession();
 
         var settings = AgentSettings.Load(args);
+        // Before anything can start a child: everything the agent ever starts is contained, and dies with it.
+        ProcessTree.ContainSelf();
         if (!args.Contains("--console"))
         {
             ServiceBase.Run(new AgentService(settings));

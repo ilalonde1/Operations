@@ -28,8 +28,9 @@ public static class RemoteAgentInstall
     /// </summary>
     public const string DataDir = InstallDir + @"\data";
 
-    /// <summary>Where agent 1.0.0 kept its data, removed on every install and removal.</summary>
-    public const string LegacyDataDir = @"C:\ProgramData\KorOperations\Agent";
+    // Agent 1.0.0 kept its data in a user-writable folder. It is NOT cleaned up from here, on purpose: any user can make
+    // an ancestor of that path a junction to Program Files, and this code runs as an administrator (Codex re-check,
+    // 2026-09-30). It existed only on KOR-104N and was removed there; nothing else ever had it.
 
     private const string Description = "Runs KOR NetworkOps health checks and approved fixes on this PC for the NetworkOps service on KOR-APP01. " +
                                        "Connects out to APP01 only; listens on nothing.";
@@ -63,7 +64,6 @@ public static class RemoteAgentInstall
         var keyFile = Path.Combine(data.FullName, "agent.key");
         if (File.Exists(keyFile)) File.Delete(keyFile);   // a new file inherits the locked folder; an old one keeps its own
         await File.WriteAllTextAsync(keyFile, key, ct).ConfigureAwait(false);
-        await DeleteLegacyAsync(computer, ct).ConfigureAwait(false);
 
         await beforeStart().ConfigureAwait(false);
 
@@ -107,16 +107,7 @@ public static class RemoteAgentInstall
             }
         }
         if (Directory.Exists(Unc(computer, InstallDir))) await DeleteWithRetryAsync(Unc(computer, InstallDir), ct).ConfigureAwait(false);
-        await DeleteLegacyAsync(computer, ct).ConfigureAwait(false);
         return had ? "service removed, files deleted" : "there was no agent service; any files deleted";
-    }
-
-    private static async Task DeleteLegacyAsync(string computer, CancellationToken ct)
-    {
-        var legacy = new DirectoryInfo(Unc(computer, LegacyDataDir));
-        if (!legacy.Exists) return;
-        if (legacy.Attributes.HasFlag(FileAttributes.ReparsePoint)) { legacy.Delete(); return; }   // the link, never its target
-        await DeleteWithRetryAsync(legacy.FullName, ct).ConfigureAwait(false);
     }
 
     /// <summary>The service's state on the PC, or null when it is not installed.</summary>
