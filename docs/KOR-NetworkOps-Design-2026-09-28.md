@@ -97,20 +97,35 @@ workstation checks already exist as code.
 
 ### 4.2 The endpoint agent (Phase 4) — why ours, and what "lightweight" means
 
-- **Pull, zero inbound ports.** The agent polls APP01 over HTTPS with mutual TLS (per-device
-  certificate issued at enrolment). Works for laptops on the VPN, dual-homed Perform boxes and
-  anything that was "offline" at sweep time — today 8 of 38 machines are missed by every
-  agentless run.
+- **As built (0.8.0, 2026-09-30): a transport, not a second brain.** `Kor.Operations.NetworkOps.Agent`
+  is a .NET Framework 4.8 service (33 KB, no dependencies: 4.8 is on every PC) that holds one HTTPS
+  poll open to APP01 on the Command Center's own port (8445, certificate pinned). The answer to the
+  poll is the work: the same probe or fix script the network route would run, which the agent runs
+  as SYSTEM and posts back. Rules, findings and decisions stay on APP01, so an agent can never
+  disagree with the service. `Service/Agents/MachineRunner` sends a job through the agent when it is
+  connected and over the one-shot SCM channel otherwise; a job the agent does not take within 40 s is
+  withdrawn before the fallback, so it can never run twice.
+- **Pull, zero inbound ports.** Works for laptops on the VPN and anything that was "offline" at
+  sweep time: a PC whose agent comes back after missing a sweep is checked at once.
+- **Identity: a per-PC key, not mutual TLS or Kerberos.** The installer (APP01, over c$ and the SCM,
+  as the service account that is already admin on every PC) writes a fresh 256-bit key into
+  `C:\ProgramData\KorOperations\Agent` (SYSTEM and Administrators only) and stores only its SHA-256
+  (`NetworkOps.Agents`, migration 005). Kerberos was rejected because the service runs as a domain
+  user, which would need an SPN change in AD; certificates would need an enrolment process.
+- **Install, upgrade, remove** are requested like fixes (Actions kinds `install-agent` /
+  `remove-agent`), audited, and Done only once the agent has called in. Upgrading is reinstalling:
+  the agent ships inside the service's deploy, so no GPO and no self-update code.
+- **Idle time.** The agent starts a copy of itself in the console user's session to read
+  GetLastInputInfo; the health probe (v5) reports "active, idle 12 min".
 - **Collects on the box.** Every probe is local API calls (registry, event log, WMI, WUA COM),
-  so the VPN only ever carries results. The same probe code runs agentless via
-  `OnTargetScmChannel` until the agent is on a machine — one probe library, two transports.
+  so the VPN only ever carries results — one probe library, two transports.
 - **Acts only from an allow-list.** Typed commands (restart service, reboot with warning, set
   add-in LoadBehavior, rebuild search index, uninstall product X…), each with a rollback
   record. Arbitrary commands only from a Command Center admin (Entra role + MFA), recorded in full.
-- **Budget:** < 1 % CPU averaged, < 60 MB RAM, idle between polls; self-updating from APP01.
+- **Budget:** < 1 % CPU averaged, < 60 MB RAM, idle between polls.
 - **Unsigned, by decision (2026-09-30).** Installs under `C:\Program Files\KorOperations\`, which only
   administrators can write, and which carries a Webroot Global Folder ALLOW override with "Detect if
-  Malicious" off. Self-update is trusted through the pinned APP01 TLS certificate and a SHA-256 check.
+  Malicious" off. Every script it runs comes from the pinned APP01 certificate's holder.
 
 ### 4.3 Remote screen
 
@@ -138,7 +153,7 @@ removed — that's the cliff (24 of 25 machines lose remote support the same day
 | **1** ✅ 09-28 | Core + Transport + `netops` CLI: channel census, run-on-target via the SCM API, hardware probe (SMBIOS port with its fixture) | 16/16 xUnit, incl. the payload run under real PowerShell 5.1 (break-tested). First census: **30 of 38 reachable, 30 of 30 run-on-target ready, WinRM open on 5, dual-homed 3**, 52 s. `hardware` on 3 PCs in 31 s, zero leftovers. Rules engine moves to Phase 2 with the store it writes to. |
 | **2** | Service on APP01: nightly sweep → SQL → rules → Graph alerts; freshness; external dead-man check | Runs alongside Ninja for a **comparison month**; every finding it raises is logged against what Ninja showed |
 | **3** ◐ 09-30 | The rack: UPS/SAN/NAS SNMP, ESXi/vCenter, Veeam freshness, firewall + switches; **graceful shutdown chain** | ✅ 11 rack devices watched every 5 min (§9), first sweep 11 of 11 and it caught a failing backup. ✅ Chain built, dry run proven end to end, rehearsed daily. ⬜ Chain proven by a pulled plug, then armed |
-| **4** | KOR agent (Webroot folder override, no cert), GPO startup-script deploy, allow-listed actions | Agent on all 38, < 1 % CPU; offline machines report when they reappear |
+| **4** ◐ 09-30 | KOR agent (Webroot folder override, no cert), installed from APP01, allow-listed actions | ✅ Built, service 0.8.0 deployed, real agent proven against a real listener in tests. ⬜ Test PC KOR-104N. ⬜ Agent on all 38, < 1 % CPU; offline machines report when they reappear |
 | **5** | Command Center page + MeshCentral + Connect | Ian runs a day of support from it without opening Ninja |
 | **6** | Patching cutover: WUfB policy via GPO **first**, remove Ninja's `NoAutoUpdate=1`, verify a full patch cycle | A Patch Tuesday lands fleet-wide with Ninja disabled |
 | **7** | Retire T-Net stack: Ninja, ScreenConnect (all three generations), TeamViewer where unused | Nothing phones home to tenacious.support |
