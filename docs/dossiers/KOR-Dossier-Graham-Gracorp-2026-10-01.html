@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KOR Structural &mdash; Graham &amp; Gracorp</title>
+<style>
+  :root {
+    --ground: #FBFAF9;
+    --surface: #FFFFFF;
+    --surface-2: #F4F2F0;
+    --ink: #1C2530;
+    --ink-soft: #55636F;
+    --ink-faint: #8A97A2;
+    --line: #E5E4E1;
+    --line-strong: #D3D2CE;
+    --slate: #3F5364;
+    --slate-deep: #2C3A47;
+    --accent: #FF5B35;
+    --accent-ink: #C6360F;
+    --good: #1E7D3A;   --good-bg: #E7F3EB;
+    --warn: #A9741A;   --warn-bg: #FBF1DE;
+    --crit: #C0392B;   --crit-bg: #FBE9E7;
+    --blue: #3E7CB1;   --blue-bg: #E8F0F7;
+    --shadow: 0 1px 2px rgba(28,37,48,.06), 0 8px 24px rgba(28,37,48,.05);
+    --radius: 10px;
+    --maxread: 44rem;
+    --sans: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+    --mono: "Cascadia Code", Consolas, "SF Mono", ui-monospace, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground: #13171C;
+      --surface: #1A2027;
+      --surface-2: #212A33;
+      --ink: #E9ECEF;
+      --ink-soft: #A6B2BC;
+      --ink-faint: #6E7C87;
+      --line: #29323B;
+      --line-strong: #38434E;
+      --slate: #7E97AC;
+      --slate-deep: #C4D3DF;
+      --accent: #FF7150;
+      --accent-ink: #FF9276;
+      --good: #6BD08A;   --good-bg: #16281C;
+      --warn: #E3B25A;   --warn-bg: #2C2413;
+      --crit: #F0938A;   --crit-bg: #2E1815;
+      --blue: #7FB1D9;   --blue-bg: #14212C;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="light"] {
+    --ground: #FBFAF9; --surface: #FFFFFF; --surface-2: #F4F2F0;
+    --ink: #1C2530; --ink-soft: #55636F; --ink-faint: #8A97A2;
+    --line: #E5E4E1; --line-strong: #D3D2CE; --slate: #3F5364; --slate-deep: #2C3A47;
+    --accent: #FF5B35; --accent-ink: #C6360F;
+    --good: #1E7D3A; --good-bg: #E7F3EB; --warn: #A9741A; --warn-bg: #FBF1DE;
+    --crit: #C0392B; --crit-bg: #FBE9E7; --blue: #3E7CB1; --blue-bg: #E8F0F7;
+    --shadow: 0 1px 2px rgba(28,37,48,.06), 0 8px 24px rgba(28,37,48,.05);
+  }
+  :root[data-theme="dark"] {
+    --ground: #13171C; --surface: #1A2027; --surface-2: #212A33;
+    --ink: #E9ECEF; --ink-soft: #A6B2BC; --ink-faint: #6E7C87;
+    --line: #29323B; --line-strong: #38434E; --slate: #7E97AC; --slate-deep: #C4D3DF;
+    --accent: #FF7150; --accent-ink: #FF9276;
+    --good: #6BD08A; --good-bg: #16281C; --warn: #E3B25A; --warn-bg: #2C2413;
+    --crit: #F0938A; --crit-bg: #2E1815; --blue: #7FB1D9; --blue-bg: #14212C;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  body {
+    margin: 0; background: var(--ground); color: var(--ink);
+    font-family: var(--sans); font-size: 17px; line-height: 1.68;
+    -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+  }
+
+  /* ---------- Hero ---------- */
+  .hero {
+    background:
+      radial-gradient(120% 140% at 88% -20%, rgba(255,91,53,.20), transparent 55%),
+      linear-gradient(180deg, var(--slate-deep), var(--slate));
+    color: #EAF0F5; padding: clamp(2.4rem, 6vw, 4.2rem) 1.5rem clamp(2rem, 5vw, 3.4rem);
+    border-bottom: 3px solid var(--accent);
+  }
+  .hero__wrap { max-width: 62rem; margin: 0 auto; }
+  .hero__eyebrow {
+    font-family: var(--mono); font-size: .72rem; letter-spacing: .22em;
+    text-transform: uppercase; color: #FFB59F; margin: 0 0 .9rem;
+  }
+  .hero h1 {
+    font-size: clamp(2rem, 5.2vw, 3.35rem); line-height: 1.05; margin: 0 0 .8rem;
+    font-weight: 700; letter-spacing: -.02em; text-wrap: balance; color: #FFFFFF;
+  }
+  .hero__lede {
+    font-size: clamp(1.05rem, 2.2vw, 1.3rem); max-width: 34rem; margin: 0;
+    color: #CBD8E2; line-height: 1.5;
+  }
+  .hero__meta {
+    margin-top: 1.6rem; display: flex; flex-wrap: wrap; gap: .5rem .7rem;
+    font-family: var(--mono); font-size: .74rem; color: #9FB3C4;
+  }
+  .hero__meta span { background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.12);
+    padding: .28rem .6rem; border-radius: 999px; }
+  /* Bold text inside the hero, on the dark ground. Without this it inherits the
+     accent colour and prints as dim amber on navy — barely legible, and the
+     emphasised words are usually the numbers the page exists to carry. Lives
+     OUTSIDE @media print on purpose so screen and print agree. Documented in
+     this directory's CLAUDE.md; it had gone missing from the style block and
+     was caught by looking at a rendered PDF page on 2026-09-04. */
+  .hero strong, .hero b { color: #FFFFFF; font-weight: 700; }
+
+  /* ---------- Shell ---------- */
+  .shell { max-width: 62rem; margin: 0 auto; padding: 0 1.5rem;
+    display: grid; grid-template-columns: 15rem minmax(0, 1fr); gap: 2.6rem; }
+  @media (max-width: 940px) { .shell { grid-template-columns: 1fr; gap: 0; } }
+
+  /* ---------- Table of contents ---------- */
+  .toc { position: sticky; top: 0; align-self: start; max-height: 100vh; overflow-y: auto;
+    padding: 2.2rem 0; }
+  @media (max-width: 940px) { .toc { position: static; max-height: none; padding: 1.4rem 0 0; } }
+  .toc__title { font-family: var(--mono); font-size: .68rem; letter-spacing: .2em;
+    text-transform: uppercase; color: var(--ink-faint); margin: 0 0 .8rem; }
+  .toc ol { list-style: none; margin: 0; padding: 0; counter-reset: toc; }
+  .toc li { margin: 0; }
+  .toc a { display: flex; gap: .6rem; align-items: baseline; text-decoration: none;
+    color: var(--ink-soft); padding: .32rem 0; font-size: .93rem; line-height: 1.3;
+    border-left: 2px solid transparent; padding-left: .7rem; transition: color .15s, border-color .15s; }
+  .toc a::before { counter-increment: toc; content: counter(toc, decimal-leading-zero);
+    font-family: var(--mono); font-size: .7rem; color: var(--ink-faint); }
+  .toc a:hover { color: var(--accent-ink); }
+  .toc a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 3px; }
+
+  /* ---------- Content ---------- */
+  main { padding: 2.2rem 0 5rem; min-width: 0; }
+  section { scroll-margin-top: 1.2rem; padding: 2.2rem 0; border-top: 1px solid var(--line); }
+  section:first-of-type { border-top: 0; padding-top: 1.4rem; }
+  .kicker { font-family: var(--mono); font-size: .72rem; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--accent-ink); margin: 0 0 .5rem; font-weight: 600; }
+  h2 { font-size: clamp(1.45rem, 3.4vw, 1.95rem); line-height: 1.15; margin: 0 0 .9rem;
+    letter-spacing: -.015em; font-weight: 700; text-wrap: balance; }
+  h3 { font-size: 1.14rem; margin: 1.8rem 0 .5rem; font-weight: 650; letter-spacing: -.01em; }
+  p { max-width: var(--maxread); margin: 0 0 1rem; }
+  .lede { font-size: 1.12rem; color: var(--ink-soft); max-width: var(--maxread); }
+  strong { font-weight: 650; color: var(--ink); }
+  a.inline { color: var(--accent-ink); text-decoration: underline; text-underline-offset: 2px;
+    text-decoration-thickness: 1px; }
+
+  ul.plain { max-width: var(--maxread); margin: 0 0 1rem; padding-left: 0; list-style: none; }
+  ul.plain li { position: relative; padding-left: 1.5rem; margin: 0 0 .55rem; }
+  ul.plain li::before { content: ""; position: absolute; left: .25rem; top: .62em;
+    width: .42rem; height: .42rem; border-radius: 2px; background: var(--accent); transform: rotate(45deg); }
+
+  /* keycap + click chips */
+  kbd { font-family: var(--mono); font-size: .82em; background: var(--surface);
+    border: 1px solid var(--line-strong); border-bottom-width: 2px; border-radius: 6px;
+    padding: .08em .5em; color: var(--ink); box-shadow: 0 1px 0 rgba(0,0,0,.04); white-space: nowrap; }
+  .btn { font-family: var(--mono); font-size: .82em; background: var(--slate); color: #fff;
+    border-radius: 6px; padding: .12em .55em; white-space: nowrap; }
+  :root[data-theme="dark"] .btn, .btn { }
+  @media (prefers-color-scheme: dark) { .btn { color: #0f141a; background: var(--slate); } }
+  :root[data-theme="dark"] .btn { color: #0f141a; }
+  :root[data-theme="light"] .btn { color: #fff; }
+  .path { font-family: var(--mono); font-size: .84em; color: var(--ink-soft); white-space: nowrap; }
+  .path b { color: var(--accent-ink); font-weight: 600; }
+
+  /* status pills that mirror the app */
+  .pill { display: inline-flex; align-items: center; gap: .35em; font-family: var(--mono);
+    font-size: .72rem; font-weight: 600; padding: .18em .6em; border-radius: 999px; color: #fff;
+    letter-spacing: .01em; vertical-align: middle; }
+  .pill--won { background: #228B22; } .pill--sub { background: #E5A800; }
+  .pill--draft { background: #609BD1; } .pill--lost { background: #808080; }
+  .pill--fresh { background: #228B22; } .pill--watch { background: #E5A800; } .pill--cold { background: #C11E1E; }
+  .pill--live { background: var(--slate); }
+
+  /* callout boxes */
+  .box { border-radius: var(--radius); padding: 1.05rem 1.15rem; margin: 1.2rem 0;
+    max-width: var(--maxread); border: 1px solid var(--line); background: var(--surface);
+    box-shadow: var(--shadow); }
+  .box__label { font-family: var(--mono); font-size: .68rem; letter-spacing: .14em;
+    text-transform: uppercase; margin: 0 0 .5rem; font-weight: 700; display: flex; align-items: center; gap: .45rem; }
+  .box p, .box ul.plain { margin-bottom: .5rem; }
+  .box p:last-child, .box ul.plain:last-child { margin-bottom: 0; }
+  .box--screen { border-left: 3px solid var(--slate); background: var(--surface-2); }
+  .box--screen .box__label { color: var(--slate); }
+  .box--tip { border-left: 3px solid var(--good); background: var(--good-bg); }
+  .box--tip .box__label { color: var(--good); }
+  .box--dont { border-left: 3px solid var(--crit); background: var(--crit-bg); }
+  .box--dont .box__label { color: var(--crit); }
+  .box--auto { border-left: 3px solid var(--accent); }
+  .box--auto .box__label { color: var(--accent-ink); }
+
+  /* lifecycle sequence */
+  .flow { display: grid; grid-template-columns: repeat(3, 1fr); gap: .8rem; margin: 1.4rem 0 .5rem;
+    max-width: var(--maxread); }
+  @media (max-width: 620px) { .flow { grid-template-columns: 1fr; } }
+  .flow__step { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 1rem; box-shadow: var(--shadow); }
+  .flow__n { font-family: var(--mono); font-size: .72rem; color: #fff; background: var(--accent);
+    width: 1.5rem; height: 1.5rem; border-radius: 6px; display: grid; place-items: center; font-weight: 700; }
+  .flow__step h4 { margin: .6rem 0 .3rem; font-size: 1rem; }
+  .flow__step p { font-size: .9rem; color: var(--ink-soft); margin: 0; }
+
+  /* map grid */
+  .map { display: grid; grid-template-columns: repeat(2, 1fr); gap: .55rem .9rem;
+    max-width: var(--maxread); margin: 1rem 0; }
+  @media (max-width: 620px) { .map { grid-template-columns: 1fr; } }
+  .map div { display: flex; gap: .6rem; align-items: baseline; padding: .5rem .2rem;
+    border-bottom: 1px solid var(--line); }
+  .map dt { font-family: var(--mono); font-size: .82rem; color: var(--accent-ink);
+    font-weight: 600; min-width: 6.6rem; }
+  .map dd { margin: 0; font-size: .92rem; color: var(--ink-soft); }
+
+  /* cheat table */
+  .table-wrap { max-width: var(--maxread); overflow-x: auto; margin: 1rem 0; }
+  table { border-collapse: collapse; width: 100%; font-size: .93rem; }
+  th, td { text-align: left; padding: .6rem .7rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-family: var(--mono); font-size: .68rem; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--ink-faint); font-weight: 600; }
+  td:first-child { font-weight: 600; white-space: nowrap; }
+
+  .chip-row { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1rem 0; }
+  footer { border-top: 1px solid var(--line); padding: 1.8rem 0 3rem; color: var(--ink-faint);
+    font-size: .86rem; max-width: var(--maxread); }
+  footer .path { font-size: .8em; }
+  .fade { opacity: 0; transform: translateY(8px); animation: rise .6s ease forwards; }
+  @keyframes rise { to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .fade { opacity: 1; transform: none; animation: none; } }
+
+  /* ---------- Print / PDF ---------- */
+  /* Side margins ZERO so a hero can bleed to the paper edge; top/bottom real so
+     pages 2..n never jam (container padding does NOT repeat per page). */
+  @page { size: Letter; margin: 11mm 0 13mm; }
+  @media print {
+    :root {
+      /* Force the light palette regardless of viewer theme. */
+      --ground:#FBFAF9; --surface:#FFFFFF; --surface-2:#F4F2F0;
+      --ink:#1C2530; --ink-soft:#55636F; --ink-faint:#8A97A2;
+      --line:#E5E4E1; --line-strong:#D3D2CE; --slate:#3F5364; --slate-deep:#2C3A47;
+      --accent:#FF5B35; --accent-ink:#C6360F;
+      --good:#1E7D3A; --good-bg:#E7F3EB; --warn:#A9741A; --warn-bg:#FBF1DE;
+      --crit:#C0392B; --crit-bg:#FBE9E7; --blue:#3E7CB1; --blue-bg:#E8F0F7;
+      --shadow: none;
+    }
+    /* --maxread is a SCREEN reading measure; left as-is it leaves a dead band
+       down the right of every printed page. */
+    :root { --maxread: 100%; }
+    html { font-size: 16.5px; }
+    body { background:#fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; color-scheme: light; }
+    .fade { opacity:1 !important; transform:none !important; animation:none !important; }
+
+    .hero { margin: -11mm 0 0; padding: 13mm 13mm 10mm; border-bottom-width: 2px; }
+    .hero h1 { font-size: 30pt; }
+    .hero__lede { font-size: 12.5pt; color:#D4E0EA; }
+    .hero__meta { display:none; }
+
+    /* Single reading column; contents becomes a printed page-1 index. */
+    .shell { display:block; max-width: none; padding: 0 13mm; }
+    .toc { position: static; max-height: none; padding: 5mm 0 1mm; break-after: auto; }
+    .toc a { color: var(--ink-soft) !important; border-left-color: var(--line-strong); }
+    main { padding: 6mm 0 0; }
+    section:first-of-type { padding-top: 4mm; }
+
+    /* Keep blocks whole across page breaks. */
+    h2, h3, h4 { break-after: avoid; }
+    section { break-inside: auto; }
+    .box, .flow, .flow__step, .chip-row, .map { break-inside: avoid; }
+    tr, li { break-inside: avoid; }
+    /* Tables MAY break across pages, and their header repeats when they do.
+       `break-inside: avoid` on a table taller than a page does not keep it
+       whole — the renderer bumps the whole block to the next page and leaves
+       the current one two-thirds empty. That cost six wasted pages in the
+       Island who's-who v4 (a 15-row door list and a 13-row permit register),
+       and it is the same class as the wide-table column loss above: the print
+       CSS assumed every block fits on one page. Rows and list items still
+       stay whole, which is the part that actually matters to a reader. */
+    .table-wrap { break-inside: auto; }
+    table { break-inside: auto; }
+    thead { display: table-header-group; }
+    tfoot { display: table-footer-group; }
+    a.inline, .toc a { text-decoration: none; }
+    footer { break-inside: avoid; }
+  }
+</style>
+<style>
+  .table-wrap--wide td:first-child { white-space: normal; }
+</style>
+
+</head>
+<body>
+<header class="hero">
+  <div class="hero__wrap fade">
+    <p class="hero__eyebrow">KOR Structural · Confidential · Prepared for Conor Murtagh · Graham partner appreciation, 1 October 2026</p>
+    <h1>Graham &amp; Gracorp</h1>
+    <p class="hero__lede">Graham turns <strong>100 this year</strong> — 3,000 people, 100% employee-owned, a backlog near $6B. We have never billed them a dollar. But <strong>three of the six people running Gracorp's Vancouver development desk came out of Anthem, Wesgroup and Bosa</strong> — and we invoiced Anthem two days ago and Wesgroup yesterday. That, not a hospital, is the evening.</p>
+    <div class="hero__meta">
+      <span>Graham Construction · GC · grahambuilds.com</span>
+      <span>Gracorp · developer · gracorp.com</span>
+      <span>Both at Suite 700, 700 W Pender St</span>
+    </div>
+  </div>
+</header>
+
+<div class="shell">
+  <nav class="toc" aria-label="Contents">
+    <p class="toc__title">On this page</p>
+    <ol>
+      <li><a href="#s0">Summary and what to do</a></li>
+      <li><a href="#s1">Two companies, two conversations</a></li>
+      <li><a href="#s2">What we have done together: nothing</a></li>
+      <li><a href="#s3">The bridge nobody noticed — MCMP</a></li>
+      <li><a href="#s4">Three of their team came from our clients</a></li>
+      <li><a href="#s5">Gracorp's BC pipeline</a></li>
+      <li><a href="#s6">Two landmines</a></li>
+      <li><a href="#s7">The Graham side, for conversation</a></li>
+      <li><a href="#s8">What our award data does and does not show</a></li>
+      <li><a href="#s9">Provenance and what is unverified</a></li>
+    </ol>
+  </nav>
+
+  <section id="s0">
+    <p class="kicker">Summary</p>
+    <h2>Summary and what to do</h2>
+
+    <p class="lede">Graham Construction and Gracorp are one group with two completely
+    different procurement realities. Graham the contractor wins BC's largest healthcare
+    work through alliance and progressive design-build, where the structural seat is
+    locked at team selection — Richmond Hospital's is already Entuitive's. Gracorp the
+    developer builds market rental high-rises and procures structural itself, project by
+    project. The second is the lane KOR actually wins in, and it is won on relationship.</p>
+
+    <p>So the evening is a Gracorp evening. We have <strong>zero history</strong> with
+    Graham — no projects, no contacts, nothing — but we are currently the structural
+    engineer for the firms that three of Gracorp's Vancouver team just left, and for the
+    architect on two of Gracorp's biggest BC projects.</p>
+
+    <div class="box box--tip">
+      <p class="box__label">▸ If you only get five minutes</p>
+      <p>Congratulate them on <strong>100 years</strong> and on <strong>Sunday's two VRCA
+      Silver Awards</strong>. Then ask about the <strong>Edmonds groundbreaking</strong> —
+      it was 18 September, thirteen days ago. Then find <strong>Adrien Rahbar</strong> and
+      open on Anthem, where you personally have <strong>1,235 hours across six of their
+      projects</strong>.</p>
+    </div>
+
+    <p class="kicker">Action items</p>
+
+    <ol class="actions">
+      <li><strong>Open on the centennial and the VRCA Silvers.</strong> Graham's theme is
+      "Defining a Century". On 28 September they took two Silver Awards at the VRCA 2026
+      Awards of Excellence — Vancouver Transit Centre Skybridge Rehabilitation and the OMD
+      Tank Farm. Three days ago, local, and theirs. <span class="inline">§07</span></li>
+
+      <li><strong>Lead with Edmonds, not with hospitals.</strong> Gracorp broke ground on
+      the 480-home Edmonds Community Hub in Burnaby on 18 September 2026.
+      <span class="inline">§05</span></li>
+
+      <li><strong>Find Adrien Rahbar, VP Real Estate.</strong> He ran development at
+      <strong>Anthem</strong> before Gracorp. We have 31 Anthem projects and $4.36M billed,
+      last invoiced <strong>29 September 2026</strong>. You have 1,235 hours on six of them.
+      <span class="inline">§04</span></li>
+
+      <li><strong>Find Sean O'Flynn, Senior Development Manager.</strong> He came from
+      <strong>Wesgroup</strong> in October 2025. Open on <strong>ACE at 1650 E 12th</strong>
+      — you have 548 hours on it and the work spans his entire Wesgroup tenure.
+      <span class="inline">§04</span></li>
+
+      <li><strong>Ask who carries structural on the Gracorp towers, and whether it is
+      per-project or standing.</strong> No structural engineer is publicly named on any of
+      them. For a developer that is a real question; for an alliance it would not be.
+      <span class="inline">§05</span></li>
+
+      <li><strong>Mention MCMP, in the present tense.</strong> Musson Cattell Mackey is the
+      architect on both the Broadway tower and Edmonds. We have been the structural engineer
+      on seven projects with them, $3.03M billed, and <strong>Bridge &amp; Elliot was
+      invoiced on 3 September 2026</strong>. <span class="inline">§03</span></li>
+
+      <li><strong>Find Jennifer Scott, Manager of Major Project Development.</strong> She
+      was a structural EIT at Wicke Herfst Maver. She is the one person in the room who will
+      follow a structural argument without translation.
+      <span class="inline">§04</span></li>
+
+      <li><strong>On the Graham side, ask Lee Holland or Jordan Hood about upcoming
+      design-build procurements and the pre-approved structural sub list.</strong> Getting on
+      the list before a bid is the legitimate ask. Asking for a seat on a live alliance is
+      not. <span class="inline">§07</span></li>
+
+      <li><strong>Say "we've worked alongside", never "we've worked for".</strong> We have no
+      Graham history at all, and the MCMP and Anthem work was invoiced to developers.
+      <span class="inline">§02</span></li>
+
+      <li><strong>Do not raise 1045 Burnaby Street, and do not ask for the Richmond Hospital
+      structural seat.</strong> One is in litigation, the other is taken.
+      <span class="inline">§06</span></li>
+    </ol>
+  </section>
+
+  <section id="s1">
+    <p class="kicker">Section 01</p>
+    <h2>Two companies, two conversations</h2>
+
+    <p>Graham began in 1926 as a family contractor working on the Saskatchewan railway. It
+    restructured during the early-1980s downturn and offered employees shares; it is now
+    <strong>100% employee-owned</strong> — which is the thing to compliment, because almost
+    nobody their size is. Today: more than 3,000 people, 29 permanent offices across Canada
+    and the US, a project backlog approaching <strong>$6 billion</strong>, and 2024 revenue
+    of <strong>CAD $4.3 billion</strong>, placing them among Canada's three or four largest
+    contractors. President and CEO is <strong>Andy Trewick</strong>. They have been named
+    one of Canada's Best Managed Companies for 26 consecutive years and a Top 100 Employer
+    for 2026.</p>
+
+    <div class="box box--auto">
+      <p class="box__label">◆ Correcting our own file</p>
+      <p>Our BD record described Graham as a "family-owned GC". That is how it started and
+      it is wrong now — they have been employee-owned for forty years, and a second record
+      in the same system already said so. Calling them family-owned tonight would land
+      badly. The record is being corrected.</p>
+    </div>
+
+    <p>The distinction that matters for structural work:</p>
+
+    <dl class="map">
+      <div><dt>Graham Construction</dt><dd>General contractor. Its big BC work is healthcare and institutional, delivered by
+      progressive design-build and competitive alliance. In that model the design-builder
+      assembles the whole consultant team — architect and engineers — at team selection, and
+      the structural seat is filled then. It is not re-tendered later, and alliances do not
+      announce their subs. "No structural engineer is named publicly" is the normal state of
+      a closed team, not evidence of an opening.</dd></div>
+
+      <div><dt>Gracorp</dt><dd>The group's real estate development arm, founded 2008, about 35 people, Vancouver
+      head office shared with Graham BC at Suite 700, 700 West Pender. It develops
+      purpose-built rental, mixed-use, office and industrial across BC, Alberta and
+      Washington State, and it hires its own consultants per project. Market residential
+      developer work won on relationship is precisely KOR's demonstrated lane.</dd></div>
+    </dl>
+
+    <p>Spend the evening on the second one.</p>
+  </section>
+
+  <section id="s2">
+    <p class="kicker">Section 02</p>
+    <h2>What we have done together: nothing</h2>
+
+    <p>This needs saying plainly so it is not accidentally overstated. Graham Construction
+    exists in our Deltek as an <em>active client record</em>, so it will autocomplete and
+    look like a relationship. It is not one.</p>
+
+    <div class="table-wrap table-wrap--wide">
+      <table>
+        <thead>
+          <tr><th>Test</th><th>Result</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Projects billed to Graham</td><td><strong>0</strong> of 37,036 project records</td></tr>
+          <tr><td>Projects Graham is associated with in any role</td><td><strong>0</strong> of 14,985 associations</td></tr>
+          <tr><td>Contacts on the Graham record</td><td><strong>0</strong></td></tr>
+          <tr><td>Gracorp in Deltek</td><td>No client record at all</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>The three "Graham" project names in our system are a private residence and a street
+    name — Graham Crockart Residence, and Sixth St Villa at 6th &amp; Graham. Unrelated.</p>
+
+    <p>So there is no shared-history card to play with Graham itself. Every warm thread
+    below runs through somebody else.</p>
+  </section>
+
+  <section id="s3">
+    <p class="kicker">Section 03</p>
+    <h2>The bridge nobody noticed — MCMP</h2>
+
+    <p class="lede">Musson Cattell Mackey Partnership is the architect on <strong>both</strong>
+    Gracorp's South Granville Station tower at 1470 West Broadway and the Edmonds Community
+    Hub in Burnaby. MCMP has been the architect on seven KOR projects, and we are on one with
+    them right now.</p>
+
+    <div class="table-wrap table-wrap--wide">
+      <table>
+        <thead>
+          <tr><th>Project</th><th>Billed</th><th>Last invoiced</th><th>Client of record</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Hudson Place One</td><td>$1,170,466</td><td>15 Oct 2024</td><td>Townline</td></tr>
+          <tr><td>Luxe, No. 3 Rd Richmond</td><td>$835,162</td><td>21 May 2026</td><td>Townline</td></tr>
+          <tr><td>Park Royal Cinemas</td><td>$410,653</td><td>21 Sep 2020</td><td>Larco Investments</td></tr>
+          <tr><td>1111–1113 Kingsway &amp; Glen</td><td>$297,998</td><td>12 Sep 2025</td><td>Peterson Group</td></tr>
+          <tr><td>Bridge &amp; Elliot, Delta</td><td>$199,500</td><td><strong>3 Sep 2026</strong></td><td>Headwater Projects</td></tr>
+          <tr><td>W2ND, 336–302 West 2nd St</td><td>$104,774</td><td>4 Aug 2020</td><td>Strand Development</td></tr>
+          <tr><td>1151 West Georgia</td><td>$14,493</td><td>28 Feb 2024</td><td>Holborn Developments</td></tr>
+          <tr><td><strong>Total</strong></td><td><strong>$3,033,046</strong></td><td>&nbsp;</td><td>Seven projects</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="box box--dont">
+      <p class="box__label">✕ The wording trap</p>
+      <p>All seven were <strong>invoiced to the developer, never to MCMP</strong>. MCMP is a
+      client record in our system but has never been the paying client. Say <em>"we've been
+      the structural engineer on seven projects with MCMP"</em> or <em>"we've worked
+      alongside them"</em>. Do not say <em>"MCMP is our client"</em> — if it gets repeated
+      back to MCMP it is wrong, and they would know.</p>
+    </div>
+
+    <p>The useful sentence is the live one: <em>"We're on Bridge &amp; Elliot in Delta with
+    MCMP right now."</em> It is true as of 3 September, it is checkable, and it tells a
+    Gracorp development manager that their architect already knows how we work.</p>
+  </section>
+
+  <section id="s4">
+    <p class="kicker">Section 04</p>
+    <h2>Three of their team came from our clients</h2>
+
+    <p class="lede">Gracorp's Vancouver desk has been built largely by hiring out of the
+    Vancouver developer bench — and that bench is our client list. This is the strongest
+    thing in the file, because it is personal to you rather than institutional.</p>
+
+    <div class="table-wrap table-wrap--wide">
+      <table>
+        <thead>
+          <tr><th>Person</th><th>Role at Gracorp</th><th>Came from</th><th>KOR's standing there</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Adrien Rahbar</td>
+            <td>VP, Real Estate · Vancouver · since May 2023 (at Gracorp since 2017)</td>
+            <td>Anthem Properties, May 2022 – May 2023</td>
+            <td>31 projects · $4.36M billed · last invoiced <strong>29 Sep 2026</strong></td>
+          </tr>
+          <tr>
+            <td>Sean O'Flynn</td>
+            <td>Senior Development Manager · Vancouver · since Oct 2025</td>
+            <td>Wesgroup 2023–25 · Amacon 2021–23 · Beedie 2019–21</td>
+            <td>Wesgroup 54 projects · $7.37M · last invoiced <strong>30 Sep 2026</strong></td>
+          </tr>
+          <tr>
+            <td>Josh Guy</td>
+            <td>Senior Construction Manager · Vancouver · since Dec 2024</td>
+            <td>Bosa Properties 2021–24 · Starlight 2018–20</td>
+            <td>Bosa 78 projects · $3.11M · last invoiced 31 Aug 2026</td>
+          </tr>
+          <tr>
+            <td>Bruce Black</td>
+            <td>President · Vancouver · since 2023, at Gracorp since 2009</td>
+            <td>TD Securities, Great Canadian Gaming</td>
+            <td>No overlap</td>
+          </tr>
+          <tr>
+            <td>Derek Steven</td>
+            <td>VP, Capital Markets · Vancouver · since 2023</td>
+            <td>BMO Financial Group, 2010–20</td>
+            <td>No overlap</td>
+          </tr>
+          <tr>
+            <td>Jennifer Scott</td>
+            <td>Manager, Major Project Development · Vancouver</td>
+            <td><strong>Structural EIT, Wicke Herfst Maver</strong>; then Bilfinger P3</td>
+            <td>A structural engineer by training</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p class="kicker">Your own hours</p>
+
+    <p>From our labour ledger, against the firms those three came from. These are your
+    hours, not the firm's:</p>
+
+    <div class="table-wrap table-wrap--wide">
+      <table>
+        <thead>
+          <tr><th>Firm</th><th>Your hours</th><th>Projects</th><th>Span</th><th>Overlaps their tenure?</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Anthem</td><td>1,235.0</td><td>6</td><td>Jul 2020 – Aug 2026</td><td><strong>Yes</strong> — Rahbar's whole year</td></tr>
+          <tr><td>Bosa</td><td>968.0</td><td>1</td><td>Jun 2016 – May 2019</td><td><strong>No</strong> — before Guy</td></tr>
+          <tr><td>Wesgroup</td><td>550.0</td><td>2</td><td>Sep 2021 – Mar 2026</td><td><strong>Yes</strong> — all of O'Flynn's</td></tr>
+          <tr><td>Amacon</td><td>174.5</td><td>1</td><td>Jul 2020 – Jun 2025</td><td><strong>Yes</strong> — O'Flynn 2021–23</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>The Anthem six, by name, so you can drop one: <strong>Jinju at 537 Cottonwood Ave</strong>
+    (389.5 h), <strong>NUVO at Wilson &amp; Central, Burnaby</strong> (242 h),
+    <strong>SOCO Phase 2 at 520 Young Dr, Coquitlam</strong> (226.5 h),
+    <strong>6444 Willingdon Ave Market Tower</strong> (216 h),
+    <strong>137 Keefer St</strong> (160 h), and 5630–5668 Heather St (1 h, this August).
+    The Wesgroup one to name is <strong>ACE at 1650 E 12th, 12th &amp; Commercial</strong> —
+    548 hours from September 2021 to December 2025. Amacon's is <strong>Vue at 500 Foster
+    Ave</strong>.</p>
+
+    <div class="box box--dont">
+      <p class="box__label">✕ Do not overclaim Bosa to Josh Guy</p>
+      <p>Your 968 Bosa hours are all on 1002–1012 Pandora Ave, 2016–2019. Guy was at Bosa
+      2021–2024. Same client, different era — "we've done a lot of Bosa work" is true,
+      "we worked together" is not.</p>
+    </div>
+
+    <p>Two senior Gracorp people are <strong>not</strong> in Vancouver and probably not in the
+    room: Giuseppe Augello, VP Real Estate, is in Seattle, and Nate Hickey, Senior
+    Development Manager, is also Seattle. Adrien Rahbar is also <strong>Chair of the City of
+    North Vancouver Advisory Planning Commission</strong> and was Vice-Chair of Vancouver's
+    Urban Design Panel — he reads drawings for a living on both sides of the table.</p>
+  </section>
+
+  <section id="s5">
+    <p class="kicker">Section 05</p>
+    <h2>Gracorp's BC pipeline</h2>
+
+    <p>Six active BC projects, roughly 1,500 residential units. Rahbar is reported to have
+    tripled the BC portfolio in three years using standardised building prototypes — which
+    matters commercially: a repeatable prototype means one structural appointment can carry
+    across several towers.</p>
+
+    <div class="table-wrap table-wrap--wide">
+      <table>
+        <thead>
+          <tr><th>Project</th><th>Scale</th><th>Status</th><th>Notes</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Edmonds Community Hub, Burnaby</td>
+            <td>50 storeys · 480 rental (384 market + 96 below-market)</td>
+            <td><span class="pill pill--live">Under construction</span></td>
+            <td><strong>Groundbreaking 18 Sep 2026.</strong> $90M BC Builds grant; with BC Builds and The Neighbourhood Church; auditorium, food bank, arts space. Architect <strong>MCMP</strong>. Our file values it at $330M.</td>
+          </tr>
+          <tr>
+            <td>1470–1476 W Broadway (South Granville Station)</td>
+            <td>34–39 storeys · 300–337 rental, 20% below-market</td>
+            <td><span class="pill pill--fresh">In application</span></td>
+            <td>Transit-integrated, includes a second entrance to the future South Granville SkyTrain station. Architect <strong>MCMP</strong>, art-deco treatment. Council referral report Jan 2026; DP-2026-00072. <strong>Storey count has moved — ask, don't assert.</strong></td>
+          </tr>
+          <tr>
+            <td>Kits East, 2175 W 7th Ave</td>
+            <td>20 storeys · 183 units (35 below-market)</td>
+            <td><span class="pill pill--fresh">Approved / proceeding</span></td>
+            <td>Replaces an ageing 35-unit building. 100% purpose-built rental.</td>
+          </tr>
+          <tr>
+            <td>Kits West</td>
+            <td>20 storeys · 182 units</td>
+            <td><span class="pill pill--watch">Reported 2026</span></td>
+            <td><strong>Not previously in our system.</strong> A second Kitsilano tower alongside Kits East.</td>
+          </tr>
+          <tr>
+            <td>Oakridge, 427–449 W 39th Ave</td>
+            <td>18 storeys · 176 units (142 market + 34 below-market)</td>
+            <td><span class="pill pill--fresh">In application</span></td>
+            <td>Joint venture with <strong>Minto Group</strong>. We hold Deltek history with two Minto entities — M4 at Lonsdale Square and 5350–5430 Heather St.</td>
+          </tr>
+          <tr>
+            <td>1045 Burnaby St, West End</td>
+            <td>16 storeys · 170 units (37 below-market)</td>
+            <td><span class="pill pill--lost">Do not raise</span></td>
+            <td>In litigation with the JV partner — see §06.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>In Calgary, Gracorp is three projects deep into University District student and
+    young-professional rental with Harrison Street Asset Management: Encore / Block 15 (303
+    units, 440 beds, substantially complete August 2025) and Block 22 (322 units, 645 beds,
+    under construction, occupancy ahead of the Fall 2027 semester). If the BC conversation
+    stalls, "what's next after Block 22?" is a genuine question.</p>
+
+    <div class="box box--screen">
+      <p class="box__label">▣ The one question worth asking</p>
+      <p>No structural engineer is publicly named on <em>any</em> of the six BC projects. For
+      an alliance that would mean nothing. For a developer procuring its own consultants it is
+      a real question: <em>"Who carries structural across the BC towers — is that a standing
+      appointment or per project?"</em> The answer tells you whether there is a seat at all,
+      and the prototype strategy tells you it is worth more than one project.</p>
+    </div>
+  </section>
+
+  <section id="s6">
+    <p class="kicker">Section 06</p>
+    <h2>Two landmines</h2>
+
+    <div class="box box--dont">
+      <p class="box__label">✕ 1045 Burnaby Street is in litigation — do not mention it</p>
+      <p>Gracorp Properties sued <strong>Fiera Real Estate</strong> in the Supreme Court of
+      British Columbia in <strong>August 2024</strong> over the 16-storey West End rental
+      project. Fiera held 90% and Gracorp 10% as development and construction manager.
+      Gracorp entered a $200,000 crane-swing easement with a neighbour in April 2024; Fiera
+      issued default notices in June, terminated both agreements in July, and invoked a
+      buyout of Gracorp's stake at 90% of fair market value, with closing expected
+      7 November 2024. Gracorp alleges there was no valid basis for termination. <strong>The
+      outcome is not verified.</strong> It is a live legal matter at a party — leave it
+      entirely alone, including the address.</p>
+    </div>
+
+    <div class="box box--dont">
+      <p class="box__label">✕ Do not ask for the Richmond Hospital structural seat</p>
+      <p>ReNew Canada's project record for the $1.96B Richmond Hospital Redevelopment lists
+      the <strong>Engineer as Entuitive</strong>, with HDR Architecture as architect and
+      <strong>Graham Design Builders LP</strong> as Phase 2 alliance partner. The seat is
+      filled. Asking for it would signal that we do not understand how alliance teams are
+      assembled — the opposite of the impression we want on a first meeting.</p>
+      <p>⚠ Our own BD system still carries a February 2025 note saying the structural slot
+      "may be open" and telling us to phone Graham BC immediately, and a June 2026 note
+      telling us to ask Graham whether their structural position on Richmond is open. Both
+      are wrong, both are being corrected, and neither should reach a conversation.</p>
+    </div>
+  </section>
+
+  <section id="s7">
+    <p class="kicker">Section 07</p>
+    <h2>The Graham side, for conversation</h2>
+
+    <p>You will meet contractor people as well as developers. Be able to talk about their
+    work without asking for anything:</p>
+
+    <ul class="plain">
+      <li><strong>Cloverdale Sport &amp; Ice Complex, Surrey</strong> — $132M, 95,000 sq ft,
+      two NHL-sized sheets usable for ice and dry floor. Started summer 2022, completed on
+      schedule and on budget, opened early 2026. A clean compliment.</li>
+      <li><strong>Cameron Community Centre and Library, Burnaby</strong> — 213,000 sq ft,
+      construction management, 27-month contract, the civic heart of the Lougheed District
+      Town Centre, and mass timber. Our file values it around $80M.</li>
+      <li><strong>Douglas College</strong> — student housing plus a new academic building.
+      Our file values it around $150M.</li>
+      <li><strong>Richmond Hospital Yurkovich Family Pavilion</strong> — $1.96B, four phases
+      2022–2031, currently Phase One decant and demolition of Park Centre and the Rotunda.
+      Nine-floor acute-care tower. Talk about it; don't fish in it.</li>
+      <li><strong>Stuart Lake Hospital Redevelopment</strong> — progressive design-build,
+      their first major BC healthcare win, 2022.</li>
+      <li><strong>B6 office tower</strong> (downtown Vancouver, WELL Core Platinum),
+      <strong>Granville Bridge south approach</strong>, and nine or more projects on ReNew
+      Canada's Top100 Infrastructure Projects 2026 list.</li>
+      <li><strong>VRCA 2026 Awards of Excellence, 28 September</strong> — two Silver Awards,
+      for the Vancouver Transit Centre Skybridge Rehabilitation and the OMD Tank Farm. Three
+      days old and the most current thing you can congratulate them on.</li>
+    </ul>
+
+    <p class="kicker">Who runs BC</p>
+
+    <dl class="map">
+      <div><dt>Lee Holland</dt><dd>Vice President, Buildings – British Columbia. On Graham's own Vancouver office page
+      and on LinkedIn. His base is reported inconsistently — Calgary in one source, Greater
+      Vancouver in another — so don't assume he is local.</dd></div>
+
+      <div><dt>Jordan Hood</dt><dd>District Manager, Buildings – British Columbia. Also on Graham's Vancouver page.</dd></div>
+
+      <div><dt>Tyler Johnston-Watson</dt><dd>District Manager, Infrastructure &amp; Industrial – British Columbia. New to our
+      records.</dd></div>
+
+      <div><dt>Tim Heavenor</dt><dd>Chief Financial Officer, EVP Development — the group-level name that bridges
+      contractor and developer.</dd></div>
+
+      <div><dt>Andy Trewick</dt><dd>President and CEO, Calgary.</dd></div>
+    </dl>
+
+    <div class="box box--auto">
+      <p class="box__label">◆ Office and switchboard, verified</p>
+      <p>Graham BC and Gracorp share <strong>Suite 700, 700 West Pender Street, Vancouver
+      V6C 1G8</strong>; Graham also has 7216 Brown Street, Delta. Switchboard
+      <strong>604.940.4500</strong>, confirmed on Graham's own site today. The shared address
+      is itself useful — both teams are one organisation in one office, so a Gracorp
+      conversation is overheard by the contractor and vice versa.</p>
+    </div>
+
+    <div class="box box--dont">
+      <p class="box__label">✕ Two email addresses in our system are wrong</p>
+      <p>Our BD records list Lee Holland and Jordan Hood with <strong>@vch.ca</strong>
+      addresses — that is Vancouver Coastal Health, not Graham, and almost certainly a bad
+      derivation from the Richmond Hospital work. <strong>Do not use them.</strong> Graham's
+      verified pattern is <code>firstname.lastname@graham.ca</code> (confirmed on two
+      records), so <code>lee.holland@graham.ca</code> is the likely form — but that is
+      derived, not verified. Use the switchboard, or ask for a card.</p>
+    </div>
+
+    <p>Gracorp addresses are verified: <code>adrien.rahbar@gracorp.com</code>,
+    <code>bruce.black@gracorp.com</code>, <code>sean.oflynn@gracorp.com</code>,
+    <code>josh.guy@gracorp.com</code>, <code>derek.steven@gracorp.com</code>, and
+    <code>jscott@gracorpcapital.com</code> for Jennifer Scott.</p>
+  </section>
+
+  <section id="s8">
+    <p class="kicker">Section 08</p>
+    <h2>What our award data does and does not show</h2>
+
+    <p>Our system holds <strong>204 public contract awards</strong> to Graham group entities
+    totalling <strong>$1.37 billion</strong>, of which 93 carry a disclosed price. The shape
+    of it is Alberta infrastructure, not BC buildings: Graham Infrastructure LP alone accounts
+    for 60 awards and $626M, mostly City of Calgary and Alberta Transportation interchanges,
+    wastewater plants and pump stations.</p>
+
+    <p>In British Columbia the same corpus holds only <strong>two</strong> Graham awards:</p>
+
+    <div class="table-wrap table-wrap--wide">
+      <table>
+        <thead>
+          <tr><th>Award</th><th>Buyer</th><th>Value</th><th>Date</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Agassiz-Rosedale Bridge No. 1287, steel and concrete repairs</td><td>Ministry of Transportation and Transit</td><td>$32,960,000</td><td>15 Jul 2026</td></tr>
+          <tr><td>Newell Substation Upgrade Project</td><td>BC Hydro</td><td>$25,149,213</td><td>23 Apr 2026</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="box box--screen">
+      <p class="box__label">▣ Read this correctly</p>
+      <p>Two BC awards is <strong>not</strong> a measure of Graham's BC book — it is a
+      measure of what public award feeds publish. Their BC buildings work arrives through P3,
+      alliance and private channels those feeds never carry, which is exactly why the
+      relationship route matters more than the tender route here.</p>
+    </div>
+  </section>
+
+  <section id="s9">
+    <p class="kicker">Section 09</p>
+    <h2>Provenance and what is unverified</h2>
+
+    <p><strong>From our own ledger</strong> (Deltek, queried today): the zero Graham history;
+    the seven MCMP projects and $3,033,046; the per-firm project counts, billed totals and
+    last-invoice dates for Anthem, Wesgroup, Bosa, Beedie, Amacon and Starlight; and your own
+    hours. Billed figures are invoiced amounts, and the per-firm numbers were recomputed after
+    a first pass double-counted them through a join — the figures above are the corrected
+    ones.</p>
+
+    <p><strong>From named public sources</strong>: Graham's centennial, ownership, headcount,
+    offices, backlog, revenue and CEO; the VRCA Silver Awards of 28 September; the Edmonds
+    groundbreaking of 18 September; Gracorp's project scales; the Fiera litigation; MCMP's role
+    on Broadway and Edmonds; Entuitive as engineer on Richmond Hospital; and Graham's Vancouver
+    address, switchboard and BC leadership from Graham's own site.</p>
+
+    <p><strong>From our BD system, and treated as unverified</strong>: the "$5.9B active BC
+    portfolio" figure, which carries no source; the "~$1.3B BC portfolio" figure for Gracorp;
+    and the $80M / $150M values for Cameron Community Centre and Douglas College.</p>
+
+    <div class="box box--dont">
+      <p class="box__label">✕ Do not assert this, however tempting</p>
+      <p><strong>We do not know who holds structural on any Gracorp BC tower.</strong> None is
+      publicly named. WHM Structural Engineers surfaced adjacent in searching, and Jennifer
+      Scott trained at WHM — that is suggestive and it is not evidence. If anyone asks what we
+      think, the honest answer is that we are asking, not telling.</p>
+    </div>
+  </section>
+
+  <footer>
+    <p>KOR Structural — Confidential / Internal · Prepared for Conor Murtagh · 1 October 2026</p>
+    <p>Ledger figures are billed work only: a project record is not a job unless money or time moved against it. Graham passes neither test, which is why §02 says so plainly.</p>
+  </footer>
+</div>
+
+</body>
+</html>
