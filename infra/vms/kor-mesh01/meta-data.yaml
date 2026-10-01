@@ -1,0 +1,18 @@
+instance-id: kor-mesh01-1
+local-hostname: kor-mesh01
+# .1-.50 is the static block (DHCP hands out .51-.199); .27 checked free 2026-09-30 (no ping, no DNS record).
+network:
+  version: 2
+  ethernets:
+    lan:
+      match:
+        name: "en*"
+      dhcp4: false
+      dhcp6: false
+      addresses: [192.168.1.27/24]
+      routes:
+        - to: default
+          via: 192.168.1.1
+      nameservers:
+        addresses: [192.168.1.30]
+        search: [int.korstructural.com]

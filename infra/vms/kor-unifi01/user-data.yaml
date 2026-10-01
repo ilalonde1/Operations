@@ -1,0 +1,32 @@
+#cloud-config
+# KOR-UNIFI01 first boot: the self-hosted UniFi controller (UniFi OS Server) for KOR's APs and switches.
+# Delivered as VMware guestinfo (not vApp/OVF properties: a standalone ESXi host never passes those on).
+# The static address is in the matching meta-data (network v2), applied before first network use.
+hostname: kor-unifi01
+fqdn: kor-unifi01.int.korstructural.com
+manage_etc_hosts: true
+timezone: America/Vancouver
+users:
+  - name: koradmin
+    gecos: KOR admin (SSH key only)
+    groups: [sudo]
+    shell: /bin/bash
+    sudo: "ALL=(ALL) NOPASSWD:ALL"
+    lock_passwd: true
+    ssh_authorized_keys:
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJ/LedVHQEXRaJRgTMqLW0XCQiZH5YiG7Md+f9O8+VYz ilalonde@KOR-1001 kor-unifi01 admin
+ssh_pwauth: false
+disable_root: true
+package_update: true
+package_upgrade: true
+packages:
+  - podman
+  - open-vm-tools
+  - unattended-upgrades
+write_files:
+  - path: /etc/apt/apt.conf.d/20auto-upgrades
+    content: |
+      APT::Periodic::Update-Package-Lists "1";
+      APT::Periodic::Unattended-Upgrade "1";
+runcmd:
+  - touch /var/lib/kor-firstboot-done

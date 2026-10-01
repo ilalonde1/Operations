@@ -1,0 +1,18 @@
+instance-id: kor-unifi01-2
+local-hostname: kor-unifi01
+# .1-.50 is the static block (DHCP hands out .51-.199); .26 checked free 2026-09-29.
+network:
+  version: 2
+  ethernets:
+    lan:
+      match:
+        name: "en*"
+      dhcp4: false
+      dhcp6: false
+      addresses: [192.168.1.26/24]
+      routes:
+        - to: default
+          via: 192.168.1.1
+      nameservers:
+        addresses: [192.168.1.30]
+        search: [int.korstructural.com]

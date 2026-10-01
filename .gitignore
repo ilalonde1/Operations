@@ -136,3 +136,7 @@ __pycache__/
 docs/architecture/v[0-9][0-9][0-9]/
 TestResults/
 tools/BdOpportunityDedup/output/
+
+# VM build kits: secrets are DPAPI files beside the scripts at build time, never committed
+infra/**/*.dpapi
+infra/**/*.ONTARGET.ps1

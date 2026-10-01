@@ -1,0 +1,25 @@
+{
+  "$schema": "https://raw.githubusercontent.com/Ylianst/MeshCentral/master/meshcentral-config-schema.json",
+  "settings": {
+    "cert": "kor-mesh01.int.korstructural.com",
+    "port": 443,
+    "redirPort": 0,
+    "selfUpdate": false,
+    "allowFraming": false,
+    "cookieIpCheck": true,
+    "agentPong": 300,
+    "mpsPort": 0,
+    "noAgentUpdate": false,
+    "_note": "KOR NetworkOps remote screen. LAN + VPN only (ufw). Built 2026-09-30."
+  },
+  "domains": {
+    "": {
+      "title": "KOR Remote",
+      "title2": "NetworkOps",
+      "newAccounts": false,
+      "userNameIsEmail": true,
+      "passwordRequirements": { "min": 16, "force2factor": true, "hint": false },
+      "agentConfig": [ "webSocketMaskOverride=1" ]
+    }
+  }
+}

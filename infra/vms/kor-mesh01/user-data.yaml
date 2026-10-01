@@ -1,0 +1,40 @@
+#cloud-config
+# KOR-MESH01 first boot: the self-hosted MeshCentral server (remote screen for KOR's PCs).
+# Delivered as VMware guestinfo (a standalone ESXi host never passes vApp/OVF properties on).
+# The static address is in the matching meta-data (network v2), applied before first network use.
+hostname: kor-mesh01
+fqdn: kor-mesh01.int.korstructural.com
+manage_etc_hosts: true
+timezone: America/Vancouver
+users:
+  - name: koradmin
+    gecos: KOR admin (SSH key only)
+    groups: [sudo]
+    shell: /bin/bash
+    sudo: "ALL=(ALL) NOPASSWD:ALL"
+    lock_passwd: true
+    ssh_authorized_keys:
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBf/tX5G5UrQ66PNZkkfXXiN/s7IOVKhpL0wht/fMrHV ilalonde@KOR-1001 kor-mesh01 admin
+ssh_pwauth: false
+disable_root: true
+package_update: true
+package_upgrade: true
+packages:
+  - open-vm-tools
+  - unattended-upgrades
+  - ufw
+write_files:
+  - path: /etc/apt/apt.conf.d/20auto-upgrades
+    content: |
+      APT::Periodic::Update-Package-Lists "1";
+      APT::Periodic::Unattended-Upgrade "1";
+runcmd:
+  # Firewall from the first boot: SSH and HTTPS from the office LAN and the VPN subnet only.
+  - ufw default deny incoming
+  - ufw default allow outgoing
+  - ufw allow from 192.168.1.0/24 to any port 22 proto tcp
+  - ufw allow from 10.0.254.0/24 to any port 22 proto tcp
+  - ufw allow from 192.168.1.0/24 to any port 443 proto tcp
+  - ufw allow from 10.0.254.0/24 to any port 443 proto tcp
+  - ufw --force enable
+  - touch /var/lib/kor-firstboot-done
