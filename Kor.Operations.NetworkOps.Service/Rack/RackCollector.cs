@@ -17,8 +17,11 @@ namespace Kor.Operations.NetworkOps.Service.Rack;
 //   Internet   from APP01 itself: public IP, DNS, pings through the firewall
 //   CoreSwitch SNMPv3 SHA/DES (all the EdgeSwitch firmware offers)
 //   Ups        the in-process UPS watcher's latest reading
+//   Mesh       a server NetworkOps cannot read itself (no admin rights there): only whether its Mesh agent is connected,
+//              from the last MeshCentral read -- enough to show it and Connect to it, and it says its health is not read
+//   MeshServer KOR-MESH01: MeshCentral itself answering, and how many agents it has connected
 // No collector writes to any device. A device that cannot be read comes back Unreachable with the reason.
-internal sealed class RackCollector(IOptions<NetworkOpsOptions> options, PowerState power)
+internal sealed class RackCollector(IOptions<NetworkOpsOptions> options, PowerState power, Mesh.MeshState mesh)
 {
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(60);
 
@@ -38,6 +41,8 @@ internal sealed class RackCollector(IOptions<NetworkOpsOptions> options, PowerSt
                 "CoreSwitch" => await CoreSwitchAsync(d, previousFacts, cap.Token).ConfigureAwait(false),
                 "Ups" => Ups(d),
                 "WindowsServer" => await ServerAsync(d, cap.Token).ConfigureAwait(false),
+                "Mesh" => RemoteOnly(d),
+                "MeshServer" => MeshServer(),
                 _ => RackResult.Unreachable($"no collector named '{d.Collector}'"),
             };
         }
@@ -45,6 +50,28 @@ internal sealed class RackCollector(IOptions<NetworkOpsOptions> options, PowerSt
         {
             return RackResult.Unreachable(ex is OperationCanceledException ? "timed out" : ex.GetType().Name + ": " + ex.Message);
         }
+    }
+
+    /// <summary>A server seen only through remote control: up = its Mesh agent is connected. Says plainly that health is not read.</summary>
+    private RackResult RemoteOnly(RackDevice d)
+    {
+        var name = d.MeshName.Length > 0 ? d.MeshName : d.Address;
+        if (!mesh.Fresh) return RackResult.Unreachable("no recent MeshCentral read to judge it by" + (mesh.LastError is { } e ? $" ({e})" : ""));
+        if (mesh.NodeNamed(name) is not { } node) return RackResult.Unreachable($"MeshCentral has no device named {name}");
+        if (!node.AgentConnected) return RackResult.Unreachable("its Mesh agent is not connected");
+        return new RackResult(true, null, new Dictionary<string, string> { ["mesh.node"] = node.Id }, [], [],
+            "remote control connected; health not read (KOR\\app-admin is not an administrator here)");
+    }
+
+    /// <summary>KOR-MESH01: MeshCentral answered the read-only account recently; how many agents it has connected.</summary>
+    private RackResult MeshServer()
+    {
+        if (!options.Value.MeshEnabled) return RackResult.Unreachable("remote control is not configured on APP01");
+        if (!mesh.Fresh) return RackResult.Unreachable(mesh.LastError ?? "MeshCentral has not been read in 15 minutes");
+        var nodes = mesh.Nodes;
+        var connected = nodes.Count(n => n.AgentConnected);
+        var facts = new Dictionary<string, string> { ["mesh.devices"] = nodes.Count.ToString(System.Globalization.CultureInfo.InvariantCulture) };
+        return new RackResult(true, null, facts, [], [], $"MeshCentral answering · {connected} of {nodes.Count} agents connected");
     }
 
     private SnmpV3Credentials Snmp(bool sha256, bool des)

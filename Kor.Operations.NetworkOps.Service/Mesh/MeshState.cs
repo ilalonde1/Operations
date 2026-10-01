@@ -40,18 +40,26 @@ internal sealed class MeshState(TimeProvider clock)
 {
     public static readonly TimeSpan FreshFor = TimeSpan.FromMinutes(15);
     private ConcurrentDictionary<int, MeshLink> _links = new();
+    private IReadOnlyList<MeshNode> _nodes = [];
 
     public DateTime LastReadUtc { get; private set; }
     public string? LastError { get; private set; }
 
     public bool Fresh => LastReadUtc != default && clock.GetUtcNow().UtcDateTime - LastReadUtc < FreshFor;
 
-    public void Update(IReadOnlyList<MeshLink> links)
+    /// <summary>Every node at the last read, linked or not (the server collector counts them; remote-only servers find theirs).</summary>
+    public IReadOnlyList<MeshNode> Nodes => _nodes;
+
+    public void Update(IReadOnlyList<MeshLink> links, IReadOnlyList<MeshNode>? allNodes = null)
     {
         _links = new ConcurrentDictionary<int, MeshLink>(links.GroupBy(l => l.DeviceId).ToDictionary(g => g.Key, g => g.First()));
+        _nodes = allNodes ?? links.Select(l => l.Node).ToList();
         LastReadUtc = clock.GetUtcNow().UtcDateTime;
         LastError = null;
     }
+
+    /// <summary>The node MeshCentral calls <paramref name="name"/>, at the last fresh read.</summary>
+    public MeshNode? NodeNamed(string name) => !Fresh ? null : _nodes.FirstOrDefault(n => n.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
 
     public void Failed(string error) => LastError = error;
 

@@ -31,7 +31,7 @@ internal sealed class MeshSweepJob(NetworkOpsStore store, MeshState state, IOpti
         var rackIds = await store.RackDeviceIdsAsync(ct).ConfigureAwait(false);
         var rack = o.Rack.Where(r => rackIds.ContainsKey(r.Name)).Select(r => new RackIdentity(rackIds[r.Name], r.Name, r.Address, r.MeshName)).ToList();
         var (linked, unmatched) = MeshMap.Map(nodes, pcs, rack, o.MeshPcGroup, o.MeshServerGroup);
-        state.Update(linked);
+        state.Update(linked, nodes);
         var stored = await store.SaveMeshNodesAsync(linked, DateTime.UtcNow, ct).ConfigureAwait(false);
 
         var summary = $"{nodes.Count} Mesh devices: {linked.Count} linked ({linked.Count(l => l.Node.AgentConnected)} connected)" +

@@ -120,6 +120,35 @@ public sealed class MeshTests
         Assert.Null(state.PresenceOf(1));                                     // MeshCentral silent: no findings anywhere
     }
 
+    // ---- servers seen only through remote control, and KOR-MESH01 itself (rack collectors Mesh / MeshServer)
+
+    [Fact]
+    public async Task A_remote_only_server_is_up_while_its_mesh_agent_is_connected_and_says_its_health_is_not_read()
+    {
+        var o = new NetworkOpsOptions { MeshUrl = "https://kor-mesh01", MeshCertSha256 = new string('A', 64), MeshUser = "u", MeshPassword = "p" };
+        var state = new MeshState(TimeProvider.System);
+        var collector = new Kor.Operations.NetworkOps.Service.Rack.RackCollector(Microsoft.Extensions.Options.Options.Create(o), new Kor.Operations.NetworkOps.Service.Power.PowerState(), state);
+        var fs01 = new RackDevice { Name = "KOR-FS01 (file server)", Kind = "Server", Collector = "Mesh", Address = "KOR-FS01", MeshName = "Kor-FS01" };
+        var mesh01 = new RackDevice { Name = "KOR-MESH01", Kind = "Server", Collector = "MeshServer", Address = "192.168.1.27" };
+        var none = new Dictionary<string, string>();
+
+        Assert.False((await collector.CollectAsync(fs01, none, default)).Reachable);           // no MeshCentral read yet: nothing claimed
+        Assert.False((await collector.CollectAsync(mesh01, none, default)).Reachable);
+
+        state.Update([], [new MeshNode("node//fs", "Kor-FS01", "mesh//SRV", 1), new MeshNode("node//pc", "KOR-216", "mesh//PCS", 5), new MeshNode("node//rds", "Kor-RDS01", "mesh//SRV", 0)]);
+        var up = await collector.CollectAsync(fs01, none, default);
+        Assert.True(up.Reachable);
+        Assert.Contains("health not read", up.Summary);
+        Assert.Equal("node//fs", up.Facts["mesh.node"]);
+
+        var rds = new RackDevice { Name = "KOR-RDS01", Kind = "Server", Collector = "Mesh", Address = "KOR-RDS01", MeshName = "Kor-RDS01" };
+        Assert.Contains("not connected", (await collector.CollectAsync(rds, none, default)).Error);
+
+        var server = await collector.CollectAsync(mesh01, none, default);
+        Assert.True(server.Reachable);
+        Assert.Equal("MeshCentral answering · 2 of 3 agents connected", server.Summary);   // conn 5 counts as connected
+    }
+
     // ---- the install script
 
     [Theory]

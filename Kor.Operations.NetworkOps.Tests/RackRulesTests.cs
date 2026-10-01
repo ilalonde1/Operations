@@ -234,9 +234,12 @@ public sealed class RackRulesTests
     public void The_shipped_rack_configuration_is_complete_and_every_channel_is_pinned()
     {
         var o = PowerTests.Shipped();
-        var collectors = new[] { "Esxi", "Synology", "Veeam", "UniFi", "Internet", "CoreSwitch", "Ups", "WindowsServer" };
+        var collectors = new[] { "Esxi", "Synology", "Veeam", "UniFi", "Internet", "CoreSwitch", "Ups", "WindowsServer", "Mesh", "MeshServer" };
         var kinds = new[] { RackKinds.Host, RackKinds.Storage, RackKinds.Ups, RackKinds.Backup, RackKinds.Network, RackKinds.Internet, RackKinds.Server };
-        Assert.Equal(13, o.Rack.Count);
+        // 13 read directly, + FS01 and RDS01 through remote control only, + KOR-MESH01 itself (2026-09-30).
+        Assert.Equal(16, o.Rack.Count);
+        if (o.Rack.Any(d => d.Collector is "Mesh" or "MeshServer"))
+            Assert.Equal(64, o.MeshCertSha256.Length);   // MeshCentral is pinned like every other channel
         Assert.Equal(o.Rack.Count, o.Rack.Select(d => d.Name).Distinct(StringComparer.OrdinalIgnoreCase).Count());
         foreach (var d in o.Rack)
         {
