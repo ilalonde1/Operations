@@ -24,7 +24,8 @@ namespace Kor.Operations.NetworkOps.Service.Sweep;
 //
 // A PC that could not be probed keeps its findings exactly as they were: not seeing a fault is
 // not the fault being fixed.
-internal sealed class HealthSweeper(NetworkOpsStore store, IDigestSender digest, Agents.MachineRunner runner, IOptions<NetworkOpsOptions> options, ILogger<HealthSweeper> log)
+internal sealed class HealthSweeper(NetworkOpsStore store, IDigestSender digest, Agents.MachineRunner runner, Agents.AgentHub agents,
+    IOptions<NetworkOpsOptions> options, ILogger<HealthSweeper> log)
 {
     public const int HistoryDays = 90;
 
@@ -44,6 +45,9 @@ internal sealed class HealthSweeper(NetworkOpsStore store, IDigestSender digest,
             async (h, c) => runs.Add(await runner.RunAsync(h, script, timeout, wantsIdle: true, c)));
 
         var now = DateTime.UtcNow;
+        // Which PCs have an agent, and the version APP01 ships: the agent's own health is judged with each check.
+        var installed = await store.AgentRecordsAsync(ct);
+        var shipped = Agents.AgentInstaller.PackageVersionOrNull();
         var notify = new List<(int DeviceId, DeviceChanges Changes)>();
         int ok = 0, unreadable = 0, findings = 0, factChanges = 0, resolutions = 0;
         foreach (var r in runs.OrderBy(r => r.Computer, StringComparer.OrdinalIgnoreCase))
@@ -77,6 +81,7 @@ internal sealed class HealthSweeper(NetworkOpsStore store, IDigestSender digest,
 
             // 4. findings: rules on the snapshot, predictions on the trends
             var raised = HealthRules.Evaluate(snap).Concat(Predictions.Evaluate(snap with { CollectedAt = now }, history))
+                .Concat(AgentRules.Evaluate(AgentStateOf(r.Computer, installed), answeredOverNetwork: r.Stages?.StartsWith("agent:", StringComparison.Ordinal) != true, shipped, now))
                 .GroupBy(f => f.RuleKey).Select(g => g.OrderByDescending(f => f.Severity).First()).ToList();
             findings += raised.Count;
 
@@ -115,5 +120,13 @@ internal sealed class HealthSweeper(NetworkOpsStore store, IDigestSender digest,
                       (unreadable > 0 ? $", {unreadable} unreadable" : "") + (sent ? ", digest mailed" : "");
         log.LogInformation("Health sweep: {Summary}", summary);
         return summary;
+    }
+
+    /// <summary>The agent as the rules see it: installed (SQL), heard right now and which version (the hub, which is live).</summary>
+    private AgentState? AgentStateOf(string device, IReadOnlyDictionary<string, NetworkOpsStore.AgentRecord> installed)
+    {
+        if (!installed.TryGetValue(device, out var rec)) return null;
+        var live = agents.Status(device);
+        return new AgentState(rec.Version, live?.Version is { Length: > 0 } v ? v : rec.LastVersion, live?.Connected == true, live?.LastPollUtc ?? rec.LastContactUtc);
     }
 }

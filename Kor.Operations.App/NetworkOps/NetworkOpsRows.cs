@@ -28,6 +28,11 @@ public sealed class FleetRow
     public string Kind => Device.Kind;
     /// <summary>Who was on the PC at the last check ("kevinw · active", "nobody signed in").</summary>
     public string Presence => Device.Presence ?? "";
+
+    /// <summary>The agent in a word or two: "connected", "quiet 3 h ago", or blank for a PC without one (the version is in the PC's window).</summary>
+    public string Agent => Device.AgentVersion is null ? ""
+        : Device.AgentConnected ? "connected"
+        : $"quiet {CommandCenterView.Ago(Device.AgentLastContactUtc, DateTime.UtcNow)}";
     public bool IsRack => Kor.Operations.NetworkOps.Core.Rack.RackKinds.IsRack(Device.Kind);
 
     public string StateLabel => NetworkOpsText.Label(State);

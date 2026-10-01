@@ -9,7 +9,7 @@ namespace Kor.Operations.NetworkOps.Service.Agents;
 // remove-agent), so it is queued, audited and shown with everything else done to that PC. The agent files travel
 // with the service (the "agent" folder beside the service's exe), so deploying the service is what makes a new
 // agent version available, and installing again is the upgrade.
-internal sealed class AgentInstaller(NetworkOpsStore store, AgentHub hub)
+internal sealed class AgentInstaller(NetworkOpsStore store, AgentHub hub, Microsoft.Extensions.Options.IOptions<NetworkOpsOptions> options)
 {
     public const string InstallKind = "install-agent";
     public const string RemoveKind = "remove-agent";
@@ -22,6 +22,9 @@ internal sealed class AgentInstaller(NetworkOpsStore store, AgentHub hub)
     public static string PackageVersion
         => FileVersionInfo.GetVersionInfo(Path.Combine(PackageDir, RemoteAgentInstall.ExeName)).ProductVersion?.Split('+')[0] ?? "unknown";
 
+    /// <summary>The shipped version, or null when the package is missing (a test host, a broken deploy).</summary>
+    public static string? PackageVersionOrNull() => File.Exists(Path.Combine(PackageDir, RemoteAgentInstall.ExeName)) ? PackageVersion : null;
+
     public static bool IsAgentKind(string kind) => kind is InstallKind or RemoveKind;
 
     /// <returns>(ok, what happened) for the action's Detail.</returns>
@@ -33,6 +36,9 @@ internal sealed class AgentInstaller(NetworkOpsStore store, AgentHub hub)
             return (true, await RemoteAgentInstall.RemoveAsync(device, ct).ConfigureAwait(false));
         }
 
+        // Removing is always allowed (it is how you back out); installing is not while agents are switched off.
+        if (!options.Value.AgentsEnabled)
+            return (false, "agents are switched off on APP01 (AgentsEnabled = false): nothing was installed");
         var version = PackageVersion;
         var key = AgentApi.NewKey();
         var before = hub.Status(device)?.LastPollUtc;

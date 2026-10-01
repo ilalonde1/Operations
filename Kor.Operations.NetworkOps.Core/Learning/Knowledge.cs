@@ -235,6 +235,16 @@ public static class Knowledge
             "A dead battery is how the 10 Sep 2026 outage dropped both servers."),
         E("ups.short-runtime", "On a full battery the UPS would last under 15 minutes at the current load.", ["An ageing battery", "More load than before"],
             ["Check the battery age; rebalance the load between the two UPSes"], "Less time for a clean shutdown in an outage."),
+
+        E("agent-silent", "This PC has the NetworkOps agent, and the PC is on, but the agent is not calling in to APP01. Checks fall back to the network route.",
+            ["The agent service was stopped or crashed (it restarts itself a minute after a crash, three times a day)", "Something on the PC is blocking it: antivirus, or the firewall to APP01 port 8445",
+             "Its key no longer matches (it was reinstalled from somewhere else, or removed)"],
+            ["Read C:\\ProgramData\\KorOperations\\Agent\\agent.log on the PC (it says why it cannot reach the server)", "Reinstall the agent from this window"],
+            "Checks still run over the network while the PC is reachable; when it is off the network at sweep time nothing is learned, and idle time is not read."),
+        E("agent-outdated", "This PC's NetworkOps agent is older than the version APP01 ships.",
+            ["APP01 was updated and this PC has not been reinstalled since"],
+            ["Reinstall the agent from this window (reinstalling is the upgrade), or include it in the next rollout"],
+            "It keeps working; it just lacks whatever the newer agent fixed."),
     }.ToDictionary(e => e.Family, StringComparer.Ordinal);
 
     private static KnowledgeEntry E(string family, string meaning, string[] causes, string[] fixes, string ifIgnored)

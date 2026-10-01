@@ -93,6 +93,45 @@ internal sealed partial class NetworkOpsStore : Agents.IAgentDirectory
         return map;
     }
 
+    public sealed record RolloutCandidate(int DeviceId, string Name, string? AgentVersion);
+
+    /// <summary>
+    /// The PCs a rollout would touch next, in name order: in the directory, answering the network recently, and either
+    /// without an agent or with one older than <paramref name="shippedVersion"/> (by what was installed).
+    /// </summary>
+    public async Task<IReadOnlyList<RolloutCandidate>> AgentRolloutCandidatesAsync(DateTime reachableSinceUtc, string shippedVersion, CancellationToken ct)
+    {
+        await using var c = await OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = Cmd(c, """
+            SELECT d.DeviceId, d.Name, CASE WHEN a.RemovedUtc IS NULL THEN a.Version END
+            FROM NetworkOps.Devices d LEFT JOIN NetworkOps.Agents a ON a.DeviceId = d.DeviceId
+            WHERE d.InDirectory = 1 AND d.RetiredUtc IS NULL AND d.Source = 'AD' AND d.LastReachableUtc >= @since
+            ORDER BY d.Name;
+            """);
+        cmd.Parameters.Add("@since", SqlDbType.DateTime2).Value = reachableSinceUtc;
+        var list = new List<RolloutCandidate>();
+        await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        while (await r.ReadAsync(ct).ConfigureAwait(false))
+        {
+            var v = r.IsDBNull(2) ? null : r.GetString(2);
+            if (v is null || !Version.TryParse(v, out var have) || !Version.TryParse(shippedVersion, out var ship) || have < ship)
+                list.Add(new RolloutCandidate(r.GetInt32(0), r.GetString(1), v));
+        }
+        return list;
+    }
+
+    /// <summary>An action that starts running at once (a rollout's per-PC install): recorded for the audit, never claimed by the ActionRunner.</summary>
+    public async Task<long> StartActionAsync(int deviceId, string kind, string by, string requestJson, CancellationToken ct)
+    {
+        await using var c = await OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = Cmd(c, "INSERT NetworkOps.Actions (DeviceId, Kind, RequestedBy, Status, BeforeJson) OUTPUT inserted.ActionId VALUES (@d, @k, @by, 'Running', @req);");
+        cmd.Parameters.Add("@d", SqlDbType.Int).Value = deviceId;
+        cmd.Parameters.Add("@k", SqlDbType.VarChar, 48).Value = kind;
+        cmd.Parameters.Add("@by", SqlDbType.NVarChar, 128).Value = by;
+        cmd.Parameters.Add("@req", SqlDbType.NVarChar, -1).Value = requestJson;
+        return (long)(await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false))!;
+    }
+
     /// <summary>
     /// A PC whose agent has just come back (a laptop reconnecting, a PC switched on) is checked at once if its last
     /// health check is older than <paramref name="maxAge"/> and none is already waiting. Null when nothing was queued.

@@ -29,6 +29,18 @@ public sealed class NetworkOpsOptions
     /// <summary>A directory machine not reachable for this long is itself a finding: silence is a finding.</summary>
     public int SilentAfterDays { get; set; } = 7;
 
+    // ---- the endpoint agent (Agents/). docs/runbooks/NetworkOps.Agent.md
+
+    /// <summary>
+    /// THE KILL SWITCH. False: no job is handed to any agent -- every check and fix takes the network route, exactly as
+    /// before the agent existed -- and no agent is installed. Agents keep calling in and stay idle. Takes effect on a
+    /// service restart (KOR_NETWORKOPS_AGENTSENABLED=false on APP01, or appsettings.json).
+    /// </summary>
+    public bool AgentsEnabled { get; set; } = true;
+
+    /// <summary>How many PCs one rollout run installs or upgrades, one at a time, stopping at the first failure.</summary>
+    public int AgentRolloutBatch { get; set; } = 5;
+
     // ---- the Command Center API (Api/ApiHost.cs). Off unless ApiPort AND ApiCertThumbprint are set.
     // Entra: every request needs a token for ApiAudience from ApiTenantId carrying scope
     // NetworkOps.Access and role NetworkOps.Admin; Conditional Access requires MFA to get one.

@@ -41,6 +41,9 @@ internal sealed class TriggerPoller(NetworkOpsStore store, HealthSweeper sweeper
                 ? c => sweeper.SweepAsync(t.DeviceName is null ? null : [t.DeviceName], c)
                 : t.JobName == RackSweepJob.JobName && t.DeviceName is not null
                 ? c => services.GetRequiredService<RackSweepJob>().SweepAsync(t.DeviceName, c)
+                // On demand only, never scheduled: the fleet is not changed unless someone asks.
+                : t.JobName == Agents.AgentRollout.JobName
+                ? c => services.GetRequiredService<Agents.AgentRollout>().RunAsync(t.RequestedBy, c)
                 : SchedulingCatalog.All.FirstOrDefault(s => s.Name.Equals(t.JobName, StringComparison.OrdinalIgnoreCase)) is { } entry
                     ? ((INetworkOpsJob)services.GetRequiredService(entry.JobType)).RunAsync
                     : null;

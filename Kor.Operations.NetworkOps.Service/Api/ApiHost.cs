@@ -175,6 +175,9 @@ internal sealed class ApiHost(IOptions<NetworkOpsOptions> options, NetworkOpsSto
             var runId = await s.QueueActionAsync(id, kind, ApiAccess.UserOf(h.User), System.Text.Json.JsonSerializer.Serialize(new { action = body.Action }), ct);
             return Results.Accepted($"/api/actions/{runId}", new { actionId = runId });
         });
+        // The next batch of the fleet rollout (Agents/AgentRollout.cs): one at a time, stops at the first failure.
+        api.MapPost("/agents/rollout", async (HttpContext h, NetworkOpsStore s, CancellationToken ct) =>
+            Results.Accepted(null, new { triggerId = await s.QueueJobAsync(Agents.AgentRollout.JobName, ApiAccess.UserOf(h.User), ct) }));
         api.MapGet("/actions/{id:long}", async (long id, NetworkOpsStore s, CancellationToken ct) =>
             await s.ActionAsync(id, ct) is { } a ? Results.Ok(a) : Results.NotFound());
 

@@ -220,7 +220,9 @@
                             </Style>
                         </DataGrid.RowStyle>
                         <DataGrid.Columns>
-                            <DataGridTemplateColumn Header="State" Width="140" SortMemberPath="State">
+                            <!-- Fixed widths + star minimums must fit the grid at the window's default size, or WPF squeezes
+                                 the fixed columns and clips their headers ("Open" rendered as "Ope", 2026-09-30). -->
+                            <DataGridTemplateColumn Header="State" Width="125" SortMemberPath="State">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <Border CornerRadius="9" Padding="8,2" HorizontalAlignment="Left" VerticalAlignment="Center"
@@ -230,13 +232,14 @@
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
-                            <DataGridTextColumn Header="PC"           Binding="{Binding Name}"            Width="100"/>
-                            <DataGridTextColumn Header="What matters" Binding="{Binding Headline}"        Width="2*" MinWidth="220"/>
+                            <DataGridTextColumn Header="PC"           Binding="{Binding Name}"            Width="95"/>
+                            <DataGridTextColumn Header="What matters" Binding="{Binding Headline}"        Width="2*" MinWidth="190"/>
                             <DataGridTextColumn Header="Open"         Binding="{Binding LiveCount}"       Width="50"/>
-                            <DataGridTextColumn Header="On it now"    Binding="{Binding Presence}"        Width="*" MinWidth="160"/>
-                            <DataGridTextColumn Header="Model"        Binding="{Binding Model}"           Width="130"/>
-                            <DataGridTextColumn Header="Checked"      Binding="{Binding LastCheckedText}" Width="90"/>
-                            <DataGridTextColumn Header="Last seen"    Binding="{Binding LastSeenText}"    Width="90"/>
+                            <DataGridTextColumn Header="On it now"    Binding="{Binding Presence}"        Width="*" MinWidth="140"/>
+                            <DataGridTextColumn Header="Agent"        Binding="{Binding Agent}"           Width="90"/>
+                            <DataGridTextColumn Header="Model"        Binding="{Binding Model}"           Width="115"/>
+                            <DataGridTextColumn Header="Checked"      Binding="{Binding LastCheckedText}" Width="80"/>
+                            <DataGridTextColumn Header="Last seen"    Binding="{Binding LastSeenText}"    Width="80"/>
                         </DataGrid.Columns>
                     </DataGrid>
                 </Grid>
