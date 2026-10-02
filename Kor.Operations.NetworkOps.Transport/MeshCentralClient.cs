@@ -1,6 +1,5 @@
 #nullable enable
 using System.Net.WebSockets;
-using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 
@@ -18,8 +17,8 @@ public sealed record MeshNode(string Id, string Name, string MeshId, int Conn)
 // Reads KOR-MESH01's device list, read-only, as the "networkops" MeshCentral account -- which has membership of the
 // two device groups and no device rights at all (no remote control, terminal, files): listing is all NetworkOps needs.
 // The protocol is MeshCentral's own control channel, as its meshctrl tool uses it: a websocket to /control.ashx with
-// an x-meshauth header (base64 user, base64 password), then {"action":"nodes"}. MESH01's certificate is self-signed and
-// trusted by its SHA-256 alone.
+// an x-meshauth header (base64 user, base64 password), then {"action":"nodes"}. MESH01's certificate is trusted by
+// MeshTrust: a publicly trusted one for its name (Let's Encrypt since 2026-10-02), or the pinned self-signed one.
 public sealed class MeshCentralClient(Uri baseUrl, string certSha256, string user, string password)
 {
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(30);
@@ -29,8 +28,7 @@ public sealed class MeshCentralClient(Uri baseUrl, string certSha256, string use
         using var deadline = CancellationTokenSource.CreateLinkedTokenSource(ct);
         deadline.CancelAfter(Timeout);
         using var ws = new ClientWebSocket();
-        var pin = certSha256.Replace(":", "").Replace(" ", "").ToUpperInvariant();
-        ws.Options.RemoteCertificateValidationCallback = (_, cert, _, _) => cert is not null && Convert.ToHexString(SHA256.HashData(cert.GetRawCertData())) == pin;
+        ws.Options.RemoteCertificateValidationCallback = (_, cert, _, errors) => MeshTrust.Accepts(cert?.GetRawCertData(), errors, certSha256);
         ws.Options.SetRequestHeader("x-meshauth", B64(user) + "," + B64(password));
         var url = new UriBuilder(baseUrl) { Scheme = "wss", Path = "/control.ashx" }.Uri;
         await ws.ConnectAsync(url, deadline.Token).ConfigureAwait(false);

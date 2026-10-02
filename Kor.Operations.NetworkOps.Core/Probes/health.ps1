@@ -316,7 +316,10 @@ $session = Try-Block 'session' {
         if ($e) { $lockedSince = $e.TimeCreated.ToString('s') }
     }
     # quser: USERNAME SESSIONNAME ID STATE IDLE-TIME LOGON-TIME; a disconnected session has no SESSIONNAME.
-    $remote = @(quser 2>$null | Select-Object -Skip 1 | ForEach-Object {
+    # v9: through cmd, which swallows its stderr. With nobody signed in quser writes "No User exists for *" to stderr, and
+    # `quser 2>$null` under ErrorActionPreference Stop turns that into a terminating error -- "nobody signed in" failed
+    # the whole block (probe-incomplete on 6 freshly restarted PCs, 2026-10-02; reproduced on KOR-207, fixed the same run).
+    $remote = @(cmd.exe /c 'quser 2>nul' | Select-Object -Skip 1 | ForEach-Object {
         $f = ($_.Trim() -replace '^>', '') -split '\s{2,}'
         if ($f.Count -ge 6) { $u = $f[0]; $name = $f[1]; $state = $f[3]; $idle = $f[4] }
         elseif ($f.Count -eq 5) { $u = $f[0]; $name = ''; $state = $f[2]; $idle = $f[3] }
@@ -384,7 +387,7 @@ $console = Try-Block 'console' {
 }
 
 [pscustomobject]@{
-    ProbeVersion  = 8
+    ProbeVersion  = 9
     Console       = $console
     Wake          = $wake
     Session       = $session
