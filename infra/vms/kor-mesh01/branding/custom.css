@@ -112,9 +112,11 @@ body:not(.login) .btn { border-radius: 6px; font-weight: 600; font-size: 14px; l
 #masthead .kor-remote-name { color: #fff; font-size: 19px; font-weight: 600; letter-spacing: .2px; padding-left: 14px; border-left: 1px solid rgba(255, 255, 255, .25); }
 
 /* The "Home help download" link in the header (custom.js). */
-#korHelpDownload { color: #fff !important; font-size: 13px; font-weight: 600; text-decoration: none; padding: 6px 12px;
-    border: 1px solid rgba(255, 255, 255, .35); border-radius: 6px; margin-right: 12px; white-space: nowrap; }
-#korHelpDownload:hover { background: rgba(255, 255, 255, .12); border-color: rgba(255, 255, 255, .6); }
+/* A white button with blue-slate writing, so it stands out on the navy header (Ian 2026-10-02). */
+#korHelpDownload { background: #FFFFFF; color: #435363 !important; font-size: 13px; font-weight: 700; text-decoration: none;
+    padding: 7px 14px; border: none; border-radius: 6px; margin-right: 14px; white-space: nowrap;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .25); }
+#korHelpDownload:hover { background: #EEF2F6; color: #2F3C48 !important; }
 
 /* The left icon bar: deep navy; the chosen page a white tab joined to the content. */
 #page_leftbar { background: #2F3C48 !important; }
