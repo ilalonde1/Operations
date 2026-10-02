@@ -10,15 +10,47 @@
     "agentPong": 300,
     "mpsPort": 0,
     "noAgentUpdate": false,
-    "_note": "KOR NetworkOps remote screen. LAN + VPN only (ufw). Built 2026-09-30."
+    "_note": "KOR NetworkOps remote screen. LAN + VPN only (ufw). Built 2026-09-30; cleaned up 2026-10-01 (branding, consent wording, idle timeout, admin pages trimmed)."
   },
   "domains": {
     "": {
       "title": "KOR Remote",
-      "title2": "NetworkOps",
+      "title2": "",
+      "siteStyle": 3,
+      "titlePicture": "kor-remote-logo.png",
+      "loginPicture": "kor-remote-logo.png",
+      "welcomeText": "Remote help for KOR staff and machines. Reachable from the office network and the VPN only.",
+      "footer": "KOR Structural · IT",
+      "loginFooter": "KOR Structural · IT",
+      "nightMode": 0,
+      "minify": true,
       "newAccounts": false,
       "userNameIsEmail": true,
       "passwordRequirements": { "min": 16, "force2factor": true, "hint": false },
+      "userSessionIdleTimeout": 30,
+      "_myServer": "The server's own admin pages: backups are Veeam's (the VM), upgrades are pinned by npm, so none of these is used from the browser.",
+      "myServer": { "Backup": false, "Restore": false, "Upgrade": false, "Console": false, "Trace": false, "ErrorLog": true, "Config": false },
+      "_consentMessages": "What a person at the PC sees when someone connects. {0} is the name of who is connecting.",
+      "consentMessages": {
+        "title": "KOR Remote",
+        "desktop": "{0} from KOR IT would like to see your screen to help. Allow?",
+        "terminal": "{0} from KOR IT would like to open a command window on this PC. Allow?",
+        "files": "{0} from KOR IT would like to see the files on this PC. Allow?",
+        "consentTimeout": 30,
+        "autoAcceptOnTimeout": false
+      },
+      "notificationMessages": {
+        "title": "KOR Remote",
+        "desktop": "{0} from KOR IT is viewing your screen.",
+        "terminal": "{0} from KOR IT has a command window open on this PC.",
+        "files": "{0} from KOR IT is looking at the files on this PC."
+      },
+      "_agentCustomization": "Names a NEW install shows (tray, consent bar). NOT serviceName: NetworkOps' installer and the Webroot override rely on the existing service and folder.",
+      "agentCustomization": {
+        "displayName": "KOR Remote",
+        "description": "Remote help from KOR IT",
+        "companyName": "KOR Structural"
+      },
       "agentConfig": [ "webSocketMaskOverride=1" ]
     }
   }

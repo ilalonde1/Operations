@@ -1,0 +1,79 @@
+/* KOR Remote: KOR's look on MeshCentral 1.2.5. Served from /opt/meshcentral/meshcentral-web/public/styles/custom.css,
+   which MeshCentral links on every page AFTER its own stylesheet; the !important wins over its inline styles.
+   KOR navy #435363 · deep navy #2F3C48 · accent orange #FF5B35 · text #3F5364 · border #CBD2D9
+   Selectors are MeshCentral's own ids (login2.handlebars, default3.handlebars): if an upgrade renames one, that piece
+   falls back to MeshCentral's default look -- nothing breaks. */
+
+/* ===== The login page ===== */
+body.login {
+    background: linear-gradient(160deg, #435363 0%, #2F3C48 100%) !important;
+    font-family: "Segoe UI", system-ui, sans-serif !important;
+}
+body.login #backgroundImage { display: none !important; }             /* the stock server-rack picture */
+
+body.login #loginPicture { max-width: 320px; height: auto; margin: 0 auto 26px; display: block; }
+
+/* Every panel the sign-in can show: password, 2FA code, reset, push. */
+body.login #loginpanel, body.login #tokenpanel, body.login #resettokenpanel, body.login #resetpanel,
+body.login #resetpasswordpanel, body.login #waitpushpanel, body.login #checkemailpanel {
+    background: #FFFFFF !important;
+    border: none !important;
+    border-radius: 12px !important;
+    box-shadow: 0 18px 50px rgba(0, 0, 0, .30) !important;
+    padding: 22px 26px !important;
+    color: #3F5364 !important;
+}
+body.login #loginpanel *, body.login #tokenpanel *, body.login #resettokenpanel *, body.login #resetpanel *,
+body.login #resetpasswordpanel *, body.login #waitpushpanel *, body.login #checkemailpanel * {
+    background-color: transparent;
+}
+
+body.login input[type=text], body.login input[type=password], body.login input[type=email], body.login input[type=tel] {
+    background: #FFFFFF !important;
+    border: 1px solid #CBD2D9 !important;
+    border-radius: 6px !important;
+    padding: 9px 11px !important;
+    font-size: 14px !important;
+    color: #3F5364 !important;
+    box-shadow: none !important;
+    outline: none !important;
+}
+body.login input[type=text]:focus, body.login input[type=password]:focus, body.login input[type=email]:focus, body.login input[type=tel]:focus {
+    border-color: #435363 !important;
+    box-shadow: 0 0 0 3px rgba(67, 83, 99, .18) !important;
+}
+/* MeshCentral tints the focused field yellow by its id; and the browser's own autofill yellow. */
+body.login #username, body.login #password, body.login #tokenInput {
+    background-color: #FFFFFF !important;
+    border: 1px solid #CBD2D9 !important;
+}
+body.login #username:focus, body.login #password:focus, body.login #tokenInput:focus {
+    background-color: #FFFFFF !important;
+    border: 1px solid #435363 !important;
+    box-shadow: 0 0 0 3px rgba(67, 83, 99, .18) !important;
+}
+body.login input:-webkit-autofill { -webkit-box-shadow: 0 0 0 40px #FFFFFF inset !important; -webkit-text-fill-color: #3F5364 !important; }
+
+body.login input[type=submit], body.login input[type=button], body.login button {
+    background: #435363 !important;
+    color: #FFFFFF !important;
+    border: none !important;
+    border-radius: 6px !important;
+    padding: 9px 14px !important;
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    cursor: pointer;
+}
+body.login input[type=submit]:hover, body.login input[type=button]:hover, body.login button:hover { background: #2F3C48 !important; }
+
+body.login #welcomeText { color: rgba(255, 255, 255, .72) !important; font-size: 13px; }
+body.login #flink, body.login #flink a { color: rgba(255, 255, 255, .5) !important; font-size: 12px; }
+/* "Root Certificate" and "Terms & Privacy": nothing for KOR staff to read there. */
+body.login #flink a[href*="MeshServerRootCert"], body.login #flink a[href="terms"] { display: none !important; }
+
+/* ===== Signed in (siteStyle 3): the header bar in KOR navy with an orange rule. ===== */
+#masthead.masthead-container {
+    background: #435363 !important;
+    border-bottom: 3px solid #FF5B35 !important;
+}
+#masthead .masthead-title img { max-height: 40px; width: auto; }

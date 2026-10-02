@@ -44,3 +44,13 @@ button. Built 2026-09-30. Everything here is what built it; rebuilding = running
 A direct-to-host OVA import leaves a vCenter-type ("vpx") MAC, and vSwitch0 (MAC change / forged transmits = reject)
 drops every frame. The guest gets its IP (tools report it) and nothing answers. The static MAC change in the deploy did
 NOT stick here the first time — so the deploy now reads it back and stops, and `fix-mac.ps1` is the cure.
+
+## Branding and tidy-up (2026-10-01)
+`meshcentral-config.json` is the live config. `branding/` holds what it refers to:
+- `kor-remote-logo.png`, made by `make-branding.py` from the app's logo (navy taken out, so it sits on any background);
+- `custom.css`, KOR's colours on the login page and the signed-in header (MeshCentral links `styles/custom.css` on every page);
+- `apply-branding.sh`, run ON the VM with the three files beside it: backs up the live config, validates the JSON,
+  installs, restarts MeshCentral once and restores the backup if it does not answer in 60 s.
+A `custom.css` change alone needs no restart: install it to `/opt/meshcentral/meshcentral-web/public/styles/`.
+`agentCustomization` renames what a NEW install shows (tray, consent bar); never set `serviceName`: NetworkOps'
+installer and the Webroot override rely on the existing service and folder.
