@@ -23,6 +23,10 @@
             <TextBlock x:Name="FindingTitle" FontSize="17" FontWeight="SemiBold" TextWrapping="Wrap" Foreground="{StaticResource Text.Primary}"/>
             <TextBlock x:Name="PresenceText" Foreground="{StaticResource Text.Secondary}" Margin="0,4,0,0" TextWrapping="Wrap"/>
 
+            <Border x:Name="NoFixNote" Visibility="Collapsed" Background="#F6F8FA" BorderBrush="#E5E7EB" BorderThickness="1" CornerRadius="6" Padding="12,9" Margin="0,14,0,0">
+                <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Text.Primary}"
+                           Text="There is no one-click fix for this yet. Ask Claude… on the finding works it out with everything NetworkOps knows; or type your own PowerShell below."/>
+            </Border>
             <TextBlock Text="CHOOSE A FIX" Style="{StaticResource Ops.Label}" Margin="0,16,0,6"/>
             <ListBox x:Name="FixList" SelectionChanged="FixList_SelectionChanged" MaxHeight="320" BorderBrush="#E5E7EB" Padding="2">
                 <ListBox.ItemTemplate>
@@ -37,7 +41,7 @@
 
             <StackPanel x:Name="ParamPanel" Visibility="Collapsed" Margin="0,10,0,0">
                 <TextBlock x:Name="ParamLabel" Style="{StaticResource Ops.Label}"/>
-                <TextBox x:Name="ParamBox" AcceptsReturn="True" TextWrapping="NoWrap" FontFamily="Consolas" MinHeight="32"
+                <TextBox x:Name="ParamBox" AcceptsReturn="True" TextWrapping="NoWrap" FontFamily="Consolas" MinHeight="32" TextChanged="ParamBox_TextChanged"
                          VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" MaxHeight="220"/>
             </StackPanel>
 

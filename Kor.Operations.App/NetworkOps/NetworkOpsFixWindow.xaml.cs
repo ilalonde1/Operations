@@ -20,8 +20,16 @@ public partial class NetworkOpsFixWindow : Window
         FindingTitle.Text = findingTitle;
         PresenceText.Text = string.IsNullOrEmpty(presence) ? $"{deviceName}: who is on it is not known yet." : $"{deviceName} at the last check: {presence}";
         FixList.ItemsSource = fixes;
+        // Only the general "run a command" is on offer: say so, rather than present an empty box as if it were the fix.
+        NoFixNote.Visibility = fixes.Count > 0 && fixes.All(f => f.Id == "run-command") ? Visibility.Visible : Visibility.Collapsed;
         if (fixes.Count > 0) FixList.SelectedIndex = 0;
     }
+
+    /// <summary>The run button is live only when the chosen fix has everything it needs.</summary>
+    private void UpdateRunnable()
+        => RunBtn.IsEnabled = Chosen is { } f && (f.ParamLabel is null || !string.IsNullOrWhiteSpace(ParamBox.Text));
+
+    private void ParamBox_TextChanged(object sender, TextChangedEventArgs e) => UpdateRunnable();
 
     public FixOption? Chosen => FixList.SelectedItem as FixOption;
     public string? Param => ParamPanel.Visibility == Visibility.Visible ? ParamBox.Text : null;
@@ -29,8 +37,7 @@ public partial class NetworkOpsFixWindow : Window
     private void FixList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         var f = Chosen;
-        RunBtn.IsEnabled = f is not null;
-        if (f is null) return;
+        if (f is null) { RunBtn.IsEnabled = false; return; }
         ParamPanel.Visibility = f.ParamLabel is null ? Visibility.Collapsed : Visibility.Visible;
         ParamLabel.Text = f.ParamLabel ?? "";
         ParamBox.Text = f.PrefilledParam ?? "";
@@ -41,15 +48,12 @@ public partial class NetworkOpsFixWindow : Window
         RunBtn.Content = f.Disruptive ? "Restart it" : "Run fix";
         // A restart someone is in the middle of using looks like what it is: the danger style, not the inviting one.
         RunBtn.Style = (Style)FindResource(warn ? "Ops.Danger" : "Ops.Primary");
+        UpdateRunnable();
     }
 
     private void Run_Click(object sender, RoutedEventArgs e)
     {
-        if (Chosen is { ParamLabel: not null } && string.IsNullOrWhiteSpace(ParamBox.Text))
-        {
-            MessageBox.Show(this, $"{Chosen.ParamLabel} is needed.", "Fix", MessageBoxButton.OK, MessageBoxImage.Information);
-            return;
-        }
+        if (!RunBtn.IsEnabled) return;   // Enter (IsDefault) while the box is still empty
         DialogResult = true;
     }
 }

@@ -127,7 +127,7 @@ public static class HealthRules
         // A BIOS fan curve that holds the fans high at idle (KOR-305, KOR-206-N).
         if (s.CoolingMode is { } mode && System.Text.RegularExpressions.Regex.IsMatch(mode, "Performance|Full Speed", System.Text.RegularExpressions.RegexOptions.IgnoreCase))
             f.Add(new("fan-profile-loud", Severity.Info, "Fans are set to a loud profile",
-                $"BIOS cooling mode is '{mode}'; 'Balance mode' is the quiet setting"));
+                $"BIOS cooling mode is '{mode}'; the quiet setting is 'Best Experience' on a P340, 'Balance mode' on a P350/P360"));
 
         // Real data on a drive nothing backs up (13 months of KOR-206-N's work lived only on D:).
         var outside = s.DataOutsideSystemDrive.Where(d => d.UsedGB >= 1).ToList();

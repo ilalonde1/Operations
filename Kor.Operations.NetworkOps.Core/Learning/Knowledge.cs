@@ -77,7 +77,7 @@ public static class Knowledge
             "Office components stay unpatched."),
         E("fan-profile-loud", "The BIOS fan profile holds the fans high even when the PC is idle and cool.",
             ["Lenovo 'Performance' or 'Best Performance' cooling mode (KOR-305, 206-N)"],
-            ["Set IntelligentCoolingPerformanceMode to 'Balance mode' (applies after a restart)", "If still loud when idle and cool: a dusty or failing fan (305's rear exhaust fan)"],
+            ["Fix… > Set the fans to the quiet profile: 'Best Experience' on a P340, 'Balance mode' on a P350/P360 (applies after a restart)", "If still loud when idle and cool: a dusty or failing fan (305's rear exhaust fan)"],
             "Noise complaints; no thermal risk."),
         E("unbacked-data", "Real data sits on a drive that no backup covers.",
             ["Work kept on a second local drive (13 months of 206-N's work lived only on D:)"],
