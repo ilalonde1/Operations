@@ -61,8 +61,15 @@ $volumes = Try-Block 'volumes' {
 }
 $physical = Try-Block 'physicalDisks' {
     @(Get-PhysicalDisk -ErrorAction Stop | ForEach-Object {
+        # v10: the drive letters on it and whether Windows boots from it, so a finding says "the data drive D:" and not
+        # only a model number (Ian, 2026-10-02: "which disk is this? His system disk? His secondary disk?").
+        $n = $_.DeviceId
+        $letters = @(Get-Partition -DiskNumber $n -ErrorAction SilentlyContinue | Where-Object { [int][char]$_.DriveLetter -gt 0 } |
+            ForEach-Object { [string]$_.DriveLetter }) -join ','
+        $disk = Get-Disk -Number $n -ErrorAction SilentlyContinue
         [pscustomobject]@{ Name = $_.FriendlyName; Media = [string]$_.MediaType; Bus = [string]$_.BusType
-            SizeGB = [math]::Round($_.Size / 1GB); Health = [string]$_.HealthStatus; Operational = [string]$_.OperationalStatus } })
+            SizeGB = [math]::Round($_.Size / 1GB); Health = [string]$_.HealthStatus; Operational = [string]$_.OperationalStatus
+            Letters = $letters; System = [bool]($disk -and ($disk.IsBoot -or $disk.IsSystem)) } })
 }
 $missingDisks = Try-Block 'missingDisks' {
     # A disk Windows has seen before but which is no longer present. Nameless entries are the
@@ -387,7 +394,7 @@ $console = Try-Block 'console' {
 }
 
 [pscustomobject]@{
-    ProbeVersion  = 9
+    ProbeVersion  = 10
     Console       = $console
     Wake          = $wake
     Session       = $session

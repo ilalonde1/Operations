@@ -74,9 +74,11 @@ public static class Predictions
         foreach (var d in s.DiskReliability.Where(d => d.Name is not null))
         {
             var name = d.Name!;
+            // The drive is named the way a person names it ("the data drive D:"), from probe v10 (Health/Drives).
+            var model = Drives.Model(s, name);
             if (d.WearPct is >= 80)
                 f.Add(new($"disk-wearing:{name.ToLowerInvariant()}", d.WearPct >= 90 ? Severity.Critical : Severity.Warning,
-                    "An SSD is wearing out", $"{name}: {d.WearPct}% of its rated write endurance used"));
+                    Drives.Title(s, name, "is wearing out", "An SSD is wearing out"), $"{model}: {d.WearPct}% of its rated write endurance used"));
             else if (d.WearPct is > 0)
             {
                 var pts = Window(h.Get(Metrics.SsdWearPct, name), now, days: 90);
@@ -84,25 +86,25 @@ public static class Predictions
                 {
                     var perDay = TheilSenPerDay(pts);
                     if (perDay > 0 && (100 - d.WearPct.Value) / perDay <= 365)
-                        f.Add(new($"disk-wearing:{name.ToLowerInvariant()}", Severity.Warning, "An SSD will wear out within a year",
-                            $"{name}: {d.WearPct}% used, rising {perDay * 30:0.#}% a month"));
+                        f.Add(new($"disk-wearing:{name.ToLowerInvariant()}", Severity.Warning, Drives.Title(s, name, "will wear out within a year", "An SSD will wear out within a year"),
+                            $"{model}: {d.WearPct}% used, rising {perDay * 30:0.#}% a month"));
                 }
             }
 
             if (d.ReadErrorsUncorrected is > 0)
-                f.Add(new($"disk-errors:{name.ToLowerInvariant()}", Severity.Critical, "A drive has unrecoverable read errors",
-                    $"{name}: {d.ReadErrorsUncorrected} uncorrected read errors -- copy its data off now"));
+                f.Add(new($"disk-errors:{name.ToLowerInvariant()}", Severity.Critical, Drives.Title(s, name, "has unrecoverable read errors", "A drive has unrecoverable read errors"),
+                    $"{model}: {d.ReadErrorsUncorrected} uncorrected read errors -- copy its data off now"));
             else
             {
                 var rise = Rise(h.Get(Metrics.DiskReadErrors, name), now) + Rise(h.Get(Metrics.DiskWriteErrors, name), now);
                 if (rise > 0)
-                    f.Add(new($"disk-errors:{name.ToLowerInvariant()}", Severity.Warning, "A drive has started logging errors",
-                        $"{name}: {rise} new read/write errors in the last week"));
+                    f.Add(new($"disk-errors:{name.ToLowerInvariant()}", Severity.Warning, Drives.Title(s, name, "has started logging errors", "A drive has started logging errors"),
+                        $"{model}: {rise} new read/write errors in the last week"));
             }
 
             if (d.PowerOnHours is >= 43_800 && media.TryGetValue(name, out var mt) && string.Equals(mt, "HDD", StringComparison.OrdinalIgnoreCase))
-                f.Add(new($"disk-aging:{name.ToLowerInvariant()}", Severity.Info, "An old spinning disk is still in service",
-                    $"{name}: {d.PowerOnHours / HoursPerYear:0.#} years powered on -- past the usual life of a hard drive"));
+                f.Add(new($"disk-aging:{name.ToLowerInvariant()}", Severity.Info, Drives.Title(s, name, "is an old spinning disk", "An old spinning disk is still in service"),
+                    $"{model}: {d.PowerOnHours / HoursPerYear:0.#} years powered on -- past the usual life of a hard drive"));
         }
 
         // ---- counts that are climbing: the same fault getting worse week on week

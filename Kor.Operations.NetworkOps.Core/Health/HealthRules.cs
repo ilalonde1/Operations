@@ -41,7 +41,7 @@ public static class HealthRules
         if (badBlocks > 0 || ntfs > 0 || resets >= 3 || unhealthy.Count > 0)
             f.Add(new("disk-failing", Severity.Critical, "A drive is failing",
                 $"14 d: {badBlocks} bad-block, {resets} controller resets, {ntfs} NTFS corruption" +
-                (unhealthy.Count > 0 ? $" | unhealthy: {string.Join("; ", unhealthy.Select(d => $"{d.Name} {d.Health}"))}" : "")));
+                (unhealthy.Count > 0 ? $" | unhealthy: {string.Join("; ", unhealthy.Select(d => $"{(Drives.Role(d) is { } r ? r + " " : "")}{d.Name} {d.Health}"))}" : "")));
 
         // GPU hangs (LiveKernelEvent 0x141 = the video engine timed out and was reset).
         // Probe v3 counts DISTINCT resets: 5 in 14 days is a pattern, 25 is a machine the user is fighting
@@ -97,7 +97,8 @@ public static class HealthRules
         {
             var pct = v.FreeGB / v.SizeGB * 100;
             if (pct < 10)
-                f.Add(new($"low-disk:{v.Letter.ToLowerInvariant()}", pct < 5 ? Severity.Critical : Severity.Warning, $"Drive {v.Letter}: is nearly full",
+                f.Add(new($"low-disk:{v.Letter.ToLowerInvariant()}", pct < 5 ? Severity.Critical : Severity.Warning,
+                    Drives.OfLetter(s, v.Letter) is { } pd && Drives.Role(pd) is { } role ? $"{Drives.Capitalised(role)} is nearly full" : $"Drive {v.Letter}: is nearly full",
                     $"{v.FreeGB:0.#} GB free of {v.SizeGB:0.#} GB ({pct:0.#}%)"));
         }
 

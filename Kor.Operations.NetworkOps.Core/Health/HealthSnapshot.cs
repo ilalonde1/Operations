@@ -109,7 +109,10 @@ public sealed record HealthSnapshot
 public sealed record OsInfo(string? Product, string? DisplayVersion, int Build, int Ubr, DateTime? LastBoot, int UptimeHours);
 public sealed record PendingRebootInfo(bool ComponentServicing, bool WindowsUpdate, bool FileRename);
 public sealed record VolumeInfo(string Letter, string? Label, double SizeGB, double FreeGB);
-public sealed record PhysicalDiskInfo(string? Name, string? Media, string? Bus, double SizeGB, string? Health, string? Operational);
+/// <param name="Letters">v10: the drive letters on it, comma-separated ("C", "D,E"); empty = none; null = probe before v10.</param>
+/// <param name="System">v10: Windows boots from it; null = probe before v10.</param>
+public sealed record PhysicalDiskInfo(string? Name, string? Media, string? Bus, double SizeGB, string? Health, string? Operational,
+    string? Letters = null, bool? System = null);
 public sealed record MissingDiskInfo(string? Name, string? InstanceId);
 public sealed record EventSummary(int Count, DateTime? Last);
 public sealed record EventCounts(EventSummary? DiskBadBlock, EventSummary? DiskResets, EventSummary? NtfsCorruption,
