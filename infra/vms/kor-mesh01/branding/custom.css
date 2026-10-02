@@ -153,7 +153,7 @@ nav .lbbuttonsel, nav .lbbuttonsel2, #page_leftbar .lbbuttonsel, #page_leftbar .
 #LeftMenuMyEvents, #LeftMenuMyFiles, #LeftMenuMyServer { display: none !important; }
 
 /* A device's tabs: General, Desktop, Terminal, Files. NetworkOps already reads software, events and hardware. */
-#MainDevRegistry, #MainDevApps, #MainDevEvents, #MainDevInfo, #MainDevConsole, #MainDevPlugins, #MainDevAmt { display: none !important; }
+#MainDevRegistry, #MainDevApps, #MainDevEvents, #MainDevInfo, #MainDevConsole, #MainDevPlugins { display: none !important; }   /* Intel AMT tab kept: AMT power + KVM */
 
 /* A device's General page: Actions, Run, Chat. Not Notes, Log Event, Message, Share, nor the 7-day power chart. */
 #p10html3 input[onclick^="showNotes"], #p10html3 input[onclick^="writeDeviceEvent"], #p10html3 input[onclick^="deviceMessageFunction"],
