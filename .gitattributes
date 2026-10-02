@@ -3,3 +3,5 @@
 *.sh            text eol=lf
 infra/**/*.yaml text eol=lf
 infra/**/*.json text eol=lf
+infra/**/*.service text eol=lf
+infra/**/*.timer   text eol=lf
