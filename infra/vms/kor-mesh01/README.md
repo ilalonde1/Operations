@@ -65,3 +65,6 @@ Verified 2026-10-02 from outside: 4445 answers; `/`, `/login` and `/agentinvite`
 
 ## The Home support download (2026-10-02)
 KOR Remote > Home support > Add Agent > MeshCentral Assistant (Application, connect on user request) gives `MeshCentralAssistant-Homesupport.exe`, wired to `wss://remote.korstructural.com:4445` (check: the exe contains `MeshServer=wss://remote.korstructural.com:4445/agent.ashx`, never the internal name). Zipped with `branding/home-help/READ ME FIRST.txt` as `KOR-Remote-Help.zip` and served at `/downloads/KOR-Remote-Help.zip` on the office/VPN-only site (the "Home help download" link in the header, custom.js); not on the public agent port (404). The exe and zip are not in git: regenerate them from KOR Remote if the group or server changes.
+
+## The KOR Remote window (2026-10-02)
+On KOR-1001, KOR Remote opens as an Edge app window: just the page, with no tabs, toolbar or bookmarks. Shortcuts: `Desktop\KOR Remote.lnk` and a Start-menu entry of the same name, both running `msedge.exe --app=https://kor-mesh01.int.korstructural.com/ --window-size=1600,1000`. The icon is `branding/kor-remote.ico` (the orange K circle), copied to `%LOCALAPPDATA%\KOR Remote\`. An app window has no editable address bar; its `...` menu shows and copies the URL.
