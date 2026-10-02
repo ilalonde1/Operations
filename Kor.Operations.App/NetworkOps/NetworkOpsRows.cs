@@ -103,6 +103,37 @@ public sealed class FleetRow
            || Headline.Contains(filter, StringComparison.OrdinalIgnoreCase);
 }
 
+/// <summary>One part of a PC as a tile in its window's "This PC" strip (Core/Health/PcComponents decides what and which
+/// findings are about it; this only draws it).</summary>
+public sealed class ComponentTile
+{
+    private static readonly Brush Clear = FreezeHex(0xCB, 0xD2, 0xD9);
+    private static readonly Brush Bar = FreezeHex(0x5B, 0x7A, 0x99);
+
+    public required PcComponent Part { get; init; }
+    public string Title => Part.Title;
+    public string Line1 => Part.Line1;
+    public string Line2 => Part.Line2;
+    public bool HasLine2 => Part.Line2.Length > 0;
+    public bool HasFill => Part.FillPct is not null;
+    /// <summary>The used-space bar's width, out of the tile's 132 px.</summary>
+    public double FillWidth => Math.Clamp(Part.FillPct ?? 0, 0, 100) * 1.32;
+    public string FillText => Part.FillPct is { } p ? $"{p:0}% used" : "";
+    /// <summary>The colour down the tile's edge: the worst open finding about this part, else quiet grey.</summary>
+    public Brush Brush => Part.Worst is { } w ? NetworkOpsBrushes.For(w) : Clear;
+    /// <summary>The bar turns amber past 90% used, red past 95%: the space itself, whatever the findings say.</summary>
+    public Brush FillBrush => Part.FillPct switch { >= 95 => NetworkOpsBrushes.Critical, >= 90 => NetworkOpsBrushes.Attention, _ => Bar };
+    public bool HasProblem => Part.Worst is not null;
+    public string Glyph => Part.Kind switch
+    {
+        "cpu" => "", "memory" => "", "gpu" => "", "drive" => "",
+        "missing-drive" => "", "windows" => "", "bios" => "", _ => "",
+    };
+    public string ToolTip { get; init; } = "";
+
+    private static Brush FreezeHex(byte r, byte g, byte b) { var x = new SolidColorBrush(Color.FromRgb(r, g, b)); x.Freeze(); return x; }
+}
+
 /// <summary>A fleet pattern: what the PCs with a problem have in common that the others do not.</summary>
 public sealed class PatternRow
 {

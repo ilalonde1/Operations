@@ -83,6 +83,15 @@ public sealed class NetworkOpsClient
 
     public Task<DeviceHistory> GetDeviceHistoryAsync(int deviceId, CancellationToken ct) => GetAsync<DeviceHistory>($"api/devices/{deviceId}/history", ct)!;
 
+    /// <summary>A PC's last full health check, raw (the "This PC" tiles are drawn from it). Null when it was never checked.</summary>
+    public async Task<LastCheckView?> GetLastCheckAsync(string deviceName, CancellationToken ct)
+    {
+        using var res = await SendAsync(HttpMethod.Get, $"api/devices/{Uri.EscapeDataString(deviceName)}/last-check", null, ct).ConfigureAwait(false);
+        if (res.StatusCode == System.Net.HttpStatusCode.NotFound) return null;
+        await EnsureOkAsync(res).ConfigureAwait(false);
+        return await res.Content.ReadFromJsonAsync<LastCheckView>(Json, ct).ConfigureAwait(false);
+    }
+
     public async Task<IReadOnlyList<Resolution>> GetResolutionsAsync(CancellationToken ct)
         => (await GetAsync<List<ResolutionRow>>("api/resolutions", ct).ConfigureAwait(false)).Select(r => r.ToResolution()).ToList();
 

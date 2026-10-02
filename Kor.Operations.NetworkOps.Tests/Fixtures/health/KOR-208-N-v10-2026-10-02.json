@@ -1,0 +1,395 @@
+[
+  {
+    "ProbeVersion": 10,
+    "Console": {
+      "DisplayOffAfterSeconds": 0,
+      "Keyboards": 1,
+      "Mice": 1
+    },
+    "Wake": {
+      "FastStartup": 0,
+      "Nics": [
+        {
+          "Mac": "04:7C:16:F3:E2:39",
+          "Description": "Intel(R) Ethernet Connection (22) I219-LM",
+          "Up": true,
+          "MagicPacket": true,
+          "Armed": true,
+          "Pme": "Enabled"
+        }
+      ],
+      "LenovoWakeOnLan": "Boot Order"
+    },
+    "Session": {
+      "ConsoleUser": "",
+      "State": "RemoteOnly",
+      "LockedSince": null,
+      "IdleSeconds": null,
+      "Remote": [
+        {
+          "User": "rbeirne",
+          "State": "Active",
+          "Idle": "26"
+        }
+      ],
+      "Summary": "nobody at the console \u00B7 rbeirne on a remote session, idle 26 min"
+    },
+    "CollectedAt": "2026-10-02T13:53:51",
+    "Computer": "KOR-208-N",
+    "Os": {
+      "Product": "Windows 11 Pro",
+      "DisplayVersion": "25H2",
+      "Build": 26200,
+      "Ubr": 9550,
+      "LastBoot": "2026-10-02T01:27:21",
+      "UptimeHours": 12
+    },
+    "PendingReboot": {
+      "ComponentServicing": false,
+      "WindowsUpdate": false,
+      "FileRename": true
+    },
+    "Volumes": [
+      {
+        "Letter": "C",
+        "Label": "Windows",
+        "SizeGB": 474.7,
+        "FreeGB": 209.7
+      },
+      {
+        "Letter": "D",
+        "Label": "Data",
+        "SizeGB": 1863,
+        "FreeGB": 1510
+      }
+    ],
+    "PhysicalDisks": [
+      {
+        "Name": "SAMSUNG MZVL2512HDJD-00BLL",
+        "Media": "SSD",
+        "Bus": "NVMe",
+        "SizeGB": 477,
+        "Health": "Healthy",
+        "Operational": "OK",
+        "Letters": "C",
+        "System": true
+      },
+      {
+        "Name": "ST2000DM006-2DM164",
+        "Media": "HDD",
+        "Bus": "SATA",
+        "SizeGB": 1863,
+        "Health": "Healthy",
+        "Operational": "OK",
+        "Letters": "D",
+        "System": false
+      }
+    ],
+    "MissingDisks": [],
+    "OrphanDriveLetters": [
+      "E"
+    ],
+    "Events14d": {
+      "DiskBadBlock": {
+        "Count": 0,
+        "Last": null
+      },
+      "DiskResets": {
+        "Count": 0,
+        "Last": null
+      },
+      "NtfsCorruption": {
+        "Count": 0,
+        "Last": null
+      },
+      "Whea": {
+        "Count": 0,
+        "Last": null
+      },
+      "UnexpectedShutdown": {
+        "Count": 0,
+        "Last": null
+      },
+      "GpuHang": {
+        "Count": 0,
+        "Last": null
+      },
+      "GpuHangLogEntries": {
+        "Count": 0,
+        "Last": null
+      },
+      "GpuHangStaleReports": 0,
+      "GpuHangReports": [],
+      "ResourceExhaustion": {
+        "Count": 0,
+        "Last": null
+      },
+      "UpdateFailures": {
+        "Count": 9,
+        "Last": "2026-10-01T10:11:45"
+      },
+      "AppHangs": {
+        "Count": 0,
+        "Last": null
+      }
+    },
+    "AppCrashes14d": [
+      {
+        "Process": "opushutil.exe",
+        "Count": 19,
+        "Last": "2026-09-27T15:09:09"
+      }
+    ],
+    "OutlookIndex60d": [],
+    "Office": {
+      "C2rMso": "16.0.20430.20032",
+      "DownlevelMso": "16.0.5495.1002",
+      "AccessEngine": true
+    },
+    "Update": {
+      "MicrosoftUpdate": true,
+      "NoAutoUpdate": 1,
+      "LastInstall": "2026-10-02T04:54:28",
+      "LastInstallTitle": "Security Update for Microsoft Office 2016 (KB5002917) 64-Bit Edition",
+      "LastInstallBy": "KOR NetworkOps"
+    },
+    "CoolingMode": "Performance mode",
+    "DisplayAdapters": [
+      {
+        "Name": "Microsoft Remote Display Adapter",
+        "Driver": "10.0.26100.9549",
+        "ErrorCode": 0
+      },
+      {
+        "Name": "NVIDIA T400 4GB",
+        "Driver": "32.0.15.9651",
+        "ErrorCode": 0
+      },
+      {
+        "Name": "Intel(R) UHD Graphics 770",
+        "Driver": "32.0.101.7088",
+        "ErrorCode": 0
+      }
+    ],
+    "Residue": {
+      "NewformaProfiles": 0,
+      "NewformaInstalled": []
+    },
+    "RemoteTools": [
+      {
+        "Name": "ncstreamer",
+        "State": "Running",
+        "StartMode": "Auto"
+      },
+      {
+        "Name": "ScreenConnect Client (f626167a716ce0b9)",
+        "State": "Running",
+        "StartMode": "Auto"
+      },
+      {
+        "Name": "TeamViewer",
+        "State": "Running",
+        "StartMode": "Auto"
+      }
+    ],
+    "DataOutsideSystemDrive": [
+      {
+        "Letter": "D",
+        "UsedGB": 353
+      }
+    ],
+    "DiskReliability": [
+      {
+        "Name": "SAMSUNG MZVL2512HDJD-00BLL",
+        "Serial": "0025_38BA_31BC_AC44.",
+        "WearPct": 0,
+        "TemperatureC": 32,
+        "TemperatureMaxC": 83,
+        "ReadErrors": null,
+        "ReadErrorsUncorrected": null,
+        "WriteErrors": null,
+        "PowerOnHours": null
+      },
+      {
+        "Name": "ST2000DM006-2DM164",
+        "Serial": "Z4Z7NV21",
+        "WearPct": 0,
+        "TemperatureC": 35,
+        "TemperatureMaxC": null,
+        "ReadErrors": 3904,
+        "ReadErrorsUncorrected": 3904,
+        "WriteErrors": null,
+        "PowerOnHours": 3628
+      }
+    ],
+    "Inventory": {
+      "Manufacturer": "LENOVO",
+      "Model": "ThinkStation P3 Tower",
+      "MachineType": "30GS0031US",
+      "Serial": "MJ0LG69L",
+      "BoardMaker": "LENOVO",
+      "BoardProduct": "1064",
+      "BiosVersion": "S0IKT7CA",
+      "BiosDate": "2025-12-18",
+      "Cpu": "13th Gen Intel(R) Core(TM) i7-13700",
+      "Cores": 16,
+      "RamGB": 96,
+      "LoggedOnUser": null,
+      "OfficeBuild": "16.0.20430.20092",
+      "OfficeChannel": "492350f6-3a01-4f97-b9c0-c7c6ddf67d60",
+      "Apps": [
+        {
+          "Name": "Adobe Acrobat (64-bit)",
+          "Version": "26.002.21931"
+        },
+        {
+          "Name": "Bluebeam Revu x64",
+          "Version": "21.11.0"
+        },
+        {
+          "Name": "ETABS 21",
+          "Version": "21.2.0"
+        },
+        {
+          "Name": "ETABS 22",
+          "Version": "22.7.0"
+        },
+        {
+          "Name": "Microsoft Access database engine 2016 (English)",
+          "Version": "16.0.5044.1000"
+        },
+        {
+          "Name": "Microsoft Teams Meeting Add-in for Microsoft Office",
+          "Version": "1.26.21803"
+        },
+        {
+          "Name": "NVIDIA Graphics Driver 596.51",
+          "Version": "596.51"
+        },
+        {
+          "Name": "SAFE 21",
+          "Version": "21.2.0"
+        },
+        {
+          "Name": "SAFE 22",
+          "Version": "22.6.0"
+        },
+        {
+          "Name": "SAFE 23",
+          "Version": "23.3.0"
+        },
+        {
+          "Name": "SketchUp 2023",
+          "Version": "23.1.340"
+        },
+        {
+          "Name": "SketchUp Viewer",
+          "Version": "22.0.354"
+        }
+      ]
+    },
+    "MailStores": [
+      {
+        "Profile": "rbeirne",
+        "Name": "rbeirne@korstructural.com.ost",
+        "GB": 9.04,
+        "LastWrite": "2026-10-02T13:41:37"
+      },
+      {
+        "Profile": "rory beirne",
+        "Name": "rbeirne@korstructural.com.ost",
+        "GB": 11.01,
+        "LastWrite": "2025-08-30T12:50:57"
+      },
+      {
+        "Profile": "rbeirne",
+        "Name": "Internet Calendar Subscriptions.pst",
+        "GB": 0,
+        "LastWrite": "2026-10-02T13:43:44"
+      },
+      {
+        "Profile": "rory beirne",
+        "Name": "Internet Calendar Subscriptions.pst",
+        "GB": 0,
+        "LastWrite": "2025-08-30T12:50:57"
+      }
+    ],
+    "Boot": {
+      "LastBootMs": 28513,
+      "MedianBootMs": 41321,
+      "Samples": 10
+    },
+    "Battery": null,
+    "Memory": [
+      {
+        "Slot": "Controller0-ChannelA-DIMM0",
+        "Bank": "BANK 0",
+        "SizeGB": 32,
+        "RatedMTs": 4800,
+        "ConfiguredMTs": 2000,
+        "Maker": "Kingston",
+        "Part": "9905782-431.A00G"
+      },
+      {
+        "Slot": "Controller0-ChannelA-DIMM1",
+        "Bank": "BANK 0",
+        "SizeGB": 16,
+        "RatedMTs": 4800,
+        "ConfiguredMTs": 2000,
+        "Maker": "Micron Technology",
+        "Part": "MTC8C1084S1UC48BA1 B"
+      },
+      {
+        "Slot": "Controller1-ChannelB-DIMM0",
+        "Bank": "BANK 1",
+        "SizeGB": 32,
+        "RatedMTs": 4800,
+        "ConfiguredMTs": 2000,
+        "Maker": "Kingston",
+        "Part": "9905782-453.A00G"
+      },
+      {
+        "Slot": "Controller1-ChannelB-DIMM1",
+        "Bank": "BANK 1",
+        "SizeGB": 16,
+        "RatedMTs": 4800,
+        "ConfiguredMTs": 2000,
+        "Maker": "Micron Technology",
+        "Part": "MTC8C1084S1UC48BA1 B"
+      }
+    ],
+    "MemorySlots": 4,
+    "WmiHealthy": true,
+    "ProbeErrors": [],
+    "ProbeMs": 8836,
+    "BlockMs": {
+      "os": 180,
+      "pendingReboot": 36,
+      "volumes": 20,
+      "physicalDisks": 1533,
+      "missingDisks": 216,
+      "orphanLetters": 13,
+      "events": 838,
+      "reliability": 531,
+      "inventory": 1552,
+      "mailStores": 26,
+      "boot": 53,
+      "battery": 12,
+      "appCrashes": 117,
+      "outlookIndex": 137,
+      "office": 17,
+      "update": 296,
+      "cooling": 508,
+      "display": 56,
+      "residue": 213,
+      "remoteTools": 219,
+      "memory": 18,
+      "memorySlots": 7,
+      "dataOutside": 4,
+      "session": 59,
+      "wake": 1645,
+      "console": 438,
+      "wmi": 69
+    }
+  }
+]

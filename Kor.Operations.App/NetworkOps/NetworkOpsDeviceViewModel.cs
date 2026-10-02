@@ -176,6 +176,62 @@ public sealed class NetworkOpsDeviceViewModel : ObservableObject
     public string FreshnessLine { get; private set; } = string.Empty;
 
     public ObservableCollection<FindingRow> OpenFindings { get; } = new();
+
+    // ---- "This PC": the key parts as tiles, from the last full check, coloured by the findings about each
+    private Kor.Operations.NetworkOps.Core.Health.HealthSnapshot? _lastCheck;
+    public ObservableCollection<ComponentTile> Components { get; } = new();
+    public bool HasComponents => Components.Count > 0;
+    /// <summary>The one-line hardware text stays only where there are no tiles (a rack device, or a PC never checked).</summary>
+    public bool ShowsHardwareLine => !HasComponents;
+
+    /// <summary>Reads the PC's last full check for the tiles. A rack device has none; a failure leaves the text line.</summary>
+    public async Task LoadComponentsAsync(CancellationToken ct)
+    {
+        if (IsRack) return;
+        try
+        {
+            var last = await _client.GetLastCheckAsync(_device.Name, ct).ConfigureAwait(true);
+            _lastCheck = last is null ? null : Kor.Operations.NetworkOps.Core.Health.HealthSnapshot.Parse(last.Json);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // The hardware line stays and the page works without the tiles -- but it says why they are missing.
+            _lastCheck = null;
+            StatusMessage = $"The PC's parts could not be read ({ex.GetType().Name}: {ex.Message}); showing the summary line instead.";
+        }
+        RebuildComponents();
+    }
+
+    /// <summary>Internal so tests can draw the tiles from a fixture check without the service.</summary>
+    internal void SetLastCheck(Kor.Operations.NetworkOps.Core.Health.HealthSnapshot? check) { _lastCheck = check; RebuildComponents(); }
+
+    private void RebuildComponents()
+    {
+        Components.Clear();
+        if (_lastCheck is { } check)
+        {
+            // Live findings colour a part; an acknowledged or snoozed one does not (it is handled, as on the fleet grid).
+            var now = DateTime.UtcNow;
+            var open = OpenFindings.Where(r => !r.Finding.IsQuiet(now)).Select(r => (r.Finding.RuleKey, r.Finding.Severity)).ToList();
+            foreach (var part in Kor.Operations.NetworkOps.Core.Health.PcComponents.Of(check, open))
+            {
+                var about = OpenFindings.Where(r => part.RuleKeys.Contains(r.Finding.RuleKey)).Select(r => r.Title).ToList();
+                Components.Add(new ComponentTile
+                {
+                    Part = part,
+                    ToolTip = about.Count > 0 ? string.Join("\n", about) + "\n(click to show it)" : $"{part.Title}: {part.Line1}{(part.Line2.Length > 0 ? " · " + part.Line2 : "")}",
+                });
+            }
+        }
+        OnPropertyChanged(nameof(HasComponents));
+        OnPropertyChanged(nameof(ShowsHardwareLine));
+    }
+
+    /// <summary>A tile was clicked: show the first open finding about that part.</summary>
+    public void SelectFindingFor(ComponentTile tile)
+    {
+        if (OpenFindings.FirstOrDefault(r => tile.Part.RuleKeys.Contains(r.Finding.RuleKey)) is { } row) SelectedFinding = row;
+    }
     public ObservableCollection<ClearedRow> Cleared { get; } = new();
     public ObservableCollection<ChangeRow> Changes { get; } = new();
     public ObservableCollection<NoteLine> Notes { get; } = new();
@@ -247,6 +303,7 @@ public sealed class NetworkOpsDeviceViewModel : ObservableObject
     {
         try
         {
+            await LoadComponentsAsync(ct).ConfigureAwait(true);
             var history = await _client.GetDeviceHistoryAsync(_device.DeviceId, ct).ConfigureAwait(true);
             _resolutions = await _client.GetResolutionsAsync(ct).ConfigureAwait(true);
             ApplyHistory(history);
@@ -308,6 +365,7 @@ public sealed class NetworkOpsDeviceViewModel : ObservableObject
                           : "",
             });
         _selectedFinding = OpenFindings.FirstOrDefault(r => r.Finding.FindingId == selectedId) ?? OpenFindings.FirstOrDefault();
+        RebuildComponents();   // the tiles' colours follow the findings
 
         foreach (var name in new[] { nameof(StateLabel), nameof(StateBrush), nameof(IdentityLine), nameof(HardwareLine), nameof(FreshnessLine), nameof(SelectedFinding),
                                      nameof(PresenceLine), nameof(ShowsPresence), nameof(SomeoneActive), nameof(CanFix),

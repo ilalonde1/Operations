@@ -22,6 +22,12 @@ public partial class NetworkOpsDeviceWindow : Window
 
     private async void Window_Loaded(object sender, RoutedEventArgs e) => await Run(_vm.LoadHistoryAsync).ConfigureAwait(true);
 
+    /// <summary>A "This PC" tile: show the finding about that part (the explanation follows the selection).</summary>
+    private void ComponentTile_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is ComponentTile tile) _vm.SelectFindingFor(tile);
+    }
+
     private async void CheckNow_Click(object sender, RoutedEventArgs e) => await Run(_vm.CheckNowAsync).ConfigureAwait(true);
 
     private async void Acknowledge_Click(object sender, RoutedEventArgs e) => await Run(_vm.AcknowledgeAsync).ConfigureAwait(true);

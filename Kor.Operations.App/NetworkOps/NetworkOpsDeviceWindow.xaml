@@ -41,6 +41,10 @@
         <!-- Who this machine is, who is on it, how it is reached; and the two things done to it most. -->
         <Border Grid.Row="0" Style="{StaticResource Card}" Margin="12,12,12,10" Padding="20,14">
             <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
@@ -52,7 +56,8 @@
                             <TextBlock Text="{Binding StateLabel}" Style="{StaticResource Ops.PillText}" FontSize="12"/>
                         </Border>
                     </StackPanel>
-                    <TextBlock Margin="0,4,0,0" TextWrapping="Wrap">
+                    <TextBlock Margin="0,4,0,0" TextWrapping="Wrap" Text="{Binding IdentityLine}" Visibility="{Binding HasComponents, Converter={StaticResource BoolToVis}}"/>
+                    <TextBlock Margin="0,4,0,0" TextWrapping="Wrap" Visibility="{Binding ShowsHardwareLine, Converter={StaticResource BoolToVis}}">
                         <Run Text="{Binding IdentityLine, Mode=OneWay}"/><Run Text="   "/><Run Text="{Binding HardwareLine, Mode=OneWay}" Foreground="{StaticResource Text.Secondary}"/>
                     </TextBlock>
                     <TextBlock Text="{Binding PresenceLine}" FontWeight="SemiBold" Margin="0,8,0,0"
@@ -102,6 +107,52 @@
                     </StackPanel>
                     <TextBlock Text="{Binding CheckStatus}" TextWrapping="Wrap" Margin="0,8,0,0" HorizontalAlignment="Right" TextAlignment="Right" Style="{StaticResource Ops.Caption}"/>
                 </StackPanel>
+                <!-- This PC: its key parts as tiles, each coloured by the worst open finding about it; click one to show that finding. -->
+                <ItemsControl Grid.Row="1" Grid.ColumnSpan="2" ItemsSource="{Binding Components}" Margin="0,12,0,-8" Visibility="{Binding HasComponents, Converter={StaticResource BoolToVis}}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Width="156" Height="74" Margin="0,0,8,8" Background="White" CornerRadius="7" BorderBrush="#E5E7EB" BorderThickness="1"
+                                    ToolTip="{Binding ToolTip}" Cursor="Hand" MouseLeftButtonUp="ComponentTile_Click">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="4"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Border Background="{Binding Brush}" CornerRadius="6,0,0,6"/>
+                                    <Grid Grid.Column="1" Margin="9,6,8,6">
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="*"/>
+                                        </Grid.RowDefinitions>
+                                        <DockPanel>
+                                            <TextBlock DockPanel.Dock="Left" Text="{Binding Glyph}" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="13"
+                                                       Foreground="{StaticResource Text.Secondary}" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                            <Ellipse DockPanel.Dock="Right" Width="8" Height="8" Fill="{Binding Brush}" VerticalAlignment="Center"
+                                                     Visibility="{Binding HasProblem, Converter={StaticResource BoolToVis}}"/>
+                                            <TextBlock Text="{Binding Title}" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource Text.Secondary}"
+                                                       TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                                        </DockPanel>
+                                        <TextBlock Grid.Row="1" Text="{Binding Line1}" FontSize="13" FontWeight="Bold" Foreground="{StaticResource Text.Primary}"
+                                                   TextTrimming="CharacterEllipsis" Margin="0,3,0,0"/>
+                                        <StackPanel Grid.Row="2" VerticalAlignment="Bottom">
+                                            <Grid Height="4" Margin="0,0,0,3" Visibility="{Binding HasFill, Converter={StaticResource BoolToVis}}" ToolTip="{Binding FillText}">
+                                                <Border Background="#EEF0F2" CornerRadius="2"/>
+                                                <Border Background="{Binding FillBrush}" CornerRadius="2" Width="{Binding FillWidth}" HorizontalAlignment="Left"/>
+                                            </Grid>
+                                            <TextBlock Text="{Binding Line2}" FontSize="11" Foreground="{StaticResource Text.Secondary}" TextTrimming="CharacterEllipsis"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
             </Grid>
         </Border>
 
