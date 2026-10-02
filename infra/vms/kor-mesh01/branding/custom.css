@@ -139,11 +139,35 @@ nav .lbbuttonsel, nav .lbbuttonsel2, #page_leftbar .lbbuttonsel, #page_leftbar .
 .modal-content .modal-header { background-color: #435363 !important; color: #fff !important; border-bottom: 3px solid #FF5B35 !important; }
 .modal-content .modal-header .modal-title, .modal-content .modal-header h5 { color: #fff !important; font-weight: 600; }
 
-/* The device list: a light card per device instead of MeshCentral's grey gradient band (icons are KOR's own:
-   images/icons*.png, branding/make-icons.py). */
+/* Device icons: KOR's own (branding/make-icons.py), under KOR file names so no browser keeps a cached old picture.
+   Positions are MeshCentral's own sprite offsets (from its .i1-.i8 / .j1-.j8 rules); only the picture changes. */
+.i1, .i2, .i3, .i4, .i5, .i6, .i7, .i8 { background-image: url(../images/kor-icons50.png) !important; background-image: image-set(url(../images/kor-icons50.png) 1x, url(../images/kor-icons100.png) 2x) !important; }
+.j1, .j2, .j3, .j4, .j5, .j6, .j7, .j8 { background-image: url(../images/kor-icons16.png) !important; background-image: image-set(url(../images/kor-icons16.png) 1x, url(../images/kor-icons32.png) 2x) !important; }
+
+/* Device groups: each group a colour, so where one ends and the next begins is obvious. A group is a header bar
+   (.DevSt) followed by its devices (the next div); the five colours repeat down the page. */
+#xdevices .DevSt {
+    margin-top: 16px; padding: 8px 12px !important; border: none !important; border-radius: 10px 10px 0 0;
+    border-left: 6px solid var(--grp, #435363) !important; background: var(--grp-tint, #EEF1F4);
+    font-weight: 700; font-size: 15px; color: #2F3C48;
+}
+#xdevices .DevSt a { font-weight: 500; font-size: 12px; color: #6B7280 !important; text-decoration: none; margin-left: 8px; }
+#xdevices .DevSt a:hover { color: #2F3C48 !important; text-decoration: underline; }
+#xdevices .DevSt .devHeaderx { color: #6B7280; font-weight: 500; font-size: 12px; }
+#xdevices .DevSt + div {
+    border-left: 6px solid var(--grp, #435363); background: var(--grp-wash, #FAFBFC);
+    border-radius: 0 0 10px 10px; padding: 6px 4px 8px 6px; margin-bottom: 4px;
+}
+#xdevices .DevSt:nth-of-type(10n+1), #xdevices .DevSt:nth-of-type(10n+1) + div { --grp: #435363; --grp-tint: #E8ECF0; --grp-wash: #F7F9FA; }
+#xdevices .DevSt:nth-of-type(10n+3), #xdevices .DevSt:nth-of-type(10n+3) + div { --grp: #FF5B35; --grp-tint: #FFE9E2; --grp-wash: #FFF8F6; }
+#xdevices .DevSt:nth-of-type(10n+5), #xdevices .DevSt:nth-of-type(10n+5) + div { --grp: #0F766E; --grp-tint: #DDF1EE; --grp-wash: #F5FBFA; }
+#xdevices .DevSt:nth-of-type(10n+7), #xdevices .DevSt:nth-of-type(10n+7) + div { --grp: #4F46E5; --grp-tint: #E6E5FB; --grp-wash: #F8F8FE; }
+#xdevices .DevSt:nth-of-type(10n+9), #xdevices .DevSt:nth-of-type(10n+9) + div { --grp: #B45309; --grp-tint: #FBEBD5; --grp-wash: #FEF9F2; }
+
+/* The device list: a white card per device on its group's wash (no grey gradient band). */
 #devs .g1t, #devs .g2t, #devs .e2t, #devs .g1, #devs .g2 { background: transparent !important; background-image: none !important; }
-#devs { background: #F6F8FA; border-radius: 10px; }
-#devs:hover { background: #EDF1F5; }
+#devs { background: #FFFFFF; border-radius: 10px; box-shadow: 0 1px 2px rgba(16, 24, 40, .06); }
+#devs:hover { background: #F3F6F9; }
 #devs .e1t { font-weight: 600; color: #3F5364; }
 
 /* ===== Less (Ian 2026-10-01: "SIMPLE. If you can remove things the better").

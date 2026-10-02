@@ -110,6 +110,9 @@ def main() -> None:
         for i, im in enumerate(big):
             strip.paste(im.resize((size, size), Image.LANCZOS), (i * size, 0))
         strip.save(OUT / name, optimize=True)
+        # The same strip under a KOR name too: custom.css points the icon classes at it, so a browser that cached
+        # MeshCentral's own icons*.png cannot keep showing the old pictures.
+        strip.save(OUT / f"kor-{name}", optimize=True)
         print(name, strip.size)
     for i, im in enumerate(big, start=1):
         im.resize((256, 256), Image.LANCZOS).save(OUT / f"icons256-{i}-1.png", optimize=True)
