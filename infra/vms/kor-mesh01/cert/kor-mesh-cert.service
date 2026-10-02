@@ -1,0 +1,8 @@
+[Unit]
+Description=KOR Remote certificate: issue (once the CNAME exists) or renew, then install with proof and rollback
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/kor-mesh-cert

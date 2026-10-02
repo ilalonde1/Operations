@@ -66,5 +66,21 @@ Verified 2026-10-02 from outside: 4445 answers; `/`, `/login` and `/agentinvite`
 ## The Home support download (2026-10-02)
 KOR Remote > Home support > Add Agent > MeshCentral Assistant (Application, connect on user request) gives `MeshCentralAssistant-Homesupport.exe`, wired to `wss://remote.korstructural.com:4445` (check: the exe contains `MeshServer=wss://remote.korstructural.com:4445/agent.ashx`, never the internal name). Zipped with `branding/home-help/READ ME FIRST.txt` as `KOR-Remote-Help.zip` and served at `/downloads/KOR-Remote-Help.zip` on the office/VPN-only site (the "Home help download" link in the header, custom.js); not on the public agent port (404). The exe and zip are not in git: regenerate them from KOR Remote if the group or server changes.
 
+## The real certificate: Let's Encrypt, waiting on ONE record (2026-10-02)
+The name is internal, so Let's Encrypt proves it through DNS (DNS-01). Register.ca has no API, so one public record delegates
+only the proof to an acme-dns account (auth.acme-dns.io), registered by `cert/setup-cert.sh` (run on the VM 10-02, done):
+
+    Register.ca, zone korstructural.com:   _acme-challenge.kor-mesh01.int   CNAME   bd02418b-02ca-4117-9bf5-671681132d2c.auth.acme-dns.io
+
+- `kor-mesh-cert.timer` (daily 03:30) runs `/usr/local/sbin/kor-mesh-cert`: until that CNAME is in public DNS it only logs
+  "waiting"; then it issues (acme.sh 3.1.6 pinned, RSA 2048 -- MeshCentral reads keys with node-forge) and renews every ~60 days.
+- `/usr/local/sbin/kor-mesh-cert-install` puts it in MeshCentral's own layout (`webserver-cert-public.crt`, `-private.key`,
+  `-chain1.crt`; the name must equal config.json `cert` or MeshCentral regenerates its own), restarts, and proves MeshCentral
+  serves the new certificate and the agents come back -- else it restores the backup (`meshcentral-data/certbackup-*`).
+- Proven live 10-02 02:18 with a stand-in certificate (new hash, same name): served in 20 s, 35 of 36 connections back in 3 min;
+  then the original certificate was put back. acme-dns account proven (an update was visible in public DNS in 5 s).
+- Log: `/var/log/kor-mesh-cert.log`. Secrets: `/etc/kor-mesh-cert/acmedns.env` (root-only), never in git.
+- Once live, no PC needs MeshCentral's root trusted: Let's Encrypt is trusted everywhere.
+
 ## The KOR Remote window (2026-10-02)
 On KOR-1001, KOR Remote opens as an Edge app window: just the page, with no tabs, toolbar or bookmarks. Shortcuts: `Desktop\KOR Remote.lnk` and a Start-menu entry of the same name, both running `msedge.exe --app=https://kor-mesh01.int.korstructural.com/ --window-size=1600,1000`. The icon is `branding/kor-remote.ico` (the orange K circle), copied to `%LOCALAPPDATA%\KOR Remote\`. An app window has no editable address bar; its `...` menu shows and copies the URL.

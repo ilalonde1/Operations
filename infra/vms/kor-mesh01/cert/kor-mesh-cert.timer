@@ -1,0 +1,10 @@
+[Unit]
+Description=KOR Remote certificate, daily at 03:30 (a renewal restarts MeshCentral: nobody is on it then)
+
+[Timer]
+OnCalendar=*-*-* 03:30:00
+RandomizedDelaySec=10m
+Persistent=true
+
+[Install]
+WantedBy=timers.target
