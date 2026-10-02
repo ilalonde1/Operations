@@ -213,7 +213,15 @@ nav .lbbuttonsel, nav .lbbuttonsel2, #page_leftbar .lbbuttonsel, #page_leftbar .
 /* Left bar: Devices, Account, Users. Not My Events, My Files, My Server (NetworkOps and the VM backups cover those). */
 #LeftMenuMyEvents, #LeftMenuMyFiles, #LeftMenuMyServer { display: none !important; }
 
-/* A device's tabs: General, Desktop, Terminal, Files. NetworkOps already reads software, events and hardware. */
+/* No device tabs at all (Ian 2026-10-02: "all I ever want here is the Desktop. The other info I get elsewhere"):
+   a device opens straight on its Desktop (custom.js), and the Back arrow returns to the list. On the Desktop page the
+   empty top bar's row goes to the remote screen: MeshCentral's 270 px allowance counted 24 px for it, so 201 -> 177. */
+#MainSubMenuSpan { display: none !important; }
+body:has(#p11:not([style*="none"])) #topbar { display: none !important; }
+.fullscreen:not(.fulldesk):has(#p11:not([style*="none"])) #container { grid-template-rows: 52px 0px auto 0px !important; }
+body:not(.fulldesk):has(#p11:not([style*="none"])) #deskarea3x { height: calc(100vh - 177px) !important; max-height: calc(100vh - 177px) !important; }
+
+/* (Kept for when the tabs come back: General, Desktop, Terminal, Files only.) */
 #MainDevRegistry, #MainDevApps, #MainDevEvents, #MainDevInfo, #MainDevConsole, #MainDevPlugins { display: none !important; }   /* Intel AMT tab kept: AMT power + KVM */
 
 /* A device's General page: Actions, Run, Chat. Not Notes, Log Event, Message, Share, nor the 7-day power chart. */

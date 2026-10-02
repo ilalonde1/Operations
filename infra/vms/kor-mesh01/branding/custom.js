@@ -34,6 +34,16 @@
             }
         } catch (e) { /* header unchanged */ }
 
+        // 5. Opening a device goes to its Desktop, not General: there are no device tabs (custom.css). Only the default
+        //    changes -- a call that names a page (General = 10, Terminal = 12, ...) still gets that page.
+        if (typeof window.gotoDevice === 'function') {
+            var originalGoto = window.gotoDevice;
+            window.gotoDevice = function (nodeid, panel, refresh, event) {
+                if (panel == null) panel = 11;
+                return originalGoto.call(this, nodeid, panel, refresh, event);
+            };
+        }
+
         // 2. First real display when a desktop first reports more than one.
         if (typeof window.deskDisplayInfo === 'function') {
             var originalInfo = window.deskDisplayInfo;
