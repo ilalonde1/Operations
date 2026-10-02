@@ -131,6 +131,10 @@ nav .lbbuttonsel, nav .lbbuttonsel2 { background-color: #fff !important; color: 
 #MainComputerState { font-size: 12px; color: #166534; font-weight: 600; }
 #p10html2 table { background: #fff !important; border-color: #E5E7EB !important; }
 
+/* Dialogs (RDP sign-in, settings...): KOR navy header, not the theme's purple. */
+.modal-content .modal-header { background-color: #435363 !important; color: #fff !important; border-bottom: 3px solid #FF5B35 !important; }
+.modal-content .modal-header .modal-title, .modal-content .modal-header h5 { color: #fff !important; font-weight: 600; }
+
 /* The footer: navy, one line, no "Terms & Privacy". */
 #footer { background-color: #2F3C48 !important; padding: 2px 0 !important; }
 #footer, #footer td, .footer1, .footer2 { color: rgba(255, 255, 255, .6) !important; font-size: 12px; }

@@ -10,7 +10,7 @@ data=/opt/meshcentral/meshcentral-data
 web=/opt/meshcentral/meshcentral-web/public/styles
 stamp=$(date +%Y%m%d-%H%M%S)
 
-for f in meshcentral-config.json kor-remote-logo.png kor-remote-mark.png custom.css; do
+for f in meshcentral-config.json kor-remote-logo.png kor-remote-mark.png custom.css custom.js; do
   [ -s "$here/$f" ] || { echo "missing $f beside this script"; exit 1; }
 done
 python3 -m json.tool "$here/meshcentral-config.json" > /dev/null || { echo "config is not valid JSON: nothing changed"; exit 1; }
@@ -23,6 +23,8 @@ install -o meshcentral -g meshcentral -m 644 "$here/kor-remote-logo.png" "$data/
 install -o meshcentral -g meshcentral -m 644 "$here/kor-remote-mark.png" "$data/kor-remote-mark.png"
 install -d -o meshcentral -g meshcentral -m 755 "$web"
 install -o meshcentral -g meshcentral -m 644 "$here/custom.css" "$web/custom.css"
+install -d -o meshcentral -g meshcentral -m 755 "$(dirname "$web")/scripts"
+install -o meshcentral -g meshcentral -m 644 "$here/custom.js" "$(dirname "$web")/scripts/custom.js"
 
 systemctl restart meshcentral
 for i in $(seq 1 30); do
