@@ -139,6 +139,13 @@ nav .lbbuttonsel, nav .lbbuttonsel2, #page_leftbar .lbbuttonsel, #page_leftbar .
 .modal-content .modal-header { background-color: #435363 !important; color: #fff !important; border-bottom: 3px solid #FF5B35 !important; }
 .modal-content .modal-header .modal-title, .modal-content .modal-header h5 { color: #fff !important; font-weight: 600; }
 
+/* The device list: a light card per device instead of MeshCentral's grey gradient band (icons are KOR's own:
+   images/icons*.png, branding/make-icons.py). */
+#devs .g1t, #devs .g2t, #devs .e2t, #devs .g1, #devs .g2 { background: transparent !important; background-image: none !important; }
+#devs { background: #F6F8FA; border-radius: 10px; }
+#devs:hover { background: #EDF1F5; }
+#devs .e1t { font-weight: 600; color: #3F5364; }
+
 /* ===== Less (Ian 2026-10-01: "SIMPLE. If you can remove things the better").
    Hidden, not disabled: an admin can still reach these by URL. Guest sharing is OFF in the config (guestDeviceSharing). */
 

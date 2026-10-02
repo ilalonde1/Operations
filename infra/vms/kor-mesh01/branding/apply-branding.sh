@@ -23,6 +23,8 @@ install -o meshcentral -g meshcentral -m 644 "$here/kor-remote-logo.png" "$data/
 install -o meshcentral -g meshcentral -m 644 "$here/kor-remote-mark.png" "$data/kor-remote-mark.png"
 install -d -o meshcentral -g meshcentral -m 755 "$web"
 install -o meshcentral -g meshcentral -m 644 "$here/custom.css" "$web/custom.css"
+install -d -o meshcentral -g meshcentral -m 755 "$(dirname "$web")/images"
+for icon in "$here"/icons/icons*.png; do install -o meshcentral -g meshcentral -m 644 "$icon" "$(dirname "$web")/images/"; done
 install -d -o meshcentral -g meshcentral -m 755 "$(dirname "$web")/scripts"
 install -o meshcentral -g meshcentral -m 644 "$here/custom.js" "$(dirname "$web")/scripts/custom.js"
 
