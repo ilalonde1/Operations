@@ -111,6 +111,34 @@ body:not(.login) .btn { border-radius: 6px; font-weight: 600; font-size: 14px; l
 #masthead .masthead-title img { height: 34px; width: auto; float: none; }
 #masthead .kor-remote-name { color: #fff; font-size: 19px; font-weight: 600; letter-spacing: .2px; padding-left: 14px; border-left: 1px solid rgba(255, 255, 255, .25); }
 
+/* ===== A device's page header and the desktop toolbar: KOR's look, not stock Bootstrap green and black. ===== */
+/* Title: the device name in KOR text colour, a size smaller; the group after it quiet. */
+#p10title .fs-4, #p11title .fs-4, #p12title .fs-4, #p13title .fs-4 { font-size: 1.2rem !important; font-weight: 700 !important; color: #2F3C48 !important; }
+#p10title .text-secondary, #p11title .text-secondary, #p12title .text-secondary, #p13title .text-secondary { color: #9CA3AF !important; }
+/* Back: a light round arrow, not a heavy black square. */
+#p10BackButton i, #p11BackButton i, #p12BackButton i, #p13BackButton i { color: #AEB8C2 !important; transition: color .15s; }
+#p10BackButton i:hover, #p11BackButton i:hover, #p12BackButton i:hover, #p13BackButton i:hover { color: #435363 !important; }
+/* Full-screen: the plain icon in navy, no box round it. */
+#devListToolbarViewIcons .fa-maximize { border: none !important; color: #435363; }
+
+/* Connect = the main action (navy); RDP Connect = the alternative (outlined); Disconnect = red. */
+#connectbutton1, #connectbutton1d { --bs-btn-bg: #435363; --bs-btn-border-color: #435363; --bs-btn-hover-bg: #2F3C48; --bs-btn-hover-border-color: #2F3C48;
+    --bs-btn-active-bg: #26313B; --bs-btn-disabled-bg: #435363; --bs-btn-disabled-border-color: #435363; color: #fff !important; }
+#connectbutton1r, #connectbutton1rd { --bs-btn-bg: #FFFFFF; --bs-btn-color: #435363; --bs-btn-border-color: #AEB8C2; --bs-btn-hover-bg: #F3F5F7;
+    --bs-btn-hover-color: #2F3C48; --bs-btn-hover-border-color: #435363; --bs-btn-disabled-bg: #FFFFFF; --bs-btn-disabled-color: #9CA3AF;
+    --bs-btn-disabled-border-color: #E5E7EB; color: #435363 !important; }
+#disconnectbutton1, #diconnectbutton1d { --bs-btn-bg: #B91C1C; --bs-btn-border-color: #B91C1C; --bs-btn-hover-bg: #991B1B; --bs-btn-hover-border-color: #991B1B; }
+#deskarea1 .btn-sm { padding: 5px 12px; font-size: 13px; }
+#deskarea1 .dropdown-toggle-split { padding-left: 7px; padding-right: 7px; }
+#deskstatus { color: #6B7280; font-size: 13px; margin-left: 4px; }
+
+/* Actions and Settings: quiet outlined buttons beside the screen, not two more filled ones. */
+#deskActionsBtn, #deskActionsSettings { --bs-btn-bg: #FFFFFF; --bs-btn-color: #435363; --bs-btn-border-color: #CBD2D9;
+    --bs-btn-hover-bg: #F3F5F7; --bs-btn-hover-color: #2F3C48; --bs-btn-hover-border-color: #AEB8C2; color: #435363 !important; }
+/* Rotate left/right: almost never needed; the view-mode arrow stays. */
+#deskarea1 .deskareaicon[title="Rotate Right"], #deskarea1 .deskareaicon[title="Rotate Left"] { display: none !important; }
+#deskarea1 .deskareaicon { color: #6B7280; }
+
 /* The "Home help download" link in the header (custom.js). */
 /* A white button with blue-slate writing, so it stands out on the navy header (Ian 2026-10-02). */
 #korHelpDownload { background: #FFFFFF; color: #435363 !important; font-size: 13px; font-weight: 700; text-decoration: none;
