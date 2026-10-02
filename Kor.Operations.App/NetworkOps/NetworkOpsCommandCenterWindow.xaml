@@ -33,6 +33,46 @@
                     <TextBlock Text="{Binding StateLabel}" Style="{StaticResource Ops.PillText}"/>
                 </Border>
             </DataTemplate>
+            <!-- One machine as a card: its colour down the left edge, the name, what it is, what matters most, and one line
+                 of who/when. A card not read lately is faded and says so on hover, as its table row is greyed. -->
+            <DataTemplate x:Key="MachineCard">
+                <Border Width="236" Height="112" Background="White" CornerRadius="8" BorderBrush="#E5E7EB" BorderThickness="1" ToolTip="{Binding Headline}">
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsStale}" Value="True">
+                                    <Setter Property="Opacity" Value="0.55"/>
+                                    <Setter Property="ToolTip" Value="Not read recently: this may be out of date."/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="5"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Border Background="{Binding State, Converter={StaticResource StateToBrush}}" CornerRadius="7,0,0,7"/>
+                        <Grid Grid.Column="1" Margin="11,8,11,8">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <DockPanel>
+                                <TextBlock DockPanel.Dock="Right" Text="{Binding StateLabel}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" Margin="8,0,0,0"
+                                           Foreground="{Binding State, Converter={StaticResource StateToBrush}}"/>
+                                <TextBlock Text="{Binding Title}" Style="{StaticResource Ops.CardTitle}"/>
+                            </DockPanel>
+                            <TextBlock Grid.Row="1" Text="{Binding Subtitle}" FontSize="11.5" Foreground="{StaticResource Text.Secondary}" TextTrimming="CharacterEllipsis" Margin="0,1,0,0"/>
+                            <TextBlock Grid.Row="2" Text="{Binding Headline}" FontSize="12.5" Foreground="{StaticResource Text.Primary}" TextWrapping="Wrap"
+                                       TextTrimming="CharacterEllipsis" Margin="0,6,0,0" VerticalAlignment="Top"/>
+                            <TextBlock Grid.Row="3" Text="{Binding Footer}" ToolTip="{Binding Footer}" FontSize="11" Foreground="{StaticResource Text.Secondary}" TextTrimming="CharacterEllipsis"/>
+                        </Grid>
+                    </Grid>
+                </Border>
+            </DataTemplate>
         </ResourceDictionary>
     </Window.Resources>
     <Grid>
@@ -147,9 +187,15 @@
                     </TextBlock.Style>
                 </TextBlock>
             </Grid>
-            <CheckBox Grid.Column="1" Content="Only problems" Margin="14,0,0,0" VerticalAlignment="Center"
-                      ToolTip="Hide rack devices and PCs with nothing open."
-                      IsChecked="{Binding ProblemsOnly}"/>
+            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                <CheckBox Content="Only problems" Margin="14,0,0,0" VerticalAlignment="Center"
+                          ToolTip="Hide rack devices and PCs with nothing open."
+                          IsChecked="{Binding ProblemsOnly}"/>
+                <RadioButton x:Name="CardsViewBtn" Content="Cards" GroupName="View" Style="{StaticResource Ops.Segment}" Margin="18,0,0,0"
+                             IsChecked="{Binding CardView}" ToolTip="Every machine as a card."/>
+                <RadioButton x:Name="TableViewBtn" Content="Table" GroupName="View" Style="{StaticResource Ops.Segment}"
+                             IsChecked="{Binding TableView}" ToolTip="The same machines as a dense table."/>
+            </StackPanel>
             <StackPanel Grid.Column="3" Orientation="Horizontal">
                 <Button Content="Ask Claude" Style="{StaticResource Ops.Primary}" Margin="0,0,8,0" Click="AskClaude_Click"
                         ToolTip="Ask anything about the selected PC (or the whole network), or open a prompt for any problem: Claude starts in Windows Terminal with everything NetworkOps knows."/>
@@ -169,9 +215,35 @@
                 <ColumnDefinition Width="380"/>
             </Grid.ColumnDefinitions>
 
-            <!-- The rack and the PCs share the height (worst first in both, so the top rows are the ones that matter);
+            <!-- Cards: the rack, then the PCs, worst first, on one page that scrolls. Same rows and filters as the table. -->
+            <ScrollViewer Grid.Column="0" Margin="0,0,5,0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                          Visibility="{Binding CardView, Converter={StaticResource BoolToVis}}">
+                <StackPanel Margin="0,0,4,0">
+                    <StackPanel Orientation="Horizontal" Margin="2,0,0,8">
+                        <TextBlock Text="Rack" Style="{StaticResource Ops.SectionTitle}"/>
+                        <TextBlock Text="{Binding RackFreshness}" Style="{StaticResource Ops.Caption}" VerticalAlignment="Bottom" Margin="10,0,0,1"/>
+                    </StackPanel>
+                    <Grid>
+                        <ListBox x:Name="RackCards" Style="{StaticResource Ops.CardList}" ItemsSource="{Binding Rack}" ItemTemplate="{StaticResource MachineCard}"
+                                 MouseDoubleClick="RackCards_MouseDoubleClick" PreviewKeyDown="RackCards_PreviewKeyDown" SelectionChanged="RackCards_SelectionChanged"/>
+                        <TextBlock Style="{StaticResource Ops.Empty}" Margin="0,8,0,16" Tag="{Binding ElementName=RackCards}" Text="Nothing in the rack matches."/>
+                    </Grid>
+                    <StackPanel Orientation="Horizontal" Margin="2,10,0,8">
+                        <TextBlock Text="PCs" Style="{StaticResource Ops.SectionTitle}"/>
+                        <TextBlock Text="double-click one to see what is wrong, what it means and what fixed it before" Style="{StaticResource Ops.Caption}"
+                                   VerticalAlignment="Bottom" Margin="10,0,0,1"/>
+                    </StackPanel>
+                    <Grid>
+                        <ListBox x:Name="FleetCards" Style="{StaticResource Ops.CardList}" ItemsSource="{Binding Fleet}" ItemTemplate="{StaticResource MachineCard}"
+                                 MouseDoubleClick="FleetCards_MouseDoubleClick" PreviewKeyDown="FleetCards_PreviewKeyDown" SelectionChanged="FleetCards_SelectionChanged"/>
+                        <TextBlock Style="{StaticResource Ops.Empty}" Margin="0,8,0,16" Tag="{Binding ElementName=FleetCards}" Text="No PC matches."/>
+                    </Grid>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- Table: the rack and the PCs share the height (worst first in both, so the top rows are the ones that matter);
                  the PCs get more of it: there are three times as many. -->
-            <Grid Grid.Column="0" Margin="0,0,5,0">
+            <Grid Grid.Column="0" Margin="0,0,5,0" Visibility="{Binding TableView, Converter={StaticResource BoolToVis}}">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="4*" MinHeight="180"/>
                     <RowDefinition Height="5*" MinHeight="220"/>

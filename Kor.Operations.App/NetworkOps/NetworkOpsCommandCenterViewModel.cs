@@ -145,6 +145,24 @@ public sealed class NetworkOpsCommandCenterViewModel : ObservableObject
         }
     }
 
+    private bool _cardView = true;
+
+    /// <summary>Every machine as a card (Ian, 2026-10-02: "cards with top line details") -- or the dense table. Same rows, same
+    /// order, same filters either way; only the drawing differs.</summary>
+    public bool CardView
+    {
+        get => _cardView;
+        set { if (SetField(ref _cardView, value)) OnPropertyChanged(nameof(TableView)); }
+    }
+
+    /// <summary>The other radio button's side of <see cref="CardView"/> (settable, so both buttons bind two-way: a OneWay radio
+    /// binding is overwritten by the first click).</summary>
+    public bool TableView
+    {
+        get => !_cardView;
+        set => CardView = !value;
+    }
+
     /// <summary>Hide PCs with nothing live on them.</summary>
     public bool ProblemsOnly
     {

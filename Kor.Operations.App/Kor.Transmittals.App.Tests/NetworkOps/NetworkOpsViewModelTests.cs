@@ -95,6 +95,47 @@ public sealed class NetworkOpsViewModelTests
     }
 
     [Fact]
+    public void A_card_says_what_it_is_and_who_is_on_it_without_the_normal_case()
+    {
+        var rows = Center().Fleet.ToDictionary(r => r.Name);
+
+        Assert.Equal(("KOR-208-N", "Lenovo 30DH"), (rows["KOR-208-N"].Title, rows["KOR-208-N"].Subtitle));
+        // A connected agent is the normal case and is not said; a quiet one or none is.
+        Assert.Equal("kwurmlinger · active, idle 12 min · checked 30 min ago", rows["KOR-208-N"].Footer);
+        Assert.Contains("agent quiet", rows["KOR-216"].Footer);
+        Assert.Contains("no agent", rows["KOR-101"].Footer);
+        Assert.Equal("PC", rows["SPARE8"].Subtitle);   // no model on record yet
+    }
+
+    [Fact]
+    public void A_rack_card_splits_the_name_from_the_role_it_carries_in_brackets()
+    {
+        var now = DateTime.UtcNow;
+        var vm = Center();
+        vm.ApplyRack(NetworkOpsRackTests.Rack(now), now);
+        foreach (var r in vm.Rack)
+        {
+            Assert.DoesNotContain("(", r.Title);
+            Assert.False(string.IsNullOrWhiteSpace(r.Subtitle), $"{r.Name}: no subtitle");
+            Assert.StartsWith(r.Kind + " · read ", r.Footer);
+        }
+        var withRole = vm.Rack.FirstOrDefault(r => r.Name.Contains(" (", StringComparison.Ordinal));
+        if (withRole is not null)
+            Assert.Equal(withRole.Name, $"{withRole.Title} ({withRole.Subtitle})");
+    }
+
+    [Fact]
+    public void Cards_and_table_are_one_switch()
+    {
+        var vm = Center();
+        Assert.True(vm.CardView); Assert.False(vm.TableView);   // cards by default (Ian, 2026-10-02)
+        vm.TableView = true;
+        Assert.False(vm.CardView);
+        vm.CardView = true;
+        Assert.False(vm.TableView);
+    }
+
+    [Fact]
     public void Filter_matches_name_model_or_problem_and_problems_only_hides_quiet_pcs()
     {
         var vm = Center();

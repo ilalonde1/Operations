@@ -229,4 +229,80 @@
         <Setter Property="FontSize" Value="12"/>
         <Setter Property="Foreground" Value="{StaticResource Text.Secondary}"/>
     </Style>
+
+    <!-- ===== Machine cards (Command Center "Cards" view): a wrapping list, no list chrome, a navy outline on the chosen
+         card. The list does not scroll itself: the page around it does, so the wheel works anywhere on the page. ===== -->
+    <Style x:Key="Ops.CardItem" TargetType="ListBoxItem">
+        <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ListBoxItem">
+                    <Border x:Name="Ring" BorderThickness="2" BorderBrush="Transparent" CornerRadius="10" Margin="0,0,8,8">
+                        <ContentPresenter/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Ring" Property="BorderBrush" Value="#CBD2D9"/>
+                        </Trigger>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter TargetName="Ring" Property="BorderBrush" Value="{StaticResource Brand.Primary.Brush}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+    <Style x:Key="Ops.CardList" TargetType="ListBox">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="SelectionMode" Value="Single"/>
+        <Setter Property="ItemContainerStyle" Value="{StaticResource Ops.CardItem}"/>
+        <Setter Property="ItemsPanel">
+            <Setter.Value>
+                <ItemsPanelTemplate>
+                    <WrapPanel/>
+                </ItemsPanelTemplate>
+            </Setter.Value>
+        </Setter>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ListBox">
+                    <ItemsPresenter/>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+    <Style x:Key="Ops.CardTitle" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="14"/>
+        <Setter Property="FontWeight" Value="Bold"/>
+        <Setter Property="Foreground" Value="{StaticResource Text.Primary}"/>
+        <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+    </Style>
+
+    <!-- Two or three words to choose between (Cards | Table): the tabs' look, as radio buttons. -->
+    <Style x:Key="Ops.Segment" TargetType="RadioButton">
+        <Setter Property="Foreground" Value="{StaticResource Text.Secondary}"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="RadioButton">
+                    <Border x:Name="Bd" Padding="10,5" Background="Transparent" BorderBrush="Transparent" BorderThickness="0,0,0,2">
+                        <ContentPresenter VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource Brand.Accent.Brush}"/>
+                            <Setter Property="Foreground" Value="{StaticResource Text.Primary}"/>
+                        </Trigger>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="Foreground" Value="{StaticResource Text.Primary}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
 </ResourceDictionary>

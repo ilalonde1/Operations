@@ -37,6 +37,28 @@ public sealed class FleetRow
 
     public string StateLabel => NetworkOpsText.Label(State);
 
+    // ---- the card: the name, what it is, what matters, and one line of who/when ----
+
+    /// <summary>The name without the role a rack device carries in brackets: "KOR-DC01 (domain controller, DNS, DHCP)" -> "KOR-DC01".</summary>
+    public string Title => IsRack && Name.IndexOf(" (", StringComparison.Ordinal) is var i and > 0 ? Name[..i] : Name;
+
+    /// <summary>What it is: a rack device's role ("domain controller, DNS, DHCP"), else its kind; a PC's model.</summary>
+    public string Subtitle
+    {
+        get
+        {
+            if (IsRack)
+                return Name.IndexOf(" (", StringComparison.Ordinal) is var i and > 0 && Name.EndsWith(')') ? Name[(i + 2)..^1] : Kind;
+            return Model.Length > 0 ? Model : "PC";
+        }
+    }
+
+    /// <summary>One line under the card: who is on a PC, its agent only when something is off with it ("connected" is the
+    /// normal case and would push the rest off the card), when it was checked; a rack device's kind and last read.</summary>
+    public string Footer => IsRack
+        ? $"{Kind} · read {LastCheckedText}"
+        : string.Join(" · ", new[] { Presence, Agent == "connected" ? "" : Agent.Length > 0 ? $"agent {Agent}" : "no agent", $"checked {LastCheckedText}" }.Where(s => s.Length > 0));
+
     /// <summary>Most urgent first: worst state, then most live findings, then name.</summary>
     internal static IEnumerable<FleetRow> Ordered(IEnumerable<FleetRow> rows)
         => rows.OrderByDescending(r => r.State).ThenByDescending(r => r.LiveCount).ThenBy(r => r.Name, StringComparer.OrdinalIgnoreCase);

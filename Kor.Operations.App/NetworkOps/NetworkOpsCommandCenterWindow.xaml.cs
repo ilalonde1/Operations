@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Threading;
 
@@ -47,11 +48,15 @@ public partial class NetworkOpsCommandCenterWindow : Window
         await RefreshAsync(_autoRefreshCts.Token).ConfigureAwait(true);
     }
 
+    // The machine chosen in whichever view is showing (cards or table).
+    private Selector PcList => _vm.CardView ? FleetCards : FleetGrid;
+    private Selector RackList => _vm.CardView ? RackCards : RackGrid;
+
     private async Task RefreshAsync(CancellationToken ct)
     {
-        // The grids are rebuilt on every read; keep what Ian had selected selected.
-        var selected = (FleetGrid.SelectedItem as FleetRow)?.Name;
-        var selectedRack = (RackGrid.SelectedItem as FleetRow)?.Name;
+        // The lists are rebuilt on every read; keep what Ian had selected selected.
+        var selected = (PcList.SelectedItem as FleetRow)?.Name;
+        var selectedRack = (RackList.SelectedItem as FleetRow)?.Name;
         try
         {
             await _vm.RefreshAsync(ct).ConfigureAwait(true);
@@ -59,10 +64,48 @@ public partial class NetworkOpsCommandCenterWindow : Window
         catch (OperationCanceledException) { /* superseded */ }
         if (selectedRack is not null)
             foreach (var row in _vm.Rack)
-                if (row.Name == selectedRack) { RackGrid.SelectedItem = row; break; }
+                if (row.Name == selectedRack) { RackList.SelectedItem = row; break; }
         if (selected is null) return;
         foreach (var row in _vm.Fleet)
-            if (row.Name == selected) { FleetGrid.SelectedItem = row; break; }
+            if (row.Name == selected) { PcList.SelectedItem = row; break; }
+    }
+
+    // ---- cards: double-click or Enter opens the machine; choosing one in a section clears the other section's choice,
+    //      so Ask Claude and Open PC always mean the one card that is outlined ----
+    private void FleetCards_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (e.OriginalSource is DependencyObject d && ItemsControl.ContainerFromElement(FleetCards, d) is not ListBoxItem) return;
+        OpenSelected();
+    }
+
+    private void FleetCards_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Enter) return;
+        e.Handled = true;
+        OpenSelected();
+    }
+
+    private void RackCards_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (e.OriginalSource is DependencyObject d && ItemsControl.ContainerFromElement(RackCards, d) is not ListBoxItem) return;
+        OpenRackSelected();
+    }
+
+    private void RackCards_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Enter) return;
+        e.Handled = true;
+        OpenRackSelected();
+    }
+
+    private void FleetCards_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (FleetCards.SelectedItem is not null) RackCards.SelectedItem = null;
+    }
+
+    private void RackCards_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (RackCards.SelectedItem is not null) FleetCards.SelectedItem = null;
     }
 
     private void FleetGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)
@@ -86,7 +129,7 @@ public partial class NetworkOpsCommandCenterWindow : Window
     /// <summary>Ask Claude, on the selected PC or rack device when there is one (the ask box then says it is about that machine).</summary>
     private void AskClaude_Click(object sender, RoutedEventArgs e)
     {
-        var selected = (FleetGrid.SelectedItem ?? RackGrid.SelectedItem) as FleetRow;
+        var selected = (PcList.SelectedItem ?? RackList.SelectedItem) as FleetRow;
         var request = selected is null ? null : new Kor.Operations.NetworkOps.Core.Learning.PromptRequest("device", null, selected.DeviceId, null);
         new PromptLibraryWindow(_vm.Client, request) { Owner = this }.Show();
     }
@@ -120,7 +163,7 @@ public partial class NetworkOpsCommandCenterWindow : Window
     /// <summary>A rack device opens in the same window as a PC: its findings, what they mean, history, notes.</summary>
     private void OpenRackSelected()
     {
-        if (RackGrid.SelectedItem is not FleetRow row || _vm.RackSnapshot is not { } rack) return;
+        if (RackList.SelectedItem is not FleetRow row || _vm.RackSnapshot is not { } rack) return;
         var vm = new NetworkOpsDeviceViewModel(_vm.Client, rack, row.Device);
         new NetworkOpsDeviceWindow(vm) { Owner = this }.Show();
     }
@@ -135,7 +178,7 @@ public partial class NetworkOpsCommandCenterWindow : Window
 
     private void OpenSelected()
     {
-        if (FleetGrid.SelectedItem is not FleetRow row || _vm.Snapshot is not { } snapshot) return;
+        if (PcList.SelectedItem is not FleetRow row || _vm.Snapshot is not { } snapshot) return;
         var vm = new NetworkOpsDeviceViewModel(_vm.Client, snapshot, row.Device);
         new NetworkOpsDeviceWindow(vm) { Owner = this }.Show();
     }
