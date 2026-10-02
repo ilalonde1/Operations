@@ -135,7 +135,36 @@ nav .lbbuttonsel, nav .lbbuttonsel2 { background-color: #fff !important; color: 
 .modal-content .modal-header { background-color: #435363 !important; color: #fff !important; border-bottom: 3px solid #FF5B35 !important; }
 .modal-content .modal-header .modal-title, .modal-content .modal-header h5 { color: #fff !important; font-weight: 600; }
 
-/* The footer: navy, one line, no "Terms & Privacy". */
+/* ===== Less (Ian 2026-10-01: "SIMPLE. If you can remove things the better").
+   Hidden, not disabled: an admin can still reach these by URL. Guest sharing is OFF in the config (guestDeviceSharing). */
+
+/* Left bar: Devices, Account, Users. Not My Events, My Files, My Server (NetworkOps and the VM backups cover those). */
+#LeftMenuMyEvents, #LeftMenuMyFiles, #LeftMenuMyServer { display: none !important; }
+
+/* A device's tabs: General, Desktop, Terminal, Files. NetworkOps already reads software, events and hardware. */
+#MainDevRegistry, #MainDevApps, #MainDevEvents, #MainDevInfo, #MainDevConsole, #MainDevPlugins, #MainDevAmt { display: none !important; }
+
+/* A device's General page: Actions, Run, Chat. Not Notes, Log Event, Message, Share, nor the 7-day power chart. */
+#p10html3 input[onclick^="showNotes"], #p10html3 input[onclick^="writeDeviceEvent"], #p10html3 input[onclick^="deviceMessageFunction"],
+#p10html3 input[onclick^="deviceToastFunction"], #p10html3 input[onclick^="showShareDevice"] { display: none !important; }
+#p10html2 { display: none !important; }
+
+/* The desktop toolbar: keep input, clipboard, refresh and the display picker. */
+#DeskGuestShareButton, #DeskRecordButton, #DeskSaveImageButton, #DeskInputLockedButton, #DeskInputUnLockedButton,
+#deskFocusBtn, #DeskLatency, #DeskTimer, #deskRecordIcon { display: none !important; }
+
+/* ===== As much desktop as possible (Ian 2026-10-01). MeshCentral sizes the remote screen as the window height minus a
+   fixed 270 px of page around it (#deskarea3x: calc(100vh - 270px)). Taken away here: the footer row (45 px), 14 px of
+   header (66 -> 52) and 10 px of the title bar (50 -> 40) = 69 px, given back to the screen: 270 - 69 = 201.
+   (The expand icon by NUM still gives the whole window to the desktop.) */
+#footer { display: none !important; }
+.fullscreen:not(.fulldesk) #container { grid-template-rows: 52px minmax(24px, max-content) auto 0px !important; }
+#masthead, #masthead.masthead-container { height: 52px !important; }
+#p11title, #p10title, #p12title, #p13title { min-height: 40px !important; }
+body:not(.fulldesk) #deskarea3x { height: calc(100vh - 201px) !important; max-height: calc(100vh - 201px) !important; }
+body:not(.fulldesk).room4submenu #deskarea3x { height: calc(100vh - 227px) !important; max-height: calc(100vh - 227px) !important; }
+
+/* The footer (hidden above; kept styled in case a page shows it). */
 #footer { background-color: #2F3C48 !important; padding: 2px 0 !important; }
 #footer, #footer td, .footer1, .footer2 { color: rgba(255, 255, 255, .6) !important; font-size: 12px; }
 #footer a[href*="terms"] { display: none !important; }
