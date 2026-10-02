@@ -113,7 +113,11 @@ body:not(.login) .btn { border-radius: 6px; font-weight: 600; font-size: 14px; l
 #page_leftbar { background: #2F3C48 !important; }
 #page_leftbar .nav-link { color: rgba(255, 255, 255, .72) !important; }
 #page_leftbar .nav-link:hover { color: #fff !important; }
-nav .lbbuttonsel, nav .lbbuttonsel2 { background-color: #fff !important; color: #435363 !important; }
+/* The chosen page: a faint white wash, not a solid white block, and its icon stays white (Ian 2026-10-01). */
+nav .lbbuttonsel, nav .lbbuttonsel2, #page_leftbar .lbbuttonsel, #page_leftbar .lbbuttonsel2 {
+    background-color: rgba(255, 255, 255, .12) !important; color: #fff !important; opacity: 1 !important;
+}
+#page_leftbar .lbbuttonsel *, #page_leftbar .lbbuttonsel2 *, nav .lbbuttonsel *, nav .lbbuttonsel2 * { color: #fff !important; }
 
 /* The device tabs (General, Desktop, Terminal, ...): words on a light bar, the chosen one underlined in orange. */
 #MainMenuSpan, #topbar .style3x, #topbar .style3, #topbar .style3sel, .topbar_td_end { background: #F6F8FA !important; }
