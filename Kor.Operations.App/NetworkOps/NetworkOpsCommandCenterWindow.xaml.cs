@@ -83,7 +83,26 @@ public partial class NetworkOpsCommandCenterWindow : Window
 
     private void Updates_Click(object sender, RoutedEventArgs e) => new NetworkOpsUpdatesWindow(_vm.Client) { Owner = this }.Show();
 
-    private void PromptLibrary_Click(object sender, RoutedEventArgs e) => new PromptLibraryWindow(_vm.Client) { Owner = this }.Show();
+    /// <summary>Ask Claude, on the selected PC or rack device when there is one (the ask box then says it is about that machine).</summary>
+    private void AskClaude_Click(object sender, RoutedEventArgs e)
+    {
+        var selected = (FleetGrid.SelectedItem ?? RackGrid.SelectedItem) as FleetRow;
+        var request = selected is null ? null : new Kor.Operations.NetworkOps.Core.Learning.PromptRequest("device", null, selected.DeviceId, null);
+        new PromptLibraryWindow(_vm.Client, request) { Owner = this }.Show();
+    }
+
+    /// <summary>A tile filters both lists to its rows; the same tile again shows everything.</summary>
+    private void Tile_Click(object sender, MouseButtonEventArgs e)
+    {
+        var tile = ((FrameworkElement)sender).Name switch
+        {
+            nameof(CriticalTile) => NetworkOpsCommandCenterViewModel.TileCritical,
+            nameof(AttentionTile) => NetworkOpsCommandCenterViewModel.TileAttention,
+            nameof(HealthyTile) => NetworkOpsCommandCenterViewModel.TileHealthy,
+            _ => NetworkOpsCommandCenterViewModel.TileStale,
+        };
+        _vm.ToggleTile(tile);
+    }
 
     private void RackGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)
     {

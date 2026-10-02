@@ -39,6 +39,8 @@ public partial class NetworkOpsFixWindow : Window
         WarningText.Visibility = warn ? Visibility.Visible : Visibility.Collapsed;
         WarningText.Text = warn ? "Someone is actively using this PC. They get a 5-minute warning on screen, but unsaved work is at risk." : "";
         RunBtn.Content = f.Disruptive ? "Restart it" : "Run fix";
+        // A restart someone is in the middle of using looks like what it is: the danger style, not the inviting one.
+        RunBtn.Style = (Style)FindResource(warn ? "Ops.Danger" : "Ops.Primary");
     }
 
     private void Run_Click(object sender, RoutedEventArgs e)

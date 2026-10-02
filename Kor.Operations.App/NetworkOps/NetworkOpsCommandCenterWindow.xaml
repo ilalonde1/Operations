@@ -13,8 +13,27 @@
         FontFamily="Mulish, Segoe UI"
         Loaded="Window_Loaded">
     <Window.Resources>
-        <nops:HealthStateToBrushConverter x:Key="StateToBrush"/>
-        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Kor.Operations.App;component/NetworkOps/NetworkOpsStyles.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+            <nops:HealthStateToBrushConverter x:Key="StateToBrush"/>
+            <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+            <!-- A row that has not been read recently is greyed, and says why on hover. -->
+            <Style x:Key="StaleRow" TargetType="DataGridRow" BasedOn="{StaticResource {x:Type DataGridRow}}">
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding IsStale}" Value="True">
+                        <Setter Property="Foreground" Value="#9CA3AF"/>
+                        <Setter Property="ToolTip" Value="Not read recently: this may be out of date."/>
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
+            <DataTemplate x:Key="StatePill">
+                <Border Style="{StaticResource Ops.Pill}" Background="{Binding State, Converter={StaticResource StateToBrush}}">
+                    <TextBlock Text="{Binding StateLabel}" Style="{StaticResource Ops.PillText}"/>
+                </Border>
+            </DataTemplate>
+        </ResourceDictionary>
     </Window.Resources>
     <Grid>
         <Grid.RowDefinitions>
@@ -30,299 +49,285 @@
                             Grid.Row="0"
                             Margin="2,0,2,8"
                             HeaderText="NetworkOps Command Center"
-                            SubtitleText="The rack, the network and every PC: what is wrong, what is coming, and what has fixed it before"
+                            SubtitleText="The rack, the network and every PC"
                             AvatarDiameter="64"
                             AvatarBorderThickness="2"/>
 
         <!-- Connection-lost banner: without it the page looks healthy while showing stale data. -->
         <Border Grid.Row="1"
                 Background="#C11E1E"
+                CornerRadius="8"
                 Margin="12,0,12,8"
                 Padding="14,8"
                 Visibility="{Binding IsConnectionLost, Converter={StaticResource BoolToVis}}">
             <TextBlock Text="{Binding ConnectionLostMessage}" Foreground="White" FontWeight="SemiBold" TextWrapping="Wrap"/>
         </Border>
 
-        <!-- KPI strip: one number each, computed from the same read as the grid. -->
-        <Grid Grid.Row="2" Margin="12,0,12,8">
+        <!-- The page in one sentence, then four tiles counted across the rack AND the PCs. A tile is also a filter. -->
+        <Grid Grid.Row="2" Margin="12,0,12,10">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="2*"/>
+                <ColumnDefinition Width="2.2*"/>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="2*"/>
             </Grid.ColumnDefinitions>
-            <!-- The rack first: when it is down, nothing else matters. Its colour is its worst device's. -->
-            <Border Grid.Column="0" Style="{StaticResource Card}" Margin="0,0,4,0" Padding="16,10"
-                    ToolTip="Healthy rack devices of all of them: hosts, storage, backups, UPSes, network, internet. The colour is the worst device's.">
+            <Border Grid.Column="0" Style="{StaticResource Card}" Margin="0,0,5,0" Padding="20,12">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Rectangle Width="5" RadiusX="2.5" RadiusY="2.5" Fill="{Binding HeadlineBrush}" Margin="0,2,14,2"/>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock x:Name="HeadlineText" Text="{Binding Headline}" FontSize="26" FontWeight="Bold" Foreground="{StaticResource Text.Primary}"/>
+                        <TextBlock Text="{Binding HeadlineDetail}" Style="{StaticResource Ops.Caption}" Margin="0,2,0,0"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,6,0,0" ToolTip="{Binding ServiceSubline}">
+                            <Ellipse Width="8" Height="8" Fill="{Binding ServiceBrush}" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                            <TextBlock Style="{StaticResource Ops.Caption}" VerticalAlignment="Center">
+                                <Run Text="NetworkOps service"/><Run Text=" "/><Run Text="{Binding ServiceHeadline, Mode=OneWay}"/>
+                            </TextBlock>
+                        </StackPanel>
+                    </StackPanel>
+                </Grid>
+            </Border>
+            <Border x:Name="CriticalTile" Grid.Column="1" Style="{StaticResource Ops.Tile}" Margin="5,0" Tag="{Binding CriticalTileTag}" MouseLeftButtonUp="Tile_Click"
+                    ToolTip="Critical, on the rack and the PCs. Click to show only these; click again to show everything.">
                 <StackPanel>
-                    <TextBlock Text="{Binding RackHeadline}" Foreground="{Binding RackBrush}" FontSize="28" FontWeight="Bold"/>
-                    <TextBlock Text="{Binding RackSubline}" Foreground="{StaticResource Text.Secondary}" FontSize="11" TextTrimming="CharacterEllipsis"/>
+                    <TextBlock Text="{Binding CriticalHeadline}" Style="{StaticResource Ops.TileNumber}" Foreground="#B91C1C"/>
+                    <TextBlock Text="Critical" Style="{StaticResource Ops.TileLabel}"/>
                 </StackPanel>
             </Border>
-            <Border Grid.Column="1" Style="{StaticResource Card}" Margin="4,0,4,0" Padding="16,10">
+            <Border x:Name="AttentionTile" Grid.Column="2" Style="{StaticResource Ops.Tile}" Margin="5,0" Tag="{Binding AttentionTileTag}" MouseLeftButtonUp="Tile_Click"
+                    ToolTip="Needs attention, on the rack and the PCs. Click to show only these.">
                 <StackPanel>
-                    <TextBlock Text="{Binding CriticalHeadline}" Foreground="#C11E1E" FontSize="28" FontWeight="Bold"/>
-                    <TextBlock Text="PCs critical" Foreground="{StaticResource Text.Secondary}" FontSize="11"/>
+                    <TextBlock Text="{Binding AttentionHeadline}" Style="{StaticResource Ops.TileNumber}" Foreground="#B45309"/>
+                    <TextBlock Text="Need attention" Style="{StaticResource Ops.TileLabel}"/>
                 </StackPanel>
             </Border>
-            <Border Grid.Column="2" Style="{StaticResource Card}" Margin="4,0,4,0" Padding="16,10">
+            <Border x:Name="HealthyTile" Grid.Column="3" Style="{StaticResource Ops.Tile}" Margin="5,0" Tag="{Binding HealthyTileTag}" MouseLeftButtonUp="Tile_Click"
+                    ToolTip="Nothing open, on the rack and the PCs. Click to show only these.">
                 <StackPanel>
-                    <TextBlock Text="{Binding AttentionHeadline}" Foreground="#E5A800" FontSize="28" FontWeight="Bold"/>
-                    <TextBlock Text="PCs need attention" Foreground="{StaticResource Text.Secondary}" FontSize="11"/>
+                    <TextBlock Text="{Binding HealthyHeadline}" Style="{StaticResource Ops.TileNumber}" Foreground="#166534"/>
+                    <TextBlock Text="{Binding HealthyLabel}" Style="{StaticResource Ops.TileLabel}"/>
                 </StackPanel>
             </Border>
-            <Border Grid.Column="3" Style="{StaticResource Card}" Margin="4,0,4,0" Padding="16,10">
+            <Border x:Name="StaleTile" Grid.Column="4" Style="{StaticResource Ops.Tile}" Margin="5,0,0,0" Tag="{Binding StaleTileTag}" MouseLeftButtonUp="Tile_Click"
+                    ToolTip="Not read recently (a PC in 3 days, the rack in 15 minutes), or never: what the page shows for them may be out of date. Click to show only these.">
                 <StackPanel>
-                    <TextBlock Text="{Binding HealthyHeadline}" Foreground="#228B22" FontSize="28" FontWeight="Bold"/>
-                    <TextBlock Text="PCs healthy" Foreground="{StaticResource Text.Secondary}" FontSize="11"/>
-                </StackPanel>
-            </Border>
-            <Border Grid.Column="4" Style="{StaticResource Card}" Margin="4,0,4,0" Padding="16,10"
-                    ToolTip="PCs with no health check in the last 3 days, or never: what the page shows for them may be out of date.">
-                <StackPanel>
-                    <TextBlock Text="{Binding StaleHeadline}" Foreground="#808080" FontSize="28" FontWeight="Bold"/>
-                    <TextBlock Text="PCs not checked in 3 days" Foreground="{StaticResource Text.Secondary}" FontSize="11" TextTrimming="CharacterEllipsis"/>
-                </StackPanel>
-            </Border>
-            <Border Grid.Column="5" Style="{StaticResource Card}" Margin="4,0,0,0" Padding="16,10">
-                <StackPanel>
-                    <TextBlock Text="{Binding ServiceHeadline}" Foreground="{Binding ServiceBrush}" FontSize="28" FontWeight="Bold"/>
-                    <TextBlock Text="{Binding ServiceSubline}" Foreground="{StaticResource Text.Secondary}" FontSize="11" TextTrimming="CharacterEllipsis"/>
+                    <TextBlock Text="{Binding StaleHeadline}" Style="{StaticResource Ops.TileNumber}" Foreground="#6B7280"/>
+                    <TextBlock Text="Not seen lately" Style="{StaticResource Ops.TileLabel}"/>
                 </StackPanel>
             </Border>
         </Grid>
 
-        <!-- Toolbar -->
-        <Grid Grid.Row="3" Margin="12,0,12,8">
+        <!-- Toolbar: find and filter on the left, what to do on the right. -->
+        <Grid Grid.Row="3" Margin="12,0,12,10">
             <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="340"/>
                 <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="320"/>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
-            <TextBlock Grid.Column="0" Text="Find" VerticalAlignment="Center" Margin="0,0,8,0"/>
-            <TextBox Grid.Column="1" x:Name="FilterBox"
-                     Text="{Binding FilterText, UpdateSourceTrigger=PropertyChanged}"
-                     VerticalContentAlignment="Center"
-                     ToolTip="Searches the rack and the PCs: a name, a model, a kind or what is wrong -- 'veeam', 'UPS', 'KOR-2', 'P340', 'disk'."/>
+            <Grid Grid.Column="0">
+                <TextBox x:Name="FilterBox"
+                         Text="{Binding FilterText, UpdateSourceTrigger=PropertyChanged}"
+                         VerticalContentAlignment="Center"
+                         ToolTip="Searches the rack and the PCs: a name, a model, a kind or what is wrong -- 'veeam', 'UPS', 'KOR-2', 'P340', 'disk'."/>
+                <TextBlock Text="Find a PC, device or problem…" Foreground="#9CA3AF" Margin="11,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding Text.Length, ElementName=FilterBox}" Value="0">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+            </Grid>
+            <CheckBox Grid.Column="1" Content="Only problems" Margin="14,0,0,0" VerticalAlignment="Center"
+                      ToolTip="Hide rack devices and PCs with nothing open."
+                      IsChecked="{Binding ProblemsOnly}"/>
             <StackPanel Grid.Column="3" Orientation="Horizontal">
-                <CheckBox Content="Only problems"
-                          ToolTip="Hide rack devices and PCs with nothing open."
-                          IsChecked="{Binding ProblemsOnly}"
-                          VerticalAlignment="Center"
-                          Margin="0,0,16,0"/>
-                <CheckBox Content="Auto-refresh"
-                          IsChecked="{Binding AutoRefresh}"
-                          VerticalAlignment="Center"
-                          Margin="0,0,12,0"
-                          ToolTip="Re-read the fleet every 15 seconds."/>
-                <Button x:Name="OpenPcBtn" Content="Open PC..." Padding="14,4" Margin="0,0,8,0" Click="OpenPc_Click"
-                        ToolTip="Open the selected PC (or double-click a row)."/>
-                <Button Content="Updates" Padding="14,4" Margin="0,0,8,0" Click="Updates_Click"
+                <Button Content="Ask Claude" Style="{StaticResource Ops.Primary}" Margin="0,0,8,0" Click="AskClaude_Click"
+                        ToolTip="Ask anything about the selected PC (or the whole network), or open a prompt for any problem: Claude starts in Windows Terminal with everything NetworkOps knows."/>
+                <Button Content="Updates" Margin="0,0,8,0" Click="Updates_Click"
                         ToolTip="What Windows Update has waiting on every PC and server, and installing it on many at once."/>
-                <Button Content="Prompt Library" Padding="14,4" Margin="0,0,8,0" Click="PromptLibrary_Click"
-                        ToolTip="Claude prompts for any tool, device or problem, written from the live database when opened; and what sessions reported back."/>
-                <Button x:Name="RefreshBtn" Content="Refresh" Padding="14,4" Click="RefreshBtn_Click"/>
+                <Button x:Name="OpenPcBtn" Content="Open PC" Margin="0,0,16,0" Click="OpenPc_Click"
+                        ToolTip="Open the selected PC (or double-click a row)."/>
+                <CheckBox Content="Auto-refresh" IsChecked="{Binding AutoRefresh}" VerticalAlignment="Center" Margin="0,0,6,0"
+                          ToolTip="Re-read everything every 15 seconds."/>
+                <Button x:Name="RefreshBtn" Content="↻" Style="{StaticResource Ops.Link}" FontSize="16" Click="RefreshBtn_Click" ToolTip="Refresh now"/>
             </StackPanel>
         </Grid>
 
-        <Grid Grid.Row="4" Margin="12,0,12,8">
+        <Grid Grid.Row="4" Margin="12,0,12,10">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="400"/>
+                <ColumnDefinition Width="380"/>
             </Grid.ColumnDefinitions>
 
-            <Grid Grid.Column="0" Margin="0,0,4,0">
+            <!-- The rack and the PCs share the height (worst first in both, so the top rows are the ones that matter);
+                 the PCs get more of it: there are three times as many. -->
+            <Grid Grid.Column="0" Margin="0,0,5,0">
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="4*" MinHeight="180"/>
+                    <RowDefinition Height="5*" MinHeight="220"/>
                 </Grid.RowDefinitions>
 
-            <!-- The rack: every piece of infrastructure, worst first, read every 5 minutes. -->
-            <Border Grid.Row="0" Style="{StaticResource Card}" Margin="0,0,0,8" Padding="12">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
-                    <StackPanel Grid.Row="0" Orientation="Horizontal">
-                        <TextBlock Text="Rack" FontSize="14" FontWeight="SemiBold"/>
-                        <TextBlock Text="  ·  hosts, storage, backups, power, network and the internet line — read every 5 minutes; double-click one to see why"
-                                   Foreground="{StaticResource Text.Secondary}" FontSize="11" VerticalAlignment="Bottom" Margin="0,0,0,1"/>
-                    </StackPanel>
-                    <DataGrid Grid.Row="1"
-                              x:Name="RackGrid"
-                              ItemsSource="{Binding Rack}"
-                              AutoGenerateColumns="False"
-                              IsReadOnly="True"
-                              SelectionMode="Single"
-                              HeadersVisibility="Column"
-                              GridLinesVisibility="Horizontal"
-                              Margin="0,8,0,0"
-                              MouseDoubleClick="RackGrid_MouseDoubleClick"
-                              PreviewKeyDown="RackGrid_PreviewKeyDown">
-                        <DataGrid.RowStyle>
-                            <Style TargetType="DataGridRow" BasedOn="{StaticResource {x:Type DataGridRow}}">
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding IsStale}" Value="True">
-                                        <Setter Property="Foreground" Value="#808080"/>
-                                        <Setter Property="ToolTip" Value="Not read in the last 15 minutes: this may be out of date."/>
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </DataGrid.RowStyle>
-                        <DataGrid.Columns>
-                            <DataGridTemplateColumn Header="State" Width="140" SortMemberPath="State">
-                                <DataGridTemplateColumn.CellTemplate>
-                                    <DataTemplate>
-                                        <Border CornerRadius="9" Padding="8,2" HorizontalAlignment="Left" VerticalAlignment="Center"
-                                                Background="{Binding State, Converter={StaticResource StateToBrush}}">
-                                            <TextBlock Text="{Binding StateLabel}" Foreground="White" FontWeight="SemiBold" FontSize="11"/>
-                                        </Border>
-                                    </DataTemplate>
-                                </DataGridTemplateColumn.CellTemplate>
-                            </DataGridTemplateColumn>
-                            <DataGridTextColumn Header="Kind"         Binding="{Binding Kind}"            Width="80"/>
-                            <DataGridTextColumn Header="Device"       Binding="{Binding Name}"            Width="280"/>
-                            <DataGridTextColumn Header="What matters" Binding="{Binding Headline}"        Width="*"/>
-                            <DataGridTextColumn Header="Open"         Binding="{Binding LiveCount}"       Width="50"/>
-                            <DataGridTextColumn Header="Read"         Binding="{Binding LastCheckedText}" Width="90"/>
-                        </DataGrid.Columns>
-                    </DataGrid>
-                </Grid>
-            </Border>
+                <!-- The rack: every piece of infrastructure, worst first. -->
+                <Border Grid.Row="0" Style="{StaticResource Card}" Margin="0,0,0,10" Padding="14,12">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="Rack" Style="{StaticResource Ops.SectionTitle}"/>
+                            <TextBlock Text="{Binding RackFreshness}" Style="{StaticResource Ops.Caption}" VerticalAlignment="Bottom" Margin="10,0,0,1"/>
+                        </StackPanel>
+                        <Grid Grid.Row="1" Margin="0,8,0,0">
+                            <DataGrid x:Name="RackGrid"
+                                      Style="{StaticResource Ops.Grid}"
+                                      ItemsSource="{Binding Rack}"
+                                      RowStyle="{StaticResource StaleRow}"
+                                      MouseDoubleClick="RackGrid_MouseDoubleClick"
+                                      PreviewKeyDown="RackGrid_PreviewKeyDown">
+                                <DataGrid.Columns>
+                                    <DataGridTemplateColumn Header="State" Width="140" SortMemberPath="State" CellTemplate="{StaticResource StatePill}"/>
+                                    <DataGridTextColumn Header="Kind"         Binding="{Binding Kind}"      Width="80"/>
+                                    <DataGridTextColumn Header="Device"       Binding="{Binding Name}"      Width="280"/>
+                                    <DataGridTextColumn Header="What matters" Binding="{Binding Headline}"  Width="*"/>
+                                    <DataGridTextColumn Header="Open"         Binding="{Binding LiveCount}" Width="56"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                            <TextBlock Style="{StaticResource Ops.Empty}" Tag="{Binding ElementName=RackGrid}" Text="Nothing in the rack matches."/>
+                        </Grid>
+                    </Grid>
+                </Border>
 
-            <!-- The fleet: most urgent first. -->
-            <Border Grid.Row="1" Style="{StaticResource Card}" Padding="12">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="*"/>
-                    </Grid.RowDefinitions>
-                    <TextBlock Grid.Row="0" Text="PCs" FontSize="14" FontWeight="SemiBold"/>
-                    <DataGrid Grid.Row="1"
-                              x:Name="FleetGrid"
-                              ItemsSource="{Binding Fleet}"
-                              AutoGenerateColumns="False"
-                              IsReadOnly="True"
-                              SelectionMode="Single"
-                              HeadersVisibility="Column"
-                              GridLinesVisibility="Horizontal"
-                              Margin="0,8,0,0"
-                              MouseDoubleClick="FleetGrid_MouseDoubleClick"
-                              PreviewKeyDown="FleetGrid_PreviewKeyDown">
-                        <DataGrid.RowStyle>
-                            <Style TargetType="DataGridRow" BasedOn="{StaticResource {x:Type DataGridRow}}">
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding IsStale}" Value="True">
-                                        <Setter Property="Foreground" Value="#808080"/>
-                                        <Setter Property="ToolTip" Value="No health check in over 3 days: this may be out of date."/>
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </DataGrid.RowStyle>
-                        <DataGrid.Columns>
-                            <!-- Fixed widths + star minimums must fit the grid at the window's default size, or WPF squeezes
-                                 the fixed columns and clips their headers ("Open" rendered as "Ope", 2026-09-30). -->
-                            <DataGridTemplateColumn Header="State" Width="125" SortMemberPath="State">
-                                <DataGridTemplateColumn.CellTemplate>
-                                    <DataTemplate>
-                                        <Border CornerRadius="9" Padding="8,2" HorizontalAlignment="Left" VerticalAlignment="Center"
-                                                Background="{Binding State, Converter={StaticResource StateToBrush}}">
-                                            <TextBlock Text="{Binding StateLabel}" Foreground="White" FontWeight="SemiBold" FontSize="11"/>
-                                        </Border>
-                                    </DataTemplate>
-                                </DataGridTemplateColumn.CellTemplate>
-                            </DataGridTemplateColumn>
-                            <DataGridTextColumn Header="PC"           Binding="{Binding Name}"            Width="95"/>
-                            <DataGridTextColumn Header="What matters" Binding="{Binding Headline}"        Width="2*" MinWidth="190"/>
-                            <DataGridTextColumn Header="Open"         Binding="{Binding LiveCount}"       Width="50"/>
-                            <DataGridTextColumn Header="On it now"    Binding="{Binding Presence}"        Width="*" MinWidth="140"/>
-                            <DataGridTextColumn Header="Agent"        Binding="{Binding Agent}"           Width="90"/>
-                            <DataGridTextColumn Header="Model"        Binding="{Binding Model}"           Width="115"/>
-                            <DataGridTextColumn Header="Checked"      Binding="{Binding LastCheckedText}" Width="80"/>
-                            <DataGridTextColumn Header="Last seen"    Binding="{Binding LastSeenText}"    Width="80"/>
-                        </DataGrid.Columns>
-                    </DataGrid>
-                </Grid>
-            </Border>
+                <!-- The PCs: most urgent first. -->
+                <Border Grid.Row="1" Style="{StaticResource Card}" Padding="14,12">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="PCs" Style="{StaticResource Ops.SectionTitle}"/>
+                            <TextBlock Text="double-click one to see what is wrong, what it means and what fixed it before" Style="{StaticResource Ops.Caption}"
+                                       VerticalAlignment="Bottom" Margin="10,0,0,1"/>
+                        </StackPanel>
+                        <Grid Grid.Row="1" Margin="0,8,0,0">
+                            <DataGrid x:Name="FleetGrid"
+                                      Style="{StaticResource Ops.Grid}"
+                                      ItemsSource="{Binding Fleet}"
+                                      RowStyle="{StaticResource StaleRow}"
+                                      MouseDoubleClick="FleetGrid_MouseDoubleClick"
+                                      PreviewKeyDown="FleetGrid_PreviewKeyDown">
+                                <DataGrid.Columns>
+                                    <!-- Fixed widths + star minimums must fit the grid at the window's default size, or WPF squeezes
+                                         the fixed columns and clips their headers ("Open" rendered as "Ope", 2026-09-30). -->
+                                    <DataGridTemplateColumn Header="State" Width="135" SortMemberPath="State" CellTemplate="{StaticResource StatePill}"/>
+                                    <DataGridTextColumn Header="PC"           Binding="{Binding Name}"            Width="100"/>
+                                    <DataGridTextColumn Header="What matters" Binding="{Binding Headline}"        Width="2*" MinWidth="190"/>
+                                    <DataGridTextColumn Header="Open"         Binding="{Binding LiveCount}"       Width="56"/>
+                                    <DataGridTextColumn Header="On it now"    Binding="{Binding Presence}"        Width="*" MinWidth="140"/>
+                                    <DataGridTextColumn Header="Agent"        Binding="{Binding Agent}"           Width="95"/>
+                                    <DataGridTextColumn Header="Model"        Binding="{Binding Model}"           Width="120"/>
+                                    <DataGridTextColumn Header="Checked"      Binding="{Binding LastCheckedText}" Width="85"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                            <TextBlock Style="{StaticResource Ops.Empty}" Tag="{Binding ElementName=FleetGrid}" Text="No PC matches."/>
+                        </Grid>
+                    </Grid>
+                </Border>
             </Grid>
 
-            <Grid Grid.Column="1" Margin="4,0,0,0">
+            <Grid Grid.Column="1" Margin="5,0,0,0">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
 
-            <!-- Rack power: both UPSes, the verdict, whether the shutdown chain is armed, its last run. -->
-            <Border Grid.Row="0" Style="{StaticResource Card}" Margin="0,0,0,8" Padding="12">
-                <StackPanel>
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="Power &amp; shutdown chain" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                        <Border Grid.Column="1" CornerRadius="9" Padding="8,2" Background="{Binding PowerBrush}" VerticalAlignment="Center">
-                            <TextBlock Text="{Binding PowerHeadline}" Foreground="White" FontWeight="SemiBold" FontSize="11"/>
-                        </Border>
-                    </Grid>
-                    <ItemsControl ItemsSource="{Binding Ups}" Margin="0,8,0,0">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <Grid Margin="0,0,0,6">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="*"/>
-                                    </Grid.ColumnDefinitions>
-                                    <Ellipse Grid.Column="0" Width="10" Height="10" Fill="{Binding Brush}" Margin="0,4,8,0" VerticalAlignment="Top"/>
-                                    <StackPanel Grid.Column="1">
-                                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
-                                        <TextBlock Text="{Binding Detail}" TextWrapping="Wrap" FontSize="11"/>
-                                    </StackPanel>
-                                </Grid>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                    <TextBlock Text="{Binding PowerReason}" TextWrapping="Wrap" FontSize="11" Margin="0,2,0,0"/>
-                    <TextBlock Text="{Binding ChainText}" TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Text.Secondary}" Margin="0,6,0,0"/>
-                    <TextBlock Text="{Binding LastRehearsalText}" TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Text.Secondary}" Margin="0,4,0,0"/>
-                    <Button x:Name="RehearseBtn" Content="Rehearse the shutdown now (dry run)" HorizontalAlignment="Left" Padding="12,4" Margin="0,8,0,0"
-                            Click="RehearseBtn_Click"
-                            ToolTip="Runs every step of the UPS shutdown chain against the live rack WITHOUT shutting anything down: proves each host, VM, Synology and the final script still line up. Runs by itself every morning at 06:45."/>
-                </StackPanel>
-            </Border>
-
-            <!-- Fleet patterns: what the PCs with a problem have in common that the others do not. -->
-            <Border Grid.Row="1" Style="{StaticResource Card}" Padding="12">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="*"/>
-                    </Grid.RowDefinitions>
-                    <TextBlock Grid.Row="0" Text="Fleet patterns" FontSize="14" FontWeight="SemiBold"/>
-                    <TextBlock Grid.Row="1" TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}" FontSize="11" Margin="0,4,0,8"
-                               Text="A problem that goes with a model, driver or app far more often than chance would (one-sided Fisher test, p ≤ 0.01). A pattern points at a cause; it does not prove one."/>
-                    <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
-                        <ItemsControl ItemsSource="{Binding Patterns}">
+                <!-- Rack power: both UPSes, the verdict, whether the shutdown chain is armed. -->
+                <Border Grid.Row="0" Style="{StaticResource Card}" Margin="0,0,0,10" Padding="14,12">
+                    <StackPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Power" Style="{StaticResource Ops.SectionTitle}" VerticalAlignment="Center"/>
+                            <Border Grid.Column="1" Style="{StaticResource Ops.Pill}" Background="{Binding PowerBrush}">
+                                <TextBlock Text="{Binding PowerHeadline}" Style="{StaticResource Ops.PillText}"/>
+                            </Border>
+                        </Grid>
+                        <ItemsControl ItemsSource="{Binding Ups}" Margin="0,10,0,0">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Border BorderBrush="{StaticResource Panel.Border}" BorderThickness="0,0,0,1" Padding="0,6,0,8">
-                                        <StackPanel>
-                                            <TextBlock Text="{Binding Summary}" TextWrapping="Wrap" FontWeight="SemiBold"/>
-                                            <TextBlock Text="{Binding MembersText}" TextWrapping="Wrap" Margin="0,2,0,0"/>
-                                            <TextBlock Text="{Binding SinceText}" Foreground="{StaticResource Text.Secondary}" FontSize="11" Margin="0,2,0,0"/>
+                                    <Grid Margin="0,0,0,8" ToolTip="{Binding Address}">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Ellipse Width="9" Height="9" Fill="{Binding Brush}" Margin="0,5,10,0" VerticalAlignment="Top"/>
+                                        <StackPanel Grid.Column="1">
+                                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
+                                            <TextBlock Text="{Binding Detail}" Style="{StaticResource Ops.Caption}"/>
                                         </StackPanel>
-                                    </Border>
+                                    </Grid>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
-                    </ScrollViewer>
-                </Grid>
-            </Border>
+                        <TextBlock Text="{Binding PowerReason}" TextWrapping="Wrap" FontWeight="SemiBold" Margin="0,0,0,6"
+                                   Visibility="{Binding HasPowerReason, Converter={StaticResource BoolToVis}}"/>
+                        <Border BorderBrush="#EEF0F2" BorderThickness="0,1,0,0" Padding="0,8,0,0" Margin="0,2,0,0">
+                            <StackPanel>
+                                <TextBlock Text="{Binding ChainText}" Style="{StaticResource Ops.Caption}"/>
+                                <TextBlock Text="{Binding LastRehearsalText}" Style="{StaticResource Ops.Caption}" Margin="0,3,0,0"/>
+                                <Button x:Name="RehearseBtn" Content="Rehearse the shutdown now" Style="{StaticResource Ops.Link}" HorizontalAlignment="Left"
+                                        Margin="-6,2,0,0" Click="RehearseBtn_Click"
+                                        ToolTip="Runs every step of the UPS shutdown chain against the live rack WITHOUT shutting anything down: proves each host, VM, Synology and the final script still line up. Runs by itself every morning at 06:45."/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Border>
+
+                <!-- Fleet patterns: what the PCs with a problem have in common that the others do not. -->
+                <Border Grid.Row="1" Style="{StaticResource Card}" Padding="14,12">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <TextBlock Grid.Row="0" Text="Patterns across the PCs" Style="{StaticResource Ops.SectionTitle}"/>
+                        <TextBlock Grid.Row="1" Style="{StaticResource Ops.Caption}" Margin="0,3,0,8"
+                                   Text="A problem that goes with a model, driver or app far more often than chance would. A lead on the cause, not proof."
+                                   ToolTip="One-sided Fisher exact test, p ≤ 0.01, over the facts that can explain a pattern (model, BIOS, drivers, Office, key apps)."/>
+                        <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
+                            <Grid>
+                                <ItemsControl x:Name="PatternList" ItemsSource="{Binding Patterns}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border BorderBrush="#EEF0F2" BorderThickness="0,0,0,1" Padding="0,8,0,10">
+                                                <StackPanel>
+                                                    <TextBlock Text="{Binding Summary}" TextWrapping="Wrap" FontWeight="SemiBold"/>
+                                                    <TextBlock Text="{Binding MembersText}" TextWrapping="Wrap" Margin="0,3,0,0"/>
+                                                    <TextBlock Text="{Binding SinceText}" Style="{StaticResource Ops.Caption}" Margin="0,2,0,0"/>
+                                                </StackPanel>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <TextBlock Style="{StaticResource Ops.Empty}" Margin="0,16,0,0" Tag="{Binding ElementName=PatternList}" Text="No pattern stands out right now."/>
+                            </Grid>
+                        </ScrollViewer>
+                    </Grid>
+                </Border>
             </Grid>
         </Grid>
 

@@ -1,7 +1,7 @@
 <Window x:Class="Kor.Operations.App.NetworkOps.PromptLibraryWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Prompt Library"
+        Title="Ask Claude"
         Width="1280"
         Height="860"
         MinWidth="980"
@@ -13,6 +13,13 @@
     <!-- Claude prompts written by the service from its live database the moment one is opened, never a stored file
          that can go stale. Each one ends with how the session reports its outcome back; what it proposes NetworkOps
          should learn waits on the right for Accept or Reject, and accepted, goes into every later prompt about it. -->
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Kor.Operations.App;component/NetworkOps/NetworkOpsStyles.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
     <Grid Margin="12">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -24,10 +31,10 @@
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
 
-        <TextBlock Grid.ColumnSpan="2" x:Name="ReportingText" TextWrapping="Wrap" Margin="2,0,2,10" Foreground="{StaticResource Text.Secondary}"/>
+        <TextBlock Grid.ColumnSpan="2" x:Name="ReportingText" Style="{StaticResource Ops.Caption}" FontSize="13" Margin="2,0,2,10"/>
 
         <!-- What a prompt can be opened for. -->
-        <Border Grid.Row="1" Style="{StaticResource Card}" Margin="0,0,4,0" Padding="12">
+        <Border Grid.Row="1" Style="{StaticResource Card}" Margin="0,0,5,0" Padding="16,14">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
@@ -38,23 +45,23 @@
                 </Grid.RowDefinitions>
                 <!-- Ask anything: the prompt carries everything NetworkOps knows about the chosen PC (or the network), and the
                      knowledge banked from earlier sessions that applies to it. -->
-                <StackPanel Margin="0,0,0,14">
-                    <TextBlock Text="Ask Claude" FontWeight="SemiBold" FontSize="15"/>
-                    <TextBlock x:Name="AskScope" Margin="0,2,0,6" TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}" FontSize="12"
+                <StackPanel Margin="0,0,0,18">
+                    <TextBlock Text="Ask Claude" Style="{StaticResource Ops.SectionTitle}" FontSize="17"/>
+                    <TextBlock x:Name="AskScope" Margin="0,3,0,8" Style="{StaticResource Ops.Caption}"
                                Text="About the whole network. Choose a PC below to ask about it."/>
                     <TextBox x:Name="AskBox" AcceptsReturn="True" TextWrapping="Wrap" MinLines="3" MaxLines="8" VerticalScrollBarVisibility="Auto"
                              TextChanged="AskBox_TextChanged"
                              ToolTip="In your own words, e.g. &quot;Andrea's ETABS crashed around 2:40 today opening the Tower B model&quot;"/>
                     <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                        <Button x:Name="AskBtn" Content="Ask in Claude" Padding="14,6" Margin="0,0,8,0" FontWeight="SemiBold" IsEnabled="False" Click="Ask_Click"
+                        <Button x:Name="AskBtn" Content="Ask in Claude" Style="{StaticResource Ops.Primary}" Margin="0,0,12,0" IsEnabled="False" Click="Ask_Click"
                                 ToolTip="Write the prompt from the live database now, with your question, and start Claude on it in Windows Terminal."/>
                         <CheckBox x:Name="AskNetworkBox" Content="About the whole network" VerticalAlignment="Center" Checked="AskNetwork_Changed" Unchecked="AskNetwork_Changed"/>
                     </StackPanel>
                 </StackPanel>
-                <TextBlock Grid.Row="1" Text="Open a prompt for" FontWeight="SemiBold" FontSize="15"/>
-                <TextBox Grid.Row="2" x:Name="FilterBox" Margin="0,8,0,8" VerticalContentAlignment="Center" TextChanged="FilterBox_TextChanged"
+                <TextBlock Grid.Row="1" Text="OR OPEN A PROMPT FOR" Style="{StaticResource Ops.Label}" Margin="0,0,0,0"/>
+                <TextBox Grid.Row="2" x:Name="FilterBox" Margin="0,6,0,8" VerticalContentAlignment="Center" TextChanged="FilterBox_TextChanged"
                          ToolTip="Filter by device, problem or tool"/>
-                <ListBox Grid.Row="3" x:Name="SubjectList" SelectionChanged="SubjectList_SelectionChanged" MouseDoubleClick="SubjectList_MouseDoubleClick"
+                <ListBox Grid.Row="3" x:Name="SubjectList" BorderBrush="#E5E7EB" SelectionChanged="SubjectList_SelectionChanged" MouseDoubleClick="SubjectList_MouseDoubleClick"
                          ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                     <ListBox.ItemTemplate>
                         <DataTemplate>
@@ -66,44 +73,44 @@
                     </ListBox.ItemTemplate>
                 </ListBox>
                 <StackPanel Grid.Row="4" Orientation="Horizontal" Margin="0,10,0,0">
-                    <Button x:Name="OpenBtn" Content="Open in Claude" Padding="14,6" Margin="0,0,6,0" FontWeight="SemiBold" IsEnabled="False" Click="Open_Click"
+                    <Button x:Name="OpenBtn" Content="Open in Claude" Margin="0,0,6,0" IsEnabled="False" Click="Open_Click"
                             ToolTip="Write the prompt from the live database now, save it, and start Claude on it in Windows Terminal."/>
-                    <Button x:Name="CopyBtn" Content="Copy" Padding="12,6" Margin="0,0,6,0" IsEnabled="False" Click="Copy_Click"
+                    <Button x:Name="CopyBtn" Content="Copy" Style="{StaticResource Ops.Link}" Margin="0,0,2,0" IsEnabled="False" Click="Copy_Click"
                             ToolTip="Write the prompt now and put it on the clipboard."/>
-                    <Button x:Name="SaveBtn" Content="Save .md" Padding="12,6" IsEnabled="False" Click="Save_Click"
+                    <Button x:Name="SaveBtn" Content="Save .md" Style="{StaticResource Ops.Link}" IsEnabled="False" Click="Save_Click"
                             ToolTip="Write the prompt now and save it to your Prompts folder."/>
                 </StackPanel>
             </Grid>
         </Border>
 
         <!-- The prompt last written, and the sessions that reported back. -->
-        <Grid Grid.Row="1" Grid.Column="1" Margin="4,0,0,0">
+        <Grid Grid.Row="1" Grid.Column="1" Margin="5,0,0,0">
             <Grid.RowDefinitions>
                 <RowDefinition Height="*"/>
-                <RowDefinition Height="8"/>
+                <RowDefinition Height="10"/>
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
-            <Border Style="{StaticResource Card}" Padding="12">
+            <Border Style="{StaticResource Card}" Padding="16,14">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
-                    <TextBlock x:Name="PromptTitle" Text="The prompt" FontWeight="SemiBold" FontSize="15" Margin="0,0,0,6" TextWrapping="Wrap"/>
-                    <TextBox Grid.Row="1" x:Name="PromptText" IsReadOnly="True" FontFamily="Consolas" FontSize="12" TextWrapping="Wrap" VerticalContentAlignment="Top"
+                    <TextBlock x:Name="PromptTitle" Text="The prompt" Style="{StaticResource Ops.SectionTitle}" Margin="0,0,0,8" TextWrapping="Wrap"/>
+                    <TextBox Grid.Row="1" x:Name="PromptText" IsReadOnly="True" FontFamily="Cascadia Mono, Consolas" FontSize="12" Background="#FAFBFC" TextWrapping="Wrap" VerticalContentAlignment="Top"
                              VerticalScrollBarVisibility="Auto" Text="Choose something on the left and open it: the prompt is written from what NetworkOps knows right now."/>
                 </Grid>
             </Border>
-            <Border Grid.Row="2" Style="{StaticResource Card}" Padding="12">
+            <Border Grid.Row="2" Style="{StaticResource Card}" Padding="16,14">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
-                    <TextBlock Text="Sessions and what they learned" FontWeight="SemiBold" FontSize="15" Margin="0,0,0,6"/>
-                    <DataGrid Grid.Row="1" x:Name="RunsGrid" AutoGenerateColumns="False" IsReadOnly="True" HeadersVisibility="Column"
-                              SelectionMode="Single" SelectionChanged="RunsGrid_SelectionChanged">
+                    <TextBlock Text="Sessions and what they learned" Style="{StaticResource Ops.SectionTitle}" Margin="0,0,0,8"/>
+                    <Grid Grid.Row="1">
+                    <DataGrid x:Name="RunsGrid" Style="{StaticResource Ops.Grid}" SelectionChanged="RunsGrid_SelectionChanged">
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="Opened" Binding="{Binding OpenedText}" Width="110"/>
                             <DataGridTextColumn Header="For" Binding="{Binding Subject}" Width="230"/>
@@ -121,11 +128,13 @@
                             </DataGridTemplateColumn>
                         </DataGrid.Columns>
                     </DataGrid>
+                    <TextBlock Style="{StaticResource Ops.Empty}" Tag="{Binding ElementName=RunsGrid}" Text="No sessions yet: ask Claude something, or open a prompt."/>
+                    </Grid>
                     <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,8,0,0">
-                        <Button x:Name="AcceptBtn" Content="Accept" Padding="12,4" Margin="0,0,6,0" IsEnabled="False" Click="Accept_Click"
+                        <Button x:Name="AcceptBtn" Content="Accept" Style="{StaticResource Ops.Primary}" Margin="0,0,6,0" IsEnabled="False" Click="Accept_Click"
                                 ToolTip="Accept what this session proposed: its learning goes into every later prompt about this kind of problem, its knowledge card into every later prompt about a machine it applies to."/>
-                        <Button x:Name="RejectBtn" Content="Reject" Padding="12,4" Margin="0,0,6,0" IsEnabled="False" Click="Reject_Click"/>
-                        <Button Content="Refresh" Padding="12,4" Click="Refresh_Click"/>
+                        <Button x:Name="RejectBtn" Content="Reject" Style="{StaticResource Ops.Danger}" Margin="0,0,6,0" IsEnabled="False" Click="Reject_Click"/>
+                        <Button Content="↻" Style="{StaticResource Ops.Link}" FontSize="16" Click="Refresh_Click" ToolTip="Refresh"/>
                     </StackPanel>
                 </Grid>
             </Border>

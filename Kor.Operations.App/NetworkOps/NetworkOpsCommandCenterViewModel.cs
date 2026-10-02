@@ -60,16 +60,61 @@ public sealed class NetworkOpsCommandCenterViewModel : ObservableObject
     public string PowerHeadline { get; private set; } = "—";
     public Brush PowerBrush { get; private set; } = NetworkOpsBrushes.Unknown;
     public string PowerReason { get; private set; } = "";
+    public bool HasPowerReason => PowerReason.Length > 0;
     public string ChainText { get; private set; } = "";
     public string LastRehearsalText { get; private set; } = "";
+
+    // ---- The headline: one sentence for the whole page, then four tiles counted across the rack AND the PCs. Each tile
+    // is also a filter: clicking it shows only those rows (TileFilter); clicking it again shows everything.
+    public string Headline { get; private set; } = "Reading…";
+    public string HeadlineDetail { get; private set; } = "";
+    public Brush HeadlineBrush { get; private set; } = NetworkOpsBrushes.Unknown;
 
     public string CriticalHeadline { get; private set; } = "—";
     public string AttentionHeadline { get; private set; } = "—";
     public string HealthyHeadline { get; private set; } = "—";
     public string StaleHeadline { get; private set; } = "—";
+    public string HealthyLabel { get; private set; } = "Healthy";
+
+    /// <summary>The service itself, shown as a small dot in the header: "Running" or "Silent".</summary>
     public string ServiceHeadline { get; private set; } = "—";
     public string ServiceSubline { get; private set; } = "Service";
     public Brush ServiceBrush { get; private set; } = NetworkOpsBrushes.Unknown;
+
+    /// <summary>When the rack was read, said once in its section title instead of on every row.</summary>
+    public string RackFreshness { get; private set; } = "";
+
+    public const string TileCritical = "critical", TileAttention = "attention", TileHealthy = "healthy", TileStale = "stale";
+    private string _tileFilter = "";
+
+    /// <summary>The tile the lists are filtered to ("" = none).</summary>
+    public string TileFilter
+    {
+        get => _tileFilter;
+        private set
+        {
+            if (!SetField(ref _tileFilter, value)) return;
+            foreach (var n in new[] { nameof(CriticalTileTag), nameof(AttentionTileTag), nameof(HealthyTileTag), nameof(StaleTileTag) }) OnPropertyChanged(n);
+            RebuildFleet();
+        }
+    }
+
+    /// <summary>Filter to a tile's rows, or clear the filter when that tile is already chosen.</summary>
+    public void ToggleTile(string tile) => TileFilter = TileFilter == tile ? "" : tile;
+
+    public string? CriticalTileTag => TileFilter == TileCritical ? "Selected" : null;
+    public string? AttentionTileTag => TileFilter == TileAttention ? "Selected" : null;
+    public string? HealthyTileTag => TileFilter == TileHealthy ? "Selected" : null;
+    public string? StaleTileTag => TileFilter == TileStale ? "Selected" : null;
+
+    private bool PassesTile(FleetRow r) => TileFilter switch
+    {
+        TileCritical => r.State == HealthState.Critical,
+        TileAttention => r.State == HealthState.Attention,
+        TileHealthy => r.State is HealthState.Healthy or HealthState.Watch,
+        TileStale => r.IsStale || r.State == HealthState.Unknown,
+        _ => true,
+    };
 
     public string StatusMessage
     {
@@ -182,34 +227,64 @@ public sealed class NetworkOpsCommandCenterViewModel : ObservableObject
             var members = CommandCenterView.MembersOf(p, snapshot.FactsByDevice, snapshot.OpenFindings);
             Patterns.Add(new PatternRow
             {
-                Summary = p.Summary,
+                Summary = NetworkOpsText.Pattern(p, snapshot.OpenFindings),
                 MembersText = members.Count == 0 ? "" : string.Join(", ", members),
                 SinceText = $"seen since {NetworkOpsText.When(p.FirstSeenUtc)}",
             });
         }
 
-        var total = _allRows.Count;
-        CriticalHeadline = _allRows.Count(r => r.State == HealthState.Critical).ToString();
-        AttentionHeadline = _allRows.Count(r => r.State == HealthState.Attention).ToString();
-        HealthyHeadline = $"{_allRows.Count(r => r.State == HealthState.Healthy)} / {total}";
-        StaleHeadline = _allRows.Count(r => r.IsStale || r.State == HealthState.Unknown).ToString();
-
         if (snapshot.Service is { } beat)
         {
             var silent = nowUtc - beat.LastBeatUtc > ServiceSilentAfter;
             ServiceHeadline = silent ? "Silent" : "Running";
-            ServiceSubline = $"Service on {beat.Host} · {beat.Version ?? "?"} · heartbeat {CommandCenterView.Ago(beat.LastBeatUtc, nowUtc)}";
+            ServiceSubline = $"NetworkOps {beat.Version ?? "?"} on {beat.Host}: {(silent ? "SILENT, " : "")}last heartbeat {CommandCenterView.Ago(beat.LastBeatUtc, nowUtc)}";
             ServiceBrush = silent ? NetworkOpsBrushes.Critical : NetworkOpsBrushes.Healthy;
         }
         else
         {
             ServiceHeadline = "Never ran";
-            ServiceSubline = "No service heartbeat recorded";
+            ServiceSubline = "No NetworkOps service heartbeat recorded";
             ServiceBrush = NetworkOpsBrushes.Critical;
         }
 
-        foreach (var name in new[] { nameof(CriticalHeadline), nameof(AttentionHeadline), nameof(HealthyHeadline), nameof(StaleHeadline),
-                                     nameof(ServiceHeadline), nameof(ServiceSubline), nameof(ServiceBrush), nameof(Snapshot) })
+        _pcsCheckedUtc = snapshot.Devices.Max(d => d.LastCheckedUtc);
+        UpdateHeadline(nowUtc);
+        foreach (var name in new[] { nameof(ServiceHeadline), nameof(ServiceSubline), nameof(ServiceBrush), nameof(Snapshot) })
+            OnPropertyChanged(name);
+    }
+
+    private DateTime? _pcsCheckedUtc;
+    private DateTime? _rackReadUtc;
+
+    /// <summary>
+    /// The sentence and the four tiles, across the rack AND the PCs: what needs a person is the same question for a
+    /// host as for a laptop. Called after either read, so the page never shows one half's counts with the other's.
+    /// </summary>
+    private void UpdateHeadline(DateTime nowUtc)
+    {
+        var all = _allRows.Concat(_allRack).ToList();
+        var critical = all.Count(r => r.State == HealthState.Critical);
+        var attention = all.Count(r => r.State == HealthState.Attention);
+        var healthy = all.Count(r => r.State is HealthState.Healthy or HealthState.Watch);
+        var stale = all.Count(r => r.IsStale || r.State == HealthState.Unknown);
+        CriticalHeadline = critical.ToString();
+        AttentionHeadline = attention.ToString();
+        HealthyHeadline = healthy.ToString();
+        HealthyLabel = $"Healthy, of {all.Count}";
+        StaleHeadline = stale.ToString();
+
+        var needs = critical + attention;
+        Headline = all.Count == 0 ? "Nothing read yet" : needs == 0 ? "All clear" : $"{needs} {(needs == 1 ? "thing needs" : "things need")} you";
+        HeadlineBrush = critical > 0 ? NetworkOpsBrushes.Critical : attention > 0 ? NetworkOpsBrushes.Attention : all.Count == 0 ? NetworkOpsBrushes.Unknown : NetworkOpsBrushes.Healthy;
+        var parts = new List<string>();
+        if (critical > 0) parts.Add($"{critical} critical");
+        if (attention > 0) parts.Add($"{attention} to look at");
+        if (_rackReadUtc is { } r) parts.Add($"rack read {CommandCenterView.Ago(r, nowUtc)}");
+        if (_pcsCheckedUtc is { } p) parts.Add($"PCs checked {CommandCenterView.Ago(p, nowUtc)}");
+        HeadlineDetail = string.Join("  ·  ", parts);
+
+        foreach (var name in new[] { nameof(CriticalHeadline), nameof(AttentionHeadline), nameof(HealthyHeadline), nameof(HealthyLabel), nameof(StaleHeadline),
+                                     nameof(Headline), nameof(HeadlineBrush), nameof(HeadlineDetail) })
             OnPropertyChanged(name);
     }
 
@@ -237,7 +312,11 @@ public sealed class NetworkOpsCommandCenterViewModel : ObservableObject
                 ? $"Rack: {rows.Count(r => r.State == HealthState.Critical)} critical, {rows.Count(r => r.State == HealthState.Attention)} need attention"
                 : "Rack healthy" + (stale > 0 ? $" · {stale} not read recently" : "");
         RackBrush = rows.Count == 0 ? NetworkOpsBrushes.Unknown : NetworkOpsBrushes.For(worst);
-        foreach (var name in new[] { nameof(RackHeadline), nameof(RackSubline), nameof(RackBrush), nameof(RackSnapshot) })
+        _rackReadUtc = rack.Devices.Max(d => d.LastCheckedUtc);
+        RackFreshness = rows.Count == 0 ? "nothing read yet"
+            : $"read every 5 minutes, last {CommandCenterView.Ago(_rackReadUtc, nowUtc)}" + (stale > 0 ? $"  ·  {stale} not read in 15 min" : "");
+        UpdateHeadline(nowUtc);
+        foreach (var name in new[] { nameof(RackHeadline), nameof(RackSubline), nameof(RackBrush), nameof(RackSnapshot), nameof(RackFreshness) })
             OnPropertyChanged(name);
     }
 
@@ -254,16 +333,17 @@ public sealed class NetworkOpsCommandCenterViewModel : ObservableObject
             "Trigger" => ("SHUTTING DOWN", NetworkOpsBrushes.Critical),
             _ => ("Not watched", NetworkOpsBrushes.Unknown),
         };
-        PowerReason = p.LevelSinceUtc is { } since ? $"{p.Reason} (since {NetworkOpsText.When(since)})" : p.Reason;
+        // On mains the reason only repeats the two UPS lines; it is shown when something is off.
+        PowerReason = p.Level == "Normal" ? "" : p.LevelSinceUtc is { } since ? $"{p.Reason} (since {NetworkOpsText.When(since)})" : p.Reason;
         ChainText = p.Armed
             ? "Shutdown chain ARMED: a real outage shuts the rack down cleanly."
-            : "Shutdown chain NOT armed: a real outage runs it as a dry run only (until the live test passes).";
+            : "Shutdown chain NOT armed: an outage is only rehearsed until the live test passes.";
         var rehearsal = p.RecentEvents.FirstOrDefault(e => e.Kind == "ChainEnd");
         LastRehearsalText = rehearsal is null
             ? "No chain run recorded yet."
             : $"Last chain run {NetworkOpsText.When(rehearsal.AtUtc)}{(rehearsal.DryRun ? " (dry run)" : "")}: {(rehearsal.Ok ? "" : "PROBLEMS — ")}{rehearsal.Text}";
 
-        foreach (var name in new[] { nameof(PowerHeadline), nameof(PowerBrush), nameof(PowerReason), nameof(ChainText), nameof(LastRehearsalText) })
+        foreach (var name in new[] { nameof(PowerHeadline), nameof(PowerBrush), nameof(PowerReason), nameof(HasPowerReason), nameof(ChainText), nameof(LastRehearsalText) })
             OnPropertyChanged(name);
     }
 
@@ -289,6 +369,7 @@ public sealed class NetworkOpsCommandCenterViewModel : ObservableObject
         foreach (var row in _allRack)
         {
             if (_problemsOnly && row.LiveCount == 0) continue;
+            if (!PassesTile(row)) continue;
             if (filter.Length > 0 && !(row.Matches(filter) || row.Kind.Contains(filter, StringComparison.OrdinalIgnoreCase))) continue;
             Rack.Add(row);
         }
@@ -302,6 +383,7 @@ public sealed class NetworkOpsCommandCenterViewModel : ObservableObject
         foreach (var row in _allRows)
         {
             if (_problemsOnly && row.LiveCount == 0) continue;
+            if (!PassesTile(row)) continue;
             if (filter.Length > 0 && !row.Matches(filter)) continue;
             Fleet.Add(row);
         }

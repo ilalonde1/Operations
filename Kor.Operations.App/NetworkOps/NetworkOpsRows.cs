@@ -93,6 +93,7 @@ public sealed class PatternRow
 public sealed class UpsLine
 {
     public required string Name { get; init; }
+    public string Address { get; init; } = "";
     public required string Detail { get; init; }
     public required Brush Brush { get; init; }
 
@@ -113,12 +114,12 @@ public sealed class UpsLine
         if (u.LoadPercent is { } l) parts.Add($"load {l}%");
         if (u.BatteryLow) parts.Add("LOW BATTERY");
         if (u.ReplaceBattery) parts.Add("replace battery");
-        parts.Add($"read {CommandCenterView.Ago(u.AtUtc, nowUtc)}");
+        if (nowUtc - u.AtUtc > TimeSpan.FromMinutes(2)) parts.Add($"read {CommandCenterView.Ago(u.AtUtc, nowUtc)}");   // fresh is the normal case: only say when it is not
         var brush = !u.Reachable ? NetworkOpsBrushes.Unknown
             : u.Source is "Battery" or "Off" || u.BatteryLow ? NetworkOpsBrushes.Critical
             : u.ReplaceBattery || u.Source == "Bypass" ? NetworkOpsBrushes.Attention
             : u.Source == "Mains" ? NetworkOpsBrushes.Healthy : NetworkOpsBrushes.Unknown;
-        return new UpsLine { Name = $"{u.Name}  ({u.Address})", Detail = string.Join(" · ", parts), Brush = brush };
+        return new UpsLine { Name = u.Name, Address = u.Address, Detail = string.Join(" · ", parts), Brush = brush };
     }
 }
 
@@ -183,6 +184,39 @@ internal static class NetworkOpsText
         HealthState.Healthy => "Healthy",
         _ => "Unknown",
     };
+
+    /// <summary>
+    /// A fleet pattern as a person says it: "opushutil.exe keeps crashing: 2 of 2 PCs with Access engine 2016 16.0.5044.1000,
+    /// against 0 of 3 without" -- the problem's own title and the fact in words, not "crash-loop:" and "access.engine.2016 =".
+    /// </summary>
+    public static string Pattern(ActivePattern p, IEnumerable<FleetFinding> open)
+    {
+        var title = open.FirstOrDefault(f => FixLearning.FamilyOf(f.RuleKey) == FixLearning.FamilyOf(p.Problem))?.Title ?? p.Problem;
+        return $"{title}: {p.AffectedWith} of {p.TotalWith} PCs with {Fact(p.Fact)} {p.Value}, against {p.AffectedWithout} of {p.TotalWithout} without";
+    }
+
+    /// <summary>A fact key in words: hw.model → "model", app.revit.2025 → "Revit 2025", access.engine.2016 → "Access engine 2016".</summary>
+    public static string Fact(string key) => key switch
+    {
+        Facts.Model => "model",
+        Facts.Board => "board",
+        Facts.Bios => "BIOS",
+        Facts.RamGb => "RAM (GB)",
+        Facts.OsRelease => "Windows",
+        Facts.OfficeBuild => "Office build",
+        Facts.OfficeChannel => "Office channel",
+        Facts.GpuName => "graphics card",
+        Facts.GpuDriver => "graphics driver",
+        _ when key.StartsWith(Facts.AccessEngine, StringComparison.Ordinal) => "Access engine" + key[Facts.AccessEngine.Length..].Replace('.', ' '),
+        _ when key.StartsWith(Facts.AppPrefix, StringComparison.Ordinal) => Words(key[Facts.AppPrefix.Length..]),
+        _ => key,
+    };
+
+    private static readonly HashSet<string> Acronyms = new(StringComparer.OrdinalIgnoreCase) { "etabs", "safe", "csi" };
+
+    private static string Words(string dotted)
+        => string.Join(" ", dotted.Split('.', StringSplitOptions.RemoveEmptyEntries)
+            .Select(w => Acronyms.Contains(w) ? w.ToUpperInvariant() : char.ToUpperInvariant(w[0]) + w[1..]));
 
     /// <summary>A local date a person reads: "Mon 29 Sep 14:05".</summary>
     public static string When(DateTime utc) => utc.ToLocalTime().ToString("ddd d MMM HH:mm", CultureInfo.CurrentCulture);

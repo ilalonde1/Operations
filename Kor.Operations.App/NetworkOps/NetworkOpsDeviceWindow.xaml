@@ -5,34 +5,41 @@
         Title="{Binding DeviceName, StringFormat='NetworkOps — {0}'}"
         Width="1300"
         Height="860"
+        MinWidth="1000"
+        MinHeight="640"
         WindowStartupLocation="CenterOwner"
         Background="{StaticResource App.Background}"
         FontFamily="Mulish, Segoe UI"
         Loaded="Window_Loaded">
     <Window.Resources>
-        <nops:HealthStateToBrushConverter x:Key="StateToBrush"/>
-        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
-        <!-- A heading and a bulleted list, used by every section of the explanation. -->
-        <DataTemplate x:Key="Bullet">
-            <TextBlock TextWrapping="Wrap" Margin="0,1,0,1">
-                <Run Text="•  "/><Run Text="{Binding Mode=OneWay}"/>
-            </TextBlock>
-        </DataTemplate>
-        <Style x:Key="SectionHeading" TargetType="TextBlock">
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Margin" Value="0,10,0,2"/>
-        </Style>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Kor.Operations.App;component/NetworkOps/NetworkOpsStyles.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+            <nops:HealthStateToBrushConverter x:Key="StateToBrush"/>
+            <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+            <!-- A heading and a bulleted list, used by every section of the explanation. -->
+            <DataTemplate x:Key="Bullet">
+                <TextBlock TextWrapping="Wrap" Margin="0,1,0,1">
+                    <Run Text="•  "/><Run Text="{Binding Mode=OneWay}"/>
+                </TextBlock>
+            </DataTemplate>
+            <Style x:Key="SectionHeading" TargetType="TextBlock">
+                <Setter Property="FontWeight" Value="SemiBold"/>
+                <Setter Property="Margin" Value="0,12,0,3"/>
+            </Style>
+        </ResourceDictionary>
     </Window.Resources>
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
-            <RowDefinition Height="260"/>
+            <RowDefinition Height="250"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- Who this PC or rack device is, and how fresh that is. -->
-        <Border Grid.Row="0" Style="{StaticResource Card}" Margin="12,12,12,8" Padding="16,12">
+        <!-- Who this machine is, who is on it, how it is reached; and the two things done to it most. -->
+        <Border Grid.Row="0" Style="{StaticResource Card}" Margin="12,12,12,10" Padding="20,14">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
@@ -40,142 +47,155 @@
                 </Grid.ColumnDefinitions>
                 <StackPanel Grid.Column="0">
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="{Binding DeviceName}" FontSize="24" FontWeight="Bold" VerticalAlignment="Center"/>
-                        <Border CornerRadius="9" Padding="10,3" Margin="12,0,0,0" VerticalAlignment="Center" Background="{Binding StateBrush}">
-                            <TextBlock Text="{Binding StateLabel}" Foreground="White" FontWeight="SemiBold"/>
+                        <TextBlock Text="{Binding DeviceName}" FontSize="26" FontWeight="Bold" VerticalAlignment="Center" Foreground="{StaticResource Text.Primary}"/>
+                        <Border Style="{StaticResource Ops.Pill}" Padding="10,3" Margin="12,0,0,0" Background="{Binding StateBrush}">
+                            <TextBlock Text="{Binding StateLabel}" Style="{StaticResource Ops.PillText}" FontSize="12"/>
                         </Border>
                     </StackPanel>
-                    <TextBlock Text="{Binding IdentityLine}" Margin="0,4,0,0"/>
-                    <TextBlock Text="{Binding HardwareLine}" Foreground="{StaticResource Text.Secondary}" TextWrapping="Wrap"/>
-                    <TextBlock Text="{Binding FreshnessLine}" Foreground="{StaticResource Text.Secondary}" FontSize="11" Margin="0,2,0,0"/>
-                    <TextBlock Text="{Binding PresenceLine}" FontWeight="SemiBold" Margin="0,4,0,0"/>
-                    <TextBlock Text="{Binding AgentLine}" Foreground="{StaticResource Text.Secondary}" FontSize="11" Margin="0,2,0,0"
-                               Visibility="{Binding ShowsAgent, Converter={StaticResource BoolToVis}}"/>
-                    <TextBlock Text="{Binding RemoteLine}" Foreground="{StaticResource Text.Secondary}" FontSize="11" Margin="0,2,0,0"
-                               Visibility="{Binding ShowsRemote, Converter={StaticResource BoolToVis}}"/>
+                    <TextBlock Margin="0,4,0,0" TextWrapping="Wrap">
+                        <Run Text="{Binding IdentityLine, Mode=OneWay}"/><Run Text="   "/><Run Text="{Binding HardwareLine, Mode=OneWay}" Foreground="{StaticResource Text.Secondary}"/>
+                    </TextBlock>
+                    <TextBlock Text="{Binding PresenceLine}" FontWeight="SemiBold" Margin="0,8,0,0"
+                               Visibility="{Binding ShowsPresence, Converter={StaticResource BoolToVis}}"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                        <Border Style="{StaticResource Ops.Chip}" ToolTip="{Binding AgentLine}" Visibility="{Binding ShowsAgent, Converter={StaticResource BoolToVis}}">
+                            <StackPanel Orientation="Horizontal">
+                                <Ellipse Width="7" Height="7" Fill="{Binding AgentDot}" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                <TextBlock Text="{Binding AgentChip}" FontSize="12"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Style="{StaticResource Ops.Chip}" ToolTip="{Binding RemoteLine}" Visibility="{Binding ShowsRemote, Converter={StaticResource BoolToVis}}">
+                            <StackPanel Orientation="Horizontal">
+                                <Ellipse Width="7" Height="7" Fill="{Binding RemoteDot}" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                <TextBlock Text="{Binding RemoteChip}" FontSize="12"/>
+                            </StackPanel>
+                        </Border>
+                        <TextBlock Text="{Binding FreshnessLine}" Style="{StaticResource Ops.Caption}" VerticalAlignment="Center" Margin="4,0,0,0"/>
+                    </StackPanel>
                 </StackPanel>
-                <StackPanel Grid.Column="1" VerticalAlignment="Center" MaxWidth="680">
+                <StackPanel Grid.Column="1" VerticalAlignment="Center" MaxWidth="560">
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                        <Button x:Name="ConnectBtn" Content="Connect" Padding="16,6" Margin="0,0,6,0" FontWeight="SemiBold" Click="Connect_Click"
+                        <Button x:Name="ConnectBtn" Content="Connect" Style="{StaticResource Ops.Primary}" Margin="0,0,8,0" Click="Connect_Click"
                                 IsEnabled="{Binding CanConnect}" Visibility="{Binding ShowsRemote, Converter={StaticResource BoolToVis}}"
-                                ToolTip="Opens this machine's screen in KOR Remote (MeshCentral), in your browser. For a PC with nobody at it or its monitors off, use RDP from the same page."/>
-                        <Button Content="Install remote control" Padding="12,6" Margin="0,0,6,0" Click="InstallRemote_Click"
-                                IsEnabled="{Binding CanInstallRemote}" Visibility="{Binding CanInstallRemote, Converter={StaticResource BoolToVis}}"
-                                ToolTip="Puts the Mesh agent on this machine through NetworkOps. Done once KOR Remote lists it as connected."/>
-                        <Button Content="{Binding AgentButtonText}" Padding="12,6" Margin="0,0,6,0" Click="InstallAgent_Click"
-                                IsEnabled="{Binding CanChangeAgent}" Visibility="{Binding ShowsAgent, Converter={StaticResource BoolToVis}}"
-                                ToolTip="Puts the NetworkOps agent on this PC from APP01 (or replaces it with the version APP01 has). Done once the agent has called in."/>
-                        <Button Content="Remove agent" Padding="12,6" Margin="0,0,6,0" Click="RemoveAgent_Click"
-                                IsEnabled="{Binding CanChangeAgent}" Visibility="{Binding HasAgent, Converter={StaticResource BoolToVis}}"
-                                ToolTip="Stops and deletes the agent on this PC; checks go back to the network route."/>
-                        <Button x:Name="CheckNowBtn" Content="{Binding CheckButtonText}" Padding="16,6"
+                                ToolTip="Opens this machine's screen in KOR Remote (MeshCentral), in your browser. For a PC with nobody at it or its monitors off, use Web-RDP (More)."/>
+                        <Button x:Name="CheckNowBtn" Content="{Binding CheckButtonText}" Margin="0,0,8,0"
                                 IsEnabled="{Binding CanCheck}" Click="CheckNow_Click"
                                 ToolTip="{Binding CheckButtonTip}"/>
+                        <Button x:Name="MoreBtn" Content="More  ▾" Click="More_Click" Visibility="{Binding ShowsMore, Converter={StaticResource BoolToVis}}"
+                                ToolTip="Wake it, open it in Web-RDP, install remote control, install or remove the agent.">
+                            <Button.ContextMenu>
+                                <ContextMenu>
+                                    <MenuItem Header="Wake it up" Click="Wake_Click" IsEnabled="{Binding CanWake}" Visibility="{Binding ShowsWake, Converter={StaticResource BoolToVis}}"
+                                              ToolTip="Sends a Wake-on-LAN magic packet from APP01 and waits (up to 6 minutes) for the PC to answer."/>
+                                    <MenuItem Header="Open in Web-RDP…" Click="WebRdp_Click" IsEnabled="{Binding CanConnect}" Visibility="{Binding ShowsRemote, Converter={StaticResource BoolToVis}}"
+                                              ToolTip="Opens this machine's page in KOR Remote; click Web-RDP there for a full-size, sharp session. Best for a PC with no monitor (it otherwise shows 1024x768)."/>
+                                    <MenuItem Header="Install remote control" Click="InstallRemote_Click" IsEnabled="{Binding CanInstallRemote}" Visibility="{Binding CanInstallRemote, Converter={StaticResource BoolToVis}}"
+                                              ToolTip="Puts the Mesh agent on this machine through NetworkOps. Done once KOR Remote lists it as connected."/>
+                                    <Separator Visibility="{Binding ShowsAgent, Converter={StaticResource BoolToVis}}"/>
+                                    <MenuItem Header="{Binding AgentButtonText}" Click="InstallAgent_Click" IsEnabled="{Binding CanChangeAgent}" Visibility="{Binding ShowsAgent, Converter={StaticResource BoolToVis}}"
+                                              ToolTip="Puts the NetworkOps agent on this PC from APP01 (or replaces it with the version APP01 has). Done once the agent has called in."/>
+                                    <MenuItem Header="Remove agent…" Foreground="#B91C1C" Click="RemoveAgent_Click" IsEnabled="{Binding CanChangeAgent}" Visibility="{Binding HasAgent, Converter={StaticResource BoolToVis}}"
+                                              ToolTip="Stops and deletes the agent on this PC; checks go back to the network route."/>
+                                </ContextMenu>
+                            </Button.ContextMenu>
+                        </Button>
                     </StackPanel>
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,6,0,0">
-                        <Button Content="Wake" Padding="12,4" Margin="0,0,6,0" Click="Wake_Click"
-                                IsEnabled="{Binding CanWake}" Visibility="{Binding ShowsWake, Converter={StaticResource BoolToVis}}"
-                                ToolTip="Sends a Wake-on-LAN magic packet from APP01 and waits (up to 6 minutes) for the PC to answer."/>
-                        <Button Content="Web-RDP…" Padding="12,4" Click="WebRdp_Click"
-                                IsEnabled="{Binding CanConnect}" Visibility="{Binding ShowsRemote, Converter={StaticResource BoolToVis}}"
-                                ToolTip="Opens this machine's page in KOR Remote; click Web-RDP there for a full-size, sharp session. Best for a PC with no monitor (it otherwise shows 1024x768)."/>
-                    </StackPanel>
-                    <TextBlock Text="{Binding CheckStatus}" TextWrapping="Wrap" Margin="0,6,0,0" HorizontalAlignment="Right" TextAlignment="Right"/>
+                    <TextBlock Text="{Binding CheckStatus}" TextWrapping="Wrap" Margin="0,8,0,0" HorizontalAlignment="Right" TextAlignment="Right" Style="{StaticResource Ops.Caption}"/>
                 </StackPanel>
             </Grid>
         </Border>
 
-        <Grid Grid.Row="1" Margin="12,0,12,8">
+        <Grid Grid.Row="1" Margin="12,0,12,10">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="480"/>
+                <ColumnDefinition Width="460"/>
             </Grid.ColumnDefinitions>
 
-            <!-- What is wrong now. -->
-            <Border Grid.Column="0" Style="{StaticResource Card}" Margin="0,0,4,0" Padding="12">
+            <!-- What is wrong now, and what to do about the one chosen. -->
+            <Border Grid.Column="0" Style="{StaticResource Card}" Margin="0,0,5,0" Padding="14,12">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
-                    <TextBlock Grid.Row="0" Text="Open now" FontSize="14" FontWeight="SemiBold"/>
-                    <DataGrid Grid.Row="1"
-                              x:Name="FindingsGrid"
-                              ItemsSource="{Binding OpenFindings}"
-                              SelectedItem="{Binding SelectedFinding, Mode=TwoWay}"
-                              AutoGenerateColumns="False"
-                              IsReadOnly="True"
-                              SelectionMode="Single"
-                              HeadersVisibility="Column"
-                              GridLinesVisibility="Horizontal"
-                              Margin="0,8,0,0">
-                        <DataGrid.Columns>
-                            <DataGridTemplateColumn Header="Severity" Width="90" SortMemberPath="Severity">
-                                <DataGridTemplateColumn.CellTemplate>
-                                    <DataTemplate>
-                                        <Border CornerRadius="9" Padding="8,2" HorizontalAlignment="Left" VerticalAlignment="Center"
-                                                Background="{Binding Severity, Converter={StaticResource StateToBrush}}">
-                                            <TextBlock Text="{Binding Severity}" Foreground="White" FontWeight="SemiBold" FontSize="11"/>
-                                        </Border>
-                                    </DataTemplate>
-                                </DataGridTemplateColumn.CellTemplate>
-                            </DataGridTemplateColumn>
-                            <DataGridTemplateColumn Header="Finding" Width="*">
-                                <DataGridTemplateColumn.CellTemplate>
-                                    <DataTemplate>
-                                        <StackPanel Margin="0,3">
-                                            <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap"/>
-                                            <TextBlock Text="{Binding Evidence}" TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}"/>
-                                            <TextBlock Text="{Binding QuietText}" TextWrapping="Wrap" FontStyle="Italic" Foreground="{StaticResource Text.Secondary}"/>
-                                        </StackPanel>
-                                    </DataTemplate>
-                                </DataGridTemplateColumn.CellTemplate>
-                            </DataGridTemplateColumn>
-                            <DataGridTextColumn Header="Since" Binding="{Binding SinceText}" Width="150"/>
-                        </DataGrid.Columns>
-                    </DataGrid>
-                    <!-- Annotate the selected finding. The service still owns it: it clears when the PC is fixed. -->
-                    <Grid Grid.Row="2" Margin="0,8,0,0" IsEnabled="{Binding HasSelection}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBox Grid.Column="0" Text="{Binding ActionNote, UpdateSourceTrigger=PropertyChanged}" VerticalContentAlignment="Center"
-                                 ToolTip="Optional reason, saved with an acknowledge or snooze: 'new drive ordered', 'user is away'."/>
-                        <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="8,0,0,0">
-                            <Button x:Name="FixBtn" Content="Fix…" Padding="14,4" Margin="0,0,10,0" FontWeight="SemiBold" Click="Fix_Click"
-                                    IsEnabled="{Binding CanFix}"
-                                    ToolTip="Run a fix for the selected finding on this machine (as SYSTEM, through the service, recorded). It is re-checked afterwards."/>
-                            <Button Content="Solve with Claude…" Padding="10,4" Margin="0,0,10,0" Click="SolveWithClaude_Click"
-                                    ToolTip="Open the Prompt Library on this finding: a Claude prompt written from everything NetworkOps knows about it right now."/>
-                            <Button Content="Acknowledge" Padding="10,4" Margin="0,0,6,0" Click="Acknowledge_Click"
-                                    ToolTip="Known and accepted: stops counting against this device until it clears and comes back."/>
-                            <Button Content="Snooze 1 day" Padding="10,4" Margin="0,0,6,0" Click="SnoozeDay_Click"/>
-                            <Button Content="Snooze 1 week" Padding="10,4" Margin="0,0,6,0" Click="SnoozeWeek_Click"/>
-                            <Button Content="Reopen" Padding="10,4" Click="Reopen_Click"
-                                    Visibility="{Binding SelectedIsQuiet, Converter={StaticResource BoolToVis}}"
-                                    ToolTip="Undo an acknowledge or snooze: it counts again at once."/>
-                        </StackPanel>
+                    <TextBlock Grid.Row="0" Text="Open now" Style="{StaticResource Ops.SectionTitle}"/>
+                    <Grid Grid.Row="1" Margin="0,8,0,0">
+                        <DataGrid x:Name="FindingsGrid"
+                                  Style="{StaticResource Ops.Grid}"
+                                  ItemsSource="{Binding OpenFindings}"
+                                  SelectedItem="{Binding SelectedFinding, Mode=TwoWay}">
+                            <DataGrid.Columns>
+                                <DataGridTemplateColumn Header="Severity" Width="96" SortMemberPath="Severity">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <Border Style="{StaticResource Ops.Pill}" Background="{Binding Severity, Converter={StaticResource StateToBrush}}">
+                                                <TextBlock Text="{Binding Severity}" Style="{StaticResource Ops.PillText}"/>
+                                            </Border>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTemplateColumn Header="Finding" Width="*">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Margin="0,3">
+                                                <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                                                <TextBlock Text="{Binding Evidence}" TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}"/>
+                                                <TextBlock Text="{Binding QuietText}" TextWrapping="Wrap" FontStyle="Italic" Foreground="{StaticResource Text.Secondary}"/>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTextColumn Header="Since" Binding="{Binding SinceText}" Width="150"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                        <TextBlock Style="{StaticResource Ops.Empty}" Tag="{Binding ElementName=FindingsGrid}" Text="Nothing open on this machine."/>
                     </Grid>
-                    <TextBlock Grid.Row="3" Text="{Binding FixStatus}" TextWrapping="Wrap" FontWeight="SemiBold" Margin="0,6,0,0"/>
+                    <!-- What to do about the selected finding: fix it or ask Claude; or, quietly, say it is known. The service
+                         still owns the finding: it clears when the machine is fixed. -->
+                    <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,10,0,0" IsEnabled="{Binding HasSelection}">
+                        <Button x:Name="FixBtn" Content="Fix…" Style="{StaticResource Ops.Primary}" Margin="0,0,8,0" Click="Fix_Click"
+                                IsEnabled="{Binding CanFix}" Visibility="{Binding ShowsFix, Converter={StaticResource BoolToVis}}"
+                                ToolTip="Run a fix for the selected finding on this machine (as SYSTEM, through the service, recorded). It is re-checked afterwards."/>
+                        <Button Content="Ask Claude…" Margin="0,0,14,0" Click="SolveWithClaude_Click"
+                                ToolTip="A Claude prompt on this finding, written from everything NetworkOps knows about it right now; Claude starts in Windows Terminal."/>
+                        <Rectangle Width="1" Fill="#E5E7EB" Margin="0,4,8,4"/>
+                        <Button Content="Acknowledge" Style="{StaticResource Ops.Link}" Click="Acknowledge_Click"
+                                ToolTip="Known and accepted: stops counting against this machine until it clears and comes back."/>
+                        <Button Content="Snooze a day" Style="{StaticResource Ops.Link}" Click="SnoozeDay_Click"/>
+                        <Button Content="Snooze a week" Style="{StaticResource Ops.Link}" Click="SnoozeWeek_Click"/>
+                        <Button Content="Reopen" Style="{StaticResource Ops.Link}" Click="Reopen_Click"
+                                Visibility="{Binding SelectedIsQuiet, Converter={StaticResource BoolToVis}}"
+                                ToolTip="Undo an acknowledge or snooze: it counts again at once."/>
+                    </StackPanel>
+                    <Grid Grid.Row="3" Margin="0,8,0,0" IsEnabled="{Binding HasSelection}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Why (saved with acknowledge or snooze)" Style="{StaticResource Ops.Caption}" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                        <TextBox Grid.Column="1" Text="{Binding ActionNote, UpdateSourceTrigger=PropertyChanged}" VerticalContentAlignment="Center"
+                                 ToolTip="Optional: 'new drive ordered', 'user is away'."/>
+                    </Grid>
+                    <TextBlock Grid.Row="4" Text="{Binding FixStatus}" TextWrapping="Wrap" FontWeight="SemiBold" Margin="0,8,0,0"/>
                 </Grid>
             </Border>
 
             <!-- The selected finding, explained. -->
-            <Border Grid.Column="1" Style="{StaticResource Card}" Margin="4,0,0,0" Padding="14,12">
+            <Border Grid.Column="1" Style="{StaticResource Card}" Margin="5,0,0,0" Padding="16,12">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel>
-                        <TextBlock Text="What it means" FontSize="14" FontWeight="SemiBold"/>
-                        <TextBlock Text="{Binding Meaning}" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                        <TextBlock Text="What it means" Style="{StaticResource Ops.SectionTitle}"/>
+                        <TextBlock Text="{Binding Meaning}" TextWrapping="Wrap" Margin="0,6,0,0"/>
 
                         <TextBlock Text="{Binding OthersHeading}" Style="{StaticResource SectionHeading}"/>
                         <TextBlock Text="{Binding ElsewhereText}" TextWrapping="Wrap"/>
 
                         <!-- Fleet patterns compare PCs: the section is hidden on a rack device. -->
                         <StackPanel Visibility="{Binding ShowsPatterns, Converter={StaticResource BoolToVis}}">
-                            <TextBlock Text="Fleet pattern" Style="{StaticResource SectionHeading}"/>
+                            <TextBlock Text="Pattern across the PCs" Style="{StaticResource SectionHeading}"/>
                             <ItemsControl ItemsSource="{Binding PatternTexts}" ItemTemplate="{StaticResource Bullet}"/>
                         </StackPanel>
 
@@ -195,68 +215,80 @@
             </Border>
         </Grid>
 
-        <!-- The past: what was wrong before, what changed, what people wrote. -->
-        <TabControl Grid.Row="2" Margin="12,0,12,8">
-            <TabItem Header="Past problems">
-                <DataGrid ItemsSource="{Binding Cleared}" AutoGenerateColumns="False" IsReadOnly="True"
-                          HeadersVisibility="Column" GridLinesVisibility="Horizontal">
-                    <DataGrid.Columns>
-                        <DataGridTextColumn Header="Finding"        Binding="{Binding Title}"    Width="320"/>
-                        <DataGridTextColumn Header="Open → cleared" Binding="{Binding WhenText}" Width="260"/>
-                        <DataGridTextColumn Header="What cleared it" Binding="{Binding How}"     Width="*"/>
-                    </DataGrid.Columns>
-                </DataGrid>
-            </TabItem>
-            <TabItem Header="What changed on it">
-                <DataGrid ItemsSource="{Binding Changes}" AutoGenerateColumns="False" IsReadOnly="True"
-                          HeadersVisibility="Column" GridLinesVisibility="Horizontal">
-                    <DataGrid.Columns>
-                        <DataGridTextColumn Header="When"   Binding="{Binding WhenText}"    Width="150"/>
-                        <DataGridTextColumn Header="Change" Binding="{Binding Description}" Width="*"/>
-                    </DataGrid.Columns>
-                </DataGrid>
-            </TabItem>
-            <TabItem Header="Fixes run">
-                <DataGrid ItemsSource="{Binding ActionsTaken}" AutoGenerateColumns="False" IsReadOnly="True" HeadersVisibility="Column" GridLinesVisibility="Horizontal">
-                    <DataGrid.Columns>
-                        <DataGridTextColumn Header="When"   Binding="{Binding WhenText}" Width="140"/>
-                        <DataGridTextColumn Header="Fix"    Binding="{Binding Fix}"      Width="220"/>
-                        <DataGridTextColumn Header="By"     Binding="{Binding By}"       Width="220"/>
-                        <DataGridTextColumn Header="Status" Binding="{Binding Status}"   Width="80"/>
-                        <DataGridTextColumn Header="What it said" Binding="{Binding Result}" Width="*"/>
-                    </DataGrid.Columns>
-                </DataGrid>
-            </TabItem>
-            <TabItem Header="Notes">
-                <Grid Margin="0,6,0,0">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="*"/>
-                    </Grid.RowDefinitions>
-                    <Grid Grid.Row="0">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBox Grid.Column="0" Text="{Binding NewNoteText, UpdateSourceTrigger=PropertyChanged}" VerticalContentAlignment="Center"
-                                 ToolTip="Anything worth knowing next time: 'reseated the GPU 30 Sep', 'user reports fan noise'."/>
-                        <Button Grid.Column="1" Content="Add note" Padding="12,4" Margin="8,0,0,0" Click="AddNote_Click"/>
+        <!-- The past: what was wrong before, what changed, what was run, what people wrote. -->
+        <Border Grid.Row="2" Style="{StaticResource Card}" Margin="12,0,12,10" Padding="14,8,14,12">
+            <TabControl>
+                <TabItem Header="Past problems">
+                    <Grid>
+                        <DataGrid x:Name="ClearedGrid" Style="{StaticResource Ops.Grid}" ItemsSource="{Binding Cleared}">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Finding"         Binding="{Binding Title}"    Width="320"/>
+                                <DataGridTextColumn Header="Open → cleared"  Binding="{Binding WhenText}" Width="260"/>
+                                <DataGridTextColumn Header="What cleared it" Binding="{Binding How}"      Width="*"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                        <TextBlock Style="{StaticResource Ops.Empty}" Tag="{Binding ElementName=ClearedGrid}" Text="No past problems recorded."/>
                     </Grid>
-                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="0,8,0,0">
-                        <ItemsControl ItemsSource="{Binding Notes}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <StackPanel Margin="0,0,0,8">
-                                        <TextBlock Text="{Binding Header}" Foreground="{StaticResource Text.Secondary}" FontSize="11"/>
-                                        <TextBlock Text="{Binding Body}" TextWrapping="Wrap"/>
-                                    </StackPanel>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </ScrollViewer>
-                </Grid>
-            </TabItem>
-        </TabControl>
+                </TabItem>
+                <TabItem Header="What changed">
+                    <Grid>
+                        <DataGrid x:Name="ChangesGrid" Style="{StaticResource Ops.Grid}" ItemsSource="{Binding Changes}">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="When"   Binding="{Binding WhenText}"    Width="150"/>
+                                <DataGridTextColumn Header="Change" Binding="{Binding Description}" Width="*"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                        <TextBlock Style="{StaticResource Ops.Empty}" Tag="{Binding ElementName=ChangesGrid}" Text="Nothing has changed on it since NetworkOps started watching."/>
+                    </Grid>
+                </TabItem>
+                <TabItem Header="Fixes run">
+                    <Grid>
+                        <DataGrid x:Name="ActionsGrid" Style="{StaticResource Ops.Grid}" ItemsSource="{Binding ActionsTaken}">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="When"         Binding="{Binding WhenText}" Width="140"/>
+                                <DataGridTextColumn Header="Fix"          Binding="{Binding Fix}"      Width="200"/>
+                                <DataGridTextColumn Header="By"           Binding="{Binding By}"       Width="200"/>
+                                <DataGridTextColumn Header="Status"       Binding="{Binding Status}"   Width="80"/>
+                                <DataGridTextColumn Header="What it said" Binding="{Binding Result}"   Width="*"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                        <TextBlock Style="{StaticResource Ops.Empty}" Tag="{Binding ElementName=ActionsGrid}" Text="Nothing has been run on it through NetworkOps."/>
+                    </Grid>
+                </TabItem>
+                <TabItem Header="Notes">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <Grid Grid.Row="0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBox Grid.Column="0" Text="{Binding NewNoteText, UpdateSourceTrigger=PropertyChanged}" VerticalContentAlignment="Center"
+                                     ToolTip="Anything worth knowing next time: 'reseated the GPU 30 Sep', 'user reports fan noise'."/>
+                            <Button Grid.Column="1" Content="Add note" Margin="8,0,0,0" Click="AddNote_Click"/>
+                        </Grid>
+                        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="0,10,0,0">
+                            <Grid>
+                                <ItemsControl x:Name="NotesList" ItemsSource="{Binding Notes}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Margin="0,0,0,10">
+                                                <TextBlock Text="{Binding Header}" Style="{StaticResource Ops.Caption}" FontSize="11"/>
+                                                <TextBlock Text="{Binding Body}" TextWrapping="Wrap"/>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <TextBlock Style="{StaticResource Ops.Empty}" Margin="0,10,0,0" Tag="{Binding ElementName=NotesList}" Text="No notes yet."/>
+                            </Grid>
+                        </ScrollViewer>
+                    </Grid>
+                </TabItem>
+            </TabControl>
+        </Border>
 
         <Border Grid.Row="3" Background="{StaticResource Panel.Background}" BorderBrush="{StaticResource Panel.Border}" BorderThickness="0,1,0,0" Padding="12,6">
             <TextBlock Text="{Binding StatusMessage}" Foreground="{StaticResource Text.Secondary}" VerticalAlignment="Center"/>

@@ -58,6 +58,16 @@ public partial class NetworkOpsDeviceWindow : Window
     private void SolveWithClaude_Click(object sender, RoutedEventArgs e)
         => new PromptLibraryWindow(_vm.Client, _vm.ClaudeRequest) { Owner = this }.Show();
 
+    /// <summary>The rarer actions, behind one button so the header shows only Connect and Check.</summary>
+    private void More_Click(object sender, RoutedEventArgs e)
+    {
+        if (MoreBtn.ContextMenu is not { } menu) return;
+        menu.PlacementTarget = MoreBtn;
+        menu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
+        menu.DataContext = _vm;
+        menu.IsOpen = true;
+    }
+
     private async void Wake_Click(object sender, RoutedEventArgs e) => await Run(_vm.WakeAsync).ConfigureAwait(true);
 
     /// <summary>KOR Remote's page for this machine, where Web-RDP gives a full-size session (a PC with no monitor shows 1024x768 otherwise).</summary>

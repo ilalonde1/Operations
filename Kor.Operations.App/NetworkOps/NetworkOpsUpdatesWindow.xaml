@@ -14,7 +14,13 @@
          Nothing installs by itself: the service searches twice a working day and says what is due; this is where it
          gets installed. Each machine's install is an ordinary fix run, so it is in that machine's history too. -->
     <Window.Resources>
-        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Kor.Operations.App;component/NetworkOps/NetworkOpsStyles.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+            <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+            <Style x:Key="Wrap" TargetType="TextBlock"><Setter Property="TextWrapping" Value="Wrap"/></Style>
+        </ResourceDictionary>
     </Window.Resources>
     <Grid Margin="12">
         <Grid.RowDefinitions>
@@ -26,19 +32,19 @@
         </Grid.RowDefinitions>
 
         <StackPanel Grid.Row="0" Margin="2,0,2,10">
-            <TextBlock x:Name="HeadlineText" FontSize="18" FontWeight="SemiBold" TextWrapping="Wrap"/>
-            <TextBlock x:Name="SublineText" Foreground="{StaticResource Text.Secondary}" TextWrapping="Wrap" Margin="0,2,0,0"/>
+            <TextBlock x:Name="HeadlineText" FontSize="22" FontWeight="Bold" TextWrapping="Wrap" Foreground="{StaticResource Text.Primary}"/>
+            <TextBlock x:Name="SublineText" Style="{StaticResource Ops.Caption}" FontSize="13" Margin="0,3,0,0"/>
         </StackPanel>
 
-        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,8">
-            <Button Content="Tick everything due" Padding="12,4" Margin="0,0,6,0" Click="TickDue_Click"
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,10">
+            <Button Content="Tick everything due" Margin="0,0,6,0" Click="TickDue_Click"
                     ToolTip="Ticks every machine with security updates due (Warning or Critical). The domain controller is left for a batch of its own."/>
-            <Button Content="Untick all" Padding="12,4" Margin="0,0,16,0" Click="UntickAll_Click"/>
+            <Button Content="Untick all" Style="{StaticResource Ops.Link}" Margin="0,0,16,0" Click="UntickAll_Click"/>
             <CheckBox x:Name="OnlyWaitingBox" Content="Only machines with updates waiting" IsChecked="True" VerticalAlignment="Center" Margin="0,0,16,0"
                       Checked="Filter_Changed" Unchecked="Filter_Changed"/>
-            <Button x:Name="ScanBtn" Content="Search again now" Padding="12,4" Margin="0,0,6,0" Click="Scan_Click"
+            <Button x:Name="ScanBtn" Content="Search again now" Margin="0,0,6,0" Click="Scan_Click"
                     ToolTip="Asks every machine what Windows Update has waiting (a few minutes). It also runs at 08:00 and 13:00 on working days."/>
-            <Button Content="Refresh" Padding="12,4" Click="Refresh_Click"/>
+            <Button Content="↻" Style="{StaticResource Ops.Link}" FontSize="16" Click="Refresh_Click" ToolTip="Refresh now"/>
         </StackPanel>
 
         <Grid Grid.Row="2">
@@ -46,9 +52,9 @@
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="420"/>
             </Grid.ColumnDefinitions>
-            <Border Style="{StaticResource Card}" Padding="8" Margin="0,0,4,0">
-                <DataGrid x:Name="Grid" AutoGenerateColumns="False" HeadersVisibility="Column" CanUserAddRows="False"
-                          SelectionMode="Single" SelectionChanged="Grid_SelectionChanged">
+            <Border Style="{StaticResource Card}" Padding="12" Margin="0,0,5,0">
+                <Grid>
+                <DataGrid x:Name="Grid" Style="{StaticResource Ops.Grid}" IsReadOnly="False" CanUserAddRows="False" SelectionChanged="Grid_SelectionChanged">
                     <DataGrid.Columns>
                         <DataGridTemplateColumn Header="" Width="34">
                             <DataGridTemplateColumn.CellTemplate>
@@ -76,26 +82,28 @@
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
                         <DataGridTextColumn Header="Waiting" Binding="{Binding WaitingText}" Width="150">
-                            <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextWrapping" Value="Wrap"/></Style></DataGridTextColumn.ElementStyle>
+                            <DataGridTextColumn.ElementStyle><StaticResource ResourceKey="Wrap"/></DataGridTextColumn.ElementStyle>
                         </DataGridTextColumn>
                         <DataGridTextColumn Header="Who's on it" Binding="{Binding WhoText}" Width="150">
-                            <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextWrapping" Value="Wrap"/></Style></DataGridTextColumn.ElementStyle>
+                            <DataGridTextColumn.ElementStyle><StaticResource ResourceKey="Wrap"/></DataGridTextColumn.ElementStyle>
                         </DataGridTextColumn>
                         <DataGridTextColumn Header="Searched" Binding="{Binding SearchedText}" Width="110">
-                            <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextWrapping" Value="Wrap"/></Style></DataGridTextColumn.ElementStyle>
+                            <DataGridTextColumn.ElementStyle><StaticResource ResourceKey="Wrap"/></DataGridTextColumn.ElementStyle>
                         </DataGridTextColumn>
                         <DataGridTextColumn Header="Install" Binding="{Binding InstallText}" Width="*">
-                            <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="TextWrapping" Value="Wrap"/></Style></DataGridTextColumn.ElementStyle>
+                            <DataGridTextColumn.ElementStyle><StaticResource ResourceKey="Wrap"/></DataGridTextColumn.ElementStyle>
                         </DataGridTextColumn>
                     </DataGrid.Columns>
                 </DataGrid>
+                <TextBlock Style="{StaticResource Ops.Empty}" Tag="{Binding ElementName=Grid}" Text="Nothing waiting on any machine that answered."/>
+                </Grid>
             </Border>
 
             <!-- The selected machine: exactly what is waiting on it. -->
-            <Border Grid.Column="1" Style="{StaticResource Card}" Padding="14,12" Margin="4,0,0,0">
+            <Border Grid.Column="1" Style="{StaticResource Card}" Padding="16,12" Margin="5,0,0,0">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel>
-                        <TextBlock x:Name="DetailTitle" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap" Text="Choose a machine to see what is waiting on it."/>
+                        <TextBlock x:Name="DetailTitle" Style="{StaticResource Ops.SectionTitle}" TextWrapping="Wrap" Text="Choose a machine to see what is waiting on it."/>
                         <TextBlock x:Name="DetailLine" Foreground="{StaticResource Text.Secondary}" TextWrapping="Wrap" Margin="0,4,0,8"/>
                         <ItemsControl x:Name="DetailList">
                             <ItemsControl.ItemTemplate>
@@ -113,9 +121,9 @@
         </Grid>
 
         <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,10,0,0">
-            <Button x:Name="InstallBtn" Content="Install on 0 ticked" Padding="16,6" Margin="0,0,8,0" FontWeight="SemiBold" IsEnabled="False" Click="Install_Click"
+            <Button x:Name="InstallBtn" Content="Install on 0 ticked" Style="{StaticResource Ops.Primary}" Margin="0,0,8,0" IsEnabled="False" Click="Install_Click"
                     ToolTip="Installs now on every ticked machine, a few at a time. Nothing restarts: each shows 'restart pending' until someone restarts it."/>
-            <Button x:Name="InstallRestartBtn" Content="Install and restart if needed" Padding="16,6" IsEnabled="False" Click="InstallRestart_Click"
+            <Button x:Name="InstallRestartBtn" Content="Install and restart if needed" IsEnabled="False" Click="InstallRestart_Click"
                     ToolTip="The same, then a restart only where an update needs it, with a 5-minute warning on screen. Asks first if someone is using one of them. APP01 is never restarted from here."/>
         </StackPanel>
         <TextBlock Grid.Row="4" x:Name="StatusText" TextWrapping="Wrap" FontWeight="SemiBold" Margin="2,8,2,0"/>

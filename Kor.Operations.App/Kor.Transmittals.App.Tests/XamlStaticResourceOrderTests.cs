@@ -112,13 +112,34 @@ public sealed class XamlStaticResourceOrderTests
         IReadOnlySet<string> globalKeys)
     {
         var document = LoadXaml(xamlPath);
-        var localKeys = CollectLocalKeys(document);
+        var localKeys = new HashSet<string>(CollectLocalKeys(document), StringComparer.OrdinalIgnoreCase);
+        // A dictionary the file merges itself (a window's own Window.Resources) is in scope for that file, as WPF resolves
+        // it: the NetworkOps windows share NetworkOpsStyles.xaml this way rather than putting its implicit Button style
+        // into App.xaml, where it would restyle every button in the app.
+        if (FindAppRoot(xamlPath) is { } appRoot)
+        {
+            var visited = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { Path.GetFullPath(xamlPath) };
+            foreach (var source in document.Descendants()
+                         .Where(e => string.Equals(e.Name.LocalName, "ResourceDictionary", StringComparison.OrdinalIgnoreCase))
+                         .Select(e => e.Attribute("Source")?.Value)
+                         .Where(s => !string.IsNullOrWhiteSpace(s)))
+                if (ResolveResourceDictionarySource(source!, xamlPath, appRoot) is { } resolved)
+                    VisitResourceDictionary(resolved, appRoot, localKeys, visited);
+        }
         var offences = new List<string>();
 
         AddUnknownResourceOffences(xamlPath, document, StaticResourceRegex, "StaticResource", localKeys, globalKeys, offences);
         AddUnknownResourceOffences(xamlPath, document, DynamicResourceRegex, "DynamicResource", localKeys, globalKeys, offences);
 
         return offences;
+    }
+
+    /// <summary>The app project folder above a XAML file (the one holding App.xaml), or null for a file outside it.</summary>
+    private static string? FindAppRoot(string xamlPath)
+    {
+        for (var dir = new DirectoryInfo(Path.GetDirectoryName(Path.GetFullPath(xamlPath))!); dir is not null; dir = dir.Parent)
+            if (File.Exists(Path.Combine(dir.FullName, "App.xaml"))) return dir.FullName;
+        return null;
     }
 
     public static IReadOnlySet<string> BuildGlobalResourceKeys(string appProjectRoot)

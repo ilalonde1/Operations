@@ -116,12 +116,42 @@ public sealed class NetworkOpsViewModelTests
         var vm = Center();
         Assert.Equal("1", vm.CriticalHeadline);
         Assert.Equal("2", vm.AttentionHeadline);
-        Assert.Equal("1 / 5", vm.HealthyHeadline);
+        Assert.Equal("1", vm.HealthyHeadline);   // a count, green, never "1 / 5" (which read as good news in green)
+        Assert.Equal("Healthy, of 5", vm.HealthyLabel);
         Assert.Equal("1", vm.StaleHeadline);
+        Assert.Equal("3 things need you", vm.Headline);
+        Assert.Same(NetworkOpsBrushes.Critical, vm.HeadlineBrush);
+        Assert.StartsWith("1 critical  ·  2 to look at", vm.HeadlineDetail);
         Assert.Equal("Running", vm.ServiceHeadline);
 
         var silent = Center(Fleet(lastBeat: Now.AddMinutes(-10)));
         Assert.Equal("Silent", silent.ServiceHeadline);
+    }
+
+    [Fact]
+    public void A_tile_filters_the_lists_and_the_same_tile_again_shows_everything()
+    {
+        var vm = Center();
+        vm.ToggleTile(NetworkOpsCommandCenterViewModel.TileAttention);
+        Assert.Equal(NetworkOpsCommandCenterViewModel.TileAttention, vm.TileFilter);
+        Assert.Equal("Selected", vm.AttentionTileTag);
+        Assert.Equal(["KOR-216", "KOR-305"], vm.Fleet.Select(r => r.Name));
+
+        vm.ToggleTile(NetworkOpsCommandCenterViewModel.TileStale);   // another tile moves the filter
+        Assert.Equal(["SPARE8"], vm.Fleet.Select(r => r.Name));
+        Assert.Null(vm.AttentionTileTag);
+
+        vm.ToggleTile(NetworkOpsCommandCenterViewModel.TileStale);   // the same tile again clears it
+        Assert.Equal("", vm.TileFilter);
+        Assert.Equal(5, vm.Fleet.Count);
+    }
+
+    [Fact]
+    public void Pattern_reads_as_a_sentence_not_rule_and_fact_keys()
+    {
+        var p = Assert.Single(Center().Patterns);
+        Assert.DoesNotContain("crash-loop:", p.Summary);
+        Assert.DoesNotContain(" = ", p.Summary);
     }
 
     [Fact]

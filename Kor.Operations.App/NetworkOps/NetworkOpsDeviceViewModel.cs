@@ -55,6 +55,7 @@ public sealed class NetworkOpsDeviceViewModel : ObservableObject
     /// <summary>PCs: who was on it at the last check. Empty for the rack.</summary>
     public string PresenceLine => IsRack || _device.Presence is null ? "" : $"On it at the last check: {_device.Presence}";
     public bool SomeoneActive => _device.PresenceState == "Active";
+    public bool ShowsPresence => PresenceLine.Length > 0;
 
     // ---- the endpoint agent
     /// <summary>PCs: whether checks and fixes reach it through its agent or over the network. Empty for the rack.</summary>
@@ -65,6 +66,10 @@ public sealed class NetworkOpsDeviceViewModel : ObservableObject
     public bool HasAgent => _device.AgentVersion is not null;
     public bool ShowsAgent => !IsRack;
     public string AgentButtonText => HasAgent ? "Reinstall agent" : "Install agent";
+    /// <summary>The agent as a chip in the header ("Agent connected"); the full sentence (AgentLine) is its tooltip.</summary>
+    public string AgentChip => _device.AgentVersion is null ? "No agent" : _device.AgentConnected ? "Agent connected" : "Agent not connected";
+    public System.Windows.Media.Brush AgentDot => _device.AgentVersion is null ? NetworkOpsBrushes.Unknown
+        : _device.AgentConnected ? NetworkOpsBrushes.Healthy : NetworkOpsBrushes.Attention;
     public bool CanChangeAgent => !_isFixing;
 
     // ---- remote control (MeshCentral on KOR-MESH01): PCs and Windows servers
@@ -79,6 +84,14 @@ public sealed class NetworkOpsDeviceViewModel : ObservableObject
         : _device.MeshNodeId is null ? "Remote control: not installed"
         : _device.MeshConnected ? "Remote control: connected (Connect opens its screen in KOR Remote)"
         : "Remote control: installed, not connected right now";
+    public string RemoteChip => _device.MeshNodeId is null ? "No remote control" : _device.MeshConnected ? "Remote control ready" : "Remote control offline";
+    public System.Windows.Media.Brush RemoteDot => _device.MeshNodeId is null ? NetworkOpsBrushes.Unknown
+        : _device.MeshConnected ? NetworkOpsBrushes.Healthy : NetworkOpsBrushes.Attention;
+
+    /// <summary>Fixes run through Windows (its service manager or the agent): PCs and Windows servers. A UPS, a switch or Veeam has none.</summary>
+    public bool ShowsFix => Installable;
+    /// <summary>The header's "More" menu has something in it.</summary>
+    public bool ShowsMore => ShowsWake || ShowsRemote || ShowsAgent;
 
     /// <summary>MeshCentral's page for this device (General tab), where "Web-RDP" opens a sharp, full-size RDP session in the
     /// browser -- the way to work on a PC with no monitor, which otherwise runs at 1024x768.</summary>
@@ -297,9 +310,9 @@ public sealed class NetworkOpsDeviceViewModel : ObservableObject
         _selectedFinding = OpenFindings.FirstOrDefault(r => r.Finding.FindingId == selectedId) ?? OpenFindings.FirstOrDefault();
 
         foreach (var name in new[] { nameof(StateLabel), nameof(StateBrush), nameof(IdentityLine), nameof(HardwareLine), nameof(FreshnessLine), nameof(SelectedFinding),
-                                     nameof(PresenceLine), nameof(SomeoneActive), nameof(CanFix),
-                                     nameof(AgentLine), nameof(HasAgent), nameof(AgentButtonText), nameof(CanChangeAgent),
-                                     nameof(RemoteLine), nameof(ConnectUrl), nameof(CanConnect), nameof(CanInstallRemote) })
+                                     nameof(PresenceLine), nameof(ShowsPresence), nameof(SomeoneActive), nameof(CanFix),
+                                     nameof(AgentLine), nameof(HasAgent), nameof(AgentButtonText), nameof(CanChangeAgent), nameof(AgentChip), nameof(AgentDot),
+                                     nameof(RemoteLine), nameof(ConnectUrl), nameof(CanConnect), nameof(CanInstallRemote), nameof(RemoteChip), nameof(RemoteDot) })
             OnPropertyChanged(name);
         Explain();
     }
