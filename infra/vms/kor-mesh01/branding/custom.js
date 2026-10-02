@@ -18,6 +18,22 @@
     } catch (e) { /* storage blocked: the page keeps its own default (0) */ }
 
     window.addEventListener('load', function () {
+        // 4. The Home support download, one click from the header: a zip of the Assistant (wired to Home support, through
+        //    remote.korstructural.com:4445) with a one-page note for the person. Served from public/downloads/ on the
+        //    office/VPN-only site: Ian downloads it and sends the file.
+        try {
+            var right = document.querySelector('#masthead .masthead-right');
+            if (right && !document.getElementById('korHelpDownload')) {
+                var a = document.createElement('a');
+                a.id = 'korHelpDownload';
+                a.href = 'downloads/KOR-Remote-Help.zip';
+                a.setAttribute('download', 'KOR-Remote-Help.zip');
+                a.title = 'The zip to send someone at home: they run it and click Request Help (nothing stays installed).';
+                a.textContent = 'Home help download';
+                right.insertBefore(a, right.firstChild);
+            }
+        } catch (e) { /* header unchanged */ }
+
         // 2. First real display when a desktop first reports more than one.
         if (typeof window.deskDisplayInfo === 'function') {
             var originalInfo = window.deskDisplayInfo;

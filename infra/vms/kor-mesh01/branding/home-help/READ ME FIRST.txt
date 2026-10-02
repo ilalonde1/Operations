@@ -1,0 +1,13 @@
+KOR Remote Help
+===============
+
+KOR IT sent you this so we can see your screen and help.
+
+1. Open the zip and double-click MeshCentralAssistant-Homesupport.exe
+   (if Windows asks "Do you want to run this?", click Run / More info > Run anyway).
+2. Click "Request Help" and type a word or two about the problem.
+3. When KOR IT connects, Windows asks you to allow it. Click Allow.
+   A bar shows at the top of your screen the whole time we are connected.
+4. When we are done, close the program. Nothing stays installed on your computer.
+
+Questions: Ian Lalonde, KOR Structural IT.

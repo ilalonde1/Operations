@@ -62,3 +62,6 @@ Agents only, on TCP 4445 (`agentPort` in meshcentral-config.json). The website a
 - Netgate: NAT WAN2 (opt1) TCP 4445 -> 192.168.1.27:4445, with its associated pass rule.
 - ufw on this VM: 4445/tcp from anywhere (22 and 443 stay LAN + VPN only).
 Verified 2026-10-02 from outside: 4445 answers; `/`, `/login` and `/agentinvite` are 404 there (agent routes only).
+
+## The Home support download (2026-10-02)
+KOR Remote > Home support > Add Agent > MeshCentral Assistant (Application, connect on user request) gives `MeshCentralAssistant-Homesupport.exe`, wired to `wss://remote.korstructural.com:4445` (check: the exe contains `MeshServer=wss://remote.korstructural.com:4445/agent.ashx`, never the internal name). Zipped with `branding/home-help/READ ME FIRST.txt` as `KOR-Remote-Help.zip` and served at `/downloads/KOR-Remote-Help.zip` on the office/VPN-only site (the "Home help download" link in the header, custom.js); not on the public agent port (404). The exe and zip are not in git: regenerate them from KOR Remote if the group or server changes.
