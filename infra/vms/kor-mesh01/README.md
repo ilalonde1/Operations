@@ -54,3 +54,11 @@ NOT stick here the first time — so the deploy now reads it back and stops, and
 A `custom.css` change alone needs no restart: install it to `/opt/meshcentral/meshcentral-web/public/styles/`.
 `agentCustomization` renames what a NEW install shows (tray, consent bar); never set `serviceName`: NetworkOps'
 installer and the Webroot override rely on the existing service and folder.
+
+## Home support: the one internet door (2026-10-02)
+Agents only, on TCP 4445 (`agentPort` in meshcentral-config.json). The website and sign-in stay office + VPN only.
+- Public DNS (Register.ca): `remote.korstructural.com` CNAME -> `office1` (184.71.160.54).
+- DC01 zone `remote.korstructural.com` -> 192.168.1.27, so inside the office the same name goes straight to this VM.
+- Netgate: NAT WAN2 (opt1) TCP 4445 -> 192.168.1.27:4445, with its associated pass rule.
+- ufw on this VM: 4445/tcp from anywhere (22 and 443 stay LAN + VPN only).
+Verified 2026-10-02 from outside: 4445 answers; `/`, `/login` and `/agentinvite` are 404 there (agent routes only).
