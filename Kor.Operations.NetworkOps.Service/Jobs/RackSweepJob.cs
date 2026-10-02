@@ -16,7 +16,8 @@ namespace Kor.Operations.NetworkOps.Service.Jobs;
 // PC's health sweep takes -- observation, facts, metrics, findings diff, one digest. A device that cannot be read
 // raises `rack.unreachable` and keeps every other finding exactly as it was: not seeing a fault is not the fault
 // being fixed. Also runnable for one device from the Command Center ("check now").
-internal sealed class RackSweepJob(NetworkOpsStore store, RackCollector collector, IDigestSender digest, IOptions<NetworkOpsOptions> options, ILogger<RackSweepJob> log) : INetworkOpsJob
+internal sealed class RackSweepJob(NetworkOpsStore store, RackCollector collector, IDigestSender digest, Updates.UpdateRescans rescans,
+    Mesh.MeshState mesh, IOptions<NetworkOpsOptions> options, ILogger<RackSweepJob> log) : INetworkOpsJob
 {
     public const string JobName = "RackSweep";
     public string Name => JobName;
@@ -26,8 +27,13 @@ internal sealed class RackSweepJob(NetworkOpsStore store, RackCollector collecto
     public async Task<string> SweepAsync(string? only, CancellationToken ct)
     {
         var o = options.Value;
-        var devices = o.Rack.Where(d => only is null || d.Name.Equals(only, StringComparison.OrdinalIgnoreCase)).ToList();
-        if (devices.Count == 0) return only is null ? "no rack devices configured" : $"no rack device named {only}";
+        var named = o.Rack.Where(d => only is null || d.Name.Equals(only, StringComparison.OrdinalIgnoreCase)).ToList();
+        if (named.Count == 0) return only is null ? "no rack devices configured" : $"no rack device named {only}";
+        // Just after a service start MeshCentral has not been read yet: a device judged from it is left exactly as it was,
+        // not called "not answering" (it was, every restart, until the first Mesh sweep -- a false alarm on KOR-MESH01).
+        List<RackDevice> waiting = mesh.Attempted ? [] : named.Where(d => d.JudgedFromMesh).ToList();
+        var devices = named.Except(waiting).ToList();
+        if (devices.Count == 0) return $"{string.Join(", ", waiting.Select(d => d.Name))}: waiting for the first MeshCentral read since the service started";
         var now = DateTime.UtcNow;
         if (only is null) await store.RetireRackDevicesExceptAsync(o.Rack.Select(d => d.Name).ToList(), now, ct);
 
@@ -73,12 +79,20 @@ internal sealed class RackSweepJob(NetworkOpsStore store, RackCollector collecto
             if (mailable.Count > 0) notify.Add((id, new DeviceChanges(d.Name, mailable)));
         }
 
+        // A server restarted since its last Windows Update search is searched again now, not at 08:00 (Updates/UpdateRescans).
+        var booted = results.Values.Where(x => x.Result.Reachable && x.Device.AppCanRunOn)
+            .Select(x => (x.Id, x.Device.Name, Core.Updates.UpdateRules.BootFromUptime(now, x.Result.Metrics.FirstOrDefault(m => m.Metric == Metrics.UptimeHours)?.Value)))
+            .ToList();
+        var researched = await rescans.ConsiderAsync(booted, ct);
+
         var sent = notify.Count > 0 && await digest.SendAsync(notify.Select(n => n.Changes).ToList(), [], DateTime.Now, ct);
         if (sent)
             foreach (var (id, dc) in notify)
                 await store.MarkNotifiedAsync(id, dc.Changes.Where(c => c.Kind != ChangeKind.Cleared).Select(c => c.RuleKey), now, ct);
 
         var summary = $"read {ok} of {devices.Count} rack devices, {raised} findings, {notify.Sum(n => n.Changes.Changes.Count)} notifiable" +
+                      (researched > 0 ? $", {researched} restarted since their last update search (searching again)" : "") +
+                      (waiting.Count > 0 ? $"; not judged until MeshCentral is first read: {string.Join(", ", waiting.Select(d => d.Name))}" : "") +
                       (ok < devices.Count ? $"; not answering: {string.Join(", ", results.Values.Where(x => !x.Result.Reachable).Select(x => $"{x.Device.Name} ({x.Result.Error})"))}" : "");
         log.LogInformation("Rack sweep: {Summary}", summary);
         return summary;

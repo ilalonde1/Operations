@@ -25,7 +25,7 @@ namespace Kor.Operations.NetworkOps.Service.Sweep;
 // A PC that could not be probed keeps its findings exactly as they were: not seeing a fault is
 // not the fault being fixed.
 internal sealed class HealthSweeper(NetworkOpsStore store, IDigestSender digest, Agents.MachineRunner runner, Agents.AgentHub agents,
-    Mesh.MeshState mesh, IOptions<NetworkOpsOptions> options, ILogger<HealthSweeper> log)
+    Mesh.MeshState mesh, Updates.UpdateRescans rescans, IOptions<NetworkOpsOptions> options, ILogger<HealthSweeper> log)
 {
     public const int HistoryDays = 90;
 
@@ -50,6 +50,7 @@ internal sealed class HealthSweeper(NetworkOpsStore store, IDigestSender digest,
         var shipped = Agents.AgentInstaller.PackageVersionOrNull();
         var notify = new List<(int DeviceId, DeviceChanges Changes)>();
         int ok = 0, unreadable = 0, findings = 0, factChanges = 0, resolutions = 0;
+        var booted = new List<(int DeviceId, string Name, DateTime? BootUtc)>();
         foreach (var r in runs.OrderBy(r => r.Computer, StringComparer.OrdinalIgnoreCase))
         {
             var id = devices[r.Computer];
@@ -68,6 +69,7 @@ internal sealed class HealthSweeper(NetworkOpsStore store, IDigestSender digest,
             }
             ok++;
             await store.RecordObservationAsync(id, ProbeLibrary.Health, snap.ProbeVersion, now, "Ok", r.OutputJson, null, ct);
+            booted.Add((id, r.Computer, Core.Updates.UpdateRules.BootFromLocal(snap.Os?.LastBoot, now, TimeZoneInfo.Local)));
 
             // 2. facts
             var observed = Facts.Extract(snap);
@@ -104,6 +106,9 @@ internal sealed class HealthSweeper(NetworkOpsStore store, IDigestSender digest,
             if (mailable.Count > 0) notify.Add((id, new DeviceChanges(r.Computer, mailable)));
         }
 
+        // A PC restarted since its last Windows Update search is searched again now, not at 08:00 (Updates/UpdateRescans).
+        var researched = await rescans.ConsiderAsync(booted, ct);
+
         // Across the fleet: what the affected PCs share. Re-run on every sweep, including a
         // single-PC check, so a pattern appears the moment the evidence for it does.
         var insights = FleetCorrelation.Find(await store.FleetMembersAsync(ct));
@@ -119,7 +124,8 @@ internal sealed class HealthSweeper(NetworkOpsStore store, IDigestSender digest,
 
         var summary = $"probed {ok} of {devices.Count}, {findings} findings, {notify.Sum(n => n.Changes.Changes.Count)} notifiable on {notify.Count} PCs, " +
                       $"{factChanges} fact changes, {resolutions} resolutions, {insights.Count} fleet patterns ({newPatterns.Count} new)" +
-                      (unreadable > 0 ? $", {unreadable} unreadable" : "") + (sent ? ", digest mailed" : "");
+                      (unreadable > 0 ? $", {unreadable} unreadable" : "") + (sent ? ", digest mailed" : "") +
+                      (researched > 0 ? $", {researched} restarted since their last update search (searching again)" : "");
         log.LogInformation("Health sweep: {Summary}", summary);
         return summary;
     }

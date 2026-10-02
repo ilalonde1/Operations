@@ -42,7 +42,13 @@ internal sealed class AgentHub(TimeProvider clock)
         => _agents.TryGetValue(device, out var a) ? new AgentStatus(a.Version, a.LastPollUtc, IsConnected(device), a.Address, a.KeyHash) : null;
 
     /// <summary>What a poll learned, for the caller to act on (record the contact, check a PC that was away).</summary>
-    public sealed record PollSeen(bool CameBack, DateTime? PreviousPollUtc);
+    /// <param name="Reconnected">Silent longer than <see cref="RestartGap"/> but less than ten minutes: most often a restart
+    /// (the agent polls again within a second of each poll ending, also while it runs a job). The caller checks the PC, and
+    /// that check's boot time is what decides whether it really restarted (Updates/UpdateRescans).</param>
+    public sealed record PollSeen(bool CameBack, DateTime? PreviousPollUtc, bool Reconnected = false);
+
+    /// <summary>A silence longer than this between polls is a reconnection: a restart, or the network gone for a while.</summary>
+    public static readonly TimeSpan RestartGap = TimeSpan.FromSeconds(45);
 
     /// <summary>
     /// Records that the agent is here, authenticated with the key hashing to <paramref name="keyHash"/>. Returns whether
@@ -61,7 +67,8 @@ internal sealed class AgentHub(TimeProvider clock)
             a.Version = version;
             a.Address = address;
             a.KeyHash = keyHash;
-            return new PollSeen(previous is null || now - previous.Value > TimeSpan.FromMinutes(10), previous);
+            var cameBack = previous is null || now - previous.Value > TimeSpan.FromMinutes(10);
+            return new PollSeen(cameBack, previous, Reconnected: !cameBack && now - previous!.Value > RestartGap);
         }
     }
 

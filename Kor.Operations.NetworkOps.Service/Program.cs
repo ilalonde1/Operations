@@ -82,6 +82,7 @@ try
     builder.Services.AddSingleton<Kor.Operations.NetworkOps.Service.Mesh.MeshState>();
     builder.Services.AddSingleton<Kor.Operations.NetworkOps.Service.Prompts.PromptLibrary>();
     builder.Services.AddSingleton<Kor.Operations.NetworkOps.Service.Updates.UpdateScanner>();
+    builder.Services.AddSingleton<Kor.Operations.NetworkOps.Service.Updates.UpdateRescans>();
     builder.Services.AddSingleton<Kor.Operations.NetworkOps.Service.Mesh.MeshInstaller>();
 
     if (runOnce is null)
@@ -92,6 +93,8 @@ try
         builder.Services.AddHostedService<Kor.Operations.NetworkOps.Service.Api.ApiHost>();
         builder.Services.AddHostedService<Kor.Operations.NetworkOps.Service.Power.PowerWatchService>();
         builder.Services.AddHostedService<Kor.Operations.NetworkOps.Service.Sweep.ActionRunner>();
+        // The same instance the sweeps queue into (a second AddHostedService<T> would build its own, which nobody feeds).
+        builder.Services.AddHostedService(sp => sp.GetRequiredService<Kor.Operations.NetworkOps.Service.Updates.UpdateRescans>());
     }
     else
     {

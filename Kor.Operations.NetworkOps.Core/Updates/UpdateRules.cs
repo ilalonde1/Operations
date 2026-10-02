@@ -87,6 +87,31 @@ public static class UpdateRules
     /// <summary>The morning after Patch Tuesday: the day the "what's new this month" notice goes out.</summary>
     public static bool IsDayAfterPatchTuesday(DateTime local) => local.Date == PatchTuesday(local.Year, local.Month).AddDays(1);
 
+    /// <summary>
+    /// The machine has started since Windows Update was last searched on it, so what that search said may be stale: updates
+    /// installed by hand (or by Windows itself) finish at a restart. Ian, 2026-10-02: DC01, FS01 and RDS01 were patched and
+    /// restarted but read "security updates are due" until the next 08:00 search. A machine never searched counts as stale.
+    /// The last search ATTEMPT counts, failed or not, so a machine that cannot be searched is not retried on every read.
+    /// </summary>
+    public static bool RestartedSinceSearch(DateTime? bootUtc, DateTime? lastSearchUtc)
+        => bootUtc is { } boot && (lastSearchUtc is not { } searched || boot > searched);
+
+    /// <summary>When a machine started, from the uptime a read reported at <paramref name="readUtc"/> (null when unknown).</summary>
+    public static DateTime? BootFromUptime(DateTime readUtc, double? uptimeHours)
+        => uptimeHours is { } h and >= 0 ? readUtc - TimeSpan.FromHours(h) : null;
+
+    /// <summary>
+    /// When a PC started, from the health probe's LastBoot -- the PC's LOCAL clock, no zone (Probes/health.ps1). KOR's PCs
+    /// share APP01's zone, so it is read as APP01-local. A PC in another zone (EDMONTON-01, an hour ahead) reads an hour late,
+    /// which at worst searches it once more; never one search fewer. A boot "in the future" is clamped to the read.
+    /// </summary>
+    public static DateTime? BootFromLocal(DateTime? lastBootLocal, DateTime readUtc, TimeZoneInfo zone)
+    {
+        if (lastBootLocal is not { } local) return null;
+        var utc = TimeZoneInfo.ConvertTimeToUtc(DateTime.SpecifyKind(local, DateTimeKind.Unspecified), zone);
+        return utc > readUtc ? readUtc : utc;
+    }
+
     private static string Name(PendingUpdate u) => u.Kb is { Length: > 0 } kb ? $"KB{kb} {Short(u.Title)}" : Short(u.Title);
 
     private static string Short(string t) => t.Length <= 70 ? t : t[..69] + "…";

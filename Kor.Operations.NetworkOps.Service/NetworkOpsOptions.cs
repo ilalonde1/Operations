@@ -178,6 +178,10 @@ public sealed class RackDevice
     /// FS01 and RDS01 but the Fix button refused to install them ("not a Windows machine"). RackRunnableTests holds it.
     /// </summary>
     public bool AppCanRunOn => Collector is "WindowsServer" or "Mesh";
+
+    /// <summary>Its state is read from MeshCentral (RackCollector.RemoteOnly / MeshServer), so it cannot be judged before the
+    /// service's first MeshCentral read.</summary>
+    public bool JudgedFromMesh => Collector is "Mesh" or "MeshServer";
 }
 
 public sealed class UpsCard

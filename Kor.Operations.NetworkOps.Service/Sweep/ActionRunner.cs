@@ -96,16 +96,17 @@ internal sealed class ActionRunner(NetworkOpsStore store, MachineRunner runner, 
                 return;
             }
             var result = ResultLine(run.OutputJson) ?? "ran; see the output";
-            await store.CompleteActionAsync(a.ActionId, true, result, run.OutputJson);
-            log.LogWarning("FIX {Id} {Fix} on {Host}: {Result}", a.ActionId, fix.Id, host, result);
 
             // After an install, search again at once: the Updates view shows what is left (or "restart pending") without
-            // waiting for the next scheduled search.
+            // waiting for the next scheduled search. BEFORE the run is marked Done, so "Done" never sits beside the finding
+            // the install just cleared (SPARE8, 2026-10-01: read in the 20 s between the two, it looked like a stale finding).
             if (install)
             {
                 try { await updates.ScanAsync([a.DeviceId], patchTuesdayNotice: false, CancellationToken.None); }
                 catch (Exception ex) when (ex is not OperationCanceledException) { log.LogWarning(ex, "Re-scan after install {Id} failed", a.ActionId); }
             }
+            await store.CompleteActionAsync(a.ActionId, true, result, run.OutputJson);
+            log.LogWarning("FIX {Id} {Fix} on {Host}: {Result}", a.ActionId, fix.Id, host, result);
 
             // Re-check, so the page shows whether it cleared. Not after a restart: the PC is going down, and the
             // hourly sweep sees it when it is back.

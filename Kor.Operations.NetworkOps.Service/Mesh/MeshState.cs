@@ -47,6 +47,10 @@ internal sealed class MeshState(TimeProvider clock)
 
     public bool Fresh => LastReadUtc != default && clock.GetUtcNow().UtcDateTime - LastReadUtc < FreshFor;
 
+    /// <summary>This process has tried to read MeshCentral at least once (it succeeded or failed). Until then nothing that is
+    /// judged from MeshCentral can be judged: just after a service start, "not read yet" is not "not answering".</summary>
+    public bool Attempted => LastReadUtc != default || LastError is not null;
+
     /// <summary>Every node at the last read, linked or not (the server collector counts them; remote-only servers find theirs).</summary>
     public IReadOnlyList<MeshNode> Nodes => _nodes;
 

@@ -39,6 +39,10 @@ internal static class AgentApi
     /// <summary>Health checked within this long needs no catch-up when a PC's agent comes back.</summary>
     public static readonly TimeSpan CatchUpAfter = TimeSpan.FromMinutes(60);
 
+    /// <summary>A PC whose agent reconnects (AgentHub.RestartGap) is checked unless it was checked within this. Short on
+    /// purpose: a check just BEFORE a restart (the one every fix queues) must not stand in for the check after it.</summary>
+    public static readonly TimeSpan RecheckAfter = TimeSpan.FromMinutes(1);
+
     /// <summary>Agent requests in flight at once, whoever sends them: ~40 agents each hold one poll; the rest is headroom.</summary>
     public const int MaxInFlight = 256;
     /// <summary>A poll is a few hundred bytes; a result can be as large as the network route allows (8 M characters of JSON).</summary>
@@ -117,6 +121,14 @@ internal static class AgentApi
                 // A PC that missed the hourly sweep (off, or a laptop away) is checked the moment it is back.
                 if (await store.QueueCheckIfStaleAsync(who.DeviceName, CatchUpAfter, "agent: back online", ct).ConfigureAwait(false) is { } trigger)
                     log.LogInformation("Agent {Device}: last health check older than {Min} min, check {Trigger} queued", who.DeviceName, CatchUpAfter.TotalMinutes, trigger);
+            }
+            else if (seen.Reconnected)
+            {
+                // Most often a restart: check it now, so the page (and its Windows Update search) reflects the restart within
+                // a minute instead of at the next hourly sweep. At most one check per RecheckAfter, however often it blips.
+                if (await store.QueueCheckIfStaleAsync(who.DeviceName, RecheckAfter, "agent: reconnected (restarted?)", ct).ConfigureAwait(false) is { } trigger)
+                    log.LogInformation("Agent {Device} reconnected after {Gap:0} s, check {Trigger} queued", who.DeviceName,
+                        (DateTime.UtcNow - seen.PreviousPollUtc!.Value).TotalSeconds, trigger);
             }
             var now = DateTime.UtcNow;
             if (seen.CameBack || !LastTouch.TryGetValue(who.DeviceId, out var last) || now - last > TouchEvery)
