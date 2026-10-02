@@ -43,11 +43,11 @@ public partial class NetworkOpsDeviceWindow : Window
         }).ConfigureAwait(true);
     }
 
-    /// <summary>Opens the machine's remote-control page in the default browser (KOR Remote signs you in with its own MFA).</summary>
+    /// <summary>Opens the machine's remote-control page in the KOR Remote app window (KOR Remote signs you in with its own MFA).</summary>
     private void Connect_Click(object sender, RoutedEventArgs e)
     {
         if (_vm.ConnectUrl is not { } url) return;
-        try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(url) { UseShellExecute = true }); }
+        try { KorRemoteWindow.Open(url); }
         catch (System.ComponentModel.Win32Exception ex)
         {
             MessageBox.Show(this, $"Could not open the browser: {ex.Message}\n\n{url}", "Connect", MessageBoxButton.OK, MessageBoxImage.Warning);
@@ -74,7 +74,7 @@ public partial class NetworkOpsDeviceWindow : Window
     private void WebRdp_Click(object sender, RoutedEventArgs e)
     {
         if (_vm.RdpPageUrl is not { } url) return;
-        try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(url) { UseShellExecute = true }); }
+        try { KorRemoteWindow.Open(url); }
         catch (System.ComponentModel.Win32Exception ex)
         {
             MessageBox.Show(this, $"Could not open the browser: {ex.Message}\n\n{url}", "Web-RDP", MessageBoxButton.OK, MessageBoxImage.Warning);
