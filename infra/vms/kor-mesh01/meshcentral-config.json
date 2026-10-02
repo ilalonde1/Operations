@@ -10,6 +10,9 @@
     "agentPong": 300,
     "mpsPort": 0,
     "noAgentUpdate": false,
+    "_agentPort": "Agent-only port, the one door to the internet (Netgate forwards it): it serves agent connections, relays and agent downloads, never the website or a sign-in page. remote.korstructural.com is public DNS -> the office IP outside, and a DC01 zone -> 192.168.1.27 inside, so one name works for office and home agents alike.",
+    "agentPort": 4445,
+    "agentAliasDNS": "remote.korstructural.com",
     "_note": "KOR NetworkOps remote screen. LAN + VPN only (ufw). Built 2026-09-30; cleaned up 2026-10-01 (branding, consent wording, idle timeout, admin pages trimmed)."
   },
   "domains": {

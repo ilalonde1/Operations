@@ -10,6 +10,8 @@ body.login {
     font-family: "Segoe UI", system-ui, sans-serif !important;
 }
 body.login #backgroundImage { display: none !important; }             /* the stock server-rack picture */
+/* titleHtml (the signed-in header's logo + name) is also printed on the sign-in page: one logo there is enough. */
+body.login img[src="logo.png"], body.login .kor-remote-name { display: none !important; }
 
 body.login #loginPicture { max-width: 320px; height: auto; margin: 0 auto 26px; display: block; }
 
