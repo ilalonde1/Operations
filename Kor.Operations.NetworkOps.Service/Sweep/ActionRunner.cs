@@ -175,7 +175,7 @@ internal sealed class ActionRunner(NetworkOpsStore store, MachineRunner runner, 
     internal static string? HostOf(NetworkOpsOptions o, string deviceName)
     {
         var rack = o.Rack.FirstOrDefault(d => d.Name.Equals(deviceName, StringComparison.OrdinalIgnoreCase));
-        return rack is null ? deviceName : rack.Collector is "WindowsServer" or "Mesh" ? rack.Address : null;
+        return rack is null ? deviceName : rack.AppCanRunOn ? rack.Address : null;
     }
 
     private bool IsRack(string deviceName) => options.Value.Rack.Any(d => d.Name.Equals(deviceName, StringComparison.OrdinalIgnoreCase));

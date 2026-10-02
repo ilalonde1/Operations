@@ -170,6 +170,14 @@ public sealed class RackDevice
     public string CertSha256 { get; set; } = "";
     /// <summary>Its name in MeshCentral when that is not its Address (BK01 is read at 192.168.1.18, known to Mesh as KOR-BK01).</summary>
     public string MeshName { get; set; } = "";
+
+    /// <summary>
+    /// THE answer to "can APP01 run something on this rack device" (a fix, an update install, an update search, a Claude
+    /// session's read, a remote-control install): a Windows server it reaches through Windows' service manager or the agent.
+    /// Decided here once. On 2026-10-01 five places decided it with two different rules, so updates could be searched on
+    /// FS01 and RDS01 but the Fix button refused to install them ("not a Windows machine"). RackRunnableTests holds it.
+    /// </summary>
+    public bool AppCanRunOn => Collector is "WindowsServer" or "Mesh";
 }
 
 public sealed class UpsCard

@@ -71,9 +71,67 @@ body.login #flink, body.login #flink a { color: rgba(255, 255, 255, .5) !importa
 /* "Root Certificate" and "Terms & Privacy": nothing for KOR staff to read there. */
 body.login #flink a[href*="MeshServerRootCert"], body.login #flink a[href="terms"] { display: none !important; }
 
-/* ===== Signed in (siteStyle 3): the header bar in KOR navy with an orange rule. ===== */
-#masthead.masthead-container {
-    background: #435363 !important;
-    border-bottom: 3px solid #FF5B35 !important;
+/* ===== Signed in (siteStyle 3, Bootstrap 5.3) =====
+   A browser can pick any Bootswatch theme (Account > Switch theme; it is stored in that browser only). Colours are
+   therefore set through Bootstrap's own variables HERE, which loads after the theme: KOR's look wins whatever theme
+   is picked. */
+:root, [data-bs-theme=light] {
+    --bs-primary: #435363; --bs-primary-rgb: 67, 83, 99;
+    --bs-link-color: #2F5496; --bs-link-color-rgb: 47, 84, 150; --bs-link-hover-color: #435363;
+    --bs-body-font-family: "Segoe UI", system-ui, sans-serif;
+    --bs-body-color: #3F5364; --bs-border-radius: 6px;
 }
-#masthead .masthead-title img { max-height: 40px; width: auto; }
+body:not(.login) { font-family: "Segoe UI", system-ui, sans-serif; color: #3F5364; }
+
+/* Buttons: KOR navy, never the theme's purple; quiet outline for secondary. */
+body .btn-primary {
+    --bs-btn-color: #fff; --bs-btn-bg: #435363; --bs-btn-border-color: #435363;
+    --bs-btn-hover-color: #fff; --bs-btn-hover-bg: #2F3C48; --bs-btn-hover-border-color: #2F3C48;
+    --bs-btn-active-color: #fff; --bs-btn-active-bg: #26313B; --bs-btn-active-border-color: #26313B;
+    --bs-btn-disabled-bg: #435363; --bs-btn-disabled-border-color: #435363; --bs-btn-focus-shadow-rgb: 67, 83, 99;
+    background-image: none !important;
+}
+body .btn-secondary {
+    --bs-btn-color: #3F5364; --bs-btn-bg: #fff; --bs-btn-border-color: #CBD2D9;
+    --bs-btn-hover-color: #3F5364; --bs-btn-hover-bg: #F3F5F7; --bs-btn-hover-border-color: #AEB8C2;
+    --bs-btn-active-bg: #E9ECEF; --bs-btn-active-border-color: #AEB8C2;
+    background-image: none !important;
+}
+body:not(.login) .btn { border-radius: 6px; font-weight: 600; font-size: 14px; letter-spacing: 0; text-transform: none; }
+
+/* The header: KOR logo and name on navy, an orange rule under it. (MeshCentral draws logo.png as the header's background;
+   it is shown as an <img> by titleHtml in the config instead.) */
+#masthead, #masthead.masthead-container {
+    background-color: #435363 !important; background-image: none !important;
+    border-bottom: 3px solid #FF5B35 !important; height: 60px;
+}
+#masthead .masthead-title { gap: 14px; }
+#masthead .masthead-title img { height: 34px; width: auto; float: none; }
+#masthead .kor-remote-name { color: #fff; font-size: 19px; font-weight: 600; letter-spacing: .2px; padding-left: 14px; border-left: 1px solid rgba(255, 255, 255, .25); }
+
+/* The left icon bar: deep navy; the chosen page a white tab joined to the content. */
+#page_leftbar { background: #2F3C48 !important; }
+#page_leftbar .nav-link { color: rgba(255, 255, 255, .72) !important; }
+#page_leftbar .nav-link:hover { color: #fff !important; }
+nav .lbbuttonsel, nav .lbbuttonsel2 { background-color: #fff !important; color: #435363 !important; }
+
+/* The device tabs (General, Desktop, Terminal, ...): words on a light bar, the chosen one underlined in orange. */
+#MainMenuSpan, #topbar .style3x, #topbar .style3, #topbar .style3sel, .topbar_td_end { background: #F6F8FA !important; }
+#topbar .style3x { color: #6B7280 !important; font-weight: 600; font-size: 14px; border-bottom: 3px solid transparent; }
+#topbar .style3x:hover { color: #3F5364 !important; background: #EEF1F4 !important; }
+#topbar .style3x.fullselect, #topbar .style3sel { color: #435363 !important; background: #fff !important; border-bottom: 3px solid #FF5B35 !important; }
+#topbar .style3x.semiselect { color: #3F5364 !important; background: #EEF1F4 !important; }
+#topbar { border-bottom: 1px solid #E5E7EB; }
+
+/* A device's General page: quiet labels, readable values, a smaller picture. */
+#p10title { font-weight: 700; color: #3F5364; }
+#p10html .row > div:first-child b { font-weight: 600; color: #6B7280; font-size: 13.5px; }
+#p10html .row { padding: 3px 0; border-bottom: 1px solid #F1F3F5; margin-left: 0; margin-right: 0; }
+#MainComputerImage { width: 104px !important; height: auto !important; opacity: .92; }
+#MainComputerState { font-size: 12px; color: #166534; font-weight: 600; }
+#p10html2 table { background: #fff !important; border-color: #E5E7EB !important; }
+
+/* The footer: navy, one line, no "Terms & Privacy". */
+#footer { background-color: #2F3C48 !important; padding: 2px 0 !important; }
+#footer, #footer td, .footer1, .footer2 { color: rgba(255, 255, 255, .6) !important; font-size: 12px; }
+#footer a[href*="terms"] { display: none !important; }

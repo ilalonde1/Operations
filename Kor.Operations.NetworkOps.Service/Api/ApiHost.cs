@@ -208,8 +208,8 @@ internal sealed class ApiHost(IOptions<NetworkOpsOptions> options, NetworkOpsSto
             var by = ApiAccess.UserOf(h.User);
             var request = System.Text.Json.JsonSerializer.Serialize(new { param = body.Param, finding = body.FindingKey, note = body.Note, confirmed = body.Confirmed, presence = dev.Presence });
             string? refuse = Kor.Operations.NetworkOps.Core.Actions.FixCatalog.Invalid(fix, body.Param)
-                ?? (dev.Source == "Rack" && !o.Value.Rack.Any(r => r.Name.Equals(dev.Name, StringComparison.OrdinalIgnoreCase) && r.Collector == "WindowsServer")
-                    ? $"{dev.Name} is not a Windows machine: fixes run through Windows' service manager" : null)
+                ?? (dev.Source == "Rack" && Sweep.ActionRunner.HostOf(o.Value, dev.Name) is null
+                    ? $"{dev.Name} is not a Windows server APP01 can run fixes on" : null)
                 ?? (fix.Disruptive && dev.PresenceState == "Active" && !body.Confirmed
                     ? $"someone is using {dev.Name} right now ({dev.Presence}): confirm to go ahead" : null);
             if (refuse is not null)
@@ -235,8 +235,8 @@ internal sealed class ApiHost(IOptions<NetworkOpsOptions> options, NetworkOpsSto
         {
             if (body.Action != "install") return Results.BadRequest(new { error = "action must be install" });
             if (await s.DeviceForActionAsync(id, ct) is not { } dev) return Results.NotFound();
-            if (dev.Source == "Rack" && !o.Value.Rack.Any(r => r.Name.Equals(dev.Name, StringComparison.OrdinalIgnoreCase) && r.Collector == "WindowsServer"))
-                return Results.BadRequest(new { error = $"{dev.Name} is not a Windows machine: remote control installs on PCs and Windows servers" });
+            if (dev.Source == "Rack" && Sweep.ActionRunner.HostOf(o.Value, dev.Name) is null)
+                return Results.BadRequest(new { error = $"{dev.Name} is not a Windows server: remote control installs on PCs and Windows servers" });
             var runId = await s.QueueActionAsync(id, Mesh.MeshInstaller.InstallKind, ApiAccess.UserOf(h.User), System.Text.Json.JsonSerializer.Serialize(new { action = "install" }), ct);
             return Results.Accepted($"/api/actions/{runId}", new { actionId = runId });
         });

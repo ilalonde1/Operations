@@ -30,7 +30,7 @@ internal static class SessionApi
             if (body.Script.Length > MaxScriptChars) return Results.BadRequest(new { error = $"the script is longer than {MaxScriptChars:N0} characters" });
             if (await s.DeviceByNameAsync(name, ct) is not { } dev) return Results.NotFound(new { error = $"NetworkOps has no machine called {name}" });
             if (Sweep.ActionRunner.HostOf(o.Value, dev.Name) is not { } host)
-                return Results.BadRequest(new { error = $"{dev.Name} is not a Windows machine: scripts run through Windows' service manager or the agent" });
+                return Results.BadRequest(new { error = $"{dev.Name} is not a Windows server APP01 can run scripts on" });
 
             var timeout = TimeSpan.FromSeconds(Math.Clamp(body.TimeoutSeconds ?? DefaultTimeoutSeconds, 10, MaxTimeoutSeconds));
             var by = ApiAccess.UserOf(h.User);

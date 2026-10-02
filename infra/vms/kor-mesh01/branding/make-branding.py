@@ -34,11 +34,23 @@ def without_navy(img: Image.Image) -> Image.Image:
 
 
 def main() -> None:
-    logo = without_navy(Image.open(SOURCE))
-    logo = logo.crop(logo.getbbox())
+    clear = without_navy(Image.open(SOURCE))
+
+    logo = clear.crop(clear.getbbox())
     logo.thumbnail((620, 240), Image.LANCZOS)
     logo.save(HERE / "kor-remote-logo.png", optimize=True)
     print("kor-remote-logo.png", logo.size)
+
+    # The header mark: the circle and "KorStructural" only. The tagline under them is unreadable at header height.
+    # It starts below the circle, so everything under the circle's lowest row is cut.
+    w, h = clear.size
+    alpha = clear.getchannel("A")
+    circle_bottom = max(y for y in range(h) if any(alpha.getpixel((x, y)) > 128 for x in range(0, int(w * 0.25))))
+    mark = clear.crop((0, 0, w, circle_bottom + 2))
+    mark = mark.crop(mark.getbbox())
+    mark.thumbnail((480, 120), Image.LANCZOS)
+    mark.save(HERE / "kor-remote-mark.png", optimize=True)
+    print("kor-remote-mark.png", mark.size)
 
 
 if __name__ == "__main__":

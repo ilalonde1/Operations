@@ -37,7 +37,7 @@ internal sealed class UpdateScanner(NetworkOpsStore store, Agents.MachineRunner 
         foreach (var d in o.Rack)
         {
             if (!rackIds.TryGetValue(d.Name, out var id)) continue;
-            if (d.Collector is "WindowsServer" or "Mesh")
+            if (d.AppCanRunOn)
                 list.Add(new UpdateTarget(id, d.Name, d.Kind, true, d.Address, null, GuardOf(d.Address)));
             else if (d.Kind == "Backup")
                 list.Add(new UpdateTarget(id, d.Name, d.Kind, true, null,

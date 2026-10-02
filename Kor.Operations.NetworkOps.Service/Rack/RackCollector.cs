@@ -60,7 +60,7 @@ internal sealed class RackCollector(IOptions<NetworkOpsOptions> options, PowerSt
         if (mesh.NodeNamed(name) is not { } node) return RackResult.Unreachable($"MeshCentral has no device named {name}");
         if (!node.AgentConnected) return RackResult.Unreachable("its Mesh agent is not connected");
         return new RackResult(true, null, new Dictionary<string, string> { ["mesh.node"] = node.Id }, [], [],
-            "remote control connected; health not read (KOR\\app-admin is not an administrator here)");
+            "remote control connected; health not read (it is set up as remote-only: Collector \"Mesh\")");
     }
 
     /// <summary>KOR-MESH01: MeshCentral answered the read-only account recently; how many agents it has connected.</summary>
