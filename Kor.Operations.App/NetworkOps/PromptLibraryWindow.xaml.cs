@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using Kor.Operations.NetworkOps.Core.Learning;
+using Serilog;
 
 namespace Kor.Operations.App.NetworkOps;
 
@@ -46,6 +47,7 @@ public sealed record PromptRunView(PromptRunRow Run)
 
 public partial class PromptLibraryWindow : Window
 {
+    private static readonly ILogger Log = Serilog.Log.ForContext<PromptLibraryWindow>();
     private readonly NetworkOpsClient _client;
     private readonly PromptRequest? _preselect;
     private readonly CancellationTokenSource _cts = new();
@@ -108,6 +110,7 @@ public partial class PromptLibraryWindow : Window
     {
         if (await RenderAsync(ct).ConfigureAwait(true) is not { } prompt) return;
         Clipboard.SetText(prompt.Markdown);
+        Log.Information("Prompt copied: {Title}, run {RunId}", prompt.Title, prompt.RunId);
         Status($"Copied: {prompt.Title}{RunNote(prompt)}");
     }).ConfigureAwait(true);
 
@@ -115,14 +118,21 @@ public partial class PromptLibraryWindow : Window
     {
         if (await RenderAsync(ct).ConfigureAwait(true) is not { } prompt) return;
         var path = PromptLauncher.Save(prompt);
-        if (!open) { Status($"Saved to {path}{RunNote(prompt)}"); return; }
+        if (!open)
+        {
+            Log.Information("Prompt saved: {Title}, run {RunId}, at {Path}", prompt.Title, prompt.RunId, path);
+            Status($"Saved to {path}{RunNote(prompt)}");
+            return;
+        }
         try
         {
             PromptLauncher.OpenInClaude(path);
+            Log.Information("Prompt opened in Claude: {Title}, run {RunId}, at {Path}", prompt.Title, prompt.RunId, path);
             Status($"Claude is starting in Windows Terminal on {path}{RunNote(prompt)}");
         }
         catch (System.ComponentModel.Win32Exception ex)
         {
+            Log.Warning(ex, "Windows Terminal would not start for {Title}, run {RunId}", prompt.Title, prompt.RunId);
             Status($"Saved to {path}, but Windows Terminal would not start ({ex.Message}). Open a terminal in the repo and run: claude \"Read {path} and follow it.\"");
         }
     }
@@ -131,7 +141,9 @@ public partial class PromptLibraryWindow : Window
     {
         if (SubjectList.SelectedItem is not PromptSubjectRow row) return null;
         Status($"Writing the prompt for {row.Label} from the live database…");
+        var clock = System.Diagnostics.Stopwatch.StartNew();
         var prompt = await _client.RenderPromptAsync(row.Request, ct).ConfigureAwait(true);
+        Log.Information("Prompt written for {Subject}: run {RunId}, {Chars} characters, {Ms} ms", row.Label, prompt.RunId, prompt.Markdown.Length, clock.ElapsedMilliseconds);
         PromptTitle.Text = prompt.Title;
         PromptText.Text = prompt.Markdown;
         PromptText.ScrollToHome();
@@ -152,6 +164,7 @@ public partial class PromptLibraryWindow : Window
     {
         if (RunsGrid.SelectedItem is not PromptRunView { AwaitsDecision: true } run) return;
         await _client.DecideLearnedAsync(run.Run.RunId, accept, ct).ConfigureAwait(true);
+        Log.Information("Learning from run {RunId} {Decision}", run.Run.RunId, accept ? "accepted" : "rejected");
         await LoadRunsAsync(ct).ConfigureAwait(true);
         Status(accept ? $"Accepted: every later prompt about {run.Subject.Split(':').Last().Trim()} carries it." : "Rejected: it stays in the record and goes into no prompt.");
     }).ConfigureAwait(true);
@@ -167,6 +180,7 @@ public partial class PromptLibraryWindow : Window
         catch (OperationCanceledException) { }
         catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException or System.IO.IOException or UnauthorizedAccessException)
         {
+            Log.Warning(ex, "Prompt Library action failed. {ErrorType}: {ErrorMessage}", ex.GetType().Name, ex.Message);
             Status($"Could not do that: {ex.Message}");
         }
     }

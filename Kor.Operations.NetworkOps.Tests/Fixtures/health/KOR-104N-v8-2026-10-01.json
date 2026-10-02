@@ -1,0 +1,331 @@
+[{
+      "ProbeVersion": 8,
+      "CollectedAt": "2026-10-01T19:05:39",
+      "Computer": "KOR-104N",
+      "Os": {
+        "Product": "Windows 11 Pro",
+        "DisplayVersion": "25H2",
+        "Build": 26200,
+        "Ubr": 9550,
+        "LastBoot": "2026-10-01T09:03:39",
+        "UptimeHours": 10
+      },
+      "PendingReboot": {
+        "ComponentServicing": false,
+        "WindowsUpdate": false,
+        "FileRename": true
+      },
+      "Volumes": [
+        {
+          "Letter": "C",
+          "Label": "Windows",
+          "SizeGB": 952.5,
+          "FreeGB": 760
+        }
+      ],
+      "PhysicalDisks": [
+        {
+          "Name": "NVMe SKHynix_HFS001TDE9X081N",
+          "Media": "SSD",
+          "Bus": "RAID",
+          "SizeGB": 954,
+          "Health": "Healthy",
+          "Operational": "OK"
+        }
+      ],
+      "MissingDisks": [
+        {
+          "Name": "WD My Passport 25E2 USB Device",
+          "InstanceId": "USBSTOR\\DISK\u0026VEN_WD\u0026PROD_MY_PASSPORT_25E2\u0026REV_4003\\575842314138363854594630\u00260"
+        }
+      ],
+      "OrphanDriveLetters": [
+        "E"
+      ],
+      "Events14d": {
+        "DiskBadBlock": {
+          "Count": 0,
+          "Last": null
+        },
+        "DiskResets": {
+          "Count": 0,
+          "Last": null
+        },
+        "NtfsCorruption": {
+          "Count": 0,
+          "Last": null
+        },
+        "Whea": {
+          "Count": 0,
+          "Last": null
+        },
+        "UnexpectedShutdown": {
+          "Count": 0,
+          "Last": null
+        },
+        "GpuHang": {
+          "Count": 5,
+          "Last": "2026-09-29T17:49:47"
+        },
+        "ResourceExhaustion": {
+          "Count": 0,
+          "Last": null
+        },
+        "UpdateFailures": {
+          "Count": 7,
+          "Last": "2026-10-01T07:26:31"
+        },
+        "AppHangs": {
+          "Count": 2,
+          "Last": "2026-09-25T03:44:33"
+        },
+        "GpuHangLogEntries": {
+          "Count": 6767,
+          "Last": "2026-10-01T17:09:45"
+        },
+        "GpuHangStaleReports": 48,
+        "GpuHangReports": [
+          {
+            "ReportId": "958a23a0-a7c9-4f6b-a7e9-91d1c9eeaf8f",
+            "Created": "2026-09-29T17:49:47",
+            "Entries": 23,
+            "Queued": true
+          },
+          {
+            "ReportId": "5b7e3bb7-65cc-48d8-8ad8-577490e16240",
+            "Created": "2026-09-29T04:03:41",
+            "Entries": 31,
+            "Queued": true
+          },
+          {
+            "ReportId": "a885a58e-5fc8-4621-97ad-c716c3fbcdaf",
+            "Created": "2026-09-27T01:36:20",
+            "Entries": 52,
+            "Queued": true
+          },
+          {
+            "ReportId": "c3987a48-1233-445a-b532-2a8bd3a60730",
+            "Created": "2026-09-27T01:34:43",
+            "Entries": 53,
+            "Queued": true
+          },
+          {
+            "ReportId": "082cb1be-925d-408d-8fdf-b059c3063309",
+            "Created": "2026-09-24T16:31:20",
+            "Entries": 89,
+            "Queued": true
+          },
+          {
+            "ReportId": "55529558-6801-427a-89bc-9441b1a26655",
+            "Created": "2026-09-12T13:18:17",
+            "Entries": 139,
+            "Queued": true
+          },
+          {
+            "ReportId": "413168e5-563a-423b-8ca2-37f5dee3245e",
+            "Created": "2026-09-06T20:21:15",
+            "Entries": 139,
+            "Queued": true
+          },
+          {
+            "ReportId": "d5e7c711-0f06-43e3-aa01-540d180ef8b6",
+            "Created": "2026-09-06T08:26:14",
+            "Entries": 139,
+            "Queued": true
+          },
+          {
+            "ReportId": "7db9bda4-e971-42c6-b17d-66cf8f4753eb",
+            "Created": "2026-09-06T06:19:12",
+            "Entries": 139,
+            "Queued": true
+          },
+          {
+            "ReportId": "7ec1ca74-fedf-4e7b-9583-e192430bdef3",
+            "Created": "2026-09-05T02:48:23",
+            "Entries": 139,
+            "Queued": true
+          },
+          {
+            "ReportId": "80c7c3ad-88bf-480f-b7e7-c2189dbd34ee",
+            "Created": "2026-08-31T16:48:34",
+            "Entries": 139,
+            "Queued": true
+          },
+          {
+            "ReportId": "1929dc58-2086-4186-a298-217e8b346063",
+            "Created": "2026-08-31T03:52:13",
+            "Entries": 139,
+            "Queued": true
+          }
+        ]
+      },
+      "AppCrashes14d": [
+        {
+          "Process": "WRSkyCommandsClient.exe",
+          "Count": 1,
+          "Last": "2026-09-21T12:24:14"
+        }
+      ],
+      "OutlookIndex60d": [
+        {
+          "Store": "C:\\Users\\dsingh\\AppData\\Local\\Microsoft\\Outlook\\dsingh@korstructural.com.ost",
+          "Count": 1,
+          "Last": "2026-09-27T12:03:19"
+        }
+      ],
+      "Office": {
+        "C2rMso": "16.0.20430.20032",
+        "DownlevelMso": "16.0.5495.1002",
+        "AccessEngine": true
+      },
+      "Update": {
+        "MicrosoftUpdate": true,
+        "NoAutoUpdate": 1,
+        "LastInstall": "2026-10-01T18:26:01",
+        "LastInstallTitle": "Security Update for Microsoft Office 2016 (KB5002917) 64-Bit Edition",
+        "LastInstallBy": "KOR NetworkOps"
+      },
+      "CoolingMode": "Best Performance",
+      "DisplayAdapters": [
+        {
+          "Name": "Intel(R) UHD Graphics 630",
+          "Driver": "31.0.101.2115",
+          "ErrorCode": 0
+        }
+      ],
+      "Residue": {
+        "NewformaProfiles": 0,
+        "NewformaInstalled": []
+      },
+      "RemoteTools": [
+        {
+          "Name": "ncstreamer",
+          "State": "Running",
+          "StartMode": "Auto"
+        },
+        {
+          "Name": "ScreenConnect Client (f626167a716ce0b9)",
+          "State": "Running",
+          "StartMode": "Auto"
+        },
+        {
+          "Name": "TeamViewer",
+          "State": "Running",
+          "StartMode": "Auto"
+        }
+      ],
+      "DataOutsideSystemDrive": [],
+      "WmiHealthy": true,
+      "ProbeErrors": [],
+      "DiskReliability": [
+        {
+          "Name": "NVMe SKHynix_HFS001TDE9X081N",
+          "Serial": "ACE4_2E00_1523_8E15_2EE4_AC00_0000_0001.",
+          "WearPct": 0,
+          "TemperatureC": 60,
+          "TemperatureMaxC": null,
+          "ReadErrors": null,
+          "ReadErrorsUncorrected": null,
+          "WriteErrors": null,
+          "PowerOnHours": null
+        }
+      ],
+      "Inventory": {
+        "Manufacturer": "LENOVO",
+        "Model": "ThinkStation P340",
+        "MachineType": "30DK003UUS",
+        "Serial": "MJ0F06D5",
+        "BoardMaker": "LENOVO",
+        "BoardProduct": "1048",
+        "BiosVersion": "S08KT5EA",
+        "BiosDate": "2025-03-20",
+        "Cpu": "Intel(R) Core(TM) i7-10700 CPU @ 2.90GHz",
+        "Cores": 8,
+        "RamGB": 32,
+        "LoggedOnUser": "kor\\dsingh",
+        "OfficeBuild": "16.0.20430.20118",
+        "OfficeChannel": "492350f6-3a01-4f97-b9c0-c7c6ddf67d60",
+        "Apps": [
+          {
+            "Name": "Adobe Acrobat (64-bit)",
+            "Version": "26.002.21931"
+          },
+          {
+            "Name": "Bluebeam Revu x64 21",
+            "Version": "21.6.1"
+          },
+          {
+            "Name": "Microsoft Access database engine 2010 (English)",
+            "Version": "14.0.7015.1000"
+          },
+          {
+            "Name": "Microsoft Access database engine 2016 (English)",
+            "Version": "16.0.5044.1000"
+          },
+          {
+            "Name": "Microsoft Teams Meeting Add-in for Microsoft Office",
+            "Version": "1.26.21803"
+          }
+        ]
+      },
+      "MailStores": [
+        {
+          "Profile": "dsingh",
+          "Name": "dsingh@korstructural.com.ost",
+          "GB": 25.2,
+          "LastWrite": "2026-10-01T17:03:16"
+        }
+      ],
+      "Boot": {
+        "LastBootMs": 54175,
+        "MedianBootMs": 81957,
+        "Samples": 10
+      },
+      "Battery": null,
+      "Memory": [
+        {
+          "Slot": "ChannelA-DIMM1",
+          "Bank": "BANK 1",
+          "SizeGB": 32,
+          "RatedMTs": 2933,
+          "ConfiguredMTs": 2933,
+          "Maker": "Samsung",
+          "Part": "M378A4G43AB2-CVF"
+        }
+      ],
+      "MemorySlots": 4,
+      "Session": {
+        "ConsoleUser": "kor\\dsingh",
+        "State": "Locked",
+        "LockedSince": null,
+        "Summary": "dsingh \u00B7 locked",
+        "IdleSeconds": null
+      },
+      "Wake": {
+        "FastStartup": 0,
+        "Nics": [
+          {
+            "Mac": "D8:BB:C1:2C:E8:D6",
+            "Description": "Intel(R) Ethernet Connection (11) I219-LM",
+            "Up": true,
+            "MagicPacket": true,
+            "Armed": true,
+            "Pme": "Enabled"
+          }
+        ],
+        "LenovoWakeOnLan": "Automatic",
+        "Wired": {
+          "Mac": "D8:BB:C1:2C:E8:D6",
+          "Description": "Intel(R) Ethernet Connection (11) I219-LM",
+          "Up": true,
+          "MagicPacket": true,
+          "Armed": true,
+          "Pme": "Enabled"
+        }
+      },
+      "Console": {
+        "DisplayOffAfterSeconds": 0,
+        "Keyboards": 1,
+        "Mice": 1
+      }
+    }]

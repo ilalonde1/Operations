@@ -54,8 +54,12 @@ public static class HealthRules
         {
             var cards = s.DisplayAdapters.Where(a => a.Name is not null && !a.Name.Contains("Remote Display", StringComparison.OrdinalIgnoreCase)).Select(a => $"{a.Name} {a.Driver}").ToList();
             var noDiscrete = cards.Count > 0 && cards.All(c => c.StartsWith("Intel", StringComparison.OrdinalIgnoreCase) || c.StartsWith("Microsoft", StringComparison.OrdinalIgnoreCase));
+            // v8 dates each reset by its report's creation; the newest and the ones left out go in the evidence.
+            var dated = (e?.GpuHangReports ?? []).Where(r => r.Created is not null).Select(r => r.Created!.Value).ToList();
             f.Add(new("gpu-hangs", gpu >= criticalAt ? Severity.Critical : Severity.Warning, "Graphics driver keeps hanging",
                 (distinct ? $"{gpu} GPU resets in 14 d" : $"{gpu} video-engine timeout log entries in 14 d (not resets)") +
+                (dated.Count > 0 ? $", newest {dated.Max():yyyy-MM-dd HH:mm}" : "") +
+                (e?.GpuHangStaleReports is > 0 and var stale ? $" ({stale} older reports still queued, not counted)" : "") +
                 $" | adapters: {(cards.Count > 0 ? string.Join("; ", cards) : "none reported")}" +
                 (noDiscrete ? " | no discrete card visible: check it is present and seated" : "")));
         }

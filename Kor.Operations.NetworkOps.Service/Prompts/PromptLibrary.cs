@@ -100,7 +100,8 @@ internal sealed class PromptLibrary(NetworkOpsStore store, Agents.AgentHub agent
                     focus is null ? null : Knowledge.For(focus.RuleKey),
                     focus is null ? [] : await store.AcceptedLearningsAsync(focus.RuleKey, ct),
                     new PromptAccess(isRack, dev.Presence, dev.AgentConnected, dev.AgentVersion, dev.MeshConnected, ConnectUrl(dev.MeshNodeId), dev.Summary),
-                    dev.LastCheckedUtc, now);
+                    dev.LastCheckedUtc, now,
+                    await store.LastCheckAsync(dev.DeviceId, ct));
 
                 var subject = focus is null ? dev.Name : $"{dev.Name}: {focus.RuleKey}";
                 var report = await StartRunAsync(req.Kind, subject, dev.DeviceId, focus?.FindingId, focus?.RuleKey, by, ct);

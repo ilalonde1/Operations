@@ -81,7 +81,25 @@ $orphanLetters = Try-Block 'orphanLetters' {
 # --- hardware and stability events, last 14 days
 $events = Try-Block 'events' {
     $wer = Count-Events 'Application' @{ ProviderName = 'Windows Error Reporting'; Id = 1001 }
-$gpuWer = @($wer | Where-Object { $_.Message -match 'LiveKernelEvent' -and $_.Message -match 'P1: 141\b' })
+    # WER 1001 fields by position (read, not rendered: .Message over hundreds of entries is the slow part):
+    # [2] event name, [5] P1, [16] the report's folder, [19] Report Id.
+    $gpuWer = @($wer | Where-Object { $_.Properties.Count -gt 19 -and "$($_.Properties[2].Value)" -eq 'LiveKernelEvent' -and "$($_.Properties[5].Value)".Trim() -eq '141' })
+    # v8: a reset is dated by when Windows CREATED its report (the report folder), not by a log entry. A report
+    # that cannot be sent stays queued and is re-logged on every retry for months: on 2026-10-01, 6 of the 7 PCs
+    # flagged had 0 resets in 14 d -- every "reset" was a 2024-2026 report still in ReportQueue (KOR-217's newest
+    # was June). A report whose folder is gone cannot be dated and is not counted (104N: 4 such, all first
+    # logged within one second at the window's start). Archived reports were moved there from the queue.
+    $gpuReports = @($gpuWer | Group-Object { "$($_.Properties[19].Value)" } | ForEach-Object {
+        $first = $_.Group | Sort-Object TimeCreated | Select-Object -First 1
+        $store = "$($first.Properties[16].Value)"
+        $folder = $null
+        foreach ($p in @($store, ($store -replace '\\ReportQueue\\', '\ReportArchive\'))) {
+            if ($p -and (Test-Path -LiteralPath $p)) { $folder = Get-Item -LiteralPath $p; break }
+        }
+        [pscustomobject]@{ ReportId = $_.Name; TimeCreated = if ($folder) { $folder.CreationTime } else { $null }
+            Entries = $_.Count; Queued = [bool]($folder -and $folder.FullName -match '\\ReportQueue\\') }
+    })
+    $gpuNew = @($gpuReports | Where-Object { $_.TimeCreated -and $_.TimeCreated -ge $since14 })
     [pscustomobject]@{
         DiskBadBlock       = Summ (Count-Events 'System' @{ ProviderName = 'disk'; Id = 7 })
         DiskResets         = Summ (@(Count-Events 'System' @{ ProviderName = 'storahci'; Id = 129 }) + @(Count-Events 'System' @{ ProviderName = 'stornvme'; Id = 129 }))
@@ -94,9 +112,13 @@ $gpuWer = @($wer | Where-Object { $_.Message -match 'LiveKernelEvent' -and $_.Me
         # v3: one GPU reset = one DISTINCT WER report. Windows re-logs event 1001 for the same report on
         # every retry to send it -- ~100 entries per reset measured 2026-09-29 (KOR-104N 6,339 entries =
         # 52 resets) -- so counting entries overstated every PC's GPU problem by two orders of magnitude.
-        GpuHang            = Summ ($gpuWer | Group-Object { if ($_.Message -match 'Report Id:\s*([0-9a-fA-F-]{36})') { $Matches[1] } else { "$($_.RecordId)" } } |
-                                   ForEach-Object { $_.Group | Sort-Object TimeCreated | Select-Object -First 1 })
+        GpuHang            = Summ $gpuNew
         GpuHangLogEntries  = Summ $gpuWer
+        # v8: the reports behind the count, newest first -- the evidence a person (or a Claude session) reads first.
+        GpuHangStaleReports = @($gpuReports).Count - $gpuNew.Count
+        GpuHangReports     = Arr ($gpuReports | Sort-Object { if ($_.TimeCreated) { $_.TimeCreated } else { [datetime]::MinValue } } -Descending | Select-Object -First 12 |
+                                   ForEach-Object { [pscustomobject]@{ ReportId = $_.ReportId; Created = if ($_.TimeCreated) { $_.TimeCreated.ToString('s') } else { $null }
+                                                                       Entries = $_.Entries; Queued = $_.Queued } })
         # v2 -- early-warning signals, each rising before the failure it predicts:
         ResourceExhaustion = Summ (Count-Events 'System' @{ ProviderName = 'Microsoft-Windows-Resource-Exhaustion-Detector'; Id = 2004 })
         UpdateFailures     = Summ (Count-Events 'System' @{ ProviderName = 'Microsoft-Windows-WindowsUpdateClient'; Id = 20 })
@@ -362,7 +384,7 @@ $console = Try-Block 'console' {
 }
 
 [pscustomobject]@{
-    ProbeVersion  = 7
+    ProbeVersion  = 8
     Console       = $console
     Wake          = $wake
     Session       = $session

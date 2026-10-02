@@ -238,6 +238,22 @@ internal sealed partial class NetworkOpsStore
             : null;
     }
 
+    /// <summary>The device's last good check as it came back (a PC's health probe first, else its newest), for a prompt to carry.</summary>
+    public async Task<Core.Prompts.LastCheck?> LastCheckAsync(int deviceId, CancellationToken ct)
+    {
+        await using var c = await OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = Cmd(c, """
+            SELECT TOP (1) o.Probe, o.CollectedUtc, o.PayloadJson FROM NetworkOps.Observations o
+            WHERE o.DeviceId = @d AND o.Status = 'Ok' AND o.PayloadJson IS NOT NULL
+            ORDER BY CASE WHEN o.Probe = 'health' THEN 0 ELSE 1 END, o.CollectedUtc DESC;
+            """);
+        cmd.Parameters.Add("@d", SqlDbType.Int).Value = deviceId;
+        await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        return await r.ReadAsync(ct).ConfigureAwait(false)
+            ? new Core.Prompts.LastCheck(r.GetString(0), DateTime.SpecifyKind(r.GetDateTime(1), DateTimeKind.Utc), r.GetString(2))
+            : null;
+    }
+
     public async Task<IReadOnlyList<ResolutionRow>> ResolutionRowsAsync(CancellationToken ct)
     {
         await using var c = await OpenAsync(ct).ConfigureAwait(false);

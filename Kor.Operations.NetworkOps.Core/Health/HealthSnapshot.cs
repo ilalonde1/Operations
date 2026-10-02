@@ -115,7 +115,12 @@ public sealed record EventSummary(int Count, DateTime? Last);
 public sealed record EventCounts(EventSummary? DiskBadBlock, EventSummary? DiskResets, EventSummary? NtfsCorruption,
     EventSummary? Whea, EventSummary? UnexpectedShutdown, EventSummary? GpuHang,
     EventSummary? ResourceExhaustion = null, EventSummary? UpdateFailures = null, EventSummary? AppHangs = null,
-    EventSummary? GpuHangLogEntries = null);   // v3: GpuHang = distinct reports; this = the raw WER entries behind them
+    EventSummary? GpuHangLogEntries = null,   // v3: GpuHang = distinct reports; this = the raw WER entries behind them
+    int? GpuHangStaleReports = null,          // v8: reports created before the window, still being re-logged (not counted)
+    IReadOnlyList<GpuReport>? GpuHangReports = null);   // v8: the reports behind the count, newest first
+
+/// <summary>One WER LiveKernelEvent 141 report. Created is null when its folder is gone (it cannot be dated, so it is not counted).</summary>
+public sealed record GpuReport(string ReportId, DateTime? Created, int Entries, bool Queued);
 
 public sealed record DiskReliabilityInfo(string? Name, string? Serial, int? WearPct, int? TemperatureC, int? TemperatureMaxC,
     long? ReadErrors, long? ReadErrorsUncorrected, long? WriteErrors, long? PowerOnHours);

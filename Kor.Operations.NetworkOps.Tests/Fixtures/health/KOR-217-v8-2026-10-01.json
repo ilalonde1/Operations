@@ -1,0 +1,391 @@
+[{
+      "ProbeVersion": 8,
+      "CollectedAt": "2026-10-01T19:05:38",
+      "Computer": "KOR-217",
+      "Os": {
+        "Product": "Windows 11 Pro",
+        "DisplayVersion": "25H2",
+        "Build": 26200,
+        "Ubr": 9550,
+        "LastBoot": "2026-09-27T19:01:41",
+        "UptimeHours": 96
+      },
+      "PendingReboot": {
+        "ComponentServicing": false,
+        "WindowsUpdate": false,
+        "FileRename": true
+      },
+      "Volumes": [
+        {
+          "Letter": "C",
+          "Label": "Windows",
+          "SizeGB": 952.5,
+          "FreeGB": 571.9
+        },
+        {
+          "Letter": "E",
+          "Label": "Spare",
+          "SizeGB": 475.7,
+          "FreeGB": 475.6
+        }
+      ],
+      "PhysicalDisks": [
+        {
+          "Name": "NVMe WDC PC SN730 SDBQNTY-1T00-1001",
+          "Media": "SSD",
+          "Bus": "RAID",
+          "SizeGB": 954,
+          "Health": "Healthy",
+          "Operational": "OK"
+        },
+        {
+          "Name": "WDC PC S N730 SDBQNTY-512",
+          "Media": "SSD",
+          "Bus": "USB",
+          "SizeGB": 477,
+          "Health": "Healthy",
+          "Operational": "OK"
+        }
+      ],
+      "MissingDisks": [
+        {
+          "Name": "WD Elements 25A2 USB Device",
+          "InstanceId": "USBSTOR\\DISK\u0026VEN_WD\u0026PROD_ELEMENTS_25A2\u0026REV_1014\\575841314138364A31413332\u00260"
+        }
+      ],
+      "OrphanDriveLetters": [
+        "F"
+      ],
+      "Events14d": {
+        "DiskBadBlock": {
+          "Count": 0,
+          "Last": null
+        },
+        "DiskResets": {
+          "Count": 0,
+          "Last": null
+        },
+        "NtfsCorruption": {
+          "Count": 0,
+          "Last": null
+        },
+        "Whea": {
+          "Count": 0,
+          "Last": null
+        },
+        "UnexpectedShutdown": {
+          "Count": 0,
+          "Last": null
+        },
+        "GpuHang": {
+          "Count": 0,
+          "Last": null
+        },
+        "ResourceExhaustion": {
+          "Count": 0,
+          "Last": null
+        },
+        "UpdateFailures": {
+          "Count": 5,
+          "Last": "2026-09-30T23:38:33"
+        },
+        "AppHangs": {
+          "Count": 1,
+          "Last": "2026-10-01T16:19:44"
+        },
+        "GpuHangLogEntries": {
+          "Count": 580,
+          "Last": "2026-10-01T17:43:31"
+        },
+        "GpuHangStaleReports": 5,
+        "GpuHangReports": [
+          {
+            "ReportId": "9786eadb-0262-4ed6-8bf4-427d7bafffac",
+            "Created": "2026-06-15T21:32:52",
+            "Entries": 116,
+            "Queued": true
+          },
+          {
+            "ReportId": "de74e86e-a0e0-4df3-96b4-0d802772b05d",
+            "Created": "2025-02-07T14:27:20",
+            "Entries": 116,
+            "Queued": true
+          },
+          {
+            "ReportId": "5768ff4b-be3d-4b4b-b4d7-3d8e716d53e6",
+            "Created": "2025-01-21T13:09:32",
+            "Entries": 116,
+            "Queued": true
+          },
+          {
+            "ReportId": "25b4bdb5-af8c-42ce-8187-5789ce2ca52e",
+            "Created": "2025-01-17T11:13:55",
+            "Entries": 116,
+            "Queued": true
+          },
+          {
+            "ReportId": "4d799f64-02e9-4a5c-b7d1-7f09ee0a26fd",
+            "Created": "2025-01-03T09:35:17",
+            "Entries": 116,
+            "Queued": true
+          }
+        ]
+      },
+      "AppCrashes14d": [
+        {
+          "Process": "opushutil.exe",
+          "Count": 29,
+          "Last": "2026-10-01T17:57:45"
+        },
+        {
+          "Process": "Revu.exe",
+          "Count": 2,
+          "Last": "2026-09-28T12:50:49"
+        },
+        {
+          "Process": "UDClientService.exe",
+          "Count": 1,
+          "Last": "2026-09-24T02:37:37"
+        }
+      ],
+      "OutlookIndex60d": [
+        {
+          "Store": "C:\\Users\\andrean\\AppData\\Local\\Microsoft\\Outlook\\andrean@korstructural.com.ost",
+          "Count": 1,
+          "Last": "2026-09-08T09:26:52"
+        }
+      ],
+      "Office": {
+        "C2rMso": "16.0.20326.20072",
+        "DownlevelMso": "16.0.5495.1002",
+        "AccessEngine": true
+      },
+      "Update": {
+        "MicrosoftUpdate": true,
+        "NoAutoUpdate": 1,
+        "LastInstall": "2026-09-28T00:13:59",
+        "LastInstallTitle": "Update for Windows (KB5124010)",
+        "LastInstallBy": "wusa"
+      },
+      "CoolingMode": "Best Performance",
+      "DisplayAdapters": [
+        {
+          "Name": "NVIDIA Quadro P1000",
+          "Driver": "32.0.15.8208",
+          "ErrorCode": 0
+        },
+        {
+          "Name": "Intel(R) UHD Graphics 630",
+          "Driver": "31.0.101.2115",
+          "ErrorCode": 0
+        }
+      ],
+      "Residue": {
+        "NewformaProfiles": 0,
+        "NewformaInstalled": []
+      },
+      "RemoteTools": [
+        {
+          "Name": "ScreenConnect Client (f626167a716ce0b9)",
+          "State": "Running",
+          "StartMode": "Auto"
+        },
+        {
+          "Name": "TeamViewer",
+          "State": "Running",
+          "StartMode": "Auto"
+        },
+        {
+          "Name": "ncstreamer",
+          "State": "Running",
+          "StartMode": "Auto"
+        }
+      ],
+      "DataOutsideSystemDrive": [],
+      "WmiHealthy": true,
+      "ProbeErrors": [],
+      "DiskReliability": [
+        {
+          "Name": "NVMe WDC PC SN730 SDBQNTY-1T00-1001",
+          "Serial": "001B_448B_41D4_A59D.",
+          "WearPct": 0,
+          "TemperatureC": 60,
+          "TemperatureMaxC": null,
+          "ReadErrors": null,
+          "ReadErrorsUncorrected": null,
+          "WriteErrors": null,
+          "PowerOnHours": null
+        },
+        {
+          "Name": "WDC PC S N730 SDBQNTY-512",
+          "Serial": "0000000000000000",
+          "WearPct": 0,
+          "TemperatureC": null,
+          "TemperatureMaxC": null,
+          "ReadErrors": null,
+          "ReadErrorsUncorrected": null,
+          "WriteErrors": null,
+          "PowerOnHours": null
+        }
+      ],
+      "Inventory": {
+        "Manufacturer": "LENOVO",
+        "Model": "ThinkStation P340",
+        "MachineType": "30DK0040US",
+        "Serial": "MJ0GM756",
+        "BoardMaker": "LENOVO",
+        "BoardProduct": "1048",
+        "BiosVersion": "S08KT5EA",
+        "BiosDate": "2025-03-20",
+        "Cpu": "Intel(R) Core(TM) i9-10900 CPU @ 2.80GHz",
+        "Cores": 10,
+        "RamGB": 32,
+        "LoggedOnUser": "kor\\andrean",
+        "OfficeBuild": "16.0.20326.20158",
+        "OfficeChannel": "492350f6-3a01-4f97-b9c0-c7c6ddf67d60",
+        "Apps": [
+          {
+            "Name": "Adobe Acrobat (64-bit)",
+            "Version": "26.002.21931"
+          },
+          {
+            "Name": "Autodesk Revit 2020",
+            "Version": "20.0.0.377"
+          },
+          {
+            "Name": "Autodesk Revit 2020 Revit MEP Imperial Content",
+            "Version": "2.2"
+          },
+          {
+            "Name": "Autodesk Revit 2020 Revit MEP Metric Content",
+            "Version": "2.2"
+          },
+          {
+            "Name": "Autodesk Revit 2024",
+            "Version": "24.0.5.432"
+          },
+          {
+            "Name": "Bluebeam Revu CAD x64 20.3",
+            "Version": "20.3.30"
+          },
+          {
+            "Name": "ETABS 19",
+            "Version": "19.1.0"
+          },
+          {
+            "Name": "ETABS 20",
+            "Version": "20.3.0"
+          },
+          {
+            "Name": "ETABS 21",
+            "Version": "21.2.0"
+          },
+          {
+            "Name": "ETABS 23",
+            "Version": "23.3.1"
+          },
+          {
+            "Name": "EtabsPostProcessing",
+            "Version": "1.31"
+          },
+          {
+            "Name": "Microsoft Access database engine 2016 (English)",
+            "Version": "16.0.5044.1000"
+          },
+          {
+            "Name": "Microsoft Teams Meeting Add-in for Microsoft Office",
+            "Version": "1.26.21803"
+          },
+          {
+            "Name": "NVIDIA Graphics Driver 581.42",
+            "Version": "581.42"
+          },
+          {
+            "Name": "SAFE 20",
+            "Version": "20.3.0"
+          },
+          {
+            "Name": "SAFE 2016",
+            "Version": "16.0.2"
+          },
+          {
+            "Name": "SAFE 21",
+            "Version": "21.2.0"
+          },
+          {
+            "Name": "SAFE 22",
+            "Version": "22.7.0"
+          },
+          {
+            "Name": "SAFE 23",
+            "Version": "23.2.0"
+          }
+        ]
+      },
+      "MailStores": [
+        {
+          "Profile": "andrea neuviale",
+          "Name": "andrean@korstructural.com.ost",
+          "GB": 17.24,
+          "LastWrite": "2025-08-22T16:34:40"
+        },
+        {
+          "Profile": "andrean",
+          "Name": "andrean@korstructural.com.ost",
+          "GB": 14.26,
+          "LastWrite": "2026-10-01T19:04:10"
+        }
+      ],
+      "Boot": {
+        "LastBootMs": 42577,
+        "MedianBootMs": 79402,
+        "Samples": 10
+      },
+      "Battery": null,
+      "Memory": [
+        {
+          "Slot": "ChannelA-DIMM1",
+          "Bank": "BANK 1",
+          "SizeGB": 32,
+          "RatedMTs": 2933,
+          "ConfiguredMTs": 2933,
+          "Maker": "Samsung",
+          "Part": "M378A4G43AB2-CVF"
+        }
+      ],
+      "MemorySlots": 4,
+      "Session": {
+        "ConsoleUser": "kor\\andrean",
+        "State": "Active",
+        "LockedSince": null,
+        "Summary": "andrean \u00B7 active",
+        "IdleSeconds": null
+      },
+      "Wake": {
+        "FastStartup": 0,
+        "Nics": [
+          {
+            "Mac": "D8:BB:C1:C1:DD:F1",
+            "Description": "Intel(R) Ethernet Connection (11) I219-LM",
+            "Up": true,
+            "MagicPacket": true,
+            "Armed": true,
+            "Pme": "Enabled"
+          }
+        ],
+        "LenovoWakeOnLan": "Automatic",
+        "Wired": {
+          "Mac": "D8:BB:C1:C1:DD:F1",
+          "Description": "Intel(R) Ethernet Connection (11) I219-LM",
+          "Up": true,
+          "MagicPacket": true,
+          "Armed": true,
+          "Pme": "Enabled"
+        }
+      },
+      "Console": {
+        "DisplayOffAfterSeconds": 0,
+        "Keyboards": 1,
+        "Mice": 1
+      }
+    }]

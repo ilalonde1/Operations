@@ -13,6 +13,9 @@ public sealed record PromptReport(long RunId, string Token, string ApiBaseUrl);
 /// <summary>What an earlier Claude session learned about this kind of problem, accepted by Ian.</summary>
 public sealed record SessionLearning(DateTime AtUtc, string Device, string Text);
 
+/// <summary>The device's last good check exactly as the machine returned it (probe JSON).</summary>
+public sealed record LastCheck(string Probe, DateTime AtUtc, string Json);
+
 /// <summary>Everything a device or finding prompt is made of -- read from the database at the moment it is opened.</summary>
 public sealed record DevicePromptInput(
     string DeviceName,
@@ -31,7 +34,8 @@ public sealed record DevicePromptInput(
     IReadOnlyList<SessionLearning> FromSessions,
     PromptAccess Access,
     DateTime? LastCheckedUtc,
-    DateTime NowUtc);
+    DateTime NowUtc,
+    LastCheck? Raw = null);
 
 // A Claude prompt is never stored as a finished document: it is composed here, from what NetworkOps knows at the moment
 // someone opens it, so it cannot go stale. Pure -- the service gathers the input, this only writes it -- so a test can
@@ -77,7 +81,10 @@ public static class PromptComposer
         sb.AppendLine(a.ConnectUrl is { } url
             ? $"- Remote screen: {url} ({(a.MeshConnected ? "Mesh agent connected" : "Mesh agent NOT connected right now")}). If nobody is at it or its monitors are off, use RDP from the same page."
             : "- Remote control: no Mesh agent on it.");
-        sb.AppendLine($"- Read anything on it with the repo's CLI, which runs ON the machine (one call, one result; never chatty reads over the VPN): `netops run --script x.ps1 --hosts {i.DeviceName}` from `{RepoPath}`. Build it first if needed: `dotnet build Kor.Operations.NetworkOps.Cli`.");
+        sb.AppendLine(i.Raw is { } raw
+            ? $"- **Read first:** its last full {raw.Probe} check ({CommandCenterView.Ago(raw.AtUtc, i.NowUtc)}) is at the end of this prompt, exactly as the machine returned it. Most questions are answered there; go to the machine only for what it does not hold."
+            : "- There is no stored check for it yet: read it on the machine.");
+        if (!a.IsRack) CheckingRules(sb, i.DeviceName);
         sb.AppendLine();
 
         if (i.Focus is { } p)
@@ -137,8 +144,36 @@ public static class PromptComposer
             sb.AppendLine();
         }
 
+        if (i.Raw is { } last)
+        {
+            sb.AppendLine($"## Its last full check ({last.Probe}, {last.AtUtc:yyyy-MM-dd HH:mm} UTC, as returned)");
+            if (last.Json.Length <= MaxRawChars)
+            {
+                sb.AppendLine("```json");
+                sb.AppendLine(last.Json.Trim());
+                sb.AppendLine("```");
+            }
+            else sb.AppendLine($"Too large to carry here ({last.Json.Length:N0} characters). Read it on the machine with the probe itself: `netops health --hosts {i.DeviceName}`.");
+            sb.AppendLine();
+        }
+
         Closing(sb, report, i.DeviceName);
         return sb.ToString();
+    }
+
+    /// <summary>A health check is ~10 KB; anything far past that would crowd out the rest of the prompt.</summary>
+    public const int MaxRawChars = 60_000;
+
+    // How a session reads a PC without wasting its time. Learned 2026-10-01: a session spent 10 of its 14 minutes on one
+    // event-log query that rendered every entry's text (it hit a 5-minute limit, carried on in the background and failed);
+    // the same answer read by field came back in 30 s. And every netops call pays the network route's setup once, so
+    // one script that reads everything beats several that read one thing each.
+    private static void CheckingRules(StringBuilder sb, string device)
+    {
+        sb.AppendLine($"- Read anything else ON the machine with the repo's CLI: `netops run --script x.ps1 --hosts {device} --timeout 90` from `{RepoPath}` (build it first if needed: `dotnet build Kor.Operations.NetworkOps.Cli`). It runs as SYSTEM under Windows PowerShell 5.1 and returns the script's output as JSON; never make chatty reads over the VPN.");
+        sb.AppendLine("  - Put every read into ONE script: each call costs 20-70 s of setup before your script starts.");
+        sb.AppendLine("  - Event logs: `Get-WinEvent -FilterHashtable @{ LogName=...; ProviderName=...; Id=...; StartTime=... } -MaxEvents N` and read `.Properties[n].Value`. NEVER render `.Message` across a whole log or thousands of events: that alone took over 10 minutes on KOR-217.");
+        sb.AppendLine("  - If a call needs more than 90 s, the script is the problem, not the network: narrow it and run again; do not wait on it in the background.");
     }
 
     /// <summary>A prompt about one of KOR's tools: its fixed brief (kept beside its code) plus what NetworkOps sees live.</summary>

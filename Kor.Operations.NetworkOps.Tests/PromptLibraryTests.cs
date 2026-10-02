@@ -69,6 +69,33 @@ public sealed class PromptLibraryTests
         Assert.Contains("- Agents: 29 of 39", tool);
     }
 
+    // 2026-10-01: a session spent 10 of 14 minutes re-reading on the PC what NetworkOps already held, with an event-log
+    // query that rendered every entry. The prompt now carries the last check and says how to read a PC quickly.
+    [Fact]
+    public void A_device_prompt_carries_its_last_check_and_how_to_read_the_machine_quickly()
+    {
+        var json = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Fixtures", "health", "KOR-104N-v8-2026-10-01.json"));
+        var md = PromptComposer.Device(Input(null) with { Raw = new LastCheck("health", Now.AddMinutes(-25), json) }, null);
+        Assert.Contains("**Read first:** its last full health check (25 min ago)", md);
+        Assert.Contains("## Its last full check (health, 2026-09-30 22:35 UTC, as returned)", md);
+        Assert.Contains("\"GpuHangStaleReports\"", md);   // the evidence the KOR-217 session went to the PC for
+        Assert.Contains("--timeout 90", md);
+        Assert.Contains("NEVER render `.Message`", md);
+        Assert.Contains("ONE script", md);
+    }
+
+    [Fact]
+    public void A_check_too_large_to_carry_is_pointed_to_not_pasted()
+    {
+        var md = PromptComposer.Device(Input(null) with { Raw = new LastCheck("health", Now, new string('x', PromptComposer.MaxRawChars + 1)) }, null);
+        Assert.Contains("Too large to carry here", md);
+        Assert.DoesNotContain("```json", md);
+    }
+
+    [Fact]
+    public void Without_a_stored_check_the_prompt_says_so()
+        => Assert.Contains("There is no stored check for it yet", PromptComposer.Device(Input(null), null));
+
     [Fact]
     public void Without_migration_007_the_prompt_says_to_leave_a_note_instead()
     {

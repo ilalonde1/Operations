@@ -12,8 +12,11 @@ namespace Kor.Operations.NetworkOps.Tests;
 //   - GPU hangs counted WER log entries, and Windows re-logs one report on every send retry (~100x).
 //
 // WHAT IT COVERS: every Count-Events call in the health probe names specific event ids or a severity
-// level (never a whole provider); the GPU count is de-duplicated by report; memory-layout on 206-N's
-// real module set and on balanced/single-stick edges.
+// level (never a whole provider); the GPU count is de-duplicated by report AND dated by the report's folder
+// (v8); no WER-derived variable other than the raw-entry tally reaches Summ; WER entries are read by field,
+// never by rendering .Message; memory-layout on 206-N's real module set and on balanced/single-stick edges.
+// The v8 dating was proven live on 7 of the 8 flagged PCs (2026-10-01): entry counts equal to v7's on all 7
+// (the field positions are right), real resets 9 -> 5 on 104N and 0 on the other six.
 // WHAT IT DOES NOT: whether a pinned id means what its rule says -- only a person reading real events
 // on a real machine proves that (how both faults were actually found). A SAME-CLASS FAULT IT WOULD NOT
 // CATCH: a pinned id that Windows ALSO logs repeatedly per incident (like WER 1001) passes this check;
@@ -31,9 +34,56 @@ public sealed class ProbeContractTests
         Assert.True(loose.Count == 0, "event counts that name a whole provider (add Id = or Level =):\n" + string.Join("\n", loose));
     }
 
+    // The THIRD instance, 2026-10-01, is the one the header below predicted: WER re-logs a report on every retry to send
+    // it, for months, so even one-per-report counted a 2025 report as a 2026 reset (6 of 7 flagged PCs had 0 real resets
+    // in 14 d). The class, in one sentence: A WER-RE-LOGGED INCIDENT MUST BE DATED BY ITS REPORT, NOT BY ANY LOG ENTRY.
     [Fact]
-    public void Gpu_resets_are_counted_once_per_report()
-        => Assert.Matches(new Regex(@"GpuHang\s*=\s*Summ\s*\(\$gpuWer\s*\|\s*Group-Object"), Probe);
+    public void Gpu_resets_are_counted_once_per_report_and_dated_by_the_report_folder()
+    {
+        Assert.Matches(new Regex(@"Group-Object\s*\{\s*""\$\(\$_\.Properties\[19\]\.Value\)""\s*\}"), Probe);   // one per Report Id
+        Assert.Matches(new Regex(@"TimeCreated\s*=\s*if\s*\(\$folder\)\s*\{\s*\$folder\.CreationTime\s*\}\s*else\s*\{\s*\$null\s*\}"), Probe);
+        Assert.Matches(new Regex(@"\$gpuNew\s*=.*TimeCreated\s+-ge\s+\$since14"), Probe);
+        Assert.Matches(new Regex(@"GpuHang\s*=\s*Summ\s+\$gpuNew\b"), Probe);
+    }
+
+    private static HealthSnapshot Fixture(string name) => HealthSnapshot.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Fixtures", "health", name)));
+
+    [Fact]
+    public void Kor217_five_queued_reports_from_2025_and_June_are_not_hangs()
+    {
+        var s = Fixture("KOR-217-v8-2026-10-01.json");
+        Assert.Equal(8, s.ProbeVersion);
+        Assert.Equal(0, s.Events14d!.GpuHang!.Count);
+        Assert.Equal(5, s.Events14d.GpuHangStaleReports);
+        Assert.DoesNotContain(HealthRules.Evaluate(s), f => f.RuleKey == "gpu-hangs");
+    }
+
+    [Fact]
+    public void Kor104N_counts_only_the_resets_created_in_the_window_and_says_so()
+    {
+        var s = Fixture("KOR-104N-v8-2026-10-01.json");
+        var f = Assert.Single(HealthRules.Evaluate(s), x => x.RuleKey == "gpu-hangs");
+        Assert.Equal(Severity.Warning, f.Severity);
+        Assert.Contains("5 GPU resets in 14 d, newest 2026-09-29 17:49", f.Evidence);
+        Assert.Contains("48 older reports still queued, not counted", f.Evidence);
+        Assert.Equal(12, s.Events14d!.GpuHangReports!.Count);   // the evidence a session reads first
+    }
+
+    [Fact]
+    public void No_count_built_on_WER_entries_is_summarised_straight_from_the_log()
+    {
+        // Every variable filled from the WER provider may only reach Summ through the dated report list.
+        var werVars = Regex.Matches(Probe, @"\$(\w+)\s*=\s*(?:Count-Events\s+'Application'\s+@\{\s*ProviderName\s*=\s*'Windows Error Reporting'|@\(\$wer\b)")
+            .Select(m => m.Groups[1].Value).ToList();
+        Assert.Contains("wer", werVars);
+        var straight = werVars.Where(v => Regex.IsMatch(Probe, $@"Summ\s+\(?\${v}\b") && v != "gpuWer").ToList();
+        Assert.True(straight.Count == 0, "WER entries summarised as incidents: " + string.Join(", ", straight));
+    }
+
+    [Fact]
+    public void Wer_entries_are_read_by_field_not_by_rendering_their_message()
+        // Rendering .Message is the slow part of an event read (a full-log render timed out at 600 s on KOR-217).
+        => Assert.DoesNotMatch(new Regex(@"\$wer\b[^\n]*\.Message"), Probe);
 
     private static HealthSnapshot WithMemory(int? slots, params MemoryModuleInfo[] mods) => new() { Memory = mods, MemorySlots = slots, ProbeVersion = 3 };
     private static MemoryModuleInfo M(string slot, int gb, int rated = 4800, int running = 4800) => new(slot, null, gb, rated, running, "Kingston", "x");
