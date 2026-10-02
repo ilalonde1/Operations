@@ -20,6 +20,8 @@ public static class FixCatalog
     public const string StartService = "start-service";
     public const string InstallUpdates = "install-updates";
     public const string InstallUpdatesRestart = "install-updates-restart";
+    public const string UpdateBios = "update-bios";
+    public const string CheckBiosUpdate = "check-bios-update";
 
     public static bool IsUpdateInstall(string id) => id is InstallUpdates or InstallUpdatesRestart;
 
@@ -50,6 +52,12 @@ public static class FixCatalog
         new("enable-wake-on-lan", "Turn on Wake-on-LAN",
             "Turns Fast Startup off and sets the wired network card to wake on a magic packet (and the BIOS too, on Lenovo), so the Wake button can start it from shutdown. Nothing restarts; the card settings apply at its next restart or shutdown.",
             Disruptive: false, TimeoutSeconds: 180, ["wake-not-ready"]),
+        new(CheckBiosUpdate, "Check the BIOS update",
+            "Finds Lenovo's BIOS package for this PC, downloads it and verifies it (Lenovo's checksum and signature, power, BIOS password, BitLocker) -- and stops there. Nothing is flashed or restarted.",
+            Disruptive: false, TimeoutSeconds: 600, [Bios.BiosRules.Rule]),
+        new(UpdateBios, "Update the BIOS",
+            "Installs Lenovo's current BIOS for this PC, exactly as Lenovo's own updater would (checksum and Lenovo signature verified, BitLocker suspended for one restart), then restarts in 5 minutes with a warning on screen. The BIOS is written during that restart: it must not be turned off.",
+            Disruptive: true, TimeoutSeconds: 1800, [Bios.BiosRules.Rule]),
         new(InstallUpdates, "Install updates (no restart)",
             "Installs what Windows Update has waiting, now, as SYSTEM: security and other software updates, never drivers, previews or feature upgrades. Does not restart: the machine shows 'restart pending' until someone restarts it.",
             Disruptive: false, TimeoutSeconds: 5400, [Updates.UpdateRules.Rule, "not-patched"]),
@@ -93,6 +101,8 @@ public static class FixCatalog
         if (a.Id == RunCommand) return param!;   // the operator's own script, as typed (audited)
         // The two update installs are one script; the restart variant only sets its switch.
         if (a.Id == InstallUpdatesRestart) return "$RestartIfNeeded = $true\n" + Script(Get(InstallUpdates)!, null);
+        // The BIOS check is the update with $DryRun: one script, so the check proves exactly what the update would run.
+        if (a.Id == CheckBiosUpdate) return "$DryRun = $true\n" + Script(Get(UpdateBios)!, null);
         using var s = typeof(FixCatalog).Assembly.GetManifestResourceStream($"Actions.{a.Id}.ps1")
             ?? throw new InvalidOperationException($"no embedded script for {a.Id}");
         using var r = new StreamReader(s);

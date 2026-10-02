@@ -25,7 +25,7 @@ namespace Kor.Operations.NetworkOps.Service.Sweep;
 // A PC that could not be probed keeps its findings exactly as they were: not seeing a fault is
 // not the fault being fixed.
 internal sealed class HealthSweeper(NetworkOpsStore store, IDigestSender digest, Agents.MachineRunner runner, Agents.AgentHub agents,
-    Mesh.MeshState mesh, Updates.UpdateRescans rescans, IOptions<NetworkOpsOptions> options, ILogger<HealthSweeper> log)
+    Mesh.MeshState mesh, Updates.UpdateRescans rescans, Bios.LenovoBiosCatalog bios, IOptions<NetworkOpsOptions> options, ILogger<HealthSweeper> log)
 {
     public const int HistoryDays = 90;
 
@@ -81,16 +81,22 @@ internal sealed class HealthSweeper(NetworkOpsStore store, IDigestSender digest,
             await store.InsertMetricsAsync(id, Metrics.Extract(snap), now, ct);
             var history = await store.MetricHistoryAsync(id, now.AddDays(-HistoryDays), ct);
 
-            // 4. findings: rules on the snapshot, predictions on the trends
+            // 4. findings: rules on the snapshot, predictions on the trends, and the BIOS against Lenovo's current package
+            //    (null = Lenovo's catalog could not be read: the BIOS is then not judged at all, below).
+            var machineType = Core.Bios.LenovoCatalog.MachineTypeOf(snap.Inventory?.Manufacturer, snap.Inventory?.MachineType);
+            var biosPackages = machineType is null ? [] : await bios.PackagesAsync(machineType, ct);
             var raised = HealthRules.Evaluate(snap).Concat(Predictions.Evaluate(snap with { CollectedAt = now }, history))
                 .Concat(AgentRules.Evaluate(AgentStateOf(r.Computer, installed), answeredOverNetwork: r.Stages?.StartsWith("agent:", StringComparison.Ordinal) != true, shipped, now))
                 .Concat(MeshRules.Evaluate(o.MeshEnabled ? mesh.PresenceOf(id) : null, answered: true))
+                .Concat(biosPackages is null ? [] : Core.Bios.BiosRules.Evaluate(snap.Inventory, (snap.Os?.Build ?? 0) >= 22000, biosPackages))
                 .GroupBy(f => f.RuleKey).Select(g => g.OrderByDescending(f => f.Severity).First()).ToList();
             findings += raised.Count;
 
             // 5. diff; learn from what cleared
             // The update scan owns "updates-due" (Updates/UpdateScanner): this sweep never raises it, so must never clear it.
-            var open = (await store.OpenFindingsAsync(id, FleetCensusJob.SilentRule, ct)).Where(f => !Core.Updates.UpdateRules.Owns(f.RuleKey)).ToList();
+            // An unread Lenovo catalog is not a current BIOS: the BIOS finding then stands exactly as it was.
+            var open = (await store.OpenFindingsAsync(id, FleetCensusJob.SilentRule, ct))
+                .Where(f => !Core.Updates.UpdateRules.Owns(f.RuleKey) && (biosPackages is not null || f.RuleKey != Core.Bios.BiosRules.Rule)).ToList();
             var changes = FindingDiff.Compute(open, raised);
             await store.ApplyChangesAsync(id, changes, now, ct);
             foreach (var cleared in changes.Where(c => c.Kind == ChangeKind.Cleared && c.Previous is not null))

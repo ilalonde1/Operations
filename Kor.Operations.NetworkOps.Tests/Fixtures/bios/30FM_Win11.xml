@@ -1,0 +1,158 @@
+﻿<?xml version="1.0" encoding="utf-8"?><packages count="26">
+  <package>
+    <location>https://download.lenovo.com/pccbbs/thinkcentre_drivers/u1ra130us17_ts_p360_2_.xml</location>
+    <category>Storage</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">49c254caba625830b2d41fd42e7cb3a4bca41aedc6ef1b795002dea6eb721cd7</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/desktop/k1car16us17_ts_p360_11_2_.xml</location>
+    <category>Camera and Card Reader</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">9fae7ed8c2148b5728c91c9ab5691d2a583da4d76dbcb878b52bf8bba4f37036</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/desktop/k2car26us17_ts_p360_2_.xml</location>
+    <category>Camera and Card Reader</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">532a9f29cb771897f571fbc9f12fbc8711be97c97baa6399c7ac3764dea6a580</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/thinkcentre_drivers/m4etn002d_ts_p360_2_.xml</location>
+    <category>Networking LAN Ethernet</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">67532d4357ba503643d0a63dcd2a5984719d745af6d976345904a0b03f373a50</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/thinkcentre_drivers/m7aud30us17_ts_p360_2_.xml</location>
+    <category>Audio</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">4a696122a4fb209cf0cda8851b6a25fbfb18c3f69cf11a67b820ccf0d7e3e786</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/thinkcentre_drivers/n1ser22us14_ts_p360_2_.xml</location>
+    <category>Camera and Card Reader</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">cd2acc7232dd751a184fb759cf088152e74fad9c747ff761f4a24b0c2f89c232</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/thinkcentre_drivers/ndetn002d_ts_p360_11_2_.xml</location>
+    <category>Networking LAN Ethernet</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">16e0882c657e60e624e7b7b70f4221e6c7e0198a5f288e656e7445d16c8b241f</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/desktop/u1dpf19us14_ts_p360_11_2_.xml</location>
+    <category>Motherboard Devices Backplanes core chipset onboard video PCIe switches</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">fa10a72c9fdf7b2e362ea3a0d87adc3385ce823d58b7f320c0708471b0a40371</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/thinkcentre_drivers/u1ra132us17_ts_p360_2_.xml</location>
+    <category>Storage</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">dae4b6eceae2c53fea30845582deea6b0578c22a906f81be8a65da1540618e4e</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/desktop/u1txt05us14_ts_p360_11_2_.xml</location>
+    <category>Motherboard Devices Backplanes core chipset onboard video PCIe switches</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">1b142fb8856226dd7e87dcd21d04ac0e7be1a2238f6c507c88e7dc093ed71a0e</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/thinkcentre_drivers/u2chp57us14_ts_p360_11_2_.xml</location>
+    <category>Motherboard Devices Backplanes core chipset onboard video PCIe switches</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">2cc32499fae1f066c262a62b43b5644b54564e7b2e051838db4170a1262ffa52</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/desktop/u4etn2qus17_ts_p360_2_.xml</location>
+    <category>Networking LAN Ethernet</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">38582b838b905a15667354fcb2293296e16a3dd7e3ab942e0f1a897fcc664463</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/thinkcentre_drivers/m3vdo049d_ts_p360_2_.xml</location>
+    <category>Graphics Processing Units GPU and Server AI Accelerators Devices</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">acde1b41b5fdb5e9846beac8fc5cd365027c19d342802e5d331568287d424fd8</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/desktop/m2etn10us14_ts_p360_2_.xml</location>
+    <category>Networking LAN Ethernet</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">fbdec5139371343486923fa32ceede194536c8231daa3b10bab10e0e9f436b36</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/thinkcentre_drivers/m2vdo013d_ts_p360_2_.xml</location>
+    <category>Display and Video Graphics</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">de66bb7bde9649e5fe704d9a1743f63febbfc629bcbe479dad831433141df706</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/thinkcentre_drivers/n1etn00ad_ts_p360_2_.xml</location>
+    <category>Networking LAN Ethernet</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">a340dc161450b0129051188227cdfb0bb488f508989ce7828f0344a01c3fc0ae</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/thinkcentre_drivers/m1tbt008d_ts_p360_2_.xml</location>
+    <category>USB Device FireWire IEEE 1394 Thunderbolt</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">45bb797550605239d1ebe57fc9ea4fe19fefe7f90f405ecf8c58ebf5ded88f7e</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/thinkcentre_drivers/m1tbt010d_ts_p360_2_.xml</location>
+    <category>USB Device FireWire IEEE 1394 Thunderbolt</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">91ba90871f6a9dd3312f04c28968737103e46202e42215254a18a079bf101e57</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/desktop/m8amt26us14_ts_p360_11_2_.xml</location>
+    <category>Motherboard Devices Backplanes core chipset onboard video PCIe switches</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">eacfe6ceae8cd6031e96544aad3c4c7fc46b15d33a9a77622c83feb257523b9c</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/thinkcentre_drivers/m2vdo020d_ts_p360_11_2_.xml</location>
+    <category>Display and Video Graphics</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">ea4cda6a240af12ac9a4fdd06009a53643c061ad8c2a59c4535257537f7bac00</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/desktop/m3vdo52us14_ts_p360_11_2_.xml</location>
+    <category>Display and Video Graphics</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">bf029b2ada526f7cd244043f47c33610b2d6fbe0ae16a04488a456b867f82ad0</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/thinkcentre_bios/s0ejy64usa_2_.xml</location>
+    <category>BIOS UEFI</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">db92221d2894f28919ef643d14316e844077e6aa94ce6d489ea7c228b4eb98b9</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/desktop/m2vdoa15us14_ts_p360_11_2_.xml</location>
+    <category>Display and Video Graphics</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">cfafc6bf5d616e55b344350f23a1f3f3e5a3d1f22561f6a29abbf24a15e34134</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/desktop/m2wlg31us14_ts_p360_11_2_.xml</location>
+    <category>Networking Wireless LAN</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">030c748b965127c993173cc56479554d29d09855ae873d4ecdbd033d27ceb03a</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/desktop/m2blt30us14_ts_p360_11_2_.xml</location>
+    <category>Bluetooth and Modem</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">522882726bf8e891c4614b33cbea335f90108ab08818d488b30a12358cc90672</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/thinkcentre_drivers/m3vdo07ad_ts_p360_11_2_.xml</location>
+    <category>Display and Video Graphics</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">505e8f437940ca306409474e21d6836450df91970f9547b5989ac86bbb1bad9b</checksum>
+  </package>
+</packages>

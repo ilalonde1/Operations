@@ -1,0 +1,218 @@
+﻿<?xml version="1.0" encoding="utf-8"?><packages count="36">
+  <package>
+    <location>https://download.lenovo.com/pccbbs/thinkcentre_drivers/k1car17us17_tsp3_2_.xml</location>
+    <category>Camera and Card Reader</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">4c1d064df250379b0dc9486aa93e19fbe4a66107f80756de2f5c12b59aca86d8</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/desktop/u4etn2qus17_tsp3_2_.xml</location>
+    <category>Networking LAN Ethernet</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">2a9658f5fd73ccccfc4290f0db14e111630616d1401c3bdd82b032e2f16a5a35</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/thinkcentre_drivers/k2car28us17_tsp3_2_.xml</location>
+    <category>Camera and Card Reader</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">f3729a463a3a40b0d715d57a4cc057bfa13bf19b8856246cf26b1b3258c57164</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/thinkcentre_drivers/n1ser22us14_tsp3_2_.xml</location>
+    <category>Camera and Card Reader</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">3b8556e861ddf1fc30e08a92a2a92bc9554eef1868df724a800d73bcae3ec98c</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/desktop/m7aud40us17_tsp3_2_.xml</location>
+    <category>Audio</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">77b110ad2a932ce0c97d9fb3b7d5393576b63a042b5c6fd0c9d98a0032a4d973</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/desktop/m7dpfa8us14_tsp3_2_.xml</location>
+    <category>Motherboard Devices Backplanes core chipset onboard video PCIe switches</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">b64c6dcd18640d6c08f0d33ae99e7ceb0df73d28db73fd9d473befefe728365c</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/thinkcentre_drivers/m2vdob4us14_tsp3_2_.xml</location>
+    <category>Display and Video Graphics</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">296d84aa9ecabd801e017561b09024b67ad5d4cf0044bd2d7831ccbc2dd60563</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/thinkcentre_drivers/m3etn001d_tsp3_2_.xml</location>
+    <category>Networking LAN Ethernet</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">43cf6092d61f916feb734dc5b3b07c942682221afd1622b5b22952d037d394b2</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/thinkcentre_drivers/u4etn2yus17_tsp3_2_.xml</location>
+    <category>Networking LAN Ethernet</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">5a9e47ee710e2e8d0a9cbf84ce3ec2108bed4272b7e1508a52342282f3feda78</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/thinkcentre_drivers/ndetn002d_tsp3_2_.xml</location>
+    <category>Networking LAN Ethernet</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">0c80a95105d4271d5712a5fcc32d61df0731742535a231a6b0a95a05a814090d</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/thinkcentre_drivers/m4etn003d_tsp3_2_.xml</location>
+    <category>Networking LAN Ethernet</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">6717cb6e4f2eecb3b487d0b2f5bba8eea8ce0fcf99003aa7a964238e3b57cdcd</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/desktop/m7chpa7us14_tsp3_2_.xml</location>
+    <category>Motherboard Devices Backplanes core chipset onboard video PCIe switches</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">1f443fb91645432b554f211466d026875ffd338bb9195bd6826ddfb81e28e302</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/thinkcentre_drivers/m8txt03us14_tsp3_2_.xml</location>
+    <category>Motherboard Devices Backplanes core chipset onboard video PCIe switches</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">cbc930077a0886661644f1c790360c2a49d3b4cb8d5f720b77677c2f53e04653</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/thinkcentre_drivers/n1ser24us14_tsp3_2_.xml</location>
+    <category>Camera and Card Reader</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">35579927937eaf139c0c05f5c8e39a1e870497fb12faa28fe0a101b9e6605784</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/thinkcentre_drivers/m7aud44us17_tsp3_2_.xml</location>
+    <category>Audio</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">30ee8cdf115e77ceb61ac8405142edffcfc900c1bf221818a39c475b36a23981</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/desktop/m7dpfa10us14_tsp3_2_.xml</location>
+    <category>Motherboard Devices Backplanes core chipset onboard video PCIe switches</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">ac61ab6d5bdbf0b24edcde5220be8dddb652987c6fcf810d0efa1c9957f00b4f</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/thinkcentre_drivers/m1tbt008d_tsp3_2_.xml</location>
+    <category>USB Device FireWire IEEE 1394 Thunderbolt</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">856f1539b3c1df10643fbff3a598871224d751357184231b279ab6a141207b38</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/thinkcentre_drivers/k1car22us17_tsp3_2_.xml</location>
+    <category>Camera and Card Reader</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">73129c043457ad633fba4f82ae0b2c655a36b7289a475bc07499afb309e03d9c</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/thinkcentre_drivers/k2car29us17_tsp3_2_.xml</location>
+    <category>Camera and Card Reader</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">9d3bd14dc68c99962ab23a336a4ae40642ee1953a556a40bd425f4439288f784</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/thinkcentre_drivers/m2etn13us14_tsp3_2_.xml</location>
+    <category>Networking LAN Ethernet</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">598514b4ed769530641b79412cfbfb20dd2e5960f7d64fb57ea2a7f066cf3941</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/thinkcentre_drivers/m1rad09us14_tsp3_2_.xml</location>
+    <category>Storage</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">b2c1ff8ee12a8bd66281c6fab4dc47d48e39328a06781033bffb1bb76ea62bec</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/thinkcentre_drivers/m1rad16us14_tsp3_2_.xml</location>
+    <category>Storage</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">03346d3bb3e25571440c968ed74bfcbfa253f279878221b82096489158700f25</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/desktop/m3vdo3aus14_tsp3_2_.xml</location>
+    <category>Display and Video Graphics</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">2d5bd3ec8984396670c6188b84c59e4a06b79e824a064364b5428e45c2748fc7</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/thinkcentre_drivers/m3vdo044d_tsp3_2_.xml</location>
+    <category>Display and Video Graphics</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">707623cc36e0c68a59d3a433b21c9549eb638fa3d1aa1ff3d91aa1037c347156</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/thinkcentre_drivers/m2vdo013d_tsp3_2_.xml</location>
+    <category>Display and Video Graphics</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">0abc6e96b57a2219c70f53209e3917625b6e8f943fb6a1db628a9cea096d4d2e</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/thinkcentre_drivers/n1etn00ad_tsp3_2_.xml</location>
+    <category>Networking LAN Ethernet</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">3b5ca94b2cfc6f7c534b193cff2971d772989f82c17a505b576ea87946ea4fb2</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/thinkcentre_drivers/m1tbt010d_tsp3_2_.xml</location>
+    <category>USB Device FireWire IEEE 1394 Thunderbolt</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">688e7d2c1a24b0c547416e2d6f07437b09c8a8192dee49d31cd47e1a53645bbf</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/desktop/m8amt16us14_tsp3_2_.xml</location>
+    <category>Motherboard Devices Backplanes core chipset onboard video PCIe switches</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">eb392dcfbee13a15a5b162959deff07d076cf5acd1096c3cdd3e07622f450236</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/desktop/m8amt26us14_tsp3_11_2_.xml</location>
+    <category>Motherboard Devices Backplanes core chipset onboard video PCIe switches</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">4eb09e197c082c397b735f845243073cc51a5f8cf4729e6942840a9e0107047c</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/desktop/m2wlg31us14_tsp3_11_2_.xml</location>
+    <category>Networking Wireless LAN</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">d423f53ad95ff71f3b20eac9efeaccc7dfaa3d929d0015f1dd62c78eb8686053</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/thinkcentre_drivers/m3vdo07ad_tsp3_11_2_.xml</location>
+    <category>Display and Video Graphics</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">f661dbe12dd6c500d7feba9d2cf72ef5f3b39b535ea7d3f8132c99384e39ad72</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/thinkcentre_drivers/m2vdo020d_tsp3_11_2_.xml</location>
+    <category>Display and Video Graphics</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">65b3a5a12bafdedf35ef1aa7a50df20cc5631bc734a6b108d276a2bc4f2d9730</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/desktop/m3vdo52us14_tsp3_11_2_.xml</location>
+    <category>Display and Video Graphics</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">dcd8696559d8385c333507f48664df11b8552c8b9675149714346d41442220f2</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/thinkcentre_bios/s0ijy7eusa_2_.xml</location>
+    <category>BIOS UEFI</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">f7023bc770ed49b188135d0a254cdd89f5e8ff218e9ce8186dfcb5ff7270e695</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/desktop/m2blt30us14_tsp3_11_2_.xml</location>
+    <category>Bluetooth and Modem</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">19703fd77b0592dab7c214108b0a39ff88c31a21eff03c384a313c91a3e8bdd9</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/desktop/m2vdoa15us14_tsp3_11_2_.xml</location>
+    <category>Display and Video Graphics</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">e5f9bd374944e70c2aa980cc2f8854eb80d7ec4112f5a9ef337dd73fe48d7257</checksum>
+  </package>
+</packages>

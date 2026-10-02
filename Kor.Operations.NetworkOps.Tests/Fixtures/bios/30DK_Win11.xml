@@ -1,0 +1,134 @@
+﻿<?xml version="1.0" encoding="utf-8"?><packages count="22">
+  <package>
+    <location>https://download.lenovo.com/pccbbs/thinkcentre_drivers/u8amt95us14_ts_p340_2_.xml</location>
+    <category>Motherboard Devices Backplanes core chipset onboard video PCIe switches</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">97f1ae9dd59419711afa53e38cc7db02d3a760bef9131057407c6ae0064d19d0</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/thinkcentre_drivers/k1car15us17_ts_p340_11_2_.xml</location>
+    <category>Camera and Card Reader</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">bb212d4a79887cd092977d667da729b4823d7f82df8ebfc4f09f018c9c8c36dd</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/thinkcentre_drivers/k1acp15us17_ts_p340_2_.xml</location>
+    <category>Motherboard Devices Backplanes core chipset onboard video PCIe switches</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">3dfe608451f7d7dbea18ebeb38e2911b468c05f2f708c19c0760e97def0c7f78</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/thinkcentre_drivers/u1ra121us17_ts_p340_2_.xml</location>
+    <category>Storage</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">ed056c93293f27ebe2adc468e9a3b51b70f5ebc2af2352719ffae1682351e79b</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/thinkcentre_drivers/kdetn001d_ts_p340_2_.xml</location>
+    <category>Networking LAN Ethernet</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">0217b03ca88b6f4d73e26c28b4c70c768444ecac63fb6d282b431e092eda33b1</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/thinkcentre_drivers/u4etn2gus17_ts_p340_2_.xml</location>
+    <category>Networking LAN Ethernet</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">4d46bc8923f969696217da8a51862db38b8a47c87a4f22d80b8a6c3acf3e845c</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/desktop/k2car25us17_ts_p340_2_.xml</location>
+    <category>Camera and Card Reader</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">ce0ebf064ba62c38fa9264956e5926bacf43a13b475862a2d5934f86ababa855</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/thinkcentre_drivers/u1dpf26us14_ts_p340_2_.xml</location>
+    <category>Motherboard Devices Backplanes core chipset onboard video PCIe switches</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">059a566bc613ae09eebbe1aa06f4b13c791a5c205cc1ae6c8c533296f906d933</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/desktop/k2vdoaaus14_ts_p340_11_2_.xml</location>
+    <category>Display and Video Graphics</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">cb666c500b519617712f6361283fde08ee09eeb25671dfb4877dc7f792b84c77</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/thinkcentre_drivers/m7aud13us17_ts_p340_11_2_.xml</location>
+    <category>Audio</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">18a23c66776ed426638da13f41ff10f7f9dd12df2b642525dbb8cfdcf4245562</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/thinkcentre_drivers/u2chp57us14_ts_p340_2_.xml</location>
+    <category>Motherboard Devices Backplanes core chipset onboard video PCIe switches</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">0c12132aa9c46d1a50787bbbb056d8f3d1c421ec17b51027763072df997b441f</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/thinkcentre_drivers/u1ser17us19_ts_p340_2_.xml</location>
+    <category>Camera and Card Reader</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">23f6cdeac194d04cec02144652eacfb703ad71eb67b9a8a3547272eb953429d6</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/thinkcentre_drivers/n1etn00ad_ts_p340_2_.xml</location>
+    <category>Networking LAN Ethernet</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">e2f286b847a3814a406a7e6b16516a438b8cdefc1b58e694e7543c0fb6378a1a</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/thinkcentre_drivers/m1tbt010d_ts_p340_2_.xml</location>
+    <category>USB Device FireWire IEEE 1394 Thunderbolt</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">dfa816b473e21141ef7103f721869ddf0033ab5f8b9a459cbcdf4b4006f20953</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/thinkcentre_drivers/m2vdo00xda_ts_p340_11_2_.xml</location>
+    <category>Display and Video Graphics</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">28e8167cb665e315a09f08336c4199aa5d67b82910a21eff0cb134f587ce72cc</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/desktop/m2blt30us14_ts_p340_11_2_.xml</location>
+    <category>Bluetooth and Modem</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">4df0fae8347f8a37d51334c3b6621dbfba8c6ed5d34e4ad8c6848424848e1ea9</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/desktop/m3vdo52us14_ts_p340_11_2_.xml</location>
+    <category>Display and Video Graphics</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">f96484c7c805f216291399b6d46015331f2a8518fe9384e4904271870b222ba6</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/thinkcentre_bios/s08jy62usa_2_.xml</location>
+    <category>BIOS UEFI</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">e34997d9538f4b2b74f165e1953e22731dba77e0efb2ac28ec14e89107c85a0c</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/desktop/m5wlg35us14_ts_p340_11_2_.xml</location>
+    <category>Networking Wireless LAN</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">61368ae119530b917eaebe01e1d281cb8a157c326d8564b5cc02ee84e7f72f80</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/desktop/m2wlg31us14_ts_p340_11_2_.xml</location>
+    <category>Networking Wireless LAN</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">3cc6757d649ad5793a16e71c88904481c57de62761cbf8c65d46649afd88e4f3</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/thinkcentre_drivers/m3vdo07ad_ts_p340_11_2_.xml</location>
+    <category>Display and Video Graphics</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">22c0fc1f30725273624b71e7bd1e2d6db83bdfe7f10bb1babfa26c3a7ee83c9e</checksum>
+  </package>
+  <package>
+    <location>https://download.lenovo.com/pccbbs/desktop/m5blt33us14_ts_p340_11_2_.xml</location>
+    <category>Bluetooth and Modem</category>
+    <oslangs></oslangs>
+    <checksum type="sha256">20853534320260e5ff8076867a880dcbd3dade88ae386cbb027ed501e0006923</checksum>
+  </package>
+</packages>
