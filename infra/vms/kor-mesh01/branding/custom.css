@@ -115,7 +115,7 @@ body:not(.login) .btn { border-radius: 6px; font-weight: 600; font-size: 14px; l
 #page_leftbar .nav-link:hover { color: #fff !important; }
 /* The chosen page: a faint white wash, not a solid white block, and its icon stays white (Ian 2026-10-01). */
 nav .lbbuttonsel, nav .lbbuttonsel2, #page_leftbar .lbbuttonsel, #page_leftbar .lbbuttonsel2 {
-    background-color: rgba(255, 255, 255, .12) !important; color: #fff !important; opacity: 1 !important;
+    background-color: rgba(255, 255, 255, .20) !important; color: #fff !important; opacity: 1 !important;
 }
 #page_leftbar .lbbuttonsel *, #page_leftbar .lbbuttonsel2 *, nav .lbbuttonsel *, nav .lbbuttonsel2 * { color: #fff !important; }
 
