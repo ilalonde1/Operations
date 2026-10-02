@@ -254,6 +254,24 @@ internal sealed partial class NetworkOpsStore
             : null;
     }
 
+    /// <summary>
+    /// A device by name (PC or rack, not retired): its id and kind. A rack server is named with what it does --
+    /// "KOR-DC01 (domain controller, DNS, DHCP)" -- so its machine name alone finds it too.
+    /// </summary>
+    public async Task<(int DeviceId, string Name, string Kind, string Source)?> DeviceByNameAsync(string name, CancellationToken ct)
+    {
+        await using var c = await OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = Cmd(c, """
+            SELECT TOP (1) DeviceId, Name, Kind, Source FROM NetworkOps.Devices
+            WHERE RetiredUtc IS NULL AND (Name = @n OR (Source = 'Rack' AND Name LIKE @prefix ESCAPE '!'))
+            ORDER BY CASE WHEN Name = @n THEN 0 ELSE 1 END;
+            """);
+        cmd.Parameters.Add("@n", SqlDbType.NVarChar, 128).Value = name;
+        cmd.Parameters.Add("@prefix", SqlDbType.NVarChar, 140).Value = name.Replace("!", "!!").Replace("%", "!%").Replace("_", "!_").Replace("[", "![") + " (%";
+        await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        return await r.ReadAsync(ct).ConfigureAwait(false) ? (r.GetInt32(0), r.GetString(1), r.GetString(2), r.GetString(3)) : null;
+    }
+
     public async Task<IReadOnlyList<ResolutionRow>> ResolutionRowsAsync(CancellationToken ct)
     {
         await using var c = await OpenAsync(ct).ConfigureAwait(false);

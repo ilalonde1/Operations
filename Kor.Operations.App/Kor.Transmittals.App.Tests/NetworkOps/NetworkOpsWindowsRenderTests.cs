@@ -109,6 +109,7 @@ public sealed class NetworkOpsWindowsRenderTests
         var library = new PromptLibraryWindow(reader, new PromptRequest("finding", null, worst.Device.DeviceId, finding.FindingId));
         library.Apply(catalog, PromptLibraryTests.Runs(),
             new RenderedPrompt(42, $"Claude: {finding.Title} on {worst.Name}", "claude-x.md", $"# Solve \"{finding.Title}\" on {worst.Name}\n\nWritten by NetworkOps at 2026-09-30 23:00 UTC from its live database..."));
+        library.AskBox.Text = "Andrea's ETABS crashed around 2:40 today opening the Tower B model";
         written += Render(library, Path.Combine(dir, $"{label}-prompt-library.png"));
 
         // The Updates view: overdue, due, held, failed, the special servers, one that cannot be reached; two ticked, one selected.

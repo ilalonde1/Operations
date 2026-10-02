@@ -28,6 +28,9 @@ public sealed class PromptLibraryTests
 
     public static IReadOnlyList<PromptRunRow> Runs() =>
     [
+        new(43, "ask", "KOR-214: Andrea's ETABS crashed opening Tower B", "ilalonde@korstructural.com", new DateTime(2026, 10, 1, 21, 40, 0, DateTimeKind.Utc),
+            new DateTime(2026, 10, 1, 21, 55, 0, DateTimeKind.Utc), "solved", "ETABS ran out of its graphics cache on a 2 GB model; raised the cache and reopened.",
+            null, "proposed", "Andrea's ETABS crashed around 2:40 today opening the Tower B model", "ETABS closes while opening large models"),
         new(42, "finding", "KOR-302N: webroot:KorTools.dll", "ilalonde@korstructural.com", new DateTime(2026, 9, 30, 22, 0, 0, DateTimeKind.Utc),
             new DateTime(2026, 9, 30, 22, 30, 0, DateTimeKind.Utc), "solved", "Webroot override was per-site; made it global and re-checked.",
             "The override must be global, not per-site.", "proposed"),
@@ -64,9 +67,18 @@ public sealed class PromptLibraryTests
     public void Only_a_proposed_learning_awaits_a_decision()
     {
         var runs = Runs().Select(r => new PromptRunView(r)).ToList();
-        Assert.True(runs[0].AwaitsDecision);
-        Assert.False(runs[1].AwaitsDecision);
-        Assert.Equal("no report yet", runs[1].OutcomeText);
-        Assert.StartsWith("Learned (proposed):", runs[0].LearnedText);
+        Assert.True(runs[1].AwaitsDecision);
+        Assert.False(runs[2].AwaitsDecision);
+        Assert.Equal("no report yet", runs[2].OutcomeText);
+        Assert.StartsWith("Learned (proposed):", runs[1].LearnedText);
+    }
+
+    [Fact]
+    public void An_ask_shows_its_question_and_the_card_it_proposes()
+    {
+        var ask = new PromptRunView(Runs()[0]);
+        Assert.True(ask.AwaitsDecision);   // a card with no learning still waits for Ian
+        Assert.StartsWith("Asked: Andrea's ETABS crashed", ask.Summary);
+        Assert.Equal("Knowledge card (proposed): ETABS closes while opening large models", ask.LearnedText);
     }
 }

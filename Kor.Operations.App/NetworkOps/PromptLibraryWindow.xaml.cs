@@ -40,8 +40,12 @@ public sealed record PromptRunView(PromptRunRow Run)
     public string Subject => Run.Subject;
     public string By => Run.CreatedBy.Split('@')[0];
     public string OutcomeText => Run.Outcome ?? "no report yet";
-    public string Summary => Run.Summary ?? "";
-    public string LearnedText => Run.LearnedText is { } l ? $"Learned ({Run.LearnedStatus}): {l}" : "";
+    public string Summary => Run.Question is { } q ? $"Asked: {q}{(Run.Summary is { } s ? $"\n{s}" : "")}" : Run.Summary ?? "";
+    public string LearnedText => string.Join("\n", new[]
+    {
+        Run.LearnedText is { } l ? $"Learned ({Run.LearnedStatus}): {l}" : null,
+        Run.CardTitle is { } c ? $"Knowledge card ({Run.LearnedStatus}): {c}" : null,
+    }.Where(x => x is not null));
     public bool AwaitsDecision => Run.LearnedStatus == "proposed";
 }
 
@@ -98,7 +102,39 @@ public partial class PromptLibraryWindow : Window
     }
 
     private void SubjectList_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        => OpenBtn.IsEnabled = CopyBtn.IsEnabled = SaveBtn.IsEnabled = SubjectList.SelectedItem is PromptSubjectRow;
+    {
+        OpenBtn.IsEnabled = CopyBtn.IsEnabled = SaveBtn.IsEnabled = SubjectList.SelectedItem is PromptSubjectRow;
+        ShowAskScope();
+    }
+
+    // ---- Ask Claude: the person's own question, about the PC chosen on the left or the whole network.
+
+    /// <summary>The machine an ask is about: the chosen device (or the device of a chosen finding), unless "whole network" is ticked.</summary>
+    private (int? DeviceId, string Label) AskTarget()
+    {
+        if (AskNetworkBox.IsChecked != true && SubjectList.SelectedItem is PromptSubjectRow { Request.DeviceId: { } id } row)
+            return (id, row.IsChild ? _all.LastOrDefault(r => !r.IsChild && r.Request.DeviceId == id)?.Label ?? row.Label : row.Label);
+        return (null, "the whole network");
+    }
+
+    private void ShowAskScope()
+    {
+        var (id, label) = AskTarget();
+        AskScope.Text = id is null
+            ? "About the whole network. Choose a PC below to ask about it."
+            : $"About {label}: the prompt carries everything NetworkOps knows about it, and what KOR has learned that applies to it.";
+    }
+
+    private void AskBox_TextChanged(object sender, TextChangedEventArgs e) => AskBtn.IsEnabled = AskBox.Text.Trim().Length > 0;
+
+    private void AskNetwork_Changed(object sender, RoutedEventArgs e) => ShowAskScope();
+
+    private async void Ask_Click(object sender, RoutedEventArgs e) => await Guard(async ct =>
+    {
+        var (id, label) = AskTarget();
+        if (await RenderAsync(new PromptRequest("ask", null, id, null, AskBox.Text.Trim()), $"a question about {label}", ct).ConfigureAwait(true) is not { } prompt) return;
+        Launch(prompt);
+    }).ConfigureAwait(true);
 
     private async void SubjectList_MouseDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e) => await Guard(ct => RenderAndAsync(ct, open: true)).ConfigureAwait(true);
 
@@ -117,6 +153,11 @@ public partial class PromptLibraryWindow : Window
     private async Task RenderAndAsync(CancellationToken ct, bool open)
     {
         if (await RenderAsync(ct).ConfigureAwait(true) is not { } prompt) return;
+        Launch(prompt, open);
+    }
+
+    private void Launch(RenderedPrompt prompt, bool open = true)
+    {
         var path = PromptLauncher.Save(prompt);
         if (!open)
         {
@@ -137,13 +178,15 @@ public partial class PromptLibraryWindow : Window
         }
     }
 
-    private async Task<RenderedPrompt?> RenderAsync(CancellationToken ct)
+    private Task<RenderedPrompt?> RenderAsync(CancellationToken ct)
+        => SubjectList.SelectedItem is PromptSubjectRow row ? RenderAsync(row.Request, row.Label, ct) : Task.FromResult<RenderedPrompt?>(null);
+
+    private async Task<RenderedPrompt?> RenderAsync(PromptRequest request, string label, CancellationToken ct)
     {
-        if (SubjectList.SelectedItem is not PromptSubjectRow row) return null;
-        Status($"Writing the prompt for {row.Label} from the live database…");
+        Status($"Writing the prompt for {label} from the live database…");
         var clock = System.Diagnostics.Stopwatch.StartNew();
-        var prompt = await _client.RenderPromptAsync(row.Request, ct).ConfigureAwait(true);
-        Log.Information("Prompt written for {Subject}: run {RunId}, {Chars} characters, {Ms} ms", row.Label, prompt.RunId, prompt.Markdown.Length, clock.ElapsedMilliseconds);
+        var prompt = await _client.RenderPromptAsync(request, ct).ConfigureAwait(true);
+        Log.Information("Prompt written for {Subject}: run {RunId}, {Chars} characters, {Ms} ms", label, prompt.RunId, prompt.Markdown.Length, clock.ElapsedMilliseconds);
         PromptTitle.Text = prompt.Title;
         PromptText.Text = prompt.Markdown;
         PromptText.ScrollToHome();
@@ -166,7 +209,11 @@ public partial class PromptLibraryWindow : Window
         await _client.DecideLearnedAsync(run.Run.RunId, accept, ct).ConfigureAwait(true);
         Log.Information("Learning from run {RunId} {Decision}", run.Run.RunId, accept ? "accepted" : "rejected");
         await LoadRunsAsync(ct).ConfigureAwait(true);
-        Status(accept ? $"Accepted: every later prompt about {run.Subject.Split(':').Last().Trim()} carries it." : "Rejected: it stays in the record and goes into no prompt.");
+        Status(accept
+            ? run.Run.CardTitle is { } card
+                ? $"Accepted: \"{card}\" now goes into every later prompt about a machine it applies to{(run.Run.LearnedText is null ? "" : ", and the learning into every prompt about this kind of problem")}."
+                : $"Accepted: every later prompt about {run.Subject.Split(':').Last().Trim()} carries it."
+            : "Rejected: it stays in the record and goes into no prompt.");
     }).ConfigureAwait(true);
 
     private async void Refresh_Click(object sender, RoutedEventArgs e) => await Guard(LoadAsync).ConfigureAwait(true);

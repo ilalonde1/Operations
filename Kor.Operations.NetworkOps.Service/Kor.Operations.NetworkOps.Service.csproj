@@ -7,7 +7,7 @@
     <AssemblyName>Kor.Operations.NetworkOps.Service</AssemblyName>
     <!-- Bump on every meaningful service-side change: the heartbeat row carries it, so a
          redeploy can be confirmed from the database, not assumed. -->
-    <Version>0.11.2</Version>
+    <Version>0.12.1</Version>
   </PropertyGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="Kor.Operations.NetworkOps.Tests" />
@@ -41,6 +41,7 @@
   <ItemGroup>
     <!-- Remote control's install script ships inside the service: generated per deployment by Mesh/MeshInstaller.cs. -->
     <EmbeddedResource Include="Mesh\install-mesh.ps1" LogicalName="Kor.Operations.NetworkOps.Service.Mesh.install-mesh.ps1" />
+    <EmbeddedResource Include="Prompts\network.md" LogicalName="Kor.Operations.NetworkOps.Service.Prompts.network.md" />
     <EmbeddedResource Include="Prompts\Tools\*.md" LogicalName="Kor.Operations.NetworkOps.Service.Prompts.Tools.%(Filename)%(Extension)" />
   </ItemGroup>
   <ItemGroup>

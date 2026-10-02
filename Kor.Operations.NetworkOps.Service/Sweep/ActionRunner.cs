@@ -170,9 +170,11 @@ internal sealed class ActionRunner(NetworkOpsStore store, MachineRunner runner, 
     /// <summary>The machine a fix runs on: a PC by its name; a rack device only if it is a Windows server (the others have no SCM).
     /// "Mesh" servers (FS01, RDS01) are Windows too, read through remote control only because APP01's account is not an
     /// administrator there yet: a fix is attempted and fails with that reason rather than being hidden.</summary>
-    private string? HostOf(string deviceName)
+    private string? HostOf(string deviceName) => HostOf(options.Value, deviceName);
+
+    internal static string? HostOf(NetworkOpsOptions o, string deviceName)
     {
-        var rack = options.Value.Rack.FirstOrDefault(d => d.Name.Equals(deviceName, StringComparison.OrdinalIgnoreCase));
+        var rack = o.Rack.FirstOrDefault(d => d.Name.Equals(deviceName, StringComparison.OrdinalIgnoreCase));
         return rack is null ? deviceName : rack.Collector is "WindowsServer" or "Mesh" ? rack.Address : null;
     }
 

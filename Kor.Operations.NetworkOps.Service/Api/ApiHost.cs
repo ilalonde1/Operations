@@ -25,7 +25,7 @@ namespace Kor.Operations.NetworkOps.Service.Api;
 // The endpoint agents call in on the same listener (/agent/v1, Agents/AgentApi.cs) with their own per-PC keys;
 // neither kind of caller can use the other's routes.
 internal sealed class ApiHost(IOptions<NetworkOpsOptions> options, NetworkOpsStore store, Power.PowerState power, Agents.AgentHub agents,
-    Mesh.MeshState mesh, Prompts.PromptLibrary prompts, Updates.UpdateScanner updates, ILoggerFactory loggers, ILogger<ApiHost> log) : BackgroundService
+    Mesh.MeshState mesh, Prompts.PromptLibrary prompts, Updates.UpdateScanner updates, Agents.MachineRunner runner, ILoggerFactory loggers, ILogger<ApiHost> log) : BackgroundService
 {
     private static readonly TimeSpan MaxSnooze = TimeSpan.FromDays(90);
 
@@ -52,6 +52,7 @@ internal sealed class ApiHost(IOptions<NetworkOpsOptions> options, NetworkOpsSto
         builder.Services.AddSingleton(mesh);
         builder.Services.AddSingleton(prompts);
         builder.Services.AddSingleton(updates);
+        builder.Services.AddSingleton(runner);
         builder.Services.AddSingleton<Agents.IAgentDirectory>(store);
         builder.WebHost.ConfigureKestrel(k =>
         {
@@ -109,7 +110,7 @@ internal sealed class ApiHost(IOptions<NetworkOpsOptions> options, NetworkOpsSto
         app.MapPost("/api/prompt-runs/{id:long}/outcome", async (long id, HttpContext h, NetworkOpsStore s, CancellationToken ct) =>
         {
             if (h.Request.Headers["X-Prompt-Token"].ToString() is not { Length: >= 20 and <= 100 } token) return Results.Unauthorized();
-            if (h.Request.ContentLength is null or > 16_384) return Results.StatusCode(StatusCodes.Status413PayloadTooLarge);
+            if (h.Request.ContentLength is null or > 32_768) return Results.StatusCode(StatusCodes.Status413PayloadTooLarge);   // a card is up to ~12 KB
             PromptOutcome? body;
             try { body = await h.Request.ReadFromJsonAsync<PromptOutcome>(ct); }
             catch (System.Text.Json.JsonException) { return Results.BadRequest(new { error = "the body must be JSON: outcome, summary, learned" }); }
@@ -117,18 +118,27 @@ internal sealed class ApiHost(IOptions<NetworkOpsOptions> options, NetworkOpsSto
                 return Results.BadRequest(new { error = "outcome must be solved, partly, not-solved or no-action" });
             if (string.IsNullOrWhiteSpace(body.Summary)) return Results.BadRequest(new { error = "summary: say what was wrong and what was done" });
             if (!await s.PromptRunsAvailableAsync(ct)) return NoPromptRuns();
-            var run = await s.RecordPromptOutcomeAsync(id, Prompts.PromptLibrary.HashToken(token), body.Outcome!, body.Summary.Trim(), body.Learned, ct);
+            if (body.Card is { } card)
+            {
+                if (Prompts.PromptLibrary.InvalidCard(card) is { } why) return Results.BadRequest(new { error = why });
+                if (!await s.KnowledgeAvailableAsync(ct))
+                    return Results.Json(new { error = "knowledge cards are not switched on (db/KorNetworkOps/008): send the report again without the card" }, statusCode: StatusCodes.Status503ServiceUnavailable);
+            }
+            var run = await s.RecordPromptOutcomeAsync(id, Prompts.PromptLibrary.HashToken(token), body.Outcome!, body.Summary.Trim(), body.Learned, body.Card, ct);
             if (run is null) return Results.Unauthorized();   // unknown run, wrong token, or already reported: the same answer for all three
             if (run.DeviceId is { } device)
                 await s.AddNoteAsync(device, $"Claude session (run {run.RunId}, {run.CreatedBy})",
                     $"[{body.Outcome}] {body.Summary.Trim()}{(string.IsNullOrWhiteSpace(body.Learned) ? "" : $" -- proposed learning: {body.Learned.Trim()}")}", ct);
-            return Results.Ok(new { recorded = run.RunId });
+            return Results.Ok(new { recorded = run.RunId, card = body.Card is null ? null : "proposed: it waits for Ian's decision in the Prompt Library" });
         });
 
         var api = app.MapGroup("/api").RequireAuthorization("CommandCenter");
 
         // ---- Windows updates: what is waiting where, and installing it on many machines at once (Updates/UpdatesApi.cs).
         Updates.UpdatesApi.Map(api);
+
+        // ---- a Claude session working a machine through APP01: netops run / last-check / knowledge (SessionApi.cs).
+        SessionApi.Map(api);
 
         // ---- the Prompt Library: prompts written from the live database when opened; their runs and what came back.
         api.MapGet("/prompts", (Prompts.PromptLibrary p, CancellationToken ct) => p.CatalogAsync(ct));
@@ -140,10 +150,10 @@ internal sealed class ApiHost(IOptions<NetworkOpsOptions> options, NetworkOpsSto
                 (_, var e, _) => Results.BadRequest(new { error = e }),
             });
         api.MapGet("/prompt-runs", (NetworkOpsStore s, CancellationToken ct) => s.PromptRunsAsync(100, ct));
-        api.MapPost("/prompt-runs/{id:long}/learned", async (long id, LearnedDecision body, NetworkOpsStore s, CancellationToken ct) =>
+        api.MapPost("/prompt-runs/{id:long}/learned", async (long id, LearnedDecision body, HttpContext h, NetworkOpsStore s, CancellationToken ct) =>
             body.Decision is not ("accept" or "reject") ? Results.BadRequest(new { error = "decision must be accept or reject" })
             : !await s.PromptRunsAvailableAsync(ct) ? NoPromptRuns()
-            : await s.DecideLearnedAsync(id, body.Decision == "accept", ct) ? Results.NoContent()
+            : await s.DecideLearnedAsync(id, body.Decision == "accept", ApiAccess.UserOf(h.User), ct) ? Results.NoContent()
             : Results.Conflict(new { error = "that run has no learning waiting for a decision" }));
         api.MapGet("/fleet", async (NetworkOpsStore s, Agents.AgentHub hub, Mesh.MeshState m, CancellationToken ct) =>
             WithMesh(WithAgents(await s.FleetSnapshotAsync(ct), await s.AgentRecordsAsync(ct), hub), m, await s.MeshRecordsAsync(ct)));

@@ -32,13 +32,29 @@
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
-                <TextBlock Text="Open a prompt for" FontWeight="SemiBold" FontSize="15"/>
-                <TextBox Grid.Row="1" x:Name="FilterBox" Margin="0,8,0,8" VerticalContentAlignment="Center" TextChanged="FilterBox_TextChanged"
+                <!-- Ask anything: the prompt carries everything NetworkOps knows about the chosen PC (or the network), and the
+                     knowledge banked from earlier sessions that applies to it. -->
+                <StackPanel Margin="0,0,0,14">
+                    <TextBlock Text="Ask Claude" FontWeight="SemiBold" FontSize="15"/>
+                    <TextBlock x:Name="AskScope" Margin="0,2,0,6" TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}" FontSize="12"
+                               Text="About the whole network. Choose a PC below to ask about it."/>
+                    <TextBox x:Name="AskBox" AcceptsReturn="True" TextWrapping="Wrap" MinLines="3" MaxLines="8" VerticalScrollBarVisibility="Auto"
+                             TextChanged="AskBox_TextChanged"
+                             ToolTip="In your own words, e.g. &quot;Andrea's ETABS crashed around 2:40 today opening the Tower B model&quot;"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                        <Button x:Name="AskBtn" Content="Ask in Claude" Padding="14,6" Margin="0,0,8,0" FontWeight="SemiBold" IsEnabled="False" Click="Ask_Click"
+                                ToolTip="Write the prompt from the live database now, with your question, and start Claude on it in Windows Terminal."/>
+                        <CheckBox x:Name="AskNetworkBox" Content="About the whole network" VerticalAlignment="Center" Checked="AskNetwork_Changed" Unchecked="AskNetwork_Changed"/>
+                    </StackPanel>
+                </StackPanel>
+                <TextBlock Grid.Row="1" Text="Open a prompt for" FontWeight="SemiBold" FontSize="15"/>
+                <TextBox Grid.Row="2" x:Name="FilterBox" Margin="0,8,0,8" VerticalContentAlignment="Center" TextChanged="FilterBox_TextChanged"
                          ToolTip="Filter by device, problem or tool"/>
-                <ListBox Grid.Row="2" x:Name="SubjectList" SelectionChanged="SubjectList_SelectionChanged" MouseDoubleClick="SubjectList_MouseDoubleClick"
+                <ListBox Grid.Row="3" x:Name="SubjectList" SelectionChanged="SubjectList_SelectionChanged" MouseDoubleClick="SubjectList_MouseDoubleClick"
                          ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                     <ListBox.ItemTemplate>
                         <DataTemplate>
@@ -49,7 +65,7 @@
                         </DataTemplate>
                     </ListBox.ItemTemplate>
                 </ListBox>
-                <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,10,0,0">
+                <StackPanel Grid.Row="4" Orientation="Horizontal" Margin="0,10,0,0">
                     <Button x:Name="OpenBtn" Content="Open in Claude" Padding="14,6" Margin="0,0,6,0" FontWeight="SemiBold" IsEnabled="False" Click="Open_Click"
                             ToolTip="Write the prompt from the live database now, save it, and start Claude on it in Windows Terminal."/>
                     <Button x:Name="CopyBtn" Content="Copy" Padding="12,6" Margin="0,0,6,0" IsEnabled="False" Click="Copy_Click"
@@ -106,8 +122,8 @@
                         </DataGrid.Columns>
                     </DataGrid>
                     <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,8,0,0">
-                        <Button x:Name="AcceptBtn" Content="Accept learning" Padding="12,4" Margin="0,0,6,0" IsEnabled="False" Click="Accept_Click"
-                                ToolTip="Put it into every later prompt about this kind of problem."/>
+                        <Button x:Name="AcceptBtn" Content="Accept" Padding="12,4" Margin="0,0,6,0" IsEnabled="False" Click="Accept_Click"
+                                ToolTip="Accept what this session proposed: its learning goes into every later prompt about this kind of problem, its knowledge card into every later prompt about a machine it applies to."/>
                         <Button x:Name="RejectBtn" Content="Reject" Padding="12,4" Margin="0,0,6,0" IsEnabled="False" Click="Reject_Click"/>
                         <Button Content="Refresh" Padding="12,4" Click="Refresh_Click"/>
                     </StackPanel>

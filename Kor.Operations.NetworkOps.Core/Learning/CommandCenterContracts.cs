@@ -49,17 +49,40 @@ public sealed record PromptFinding(long FindingId, string RuleKey, string Title,
 public sealed record PromptSubject(int DeviceId, string Device, string Kind, IReadOnlyList<PromptFinding> Findings);
 public sealed record PromptCatalog(IReadOnlyList<PromptTool> Tools, IReadOnlyList<PromptSubject> Devices, bool Reporting);
 
-/// <param name="Kind">tool | device | finding</param>
-public sealed record PromptRequest(string Kind, string? ToolId, int? DeviceId, long? FindingId);
+/// <param name="Kind">tool | device | finding | ask</param>
+/// <param name="Question">An ask's own question, in the person's words. An ask with no DeviceId is about the whole network.</param>
+public sealed record PromptRequest(string Kind, string? ToolId, int? DeviceId, long? FindingId, string? Question = null);
 
 /// <param name="RunId">The recorded run the session reports back to; null when reporting is not available (migration 007).</param>
 public sealed record RenderedPrompt(long? RunId, string Title, string FileName, string Markdown);
 
 /// <param name="Outcome">solved | partly | not-solved | no-action</param>
-public sealed record PromptOutcome(string Outcome, string Summary, string? Learned);
+/// <param name="Card">What the session found, as knowledge to bank for other machines (migration 008); Ian accepts it or not.</param>
+public sealed record PromptOutcome(string Outcome, string Summary, string? Learned, CardProposal? Card = null);
 
 public sealed record PromptRunRow(long RunId, string Kind, string Subject, string CreatedBy, DateTime CreatedUtc, DateTime? OutcomeUtc,
-    string? Outcome, string? Summary, string? LearnedText, string? LearnedStatus);
+    string? Outcome, string? Summary, string? LearnedText, string? LearnedStatus, string? Question = null, string? CardTitle = null);
+
+// ---- knowledge cards (db/KorNetworkOps/008): what a session learned, banked so every later prompt about a machine it
+// applies to starts from it. A card is written by the session, accepted or rejected by Ian, never edited by anything else.
+
+/// <param name="AppliesTo">Which machines it concerns: comma-separated terms, any one matching (Core/Prompts/KnowledgeCards).</param>
+public sealed record CardProposal(string Title, string AppliesTo, string Symptom, string? Cause, string? Check, string? Fix, string? Tags);
+
+public sealed record KnowledgeCard(long CardId, string Title, string AppliesTo, string Symptom, string? Cause, string? Check, string? Fix,
+    string? Tags, string? SourceDevice, long? SourceRunId, string Status, DateTime CreatedUtc);
+
+// ---- a Claude session reading a machine THROUGH APP01 (netops run): the service runs the script on the machine -- through
+// its agent, else APP01's own network route -- so nothing goes from the person's PC to the machine.
+
+/// <param name="Purpose">One line on why, for the audit.</param>
+/// <param name="PromptRunId">The prompt run the session is working, when it has one.</param>
+public sealed record RemoteRunRequest(string Script, int? TimeoutSeconds, string? Purpose, long? PromptRunId);
+
+/// <param name="Route">agent | network</param>
+public sealed record RemoteRunResult(long ActionId, string Device, bool Ok, string Route, int Ms, string? OutputJson, string? Error);
+
+public sealed record LastCheckView(string Device, string Probe, DateTime AtUtc, string Json);
 
 /// <param name="Decision">accept | reject</param>
 public sealed record LearnedDecision(string Decision);
