@@ -183,7 +183,8 @@ public static class NetworkMaps
                     else if (connected && liveAt.ContainsKey((s.Mac, p.Port))) on = on with { ConnectedNow = true };
                 }
                 ports.Add(new NetPort(p.Port, p.Speed, p.Poe, kind, on, displaced,
-                    Up: lp?.Up, SpeedNow: lp is { Up: true } ? lp.Speed : null, Module: lp?.Sfp, PoeWatts: lp?.PoeW is > 0 ? lp.PoeW : null));
+                    Up: lp?.Up, SpeedNow: lp is { Up: true } ? lp.Speed : null, Module: lp?.Sfp, PoeWatts: lp?.PoeW is > 0 ? lp.PoeW : null,
+                    FullDuplex: lp?.FullDuplex, Errors: lp?.Errors ?? 0, Dropped: lp?.Dropped ?? 0, Satisfaction: lp?.Satisfaction));
             }
             portsBySwitch[s.Mac] = ports;
         }
@@ -288,11 +289,14 @@ public static class NetworkMaps
         }
 
         var shift = corePorts is null ? 0 : 1;   // with the core shown, everything hangs one level below it
+        var liveDevById = (live?.Devices ?? []).GroupBy(d => d.Mac, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
         var list = ordered.Select(o => new NetSwitch(o.Dev.Mac, o.Dev.Label, o.Dev.Model, o.Dev.Ip,
                 o.Dev.Uplink?.Mac, o.Dev.Uplink?.Mac is { } pm ? (devices.TryGetValue(pm, out var pd) ? pd.Label : pm == rootMac && core is not null ? core.Name : known.ByMac.GetValueOrDefault(pm) ?? pm) : null,
                 // UniFi does not know the core's port numbers: the core's own MAC table does.
                 o.Dev.Uplink?.Port ?? (coreParentPort.TryGetValue(o.Dev.Mac, out var cpp) ? cpp : null),
-                o.Dev.Uplink?.LocalPort, o.Depth + shift, portsBySwitch[o.Dev.Mac]))
+                o.Dev.Uplink?.LocalPort, o.Depth + shift, portsBySwitch[o.Dev.Mac], IsCore: false,
+                Cpu: liveDevById.GetValueOrDefault(o.Dev.Mac)?.Cpu, MemPct: liveDevById.GetValueOrDefault(o.Dev.Mac)?.MemPct,
+                TempC: liveDevById.GetValueOrDefault(o.Dev.Mac)?.TempC, Overheat: liveDevById.GetValueOrDefault(o.Dev.Mac)?.Overheat ?? false))
             .ToList();
         if (corePorts is not null) list.Insert(0, new NetSwitch(rootMac!, core!.Name, "EdgeSwitch (not UniFi)", core.Ip, null, null, null, null, 1, corePorts, IsCore: true));
         var aps = site.Devices.Where(d => d.Type == "uap").OrderBy(d => d.Label, StringComparer.OrdinalIgnoreCase)
@@ -376,8 +380,19 @@ public sealed record NetPlacement(NetEndpoint Endpoint, string Placement, string
 
 /// <param name="Depth">1 = hangs from the core (or a device the controller does not manage); 2 = from one of those; ...</param>
 /// <param name="IsCore">The core switch (an EdgeSwitch, read by NetworkOps itself, not by UniFi): "network:core" opens it.</param>
+/// <param name="Cpu">The switch's own load %, <param name="MemPct">memory used %, <param name="TempC">temperature, from the live read.</param>
 public sealed record NetSwitch(string Mac, string Name, string Model, string? Ip, string? ParentMac, string? ParentName, int? ParentPort,
-    int? UplinkPort, int Depth, IReadOnlyList<NetPort> Ports, bool IsCore = false);
+    int? UplinkPort, int Depth, IReadOnlyList<NetPort> Ports, bool IsCore = false,
+    double? Cpu = null, double? MemPct = null, double? TempC = null, bool Overheat = false)
+{
+    /// <summary>A one-line health note on the switch itself, or null when it is fine.</summary>
+    public string? HealthReason =>
+        Overheat ? $"this switch reports OVERHEATING{(TempC is { } t ? $" ({t:0}°C)" : "")}"
+        : TempC is { } t2 and >= 75 ? $"this switch is hot ({t2:0}°C)"
+        : Cpu is { } c and >= 90 ? $"this switch's CPU is at {c:0}%"
+        : MemPct is { } m and >= 90 ? $"this switch's memory is at {m:0}%"
+        : null;
+}
 
 /// <param name="Kind">device | link (a UniFi device hangs here) | uplink (toward the parent) | empty</param>
 /// <param name="AlsoSeen">Other clients the controller recorded on this port: the desk's history, or devices beyond a link.</param>
@@ -385,8 +400,46 @@ public sealed record NetSwitch(string Mac, string Name, string Model, string? Ip
 /// <param name="SpeedNow">Its link speed now, in Mb/s, when up.</param>
 /// <param name="Module">What is in an SFP cage ("SFP-H10GB-CU1M" = a 1 m 10G DAC), from the live read.</param>
 /// <param name="PoeWatts">Power it is giving a phone / access point now.</param>
+/// <param name="FullDuplex">The negotiated duplex (live): false = HALF-duplex, almost always a cable/NIC fault.</param>
+/// <param name="Errors">rx+tx errors since the device booted; <param name="Dropped">rx+tx dropped; <param name="Satisfaction">UniFi's port experience %.</param>
 public sealed record NetPort(int Number, int SpeedMbps, bool Poe, string Kind, NetEndpoint? On, IReadOnlyList<NetEndpoint> AlsoSeen,
-    bool? Up = null, int? SpeedNow = null, string? Module = null, double? PoeWatts = null);
+    bool? Up = null, int? SpeedNow = null, string? Module = null, double? PoeWatts = null,
+    bool? FullDuplex = null, long Errors = 0, long Dropped = 0, int? Satisfaction = null)
+{
+    private static string Spd(int s) => s >= 1000 ? $"{s / 1000.0:0.#}G" : $"{s}M";
+
+    /// <summary>A synthesised verdict on the link from the live telemetry: "good" | "suspect" | "bad" | "down", or ""
+    /// for an empty/uplink/link port or when there is no live read. This is what colours a port and raises a finding.</summary>
+    public string Health
+    {
+        get
+        {
+            if (Kind is "empty" or "uplink" or "link" || On is null) return "";
+            if (Up == false) return "down";
+            if (Up != true) return "";   // no live read this cycle
+            if (FullDuplex == false) return "bad";                                   // half-duplex: cable/jack/NIC fault
+            if (Satisfaction is { } s and < 70) return "bad";
+            if (Errors > 5000) return "bad";
+            if (SpeedNow is > 0 and < 1000 && Module is null) return "suspect";       // sub-gigabit on copper: likely bad cable
+            if (Satisfaction is { } s2 and < 90) return "suspect";
+            if (Errors > 100 || Dropped > 2000) return "suspect";
+            return "good";
+        }
+    }
+
+    /// <summary>Why the link is not "good", for the person to act on -- or null when it is good or has no live read.</summary>
+    public string? HealthReason => Health switch
+    {
+        "down" => "the link is down -- check the cable and the port",
+        "bad" when FullDuplex == false => "the link is HALF-DUPLEX -- almost always a bad cable, jack or NIC",
+        "bad" when Satisfaction is { } s and < 70 => $"UniFi rates this port's experience {s}%; {Errors:N0} errors",
+        "bad" => $"{Errors:N0} errors on this link -- check the cable and the port",
+        "suspect" when SpeedNow is > 0 and < 1000 && Module is null => $"linked at {Spd(SpeedNow.Value)} -- below gigabit; if it should be faster, re-seat or replace the cable/jack",
+        "suspect" when Satisfaction is { } s and < 90 => $"UniFi rates this port's experience {s}%",
+        "suspect" => $"{Errors:N0} errors / {Dropped:N0} dropped on this link",
+        _ => null,
+    };
+}
 
 public sealed record NetAccessPoint(string Mac, string Name, string Model, string? Ip, IReadOnlyList<NetEndpoint> Clients);
 
@@ -471,20 +524,29 @@ public sealed record UniFiLive(long Now, IReadOnlyList<LiveDevice> Devices, IRea
             _ => null,
         } : null;
         static bool B(JsonElement e, string p) => e.TryGetProperty(p, out var v) && v.ValueKind == JsonValueKind.True;
+        static bool? BN(JsonElement e, string p) => e.TryGetProperty(p, out var v) ? v.ValueKind == JsonValueKind.True ? true : v.ValueKind == JsonValueKind.False ? false : (bool?)null : null;
         static IEnumerable<JsonElement> A(JsonElement e, string p) => e.TryGetProperty(p, out var v) && v.ValueKind == JsonValueKind.Array ? v.EnumerateArray() : [];
 
         var devices = A(r, "devices").Select(d => new LiveDevice(NetworkMaps.Mac(S(d, "mac")), S(d, "name") ?? "", (int)(L(d, "state") ?? 0),
-            A(d, "ports").Select(p => new LivePort((int)(L(p, "port") ?? 0), B(p, "up"), (int)(L(p, "speed") ?? 0), D(p, "poeW"), S(p, "media"), S(p, "sfp"))).ToList())).ToList();
+            A(d, "ports").Select(p => new LivePort((int)(L(p, "port") ?? 0), B(p, "up"), (int)(L(p, "speed") ?? 0), D(p, "poeW"), S(p, "media"), S(p, "sfp"),
+                BN(p, "fullDuplex"), (L(p, "rxErr") ?? 0) + (L(p, "txErr") ?? 0), (L(p, "rxDrop") ?? 0) + (L(p, "txDrop") ?? 0), (int?)L(p, "sat"), B(p, "isUplink"))).ToList(),
+            D(d, "cpu"), D(d, "mem"), D(d, "tempC"), B(d, "overheat"), L(d, "uptime"))).ToList();
         var clients = A(r, "clients").Select(c => new LiveClient(NetworkMaps.Mac(S(c, "mac")), S(c, "ip"), S(c, "hostname") ?? S(c, "name"), B(c, "wired"),
-            S(c, "swMac") is { } sw ? NetworkMaps.Mac(sw) : null, (int?)L(c, "swPort"), S(c, "apMac") is { } ap ? NetworkMaps.Mac(ap) : null, L(c, "uptime"))).ToList();
+            S(c, "swMac") is { } sw ? NetworkMaps.Mac(sw) : null, (int?)L(c, "swPort"), S(c, "apMac") is { } ap ? NetworkMaps.Mac(ap) : null, L(c, "uptime"),
+            (int?)L(c, "sat"), (int?)L(c, "signal"), (int?)L(c, "anomalies"), (int?)L(c, "wiredRate"))).ToList();
         return new UniFiLive(L(r, "now") ?? 0, devices, clients);
     }
 }
 
 /// <param name="State">The controller's state: 1 = connected.</param>
-public sealed record LiveDevice(string Mac, string Name, int State, IReadOnlyList<LivePort> Ports);
+/// <param name="Cpu">Device load %, <param name="MemPct">memory used %, <param name="TempC">general temperature.</param>
+public sealed record LiveDevice(string Mac, string Name, int State, IReadOnlyList<LivePort> Ports,
+    double? Cpu = null, double? MemPct = null, double? TempC = null, bool Overheat = false, long? Uptime = null);
 
-public sealed record LivePort(int Port, bool Up, int Speed, double? PoeW, string? Media, string? Sfp);
+/// <param name="Errors">rx+tx errors since the device booted, <param name="Dropped">rx+tx dropped, <param name="Satisfaction">UniFi's port experience %.</param>
+public sealed record LivePort(int Port, bool Up, int Speed, double? PoeW, string? Media, string? Sfp,
+    bool? FullDuplex = null, long Errors = 0, long Dropped = 0, int? Satisfaction = null, bool IsUplink = false);
 
-/// <param name="Uptime">Seconds it has been connected.</param>
-public sealed record LiveClient(string Mac, string? Ip, string? Hostname, bool Wired, string? SwMac, int? SwPort, string? ApMac, long? Uptime);
+/// <param name="Uptime">Seconds it has been connected. <param name="Satisfaction">UniFi's client experience %, <param name="Signal">wireless dBm.</param>
+public sealed record LiveClient(string Mac, string? Ip, string? Hostname, bool Wired, string? SwMac, int? SwPort, string? ApMac, long? Uptime,
+    int? Satisfaction = null, int? Signal = null, int? Anomalies = null, int? WiredRate = null);

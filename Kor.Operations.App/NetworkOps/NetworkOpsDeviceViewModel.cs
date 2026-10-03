@@ -285,14 +285,20 @@ public sealed class NetworkOpsDeviceViewModel : ObservableObject
         var sw = _network.Switches.FirstOrDefault(s => s.Mac == hit.SwitchMac);
         if (sw is null) return;
 
-        System.Windows.Media.Brush Fill(Kor.Operations.NetworkOps.Core.Network.NetPort p) => p.Kind == "empty"
-            ? NetworkOpsBrushes.Unknown                     // grey: nothing plugged in
-            : p.Up switch { true => NetworkOpsBrushes.Healthy, false => NetworkOpsBrushes.Attention, _ => NetworkOpsBrushes.Unknown };
+        // Colour by the SYNTHESISED health (errors, half-duplex, satisfaction, speed), not just link up/down.
+        System.Windows.Media.Brush Fill(Kor.Operations.NetworkOps.Core.Network.NetPort p) => p.Health switch
+        {
+            "good" => NetworkOpsBrushes.Healthy,            // green
+            "suspect" => NetworkOpsBrushes.Attention,        // amber
+            "bad" or "down" => NetworkOpsBrushes.Critical,   // red
+            _ => NetworkOpsBrushes.Unknown,                  // grey: empty, uplink, or no live read
+        };
         string Tip(Kor.Operations.NetworkOps.Core.Network.NetPort p)
         {
             var who = p.On?.Name is { Length: > 0 } n ? n : p.Kind == "empty" ? "nothing" : p.Kind;
-            var link = p.Up switch { true => "up" + (Speed(p.SpeedNow) is { Length: > 0 } s ? $" · {s}" : ""), false => "down", _ => "" };
-            return $"Port {p.Number}: {who}" + (link.Length > 0 ? $" · {link}" : "");
+            var link = p.Up switch { true => "up" + (Speed(p.SpeedNow) is { Length: > 0 } s ? $" · {s}" : "") + (p.FullDuplex == false ? " · HALF-DUPLEX" : ""), false => "down", _ => "" };
+            var errs = p.Errors > 0 || p.Dropped > 0 ? $" · {p.Errors:N0} err/{p.Dropped:N0} drop" : "";
+            return $"Port {p.Number}: {who}" + (link.Length > 0 ? $" · {link}{errs}" : "") + (p.HealthReason is { } hr ? $"\n⚠ {hr}" : "");
         }
         SwitchPorts = sw.Ports.OrderBy(p => p.Number).Select(p => new PortCell(p.Number.ToString(), Fill(p), p.Number == mine, Tip(p))).ToList();
 
@@ -300,13 +306,16 @@ public sealed class NetworkOpsDeviceViewModel : ObservableObject
         var sp = Speed(myPort?.SpeedNow) is { Length: > 0 } s1 ? s1 : Speed(myPort?.SpeedMbps);
         SwitchPortTitle = $"{sw.Name} · port {mine}";
         SwitchPortDetail = (myPort?.Up switch { true => "link up", false => "link down", _ => "last seen here" })
-            + (sp.Length > 0 ? $" · {sp}" : "") + (myPort?.PoeWatts is { } w ? $" · PoE {w:0.#} W" : "") + (myPort?.Module is { Length: > 0 } m ? $" · {m}" : "");
+            + (sp.Length > 0 ? $" · {sp}" : "") + (myPort?.FullDuplex == false ? " · half-duplex" : "")
+            + (myPort?.PoeWatts is { } w ? $" · PoE {w:0.#} W" : "") + (myPort?.Module is { Length: > 0 } m ? $" · {m}" : "")
+            + (myPort is { Errors: > 0 } or { Dropped: > 0 } ? $" · {myPort.Errors:N0} err/{myPort.Dropped:N0} drop" : "")
+            + (myPort?.Satisfaction is { } sat ? $" · experience {sat}%" : "");
         SwitchPortOpens = $"network:{(sw.IsCore ? "core" : sw.Mac)}#{mine}";
-        // v1 signal (we have link state + negotiated speed, not error counters or the port's max): a down link, or a wired
-        // PC linked below gigabit -- the classic "bad cable or jack" symptom. Proper error-based detection is a follow-up.
-        if (myPort?.Up == false) CableWarning = "This port's link is DOWN — check the cable and the port.";
-        else if (!IsRack && myPort?.SpeedNow is { } now && now is > 0 and < 1000)
-            CableWarning = $"Linked at {Speed(now)} — slower than gigabit. If this PC should be faster, re-seat or replace the cable/jack.";
+        // The synthesised verdict on THIS PC's port (half-duplex, errors, low satisfaction, sub-gigabit), plus a switch-level
+        // note (overheating, pegged CPU/mem). Real telemetry, not a guess.
+        CableWarning = myPort?.HealthReason is { } reason
+            ? char.ToUpper(reason[0]) + reason[1..] + (sw.HealthReason is { } sh ? $"  Also: {sh}." : "")
+            : sw.HealthReason is { } sh2 ? char.ToUpper(sh2[0]) + sh2[1..] + "." : null;
     }
 
     /// <summary>Internal so tests can draw the tiles from a fixture check without the service.</summary>

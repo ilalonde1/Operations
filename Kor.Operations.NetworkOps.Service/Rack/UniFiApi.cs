@@ -67,11 +67,21 @@ internal static class UniFiApi
             ["devices"] = new JsonArray(devices.Select(d => (JsonNode)new JsonObject
             {
                 ["mac"] = F(d, "mac"), ["name"] = F(d, "name"), ["state"] = F(d, "state"), ["uptime"] = F(d, "uptime"),
+                // Device health, for synthesis: load, memory pressure, temperature -- a switch overheating or pegged is worth saying.
+                ["model"] = F(d, "model"), ["version"] = F(d, "version"),
+                ["cpu"] = F(d?["system-stats"], "cpu"), ["mem"] = F(d?["system-stats"], "mem"),
+                ["tempC"] = F(d, "general_temperature"), ["overheat"] = F(d, "overheating"),
                 ["ports"] = new JsonArray((d?["port_table"] as JsonArray ?? []).Select(p => (JsonNode)new JsonObject
                 {
                     ["port"] = F(p, "port_idx"), ["up"] = F(p, "up"), ["speed"] = F(p, "speed"), ["poe"] = F(p, "poe_enable"),
                     ["poeW"] = F(p, "poe_power"), ["media"] = F(p, "media"),
                     ["sfp"] = p?["sfp_found"]?.GetValue<bool>() == true ? F(p, "sfp_part") : null, ["name"] = F(p, "name"),
+                    // The telemetry a bad cable or port shows in: a half-duplex link, rising errors/drops, a low satisfaction,
+                    // the negotiated speed vs the port's capability, PoE draw. Counters are cumulative since the device booted.
+                    ["fullDuplex"] = F(p, "full_duplex"), ["isUplink"] = F(p, "is_uplink"), ["enabled"] = F(p, "enable"),
+                    ["rxErr"] = F(p, "rx_errors"), ["txErr"] = F(p, "tx_errors"), ["rxDrop"] = F(p, "rx_dropped"), ["txDrop"] = F(p, "tx_dropped"),
+                    ["sat"] = F(p, "satisfaction"), ["poeV"] = F(p, "poe_voltage"), ["poeA"] = F(p, "poe_current"),
+                    ["rxBytes"] = F(p, "rx_bytes"), ["txBytes"] = F(p, "tx_bytes"),
                 }).ToArray()),
             }).ToArray()),
             ["clients"] = new JsonArray(clients.Select(c => (JsonNode)new JsonObject
@@ -79,6 +89,9 @@ internal static class UniFiApi
                 ["mac"] = F(c, "mac"), ["ip"] = F(c, "ip"), ["hostname"] = F(c, "hostname"), ["name"] = F(c, "name"),
                 ["wired"] = F(c, "is_wired"), ["swMac"] = F(c, "sw_mac"), ["swPort"] = F(c, "sw_port"), ["apMac"] = F(c, "ap_mac"),
                 ["uptime"] = F(c, "uptime"),
+                // Client experience: UniFi's own satisfaction %, wireless signal, anomaly count, wired negotiated rate.
+                ["sat"] = F(c, "satisfaction"), ["signal"] = F(c, "signal"), ["anomalies"] = F(c, "anomalies"),
+                ["wiredRate"] = F(c, "wired-rate_mbps"), ["txRetries"] = F(c, "tx_retries"),
             }).ToArray()),
         };
         return o;
