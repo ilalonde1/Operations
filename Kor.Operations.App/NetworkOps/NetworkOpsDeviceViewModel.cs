@@ -311,9 +311,17 @@ public sealed class NetworkOpsDeviceViewModel : ObservableObject
             + (myPort is { Errors: > 0 } or { Dropped: > 0 } ? $" · {myPort.Errors:N0} err/{myPort.Dropped:N0} drop" : "")
             + (myPort?.Satisfaction is { } sat ? $" · experience {sat}%" : "");
         SwitchPortOpens = $"network:{(sw.IsCore ? "core" : sw.Mac)}#{mine}";
-        // The synthesised verdict on THIS PC's port (half-duplex, errors, low satisfaction, sub-gigabit), plus a switch-level
-        // note (overheating, pegged CPU/mem). Real telemetry, not a guess.
-        CableWarning = myPort?.HealthReason is { } reason
+        // The synthesised port verdict (half-duplex, low satisfaction) first; else a PC-context note the network-wide finding
+        // deliberately leaves out -- a down link, or this PC linked below gigabit (meaningful here, since it IS a PC). Plus a
+        // switch-level note (overheating, pegged CPU/mem). Real telemetry.
+        string? pcReason = myPort switch
+        {
+            { Up: false } => "this port's link is DOWN -- check the cable and the port",
+            { Up: true, SpeedNow: > 0 and < 1000, Module: null } when !IsRack => $"linked at {Speed(myPort.SpeedNow)} -- below gigabit; if this PC should be faster, re-seat or replace the cable/jack",
+            _ => null,
+        };
+        var warn = myPort?.HealthReason ?? pcReason;
+        CableWarning = warn is { } reason
             ? char.ToUpper(reason[0]) + reason[1..] + (sw.HealthReason is { } sh ? $"  Also: {sh}." : "")
             : sw.HealthReason is { } sh2 ? char.ToUpper(sh2[0]) + sh2[1..] + "." : null;
     }

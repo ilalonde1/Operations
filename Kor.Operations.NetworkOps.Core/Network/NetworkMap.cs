@@ -410,6 +410,11 @@ public sealed record NetPort(int Number, int SpeedMbps, bool Poe, string Kind, N
 
     /// <summary>A synthesised verdict on the link from the live telemetry: "good" | "suspect" | "bad" | "down", or ""
     /// for an empty/uplink/link port or when there is no live read. This is what colours a port and raises a finding.</summary>
+    // Only signals reliable from a SINGLE read drive the verdict. Error/dropped counts are CUMULATIVE since the device
+    // booted -- a switch up for months has thousands normally -- so an absolute threshold is meaningless (it flagged 32 of
+    // 85 ports on first run); rate/delta detection is a follow-up (like disk-errors' Rise). Half-duplex and UniFi's own
+    // satisfaction % ARE single-read reliable. Sub-gigabit is only suspect for a device that should be faster, which the
+    // port alone cannot know (a phone/AP at 100M is normal) -- so it is shown as info, not a fault, except on the PC page.
     public string Health
     {
         get
@@ -417,12 +422,9 @@ public sealed record NetPort(int Number, int SpeedMbps, bool Poe, string Kind, N
             if (Kind is "empty" or "uplink" or "link" || On is null) return "";
             if (Up == false) return "down";
             if (Up != true) return "";   // no live read this cycle
-            if (FullDuplex == false) return "bad";                                   // half-duplex: cable/jack/NIC fault
+            if (FullDuplex == false) return "bad";                       // half-duplex: cable/jack/NIC fault
             if (Satisfaction is { } s and < 70) return "bad";
-            if (Errors > 5000) return "bad";
-            if (SpeedNow is > 0 and < 1000 && Module is null) return "suspect";       // sub-gigabit on copper: likely bad cable
             if (Satisfaction is { } s2 and < 90) return "suspect";
-            if (Errors > 100 || Dropped > 2000) return "suspect";
             return "good";
         }
     }
@@ -431,12 +433,9 @@ public sealed record NetPort(int Number, int SpeedMbps, bool Poe, string Kind, N
     public string? HealthReason => Health switch
     {
         "down" => "the link is down -- check the cable and the port",
-        "bad" when FullDuplex == false => "the link is HALF-DUPLEX -- almost always a bad cable, jack or NIC",
-        "bad" when Satisfaction is { } s and < 70 => $"UniFi rates this port's experience {s}%; {Errors:N0} errors",
-        "bad" => $"{Errors:N0} errors on this link -- check the cable and the port",
-        "suspect" when SpeedNow is > 0 and < 1000 && Module is null => $"linked at {Spd(SpeedNow.Value)} -- below gigabit; if it should be faster, re-seat or replace the cable/jack",
-        "suspect" when Satisfaction is { } s and < 90 => $"UniFi rates this port's experience {s}%",
-        "suspect" => $"{Errors:N0} errors / {Dropped:N0} dropped on this link",
+        "bad" when FullDuplex == false => "the link is HALF-DUPLEX -- almost always a bad cable, jack or NIC" + (Errors > 0 ? $" ({Errors:N0} lifetime errors)" : ""),
+        "bad" when Satisfaction is { } s => $"UniFi rates this port's experience {s}%",
+        "suspect" when Satisfaction is { } s => $"UniFi rates this port's experience {s}%",
         _ => null,
     };
 }
