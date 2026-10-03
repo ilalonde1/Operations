@@ -178,8 +178,8 @@ internal sealed class ApiHost(IOptions<NetworkOpsOptions> options, NetworkOpsSto
         });
         api.MapGet("/resolutions", (NetworkOpsStore s, CancellationToken ct) => s.ResolutionRowsAsync(ct));
         // The port map: every switch, port and device, by name and person (Network/NetworkMapService; built after each rack sweep).
-        api.MapGet("/network", (Network.NetworkMapService m) => m.Current is { } map
-            ? Results.Ok(new Core.Network.NetworkMapResponse(m.BuiltUtc, m.Notes, map))
+        api.MapGet("/network", (Network.NetworkMapService m) => m.Response() is { } r
+            ? Results.Ok(r)   // ONE atomic read: map, time and notes from the same published snapshot, never torn
             : Results.Problem("The port map has not been built yet: it is built after the first rack sweep that reads the UniFi controller.", statusCode: 503));
         // What moved between ports (a desk moved, a cable swapped): default the last 7 days. Empty before 010.
         api.MapGet("/network/moves", (DateTime? since, NetworkOpsStore s, CancellationToken ct) =>

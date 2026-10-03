@@ -213,7 +213,7 @@ public static class NetworkMaps
                     // gives only an unordered set, with no "switch's own last device" signal), so promoting the lowest MAC
                     // would draw a VM as the attached device on a map an engineer trusts to find hardware. Say what is true.
                     on = Describe(here[0], null, 0) with { Name = "VMs (host not seen)", NameSource = "VMware", ConnectedNow = cp.Up };
-                    behind = here.Select(m => Describe(m, null, 0) with { ConnectedNow = cp.Up }).ToList();
+                    behind = here.Skip(1).Select(m => Describe(m, null, 0) with { ConnectedNow = cp.Up }).ToList();   // Skip(1): here[0] IS the occupant, never also "behind"
                 }
                 else
                 {

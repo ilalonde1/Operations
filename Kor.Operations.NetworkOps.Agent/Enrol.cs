@@ -39,6 +39,12 @@ internal static class Enrol
     public const string InstallDir = @"C:\Program Files\KorOperations\Agent";
     private const string DisplayName = "KOR NetworkOps Agent";
     private const string Description = "Runs KOR NetworkOps health checks and approved fixes on this PC for the NetworkOps service on KOR-APP01.";
+    // Absolute system paths, never bare names: the staging folder is on the executable search path, so a planted sc.exe or
+    // powershell.exe there would otherwise run elevated during --enrol (2026-10-03 re-audit, finding 1).
+    private static readonly string ScExe = Path.Combine(Environment.SystemDirectory, "sc.exe");
+    private static readonly string PowerShellExe = Path.Combine(Environment.SystemDirectory, "WindowsPowerShell", "v1.0", "powershell.exe");
+    // The agent is a single exe plus its config and pdb: copy only its own files, never whatever else is in the staging folder.
+    private const string PackageGlob = "Kor.Operations.NetworkOps.Agent.*";
 
     public static int Run(AgentSettings s, string code)
     {
@@ -59,7 +65,7 @@ internal static class Enrol
         System.Threading.Thread.Sleep(2000);
         Directory.CreateDirectory(InstallDir);
         if (!string.Equals(Path.GetFullPath(from).TrimEnd('\\'), Path.GetFullPath(InstallDir).TrimEnd('\\'), StringComparison.OrdinalIgnoreCase))
-            foreach (var f in Directory.GetFiles(from))
+            foreach (var f in Directory.GetFiles(from, PackageGlob))
                 File.Copy(f, Path.Combine(InstallDir, Path.GetFileName(f)), overwrite: true);
 
         var data = Path.Combine(InstallDir, "data");
@@ -85,7 +91,7 @@ internal static class Enrol
             try
             {
                 var enc = Convert.ToBase64String(System.Text.Encoding.Unicode.GetBytes(answer.Mesh));
-                using var p = Process.Start(new ProcessStartInfo("powershell.exe", $"-NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand {enc}")
+                using var p = Process.Start(new ProcessStartInfo(PowerShellExe, $"-NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand {enc}")
                     { UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true, RedirectStandardError = true })!;
                 p.StandardOutput.ReadToEnd();
                 p.StandardError.ReadToEnd();
@@ -124,7 +130,7 @@ internal static class Enrol
 
     private static int Sc(string args, bool allowFail = false)
     {
-        using var p = Process.Start(new ProcessStartInfo("sc.exe", args) { UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true })!;
+        using var p = Process.Start(new ProcessStartInfo(ScExe, args) { UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true })!;
         p.StandardOutput.ReadToEnd();
         p.WaitForExit();
         if (p.ExitCode != 0 && !allowFail) throw new InvalidOperationException($"sc {args} failed ({p.ExitCode})");

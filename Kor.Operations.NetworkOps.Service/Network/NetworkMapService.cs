@@ -39,6 +39,14 @@ internal sealed class NetworkMapService(NetworkOpsStore store, MacDirectory macs
     /// <summary>What the last build could not read (leases, history), said with the map rather than hidden.</summary>
     public IReadOnlyList<string> Notes => _published.Notes;
 
+    /// <summary>The map, its build time and its notes as ONE atomic read. A caller MUST use this rather than reading
+    /// Current/BuiltUtc/Notes separately, which could tear across a publish (2026-10-03 re-audit). Null until first built.</summary>
+    public NetworkMapResponse? Response()
+    {
+        var s = _published;
+        return s.Map is { } map ? new NetworkMapResponse(s.BuiltUtc, s.Notes, map) : null;
+    }
+
     /// <summary>The controller's read, as RackCollector got it.</summary>
     public void SetUniFi(string json) => _unifiJson = json;
 

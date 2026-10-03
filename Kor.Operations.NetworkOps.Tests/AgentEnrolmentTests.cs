@@ -56,6 +56,17 @@ public sealed class AgentEnrolmentTests
         Assert.Equal(9, e.Redeem("BOARDROOM", code, T0)!.Value.DeviceId);               // BOARDROOM is untouched
     }
 
+    [Fact]
+    public void Wrong_guesses_at_a_name_with_no_live_code_are_not_tracked()
+    {
+        // A spray of names that have no code achieves nothing (there is no code to brute-force) and must not be counted or
+        // grow the miss map (2026-10-03 re-audit, unbounded-memory). So a name sprayed BEFORE it has a code still redeems at once.
+        var e = new AgentEnrolment();
+        for (var i = 0; i < 50; i++) e.Redeem("NOCODE-" + i, "AAAA-AAAA-AAAA", T0);   // distinct names, none with a code
+        var code = e.Issue(3, "NOCODE-0", "a", T0).Code;
+        Assert.Equal(3, e.Redeem("NOCODE-0", code, T0)!.Value.DeviceId);               // not rate-limited by the earlier spray
+    }
+
     [Theory]
     [InlineData("BOARDROOM", true)]
     [InlineData("KOR-PERFORM3", true)]
