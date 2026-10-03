@@ -11,19 +11,24 @@ namespace Kor.Operations.NetworkOps.Cli;
 //   netops last-check --hosts A,B                the last full health check NetworkOps stored, as returned
 //   netops check      --hosts A,B                a fresh full health check now (stored; the Command Center sees it)
 //   netops knowledge  [--search words] [--all]   banked knowledge cards (accepted; --all adds proposed/rejected)
+//   netops findings   [--hosts A,B]              open findings across the fleet (the Command Center's list), as JSON
+//   netops fix        --hosts A,B --fix <id> [--param x] [--finding rule] [--purpose "why"] [--confirmed] [--timeout s]
+//                                                queue a CATALOG fix (Core/Actions/FixCatalog) exactly as the Command
+//                                                Center's Fix… does: same API, same refusals, audited; waits for it
 //
 // `netops run --direct ...` is the old route (this PC straight to the machine over SMB): for the LAN, not for a session.
 internal static class SessionVerbs
 {
     public static bool Handles(string verb, string[] args)
-        => verb is "check" or "last-check" or "knowledge" || (verb == "run" && !args.Contains("--direct"));
+        => verb is "check" or "last-check" or "knowledge" or "findings" or "fix" || (verb == "run" && !args.Contains("--direct"));
 
     public static async Task<int> RunAsync(string verb, string[] args)
     {
-        string? hostsArg = null, script = null, outDir = null, purpose = null, search = null;
+        string? hostsArg = null, script = null, outDir = null, purpose = null, search = null, fixId = null, param = null, finding = null;
         long? promptRun = null;
         var timeout = 90;
         var all = false;
+        var confirmed = false;
         for (var i = 1; i < args.Length; i++)
         {
             switch (args[i])
@@ -34,6 +39,10 @@ internal static class SessionVerbs
                 case "--purpose" when i + 1 < args.Length: purpose = args[++i]; break;
                 case "--search" when i + 1 < args.Length: search = args[++i]; break;
                 case "--all": all = true; break;
+                case "--fix" when i + 1 < args.Length: fixId = args[++i]; break;
+                case "--param" when i + 1 < args.Length: param = args[++i]; break;
+                case "--finding" when i + 1 < args.Length: finding = args[++i]; break;
+                case "--confirmed": confirmed = true; break;
                 case "--timeout" when i + 1 < args.Length && int.TryParse(args[i + 1], out var t): timeout = t; i++; break;
                 case "--run" when i + 1 < args.Length && long.TryParse(args[i + 1], out var r): promptRun = r; i++; break;
                 default: Console.Error.WriteLine($"Unknown argument for {verb}: {args[i]}"); return 2;
@@ -47,6 +56,7 @@ internal static class SessionVerbs
         try
         {
             if (verb == "knowledge") return await KnowledgeAsync(server, search, all, ct);
+            if (verb == "findings") return await FindingsAsync(server, hostsArg, ct);
 
             if (string.IsNullOrWhiteSpace(hostsArg)) { Console.Error.WriteLine("--hosts A,B is required (the machine names NetworkOps knows, e.g. KOR-217 or KOR-DC01)."); return 2; }
             var hosts = hostsArg.Equals("all", StringComparison.OrdinalIgnoreCase)
@@ -58,6 +68,7 @@ internal static class SessionVerbs
                 "run" => await RunScriptAsync(server, hosts, script, timeout, purpose, promptRun, outDir, ct),
                 "last-check" => await LastCheckAsync(server, hosts, ct),
                 "check" => await CheckAsync(server, hosts, ct),
+                "fix" => await FixAsync(server, hosts, fixId, param, finding, purpose, confirmed, timeout, ct),
                 _ => 2,
             };
         }
@@ -152,6 +163,54 @@ internal static class SessionVerbs
         }
         Console.WriteLine($"{cards.Count} card(s)");
         return 0;
+    }
+
+    private static async Task<int> FindingsAsync(AppServer server, string? hostsArg, CancellationToken ct)
+    {
+        var fleet = await server.GetAsync<FleetSnapshot>("/api/fleet", ct);
+        var only = hostsArg is null ? null : hostsArg.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var rows = fleet.OpenFindings.Where(f => only is null || only.Contains(f.Device)).OrderBy(f => f.RuleKey).ThenBy(f => f.Device).ToList();
+        Console.WriteLine(JsonSerializer.Serialize(new { devices = fleet.Devices, findings = rows }, new JsonSerializerOptions { WriteIndented = true }));
+        Console.Error.WriteLine($"{rows.Count} open finding(s) on {rows.Select(f => f.Device).Distinct(StringComparer.OrdinalIgnoreCase).Count()} device(s)");
+        return 0;
+    }
+
+    private sealed record QueuedAction(long ActionId);
+
+    // The Command Center's Fix…, from a session: the same endpoint, so the catalog, the "someone is using it" refusal and
+    // the audit row are the service's, not this verb's. Waits for each run to finish (or --timeout), then prints it.
+    private static async Task<int> FixAsync(AppServer server, IReadOnlyList<string> hosts, string? fixId, string? param, string? finding, string? purpose, bool confirmed, int timeout, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(fixId)) { Console.Error.WriteLine("--fix <id> is required (a FixCatalog id, e.g. repair-wmi)."); return 2; }
+        var devices = (await server.GetAsync<FleetSnapshot>("/api/fleet", ct)).Devices;
+        var queued = new List<(string Host, long Id)>();
+        var failed = 0;
+        foreach (var h in hosts)
+        {
+            var dev = devices.FirstOrDefault(d => d.Name.Equals(h, StringComparison.OrdinalIgnoreCase))
+                ?? devices.FirstOrDefault(d => d.Name.StartsWith(h + " ", StringComparison.OrdinalIgnoreCase));
+            if (dev is null) { Console.WriteLine($"=== {h}: NetworkOps does not know this machine"); failed++; continue; }
+            try { queued.Add((dev.Name, (await server.PostAsync<QueuedAction>($"/api/devices/{dev.DeviceId}/fixes", new FixRequest(fixId, param, finding, purpose, confirmed), ct)).ActionId)); }
+            catch (AppServerException ex) { Console.WriteLine($"=== {dev.Name}: refused -- {ex.Message}"); failed++; }
+        }
+        Console.Error.WriteLine($"netops: {queued.Count} fix run(s) queued on APP01 ({fixId}); waiting up to {timeout} s...");
+        var deadline = DateTime.UtcNow.AddSeconds(timeout);
+        var pending = queued.ToList();
+        while (pending.Count > 0 && DateTime.UtcNow < deadline)
+        {
+            await Task.Delay(TimeSpan.FromSeconds(5), ct);
+            foreach (var q in pending.ToList())
+            {
+                var a = await server.GetAsync<ActionRow>($"/api/actions/{q.Id}", ct);
+                if (a.Status is "Requested" or "Running") continue;
+                pending.Remove(q);
+                if (a.Status != "Done") failed++;
+                Console.WriteLine($"=== {q.Host}: action {q.Id} {a.Status}{(a.Detail is null ? "" : $" -- {a.Detail}")}");
+                if (a.Output is { Length: > 0 }) Console.WriteLine(a.Output.Length > 4000 ? a.Output[..4000] + " …" : a.Output);
+            }
+        }
+        foreach (var q in pending) Console.WriteLine($"=== {q.Host}: action {q.Id} still running after {timeout} s; it carries on on APP01 (GET /api/actions/{q.Id})");
+        return failed == 0 && pending.Count == 0 ? 0 : 1;
     }
 
     private static string Pretty(string json)
