@@ -126,6 +126,8 @@ public partial class NetworkOpsCommandCenterWindow : Window
 
     private void Updates_Click(object sender, RoutedEventArgs e) => new NetworkOpsUpdatesWindow(_vm.Client) { Owner = this }.Show();
 
+    private void Network_Click(object sender, RoutedEventArgs e) => new NetworkOpsNetworkWindow(_vm.Client) { Owner = this }.Show();
+
     /// <summary>Ask Claude, on the selected PC or rack device when there is one (the ask box then says it is about that machine).</summary>
     private void AskClaude_Click(object sender, RoutedEventArgs e)
     {

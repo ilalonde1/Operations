@@ -87,6 +87,15 @@ public sealed class NetworkOpsClient
     public async Task<IReadOnlyList<Kor.Operations.NetworkOps.Core.Rack.DeviceReading>> GetReadingsAsync(int deviceId, CancellationToken ct)
         => await GetAsync<List<Kor.Operations.NetworkOps.Core.Rack.DeviceReading>>($"api/devices/{deviceId}/readings", ct).ConfigureAwait(false);
 
+    /// <summary>The port map: every switch, port, device and person (null until the service has built it after a rack sweep).</summary>
+    public async Task<Kor.Operations.NetworkOps.Core.Network.NetworkMapResponse?> GetNetworkAsync(CancellationToken ct)
+    {
+        using var res = await SendAsync(HttpMethod.Get, "api/network", null, ct).ConfigureAwait(false);
+        if (res.StatusCode == System.Net.HttpStatusCode.ServiceUnavailable) return null;
+        await EnsureOkAsync(res).ConfigureAwait(false);
+        return await res.Content.ReadFromJsonAsync<Kor.Operations.NetworkOps.Core.Network.NetworkMapResponse>(Json, ct).ConfigureAwait(false);
+    }
+
     /// <summary>A PC's last full health check, raw (the "This PC" tiles are drawn from it). Null when it was never checked.</summary>
     public async Task<LastCheckView?> GetLastCheckAsync(string deviceName, CancellationToken ct)
     {

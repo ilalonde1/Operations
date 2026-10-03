@@ -199,6 +199,8 @@
             <StackPanel Grid.Column="3" Orientation="Horizontal">
                 <Button Content="Ask Claude" Style="{StaticResource Ops.Primary}" Margin="0,0,8,0" Click="AskClaude_Click"
                         ToolTip="Ask anything about the selected PC (or the whole network), or open a prompt for any problem: Claude starts in Windows Terminal with everything NetworkOps knows."/>
+                <Button Content="Network" Margin="0,0,8,0" Click="Network_Click"
+                        ToolTip="Every switch and port, and what is plugged into each: PC, person, IP. Searchable."/>
                 <Button Content="Updates" Margin="0,0,8,0" Click="Updates_Click"
                         ToolTip="What Windows Update has waiting on every PC and server, and installing it on many at once."/>
                 <Button x:Name="OpenPcBtn" Content="Open PC" Margin="0,0,16,0" Click="OpenPc_Click"
