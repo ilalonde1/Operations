@@ -237,7 +237,8 @@ public sealed class NetworkOpsDeviceViewModel : ObservableObject
                 Part = part,
                 ToolTip = about.Count > 0 ? string.Join("\n", about) + "\n(click to show it; click again for the part)"
                         : part.Detail is { Length: > 0 } detail ? $"{part.Title}:\n{detail.Replace("; ", "\n")}\n(click for more)"   // a switch port: everything attached
-                        : $"{part.Title}: {part.Line1}{(part.Line2.Length > 0 ? " · " + part.Line2 : "")}\n(click for more)",
+                        : $"{part.Title}: {part.Line1}{(part.Line2.Length > 0 ? " · " + part.Line2 : "")}\n" +
+                          (part.Opens is { } o && o.StartsWith("network:", StringComparison.Ordinal) ? "(click: its ports and devices in the Network window)" : "(click for more)"),
             };
             // A rebuild (a refresh, a finding cleared) keeps the part that was showing, matched by what it is.
             if (shown.Kind is not null && (part.Kind, part.Title, part.Line1) == shown) { tile.IsSelected = true; _selectedPart = tile; }

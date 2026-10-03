@@ -16,6 +16,7 @@ public partial class NetworkOpsCommandCenterWindow : Window
     private static readonly TimeSpan AutoRefreshInterval = TimeSpan.FromSeconds(15);
 
     private readonly NetworkOpsCommandCenterViewModel _vm;
+    private readonly NetworkOpsNavigator _nav;   // every window this one opens, and they open each other, through this
     private readonly DispatcherTimer _autoRefreshTimer;
     // A manual refresh and the timer each have their own token, so a tick never cancels a click.
     private CancellationTokenSource? _cts;
@@ -26,6 +27,7 @@ public partial class NetworkOpsCommandCenterWindow : Window
         _vm = vm ?? throw new ArgumentNullException(nameof(vm));
         InitializeComponent();
         DataContext = _vm;
+        _nav = new NetworkOpsNavigator(_vm.Client, () => _vm.Snapshot, () => _vm.RackSnapshot, this);
 
         _autoRefreshTimer = new DispatcherTimer { Interval = AutoRefreshInterval };
         _autoRefreshTimer.Tick += async (_, _) => await AutoTickAsync().ConfigureAwait(true);
@@ -126,25 +128,7 @@ public partial class NetworkOpsCommandCenterWindow : Window
 
     private void Updates_Click(object sender, RoutedEventArgs e) => new NetworkOpsUpdatesWindow(_vm.Client) { Owner = this }.Show();
 
-    private void Network_Click(object sender, RoutedEventArgs e)
-        => new NetworkOpsNetworkWindow(_vm.Client, name => DeviceNamed(name) is not null, OpenDeviceNamed) { Owner = this }.Show();
-
-    /// <summary>A device by the name the port map gives it: a fleet PC by its name, or a rack device by its name (the map
-    /// names rack devices as configured -- "ESXi host .16 (standby)").</summary>
-    private (Kor.Operations.NetworkOps.Core.Learning.FleetSnapshot Snapshot, Kor.Operations.NetworkOps.Core.Learning.DeviceRow Device)? DeviceNamed(string name)
-    {
-        if (_vm.Snapshot is { } pcs && pcs.Devices.FirstOrDefault(d => d.Name.Equals(name, StringComparison.OrdinalIgnoreCase)) is { } pc) return (pcs, pc);
-        if (_vm.RackSnapshot is { } rack && rack.Devices.FirstOrDefault(d => d.Name.Equals(name, StringComparison.OrdinalIgnoreCase)) is { } r) return (rack, r);
-        return null;
-    }
-
-    /// <summary>Opens a device's page from the port map, the same window a double-click in the lists opens.</summary>
-    private bool OpenDeviceNamed(string name)
-    {
-        if (DeviceNamed(name) is not { } d) return false;
-        new NetworkOpsDeviceWindow(new NetworkOpsDeviceViewModel(_vm.Client, d.Snapshot, d.Device)) { Owner = this }.Show();
-        return true;
-    }
+    private void Network_Click(object sender, RoutedEventArgs e) => _nav.OpenNetwork();
 
     /// <summary>Ask Claude, on the selected PC or rack device when there is one (the ask box then says it is about that machine).</summary>
     private void AskClaude_Click(object sender, RoutedEventArgs e)
@@ -184,8 +168,7 @@ public partial class NetworkOpsCommandCenterWindow : Window
     private void OpenRackSelected()
     {
         if (RackList.SelectedItem is not FleetRow row || _vm.RackSnapshot is not { } rack) return;
-        var vm = new NetworkOpsDeviceViewModel(_vm.Client, rack, row.Device);
-        new NetworkOpsDeviceWindow(vm) { Owner = this }.Show();
+        _nav.Open(rack, row.Device);
     }
 
     private async void RehearseBtn_Click(object sender, RoutedEventArgs e)
@@ -199,8 +182,7 @@ public partial class NetworkOpsCommandCenterWindow : Window
     private void OpenSelected()
     {
         if (PcList.SelectedItem is not FleetRow row || _vm.Snapshot is not { } snapshot) return;
-        var vm = new NetworkOpsDeviceViewModel(_vm.Client, snapshot, row.Device);
-        new NetworkOpsDeviceWindow(vm) { Owner = this }.Show();
+        _nav.Open(snapshot, row.Device);
     }
 
     private CancellationToken ResetToken()

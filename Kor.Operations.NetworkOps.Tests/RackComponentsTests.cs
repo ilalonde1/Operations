@@ -89,6 +89,10 @@ public sealed class RackComponentsTests
         Assert.All(tiles.Take(offline), t => Assert.NotNull(t.Worst));                                    // offline ones first, coloured
         Assert.All(tiles.Skip(offline), t => Assert.StartsWith("online", t.Line2));
         Assert.Contains(tiles, t => t.Title == "Access point" && t.Line1 == "BMZ-AP01 [Outside Boardroom]");
+        // Each opens the ONE place its ports / wireless are shown -- the Network window at its MAC -- not a copy here
+        // (Ian, 2026-10-02: "duplicate ways to get into the same data. No data duplication").
+        Assert.All(tiles, t => Assert.Matches("^network:([0-9a-f]{2}:){5}[0-9a-f]{2}$", t.Opens));
+        Assert.Equal("network:", RackComponents.Of(read.Facts, readings, open).Single(t => t.Kind == "devices").Opens);
     }
 
     [Fact]

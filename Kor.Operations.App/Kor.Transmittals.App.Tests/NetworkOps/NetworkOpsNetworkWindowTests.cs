@@ -99,6 +99,21 @@ public sealed class NetworkOpsNetworkWindowTests
         Assert.Equal("known", noLive.State);                                                       // no live read: no claim about now
     }
 
+    // Ian, 2026-10-02: "I do NOT want duplicate ways to see duplicated data I want duplicate ways to get into the same data."
+    // A device's page and the Network window each exist once; everything that shows a device or a switch goes there through
+    // the one navigator. A second place building its own device or network window is a second copy of the way in.
+    [Fact]
+    public void Only_the_navigator_opens_a_device_page_or_the_network_window()
+    {
+        var dir = Path.Combine(XamlStaticResourceOrderTests.GetRepoRoot(), "Kor.Operations.App");
+        var offenders = Directory.EnumerateFiles(dir, "*.cs", SearchOption.AllDirectories)
+            .Where(f => !f.Contains("Tests", StringComparison.Ordinal) && !f.Contains(Path.DirectorySeparatorChar + "obj" + Path.DirectorySeparatorChar)
+                        && !f.EndsWith("NetworkOpsNavigator.cs", StringComparison.Ordinal))
+            .Where(f => File.ReadAllText(f) is var s && (s.Contains("new NetworkOpsDeviceWindow(", StringComparison.Ordinal) || s.Contains("new NetworkOpsNetworkWindow(", StringComparison.Ordinal)))
+            .Select(Path.GetFileName).ToList();
+        Assert.True(offenders.Count == 0, "opens a NetworkOps window itself instead of through NetworkOpsNavigator: " + string.Join(", ", offenders));
+    }
+
     [Fact]
     public void A_search_finds_a_person_anywhere_and_says_where()
     {

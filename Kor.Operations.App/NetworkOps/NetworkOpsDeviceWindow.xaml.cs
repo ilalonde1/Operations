@@ -22,10 +22,16 @@ public partial class NetworkOpsDeviceWindow : Window
 
     private async void Window_Loaded(object sender, RoutedEventArgs e) => await Run(_vm.LoadHistoryAsync).ConfigureAwait(true);
 
-    /// <summary>A tile: its finding if it has one, else (or clicked again) "About this part".</summary>
+    /// <summary>The one way windows open each other (set by whoever opens this one); null in a test.</summary>
+    public NetworkOpsNavigator? Navigator { get; init; }
+
+    /// <summary>A tile: its finding if it has one; else, a part with a page of its own (a UniFi switch or access point: the
+    /// Network window) goes there; else (or clicked again) "About this part".</summary>
     private void ComponentTile_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
-        if ((sender as FrameworkElement)?.DataContext is ComponentTile tile) _vm.ClickTile(tile);
+        if ((sender as FrameworkElement)?.DataContext is not ComponentTile tile) return;
+        if (tile.Part.RuleKeys.Count == 0 && Navigator?.Follow(tile.Part.Opens) == true) return;
+        _vm.ClickTile(tile);
     }
 
     private void ClosePart_Click(object sender, RoutedEventArgs e) => _vm.SelectedPart = null;

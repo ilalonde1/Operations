@@ -14,9 +14,12 @@ namespace Kor.Operations.NetworkOps.Core.Health;
 /// <param name="Detail">More than two lines hold -- a switch port's full list of what is attached -- for the tile's hover.</param>
 /// <param name="Info">Everything known about the part, as label/value rows: what clicking a healthy tile shows (Ian,
 /// 2026-10-02: "why don't the tiles click anywhere ... what does clicking on it allow?").</param>
+/// <param name="Opens">Where a click goes when this part has a page of its own, instead of showing a copy of it here:
+/// "network:{mac}" = the Network window at that switch / access point; "network:" = the Network window. Ian, 2026-10-02:
+/// "I do NOT want duplicate ways to see duplicated data I want duplicate ways to get into the same data."</param>
 public sealed record PcComponent(string Kind, string Title, string Line1, string Line2, double? FillPct, Severity? Worst,
     IReadOnlyList<string> RuleKeys, bool IsSystem = false, IReadOnlyList<int>? Lights = null, string? Detail = null,
-    IReadOnlyList<PartInfo>? Info = null);
+    IReadOnlyList<PartInfo>? Info = null, string? Opens = null);
 
 /// <summary>One row of what is known about a part: "Model" = "ST2000DM006-2DM164".</summary>
 public sealed record PartInfo(string Label, string Value);

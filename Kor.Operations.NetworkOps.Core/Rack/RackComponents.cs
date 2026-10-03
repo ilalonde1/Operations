@@ -114,7 +114,7 @@ public static class RackComponents
         if (One("devices.total") is { } total)
             tiles.Add(Make("devices", "Devices", $"{N(One("devices.online") ?? 0)} of {N(total)} online", F("unifi.site"), null, open,
                 k => k.StartsWith("unifi.offline:", StringComparison.Ordinal) || k == "unifi.unnamed")
-                with { Info = [.. PcComponents.Rows(("Site", F("unifi.site"))), .. Pick("devices.total", "devices.online")] });
+                with { Info = [.. PcComponents.Rows(("Site", F("unifi.site"))), .. Pick("devices.total", "devices.online")], Opens = "network:" });
         if (One("alarms.open") is { } alarms) tiles.Add(Make("alarms", "Alarms", alarms == 0 ? "none" : $"{N(alarms)} open", "", null, open, k => k == "unifi.alarms")
             with { Info = Pick("alarms.open") });
         // Each UniFi device (access point, switch, gateway): checked in or not, firmware, an upgrade waiting -- offline first.
@@ -127,7 +127,7 @@ public static class RackComponents
             var mac = seen.Subject;
             var state = seen.Value < 0 ? "never checked in" : seen.Value <= 5 ? "online" : $"offline {(seen.Value >= 2880 ? $"{seen.Value / 1440:0} days" : seen.Value >= 120 ? $"{seen.Value / 60:0} h" : $"{seen.Value:0} min")}";
             tiles.Add(Make("unifi-device", dev!.Kind, dev.Label, $"{state}{(dev.Upgradable ? " · update waiting" : "")} · {dev.Model}", null, open,
-                k => k == $"unifi.offline:{mac}") with { Info = SubjectInfo(mac, facts, readings) });
+                k => k == $"unifi.offline:{mac}") with { Info = SubjectInfo(mac, facts, readings), Opens = $"network:{mac}" });   // its ports / wireless live in the Network window
         }
 
         // Pinged per target (several destinations): the tile shows the WORST of them, latency and loss.
