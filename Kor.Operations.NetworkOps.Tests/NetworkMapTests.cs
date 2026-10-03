@@ -148,6 +148,52 @@ public sealed class NetworkMapTests(ITestOutputHelper output)
         Assert.All(renamed.AccessPoints.SelectMany(a => a.Clients), c => Assert.StartsWith("Renamed ", c.Via));   // shown by the CURRENT name
     }
 
+    // Rule 6, the LIVE read (Ian, 2026-10-02: "the old firewall IS GONE. So you tell me what's saying it's a .1 address" --
+    // the database's record of SW03 port 7; and he was on the VPN, not at KOR-1001's port). Fixture: the controller's live
+    // API that evening (unifi-live-2026-10-02.json, projected: no keys).
+    // COVERS: each PC says connected now or not (29 of 30; KOR-1001 not); a dead port reads down (SW03 port 7, the old
+    // firewall's record); the live read moves no placement where it agrees with the database (70 of 70 did); nothing
+    // dropped or doubled with it. DOES NOT: a device that MOVED between the two reads (none had) -- IsMove and the claim
+    // override cover the shape, not real data. WOULD NOT CATCH: a client the live API lists on the wrong port.
+    private static UniFiLive Live() => UniFiLive.Parse(Fx("unifi-live-2026-10-02.json"));
+
+    private static NetworkMap LiveMap() => NetworkMaps.Build(UniFiSite.Parse(Fx("unifi-2026-10-02.json")), Fleet(), Leases(),
+        new KnownNames(new Dictionary<string, string> { [CoreMac] = "Core switch (EdgeSwitch 10G)" }, new Dictionary<string, string>()), Live());
+
+    [Fact]
+    public void With_the_live_read_every_PC_says_whether_it_is_connected_now()
+    {
+        var map = LiveMap();
+        var pcs = Fleet().Where(f => f.Macs.Count > 0).Select(f => map.PortOf(f.Name)!.Value.Port.On!).ToList();
+        output.WriteLine($"fleet PCs connected now: {pcs.Count(e => e.ConnectedNow == true)} of {pcs.Count}");
+        Assert.Equal(29, pcs.Count(e => e.ConnectedNow == true));
+        Assert.False(pcs.Single(e => e.Pc == "KOR-1001").ConnectedNow);             // on the VPN that evening
+        Assert.All(Map().Everything(), p => Assert.Null(p.Endpoint.ConnectedNow));  // no live read: no claim about now
+        Assert.NotNull(map.LiveUtc);
+    }
+
+    [Fact]
+    public void A_dead_port_reads_down_and_its_old_device_not_connected()
+    {
+        // By MAC: the database fixture was read before the BMZ -> KOR rename (the lesson of that rename, again).
+        var p7 = LiveMap().Switches.Single(s => s.Mac == "78:45:58:e5:fa:ca").Ports.Single(p => p.Number == 7);       // SW03
+        Assert.False(p7.Up);
+        Assert.False(p7.On!.ConnectedNow);                                              // the old firewall's record, three days old
+        var dac = LiveMap().Switches.Single(s => s.Mac == "74:83:c2:13:f1:c2").Ports.Single(p => p.Number == 49);     // SW01
+        Assert.Equal((true, 10000, "SFP-H10GB-CU1M"), (dac.Up!.Value, dac.SpeedNow!.Value, dac.Module));   // ESXi .16, 10G on a 1 m DAC
+        Assert.True(dac.On!.ConnectedNow);                                              // the host, with its VMs live behind it
+        Assert.Contains(dac.AlsoSeen, a => a.Mac == "00:50:56:1a:01:27");               // KOR-MESH01
+    }
+
+    [Fact]
+    public void The_live_read_moves_nothing_where_it_agrees_and_drops_nothing()
+    {
+        static IEnumerable<string> Where(NetworkMap m) => m.Everything().Where(p => p.Placement == "port").Select(p => $"{p.Endpoint.Mac} {p.SwitchMac} {p.Port}").Order();
+        Assert.Equal(Where(Map()), Where(LiveMap()));
+        var all = LiveMap().Everything().GroupBy(p => p.Endpoint.Mac).Where(g => g.Count() > 1).Select(g => g.Key).ToList();
+        Assert.True(all.Count == 0, "in two places with the live read: " + string.Join(", ", all));
+    }
+
     [Fact]
     public void Desk_switches_show_whose_desk_it_is()
     {

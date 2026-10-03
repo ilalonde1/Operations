@@ -40,6 +40,32 @@ public sealed class NetworkMapServiceTests
         Assert.False(NetworkOpsStore.IsMove(new("also-seen", "BMZ-SW01", 5, sw01), new("port", "BMZ-SW01", 7, sw01))); // history is not a move
     }
 
+    // The live API's device records carry the device's auth key and SSH host key: only named fields may leave UniFiApi.
+    [Fact]
+    public void The_live_read_keeps_only_named_fields_and_reads_back_as_the_live_shape()
+    {
+        var devices = System.Text.Json.Nodes.JsonNode.Parse("""
+            [{"mac":"74:83:c2:13:f1:c2","name":"KOR-SW01","state":1,"uptime":5,"x_authkey":"SECRET-A","x_ssh_hostkey":"SECRET-B",
+              "port_table":[{"port_idx":49,"up":true,"speed":10000,"poe_enable":false,"media":"SFP+","sfp_found":true,"sfp_part":"SFP-H10GB-CU1M","name":"SFP+ 1"},
+                            {"port_idx":7,"up":false,"speed":0,"poe_enable":true,"poe_power":"3.21","media":"GE","sfp_found":false,"sfp_part":"x"}]}]
+            """)!.AsArray();
+        var clients = System.Text.Json.Nodes.JsonNode.Parse("""
+            [{"mac":"E8:97:44:09:5C:00","ip":"192.168.1.112","hostname":"KOR-1001","is_wired":true,"sw_mac":"74:83:c2:13:f1:c2","sw_port":5,"uptime":600,"x_password":"SECRET-C"}]
+            """)!.AsArray();
+        var json = UniFiApiProject(devices, clients);
+        Assert.DoesNotContain("SECRET", json);
+        var live = Kor.Operations.NetworkOps.Core.Network.UniFiLive.Parse(json);
+        var p49 = live.Devices.Single().Ports.Single(p => p.Port == 49);
+        Assert.Equal((true, 10000, "SFP-H10GB-CU1M"), (p49.Up, p49.Speed, p49.Sfp));
+        Assert.Null(live.Devices.Single().Ports.Single(p => p.Port == 7).Sfp);           // no module: no part, whatever the field holds
+        Assert.Equal(3.21, live.Devices.Single().Ports.Single(p => p.Port == 7).PoeW);   // the API sends PoE watts as a string
+        var c = live.Clients.Single();
+        Assert.Equal(("e8:97:44:09:5c:00", "74:83:c2:13:f1:c2", 5), (c.Mac, c.SwMac, c.SwPort!.Value));
+    }
+
+    private static string UniFiApiProject(System.Text.Json.Nodes.JsonArray d, System.Text.Json.Nodes.JsonArray c)
+        => Kor.Operations.NetworkOps.Service.Rack.UniFiApi.Project(d, c, 1_790_999_999).ToJsonString();
+
     [Fact]
     public void The_usual_person_is_the_one_most_often_signed_in()
     {

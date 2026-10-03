@@ -27,7 +27,9 @@ namespace Kor.Operations.NetworkOps.Core.Network;
 /// </summary>
 public static class NetworkMaps
 {
-    public static NetworkMap Build(UniFiSite site, IReadOnlyList<FleetPc> fleet, IReadOnlyList<DhcpLease> leases, KnownNames known)
+    /// <param name="live">The controller's LIVE API read (ports up now, clients connected now), when it could be read: rule 6.
+    /// Without it the map is the database's -- who was last on each port -- and says nothing about now.</param>
+    public static NetworkMap Build(UniFiSite site, IReadOnlyList<FleetPc> fleet, IReadOnlyList<DhcpLease> leases, KnownNames known, UniFiLive? live = null)
     {
         var devices = site.Devices.ToDictionary(d => d.Mac, StringComparer.Ordinal);
         var clients = site.Clients.GroupBy(c => c.Mac).ToDictionary(g => g.Key, g => g.OrderByDescending(c => c.LastSeen).First(), StringComparer.Ordinal);
@@ -35,13 +37,23 @@ public static class NetworkMaps
         foreach (var pc in fleet) foreach (var m in pc.Macs) pcByMac.TryAdd(Mac(m), pc);
         var leaseByMac = leases.GroupBy(l => Mac(l.Mac)).ToDictionary(g => g.Key, g => g.OrderByDescending(l => l.State == "Active").First(), StringComparer.Ordinal);
 
+        // 6 LIVE: who is connected NOW and where, which ports are up NOW -- the controller's own live word, the strongest
+        // there is. It decides a port's occupant over the database's history (2026-10-02: 70 of 70 live positions matched
+        // the database; what it adds is "now": KOR-1001 was on the VPN, its port's record was three days old).
+        var liveClients = (live?.Clients ?? []).GroupBy(c => c.Mac).ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
+        var livePorts = (live?.Devices ?? []).SelectMany(d => d.Ports.Select(p => (d.Mac, P: p))).GroupBy(x => (x.Mac, x.P.Port)).ToDictionary(g => g.Key, g => g.First().P);
+        var liveUp = (live?.Devices ?? []).ToDictionary(d => d.Mac, d => d.State == 1, StringComparer.Ordinal);
+        var liveAt = liveClients.Values.Where(c => c.Wired && c.SwMac is not null && c.SwPort is not null)
+            .GroupBy(c => (c.SwMac!, c.SwPort!.Value)).ToDictionary(g => g.Key, g => g.ToList());
+
         NetEndpoint Describe(string mac, string? ip, long seen)
         {
             pcByMac.TryGetValue(mac, out var pc);
             devices.TryGetValue(mac, out var dev);
             clients.TryGetValue(mac, out var cl);
             leaseByMac.TryGetValue(mac, out var lease);
-            ip = ip is { Length: > 0 } ? ip : cl?.Ip is { Length: > 0 } cip ? cip : dev?.Ip is { Length: > 0 } dip ? dip : lease?.Ip;
+            liveClients.TryGetValue(mac, out var lc);
+            ip = ip is { Length: > 0 } ? ip : lc?.Ip is { Length: > 0 } lip ? lip : cl?.Ip is { Length: > 0 } cip ? cip : dev?.Ip is { Length: > 0 } dip ? dip : lease?.Ip;
             var maker = EdgeSwitchRules.MakerOf(mac) ?? (cl?.Maker is { Length: > 0 } mk ? mk : null);
             var (name, source) =
                 pc is not null ? (pc.Name, "NetworkOps agent")
@@ -50,10 +62,12 @@ public static class NetworkMaps
                 : lease?.HostName is { Length: > 0 } hn ? (Short(hn), "DHCP")
                 : known.ByMac.TryGetValue(mac, out var km) ? (km, "APP01")   // its ARP table + reverse DNS (the firewall, by being the gateway)
                 : cl?.Hostname is { Length: > 0 } ch ? (ch, "UniFi client")
+                : lc?.Hostname is { Length: > 0 } lh ? (lh, "UniFi client")
                 : maker is not null ? ($"{maker} device", "maker")
                 : (mac, "MAC only");
             return new NetEndpoint(mac, name, source, ip, pc?.Name, pc?.User, pc?.UserSource, maker,
-                seen > 0 ? DateTimeOffset.FromUnixTimeSeconds(seen).UtcDateTime : null, lease?.State, dev?.Kind);
+                seen > 0 ? DateTimeOffset.FromUnixTimeSeconds(seen).UtcDateTime : null, lease?.State, dev?.Kind,
+                ConnectedNow: live is null ? null : lc is not null || (liveUp.TryGetValue(mac, out var up) && up));
         }
 
         // 1 TREE: parent first, from the root (the core switch, or any device whose parent the controller does not manage).
@@ -77,6 +91,8 @@ public static class NetworkMaps
         bool IsUplink(UniFiDev s, UniFiPort p) => s.Uplink?.LocalPort == p.Port || (p.LastMac is not null && s.Uplink?.Mac == p.LastMac);
         var claims = switches.SelectMany(s => s.PortTable.Where(p => p.LastMac is not null && !IsUplink(s, p)).Select(p => (Sw: s.Mac, p.Port, Mac: p.LastMac!, p.ConnectedAt)))
             .GroupBy(c => c.Mac).ToDictionary(g => g.Key, g => g.OrderByDescending(c => c.ConnectedAt).First(), StringComparer.Ordinal);
+        // A device connected now is where the live read says, whatever a port's history says (rule 6 over rule 3).
+        foreach (var lc in liveAt.Values.SelectMany(x => x)) claims[lc.Mac] = (lc.SwMac!, lc.SwPort!.Value, lc.Mac, long.MaxValue);
         var placed = new HashSet<string>(StringComparer.Ordinal);
         var portsBySwitch = new Dictionary<string, List<NetPort>>(StringComparer.Ordinal);
         // Where each UniFi device hangs is the tree's fact (rule 1), stronger than a port's last-seen: that port is a link,
@@ -105,6 +121,29 @@ public static class NetworkMaps
                         displaced.Add(Describe(other, p.LastIp, p.ConnectedAt) with { SeenIsConnected = true });
                     }
                 }
+                else if (liveAt.TryGetValue((s.Mac, p.Port), out var here) && here.Count > 1 && p.LastMac is { } box && !liveClients.ContainsKey(box)
+                         && claims.TryGetValue(box, out var bw) && bw.Sw == s.Mac && bw.Port == p.Port)
+                {
+                    // Several live devices on one port, and the switch's own last device there is not live anywhere: that is the
+                    // box they are behind (ESXi host .16 on SW01 port 49, its VMs live behind it). The box stays; they are also seen.
+                    mac = box; ip = p.LastIp; seen = p.ConnectedAt; connected = true;
+                    foreach (var o in here) { placed.Add(o.Mac); displaced.Add(Describe(o.Mac, o.Ip, 0)); }
+                }
+                else if (liveAt.TryGetValue((s.Mac, p.Port), out here))
+                {
+                    // Connected here now. More than one is a hub or unmanaged switch behind the port: a fleet PC first, the rest also seen.
+                    // Who is "on" it: a fleet PC; else the switch's own last device there (the box -- ESXi .16's own address is
+                    // live too, behind it its VMs); else the longest connected.
+                    var first = here.OrderBy(c => pcByMac.ContainsKey(c.Mac) ? 0 : c.Mac == p.LastMac ? 1 : 2).ThenByDescending(c => c.Uptime).First();
+                    mac = first.Mac; ip = first.Ip; connected = true;
+                    seen = first.Uptime is { } up && live!.Now > up ? live.Now - up : 0;
+                    foreach (var o in here.Where(c => c.Mac != first.Mac)) { placed.Add(o.Mac); displaced.Add(Describe(o.Mac, o.Ip, 0)); }
+                    if (p.LastMac is { } other && other != first.Mac && !liveClients.ContainsKey(other) && claims.TryGetValue(other, out var w) && w.Sw == s.Mac && w.Port == p.Port)
+                    {
+                        placed.Add(other);
+                        displaced.Add(Describe(other, p.LastIp, p.ConnectedAt) with { SeenIsConnected = true });
+                    }
+                }
                 else if (p.LastMac is { } lm && claims.TryGetValue(lm, out var won) && won.Sw == s.Mac && won.Port == p.Port) { mac = lm; ip = p.LastIp; seen = p.ConnectedAt; connected = true; }
                 else if (p.LastMac is null)
                 {
@@ -117,7 +156,12 @@ public static class NetworkMaps
                     : mac is null ? "empty"
                     : "device";
                 if (mac is not null && kind != "uplink") placed.Add(mac);
-                ports.Add(new NetPort(p.Port, p.Speed, p.Poe, kind, mac is null ? null : Describe(mac, ip, seen) with { SeenIsConnected = connected }, displaced));
+                livePorts.TryGetValue((s.Mac, p.Port), out var lp);
+                var on = mac is null ? null : Describe(mac, ip, seen) with { SeenIsConnected = connected };
+                // What is plugged into a port that is up IS connected now; into one that is down, is not (the port's own live word).
+                if (on is not null && kind == "device" && lp is not null) on = on with { ConnectedNow = lp.Up };
+                ports.Add(new NetPort(p.Port, p.Speed, p.Poe, kind, on, displaced,
+                    Up: lp?.Up, SpeedNow: lp is { Up: true } ? lp.Speed : null, Module: lp?.Sfp, PoeWatts: lp?.PoeW is > 0 ? lp.PoeW : null));
             }
             portsBySwitch[s.Mac] = ports;
         }
@@ -133,7 +177,14 @@ public static class NetworkMaps
         foreach (var c in clients.Values.OrderBy(c => c.Mac, StringComparer.Ordinal))
         {
             if (placed.Contains(c.Mac) || tree.Contains(c.Mac)) continue;
-            if (!c.Wired) { wireless.Add((Describe(c.Mac, c.Ip, c.LastSeen) with { Via = ViaName(c) }, c.UplinkMac)); continue; }
+            if (!c.Wired)
+            {
+                // On an access point now, if the live read says so; else the one the controller last recorded.
+                var apMac = liveClients.TryGetValue(c.Mac, out var lw) && lw.ApMac is { } la ? la : c.UplinkMac;
+                var via = apMac is not null && devices.TryGetValue(apMac, out var apDev) ? apDev.Label : ViaName(c);
+                wireless.Add((Describe(c.Mac, c.Ip, c.LastSeen) with { Via = via }, apMac));
+                continue;
+            }
             if (c.UplinkMac is { } up && c.Port is { } port && portsBySwitch.TryGetValue(up, out var ports) && ports.FindIndex(x => x.Number == port) is var i and >= 0)
                 ports[i] = ports[i] with { AlsoSeen = [.. ports[i].AlsoSeen, Describe(c.Mac, c.Ip, c.LastSeen)] };
             else unplaced.Add(Describe(c.Mac, c.Ip, c.LastSeen) with { Via = ViaName(c) });
@@ -147,7 +198,8 @@ public static class NetworkMaps
             .Select(d => new NetAccessPoint(d.Mac, d.Label, d.Model, d.Ip, wireless.Where(w => w.ApMac == d.Mac).Select(w => w.E).OrderBy(w => w.Name, StringComparer.OrdinalIgnoreCase).ToList()))
             .ToList();
         return new NetworkMap(DateTimeOffset.FromUnixTimeSeconds(site.Now).UtcDateTime, list, aps,
-            wireless.Where(w => !aps.Any(a => a.Mac == w.ApMac)).Select(w => w.E).ToList(), unplaced);
+            wireless.Where(w => !aps.Any(a => a.Mac == w.ApMac)).Select(w => w.E).ToList(), unplaced)
+        { LiveUtc = live is null ? null : DateTimeOffset.FromUnixTimeSeconds(live.Now).UtcDateTime };
     }
 
     /// <summary>aa-BB-cc... / AA:BB:... -> aa:bb:...: the one spelling every source is compared in.</summary>
@@ -173,6 +225,9 @@ public sealed record DhcpLease(string Ip, string Mac, string? HostName, string S
 public sealed record NetworkMap(DateTime ReadUtc, IReadOnlyList<NetSwitch> Switches, IReadOnlyList<NetAccessPoint> AccessPoints,
     IReadOnlyList<NetEndpoint> OtherWireless, IReadOnlyList<NetEndpoint> Unplaced)
 {
+    /// <summary>When the controller's live API was read for this map; null = the database only (no "now" in it).</summary>
+    public DateTime? LiveUtc { get; init; }
+
     /// <summary>Every endpoint once, where it is (rule 3): occupants, also-seen, wireless, unplaced. The ONE walk -- the store's
     /// rows, the documentation and the gate all read this.</summary>
     public IEnumerable<NetPlacement> Everything()
@@ -219,7 +274,12 @@ public sealed record NetSwitch(string Mac, string Name, string Model, string? Ip
 
 /// <param name="Kind">device | link (a UniFi device hangs here) | uplink (toward the parent) | empty</param>
 /// <param name="AlsoSeen">Other clients the controller recorded on this port: the desk's history, or devices beyond a link.</param>
-public sealed record NetPort(int Number, int SpeedMbps, bool Poe, string Kind, NetEndpoint? On, IReadOnlyList<NetEndpoint> AlsoSeen);
+/// <param name="Up">The port's link NOW (live read); null when there was no live read.</param>
+/// <param name="SpeedNow">Its link speed now, in Mb/s, when up.</param>
+/// <param name="Module">What is in an SFP cage ("SFP-H10GB-CU1M" = a 1 m 10G DAC), from the live read.</param>
+/// <param name="PoeWatts">Power it is giving a phone / access point now.</param>
+public sealed record NetPort(int Number, int SpeedMbps, bool Poe, string Kind, NetEndpoint? On, IReadOnlyList<NetEndpoint> AlsoSeen,
+    bool? Up = null, int? SpeedNow = null, string? Module = null, double? PoeWatts = null);
 
 public sealed record NetAccessPoint(string Mac, string Name, string Model, string? Ip, IReadOnlyList<NetEndpoint> Clients);
 
@@ -230,8 +290,10 @@ public sealed record NetAccessPoint(string Mac, string Name, string Model, strin
 /// <param name="Via">Wireless or unplaced: the access point or uplink the controller named.</param>
 /// <param name="SeenIsConnected">SeenUtc is when the SWITCH saw it connect (connected since), not when the controller last
 /// recorded it: ESXi host .16's link on BMZ-SW01 port 49 read "seen 2024-09-26" -- up since then, not gone since then.</param>
+/// <param name="ConnectedNow">On the network NOW by the controller's live read; null when there was no live read -- never
+/// guessed from a date.</param>
 public sealed record NetEndpoint(string Mac, string Name, string NameSource, string? Ip, string? Pc, string? User, string? UserSource,
-    string? Maker, DateTime? SeenUtc, string? Lease, string? UniFiKind, string? Via = null, bool SeenIsConnected = false);
+    string? Maker, DateTime? SeenUtc, string? Lease, string? UniFiKind, string? Via = null, bool SeenIsConnected = false, bool? ConnectedNow = null);
 
 // ---- the controller's read (kor-unifi-status, 2026-10-02 shape) ----
 
@@ -274,3 +336,39 @@ public sealed record UniFiUplink(string? Mac, int? Port, int? LocalPort);
 public sealed record UniFiPort(int Port, int Speed, bool Poe, string? LastMac, string? LastIp, long ConnectedAt);
 
 public sealed record UniFiClient(string Mac, string Hostname, string Ip, bool Wired, string? UplinkMac, string UplinkName, int? Port, long LastSeen, string Maker);
+
+// ---- the controller's LIVE API read (Service/Rack/UniFiApi: stat/device + stat/sta, projected to these fields) ----
+
+/// <summary>What the controller knows NOW: every device's state and ports, every client connected.</summary>
+public sealed record UniFiLive(long Now, IReadOnlyList<LiveDevice> Devices, IReadOnlyList<LiveClient> Clients)
+{
+    public static UniFiLive Parse(string json)
+    {
+        using var doc = JsonDocument.Parse(json);
+        var r = doc.RootElement;
+        static string? S(JsonElement e, string p) => e.TryGetProperty(p, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() : null;
+        static long? L(JsonElement e, string p) => e.TryGetProperty(p, out var v) && v.ValueKind == JsonValueKind.Number ? v.GetInt64() : null;
+        static double? D(JsonElement e, string p) => e.TryGetProperty(p, out var v) ? v.ValueKind switch
+        {
+            JsonValueKind.Number => v.GetDouble(),
+            JsonValueKind.String when double.TryParse(v.GetString(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var x) => x,
+            _ => null,
+        } : null;
+        static bool B(JsonElement e, string p) => e.TryGetProperty(p, out var v) && v.ValueKind == JsonValueKind.True;
+        static IEnumerable<JsonElement> A(JsonElement e, string p) => e.TryGetProperty(p, out var v) && v.ValueKind == JsonValueKind.Array ? v.EnumerateArray() : [];
+
+        var devices = A(r, "devices").Select(d => new LiveDevice(NetworkMaps.Mac(S(d, "mac")), S(d, "name") ?? "", (int)(L(d, "state") ?? 0),
+            A(d, "ports").Select(p => new LivePort((int)(L(p, "port") ?? 0), B(p, "up"), (int)(L(p, "speed") ?? 0), D(p, "poeW"), S(p, "media"), S(p, "sfp"))).ToList())).ToList();
+        var clients = A(r, "clients").Select(c => new LiveClient(NetworkMaps.Mac(S(c, "mac")), S(c, "ip"), S(c, "hostname") ?? S(c, "name"), B(c, "wired"),
+            S(c, "swMac") is { } sw ? NetworkMaps.Mac(sw) : null, (int?)L(c, "swPort"), S(c, "apMac") is { } ap ? NetworkMaps.Mac(ap) : null, L(c, "uptime"))).ToList();
+        return new UniFiLive(L(r, "now") ?? 0, devices, clients);
+    }
+}
+
+/// <param name="State">The controller's state: 1 = connected.</param>
+public sealed record LiveDevice(string Mac, string Name, int State, IReadOnlyList<LivePort> Ports);
+
+public sealed record LivePort(int Port, bool Up, int Speed, double? PoeW, string? Media, string? Sfp);
+
+/// <param name="Uptime">Seconds it has been connected.</param>
+public sealed record LiveClient(string Mac, string? Ip, string? Hostname, bool Wired, string? SwMac, int? SwPort, string? ApMac, long? Uptime);

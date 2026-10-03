@@ -126,6 +126,18 @@ internal sealed class RackCollector(IOptions<NetworkOpsOptions> options, PowerSt
         if (exit != 0 || json.Length == 0) throw new InvalidOperationException("UniFi status command failed: " + err.Trim());
         var result = UniFiRules.Evaluate(json);
         map?.SetUniFi(json);   // the same read builds the port map after the sweep (Network/NetworkMapService)
+        // The live API: ports up now, clients connected now. A failure leaves the map on the database read and says why.
+        if (map is not null)
+        {
+            if (!o.UniFiApiEnabled) map.SetLive(null, "the UniFi live API is not set up (KOR_NETWORKOPS_UNIFIAPIUSER / _UNIFIAPIPASSWORD)");
+            else if (string.IsNullOrWhiteSpace(d.CertSha256)) map.SetLive(null, "no CertSha256 pinned for the UniFi API");
+            else
+            {
+                try { map.SetLive(await UniFiApi.ReadLiveAsync(d.Address, o.UniFiApiPort, o.UniFiSite, o.UniFiApiUser, o.UniFiApiPassword, d.CertSha256, ct).ConfigureAwait(false), null); }
+                catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException or TaskCanceledException or System.Text.Json.JsonException)
+                { map.SetLive(null, "the UniFi live API could not be read: " + ex.Message); }
+            }
+        }
         return result;
     }
 

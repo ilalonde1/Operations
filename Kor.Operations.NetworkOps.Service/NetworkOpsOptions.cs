@@ -131,6 +131,15 @@ public sealed class NetworkOpsOptions
     /// <summary>Key for `netops@KOR-UNIFI01`, whose only permitted command prints the UniFi status (KOR_NETWORKOPS_UNIFISTATUSKEYPATH).</summary>
     public string UniFiStatusKeyPath { get; set; } = "";
 
+    /// <summary>The UniFi controller's LIVE API (Rack/UniFiApi): a VIEW-ONLY local account, from KOR_NETWORKOPS_UNIFIAPIUSER /
+    /// _UNIFIAPIPASSWORD machine variables. Off (database read only, no "connected now") until both are set.</summary>
+    public string UniFiApiUser { get; set; } = "";
+    public string UniFiApiPassword { get; set; } = "";
+    public int UniFiApiPort { get; set; } = 11443;
+    /// <summary>The UniFi site's internal name (the KOR Structural site).</summary>
+    public string UniFiSite { get; set; } = "8evrvfqv";
+    public bool UniFiApiEnabled => UniFiApiUser.Length > 0 && UniFiApiPassword.Length > 0;
+
     /// <summary>The DHCP server whose leases name devices on the port map (Probes/dhcp-leases.ps1 runs there).</summary>
     public string DhcpServer { get; set; } = "KOR-DC01";
 

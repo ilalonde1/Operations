@@ -38,6 +38,12 @@ internal sealed class NetworkMapService(NetworkOpsStore store, MacDirectory macs
     /// <summary>The controller's read, as RackCollector got it.</summary>
     public void SetUniFi(string json) => _unifiJson = json;
 
+    private string? _liveJson;
+    private string? _liveProblem;
+
+    /// <summary>The controller's live API read (Rack/UniFiApi), or null and why not: the map then has no "now" in it.</summary>
+    public void SetLive(string? json, string? problem) { _liveJson = json; _liveProblem = problem; }
+
     public async Task<string> RefreshAsync(CancellationToken ct)
     {
         if (_unifiJson is not { } json) return "port map: no UniFi read yet";
@@ -62,7 +68,14 @@ internal sealed class NetworkMapService(NetworkOpsStore store, MacDirectory macs
                     byMac[mac] = System.Text.RegularExpressions.Regex.Replace(l, @"\s*\(\d{1,3}(\.\d{1,3}){3}\)$", "");   // the IP is its own column
             var byIp = options.Value.Rack.Where(r => IPAddress.TryParse(r.Address, out _)).GroupBy(r => r.Address).ToDictionary(g => g.Key, g => g.First().Name, StringComparer.Ordinal);
 
-            var map = NetworkMaps.Build(site, _fleet, _leases, new KnownNames(byMac, byIp));
+            UniFiLive? live = null;
+            if (_liveJson is { } lj)
+            {
+                try { live = UniFiLive.Parse(lj); }
+                catch (JsonException ex) { notes.Add("the UniFi live read could not be parsed: " + ex.Message); }
+            }
+            else if (_liveProblem is { } why) notes.Add(why + " -- no \"connected now\" in this map");
+            var map = NetworkMaps.Build(site, _fleet, _leases, new KnownNames(byMac, byIp), live);
             Current = map;
             BuiltUtc = now;
             Notes = notes;
