@@ -114,7 +114,8 @@ public sealed class NetworkOpsWindowsRenderTests
         written += Render(new NetworkOpsDeviceWindow(device), Path.Combine(dir, $"{label}-pc-{worst.Name}.png"));
         if (label != "fixture") return written;
         // The Network window on the real map of 2026-10-02: BMZ-SW01's ports, then a search for one person.
-        var network = new NetworkOpsNetworkWindow(NetworkOpsNetworkWindowTests.RealMap());
+        written += Render(new NetworkOpsNetworkWindow(NetworkOpsNetworkWindowTests.LiveMap()), Path.Combine(dir, $"{label}-network-switches.png"));
+        var network = new NetworkOpsNetworkWindow(NetworkOpsNetworkWindowTests.LiveMap(), table: true);
         written += Render(network, Path.Combine(dir, $"{label}-network.png"));
         network.SearchBox.Text = "SW02";
         written += Render(network, Path.Combine(dir, $"{label}-network-search.png"));

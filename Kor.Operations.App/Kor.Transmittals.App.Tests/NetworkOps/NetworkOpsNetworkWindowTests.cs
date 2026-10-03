@@ -29,14 +29,20 @@ public sealed class NetworkOpsNetworkWindowTests
 
     private sealed record FleetRow(string Name, List<string> Macs, string? LastUser);
 
-    internal static NetworkMapResponse RealMap()
+    internal static NetworkMapResponse RealMap() => Build(live: false);
+
+    /// <summary>The same evening's map with the controller's LIVE read: ports up now, devices connected now.</summary>
+    internal static NetworkMapResponse LiveMap() => Build(live: true);
+
+    private static NetworkMapResponse Build(bool live)
     {
         var web = new JsonSerializerOptions(JsonSerializerDefaults.Web);
         var fleet = JsonSerializer.Deserialize<List<FleetRow>>(Fx("fleet-2026-10-02.json"), web)!
             .Select(f => new FleetPc(f.Name, f.Macs, f.LastUser is { Length: > 0 } u ? u : null, f.LastUser is { Length: > 0 } ? "usual" : null)).ToList();
         var leases = JsonSerializer.Deserialize<List<DhcpLease>>(Fx("dhcp-2026-10-02.json"), web)!;
         var map = NetworkMaps.Build(UniFiSite.Parse(Fx("unifi-2026-10-02.json")), fleet, leases,
-            new KnownNames(new Dictionary<string, string> { ["74:ac:b9:aa:84:a3"] = "Core switch" }, new Dictionary<string, string> { ["192.168.1.16"] = "ESXi host .16" }));
+            new KnownNames(new Dictionary<string, string> { ["74:ac:b9:aa:84:a3"] = "Core switch" }, new Dictionary<string, string> { ["192.168.1.16"] = "ESXi host .16" }),
+            live ? UniFiLive.Parse(Fx("unifi-live-2026-10-02.json")) : null);
         return new NetworkMapResponse(new DateTime(2026, 10, 3, 4, 25, 0, DateTimeKind.Utc), [], map);
     }
 
@@ -66,6 +72,31 @@ public sealed class NetworkOpsNetworkWindowTests
         Assert.StartsWith("↑ Core switch", sw01.Single(r => r.Port == 50).Device);
         Assert.Equal("ESXi host .16", sw01.Single(r => r.Port == 49).Device);
         Assert.Equal("—", sw01.Single(r => r.Port == 10).Device);                                // empty, said so
+    }
+
+    // Ian, 2026-10-02: "shows me the switches in small cards as ports with important info displayed and it's clickable which
+    // brings you to the device page".
+    [Fact]
+    public void Each_switch_is_a_panel_of_every_port_and_a_tile_knows_where_it_leads()
+    {
+        var panels = new NetworkOpsNetworkModel(LiveMap()).Panels;
+        Assert.Equal(10, panels.Count);
+        var sw01 = panels.Single(p => p.Mac == "74:83:c2:13:f1:c2");
+        Assert.Equal(Enumerable.Range(1, 52), sw01.Ports.Select(c => c.Number));
+        var p2 = sw01.Ports.Single(c => c.Number == 2);
+        Assert.Equal(("KOR-205", "on", "KOR-205"), (p2.Title, p2.State, p2.OpenName));            // a PC: opens its page
+        var p5 = sw01.Ports.Single(c => c.Number == 5);
+        Assert.Equal(("KOR-1001", "off"), (p5.Title, p5.State));                                   // on the VPN that evening
+        var p4 = sw01.Ports.Single(c => c.Number == 4);
+        Assert.Equal(("link", "74:ac:b9:a4:fc:fc"), (p4.State, p4.GoToSwitch));                    // a link: goes to Flex Mini - Kate
+        var p49 = sw01.Ports.Single(c => c.Number == 49);
+        Assert.Equal(("ESXi host .16", "10G"), (p49.OpenName, p49.Speed));                          // a rack device: its page
+        Assert.Contains("Module: SFP-H10GB-CU1M", p49.Tip);
+        Assert.True(sw01.Ports.Single(c => c.Number == 10).IsEmpty);
+        Assert.Contains("ports up", sw01.Sub);
+
+        var noLive = new NetworkOpsNetworkModel(RealMap()).Panels.Single(p => p.Mac == "74:83:c2:13:f1:c2").Ports.Single(c => c.Number == 2);
+        Assert.Equal("known", noLive.State);                                                       // no live read: no claim about now
     }
 
     [Fact]
