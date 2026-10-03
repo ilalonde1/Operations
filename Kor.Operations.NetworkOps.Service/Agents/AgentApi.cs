@@ -128,7 +128,7 @@ internal static class AgentApi
 
         // A PC outside the domain, before it has a key (AgentEnrolment; the agent side is Agent/Enrol.cs).
         agent.MapGet("/package", () => Results.File(AgentEnrolment.PackageZip(), "application/zip", "kor-agent.zip"));
-        agent.MapPost("/enrol", async (EnrolBody body, HttpContext h, AgentEnrolment enrolment, NetworkOpsStore store, AgentHub hub, ILoggerFactory logs, CancellationToken ct) =>
+        agent.MapPost("/enrol", async (EnrolBody body, HttpContext h, AgentEnrolment enrolment, NetworkOpsStore store, AgentHub hub, Microsoft.Extensions.Options.IOptions<NetworkOpsOptions> opts, ILoggerFactory logs, CancellationToken ct) =>
         {
             var log = logs.CreateLogger("Kor.Operations.NetworkOps.Agents.Enrol");
             var from = h.Connection.RemoteIpAddress?.ToString() ?? "?";
@@ -143,8 +143,19 @@ internal static class AgentApi
             await store.SaveAgentAsync(hit.DeviceId, hash, AgentInstaller.PackageVersionOrNull() ?? "unknown", $"enrolled with a code from {hit.By}", ct).ConfigureAwait(false);
             hub.Revoke(body.Device, Convert.ToHexString(hash));   // from here only this key is accepted for the PC
             await store.AddNoteAsync(hit.DeviceId, "NetworkOps", $"Agent enrolled from {from} with a one-time code issued by {hit.By}.", ct).ConfigureAwait(false);
-            log.LogInformation("Agent enrolled: {Device} from {Address}, code issued by {By}", body.Device, from, hit.By);
-            return Results.Ok(new { key });
+            // One enrolment, both agents: hand back the filled remote-control (MeshCentral) install script so the PC, which
+            // is elevated during --enrol, installs it too and appears in KOR Remote -- no second step, no silo. The PC is
+            // not in the domain, so it could not be reached to install Mesh any other way. Best-effort: if remote control is
+            // not configured, the monitoring agent still enrols.
+            string? mesh = null;
+            var o = opts.Value;
+            if (o.MeshEnabled)
+            {
+                try { mesh = Mesh.MeshInstaller.Script(o, server: false); }
+                catch (Exception ex) when (ex is InvalidOperationException) { log.LogWarning("Enrolment {Device}: remote-control script not included: {Reason}", body.Device, ex.Message); }
+            }
+            log.LogInformation("Agent enrolled: {Device} from {Address}, code issued by {By}{Mesh}", body.Device, from, hit.By, mesh is null ? "" : " (+ remote control)");
+            return Results.Ok(new { key, mesh });
         }).WithMetadata(new Microsoft.AspNetCore.Mvc.RequestSizeLimitAttribute(4096));
 
         agent.MapPost("/poll", async (AgentPoll body, HttpContext h, IAgentDirectory store, AgentHub hub, ILoggerFactory logs, CancellationToken ct) =>

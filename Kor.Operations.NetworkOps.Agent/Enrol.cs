@@ -20,6 +20,9 @@ internal sealed class EnrolRequest
 internal sealed class EnrolAnswer
 {
     [DataMember(Name = "key")] public string Key = "";
+    // The filled remote-control (MeshCentral) install script, when APP01 has remote control configured: this PC installs
+    // it too, in the same elevated --enrol run, so one command sets up both agents. Empty from an older server.
+    [DataMember(Name = "mesh")] public string Mesh = "";
 }
 
 /// <summary>
@@ -46,9 +49,10 @@ internal static class Enrol
         }
 
         Console.WriteLine($"Enrolling {s.Device} with NetworkOps at {s.ServerUrl} ...");
-        string key;
-        try { key = TradeCodeForKey(s, code.Trim()); }
+        EnrolAnswer answer;
+        try { answer = TradeCodeForKey(s, code.Trim()); }
         catch (Exception ex) { Console.Error.WriteLine("Not enrolled: " + ex.Message); return 1; }
+        var key = answer.Key;
 
         var from = AppDomain.CurrentDomain.BaseDirectory;
         Sc($"stop {Program.ServiceName}", allowFail: true);
@@ -72,10 +76,33 @@ internal static class Enrol
         Sc($"description {Program.ServiceName} \"{Description}\"", allowFail: true);
         Sc($"start {Program.ServiceName}");
         Console.WriteLine($"Enrolled. The agent is running; {s.Device} appears in NetworkOps within a minute.");
+
+        // Both agents in the one run: install remote control too, elevated as we are now, so the PC also appears in KOR
+        // Remote. Best-effort -- a failure here does not undo the monitoring enrolment above.
+        if (!string.IsNullOrEmpty(answer.Mesh))
+        {
+            Console.WriteLine("Installing remote control (KOR Remote) ...");
+            try
+            {
+                var enc = Convert.ToBase64String(System.Text.Encoding.Unicode.GetBytes(answer.Mesh));
+                using var p = Process.Start(new ProcessStartInfo("powershell.exe", $"-NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand {enc}")
+                    { UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true, RedirectStandardError = true })!;
+                p.StandardOutput.ReadToEnd();
+                p.StandardError.ReadToEnd();
+                p.WaitForExit();
+                Console.WriteLine(p.ExitCode == 0
+                    ? "Remote control installed; the PC appears in KOR Remote shortly."
+                    : $"Remote control install returned {p.ExitCode} -- the monitoring agent is still enrolled; install it from the Command Center later.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Remote control install could not run: " + ex.Message + " -- the monitoring agent is still enrolled.");
+            }
+        }
         return 0;
     }
 
-    private static string TradeCodeForKey(AgentSettings s, string code)
+    private static EnrolAnswer TradeCodeForKey(AgentSettings s, string code)
     {
         ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
         using var handler = new HttpClientHandler
@@ -92,7 +119,7 @@ internal static class Enrol
                 : $"APP01 answered {(int)response.StatusCode} {response.ReasonPhrase}");
         var answer = Json.Read<EnrolAnswer>(response.Content.ReadAsByteArrayAsync().GetAwaiter().GetResult());
         if (answer is null || answer.Key.Length < 20) throw new InvalidOperationException("APP01 sent no key");
-        return answer.Key;
+        return answer;
     }
 
     private static int Sc(string args, bool allowFail = false)
