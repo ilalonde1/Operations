@@ -305,4 +305,64 @@
             </Setter.Value>
         </Setter>
     </Style>
+
+    <!-- KOR Remote viewer (KorRemoteViewerWindow): its dark title strip, ScreenConnect-style. -->
+    <!-- A toolbar icon: Segoe Fluent glyph, light on dark, a soft square on hover. Clickable inside the window's own title bar. -->
+    <Style x:Key="Ops.RemoteTool" TargetType="Button">
+        <Setter Property="WindowChrome.IsHitTestVisibleInChrome" Value="True"/>
+        <Setter Property="Foreground" Value="#F3F4F6"/>
+        <Setter Property="FontFamily" Value="Segoe Fluent Icons, Segoe MDL2 Assets"/>
+        <Setter Property="FontSize" Value="19"/>
+        <Setter Property="Width" Value="44"/>
+        <Setter Property="Height" Value="38"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Bg" Background="Transparent" CornerRadius="5" Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bg" Property="Background" Value="#33FFFFFF"/>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Bg" Property="Background" Value="#55FFFFFF"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.35"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+    <!-- Minimise / maximise / close: the window's own buttons, drawn by the window because the title bar is its own. -->
+    <Style x:Key="Ops.RemoteCaption" TargetType="Button" BasedOn="{StaticResource Ops.RemoteTool}">
+        <Setter Property="FontSize" Value="11"/>
+        <Setter Property="Width" Value="46"/>
+        <Setter Property="Height" Value="44"/>
+        <Setter Property="Foreground" Value="#D1D5DB"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Bg" Background="Transparent" Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bg" Property="Background" Value="#22FFFFFF"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+    <!-- "More" in the strip: a caption button with words. -->
+    <Style x:Key="Ops.RemoteMore" TargetType="Button" BasedOn="{StaticResource Ops.RemoteCaption}">
+        <Setter Property="FontFamily" Value="Mulish, Segoe UI"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Width" Value="Auto"/>
+        <Setter Property="Padding" Value="12,0"/>
+    </Style>
 </ResourceDictionary>

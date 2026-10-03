@@ -332,5 +332,9 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Resource>
   </ItemGroup>
+  <ItemGroup>
+    <!-- The script the KOR Remote viewer puts into MeshCentral's page (NetworkOps/KorRemoteBridge.cs). -->
+    <EmbeddedResource Include="NetworkOps\KorRemoteBridge.js" LogicalName="KorRemoteBridge.js" />
+  </ItemGroup>
 </Project>
 

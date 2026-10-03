@@ -22,4 +22,17 @@ public static class MeshLinks
         if (!Regex.IsMatch(id, "^[A-Za-z0-9@$]+$")) return null;   // not a MeshCentral id: no link beats a broken one
         return $"{baseUrl.TrimEnd('/')}/?gotonode={id}&viewmode={viewMode}";
     }
+
+    /// <summary>
+    /// The app's own remote-control window (KorRemoteViewerWindow): the desktop page with MeshCentral's header (1), top bar
+    /// (2), footer (4) and panel titles (8) hidden -- MeshCentral 1.2.5 default.handlebars, adjustPanels(). 16 (the left bar)
+    /// is commented out in 1.2.5; the page's own full-screen mode hides that, and the bridge turns it on.
+    /// </summary>
+    public const int ViewerHide = 1 | 2 | 4 | 8;
+
+    /// <summary>The page is a device link (signing in lands on MeshCentral's home page instead; the viewer sends it back).</summary>
+    public static bool IsDeviceLink(Uri? page) => page?.Query.Contains("gotonode=", StringComparison.Ordinal) == true;
+
+    public static string? ViewerUrl(string? baseUrl, string? meshNodeId)
+        => DeviceUrl(baseUrl, meshNodeId, viewMode: 11) is { } url ? $"{url}&hide={ViewerHide}" : null;
 }

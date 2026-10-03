@@ -78,6 +78,8 @@ public sealed class NetworkOpsDeviceViewModel : ObservableObject
     private bool Installable => !IsRack || _device.Kind == Kor.Operations.NetworkOps.Core.Rack.RackKinds.Server;
     public bool ShowsRemote => Installable || _device.MeshNodeId is not null;
     public string? ConnectUrl => NetworkOpsClient.ConnectUrl(_device.MeshNodeId);
+    /// <summary>The same device in the app's own viewer: MeshCentral's chrome hidden (MeshLinks.ViewerUrl).</summary>
+    public string? ViewerUrl => MeshLinks.ViewerUrl(NetworkOpsClient.MeshUrl, _device.MeshNodeId);
     public bool CanConnect => ShowsRemote && ConnectUrl is not null;
     public bool CanInstallRemote => Installable && _device.MeshNodeId is null && !_isFixing;
     public string RemoteLine => !ShowsRemote ? ""

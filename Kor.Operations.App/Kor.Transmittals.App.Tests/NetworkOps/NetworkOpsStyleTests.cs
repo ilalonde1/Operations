@@ -25,10 +25,10 @@ public sealed class NetworkOpsStyleTests
     private static string[] Windows() => Directory.GetFiles(Dir, "*Window.xaml");
 
     [Fact]
-    public void There_are_five_NetworkOps_windows_and_each_merges_the_styles()
+    public void There_are_six_NetworkOps_windows_and_each_merges_the_styles()
     {
         var windows = Windows();
-        Assert.Equal(5, windows.Length);   // the scan is looking at something; a new window must join it
+        Assert.Equal(6, windows.Length);   // the scan is looking at something; a new window must join it (6th: KOR Remote viewer, 2026-10-02)
         foreach (var w in windows)
             Assert.True(File.ReadAllText(w).Contains("component/NetworkOps/NetworkOpsStyles.xaml"), $"{Path.GetFileName(w)} does not merge NetworkOpsStyles.xaml");
     }

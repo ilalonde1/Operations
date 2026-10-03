@@ -113,6 +113,12 @@ public sealed class NetworkOpsWindowsRenderTests
         else device.SetLastCheck(NetworkOpsComponentTilesTests.Kor208NCheck());   // the "This PC" strip, from a real v10 check
         written += Render(new NetworkOpsDeviceWindow(device), Path.Combine(dir, $"{label}-pc-{worst.Name}.png"));
         if (label != "fixture") return written;
+        // The KOR Remote viewer, connected to a PC with two monitors showing the second (the page itself is not drawn here).
+        var viewer = new KorRemoteViewerModel(worst.Name, "kwurmlinger · active, idle 12 min");
+        viewer.Apply(new BridgeState("desktop", [], worst.Name, 3, [new("655406", "Ctrl-Alt-Del")],
+            [new(0, "All Displays", false), new(1, "Display 1", false), new(2, "Display 2", true)]));
+        written += Render(new KorRemoteViewerWindow(viewer) { Width = 1400, Height = 360 }, Path.Combine(dir, $"{label}-kor-remote-viewer.png"));
+
         // The failing drive's "About this part": the case with the most on it.
         if ((device.Components.FirstOrDefault(t => t.Part.Kind == "drive" && !t.Part.IsSystem) ?? device.Components.FirstOrDefault()) is { } part)
         {

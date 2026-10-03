@@ -36,6 +36,17 @@ public sealed class MeshLinksTests
     }
 
     [Fact]
+    public void The_viewer_link_is_the_desktop_link_with_MeshCentrals_chrome_hidden()
+    {
+        var url = MeshLinks.ViewerUrl("https://kor-mesh01.int.korstructural.com/", "node//6bM4@p1tjSNm6ZEW1LK3BGuWhckLeBspQj@x7t7ALpVrfF4anjtRH2s9NnEdPpDM")!;
+        var args = MeshCentralReads(url);
+        Assert.Equal("6bM4@p1tjSNm6ZEW1LK3BGuWhckLeBspQj@x7t7ALpVrfF4anjtRH2s9NnEdPpDM", args["gotonode"]);
+        Assert.Equal("11", args["viewmode"]);
+        Assert.Equal("15", args["hide"]);                // header, top bar, footer, titles
+        Assert.Null(MeshLinks.ViewerUrl("https://x/", "not an id!"));
+    }
+
+    [Fact]
     public void The_general_page_link_is_the_same_link_with_view_10()
         => Assert.Equal("10", MeshCentralReads(MeshLinks.DeviceUrl("https://x", "node//abc", viewMode: 10)!)["viewmode"]);
 

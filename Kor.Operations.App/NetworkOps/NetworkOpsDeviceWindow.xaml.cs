@@ -39,26 +39,39 @@ public partial class NetworkOpsDeviceWindow : Window
     private async void Fix_Click(object sender, RoutedEventArgs e)
     {
         if (_vm.SelectedFinding is not { } row) return;
-        await Run(async ct =>
-        {
-            var fixes = await _vm.FixesForSelectedAsync(ct).ConfigureAwait(true);
-            var dlg = new NetworkOpsFixWindow(row.Title, _vm.DeviceName, _vm.Device.Presence ?? "", _vm.SomeoneActive, fixes) { Owner = this };
-            if (dlg.ShowDialog() != true || dlg.Chosen is not { } fix) return;
-            var (refused, needsConfirmation) = await _vm.RunFixAsync(fix, dlg.Param, confirmed: false, ct).ConfigureAwait(true);
-            if (needsConfirmation && MessageBox.Show(this, $"{refused}\n\nRestart it anyway? They get a 5-minute warning on screen.", "Someone is using this PC",
-                    MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) == MessageBoxResult.Yes)
-                await _vm.RunFixAsync(fix, dlg.Param, confirmed: true, ct).ConfigureAwait(true);
-        }).ConfigureAwait(true);
+        await FixAsync(row, this).ConfigureAwait(true);
     }
 
-    /// <summary>Opens the machine's remote-control page in the KOR Remote app window (KOR Remote signs you in with its own MFA).</summary>
-    private void Connect_Click(object sender, RoutedEventArgs e)
+    /// <summary>The one fix flow, from this window's Fix button or the KOR Remote viewer's toolbar (<paramref name="from"/>
+    /// owns the dialogs): pick the finding, choose a fix, run it through the service, confirm a restart on a PC in use.</summary>
+    internal Task FixAsync(FindingRow row, Window from)
+    {
+        _vm.SelectedFinding = row;
+        return Run(async ct =>
+        {
+            var fixes = await _vm.FixesForSelectedAsync(ct).ConfigureAwait(true);
+            var dlg = new NetworkOpsFixWindow(row.Title, _vm.DeviceName, _vm.Device.Presence ?? "", _vm.SomeoneActive, fixes) { Owner = from };
+            if (dlg.ShowDialog() != true || dlg.Chosen is not { } fix) return;
+            var (refused, needsConfirmation) = await _vm.RunFixAsync(fix, dlg.Param, confirmed: false, ct).ConfigureAwait(true);
+            if (needsConfirmation && MessageBox.Show(from, $"{refused}\n\nRestart it anyway? They get a 5-minute warning on screen.", "Someone is using this PC",
+                    MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) == MessageBoxResult.Yes)
+                await _vm.RunFixAsync(fix, dlg.Param, confirmed: true, ct).ConfigureAwait(true);
+        });
+    }
+
+    internal NetworkOpsDeviceViewModel ViewModel => _vm;
+
+    /// <summary>Opens this machine in the app's KOR Remote viewer (one per machine: a second Connect brings it forward).</summary>
+    private void Connect_Click(object sender, RoutedEventArgs e) => KorRemoteViewerWindow.Open(this);
+
+    /// <summary>The fallback: MeshCentral's full page in an Edge app window, for whatever the viewer's toolbar does not do.</summary>
+    internal void OpenInBrowser(Window from)
     {
         if (_vm.ConnectUrl is not { } url) return;
         try { KorRemoteWindow.Open(url); }
         catch (System.ComponentModel.Win32Exception ex)
         {
-            MessageBox.Show(this, $"Could not open the browser: {ex.Message}\n\n{url}", "Connect", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(from, $"Could not open the browser: {ex.Message}\n\n{url}", "Connect", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 
