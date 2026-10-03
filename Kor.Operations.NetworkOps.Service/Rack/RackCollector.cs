@@ -172,7 +172,10 @@ internal sealed class RackCollector(IOptions<NetworkOpsOptions> options, PowerSt
         var tables = await SnmpChannel.WalkAsync(d.Address, creds, EdgeSwitchRules.Tables, TimeSpan.FromSeconds(8), ct).ConfigureAwait(false);
         // What is plugged into each port, named (MacDirectory: UniFi, ARP + rack addresses + DNS); without it, the MACs.
         var label = macs is null ? null : await macs.LabellerAsync(ct).ConfigureAwait(false);
-        return EdgeSwitchRules.Evaluate(sys.Concat(tables).ToDictionary(kv => kv.Key, kv => kv.Value), previousFacts, label);
+        var walk = sys.Concat(tables).ToDictionary(kv => kv.Key, kv => kv.Value);
+        // The same read is the core's panel in the port map: it is an EdgeSwitch, so UniFi knows nothing of its ports.
+        map?.SetCore(new Kor.Operations.NetworkOps.Core.Network.CoreSwitchRead(d.Name, d.Address, EdgeSwitchRules.Ports(walk), DateTime.UtcNow));
+        return EdgeSwitchRules.Evaluate(walk, previousFacts, label);
     }
 
     /// <summary>A Windows server: Probes/server.ps1 through the same one-shot SCM channel the PC probes use (needs the

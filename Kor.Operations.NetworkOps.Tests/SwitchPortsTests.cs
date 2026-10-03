@@ -61,11 +61,14 @@ public sealed class SwitchPortsTests
         Assert.Equal(3, read.Metrics.Single(m => m.Metric == "port.devices" && m.Subject.Contains("Port: 2")).Value);
         Assert.DoesNotContain(read.Metrics, m => m.Metric == "port.up" && m.Subject.StartsWith("CPU", StringComparison.Ordinal));
 
-        var tiles = RackComponents.Of(read.Facts, read.Metrics.Select(m => new DeviceReading(m.Metric, m.Subject, m.Value, DateTime.UtcNow)).ToList(), [])
-            .Where(t => t.Kind == "port").ToList();
-        Assert.Equal(["Port 1", "Port 2"], tiles.Select(t => t.Title));
-        Assert.Equal(("UniFi USF5P 192.168.1.60", "+2 more behind it"), (tiles[1].Line1, tiles[1].Line2));
-        Assert.Contains("00:01:02:03:04:06", tiles[1].Detail);
+        // The same walk is the core's panel in the port map (EdgeSwitchRules.Ports): each front-panel port, up, and every MAC
+        // it learned -- the CPU interface is no port, the switch's own MAC (bridge port 0) is no device.
+        var ports = EdgeSwitchRules.Ports(Walk());
+        Assert.Equal([1, 2], ports.Select(p => p.Port));
+        Assert.All(ports, p => Assert.True(p.Up));
+        Assert.Equal(["00:50:56:1a:01:10"], ports[0].Macs);
+        Assert.Equal(3, ports[1].Macs.Count);
+        Assert.DoesNotContain("00:01:02:03:04:07", ports[1].Macs);
     }
 
     [Fact]

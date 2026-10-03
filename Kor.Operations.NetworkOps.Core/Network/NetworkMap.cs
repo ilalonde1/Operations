@@ -29,7 +29,9 @@ public static class NetworkMaps
 {
     /// <param name="live">The controller's LIVE API read (ports up now, clients connected now), when it could be read: rule 6.
     /// Without it the map is the database's -- who was last on each port -- and says nothing about now.</param>
-    public static NetworkMap Build(UniFiSite site, IReadOnlyList<FleetPc> fleet, IReadOnlyList<DhcpLease> leases, KnownNames known, UniFiLive? live = null)
+    /// <param name="core">The core switch's own read (it is an EdgeSwitch: UniFi knows only its MAC): rule 7.</param>
+    public static NetworkMap Build(UniFiSite site, IReadOnlyList<FleetPc> fleet, IReadOnlyList<DhcpLease> leases, KnownNames known, UniFiLive? live = null,
+        CoreSwitchRead? core = null)
     {
         var devices = site.Devices.ToDictionary(d => d.Mac, StringComparer.Ordinal);
         var clients = site.Clients.GroupBy(c => c.Mac).ToDictionary(g => g.Key, g => g.OrderByDescending(c => c.LastSeen).First(), StringComparer.Ordinal);
@@ -166,6 +168,37 @@ public static class NetworkMaps
             portsBySwitch[s.Mac] = ports;
         }
 
+        // 7 CORE: the switch the top UniFi switches hang from is not UniFi (an EdgeSwitch ES-16-XG -- Ian, 2026-10-02: "I'm not
+        // understanding why that switch isn't listed?"). Its own read (SNMP, every sweep) is its panel: each port, up now,
+        // and what it has learned there. A port holding a top switch's own MAC is the link to that switch (and gives it its
+        // "hangs from core port N"); any other port's occupant is the box itself -- a fleet PC, else a named device, VMware
+        // addresses last (VMs live behind hosts) -- and the rest are behind it. Its MAC table is live: up = connected now.
+        var rootMac = switches.Select(s => s.Uplink?.Mac).FirstOrDefault(m => m is not null && !devices.ContainsKey(m));
+        var coreParentPort = new Dictionary<string, int>(StringComparer.Ordinal);
+        List<NetPort>? corePorts = null;
+        if (core is not null && rootMac is not null)
+        {
+            var topSwitches = switches.Where(s => s.Uplink?.Mac == rootMac).Select(s => s.Mac).ToHashSet(StringComparer.Ordinal);
+            corePorts = [];
+            foreach (var cp in core.Ports)
+            {
+                var link = cp.Macs.FirstOrDefault(topSwitches.Contains);
+                if (link is not null)
+                {
+                    coreParentPort.TryAdd(link, cp.Port);
+                    corePorts.Add(new NetPort(cp.Port, cp.SpeedMbps ?? 0, false, "link", Describe(link, null, 0), [], Up: cp.Up, SpeedNow: cp.Up ? cp.SpeedMbps : null));
+                    continue;
+                }
+                int Rank(string m) => pcByMac.ContainsKey(m) ? 0 : EdgeSwitchRules.MakerOf(m) == "VMware" ? 3
+                    : Describe(m, null, 0).NameSource is "maker" or "MAC only" ? 2 : 1;
+                var here = cp.Macs.Where(m => !placed.Contains(m) && !devices.ContainsKey(m) && m != rootMac).OrderBy(Rank).ThenBy(m => m, StringComparer.Ordinal).ToList();
+                NetEndpoint? on = here.Count == 0 ? null : Describe(here[0], null, 0) with { ConnectedNow = cp.Up };
+                var behind = here.Skip(1).Select(m => Describe(m, null, 0) with { ConnectedNow = cp.Up }).ToList();
+                foreach (var m in here) placed.Add(m);
+                corePorts.Add(new NetPort(cp.Port, cp.SpeedMbps ?? 0, false, on is null ? "empty" : "device", on, behind, Up: cp.Up, SpeedNow: cp.Up ? cp.SpeedMbps : null));
+            }
+        }
+
         // Every other wired client the controller recorded on a port: "also seen" there (history, or beyond a link).
         var wireless = new List<(NetEndpoint E, string? ApMac)>();
         var unplaced = new List<NetEndpoint>();
@@ -190,10 +223,14 @@ public static class NetworkMaps
             else unplaced.Add(Describe(c.Mac, c.Ip, c.LastSeen) with { Via = ViaName(c) });
         }
 
+        var shift = corePorts is null ? 0 : 1;   // with the core shown, everything hangs one level below it
         var list = ordered.Select(o => new NetSwitch(o.Dev.Mac, o.Dev.Label, o.Dev.Model, o.Dev.Ip,
-                o.Dev.Uplink?.Mac, o.Dev.Uplink?.Mac is { } pm ? (devices.TryGetValue(pm, out var pd) ? pd.Label : known.ByMac.GetValueOrDefault(pm) ?? pm) : null,
-                o.Dev.Uplink?.Port, o.Dev.Uplink?.LocalPort, o.Depth, portsBySwitch[o.Dev.Mac]))
+                o.Dev.Uplink?.Mac, o.Dev.Uplink?.Mac is { } pm ? (devices.TryGetValue(pm, out var pd) ? pd.Label : pm == rootMac && core is not null ? core.Name : known.ByMac.GetValueOrDefault(pm) ?? pm) : null,
+                // UniFi does not know the core's port numbers: the core's own MAC table does.
+                o.Dev.Uplink?.Port ?? (coreParentPort.TryGetValue(o.Dev.Mac, out var cpp) ? cpp : null),
+                o.Dev.Uplink?.LocalPort, o.Depth + shift, portsBySwitch[o.Dev.Mac]))
             .ToList();
+        if (corePorts is not null) list.Insert(0, new NetSwitch(rootMac!, core!.Name, "EdgeSwitch (not UniFi)", core.Ip, null, null, null, null, 1, corePorts, IsCore: true));
         var aps = site.Devices.Where(d => d.Type == "uap").OrderBy(d => d.Label, StringComparer.OrdinalIgnoreCase)
             .Select(d => new NetAccessPoint(d.Mac, d.Label, d.Model, d.Ip, wireless.Where(w => w.ApMac == d.Mac).Select(w => w.E).OrderBy(w => w.Name, StringComparer.OrdinalIgnoreCase).ToList()))
             .ToList();
@@ -269,8 +306,9 @@ public sealed record NetPlacement(NetEndpoint Endpoint, string Placement, string
 }
 
 /// <param name="Depth">1 = hangs from the core (or a device the controller does not manage); 2 = from one of those; ...</param>
+/// <param name="IsCore">The core switch (an EdgeSwitch, read by NetworkOps itself, not by UniFi): "network:core" opens it.</param>
 public sealed record NetSwitch(string Mac, string Name, string Model, string? Ip, string? ParentMac, string? ParentName, int? ParentPort,
-    int? UplinkPort, int Depth, IReadOnlyList<NetPort> Ports);
+    int? UplinkPort, int Depth, IReadOnlyList<NetPort> Ports, bool IsCore = false);
 
 /// <param name="Kind">device | link (a UniFi device hangs here) | uplink (toward the parent) | empty</param>
 /// <param name="AlsoSeen">Other clients the controller recorded on this port: the desk's history, or devices beyond a link.</param>
@@ -336,6 +374,13 @@ public sealed record UniFiUplink(string? Mac, int? Port, int? LocalPort);
 public sealed record UniFiPort(int Port, int Speed, bool Poe, string? LastMac, string? LastIp, long ConnectedAt);
 
 public sealed record UniFiClient(string Mac, string Hostname, string Ip, bool Wired, string? UplinkMac, string UplinkName, int? Port, long LastSeen, string Maker);
+
+// ---- the core switch, read by NetworkOps itself (an EdgeSwitch: UniFi knows only its MAC) ----
+
+/// <summary>The core switch's own read (SNMP, every rack sweep): its ports as they are now and what each has learned.</summary>
+public sealed record CoreSwitchRead(string Name, string? Ip, IReadOnlyList<CoreSwitchPort> Ports, DateTime ReadUtc);
+
+public sealed record CoreSwitchPort(int Port, bool Up, int? SpeedMbps, IReadOnlyList<string> Macs);
 
 // ---- the controller's LIVE API read (Service/Rack/UniFiApi: stat/device + stat/sta, projected to these fields) ----
 

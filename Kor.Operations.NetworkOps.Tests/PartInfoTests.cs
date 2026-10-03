@@ -113,12 +113,11 @@ public sealed class PartInfoTests
     [Fact]
     public void A_switch_port_lists_each_device_on_it_and_a_UniFi_device_its_address_and_firmware()
     {
-        // The real walk (edgeswitch.txt) predates the MAC table; SwitchPortsTests' walk has one: three devices on port 2.
-        var port = Of(EdgeSwitchRules.Evaluate(SwitchPortsTests.Walk(), new Dictionary<string, string>(), m => m == "74:83:c2:0a:78:24" ? "UniFi USF5P 192.168.1.60" : null))
-            .Single(t => t.Title == "Port 2");
-        Assert.Equal(3, port.Info!.Count(r => r.Label == "Attached"));                                   // one row each, not one long line
-        Assert.Contains(port.Info!, r => r.Label == "Attached" && r.Value == "UniFi USF5P 192.168.1.60");
-        Assert.Contains(port.Info!, r => r.Label == "Interface" && r.Value.StartsWith("Slot: 0 Port: 2", StringComparison.Ordinal));
+        // A core port's devices are no longer drawn on the core's page (they are its panel in the Network window, NetworkMapTests);
+        // the page's Ports tile goes there.
+        var ports = Of(EdgeSwitchRules.Evaluate(SwitchPortsTests.Walk(), new Dictionary<string, string>(), _ => null)).Single(t => t.Kind == "ports");
+        Assert.Equal("network:core", ports.Opens);
+        Assert.Contains(ports.Info!, r => r.Label == "Port 2" && r.Value.StartsWith("up", StringComparison.Ordinal));
 
         var ap = Of(Read("unifi")).First(t => t.Kind == "unifi-device");
         Assert.Contains(ap.Info!, r => r.Label == "Address" && r.Value.StartsWith("192.168.", StringComparison.Ordinal));

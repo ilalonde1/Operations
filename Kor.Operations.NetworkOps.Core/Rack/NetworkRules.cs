@@ -125,7 +125,26 @@ public static class EdgeSwitchRules
     public const string BasePortIfIndex = "1.3.6.1.2.1.17.1.4.1.2";
     public const string FdbPort = "1.3.6.1.2.1.17.4.3.1.2";
     public const string QFdbPort = "1.3.6.1.2.1.17.7.1.2.2.1.2";
-    public static readonly string[] Tables = ["1.3.6.1.2.1.2.2.1.2", "1.3.6.1.2.1.2.2.1.8", "1.3.6.1.2.1.2.2.1.14", BasePortIfIndex, FdbPort, QFdbPort];
+    /// <summary>IF-MIB ifHighSpeed: each interface's speed now, in Mb/s (the core's panel in the Network window, 2026-10-02).</summary>
+    public const string IfHighSpeed = "1.3.6.1.2.1.31.1.1.1.15";
+    public static readonly string[] Tables = ["1.3.6.1.2.1.2.2.1.2", "1.3.6.1.2.1.2.2.1.8", "1.3.6.1.2.1.2.2.1.14", BasePortIfIndex, FdbPort, QFdbPort, IfHighSpeed];
+
+    /// <summary>
+    /// Each front-panel port as the switch reports it NOW: up or down, its speed, and every MAC it has learned there -- the
+    /// core switch's own panel in the port map (it is an EdgeSwitch, not UniFi: the controller knows nothing of its ports).
+    /// </summary>
+    public static IReadOnlyList<Network.CoreSwitchPort> Ports(IReadOnlyDictionary<string, string> v)
+    {
+        var macs = MacsByIfIndex(v);
+        return v.Where(kv => kv.Key.StartsWith("1.3.6.1.2.1.2.2.1.2.", StringComparison.Ordinal))
+            .Select(kv => (Idx: kv.Key[20..], No: PortNumber(kv.Value)))
+            .Where(x => x.No is not null)
+            .Select(x => new Network.CoreSwitchPort(x.No!.Value,
+                v.TryGetValue($"1.3.6.1.2.1.2.2.1.8.{x.Idx}", out var st) && st == "1",
+                v.TryGetValue($"{IfHighSpeed}.{x.Idx}", out var sp) && int.TryParse(sp, NumberStyles.Integer, CultureInfo.InvariantCulture, out var mb) && mb > 0 ? mb : null,
+                macs.TryGetValue(x.Idx, out var m) ? m : []))
+            .OrderBy(p => p.Port).ToList();
+    }
 
     /// <summary>A port's attached devices fit one fact (nvarchar(400)): this many labels, then "+N more".</summary>
     public const int AttachedShown = 6;

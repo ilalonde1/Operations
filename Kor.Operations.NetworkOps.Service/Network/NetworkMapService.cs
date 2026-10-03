@@ -41,6 +41,11 @@ internal sealed class NetworkMapService(NetworkOpsStore store, MacDirectory macs
     private string? _liveJson;
     private string? _liveProblem;
 
+    private CoreSwitchRead? _core;
+
+    /// <summary>The core switch's own read (Rack/RackCollector, SNMP): its panel in the map.</summary>
+    public void SetCore(CoreSwitchRead core) => _core = core;
+
     /// <summary>The controller's live API read (Rack/UniFiApi), or null and why not: the map then has no "now" in it.</summary>
     public void SetLive(string? json, string? problem) { _liveJson = json; _liveProblem = problem; }
 
@@ -75,7 +80,10 @@ internal sealed class NetworkMapService(NetworkOpsStore store, MacDirectory macs
                 catch (JsonException ex) { notes.Add("the UniFi live read could not be parsed: " + ex.Message); }
             }
             else if (_liveProblem is { } why) notes.Add(why + " -- no \"connected now\" in this map");
-            var map = NetworkMaps.Build(site, _fleet, _leases, new KnownNames(byMac, byIp), live);
+            // The core's read is used only while fresh: a switch not read for 15 minutes is not drawn as if it were live.
+            var core = _core is { } c && now - c.ReadUtc < TimeSpan.FromMinutes(15) ? c : null;
+            if (core is null) notes.Add("the core switch has not been read in the last 15 minutes -- its panel is left out");
+            var map = NetworkMaps.Build(site, _fleet, _leases, new KnownNames(byMac, byIp), live, core);
             Current = map;
             BuiltUtc = now;
             Notes = notes;

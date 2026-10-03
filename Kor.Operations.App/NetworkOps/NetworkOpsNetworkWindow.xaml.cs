@@ -19,6 +19,7 @@ public partial class NetworkOpsNetworkWindow : Window
     private NetworkOpsNetworkModel? _model;
     private PortCard? _chosen;
     private string? _pendingFocus;
+    private int? _pendingPort;
 
     /// <param name="navigator">Opens a port's device page (the one device window, through the one navigator).</param>
     public NetworkOpsNetworkWindow(NetworkOpsClient client, NetworkOpsNavigator? navigator = null)
@@ -33,19 +34,27 @@ public partial class NetworkOpsNetworkWindow : Window
     /// (Ian, 2026-10-02: duplicate ways INTO the same data, never a copy of it). Before the map has loaded, it is kept and
     /// applied when it does.
     /// </summary>
-    public void FocusOn(string mac)
+    /// <param name="mac">A switch or access point's MAC, or "core" (the core switch: an EdgeSwitch, UniFi gives it no MAC of its own here).</param>
+    /// <param name="port">One of its ports: shown in the details beside the panels (a PC's page "on KOR-SW01 port 12" lands here).</param>
+    public void FocusOn(string mac, int? port = null)
     {
-        if (_model is null) { _pendingFocus = mac; return; }
+        if (_model is null) { _pendingFocus = mac; _pendingPort = port; return; }
         _pendingFocus = null;
+        _pendingPort = null;
         var map = _model.Response.Map;
-        if (map.Switches.FirstOrDefault(s => s.Mac == mac) is { } sw)
+        if ((mac == "core" ? map.Switches.FirstOrDefault(s => s.IsCore) : map.Switches.FirstOrDefault(s => s.Mac == mac)) is { } sw)
         {
             SearchBox.Text = "";
             PanelsViewBtn.IsChecked = true;
-            Dispatcher.BeginInvoke(() => ScrollToSwitch(mac), System.Windows.Threading.DispatcherPriority.Loaded);
-            PortWhere.Text = sw.Name;
-            PortDetail.Text = "Its ports are on the left. Click one for what is on it.";
-            OpenDeviceBtn.Visibility = Visibility.Collapsed;
+            Dispatcher.BeginInvoke(() => ScrollToSwitch(sw.Mac), System.Windows.Threading.DispatcherPriority.Loaded);
+            if (port is { } n && _model.Panels.FirstOrDefault(p => p.Mac == sw.Mac)?.Ports.FirstOrDefault(c => c.Number == n) is { } card)
+                ShowCard(card);
+            else
+            {
+                PortWhere.Text = sw.Name;
+                PortDetail.Text = "Its ports are on the left. Click one for what is on it.";
+                OpenDeviceBtn.Visibility = Visibility.Collapsed;
+            }
         }
         else if (_model.Places.FirstOrDefault(p => p.Key == mac) is { } place)
         {
@@ -105,7 +114,7 @@ public partial class NetworkOpsNetworkWindow : Window
         PlaceList.ItemsSource = _model.Places;
         PlaceList.SelectedItem = _model.Places.FirstOrDefault(p => p.Key == was && was is { Length: > 0 }) ?? _model.Places.FirstOrDefault();
         if (SearchBox.Text.Length > 0) ShowSearch();
-        if (_pendingFocus is { } f) FocusOn(f);
+        if (_pendingFocus is { } f) FocusOn(f, _pendingPort);
     }
 
     private void View_Changed(object sender, RoutedEventArgs e)
@@ -120,13 +129,19 @@ public partial class NetworkOpsNetworkWindow : Window
     private void Port_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
         if ((sender as FrameworkElement)?.DataContext is not PortCard card) return;
+        if (ShowCard(card)) _nav!.OpenDevice(card.OpenName!);
+        else if (card.GoToSwitch is { } mac) ScrollToSwitch(mac);
+    }
+
+    /// <summary>A port's details beside the panels; true when its device has a page of its own.</summary>
+    private bool ShowCard(PortCard card)
+    {
         _chosen = card;
         PortWhere.Text = card.Row.Where ?? $"Port {card.Number}";
         PortDetail.Text = string.Join("\n", card.Tip.Split('\n').Skip(1)) is { Length: > 0 } d ? d + (card.Row.Mac.Length > 0 ? "\nMAC: " + card.Row.Mac : "") + (card.Row.NamedBy.Length > 0 ? "\nNamed by: " + card.Row.NamedBy : "") : "Nothing is connected here.";
         var hasPage = card.OpenName is { } n && _nav?.HasPage(n) == true;
         OpenDeviceBtn.Visibility = hasPage ? Visibility.Visible : Visibility.Collapsed;
-        if (hasPage) _nav!.OpenDevice(card.OpenName!);
-        else if (card.GoToSwitch is { } mac) ScrollToSwitch(mac);
+        return hasPage;
     }
 
     private void OpenDevice_Click(object sender, RoutedEventArgs e)

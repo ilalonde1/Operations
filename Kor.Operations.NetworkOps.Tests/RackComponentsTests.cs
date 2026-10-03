@@ -58,7 +58,9 @@ public sealed class RackComponentsTests
         Assert.Equal("9 of 16 up", ports.Line1);
         Assert.Equal(16, ports.Lights!.Count);
         Assert.Equal(16, ports.Info!.Count);
-        Assert.Equal(9, t.Count(x => x.Kind == "port"));
+        // What is on each port lives once, in the Network window's core panel: this page draws none, its Ports tile goes there.
+        Assert.Equal(0, t.Count(x => x.Kind == "port"));
+        Assert.Equal("network:core", ports.Opens);
         Assert.DoesNotContain(t, x => x.Title == "Port 0");
         Assert.Equal((Severity?)Severity.Warning, ports.Worst);
     }

@@ -53,8 +53,9 @@ public sealed class NetworkOpsNavigator
     public void Open(FleetSnapshot snapshot, DeviceRow device)
         => new NetworkOpsDeviceWindow(new NetworkOpsDeviceViewModel(_client, snapshot, device)) { Owner = _owner, Navigator = this }.Show();
 
-    /// <summary>The Network window -- one, brought forward if open -- at a switch or access point (by MAC) when given.</summary>
-    public void OpenNetwork(string? focusMac = null)
+    /// <summary>The Network window -- one, brought forward if open -- at a switch or access point (by MAC, or "core"), and at
+    /// one of its ports when given.</summary>
+    public void OpenNetwork(string? focusMac = null, int? port = null)
     {
         if (_network is null || !_network.IsLoaded)
         {
@@ -67,14 +68,25 @@ public sealed class NetworkOpsNavigator
             if (_network.WindowState == WindowState.Minimized) _network.WindowState = WindowState.Normal;
             _network.Activate();
         }
-        if (focusMac is { Length: > 0 }) _network.FocusOn(focusMac);
+        if (focusMac is { Length: > 0 }) _network.FocusOn(focusMac, port);
     }
 
-    /// <summary>Follows a part's <see cref="Kor.Operations.NetworkOps.Core.Health.PcComponent.Opens"/>; false when it opens nothing.</summary>
+    /// <summary>Follows a part's <see cref="Kor.Operations.NetworkOps.Core.Health.PcComponent.Opens"/> -- "network:",
+    /// "network:{mac}", "network:core", "network:{mac}#{port}" -- false when it opens nothing.</summary>
     public bool Follow(string? opens)
     {
-        if (opens is null || !opens.StartsWith("network:", StringComparison.Ordinal)) return false;
-        OpenNetwork(opens["network:".Length..]);
+        if (ParseOpens(opens) is not { } target) return false;
+        OpenNetwork(target.Key, target.Port);
         return true;
+    }
+
+    /// <summary>"network:{key}#{port}" -> (key, port); null for anything that is not a Network window link.</summary>
+    public static (string Key, int? Port)? ParseOpens(string? opens)
+    {
+        if (opens is null || !opens.StartsWith("network:", StringComparison.Ordinal)) return null;
+        var rest = opens["network:".Length..];
+        var hash = rest.IndexOf('#');
+        return hash < 0 ? (rest, null)
+            : (rest[..hash], int.TryParse(rest[(hash + 1)..], System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var p) ? p : null);
     }
 }

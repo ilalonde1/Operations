@@ -115,6 +115,31 @@ public sealed class NetworkOpsNetworkWindowTests
     }
 
     [Fact]
+    public void A_link_says_which_switch_and_which_port()
+    {
+        Assert.Equal(("74:83:c2:13:f1:c2", (int?)12), NetworkOpsNavigator.ParseOpens("network:74:83:c2:13:f1:c2#12"));
+        Assert.Equal(("core", (int?)null), NetworkOpsNavigator.ParseOpens("network:core"));
+        Assert.Equal(("", (int?)null), NetworkOpsNavigator.ParseOpens("network:"));
+        Assert.Null(NetworkOpsNavigator.ParseOpens("something else"));
+    }
+
+    // "On KOR-SW01 · port 12" on a PC's own page: the map's answer, as a tile that opens the map at that port.
+    [Fact]
+    public void A_PCs_page_says_where_it_is_plugged_in_and_opens_that_port()
+    {
+        var now = DateTime.UtcNow;
+        var dev = new Kor.Operations.NetworkOps.Core.Learning.DeviceRow(4, "KOR-208-N", now, now);
+        var snap = new Kor.Operations.NetworkOps.Core.Learning.FleetSnapshot([dev], new Dictionary<string, IReadOnlyDictionary<string, string>>(StringComparer.OrdinalIgnoreCase), [], [], null);
+        var vm = new NetworkOpsDeviceViewModel(NetworkOpsClient.Unconfigured("test"), snap, dev);
+        vm.SetLastCheck(NetworkOpsComponentTilesTests.Kor208NCheck());
+        vm.SetNetwork(LiveMap().Map);
+        var net = vm.Components.Single(t => t.Part.Kind == "network");
+        Assert.Equal(("USW Flex Mini - Server Room PCs · port 5", "connected now · 1G"), (net.Line1, net.Line2));
+        Assert.Equal("network:74:83:c2:fb:d9:af#5", net.Part.Opens);
+        Assert.Contains("Network window", net.ToolTip);
+    }
+
+    [Fact]
     public void A_search_finds_a_person_anywhere_and_says_where()
     {
         var m = new NetworkOpsNetworkModel(RealMap());

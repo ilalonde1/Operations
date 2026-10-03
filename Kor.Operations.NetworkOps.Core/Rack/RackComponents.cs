@@ -98,18 +98,10 @@ public static class RackComponents
                         + (errors.GetValueOrDefault(x.Reading.Subject) is > 0 and var e ? $" · {N(e)} errors" : "")
                         + (x.Reading.Value >= 1 && F($"port.attached:{x.No}") is { Length: > 0 } a ? $" · {a.Split(';')[0].Trim()}" : ""))).ToList(),
             };
-            tiles.Add(lights.Count > 0 ? tile with { Lights = lights } : tile);
-
-            // Each port with something plugged in: what it is (the switch's MAC table, named on APP01), in front-panel order.
-            foreach (var p in physical.Where(p => p.Reading.Value >= 1).Select(p => (p.No, p.Reading.Subject)))
-            {
-                var attached = F($"port.attached:{p.No}");
-                var count = readings.Where(r => r.Metric == "port.devices" && r.Subject == p.Subject).Select(r => r.Value).FirstOrDefault();
-                var errs = errors.GetValueOrDefault(p.Subject);
-                tiles.Add(Make("port", $"Port {p.No}", attached.Length > 0 ? attached.Split(';')[0].Trim() : count > 0 ? $"{N(count)} devices" : "link up, nothing learned",
-                    count > 1 ? $"+{N(count - 1)} more behind it{(errs > 0 ? $" · {N(errs)} errors" : "")}" : errs > 0 ? $"{N(errs)} errors" : "", null, open,
-                    k => k == $"switch.port-down:{p.Subject}") with { Detail = attached, Info = [new PartInfo("Interface", p.Subject.Trim()), .. SubjectInfo(p.Subject, facts, readings, factSuffix: $"{p.No}")] });
-            }
+            // What is on each port is NOT drawn here: the core is a panel in the Network window, every port with its device,
+            // built from this same read (Core/Network rule 7). One view of the data, this tile the way in (Ian, 2026-10-02:
+            // "I want duplicate ways to get into the same data. No data duplication").
+            tiles.Add((lights.Count > 0 ? tile with { Lights = lights } : tile) with { Opens = "network:core" });
         }
         if (One("devices.total") is { } total)
             tiles.Add(Make("devices", "Devices", $"{N(One("devices.online") ?? 0)} of {N(total)} online", F("unifi.site"), null, open,

@@ -133,7 +133,7 @@ public sealed class ComponentTile : System.ComponentModel.INotifyPropertyChanged
         "cpu" => "", "memory" => "", "gpu" => "", "missing-drive" => "", "windows" => "", "bios" => "",
         "drive" or "datastore" or "volume" or "disks" or "repo" => "",
         "system" => "", "uptime" => "", "vms" => "", "job" => "", "updates" => "", "services" => "",
-        "ports" => "", "port" => "", "devices" => "", "unifi-device" => "", "alarms" => "", "internet" => "",
+        "network" => "", "ports" => "", "port" => "", "devices" => "", "unifi-device" => "", "alarms" => "", "internet" => "",
         "charge" => "", "runtime" => "", "load" => "",
         _ => "",
     };

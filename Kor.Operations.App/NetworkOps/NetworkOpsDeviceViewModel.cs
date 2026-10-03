@@ -209,7 +209,37 @@ public sealed class NetworkOpsDeviceViewModel : ObservableObject
             _readings = null;
             StatusMessage = $"The {(IsRack ? "device's readings" : "PC's parts")} could not be read ({ex.GetType().Name}: {ex.Message}); showing the summary line instead.";
         }
+        // Where it is plugged in: the port map's own answer (no copy kept here; the tile opens the map at that port).
+        try { _network = (await _client.GetNetworkAsync(ct).ConfigureAwait(true))?.Map; }
+        catch (Exception ex) when (ex is System.Net.Http.HttpRequestException or InvalidOperationException)
+        {
+            _network = null;
+            StatusMessage = $"Where it is plugged in could not be read ({ex.Message}); the Network tile is left out.";
+        }
         RebuildComponents();
+    }
+
+    private Kor.Operations.NetworkOps.Core.Network.NetworkMap? _network;
+
+    /// <summary>Internal so tests can place the device on a fixture map without the service.</summary>
+    internal void SetNetwork(Kor.Operations.NetworkOps.Core.Network.NetworkMap? map) { _network = map; RebuildComponents(); }
+
+    /// <summary>
+    /// "On KOR-SW01 · port 12": this device's port in the map -- a fleet PC by its agent's name, a rack device by its own --
+    /// as a tile that opens the Network window at that port (Ian, 2026-10-02: duplicate ways into the same data, no copy).
+    /// </summary>
+    private Kor.Operations.NetworkOps.Core.Health.PcComponent? NetworkTile()
+    {
+        if (_network is null) return null;
+        var hit = _network.Everything().FirstOrDefault(p => p.Placement == "port" &&
+            (string.Equals(p.Endpoint.Pc, _device.Name, StringComparison.OrdinalIgnoreCase) || string.Equals(p.Endpoint.Name, _device.Name, StringComparison.OrdinalIgnoreCase)));
+        if (hit is null || hit.Port is not { } n) return null;
+        var sw = _network.Switches.First(s => s.Mac == hit.SwitchMac);
+        var port = sw.Ports.First(p => p.Number == n);
+        var speed = port.SpeedNow is { } sp ? (sp >= 1000 ? $" · {sp / 1000}G" : $" · {sp}M") : "";
+        var line2 = hit.Endpoint.ConnectedNow switch { true => "connected now" + speed, false => "not connected now", null => "" };
+        return new Kor.Operations.NetworkOps.Core.Health.PcComponent("network", "Network", $"{sw.Name} · port {n}", line2, null, null, [],
+            Opens: $"network:{(sw.IsCore ? "core" : sw.Mac)}#{n}");
     }
 
     /// <summary>Internal so tests can draw the tiles from a fixture check without the service.</summary>
@@ -229,6 +259,7 @@ public sealed class NetworkOpsDeviceViewModel : ObservableObject
             : (_lastCheck is { } check ? Kor.Operations.NetworkOps.Core.Health.PcComponents.Of(check, open) : []);
         var shown = _selectedPart is { } was ? (was.Part.Kind, was.Part.Title, was.Part.Line1) : default;
         _selectedPart = null;
+        if (NetworkTile() is { } net && parts.Count > 0) parts = [.. parts, net];
         foreach (var part in parts)
         {
             var about = OpenFindings.Where(r => part.RuleKeys.Contains(r.Finding.RuleKey)).Select(r => r.Title).ToList();
@@ -238,7 +269,7 @@ public sealed class NetworkOpsDeviceViewModel : ObservableObject
                 ToolTip = about.Count > 0 ? string.Join("\n", about) + "\n(click to show it; click again for the part)"
                         : part.Detail is { Length: > 0 } detail ? $"{part.Title}:\n{detail.Replace("; ", "\n")}\n(click for more)"   // a switch port: everything attached
                         : $"{part.Title}: {part.Line1}{(part.Line2.Length > 0 ? " · " + part.Line2 : "")}\n" +
-                          (part.Opens is { } o && o.StartsWith("network:", StringComparison.Ordinal) ? "(click: its ports and devices in the Network window)" : "(click for more)"),
+                          (part.Opens is { } o && o.StartsWith("network:", StringComparison.Ordinal) ? "(click: open it in the Network window)" : "(click for more)"),
             };
             // A rebuild (a refresh, a finding cleared) keeps the part that was showing, matched by what it is.
             if (shown.Kind is not null && (part.Kind, part.Title, part.Line1) == shown) { tile.IsSelected = true; _selectedPart = tile; }

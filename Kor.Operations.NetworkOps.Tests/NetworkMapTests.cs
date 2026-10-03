@@ -194,6 +194,52 @@ public sealed class NetworkMapTests(ITestOutputHelper output)
         Assert.True(all.Count == 0, "in two places with the live read: " + string.Join(", ", all));
     }
 
+    // Rule 7, the CORE (Ian, 2026-10-02: "I'm not understanding why that switch isn't listed?" -- it is an EdgeSwitch, not
+    // UniFi; the controller knows only its MAC). Its ports as its own live read showed them that evening (core facts
+    // port.attached:1..14): 1 = SW02 and all behind it, 2 = SW01 and all behind it, 3 = ESXi host .10 with its VMs, 14 = the
+    // Netgate. COVERS: the core is the first panel and the tree's root; SW01/SW02 take "hangs from core port 2/1" from the
+    // core's MAC table; a core port holding a top switch's MAC is a link and places nothing behind it a second time (KOR-205
+    // stays on SW01 port 2); a host's port shows the host, its VMs behind it; the firewall leaves "also seen on SW01 port
+    // 25" for core port 14 where it is; nothing doubled. DOES NOT: the SNMP walk itself (EdgeSwitchRules.Ports is tested on
+    // a synthetic walk in SwitchPortsTests). WOULD NOT CATCH: a host whose own NIC address the core never learns (only its
+    // VMs') -- a VM would be drawn as the occupant.
+    private static CoreSwitchRead TonightsCore() => new("Core switch (EdgeSwitch 10G)", "192.168.1.11",
+    [
+        new(1, true, 10000, ["e0:63:da:8a:30:d9", "d8:bb:c1:c1:dd:f1"]),                                   // SW02 (+ KOR-217 behind it)
+        new(2, true, 10000, ["74:83:c2:13:f1:c2", "e8:ea:6a:06:44:2a", "40:b0:76:9f:6f:ce"]),              // SW01 (+ ESXi .16, KOR-205)
+        new(3, true, 10000, ["00:0c:29:fc:f7:38", "00:50:56:8b:ed:b1", "38:68:dd:55:de:b8"]),              // ESXi host .10 + VMs
+        new(4, false, null, []),
+        new(14, true, 1000, ["90:ec:77:97:8c:24"]),                                                        // the Netgate
+    ], DateTime.UtcNow);
+
+    private static NetworkMap CoreMap() => NetworkMaps.Build(UniFiSite.Parse(Fx("unifi-2026-10-02.json")), Fleet(), Leases(),
+        new KnownNames(new Dictionary<string, string> { [CoreMac] = "Core switch (EdgeSwitch 10G)" }, new Dictionary<string, string>()), Live(), TonightsCore());
+
+    [Fact]
+    public void The_core_switch_is_the_first_panel_and_the_root_of_the_tree()
+    {
+        var map = CoreMap();
+        var core = map.Switches[0];
+        Assert.Equal((CoreMac, "Core switch (EdgeSwitch 10G)", 1), (core.Mac, core.Name, core.Depth));
+        var sw01 = map.Switches.Single(s => s.Mac == "74:83:c2:13:f1:c2");
+        var sw02 = map.Switches.Single(s => s.Mac == "e0:63:da:8a:30:d9");
+        Assert.Equal((2, 2), (sw01.ParentPort!.Value, sw01.Depth));
+        Assert.Equal((1, 2), (sw02.ParentPort!.Value, sw02.Depth));
+        Assert.Equal(("link", "74:83:c2:13:f1:c2"), (core.Ports.Single(p => p.Number == 2).Kind, core.Ports.Single(p => p.Number == 2).On!.Mac));
+        Assert.Empty(core.Ports.Single(p => p.Number == 2).AlsoSeen);                          // what is behind SW01 stays on SW01
+        Assert.Equal(("74:83:c2:13:f1:c2", 2), (map.PortOf("KOR-205")!.Value.Switch.Mac, map.PortOf("KOR-205")!.Value.Port.Number));
+
+        var p3 = core.Ports.Single(p => p.Number == 3);
+        Assert.Equal("38:68:dd:55:de:b8", p3.On!.Mac);                                         // the host, not a VM
+        Assert.Equal(2, p3.AlsoSeen.Count);
+        Assert.True(p3.On.ConnectedNow);
+        Assert.False(core.Ports.Single(p => p.Number == 4).Up);
+
+        var fw = map.Everything().Single(p => p.Endpoint.Mac == "90:ec:77:97:8c:24");
+        Assert.Equal(("port", CoreMac, 14), (fw.Placement, fw.SwitchMac, fw.Port!.Value));      // where it is, not where it was
+        Assert.DoesNotContain(map.Everything().GroupBy(p => p.Endpoint.Mac), g => g.Count() > 1);
+    }
+
     [Fact]
     public void Desk_switches_show_whose_desk_it_is()
     {
