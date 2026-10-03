@@ -112,16 +112,16 @@ internal sealed partial class NetworkOpsStore
         await bulk.WriteToServerAsync(t, ct).ConfigureAwait(false);
     }
 
-    /// <summary>The latest value of every reading (metric + subject) a device stored in the last two days -- what its tiles
-    /// are drawn from (GET /api/devices/{id}/readings).</summary>
+    /// <summary>What the device's LATEST read reported, every reading of it -- what its tiles are drawn from (GET
+    /// /api/devices/{id}/readings). Only that read: a datastore removed on 2026-10-02 kept its tile for two days while this
+    /// returned "the latest value of each reading in two days". A read stores all its readings at one time.</summary>
     public async Task<IReadOnlyList<Core.Rack.DeviceReading>> LatestReadingsAsync(int deviceId, CancellationToken ct)
     {
         await using var c = await OpenAsync(ct).ConfigureAwait(false);
         await using var cmd = Cmd(c, """
-            SELECT Metric, Subject, Value, CollectedUtc FROM (
-                SELECT Metric, Subject, Value, CollectedUtc, ROW_NUMBER() OVER (PARTITION BY Metric, Subject ORDER BY CollectedUtc DESC) AS n
-                FROM NetworkOps.Metrics WHERE DeviceId = @d AND CollectedUtc >= DATEADD(day, -2, SYSUTCDATETIME())) x
-            WHERE n = 1 ORDER BY Metric, Subject;
+            DECLARE @last datetime2(0) = (SELECT MAX(CollectedUtc) FROM NetworkOps.Metrics WHERE DeviceId = @d AND CollectedUtc >= DATEADD(day, -2, SYSUTCDATETIME()));
+            SELECT Metric, Subject, Value, CollectedUtc FROM NetworkOps.Metrics
+            WHERE DeviceId = @d AND CollectedUtc = @last ORDER BY Metric, Subject;
             """);
         cmd.Parameters.Add("@d", SqlDbType.Int).Value = deviceId;
         var list = new List<Core.Rack.DeviceReading>();

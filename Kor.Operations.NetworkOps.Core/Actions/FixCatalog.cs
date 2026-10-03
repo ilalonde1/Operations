@@ -8,7 +8,10 @@ namespace Kor.Operations.NetworkOps.Core.Actions;
 /// <param name="Disruptive">Interrupts the person at the PC (a restart). Refused while someone is ACTIVE unless confirmed.</param>
 /// <param name="Families">Finding families it is offered for; "*" = any finding (the escape hatch).</param>
 /// <param name="ParamLabel">Non-null when the fix needs one input (a service name, a script).</param>
-public sealed record FixAction(string Id, string Title, string Explain, bool Disruptive, int TimeoutSeconds, IReadOnlyList<string> Families, string? ParamLabel = null);
+/// <param name="Target">Where it runs: "windows" (a PC or Windows server, PowerShell as SYSTEM) or "esxi" (an ESXi host, a
+/// Python script in hostd over the key APP01 already reads the hosts with).</param>
+public sealed record FixAction(string Id, string Title, string Explain, bool Disruptive, int TimeoutSeconds, IReadOnlyList<string> Families, string? ParamLabel = null,
+    string Target = FixCatalog.Windows);
 
 /// <summary>What the page may run, and nothing else. Each script is embedded (Actions/*.ps1), runs ON the PC as
 /// SYSTEM through the same one-shot SCM channel as the health probe, and returns plain values. Every run is a row in
@@ -21,6 +24,9 @@ public static class FixCatalog
     public const string InstallUpdates = "install-updates";
     public const string InstallUpdatesRestart = "install-updates-restart";
     public const string UpdateBios = "update-bios";
+    public const string RemoveStaleDatastore = "remove-stale-datastore";
+    public const string Windows = "windows";
+    public const string Esxi = "esxi";
     public const string CheckBiosUpdate = "check-bios-update";
 
     public static bool IsUpdateInstall(string id) => id is InstallUpdates or InstallUpdatesRestart;
@@ -67,6 +73,9 @@ public static class FixCatalog
         new(InstallUpdatesRestart, "Install updates and restart if needed",
             "The same install, then -- only if an update needs it -- a restart in 5 minutes with a warning on screen, so whoever is there can save.",
             Disruptive: true, TimeoutSeconds: 5400, [Updates.UpdateRules.Rule, "not-patched"]),
+        new(RemoveStaleDatastore, "Remove the leftover Veeam datastore",
+            "Unmounts the datastore Veeam left behind after an instant recovery -- only if it is a VeeamBackup_* NFS mount, the host reports it inaccessible, and no VM is registered on it (all read from the host first). Nothing else is touched; the host's list is read again to confirm.",
+            Disruptive: false, TimeoutSeconds: 120, ["esxi.stale-mount"], ParamLabel: "Datastore", Target: Esxi),
         new(StartService, "Start the stopped service",
             "Starts the service and sets it to restart itself if it fails again (3 x 60 s) -- the MCP server and Certify on APP01 stayed down for days without that.",
             Disruptive: false, TimeoutSeconds: 180, ["server.service-stopped"], ParamLabel: "Service name"),
@@ -86,12 +95,14 @@ public static class FixCatalog
 
     /// <summary>The input a fix gets from its finding, when the finding already names it (server.service-stopped:Certify.Service).</summary>
     public static string? ParamFromFinding(FixAction a, string ruleKey)
-        => a.Id == StartService && ruleKey.IndexOf(':') is var i and > 0 ? ruleKey[(i + 1)..] : null;
+        => a.Id is StartService or RemoveStaleDatastore && ruleKey.IndexOf(':') is var i and > 0 ? ruleKey[(i + 1)..] : null;
 
     /// <summary>Why the input is refused, or null. A service name is a bare identifier: it is pasted into a script.</summary>
     public static string? Invalid(FixAction a, string? param) => a.Id switch
     {
         StartService when param is null || !Regex.IsMatch(param, @"^[A-Za-z0-9_.\-]{1,80}$") => "a service name is letters, digits, dot, dash or underscore",
+        // Passed to the host as one shell argument: a datastore name with nothing a shell could read as more.
+        RemoveStaleDatastore when param is null || !Regex.IsMatch(param, @"^[A-Za-z0-9_.\-]{1,100}$") => "a datastore name is letters, digits, dot, dash or underscore",
         RunCommand when string.IsNullOrWhiteSpace(param) => "there is no script to run",
         RunCommand when param!.Length > 20000 => "the script is longer than 20,000 characters",
         _ when a.ParamLabel is null && !string.IsNullOrEmpty(param) => "this fix takes no input",
@@ -106,6 +117,13 @@ public static class FixCatalog
         if (a.Id == InstallUpdatesRestart) return "$RestartIfNeeded = $true\n" + Script(Get(InstallUpdates)!, null);
         // The BIOS check is the update with $DryRun: one script, so the check proves exactly what the update would run.
         if (a.Id == CheckBiosUpdate) return "$DryRun = $true\n" + Script(Get(UpdateBios)!, null);
+        // An ESXi fix is a Python script (the host's argument is passed on its command line, not bound in here).
+        if (a.Target == Esxi)
+        {
+            using var py = typeof(FixCatalog).Assembly.GetManifestResourceStream($"Actions.{a.Id}.py")
+                ?? throw new InvalidOperationException($"no embedded script for {a.Id}");
+            return new StreamReader(py).ReadToEnd();
+        }
         using var s = typeof(FixCatalog).Assembly.GetManifestResourceStream($"Actions.{a.Id}.ps1")
             ?? throw new InvalidOperationException($"no embedded script for {a.Id}");
         using var r = new StreamReader(s);

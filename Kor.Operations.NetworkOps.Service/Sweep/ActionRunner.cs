@@ -82,6 +82,11 @@ internal sealed class ActionRunner(NetworkOpsStore store, MachineRunner runner, 
             using var req = JsonDocument.Parse(a.RequestJson);
             var param = req.RootElement.TryGetProperty("param", out var p) && p.ValueKind == JsonValueKind.String ? p.GetString() : null;
             if (FixCatalog.Invalid(fix, param) is { } why) throw new InvalidOperationException(why);
+            if (fix.Target == FixCatalog.Esxi)
+            {
+                await RunOnEsxiAsync(a, fix, param!, ct);
+                return;
+            }
             var host = HostOf(a.DeviceName) ?? throw new InvalidOperationException($"{a.DeviceName} is not a machine fixes can run on");
 
             log.LogWarning("FIX {Id} {Fix} on {Host} requested by {By}", a.ActionId, fix.Id, host, a.RequestedBy);
@@ -177,6 +182,46 @@ internal sealed class ActionRunner(NetworkOpsStore store, MachineRunner runner, 
     {
         var rack = o.Rack.FirstOrDefault(d => d.Name.Equals(deviceName, StringComparison.OrdinalIgnoreCase));
         return rack is null ? deviceName : rack.AppCanRunOn ? rack.Address : null;
+    }
+
+    /// <summary>The ESXi host a fix targeting "esxi" runs on (a rack device read by the Esxi collector), or null.</summary>
+    internal static RackDevice? EsxiHostOf(NetworkOpsOptions o, string deviceName)
+        => o.Rack.FirstOrDefault(d => d.Name.Equals(deviceName, StringComparison.OrdinalIgnoreCase) && d.Collector == "Esxi");
+
+    /// <summary>THE answer to "can this fix run on this device" -- for the API's refusal and the runner alike: a Windows fix
+    /// where APP01 can run PowerShell, an ESXi fix on an ESXi host.</summary>
+    internal static bool CanRun(NetworkOpsOptions o, string deviceName, FixAction fix)
+        => fix.Target == FixCatalog.Esxi ? EsxiHostOf(o, deviceName) is not null : HostOf(o, deviceName) is not null;
+
+    /// <summary>
+    /// An ESXi fix: its Python script copied to the host and run in hostd over the key APP01 reads the hosts with (the same
+    /// route as Rack/esxi-health.py), its one argument validated by FixCatalog.Invalid before it gets here. Audited like any
+    /// fix; the host is read again straight after, so the page shows whether it cleared.
+    /// </summary>
+    private async Task RunOnEsxiAsync(NetworkOpsStore.ClaimedAction a, FixAction fix, string param, CancellationToken ct)
+    {
+        var o = options.Value;
+        var d = EsxiHostOf(o, a.DeviceName) ?? throw new InvalidOperationException($"{a.DeviceName} is not an ESXi host");
+        log.LogWarning("FIX {Id} {Fix} on ESXi {Host} ({Param}) requested by {By}", a.ActionId, fix.Id, d.Address, param, a.RequestedBy);
+        string output;
+        int exit;
+        string error;
+        using (var sh = EsxiShell.Connect(d.Address, o.EsxiKeyPath, d.HostKeys.Count > 0 ? d.HostKeys : o.EsxiHostKeys.GetValueOrDefault(d.Address) ?? [], TimeSpan.FromSeconds(20)))
+        {
+            var path = $"/tmp/kor-fix-{fix.Id}.py";
+            var (w, _, we) = await sh.RunWithInputAsync($"cat > {path}", FixCatalog.Script(fix, null), TimeSpan.FromSeconds(30), ct);
+            if (w != 0) throw new InvalidOperationException("could not copy the fix to the host: " + we.Trim());
+            (exit, output, error) = await sh.RunAsync($"python {path} '{param}'", TimeSpan.FromSeconds(fix.TimeoutSeconds), ct);
+        }
+        if (exit != 0)
+        {
+            await store.CompleteActionAsync(a.ActionId, false, $"the fix failed on the host (exit {exit}): {error.Trim()}", output);
+            return;
+        }
+        var result = ResultLine(output) ?? "ran; see the output";
+        await store.CompleteActionAsync(a.ActionId, true, result, output);
+        log.LogWarning("FIX {Id} {Fix} on ESXi {Host}: {Result}", a.ActionId, fix.Id, d.Address, result);
+        await store.QueueRackCheckAsync(a.DeviceName, $"fix {a.ActionId}", CancellationToken.None);
     }
 
     private bool IsRack(string deviceName) => options.Value.Rack.Any(d => d.Name.Equals(deviceName, StringComparison.OrdinalIgnoreCase));

@@ -4,7 +4,7 @@
         xmlns:nops="clr-namespace:Kor.Operations.App.NetworkOps"
         Title="{Binding DeviceName, StringFormat='NetworkOps — {0}'}"
         Width="1300"
-        Height="860"
+        Height="940"
         MinWidth="1000"
         MinHeight="640"
         WindowStartupLocation="CenterOwner"
@@ -31,10 +31,12 @@
         </ResourceDictionary>
     </Window.Resources>
     <Grid>
+        <!-- The findings keep room whatever the tiles take (two rows of tiles squeezed "Open now" to half a row, 2026-10-02);
+             the history tabs give way first. -->
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-            <RowDefinition Height="250"/>
+            <RowDefinition Height="3*" MinHeight="280"/>
+            <RowDefinition Height="2*" MinHeight="170"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 

@@ -218,8 +218,9 @@ internal sealed class ApiHost(IOptions<NetworkOpsOptions> options, NetworkOpsSto
             var by = ApiAccess.UserOf(h.User);
             var request = System.Text.Json.JsonSerializer.Serialize(new { param = body.Param, finding = body.FindingKey, note = body.Note, confirmed = body.Confirmed, presence = dev.Presence });
             string? refuse = Kor.Operations.NetworkOps.Core.Actions.FixCatalog.Invalid(fix, body.Param)
-                ?? (dev.Source == "Rack" && Sweep.ActionRunner.HostOf(o.Value, dev.Name) is null
-                    ? $"{dev.Name} is not a Windows server APP01 can run fixes on" : null)
+                ?? (dev.Source == "Rack" && !Sweep.ActionRunner.CanRun(o.Value, dev.Name, fix)
+                    ? (fix.Target == Kor.Operations.NetworkOps.Core.Actions.FixCatalog.Esxi ? $"{dev.Name} is not an ESXi host" : $"{dev.Name} is not a Windows server APP01 can run fixes on") : null)
+                ?? (dev.Source != "Rack" && fix.Target == Kor.Operations.NetworkOps.Core.Actions.FixCatalog.Esxi ? $"{fix.Title} is for an ESXi host, not a PC" : null)
                 ?? (fix.Disruptive && dev.PresenceState == "Active" && !body.Confirmed
                     ? $"someone is using {dev.Name} right now ({dev.Presence}): confirm to go ahead" : null);
             if (refuse is not null)
