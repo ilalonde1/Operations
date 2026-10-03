@@ -115,7 +115,10 @@ public sealed class ComponentTile
     public string Line1 => Part.Line1;
     public string Line2 => Part.Line2;
     public bool HasLine2 => Part.Line2.Length > 0;
-    public bool HasFill => Part.FillPct is not null;
+    public bool HasFill => Part.FillPct is not null && Part.Lights is null;
+    /// <summary>A switch's ports as lights: green up, grey down, amber up with errors (Core: PcComponent.Lights).</summary>
+    public bool HasLights => Part.Lights is { Count: > 0 };
+    public IReadOnlyList<Brush> LightBrushes => (Part.Lights ?? []).Select(l => l switch { 1 => NetworkOpsBrushes.Healthy, 2 => NetworkOpsBrushes.Attention, _ => Clear }).ToList();
     /// <summary>The used-space bar's width, out of the tile's 132 px.</summary>
     public double FillWidth => Math.Clamp(Part.FillPct ?? 0, 0, 100) * 1.32;
     public string FillText => Part.FillPct is { } p ? $"{p:0}% used" : "";
@@ -130,7 +133,7 @@ public sealed class ComponentTile
         "cpu" => "", "memory" => "", "gpu" => "", "missing-drive" => "", "windows" => "", "bios" => "",
         "drive" or "datastore" or "volume" or "disks" or "repo" => "",
         "system" => "", "uptime" => "", "vms" => "", "job" => "", "updates" => "", "services" => "",
-        "ports" => "", "devices" => "", "alarms" => "", "internet" => "",
+        "ports" => "", "port" => "", "devices" => "", "unifi-device" => "", "alarms" => "", "internet" => "",
         "charge" => "", "runtime" => "", "load" => "",
         _ => "",
     };

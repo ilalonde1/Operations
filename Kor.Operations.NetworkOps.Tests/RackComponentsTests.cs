@@ -68,6 +68,35 @@ public sealed class RackComponentsTests
     }
 
     [Fact]
+    public void Every_UniFi_device_is_a_tile_offline_first_coloured_by_its_finding()
+    {
+        // The controller's real read (Fixtures/rack/unifi.json), through the rule exactly as the rack sweep runs it.
+        var json = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Fixtures", "rack", "unifi.json"));
+        var read = UniFiRules.Evaluate(json);
+        var readings = read.Metrics.Select(m => new DeviceReading(m.Metric, m.Subject, m.Value, DateTime.UtcNow)).ToList();
+        var open = read.Findings.Select(f => (f.RuleKey, f.Severity)).ToList();
+        var tiles = RackComponents.Of(read.Facts, readings, open).Where(t => t.Kind == "unifi-device").ToList();
+
+        using var doc = JsonDocument.Parse(json);
+        Assert.Equal(doc.RootElement.GetProperty("devices").GetArrayLength(), tiles.Count);              // every device, none lost
+        var offline = read.Findings.Count(f => f.RuleKey.StartsWith("unifi.offline:", StringComparison.Ordinal));
+        Assert.All(tiles.Take(offline), t => Assert.NotNull(t.Worst));                                    // offline ones first, coloured
+        Assert.All(tiles.Skip(offline), t => Assert.StartsWith("online", t.Line2));
+        Assert.Contains(tiles, t => t.Title == "Access point" && t.Line1 == "BMZ-AP01 [Outside Boardroom]");
+    }
+
+    [Fact]
+    public void A_UniFi_device_fact_always_fits_its_column_and_parses()
+    {
+        var name = new string('x', 300);
+        var json = $$"""{"site":"S","now":1000,"openAlarms":[],"devices":[{"name":"{{name}}","model":"U7PG2","type":"uap","ip":"192.168.1.9","mac":"aa:bb","version":"6.8.2","adopted":true,"upgradable":true,"upgradeTo":"6.9","lastSeen":990,"ports":2}]}""";
+        var fact = UniFiRules.Evaluate(json).Facts["unifi.device:aa:bb"];
+        Assert.True(fact.Length <= 400, $"{fact.Length} characters: the store would cut it, and cut JSON is unreadable");
+        Assert.Equal(80, UniFiDevice.Parse(fact)!.Name.Length);
+        Assert.Null(UniFiDevice.Parse("{\"Name\":\"cut"));
+    }
+
+    [Fact]
     public void The_internet_shows_the_worst_target()
     {
         var readings = Readings["Internet (Netgate + Shaw)"];

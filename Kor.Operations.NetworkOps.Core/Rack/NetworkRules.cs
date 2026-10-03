@@ -30,6 +30,14 @@ public static class UniFiRules
             if (d.GetProperty("name").GetString() is not { Length: > 0 }) unnamed++;
             var seen = d.GetProperty("lastSeen").GetInt64();
             var age = seen > 0 ? now - seen : long.MaxValue;
+            // Each device, kept (2026-10-02: the controller sent all of this every 5 minutes and only two counts were kept):
+            // minutes since it checked in (-1 = never), and who it is -- so the page shows every AP and switch.
+            b.Metric("unifi.seen.min", seen > 0 ? Math.Round(age / 60.0, 1) : -1, mac);
+            // Every field bounded BEFORE serializing: a fact value is cut at 400 characters when stored, and cut JSON is
+            // unreadable (the 0.17.2 lesson). 80+16+24+40+40 and the keys stay well under 400 whatever the controller holds.
+            b.Fact($"unifi.device:{mac}", JsonSerializer.Serialize(new UniFiDevice(
+                Cap(d.GetProperty("name").GetString(), 80), Cap(d.GetProperty("type").GetString(), 16), Cap(model, 24), Cap(ip, 40),
+                Cap(d.GetProperty("version").GetString(), 40), d.GetProperty("upgradable").GetBoolean())));
             if (age <= offlineAfterSeconds) online++;
             else
             {
@@ -53,6 +61,22 @@ public static class UniFiRules
     }
 
     private static string Ago(long s) => s < 3600 ? $"{s / 60} min" : s < 172800 ? $"{s / 3600} h" : $"{s / 86400} days";
+
+    private static string Cap(string? s, int max) => s is null ? "" : s.Length <= max ? s : s[..max];
+}
+
+/// <summary>One UniFi device as the rack keeps it (fact unifi.device:{mac}): its name ("" = unnamed), type (uap / usw /
+/// ugw...), model, IP, firmware, and whether the controller has an upgrade for it.</summary>
+public sealed record UniFiDevice(string Name, string Type, string Model, string Ip, string Version, bool Upgradable)
+{
+    public static UniFiDevice? Parse(string json)
+    {
+        try { return JsonSerializer.Deserialize<UniFiDevice>(json); }
+        catch (JsonException) { return null; }
+    }
+
+    public string Kind => Type switch { "uap" => "Access point", "usw" => "Switch", "ugw" or "udm" or "uxg" => "Gateway", _ => "Device" };
+    public string Label => Name.Length > 0 ? Name : $"{Model} {Ip}";
 }
 
 /// <summary>What NetworkOps measured about the line out, from APP01 (through the firewall).</summary>
@@ -95,9 +119,60 @@ public static class EdgeSwitchRules
 {
     public const string SysDescr = "1.3.6.1.2.1.1.1.0";
     public const string SysUpTime = "1.3.6.1.2.1.1.3.0";
-    public static readonly string[] Tables = ["1.3.6.1.2.1.2.2.1.2", "1.3.6.1.2.1.2.2.1.8", "1.3.6.1.2.1.2.2.1.14"];
+    // ifDescr, ifOperStatus, ifInErrors -- and (2026-10-02, Ian: "which IP / device name is attached to each port") the
+    // MAC address table: BRIDGE-MIB dot1dBasePortIfIndex (bridge port -> ifIndex), dot1dTpFdbPort and Q-BRIDGE dot1qTpFdbPort
+    // (MAC -> bridge port; the MAC is the last six numbers of the OID). Whichever of the two the firmware fills is used.
+    public const string BasePortIfIndex = "1.3.6.1.2.1.17.1.4.1.2";
+    public const string FdbPort = "1.3.6.1.2.1.17.4.3.1.2";
+    public const string QFdbPort = "1.3.6.1.2.1.17.7.1.2.2.1.2";
+    public static readonly string[] Tables = ["1.3.6.1.2.1.2.2.1.2", "1.3.6.1.2.1.2.2.1.8", "1.3.6.1.2.1.2.2.1.14", BasePortIfIndex, FdbPort, QFdbPort];
 
-    public static RackResult Evaluate(IReadOnlyDictionary<string, string> v, IReadOnlyDictionary<string, string> previousFacts)
+    /// <summary>A port's attached devices fit one fact (nvarchar(400)): this many labels, then "+N more".</summary>
+    public const int AttachedShown = 6;
+
+    /// <summary>
+    /// The MACs the switch has learned on each ifIndex, from its MAC address table (Q-BRIDGE if filled, else BRIDGE).
+    /// A MAC learned on several VLANs counts once per port.
+    /// </summary>
+    public static IReadOnlyDictionary<string, IReadOnlyList<string>> MacsByIfIndex(IReadOnlyDictionary<string, string> v)
+    {
+        var bridgeToIf = v.Where(kv => kv.Key.StartsWith(BasePortIfIndex + ".", StringComparison.Ordinal))
+            .ToDictionary(kv => kv.Key[(BasePortIfIndex.Length + 1)..], kv => kv.Value);
+        IEnumerable<(string Mac, string BridgePort)> Fdb(string table) => v
+            .Where(kv => kv.Key.StartsWith(table + ".", StringComparison.Ordinal))
+            .Select(kv => (Octets: kv.Key[(table.Length + 1)..].Split('.'), Port: kv.Value))
+            .Where(x => x.Octets.Length >= 6 && x.Port != "0")
+            .Select(x => (string.Join(":", x.Octets[^6..].Select(o => int.Parse(o, CultureInfo.InvariantCulture).ToString("x2", CultureInfo.InvariantCulture))), x.Port));
+        var entries = Fdb(QFdbPort).ToList();
+        if (entries.Count == 0) entries = Fdb(FdbPort).ToList();
+        return entries
+            .GroupBy(e => bridgeToIf.TryGetValue(e.BridgePort, out var ifIndex) ? ifIndex : e.BridgePort)
+            .ToDictionary(g => g.Key, g => (IReadOnlyList<string>)g.Select(e => e.Mac).Distinct().Order(StringComparer.Ordinal).ToList());
+    }
+
+    /// <summary>
+    /// The maker of a MAC from its first three bytes, for the makers on KOR's network only (each checked against what the
+    /// core switch had learned on 2026-10-02): a device that never talks to APP01 is not in its ARP table, so its port showed
+    /// a bare MAC -- the NAS's and the hosts' storage ports. Null for anything else: no guessing beyond this list.
+    /// </summary>
+    public static string? MakerOf(string mac) => mac.Length >= 8 ? mac[..8].ToLowerInvariant() switch
+    {
+        "00:50:56" or "00:0c:29" or "00:05:69" => "VMware",
+        "00:11:32" or "90:09:d0" => "Synology",
+        "74:83:c2" or "74:ac:b9" or "f4:92:bf" or "24:5a:4c" or "78:8a:20" or "fc:ec:da" or "e0:63:da" => "Ubiquiti",
+        "00:c0:b7" => "APC",
+        _ => null,
+    } : null;
+
+    /// <summary>What a port's fact says: the devices behind it, named where the caller can, at most AttachedShown and "+N more".</summary>
+    public static string AttachedText(IReadOnlyList<string> macs, Func<string, string?> label)
+    {
+        var named = macs.Select(m => label(m) ?? (MakerOf(m) is { } maker ? $"{maker} {m}" : m)).OrderBy(l => l.Contains(':') && l.Length == 17 ? 1 : 0).ThenBy(l => l, StringComparer.OrdinalIgnoreCase).ToList();
+        var shown = string.Join("; ", named.Take(AttachedShown).Select(l => l.Length > 50 ? l[..50] : l));
+        return named.Count > AttachedShown ? $"{shown}; +{named.Count - AttachedShown} more" : shown;
+    }
+
+    public static RackResult Evaluate(IReadOnlyDictionary<string, string> v, IReadOnlyDictionary<string, string> previousFacts, Func<string, string?>? labelOfMac = null)
     {
         var b = new RackBuilder();
         if (v.TryGetValue(SysDescr, out var descr))
@@ -113,9 +188,20 @@ public static class EdgeSwitchRules
         }
         var names = v.Where(kv => kv.Key.StartsWith("1.3.6.1.2.1.2.2.1.2.", StringComparison.Ordinal)).ToDictionary(kv => kv.Key[20..], kv => kv.Value.Trim('"'));
         var up = new List<string>();
+        var macs = MacsByIfIndex(v);
         foreach (var (idx, name) in names.OrderBy(kv => int.TryParse(kv.Key, out var n) ? n : 0))
         {
-            if (v.TryGetValue($"1.3.6.1.2.1.2.2.1.8.{idx}", out var st) && st == "1") up.Add(name);
+            var isUp = v.TryGetValue($"1.3.6.1.2.1.2.2.1.8.{idx}", out var st) && st == "1";
+            if (isUp) up.Add(name);
+            // Each physical port's state, kept for the port map (2026-10-02: only the count was kept). CPU / VLAN interfaces are not ports.
+            if (PortNumber(name) is { } port)
+            {
+                b.Metric("port.up", isUp ? 1 : 0, name);
+                // What is plugged in: how many devices the switch has learned there, and who they are (bounded to fit the fact).
+                var here = macs.TryGetValue(idx, out var m) ? m : [];
+                b.Metric("port.devices", here.Count, name);
+                if (here.Count > 0) b.Fact($"port.attached:{port}", AttachedText(here, labelOfMac ?? (_ => null)));
+            }
             if (v.TryGetValue($"1.3.6.1.2.1.2.2.1.14.{idx}", out var err) && double.TryParse(err, NumberStyles.Float, CultureInfo.InvariantCulture, out var e))
                 b.Metric("port.in-errors", e, name);
         }
@@ -126,6 +212,12 @@ public static class EdgeSwitchRules
                 b.Raise($"switch.port-down:{gone}", Severity.Warning, $"Core switch port {gone} went down", "it was up on the previous read: a server, SAN or uplink may have lost its link");
         return b.Done($"{up.Count} ports up · up {(b.Metrics.FirstOrDefault(m => m.Metric == "uptime.hours")?.Value / 24 ?? 0):0.#} days");
     }
+
+    /// <summary>The front-panel number of an EdgeSwitch interface ("Slot: 0 Port: 12 10G - Level" -> 12), or null for the
+    /// CPU interface, a link aggregate or a VLAN. Anchored at the start: the CPU interface is named " CPU Interface for
+    /// Slot: 5 Port: 1", and an unanchored match counted it as port 1 (the map read "10 of 17 up" on a 16-port switch).</summary>
+    public static int? PortNumber(string ifName)
+        => System.Text.RegularExpressions.Regex.Match(ifName.Trim().Trim('"'), @"^Slot:\s*\d+\s+Port:\s*(\d+)") is { Success: true } m ? int.Parse(m.Groups[1].Value, CultureInfo.InvariantCulture) : null;
 }
 
 /// <summary>A UPS as a rack device: the watcher's latest reading turned into findings (the shutdown decision itself is PowerPolicy).</summary>

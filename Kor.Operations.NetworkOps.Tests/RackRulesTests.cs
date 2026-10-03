@@ -199,6 +199,26 @@ public sealed class RackRulesTests
     }
 
     [Fact]
+    public void Core_switch_as_read_draws_one_light_per_physical_port_in_front_panel_order()
+    {
+        var v = Walk(Fx("edgeswitch.txt"));
+        var read = EdgeSwitchRules.Evaluate(v, new Dictionary<string, string>());
+        var physical = v.Where(kv => kv.Key.StartsWith("1.3.6.1.2.1.2.2.1.2.", StringComparison.Ordinal) && EdgeSwitchRules.PortNumber(kv.Value.Trim('"')) is not null).ToList();
+        Assert.Equal(physical.Count, read.Metrics.Count(m => m.Metric == "port.up"));                      // CPU / VLAN interfaces are not ports
+        var tile = RackComponents.Of(read.Facts, read.Metrics.Select(m => new DeviceReading(m.Metric, m.Subject, m.Value, DateTime.UtcNow)).ToList(), [])
+            .Single(t => t.Kind == "ports");
+        Assert.Equal(physical.Count, tile.Lights!.Count);
+        // 10 interfaces up that day -- 9 front-panel ports and the always-up CPU interface, which is not a port.
+        Assert.Equal(10, read.Metrics.Single(m => m.Metric == "ports.up").Value);
+        Assert.Equal(9, tile.Lights.Count(l => l >= 1));
+        Assert.Equal($"9 of {physical.Count} up", tile.Line1);
+        Assert.Equal(16, physical.Count);                                                                   // a 16-port switch
+        Assert.Equal(12, EdgeSwitchRules.PortNumber("Slot: 0 Port: 12 10G - Level"));
+        Assert.Null(EdgeSwitchRules.PortNumber(" CPU Interface for Slot: 5 Port: 1"));                      // counted as port 1 until anchored
+        Assert.Null(EdgeSwitchRules.PortNumber(" Link Aggregate 3"));
+    }
+
+    [Fact]
     public void Core_switch_as_read_records_its_up_ports_and_a_port_that_drops_is_raised()
     {
         var v = Walk(Fx("edgeswitch.txt"));

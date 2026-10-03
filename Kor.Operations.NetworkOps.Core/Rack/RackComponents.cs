@@ -67,13 +67,43 @@ public static class RackComponents
 
         if (One("ports.up") is { } ports)
         {
-            var erring = Each("port.in-errors").Count(p => p.Value > 0);
-            tiles.Add(Make("ports", "Ports", $"{N(ports)} up", erring > 0 ? $"{erring} with errors" : "no errors", null, open, k => k.StartsWith("switch.port-down:", StringComparison.Ordinal)));
+            var errors = Each("port.in-errors").ToDictionary(p => p.Subject, p => p.Value);
+            var erring = errors.Count(p => p.Value > 0);
+            // The port map: each physical port, front-panel order, as a light (needs the per-port state kept since 2026-10-02).
+            var lights = Each("port.up").Select(p => (No: EdgeSwitchRules.PortNumber(p.Subject) ?? 0, State: p.Value >= 1 ? (errors.GetValueOrDefault(p.Subject) > 0 ? 2 : 1) : 0))
+                .OrderBy(p => p.No).Select(p => p.State).ToList();
+            // "N of M up" from the lights (physical ports only): ports.up counts every interface up, the always-up CPU one too.
+            var tile = Make("ports", "Ports", lights.Count > 0 ? $"{lights.Count(l => l >= 1)} of {lights.Count} up" : $"{N(ports)} up", erring > 0 ? $"{erring} with errors" : "no errors", null, open,
+                k => k.StartsWith("switch.port-down:", StringComparison.Ordinal));
+            tiles.Add(lights.Count > 0 ? tile with { Lights = lights } : tile);
+
+            // Each port with something plugged in: what it is (the switch's MAC table, named on APP01), in front-panel order.
+            foreach (var p in Each("port.up").Where(p => p.Value >= 1).Select(p => (No: EdgeSwitchRules.PortNumber(p.Subject) ?? 0, p.Subject)).OrderBy(p => p.No))
+            {
+                var attached = F($"port.attached:{p.No}");
+                var count = readings.Where(r => r.Metric == "port.devices" && r.Subject == p.Subject).Select(r => r.Value).FirstOrDefault();
+                var errs = errors.GetValueOrDefault(p.Subject);
+                tiles.Add(Make("port", $"Port {p.No}", attached.Length > 0 ? attached.Split(';')[0].Trim() : count > 0 ? $"{N(count)} devices" : "link up, nothing learned",
+                    count > 1 ? $"+{N(count - 1)} more behind it{(errs > 0 ? $" · {N(errs)} errors" : "")}" : errs > 0 ? $"{N(errs)} errors" : "", null, open,
+                    k => k == $"switch.port-down:{p.Subject}") with { Detail = attached });
+            }
         }
         if (One("devices.total") is { } total)
             tiles.Add(Make("devices", "Devices", $"{N(One("devices.online") ?? 0)} of {N(total)} online", F("unifi.site"), null, open,
                 k => k.StartsWith("unifi.offline:", StringComparison.Ordinal) || k == "unifi.unnamed"));
         if (One("alarms.open") is { } alarms) tiles.Add(Make("alarms", "Alarms", alarms == 0 ? "none" : $"{N(alarms)} open", "", null, open, k => k == "unifi.alarms"));
+        // Each UniFi device (access point, switch, gateway): checked in or not, firmware, an upgrade waiting -- offline first.
+        var unifi = Each("unifi.seen.min")
+            .Select(s => (Seen: s, Dev: facts.TryGetValue($"unifi.device:{s.Subject}", out var j) ? UniFiDevice.Parse(j) : null))
+            .Where(x => x.Dev is not null)
+            .OrderBy(x => x.Seen.Value is >= 0 and <= 5 ? 1 : 0).ThenBy(x => x.Dev!.Kind, StringComparer.Ordinal).ThenBy(x => x.Dev!.Label, StringComparer.OrdinalIgnoreCase);
+        foreach (var (seen, dev) in unifi)
+        {
+            var mac = seen.Subject;
+            var state = seen.Value < 0 ? "never checked in" : seen.Value <= 5 ? "online" : $"offline {(seen.Value >= 2880 ? $"{seen.Value / 1440:0} days" : seen.Value >= 120 ? $"{seen.Value / 60:0} h" : $"{seen.Value:0} min")}";
+            tiles.Add(Make("unifi-device", dev!.Kind, dev.Label, $"{state}{(dev.Upgradable ? " · update waiting" : "")} · {dev.Model}", null, open,
+                k => k == $"unifi.offline:{mac}"));
+        }
 
         // Pinged per target (several destinations): the tile shows the WORST of them, latency and loss.
         var pings = Each("ping.ms").ToList();

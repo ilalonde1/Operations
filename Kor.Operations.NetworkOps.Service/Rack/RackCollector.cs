@@ -21,7 +21,7 @@ namespace Kor.Operations.NetworkOps.Service.Rack;
 //              from the last MeshCentral read -- enough to show it and Connect to it, and it says its health is not read
 //   MeshServer KOR-MESH01: MeshCentral itself answering, and how many agents it has connected
 // No collector writes to any device. A device that cannot be read comes back Unreachable with the reason.
-internal sealed class RackCollector(IOptions<NetworkOpsOptions> options, PowerState power, Mesh.MeshState mesh)
+internal sealed class RackCollector(IOptions<NetworkOpsOptions> options, PowerState power, Mesh.MeshState mesh, MacDirectory? macs = null)
 {
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(60);
 
@@ -155,7 +155,9 @@ internal sealed class RackCollector(IOptions<NetworkOpsOptions> options, PowerSt
         var creds = Snmp(sha256: false, des: true);
         var sys = await SnmpChannel.GetAsync(d.Address, creds, [EdgeSwitchRules.SysDescr, EdgeSwitchRules.SysUpTime], TimeSpan.FromSeconds(8), ct).ConfigureAwait(false);
         var tables = await SnmpChannel.WalkAsync(d.Address, creds, EdgeSwitchRules.Tables, TimeSpan.FromSeconds(8), ct).ConfigureAwait(false);
-        return EdgeSwitchRules.Evaluate(sys.Concat(tables).ToDictionary(kv => kv.Key, kv => kv.Value), previousFacts);
+        // What is plugged into each port, named (MacDirectory: UniFi, ARP + rack addresses + DNS); without it, the MACs.
+        var label = macs is null ? null : await macs.LabellerAsync(ct).ConfigureAwait(false);
+        return EdgeSwitchRules.Evaluate(sys.Concat(tables).ToDictionary(kv => kv.Key, kv => kv.Value), previousFacts, label);
     }
 
     /// <summary>A Windows server: Probes/server.ps1 through the same one-shot SCM channel the PC probes use (needs the

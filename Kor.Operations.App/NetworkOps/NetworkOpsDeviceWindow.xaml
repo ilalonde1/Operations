@@ -141,6 +141,19 @@
                                         <TextBlock Grid.Row="1" Text="{Binding Line1}" FontSize="13" FontWeight="Bold" Foreground="{StaticResource Text.Primary}"
                                                    TextTrimming="CharacterEllipsis" Margin="0,3,0,0"/>
                                         <StackPanel Grid.Row="2" VerticalAlignment="Bottom">
+                                            <!-- A switch's ports as lights (green up, grey down, amber up with errors), front-panel order. -->
+                                            <ItemsControl ItemsSource="{Binding LightBrushes}" Margin="0,0,0,3" Visibility="{Binding HasLights, Converter={StaticResource BoolToVis}}">
+                                                <ItemsControl.ItemsPanel>
+                                                    <ItemsPanelTemplate>
+                                                        <StackPanel Orientation="Horizontal"/>
+                                                    </ItemsPanelTemplate>
+                                                </ItemsControl.ItemsPanel>
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <Rectangle Width="6" Height="6" RadiusX="1.5" RadiusY="1.5" Margin="0,0,2,0" Fill="{Binding}"/>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
                                             <Grid Height="4" Margin="0,0,0,3" Visibility="{Binding HasFill, Converter={StaticResource BoolToVis}}" ToolTip="{Binding FillText}">
                                                 <Border Background="#EEF0F2" CornerRadius="2"/>
                                                 <Border Background="{Binding FillBrush}" CornerRadius="2" Width="{Binding FillWidth}" HorizontalAlignment="Left"/>

@@ -231,7 +231,9 @@ public sealed class NetworkOpsDeviceViewModel : ObservableObject
             Components.Add(new ComponentTile
             {
                 Part = part,
-                ToolTip = about.Count > 0 ? string.Join("\n", about) + "\n(click to show it)" : $"{part.Title}: {part.Line1}{(part.Line2.Length > 0 ? " · " + part.Line2 : "")}",
+                ToolTip = about.Count > 0 ? string.Join("\n", about) + "\n(click to show it)"
+                        : part.Detail is { Length: > 0 } detail ? $"{part.Title}:\n{detail.Replace("; ", "\n")}"   // a switch port: everything attached
+                        : $"{part.Title}: {part.Line1}{(part.Line2.Length > 0 ? " · " + part.Line2 : "")}",
             });
         }
         OnPropertyChanged(nameof(HasComponents));

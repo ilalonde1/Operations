@@ -9,8 +9,11 @@ namespace Kor.Operations.NetworkOps.Core.Health;
 /// <param name="Kind">cpu | memory | gpu | drive | missing-drive | windows | bios</param>
 /// <param name="FillPct">A drive's used space, 0-100; null for anything else.</param>
 /// <param name="Worst">The worst open finding about this part, or null when nothing is open on it.</param>
+/// <param name="Lights">A row of status lights instead of a fill bar -- a switch's ports in front-panel order: 0 down, 1 up,
+/// 2 up with errors.</param>
+/// <param name="Detail">More than two lines hold -- a switch port's full list of what is attached -- for the tile's hover.</param>
 public sealed record PcComponent(string Kind, string Title, string Line1, string Line2, double? FillPct, Severity? Worst,
-    IReadOnlyList<string> RuleKeys, bool IsSystem = false);
+    IReadOnlyList<string> RuleKeys, bool IsSystem = false, IReadOnlyList<int>? Lights = null, string? Detail = null);
 
 /// <summary>
 /// The PC's key parts, from its last full check, each with the open findings that are about it -- Ian, 2026-10-02: "something
