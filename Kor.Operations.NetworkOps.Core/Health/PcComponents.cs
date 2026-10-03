@@ -80,11 +80,12 @@ public static class PcComponents
                 var letters = Drives.LettersOf(d);
                 var vols = s.Volumes.Where(v => letters.Contains(v.Letter.ToUpperInvariant() + ":")).ToList();
                 double? fill = vols.Sum(v => v.SizeGB) is > 0 and var size ? Math.Round((size - vols.Sum(v => v.FreeGB)) / size * 100) : null;
-                var title = (letters.Count > 0 ? string.Join(" ", letters) + "  " : "") + (d.System == true ? "System" : letters.Count > 0 ? "Data" : "No letter");
+                var title = (letters.Count > 0 ? string.Join(" ", letters) + "  " : "")
+                            + (d.System == true ? "System" : letters.Count > 0 ? "Data" : d.UnmountedGB is >= 1 ? "Not mounted" : "No letter");
                 var model = d.Name!.ToLowerInvariant();
                 var unhealthy = d.Health is not null && !d.Health.Equals("Healthy", StringComparison.OrdinalIgnoreCase);
                 yield return Make("drive", title, Drives.Kind(d), d.Name!, fill, open,
-                    k => k == $"disk-errors:{model}" || k == $"disk-wearing:{model}" || k == $"disk-aging:{model}"
+                    k => k == $"disk-errors:{model}" || k == $"disk-wearing:{model}" || k == $"disk-aging:{model}" || k == $"disk-unmounted:{model}"
                          || letters.Any(l => k == $"low-disk:{l.TrimEnd(':').ToLowerInvariant()}")
                          || (k == "disk-failing" && unhealthy),
                     isSystem: d.System == true);

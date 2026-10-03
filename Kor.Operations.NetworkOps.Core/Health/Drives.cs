@@ -24,7 +24,10 @@ public static class Drives
         if (d.Letters is null && d.System is null) return null;
         var letters = LettersOf(d);
         var where = letters.Count > 0 ? " " + string.Join(", ", letters) : "";
-        return d.System == true ? $"the system drive{where}" : letters.Count > 0 ? $"the data drive{where}" : "a drive with no letter";
+        return d.System == true ? $"the system drive{where}"
+             : letters.Count > 0 ? $"the data drive{where}"
+             : d.UnmountedGB is >= 1 ? "the data drive that is no longer mounted"   // v11: its data partition lost its letter (KOR-208-N)
+             : "a drive with no letter";
     }
 
     /// <summary>"2 TB hard drive", "512 GB NVMe SSD": the size as the box says it (decimal), and the kind.</summary>

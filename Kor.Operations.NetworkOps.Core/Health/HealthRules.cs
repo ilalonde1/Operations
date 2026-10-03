@@ -32,6 +32,15 @@ public static class HealthRules
                 string.Join("; ", vanished.Select(d => d.Name)) +
                 (s.OrphanDriveLetters.Count > 0 ? $" | letters with no volume: {string.Join(",", s.OrphanDriveLetters)}" : "")));
 
+        // A drive that is still there but whose data Windows no longer shows (probe v11): its data partition has no letter and
+        // no folder mount. KOR-208-N, 2026-10-02 15:05: the D: hard drive reset, logged 306 bad blocks, and its 1,863 GB
+        // partition lost its volume and letter -- the drive stayed, so "A drive has disappeared" never fired.
+        foreach (var d in s.PhysicalDisks.Where(d => d.Name is not null && d.System != true && d.UnmountedGB is >= 1))
+            f.Add(new($"disk-unmounted:{d.Name!.ToLowerInvariant()}", Severity.Critical, "A data drive's volume is no longer mounted",
+                $"{Drives.Model(s, d.Name)}: {d.UnmountedGB:N0} GB of data partition with no letter" +
+                (s.OrphanDriveLetters.Count > 0 ? $" | letters left with nothing behind them: {string.Join(", ", s.OrphanDriveLetters)}" : "") +
+                " | copy the data off with a recovery tool before anything writes to it"));
+
         // A drive going bad: any bad block or NTFS corruption, or repeated controller resets.
         var e = s.Events14d;
         var badBlocks = e?.DiskBadBlock?.Count ?? 0;

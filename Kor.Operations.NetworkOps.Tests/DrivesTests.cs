@@ -79,10 +79,61 @@ public sealed class DrivesTests
     }
 
     [Fact]
+    public void A_drive_filling_up_is_named_the_same_way()
+    {
+        var s = Kor208N();
+        var h = new MetricHistory();
+        // C: losing 4 GB a day for 3 days (KOR-208-N, 2026-10-02): 120 GB free -> about a month.
+        for (var d = 3; d >= 0; d--) h.Add(Metrics.DiskFreeGb, "C", s.CollectedAt.AddDays(-d), 120 + 4 * d);
+        var f = Predictions.Evaluate(s, h).Single(x => x.RuleKey == "disk-filling:c");
+        Assert.StartsWith("The system drive C: will be full in about", f.Title);
+    }
+
+    [Fact]
     public void An_unhealthy_drive_is_named_in_the_failing_finding()
     {
         var f = HealthRules.Evaluate(Kor208N(Ssd, Hdd with { Health = "Warning" })).Single(x => x.RuleKey == "disk-failing");
         Assert.Contains("unhealthy: the data drive D: ST2000DM006-2DM164 Warning", f.Evidence);
+    }
+
+    // ---- probe v11: a drive whose data Windows no longer shows (KOR-208-N, 2026-10-02 15:05, as read at 17:30)
+
+    private static HealthSnapshot Kor208NAfterTheFailure() => Kor208N(Ssd, Hdd with { Letters = "", UnmountedGB = 1863 }) with
+    {
+        Volumes = [new("C", "Windows", 474.7, 209.4)],
+        OrphanDriveLetters = ["D", "E"],
+    };
+
+    [Fact]
+    public void A_drive_whose_volume_dropped_out_is_critical_and_says_which_letters_it_left()
+    {
+        var f = HealthRules.Evaluate(Kor208NAfterTheFailure()).Single(x => x.RuleKey == "disk-unmounted:st2000dm006-2dm164");
+        Assert.Equal(Severity.Critical, f.Severity);
+        Assert.Equal("A data drive's volume is no longer mounted", f.Title);
+        Assert.Equal("ST2000DM006-2DM164 (2 TB hard drive): 1,863 GB of data partition with no letter | letters left with nothing behind them: D, E | copy the data off with a recovery tool before anything writes to it", f.Evidence);
+        // Its other findings name it the same way.
+        Assert.Equal("The data drive that is no longer mounted has unrecoverable read errors",
+            Predictions.Evaluate(Kor208NAfterTheFailure(), new MetricHistory()).Single(x => x.RuleKey == "disk-errors:st2000dm006-2dm164").Title);
+    }
+
+    [Fact]
+    public void A_blank_new_drive_and_the_system_drive_never_raise_it()
+    {
+        Assert.DoesNotContain(HealthRules.Evaluate(Kor208N(Ssd, Hdd with { Letters = "", UnmountedGB = 0 })), x => x.RuleKey.StartsWith("disk-unmounted", StringComparison.Ordinal));
+        Assert.DoesNotContain(HealthRules.Evaluate(Kor208N(Ssd with { UnmountedGB = 400 }, Hdd)), x => x.RuleKey.StartsWith("disk-unmounted", StringComparison.Ordinal));
+        Assert.DoesNotContain(HealthRules.Evaluate(Kor208N()), x => x.RuleKey.StartsWith("disk-unmounted", StringComparison.Ordinal));   // before v11: null
+        Assert.Equal("a drive with no letter", Drives.Role(Hdd with { Letters = "", UnmountedGB = 0 }));
+    }
+
+    [Fact]
+    public void The_tile_says_not_mounted_and_is_red()
+    {
+        var s = Kor208NAfterTheFailure();
+        var open = HealthRules.Evaluate(s).Concat(Predictions.Evaluate(s, new MetricHistory())).Select(x => (x.RuleKey, x.Severity)).ToList();
+        var tile = PcComponents.Of(s, open).Single(t => t.Line2 == "ST2000DM006-2DM164");
+        Assert.Equal("Not mounted", tile.Title);
+        Assert.Equal((Severity?)Severity.Critical, tile.Worst);
+        Assert.Contains("disk-unmounted:st2000dm006-2dm164", tile.RuleKeys);
     }
 
     [Fact]

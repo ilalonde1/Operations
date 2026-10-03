@@ -49,7 +49,8 @@ public static class Predictions
             var days = free / -perDay;
             if (days > 60) continue;
             f.Add(new($"disk-filling:{letter.ToLowerInvariant()}", days <= 14 ? Severity.Critical : Severity.Warning,
-                $"Drive {letter}: will be full in about {Math.Max(1, Math.Round(days))} days",
+                (Drives.OfLetter(s, letter) is { } pd && Drives.Role(pd) is { } role ? Drives.Capitalised(role) : $"Drive {letter}:") +
+                $" will be full in about {Math.Max(1, Math.Round(days))} days",
                 $"{free:0.#} GB free, losing {-perDay:0.##} GB a day over the last {Span(pts):0} days"));
         }
 

@@ -67,9 +67,17 @@ $physical = Try-Block 'physicalDisks' {
         $letters = @(Get-Partition -DiskNumber $n -ErrorAction SilentlyContinue | Where-Object { [int][char]$_.DriveLetter -gt 0 } |
             ForEach-Object { [string]$_.DriveLetter }) -join ','
         $disk = Get-Disk -Number $n -ErrorAction SilentlyContinue
+        # v11: data partitions (GPT "Basic", MBR "IFS"/"Logical"/"FAT*") over 1 GB with no letter and no folder mount -- data
+        # Windows is no longer showing. KOR-208-N, 2026-10-02 15:05: its D: hard drive reset, logged 306 bad blocks, and its
+        # 1,863 GB partition lost its volume and letter while the drive itself stayed (so "a drive has disappeared" never
+        # fired). Measured on 11 drives across 5 PCs before shipping: 1,863 there, 0 on every other. A blank new drive has 0.
+        $parts = @(Get-Partition -DiskNumber $n -ErrorAction SilentlyContinue)
+        $unmounted = @($parts | Where-Object { [string]$_.Type -match '^(Basic|IFS|Logical|FAT)' -and [int][char]$_.DriveLetter -eq 0 -and $_.Size -gt 1GB -and
+            -not @($_.AccessPaths | Where-Object { $_ -and $_ -notlike '\\?\Volume*' }).Count })
         [pscustomobject]@{ Name = $_.FriendlyName; Media = [string]$_.MediaType; Bus = [string]$_.BusType
             SizeGB = [math]::Round($_.Size / 1GB); Health = [string]$_.HealthStatus; Operational = [string]$_.OperationalStatus
-            Letters = $letters; System = [bool]($disk -and ($disk.IsBoot -or $disk.IsSystem)) } })
+            Letters = $letters; System = [bool]($disk -and ($disk.IsBoot -or $disk.IsSystem))
+            UnmountedGB = [math]::Round((($unmounted | Measure-Object Size -Sum).Sum) / 1GB, 1) } })
 }
 $missingDisks = Try-Block 'missingDisks' {
     # A disk Windows has seen before but which is no longer present. Nameless entries are the
@@ -394,7 +402,7 @@ $console = Try-Block 'console' {
 }
 
 [pscustomobject]@{
-    ProbeVersion  = 10
+    ProbeVersion  = 11
     Console       = $console
     Wake          = $wake
     Session       = $session
