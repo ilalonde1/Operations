@@ -134,7 +134,7 @@ public sealed class ComponentTile : System.ComponentModel.INotifyPropertyChanged
         "drive" or "datastore" or "volume" or "disks" or "repo" => "",
         "system" => "", "uptime" => "", "vms" => "", "job" => "", "updates" => "", "services" => "",
         "network" => "", "ports" => "", "port" => "", "devices" => "", "unifi-device" => "", "alarms" => "", "internet" => "",
-        "charge" => "", "runtime" => "", "load" => "",
+        "supply" or "pages" => "", "charge" => "", "runtime" => "", "load" => "",
         _ => "",
     };
     public string ToolTip { get; init; } = "";

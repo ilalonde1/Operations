@@ -40,6 +40,9 @@ public sealed class PartInfoTests
 
     private static RackResult Read(string name) => Reads[name]();
 
+    private static Dictionary<string, string> Printer(string ip)
+        => JsonSerializer.Deserialize<Dictionary<string, Dictionary<string, string>>>(Fx("rack", "printers-2026-10-02.json"))![ip];
+
     private static Dictionary<string, Func<RackResult>> BuildReads()
     {
         string[] production = ["Kor-DC01", "vcenter", "Kor-FS01", "Kor-APP01", "Kor-RDS01", "Kor-BK01", "KOR-UNIFI01"];
@@ -57,6 +60,11 @@ public sealed class PartInfoTests
             ["veeam"] = () => VeeamRules.Evaluate(Fx("rack", "veeam-jobs.json"), Fx("rack", "veeam-repos.json"), At),
             ["internet"] = () => InternetRules.Evaluate(new InternetCheck("184.71.160.54", "184.71.160.54", true, pings)),
             ["ups"] = () => UpsRules.Evaluate(new UpsReading("E", At, true, PowerSource.Mains, 0, 48, 100, 25, false, false, null)),
+            // Each printer's real SNMP answers (2026-10-02): supplies, pages, firmware.
+            ["printer-plotter"] = () => PrinterRules.Evaluate(Printer("192.168.1.5")),
+            ["printer-copier"] = () => PrinterRules.Evaluate(Printer("192.168.1.8")),
+            ["printer-brother"] = () => PrinterRules.Evaluate(Printer("192.168.1.156")),
+            ["printer-hp"] = () => PrinterRules.Evaluate(Printer("192.168.1.220")),
         };
     }
 

@@ -37,7 +37,8 @@ public static class RackComponents
         if (model.Length > 0 || version.Length > 0)
             tiles.Add(Make("system", "System", model.Length > 0 ? model : version, model.Length > 0 ? version : "", null, open,
                 k => k == RackResult.UnreachableRule || k is "syno.update" or "syno.system" or "syno.power" or "syno.fan" or "syno.cpu-fan" or "syno.temp"
-                     or "esxi.maintenance" or "esxi.sensors-blind" or "server.reboot-pending" or "unifi.firmware" || k.StartsWith("esxi.sensor:", StringComparison.Ordinal))
+                     or "esxi.maintenance" or "esxi.sensors-blind" or "server.reboot-pending" or "unifi.firmware" || k.StartsWith("esxi.sensor:", StringComparison.Ordinal)
+                     || (k.StartsWith("printer.", StringComparison.Ordinal) && !k.StartsWith("printer.supply:", StringComparison.Ordinal)))   // jam, door, paper, offline
                 with { Info = DeviceInfo(facts, readings) });
 
         if (One("uptime.hours") is { } up)
@@ -136,6 +137,14 @@ public static class RackComponents
         if (One("runtime.min") is { } runtime) tiles.Add(Make("runtime", "Runtime", $"{N(runtime)} min", "on battery, at this load", null, open, k => k == "ups.short-runtime") with { Info = ups });
         if (One("load.pct") is { } load) tiles.Add(Make("load", "Load", $"{N(load)}%", "", load, open, k => k is "ups.bypass" or "ups.output-off") with { Info = ups });
 
+        // A printer: each supply (ink, toner, drum, waste) with what is left; the page count (Rack/PrinterRules).
+        foreach (var s in Each("supply.pct"))
+            tiles.Add(Make("supply", "Supply", s.Subject, $"{s.Value.ToString("0", CultureInfo.InvariantCulture)}% left", 100 - s.Value, open,
+                k => k == $"printer.supply:{s.Subject}") with { Info = SubjectInfo(s.Subject, facts, readings) });
+        if (One("pages.total") is { } pages)
+            tiles.Add(Make("pages", "Pages", $"{pages.ToString("#,0", CultureInfo.InvariantCulture)} printed", F("fw.version") is { Length: > 0 } fwv ? $"firmware {fwv}" : "", null, open, _ => false)
+                with { Info = [.. Pick("pages.total"), .. PcComponents.Rows(("Model", F("hw.model")), ("Firmware", F("fw.version")))] });
+
         foreach (var j in Each("job.age.hours"))
             tiles.Add(Make("job", "Backup job", j.Subject, $"{F($"veeam.result:{j.Subject}") switch { "" => "last run", var r => r }} · {(j.Value >= 48 ? $"{j.Value / 24:0.#} d" : $"{N(j.Value)} h")} ago", null, open,
                 k => k.EndsWith(":" + j.Subject, StringComparison.Ordinal) && k.StartsWith("veeam.", StringComparison.Ordinal) && !k.StartsWith("veeam.repo", StringComparison.Ordinal))
@@ -174,6 +183,7 @@ public static class RackComponents
         ["devices.total"] = ("Devices", ""), ["devices.online"] = ("Online", ""), ["alarms.open"] = ("Alarms open", ""), ["unifi.seen.min"] = ("Last checked in", " min ago"),
         ["ping.ms"] = ("Round trip", " ms"), ["ping.loss.pct"] = ("Loss", "%"), ["charge.pct"] = ("Charge", "%"), ["runtime.min"] = ("Runtime", " min"),
         ["load.pct"] = ("Load", "%"), ["job.age.hours"] = ("Last run", " hours ago"),
+        ["supply.pct"] = ("Left", "%"), ["pages.total"] = ("Pages printed", ""),
     };
 
     private static string Value(DeviceReading r)

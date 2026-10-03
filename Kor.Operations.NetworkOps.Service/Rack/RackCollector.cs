@@ -42,6 +42,9 @@ internal sealed class RackCollector(IOptions<NetworkOpsOptions> options, PowerSt
                 "CoreSwitch" => await CoreSwitchAsync(d, previousFacts, cap.Token).ConfigureAwait(false),
                 "Ups" => Ups(d),
                 "WindowsServer" => await ServerAsync(d, cap.Token).ConfigureAwait(false),
+                // A printer: read-only SNMP v1 "public" (SnmpChannel.GetV1Async says why v1 here), no password stored.
+                "Printer" => PrinterRules.Evaluate(await SnmpChannel.GetV1Async(d.Address, "public", PrinterRules.Oids, [PrinterRules.ErrorState],
+                    TimeSpan.FromSeconds(2), cap.Token).ConfigureAwait(false)),
                 "Mesh" => RemoteOnly(d),
                 "MeshServer" => MeshServer(),
                 _ => RackResult.Unreachable($"no collector named '{d.Collector}'"),

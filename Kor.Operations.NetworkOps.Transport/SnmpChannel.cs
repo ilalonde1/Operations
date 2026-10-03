@@ -12,7 +12,8 @@ namespace Kor.Operations.NetworkOps.Transport;
 /// <param name="PrivDes">True for DES privacy -- the core switch's firmware offers nothing else; everything else is AES.</param>
 public sealed record SnmpV3Credentials(string User, string AuthPassword, string PrivPassword, bool AuthSha256, bool PrivDes = false);
 
-// SNMPv3 GET and WALK, authPriv only (never v1/v2c: every device has them off). Values come back as decimal
+// SNMPv3 GET and WALK, authPriv only (never v1/v2c: every rack device has them off) -- except the printers' read-only v1
+// GET (GetV1Async, which says why). Values come back as decimal
 // strings, TimeTicks as hundredths of a second, and an OID the device does not have is simply left out --
 // the Core parsers decide what a missing value means.
 public static class SnmpChannel
@@ -54,6 +55,44 @@ public static class SnmpChannel
                 Messenger.BulkWalk(VersionCode.V3, endpoint, new OctetString(creds.User), OctetString.Empty, new ObjectIdentifier(table), list,
                     ms, 20, WalkMode.WithinSubtree, Privacy(creds), report);
                 foreach (var v in list) if (Text(v.Data) is { } t) values[v.Id.ToString()] = t;
+            }
+            return (IReadOnlyDictionary<string, string>)values;
+        }, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// SNMP v1 GET, read-only -- the ONE exception to v3-only above: the printers (2026-10-02). v1, not v2c: the Canons
+    /// answer v1 only (v2c timed out on both while v1 -- what Windows' own printer SNMP speaks -- answered). SNMPv3 would need
+    /// each printer's admin login to set up, and a read-only "public" GET changes nothing on a printer. An OID the device
+    /// does not have is left out. Octet strings named in
+    /// <paramref name="hexOids"/> come back as hex: a bit string such as a printer's error flags is not text (0x20 = "low
+    /// ink" is the same byte as a space).
+    /// </summary>
+    public static async Task<IReadOnlyDictionary<string, string>> GetV1Async(string host, string community, IReadOnlyList<string> oids,
+        IReadOnlyCollection<string> hexOids, TimeSpan timeout, CancellationToken ct)
+    {
+        var endpoint = await EndpointAsync(host, ct).ConfigureAwait(false);
+        var ms = (int)timeout.TotalMilliseconds;
+        return await Task.Run(() =>
+        {
+            // ONE OID per request: the Canons (iR-ADV C5840, TZ-30000) drop -- no answer at all -- a request that names any OID
+            // they do not have, so a batch of 10 timed out on both (2026-10-02) while single GETs answered at once. The first
+            // OID (sysDescr) must answer, or the device is not answering; after that a missing or silent OID is skipped.
+            var values = new Dictionary<string, string>();
+            var answered = false;
+            foreach (var oid in oids)
+            {
+                ct.ThrowIfCancellationRequested();
+                IList<Variable> got;
+                try { got = Messenger.Get(VersionCode.V1, endpoint, new OctetString(community), [new Variable(new ObjectIdentifier(oid))], ms); }
+                catch (Exception ex) when (answered && ex is Lextm.SharpSnmpLib.Messaging.TimeoutException or ErrorException) { continue; }
+                answered = true;
+                foreach (var v in got)
+                {
+                    var id = v.Id.ToString();
+                    var text = v.Data is OctetString os && hexOids.Contains(id) ? os.ToHexString() : Text(v.Data);
+                    if (text is not null) values[id] = text;
+                }
             }
             return (IReadOnlyDictionary<string, string>)values;
         }, ct).ConfigureAwait(false);

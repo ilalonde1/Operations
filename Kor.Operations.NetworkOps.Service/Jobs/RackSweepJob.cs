@@ -70,7 +70,9 @@ internal sealed class RackSweepJob(NetworkOpsStore store, RackCollector collecto
             else
             {
                 // Only the unreachable finding moves; everything else stands.
-                var severity = d.Kind is RackKinds.Host or RackKinds.Storage or RackKinds.Internet or RackKinds.Ups ? Severity.Critical : Severity.Warning;
+                // A printer that does not answer is usually switched off for the night (the plotter): worth seeing, not an alarm.
+                var severity = d.Kind is RackKinds.Host or RackKinds.Storage or RackKinds.Internet or RackKinds.Ups ? Severity.Critical
+                    : d.Kind == RackKinds.Printer ? Severity.Info : Severity.Warning;
                 changes = FindingDiff.Compute(open.Where(f => f.RuleKey == RackResult.UnreachableRule).ToList(),
                     [new Finding(RackResult.UnreachableRule, severity, $"{d.Name} is not answering", r.Error ?? "no answer")]);
             }
