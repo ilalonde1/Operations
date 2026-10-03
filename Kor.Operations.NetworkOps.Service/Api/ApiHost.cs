@@ -162,6 +162,14 @@ internal sealed class ApiHost(IOptions<NetworkOpsOptions> options, NetworkOpsSto
         api.MapGet("/rack", async (NetworkOpsStore s, Mesh.MeshState m, CancellationToken ct) =>
             WithMesh(await s.FleetSnapshotAsync(ct, rack: true), m, await s.MeshRecordsAsync(ct)));
         api.MapGet("/devices/{id:int}/history", (int id, NetworkOpsStore s, CancellationToken ct) => s.DeviceHistoryAsync(id, ct));
+        // What changed since a moment (default: the last 24 h; at most 31 days back): the morning brief, from the database.
+        api.MapGet("/changes", (DateTime? since, NetworkOpsStore s, CancellationToken ct) =>
+        {
+            var now = DateTime.UtcNow;
+            var from = since is { } x ? (x.Kind == DateTimeKind.Unspecified ? DateTime.SpecifyKind(x, DateTimeKind.Utc) : x.ToUniversalTime()) : now.AddHours(-24);
+            if (from < now.AddDays(-31)) from = now.AddDays(-31);
+            return s.ChangesSinceAsync(from, ct);
+        });
         api.MapGet("/resolutions", (NetworkOpsStore s, CancellationToken ct) => s.ResolutionRowsAsync(ct));
 
         api.MapPost("/devices/{name}/check", async (string name, HttpContext h, NetworkOpsStore s, CancellationToken ct) =>

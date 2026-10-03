@@ -84,6 +84,60 @@ internal sealed partial class NetworkOpsStore
         return new FleetSnapshot(devices, facts, open, patterns, beat);
     }
 
+    /// <summary>What changed across the PCs and the rack since <paramref name="sinceUtc"/> (GET /api/changes): findings opened or
+    /// cleared, fixes and runs requested, and what is open now. Retired devices are left out.</summary>
+    public async Task<ChangesView> ChangesSinceAsync(DateTime sinceUtc, CancellationToken ct)
+    {
+        await using var c = await OpenAsync(ct).ConfigureAwait(false);
+        var opened = new List<ChangeFinding>();
+        var cleared = new List<ChangeFinding>();
+        await using (var cmd = Cmd(c, """
+            SELECT TOP (1000) d.Name, f.RuleKey, f.Severity, f.Title, f.Evidence, f.FirstSeenUtc, f.ClearedUtc
+            FROM NetworkOps.Findings f JOIN NetworkOps.Devices d ON d.DeviceId = f.DeviceId
+            WHERE d.RetiredUtc IS NULL AND (f.FirstSeenUtc >= @s OR f.ClearedUtc >= @s)
+            ORDER BY f.Severity DESC, d.Name, f.RuleKey;
+            """))
+        {
+            cmd.Parameters.Add("@s", SqlDbType.DateTime2).Value = sinceUtc;
+            await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+            while (await r.ReadAsync(ct).ConfigureAwait(false))
+            {
+                var f = new ChangeFinding(r.GetString(0), r.GetString(1), (Severity)r.GetByte(2), r.GetString(3), r.GetString(4), Utc(r, 5)!.Value, Utc(r, 6));
+                (f.FirstSeenUtc >= sinceUtc ? opened : cleared).Add(f);
+            }
+        }
+
+        var actions = new List<ChangeAction>();
+        await using (var cmd = Cmd(c, """
+            SELECT TOP (1000) d.Name, a.ActionId, a.Kind, a.RequestedBy, a.RequestedUtc, a.Status, a.Detail
+            FROM NetworkOps.Actions a JOIN NetworkOps.Devices d ON d.DeviceId = a.DeviceId
+            WHERE a.RequestedUtc >= @s ORDER BY a.ActionId;
+            """))
+        {
+            cmd.Parameters.Add("@s", SqlDbType.DateTime2).Value = sinceUtc;
+            await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+            while (await r.ReadAsync(ct).ConfigureAwait(false))
+                actions.Add(new ChangeAction(r.GetString(0), r.GetInt64(1), r.GetString(2), r.GetString(3), Utc(r, 4)!.Value, r.GetString(5), r.IsDBNull(6) ? null : r.GetString(6)));
+        }
+
+        int critical = 0, warning = 0, info = 0;
+        await using (var cmd = Cmd(c, """
+            SELECT f.Severity, COUNT(*) FROM NetworkOps.Findings f JOIN NetworkOps.Devices d ON d.DeviceId = f.DeviceId
+            WHERE f.ClearedUtc IS NULL AND d.RetiredUtc IS NULL GROUP BY f.Severity;
+            """))
+        {
+            await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+            while (await r.ReadAsync(ct).ConfigureAwait(false))
+                switch ((Severity)r.GetByte(0))
+                {
+                    case Severity.Critical: critical = r.GetInt32(1); break;
+                    case Severity.Warning: warning = r.GetInt32(1); break;
+                    default: info += r.GetInt32(1); break;
+                }
+        }
+        return new ChangesView(sinceUtc, DateTime.UtcNow, opened, cleared, actions, critical, warning, info);
+    }
+
     public async Task<DeviceHistory> DeviceHistoryAsync(int deviceId, CancellationToken ct)
     {
         await using var c = await OpenAsync(ct).ConfigureAwait(false);

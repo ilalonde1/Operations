@@ -161,6 +161,10 @@ public static class PromptComposer
         sb.AppendLine($"- `netops last-check --hosts {machine}` -- the last full health check NetworkOps stored, as the machine returned it.");
         sb.AppendLine($"- `netops check --hosts {machine}` -- a fresh full health check now (stored, so the Command Center and its learning see it too).");
         sb.AppendLine("- `netops knowledge --search <words>` -- the knowledge banked from earlier sessions.");
+        sb.AppendLine($"- `netops history --hosts {machine}` -- its past problems, what changed on it, notes, and every fix or run on it (with ids).");
+        sb.AppendLine("- `netops action --id N` / `netops trigger --id N` -- one fix or run (status, full output) / one queued check or job.");
+        sb.AppendLine("- `netops findings --hosts A,B` and `netops changes --since 24h` -- what is open now (PCs and rack), and what opened, cleared and was done since.");
+        sb.AppendLine("- `netops fix --hosts A,B --fix <catalog id>` -- a catalog fix, exactly as the Command Center's Fix… runs it. --hosts takes PCs and rack devices alike (KOR-FS01), or all / rack.");
         sb.AppendLine("- The first call asks you to sign in: the same Entra sign-in and MFA as the app.");
         sb.AppendLine("How to read quickly:");
         sb.AppendLine("- Put every read into ONE script; return one object (it is converted to JSON for you).");
