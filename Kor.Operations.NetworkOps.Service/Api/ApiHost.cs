@@ -25,7 +25,8 @@ namespace Kor.Operations.NetworkOps.Service.Api;
 // The endpoint agents call in on the same listener (/agent/v1, Agents/AgentApi.cs) with their own per-PC keys;
 // neither kind of caller can use the other's routes.
 internal sealed class ApiHost(IOptions<NetworkOpsOptions> options, NetworkOpsStore store, Power.PowerState power, Agents.AgentHub agents,
-    Mesh.MeshState mesh, Prompts.PromptLibrary prompts, Updates.UpdateScanner updates, Agents.MachineRunner runner, ILoggerFactory loggers, ILogger<ApiHost> log) : BackgroundService
+    Mesh.MeshState mesh, Prompts.PromptLibrary prompts, Updates.UpdateScanner updates, Agents.MachineRunner runner, ILoggerFactory loggers, ILogger<ApiHost> log,
+    Network.NetworkMapService networkMap) : BackgroundService
 {
     private static readonly TimeSpan MaxSnooze = TimeSpan.FromDays(90);
 
@@ -53,6 +54,7 @@ internal sealed class ApiHost(IOptions<NetworkOpsOptions> options, NetworkOpsSto
         builder.Services.AddSingleton(prompts);
         builder.Services.AddSingleton(updates);
         builder.Services.AddSingleton(runner);
+        builder.Services.AddSingleton(networkMap);
         builder.Services.AddSingleton<Agents.IAgentDirectory>(store);
         builder.WebHost.ConfigureKestrel(k =>
         {
@@ -173,6 +175,13 @@ internal sealed class ApiHost(IOptions<NetworkOpsOptions> options, NetworkOpsSto
             return s.ChangesSinceAsync(from, ct);
         });
         api.MapGet("/resolutions", (NetworkOpsStore s, CancellationToken ct) => s.ResolutionRowsAsync(ct));
+        // The port map: every switch, port and device, by name and person (Network/NetworkMapService; built after each rack sweep).
+        api.MapGet("/network", (Network.NetworkMapService m) => m.Current is { } map
+            ? Results.Ok(new Core.Network.NetworkMapResponse(m.BuiltUtc, m.Notes, map))
+            : Results.Problem("The port map has not been built yet: it is built after the first rack sweep that reads the UniFi controller.", statusCode: 503));
+        // What moved between ports (a desk moved, a cable swapped): default the last 7 days. Empty before 010.
+        api.MapGet("/network/moves", (DateTime? since, NetworkOpsStore s, CancellationToken ct) =>
+            s.NetworkMovesAsync(since is { } x ? x.ToUniversalTime() : DateTime.UtcNow.AddDays(-7), ct));
 
         api.MapPost("/devices/{name}/check", async (string name, HttpContext h, NetworkOpsStore s, CancellationToken ct) =>
             // A rack device's "check now" re-reads that device through the rack sweep; a PC's runs its health probe.

@@ -17,7 +17,7 @@ namespace Kor.Operations.NetworkOps.Service.Jobs;
 // raises `rack.unreachable` and keeps every other finding exactly as it was: not seeing a fault is not the fault
 // being fixed. Also runnable for one device from the Command Center ("check now").
 internal sealed class RackSweepJob(NetworkOpsStore store, RackCollector collector, IDigestSender digest, Updates.UpdateRescans rescans,
-    Mesh.MeshState mesh, IOptions<NetworkOpsOptions> options, ILogger<RackSweepJob> log) : INetworkOpsJob
+    Mesh.MeshState mesh, IOptions<NetworkOpsOptions> options, ILogger<RackSweepJob> log, Network.NetworkMapService? map = null) : INetworkOpsJob
 {
     public const string JobName = "RackSweep";
     public string Name => JobName;
@@ -90,7 +90,15 @@ internal sealed class RackSweepJob(NetworkOpsStore store, RackCollector collecto
             foreach (var (id, dc) in notify)
                 await store.MarkNotifiedAsync(id, dc.Changes.Where(c => c.Kind != ChangeKind.Cleared).Select(c => c.RuleKey), now, ct);
 
-        var summary = $"read {ok} of {devices.Count} rack devices, {raised} findings, {notify.Sum(n => n.Changes.Changes.Count)} notifiable" +
+        // The port map, from this sweep's UniFi read (a failure to build it is said, and touches nothing above).
+        var mapped = "";
+        if (map is not null && results.Values.Any(x => x.Device.Collector == "UniFi" && x.Result.Reachable))
+        {
+            try { mapped = "; " + await map.RefreshAsync(ct); }
+            catch (Exception ex) when (ex is not OperationCanceledException) { log.LogWarning(ex, "Port map not built"); mapped = "; port map not built: " + ex.Message; }
+        }
+
+        var summary = $"read {ok} of {devices.Count} rack devices, {raised} findings, {notify.Sum(n => n.Changes.Changes.Count)} notifiable" + mapped +
                       (researched > 0 ? $", {researched} restarted since their last update search (searching again)" : "") +
                       (waiting.Count > 0 ? $"; not judged until MeshCentral is first read: {string.Join(", ", waiting.Select(d => d.Name))}" : "") +
                       (ok < devices.Count ? $"; not answering: {string.Join(", ", results.Values.Where(x => !x.Result.Reachable).Select(x => $"{x.Device.Name} ({x.Result.Error})"))}" : "");

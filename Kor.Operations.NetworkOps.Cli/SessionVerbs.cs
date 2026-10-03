@@ -21,6 +21,7 @@ namespace Kor.Operations.NetworkOps.Cli;
 //   netops trigger    --id N                     one queued check or job: status and result
 //   netops updates    [--scan]                   what Windows Update has waiting everywhere; --scan searches again first
 //   netops changes    [--since 24h|7d|2026-10-02T01:45]   the morning brief: opened, cleared, done, open now
+//   netops network    [--search KOR-207|markb|192.168.1.73]  the port map: every switch, port, device and person
 //
 // --hosts takes a PC or a rack device (KOR-217, KOR-FS01: a rack name matches up to its bracket), "all" (every PC) or
 // "rack" (every rack device): one resolver (Core/Learning/HostNames.Resolve) for every verb.
@@ -28,7 +29,7 @@ namespace Kor.Operations.NetworkOps.Cli;
 internal static class SessionVerbs
 {
     public static bool Handles(string verb, string[] args)
-        => verb is "check" or "last-check" or "knowledge" or "findings" or "fix" or "history" or "readings" or "action" or "trigger" or "updates" or "changes" || (verb == "run" && !args.Contains("--direct"));
+        => verb is "check" or "last-check" or "knowledge" or "findings" or "fix" or "history" or "readings" or "action" or "trigger" or "updates" or "changes" or "network" || (verb == "run" && !args.Contains("--direct"));
 
     public static async Task<int> RunAsync(string verb, string[] args)
     {
@@ -71,6 +72,12 @@ internal static class SessionVerbs
             if (verb == "findings") return await FindingsAsync(server, hostsArg, ct);
             if (verb == "updates") return await UpdatesAsync(server, scan, ct);
             if (verb == "changes") return await ChangesAsync(server, since, ct);
+            if (verb == "network")
+            {
+                Console.Write(Kor.Operations.NetworkOps.Core.Network.NetworkMapText.Render(
+                    await server.GetAsync<Kor.Operations.NetworkOps.Core.Network.NetworkMapResponse>("/api/network", ct), search));
+                return 0;
+            }
             if (verb is "action" or "trigger")
             {
                 if (id is null) { Console.Error.WriteLine($"--id N is required (the {verb} id, as netops and the Command Center print it)."); return 2; }

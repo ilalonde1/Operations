@@ -1,0 +1,751 @@
+[
+ {
+  "Ip": "192.168.1.51",
+  "Mac": "d8-bb-c1-2c-ea-09",
+  "HostName": "KOR-101.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-08T08:49:24.7150000Z"
+ },
+ {
+  "Ip": "192.168.1.52",
+  "Mac": "82-69-c4-a9-0a-ea",
+  "HostName": "Omar-s-S22-Ultra.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-09T21:33:57.4110000Z"
+ },
+ {
+  "Ip": "192.168.1.53",
+  "Mac": "86-e7-7c-d3-71-24",
+  "HostName": "Pixel-9.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-10T21:52:24.7300000Z"
+ },
+ {
+  "Ip": "192.168.1.54",
+  "Mac": "3a-46-df-9b-49-4d",
+  "HostName": "Pixel-10.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-09T20:30:23.6180000Z"
+ },
+ {
+  "Ip": "192.168.1.55",
+  "Mac": "de-51-68-b2-1d-f0",
+  "HostName": "Andrea-s-S23.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-07T20:38:43.2720000Z"
+ },
+ {
+  "Ip": "192.168.1.56",
+  "Mac": "74-83-c2-0a-75-99",
+  "HostName": "USW-Flex.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-08T08:58:51.0090000Z"
+ },
+ {
+  "Ip": "192.168.1.57",
+  "Mac": "e0-63-da-8a-30-d9",
+  "HostName": "BMZ-SW02.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-08T08:58:57.0020000Z"
+ },
+ {
+  "Ip": "192.168.1.58",
+  "Mac": "3e-42-41-2b-e5-f1",
+  "HostName": null,
+  "State": "Active",
+  "Expires": "2026-10-11T03:02:47.1320000Z"
+ },
+ {
+  "Ip": "192.168.1.59",
+  "Mac": "2c-f0-5d-c5-9e-9e",
+  "HostName": "KOR-310.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-11T02:06:34.6240000Z"
+ },
+ {
+  "Ip": "192.168.1.60",
+  "Mac": "74-83-c2-0a-78-24",
+  "HostName": "USW-Flex.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-08T19:44:17.5200000Z"
+ },
+ {
+  "Ip": "192.168.1.61",
+  "Mac": "d8-bb-c1-c1-dd-f1",
+  "HostName": "KOR-217.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-08T08:59:01.4770000Z"
+ },
+ {
+  "Ip": "192.168.1.62",
+  "Mac": "80-5e-c0-2a-1b-51",
+  "HostName": "SIP-T41S.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-08T08:59:18.8020000Z"
+ },
+ {
+  "Ip": "192.168.1.63",
+  "Mac": "36-f8-83-20-98-73",
+  "HostName": "iPhone.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-11T00:39:05.6230000Z"
+ },
+ {
+  "Ip": "192.168.1.64",
+  "Mac": "04-7c-16-f7-55-09",
+  "HostName": "KOR-223N.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-10T09:17:28.5190000Z"
+ },
+ {
+  "Ip": "192.168.1.65",
+  "Mac": "04-7c-16-f3-e2-0e",
+  "HostName": "KOR-206-N.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-10T08:26:55.5860000Z"
+ },
+ {
+  "Ip": "192.168.1.66",
+  "Mac": "f4-92-bf-ae-21-96",
+  "HostName": "USW-Flex.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-08T19:46:41.2340000Z"
+ },
+ {
+  "Ip": "192.168.1.67",
+  "Mac": "dc-71-96-b8-0a-92",
+  "HostName": "LAPTOP-91PQJV53.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-07T16:36:08.1150000Z"
+ },
+ {
+  "Ip": "192.168.1.68",
+  "Mac": "2c-f0-5d-c9-17-40",
+  "HostName": "KOR-206.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-10T08:27:45.8030000Z"
+ },
+ {
+  "Ip": "192.168.1.69",
+  "Mac": "98-fa-9b-f2-63-ab",
+  "HostName": "KOR-SPARE2.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-10T00:29:16.6490000Z"
+ },
+ {
+  "Ip": "192.168.1.70",
+  "Mac": "2c-f0-5d-1b-da-86",
+  "HostName": "KOR-320.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-08T08:59:01.9290000Z"
+ },
+ {
+  "Ip": "192.168.1.71",
+  "Mac": "04-7c-16-9f-2d-dd",
+  "HostName": "KOR-305.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-08T08:49:24.4280000Z"
+ },
+ {
+  "Ip": "192.168.1.72",
+  "Mac": "2e-de-37-9a-9c-2f",
+  "HostName": "iPhone.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-09T15:52:09.3400000Z"
+ },
+ {
+  "Ip": "192.168.1.73",
+  "Mac": "2c-f0-5d-12-9e-8f",
+  "HostName": "KOR-204.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-08T08:49:24.3240000Z"
+ },
+ {
+  "Ip": "192.168.1.74",
+  "Mac": "04-7b-cb-a8-3b-4c",
+  "HostName": "KOR-314.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-08T08:49:26.2100000Z"
+ },
+ {
+  "Ip": "192.168.1.75",
+  "Mac": "d8-bb-c1-c1-de-06",
+  "HostName": "KOR-308.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-08T08:49:24.4080000Z"
+ },
+ {
+  "Ip": "192.168.1.76",
+  "Mac": "04-7c-16-20-63-ee",
+  "HostName": "KOR-319.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-09T18:17:30.6820000Z"
+ },
+ {
+  "Ip": "192.168.1.77",
+  "Mac": "3e-36-2b-bd-2b-b3",
+  "HostName": "iPhone.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-10T00:17:28.4400000Z"
+ },
+ {
+  "Ip": "192.168.1.78",
+  "Mac": "04-7c-16-9f-2d-c4",
+  "HostName": "KOR-307-N.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-10T08:28:24.8310000Z"
+ },
+ {
+  "Ip": "192.168.1.79",
+  "Mac": "d8-bb-c1-2c-e8-d6",
+  "HostName": "KOR-104N.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-10T16:21:02.8900000Z"
+ },
+ {
+  "Ip": "192.168.1.80",
+  "Mac": "12-7d-94-ee-dd-4c",
+  "HostName": "Andrea-s-S23.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-10T22:03:31.8180000Z"
+ },
+ {
+  "Ip": "192.168.1.81",
+  "Mac": "74-ac-b9-a4-fc-fc",
+  "HostName": "USW-Flex-Mini.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-08T08:49:23.1950000Z"
+ },
+ {
+  "Ip": "192.168.1.82",
+  "Mac": "80-5e-c0-2a-1d-7a",
+  "HostName": "SIP-T41S.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-08T08:59:19.5350000Z"
+ },
+ {
+  "Ip": "192.168.1.83",
+  "Mac": "0e-d5-fe-74-9b-db",
+  "HostName": "iPhone.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-10T16:10:08.7280000Z"
+ },
+ {
+  "Ip": "192.168.1.84",
+  "Mac": "1c-69-7a-05-e2-b5",
+  "HostName": "Boardroom.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-10T09:33:16.0970000Z"
+ },
+ {
+  "Ip": "192.168.1.85",
+  "Mac": "80-5e-c0-2a-1c-da",
+  "HostName": "SIP-T41S.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-08T08:59:06.0440000Z"
+ },
+ {
+  "Ip": "192.168.1.86",
+  "Mac": "04-7c-16-f3-e2-39",
+  "HostName": "KOR-208-N.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-10T08:27:31.5980000Z"
+ },
+ {
+  "Ip": "192.168.1.87",
+  "Mac": "80-5e-c0-2a-1d-63",
+  "HostName": "SIP-T41S.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-08T08:59:19.0120000Z"
+ },
+ {
+  "Ip": "192.168.1.88",
+  "Mac": "66-20-38-7d-ae-be",
+  "HostName": null,
+  "State": "Active",
+  "Expires": "2026-10-10T23:58:24.5970000Z"
+ },
+ {
+  "Ip": "192.168.1.89",
+  "Mac": "80-5e-c0-2a-17-69",
+  "HostName": "SIP-T41S.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-08T08:59:06.1780000Z"
+ },
+ {
+  "Ip": "192.168.1.90",
+  "Mac": "04-7c-16-96-da-0c",
+  "HostName": "KOR-216.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-08T08:49:25.5770000Z"
+ },
+ {
+  "Ip": "192.168.1.91",
+  "Mac": "04-7b-cb-a5-b5-60",
+  "HostName": "KOR-302N.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-08T08:49:21.8840000Z"
+ },
+ {
+  "Ip": "192.168.1.92",
+  "Mac": "2c-f0-5d-51-22-02",
+  "HostName": "KOR-213-N.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-10T08:28:19.9010000Z"
+ },
+ {
+  "Ip": "192.168.1.93",
+  "Mac": "40-b0-76-9f-6f-ce",
+  "HostName": "KOR-205.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-10T01:59:17.3370000Z"
+ },
+ {
+  "Ip": "192.168.1.94",
+  "Mac": "74-ac-b9-a4-fc-cb",
+  "HostName": "USW_MINI.int.korstructural.com",
+  "State": "ActiveReservation",
+  "Expires": null
+ },
+ {
+  "Ip": "192.168.1.95",
+  "Mac": "36-38-bd-6a-a4-09",
+  "HostName": "Watch.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-03T18:58:49.3510000Z"
+ },
+ {
+  "Ip": "192.168.1.96",
+  "Mac": "1e-e9-b2-0a-ed-5a",
+  "HostName": "iPhone.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-10T01:59:14.6330000Z"
+ },
+ {
+  "Ip": "192.168.1.97",
+  "Mac": "00-50-56-8b-eb-49",
+  "HostName": "BMZ-HO-RDS001",
+  "State": "InactiveReservation",
+  "Expires": null
+ },
+ {
+  "Ip": "192.168.1.98",
+  "Mac": "80-5e-c0-2a-12-69",
+  "HostName": "SIP-T41S.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-08T08:59:19.5030000Z"
+ },
+ {
+  "Ip": "192.168.1.99",
+  "Mac": "78-45-58-e5-fa-ca",
+  "HostName": "BMZ-SW03.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-08T08:59:02.2950000Z"
+ },
+ {
+  "Ip": "192.168.1.100",
+  "Mac": "16-6c-97-1f-38-aa",
+  "HostName": null,
+  "State": "Active",
+  "Expires": "2026-10-09T17:13:33.4290000Z"
+ },
+ {
+  "Ip": "192.168.1.101",
+  "Mac": "28-29-86-74-98-2b",
+  "HostName": "apc74982B.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-08T00:11:16.2050000Z"
+ },
+ {
+  "Ip": "192.168.1.102",
+  "Mac": "72-5d-f8-ad-9a-f5",
+  "HostName": "iPhone.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-10T20:47:24.0750000Z"
+ },
+ {
+  "Ip": "192.168.1.103",
+  "Mac": "2e-ab-27-e4-bb-c3",
+  "HostName": "iPhone.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-09T23:09:49.9210000Z"
+ },
+ {
+  "Ip": "192.168.1.104",
+  "Mac": "80-5e-c0-2a-1b-25",
+  "HostName": "SIP-T41S.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-08T08:59:20.6500000Z"
+ },
+ {
+  "Ip": "192.168.1.105",
+  "Mac": "90-09-d0-5c-90-45",
+  "HostName": "Synology02.int.korstructural.com",
+  "State": "ActiveReservation",
+  "Expires": null
+ },
+ {
+  "Ip": "192.168.1.106",
+  "Mac": "74-83-c2-13-f1-c2",
+  "HostName": "BMZ-SW01.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-08T08:49:19.8120000Z"
+ },
+ {
+  "Ip": "192.168.1.107",
+  "Mac": "ea-66-41-d6-76-6a",
+  "HostName": "iPhone.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-04T00:32:59.2290000Z"
+ },
+ {
+  "Ip": "192.168.1.108",
+  "Mac": "c8-95-ce-c6-57-6e",
+  "HostName": "KOR-1001.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-09T16:18:52.9250000Z"
+ },
+ {
+  "Ip": "192.168.1.109",
+  "Mac": "e6-6a-a4-cf-f1-87",
+  "HostName": "Galaxy-S20-FE-5G.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-10T23:36:39.2820000Z"
+ },
+ {
+  "Ip": "192.168.1.110",
+  "Mac": "a0-36-bc-bd-93-6b",
+  "HostName": "KOR-PERFORM3.engineering.local",
+  "State": "Active",
+  "Expires": "2026-10-08T03:51:07.3940000Z"
+ },
+ {
+  "Ip": "192.168.1.111",
+  "Mac": "b2-8d-b1-7e-f8-81",
+  "HostName": "iPhone.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-03T18:58:51.5890000Z"
+ },
+ {
+  "Ip": "192.168.1.112",
+  "Mac": "e8-97-44-09-5c-00",
+  "HostName": "KOR-1001.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-08T07:01:34.3410000Z"
+ },
+ {
+  "Ip": "192.168.1.113",
+  "Mac": "9e-0f-39-84-00-62",
+  "HostName": "Conor-s-S10.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-09T23:42:50.1550000Z"
+ },
+ {
+  "Ip": "192.168.1.114",
+  "Mac": "6a-82-e8-e1-a1-20",
+  "HostName": "Watch.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-09T22:36:46.1040000Z"
+ },
+ {
+  "Ip": "192.168.1.115",
+  "Mac": "80-5e-c0-25-c6-2b",
+  "HostName": "SIP-T41S.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-08T08:59:19.1840000Z"
+ },
+ {
+  "Ip": "192.168.1.116",
+  "Mac": "74-83-c2-fb-d9-af",
+  "HostName": "USW-Flex-Mini.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-08T08:49:29.2500000Z"
+ },
+ {
+  "Ip": "192.168.1.117",
+  "Mac": "74-83-c2-02-3f-b1",
+  "HostName": "BMZ-AP02MiddleBullpen.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-08T08:58:59.0700000Z"
+ },
+ {
+  "Ip": "192.168.1.118",
+  "Mac": "18-c0-4d-28-9f-d6",
+  "HostName": "KOR-PERFORM2.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-09T02:26:30.5310000Z"
+ },
+ {
+  "Ip": "192.168.1.119",
+  "Mac": "0c-9d-92-c2-34-c5",
+  "HostName": "KOR-210.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-09T22:37:13.3990000Z"
+ },
+ {
+  "Ip": "192.168.1.120",
+  "Mac": "ee-fe-22-2c-3c-9b",
+  "HostName": null,
+  "State": "Active",
+  "Expires": "2026-10-10T18:40:21.6110000Z"
+ },
+ {
+  "Ip": "192.168.1.121",
+  "Mac": "7a-35-f2-8e-e4-dc",
+  "HostName": "iPhone.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-10T21:23:01.2240000Z"
+ },
+ {
+  "Ip": "192.168.1.122",
+  "Mac": "da-2b-d4-88-9b-df",
+  "HostName": null,
+  "State": "Active",
+  "Expires": "2026-10-09T19:44:00.7010000Z"
+ },
+ {
+  "Ip": "192.168.1.123",
+  "Mac": "1e-78-90-ff-c5-cc",
+  "HostName": "Chris-s-S22.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-10T04:45:14.1630000Z"
+ },
+ {
+  "Ip": "192.168.1.124",
+  "Mac": "96-e1-d2-16-24-f9",
+  "HostName": null,
+  "State": "Active",
+  "Expires": "2026-10-08T02:26:02.6870000Z"
+ },
+ {
+  "Ip": "192.168.1.125",
+  "Mac": "80-5e-c0-2a-1c-d2",
+  "HostName": "SIP-T41S.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-08T08:59:19.5180000Z"
+ },
+ {
+  "Ip": "192.168.1.126",
+  "Mac": "74-83-c2-02-3c-d6",
+  "HostName": "BMZ-AP01OutsideBoardroom.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-08T08:59:00.0210000Z"
+ },
+ {
+  "Ip": "192.168.1.127",
+  "Mac": "92-e9-7e-6f-c5-8e",
+  "HostName": "Andrea-s-S23.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-10T23:11:02.3590000Z"
+ },
+ {
+  "Ip": "192.168.1.133",
+  "Mac": "80-5e-c0-2a-16-ad",
+  "HostName": "SIP-T41S.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-08T08:59:18.9710000Z"
+ },
+ {
+  "Ip": "192.168.1.135",
+  "Mac": "74-83-c2-02-3c-61",
+  "HostName": "BMZ-AP03OutsideKitchen.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-08T08:58:51.0270000Z"
+ },
+ {
+  "Ip": "192.168.1.136",
+  "Mac": "d8-bb-c1-2a-26-cc",
+  "HostName": "KOR-207.int.korstructural.com",
+  "State": "ActiveReservation",
+  "Expires": null
+ },
+ {
+  "Ip": "192.168.1.139",
+  "Mac": "40-16-7e-68-ef-ba",
+  "HostName": "KOR-SPARE8.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-10T08:28:29.6560000Z"
+ },
+ {
+  "Ip": "192.168.1.143",
+  "Mac": "80-5e-c0-cb-11-8d",
+  "HostName": "SIP-T54W.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-08T08:59:03.4570000Z"
+ },
+ {
+  "Ip": "192.168.1.145",
+  "Mac": "80-5e-c0-25-c6-3f",
+  "HostName": "SIP-T41S.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-08T08:59:18.6910000Z"
+ },
+ {
+  "Ip": "192.168.1.146",
+  "Mac": "04-d4-c4-05-9b-28",
+  "HostName": "KOR-304.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-08T08:59:02.0370000Z"
+ },
+ {
+  "Ip": "192.168.1.156",
+  "Mac": "30-05-5c-11-10-55",
+  "HostName": "BRN30055C111055.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-08T08:49:23.2380000Z"
+ },
+ {
+  "Ip": "192.168.1.157",
+  "Mac": "80-5e-c0-2a-1c-71",
+  "HostName": "SIP-T41S.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-08T08:59:06.8920000Z"
+ },
+ {
+  "Ip": "192.168.1.163",
+  "Mac": "0c-9d-92-c2-40-f0",
+  "HostName": "KOR-202.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-08T08:49:24.0530000Z"
+ },
+ {
+  "Ip": "192.168.1.165",
+  "Mac": "70-8b-cd-aa-19-13",
+  "HostName": "KOR-224.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-10T22:10:30.7260000Z"
+ },
+ {
+  "Ip": "192.168.1.167",
+  "Mac": "80-5e-c0-2a-16-a8",
+  "HostName": "SIP-T41S.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-08T08:59:19.6180000Z"
+ },
+ {
+  "Ip": "192.168.1.174",
+  "Mac": "2c-f0-5d-12-9e-95",
+  "HostName": "KOR-306.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-08T08:49:24.2270000Z"
+ },
+ {
+  "Ip": "192.168.1.176",
+  "Mac": "80-5e-c0-2a-1d-6a",
+  "HostName": "SIP-T41S.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-08T08:59:19.1600000Z"
+ },
+ {
+  "Ip": "192.168.1.179",
+  "Mac": "40-16-7e-68-f1-66",
+  "HostName": "KOR-213.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-08T02:51:35.3180000Z"
+ },
+ {
+  "Ip": "192.168.1.180",
+  "Mac": "80-5e-c0-2a-1c-b2",
+  "HostName": "SIP-T41S.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-08T08:59:05.8900000Z"
+ },
+ {
+  "Ip": "192.168.1.183",
+  "Mac": "80-5e-c0-2a-12-61",
+  "HostName": "SIP-T41S.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-08T08:59:18.7960000Z"
+ },
+ {
+  "Ip": "192.168.1.184",
+  "Mac": "80-5e-c0-2a-1b-41",
+  "HostName": "SIP-T41S.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-08T08:59:19.4210000Z"
+ },
+ {
+  "Ip": "192.168.1.185",
+  "Mac": "80-5e-c0-25-c6-4c",
+  "HostName": "SIP-T41S.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-08T08:59:06.7900000Z"
+ },
+ {
+  "Ip": "192.168.1.187",
+  "Mac": "80-5e-c0-2a-1a-7a",
+  "HostName": "SIP-T41S.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-08T08:59:06.7860000Z"
+ },
+ {
+  "Ip": "192.168.1.189",
+  "Mac": "80-5e-c0-25-c6-36",
+  "HostName": "SIP-T41S.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-08T08:28:32.9260000Z"
+ },
+ {
+  "Ip": "192.168.1.190",
+  "Mac": "80-5e-c0-2a-1a-77",
+  "HostName": "SIP-T41S.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-08T08:59:18.7850000Z"
+ },
+ {
+  "Ip": "192.168.1.191",
+  "Mac": "80-5e-c0-2a-17-74",
+  "HostName": "SIP-T41S.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-08T08:59:19.6590000Z"
+ },
+ {
+  "Ip": "192.168.1.193",
+  "Mac": "80-5e-c0-2a-1d-9e",
+  "HostName": "SIP-T41S.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-08T08:59:18.8680000Z"
+ },
+ {
+  "Ip": "192.168.1.195",
+  "Mac": "80-5e-c0-2a-1d-7e",
+  "HostName": "SIP-T41S.int.korstructural.com",
+  "State": "Active",
+  "Expires": "2026-10-08T08:59:19.2580000Z"
+ },
+ {
+  "Ip": "192.168.1.200",
+  "Mac": "00-04-63-60-51-60",
+  "HostName": "PALADIN.engineering.local",
+  "State": "InactiveReservation",
+  "Expires": null
+ },
+ {
+  "Ip": "192.168.1.211",
+  "Mac": "04-7c-16-f3-e2-20",
+  "HostName": "Henry Perform IP",
+  "State": "InactiveReservation",
+  "Expires": null
+ },
+ {
+  "Ip": "192.168.1.212",
+  "Mac": "fe-80-e3-0d-c7-7e-15-17-88-93",
+  "HostName": "Jeremy's PC - Perform",
+  "State": "InactiveReservation",
+  "Expires": null
+ },
+ {
+  "Ip": "192.168.1.213",
+  "Mac": "02",
+  "HostName": "Ians Perform IP Test (KOR-SPARE9)",
+  "State": "InactiveReservation",
+  "Expires": null
+ },
+ {
+  "Ip": "192.168.1.220",
+  "Mac": "ec-9a-74-31-99-59",
+  "HostName": "HP_LaserJet5200",
+  "State": "InactiveReservation",
+  "Expires": null
+ }
+]

@@ -21,7 +21,8 @@ namespace Kor.Operations.NetworkOps.Service.Rack;
 //              from the last MeshCentral read -- enough to show it and Connect to it, and it says its health is not read
 //   MeshServer KOR-MESH01: MeshCentral itself answering, and how many agents it has connected
 // No collector writes to any device. A device that cannot be read comes back Unreachable with the reason.
-internal sealed class RackCollector(IOptions<NetworkOpsOptions> options, PowerState power, Mesh.MeshState mesh, MacDirectory? macs = null)
+internal sealed class RackCollector(IOptions<NetworkOpsOptions> options, PowerState power, Mesh.MeshState mesh, MacDirectory? macs = null,
+    Network.NetworkMapService? map = null)
 {
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(60);
 
@@ -123,7 +124,9 @@ internal sealed class RackCollector(IOptions<NetworkOpsOptions> options, PowerSt
         using var sh = EsxiShell.Connect(d.Address, "netops", o.UniFiStatusKeyPath, d.HostKeys, TimeSpan.FromSeconds(20));
         var (exit, json, err) = await sh.RunAsync("status", Timeout, ct).ConfigureAwait(false);   // the forced command runs whatever is asked
         if (exit != 0 || json.Length == 0) throw new InvalidOperationException("UniFi status command failed: " + err.Trim());
-        return UniFiRules.Evaluate(json);
+        var result = UniFiRules.Evaluate(json);
+        map?.SetUniFi(json);   // the same read builds the port map after the sweep (Network/NetworkMapService)
+        return result;
     }
 
     private async Task<RackResult> InternetAsync(CancellationToken ct)

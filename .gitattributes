@@ -5,3 +5,4 @@ infra/**/*.yaml text eol=lf
 infra/**/*.json text eol=lf
 infra/**/*.service text eol=lf
 infra/**/*.timer   text eol=lf
+infra/vms/kor-unifi01/kor-unifi-status text eol=lf

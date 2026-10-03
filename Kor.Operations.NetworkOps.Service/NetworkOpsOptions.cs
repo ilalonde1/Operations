@@ -131,6 +131,9 @@ public sealed class NetworkOpsOptions
     /// <summary>Key for `netops@KOR-UNIFI01`, whose only permitted command prints the UniFi status (KOR_NETWORKOPS_UNIFISTATUSKEYPATH).</summary>
     public string UniFiStatusKeyPath { get; set; } = "";
 
+    /// <summary>The DHCP server whose leases name devices on the port map (Probes/dhcp-leases.ps1 runs there).</summary>
+    public string DhcpServer { get; set; } = "KOR-DC01";
+
     /// <summary>The office's Shaw STATIC address: traffic leaving by any other means the firewall is on the wrong WAN.</summary>
     public string ExpectedPublicIp { get; set; } = "";
     public List<string> InternetPingTargets { get; set; } = [];

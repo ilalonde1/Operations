@@ -1,0 +1,3125 @@
+{
+ "site": "KOR Structural",
+ "now": 1791000461,
+ "devices": [
+  {
+   "name": "USW Flex Mini - Kate",
+   "model": "USMINI",
+   "type": "usw",
+   "ip": "192.168.1.81",
+   "mac": "74:ac:b9:a4:fc:fc",
+   "version": "2.1.6.762",
+   "adopted": true,
+   "upgradable": false,
+   "upgradeTo": null,
+   "lastSeen": 1791000393,
+   "ports": 5,
+   "uplink": {
+    "mac": "74:83:c2:13:f1:c2",
+    "port": 4,
+    "localPort": 1
+   },
+   "portTable": [
+    {
+     "port": 1,
+     "speed": 1000,
+     "poe": false,
+     "lastMac": "74:83:c2:13:f1:c2",
+     "lastIp": "192.168.1.106",
+     "connectedAt": 1780357395
+    },
+    {
+     "port": 2,
+     "speed": 0,
+     "poe": false,
+     "lastMac": null,
+     "lastIp": null,
+     "connectedAt": 0
+    },
+    {
+     "port": 3,
+     "speed": 1000,
+     "poe": false,
+     "lastMac": "04:7c:16:f7:55:09",
+     "lastIp": "192.168.1.64",
+     "connectedAt": 1790756861
+    },
+    {
+     "port": 4,
+     "speed": 0,
+     "poe": false,
+     "lastMac": null,
+     "lastIp": null,
+     "connectedAt": 0
+    },
+    {
+     "port": 5,
+     "speed": 0,
+     "poe": false,
+     "lastMac": null,
+     "lastIp": null,
+     "connectedAt": 0
+    }
+   ]
+  },
+  {
+   "name": "USW Flex Mini - Server Room PCs",
+   "model": "USMINI",
+   "type": "usw",
+   "ip": "192.168.1.116",
+   "mac": "74:83:c2:fb:d9:af",
+   "version": "2.1.6.762",
+   "adopted": true,
+   "upgradable": false,
+   "upgradeTo": null,
+   "lastSeen": 1791000395,
+   "ports": 5,
+   "uplink": {
+    "mac": "74:83:c2:13:f1:c2",
+    "port": 34,
+    "localPort": 1
+   },
+   "portTable": [
+    {
+     "port": 1,
+     "speed": 1000,
+     "poe": false,
+     "lastMac": "74:83:c2:13:f1:c2",
+     "lastIp": "192.168.1.106",
+     "connectedAt": 1780357399
+    },
+    {
+     "port": 2,
+     "speed": 1000,
+     "poe": false,
+     "lastMac": "0c:9d:92:c2:34:c5",
+     "lastIp": "192.168.1.119",
+     "connectedAt": 1790894254
+    },
+    {
+     "port": 3,
+     "speed": 0,
+     "poe": false,
+     "lastMac": "0c:9d:92:c2:34:c5",
+     "lastIp": "192.168.1.119",
+     "connectedAt": 1790742424
+    },
+    {
+     "port": 4,
+     "speed": 1000,
+     "poe": false,
+     "lastMac": "18:c0:4d:28:9f:d6",
+     "lastIp": "192.168.1.118",
+     "connectedAt": 1790742424
+    },
+    {
+     "port": 5,
+     "speed": 1000,
+     "poe": false,
+     "lastMac": "04:7c:16:f3:e2:39",
+     "lastIp": "192.168.1.86",
+     "connectedAt": 1790742424
+    }
+   ]
+  },
+  {
+   "name": "BMZ-AP01 [Outside Boardroom]",
+   "model": "U7PG2",
+   "type": "uap",
+   "ip": "192.168.1.126",
+   "mac": "74:83:c2:02:3c:d6",
+   "version": "6.8.2.15592",
+   "adopted": true,
+   "upgradable": false,
+   "upgradeTo": null,
+   "lastSeen": 1791000384,
+   "ports": 2,
+   "uplink": {
+    "mac": "e0:63:da:8a:30:d9",
+    "port": 45,
+    "localPort": 1
+   },
+   "portTable": [
+    {
+     "port": 1,
+     "speed": 0,
+     "poe": false,
+     "lastMac": "90:ec:77:97:8c:24",
+     "lastIp": null,
+     "connectedAt": 1790750405
+    },
+    {
+     "port": 2,
+     "speed": 0,
+     "poe": false,
+     "lastMac": null,
+     "lastIp": null,
+     "connectedAt": 0
+    }
+   ]
+  },
+  {
+   "name": "BMZ-AP02 [Middle Bullpen]",
+   "model": "U7PG2",
+   "type": "uap",
+   "ip": "192.168.1.117",
+   "mac": "74:83:c2:02:3f:b1",
+   "version": "6.8.2.15592",
+   "adopted": true,
+   "upgradable": false,
+   "upgradeTo": null,
+   "lastSeen": 1791000399,
+   "ports": 2,
+   "uplink": {
+    "mac": "e0:63:da:8a:30:d9",
+    "port": 43,
+    "localPort": 1
+   },
+   "portTable": [
+    {
+     "port": 1,
+     "speed": 0,
+     "poe": false,
+     "lastMac": "90:ec:77:97:8c:24",
+     "lastIp": null,
+     "connectedAt": 1790750427
+    },
+    {
+     "port": 2,
+     "speed": 0,
+     "poe": false,
+     "lastMac": null,
+     "lastIp": null,
+     "connectedAt": 0
+    }
+   ]
+  },
+  {
+   "name": "BMZ-AP03 [Outside Kitchen]",
+   "model": "U7PG2",
+   "type": "uap",
+   "ip": "192.168.1.135",
+   "mac": "74:83:c2:02:3c:61",
+   "version": "6.8.2.15592",
+   "adopted": true,
+   "upgradable": false,
+   "upgradeTo": null,
+   "lastSeen": 1791000355,
+   "ports": 2,
+   "uplink": {
+    "mac": "e0:63:da:8a:30:d9",
+    "port": 44,
+    "localPort": 1
+   },
+   "portTable": [
+    {
+     "port": 1,
+     "speed": 0,
+     "poe": false,
+     "lastMac": "90:ec:77:97:8c:24",
+     "lastIp": null,
+     "connectedAt": 1790750435
+    },
+    {
+     "port": 2,
+     "speed": 0,
+     "poe": false,
+     "lastMac": null,
+     "lastIp": null,
+     "connectedAt": 0
+    }
+   ]
+  },
+  {
+   "name": "USW Flex - Mark",
+   "model": "USF5P",
+   "type": "usw",
+   "ip": "192.168.1.60",
+   "mac": "74:83:c2:0a:78:24",
+   "version": "7.5.15.17146",
+   "adopted": true,
+   "upgradable": false,
+   "upgradeTo": null,
+   "lastSeen": 1791000368,
+   "ports": 5,
+   "uplink": {
+    "mac": "e0:63:da:8a:30:d9",
+    "port": 13,
+    "localPort": 1
+   },
+   "portTable": [
+    {
+     "port": 1,
+     "speed": 1000,
+     "poe": false,
+     "lastMac": "e0:63:da:8a:30:d9",
+     "lastIp": "192.168.1.57",
+     "connectedAt": 1790742690
+    },
+    {
+     "port": 2,
+     "speed": 0,
+     "poe": true,
+     "lastMac": null,
+     "lastIp": null,
+     "connectedAt": 0
+    },
+    {
+     "port": 3,
+     "speed": 1000,
+     "poe": true,
+     "lastMac": "d8:bb:c1:2a:26:cc",
+     "lastIp": "192.168.1.136",
+     "connectedAt": 1790053260
+    },
+    {
+     "port": 4,
+     "speed": 0,
+     "poe": true,
+     "lastMac": null,
+     "lastIp": null,
+     "connectedAt": 0
+    },
+    {
+     "port": 5,
+     "speed": 100,
+     "poe": true,
+     "lastMac": "80:5e:c0:2a:1e:4a",
+     "lastIp": "192.168.1.50",
+     "connectedAt": 1790742361
+    }
+   ]
+  },
+  {
+   "name": "",
+   "model": "USF5P",
+   "type": "usw",
+   "ip": "192.168.1.56",
+   "mac": "74:83:c2:0a:75:99",
+   "version": "7.5.15.17146",
+   "adopted": true,
+   "upgradable": false,
+   "upgradeTo": null,
+   "lastSeen": 1791000363,
+   "ports": 5,
+   "uplink": {
+    "mac": "e0:63:da:8a:30:d9",
+    "port": 20,
+    "localPort": 1
+   },
+   "portTable": [
+    {
+     "port": 1,
+     "speed": 1000,
+     "poe": false,
+     "lastMac": "e0:63:da:8a:30:d9",
+     "lastIp": "192.168.1.57",
+     "connectedAt": 1790742676
+    },
+    {
+     "port": 2,
+     "speed": 0,
+     "poe": true,
+     "lastMac": null,
+     "lastIp": null,
+     "connectedAt": 0
+    },
+    {
+     "port": 3,
+     "speed": 100,
+     "poe": true,
+     "lastMac": "80:5e:c0:25:c6:36",
+     "lastIp": "192.168.1.189",
+     "connectedAt": 1790756911
+    },
+    {
+     "port": 4,
+     "speed": 0,
+     "poe": true,
+     "lastMac": null,
+     "lastIp": null,
+     "connectedAt": 0
+    },
+    {
+     "port": 5,
+     "speed": 0,
+     "poe": true,
+     "lastMac": null,
+     "lastIp": null,
+     "connectedAt": 0
+    }
+   ]
+  },
+  {
+   "name": "",
+   "model": "USF5P",
+   "type": "usw",
+   "ip": "192.168.1.53",
+   "mac": "f4:92:bf:ae:1f:23",
+   "version": "7.1.26.15869",
+   "adopted": true,
+   "upgradable": false,
+   "upgradeTo": null,
+   "lastSeen": 1783170673,
+   "ports": 5,
+   "uplink": {
+    "mac": "e0:63:da:8a:30:d9",
+    "port": 10,
+    "localPort": 1
+   },
+   "portTable": [
+    {
+     "port": 1,
+     "speed": 1000,
+     "poe": false,
+     "lastMac": "04:7b:cb:a8:3b:4c",
+     "lastIp": "192.168.1.74",
+     "connectedAt": 1780075679
+    },
+    {
+     "port": 2,
+     "speed": 1000,
+     "poe": true,
+     "lastMac": "40:16:7e:68:f1:98",
+     "lastIp": null,
+     "connectedAt": 1783170751
+    },
+    {
+     "port": 3,
+     "speed": 100,
+     "poe": true,
+     "lastMac": "80:5e:c0:2a:1b:51",
+     "lastIp": "192.168.1.62",
+     "connectedAt": 1748367233
+    },
+    {
+     "port": 4,
+     "speed": 0,
+     "poe": true,
+     "lastMac": "94:83:c4:44:b4:f3",
+     "lastIp": null,
+     "connectedAt": 1748526463
+    },
+    {
+     "port": 5,
+     "speed": 0,
+     "poe": true,
+     "lastMac": null,
+     "lastIp": null,
+     "connectedAt": 0
+    }
+   ]
+  },
+  {
+   "name": "",
+   "model": "USF5P",
+   "type": "usw",
+   "ip": "192.168.1.59",
+   "mac": "74:83:c2:07:f0:b7",
+   "version": "6.4.18.14328",
+   "adopted": true,
+   "upgradable": false,
+   "upgradeTo": null,
+   "lastSeen": 0,
+   "ports": 5,
+   "uplink": {
+    "mac": "e0:63:da:8a:30:d9",
+    "port": 46,
+    "localPort": 1
+   },
+   "portTable": [
+    {
+     "port": 1,
+     "speed": 1000,
+     "poe": false,
+     "lastMac": null,
+     "lastIp": null,
+     "connectedAt": 0
+    },
+    {
+     "port": 2,
+     "speed": 0,
+     "poe": true,
+     "lastMac": null,
+     "lastIp": null,
+     "connectedAt": 0
+    },
+    {
+     "port": 3,
+     "speed": 0,
+     "poe": true,
+     "lastMac": null,
+     "lastIp": null,
+     "connectedAt": 0
+    },
+    {
+     "port": 4,
+     "speed": 10,
+     "poe": true,
+     "lastMac": null,
+     "lastIp": null,
+     "connectedAt": 0
+    },
+    {
+     "port": 5,
+     "speed": 0,
+     "poe": true,
+     "lastMac": null,
+     "lastIp": null,
+     "connectedAt": 0
+    }
+   ]
+  },
+  {
+   "name": "USW Flex - Nelson",
+   "model": "USF5P",
+   "type": "usw",
+   "ip": "192.168.1.66",
+   "mac": "f4:92:bf:ae:21:96",
+   "version": "7.5.15.17146",
+   "adopted": true,
+   "upgradable": false,
+   "upgradeTo": null,
+   "lastSeen": 1791000405,
+   "ports": 5,
+   "uplink": {
+    "mac": "e0:63:da:8a:30:d9",
+    "port": 29,
+    "localPort": 1
+   },
+   "portTable": [
+    {
+     "port": 1,
+     "speed": 1000,
+     "poe": false,
+     "lastMac": "e0:63:da:8a:30:d9",
+     "lastIp": "192.168.1.57",
+     "connectedAt": 1782563854
+    },
+    {
+     "port": 2,
+     "speed": 1000,
+     "poe": true,
+     "lastMac": "04:7c:16:9f:2d:c4",
+     "lastIp": "192.168.1.78",
+     "connectedAt": 1790047737
+    },
+    {
+     "port": 3,
+     "speed": 100,
+     "poe": true,
+     "lastMac": "80:5e:c0:2a:1a:75",
+     "lastIp": "192.168.1.49",
+     "connectedAt": 1790756948
+    },
+    {
+     "port": 4,
+     "speed": 0,
+     "poe": true,
+     "lastMac": null,
+     "lastIp": null,
+     "connectedAt": 0
+    },
+    {
+     "port": 5,
+     "speed": 0,
+     "poe": true,
+     "lastMac": null,
+     "lastIp": null,
+     "connectedAt": 0
+    }
+   ]
+  },
+  {
+   "name": "BMZ-SW01",
+   "model": "US48",
+   "type": "usw",
+   "ip": "192.168.1.106",
+   "mac": "74:83:c2:13:f1:c2",
+   "version": "7.5.15.17146",
+   "adopted": true,
+   "upgradable": false,
+   "upgradeTo": null,
+   "lastSeen": 1791000396,
+   "ports": 52,
+   "uplink": {
+    "mac": "74:ac:b9:aa:84:a3",
+    "port": null,
+    "localPort": 50
+   },
+   "portTable": [
+    {
+     "port": 1,
+     "speed": 1000,
+     "poe": false,
+     "lastMac": "04:7c:16:f3:e2:0e",
+     "lastIp": "192.168.1.65",
+     "connectedAt": 1790929731
+    },
+    {
+     "port": 2,
+     "speed": 1000,
+     "poe": false,
+     "lastMac": "40:b0:76:9f:6f:ce",
+     "lastIp": "192.168.1.93",
+     "connectedAt": 1790560777
+    },
+    {
+     "port": 3,
+     "speed": 1000,
+     "poe": false,
+     "lastMac": "2c:f0:5d:51:22:02",
+     "lastIp": "192.168.1.92",
+     "connectedAt": 1790929789
+    },
+    {
+     "port": 4,
+     "speed": 1000,
+     "poe": false,
+     "lastMac": "74:ac:b9:a4:fc:fc",
+     "lastIp": "192.168.1.81",
+     "connectedAt": 1790756922
+    },
+    {
+     "port": 5,
+     "speed": 0,
+     "poe": false,
+     "lastMac": "e8:97:44:09:5c:00",
+     "lastIp": "192.168.1.112",
+     "connectedAt": 1790751750
+    },
+    {
+     "port": 6,
+     "speed": 1000,
+     "poe": false,
+     "lastMac": "2c:f0:5d:12:9e:8f",
+     "lastIp": "192.168.1.73",
+     "connectedAt": 1790560794
+    },
+    {
+     "port": 7,
+     "speed": 1000,
+     "poe": false,
+     "lastMac": "04:7c:16:9f:2d:dd",
+     "lastIp": "192.168.1.71",
+     "connectedAt": 1790560933
+    },
+    {
+     "port": 8,
+     "speed": 1000,
+     "poe": false,
+     "lastMac": "70:8b:cd:aa:19:13",
+     "lastIp": "192.168.1.165",
+     "connectedAt": 1790979013
+    },
+    {
+     "port": 9,
+     "speed": 1000,
+     "poe": false,
+     "lastMac": "1c:69:7a:05:e2:b5",
+     "lastIp": "192.168.1.84",
+     "connectedAt": 1790933629
+    },
+    {
+     "port": 10,
+     "speed": 0,
+     "poe": false,
+     "lastMac": null,
+     "lastIp": null,
+     "connectedAt": 0
+    },
+    {
+     "port": 11,
+     "speed": 1000,
+     "poe": false,
+     "lastMac": "40:16:7e:68:ef:ba",
+     "lastIp": "192.168.1.139",
+     "connectedAt": 1789535907
+    },
+    {
+     "port": 12,
+     "speed": 1000,
+     "poe": false,
+     "lastMac": "04:7c:16:96:da:0c",
+     "lastIp": "192.168.1.90",
+     "connectedAt": 1790624916
+    },
+    {
+     "port": 13,
+     "speed": 1000,
+     "poe": false,
+     "lastMac": "2c:f0:5d:12:9e:95",
+     "lastIp": "192.168.1.174",
+     "connectedAt": 1790560986
+    },
+    {
+     "port": 14,
+     "speed": 100,
+     "poe": false,
+     "lastMac": "30:05:5c:11:10:55",
+     "lastIp": "192.168.1.156",
+     "connectedAt": 1790997705
+    },
+    {
+     "port": 15,
+     "speed": 0,
+     "poe": false,
+     "lastMac": null,
+     "lastIp": null,
+     "connectedAt": 0
+    },
+    {
+     "port": 16,
+     "speed": 1000,
+     "poe": false,
+     "lastMac": "04:7c:16:f3:e2:20",
+     "lastIp": "192.168.1.45",
+     "connectedAt": 1790929789
+    },
+    {
+     "port": 17,
+     "speed": 0,
+     "poe": false,
+     "lastMac": "c4:00:ad:7a:10:3f",
+     "lastIp": "192.168.1.141",
+     "connectedAt": 1783110171
+    },
+    {
+     "port": 18,
+     "speed": 0,
+     "poe": false,
+     "lastMac": null,
+     "lastIp": null,
+     "connectedAt": 0
+    },
+    {
+     "port": 19,
+     "speed": 1000,
+     "poe": false,
+     "lastMac": "d8:bb:c1:c1:de:06",
+     "lastIp": "192.168.1.75",
+     "connectedAt": 1790560986
+    },
+    {
+     "port": 20,
+     "speed": 1000,
+     "poe": false,
+     "lastMac": "2c:f0:5d:c5:9e:9e",
+     "lastIp": "192.168.1.59",
+     "connectedAt": 1748367145
+    },
+    {
+     "port": 21,
+     "speed": 1000,
+     "poe": false,
+     "lastMac": "04:7b:cb:a5:b5:60",
+     "lastIp": "192.168.1.91",
+     "connectedAt": 1790557592
+    },
+    {
+     "port": 22,
+     "speed": 1000,
+     "poe": false,
+     "lastMac": "98:fa:9b:f2:63:ab",
+     "lastIp": "192.168.1.69",
+     "connectedAt": 1790568217
+    },
+    {
+     "port": 23,
+     "speed": 0,
+     "poe": false,
+     "lastMac": null,
+     "lastIp": null,
+     "connectedAt": 0
+    },
+    {
+     "port": 24,
+     "speed": 1000,
+     "poe": false,
+     "lastMac": "34:9f:7b:fd:83:fc",
+     "lastIp": "192.168.1.5",
+     "connectedAt": 1748367145
+    },
+    {
+     "port": 25,
+     "speed": 0,
+     "poe": false,
+     "lastMac": "e8:97:44:09:5c:00",
+     "lastIp": "192.168.1.112",
+     "connectedAt": 1790749299
+    },
+    {
+     "port": 26,
+     "speed": 1000,
+     "poe": false,
+     "lastMac": "00:20:85:bb:6e:31",
+     "lastIp": null,
+     "connectedAt": 1790716580
+    },
+    {
+     "port": 27,
+     "speed": 100,
+     "poe": false,
+     "lastMac": "b4:a9:fc:10:35:8c",
+     "lastIp": null,
+     "connectedAt": 1754541649
+    },
+    {
+     "port": 28,
+     "speed": 0,
+     "poe": false,
+     "lastMac": null,
+     "lastIp": null,
+     "connectedAt": 0
+    },
+    {
+     "port": 29,
+     "speed": 1000,
+     "poe": false,
+     "lastMac": "d8:bb:c1:2c:ea:09",
+     "lastIp": "192.168.1.51",
+     "connectedAt": 1790557493
+    },
+    {
+     "port": 30,
+     "speed": 10,
+     "poe": false,
+     "lastMac": "e0:cb:4e:f8:22:30",
+     "lastIp": null,
+     "connectedAt": 1748367145
+    },
+    {
+     "port": 31,
+     "speed": 1000,
+     "poe": false,
+     "lastMac": "30:05:5c:be:e0:5e",
+     "lastIp": null,
+     "connectedAt": 1790995583
+    },
+    {
+     "port": 32,
+     "speed": 0,
+     "poe": false,
+     "lastMac": null,
+     "lastIp": null,
+     "connectedAt": 0
+    },
+    {
+     "port": 33,
+     "speed": 0,
+     "poe": false,
+     "lastMac": "b4:a9:fc:10:35:8c",
+     "lastIp": null,
+     "connectedAt": 1754534793
+    },
+    {
+     "port": 34,
+     "speed": 1000,
+     "poe": false,
+     "lastMac": "74:83:c2:fb:d9:af",
+     "lastIp": "192.168.1.116",
+     "connectedAt": 1749659362
+    },
+    {
+     "port": 35,
+     "speed": 0,
+     "poe": false,
+     "lastMac": null,
+     "lastIp": null,
+     "connectedAt": 0
+    },
+    {
+     "port": 36,
+     "speed": 1000,
+     "poe": false,
+     "lastMac": "04:7b:cb:a8:3b:4c",
+     "lastIp": "192.168.1.74",
+     "connectedAt": 1790557442
+    },
+    {
+     "port": 37,
+     "speed": 0,
+     "poe": false,
+     "lastMac": null,
+     "lastIp": null,
+     "connectedAt": 0
+    },
+    {
+     "port": 38,
+     "speed": 1000,
+     "poe": false,
+     "lastMac": "d8:bb:c1:2c:e8:d6",
+     "lastIp": "192.168.1.79",
+     "connectedAt": 1790700302
+    },
+    {
+     "port": 39,
+     "speed": 1000,
+     "poe": false,
+     "lastMac": "0c:9d:92:c2:40:f0",
+     "lastIp": "192.168.1.163",
+     "connectedAt": 1790560743
+    },
+    {
+     "port": 40,
+     "speed": 1000,
+     "poe": false,
+     "lastMac": "2c:f0:5d:c9:17:40",
+     "lastIp": "192.168.1.68",
+     "connectedAt": 1790560871
+    },
+    {
+     "port": 41,
+     "speed": 0,
+     "poe": false,
+     "lastMac": "2c:f0:5d:51:22:02",
+     "lastIp": null,
+     "connectedAt": 1756579281
+    },
+    {
+     "port": 42,
+     "speed": 0,
+     "poe": false,
+     "lastMac": null,
+     "lastIp": null,
+     "connectedAt": 0
+    },
+    {
+     "port": 43,
+     "speed": 1000,
+     "poe": false,
+     "lastMac": "28:29:86:74:98:2b",
+     "lastIp": "192.168.1.101",
+     "connectedAt": 1790468706
+    },
+    {
+     "port": 44,
+     "speed": 1000,
+     "poe": false,
+     "lastMac": "34:9f:7b:59:9d:1a",
+     "lastIp": "192.168.1.8",
+     "connectedAt": 1790993399
+    },
+    {
+     "port": 45,
+     "speed": 1000,
+     "poe": false,
+     "lastMac": "04:7c:16:20:63:ee",
+     "lastIp": "192.168.1.76",
+     "connectedAt": 1790878727
+    },
+    {
+     "port": 46,
+     "speed": 0,
+     "poe": false,
+     "lastMac": null,
+     "lastIp": null,
+     "connectedAt": 0
+    },
+    {
+     "port": 47,
+     "speed": 0,
+     "poe": false,
+     "lastMac": null,
+     "lastIp": null,
+     "connectedAt": 0
+    },
+    {
+     "port": 48,
+     "speed": 0,
+     "poe": false,
+     "lastMac": null,
+     "lastIp": null,
+     "connectedAt": 0
+    },
+    {
+     "port": 49,
+     "speed": 10000,
+     "poe": false,
+     "lastMac": "e8:ea:6a:06:44:2a",
+     "lastIp": "192.168.1.16",
+     "connectedAt": 1727393050
+    },
+    {
+     "port": 50,
+     "speed": 10000,
+     "poe": false,
+     "lastMac": "74:ac:b9:aa:84:a3",
+     "lastIp": "192.168.1.11",
+     "connectedAt": 1790749579
+    },
+    {
+     "port": 51,
+     "speed": 0,
+     "poe": false,
+     "lastMac": null,
+     "lastIp": null,
+     "connectedAt": 0
+    },
+    {
+     "port": 52,
+     "speed": 0,
+     "poe": false,
+     "lastMac": null,
+     "lastIp": null,
+     "connectedAt": 0
+    }
+   ]
+  },
+  {
+   "name": "BMZ-SW03",
+   "model": "US24PRO2",
+   "type": "usw",
+   "ip": "192.168.1.99",
+   "mac": "78:45:58:e5:fa:ca",
+   "version": "7.5.15.17146",
+   "adopted": true,
+   "upgradable": false,
+   "upgradeTo": null,
+   "lastSeen": 1791000400,
+   "ports": 26,
+   "uplink": {
+    "mac": "e0:63:da:8a:30:d9",
+    "port": 50,
+    "localPort": 25
+   },
+   "portTable": [
+    {
+     "port": 1,
+     "speed": 0,
+     "poe": false,
+     "lastMac": null,
+     "lastIp": null,
+     "connectedAt": 0
+    },
+    {
+     "port": 2,
+     "speed": 0,
+     "poe": false,
+     "lastMac": null,
+     "lastIp": null,
+     "connectedAt": 0
+    },
+    {
+     "port": 3,
+     "speed": 0,
+     "poe": false,
+     "lastMac": null,
+     "lastIp": null,
+     "connectedAt": 0
+    },
+    {
+     "port": 4,
+     "speed": 0,
+     "poe": false,
+     "lastMac": null,
+     "lastIp": null,
+     "connectedAt": 0
+    },
+    {
+     "port": 5,
+     "speed": 1000,
+     "poe": false,
+     "lastMac": "90:09:d0:66:cc:00",
+     "lastIp": "192.168.1.15",
+     "connectedAt": 1787650177
+    },
+    {
+     "port": 6,
+     "speed": 0,
+     "poe": false,
+     "lastMac": null,
+     "lastIp": null,
+     "connectedAt": 0
+    },
+    {
+     "port": 7,
+     "speed": 0,
+     "poe": false,
+     "lastMac": "e4:3a:6e:07:6d:f7",
+     "lastIp": "192.168.1.1",
+     "connectedAt": 1790749118
+    },
+    {
+     "port": 8,
+     "speed": 0,
+     "poe": false,
+     "lastMac": null,
+     "lastIp": null,
+     "connectedAt": 0
+    },
+    {
+     "port": 9,
+     "speed": 1000,
+     "poe": false,
+     "lastMac": "90:09:d0:5c:90:45",
+     "lastIp": "192.168.1.105",
+     "connectedAt": 1790473607
+    },
+    {
+     "port": 10,
+     "speed": 0,
+     "poe": false,
+     "lastMac": null,
+     "lastIp": null,
+     "connectedAt": 0
+    },
+    {
+     "port": 11,
+     "speed": 1000,
+     "poe": false,
+     "lastMac": "90:09:d0:66:cc:01",
+     "lastIp": "192.168.1.15",
+     "connectedAt": 1787650177
+    },
+    {
+     "port": 12,
+     "speed": 0,
+     "poe": false,
+     "lastMac": null,
+     "lastIp": null,
+     "connectedAt": 0
+    },
+    {
+     "port": 13,
+     "speed": 0,
+     "poe": false,
+     "lastMac": null,
+     "lastIp": null,
+     "connectedAt": 0
+    },
+    {
+     "port": 14,
+     "speed": 0,
+     "poe": false,
+     "lastMac": null,
+     "lastIp": null,
+     "connectedAt": 0
+    },
+    {
+     "port": 15,
+     "speed": 0,
+     "poe": false,
+     "lastMac": null,
+     "lastIp": null,
+     "connectedAt": 0
+    },
+    {
+     "port": 16,
+     "speed": 0,
+     "poe": false,
+     "lastMac": null,
+     "lastIp": null,
+     "connectedAt": 0
+    },
+    {
+     "port": 17,
+     "speed": 0,
+     "poe": false,
+     "lastMac": null,
+     "lastIp": null,
+     "connectedAt": 0
+    },
+    {
+     "port": 18,
+     "speed": 0,
+     "poe": false,
+     "lastMac": null,
+     "lastIp": null,
+     "connectedAt": 0
+    },
+    {
+     "port": 19,
+     "speed": 0,
+     "poe": false,
+     "lastMac": null,
+     "lastIp": null,
+     "connectedAt": 0
+    },
+    {
+     "port": 20,
+     "speed": 0,
+     "poe": false,
+     "lastMac": null,
+     "lastIp": null,
+     "connectedAt": 0
+    },
+    {
+     "port": 21,
+     "speed": 0,
+     "poe": false,
+     "lastMac": null,
+     "lastIp": null,
+     "connectedAt": 0
+    },
+    {
+     "port": 22,
+     "speed": 0,
+     "poe": false,
+     "lastMac": null,
+     "lastIp": null,
+     "connectedAt": 0
+    },
+    {
+     "port": 23,
+     "speed": 0,
+     "poe": false,
+     "lastMac": null,
+     "lastIp": null,
+     "connectedAt": 0
+    },
+    {
+     "port": 24,
+     "speed": 0,
+     "poe": false,
+     "lastMac": null,
+     "lastIp": null,
+     "connectedAt": 0
+    },
+    {
+     "port": 25,
+     "speed": 10000,
+     "poe": false,
+     "lastMac": "e0:63:da:8a:30:d9",
+     "lastIp": "192.168.1.57",
+     "connectedAt": 1790758822
+    },
+    {
+     "port": 26,
+     "speed": 10000,
+     "poe": false,
+     "lastMac": null,
+     "lastIp": null,
+     "connectedAt": 0
+    }
+   ]
+  },
+  {
+   "name": "BMZ-SW02",
+   "model": "US48P500",
+   "type": "usw",
+   "ip": "192.168.1.57",
+   "mac": "e0:63:da:8a:30:d9",
+   "version": "7.5.15.17146",
+   "adopted": true,
+   "upgradable": false,
+   "upgradeTo": null,
+   "lastSeen": 1791000391,
+   "ports": 52,
+   "uplink": {
+    "mac": "74:ac:b9:aa:84:a3",
+    "port": null,
+    "localPort": 49
+   },
+   "portTable": [
+    {
+     "port": 1,
+     "speed": 1000,
+     "poe": true,
+     "lastMac": "80:5e:c0:cb:11:8d",
+     "lastIp": "192.168.1.143",
+     "connectedAt": 1748399323
+    },
+    {
+     "port": 2,
+     "speed": 100,
+     "poe": true,
+     "lastMac": "80:5e:c0:2a:1d:6a",
+     "lastIp": "192.168.1.176",
+     "connectedAt": 1787650218
+    },
+    {
+     "port": 3,
+     "speed": 100,
+     "poe": true,
+     "lastMac": "80:5e:c0:2a:17:74",
+     "lastIp": "192.168.1.191",
+     "connectedAt": 1787650218
+    },
+    {
+     "port": 4,
+     "speed": 100,
+     "poe": true,
+     "lastMac": "80:5e:c0:2a:1c:da",
+     "lastIp": "192.168.1.85",
+     "connectedAt": 1790742666
+    },
+    {
+     "port": 5,
+     "speed": 100,
+     "poe": true,
+     "lastMac": "80:5e:c0:2a:1d:7a",
+     "lastIp": "192.168.1.82",
+     "connectedAt": 1787650218
+    },
+    {
+     "port": 6,
+     "speed": 100,
+     "poe": true,
+     "lastMac": "80:5e:c0:2a:12:69",
+     "lastIp": "192.168.1.98",
+     "connectedAt": 1787650218
+    },
+    {
+     "port": 7,
+     "speed": 0,
+     "poe": true,
+     "lastMac": "80:5e:c0:2a:1d:4a",
+     "lastIp": null,
+     "connectedAt": 1748399323
+    },
+    {
+     "port": 8,
+     "speed": 100,
+     "poe": true,
+     "lastMac": "80:5e:c0:2a:1c:d2",
+     "lastIp": "192.168.1.125",
+     "connectedAt": 1787650218
+    },
+    {
+     "port": 9,
+     "speed": 100,
+     "poe": true,
+     "lastMac": "80:5e:c0:2a:1c:71",
+     "lastIp": "192.168.1.157",
+     "connectedAt": 1787650218
+    },
+    {
+     "port": 10,
+     "speed": 100,
+     "poe": true,
+     "lastMac": "80:5e:c0:2a:1b:51",
+     "lastIp": "192.168.1.62",
+     "connectedAt": 1787650218
+    },
+    {
+     "port": 11,
+     "speed": 100,
+     "poe": true,
+     "lastMac": "80:5e:c0:25:c6:4c",
+     "lastIp": "192.168.1.185",
+     "connectedAt": 1787650218
+    },
+    {
+     "port": 12,
+     "speed": 0,
+     "poe": true,
+     "lastMac": "80:5e:c0:2a:1a:b0",
+     "lastIp": null,
+     "connectedAt": 1748399323
+    },
+    {
+     "port": 13,
+     "speed": 1000,
+     "poe": true,
+     "lastMac": "74:83:c2:0a:78:24",
+     "lastIp": "192.168.1.60",
+     "connectedAt": 1790756929
+    },
+    {
+     "port": 14,
+     "speed": 100,
+     "poe": true,
+     "lastMac": "80:5e:c0:25:c6:2b",
+     "lastIp": "192.168.1.115",
+     "connectedAt": 1787650218
+    },
+    {
+     "port": 15,
+     "speed": 0,
+     "poe": true,
+     "lastMac": null,
+     "lastIp": null,
+     "connectedAt": 0
+    },
+    {
+     "port": 16,
+     "speed": 0,
+     "poe": true,
+     "lastMac": null,
+     "lastIp": null,
+     "connectedAt": 0
+    },
+    {
+     "port": 17,
+     "speed": 100,
+     "poe": true,
+     "lastMac": "80:5e:c0:2a:17:69",
+     "lastIp": "192.168.1.89",
+     "connectedAt": 1787650218
+    },
+    {
+     "port": 18,
+     "speed": 100,
+     "poe": true,
+     "lastMac": "80:5e:c0:2a:1c:b2",
+     "lastIp": "192.168.1.180",
+     "connectedAt": 1790742666
+    },
+    {
+     "port": 19,
+     "speed": 100,
+     "poe": true,
+     "lastMac": "80:5e:c0:2a:1a:7a",
+     "lastIp": "192.168.1.187",
+     "connectedAt": 1790742666
+    },
+    {
+     "port": 20,
+     "speed": 1000,
+     "poe": true,
+     "lastMac": "74:83:c2:0a:75:99",
+     "lastIp": "192.168.1.56",
+     "connectedAt": 1790756917
+    },
+    {
+     "port": 21,
+     "speed": 100,
+     "poe": true,
+     "lastMac": "80:5e:c0:25:c6:3f",
+     "lastIp": "192.168.1.145",
+     "connectedAt": 1787650218
+    },
+    {
+     "port": 22,
+     "speed": 100,
+     "poe": true,
+     "lastMac": "80:5e:c0:2a:12:61",
+     "lastIp": "192.168.1.183",
+     "connectedAt": 1787650218
+    },
+    {
+     "port": 23,
+     "speed": 100,
+     "poe": true,
+     "lastMac": "80:5e:c0:2a:16:ad",
+     "lastIp": "192.168.1.133",
+     "connectedAt": 1787650218
+    },
+    {
+     "port": 24,
+     "speed": 100,
+     "poe": true,
+     "lastMac": "80:5e:c0:2a:1b:41",
+     "lastIp": "192.168.1.184",
+     "connectedAt": 1787650218
+    },
+    {
+     "port": 25,
+     "speed": 100,
+     "poe": true,
+     "lastMac": "80:5e:c0:2a:1d:63",
+     "lastIp": "192.168.1.87",
+     "connectedAt": 1787650218
+    },
+    {
+     "port": 26,
+     "speed": 0,
+     "poe": true,
+     "lastMac": null,
+     "lastIp": null,
+     "connectedAt": 0
+    },
+    {
+     "port": 27,
+     "speed": 1000,
+     "poe": true,
+     "lastMac": "2c:f0:5d:bd:8f:ba",
+     "lastIp": null,
+     "connectedAt": 1748399323
+    },
+    {
+     "port": 28,
+     "speed": 0,
+     "poe": true,
+     "lastMac": null,
+     "lastIp": null,
+     "connectedAt": 0
+    },
+    {
+     "port": 29,
+     "speed": 1000,
+     "poe": true,
+     "lastMac": "f4:92:bf:ae:21:96",
+     "lastIp": "192.168.1.66",
+     "connectedAt": 1790756940
+    },
+    {
+     "port": 30,
+     "speed": 100,
+     "poe": true,
+     "lastMac": "80:5e:c0:2a:1b:25",
+     "lastIp": "192.168.1.104",
+     "connectedAt": 1787650218
+    },
+    {
+     "port": 31,
+     "speed": 0,
+     "poe": true,
+     "lastMac": "d8:bb:c1:2c:e8:d6",
+     "lastIp": null,
+     "connectedAt": 1751976138
+    },
+    {
+     "port": 32,
+     "speed": 100,
+     "poe": true,
+     "lastMac": "80:5e:c0:2a:1d:7e",
+     "lastIp": "192.168.1.195",
+     "connectedAt": 1787650218
+    },
+    {
+     "port": 33,
+     "speed": 0,
+     "poe": true,
+     "lastMac": null,
+     "lastIp": null,
+     "connectedAt": 0
+    },
+    {
+     "port": 34,
+     "speed": 100,
+     "poe": true,
+     "lastMac": "80:5e:c0:2a:16:a8",
+     "lastIp": "192.168.1.167",
+     "connectedAt": 1787650218
+    },
+    {
+     "port": 35,
+     "speed": 1000,
+     "poe": true,
+     "lastMac": "d8:bb:c1:c1:dd:f1",
+     "lastIp": "192.168.1.61",
+     "connectedAt": 1790560882
+    },
+    {
+     "port": 36,
+     "speed": 0,
+     "poe": true,
+     "lastMac": null,
+     "lastIp": null,
+     "connectedAt": 0
+    },
+    {
+     "port": 37,
+     "speed": 100,
+     "poe": true,
+     "lastMac": "80:5e:c0:2a:1d:9e",
+     "lastIp": "192.168.1.193",
+     "connectedAt": 1787650218
+    },
+    {
+     "port": 38,
+     "speed": 100,
+     "poe": true,
+     "lastMac": "80:5e:c0:2a:1a:77",
+     "lastIp": "192.168.1.190",
+     "connectedAt": 1787650218
+    },
+    {
+     "port": 39,
+     "speed": 1000,
+     "poe": true,
+     "lastMac": "04:d4:c4:05:9b:28",
+     "lastIp": "192.168.1.146",
+     "connectedAt": 1790290911
+    },
+    {
+     "port": 40,
+     "speed": 0,
+     "poe": true,
+     "lastMac": "d8:bb:c1:2c:e8:d6",
+     "lastIp": null,
+     "connectedAt": 1748399323
+    },
+    {
+     "port": 41,
+     "speed": 0,
+     "poe": true,
+     "lastMac": "04:7c:16:9f:2d:c4",
+     "lastIp": null,
+     "connectedAt": 1748399323
+    },
+    {
+     "port": 42,
+     "speed": 100,
+     "poe": true,
+     "lastMac": "ec:9a:74:31:99:59",
+     "lastIp": "192.168.1.220",
+     "connectedAt": 1790935872
+    },
+    {
+     "port": 43,
+     "speed": 1000,
+     "poe": true,
+     "lastMac": "74:83:c2:02:3f:b1",
+     "lastIp": "192.168.1.117",
+     "connectedAt": 1790742666
+    },
+    {
+     "port": 44,
+     "speed": 1000,
+     "poe": true,
+     "lastMac": "74:83:c2:02:3c:61",
+     "lastIp": "192.168.1.135",
+     "connectedAt": 1790742666
+    },
+    {
+     "port": 45,
+     "speed": 1000,
+     "poe": true,
+     "lastMac": "74:83:c2:02:3c:d6",
+     "lastIp": "192.168.1.126",
+     "connectedAt": 1783394672
+    },
+    {
+     "port": 46,
+     "speed": 0,
+     "poe": true,
+     "lastMac": "04:7b:cb:a8:3e:a5",
+     "lastIp": null,
+     "connectedAt": 1748399323
+    },
+    {
+     "port": 47,
+     "speed": 1000,
+     "poe": true,
+     "lastMac": "2c:f0:5d:1b:da:86",
+     "lastIp": "192.168.1.70",
+     "connectedAt": 1790479846
+    },
+    {
+     "port": 48,
+     "speed": 0,
+     "poe": true,
+     "lastMac": "e0:51:d8:19:5c:b8",
+     "lastIp": "192.168.1.107",
+     "connectedAt": 1787001191
+    },
+    {
+     "port": 49,
+     "speed": 10000,
+     "poe": false,
+     "lastMac": "74:ac:b9:aa:84:a3",
+     "lastIp": "192.168.1.11",
+     "connectedAt": 1790749665
+    },
+    {
+     "port": 50,
+     "speed": 10000,
+     "poe": false,
+     "lastMac": "78:45:58:e5:fa:ca",
+     "lastIp": "192.168.1.99",
+     "connectedAt": 1790757627
+    },
+    {
+     "port": 51,
+     "speed": 0,
+     "poe": false,
+     "lastMac": null,
+     "lastIp": null,
+     "connectedAt": 0
+    },
+    {
+     "port": 52,
+     "speed": 0,
+     "poe": false,
+     "lastMac": null,
+     "lastIp": null,
+     "connectedAt": 0
+    }
+   ]
+  }
+ ],
+ "clients": [
+  {
+   "mac": "26:9c:5a:2b:25:14",
+   "hostname": "Watch",
+   "ip": "192.168.1.80",
+   "wired": false,
+   "uplinkMac": "74:83:c2:02:3c:d6",
+   "uplinkName": "BMZ-AP01 [Outside Boardroom]",
+   "port": null,
+   "lastSeen": 1790107144,
+   "maker": "",
+   "network": ""
+  },
+  {
+   "mac": "c2:04:3c:d6:7a:35",
+   "hostname": "",
+   "ip": "",
+   "wired": true,
+   "uplinkMac": "74:83:c2:02:3c:d6",
+   "uplinkName": "BMZ-AP01 [Outside Boardroom]",
+   "port": 50,
+   "lastSeen": 1790119243,
+   "maker": "",
+   "network": "Default"
+  },
+  {
+   "mac": "f0:b6:1e:3a:b9:16",
+   "hostname": "JMEClaptop",
+   "ip": "192.168.1.100",
+   "wired": false,
+   "uplinkMac": "74:83:c2:02:3c:d6",
+   "uplinkName": "BMZ-AP01 [Outside Boardroom]",
+   "port": null,
+   "lastSeen": 1790122909,
+   "maker": "Intel Corporate",
+   "network": ""
+  },
+  {
+   "mac": "dc:71:96:b8:0a:92",
+   "hostname": "LAPTOP-91PQJV53",
+   "ip": "192.168.1.67",
+   "wired": false,
+   "uplinkMac": "74:83:c2:02:3f:b1",
+   "uplinkName": "BMZ-AP02 [Middle Bullpen]",
+   "port": null,
+   "lastSeen": 1790347097,
+   "maker": "Intel Corporate",
+   "network": ""
+  },
+  {
+   "mac": "36:38:bd:6a:a4:09",
+   "hostname": "Watch",
+   "ip": "192.168.1.95",
+   "wired": false,
+   "uplinkMac": "74:83:c2:02:3f:b1",
+   "uplinkName": "BMZ-AP02 [Middle Bullpen]",
+   "port": null,
+   "lastSeen": 1790366314,
+   "maker": "",
+   "network": ""
+  },
+  {
+   "mac": "b2:8d:b1:7e:f8:81",
+   "hostname": "iPhone",
+   "ip": "192.168.1.111",
+   "wired": false,
+   "uplinkMac": "74:83:c2:02:3c:d6",
+   "uplinkName": "BMZ-AP01 [Outside Boardroom]",
+   "port": null,
+   "lastSeen": 1790383980,
+   "maker": "",
+   "network": "Default"
+  },
+  {
+   "mac": "ea:66:41:d6:76:6a",
+   "hostname": "",
+   "ip": "192.168.1.107",
+   "wired": false,
+   "uplinkMac": "74:83:c2:02:3c:d6",
+   "uplinkName": "BMZ-AP01 [Outside Boardroom]",
+   "port": null,
+   "lastSeen": 1790386037,
+   "maker": "",
+   "network": ""
+  },
+  {
+   "mac": "80:5e:c0:25:c6:36",
+   "hostname": "SIP-T41S",
+   "ip": "192.168.1.189",
+   "wired": true,
+   "uplinkMac": "74:83:c2:0a:75:99",
+   "uplinkName": "USW Flex",
+   "port": 3,
+   "lastSeen": 1790402274,
+   "maker": "Yealink(Xiamen) Network Technology Co.,Ltd.",
+   "network": "Default"
+  },
+  {
+   "mac": "04:7c:16:9f:2d:c4",
+   "hostname": "KOR-307-N",
+   "ip": "192.168.1.78",
+   "wired": true,
+   "uplinkMac": "f4:92:bf:ae:21:96",
+   "uplinkName": "USW Flex - Nelson",
+   "port": 2,
+   "lastSeen": 1790402277,
+   "maker": "Micro-Star INTL CO., LTD.",
+   "network": "Default"
+  },
+  {
+   "mac": "80:5e:c0:2a:1a:75",
+   "hostname": "",
+   "ip": "192.168.1.49",
+   "wired": true,
+   "uplinkMac": "f4:92:bf:ae:21:96",
+   "uplinkName": "USW Flex - Nelson",
+   "port": 3,
+   "lastSeen": 1790402277,
+   "maker": "Yealink(Xiamen) Network Technology Co.,Ltd.",
+   "network": "Default"
+  },
+  {
+   "mac": "74:ac:b9:a4:fc:cb",
+   "hostname": "USW_MINI",
+   "ip": "192.168.1.94",
+   "wired": true,
+   "uplinkMac": "74:83:c2:13:f1:c2",
+   "uplinkName": "BMZ-SW01",
+   "port": 5,
+   "lastSeen": 1790402294,
+   "maker": "Ubiquiti Inc",
+   "network": "Default"
+  },
+  {
+   "mac": "2c:f0:5d:bd:8e:83",
+   "hostname": "",
+   "ip": "192.168.1.213",
+   "wired": true,
+   "uplinkMac": "74:83:c2:fb:d9:af",
+   "uplinkName": "USW Flex Mini",
+   "port": 5,
+   "lastSeen": 1790402294,
+   "maker": "Micro-Star INTL CO., LTD.",
+   "network": "Default"
+  },
+  {
+   "mac": "02:7f:00:bf:0c:92",
+   "hostname": "",
+   "ip": "",
+   "wired": true,
+   "uplinkMac": "74:83:c2:13:f1:c2",
+   "uplinkName": "BMZ-SW01",
+   "port": 50,
+   "lastSeen": 1790608988,
+   "maker": "",
+   "network": "Default"
+  },
+  {
+   "mac": "96:e1:d2:16:24:f9",
+   "hostname": "",
+   "ip": "192.168.1.124",
+   "wired": false,
+   "uplinkMac": "74:83:c2:02:3c:61",
+   "uplinkName": "BMZ-AP03 [Outside Kitchen]",
+   "port": null,
+   "lastSeen": 1790646476,
+   "maker": "",
+   "network": ""
+  },
+  {
+   "mac": "de:51:68:b2:1d:f0",
+   "hostname": "Andrea-s-S23",
+   "ip": "192.168.1.55",
+   "wired": false,
+   "uplinkMac": "74:83:c2:02:3c:d6",
+   "uplinkName": "BMZ-AP01 [Outside Boardroom]",
+   "port": null,
+   "lastSeen": 1790713750,
+   "maker": "",
+   "network": "Default"
+  },
+  {
+   "mac": "00:0c:29:a0:17:89",
+   "hostname": "",
+   "ip": "192.168.1.26",
+   "wired": true,
+   "uplinkMac": "74:83:c2:13:f1:c2",
+   "uplinkName": "BMZ-SW01",
+   "port": 49,
+   "lastSeen": 1790715052,
+   "maker": "VMware, Inc.",
+   "network": "Default"
+  },
+  {
+   "mac": "a0:36:bc:bd:93:6b",
+   "hostname": "KOR-PERFORM3",
+   "ip": "192.168.55.102",
+   "wired": true,
+   "uplinkMac": "74:83:c2:13:f1:c2",
+   "uplinkName": "BMZ-SW01",
+   "port": 5,
+   "lastSeen": 1790716353,
+   "maker": "ASUSTek COMPUTER INC.",
+   "network": "Default"
+  },
+  {
+   "mac": "d8:bb:c1:2a:26:cc",
+   "hostname": "KOR-207",
+   "ip": "192.168.1.136",
+   "wired": true,
+   "uplinkMac": "74:83:c2:0a:78:24",
+   "uplinkName": "USW Flex - Mark",
+   "port": 3,
+   "lastSeen": 1790742301,
+   "maker": "Micro-Star INTL CO., LTD.",
+   "network": "Default"
+  },
+  {
+   "mac": "18:c0:4d:28:9f:d6",
+   "hostname": "KOR-PERFORM2",
+   "ip": "192.168.1.118",
+   "wired": true,
+   "uplinkMac": "74:83:c2:fb:d9:af",
+   "uplinkName": "USW Flex Mini - Server Room PCs",
+   "port": 4,
+   "lastSeen": 1790742451,
+   "maker": "Giga-Byte Technology Co.,Ltd.",
+   "network": "Default"
+  },
+  {
+   "mac": "04:7c:16:f7:55:09",
+   "hostname": "KOR-223N",
+   "ip": "192.168.1.64",
+   "wired": true,
+   "uplinkMac": "74:ac:b9:a4:fc:fc",
+   "uplinkName": "USW Flex Mini - Kate",
+   "port": 3,
+   "lastSeen": 1790742539,
+   "maker": "Micro-Star INTL CO., LTD.",
+   "network": "Default"
+  },
+  {
+   "mac": "80:5e:c0:2a:1e:4a",
+   "hostname": "",
+   "ip": "192.168.1.50",
+   "wired": true,
+   "uplinkMac": "74:83:c2:0a:78:24",
+   "uplinkName": "USW Flex - Mark",
+   "port": 5,
+   "lastSeen": 1790742681,
+   "maker": "Yealink(Xiamen) Network Technology Co.,Ltd.",
+   "network": "Default"
+  },
+  {
+   "mac": "90:09:d0:5c:90:45",
+   "hostname": "Synology02",
+   "ip": "192.168.1.105",
+   "wired": true,
+   "uplinkMac": "78:45:58:e5:fa:ca",
+   "uplinkName": "BMZ-SW03",
+   "port": 9,
+   "lastSeen": 1790743056,
+   "maker": "Synology Incorporated",
+   "network": "Default"
+  },
+  {
+   "mac": "40:16:7e:68:f1:66",
+   "hostname": "",
+   "ip": "192.168.1.179",
+   "wired": true,
+   "uplinkMac": "74:ac:b9:a4:fc:cb",
+   "uplinkName": "BMZ-SW02",
+   "port": 49,
+   "lastSeen": 1790743512,
+   "maker": "ASUSTek COMPUTER INC.",
+   "network": "Default"
+  },
+  {
+   "mac": "04:7c:16:f3:e2:39",
+   "hostname": "KOR-208-N",
+   "ip": "192.168.1.86",
+   "wired": true,
+   "uplinkMac": "74:83:c2:fb:d9:af",
+   "uplinkName": "USW Flex Mini - Server Room PCs",
+   "port": 5,
+   "lastSeen": 1790744952,
+   "maker": "Micro-Star INTL CO., LTD.",
+   "network": "Default"
+  },
+  {
+   "mac": "90:ec:77:97:8c:24",
+   "hostname": "",
+   "ip": "192.168.1.1",
+   "wired": true,
+   "uplinkMac": "74:83:c2:13:f1:c2",
+   "uplinkName": "BMZ-SW01",
+   "port": 25,
+   "lastSeen": 1790748460,
+   "maker": "silicom",
+   "network": "Default"
+  },
+  {
+   "mac": "38:68:dd:55:de:b8",
+   "hostname": "",
+   "ip": "192.168.1.10",
+   "wired": true,
+   "uplinkMac": "74:83:c2:13:f1:c2",
+   "uplinkName": "BMZ-SW01",
+   "port": 50,
+   "lastSeen": 1790749806,
+   "maker": "Inventec Corporation",
+   "network": "Default"
+  },
+  {
+   "mac": "00:50:56:8b:b1:f4",
+   "hostname": "",
+   "ip": "192.168.1.30",
+   "wired": true,
+   "uplinkMac": "74:83:c2:0a:78:24",
+   "uplinkName": "USW Flex",
+   "port": 1,
+   "lastSeen": 1790749806,
+   "maker": "VMware, Inc.",
+   "network": "Default"
+  },
+  {
+   "mac": "74:ac:b9:aa:84:a3",
+   "hostname": "",
+   "ip": "192.168.1.11",
+   "wired": true,
+   "uplinkMac": "e0:63:da:8a:30:d9",
+   "uplinkName": "BMZ-SW02",
+   "port": 49,
+   "lastSeen": 1790749806,
+   "maker": "Ubiquiti Inc",
+   "network": "Default"
+  },
+  {
+   "mac": "74:ac:b9:aa:84:a4",
+   "hostname": "",
+   "ip": "",
+   "wired": true,
+   "uplinkMac": "74:83:c2:13:f1:c2",
+   "uplinkName": "BMZ-SW01",
+   "port": 50,
+   "lastSeen": 1790749806,
+   "maker": "Ubiquiti Inc",
+   "network": "Default"
+  },
+  {
+   "mac": "00:11:32:fe:dd:d5",
+   "hostname": "",
+   "ip": "192.168.1.12",
+   "wired": true,
+   "uplinkMac": "74:83:c2:0a:78:24",
+   "uplinkName": "USW Flex",
+   "port": 1,
+   "lastSeen": 1790749806,
+   "maker": "Synology Incorporated",
+   "network": "Default"
+  },
+  {
+   "mac": "00:50:56:8b:01:22",
+   "hostname": "",
+   "ip": "192.168.1.31",
+   "wired": true,
+   "uplinkMac": "74:83:c2:0a:78:24",
+   "uplinkName": "USW Flex",
+   "port": 1,
+   "lastSeen": 1790749806,
+   "maker": "VMware, Inc.",
+   "network": "Default"
+  },
+  {
+   "mac": "00:50:56:8b:ed:b1",
+   "hostname": "",
+   "ip": "192.168.1.32",
+   "wired": true,
+   "uplinkMac": "74:83:c2:0a:78:24",
+   "uplinkName": "USW Flex",
+   "port": 1,
+   "lastSeen": 1790749806,
+   "maker": "VMware, Inc.",
+   "network": "Default"
+  },
+  {
+   "mac": "00:0c:29:fc:f7:38",
+   "hostname": "",
+   "ip": "192.168.1.9",
+   "wired": true,
+   "uplinkMac": "74:83:c2:0a:78:24",
+   "uplinkName": "USW Flex",
+   "port": 1,
+   "lastSeen": 1790749806,
+   "maker": "VMware, Inc.",
+   "network": "Default"
+  },
+  {
+   "mac": "00:50:56:8b:2f:d2",
+   "hostname": "",
+   "ip": "192.168.1.33",
+   "wired": true,
+   "uplinkMac": "74:83:c2:0a:78:24",
+   "uplinkName": "USW Flex",
+   "port": 1,
+   "lastSeen": 1790749806,
+   "maker": "VMware, Inc.",
+   "network": "Default"
+  },
+  {
+   "mac": "e4:3a:6e:07:6d:f7",
+   "hostname": "",
+   "ip": "192.168.1.1",
+   "wired": true,
+   "uplinkMac": "78:45:58:e5:fa:ca",
+   "uplinkName": "BMZ-SW03",
+   "port": 7,
+   "lastSeen": 1790749806,
+   "maker": "Shenzhen Zeroone Technology CO.,LTD",
+   "network": "Default"
+  },
+  {
+   "mac": "e4:3a:6e:07:6d:f6",
+   "hostname": "",
+   "ip": "10.58.192.98",
+   "wired": true,
+   "uplinkMac": "78:45:58:e5:fa:ca",
+   "uplinkName": "BMZ-SW03",
+   "port": 50,
+   "lastSeen": 1790749952,
+   "maker": "Shenzhen Zeroone Technology CO.,LTD",
+   "network": "Default"
+  },
+  {
+   "mac": "e8:97:44:09:5c:00",
+   "hostname": "KOR-1001",
+   "ip": "192.168.1.112",
+   "wired": true,
+   "uplinkMac": "74:83:c2:13:f1:c2",
+   "uplinkName": "BMZ-SW01",
+   "port": 5,
+   "lastSeen": 1790752405,
+   "maker": "",
+   "network": "Default"
+  },
+  {
+   "mac": "04:7b:cb:a5:b5:60",
+   "hostname": "KOR-302N",
+   "ip": "192.168.1.91",
+   "wired": true,
+   "uplinkMac": "74:83:c2:13:f1:c2",
+   "uplinkName": "BMZ-SW01",
+   "port": 21,
+   "lastSeen": 1790757657,
+   "maker": "Universal Global Scientific Industrial Co., Ltd.",
+   "network": "Default"
+  },
+  {
+   "mac": "04:7c:16:9f:2d:dd",
+   "hostname": "KOR-305",
+   "ip": "192.168.1.71",
+   "wired": true,
+   "uplinkMac": "74:83:c2:13:f1:c2",
+   "uplinkName": "BMZ-SW01",
+   "port": 7,
+   "lastSeen": 1790757657,
+   "maker": "Micro-Star INTL CO., LTD.",
+   "network": "Default"
+  },
+  {
+   "mac": "04:7c:16:f3:e2:0e",
+   "hostname": "KOR-206-N",
+   "ip": "192.168.1.65",
+   "wired": true,
+   "uplinkMac": "74:83:c2:13:f1:c2",
+   "uplinkName": "BMZ-SW01",
+   "port": 1,
+   "lastSeen": 1790757657,
+   "maker": "Micro-Star INTL CO., LTD.",
+   "network": "Default"
+  },
+  {
+   "mac": "40:b0:76:9f:6f:ce",
+   "hostname": "KOR-205",
+   "ip": "192.168.1.93",
+   "wired": true,
+   "uplinkMac": "74:83:c2:13:f1:c2",
+   "uplinkName": "BMZ-SW01",
+   "port": 2,
+   "lastSeen": 1790757657,
+   "maker": "ASUSTek COMPUTER INC.",
+   "network": "Default"
+  },
+  {
+   "mac": "2c:f0:5d:12:9e:8f",
+   "hostname": "KOR-204",
+   "ip": "192.168.1.73",
+   "wired": true,
+   "uplinkMac": "74:83:c2:13:f1:c2",
+   "uplinkName": "BMZ-SW01",
+   "port": 6,
+   "lastSeen": 1790757657,
+   "maker": "Micro-Star INTL CO., LTD.",
+   "network": "Default"
+  },
+  {
+   "mac": "70:8b:cd:aa:19:13",
+   "hostname": "KOR-224",
+   "ip": "192.168.1.165",
+   "wired": true,
+   "uplinkMac": "74:83:c2:13:f1:c2",
+   "uplinkName": "BMZ-SW01",
+   "port": 8,
+   "lastSeen": 1790757657,
+   "maker": "ASUSTek COMPUTER INC.",
+   "network": "Default"
+  },
+  {
+   "mac": "1c:69:7a:05:e2:b5",
+   "hostname": "Boardroom",
+   "ip": "192.168.1.84",
+   "wired": true,
+   "uplinkMac": "74:83:c2:13:f1:c2",
+   "uplinkName": "BMZ-SW01",
+   "port": 9,
+   "lastSeen": 1790757657,
+   "maker": "EliteGroup Computer Systems Co., LTD",
+   "network": "Default"
+  },
+  {
+   "mac": "40:16:7e:68:ef:ba",
+   "hostname": "KOR-SPARE8",
+   "ip": "192.168.1.139",
+   "wired": true,
+   "uplinkMac": "74:83:c2:13:f1:c2",
+   "uplinkName": "BMZ-SW01",
+   "port": 11,
+   "lastSeen": 1790757657,
+   "maker": "ASUSTek COMPUTER INC.",
+   "network": "Default"
+  },
+  {
+   "mac": "04:7c:16:96:da:0c",
+   "hostname": "KOR-216",
+   "ip": "192.168.1.90",
+   "wired": true,
+   "uplinkMac": "74:83:c2:13:f1:c2",
+   "uplinkName": "BMZ-SW01",
+   "port": 12,
+   "lastSeen": 1790757657,
+   "maker": "Micro-Star INTL CO., LTD.",
+   "network": "Default"
+  },
+  {
+   "mac": "2c:f0:5d:12:9e:95",
+   "hostname": "KOR-306",
+   "ip": "192.168.1.174",
+   "wired": true,
+   "uplinkMac": "74:83:c2:13:f1:c2",
+   "uplinkName": "BMZ-SW01",
+   "port": 13,
+   "lastSeen": 1790757657,
+   "maker": "Micro-Star INTL CO., LTD.",
+   "network": "Default"
+  },
+  {
+   "mac": "04:7c:16:f3:e2:20",
+   "hostname": "",
+   "ip": "192.168.1.45",
+   "wired": true,
+   "uplinkMac": "74:83:c2:13:f1:c2",
+   "uplinkName": "BMZ-SW01",
+   "port": 16,
+   "lastSeen": 1790757657,
+   "maker": "Micro-Star INTL CO., LTD.",
+   "network": "Default"
+  },
+  {
+   "mac": "2c:f0:5d:c5:9e:9e",
+   "hostname": "KOR-310",
+   "ip": "192.168.1.59",
+   "wired": true,
+   "uplinkMac": "74:83:c2:13:f1:c2",
+   "uplinkName": "BMZ-SW01",
+   "port": 20,
+   "lastSeen": 1790757657,
+   "maker": "Micro-Star INTL CO., LTD.",
+   "network": "Default"
+  },
+  {
+   "mac": "98:fa:9b:f2:63:ab",
+   "hostname": "KOR-SPARE2",
+   "ip": "192.168.1.69",
+   "wired": true,
+   "uplinkMac": "74:83:c2:13:f1:c2",
+   "uplinkName": "BMZ-SW01",
+   "port": 22,
+   "lastSeen": 1790757657,
+   "maker": "LCFC(HeFei) Electronics Technology co., ltd",
+   "network": "Default"
+  },
+  {
+   "mac": "34:9f:7b:fd:83:fc",
+   "hostname": "",
+   "ip": "192.168.1.5",
+   "wired": true,
+   "uplinkMac": "74:83:c2:13:f1:c2",
+   "uplinkName": "BMZ-SW01",
+   "port": 24,
+   "lastSeen": 1790757657,
+   "maker": "Canon Inc.",
+   "network": "Default"
+  },
+  {
+   "mac": "00:20:85:bb:6e:31",
+   "hostname": "ups-00-20-85-BB-6E-31",
+   "ip": "192.168.1.44",
+   "wired": true,
+   "uplinkMac": "74:83:c2:13:f1:c2",
+   "uplinkName": "BMZ-SW01",
+   "port": 26,
+   "lastSeen": 1790757657,
+   "maker": "Eaton Corporation",
+   "network": "Default"
+  },
+  {
+   "mac": "04:7b:cb:a8:3b:4c",
+   "hostname": "KOR-314",
+   "ip": "192.168.1.74",
+   "wired": true,
+   "uplinkMac": "74:83:c2:13:f1:c2",
+   "uplinkName": "BMZ-SW01",
+   "port": 36,
+   "lastSeen": 1790757657,
+   "maker": "Universal Global Scientific Industrial Co., Ltd.",
+   "network": "Default"
+  },
+  {
+   "mac": "d8:bb:c1:2c:e8:d6",
+   "hostname": "KOR-104N",
+   "ip": "192.168.1.79",
+   "wired": true,
+   "uplinkMac": "74:83:c2:13:f1:c2",
+   "uplinkName": "BMZ-SW01",
+   "port": 38,
+   "lastSeen": 1790757657,
+   "maker": "Micro-Star INTL CO., LTD.",
+   "network": "Default"
+  },
+  {
+   "mac": "0c:9d:92:c2:40:f0",
+   "hostname": "KOR-202",
+   "ip": "192.168.1.163",
+   "wired": true,
+   "uplinkMac": "74:83:c2:13:f1:c2",
+   "uplinkName": "BMZ-SW01",
+   "port": 39,
+   "lastSeen": 1790757657,
+   "maker": "ASUSTek COMPUTER INC.",
+   "network": "Default"
+  },
+  {
+   "mac": "28:29:86:74:98:2b",
+   "hostname": "apc74982B",
+   "ip": "192.168.1.101",
+   "wired": true,
+   "uplinkMac": "74:83:c2:13:f1:c2",
+   "uplinkName": "BMZ-SW01",
+   "port": 43,
+   "lastSeen": 1790757657,
+   "maker": "APC by Schneider Electric",
+   "network": "Default"
+  },
+  {
+   "mac": "04:7c:16:20:63:ee",
+   "hostname": "KOR-319",
+   "ip": "192.168.1.76",
+   "wired": true,
+   "uplinkMac": "74:83:c2:13:f1:c2",
+   "uplinkName": "BMZ-SW01",
+   "port": 45,
+   "lastSeen": 1790757657,
+   "maker": "Micro-Star INTL CO., LTD.",
+   "network": "Default"
+  },
+  {
+   "mac": "e8:ea:6a:06:44:2a",
+   "hostname": "",
+   "ip": "192.168.1.16",
+   "wired": true,
+   "uplinkMac": "74:83:c2:13:f1:c2",
+   "uplinkName": "BMZ-SW01",
+   "port": 49,
+   "lastSeen": 1790757657,
+   "maker": "StarTech.com",
+   "network": "Default"
+  },
+  {
+   "mac": "00:50:56:8b:05:2e",
+   "hostname": "",
+   "ip": "192.168.1.18",
+   "wired": true,
+   "uplinkMac": "74:83:c2:13:f1:c2",
+   "uplinkName": "BMZ-SW01",
+   "port": 49,
+   "lastSeen": 1790757657,
+   "maker": "VMware, Inc.",
+   "network": "Default"
+  },
+  {
+   "mac": "d8:bb:c1:c1:de:06",
+   "hostname": "KOR-308",
+   "ip": "192.168.1.75",
+   "wired": true,
+   "uplinkMac": "74:83:c2:13:f1:c2",
+   "uplinkName": "BMZ-SW01",
+   "port": 19,
+   "lastSeen": 1790757657,
+   "maker": "Micro-Star INTL CO., LTD.",
+   "network": "Default"
+  },
+  {
+   "mac": "2c:f0:5d:51:22:02",
+   "hostname": "KOR-213-N",
+   "ip": "192.168.1.92",
+   "wired": true,
+   "uplinkMac": "74:83:c2:13:f1:c2",
+   "uplinkName": "BMZ-SW01",
+   "port": 3,
+   "lastSeen": 1790757657,
+   "maker": "Micro-Star INTL CO., LTD.",
+   "network": "Default"
+  },
+  {
+   "mac": "d8:bb:c1:2c:ea:09",
+   "hostname": "KOR-101",
+   "ip": "192.168.1.51",
+   "wired": true,
+   "uplinkMac": "74:83:c2:13:f1:c2",
+   "uplinkName": "BMZ-SW01",
+   "port": 29,
+   "lastSeen": 1790757657,
+   "maker": "Micro-Star INTL CO., LTD.",
+   "network": "Default"
+  },
+  {
+   "mac": "2c:f0:5d:c9:17:40",
+   "hostname": "KOR-206",
+   "ip": "192.168.1.68",
+   "wired": true,
+   "uplinkMac": "74:83:c2:13:f1:c2",
+   "uplinkName": "BMZ-SW01",
+   "port": 40,
+   "lastSeen": 1790757657,
+   "maker": "Micro-Star INTL CO., LTD.",
+   "network": "Default"
+  },
+  {
+   "mac": "00:50:56:1a:01:26",
+   "hostname": "",
+   "ip": "192.168.1.26",
+   "wired": true,
+   "uplinkMac": "74:83:c2:13:f1:c2",
+   "uplinkName": "BMZ-SW01",
+   "port": 49,
+   "lastSeen": 1790757657,
+   "maker": "VMware, Inc.",
+   "network": "Default"
+  },
+  {
+   "mac": "90:09:d0:66:cc:01",
+   "hostname": "",
+   "ip": "192.168.1.15",
+   "wired": true,
+   "uplinkMac": "78:45:58:e5:fa:ca",
+   "uplinkName": "BMZ-SW03",
+   "port": 11,
+   "lastSeen": 1790757681,
+   "maker": "Synology Incorporated",
+   "network": "Default"
+  },
+  {
+   "mac": "90:09:d0:66:cc:00",
+   "hostname": "",
+   "ip": "192.168.1.15",
+   "wired": true,
+   "uplinkMac": "78:45:58:e5:fa:ca",
+   "uplinkName": "BMZ-SW03",
+   "port": 5,
+   "lastSeen": 1790757681,
+   "maker": "Synology Incorporated",
+   "network": "Default"
+  },
+  {
+   "mac": "80:5e:c0:cb:11:8d",
+   "hostname": "SIP-T54W",
+   "ip": "192.168.1.143",
+   "wired": true,
+   "uplinkMac": "e0:63:da:8a:30:d9",
+   "uplinkName": "BMZ-SW02",
+   "port": 1,
+   "lastSeen": 1790758223,
+   "maker": "Yealink(Xiamen) Network Technology Co.,Ltd.",
+   "network": "Default"
+  },
+  {
+   "mac": "80:5e:c0:2a:1d:6a",
+   "hostname": "SIP-T41S",
+   "ip": "192.168.1.176",
+   "wired": true,
+   "uplinkMac": "e0:63:da:8a:30:d9",
+   "uplinkName": "BMZ-SW02",
+   "port": 2,
+   "lastSeen": 1790758223,
+   "maker": "Yealink(Xiamen) Network Technology Co.,Ltd.",
+   "network": "Default"
+  },
+  {
+   "mac": "80:5e:c0:2a:17:74",
+   "hostname": "SIP-T41S",
+   "ip": "192.168.1.191",
+   "wired": true,
+   "uplinkMac": "e0:63:da:8a:30:d9",
+   "uplinkName": "BMZ-SW02",
+   "port": 3,
+   "lastSeen": 1790758223,
+   "maker": "Yealink(Xiamen) Network Technology Co.,Ltd.",
+   "network": "Default"
+  },
+  {
+   "mac": "80:5e:c0:2a:1c:da",
+   "hostname": "SIP-T41S",
+   "ip": "192.168.1.85",
+   "wired": true,
+   "uplinkMac": "e0:63:da:8a:30:d9",
+   "uplinkName": "BMZ-SW02",
+   "port": 4,
+   "lastSeen": 1790758223,
+   "maker": "Yealink(Xiamen) Network Technology Co.,Ltd.",
+   "network": "Default"
+  },
+  {
+   "mac": "80:5e:c0:2a:1d:7a",
+   "hostname": "SIP-T41S",
+   "ip": "192.168.1.82",
+   "wired": true,
+   "uplinkMac": "e0:63:da:8a:30:d9",
+   "uplinkName": "BMZ-SW02",
+   "port": 5,
+   "lastSeen": 1790758223,
+   "maker": "Yealink(Xiamen) Network Technology Co.,Ltd.",
+   "network": "Default"
+  },
+  {
+   "mac": "80:5e:c0:2a:12:69",
+   "hostname": "SIP-T41S",
+   "ip": "192.168.1.98",
+   "wired": true,
+   "uplinkMac": "e0:63:da:8a:30:d9",
+   "uplinkName": "BMZ-SW02",
+   "port": 6,
+   "lastSeen": 1790758223,
+   "maker": "Yealink(Xiamen) Network Technology Co.,Ltd.",
+   "network": "Default"
+  },
+  {
+   "mac": "80:5e:c0:2a:1c:d2",
+   "hostname": "SIP-T41S",
+   "ip": "192.168.1.125",
+   "wired": true,
+   "uplinkMac": "e0:63:da:8a:30:d9",
+   "uplinkName": "BMZ-SW02",
+   "port": 8,
+   "lastSeen": 1790758223,
+   "maker": "Yealink(Xiamen) Network Technology Co.,Ltd.",
+   "network": "Default"
+  },
+  {
+   "mac": "80:5e:c0:2a:1c:71",
+   "hostname": "SIP-T41S",
+   "ip": "192.168.1.157",
+   "wired": true,
+   "uplinkMac": "e0:63:da:8a:30:d9",
+   "uplinkName": "BMZ-SW02",
+   "port": 9,
+   "lastSeen": 1790758223,
+   "maker": "Yealink(Xiamen) Network Technology Co.,Ltd.",
+   "network": "Default"
+  },
+  {
+   "mac": "80:5e:c0:2a:1b:51",
+   "hostname": "SIP-T41S",
+   "ip": "192.168.1.62",
+   "wired": true,
+   "uplinkMac": "e0:63:da:8a:30:d9",
+   "uplinkName": "BMZ-SW02",
+   "port": 10,
+   "lastSeen": 1790758223,
+   "maker": "Yealink(Xiamen) Network Technology Co.,Ltd.",
+   "network": "Default"
+  },
+  {
+   "mac": "80:5e:c0:25:c6:4c",
+   "hostname": "SIP-T41S",
+   "ip": "192.168.1.185",
+   "wired": true,
+   "uplinkMac": "e0:63:da:8a:30:d9",
+   "uplinkName": "BMZ-SW02",
+   "port": 11,
+   "lastSeen": 1790758223,
+   "maker": "Yealink(Xiamen) Network Technology Co.,Ltd.",
+   "network": "Default"
+  },
+  {
+   "mac": "80:5e:c0:25:c6:2b",
+   "hostname": "SIP-T41S",
+   "ip": "192.168.1.115",
+   "wired": true,
+   "uplinkMac": "e0:63:da:8a:30:d9",
+   "uplinkName": "BMZ-SW02",
+   "port": 14,
+   "lastSeen": 1790758223,
+   "maker": "Yealink(Xiamen) Network Technology Co.,Ltd.",
+   "network": "Default"
+  },
+  {
+   "mac": "80:5e:c0:2a:17:69",
+   "hostname": "SIP-T41S",
+   "ip": "192.168.1.89",
+   "wired": true,
+   "uplinkMac": "e0:63:da:8a:30:d9",
+   "uplinkName": "BMZ-SW02",
+   "port": 17,
+   "lastSeen": 1790758223,
+   "maker": "Yealink(Xiamen) Network Technology Co.,Ltd.",
+   "network": "Default"
+  },
+  {
+   "mac": "80:5e:c0:2a:1c:b2",
+   "hostname": "SIP-T41S",
+   "ip": "192.168.1.180",
+   "wired": true,
+   "uplinkMac": "e0:63:da:8a:30:d9",
+   "uplinkName": "BMZ-SW02",
+   "port": 18,
+   "lastSeen": 1790758223,
+   "maker": "Yealink(Xiamen) Network Technology Co.,Ltd.",
+   "network": "Default"
+  },
+  {
+   "mac": "80:5e:c0:2a:1a:7a",
+   "hostname": "SIP-T41S",
+   "ip": "192.168.1.187",
+   "wired": true,
+   "uplinkMac": "e0:63:da:8a:30:d9",
+   "uplinkName": "BMZ-SW02",
+   "port": 19,
+   "lastSeen": 1790758223,
+   "maker": "Yealink(Xiamen) Network Technology Co.,Ltd.",
+   "network": "Default"
+  },
+  {
+   "mac": "80:5e:c0:25:c6:3f",
+   "hostname": "SIP-T41S",
+   "ip": "192.168.1.145",
+   "wired": true,
+   "uplinkMac": "e0:63:da:8a:30:d9",
+   "uplinkName": "BMZ-SW02",
+   "port": 21,
+   "lastSeen": 1790758223,
+   "maker": "Yealink(Xiamen) Network Technology Co.,Ltd.",
+   "network": "Default"
+  },
+  {
+   "mac": "80:5e:c0:2a:12:61",
+   "hostname": "SIP-T41S",
+   "ip": "192.168.1.183",
+   "wired": true,
+   "uplinkMac": "e0:63:da:8a:30:d9",
+   "uplinkName": "BMZ-SW02",
+   "port": 22,
+   "lastSeen": 1790758223,
+   "maker": "Yealink(Xiamen) Network Technology Co.,Ltd.",
+   "network": "Default"
+  },
+  {
+   "mac": "80:5e:c0:2a:16:ad",
+   "hostname": "SIP-T41S",
+   "ip": "192.168.1.133",
+   "wired": true,
+   "uplinkMac": "e0:63:da:8a:30:d9",
+   "uplinkName": "BMZ-SW02",
+   "port": 23,
+   "lastSeen": 1790758223,
+   "maker": "Yealink(Xiamen) Network Technology Co.,Ltd.",
+   "network": "Default"
+  },
+  {
+   "mac": "80:5e:c0:2a:1b:41",
+   "hostname": "SIP-T41S",
+   "ip": "192.168.1.184",
+   "wired": true,
+   "uplinkMac": "e0:63:da:8a:30:d9",
+   "uplinkName": "BMZ-SW02",
+   "port": 24,
+   "lastSeen": 1790758223,
+   "maker": "Yealink(Xiamen) Network Technology Co.,Ltd.",
+   "network": "Default"
+  },
+  {
+   "mac": "80:5e:c0:2a:1d:63",
+   "hostname": "SIP-T41S",
+   "ip": "192.168.1.87",
+   "wired": true,
+   "uplinkMac": "e0:63:da:8a:30:d9",
+   "uplinkName": "BMZ-SW02",
+   "port": 25,
+   "lastSeen": 1790758223,
+   "maker": "Yealink(Xiamen) Network Technology Co.,Ltd.",
+   "network": "Default"
+  },
+  {
+   "mac": "80:5e:c0:2a:1b:25",
+   "hostname": "SIP-T41S",
+   "ip": "192.168.1.104",
+   "wired": true,
+   "uplinkMac": "e0:63:da:8a:30:d9",
+   "uplinkName": "BMZ-SW02",
+   "port": 30,
+   "lastSeen": 1790758223,
+   "maker": "Yealink(Xiamen) Network Technology Co.,Ltd.",
+   "network": "Default"
+  },
+  {
+   "mac": "80:5e:c0:2a:1d:7e",
+   "hostname": "SIP-T41S",
+   "ip": "192.168.1.195",
+   "wired": true,
+   "uplinkMac": "e0:63:da:8a:30:d9",
+   "uplinkName": "BMZ-SW02",
+   "port": 32,
+   "lastSeen": 1790758223,
+   "maker": "Yealink(Xiamen) Network Technology Co.,Ltd.",
+   "network": "Default"
+  },
+  {
+   "mac": "80:5e:c0:2a:16:a8",
+   "hostname": "SIP-T41S",
+   "ip": "192.168.1.167",
+   "wired": true,
+   "uplinkMac": "e0:63:da:8a:30:d9",
+   "uplinkName": "BMZ-SW02",
+   "port": 34,
+   "lastSeen": 1790758223,
+   "maker": "Yealink(Xiamen) Network Technology Co.,Ltd.",
+   "network": "Default"
+  },
+  {
+   "mac": "80:5e:c0:2a:1d:9e",
+   "hostname": "SIP-T41S",
+   "ip": "192.168.1.193",
+   "wired": true,
+   "uplinkMac": "e0:63:da:8a:30:d9",
+   "uplinkName": "BMZ-SW02",
+   "port": 37,
+   "lastSeen": 1790758223,
+   "maker": "Yealink(Xiamen) Network Technology Co.,Ltd.",
+   "network": "Default"
+  },
+  {
+   "mac": "80:5e:c0:2a:1a:77",
+   "hostname": "SIP-T41S",
+   "ip": "192.168.1.190",
+   "wired": true,
+   "uplinkMac": "e0:63:da:8a:30:d9",
+   "uplinkName": "BMZ-SW02",
+   "port": 38,
+   "lastSeen": 1790758223,
+   "maker": "Yealink(Xiamen) Network Technology Co.,Ltd.",
+   "network": "Default"
+  },
+  {
+   "mac": "04:d4:c4:05:9b:28",
+   "hostname": "KOR-304",
+   "ip": "192.168.1.146",
+   "wired": true,
+   "uplinkMac": "e0:63:da:8a:30:d9",
+   "uplinkName": "BMZ-SW02",
+   "port": 39,
+   "lastSeen": 1790758223,
+   "maker": "ASUSTek COMPUTER INC.",
+   "network": "Default"
+  },
+  {
+   "mac": "ec:9a:74:31:99:59",
+   "hostname": "",
+   "ip": "192.168.1.220",
+   "wired": true,
+   "uplinkMac": "e0:63:da:8a:30:d9",
+   "uplinkName": "BMZ-SW02",
+   "port": 42,
+   "lastSeen": 1790758223,
+   "maker": "Hewlett Packard",
+   "network": "Default"
+  },
+  {
+   "mac": "2c:f0:5d:1b:da:86",
+   "hostname": "KOR-320",
+   "ip": "192.168.1.70",
+   "wired": true,
+   "uplinkMac": "e0:63:da:8a:30:d9",
+   "uplinkName": "BMZ-SW02",
+   "port": 47,
+   "lastSeen": 1790758223,
+   "maker": "Micro-Star INTL CO., LTD.",
+   "network": "Default"
+  },
+  {
+   "mac": "d8:bb:c1:c1:dd:f1",
+   "hostname": "KOR-217",
+   "ip": "192.168.1.61",
+   "wired": true,
+   "uplinkMac": "e0:63:da:8a:30:d9",
+   "uplinkName": "BMZ-SW02",
+   "port": 35,
+   "lastSeen": 1790758223,
+   "maker": "Micro-Star INTL CO., LTD.",
+   "network": "Default"
+  },
+  {
+   "mac": "00:50:56:1a:01:27",
+   "hostname": "",
+   "ip": "192.168.1.27",
+   "wired": true,
+   "uplinkMac": "74:83:c2:13:f1:c2",
+   "uplinkName": "BMZ-SW01",
+   "port": 49,
+   "lastSeen": 1790827035,
+   "maker": "VMware, Inc.",
+   "network": "Default"
+  },
+  {
+   "mac": "00:50:56:8b:17:f1",
+   "hostname": "",
+   "ip": "",
+   "wired": true,
+   "uplinkMac": "74:83:c2:13:f1:c2",
+   "uplinkName": "BMZ-SW01",
+   "port": 49,
+   "lastSeen": 1790827149,
+   "maker": "VMware, Inc.",
+   "network": "Default"
+  },
+  {
+   "mac": "2e:de:37:9a:9c:2f",
+   "hostname": "iPhone",
+   "ip": "192.168.1.72",
+   "wired": false,
+   "uplinkMac": "74:83:c2:02:3f:b1",
+   "uplinkName": "BMZ-AP02 [Middle Bullpen]",
+   "port": null,
+   "lastSeen": 1790875512,
+   "maker": "",
+   "network": ""
+  },
+  {
+   "mac": "0c:9d:92:c2:34:c5",
+   "hostname": "KOR-210",
+   "ip": "192.168.1.119",
+   "wired": true,
+   "uplinkMac": "74:83:c2:fb:d9:af",
+   "uplinkName": "USW Flex Mini - Server Room PCs",
+   "port": 2,
+   "lastSeen": 1790880841,
+   "maker": "ASUSTek COMPUTER INC.",
+   "network": "Default"
+  },
+  {
+   "mac": "da:2b:d4:88:9b:df",
+   "hostname": "",
+   "ip": "192.168.1.122",
+   "wired": false,
+   "uplinkMac": "74:83:c2:02:3c:d6",
+   "uplinkName": "BMZ-AP01 [Outside Boardroom]",
+   "port": null,
+   "lastSeen": 1790884146,
+   "maker": "",
+   "network": ""
+  },
+  {
+   "mac": "6a:82:e8:e1:a1:20",
+   "hostname": "Watch",
+   "ip": "192.168.1.114",
+   "wired": false,
+   "uplinkMac": "74:83:c2:02:3f:b1",
+   "uplinkName": "BMZ-AP02 [Middle Bullpen]",
+   "port": null,
+   "lastSeen": 1790894651,
+   "maker": "",
+   "network": ""
+  },
+  {
+   "mac": "3a:46:df:9b:49:4d",
+   "hostname": "Pixel-10",
+   "ip": "192.168.1.54",
+   "wired": false,
+   "uplinkMac": "74:83:c2:02:3c:d6",
+   "uplinkName": "BMZ-AP01 [Outside Boardroom]",
+   "port": null,
+   "lastSeen": 1790895950,
+   "maker": "",
+   "network": ""
+  },
+  {
+   "mac": "16:6c:97:1f:38:aa",
+   "hostname": "",
+   "ip": "192.168.1.100",
+   "wired": false,
+   "uplinkMac": "74:83:c2:02:3c:d6",
+   "uplinkName": "BMZ-AP01 [Outside Boardroom]",
+   "port": null,
+   "lastSeen": 1790897626,
+   "maker": "",
+   "network": ""
+  },
+  {
+   "mac": "c8:95:ce:c6:57:6e",
+   "hostname": "KOR-1001",
+   "ip": "192.168.1.108",
+   "wired": false,
+   "uplinkMac": "74:83:c2:02:3c:d6",
+   "uplinkName": "BMZ-AP01 [Outside Boardroom]",
+   "port": null,
+   "lastSeen": 1790899359,
+   "maker": "",
+   "network": "Default"
+  },
+  {
+   "mac": "9e:0f:39:84:00:62",
+   "hostname": "Conor-s-S10",
+   "ip": "192.168.1.113",
+   "wired": false,
+   "uplinkMac": "74:83:c2:02:3c:d6",
+   "uplinkName": "BMZ-AP01 [Outside Boardroom]",
+   "port": 50,
+   "lastSeen": 1790899701,
+   "maker": "",
+   "network": "Default"
+  },
+  {
+   "mac": "2e:ab:27:e4:bb:c3",
+   "hostname": "iPhone",
+   "ip": "192.168.1.103",
+   "wired": false,
+   "uplinkMac": "74:83:c2:02:3c:d6",
+   "uplinkName": "BMZ-AP01 [Outside Boardroom]",
+   "port": null,
+   "lastSeen": 1790899816,
+   "maker": "",
+   "network": "Default"
+  },
+  {
+   "mac": "82:69:c4:a9:0a:ea",
+   "hostname": "Omar-s-S22-Ultra",
+   "ip": "192.168.1.52",
+   "wired": false,
+   "uplinkMac": "74:83:c2:02:3c:d6",
+   "uplinkName": "BMZ-AP01 [Outside Boardroom]",
+   "port": null,
+   "lastSeen": 1790899871,
+   "maker": "",
+   "network": "Default"
+  },
+  {
+   "mac": "3e:36:2b:bd:2b:b3",
+   "hostname": "iPhone",
+   "ip": "192.168.1.77",
+   "wired": false,
+   "uplinkMac": "74:83:c2:02:3c:d6",
+   "uplinkName": "BMZ-AP01 [Outside Boardroom]",
+   "port": null,
+   "lastSeen": 1790903765,
+   "maker": "",
+   "network": ""
+  },
+  {
+   "mac": "1e:e9:b2:0a:ed:5a",
+   "hostname": "iPhone",
+   "ip": "192.168.1.96",
+   "wired": false,
+   "uplinkMac": "74:83:c2:02:3c:d6",
+   "uplinkName": "BMZ-AP01 [Outside Boardroom]",
+   "port": null,
+   "lastSeen": 1790906424,
+   "maker": "",
+   "network": ""
+  },
+  {
+   "mac": "34:9f:7b:59:9d:1a",
+   "hostname": "",
+   "ip": "192.168.1.8",
+   "wired": true,
+   "uplinkMac": "74:83:c2:13:f1:c2",
+   "uplinkName": "BMZ-SW01",
+   "port": 44,
+   "lastSeen": 1790915871,
+   "maker": "Canon Inc.",
+   "network": "Default"
+  },
+  {
+   "mac": "1e:78:90:ff:c5:cc",
+   "hostname": "Chris-s-S22",
+   "ip": "192.168.1.123",
+   "wired": false,
+   "uplinkMac": "74:83:c2:02:3c:d6",
+   "uplinkName": "BMZ-AP01 [Outside Boardroom]",
+   "port": null,
+   "lastSeen": 1790916335,
+   "maker": "",
+   "network": ""
+  },
+  {
+   "mac": "00:50:56:8b:31:d7",
+   "hostname": "",
+   "ip": "192.168.1.240",
+   "wired": true,
+   "uplinkMac": "74:83:c2:13:f1:c2",
+   "uplinkName": "BMZ-SW01",
+   "port": 49,
+   "lastSeen": 1790918738,
+   "maker": "VMware, Inc.",
+   "network": "Default"
+  },
+  {
+   "mac": "86:e7:7c:d3:71:24",
+   "hostname": "Pixel-9",
+   "ip": "192.168.1.53",
+   "wired": false,
+   "uplinkMac": "74:83:c2:02:3c:61",
+   "uplinkName": "BMZ-AP03 [Outside Kitchen]",
+   "port": null,
+   "lastSeen": 1790978380,
+   "maker": "",
+   "network": "Default"
+  },
+  {
+   "mac": "72:5d:f8:ad:9a:f5",
+   "hostname": "iPhone",
+   "ip": "192.168.1.102",
+   "wired": false,
+   "uplinkMac": "74:83:c2:02:3c:61",
+   "uplinkName": "BMZ-AP03 [Outside Kitchen]",
+   "port": null,
+   "lastSeen": 1790979775,
+   "maker": "",
+   "network": ""
+  },
+  {
+   "mac": "92:e9:7e:6f:c5:8e",
+   "hostname": "Andrea-s-S23",
+   "ip": "192.168.1.127",
+   "wired": false,
+   "uplinkMac": "74:83:c2:02:3c:d6",
+   "uplinkName": "BMZ-AP01 [Outside Boardroom]",
+   "port": null,
+   "lastSeen": 1790982705,
+   "maker": "",
+   "network": ""
+  },
+  {
+   "mac": "12:7d:94:ee:dd:4c",
+   "hostname": "Andrea-s-S23",
+   "ip": "192.168.1.80",
+   "wired": false,
+   "uplinkMac": "74:83:c2:02:3c:d6",
+   "uplinkName": "BMZ-AP01 [Outside Boardroom]",
+   "port": null,
+   "lastSeen": 1790982820,
+   "maker": "",
+   "network": ""
+  },
+  {
+   "mac": "7a:35:f2:8e:e4:dc",
+   "hostname": "iPhone",
+   "ip": "192.168.1.121",
+   "wired": false,
+   "uplinkMac": "74:83:c2:02:3c:d6",
+   "uplinkName": "BMZ-AP01 [Outside Boardroom]",
+   "port": null,
+   "lastSeen": 1790984308,
+   "maker": "",
+   "network": ""
+  },
+  {
+   "mac": "0e:d5:fe:74:9b:db",
+   "hostname": "iPhone",
+   "ip": "192.168.1.83",
+   "wired": false,
+   "uplinkMac": "74:83:c2:02:3c:d6",
+   "uplinkName": "BMZ-AP01 [Outside Boardroom]",
+   "port": null,
+   "lastSeen": 1790985343,
+   "maker": "",
+   "network": ""
+  },
+  {
+   "mac": "e6:6a:a4:cf:f1:87",
+   "hostname": "Galaxy-S20-FE-5G",
+   "ip": "192.168.1.109",
+   "wired": false,
+   "uplinkMac": "74:83:c2:02:3c:d6",
+   "uplinkName": "BMZ-AP01 [Outside Boardroom]",
+   "port": null,
+   "lastSeen": 1790985573,
+   "maker": "",
+   "network": "Default"
+  },
+  {
+   "mac": "66:20:38:7d:ae:be",
+   "hostname": "",
+   "ip": "192.168.1.88",
+   "wired": false,
+   "uplinkMac": "74:83:c2:02:3c:d6",
+   "uplinkName": "BMZ-AP01 [Outside Boardroom]",
+   "port": null,
+   "lastSeen": 1790985856,
+   "maker": "",
+   "network": "Default"
+  },
+  {
+   "mac": "36:f8:83:20:98:73",
+   "hostname": "iPhone",
+   "ip": "192.168.1.63",
+   "wired": false,
+   "uplinkMac": "74:83:c2:02:3c:d6",
+   "uplinkName": "BMZ-AP01 [Outside Boardroom]",
+   "port": null,
+   "lastSeen": 1790988275,
+   "maker": "",
+   "network": ""
+  },
+  {
+   "mac": "ee:fe:22:2c:3c:9b",
+   "hostname": "",
+   "ip": "192.168.1.120",
+   "wired": false,
+   "uplinkMac": "74:83:c2:02:3c:61",
+   "uplinkName": "BMZ-AP03 [Outside Kitchen]",
+   "port": null,
+   "lastSeen": 1790993386,
+   "maker": "",
+   "network": ""
+  },
+  {
+   "mac": "30:05:5c:be:e0:5e",
+   "hostname": "",
+   "ip": "192.168.1.14",
+   "wired": true,
+   "uplinkMac": "74:83:c2:13:f1:c2",
+   "uplinkName": "BMZ-SW01",
+   "port": 31,
+   "lastSeen": 1790996098,
+   "maker": "Brother industries, LTD.",
+   "network": "Default"
+  },
+  {
+   "mac": "3e:42:41:2b:e5:f1",
+   "hostname": "",
+   "ip": "192.168.1.58",
+   "wired": false,
+   "uplinkMac": "74:83:c2:02:3c:d6",
+   "uplinkName": "BMZ-AP01 [Outside Boardroom]",
+   "port": null,
+   "lastSeen": 1790996597,
+   "maker": "",
+   "network": "Default"
+  },
+  {
+   "mac": "30:05:5c:11:10:55",
+   "hostname": "BRN30055C111055",
+   "ip": "192.168.1.156",
+   "wired": true,
+   "uplinkMac": "74:83:c2:13:f1:c2",
+   "uplinkName": "BMZ-SW01",
+   "port": 14,
+   "lastSeen": 1790997071,
+   "maker": "Brother industries, LTD.",
+   "network": "Default"
+  }
+ ],
+ "openAlarms": []
+}

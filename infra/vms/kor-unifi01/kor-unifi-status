@@ -1,0 +1,45 @@
+#!/bin/bash
+# KOR NetworkOps -- read-only UniFi status as ONE line of JSON. The ONLY command the `netops` user may run (forced command
+# in ~netops/.ssh/authorized_keys; sudo rule /etc/sudoers.d/kor-netops). Reads the controller's own database inside the
+# UniFi OS container; changes nothing. Installed as /usr/local/bin/kor-unifi-status by install-status.ps1 (beside this file).
+#
+#   devices     every UniFi device in the KOR Structural site: name, model, IP, firmware, upgradable, last seen (2026-09-30)
+#               + uplink: the switch MAC and port it hangs from, and its own port that leads there; ports: each port's speed, PoE, and the last device seen on
+#               it (MAC, IP, when) -- the network's tree, and what is on each port (2026-10-02, the port map)
+#   clients     every client seen in the last 30 days: MAC, host name, last IP, wired or not, the switch or access point and
+#               port it was last on, last seen, maker (2026-10-02)
+#   openAlarms  the controller's open alarms
+#
+# Only named fields leave: a device record also holds its SSH host key and auth key, which never do.
+set -euo pipefail
+u=uosserver; uid=$(id -u "$u")
+js=$(mktemp /tmp/kor-unifi-XXXXXX.js); chmod 644 "$js"
+cat > "$js" <<'EOF'
+db = db.getSiblingDB('ace');
+var site = db.site.findOne({name: '8evrvfqv'});
+var now = Math.floor(Date.now() / 1000);
+function n(v) { return v == null ? 0 : (typeof v === 'object' && v.toNumber ? v.toNumber() : Number(v)); }
+var devices = db.device.find({site_id: site._id.str}).toArray().map(d => ({
+  name: d.name || '', model: d.model, type: d.type, ip: d.ip, mac: d.mac, version: d.version,
+  adopted: !!d.adopted, upgradable: !!d.upgradable, upgradeTo: d.upgrade_to_firmware || null,
+  lastSeen: n(d.last_seen), ports: (d.port_table || []).length,
+  uplink: d.last_uplink ? { mac: d.last_uplink.uplink_mac || null, port: d.last_uplink.uplink_remote_port || null,
+                            localPort: d.last_uplink.port_idx || null } : null,
+  portTable: (d.port_table || []).map(p => ({
+    port: p.port_idx, speed: p.speed || 0, poe: !!p.port_poe,
+    lastMac: p.last_connection ? p.last_connection.mac || null : null,
+    lastIp: p.last_connection ? p.last_connection.ip || null : null,
+    connectedAt: p.last_connection ? n(p.last_connection.connected_at) : 0 })) }));
+var clients = db.user.find({site_id: site._id.str, last_seen: {$gt: now - 30 * 86400}}).toArray().map(c => ({
+  mac: c.mac, hostname: c.hostname || '', ip: c.last_ip || '', wired: !!c.is_wired,
+  uplinkMac: c.last_uplink_mac || null, uplinkName: c.last_uplink_name || '', port: c.last_uplink_remote_port || null,
+  lastSeen: n(c.last_seen), maker: c.oui || '', network: c.last_connection_network_name || '' }));
+var alarms = db.alarm.find({site_id: site._id.str, archived: false}).sort({time: -1}).limit(50).toArray().map(a => ({
+  key: a.key, message: a.msg, time: a.time, device: a.ap_name || a.sw_name || a.gw_name || '' }));
+print(JSON.stringify({site: site.desc, now: now, devices: devices, clients: clients, openAlarms: alarms}));
+EOF
+name=$(basename "$js")
+cd /tmp
+sudo -u "$u" XDG_RUNTIME_DIR=/run/user/$uid podman cp "$js" uosserver:/tmp/"$name"
+sudo -u "$u" XDG_RUNTIME_DIR=/run/user/$uid podman exec uosserver sh -c "mongo --quiet --port 27117 /tmp/$name; rm -f /tmp/$name"
+rm -f "$js"
