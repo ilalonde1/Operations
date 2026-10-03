@@ -116,7 +116,7 @@ public sealed class NetworkMapTests(ITestOutputHelper output)
 
         var text = NetworkMapText.Render(back);
         Assert.All(back.Map.Switches, s => Assert.Contains(s.Name, text));
-        Assert.Contains("KOR-207 · kor\\markb", text);
+        Assert.Contains("KOR-207 | kor\\markb", text);
         var hit = NetworkMapText.Render(back, "markb");
         Assert.Contains("USW Flex - Mark port 3", hit);
         File.WriteAllText(Path.Combine(Path.GetTempPath(), "netops-network-fixture.txt"), text);   // looked at, 2026-10-02

@@ -46,7 +46,7 @@ BEGIN TRY
         (
             Mac           char(17)       NOT NULL CONSTRAINT PK_NetworkOps_NetworkPlacements PRIMARY KEY,   -- aa:bb:cc:dd:ee:ff
             Name          nvarchar(200)  NOT NULL,
-            NameSource    varchar(32)    NOT NULL,   -- NetworkOps agent | UniFi device | rack | DHCP | UniFi client | maker | MAC only
+            NameSource    varchar(32)    NOT NULL,   -- NetworkOps agent | UniFi device | rack | DHCP | APP01 | UniFi client | maker | MAC only
             Placement     varchar(16)    NOT NULL,   -- port | also-seen | wireless | unplaced
             SwitchName    nvarchar(200)  NULL,       -- the switch (port, also-seen) or access point (wireless)
             Port          int            NULL,

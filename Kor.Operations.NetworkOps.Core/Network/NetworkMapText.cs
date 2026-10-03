@@ -66,9 +66,10 @@ public static class NetworkMapText
         return sb.ToString();
     }
 
-    /// <summary>"KOR-207 · kor\markb (usual) · 192.168.1.73 · seen 2026-09-29" -- and how it was named, when not by its agent.</summary>
+    /// <summary>"KOR-207 | kor\markb (usual) | 192.168.1.73 | seen 2026-09-29" -- and how it was named, when not by its agent.</summary>
+    // " | ", not " · ": the middle dot printed as "?" in a Windows console (2026-10-02).
     public static string Line(NetEndpoint e)
-        => string.Join(" · ", new[]
+        => string.Join(" | ", new[]
         {
             e.Name,
             e.User is { } u ? $"{u}{(e.UserSource is { } us ? $" ({us})" : "")}" : null,

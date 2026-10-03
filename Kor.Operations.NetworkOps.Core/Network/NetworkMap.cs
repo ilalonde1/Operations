@@ -18,8 +18,8 @@ namespace Kor.Operations.NetworkOps.Core.Network;
 ///               recorded on a port is listed there as "also seen" -- a desk's history, or devices beyond a link -- so no
 ///               client is dropped: each of the controller's clients is an occupant, also seen, wireless, or unplaced,
 ///               exactly once.
-///   4 NAME      fleet PC (our agent's MACs) > UniFi device > a known name (rack) > DHCP host name > controller host name >
-///               maker > the MAC. Every endpoint says which.
+///   4 NAME      fleet PC (our agent's MACs) > UniFi device > a configured rack device (by IP) > DHCP host name > what APP01
+///               knows (its ARP table, reverse DNS) > controller host name > maker > the MAC. Every endpoint says which.
 ///   5 USER      the fleet PC's person, as the caller found it (usual / signed in now / last signed in).
 /// The controller's "last seen" is shown as a date, never as "online": how often it writes it is not established (on
 /// 2026-10-02 every client read 23 h or older at 21:00 -- after hours, and KOR-1001 was on the VPN, not a switch port, so
@@ -46,9 +46,9 @@ public static class NetworkMaps
             var (name, source) =
                 pc is not null ? (pc.Name, "NetworkOps agent")
                 : dev is not null ? (dev.Label, "UniFi device")
-                : known.ByMac.TryGetValue(mac, out var km) ? (km, "rack")
                 : ip is not null && known.ByIp.TryGetValue(ip, out var ki) ? (ki, "rack")
                 : lease?.HostName is { Length: > 0 } hn ? (Short(hn), "DHCP")
+                : known.ByMac.TryGetValue(mac, out var km) ? (km, "APP01")   // its ARP table + reverse DNS (the firewall, by being the gateway)
                 : cl?.Hostname is { Length: > 0 } ch ? (ch, "UniFi client")
                 : maker is not null ? ($"{maker} device", "maker")
                 : (mac, "MAC only");
@@ -178,12 +178,12 @@ public sealed record NetworkMap(DateTime ReadUtc, IReadOnlyList<NetSwitch> Switc
             foreach (var p in s.Ports)
             {
                 // Every occupant that is not part of the tree (a UniFi device, or the parent an uplink leads to): a desk's PC.
-                if (p.On is { UniFiKind: null } on && p.Kind != "uplink") yield return new(on, "port", s.Name, p.Number);
-                foreach (var a in p.AlsoSeen) yield return new(a, "also-seen", s.Name, p.Number);
+                if (p.On is { UniFiKind: null } on && p.Kind != "uplink") yield return new(on, "port", s.Name, p.Number, s.Mac);
+                foreach (var a in p.AlsoSeen) yield return new(a, "also-seen", s.Name, p.Number, s.Mac);
             }
-        foreach (var ap in AccessPoints) foreach (var w in ap.Clients) yield return new(w, "wireless", ap.Name, null);
-        foreach (var w in OtherWireless) yield return new(w, "wireless", w.Via, null);
-        foreach (var u in Unplaced) yield return new(u, "unplaced", u.Via is { Length: > 0 } v ? v : null, null);
+        foreach (var ap in AccessPoints) foreach (var w in ap.Clients) yield return new(w, "wireless", ap.Name, null, ap.Mac);
+        foreach (var w in OtherWireless) yield return new(w, "wireless", w.Via, null, null);
+        foreach (var u in Unplaced) yield return new(u, "unplaced", u.Via is { Length: > 0 } v ? v : null, null, null);
     }
 
     /// <summary>Where a fleet PC is plugged in, or null.</summary>
@@ -198,7 +198,8 @@ public sealed record NetworkMap(DateTime ReadUtc, IReadOnlyList<NetSwitch> Switc
 
 /// <param name="Placement">port | also-seen | wireless | unplaced</param>
 /// <param name="Switch">The switch (port, also-seen), access point (wireless), or what the controller last named (unplaced).</param>
-public sealed record NetPlacement(NetEndpoint Endpoint, string Placement, string? Switch, int? Port)
+/// <param name="SwitchMac">The switch / access point by MAC: what a move is judged by (a renamed switch is not a move).</param>
+public sealed record NetPlacement(NetEndpoint Endpoint, string Placement, string? Switch, int? Port, string? SwitchMac = null)
 {
     public string Where => Placement switch
     {
@@ -219,7 +220,7 @@ public sealed record NetPort(int Number, int SpeedMbps, bool Poe, string Kind, N
 
 public sealed record NetAccessPoint(string Mac, string Name, string Model, string? Ip, IReadOnlyList<NetEndpoint> Clients);
 
-/// <param name="NameSource">NetworkOps agent | UniFi device | rack | DHCP | UniFi client | maker | MAC only</param>
+/// <param name="NameSource">NetworkOps agent | UniFi device | rack | DHCP | APP01 | UniFi client | maker | MAC only</param>
 /// <param name="SeenUtc">When the switch saw it connect, or the controller last recorded it -- a date, not "online".</param>
 /// <param name="Lease">DC01's lease state for it (Active, ...), or null.</param>
 /// <param name="UniFiKind">For a UniFi device: Switch / Access point / Gateway.</param>

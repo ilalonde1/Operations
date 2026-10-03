@@ -89,19 +89,22 @@ internal sealed partial class NetworkOpsStore
         try
         {
             await using var c = await OpenAsync(ct).ConfigureAwait(false);
-            var before = new Dictionary<string, (string Placement, string? Switch, int? Port)>(StringComparer.Ordinal);
-            await using (var read = Cmd(c, "SELECT Mac, Placement, SwitchName, Port FROM NetworkOps.NetworkPlacements;"))
+            bool macColumn;
+            await using (var has = Cmd(c, "SELECT CASE WHEN COL_LENGTH(N'NetworkOps.NetworkPlacements', N'SwitchMac') IS NULL THEN 0 ELSE 1 END;"))
+                macColumn = (int)(await has.ExecuteScalarAsync(ct).ConfigureAwait(false))! == 1;   // 011 run
+            var before = new Dictionary<string, PlacedAt>(StringComparer.Ordinal);
+            await using (var read = Cmd(c, $"SELECT Mac, Placement, SwitchName, Port, {(macColumn ? "SwitchMac" : "NULL")} FROM NetworkOps.NetworkPlacements;"))
             {
                 await using var r = await read.ExecuteReaderAsync(ct).ConfigureAwait(false);
                 while (await r.ReadAsync(ct).ConfigureAwait(false))
-                    before[r.GetString(0)] = (r.GetString(1), r.IsDBNull(2) ? null : r.GetString(2), r.IsDBNull(3) ? null : r.GetInt32(3));
+                    before[r.GetString(0)] = new(r.GetString(1), r.IsDBNull(2) ? null : r.GetString(2), r.IsDBNull(3) ? null : r.GetInt32(3), r.IsDBNull(4) ? null : r.GetString(4));
             }
 
             await using var tx = (SqlTransaction)await c.BeginTransactionAsync(ct).ConfigureAwait(false);
             var moves = 0;
-            foreach (var p in map.Everything().Select(x => (E: x.Endpoint, x.Placement, x.Switch, x.Port)))
+            foreach (var p in map.Everything().Select(x => (E: x.Endpoint, x.Placement, x.Switch, x.Port, x.SwitchMac)))
             {
-                if (before.TryGetValue(p.E.Mac, out var was) && was.Placement == "port" && p.Placement == "port" && (was.Switch != p.Switch || was.Port != p.Port))
+                if (before.TryGetValue(p.E.Mac, out var was) && IsMove(was, new(p.Placement, p.Switch, p.Port, p.SwitchMac)))
                 {
                     await using var mv = Cmd(c, """
                         INSERT NetworkOps.NetworkMoves (Mac, Name, FromSwitch, FromPort, ToSwitch, ToPort, AtUtc) VALUES (@m, @n, @fs, @fp, @ts, @tp, @now);
@@ -116,13 +119,14 @@ internal sealed partial class NetworkOpsStore
                     await mv.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
                     moves++;
                 }
-                await using var up = Cmd(c, """
+                await using var up = Cmd(c, $"""
                     MERGE NetworkOps.NetworkPlacements WITH (HOLDLOCK) AS t USING (SELECT @m AS Mac) AS s ON t.Mac = s.Mac
                     WHEN MATCHED THEN UPDATE SET Name = @n, NameSource = @ns, Placement = @pl, SwitchName = @sw, Port = @p, Ip = @ip, Pc = @pc,
-                                                 UserName = @u, UserSource = @us, Maker = @mk, SeenUtc = @seen, UpdatedUtc = @now
-                    WHEN NOT MATCHED THEN INSERT (Mac, Name, NameSource, Placement, SwitchName, Port, Ip, Pc, UserName, UserSource, Maker, SeenUtc, FirstSeenUtc, UpdatedUtc)
-                                          VALUES (@m, @n, @ns, @pl, @sw, @p, @ip, @pc, @u, @us, @mk, @seen, @now, @now);
+                                                 UserName = @u, UserSource = @us, Maker = @mk, SeenUtc = @seen, UpdatedUtc = @now{(macColumn ? ", SwitchMac = @smac" : "")}
+                    WHEN NOT MATCHED THEN INSERT (Mac, Name, NameSource, Placement, SwitchName, Port, Ip, Pc, UserName, UserSource, Maker, SeenUtc, FirstSeenUtc, UpdatedUtc{(macColumn ? ", SwitchMac" : "")})
+                                          VALUES (@m, @n, @ns, @pl, @sw, @p, @ip, @pc, @u, @us, @mk, @seen, @now, @now{(macColumn ? ", @smac" : "")});
                     """, tx);
+                up.Parameters.Add("@smac", SqlDbType.Char, 17).Value = (object?)p.SwitchMac ?? DBNull.Value;
                 up.Parameters.Add("@m", SqlDbType.Char, 17).Value = p.E.Mac;
                 up.Parameters.Add("@n", SqlDbType.NVarChar, 200).Value = Truncate(p.E.Name, 200)!;
                 up.Parameters.Add("@ns", SqlDbType.VarChar, 32).Value = Truncate(p.E.NameSource, 32)!;
@@ -143,6 +147,17 @@ internal sealed partial class NetworkOpsStore
         }
         catch (SqlException ex) when (ex.Number == 208) { return (false, 0); }   // 010 not run yet
     }
+
+    /// <summary>Where a device was or is: placement, switch (name and, from 011, MAC), port.</summary>
+    internal sealed record PlacedAt(string Placement, string? Switch, int? Port, string? SwitchMac);
+
+    /// <summary>
+    /// A move is a device on a port before and on a DIFFERENT port now. The switch is compared by MAC when both rows have it
+    /// (011): renaming BMZ-SW01 is not every device on it moving. By name only for a row written before 011.
+    /// </summary>
+    internal static bool IsMove(PlacedAt was, PlacedAt now)
+        => was.Placement == "port" && now.Placement == "port"
+           && (was.Port != now.Port || (was.SwitchMac is not null && now.SwitchMac is not null ? was.SwitchMac != now.SwitchMac : was.Switch != now.Switch));
 
     public sealed record NetworkMoveRow(string Mac, string Name, string? FromSwitch, int? FromPort, string? ToSwitch, int? ToPort, DateTime AtUtc);
 

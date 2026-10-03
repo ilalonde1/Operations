@@ -58,7 +58,8 @@ internal sealed class NetworkMapService(NetworkOpsStore store, MacDirectory macs
             var label = await macs.LabellerAsync(ct).ConfigureAwait(false);
             var byMac = new Dictionary<string, string>(StringComparer.Ordinal);
             foreach (var mac in site.Clients.Select(c => c.Mac).Concat(site.Devices.SelectMany(d => d.PortTable.Select(p => p.LastMac).Concat([d.Uplink?.Mac]))).OfType<string>().Distinct())
-                if (label(mac) is { } l && !l.StartsWith("UniFi ", StringComparison.Ordinal) && !IPAddress.TryParse(l, out _)) byMac[mac] = l;
+                if (label(mac) is { } l && !l.StartsWith("UniFi ", StringComparison.Ordinal) && !IPAddress.TryParse(l, out _))
+                    byMac[mac] = System.Text.RegularExpressions.Regex.Replace(l, @"\s*\(\d{1,3}(\.\d{1,3}){3}\)$", "");   // the IP is its own column
             var byIp = options.Value.Rack.Where(r => IPAddress.TryParse(r.Address, out _)).GroupBy(r => r.Address).ToDictionary(g => g.Key, g => g.First().Name, StringComparer.Ordinal);
 
             var map = NetworkMaps.Build(site, _fleet, _leases, new KnownNames(byMac, byIp));

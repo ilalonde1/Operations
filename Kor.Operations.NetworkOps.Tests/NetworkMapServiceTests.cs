@@ -28,6 +28,18 @@ public sealed class NetworkMapServiceTests
         Assert.Equal(107, NetworkMapService.ParseLeases(real).Count);
     }
 
+    // Ian, 2026-10-02: "is there a way to change the names of the devices from BMZ to KOR without breaking things?"
+    [Fact]
+    public void Renaming_a_switch_is_not_a_move_but_changing_port_or_switch_is()
+    {
+        var sw01 = "74:83:c2:13:f1:c2";
+        Assert.False(NetworkOpsStore.IsMove(new("port", "BMZ-SW01", 5, sw01), new("port", "KOR-SW01", 5, sw01)));   // renamed
+        Assert.True(NetworkOpsStore.IsMove(new("port", "BMZ-SW01", 25, sw01), new("port", "BMZ-SW01", 5, sw01)));    // KOR-1001, 09-29
+        Assert.True(NetworkOpsStore.IsMove(new("port", "BMZ-SW01", 5, sw01), new("port", "BMZ-SW02", 5, "e0:63:da:8a:30:d9")));
+        Assert.True(NetworkOpsStore.IsMove(new("port", "BMZ-SW01", 5, null), new("port", "KOR-SW01", 5, sw01)));      // a pre-011 row: by name
+        Assert.False(NetworkOpsStore.IsMove(new("also-seen", "BMZ-SW01", 5, sw01), new("port", "BMZ-SW01", 7, sw01))); // history is not a move
+    }
+
     [Fact]
     public void The_usual_person_is_the_one_most_often_signed_in()
     {
