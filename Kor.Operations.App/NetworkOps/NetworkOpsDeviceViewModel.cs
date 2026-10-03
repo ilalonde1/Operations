@@ -255,6 +255,60 @@ public sealed class NetworkOpsDeviceViewModel : ObservableObject
             Opens: $"network:{(sw.IsCore ? "core" : sw.Mac)}#{n}");
     }
 
+    // ---- the switch this device is plugged into, drawn as its ports (Ian 2026-10-03: "show which switch port ... image of
+    // the switch ports and its port lit green if healthy ... show if a port or cable is bad"). From the live port map.
+    public sealed record PortCell(string Number, System.Windows.Media.Brush Fill, bool IsMine, string Tip)
+    {
+        public System.Windows.Thickness Edge => new(IsMine ? 2.5 : 1);
+        public System.Windows.Media.Brush EdgeBrush => IsMine ? Mine : Faint;
+        private static readonly System.Windows.Media.Brush Mine = Frozen(0x11, 0x18, 0x27), Faint = Frozen(0xE5, 0xE7, 0xEB);
+        private static System.Windows.Media.Brush Frozen(byte r, byte g, byte b)
+        { var x = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(r, g, b)); x.Freeze(); return x; }
+    }
+    public IReadOnlyList<PortCell> SwitchPorts { get; private set; } = [];
+    public string SwitchPortTitle { get; private set; } = "";
+    public string SwitchPortDetail { get; private set; } = "";
+    public string? CableWarning { get; private set; }
+    public bool HasSwitchPorts => SwitchPorts.Count > 0;
+    public bool HasCableWarning => !string.IsNullOrEmpty(CableWarning);
+    public string? SwitchPortOpens { get; private set; }   // network:{mac|core}#{n} -- the full switch view
+
+    private static string Speed(int? mbps) => mbps is { } s && s > 0 ? (s >= 1000 ? $"{s / 1000.0:0.#}G" : $"{s}M") : "";
+
+    private void BuildSwitchPorts()
+    {
+        SwitchPorts = []; SwitchPortTitle = ""; SwitchPortDetail = ""; CableWarning = null; SwitchPortOpens = null;
+        if (_network is null) return;
+        var hit = _network.Everything().FirstOrDefault(p => p.Placement == "port" &&
+            (string.Equals(p.Endpoint.Pc, _device.Name, StringComparison.OrdinalIgnoreCase) || string.Equals(p.Endpoint.Name, _device.Name, StringComparison.OrdinalIgnoreCase)));
+        if (hit is null || hit.Port is not { } mine) return;
+        var sw = _network.Switches.FirstOrDefault(s => s.Mac == hit.SwitchMac);
+        if (sw is null) return;
+
+        System.Windows.Media.Brush Fill(Kor.Operations.NetworkOps.Core.Network.NetPort p) => p.Kind == "empty"
+            ? NetworkOpsBrushes.Unknown                     // grey: nothing plugged in
+            : p.Up switch { true => NetworkOpsBrushes.Healthy, false => NetworkOpsBrushes.Attention, _ => NetworkOpsBrushes.Unknown };
+        string Tip(Kor.Operations.NetworkOps.Core.Network.NetPort p)
+        {
+            var who = p.On?.Name is { Length: > 0 } n ? n : p.Kind == "empty" ? "nothing" : p.Kind;
+            var link = p.Up switch { true => "up" + (Speed(p.SpeedNow) is { Length: > 0 } s ? $" · {s}" : ""), false => "down", _ => "" };
+            return $"Port {p.Number}: {who}" + (link.Length > 0 ? $" · {link}" : "");
+        }
+        SwitchPorts = sw.Ports.OrderBy(p => p.Number).Select(p => new PortCell(p.Number.ToString(), Fill(p), p.Number == mine, Tip(p))).ToList();
+
+        var myPort = sw.Ports.FirstOrDefault(p => p.Number == mine);
+        var sp = Speed(myPort?.SpeedNow) is { Length: > 0 } s1 ? s1 : Speed(myPort?.SpeedMbps);
+        SwitchPortTitle = $"{sw.Name} · port {mine}";
+        SwitchPortDetail = (myPort?.Up switch { true => "link up", false => "link down", _ => "last seen here" })
+            + (sp.Length > 0 ? $" · {sp}" : "") + (myPort?.PoeWatts is { } w ? $" · PoE {w:0.#} W" : "") + (myPort?.Module is { Length: > 0 } m ? $" · {m}" : "");
+        SwitchPortOpens = $"network:{(sw.IsCore ? "core" : sw.Mac)}#{mine}";
+        // v1 signal (we have link state + negotiated speed, not error counters or the port's max): a down link, or a wired
+        // PC linked below gigabit -- the classic "bad cable or jack" symptom. Proper error-based detection is a follow-up.
+        if (myPort?.Up == false) CableWarning = "This port's link is DOWN — check the cable and the port.";
+        else if (!IsRack && myPort?.SpeedNow is { } now && now is > 0 and < 1000)
+            CableWarning = $"Linked at {Speed(now)} — slower than gigabit. If this PC should be faster, re-seat or replace the cable/jack.";
+    }
+
     /// <summary>Internal so tests can draw the tiles from a fixture check without the service.</summary>
     internal void SetLastCheck(Kor.Operations.NetworkOps.Core.Health.HealthSnapshot? check) { _lastCheck = check; RebuildComponents(); }
 
@@ -288,11 +342,15 @@ public sealed class NetworkOpsDeviceViewModel : ObservableObject
             if (shown.Kind is not null && (part.Kind, part.Title, part.Line1) == shown) { tile.IsSelected = true; _selectedPart = tile; }
             Components.Add(tile);
         }
+        BuildSwitchPorts();
         OnPropertyChanged(nameof(HasComponents));
         OnPropertyChanged(nameof(ShowsHardwareLine));
         OnPropertyChanged(nameof(SelectedPart));
         OnPropertyChanged(nameof(ShowsPart));
         OnPropertyChanged(nameof(ShowsExplanation));
+        foreach (var n in new[] { nameof(SwitchPorts), nameof(SwitchPortTitle), nameof(SwitchPortDetail), nameof(CableWarning),
+                                  nameof(HasSwitchPorts), nameof(HasCableWarning), nameof(SwitchPortOpens) })
+            OnPropertyChanged(n);
     }
 
     /// <summary>A tile was clicked: show the first open finding about that part.</summary>

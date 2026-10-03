@@ -111,6 +111,7 @@ public sealed class NetworkOpsWindowsRenderTests
         var device = new NetworkOpsDeviceViewModel(reader, snapshot, worst.Device);
         if (reader.IsConfigured) device.LoadHistoryAsync(CancellationToken.None).GetAwaiter().GetResult();
         else device.SetLastCheck(NetworkOpsComponentTilesTests.Kor208NCheck());   // the "This PC" strip, from a real v10 check
+        device.SetNetwork(NetworkOpsNetworkWindowTests.LiveMap().Map);            // so the device page draws its switch-port strip
         written += Render(new NetworkOpsDeviceWindow(device), Path.Combine(dir, $"{label}-pc-{worst.Name}.png"));
         if (label != "fixture") return written;
         // The Network window on the real map of 2026-10-02: BMZ-SW01's ports, then a search for one person.

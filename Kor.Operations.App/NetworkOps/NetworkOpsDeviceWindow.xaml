@@ -46,6 +46,7 @@
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
@@ -168,6 +169,41 @@
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
+
+                <!-- The switch this PC is plugged into, drawn as its ports: this one bordered, green link up / amber down /
+                     grey empty; its link data and a cable/port warning. Click a port, or "Open full view", for the Network window. -->
+                <Border Grid.Row="2" Grid.ColumnSpan="2" Margin="0,14,0,0" Padding="12,10" Background="#F8FAFC" CornerRadius="7"
+                        BorderBrush="#E5E7EB" BorderThickness="1" Visibility="{Binding HasSwitchPorts, Converter={StaticResource BoolToVis}}">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="Switch port" FontWeight="Bold" Foreground="{StaticResource Text.Primary}" VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding SwitchPortTitle}" Margin="10,0,0,0" FontWeight="SemiBold" Foreground="{StaticResource Text.Primary}" VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding SwitchPortDetail}" Margin="8,0,0,0" Foreground="{StaticResource Text.Secondary}" VerticalAlignment="Center"/>
+                            <Button Content="Open full view" Click="OpenSwitch_Click" Margin="12,0,0,0" FontSize="12"/>
+                        </StackPanel>
+                        <ItemsControl ItemsSource="{Binding SwitchPorts}" Margin="0,8,0,0">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate><WrapPanel Orientation="Horizontal"/></ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Width="30" MinHeight="30" Margin="0,0,4,4" CornerRadius="4" Background="White"
+                                            BorderBrush="{Binding EdgeBrush}" BorderThickness="{Binding Edge}" ToolTip="{Binding Tip}">
+                                        <Grid>
+                                            <Ellipse Width="8" Height="8" Fill="{Binding Fill}" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,4,0,0"/>
+                                            <TextBlock Text="{Binding Number}" FontSize="10" Foreground="{StaticResource Text.Primary}"
+                                                       HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,2"/>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <TextBlock Text="{Binding CableWarning}" Margin="0,4,0,0" TextWrapping="Wrap" FontWeight="SemiBold"
+                                   Foreground="#B45309" Visibility="{Binding HasCableWarning, Converter={StaticResource BoolToVis}}"/>
+                        <TextBlock Margin="0,6,0,0" FontSize="11" Foreground="{StaticResource Text.Secondary}"
+                                   Text="Green = link up · Amber = link down · Grey = nothing · bordered = this PC"/>
+                    </StackPanel>
+                </Border>
             </Grid>
         </Border>
 

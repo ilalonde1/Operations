@@ -70,6 +70,9 @@ public partial class NetworkOpsDeviceWindow : Window
     /// <summary>Opens this machine in the app's KOR Remote viewer (one per machine: a second Connect brings it forward).</summary>
     private void Connect_Click(object sender, RoutedEventArgs e) => KorRemoteViewerWindow.Open(this);
 
+    /// <summary>The switch-port strip's "Open full view": the Network window at this device's switch and port.</summary>
+    private void OpenSwitch_Click(object sender, RoutedEventArgs e) => Navigator?.Follow(_vm.SwitchPortOpens);
+
     /// <summary>The fallback: MeshCentral's full page in an Edge app window, for whatever the viewer's toolbar does not do.</summary>
     internal void OpenInBrowser(Window from)
     {
