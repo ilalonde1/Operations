@@ -270,8 +270,9 @@ public sealed class NetworkOpsViewModelTests
     {
         var pc = Device("KOR-208-N");
         Assert.True(pc.CanConnect);
-        // MeshCentral's own deep link: the node id without "node//", URL-encoded, straight onto the desktop tab.
-        Assert.Equal("https://kor-mesh01.int.korstructural.com/?gotonode=bJ%40yhUBjIF4c8rS8MThrje0BENzyV5SCkrj4lZqrwPu4cOg3pq3Qj5YQwtqot2NX&viewmode=11", pc.ConnectUrl);
+        // MeshCentral's own deep link: the node id without "node//", RAW ('@' stays '@': MeshCentral does not decode its URL
+        // arguments, so '%40' was a node that does not exist -- Connect opened an empty Desktop, 2026-10-02), onto the desktop.
+        Assert.Equal("https://kor-mesh01.int.korstructural.com/?gotonode=bJ@yhUBjIF4c8rS8MThrje0BENzyV5SCkrj4lZqrwPu4cOg3pq3Qj5YQwtqot2NX&viewmode=11", pc.ConnectUrl);
         Assert.StartsWith("Remote control: connected", pc.RemoteLine);
         Assert.False(pc.CanInstallRemote);
 

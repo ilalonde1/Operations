@@ -217,9 +217,7 @@ internal sealed class PromptLibrary(NetworkOpsStore store, Agents.AgentHub agent
         return new RenderedPrompt(report?.RunId, title, $"{safe}{(report is null ? "" : $"-run{report.RunId}")}.md", markdown);
     }
 
-    private string? ConnectUrl(string? nodeId)
-        => nodeId is null || options.Value.MeshUrl.Length == 0 ? null
-         : $"{options.Value.MeshUrl.TrimEnd('/')}/?gotonode={Uri.EscapeDataString(Transport.MeshCentralClient.LinkId(nodeId))}&viewmode=11";
+    private string? ConnectUrl(string? nodeId) => Core.Learning.MeshLinks.DeviceUrl(options.Value.MeshUrl, nodeId, viewMode: 11);
 
     /// <summary>What the service sees right now, for one tool's prompt.</summary>
     private async Task<IReadOnlyList<(string, string)>> LiveAsync(string tool, CancellationToken ct)

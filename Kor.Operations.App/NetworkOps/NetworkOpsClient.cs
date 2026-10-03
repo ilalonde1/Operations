@@ -144,10 +144,7 @@ public sealed class NetworkOpsClient
     public static string? MeshUrl => (ConfigurationManager.AppSettings["NetworkOps.MeshUrl"] is { Length: > 0 } v ? v.Trim() : DefaultMeshUrl).TrimEnd('/');
 
     /// <summary>A device's remote-control page: MeshCentral opened straight on that device's desktop tab.</summary>
-    public static string? ConnectUrl(string? meshNodeId)
-        => MeshUrl is { } baseUrl && meshNodeId is { Length: > 0 }
-            ? $"{baseUrl}/?gotonode={Uri.EscapeDataString(meshNodeId.StartsWith("node//", StringComparison.Ordinal) ? meshNodeId[6..] : meshNodeId)}&viewmode=11"
-            : null;
+    public static string? ConnectUrl(string? meshNodeId) => MeshLinks.DeviceUrl(MeshUrl, meshNodeId, viewMode: 11);
 
     /// <summary>Asks the service to install (or reinstall, which is the upgrade) or remove a PC's agent. Returns the run's id.</summary>
     public async Task<long> RequestAgentAsync(int deviceId, string action, CancellationToken ct)

@@ -95,7 +95,7 @@ public sealed class NetworkOpsDeviceViewModel : ObservableObject
 
     /// <summary>MeshCentral's page for this device (General tab), where "Web-RDP" opens a sharp, full-size RDP session in the
     /// browser -- the way to work on a PC with no monitor, which otherwise runs at 1024x768.</summary>
-    public string? RdpPageUrl => NetworkOpsClient.ConnectUrl(_device.MeshNodeId)?.Replace("&viewmode=11", "&viewmode=10", StringComparison.Ordinal);
+    public string? RdpPageUrl => MeshLinks.DeviceUrl(NetworkOpsClient.MeshUrl, _device.MeshNodeId, viewMode: 10);
 
     // ---- Wake-on-LAN: PCs only (the rack is never shut down)
     public bool ShowsWake => !IsRack;
