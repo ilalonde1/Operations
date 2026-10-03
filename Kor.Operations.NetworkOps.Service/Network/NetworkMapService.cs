@@ -96,8 +96,11 @@ internal sealed class NetworkMapService(NetworkOpsStore store, MacDirectory macs
                     notes.Add($"the UniFi live read is {(now - liveNow.Utc).TotalMinutes:0} min old -- no \"connected now\" in this map");
                 else
                 {
+                    // Any schema failure (bad JSON, or a numeric field the shape did not expect) degrades the live source to a
+                    // note -- it must never throw out of the whole refresh and freeze the map (2026-10-03 re-audit, finding 6).
                     try { live = UniFiLive.Parse(lj); }
-                    catch (JsonException ex) { notes.Add("the UniFi live read could not be parsed: " + ex.Message); }
+                    catch (Exception ex) when (ex is JsonException or FormatException or ArgumentException or OverflowException or InvalidOperationException)
+                    { notes.Add("the UniFi live read could not be parsed: " + ex.Message); }
                 }
             }
             else if (liveNow.Problem is { } why) notes.Add(why + " -- no \"connected now\" in this map");

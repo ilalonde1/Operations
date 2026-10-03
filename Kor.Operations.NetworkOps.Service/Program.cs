@@ -37,6 +37,8 @@ try
     Kor.Operations.NetworkOps.Transport.OnTargetChannel.CleanupProblem = msg => Log.Warning("OnTarget cleanup: {Problem}", msg);
     // Surface a table that reads as "invalid object" AFTER its migration ran (a drop/rename), vs genuine pre-migration state.
     Kor.Operations.NetworkOps.Service.Store.NetworkOpsStore.SchemaGap = msg => Log.Warning("Schema: {Problem}", msg);
+    // Surface an AD workstation whose name already belongs to a non-AD device (it is then not tracked), rather than silently.
+    Kor.Operations.NetworkOps.Service.Store.NetworkOpsStore.DirectoryConflict = msg => Log.Warning("Directory: {Problem}", msg);
 
     // A service inherits services.exe's environment, read at BOOT: a KOR_NETWORKOPS_* machine variable
     // set later is invisible until APP01 restarts. Take any the process is missing from the machine

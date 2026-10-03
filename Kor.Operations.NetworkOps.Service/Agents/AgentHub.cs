@@ -116,15 +116,21 @@ internal sealed class AgentHub(TimeProvider clock)
             while (true)
             {
                 var job = await a.Queue.Reader.ReadAsync(held.Token).ConfigureAwait(false);
-                bool stale;
-                lock (a) stale = revoked.IsCancellationRequested || !a.Accepts(keyHash);
+                bool stale, mine = false;
+                lock (a)
+                {
+                    stale = revoked.IsCancellationRequested || !a.Accepts(keyHash);
+                    // The revoke-check, the claim and the handoff-key binding are ONE locked step: a Revoke (which takes the
+                    // same lock) cannot slip between the check and the handoff and let this now-old-key poll receive the job
+                    // (2026-10-03 re-audit, finding 2). A job its caller already withdrew (Claimed != 0) is skipped, not run late.
+                    if (!stale && Interlocked.Exchange(ref job.Claimed, 1) == 0) { job.HandedToKey = keyHash; mine = true; }
+                }
                 if (stale)
                 {
                     a.Queue.Writer.TryWrite(job);   // back in the queue, unclaimed, for a poll with the current key
                     return null;
                 }
-                // A job its caller already gave up on is skipped, never run late.
-                if (Interlocked.Exchange(ref job.Claimed, 1) != 0) continue;
+                if (!mine) continue;   // withdrawn by its caller, or taken elsewhere: leave it
                 string script;
                 try { script = OnTargetPayload.Build(job.Body, Path.Combine(workDir, job.Id + ".json")); }
                 catch (ArgumentException ex)
@@ -133,7 +139,6 @@ internal sealed class AgentHub(TimeProvider clock)
                     job.PickedUp.TrySetResult();
                     continue;
                 }
-                job.HandedToKey = keyHash;
                 job.PickedUp.TrySetResult();
                 return new AgentJobMessage(job.Id, script, (int)job.Timeout.TotalSeconds, job.WantsIdle);
             }

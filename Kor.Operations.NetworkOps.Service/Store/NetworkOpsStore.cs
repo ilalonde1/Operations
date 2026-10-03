@@ -21,6 +21,11 @@ internal sealed partial class NetworkOpsStore
     /// ran is distinguishable from "migration not run yet" (otherwise both read identically, forever).</summary>
     public static Action<string>? SchemaGap;
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, byte> ReportedGaps = new(StringComparer.Ordinal);
+
+    /// <summary>The host wires this to its log. Called when an Active Directory name already belongs to a non-AD (Rack/Manual)
+    /// device, so that AD machine is not represented -- reported once per name rather than left silent.</summary>
+    public static Action<string>? DirectoryConflict;
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, byte> ReportedConflicts = new(StringComparer.OrdinalIgnoreCase);
     private static bool MissingObject(SqlException ex, string what)
     {
         if (ex.Number != 208) return false;
@@ -76,6 +81,21 @@ internal sealed partial class NetworkOpsStore
             await up.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
         }
         var inList = string.Join(",", names.Select((_, i) => "@p" + i));
+        // A name AD wants but that already belongs to a non-AD (Rack/Manual) row was left untouched above -- so the AD
+        // machine of that name is never represented. That must not be silent: surface each conflict once (2026-10-03 re-audit).
+        if (DirectoryConflict is { } report)
+        {
+            var conflicts = new List<string>();
+            await using (var clash = Cmd(c, $"SELECT Name, Source FROM NetworkOps.Devices WHERE Source <> 'AD' AND RetiredUtc IS NULL AND Name IN ({inList});", tx))
+            {
+                var j = 0;
+                foreach (var n in names) clash.Parameters.Add("@p" + j++, SqlDbType.NVarChar, 64).Value = n;
+                await using var cr = await clash.ExecuteReaderAsync(ct).ConfigureAwait(false);
+                while (await cr.ReadAsync(ct).ConfigureAwait(false))
+                    if (ReportedConflicts.TryAdd(cr.GetString(0), 0)) conflicts.Add($"{cr.GetString(0)} (held by Source '{cr.GetString(1)}')");
+            }
+            if (conflicts.Count > 0) report($"Active Directory names already held by a non-AD device, so those AD machines are not tracked: {string.Join(", ", conflicts)}");
+        }
         await using (var gone = Cmd(c, $"UPDATE NetworkOps.Devices SET InDirectory = 0 WHERE Source = 'AD' AND InDirectory = 1 AND Name NOT IN ({inList});", tx))
         {
             var i = 0;

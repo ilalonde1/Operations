@@ -252,6 +252,17 @@ public sealed class NetworkMapTests(ITestOutputHelper output)
     // ---- abnormal input must degrade, not throw out of Build and freeze the whole map ----
 
     [Fact]
+    public void A_live_read_with_junk_numbers_degrades_instead_of_aborting_the_refresh()
+    {
+        // A fractional "state"/"speed" (a JSON Number that GetInt64 throws on) and a wild timestamp must not escape the
+        // parse and freeze the whole map (2026-10-03 re-audit, finding 6).
+        var live = UniFiLive.Parse("""{"now":99999999999999999,"devices":[{"mac":"aa:bb:cc:dd:ee:01","name":"x","state":1.5,"ports":[{"port":1,"up":true,"speed":1000.5}]}],"clients":[]}""");
+        Assert.Equal(0, live.Devices[0].State);   // 1.5 -> null -> 0, not a throw
+        Assert.Null(Record.Exception(() => NetworkMaps.Build(new UniFiSite(1_700_000_000, [], []), [], [],
+            new KnownNames(new Dictionary<string, string>(), new Dictionary<string, string>()), live)));
+    }
+
+    [Fact]
     public void A_controller_that_lists_a_device_twice_does_not_throw()
     {
         var dev = new UniFiDev("aa:bb:cc:dd:ee:ff", "SW-dup", "US8", "usw", "192.168.1.9", null, []);
@@ -272,7 +283,7 @@ public sealed class NetworkMapTests(ITestOutputHelper output)
         NetEndpoint NameFrom(DateTime expires)
         {
             var map = NetworkMaps.Build(new UniFiSite(now, [dev], [client]), [],
-                [new DhcpLease("192.168.1.50", mac, "OLD-NAME", "Active", expires)], new KnownNames(new Dictionary<string, string>(), new Dictionary<string, string>()));
+                [new DhcpLease("192.168.1.50", mac, "OLD-NAME", "Active", expires)], new KnownNames(new Dictionary<string, string>(), new Dictionary<string, string>()), asOfUtc: at);
             return map.Everything().Single(x => x.Endpoint.Mac == mac).Endpoint;
         }
 

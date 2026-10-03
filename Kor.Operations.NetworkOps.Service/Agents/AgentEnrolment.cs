@@ -109,7 +109,8 @@ internal sealed class AgentEnrolment
     {
         var files = Directory.GetFiles(AgentInstaller.PackageDir);
         var newest = files.Length == 0 ? DateTime.MinValue : files.Max(File.GetLastWriteTimeUtc);
-        return $"{files.Length}:{newest.Ticks}";
+        var total = files.Sum(f => new FileInfo(f).Length);   // + total size: catches an OLDER file changing, not just the newest (re-audit)
+        return $"{files.Length}:{newest.Ticks}:{total}";
     }
 
     /// <summary>The certificate pin the agent package itself carries (its .exe.config): the download is checked against the

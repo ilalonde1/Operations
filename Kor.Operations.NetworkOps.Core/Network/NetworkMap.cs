@@ -31,7 +31,7 @@ public static class NetworkMaps
     /// Without it the map is the database's -- who was last on each port -- and says nothing about now.</param>
     /// <param name="core">The core switch's own read (it is an EdgeSwitch: UniFi knows only its MAC): rule 7.</param>
     public static NetworkMap Build(UniFiSite site, IReadOnlyList<FleetPc> fleet, IReadOnlyList<DhcpLease> leases, KnownNames known, UniFiLive? live = null,
-        CoreSwitchRead? core = null)
+        CoreSwitchRead? core = null, DateTime? asOfUtc = null)
     {
         // GroupBy, not ToDictionary: a controller export that lists a device twice (a re-adoption artifact, or the same MAC
         // in two cases) must not throw out of Build and freeze the whole map -- every other MAC-keyed map here already dedups.
@@ -41,7 +41,8 @@ public static class NetworkMaps
         foreach (var pc in fleet) foreach (var m in pc.Macs) pcByMac.TryAdd(Mac(m), pc);
         // A long-expired lease's hostname may since have been reassigned to a different device, so an expired lease must
         // not name a MAC (naming would then be wrong, worse than falling to maker/MAC). Keep leases with no expiry known.
-        var nowUtc = DateTimeOffset.FromUnixTimeSeconds(site.Now).UtcDateTime;
+        // Judge expiry by APP01's clock (asOfUtc), NOT the controller's possibly-wrong clock (2026-10-03 re-audit, finding "expired leases").
+        var nowUtc = asOfUtc ?? DateTime.UtcNow;
         var leaseByMac = leases.Where(l => l.Expires is null || l.Expires > nowUtc).GroupBy(l => Mac(l.Mac))
             .ToDictionary(g => g.Key, g => g.OrderByDescending(l => l.State == "Active").ThenByDescending(l => l.Expires ?? DateTime.MaxValue).First(), StringComparer.Ordinal);
 
@@ -62,11 +63,17 @@ public static class NetworkMaps
             leaseByMac.TryGetValue(mac, out var lease);
             liveClients.TryGetValue(mac, out var lc);
             ip = ip is { Length: > 0 } ? ip : lc?.Ip is { Length: > 0 } lip ? lip : cl?.Ip is { Length: > 0 } cip ? cip : dev?.Ip is { Length: > 0 } dip ? dip : lease?.Ip;
+            // The IP is current for this MAC unless a live client or an ACTIVE lease says this MAC now has a DIFFERENT one:
+            // a reassigned IP (the port's recorded LastIp is stale) must not borrow another machine's static rack name
+            // (2026-10-03 re-audit, finding 5). A rack device has no lease/live client, so its static IP still names it.
+            var ipIsCurrent = ip is { Length: > 0 }
+                && !(lc?.Ip is { Length: > 0 } lcip && !string.Equals(lcip, ip, StringComparison.Ordinal))
+                && !(lease is { State: "Active", Ip: { Length: > 0 } ali } && !string.Equals(ali, ip, StringComparison.Ordinal));
             var maker = EdgeSwitchRules.MakerOf(mac) ?? (cl?.Maker is { Length: > 0 } mk ? mk : null);
             var (name, source) =
                 pc is not null ? (pc.Name, "NetworkOps agent")
                 : dev is not null ? (dev.Label, "UniFi device")
-                : ip is not null && known.ByIp.TryGetValue(ip, out var ki) ? (ki, "rack")
+                : ipIsCurrent && known.ByIp.TryGetValue(ip!, out var ki) ? (ki, "rack")
                 : lease?.HostName is { Length: > 0 } hn ? (Short(hn), "DHCP")
                 : known.ByMac.TryGetValue(mac, out var km) ? (km, "APP01")   // its ARP table + reverse DNS (the firewall, by being the gateway)
                 : cl?.Hostname is { Length: > 0 } ch ? (ch, "UniFi client")
@@ -74,7 +81,7 @@ public static class NetworkMaps
                 : maker is not null ? ($"{maker} device", "maker")
                 : (mac, "MAC only");
             return new NetEndpoint(mac, name, source, ip, pc?.Name, pc?.User, pc?.UserSource, maker,
-                seen > 0 ? DateTimeOffset.FromUnixTimeSeconds(seen).UtcDateTime : null, lease?.State, dev?.Kind,
+                seen > 0 ? SafeUtc(seen) : null, lease?.State, dev?.Kind,
                 ConnectedNow: live is null ? null : lc is not null || (liveUp.TryGetValue(mac, out var up) && up));
         }
 
@@ -193,6 +200,20 @@ public static class NetworkMaps
         {
             var topSwitches = switches.Where(s => s.Uplink?.Mac == rootMac).Select(s => s.Mac).ToHashSet(StringComparer.Ordinal);
             corePorts = [];
+            // Hosts the LIVE read still shows on a switch port keep that (fresh) placement; only a STALE switch record is
+            // overridden by the core's fresh direct evidence below (2026-10-03 re-audit, finding 4).
+            var liveOnSwitch = liveAt.Values.SelectMany(x => x).Select(c => c.Mac).ToHashSet(StringComparer.Ordinal);
+            void Unplace(string mac)
+            {
+                foreach (var (_, ps) in portsBySwitch)
+                    for (var k = 0; k < ps.Count; k++)
+                    {
+                        var np = ps[k];
+                        if (np.On?.Mac == mac) np = np with { On = null, Kind = np.Kind is "uplink" or "link" ? np.Kind : np.AlsoSeen.Count > 0 ? "device" : "empty" };
+                        if (np.AlsoSeen.Any(a => a.Mac == mac)) np = np with { AlsoSeen = np.AlsoSeen.Where(a => a.Mac != mac).ToList() };
+                        ps[k] = np;
+                    }
+            }
             foreach (var cp in core.Ports)
             {
                 var link = cp.Macs.FirstOrDefault(topSwitches.Contains);
@@ -202,6 +223,11 @@ public static class NetworkMaps
                     corePorts.Add(new NetPort(cp.Port, cp.SpeedMbps ?? 0, false, "link", Describe(link, null, 0), [], Up: cp.Up, SpeedNow: cp.Up ? cp.SpeedMbps : null));
                     continue;
                 }
+                // A non-VMware host directly on this NON-uplink core port is attached to the core NOW -- reclaim it from any
+                // stale switch placement, so the core is not left reading "host not seen" (finding 4). Live-on-switch stays.
+                foreach (var m in cp.Macs.Where(m => !devices.ContainsKey(m) && m != rootMac && EdgeSwitchRules.MakerOf(m) != "VMware"
+                                                     && placed.Contains(m) && !liveOnSwitch.Contains(m)).ToList())
+                { Unplace(m); placed.Remove(m); }
                 int Rank(string m) => pcByMac.ContainsKey(m) ? 0 : EdgeSwitchRules.MakerOf(m) == "VMware" ? 3
                     : Describe(m, null, 0).NameSource is "maker" or "MAC only" ? 2 : 1;
                 var here = cp.Macs.Where(m => !placed.Contains(m) && !devices.ContainsKey(m) && m != rootMac).OrderBy(Rank).ThenBy(m => m, StringComparer.Ordinal).ToList();
@@ -249,6 +275,18 @@ public static class NetworkMaps
             else unplaced.Add(Describe(c.Mac, c.Ip, c.LastSeen) with { Via = ViaName(c) });
         }
 
+        // A client the LIVE read shows on an access point NOW that the controller's history snapshot does not list would
+        // otherwise vanish (2026-10-03 re-audit, finding 3). Add live-only wireless clients. (Live wired clients are already
+        // placed via liveAt on their switch port; only wireless-only is missed, since liveAt keeps wired clients.)
+        foreach (var lw in liveClients.Values)
+        {
+            if (lw.Wired || placed.Contains(lw.Mac) || tree.Contains(lw.Mac) || clients.ContainsKey(lw.Mac)) continue;
+            var via = lw.ApMac is { } la && devices.TryGetValue(la, out var apDev) ? apDev.Label : lw.ApMac;
+            var seen = lw.Uptime is { } up && live!.Now > up ? live.Now - up : 0;
+            wireless.Add((Describe(lw.Mac, lw.Ip, seen) with { Via = via, ConnectedNow = true }, lw.ApMac));
+            placed.Add(lw.Mac);
+        }
+
         var shift = corePorts is null ? 0 : 1;   // with the core shown, everything hangs one level below it
         var list = ordered.Select(o => new NetSwitch(o.Dev.Mac, o.Dev.Label, o.Dev.Model, o.Dev.Ip,
                 o.Dev.Uplink?.Mac, o.Dev.Uplink?.Mac is { } pm ? (devices.TryGetValue(pm, out var pd) ? pd.Label : pm == rootMac && core is not null ? core.Name : known.ByMac.GetValueOrDefault(pm) ?? pm) : null,
@@ -260,13 +298,18 @@ public static class NetworkMaps
         var aps = site.Devices.Where(d => d.Type == "uap").OrderBy(d => d.Label, StringComparer.OrdinalIgnoreCase)
             .Select(d => new NetAccessPoint(d.Mac, d.Label, d.Model, d.Ip, wireless.Where(w => w.ApMac == d.Mac).Select(w => w.E).OrderBy(w => w.Name, StringComparer.OrdinalIgnoreCase).ToList()))
             .ToList();
-        return new NetworkMap(DateTimeOffset.FromUnixTimeSeconds(site.Now).UtcDateTime, list, aps,
+        return new NetworkMap(SafeUtc(site.Now), list, aps,
             wireless.Where(w => !aps.Any(a => a.Mac == w.ApMac)).Select(w => w.E).ToList(), unplaced)
-        { LiveUtc = live is null ? null : DateTimeOffset.FromUnixTimeSeconds(live.Now).UtcDateTime };
+        { LiveUtc = live is null ? null : SafeUtc(live.Now) };
     }
 
     /// <summary>aa-BB-cc... / AA:BB:... -> aa:bb:...: the one spelling every source is compared in.</summary>
     public static string Mac(string? mac) => (mac ?? "").Trim().ToLowerInvariant().Replace('-', ':');
+
+    /// <summary>Unix seconds -> UTC, CLAMPED to the representable range so a junk timestamp in a controller/live payload
+    /// cannot throw ArgumentOutOfRange out of the whole build (2026-10-03 re-audit, finding 6).</summary>
+    public static DateTime SafeUtc(long unixSeconds)
+        => unixSeconds is >= -62135596800 and <= 253402300799 ? DateTimeOffset.FromUnixTimeSeconds(unixSeconds).UtcDateTime : DateTime.UnixEpoch;
 
     // "KOR-101.int.korstructural.com" -> "KOR-101"
     private static string Short(string host) => host.Split('.')[0];
@@ -368,8 +411,8 @@ public sealed record UniFiSite(long Now, IReadOnlyList<UniFiDev> Devices, IReadO
         using var doc = JsonDocument.Parse(json);
         var r = doc.RootElement;
         static string? S(JsonElement e, string p) => e.TryGetProperty(p, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() : null;
-        static long L(JsonElement e, string p) => e.TryGetProperty(p, out var v) && v.ValueKind == JsonValueKind.Number ? v.GetInt64() : 0;
-        static int? I(JsonElement e, string p) => e.TryGetProperty(p, out var v) && v.ValueKind == JsonValueKind.Number ? v.GetInt32() : null;
+        static long L(JsonElement e, string p) => e.TryGetProperty(p, out var v) && v.ValueKind == JsonValueKind.Number && v.TryGetInt64(out var x) ? x : 0;
+        static int? I(JsonElement e, string p) => e.TryGetProperty(p, out var v) && v.ValueKind == JsonValueKind.Number && v.TryGetInt32(out var x) ? x : null;
         static bool B(JsonElement e, string p) => e.TryGetProperty(p, out var v) && v.ValueKind == JsonValueKind.True;
 
         var devices = r.GetProperty("devices").EnumerateArray().Select(d => new UniFiDev(
@@ -384,7 +427,7 @@ public sealed record UniFiSite(long Now, IReadOnlyList<UniFiDev> Devices, IReadO
             ? cs.EnumerateArray().Select(c => new UniFiClient(NetworkMaps.Mac(S(c, "mac")), S(c, "hostname") ?? "", S(c, "ip") ?? "", B(c, "wired"),
                 S(c, "uplinkMac") is { } um ? NetworkMaps.Mac(um) : null, S(c, "uplinkName") ?? "", I(c, "port"), L(c, "lastSeen"), S(c, "maker") ?? "")).ToList()
             : [];
-        return new UniFiSite(r.GetProperty("now").GetInt64(), devices, clients);
+        return new UniFiSite(L(r, "now"), devices, clients);
     }
 }
 
@@ -418,7 +461,9 @@ public sealed record UniFiLive(long Now, IReadOnlyList<LiveDevice> Devices, IRea
         using var doc = JsonDocument.Parse(json);
         var r = doc.RootElement;
         static string? S(JsonElement e, string p) => e.TryGetProperty(p, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() : null;
-        static long? L(JsonElement e, string p) => e.TryGetProperty(p, out var v) && v.ValueKind == JsonValueKind.Number ? v.GetInt64() : null;
+        // TryGetInt64, not GetInt64: a fractional number (e.g. "state":1.5) IS a JSON Number but GetInt64 throws on it --
+        // which escaped the live-read parse and aborted the whole refresh (2026-10-03 re-audit, finding 6).
+        static long? L(JsonElement e, string p) => e.TryGetProperty(p, out var v) && v.ValueKind == JsonValueKind.Number && v.TryGetInt64(out var x) ? x : null;
         static double? D(JsonElement e, string p) => e.TryGetProperty(p, out var v) ? v.ValueKind switch
         {
             JsonValueKind.Number => v.GetDouble(),

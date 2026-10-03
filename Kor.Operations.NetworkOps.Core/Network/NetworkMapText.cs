@@ -57,6 +57,14 @@ public static class NetworkMapText
             sb.AppendLine($"{ap.Name}  ({ap.Model}, wireless: {ap.Clients.Count})");
             foreach (var c in ap.Clients) sb.AppendLine($"       {Line(c)}");
         }
+        // Wireless clients on an access point the controller does not manage here (its MAC is not a device): counted in the
+        // summary but, until 2026-10-03 (re-audit finding 7), only findable by search -- now rendered as their own group.
+        if (map.OtherWireless.Count > 0)
+        {
+            sb.AppendLine();
+            sb.AppendLine($"Wireless, access point not managed here ({map.OtherWireless.Count}):");
+            foreach (var w in map.OtherWireless) sb.AppendLine($"       {Line(w)}{(w.Via is { Length: > 0 } v ? $"  (on {v})" : "")}");
+        }
         if (map.Unplaced.Count > 0)
         {
             sb.AppendLine();
