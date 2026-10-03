@@ -18,29 +18,41 @@ namespace Kor.Operations.NetworkOps.Tests;
 //    ErrorActionPreference Stop turns a native command's stderr into a terminating error. The class: A NATIVE COMMAND'S
 //    STDERR REDIRECTED BY POWERSHELL IN A STOP SCRIPT. Reproduced on KOR-207 and fixed in the same run (cmd swallows it).
 //
-// WHAT IT COVERS: MeshTrust's answers (validated -> yes; pinned self-signed -> yes; anything else, or no certificate, -> no);
-// that the service's MeshCentral client and the PC install script both use that rule; that no script NetworkOps runs on a
-// machine redirects a native command's stderr with 2>$null.
+// WHAT IT COVERS: MeshTrust's answers (validated AND issued by Let's Encrypt -> yes; pinned self-signed -> yes; a
+// validated cert from ANOTHER CA for the name -> no; anything else, or no certificate, -> no -- the issuer requirement is
+// the 2026-10-03 tightening over "any publicly-valid cert"); that the service's MeshCentral client and the PC install
+// script both use that rule; that no script NetworkOps runs on a machine redirects a native command's stderr with 2>$null.
 // WHAT IT DOES NOT: a live TLS handshake (proven live on 2026-10-02 after the deploy: the Mesh sweep read MESH01 again), or
 // a native command's stderr redirected another way (2>&1 into a variable would not throw, so it is not the class).
 // A SAME-CLASS FAULT IT WOULD NOT CATCH: another rotating certificate pinned elsewhere (Veeam's is pinned on purpose: it is
 // self-signed and does not rotate) -- only MESH01's is checked here.
 public sealed class MeshTrustAndProbeStderrTests
 {
-    private static readonly byte[] SelfSigned = [1, 2, 3, 4];
+    private static readonly byte[] SelfSigned = [1, 2, 3, 4];   // the rollback cert: matched by hash, never parsed
     private static string PinOf(byte[] raw) => Convert.ToHexString(SHA256.HashData(raw));
+    private static byte[] Chain(string issuerOrg)   // a real cert whose issuer carries this organisation (the CA path parses it)
+    {
+        using var rsa = RSA.Create(2048);
+        var req = new System.Security.Cryptography.X509Certificates.CertificateRequest(
+            $"CN=kor-mesh01.int.korstructural.com, O={issuerOrg}", rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+        using var cert = req.CreateSelfSigned(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddDays(1));
+        return cert.RawData;
+    }
 
     [Fact]
-    public void Mesh01_is_trusted_by_a_validated_certificate_or_by_the_pin()
+    public void Mesh01_is_trusted_by_a_LetsEncrypt_chain_or_by_the_pin()
     {
         var pin = PinOf(SelfSigned);
-        Assert.True(MeshTrust.Accepts([9, 9, 9], SslPolicyErrors.None, pin));                               // Let's Encrypt, any renewal
-        Assert.True(MeshTrust.Accepts(SelfSigned, SslPolicyErrors.RemoteCertificateChainErrors, pin));       // the rollback certificate
+        var le = Chain("Let's Encrypt");
+        var otherCa = Chain("Some Other CA");
+        Assert.True(MeshTrust.Accepts(le, SslPolicyErrors.None, pin));                                   // Let's Encrypt, any renewal
+        Assert.True(MeshTrust.Accepts(SelfSigned, SslPolicyErrors.RemoteCertificateChainErrors, pin));    // the rollback certificate
         Assert.True(MeshTrust.Accepts(SelfSigned, SslPolicyErrors.RemoteCertificateChainErrors, pin.ToLowerInvariant()));
-        Assert.False(MeshTrust.Accepts([9, 9, 9], SslPolicyErrors.RemoteCertificateChainErrors, pin));       // untrusted and not pinned
-        Assert.False(MeshTrust.Accepts([9, 9, 9], SslPolicyErrors.RemoteCertificateNameMismatch, pin));      // trusted CA, wrong name
+        Assert.False(MeshTrust.Accepts(otherCa, SslPolicyErrors.None, pin));                              // validated, but ANOTHER CA for this name
+        Assert.False(MeshTrust.Accepts(le, SslPolicyErrors.RemoteCertificateChainErrors, pin));           // Let's Encrypt but chain not validated, not pinned
+        Assert.False(MeshTrust.Accepts(le, SslPolicyErrors.RemoteCertificateNameMismatch, pin));          // trusted CA, wrong name
         Assert.False(MeshTrust.Accepts(null, SslPolicyErrors.None, pin));
-        Assert.False(MeshTrust.Accepts(SelfSigned, SslPolicyErrors.RemoteCertificateChainErrors, ""));        // no pin configured
+        Assert.False(MeshTrust.Accepts(SelfSigned, SslPolicyErrors.RemoteCertificateChainErrors, ""));     // no pin configured
     }
 
     [Fact]
@@ -53,7 +65,8 @@ public sealed class MeshTrustAndProbeStderrTests
         var script = MeshInstaller.Script(new Kor.Operations.NetworkOps.Service.NetworkOpsOptions
             { MeshUrl = "https://kor-mesh01.int.korstructural.com", MeshCertSha256 = new string('A', 64), MeshPcGroup = "mesh//x" }, server: false);
         var callback = Regex.Match(script, @"ServerCertificateValidationCallback = \{(.*?)\n\}", RegexOptions.Singleline).Groups[1].Value;
-        Assert.Contains("if ([int]$errors -eq 0) { return $true }", callback);   // validated = trusted, as MeshTrust
+        Assert.Contains("[int]$errors -eq 0", callback);                           // a validated chain...
+        Assert.Contains("Let's Encrypt", callback);                                // ...AND issued by Let's Encrypt, as MeshTrust
         Assert.Contains(new string('A', 64), callback);                            // and the pin, as MeshTrust
     }
 

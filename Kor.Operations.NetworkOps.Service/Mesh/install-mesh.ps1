@@ -11,13 +11,13 @@ $stage = 'C:\Program Files\KorOperations\MeshStage'
 $exe = Join-Path $stage 'KorMeshAgent64.exe'
 New-Item -ItemType Directory -Force $stage | Out-Null
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-# Transport/MeshTrust.cs, the same rule: a certificate Windows itself validates (Let's Encrypt since 2026-10-02, renewed
-# every ~60 days), or the pinned self-signed one.
+# Transport/MeshTrust.cs, the same rule: the pinned self-signed cert by exact hash, OR a cert Windows itself validates
+# (trusted chain, right name, in date) AND issued by Let's Encrypt -- so another CA mis-issuing for this name is refused.
 [Net.ServicePointManager]::ServerCertificateValidationCallback = {
     param($sender, $cert, $chain, $errors)
-    if ([int]$errors -eq 0) { return $true }
     $hash = [BitConverter]::ToString([Security.Cryptography.SHA256]::Create().ComputeHash($cert.GetRawCertData())) -replace '-', ''
-    $hash -eq '{{CERTSHA256}}'
+    if ($hash -eq '{{CERTSHA256}}') { return $true }
+    ([int]$errors -eq 0) -and ($cert.Issuer -like "*Let's Encrypt*")
 }
 try
 {
