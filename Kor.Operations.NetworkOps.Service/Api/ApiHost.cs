@@ -91,6 +91,7 @@ internal sealed class ApiHost(IOptions<NetworkOpsOptions> options, NetworkOpsSto
             var why = http.Response.StatusCode is 401 or 403 ? ApiAccess.Deny(http.User, o.ApiTenantId) : null;
             audit.LogInformation("API {Who} {Method} {Path} -> {Status}{Why}", who, http.Request.Method, http.Request.Path, http.Response.StatusCode, why is null ? "" : $" ({why})");
         });
+        Agents.AgentApi.UseBeforeKeyGate(app);   // /agent/v1/package and /enrol: bounded body + concurrency, no key
         Agents.AgentApi.UseAgentGate(app);   // /agent: key checked before any body is read
         app.UseAuthentication();
         app.UseAuthorization();

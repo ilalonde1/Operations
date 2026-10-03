@@ -16,6 +16,19 @@ internal sealed partial class NetworkOpsStore
 
     public NetworkOpsStore(IOptions<NetworkOpsOptions> options) => _cs = options.Value.Db;
 
+    /// <summary>The host wires this to its log. A SqlException 208 ("invalid object name") is treated as graceful
+    /// pre-migration degradation, but it is reported ONCE per table so that a table dropped or renamed AFTER its migration
+    /// ran is distinguishable from "migration not run yet" (otherwise both read identically, forever).</summary>
+    public static Action<string>? SchemaGap;
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, byte> ReportedGaps = new(StringComparer.Ordinal);
+    private static bool MissingObject(SqlException ex, string what)
+    {
+        if (ex.Number != 208) return false;
+        if (ReportedGaps.TryAdd(what, 0))
+            SchemaGap?.Invoke($"{what}: {ex.Message.Trim()} -- treated as 'migration not run'; if that migration HAS run, the table was dropped or renamed.");
+        return true;
+    }
+
     private async Task<SqlConnection> OpenAsync(CancellationToken ct)
     {
         var c = new SqlConnection(_cs);
@@ -36,12 +49,27 @@ internal sealed partial class NetworkOpsStore
         if (names.Count == 0) throw new InvalidOperationException("Active Directory returned no workstations; refusing to mark the fleet as gone.");
         await using var c = await OpenAsync(ct).ConfigureAwait(false);
         await using var tx = (SqlTransaction)await c.BeginTransactionAsync(ct).ConfigureAwait(false);
+
+        // A non-empty but incomplete answer (a transient DC error, LDAP paging truncation) is the same hazard as an empty
+        // one: it would retire every live PC it happens to omit, blacking out monitoring silently until the next full sync.
+        // Treat a drop to under half the currently-managed count as a failed query and refuse the whole sync (rolls back,
+        // leaving InDirectory as it was). The upserts only ever set InDirectory=1, so losing them to the rollback is safe.
+        await using (var count = Cmd(c, "SELECT COUNT(*) FROM NetworkOps.Devices WHERE Source = 'AD' AND InDirectory = 1;", tx))
+        {
+            var current = (int)(await count.ExecuteScalarAsync(ct).ConfigureAwait(false))!;
+            if (current >= 4 && names.Count * 2 < current)
+                throw new InvalidOperationException($"Active Directory returned {names.Count} workstations but {current} are managed; refusing a sync that looks like a partial query.");
+        }
+
         foreach (var n in names)
         {
+            // Only ever touch AD rows: a Rack/Manual device that happens to share a name must never be flipped to look like
+            // a domain PC (Devices.Name is UNIQUE, so insert only when the name is free -- a collision is left untouched,
+            // not mislabeled, and not thrown).
             await using var up = Cmd(c, """
-                IF EXISTS (SELECT 1 FROM NetworkOps.Devices WHERE Name = @n)
-                    UPDATE NetworkOps.Devices SET InDirectory = 1 WHERE Name = @n AND InDirectory = 0;
-                ELSE
+                IF EXISTS (SELECT 1 FROM NetworkOps.Devices WHERE Name = @n AND Source = 'AD')
+                    UPDATE NetworkOps.Devices SET InDirectory = 1 WHERE Name = @n AND Source = 'AD' AND InDirectory = 0;
+                ELSE IF NOT EXISTS (SELECT 1 FROM NetworkOps.Devices WHERE Name = @n)
                     INSERT NetworkOps.Devices (Name, Kind, Source) VALUES (@n, 'Workstation', 'AD');
                 """, tx);
             up.Parameters.Add("@n", SqlDbType.NVarChar, 64).Value = n;

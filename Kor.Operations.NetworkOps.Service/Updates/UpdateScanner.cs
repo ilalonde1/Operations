@@ -86,7 +86,7 @@ internal sealed class UpdateScanner(NetworkOpsStore store, Agents.MachineRunner 
             ok++;
             await store.RecordObservationAsync(t.DeviceId, NetworkOpsStore.UpdatesProbe, scan.ScanVersion, now, "Ok", run.OutputJson, null, ct);
 
-            var raised = UpdateRules.Evaluate(scan, DateTime.Now);
+            var raised = UpdateRules.Evaluate(scan, DateTime.UtcNow);   // Released is UTC; compare age in the same frame
             var open = (await store.OpenFindingsAsync(t.DeviceId, null, ct)).Where(f => UpdateRules.Owns(f.RuleKey)).ToList();
             var changes = FindingDiff.Compute(open, raised);
             if (changes.Count > 0) await store.ApplyChangesAsync(t.DeviceId, changes, now, ct);

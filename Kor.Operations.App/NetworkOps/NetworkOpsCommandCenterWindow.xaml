@@ -36,7 +36,7 @@
             <!-- One machine as a card: its colour down the left edge, the name, what it is, what matters most, and one line
                  of who/when. A card not read lately is faded and says so on hover, as its table row is greyed. -->
             <DataTemplate x:Key="MachineCard">
-                <Border Width="236" Height="112" Background="White" CornerRadius="8" BorderBrush="#E5E7EB" BorderThickness="1" ToolTip="{Binding Headline}">
+                <Border Width="236" MinHeight="112" Background="White" CornerRadius="8" BorderBrush="#E5E7EB" BorderThickness="1" ToolTip="{Binding Headline}">
                     <Border.Style>
                         <Style TargetType="Border">
                             <Style.Triggers>

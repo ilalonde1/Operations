@@ -8,8 +8,9 @@ namespace Kor.Operations.NetworkOps.Tests;
 // joined"; "do boardroom and non domain PCs -- autonomously").
 //
 // WHAT IT COVERS: a code works once, for the one PC name it was issued for, within the hour; a right code from the wrong
-// name does not burn it; a burst of wrong guesses shuts the door for a minute; one live code per PC (re-issuing voids the
-// old); the code reads without 0/O/1/I and is accepted with or without its dashes; PC names are Windows names; the
+// name does not burn it; a burst of wrong guesses shuts the door for a minute FOR THAT PC ONLY (one PC's spray does not
+// block another's valid code); one live code per PC (re-issuing voids the old); the code reads without 0/O/1/I and is
+// accepted with or without its dashes; PC names are Windows names; the
 // command an administrator runs carries the pin, the package address and the code and nothing else from outside; only
 // the two before-key routes skip the agent gate.
 // WHAT IT DOES NOT: the agent's own install on the PC (Agent/Enrol.cs: sc.exe, folder ACLs) -- run for real on the
@@ -44,6 +45,15 @@ public sealed class AgentEnrolmentTests
         for (var i = 0; i < 10; i++) e.Redeem("BOARDROOM", "AAAA-AAAA-AAA" + i, T0);
         Assert.Null(e.Redeem("BOARDROOM", second, T0));                                 // the right code, in a burst of wrong ones
         Assert.Equal(5, e.Redeem("BOARDROOM", second, T0.AddMinutes(2))!.Value.DeviceId);   // a minute later it works
+    }
+
+    [Fact]
+    public void One_PCs_wrong_guesses_do_not_block_another_PCs_valid_code()
+    {
+        var e = new AgentEnrolment();
+        var code = e.Issue(9, "BOARDROOM", "a", T0).Code;
+        for (var i = 0; i < 15; i++) e.Redeem("KIOSK", "AAAA-AAAA-AAA" + i % 10, T0);   // a spray at KIOSK
+        Assert.Equal(9, e.Redeem("BOARDROOM", code, T0)!.Value.DeviceId);               // BOARDROOM is untouched
     }
 
     [Theory]

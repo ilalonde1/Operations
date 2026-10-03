@@ -34,6 +34,13 @@ public sealed class EsxiShell : IDisposable
             ssh.Dispose();
             throw new InvalidOperationException($"{host} presented host key SHA256:{seen}, which is not pinned: refused");
         }
+        catch
+        {
+            // Any other failure (timeout, auth, socket) must still dispose the client, or each failed connect leaks its
+            // socket and session threads -- ~288/day while a host like KOR-UNIFI01 stays unreachable on the 5-min sweep.
+            ssh.Dispose();
+            throw;
+        }
         return new EsxiShell(ssh);
     }
 

@@ -109,13 +109,18 @@ public static class SmbiosParser
 
     private static SmbiosChassis ParseChassis(RawStructure c)
     {
-        var code = c.Data[0x05] & 0x7F;   // bit 7 is "lock present", not part of the type
+        // A Type-3 whose formatted area is only 4-5 bytes passes the flen>=4 walk guard but has no type byte: read it
+        // only when present (0 -> Unknown), rather than throw and take the whole machine's hardware profile down.
+        var code = c.Data.Length > 0x05 ? c.Data[0x05] & 0x7F : 0;   // bit 7 is "lock present", not part of the type
         return new SmbiosChassis(c.String(0x04), code, ChassisTypes.TryGetValue(code, out var n) ? n : $"Unknown({code})");
     }
 
     private static SmbiosDimm ParseDimm(RawStructure d)
     {
-        var raw = BitConverter.ToUInt16(d.Data, 0x0C);
+        // A Type-17 with a formatted area shorter than 14 bytes passes the flen>=4 walk guard but has no size field:
+        // treat it as an empty slot (every other field below is already length-guarded), rather than throw out of the
+        // whole fleet's hardware run (Cli hardware calls Parse with no catch).
+        var raw = d.Data.Length >= 0x0E ? BitConverter.ToUInt16(d.Data, 0x0C) : (ushort)0;
         // 0 = slot empty. 0x7FFF = "see the extended DWORD". Bit 15 set = the value is KB, not MB.
         double sizeMb = raw == 0 ? 0
             : raw == 0x7FFF && d.Data.Length >= 0x20 ? BitConverter.ToUInt32(d.Data, 0x1C)

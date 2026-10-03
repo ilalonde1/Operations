@@ -35,7 +35,9 @@ internal sealed class AgentEnrolment
     public static readonly TimeSpan Lifetime = TimeSpan.FromHours(1);
     private const string Alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";   // no 0/O, 1/I: it may be read aloud or retyped
     private readonly ConcurrentDictionary<string, (int DeviceId, string Device, DateTime ExpiresUtc, string By)> _codes = new(StringComparer.Ordinal);
-    private readonly ConcurrentQueue<DateTime> _misses = new();
+    // Wrong guesses are limited PER NAMED PC, not globally: an attacker spraying wrong codes at one PC must not freeze
+    // every other PC's enrolment too (a global queue did). The 60-bit code is the real defence; this is the backstop.
+    private readonly ConcurrentDictionary<string, ConcurrentQueue<DateTime>> _misses = new(StringComparer.OrdinalIgnoreCase);
 
     public sealed record Issued(string Code, DateTime ExpiresUtc);
 
@@ -51,25 +53,56 @@ internal sealed class AgentEnrolment
     /// <summary>The device a code was issued for, spending it -- or null: unknown, expired, for another name, or too many misses.</summary>
     public (int DeviceId, string By)? Redeem(string device, string code, DateTime nowUtc)
     {
-        while (_misses.TryPeek(out var t) && nowUtc - t > TimeSpan.FromMinutes(1)) _misses.TryDequeue(out _);
-        if (_misses.Count >= 10) return null;   // a burst of wrong guesses: everything refused for a minute
+        if (TooManyMisses(device, nowUtc)) return null;   // a burst of wrong guesses at THIS PC: refused for a minute
         var key = Regex.Replace(code.ToUpperInvariant(), "[^A-Z0-9]", "");
-        if (_codes.TryRemove(key, out var e) && e.ExpiresUtc >= nowUtc && e.Device.Equals(device, StringComparison.OrdinalIgnoreCase))
+        // Peek before claiming: only a confirmed match (right code, right name, unexpired) is spent, and the spend is the
+        // atomic TryRemove. A wrong name must NEVER remove-then-readd the code -- that transiently hid a valid code from a
+        // racing correct redeem and failed it (and burned a miss) for no reason.
+        if (_codes.TryGetValue(key, out var e) && e.ExpiresUtc >= nowUtc && e.Device.Equals(device, StringComparison.OrdinalIgnoreCase)
+            && _codes.TryRemove(key, out e))
             return (e.DeviceId, e.By);
-        if (e.Device is not null && e.ExpiresUtc >= nowUtc && !e.Device.Equals(device, StringComparison.OrdinalIgnoreCase))
-            _codes[key] = e;   // a right code from the wrong PC name does not burn it
-        _misses.Enqueue(nowUtc);
+        Miss(device, nowUtc);
         return null;
     }
 
-    /// <summary>The agent package (the folder that travels with the service) as one zip, for the PC to download.</summary>
+    private bool TooManyMisses(string device, DateTime nowUtc)
+    {
+        if (!_misses.TryGetValue(device, out var q)) return false;
+        while (q.TryPeek(out var t) && nowUtc - t > TimeSpan.FromMinutes(1)) q.TryDequeue(out _);
+        return q.Count >= 10;
+    }
+
+    private void Miss(string device, DateTime nowUtc) => _misses.GetOrAdd(device, _ => new ConcurrentQueue<DateTime>()).Enqueue(nowUtc);
+
+    private static readonly object _zipLock = new();
+    private static byte[]? _zipCache;
+    private static string? _zipSig;
+
+    /// <summary>The agent package (the folder that travels with the service) as one zip, for the PC to download.
+    /// Built once and cached: /agent/v1/package is unauthenticated (before-key), so recompressing the whole folder at
+    /// Optimal on every request was a CPU/memory amplifier anyone on the LAN could loop. Rebuilt only when a deploy
+    /// changes the package (file count or newest write time).</summary>
     public static byte[] PackageZip()
     {
-        using var ms = new MemoryStream();
-        using (var zip = new ZipArchive(ms, ZipArchiveMode.Create, leaveOpen: true))
-            foreach (var f in Directory.GetFiles(AgentInstaller.PackageDir))
-                zip.CreateEntryFromFile(f, Path.GetFileName(f), CompressionLevel.Optimal);
-        return ms.ToArray();
+        var sig = PackageSignature();
+        lock (_zipLock)
+        {
+            if (_zipCache is not null && _zipSig == sig) return _zipCache;
+            using var ms = new MemoryStream();
+            using (var zip = new ZipArchive(ms, ZipArchiveMode.Create, leaveOpen: true))
+                foreach (var f in Directory.GetFiles(AgentInstaller.PackageDir))
+                    zip.CreateEntryFromFile(f, Path.GetFileName(f), CompressionLevel.Optimal);
+            _zipCache = ms.ToArray();
+            _zipSig = sig;
+            return _zipCache;
+        }
+    }
+
+    private static string PackageSignature()
+    {
+        var files = Directory.GetFiles(AgentInstaller.PackageDir);
+        var newest = files.Length == 0 ? DateTime.MinValue : files.Max(File.GetLastWriteTimeUtc);
+        return $"{files.Length}:{newest.Ticks}";
     }
 
     /// <summary>The certificate pin the agent package itself carries (its .exe.config): the download is checked against the

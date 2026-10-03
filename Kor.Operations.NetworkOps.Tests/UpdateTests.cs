@@ -51,6 +51,14 @@ public sealed class UpdateTests
         Assert.Single(s.Updates);
     }
 
+    [Theory]
+    [InlineData("[]")]        // empty array -> a[0] used to throw ArgumentOutOfRange
+    [InlineData("42")]        // a scalar -> AsObject() used to throw InvalidOperation
+    [InlineData("\"err\"")]
+    [InlineData("[42]")]      // one-element array of a scalar
+    public void Junk_but_valid_JSON_fails_as_a_JsonException_the_scanner_isolates(string json)
+        => Assert.Throws<System.Text.Json.JsonException>(() => UpdateScan.Parse(json));
+
     [Fact]
     public void Security_updates_are_held_three_days_then_due_then_overdue_at_fourteen()
     {

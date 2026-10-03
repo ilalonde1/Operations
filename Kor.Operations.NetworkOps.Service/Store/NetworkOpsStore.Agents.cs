@@ -14,7 +14,7 @@ internal sealed partial class NetworkOpsStore : Agents.IAgentDirectory
     public async Task<AgentCredential?> AgentCredentialAsync(string deviceName, CancellationToken ct)
     {
         try { return await AgentCredentialCoreAsync(deviceName, ct).ConfigureAwait(false); }
-        catch (SqlException ex) when (ex.Number == 208) { return null; }   // invalid object name: 005 has not run, so no PC has an agent
+        catch (SqlException ex) when (MissingObject(ex, "Agents (005)")) { return null; }
     }
 
     private async Task<AgentCredential?> AgentCredentialCoreAsync(string deviceName, CancellationToken ct)
@@ -130,7 +130,7 @@ internal sealed partial class NetworkOpsStore : Agents.IAgentDirectory
             while (await r.ReadAsync(ct).ConfigureAwait(false))
                 map[r.GetString(0)] = new AgentRecord(r.GetString(0), r.GetString(1), r.IsDBNull(2) ? null : r.GetString(2), Utc(r, 3), Utc(r, 4));
         }
-        catch (SqlException ex) when (ex.Number == 208)   // invalid object name: 005 has not run
+        catch (SqlException ex) when (MissingObject(ex, "Agents (005)"))
         {
         }
         return map;

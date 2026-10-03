@@ -92,7 +92,9 @@ internal sealed partial class NetworkOpsStore
             bool macColumn;
             await using (var has = Cmd(c, "SELECT CASE WHEN COL_LENGTH(N'NetworkOps.NetworkPlacements', N'SwitchMac') IS NULL THEN 0 ELSE 1 END;"))
                 macColumn = (int)(await has.ExecuteScalarAsync(ct).ConfigureAwait(false))! == 1;   // 011 run
-            var before = new Dictionary<string, PlacedAt>(StringComparer.Ordinal);
+            // Keyed case-insensitively to match the DB's MAC collation and the MERGE's ON t.Mac = s.Mac below: an Ordinal
+            // dict would miss a placement whose stored MAC differs only in case, losing the NetworkMoves history row.
+            var before = new Dictionary<string, PlacedAt>(StringComparer.OrdinalIgnoreCase);
             await using (var read = Cmd(c, $"SELECT Mac, Placement, SwitchName, Port, {(macColumn ? "SwitchMac" : "NULL")} FROM NetworkOps.NetworkPlacements;"))
             {
                 await using var r = await read.ExecuteReaderAsync(ct).ConfigureAwait(false);
@@ -145,7 +147,7 @@ internal sealed partial class NetworkOpsStore
             await tx.CommitAsync(ct).ConfigureAwait(false);
             return (true, moves);
         }
-        catch (SqlException ex) when (ex.Number == 208) { return (false, 0); }   // 010 not run yet
+        catch (SqlException ex) when (MissingObject(ex, "NetworkPlacements (010)")) { return (false, 0); }
     }
 
     /// <summary>Where a device was or is: placement, switch (name and, from 011, MAC), port.</summary>
@@ -175,7 +177,7 @@ internal sealed partial class NetworkOpsStore
                 list.Add(new NetworkMoveRow(r.GetString(0), r.GetString(1), r.IsDBNull(2) ? null : r.GetString(2), r.IsDBNull(3) ? null : r.GetInt32(3),
                     r.IsDBNull(4) ? null : r.GetString(4), r.IsDBNull(5) ? null : r.GetInt32(5), DateTime.SpecifyKind(r.GetDateTime(6), DateTimeKind.Utc)));
         }
-        catch (SqlException ex) when (ex.Number == 208) { }
+        catch (SqlException ex) when (MissingObject(ex, "NetworkMoves (010)")) { }
         return list;
     }
 }

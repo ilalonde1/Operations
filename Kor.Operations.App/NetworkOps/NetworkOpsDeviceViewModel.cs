@@ -70,7 +70,7 @@ public sealed class NetworkOpsDeviceViewModel : ObservableObject
     public string AgentChip => _device.AgentVersion is null ? "No agent" : _device.AgentConnected ? "Agent connected" : "Agent not connected";
     public System.Windows.Media.Brush AgentDot => _device.AgentVersion is null ? NetworkOpsBrushes.Unknown
         : _device.AgentConnected ? NetworkOpsBrushes.Healthy : NetworkOpsBrushes.Attention;
-    public bool CanChangeAgent => !_isFixing;
+    public bool CanChangeAgent => !_isBusy;
 
     // ---- remote control (MeshCentral on KOR-MESH01): PCs and Windows servers
     // Any device MeshCentral knows can be connected to (BK01 is filed as "Backup" but is a Windows box with a Mesh agent);
@@ -81,7 +81,7 @@ public sealed class NetworkOpsDeviceViewModel : ObservableObject
     /// <summary>The same device in the app's own viewer: MeshCentral's chrome hidden (MeshLinks.ViewerUrl).</summary>
     public string? ViewerUrl => MeshLinks.ViewerUrl(NetworkOpsClient.MeshUrl, _device.MeshNodeId);
     public bool CanConnect => ShowsRemote && ConnectUrl is not null;
-    public bool CanInstallRemote => Installable && _device.MeshNodeId is null && !_isFixing;
+    public bool CanInstallRemote => Installable && _device.MeshNodeId is null && !_isBusy;
     public string RemoteLine => !ShowsRemote ? ""
         : _device.MeshNodeId is null ? "Remote control: not installed"
         : _device.MeshConnected ? "Remote control: connected (Connect opens its screen in KOR Remote)"
@@ -101,13 +101,13 @@ public sealed class NetworkOpsDeviceViewModel : ObservableObject
 
     // ---- Wake-on-LAN: PCs only (the rack is never shut down)
     public bool ShowsWake => !IsRack;
-    public bool CanWake => ShowsWake && !_isFixing;
+    public bool CanWake => ShowsWake && !_isBusy;
 
     /// <summary>Sends a magic packet from APP01 and follows the run until the PC answers (or 6 minutes pass).</summary>
     public async Task WakeAsync(CancellationToken ct)
     {
-        if (_isFixing || !ShowsWake) return;
-        _isFixing = true; OnPropertyChanged(nameof(CanFix)); OnPropertyChanged(nameof(CanWake)); OnPropertyChanged(nameof(CanChangeAgent));
+        if (_isBusy || !ShowsWake) return;
+        _isFixing = true; RaiseActionStates();
         try
         {
             var id = await _client.WakeAsync(_device.DeviceId, ct).ConfigureAwait(true);
@@ -127,14 +127,14 @@ public sealed class NetworkOpsDeviceViewModel : ObservableObject
         {
             FixStatus = $"Wake failed: {ex.Message}";
         }
-        finally { _isFixing = false; OnPropertyChanged(nameof(CanFix)); OnPropertyChanged(nameof(CanWake)); OnPropertyChanged(nameof(CanChangeAgent)); }
+        finally { _isFixing = false; RaiseActionStates(); }
     }
 
     /// <summary>Installs remote control through the service and follows it until MeshCentral lists the device as connected.</summary>
     public async Task InstallRemoteAsync(CancellationToken ct)
     {
-        if (_isFixing || !ShowsRemote) return;
-        _isFixing = true; OnPropertyChanged(nameof(CanFix)); OnPropertyChanged(nameof(CanInstallRemote)); OnPropertyChanged(nameof(CanChangeAgent));
+        if (_isBusy || !ShowsRemote) return;
+        _isFixing = true; RaiseActionStates();
         try
         {
             var id = await _client.RequestMeshAsync(_device.DeviceId, ct).ConfigureAwait(true);
@@ -154,7 +154,7 @@ public sealed class NetworkOpsDeviceViewModel : ObservableObject
         {
             FixStatus = $"Installing remote control failed: {ex.Message}";
         }
-        finally { _isFixing = false; OnPropertyChanged(nameof(CanFix)); OnPropertyChanged(nameof(CanInstallRemote)); OnPropertyChanged(nameof(CanChangeAgent)); }
+        finally { _isFixing = false; RaiseActionStates(); }
     }
 
     // ---- fixes
@@ -162,7 +162,20 @@ public sealed class NetworkOpsDeviceViewModel : ObservableObject
     private string _fixStatus = string.Empty;
     private bool _isFixing;
     public string FixStatus { get => _fixStatus; private set => SetField(ref _fixStatus, value); }
-    public bool CanFix => _selectedFinding is not null && !_isFixing;
+    public bool CanFix => _selectedFinding is not null && !_isBusy;
+
+    // Check and every fix/wake/agent/annotate share one rule: one at a time. _isBusy is true while any of them runs,
+    // so the others' buttons disable and their entry guards turn them away -- two reloads can't interleave and clobber
+    // each other's status. RaiseActionStates re-queries every command when the flag flips.
+    private bool _isBusy => _isChecking || _isFixing;
+    private void RaiseActionStates()
+    {
+        OnPropertyChanged(nameof(CanCheck));
+        OnPropertyChanged(nameof(CanFix));
+        OnPropertyChanged(nameof(CanWake));
+        OnPropertyChanged(nameof(CanInstallRemote));
+        OnPropertyChanged(nameof(CanChangeAgent));
+    }
     public DeviceRow Device => _device;
     public NetworkOpsClient Client => _client;
 
@@ -377,11 +390,11 @@ public sealed class NetworkOpsDeviceViewModel : ObservableObject
         set
         {
             if (SetField(ref _isChecking, value))
-                OnPropertyChanged(nameof(CanCheck));
+                RaiseActionStates();
         }
     }
 
-    public bool CanCheck => !_isChecking;
+    public bool CanCheck => !_isBusy;
 
     public string NewNoteText
     {
@@ -536,7 +549,7 @@ public sealed class NetworkOpsDeviceViewModel : ObservableObject
     /// <summary>Queues a health check of this PC and waits for the service to answer. Returns when it has, or given up.</summary>
     public async Task CheckNowAsync(CancellationToken ct)
     {
-        if (IsChecking) return;
+        if (_isBusy) return;
         IsChecking = true;
         try
         {
@@ -596,8 +609,8 @@ public sealed class NetworkOpsDeviceViewModel : ObservableObject
     /// </summary>
     public async Task<(string? Refused, bool NeedsConfirmation)> RunFixAsync(FixOption fix, string? param, bool confirmed, CancellationToken ct)
     {
-        if (_isFixing) return (null, false);
-        _isFixing = true; OnPropertyChanged(nameof(CanFix));
+        if (_isBusy) return (null, false);
+        _isFixing = true; RaiseActionStates();
         try
         {
             var (id, refused, needsConfirmation) = await _client.RequestFixAsync(_device.DeviceId,
@@ -629,7 +642,7 @@ public sealed class NetworkOpsDeviceViewModel : ObservableObject
             FixStatus = $"Fix failed: {ex.Message}";
             return (null, false);
         }
-        finally { _isFixing = false; OnPropertyChanged(nameof(CanFix)); }
+        finally { _isFixing = false; RaiseActionStates(); }
     }
 
     /// <summary>
@@ -638,8 +651,8 @@ public sealed class NetworkOpsDeviceViewModel : ObservableObject
     /// </summary>
     public async Task ChangeAgentAsync(string action, CancellationToken ct)
     {
-        if (_isFixing || IsRack) return;
-        _isFixing = true; OnPropertyChanged(nameof(CanFix)); OnPropertyChanged(nameof(CanChangeAgent));
+        if (_isBusy || IsRack) return;
+        _isFixing = true; RaiseActionStates();
         var what = action == "remove" ? "Removing the agent" : HasAgent ? "Reinstalling the agent" : "Installing the agent";
         try
         {
@@ -660,7 +673,7 @@ public sealed class NetworkOpsDeviceViewModel : ObservableObject
         {
             FixStatus = $"{what} failed: {ex.Message}";
         }
-        finally { _isFixing = false; OnPropertyChanged(nameof(CanFix)); OnPropertyChanged(nameof(CanChangeAgent)); }
+        finally { _isFixing = false; RaiseActionStates(); }
     }
 
     public Task AcknowledgeAsync(CancellationToken ct)
@@ -675,7 +688,8 @@ public sealed class NetworkOpsDeviceViewModel : ObservableObject
 
     private async Task Annotate(string verb, Func<FleetFinding, Task> write, CancellationToken ct)
     {
-        if (_selectedFinding?.Finding is not { } f) return;
+        if (_selectedFinding?.Finding is not { } f || _isBusy) return;
+        _isFixing = true; RaiseActionStates();
         try
         {
             await write(f).ConfigureAwait(true);
@@ -688,11 +702,13 @@ public sealed class NetworkOpsDeviceViewModel : ObservableObject
         {
             StatusMessage = $"{verb} failed: {ex.Message}";
         }
+        finally { _isFixing = false; RaiseActionStates(); }
     }
 
     public async Task AddNoteAsync(CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(NewNoteText)) return;
+        if (string.IsNullOrWhiteSpace(NewNoteText) || _isBusy) return;
+        _isFixing = true; RaiseActionStates();
         try
         {
             await _client.AddNoteAsync(_device.DeviceId, NewNoteText, ct).ConfigureAwait(true);
@@ -704,6 +720,7 @@ public sealed class NetworkOpsDeviceViewModel : ObservableObject
         {
             StatusMessage = $"Note failed: {ex.Message}";
         }
+        finally { _isFixing = false; RaiseActionStates(); }
     }
 
     private static string Join(string sep, params string[] parts) => string.Join(sep, parts.Where(p => !string.IsNullOrWhiteSpace(p)));

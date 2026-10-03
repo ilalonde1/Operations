@@ -107,6 +107,12 @@ public partial class NetworkOpsNetworkWindow : Window
     internal void Apply(NetworkMapResponse map)
     {
         var was = (PlaceList.SelectedItem as NetworkPlace)?.Key;
+        // The side panel's chosen port belongs to the old model; a rebuild makes it stale, so drop it rather than keep
+        // showing a port from a map that no longer exists. The next tile click re-fills it from the new model.
+        _chosen = null;
+        PortWhere.Text = "";
+        PortDetail.Text = "Click a port for what is on it.";
+        OpenDeviceBtn.Visibility = Visibility.Collapsed;
         _model = new NetworkOpsNetworkModel(map);
         HeadlineText.Text = _model.Headline;
         SublineText.Text = _model.Subline + (_model.Notes.Count > 0 ? " · " + string.Join(" · ", _model.Notes) : "");
@@ -194,12 +200,14 @@ public partial class NetworkOpsNetworkWindow : Window
         Rows.ItemsSource = rows;
     }
 
-    // Every handler is async void: nothing may escape it. A cancel only ever means the window closed.
+    // Every handler is async void: nothing may escape it, so this catches everything but a cancel (which only ever
+    // means the window closed). A narrower filter let a JsonException from a changed map DTO escape and take the whole
+    // app down; the device and command-center view models already catch `is not OperationCanceledException` for this.
     private async Task Guard(Func<CancellationToken, Task> work)
     {
         try { await work(_cts.Token).ConfigureAwait(true); }
         catch (OperationCanceledException) { }
-        catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException)
+        catch (Exception ex)
         {
             StatusText.Text = $"Could not read the map: {ex.Message}";
         }

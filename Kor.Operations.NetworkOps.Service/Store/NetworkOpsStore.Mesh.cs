@@ -56,7 +56,7 @@ internal sealed partial class NetworkOpsStore
             await tx.CommitAsync(ct).ConfigureAwait(false);
             return true;
         }
-        catch (SqlException ex) when (ex.Number == 208) { return false; }   // 006 not run yet
+        catch (SqlException ex) when (MissingObject(ex, "MeshNodes (006)")) { return false; }
     }
 
     public sealed record MeshRecord(string NodeId, bool Connected, DateTime? LastConnectedUtc, DateTime LastReadUtc);
@@ -73,7 +73,7 @@ internal sealed partial class NetworkOpsStore
             while (await r.ReadAsync(ct).ConfigureAwait(false))
                 map[r.GetInt32(0)] = new MeshRecord(r.GetString(1), r.GetBoolean(2), Utc(r, 3), Utc(r, 4)!.Value);
         }
-        catch (SqlException ex) when (ex.Number == 208) { }
+        catch (SqlException ex) when (MissingObject(ex, "MeshNodes (006)")) { }
         return map;
     }
 }

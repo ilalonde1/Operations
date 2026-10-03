@@ -44,8 +44,25 @@ internal sealed class JobDispatcher(NetworkOpsStore store, IDigestSender alerts,
 
     public Task RunAsync(INetworkOpsJob job, CancellationToken ct) => RunAsync(job.Name, job.RunAsync, ct);
 
+    // One run of a given job at a time, whichever path started it. Quartz's [DisallowConcurrentExecution] only serializes
+    // the SCHEDULED path (by JobKey); TriggerPoller runs the same singleton job on demand, invisible to Quartz, so a manual
+    // "check now" and the cron run could execute together and both read-modify-write the same devices' findings at the same
+    // instant (one's raise racing the other's clear). This gate, on the path both share, closes that.
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, SemaphoreSlim> _perJob = new(StringComparer.OrdinalIgnoreCase);
+
     /// <summary>Records, runs and alerts on one unit of work; returns whether it succeeded and its summary or error.</summary>
     public async Task<(bool Success, string Result)> RunAsync(string jobName, Func<CancellationToken, Task<string>> work, CancellationToken ct)
+    {
+        var gate = _perJob.GetOrAdd(jobName, _ => new SemaphoreSlim(1, 1));
+        await gate.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            return await RunGuardedAsync(jobName, work, ct).ConfigureAwait(false);
+        }
+        finally { gate.Release(); }
+    }
+
+    private async Task<(bool Success, string Result)> RunGuardedAsync(string jobName, Func<CancellationToken, Task<string>> work, CancellationToken ct)
     {
         long runId;
         try { runId = await store.StartRunAsync(jobName, Environment.MachineName, Version, ct); }

@@ -72,7 +72,16 @@ internal sealed class LenovoBiosCatalog(ILogger<LenovoBiosCatalog> log, TimeProv
         }
         var packages = new List<LenovoBiosPackage>();
         foreach (var url in LenovoCatalog.BiosLocations(catalog))
-            packages.Add(LenovoBiosPackage.Parse(await client.GetStringAsync(url, ct).ConfigureAwait(false), url));
+        {
+            // Parse each descriptor on its own: one malformed descriptor must not drop the whole type's catalog, which
+            // would silently suppress bios-behind for every PC of that type. A network failure still propagates to the
+            // caller's catch (and its stale fallback); only a bad-content parse is skipped.
+            try { packages.Add(LenovoBiosPackage.Parse(await client.GetStringAsync(url, ct).ConfigureAwait(false), url)); }
+            catch (Exception ex) when (ex is FormatException or System.Xml.XmlException)
+            {
+                log.LogWarning("Lenovo BIOS catalog {Type}: skipping a malformed package descriptor at {Url}: {Error}", machineType, url, ex.Message);
+            }
+        }
         return packages;
     }
 }

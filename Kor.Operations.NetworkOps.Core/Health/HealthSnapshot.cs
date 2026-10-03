@@ -58,7 +58,11 @@ public sealed record HealthSnapshot
     public static HealthSnapshot Parse(string json)
     {
         var root = System.Text.Json.Nodes.JsonNode.Parse(json) ?? throw new JsonException("empty health snapshot");
-        var obj = (root is System.Text.Json.Nodes.JsonArray a ? a[0] : root)?.AsObject() ?? throw new JsonException("empty health snapshot");
+        // An empty array, or a scalar/array-of-scalar instead of an object, is a probe that returned junk-but-valid
+        // JSON. Fail as a JsonException (the one type HealthSweeper catches per machine) rather than the
+        // ArgumentOutOfRange a[0] / InvalidOperation AsObject() that would escape and abort the whole sweep.
+        var node = root is System.Text.Json.Nodes.JsonArray a ? (a.Count > 0 ? a[0] : null) : root;
+        var obj = node as System.Text.Json.Nodes.JsonObject ?? throw new JsonException("health snapshot is not an object");
         // PowerShell unrolls a one-item list to the bare item, so any list can arrive as a single
         // object (every C:-only machine's Volumes did, 2026-09-28). Wrap it back into a list.
         foreach (var name in ListProperties)

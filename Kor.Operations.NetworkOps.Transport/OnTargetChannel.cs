@@ -92,8 +92,19 @@ public sealed class OnTargetChannel
     // Pending cleanups are tracked so a process can wait for them before it exits (DrainAsync).
     private static readonly ConcurrentDictionary<Task, byte> PendingCleanups = new();
 
-    /// <summary>Waits for every one-shot service still being cleaned up. Call before the process exits.</summary>
-    public static Task DrainAsync() => Task.WhenAll(PendingCleanups.Keys.ToArray());
+    /// <summary>Waits for every one-shot service still being cleaned up. Call before the process exits.
+    /// Loops, re-snapshotting: a cleanup is registered only once its remote service has started, so a one-shot
+    /// Task.WhenAll could take its snapshot before a launch-in-flight registered and strand that KorRun service on exit.
+    /// The caller bounds this with its own timeout.</summary>
+    public static async Task DrainAsync()
+    {
+        while (!PendingCleanups.IsEmpty)
+            await Task.WhenAll(PendingCleanups.Keys.ToArray()).ConfigureAwait(false);
+    }
+
+    /// <summary>The host wires this to its log. It is called when a one-shot KorRun service could not be marked for
+    /// deletion, which leaves it installed on the target -- a leak that was previously discarded unlogged.</summary>
+    public static Action<string>? CleanupProblem;
 
     /// <summary>Creates and starts the one-shot service. Returns an error message, or null when the probe is running.</summary>
     private static async Task<string?> LaunchAsync(string computer, string serviceName, string localScript)
@@ -114,7 +125,13 @@ public sealed class OnTargetChannel
         var start = Task.Run(() => ServiceControlManager.Start(svc));
         var cleanup = start.ContinueWith(_ =>
         {
-            try { ServiceControlManager.MarkForDelete(svc); }
+            try
+            {
+                var err = ServiceControlManager.MarkForDelete(svc);
+                // A failed delete (not "already marked") leaves KorRun<id> installed on the target, invisibly: surface it.
+                if (err is not 0 and not ServiceControlManager.ErrorServiceMarkedForDelete)
+                    CleanupProblem?.Invoke($"one-shot service '{serviceName}' on {computer} was not deleted: {new Win32Exception(err).Message} ({err}) -- it is left installed");
+            }
             finally { svc.Dispose(); }
         }, TaskScheduler.Default);
         PendingCleanups.TryAdd(cleanup, 0);

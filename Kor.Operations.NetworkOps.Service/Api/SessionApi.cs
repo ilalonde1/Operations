@@ -40,7 +40,14 @@ internal static class SessionApi
             var clock = System.Diagnostics.Stopwatch.StartNew();
             Transport.OnTargetRun run;
             try { run = await runner.RunAsync(host, body.Script, timeout, wantsIdle: false, ct); }
-            catch (Exception ex) when (ex is not OperationCanceledException)
+            catch (OperationCanceledException)
+            {
+                // The request aborted or the service is stopping mid-run: close the action, or it sits "Running" forever
+                // (session-run rows are not the queued-fix rows the abandoned-fix sweep reopens at startup).
+                await s.CompleteActionAsync(actionId, false, "aborted (the request was cancelled or the service stopped)", null);
+                throw;
+            }
+            catch (Exception ex)
             {
                 await s.CompleteActionAsync(actionId, false, ex.Message, null);
                 return Results.Ok(new RemoteRunResult(actionId, dev.Name, false, route, (int)clock.ElapsedMilliseconds, null, ex.Message));

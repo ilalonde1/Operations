@@ -22,7 +22,10 @@ public sealed record UpdateScan(int ScanVersion, DateTime ScannedAt, string Comp
     public static UpdateScan Parse(string json)
     {
         var root = JsonNode.Parse(json) ?? throw new JsonException("empty update scan");
-        var obj = (root is JsonArray a ? a[0] : root)?.AsObject() ?? throw new JsonException("empty update scan");
+        // An empty array or a scalar fails as a JsonException (what UpdateScanner catches per machine), not the
+        // ArgumentOutOfRange a[0] / InvalidOperation AsObject() that would escape and abort the whole scan.
+        var node = root is JsonArray a ? (a.Count > 0 ? a[0] : null) : root;
+        var obj = node as JsonObject ?? throw new JsonException("update scan is not an object");
         var key = obj.Select(kv => kv.Key).FirstOrDefault(k => k.Equals(nameof(Updates), StringComparison.OrdinalIgnoreCase));
         if (key is not null && obj[key] is JsonObject single) { obj[key] = null; obj[key] = new JsonArray(single.DeepClone()); }
         var s = obj.Deserialize<UpdateScan>(Json) ?? throw new JsonException("empty update scan");
@@ -49,12 +52,14 @@ public static class UpdateRules
     /// <summary>The scan job owns this finding: the health and rack sweeps must leave it alone (they never raise it).</summary>
     public static bool Owns(string ruleKey) => ruleKey == Rule;
 
-    public static IReadOnlyList<Finding> Evaluate(UpdateScan scan, DateTime nowLocal)
+    // nowUtc, not local: Released (LastDeploymentChangeTime) is a UTC wall-clock date, so "how many days old" must compare
+    // against now in the same frame -- a local now vs a UTC release date reads up to a day off every day west/east of UTC.
+    public static IReadOnlyList<Finding> Evaluate(UpdateScan scan, DateTime nowUtc)
     {
         if (scan.Updates.Count == 0) return [];
         var security = scan.Updates.Where(u => u.Security).ToList();
         var oldest = security.Where(u => u.Released is not null).Select(u => u.Released!.Value).DefaultIfEmpty().Min();
-        var age = security.Count > 0 && oldest != default ? nowLocal.Date - oldest.Date : TimeSpan.Zero;
+        var age = security.Count > 0 && oldest != default ? nowUtc.Date - oldest.Date : TimeSpan.Zero;
         var outOfBand = security.Where(u => u.Severity == "Critical" && u.Released is { } r && !IsPatchTuesday(r)).ToList();
 
         var severity = security.Count == 0 ? Severity.Info

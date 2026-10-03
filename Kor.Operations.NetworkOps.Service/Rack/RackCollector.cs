@@ -137,8 +137,8 @@ internal sealed class RackCollector(IOptions<NetworkOpsOptions> options, PowerSt
             else
             {
                 try { map.SetLive(await UniFiApi.ReadLiveAsync(d.Address, o.UniFiApiPort, o.UniFiSite, o.UniFiApiUser, o.UniFiApiPassword, d.CertSha256, ct).ConfigureAwait(false), null); }
-                catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException or TaskCanceledException or System.Text.Json.JsonException)
-                { map.SetLive(null, "the UniFi live API could not be read: " + ex.Message); }
+                catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException or System.Text.Json.JsonException || (ex is TaskCanceledException && !ct.IsCancellationRequested))
+                { map.SetLive(null, "the UniFi live API could not be read: " + ex.Message); }   // a shutdown cancel is NOT a read failure: let it propagate
             }
         }
         return result;
@@ -149,7 +149,7 @@ internal sealed class RackCollector(IOptions<NetworkOpsOptions> options, PowerSt
         var o = options.Value;
         string? ip = null;
         try { using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(15) }; ip = (await http.GetStringAsync("https://api.ipify.org", ct).ConfigureAwait(false)).Trim(); }
-        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException) { }
+        catch (Exception ex) when (ex is HttpRequestException || (ex is TaskCanceledException && !ct.IsCancellationRequested)) { }   // shutdown propagates, a timeout does not
         var dns = false;
         try { dns = (await System.Net.Dns.GetHostAddressesAsync("www.microsoft.com", ct).ConfigureAwait(false)).Length > 0; }
         catch (System.Net.Sockets.SocketException) { }

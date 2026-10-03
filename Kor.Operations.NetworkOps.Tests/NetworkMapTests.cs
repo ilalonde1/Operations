@@ -248,4 +248,35 @@ public sealed class NetworkMapTests(ITestOutputHelper output)
         Assert.Equal(("USW Flex - Mark", 3), (map.PortOf("KOR-207")!.Value.Switch.Name, map.PortOf("KOR-207")!.Value.Port.Number));
         Assert.Equal("kor\\markb", map.PortOf("KOR-207")!.Value.Port.On!.User);
     }
+
+    // ---- abnormal input must degrade, not throw out of Build and freeze the whole map ----
+
+    [Fact]
+    public void A_controller_that_lists_a_device_twice_does_not_throw()
+    {
+        var dev = new UniFiDev("aa:bb:cc:dd:ee:ff", "SW-dup", "US8", "usw", "192.168.1.9", null, []);
+        var site = new UniFiSite(1_700_000_000, [dev, dev], []);   // the same device MAC twice (a re-adoption artifact)
+        Assert.Null(Record.Exception(() => NetworkMaps.Build(site, [], [], new KnownNames(new Dictionary<string, string>(), new Dictionary<string, string>()))));
+    }
+
+    [Fact]
+    public void A_live_lease_names_a_device_but_an_expired_one_does_not()
+    {
+        const long now = 1_700_000_000;
+        var at = DateTimeOffset.FromUnixTimeSeconds(now).UtcDateTime;
+        const string mac = "aa:bb:cc:00:11:22";
+        var client = new UniFiClient(mac, "", "192.168.1.50", true, null, "", null, now, "Dell");
+        var dev = new UniFiDev("de:ad:be:ef:00:01", "SW", "US8", "usw", "192.168.1.9", null,
+            [new UniFiPort(1, 1000, false, mac, "192.168.1.50", now)]);
+
+        NetEndpoint NameFrom(DateTime expires)
+        {
+            var map = NetworkMaps.Build(new UniFiSite(now, [dev], [client]), [],
+                [new DhcpLease("192.168.1.50", mac, "OLD-NAME", "Active", expires)], new KnownNames(new Dictionary<string, string>(), new Dictionary<string, string>()));
+            return map.Everything().Single(x => x.Endpoint.Mac == mac).Endpoint;
+        }
+
+        Assert.Equal("OLD-NAME", NameFrom(at.AddDays(1)).Name);          // a current lease names it
+        Assert.DoesNotContain("OLD-NAME", NameFrom(at.AddDays(-30)).Name);   // an expired one must not (the host may be reassigned)
+    }
 }

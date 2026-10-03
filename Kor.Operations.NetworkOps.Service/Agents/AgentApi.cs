@@ -53,8 +53,10 @@ internal static class AgentApi
     /// real agent's held poll or result needs (Codex re-check 2026-09-30, finding 9).
     /// </summary>
     public const int MaxAuthenticating = 16;
+    public const int MaxBeforeKey = 8;
     private static readonly SemaphoreSlim InFlight = new(MaxInFlight, MaxInFlight);
     private static readonly SemaphoreSlim Authenticating = new(MaxAuthenticating, MaxAuthenticating);
+    private static readonly SemaphoreSlim BeforeKey = new(MaxBeforeKey, MaxBeforeKey);
     private const string Caller = "kor.agent";
 
     /// <summary>
@@ -89,6 +91,23 @@ internal static class AgentApi
                 await next(h).ConfigureAwait(false);
             }
             finally { InFlight.Release(); }
+        }));
+
+    /// <summary>The two before-key routes (/package, /enrol) are unauthenticated by design, so UseAgentGate skips them.
+    /// This still bounds their body and caps how many run at once, so an anonymous loop on them cannot starve the service.
+    /// The package zip is cached and a wrong enrol code is refused in memory, so a held slot does almost no work.</summary>
+    public static void UseBeforeKeyGate(IApplicationBuilder app)
+        => app.UseWhen(h => h.Request.Path.StartsWithSegments("/agent") && IsBeforeKey(h.Request.Path), branch => branch.Use(async (HttpContext h, RequestDelegate next) =>
+        {
+            if (h.Features.Get<Microsoft.AspNetCore.Http.Features.IHttpMaxRequestBodySizeFeature>() is { IsReadOnly: false } size)
+                size.MaxRequestBodySize = 8192;   // /enrol's body is tiny; /package is a GET
+            if (!await BeforeKey.WaitAsync(TimeSpan.FromSeconds(2), h.RequestAborted).ConfigureAwait(false))
+            {
+                h.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+                return;
+            }
+            try { await next(h).ConfigureAwait(false); }
+            finally { BeforeKey.Release(); }
         }));
 
     private static NetworkOpsStore.AgentCredential Who(HttpContext h) => (NetworkOpsStore.AgentCredential)h.Items[Caller]!;

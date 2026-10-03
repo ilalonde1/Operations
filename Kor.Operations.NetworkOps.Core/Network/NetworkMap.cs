@@ -33,18 +33,24 @@ public static class NetworkMaps
     public static NetworkMap Build(UniFiSite site, IReadOnlyList<FleetPc> fleet, IReadOnlyList<DhcpLease> leases, KnownNames known, UniFiLive? live = null,
         CoreSwitchRead? core = null)
     {
-        var devices = site.Devices.ToDictionary(d => d.Mac, StringComparer.Ordinal);
+        // GroupBy, not ToDictionary: a controller export that lists a device twice (a re-adoption artifact, or the same MAC
+        // in two cases) must not throw out of Build and freeze the whole map -- every other MAC-keyed map here already dedups.
+        var devices = site.Devices.GroupBy(d => d.Mac, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
         var clients = site.Clients.GroupBy(c => c.Mac).ToDictionary(g => g.Key, g => g.OrderByDescending(c => c.LastSeen).First(), StringComparer.Ordinal);
         var pcByMac = new Dictionary<string, FleetPc>(StringComparer.Ordinal);
         foreach (var pc in fleet) foreach (var m in pc.Macs) pcByMac.TryAdd(Mac(m), pc);
-        var leaseByMac = leases.GroupBy(l => Mac(l.Mac)).ToDictionary(g => g.Key, g => g.OrderByDescending(l => l.State == "Active").First(), StringComparer.Ordinal);
+        // A long-expired lease's hostname may since have been reassigned to a different device, so an expired lease must
+        // not name a MAC (naming would then be wrong, worse than falling to maker/MAC). Keep leases with no expiry known.
+        var nowUtc = DateTimeOffset.FromUnixTimeSeconds(site.Now).UtcDateTime;
+        var leaseByMac = leases.Where(l => l.Expires is null || l.Expires > nowUtc).GroupBy(l => Mac(l.Mac))
+            .ToDictionary(g => g.Key, g => g.OrderByDescending(l => l.State == "Active").ThenByDescending(l => l.Expires ?? DateTime.MaxValue).First(), StringComparer.Ordinal);
 
         // 6 LIVE: who is connected NOW and where, which ports are up NOW -- the controller's own live word, the strongest
         // there is. It decides a port's occupant over the database's history (2026-10-02: 70 of 70 live positions matched
         // the database; what it adds is "now": KOR-1001 was on the VPN, its port's record was three days old).
         var liveClients = (live?.Clients ?? []).GroupBy(c => c.Mac).ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
         var livePorts = (live?.Devices ?? []).SelectMany(d => d.Ports.Select(p => (d.Mac, P: p))).GroupBy(x => (x.Mac, x.P.Port)).ToDictionary(g => g.Key, g => g.First().P);
-        var liveUp = (live?.Devices ?? []).ToDictionary(d => d.Mac, d => d.State == 1, StringComparer.Ordinal);
+        var liveUp = (live?.Devices ?? []).GroupBy(d => d.Mac, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.First().State == 1, StringComparer.Ordinal);
         var liveAt = liveClients.Values.Where(c => c.Wired && c.SwMac is not null && c.SwPort is not null)
             .GroupBy(c => (c.SwMac!, c.SwPort!.Value)).ToDictionary(g => g.Key, g => g.ToList());
 
@@ -161,7 +167,14 @@ public static class NetworkMaps
                 livePorts.TryGetValue((s.Mac, p.Port), out var lp);
                 var on = mac is null ? null : Describe(mac, ip, seen) with { SeenIsConnected = connected };
                 // What is plugged into a port that is up IS connected now; into one that is down, is not (the port's own live word).
-                if (on is not null && kind == "device" && lp is not null) on = on with { ConnectedNow = lp.Up };
+                if (on is not null && kind == "device")
+                {
+                    if (lp is not null) on = on with { ConnectedNow = lp.Up };
+                    // stat/sta (liveAt) and stat/device (livePorts) are independent reads that can disagree: when the box
+                    // branch found live devices on this port (connected=true) but stat/device omits the port, fold that in
+                    // so a host with live VMs behind it is not drawn "not connected now".
+                    else if (connected && liveAt.ContainsKey((s.Mac, p.Port))) on = on with { ConnectedNow = true };
+                }
                 ports.Add(new NetPort(p.Port, p.Speed, p.Poe, kind, on, displaced,
                     Up: lp?.Up, SpeedNow: lp is { Up: true } ? lp.Speed : null, Module: lp?.Sfp, PoeWatts: lp?.PoeW is > 0 ? lp.PoeW : null));
             }
@@ -192,8 +205,21 @@ public static class NetworkMaps
                 int Rank(string m) => pcByMac.ContainsKey(m) ? 0 : EdgeSwitchRules.MakerOf(m) == "VMware" ? 3
                     : Describe(m, null, 0).NameSource is "maker" or "MAC only" ? 2 : 1;
                 var here = cp.Macs.Where(m => !placed.Contains(m) && !devices.ContainsKey(m) && m != rootMac).OrderBy(Rank).ThenBy(m => m, StringComparer.Ordinal).ToList();
-                NetEndpoint? on = here.Count == 0 ? null : Describe(here[0], null, 0) with { ConnectedNow = cp.Up };
-                var behind = here.Skip(1).Select(m => Describe(m, null, 0) with { ConnectedNow = cp.Up }).ToList();
+                NetEndpoint? on;
+                List<NetEndpoint> behind;
+                if (here.Count > 0 && here.All(m => EdgeSwitchRules.MakerOf(m) == "VMware"))
+                {
+                    // Every MAC the core learned on this port is a VMware OUI: the host's own NIC was never learned (the core
+                    // gives only an unordered set, with no "switch's own last device" signal), so promoting the lowest MAC
+                    // would draw a VM as the attached device on a map an engineer trusts to find hardware. Say what is true.
+                    on = Describe(here[0], null, 0) with { Name = "VMs (host not seen)", NameSource = "VMware", ConnectedNow = cp.Up };
+                    behind = here.Select(m => Describe(m, null, 0) with { ConnectedNow = cp.Up }).ToList();
+                }
+                else
+                {
+                    on = here.Count == 0 ? null : Describe(here[0], null, 0) with { ConnectedNow = cp.Up };
+                    behind = here.Skip(1).Select(m => Describe(m, null, 0) with { ConnectedNow = cp.Up }).ToList();
+                }
                 foreach (var m in here) placed.Add(m);
                 corePorts.Add(new NetPort(cp.Port, cp.SpeedMbps ?? 0, false, on is null ? "empty" : "device", on, behind, Up: cp.Up, SpeedNow: cp.Up ? cp.SpeedMbps : null));
             }

@@ -262,12 +262,13 @@ public partial class NetworkOpsUpdatesWindow : Window
 
     private void Status(string text) => StatusText.Text = text;
 
-    // Every handler is async void: nothing may escape it. A cancel only ever means the window closed.
+    // Every handler is async void: nothing may escape it but a cancel (which only ever means the window closed). A
+    // narrower filter let an unexpected exception (e.g. a JsonException from a changed DTO) escape and crash the app.
     private async Task Guard(Func<CancellationToken, Task> work)
     {
         try { await work(_cts.Token).ConfigureAwait(true); }
         catch (OperationCanceledException) { }
-        catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException)
+        catch (Exception ex)
         {
             Status($"Could not do that: {ex.Message}");
         }

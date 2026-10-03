@@ -23,31 +23,37 @@ internal sealed class NetworkMapService(NetworkOpsStore store, MacDirectory macs
 {
     private static readonly TimeSpan SlowEvery = TimeSpan.FromMinutes(30);
     private readonly SemaphoreSlim _gate = new(1, 1);
-    private string? _unifiJson;
+    private volatile string? _unifiJson;
     private IReadOnlyList<DhcpLease> _leases = [];
     private DateTime _leasesUtc;
     private string? _leasesProblem;
     private IReadOnlyList<FleetPc> _fleet = [];
     private DateTime _fleetUtc;
 
-    public NetworkMap? Current { get; private set; }
-    public DateTime? BuiltUtc { get; private set; }
+    // The published map, its build time and its notes are ONE immutable value, swapped in a single volatile write, so a
+    // reader (GET /api/network) never sees a fresh map stamped with a stale time or notes that describe a different build.
+    private sealed record Snapshot(NetworkMap? Map, DateTime? BuiltUtc, IReadOnlyList<string> Notes);
+    private volatile Snapshot _published = new(null, null, []);
+    public NetworkMap? Current => _published.Map;
+    public DateTime? BuiltUtc => _published.BuiltUtc;
     /// <summary>What the last build could not read (leases, history), said with the map rather than hidden.</summary>
-    public IReadOnlyList<string> Notes { get; private set; } = [];
+    public IReadOnlyList<string> Notes => _published.Notes;
 
     /// <summary>The controller's read, as RackCollector got it.</summary>
     public void SetUniFi(string json) => _unifiJson = json;
 
-    private string? _liveJson;
-    private string? _liveProblem;
+    // The live read is one immutable value (json, why-not, when): set and read together, never torn, and stamped so a
+    // stale read is not presented as "now".
+    private sealed record LiveState(string? Json, string? Problem, DateTime Utc);
+    private volatile LiveState _live = new(null, null, default);
 
-    private CoreSwitchRead? _core;
+    private volatile CoreSwitchRead? _core;
 
     /// <summary>The core switch's own read (Rack/RackCollector, SNMP): its panel in the map.</summary>
     public void SetCore(CoreSwitchRead core) => _core = core;
 
     /// <summary>The controller's live API read (Rack/UniFiApi), or null and why not: the map then has no "now" in it.</summary>
-    public void SetLive(string? json, string? problem) { _liveJson = json; _liveProblem = problem; }
+    public void SetLive(string? json, string? problem) => _live = new(json, problem, DateTime.UtcNow);
 
     public async Task<string> RefreshAsync(CancellationToken ct)
     {
@@ -74,19 +80,24 @@ internal sealed class NetworkMapService(NetworkOpsStore store, MacDirectory macs
             var byIp = options.Value.Rack.Where(r => IPAddress.TryParse(r.Address, out _)).GroupBy(r => r.Address).ToDictionary(g => g.Key, g => g.First().Name, StringComparer.Ordinal);
 
             UniFiLive? live = null;
-            if (_liveJson is { } lj)
+            var liveNow = _live;   // the immutable triple, read once
+            if (liveNow.Json is { } lj)
             {
-                try { live = UniFiLive.Parse(lj); }
-                catch (JsonException ex) { notes.Add("the UniFi live read could not be parsed: " + ex.Message); }
+                // Mirror the core's 15-minute rule: a live read older than that is not presented as "connected now".
+                if (now - liveNow.Utc >= TimeSpan.FromMinutes(15))
+                    notes.Add($"the UniFi live read is {(now - liveNow.Utc).TotalMinutes:0} min old -- no \"connected now\" in this map");
+                else
+                {
+                    try { live = UniFiLive.Parse(lj); }
+                    catch (JsonException ex) { notes.Add("the UniFi live read could not be parsed: " + ex.Message); }
+                }
             }
-            else if (_liveProblem is { } why) notes.Add(why + " -- no \"connected now\" in this map");
+            else if (liveNow.Problem is { } why) notes.Add(why + " -- no \"connected now\" in this map");
             // The core's read is used only while fresh: a switch not read for 15 minutes is not drawn as if it were live.
             var core = _core is { } c && now - c.ReadUtc < TimeSpan.FromMinutes(15) ? c : null;
             if (core is null) notes.Add("the core switch has not been read in the last 15 minutes -- its panel is left out");
             var map = NetworkMaps.Build(site, _fleet, _leases, new KnownNames(byMac, byIp), live, core);
-            Current = map;
-            BuiltUtc = now;
-            Notes = notes;
+            _published = new Snapshot(map, now, notes);
             var (saved, moves) = await store.SaveNetworkMapAsync(map, now, ct).ConfigureAwait(false);
             var placed = map.Everything().ToList();
             return $"port map: {placed.Count(p => p.Placement == "port")} on a port, {placed.Count(p => p.Placement == "wireless")} wireless, " +
@@ -107,9 +118,19 @@ internal sealed class NetworkMapService(NetworkOpsStore store, MacDirectory macs
             _leasesProblem = $"DHCP leases from {server} not read ({run.Status}: {run.Error}); names from the last read{(_leasesUtc == default ? " -- none yet" : $" at {_leasesUtc:HH:mm} UTC")}";
             return;
         }
-        _leases = ParseLeases(json);
-        _leasesUtc = now;
-        _leasesProblem = null;
+        try
+        {
+            _leases = ParseLeases(json);
+            _leasesUtc = now;
+            _leasesProblem = null;
+        }
+        catch (JsonException ex)
+        {
+            // A clean Status but junk JSON (a prepended warning line, or output truncated at the channel's size cap) must
+            // not throw out of the whole refresh and freeze the map forever (it did: _leasesUtc stayed unset, so every
+            // sweep re-threw). Degrade to the last-good leases with a note, like the fleet read above.
+            _leasesProblem = $"DHCP leases from {server} could not be parsed ({ex.Message}); names from the last read{(_leasesUtc == default ? " -- none yet" : $" at {_leasesUtc:HH:mm} UTC")}";
+        }
     }
 
     /// <summary>The probe's output: an array of leases -- or, as the channel can wrap it, an array holding that array.</summary>

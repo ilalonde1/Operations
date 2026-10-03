@@ -118,7 +118,7 @@
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <Border Width="156" Height="74" Margin="0,0,8,8" Background="White" CornerRadius="7" BorderBrush="{Binding Outline}" BorderThickness="{Binding OutlineThickness}"
+                            <Border Width="156" MinHeight="74" Margin="0,0,8,8" Background="White" CornerRadius="7" BorderBrush="{Binding Outline}" BorderThickness="{Binding OutlineThickness}"
                                     ToolTip="{Binding ToolTip}" Cursor="Hand" MouseLeftButtonUp="ComponentTile_Click">
                                 <Grid>
                                     <Grid.ColumnDefinitions>

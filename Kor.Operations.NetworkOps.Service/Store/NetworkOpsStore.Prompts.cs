@@ -142,7 +142,7 @@ internal sealed partial class NetworkOpsStore
                 list.Add(new PromptRunRow(r.GetInt64(0), r.GetString(1), r.GetString(2), r.GetString(3), Utc(r, 4)!.Value, Utc(r, 5),
                     S(r, 6), S(r, 7), S(r, 8), S(r, 9), S(r, 10), S(r, 11)));
         }
-        catch (SqlException ex) when (ex.Number == 208) { }
+        catch (SqlException ex) when (MissingObject(ex, "Learning layer (prompts/knowledge migration)")) { }
         return list;
     }
 
@@ -156,6 +156,9 @@ internal sealed partial class NetworkOpsStore
     {
         var knowledge = await KnowledgeAvailableAsync(ct).ConfigureAwait(false);
         await using var c = await OpenAsync(ct).ConfigureAwait(false);
+        // One transaction for the two updates: a failure between them must not leave the run 'accepted' while its card
+        // stays 'proposed' (as RecordPromptOutcomeAsync already does for the outcome+card pair).
+        await using var tx = (SqlTransaction)await c.BeginTransactionAsync(ct).ConfigureAwait(false);
         await using var cmd = Cmd(c, knowledge
             ? """
               UPDATE NetworkOps.PromptRuns SET LearnedStatus = @s WHERE RunId = @id AND LearnedStatus = 'proposed';
@@ -167,11 +170,13 @@ internal sealed partial class NetworkOpsStore
               END
               ELSE SELECT 0;
               """
-            : "UPDATE NetworkOps.PromptRuns SET LearnedStatus = @s WHERE RunId = @id AND LearnedStatus = 'proposed'; SELECT @@ROWCOUNT;");
+            : "UPDATE NetworkOps.PromptRuns SET LearnedStatus = @s WHERE RunId = @id AND LearnedStatus = 'proposed'; SELECT @@ROWCOUNT;", tx);
         cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = runId;
         cmd.Parameters.Add("@s", SqlDbType.VarChar, 16).Value = accept ? "accepted" : "rejected";
         cmd.Parameters.Add("@by", SqlDbType.NVarChar, 128).Value = by;
-        return Convert.ToInt32(await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false)) == 1;
+        var decided = Convert.ToInt32(await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false)) == 1;
+        await tx.CommitAsync(ct).ConfigureAwait(false);
+        return decided;
     }
 
     /// <summary>Accepted learnings about the same kind of problem (rule family), for every later prompt about it.</summary>
@@ -192,7 +197,7 @@ internal sealed partial class NetworkOpsStore
                 if (FixLearning.FamilyOf(r.GetString(0)) == family)
                     list.Add(new SessionLearning(Utc(r, 1) ?? DateTime.UtcNow, r.GetString(2), r.GetString(3)));
         }
-        catch (SqlException ex) when (ex.Number == 208) { }
+        catch (SqlException ex) when (MissingObject(ex, "Learning layer (prompts/knowledge migration)")) { }
         return list;
     }
 
@@ -214,7 +219,7 @@ internal sealed partial class NetworkOpsStore
                 list.Add(new KnowledgeCard(r.GetInt64(0), r.GetString(1), r.GetString(2), r.GetString(3), S(r, 4), S(r, 5), S(r, 6), S(r, 7), S(r, 8),
                     r.IsDBNull(9) ? null : r.GetInt64(9), r.GetString(10), Utc(r, 11)!.Value));
         }
-        catch (SqlException ex) when (ex.Number == 208) { }
+        catch (SqlException ex) when (MissingObject(ex, "Learning layer (prompts/knowledge migration)")) { }
         return list;
     }
 }

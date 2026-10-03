@@ -126,6 +126,11 @@ internal sealed class ActionRunner(NetworkOpsStore store, MachineRunner runner, 
             log.LogError(ex, "FIX {Id} failed", a.ActionId);
             await store.CompleteActionAsync(a.ActionId, false, ex.Message, null);
         }
+        catch (OperationCanceledException)
+        {
+            // Shutdown mid-fix. This task is fire-and-forget (unawaited), so letting the cancel escape would be an
+            // UNOBSERVED task exception. The action is left Running and reopened on next start (AbandonRunningActionsAsync).
+        }
     }
 
     /// <summary>

@@ -33,6 +33,11 @@ Log.Logger = new LoggerConfiguration()
 
 try
 {
+    // Surface one-shot KorRun services that could not be cleaned off a target (a leak that was discarded unlogged).
+    Kor.Operations.NetworkOps.Transport.OnTargetChannel.CleanupProblem = msg => Log.Warning("OnTarget cleanup: {Problem}", msg);
+    // Surface a table that reads as "invalid object" AFTER its migration ran (a drop/rename), vs genuine pre-migration state.
+    Kor.Operations.NetworkOps.Service.Store.NetworkOpsStore.SchemaGap = msg => Log.Warning("Schema: {Problem}", msg);
+
     // A service inherits services.exe's environment, read at BOOT: a KOR_NETWORKOPS_* machine variable
     // set later is invisible until APP01 restarts. Take any the process is missing from the machine
     // store itself, so a setting applies on a service restart, not a server reboot.

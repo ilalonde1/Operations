@@ -73,8 +73,8 @@ public partial class KorRemoteViewerWindow : Window
     {
         try
         {
-            _environment ??= CoreWebView2Environment.CreateAsync(null, ProfileFolder);
-            await View.EnsureCoreWebView2Async(await _environment.ConfigureAwait(true)).ConfigureAwait(true);
+            var env = _environment ??= CoreWebView2Environment.CreateAsync(null, ProfileFolder);
+            await View.EnsureCoreWebView2Async(await env.ConfigureAwait(true)).ConfigureAwait(true);
             var core = View.CoreWebView2;
             core.Settings.AreDevToolsEnabled = false;
             core.Settings.IsStatusBarEnabled = false;
@@ -83,9 +83,14 @@ public partial class KorRemoteViewerWindow : Window
             core.DownloadStarting += OnDownload;
             View.Source = new Uri(_url);
         }
-        catch (Exception ex) when (ex is WebView2RuntimeNotFoundException or InvalidOperationException or System.Runtime.InteropServices.COMException)
+        // Loaded is async void, so nothing may escape. The environment is a process-wide cached Task built with
+        // ??=: a locked/busy profile folder faults CreateAsync with IOException/UnauthorizedAccessException, and a
+        // faulted Task would be handed to every later Connect forever -- so on failure we drop it to let the next
+        // attempt rebuild it. (The cert-not-found/runtime-missing cases keep a good env and just report.)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            _vm.Apply(new BridgeState("desktop", Missing: ["the WebView2 runtime (" + ex.Message + ")"]));
+            if (_environment is { IsFaulted: true } or { IsCanceled: true }) _environment = null;
+            _vm.Apply(new BridgeState("desktop", Missing: ["the remote viewer could not start (" + ex.Message + ")"]));
         }
     }
 

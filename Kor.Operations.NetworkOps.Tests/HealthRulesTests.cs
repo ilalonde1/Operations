@@ -139,6 +139,13 @@ public sealed class HealthRulesTests
         Assert.Contains("crash-loop:revit.exe", keys);
     }
 
+    [Theory]
+    [InlineData("[]")]        // empty array -> a[0] used to throw ArgumentOutOfRange, escaping HealthSweeper's JsonException catch
+    [InlineData("42")]        // a scalar -> AsObject() used to throw InvalidOperation
+    [InlineData("[\"x\"]")]
+    public void A_probe_that_returns_junk_but_valid_JSON_fails_as_a_JsonException(string json)
+        => Assert.Throws<System.Text.Json.JsonException>(() => HealthSnapshot.Parse(json));
+
     // ---- threshold edges, synthetic ----
 
     private static HealthSnapshot Clean() => new() { Computer = "SYNTH", CollectedAt = new DateTime(2026, 9, 28), WmiHealthy = true };

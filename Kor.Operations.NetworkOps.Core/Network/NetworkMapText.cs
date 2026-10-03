@@ -68,11 +68,17 @@ public static class NetworkMapText
 
     /// <summary>"KOR-207 | kor\markb (usual) | 192.168.1.73 | seen 2026-09-29" -- and how it was named, when not by its agent.</summary>
     // " | ", not " · ": the middle dot printed as "?" in a Windows console (2026-10-02).
+    // A DHCP Option-12 hostname or a UniFi client name is device-advertised free text: it can carry the " | " column
+    // delimiter or a newline, which would add a phantom column or break the one-port-per-line layout (and the "N of M"
+    // search output). Neutralise the delimiter and collapse control characters before joining.
+    private static string? Clean(string? s) => s is null ? null
+        : System.Text.RegularExpressions.Regex.Replace(s, "[\u0000-\u001F\u007F]", " ").Replace("|", "/").Trim();
+
     public static string Line(NetEndpoint e)
         => string.Join(" | ", new[]
         {
-            e.Name,
-            e.User is { } u ? $"{u}{(e.UserSource is { } us ? $" ({us})" : "")}" : null,
+            Clean(e.Name),
+            e.User is { } u ? Clean($"{u}{(e.UserSource is { } us ? $" ({us})" : "")}") : null,
             e.Ip,
             e.NameSource is "NetworkOps agent" ? null : $"named by {e.NameSource}{(e.Maker is { } m && e.NameSource != "maker" ? $", {m}" : "")}",
             e.ConnectedNow switch
