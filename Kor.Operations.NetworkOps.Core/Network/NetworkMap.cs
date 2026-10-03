@@ -123,17 +123,20 @@ public static class NetworkMaps
         }
 
         // Every other wired client the controller recorded on a port: "also seen" there (history, or beyond a link).
-        var wireless = new List<NetEndpoint>();
+        var wireless = new List<(NetEndpoint E, string? ApMac)>();
         var unplaced = new List<NetEndpoint>();
         // The tree's members are not endpoints: the UniFi devices, and the parents their uplinks lead to (the core switch).
         var tree = site.Devices.Select(d => d.Mac).Concat(site.Devices.Select(d => d.Uplink?.Mac).OfType<string>()).ToHashSet(StringComparer.Ordinal);
+        // A client's access point / switch is matched by MAC, and shown by its CURRENT name: the controller keeps the name it
+        // had when the client last connected, so after the BMZ -> KOR rename (2026-10-02) a name match lost every wireless client.
+        string ViaName(UniFiClient c) => c.UplinkMac is { } m && devices.TryGetValue(m, out var d) ? d.Label : c.UplinkName;
         foreach (var c in clients.Values.OrderBy(c => c.Mac, StringComparer.Ordinal))
         {
             if (placed.Contains(c.Mac) || tree.Contains(c.Mac)) continue;
-            if (!c.Wired) { wireless.Add(Describe(c.Mac, c.Ip, c.LastSeen) with { Via = c.UplinkName }); continue; }
+            if (!c.Wired) { wireless.Add((Describe(c.Mac, c.Ip, c.LastSeen) with { Via = ViaName(c) }, c.UplinkMac)); continue; }
             if (c.UplinkMac is { } up && c.Port is { } port && portsBySwitch.TryGetValue(up, out var ports) && ports.FindIndex(x => x.Number == port) is var i and >= 0)
                 ports[i] = ports[i] with { AlsoSeen = [.. ports[i].AlsoSeen, Describe(c.Mac, c.Ip, c.LastSeen)] };
-            else unplaced.Add(Describe(c.Mac, c.Ip, c.LastSeen) with { Via = c.UplinkName });
+            else unplaced.Add(Describe(c.Mac, c.Ip, c.LastSeen) with { Via = ViaName(c) });
         }
 
         var list = ordered.Select(o => new NetSwitch(o.Dev.Mac, o.Dev.Label, o.Dev.Model, o.Dev.Ip,
@@ -141,10 +144,10 @@ public static class NetworkMaps
                 o.Dev.Uplink?.Port, o.Dev.Uplink?.LocalPort, o.Depth, portsBySwitch[o.Dev.Mac]))
             .ToList();
         var aps = site.Devices.Where(d => d.Type == "uap").OrderBy(d => d.Label, StringComparer.OrdinalIgnoreCase)
-            .Select(d => new NetAccessPoint(d.Mac, d.Label, d.Model, d.Ip, wireless.Where(w => w.Via == d.Label).OrderBy(w => w.Name, StringComparer.OrdinalIgnoreCase).ToList()))
+            .Select(d => new NetAccessPoint(d.Mac, d.Label, d.Model, d.Ip, wireless.Where(w => w.ApMac == d.Mac).Select(w => w.E).OrderBy(w => w.Name, StringComparer.OrdinalIgnoreCase).ToList()))
             .ToList();
         return new NetworkMap(DateTimeOffset.FromUnixTimeSeconds(site.Now).UtcDateTime, list, aps,
-            wireless.Where(w => !aps.Any(a => a.Name == w.Via)).ToList(), unplaced);
+            wireless.Where(w => !aps.Any(a => a.Mac == w.ApMac)).Select(w => w.E).ToList(), unplaced);
     }
 
     /// <summary>aa-BB-cc... / AA:BB:... -> aa:bb:...: the one spelling every source is compared in.</summary>

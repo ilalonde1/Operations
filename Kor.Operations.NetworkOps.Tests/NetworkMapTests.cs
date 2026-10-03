@@ -122,6 +122,32 @@ public sealed class NetworkMapTests(ITestOutputHelper output)
         File.WriteAllText(Path.Combine(Path.GetTempPath(), "netops-network-fixture.txt"), text);   // looked at, 2026-10-02
     }
 
+    // THE CLASS: anything joined on a device's NAME breaks when it is renamed. Found twice on 2026-10-02 at the BMZ -> KOR
+    // rename: the move history (switch names; fixed with 011) and the access points' wireless clients (all three showed 0,
+    // because each client remembers its AP by the name it had). A differential: rename EVERY UniFi device -- the clients keep
+    // the old names, exactly as the live controller does -- and everything but the names must come out the same.
+    // COVERS: every placement (device, placement, switch by MAC, port), each access point's clients, the tree (parent, port,
+    // depth). DOES NOT: the store's rows (IsMove is tested apart) or the app. WOULD NOT CATCH: a join on a PC's name -- PCs
+    // are named by their agent and are not renamed here.
+    [Fact]
+    public void Renaming_every_UniFi_device_changes_nothing_but_names()
+    {
+        var json = System.Text.Json.Nodes.JsonNode.Parse(Fx("unifi-2026-10-02.json"))!;
+        foreach (var d in json["devices"]!.AsArray()) d!["name"] = "Renamed " + (string?)d["mac"];
+        var renamed = NetworkMaps.Build(UniFiSite.Parse(json.ToJsonString()), Fleet(), Leases(),
+            new KnownNames(new Dictionary<string, string> { [CoreMac] = "Core switch (EdgeSwitch 10G)" }, new Dictionary<string, string>()));
+        var before = Map();
+
+        static IEnumerable<string> Where(NetworkMap m) => m.Everything().Select(p => $"{p.Endpoint.Mac} {p.Placement} {p.SwitchMac} {p.Port}").Order();
+        Assert.Equal(Where(before), Where(renamed));
+        // Lists sort by name, so their ORDER may differ: compared in MAC order.
+        Assert.Equal(before.AccessPoints.Select(a => (a.Mac, a.Clients.Count)).Order(), renamed.AccessPoints.Select(a => (a.Mac, a.Clients.Count)).Order());
+        Assert.Equal(before.Switches.Select(s => (s.Mac, s.ParentMac, s.ParentPort, s.Depth)).Order(), renamed.Switches.Select(s => (s.Mac, s.ParentMac, s.ParentPort, s.Depth)).Order());
+        Assert.Equal(31, renamed.AccessPoints.Sum(a => a.Clients.Count) + renamed.OtherWireless.Count);
+        Assert.True(renamed.AccessPoints.Sum(a => a.Clients.Count) > 0, "the access points lost their wireless clients");
+        Assert.All(renamed.AccessPoints.SelectMany(a => a.Clients), c => Assert.StartsWith("Renamed ", c.Via));   // shown by the CURRENT name
+    }
+
     [Fact]
     public void Desk_switches_show_whose_desk_it_is()
     {
