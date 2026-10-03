@@ -225,19 +225,27 @@ public sealed class NetworkOpsDeviceViewModel : ObservableObject
         var parts = IsRack
             ? (_readings is { } readings ? Kor.Operations.NetworkOps.Core.Rack.RackComponents.Of(_snapshot.FactsOf(_device.Name), readings, open) : [])
             : (_lastCheck is { } check ? Kor.Operations.NetworkOps.Core.Health.PcComponents.Of(check, open) : []);
+        var shown = _selectedPart is { } was ? (was.Part.Kind, was.Part.Title, was.Part.Line1) : default;
+        _selectedPart = null;
         foreach (var part in parts)
         {
             var about = OpenFindings.Where(r => part.RuleKeys.Contains(r.Finding.RuleKey)).Select(r => r.Title).ToList();
-            Components.Add(new ComponentTile
+            var tile = new ComponentTile
             {
                 Part = part,
-                ToolTip = about.Count > 0 ? string.Join("\n", about) + "\n(click to show it)"
-                        : part.Detail is { Length: > 0 } detail ? $"{part.Title}:\n{detail.Replace("; ", "\n")}"   // a switch port: everything attached
-                        : $"{part.Title}: {part.Line1}{(part.Line2.Length > 0 ? " · " + part.Line2 : "")}",
-            });
+                ToolTip = about.Count > 0 ? string.Join("\n", about) + "\n(click to show it; click again for the part)"
+                        : part.Detail is { Length: > 0 } detail ? $"{part.Title}:\n{detail.Replace("; ", "\n")}\n(click for more)"   // a switch port: everything attached
+                        : $"{part.Title}: {part.Line1}{(part.Line2.Length > 0 ? " · " + part.Line2 : "")}\n(click for more)",
+            };
+            // A rebuild (a refresh, a finding cleared) keeps the part that was showing, matched by what it is.
+            if (shown.Kind is not null && (part.Kind, part.Title, part.Line1) == shown) { tile.IsSelected = true; _selectedPart = tile; }
+            Components.Add(tile);
         }
         OnPropertyChanged(nameof(HasComponents));
         OnPropertyChanged(nameof(ShowsHardwareLine));
+        OnPropertyChanged(nameof(SelectedPart));
+        OnPropertyChanged(nameof(ShowsPart));
+        OnPropertyChanged(nameof(ShowsExplanation));
     }
 
     /// <summary>A tile was clicked: show the first open finding about that part.</summary>
@@ -245,6 +253,47 @@ public sealed class NetworkOpsDeviceViewModel : ObservableObject
     {
         if (OpenFindings.FirstOrDefault(r => tile.Part.RuleKeys.Contains(r.Finding.RuleKey)) is { } row) SelectedFinding = row;
     }
+
+    /// <summary>
+    /// A tile was clicked (Ian, 2026-10-02: "why don't the tiles click anywhere? ... what does clicking on it allow?").
+    /// A part with an open finding shows the finding -- what is wrong comes first; clicked again, or a healthy part, it shows
+    /// "About this part": everything known about it, in the panel where a finding's explanation goes.
+    /// </summary>
+    public void ClickTile(ComponentTile tile)
+    {
+        var finding = OpenFindings.FirstOrDefault(r => tile.Part.RuleKeys.Contains(r.Finding.RuleKey));
+        if (finding is not null && !(SelectedPart is null && ReferenceEquals(SelectedFinding, finding)))
+        {
+            SelectedPart = null;
+            SelectedFinding = finding;
+            return;
+        }
+        SelectedPart = tile;
+    }
+
+    private ComponentTile? _selectedPart;
+    /// <summary>The part whose "About this part" is showing in place of a finding's explanation; null shows the explanation.</summary>
+    public ComponentTile? SelectedPart
+    {
+        get => _selectedPart;
+        set
+        {
+            if (ReferenceEquals(_selectedPart, value)) return;
+            if (_selectedPart is not null) _selectedPart.IsSelected = false;
+            _selectedPart = value;
+            if (value is not null) value.IsSelected = true;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(ShowsPart));
+            OnPropertyChanged(nameof(ShowsExplanation));
+            OnPropertyChanged(nameof(SelectedPartFindings));
+        }
+    }
+    public bool ShowsPart => _selectedPart is not null;
+    public bool ShowsExplanation => _selectedPart is null;
+    /// <summary>The part showing has open findings: the panel offers them.</summary>
+    public string SelectedPartFindings => _selectedPart is { } t && t.Part.RuleKeys.Count > 0
+        ? $"{t.Part.RuleKeys.Count} open finding{(t.Part.RuleKeys.Count == 1 ? "" : "s")} about this part — click the tile again, or pick it in Open now."
+        : "";
 
     public ObservableCollection<ClearedRow> Cleared { get; } = new();
     public ObservableCollection<ChangeRow> Changes { get; } = new();
@@ -268,6 +317,8 @@ public sealed class NetworkOpsDeviceViewModel : ObservableObject
         {
             if (SetField(ref _selectedFinding, value))
             {
+                // Picking a finding (in the grid, or by its tile) puts its explanation back in the panel.
+                if (value is not null) SelectedPart = null;
                 Explain();
                 OnPropertyChanged(nameof(CanFix));
             }

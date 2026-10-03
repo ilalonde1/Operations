@@ -20,7 +20,7 @@ public sealed class SwitchPortsTests
 {
     private const string Ifs = "1.3.6.1.2.1.2.2.1.2";
 
-    private static Dictionary<string, string> Walk() => new()
+    internal static Dictionary<string, string> Walk() => new()
     {
         [$"{Ifs}.1"] = "\"Slot: 0 Port: 1 10G - Level\"", [$"{Ifs}.2"] = "\"Slot: 0 Port: 2 10G - Level\"", [$"{Ifs}.3"] = "\"CPU Interface for Slot: 5 Port: 1\"",
         ["1.3.6.1.2.1.2.2.1.8.1"] = "1", ["1.3.6.1.2.1.2.2.1.8.2"] = "1", ["1.3.6.1.2.1.2.2.1.8.3"] = "1",

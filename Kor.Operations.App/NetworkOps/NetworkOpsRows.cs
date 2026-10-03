@@ -105,7 +105,7 @@ public sealed class FleetRow
 
 /// <summary>One part of a PC as a tile in its window's "This PC" strip (Core/Health/PcComponents decides what and which
 /// findings are about it; this only draws it).</summary>
-public sealed class ComponentTile
+public sealed class ComponentTile : System.ComponentModel.INotifyPropertyChanged
 {
     private static readonly Brush Clear = FreezeHex(0xCB, 0xD2, 0xD9);
     private static readonly Brush Bar = FreezeHex(0x5B, 0x7A, 0x99);
@@ -138,6 +138,23 @@ public sealed class ComponentTile
         _ => "",
     };
     public string ToolTip { get; init; } = "";
+
+    /// <summary>"About this part": everything known about it, as label/value rows (Core: PcComponent.Info).</summary>
+    public IReadOnlyList<PartInfo> Info => Part.Info ?? [];
+    public string Heading => Part.Line1.Length > 0 ? $"{Part.Title} — {Part.Line1}" : Part.Title;
+
+    private static readonly Brush Edge = FreezeHex(0xE5, 0xE7, 0xEB);
+    private static readonly Brush Chosen = FreezeHex(0x5B, 0x7A, 0x99);
+    private bool _isSelected;
+    /// <summary>The tile whose "About this part" is showing: outlined, so which part the panel is about is never a guess.</summary>
+    public bool IsSelected
+    {
+        get => _isSelected;
+        set { if (_isSelected == value) return; _isSelected = value; PropertyChanged?.Invoke(this, new(nameof(IsSelected))); PropertyChanged?.Invoke(this, new(nameof(Outline))); PropertyChanged?.Invoke(this, new(nameof(OutlineThickness))); }
+    }
+    public Brush Outline => _isSelected ? Chosen : Edge;
+    public System.Windows.Thickness OutlineThickness => new(_isSelected ? 2 : 1);
+    public event System.ComponentModel.PropertyChangedEventHandler? PropertyChanged;
 
     private static Brush FreezeHex(byte r, byte g, byte b) { var x = new SolidColorBrush(Color.FromRgb(r, g, b)); x.Freeze(); return x; }
 }

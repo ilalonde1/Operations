@@ -64,6 +64,48 @@ public sealed class NetworkOpsComponentTilesTests
         Assert.Equal("disk-errors:st2000dm006-2dm164", vm.SelectedFinding!.Finding.RuleKey);
     }
 
+    // Ian, 2026-10-02: "why don't the tiles click anywhere? ... what does clicking on it allow?"
+    [Fact]
+    public void A_healthy_tile_shows_the_part_and_a_tile_with_a_finding_shows_the_finding_then_the_part()
+    {
+        var vm = Window();
+        vm.SetLastCheck(Kor208NCheck());
+        Assert.True(vm.ShowsExplanation);
+
+        var cpu = vm.Components.Single(t => t.Part.Kind == "cpu");
+        vm.ClickTile(cpu);
+        Assert.Same(cpu, vm.SelectedPart);
+        Assert.True(vm.ShowsPart);
+        Assert.False(vm.ShowsExplanation);
+        Assert.True(cpu.IsSelected);
+        Assert.Contains(cpu.Info, r => r.Label == "Processor");
+
+        var d = vm.Components.Single(t => t.Title.StartsWith("D:", StringComparison.Ordinal));
+        vm.ClickTile(d);                                                          // what is wrong first
+        Assert.Null(vm.SelectedPart);
+        Assert.False(cpu.IsSelected);
+        Assert.Equal("disk-errors:st2000dm006-2dm164", vm.SelectedFinding!.Finding.RuleKey);
+        vm.ClickTile(d);                                                          // again: the drive itself
+        Assert.Same(d, vm.SelectedPart);
+        Assert.Contains(d.Info, r => r.Label == "Model" && r.Value == "ST2000DM006-2DM164");
+        Assert.StartsWith("1 open finding", vm.SelectedPartFindings);
+
+        vm.SelectedFinding = vm.OpenFindings.Single(r => r.Finding.RuleKey.StartsWith("crash-loop", StringComparison.Ordinal));
+        Assert.Null(vm.SelectedPart);                                             // picking a finding brings its explanation back
+        Assert.True(vm.ShowsExplanation);
+    }
+
+    [Fact]
+    public void The_part_showing_survives_a_refresh()
+    {
+        var vm = Window();
+        vm.SetLastCheck(Kor208NCheck());
+        vm.ClickTile(vm.Components.Single(t => t.Part.Kind == "memory"));
+        vm.SetLastCheck(Kor208NCheck());                                          // a new check rebuilds every tile
+        Assert.Equal("memory", vm.SelectedPart!.Part.Kind);
+        Assert.Same(vm.SelectedPart, vm.Components.Single(t => t.IsSelected));
+    }
+
     [Fact]
     public void An_acknowledged_finding_does_not_colour_its_part()
     {

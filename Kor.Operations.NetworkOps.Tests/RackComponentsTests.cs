@@ -53,7 +53,13 @@ public sealed class RackComponentsTests
     {
         var t = Tiles("Core switch (EdgeSwitch 10G)", new() { ["fw.version"] = "1.8.1" }, ("switch.port-down:0/5", Severity.Warning));
         var ports = t.Single(x => x.Kind == "ports");
-        Assert.EndsWith(" up", ports.Line1);
+        // 16 front-panel ports, 9 up. This read (before 2026-10-02's anchor) still holds the CPU interface: it is no port, so
+        // not "10 of 17", no 17th light, and no "Port 0" tile (the render showed all three).
+        Assert.Equal("9 of 16 up", ports.Line1);
+        Assert.Equal(16, ports.Lights!.Count);
+        Assert.Equal(16, ports.Info!.Count);
+        Assert.Equal(9, t.Count(x => x.Kind == "port"));
+        Assert.DoesNotContain(t, x => x.Title == "Port 0");
         Assert.Equal((Severity?)Severity.Warning, ports.Worst);
     }
 

@@ -118,7 +118,7 @@
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <Border Width="156" Height="74" Margin="0,0,8,8" Background="White" CornerRadius="7" BorderBrush="#E5E7EB" BorderThickness="1"
+                            <Border Width="156" Height="74" Margin="0,0,8,8" Background="White" CornerRadius="7" BorderBrush="{Binding Outline}" BorderThickness="{Binding OutlineThickness}"
                                     ToolTip="{Binding ToolTip}" Cursor="Hand" MouseLeftButtonUp="ComponentTile_Click">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
@@ -249,9 +249,35 @@
                 </Grid>
             </Border>
 
-            <!-- The selected finding, explained. -->
+            <!-- The selected finding, explained; or, when a tile is clicked, everything known about that part. -->
             <Border Grid.Column="1" Style="{StaticResource Card}" Margin="5,0,0,0" Padding="16,12">
-                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <Grid>
+                <ScrollViewer x:Name="PartPanel" VerticalScrollBarVisibility="Auto" Visibility="{Binding ShowsPart, Converter={StaticResource BoolToVis}}">
+                    <StackPanel>
+                        <DockPanel>
+                            <Button DockPanel.Dock="Right" Content="✕" Style="{StaticResource Ops.Link}" Click="ClosePart_Click" VerticalAlignment="Top"
+                                    ToolTip="Back to the selected finding"/>
+                            <TextBlock Text="About this part" Style="{StaticResource Ops.SectionTitle}"/>
+                        </DockPanel>
+                        <TextBlock Text="{Binding SelectedPart.Heading}" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,6,0,8"/>
+                        <ItemsControl ItemsSource="{Binding SelectedPart.Info}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="0,2,0,2">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="130"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="{Binding Label}" Foreground="{StaticResource Text.Secondary}" TextWrapping="Wrap" Margin="0,0,10,0"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding Value}" TextWrapping="Wrap"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <TextBlock Text="{Binding SelectedPartFindings}" TextWrapping="Wrap" FontStyle="Italic" Margin="0,10,0,0" Foreground="{StaticResource Text.Secondary}"/>
+                    </StackPanel>
+                </ScrollViewer>
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Visibility="{Binding ShowsExplanation, Converter={StaticResource BoolToVis}}">
                     <StackPanel>
                         <TextBlock Text="What it means" Style="{StaticResource Ops.SectionTitle}"/>
                         <TextBlock Text="{Binding Meaning}" TextWrapping="Wrap" Margin="0,6,0,0"/>
@@ -278,6 +304,7 @@
                         <TextBlock Text="{Binding IfIgnored}" TextWrapping="Wrap"/>
                     </StackPanel>
                 </ScrollViewer>
+                </Grid>
             </Border>
         </Grid>
 

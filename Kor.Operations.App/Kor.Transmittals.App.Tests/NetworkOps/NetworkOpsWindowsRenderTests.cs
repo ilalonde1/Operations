@@ -98,6 +98,12 @@ public sealed class NetworkOpsWindowsRenderTests
             var vm = new NetworkOpsDeviceViewModel(reader, rack with { Devices = [.. rack.Devices, dev] }, dev);
             vm.SetReadings(r);
             written += Render(new NetworkOpsDeviceWindow(vm), Path.Combine(dir, $"{label}-rack-{new string(name.Where(char.IsLetterOrDigit).ToArray())}.png"));
+            // "About this part" for the tile with the most to say: what clicking a tile shows.
+            if (vm.Components.OrderByDescending(t => t.Info.Count).FirstOrDefault() is { } richest)
+            {
+                vm.SelectedPart = richest;
+                written += Render(new NetworkOpsDeviceWindow(vm), Path.Combine(dir, $"{label}-rack-{new string(name.Where(char.IsLetterOrDigit).ToArray())}-part.png"));
+            }
         }
 
         // The PC window on the worst PC: the one with the most to explain.
@@ -107,6 +113,12 @@ public sealed class NetworkOpsWindowsRenderTests
         else device.SetLastCheck(NetworkOpsComponentTilesTests.Kor208NCheck());   // the "This PC" strip, from a real v10 check
         written += Render(new NetworkOpsDeviceWindow(device), Path.Combine(dir, $"{label}-pc-{worst.Name}.png"));
         if (label != "fixture") return written;
+        // The failing drive's "About this part": the case with the most on it.
+        if ((device.Components.FirstOrDefault(t => t.Part.Kind == "drive" && !t.Part.IsSystem) ?? device.Components.FirstOrDefault()) is { } part)
+        {
+            device.SelectedPart = part;
+            written += Render(new NetworkOpsDeviceWindow(device), Path.Combine(dir, $"{label}-pc-{worst.Name}-part.png"));
+        }
 
         // The Fix dialog on a PC someone is actively using, with the restart chosen: the case with the most on it
         // (the warning, the relabelled button). It sizes to its content, so it is given a height to render into.
