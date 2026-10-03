@@ -33,6 +33,8 @@ public static class MeshLinks
     /// <summary>The page is a device link (signing in lands on MeshCentral's home page instead; the viewer sends it back).</summary>
     public static bool IsDeviceLink(Uri? page) => page?.Query.Contains("gotonode=", StringComparison.Ordinal) == true;
 
-    public static string? ViewerUrl(string? baseUrl, string? meshNodeId)
-        => DeviceUrl(baseUrl, meshNodeId, viewMode: 11) is { } url ? $"{url}&hide={ViewerHide}" : null;
+    /// <summary>A device page for the app's own window with MeshCentral's chrome hidden: the Desktop tab (viewMode 11, the
+    /// default) for Connect, or the general page (viewMode 10) for Web-RDP -- both in the same clean window, no browser.</summary>
+    public static string? ViewerUrl(string? baseUrl, string? meshNodeId, int viewMode = 11)
+        => DeviceUrl(baseUrl, meshNodeId, viewMode) is { } url ? $"{url}&hide={ViewerHide}" : null;
 }

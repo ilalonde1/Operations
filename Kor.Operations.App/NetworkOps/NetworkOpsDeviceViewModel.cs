@@ -95,9 +95,9 @@ public sealed class NetworkOpsDeviceViewModel : ObservableObject
     /// <summary>The header's "More" menu has something in it.</summary>
     public bool ShowsMore => ShowsWake || ShowsRemote || ShowsAgent;
 
-    /// <summary>MeshCentral's page for this device (General tab), where "Web-RDP" opens a sharp, full-size RDP session in the
-    /// browser -- the way to work on a PC with no monitor, which otherwise runs at 1024x768.</summary>
-    public string? RdpPageUrl => MeshLinks.DeviceUrl(NetworkOpsClient.MeshUrl, _device.MeshNodeId, viewMode: 10);
+    /// <summary>The device's Web-RDP page (full-size session, for a PC with no monitor that otherwise shows 1024x768) in the
+    /// app's OWN viewer window -- same clean window as Connect, MeshCentral's chrome hidden, no browser.</summary>
+    public string? RdpViewerUrl => MeshLinks.ViewerUrl(NetworkOpsClient.MeshUrl, _device.MeshNodeId, viewMode: 10);
 
     // ---- Wake-on-LAN: PCs only (the rack is never shut down)
     public bool ShowsWake => !IsRack;

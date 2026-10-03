@@ -26,26 +26,40 @@ public partial class KorRemoteViewerWindow : Window
 
     private readonly NetworkOpsDeviceWindow _device;
     private readonly KorRemoteViewerModel _vm;
-    private readonly string _url;
+    private string _url;
     private int _reroutes;
 
     public static string ProfileFolder => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "KorOperations", "KorRemote");
     public static string ScreenshotFolder => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyPictures), "KOR Remote");
 
-    /// <summary>Opens (or brings forward) the viewer for the device in <paramref name="device"/>.</summary>
-    public static void Open(NetworkOpsDeviceWindow device)
+    /// <summary>Opens (or brings forward) the clean viewer for the device at its remote desktop (Connect).</summary>
+    public static void Open(NetworkOpsDeviceWindow device) => Open(device, device.ViewModel.ViewerUrl);
+
+    /// <summary>Opens (or brings forward) the SAME clean viewer at the device's Web-RDP view -- one window, never the browser.</summary>
+    public static void OpenRdp(NetworkOpsDeviceWindow device) => Open(device, device.ViewModel.RdpViewerUrl);
+
+    private static void Open(NetworkOpsDeviceWindow device, string? url)
     {
         var d = device.ViewModel;
-        if (d.ViewerUrl is not { } url) return;
+        if (url is null) return;
         if (Open_.TryGetValue(d.DeviceName, out var open))
         {
             if (open.WindowState == WindowState.Minimized) open.WindowState = WindowState.Normal;
             open.Activate();
+            open.NavigateTo(url);   // one viewer per machine: switch between Connect and Web-RDP in place
             return;
         }
         var w = new KorRemoteViewerWindow(device, url);
         Open_[d.DeviceName] = w;
         w.Show();
+    }
+
+    /// <summary>Point an already-open viewer at another view of the same machine (Connect &lt;-&gt; Web-RDP).</summary>
+    public void NavigateTo(string url)
+    {
+        _url = url;
+        _reroutes = 0;
+        if (View.CoreWebView2 is not null && Uri.TryCreate(url, UriKind.Absolute, out var uri)) View.Source = uri;
     }
 
     private KorRemoteViewerWindow(NetworkOpsDeviceWindow device, string url)

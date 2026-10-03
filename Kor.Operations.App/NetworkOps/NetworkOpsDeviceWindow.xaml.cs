@@ -97,16 +97,9 @@ public partial class NetworkOpsDeviceWindow : Window
 
     private async void Wake_Click(object sender, RoutedEventArgs e) => await Run(_vm.WakeAsync).ConfigureAwait(true);
 
-    /// <summary>KOR Remote's page for this machine, where Web-RDP gives a full-size session (a PC with no monitor shows 1024x768 otherwise).</summary>
-    private void WebRdp_Click(object sender, RoutedEventArgs e)
-    {
-        if (_vm.RdpPageUrl is not { } url) return;
-        try { KorRemoteWindow.Open(url); }
-        catch (System.ComponentModel.Win32Exception ex)
-        {
-            MessageBox.Show(this, $"Could not open the browser: {ex.Message}\n\n{url}", "Web-RDP", MessageBoxButton.OK, MessageBoxImage.Warning);
-        }
-    }
+    /// <summary>Web-RDP (a full-size session for a PC with no monitor, which shows 1024x768 otherwise) in the app's own clean
+    /// viewer -- the same window as Connect, never the browser.</summary>
+    private void WebRdp_Click(object sender, RoutedEventArgs e) => KorRemoteViewerWindow.OpenRdp(this);
 
     private async void InstallRemote_Click(object sender, RoutedEventArgs e) => await Run(_vm.InstallRemoteAsync).ConfigureAwait(true);
 
