@@ -110,13 +110,41 @@ internal sealed class NetworkMapService(NetworkOpsStore store, MacDirectory macs
             var map = NetworkMaps.Build(site, _fleet, _leases, new KnownNames(byMac, byIp), live, core);
             _published = new Snapshot(map, now, notes);
             var (saved, moves) = await store.SaveNetworkMapAsync(map, now, ct).ConfigureAwait(false);
+            var faults = await ApplyLinkFindingsAsync(map, now, ct).ConfigureAwait(false);
             var placed = map.Everything().ToList();
             return $"port map: {placed.Count(p => p.Placement == "port")} on a port, {placed.Count(p => p.Placement == "wireless")} wireless, " +
                    $"{_fleet.Count(f => map.PortOf(f.Name) is not null)} of {_fleet.Count(f => f.Macs.Count > 0)} fleet PCs placed" +
                    (saved ? (moves > 0 ? $", {moves} moved" : "") : " (not stored: run 010_NetworkMap.sql)") +
+                   (faults > 0 ? $", {faults} link fault(s)" : "") +
                    (notes.Count > 0 ? "; " + string.Join("; ", notes) : "");
         }
         finally { _gate.Release(); }
+    }
+
+    private HashSet<string> _lastLinkFaults = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Raise or clear the "link-fault" finding on each device from its port's synthesised health (NetworkFindings).
+    /// Owned here -- the sweeps never touch that rule -- and bounded to the faulty-or-recently-faulty set, so it is cheap.</summary>
+    private async Task<int> ApplyLinkFindingsAsync(NetworkMap map, DateTime now, CancellationToken ct)
+    {
+        var current = Core.Network.NetworkFindings.LinkFaults(map)
+            .GroupBy(x => x.Device, StringComparer.OrdinalIgnoreCase).ToDictionary(g => g.Key, g => g.First().Finding, StringComparer.OrdinalIgnoreCase);
+        var touch = new HashSet<string>(current.Keys, StringComparer.OrdinalIgnoreCase);
+        touch.UnionWith(_lastLinkFaults);
+        foreach (var name in touch)
+        {
+            try
+            {
+                if (await store.DeviceByNameAsync(name, ct).ConfigureAwait(false) is not { } dev) continue;
+                var open = (await store.OpenFindingsAsync(dev.DeviceId, null, ct).ConfigureAwait(false)).Where(f => f.RuleKey == Core.Network.NetworkFindings.LinkRule).ToList();
+                var raised = current.TryGetValue(name, out var f) ? new List<Core.Health.Finding> { f } : new List<Core.Health.Finding>();
+                var changes = Core.Health.FindingDiff.Compute(open, raised);
+                if (changes.Count > 0) await store.ApplyChangesAsync(dev.DeviceId, changes, now, ct).ConfigureAwait(false);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException) { log.LogWarning(ex, "Port map: the link finding for {Device} could not be applied", name); }
+        }
+        _lastLinkFaults = new HashSet<string>(current.Keys, StringComparer.OrdinalIgnoreCase);
+        return current.Count;
     }
 
     private async Task ReadLeasesAsync(DateTime now, CancellationToken ct)

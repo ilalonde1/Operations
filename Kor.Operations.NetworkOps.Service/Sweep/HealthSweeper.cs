@@ -96,7 +96,8 @@ internal sealed class HealthSweeper(NetworkOpsStore store, IDigestSender digest,
             // The update scan owns "updates-due" (Updates/UpdateScanner): this sweep never raises it, so must never clear it.
             // An unread Lenovo catalog is not a current BIOS: the BIOS finding then stands exactly as it was.
             var open = (await store.OpenFindingsAsync(id, FleetCensusJob.SilentRule, ct))
-                .Where(f => !Core.Updates.UpdateRules.Owns(f.RuleKey) && (biosPackages is not null || f.RuleKey != Core.Bios.BiosRules.Rule)).ToList();
+                .Where(f => !Core.Updates.UpdateRules.Owns(f.RuleKey) && !Core.Network.NetworkFindings.Owns(f.RuleKey)
+                            && (biosPackages is not null || f.RuleKey != Core.Bios.BiosRules.Rule)).ToList();
             var changes = FindingDiff.Compute(open, raised);
             await store.ApplyChangesAsync(id, changes, now, ct);
             foreach (var cleared in changes.Where(c => c.Kind == ChangeKind.Cleared && c.Previous is not null))

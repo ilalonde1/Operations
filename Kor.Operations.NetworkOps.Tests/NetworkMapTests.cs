@@ -252,6 +252,23 @@ public sealed class NetworkMapTests(ITestOutputHelper output)
     // ---- abnormal input must degrade, not throw out of Build and freeze the whole map ----
 
     [Fact]
+    public void A_half_duplex_link_raises_a_link_fault_finding()
+    {
+        // Synthesis: a wired PC whose live port negotiated HALF-duplex (a classic bad cable/jack/NIC) -> a "link-fault"
+        // finding on that PC (which the Command Center shows and the digest mails).
+        const long now = 1_700_000_000;
+        const string swMac = "de:ad:be:ef:00:02", pcMac = "aa:bb:cc:00:22:33";
+        var sw = new UniFiDev(swMac, "SW", "US8", "usw", "192.168.1.9", null, [new UniFiPort(1, 1000, false, pcMac, "192.168.1.60", now)]);
+        var live = new UniFiLive(now, [new LiveDevice(swMac, "SW", 1, [new LivePort(1, true, 1000, null, null, null, FullDuplex: false)])], []);
+        var map = NetworkMaps.Build(new UniFiSite(now, [sw], []), [new FleetPc("KOR-TEST", [pcMac], null, null)], [],
+            new KnownNames(new Dictionary<string, string>(), new Dictionary<string, string>()), live);
+        var hit = Assert.Single(NetworkFindings.LinkFaults(map).ToList());
+        Assert.Equal("KOR-TEST", hit.Device);
+        Assert.Equal(NetworkFindings.LinkRule, hit.Finding.RuleKey);
+        Assert.Contains("HALF-DUPLEX", hit.Finding.Evidence);
+    }
+
+    [Fact]
     public void A_live_read_with_junk_numbers_degrades_instead_of_aborting_the_refresh()
     {
         // A fractional "state"/"speed" (a JSON Number that GetInt64 throws on) and a wild timestamp must not escape the
