@@ -184,20 +184,28 @@ public sealed class NetworkOpsDeviceViewModel : ObservableObject
     /// <summary>The one-line hardware text stays only where there are no tiles (a rack device, or a PC never checked).</summary>
     public bool ShowsHardwareLine => !HasComponents;
 
-    /// <summary>Reads the PC's last full check for the tiles. A rack device has none; a failure leaves the text line.</summary>
+    // A rack device's tiles come from its latest readings and facts (Core/Rack/RackComponents), a PC's from its last full check.
+    private IReadOnlyList<Kor.Operations.NetworkOps.Core.Rack.DeviceReading>? _readings;
+
+    /// <summary>Reads what the tiles are drawn from: a PC's last full check, a rack device's latest readings. A failure leaves
+    /// the text line, and says so.</summary>
     public async Task LoadComponentsAsync(CancellationToken ct)
     {
-        if (IsRack) return;
         try
         {
-            var last = await _client.GetLastCheckAsync(_device.Name, ct).ConfigureAwait(true);
-            _lastCheck = last is null ? null : Kor.Operations.NetworkOps.Core.Health.HealthSnapshot.Parse(last.Json);
+            if (IsRack) _readings = await _client.GetReadingsAsync(_device.DeviceId, ct).ConfigureAwait(true);
+            else
+            {
+                var last = await _client.GetLastCheckAsync(_device.Name, ct).ConfigureAwait(true);
+                _lastCheck = last is null ? null : Kor.Operations.NetworkOps.Core.Health.HealthSnapshot.Parse(last.Json);
+            }
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             // The hardware line stays and the page works without the tiles -- but it says why they are missing.
             _lastCheck = null;
-            StatusMessage = $"The PC's parts could not be read ({ex.GetType().Name}: {ex.Message}); showing the summary line instead.";
+            _readings = null;
+            StatusMessage = $"The {(IsRack ? "device's readings" : "PC's parts")} could not be read ({ex.GetType().Name}: {ex.Message}); showing the summary line instead.";
         }
         RebuildComponents();
     }
@@ -205,23 +213,26 @@ public sealed class NetworkOpsDeviceViewModel : ObservableObject
     /// <summary>Internal so tests can draw the tiles from a fixture check without the service.</summary>
     internal void SetLastCheck(Kor.Operations.NetworkOps.Core.Health.HealthSnapshot? check) { _lastCheck = check; RebuildComponents(); }
 
+    /// <summary>Internal so tests can draw a rack device's tiles from fixture readings without the service.</summary>
+    internal void SetReadings(IReadOnlyList<Kor.Operations.NetworkOps.Core.Rack.DeviceReading>? readings) { _readings = readings; RebuildComponents(); }
+
     private void RebuildComponents()
     {
         Components.Clear();
-        if (_lastCheck is { } check)
+        // Live findings colour a part; an acknowledged or snoozed one does not (it is handled, as on the fleet grid).
+        var now = DateTime.UtcNow;
+        var open = OpenFindings.Where(r => !r.Finding.IsQuiet(now)).Select(r => (r.Finding.RuleKey, r.Finding.Severity)).ToList();
+        var parts = IsRack
+            ? (_readings is { } readings ? Kor.Operations.NetworkOps.Core.Rack.RackComponents.Of(_snapshot.FactsOf(_device.Name), readings, open) : [])
+            : (_lastCheck is { } check ? Kor.Operations.NetworkOps.Core.Health.PcComponents.Of(check, open) : []);
+        foreach (var part in parts)
         {
-            // Live findings colour a part; an acknowledged or snoozed one does not (it is handled, as on the fleet grid).
-            var now = DateTime.UtcNow;
-            var open = OpenFindings.Where(r => !r.Finding.IsQuiet(now)).Select(r => (r.Finding.RuleKey, r.Finding.Severity)).ToList();
-            foreach (var part in Kor.Operations.NetworkOps.Core.Health.PcComponents.Of(check, open))
+            var about = OpenFindings.Where(r => part.RuleKeys.Contains(r.Finding.RuleKey)).Select(r => r.Title).ToList();
+            Components.Add(new ComponentTile
             {
-                var about = OpenFindings.Where(r => part.RuleKeys.Contains(r.Finding.RuleKey)).Select(r => r.Title).ToList();
-                Components.Add(new ComponentTile
-                {
-                    Part = part,
-                    ToolTip = about.Count > 0 ? string.Join("\n", about) + "\n(click to show it)" : $"{part.Title}: {part.Line1}{(part.Line2.Length > 0 ? " · " + part.Line2 : "")}",
-                });
-            }
+                Part = part,
+                ToolTip = about.Count > 0 ? string.Join("\n", about) + "\n(click to show it)" : $"{part.Title}: {part.Line1}{(part.Line2.Length > 0 ? " · " + part.Line2 : "")}",
+            });
         }
         OnPropertyChanged(nameof(HasComponents));
         OnPropertyChanged(nameof(ShowsHardwareLine));
@@ -232,6 +243,7 @@ public sealed class NetworkOpsDeviceViewModel : ObservableObject
     {
         if (OpenFindings.FirstOrDefault(r => tile.Part.RuleKeys.Contains(r.Finding.RuleKey)) is { } row) SelectedFinding = row;
     }
+
     public ObservableCollection<ClearedRow> Cleared { get; } = new();
     public ObservableCollection<ChangeRow> Changes { get; } = new();
     public ObservableCollection<NoteLine> Notes { get; } = new();

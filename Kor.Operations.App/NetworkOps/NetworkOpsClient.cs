@@ -83,6 +83,10 @@ public sealed class NetworkOpsClient
 
     public Task<DeviceHistory> GetDeviceHistoryAsync(int deviceId, CancellationToken ct) => GetAsync<DeviceHistory>($"api/devices/{deviceId}/history", ct)!;
 
+    /// <summary>Every latest reading a device stored (a rack device's tiles are drawn from these).</summary>
+    public async Task<IReadOnlyList<Kor.Operations.NetworkOps.Core.Rack.DeviceReading>> GetReadingsAsync(int deviceId, CancellationToken ct)
+        => await GetAsync<List<Kor.Operations.NetworkOps.Core.Rack.DeviceReading>>($"api/devices/{deviceId}/readings", ct).ConfigureAwait(false);
+
     /// <summary>A PC's last full health check, raw (the "This PC" tiles are drawn from it). Null when it was never checked.</summary>
     public async Task<LastCheckView?> GetLastCheckAsync(string deviceName, CancellationToken ct)
     {

@@ -112,6 +112,25 @@ internal sealed partial class NetworkOpsStore
         await bulk.WriteToServerAsync(t, ct).ConfigureAwait(false);
     }
 
+    /// <summary>The latest value of every reading (metric + subject) a device stored in the last two days -- what its tiles
+    /// are drawn from (GET /api/devices/{id}/readings).</summary>
+    public async Task<IReadOnlyList<Core.Rack.DeviceReading>> LatestReadingsAsync(int deviceId, CancellationToken ct)
+    {
+        await using var c = await OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = Cmd(c, """
+            SELECT Metric, Subject, Value, CollectedUtc FROM (
+                SELECT Metric, Subject, Value, CollectedUtc, ROW_NUMBER() OVER (PARTITION BY Metric, Subject ORDER BY CollectedUtc DESC) AS n
+                FROM NetworkOps.Metrics WHERE DeviceId = @d AND CollectedUtc >= DATEADD(day, -2, SYSUTCDATETIME())) x
+            WHERE n = 1 ORDER BY Metric, Subject;
+            """);
+        cmd.Parameters.Add("@d", SqlDbType.Int).Value = deviceId;
+        var list = new List<Core.Rack.DeviceReading>();
+        await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        while (await r.ReadAsync(ct).ConfigureAwait(false))
+            list.Add(new Core.Rack.DeviceReading(r.GetString(0), r.GetString(1), r.GetDouble(2), DateTime.SpecifyKind(r.GetDateTime(3), DateTimeKind.Utc)));
+        return list;
+    }
+
     public async Task<MetricHistory> MetricHistoryAsync(int deviceId, DateTime sinceUtc, CancellationToken ct)
     {
         await using var c = await OpenAsync(ct).ConfigureAwait(false);

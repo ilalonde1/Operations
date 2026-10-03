@@ -16,6 +16,7 @@ namespace Kor.Operations.NetworkOps.Cli;
 //                                                queue a CATALOG fix (Core/Actions/FixCatalog) exactly as the Command
 //                                                Center's Fix… does: same API, same refusals, audited; waits for it
 //   netops history    --hosts A,B                a machine's past problems, fact changes, notes and the fixes run on it
+//   netops readings   --hosts A,B                every latest reading it stored (CPU, volumes, disks, ports, jobs...), as JSON
 //   netops action     --id N                     one fix or run: status, what it said, its full output
 //   netops trigger    --id N                     one queued check or job: status and result
 //   netops updates    [--scan]                   what Windows Update has waiting everywhere; --scan searches again first
@@ -27,7 +28,7 @@ namespace Kor.Operations.NetworkOps.Cli;
 internal static class SessionVerbs
 {
     public static bool Handles(string verb, string[] args)
-        => verb is "check" or "last-check" or "knowledge" or "findings" or "fix" or "history" or "action" or "trigger" or "updates" or "changes" || (verb == "run" && !args.Contains("--direct"));
+        => verb is "check" or "last-check" or "knowledge" or "findings" or "fix" or "history" or "readings" or "action" or "trigger" or "updates" or "changes" || (verb == "run" && !args.Contains("--direct"));
 
     public static async Task<int> RunAsync(string verb, string[] args)
     {
@@ -92,6 +93,7 @@ internal static class SessionVerbs
                 "check" => await CheckAsync(server, hosts.Select(h => h.Name).ToList(), ct),
                 "fix" => await FixAsync(server, hosts, fixId, param, finding, purpose, confirmed, timeout, ct),
                 "history" => await HistoryAsync(server, hosts, ct),
+                "readings" => await ReadingsAsync(server, hosts, ct),
                 _ => 2,
             };
             return unknown.Count > 0 && code == 0 ? 1 : code;
@@ -224,6 +226,16 @@ internal static class SessionVerbs
         {
             Console.WriteLine($"=== {d.Name}");
             Console.WriteLine(JsonSerializer.Serialize(await server.GetAsync<DeviceHistory>($"/api/devices/{d.DeviceId}/history", ct), Indented));
+        }
+        return 0;
+    }
+
+    private static async Task<int> ReadingsAsync(AppServer server, IReadOnlyList<DeviceRow> hosts, CancellationToken ct)
+    {
+        foreach (var d in hosts)
+        {
+            Console.WriteLine($"=== {d.Name}");
+            Console.WriteLine(JsonSerializer.Serialize(await server.GetAsync<List<Kor.Operations.NetworkOps.Core.Rack.DeviceReading>>($"/api/devices/{d.DeviceId}/readings", ct), Indented));
         }
         return 0;
     }

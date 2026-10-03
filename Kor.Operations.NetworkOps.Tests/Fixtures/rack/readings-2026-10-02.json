@@ -1,0 +1,699 @@
+{
+ "APC SRT1500 UPS": [
+  {
+   "metric": "charge.pct",
+   "subject": "",
+   "value": 100,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "load.pct",
+   "subject": "",
+   "value": 26,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "runtime.min",
+   "subject": "",
+   "value": 45,
+   "atUtc": "2026-10-03T02:15:00Z"
+  }
+ ],
+ "Core switch (EdgeSwitch 10G)": [
+  {
+   "metric": "port.in-errors",
+   "subject": " CPU Interface for Slot: 5 Port: 1",
+   "value": 0,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "port.in-errors",
+   "subject": " Link Aggregate 1",
+   "value": 0,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "port.in-errors",
+   "subject": " Link Aggregate 2",
+   "value": 0,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "port.in-errors",
+   "subject": " Link Aggregate 3",
+   "value": 0,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "port.in-errors",
+   "subject": " Link Aggregate 4",
+   "value": 0,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "port.in-errors",
+   "subject": " Link Aggregate 5",
+   "value": 0,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "port.in-errors",
+   "subject": " Link Aggregate 6",
+   "value": 0,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "port.in-errors",
+   "subject": "Slot: 0 Port: 1 10G - Level",
+   "value": 0,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "port.in-errors",
+   "subject": "Slot: 0 Port: 10 10G - Level",
+   "value": 0,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "port.in-errors",
+   "subject": "Slot: 0 Port: 11 10G - Level",
+   "value": 0,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "port.in-errors",
+   "subject": "Slot: 0 Port: 12 10G - Level",
+   "value": 0,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "port.in-errors",
+   "subject": "Slot: 0 Port: 13 10G - Level",
+   "value": 0,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "port.in-errors",
+   "subject": "Slot: 0 Port: 14 10G - Level",
+   "value": 0,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "port.in-errors",
+   "subject": "Slot: 0 Port: 15 10G - Level",
+   "value": 0,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "port.in-errors",
+   "subject": "Slot: 0 Port: 16 10G - Level",
+   "value": 0,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "port.in-errors",
+   "subject": "Slot: 0 Port: 2 10G - Level",
+   "value": 0,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "port.in-errors",
+   "subject": "Slot: 0 Port: 3 10G - Level",
+   "value": 0,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "port.in-errors",
+   "subject": "Slot: 0 Port: 4 10G - Level",
+   "value": 0,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "port.in-errors",
+   "subject": "Slot: 0 Port: 5 10G - Level",
+   "value": 0,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "port.in-errors",
+   "subject": "Slot: 0 Port: 6 10G - Level",
+   "value": 0,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "port.in-errors",
+   "subject": "Slot: 0 Port: 7 10G - Level",
+   "value": 0,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "port.in-errors",
+   "subject": "Slot: 0 Port: 8 10G - Level",
+   "value": 0,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "port.in-errors",
+   "subject": "Slot: 0 Port: 9 10G - Level",
+   "value": 0,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "ports.up",
+   "subject": "",
+   "value": 10,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "uptime.hours",
+   "subject": "",
+   "value": 165.1,
+   "atUtc": "2026-10-03T02:15:00Z"
+  }
+ ],
+ "Eaton 5PX UPS": [
+  {
+   "metric": "charge.pct",
+   "subject": "",
+   "value": 100,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "load.pct",
+   "subject": "",
+   "value": 36,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "runtime.min",
+   "subject": "",
+   "value": 24,
+   "atUtc": "2026-10-03T02:15:00Z"
+  }
+ ],
+ "ESXi host .10 (production)": [
+  {
+   "metric": "clock.offset.s",
+   "subject": "",
+   "value": -3.5,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "cpu.pct",
+   "subject": "",
+   "value": 57.5,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "datastore.free.pct",
+   "subject": "datastore1",
+   "value": 90.5,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "datastore.free.pct",
+   "subject": "UC3200",
+   "value": 55.1,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "mem.pct",
+   "subject": "",
+   "value": 90.8,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "sensors.count",
+   "subject": "",
+   "value": 314,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "uptime.hours",
+   "subject": "",
+   "value": 164.6,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "vms.running",
+   "subject": "",
+   "value": 5,
+   "atUtc": "2026-10-03T02:15:00Z"
+  }
+ ],
+ "ESXi host .16 (standby)": [
+  {
+   "metric": "clock.offset.s",
+   "subject": "",
+   "value": -2.4,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "cpu.pct",
+   "subject": "",
+   "value": 10.5,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "datastore.free.pct",
+   "subject": "UC3200",
+   "value": 55.1,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "datastore.free.pct",
+   "subject": "VeeamBackup_KOR-APP01.int.korstructural.c_",
+   "value": 21.6,
+   "atUtc": "2026-10-02T05:20:00Z"
+  },
+  {
+   "metric": "datastore.free.pct",
+   "subject": "VeeamBackup_KOR-BK01",
+   "value": 21.9,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "mem.pct",
+   "subject": "",
+   "value": 38.6,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "sensors.count",
+   "subject": "",
+   "value": 249,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "uptime.hours",
+   "subject": "",
+   "value": 164.4,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "vms.running",
+   "subject": "",
+   "value": 3,
+   "atUtc": "2026-10-03T02:15:00Z"
+  }
+ ],
+ "Internet (Netgate + Shaw)": [
+  {
+   "metric": "ping.loss.pct",
+   "subject": "1.1.1.1",
+   "value": 0,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "ping.loss.pct",
+   "subject": "184.71.160.53",
+   "value": 0,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "ping.loss.pct",
+   "subject": "192.168.1.1",
+   "value": 0,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "ping.loss.pct",
+   "subject": "8.8.8.8",
+   "value": 0,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "ping.ms",
+   "subject": "1.1.1.1",
+   "value": 12.8,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "ping.ms",
+   "subject": "184.71.160.53",
+   "value": 11.6,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "ping.ms",
+   "subject": "192.168.1.1",
+   "value": 0,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "ping.ms",
+   "subject": "8.8.8.8",
+   "value": 15.2,
+   "atUtc": "2026-10-03T02:15:00Z"
+  }
+ ],
+ "KOR-APP01 (apps, SQL, NetworkOps)": [
+  {
+   "metric": "disk.free.pct",
+   "subject": "C:",
+   "value": 23.4,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "disk.free.pct",
+   "subject": "D:",
+   "value": 84.5,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "update.age.days",
+   "subject": "",
+   "value": 1,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "uptime.hours",
+   "subject": "",
+   "value": 20.8,
+   "atUtc": "2026-10-03T02:15:00Z"
+  }
+ ],
+ "KOR-DC01 (domain controller, DNS, DHCP)": [
+  {
+   "metric": "disk.free.pct",
+   "subject": "C:",
+   "value": 49.7,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "update.age.days",
+   "subject": "",
+   "value": 1,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "uptime.hours",
+   "subject": "",
+   "value": 17.6,
+   "atUtc": "2026-10-03T02:15:00Z"
+  }
+ ],
+ "KOR-FS01 (file server)": [
+  {
+   "metric": "disk.free.pct",
+   "subject": "C:",
+   "value": 46.4,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "disk.free.pct",
+   "subject": "E:",
+   "value": 57.7,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "update.age.days",
+   "subject": "",
+   "value": 1,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "uptime.hours",
+   "subject": "",
+   "value": 16.7,
+   "atUtc": "2026-10-03T02:15:00Z"
+  }
+ ],
+ "KOR-MESH01 (remote control, MeshCentral)": [],
+ "KOR-RDS01 (remote desktop)": [
+  {
+   "metric": "disk.free.pct",
+   "subject": "C:",
+   "value": 43.3,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "update.age.days",
+   "subject": "",
+   "value": 1,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "uptime.hours",
+   "subject": "",
+   "value": 19.3,
+   "atUtc": "2026-10-03T02:15:00Z"
+  }
+ ],
+ "NAS01 (Veeam repository)": [
+  {
+   "metric": "disk.temp.c",
+   "subject": "Disk 1",
+   "value": 35,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "disk.temp.c",
+   "subject": "Disk 2",
+   "value": 36,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "disk.temp.c",
+   "subject": "Disk 3",
+   "value": 36,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "disk.temp.c",
+   "subject": "Disk 4",
+   "value": 35,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "disk.temp.c",
+   "subject": "Disk 5",
+   "value": 35,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "disk.temp.c",
+   "subject": "Disk 6",
+   "value": 35,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "disks.count",
+   "subject": "",
+   "value": 6,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "temp.c",
+   "subject": "",
+   "value": 46,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "volume.free.pct",
+   "subject": "Volume 1",
+   "value": 1.1,
+   "atUtc": "2026-10-03T02:15:00Z"
+  }
+ ],
+ "Synology02 (Veeam repository)": [
+  {
+   "metric": "disk.temp.c",
+   "subject": "Disk 1",
+   "value": 41,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "disk.temp.c",
+   "subject": "Disk 2",
+   "value": 40,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "disk.temp.c",
+   "subject": "Disk 3",
+   "value": 40,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "disk.temp.c",
+   "subject": "Disk 4",
+   "value": 41,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "disk.temp.c",
+   "subject": "Disk 5",
+   "value": 43,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "disks.count",
+   "subject": "",
+   "value": 5,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "temp.c",
+   "subject": "",
+   "value": 44,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "volume.free.pct",
+   "subject": "Volume 1",
+   "value": 5.5,
+   "atUtc": "2026-10-03T02:15:00Z"
+  }
+ ],
+ "UC3200 SAN": [
+  {
+   "metric": "disk.temp.c",
+   "subject": "Drive 1",
+   "value": 42,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "disk.temp.c",
+   "subject": "Drive 10",
+   "value": 42,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "disk.temp.c",
+   "subject": "Drive 11",
+   "value": 41,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "disk.temp.c",
+   "subject": "Drive 12",
+   "value": 41,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "disk.temp.c",
+   "subject": "Drive 2",
+   "value": 44,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "disk.temp.c",
+   "subject": "Drive 3",
+   "value": 43,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "disk.temp.c",
+   "subject": "Drive 4",
+   "value": 42,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "disk.temp.c",
+   "subject": "Drive 5",
+   "value": 43,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "disk.temp.c",
+   "subject": "Drive 6",
+   "value": 44,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "disk.temp.c",
+   "subject": "Drive 7",
+   "value": 43,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "disk.temp.c",
+   "subject": "Drive 8",
+   "value": 42,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "disk.temp.c",
+   "subject": "Drive 9",
+   "value": 41,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "disks.count",
+   "subject": "",
+   "value": 12,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "temp.c",
+   "subject": "",
+   "value": 51,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "volume.free.pct",
+   "subject": "Volume 1",
+   "value": 19.2,
+   "atUtc": "2026-10-03T02:15:00Z"
+  }
+ ],
+ "UniFi network": [
+  {
+   "metric": "alarms.open",
+   "subject": "",
+   "value": 0,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "devices.online",
+   "subject": "",
+   "value": 11,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "devices.total",
+   "subject": "",
+   "value": 13,
+   "atUtc": "2026-10-03T02:15:00Z"
+  }
+ ],
+ "Veeam backups (BK01)": [
+  {
+   "metric": "job.age.hours",
+   "subject": "Kor-FS01",
+   "value": 22.2,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "job.age.hours",
+   "subject": "Kor-VMs-New",
+   "value": 2.2,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "job.age.hours",
+   "subject": "Vcenter",
+   "value": 2,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "jobs.count",
+   "subject": "",
+   "value": 3,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "repo.free.pct",
+   "subject": "Default Backup Repository",
+   "value": 95.2,
+   "atUtc": "2026-10-03T02:15:00Z"
+  },
+  {
+   "metric": "repo.free.pct",
+   "subject": "Synology105",
+   "value": 58.1,
+   "atUtc": "2026-10-03T02:15:00Z"
+  }
+ ]
+}

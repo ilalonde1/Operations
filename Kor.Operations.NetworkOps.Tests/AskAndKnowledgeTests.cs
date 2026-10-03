@@ -114,7 +114,7 @@ public sealed class AskAndKnowledgeTests
     // ---- the rule under all of it: nothing a prompt hands a session reaches a machine from Ian's PC.
 
     // Every verb SessionVerbs.Handles sends through APP01 (the next test pins that list in the CLI's own source).
-    private static readonly string[] ThroughApp01 = ["run", "check", "last-check", "knowledge", "findings", "fix", "history", "action", "trigger", "updates", "changes"];
+    private static readonly string[] ThroughApp01 = ["run", "check", "last-check", "knowledge", "findings", "fix", "history", "readings", "action", "trigger", "updates", "changes"];
 
     [Fact]
     public void Every_netops_command_a_prompt_hands_out_goes_through_APP01()
@@ -140,7 +140,7 @@ public sealed class AskAndKnowledgeTests
     public void The_CLI_sends_run_through_APP01_unless_told_direct()
     {
         var verbs = File.ReadAllText(Path.Combine(Repo.Root, "Kor.Operations.NetworkOps.Cli", "SessionVerbs.cs"));
-        Assert.Matches(new Regex(@"verb is ""check"" or ""last-check"" or ""knowledge"" or ""findings"" or ""fix"" or ""history"" or ""action"" or ""trigger"" or ""updates"" or ""changes"" \|\| \(verb == ""run"" && !args\.Contains\(""--direct""\)\)"), verbs);
+        Assert.Matches(new Regex(@"verb is ""check"" or ""last-check"" or ""knowledge"" or ""findings"" or ""fix"" or ""history"" or ""readings"" or ""action"" or ""trigger"" or ""updates"" or ""changes"" \|\| \(verb == ""run"" && !args\.Contains\(""--direct""\)\)"), verbs);
         var program = File.ReadAllText(Path.Combine(Repo.Root, "Kor.Operations.NetworkOps.Cli", "Program.cs"));
         Assert.True(program.IndexOf("SessionVerbs.Handles", StringComparison.Ordinal) < program.IndexOf("RunEverywhere(hosts", StringComparison.Ordinal),
             "SessionVerbs must be asked before any verb reaches a machine from this PC");

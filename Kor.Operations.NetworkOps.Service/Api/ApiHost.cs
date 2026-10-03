@@ -162,6 +162,8 @@ internal sealed class ApiHost(IOptions<NetworkOpsOptions> options, NetworkOpsSto
         api.MapGet("/rack", async (NetworkOpsStore s, Mesh.MeshState m, CancellationToken ct) =>
             WithMesh(await s.FleetSnapshotAsync(ct, rack: true), m, await s.MeshRecordsAsync(ct)));
         api.MapGet("/devices/{id:int}/history", (int id, NetworkOpsStore s, CancellationToken ct) => s.DeviceHistoryAsync(id, ct));
+        // Every latest reading of a device (a rack device's tiles are drawn from these and its facts).
+        api.MapGet("/devices/{id:int}/readings", (int id, NetworkOpsStore s, CancellationToken ct) => s.LatestReadingsAsync(id, ct));
         // What changed since a moment (default: the last 24 h; at most 31 days back): the morning brief, from the database.
         api.MapGet("/changes", (DateTime? since, NetworkOpsStore s, CancellationToken ct) =>
         {

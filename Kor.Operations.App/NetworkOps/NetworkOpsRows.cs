@@ -124,10 +124,15 @@ public sealed class ComponentTile
     /// <summary>The bar turns amber past 90% used, red past 95%: the space itself, whatever the findings say.</summary>
     public Brush FillBrush => Part.FillPct switch { >= 95 => NetworkOpsBrushes.Critical, >= 90 => NetworkOpsBrushes.Attention, _ => Bar };
     public bool HasProblem => Part.Worst is not null;
+    // Segoe Fluent / MDL2 glyphs, each checked by rendering a sheet of candidates (2026-10-02) before use.
     public string Glyph => Part.Kind switch
     {
-        "cpu" => "", "memory" => "", "gpu" => "", "drive" => "",
-        "missing-drive" => "", "windows" => "", "bios" => "", _ => "",
+        "cpu" => "", "memory" => "", "gpu" => "", "missing-drive" => "", "windows" => "", "bios" => "",
+        "drive" or "datastore" or "volume" or "disks" or "repo" => "",
+        "system" => "", "uptime" => "", "vms" => "", "job" => "", "updates" => "", "services" => "",
+        "ports" => "", "devices" => "", "alarms" => "", "internet" => "",
+        "charge" => "", "runtime" => "", "load" => "",
+        _ => "",
     };
     public string ToolTip { get; init; } = "";
 

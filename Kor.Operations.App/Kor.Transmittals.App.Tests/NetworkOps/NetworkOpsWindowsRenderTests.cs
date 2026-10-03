@@ -67,6 +67,12 @@ public sealed class NetworkOpsWindowsRenderTests
         Assert.True(written >= 2, $"Expected at least 2 renders, got {written}.");
     }
 
+    /// <summary>Every rack device's real readings of 2026-10-02 evening (the fixture RackComponentsTests reads).</summary>
+    private static System.Collections.Generic.Dictionary<string, System.Collections.Generic.List<Kor.Operations.NetworkOps.Core.Rack.DeviceReading>> RealRackReadings()
+        => System.Text.Json.JsonSerializer.Deserialize<System.Collections.Generic.Dictionary<string, System.Collections.Generic.List<Kor.Operations.NetworkOps.Core.Rack.DeviceReading>>>(
+               File.ReadAllText(Path.Combine(XamlStaticResourceOrderTests.GetRepoRoot(), "Kor.Operations.NetworkOps.Tests", "Fixtures", "rack", "readings-2026-10-02.json")),
+               new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web))!;
+
     private static int RenderFleet(FleetSnapshot snapshot, NetworkOpsClient reader, string dir, string label)
     {
         var center = new NetworkOpsCommandCenterViewModel(reader);
@@ -82,7 +88,17 @@ public sealed class NetworkOpsWindowsRenderTests
         var worstRack = center.Rack.First();
         var rackDevice = new NetworkOpsDeviceViewModel(reader, rack, worstRack.Device);
         if (reader.IsConfigured) rackDevice.LoadHistoryAsync(CancellationToken.None).GetAwaiter().GetResult();
+        else if (RealRackReadings().TryGetValue(worstRack.Name, out var readings)) rackDevice.SetReadings(readings);   // its tiles, from a real evening's readings
         written += Render(new NetworkOpsDeviceWindow(rackDevice), Path.Combine(dir, $"{label}-rack-device.png"));
+        // And one of each other kind the rack has, so every kind of tile is looked at.
+        foreach (var name in new[] { "ESXi host .10 (production)", "UC3200 SAN", "Core switch (EdgeSwitch 10G)", "UniFi network", "Internet (Netgate + Shaw)", "KOR-FS01 (file server)" })
+        {
+            if (label != "fixture" || !RealRackReadings().TryGetValue(name, out var r)) continue;
+            var dev = new Kor.Operations.NetworkOps.Core.Learning.DeviceRow(9000 + name.Length, name, DateTime.UtcNow, DateTime.UtcNow, Kind: "Host");
+            var vm = new NetworkOpsDeviceViewModel(reader, rack with { Devices = [.. rack.Devices, dev] }, dev);
+            vm.SetReadings(r);
+            written += Render(new NetworkOpsDeviceWindow(vm), Path.Combine(dir, $"{label}-rack-{new string(name.Where(char.IsLetterOrDigit).ToArray())}.png"));
+        }
 
         // The PC window on the worst PC: the one with the most to explain.
         var worst = center.Fleet.First();
