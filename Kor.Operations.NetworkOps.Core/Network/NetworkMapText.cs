@@ -75,7 +75,12 @@ public static class NetworkMapText
             e.User is { } u ? $"{u}{(e.UserSource is { } us ? $" ({us})" : "")}" : null,
             e.Ip,
             e.NameSource is "NetworkOps agent" ? null : $"named by {e.NameSource}{(e.Maker is { } m && e.NameSource != "maker" ? $", {m}" : "")}",
-            e.SeenUtc is { } t ? $"{(e.SeenIsConnected ? "connected since" : "seen")} {t.ToLocalTime():yyyy-MM-dd}" : null,
+            e.ConnectedNow switch
+            {
+                true => "CONNECTED NOW",
+                false => "not connected now" + (e.SeenUtc is { } tl ? $" (last {tl.ToLocalTime():yyyy-MM-dd})" : ""),
+                null => e.SeenUtc is { } t ? $"{(e.SeenIsConnected ? "connected since" : "seen")} {t.ToLocalTime():yyyy-MM-dd}" : null,
+            },
             e.Mac,
         }.Where(x => !string.IsNullOrEmpty(x)));
 

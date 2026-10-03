@@ -46,10 +46,27 @@ public partial class NetworkOpsNetworkWindow : Window
     {
         StatusText.Text = "Reading…";
         var map = await _client!.GetNetworkAsync(ct).ConfigureAwait(true);
-        if (map is null) { StatusText.Text = "The map is built after the service's next rack sweep (every 5 minutes). Try again shortly."; return; }
+        if (map is null)
+        {
+            // Just after the service starts there is no map until its first rack sweep (2026-10-02: a blank window, the
+            // reason cut off at the foot). Say so where it is seen, and try again by itself.
+            if (_model is null)
+            {
+                HeadlineText.Text = "The map is being built";
+                SublineText.Text = "The service has just started: the map comes with its first rack sweep, within 5 minutes. This window checks again every 30 seconds.";
+            }
+            StatusText.Text = $"Waiting for the map (checked {DateTime.Now:HH:mm:ss}).";
+            _retry ??= new System.Windows.Threading.DispatcherTimer(TimeSpan.FromSeconds(30), System.Windows.Threading.DispatcherPriority.Background,
+                async (_, _) => await Guard(LoadAsync).ConfigureAwait(true), Dispatcher);
+            _retry.Start();
+            return;
+        }
+        _retry?.Stop();
         Apply(map);
         StatusText.Text = "";
     }
+
+    private System.Windows.Threading.DispatcherTimer? _retry;
 
     /// <summary>Fills the window; the switch that was showing stays showing.</summary>
     internal void Apply(NetworkMapResponse map)
@@ -148,6 +165,7 @@ public partial class NetworkOpsNetworkWindow : Window
 
     protected override void OnClosed(EventArgs e)
     {
+        _retry?.Stop();
         _cts.Cancel();
         base.OnClosed(e);
     }
