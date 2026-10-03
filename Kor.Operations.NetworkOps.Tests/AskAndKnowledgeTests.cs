@@ -140,7 +140,7 @@ public sealed class AskAndKnowledgeTests
     public void The_CLI_sends_run_through_APP01_unless_told_direct()
     {
         var verbs = File.ReadAllText(Path.Combine(Repo.Root, "Kor.Operations.NetworkOps.Cli", "SessionVerbs.cs"));
-        Assert.Matches(new Regex(@"verb is ""check"" or ""last-check"" or ""knowledge"" or ""findings"" or ""fix"" or ""history"" or ""readings"" or ""action"" or ""trigger"" or ""updates"" or ""changes"" or ""network"" \|\| \(verb == ""run"" && !args\.Contains\(""--direct""\)\)"), verbs);
+        Assert.Matches(new Regex(@"verb is ""check"" or ""last-check"" or ""knowledge"" or ""findings"" or ""fix"" or ""history"" or ""readings"" or ""action"" or ""trigger"" or ""updates"" or ""changes"" or ""network"" or ""add-pc"" \|\| \(verb == ""run"" && !args\.Contains\(""--direct""\)\)"), verbs);
         var program = File.ReadAllText(Path.Combine(Repo.Root, "Kor.Operations.NetworkOps.Cli", "Program.cs"));
         Assert.True(program.IndexOf("SessionVerbs.Handles", StringComparison.Ordinal) < program.IndexOf("RunEverywhere(hosts", StringComparison.Ordinal),
             "SessionVerbs must be asked before any verb reaches a machine from this PC");

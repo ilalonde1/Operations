@@ -26,7 +26,7 @@ namespace Kor.Operations.NetworkOps.Service.Api;
 // neither kind of caller can use the other's routes.
 internal sealed class ApiHost(IOptions<NetworkOpsOptions> options, NetworkOpsStore store, Power.PowerState power, Agents.AgentHub agents,
     Mesh.MeshState mesh, Prompts.PromptLibrary prompts, Updates.UpdateScanner updates, Agents.MachineRunner runner, ILoggerFactory loggers, ILogger<ApiHost> log,
-    Network.NetworkMapService networkMap) : BackgroundService
+    Network.NetworkMapService networkMap, Agents.AgentEnrolment enrolment) : BackgroundService
 {
     private static readonly TimeSpan MaxSnooze = TimeSpan.FromDays(90);
 
@@ -55,6 +55,7 @@ internal sealed class ApiHost(IOptions<NetworkOpsOptions> options, NetworkOpsSto
         builder.Services.AddSingleton(updates);
         builder.Services.AddSingleton(runner);
         builder.Services.AddSingleton(networkMap);
+        builder.Services.AddSingleton(enrolment);
         builder.Services.AddSingleton<Agents.IAgentDirectory>(store);
         builder.WebHost.ConfigureKestrel(k =>
         {
@@ -274,6 +275,20 @@ internal sealed class ApiHost(IOptions<NetworkOpsOptions> options, NetworkOpsSto
         api.MapGet("/actions/{id:long}", async (long id, NetworkOpsStore s, CancellationToken ct) =>
             await s.ActionAsync(id, ct) is { } a ? Results.Ok(a) : Results.NotFound());
 
+        // A PC that is not in the domain (the Boardroom PC): add it, and issue the one-time code and the one command an
+        // administrator runs on it (Agents/AgentEnrolment). Asking again for the same PC re-issues the code.
+        api.MapPost("/devices/manual", async (Agents.ManualPcRequest body, HttpContext h, NetworkOpsStore s, Agents.AgentEnrolment enrolment, CancellationToken ct) =>
+        {
+            if (!Agents.AgentEnrolment.IsPcName(body.Name)) return Results.BadRequest(new { error = "a Windows computer name: letters, digits and hyphens, at most 15" });
+            var name = body.Name.ToUpperInvariant();
+            if (await s.AddManualPcAsync(name, ct) is not { } id)
+                return Results.Conflict(new { error = $"{name} is a domain PC: it gets its agent from its own window (More > Install agent)" });
+            var who = ApiAccess.UserOf(h.User);
+            var issued = enrolment.Issue(id, name, who, DateTime.UtcNow);
+            await s.AddNoteAsync(id, who, $"Added as a PC outside the domain; enrolment code issued (good until {issued.ExpiresUtc:HH:mm} UTC).", ct);
+            return Results.Ok(new { deviceId = id, device = name, code = issued.Code, expiresUtc = issued.ExpiresUtc,
+                command = Agents.AgentEnrolment.Command(Agents.AgentEnrolment.PackageServerUrl(), Agents.AgentEnrolment.PackagePin(), issued.Code) });
+        });
         api.MapPost("/devices/{id:int}/notes", async (int id, NoteRequest body, HttpContext h, NetworkOpsStore s, CancellationToken ct) =>
             string.IsNullOrWhiteSpace(body.Body) ? Results.BadRequest(new { error = "a note needs text" })
             : await s.AddNoteAsync(id, ApiAccess.UserOf(h.User), body.Body, ct) ? Results.NoContent() : Results.NotFound());

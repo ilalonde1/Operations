@@ -99,6 +99,11 @@ public sealed class AgentEndToEndTests : IAsyncLifetime
         builder.Logging.ClearProviders();
         builder.Services.AddSingleton(_hub);
         builder.Services.AddSingleton<IAgentDirectory>(new FakeDirectory(AgentApi.Hash(_key)));
+        // What /agent/v1/enrol takes, as ApiHost registers it: without them minimal APIs cannot bind the route and every
+        // /agent request is a 500. The store is never opened here (these tests never enrol).
+        builder.Services.AddSingleton(new AgentEnrolment());
+        builder.Services.AddSingleton(new Kor.Operations.NetworkOps.Service.Store.NetworkOpsStore(
+            Microsoft.Extensions.Options.Options.Create(new Kor.Operations.NetworkOps.Service.NetworkOpsOptions { Db = "unused" })));
         builder.Services.ConfigureHttpJsonOptions(j => j.SerializerOptions.PropertyNameCaseInsensitive = true);
         builder.WebHost.ConfigureKestrel(k => k.Listen(IPAddress.Loopback, 0, l => l.UseHttps(_cert)));
         _app = builder.Build();

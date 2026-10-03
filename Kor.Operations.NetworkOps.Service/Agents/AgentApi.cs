@@ -62,8 +62,12 @@ internal static class AgentApi
     /// for that route, check the key within the look-up budget, and only then take a working slot. Only an authenticated
     /// request reaches an endpoint, and only authenticated requests hold slots.
     /// </summary>
+    /// <summary>The two /agent routes a PC uses BEFORE it has a key (AgentEnrolment): the package download, which holds no
+    /// secret, and the code-for-key trade, which the one-time code and its rate limit guard. Everything else needs the key.</summary>
+    internal static bool IsBeforeKey(PathString path) => path == "/agent/v1/enrol" || path == "/agent/v1/package";
+
     public static void UseAgentGate(IApplicationBuilder app)
-        => app.UseWhen(h => h.Request.Path.StartsWithSegments("/agent"), branch => branch.Use(async (HttpContext h, RequestDelegate next) =>
+        => app.UseWhen(h => h.Request.Path.StartsWithSegments("/agent") && !IsBeforeKey(h.Request.Path), branch => branch.Use(async (HttpContext h, RequestDelegate next) =>
         {
             if (h.Features.Get<Microsoft.AspNetCore.Http.Features.IHttpMaxRequestBodySizeFeature>() is { IsReadOnly: false } size)
                 size.MaxRequestBodySize = h.Request.Path.Value?.EndsWith("/result", StringComparison.Ordinal) == true ? MaxResultBytes : MaxPollBytes;
@@ -102,6 +106,27 @@ internal static class AgentApi
     public static void Map(IEndpointRouteBuilder app)
     {
         var agent = app.MapGroup("/agent/v1");
+
+        // A PC outside the domain, before it has a key (AgentEnrolment; the agent side is Agent/Enrol.cs).
+        agent.MapGet("/package", () => Results.File(AgentEnrolment.PackageZip(), "application/zip", "kor-agent.zip"));
+        agent.MapPost("/enrol", async (EnrolBody body, HttpContext h, AgentEnrolment enrolment, NetworkOpsStore store, AgentHub hub, ILoggerFactory logs, CancellationToken ct) =>
+        {
+            var log = logs.CreateLogger("Kor.Operations.NetworkOps.Agents.Enrol");
+            var from = h.Connection.RemoteIpAddress?.ToString() ?? "?";
+            if (body.Device is not { Length: > 0 and <= 64 } || body.Code is not { Length: > 0 and <= 40 }) return Results.BadRequest();
+            if (enrolment.Redeem(body.Device, body.Code, DateTime.UtcNow) is not { } hit)
+            {
+                log.LogWarning("Enrolment refused for {Device} from {Address}: wrong, used or expired code", body.Device, from);
+                return Results.StatusCode(StatusCodes.Status403Forbidden);
+            }
+            var key = NewKey();
+            var hash = Hash(key);
+            await store.SaveAgentAsync(hit.DeviceId, hash, AgentInstaller.PackageVersionOrNull() ?? "unknown", $"enrolled with a code from {hit.By}", ct).ConfigureAwait(false);
+            hub.Revoke(body.Device, Convert.ToHexString(hash));   // from here only this key is accepted for the PC
+            await store.AddNoteAsync(hit.DeviceId, "NetworkOps", $"Agent enrolled from {from} with a one-time code issued by {hit.By}.", ct).ConfigureAwait(false);
+            log.LogInformation("Agent enrolled: {Device} from {Address}, code issued by {By}", body.Device, from, hit.By);
+            return Results.Ok(new { key });
+        }).WithMetadata(new Microsoft.AspNetCore.Mvc.RequestSizeLimitAttribute(4096));
 
         agent.MapPost("/poll", async (AgentPoll body, HttpContext h, IAgentDirectory store, AgentHub hub, ILoggerFactory logs, CancellationToken ct) =>
         {

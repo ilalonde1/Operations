@@ -22,6 +22,7 @@ namespace Kor.Operations.NetworkOps.Cli;
 //   netops updates    [--scan]                   what Windows Update has waiting everywhere; --scan searches again first
 //   netops changes    [--since 24h|7d|2026-10-02T01:45]   the morning brief: opened, cleared, done, open now
 //   netops network    [--search KOR-207|markb|192.168.1.73]  the port map: every switch, port, device and person
+//   netops add-pc     --hosts NAME           a PC outside the domain: its one-time code and the command to run on it
 //
 // --hosts takes a PC or a rack device (KOR-217, KOR-FS01: a rack name matches up to its bracket), "all" (every PC) or
 // "rack" (every rack device): one resolver (Core/Learning/HostNames.Resolve) for every verb.
@@ -29,7 +30,7 @@ namespace Kor.Operations.NetworkOps.Cli;
 internal static class SessionVerbs
 {
     public static bool Handles(string verb, string[] args)
-        => verb is "check" or "last-check" or "knowledge" or "findings" or "fix" or "history" or "readings" or "action" or "trigger" or "updates" or "changes" or "network" || (verb == "run" && !args.Contains("--direct"));
+        => verb is "check" or "last-check" or "knowledge" or "findings" or "fix" or "history" or "readings" or "action" or "trigger" or "updates" or "changes" or "network" or "add-pc" || (verb == "run" && !args.Contains("--direct"));
 
     public static async Task<int> RunAsync(string verb, string[] args)
     {
@@ -72,6 +73,16 @@ internal static class SessionVerbs
             if (verb == "findings") return await FindingsAsync(server, hostsArg, ct);
             if (verb == "updates") return await UpdatesAsync(server, scan, ct);
             if (verb == "changes") return await ChangesAsync(server, since, ct);
+            if (verb == "add-pc")
+            {
+                // A PC outside the domain: the one-time code and the command to run on it as an administrator.
+                if (hostsArg is not { Length: > 0 } pcName) { Console.Error.WriteLine("--hosts NAME is required (the PC's Windows computer name)."); return 2; }
+                var enrol = await server.PostAsync<ManualPcAnswer>("/api/devices/manual", new { name = pcName }, ct);
+                Console.WriteLine($"{enrol.Device}: code {enrol.Code}, good until {enrol.ExpiresUtc.ToLocalTime():HH:mm}, once.");
+                Console.WriteLine("On that PC, in PowerShell run as administrator:");
+                Console.WriteLine(enrol.Command);
+                return 0;
+            }
             if (verb == "network")
             {
                 Console.Write(Kor.Operations.NetworkOps.Core.Network.NetworkMapText.Render(
@@ -277,6 +288,8 @@ internal static class SessionVerbs
     }
 
     private sealed record QueuedAction(long ActionId);
+
+    private sealed record ManualPcAnswer(int DeviceId, string Device, string Code, DateTime ExpiresUtc, string Command);
 
     // The Command Center's Fix…, from a session: the same endpoint, so the catalog, the "someone is using it" refusal and
     // the audit row are the service's, not this verb's. Waits for each run to finish (or --timeout), then prints it.

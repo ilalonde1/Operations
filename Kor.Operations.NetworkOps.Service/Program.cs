@@ -80,6 +80,7 @@ try
     builder.Services.AddSingleton<Kor.Operations.NetworkOps.Service.Agents.AgentHub>();
     builder.Services.AddSingleton<Kor.Operations.NetworkOps.Service.Agents.MachineRunner>();
     builder.Services.AddSingleton<Kor.Operations.NetworkOps.Service.Agents.AgentInstaller>();
+    builder.Services.AddSingleton<Kor.Operations.NetworkOps.Service.Agents.AgentEnrolment>();
     builder.Services.AddSingleton<Kor.Operations.NetworkOps.Service.Agents.AgentRollout>();
     builder.Services.AddSingleton<Kor.Operations.NetworkOps.Service.Mesh.MeshState>();
     builder.Services.AddSingleton<Kor.Operations.NetworkOps.Service.Prompts.PromptLibrary>();

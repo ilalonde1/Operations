@@ -14,6 +14,7 @@
 //   Kor.Operations.NetworkOps.Agent.exe --console [overrides]    in a console, for tests
 //   Kor.Operations.NetworkOps.Agent.exe --idle                   exit with this session's idle seconds (the service
 //                                                                 starts it in the signed-in user's session)
+//   Kor.Operations.NetworkOps.Agent.exe --enrol CODE             a PC outside the domain installs itself (Enrol.cs)
 using System;
 using System.Linq;
 using System.ServiceProcess;
@@ -29,6 +30,9 @@ internal static class Program
     {
         // Started by the agent in the console user's session: the exit code IS the answer (ConsoleIdle).
         if (args.Length > 0 && args[0] == "--idle") return ConsoleIdle.ForThisSession();
+
+        // A PC outside the domain installs itself with a one-time code (Enrol.cs).
+        if (args.Length > 1 && args[0] == "--enrol") return Enrol.Run(AgentSettings.Load([]), args[1]);
 
         var settings = AgentSettings.Load(args);
         // Before anything can start a child: everything the agent ever starts is contained, and dies with it.

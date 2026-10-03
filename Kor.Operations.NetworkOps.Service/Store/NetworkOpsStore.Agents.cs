@@ -37,6 +37,29 @@ internal sealed partial class NetworkOpsStore : Agents.IAgentDirectory
     /// cleared: until the installer confirms a poll with the new key, this install is unconfirmed, and the rollout
     /// retries it (Codex audit 2026-09-30, finding 7).
     /// </summary>
+    /// <summary>
+    /// A PC that is not in the domain, added by hand (Ian, 2026-10-02: the Boardroom PC). Source 'Manual' -- the directory
+    /// sync only ever retires Source 'AD' rows, so it stays. Returns its id; null when a domain PC already has that name
+    /// (it is enrolled the domain way, from its own window).
+    /// </summary>
+    public async Task<int?> AddManualPcAsync(string name, CancellationToken ct)
+    {
+        await using var c = await OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = Cmd(c, """
+            DECLARE @id int, @src varchar(16);
+            SELECT @id = DeviceId, @src = Source FROM NetworkOps.Devices WHERE Name = @n;
+            IF @id IS NULL
+            BEGIN
+                INSERT NetworkOps.Devices (Name, Kind, Source, InDirectory) VALUES (@n, 'Workstation', 'Manual', 1);
+                SET @id = SCOPE_IDENTITY(); SET @src = 'Manual';
+            END
+            ELSE IF @src = 'Manual' UPDATE NetworkOps.Devices SET InDirectory = 1, RetiredUtc = NULL WHERE DeviceId = @id;
+            SELECT CASE WHEN @src = 'Manual' THEN @id END;
+            """);
+        cmd.Parameters.Add("@n", SqlDbType.NVarChar, 64).Value = name;
+        return await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false) is int id ? id : null;
+    }
+
     public async Task SaveAgentAsync(int deviceId, byte[] secretSha256, string version, string by, CancellationToken ct)
     {
         await using var c = await OpenAsync(ct).ConfigureAwait(false);
