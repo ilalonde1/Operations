@@ -160,6 +160,25 @@ internal sealed partial class NetworkOpsStore
         return list;
     }
 
+    /// <summary>The ActionIdsJson column's size (nvarchar(400), migration 002).</summary>
+    internal const int ActionIdsMax = 400;
+
+    /// <summary>
+    /// A JSON list that fits <paramref name="maxChars"/> WHOLE: the newest items that fit, never a cut string. It was
+    /// Truncate(Serialize(list), 400), which on 2026-10-02 -- after a night of installs made the lists long -- cut through a
+    /// "\u" escape and appended "…": invalid JSON in FindingResolutions, and GET /api/resolutions (which every device
+    /// window loads) answered 500 until the row was read past. Serialized JSON is never truncated.
+    /// </summary>
+    internal static string JsonListWithin(IReadOnlyList<string> items, int maxChars)
+    {
+        for (var skip = 0; skip <= items.Count; skip++)
+        {
+            var json = JsonSerializer.Serialize(items.Skip(skip).ToList());
+            if (json.Length <= maxChars) return json;
+        }
+        return "[]";
+    }
+
     public async Task InsertResolutionAsync(long findingId, int deviceId, Resolution res, CancellationToken ct)
     {
         await using var c = await OpenAsync(ct).ConfigureAwait(false);
@@ -174,7 +193,7 @@ internal sealed partial class NetworkOpsStore
         cmd.Parameters.Add("@at", SqlDbType.DateTime2).Value = res.ClearedUtc;
         cmd.Parameters.Add("@rb", SqlDbType.Bit).Value = res.Rebooted;
         cmd.Parameters.Add("@facts", SqlDbType.NVarChar, -1).Value = JsonSerializer.Serialize(res.ChangedFacts);
-        cmd.Parameters.Add("@acts", SqlDbType.NVarChar, 400).Value = Truncate(JsonSerializer.Serialize(res.Actions), 400)!;
+        cmd.Parameters.Add("@acts", SqlDbType.NVarChar, ActionIdsMax).Value = JsonListWithin(res.Actions, ActionIdsMax);
         cmd.Parameters.Add("@sum", SqlDbType.NVarChar, 1000).Value = Truncate(res.Summary, 1000)!;
         await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
     }

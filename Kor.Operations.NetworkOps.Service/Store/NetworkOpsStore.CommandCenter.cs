@@ -334,9 +334,18 @@ internal sealed partial class NetworkOpsStore
         await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
         while (await r.ReadAsync(ct).ConfigureAwait(false))
             list.Add(new ResolutionRow(r.GetString(0), Utc(r, 1)!.Value, r.GetBoolean(2),
-                (r.IsDBNull(3) ? null : JsonSerializer.Deserialize<List<FactChange>>(r.GetString(3))) ?? [],
-                (r.IsDBNull(4) ? null : JsonSerializer.Deserialize<List<string>>(r.GetString(4))) ?? []));
+                ListOrEmpty<FactChange>(r.IsDBNull(3) ? null : r.GetString(3)),
+                ListOrEmpty<string>(r.IsDBNull(4) ? null : r.GetString(4))));
         return list;
+    }
+
+    /// <summary>A stored JSON list, or empty when it is missing or unreadable: one bad row (the truncated lists of
+    /// 2026-10-02, repaired by migration 009) must cost that row's detail, never the whole endpoint (it was a 500).</summary>
+    internal static IReadOnlyList<T> ListOrEmpty<T>(string? json)
+    {
+        if (string.IsNullOrEmpty(json)) return [];
+        try { return JsonSerializer.Deserialize<List<T>>(json) ?? []; }
+        catch (JsonException) { return []; }
     }
 
     /// <summary>Queues "check this PC now"; the TriggerPoller claims it within ~5 s. Null when the PC is not in the fleet.</summary>
