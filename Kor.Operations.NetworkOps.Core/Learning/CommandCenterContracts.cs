@@ -42,6 +42,16 @@ public sealed record UpdateInstallRequest(IReadOnlyList<int> DeviceIds, string R
 /// <param name="Note">Queued, but not quite as asked (APP01: installed without the restart).</param>
 public sealed record UpdateInstallOutcome(int DeviceId, string Name, long? ActionId, string? Refused, bool NeedsConfirmation, string? Note = null);
 
+// ---- To clear: one fix on every machine that has the same issue (the "Fix on all N" on a To-clear worklist row). The
+// generic fleet fan-out for any catalog fix (the per-issue sibling of the updates fan-out).
+
+/// <param name="Param">Shared across the machines (the ruleKey carries it, so a grouped issue shares it).</param>
+/// <param name="Confirmed">Set after being told someone is actively using one of the machines (a disruptive fix is refused otherwise).</param>
+public sealed record FixRunManyRequest(string FixId, IReadOnlyList<int> DeviceIds, string? Param, bool Confirmed);
+
+/// <summary>Per machine: queued (ActionId) or refused (why), and whether confirming would let it run.</summary>
+public sealed record FixRunOutcome(int DeviceId, string Name, long? ActionId, string? Refused, bool NeedsConfirmation);
+
 // ---- the Prompt Library: Claude prompts generated from the live database when opened (Core/Prompts/PromptComposer).
 
 public sealed record PromptTool(string Id, string Title, string Summary);

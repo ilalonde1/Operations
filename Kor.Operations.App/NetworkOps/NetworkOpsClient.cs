@@ -212,6 +212,17 @@ public sealed class NetworkOpsClient
         return await res.Content.ReadFromJsonAsync<List<Kor.Operations.NetworkOps.Core.Learning.DeployRunOutcome>>(Json, ct).ConfigureAwait(false) ?? [];
     }
 
+    /// <summary>The "path to all-green" worklist: every live finding grouped by issue, ranked, with the fix that clears each.</summary>
+    public Task<ToClearView> GetToClearAsync(CancellationToken ct) => GetAsync<ToClearView>("api/to-clear", ct)!;
+
+    /// <summary>Run one fix on every machine that has the issue ("Fix on all N"): per-machine queued or refused.</summary>
+    public async Task<IReadOnlyList<FixRunOutcome>> RunFixManyAsync(string fixId, IReadOnlyList<int> deviceIds, string? param, bool confirmed, CancellationToken ct)
+    {
+        using var res = await SendAsync(HttpMethod.Post, "api/fixes/run-many", new FixRunManyRequest(fixId, deviceIds, param, confirmed), ct).ConfigureAwait(false);
+        await EnsureOkAsync(res).ConfigureAwait(false);
+        return await res.Content.ReadFromJsonAsync<List<FixRunOutcome>>(Json, ct).ConfigureAwait(false) ?? [];
+    }
+
     /// <summary>Queues a whole-fleet health re-check; the service claims it within ~5 s. Null when one is already running.</summary>
     public async Task<long?> QueueFleetSweepAsync(CancellationToken ct)
     {

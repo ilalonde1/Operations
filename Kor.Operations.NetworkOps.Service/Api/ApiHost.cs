@@ -276,6 +276,40 @@ internal sealed class ApiHost(IOptions<NetworkOpsOptions> options, NetworkOpsSto
             var runId = await s.QueueActionAsync(id, fix.Id, by, request, ct);
             return Results.Accepted($"/api/actions/{runId}", new { actionId = runId });
         });
+        // ---- To clear (the "path to all-green" worklist): every LIVE finding across the PCs and the rack, grouped by issue,
+        // ranked, with the fix that clears each. Composed in Core from the same snapshot the Command Center reads.
+        api.MapGet("/to-clear", async (NetworkOpsStore s, CancellationToken ct) =>
+            Results.Ok(Core.Learning.ToClear.Build([await s.FleetSnapshotAsync(ct), await s.FleetSnapshotAsync(ct, rack: true)], DateTime.UtcNow)));
+        // Fix one issue on every machine that has it ("Fix on all N"): the generic fleet fan-out for any catalog fix. Each
+        // machine is validated and queued exactly as the single-machine POST above, so a disruptive fix on an active PC is
+        // refused per-machine unless confirmed, and every run (and refusal) is audited.
+        api.MapPost("/fixes/run-many", async (FixRunManyRequest body, HttpContext h, NetworkOpsStore s, IOptions<NetworkOpsOptions> o, CancellationToken ct) =>
+        {
+            var fix = Kor.Operations.NetworkOps.Core.Actions.FixCatalog.Get(body.FixId);
+            if (fix is null) return Results.BadRequest(new { error = $"'{body.FixId}' is not a fix NetworkOps knows" });
+            if (Kor.Operations.NetworkOps.Core.Actions.FixCatalog.Invalid(fix, body.Param) is { } bad) return Results.BadRequest(new { error = bad });
+            var by = ApiAccess.UserOf(h.User);
+            var outcomes = new List<FixRunOutcome>();
+            foreach (var id in body.DeviceIds.Distinct())
+            {
+                if (await s.DeviceForActionAsync(id, ct) is not { } dev) { outcomes.Add(new FixRunOutcome(id, $"#{id}", null, "not in NetworkOps", false)); continue; }
+                var needsConfirm = fix.Disruptive && dev.PresenceState == "Active" && !body.Confirmed;
+                string? refuse =
+                    (dev.Source == "Rack" && !Sweep.ActionRunner.CanRun(o.Value, dev.Name, fix)
+                        ? (fix.Target == Kor.Operations.NetworkOps.Core.Actions.FixCatalog.Esxi ? $"{dev.Name} is not an ESXi host" : $"{dev.Name} is not a Windows server APP01 can run fixes on") : null)
+                    ?? (dev.Source != "Rack" && fix.Target == Kor.Operations.NetworkOps.Core.Actions.FixCatalog.Esxi ? $"{fix.Title} is for an ESXi host, not a PC" : null)
+                    ?? (needsConfirm ? $"someone is using {dev.Name} right now ({dev.Presence}): confirm to go ahead" : null);
+                if (refuse is not null)
+                {
+                    await s.RecordRefusedActionAsync(id, fix.Id, by, "{}", refuse, ct);
+                    outcomes.Add(new FixRunOutcome(id, dev.Name, null, refuse, needsConfirm));
+                    continue;
+                }
+                var request = System.Text.Json.JsonSerializer.Serialize(new { param = body.Param, confirmed = body.Confirmed, presence = dev.Presence });
+                outcomes.Add(new FixRunOutcome(id, dev.Name, await s.QueueActionAsync(id, fix.Id, by, request, ct), null, false));
+            }
+            return Results.Ok(outcomes);
+        });
         // ---- the endpoint agent: install (or upgrade, which is installing again) and remove, queued and audited like a fix.
         api.MapPost("/devices/{id:int}/agent", async (int id, AgentRequest body, HttpContext h, NetworkOpsStore s, CancellationToken ct) =>
         {

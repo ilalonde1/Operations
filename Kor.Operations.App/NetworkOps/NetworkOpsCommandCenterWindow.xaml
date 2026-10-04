@@ -197,7 +197,9 @@
                              IsChecked="{Binding TableView}" ToolTip="The same machines as a dense table."/>
             </StackPanel>
             <StackPanel Grid.Column="3" Orientation="Horizontal">
-                <Button Content="Ask Claude" Style="{StaticResource Ops.Primary}" Margin="0,0,8,0" Click="AskClaude_Click"
+                <Button Content="To clear" Style="{StaticResource Ops.Primary}" Margin="0,0,8,0" Click="ToClear_Click"
+                        ToolTip="The path to all-green: every open issue across the fleet, grouped, ranked, with 'fix on all the machines that have it' — the one place to work the fleet down to green."/>
+                <Button Content="Ask Claude" Margin="0,0,8,0" Click="AskClaude_Click"
                         ToolTip="Ask anything about the selected PC (or the whole network), or open a prompt for any problem: Claude starts in Windows Terminal with everything NetworkOps knows."/>
                 <Button Content="Network" Margin="0,0,8,0" Click="Network_Click"
                         ToolTip="Every switch and port, and what is plugged into each: PC, person, IP. Searchable."/>
