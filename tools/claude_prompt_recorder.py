@@ -1,7 +1,7 @@
 """UserPromptSubmit hook: record what the user actually asked, so a later hook can check it.
 
 Companion to claude_asked_guard.py. Appends each user message to a per-session file; the
-guard reads the last few back and refuses build/publish/deploy/remote-exec commands whose
+guard reads the last few back and refuses actions on another machine (remote exec, services, c$ writes) whose
 verb never appeared in them. This file is the memory the guard checks against -- it holds
 nothing else and emits nothing.
 

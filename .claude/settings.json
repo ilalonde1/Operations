@@ -13,6 +13,12 @@
             "command": "python \"$CLAUDE_PROJECT_DIR/tools/claude_bash_guard.py\"",
             "timeout": 20,
             "statusMessage": "Checking against the repo's hard rules"
+          },
+          {
+            "type": "command",
+            "command": "python \"$CLAUDE_PROJECT_DIR/tools/claude_asked_guard.py\"",
+            "timeout": 20,
+            "statusMessage": "Checking remote actions were asked for"
           }
         ]
       },
@@ -24,6 +30,23 @@
             "command": "python \"$CLAUDE_PROJECT_DIR/tools/claude_bash_guard.py\"",
             "timeout": 20,
             "statusMessage": "Checking against the repo's hard rules"
+          },
+          {
+            "type": "command",
+            "command": "python \"$CLAUDE_PROJECT_DIR/tools/claude_asked_guard.py\"",
+            "timeout": 20,
+            "statusMessage": "Checking remote actions were asked for"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$CLAUDE_PROJECT_DIR/tools/claude_prompt_recorder.py\"",
+            "timeout": 20
           }
         ]
       }

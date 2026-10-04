@@ -20,20 +20,23 @@ REAL_ASK = ("Can you check PCs 202, 204 and 208N to see if they're using it, and
 
 CASES = [
     # (session tag, prompts, command, expect_deny, label)
-    ("s1", [REAL_ASK], 'cd "C:/VIsual Studio Projects/Operations" && git worktree add --detach "C:/VIsual Studio Projects/Operations-publish" HEAD',
-     True, "git worktree add (ran it unasked)"),
-    ("s1", [REAL_ASK], 'dotnet build Kor.Operations.App/Kor.Operations.App.csproj -c Release --nologo',
-     True, "dotnet build (ran it unasked)"),
     ("s1", [REAL_ASK], 'sc.exe \\\\KOR-204 create KorDeployProbe binPath= $bin type= own start= demand',
      True, "sc.exe create on Jim's PC (ran it unasked)"),
     ("s1", [REAL_ASK], 'New-CimSession -ComputerName $h; Invoke-CimMethod -CimSession $s -ClassName Win32_Process -MethodName Create',
      True, "remote process exec (ran it unasked)"),
     ("s1", [REAL_ASK], 'Copy-Item "\\\\KOR-204\\c$\\Windows\\System32\\winevt\\Logs\\System.evtx" $sys -Force',
      True, "pull an event log off a colleague's PC (was rejected by the user)"),
-    ("s1", [REAL_ASK], './tools/deploy-newerforma-app.ps1 -Version 18',
-     True, "run the publish script before being told to"),
-    ("s1", [REAL_ASK], 'git commit -m "wip"',
-     True, "commit unasked"),
+
+    # Local actions are NOT gated (trimmed 2026-10-03): cheap to undo on this PC, and gating
+    # them blocked ordinary asks like "clean up my git".
+    ("s7", ["clean up my git"], 'git commit -m "wip" && git push origin develop',
+     False, "commit + push under 'clean up my git'"),
+    ("s7", ["clean up my git"], 'git worktree add --detach ../Operations-publish HEAD',
+     False, "git worktree add (local)"),
+    ("s7", ["clean up my git"], 'dotnet build Kor.Operations.App/Kor.Operations.App.csproj -c Release',
+     False, "dotnet build (local)"),
+    ("s7", ["clean up my git"], './tools/deploy-newerforma-app.ps1 -Version 18',
+     False, "publish script (local)"),
 
     # Reads must stay open -- investigation is not what is being gated.
     ("s2", [REAL_ASK], 'Get-ChildItem "\\\\KOR-204\\c$\\Newerforma" | Select-Object Name, Length',
@@ -47,18 +50,18 @@ CASES = [
 
     # The same actions ARE allowed once the ask contains the verb.
     ("s3", [REAL_ASK, "ok publish it and deploy to the three PCs"],
-     './tools/deploy-newerforma-app.ps1 -Version 18', False, "publish, after being told to publish"),
-    ("s3", [REAL_ASK, "ok publish it and deploy to the three PCs"],
      'Remove-Item "\\\\KOR-204\\c$\\Newerforma\\*" -Recurse -Force', False, "wipe, after 'deploy'"),
-    ("s4", [REAL_ASK, "go ahead and build it first"],
-     'dotnet build Kor.Operations.App/Kor.Operations.App.csproj -c Release', False, "build, after 'build'"),
+    ("s4", [REAL_ASK, "go ahead and run it on 204"],
+     'Invoke-CimMethod -ComputerName KOR-204 -ClassName Win32_Process -MethodName Create', False,
+     "remote exec, after 'run'"),
 
     # A stale ask must not authorise later: LOOKBACK is 3 messages.
-    ("s5", ["ok publish it", "thanks", "what did rory say?", "any news from jim?"],
-     './tools/deploy-newerforma-app.ps1 -Version 18', True, "publish, 4 messages after the ask went stale"),
+    ("s5", ["ok deploy it", "thanks", "what did rory say?", "any news from jim?"],
+     'Remove-Item "\\\\KOR-204\\c$\\Newerforma\\*" -Recurse -Force', True,
+     "remote wipe, 4 messages after the ask went stale"),
 
     # No recorded prompt at all = deny, never silently allow.
-    ("s6", [], 'dotnet publish -c Release', True, "no prompt record at all"),
+    ("s6", [], 'sc.exe \\\\KOR-204 stop KorAgent', True, "no prompt record at all"),
 ]
 
 

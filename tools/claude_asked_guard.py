@@ -12,9 +12,14 @@ A command in one of the CLASSES below is allowed only if one of that class's ver
 in the last LOOKBACK messages. Otherwise it is denied with a one-line reason, before the
 action -- the same moment claude_bash_guard.py fires.
 
-What it does not gate: reads. Grep, cat, ls, Get-Content, a CIM query, a c$ listing all pass.
+What it gates: only actions on ANOTHER machine -- remote services, remote process execution,
+copying onto or deleting from a c$/admin$ share, and pulling event logs or dumps off one.
+
+What it does not gate: anything local (dotnet build/test/publish, deploy scripts, git commit,
+push, worktree), and reads. Grep, cat, ls, Get-Content, a CIM query, a c$ listing all pass.
 The gate stops acting beyond the ask, not investigating beyond it. A verb match is crude:
-"don't build yet" contains "build". And a class not listed here is not gated.
+"don't fix it yet" contains "fix". And a class not listed here is not gated -- e.g. a deploy
+script that itself copies to c$ passes, because only the script name is on the command line.
 
 stdin  : the PreToolUse payload
 stdout : nothing (allow), or a permissionDecision of "deny"
@@ -28,15 +33,11 @@ import tempfile
 LOOKBACK = 3   # user messages; "go" after "unzip the new build" still carries the ask
 
 # Repo rule 7 in force here too: every pattern is a raw string.
+# ONLY actions on ANOTHER machine. Local build, test, publish, worktree and commit/push were
+# gated here at first and were dropped on 2026-10-03: every one is cheap to undo on this PC,
+# and gating them blocked ordinary asks ("clean up my git" says neither commit nor push).
+# What the 2026-09-09 incident actually cost was done to colleagues' machines.
 CLASSES = [
-    ("build or publish with dotnet",
-     re.compile(r"\bdotnet\s+(?:build|publish|test|run)\b|\bmsbuild\b", re.I),
-     ["build", "publish", "test", "compile", "deploy", "run the"]),
-
-    ("run a publish or deploy script",
-     re.compile(r"deploy-[\w-]+\.ps1|\bpublish\.ps1\b|\btakeoff\s+publish\b|\bdotnet\s+publish\b", re.I),
-     ["publish", "deploy", "ship", "release"]),
-
     # Its own class, because "get it ready" legitimately authorises staging an app onto c$
     # and must NOT also authorise hoovering diagnostics off a colleague's machine. The
     # 2026-09-09 event-log pull off Jim's PC was rejected by the user by hand.
@@ -44,14 +45,6 @@ CLASSES = [
      re.compile(r"(?:\\\\|//)[\w.-]+[\\/](?:c|admin)\$[^\n]*(?:\.evtx|winevt|CrashDumps|Minidump)"
                 r"|(?:\.evtx|winevt|CrashDumps)[^\n]*(?:\\\\|//)[\w.-]+[\\/](?:c|admin)\$", re.I),
      ["log", "event", "crash", "dump", "diagnose", "diagnostic", "investigate", "why"]),
-
-    ("create a git worktree",
-     re.compile(r"\bgit\s+worktree\s+add\b", re.I),
-     ["worktree"]),
-
-    ("commit or push",
-     re.compile(r"\bgit\s+(?:commit|push)\b", re.I),
-     ["commit", "push"]),
 
     ("create, start, stop or delete a service on a remote host",
      re.compile(r"\bsc(?:\.exe)?\s+(?:\\\\|//)[\w.-]+\s+(?:create|start|stop|delete|config|failure)\b", re.I),
