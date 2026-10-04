@@ -1,6 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
+    <!-- Version lives in AssemblyInfo.cs, NOT here: GenerateAssemblyInfo=false (below) makes the SDK
+         ignore <Version>, so a value here would be a dead config line reading 0.0.0.0 in the logs. -->
     <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>

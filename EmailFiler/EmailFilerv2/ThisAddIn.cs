@@ -30,6 +30,14 @@ namespace EmailFilerv2
 
         private void ThisAddIn_Startup(object sender, EventArgs e)
         {
+            // Load telemetry to the shared filing log (SMB-readable): which version loaded, what app path it resolved, and
+            // -- the key number -- how long Startup took. With the SQL round-trip gone and SyncFolders deferred, this is
+            // small; that is the load-time fix, measurable instead of asserted.
+            var loadClock = System.Diagnostics.Stopwatch.StartNew();
+            string app;
+            try { app = HostExeResolver.Resolve() ?? "NOT FOUND"; } catch (Exception ex) { app = "resolve error: " + ex.Message; }
+            ItemsToFileProcessor.SafeLog($"ADD-IN LOADED: EmailFilerv2 {System.Reflection.Assembly.GetExecutingAssembly().GetName().Version} -- app resolves to [{app}]");
+
             // _autoFileOnSend keeps its safe default (true) and is re-read from the DB on every send (Application_ItemSend),
             // so startup does NOT open a SQL connection here -- that round-trip to APP01 was part of the slow Outlook load.
             this.Application.ItemSend +=
@@ -46,6 +54,7 @@ namespace EmailFilerv2
                 _syncTimer.Tick += (s, ev) =>
                 {
                     _syncTimer.Stop();
+                    ItemsToFileProcessor.SafeLog($"deferred SyncFolders firing ({loadClock.ElapsedMilliseconds} ms after load)");
                     try { _itemsToFileProcessor.SyncFolders(); } catch { /* never block; filing still works without the synced folders */ }
                 };
                 _syncTimer.Start();
@@ -65,10 +74,12 @@ namespace EmailFilerv2
                 ((Outlook.ApplicationEvents_11_Event)this.Application).Quit
                     += new Outlook.ApplicationEvents_11_QuitEventHandler(Application_Quit);
             }
-            catch
+            catch (Exception ex)
             {
-                // never block Outlook startup
+                // never block Outlook startup, but DO record it.
+                ItemsToFileProcessor.SafeLog("ThisAddIn_Startup error (Outlook load not blocked): " + ex.Message);
             }
+            ItemsToFileProcessor.SafeLog($"ThisAddIn_Startup returned in {loadClock.ElapsedMilliseconds} ms (folder sync deferred -- Outlook's load was not blocked on it)");
         }
 
         private void Application_Quit()

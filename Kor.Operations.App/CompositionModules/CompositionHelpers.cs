@@ -141,7 +141,9 @@ internal static class CompositionHelpers
         Directory.CreateDirectory(logDirectory);
 
         _serilogLogger = new LoggerConfiguration()
-            .MinimumLevel.Information()
+            // Debug-level: this app is young and actively built -- verbose logging we can rely on beats guessing. Framework
+            // noise stays out via the Microsoft override.
+            .MinimumLevel.Debug()
             .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
             .Enrich.FromLogContext()
             .Destructure.With<CredentialRedactingPolicy>()
@@ -151,7 +153,11 @@ internal static class CompositionHelpers
                 rollingInterval: RollingInterval.Day,
                 outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {SourceContext} {Message:lj} {Properties:j}{NewLine}{SanitizedExceptionMessage}{NewLine}{Exception}",
                 retainedFileCountLimit: 30,
-                fileSizeLimitBytes: 10L * 1024 * 1024)
+                fileSizeLimitBytes: 10L * 1024 * 1024,
+                // shared: a second app process (single-instance is not guaranteed while developing) can still write instead
+                // of silently getting no log. Shared mode writes each event straight through, so nothing is lost on a quick
+                // exit (App.OnExit also calls Log.CloseAndFlush as belt-and-suspenders).
+                shared: true)
             .CreateLogger();
 
         return _serilogLogger;

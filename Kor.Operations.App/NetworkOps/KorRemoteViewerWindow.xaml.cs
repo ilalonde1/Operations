@@ -24,10 +24,14 @@ public partial class KorRemoteViewerWindow : Window
     // One WebView2 profile for every viewer in the app (a profile folder may have only one set of options per process).
     private static Task<CoreWebView2Environment>? _environment;
 
+    private static readonly Serilog.ILogger _log = Serilog.Log.ForContext<KorRemoteViewerWindow>();
+
     private readonly NetworkOpsDeviceWindow _device;
     private readonly KorRemoteViewerModel _vm;
     private string _url;
     private int _reroutes;
+    private bool _gotBridge;
+    private System.Windows.Threading.DispatcherTimer? _watchdog;
 
     public static string ProfileFolder => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "KorOperations", "KorRemote");
     public static string ScreenshotFolder => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyPictures), "KOR Remote");
@@ -41,7 +45,8 @@ public partial class KorRemoteViewerWindow : Window
     private static void Open(NetworkOpsDeviceWindow device, string? url)
     {
         var d = device.ViewModel;
-        if (url is null) return;
+        if (url is null) { _log.Warning("KorRemote Connect: no viewer URL for {Device} (no mesh node id on record?)", d.DeviceName); return; }
+        _log.Information("KorRemote Connect requested: {Device} -> {Url}", d.DeviceName, url);
         if (Open_.TryGetValue(d.DeviceName, out var open))
         {
             if (open.WindowState == WindowState.Minimized) open.WindowState = WindowState.Normal;
@@ -57,8 +62,10 @@ public partial class KorRemoteViewerWindow : Window
     /// <summary>Point an already-open viewer at another view of the same machine (Connect &lt;-&gt; Web-RDP).</summary>
     public void NavigateTo(string url)
     {
+        _log.Information("KorRemote NavigateTo {Device} -> {Url}", _vm.DeviceName, url);
         _url = url;
         _reroutes = 0;
+        _gotBridge = false;
         if (View.CoreWebView2 is not null && Uri.TryCreate(url, UriKind.Absolute, out var uri)) View.Source = uri;
     }
 
@@ -95,7 +102,9 @@ public partial class KorRemoteViewerWindow : Window
             await core.AddScriptToExecuteOnDocumentCreatedAsync(KorRemoteBridge.Script).ConfigureAwait(true);
             core.WebMessageReceived += (_, e) => OnPage(KorRemoteBridge.Parse(e.WebMessageAsJson));
             core.DownloadStarting += OnDownload;
+            _log.Information("KorRemote WebView2 ready for {Device}; navigating to {Url}", _vm.DeviceName, _url);
             View.Source = new Uri(_url);
+            StartWatchdog();
         }
         // Loaded is async void, so nothing may escape. The environment is a process-wide cached Task built with
         // ??=: a locked/busy profile folder faults CreateAsync with IOException/UnauthorizedAccessException, and a
@@ -104,16 +113,43 @@ public partial class KorRemoteViewerWindow : Window
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             if (_environment is { IsFaulted: true } or { IsCanceled: true }) _environment = null;
+            _log.Error(ex, "KorRemote viewer failed to start for {Device}", _vm.DeviceName);
             _vm.Apply(new BridgeState("desktop", Missing: ["the remote viewer could not start (" + ex.Message + ")"]));
         }
     }
 
+    // If the page never posts a bridge message, the injected script did not run (injection failed, or it is not a MeshCentral
+    // page) -- which is invisible without this, and is exactly the "connected but no controls" case.
+    private void StartWatchdog()
+    {
+        _watchdog?.Stop();
+        _watchdog = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(8) };
+        _watchdog.Tick += (_, _) =>
+        {
+            _watchdog?.Stop();
+            if (!_gotBridge)
+                _log.Warning("KorRemote: no bridge message from {Device} within 8s at {Url} -- the toolbar has no controls because the page posted no state (script injection failed, or it is not the MeshCentral desktop page)", _vm.DeviceName, _url);
+        };
+        _watchdog.Start();
+    }
+
     private void OnPage(BridgeState? s)
     {
+        if (s is not null)
+        {
+            _gotBridge = true;
+            _log.Information("KorRemote bridge [{Device}]: page={Page} state={State} node={Node} missing={Missing} displays={DisplayCount} {@Displays} files={Files}",
+                _vm.DeviceName, s.Page, s.State, s.Node, s.Missing, s.Displays?.Count ?? 0, s.Displays, s.Files);
+            if (s.Missing is { Count: > 0 })
+                _log.Warning("KorRemote [{Device}]: MeshCentral page is MISSING functions the toolbar needs: {Missing} -- a MeshCentral update likely renamed them, so the toolbar buttons do nothing", _vm.DeviceName, s.Missing);
+        }
         _vm.Apply(s);
         // Signing in lands on MeshCentral's home page, not the device: send it back to the device, a few times at most.
         if (s is { Page: "desktop" } && !Kor.Operations.NetworkOps.Core.Learning.MeshLinks.IsDeviceLink(View.Source) && _reroutes++ < 3)
+        {
+            _log.Information("KorRemote [{Device}]: landed off the device page, re-routing to {Url} (attempt {Attempt})", _vm.DeviceName, _url, _reroutes);
             View.Source = new Uri(_url);
+        }
     }
 
     /// <summary>A screenshot (deskSaveImage downloads a PNG): straight to Pictures\KOR Remote, no download prompt.</summary>
@@ -132,7 +168,9 @@ public partial class KorRemoteViewerWindow : Window
 
     private void Do(string script)
     {
+        _log.Debug("KorRemote command [{Device}]: {Script}", _vm.DeviceName, script);
         if (View.CoreWebView2 is not null) _ = View.CoreWebView2.ExecuteScriptAsync(script);
+        else _log.Warning("KorRemote command dropped [{Device}] (WebView not ready): {Script}", _vm.DeviceName, script);
     }
 
     private void Show(Button anchor, ContextMenu menu)

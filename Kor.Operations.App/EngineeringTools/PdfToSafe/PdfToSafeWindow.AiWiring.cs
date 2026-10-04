@@ -30,7 +30,7 @@ namespace Kor.Operations.EngineeringTools.PdfToSafe
 
         private const string AiSystemPrompt =
             "You are an expert structural engineering CAD technician assisting KOR Structural " +
-            "(Vancouver, BC). The user has loaded a Bluebeam-marked-up PDF into the KOR NewerForma " +
+            "(Vancouver, BC). The user has loaded a Bluebeam-marked-up PDF into the KOR Operations " +
             "PDF-to-SAFE import tool and will converse with you in plain English to prepare the " +
             "model for export to CSI SAFE, ETABS, or AutoCAD.\n\n" +
             "You have tools that mutate the state of the tool directly: change per-colour or " +

@@ -60,6 +60,10 @@ namespace Kor.Operations
             }
 
             Log.Logger = CompositionHelpers.GetSerilogLogger();
+            // One guaranteed line per launch: proves logging is alive this session, and dates the session.
+            Log.ForContext<OperationsApp>().Information("App starting. version={Version} args=[{Args}]",
+                System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "?",
+                string.Join(" ", e.Args ?? Array.Empty<string>()));
             RegisterGlobalExceptionHandlers();
             SecretMigrationRunner.RunOnceAtStartup();
             EnvironmentSecretOverrides.Apply();
@@ -71,6 +75,7 @@ namespace Kor.Operations
             _services = AppCompositionRoot.BuildServiceProvider();
             Kor.Operations.Services.AppServices.Initialize(_services);
             _services.GetRequiredService<AppAiContextBuilder>().Register(_services.GetRequiredService<FirmContextProvider>());
+            Log.ForContext<OperationsApp>().Debug("Startup: services built; initializing Graph auth…");
             try
             {
                 await AppAuthBootstrapper.EnsureGraphInitializedForDelegatedAuthAsync(
@@ -96,11 +101,15 @@ namespace Kor.Operations
                 return;
             }
             ClearProcessProxyEnvVars();
+            Log.ForContext<OperationsApp>().Debug("Startup: Graph auth initialized OK");
 
             var args = e.Args ?? Array.Empty<string>();
             _guard = new SingleInstanceGuard(args);
+            Log.ForContext<OperationsApp>().Debug("Startup: single-instance firstInstance={First} participates={Participates} args=[{Args}]",
+                _guard.IsFirstInstance, _guard.ParticipatesInSingleInstance, string.Join(" ", args));
             if (!_guard.IsFirstInstance)
             {
+                Log.ForContext<OperationsApp>().Information("Another instance is already running; forwarding args and exiting");
                 _guard.ForwardArgsAndExit(args);
                 Shutdown();
                 return;
@@ -112,16 +121,19 @@ namespace Kor.Operations
                 _pipeServer.Start(_services);
             }
 
+            Log.ForContext<OperationsApp>().Debug("Startup: routing args=[{Args}]…", string.Join(" ", args));
             var startupWindow = await new AppStartupRouter(
                 _services,
                 _services.GetRequiredService<ILogger<AppStartupRouter>>()).RouteAsync(args, CancellationToken.None).ConfigureAwait(true);
             if (startupWindow == null)
             {
+                Log.ForContext<OperationsApp>().Warning("Startup: the router returned NO window for args=[{Args}] -- nothing to show, exiting", string.Join(" ", args));
                 Shutdown();
                 return;
             }
 
             MainWindow = startupWindow;
+            Log.ForContext<OperationsApp>().Information("Startup: showing {Window}", startupWindow.GetType().Name);
             startupWindow.Show();
 
             // kor:// deep link on cold launch (a report PDF/email link opened the
@@ -156,6 +168,8 @@ namespace Kor.Operations
                 Log.ForContext<OperationsApp>().Warning(ex, "DI service provider dispose failed. {ErrorType}: {ErrorMessage}", ex.GetType().Name, ex.Message);
             }
 
+            Log.ForContext<OperationsApp>().Information("App exiting (code {Code})", e.ApplicationExitCode);
+            Log.CloseAndFlush();   // never lose the tail of the log on exit
             base.OnExit(e);
         }
 

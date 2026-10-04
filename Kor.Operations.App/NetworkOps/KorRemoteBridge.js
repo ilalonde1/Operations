@@ -49,9 +49,16 @@
         var k = el('deskkeys');
         if (k) for (var i = 0; i < k.options.length; i++) keys.push({ value: k.options[i].value, text: k.options[i].text });
         var displays = [];
+        var seenDisplay = {};
         var imgs = document.querySelectorAll('[id^=DeskMonitorSelectionX]');
-        for (var j = 0; j < imgs.length; j++)
-            displays.push({ number: parseInt(imgs[j].id.substring('DeskMonitorSelectionX'.length), 10), name: imgs[j].title || '', selected: !imgs[j].classList.contains('gray') });
+        for (var j = 0; j < imgs.length; j++) {
+            var dnum = parseInt(imgs[j].id.substring('DeskMonitorSelectionX'.length), 10);
+            // MeshCentral renders the monitor selector in more than one place, so the same monitor (and "All", number 0)
+            // appears several times. Keep each monitor number once, or the toolbar shows duplicates (two "All", 8 for 3).
+            if (isNaN(dnum) || seenDisplay[dnum]) continue;
+            seenDisplay[dnum] = true;
+            displays.push({ number: dnum, name: imgs[j].title || '', selected: !imgs[j].classList.contains('gray') });
+        }
         return {
             page: 'desktop',
             missing: NEED.filter(function (n) { return !has(n); }),

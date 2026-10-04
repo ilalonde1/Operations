@@ -1,20 +1,20 @@
 # EMBEDDED DEPLOY PAYLOAD (Deploy.migrate-to-korops.ps1). Dispatched by NetworkOps to a workstation's agent and run there
 # as SYSTEM via MachineRunner -> AgentHub (poll-based; survives a multi-minute job; needs no WinRM/RPC, which are blocked
-# fleet-wide). The dispatcher PREPENDS `$Sha = '<V24.zip sha256>'` -- this script has no param() because the agent runs a
+# fleet-wide). The dispatcher PREPENDS `$Sha = '<V25.zip sha256>'` -- this script has no param() because the agent runs a
 # script body, not a file with arguments.
 #
 # Migrates the flat C:\Newerforma install to C:\KOR-Operations and drops the "Newerforma" name. MEASURED 2026-10-03: the
 # fleet is uniform -- flat C:\Newerforma, EmailFilerv2 add-in 1.0.0.52, NO launcher; shortcuts stale -> replaced.
-# The add-in finds the app RIGHT (no env-var hack): rebuilt as 1.0.0.54 with HostExeResolver's config + fallback pointing
+# The add-in finds the app RIGHT (no env-var hack): rebuilt as 1.0.0.55 with HostExeResolver's config + fallback pointing
 # at C:\KOR-Operations. Removing C:\Newerforma is cleanup, not load-bearing. Also carries the VSTO load-time fix.
-if ([string]::IsNullOrWhiteSpace($Sha)) { throw 'migrate-to-korops: the dispatcher did not provide $Sha (the V24.zip hash)' }
+if ([string]::IsNullOrWhiteSpace($Sha)) { throw 'migrate-to-korops: the dispatcher did not provide $Sha (the V25.zip hash)' }
 $ErrorActionPreference = 'Stop'
-$Pkg      = '1.0.0.54'
+$Pkg      = '1.0.0.55'
 $Guid     = '{6F2C1E0A-7B4D-4E8F-9C31-2A5B8D0E4F52}'   # Active Setup component id for the KOR email filer add-in
 $Dir      = 'C:\ProgramData\KOR\EmailFiler'
 $root     = 'C:\KOR-Operations'
 $oldRoot  = 'C:\Newerforma'
-$share    = '\\KOR-FS01\Library\11 IT\_Applications\Newerforma\New\V24.zip'
+$share    = '\\KOR-FS01\Library\11 IT\_Applications\Newerforma\New\V25.zip'
 $appExe   = Join-Path $root 'Kor.Operations.App.exe'
 $steps = New-Object System.Collections.Generic.List[string]
 function S($m) { $steps.Add($m) }
@@ -41,7 +41,10 @@ function Set-Trust {
     }
 }
 $cur = (Get-ItemProperty $reg -ErrorAction SilentlyContinue).Manifest
-if ($Mode -eq 'reinstall' -and $cur -like '*C:/KOR-Operations/EmailFilerv2.vsto*') { Write-Step 'already on KOR-Operations'; return }
+# reinstall ALWAYS uninstalls+installs. Active Setup fires it once per version bump (HKCU Version < HKLM gate), so this is
+# how an offline user is brought to the on-disk version. An earlier early-return keyed on the PATH alone ('already on
+# KOR-Operations') left old-version users behind -- the path was right but the add-in was stale. "Already current" for a
+# re-run of the whole op is covered by the main early-return above (appExe present AND installed .vsto == $Pkg).
 if ($Mode -in 'uninstall','reinstall') {
     if ($cur) { $url = ($cur -split '\|')[0]; Write-Step ("uninstall " + $url + " -> exit " + (Invoke-Vsto "/uninstall `"$url`" /silent")) } else { Write-Step 'no old add-in registered' }
 }
@@ -82,25 +85,27 @@ try {
     Set-Content -Path "$Dir\user-step.ps1" -Value $UserStep -Encoding UTF8
     Get-ChildItem $Dir -Filter 'result-*.txt' -ErrorAction SilentlyContinue | Remove-Item -Force
 
-    # Already migrated? (re-run safety): app in place and the old folder's app gone.
-    if ((Test-Path $appExe) -and -not (Test-Path "$oldRoot\Kor.Operations.App.exe")) {
-        return [pscustomobject]@{ Done = $true; AlreadyMigrated = $true; Result = 'C:\KOR-Operations in place; C:\Newerforma gone' }
+    # Already CURRENT? (re-run safety): app in place, the old folder gone, AND the installed add-in matches this package.
+    # Otherwise fall through -- this op also UPDATES an already-migrated PC to a newer version in place.
+    $installedVsto = if (Test-Path "$root\EmailFilerv2.vsto") { try { ([xml](Get-Content "$root\EmailFilerv2.vsto" -Raw)).assembly.assemblyIdentity.version } catch { $null } } else { $null }
+    if ((Test-Path $appExe) -and -not (Test-Path "$oldRoot\Kor.Operations.App.exe") -and $installedVsto -eq $Pkg) {
+        return [pscustomobject]@{ Done = $true; AlreadyCurrent = $true; Result = "C:\KOR-Operations already $Pkg; C:\Newerforma gone" }
     }
 
-    # 1. Pull + verify V24, stage it (non-disruptive).
+    # 1. Pull + verify V25, stage it (non-disruptive).
     $stage = 'C:\KOR-Operations_new'
-    $zip = 'C:\Windows\Temp\KOR-V24.zip'
+    $zip = 'C:\Windows\Temp\KOR-V25.zip'
     Copy-Item -LiteralPath $share -Destination $zip -Force
     $got = (Get-FileHash $zip -Algorithm SHA256).Hash
-    if ($got -ne $Sha) { throw "V24 hash mismatch: $got (expected $Sha)" }
+    if ($got -ne $Sha) { throw "V25 hash mismatch: $got (expected $Sha)" }
     if (Test-Path $stage) { Remove-Item $stage -Recurse -Force }
     Add-Type -AssemblyName System.IO.Compression.FileSystem
     [System.IO.Compression.ZipFile]::ExtractToDirectory($zip, $stage)
     Remove-Item $zip -Force
-    $staged = Join-Path $stage 'V24'
+    $staged = Join-Path $stage 'V25'
     $sFiles = @(Get-ChildItem $staged -Recurse -File).Count
-    if (-not (Test-Path (Join-Path $staged 'Kor.Operations.App.exe')) -or -not (Test-Path (Join-Path $staged 'EmailFilerv2.vsto')) -or $sFiles -lt 900) { throw "staged V24 incomplete ($sFiles files)" }
-    S "staged V24: $sFiles files"
+    if (-not (Test-Path (Join-Path $staged 'Kor.Operations.App.exe')) -or -not (Test-Path (Join-Path $staged 'EmailFilerv2.vsto')) -or $sFiles -lt 900) { throw "staged V25 incomplete ($sFiles files)" }
+    S "staged V25: $sFiles files"
 
     # Signed-in users (explorer owners), with SIDs.
     $users = @(Get-CimInstance Win32_Process -Filter "Name='explorer.exe'" | ForEach-Object {
@@ -119,7 +124,8 @@ try {
     # 3. Uninstall the old add-in as each signed-in user (reads the current registration, whatever path).
     foreach ($u in $users) { S ("uninstall as " + $u.Short + ": " + (As-User $u.User 'uninstall')) }
 
-    # 4. Place V24 at C:\KOR-Operations (rename any existing aside first, then move in).
+    # 4. Place V25 at C:\KOR-Operations (rename any existing aside first, then move in).
+    $kept = $null
     if (Test-Path $root) {
         $kept = "$root`_old_" + (Get-Date -Format 'yyyyMMddHHmmss')
         Rename-Item $root $kept -ErrorAction Stop
@@ -129,7 +135,8 @@ try {
     Remove-Item $stage -Recurse -Force -ErrorAction SilentlyContinue
     $files = @(Get-ChildItem $root -Recurse -File).Count
     if (-not (Test-Path $appExe) -or $files -lt 900) { throw "C:\KOR-Operations incomplete ($files files)" }
-    S "C:\KOR-Operations = V24 ($files files)"
+    S "C:\KOR-Operations = V25 ($files files)"
+    if ($kept -and (Test-Path $kept)) { try { Remove-Item $kept -Recurse -Force -ErrorAction Stop; S 'previous C:\KOR-Operations install removed' } catch { S "previous install left at $kept (locked)" } }
 
     # 5. Install the new add-in as each signed-in user (from C:\KOR-Operations).
     foreach ($u in $users) { S ("install as " + $u.Short + ": " + (As-User $u.User 'install')) }
@@ -150,13 +157,13 @@ try {
     New-Item $as -Force | Out-Null
     Set-ItemProperty $as -Name '(default)' -Value "KOR Operations email add-in $Pkg (KOR-Operations)"
     Set-ItemProperty $as -Name StubPath -Value "powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$Dir\user-step.ps1`" -Mode reinstall"
-    Set-ItemProperty $as -Name Version -Value '24,0,0,0'
+    Set-ItemProperty $as -Name Version -Value '25,0,0,0'
     Set-ItemProperty $as -Name IsInstalled -Value 1 -Type DWord
     S 'Active Setup registered for everyone else'
     $okUsers = @($users | Where-Object { (Get-Content "$Dir\result-$($_.Short).txt" -ErrorAction SilentlyContinue) -match 'OK=True|already on KOR-Operations' })
     foreach ($u in $okUsers) {
         $k = "Registry::HKEY_USERS\$($u.Sid)\Software\Microsoft\Active Setup\Installed Components\$Guid"
-        New-Item $k -Force | Out-Null; Set-ItemProperty $k -Name Version -Value '24,0,0,0'
+        New-Item $k -Force | Out-Null; Set-ItemProperty $k -Name Version -Value '25,0,0,0'
     }
 
     # 8. Remove C:\Newerforma (cleanup -- resolution already points at C:\KOR-Operations via the add-in config).

@@ -324,7 +324,8 @@ namespace EmailFilerv2
             }
         }
 
-        private static void SafeLog(string message)
+        // internal so the add-in's startup (ThisAddIn) can log the load + its timing to the same shared file.
+        internal static void SafeLog(string message)
         {
             try
             {
