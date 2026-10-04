@@ -24,6 +24,24 @@ namespace Kor.Operations
         internal IServiceProvider Services =>
             _services ?? throw new InvalidOperationException("The application service provider has not been initialized.");
 
+        // Launch args can carry a file path, a project reference, or a kor:// deep link -- handy for diagnosing routing, but
+        // not to write verbatim into a log or the crash file (audit #8). Keep the shape (count + each arg's scheme or kind)
+        // and drop the payload: a URI -> "<scheme>://…", a path -> "<path>", anything long is truncated.
+        private static string SafeArgs(string[]? args)
+        {
+            if (args is null || args.Length == 0) return "none";
+            var parts = new System.Collections.Generic.List<string>(args.Length);
+            foreach (var a in args)
+            {
+                if (string.IsNullOrEmpty(a)) { parts.Add("\"\""); continue; }
+                int scheme = a.IndexOf("://", StringComparison.Ordinal);
+                if (scheme > 0) parts.Add(a.Substring(0, scheme) + "://…");
+                else if (a.Contains('\\') || a.Contains('/') || (a.Length > 1 && a[1] == ':')) parts.Add("<path>");
+                else parts.Add(a.Length > 24 ? a.Substring(0, 24) + "…" : a);
+            }
+            return args.Length + ": [" + string.Join(", ", parts) + "]";
+        }
+
         protected override async void OnStartup(StartupEventArgs e)
         {
             try
@@ -39,7 +57,7 @@ namespace Kor.Operations
                         "KorOperations", "startup-crash.txt");
                     System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(crashLog)!);
                     System.IO.File.AppendAllText(crashLog,
-                        $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} ARGS=[{string.Join(" ", e.Args ?? Array.Empty<string>())}]{Environment.NewLine}" +
+                        $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} ARGS={SafeArgs(e.Args)}{Environment.NewLine}" +
                         $"{ex}{Environment.NewLine}{Environment.NewLine}");
                 }
                 catch (Exception) { /* last-resort crash log — nowhere to report if this fails */ }
@@ -61,9 +79,9 @@ namespace Kor.Operations
 
             Log.Logger = CompositionHelpers.GetSerilogLogger();
             // One guaranteed line per launch: proves logging is alive this session, and dates the session.
-            Log.ForContext<OperationsApp>().Information("App starting. version={Version} args=[{Args}]",
+            Log.ForContext<OperationsApp>().Information("App starting. version={Version} args={Args}",
                 System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "?",
-                string.Join(" ", e.Args ?? Array.Empty<string>()));
+                SafeArgs(e.Args));
             RegisterGlobalExceptionHandlers();
             SecretMigrationRunner.RunOnceAtStartup();
             EnvironmentSecretOverrides.Apply();
@@ -105,8 +123,8 @@ namespace Kor.Operations
 
             var args = e.Args ?? Array.Empty<string>();
             _guard = new SingleInstanceGuard(args);
-            Log.ForContext<OperationsApp>().Debug("Startup: single-instance firstInstance={First} participates={Participates} args=[{Args}]",
-                _guard.IsFirstInstance, _guard.ParticipatesInSingleInstance, string.Join(" ", args));
+            Log.ForContext<OperationsApp>().Debug("Startup: single-instance firstInstance={First} participates={Participates} args={Args}",
+                _guard.IsFirstInstance, _guard.ParticipatesInSingleInstance, SafeArgs(args));
             if (!_guard.IsFirstInstance)
             {
                 Log.ForContext<OperationsApp>().Information("Another instance is already running; forwarding args and exiting");
@@ -121,13 +139,13 @@ namespace Kor.Operations
                 _pipeServer.Start(_services);
             }
 
-            Log.ForContext<OperationsApp>().Debug("Startup: routing args=[{Args}]…", string.Join(" ", args));
+            Log.ForContext<OperationsApp>().Debug("Startup: routing args={Args}…", SafeArgs(args));
             var startupWindow = await new AppStartupRouter(
                 _services,
                 _services.GetRequiredService<ILogger<AppStartupRouter>>()).RouteAsync(args, CancellationToken.None).ConfigureAwait(true);
             if (startupWindow == null)
             {
-                Log.ForContext<OperationsApp>().Warning("Startup: the router returned NO window for args=[{Args}] -- nothing to show, exiting", string.Join(" ", args));
+                Log.ForContext<OperationsApp>().Warning("Startup: the router returned NO window for args={Args} -- nothing to show, exiting", SafeArgs(args));
                 Shutdown();
                 return;
             }

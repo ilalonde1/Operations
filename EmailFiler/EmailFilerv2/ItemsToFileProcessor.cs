@@ -324,6 +324,35 @@ namespace EmailFilerv2
             }
         }
 
+        // The shared filing log lives on \\kor-fs01, so a write is an SMB round-trip. SafeLog is called ON OUTLOOK'S LOAD
+        // THREAD at startup (ThisAddIn), so it must NEVER wait on that write -- a slow/cold/offline share would slow the very
+        // load this logging measures, and make the "returned in N ms" number dishonest (audit #6). So SafeLog only captures
+        // the line (with the time stamped NOW) and a single background thread drains the queue to the file, batching appends.
+        private static readonly System.Collections.Concurrent.BlockingCollection<string> _logQueue =
+            new System.Collections.Concurrent.BlockingCollection<string>();
+        private static readonly System.Threading.Thread _logThread = StartLogWriter();
+
+        private static System.Threading.Thread StartLogWriter()
+        {
+            var t = new System.Threading.Thread(DrainLog) { IsBackground = true, Name = "EmailFilerLog" };
+            t.Start();
+            return t;
+        }
+
+        private static void DrainLog()
+        {
+            foreach (var first in _logQueue.GetConsumingEnumerable())
+            {
+                try
+                {
+                    var batch = new List<string> { first };
+                    while (_logQueue.TryTake(out var more)) batch.Add(more);
+                    File.AppendAllLines(GetFilingLogPath(), batch);
+                }
+                catch { /* a failed write must never kill the writer; drop this batch and keep draining */ }
+            }
+        }
+
         // internal so the add-in's startup (ThisAddIn) can log the load + its timing to the same shared file.
         internal static void SafeLog(string message)
         {
@@ -334,12 +363,24 @@ namespace EmailFilerv2
                     DateTime.Now,
                     message ?? string.Empty);
 
-                File.AppendAllLines(GetFilingLogPath(), new[] { line });
+                if (!_logQueue.IsAddingCompleted) _logQueue.Add(line);
             }
             catch
             {
-                // Never break Outlook because logging failed
+                // Never break Outlook because logging failed (e.g. the queue was completed during shutdown)
             }
+        }
+
+        // On Outlook quit, give the background writer a moment to flush what is queued, so the last lines (the load-time
+        // telemetry, the on-quit filing results) are not lost when the process exits and kills the background thread.
+        internal static void FlushLog()
+        {
+            try
+            {
+                _logQueue.CompleteAdding();
+                _logThread.Join(TimeSpan.FromSeconds(3));
+            }
+            catch { /* best effort */ }
         }
 
         private bool IsItemsToFileEnabled()

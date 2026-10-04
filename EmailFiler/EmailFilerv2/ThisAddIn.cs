@@ -28,6 +28,15 @@ namespace EmailFilerv2
         // blocks Outlook's startup. Held in a field so it is not garbage-collected before it fires.
         private System.Windows.Forms.Timer _syncTimer;
 
+        // Set on Quit/Shutdown so the deferred timer, if it has not fired yet, does NOT run SyncFolders against a
+        // tearing-down Outlook/MAPI session (audit #7).
+        private volatile bool _quitting;
+
+        // The DEPLOYED (ClickOnce/.vsto) version of the add-in, for the load log. The assembly version is left at 1.0.0.0,
+        // so GetName().Version would mislabel which build loaded. Keep this in sync with ApplicationVersion in
+        // EmailFilerv2.csproj on every release.
+        internal const string AddinVersion = "1.0.0.56";
+
         private void ThisAddIn_Startup(object sender, EventArgs e)
         {
             // Load telemetry to the shared filing log (SMB-readable): which version loaded, what app path it resolved, and
@@ -36,7 +45,7 @@ namespace EmailFilerv2
             var loadClock = System.Diagnostics.Stopwatch.StartNew();
             string app;
             try { app = HostExeResolver.Resolve() ?? "NOT FOUND"; } catch (Exception ex) { app = "resolve error: " + ex.Message; }
-            ItemsToFileProcessor.SafeLog($"ADD-IN LOADED: EmailFilerv2 {System.Reflection.Assembly.GetExecutingAssembly().GetName().Version} -- app resolves to [{app}]");
+            ItemsToFileProcessor.SafeLog($"ADD-IN LOADED: EmailFilerv2 {AddinVersion} -- app resolves to [{app}]");
 
             // _autoFileOnSend keeps its safe default (true) and is re-read from the DB on every send (Application_ItemSend),
             // so startup does NOT open a SQL connection here -- that round-trip to APP01 was part of the slow Outlook load.
@@ -54,6 +63,10 @@ namespace EmailFilerv2
                 _syncTimer.Tick += (s, ev) =>
                 {
                     _syncTimer.Stop();
+                    _syncTimer.Dispose();
+                    _syncTimer = null;
+                    // If Outlook started closing in the 2s window, do NOT touch MAPI on the way down (audit #7).
+                    if (_quitting) { ItemsToFileProcessor.SafeLog("deferred SyncFolders skipped -- Outlook is quitting"); return; }
                     ItemsToFileProcessor.SafeLog($"deferred SyncFolders firing ({loadClock.ElapsedMilliseconds} ms after load)");
                     try { _itemsToFileProcessor.SyncFolders(); } catch { /* never block; filing still works without the synced folders */ }
                 };
@@ -84,6 +97,9 @@ namespace EmailFilerv2
 
         private void Application_Quit()
         {
+            _quitting = true;
+            // Stop the deferred sync before touching MAPI on the way down, so Tick cannot re-enter SyncFolders now.
+            try { _syncTimer?.Stop(); _syncTimer?.Dispose(); _syncTimer = null; } catch { }
             try
             {
                 _itemsToFileProcessor?.ProcessOnQuit();
@@ -92,11 +108,20 @@ namespace EmailFilerv2
             {
                 // Never block Outlook closing
             }
+            finally
+            {
+                // Let the background log writer flush the on-quit lines before the process exits.
+                ItemsToFileProcessor.FlushLog();
+            }
         }
 
         private void ThisAddIn_Shutdown(object sender, EventArgs e)
         {
-            // no-op; we rely on Application_Quit above
+            // Quit is the main path; Shutdown is the backstop. Make sure the deferred timer can't fire into teardown, and
+            // flush the log (idempotent with Application_Quit).
+            _quitting = true;
+            try { _syncTimer?.Stop(); _syncTimer?.Dispose(); _syncTimer = null; } catch { }
+            ItemsToFileProcessor.FlushLog();
         }
 
         protected override Office.IRibbonExtensibility CreateRibbonExtensibilityObject()

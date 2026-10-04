@@ -6,7 +6,8 @@
 # Migrates the flat C:\Newerforma install to C:\KOR-Operations and drops the "Newerforma" name, OR updates an
 # already-migrated PC in place. MEASURED 2026-10-03: the fleet is uniform -- flat C:\Newerforma, EmailFilerv2 add-in
 # 1.0.0.52, NO launcher; shortcuts stale -> replaced. The add-in finds the app RIGHT (no env-var hack): rebuilt as
-# 1.0.0.55 with HostExeResolver's config + fallback pointing at C:\KOR-Operations. Also carries the VSTO load-time fix.
+# 1.0.0.56 with HostExeResolver's config + fallback pointing at C:\KOR-Operations. Carries the VSTO load-time fix, an
+# off-load-path (background) log writer, and the deferred-sync timer shutdown guard.
 #
 # TRANSACTIONAL (audit CODEX-KOROPS-MIGRATE-OR-UPDATE-AND-ADDIN-AUDIT, 2026-10-04): the build is PLACED and validated
 # BEFORE any per-user add-in uninstall, and a placement failure RESTORES the previous install -- so a failed run never
@@ -15,8 +16,8 @@
 # is never recorded as success.
 if ([string]::IsNullOrWhiteSpace($Sha)) { throw 'migrate-to-korops: the dispatcher did not provide $Sha (the package hash)' }
 $ErrorActionPreference = 'Stop'
-$Pkg      = '1.0.0.55'                                  # the add-in (.vsto) version this package carries
-$PkgGen   = 25                                          # package generation: drives V<N>.zip AND the Active Setup version, so they can never drift
+$Pkg      = '1.0.0.56'                                  # the add-in (.vsto) version this package carries
+$PkgGen   = 26                                          # package generation: drives V<N>.zip AND the Active Setup version, so they can never drift
 $Guid     = '{6F2C1E0A-7B4D-4E8F-9C31-2A5B8D0E4F52}'   # Active Setup component id for the KOR email filer add-in
 $Dir      = 'C:\ProgramData\KOR\EmailFiler'
 $ResultsDir = Join-Path $Dir 'results'
