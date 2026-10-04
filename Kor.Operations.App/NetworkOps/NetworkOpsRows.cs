@@ -211,6 +211,13 @@ public sealed class FindingRow
     public Severity Severity => Finding.Severity;
     public string Title => Finding.Title;
     public string Evidence => Finding.Evidence;
+
+    public bool IsQuiet => QuietText.Length > 0;
+    // An acknowledged or snoozed finding is handled: it already stops counting against the PC, so the pill shows it muted
+    // ("Acknowledged"/"Snoozed" in grey) instead of a live red Critical. (Ian, 2026-10-04: "shouldn't this critical go
+    // away if I acknowledge?" -- it did at the fleet level; this makes the detail row read that way too.)
+    public string PillText => IsQuiet ? (Finding.AcknowledgedUtc is not null ? "Acknowledged" : "Snoozed") : Severity.ToString();
+    public System.Windows.Media.Brush PillBrush => IsQuiet ? NetworkOpsBrushes.Unknown : NetworkOpsBrushes.For(Severity);
 }
 
 /// <summary>A finding that has cleared on this PC, and what cleared it if the service could tell.</summary>

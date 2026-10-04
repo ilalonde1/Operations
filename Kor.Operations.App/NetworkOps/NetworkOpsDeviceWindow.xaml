@@ -233,8 +233,8 @@
                                 <DataGridTemplateColumn Header="Severity" Width="96" SortMemberPath="Severity">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
-                                            <Border Style="{StaticResource Ops.Pill}" Background="{Binding Severity, Converter={StaticResource StateToBrush}}">
-                                                <TextBlock Text="{Binding Severity}" Style="{StaticResource Ops.PillText}"/>
+                                            <Border Style="{StaticResource Ops.Pill}" Background="{Binding PillBrush}">
+                                                <TextBlock Text="{Binding PillText}" Style="{StaticResource Ops.PillText}"/>
                                             </Border>
                                         </DataTemplate>
                                     </DataGridTemplateColumn.CellTemplate>
