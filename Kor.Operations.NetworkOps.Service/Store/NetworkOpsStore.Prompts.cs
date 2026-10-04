@@ -26,7 +26,7 @@ internal sealed partial class NetworkOpsStore
         return (int)(await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false))! == 1;
     }
 
-    /// <summary>Whether 010 has run: a card carries a plain-English explanation and may amend an earlier card. The service
+    /// <summary>Whether 012 has run: a card carries a plain-English explanation and may amend an earlier card. The service
     /// may be deployed before the migration is applied, so card reads/writes degrade to the 008 shape until it is.</summary>
     public async Task<bool> CardsAmendableAsync(CancellationToken ct)
     {
@@ -89,7 +89,7 @@ internal sealed partial class NetworkOpsStore
     public async Task<ReportedRun?> RecordPromptOutcomeAsync(long runId, byte[] tokenSha256, string outcome, string summary, string? learned,
         CardProposal? card, CancellationToken ct)
     {
-        // The plain explanation + amends link land only when 010 has run; before that a card still banks in the 008 shape.
+        // The plain explanation + amends link land only when 012 has run; before that a card still banks in the 008 shape.
         var amendable = card is not null && await CardsAmendableAsync(ct).ConfigureAwait(false);
         await using var c = await OpenAsync(ct).ConfigureAwait(false);
         await using var tx = (SqlTransaction)await c.BeginTransactionAsync(ct).ConfigureAwait(false);
@@ -155,7 +155,7 @@ internal sealed partial class NetworkOpsStore
             var knowledge = await KnowledgeAvailableAsync(ct).ConfigureAwait(false);
             var amendable = knowledge && await CardsAmendableAsync(ct).ConfigureAwait(false);
             // The card columns, in a fixed order (Title, Plain, AppliesTo, Symptom, Cause, Check, Fix, Tags, Amends), so the
-            // approval view can show the plain explanation and the full technical card. Plain/Amends only exist after 010.
+            // approval view can show the plain explanation and the full technical card. Plain/Amends only exist after 012.
             var cardCols = !knowledge
                 ? "CAST(NULL AS nvarchar(200)), CAST(NULL AS nvarchar(2000)), CAST(NULL AS nvarchar(400)), CAST(NULL AS nvarchar(2000)), CAST(NULL AS nvarchar(2000)), CAST(NULL AS nvarchar(2000)), CAST(NULL AS nvarchar(2000)), CAST(NULL AS nvarchar(400)), CAST(NULL AS bigint)"
                 : amendable

@@ -130,7 +130,7 @@ internal sealed class ApiHost(IOptions<NetworkOpsOptions> options, NetworkOpsSto
                 if (card.AmendsCardId is { } amendId)
                 {
                     if (!await s.CardsAmendableAsync(ct))
-                        return Results.Json(new { error = "amending a card needs db/KorNetworkOps/010: resend without amendsCardId (it will bank as a fresh card), or apply 010 first" }, statusCode: StatusCodes.Status503ServiceUnavailable);
+                        return Results.Json(new { error = "amending a card needs db/KorNetworkOps/012: resend without amendsCardId (it will bank as a fresh card), or apply 012 first" }, statusCode: StatusCodes.Status503ServiceUnavailable);
                     if (!await s.CardExistsAsync(amendId, ct)) return Results.BadRequest(new { error = $"card.amends: {amendId} is not a known card" });
                 }
             }

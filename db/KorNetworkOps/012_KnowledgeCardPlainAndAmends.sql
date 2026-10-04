@@ -1,5 +1,5 @@
 /*
-010_KnowledgeCardPlainAndAmends.sql
+012_KnowledgeCardPlainAndAmends.sql
 
 A knowledge card now carries a PLAIN-ENGLISH explanation -- what the card means and what approving it will do,
 for the person approving it (Ian), who should never have to read the technical card to know what he is signing off.
