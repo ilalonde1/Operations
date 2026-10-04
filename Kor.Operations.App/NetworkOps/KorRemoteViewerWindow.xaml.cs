@@ -46,14 +46,17 @@ public partial class KorRemoteViewerWindow : Window
     {
         var d = device.ViewModel;
         if (url is null) { _log.Warning("KorRemote Connect: no viewer URL for {Device} (no mesh node id on record?)", d.DeviceName); return; }
-        _log.Information("KorRemote Connect requested: {Device} -> {Url}", d.DeviceName, url);
+        var viewMode = System.Text.RegularExpressions.Regex.Match(url, "viewmode=(\\d+)") is { Success: true } vm ? vm.Groups[1].Value : "?";
+        _log.Information("KorRemote Connect requested: {Device} (viewmode={ViewMode}) -> {Url}", d.DeviceName, viewMode, url);
         if (Open_.TryGetValue(d.DeviceName, out var open))
         {
+            _log.Information("KorRemote Connect: REUSING the open viewer for {Device}", d.DeviceName);
             if (open.WindowState == WindowState.Minimized) open.WindowState = WindowState.Normal;
             open.Activate();
             open.NavigateTo(url);   // one viewer per machine: switch between Connect and Web-RDP in place
             return;
         }
+        _log.Information("KorRemote Connect: creating a NEW viewer window for {Device}", d.DeviceName);
         var w = new KorRemoteViewerWindow(device, url);
         Open_[d.DeviceName] = w;
         w.Show();
@@ -76,8 +79,8 @@ public partial class KorRemoteViewerWindow : Window
         _vm = new KorRemoteViewerModel(device.ViewModel.DeviceName, device.ViewModel.Device.Presence);
         InitializeComponent();
         DataContext = _vm;
-        Loaded += async (_, _) => await StartAsync().ConfigureAwait(true);
-        Closed += (_, _) => { Open_.Remove(_vm.DeviceName); View.Dispose(); };
+        Loaded += async (_, _) => { FitOnScreen(); await StartAsync().ConfigureAwait(true); LogVisualState("loaded"); };
+        Closed += (_, _) => { _watchdog?.Stop(); Open_.Remove(_vm.DeviceName); View.Dispose(); };
     }
 
     /// <summary>For the render test only: the window with no page behind it.</summary>
@@ -102,6 +105,13 @@ public partial class KorRemoteViewerWindow : Window
             await core.AddScriptToExecuteOnDocumentCreatedAsync(KorRemoteBridge.Script).ConfigureAwait(true);
             core.WebMessageReceived += (_, e) => OnPage(KorRemoteBridge.Parse(e.WebMessageAsJson));
             core.DownloadStarting += OnDownload;
+            // The web page going HTML5 fullscreen makes the WebView's own window fill the top-level window, covering the
+            // toolbar -- exactly "connected but no controls". Record every transition so the cause is in the log, not a guess.
+            core.ContainsFullScreenElementChanged += (_, _) =>
+            {
+                _log.Warning("KorRemote [{Device}]: WebView fullscreen changed -> ContainsFullScreenElement={Full}", _vm.DeviceName, core.ContainsFullScreenElement);
+                LogVisualState("fullscreenChanged");
+            };
             _log.Information("KorRemote WebView2 ready for {Device}; navigating to {Url}", _vm.DeviceName, _url);
             View.Source = new Uri(_url);
             StartWatchdog();
@@ -150,6 +160,10 @@ public partial class KorRemoteViewerWindow : Window
             _log.Information("KorRemote [{Device}]: landed off the device page, re-routing to {Url} (attempt {Attempt})", _vm.DeviceName, _url, _reroutes);
             View.Source = new Uri(_url);
         }
+        // Record the render layer a beat after the state lands (let layout settle): this is what says whether the toolbar is
+        // actually on screen and clear of the remote view, which the bridge state alone cannot.
+        if (s is { Page: "desktop", State: 3 })
+            Dispatcher.BeginInvoke(new Action(() => LogVisualState("bridge-connected")), System.Windows.Threading.DispatcherPriority.Background);
     }
 
     /// <summary>A screenshot (deskSaveImage downloads a PNG): straight to Pictures\KOR Remote, no download prompt.</summary>
@@ -269,11 +283,56 @@ public partial class KorRemoteViewerWindow : Window
         Close();
     }
 
+    // Keep the whole window -- crucially its top strip, the toolbar -- inside the screen's work area. At 125%+ DPI a
+    // 1600x1000 window is taller than a ~1536x912 work area, and CenterScreen then puts the toolbar ABOVE the top of the
+    // screen: "connected but no controls" (found 2026-10-04 from the render-layer log -- tools at Y=-51). Shrink to fit and
+    // pull back on screen. Deliberately NOT MaxWidth/MaxHeight, so a later Maximise still fills the screen.
+    private void FitOnScreen()
+    {
+        if (WindowState != WindowState.Normal) return;
+        var wa = SystemParameters.WorkArea;
+        if (Width > wa.Width) Width = wa.Width;
+        if (Height > wa.Height) Height = wa.Height;
+        if (Left < wa.Left) Left = wa.Left;
+        if (Top < wa.Top) Top = wa.Top;
+        if (Left + Width > wa.Right) Left = Math.Max(wa.Left, wa.Right - Width);
+        if (Top + Height > wa.Bottom) Top = Math.Max(wa.Top, wa.Bottom - Height);
+    }
+
     // A maximised window with its own title bar hangs past the screen edge by the resize border: inset it by that much.
     private void Window_StateChanged(object? sender, EventArgs e)
     {
         Frame.Margin = WindowState == WindowState.Maximized ? new Thickness(7) : new Thickness(0);
         MaxBtn.Content = WindowState == WindowState.Maximized ? "" : "";
         MaxBtn.ToolTip = WindowState == WindowState.Maximized ? "Restore" : "Maximise";
+        LogVisualState("stateChanged");
+    }
+
+    /// <summary>The render/window layer the bridge state cannot show: whether the toolbar strip is actually on screen and
+    /// CLEAR of the remote view. The WebView2 is a child HWND and can end up sitting over the strip -- the "connected but
+    /// no controls" shape. Written on load, on every window-state and fullscreen change, and a beat after the bridge
+    /// connects, so the fault lands in the log instead of a question to the person watching the screen.</summary>
+    private void LogVisualState(string when)
+    {
+        try
+        {
+            var src = PresentationSource.FromVisual(this);
+            double dpi = src?.CompositionTarget?.TransformToDevice.M11 ?? 1.0;
+            string toolsRect = "n/a", viewRect = "n/a", relation = "unknown";
+            if (src is not null && Tools.IsVisible && Tools.ActualWidth > 0 && View.ActualWidth > 0)
+            {
+                var tp = Tools.PointToScreen(new Point(0, 0));
+                var tr = new Rect(tp, new Size(Tools.ActualWidth * dpi, Tools.ActualHeight * dpi));
+                var vp = View.PointToScreen(new Point(0, 0));
+                var vr = new Rect(vp, new Size(View.ActualWidth * dpi, View.ActualHeight * dpi));
+                toolsRect = $"{tr.X:0},{tr.Y:0} {tr.Width:0}x{tr.Height:0}";
+                viewRect = $"{vr.X:0},{vr.Y:0} {vr.Width:0}x{vr.Height:0}";
+                relation = vr.IntersectsWith(tr) ? "WEBVIEW OVERLAPS TOOLBAR" : "toolbar clear of view";
+            }
+            bool? full = View.CoreWebView2?.ContainsFullScreenElement;
+            _log.Information("KorRemote visual [{Device}] {When}: windowState={WState} win={WW:0}x{WH:0} dpi={Dpi:0.00} frameMargin={Margin} viewVisible={VVis} viewReady={VReady} toolsVisible={TVis} tools=[{ToolsRect}] view=[{ViewRect}] {Relation} fullscreenEl={Full} ready={Ready} connected={Conn} monitors={Mon} overlayShown={Overlay}",
+                _vm.DeviceName, when, WindowState, ActualWidth, ActualHeight, dpi, Frame.Margin, View.Visibility, View.CoreWebView2 is not null, Tools.IsVisible, toolsRect, viewRect, relation, full, _vm.IsReady, _vm.IsConnected, _vm.Monitors.Count, _vm.ShowsOverlay);
+        }
+        catch (Exception ex) { _log.Warning(ex, "KorRemote visual [{Device}] {When}: could not read the visual state", _vm.DeviceName, when); }
     }
 }
