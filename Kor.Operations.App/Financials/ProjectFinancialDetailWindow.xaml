@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:fin="clr-namespace:Kor.Operations.Financials"
         xmlns:bus="clr-namespace:Kor.Operations.Financials;assembly=Kor.Operations.Business"
-        Title="KOR NewerForma - Financials - Project Detail"
+        Title="KOR Operations - Financials - Project Detail"
         WindowStartupLocation="CenterOwner"
         Background="{StaticResource App.Background}"
         Width="1400"

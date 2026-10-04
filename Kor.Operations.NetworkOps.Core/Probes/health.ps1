@@ -275,10 +275,14 @@ $cooling = Try-Block 'cooling' {
 }
 
 # --- display adapters: after enough GPU hangs a card can drop to "Microsoft Basic Display"
-# (KOR-104N / EDMONTON-01 / 213 showed no NVIDIA card at all on 2026-09-28)
+# (KOR-104N / EDMONTON-01 / 213 showed no NVIDIA card at all on 2026-09-28).
+# v12: also the resolution each card is DRIVING right now (CurrentHorizontal/VerticalResolution). 0/null = the
+# card is driving no display at all -- a headless PC with no monitor and no dummy plug, so KOR Remote (which mirrors
+# the physical screen) comes up blank or at a fallback size. A dummy HDMI/DP plug makes it report a real resolution.
 $display = Try-Block 'display' {
     @(Get-CimInstance Win32_VideoController | ForEach-Object {
-        [pscustomobject]@{ Name = $_.Name; Driver = $_.DriverVersion; ErrorCode = [int]$_.ConfigManagerErrorCode } })
+        [pscustomobject]@{ Name = $_.Name; Driver = $_.DriverVersion; ErrorCode = [int]$_.ConfigManagerErrorCode
+            Width = [int]$_.CurrentHorizontalResolution; Height = [int]$_.CurrentVerticalResolution } })
 }
 
 # --- residue and remote-access footprint
@@ -402,7 +406,7 @@ $console = Try-Block 'console' {
 }
 
 [pscustomobject]@{
-    ProbeVersion  = 11
+    ProbeVersion  = 12
     Console       = $console
     Wake          = $wake
     Session       = $session

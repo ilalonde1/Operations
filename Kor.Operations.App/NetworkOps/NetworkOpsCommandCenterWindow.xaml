@@ -203,8 +203,12 @@
                         ToolTip="Every switch and port, and what is plugged into each: PC, person, IP. Searchable."/>
                 <Button Content="Updates" Margin="0,0,8,0" Click="Updates_Click"
                         ToolTip="What Windows Update has waiting on every PC and server, and installing it on many at once."/>
-                <Button x:Name="OpenPcBtn" Content="Open PC" Margin="0,0,16,0" Click="OpenPc_Click"
+                <Button Content="Deploy" Margin="0,0,8,0" Click="Deploy_Click"
+                        ToolTip="Install an app update or migration on ticked machines, through each PC's agent as SYSTEM (e.g. migrate to KOR-Operations)."/>
+                <Button x:Name="OpenPcBtn" Content="Open PC" Margin="0,0,8,0" Click="OpenPc_Click"
                         ToolTip="Open the selected PC (or double-click a row)."/>
+                <Button x:Name="RecheckBtn" Content="Re-check all" Margin="0,0,16,0" Click="RecheckAll_Click"
+                        ToolTip="Runs the health probe on every PC now (a few minutes) instead of waiting for the next scheduled sweep. New findings appear as each PC answers; the list refreshes when it finishes."/>
                 <CheckBox Content="Auto-refresh" IsChecked="{Binding AutoRefresh}" VerticalAlignment="Center" Margin="0,0,6,0"
                           ToolTip="Re-read everything every 15 seconds."/>
                 <Button x:Name="RefreshBtn" Content="↻" Style="{StaticResource Ops.Link}" FontSize="16" Click="RefreshBtn_Click" ToolTip="Refresh now"/>

@@ -25,6 +25,7 @@
     <EmbeddedResource Include="Rack\*.py" LogicalName="Rack.%(Filename).py" />
     <EmbeddedResource Include="Actions\*.ps1" LogicalName="Actions.%(Filename).ps1" />
     <EmbeddedResource Include="Actions\*.py" LogicalName="Actions.%(Filename).py" />
+    <EmbeddedResource Include="Deploy\*.ps1" LogicalName="Deploy.%(Filename).ps1" />
   </ItemGroup>
 
 </Project>

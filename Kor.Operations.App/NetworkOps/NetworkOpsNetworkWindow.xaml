@@ -75,7 +75,7 @@
                                         </ItemsControl.ItemsPanel>
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
-                                                <Border Width="132" Height="54" Margin="0,0,5,5" Background="White" CornerRadius="5" BorderBrush="#E5E7EB" BorderThickness="1"
+                                                <Border Width="132" MinHeight="54" Margin="0,0,5,5" Background="White" CornerRadius="5" BorderBrush="#E5E7EB" BorderThickness="1"
                                                         Opacity="{Binding Fade}" ToolTip="{Binding Tip}" Cursor="Hand" MouseLeftButtonUp="Port_Click">
                                                     <Grid>
                                                         <Grid.ColumnDefinitions>
@@ -132,7 +132,7 @@
                          ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                     <ListBox.ItemTemplate>
                         <DataTemplate>
-                            <DockPanel Margin="{Binding Indent}" Height="44">
+                            <DockPanel Margin="{Binding Indent}" MinHeight="44">
                                 <TextBlock DockPanel.Dock="Left" Text="{Binding Glyph}" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="15"
                                            Foreground="{StaticResource Text.Secondary}" VerticalAlignment="Center" Margin="4,0,10,0"/>
                                 <StackPanel VerticalAlignment="Center">

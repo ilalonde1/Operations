@@ -42,6 +42,30 @@ public partial class NetworkOpsCommandCenterWindow : Window
 
     private async void RefreshBtn_Click(object sender, RoutedEventArgs e) => await RefreshAsync(ResetToken()).ConfigureAwait(true);
 
+    // Re-check the WHOLE fleet now (every PC runs its health probe) instead of waiting for the scheduled sweep, and
+    // refresh the view as each PC answers so new findings appear while it runs.
+    private async void RecheckAll_Click(object sender, RoutedEventArgs e)
+    {
+        RecheckBtn.IsEnabled = false;
+        var label = RecheckBtn.Content;
+        try
+        {
+            var ct = ResetToken();
+            var trigger = await _vm.Client.QueueFleetSweepAsync(ct).ConfigureAwait(true);
+            RecheckBtn.Content = trigger is null ? "Already running…" : "Re-checking…";
+            for (var i = 0; i < 180; i++)   // every PC is probed; cap ~15 min
+            {
+                await Task.Delay(TimeSpan.FromSeconds(5), ct).ConfigureAwait(true);
+                await RefreshAsync(ct).ConfigureAwait(true);
+                if (trigger is null) break;   // one was already running; a single refresh is enough
+                if (await _vm.Client.GetTriggerAsync(trigger.Value, ct).ConfigureAwait(true) is { CompletedUtc: not null }) break;
+            }
+        }
+        catch (OperationCanceledException) { /* superseded, or the window is closing */ }
+        catch (Exception ex) { MessageBox.Show(this, $"Could not start a fleet re-check: {ex.Message}", "Re-check all", MessageBoxButton.OK, MessageBoxImage.Warning); }
+        finally { RecheckBtn.Content = label; RecheckBtn.IsEnabled = true; }
+    }
+
     private async Task AutoTickAsync()
     {
         if (!_vm.AutoRefresh || WindowState == WindowState.Minimized) return;
@@ -127,6 +151,8 @@ public partial class NetworkOpsCommandCenterWindow : Window
     private void OpenPc_Click(object sender, RoutedEventArgs e) => OpenSelected();
 
     private void Updates_Click(object sender, RoutedEventArgs e) => new NetworkOpsUpdatesWindow(_vm.Client) { Owner = this }.Show();
+
+    private void Deploy_Click(object sender, RoutedEventArgs e) => new NetworkOpsDeployWindow(_vm.Client) { Owner = this }.Show();
 
     private void Network_Click(object sender, RoutedEventArgs e) => _nav.OpenNetwork();
 

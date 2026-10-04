@@ -5,7 +5,7 @@
         xmlns:ctrl="clr-namespace:Kor.Operations.Controls"
         xmlns:local="clr-namespace:Kor.Operations.PMTools"
         xmlns:sys="clr-namespace:System;assembly=mscorlib"
-        Title="KOR NewerForma — Historical Project Analytics"
+        Title="KOR Operations — Historical Project Analytics"
         WindowStartupLocation="CenterOwner"
         Background="{StaticResource App.Background}"
         Width="1500"

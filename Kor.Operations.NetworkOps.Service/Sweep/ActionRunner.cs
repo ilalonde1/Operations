@@ -78,6 +78,28 @@ internal sealed class ActionRunner(NetworkOpsStore store, MachineRunner runner, 
                 return;
             }
 
+            // Fleet deployment op (migrate to KOR-Operations, future app rollouts): run its embedded payload on the PC's
+            // agent as SYSTEM. The package hash is computed from the share NOW, so the on-PC pull is integrity-checked.
+            if (Core.Deploy.DeployCatalog.Get(a.Kind) is { } deployOp)
+            {
+                var dhost = HostOf(a.DeviceName) ?? throw new InvalidOperationException($"{a.DeviceName} is not a machine a deployment can run on");
+                string? sha = null;
+                if (deployOp.PackageSharePath is { } pkg)
+                {
+                    if (!System.IO.File.Exists(pkg)) throw new InvalidOperationException($"the deployment package is not on the share: {pkg}");
+                    using var fs = System.IO.File.OpenRead(pkg);
+                    using var sha256 = System.Security.Cryptography.SHA256.Create();
+                    sha = System.Convert.ToHexString(sha256.ComputeHash(fs));
+                }
+                log.LogWarning("DEPLOY {Id} {Op} on {Host} requested by {By}", a.ActionId, deployOp.Key, dhost, a.RequestedBy);
+                var drun = await runner.RunAsync(dhost, Core.Deploy.DeployCatalog.Script(deployOp, sha), TimeSpan.FromSeconds(deployOp.TimeoutSeconds), wantsIdle: false, ct);
+                var dok = drun.Status == OnTargetStatus.Ok;
+                await store.CompleteActionAsync(a.ActionId, dok, dok ? (ResultLine(drun.OutputJson) ?? "ran") : $"{drun.Status}: {drun.Error}", drun.OutputJson);
+                log.LogWarning("DEPLOY {Id} {Op} on {Host}: {Status}", a.ActionId, deployOp.Key, dhost, drun.Status);
+                if (dok) await store.QueueCheckAsync(a.DeviceName, $"deploy {a.ActionId}", CancellationToken.None);
+                return;
+            }
+
             var fix = FixCatalog.Get(a.Kind) ?? throw new InvalidOperationException($"'{a.Kind}' is not in the fix catalog");
             using var req = JsonDocument.Parse(a.RequestJson);
             var param = req.RootElement.TryGetProperty("param", out var p) && p.ValueKind == JsonValueKind.String ? p.GetString() : null;

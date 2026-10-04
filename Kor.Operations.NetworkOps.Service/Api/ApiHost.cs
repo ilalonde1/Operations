@@ -189,6 +189,34 @@ internal sealed class ApiHost(IOptions<NetworkOpsOptions> options, NetworkOpsSto
             // A rack device's "check now" re-reads that device through the rack sweep; a PC's runs its health probe.
             (await s.IsRackDeviceAsync(name, ct) ? await s.QueueRackCheckAsync(name, ApiAccess.UserOf(h.User), ct) : await s.QueueCheckAsync(name, ApiAccess.UserOf(h.User), ct))
                 is { } id ? Results.Accepted($"/api/triggers/{id}", new { triggerId = id }) : Results.NotFound());
+        // Re-check the WHOLE fleet now (every PC runs its health probe), instead of waiting for the scheduled sweep.
+        api.MapPost("/sweep", async (HttpContext h, NetworkOpsStore s, CancellationToken ct) =>
+            await s.QueueFleetSweepAsync(ApiAccess.UserOf(h.User), ct) is { } id
+                ? Results.Accepted($"/api/triggers/{id}", new { triggerId = id })
+                : Results.Ok(new { triggerId = (long?)null, note = "a fleet sweep is already running" }));
+        // ---- Fleet Deploy: run a deployment op (migrate to KOR-Operations, future app rollouts) on ticked machines, through
+        //      each PC's agent as SYSTEM. /run queues one action per device (the ActionRunner executes it); the app follows
+        //      each ActionId like an update install. The payload is an embedded Deploy/*.ps1; nothing arbitrary crosses here.
+        api.MapGet("/deploy/ops", () => Results.Ok(Core.Deploy.DeployCatalog.All
+            .Select(o => new DeployOpView(o.Key, o.Title, o.Explain, o.Disruptive)).ToList()));
+        api.MapPost("/deploy/run", async (DeployRunRequest body, HttpContext h, NetworkOpsStore s, IOptions<NetworkOpsOptions> o, CancellationToken ct) =>
+        {
+            if (Core.Deploy.DeployCatalog.Get(body.OpKey) is not { } op) return Results.BadRequest(new { error = $"no deployment op '{body.OpKey}'" });
+            var names = (body.Devices ?? []).Where(n => !string.IsNullOrWhiteSpace(n)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+            if (names.Count == 0) return Results.BadRequest(new { error = "tick at least one machine" });
+            if (names.Count > 100) return Results.BadRequest(new { error = "at most 100 machines in one batch" });
+            if (op.PackageSharePath is { } pkg && !System.IO.File.Exists(pkg)) return Results.BadRequest(new { error = $"the deployment package is missing from the share: {pkg}" });
+            var by = ApiAccess.UserOf(h.User);
+            var req = System.Text.Json.JsonSerializer.Serialize(new { op = op.Key, via = "fleet deploy" });
+            var outcomes = new List<DeployRunOutcome>();
+            foreach (var name in names)
+            {
+                if (await s.DeviceByNameAsync(name, ct) is not { } dev) { outcomes.Add(new DeployRunOutcome(name, null, "not in NetworkOps")); continue; }
+                if (Sweep.ActionRunner.HostOf(o.Value, dev.Name) is null) { outcomes.Add(new DeployRunOutcome(dev.Name, null, "not a Windows PC a deployment can run on")); continue; }
+                outcomes.Add(new DeployRunOutcome(dev.Name, await s.QueueActionAsync(dev.DeviceId, op.Key, by, req, ct), null));
+            }
+            return Results.Ok(outcomes);
+        });
         api.MapGet("/triggers/{id:long}", async (long id, NetworkOpsStore s, CancellationToken ct) =>
             await s.TriggerStateAsync(id, ct) is { } t ? Results.Ok(t) : Results.NotFound());
         api.MapPost("/triggers/{id:long}/cancel", async (long id, HttpContext h, NetworkOpsStore s, CancellationToken ct) =>

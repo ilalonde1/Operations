@@ -131,6 +131,24 @@ public static class HealthRules
             f.Add(new("display-sleeps-headless", Severity.Info, "Its display goes dark and nothing can wake it",
                 $"no keyboard or mouse attached, and Windows turns the display off after {con.DisplayOffAfterSeconds / 60} min: a monitor plugged in later shows nothing"));
 
+        // A headless PC with a real graphics card but NO monitor and NO dummy plug: the card is driving no display, so
+        // over KOR Remote (which mirrors the physical screen) the console comes up blank or at a fallback size, and the
+        // GPU can sit idle instead of accelerating. A monitor -- or an HDMI/DisplayPort dummy plug -- gives it a real
+        // desktop and keeps the card engaged. Gated on probe v12, the first that reports each adapter's live resolution
+        // (0 = driving nothing); older probes carry no resolution, so they must not raise it.
+        if (s.ProbeVersion >= 12 && s.Console is { Keyboards: 0, Mice: 0 })
+        {
+            static bool Real(DisplayAdapterInfo a) => a.Name is not null
+                && !a.Name.Contains("Remote Display", StringComparison.OrdinalIgnoreCase)
+                && !a.Name.Contains("Basic Display", StringComparison.OrdinalIgnoreCase);
+            var hasGpu = s.DisplayAdapters.Any(Real);
+            var driving = s.DisplayAdapters.Any(a => (a.Width ?? 0) > 0
+                && (a.Name is null || !a.Name.Contains("Remote Display", StringComparison.OrdinalIgnoreCase)));
+            if (hasGpu && !driving)
+                f.Add(new("headless-no-display", Severity.Info, "Headless with no monitor or dummy plug",
+                    "no keyboard or mouse, and the graphics card is driving no display: over KOR Remote the console comes up blank or at a fallback size, and the GPU can sit idle. A monitor -- or an HDMI/DisplayPort dummy plug (match the card's port; most workstation cards are DisplayPort) -- gives it a real desktop and keeps the card engaged"));
+        }
+
         if (WakeProblems(s.Wake) is { Count: > 0 } wake)
             f.Add(new("wake-not-ready", Severity.Info, "A magic packet won't wake it", string.Join("; ", wake)));
 

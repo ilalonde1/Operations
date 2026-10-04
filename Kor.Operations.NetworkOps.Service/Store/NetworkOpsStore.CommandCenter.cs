@@ -363,6 +363,23 @@ internal sealed partial class NetworkOpsStore
         return await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false) is long id ? id : null;
     }
 
+    /// <summary>Queues a WHOLE-FLEET health sweep (no device = every PC in the directory; the TriggerPoller runs
+    /// HealthSweeper.SweepAsync(null) for a device-less HealthSweep trigger). Null when one is already pending or running,
+    /// so a run-happy finger cannot stack a dozen fleet sweeps.</summary>
+    public async Task<long?> QueueFleetSweepAsync(string by, CancellationToken ct)
+    {
+        await using var c = await OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = Cmd(c, """
+            INSERT NetworkOps.JobTriggers (JobName, RequestedBy)
+            OUTPUT inserted.TriggerId
+            SELECT 'HealthSweep', @by
+            WHERE NOT EXISTS (SELECT 1 FROM NetworkOps.JobTriggers t
+                              WHERE t.JobName = 'HealthSweep' AND t.DeviceName IS NULL AND t.Status IN ('Pending', 'Running'));
+            """);
+        cmd.Parameters.Add("@by", SqlDbType.NVarChar, 128).Value = by;
+        return await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false) is long id ? id : null;
+    }
+
     public async Task<TriggerState?> TriggerStateAsync(long triggerId, CancellationToken ct)
     {
         await using var c = await OpenAsync(ct).ConfigureAwait(false);

@@ -195,6 +195,32 @@ public sealed class NetworkOpsClient
         return doc.RootElement.GetProperty("triggerId").GetInt64();
     }
 
+    /// <summary>The fleet deployment ops the app can run (migrate to KOR-Operations, future rollouts).</summary>
+    public async Task<IReadOnlyList<Kor.Operations.NetworkOps.Core.Learning.DeployOpView>> GetDeployOpsAsync(CancellationToken ct)
+    {
+        using var res = await SendAsync(HttpMethod.Get, "api/deploy/ops", null, ct).ConfigureAwait(false);
+        await EnsureOkAsync(res).ConfigureAwait(false);
+        return await res.Content.ReadFromJsonAsync<List<Kor.Operations.NetworkOps.Core.Learning.DeployOpView>>(Json, ct).ConfigureAwait(false) ?? [];
+    }
+
+    /// <summary>Queues a deployment op on each ticked machine (one audited action per PC, run through its agent as SYSTEM).
+    /// Returns a per-device outcome: an ActionId to follow, or why it was refused.</summary>
+    public async Task<IReadOnlyList<Kor.Operations.NetworkOps.Core.Learning.DeployRunOutcome>> RunDeployAsync(string opKey, IReadOnlyList<string> devices, CancellationToken ct)
+    {
+        using var res = await SendAsync(HttpMethod.Post, "api/deploy/run", new Kor.Operations.NetworkOps.Core.Learning.DeployRunRequest(opKey, devices), ct).ConfigureAwait(false);
+        await EnsureOkAsync(res).ConfigureAwait(false);
+        return await res.Content.ReadFromJsonAsync<List<Kor.Operations.NetworkOps.Core.Learning.DeployRunOutcome>>(Json, ct).ConfigureAwait(false) ?? [];
+    }
+
+    /// <summary>Queues a whole-fleet health re-check; the service claims it within ~5 s. Null when one is already running.</summary>
+    public async Task<long?> QueueFleetSweepAsync(CancellationToken ct)
+    {
+        using var res = await SendAsync(HttpMethod.Post, "api/sweep", null, ct).ConfigureAwait(false);
+        await EnsureOkAsync(res).ConfigureAwait(false);
+        using var doc = JsonDocument.Parse(await res.Content.ReadAsStringAsync(ct).ConfigureAwait(false));
+        return doc.RootElement.TryGetProperty("triggerId", out var t) && t.ValueKind == JsonValueKind.Number ? t.GetInt64() : null;
+    }
+
     /// <summary>Cancels a check that has not been claimed yet. False when the service already took it.</summary>
     public async Task<bool> CancelCheckAsync(long triggerId, CancellationToken ct)
     {

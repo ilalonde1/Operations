@@ -24,18 +24,31 @@ namespace EmailFilerv2
         // Files "file on send" emails from Sent Items once they have actually gone.
         private FileOnSend _fileOnSend;
 
+        // A one-shot timer that runs the folder sync just AFTER load, so its SQL round-trip + MAPI folder work never
+        // blocks Outlook's startup. Held in a field so it is not garbage-collected before it fires.
+        private System.Windows.Forms.Timer _syncTimer;
+
         private void ThisAddIn_Startup(object sender, EventArgs e)
         {
-            // Initial load (not strictly required now, but harmless)
-            _autoFileOnSend = LoadAutoFileOnSendFlag();
-
+            // _autoFileOnSend keeps its safe default (true) and is re-read from the DB on every send (Application_ItemSend),
+            // so startup does NOT open a SQL connection here -- that round-trip to APP01 was part of the slow Outlook load.
             this.Application.ItemSend +=
                 new Outlook.ApplicationEvents_11_ItemSendEventHandler(Application_ItemSend);
 
             try
             {
                 _itemsToFileProcessor = new ItemsToFileProcessor(this.Application);
-                _itemsToFileProcessor.SyncFolders(); // respects ItemsToFileEnabled and favorites
+
+                // Defer the folder sync off the load path: SyncFolders reads SQL favorites/projects AND enumerates and
+                // creates Outlook MAPI folders. That work must run on the UI thread but need not block Outlook opening,
+                // so a one-shot timer runs it a beat after startup. Outlook loads fast; the folders appear a moment later.
+                _syncTimer = new System.Windows.Forms.Timer { Interval = 2000 };
+                _syncTimer.Tick += (s, ev) =>
+                {
+                    _syncTimer.Stop();
+                    try { _itemsToFileProcessor.SyncFolders(); } catch { /* never block; filing still works without the synced folders */ }
+                };
+                _syncTimer.Start();
 
                 try
                 {

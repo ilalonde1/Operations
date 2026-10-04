@@ -82,6 +82,12 @@ public sealed record RemoteRunRequest(string Script, int? TimeoutSeconds, string
 /// <param name="Route">agent | network</param>
 public sealed record RemoteRunResult(long ActionId, string Device, bool Ok, string Route, int Ms, string? OutputJson, string? Error);
 
+// Fleet Deploy: the catalog of deployment ops (GET /api/deploy/ops), and running one on ticked machines (POST /api/deploy/run,
+// which queues one action per device; the app follows each ActionId like an update install).
+public sealed record DeployOpView(string Key, string Title, string Explain, bool Disruptive);
+public sealed record DeployRunRequest(string OpKey, IReadOnlyList<string> Devices);
+public sealed record DeployRunOutcome(string Device, long? ActionId, string? Refused);
+
 public sealed record LastCheckView(string Device, string Probe, DateTime AtUtc, string Json);
 
 /// <param name="Decision">accept | reject</param>

@@ -4,7 +4,7 @@
         xmlns:controls="clr-namespace:Kor.Operations.Controls"
         xmlns:fin="clr-namespace:Kor.Operations.Financials"
         xmlns:bus="clr-namespace:Kor.Operations.Financials;assembly=Kor.Operations.Business"
-        Title="KOR NewerForma - Financials"
+        Title="KOR Operations - Financials"
         WindowStartupLocation="CenterOwner"
         Background="{StaticResource App.Background}"
         Width="1650"

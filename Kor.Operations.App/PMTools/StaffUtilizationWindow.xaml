@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:fin="clr-namespace:Kor.Operations.Financials"
         xmlns:ctrl="clr-namespace:Kor.Operations.Controls"
-        Title="KOR NewerForma — Staff Utilization"
+        Title="KOR Operations — Staff Utilization"
         WindowStartupLocation="CenterOwner"
         Background="{StaticResource App.Background}"
         Width="1200"

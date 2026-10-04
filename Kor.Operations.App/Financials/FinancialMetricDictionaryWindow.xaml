@@ -1,7 +1,7 @@
 <Window x:Class="Kor.Operations.Financials.FinancialMetricDictionaryWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="KOR NewerForma - KPI Dictionary"
+        Title="KOR Operations - KPI Dictionary"
         WindowStartupLocation="CenterOwner"
         Background="{StaticResource App.Background}"
         Width="1120"

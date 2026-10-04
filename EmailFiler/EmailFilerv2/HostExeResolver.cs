@@ -24,7 +24,7 @@ namespace EmailFilerv2
                 if (File.Exists(candidate))
                     return candidate;
 
-                var prodFallback = @"C:\Newerforma\Kor.Operations.App.exe";
+                var prodFallback = @"C:\KOR-Operations\Kor.Operations.App.exe";
                 if (File.Exists(prodFallback))
                     return prodFallback;
             }

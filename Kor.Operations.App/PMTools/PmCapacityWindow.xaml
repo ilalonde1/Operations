@@ -7,7 +7,7 @@
         xmlns:fin="clr-namespace:Kor.Operations.Financials"
         xmlns:bus="clr-namespace:Kor.Operations.Financials;assembly=Kor.Operations.Business"
         xmlns:converters="clr-namespace:Kor.Operations.Converters"
-        Title="KOR NewerForma - PM Capacity &amp; Risk"
+        Title="KOR Operations - PM Capacity &amp; Risk"
         WindowStartupLocation="CenterOwner"
         Background="{StaticResource App.Background}"
         Width="1650"

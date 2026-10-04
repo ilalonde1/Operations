@@ -162,7 +162,8 @@ public sealed record CrashCount(string Process, int Count, DateTime? Last);
 public sealed record StoreIndexFailures(string Store, int Count, DateTime? Last);
 public sealed record OfficeInfo(string? C2rMso, string? DownlevelMso, bool AccessEngine);
 public sealed record UpdateInfo(bool MicrosoftUpdate, int? NoAutoUpdate, DateTime? LastInstall, string? LastInstallTitle, string? LastInstallBy);
-public sealed record DisplayAdapterInfo(string? Name, string? Driver, int? ErrorCode);
+// Width/Height = the resolution the card is DRIVING now (probe v12+; 0/null on an older probe or when it drives no display).
+public sealed record DisplayAdapterInfo(string? Name, string? Driver, int? ErrorCode, int? Width = null, int? Height = null);
 public sealed record ResidueInfo(int NewformaProfiles, IReadOnlyList<string>? NewformaInstalled);
 public sealed record RemoteToolInfo(string Name, string? State, string? StartMode);
 public sealed record DataVolumeInfo(string Letter, double UsedGB);
