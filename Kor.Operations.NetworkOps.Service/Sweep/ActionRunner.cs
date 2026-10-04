@@ -93,9 +93,17 @@ internal sealed class ActionRunner(NetworkOpsStore store, MachineRunner runner, 
                 }
                 log.LogWarning("DEPLOY {Id} {Op} on {Host} requested by {By}", a.ActionId, deployOp.Key, dhost, a.RequestedBy);
                 var drun = await runner.RunAsync(dhost, Core.Deploy.DeployCatalog.Script(deployOp, sha), TimeSpan.FromSeconds(deployOp.TimeoutSeconds), wantsIdle: false, ct);
-                var dok = drun.Status == OnTargetStatus.Ok;
-                await store.CompleteActionAsync(a.ActionId, dok, dok ? (ResultLine(drun.OutputJson) ?? "ran") : $"{drun.Status}: {drun.Error}", drun.OutputJson);
-                log.LogWarning("DEPLOY {Id} {Op} on {Host}: {Status}", a.ActionId, deployOp.Key, dhost, drun.Status);
+                // Success is the PAYLOAD's verdict, not just the transport: a deploy script can run cleanly and still report
+                // a failed or partial install (e.g. a user whose add-in did not reinstall, or a rolled-back placement). Mark
+                // the action done only when the script ran AND its own Ok/Done verdict is not false -- otherwise a broken box
+                // would show green. (Audit finding #5.)
+                var (payloadOk, verdictLine) = DeployVerdict(drun.OutputJson);
+                var dok = drun.Status == OnTargetStatus.Ok && payloadOk != false;
+                var ddetail = drun.Status == OnTargetStatus.Ok
+                    ? (verdictLine ?? ResultLine(drun.OutputJson) ?? "ran")
+                    : $"{drun.Status}: {drun.Error}";
+                await store.CompleteActionAsync(a.ActionId, dok, ddetail, drun.OutputJson);
+                log.LogWarning("DEPLOY {Id} {Op} on {Host}: transport={Status} ok={Ok} {Detail}", a.ActionId, deployOp.Key, dhost, drun.Status, dok, ddetail);
                 if (dok) await store.QueueCheckAsync(a.DeviceName, $"deploy {a.ActionId}", CancellationToken.None);
                 return;
             }
@@ -268,5 +276,37 @@ internal sealed class ActionRunner(NetworkOpsStore store, MachineRunner runner, 
             return doc.RootElement.ValueKind == JsonValueKind.Array && doc.RootElement.GetArrayLength() == 0 ? "ran; no output" : null;
         }
         catch (JsonException) { return outputJson.Length > 300 ? outputJson[..300] : outputJson; }
+    }
+
+    /// <summary>A deploy payload's own verdict. Deploy scripts return an object (or a one-element array) carrying
+    /// <c>Ok</c> (or <c>Done</c>) and, for the migration, <c>AddinFailed</c>. Returns (ok, line): <c>ok</c> is null when
+    /// the payload declares no verdict (back-compat -- the caller then falls back to transport status), false when the
+    /// script reported failure or left a signed-in user unresolved. <c>line</c> is the payload's Result/Error for the
+    /// action detail.</summary>
+    internal static (bool? ok, string? line) DeployVerdict(string? outputJson)
+    {
+        if (string.IsNullOrWhiteSpace(outputJson)) return (null, null);
+        try
+        {
+            using var doc = JsonDocument.Parse(outputJson);
+            foreach (var e in doc.RootElement.ValueKind == JsonValueKind.Array ? doc.RootElement.EnumerateArray() : new[] { doc.RootElement }.AsEnumerable())
+            {
+                if (e.ValueKind != JsonValueKind.Object) continue;
+                bool? ok = null;
+                if (e.TryGetProperty("Ok", out var okEl) && okEl.ValueKind is JsonValueKind.True or JsonValueKind.False) ok = okEl.GetBoolean();
+                else if (e.TryGetProperty("Done", out var dnEl) && dnEl.ValueKind is JsonValueKind.True or JsonValueKind.False) ok = dnEl.GetBoolean();
+                string? line = e.TryGetProperty("Result", out var r) ? r.ToString()
+                             : e.TryGetProperty("Error", out var er) ? "failed: " + er.ToString()
+                             : null;
+                if (e.TryGetProperty("AddinFailed", out var af) && af.ValueKind == JsonValueKind.String && !string.IsNullOrEmpty(af.GetString()))
+                {
+                    ok = false;
+                    line = (line ?? "ran") + $" (add-in unresolved for: {af.GetString()})";
+                }
+                if (ok is not null || line is not null) return (ok, line);
+            }
+            return (null, null);
+        }
+        catch (JsonException) { return (null, null); }
     }
 }
