@@ -28,6 +28,9 @@ public static class FixCatalog
     public const string Windows = "windows";
     public const string Esxi = "esxi";
     public const string CheckBiosUpdate = "check-bios-update";
+    // Dispatched by ActionRunner to AgentInstaller (not scripted here, so it carries no embedded Actions/*.ps1).
+    // MUST equal the Service's AgentInstaller.InstallKind -- FixCatalogTests asserts the two strings are the same.
+    public const string UpdateAgent = "install-agent";
 
     public static bool IsUpdateInstall(string id) => id is InstallUpdates or InstallUpdatesRestart;
 
@@ -79,6 +82,9 @@ public static class FixCatalog
         new(StartService, "Start the stopped service",
             "Starts the service and sets it to restart itself if it fails again (3 x 60 s) -- the MCP server and Certify on APP01 stayed down for days without that.",
             Disruptive: false, TimeoutSeconds: 180, ["server.service-stopped"], ParamLabel: "Service name"),
+        new(UpdateAgent, "Update the agent",
+            "Reinstalls the NetworkOps agent from the version APP01 ships -- upgrading an out-of-date agent, or restoring one that stopped calling in. Silent: nothing restarts, and the agent calls back within a minute. Runs through the same audited channel as every other action.",
+            Disruptive: false, TimeoutSeconds: 180, ["agent-outdated", "agent-silent"]),
         new(RunCommand, "Run a PowerShell command…",
             "Runs your PowerShell as SYSTEM on this machine and shows the output. Audited: the script, who ran it and what it returned are kept.",
             Disruptive: false, TimeoutSeconds: 600, ["*"], ParamLabel: "PowerShell to run as SYSTEM"),

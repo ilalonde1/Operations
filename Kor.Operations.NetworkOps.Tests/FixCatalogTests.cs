@@ -20,7 +20,7 @@ public sealed class FixCatalogTests
     [Fact]
     public void Every_fix_but_the_escape_hatch_has_an_embedded_script()
     {
-        foreach (var f in FixCatalog.All.Where(f => f.Id != FixCatalog.RunCommand))
+        foreach (var f in FixCatalog.All.Where(f => f.Id != FixCatalog.RunCommand && f.Id != FixCatalog.UpdateAgent))
         {
             var script = FixCatalog.Script(f, f.ParamLabel is null ? null : "Spooler");
             Assert.False(string.IsNullOrWhiteSpace(script), $"{f.Id} has no script");
@@ -78,6 +78,18 @@ public sealed class FixCatalogTests
     }
 
     [Fact]
+    public void Update_the_agent_is_offered_for_the_agent_findings_and_routes_to_the_installer()
+    {
+        // The id the app queues (FixCatalog) must be the kind ActionRunner routes to the installer (Service).
+        Assert.Equal(Kor.Operations.NetworkOps.Service.Agents.AgentInstaller.InstallKind, FixCatalog.UpdateAgent);
+        Assert.True(Kor.Operations.NetworkOps.Service.Agents.AgentInstaller.IsAgentKind(FixCatalog.UpdateAgent));
+        Assert.Contains(FixCatalog.UpdateAgent, FixCatalog.For("agent-outdated").Select(f => f.Id));
+        Assert.Contains(FixCatalog.UpdateAgent, FixCatalog.For("agent-silent").Select(f => f.Id));
+        Assert.DoesNotContain(FixCatalog.UpdateAgent, FixCatalog.For("low-disk:C").Select(f => f.Id));
+        Assert.False(FixCatalog.Get(FixCatalog.UpdateAgent)!.Disruptive);
+    }
+
+    [Fact]
     public void Only_the_restarts_are_disruptive()
         => Assert.Equal(["restart-pc", FixCatalog.UpdateBios, FixCatalog.InstallUpdatesRestart], FixCatalog.All.Where(f => f.Disruptive).Select(f => f.Id));
 
@@ -92,7 +104,7 @@ public sealed class FixCatalogTests
     public void The_fix_scripts_return_plain_values()
     {
         // The probe-writing rule: no Get-Item / Get-Content results in the output (their PS graphs serialise to MBs).
-        foreach (var f in FixCatalog.All.Where(f => f.Id != FixCatalog.RunCommand))
+        foreach (var f in FixCatalog.All.Where(f => f.Id != FixCatalog.RunCommand && f.Id != FixCatalog.UpdateAgent))
         {
             var script = FixCatalog.Script(f, f.ParamLabel is null ? null : "Spooler");
             // A bare call on its own line lands in the output; one piped onward (| ForEach-Object ...) does not.
