@@ -37,6 +37,58 @@ public static class GraphBuilder
             Recipes(types, mentions, formats),
         };
 
+    public static ArchGraph BuildScoped(ArchModel model, ScopedView view)
+    {
+        var nodes = new List<(string Id, string Label, string Detail, string Group, double Weight, double X, double Y)>();
+
+        foreach (var d in view.DerivedNodes.OrderBy(n => n.Id, StringComparer.Ordinal))
+        {
+            var matched = model.Types
+                .Where(t => d.Cluster is null || model.Projects.Any(p =>
+                    string.Equals(p.Name, t.Project, StringComparison.Ordinal)
+                    && string.Equals(p.Cluster, d.Cluster, StringComparison.OrdinalIgnoreCase)))
+                .Where(t => d.IncludeIds.Count == 0 || d.IncludeIds.Contains(t.Id, StringComparer.Ordinal))
+                .OrderBy(t => t.Id, StringComparer.Ordinal)
+                .ToList();
+
+            var expected = d.IncludeIds.Count == 0
+                ? matched.Count.ToString(CultureInfo.InvariantCulture)
+                : d.IncludeIds.Count.ToString(CultureInfo.InvariantCulture);
+            var detail = $"{d.Detail}; {matched.Count.ToString(CultureInfo.InvariantCulture)}/{expected} derived type(s)";
+            nodes.Add((d.Id, d.Label, detail, d.Group, Math.Max(1, matched.Count), d.X, d.Y));
+        }
+
+        foreach (var n in view.AuthoredNodes.OrderBy(n => n.Id, StringComparer.Ordinal))
+        {
+            nodes.Add((n.Id, n.Title, $"{n.Detail}; {n.State}", n.State, 1, n.X, n.Y));
+        }
+
+        var index = nodes.Select((n, i) => (n.Id, i)).ToDictionary(x => x.Id, x => x.i, StringComparer.Ordinal);
+        var edges = view.Edges
+            .Where(e => index.ContainsKey(e.From) && index.ContainsKey(e.To))
+            .OrderBy(e => e.From, StringComparer.Ordinal)
+            .ThenBy(e => e.To, StringComparer.Ordinal)
+            .ThenBy(e => e.Label, StringComparer.Ordinal)
+            .Select(e => new ArchGraphEdge(e.From, e.To, $"{e.State}:{e.Label}"))
+            .ToList();
+
+        return new ArchGraph(
+            view.Name,
+            view.Title,
+            view.Subtitle,
+            nodes.Select((n, i) => new ArchNode(
+                    n.Id,
+                    n.Label,
+                    n.Detail,
+                    n.Group,
+                    Round(0.55 + Math.Min(0.45, Math.Sqrt(n.Weight) * 0.08)),
+                    n.X,
+                    n.Y))
+                .OrderBy(n => n.Id, StringComparer.Ordinal)
+                .ToList(),
+            edges);
+    }
+
     // ---------------------------------------------------------------------------------------
     // 1. THE WEB
     // ---------------------------------------------------------------------------------------

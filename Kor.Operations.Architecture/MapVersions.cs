@@ -66,6 +66,27 @@ public static class MapVersions
                 .ToDictionary(g => g.Key, g => g.Count(), StringComparer.Ordinal),
             m.Duplicates.ToDictionary(d => d.Name, d => d.Similarity, StringComparer.Ordinal));
 
+    public static MapSummary Summarise(ArchGraph graph, string root, int version, DateTime drawnUtc)
+        => new(
+            version,
+            drawnUtc.ToString("yyyy-MM-dd HH:mm:ss'Z'", CultureInfo.InvariantCulture),
+            root,
+            new Dictionary<string, int>(StringComparer.Ordinal)
+            {
+                ["scoped nodes"] = graph.Nodes.Count,
+                ["scoped edges"] = graph.Edges.Count,
+                ["live edges"] = graph.Edges.Count(e => e.Kind.StartsWith("live:", StringComparison.OrdinalIgnoreCase)),
+                ["built edges"] = graph.Edges.Count(e => e.Kind.StartsWith("built:", StringComparison.OrdinalIgnoreCase)),
+            },
+            Sorted(graph.Nodes.Select(n => $"{n.Id}: {n.Label}")),
+            Sorted(graph.Edges.Select(e => $"{e.From} -> {e.To}: {e.Kind}")),
+            Array.Empty<string>(),
+            Array.Empty<string>(),
+            graph.Nodes.GroupBy(n => n.Group, StringComparer.Ordinal)
+                .OrderBy(g => g.Key, StringComparer.Ordinal)
+                .ToDictionary(g => g.Key, g => g.Count(), StringComparer.Ordinal),
+            new Dictionary<string, double>(StringComparer.Ordinal));
+
     private static List<string> Sorted(IEnumerable<string> xs)
         => xs.Distinct(StringComparer.Ordinal).OrderBy(x => x, StringComparer.Ordinal).ToList();
 

@@ -34,12 +34,11 @@ public static class Program
     public static int Main(string[] rawArgs)
     {
         string root = ArgValue(rawArgs, "--root") ?? Directory.GetCurrentDirectory();
+        string? viewName = ArgValue(rawArgs, "--view");
 
         // `--out` IS A FOLDER — the one the numbered versions live under. It used to be the path of
         // a 2.7 MB model JSON that got committed and rotted, which is exactly what a version folder
         // replaces. The full model is written only when it is asked for by name, for debugging.
-        string versionRoot = ArgValue(rawArgs, "--out")
-                             ?? Path.Combine(root, "docs", "architecture");
         string? modelJson = ArgValue(rawArgs, "--model-json");
 
         if (!Directory.Exists(root))
@@ -48,7 +47,36 @@ public static class Program
             return 2;
         }
 
+        if (Flag(rawArgs, "--list-views"))
+        {
+            foreach (var view in ScopedViews.All.OrderBy(v => v.Name, StringComparer.Ordinal))
+            {
+                Console.WriteLine($"{view.Name}\t{view.Title}");
+            }
+
+            return 0;
+        }
+
+        var scopedView = viewName is null ? null : ScopedViews.Find(viewName);
+        if (viewName is not null && scopedView is null)
+        {
+            Console.Error.WriteLine($"unknown scoped view: {viewName}");
+            Console.Error.WriteLine("available views:");
+            foreach (var view in ScopedViews.All.OrderBy(v => v.Name, StringComparer.Ordinal))
+            {
+                Console.Error.WriteLine("  " + view.Name);
+            }
+
+            return 2;
+        }
+
+        string versionRoot = ArgValue(rawArgs, "--out")
+                             ?? (scopedView is null
+                                 ? Path.Combine(root, "docs", "architecture")
+                                 : Path.Combine(root, "docs", "architecture", "views", scopedView.Name));
+
         var model = Extractor.Extract(root);
+        ArchGraph? scopedGraph = scopedView is null ? null : GraphBuilder.BuildScoped(model, scopedView);
 
         if (modelJson is not null)
         {
@@ -65,6 +93,10 @@ public static class Program
                           $"{model.Stats.AmbiguousTypeNames} ambiguous type name(s) not linked");
         Console.WriteLine($"  {model.Scripts.Count} script(s) outside any project, " +
                           $"{model.Scripts.Count(s => s.ReferencedBy == 0)} referenced by nothing");
+        if (scopedView is not null && scopedGraph is not null)
+        {
+            Console.WriteLine($"  scoped view: {scopedView.Name} ({scopedGraph.Nodes.Count} node(s), {scopedGraph.Edges.Count} edge(s))");
+        }
 
         if (Flag(rawArgs, "--model-only")) return 0;
 
@@ -82,7 +114,15 @@ public static class Program
         RenderResult render;
         try
         {
-            render = VisioRenderer.Render(model, outDir, keepVisioOpen: Flag(rawArgs, "--keep-open"));
+            render = scopedGraph is null
+                ? VisioRenderer.Render(model, outDir, keepVisioOpen: Flag(rawArgs, "--keep-open"))
+                : VisioRenderer.Render(
+                    model,
+                    outDir,
+                    keepVisioOpen: Flag(rawArgs, "--keep-open"),
+                    onlyGraphs: new[] { scopedGraph },
+                    scene: scopedView,
+                    fileStem: $"KOR-Architecture-{scopedView!.Name}");
         }
         catch (Exception ex) when (ex is InvalidOperationException or System.Runtime.InteropServices.COMException)
         {
@@ -94,7 +134,9 @@ public static class Program
 
         foreach (string note in render.Notes) Console.WriteLine("  " + note);
 
-        var summary = MapVersions.Summarise(model, root, version, DateTime.UtcNow);
+        var summary = scopedGraph is null
+            ? MapVersions.Summarise(model, root, version, DateTime.UtcNow)
+            : MapVersions.Summarise(scopedGraph, root, version, DateTime.UtcNow);
         MapVersions.Write(summary, outDir);
         string changesPath = MapVersions.WriteChanges(outDir, summary, previous);
 
@@ -140,7 +182,8 @@ public static class Program
 
         if (!Flag(rawArgs, "--verify")) return 0;
 
-        if (render.PngPaths.Count < 2) bad.Add($"only {render.PngPaths.Count} page(s) exported; expected at least 2");
+        var expectedPages = scopedGraph is null ? 2 : 1;
+        if (render.PngPaths.Count < expectedPages) bad.Add($"only {render.PngPaths.Count} page(s) exported; expected at least {expectedPages}");
         if (bad.Count > 0)
         {
             foreach (string b in bad) Console.Error.WriteLine("  FAIL " + b);

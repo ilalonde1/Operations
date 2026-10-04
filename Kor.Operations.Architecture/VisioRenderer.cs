@@ -82,14 +82,20 @@ public static class VisioRenderer
 
     // ---- entry point -------------------------------------------------------------------------
 
-    public static RenderResult Render(ArchModel model, string outDir, bool keepVisioOpen = false)
+    public static RenderResult Render(
+        ArchModel model,
+        string outDir,
+        bool keepVisioOpen = false,
+        IReadOnlyList<ArchGraph>? onlyGraphs = null,
+        ScopedView? scene = null,
+        string fileStem = "KOR-Application-Map")
     {
         // FULL PATH, PLATFORM SEPARATORS. A root given with forward slashes survives Path.Combine as
         // a mixed-separator path, which .NET is happy with and Visio is not — SaveAs comes back
         // "Path not found" with no clue which path it means.
         outDir = Path.GetFullPath(outDir);
         Directory.CreateDirectory(outDir);
-        string vsdxPath = Path.Combine(outDir, "KOR-Application-Map.vsdx");
+        string vsdxPath = Path.Combine(outDir, fileStem + ".vsdx");
         var notes = new List<string>();
         var pngs = new List<string>();
 
@@ -123,20 +129,37 @@ public static class VisioRenderer
             oldUndoEnabled = doc.UndoEnabled;
             doc.UndoEnabled = false;
 
-            notes.Add(PageApplication(doc, model));
-            notes.Add(PageDrawingIntake(doc, model));
-            notes.Add(MatrixDependencies(doc, model));
-            notes.Add(MatrixFormats(doc, model));
-            notes.Add(ListVerbs(doc, model));
-            notes.Add(ListDuplication(doc, model));
-            notes.Add(MasterMatrix(doc, model));
-            notes.Add(ListScripts(doc, model));
-
-            foreach (var g in model.Graphs)
+            if (onlyGraphs is null)
             {
-                bool recipe = g.Name == "Recipes";
-                GraphPage(visio, doc, g, recipe ? 40 : 44, recipe ? 26 : 40, recipe);
-                notes.Add($"graph: {g.Name} — {g.Nodes.Count} node(s), {g.Edges.Count} tie(s)");
+                notes.Add(PageApplication(doc, model));
+                notes.Add(PageDrawingIntake(doc, model));
+                notes.Add(MatrixDependencies(doc, model));
+                notes.Add(MatrixFormats(doc, model));
+                notes.Add(ListVerbs(doc, model));
+                notes.Add(ListDuplication(doc, model));
+                notes.Add(MasterMatrix(doc, model));
+                notes.Add(ListScripts(doc, model));
+            }
+
+            if (scene is not null)
+            {
+                var graph = (onlyGraphs ?? model.Graphs).Single(g => g.Name == scene.Name);
+                ScenePage(visio, doc, scene, graph);
+                notes.Add($"scene: {scene.Name} — {graph.Nodes.Count} box(es), {graph.Edges.Count} tie(s)");
+            }
+            else
+            {
+                bool firstGraphPage = true;
+                foreach (var g in onlyGraphs ?? model.Graphs)
+                {
+                    bool recipe = g.Name == "Recipes";
+                    // In scoped mode the first graph takes over the blank default page rather than
+                    // adding a new one beside it; the full-map path already filled page 1 above.
+                    dynamic? reuse = onlyGraphs is not null && firstGraphPage ? doc.Pages[1] : null;
+                    GraphPage(visio, doc, g, recipe ? 40 : 44, recipe ? 26 : 40, recipe, reuse);
+                    notes.Add($"graph: {g.Name} — {g.Nodes.Count} node(s), {g.Edges.Count} tie(s)");
+                    firstGraphPage = false;
+                }
             }
 
             // Recalc back ON before anything asks a page how big its contents are — that answer is
@@ -150,7 +173,9 @@ public static class VisioRenderer
             foreach (dynamic p in doc.Pages)
             {
                 string name = NotWord.Replace((string)p.Name, "-");
-                string png = Path.Combine(outDir, $"KOR-Application-Map-{name}.png");
+                string png = scene is null
+                    ? Path.Combine(outDir, $"{fileStem}-{name}.png")
+                    : Path.Combine(outDir, $"{fileStem}.png");
                 if (File.Exists(png)) File.Delete(png);
                 p.Export(png);
                 pngs.Add(png);
@@ -741,12 +766,133 @@ public static class VisioRenderer
 
     // ---- graph pages -------------------------------------------------------------------------
 
+    private static void ScenePage(dynamic visio, dynamic doc, ScopedView view, ArchGraph graph)
+    {
+        dynamic page = doc.Pages[1];
+        SetPageSize(page, view.PageWidth, view.PageHeight, graph.Name);
+
+        HeaderBlock(page, 0.55, view.PageHeight - 0.85, view.PageWidth - 1.1, 0.55, view.Header);
+
+        var graphNodes = graph.Nodes.ToDictionary(n => n.Id, StringComparer.Ordinal);
+        var boxes = SceneBoxes(view, graphNodes).ToList();
+        var shapes = new Dictionary<string, dynamic>(StringComparer.Ordinal);
+
+        foreach (var box in boxes.OrderBy(b => b.Id, StringComparer.Ordinal))
+        {
+            dynamic shape = page.DrawRectangle(box.X, box.Y, box.X + box.W, box.Y + box.H);
+            shape.Text = box.Title + "\n" + box.Detail;
+            shape.CellsU["FillForegnd"].FormulaU = box.Fill;
+            shape.CellsU["LineColor"].FormulaU = Ink;
+            shape.CellsU["LineWeight"].FormulaU = "1.1 pt";
+            shape.CellsU["LinePattern"].FormulaU = box.State == "built" ? "2" : "1";
+            shape.CellsU["Rounding"].FormulaU = "0.07 in";
+            shape.CellsU["Char.Size"].FormulaU = "7.2 pt";
+            shape.CellsU["Char.Color"].FormulaU = Ink;
+            shape.CellsU["Para.HorzAlign"].FormulaU = "1";
+            shape.CellsU["VerticalAlign"].FormulaU = "1";
+            ApplyBoldFirstLine(shape, box.Title.Length, 8.5);
+            shapes[box.Id] = shape;
+        }
+
+        foreach (var edge in view.Edges.OrderBy(e => e.From, StringComparer.Ordinal)
+                     .ThenBy(e => e.To, StringComparer.Ordinal)
+                     .ThenBy(e => e.Label, StringComparer.Ordinal))
+        {
+            if (!shapes.TryGetValue(edge.From, out var from) || !shapes.TryGetValue(edge.To, out var to))
+            {
+                continue;
+            }
+
+            SceneTie(visio, page, from, to, edge.Label, edge.State);
+        }
+    }
+
+    private static IEnumerable<SceneBox> SceneBoxes(ScopedView view, IReadOnlyDictionary<string, ArchNode> graphNodes)
+    {
+        foreach (var node in view.DerivedNodes)
+        {
+            var detail = graphNodes.TryGetValue(node.Id, out var graphNode) ? graphNode.Detail : node.Detail;
+            yield return new SceneBox(node.Id, node.Label, detail, node.Fill, node.State, node.X, node.Y, node.W, node.H);
+        }
+
+        foreach (var node in view.AuthoredNodes)
+        {
+            yield return new SceneBox(node.Id, node.Title, node.Detail, node.Fill, node.State, node.X, node.Y, node.W, node.H);
+        }
+    }
+
+    private static void HeaderBlock(dynamic page, double x, double y, double w, double h, string text)
+    {
+        dynamic header = page.DrawRectangle(x, y, x + w, y + h);
+        header.Text = text;
+        header.CellsU["LinePattern"].FormulaU = "0";
+        header.CellsU["FillPattern"].FormulaU = "0";
+        header.CellsU["Char.Size"].FormulaU = "8.5 pt";
+        header.CellsU["Char.Color"].FormulaU = Hairline;
+        header.CellsU["Para.HorzAlign"].FormulaU = "0";
+        ApplyBoldFirstLine(header, text.IndexOf('\n') < 0 ? text.Length : text.IndexOf('\n'), 14);
+    }
+
+    private static void SceneTie(dynamic visio, dynamic page, dynamic from, dynamic to, string label, string state)
+    {
+        dynamic c = page.Drop(visio.ConnectorToolDataObject, 0, 0);
+        c.CellsU["BeginX"].GlueTo(from.CellsU["PinX"]);
+        c.CellsU["EndX"].GlueTo(to.CellsU["PinX"]);
+        c.CellsU["LineColor"].FormulaU = state == "built" ? Hairline : Ink;
+        c.CellsU["LineWeight"].FormulaU = state == "built" ? "0.75 pt" : "1.0 pt";
+        c.CellsU["LinePattern"].FormulaU = state == "built" ? "2" : "1";
+        c.CellsU["EndArrow"].FormulaU = "5";
+        c.CellsU["EndArrowSize"].FormulaU = "1";
+        c.Text = label;
+        c.CellsU["Char.Size"].FormulaU = "7.5 pt";
+        c.CellsU["Char.Color"].FormulaU = state == "built" ? Hairline : Ink;
+    }
+
+    private static void ApplyBoldFirstLine(dynamic shape, int chars, double pt)
+    {
+        if (chars <= 0)
+        {
+            return;
+        }
+
+        try
+        {
+            dynamic range = shape.Characters;
+            range.Begin = 0;
+            range.End = chars;
+            range.CharProps[2] = 17;
+            range.CharProps[7] = pt;
+        }
+        catch (COMException)
+        {
+            shape.CellsU["Char.Style"].FormulaU = "1";
+        }
+        catch (Exception)
+        {
+            shape.CellsU["Char.Style"].FormulaU = "1";
+        }
+    }
+
+    private sealed record SceneBox(
+        string Id,
+        string Title,
+        string Detail,
+        string Fill,
+        string State,
+        double X,
+        double Y,
+        double W,
+        double H);
+
     /// <summary>Nodes where the layout put them, ties drawn STRAIGHT. A routed connector is right when
     /// a diagram is boxes in rows; on a force-directed graph it fights the layout, adds elbows the
     /// layout did not ask for, and costs a COM round trip each.</summary>
-    private static void GraphPage(dynamic visio, dynamic doc, ArchGraph graph, double w, double h, bool recipe)
+    private static void GraphPage(dynamic visio, dynamic doc, ArchGraph graph, double w, double h, bool recipe, dynamic? existingPage = null)
     {
-        dynamic page = doc.Pages.Add();
+        // Reuse the document's default first page when asked (scoped views draw no other page, so
+        // Documents.Add's blank "Page-1" would otherwise survive to export as an empty PNG). The
+        // full-map path passes null and keeps adding pages, exactly as before.
+        dynamic page = existingPage ?? doc.Pages.Add();
         SetPageSize(page, w, h, graph.Name);
 
         Label(page, 0.8, h - 1.1, graph.Title, 22, Accent);
@@ -764,9 +910,22 @@ public static class VisioRenderer
         {
             if (!at.TryGetValue(e.From, out var a) || !at.TryGetValue(e.To, out var b)) continue;
             dynamic line = page.DrawLine(a.X, a.Y, b.X, b.Y);
-            string kind = e.Kind.Split(':')[0];
+            var kindParts = e.Kind.Split(':', 2);
+            string kind = kindParts[0];
+            string label = kindParts.Length == 2 ? kindParts[1] : "";
             switch (kind)
             {
+                case "built":
+                    line.CellsU["LineColor"].FormulaU = "RGB(90,105,122)";
+                    line.CellsU["LineWeight"].FormulaU = "1.0 pt";
+                    line.CellsU["LinePattern"].FormulaU = "2";
+                    line.CellsU["EndArrow"].FormulaU = "4";
+                    break;
+                case "live":
+                    line.CellsU["LineColor"].FormulaU = "RGB(50,115,82)";
+                    line.CellsU["LineWeight"].FormulaU = "1.0 pt";
+                    line.CellsU["EndArrow"].FormulaU = "4";
+                    break;
                 case "duplicates":
                     int n = int.TryParse(e.Kind.Split(':').ElementAtOrDefault(1), out int c) ? c : 1;
                     line.CellsU["LineColor"].FormulaU = "RGB(205,60,45)";
@@ -788,12 +947,21 @@ public static class VisioRenderer
                     if (recipe) line.CellsU["EndArrow"].FormulaU = "4";
                     break;
             }
+
+            if (kind is "built" or "live" && label.Length > 0)
+            {
+                line.Text = label;
+                line.CellsU["Char.Size"].FormulaU = "7 pt";
+                line.CellsU["Char.Color"].FormulaU = Ink;
+            }
         }
 
         foreach (var node in graph.Nodes)
         {
             var c = at[node.Id];
-            string fill = GraphFill.TryGetValue(node.Group, out string? f) ? f : "RGB(200,205,210)";
+            string fill = node.Group.StartsWith("RGB(", StringComparison.OrdinalIgnoreCase)
+                ? node.Group
+                : GraphFill.TryGetValue(node.Group, out string? f) ? f : "RGB(200,205,210)";
             dynamic s;
 
             if (recipe)
