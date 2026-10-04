@@ -118,8 +118,10 @@ internal sealed class PromptLibrary(NetworkOpsStore store, Agents.AgentHub agent
     /// <summary>Why a proposed card is refused, or null.</summary>
     public static string? InvalidCard(CardProposal c)
         => string.IsNullOrWhiteSpace(c.Title) ? "card.title: what someone would search for"
+         : string.IsNullOrWhiteSpace(c.Plain) ? "card.plain: one plain-English line -- what this card is and what approving it will do (no jargon)"
          : string.IsNullOrWhiteSpace(c.Symptom) ? "card.symptom: what the person sees"
          : KnowledgeCards.Invalid(c.AppliesTo) is { } why ? $"card.{why}"
+         : c.AmendsCardId is <= 0 ? "card.amends: the id of a card to supersede, or leave it out"
          : null;
 
     private async Task<(FleetSnapshot Fleet, FleetSnapshot Rack)> SnapshotsAsync(CancellationToken ct)

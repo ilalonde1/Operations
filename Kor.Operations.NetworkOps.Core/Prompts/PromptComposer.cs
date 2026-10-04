@@ -315,13 +315,15 @@ public static class PromptComposer
         {
             sb.AppendLine("    # Bank it for other machines and next time (optional; Ian approves it). Leave card out if nothing generalises.");
             sb.AppendLine("    card = @{");
+            sb.AppendLine("        plain     = 'In plain English, no jargon: what this card is and what approving it will DO. Ian reads this first, and decides from it.'");
             sb.AppendLine("        title     = 'ETABS crashes opening large models'   # what someone would search for");
-            sb.AppendLine("        appliesTo = 'app:etabs'   # any | app:<name> | model:<text> | gpu:<text> | kind:<kind> | device:<name> | finding:<rule>; comma = or");
+            sb.AppendLine("        appliesTo = 'app:etabs'   # any | app:<name> | model:<text> | gpu:<text> | kind:<kind> | device:<name> | finding:<rule>; comma = or. Name EVERY model/machine it covers, from what you saw.");
             sb.AppendLine("        symptom   = 'What the person sees.'");
             sb.AppendLine("        cause     = 'What it actually was, and the evidence that proved it.'");
             sb.AppendLine("        check     = 'How to tell on another machine: what to read, and what it looks like when it is this.'");
             sb.AppendLine("        fix       = 'What cleared it, and how you know it did.'");
             sb.AppendLine("        tags      = 'etabs, crash'");
+            sb.AppendLine("        # amends  = 123   # to CORRECT or WIDEN an existing card (use its id from the list above): Ian approves it as a new version, the old one retires. Do this -- do NOT write prose asking Ian to edit a card by hand.");
             sb.AppendLine("    }");
         }
         sb.AppendLine("} | ConvertTo-Json -Depth 4");

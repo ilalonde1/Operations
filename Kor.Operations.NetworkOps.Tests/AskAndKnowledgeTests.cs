@@ -56,12 +56,32 @@ public sealed class AskAndKnowledgeTests
     public void A_card_no_prompt_could_ever_carry_is_refused(string appliesTo)
     {
         Assert.NotNull(KnowledgeCards.Invalid(appliesTo));
-        Assert.NotNull(PromptLibrary.InvalidCard(new CardProposal("t", appliesTo, "s", null, null, null, null)));
+        Assert.NotNull(PromptLibrary.InvalidCard(new CardProposal("t", appliesTo, "s", null, null, null, null, "plain")));
     }
 
     [Fact]
     public void A_good_card_is_accepted_for_review()
-        => Assert.Null(PromptLibrary.InvalidCard(new CardProposal("ETABS crashes opening large models", "app:etabs", "closes while opening", null, null, null, null)));
+        => Assert.Null(PromptLibrary.InvalidCard(new CardProposal("ETABS crashes opening large models", "app:etabs", "closes while opening", null, null, null, null,
+            "If ETABS crashes opening big models on these machines, it is the 32-bit graphics cache; approving this offers that fix.")));
+
+    [Fact]
+    public void A_card_without_a_plain_explanation_is_refused()   // Ian, 010: the person approving must get a plain line first
+        => Assert.Contains("plain", PromptLibrary.InvalidCard(new CardProposal("t", "app:etabs", "s", null, null, null, null))!);
+
+    [Theory]
+    [InlineData(0L, true)]
+    [InlineData(-1L, true)]
+    [InlineData(5L, false)]   // a positive id passes here; the endpoint checks it is a REAL card
+    public void An_amends_id_is_a_positive_card_id_or_left_out(long amends, bool refused)
+        => Assert.Equal(refused, PromptLibrary.InvalidCard(new CardProposal("t", "app:etabs", "s", null, null, null, null, "plain", amends)) is not null);
+
+    [Fact]
+    public void The_report_template_asks_for_a_plain_explanation_and_offers_to_amend()
+    {
+        var md = PromptComposer.Device(Pc(), new PromptReport(7, "tok_abcdefghijklmnopqrstuvwxyz", "https://x", Cards: true));
+        Assert.Contains("plain     =", md);   // the plain-English line is asked for
+        Assert.Contains("amends", md);        // and amending a card by id, instead of prose for Ian
+    }
 
     private static DevicePromptInput Pc(IReadOnlyList<KnowledgeCard>? cards = null) => new(
         "KOR-214", "Workstation", AndreasPc, [], null, [], [], [], [], [], [], [], null, [],

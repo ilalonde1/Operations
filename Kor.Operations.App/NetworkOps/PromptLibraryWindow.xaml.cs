@@ -41,11 +41,30 @@ public sealed record PromptRunView(PromptRunRow Run)
     public string By => Run.CreatedBy.Split('@')[0];
     public string OutcomeText => Run.Outcome ?? "no report yet";
     public string Summary => Run.Question is { } q ? $"Asked: {q}{(Run.Summary is { } s ? $"\n{s}" : "")}" : Run.Summary ?? "";
-    public string LearnedText => string.Join("\n", new[]
+    public string LearnedText
     {
-        Run.LearnedText is { } l ? $"Learned ({Run.LearnedStatus}): {l}" : null,
-        Run.CardTitle is { } c ? $"Knowledge card ({Run.LearnedStatus}): {c}" : null,
-    }.Where(x => x is not null));
+        get
+        {
+            var parts = new List<string>();
+            if (Run.LearnedText is { } l) parts.Add($"Learned ({Run.LearnedStatus}): {l}");
+            if (Run.CardTitle is { } title)
+            {
+                // Plain-English FIRST (what approving it does), then the full technical card -- so the decision is made from
+                // the plain line, with the real card there to check (Ian, 010).
+                var card = $"Knowledge card ({Run.LearnedStatus}){(Run.CardAmends is { } a ? $" — amends card {a}" : "")}:";
+                if (!string.IsNullOrWhiteSpace(Run.CardPlain)) card += $"\n  • In plain terms: {Run.CardPlain}";
+                card += $"\n  • Technical — {title}";
+                if (Run.CardAppliesTo is { } ap) card += $"\n      applies to: {ap}";
+                if (Run.CardSymptom is { } sy) card += $"\n      symptom: {sy}";
+                if (Run.CardCause is { } ca) card += $"\n      cause: {ca}";
+                if (Run.CardCheck is { } ch) card += $"\n      check: {ch}";
+                if (Run.CardFix is { } fx) card += $"\n      fix: {fx}";
+                if (Run.CardTags is { } tg) card += $"\n      tags: {tg}";
+                parts.Add(card);
+            }
+            return string.Join("\n", parts);
+        }
+    }
     public bool AwaitsDecision => Run.LearnedStatus == "proposed";
 }
 

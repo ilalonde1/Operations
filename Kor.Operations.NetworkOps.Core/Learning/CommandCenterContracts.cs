@@ -61,16 +61,26 @@ public sealed record RenderedPrompt(long? RunId, string Title, string FileName, 
 public sealed record PromptOutcome(string Outcome, string Summary, string? Learned, CardProposal? Card = null);
 
 public sealed record PromptRunRow(long RunId, string Kind, string Subject, string CreatedBy, DateTime CreatedUtc, DateTime? OutcomeUtc,
-    string? Outcome, string? Summary, string? LearnedText, string? LearnedStatus, string? Question = null, string? CardTitle = null);
+    string? Outcome, string? Summary, string? LearnedText, string? LearnedStatus, string? Question = null, string? CardTitle = null,
+    // The proposed card's fields, so the person approving sees the plain-English explanation FIRST and the full technical
+    // card too (Ian, 010). Null when the run has no card, or before the migrations that add them.
+    string? CardPlain = null, string? CardAppliesTo = null, string? CardSymptom = null, string? CardCause = null,
+    string? CardCheck = null, string? CardFix = null, string? CardTags = null, long? CardAmends = null);
 
 // ---- knowledge cards (db/KorNetworkOps/008): what a session learned, banked so every later prompt about a machine it
-// applies to starts from it. A card is written by the session, accepted or rejected by Ian, never edited by anything else.
+// applies to starts from it. A card is written by the session and accepted or rejected by Ian; it is never edited in
+// place -- a correction is a NEW card that AMENDS the old one (and, on acceptance, retires it). Every card carries a
+// plain-English explanation (010) so the person approving it never has to read the technical card to know what it does.
 
 /// <param name="AppliesTo">Which machines it concerns: comma-separated terms, any one matching (Core/Prompts/KnowledgeCards).</param>
-public sealed record CardProposal(string Title, string AppliesTo, string Symptom, string? Cause, string? Check, string? Fix, string? Tags);
+/// <param name="Plain">Plain-English: what this card is and what approving it will do. Shown FIRST at approval; required.</param>
+/// <param name="AmendsCardId">The card this one supersedes (a corrected/widened version), or null for a fresh card. On
+/// acceptance of an amendment, the amended card is retired.</param>
+public sealed record CardProposal(string Title, string AppliesTo, string Symptom, string? Cause, string? Check, string? Fix, string? Tags,
+    string Plain = "", [property: System.Text.Json.Serialization.JsonPropertyName("amends")] long? AmendsCardId = null);
 
 public sealed record KnowledgeCard(long CardId, string Title, string AppliesTo, string Symptom, string? Cause, string? Check, string? Fix,
-    string? Tags, string? SourceDevice, long? SourceRunId, string Status, DateTime CreatedUtc);
+    string? Tags, string? SourceDevice, long? SourceRunId, string Status, DateTime CreatedUtc, string? Plain = null, long? AmendsCardId = null);
 
 // ---- a Claude session reading a machine THROUGH APP01 (netops run): the service runs the script on the machine -- through
 // its agent, else APP01's own network route -- so nothing goes from the person's PC to the machine.

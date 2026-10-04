@@ -127,6 +127,12 @@ internal sealed class ApiHost(IOptions<NetworkOpsOptions> options, NetworkOpsSto
                 if (Prompts.PromptLibrary.InvalidCard(card) is { } why) return Results.BadRequest(new { error = why });
                 if (!await s.KnowledgeAvailableAsync(ct))
                     return Results.Json(new { error = "knowledge cards are not switched on (db/KorNetworkOps/008): send the report again without the card" }, statusCode: StatusCodes.Status503ServiceUnavailable);
+                if (card.AmendsCardId is { } amendId)
+                {
+                    if (!await s.CardsAmendableAsync(ct))
+                        return Results.Json(new { error = "amending a card needs db/KorNetworkOps/010: resend without amendsCardId (it will bank as a fresh card), or apply 010 first" }, statusCode: StatusCodes.Status503ServiceUnavailable);
+                    if (!await s.CardExistsAsync(amendId, ct)) return Results.BadRequest(new { error = $"card.amends: {amendId} is not a known card" });
+                }
             }
             var run = await s.RecordPromptOutcomeAsync(id, Prompts.PromptLibrary.HashToken(token), body.Outcome!, body.Summary.Trim(), body.Learned, body.Card, ct);
             if (run is null) return Results.Unauthorized();   // unknown run, wrong token, or already reported: the same answer for all three
