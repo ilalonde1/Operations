@@ -11,6 +11,8 @@
   </PropertyGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="Kor.Operations.NetworkOps.Tests" />
+    <!-- The MCP server (separate process) reuses NetworkOpsStore's read queries DB-direct. Compile-time only. -->
+    <InternalsVisibleTo Include="Kor.Operations.NetworkOps.Mcp" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.8" />
