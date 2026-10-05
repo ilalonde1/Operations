@@ -67,3 +67,6 @@ foreach ($dir in @([Environment]::GetFolderPath('Programs'), [Environment]::GetF
 }
 $sizeMB = [math]::Round((Get-ChildItem $Target -Recurse -File | Measure-Object Length -Sum).Sum/1MB, 0)
 Write-Host "RELEASED KOR Operations ($sizeMB MB) to $Target. Shortcuts: Start Menu + Desktop ('KOR Operations')." -ForegroundColor Green
+# Success is already proven above (exe present, robocopy < 8). Don't let robocopy's non-zero success code (1 = files
+# copied) leak out as the script's exit status -- it reads as a failure to any caller.
+exit 0
