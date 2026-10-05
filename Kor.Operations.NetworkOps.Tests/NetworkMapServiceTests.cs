@@ -1,4 +1,6 @@
 #nullable enable
+using Kor.Operations.NetworkOps.Core.Health;
+using Kor.Operations.NetworkOps.Core.Network;
 using Kor.Operations.NetworkOps.Service.Network;
 using Kor.Operations.NetworkOps.Service.Store;
 using Xunit;
@@ -10,10 +12,13 @@ namespace Kor.Operations.NetworkOps.Tests;
 //
 // WHAT IT COVERS: the probe's lease list read bare or wrapped in another array, the real 107 leases of 2026-10-02 all read,
 // a lease with no MAC or IP skipped; the usual person is the most often signed in, a built-in Administrator only when
-// nobody else ever is, and with no history whoever is on now.
-// WHAT IT DOES NOT: the SQL that counts sign-ins (JSON_VALUE over both payload shapes) -- read live after deploy, 2026-10-02.
+// nobody else ever is, and with no history whoever is on now. Link findings: every device the store holds open is diffed
+// even when nothing raises it now (so it clears), and one device under two names is diffed once with what it raises.
+// WHAT IT DOES NOT: the SQL that counts sign-ins (JSON_VALUE over both payload shapes) -- read live after deploy, 2026-10-02;
+// the SQL behind DevicesWithOpenFindingAsync and the name -> DeviceId lookup -- read live after deploy (the open link-fault
+// count goes from 23 to what the current rule raises).
 // A SAME-CLASS FAULT IT WOULD NOT CATCH: a shared PC used by two people equally gets whichever was on most recently, with
-// no hint that it is shared.
+// no hint that it is shared; a link finding on a RETIRED device stays open (the store query skips retired devices).
 public sealed class NetworkMapServiceTests
 {
     [Fact]
@@ -74,5 +79,29 @@ public sealed class NetworkMapServiceTests
         Assert.Equal(("kor\\Administrator", "usual"), NetworkOpsStore.UsualUser([("kor\\Administrator", 2, t)], null));    // nobody else ever
         Assert.Equal(("kor\\gdow", "signed in now"), NetworkOpsStore.UsualUser(null, "kor\\gdow"));
         Assert.Equal((null, null), NetworkOpsStore.UsualUser([], ""));
+    }
+
+    // 2026-10-05: 23 link-fault findings raised by 0.32's dropped-packet rule were still open two days after 0.33.1 retired
+    // it -- the refresh only revisited devices it remembered raising, and a restart forgot them all.
+    [Fact]
+    public void A_link_finding_open_in_the_store_is_revisited_even_when_nothing_raises_it()
+    {
+        var fault = new Finding(NetworkFindings.LinkRule, Severity.Warning, "Network link fault", "KOR-SW01 port 4: the link is HALF-DUPLEX");
+        var targets = NetworkMapService.LinkFindingTargets([(7, fault)], [12, 7]);
+
+        Assert.Equal(2, targets.Count);
+        Assert.Equal(fault, targets.Single(t => t.DeviceId == 7).Finding);   // raised now AND open: kept, not cleared
+        Assert.Null(targets.Single(t => t.DeviceId == 12).Finding);          // open, raised by nothing now: cleared
+        Assert.Empty(NetworkMapService.LinkFindingTargets([], []));
+    }
+
+    [Fact]
+    public void A_device_seen_under_two_names_is_diffed_once_with_what_it_raises()
+    {
+        // NAS01 on the map is "NAS01 (Veeam repository)" in the store; both resolve to one DeviceId. Diffing once per name
+        // would clear under one name what the other just raised, every refresh.
+        var fault = new Finding(NetworkFindings.LinkRule, Severity.Info, "Network link degraded", "KOR-SW01 port 30: UniFi rates this port's experience 80%");
+        var one = Assert.Single(NetworkMapService.LinkFindingTargets([(31, fault)], [31]));
+        Assert.Equal((31, fault), (one.DeviceId, one.Finding));
     }
 }

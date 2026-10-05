@@ -199,6 +199,24 @@ internal sealed partial class NetworkOpsStore
 
     // ------------------------------------------------------------------ findings
 
+    /// <summary>Every live device with this rule open. A job that owns a rule clears from THIS, not from what it remembers
+    /// raising: memory is empty after a restart, and a finding raised by an older version of the rule is never revisited
+    /// (23 link-fault findings from 0.32's dropped-packet rule stayed open for days after 0.33.1 retired it, 2026-10-05).</summary>
+    public async Task<IReadOnlyList<int>> DevicesWithOpenFindingAsync(string ruleKey, CancellationToken ct)
+    {
+        await using var c = await OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = Cmd(c, """
+            SELECT DISTINCT f.DeviceId FROM NetworkOps.Findings f
+            JOIN NetworkOps.Devices d ON d.DeviceId = f.DeviceId
+            WHERE f.RuleKey = @k AND f.ClearedUtc IS NULL AND d.RetiredUtc IS NULL;
+            """);
+        cmd.Parameters.Add("@k", SqlDbType.NVarChar, 160).Value = ruleKey;
+        var list = new List<int>();
+        await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        while (await r.ReadAsync(ct).ConfigureAwait(false)) list.Add(r.GetInt32(0));
+        return list;
+    }
+
     /// <param name="excludeRulePrefix">Rules owned by another job (the census owns device-silent) are left alone.</param>
     public async Task<IReadOnlyList<OpenFinding>> OpenFindingsAsync(int deviceId, string? excludeRulePrefix, CancellationToken ct)
     {

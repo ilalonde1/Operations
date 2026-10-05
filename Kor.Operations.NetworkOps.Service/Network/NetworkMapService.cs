@@ -121,30 +121,45 @@ internal sealed class NetworkMapService(NetworkOpsStore store, MacDirectory macs
         finally { _gate.Release(); }
     }
 
-    private HashSet<string> _lastLinkFaults = new(StringComparer.OrdinalIgnoreCase);
-
     /// <summary>Raise or clear the "link-fault" finding on each device from its port's synthesised health (NetworkFindings).
-    /// Owned here -- the sweeps never touch that rule -- and bounded to the faulty-or-recently-faulty set, so it is cheap.</summary>
+    /// Owned here -- the sweeps never touch that rule. Bounded to the devices faulty now plus those the STORE holds open:
+    /// it once cleared from an in-memory "last raised" set, which a restart empties, so 23 findings raised by 0.32's
+    /// dropped-packet rule were never revisited after 0.33.1 retired it (2026-10-05).</summary>
     private async Task<int> ApplyLinkFindingsAsync(NetworkMap map, DateTime now, CancellationToken ct)
     {
-        var current = Core.Network.NetworkFindings.LinkFaults(map)
-            .GroupBy(x => x.Device, StringComparer.OrdinalIgnoreCase).ToDictionary(g => g.Key, g => g.First().Finding, StringComparer.OrdinalIgnoreCase);
-        var touch = new HashSet<string>(current.Keys, StringComparer.OrdinalIgnoreCase);
-        touch.UnionWith(_lastLinkFaults);
-        foreach (var name in touch)
+        var raised = new List<(int DeviceId, Core.Health.Finding Finding)>();
+        foreach (var (name, f) in Core.Network.NetworkFindings.LinkFaults(map))
         {
             try
             {
-                if (await store.DeviceByNameAsync(name, ct).ConfigureAwait(false) is not { } dev) continue;
-                var open = (await store.OpenFindingsAsync(dev.DeviceId, null, ct).ConfigureAwait(false)).Where(f => f.RuleKey == Core.Network.NetworkFindings.LinkRule).ToList();
-                var raised = current.TryGetValue(name, out var f) ? new List<Core.Health.Finding> { f } : new List<Core.Health.Finding>();
-                var changes = Core.Health.FindingDiff.Compute(open, raised);
-                if (changes.Count > 0) await store.ApplyChangesAsync(dev.DeviceId, changes, now, ct).ConfigureAwait(false);
+                if (await store.DeviceByNameAsync(name, ct).ConfigureAwait(false) is { } dev) raised.Add((dev.DeviceId, f));
             }
-            catch (Exception ex) when (ex is not OperationCanceledException) { log.LogWarning(ex, "Port map: the link finding for {Device} could not be applied", name); }
+            catch (Exception ex) when (ex is not OperationCanceledException) { log.LogWarning(ex, "Port map: {Device} could not be looked up for its link finding", name); }
         }
-        _lastLinkFaults = new HashSet<string>(current.Keys, StringComparer.OrdinalIgnoreCase);
-        return current.Count;
+        var openInStore = await store.DevicesWithOpenFindingAsync(Core.Network.NetworkFindings.LinkRule, ct).ConfigureAwait(false);
+        foreach (var (deviceId, finding) in LinkFindingTargets(raised, openInStore))
+        {
+            try
+            {
+                var open = (await store.OpenFindingsAsync(deviceId, null, ct).ConfigureAwait(false)).Where(f => f.RuleKey == Core.Network.NetworkFindings.LinkRule).ToList();
+                var changes = Core.Health.FindingDiff.Compute(open, finding is null ? [] : [finding]);
+                if (changes.Count > 0) await store.ApplyChangesAsync(deviceId, changes, now, ct).ConfigureAwait(false);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException) { log.LogWarning(ex, "Port map: the link finding for device {DeviceId} could not be applied", deviceId); }
+        }
+        return raised.Select(r => r.DeviceId).Distinct().Count();
+    }
+
+    /// <summary>Which devices to diff, and what each raises now (null = nothing, so an open one clears). Keyed by DeviceId,
+    /// not name: a rack device is "NAS01" on the map and "NAS01 (Veeam repository)" in the store, and diffing it once per
+    /// name would clear under one name what the other just raised.</summary>
+    internal static IReadOnlyList<(int DeviceId, Core.Health.Finding? Finding)> LinkFindingTargets(
+        IEnumerable<(int DeviceId, Core.Health.Finding Finding)> raisedNow, IEnumerable<int> openInStore)
+    {
+        var targets = new Dictionary<int, Core.Health.Finding?>();
+        foreach (var (id, f) in raisedNow) targets.TryAdd(id, f);
+        foreach (var id in openInStore) targets.TryAdd(id, null);
+        return targets.Select(t => (t.Key, t.Value)).ToList();
     }
 
     private async Task ReadLeasesAsync(DateTime now, CancellationToken ct)

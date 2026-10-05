@@ -269,6 +269,21 @@ public sealed class NetworkMapTests(ITestOutputHelper output)
     }
 
     [Fact]
+    public void A_lifetime_dropped_count_on_a_clean_link_raises_nothing()
+    {
+        // KOR-206-N on KOR-SW01 port 1, 2026-10-05: 0 errors / 15,985 dropped since the switch booted, full duplex. 0.32 called
+        // that "Network link degraded" (Dropped > 2000); it is a cumulative counter, and the PC's own NIC read 0 errors.
+        const long now = 1_700_000_000;
+        const string swMac = "de:ad:be:ef:00:02", pcMac = "04:7c:16:f3:e2:0e";
+        var sw = new UniFiDev(swMac, "KOR-SW01", "US48", "usw", "192.168.1.9", null, [new UniFiPort(1, 1000, false, pcMac, "192.168.1.60", now)]);
+        var live = new UniFiLive(now, [new LiveDevice(swMac, "KOR-SW01", 1, [new LivePort(1, true, 1000, null, null, null, FullDuplex: true, Errors: 0, Dropped: 15_985)])], []);
+        var map = NetworkMaps.Build(new UniFiSite(now, [sw], []), [new FleetPc("KOR-206-N", [pcMac], null, null)], [],
+            new KnownNames(new Dictionary<string, string>(), new Dictionary<string, string>()), live);
+        Assert.Equal("good", map.PortOf("KOR-206-N")!.Value.Port.Health);
+        Assert.Empty(NetworkFindings.LinkFaults(map));
+    }
+
+    [Fact]
     public void A_live_read_with_junk_numbers_degrades_instead_of_aborting_the_refresh()
     {
         // A fractional "state"/"speed" (a JSON Number that GetInt64 throws on) and a wild timestamp must not escape the
