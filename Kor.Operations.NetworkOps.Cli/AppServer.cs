@@ -66,6 +66,11 @@ internal sealed class AppServer : IDisposable
         return JsonSerializer.Deserialize<T>(text, Json)!;
     }
 
+    /// <summary>An access token for NetworkOps (the same one the verbs send), for `netops token` -- so a client that is not
+    /// this CLI (e.g. the MCP endpoint over HTTP) can authenticate as the signed-in person. Sign-in prompts go to stderr;
+    /// the token is the only thing on stdout.</summary>
+    public Task<string> AccessTokenAsync(CancellationToken ct) => TokenAsync(ct);
+
     private async Task<string> TokenAsync(CancellationToken ct)
     {
         _pca ??= await BuildPcaAsync().ConfigureAwait(false);

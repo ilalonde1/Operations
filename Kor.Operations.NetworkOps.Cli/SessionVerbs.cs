@@ -23,6 +23,7 @@ namespace Kor.Operations.NetworkOps.Cli;
 //   netops changes    [--since 24h|7d|2026-10-02T01:45]   the morning brief: opened, cleared, done, open now
 //   netops network    [--search KOR-207|markb|192.168.1.73]  the port map: every switch, port, device and person
 //   netops add-pc     --hosts NAME           a PC outside the domain: its one-time code and the command to run on it
+//   netops token                             a NetworkOps access token on stdout (for the MCP endpoint / any HTTP client)
 //
 // --hosts takes a PC or a rack device (KOR-217, KOR-FS01: a rack name matches up to its bracket), "all" (every PC) or
 // "rack" (every rack device): one resolver (Core/Learning/HostNames.Resolve) for every verb.
@@ -30,7 +31,7 @@ namespace Kor.Operations.NetworkOps.Cli;
 internal static class SessionVerbs
 {
     public static bool Handles(string verb, string[] args)
-        => verb is "check" or "last-check" or "knowledge" or "findings" or "fix" or "history" or "readings" or "action" or "trigger" or "updates" or "changes" or "network" or "add-pc" || (verb == "run" && !args.Contains("--direct"));
+        => verb is "check" or "last-check" or "knowledge" or "findings" or "fix" or "history" or "readings" or "action" or "trigger" or "updates" or "changes" or "network" or "add-pc" or "token" || (verb == "run" && !args.Contains("--direct"));
 
     public static async Task<int> RunAsync(string verb, string[] args)
     {
@@ -69,6 +70,9 @@ internal static class SessionVerbs
         var ct = cts.Token;
         try
         {
+            // A NetworkOps access token (the same the verbs send), on stdout -- for the MCP endpoint or any client that
+            // authenticates as the signed-in person. Sign-in (MFA) prompts go to stderr, so `netops token` pipes cleanly.
+            if (verb == "token") { Console.WriteLine(await server.AccessTokenAsync(ct)); return 0; }
             if (verb == "knowledge") return await KnowledgeAsync(server, search, all, ct);
             if (verb == "findings") return await FindingsAsync(server, hostsArg, ct);
             if (verb == "updates") return await UpdatesAsync(server, scan, ct);
