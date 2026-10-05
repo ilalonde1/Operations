@@ -12,9 +12,11 @@
   <ItemGroup>
     <!-- `netops watchdog` reads the service heartbeat; same version as the service. -->
     <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.4" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.8" />
     <!-- Signing in to NetworkOps on APP01 as the app does (AppServer.cs): the app's registration and token cache. -->
     <PackageReference Include="Microsoft.Identity.Client" Version="4.83.1" />
     <PackageReference Include="Microsoft.Identity.Client.Extensions.Msal" Version="4.83.1" />
+    <PackageReference Include="ModelContextProtocol" Version="2.2.0" />
   </ItemGroup>
 
   <ItemGroup>

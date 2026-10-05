@@ -167,6 +167,14 @@ public sealed class AskAndKnowledgeTests
     }
 
     [Fact]
+    public void The_CLI_exposes_the_mcp_bridge_verb()
+    {
+        // `netops mcp` is the stdio MCP bridge Claude Code launches (.mcp.json); it must stay wired to McpBridge.
+        var program = File.ReadAllText(Path.Combine(Repo.Root, "Kor.Operations.NetworkOps.Cli", "Program.cs"));
+        Assert.Matches(new Regex(@"verb == ""mcp""[\s\S]{0,120}McpBridge\.RunAsync"), program);
+    }
+
+    [Fact]
     public void The_CLI_signs_in_exactly_as_the_app_does()
     {
         var config = File.ReadAllText(Path.Combine(Repo.Root, "Kor.Operations.App", "App.config"));

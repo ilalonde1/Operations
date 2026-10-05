@@ -40,6 +40,11 @@ var verb = args[0].ToLowerInvariant();
 if (verb == "watchdog")
     return await Kor.Operations.NetworkOps.Cli.WatchdogVerb.RunAsync(args);
 
+// A stdio MCP server Claude Code launches, proxied to the real /mcp on APP01 (signed in as the person, cert pinned):
+// the NetworkOps tools with nothing to set up. Long-running; speaks MCP on stdio, so no other output here.
+if (verb == "mcp")
+    return await Kor.Operations.NetworkOps.Cli.McpBridge.RunAsync();
+
 // What a Claude session uses: everything through NetworkOps on APP01, never from this PC to the machine (SessionVerbs.cs).
 if (Kor.Operations.NetworkOps.Cli.SessionVerbs.Handles(verb, args))
     return await Kor.Operations.NetworkOps.Cli.SessionVerbs.RunAsync(verb, args);

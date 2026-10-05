@@ -1,11 +1,8 @@
 {
   "mcpServers": {
     "networkops": {
-      "type": "http",
-      "url": "https://KOR-APP01.int.korstructural.com:8445/mcp",
-      "headers": {
-        "Authorization": "Bearer ${NETWORKOPS_TOKEN}"
-      }
+      "command": "C:/KOR-Operations/cli/netops.exe",
+      "args": ["mcp"]
     }
   }
 }
