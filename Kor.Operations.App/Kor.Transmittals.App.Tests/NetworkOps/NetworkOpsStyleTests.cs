@@ -28,7 +28,8 @@ public sealed class NetworkOpsStyleTests
     public void There_are_seven_NetworkOps_windows_and_each_merges_the_styles()
     {
         var windows = Windows();
-        Assert.Equal(7, windows.Length);   // the scan is looking at something; a new window must join it (6th: KOR Remote viewer, 7th: Network, 2026-10-02)
+        Assert.Equal(8, windows.Length);   // a new window must join the scan. Network stopped being a window (folded to a
+                                            // UserControl tab, 2026-10-04); the To-clear machine picker is the 8th (2026-10-05).
         foreach (var w in windows)
             Assert.True(File.ReadAllText(w).Contains("component/NetworkOps/NetworkOpsStyles.xaml"), $"{Path.GetFileName(w)} does not merge NetworkOpsStyles.xaml");
     }

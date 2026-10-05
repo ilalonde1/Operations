@@ -1,5 +1,6 @@
 #nullable enable
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading;
@@ -39,9 +40,9 @@ public sealed class ToClearRow
     public bool CanFix => Issue.Fix is { } f && (f.ParamLabel is null || !string.IsNullOrEmpty(f.PrefilledParam));
     public string FixLabel => Issue.Fix is not { } f ? "" : Issue.Count == 1 ? f.Title : $"{f.Title} · all {Issue.Count}";
 
-    // Park (acknowledge) on every machine the issue is open on: the third disposition, for a state that is known/expected
-    // (a drive removed on purpose) or won't be chased now. It stops counting against green and drops off this list.
-    public string AckLabel => Issue.Count == 1 ? "Acknowledge" : $"Acknowledge · all {Issue.Count}";
+    // Park (acknowledge): the third disposition, for a state that is known/expected (a drive removed on purpose) or won't
+    // be chased now. On one machine it parks that one; on several the ellipsis signals a picker (choose which machines).
+    public string AckLabel => Issue.Count == 1 ? "Acknowledge" : $"Acknowledge · {Issue.Count} machines…";
 
     // Set once a fix is queued on this issue: the button is replaced by a "running" note until the finding clears.
     public string? Fixing { get; set; }
@@ -156,17 +157,12 @@ public partial class NetworkOpsToClearView : UserControl
         }
     }
 
-    // Park the issue on every machine it is open on. It becomes quiet (acknowledged) -> the fleet stops flagging it and it
-    // drops off this list on the reload. Use it when the state is known/expected or won't be chased now.
+    // Park the issue by acknowledging it on the machines you choose. It becomes quiet (acknowledged) -> the fleet stops
+    // flagging it and it drops off this list on the reload. Use it when the state is known/expected or won't be chased now.
     private async void Acknowledge_Click(object sender, RoutedEventArgs e)
     {
         if ((sender as FrameworkElement)?.DataContext is not ToClearRow row) return;
-        var ids = row.Issue.Machines.Select(m => m.FindingId).Where(x => x > 0).Distinct().ToList();
-        if (ids.Count == 0) return;
-        if (row.Issue.Severity == Severity.Critical &&
-            MessageBox.Show($"Acknowledge “{row.Title}” on {ids.Count} machine(s)? It stops counting against green and drops off this list (reopen it from the machine's page).",
-                "Acknowledge", MessageBoxButton.OKCancel, MessageBoxImage.Question) != MessageBoxResult.OK)
-            return;
+        if (!TryPickMachines(row, "Acknowledge", out var ids)) return;
         try
         {
             Status($"Acknowledging {row.Title} on {ids.Count}…");
@@ -178,12 +174,11 @@ public partial class NetworkOpsToClearView : UserControl
         catch (Exception ex) { Log.Warning(ex, "To clear: acknowledge failed for {Rule}", row.Issue.RuleKey); Status("Could not acknowledge: " + ex.Message); }
     }
 
-    // Hide the issue for a week; it comes back if still open then.
+    // Hide the issue for a week on the machines you choose; it comes back if still open then.
     private async void Snooze_Click(object sender, RoutedEventArgs e)
     {
         if ((sender as FrameworkElement)?.DataContext is not ToClearRow row) return;
-        var ids = row.Issue.Machines.Select(m => m.FindingId).Where(x => x > 0).Distinct().ToList();
-        if (ids.Count == 0) return;
+        if (!TryPickMachines(row, "Snooze", out var ids)) return;
         try
         {
             Status($"Snoozing {row.Title} on {ids.Count}…");
@@ -193,6 +188,29 @@ public partial class NetworkOpsToClearView : UserControl
             await ReloadAsync().ConfigureAwait(true);
         }
         catch (Exception ex) { Log.Warning(ex, "To clear: snooze failed for {Rule}", row.Issue.RuleKey); Status("Could not snooze: " + ex.Message); }
+    }
+
+    // Which machines a disposition applies to. One machine: that one (a Critical asks to confirm first). Several: a picker,
+    // so you can clear the PC you've handled (208's removed drive) and leave the one that still needs attention (206's).
+    // False = cancelled, or nothing chosen.
+    private bool TryPickMachines(ToClearRow row, string verb, out List<long> ids)
+    {
+        ids = new List<long>();
+        var machines = row.Issue.Machines.Where(m => m.FindingId > 0).ToList();
+        if (machines.Count == 0) return false;
+        if (machines.Count == 1)
+        {
+            if (verb == "Acknowledge" && row.Issue.Severity == Severity.Critical &&
+                MessageBox.Show($"Acknowledge “{row.Title}” on {machines[0].Name}? It stops counting against green and drops off this list (reopen it from the machine's page).",
+                    "Acknowledge", MessageBoxButton.OKCancel, MessageBoxImage.Question) != MessageBoxResult.OK)
+                return false;
+            ids = machines.Select(m => m.FindingId).ToList();
+            return true;
+        }
+        var picker = new NetworkOpsMachinePickerWindow(verb, row.Title, machines.Select(m => m.Name).ToList()) { Owner = Window.GetWindow(this) };
+        if (picker.ShowDialog() != true || picker.SelectedIndexes.Count == 0) return false;
+        ids = picker.SelectedIndexes.Select(i => machines[i].FindingId).ToList();
+        return true;
     }
 
     private void Ask_Click(object sender, RoutedEventArgs e)
