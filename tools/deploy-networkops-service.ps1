@@ -5,8 +5,11 @@
 # Lived in a session scratchpad until 2026-10-02 and deployed 0.2.0 .. 0.15.1 from there; versioned here beside
 # deploy-newerforma-app.ps1 (Ian: "ALL THIS MUST BE CODE AND DB BASED"). The target folder holds only the publish output:
 # keys, logs and settings that are not in the build live elsewhere (C:\ProgramData\KorOperations\NetworkOps), so /MIR
-# deletes nothing that matters. Nothing in flight is protected: check GET /api/actions for Running fixes first -- a restart
-# marks a running fix failed (the work on the PC carries on, its result is lost).
+# deletes nothing that matters. A restart during a running fix is handled, not silent: on start the service runs
+# AbandonRunningActionsAsync -- any action left 'Running' is marked Failed/"outcome unknown" (the work on the PC carries on,
+# its result is lost; the health sweep re-detects the finding if it's still open), and 'Requested' (queued, not yet picked
+# up) actions survive and run after. There is NO anonymous list route to pre-check -- GET /api/actions is 404 (only
+# /api/actions/{id} exists); the in-flight surface is auth-gated GET /api/to-clear (.running per issue).
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path -Parent $PSScriptRoot
 $project = Join-Path $repo 'Kor.Operations.NetworkOps.Service'
