@@ -5,11 +5,15 @@ using Kor.Operations.NetworkOps.Service.Store;
 using Microsoft.Extensions.DependencyInjection;
 using ModelContextProtocol.Server;
 
-namespace Kor.Operations.NetworkOps.Mcp;
+namespace Kor.Operations.NetworkOps.Service.Mcp;
 
-/// <summary>Read tools over NetworkOps' live database -- the structured context a Claude session needs, pulled on demand
-/// instead of a point-in-time prompt plus parsing <c>netops</c> CLI text. Reads only; audited action tools (acknowledge,
-/// run-fix, re-check) come in a later phase, through the store's existing audited paths.</summary>
+/// <summary>The NetworkOps MCP tools: live, structured NetworkOps context for a Claude session over MCP, instead of a
+/// point-in-time prompt plus parsing <c>netops</c> CLI text. Served by the Command Center service itself (over HTTP,
+/// behind the same Entra auth), so there is one authenticated, audited endpoint on APP01 and the DB credential never
+/// leaves the server. Reads only; audited action tools (acknowledge, run-fix, re-check) come in a later phase through
+/// the store's existing audited paths.
+/// <para>NetworkOpsStore is internal, so a public tool method cannot take it as a parameter (CS0051): each tool takes
+/// <see cref="IServiceProvider"/> and resolves the store from DI.</para></summary>
 [McpServerToolType]
 public sealed class NetworkOpsMcpTools
 {

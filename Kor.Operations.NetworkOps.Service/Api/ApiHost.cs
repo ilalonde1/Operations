@@ -57,6 +57,9 @@ internal sealed class ApiHost(IOptions<NetworkOpsOptions> options, NetworkOpsSto
         builder.Services.AddSingleton(networkMap);
         builder.Services.AddSingleton(enrolment);
         builder.Services.AddSingleton<Agents.IAgentDirectory>(store);
+        // The MCP server: live, structured NetworkOps context for a Claude session over HTTP, behind the same Entra auth
+        // as the rest of the API (mapped below). One authenticated, audited endpoint on APP01; the DB credential stays here.
+        builder.Services.AddMcpServer().WithHttpTransport().WithTools<Mcp.NetworkOpsMcpTools>();
         builder.WebHost.ConfigureKestrel(k =>
         {
             k.AddServerHeader = false;
@@ -97,6 +100,9 @@ internal sealed class ApiHost(IOptions<NetworkOpsOptions> options, NetworkOpsSto
         app.UseAuthorization();
         Map(app);
         Agents.AgentApi.Map(app);
+        // MCP over HTTP at /mcp, behind the same Entra "CommandCenter" policy as /api. A Claude session (or the app's
+        // in-app chat) connects here with a token and gets the NetworkOps tools; every call is audited by the middleware above.
+        app.MapMcp("/mcp").RequireAuthorization("CommandCenter");
 
         log.LogInformation("Command Center API listening on https://*:{Port} (certificate {Subject}, expires {Expiry:yyyy-MM-dd})", o.ApiPort, cert.Subject, cert.NotAfter);
         await app.RunAsync(ct).ConfigureAwait(false);
