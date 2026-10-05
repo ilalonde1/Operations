@@ -42,7 +42,7 @@ public sealed class KorRemoteViewerTests
     {
         // Every call in the script is to one of: its own functions, the browser's, or a checked page function.
         var own = Regex.Matches(Script, @"function ([A-Za-z]+)\(").Select(m => m.Groups[1].Value);
-        var browser = new[] { "postMessage", "filter", "push", "parseInt", "querySelectorAll", "querySelector", "getElementById", "createElement",
+        var browser = new[] { "postMessage", "filter", "push", "parseInt", "isNaN", "querySelectorAll", "querySelector", "getElementById", "createElement",
             "appendChild", "contains", "substring", "stringify", "String", "setInterval", "function", "if", "for", "return", "catch" };
         var allowed = own.Concat(browser).Concat(KorRemoteBridge.RequiredFunctions).ToHashSet();
         var calls = Regex.Matches(Script.Split('\n').Where(l => !l.TrimStart().StartsWith("//")).Aggregate("", (a, l) => a + l + "\n"), @"(?<![.\w])([A-Za-z_]\w*)\s*\(")

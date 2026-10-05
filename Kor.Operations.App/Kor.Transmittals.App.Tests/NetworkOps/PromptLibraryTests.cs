@@ -79,6 +79,8 @@ public sealed class PromptLibraryTests
         var ask = new PromptRunView(Runs()[0]);
         Assert.True(ask.AwaitsDecision);   // a card with no learning still waits for Ian
         Assert.StartsWith("Asked: Andrea's ETABS crashed", ask.Summary);
-        Assert.Equal("Knowledge card (proposed): ETABS closes while opening large models", ask.LearnedText);
+        // Since the plain+technical card format (010): plain line first when there is one, then the technical card. This
+        // fixture sets only the title, so it is the technical line alone.
+        Assert.Equal("Knowledge card (proposed):\n  • Technical — ETABS closes while opening large models", ask.LearnedText);
     }
 }
