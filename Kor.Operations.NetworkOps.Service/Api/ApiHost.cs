@@ -236,6 +236,35 @@ internal sealed class ApiHost(IOptions<NetworkOpsOptions> options, NetworkOpsSto
                 : Annotate(s, id, NetworkOpsStore.Annotation.Snooze, h, body.Note, DateTime.SpecifyKind(until, DateTimeKind.Utc), ct));
         api.MapPost("/findings/{id:long}/reopen", (long id, HttpContext h, NetworkOpsStore s, CancellationToken ct) =>
             Annotate(s, id, NetworkOpsStore.Annotation.Reopen, h, null, null, ct));
+        // Acknowledge/snooze/reopen ONE issue on every machine it is open on ("Acknowledge · all N" from the To-clear
+        // worklist): the single-finding annotate, fanned out. Each finding is updated the same way and by the same person;
+        // the count says how many were still open (the rest had cleared). Every disposition is logged -- the single path
+        // was silent, which once made an acknowledged state impossible to confirm from the logs.
+        api.MapPost("/findings/annotate-many", async (AnnotateManyRequest body, HttpContext h, NetworkOpsStore s, CancellationToken ct) =>
+        {
+            var kind = body.Kind?.ToLowerInvariant() switch
+            {
+                "acknowledge" => NetworkOpsStore.Annotation.Acknowledge,
+                "snooze" => NetworkOpsStore.Annotation.Snooze,
+                "reopen" => NetworkOpsStore.Annotation.Reopen,
+                _ => (NetworkOpsStore.Annotation?)null,
+            };
+            if (kind is not { } k) return Results.BadRequest(new { error = "kind must be acknowledge, snooze or reopen" });
+            DateTime? until = null;
+            if (k == NetworkOpsStore.Annotation.Snooze)
+            {
+                if (body.UntilUtc is not { } u || u <= DateTime.UtcNow || u - DateTime.UtcNow > MaxSnooze)
+                    return Results.BadRequest(new { error = "untilUtc must be in the future and within 90 days" });
+                until = DateTime.SpecifyKind(u, DateTimeKind.Utc);
+            }
+            var ids = (body.FindingIds ?? []).Distinct().ToList();
+            var by = ApiAccess.UserOf(h.User);
+            var ok = 0;
+            foreach (var id in ids) if (await s.AnnotateAsync(id, k, by, body.Note, until, ct).ConfigureAwait(false)) ok++;
+            Serilog.Log.ForContext("Area", "Findings").Information("annotate-many {Kind} by {By}: {Ok} of {Total} findings ({Ids})",
+                k, by, ok, ids.Count, string.Join(",", ids));
+            return Results.Ok(new AnnotateManyOutcome(ok, ids.Count));
+        });
 
         // Rack power: the live UPS readings, the verdict, whether the chain is armed, and the recent timeline.
         api.MapGet("/power", async (Power.PowerState ps, IOptions<NetworkOpsOptions> o, NetworkOpsStore s, CancellationToken ct) =>
@@ -397,9 +426,17 @@ internal sealed class ApiHost(IOptions<NetworkOpsOptions> options, NetworkOpsSto
         => Results.Json(new { error = "reporting is not switched on: run db/KorNetworkOps/007_PromptLibrary.sql" }, statusCode: StatusCodes.Status503ServiceUnavailable);
 
     private static async Task<IResult> Annotate(NetworkOpsStore s, long id, NetworkOpsStore.Annotation kind, HttpContext h, string? note, DateTime? until, CancellationToken ct)
-        => await s.AnnotateAsync(id, kind, ApiAccess.UserOf(h.User), note, until, ct).ConfigureAwait(false)
+    {
+        var by = ApiAccess.UserOf(h.User);
+        var ok = await s.AnnotateAsync(id, kind, by, note, until, ct).ConfigureAwait(false);
+        // Log every disposition: a silent acknowledge once made it impossible to confirm from the logs whether a finding
+        // had actually been parked (the UI greyed it, but nothing recorded the write).
+        Serilog.Log.ForContext("Area", "Findings").Information("annotate {Kind} finding {Id} by {By}: {Result}",
+            kind, id, by, ok ? "done" : "already cleared");
+        return ok
             ? Results.NoContent()
             : Results.Conflict(new { error = "that finding has cleared since the page loaded; refresh to see it in the history" });
+    }
 
     private static X509Certificate2 LoadCertificate(string thumbprint)
     {

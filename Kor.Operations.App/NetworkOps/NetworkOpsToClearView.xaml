@@ -80,6 +80,10 @@
                                         </Border>
                                         <Button Content="Ask Claude" Click="Ask_Click" Margin="0,0,0,6"
                                                 ToolTip="Open a Claude prompt for this issue (on the first machine): investigate and clear it with everything NetworkOps knows."/>
+                                        <Button Content="{Binding AckLabel}" Click="Acknowledge_Click" Margin="0,0,0,2"
+                                                ToolTip="Acknowledge on every machine that has it: it stops counting against green and drops off this list. Use it when the state is known or expected — e.g. a drive you removed on purpose. Reopen from the machine's page."/>
+                                        <Button Content="Snooze a week" Style="{StaticResource Ops.Link}" HorizontalAlignment="Center" Click="Snooze_Click"
+                                                ToolTip="Hide it for 7 days; it comes back if still open then."/>
                                     </StackPanel>
                                 </Grid>
                             </Border>

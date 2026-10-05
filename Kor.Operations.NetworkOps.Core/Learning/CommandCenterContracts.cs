@@ -158,6 +158,14 @@ public sealed record TriggerState(string Status, string? Result, DateTime Reques
 /// <summary>Request bodies.</summary>
 public sealed record AnnotateRequest(string? Note, DateTime? UntilUtc);
 
+/// <summary>Acknowledge (or snooze/reopen) one issue on EVERY machine it is open on, from the To-clear worklist: the same
+/// disposition as the single-finding annotate, fanned out over the issue's findings.</summary>
+/// <param name="Kind">acknowledge | snooze | reopen.</param>
+public sealed record AnnotateManyRequest(IReadOnlyList<long> FindingIds, string Kind, string? Note, DateTime? UntilUtc);
+
+/// <summary>How many of the requested findings were annotated (the rest had already cleared).</summary>
+public sealed record AnnotateManyOutcome(int Ok, int Total);
+
 public sealed record NoteRequest(string Body);
 
 /// <param name="Action">install (also the upgrade) | remove</param>

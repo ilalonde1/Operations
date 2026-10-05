@@ -39,6 +39,10 @@ public sealed class ToClearRow
     public bool CanFix => Issue.Fix is { } f && (f.ParamLabel is null || !string.IsNullOrEmpty(f.PrefilledParam));
     public string FixLabel => Issue.Fix is not { } f ? "" : Issue.Count == 1 ? f.Title : $"{f.Title} · all {Issue.Count}";
 
+    // Park (acknowledge) on every machine the issue is open on: the third disposition, for a state that is known/expected
+    // (a drive removed on purpose) or won't be chased now. It stops counting against green and drops off this list.
+    public string AckLabel => Issue.Count == 1 ? "Acknowledge" : $"Acknowledge · all {Issue.Count}";
+
     // Set once a fix is queued on this issue: the button is replaced by a "running" note until the finding clears.
     public string? Fixing { get; set; }
     public bool ShowFix => CanFix && Fixing is null;
@@ -150,6 +154,45 @@ public partial class NetworkOpsToClearView : UserControl
             Log.Warning(ex, "To clear: fix-on-all failed for {Fix}", fix.Id);
             Status("Could not run the fix: " + ex.Message);
         }
+    }
+
+    // Park the issue on every machine it is open on. It becomes quiet (acknowledged) -> the fleet stops flagging it and it
+    // drops off this list on the reload. Use it when the state is known/expected or won't be chased now.
+    private async void Acknowledge_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is not ToClearRow row) return;
+        var ids = row.Issue.Machines.Select(m => m.FindingId).Where(x => x > 0).Distinct().ToList();
+        if (ids.Count == 0) return;
+        if (row.Issue.Severity == Severity.Critical &&
+            MessageBox.Show($"Acknowledge “{row.Title}” on {ids.Count} machine(s)? It stops counting against green and drops off this list (reopen it from the machine's page).",
+                "Acknowledge", MessageBoxButton.OKCancel, MessageBoxImage.Question) != MessageBoxResult.OK)
+            return;
+        try
+        {
+            Status($"Acknowledging {row.Title} on {ids.Count}…");
+            var r = await _client.AcknowledgeManyAsync(ids, null, CancellationToken.None).ConfigureAwait(true);
+            Log.Information("To clear: acknowledged {Rule} on {Count} -> {Ok} parked", row.Issue.RuleKey, ids.Count, r.Ok);
+            Status($"Acknowledged {row.Title} on {r.Ok} machine(s). It stops counting against green.");
+            await ReloadAsync().ConfigureAwait(true);
+        }
+        catch (Exception ex) { Log.Warning(ex, "To clear: acknowledge failed for {Rule}", row.Issue.RuleKey); Status("Could not acknowledge: " + ex.Message); }
+    }
+
+    // Hide the issue for a week; it comes back if still open then.
+    private async void Snooze_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is not ToClearRow row) return;
+        var ids = row.Issue.Machines.Select(m => m.FindingId).Where(x => x > 0).Distinct().ToList();
+        if (ids.Count == 0) return;
+        try
+        {
+            Status($"Snoozing {row.Title} on {ids.Count}…");
+            var r = await _client.SnoozeManyAsync(ids, DateTime.UtcNow.AddDays(7), null, CancellationToken.None).ConfigureAwait(true);
+            Log.Information("To clear: snoozed {Rule} on {Count} -> {Ok} for 7d", row.Issue.RuleKey, ids.Count, r.Ok);
+            Status($"Snoozed {row.Title} on {r.Ok} machine(s) for a week.");
+            await ReloadAsync().ConfigureAwait(true);
+        }
+        catch (Exception ex) { Log.Warning(ex, "To clear: snooze failed for {Rule}", row.Issue.RuleKey); Status("Could not snooze: " + ex.Message); }
     }
 
     private void Ask_Click(object sender, RoutedEventArgs e)

@@ -250,6 +250,22 @@ public sealed class NetworkOpsClient
     public Task ReopenAsync(long findingId, CancellationToken ct)
         => PostAsync($"api/findings/{findingId}/reopen", null, ct);
 
+    /// <summary>Acknowledge one issue on every machine it is open on (the To-clear "Acknowledge · all N"): parks each
+    /// finding so it stops counting against green. Returns how many were still open.</summary>
+    public Task<AnnotateManyOutcome> AcknowledgeManyAsync(IReadOnlyList<long> findingIds, string? note, CancellationToken ct)
+        => AnnotateManyAsync(new AnnotateManyRequest(findingIds, "acknowledge", note, null), ct);
+
+    /// <summary>Snooze one issue on every machine it is open on, until <paramref name="untilUtc"/>.</summary>
+    public Task<AnnotateManyOutcome> SnoozeManyAsync(IReadOnlyList<long> findingIds, DateTime untilUtc, string? note, CancellationToken ct)
+        => AnnotateManyAsync(new AnnotateManyRequest(findingIds, "snooze", note, untilUtc), ct);
+
+    private async Task<AnnotateManyOutcome> AnnotateManyAsync(AnnotateManyRequest body, CancellationToken ct)
+    {
+        using var res = await SendAsync(HttpMethod.Post, "api/findings/annotate-many", body, ct).ConfigureAwait(false);
+        await EnsureOkAsync(res).ConfigureAwait(false);
+        return await res.Content.ReadFromJsonAsync<AnnotateManyOutcome>(Json, ct).ConfigureAwait(false) ?? new AnnotateManyOutcome(0, 0);
+    }
+
     public Task AddNoteAsync(int deviceId, string body, CancellationToken ct)
         => PostAsync($"api/devices/{deviceId}/notes", new NoteRequest(body), ct);
 
