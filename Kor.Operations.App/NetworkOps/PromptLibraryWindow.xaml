@@ -65,7 +65,7 @@
                          ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                     <ListBox.ItemTemplate>
                         <DataTemplate>
-                            <StackPanel Margin="{Binding Indent}">
+                            <StackPanel Margin="{Binding Indent}" Opacity="{Binding RowOpacity}">
                                 <TextBlock Text="{Binding Label}" FontWeight="{Binding Weight}" TextWrapping="Wrap"/>
                                 <TextBlock Text="{Binding Detail}" TextWrapping="Wrap" Foreground="{StaticResource Text.Secondary}" FontSize="12"/>
                             </StackPanel>

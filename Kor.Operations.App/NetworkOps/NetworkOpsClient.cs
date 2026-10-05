@@ -318,8 +318,18 @@ public sealed class NetworkOpsClient
         => await GetAsync<List<PromptRunRow>>("api/prompt-runs", ct).ConfigureAwait(false);
 
     /// <summary>Accepts or rejects what a session proposed NetworkOps should learn. Accepted, it goes into every later prompt about that kind of problem.</summary>
-    public Task DecideLearnedAsync(long runId, bool accept, CancellationToken ct)
-        => PostAsync($"api/prompt-runs/{runId}/learned", new LearnedDecision(accept ? "accept" : "reject"), ct);
+    /// <summary>Accept or reject a session's proposal. On accept of a verdict that resolves the finding, the service closes
+    /// the finding in the same step; the result says whether it did, so the UI can tell the person.</summary>
+    public async Task<LearnedDecisionResult> DecideLearnedAsync(long runId, bool accept, CancellationToken ct)
+    {
+        using var res = await SendAsync(HttpMethod.Post, $"api/prompt-runs/{runId}/learned", new LearnedDecision(accept ? "accept" : "reject"), ct).ConfigureAwait(false);
+        await EnsureOkAsync(res).ConfigureAwait(false);
+        // An older service (before the verdict->finding tie) answers 204 with no body: the decision took, nothing was
+        // settled. Tolerate that -- and any empty/odd body -- so the new app is safe against it during the deploy window.
+        if (res.StatusCode == System.Net.HttpStatusCode.NoContent) return new LearnedDecisionResult(true, false);
+        try { return await res.Content.ReadFromJsonAsync<LearnedDecisionResult>(Json, ct).ConfigureAwait(false) ?? new LearnedDecisionResult(true, false); }
+        catch (System.Text.Json.JsonException) { return new LearnedDecisionResult(true, false); }
+    }
 
     // ------------------------------------------------------------------ plumbing
 

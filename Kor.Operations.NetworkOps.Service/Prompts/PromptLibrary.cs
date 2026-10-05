@@ -39,11 +39,15 @@ internal sealed class PromptLibrary(NetworkOpsStore store, Agents.AgentHub agent
     public async Task<PromptCatalog> CatalogAsync(CancellationToken ct)
     {
         var (fleet, rack) = (await store.FleetSnapshotAsync(ct), await store.FleetSnapshotAsync(ct, rack: true));
+        var now = DateTime.UtcNow;
         var devices = fleet.Devices.Concat(rack.Devices)
             .Select(d => new PromptSubject(d.DeviceId, d.Name, d.Kind,
                 fleet.OpenOn(d.Name).Concat(rack.OpenOn(d.Name))
-                    .OrderByDescending(f => f.Severity).ThenBy(f => f.Title, StringComparer.Ordinal)
-                    .Select(f => new PromptFinding(f.FindingId, f.RuleKey, f.Title, f.Severity)).ToList()))
+                    // Live first, then parked (acknowledged/snoozed) -- the list shows both, so a finding closed from a
+                    // session reads as parked rather than looking live, or vanishing.
+                    .OrderBy(f => f.IsQuiet(now)).ThenByDescending(f => f.Severity).ThenBy(f => f.Title, StringComparer.Ordinal)
+                    .Select(f => new PromptFinding(f.FindingId, f.RuleKey, f.Title, f.Severity,
+                        f.AcknowledgedUtc is not null ? "Acknowledged" : f.SnoozedUntilUtc is { } s && s > now ? "Snoozed" : null)).ToList()))
             .OrderByDescending(s => s.Findings.Count > 0).ThenBy(s => s.Device, StringComparer.OrdinalIgnoreCase)
             .ToList();
         return new PromptCatalog(Tools.Select(t => new PromptTool(t.Id, t.Title, t.Summary)).ToList(), devices, await store.PromptRunsAvailableAsync(ct));

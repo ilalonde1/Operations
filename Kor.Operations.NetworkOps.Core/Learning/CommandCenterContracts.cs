@@ -55,7 +55,9 @@ public sealed record FixRunOutcome(int DeviceId, string Name, long? ActionId, st
 // ---- the Prompt Library: Claude prompts generated from the live database when opened (Core/Prompts/PromptComposer).
 
 public sealed record PromptTool(string Id, string Title, string Summary);
-public sealed record PromptFinding(long FindingId, string RuleKey, string Title, Health.Severity Severity);
+/// <param name="Parked">Null when the finding is live; "Acknowledged" or "Snoozed" when it is quiet, so the list shows
+/// what is parked vs what is still live (and a finding closed from a session reads as parked, not as live).</param>
+public sealed record PromptFinding(long FindingId, string RuleKey, string Title, Health.Severity Severity, string? Parked = null);
 public sealed record PromptSubject(int DeviceId, string Device, string Kind, IReadOnlyList<PromptFinding> Findings);
 public sealed record PromptCatalog(IReadOnlyList<PromptTool> Tools, IReadOnlyList<PromptSubject> Devices, bool Reporting);
 
@@ -154,6 +156,27 @@ public sealed record FixRequest(string ActionId, string? Param, string? FindingK
 public sealed record ActionRow(long ActionId, string Kind, string RequestedBy, DateTime RequestedUtc, DateTime? CompletedUtc, string Status, string? Detail, string? Output);
 
 public sealed record TriggerState(string Status, string? Result, DateTime RequestedUtc, DateTime? ClaimedUtc, DateTime? CompletedUtc);
+
+/// <summary>A session's verdict on what it was asked about (the <c>outcome</c> value it reports on <see cref="PromptOutcome"/>).
+/// One of these four.</summary>
+public static class PromptVerdict
+{
+    public const string Solved = "solved";
+    public const string Partly = "partly";
+    public const string NotSolved = "not-solved";
+    public const string NoAction = "no-action";
+
+    /// <summary>True when the verdict settles the finding it was about, so accepting the session should close it: the
+    /// problem was fixed (<c>solved</c>) or there was nothing real to fix (<c>no-action</c> -- stale/false). A
+    /// <c>partly</c> or <c>not-solved</c> verdict leaves it open: it is still a live problem.</summary>
+    public static bool ResolvesFinding(string? outcome) =>
+        string.Equals(outcome, Solved, StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(outcome, NoAction, StringComparison.OrdinalIgnoreCase);
+}
+
+/// <summary>What accepting/rejecting a session's proposal did: whether the decision took, and -- on accept of a verdict
+/// that resolves the finding -- whether the finding was closed in the same step (so the two are never out of step).</summary>
+public sealed record LearnedDecisionResult(bool Decided, bool FindingSettled);
 
 /// <summary>Request bodies.</summary>
 public sealed record AnnotateRequest(string? Note, DateTime? UntilUtc);

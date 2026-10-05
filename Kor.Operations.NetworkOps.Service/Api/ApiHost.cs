@@ -164,10 +164,13 @@ internal sealed class ApiHost(IOptions<NetworkOpsOptions> options, NetworkOpsSto
             });
         api.MapGet("/prompt-runs", (NetworkOpsStore s, CancellationToken ct) => s.PromptRunsAsync(100, ct));
         api.MapPost("/prompt-runs/{id:long}/learned", async (long id, LearnedDecision body, HttpContext h, NetworkOpsStore s, CancellationToken ct) =>
-            body.Decision is not ("accept" or "reject") ? Results.BadRequest(new { error = "decision must be accept or reject" })
-            : !await s.PromptRunsAvailableAsync(ct) ? NoPromptRuns()
-            : await s.DecideLearnedAsync(id, body.Decision == "accept", ApiAccess.UserOf(h.User), ct) ? Results.NoContent()
-            : Results.Conflict(new { error = "that run has no learning waiting for a decision" }));
+        {
+            if (body.Decision is not ("accept" or "reject")) return Results.BadRequest(new { error = "decision must be accept or reject" });
+            if (!await s.PromptRunsAvailableAsync(ct)) return NoPromptRuns();
+            var result = await s.DecideLearnedAsync(id, body.Decision == "accept", ApiAccess.UserOf(h.User), ct);
+            // Carries whether the finding was closed in the same step, so the UI can say so (verdict -> finding, tied together).
+            return result.Decided ? Results.Ok(result) : Results.Conflict(new { error = "that run has no learning waiting for a decision" });
+        });
         api.MapGet("/fleet", async (NetworkOpsStore s, Agents.AgentHub hub, Mesh.MeshState m, CancellationToken ct) =>
             WithMesh(WithAgents(await s.FleetSnapshotAsync(ct), await s.AgentRecordsAsync(ct), hub), m, await s.MeshRecordsAsync(ct)));
         // The rack (hosts, storage, UPSes, backup, network, internet): the same shape as /fleet, served apart so a

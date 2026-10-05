@@ -13,10 +13,12 @@ using Serilog;
 namespace Kor.Operations.App.NetworkOps;
 
 /// <summary>One line in the list on the left: a tool, a device, or one open finding under its device.</summary>
-public sealed record PromptSubjectRow(string Label, string Detail, PromptRequest Request, bool IsChild, string Search)
+public sealed record PromptSubjectRow(string Label, string Detail, PromptRequest Request, bool IsChild, string Search, string? Parked = null)
 {
     public Thickness Indent => IsChild ? new Thickness(18, 2, 2, 4) : new Thickness(2, 6, 2, 2);
     public FontWeight Weight => IsChild ? FontWeights.Normal : FontWeights.SemiBold;
+    // A parked (acknowledged/snoozed) finding is greyed, so live vs parked reads at a glance.
+    public double RowOpacity => Parked is null ? 1.0 : 0.5;
 
     public static IReadOnlyList<PromptSubjectRow> From(PromptCatalog c)
     {
@@ -27,7 +29,8 @@ public sealed record PromptSubjectRow(string Label, string Detail, PromptRequest
         {
             rows.Add(new(d.Device, d.Findings.Count == 0 ? $"{d.Kind} · nothing open" : $"{d.Kind} · {d.Findings.Count} open", new PromptRequest("device", null, d.DeviceId, null), false, d.Device));
             foreach (var f in d.Findings)
-                rows.Add(new(f.Title, $"{f.Severity} · {f.RuleKey}", new PromptRequest("finding", null, d.DeviceId, f.FindingId), true, $"{d.Device} {f.Title} {f.RuleKey}"));
+                rows.Add(new(f.Title, f.Parked is null ? $"{f.Severity} · {f.RuleKey}" : $"{f.Severity} · {f.RuleKey} · {f.Parked}",
+                    new PromptRequest("finding", null, d.DeviceId, f.FindingId), true, $"{d.Device} {f.Title} {f.RuleKey}", f.Parked));
         }
         return rows;
     }
@@ -225,14 +228,17 @@ public partial class PromptLibraryWindow : Window
     private async Task Decide(bool accept) => await Guard(async ct =>
     {
         if (RunsGrid.SelectedItem is not PromptRunView { AwaitsDecision: true } run) return;
-        await _client.DecideLearnedAsync(run.Run.RunId, accept, ct).ConfigureAwait(true);
-        Log.Information("Learning from run {RunId} {Decision}", run.Run.RunId, accept ? "accepted" : "rejected");
-        await LoadRunsAsync(ct).ConfigureAwait(true);
-        Status(accept
-            ? run.Run.CardTitle is { } card
-                ? $"Accepted: \"{card}\" now goes into every later prompt about a machine it applies to{(run.Run.LearnedText is null ? "" : ", and the learning into every prompt about this kind of problem")}."
-                : $"Accepted: every later prompt about {run.Subject.Split(':').Last().Trim()} carries it."
-            : "Rejected: it stays in the record and goes into no prompt.");
+        var result = await _client.DecideLearnedAsync(run.Run.RunId, accept, ct).ConfigureAwait(true);
+        Log.Information("Learning from run {RunId} {Decision}{Settled}", run.Run.RunId, accept ? "accepted" : "rejected", result.FindingSettled ? " + finding closed" : "");
+        // When the verdict closed the finding, it drops off the left list -> refresh the whole catalog; otherwise just the runs.
+        if (result.FindingSettled) await LoadAsync(ct).ConfigureAwait(true);
+        else await LoadRunsAsync(ct).ConfigureAwait(true);
+        Status(!accept
+            ? "Rejected: it stays in the record and goes into no prompt."
+            : (result.FindingSettled ? "Accepted — and the finding is closed, its verdict settled it. " : "Accepted. ")
+              + (run.Run.CardTitle is { } card
+                  ? $"\"{card}\" now goes into every later prompt about a machine it applies to{(run.Run.LearnedText is null ? "" : ", and the learning into every prompt about this kind of problem")}."
+                  : $"Every later prompt about {run.Subject.Split(':').Last().Trim()} carries it."));
     }).ConfigureAwait(true);
 
     private async void Refresh_Click(object sender, RoutedEventArgs e) => await Guard(LoadAsync).ConfigureAwait(true);

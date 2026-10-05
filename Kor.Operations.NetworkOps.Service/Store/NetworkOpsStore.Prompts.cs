@@ -191,7 +191,7 @@ internal sealed partial class NetworkOpsStore
     /// Ian's decision on what a run proposed: its learning and its card together. False when the run has nothing
     /// waiting for a decision.
     /// </summary>
-    public async Task<bool> DecideLearnedAsync(long runId, bool accept, string by, CancellationToken ct)
+    public async Task<LearnedDecisionResult> DecideLearnedAsync(long runId, bool accept, string by, CancellationToken ct)
     {
         var knowledge = await KnowledgeAvailableAsync(ct).ConfigureAwait(false);
         var amendable = knowledge && await CardsAmendableAsync(ct).ConfigureAwait(false);
@@ -231,8 +231,39 @@ internal sealed partial class NetworkOpsStore
         cmd.Parameters.Add("@s", SqlDbType.VarChar, 16).Value = accept ? "accepted" : "rejected";
         cmd.Parameters.Add("@by", SqlDbType.NVarChar, 128).Value = by;
         var decided = Convert.ToInt32(await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false)) == 1;
+
+        // Tie the verdict to the finding: accepting a session whose verdict RESOLVES what it was about (solved, or
+        // no-action = nothing real/stale) closes that finding in the SAME transaction -- the decision and the finding can
+        // never be out of step (Ian, 2026-10-05: "this should all be tied together"). partly/not-solved leave it open.
+        var findingSettled = false;
+        if (decided && accept)
+        {
+            string? outcome = null; long? findingId = null;
+            await using (var read = Cmd(c, "SELECT Outcome, FindingId FROM NetworkOps.PromptRuns WHERE RunId = @rid;", tx))
+            {
+                read.Parameters.Add("@rid", SqlDbType.BigInt).Value = runId;
+                await using var rr = await read.ExecuteReaderAsync(ct).ConfigureAwait(false);
+                if (await rr.ReadAsync(ct).ConfigureAwait(false))
+                {
+                    outcome = rr.IsDBNull(0) ? null : rr.GetString(0);
+                    findingId = rr.IsDBNull(1) ? null : rr.GetInt64(1);
+                }
+            }
+            if (findingId is { } fid && PromptVerdict.ResolvesFinding(outcome))
+            {
+                await using var ack = Cmd(c, """
+                    UPDATE NetworkOps.Findings
+                    SET AcknowledgedUtc = SYSUTCDATETIME(), AcknowledgedBy = @aby, SnoozedUntilUtc = NULL, AckNote = @note
+                    WHERE FindingId = @fid AND ClearedUtc IS NULL AND AcknowledgedUtc IS NULL;
+                    """, tx);
+                ack.Parameters.Add("@fid", SqlDbType.BigInt).Value = fid;
+                ack.Parameters.Add("@aby", SqlDbType.NVarChar, 128).Value = by;
+                ack.Parameters.Add("@note", SqlDbType.NVarChar, 1000).Value = $"Closed from an Ask Claude session (#{runId}): verdict '{outcome}'.";
+                findingSettled = await ack.ExecuteNonQueryAsync(ct).ConfigureAwait(false) == 1;
+            }
+        }
         await tx.CommitAsync(ct).ConfigureAwait(false);
-        return decided;
+        return new LearnedDecisionResult(decided, findingSettled);
     }
 
     /// <summary>Accepted learnings about the same kind of problem (rule family), for every later prompt about it.</summary>
