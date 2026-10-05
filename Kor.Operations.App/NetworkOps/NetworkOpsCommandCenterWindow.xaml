@@ -196,20 +196,29 @@
                 <RadioButton x:Name="TableViewBtn" Content="Table" GroupName="View" Style="{StaticResource Ops.Segment}"
                              IsChecked="{Binding TableView}" ToolTip="The same machines as a dense table."/>
             </StackPanel>
+            <!-- Grouped by purpose, left to right: ACT on the fleet · open a focused TOOL · the selected PC · refresh.
+                 Thin separators mark the groups so the row reads as four things, not nine. -->
             <StackPanel Grid.Column="3" Orientation="Horizontal">
-                <Button Content="To clear" Style="{StaticResource Ops.Primary}" Margin="0,0,8,0" Click="ToClear_Click"
+                <!-- Act: the one place to work the fleet down to green. -->
+                <Button Content="To clear" Style="{StaticResource Ops.Primary}" Margin="0,0,10,0" Click="ToClear_Click"
                         ToolTip="The path to all-green: every open issue across the fleet, grouped, ranked, with 'fix on all the machines that have it' — the one place to work the fleet down to green."/>
-                <Button Content="Ask Claude" Margin="0,0,8,0" Click="AskClaude_Click"
-                        ToolTip="Ask anything about the selected PC (or the whole network), or open a prompt for any problem: Claude starts in Windows Terminal with everything NetworkOps knows."/>
-                <Button Content="Network" Margin="0,0,8,0" Click="Network_Click"
+                <Border Width="1" Background="#E3E7EB" Margin="0,6,10,6"/>
+                <!-- Tools: a focused workspace, each opened on its own. -->
+                <Button Content="Network" Margin="0,0,6,0" Click="Network_Click"
                         ToolTip="Every switch and port, and what is plugged into each: PC, person, IP. Searchable."/>
-                <Button Content="Updates" Margin="0,0,8,0" Click="Updates_Click"
+                <Button Content="Updates" Margin="0,0,6,0" Click="Updates_Click"
                         ToolTip="What Windows Update has waiting on every PC and server, and installing it on many at once."/>
-                <Button Content="Deploy" Margin="0,0,8,0" Click="Deploy_Click"
+                <Button Content="Deploy" Margin="0,0,6,0" Click="Deploy_Click"
                         ToolTip="Install an app update or migration on ticked machines, through each PC's agent as SYSTEM (e.g. migrate to KOR-Operations)."/>
-                <Button x:Name="OpenPcBtn" Content="Open PC" Margin="0,0,8,0" Click="OpenPc_Click"
+                <Button Content="Ask Claude" Margin="0,0,10,0" Click="AskClaude_Click"
+                        ToolTip="Ask anything about the selected PC (or the whole network), or open a prompt for any problem: Claude starts in Windows Terminal with everything NetworkOps knows."/>
+                <Border Width="1" Background="#E3E7EB" Margin="0,6,10,6"/>
+                <!-- The selected PC. -->
+                <Button x:Name="OpenPcBtn" Content="Open PC" Margin="0,0,10,0" Click="OpenPc_Click"
                         ToolTip="Open the selected PC (or double-click a row)."/>
-                <Button x:Name="RecheckBtn" Content="Re-check all" Margin="0,0,16,0" Click="RecheckAll_Click"
+                <Border Width="1" Background="#E3E7EB" Margin="0,6,10,6"/>
+                <!-- Freshness. -->
+                <Button x:Name="RecheckBtn" Content="Re-check all" Margin="0,0,8,0" Click="RecheckAll_Click"
                         ToolTip="Runs the health probe on every PC now (a few minutes) instead of waiting for the next scheduled sweep. New findings appear as each PC answers; the list refreshes when it finishes."/>
                 <CheckBox Content="Auto-refresh" IsChecked="{Binding AutoRefresh}" VerticalAlignment="Center" Margin="0,0,6,0"
                           ToolTip="Re-read everything every 15 seconds."/>
