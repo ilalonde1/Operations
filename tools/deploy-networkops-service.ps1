@@ -8,8 +8,11 @@
 # deletes nothing that matters. A restart during a running fix is handled, not silent: on start the service runs
 # AbandonRunningActionsAsync -- any action left 'Running' is marked Failed/"outcome unknown" (the work on the PC carries on,
 # its result is lost; the health sweep re-detects the finding if it's still open), and 'Requested' (queued, not yet picked
-# up) actions survive and run after. There is NO anonymous list route to pre-check -- GET /api/actions is 404 (only
-# /api/actions/{id} exists); the in-flight surface is auth-gated GET /api/to-clear (.running per issue).
+# up) actions survive and run after. To avoid that at all, this script REFUSES to restart while a fix is in flight: GET
+# /api/ping reports an in-flight count (anonymous, best-effort), and the deploy stops only when it is 0 -- or -Force is
+# given. -1 means unknown (an older build without the field, or the DB unreachable): it warns and proceeds. This gate
+# exists because the count was twice ASSERTED ("0 in-flight", "nothing at this hour") instead of checked, before a restart.
+param([switch]$Force)   # restart even if a fix is in flight (its result is lost)
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path -Parent $PSScriptRoot
 $project = Join-Path $repo 'Kor.Operations.NetworkOps.Service'
@@ -20,6 +23,16 @@ $ping = 'https://KOR-APP01.int.korstructural.com:8445/api/ping'
 
 $version = ([xml](Get-Content (Join-Path $project 'Kor.Operations.NetworkOps.Service.csproj'))).Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
 if (-not $version) { throw 'no <Version> in the service csproj' }
+
+# Gate: never restart mid-fix on a hand-wave. A running fix is marked failed by the restart, and business hours make that
+# real. Fail fast here, before we even publish.
+if (-not $Force) {
+    try { $pre = (curl.exe -sk --max-time 5 $ping | ConvertFrom-Json) } catch { $pre = $null }
+    $inFlight = if ($pre -and ($pre.PSObject.Properties.Name -contains 'inFlight')) { [int]$pre.inFlight } else { -1 }
+    if ($inFlight -gt 0) { throw "$inFlight fix(es) in flight right now -- a restart marks them failed. Wait, or re-run with -Force." }
+    if ($inFlight -lt 0) { "in-flight: unknown (older build or DB unreachable) -- proceeding without the check" }
+    else { "in-flight: 0 -- safe to restart" }
+}
 "--- publish $version"
 if (Test-Path $stage) { Remove-Item $stage -Recurse -Force -Confirm:$false }
 dotnet publish $project -c Release -o $stage -v q 2>&1 | Select-String ' error |Error\(s\)'

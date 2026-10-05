@@ -225,6 +225,20 @@ internal sealed partial class NetworkOpsStore
         return set;
     }
 
+    /// <summary>How many actions are IN FLIGHT (Requested or Running) right now. Best-effort: -1 when it cannot be read
+    /// (DB down or Actions table absent), so a caller like /api/ping still answers and the deploy gate treats it as
+    /// "unknown" rather than "zero". A restart while this is &gt; 0 marks the running ones failed (AbandonRunningActionsAsync).</summary>
+    public async Task<int> CountInFlightActionsAsync(CancellationToken ct)
+    {
+        try
+        {
+            await using var c = await OpenAsync(ct).ConfigureAwait(false);
+            await using var cmd = Cmd(c, "SELECT COUNT(*) FROM NetworkOps.Actions WHERE Status IN ('Requested', 'Running');");
+            return (int)(await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false))!;
+        }
+        catch { return -1; }
+    }
+
     /// <summary>A refused request is recorded too: the audit shows what was attempted, not just what ran.</summary>
     public async Task<long> RecordRefusedActionAsync(int deviceId, string kind, string by, string requestJson, string why, CancellationToken ct)
     {

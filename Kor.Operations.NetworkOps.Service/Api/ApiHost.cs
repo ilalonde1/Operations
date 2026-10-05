@@ -106,7 +106,10 @@ internal sealed class ApiHost(IOptions<NetworkOpsOptions> options, NetworkOpsSto
     {
         // Unauthenticated liveness: says only that the API is up and which version, so reachability and
         // the certificate can be checked without a token.
-        app.MapGet("/api/ping", () => Results.Ok(new { status = "ok", version = Jobs.JobDispatcher.Version }));
+        // Anonymous: proves the service is up and WHICH build (the deploy script asserts the version). Also reports how many
+        // fixes are in flight, so a deploy can refuse to restart mid-fix -- best-effort (-1 = unknown), never blocks the ping.
+        app.MapGet("/api/ping", async (NetworkOpsStore s, CancellationToken ct) =>
+            Results.Ok(new { status = "ok", version = Jobs.JobDispatcher.Version, inFlight = await s.CountInFlightActionsAsync(ct) }));
 
         // A Claude session reporting its outcome (Prompts/PromptLibrary.cs). It has no Entra token -- it runs in a
         // terminal -- so it is outside the group: the run's own one-time token is the credential, checked in SQL
