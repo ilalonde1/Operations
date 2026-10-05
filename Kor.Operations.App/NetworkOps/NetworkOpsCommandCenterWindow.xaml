@@ -77,12 +77,13 @@
     </Window.Resources>
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>   <!-- header -->
+            <RowDefinition Height="Auto"/>   <!-- connection-lost banner -->
+            <RowDefinition Height="Auto"/>   <!-- primary nav (Fleet | To clear) -->
+            <RowDefinition Height="Auto"/>   <!-- Fleet: headline + tiles -->
+            <RowDefinition Height="Auto"/>   <!-- Fleet: toolbar -->
+            <RowDefinition Height="*"/>      <!-- content (Fleet, or the To clear worklist) -->
+            <RowDefinition Height="Auto"/>   <!-- status -->
         </Grid.RowDefinitions>
 
         <controls:KorHeader x:Name="HeaderBar"
@@ -103,8 +104,17 @@
             <TextBlock Text="{Binding ConnectionLostMessage}" Foreground="White" FontWeight="SemiBold" TextWrapping="Wrap"/>
         </Border>
 
-        <!-- The page in one sentence, then four tiles counted across the rack AND the PCs. A tile is also a filter. -->
-        <Grid Grid.Row="2" Margin="12,0,12,10">
+        <!-- Primary nav: the two surfaces you live in. The tools (Network/Updates/Deploy/Ask Claude) open from the Fleet toolbar. -->
+        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="12,0,12,8">
+            <RadioButton x:Name="FleetTab" Content="Fleet" GroupName="ConsoleTab" Style="{StaticResource Ops.Segment}" IsChecked="True"
+                         ToolTip="The rack and every PC, worst first."/>
+            <RadioButton x:Name="ToClearTab" Content="To clear" GroupName="ConsoleTab" Style="{StaticResource Ops.Segment}" Margin="6,0,0,0"
+                         Checked="ToClearTab_Checked"
+                         ToolTip="Every open issue across the fleet, grouped, with fix-on-all — the path to all-green."/>
+        </StackPanel>
+
+        <!-- Fleet: the page in one sentence, then four tiles counted across the rack AND the PCs. A tile is also a filter. -->
+        <Grid Grid.Row="3" Margin="12,0,12,10" Visibility="{Binding IsChecked, ElementName=FleetTab, Converter={StaticResource BoolToVis}}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="2.2*"/>
                 <ColumnDefinition Width="*"/>
@@ -161,8 +171,8 @@
             </Border>
         </Grid>
 
-        <!-- Toolbar: find and filter on the left, what to do on the right. -->
-        <Grid Grid.Row="3" Margin="12,0,12,10">
+        <!-- Fleet toolbar: find and filter on the left, what to do on the right. -->
+        <Grid Grid.Row="4" Margin="12,0,12,10" Visibility="{Binding IsChecked, ElementName=FleetTab, Converter={StaticResource BoolToVis}}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="340"/>
                 <ColumnDefinition Width="Auto"/>
@@ -199,10 +209,6 @@
             <!-- Grouped by purpose, left to right: ACT on the fleet · open a focused TOOL · the selected PC · refresh.
                  Thin separators mark the groups so the row reads as four things, not nine. -->
             <StackPanel Grid.Column="3" Orientation="Horizontal">
-                <!-- Act: the one place to work the fleet down to green. -->
-                <Button Content="To clear" Style="{StaticResource Ops.Primary}" Margin="0,0,10,0" Click="ToClear_Click"
-                        ToolTip="The path to all-green: every open issue across the fleet, grouped, ranked, with 'fix on all the machines that have it' — the one place to work the fleet down to green."/>
-                <Border Width="1" Background="#E3E7EB" Margin="0,6,10,6"/>
                 <!-- Tools: a focused workspace, each opened on its own. -->
                 <Button Content="Network" Margin="0,0,6,0" Click="Network_Click"
                         ToolTip="Every switch and port, and what is plugged into each: PC, person, IP. Searchable."/>
@@ -226,7 +232,7 @@
             </StackPanel>
         </Grid>
 
-        <Grid Grid.Row="4" Margin="12,0,12,10">
+        <Grid Grid.Row="5" Margin="12,0,12,10" Visibility="{Binding IsChecked, ElementName=FleetTab, Converter={StaticResource BoolToVis}}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="380"/>
@@ -420,7 +426,11 @@
             </Grid>
         </Grid>
 
-        <Border Grid.Row="5" Background="{StaticResource Panel.Background}" BorderBrush="{StaticResource Panel.Border}" BorderThickness="0,1,0,0" Padding="12,6">
+        <!-- To clear: the worklist, hosted here and shown when its tab is picked (created in code with the client). -->
+        <ContentControl x:Name="ToClearHost" Grid.Row="5" Margin="0,0,0,2"
+                        Visibility="{Binding IsChecked, ElementName=ToClearTab, Converter={StaticResource BoolToVis}}"/>
+
+        <Border Grid.Row="6" Background="{StaticResource Panel.Background}" BorderBrush="{StaticResource Panel.Border}" BorderThickness="0,1,0,0" Padding="12,6">
             <TextBlock x:Name="StatusText" Text="{Binding StatusMessage}" Foreground="{StaticResource Text.Secondary}" VerticalAlignment="Center"/>
         </Border>
     </Grid>

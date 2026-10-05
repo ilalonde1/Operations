@@ -154,7 +154,8 @@ public partial class NetworkOpsCommandCenterWindow : Window
 
     private void Deploy_Click(object sender, RoutedEventArgs e) => new NetworkOpsDeployWindow(_vm.Client) { Owner = this }.Show();
 
-    private void ToClear_Click(object sender, RoutedEventArgs e) => new NetworkOpsToClearWindow(_vm.Client) { Owner = this }.Show();
+    // The To-clear worklist is a tab, created the first time it is opened (it reads the fleet on its own Loaded).
+    private void ToClearTab_Checked(object sender, RoutedEventArgs e) => ToClearHost.Content ??= new NetworkOpsToClearView(_vm.Client);
 
     private void Network_Click(object sender, RoutedEventArgs e) => _nav.OpenNetwork();
 

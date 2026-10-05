@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Media;
 using Kor.Operations.NetworkOps.Core.Health;
 using Kor.Operations.NetworkOps.Core.Learning;
@@ -46,13 +47,13 @@ public sealed class ToClearRow
 
 /// <summary>The path to all-green: every live finding across the fleet, grouped by issue and ranked, with "Fix on all N"
 /// for the ones a catalog fix clears, and Ask Claude for the rest. Parked (acknowledged/snoozed) findings do not appear.</summary>
-public partial class NetworkOpsToClearWindow : Window
+public partial class NetworkOpsToClearView : UserControl
 {
-    private static readonly ILogger Log = Serilog.Log.ForContext<NetworkOpsToClearWindow>();
+    private static readonly ILogger Log = Serilog.Log.ForContext<NetworkOpsToClearView>();
     private readonly NetworkOpsClient _client;
     private readonly ObservableCollection<ToClearRow> _rows = new();
 
-    public NetworkOpsToClearWindow(NetworkOpsClient client)
+    public NetworkOpsToClearView(NetworkOpsClient client)
     {
         _client = client;
         InitializeComponent();
@@ -117,7 +118,7 @@ public partial class NetworkOpsToClearWindow : Window
         if ((sender as FrameworkElement)?.DataContext is not ToClearRow row) return;
         var first = row.Issue.Machines.FirstOrDefault(m => m.DeviceId > 0);
         var request = first is null ? null : new PromptRequest("finding", null, first.DeviceId, first.FindingId);
-        new PromptLibraryWindow(_client, request) { Owner = this }.Show();
+        new PromptLibraryWindow(_client, request) { Owner = Window.GetWindow(this) }.Show();
     }
 
     private async void Refresh_Click(object sender, RoutedEventArgs e) => await ReloadAsync();
