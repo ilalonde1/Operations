@@ -98,6 +98,10 @@ public sealed class NetworkOpsOptions
     public string SnmpAuthPassword { get; set; } = "";
     public string SnmpPrivPassword { get; set; } = "";
 
+    /// <summary>SNMP v2c read-only community for the FIREWALL only (KOR_NETWORKOPS_SNMPCOMMUNITY). The Netgate runs pfSense,
+    /// whose SNMP is FreeBSD bsnmpd -- v1/v2c, no v3. Read-only, bound to LAN. Empty = the Firewall collector says so.</summary>
+    public string SnmpCommunity { get; set; } = "";
+
     public int PowerPollSeconds { get; set; } = 10;
     /// <summary>A reading is stored this often, and on every change of source or reachability.</summary>
     public int PowerRecordSeconds { get; set; } = 60;

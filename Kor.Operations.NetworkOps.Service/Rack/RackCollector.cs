@@ -40,6 +40,7 @@ internal sealed class RackCollector(IOptions<NetworkOpsOptions> options, PowerSt
                 "UniFi" => await UniFiAsync(d, cap.Token).ConfigureAwait(false),
                 "Internet" => await InternetAsync(cap.Token).ConfigureAwait(false),
                 "CoreSwitch" => await CoreSwitchAsync(d, previousFacts, cap.Token).ConfigureAwait(false),
+                "Firewall" => await FirewallAsync(d, previousFacts, cap.Token).ConfigureAwait(false),
                 "Ups" => Ups(d),
                 "WindowsServer" => await ServerAsync(d, cap.Token).ConfigureAwait(false),
                 // A printer: read-only SNMP v1 "public" (SnmpChannel.GetV1Async says why v1 here), no password stored.
@@ -179,6 +180,25 @@ internal sealed class RackCollector(IOptions<NetworkOpsOptions> options, PowerSt
         // The same read is the core's panel in the port map: it is an EdgeSwitch, so UniFi knows nothing of its ports.
         map?.SetCore(new Kor.Operations.NetworkOps.Core.Network.CoreSwitchRead(d.Name, d.Address, EdgeSwitchRules.Ports(walk), DateTime.UtcNow));
         return EdgeSwitchRules.Evaluate(walk, previousFacts, label);
+    }
+
+    /// <summary>
+    /// The firewall (Netgate pfSense) over SNMP v2c with the read-only community (bsnmpd is v1/v2c, no v3). The interface
+    /// tables and per-core CPU come from a GETBULK walk; the scalars (uptime, UCD memory, PF state counts) from one batched
+    /// GET. Both go to FirewallRules. The read also builds the firewall's panel in the port map, kept fresh like the core's.
+    /// </summary>
+    private async Task<RackResult> FirewallAsync(RackDevice d, IReadOnlyDictionary<string, string> previousFacts, CancellationToken ct)
+    {
+        var community = options.Value.SnmpCommunity;
+        if (string.IsNullOrWhiteSpace(community))
+            return RackResult.Unreachable("KOR_NETWORKOPS_SNMPCOMMUNITY is not set -- enable SNMP on the Netgate (LAN-bound) and set the read community on APP01");
+        var now = DateTime.UtcNow;
+        var tables = await SnmpChannel.WalkV2cAsync(d.Address, community, Core.Rack.FirewallRules.Tables, TimeSpan.FromSeconds(10), ct).ConfigureAwait(false);
+        var scalars = await SnmpChannel.GetV2cAsync(d.Address, community, Core.Rack.FirewallRules.Scalars, TimeSpan.FromSeconds(5), ct).ConfigureAwait(false);
+        if (tables.Count == 0 && scalars.Count == 0)
+            return RackResult.Unreachable("no SNMP v2c answer (check the community string and that SNMP is bound to the LAN)");
+        var walk = tables.Concat(scalars).ToDictionary(kv => kv.Key, kv => kv.Value);
+        return Core.Rack.FirewallRules.Evaluate(walk, previousFacts, now);
     }
 
     /// <summary>A Windows server: Probes/server.ps1 through the same one-shot SCM channel the PC probes use (needs the

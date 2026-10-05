@@ -503,6 +503,22 @@ public sealed record CoreSwitchRead(string Name, string? Ip, IReadOnlyList<CoreS
 
 public sealed record CoreSwitchPort(int Port, bool Up, int? SpeedMbps, IReadOnlyList<string> Macs);
 
+// ---- the firewall (Netgate pfSense), read by NetworkOps itself over SNMP v2c (Rack/FirewallRules) ----
+
+/// <summary>The firewall's read (SNMP, every rack sweep): its assigned interfaces and the box's own health -- the panel the
+/// Command Center draws for it. CpuPct/MemUsedPct/States are null when the device did not answer that OID.</summary>
+public sealed record FirewallRead(string Name, string? Ip, string? Model, IReadOnlyList<FirewallInterface> Interfaces,
+    int? CpuPct, int? MemUsedPct, int? StatesUsed, int? StatesLimit, double UptimeHours, DateTime ReadUtc);
+
+/// <summary>One pfSense-assigned interface: its role name (WAN / WAN2 / LAN, from ifAlias), the NIC (ifDescr, e.g. igc3),
+/// whether it is up/down/dormant, the speed it negotiated (Mb/s), throughput now (Mb/s, null until a second read), and
+/// input errors. IsWan is the role starting "WAN".</summary>
+public sealed record FirewallInterface(string Role, string Nic, string State, int? SpeedMbps, double? InMbps, double? OutMbps, long InErrors)
+{
+    public bool IsWan => Role.StartsWith("WAN", StringComparison.OrdinalIgnoreCase);
+    public bool Up => State == "up";
+}
+
 // ---- the controller's LIVE API read (Service/Rack/UniFiApi: stat/device + stat/sta, projected to these fields) ----
 
 /// <summary>What the controller knows NOW: every device's state and ports, every client connected.</summary>

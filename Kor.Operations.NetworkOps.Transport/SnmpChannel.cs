@@ -61,6 +61,53 @@ public static class SnmpChannel
     }
 
     /// <summary>
+    /// Every value under each table OID over SNMP v2c with a read-only community (GETBULK walk, within the subtree). The
+    /// firewall's exception to v3: the Netgate runs pfSense, whose SNMP service is FreeBSD bsnmpd -- v1/v2c only, no v3
+    /// (checked 2026-10-05). A read-only community bound to the LAN, reading standard IF-MIB and HOST-RESOURCES counters,
+    /// changes nothing on the firewall. Same shape as WalkAsync, no v3 handshake or privacy.
+    /// </summary>
+    public static async Task<IReadOnlyDictionary<string, string>> WalkV2cAsync(string host, string community, IReadOnlyList<string> tables,
+        TimeSpan timeout, CancellationToken ct)
+    {
+        var endpoint = await EndpointAsync(host, ct).ConfigureAwait(false);
+        var ms = (int)timeout.TotalMilliseconds;
+        return await Task.Run(() =>
+        {
+            var community2c = new OctetString(community);
+            var values = new Dictionary<string, string>();
+            foreach (var table in tables)
+            {
+                var list = new List<Variable>();
+                // v2c GETBULK: no engine discovery, no privacy, no report -- contextName is empty and privacy/report are null.
+                Messenger.BulkWalk(VersionCode.V2, endpoint, community2c, OctetString.Empty, new ObjectIdentifier(table), list,
+                    ms, 10, WalkMode.WithinSubtree, null, null);
+                foreach (var v in list) if (Text(v.Data) is { } t) values[v.Id.ToString()] = t;
+            }
+            return (IReadOnlyDictionary<string, string>)values;
+        }, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// SNMP v2c GET of specific scalar OIDs with a read-only community -- the firewall's scalars (sysUpTime, UCD memory,
+    /// the PF state counts). v2c, not v1: ifHCInOctets and friends are Counter64, which v1 cannot carry. One batched GET;
+    /// an OID the device does not have comes back noSuchObject and is left out (Text returns null).
+    /// </summary>
+    public static async Task<IReadOnlyDictionary<string, string>> GetV2cAsync(string host, string community, IReadOnlyList<string> oids,
+        TimeSpan timeout, CancellationToken ct)
+    {
+        var endpoint = await EndpointAsync(host, ct).ConfigureAwait(false);
+        var ms = (int)timeout.TotalMilliseconds;
+        return await Task.Run(() =>
+        {
+            var got = Messenger.Get(VersionCode.V2, endpoint, new OctetString(community),
+                oids.Select(o => new Variable(new ObjectIdentifier(o))).ToList(), ms);
+            var values = new Dictionary<string, string>();
+            foreach (var v in got) if (Text(v.Data) is { } t) values[v.Id.ToString()] = t;
+            return (IReadOnlyDictionary<string, string>)values;
+        }, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>
     /// SNMP v1 GET, read-only -- the ONE exception to v3-only above: the printers (2026-10-02). v1, not v2c: the Canons
     /// answer v1 only (v2c timed out on both while v1 -- what Windows' own printer SNMP speaks -- answered). SNMPv3 would need
     /// each printer's admin login to set up, and a read-only "public" GET changes nothing on a printer. An OID the device

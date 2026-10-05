@@ -239,6 +239,181 @@ public static class EdgeSwitchRules
         => System.Text.RegularExpressions.Regex.Match(ifName.Trim().Trim('"'), @"^Slot:\s*\d+\s+Port:\s*(\d+)") is { Success: true } m ? int.Parse(m.Groups[1].Value, CultureInfo.InvariantCulture) : null;
 }
 
+/// <summary>
+/// The firewall (Netgate pfSense Plus) over SNMP v2c (bsnmpd -- v1/v2c only, no v3, checked 2026-10-05 against the live
+/// fw01). Its assigned interfaces named by ifAlias (WAN / WAN2 / WAN3 / LAN), each one's negotiated speed and throughput,
+/// and the box's own health: CPU (HOST-RESOURCES hrProcessorLoad), memory (UCD-SNMP, NOT hrStorageTable -- that table is
+/// hundreds of FreeBSD UMA rows and walking it hangs), the PF state table (BEGEMOT-PF-MIB) and uptime. Throughput is a
+/// rate between two reads, so the octet counters and the read time are kept as facts for the next sweep to difference.
+/// </summary>
+public static class FirewallRules
+{
+    // IF-MIB
+    public const string IfDescr = "1.3.6.1.2.1.2.2.1.2";          // idx -> NIC name (igc0..igc3)
+    public const string IfOperStatus = "1.3.6.1.2.1.2.2.1.8";     // 1 up, 2 down, 5 dormant (a WAN with no carrier)
+    public const string IfInErrors = "1.3.6.1.2.1.2.2.1.14";
+    public const string IfAlias = "1.3.6.1.2.1.31.1.1.1.18";      // idx -> pfSense role (WAN/LAN/...); empty for system ifaces
+    public const string IfHighSpeed = "1.3.6.1.2.1.31.1.1.1.15";  // Mb/s
+    public const string IfHCInOctets = "1.3.6.1.2.1.31.1.1.1.6";  // Counter64
+    public const string IfHCOutOctets = "1.3.6.1.2.1.31.1.1.1.10";
+    public const string HrProcessorLoad = "1.3.6.1.2.1.25.3.3.1.2"; // per-core %, a handful of rows
+    public static readonly string[] Tables = [IfDescr, IfOperStatus, IfInErrors, IfAlias, IfHighSpeed, IfHCInOctets, IfHCOutOctets, HrProcessorLoad];
+
+    // Scalars (one batched v2c GET)
+    public const string SysDescr = "1.3.6.1.2.1.1.1.0";
+    public const string SysName = "1.3.6.1.2.1.1.5.0";
+    public const string SysUpTime = "1.3.6.1.2.1.1.3.0";          // TimeTicks (hundredths of a second)
+    public const string MemTotalRealKb = "1.3.6.1.4.1.2021.4.5.0";
+    public const string MemAvailRealKb = "1.3.6.1.4.1.2021.4.6.0";
+    public const string PfRunning = "1.3.6.1.4.1.12325.1.200.1.1.1.0";
+    public const string PfStateCount = "1.3.6.1.4.1.12325.1.200.1.3.1.0";
+    public const string PfStateLimit = "1.3.6.1.4.1.12325.1.200.1.5.1.0";
+    public static readonly string[] Scalars = [SysDescr, SysName, SysUpTime, MemTotalRealKb, MemAvailRealKb, PfRunning, PfStateCount, PfStateLimit];
+
+    private static readonly System.Text.RegularExpressions.Regex Version =
+        new(@"\d+\.\d+(\.\d+)?-RELEASE", System.Text.RegularExpressions.RegexOptions.Compiled);
+
+    /// <summary>The assigned interfaces (ifAlias non-empty), with throughput differenced from the previous read's octet
+    /// facts, and the raw current octets keyed by role so the caller can store them for next time.</summary>
+    public static (IReadOnlyList<Network.FirewallInterface> Interfaces, IReadOnlyDictionary<string, (ulong In, ulong Out)> Octets)
+        ReadInterfaces(IReadOnlyDictionary<string, string> v, IReadOnlyDictionary<string, string> previousFacts, DateTime nowUtc)
+    {
+        double? deltaSec = null;
+        if (previousFacts.TryGetValue("fw.read.ticks", out var pt) && long.TryParse(pt, NumberStyles.Integer, CultureInfo.InvariantCulture, out var ticks))
+        {
+            var secs = (nowUtc - new DateTime(ticks, DateTimeKind.Utc)).TotalSeconds;
+            if (secs > 0) deltaSec = secs;
+        }
+        var ifaces = new List<Network.FirewallInterface>();
+        var octets = new Dictionary<string, (ulong In, ulong Out)>(StringComparer.Ordinal);
+        foreach (var (key, raw) in v.Where(kv => kv.Key.StartsWith(IfAlias + ".", StringComparison.Ordinal)))
+        {
+            var role = raw.Trim('"').Trim();
+            if (role.Length == 0) continue;                       // a system interface (lo0, pflog0, ...): pfSense gives it no name
+            var idx = key[(IfAlias.Length + 1)..];
+            var nic = v.TryGetValue($"{IfDescr}.{idx}", out var n) ? n.Trim('"') : idx;
+            var state = v.TryGetValue($"{IfOperStatus}.{idx}", out var os) ? os switch { "1" => "up", "5" => "dormant", _ => "down" } : "down";
+            int? speed = v.TryGetValue($"{IfHighSpeed}.{idx}", out var sp) && int.TryParse(sp, NumberStyles.Integer, CultureInfo.InvariantCulture, out var mb) && mb > 0 ? mb : null;
+            long errs = v.TryGetValue($"{IfInErrors}.{idx}", out var er) && long.TryParse(er, NumberStyles.Integer, CultureInfo.InvariantCulture, out var e) ? e : 0;
+            ulong inOct = v.TryGetValue($"{IfHCInOctets}.{idx}", out var io) && ulong.TryParse(io, NumberStyles.Integer, CultureInfo.InvariantCulture, out var iv) ? iv : 0;
+            ulong outOct = v.TryGetValue($"{IfHCOutOctets}.{idx}", out var oo) && ulong.TryParse(oo, NumberStyles.Integer, CultureInfo.InvariantCulture, out var ov) ? ov : 0;
+            octets[role] = (inOct, outOct);
+            double? inMbps = Rate(previousFacts, $"fw.octin:{role}", inOct, deltaSec);
+            double? outMbps = Rate(previousFacts, $"fw.octout:{role}", outOct, deltaSec);
+            ifaces.Add(new Network.FirewallInterface(role, nic, state, speed, inMbps, outMbps, errs));
+        }
+        // WAN/LAN first, then by role name, so the active WAN and the LAN head the panel.
+        ifaces = ifaces.OrderByDescending(i => i.IsWan && i.Up).ThenByDescending(i => i.Up).ThenBy(i => i.Role, StringComparer.OrdinalIgnoreCase).ToList();
+        return (ifaces, octets);
+    }
+
+    /// <summary>Megabits/second between the previous octet count and this one; null until there are two reads, and on a
+    /// counter reset (the box rebooted) rather than a negative spike.</summary>
+    private static double? Rate(IReadOnlyDictionary<string, string> previousFacts, string factKey, ulong now, double? deltaSec)
+    {
+        if (deltaSec is not { } ds || !previousFacts.TryGetValue(factKey, out var pv) || !ulong.TryParse(pv, NumberStyles.Integer, CultureInfo.InvariantCulture, out var prev) || now < prev)
+            return null;
+        return Math.Round((now - prev) * 8.0 / ds / 1_000_000.0, 1);
+    }
+
+    /// <summary>The whole read as the panel wants it (Service/RackCollector pushes this to the map), from the same parse.</summary>
+    public static Network.FirewallRead Read(string name, string? ip, IReadOnlyDictionary<string, string> v,
+        IReadOnlyDictionary<string, string> previousFacts, DateTime nowUtc)
+    {
+        var (ifaces, _) = ReadInterfaces(v, previousFacts, nowUtc);
+        return new Network.FirewallRead(name, ip, Model(v), ifaces, Cpu(v), MemUsedPct(v), Int(v, PfStateCount), Int(v, PfStateLimit), UptimeHours(v), nowUtc);
+    }
+
+    public static RackResult Evaluate(IReadOnlyDictionary<string, string> v, IReadOnlyDictionary<string, string> previousFacts, DateTime nowUtc)
+    {
+        var b = new RackBuilder();
+        if (Model(v) is { } model) b.Fact("fw.model", model);
+        if (v.TryGetValue(SysName, out var host)) b.Fact("fw.hostname", host.Trim('"'));
+
+        var (ifaces, octets) = ReadInterfaces(v, previousFacts, nowUtc);
+        var upNow = new List<string>();
+        foreach (var i in ifaces)
+        {
+            var speed = i.SpeedMbps is { } s ? $"{s} Mb/s" : "no link";
+            var flow = i.InMbps is { } dn && i.OutMbps is { } upl ? $" · {dn:0.#}↓/{upl:0.#}↑ Mb/s" : "";
+            b.Fact($"fw.if:{i.Role}", $"{i.Nic} {i.State} · {speed}{flow}");
+            if (i.SpeedMbps is { } mb) b.Metric("fw.if.speed.mbps", mb, i.Role);
+            b.Metric("fw.if.up", i.Up ? 1 : 0, i.Role);
+            if (i.InMbps is { } din) b.Metric("fw.if.in.mbps", din, i.Role);
+            if (i.OutMbps is { } dout) b.Metric("fw.if.out.mbps", dout, i.Role);
+            if (i.InErrors > 0) b.Metric("fw.if.in-errors", i.InErrors, i.Role);
+            if (i.Up) upNow.Add(i.Role);
+        }
+        // Keep the current octets and read time so the NEXT sweep can turn them into a rate.
+        foreach (var (role, o) in octets) { b.Fact($"fw.octin:{role}", o.In.ToString(CultureInfo.InvariantCulture)); b.Fact($"fw.octout:{role}", o.Out.ToString(CultureInfo.InvariantCulture)); }
+        b.Fact("fw.read.ticks", nowUtc.Ticks.ToString(CultureInfo.InvariantCulture));
+        b.Fact("fw.up", string.Join(",", upNow));
+
+        if (Cpu(v) is { } cpu) b.Metric("fw.cpu.pct", cpu);
+        if (MemUsedPct(v) is { } mem) { b.Metric("fw.mem.pct", mem); if (mem >= 90) b.Raise("fw.memory", Severity.Warning, "Firewall memory is high", $"{mem}% of RAM in use"); }
+        if (Int(v, PfStateCount) is { } states)
+        {
+            b.Metric("fw.states", states);
+            if (Int(v, PfStateLimit) is { } limit && limit > 0)
+            {
+                b.Metric("fw.states.limit", limit);
+                if (states >= limit * 0.8) b.Raise("fw.states", Severity.Warning, "Firewall state table is near its limit", $"{states:N0} of {limit:N0} states");
+            }
+        }
+        if (UptimeHours(v) is var up && up > 0)
+        {
+            b.Metric("fw.uptime.hours", Math.Round(up, 1));
+            if (up < 24) b.Raise("fw.rebooted", Severity.Info, "Firewall restarted recently", $"up {up:0.0} h");
+        }
+        if (v.TryGetValue(PfRunning, out var pf) && pf != "1")
+            b.Raise("fw.pf-down", Severity.Critical, "Firewall packet filter is NOT running", "pf is disabled: traffic is not being filtered");
+
+        // An interface that was up on the last read and is not now. A WAN may be a failover (Warning); the LAN going down
+        // cuts the office off (Critical). Dormant standby WANs were never in the list, so they do not raise.
+        if (previousFacts.TryGetValue("fw.up", out var before))
+            foreach (var gone in before.Split(',', StringSplitOptions.RemoveEmptyEntries).Except(upNow, StringComparer.Ordinal))
+                b.Raise($"fw.link-down:{gone}", gone.StartsWith("WAN", StringComparison.OrdinalIgnoreCase) ? Severity.Warning : Severity.Critical,
+                    $"Firewall {gone} link went down", "it was up on the previous read");
+        if (ifaces.Any(i => i.IsWan) && !ifaces.Any(i => i.IsWan && i.Up))
+            b.Raise("fw.no-wan", Severity.Critical, "No WAN is up on the firewall", "every WAN-role interface is down or dormant");
+
+        var wan = ifaces.FirstOrDefault(i => i.IsWan && i.Up);
+        var lan = ifaces.FirstOrDefault(i => !i.IsWan && i.Up);
+        var parts = new List<string>();
+        if (wan is not null) parts.Add($"{wan.Role} {(wan.SpeedMbps is { } ws ? ws + "Mb" : "up")}");
+        if (lan is not null) parts.Add($"{lan.Role} {(lan.SpeedMbps is { } ls ? ls + "Mb" : "up")}");
+        if (Cpu(v) is { } c) parts.Add($"CPU {c}%");
+        if (Int(v, PfStateCount) is { } st) parts.Add($"{st:N0} states");
+        if (up > 0) parts.Add($"up {up / 24:0.#}d");
+        return b.Done(parts.Count > 0 ? string.Join(" · ", parts) : "answered SNMP");
+    }
+
+    private static string? Model(IReadOnlyDictionary<string, string> v)
+        => v.TryGetValue(SysDescr, out var d) && d.Contains("pfSense", StringComparison.OrdinalIgnoreCase)
+            ? "pfSense" + (d.Contains("Plus", StringComparison.OrdinalIgnoreCase) ? " Plus" : "") + (Version.Match(d) is { Success: true } m ? " " + m.Value : "")
+            : v.TryGetValue(SysDescr, out var d2) ? d2.Trim('"') : null;
+
+    private static int? Cpu(IReadOnlyDictionary<string, string> v)
+    {
+        var cores = v.Where(kv => kv.Key.StartsWith(HrProcessorLoad + ".", StringComparison.Ordinal))
+            .Select(kv => int.TryParse(kv.Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var p) ? p : -1).Where(p => p >= 0).ToList();
+        return cores.Count > 0 ? (int)Math.Round(cores.Average()) : null;
+    }
+
+    private static int? MemUsedPct(IReadOnlyDictionary<string, string> v)
+        => Long(v, MemTotalRealKb) is { } total && total > 0 && Long(v, MemAvailRealKb) is { } avail
+            ? (int)Math.Round(100.0 * (total - avail) / total) : null;
+
+    private static double UptimeHours(IReadOnlyDictionary<string, string> v)
+        => v.TryGetValue(SysUpTime, out var t) && long.TryParse(t, NumberStyles.Integer, CultureInfo.InvariantCulture, out var ticks) ? ticks / 360000.0 : 0;
+
+    private static int? Int(IReadOnlyDictionary<string, string> v, string oid)
+        => v.TryGetValue(oid, out var s) && int.TryParse(s, NumberStyles.Integer, CultureInfo.InvariantCulture, out var n) ? n : null;
+
+    private static long? Long(IReadOnlyDictionary<string, string> v, string oid)
+        => v.TryGetValue(oid, out var s) && long.TryParse(s, NumberStyles.Integer, CultureInfo.InvariantCulture, out var n) ? n : null;
+}
+
 /// <summary>A UPS as a rack device: the watcher's latest reading turned into findings (the shutdown decision itself is PowerPolicy).</summary>
 public static class UpsRules
 {
