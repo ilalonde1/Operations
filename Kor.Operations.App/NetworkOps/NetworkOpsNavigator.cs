@@ -6,6 +6,14 @@ using Kor.Operations.NetworkOps.Core.Learning;
 
 namespace Kor.Operations.App.NetworkOps;
 
+/// <summary>The console (Command Center) that hosts the Network surface as a tab. The navigator drives it there instead of
+/// owning a standalone Network window: bring the console forward, switch to the Network tab, and focus a switch/port when
+/// asked. Implemented by <see cref="NetworkOpsCommandCenterWindow"/>; the navigator holds it as its owner.</summary>
+public interface INetworkTabHost
+{
+    void ShowNetwork(string? focusMac, int? port);
+}
+
 /// <summary>
 /// The ONE way NetworkOps windows open each other (Ian, 2026-10-02: "I do NOT want duplicate ways to see duplicated data I
 /// want duplicate ways to get into the same data"). A device's page, and the Network window at a switch or access point,
@@ -18,7 +26,6 @@ public sealed class NetworkOpsNavigator
     private readonly Func<FleetSnapshot?> _pcs;
     private readonly Func<FleetSnapshot?> _rack;
     private readonly Window _owner;
-    private NetworkOpsNetworkWindow? _network;
 
     /// <param name="pcs">The Command Center's current fleet snapshot.</param>
     /// <param name="rack">Its current rack snapshot.</param>
@@ -53,23 +60,11 @@ public sealed class NetworkOpsNavigator
     public void Open(FleetSnapshot snapshot, DeviceRow device)
         => new NetworkOpsDeviceWindow(new NetworkOpsDeviceViewModel(_client, snapshot, device)) { Owner = _owner, Navigator = this }.Show();
 
-    /// <summary>The Network window -- one, brought forward if open -- at a switch or access point (by MAC, or "core"), and at
-    /// one of its ports when given.</summary>
+    /// <summary>The Network surface -- a tab of the console, brought forward -- at a switch or access point (by MAC, or
+    /// "core"), and at one of its ports when given. Folded from a standalone window into a tab (2026-10-04): the navigator
+    /// drives the console there, so there is still exactly one Network surface and one way into it.</summary>
     public void OpenNetwork(string? focusMac = null, int? port = null)
-    {
-        if (_network is null || !_network.IsLoaded)
-        {
-            _network = new NetworkOpsNetworkWindow(_client, this) { Owner = _owner };
-            _network.Closed += (_, _) => _network = null;
-            _network.Show();
-        }
-        else
-        {
-            if (_network.WindowState == WindowState.Minimized) _network.WindowState = WindowState.Normal;
-            _network.Activate();
-        }
-        if (focusMac is { Length: > 0 }) _network.FocusOn(focusMac, port);
-    }
+        => (_owner as INetworkTabHost)?.ShowNetwork(focusMac is { Length: > 0 } ? focusMac : null, port);
 
     /// <summary>Follows a part's <see cref="Kor.Operations.NetworkOps.Core.Health.PcComponent.Opens"/> -- "network:",
     /// "network:{mac}", "network:core", "network:{mac}#{port}" -- false when it opens nothing.</summary>

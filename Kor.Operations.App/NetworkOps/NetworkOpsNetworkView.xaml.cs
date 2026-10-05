@@ -10,8 +10,9 @@ using Kor.Operations.NetworkOps.Core.Network;
 
 namespace Kor.Operations.App.NetworkOps;
 
-/// <summary>The port map: the switches as panels of port tiles (a tile opens its device's page), or as a table and search.</summary>
-public partial class NetworkOpsNetworkWindow : Window
+/// <summary>The port map: the switches as panels of port tiles (a tile opens its device's page), or as a table and search.
+/// A tab of the Command Center (folded from a standalone window 2026-10-04); reached the one way in, through the navigator.</summary>
+public partial class NetworkOpsNetworkView : UserControl
 {
     private readonly NetworkOpsClient? _client;
     private readonly NetworkOpsNavigator? _nav;
@@ -22,11 +23,14 @@ public partial class NetworkOpsNetworkWindow : Window
     private int? _pendingPort;
 
     /// <param name="navigator">Opens a port's device page (the one device window, through the one navigator).</param>
-    public NetworkOpsNetworkWindow(NetworkOpsClient client, NetworkOpsNavigator? navigator = null)
+    public NetworkOpsNetworkView(NetworkOpsClient client, NetworkOpsNavigator? navigator = null)
     {
         _client = client ?? throw new ArgumentNullException(nameof(client));
         _nav = navigator;
         InitializeComponent();
+        // Hosted in a visibility-toggled tab, so the view stays in the tree across tab switches: Unloaded fires only when
+        // the console window closes. That is where the retry timer stops and the read is cancelled (was OnClosed).
+        Unloaded += (_, _) => { _retry?.Stop(); _cts.Cancel(); };
     }
 
     /// <summary>
@@ -65,15 +69,15 @@ public partial class NetworkOpsNetworkWindow : Window
         }
     }
 
-    /// <summary>For the render test: the window filled from a map, no service.</summary>
-    internal NetworkOpsNetworkWindow(NetworkMapResponse map, bool table = false)
+    /// <summary>For the render test: the view filled from a map, no service.</summary>
+    internal NetworkOpsNetworkView(NetworkMapResponse map, bool table = false)
     {
         InitializeComponent();
         if (table) TableViewBtn.IsChecked = true;
         Apply(map);
     }
 
-    private async void Window_Loaded(object sender, RoutedEventArgs e) { if (_client is not null) await Guard(LoadAsync).ConfigureAwait(true); }
+    private async void View_Loaded(object sender, RoutedEventArgs e) { if (_client is not null) await Guard(LoadAsync).ConfigureAwait(true); }
 
     private async void Refresh_Click(object sender, RoutedEventArgs e) => await Guard(LoadAsync).ConfigureAwait(true);
 
@@ -213,10 +217,4 @@ public partial class NetworkOpsNetworkWindow : Window
         }
     }
 
-    protected override void OnClosed(EventArgs e)
-    {
-        _retry?.Stop();
-        _cts.Cancel();
-        base.OnClosed(e);
-    }
 }

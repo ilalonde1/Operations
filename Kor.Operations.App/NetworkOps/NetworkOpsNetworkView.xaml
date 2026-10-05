@@ -1,26 +1,20 @@
-<Window x:Class="Kor.Operations.App.NetworkOps.NetworkOpsNetworkWindow"
+<UserControl x:Class="Kor.Operations.App.NetworkOps.NetworkOpsNetworkView"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Network"
-        Width="1500"
-        Height="940"
-        MinWidth="1000"
-        MinHeight="600"
-        WindowStartupLocation="CenterOwner"
-        Background="{StaticResource App.Background}"
         FontFamily="Mulish, Segoe UI"
-        Loaded="Window_Loaded">
+        Loaded="View_Loaded">
     <!-- What is plugged in where, by name and person (Ian, 2026-10-02). Two views of one map:
          Switches: each switch a panel of port tiles, front-panel order; a tile opens the device's page.
-         Table: the tree on the left, the chosen switch's ports (or a search) as rows. -->
-    <Window.Resources>
+         Table: the tree on the left, the chosen switch's ports (or a search) as rows.
+         Folded from a standalone window into a tab of the Command Center (2026-10-04); the same one surface. -->
+    <UserControl.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="/Kor.Operations.App;component/NetworkOps/NetworkOpsStyles.xaml"/>
             </ResourceDictionary.MergedDictionaries>
             <BooleanToVisibilityConverter x:Key="BoolToVis"/>
         </ResourceDictionary>
-    </Window.Resources>
+    </UserControl.Resources>
     <Grid Margin="12">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -199,4 +193,4 @@
 
         <TextBlock x:Name="StatusText" Grid.Row="2" Style="{StaticResource Ops.Caption}" Margin="2,8,0,0" TextWrapping="Wrap"/>
     </Grid>
-</Window>
+</UserControl>

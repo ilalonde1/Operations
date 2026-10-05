@@ -114,12 +114,14 @@ public sealed class NetworkOpsWindowsRenderTests
         device.SetNetwork(NetworkOpsNetworkWindowTests.LiveMap().Map);            // so the device page draws its switch-port strip
         written += Render(new NetworkOpsDeviceWindow(device), Path.Combine(dir, $"{label}-pc-{worst.Name}.png"));
         if (label != "fixture") return written;
-        // The Network window on the real map of 2026-10-02: BMZ-SW01's ports, then a search for one person.
-        written += Render(new NetworkOpsNetworkWindow(NetworkOpsNetworkWindowTests.LiveMap()), Path.Combine(dir, $"{label}-network-switches.png"));
-        var network = new NetworkOpsNetworkWindow(NetworkOpsNetworkWindowTests.LiveMap(), table: true);
-        written += Render(network, Path.Combine(dir, $"{label}-network.png"));
+        // The Network tab on the real map of 2026-10-02: BMZ-SW01's ports, then a search for one person. Folded from a
+        // window into a UserControl (2026-10-04), so it renders at the window's old size.
+        var netSize = new Size(1500, 940);
+        written += Render(new NetworkOpsNetworkView(NetworkOpsNetworkWindowTests.LiveMap()), netSize, Path.Combine(dir, $"{label}-network-switches.png"));
+        var network = new NetworkOpsNetworkView(NetworkOpsNetworkWindowTests.LiveMap(), table: true);
+        written += Render(network, netSize, Path.Combine(dir, $"{label}-network.png"));
         network.SearchBox.Text = "SW02";
-        written += Render(network, Path.Combine(dir, $"{label}-network-search.png"));
+        written += Render(network, netSize, Path.Combine(dir, $"{label}-network-search.png"));
 
         // The KOR Remote viewer, connected to a PC with two monitors showing the second (the page itself is not drawn here).
         var viewer = new KorRemoteViewerModel(worst.Name, "kwurmlinger · active, idle 12 min");
@@ -180,7 +182,12 @@ public sealed class NetworkOpsWindowsRenderTests
     {
         var root = window.Content as FrameworkElement
                    ?? throw new InvalidOperationException($"{window.GetType().Name} has no FrameworkElement content to render.");
-        var size = new Size(window.Width, window.Height);
+        return Render(root, new Size(window.Width, window.Height), path);
+    }
+
+    // Render any element (a window's content, or a UserControl folded out of a window) at an explicit size.
+    private static int Render(FrameworkElement root, Size size, string path)
+    {
         // A DataGrid sizes its star columns in work it QUEUES on the dispatcher once it knows its
         // viewport; a never-shown window has no running dispatcher, so without pumping the queue those
         // columns render collapsed -- which a shown window never does. Lay out, drain, lay out again.

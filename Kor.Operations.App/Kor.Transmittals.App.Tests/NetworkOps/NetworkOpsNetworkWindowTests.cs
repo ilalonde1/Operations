@@ -100,18 +100,34 @@ public sealed class NetworkOpsNetworkWindowTests
     }
 
     // Ian, 2026-10-02: "I do NOT want duplicate ways to see duplicated data I want duplicate ways to get into the same data."
-    // A device's page and the Network window each exist once; everything that shows a device or a switch goes there through
-    // the one navigator. A second place building its own device or network window is a second copy of the way in.
+    // A device's page and the Network surface each exist once; everything that shows a device or a switch goes there through
+    // the one navigator. A second place building its own copy is a second way in. The Network surface was folded from a
+    // standalone window into a console tab (2026-10-04): the navigator still owns the way in (OpenNetwork ->
+    // INetworkTabHost.ShowNetwork), and the console is the single place that creates the view.
     [Fact]
-    public void Only_the_navigator_opens_a_device_page_or_the_network_window()
+    public void Only_one_place_creates_a_device_page_or_the_network_surface()
     {
         var dir = Path.Combine(XamlStaticResourceOrderTests.GetRepoRoot(), "Kor.Operations.App");
-        var offenders = Directory.EnumerateFiles(dir, "*.cs", SearchOption.AllDirectories)
-            .Where(f => !f.Contains("Tests", StringComparison.Ordinal) && !f.Contains(Path.DirectorySeparatorChar + "obj" + Path.DirectorySeparatorChar)
-                        && !f.EndsWith("NetworkOpsNavigator.cs", StringComparison.Ordinal))
-            .Where(f => File.ReadAllText(f) is var s && (s.Contains("new NetworkOpsDeviceWindow(", StringComparison.Ordinal) || s.Contains("new NetworkOpsNetworkWindow(", StringComparison.Ordinal)))
-            .Select(Path.GetFileName).ToList();
-        Assert.True(offenders.Count == 0, "opens a NetworkOps window itself instead of through NetworkOpsNavigator: " + string.Join(", ", offenders));
+        var files = Directory.EnumerateFiles(dir, "*.cs", SearchOption.AllDirectories)
+            .Where(f => !f.Contains("Tests", StringComparison.Ordinal) && !f.Contains(Path.DirectorySeparatorChar + "obj" + Path.DirectorySeparatorChar))
+            .Select(f => (Name: Path.GetFileName(f), Text: File.ReadAllText(f)))
+            .ToList();
+
+        // The device page: created only by the navigator.
+        var deviceOffenders = files
+            .Where(f => f.Name != "NetworkOpsNavigator.cs" && f.Text.Contains("new NetworkOpsDeviceWindow(", StringComparison.Ordinal))
+            .Select(f => f.Name).ToList();
+        Assert.True(deviceOffenders.Count == 0, "creates a device page outside NetworkOpsNavigator: " + string.Join(", ", deviceOffenders));
+
+        // The Network surface: created only by the console that hosts the tab; everything else reaches it through the navigator.
+        var networkOffenders = files
+            .Where(f => f.Name != "NetworkOpsCommandCenterWindow.xaml.cs" && f.Text.Contains("new NetworkOpsNetworkView(", StringComparison.Ordinal))
+            .Select(f => f.Name).ToList();
+        Assert.True(networkOffenders.Count == 0, "creates the Network surface outside its console host: " + string.Join(", ", networkOffenders));
+
+        // The old standalone Network window is gone; nothing should resurrect it.
+        var windowOffenders = files.Where(f => f.Text.Contains("new NetworkOpsNetworkWindow(", StringComparison.Ordinal)).Select(f => f.Name).ToList();
+        Assert.True(windowOffenders.Count == 0, "the Network surface is a console tab now, not a window: " + string.Join(", ", windowOffenders));
     }
 
     [Fact]

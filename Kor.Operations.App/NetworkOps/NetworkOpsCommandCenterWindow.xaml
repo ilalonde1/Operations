@@ -104,13 +104,17 @@
             <TextBlock Text="{Binding ConnectionLostMessage}" Foreground="White" FontWeight="SemiBold" TextWrapping="Wrap"/>
         </Border>
 
-        <!-- Primary nav: the two surfaces you live in. The tools (Network/Updates/Deploy/Ask Claude) open from the Fleet toolbar. -->
+        <!-- Primary nav: the console's surfaces as tabs. Network is folded in here (2026-10-04); Updates/Deploy/Ask Claude
+             still open from the Fleet toolbar until each is folded in turn. -->
         <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="12,0,12,8">
             <RadioButton x:Name="FleetTab" Content="Fleet" GroupName="ConsoleTab" Style="{StaticResource Ops.Segment}" IsChecked="True"
                          ToolTip="The rack and every PC, worst first."/>
             <RadioButton x:Name="ToClearTab" Content="To clear" GroupName="ConsoleTab" Style="{StaticResource Ops.Segment}" Margin="6,0,0,0"
                          Checked="ToClearTab_Checked"
                          ToolTip="Every open issue across the fleet, grouped, with fix-on-all — the path to all-green."/>
+            <RadioButton x:Name="NetworkTab" Content="Network" GroupName="ConsoleTab" Style="{StaticResource Ops.Segment}" Margin="6,0,0,0"
+                         Checked="NetworkTab_Checked"
+                         ToolTip="Every switch and port, and what is plugged into each: PC, person, IP. Searchable."/>
         </StackPanel>
 
         <!-- Fleet: the page in one sentence, then four tiles counted across the rack AND the PCs. A tile is also a filter. -->
@@ -209,9 +213,7 @@
             <!-- Grouped by purpose, left to right: ACT on the fleet · open a focused TOOL · the selected PC · refresh.
                  Thin separators mark the groups so the row reads as four things, not nine. -->
             <StackPanel Grid.Column="3" Orientation="Horizontal">
-                <!-- Tools: a focused workspace, each opened on its own. -->
-                <Button Content="Network" Margin="0,0,6,0" Click="Network_Click"
-                        ToolTip="Every switch and port, and what is plugged into each: PC, person, IP. Searchable."/>
+                <!-- Tools: a focused workspace, each opened on its own. (Network moved to a console tab, 2026-10-04.) -->
                 <Button Content="Updates" Margin="0,0,6,0" Click="Updates_Click"
                         ToolTip="What Windows Update has waiting on every PC and server, and installing it on many at once."/>
                 <Button Content="Deploy" Margin="0,0,6,0" Click="Deploy_Click"
@@ -429,6 +431,10 @@
         <!-- To clear: the worklist, hosted here and shown when its tab is picked (created in code with the client). -->
         <ContentControl x:Name="ToClearHost" Grid.Row="5" Margin="0,0,0,2"
                         Visibility="{Binding IsChecked, ElementName=ToClearTab, Converter={StaticResource BoolToVis}}"/>
+
+        <!-- Network: the port map, hosted here and shown when its tab is picked (created in code with the client + navigator). -->
+        <ContentControl x:Name="NetworkHost" Grid.Row="5" Margin="12,0,12,2"
+                        Visibility="{Binding IsChecked, ElementName=NetworkTab, Converter={StaticResource BoolToVis}}"/>
 
         <Border Grid.Row="6" Background="{StaticResource Panel.Background}" BorderBrush="{StaticResource Panel.Border}" BorderThickness="0,1,0,0" Padding="12,6">
             <TextBlock x:Name="StatusText" Text="{Binding StatusMessage}" Foreground="{StaticResource Text.Secondary}" VerticalAlignment="Center"/>

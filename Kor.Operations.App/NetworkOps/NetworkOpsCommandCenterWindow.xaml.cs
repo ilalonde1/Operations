@@ -10,7 +10,7 @@ using System.Windows.Threading;
 
 namespace Kor.Operations.App.NetworkOps;
 
-public partial class NetworkOpsCommandCenterWindow : Window
+public partial class NetworkOpsCommandCenterWindow : Window, INetworkTabHost
 {
     // Same cadence as the FileSync Command Center: fresh enough to watch a check land, light on the service.
     private static readonly TimeSpan AutoRefreshInterval = TimeSpan.FromSeconds(15);
@@ -157,7 +157,23 @@ public partial class NetworkOpsCommandCenterWindow : Window
     // The To-clear worklist is a tab, created the first time it is opened (it reads the fleet on its own Loaded).
     private void ToClearTab_Checked(object sender, RoutedEventArgs e) => ToClearHost.Content ??= new NetworkOpsToClearView(_vm.Client);
 
-    private void Network_Click(object sender, RoutedEventArgs e) => _nav.OpenNetwork();
+    // The Network port map is a tab too (folded from a standalone window 2026-10-04). It is created the first time it is
+    // shown; it reads the map on its own Loaded. Created with the navigator so a port tile still opens the one device page.
+    private NetworkOpsNetworkView EnsureNetwork()
+        => (NetworkOpsNetworkView)(NetworkHost.Content ??= new NetworkOpsNetworkView(_vm.Client, _nav));
+
+    private void NetworkTab_Checked(object sender, RoutedEventArgs e) => EnsureNetwork();
+
+    /// <summary>INetworkTabHost: the navigator drives the console here -- a device page's "Open full view", a part's
+    /// "network:..." link. Bring the console forward, switch to the Network tab, and focus the switch/port when given.</summary>
+    public void ShowNetwork(string? focusMac, int? port)
+    {
+        if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
+        Activate();
+        var view = EnsureNetwork();
+        NetworkTab.IsChecked = true;
+        if (focusMac is { Length: > 0 }) view.FocusOn(focusMac, port);   // before the map loads this is kept and applied on load
+    }
 
     /// <summary>Ask Claude, on the selected PC or rack device when there is one (the ask box then says it is about that machine).</summary>
     private void AskClaude_Click(object sender, RoutedEventArgs e)
