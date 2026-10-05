@@ -59,7 +59,11 @@ internal sealed class ApiHost(IOptions<NetworkOpsOptions> options, NetworkOpsSto
         builder.Services.AddSingleton<Agents.IAgentDirectory>(store);
         // The MCP server: live, structured NetworkOps context for a Claude session over HTTP, behind the same Entra auth
         // as the rest of the API (mapped below). One authenticated, audited endpoint on APP01; the DB credential stays here.
-        builder.Services.AddMcpServer().WithHttpTransport().WithTools<Mcp.NetworkOpsMcpTools>();
+        // HttpContextAccessor so an action tool records WHO acted (the token's owner), for the audit.
+        builder.Services.AddHttpContextAccessor();
+        builder.Services.AddMcpServer().WithHttpTransport()
+            .WithTools<Mcp.NetworkOpsMcpTools>()      // reads
+            .WithTools<Mcp.NetworkOpsMcpActions>();   // audited actions
         builder.WebHost.ConfigureKestrel(k =>
         {
             k.AddServerHeader = false;
