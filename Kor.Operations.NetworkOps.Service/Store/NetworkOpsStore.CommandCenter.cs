@@ -209,6 +209,22 @@ internal sealed partial class NetworkOpsStore
         return (long)(await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false))!;
     }
 
+    /// <summary>Which (device, fix kind) pairs have an action IN FLIGHT (Requested or Running), as "&lt;deviceId&gt;|&lt;kind&gt;".
+    /// The To-clear worklist uses it to show an issue as already "fixing" -- real state, so it is not re-queued.</summary>
+    public async Task<IReadOnlySet<string>> RunningActionTargetsAsync(CancellationToken ct)
+    {
+        var set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        try
+        {
+            await using var c = await OpenAsync(ct).ConfigureAwait(false);
+            await using var cmd = Cmd(c, "SELECT DeviceId, Kind FROM NetworkOps.Actions WHERE Status IN ('Requested', 'Running');");
+            await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+            while (await r.ReadAsync(ct).ConfigureAwait(false)) set.Add($"{r.GetInt32(0)}|{r.GetString(1)}");
+        }
+        catch (SqlException ex) when (MissingObject(ex, "Actions")) { }
+        return set;
+    }
+
     /// <summary>A refused request is recorded too: the audit shows what was attempted, not just what ran.</summary>
     public async Task<long> RecordRefusedActionAsync(int deviceId, string kind, string by, string requestJson, string why, CancellationToken ct)
     {

@@ -25,7 +25,7 @@ public sealed class ToClearTests
     private static FleetFinding F(long id, string device, string rule, Severity sev, DateTime? acked = null, DateTime? snoozed = null)
         => new(id, device, rule, sev, rule + " title", "evidence", Now.AddDays(-1), Now, acked, acked is null ? null : "ian", snoozed, null);
 
-    private static ToClearView Build()
+    private static ToClearView Build(IReadOnlySet<string>? running = null)
     {
         var devices = new List<DeviceRow> { new(1, "KOR-1", null, null), new(2, "KOR-2", null, null), new(3, "KOR-3", null, null) };
         var findings = new List<FleetFinding>
@@ -39,7 +39,7 @@ public sealed class ToClearTests
             F(16, "KOR-1", "wmi-broken", Severity.Warning, snoozed: Now.AddDays(1)),   // parked (snoozed into the future)
         };
         var snap = new FleetSnapshot(devices, new Dictionary<string, IReadOnlyDictionary<string, string>>(), findings, [], null);
-        return ToClear.Build([snap], Now);
+        return ToClear.Build([snap], running ?? new HashSet<string>(), Now);
     }
 
     [Fact]
@@ -86,5 +86,23 @@ public sealed class ToClearTests
         var mailbox = v.Open.Single(i => i.RuleKey == "mailbox-near-limit:x");
         Assert.Null(mailbox.Fix);                        // only the escape hatch applies -> not "the fix"
         Assert.False(mailbox.OneClick);
+    }
+
+    [Fact]
+    public void An_issue_with_its_fix_in_flight_on_any_machine_is_running()
+    {
+        // free-disk-space already queued on KOR-1 (deviceId 1) -> the whole low-disk issue reads as "fixing".
+        var v = Build(new HashSet<string> { "1|free-disk-space" });
+        Assert.True(v.Open.Single(i => i.RuleKey == "low-disk:C").Running);
+        Assert.False(v.Open.Single(i => i.RuleKey == "not-restarted").Running);   // restart-pc not in flight
+    }
+
+    [Fact]
+    public void An_unrelated_action_in_flight_does_not_mark_an_issue_running()
+    {
+        // An action of a DIFFERENT kind on an affected machine is not this issue's fix.
+        var v = Build(new HashSet<string> { "1|restart-pc" });
+        Assert.False(v.Open.Single(i => i.RuleKey == "low-disk:C").Running);
+        Assert.True(v.Open.Single(i => i.RuleKey == "not-restarted").Running);    // restart-pc IS not-restarted's fix, on KOR-1
     }
 }

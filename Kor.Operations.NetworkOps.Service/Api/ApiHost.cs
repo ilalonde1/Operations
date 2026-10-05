@@ -279,7 +279,10 @@ internal sealed class ApiHost(IOptions<NetworkOpsOptions> options, NetworkOpsSto
         // ---- To clear (the "path to all-green" worklist): every LIVE finding across the PCs and the rack, grouped by issue,
         // ranked, with the fix that clears each. Composed in Core from the same snapshot the Command Center reads.
         api.MapGet("/to-clear", async (NetworkOpsStore s, CancellationToken ct) =>
-            Results.Ok(Core.Learning.ToClear.Build([await s.FleetSnapshotAsync(ct), await s.FleetSnapshotAsync(ct, rack: true)], DateTime.UtcNow)));
+            Results.Ok(Core.Learning.ToClear.Build(
+                [await s.FleetSnapshotAsync(ct), await s.FleetSnapshotAsync(ct, rack: true)],
+                await s.RunningActionTargetsAsync(ct),
+                DateTime.UtcNow)));
         // Fix one issue on every machine that has it ("Fix on all N"): the generic fleet fan-out for any catalog fix. Each
         // machine is validated and queued exactly as the single-machine POST above, so a disruptive fix on an active PC is
         // refused per-machine unless confirmed, and every run (and refusal) is audited.

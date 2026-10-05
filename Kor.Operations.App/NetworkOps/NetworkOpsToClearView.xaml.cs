@@ -38,6 +38,12 @@ public sealed class ToClearRow
     // Offer the fix only when it can run without asking for an input (the ruleKey carries the param when it needs one).
     public bool CanFix => Issue.Fix is { } f && (f.ParamLabel is null || !string.IsNullOrEmpty(f.PrefilledParam));
     public string FixLabel => Issue.Fix is not { } f ? "" : Issue.Count == 1 ? f.Title : $"{f.Title} · all {Issue.Count}";
+
+    // Set once a fix is queued on this issue: the button is replaced by a "running" note until the finding clears.
+    public string? Fixing { get; set; }
+    public bool ShowFix => CanFix && Fixing is null;
+    public bool ShowFixing => Fixing is not null;
+    public string FixingText => "⏳ " + Fixing;
     public string FixHint => Issue.Fix is not { } f
         ? "No one-click fix — Ask Claude, or hands-on."
         : !CanFix ? $"{f.Title} needs an input — open a machine to run it."
@@ -52,32 +58,57 @@ public partial class NetworkOpsToClearView : UserControl
     private static readonly ILogger Log = Serilog.Log.ForContext<NetworkOpsToClearView>();
     private readonly NetworkOpsClient _client;
     private readonly ObservableCollection<ToClearRow> _rows = new();
+    private readonly System.Collections.Generic.Dictionary<string, string> _fixing = new(StringComparer.OrdinalIgnoreCase);   // ruleKey -> running note, until the finding clears
+    private System.Windows.Threading.DispatcherTimer? _auto;
 
     public NetworkOpsToClearView(NetworkOpsClient client)
     {
         _client = client;
         InitializeComponent();
         IssueList.ItemsSource = _rows;
-        Loaded += async (_, _) => await ReloadAsync();
+        Loaded += async (_, _) => { StartAuto(); await ReloadAsync(); };
+        Unloaded += (_, _) => _auto?.Stop();
+    }
+
+    // A fix lands server-side, runs, then the service re-checks -- minutes later. Refresh on a timer so cleared issues
+    // drop off on their own, but only while this tab is actually showing (it is a visibility-toggled panel, never unloaded).
+    private void StartAuto()
+    {
+        if (_auto is not null) return;
+        _auto = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(20) };
+        _auto.Tick += async (_, _) => { if (IsVisible) await ReloadAsync(); };
+        _auto.Start();
     }
 
     private async Task ReloadAsync()
     {
         try
         {
-            Status("Reading the fleet…");
             var v = await _client.GetToClearAsync(CancellationToken.None).ConfigureAwait(true);
+            // A "fixing" mark lives only while its issue is still open: a cleared one drops off the list and stops fixing.
+            var openKeys = new System.Collections.Generic.HashSet<string>(v.Open.Select(i => i.RuleKey), StringComparer.OrdinalIgnoreCase);
+            foreach (var k in _fixing.Keys.Where(k => !openKeys.Contains(k)).ToList()) _fixing.Remove(k);
             _rows.Clear();
-            foreach (var i in v.Open) _rows.Add(new ToClearRow { Issue = i });
+            var fixingCount = 0;
+            foreach (var i in v.Open)
+            {
+                // What we just queued (specific note) wins; otherwise the SERVER tells us a fix is in flight -- so a fix
+                // started last session, or from another machine, still shows as "fixing" here.
+                var note = _fixing.TryGetValue(i.RuleKey, out var f) ? f
+                    : i.Running ? "running on the affected machines" : null;
+                if (note is not null) fixingCount++;
+                _rows.Add(new ToClearRow { Issue = i, Fixing = note });
+            }
             var green = v.Issues == 0;
+            var fixingNote = fixingCount > 0 ? $" · {fixingCount} fixing" : "";
             HeadlineText.Text = green ? "All green" : v.Issues.ToString();
             HeadlineDetail.Text = green
                 ? (v.Parked > 0 ? $"Nothing live to clear. {v.Parked} parked (acknowledged or snoozed)." : "Nothing to clear.")
-                : $"issue{(v.Issues == 1 ? "" : "s")} to clear · {v.OneClickIssues} one-click · {v.Parked} parked";
+                : $"issue{(v.Issues == 1 ? "" : "s")} to clear · {v.OneClickIssues} one-click · {v.Parked} parked{fixingNote}";
             HeadlineAccent.Fill = green ? NetworkOpsBrushes.Healthy
                 : v.Open[0].Severity == Severity.Critical ? NetworkOpsBrushes.Critical
                 : NetworkOpsBrushes.Attention;
-            Status(green ? "All green 🎉" : $"{v.Issues} to clear across the fleet");
+            Status($"Updated {DateTime.Now:HH:mm:ss} · {(green ? "all green 🎉" : $"{v.Issues} to clear{fixingNote}")} · refreshes every 20s");
         }
         catch (Exception ex)
         {
@@ -89,6 +120,7 @@ public partial class NetworkOpsToClearView : UserControl
     private async void Fix_Click(object sender, RoutedEventArgs e)
     {
         if ((sender as FrameworkElement)?.DataContext is not ToClearRow row || row.Issue.Fix is not { } fix) return;
+        if (sender is Button btn) btn.IsEnabled = false;   // instant feedback; stops a double-fire while it queues
         var ids = row.Issue.Machines.Select(m => m.DeviceId).Where(x => x > 0).Distinct().ToList();
         if (ids.Count == 0) return;
         try
@@ -103,7 +135,14 @@ public partial class NetworkOpsToClearView : UserControl
             var queued = outcomes.Count(o => o.ActionId is not null);
             var refused = outcomes.Count(o => o.Refused is not null);
             Log.Information("To clear: {Fix} on {Count} -> queued {Queued}, refused {Refused}", fix.Id, ids.Count, queued, refused);
-            Status($"{fix.Title}: queued on {queued}{(refused > 0 ? $", {refused} refused/held" : "")}. A re-check shows whether it cleared.");
+            if (queued > 0)
+            {
+                // Mark the issue "running" until it clears (the service re-checks after each fix). Disruptive fixes restart.
+                _fixing[row.Issue.RuleKey] = $"queued on {queued} — running ({(fix.Disruptive ? "restart pending" : "a few min")})";
+                Status($"Queued {fix.Title} on {queued} machine(s){(refused > 0 ? $"; {refused} held (someone's using them — open the PC to confirm)" : "")}. Running now — the list clears each as it's fixed and re-checked (auto-refreshing).");
+            }
+            else
+                Status($"{fix.Title}: nothing queued ({refused} held/refused). Open a machine to confirm, or Ask Claude.");
             await ReloadAsync().ConfigureAwait(true);
         }
         catch (Exception ex)

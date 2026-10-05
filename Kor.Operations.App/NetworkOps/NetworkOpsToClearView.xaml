@@ -69,10 +69,15 @@
                                         <TextBlock Text="{Binding FixHint}" Style="{StaticResource Ops.Caption}" Margin="0,4,0,0"/>
                                     </StackPanel>
 
-                                    <StackPanel Grid.Column="2" VerticalAlignment="Center" MinWidth="150">
+                                    <StackPanel Grid.Column="2" VerticalAlignment="Center" MinWidth="160">
                                         <Button Content="{Binding FixLabel}" Style="{StaticResource Ops.Primary}" Click="Fix_Click" Margin="0,0,0,6"
-                                                Visibility="{Binding CanFix, Converter={StaticResource BoolToVis}}"
-                                                ToolTip="Queue this fix on every machine that has the issue. Each run is audited; the list refreshes after."/>
+                                                Visibility="{Binding ShowFix, Converter={StaticResource BoolToVis}}"
+                                                ToolTip="Queue this fix on every machine that has the issue. Each run is audited; this list clears each as it's fixed and re-checked."/>
+                                        <Border Background="#ECF6EC" BorderBrush="#BFE3BF" BorderThickness="1" CornerRadius="5" Padding="9,5" Margin="0,0,0,6"
+                                                Visibility="{Binding ShowFixing, Converter={StaticResource BoolToVis}}"
+                                                ToolTip="This fix is queued and running on the affected machines. The issue drops off once they clear and re-check.">
+                                            <TextBlock Text="{Binding FixingText}" FontSize="12" Foreground="#166534" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                                        </Border>
                                         <Button Content="Ask Claude" Click="Ask_Click" Margin="0,0,0,6"
                                                 ToolTip="Open a Claude prompt for this issue (on the first machine): investigate and clear it with everything NetworkOps knows."/>
                                     </StackPanel>

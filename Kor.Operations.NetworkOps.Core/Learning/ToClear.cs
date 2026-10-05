@@ -22,6 +22,9 @@ public sealed record ToClearIssue(string RuleKey, string Title, Severity Severit
     public int Count => Machines.Count;
     /// <summary>Clears with a single click: a fix exists, it needs no input, and it does not interrupt anyone.</summary>
     public bool OneClick => Fix is { Disruptive: false, ParamLabel: null };
+    /// <summary>The fix is already in flight (queued or running) on at least one affected machine -- so the view shows it
+    /// as "fixing" rather than offering to queue it again. True only when a catalog fix exists for the issue.</summary>
+    public bool Running { get; init; }
 }
 
 /// <summary>The worklist and the distance to green: how many issues are open, across how many machines, how many clear in
@@ -31,8 +34,9 @@ public sealed record ToClearView(int Issues, int Machines, int OneClickIssues, i
 public static class ToClear
 {
     /// <summary>Build the worklist from one or more fleet snapshots (PCs and the rack). <paramref name="nowUtc"/> decides
-    /// which snoozes are still in the future (parked) vs expired (live again).</summary>
-    public static ToClearView Build(IEnumerable<FleetSnapshot> snapshots, DateTime nowUtc)
+    /// which snoozes are still in the future (parked) vs expired (live again). <paramref name="runningTargets"/> is the set
+    /// of "&lt;deviceId&gt;|&lt;fixKind&gt;" pairs with an action already in flight, so an issue being fixed shows as "fixing".</summary>
+    public static ToClearView Build(IEnumerable<FleetSnapshot> snapshots, IReadOnlySet<string> runningTargets, DateTime nowUtc)
     {
         var deviceByName = new Dictionary<string, DeviceRow>(StringComparer.OrdinalIgnoreCase);
         var live = new List<FleetFinding>();
@@ -59,7 +63,9 @@ public static class ToClear
                 var fix = FixCatalog.For(g.Key).FirstOrDefault(a => a.Id != FixCatalog.RunCommand);   // the primary fix; the escape hatch (run-command) is not "the fix"
                 var option = fix is null ? null
                     : new FixOption(fix.Id, fix.Title, fix.Explain, fix.Disruptive, fix.ParamLabel, FixCatalog.ParamFromFinding(fix, g.Key));
-                return new ToClearIssue(g.Key, worst.Title, worst.Severity, worst.Evidence, g.Min(f => f.FirstSeenUtc), machines, option);
+                // Already being fixed when that fix is in flight on any machine the issue is open on.
+                var running = fix is not null && machines.Any(m => runningTargets.Contains($"{m.DeviceId}|{fix.Id}"));
+                return new ToClearIssue(g.Key, worst.Title, worst.Severity, worst.Evidence, g.Min(f => f.FirstSeenUtc), machines, option) { Running = running };
             })
             .OrderByDescending(i => i.Severity).ThenByDescending(i => i.Count).ThenBy(i => i.FirstSeenUtc)
             .ToList();
