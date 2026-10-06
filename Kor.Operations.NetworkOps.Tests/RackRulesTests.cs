@@ -242,7 +242,7 @@ public sealed class RackRulesTests
         while (dir is not null && !Directory.Exists(Path.Combine(dir.FullName, "Kor.Operations.NetworkOps.Core", "Rack"))) dir = dir.Parent;
         Assert.NotNull(dir);
         var families = Directory.GetFiles(Path.Combine(dir!.FullName, "Kor.Operations.NetworkOps.Core", "Rack"), "*.cs")
-            .SelectMany(f => Regex.Matches(File.ReadAllText(f), @"Raise\(\$?""([a-z0-9.\-]+)").Select(m => m.Groups[1].Value))
+            .SelectMany(f => Regex.Matches(File.ReadAllText(f), @"(?:Raise|new Finding)\(\$?""([a-z0-9.\-]+)").Select(m => m.Groups[1].Value))
             .Append(RackResult.UnreachableRule)
             .Distinct().ToList();
         Assert.True(families.Count >= 40, $"only {families.Count} families found: the scan is broken, not the rules");
