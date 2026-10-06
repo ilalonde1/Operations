@@ -15,16 +15,21 @@ namespace Kor.Operations.NetworkOps.Core.Rack;
 ///   a production VM off, or Tools not running on it (the shutdown chain needs Tools)
 ///   maintenance mode                       -- a cleanly-shut host comes back IN maintenance mode (2026-09-25)
 ///
-/// Class 2 ("configured right, not just up"): every powered-on VM on VMXNET3 (esxi.vm-nic-legacy) and no iSCSI path that
-/// keeps dropping (esxi.iscsi-flapping, from the host's own vmkernel.log). DOES NOT COVER which storage portal/vmk the
-/// ACTIVE path uses (the 1G-management vs 10G-storage fault (e) needs the iSCSI session detail -- a separate rule), nor a
-/// NIC on a powered-OFF VM. A SAME-CLASS FAULT IT WOULD MISS: a VM on VMXNET3 but a legacy SCSI controller, and flapping
-/// that happened before the current vmkernel.log rotated.
+/// Class 2 ("configured right, not just up"): every powered-on VM on VMXNET3 (esxi.vm-nic-legacy); no iSCSI path that keeps
+/// dropping (esxi.iscsi-flapping, from the host's own vmkernel.log); and every ACTIVE path to the SAN running over the
+/// dedicated 192.168.200.x storage network, not the 1G management subnet (esxi.iscsi-wrong-path). DOES NOT COVER a NIC on a
+/// powered-OFF VM, a legacy SCSI controller, a STANDBY (State=off) path's subnet, or the storage MTU directly. A SAME-CLASS
+/// FAULT IT WOULD MISS: a VM on VMXNET3 but an old SCSI controller; flapping that rotated out of the current log; and an
+/// active path on a third subnet that is not the management one (only the 192.168.200.x-or-flag test is applied).
 /// </summary>
 public static class EsxiRules
 {
     /// <summary>iscsivmk_StopConnection events in the current vmkernel.log above this = a flapping path (Class 2 f).</summary>
     public const int IscsiFlapThreshold = 8;
+
+    /// <summary>The dedicated storage network for the SAN (MTU 9000). An ACTIVE iSCSI path whose connection is NOT on it is
+    /// on the 1G management subnet instead -- the wrong-path fault (Class 2 e).</summary>
+    public const string StorageSubnetPrefix = "192.168.200.";
 
     public static string Script
     {
@@ -130,6 +135,20 @@ public static class EsxiRules
             if (drops >= IscsiFlapThreshold) b.Raise("esxi.iscsi-flapping", Severity.Warning, "An iSCSI connection keeps dropping",
                 $"{drops} iscsivmk_StopConnection events in the current vmkernel.log -- a path is flapping (a bad cable or NIC, a standby portal answering, or an MTU / port-binding mismatch)");
         }
+
+        // Class 2 (e): an ACTIVE path to the SAN LUN must run over the dedicated storage network (192.168.200.x / MTU 9000),
+        // not the 1G management subnet. .16 ran its active path over 192.168.1.x before 6 Oct and backups ran at half speed.
+        if (h.TryGetProperty("iscsiPaths", out var ips) && ips.ValueKind == JsonValueKind.Array)
+            foreach (var p in ips.EnumerateArray())
+            {
+                if ((S(p, "state") ?? "") != "active") continue;   // a disabled/standby path on the management net is fine
+                var local = S(p, "local") ?? ""; var remote = S(p, "remote") ?? "";
+                var offStorage = (local.Length > 0 && !local.StartsWith(StorageSubnetPrefix, StringComparison.Ordinal))
+                              || (remote.Length > 0 && !remote.StartsWith(StorageSubnetPrefix, StringComparison.Ordinal));
+                if (offStorage)
+                    b.Raise($"esxi.iscsi-wrong-path:{S(p, "runtime")}", Severity.Warning, "SAN traffic is on the wrong network",
+                        $"active path {S(p, "runtime")} runs {(local.Length > 0 ? local : "?")} -> {(remote.Length > 0 ? remote : "?")}, not the {StorageSubnetPrefix}x storage network (MTU 9000): it is using the 1G management NIC and will be slow");
+            }
 
         var cpu = h.GetProperty("cpuMhzTotal").GetDouble() is var t && t > 0 ? 100 * h.GetProperty("cpuMhzUsed").GetDouble() / t : 0;
         var mem = 100.0 * h.GetProperty("memMbUsed").GetDouble() / Math.Max(1, h.GetProperty("memMbTotal").GetDouble());

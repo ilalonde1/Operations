@@ -171,6 +171,10 @@ public static class Knowledge
             ["A standby/wrong portal answering and resetting", "A bad cable, NIC or SFP on the storage path", "An MTU or port-binding mismatch"],
             ["Check the host's iSCSI paths and port binding (esxcli iscsi session / storage core path), the storage NICs, and the SAN side"],
             "Storage I/O stalls on each drop; backups and VMs on the SAN slow or pause."),
+        E("esxi.iscsi-wrong-path", "The active path to the SAN runs over the 1G management network instead of the dedicated 10G storage network.",
+            ["No iSCSI port binding, so the path selection used the management vmkernel", "A standby/management portal left selectable (the PSP picked it)"],
+            ["Bind iSCSI to the storage vmkernel only, and disable the path on the management portal (esxcli storage core path set --state off), so the active path uses 192.168.200.x / MTU 9000"],
+            "Storage runs at 1G line rate -- backups and VM I/O at roughly half speed (.16 went 112 -> 172 MB/s once fixed)."),
 
         E("syno.system", "The Synology reports a system failure.", ["A hardware fault"], ["Open DSM > Info Center; contact Synology"], "The box may stop serving storage."),
         E("syno.power", "A power supply on the Synology has failed or lost power.",

@@ -22,6 +22,23 @@ public sealed class EsxiClass2Tests
         $$"""{"version":"VMware ESXi 7.0.2 build-17867351","maintenanceMode":false,"sensors":[],"datastores":[],"cpuMhzTotal":10000,"cpuMhzUsed":500,"memMbUsed":1000,"memMbTotal":10000,"iscsiDrops":{{iscsiDrops}},"vms":{{vms}}}""",
         [], At);
 
+    private static RackResult EvalPaths(string iscsiPaths) => EsxiRules.Evaluate(
+        $$"""{"version":"VMware ESXi 7.0.2 build-17867351","maintenanceMode":false,"sensors":[],"datastores":[],"cpuMhzTotal":10000,"cpuMhzUsed":500,"memMbUsed":1000,"memMbTotal":10000,"iscsiDrops":0,"iscsiPaths":{{iscsiPaths}},"vms":[]}""",
+        [], At);
+
+    [Fact]
+    public void An_active_san_path_on_the_management_subnet_is_wrong_the_storage_subnet_is_fine()
+    {
+        // The broken .16 state (pre 6-Oct): the active path's working connection is on 192.168.1.x (management).
+        var bad = EvalPaths("""[{"runtime":"vmhba64:C2:T0:L1","state":"active","local":"192.168.1.16","remote":"192.168.1.12"},{"runtime":"vmhba64:C1:T0:L1","state":"active","local":"192.168.200.16","remote":"192.168.200.13"}]""");
+        Assert.Single(bad.Findings, f => f.RuleKey == "esxi.iscsi-wrong-path:vmhba64:C2:T0:L1" && f.Severity == Severity.Warning);
+        Assert.DoesNotContain(bad.Findings, f => f.RuleKey == "esxi.iscsi-wrong-path:vmhba64:C1:T0:L1");   // the storage-subnet path is fine
+
+        // The fixed state (real .16 now): the management path is State=off, the active ones are on storage -> nothing.
+        var good = EvalPaths("""[{"runtime":"vmhba64:C2:T0:L1","state":"off","local":"192.168.1.16","remote":"192.168.1.12"},{"runtime":"vmhba64:C1:T0:L1","state":"active","local":"192.168.200.16","remote":"192.168.200.13"},{"runtime":"vmhba64:C3:T0:L1","state":"active","local":"192.168.200.16","remote":"192.168.200.12"}]""");
+        Assert.DoesNotContain(good.Findings, f => f.RuleKey.StartsWith("esxi.iscsi-wrong-path"));
+    }
+
     [Fact]
     public void A_legacy_nic_on_a_powered_on_vm_is_flagged_a_powered_off_one_is_not()
     {

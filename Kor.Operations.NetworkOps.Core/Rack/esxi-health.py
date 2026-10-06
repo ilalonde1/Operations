@@ -1,7 +1,7 @@
 # KOR NetworkOps -- one read-only health snapshot of an ESXi host, as JSON on stdout. Runs ON the host
 # (python + pyVmomi ship with ESXi 7), logged in through hostd with a local ticket: no password exists
 # anywhere. NetworkOps (Rack/EsxiRules) turns it into facts, metrics and findings. Changes NOTHING.
-import json, ssl, time
+import json, ssl, time, subprocess
 from pyVmomi import vim, SoapStubAdapter
 
 si = vim.ServiceInstance("ServiceInstance", SoapStubAdapter(host="localhost", port=443, path="/sdk", sslContext=ssl._create_unverified_context()))
@@ -47,9 +47,50 @@ try:
 except (IOError, OSError):
     iscsi_drops = -1
 
+# Class 2 (e): the iSCSI paths to the SAN LUN, with the subnet each ACTIVE path's working connection runs on, so the rule
+# can check the active path uses the dedicated storage network (192.168.200.x / MTU 9000), not the 1G management subnet.
+def _esxcli(*a):
+    try:
+        return subprocess.check_output(["esxcli"] + list(a), universal_newlines=True, stderr=subprocess.DEVNULL, timeout=20)
+    except Exception:
+        return ""
+
+
+def _blocks(text):
+    out_b, cur = [], {}
+    for ln in text.splitlines():
+        if not ln.strip():
+            if cur:
+                out_b.append(cur)
+                cur = {}
+            continue
+        if ":" in ln:
+            k, _, v = ln.partition(":")
+            cur[k.strip()] = v.strip()
+    if cur:
+        out_b.append(cur)
+    return out_b
+
+
+_conns = {}
+for _b in _blocks(_esxcli("iscsi", "session", "connection", "list")):
+    _isid = _b.get("ISID")
+    if _isid:
+        _conns[_isid] = (_b.get("LocalAddress", ""), _b.get("RemoteAddress", ""))
+iscsi_paths = []
+for _b in _blocks(_esxcli("storage", "core", "path", "list")):
+    if _b.get("Transport") != "iscsi":
+        continue
+    _ttd = _b.get("TargetTransportDetails", "")
+    _isid = next((w.split("=", 1)[1] for w in _ttd.split() if w.startswith("Session=")), "")
+    _lr = _conns.get(_isid, ("", ""))
+    iscsi_paths.append({"runtime": _b.get("RuntimeName", ""), "device": _b.get("Device", ""),
+                        "state": _b.get("State", ""), "local": _lr[0], "remote": _lr[1]})
+
 out = {
     "name": h.name,
     "iscsiDrops": iscsi_drops,
+    "iscsiPaths": iscsi_paths,
     "version": c.about.fullName,
     "vendor": h.hardware.systemInfo.vendor,
     "model": h.hardware.systemInfo.model,
