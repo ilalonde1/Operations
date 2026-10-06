@@ -283,6 +283,23 @@ public sealed class NetworkMapTests(ITestOutputHelper output)
         Assert.Empty(NetworkFindings.LinkFaults(map));
     }
 
+    [Theory]
+    [InlineData(85, "good")]       // Canon C5840 on KOR-SW01 port 44, 2026-10-06: clean 1G full-duplex link, UniFi said 85%
+    [InlineData(80, "good")]
+    [InlineData(79, "suspect")]
+    [InlineData(69, "bad")]
+    public void UniFi_experience_in_the_80s_raises_nothing(int satisfaction, string health)
+    {
+        const long now = 1_700_000_000;
+        const string swMac = "de:ad:be:ef:00:02", pcMac = "34:9f:7b:59:9d:1a";
+        var sw = new UniFiDev(swMac, "KOR-SW01", "US48", "usw", "192.168.1.9", null, [new UniFiPort(44, 1000, false, pcMac, "192.168.1.8", now)]);
+        var live = new UniFiLive(now, [new LiveDevice(swMac, "KOR-SW01", 1, [new LivePort(44, true, 1000, null, null, null, FullDuplex: true, Errors: 2, Satisfaction: satisfaction)])], []);
+        var map = NetworkMaps.Build(new UniFiSite(now, [sw], []), [new FleetPc("KOR-TEST", [pcMac], null, null)], [],
+            new KnownNames(new Dictionary<string, string>(), new Dictionary<string, string>()), live);
+        Assert.Equal(health, map.PortOf("KOR-TEST")!.Value.Port.Health);
+        Assert.Equal(health == "good" ? 0 : 1, NetworkFindings.LinkFaults(map).Count());
+    }
+
     [Fact]
     public void A_live_read_with_junk_numbers_degrades_instead_of_aborting_the_refresh()
     {

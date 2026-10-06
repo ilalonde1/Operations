@@ -424,7 +424,9 @@ public sealed record NetPort(int Number, int SpeedMbps, bool Poe, string Kind, N
             if (Up != true) return "";   // no live read this cycle
             if (FullDuplex == false) return "bad";                       // half-duplex: cable/jack/NIC fault
             if (Satisfaction is { } s and < 70) return "bad";
-            if (Satisfaction is { } s2 and < 90) return "suspect";
+            // 80s are UniFi noise, not a fault: KOR-SW01 port 44 (Canon C5840) sat at 85% for days on a 1G full-duplex link
+            // with 2 lifetime errors and 0 dropped, the only one of 145 scored ports under 90.
+            if (Satisfaction is { } s2 and < 80) return "suspect";
             return "good";
         }
     }
