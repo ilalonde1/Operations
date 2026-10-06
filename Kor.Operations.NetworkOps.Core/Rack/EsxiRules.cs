@@ -14,9 +14,18 @@ namespace Kor.Operations.NetworkOps.Core.Rack;
 ///   datastore low / inaccessible           -- every VM lives on the UC3200 datastore
 ///   a production VM off, or Tools not running on it (the shutdown chain needs Tools)
 ///   maintenance mode                       -- a cleanly-shut host comes back IN maintenance mode (2026-09-25)
+///
+/// Class 2 ("configured right, not just up"): every powered-on VM on VMXNET3 (esxi.vm-nic-legacy) and no iSCSI path that
+/// keeps dropping (esxi.iscsi-flapping, from the host's own vmkernel.log). DOES NOT COVER which storage portal/vmk the
+/// ACTIVE path uses (the 1G-management vs 10G-storage fault (e) needs the iSCSI session detail -- a separate rule), nor a
+/// NIC on a powered-OFF VM. A SAME-CLASS FAULT IT WOULD MISS: a VM on VMXNET3 but a legacy SCSI controller, and flapping
+/// that happened before the current vmkernel.log rotated.
 /// </summary>
 public static class EsxiRules
 {
+    /// <summary>iscsivmk_StopConnection events in the current vmkernel.log above this = a flapping path (Class 2 f).</summary>
+    public const int IscsiFlapThreshold = 8;
+
     public static string Script
     {
         get
@@ -96,7 +105,7 @@ public static class EsxiRules
         }
 
         var vms = h.GetProperty("vms").EnumerateArray().Select(v => (Name: v.GetProperty("name").GetString() ?? "", Power: v.GetProperty("power").GetString() ?? "",
-            Tools: S(v, "tools") ?? "")).ToList();
+            Tools: S(v, "tools") ?? "", Nics: v.TryGetProperty("nics", out var vn) ? vn.EnumerateArray().Select(x => x.GetString() ?? "").ToList() : [])).ToList();
         var on = vms.Count(v => v.Power == "poweredOn");
         b.Metric("vms.running", on);
         foreach (var v in vms.Where(v => productionVms.Contains(v.Name, StringComparer.OrdinalIgnoreCase)))
@@ -104,6 +113,22 @@ public static class EsxiRules
             if (v.Power != "poweredOn") b.Raise($"esxi.vm-off:{v.Name}", Severity.Critical, $"{v.Name} is not running", $"power state {v.Power}");
             else if (v.Tools != "guestToolsRunning") b.Raise($"esxi.vm-tools:{v.Name}", Severity.Warning, $"VMware Tools not running in {v.Name}",
                 $"tools {v.Tools}: the UPS shutdown chain cannot shut it down cleanly without them");
+        }
+
+        // Class 2 (d): every POWERED-ON VM should use VMXNET3. E1000/E1000e are legacy and throttle -- Kor-BK01 ran E1000e
+        // and capped backups near 1G before 6 Oct 2026. A powered-off VM (Kor-Lab01_proxy) is not judged.
+        foreach (var v in vms.Where(v => v.Power == "poweredOn" && v.Nics.Any(t => t.Length > 0 && !t.Equals("VirtualVmxnet3", StringComparison.OrdinalIgnoreCase))))
+        {
+            var legacy = string.Join(", ", v.Nics.Where(t => t.Length > 0 && !t.Equals("VirtualVmxnet3", StringComparison.OrdinalIgnoreCase)).Select(t => t.Replace("Virtual", "")));
+            b.Raise($"esxi.vm-nic-legacy:{v.Name}", Severity.Warning, $"{v.Name} has a legacy virtual NIC", $"{legacy}: switch it to VMXNET3 for full throughput (an E1000e caps Veeam near 1G)");
+        }
+
+        // Class 2 (f): a path to the SAN that keeps dropping -- iscsivmk_StopConnection in the current (recent) vmkernel.log.
+        if (h.TryGetProperty("iscsiDrops", out var idr) && idr.TryGetInt32(out var drops) && drops >= 0)
+        {
+            b.Metric("iscsi.drops", drops);
+            if (drops >= IscsiFlapThreshold) b.Raise("esxi.iscsi-flapping", Severity.Warning, "An iSCSI connection keeps dropping",
+                $"{drops} iscsivmk_StopConnection events in the current vmkernel.log -- a path is flapping (a bad cable or NIC, a standby portal answering, or an MTU / port-binding mismatch)");
         }
 
         var cpu = h.GetProperty("cpuMhzTotal").GetDouble() is var t && t > 0 ? 100 * h.GetProperty("cpuMhzUsed").GetDouble() / t : 0;

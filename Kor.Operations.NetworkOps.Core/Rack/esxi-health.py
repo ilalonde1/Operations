@@ -29,8 +29,27 @@ if hw is not None:
             for s in group or []:
                 sensors.append({"name": s.name, "type": "hardware", "state": s.status.key if s.status else "unknown"})
 
+# Class 2 (d): each VM's virtual NIC adapter class (VirtualVmxnet3 is the one that performs; VirtualE1000/E1000e are legacy).
+def vm_nics(v):
+    try:
+        devs = v.config.hardware.device if v.config and v.config.hardware else []
+        return [type(d).__name__ for d in devs if isinstance(d, vim.vm.device.VirtualEthernetCard)]
+    except Exception:
+        return []
+
+
+# Class 2 (f): repeated iSCSI connection drops. The host reads its own /var/log/vmkernel.log (the current, un-rotated one --
+# inherently recent); a working path that flaps logs iscsivmk_StopConnection on every drop. -1 = the log could not be read.
+iscsi_drops = -1
+try:
+    with open("/var/log/vmkernel.log", errors="ignore") as lf:
+        iscsi_drops = sum(1 for line in lf if "iscsivmk_StopConnection" in line)
+except (IOError, OSError):
+    iscsi_drops = -1
+
 out = {
     "name": h.name,
+    "iscsiDrops": iscsi_drops,
     "version": c.about.fullName,
     "vendor": h.hardware.systemInfo.vendor,
     "model": h.hardware.systemInfo.model,
