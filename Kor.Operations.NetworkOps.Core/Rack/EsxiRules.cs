@@ -139,9 +139,12 @@ public static class EsxiRules
         // Class 2 (e): an ACTIVE path to the SAN LUN must run over the dedicated storage network (192.168.200.x / MTU 9000),
         // not the 1G management subnet. .16 ran its active path over 192.168.1.x before 6 Oct and backups ran at half speed.
         if (h.TryGetProperty("iscsiPaths", out var ips) && ips.ValueKind == JsonValueKind.Array)
+        {
+            var active = 0;
             foreach (var p in ips.EnumerateArray())
             {
                 if ((S(p, "state") ?? "") != "active") continue;   // a disabled/standby path on the management net is fine
+                active++;
                 var local = S(p, "local") ?? ""; var remote = S(p, "remote") ?? "";
                 var offStorage = (local.Length > 0 && !local.StartsWith(StorageSubnetPrefix, StringComparison.Ordinal))
                               || (remote.Length > 0 && !remote.StartsWith(StorageSubnetPrefix, StringComparison.Ordinal));
@@ -149,6 +152,8 @@ public static class EsxiRules
                     b.Raise($"esxi.iscsi-wrong-path:{S(p, "runtime")}", Severity.Warning, "SAN traffic is on the wrong network",
                         $"active path {S(p, "runtime")} runs {(local.Length > 0 ? local : "?")} -> {(remote.Length > 0 ? remote : "?")}, not the {StorageSubnetPrefix}x storage network (MTU 9000): it is using the 1G management NIC and will be slow");
             }
+            b.Metric("iscsi.active-paths", active);   // also proves the esxcli read ran (0 = it did not, or no SAN paths)
+        }
 
         var cpu = h.GetProperty("cpuMhzTotal").GetDouble() is var t && t > 0 ? 100 * h.GetProperty("cpuMhzUsed").GetDouble() / t : 0;
         var mem = 100.0 * h.GetProperty("memMbUsed").GetDouble() / Math.Max(1, h.GetProperty("memMbTotal").GetDouble());
