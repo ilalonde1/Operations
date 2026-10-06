@@ -26,8 +26,16 @@ $storageErrors = @(Get-WinEvent -FilterHashtable @{ LogName = 'System'; StartTim
     Where-Object { $_.ProviderName -match '^(disk|Ntfs|volsnap|Microsoft-Windows-Ntfs|storahci|stornvme|iScsiPrt|mpio)$' } |
     Group-Object { "$($_.ProviderName) $($_.Id)" } | ForEach-Object { [pscustomobject]@{ Event = "$($_.Name)"; Count = $_.Count } })
 
+# Class 2 -- "configured right, not just up": antivirus posture and NIC firewall profile. Guarded (Get-MpComputerStatus is
+# absent if the Defender feature was removed; WRSVC absent if Webroot is not installed). Windows Server never auto-passives
+# Defender without MDE, so Defender in Normal mode plus a running third-party AV means two active engines fighting.
+$mp = Get-MpComputerStatus
+$winDefend = Get-Service WinDefend -ErrorAction SilentlyContinue
+$wrsvc = Get-Service WRSVC -ErrorAction SilentlyContinue
+$nicCats = @(Get-NetConnectionProfile | ForEach-Object { "$($_.NetworkCategory)" })
+
 [pscustomobject]@{
-    ProbeVersion = 1
+    ProbeVersion = 2
     Computer = "$env:COMPUTERNAME"
     OsCaption = "$($os.Caption)"
     OsBuild = "$($os.Version)"
@@ -38,4 +46,9 @@ $storageErrors = @(Get-WinEvent -FilterHashtable @{ LogName = 'System'; StartTim
     PendingReboot = $pending
     LastUpdateDays = if ($lastHotfix) { [math]::Round(((Get-Date) - $lastHotfix.InstalledOn).TotalDays) } else { -1 }
     StorageErrors24h = $storageErrors
+    DefenderInstalled = [bool]$winDefend
+    DefenderMode = "$($mp.AMRunningMode)"
+    DefenderRealtime = [bool]$mp.RealTimeProtectionEnabled
+    WebrootStatus = "$($wrsvc.Status)"
+    NicCategories = $nicCats
 }
