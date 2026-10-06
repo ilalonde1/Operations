@@ -118,7 +118,17 @@ internal sealed class RackCollector(IOptions<NetworkOpsOptions> options, PowerSt
         http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tok.RootElement.GetProperty("access_token").GetString());
         var jobs = await http.GetStringAsync("api/v1/jobs/states", ct).ConfigureAwait(false);
         var repos = await http.GetStringAsync("api/v1/backupInfrastructure/repositories/states", ct).ConfigureAwait(false);
-        return VeeamRules.Evaluate(jobs, repos, DateTime.UtcNow, previousFacts);
+        // The server build, for the version-security check -- best effort: a Backup Viewer that cannot read serverInfo, or
+        // a server mid-upgrade, just leaves veeam.version unset rather than failing the whole read.
+        string? serverVersion = null;
+        try
+        {
+            using var si = System.Text.Json.JsonDocument.Parse(await http.GetStringAsync("api/v1/serverInfo", ct).ConfigureAwait(false));
+            serverVersion = si.RootElement.TryGetProperty("buildVersion", out var bv) ? bv.GetString()
+                : si.RootElement.TryGetProperty("version", out var ver) ? ver.GetString() : null;
+        }
+        catch (Exception ex) when (ex is HttpRequestException or System.Text.Json.JsonException || (ex is TaskCanceledException && !ct.IsCancellationRequested)) { }
+        return VeeamRules.Evaluate(jobs, repos, DateTime.UtcNow, previousFacts, serverVersion: serverVersion);
     }
 
     private async Task<RackResult> UniFiAsync(RackDevice d, CancellationToken ct)

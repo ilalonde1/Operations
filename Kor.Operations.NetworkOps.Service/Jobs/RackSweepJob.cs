@@ -36,6 +36,10 @@ internal sealed class RackSweepJob(NetworkOpsStore store, RackCollector collecto
         if (devices.Count == 0) return $"{string.Join(", ", waiting.Select(d => d.Name))}: waiting for the first MeshCentral read since the service started";
         var now = DateTime.UtcNow;
         if (only is null) await store.RetireRackDevicesExceptAsync(o.Rack.Select(d => d.Name).ToList(), now, ct);
+        // Class 1: the version-security baseline, read once per sweep and compared to each device's recorded version facts
+        // below (VersionBaselineRules). Empty when 013 has not run -> the comparator raises baseline.stale "run 013".
+        var baseline = await store.VersionBaselineAsync(ct);
+        var selfHost = Environment.MachineName;   // the baseline's own-freshness finding hangs on the NetworkOps host (APP01)
 
         // Read everything first, in parallel (one slow device must not hold up the rest).
         var results = new ConcurrentDictionary<string, (RackDevice Device, int Id, RackResult Result)>(StringComparer.OrdinalIgnoreCase);
@@ -64,8 +68,13 @@ internal sealed class RackSweepJob(NetworkOpsStore store, RackCollector collecto
                 var observed = r.Facts.Count > 0 ? r.Facts : null;
                 await store.ApplyFactsAsync(id, FactDiff.Compute(await store.CurrentFactsAsync(id, ct), observed), observed is not null, now, ct);
                 await store.InsertMetricsAsync(id, r.Metrics, now, ct);
-                raised += r.Findings.Count;
-                changes = FindingDiff.Compute(open, r.Findings);   // also clears rack.unreachable
+                // Compare this device's recorded version facts to the secure baseline; on the NetworkOps host, also check
+                // the baseline's own freshness. These merge into the device's finding diff so they clear when fixed.
+                var versionFindings = Core.Rack.VersionBaselineRules.Evaluate(r.Facts, baseline, now).ToList();
+                if (d.Address.Equals(selfHost, StringComparison.OrdinalIgnoreCase) && Core.Rack.VersionBaselineRules.BaselineHealth(baseline, now) is { } bh)
+                    versionFindings.Add(bh);
+                raised += r.Findings.Count + versionFindings.Count;
+                changes = FindingDiff.Compute(open, versionFindings.Count == 0 ? r.Findings : r.Findings.Concat(versionFindings).ToList());   // also clears rack.unreachable
             }
             else
             {

@@ -18,9 +18,11 @@ public static class VeeamRules
     /// healthy -- and then re-alert -- every time its retry starts (Kor-FS01, 30 Sep 2026).
     /// </param>
     public static RackResult Evaluate(string jobsJson, string reposJson, DateTime nowUtc, IReadOnlyDictionary<string, string>? previousFacts = null,
-        int staleHours = 36, int repoFreeWarnPct = 15)
+        int staleHours = 36, int repoFreeWarnPct = 15, string? serverVersion = null)
     {
         var b = new RackBuilder();
+        // The B&R server build, for VersionBaselineRules (Class 1): Veeam below the secure build carries CVE-2025-64393.
+        if (!string.IsNullOrWhiteSpace(serverVersion)) b.Fact("veeam.version", serverVersion);
         using var jobs = JsonDocument.Parse(jobsJson);
         using var repos = JsonDocument.Parse(reposJson);
         int ok = 0, total = 0;

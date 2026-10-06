@@ -8,6 +8,25 @@ namespace Kor.Operations.NetworkOps.Service.Store;
 // touches them: it only marks Source = 'AD' rows.
 internal sealed partial class NetworkOpsStore
 {
+    /// <summary>The version-security baseline (013): product -> minimum secure build, end-of-support, last reviewed. Empty
+    /// (never null) when the table is missing -- VersionBaselineRules then raises baseline.stale "run 013".</summary>
+    public async Task<IReadOnlyList<Core.Rack.VersionBaselineRow>> VersionBaselineAsync(CancellationToken ct)
+    {
+        var rows = new List<Core.Rack.VersionBaselineRow>();
+        try
+        {
+            await using var c = await OpenAsync(ct).ConfigureAwait(false);
+            await using var cmd = Cmd(c, "SELECT Product, MinSecureBuild, EndOfSupportUtc, LastReviewedUtc, Reason, Source FROM NetworkOps.VersionBaseline;");
+            await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+            while (await r.ReadAsync(ct).ConfigureAwait(false))
+                rows.Add(new Core.Rack.VersionBaselineRow(r.GetString(0),
+                    r.IsDBNull(1) ? null : r.GetString(1), Utc(r, 2), Utc(r, 3)!.Value,
+                    r.IsDBNull(4) ? null : r.GetString(4), r.IsDBNull(5) ? null : r.GetString(5)));
+        }
+        catch (Microsoft.Data.SqlClient.SqlException ex) when (MissingObject(ex, "VersionBaseline (013)")) { }
+        return rows;
+    }
+
     /// <summary>The device's id, creating it on first sight; records when it was last read and whether it answered.</summary>
     public async Task<int> UpsertRackDeviceAsync(string name, string kind, bool reachable, DateTime nowUtc, CancellationToken ct)
     {
