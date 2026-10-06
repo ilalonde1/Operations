@@ -44,7 +44,12 @@ internal sealed class NetworkMapService(NetworkOpsStore store, MacDirectory macs
     public NetworkMapResponse? Response()
     {
         var s = _published;
-        return s.Map is { } map ? new NetworkMapResponse(s.BuiltUtc, s.Notes, map) : null;
+        if (s.Map is not { } map) return null;
+        // The firewall rides alongside the map (it is not part of the port graph). Its own read, kept fresh like the
+        // core's: a read older than 15 minutes is not presented as "now" -- the panel is left out rather than stale.
+        var fw = _firewall;
+        var firewall = fw is not null && DateTime.UtcNow - fw.ReadUtc < TimeSpan.FromMinutes(15) ? fw : null;
+        return new NetworkMapResponse(s.BuiltUtc, s.Notes, map, firewall);
     }
 
     /// <summary>The controller's read, as RackCollector got it.</summary>
@@ -59,6 +64,11 @@ internal sealed class NetworkMapService(NetworkOpsStore store, MacDirectory macs
 
     /// <summary>The core switch's own read (Rack/RackCollector, SNMP): its panel in the map.</summary>
     public void SetCore(CoreSwitchRead core) => _core = core;
+
+    private volatile FirewallRead? _firewall;
+
+    /// <summary>The firewall's own read (Rack/RackCollector, SNMP v2c): its panel alongside the map.</summary>
+    public void SetFirewall(FirewallRead firewall) => _firewall = firewall;
 
     /// <summary>The controller's live API read (Rack/UniFiApi), or null and why not: the map then has no "now" in it.</summary>
     public void SetLive(string? json, string? problem) => _live = new(json, problem, DateTime.UtcNow);

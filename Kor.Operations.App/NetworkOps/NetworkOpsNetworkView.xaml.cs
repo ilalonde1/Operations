@@ -121,6 +121,8 @@ public partial class NetworkOpsNetworkView : UserControl
         HeadlineText.Text = _model.Headline;
         SublineText.Text = _model.Subline + (_model.Notes.Count > 0 ? " · " + string.Join(" · ", _model.Notes) : "");
         PanelList.ItemsSource = _model.Panels;
+        FirewallPanel.DataContext = _model.Firewall;
+        FirewallPanel.Visibility = _model.Firewall is null ? Visibility.Collapsed : Visibility.Visible;
         PlaceList.ItemsSource = _model.Places;
         PlaceList.SelectedItem = _model.Places.FirstOrDefault(p => p.Key == was && was is { Length: > 0 }) ?? _model.Places.FirstOrDefault();
         if (SearchBox.Text.Length > 0) ShowSearch();
@@ -157,6 +159,12 @@ public partial class NetworkOpsNetworkView : UserControl
     private void OpenDevice_Click(object sender, RoutedEventArgs e)
     {
         if (_chosen?.OpenName is { } n) _nav?.OpenDevice(n);
+    }
+
+    /// <summary>The firewall card: opens the Netgate's NetworkOps page (its facts, metrics and any findings).</summary>
+    private void Firewall_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (_model?.Firewall is { } fw && _nav?.HasPage(fw.OpenName) == true) _nav.OpenDevice(fw.OpenName);
     }
 
     private void ScrollToSwitch(string mac)

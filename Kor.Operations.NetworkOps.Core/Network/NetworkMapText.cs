@@ -4,7 +4,7 @@ using System.Text;
 namespace Kor.Operations.NetworkOps.Core.Network;
 
 /// <summary>What GET /api/network returns: the map, when it was built, and what the build could not read.</summary>
-public sealed record NetworkMapResponse(DateTime? BuiltUtc, IReadOnlyList<string> Notes, NetworkMap Map);
+public sealed record NetworkMapResponse(DateTime? BuiltUtc, IReadOnlyList<string> Notes, NetworkMap Map, FirewallRead? Firewall = null);
 
 /// <summary>
 /// The port map as text (`netops network`): every switch, parent first and indented under it, each port that has something

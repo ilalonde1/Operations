@@ -114,6 +114,29 @@ public sealed class NetworkOpsNetworkModel
         $" · {s.Ports.Count(p => p.Kind == "device")} devices" + (s.Ports.Any(p => p.Up is not null) ? $", {s.Ports.Count(p => p.Up == true)} of {s.Ports.Count} ports up" : ""),
         s.Depth, s.Ports.Select(p => Card(s, p)).ToList())).ToList();
 
+    /// <summary>The firewall (Netgate pfSense) as a card above the switches: its assigned interfaces and the box's health.
+    /// Null when the service has no fresh firewall read (SNMP off on the Netgate, or the read is more than 15 minutes old).</summary>
+    public FirewallCard? Firewall => Response.Firewall is { } fw
+        ? new FirewallCard(fw.Name,
+            string.Join(" · ", new[] { fw.Model, fw.Ip }.Where(x => !string.IsNullOrWhiteSpace(x))),
+            FirewallHealth(fw),
+            fw.Interfaces.Select(i => new FirewallIfTile(i.Role,
+                $"{i.Nic} · {i.State}",
+                i.SpeedMbps is { } sp ? sp >= 1000 ? $"{sp / 1000}G" : $"{sp}M" : "",
+                i.InMbps is { } dn && i.OutMbps is { } up ? $"{dn:0.#}↓ {up:0.#}↑ Mb/s" : "",
+                i.State)).ToList(),
+            fw.Name)
+        : null;
+
+    private static string FirewallHealth(FirewallRead fw)
+        => string.Join(" · ", new[]
+        {
+            fw.CpuPct is { } c ? $"CPU {c}%" : null,
+            fw.MemUsedPct is { } m ? $"mem {m}%" : null,
+            fw.StatesUsed is { } s ? $"{s:N0}{(fw.StatesLimit is { } l ? $" of {l:N0}" : "")} states" : null,
+            fw.UptimeHours > 0 ? $"up {fw.UptimeHours / 24:0.#}d" : null,
+        }.Where(x => x is not null));
+
     private static PortCard Card(NetSwitch s, NetPort p)
     {
         var row = PortRow(p);
@@ -143,6 +166,20 @@ public sealed class NetworkOpsNetworkModel
             p.Kind is "link" ? p.On?.Mac : p.Kind == "uplink" ? s.ParentMac : null,
             row with { Where = $"{s.Name} port {p.Number}" });
     }
+}
+
+/// <summary>The firewall card above the switches: the box's name, software/IP line, a health line, and its interfaces as
+/// tiles. OpenName opens its NetworkOps device page (where the facts, metrics and any findings live).</summary>
+public sealed record FirewallCard(string Name, string Sub, string Health, IReadOnlyList<FirewallIfTile> Interfaces, string OpenName);
+
+/// <summary>One firewall interface tile: its pfSense role (WAN2/LAN), the NIC + state, the negotiated speed and live
+/// throughput. The stripe is green up, amber dormant (a standby WAN), grey down.</summary>
+public sealed record FirewallIfTile(string Role, string Detail, string Speed, string Flow, string State)
+{
+    private static readonly System.Windows.Media.Brush Up = Frozen(0x22, 0x8B, 0x22), Dormant = Frozen(0xE5, 0xA8, 0x00), Down = Frozen(0xD5, 0xDA, 0xDF);
+    public System.Windows.Media.Brush Stripe => State switch { "up" => Up, "dormant" => Dormant, _ => Down };
+    public double Fade => State == "up" ? 1.0 : 0.72;
+    private static System.Windows.Media.Brush Frozen(byte r, byte g, byte b) { var x = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(r, g, b)); x.Freeze(); return x; }
 }
 
 /// <summary>One switch's panel: its title line and every port as a tile.</summary>

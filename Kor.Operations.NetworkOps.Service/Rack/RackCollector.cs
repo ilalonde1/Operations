@@ -198,6 +198,7 @@ internal sealed class RackCollector(IOptions<NetworkOpsOptions> options, PowerSt
         if (tables.Count == 0 && scalars.Count == 0)
             return RackResult.Unreachable("no SNMP v2c answer (check the community string and that SNMP is bound to the LAN)");
         var walk = tables.Concat(scalars).ToDictionary(kv => kv.Key, kv => kv.Value);
+        map?.SetFirewall(Core.Rack.FirewallRules.Read(d.Name, d.Address, walk, previousFacts, now));
         return Core.Rack.FirewallRules.Evaluate(walk, previousFacts, now);
     }
 

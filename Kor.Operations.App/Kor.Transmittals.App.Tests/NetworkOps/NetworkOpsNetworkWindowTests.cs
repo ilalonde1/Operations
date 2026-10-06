@@ -60,6 +60,28 @@ public sealed class NetworkOpsNetworkWindowTests
     }
 
     [Fact]
+    public void The_firewall_card_maps_the_interfaces_and_the_health_line()
+    {
+        var fw = new FirewallRead("Firewall (Netgate pfSense)", "192.168.1.1", "pfSense Plus 25.07.1-RELEASE",
+            [new FirewallInterface("WAN2", "igc3", "up", 1000, 12.3, 4.5, 0),
+             new FirewallInterface("LAN", "igc2", "up", 1000, null, null, 0),
+             new FirewallInterface("WAN", "igc0", "dormant", 10, null, null, 0)],
+            CpuPct: 1, MemUsedPct: 35, StatesUsed: 2622, StatesLimit: 397000, UptimeHours: 136.6, ReadUtc: DateTime.UtcNow);
+        var card = new NetworkOpsNetworkModel(RealMap() with { Firewall = fw }).Firewall;
+        Assert.NotNull(card);
+        Assert.Equal("Firewall (Netgate pfSense)", card!.Name);
+        Assert.Equal("pfSense Plus 25.07.1-RELEASE · 192.168.1.1", card.Sub);
+        Assert.Equal("CPU 1% · mem 35% · 2,622 of 397,000 states · up 5.7d", card.Health);
+        Assert.Equal(["WAN2", "LAN", "WAN"], card.Interfaces.Select(i => i.Role));
+        var wan2 = card.Interfaces[0];
+        Assert.Equal(("igc3 · up", "1G", "12.3↓ 4.5↑ Mb/s"), (wan2.Detail, wan2.Speed, wan2.Flow));
+        Assert.Equal("", card.Interfaces[1].Flow);        // LAN: no second read yet, so no throughput
+        Assert.Equal("10M", card.Interfaces[2].Speed);    // the dormant standby WAN
+
+        Assert.Null(new NetworkOpsNetworkModel(RealMap()).Firewall);   // no firewall in the response -> no card
+    }
+
+    [Fact]
     public void A_switch_page_is_every_port_with_each_desk_and_its_person()
     {
         var m = new NetworkOpsNetworkModel(RealMap());
