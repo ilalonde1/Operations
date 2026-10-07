@@ -85,6 +85,18 @@ public sealed class ProbeContractTests
         // Rendering .Message is the slow part of an event read (a full-log render timed out at 600 s on KOR-217).
         => Assert.DoesNotMatch(new Regex(@"\$wer\b[^\n]*\.Message"), Probe);
 
+    [Fact]
+    public void The_boot_time_read_cannot_raise_a_probe_error_where_its_log_is_absent()
+    {
+        // Diagnostics-Performance/Operational is a desktop log; on Windows Server and VMware guests Get-WinEvent throws
+        // "The parameter is incorrect", which surfaced as a false probe-incomplete finding (BK01, a Server 2019 VM,
+        // 2026-10-07). Boot time is optional telemetry, so its read must be wrapped so a missing log never reaches ProbeErrors.
+        var boot = Regex.Match(Probe, @"Try-Block 'boot' \{(?<body>[\s\S]*?)\r?\n\}");
+        Assert.True(boot.Success, "could not find the boot Try-Block in the probe");
+        Assert.Contains("Diagnostics-Performance/Operational", boot.Groups["body"].Value);
+        Assert.Matches(new Regex(@"try\s*\{[\s\S]*?Get-WinEvent[\s\S]*?catch", RegexOptions.Singleline), boot.Groups["body"].Value);
+    }
+
     private static HealthSnapshot WithMemory(int? slots, params MemoryModuleInfo[] mods) => new() { Memory = mods, MemorySlots = slots, ProbeVersion = 3 };
     private static MemoryModuleInfo M(string slot, int gb, int rated = 4800, int running = 4800) => new(slot, null, gb, rated, running, "Kingston", "x");
 

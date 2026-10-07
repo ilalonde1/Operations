@@ -197,10 +197,16 @@ $mailStores = Try-Block 'mailStores' {
     })
 }
 
-# --- v2: boot time -- a machine getting slower to start is the first sign of disk or startup trouble
+# --- v2: boot time -- a machine getting slower to start is the first sign of disk or startup trouble.
+# The Diagnostics-Performance/Operational log is a desktop feature: on Windows Server and VMware guests it is absent
+# or disabled, and Get-WinEvent then throws "The parameter is incorrect" (a terminating error -ErrorAction cannot
+# suppress). Boot time is optional telemetry, not a health-critical read, so a failure to get it must NOT surface as
+# "part of the health check couldn't read" -- swallow it and return null (BK01, a Server 2019 VM, 2026-10-07).
 $boot = Try-Block 'boot' {
-    $b = @(Get-WinEvent -FilterHashtable @{ LogName = 'Microsoft-Windows-Diagnostics-Performance/Operational'; Id = 100 } -MaxEvents 10 -ErrorAction SilentlyContinue |
-        ForEach-Object { $x = [xml]$_.ToXml(); [int](($x.Event.EventData.Data | Where-Object Name -eq 'BootTime').'#text') } | Where-Object { $_ -gt 0 })
+    try {
+        $b = @(Get-WinEvent -FilterHashtable @{ LogName = 'Microsoft-Windows-Diagnostics-Performance/Operational'; Id = 100 } -MaxEvents 10 -ErrorAction Stop |
+            ForEach-Object { $x = [xml]$_.ToXml(); [int](($x.Event.EventData.Data | Where-Object Name -eq 'BootTime').'#text') } | Where-Object { $_ -gt 0 })
+    } catch { $b = @() }
     if ($b.Count) { [pscustomobject]@{ LastBootMs = $b[0]; MedianBootMs = ($b | Sort-Object)[[int][math]::Floor($b.Count / 2)]; Samples = $b.Count } } else { $null }
 }
 
