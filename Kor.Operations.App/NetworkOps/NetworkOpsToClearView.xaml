@@ -37,7 +37,21 @@
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Border Background="#F2F4F6" CornerRadius="13" Padding="10,4" Margin="0,0,8,6" ToolTip="{Binding Tip}">
+                                <!-- A clickable filter chip: click to show only this kind of problem, click the live one again for all. -->
+                                <Border CornerRadius="13" Padding="10,4" Margin="0,0,8,6" ToolTip="{Binding Tip}" Cursor="Hand" MouseLeftButtonUp="Chip_Click">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Setter Property="Background" Value="#F2F4F6"/>
+                                            <Setter Property="BorderBrush" Value="Transparent"/>
+                                            <Setter Property="BorderThickness" Value="1"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                    <Setter Property="Background" Value="#DCE4EC"/>
+                                                    <Setter Property="BorderBrush" Value="#5B7A99"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
                                     <StackPanel Orientation="Horizontal">
                                         <Ellipse Width="8" Height="8" Fill="{Binding Dot}" VerticalAlignment="Center" Margin="0,0,7,0"/>
                                         <TextBlock Text="{Binding Name}" FontSize="12.5" Foreground="{StaticResource Text.Primary}" VerticalAlignment="Center"/>
@@ -55,8 +69,14 @@
 
         <!-- Toolbar. -->
         <Grid Grid.Row="1" Margin="12,0,12,8">
-            <TextBlock Text="Fix an issue on every machine that has it, or hand it to Claude. Acknowledging a finding parks it — it stops counting against green."
-                       Style="{StaticResource Ops.Caption}" VerticalAlignment="Center"/>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center">
+                <TextBlock x:Name="HelpCaption"
+                           Text="Fix an issue on every machine that has it, or hand it to Claude. Acknowledging a finding parks it — it stops counting against green."
+                           Style="{StaticResource Ops.Caption}" VerticalAlignment="Center"/>
+                <!-- Appears only when a category chip is filtering the list; clears the filter. -->
+                <Button x:Name="ClearFilterBtn" Style="{StaticResource Ops.Link}" Click="ClearFilter_Click"
+                        VerticalAlignment="Center" Visibility="Collapsed" ToolTip="Show every open issue again."/>
+            </StackPanel>
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                 <Button x:Name="RefreshBtn" Content="Re-check all" Margin="0,0,8,0" Click="Recheck_Click"
                         ToolTip="Run the health probe on every PC now, then refresh this list."/>

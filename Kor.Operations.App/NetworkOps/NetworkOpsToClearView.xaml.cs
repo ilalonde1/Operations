@@ -58,13 +58,22 @@ public sealed class ToClearRow
 
 /// <summary>One category on the overview strip: a kind of problem, how many machines have it, a dot in its worst colour.
 /// The Ninja "Device health issues" rollup Ian asked for -- the whole worklist read in one glance before the detail below.</summary>
-public sealed class ToClearCategoryRow
+public sealed class ToClearCategoryRow : System.ComponentModel.INotifyPropertyChanged
 {
     public required ToClearCategory Category { get; init; }
     public string Name => Category.Name;
     public string CountText => Category.Machines.ToString(System.Globalization.CultureInfo.InvariantCulture);
     public Brush Dot => NetworkOpsBrushes.For(Category.Severity);
-    public string Tip => $"{Category.Issues} issue{(Category.Issues == 1 ? "" : "s")} on {Category.Machines} machine{(Category.Machines == 1 ? "" : "s")}: {string.Join(", ", Category.RuleKeys.Take(6))}";
+    public string Tip => $"{Category.Issues} issue{(Category.Issues == 1 ? "" : "s")} on {Category.Machines} machine{(Category.Machines == 1 ? "" : "s")} — click to show only these: {string.Join(", ", Category.RuleKeys.Take(6))}";
+
+    private bool _isSelected;
+    /// <summary>The chip the worklist is filtered to: highlighted, so which filter is live is never a guess.</summary>
+    public bool IsSelected
+    {
+        get => _isSelected;
+        set { if (_isSelected == value) return; _isSelected = value; PropertyChanged?.Invoke(this, new(nameof(IsSelected))); }
+    }
+    public event System.ComponentModel.PropertyChangedEventHandler? PropertyChanged;
 }
 
 /// <summary>The path to all-green: every live finding across the fleet, grouped by issue and ranked, with "Fix on all N"
@@ -77,6 +86,7 @@ public partial class NetworkOpsToClearView : UserControl
     private readonly ObservableCollection<ToClearCategoryRow> _categories = new();   // the at-a-glance rollup above the list
     private readonly System.Collections.Generic.Dictionary<string, string> _fixing = new(StringComparer.OrdinalIgnoreCase);   // ruleKey -> running note, until the finding clears
     private System.Windows.Threading.DispatcherTimer? _auto;
+    private string? _selectedCategory;   // the category chip the worklist is filtered to (null = show all)
 
     public NetworkOpsToClearView(NetworkOpsClient client)
     {
@@ -84,6 +94,10 @@ public partial class NetworkOpsToClearView : UserControl
         InitializeComponent();
         IssueList.ItemsSource = _rows;
         CategoryStrip.ItemsSource = _categories;
+        // Clicking a category chip filters the worklist to its rules (the Core comment's intent). The filter lives on the
+        // list's own default view so it survives the 20s auto-refresh, which clears and refills the rows underneath it.
+        System.Windows.Data.CollectionViewSource.GetDefaultView(_rows).Filter = o =>
+            _selectedCategory is null || (o is ToClearRow r && ToClearCategories.CategoryOf(r.Issue.RuleKey) == _selectedCategory);
         Loaded += async (_, _) => { StartAuto(); await ReloadAsync(); };
         Unloaded += (_, _) => _auto?.Stop();
     }
@@ -129,6 +143,10 @@ public partial class NetworkOpsToClearView : UserControl
         // The at-a-glance rollup: the same open issues grouped into broad categories with a machine count (the Ninja view).
         _categories.Clear();
         foreach (var c in ToClearCategories.Of(v.Open)) _categories.Add(new ToClearCategoryRow { Category = c });
+        // Keep the active chip filter across the refresh; drop it if that category has cleared off the list.
+        if (_selectedCategory is not null && _categories.All(c => !string.Equals(c.Name, _selectedCategory, StringComparison.Ordinal)))
+            _selectedCategory = null;
+        ApplyCategoryFilter();
         var green = v.Issues == 0;
         var fixingNote = fixingCount > 0 ? $" · {fixingCount} fixing" : "";
         HeadlineText.Text = green ? "All green" : v.Issues.ToString();
@@ -238,6 +256,31 @@ public partial class NetworkOpsToClearView : UserControl
         var first = row.Issue.Machines.FirstOrDefault(m => m.DeviceId > 0);
         var request = first is null ? null : new PromptRequest("finding", null, first.DeviceId, first.FindingId);
         new PromptLibraryWindow(_client, request) { Owner = Window.GetWindow(this) }.Show();
+    }
+
+    // A category chip toggles the worklist filter: click to show only that kind of problem, click the live one again for all.
+    private void Chip_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is not ToClearCategoryRow cat) return;
+        _selectedCategory = string.Equals(_selectedCategory, cat.Name, StringComparison.Ordinal) ? null : cat.Name;
+        ApplyCategoryFilter();
+    }
+
+    private void ClearFilter_Click(object sender, RoutedEventArgs e)
+    {
+        _selectedCategory = null;
+        ApplyCategoryFilter();
+    }
+
+    // Reflect the active filter everywhere at once: the highlighted chip, the rows shown, and the "showing X — show all" line.
+    private void ApplyCategoryFilter()
+    {
+        foreach (var c in _categories) c.IsSelected = _selectedCategory is not null && string.Equals(c.Name, _selectedCategory, StringComparison.Ordinal);
+        System.Windows.Data.CollectionViewSource.GetDefaultView(_rows).Refresh();
+        var filtered = _selectedCategory is not null;
+        HelpCaption.Visibility = filtered ? Visibility.Collapsed : Visibility.Visible;
+        ClearFilterBtn.Visibility = filtered ? Visibility.Visible : Visibility.Collapsed;
+        if (filtered) ClearFilterBtn.Content = $"Showing: {_selectedCategory} — show all";
     }
 
     private async void Refresh_Click(object sender, RoutedEventArgs e) => await ReloadAsync();
