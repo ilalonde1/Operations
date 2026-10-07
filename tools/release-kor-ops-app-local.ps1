@@ -50,7 +50,10 @@ Get-Process 'Kor.Operations.App' -ErrorAction SilentlyContinue |
 Start-Sleep -Seconds 1
 New-Item -ItemType Directory -Force $Target | Out-Null
 Write-Host "Installing into $Target ..." -ForegroundColor Cyan
-$rc = robocopy $stage $Target /MIR /NFL /NDL /NJH /NJS /NP /R:2 /W:1
+# /MIR mirrors, so it DELETES anything in the target the staged app does not have. The netops CLI lives beside the app in
+# C:\KOR-Operations\cli (installed by tools/install-netops.ps1), so a bare /MIR wiped it every release -- a documented bug.
+# Exclude that folder (and any other non-app sibling) so the release replaces only the app.
+$rc = robocopy $stage $Target /MIR /XD (Join-Path $Target 'cli') /NFL /NDL /NJH /NJS /NP /R:2 /W:1
 if ($LASTEXITCODE -ge 8) { throw "robocopy failed ($LASTEXITCODE)." }
 $exePath = Join-Path $Target $exe
 if (-not (Test-Path $exePath)) { throw "Install failed: no $exePath." }
