@@ -53,7 +53,11 @@ internal sealed class AgentLoop
 
     public async Task RunAsync(CancellationToken ct)
     {
-        ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12 | (SecurityProtocolType)12288 /* Tls13 */;
+        // TLS 1.2 is what APP01's listener serves and is on every box; require it. Add TLS 1.3 only where the runtime
+        // accepts it: the Tls13 enum value (12288) is .NET Framework 4.8+, and net472 (KOR-BK01) throws
+        // NotSupportedException from ValidateSecurityProtocol if asked for it -- which killed the agent loop on start.
+        ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
+        try { ServicePointManager.SecurityProtocol |= (SecurityProtocolType)12288 /* Tls13 */; } catch (NotSupportedException) { }
         Directory.CreateDirectory(_s.WorkDir);
         ClearLeftovers();
         var key = File.ReadAllText(_s.KeyPath).Trim();

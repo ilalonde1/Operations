@@ -125,6 +125,18 @@ try
         return 2;
     }
 
+    // The rack inventory (what to read, how to reach each) lives in SQL from 014, like everything else NetworkOps knows.
+    // Load it over the appsettings "Rack" list before any sweep runs. Fall back to appsettings only when the table is
+    // missing or empty, so deploying this build before 014 runs never blanks the rack sweep. A restart picks up a change.
+    var rackFromDb = await host.Services.GetRequiredService<NetworkOpsStore>().RackInventoryAsync(CancellationToken.None);
+    if (rackFromDb.Count > 0)
+    {
+        opts.Rack = [.. rackFromDb];
+        Log.Information("Rack inventory: {Count} devices from SQL (NetworkOps.RackInventory)", rackFromDb.Count);
+    }
+    else
+        Log.Warning("Rack inventory: NetworkOps.RackInventory is empty or absent -- using the appsettings fallback ({Count} devices). Run db/KorNetworkOps/014_RackInventory.sql.", opts.Rack.Count);
+
     if (runOnce is not null)
     {
         var entry = SchedulingCatalog.All.FirstOrDefault(s => s.Name.Equals(runOnce, StringComparison.OrdinalIgnoreCase))

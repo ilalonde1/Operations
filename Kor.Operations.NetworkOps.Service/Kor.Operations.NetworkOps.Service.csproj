@@ -7,7 +7,7 @@
     <AssemblyName>Kor.Operations.NetworkOps.Service</AssemblyName>
     <!-- Bump on every meaningful service-side change: the heartbeat row carries it, so a
          redeploy can be confirmed from the database, not assumed. -->
-    <Version>0.57.11</Version>
+    <Version>0.57.14</Version>
   </PropertyGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="Kor.Operations.NetworkOps.Tests" />
@@ -52,11 +52,12 @@
   </ItemGroup>
 
   <!-- The endpoint agent travels with the service, in an "agent" folder beside it: deploying the service is what
-       makes a new agent version available to install (Agents/AgentInstaller.cs). It is a .NET Framework 4.8 exe, so
-       it is built by its own project, not referenced. -->
+       makes a new agent version available to install (Agents/AgentInstaller.cs). It is a .NET Framework 4.7.2 exe
+       (net472, so it runs on older servers like BK01 too), so it is built by its own project, not referenced.
+       The net472 here must match the agent project's TargetFramework, or the copy below silently finds nothing. -->
   <PropertyGroup>
     <AgentProject>$(MSBuildThisFileDirectory)..\Kor.Operations.NetworkOps.Agent\Kor.Operations.NetworkOps.Agent.csproj</AgentProject>
-    <AgentOutput>$(MSBuildThisFileDirectory)..\Kor.Operations.NetworkOps.Agent\bin\$(Configuration)\net48\</AgentOutput>
+    <AgentOutput>$(MSBuildThisFileDirectory)..\Kor.Operations.NetworkOps.Agent\bin\$(Configuration)\net472\</AgentOutput>
   </PropertyGroup>
   <Target Name="BuildAgent" BeforeTargets="Build">
     <!-- Restore and build as separate evaluations (one call would build against the pre-restore evaluation). -->

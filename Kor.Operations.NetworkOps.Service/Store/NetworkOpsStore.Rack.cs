@@ -27,6 +27,47 @@ internal sealed partial class NetworkOpsStore
         return rows;
     }
 
+    /// <summary>The rack inventory (014): which infrastructure to read and how to reach each, the source the sweep walks.
+    /// Ordered by SortOrder (the Command Center lists it in that order). Empty (never null) when the table is missing --
+    /// the service then falls back to the appsettings "Rack" list, so a deploy before 014 runs never blanks the sweep.
+    /// A NULL Address/MeshName/UpsName/CertSha256 reads back as the empty string the appsettings model used.</summary>
+    public async Task<IReadOnlyList<RackDevice>> RackInventoryAsync(CancellationToken ct)
+    {
+        var byId = new Dictionary<int, RackDevice>();
+        var ordered = new List<RackDevice>();
+        try
+        {
+            await using var c = await OpenAsync(ct).ConfigureAwait(false);
+            await using (var cmd = Cmd(c, "SELECT RackDeviceId, Name, Kind, Collector, Address, MeshName, UpsName, CertSha256, VolumeFreeWarnPct FROM NetworkOps.RackInventory WHERE Enabled = 1 ORDER BY SortOrder, Name;"))
+            await using (var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false))
+                while (await r.ReadAsync(ct).ConfigureAwait(false))
+                {
+                    var d = new RackDevice
+                    {
+                        Name = r.GetString(1),
+                        Kind = r.GetString(2),
+                        Collector = r.GetString(3),
+                        Address = r.IsDBNull(4) ? "" : r.GetString(4),
+                        MeshName = r.IsDBNull(5) ? "" : r.GetString(5),
+                        UpsName = r.IsDBNull(6) ? "" : r.GetString(6),
+                        CertSha256 = r.IsDBNull(7) ? "" : r.GetString(7).Trim(),   // char(64): trim any pad
+                        VolumeFreeWarnPct = r.GetInt32(8),
+                    };
+                    byId[r.GetInt32(0)] = d;
+                    ordered.Add(d);
+                }
+            if (byId.Count > 0)
+            {
+                await using var cmd2 = Cmd(c, "SELECT RackDeviceId, HostKey FROM NetworkOps.RackInventoryHostKey ORDER BY RackDeviceId, HostKey;");
+                await using var r2 = await cmd2.ExecuteReaderAsync(ct).ConfigureAwait(false);
+                while (await r2.ReadAsync(ct).ConfigureAwait(false))
+                    if (byId.TryGetValue(r2.GetInt32(0), out var d)) d.HostKeys.Add(r2.GetString(1));
+            }
+        }
+        catch (Microsoft.Data.SqlClient.SqlException ex) when (MissingObject(ex, "RackInventory (014)")) { return []; }
+        return ordered;
+    }
+
     /// <summary>The device's id, creating it on first sight; records when it was last read and whether it answered.</summary>
     public async Task<int> UpsertRackDeviceAsync(string name, string kind, bool reachable, DateTime nowUtc, CancellationToken ct)
     {
