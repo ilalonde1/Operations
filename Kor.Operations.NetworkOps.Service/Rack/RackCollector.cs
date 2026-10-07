@@ -6,6 +6,7 @@ using Kor.Operations.NetworkOps.Core.Power;
 using Kor.Operations.NetworkOps.Core.Rack;
 using Kor.Operations.NetworkOps.Service.Power;
 using Kor.Operations.NetworkOps.Transport;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Kor.Operations.NetworkOps.Service.Rack;
@@ -23,7 +24,7 @@ namespace Kor.Operations.NetworkOps.Service.Rack;
 //   MeshServer KOR-MESH01: MeshCentral itself answering, and how many agents it has connected
 // No collector writes to any device. A device that cannot be read comes back Unreachable with the reason.
 internal sealed class RackCollector(IOptions<NetworkOpsOptions> options, PowerState power, Mesh.MeshState mesh, MacDirectory? macs = null,
-    Network.NetworkMapService? map = null)
+    Network.NetworkMapService? map = null, Microsoft.Extensions.Logging.ILogger<RackCollector>? log = null)
 {
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(60);
 
@@ -40,7 +41,7 @@ internal sealed class RackCollector(IOptions<NetworkOpsOptions> options, PowerSt
             if (result.Reachable && d.Collector is "Veeam" or "Mesh")
             {
                 try { if (await WindowsHealthOverMeshAsync(d, cap.Token).ConfigureAwait(false) is { Reachable: true } win) result = Merge(result, win); }
-                catch (Exception ex) when (ex is not OperationCanceledException) { /* additive; keep the primary read */ }
+                catch (Exception ex) when (ex is not OperationCanceledException) { log?.LogWarning(ex, "Mesh health augment for {Dev} threw", d.Name); }
             }
             return result;
         }
@@ -79,17 +80,23 @@ internal sealed class RackCollector(IOptions<NetworkOpsOptions> options, PowerSt
     private async Task<RackResult?> WindowsHealthOverMeshAsync(RackDevice d, CancellationToken ct)
     {
         var o = options.Value;
-        if (!o.MeshEnabled || !mesh.Fresh) return null;
+        if (!o.MeshEnabled || !mesh.Fresh) { log?.LogInformation("Mesh health {Dev}: skipped (meshEnabled={E} fresh={F})", d.Name, o.MeshEnabled, mesh.Fresh); return null; }
         var name = d.MeshName.Length > 0 ? d.MeshName : d.Address;
         // Prefer the single CONNECTED node of this name; a duplicate/stale node must not be read, and ambiguity is refused.
         var connected = mesh.Nodes.Where(n => n.Name.Equals(name, StringComparison.OrdinalIgnoreCase) && n.AgentConnected).ToList();
-        if (connected.Count != 1) return null;
-        var script = OnTargetPayload.BuildForStdout(Kor.Operations.NetworkOps.Core.Probes.ProbeLibrary.Get("server"));
+        if (connected.Count != 1) { log?.LogInformation("Mesh health {Dev}: {N} connected node(s) named '{Name}' (need exactly 1)", d.Name, connected.Count, name); return null; }
+        // The LIGHT probe (disk / reboot / stopped-services, no event log), not the full server.ps1: MeshCentral runs one
+        // command at a time per agent, and the heavy probe ran long enough to leave BK01's agent "already busy", so no sweep
+        // could read it. The light probe is a couple of seconds. A short timeout, so a bad run never ties the agent up for long.
+        var script = OnTargetPayload.BuildForStdout(Kor.Operations.NetworkOps.Core.Probes.ProbeLibrary.Get("server-basics"));
         var client = new MeshCentralClient(new Uri(o.MeshUrl), o.MeshCertSha256, o.MeshUser, o.MeshPassword);
-        var run = await client.RunCommandAsync(connected[0].Id, script, TimeSpan.FromSeconds(90), ct).ConfigureAwait(false);
-        if (!run.Completed) return null;   // no verdict from the agent: do not claim a read
+        var run = await client.RunCommandAsync(connected[0].Id, script, TimeSpan.FromSeconds(25), ct).ConfigureAwait(false);
+        if (!run.Completed) { log?.LogWarning("Mesh health {Dev}: no terminal verdict from the agent ({Len} chars of output)", d.Name, run.Output.Length); return null; }
         var parsed = OnTargetPayload.ParseResult(run.Output);
-        return parsed is { Ok: true, OutputJson: { } json } ? ServerRules.Evaluate(json) : null;
+        if (parsed is not { Ok: true, OutputJson: { } json }) { log?.LogWarning("Mesh health {Dev}: probe not ok: {Err}", d.Name, parsed.Error ?? (run.Output.Length > 200 ? run.Output[..200] : run.Output)); return null; }
+        var res = ServerRules.Evaluate(json);
+        log?.LogInformation("Mesh health {Dev}: {Findings} finding(s) -- {Summary}", d.Name, res.Findings.Count, res.Summary);
+        return res;
     }
 
     /// <summary>Fold a Windows-health read over Mesh into the device's primary read: union the facts, metrics and findings

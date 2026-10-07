@@ -60,7 +60,15 @@ internal sealed class RackSweepJob(NetworkOpsStore store, RackCollector collecto
             await store.RecordObservationAsync(id, "rack", 1, now, r.Reachable ? "Ok" : "Offline", payload, r.Error, ct);
 
             // The update scan owns "updates-due" (Updates/UpdateScanner): this sweep never raises it, so must never clear it.
-            var open = (await store.OpenFindingsAsync(id, null, ct)).Where(f => !Core.Updates.UpdateRules.Owns(f.RuleKey) && !Core.Network.NetworkFindings.Owns(f.RuleKey)).ToList();
+            // Windows-health findings (server.*) on a Veeam/Mesh device come from the health probe run over the agent, which
+            // MeshCentral can report "already busy" for on any given cycle; when it did NOT read this cycle (no os.caption
+            // fact), keep those findings rather than clear them on an empty read -- the same rule the unreachable path uses.
+            // A WindowsServer (SCM) device always reads os.caption, so its server.* findings still diff normally.
+            var windowsRead = r.Facts.ContainsKey("os.caption");
+            var open = (await store.OpenFindingsAsync(id, null, ct))
+                .Where(f => !Core.Updates.UpdateRules.Owns(f.RuleKey) && !Core.Network.NetworkFindings.Owns(f.RuleKey)
+                         && (windowsRead || !f.RuleKey.StartsWith("server.", StringComparison.Ordinal)))
+                .ToList();
             IReadOnlyList<FindingChange> changes;
             if (r.Reachable)
             {
