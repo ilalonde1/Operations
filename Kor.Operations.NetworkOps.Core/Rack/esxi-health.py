@@ -33,7 +33,9 @@ if hw is not None:
 def vm_nics(v):
     try:
         devs = v.config.hardware.device if v.config and v.config.hardware else []
-        return [type(d).__name__ for d in devs if isinstance(d, vim.vm.device.VirtualEthernetCard)]
+        # SHORT class name: pyVmomi's type(d).__name__ is the full "vim.vm.device.VirtualVmxnet3"; the rule compares against
+        # the short "VirtualVmxnet3", so emit the short form or every VM reads as legacy (false positive on live VMXNET3 VMs).
+        return [type(d).__name__.split(".")[-1] for d in devs if isinstance(d, vim.vm.device.VirtualEthernetCard)]
     except Exception:
         return []
 

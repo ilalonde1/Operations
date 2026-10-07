@@ -24,6 +24,9 @@ public sealed class EsxiProbeContractTests
         foreach (var field in new[] { "name", "version", "vms", "datastores", "sensors", "iscsiDrops", "iscsiPaths", "maintenanceMode", "overallStatus" })
             Assert.Contains($"\"{field}\"", Probe);
         Assert.Contains("\"nics\": vm_nics(v)", Probe);   // the per-VM NIC list esxi.vm-nic-legacy reads -- the field that was missing
+        // The NIC class name must be the SHORT form ("VirtualVmxnet3"), not pyVmomi's full "vim.vm.device.VirtualVmxnet3",
+        // or the rule's equality check misreads every VMXNET3 VM as legacy. (The dead rule hid this; it fired on all VMs live.)
+        Assert.Contains(".split(\".\")[-1]", Probe);
     }
 
     [Fact]
