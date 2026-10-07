@@ -162,15 +162,16 @@ public sealed class NetworkOpsWindowsRenderTests
         library.AskBox.Text = "Andrea's ETABS crashed around 2:40 today opening the Tower B model";
         written += Render(library, Path.Combine(dir, $"{label}-prompt-library.png"));
 
-        // The Updates view: overdue, due, held, failed, the special servers, one that cannot be reached; two ticked, one selected.
-        var updates = new NetworkOpsUpdatesWindow(reader);
+        // The Updates view (folded from a window into the console's Updates tab): overdue, due, held, failed, the special
+        // servers, one that cannot be reached; two ticked, one selected.
+        var updates = new NetworkOpsUpdatesView(reader);
         updates.Apply(NetworkOpsUpdatesTests.Rows(), new DateTime(2026, 10, 1, 17, 0, 0, DateTimeKind.Utc));
         updates.OnlyWaitingBox.IsChecked = false;
         var views = ((System.Collections.IEnumerable)updates.Grid.ItemsSource).Cast<UpdateRowView>().ToList();
         views[0].IsTicked = true;
         views[1].IsTicked = true;
         updates.Grid.SelectedItem = views[0];
-        written += Render(updates, Path.Combine(dir, $"{label}-updates.png"));
+        written += Render(updates, new Size(1320, 880), Path.Combine(dir, $"{label}-updates.png"));
         return written;
     }
 

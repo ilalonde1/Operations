@@ -1,19 +1,14 @@
-<Window x:Class="Kor.Operations.App.NetworkOps.NetworkOpsUpdatesWindow"
+<UserControl x:Class="Kor.Operations.App.NetworkOps.NetworkOpsUpdatesView"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Windows updates"
-        Width="1320"
-        Height="880"
-        MinWidth="1000"
-        MinHeight="620"
-        WindowStartupLocation="CenterOwner"
         Background="{StaticResource App.Background}"
         FontFamily="Mulish, Segoe UI"
-        Loaded="Window_Loaded">
+        Loaded="OnLoaded">
     <!-- What Windows Update has waiting on every PC and server, and installing it on the ticked machines at once.
          Nothing installs by itself: the service searches twice a working day and says what is due; this is where it
-         gets installed. Each machine's install is an ordinary fix run, so it is in that machine's history too. -->
-    <Window.Resources>
+         gets installed. Each machine's install is an ordinary fix run, so it is in that machine's history too.
+         Folded from a standalone window into the console's "Updates" tab (2026-10-07), like the Network map before it. -->
+    <UserControl.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="/Kor.Operations.App;component/NetworkOps/NetworkOpsStyles.xaml"/>
@@ -21,8 +16,8 @@
             <BooleanToVisibilityConverter x:Key="BoolToVis"/>
             <Style x:Key="Wrap" TargetType="TextBlock"><Setter Property="TextWrapping" Value="Wrap"/></Style>
         </ResourceDictionary>
-    </Window.Resources>
-    <Grid Margin="12">
+    </UserControl.Resources>
+    <Grid Margin="12,0,12,0">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
@@ -128,4 +123,4 @@
         </StackPanel>
         <TextBlock Grid.Row="4" x:Name="StatusText" TextWrapping="Wrap" FontWeight="SemiBold" Margin="2,8,2,0"/>
     </Grid>
-</Window>
+</UserControl>

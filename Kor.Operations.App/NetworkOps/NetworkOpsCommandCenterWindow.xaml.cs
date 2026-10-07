@@ -156,7 +156,12 @@ public partial class NetworkOpsCommandCenterWindow : Window, INetworkTabHost
 
     private void OpenPc_Click(object sender, RoutedEventArgs e) => OpenSelected();
 
-    private void Updates_Click(object sender, RoutedEventArgs e) => new NetworkOpsUpdatesWindow(_vm.Client) { Owner = this }.Show();
+    // The Updates view is a console tab now (folded from a standalone window, 2026-10-07), created the first time it is
+    // shown; it reads on its own Loaded, like the Network tab.
+    private NetworkOpsUpdatesView EnsureUpdates()
+        => (NetworkOpsUpdatesView)(UpdatesHost.Content ??= new NetworkOpsUpdatesView(_vm.Client));
+
+    private void UpdatesTab_Checked(object sender, RoutedEventArgs e) => EnsureUpdates();
 
     private void Deploy_Click(object sender, RoutedEventArgs e) => new NetworkOpsDeployWindow(_vm.Client) { Owner = this }.Show();
 
@@ -179,14 +184,6 @@ public partial class NetworkOpsCommandCenterWindow : Window, INetworkTabHost
         var view = EnsureNetwork();
         NetworkTab.IsChecked = true;
         if (focusMac is { Length: > 0 }) view.FocusOn(focusMac, port);   // before the map loads this is kept and applied on load
-    }
-
-    /// <summary>Ask Claude, on the selected PC or rack device when there is one (the ask box then says it is about that machine).</summary>
-    private void AskClaude_Click(object sender, RoutedEventArgs e)
-    {
-        var selected = (PcList.SelectedItem ?? RackList.SelectedItem) as FleetRow;
-        var request = selected is null ? null : new Kor.Operations.NetworkOps.Core.Learning.PromptRequest("device", null, selected.DeviceId, null);
-        new PromptLibraryWindow(_vm.Client, request) { Owner = this }.Show();
     }
 
     /// <summary>A tile filters both lists to its rows; the same tile again shows everything.</summary>

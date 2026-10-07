@@ -115,6 +115,9 @@
             <RadioButton x:Name="NetworkTab" Content="Network" GroupName="ConsoleTab" Style="{StaticResource Ops.Segment}" Margin="6,0,0,0"
                          Checked="NetworkTab_Checked"
                          ToolTip="Every switch and port, and what is plugged into each: PC, person, IP. Searchable."/>
+            <RadioButton x:Name="UpdatesTab" Content="Updates" GroupName="ConsoleTab" Style="{StaticResource Ops.Segment}" Margin="6,0,0,0"
+                         Checked="UpdatesTab_Checked"
+                         ToolTip="What Windows Update has waiting on every PC and server, and installing it on many at once."/>
         </StackPanel>
 
         <!-- Fleet: the page in one sentence, then four tiles counted across the rack AND the PCs. A tile is also a filter. -->
@@ -217,13 +220,10 @@
             <!-- Grouped by purpose, left to right: ACT on the fleet · open a focused TOOL · the selected PC · refresh.
                  Thin separators mark the groups so the row reads as four things, not nine. -->
             <StackPanel Grid.Column="3" Orientation="Horizontal">
-                <!-- Tools: a focused workspace, each opened on its own. (Network moved to a console tab, 2026-10-04.) -->
-                <Button Content="Updates" Margin="0,0,6,0" Click="Updates_Click"
-                        ToolTip="What Windows Update has waiting on every PC and server, and installing it on many at once."/>
-                <Button Content="Deploy" Margin="0,0,6,0" Click="Deploy_Click"
+                <!-- Tools: Updates and Network are now console tabs (one way in); Ask Claude lives on every device and
+                     every To-clear issue, so the loose global button is gone. Deploy stays here until it is folded in too. -->
+                <Button Content="Deploy" Margin="0,0,10,0" Click="Deploy_Click"
                         ToolTip="Install an app update or migration on ticked machines, through each PC's agent as SYSTEM (e.g. migrate to KOR-Operations)."/>
-                <Button Content="Ask Claude" Margin="0,0,10,0" Click="AskClaude_Click"
-                        ToolTip="Ask anything about the selected PC (or the whole network), or open a prompt for any problem: Claude starts in Windows Terminal with everything NetworkOps knows."/>
                 <Border Width="1" Background="#E3E7EB" Margin="0,6,10,6"/>
                 <!-- The selected PC. -->
                 <Button x:Name="OpenPcBtn" Content="Open PC" Margin="0,0,10,0" Click="OpenPc_Click"
@@ -439,6 +439,10 @@
         <!-- Network: the port map, hosted here and shown when its tab is picked (created in code with the client + navigator). -->
         <ContentControl x:Name="NetworkHost" Grid.Row="5" Margin="12,0,12,2"
                         Visibility="{Binding IsChecked, ElementName=NetworkTab, Converter={StaticResource BoolToVis}}"/>
+
+        <!-- Updates: the Windows-update view, hosted here and shown when its tab is picked (folded from a standalone window). -->
+        <ContentControl x:Name="UpdatesHost" Grid.Row="5" Margin="0,0,0,2"
+                        Visibility="{Binding IsChecked, ElementName=UpdatesTab, Converter={StaticResource BoolToVis}}"/>
 
         <Border Grid.Row="6" Background="{StaticResource Panel.Background}" BorderBrush="{StaticResource Panel.Border}" BorderThickness="0,1,0,0" Padding="12,6">
             <TextBlock x:Name="StatusText" Text="{Binding StatusMessage}" Foreground="{StaticResource Text.Secondary}" VerticalAlignment="Center"/>

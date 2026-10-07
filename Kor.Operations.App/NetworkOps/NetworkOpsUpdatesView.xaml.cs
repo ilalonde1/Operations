@@ -60,7 +60,7 @@ public sealed class UpdateRowView(UpdateRow row, DateTime nowUtc) : INotifyPrope
         : Row.ScanStatus == "Ok" ? CommandCenterView.Ago(Row.ScannedUtc, nowUtc)
         : $"{CommandCenterView.Ago(Row.ScannedUtc, nowUtc)}: {Short(Row.ScanStatus, 60)}";
 
-    /// <summary>This window's install progress when there is one; otherwise the last install on record.</summary>
+    /// <summary>This view's install progress when there is one; otherwise the last install on record.</summary>
     public string InstallText => _progress ?? (!Row.Target ? Row.Why ?? "" : Row.LastInstall is { } l ? $"last: {Short(l, 140)} ({CommandCenterView.Ago(Row.LastInstallUtc, nowUtc)})" : "");
 
     public string? Progress { get => _progress; set { _progress = value; Changed(nameof(InstallText)); } }
@@ -78,7 +78,7 @@ public sealed class UpdateRowView(UpdateRow row, DateTime nowUtc) : INotifyPrope
 
 public sealed record PendingLine(string Title, string Line);
 
-public partial class NetworkOpsUpdatesWindow : Window
+public partial class NetworkOpsUpdatesView : UserControl
 {
     private readonly NetworkOpsClient _client;
     private readonly CancellationTokenSource _cts = new();
@@ -86,14 +86,17 @@ public partial class NetworkOpsUpdatesWindow : Window
     private readonly Dictionary<long, UpdateRowView> _running = new();
     private List<UpdateRowView> _all = [];
 
-    public NetworkOpsUpdatesWindow(NetworkOpsClient client)
+    public NetworkOpsUpdatesView(NetworkOpsClient client)
     {
         _client = client ?? throw new ArgumentNullException(nameof(client));
         InitializeComponent();
         _follow.Tick += async (_, _) => await Guard(FollowAsync).ConfigureAwait(true);
+        // The tab is created once and hidden/shown by visibility, so Unloaded fires when the CONSOLE WINDOW closes
+        // (not on a tab switch): the right place to stop the follow timer and cancel in-flight reads.
+        Unloaded += (_, _) => { _follow.Stop(); _cts.Cancel(); };
     }
 
-    private async void Window_Loaded(object sender, RoutedEventArgs e) => await Guard(LoadAsync).ConfigureAwait(true);
+    private async void OnLoaded(object sender, RoutedEventArgs e) => await Guard(LoadAsync).ConfigureAwait(true);
 
     private async Task LoadAsync(CancellationToken ct)
     {
@@ -102,7 +105,7 @@ public partial class NetworkOpsUpdatesWindow : Window
         Status("");
     }
 
-    /// <summary>Fills the window (public so a render test can fill it without a service). Ticks and progress survive a refresh.</summary>
+    /// <summary>Fills the view (public so a render test can fill it without a service). Ticks and progress survive a refresh.</summary>
     public void Apply(IReadOnlyList<UpdateRow> rows, DateTime nowUtc)
     {
         var ticked = _all.Where(r => r.IsTicked).Select(r => r.Row.DeviceId).ToHashSet();
@@ -181,14 +184,15 @@ public partial class NetworkOpsUpdatesWindow : Window
     {
         var ticked = _all.Where(r => r.IsTicked).ToList();
         if (ticked.Count == 0) return;
+        var owner = Window.GetWindow(this);
         var what = restart == "none" ? "Install updates now (no restart)" : "Install updates now, and restart where an update needs it (5-minute warning on screen)";
-        if (MessageBox.Show(this, $"{what} on {ticked.Count} machine{(ticked.Count == 1 ? "" : "s")}?\n\n{string.Join(", ", ticked.Select(t => t.Name))}",
+        if (MessageBox.Show(owner, $"{what} on {ticked.Count} machine{(ticked.Count == 1 ? "" : "s")}?\n\n{string.Join(", ", ticked.Select(t => t.Name))}",
                 "Install updates", MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No) != MessageBoxResult.Yes) return;
 
         Status($"Queuing {ticked.Count}…");
         var outcomes = (await _client.InstallUpdatesAsync(new UpdateInstallRequest(ticked.Select(t => t.Row.DeviceId).ToList(), restart, false), ct).ConfigureAwait(true)).ToList();
         var ask = outcomes.Where(o => o.NeedsConfirmation).ToList();
-        if (ask.Count > 0 && MessageBox.Show(this,
+        if (ask.Count > 0 && MessageBox.Show(owner,
                 $"Someone is using {(ask.Count == 1 ? "this machine" : "these machines")} right now:\n\n{string.Join("\n", ask.Select(a => $"{a.Name}: {a.Refused}"))}\n\n" +
                 "Install and restart them anyway if an update needs it? They get a 5-minute warning on screen.",
                 "Someone is using it", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) == MessageBoxResult.Yes)
@@ -262,7 +266,7 @@ public partial class NetworkOpsUpdatesWindow : Window
 
     private void Status(string text) => StatusText.Text = text;
 
-    // Every handler is async void: nothing may escape it but a cancel (which only ever means the window closed). A
+    // Every handler is async void: nothing may escape it but a cancel (which only ever means the view is going away). A
     // narrower filter let an unexpected exception (e.g. a JsonException from a changed DTO) escape and crash the app.
     private async Task Guard(Func<CancellationToken, Task> work)
     {
@@ -272,12 +276,5 @@ public partial class NetworkOpsUpdatesWindow : Window
         {
             Status($"Could not do that: {ex.Message}");
         }
-    }
-
-    protected override void OnClosed(EventArgs e)
-    {
-        _follow.Stop();
-        _cts.Cancel();
-        base.OnClosed(e);
     }
 }
