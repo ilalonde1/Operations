@@ -31,6 +31,7 @@ public partial class KorRemoteViewerWindow : Window
     private string _url;
     private int _reroutes;
     private bool _gotBridge;
+    private bool _cookiesPersisted;
     private System.Windows.Threading.DispatcherTimer? _watchdog;
 
     public static string ProfileFolder => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "KorOperations", "KorRemote");
@@ -154,6 +155,11 @@ public partial class KorRemoteViewerWindow : Window
                 _log.Warning("KorRemote [{Device}]: MeshCentral page is MISSING functions the toolbar needs: {Missing} -- a MeshCentral update likely renamed them, so the toolbar buttons do nothing", _vm.DeviceName, s.Missing);
         }
         _vm.Apply(s);
+        // Keep the sign-in. The moment we are on an authenticated MeshCentral page, promote its session auth cookie to a
+        // persistent one -- otherwise every Connect asks to sign in again: WebView2 keeps PERSISTENT cookies in the profile
+        // folder across launches but drops SESSION cookies when the viewer's browser process ends, and MeshCentral's login
+        // cookie is a session cookie unless "keep me signed in" is set. This does that for us, once per viewer.
+        if (s is { Page: not "login" }) _ = PersistAuthCookiesAsync();
         // Signing in lands on MeshCentral's home page, not the device: send it back to the device, a few times at most.
         if (s is { Page: "desktop" } && !Kor.Operations.NetworkOps.Core.Learning.MeshLinks.IsDeviceLink(View.Source) && _reroutes++ < 3)
         {
@@ -164,6 +170,30 @@ public partial class KorRemoteViewerWindow : Window
         // actually on screen and clear of the remote view, which the bridge state alone cannot.
         if (s is { Page: "desktop", State: 3 })
             Dispatcher.BeginInvoke(new Action(() => LogVisualState("bridge-connected")), System.Windows.Threading.DispatcherPriority.Background);
+    }
+
+    /// <summary>Promote MeshCentral's session auth cookie(s) to persistent (30 days, matching its own "keep me signed in"),
+    /// so a closed-and-reopened viewer stays signed in instead of landing on the login page every Connect. Once per viewer;
+    /// best-effort (a failure just means the sign-in is asked for again, as before).</summary>
+    private async Task PersistAuthCookiesAsync()
+    {
+        if (_cookiesPersisted || View.CoreWebView2 is not { } core) return;
+        _cookiesPersisted = true;   // one attempt per viewer, whatever the outcome -- do not retry on every bridge message
+        try
+        {
+            if (!Uri.TryCreate(_url, UriKind.Absolute, out var u)) return;
+            var origin = u.GetLeftPart(UriPartial.Authority);
+            var cookies = await core.CookieManager.GetCookiesAsync(origin).ConfigureAwait(true);
+            var promoted = 0;
+            foreach (var c in cookies.Where(c => c.IsSession))
+            {
+                c.Expires = DateTime.Now.AddDays(30);
+                core.CookieManager.AddOrUpdateCookie(c);
+                promoted++;
+            }
+            _log.Information("KorRemote [{Device}]: kept the sign-in -- promoted {N} MeshCentral session cookie(s) to persistent (30 d)", _vm.DeviceName, promoted);
+        }
+        catch (Exception ex) { _log.Warning(ex, "KorRemote [{Device}]: could not persist the sign-in cookie; a future Connect may ask to sign in again", _vm.DeviceName); }
     }
 
     /// <summary>A screenshot (deskSaveImage downloads a PNG): straight to Pictures\KOR Remote, no download prompt.</summary>
