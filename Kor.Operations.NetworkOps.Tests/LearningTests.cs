@@ -201,6 +201,17 @@ public sealed class LearningTests
     }
 
     [Fact]
+    public void Windows_server_is_not_flagged_as_an_unsupported_windows_10()
+    {
+        // Server 2019 is build 17763 -- the same as Windows 10 1809 -- but supported to Jan 2029, so it must not read
+        // as an unsupported Windows 10 (BK01, the Veeam backup box, flagged in error on 2026-10-07).
+        var srv2019 = At(T0) with { Os = new OsInfo("Windows Server 2019 Standard", null, 17763, 9245, null, 22) };
+        var srv2022 = At(T0) with { Os = new OsInfo("Windows Server 2022 Standard", null, 20348, 1, null, 22) };
+        Assert.DoesNotContain(Predictions.Evaluate(srv2019, new MetricHistory()), x => x.RuleKey == "os-unsupported");
+        Assert.DoesNotContain(Predictions.Evaluate(srv2022, new MetricHistory()), x => x.RuleKey == "os-unsupported");
+    }
+
+    [Fact]
     public void A_mailbox_growing_toward_the_limit_is_raised_before_it_reaches_40_gb()
     {
         var s = At(T0.AddDays(30)) with { MailStores = [new MailStoreInfo("jdoe", "jdoe@korstructural.com.ost", 38, null)] };

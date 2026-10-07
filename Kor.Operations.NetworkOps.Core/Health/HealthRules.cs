@@ -25,8 +25,13 @@ public static class HealthRules
             f.Add(new("wmi-broken", Severity.Critical, "WMI is broken",
                 $"core CIM classes fail ('Invalid class'); {s.ProbeErrors.Count} probe blocks could not read"));
 
-        // A data drive that vanished (KOR-206-N's D:, 2026-09-28). USB sticks that were unplugged are not drives that failed.
-        var vanished = s.MissingDisks.Where(d => d.InstanceId is not null && !d.InstanceId.StartsWith("USBSTOR", StringComparison.OrdinalIgnoreCase)).ToList();
+        // A data drive that vanished (KOR-206-N's D:, 2026-09-28). USB sticks that were unplugged are not drives that
+        // failed; nor are VMware's phantom virtual-SATA nodes -- a VM's SATA controller enumerates its unpopulated ports
+        // as ghost "VMware Virtual SATA Hard Drive" devices with no volume (BK01, 7 of them, raised Critical in error
+        // on 2026-10-07; its real disks are SAS + iSCSI and all Healthy).
+        var vanished = s.MissingDisks.Where(d => d.InstanceId is not null
+            && !d.InstanceId.StartsWith("USBSTOR", StringComparison.OrdinalIgnoreCase)
+            && !d.InstanceId.Contains("VEN_VMWARE&PROD_VIRTUAL_SATA", StringComparison.OrdinalIgnoreCase)).ToList();
         if (vanished.Count > 0)
             f.Add(new("disk-missing", Severity.Critical, "A drive has disappeared",
                 string.Join("; ", vanished.Select(d => d.Name)) +
@@ -105,8 +110,15 @@ public static class HealthRules
         foreach (var v in s.Volumes.Where(v => v.SizeGB > 0))
         {
             var pct = v.FreeGB / v.SizeGB * 100;
-            if (pct < 10)
-                f.Add(new($"low-disk:{v.Letter.ToLowerInvariant()}", pct < 5 ? Severity.Critical : Severity.Warning,
+            // Low on space in EITHER relative OR absolute terms. Percentage alone missed a ~100 GB system drive at 20 GB
+            // free (BK01's C:, 20.6% -- Ninja flagged it, we did not). The absolute floor is gated by a loose % so a big
+            // drive that is merely 20% free is left alone: on a 500 GB drive 25 GB is ~5%, so the floor only ever sharpens
+            // small or system drives, never adds noise to large ones. Same thresholds as the server disk rule
+            // (Core/Rack/ServerRules), so a filling drive reads identically whether a box is read as a server or an agent.
+            var crit = pct < 5 || (v.FreeGB < 5 && pct < 25);
+            var warn = pct < 10 || (v.FreeGB < 25 && pct < 40);
+            if (crit || warn)
+                f.Add(new($"low-disk:{v.Letter.ToLowerInvariant()}", crit ? Severity.Critical : Severity.Warning,
                     Drives.OfLetter(s, v.Letter) is { } pd && Drives.Role(pd) is { } role ? $"{Drives.Capitalised(role)} is nearly full" : $"Drive {v.Letter}: is nearly full",
                     $"{v.FreeGB:0.#} GB free of {v.SizeGB:0.#} GB ({pct:0.#}%)"));
         }

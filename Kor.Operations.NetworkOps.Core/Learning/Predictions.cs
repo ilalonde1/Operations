@@ -129,8 +129,11 @@ public static class Predictions
             f.Add(new("battery-worn", b.HealthPct < 50 ? Severity.Critical : Severity.Warning, "The laptop battery is worn",
                 $"holds {b.HealthPct}% of its original charge ({b.FullChargeMWh:n0} of {b.DesignMWh:n0} mWh)"));
 
-        // Windows 10 left support on 14 Oct 2025: no more security updates.
-        if (s.Os is { Build: > 0 and < 22000 } os)
+        // Windows 10 (client) left support on 14 Oct 2025: no more security updates. Windows Server shares build numbers
+        // with the client -- Server 2019 is build 17763, same as Windows 10 1809 -- but has its own, far longer lifecycle
+        // (Server 2019 to Jan 2029), so a Server SKU must not read as an unsupported Windows 10 (BK01, Server 2019, was
+        // flagged in error on 2026-10-07). The rack's Windows servers are judged by the version baseline, not this rule.
+        if (s.Os is { Build: > 0 and < 22000, Product: not null } os && !os.Product.Contains("Server", StringComparison.OrdinalIgnoreCase))
             f.Add(new("os-unsupported", Severity.Warning, "Windows 10 no longer gets security updates",
                 $"build {os.Build}.{os.Ubr} ({os.Product}) -- support ended 14 Oct 2025"));
 

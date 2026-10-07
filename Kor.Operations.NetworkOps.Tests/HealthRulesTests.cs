@@ -181,6 +181,28 @@ public sealed class HealthRulesTests
     }
 
     [Fact]
+    public void A_small_system_drive_flags_on_the_absolute_floor_even_above_10_percent_but_a_large_one_does_not()
+    {
+        // BK01's C: 20.5 GB free of 99.4 (20.6%) -- Ninja caught it, the percentage-only rule did not.
+        var tight = HealthRules.Evaluate(Clean() with { Volumes = [new VolumeInfo("C", null, 99.4, 20.5)] }).Single(x => x.RuleKey == "low-disk:c");
+        Assert.Equal(Severity.Warning, tight.Severity);
+        // A large drive merely 20% free keeps tens of GB of headroom and must NOT flag (no fleet-wide noise).
+        Assert.DoesNotContain(HealthRules.Evaluate(Clean() with { Volumes = [new VolumeInfo("C", null, 500, 100)] }), x => x.RuleKey == "low-disk:c");
+    }
+
+    [Fact]
+    public void A_vmware_phantom_virtual_sata_node_is_not_a_missing_drive_but_a_real_loss_still_is()
+    {
+        // A VMware VM's SATA controller lists its unpopulated ports as ghost "VMware Virtual SATA Hard Drive" nodes
+        // (BK01, 7 of them, raised Critical in error 2026-10-07). They are not lost drives.
+        var ghost = new MissingDiskInfo("VMware Virtual SATA Hard Drive", @"SCSI\DISK&VEN_VMWARE&PROD_VIRTUAL_SATA_HAR\5&354AE4D7&0&010000");
+        Assert.DoesNotContain(HealthRules.Evaluate(Clean() with { MissingDisks = [ghost] }), x => x.RuleKey == "disk-missing");
+        // A genuinely missing data drive (not a USB stick, not a VMware ghost) still raises it.
+        var real = new MissingDiskInfo("Samsung SSD 870 EVO", @"SCSI\DISK&VEN_SAMSUNG&PROD_SAMSUNG_SSD_870\4&ABC123&0&000000");
+        Assert.Contains(HealthRules.Evaluate(Clean() with { MissingDisks = [real] }), x => x.RuleKey == "disk-missing");
+    }
+
+    [Fact]
     public void Only_the_2020_access_engine_dlls_are_stale_not_the_patched_ones()
     {
         var old = Clean() with { Office = new OfficeInfo("16.0.20326.20072", "16.0.5023.1000", true) };
