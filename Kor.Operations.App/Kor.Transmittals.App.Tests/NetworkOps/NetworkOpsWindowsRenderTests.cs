@@ -123,6 +123,11 @@ public sealed class NetworkOpsWindowsRenderTests
         network.SearchBox.Text = "SW02";
         written += Render(network, netSize, Path.Combine(dir, $"{label}-network-search.png"));
 
+        // The "To clear" worklist with its category rollup strip, built from the fixture fleet's open issues.
+        var toClear = new NetworkOpsToClearView(reader);
+        toClear.Apply(ToClear.Build([snapshot], new System.Collections.Generic.HashSet<string>(), DateTime.UtcNow));
+        written += Render(toClear, new Size(1400, 900), Path.Combine(dir, $"{label}-to-clear.png"));
+
         // The KOR Remote viewer, connected to a PC with two monitors showing the second (the page itself is not drawn here).
         var viewer = new KorRemoteViewerModel(worst.Name, "kwurmlinger · active, idle 12 min");
         viewer.Apply(new BridgeState("desktop", [], worst.Name, 3, [new("655406", "Ctrl-Alt-Del")],

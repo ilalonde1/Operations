@@ -56,6 +56,17 @@ public sealed class ToClearRow
         : $"{f.Title}: one click, nothing restarts.";
 }
 
+/// <summary>One category on the overview strip: a kind of problem, how many machines have it, a dot in its worst colour.
+/// The Ninja "Device health issues" rollup Ian asked for -- the whole worklist read in one glance before the detail below.</summary>
+public sealed class ToClearCategoryRow
+{
+    public required ToClearCategory Category { get; init; }
+    public string Name => Category.Name;
+    public string CountText => Category.Machines.ToString(System.Globalization.CultureInfo.InvariantCulture);
+    public Brush Dot => NetworkOpsBrushes.For(Category.Severity);
+    public string Tip => $"{Category.Issues} issue{(Category.Issues == 1 ? "" : "s")} on {Category.Machines} machine{(Category.Machines == 1 ? "" : "s")}: {string.Join(", ", Category.RuleKeys.Take(6))}";
+}
+
 /// <summary>The path to all-green: every live finding across the fleet, grouped by issue and ranked, with "Fix on all N"
 /// for the ones a catalog fix clears, and Ask Claude for the rest. Parked (acknowledged/snoozed) findings do not appear.</summary>
 public partial class NetworkOpsToClearView : UserControl
@@ -63,6 +74,7 @@ public partial class NetworkOpsToClearView : UserControl
     private static readonly ILogger Log = Serilog.Log.ForContext<NetworkOpsToClearView>();
     private readonly NetworkOpsClient _client;
     private readonly ObservableCollection<ToClearRow> _rows = new();
+    private readonly ObservableCollection<ToClearCategoryRow> _categories = new();   // the at-a-glance rollup above the list
     private readonly System.Collections.Generic.Dictionary<string, string> _fixing = new(StringComparer.OrdinalIgnoreCase);   // ruleKey -> running note, until the finding clears
     private System.Windows.Threading.DispatcherTimer? _auto;
 
@@ -71,6 +83,7 @@ public partial class NetworkOpsToClearView : UserControl
         _client = client;
         InitializeComponent();
         IssueList.ItemsSource = _rows;
+        CategoryStrip.ItemsSource = _categories;
         Loaded += async (_, _) => { StartAuto(); await ReloadAsync(); };
         Unloaded += (_, _) => _auto?.Stop();
     }
@@ -87,39 +100,45 @@ public partial class NetworkOpsToClearView : UserControl
 
     private async Task ReloadAsync()
     {
-        try
-        {
-            var v = await _client.GetToClearAsync(CancellationToken.None).ConfigureAwait(true);
-            // A "fixing" mark lives only while its issue is still open: a cleared one drops off the list and stops fixing.
-            var openKeys = new System.Collections.Generic.HashSet<string>(v.Open.Select(i => i.RuleKey), StringComparer.OrdinalIgnoreCase);
-            foreach (var k in _fixing.Keys.Where(k => !openKeys.Contains(k)).ToList()) _fixing.Remove(k);
-            _rows.Clear();
-            var fixingCount = 0;
-            foreach (var i in v.Open)
-            {
-                // What we just queued (specific note) wins; otherwise the SERVER tells us a fix is in flight -- so a fix
-                // started last session, or from another machine, still shows as "fixing" here.
-                var note = _fixing.TryGetValue(i.RuleKey, out var f) ? f
-                    : i.Running ? "running on the affected machines" : null;
-                if (note is not null) fixingCount++;
-                _rows.Add(new ToClearRow { Issue = i, Fixing = note });
-            }
-            var green = v.Issues == 0;
-            var fixingNote = fixingCount > 0 ? $" · {fixingCount} fixing" : "";
-            HeadlineText.Text = green ? "All green" : v.Issues.ToString();
-            HeadlineDetail.Text = green
-                ? (v.Parked > 0 ? $"Nothing live to clear. {v.Parked} parked (acknowledged or snoozed)." : "Nothing to clear.")
-                : $"issue{(v.Issues == 1 ? "" : "s")} to clear · {v.OneClickIssues} one-click · {v.Parked} parked{fixingNote}";
-            HeadlineAccent.Fill = green ? NetworkOpsBrushes.Healthy
-                : v.Open[0].Severity == Severity.Critical ? NetworkOpsBrushes.Critical
-                : NetworkOpsBrushes.Attention;
-            Status($"Updated {DateTime.Now:HH:mm:ss} · {(green ? "all green 🎉" : $"{v.Issues} to clear{fixingNote}")} · refreshes every 20s");
-        }
+        try { Apply(await _client.GetToClearAsync(CancellationToken.None).ConfigureAwait(true)); }
         catch (Exception ex)
         {
             Log.Warning(ex, "To clear: load failed");
             Status("Could not read the fleet: " + ex.Message);
         }
+    }
+
+    /// <summary>Fill the category strip, the issue list and the headline from one worklist read. Internal so the render test
+    /// can drive it without the service.</summary>
+    internal void Apply(ToClearView v)
+    {
+        // A "fixing" mark lives only while its issue is still open: a cleared one drops off the list and stops fixing.
+        var openKeys = new System.Collections.Generic.HashSet<string>(v.Open.Select(i => i.RuleKey), StringComparer.OrdinalIgnoreCase);
+        foreach (var k in _fixing.Keys.Where(k => !openKeys.Contains(k)).ToList()) _fixing.Remove(k);
+        _rows.Clear();
+        var fixingCount = 0;
+        foreach (var i in v.Open)
+        {
+            // What we just queued (specific note) wins; otherwise the SERVER tells us a fix is in flight -- so a fix
+            // started last session, or from another machine, still shows as "fixing" here.
+            var note = _fixing.TryGetValue(i.RuleKey, out var f) ? f
+                : i.Running ? "running on the affected machines" : null;
+            if (note is not null) fixingCount++;
+            _rows.Add(new ToClearRow { Issue = i, Fixing = note });
+        }
+        // The at-a-glance rollup: the same open issues grouped into broad categories with a machine count (the Ninja view).
+        _categories.Clear();
+        foreach (var c in ToClearCategories.Of(v.Open)) _categories.Add(new ToClearCategoryRow { Category = c });
+        var green = v.Issues == 0;
+        var fixingNote = fixingCount > 0 ? $" · {fixingCount} fixing" : "";
+        HeadlineText.Text = green ? "All green" : v.Issues.ToString();
+        HeadlineDetail.Text = green
+            ? (v.Parked > 0 ? $"Nothing live to clear. {v.Parked} parked (acknowledged or snoozed)." : "Nothing to clear.")
+            : $"issue{(v.Issues == 1 ? "" : "s")} to clear · {v.OneClickIssues} one-click · {v.Parked} parked{fixingNote}";
+        HeadlineAccent.Fill = green ? NetworkOpsBrushes.Healthy
+            : v.Open[0].Severity == Severity.Critical ? NetworkOpsBrushes.Critical
+            : NetworkOpsBrushes.Attention;
+        Status($"Updated {DateTime.Now:HH:mm:ss} · {(green ? "all green 🎉" : $"{v.Issues} to clear{fixingNote}")} · refreshes every 20s");
     }
 
     private async void Fix_Click(object sender, RoutedEventArgs e)
@@ -134,7 +153,7 @@ public partial class NetworkOpsToClearView : UserControl
             var outcomes = await _client.RunFixManyAsync(fix.Id, ids, fix.PrefilledParam, confirmed: false, CancellationToken.None).ConfigureAwait(true);
             var need = outcomes.Where(o => o.NeedsConfirmation).Select(o => o.Name).ToList();
             if (need.Count > 0 &&
-                MessageBox.Show($"{fix.Title} restarts the PC. Someone is using: {string.Join(", ", need)}. Go ahead anyway?",
+                MessageBox.Show($"{fix.Title} will interrupt {need.Count} machine(s): {string.Join(", ", need)}. Go ahead?",
                     "Confirm", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
                 outcomes = await _client.RunFixManyAsync(fix.Id, ids, fix.PrefilledParam, confirmed: true, CancellationToken.None).ConfigureAwait(true);
             var queued = outcomes.Count(o => o.ActionId is not null);
