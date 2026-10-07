@@ -6,9 +6,9 @@ using System.Runtime.Versioning;
 // This project sets GenerateAssemblyInfo=false, so the SDK does NOT synthesise version
 // attributes from <Version> in the csproj -- they must live here or FileVersion stays 0.0.0.0
 // (which the app's startup log reports). Date-based: YYYY.M.D. Bump on a meaningful app change.
-[assembly: AssemblyVersion("2026.10.5")]
-[assembly: AssemblyFileVersion("2026.10.5")]
-[assembly: AssemblyInformationalVersion("2026.10.5")]
+[assembly: AssemblyVersion("2026.10.6")]
+[assembly: AssemblyFileVersion("2026.10.6")]
+[assembly: AssemblyInformationalVersion("2026.10.6")]
 
 [assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Kor.Operations.EngineeringTools.Tests")]
 [assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Kor.Operations.App.Tests")]

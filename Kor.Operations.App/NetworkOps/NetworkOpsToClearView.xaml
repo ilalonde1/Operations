@@ -118,12 +118,21 @@
                                                 ToolTip="This fix is queued and running on the affected machines. The issue drops off once they clear and re-check.">
                                             <TextBlock Text="{Binding FixingText}" FontSize="12" Foreground="#166534" FontWeight="SemiBold" TextWrapping="Wrap"/>
                                         </Border>
-                                        <Button Content="Ask Claude" Click="Ask_Click" Margin="0,0,0,6"
-                                                ToolTip="Open a Claude prompt for this issue (on the first machine): investigate and clear it with everything NetworkOps knows."/>
-                                        <Button Content="{Binding AckLabel}" Click="Acknowledge_Click" Margin="0,0,0,2"
-                                                ToolTip="Acknowledge on every machine that has it: it stops counting against green and drops off this list. Use it when the state is known or expected — e.g. a drive you removed on purpose. Reopen from the machine's page."/>
-                                        <Button Content="Snooze a week" Style="{StaticResource Ops.Link}" HorizontalAlignment="Center" Click="Snooze_Click"
-                                                ToolTip="Hide it for 7 days; it comes back if still open then."/>
+                                        <!-- Ask Claude is the PRIMARY verb only when there is no one-click fix; otherwise it tucks into More. -->
+                                        <Button Content="Ask Claude" Style="{StaticResource Ops.Primary}" Click="Ask_Click" Margin="0,0,0,6"
+                                                Visibility="{Binding ShowAskPrimary, Converter={StaticResource BoolToVis}}"
+                                                ToolTip="No one-click fix for this — open a Claude prompt for it (on the first machine): investigate and clear it with everything NetworkOps knows."/>
+                                        <!-- Secondary dispositions behind one control, so the card shows one clear verb up front. -->
+                                        <Button Content="More ▾" Style="{StaticResource Ops.Link}" HorizontalAlignment="Right" Click="More_Click"
+                                                ToolTip="Ask Claude, acknowledge, or snooze this issue.">
+                                            <Button.ContextMenu>
+                                                <ContextMenu>
+                                                    <MenuItem Header="Ask Claude" Click="Ask_Click"/>
+                                                    <MenuItem Header="{Binding AckLabel}" Click="Acknowledge_Click"/>
+                                                    <MenuItem Header="Snooze a week" Click="Snooze_Click"/>
+                                                </ContextMenu>
+                                            </Button.ContextMenu>
+                                        </Button>
                                     </StackPanel>
                                 </Grid>
                             </Border>

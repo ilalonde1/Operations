@@ -48,6 +48,9 @@ public sealed class ToClearRow
     public string? Fixing { get; set; }
     public bool ShowFix => CanFix && Fixing is null;
     public bool ShowFixing => Fixing is not null;
+    // No one-click fix and nothing running: Ask Claude is the real path, so it takes the primary slot rather than hiding
+    // behind "More". (A fixable issue keeps Fix primary and tucks Ask/Acknowledge/Snooze into the menu.)
+    public bool ShowAskPrimary => !CanFix && Fixing is null;
     public string FixingText => "⏳ " + Fixing;
     public string FixHint => Issue.Fix is not { } f
         ? "No one-click fix — Ask Claude, or hands-on."
@@ -248,6 +251,19 @@ public partial class NetworkOpsToClearView : UserControl
         if (picker.ShowDialog() != true || picker.SelectedIndexes.Count == 0) return false;
         ids = picker.SelectedIndexes.Select(i => machines[i].FindingId).ToList();
         return true;
+    }
+
+    // The per-issue overflow: Ask Claude / Acknowledge / Snooze tuck behind one "More" so each card shows one clear verb.
+    // The menu's items reuse the handlers below unchanged -- they resolve the row from their own DataContext, which we set
+    // to the button's (the bound ToClearRow) as the menu opens, because a ContextMenu is outside the card's visual tree.
+    private void More_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button b && b.ContextMenu is { } menu)
+        {
+            menu.DataContext = b.DataContext;
+            menu.PlacementTarget = b;
+            menu.IsOpen = true;
+        }
     }
 
     private void Ask_Click(object sender, RoutedEventArgs e)
