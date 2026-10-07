@@ -59,4 +59,30 @@ public sealed class ServerRulesTests
         var r = Eval("{" + Base + "}");   // ProbeVersion 1: no DefenderMode/WebrootStatus/NicCategories
         Assert.DoesNotContain(r.Findings, f => f.RuleKey is "server.av-conflict" or "server.av-none" or "server.nic-public");
     }
+
+    // Disk: low on space in EITHER relative OR absolute terms. The %-only rule missed BK01 (C: 21 GB of 99 GB = 21%), which
+    // Ninja caught and we did not (2026-10-06). The absolute floor is gated by a loose % so a small, mostly-empty drive is
+    // not flagged. Rule key is server.disk-full:<drive>, drive including its colon.
+    private static string WithDisk(double freeGb, double sizeGb)
+    {
+        string N(double v) => v.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        return "{\"Computer\":\"BK01\",\"OsCaption\":\"Windows Server\",\"OsBuild\":\"10.0.26100\",\"UptimeHours\":100,"
+             + $"\"Disks\":[{{\"Drive\":\"C:\",\"SizeGB\":{N(sizeGb)},\"FreeGB\":{N(freeGb)}}}],"
+             + "\"VssWriters\":[],\"StoppedAutoServices\":[],\"PendingReboot\":false,\"LastUpdateDays\":5,\"StorageErrors24h\":[]}";
+    }
+
+    [Fact]
+    public void A_server_system_drive_low_on_headroom_is_flagged_even_above_10pct()
+    {
+        var f = Assert.Single(Eval(WithDisk(21, 99)).Findings, x => x.RuleKey == "server.disk-full:C:");   // the BK01 case
+        Assert.Equal(Severity.Warning, f.Severity);
+    }
+
+    [Fact]
+    public void A_nearly_full_drive_is_critical()
+        => Assert.Equal(Severity.Critical, Assert.Single(Eval(WithDisk(40, 2000)).Findings, x => x.RuleKey == "server.disk-full:C:").Severity);
+
+    [Fact]
+    public void A_small_mostly_empty_drive_is_not_flagged()
+        => Assert.DoesNotContain(Eval(WithDisk(24, 30)).Findings, x => x.RuleKey == "server.disk-full:C:");   // 80% free: the absolute floor must not fire
 }

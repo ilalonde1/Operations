@@ -37,8 +37,13 @@ public static class ServerRules
             if (size <= 0) continue;
             var pct = 100 * free / size;
             b.Metric("disk.free.pct", Math.Round(pct, 1), drive);
-            if (pct < 5) b.Raise($"server.disk-full:{drive}", Severity.Critical, $"Drive {drive} is almost full", $"{free:0.#} GB free of {size:0} GB ({pct:0.0}%)");
-            else if (pct < 10) b.Raise($"server.disk-full:{drive}", Severity.Warning, $"Drive {drive} is filling up", $"{free:0.#} GB free of {size:0} GB ({pct:0.0}%)");
+            var ev = $"{free:0.#} GB free of {size:0} GB ({pct:0.0}%)";
+            // Low on space in EITHER relative OR absolute terms: a huge data drive at 2% is critical, and a system drive with
+            // only a few GB of headroom is a problem even above 10% (Windows updates and logs need the room). The absolute
+            // floor is gated by a loose % so a small-but-mostly-empty drive is not flagged. (BK01 C: 21 GB / 99 GB = 21% was
+            // invisible before -- Ninja caught it, we did not; audit-driven, 2026-10-06.)
+            if (pct < 5 || (free < 5 && pct < 25)) b.Raise($"server.disk-full:{drive}", Severity.Critical, $"Drive {drive} is almost full", ev);
+            else if (pct < 10 || (free < 25 && pct < 40)) b.Raise($"server.disk-full:{drive}", Severity.Warning, $"Drive {drive} is filling up", ev);
         }
 
         // A writer in error fails the next backup. "Waiting for completion" with no error is a snapshot in progress: fine.

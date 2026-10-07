@@ -62,6 +62,34 @@ public static class OnTargetPayload
             """;
     }
 
+    /// <summary>
+    /// The same captured-and-serialised <c>{Ok, Output}</c> envelope as <see cref="Build"/>, but written to STDOUT instead
+    /// of a result file -- for a channel that returns a command's own output directly (the MeshCentral agent), where there
+    /// is no admin share to drop a file on. The output is read by the same <see cref="ParseResult"/>, so a probe runs
+    /// identically over SCM or Mesh. Compact JSON: one line, which a stdout channel returns cleanly.
+    /// </summary>
+    public static string BuildForStdout(string body, int maxResultChars = MaxResultChars)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(body);
+        ArgumentOutOfRangeException.ThrowIfLessThan(maxResultChars, 1024);
+        return $$"""
+            $ErrorActionPreference = 'Stop'
+            $r = try {
+                $o = & {
+            {{body}}
+                }
+                [pscustomobject]@{ Ok = $true; Output = @($o) }
+            } catch {
+                [pscustomobject]@{ Ok = $false; Error = $_.Exception.Message; Line = $_.InvocationInfo.ScriptLineNumber }
+            }
+            $json = $r | ConvertTo-Json -Depth 8 -Compress
+            if ($json.Length -gt {{maxResultChars}}) {
+                $json = [pscustomobject]@{ Ok = $false; Line = 0; Error = ('result too large: {0:N1} MB of JSON, the limit is {1:N1} MB; return plain values, not rich objects.' -f ($json.Length / 1MB), ({{maxResultChars}} / 1MB)) } | ConvertTo-Json -Compress
+            }
+            Write-Output $json
+            """;
+    }
+
     /// <summary>Reads the JSON the payload publishes. Output stays raw JSON: probes own their shapes.</summary>
     public static OnTargetResult ParseResult(string json)
     {
