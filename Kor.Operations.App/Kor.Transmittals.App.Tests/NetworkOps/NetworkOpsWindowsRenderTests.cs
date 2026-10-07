@@ -172,6 +172,12 @@ public sealed class NetworkOpsWindowsRenderTests
         views[1].IsTicked = true;
         updates.Grid.SelectedItem = views[0];
         written += Render(updates, new Size(1320, 880), Path.Combine(dir, $"{label}-updates.png"));
+
+        // The Deploy view (folded from a window into the console's Deploy tab): the fleet, one operation chosen.
+        var deploy = new NetworkOpsDeployView(reader);
+        deploy.Apply([new Kor.Operations.NetworkOps.Core.Learning.DeployOpView("migrate-korops", "Migrate to KOR-Operations",
+            "Swaps the install and re-registers the add-in, closing Outlook briefly on each.", true)], snapshot);
+        written += Render(deploy, new Size(1160, 820), Path.Combine(dir, $"{label}-deploy.png"));
         return written;
     }
 

@@ -163,7 +163,11 @@ public partial class NetworkOpsCommandCenterWindow : Window, INetworkTabHost
 
     private void UpdatesTab_Checked(object sender, RoutedEventArgs e) => EnsureUpdates();
 
-    private void Deploy_Click(object sender, RoutedEventArgs e) => new NetworkOpsDeployWindow(_vm.Client) { Owner = this }.Show();
+    // The Deploy view is a console tab now (folded from a standalone window, 2026-10-07), created the first time it is shown.
+    private NetworkOpsDeployView EnsureDeploy()
+        => (NetworkOpsDeployView)(DeployHost.Content ??= new NetworkOpsDeployView(_vm.Client));
+
+    private void DeployTab_Checked(object sender, RoutedEventArgs e) => EnsureDeploy();
 
     // The To-clear worklist is a tab, created the first time it is opened (it reads the fleet on its own Loaded).
     private void ToClearTab_Checked(object sender, RoutedEventArgs e) => ToClearHost.Content ??= new NetworkOpsToClearView(_vm.Client);

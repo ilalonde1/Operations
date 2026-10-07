@@ -39,7 +39,7 @@ public sealed class DeployRowView(DeviceRow device) : INotifyPropertyChanged
     private void Changed([CallerMemberName] string? n = null) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(n));
 }
 
-public partial class NetworkOpsDeployWindow : Window
+public partial class NetworkOpsDeployView : UserControl
 {
     private readonly NetworkOpsClient _client;
     private readonly CancellationTokenSource _cts = new();
@@ -48,22 +48,33 @@ public partial class NetworkOpsDeployWindow : Window
     private List<DeployRowView> _all = [];
     private IReadOnlyList<DeployOpView> _ops = [];
 
-    public NetworkOpsDeployWindow(NetworkOpsClient client)
+    public NetworkOpsDeployView(NetworkOpsClient client)
     {
         _client = client ?? throw new ArgumentNullException(nameof(client));
         InitializeComponent();
         _follow.Tick += async (_, _) => await Guard(FollowAsync).ConfigureAwait(true);
+        // The tab is created once and hidden/shown by visibility, so Unloaded fires when the CONSOLE WINDOW closes (not on
+        // a tab switch): the right place to stop the follow timer and cancel in-flight reads.
+        Unloaded += (_, _) => { _follow.Stop(); _cts.Cancel(); };
     }
 
-    private async void Window_Loaded(object sender, RoutedEventArgs e) => await Guard(LoadAsync).ConfigureAwait(true);
+    private async void OnLoaded(object sender, RoutedEventArgs e) => await Guard(LoadAsync).ConfigureAwait(true);
 
     private async Task LoadAsync(CancellationToken ct)
     {
         Status("Reading…");
-        _ops = await _client.GetDeployOpsAsync(ct).ConfigureAwait(true);
+        var ops = await _client.GetDeployOpsAsync(ct).ConfigureAwait(true);
+        var fleet = await _client.GetFleetAsync(ct).ConfigureAwait(true);
+        Apply(ops, fleet);
+        Status("");
+    }
+
+    /// <summary>Fills the view (public so a render test can fill it without a service). Ticks and progress survive a refresh.</summary>
+    public void Apply(IReadOnlyList<DeployOpView> ops, FleetSnapshot fleet)
+    {
+        _ops = ops;
         OpBox.ItemsSource = _ops;
         if (OpBox.SelectedIndex < 0 && _ops.Count > 0) OpBox.SelectedIndex = 0;
-        var fleet = await _client.GetFleetAsync(ct).ConfigureAwait(true);
         var ticked = _all.Where(r => r.IsTicked).Select(r => r.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
         var progress = _all.Where(r => r.Progress.Length > 0).ToDictionary(r => r.Name, r => (r.ActionId, r.Progress), StringComparer.OrdinalIgnoreCase);
         _all = fleet.Devices
@@ -76,7 +87,6 @@ public partial class NetworkOpsDeployWindow : Window
         Grid.ItemsSource = _all;
         HeadlineText.Text = $"{_all.Count} machines";
         UpdateButton();
-        Status("");
     }
 
     private DeployOpView? SelectedOp => OpBox.SelectedItem as DeployOpView;
@@ -106,7 +116,7 @@ public partial class NetworkOpsDeployWindow : Window
         var ticked = _all.Where(r => r.IsTicked).ToList();
         if (ticked.Count == 0) return;
         var warn = op.Disruptive ? "\n\nThis closes the app and Outlook on each for about a minute." : "";
-        if (MessageBox.Show(this, $"Run \"{op.Title}\" on {ticked.Count} machine{(ticked.Count == 1 ? "" : "s")}?{warn}\n\n{string.Join(", ", ticked.Select(t => t.Name))}",
+        if (MessageBox.Show(Window.GetWindow(this), $"Run \"{op.Title}\" on {ticked.Count} machine{(ticked.Count == 1 ? "" : "s")}?{warn}\n\n{string.Join(", ", ticked.Select(t => t.Name))}",
                 op.Title, MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No) != MessageBoxResult.Yes) return;
 
         Status($"Queuing {ticked.Count}…");
@@ -150,13 +160,5 @@ public partial class NetworkOpsDeployWindow : Window
         try { await work(_cts.Token).ConfigureAwait(true); }
         catch (OperationCanceledException) { }
         catch (Exception ex) { Status($"Could not do that: {ex.Message}"); }
-    }
-
-    protected override void OnClosed(EventArgs e)
-    {
-        _follow.Stop();
-        _cts.Cancel();
-        _cts.Dispose();
-        base.OnClosed(e);
     }
 }
