@@ -8,8 +8,9 @@ namespace Kor.Operations.NetworkOps.Core.Actions;
 /// <param name="Disruptive">Interrupts the person at the PC (a restart). Refused while someone is ACTIVE unless confirmed.</param>
 /// <param name="Families">Finding families it is offered for; "*" = any finding (the escape hatch).</param>
 /// <param name="ParamLabel">Non-null when the fix needs one input (a service name, a script).</param>
-/// <param name="Target">Where it runs: "windows" (a PC or Windows server, PowerShell as SYSTEM) or "esxi" (an ESXi host, a
-/// Python script in hostd over the key APP01 already reads the hosts with).</param>
+/// <param name="Target">Where it runs: "windows" (a PC or Windows server, PowerShell as SYSTEM through the SCM channel),
+/// "esxi" (an ESXi host, a Python script over the key APP01 reads the hosts with), or "mesh" (a PowerShell script on the
+/// device's MeshCentral agent -- the way to reach a workgroup/off-domain box like BK01 that the SCM channel cannot).</param>
 public sealed record FixAction(string Id, string Title, string Explain, bool Disruptive, int TimeoutSeconds, IReadOnlyList<string> Families, string? ParamLabel = null,
     string Target = FixCatalog.Windows);
 
@@ -27,6 +28,8 @@ public static class FixCatalog
     public const string RemoveStaleDatastore = "remove-stale-datastore";
     public const string Windows = "windows";
     public const string Esxi = "esxi";
+    /// <summary>Run via the device's MeshCentral agent -- reaches workgroup/off-domain boxes (BK01) the SCM channel cannot.</summary>
+    public const string MeshAgent = "mesh";
     public const string CheckBiosUpdate = "check-bios-update";
     // Dispatched by ActionRunner to AgentInstaller (not scripted here, so it carries no embedded Actions/*.ps1).
     // MUST equal the Service's AgentInstaller.InstallKind -- FixCatalogTests asserts the two strings are the same.

@@ -15,7 +15,7 @@ namespace Kor.Operations.NetworkOps.Service.Sweep;
 // machine as SYSTEM (through its agent, or the one-shot SCM channel), records the output, and then queues a re-check of the
 // machine, so the page shows whether the finding actually cleared. Only FixCatalog's fixes run. A fix left
 // Running by a stopped service is marked failed at startup, never re-run: a fix is not idempotent.
-internal sealed class ActionRunner(NetworkOpsStore store, MachineRunner runner, AgentInstaller installer, Mesh.MeshInstaller mesh,
+internal sealed class ActionRunner(NetworkOpsStore store, MachineRunner runner, AgentInstaller installer, Mesh.MeshInstaller mesh, Mesh.MeshState meshState,
     Updates.UpdateScanner updates, AgentHub agents, IOptions<NetworkOpsOptions> options, ILogger<ActionRunner> log) : BackgroundService
 {
     // Update installs each pull hundreds of MB through the office's internet line: a batch of 30 runs a few at a time.
@@ -115,6 +115,11 @@ internal sealed class ActionRunner(NetworkOpsStore store, MachineRunner runner, 
             if (fix.Target == FixCatalog.Esxi)
             {
                 await RunOnEsxiAsync(a, fix, param!, ct);
+                return;
+            }
+            if (fix.Target == FixCatalog.MeshAgent)
+            {
+                await RunViaMeshAsync(a, fix, param, ct);
                 return;
             }
             var host = HostOf(a.DeviceName) ?? throw new InvalidOperationException($"{a.DeviceName} is not a machine fixes can run on");
@@ -257,6 +262,24 @@ internal sealed class ActionRunner(NetworkOpsStore store, MachineRunner runner, 
         await store.CompleteActionAsync(a.ActionId, true, result, output);
         log.LogWarning("FIX {Id} {Fix} on ESXi {Host}: {Result}", a.ActionId, fix.Id, d.Address, result);
         await store.QueueRackCheckAsync(a.DeviceName, $"fix {a.ActionId}", CancellationToken.None);
+    }
+
+    /// <summary>A "mesh" fix: run the PowerShell on the device's MeshCentral agent (the only reach to a workgroup box like
+    /// BK01). Audited and re-checked exactly like a Windows fix. Needs the MeshCentral account's Remote Commands right.</summary>
+    private async Task RunViaMeshAsync(NetworkOpsStore.ClaimedAction a, FixAction fix, string? param, CancellationToken ct)
+    {
+        var o = options.Value;
+        if (!o.MeshEnabled) throw new InvalidOperationException("remote control is not configured on APP01");
+        var link = meshState.For(a.DeviceId) ?? throw new InvalidOperationException($"{a.DeviceName} has no linked Mesh agent to run through");
+        if (!link.Node.AgentConnected) throw new InvalidOperationException($"{a.DeviceName}'s Mesh agent is not connected");
+        log.LogWarning("FIX {Id} {Fix} on {Dev} via Mesh requested by {By}", a.ActionId, fix.Id, a.DeviceName, a.RequestedBy);
+        var client = new MeshCentralClient(new Uri(o.MeshUrl), o.MeshCertSha256, o.MeshUser, o.MeshPassword);
+        var output = await client.RunCommandAsync(link.Node.Id, FixCatalog.Script(fix, param), TimeSpan.FromSeconds(fix.TimeoutSeconds), ct);
+        var result = ResultLine(output) ?? (output.Length > 0 ? "ran; see the output" : "ran (no output returned)");
+        await store.CompleteActionAsync(a.ActionId, true, result, output);
+        log.LogWarning("FIX {Id} {Fix} on {Dev} via Mesh: {Result}", a.ActionId, fix.Id, a.DeviceName, result);
+        if (IsRack(a.DeviceName)) await store.QueueRackCheckAsync(a.DeviceName, $"fix {a.ActionId}", CancellationToken.None);
+        else await store.QueueCheckAsync(a.DeviceName, $"fix {a.ActionId}", CancellationToken.None);
     }
 
     private bool IsRack(string deviceName) => options.Value.Rack.Any(d => d.Name.Equals(deviceName, StringComparison.OrdinalIgnoreCase));

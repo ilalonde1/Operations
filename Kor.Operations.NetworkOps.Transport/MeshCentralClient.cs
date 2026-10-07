@@ -48,6 +48,48 @@ public sealed class MeshCentralClient(Uri baseUrl, string certSha256, string use
         }
     }
 
+    /// <summary>
+    /// Run a PowerShell script on one connected agent and return its output. MeshCentral's control channel:
+    /// {"action":"runcommands", nodeids, type:2 (PowerShell), cmds, runAsUser:0, reply:true}. The account needs the
+    /// REMOTE COMMANDS right on that device's group (the listing account has none by design) -- without it MeshCentral
+    /// answers "close". NOTE: the exact shape of the reply messages is MeshCentral-version specific, so this collects the
+    /// text tied to our run until it ends or the deadline, and is finalised against the live server before first real use.
+    /// </summary>
+    public async Task<string> RunCommandAsync(string nodeId, string script, TimeSpan timeout, CancellationToken ct)
+    {
+        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        deadline.CancelAfter(timeout);
+        using var ws = new ClientWebSocket();
+        ws.Options.RemoteCertificateValidationCallback = (_, cert, _, errors) => MeshTrust.Accepts(cert?.GetRawCertData(), errors, certSha256);
+        ws.Options.SetRequestHeader("x-meshauth", B64(user) + "," + B64(password));
+        var url = new UriBuilder(baseUrl) { Scheme = "wss", Path = "/control.ashx" }.Uri;
+        await ws.ConnectAsync(url, deadline.Token).ConfigureAwait(false);
+        const string rid = "networkops-run";
+        var msg = JsonSerializer.Serialize(new { action = "runcommands", nodeids = new[] { nodeId }, type = 2, cmds = script, runAsUser = 0, reply = true, responseid = rid });
+        await SendAsync(ws, msg, deadline.Token).ConfigureAwait(false);
+        var output = new StringBuilder();
+        try
+        {
+            while (true)
+            {
+                var text = await ReceiveAsync(ws, deadline.Token).ConfigureAwait(false);
+                if (text is null) break;
+                using var doc = JsonDocument.Parse(text);
+                var root = doc.RootElement;
+                var action = root.TryGetProperty("action", out var a) ? a.GetString() : null;
+                if (action == "close") throw new UnauthorizedAccessException("MeshCentral refused the command: " + (root.TryGetProperty("cause", out var c) ? c.GetString() : "the account likely lacks the Remote Commands right"));
+                // Collect any output text this run carries (console / cmdresult / runcommands). Shape confirmed live.
+                if (root.TryGetProperty("value", out var v) && v.ValueKind == JsonValueKind.String) output.Append(v.GetString());
+                else if (action is "msg" or "cmdresult" && root.TryGetProperty("data", out var dt) && dt.ValueKind == JsonValueKind.String) output.Append(dt.GetString());
+                // A runcommands reply tagged with our responseid marks the run finished.
+                if (action == "runcommands" && root.TryGetProperty("responseid", out var ri) && ri.GetString() == rid) break;
+            }
+        }
+        catch (OperationCanceledException) when (deadline.IsCancellationRequested && !ct.IsCancellationRequested) { }   // deadline: return what came back
+        try { await ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "done", CancellationToken.None).ConfigureAwait(false); } catch (WebSocketException) { }
+        return output.ToString();
+    }
+
     /// <summary>The "nodes" answer: { "nodes": { "mesh//...": [ { "_id": "node//...", "name": "...", "conn": 1 }, ... ] } }.</summary>
     internal static IReadOnlyList<MeshNode> Parse(JsonElement root)
     {
