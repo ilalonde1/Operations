@@ -109,7 +109,7 @@
         <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="12,0,12,8">
             <RadioButton x:Name="FleetTab" Content="Fleet" GroupName="ConsoleTab" Style="{StaticResource Ops.Segment}" IsChecked="True"
                          ToolTip="The rack and every PC, worst first."/>
-            <RadioButton x:Name="ToClearTab" Content="To clear" GroupName="ConsoleTab" Style="{StaticResource Ops.Segment}" Margin="6,0,0,0"
+            <RadioButton x:Name="ToClearTab" Content="{Binding ToClearTabText}" GroupName="ConsoleTab" Style="{StaticResource Ops.Segment}" Margin="6,0,0,0"
                          Checked="ToClearTab_Checked"
                          ToolTip="Every open issue across the fleet, grouped, with fix-on-all — the path to all-green."/>
             <RadioButton x:Name="NetworkTab" Content="Network" GroupName="ConsoleTab" Style="{StaticResource Ops.Segment}" Margin="6,0,0,0"
@@ -142,6 +142,10 @@
                                 <Run Text="NetworkOps service"/><Run Text=" "/><Run Text="{Binding ServiceHeadline, Mode=OneWay}"/>
                             </TextBlock>
                         </StackPanel>
+                        <!-- The way to act: jump to the consolidated "To clear" worklist. Shown only when something is open. -->
+                        <Button Content="{Binding ToClearNudgeText}" Style="{StaticResource Ops.Link}" HorizontalAlignment="Left" Margin="-2,8,0,0"
+                                Visibility="{Binding HasToClearIssues, Converter={StaticResource BoolToVis}}" Click="GoToClear_Click"
+                                ToolTip="Open the To clear worklist — every open issue across the fleet, grouped, with fix-on-all."/>
                     </StackPanel>
                 </Grid>
             </Border>

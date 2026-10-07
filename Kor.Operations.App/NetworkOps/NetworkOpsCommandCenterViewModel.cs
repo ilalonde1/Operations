@@ -84,6 +84,22 @@ public sealed class NetworkOpsCommandCenterViewModel : ObservableObject
     /// <summary>When the rack was read, said once in its section title instead of on every row.</summary>
     public string RackFreshness { get; private set; } = "";
 
+    // ---- The "To clear" worklist count: shown on its tab ("To clear · 7") and as a one-click nudge on the Fleet headline,
+    // so the consolidated, actionable surface is findable from the read-only fleet view. Refreshed with each fleet read.
+    private int _toClearIssues;
+    public int ToClearIssueCount
+    {
+        get => _toClearIssues;
+        private set
+        {
+            if (!SetField(ref _toClearIssues, value)) return;
+            foreach (var n in new[] { nameof(ToClearTabText), nameof(HasToClearIssues), nameof(ToClearNudgeText) }) OnPropertyChanged(n);
+        }
+    }
+    public string ToClearTabText => _toClearIssues > 0 ? $"To clear · {_toClearIssues}" : "To clear";
+    public bool HasToClearIssues => _toClearIssues > 0;
+    public string ToClearNudgeText => _toClearIssues == 1 ? "1 issue to clear  →" : $"{_toClearIssues} issues to clear  →";
+
     public const string TileCritical = "critical", TileAttention = "attention", TileHealthy = "healthy", TileStale = "stale";
     private string _tileFilter = "";
 
@@ -209,6 +225,9 @@ public sealed class NetworkOpsCommandCenterViewModel : ObservableObject
             {
                 ApplyPower(new PowerSnapshot([], "Off", $"Could not read rack power: {ex.Message}", null, false, []), DateTime.UtcNow);
             }
+            // The distance-to-green count for the "To clear" tab and the Fleet nudge. A hint, so a failure keeps the last value.
+            try { ToClearIssueCount = (await _client.GetToClearAsync(ct).ConfigureAwait(true)).Issues; }
+            catch (Exception ex) when (ex is not OperationCanceledException) { /* keep the last count */ }
             StatusMessage = $"Loaded at {DateTime.Now:HH:mm:ss}. {Rack.Count} rack devices, {snapshot.Devices.Count} PCs, " +
                             $"{snapshot.OpenFindings.Count + (RackSnapshot?.OpenFindings.Count ?? 0)} open findings, {snapshot.Patterns.Count} fleet patterns.";
             _lastSuccessfulRefreshAt = DateTimeOffset.Now;

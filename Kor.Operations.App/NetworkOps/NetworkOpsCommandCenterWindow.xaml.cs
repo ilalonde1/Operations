@@ -35,10 +35,16 @@ public partial class NetworkOpsCommandCenterWindow : Window, INetworkTabHost
 
     private async void Window_Loaded(object sender, RoutedEventArgs e)
     {
+        // Land on the "To clear" worklist, not the read-only Fleet: it is the consolidated, actionable view (every open
+        // issue grouped, with fix-on-all), so the fix level is in front of you on open. Set here, not in XAML, because the
+        // tab's Checked handler creates the view into ToClearHost, which does not exist until the window's tree is built.
+        ToClearTab.IsChecked = true;
         await RefreshAsync(ResetToken()).ConfigureAwait(true);
         _autoRefreshTimer.Start();
-        FilterBox.Focus();
     }
+
+    /// <summary>The Fleet headline's "N issues to clear →" nudge: switch to the worklist tab.</summary>
+    private void GoToClear_Click(object sender, RoutedEventArgs e) => ToClearTab.IsChecked = true;
 
     private async void RefreshBtn_Click(object sender, RoutedEventArgs e) => await RefreshAsync(ResetToken()).ConfigureAwait(true);
 
