@@ -25,6 +25,12 @@ public sealed record ToClearIssue(string RuleKey, string Title, Severity Severit
     /// <summary>The fix is already in flight (queued or running) on at least one affected machine -- so the view shows it
     /// as "fixing" rather than offering to queue it again. True only when a catalog fix exists for the issue.</summary>
     public bool Running { get; init; }
+
+    /// <summary>Plain-English "what this finding means", and "what happens if it is left", from the knowledge entry for the
+    /// rule's family (Knowledge.For). Null when no entry covers the family. Let the worklist say what an issue MEANS inline,
+    /// instead of only a rule-shaped title and a raw number -- the explanation that otherwise lives a click away on the PC.</summary>
+    public string? Meaning { get; init; }
+    public string? IfIgnored { get; init; }
 }
 
 /// <summary>The worklist and the distance to green: how many issues are open, across how many machines, how many clear in
@@ -65,7 +71,10 @@ public static class ToClear
                     : new FixOption(fix.Id, fix.Title, fix.Explain, fix.Disruptive, fix.ParamLabel, FixCatalog.ParamFromFinding(fix, g.Key));
                 // Already being fixed when that fix is in flight on any machine the issue is open on.
                 var running = fix is not null && machines.Any(m => runningTargets.Contains($"{m.DeviceId}|{fix.Id}"));
-                return new ToClearIssue(g.Key, worst.Title, worst.Severity, worst.Evidence, g.Min(f => f.FirstSeenUtc), machines, option) { Running = running };
+                // The plain-English meaning for this rule, so the worklist can say what the issue IS, not just its title.
+                var know = Knowledge.For(g.Key);
+                return new ToClearIssue(g.Key, worst.Title, worst.Severity, worst.Evidence, g.Min(f => f.FirstSeenUtc), machines, option)
+                    { Running = running, Meaning = know?.Meaning, IfIgnored = know?.IfIgnored };
             })
             .OrderByDescending(i => i.Severity).ThenByDescending(i => i.Count).ThenBy(i => i.FirstSeenUtc)
             .ToList();

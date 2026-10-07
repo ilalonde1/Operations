@@ -105,4 +105,13 @@ public sealed class ToClearTests
         Assert.False(v.Open.Single(i => i.RuleKey == "low-disk:C").Running);
         Assert.True(v.Open.Single(i => i.RuleKey == "not-restarted").Running);    // restart-pc IS not-restarted's fix, on KOR-1
     }
+
+    [Fact]
+    public void Each_issue_carries_the_plain_meaning_from_its_knowledge_entry()
+    {
+        // The worklist says what an issue MEANS inline, not just its rule-shaped title -- the explanation Knowledge holds.
+        var restart = Build().Open.Single(i => i.RuleKey == "not-restarted");
+        Assert.Equal(Knowledge.For("not-restarted")!.Meaning, restart.Meaning);
+        Assert.False(string.IsNullOrWhiteSpace(restart.Meaning));
+    }
 }

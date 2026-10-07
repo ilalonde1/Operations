@@ -24,6 +24,10 @@ public sealed class ToClearRow
     public Brush SeverityBrush => NetworkOpsBrushes.For(Issue.Severity);
     public string Title => Issue.Title;
     public string Evidence => Issue.Evidence;
+    /// <summary>Plain-English "what this means", from the issue's knowledge entry (empty when none) -- shown inline so the
+    /// worklist explains an issue without a trip to the PC's page.</summary>
+    public string Meaning => Issue.Meaning ?? "";
+    public bool ShowMeaning => !string.IsNullOrEmpty(Issue.Meaning);
 
     public string Where
     {
