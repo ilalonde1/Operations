@@ -1,12 +1,10 @@
 #nullable enable
 using System.Net.Http.Headers;
 using System.Net.NetworkInformation;
-using Kor.Operations.NetworkOps.Core.OnTarget;
 using Kor.Operations.NetworkOps.Core.Power;
 using Kor.Operations.NetworkOps.Core.Rack;
 using Kor.Operations.NetworkOps.Service.Power;
 using Kor.Operations.NetworkOps.Transport;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Kor.Operations.NetworkOps.Service.Rack;
@@ -24,7 +22,7 @@ namespace Kor.Operations.NetworkOps.Service.Rack;
 //   MeshServer KOR-MESH01: MeshCentral itself answering, and how many agents it has connected
 // No collector writes to any device. A device that cannot be read comes back Unreachable with the reason.
 internal sealed class RackCollector(IOptions<NetworkOpsOptions> options, PowerState power, Mesh.MeshState mesh, MacDirectory? macs = null,
-    Network.NetworkMapService? map = null, Microsoft.Extensions.Logging.ILogger<RackCollector>? log = null)
+    Network.NetworkMapService? map = null)
 {
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(60);
 
@@ -34,27 +32,7 @@ internal sealed class RackCollector(IOptions<NetworkOpsOptions> options, PowerSt
         {
             using var cap = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cap.CancelAfter(TimeSpan.FromSeconds(120));
-            var result = await CollectPrimaryAsync(d, previousFacts, cap.Token).ConfigureAwait(false);
-            // A workgroup / off-domain Windows box (the Veeam server BK01, a remote-only server) is reachable only through
-            // its MeshCentral agent, so SCM never reads its disk / reboot / services -- a filling C: was invisible. Run the
-            // SAME Windows health probe over Mesh and merge it in. Best-effort: a failure leaves the primary read untouched.
-            if (result.Reachable && d.Collector is "Veeam" or "Mesh")
-            {
-                try { if (await WindowsHealthOverMeshAsync(d, cap.Token).ConfigureAwait(false) is { Reachable: true } win) result = Merge(result, win); }
-                catch (Exception ex) when (ex is not OperationCanceledException) { log?.LogWarning(ex, "Mesh health augment for {Dev} threw", d.Name); }
-            }
-            return result;
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
-        {
-            return RackResult.Unreachable(ex is OperationCanceledException ? "timed out" : ex.GetType().Name + ": " + ex.Message);
-        }
-    }
-
-    private async Task<RackResult> CollectPrimaryAsync(RackDevice d, IReadOnlyDictionary<string, string> previousFacts, CancellationToken ct)
-    {
-        using var cap = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        return d.Collector switch
+            return d.Collector switch
             {
                 "Esxi" => await EsxiAsync(d, cap.Token).ConfigureAwait(false),
                 "Synology" => SynologyRules.Evaluate(await SnmpChannel.WalkAsync(d.Address, Snmp(sha256: false, des: false), SynologyRules.Tables, TimeSpan.FromSeconds(8), cap.Token).ConfigureAwait(false), d.VolumeFreeWarnPct),
@@ -72,45 +50,11 @@ internal sealed class RackCollector(IOptions<NetworkOpsOptions> options, PowerSt
                 "MeshServer" => MeshServer(),
                 _ => RackResult.Unreachable($"no collector named '{d.Collector}'"),
             };
-    }
-
-    /// <summary>The Windows health probe (Probes/server.ps1) run on a workgroup / off-domain box through its MeshCentral
-    /// agent, so a box SCM cannot reach (BK01, a remote-only server) still gets disk / reboot / service / AV findings.
-    /// Read-only. Best-effort: null when there is no fresh, single, connected Mesh node of that name, or no verdict came back.</summary>
-    private async Task<RackResult?> WindowsHealthOverMeshAsync(RackDevice d, CancellationToken ct)
-    {
-        var o = options.Value;
-        if (!o.MeshEnabled || !mesh.Fresh) { log?.LogInformation("Mesh health {Dev}: skipped (meshEnabled={E} fresh={F})", d.Name, o.MeshEnabled, mesh.Fresh); return null; }
-        var name = d.MeshName.Length > 0 ? d.MeshName : d.Address;
-        // Prefer the single CONNECTED node of this name; a duplicate/stale node must not be read, and ambiguity is refused.
-        var connected = mesh.Nodes.Where(n => n.Name.Equals(name, StringComparison.OrdinalIgnoreCase) && n.AgentConnected).ToList();
-        if (connected.Count != 1) { log?.LogInformation("Mesh health {Dev}: {N} connected node(s) named '{Name}' (need exactly 1)", d.Name, connected.Count, name); return null; }
-        // The LIGHT probe (disk / reboot / stopped-services, no event log), not the full server.ps1: MeshCentral runs one
-        // command at a time per agent, and the heavy probe ran long enough to leave BK01's agent "already busy", so no sweep
-        // could read it. The light probe is a couple of seconds. A short timeout, so a bad run never ties the agent up for long.
-        var script = OnTargetPayload.BuildForStdout(Kor.Operations.NetworkOps.Core.Probes.ProbeLibrary.Get("server-basics"));
-        var client = new MeshCentralClient(new Uri(o.MeshUrl), o.MeshCertSha256, o.MeshUser, o.MeshPassword);
-        var run = await client.RunCommandAsync(connected[0].Id, script, TimeSpan.FromSeconds(25), ct).ConfigureAwait(false);
-        if (!run.Completed) { log?.LogWarning("Mesh health {Dev}: no terminal verdict from the agent ({Len} chars of output)", d.Name, run.Output.Length); return null; }
-        var parsed = OnTargetPayload.ParseResult(run.Output);
-        if (parsed is not { Ok: true, OutputJson: { } json }) { log?.LogWarning("Mesh health {Dev}: probe not ok: {Err}", d.Name, parsed.Error ?? (run.Output.Length > 200 ? run.Output[..200] : run.Output)); return null; }
-        var res = ServerRules.Evaluate(json);
-        log?.LogInformation("Mesh health {Dev}: {Findings} finding(s) -- {Summary}", d.Name, res.Findings.Count, res.Summary);
-        return res;
-    }
-
-    /// <summary>Fold a Windows-health read over Mesh into the device's primary read: union the facts, metrics and findings
-    /// (worst wins per rule). The remote-only collector's summary says "health not read" -- it is read now, so lead with it.</summary>
-    private static RackResult Merge(RackResult primary, RackResult windows)
-    {
-        var facts = new Dictionary<string, string>(primary.Facts);
-        foreach (var kv in windows.Facts) facts[kv.Key] = kv.Value;
-        var findings = primary.Findings.Concat(windows.Findings)
-            .GroupBy(f => f.RuleKey).Select(g => g.OrderByDescending(f => f.Severity).First()).ToList();
-        var summary = primary.Summary.Contains("health not read", StringComparison.OrdinalIgnoreCase)
-            ? windows.Summary + " · remote control connected"
-            : primary.Summary + " · " + windows.Summary;
-        return new RackResult(true, null, facts, primary.Metrics.Concat(windows.Metrics).ToList(), findings, summary);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
+        {
+            return RackResult.Unreachable(ex is OperationCanceledException ? "timed out" : ex.GetType().Name + ": " + ex.Message);
+        }
     }
 
     /// <summary>A server seen only through remote control: up = its Mesh agent is connected. Says plainly that health is not read.</summary>
