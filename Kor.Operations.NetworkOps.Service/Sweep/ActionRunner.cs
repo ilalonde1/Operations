@@ -231,7 +231,12 @@ internal sealed class ActionRunner(NetworkOpsStore store, MachineRunner runner, 
     /// <summary>THE answer to "can this fix run on this device" -- for the API's refusal and the runner alike: a Windows fix
     /// where APP01 can run PowerShell, an ESXi fix on an ESXi host.</summary>
     internal static bool CanRun(NetworkOpsOptions o, string deviceName, FixAction fix)
-        => fix.Target == FixCatalog.Esxi ? EsxiHostOf(o, deviceName) is not null : HostOf(o, deviceName) is not null;
+        => fix.Target switch
+        {
+            FixCatalog.Esxi => EsxiHostOf(o, deviceName) is not null,
+            FixCatalog.MeshAgent => true,   // any device may have a Mesh agent; RunViaMeshAsync checks it is connected at run time
+            _ => HostOf(o, deviceName) is not null,
+        };
 
     /// <summary>
     /// An ESXi fix: its Python script copied to the host and run in hostd over the key APP01 reads the hosts with (the same

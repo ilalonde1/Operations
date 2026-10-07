@@ -21,6 +21,7 @@ public sealed record FixAction(string Id, string Title, string Explain, bool Dis
 public static class FixCatalog
 {
     public const string RunCommand = "run-command";
+    public const string RunCommandMesh = "run-command-mesh";
     public const string StartService = "start-service";
     public const string InstallUpdates = "install-updates";
     public const string InstallUpdatesRestart = "install-updates-restart";
@@ -91,6 +92,11 @@ public static class FixCatalog
         new(RunCommand, "Run a PowerShell command…",
             "Runs your PowerShell as SYSTEM on this machine and shows the output. Audited: the script, who ran it and what it returned are kept.",
             Disruptive: false, TimeoutSeconds: 600, ["*"], ParamLabel: "PowerShell to run as SYSTEM"),
+        // Invoked by id (not offered per-finding): the generic way to run anything on a device's Mesh agent -- a workgroup
+        // box like BK01 the SCM channel cannot reach. Specific mesh fixes (with their own families) come on top of this.
+        new(RunCommandMesh, "Run a PowerShell command via the Mesh agent…",
+            "Runs your PowerShell through this device's MeshCentral agent and shows the output -- the way to reach a workgroup/off-domain box (like BK01) the SCM channel cannot. Audited like every other action.",
+            Disruptive: false, TimeoutSeconds: 600, [], ParamLabel: "PowerShell to run on the Mesh agent", Target: MeshAgent),
     ];
 
     public static FixAction? Get(string id) => All.FirstOrDefault(a => a.Id == id);
@@ -112,8 +118,8 @@ public static class FixCatalog
         StartService when param is null || !Regex.IsMatch(param, @"^[A-Za-z0-9_.\-]{1,80}$") => "a service name is letters, digits, dot, dash or underscore",
         // Passed to the host as one shell argument: a datastore name with nothing a shell could read as more.
         RemoveStaleDatastore when param is null || !Regex.IsMatch(param, @"^[A-Za-z0-9_.\-]{1,100}$") => "a datastore name is letters, digits, dot, dash or underscore",
-        RunCommand when string.IsNullOrWhiteSpace(param) => "there is no script to run",
-        RunCommand when param!.Length > 20000 => "the script is longer than 20,000 characters",
+        (RunCommand or RunCommandMesh) when string.IsNullOrWhiteSpace(param) => "there is no script to run",
+        (RunCommand or RunCommandMesh) when param!.Length > 20000 => "the script is longer than 20,000 characters",
         _ when a.ParamLabel is null && !string.IsNullOrEmpty(param) => "this fix takes no input",
         _ => null,
     };
@@ -121,7 +127,7 @@ public static class FixCatalog
     /// <summary>The script that runs on the machine: the fix's body, with its input bound as a single-quoted PowerShell string.</summary>
     public static string Script(FixAction a, string? param)
     {
-        if (a.Id == RunCommand) return param!;   // the operator's own script, as typed (audited)
+        if (a.Id is RunCommand or RunCommandMesh) return param!;   // the operator's own script, as typed (audited)
         // The two update installs are one script; the restart variant only sets its switch.
         if (a.Id == InstallUpdatesRestart) return "$RestartIfNeeded = $true\n" + Script(Get(InstallUpdates)!, null);
         // The BIOS check is the update with $DryRun: one script, so the check proves exactly what the update would run.

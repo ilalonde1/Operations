@@ -114,6 +114,14 @@ internal static class SchedulingSetup
                 q.AddJob(shim, key, j => j.WithDescription(s.Why));
                 q.AddTrigger(t => t.ForJob(key).WithIdentity(s.Name + "-trigger")
                     .WithCronSchedule(s.Cron, c => c.InTimeZone(TimeZoneInfo.Local).WithMisfireHandlingInstructionDoNothing()));
+
+                // MeshState is in-memory only and gates EVERY remote-control action (Connect, and the Mesh-run fix
+                // channel). A restart blanks it until the next 5-minute sweep, so the act-layer answers "no linked
+                // Mesh agent" for up to 5 min after each deploy -- it bit the Mesh channel's first live runs twice.
+                // Warm it once, ~20 s after boot (Kestrel and the DB are up by then); the cron trigger carries on.
+                if (s.JobType == typeof(Mesh.MeshSweepJob))
+                    q.AddTrigger(t => t.ForJob(key).WithIdentity(s.Name + "-startup")
+                        .StartAt(DateTimeOffset.Now.AddSeconds(20)));
             }
         });
         services.AddQuartzHostedService(o => o.WaitForJobsToComplete = false);

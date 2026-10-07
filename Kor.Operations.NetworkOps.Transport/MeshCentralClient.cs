@@ -50,10 +50,14 @@ public sealed class MeshCentralClient(Uri baseUrl, string certSha256, string use
 
     /// <summary>
     /// Run a PowerShell script on one connected agent and return its output. MeshCentral's control channel:
-    /// {"action":"runcommands", nodeids, type:2 (PowerShell), cmds, runAsUser:0, reply:true}. The account needs the
-    /// REMOTE COMMANDS right on that device's group (the listing account has none by design) -- without it MeshCentral
-    /// answers "close". NOTE: the exact shape of the reply messages is MeshCentral-version specific, so this collects the
-    /// text tied to our run until it ends or the deadline, and is finalised against the live server before first real use.
+    /// {"action":"runcommands", nodeids, type:2 (PowerShell), cmds, runAsUser:0, reply:true, responseid}. The account
+    /// needs the REMOTE COMMANDS right on that device's group (the listing account has none by design) -- without it
+    /// MeshCentral answers "close". The reply, confirmed live against MESH01 (2026-10-06) running `hostname` on BK01, is a
+    /// stream of {"action":"msg",...}: zero or more {"type":"console","value":"<chunk>"} as the agent prints, then one
+    /// terminal {"type":"runcommands","result":"<full output>","responseid":"<ours>"} -- the complete, authoritative
+    /// output. We take that and stop (MeshCentral then floods the socket with unrelated node-change events). The streamed
+    /// console text is only a fallback if the terminal reply never comes. LIMIT: the terminal result may be truncated by
+    /// the server for very large output; the act-layer's commands are short (a verdict line, a state word), so this holds.
     /// </summary>
     public async Task<string> RunCommandAsync(string nodeId, string script, TimeSpan timeout, CancellationToken ct)
     {
@@ -67,27 +71,38 @@ public sealed class MeshCentralClient(Uri baseUrl, string certSha256, string use
         const string rid = "networkops-run";
         var msg = JsonSerializer.Serialize(new { action = "runcommands", nodeids = new[] { nodeId }, type = 2, cmds = script, runAsUser = 0, reply = true, responseid = rid });
         await SendAsync(ws, msg, deadline.Token).ConfigureAwait(false);
-        var output = new StringBuilder();
+        var console = new StringBuilder();   // streaming console output, kept only as a fallback
+        string? final = null;                // the authoritative, complete result tied to our run
         try
         {
             while (true)
             {
-                var text = await ReceiveAsync(ws, deadline.Token).ConfigureAwait(false);
+                using var recv = CancellationTokenSource.CreateLinkedTokenSource(deadline.Token);
+                recv.CancelAfter(TimeSpan.FromSeconds(20));   // secondary guard: MeshCentral also streams unrelated node events, so this fires only in a genuine lull
+                string? text;
+                try { text = await ReceiveAsync(ws, recv.Token).ConfigureAwait(false); }
+                catch (OperationCanceledException) when (recv.IsCancellationRequested && !deadline.IsCancellationRequested) { break; }
                 if (text is null) break;
                 using var doc = JsonDocument.Parse(text);
                 var root = doc.RootElement;
                 var action = root.TryGetProperty("action", out var a) ? a.GetString() : null;
-                if (action == "close") throw new UnauthorizedAccessException("MeshCentral refused the command: " + (root.TryGetProperty("cause", out var c) ? c.GetString() : "the account likely lacks the Remote Commands right"));
-                // Collect any output text this run carries (console / cmdresult / runcommands). Shape confirmed live.
-                if (root.TryGetProperty("value", out var v) && v.ValueKind == JsonValueKind.String) output.Append(v.GetString());
-                else if (action is "msg" or "cmdresult" && root.TryGetProperty("data", out var dt) && dt.ValueKind == JsonValueKind.String) output.Append(dt.GetString());
-                // A runcommands reply tagged with our responseid marks the run finished.
-                if (action == "runcommands" && root.TryGetProperty("responseid", out var ri) && ri.GetString() == rid) break;
+                if (action == "close") throw new UnauthorizedAccessException("MeshCentral refused the command (the account likely lacks the Remote Commands right): " + (root.TryGetProperty("cause", out var c) ? c.GetString() : ""));
+                if (action != "msg") continue;   // serverinfo, userinfo, node/changenode events: not our output
+                var type = root.TryGetProperty("type", out var ty) ? ty.GetString() : null;
+                if (type == "runcommands" && root.TryGetProperty("responseid", out var ri) && ri.GetString() == rid)
+                {
+                    // The terminal reply for OUR run carries the complete output. Authoritative -- take it and stop,
+                    // before the flood of unrelated node events MeshCentral pushes afterwards.
+                    final = root.TryGetProperty("result", out var rs) ? rs.GetString() : null;
+                    break;
+                }
+                if (type == "console" && root.TryGetProperty("value", out var v) && v.ValueKind == JsonValueKind.String)
+                    console.Append(v.GetString());   // live output as the agent produces it; used only if the terminal reply never arrives
             }
         }
         catch (OperationCanceledException) when (deadline.IsCancellationRequested && !ct.IsCancellationRequested) { }   // deadline: return what came back
         try { await ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "done", CancellationToken.None).ConfigureAwait(false); } catch (WebSocketException) { }
-        return output.ToString();
+        return (final ?? console.ToString()).TrimEnd();
     }
 
     /// <summary>The "nodes" answer: { "nodes": { "mesh//...": [ { "_id": "node//...", "name": "...", "conn": 1 }, ... ] } }.</summary>

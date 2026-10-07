@@ -20,7 +20,7 @@ public sealed class FixCatalogTests
     [Fact]
     public void Every_fix_but_the_escape_hatch_has_an_embedded_script()
     {
-        foreach (var f in FixCatalog.All.Where(f => f.Id != FixCatalog.RunCommand && f.Id != FixCatalog.UpdateAgent))
+        foreach (var f in FixCatalog.All.Where(f => f.Id != FixCatalog.RunCommand && f.Id != FixCatalog.RunCommandMesh && f.Id != FixCatalog.UpdateAgent))
         {
             var script = FixCatalog.Script(f, f.ParamLabel is null ? null : "Spooler");
             Assert.False(string.IsNullOrWhiteSpace(script), $"{f.Id} has no script");
@@ -42,7 +42,7 @@ public sealed class FixCatalogTests
     {
         var fixes = FixCatalog.For("low-disk:C");
         Assert.Equal("free-disk-space", fixes[0].Id);
-        Assert.Equal(FixCatalog.RunCommand, fixes[^1].Id);
+        Assert.Equal(FixCatalog.RunCommand, fixes[^1].Id);   // the SCM escape hatch, last (run-command-mesh is invoked by id, not offered)
         Assert.Equal([FixCatalog.RunCommand], FixCatalog.For("mailbox-near-limit:x").Select(f => f.Id));   // nothing scriptable: just the hatch
     }
 
@@ -104,7 +104,7 @@ public sealed class FixCatalogTests
     public void The_fix_scripts_return_plain_values()
     {
         // The probe-writing rule: no Get-Item / Get-Content results in the output (their PS graphs serialise to MBs).
-        foreach (var f in FixCatalog.All.Where(f => f.Id != FixCatalog.RunCommand && f.Id != FixCatalog.UpdateAgent))
+        foreach (var f in FixCatalog.All.Where(f => f.Id != FixCatalog.RunCommand && f.Id != FixCatalog.RunCommandMesh && f.Id != FixCatalog.UpdateAgent))
         {
             var script = FixCatalog.Script(f, f.ParamLabel is null ? null : "Spooler");
             // A bare call on its own line lands in the output; one piped onward (| ForEach-Object ...) does not.
