@@ -203,6 +203,25 @@ public sealed class HealthRulesTests
     }
 
     [Fact]
+    public void An_iscsi_san_volume_is_not_counted_as_unbacked_data_but_a_local_data_drive_is()
+    {
+        // BK01's E:/F: are iSCSI Synology volumes -- the Veeam repository itself, not a loose local drive (Ian, 2026-10-07).
+        var repo = Clean() with
+        {
+            DataOutsideSystemDrive = [new DataVolumeInfo("E", 1247.7)],
+            PhysicalDisks = [new PhysicalDiskInfo("SYNOLOGY Storage", "Unspecified", "iSCSI", 26000, "Healthy", "OK", "E", false, 0)],
+        };
+        Assert.DoesNotContain(HealthRules.Evaluate(repo), x => x.RuleKey == "unbacked-data");
+        // A genuine local data drive with real data on it still raises it.
+        var local = Clean() with
+        {
+            DataOutsideSystemDrive = [new DataVolumeInfo("D", 53.1)],
+            PhysicalDisks = [new PhysicalDiskInfo("Samsung SSD 870 EVO", "SSD", "SATA", 500, "Healthy", "OK", "D", false, 0)],
+        };
+        Assert.Contains(HealthRules.Evaluate(local), x => x.RuleKey == "unbacked-data");
+    }
+
+    [Fact]
     public void Only_the_2020_access_engine_dlls_are_stale_not_the_patched_ones()
     {
         var old = Clean() with { Office = new OfficeInfo("16.0.20326.20072", "16.0.5023.1000", true) };

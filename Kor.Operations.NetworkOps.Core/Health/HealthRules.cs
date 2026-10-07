@@ -169,8 +169,13 @@ public static class HealthRules
             f.Add(new("fan-profile-loud", Severity.Info, "Fans are set to a loud profile",
                 $"BIOS cooling mode is '{mode}'; the quiet setting is 'Best Experience' on a P340, 'Balance mode' on a P350/P360"));
 
-        // Real data on a drive nothing backs up (13 months of KOR-206-N's work lived only on D:).
-        var outside = s.DataOutsideSystemDrive.Where(d => d.UsedGB >= 1).ToList();
+        // Real data on a drive nothing backs up (13 months of KOR-206-N's work lived only on D:). An iSCSI/SAN volume is
+        // the storage tier, not a loose local drive at risk -- on a backup server it IS the repository (BK01's E:/F:
+        // Synology iSCSI, the Veeam target), so it is not "unbacked data" and is skipped (Ian, 2026-10-07).
+        var outside = s.DataOutsideSystemDrive
+            .Where(d => d.UsedGB >= 1)
+            .Where(d => !string.Equals(Drives.OfLetter(s, d.Letter)?.Bus, "iSCSI", StringComparison.OrdinalIgnoreCase))
+            .ToList();
         if (outside.Count > 0)
             f.Add(new("unbacked-data", Severity.Warning, "Data on a drive that isn't backed up",
                 string.Join("; ", outside.Select(d => $"{d.Letter}: {d.UsedGB:0.#} GB used"))));

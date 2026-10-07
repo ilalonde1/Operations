@@ -144,6 +144,7 @@ public static class PromptComposer
         sb.AppendLine("## Working rules (binding)");
         sb.AppendLine($"- Work from the repo `{RepoPath}` and follow its `CLAUDE.md`. Search before you build; verify by reading back.");
         sb.AppendLine("- Read first. Changes to a machine go through NetworkOps (Command Center → Fix…, which is allow-listed, run as SYSTEM, audited and re-checked). Anything else that changes a PC, a server, GPO, the firewall or DNS needs Ian's OK first.");
+        sb.AppendLine("- This repo and the live service are shared by other sessions. Solving a finding does NOT include changing the repo's code or DEPLOYING (service, app or agent): if the real fix is a code change, say so and hand it to Ian rather than shipping it from here. A deploy restarts the live service and carries every session's uncommitted changes. Report the finding either way.");
         sb.AppendLine("- Never echo, store or commit a password or key. Never content-search OneDrive. Never kill processes by name machine-wide.");
         sb.AppendLine("- KOR-1001 is the machine this terminal runs on (Ian's PC, often on the VPN).");
         sb.AppendLine("- Say what you checked and what you found; state as fact only what is in live output.");
