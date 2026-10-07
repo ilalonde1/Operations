@@ -26,13 +26,16 @@ $storageErrors = @(Get-WinEvent -FilterHashtable @{ LogName = 'System'; StartTim
     Where-Object { $_.ProviderName -match '^(disk|Ntfs|volsnap|Microsoft-Windows-Ntfs|storahci|stornvme|iScsiPrt|mpio)$' } |
     Group-Object { "$($_.ProviderName) $($_.Id)" } | ForEach-Object { [pscustomobject]@{ Event = "$($_.Name)"; Count = $_.Count } })
 
-# Class 2 -- "configured right, not just up": antivirus posture and NIC firewall profile. Guarded (Get-MpComputerStatus is
-# absent if the Defender feature was removed; WRSVC absent if Webroot is not installed). Windows Server never auto-passives
-# Defender without MDE, so Defender in Normal mode plus a running third-party AV means two active engines fighting.
-$mp = Get-MpComputerStatus
-$winDefend = Get-Service WinDefend -ErrorAction SilentlyContinue
-$wrsvc = Get-Service WRSVC -ErrorAction SilentlyContinue
-$nicCats = @(Get-NetConnectionProfile | ForEach-Object { "$($_.NetworkCategory)" })
+# Class 2 -- "configured right, not just up": antivirus posture and NIC firewall profile. Each read is wrapped in try/catch,
+# NOT left to $ErrorActionPreference: removing the Defender feature takes its WMI provider with it, so Get-MpComputerStatus
+# throws a TERMINATING "Invalid class" CimException that SilentlyContinue does not swallow -- which blanked the whole server
+# probe the moment Defender was uninstalled (RDS01 went rack.unreachable, 2026-10-06). A missing engine must read as absent,
+# never as a dead probe. Windows Server never auto-passives Defender without MDE, so Defender in Normal mode plus a running
+# third-party AV means two active engines fighting.
+$mp = try { Get-MpComputerStatus } catch { $null }
+$winDefend = try { Get-Service WinDefend -ErrorAction Stop } catch { $null }
+$wrsvc = try { Get-Service WRSVC -ErrorAction Stop } catch { $null }
+$nicCats = @(try { Get-NetConnectionProfile | ForEach-Object { "$($_.NetworkCategory)" } } catch { })
 
 [pscustomobject]@{
     ProbeVersion = 2
