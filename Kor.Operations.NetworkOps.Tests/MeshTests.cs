@@ -120,6 +120,20 @@ public sealed class MeshTests
         Assert.Null(state.PresenceOf(1));                                     // MeshCentral silent: no findings anywhere
     }
 
+    [Fact]
+    public void A_duplicate_node_name_links_the_connected_one_and_never_guesses_between_two()
+    {
+        var clock = new FakeTimeProvider(DateTimeOffset.UtcNow);
+        var state = new MeshState(clock);
+        MeshLink L(string id, int conn) => new(5, "Veeam backups (BK01)", new MeshNode("node//" + id, "KOR-BK01", "mesh//SRV", conn), "KOR Servers");
+        // BK01 kept its old computer name on a stale node after a NIC swap: the LIVE node wins, not whichever sorts first.
+        state.Update([L("stale", 0), L("live", 1)]);
+        Assert.Equal("node//live", state.For(5)!.Node.Id);
+        // Two CONNECTED nodes with the same name is unresolvable: link NONE, so a fix refuses rather than hit the wrong box.
+        state.Update([L("a", 1), L("b", 1)]);
+        Assert.Null(state.For(5));
+    }
+
     // ---- servers seen only through remote control, and KOR-MESH01 itself (rack collectors Mesh / MeshServer)
 
     [Fact]

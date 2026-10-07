@@ -56,10 +56,26 @@ internal sealed class MeshState(TimeProvider clock)
 
     public void Update(IReadOnlyList<MeshLink> links, IReadOnlyList<MeshNode>? allNodes = null)
     {
-        _links = new ConcurrentDictionary<int, MeshLink>(links.GroupBy(l => l.DeviceId).ToDictionary(g => g.Key, g => g.First()));
+        // A device can match more than one node when a stale/renamed node keeps the old computer name (BK01 after its NIC
+        // swap). Never guess which to run a fix on: take the single CONNECTED node when there is exactly one; if two are both
+        // connected, link NONE (a fix then refuses rather than hit the wrong machine). (Audit 2026-10-06, finding #3.)
+        _links = new ConcurrentDictionary<int, MeshLink>(
+            links.GroupBy(l => l.DeviceId)
+                 .Select(g => Disambiguate(g.ToList()))
+                 .Where(l => l is not null)
+                 .ToDictionary(l => l!.DeviceId, l => l!));
         _nodes = allNodes ?? links.Select(l => l.Node).ToList();
         LastReadUtc = clock.GetUtcNow().UtcDateTime;
         LastError = null;
+    }
+
+    private static MeshLink? Disambiguate(IReadOnlyList<MeshLink> candidates)
+    {
+        if (candidates.Count == 1) return candidates[0];
+        var connected = candidates.Where(l => l.Node.AgentConnected).ToList();
+        if (connected.Count == 1) return connected[0];   // the live node wins over a stale duplicate of the same name
+        if (connected.Count > 1) return null;            // two live nodes with this name: ambiguous -- link none, do not guess
+        return candidates[0];                            // none connected: a fix refuses on AgentConnected anyway
     }
 
     /// <summary>The node MeshCentral calls <paramref name="name"/>, at the last fresh read.</summary>

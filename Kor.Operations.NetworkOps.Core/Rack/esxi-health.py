@@ -111,8 +111,13 @@ out = {
     "datastores": [{"name": d.summary.name, "type": d.summary.type, "accessible": d.summary.accessible,
                     "capacityGb": round(d.summary.capacity / 1e9, 1), "freeGb": round(d.summary.freeSpace / 1e9, 1)} for d in h.datastore],
     "vms": [{"name": v.name, "power": str(v.runtime.powerState), "tools": str(v.guest.toolsRunningStatus) if v.guest else None,
-             "status": str(v.overallStatus)} for v in h.vm],
+             "status": str(v.overallStatus), "nics": vm_nics(v)} for v in h.vm],
     "sensors": sensors,
 }
-c.sessionManager.Logout()
+# Print the snapshot BEFORE logging out: a Logout() that throws must not throw away a fully-built snapshot (it did, leaving
+# the host rack.unreachable). Logout is best-effort cleanup. (Audit 2026-10-06, findings #11 nics + #9 print-before-logout.)
 print(json.dumps(out))
+try:
+    c.sessionManager.Logout()
+except Exception:
+    pass

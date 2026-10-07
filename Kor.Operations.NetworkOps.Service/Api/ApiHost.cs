@@ -311,12 +311,18 @@ internal sealed class ApiHost(IOptions<NetworkOpsOptions> options, NetworkOpsSto
                 ?? (dev.Source == "Rack" && !Sweep.ActionRunner.CanRun(o.Value, dev.Name, fix)
                     ? (fix.Target == Kor.Operations.NetworkOps.Core.Actions.FixCatalog.Esxi ? $"{dev.Name} is not an ESXi host" : $"{dev.Name} is not a Windows server APP01 can run fixes on") : null)
                 ?? (dev.Source != "Rack" && fix.Target == Kor.Operations.NetworkOps.Core.Actions.FixCatalog.Esxi ? $"{fix.Title} is for an ESXi host, not a PC" : null)
-                ?? (fix.Disruptive && dev.PresenceState == "Active" && !body.Confirmed
-                    ? $"someone is using {dev.Name} right now ({dev.Presence}): confirm to go ahead" : null);
+                // EVERY disruptive fix needs explicit confirmation -- presence only shapes the warning, it never waives it.
+                // (Gating on PresenceState=="Active" meant a restart on a server or an idle PC, whose presence is null, fired
+                // with no confirmation at all -- the opposite of the standing rule. Audit 2026-10-06, finding #1.)
+                ?? (fix.Disruptive && !body.Confirmed
+                    ? (dev.PresenceState == "Active"
+                        ? $"someone is using {dev.Name} right now ({dev.Presence}): confirm to {fix.Title.ToLowerInvariant()}"
+                        : $"{fix.Title} will interrupt {dev.Name}: confirm to go ahead")
+                    : null);
             if (refuse is not null)
             {
                 await s.RecordRefusedActionAsync(id, fix.Id, by, request, refuse, ct);
-                return Results.Conflict(new { error = refuse, needsConfirmation = fix.Disruptive && dev.PresenceState == "Active" && !body.Confirmed });
+                return Results.Conflict(new { error = refuse, needsConfirmation = fix.Disruptive && !body.Confirmed });
             }
             var runId = await s.QueueActionAsync(id, fix.Id, by, request, ct);
             return Results.Accepted($"/api/actions/{runId}", new { actionId = runId });
@@ -341,12 +347,14 @@ internal sealed class ApiHost(IOptions<NetworkOpsOptions> options, NetworkOpsSto
             foreach (var id in body.DeviceIds.Distinct())
             {
                 if (await s.DeviceForActionAsync(id, ct) is not { } dev) { outcomes.Add(new FixRunOutcome(id, $"#{id}", null, "not in NetworkOps", false)); continue; }
-                var needsConfirm = fix.Disruptive && dev.PresenceState == "Active" && !body.Confirmed;
+                var needsConfirm = fix.Disruptive && !body.Confirmed;   // every disruptive fix, not only one with someone on it
                 string? refuse =
                     (dev.Source == "Rack" && !Sweep.ActionRunner.CanRun(o.Value, dev.Name, fix)
                         ? (fix.Target == Kor.Operations.NetworkOps.Core.Actions.FixCatalog.Esxi ? $"{dev.Name} is not an ESXi host" : $"{dev.Name} is not a Windows server APP01 can run fixes on") : null)
                     ?? (dev.Source != "Rack" && fix.Target == Kor.Operations.NetworkOps.Core.Actions.FixCatalog.Esxi ? $"{fix.Title} is for an ESXi host, not a PC" : null)
-                    ?? (needsConfirm ? $"someone is using {dev.Name} right now ({dev.Presence}): confirm to go ahead" : null);
+                    ?? (needsConfirm
+                        ? (dev.PresenceState == "Active" ? $"someone is using {dev.Name} right now ({dev.Presence}): confirm to {fix.Title.ToLowerInvariant()}" : $"{fix.Title} will interrupt {dev.Name}: confirm to go ahead")
+                        : null);
                 if (refuse is not null)
                 {
                     await s.RecordRefusedActionAsync(id, fix.Id, by, "{}", refuse, ct);

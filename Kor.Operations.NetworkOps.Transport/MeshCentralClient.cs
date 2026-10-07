@@ -14,6 +14,10 @@ public sealed record MeshNode(string Id, string Name, string MeshId, int Conn)
     public bool AgentConnected => (Conn & 1) != 0;
 }
 
+/// <summary>The outcome of a Mesh run. <paramref name="Completed"/> is true only when the terminal reply for OUR run
+/// arrived; false means the outcome is unknown (the agent went away, or the command is still running) -- never success.</summary>
+public sealed record MeshRunResult(bool Completed, string Output);
+
 // Reads KOR-MESH01's device list, read-only, as the "networkops" MeshCentral account -- which has membership of the
 // two device groups and no device rights at all (no remote control, terminal, files): listing is all NetworkOps needs.
 // The protocol is MeshCentral's own control channel, as its meshctrl tool uses it: a websocket to /control.ashx with
@@ -59,7 +63,7 @@ public sealed class MeshCentralClient(Uri baseUrl, string certSha256, string use
     /// console text is only a fallback if the terminal reply never comes. LIMIT: the terminal result may be truncated by
     /// the server for very large output; the act-layer's commands are short (a verdict line, a state word), so this holds.
     /// </summary>
-    public async Task<string> RunCommandAsync(string nodeId, string script, TimeSpan timeout, CancellationToken ct)
+    public async Task<MeshRunResult> RunCommandAsync(string nodeId, string script, TimeSpan timeout, CancellationToken ct)
     {
         using var deadline = CancellationTokenSource.CreateLinkedTokenSource(ct);
         deadline.CancelAfter(timeout);
@@ -68,11 +72,12 @@ public sealed class MeshCentralClient(Uri baseUrl, string certSha256, string use
         ws.Options.SetRequestHeader("x-meshauth", B64(user) + "," + B64(password));
         var url = new UriBuilder(baseUrl) { Scheme = "wss", Path = "/control.ashx" }.Uri;
         await ws.ConnectAsync(url, deadline.Token).ConfigureAwait(false);
-        const string rid = "networkops-run";
+        var rid = "networkops-run-" + Guid.NewGuid().ToString("N");   // unique per run: another run's frames can never be mistaken for ours
         var msg = JsonSerializer.Serialize(new { action = "runcommands", nodeids = new[] { nodeId }, type = 2, cmds = script, runAsUser = 0, reply = true, responseid = rid });
         await SendAsync(ws, msg, deadline.Token).ConfigureAwait(false);
         var console = new StringBuilder();   // streaming console output, kept only as a fallback
         string? final = null;                // the authoritative, complete result tied to our run
+        var gotTerminal = false;             // did the terminal reply for OUR run actually arrive? (else the outcome is unknown)
         try
         {
             while (true)
@@ -94,6 +99,7 @@ public sealed class MeshCentralClient(Uri baseUrl, string certSha256, string use
                     // The terminal reply for OUR run carries the complete output. Authoritative -- take it and stop,
                     // before the flood of unrelated node events MeshCentral pushes afterwards.
                     final = root.TryGetProperty("result", out var rs) ? rs.GetString() : null;
+                    gotTerminal = true;
                     break;
                 }
                 if (type == "console" && root.TryGetProperty("value", out var v) && v.ValueKind == JsonValueKind.String)
@@ -101,8 +107,11 @@ public sealed class MeshCentralClient(Uri baseUrl, string certSha256, string use
             }
         }
         catch (OperationCanceledException) when (deadline.IsCancellationRequested && !ct.IsCancellationRequested) { }   // deadline: return what came back
-        try { await ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "done", CancellationToken.None).ConfigureAwait(false); } catch (WebSocketException) { }
-        return (final ?? console.ToString()).TrimEnd();
+        using (var closeCts = new CancellationTokenSource(TimeSpan.FromSeconds(5)))   // bounded: a never-acked close must not hang disposal
+            try { await ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "done", closeCts.Token).ConfigureAwait(false); } catch (Exception) { }
+        // Completed = the terminal reply tied to OUR run actually arrived. Without it (lull, deadline, socket close, or a
+        // disconnected agent) the OUTCOME IS UNKNOWN and the caller must NOT record success. (Audit 2026-10-06, finding #2.)
+        return new MeshRunResult(gotTerminal, (final ?? console.ToString()).TrimEnd());
     }
 
     /// <summary>The "nodes" answer: { "nodes": { "mesh//...": [ { "_id": "node//...", "name": "...", "conn": 1 }, ... ] } }.</summary>

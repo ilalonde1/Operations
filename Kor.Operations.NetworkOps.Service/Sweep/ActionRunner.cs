@@ -112,6 +112,10 @@ internal sealed class ActionRunner(NetworkOpsStore store, MachineRunner runner, 
             using var req = JsonDocument.Parse(a.RequestJson);
             var param = req.RootElement.TryGetProperty("param", out var p) && p.ValueKind == JsonValueKind.String ? p.GetString() : null;
             if (FixCatalog.Invalid(fix, param) is { } why) throw new InvalidOperationException(why);
+            // The last gate: a disruptive fix must carry confirmation in its request. The API refuses an unconfirmed one at
+            // admission (presence does not waive it); this catches anything that reaches the queue without it. (Audit #1.)
+            if (fix.Disruptive && !(req.RootElement.TryGetProperty("confirmed", out var cf) && cf.ValueKind == JsonValueKind.True))
+                throw new InvalidOperationException($"{fix.Title} is disruptive and was not confirmed -- refusing to run it");
             if (fix.Target == FixCatalog.Esxi)
             {
                 await RunOnEsxiAsync(a, fix, param!, ct);
@@ -275,14 +279,21 @@ internal sealed class ActionRunner(NetworkOpsStore store, MachineRunner runner, 
     {
         var o = options.Value;
         if (!o.MeshEnabled) throw new InvalidOperationException("remote control is not configured on APP01");
+        // A stale MeshCentral read must not authorise a run: the link + connection flags could be many minutes old if the
+        // sweep has been failing. Require a fresh read. (Audit 2026-10-06, finding #3.)
+        if (!meshState.Fresh) throw new InvalidOperationException($"the last MeshCentral read is stale -- {a.DeviceName} cannot be reached through Mesh right now");
         var link = meshState.For(a.DeviceId) ?? throw new InvalidOperationException($"{a.DeviceName} has no linked Mesh agent to run through");
         if (!link.Node.AgentConnected) throw new InvalidOperationException($"{a.DeviceName}'s Mesh agent is not connected");
         log.LogWarning("FIX {Id} {Fix} on {Dev} via Mesh requested by {By}", a.ActionId, fix.Id, a.DeviceName, a.RequestedBy);
         var client = new MeshCentralClient(new Uri(o.MeshUrl), o.MeshCertSha256, o.MeshUser, o.MeshPassword);
-        var output = await client.RunCommandAsync(link.Node.Id, FixCatalog.Script(fix, param), TimeSpan.FromSeconds(fix.TimeoutSeconds), ct);
-        var result = ResultLine(output) ?? (output.Length > 0 ? "ran; see the output" : "ran (no output returned)");
-        await store.CompleteActionAsync(a.ActionId, true, result, output);
-        log.LogWarning("FIX {Id} {Fix} on {Dev} via Mesh: {Result}", a.ActionId, fix.Id, a.DeviceName, result);
+        var run = await client.RunCommandAsync(link.Node.Id, FixCatalog.Script(fix, param), TimeSpan.FromSeconds(fix.TimeoutSeconds), ct);
+        // No terminal reply = the outcome is UNKNOWN (the agent went away, or it is still running): record it as failed,
+        // never as success, and never auto-retry a non-idempotent script. (Audit 2026-10-06, finding #2.)
+        var (ok, result) = run.Completed
+            ? (true, ResultLine(run.Output) ?? (run.Output.Length > 0 ? "ran; see the output" : "ran (no output returned)"))
+            : (false, run.Output.Length > 0 ? "no completion from the Mesh agent -- outcome unknown; partial output kept" : "no response from the Mesh agent -- outcome unknown (disconnected, or still running)");
+        await store.CompleteActionAsync(a.ActionId, ok, result, run.Output.Length > 0 ? run.Output : null);
+        log.LogWarning("FIX {Id} {Fix} on {Dev} via Mesh: ok={Ok} {Result}", a.ActionId, fix.Id, a.DeviceName, ok, result);
         if (IsRack(a.DeviceName)) await store.QueueRackCheckAsync(a.DeviceName, $"fix {a.ActionId}", CancellationToken.None);
         else await store.QueueCheckAsync(a.DeviceName, $"fix {a.ActionId}", CancellationToken.None);
     }

@@ -280,7 +280,10 @@ internal sealed partial class NetworkOpsStore
     public async Task CompleteActionAsync(long actionId, bool ok, string detail, string? outputJson)
     {
         await using var c = await OpenAsync(CancellationToken.None).ConfigureAwait(false);
-        await using var cmd = Cmd(c, "UPDATE NetworkOps.Actions SET Status = @s, Detail = @det, AfterJson = @out, CompletedUtc = SYSUTCDATETIME() WHERE ActionId = @id;");
+        // Only a non-terminal row may be completed. Without this, a throw in the POST-completion work (the re-check enqueue
+        // after a fix is already marked Done) hit the runner's catch, which completed the SAME row again as Failed/null --
+        // clobbering a genuinely successful fix. A terminal row is now immutable. (Audit 2026-10-06, finding #5.)
+        await using var cmd = Cmd(c, "UPDATE NetworkOps.Actions SET Status = @s, Detail = @det, AfterJson = @out, CompletedUtc = SYSUTCDATETIME() WHERE ActionId = @id AND Status IN ('Requested', 'Running');");
         cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = actionId;
         cmd.Parameters.Add("@s", SqlDbType.VarChar, 16).Value = ok ? "Done" : "Failed";
         cmd.Parameters.Add("@det", SqlDbType.NVarChar, 2000).Value = Truncate(detail, 2000)!;
