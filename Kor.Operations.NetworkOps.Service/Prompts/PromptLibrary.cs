@@ -13,7 +13,8 @@ namespace Kor.Operations.NetworkOps.Service.Prompts;
 // document. A device or finding prompt is assembled from the database the moment it is opened (Core/Prompts/
 // PromptComposer); a tool prompt is the tool's brief, embedded from Prompts/Tools/<id>.md beside the tool's code -- so it
 // changes in the same commit as the tool -- plus what the service sees live. Every prompt opened is recorded as a run
-// with a one-time token, and the session reports its outcome back to that run (ApiHost: /api/prompt-runs/{id}/outcome).
+// with its own token, and the session reports its outcome back to that run (ApiHost: /api/prompt-runs/{id}/outcome) --
+// again, to correct it, until Ian decides the run.
 internal sealed class PromptLibrary(NetworkOpsStore store, Agents.AgentHub agents, Mesh.MeshState mesh, Power.PowerState power,
     IOptions<NetworkOpsOptions> options, TimeProvider clock)
 {

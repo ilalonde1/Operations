@@ -147,12 +147,19 @@ internal sealed class ApiHost(IOptions<NetworkOpsOptions> options, NetworkOpsSto
                     if (!await s.CardExistsAsync(amendId, ct)) return Results.BadRequest(new { error = $"card.amends: {amendId} is not a known card" });
                 }
             }
-            var run = await s.RecordPromptOutcomeAsync(id, Prompts.PromptLibrary.HashToken(token), body.Outcome!, body.Summary.Trim(), body.Learned, body.Card, ct);
-            if (run is null) return Results.Unauthorized();   // unknown run, wrong token, or already reported: the same answer for all three
+            // The token is reusable until Ian decides the run: a second report is a correction and replaces the first.
+            var (run, locked) = await s.RecordPromptOutcomeAsync(id, Prompts.PromptLibrary.HashToken(token), body.Outcome!, body.Summary.Trim(), body.Learned, body.Card, ct);
+            if (locked) return Results.Conflict(new { error = $"run {id} is already decided in the Prompt Library, so it can no longer be corrected: ask Ian, or bank the correction from a new prompt (a card can amend the old one)" });
+            if (run is null) return Results.Unauthorized();   // unknown run or wrong token: the same answer for both
             if (run.DeviceId is { } device)
-                await s.AddNoteAsync(device, $"Claude session (run {run.RunId}, {run.CreatedBy})",
+                await s.AddNoteAsync(device, $"Claude session (run {run.RunId}, {run.CreatedBy}){(run.Corrected ? " -- correction" : "")}",
                     $"[{body.Outcome}] {body.Summary.Trim()}{(string.IsNullOrWhiteSpace(body.Learned) ? "" : $" -- proposed learning: {body.Learned.Trim()}")}", ct);
-            return Results.Ok(new { recorded = run.RunId, card = body.Card is null ? null : "proposed: it waits for Ian's decision in the Prompt Library" });
+            return Results.Ok(new
+            {
+                recorded = run.RunId,
+                corrected = run.Corrected,
+                card = body.Card is null ? (run.Corrected ? "none: any earlier card from this run is withdrawn" : null) : "proposed: it waits for Ian's decision in the Prompt Library",
+            });
         });
 
         var api = app.MapGroup("/api").RequireAuthorization("CommandCenter");

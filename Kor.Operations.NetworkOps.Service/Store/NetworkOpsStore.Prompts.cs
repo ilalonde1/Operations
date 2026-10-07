@@ -79,26 +79,31 @@ internal sealed partial class NetworkOpsStore
         await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
     }
 
-    public sealed record ReportedRun(long RunId, int? DeviceId, string Subject, string CreatedBy);
+    /// <param name="Corrected">True when this report replaced an earlier one from the same run.</param>
+    public sealed record ReportedRun(long RunId, int? DeviceId, string Subject, string CreatedBy, bool Corrected);
 
     /// <summary>
-    /// Writes a session's outcome -- once: only while no outcome is recorded and only with the run's own token (compared
-    /// in SQL against its SHA-256). Null when the token is wrong, the run is unknown, or it has already reported. A card
-    /// is written in the same transaction, as proposed: it waits for Ian with the run's learning.
+    /// Writes a session's outcome with the run's own token (compared in SQL against its SHA-256). The token is reusable
+    /// until Ian decides the run: a later report REPLACES the earlier outcome, learning and card, so a session that got
+    /// it wrong can post the correction (2026-10-07: run 14 reported not-solved, then fixed it, and the token refused).
+    /// Once the run's learning is accepted or rejected it is locked. Run is null when the token is wrong or the run is
+    /// unknown (Locked false), or when the run is already decided (Locked true). A card is written in the same
+    /// transaction, as proposed: it waits for Ian with the run's learning.
     /// </summary>
-    public async Task<ReportedRun?> RecordPromptOutcomeAsync(long runId, byte[] tokenSha256, string outcome, string summary, string? learned,
+    public async Task<(ReportedRun? Run, bool Locked)> RecordPromptOutcomeAsync(long runId, byte[] tokenSha256, string outcome, string summary, string? learned,
         CardProposal? card, CancellationToken ct)
     {
         // The plain explanation + amends link land only when 012 has run; before that a card still banks in the 008 shape.
         var amendable = card is not null && await CardsAmendableAsync(ct).ConfigureAwait(false);
         await using var c = await OpenAsync(ct).ConfigureAwait(false);
         await using var tx = (SqlTransaction)await c.BeginTransactionAsync(ct).ConfigureAwait(false);
+        // Undecided = no learning waiting (NULL) or waiting for Ian ('proposed'); accepted/rejected runs never change.
         await using var cmd = Cmd(c, """
             UPDATE NetworkOps.PromptRuns
             SET OutcomeUtc = SYSUTCDATETIME(), Outcome = @o, Summary = @s, LearnedText = @l,
                 LearnedStatus = CASE WHEN @l IS NULL AND @card = 0 THEN NULL ELSE 'proposed' END
-            OUTPUT inserted.RunId, inserted.DeviceId, inserted.Subject, inserted.CreatedBy
-            WHERE RunId = @id AND TokenSha256 = @t AND OutcomeUtc IS NULL;
+            OUTPUT inserted.RunId, inserted.DeviceId, inserted.Subject, inserted.CreatedBy, CAST(CASE WHEN deleted.OutcomeUtc IS NULL THEN 0 ELSE 1 END AS bit)
+            WHERE RunId = @id AND TokenSha256 = @t AND (LearnedStatus IS NULL OR LearnedStatus = 'proposed');
             """);
         cmd.Transaction = tx;
         cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = runId;
@@ -110,19 +115,53 @@ internal sealed partial class NetworkOpsStore
         ReportedRun? run = null;
         await using (var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false))
             if (await r.ReadAsync(ct).ConfigureAwait(false))
-                run = new ReportedRun(r.GetInt64(0), r.IsDBNull(1) ? null : r.GetInt32(1), r.GetString(2), r.GetString(3));
-        if (run is null) { await tx.RollbackAsync(ct).ConfigureAwait(false); return null; }
+                run = new ReportedRun(r.GetInt64(0), r.IsDBNull(1) ? null : r.GetInt32(1), r.GetString(2), r.GetString(3), r.GetBoolean(4));
+        if (run is null)
+        {
+            // The right token on a decided run is a different answer from a wrong token: the session can be told why.
+            await using var probe = Cmd(c, "SELECT CASE WHEN EXISTS (SELECT 1 FROM NetworkOps.PromptRuns WHERE RunId = @id AND TokenSha256 = @t) THEN 1 ELSE 0 END;", tx);
+            probe.Parameters.Add("@id", SqlDbType.BigInt).Value = runId;
+            probe.Parameters.Add("@t", SqlDbType.Binary, 32).Value = tokenSha256;
+            var locked = Convert.ToInt32(await probe.ExecuteScalarAsync(ct).ConfigureAwait(false)) == 1;
+            await tx.RollbackAsync(ct).ConfigureAwait(false);
+            return (null, locked);
+        }
+
+        // One card per run (UX_NetworkOps_KnowledgeCards_Run), so a correction rewrites the run's card IN PLACE -- never a
+        // delete, which another card's AmendsCardId could block. The run is undecided, so that card was never accepted.
+        // A correction without a card withdraws the earlier one (retired, its slot kept for a later correction to reuse).
+        if (card is null && run.Corrected && await KnowledgeAvailableAsync(ct).ConfigureAwait(false))
+        {
+            await using var withdraw = Cmd(c, """
+                UPDATE NetworkOps.KnowledgeCards SET Status = 'retired', DecidedUtc = SYSUTCDATETIME(), DecidedBy = N'withdrawn by its session''s correction'
+                WHERE SourceRunId = @run AND Status = 'proposed';
+                """, tx);
+            withdraw.Parameters.Add("@run", SqlDbType.BigInt).Value = run.RunId;
+            await withdraw.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+        }
 
         if (card is not null)
         {
             await using var ins = Cmd(c, amendable
                 ? """
-                  INSERT NetworkOps.KnowledgeCards (Title, AppliesTo, Symptom, Cause, HowToCheck, Fix, Tags, Plain, AmendsCardId, SourceRunId, SourceDeviceId)
-                  VALUES (@ti, @ap, @sy, @ca, @ch, @fx, @tg, @pl, @am, @run, @dev);
+                  IF EXISTS (SELECT 1 FROM NetworkOps.KnowledgeCards WHERE SourceRunId = @run)
+                      UPDATE NetworkOps.KnowledgeCards
+                      SET Title = @ti, AppliesTo = @ap, Symptom = @sy, Cause = @ca, HowToCheck = @ch, Fix = @fx, Tags = @tg, Plain = @pl,
+                          AmendsCardId = NULLIF(@am, CardId), SourceDeviceId = @dev, Status = 'proposed', DecidedUtc = NULL, DecidedBy = NULL, CreatedUtc = SYSUTCDATETIME()
+                      WHERE SourceRunId = @run;
+                  ELSE
+                      INSERT NetworkOps.KnowledgeCards (Title, AppliesTo, Symptom, Cause, HowToCheck, Fix, Tags, Plain, AmendsCardId, SourceRunId, SourceDeviceId)
+                      VALUES (@ti, @ap, @sy, @ca, @ch, @fx, @tg, @pl, @am, @run, @dev);
                   """
                 : """
-                  INSERT NetworkOps.KnowledgeCards (Title, AppliesTo, Symptom, Cause, HowToCheck, Fix, Tags, SourceRunId, SourceDeviceId)
-                  VALUES (@ti, @ap, @sy, @ca, @ch, @fx, @tg, @run, @dev);
+                  IF EXISTS (SELECT 1 FROM NetworkOps.KnowledgeCards WHERE SourceRunId = @run)
+                      UPDATE NetworkOps.KnowledgeCards
+                      SET Title = @ti, AppliesTo = @ap, Symptom = @sy, Cause = @ca, HowToCheck = @ch, Fix = @fx, Tags = @tg,
+                          SourceDeviceId = @dev, Status = 'proposed', DecidedUtc = NULL, DecidedBy = NULL, CreatedUtc = SYSUTCDATETIME()
+                      WHERE SourceRunId = @run;
+                  ELSE
+                      INSERT NetworkOps.KnowledgeCards (Title, AppliesTo, Symptom, Cause, HowToCheck, Fix, Tags, SourceRunId, SourceDeviceId)
+                      VALUES (@ti, @ap, @sy, @ca, @ch, @fx, @tg, @run, @dev);
                   """);
             ins.Transaction = tx;
             ins.Parameters.Add("@ti", SqlDbType.NVarChar, 200).Value = Truncate(card.Title.Trim(), 200)!;
@@ -142,7 +181,7 @@ internal sealed partial class NetworkOpsStore
             await ins.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
         }
         await tx.CommitAsync(ct).ConfigureAwait(false);
-        return run;
+        return (run, false);
     }
 
     private static object Opt(string? s, int max) => string.IsNullOrWhiteSpace(s) ? DBNull.Value : Truncate(s.Trim(), max)!;

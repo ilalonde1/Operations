@@ -16,7 +16,7 @@ namespace Kor.Operations.NetworkOps.Tests;
 // report-back command for its own run and token (or, before 007, says to leave a note); every tool in the catalog has
 // its brief embedded and every brief on disk is in the catalog; the token is stored only as a hash; the library's
 // source reads no credential option, so no prompt can carry one.
-// WHAT IT DOES NOT: the SQL (PromptRuns insert/outcome/single-use), the HTTP routes, or the live-state lines of a tool
+// WHAT IT DOES NOT: the SQL (PromptRuns insert/outcome/correct-until-decided), the HTTP routes, or the live-state lines of a tool
 // prompt -- those need APP01's database and are proven by rendering and reporting one live. A SAME-CLASS FAULT IT
 // WOULD NOT CATCH: an outcome route accidentally moved inside the Entra group would refuse every session's report;
 // only the live round trip shows the route is reachable with the token alone.
@@ -63,6 +63,9 @@ public sealed class PromptLibraryTests
         Assert.Contains("https://KOR-APP01.int.korstructural.com:8445/api/prompt-runs/41/outcome", md);
         Assert.Contains("'X-Prompt-Token' = 'tok_abcdefghijklmnopqrstuvwxyz'", md);
         Assert.EndsWith("Prompt Library.", md.TrimEnd());
+        // 2026-10-07: run 14 reported not-solved, then fixed it, and the single-use token refused the correction.
+        Assert.Contains("send it again with the same token", md);
+        Assert.DoesNotContain("works once", md);
 
         var tool = PromptComposer.Tool("The endpoint agent", "## Brief\ntext", [("Agents", "29 of 39")], new PromptReport(7, "tok_zyxwvutsrqponmlkjihgfedcba", "https://x:8445"), Now);
         Assert.Contains("/api/prompt-runs/7/outcome", tool);

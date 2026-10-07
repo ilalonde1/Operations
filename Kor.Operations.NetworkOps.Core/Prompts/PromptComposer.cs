@@ -330,7 +330,8 @@ public static class PromptComposer
         sb.AppendLine($"Invoke-RestMethod -Method Post -Uri '{report.ApiBaseUrl.TrimEnd('/')}/api/prompt-runs/{report.RunId}/outcome' -Headers @{{ 'X-Prompt-Token' = '{report.Token}' }} -ContentType 'application/json' -Body $body -SkipCertificateCheck");
         sb.AppendLine("```");
         sb.AppendLine();
-        sb.AppendLine($"The token works once, for this run ({report.RunId}) only. The outcome lands on {(device is null ? "the run" : device)} as a note and in the Prompt Library.");
+        sb.AppendLine("If you report and then learn more (you fixed it after all, or the cause was something else), send it again with the same token: the new report REPLACES the earlier outcome, learning and card. That works until Ian decides the run.");
+        sb.AppendLine($"The token is for this run ({report.RunId}) only. The outcome lands on {(device is null ? "the run" : device)} as a note and in the Prompt Library.");
     }
 
     /// <summary>Identity and state facts worth a session's attention; app version facts (dozens) are left out.</summary>
