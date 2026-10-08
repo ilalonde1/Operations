@@ -91,13 +91,17 @@ public sealed class ToClearCategoryRow : System.ComponentModel.INotifyPropertyCh
 public sealed class ClearActionRow
 {
     public required ClearAction Action { get; init; }
+    // The reasons folded into this action, as full rows for the disclosure. Each reuses ToClearRow, so the per-reason
+    // Fix / Ask / Acknowledge / Snooze handlers resolve them from DataContext unchanged. Built in Apply so each carries
+    // its "fixing" note -- this is where a reboot reason is now acted on, since it no longer has a card in the list below.
+    public required IReadOnlyList<ToClearRow> ReasonRows { get; init; }
 
     public string Title => Action.Fix.Title;
     public Brush SeverityBrush => NetworkOpsBrushes.For(Action.Severity);
     // The headline: the de-duplicated machine count and the findings it clears -- NOT the sum of the per-reason counts.
     public string Summary => $"{Action.Machines} machine{(Action.Machines == 1 ? "" : "s")} · clears {Action.Findings} finding{(Action.Findings == 1 ? "" : "s")}";
     // The reasons that fold into this one action, worst first, each with its own count: "not-restarted (13) · reboot-overdue (9)…".
-    public string Reasons => string.Join("   ·   ", Action.Reasons.Select(r => $"{r.Title} ({r.Count})"));
+    public string ReasonsSummary => string.Join("   ·   ", Action.Reasons.Select(r => $"{r.Title} ({r.Count})"));
     // The saving, stated plainly: the machines carried by 2+ of the reasons, cleared by this one run.
     public bool ShowOverlap => Action.OverlapMachines > 0;
     public string Overlap => Action.OverlapMachines == 0 ? ""
@@ -106,6 +110,8 @@ public sealed class ClearActionRow
     // an input-needed fix (start a named service) is not, so it shows the breakdown without a run-all button.
     public bool CanRun => Action.Fix.ParamLabel is null;
     public string RunLabel => $"{Action.Fix.Title} · all {Action.Machines}";
+    public string ExpandLabel => $"Show {Action.Reasons.Count} reasons ▾";
+    public string CollapseLabel => "Hide reasons ▴";
     // Every machine this action would touch, counted once (the union), as device ids for the run.
     public IReadOnlyList<int> UnionDeviceIds =>
         Action.Reasons.SelectMany(i => i.Machines.Select(m => m.DeviceId)).Where(x => x > 0).Distinct().ToList();
@@ -167,30 +173,38 @@ public partial class NetworkOpsToClearView : UserControl
         // A "fixing" mark lives only while its issue is still open: a cleared one drops off the list and stops fixing.
         var openKeys = new System.Collections.Generic.HashSet<string>(v.Open.Select(i => i.RuleKey), StringComparer.OrdinalIgnoreCase);
         foreach (var k in _fixing.Keys.Where(k => !openKeys.Contains(k)).ToList()) _fixing.Remove(k);
-        _rows.Clear();
-        var fixingCount = 0;
-        foreach (var i in v.Open)
-        {
-            // What we just queued (specific note) wins; otherwise the SERVER tells us a fix is in flight -- so a fix
-            // started last session, or from another machine, still shows as "fixing" here.
-            var note = _fixing.TryGetValue(i.RuleKey, out var f) ? f
-                : i.Running ? "running on the affected machines" : null;
-            if (note is not null) fixingCount++;
-            _rows.Add(new ToClearRow { Issue = i, Fixing = note });
-        }
-        // The at-a-glance rollup: the same open issues grouped into broad categories with a machine count (the Ninja view).
-        _categories.Clear();
-        foreach (var c in ToClearCategories.Of(v.Open)) _categories.Add(new ToClearCategoryRow { Category = c });
+
+        // What we just queued (specific note) wins; otherwise the SERVER tells us a fix is in flight -- so a fix started
+        // last session, or from another machine, still shows as "fixing", whether the issue sits in the panel or the list.
+        string? NoteFor(ToClearIssue i) => _fixing.TryGetValue(i.RuleKey, out var f) ? f : i.Running ? "running on the affected machines" : null;
+        var fixingCount = v.Open.Count(i => NoteFor(i) is not null);
+
         // "Clear in one action": the open issues regrouped by the fix that clears them, machines de-duplicated across the
-        // reasons. Shown only where it actually CONSOLIDATES (2+ reasons) -- one restart clearing three reboot reasons on
-        // the union of PCs, with the overlap called out -- so the headline is the saving, not three separate counts.
+        // reasons, kept only where it CONSOLIDATES (2+ reasons). Those reasons move OUT of the per-issue list and live,
+        // expandable, on the action row -- so one restart clearing three reboot reasons is read and acted on once.
+        var actions = ClearByAction.Of(v.Open).Where(a => a.Consolidates).ToList();
+        var covered = new System.Collections.Generic.HashSet<string>(
+            actions.SelectMany(a => a.Reasons.Select(r => r.RuleKey)), StringComparer.OrdinalIgnoreCase);
         _actions.Clear();
-        foreach (var a in ClearByAction.Of(v.Open).Where(a => a.Consolidates)) _actions.Add(new ClearActionRow { Action = a });
+        foreach (var a in actions)
+            _actions.Add(new ClearActionRow { Action = a, ReasonRows = a.Reasons.Select(i => new ToClearRow { Issue = i, Fixing = NoteFor(i) }).ToList() });
         ActionSection.Visibility = _actions.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+
+        // The per-issue list is now only what no consolidating action covers: critical one-offs, single-reason fixes, and
+        // the Ask-Claude issues. Everything reboot-shaped is up in the panel.
+        var remainder = v.Open.Where(i => !covered.Contains(i.RuleKey)).ToList();
+        _rows.Clear();
+        foreach (var i in remainder) _rows.Add(new ToClearRow { Issue = i, Fixing = NoteFor(i) });
+
+        // The chips roll up (and filter) the LIST -- the remainder below the panel -- so the chips, the list and the filter
+        // all speak about the same set, and a chip can never filter the list to empty.
+        _categories.Clear();
+        foreach (var c in ToClearCategories.Of(remainder)) _categories.Add(new ToClearCategoryRow { Category = c });
         // Keep the active chip filter across the refresh; drop it if that category has cleared off the list.
         if (_selectedCategory is not null && _categories.All(c => !string.Equals(c.Name, _selectedCategory, StringComparison.Ordinal)))
             _selectedCategory = null;
         ApplyCategoryFilter();
+
         var green = v.Issues == 0;
         var fixingNote = fixingCount > 0 ? $" · {fixingCount} fixing" : "";
         HeadlineText.Text = green ? "All green" : v.Issues.ToString();
@@ -200,6 +214,13 @@ public partial class NetworkOpsToClearView : UserControl
         HeadlineAccent.Fill = green ? NetworkOpsBrushes.Healthy
             : v.Open[0].Severity == Severity.Critical ? NetworkOpsBrushes.Critical
             : NetworkOpsBrushes.Attention;
+
+        // The list can be empty while the panel is full (everything consolidated); only say "all green" when truly nothing
+        // is open, and otherwise point to the panel rather than leaving a bare "nothing to clear" over a list of actions.
+        if (green) { EmptyText.Text = "All green — nothing to clear. 🎉"; EmptyText.Visibility = Visibility.Visible; }
+        else if (_rows.Count == 0) { EmptyText.Text = "Everything to clear is up in “Clear in one action”."; EmptyText.Visibility = Visibility.Visible; }
+        else EmptyText.Visibility = Visibility.Collapsed;
+
         Status($"Updated {DateTime.Now:HH:mm:ss} · {(green ? "all green 🎉" : $"{v.Issues} to clear{fixingNote}")} · refreshes every 20s");
     }
 

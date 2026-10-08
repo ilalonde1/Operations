@@ -8,6 +8,31 @@
                 <ResourceDictionary Source="/Kor.Operations.App;component/NetworkOps/NetworkOpsStyles.xaml"/>
             </ResourceDictionary.MergedDictionaries>
             <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+            <!-- The reasons disclosure on an action row: a link-styled toggle whose label flips Show/Hide with its state. -->
+            <Style x:Key="Ops.Disclose" TargetType="ToggleButton">
+                <Setter Property="Foreground" Value="#2F5496"/>
+                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="BorderThickness" Value="0"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Setter Property="FontSize" Value="12.5"/>
+                <Setter Property="HorizontalAlignment" Value="Right"/>
+                <Setter Property="Padding" Value="6,4"/>
+                <Setter Property="Content" Value="{Binding ExpandLabel}"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ToggleButton">
+                            <Border Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+                <Style.Triggers>
+                    <Trigger Property="IsChecked" Value="True">
+                        <Setter Property="Content" Value="{Binding CollapseLabel}"/>
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
         </ResourceDictionary>
     </UserControl.Resources>
     <Grid>
@@ -76,26 +101,82 @@
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <Border Background="#F4F8FB" BorderBrush="#D3DEE8" BorderThickness="1" CornerRadius="8" Padding="12,10" Margin="0,0,0,7">
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto"/>
-                                                <ColumnDefinition Width="*"/>
-                                                <ColumnDefinition Width="Auto"/>
-                                            </Grid.ColumnDefinitions>
-                                            <Rectangle Grid.Column="0" Width="4" RadiusX="2" RadiusY="2" Fill="{Binding SeverityBrush}" Margin="0,1,12,1"/>
-                                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                                <StackPanel Orientation="Horizontal">
-                                                    <TextBlock Text="{Binding Title}" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource Text.Primary}" VerticalAlignment="Center"/>
-                                                    <TextBlock Text="{Binding Summary}" FontSize="12.5" Foreground="{StaticResource Text.Secondary}" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                                        <StackPanel>
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <Rectangle Grid.Column="0" Width="4" RadiusX="2" RadiusY="2" Fill="{Binding SeverityBrush}" Margin="0,1,12,1"/>
+                                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <TextBlock Text="{Binding Title}" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource Text.Primary}" VerticalAlignment="Center"/>
+                                                        <TextBlock Text="{Binding Summary}" FontSize="12.5" Foreground="{StaticResource Text.Secondary}" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                                                    </StackPanel>
+                                                    <TextBlock Text="{Binding ReasonsSummary}" Style="{StaticResource Ops.Caption}" Margin="0,4,0,0" TextWrapping="Wrap"/>
+                                                    <TextBlock Text="{Binding Overlap}" Visibility="{Binding ShowOverlap, Converter={StaticResource BoolToVis}}"
+                                                               FontSize="12.5" FontWeight="SemiBold" Foreground="#1F7A4D" Margin="0,4,0,0" TextWrapping="Wrap"/>
                                                 </StackPanel>
-                                                <TextBlock Text="{Binding Reasons}" Style="{StaticResource Ops.Caption}" Margin="0,4,0,0" TextWrapping="Wrap"/>
-                                                <TextBlock Text="{Binding Overlap}" Visibility="{Binding ShowOverlap, Converter={StaticResource BoolToVis}}"
-                                                           FontSize="12.5" FontWeight="SemiBold" Foreground="#1F7A4D" Margin="0,4,0,0" TextWrapping="Wrap"/>
-                                            </StackPanel>
-                                            <Button Grid.Column="2" Content="{Binding RunLabel}" Style="{StaticResource Ops.Primary}" VerticalAlignment="Center" Margin="12,0,0,0"
-                                                    Click="RunAction_Click" Visibility="{Binding CanRun, Converter={StaticResource BoolToVis}}"
-                                                    ToolTip="Run this one fix on every machine that needs it, clearing every reason it covers on each. Audited; the cards below clear as each machine is fixed and re-checked."/>
-                                        </Grid>
+                                                <StackPanel Grid.Column="2" VerticalAlignment="Center" Margin="12,0,0,0">
+                                                    <Button Content="{Binding RunLabel}" Style="{StaticResource Ops.Primary}"
+                                                            Click="RunAction_Click" Visibility="{Binding CanRun, Converter={StaticResource BoolToVis}}"
+                                                            ToolTip="Run this one fix on every machine that needs it, clearing every reason it covers on each. Audited; the reasons clear as each machine is fixed and re-checked."/>
+                                                    <ToggleButton x:Name="ReasonsToggle" Style="{StaticResource Ops.Disclose}" Margin="0,4,0,0"
+                                                                  ToolTip="Show each reason and its machines — fix, acknowledge or snooze one on its own."/>
+                                                </StackPanel>
+                                            </Grid>
+
+                                            <!-- The reasons, revealed by the toggle: each is a full ToClearRow, so Fix / Ask / Acknowledge /
+                                                 Snooze act on just that reason (its own machines), while Run above clears the whole union. -->
+                                            <ItemsControl ItemsSource="{Binding ReasonRows}" Margin="16,8,0,0"
+                                                          Visibility="{Binding IsChecked, ElementName=ReasonsToggle, Converter={StaticResource BoolToVis}}">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <Border Background="White" BorderBrush="#E6ECF1" BorderThickness="1" CornerRadius="6" Padding="12,9" Margin="0,0,0,6">
+                                                            <Grid>
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition Width="100"/>
+                                                                    <ColumnDefinition Width="*"/>
+                                                                    <ColumnDefinition Width="Auto"/>
+                                                                </Grid.ColumnDefinitions>
+                                                                <Border Grid.Column="0" Style="{StaticResource Ops.Pill}" Background="{Binding SeverityBrush}" VerticalAlignment="Top" HorizontalAlignment="Left">
+                                                                    <TextBlock Text="{Binding SeverityText}" Style="{StaticResource Ops.PillText}"/>
+                                                                </Border>
+                                                                <StackPanel Grid.Column="1" Margin="4,0,16,0">
+                                                                    <TextBlock Text="{Binding Title}" FontSize="13.5" FontWeight="SemiBold" Foreground="{StaticResource Text.Primary}" TextWrapping="Wrap"/>
+                                                                    <TextBlock Text="{Binding Where}" FontSize="12" Foreground="{StaticResource Text.Primary}" Margin="0,2,0,0" TextWrapping="Wrap"/>
+                                                                    <TextBlock Text="{Binding Meaning}" Visibility="{Binding ShowMeaning, Converter={StaticResource BoolToVis}}"
+                                                                               FontSize="12" Foreground="{StaticResource Text.Secondary}" TextWrapping="Wrap" Margin="0,3,0,0"/>
+                                                                </StackPanel>
+                                                                <StackPanel Grid.Column="2" VerticalAlignment="Center" MinWidth="150">
+                                                                    <Button Content="{Binding FixLabel}" Style="{StaticResource Ops.Primary}" Click="Fix_Click" Margin="0,0,0,6"
+                                                                            Visibility="{Binding ShowFix, Converter={StaticResource BoolToVis}}"
+                                                                            ToolTip="Fix just this reason, on its machines."/>
+                                                                    <Border Background="#ECF6EC" BorderBrush="#BFE3BF" BorderThickness="1" CornerRadius="5" Padding="9,5" Margin="0,0,0,6"
+                                                                            Visibility="{Binding ShowFixing, Converter={StaticResource BoolToVis}}">
+                                                                        <TextBlock Text="{Binding FixingText}" FontSize="12" Foreground="#166534" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                                                                    </Border>
+                                                                    <Button Content="Ask Claude" Style="{StaticResource Ops.Primary}" Click="Ask_Click" Margin="0,0,0,6"
+                                                                            Visibility="{Binding ShowAskPrimary, Converter={StaticResource BoolToVis}}"
+                                                                            ToolTip="No one-click fix for this reason — open a Claude prompt for it."/>
+                                                                    <Button Content="More ▾" Style="{StaticResource Ops.Link}" HorizontalAlignment="Right" Click="More_Click"
+                                                                            ToolTip="Ask Claude, acknowledge, or snooze just this reason.">
+                                                                        <Button.ContextMenu>
+                                                                            <ContextMenu>
+                                                                                <MenuItem Header="Ask Claude" Click="Ask_Click"/>
+                                                                                <MenuItem Header="{Binding AckLabel}" Click="Acknowledge_Click"/>
+                                                                                <MenuItem Header="Snooze a week" Click="Snooze_Click"/>
+                                                                            </ContextMenu>
+                                                                        </Button.ContextMenu>
+                                                                    </Button>
+                                                                </StackPanel>
+                                                            </Grid>
+                                                        </Border>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </StackPanel>
                                     </Border>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
@@ -184,7 +265,9 @@
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
-                <TextBlock Style="{StaticResource Ops.Empty}" Margin="0,40,0,0" Tag="{Binding ElementName=IssueList}"
+                <!-- Driven from Apply: the list can be empty while the panel is full (everything consolidated), so its
+                     message is set there, not from IssueList.HasItems. -->
+                <TextBlock x:Name="EmptyText" Style="{StaticResource Ops.Empty}" Margin="0,40,0,0" Visibility="Collapsed"
                            Text="All green — nothing to clear. 🎉" FontSize="15"/>
             </Grid>
         </ScrollViewer>

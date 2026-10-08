@@ -155,6 +155,11 @@ public sealed class NetworkOpsWindowsRenderTests
         var toClearOverlap = new NetworkOpsToClearView(reader);
         toClearOverlap.Apply(ToClear.Build([rebootSnap], new System.Collections.Generic.HashSet<string>(), DateTime.UtcNow));
         written += Render(toClearOverlap, new Size(1400, 900), Path.Combine(dir, $"{label}-to-clear-overlap.png"));
+        // The same panel with the reasons disclosed: the toggle state lives in the UI, so flip every "ReasonsToggle" in
+        // the realised tree (the first Render laid it out) and render again -- this is the per-reason Fix/More layer.
+        foreach (var tb in Descendants<System.Windows.Controls.Primitives.ToggleButton>(toClearOverlap).Where(t => t.Name == "ReasonsToggle"))
+            tb.IsChecked = true;
+        written += Render(toClearOverlap, new Size(1400, 1180), Path.Combine(dir, $"{label}-to-clear-overlap-expanded.png"));
 
         // The KOR Remote viewer, connected to a PC with two monitors showing the second (the page itself is not drawn here).
         var viewer = new KorRemoteViewerModel(worst.Name, "kwurmlinger · active, idle 12 min");
@@ -207,6 +212,16 @@ public sealed class NetworkOpsWindowsRenderTests
             "Swaps the install and re-registers the add-in, closing Outlook briefly on each.", true)], snapshot);
         written += Render(deploy, new Size(1160, 820), Path.Combine(dir, $"{label}-deploy.png"));
         return written;
+    }
+
+    private static System.Collections.Generic.IEnumerable<T> Descendants<T>(DependencyObject root) where T : DependencyObject
+    {
+        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++)
+        {
+            var child = VisualTreeHelper.GetChild(root, i);
+            if (child is T t) yield return t;
+            foreach (var d in Descendants<T>(child)) yield return d;
+        }
     }
 
     private static void DrainDispatcher()
