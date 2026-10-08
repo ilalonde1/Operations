@@ -19,6 +19,12 @@
             "command": "python \"$CLAUDE_PROJECT_DIR/tools/claude_asked_guard.py\"",
             "timeout": 20,
             "statusMessage": "Checking remote actions were asked for"
+          },
+          {
+            "type": "command",
+            "command": "python \"$CLAUDE_PROJECT_DIR/tools/claude_sql_schema_guard.py\"",
+            "timeout": 20,
+            "statusMessage": "Checking the table's schema was read before writing to it"
           }
         ]
       },
@@ -36,6 +42,12 @@
             "command": "python \"$CLAUDE_PROJECT_DIR/tools/claude_asked_guard.py\"",
             "timeout": 20,
             "statusMessage": "Checking remote actions were asked for"
+          },
+          {
+            "type": "command",
+            "command": "python \"$CLAUDE_PROJECT_DIR/tools/claude_sql_schema_guard.py\"",
+            "timeout": 20,
+            "statusMessage": "Checking the table's schema was read before writing to it"
           }
         ]
       }
