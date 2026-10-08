@@ -36,6 +36,10 @@ public sealed class OnTargetChannel
     {
         var reach = await SmbReachability.ProbeAsync(computer, ct: ct).ConfigureAwait(false);
         if (!reach.Reachable) return OnTargetRun.Failed(computer, OnTargetStatus.Offline, "port 445 not answering on any address");
+        // For a workgroup box, open the IPC$ session under its local credential before the c$ write below (and the SCM
+        // call after) so both authenticate as the local admin. A no-op for a domain machine (no credential registered).
+        try { LocalAuth.Ensure(computer); }
+        catch (Exception ex) { return OnTargetRun.Failed(computer, OnTargetStatus.NoAdminShare, $"local sign-in to {computer} failed: {ex.Message}"); }
         var reachMs = (int)clock.ElapsedMilliseconds;
 
         var id = Guid.NewGuid().ToString("N")[..8];

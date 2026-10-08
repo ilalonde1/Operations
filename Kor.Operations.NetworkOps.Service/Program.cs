@@ -118,6 +118,20 @@ try
     Log.Information("NetworkOps {Version} on {Host}: alerts {Alerts}, {Jobs} scheduled jobs", JobDispatcher.Version, Environment.MachineName,
         opts.AlertsEnabled ? "ON" : "off (digests written to " + DigestSender.DigestDirectory + ")", SchedulingCatalog.All.Count);
 
+    // Workgroup boxes (BK01, the boardroom PC): register each local admin credential so the SMB + SCM push reaches them
+    // as that account instead of the domain service account. The password comes from the named machine variable on APP01
+    // (never the repo); without it the box is simply reached as the service account, as before.
+    foreach (var la in opts.LocalAuth)
+    {
+        if (string.IsNullOrWhiteSpace(la.Host) || string.IsNullOrWhiteSpace(la.User) || string.IsNullOrWhiteSpace(la.PasswordVariable))
+        { Log.Warning("LocalAuth: an entry is missing Host/User/PasswordVariable -- skipped"); continue; }
+        var pw = Environment.GetEnvironmentVariable(la.PasswordVariable);
+        if (string.IsNullOrEmpty(pw))
+        { Log.Warning("LocalAuth: no password in {Var} for {Host}; it will be reached as the service account only", la.PasswordVariable, la.Host); continue; }
+        Kor.Operations.NetworkOps.Transport.LocalAuth.Register(la.Host, la.User, pw, la.Aliases);
+        Log.Information("LocalAuth: {Host} (also {Aliases}) will be reached as {User}", la.Host, string.Join(", ", la.Aliases), la.User);
+    }
+
     // The learning layer needs migration 002. Say so plainly and stop, rather than fail mid-sweep.
     if (!await host.Services.GetRequiredService<NetworkOpsStore>().LearningSchemaPresentAsync(CancellationToken.None))
     {

@@ -53,12 +53,16 @@ internal static class ServiceControlManager
             catch (Win32Exception ex) when (attempt == 0 && StaleHandleErrors.Contains(ex.NativeErrorCode))
             {
                 if (Pool.TryRemove(new KeyValuePair<string, Lazy<ScmHandle>>(machine, lazy))) handle.Dispose();
+                LocalAuth.Drop(machine);   // a workgroup box's IPC$ session may have dropped with the handle; re-open it next attempt
             }
         }
     }
 
     public static ScmHandle OpenManager(string machine, bool forCreate)
     {
+        // For a workgroup box with a registered local credential, open the IPC$ session first so this SCM connect
+        // (OpenSCManager uses the caller's identity) authenticates as that local admin. A no-op for a domain machine.
+        LocalAuth.Ensure(machine);
         var access = ScManagerConnect | (forCreate ? ScManagerCreateService : 0);
         var h = OpenSCManagerW(@"\\" + machine, null, access);
         if (h.IsInvalid) throw new Win32Exception(Marshal.GetLastWin32Error(), $"OpenSCManager on {machine} failed");
