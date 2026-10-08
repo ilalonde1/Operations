@@ -85,35 +85,45 @@ public sealed class ArcGisFeatureOpportunityProvider : IOpportunityProvider
         var rowsSkipped = 0;
         var offset = 0;
         var pages = 0;
-        var truncated = false;
 
-        while (pages < map.MaxPagesPerRun && !ct.IsCancellationRequested)
+        InvalidOperationException IncompleteRead(string reason) => new(
+            $"ArcGIS partial read for {source.Name} at offset {offset}: {reason} " +
+            $"({rowsRead} row(s), {pages} page(s), page size {pageSize}, cap {map.MaxPagesPerRun}).");
+
+        while (pages < map.MaxPagesPerRun)
         {
+            ct.ThrowIfCancellationRequested();
             var url = BuildQueryUrl(layerUrl, map.Where, map.OutFields, offset, pageSize, map.Paginate);
             using var doc = await GetJsonAsync(url, source, ct).ConfigureAwait(false);
             if (doc is null)
             {
-                truncated = true;
-                break;
+                throw IncompleteRead("query returned an unsuccessful HTTP response.");
             }
 
             pages++;
             var root = doc.RootElement;
+            if (root.ValueKind != JsonValueKind.Object)
+            {
+                throw IncompleteRead("query did not return a JSON object.");
+            }
 
             // An ArcGIS error is HTTP 200 with an "error" object in the body —
             // it will not surface as a failed request.
             if (root.TryGetProperty("error", out var err))
             {
-                _logger.LogWarning(
-                    "ArcGIS source {SourceName} returned an error payload at offset {Offset}: {Error}",
-                    source.Name, offset, err.ToString());
-                truncated = true;
-                break;
+                throw IncompleteRead($"query returned an ArcGIS error: {err}.");
             }
 
             if (!root.TryGetProperty("features", out var features) || features.ValueKind != JsonValueKind.Array)
             {
-                break;
+                throw IncompleteRead("query did not return a features array.");
+            }
+
+            // Empty sources need attention too. In particular, an empty page
+            // after exceededTransferLimit=true cannot establish completeness.
+            if (features.GetArrayLength() == 0)
+            {
+                throw IncompleteRead("query returned an empty features page; completeness cannot be established.");
             }
 
             var countThisPage = 0;
@@ -145,40 +155,30 @@ public sealed class ArcGisFeatureOpportunityProvider : IOpportunityProvider
                 // a source looks healthy while going stale.
                 if (more)
                 {
-                    truncated = true;
+                    throw IncompleteRead("the non-paging layer exceeded its transfer limit.");
                 }
 
                 break;
             }
 
-            if (!more || countThisPage == 0)
+            if (!more)
             {
                 break;
             }
 
-            offset += pageSize;
-
             if (pages >= map.MaxPagesPerRun)
             {
-                truncated = true;
+                throw IncompleteRead("the page cap was reached while more results remain.");
             }
+
+            // resultRecordCount is an upper bound. Advancing by the requested
+            // size after a short page would skip rows we never observed.
+            offset += countThisPage;
         }
 
-        if (truncated)
-        {
-            // A partial read that looks like a clean one is the exact failure the
-            // freshness checks were built for, so it goes in the RUN RECORD, not
-            // just the log — IngestionService drains these into ErrorSummary as
-            // "DEGRADED: …", which is queryable. Adversarial review 2026-09-04:
-            // this was log-only, so a max-page truncation completed Success=true
-            // with nothing to find it by.
-            IngestionRunDiagnostics.AddWarning(
-                $"ArcGIS partial read: {pages} page(s) of {pageSize} (cap {map.MaxPagesPerRun}); rows beyond that were not read.");
-            _logger.LogWarning(
-                "ArcGIS source {SourceName} returned a PARTIAL read ({Pages} page(s) of {PageSize}, cap {MaxPages}).",
-                source.Name, pages, pageSize, map.MaxPagesPerRun);
-        }
-
+        // Fail before handing any candidates to IngestionService. A diagnostic
+        // warning alone does not make that service record Success=false.
+        ct.ThrowIfCancellationRequested();
         var results = order.Select(k => byRef[k].ToCandidate(map)).ToList();
 
         _logger.LogInformation(

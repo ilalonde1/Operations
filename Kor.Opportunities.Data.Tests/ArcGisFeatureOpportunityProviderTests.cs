@@ -9,7 +9,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using Kor.Opportunities.Core.Ingestion;
 using Kor.Opportunities.Core.Models;
+using Kor.Opportunities.Data.Ingestion;
 using Kor.Opportunities.Data.Ingestion.Providers;
+using Kor.Opportunities.Data.Sources;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
@@ -23,8 +25,10 @@ namespace Kor.Opportunities.Data.Tests;
 /// that would otherwise file the same project up to nine times. Plus the
 /// HTTP-200-with-an-error-body case, the status filter and page-size capping.
 ///
-/// WHAT THEY DO NOT COVER: anything downstream of the provider — the relevance
-/// gate, OpportunityKey composition, dedup against existing rows, or whether a
+/// Also checks IngestionService's persisted completion status for incomplete
+/// fetches, using in-memory source/run stores (no production DB writes).
+/// WHAT THEY DO NOT COVER: the relevance gate, OpportunityKey composition,
+/// dedup against existing rows, publisher freshness, or whether a
 /// given municipality's layer is an APPLICATIONS layer rather than a static
 /// zoning overlay. A same-class fault they would NOT catch: a config row pointed
 /// at a "Development Permit Area" polygon layer, which returns perfectly valid
@@ -149,7 +153,8 @@ public sealed class ArcGisFeatureOpportunityProviderTests
 
         var handler = new StubHandler();
         handler.Add("?f=json", Meta(1000));
-        handler.Add("resultOffset=0", Response(exceeded: false));
+        handler.Add("resultOffset=0", Response(exceeded: false,
+            Row("REZ00001", "One", "Rezoning", "ACTIVE", "1", "MAIN ST", Aug2025Ms, "x")));
 
         await RunAsync(handler, cfg);
 
@@ -158,15 +163,14 @@ public sealed class ArcGisFeatureOpportunityProviderTests
     }
 
     [Fact]
-    public async Task AnArcGisErrorBodyReturnedAsHttp200StopsTheReadInsteadOfThrowing()
+    public async Task AnArcGisErrorBodyReturnedAsHttp200FailsTheRead()
     {
         var handler = new StubHandler();
         handler.Add("?f=json", Meta(2000));
         handler.Add("resultOffset=0", """{"error":{"code":400,"message":"Unable to complete operation."}}""");
 
-        var results = await RunAsync(handler, VictoriaConfig);
-
-        Assert.Empty(results);
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(() => RunAsync(handler, VictoriaConfig));
+        Assert.Contains("Unable to complete operation", error.Message);
     }
 
     [Fact]
@@ -458,11 +462,11 @@ public sealed class ArcGisFeatureOpportunityProviderTests
     }
 
     [Fact]
-    public async Task ANonPagingLayerWithMoreRowsThanItWillGiveIsReportedAsPartial()
+    public async Task ANonPagingLayerWithMoreRowsThanItWillGiveFailsTheRead()
     {
         // A layer that cannot page AND holds more than maxRecordCount cannot be
         // read in full at all. Keeping the first slice quietly is how a source
-        // looks healthy while going stale, so the run must carry the warning.
+        // looks healthy while going stale, so the run must fail.
         var cfg = new Dictionary<string, string>(VictoriaConfig, StringComparer.OrdinalIgnoreCase)
         {
             ["arcgis.supportsPagination"] = "false",
@@ -473,12 +477,164 @@ public sealed class ArcGisFeatureOpportunityProviderTests
         handler.Add("/query", Response(exceeded: true,
             Row("REZ00901", "846 Broughton Street", "Rezoning", "ACTIVE", "846", "BROUGHTON ST", Aug2025Ms, "x")));
 
-        IngestionRunDiagnostics.BeginRun();
-        await RunAsync(handler, cfg);
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(() => RunAsync(handler, cfg));
+        Assert.Contains("partial read", error.Message, StringComparison.OrdinalIgnoreCase);
+    }
 
-        Assert.Contains(
-            IngestionRunDiagnostics.Drain(),
-            w => w.Contains("partial read", StringComparison.OrdinalIgnoreCase));
+    // Covers detectable incomplete reads, including failure after a useful page.
+    // Does not prove publisher freshness: a complete, internally valid older
+    // snapshot is indistinguishable here from an unchanged live dataset.
+    [Theory]
+    [InlineData(null)] // No route: HTTP 404.
+    [InlineData("{\"error\":{\"code\":500,\"message\":\"Query failed\"}}")]
+    [InlineData("{}")]
+    [InlineData("{\"features\":null}")]
+    [InlineData("{\"features\":[]}")]
+    [InlineData("{\"features\":[],\"exceededTransferLimit\":true}")]
+    [InlineData("{\"features\":[],\"exceededTransferLimit\":false}")]
+    public async Task AnIncompletePageFailsInsteadOfReturningTheEarlierApplications(string? secondPage)
+    {
+        var handler = new StubHandler();
+        handler.Add("?f=json", Meta(1));
+        handler.Add("resultOffset=0", Response(exceeded: true,
+            Row("REZ00001", "One", "Rezoning", "ACTIVE", "1", "MAIN ST", Aug2025Ms, "x")));
+        if (secondPage is not null)
+        {
+            handler.Add("resultOffset=1", secondPage);
+        }
+
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(() => RunAsync(handler, VictoriaConfig));
+        Assert.Contains("offset 1", error.Message);
+    }
+
+    [Fact]
+    public async Task AnEmptyFirstPageFailsInsteadOfReportingAHealthyEmptySource()
+    {
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            FetchAsync(VictoriaConfig, Meta(2000), Response(exceeded: false)));
+    }
+
+    [Fact]
+    public async Task APageCapFailsInsteadOfReturningTheFirstSlice()
+    {
+        var cfg = new Dictionary<string, string>(VictoriaConfig)
+        {
+            ["arcgis.maxPagesPerRun"] = "1",
+        };
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(() => FetchAsync(cfg, Meta(1),
+            Response(exceeded: true,
+                Row("REZ00001", "One", "Rezoning", "ACTIVE", "1", "MAIN ST", Aug2025Ms, "x"))));
+        Assert.Contains("cap 1", error.Message);
+    }
+
+    [Fact]
+    public async Task AShortPageWithMoreResultsDoesNotSkipUnseenRows()
+    {
+        var handler = new StubHandler();
+        handler.Add("?f=json", Meta(2));
+        handler.Add("resultOffset=0", Response(exceeded: true,
+            Row("REZ00001", "One", "Rezoning", "ACTIVE", "1", "MAIN ST", Aug2025Ms, "x")));
+        handler.Add("resultOffset=1", Response(exceeded: false,
+            Row("REZ00002", "Two", "Rezoning", "ACTIVE", "2", "MAIN ST", Aug2025Ms, "x")));
+        // The old page-size increment jumps here and misses REZ00002.
+        handler.Add("resultOffset=2", Response(exceeded: false));
+
+        var results = await RunAsync(handler, VictoriaConfig);
+
+        Assert.Equal(new[] { "REZ00001", "REZ00002" }, results.Select(c => c.ExternalReference));
+        Assert.DoesNotContain(handler.Requested, u => u.Contains("resultOffset=2", StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData("http", false)]
+    [InlineData("error", false)]
+    [InlineData("missing-features", false)]
+    [InlineData("empty", false)]
+    [InlineData("cap", false)]
+    [InlineData("complete", true)]
+    public async Task IngestionPersistsFailureForIncompleteReads(string outcome, bool expectedSuccess)
+    {
+        // Deliberately no URL mapping: on the old code, the partial candidate
+        // is counted as skipped and the run reports Success=true. This isolates
+        // fetch completeness from relevance/dedup and needs no downstream store.
+        var cfg = new Dictionary<string, string>
+        {
+            ["arcgis.externalRefField"] = "FOLDER_NUMBER",
+            ["arcgis.titleField"] = "SUBJECT",
+            ["arcgis.buyerOverride"] = "City of Victoria",
+            ["arcgis.maxPagesPerRun"] = outcome == "cap" ? "1" : "2",
+        };
+        var handler = new StubHandler();
+        handler.Add("?f=json", Meta(1));
+        handler.Add("resultOffset=0", Response(exceeded: outcome != "complete",
+            Row("REZ00001", "One", "Rezoning", "ACTIVE", "1", "MAIN ST", Aug2025Ms, "x")));
+        switch (outcome)
+        {
+            case "error":
+                handler.Add("resultOffset=1", """{"error":{"code":500,"message":"Query failed"}}""");
+                break;
+            case "missing-features":
+                handler.Add("resultOffset=1", "{}");
+                break;
+            case "empty":
+                handler.Add("resultOffset=1", Response(exceeded: true));
+                break;
+        }
+
+        using var http = new HttpClient(handler);
+        var provider = new ArcGisFeatureOpportunityProvider(http, NullLogger<ArcGisFeatureOpportunityProvider>.Instance);
+        var runs = new RecordingRunStore();
+        var service = new IngestionService(new MappingStore(cfg), null!, null!, null!, null!, null!,
+            runs, null!, NullLogger<IngestionService>.Instance);
+        var source = new OpportunitySource
+        {
+            Id = Guid.NewGuid(),
+            Name = "Test_ArcGis",
+            BaseUrl = "https://example.test/FeatureServer/0",
+            SourceType = OpportunitySourceType.ArcGisFeatureService,
+        };
+
+        var result = await service.IngestAsync(provider, source, null, CancellationToken.None);
+
+        Assert.Equal(expectedSuccess, result.Success);
+        Assert.Equal(expectedSuccess, runs.Success);
+        Assert.Equal(expectedSuccess ? 1 : 0, runs.Skipped);
+        Assert.Equal(result.ErrorSummary, runs.ErrorSummary);
+        if (!expectedSuccess)
+        {
+            Assert.Contains("ArcGIS partial read", runs.ErrorSummary);
+        }
+    }
+
+    private sealed class MappingStore(IReadOnlyDictionary<string, string> config) : IOpportunitySourceStore
+    {
+        public Task<IReadOnlyDictionary<string, string>> GetMappingsAsync(Guid id, CancellationToken ct)
+            => Task.FromResult(config);
+        public Task<IReadOnlyList<OpportunitySource>> ListEnabledAsync(CancellationToken ct) => throw new NotSupportedException();
+        public Task<OpportunitySource?> GetByNameAsync(string name, CancellationToken ct) => throw new NotSupportedException();
+        public Task<OpportunitySource> EnsureAsync(OpportunitySource desired, CancellationToken ct) => throw new NotSupportedException();
+        public Task EnsureMappingsAsync(Guid id, IReadOnlyDictionary<string, string> mappings, CancellationToken ct) => throw new NotSupportedException();
+        public Task SetMappingAsync(Guid id, string key, string value, CancellationToken ct) => throw new NotSupportedException();
+    }
+
+    private sealed class RecordingRunStore : IIngestionRunStore
+    {
+        public bool? Success { get; private set; }
+        public int Skipped { get; private set; }
+        public string? ErrorSummary { get; private set; }
+        public Task<Guid> StartAsync(string providerName, string? hostInstance, string? correlationId, CancellationToken ct)
+            => Task.FromResult(Guid.NewGuid());
+        public Task CompleteAsync(Guid runId, bool success, int insertedCount, int duplicateCount,
+            int skippedCount, int failedCount, string? errorSummary, CancellationToken ct)
+        {
+            Success = success;
+            Skipped = skippedCount;
+            ErrorSummary = errorSummary;
+            Assert.Equal(0, insertedCount);
+            Assert.Equal(0, duplicateCount);
+            return Task.CompletedTask;
+        }
+        public Task<IReadOnlyList<IngestionRun>> ListRecentAsync(int max, CancellationToken ct) => throw new NotSupportedException();
     }
 
     private static async Task<IReadOnlyList<Core.Ingestion.OpportunityCandidate>> RunAsync(
