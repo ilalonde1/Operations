@@ -128,6 +128,34 @@ public sealed class NetworkOpsWindowsRenderTests
         toClear.Apply(ToClear.Build([snapshot], new System.Collections.Generic.HashSet<string>(), DateTime.UtcNow));
         written += Render(toClear, new Size(1400, 900), Path.Combine(dir, $"{label}-to-clear.png"));
 
+        // "Clear in one action", built so the overlap line renders: three reboot reasons where two machines carry 2+ of
+        // them (the fixture fleet has reboot reasons but no machine carries two). This is the worked case the unit test
+        // asserts -- 5 machines, 8 findings, 2 overlapping -- so the panel can be LOOKED at, not just unit-proved.
+        var rebootDevices = new System.Collections.Generic.List<DeviceRow>
+        {
+            new(1, "KOR-11", DateTime.UtcNow, DateTime.UtcNow), new(2, "KOR-12", DateTime.UtcNow, DateTime.UtcNow),
+            new(3, "KOR-13", DateTime.UtcNow, DateTime.UtcNow), new(4, "KOR-14", DateTime.UtcNow, DateTime.UtcNow),
+            new(5, "KOR-15", DateTime.UtcNow, DateTime.UtcNow),
+        };
+        FleetFinding RF(long id, string dev, string rule, string title)
+            => new(id, dev, rule, Kor.Operations.NetworkOps.Core.Health.Severity.Warning, title, "evidence", DateTime.UtcNow.AddDays(-1), DateTime.UtcNow, null, null, null, null);
+        var rebootOpen = new System.Collections.Generic.List<FleetFinding>
+        {
+            RF(1, "KOR-11", "not-restarted", "Not restarted in 21 days"),
+            RF(2, "KOR-12", "not-restarted", "Not restarted in 21 days"),
+            RF(3, "KOR-13", "not-restarted", "Not restarted in 21 days"),
+            RF(4, "KOR-12", "reboot-overdue", "A reboot is overdue"),
+            RF(5, "KOR-13", "reboot-overdue", "A reboot is overdue"),
+            RF(6, "KOR-14", "reboot-overdue", "A reboot is overdue"),
+            RF(7, "KOR-13", "crash-loop:opushutil.exe", "opushutil.exe keeps crashing"),
+            RF(8, "KOR-15", "crash-loop:opushutil.exe", "opushutil.exe keeps crashing"),
+        };
+        var rebootSnap = new FleetSnapshot(rebootDevices,
+            new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IReadOnlyDictionary<string, string>>(), rebootOpen, [], null);
+        var toClearOverlap = new NetworkOpsToClearView(reader);
+        toClearOverlap.Apply(ToClear.Build([rebootSnap], new System.Collections.Generic.HashSet<string>(), DateTime.UtcNow));
+        written += Render(toClearOverlap, new Size(1400, 900), Path.Combine(dir, $"{label}-to-clear-overlap.png"));
+
         // The KOR Remote viewer, connected to a PC with two monitors showing the second (the page itself is not drawn here).
         var viewer = new KorRemoteViewerModel(worst.Name, "kwurmlinger · active, idle 12 min");
         viewer.Apply(new BridgeState("desktop", [], worst.Name, 3, [new("655406", "Ctrl-Alt-Del")],

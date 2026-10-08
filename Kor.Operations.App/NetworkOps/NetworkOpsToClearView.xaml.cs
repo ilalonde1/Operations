@@ -85,6 +85,33 @@ public sealed class ToClearCategoryRow : System.ComponentModel.INotifyPropertyCh
     public event System.ComponentModel.PropertyChangedEventHandler? PropertyChanged;
 }
 
+/// <summary>One "clear in one action" row: a single fix (restart, free disk…) that clears SEVERAL reasons at once, over the
+/// de-duplicated union of machines. It answers the question the per-issue counts hide -- "13 + 9 + 6 reboots, but how many
+/// machines overlap?" -- by showing the union, the findings cleared, and how many machines carry 2+ of the reasons.</summary>
+public sealed class ClearActionRow
+{
+    public required ClearAction Action { get; init; }
+
+    public string Title => Action.Fix.Title;
+    public Brush SeverityBrush => NetworkOpsBrushes.For(Action.Severity);
+    // The headline: the de-duplicated machine count and the findings it clears -- NOT the sum of the per-reason counts.
+    public string Summary => $"{Action.Machines} machine{(Action.Machines == 1 ? "" : "s")} · clears {Action.Findings} finding{(Action.Findings == 1 ? "" : "s")}";
+    // The reasons that fold into this one action, worst first, each with its own count: "not-restarted (13) · reboot-overdue (9)…".
+    public string Reasons => string.Join("   ·   ", Action.Reasons.Select(r => $"{r.Title} ({r.Count})"));
+    // The saving, stated plainly: the machines carried by 2+ of the reasons, cleared by this one run.
+    public bool ShowOverlap => Action.OverlapMachines > 0;
+    public string Overlap => Action.OverlapMachines == 0 ? ""
+        : $"{Action.OverlapMachines} of the {Action.Machines} carry 2 or more of these — one {Verb} clears every reason on each.";
+    // Runnable on all at once only when the fix needs no per-machine input. A restart is runnable (it warns/confirms first);
+    // an input-needed fix (start a named service) is not, so it shows the breakdown without a run-all button.
+    public bool CanRun => Action.Fix.ParamLabel is null;
+    public string RunLabel => $"{Action.Fix.Title} · all {Action.Machines}";
+    // Every machine this action would touch, counted once (the union), as device ids for the run.
+    public IReadOnlyList<int> UnionDeviceIds =>
+        Action.Reasons.SelectMany(i => i.Machines.Select(m => m.DeviceId)).Where(x => x > 0).Distinct().ToList();
+    private string Verb => Action.Fix.Id == "restart-pc" ? "restart" : "run";
+}
+
 /// <summary>The path to all-green: every live finding across the fleet, grouped by issue and ranked, with "Fix on all N"
 /// for the ones a catalog fix clears, and Ask Claude for the rest. Parked (acknowledged/snoozed) findings do not appear.</summary>
 public partial class NetworkOpsToClearView : UserControl
@@ -93,6 +120,7 @@ public partial class NetworkOpsToClearView : UserControl
     private readonly NetworkOpsClient _client;
     private readonly ObservableCollection<ToClearRow> _rows = new();
     private readonly ObservableCollection<ToClearCategoryRow> _categories = new();   // the at-a-glance rollup above the list
+    private readonly ObservableCollection<ClearActionRow> _actions = new();          // "clear in one action": issues grouped by the fix that clears them, machines de-duplicated
     private readonly System.Collections.Generic.Dictionary<string, string> _fixing = new(StringComparer.OrdinalIgnoreCase);   // ruleKey -> running note, until the finding clears
     private System.Windows.Threading.DispatcherTimer? _auto;
     private string? _selectedCategory;   // the category chip the worklist is filtered to (null = show all)
@@ -103,6 +131,7 @@ public partial class NetworkOpsToClearView : UserControl
         InitializeComponent();
         IssueList.ItemsSource = _rows;
         CategoryStrip.ItemsSource = _categories;
+        ActionStrip.ItemsSource = _actions;
         // Clicking a category chip filters the worklist to its rules (the Core comment's intent). The filter lives on the
         // list's own default view so it survives the 20s auto-refresh, which clears and refills the rows underneath it.
         System.Windows.Data.CollectionViewSource.GetDefaultView(_rows).Filter = o =>
@@ -152,6 +181,12 @@ public partial class NetworkOpsToClearView : UserControl
         // The at-a-glance rollup: the same open issues grouped into broad categories with a machine count (the Ninja view).
         _categories.Clear();
         foreach (var c in ToClearCategories.Of(v.Open)) _categories.Add(new ToClearCategoryRow { Category = c });
+        // "Clear in one action": the open issues regrouped by the fix that clears them, machines de-duplicated across the
+        // reasons. Shown only where it actually CONSOLIDATES (2+ reasons) -- one restart clearing three reboot reasons on
+        // the union of PCs, with the overlap called out -- so the headline is the saving, not three separate counts.
+        _actions.Clear();
+        foreach (var a in ClearByAction.Of(v.Open).Where(a => a.Consolidates)) _actions.Add(new ClearActionRow { Action = a });
+        ActionSection.Visibility = _actions.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         // Keep the active chip filter across the refresh; drop it if that category has cleared off the list.
         if (_selectedCategory is not null && _categories.All(c => !string.Equals(c.Name, _selectedCategory, StringComparison.Ordinal)))
             _selectedCategory = null;
@@ -199,6 +234,45 @@ public partial class NetworkOpsToClearView : UserControl
         catch (Exception ex)
         {
             Log.Warning(ex, "To clear: fix-on-all failed for {Fix}", fix.Id);
+            Status("Could not run the fix: " + ex.Message);
+        }
+    }
+
+    // "Clear in one action": run the one fix over the de-duplicated union of machines, clearing every reason it covers on
+    // each. Same queue + confirm path as a single issue's Fix, but across the union rather than one reason's machines.
+    private async void RunAction_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is not ClearActionRow row) return;
+        var fix = row.Action.Fix;
+        var ids = row.UnionDeviceIds;
+        if (ids.Count == 0) return;
+        if (sender is Button btn) btn.IsEnabled = false;   // instant feedback; stops a double-fire while it queues
+        try
+        {
+            Status($"Queuing {fix.Title} on {ids.Count}…");
+            var outcomes = await _client.RunFixManyAsync(fix.Id, ids, fix.PrefilledParam, confirmed: false, CancellationToken.None).ConfigureAwait(true);
+            var need = outcomes.Where(o => o.NeedsConfirmation).Select(o => o.Name).ToList();
+            if (need.Count > 0 &&
+                MessageBox.Show($"{fix.Title} will interrupt {need.Count} machine(s): {string.Join(", ", need)}. Go ahead?",
+                    "Confirm", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
+                outcomes = await _client.RunFixManyAsync(fix.Id, ids, fix.PrefilledParam, confirmed: true, CancellationToken.None).ConfigureAwait(true);
+            var queued = outcomes.Count(o => o.ActionId is not null);
+            var refused = outcomes.Count(o => o.Refused is not null);
+            Log.Information("To clear: action {Fix} over union of {Count} -> queued {Queued}, refused {Refused}", fix.Id, ids.Count, queued, refused);
+            if (queued > 0)
+            {
+                // Mark every reason this action covers as running, so each of its cards shows "fixing" until it clears.
+                foreach (var reason in row.Action.Reasons)
+                    _fixing[reason.RuleKey] = $"queued on {queued} — running ({(fix.Disruptive ? "restart pending" : "a few min")})";
+                Status($"Queued {fix.Title} on {queued} machine(s){(refused > 0 ? $"; {refused} held (someone's using them — open the PC to confirm)" : "")}. One run clears every reason it covers on each (auto-refreshing).");
+            }
+            else
+                Status($"{fix.Title}: nothing queued ({refused} held/refused). Open a machine to confirm, or Ask Claude.");
+            await ReloadAsync().ConfigureAwait(true);
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "To clear: clear-by-action failed for {Fix}", fix.Id);
             Status("Could not run the fix: " + ex.Message);
         }
     }

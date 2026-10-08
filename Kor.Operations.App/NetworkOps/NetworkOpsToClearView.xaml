@@ -63,6 +63,44 @@
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
+
+                    <!-- Clear in one action: issues regrouped by the fix that clears them, machines de-duplicated. Code-behind
+                         shows this only when a fix consolidates 2+ reasons, so the saving leads (one restart for three reboot
+                         reasons, with the overlap called out) instead of three separate counts the eye has to add up. -->
+                    <StackPanel x:Name="ActionSection" Margin="0,16,0,0" Visibility="Collapsed">
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,7">
+                            <TextBlock Text="CLEAR IN ONE ACTION" FontSize="11" FontWeight="Bold" Foreground="{StaticResource Text.Secondary}" VerticalAlignment="Center"/>
+                            <TextBlock Text="one fix clears several reasons at once — machines counted once" Style="{StaticResource Ops.Caption}" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <ItemsControl x:Name="ActionStrip">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Background="#F4F8FB" BorderBrush="#D3DEE8" BorderThickness="1" CornerRadius="8" Padding="12,10" Margin="0,0,0,7">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Rectangle Grid.Column="0" Width="4" RadiusX="2" RadiusY="2" Fill="{Binding SeverityBrush}" Margin="0,1,12,1"/>
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="{Binding Title}" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource Text.Primary}" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="{Binding Summary}" FontSize="12.5" Foreground="{StaticResource Text.Secondary}" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                                                </StackPanel>
+                                                <TextBlock Text="{Binding Reasons}" Style="{StaticResource Ops.Caption}" Margin="0,4,0,0" TextWrapping="Wrap"/>
+                                                <TextBlock Text="{Binding Overlap}" Visibility="{Binding ShowOverlap, Converter={StaticResource BoolToVis}}"
+                                                           FontSize="12.5" FontWeight="SemiBold" Foreground="#1F7A4D" Margin="0,4,0,0" TextWrapping="Wrap"/>
+                                            </StackPanel>
+                                            <Button Grid.Column="2" Content="{Binding RunLabel}" Style="{StaticResource Ops.Primary}" VerticalAlignment="Center" Margin="12,0,0,0"
+                                                    Click="RunAction_Click" Visibility="{Binding CanRun, Converter={StaticResource BoolToVis}}"
+                                                    ToolTip="Run this one fix on every machine that needs it, clearing every reason it covers on each. Audited; the cards below clear as each machine is fixed and re-checked."/>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
                 </StackPanel>
             </Grid>
         </Border>
