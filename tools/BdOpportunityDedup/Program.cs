@@ -17,6 +17,8 @@
 //   BdOpportunityDedup                     dry run; writes a plan CSV
 //   BdOpportunityDedup --commit            apply the plan
 //   BdOpportunityDedup --min-similarity .95
+//   BdOpportunityDedup --include-same-source   also group ONE source's repeats, but
+//                                              only when buyer and deadline match
 //
 // DRY RUN IS THE DEFAULT. Nothing is written without --commit.
 //
@@ -55,6 +57,7 @@ internal static class Program
     private static async Task<int> Main(string[] args)
     {
         var commit = false;
+        var includeSameSource = false;
         var minSimilarity = 0.90;
         string? db = null;
 
@@ -64,6 +67,9 @@ internal static class Program
             {
                 case "--commit":
                     commit = true;
+                    break;
+                case "--include-same-source":
+                    includeSameSource = true;
                     break;
                 case "--db" when i + 1 < args.Length:
                     db = args[++i];
@@ -93,11 +99,30 @@ internal static class Program
         var rows = await LoadAsync(con).ConfigureAwait(false);
         Console.WriteLine($"active opportunities considered: {rows.Count}");
 
+        // A group is normally only considered when the SAME title arrives under SEVERAL
+        // sources — a second portal is the corroboration that this is one solicitation.
+        //
+        // --include-same-source (2026-10-08) also admits a single-source group, but only
+        // when every member shares ONE buyer and ONE non-null deadline date. BC Bid
+        // re-posts a solicitation under a fresh reference number, which looks identical
+        // to a genuine re-issue; the deadline is what separates them, because the point
+        // of re-issuing is to move it. Measured on the day: of 12 same-source groups with
+        // a live deadline, 11 shared a deadline and ONE did not — City of North Vancouver
+        // "Asphalt Pavement Crack Sealing Services", closing 2026-10-15 AND 2026-11-05.
+        // Those are two real procurements and this gate correctly leaves them alone.
+        static bool SameSourceIsSafe(IGrouping<string, Row> g)
+            => g.Select(r => r.BuyerName.Trim().ToLowerInvariant()).Distinct(StringComparer.Ordinal).Count() == 1
+               && g.All(r => r.DeadlineDate.HasValue)
+               && g.Select(r => r.DeadlineDate!.Value).Distinct().Count() == 1;
+
         var groups = rows
             .GroupBy(r => r.NormName, StringComparer.Ordinal)
-            .Where(g => g.Select(r => r.SourcePrefix).Distinct(StringComparer.OrdinalIgnoreCase).Count() > 1)
+            .Where(g => g.Select(r => r.SourcePrefix).Distinct(StringComparer.OrdinalIgnoreCase).Count() > 1
+                        || (includeSameSource && g.Count() > 1 && SameSourceIsSafe(g)))
             .ToList();
-        Console.WriteLine($"groups holding one title under several sources: {groups.Count}");
+        Console.WriteLine(includeSameSource
+            ? $"groups holding one title (several sources, or one source with a shared buyer+deadline): {groups.Count}"
+            : $"groups holding one title under several sources: {groups.Count}");
         Console.WriteLine();
 
         var plans = new List<Plan>();
@@ -287,6 +312,7 @@ WHERE Id = @drop;", p).ConfigureAwait(false);
 SELECT o.Id, o.OpportunityKey, o.Name, ISNULL(o.BuyerName,'') AS BuyerName, o.Status,
        o.RelevanceScore,
        CASE WHEN o.SubmissionDeadlineUtc IS NULL THEN 0 ELSE 1 END AS HasDeadline,
+       CONVERT(date, o.SubmissionDeadlineUtc) AS DeadlineDate,
        CASE WHEN o.OwnerStaffId IS NULL THEN 0 ELSE 1 END AS HasOwner,
        CASE WHEN EXISTS (SELECT 1 FROM opportunities.CrmEngagements e WHERE e.OpportunityId = o.Id)
             THEN 1 ELSE 0 END AS HasPursuit,
@@ -302,12 +328,16 @@ WHERE o.DismissedAtUtc IS NULL AND LEN(o.Name) > 25;";
         while (await r.ReadAsync().ConfigureAwait(false))
         {
             var name = r.GetString(2);
+            // Ordinals: 0 Id, 1 Key, 2 Name, 3 Buyer, 4 Status, 5 Score, 6 HasDeadline,
+            // 7 DeadlineDate, 8 HasOwner, 9 HasPursuit, 10 HasHumanWork. DeadlineDate was
+            // inserted at 7 on 2026-10-08 and shifted the three flags after it.
             list.Add(new Row(
                 r.GetInt64(0), r.GetString(1), name, r.GetString(3), r.GetInt32(4),
                 r.IsDBNull(5) ? null : r.GetDecimal(5),
-                r.GetInt32(6) == 1, r.GetInt32(7) == 1, r.GetInt32(8) == 1, r.GetInt32(9) == 1,
+                r.GetInt32(6) == 1, r.GetInt32(8) == 1, r.GetInt32(9) == 1, r.GetInt32(10) == 1,
                 name.Trim().ToLowerInvariant(),
-                r.GetString(1).Length >= 8 ? r.GetString(1)[..8] : r.GetString(1)));
+                r.GetString(1).Length >= 8 ? r.GetString(1)[..8] : r.GetString(1),
+                r.IsDBNull(7) ? null : r.GetDateTime(7)));
         }
 
         return list;
@@ -390,7 +420,7 @@ WHERE o.DismissedAtUtc IS NULL AND LEN(o.Name) > 25;";
     private sealed record Row(
         long Id, string OpportunityKey, string Name, string BuyerName, int Status,
         decimal? RelevanceScore, bool HasDeadline, bool HasOwner, bool HasPursuit, bool HasHumanWork,
-        string NormName, string SourcePrefix);
+        string NormName, string SourcePrefix, DateTime? DeadlineDate);
 
     private sealed record Plan(Row Survivor, Row Loser);
 
