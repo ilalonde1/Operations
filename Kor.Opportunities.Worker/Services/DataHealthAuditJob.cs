@@ -144,16 +144,34 @@ internal sealed class DataHealthAuditJob : IJob
     // only loud failure mode is a thrown provider — a source that keeps running
     // green while producing NOTHING (portal moved, filter broke, session died)
     // is invisible. APC was dead-green for 18 days. Verdicts:
-    //   DEAD-GREEN      produced before, nothing in 14 days despite >=5 recent runs
+    //   DEAD-GREEN      produced before, nothing NEW in 14 days despite >=5 recent runs
     //   NEVER-PRODUCED  >=10 runs all-time, never produced, feed emitting nothing
     //   GATED           never produced BUT candidates are arriving and being
     //                   skipped/rejected — feed alive, review the relevance gate
     // MPI sources (type 18) are excluded — their providers upsert internally and
     // always record 0 in IngestionRuns by design.
+    //
+    // ⚠ "PRODUCED" MEANS INSERTED, NOT SEEN (2026-10-08). This previously read
+    //   `InsertedCount + DuplicateCount > 0`, which credited a run for re-seeing
+    //   rows it already had — so a feed stuck replaying an unchanged snapshot
+    //   refreshed its own freshness on every run and could never age past the
+    //   14-day test. Coquitlam re-saw 391 duplicates a day for 30 days while its
+    //   newest observation stayed at 2026-09-01, and this sentinel stayed silent
+    //   the whole time. Duplicates prove the FETCH works; only an insert proves
+    //   the PUBLISHER is still moving, which is what this check is for.
+    //
+    //   Cost of the change, measured: alerts went 22 -> 46, adding Colwood,
+    //   Courtenay, Qualicum Beach and RDN among the early-signal feeds. A quiet
+    //   publisher now qualifies too, so DEAD-GREEN is a REVIEW PROMPT, not proof
+    //   of a defect — read it as "nothing new here in a fortnight, is that right?"
+    //
+    //   The observation fallback below stays: production can predate retained run
+    //   history, and without it a source whose inserts have aged out of
+    //   IngestionRuns would be mislabelled NEVER-PRODUCED.
     private const string Q9SourceStalenessSql = """
         WITH SourceRuns AS (
             SELECT s.Id, s.Name,
-                   MAX(CASE WHEN r.InsertedCount + r.DuplicateCount > 0 THEN r.EndedAtUtc END) AS LastRunProducedUtc,
+                   MAX(CASE WHEN r.InsertedCount > 0 THEN r.EndedAtUtc END) AS LastRunProducedUtc,
                    MAX(r.EndedAtUtc) AS LastRunUtc,
                    SUM(CASE WHEN r.EndedAtUtc >= DATEADD(day, -7, SYSDATETIMEOFFSET()) THEN 1 ELSE 0 END) AS Runs7d,
                    SUM(CASE WHEN r.EndedAtUtc >= DATEADD(day, -7, SYSDATETIMEOFFSET()) THEN r.SkippedCount ELSE 0 END) AS Skipped7d,
