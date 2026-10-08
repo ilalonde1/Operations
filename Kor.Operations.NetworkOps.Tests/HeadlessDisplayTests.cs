@@ -97,6 +97,6 @@ public sealed class HeadlessDisplayTests
         var probe = Kor.Operations.NetworkOps.Core.Probes.ProbeLibrary.Get(Kor.Operations.NetworkOps.Core.Probes.ProbeLibrary.Health);
         Assert.Contains("CurrentHorizontalResolution", probe);
         Assert.Contains("CurrentVerticalResolution", probe);
-        Assert.Contains("ProbeVersion  = 12", probe);
+        Assert.Contains("ProbeVersion  = 13", probe);
     }
 }

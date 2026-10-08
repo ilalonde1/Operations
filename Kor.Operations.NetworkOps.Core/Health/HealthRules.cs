@@ -190,6 +190,26 @@ public static class HealthRules
             f.Add(new("newforma-residue", Severity.Info, "Newforma leftovers",
                 $"{r.NewformaProfiles} profile folders, installed: {string.Join(", ", r.NewformaInstalled ?? [])}"));
 
+        // Antivirus posture (probe v13). The policy is: Defender OFF on a workstation, Webroot is the antivirus.
+        // s.Antivirus is null when the probe could not read it, and unknown is never a finding.
+        if (s.Antivirus is { } av)
+        {
+            // Defender is the active engine where it should have stood down for Webroot -- the "Defender off" policy
+            // was never applied here, or something turned it back on. This is the check that was missing entirely.
+            if (av.DefenderActive)
+                f.Add(new("av-defender-on", Severity.Warning, "Microsoft Defender is the active antivirus",
+                    $"Defender is in Normal mode (real-time {(av.DefenderRealtime == true ? "on" : "off")}); on a workstation it should be off, with Webroot the antivirus"
+                    + (av.WebrootRunning == true ? " -- and Webroot is running too, so two engines are active" : av.WebrootRunning == false ? " -- and Webroot is not running" : "")));
+
+            // Nothing is actively protecting the PC: Defender has stood down AND Webroot is not running AND Windows
+            // Security Center has no third-party AV registered. Fires only on real readings (Defender mode known), so an
+            // unreadable probe block never raises a false "unprotected".
+            else if (av.DefenderMode is { Length: > 0 } && av.WebrootRunning == false && av.ThirdPartyAv.Count == 0)
+                f.Add(new("av-none", Severity.Critical, "No active antivirus",
+                    $"Defender is {av.DefenderMode} and Webroot is not running -- nothing is actively protecting this PC"
+                    + ((av.RegisteredAv ?? []).Count > 0 ? $" | registered: {string.Join(", ", av.RegisteredAv!)}" : "")));
+        }
+
         // A probe block failed for a reason other than broken WMI: the snapshot is incomplete.
         if (s.WmiHealthy != false && s.ProbeErrors.Count > 0)
             f.Add(new("probe-incomplete", Severity.Info, "Part of the health check couldn't read",

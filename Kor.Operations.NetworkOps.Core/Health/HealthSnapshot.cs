@@ -47,6 +47,9 @@ public sealed record HealthSnapshot
     public WakeInfo? Wake { get; init; }
     /// <summary>v7: keyboards and mice attached, and when the display switches itself off (0 = never).</summary>
     public ConsoleInfo? Console { get; init; }
+    /// <summary>v13: antivirus posture -- is Defender the active engine (it should be OFF on a workstation; Webroot is the
+    /// AV), is Webroot running, and which AV products Windows has registered. Null when the probe could not read it.</summary>
+    public AntivirusInfo? Antivirus { get; init; }
 
     private static readonly JsonSerializerOptions Json = new()
     {
@@ -112,6 +115,18 @@ public sealed record HealthSnapshot
 
 public sealed record OsInfo(string? Product, string? DisplayVersion, int Build, int Ubr, DateTime? LastBoot, int UptimeHours);
 public sealed record PendingRebootInfo(bool ComponentServicing, bool WindowsUpdate, bool FileRename);
+
+/// <summary>Antivirus posture on a workstation. <see cref="DefenderMode"/> is Get-MpComputerStatus's AMRunningMode:
+/// "Normal" = Defender is the active engine; "Passive"/"SxS Passive Mode"/"Not running" = it has stood down for a
+/// third-party AV, which is the wanted state here (Webroot is the antivirus). Any field null = the probe could not read it.</summary>
+public sealed record AntivirusInfo(bool? DefenderInstalled, string? DefenderMode, bool? DefenderRealtime, bool? WebrootRunning, IReadOnlyList<string>? RegisteredAv)
+{
+    /// <summary>True when Defender is the active real-time engine (AMRunningMode "Normal"); false/unknown otherwise.</summary>
+    public bool DefenderActive => DefenderMode is { Length: > 0 } m && m.Equals("Normal", StringComparison.OrdinalIgnoreCase);
+    /// <summary>A third-party AV (not Defender) that Windows Security Center has registered, if any.</summary>
+    public IReadOnlyList<string> ThirdPartyAv =>
+        (RegisteredAv ?? []).Where(n => !string.IsNullOrWhiteSpace(n) && n.IndexOf("Defender", StringComparison.OrdinalIgnoreCase) < 0).ToList();
+}
 public sealed record VolumeInfo(string Letter, string? Label, double SizeGB, double FreeGB);
 /// <param name="Letters">v10: the drive letters on it, comma-separated ("C", "D,E"); empty = none; null = probe before v10.</param>
 /// <param name="System">v10: Windows boots from it; null = probe before v10.</param>

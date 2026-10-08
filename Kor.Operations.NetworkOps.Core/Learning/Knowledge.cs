@@ -17,6 +17,14 @@ public static class Knowledge
 
     private static readonly Dictionary<string, KnowledgeEntry> Entries = new[]
     {
+        E("av-defender-on", "Microsoft Defender is running as the active antivirus on a workstation, where the policy is Defender off and Webroot the antivirus.",
+            ["The 'turn Defender off' step was never applied here (a fresh image or a new build)", "Webroot is not installed or not registered, so Windows left Defender as the active engine", "A Windows or policy change re-enabled Defender"],
+            ["Confirm Webroot is installed and running -- once it registers, Windows auto-passives Defender", "Apply the workstation Defender-off configuration", "Re-check: Defender should then read Passive, not Normal"],
+            "Two antivirus engines can fight -- scan slowdowns, quarantine conflicts, false detections -- or Defender runs where Webroot was meant to protect."),
+        E("av-none", "Nothing is actively protecting this PC: Defender has stood down and Webroot is not running, and Windows Security Center shows no other antivirus registered.",
+            ["Webroot was removed or its service stopped while Defender was already turned off", "An install or uninstall left the PC between antivirus products"],
+            ["Start or reinstall Webroot (its service is WRSVC)", "If Webroot is gone for good, re-enable Defender so the PC is not left unprotected", "Re-check: either Webroot running, or Defender active"],
+            "The PC is exposed -- no real-time antivirus is scanning it at all."),
         E("wmi-broken", "Windows Management Instrumentation is not answering, so most health reads fail and the machine is partly blind to monitoring.",
             ["A corrupted WMI repository (KOR-213, Sep 2026)"],
             ["Run `winmgmt /verifyrepository`; if inconsistent, `winmgmt /salvagerepository`", "Restart the Winmgmt service", "Last resort: `winmgmt /resetrepository` and reboot"],

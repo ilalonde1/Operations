@@ -411,8 +411,32 @@ $console = Try-Block 'console' {
     }
 }
 
+# --- antivirus posture (v13). The POLICY is: Defender OFF on a workstation, Webroot is the antivirus. On a client OS
+# Windows auto-passives Defender when a third-party AV registers, so "off" means Defender is Passive / not real-time and
+# Webroot is running. Defender in "Normal" mode means it is the active engine -- Webroot is not holding the slot. Each read
+# is isolated in its own try/catch (mirrors server.ps1): a missing engine must read as absent, never as a dead probe.
+$antivirus = Try-Block 'antivirus' {
+    $mp = try { Get-MpComputerStatus -ErrorAction Stop } catch { $null }
+    $winDefend = try { Get-Service WinDefend -ErrorAction Stop } catch { $null }
+    $wrsvc = try { Get-Service WRSVC -ErrorAction Stop } catch { $null }
+    # SecurityCenter2 (client OS only) is Windows' own record of which AV products are registered -- the authoritative
+    # "what is protecting this PC", so Webroot shows even if its service is named differently on some build.
+    $registered = @(try {
+        Get-CimInstance -Namespace 'root\SecurityCenter2' -ClassName AntiVirusProduct -ErrorAction Stop |
+            ForEach-Object { "$($_.displayName)" }
+    } catch { })
+    [pscustomobject]@{
+        DefenderInstalled = [bool]$winDefend
+        DefenderMode      = "$($mp.AMRunningMode)"
+        DefenderRealtime  = [bool]$mp.RealTimeProtectionEnabled
+        WebrootRunning    = [bool]($wrsvc -and $wrsvc.Status -eq 'Running')
+        RegisteredAv      = Arr $registered
+    }
+}
+
 [pscustomobject]@{
-    ProbeVersion  = 12
+    ProbeVersion  = 13
+    Antivirus     = $antivirus
     Console       = $console
     Wake          = $wake
     Session       = $session
