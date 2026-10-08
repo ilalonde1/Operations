@@ -56,11 +56,13 @@ public sealed class ToClearRow
     // behind "More". (A fixable issue keeps Fix primary and tucks Ask/Acknowledge/Snooze into the menu.)
     public bool ShowAskPrimary => !CanFix && Fixing is null;
     public string FixingText => "⏳ " + Fixing;
+    // The hint below the evidence. For a one-click fix the button already names it, so the hint only adds what the button
+    // can't: whether it restarts. For no fix / an input-needed fix it says why there's no button.
     public string FixHint => Issue.Fix is not { } f
-        ? "No one-click fix — Ask Claude, or hands-on."
+        ? "No one-click fix — Ask Claude, or handle it hands-on."
         : !CanFix ? $"{f.Title} needs an input — open a machine to run it."
-        : f.Disruptive ? $"{f.Title}: restarts the PC (warns first; asks if someone's on it)."
-        : $"{f.Title}: one click, nothing restarts.";
+        : f.Disruptive ? "Restarts the machine — warns first, and asks if someone's on it."
+        : "One click, nothing restarts.";
 }
 
 /// <summary>One category on the overview strip: a kind of problem, how many machines have it, a dot in its worst colour.

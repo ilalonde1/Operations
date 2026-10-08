@@ -94,15 +94,19 @@
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="110"/>
-                                        <ColumnDefinition Width="*"/>
+                                        <!-- Content is capped (not Width="*") so the actions sit right beside it instead of being
+                                             pinned to the far edge with a wide empty gap; the trailing * keeps the issue and its
+                                             actions grouped together on the left. -->
                                         <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
 
                                     <Border Grid.Column="0" Style="{StaticResource Ops.Pill}" Background="{Binding SeverityBrush}" VerticalAlignment="Top" HorizontalAlignment="Left">
                                         <TextBlock Text="{Binding SeverityText}" Style="{StaticResource Ops.PillText}"/>
                                     </Border>
 
-                                    <StackPanel Grid.Column="1" Margin="4,0,12,0">
+                                    <StackPanel Grid.Column="1" Margin="4,0,24,0" MaxWidth="720">
                                         <TextBlock Text="{Binding Title}" FontSize="14.5" FontWeight="SemiBold" Foreground="{StaticResource Text.Primary}" TextWrapping="Wrap"/>
                                         <TextBlock Text="{Binding Where}" FontSize="12.5" Foreground="{StaticResource Text.Primary}" Margin="0,3,0,0" TextWrapping="Wrap"/>
                                         <!-- Plain-English "what this means" (from the rule's knowledge entry): the explanation inline, not a click away. -->
