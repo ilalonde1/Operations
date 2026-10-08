@@ -165,25 +165,6 @@ public sealed class NetworkOpsOptions
     public string MeshServerGroup { get; set; } = "";
 
     public bool MeshEnabled => MeshUrl.Length > 0 && MeshCertSha256.Length > 0 && MeshUser.Length > 0 && MeshPassword.Length > 0;
-
-    // ---- workgroup boxes (Transport/LocalAuth): machines the push reaches with a LOCAL admin credential instead of the
-    // domain service account (BK01, the boardroom PC). Registered at startup; the password lives only in each entry's
-    // named environment variable on APP01. Empty = every machine is reached as the service account, exactly as before.
-    public List<LocalAuthTarget> LocalAuth { get; set; } = [];
-}
-
-/// <summary>A machine NetworkOps reaches with a LOCAL credential rather than the domain service account -- a workgroup
-/// box such as BK01 or the boardroom PC. The password is held only in the named APP01 environment variable, never here.</summary>
-public sealed class LocalAuthTarget
-{
-    /// <summary>The address the push addresses it by -- the IP for a workgroup box (BK01 = 192.168.1.18).</summary>
-    public string Host { get; set; } = "";
-    /// <summary>Other strings it is reached by (its name), so a name-targeted fleet probe finds the credential too.</summary>
-    public List<string> Aliases { get; set; } = [];
-    /// <summary>The local account, computer-qualified: "KOR-BK01\\administrator".</summary>
-    public string User { get; set; } = "";
-    /// <summary>The APP01 machine variable holding the password, e.g. KOR_NETWORKOPS_BK01PW. Never the password itself.</summary>
-    public string PasswordVariable { get; set; } = "";
 }
 
 /// <summary>One rack device and how to read it.</summary>
