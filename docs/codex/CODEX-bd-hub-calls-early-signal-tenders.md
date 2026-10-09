@@ -98,10 +98,28 @@ anyone editing the UI — say explicitly in your response which bucket an unreco
 tell, without clicking and without training, whether they are looking at something somebody
 has applied to build or something somebody is asking for bids on.
 
-And the regression rule: **every row currently reachable stays reachable.** 8,976 rows are
-visible today; after this change the three segments plus their filters must still reach all
-of them. A kind split that silently drops the 152 GraphEmail/Manual rows has replaced a
-wrong label with missing data, which is worse.
+And the regression rule: **every row currently reachable stays reachable.** A kind split that
+silently drops the 152 GraphEmail/Manual rows has replaced a wrong label with missing data,
+which is worse.
+
+⚠ **THE NUMBER TO RECONCILE TO IS 8,836, NOT 8,976, and the difference is the trap.**
+Summing the per-`SourceType` counts gives 8,976. There are only **8,836 distinct live
+opportunities**, because **140 are observed by two source types at once** — measured
+2026-10-09:
+
+| Pair | Rows |
+|---|---:|
+| 8 BcBid + 10 BidsAndTenders | 70 |
+| 3 Rss + 8 BcBid | 34 |
+| 10 BidsAndTenders + 11 APC | 21 |
+| 3 Rss + 11 APC | 13 |
+| 8 BcBid + 11 APC | 2 |
+
+⭐ **All five pairs are tender+tender — the same solicitation posted on two portals. None
+crosses into 20/21/22, so the Signals/Bids boundary is unambiguous and no row needs to be in
+two segments.** Segment counts must therefore be of DISTINCT opportunities and must
+reconcile to 8,836. A Bids count of 2,827 is the double-counted figure; the de-duplicated
+one is lower. Report distinct counts and say so.
 
 ## ⚠ Verification bar — this is WPF, so RUN IT
 
@@ -120,7 +138,8 @@ standing rule is that WPF is verified by running it; a compile proves nothing ab
 
 - The three segment labels as shipped, and the `SourceType` → segment mapping, including the
   unrecognised-type rule.
-- Before/after row counts per segment, summing to the live total.
+- Before/after **distinct** row counts per segment, reconciling to 8,836 — see the warning
+  above about 8,976 being the double-counted sum.
 - Evidence the app was RUN: what you clicked and what appeared.
 - What you did NOT change, listed — particularly that `BazaarView` and `OpportunitiesView`
   are both still reachable and still functional.
