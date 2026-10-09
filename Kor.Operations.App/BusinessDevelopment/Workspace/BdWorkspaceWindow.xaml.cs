@@ -268,6 +268,17 @@ public partial class BdWorkspaceWindow : Window
         win.Show();
     }
 
+    private void Reports_Click(object sender, RoutedEventArgs e)
+    {
+        // Audit item 25: BdReportsWindow was registered in DI and constructed only
+        // from HomeWindow.xaml.cs, so from inside the BD workspace the Reports screen
+        // did not exist. Separate window — see Proposals_Click: do not touch the rail
+        // highlight.
+        var win = _services.GetRequiredService<App.BusinessDevelopment.Reports.BdReportsWindow>();
+        win.Owner = this;
+        win.Show();
+    }
+
     private void BriefsMaker_Click(object sender, RoutedEventArgs e)
     {
         var win = _services.GetRequiredService<Kor.Operations.App.BusinessDevelopment.Briefs.BriefsMakerWindow>();
@@ -341,10 +352,16 @@ public partial class BdWorkspaceWindow : Window
             case "Events": NavigateToEvents(); break;
             case "Market History": NavigateToCompetition(); break;
             case "Admin": Admin_Click(this, empty); break;
-            case "Pursuits": Pursuits_Click(this, empty); break;
-            case "Pursuit Monitor": Overwatch_Click(this, empty); break;
-            case "BD Scorecard": Attribution_Click(this, empty); break;
-            case "BD Tracking": BdTracking_Click(this, empty); break;
+            // ⚠ THIS SWITCH MATCHES THE NAV LABELS, so renaming a button silently
+            //    breaks every deep link that used the old one — a KorDeepLink in an
+            //    email or a saved shortcut just lands on Dashboard via the default
+            //    below, with no error. The 2026-10-09 rename therefore keeps BOTH
+            //    spellings. Old names are permanent aliases; do not "tidy" them away.
+            case "My Pursuits": case "Pursuits": Pursuits_Click(this, empty); break;
+            case "All Pursuits": case "Pursuit Monitor": case "Overwatch": Overwatch_Click(this, empty); break;
+            case "Scorecard": case "BD Scorecard": case "Attribution": Attribution_Click(this, empty); break;
+            case "Engagements": case "BD Tracking": BdTracking_Click(this, empty); break;
+            case "Reports": Reports_Click(this, empty); break;
             default: NavigateToDashboard(); break;
         }
     }

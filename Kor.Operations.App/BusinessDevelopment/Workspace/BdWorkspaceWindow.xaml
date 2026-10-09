@@ -86,20 +86,28 @@
                             ToolTip="Major projects on the horizon — earlier than tenders, before an RFP exists."/>
 
                     <TextBlock Text="PURSUE" Style="{StaticResource NavGroupHeader}"/>
-                    <Button x:Name="PursuitsButton" Content="Pursuits" Style="{StaticResource NavButton}" Click="Pursuits_Click"
+                    <!-- "Pursuits" and "Pursuit Monitor" are MINE vs EVERYONE'S, and the
+                         old labels said nothing about which. The distinction is the only
+                         reason both screens exist. -->
+                    <Button x:Name="PursuitsButton" Content="My Pursuits" Style="{StaticResource NavButton}" Click="Pursuits_Click"
                             ToolTip="The pursuits you own — calls, contacts, stages, outcomes."/>
-                    <Button x:Name="OverwatchButton" Content="Pursuit Monitor" Style="{StaticResource NavButton}" Click="Overwatch_Click"
-                            ToolTip="Manager board — every owned active pursuit, coldest first."/>
+                    <Button x:Name="OverwatchButton" Content="All Pursuits" Style="{StaticResource NavButton}" Click="Overwatch_Click"
+                            ToolTip="Manager board — every owned active pursuit across the team, coldest first."/>
 
                     <TextBlock Text="KNOW" Style="{StaticResource NavGroupHeader}"/>
                     <Button x:Name="RelationshipsButton" Content="Relationships" Style="{StaticResource NavButton}" Click="Relationships_Click"/>
-                    <Button x:Name="AttributionButton" Content="BD Scorecard" Style="{StaticResource NavButton}" Click="Attribution_Click"
+                    <!-- "BD" is redundant inside the Business Development workspace. -->
+                    <Button x:Name="AttributionButton" Content="Scorecard" Style="{StaticResource NavButton}" Click="Attribution_Click"
                             ToolTip="Wins, won fee, active pursuits — the honest scorecard."/>
                     <Button x:Name="CompetitionButton" Content="Market History" Style="{StaticResource NavButton}" Click="Competition_Click"
                             ToolTip="Who won what, historically — the competitor record."/>
                     <Button x:Name="EventsButton" Content="Events" Style="{StaticResource NavButton}" Click="Events_Click"/>
-                    <Button x:Name="BdTrackingButton" Content="BD Tracking" Style="{StaticResource NavButton}" Click="BdTracking_Click"
-                            ToolTip="The KOR Structural BD Tracking 2026 spreadsheet, ingested (read-only)."/>
+                    <!-- This screen's own content is headed ENGAGEMENTS, with a capture
+                         rate over Region / Initiator / Contact / Company / Submitted /
+                         Accepted. It is outreach, not pursuits, so KNOW is the right
+                         group and "Engagements" is what it actually shows. -->
+                    <Button x:Name="BdTrackingButton" Content="Engagements" Style="{StaticResource NavButton}" Click="BdTracking_Click"
+                            ToolTip="Who we approached and whether it converted — the KOR Structural BD Tracking 2026 spreadsheet, ingested (read-only)."/>
 
                     <TextBlock Text="TOOLS" Style="{StaticResource NavGroupHeader}"/>
                     <Button x:Name="BriefsMakerButton" Content="Make a Brief..." Style="{StaticResource NavButton}" Click="BriefsMaker_Click"/>
@@ -107,6 +115,11 @@
                             ToolTip="Opens the Fee Proposal Builder in a separate window."/>
                     <Button x:Name="BrochuresButton" Content="Brochures" Style="{StaticResource NavButton}" Click="Brochures_Click"
                             ToolTip="Opens the Sales Brochure Builder in a separate window."/>
+                    <!-- Audit item 25: BdReportsWindow was constructed only from
+                         HomeWindow, so Reports was unreachable from the BD workspace
+                         entirely. Same separate-window pattern as Proposals/Brochures. -->
+                    <Button x:Name="ReportsButton" Content="Reports" Style="{StaticResource NavButton}" Click="Reports_Click"
+                            ToolTip="Opens the BD Reports window — pipeline, seats and market reports."/>
 
                     <Button x:Name="AdminButton" Content="Admin" Style="{StaticResource NavButton}" Click="Admin_Click"
                             Margin="0,14,0,2" ToolTip="Sources, ingestion, and settings."/>

@@ -67,7 +67,7 @@
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
             <StackPanel Grid.Column="0" Orientation="Horizontal">
-                <TextBlock Text="BD Tracking" FontSize="20" FontWeight="SemiBold" Foreground="{StaticResource Brand.Primary.Brush}" VerticalAlignment="Center"/>
+                <TextBlock Text="Engagements" FontSize="20" FontWeight="SemiBold" Foreground="{StaticResource Brand.Primary.Brush}" VerticalAlignment="Center"/>
                 <TextBlock Text="2026 spreadsheet, ingested" FontSize="11" Foreground="{StaticResource Text.Secondary}" VerticalAlignment="Center" Margin="12,4,0,0"/>
             </StackPanel>
             <Button Grid.Column="1" Content="↻ Refresh" Width="100" Click="RefreshButton_Click"
