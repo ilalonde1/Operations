@@ -1,6 +1,7 @@
 #nullable enable
 using System;
 using System.Data;
+using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Data.SqlClient;
@@ -57,29 +58,14 @@ public sealed class SqlPursuitGrabStore : IPursuitGrabStore
     // OpportunityStatus.New = 1, Pursuing = 4; CrmEngagementStage.Drafting = 1.
     // Mirrored as literals here so the Data layer stays free of the Core enum
     // dependency in raw SQL; values are stable on disk (OpportunityEnums.cs).
-    private const string GrabSql = @"
-SET XACT_ABORT ON;
-SET NOCOUNT ON;
-
-BEGIN TRANSACTION;
-
-UPDATE opportunities.Opportunities
-   SET OwnerStaffId     = @me,
-       Status           = 4,                      -- Pursuing
-       PursuingSinceUtc  = SYSDATETIMEOFFSET(),
-       UpdatedAtUtc      = SYSDATETIMEOFFSET(),
-       UpdatedBy         = @me
- WHERE Id = @id
-   AND Status = 1                                 -- still New
-   AND OwnerStaffId IS NULL;                       -- still un-claimed
-
-IF @@ROWCOUNT = 0
-BEGIN
-    ROLLBACK TRANSACTION;
-    SELECT CAST(0 AS bigint) AS EngagementId;
-END
-ELSE
-BEGIN
+    // ⚠ ONE COPY ON PURPOSE. This block was duplicated verbatim in GrabSql and
+    //   ClaimOwnedSql, whose own comment read "Same birth payload as GrabSql minus
+    //   the opportunity-status flip" — two copies that had to be changed together,
+    //   and the fields in it are exactly the ones that were ALREADY lost once each
+    //   (buyer canonical org = fix F9, provenance = fix F1, stage history = audit
+    //   M2). A pursuit born by Grab and one born by Claim must be indistinguishable
+    //   afterwards; sharing the text is what makes that true by construction.
+    private const string EngagementBirthSql = @"
     DECLARE @eng TABLE (Id bigint);
 
     -- Carry the opportunity's already-resolved buyer canonical org onto the
@@ -109,6 +95,32 @@ BEGIN
     WHERE o.Id = @id;
 
     DECLARE @newEng bigint = (SELECT TOP 1 Id FROM @eng);
+";
+
+    private const string GrabSql = @"
+SET XACT_ABORT ON;
+SET NOCOUNT ON;
+
+BEGIN TRANSACTION;
+
+UPDATE opportunities.Opportunities
+   SET OwnerStaffId     = @me,
+       Status           = 4,                      -- Pursuing
+       PursuingSinceUtc  = SYSDATETIMEOFFSET(),
+       UpdatedAtUtc      = SYSDATETIMEOFFSET(),
+       UpdatedBy         = @me
+ WHERE Id = @id
+   AND Status = 1                                 -- still New
+   AND OwnerStaffId IS NULL;                       -- still un-claimed
+
+IF @@ROWCOUNT = 0
+BEGIN
+    ROLLBACK TRANSACTION;
+    SELECT CAST(0 AS bigint) AS EngagementId;
+END
+ELSE
+BEGIN
+" + EngagementBirthSql + @"
 
     -- Record the pursuit's opening stage so stage-age analytics have a start
     -- point (audit 2026-07-01 M2 — the history table previously had no writers).
@@ -140,25 +152,7 @@ BEGIN
 END
 ELSE
 BEGIN
-    DECLARE @eng TABLE (Id bigint);
-
-    INSERT INTO opportunities.CrmEngagements
-        (OpportunityId, Stage, OwnerStaffId, BuyerCanonicalOrgId, ExternalSource, ExternalSourceKey, CreatedBy, UpdatedBy)
-    OUTPUT inserted.Id INTO @eng
-    SELECT @id, 1, @me, o.BuyerCanonicalOrgId,
-           LEFT(N'Grab.' + COALESCE(
-               (SELECT TOP 1 s.Name
-                FROM opportunities.OpportunityObservations ob
-                JOIN opportunities.OpportunitySources s ON s.Id = ob.OpportunitySourceId
-                WHERE ob.OpportunityId = o.Id
-                ORDER BY ob.IngestedAtUtc ASC, ob.Id ASC),
-               N'Unknown'), 50),
-           o.OpportunityKey,
-           @me, @me
-    FROM opportunities.Opportunities o
-    WHERE o.Id = @id;
-
-    DECLARE @newEng bigint = (SELECT TOP 1 Id FROM @eng);
+" + EngagementBirthSql + @"
 
     IF @newEng IS NULL
     BEGIN
@@ -179,6 +173,22 @@ BEGIN
         SELECT @newEng AS EngagementId;
     END
 END";
+
+    /// <summary>
+    /// Every branch of both statements SELECTs something, so today the scalar is
+    /// never null — but that is an assumption about SQL that is a long way from the
+    /// C# asserting it, and <c>Convert.ToInt64(DBNull.Value)</c> throws
+    /// InvalidCastException rather than returning 0. A future branch that returns no
+    /// row should mean "nothing was created", which is an outcome both callers
+    /// already handle, not an exception out of a committed transaction.
+    /// </summary>
+    private static long ReadEngagementId(object? scalar)
+        => scalar switch
+        {
+            long l => l,
+            null or DBNull => 0L,
+            _ => Convert.ToInt64(scalar, CultureInfo.InvariantCulture),
+        };
 
     private readonly string _connectionString;
 
@@ -205,8 +215,7 @@ END";
         cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = opportunityId;
         cmd.Parameters.Add("@me", SqlDbType.NVarChar, 150).Value = staffUpn.Trim();
 
-        var scalar = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
-        var engagementId = scalar is long l ? l : Convert.ToInt64(scalar);
+        var engagementId = ReadEngagementId(await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false));
 
         return engagementId > 0
             ? new GrabResult(GrabOutcome.Grabbed, engagementId)
@@ -228,8 +237,7 @@ END";
 
         try
         {
-            var scalar = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
-            return scalar is long l ? l : Convert.ToInt64(scalar);
+            return ReadEngagementId(await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false));
         }
         catch (SqlException ex) when (ex.Number is 2601 or 2627)
         {
