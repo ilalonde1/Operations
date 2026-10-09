@@ -25,6 +25,45 @@
             "command": "python \"$CLAUDE_PROJECT_DIR/tools/claude_sql_schema_guard.py\"",
             "timeout": 20,
             "statusMessage": "Checking the table's schema was read before writing to it"
+          },
+          {
+            "type": "command",
+            "command": "python \"$CLAUDE_PROJECT_DIR/tools/claude_prior_art_guard.py\"",
+            "timeout": 20,
+            "statusMessage": "Recording the search"
+          }
+        ]
+      },
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$CLAUDE_PROJECT_DIR/tools/claude_prior_art_guard.py\"",
+            "timeout": 20,
+            "statusMessage": "Checking the prior art was looked for"
+          }
+        ]
+      },
+      {
+        "matcher": "Grep",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$CLAUDE_PROJECT_DIR/tools/claude_prior_art_guard.py\"",
+            "timeout": 20,
+            "statusMessage": "Recording the search"
+          }
+        ]
+      },
+      {
+        "matcher": "Glob",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$CLAUDE_PROJECT_DIR/tools/claude_prior_art_guard.py\"",
+            "timeout": 20,
+            "statusMessage": "Recording the search"
           }
         ]
       },
@@ -48,6 +87,12 @@
             "command": "python \"$CLAUDE_PROJECT_DIR/tools/claude_sql_schema_guard.py\"",
             "timeout": 20,
             "statusMessage": "Checking the table's schema was read before writing to it"
+          },
+          {
+            "type": "command",
+            "command": "python \"$CLAUDE_PROJECT_DIR/tools/claude_prior_art_guard.py\"",
+            "timeout": 20,
+            "statusMessage": "Recording the search"
           }
         ]
       }

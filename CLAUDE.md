@@ -18,6 +18,27 @@ this repo, having already produced the 1,126-model analysis it was duplicating. 
 walk, one wedged process, and a lesson re-learned that `db/tools/verify_e2k_claims.ps1` states in
 its header: *Get-ChildItem -Recurse over SMB is unusably slow.*
 
+⚠ **It cost again on 2026-10-08, three times in one session, so it is a hook now.** A whole
+early-signal wiring plan was rewritten while `docs/KOR-EarlySignal-CoverageGap-2026-09-10.md` —
+which had already measured the gap (13 of 56 municipalities, Metro Vancouver 4 of 21), probed
+Richmond, New Westminster, North Vancouver and Burnaby, characterised the zoning-overlay false
+positive, written the hunt order and promoted three tools into `tools/BdSourceCoverage/` — sat
+unread. A deploy script was nearly rebuilt over `publish-opportunities.ps1`. "US coverage is zero"
+was reported while California had been live for weeks. **Ian found all three, not the search**, and
+asked the only question that matters: *"Should I trust you? The answer is no. So how do we move
+forward constructively?"*
+
+`tools/claude_prior_art_guard.py` now **denies a Write that creates a file under `docs/`,
+`tools/`, `Schema/*.sql` or `db/*.sql` unless this session has already listed that directory or
+run a content search sharing a word with the filename.** Reading one file does not count — going
+looking is the whole point. It carries, in its own header, the properties it checks, the ones it
+does not, and two same-class faults it would miss: mentioning a path in any command satisfies the
+directory check, and searching the right place with the wrong word still ends in a false absence.
+
+The pattern worth generalising, because this is now the third time it has held: **everything Ian
+catches is a claim about ABSENCE; everything caught without him comes from a mechanical check.**
+Trust a number shown with the command that produced it. Do not trust "there is no X".
+
 ## 2. Read the artifact you were given before generating a new one.
 
 If the user has handed over a report, a scan, a measurement — read it and say what it already
