@@ -35,7 +35,20 @@ public sealed class ScoringOptions
             "apartment", "condominium", "townhouse", "townhome", "rowhouse", "row house",
             "fourplex", "sixplex", "houseplex", "multiplex",
             "m-cg", "m-c1", "m-c2", "m-g", "m-1", "m-2", "m-h1", "m-h2", "m-h3",
-            "m-x1", "m-x2", "h-go", "mu-1", "mu-2" }) weights[term] = 30m;
+            "m-x1", "m-x2", "h-go", "mu-1", "mu-2",
+            // ⭐ R-CG IS THE ONE R-CODE THAT BELONGS HERE, and the "no R-only codes"
+            //    rule below swept it up. It is Calgary's grade-oriented infill district
+            //    — rowhouse form — and StructuralRelevanceGate admits it deliberately as
+            //    the named exception to its own exclusion of R-C1/R-C1s/R-C2/R-1s/R-G.
+            //    It is NOT the single-family flood those codes represent.
+            //    Measured 2026-10-09 before this line existed: 152 Calgary R-CG
+            //    redesignations averaged 3.5 while 314 M-*/MU-*/H-GO rezonings averaged
+            //    33.0 — a tenfold gap from one missing term, with "Land Use Amendment to
+            //    accommodate R-CG" rendering as tier Low, score 3 on the Signals screen.
+            //    Found by the cross-check the big-ticket brief required: the view called
+            //    these rows big-ticket, the scorer ranked them below the small-work mean,
+            //    and the disagreement is where one of the two is wrong. The gate was right.
+            "r-cg" }) weights[term] = 30m;
         // Gate-ratified commercial / industrial / special districts. Smaller
         // contribution than an explicit multi-unit form; no bare DC or R-only codes.
         foreach (var term in new[] { "i-g", "i-b", "i-e", "i-c", "i-r", "i-o", "i-h",

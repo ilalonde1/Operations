@@ -17,6 +17,9 @@ public sealed class PlanningScoringTests
     [InlineData("Applicant: HORIZON LAND SURVEYS. H-GO")]
     [InlineData("M-CG")]
     [InlineData("MU-2")]
+    // The live shape of the 152 rows this fixes, verbatim from the database.
+    [InlineData("Applicant: CIVICWORKS. R-CG")]
+    [InlineData("R-CG")]
     [InlineData("multi-residential")]
     [InlineData("Mixed uses with apartments and townhouses")]
     public void LatestDescription_NamedForm_OutscoresSingleFamilyCeiling(string description)
@@ -29,7 +32,13 @@ public sealed class PlanningScoringTests
 
     [Theory]
     [InlineData("Single family dwelling, two storeys, secondary suite and setback variance")]
-    [InlineData("R-C1 R-C2 R-CG DC")]
+    // R-CG was in this list and should not have been: it is the ONE R-code the gate
+    // admits, because grade-oriented infill is rowhouse form, not the single-family
+    // flood that R-C1/R-C2 are. Keeping it here asserted the defect — 152 live Calgary
+    // rows averaged 3.5 against 33.0 for equivalent M-*/MU-* rezonings. R-C1, R-C2 and
+    // bare DC stay: bare DC admitted timber sales when the GATE tried it, which is why
+    // the gate uses "accommodate dc" / "direct control" instead.
+    [InlineData("R-C1 R-C2 DC")]
     [InlineData("M-C10 M-C1s XM-C1 apartmental")]
     [InlineData("")]
     public void BroadAdmissionWords_AndPartialDistricts_DoNotLiftPermits(string description)
