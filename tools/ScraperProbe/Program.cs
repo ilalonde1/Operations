@@ -5,6 +5,11 @@ using Kor.Opportunities.Data.Ingestion.Scraping;
 using Microsoft.Extensions.Logging;
 using Microsoft.Playwright;
 
+if (args.Length is 2 or 3 && args[0] == "--apc-deadlines")
+{
+    return await ApcDeadlineProbe.RunAsync(args[1], args.Length == 3 ? args[2] : null);
+}
+
 var htmlOpt = new Option<FileInfo?>("--html", "Path to an HTML file containing one or more BC Bid <tr> rows");
 var detailHtmlOpt = new Option<FileInfo?>(
     "--detail-html",

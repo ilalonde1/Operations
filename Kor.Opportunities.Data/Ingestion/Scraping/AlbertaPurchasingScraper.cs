@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -31,6 +32,35 @@ public sealed class AlbertaPurchasingScraper : PlaywrightScraperBase<Opportunity
     private static readonly Regex DateLikeRegex = new(
         @"\b(?:\d{4}-\d{1,2}-\d{1,2}|[A-Z][a-z]{2,8}\s+\d{1,2},?\s+\d{4}|\d{1,2}/\d{1,2}/\d{4})\b",
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    // ⚠ RESOLVED DEFENSIVELY, AND NOT IN A STATIC INITIALISER THAT CAN THROW.
+    //   FindSystemTimeZoneById raises TimeZoneNotFoundException when the id is
+    //   unknown to the host. In a `static readonly` field that becomes a
+    //   TypeInitializationException on first touch, which kills the whole scraper
+    //   — not just the closing date — on a machine whose ICU data differs from the
+    //   dev box. The IANA id works on .NET 8 with ICU; the Windows id is the
+    //   fallback; null means "no deadline captured", which is already a handled,
+    //   diagnosed outcome rather than a dead source.
+    private static readonly TimeZoneInfo? AlbertaTimeZone = ResolveAlbertaTimeZone();
+
+    private static TimeZoneInfo? ResolveAlbertaTimeZone()
+    {
+        foreach (var id in new[] { "America/Edmonton", "Mountain Standard Time" })
+        {
+            try
+            {
+                return TimeZoneInfo.FindSystemTimeZoneById(id);
+            }
+            catch (TimeZoneNotFoundException)
+            {
+            }
+            catch (InvalidTimeZoneException)
+            {
+            }
+        }
+
+        return null;
+    }
 
     private readonly ILogger<AlbertaPurchasingScraper> _logger;
 
@@ -107,6 +137,22 @@ public sealed class AlbertaPurchasingScraper : PlaywrightScraperBase<Opportunity
         if (candidates.Count == 0)
         {
             await TryWriteNoRowsDiagnosticAsync(page, ct).ConfigureAwait(false);
+        }
+
+        var missingDeadlines = candidates.FindAll(c => c.SubmissionDeadlineUtc is null);
+        if (missingDeadlines.Count > 0)
+        {
+            foreach (var candidate in missingDeadlines)
+            {
+                _logger.LogWarning("APC closing date missing for {Reference}: {Url}",
+                    candidate.ExternalReference, candidate.Url);
+            }
+
+            // One bounded warning survives ErrorSummary's 2,000-character limit;
+            // the log above identifies every affected posting without dropping rows.
+            IngestionRunDiagnostics.AddWarning(
+                $"APC closing date missing for {missingDeadlines.Count}/{candidates.Count} posting(s); " +
+                $"sample references: {string.Join(", ", missingDeadlines.Take(5).Select(c => c.ExternalReference))}");
         }
 
         return candidates;
@@ -252,6 +298,38 @@ public sealed class AlbertaPurchasingScraper : PlaywrightScraperBase<Opportunity
 
     private static async Task<DateTimeOffset?> FindDeadlineAsync(IElementHandle link)
     {
+        // Live APC markup (2026-10-08): cards are DIVs inside this component,
+        // not tr/li/role=row. Scope to one posting: an outer search-result DIV
+        // also wraps the entire list. Posting Date precedes Closing Date.
+        var card = await link.QuerySelectorAsync("xpath=ancestor::apc-opportunity-search-result[1]")
+            .ConfigureAwait(false);
+        if (card is not null)
+        {
+            var closingValue = await card.QuerySelectorAsync(
+                ".search-result__detail:has(.search-result__detail-header:has-text('Closing Date')) .search-result__detail-value")
+                .ConfigureAwait(false);
+            if (closingValue is null)
+            {
+                return null;
+            }
+
+            // Observed value: Oct 23, 2026 • 4:00:00 pm (MT).
+            // MT follows Alberta's DST rules; do not treat the wall clock as UTC
+            // or discard the time, and never fall back to the card's posted date.
+            var closingText = NormalizeText(await closingValue.InnerTextAsync().ConfigureAwait(false));
+            if (AlbertaTimeZone is not null
+                && DateTime.TryParseExact(closingText, "MMM d, yyyy '•' h:mm:ss tt '(MT)'",
+                    CultureInfo.InvariantCulture, DateTimeStyles.None, out var local)
+                && !AlbertaTimeZone.IsInvalidTime(local)
+                && !AlbertaTimeZone.IsAmbiguousTime(local))
+            {
+                return new DateTimeOffset(TimeZoneInfo.ConvertTimeToUtc(local, AlbertaTimeZone));
+            }
+
+            return null;
+        }
+
+        // Preserve the existing parser for legacy table/list markup.
         var container = await link
             .QuerySelectorAsync("xpath=ancestor::*[self::tr or self::li or @role='row'][1]")
             .ConfigureAwait(false);

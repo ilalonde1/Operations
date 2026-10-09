@@ -15,6 +15,7 @@
     </PackageReference>
   </ItemGroup>
   <ItemGroup>
+    <EmbeddedResource Include="Fixtures\apc-listing-20261008.html" />
     <ProjectReference Include="..\Kor.Opportunities.Core\Kor.Opportunities.Core.csproj" />
     <ProjectReference Include="..\Kor.Opportunities.Data\Kor.Opportunities.Data.csproj" />
   </ItemGroup>
