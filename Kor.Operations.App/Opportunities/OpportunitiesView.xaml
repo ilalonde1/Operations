@@ -374,7 +374,8 @@
                         <Border Background="#F4F8FB" BorderBrush="{StaticResource Panel.Border}" BorderThickness="1" CornerRadius="3"
                                 Padding="10" Margin="0,4,0,0"
                                 Visibility="{Binding NoEngagement, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
-                            <TextBlock Text="Not yet a Pursuit. Click 'Promote to Pursuit' above to start tracking activity, contacts, and proposal work."
+                            <!-- The button above is labelled "Start Pursuit", not "Promote to Pursuit". -->
+                            <TextBlock Text="Not yet a Pursuit. Click 'Start Pursuit' above to start tracking activity, contacts, and proposal work."
                                        TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Text.Secondary}"/>
                         </Border>
 

@@ -385,7 +385,16 @@
         </Grid>
 
         <Border Grid.Row="3" Padding="12,6" Background="{StaticResource App.Background}">
-            <TextBlock Text="{Binding StatusMessage}" FontSize="12"/>
+            <StackPanel Orientation="Horizontal">
+                <!-- CrmViewModel.IsLoading was set on every load and bound by NOTHING
+                     (audit 08-bd-app-surface §5i / item 19), so a slow or failed load
+                     was a blank grid and a 12px status line with no way to tell which.
+                     The only other IsLoading binding in Crm/*.xaml belongs to a
+                     different view model. -->
+                <TextBlock Text="⏳" FontSize="12" Margin="0,0,6,0"
+                           Visibility="{Binding IsLoading, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}"/>
+                <TextBlock Text="{Binding StatusMessage}" FontSize="12"/>
+            </StackPanel>
         </Border>
     </Grid>
 </UserControl>

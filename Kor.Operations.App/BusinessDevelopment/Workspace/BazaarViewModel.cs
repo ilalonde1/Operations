@@ -23,7 +23,11 @@ namespace Kor.Operations.App.BusinessDevelopment.Workspace;
 /// </summary>
 public sealed class BazaarViewModel : ObservableObject, IAiContextProvider
 {
-    public const string Provider = "Opportunity Bazaar (BD)";
+    // "Bazaar" was retired from the interface on 2026-07-09 and the UI now says
+    // "To grab". The TYPE names are left alone deliberately — renaming them is a
+    // refactor touching DI, tests and deep links — but no string a user or the AI
+    // reads should still use a word that is nowhere on screen.
+    public const string Provider = "Opportunities to grab (BD)";
 
     private readonly IOpportunityStore _opportunityStore;
     private readonly IPursuitGrabStore _grabStore;
@@ -224,7 +228,7 @@ public sealed class BazaarViewModel : ObservableObject, IAiContextProvider
 
             StatusMessage = result.Outcome == GrabOutcome.Grabbed
                 ? $"Grabbed “{row.Name}” — now a Drafting pursuit in your Pursuits list."
-                : $"“{row.Name}” was already taken — removed from the Bazaar.";
+                : $"“{row.Name}” was already taken — removed from the To grab list.";
 
             OnPropertyChanged(nameof(HasGrabbable));
             OnPropertyChanged(nameof(Headline));
@@ -283,7 +287,7 @@ public sealed class BazaarViewModel : ObservableObject, IAiContextProvider
         }
 
         var sb = new StringBuilder();
-        sb.AppendLine($"Opportunity Bazaar (un-claimed pool, available to grab): {pool.Length}.");
+        sb.AppendLine($"Opportunities to grab (un-claimed pool): {pool.Length}.");
 
         var high = pool.Count(r => r.Model.RelevanceTier == RelevanceTier.High);
         var medium = pool.Count(r => r.Model.RelevanceTier == RelevanceTier.Medium);

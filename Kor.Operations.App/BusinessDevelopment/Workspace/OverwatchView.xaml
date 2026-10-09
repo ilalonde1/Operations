@@ -75,6 +75,24 @@
                         <DataGridTextColumn Header="Opened"     Binding="{Binding OpenedDisplay}"       Width="100"/>
                     </DataGrid.Columns>
                 </DataGrid>
+
+                <!-- Empty state: an empty grid reads as a failed load. Triggering on
+                     Pursuits.Count needs no new view-model property and no converter. -->
+                <TextBlock Grid.Row="2" HorizontalAlignment="Center" VerticalAlignment="Center"
+                           Margin="24" TextAlignment="Center" TextWrapping="Wrap" FontSize="13"
+                           Foreground="{StaticResource Text.Secondary}"
+                           Text="No pursuits in flight.&#10;Grab an opportunity from Signals or Bids and it will appear here.">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding Pursuits.Count}" Value="0">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
             </Grid>
         </Border>
 

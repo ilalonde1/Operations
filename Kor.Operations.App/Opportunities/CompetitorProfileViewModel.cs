@@ -204,7 +204,7 @@ public sealed class CompetitorProfileViewModel : INotifyPropertyChanged, Kor.Ope
             LifetimeCount = p.LifetimeCount;
             AvgContractValue = p.AvgContractValue;
             ActiveWindow = p.FirstWinAtUtc.HasValue && p.LastWinAtUtc.HasValue
-                ? $"{p.FirstWinAtUtc.Value:yyyy-MM-dd}  {p.LastWinAtUtc.Value:yyyy-MM-dd}"
+                ? $"{p.FirstWinAtUtc.Value:yyyy-MM-dd} — {p.LastWinAtUtc.Value:yyyy-MM-dd}"
                 : "";
             ByYear.Clear(); foreach (var y in p.ByYear) ByYear.Add(y);
             TopBuyers.Clear(); foreach (var b in p.TopBuyers) TopBuyers.Add(b);
@@ -229,7 +229,7 @@ public sealed class CompetitorProfileViewModel : INotifyPropertyChanged, Kor.Ope
               AgentVendorLinkedInUrl = p.AgentVendorLinkedInUrl;
               AgentKorOverlapScore = p.AgentKorOverlapScore;
               AgentContractProjectType = p.AgentContractProjectType;
-            StatusText = $"{LifetimeCount:N0} contracts  {LifetimeValue:C0} lifetime";
+            StatusText = $"{LifetimeCount:N0} contracts — {LifetimeValue:C0} lifetime";
         }
         catch (Exception ex)
         {

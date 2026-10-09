@@ -69,13 +69,13 @@ public sealed class BuyerProfileViewModel : INotifyPropertyChanged, Kor.Operatio
             LifetimeCount = p.LifetimeCount;
             AvgContractValue = p.AvgContractValue;
             ActiveWindow = p.FirstAwardAtUtc.HasValue && p.LastAwardAtUtc.HasValue
-                ? $"{p.FirstAwardAtUtc.Value:yyyy-MM-dd}  {p.LastAwardAtUtc.Value:yyyy-MM-dd}"
+                ? $"{p.FirstAwardAtUtc.Value:yyyy-MM-dd} — {p.LastAwardAtUtc.Value:yyyy-MM-dd}"
                 : "";
             ByYear.Clear(); foreach (var y in p.ByYear) ByYear.Add(y);
             TopWinners.Clear(); foreach (var w in p.TopWinners) TopWinners.Add(w);
             BySource.Clear(); foreach (var s in p.BySource) BySource.Add(s);
             RecentAwards.Clear(); foreach (var a in p.RecentAwards) RecentAwards.Add(a);
-            StatusText = $"{LifetimeCount:N0} contracts  {LifetimeValue:C0} lifetime";
+            StatusText = $"{LifetimeCount:N0} contracts — {LifetimeValue:C0} lifetime";
         }
         catch (Exception ex)
         {

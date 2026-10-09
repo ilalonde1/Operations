@@ -164,6 +164,15 @@
             </Grid>
         </Border>
 
-        <ContentControl x:Name="DossierHost" Grid.Column="2"/>
+        <!-- DossierHost had no default content, so this view opened two-thirds BLANK
+             with only "Type to search…" in the left column to explain it (audit
+             08-bd-app-surface §5i / item 19). The placeholder disappears the moment
+             real content is injected into the host. -->
+        <ContentControl x:Name="DossierHost" Grid.Column="2">
+            <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center"
+                       Margin="24" TextAlignment="Center" TextWrapping="Wrap" FontSize="13"
+                       Foreground="{StaticResource Text.Secondary}"
+                       Text="Search for an organization on the left.&#10;Its dossier — people, history and KOR's work with them — opens here."/>
+        </ContentControl>
     </Grid>
 </UserControl>

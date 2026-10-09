@@ -11,7 +11,8 @@ namespace Kor.Operations.App.BusinessDevelopment.Workspace;
 /// <summary>
 /// BD attribution scorecard — CRM-sourced wins/fee/active counts + by-source
 /// and by-owner breakdowns, hosted in <c>BdWorkspaceWindow</c>'s ContentHost
-/// via the "Attribution" nav button. Registers its VM as an AI context provider.
+/// via the "BD Scorecard" nav button — it has not been called "Attribution" on
+/// screen since the 2026-07 rename. Registers its VM as an AI context provider.
 /// </summary>
 public partial class AttributionView : UserControl
 {

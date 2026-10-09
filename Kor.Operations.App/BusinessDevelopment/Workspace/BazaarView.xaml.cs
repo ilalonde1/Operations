@@ -12,9 +12,11 @@ using Kor.Opportunities.Data.Crm;
 namespace Kor.Operations.App.BusinessDevelopment.Workspace;
 
 /// <summary>
-/// The Opportunity Bazaar — read-only clearing-house list of un-claimed
-/// opportunities, hosted in <c>BdWorkspaceWindow</c>'s ContentHost via the
-/// "Bazaar" nav button. Registers its VM as an AI context provider so the
+/// The un-claimed pool — read-only list of opportunities available to grab,
+/// hosted in <c>BdWorkspaceWindow</c>'s ContentHost via the **"To grab"
+/// checkbox inside Signals and Bids**. There has been no "Bazaar" nav button
+/// since 2026-07-09, and no top-level door at all since the kind split.
+/// Registers its VM as an AI context provider so the
 /// un-claimed pool is visible to the assistant.
 /// </summary>
 public partial class BazaarView : UserControl

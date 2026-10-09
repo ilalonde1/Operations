@@ -500,7 +500,9 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
             await RefreshIngestionRunsAsync(ct).ConfigureAwait(true);
 
             StatusMessage = rows.Count == 0
-                ? "No opportunities yet — click \"New Opportunity\" or pick a source from \"Run Source ▾\" to populate."
+                // The button is labelled "New", not "New Opportunity". Telling a user to
+                // click something that is not on screen is worse than saying nothing.
+                ? "No opportunities yet — click \"New\" or pick a source from \"Run Source ▾\" to populate."
                 : $"Loaded {rows.Count} opportunit{(rows.Count == 1 ? "y" : "ies")}.";
 
             // A deep link that lands on nothing must SAY so rather than quietly

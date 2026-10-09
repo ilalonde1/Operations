@@ -21,7 +21,7 @@
                     Click="GrabButton_Click"
                     IsEnabled="{Binding CanGrab}"
                     Style="{StaticResource Button.Primary}"
-                    ToolTip="Claim the selected opportunity — it leaves the Bazaar and becomes a Drafting pursuit you own."/>
+                    ToolTip="Claim the selected opportunity — it leaves the To grab list and becomes a Drafting pursuit you own."/>
             <Button Content="Not for us…" Width="110" Margin="10,0,0,0"
                     Click="DismissButton_Click"
                     IsEnabled="{Binding CanGrab}"
@@ -80,6 +80,27 @@
                         <DataGridTextColumn Header="Deadline" Binding="{Binding DeadlineDisplay}"        Width="100"/>
                     </DataGrid.Columns>
                 </DataGrid>
+
+                <!-- Empty state. An empty DataGrid is indistinguishable from a failed
+                     load, and this one is reachable from Signals and Bids via the
+                     "To grab" checkbox, so a user WILL land here with nothing to show.
+                     A style trigger rather than an inverse-bool converter: nothing has
+                     to be registered, so the same four lines work in any view. -->
+                <TextBlock Grid.Row="2" HorizontalAlignment="Center" VerticalAlignment="Center"
+                           Margin="24" TextAlignment="Center" TextWrapping="Wrap" FontSize="13"
+                           Foreground="{StaticResource Text.Secondary}"
+                           Text="Nothing left to grab here.&#10;Everything in this view has been claimed or dismissed — clear the “To grab” tick to see them all.">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding HasGrabbable}" Value="False">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
             </Grid>
         </Border>
 

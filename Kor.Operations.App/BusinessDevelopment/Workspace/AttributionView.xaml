@@ -101,6 +101,22 @@
                             <DataGridTextColumn Header="Won fee" Binding="{Binding WonFee, StringFormat={}{0:C0}}" Width="120"/>
                         </DataGrid.Columns>
                     </DataGrid>
+
+                    <TextBlock Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center"
+                               Margin="16" TextAlignment="Center" TextWrapping="Wrap" FontSize="12"
+                               Foreground="{StaticResource Text.Secondary}"
+                               Text="No wins attributed to a source yet.">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding BySource.Count}" Value="0">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
                 </Grid>
             </Border>
 
@@ -120,6 +136,22 @@
                             <DataGridTextColumn Header="Won fee" Binding="{Binding WonFee, StringFormat={}{0:C0}}" Width="120"/>
                         </DataGrid.Columns>
                     </DataGrid>
+
+                    <TextBlock Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center"
+                               Margin="16" TextAlignment="Center" TextWrapping="Wrap" FontSize="12"
+                               Foreground="{StaticResource Text.Secondary}"
+                               Text="No wins attributed to an owner yet.">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding ByOwner.Count}" Value="0">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
                 </Grid>
             </Border>
         </Grid>

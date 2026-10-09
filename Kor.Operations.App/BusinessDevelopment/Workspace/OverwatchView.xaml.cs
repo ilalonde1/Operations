@@ -17,7 +17,8 @@ namespace Kor.Operations.App.BusinessDevelopment.Workspace;
 /// <summary>
 /// Manager overwatch board — read-only list of every owned, active pursuit
 /// with its staleness signal, plus one-click reassign. Hosted in
-/// <c>BdWorkspaceWindow</c>'s ContentHost via the "Overwatch" nav button.
+/// <c>BdWorkspaceWindow</c>'s ContentHost via the "Pursuit Monitor" nav button
+/// — it has not been called "Overwatch" on screen since the 2026-07 rename.
 /// </summary>
 public partial class OverwatchView : UserControl
 {
