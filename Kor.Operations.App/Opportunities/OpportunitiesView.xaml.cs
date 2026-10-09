@@ -39,8 +39,8 @@ public partial class OpportunitiesView : UserControl
         _initialized = true;
         // Keep the kind and time axis beside the title in the hub. The wider
         // registry's supporting columns remain available by scrolling.
-        var hubColumns = new[] { "Kind", "Name", "Filed / posted", "Deadline", "Buyer", "Status", "Tier", "Source" };
-        foreach (var column in OpportunitiesGrid.Columns.Where(c => c.Header is "Kind" or "Filed / posted"))
+        var hubColumns = new[] { "Kind", "Work size", "Name", "Filed / posted", "Deadline", "Buyer", "Status", "Tier", "Source" };
+        foreach (var column in OpportunitiesGrid.Columns.Where(c => c.Header is "Kind" or "Work size" or "Filed / posted"))
             column.Visibility = _vm.HubSegment.HasValue ? Visibility.Visible : Visibility.Collapsed;
         if (_vm.HubSegment.HasValue)
         {

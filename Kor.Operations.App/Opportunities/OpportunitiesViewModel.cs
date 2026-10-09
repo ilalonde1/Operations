@@ -62,13 +62,19 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
     private string _hubActor = "";
     private OpportunityKind? _hubKind;
     internal OpportunityKind? HubKind => _hubKind;
+    internal OpportunityWorkFilter HubWorkFilter { get; private set; } = OpportunityWorkFilter.CollapseSmaller;
+    internal int MatchingSmallWorkCount => Opportunities.Count(r => r.Kind == OpportunityKind.Application
+        && r.IsBigTicket == false && MatchesFilters(r, applyWorkSize: false));
+    internal int VisibleHubCount => FilteredOpportunitiesView.Cast<OpportunityRowView>().Count();
     public event EventHandler? HubChanged;
 
-    internal void ConfigureHub(OpportunityHubSegment segment, string actor, OpportunityKind? kind = null)
+    internal void ConfigureHub(OpportunityHubSegment segment, string actor, OpportunityKind? kind = null,
+        OpportunityWorkFilter workFilter = OpportunityWorkFilter.CollapseSmaller)
     {
         HubSegment = segment;
         _hubActor = actor;
         _hubKind = kind;
+        HubWorkFilter = workFilter;
         PrimeConsultantOnly = false;
         RefreshHub();
     }
@@ -82,6 +88,12 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
             if (Selected is not null && !view.Contains(Selected)) Selected = null;
             HubChanged?.Invoke(this, EventArgs.Empty);
         }
+    }
+
+    private void RefreshFilters()
+    {
+        if (HubSegment.HasValue) RefreshHub();
+        else FilteredOpportunitiesView.Refresh();
     }
 
     // Frozen so the VM can hand them out cross-thread (XAML binds on UI thread but
@@ -340,7 +352,7 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
         {
             if (SetField(ref _filterText, value ?? string.Empty))
             {
-                FilteredOpportunitiesView.Refresh();
+                RefreshFilters();
             }
         }
     }
@@ -353,7 +365,7 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
         {
             if (SetField(ref _statusFilter, value))
             {
-                FilteredOpportunitiesView.Refresh();
+                RefreshFilters();
             }
         }
     }
@@ -366,7 +378,7 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
         {
             if (SetField(ref _tierFilter, value))
             {
-                FilteredOpportunitiesView.Refresh();
+                RefreshFilters();
             }
         }
     }
@@ -379,7 +391,7 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
         {
             if (SetField(ref _provinceFilter, value))
             {
-                FilteredOpportunitiesView.Refresh();
+                RefreshFilters();
             }
         }
     }
@@ -391,7 +403,7 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
         {
             if (SetField(ref _primeConsultantOnly, value))
             {
-                FilteredOpportunitiesView.Refresh();
+                RefreshFilters();
             }
         }
     }
@@ -466,7 +478,7 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
             foreach (var r in rows)
             {
                 Opportunities.Add(metadata is not null && metadata.TryGetValue(r.Id, out var info)
-                    ? new OpportunityRowView(r) { Kind = info.Kind, FiledAtUtc = info.FiledAtUtc }
+                    ? new OpportunityRowView(r) { Kind = info.Kind, FiledAtUtc = info.FiledAtUtc, IsBigTicket = info.IsBigTicket }
                     : new OpportunityRowView(r));
             }
             RefreshHub();
@@ -1037,6 +1049,8 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
             HubSegment = row.Kind is OpportunityKind.Bid or OpportunityKind.Award
                 ? OpportunityHubSegment.Bids : OpportunityHubSegment.Signals;
             _hubKind = null;
+            if (!OpportunityHubSelection.MatchesWorkSize(row, HubSegment.Value, HubWorkFilter))
+                HubWorkFilter = OpportunityWorkFilter.All;
             RefreshHub();
         }
 
@@ -1061,7 +1075,7 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
             if (Opportunities[i].Id == saved.Id)
             {
                 var previous = Opportunities[i];
-                Opportunities[i] = new OpportunityRowView(saved) { Kind = previous.Kind, FiledAtUtc = previous.FiledAtUtc };
+                Opportunities[i] = new OpportunityRowView(saved) { Kind = previous.Kind, FiledAtUtc = previous.FiledAtUtc, IsBigTicket = previous.IsBigTicket };
                 Selected = Opportunities[i];
                 RefreshHub();
                 return;
@@ -1074,7 +1088,9 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
         RefreshHub();
     }
 
-    private bool OpportunityFilterPredicate(object obj)
+    private bool OpportunityFilterPredicate(object obj) => MatchesFilters(obj, applyWorkSize: true);
+
+    private bool MatchesFilters(object obj, bool applyWorkSize)
     {
         if (obj is not OpportunityRowView row)
         {
@@ -1082,6 +1098,8 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
         }
 
         if (HubSegment is { } segment && !OpportunityHubSelection.Matches(row, segment, _hubActor, _hubKind)) return false;
+        if (applyWorkSize && HubSegment is { } sizeSegment
+            && !OpportunityHubSelection.MatchesWorkSize(row, sizeSegment, HubWorkFilter)) return false;
 
         if (StatusFilter is { } status && row.Model.Status != status)
         {

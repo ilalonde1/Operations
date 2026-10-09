@@ -32,7 +32,11 @@ SELECT ob.OpportunityId, s.SourceType, m.ValueJson, ob.PostedDateUtc
 FROM opportunities.OpportunityObservations ob
 JOIN opportunities.OpportunitySources s ON s.Id = ob.OpportunitySourceId
 LEFT JOIN opportunities.OpportunitySourceMappings m ON m.OpportunitySourceId = s.Id AND m.[Key] = 'bd.kind'
-WHERE ob.OpportunityId IN (SELECT Id FROM @page);", con) { CommandTimeout = CommandTimeoutSeconds };
+WHERE ob.OpportunityId IN (SELECT Id FROM @page);
+SELECT v.OpportunityId, CAST(MIN(CAST(v.IsBigTicket AS int)) AS bit)
+FROM opportunities.vIslandApplications v
+WHERE v.OpportunityId IN (SELECT Id FROM @page)
+GROUP BY v.OpportunityId;", con) { CommandTimeout = CommandTimeoutSeconds };
             cmd.Parameters.Add("@after", SqlDbType.BigInt).Value = after;
             cmd.Parameters.Add("@last", SqlDbType.BigInt).Value = lastId;
             await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
@@ -53,9 +57,13 @@ WHERE ob.OpportunityId IN (SELECT Id FROM @page);", con) { CommandTimeout = Comm
                     if (!dates.TryGetValue(id, out var previous) || date > previous) dates[id] = date;
                 }
             }
+            var sizes = new Dictionary<long, bool>();
+            await reader.NextResultAsync(ct).ConfigureAwait(false);
+            while (await reader.ReadAsync(ct).ConfigureAwait(false)) sizes[reader.GetInt64(0)] = reader.GetBoolean(1);
             foreach (var row in page)
                 result.Add(new(row, kinds.TryGetValue(row.Id, out var values) ? OpportunityKinds.Combine(values) : OpportunityKind.Other,
-                    dates.TryGetValue(row.Id, out var date) ? date : null));
+                    dates.TryGetValue(row.Id, out var date) ? date : null,
+                    sizes.TryGetValue(row.Id, out var big) ? big : null));
             after = page[^1].Id;
         }
         return result;

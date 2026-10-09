@@ -7,7 +7,7 @@ using Kor.Opportunities.Core.Models;
 
 namespace Kor.Opportunities.Data.Opportunities;
 
-public sealed record OpportunityHubRecord(Opportunity Opportunity, OpportunityKind Kind, DateTimeOffset? FiledAtUtc);
+public sealed record OpportunityHubRecord(Opportunity Opportunity, OpportunityKind Kind, DateTimeOffset? FiledAtUtc, bool? IsBigTicket = null);
 
 public interface IOpportunityHubStore
 {

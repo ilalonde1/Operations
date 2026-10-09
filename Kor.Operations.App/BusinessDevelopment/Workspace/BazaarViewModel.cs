@@ -37,11 +37,16 @@ public sealed class BazaarViewModel : ObservableObject, IAiContextProvider
     private OpportunityRowView[] _hubRows = Array.Empty<OpportunityRowView>();
     internal OpportunityHubSegment? HubSegment { get; private set; }
     private OpportunityKind? _hubKind;
+    private OpportunityWorkFilter _workFilter = OpportunityWorkFilter.CollapseSmaller;
+    internal int MatchingSmallWorkCount { get; private set; }
+    internal event EventHandler? HubChanged;
 
-    internal void ConfigureHub(OpportunityHubSegment segment, OpportunityKind? kind)
+    internal void ConfigureHub(OpportunityHubSegment segment, OpportunityKind? kind,
+        OpportunityWorkFilter workFilter = OpportunityWorkFilter.CollapseSmaller)
     {
         HubSegment = segment;
         _hubKind = kind;
+        _workFilter = workFilter;
         ApplyHubRows();
     }
 
@@ -51,7 +56,9 @@ public sealed class BazaarViewModel : ObservableObject, IAiContextProvider
         var candidates = _hubRows.Where(r => OpportunityHubSelection.Matches(r, segment, "", _hubKind)).ToArray();
         var eligible = BazaarOpportunitySelector.SelectDefaultView(candidates.Select(r => r.Model), DateTimeOffset.UtcNow)
             .Select(o => o.Id).ToHashSet();
-        var rows = OpportunityHubSelection.Sort(candidates.Where(r => eligible.Contains(r.Id)), segment, DateTimeOffset.UtcNow);
+        MatchingSmallWorkCount = candidates.Count(r => eligible.Contains(r.Id) && r.Kind == OpportunityKind.Application && r.IsBigTicket == false);
+        var rows = OpportunityHubSelection.Sort(candidates.Where(r => eligible.Contains(r.Id)
+            && OpportunityHubSelection.MatchesWorkSize(r, segment, _workFilter)), segment, DateTimeOffset.UtcNow);
         Grabbable.Clear();
         foreach (var row in rows) Grabbable.Add(row);
         Selected = null;
@@ -59,6 +66,7 @@ public sealed class BazaarViewModel : ObservableObject, IAiContextProvider
         OnPropertyChanged(nameof(HasGrabbable));
         OnPropertyChanged(nameof(Headline));
         StatusMessage = $"Loaded {Grabbable.Count} opportunities to grab. Existing availability rules apply; clear To grab for the full segment.";
+        HubChanged?.Invoke(this, EventArgs.Empty);
     }
 
     // Immutable snapshot of the loaded pool, swapped on the UI thread after each
@@ -132,7 +140,7 @@ public sealed class BazaarViewModel : ObservableObject, IAiContextProvider
             if (HubSegment.HasValue)
             {
                 var loaded = await (_hubStore ?? throw new InvalidOperationException("Hub store is not configured.")).ListHubAsync(ct).ConfigureAwait(true);
-                _hubRows = loaded.Select(r => new OpportunityRowView(r.Opportunity) { Kind = r.Kind, FiledAtUtc = r.FiledAtUtc }).ToArray();
+                _hubRows = loaded.Select(r => new OpportunityRowView(r.Opportunity) { Kind = r.Kind, FiledAtUtc = r.FiledAtUtc, IsBigTicket = r.IsBigTicket }).ToArray();
                 ApplyHubRows();
                 return;
             }

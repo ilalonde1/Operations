@@ -23,6 +23,71 @@ namespace Kor.Operations.App.Tests.BusinessDevelopment;
 /// <summary>Checks classification, reachability, ownership and ordering, not rendering or SQL paging.</summary>
 public sealed class OpportunityHubTests
 {
+    [Fact]
+    public async Task ToGrabRevealPreservesEligibilityAndSmallWorkCount()
+    {
+        var hubStore = new Mock<IOpportunityHubStore>();
+        hubStore.Setup(s => s.ListHubAsync(It.IsAny<CancellationToken>())).ReturnsAsync([
+            new(new Opportunity { Id = 1, Name = "Small" }, OpportunityKind.Application, null, false),
+            new(new Opportunity { Id = 2, Name = "Big" }, OpportunityKind.Application, null, true),
+            new(new Opportunity { Id = 3, Name = "Owned small", OwnerStaffId = "other" }, OpportunityKind.Application, null, false)]);
+        var vm = new BazaarViewModel(Mock.Of<IOpportunityStore>(), Mock.Of<IPursuitGrabStore>(), Mock.Of<IPursuitLifecycleStore>(), hubStore.Object);
+        vm.ConfigureHub(OpportunityHubSegment.Signals, null);
+        await vm.LoadAsync(CancellationToken.None);
+        Assert.Equal(2, Assert.Single(vm.Grabbable).Id);
+        Assert.Equal(1, vm.MatchingSmallWorkCount);
+        vm.ConfigureHub(OpportunityHubSegment.Signals, null, OpportunityWorkFilter.All);
+        Assert.Equal([1L, 2L], vm.Grabbable.Select(r => r.Id).Order());
+        vm.ConfigureHub(OpportunityHubSegment.Signals, null, OpportunityWorkFilter.SmallerOnly);
+        Assert.Equal(1, Assert.Single(vm.Grabbable).Id);
+    }
+
+    [Fact]
+    public void WorkSizeCollapseAndRevealPartitionSignalsWithoutDroppingUnknowns()
+    {
+        var rows = new[] { new OpportunityRowView(new Opportunity { Id = 1 }) { Kind = OpportunityKind.Application, IsBigTicket = false },
+            new OpportunityRowView(new Opportunity { Id = 2 }) { Kind = OpportunityKind.Application, IsBigTicket = true },
+            Row(3, OpportunityKind.Application), Row(4, OpportunityKind.Other) };
+        Assert.Equal([2L, 3L, 4L], rows.Where(r => OpportunityHubSelection.MatchesWorkSize(r, OpportunityHubSegment.Signals,
+            OpportunityWorkFilter.CollapseSmaller)).Select(r => r.Id));
+        Assert.Equal([1L], rows.Where(r => OpportunityHubSelection.MatchesWorkSize(r, OpportunityHubSegment.Signals,
+            OpportunityWorkFilter.SmallerOnly)).Select(r => r.Id));
+        Assert.All(rows, r => Assert.True(OpportunityHubSelection.MatchesWorkSize(r, OpportunityHubSegment.Signals, OpportunityWorkFilter.All)));
+        Assert.All(rows, r => Assert.True(OpportunityHubSelection.MatchesWorkSize(r, OpportunityHubSegment.Mine, OpportunityWorkFilter.CollapseSmaller)));
+        Assert.All(rows, r => Assert.True(OpportunityHubSelection.MatchesWorkSize(r, OpportunityHubSegment.Bids, OpportunityWorkFilter.SmallerOnly)));
+    }
+
+    [Fact]
+    public void SmallWorkCountTracksSearchAndDeepLinkRevealsCollapsedApplication()
+    {
+        Exception? failure = null;
+        var thread = new Thread(() =>
+        {
+            try
+            {
+                var vm = new OpportunitiesViewModel(Mock.Of<IOpportunityStore>(), Mock.Of<IHeartbeatStore>(),
+                    Mock.Of<IOpportunityScoringService>(), Mock.Of<IIngestionRunStore>(), Mock.Of<IIngestionTriggerStore>(),
+                    Mock.Of<IOpportunitySourceStore>(), Mock.Of<Kor.Operations.App.Crm.IDeltekClientContextService>(),
+                    Mock.Of<ICrmEngagementStore>(), Mock.Of<ICrmActivityStore>(), Mock.Of<ICrmContactStore>(),
+                    Mock.Of<IOpportunityObservationStore>(), Mock.Of<IOpportunityInterestedFirmStore>(), Mock.Of<IPursuitGrabStore>());
+                vm.Opportunities.Add(new(new Opportunity { Id = 1, Name = "Deck" }) { Kind = OpportunityKind.Application, IsBigTicket = false });
+                vm.Opportunities.Add(new(new Opportunity { Id = 2, Name = "Tower" }) { Kind = OpportunityKind.Application, IsBigTicket = true });
+                vm.ConfigureHub(OpportunityHubSegment.Signals, "me");
+                Assert.Equal(1, vm.VisibleHubCount);
+                Assert.Equal(1, vm.MatchingSmallWorkCount);
+                vm.FilterText = "Tower";
+                Assert.Equal(0, vm.MatchingSmallWorkCount);
+                Assert.True(vm.SelectById(1));
+                Assert.Equal(OpportunityWorkFilter.All, vm.HubWorkFilter);
+                Assert.Equal(2, vm.VisibleHubCount);
+                Assert.Equal(1, vm.Selected!.Id);
+            }
+            catch (Exception ex) { failure = ex; }
+        }) { IsBackground = true };
+        thread.SetApartmentState(ApartmentState.STA); thread.Start();
+        Assert.True(thread.Join(TimeSpan.FromSeconds(10)));
+        Assert.Null(failure);
+    }
     [Theory]
     [InlineData(OpportunitySourceType.ArcGisFeatureService, OpportunityKind.Application)]
     [InlineData(OpportunitySourceType.TempestProspero, OpportunityKind.Application)]

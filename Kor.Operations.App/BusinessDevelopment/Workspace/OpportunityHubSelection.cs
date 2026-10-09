@@ -9,9 +9,19 @@ using Kor.Opportunities.Core.Models;
 namespace Kor.Operations.App.BusinessDevelopment.Workspace;
 
 public enum OpportunityHubSegment { Signals, Bids, Mine }
+public enum OpportunityWorkFilter { CollapseSmaller, All, SmallerOnly }
 
 internal static class OpportunityHubSelection
 {
+    // Presentation only: the SQL view is the sole scope classifier. Unknowns
+    // remain visible by default; Bids/Mine do not inherit Signals' collapse.
+    internal static bool MatchesWorkSize(OpportunityRowView row, OpportunityHubSegment segment, OpportunityWorkFilter filter)
+    {
+        if (segment != OpportunityHubSegment.Signals) return true;
+        var small = row.Kind == OpportunityKind.Application && row.IsBigTicket == false;
+        return filter switch { OpportunityWorkFilter.CollapseSmaller => !small,
+            OpportunityWorkFilter.SmallerOnly => small, _ => true };
+    }
     internal static bool Matches(OpportunityRowView row, OpportunityHubSegment segment, string actor, OpportunityKind? kind = null)
     {
         if (row.Model.DismissedAtUtc is not null || (kind.HasValue && row.Kind != kind)) return false;

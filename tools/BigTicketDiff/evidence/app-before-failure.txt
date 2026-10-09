@@ -1,0 +1,6 @@
+FAIL: the running Signals screen has no small-work reveal/count control.
+At C:\VIsual Studio Projects\Operations\tools\BigTicketDiff\Verify-App.ps1:17 char:17
++ ... !$reveal) { throw 'FAIL: the running Signals screen has no small-work ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : OperationStopped: (FAIL: the runni.../count control.:String) [], RuntimeException
+    + FullyQualifiedErrorId : FAIL: the running Signals screen has no small-work reveal/count control.

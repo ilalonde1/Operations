@@ -22,6 +22,31 @@ namespace Kor.Operations.App.Tests.BusinessDevelopment;
 public sealed class OpportunityHubLiveTests(ITestOutputHelper output)
 {
     [LiveHubFact]
+    public async Task EveryApplicationUsesTheViewAndOneRevealReachesEverySignal()
+    {
+        var connection = Environment.GetEnvironmentVariable("KOR_HUB_VERIFY_DB")!;
+        var hub = await new SqlOpportunityStore(connection).ListHubAsync(CancellationToken.None);
+        await using var con = new SqlConnection(connection); await con.OpenAsync();
+        await using var command = new SqlCommand("SELECT OpportunityId, CAST(MIN(CAST(IsBigTicket AS int)) AS bit) FROM opportunities.vIslandApplications GROUP BY OpportunityId", con);
+        await using var reader = await command.ExecuteReaderAsync();
+        var sizes = new Dictionary<long, bool>();
+        while (await reader.ReadAsync()) sizes[reader.GetInt64(0)] = reader.GetBoolean(1);
+        var rows = hub.Select(r => new Kor.Operations.App.Opportunities.OpportunityRowView(r.Opportunity)
+            { Kind = r.Kind, IsBigTicket = r.IsBigTicket, FiledAtUtc = r.FiledAtUtc }).ToArray();
+        foreach (var row in rows.Where(r => r.Kind == OpportunityKind.Application))
+        {
+            Assert.True(sizes.ContainsKey(row.Id), $"Unassessed application: {row.Id}");
+            Assert.Equal(sizes[row.Id], row.IsBigTicket);
+        }
+        var signals = rows.Where(r => OpportunityHubSelection.Matches(r, OpportunityHubSegment.Signals, "me")).ToArray();
+        var collapsed = signals.Where(r => OpportunityHubSelection.MatchesWorkSize(r, OpportunityHubSegment.Signals, OpportunityWorkFilter.CollapseSmaller)).ToArray();
+        var small = signals.Where(r => OpportunityHubSelection.MatchesWorkSize(r, OpportunityHubSegment.Signals, OpportunityWorkFilter.SmallerOnly)).ToArray();
+        var revealed = signals.Where(r => OpportunityHubSelection.MatchesWorkSize(r, OpportunityHubSegment.Signals, OpportunityWorkFilter.All)).ToArray();
+        Assert.Equal(signals.Select(r => r.Id).Order(), collapsed.Concat(small).Select(r => r.Id).Order());
+        Assert.Equal(signals.Select(r => r.Id), revealed.Select(r => r.Id));
+        output.WriteLine($"Signals={signals.Length}; default={collapsed.Length}; smaller={small.Length}; reveal={revealed.Length}; applications={rows.Count(r => r.Kind == OpportunityKind.Application)}");
+    }
+    [LiveHubFact]
     public async Task PagedHubReachesEveryUndismissedRowExactlyOnce()
     {
         var connection = Environment.GetEnvironmentVariable("KOR_HUB_VERIFY_DB")!;

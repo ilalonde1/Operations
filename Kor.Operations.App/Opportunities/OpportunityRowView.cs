@@ -21,6 +21,9 @@ public sealed class OpportunityRowView
 
     public OpportunityKind Kind { get; init; }
     public DateTimeOffset? FiledAtUtc { get; init; }
+    public bool? IsBigTicket { get; init; }
+    public string WorkSizeDisplay => Kind != OpportunityKind.Application ? "—"
+        : IsBigTicket switch { true => "Big-ticket", false => "Smaller work", _ => "Unassessed" };
     public string KindDisplay => Kind switch
     {
         OpportunityKind.Application => "Application / rezoning",

@@ -21,6 +21,7 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
@@ -49,6 +50,19 @@
                       ToolTip="Available, unclaimed opportunities using the existing Bazaar eligibility rules."/>
             <TextBlock x:Name="CountHint" Margin="16,0,0,0" VerticalAlignment="Center" Foreground="{StaticResource Text.Secondary}"/>
         </StackPanel>
-        <ContentControl Grid.Row="2" x:Name="Host"/>
+        <WrapPanel Grid.Row="2" x:Name="SmallWorkPanel" Margin="12,0,12,10">
+            <TextBlock Text="Work size:" VerticalAlignment="Center" Margin="0,0,8,0"/>
+            <ComboBox x:Name="WorkSizeFilter" Width="205" SelectedIndex="0" SelectionChanged="WorkSize_Changed"
+                      ToolTip="Uses the shared application scope classification. Unassessed applications remain visible by default.">
+                <ComboBoxItem Content="Smaller work collapsed"/>
+                <ComboBoxItem Content="All work"/>
+                <ComboBoxItem Content="Smaller work only"/>
+            </ComboBox>
+            <Button x:Name="SmallWorkReveal" Margin="12,0,0,0" Padding="12,5" Click="SmallWorkReveal_Click"
+                    ToolTip="Some multi-unit proposals have ambiguous scope text. Reveal smaller items to review them."/>
+            <TextBlock x:Name="SmallWorkCount" Margin="12,0,0,0" VerticalAlignment="Center"
+                       Foreground="{StaticResource Text.Secondary}"/>
+        </WrapPanel>
+        <ContentControl Grid.Row="3" x:Name="Host"/>
     </Grid>
 </UserControl>

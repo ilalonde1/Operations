@@ -179,6 +179,7 @@
                       MouseDoubleClick="OpportunitiesGrid_MouseDoubleClick">
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="Kind" Binding="{Binding KindDisplay}" Width="155"/>
+                    <DataGridTextColumn Header="Work size" Binding="{Binding WorkSizeDisplay}" Width="120" MinWidth="110"/>
                     <DataGridTextColumn Header="Filed / posted" Binding="{Binding FiledAtDisplay}" SortMemberPath="FiledAtUtc" Width="110"/>
                     <DataGridTemplateColumn Header="Repeat" Width="52" SortMemberPath="IsRepeatClient">
                         <DataGridTemplateColumn.CellTemplate>

@@ -76,17 +76,24 @@ public partial class OpportunitiesHubView : UserControl
 
     private void KindFilter_Changed(object sender, SelectionChangedEventArgs e) { if (!_updating && _vm is not null) ApplyFilters(); }
     private void ToGrab_Changed(object sender, RoutedEventArgs e) { if (!_updating && _vm is not null) ApplyFilters(); }
+    private void WorkSize_Changed(object sender, SelectionChangedEventArgs e) { if (!_updating && _vm is not null) ApplyFilters(); }
+    private void SmallWorkReveal_Click(object sender, RoutedEventArgs e)
+        => WorkSizeFilter.SelectedIndex = WorkSizeFilter.SelectedIndex == 0 ? 1 : 0;
 
     private void ApplyFilters()
     {
         var kind = (KindFilter.SelectedItem as ComboBoxItem)?.Tag as OpportunityKind?;
         _updating = true;
-        _vm.ConfigureHub(_segment, Actor, kind);
+        _vm.ConfigureHub(_segment, Actor, kind, (OpportunityWorkFilter)WorkSizeFilter.SelectedIndex);
         _updating = false;
         if (ToGrabFilter.IsChecked == true && _segment != OpportunityHubSegment.Mine)
         {
-            _grab ??= _services.GetRequiredService<BazaarView>();
-            ((BazaarViewModel)_grab.DataContext).ConfigureHub(_segment, kind);
+            if (_grab is null)
+            {
+                _grab = _services.GetRequiredService<BazaarView>();
+                ((BazaarViewModel)_grab.DataContext).HubChanged += RegistryChanged;
+            }
+            ((BazaarViewModel)_grab.DataContext).ConfigureHub(_segment, kind, (OpportunityWorkFilter)WorkSizeFilter.SelectedIndex);
             Host.Content = _grab;
         }
         else Host.Content = _all;
@@ -96,6 +103,9 @@ public partial class OpportunitiesHubView : UserControl
     private void RegistryChanged(object? sender, EventArgs e)
     {
         if (_updating) return;
+        _updating = true;
+        WorkSizeFilter.SelectedIndex = (int)_vm.HubWorkFilter;
+        _updating = false;
         if (_vm.HubSegment is { } segment && (segment != _segment
             || (_vm.HubKind is null && (KindFilter.SelectedItem as ComboBoxItem)?.Tag is not null)))
         {
@@ -114,6 +124,13 @@ public partial class OpportunitiesHubView : UserControl
         BidsBtn.Style = (Style)FindResource(_segment == OpportunityHubSegment.Bids ? "SegBtnActive" : "SegBtn");
         MineBtn.Style = (Style)FindResource(_segment == OpportunityHubSegment.Mine ? "SegBtnActive" : "SegBtn");
         ToGrabFilter.Visibility = _segment == OpportunityHubSegment.Mine ? Visibility.Collapsed : Visibility.Visible;
+        SmallWorkPanel.Visibility = _segment == OpportunityHubSegment.Signals ? Visibility.Visible : Visibility.Collapsed;
+        var grab = ToGrabFilter.IsChecked == true ? _grab?.DataContext as BazaarViewModel : null;
+        var smaller = grab?.MatchingSmallWorkCount ?? _vm.MatchingSmallWorkCount;
+        var visible = grab?.Grabbable.Count ?? _vm.VisibleHubCount;
+        SmallWorkReveal.Content = WorkSizeFilter.SelectedIndex == 0
+            ? $"{smaller:N0} smaller items hidden · Show" : "Hide smaller items";
+        SmallWorkCount.Text = $"{visible:N0} matching items shown · {smaller:N0} classified smaller";
         ModeHint.Text = _segment switch
         {
             OpportunityHubSegment.Signals => "Applications / rezonings and other leads · newest filed first; unknown dates last",
