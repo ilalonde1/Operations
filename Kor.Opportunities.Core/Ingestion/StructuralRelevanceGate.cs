@@ -162,6 +162,24 @@ public static class StructuralRelevanceGate
         "lot coverage",
         "site coverage",
         "building height",
+        // Calgary writes district codes where BC usually writes planning prose.
+        // RelevanceGateDiff, 2026-10-08: 232 gains / 400 Calgary rows, no new
+        // R-only districts except the deliberate R-CG infill exception; zero
+        // reject-title gains and keep losses in the existing source corpus.
+        // These use the same word boundaries as the other keep-signals.
+        // Bare "DC" FAILED the harness (timber sales and a rec-site operator),
+        // so direct control requires planning context. Do not add bare DC or
+        // the single-family R-C1/R-C1s/R-C2/R-1s/R-G families.
+        "m-cg", "m-c1", "m-c2", "m-g", "m-1", "m-2",
+        "m-h1", "m-h2", "m-h3", "m-x1", "m-x2", "h-go",
+        "mu-1", "mu-2",
+        "i-g", "i-b", "i-e", "i-c", "i-r", "i-o", "i-h",
+        "c-n1", "c-n2", "c-c1", "c-c2", "c-cor1", "c-cor2", "c-cor3",
+        "c-o", "c-r1", "c-r2", "c-r3",
+        "cc-mh", "cc-mhx", "cc-x", "cc-cor", "cc-et", "cc-eir",
+        "cc-emu", "cc-epr", "cc-err", "cc-er", "cr20-c20/r20",
+        "s-un", "s-spr", "s-cs", "s-r", "s-ci", "s-cri", "s-urp", "s-fud", "s-tuc",
+        "accommodate dc", "direct control", "r-cg",
         // French vocabulary — CanadaBuys federal postings can be French-only;
         // accented and unaccented variants both included because upstream
         // encodings vary.

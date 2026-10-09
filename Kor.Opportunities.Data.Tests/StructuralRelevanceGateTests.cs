@@ -28,4 +28,73 @@ public sealed class StructuralRelevanceGateTests
         var decision = StructuralRelevanceGate.Evaluate(title, description: null, buyer: null);
         Assert.True(decision.Keep, $"'{title}' should pass; reason={decision.RejectReason}");
     }
+
+    [Theory]
+    [InlineData("M-C1")]
+    [InlineData("M-H1")]
+    [InlineData("M-X2")]
+    [InlineData("H-GO")]
+    [InlineData("MU-1")]
+    [InlineData("I-B")]
+    [InlineData("I-C")]
+    [InlineData("C-COR2")]
+    [InlineData("CC-MHX")]
+    [InlineData("CR20-C20/R20")]
+    [InlineData("S-CI")]
+    [InlineData("R-CG")]
+    [InlineData("DC")]
+    [InlineData("Direct Control District (DC)")]
+    public void CalgaryDistrictInPlanningDescription_IsKept(string district)
+    {
+        Assert.True(StructuralRelevanceGate.Evaluate("111 27 AV NW",
+            $"Land Use Amendment to accommodate {district}", "City of Calgary").Keep);
+    }
+
+    [Theory]
+    [InlineData("R-C1")]
+    [InlineData("R-C1s")]
+    [InlineData("R-C2")]
+    [InlineData("R-1s")]
+    [InlineData("R-1N")]
+    [InlineData("R-G")]
+    [InlineData("R-Gm")]
+    [InlineData("R-2M")]
+    public void CalgaryLowDensityDistrict_AloneIsNotAKeepSignal(string district)
+    {
+        Assert.False(StructuralRelevanceGate.Evaluate("111 27 AV NW",
+            $"Land Use Amendment to accommodate {district}", "City of Calgary").Keep);
+    }
+
+    [Theory]
+    [InlineData("TA1882 - TPL - DC - Redwillow")]
+    [InlineData("TA2951. TPL - DC, Kelly Lake")]
+    [InlineData("PA(23)DCS-001 Site Operator for Harmon and Kane Lake Rec Site")]
+    [InlineData("Supply of DC motors")]
+    [InlineData("XM-C1 specification")]
+    [InlineData("M-C10 specification")]
+    [InlineData("MU-10 specification")]
+    [InlineData("S-CIR specification")]
+    public void CalgaryCodeLookalikes_AndBareDc_DoNotPass(string title)
+    {
+        Assert.False(StructuralRelevanceGate.Evaluate(title, null, null).Keep);
+    }
+
+    [Fact]
+    public void CalgaryDistrict_DoesNotOverrideAlwaysIrrelevantPermit()
+    {
+        Assert.False(StructuralRelevanceGate.Evaluate("Plumbing permit",
+            "Land Use Amendment to accommodate M-C1", null).Keep);
+    }
+
+    [Fact]
+    public void CalgaryDistrict_IsCaseInsensitiveAndWordBoundedInTitle()
+    {
+        Assert.True(StructuralRelevanceGate.Evaluate("Amendment (m-c1).", null, null).Keep);
+    }
+
+    [Fact]
+    public void CalgaryDistrictInBuyerOnly_DoesNotPass()
+    {
+        Assert.False(StructuralRelevanceGate.Evaluate("Policy Amendment", null, "M-C1").Keep);
+    }
 }

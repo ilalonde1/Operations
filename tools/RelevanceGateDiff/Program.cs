@@ -36,11 +36,16 @@
 // Read-only. It writes nothing to the database.
 using System.Data;
 using System.Globalization;
+using System.Text.Json;
+using System.Text.RegularExpressions;
 using Kor.Opportunities.Core.Ingestion;
 using Microsoft.Data.SqlClient;
 
 var vocabPath = (string?)null;
 var showCount = 12;
+string? calgaryPath = null;
+string? snapshotPath = null;
+string? verifySnapshotPath = null;
 
 for (var i = 0; i < args.Length; i++)
 {
@@ -52,16 +57,47 @@ for (var i = 0; i < args.Length; i++)
         case "--show" when i + 1 < args.Length:
             showCount = int.Parse(args[++i], CultureInfo.InvariantCulture);
             break;
+        case "--calgary" when i + 1 < args.Length:
+            calgaryPath = args[++i];
+            break;
+        case "--snapshot" when i + 1 < args.Length:
+            snapshotPath = args[++i];
+            break;
+        case "--verify-snapshot" when i + 1 < args.Length:
+            verifySnapshotPath = args[++i];
+            break;
         default:
             Console.Error.WriteLine($"Unknown argument: {args[i]}");
             return 2;
     }
 }
 
+// Freeze the proposed verdicts before promotion, then verify the shipped gate
+// against EXACTLY those inputs without a live DB. This avoids comparing two
+// arms which both already contain the vocabulary change after promotion.
+if (verifySnapshotPath is not null)
+{
+    var snapshot = JsonSerializer.Deserialize<List<ScoredRow>>(File.ReadAllText(verifySnapshotPath))!;
+    var mismatches = snapshot.Where(r => StructuralRelevanceGate.Evaluate(
+        r.Title, r.Description, r.Buyer) != r.After).ToList();
+    foreach (var group in snapshot.GroupBy(r => r.Arm))
+    {
+        Console.WriteLine($"SNAPSHOT {group.Key}: {group.Count()} scored; " +
+            $"{group.Count(r => !r.Before.Keep && r.After.Keep)} gains; " +
+            $"{group.Count(r => r.Before.Keep && !r.After.Keep)} regressions");
+    }
+    Console.WriteLine($"Shipped gate vs proposed snapshot: {mismatches.Count} mismatches / {snapshot.Count} rows");
+    foreach (var row in mismatches.Take(showCount))
+        Console.WriteLine($"  {row.Arm}: {row.Title} | {row.Description}");
+    return mismatches.Count == 0 ? 0 : 1;
+}
+
 if (vocabPath is null || !File.Exists(vocabPath))
 {
     Console.Error.WriteLine("Usage: RelevanceGateDiff --vocab <file> [--show N]");
     Console.Error.WriteLine("  <file>: one candidate term per line; '#' comments; 'pro:' prefix = professional signal.");
+    Console.Error.WriteLine("  --calgary <json>: local 600-row feed sample; scores first 400 and measures code visibility.");
+    Console.Error.WriteLine("  --snapshot <json>: save before/proposed verdicts; --verify-snapshot <json>: verify promotion offline.");
     return 2;
 }
 
@@ -93,6 +129,7 @@ foreach (var raw in File.ReadAllLines(vocabPath))
 }
 
 var delta = new RelevanceVocabularyDelta(building, professional);
+var scored = new List<ScoredRow>();
 
 Console.WriteLine($"Candidate vocabulary: {delta.BuildingSignals.Count} building + {delta.ProfessionalSignals.Count} professional term(s)");
 Console.WriteLine($"  {string.Join(", ", delta.BuildingSignals)}");
@@ -119,6 +156,7 @@ await foreach (var r in ReadAsync(cs, keptSql))
     keptTotal++;
     var before = StructuralRelevanceGate.Evaluate(r.Title, r.Description, r.Buyer);
     var after = StructuralRelevanceGate.Evaluate(r.Title, r.Description, r.Buyer, delta);
+    scored.Add(new("observations", r.Title, r.Description, r.Buyer, before, after));
 
     if (!before.Keep)
     {
@@ -179,6 +217,7 @@ await foreach (var r in ReadAsync(cs, rejectSql))
     rejTotal++;
     var before = StructuralRelevanceGate.Evaluate(r.Title, null, r.Buyer);
     var after = StructuralRelevanceGate.Evaluate(r.Title, null, r.Buyer, delta);
+    scored.Add(new("rejects (title only)", r.Title, null, r.Buyer, before, after));
 
     if (before.Keep || !after.Keep)
     {
@@ -294,7 +333,73 @@ foreach (var (term, examples) in byTerm.OrderByDescending(k => k.Value.Count))
     Console.WriteLine();
 }
 
-return keptFlipped.Count == 0 ? 0 : 1;
+var calgaryFailures = calgaryPath is null ? 0 : ScoreCalgary(calgaryPath, delta, scored);
+if (snapshotPath is not null)
+    File.WriteAllText(snapshotPath, JsonSerializer.Serialize(scored));
+
+return keptFlipped.Count == 0 && calgaryFailures == 0 ? 0 : 1;
+
+// This arm scores address + description exactly as published, with no applicant
+// or proposedlud composition. Only the first 400 rows enter the keep-rate. The
+// full local sample measures visibility; proposedlud is used ONLY to classify
+// the results, never as a keep signal. It cannot validate upstream mappings or
+// infer the built form of a DC/ambiguous R-CG application from a district alone.
+static int ScoreCalgary(string path, RelevanceVocabularyDelta delta, List<ScoredRow> scored)
+{
+    using var doc = JsonDocument.Parse(File.ReadAllText(path));
+    var rows = doc.RootElement.EnumerateArray().ToArray();
+    var beforeKept = 0;
+    var afterKept = 0;
+    var regressions = 0;
+    var lowDensityGains = 0;
+    var rcgGains = 0;
+    var coded = 0;
+    var visible = 0;
+    var byCode = new Dictionary<string, (int Total, int Before, int After)>();
+    for (var i = 0; i < rows.Length; i++)
+    {
+        var row = rows[i];
+        var title = Field(row, "address");
+        var description = Field(row, "description");
+        var codes = (Field(row, "proposedlud") ?? "").Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (codes.Length > 0)
+        {
+            coded++;
+            if (codes.Any(code => Regex.IsMatch(description ?? "", $@"\b{Regex.Escape(code)}\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)))
+                visible++;
+        }
+        var before = StructuralRelevanceGate.Evaluate(title, description, "City of Calgary");
+        var after = StructuralRelevanceGate.Evaluate(title, description, "City of Calgary", delta);
+        scored.Add(new(i < 400 ? "Calgary first 400" : "Calgary remainder", title, description, "City of Calgary", before, after));
+        // R-CG is reported separately so its admission is an explicit decision.
+        var lowDensityOnly = codes.Length > 0 && codes.All(code => code.StartsWith("R-", StringComparison.OrdinalIgnoreCase));
+        if (!before.Keep && after.Keep && lowDensityOnly)
+        {
+            if (codes.All(code => code.Equals("R-CG", StringComparison.OrdinalIgnoreCase)))
+                rcgGains++;
+            else
+                lowDensityGains++;
+            Console.WriteLine($"  NEW R-only: {string.Join(';', codes)} | {description}");
+        }
+        if (i >= 400) continue;
+        beforeKept += before.Keep ? 1 : 0;
+        afterKept += after.Keep ? 1 : 0;
+        regressions += before.Keep && !after.Keep ? 1 : 0;
+        var key = string.Join(';', codes.Distinct().Order());
+        var group = byCode.GetValueOrDefault(key);
+        byCode[key] = (group.Total + 1, group.Before + (before.Keep ? 1 : 0), group.After + (after.Keep ? 1 : 0));
+    }
+    var count = Math.Min(400, rows.Length);
+    Console.WriteLine($"CALGARY: {beforeKept}/{count} ({100.0 * beforeKept / count:F1}%) -> {afterKept}/{count} ({100.0 * afterKept / count:F1}%); gains {afterKept - beforeKept + regressions}; regressions {regressions}");
+    Console.WriteLine($"CALGARY R-only gains across {rows.Length}: low-density excluding R-CG {lowDensityGains}; R-CG {rcgGains}");
+    Console.WriteLine($"CALGARY visibility: {visible}/{coded} coded rows contain a proposed code in description; {coded - visible}/{coded} ({100.0 * (coded - visible) / coded:F1}%) absent; {rows.Length - coded} uncoded rows");
+    foreach (var (code, group) in byCode.OrderBy(k => k.Key))
+        Console.WriteLine($"  {code}: {group.Before} -> {group.After} / {group.Total}");
+    return regressions + lowDensityGains;
+}
+
+static string? Field(JsonElement row, string name)
+    => row.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String ? value.GetString() : null;
 
 static string Cut(string? s, int max)
 {
@@ -345,3 +450,4 @@ static int HasColumn(SqlDataReader reader, string name)
 }
 
 internal sealed record Row(string? Title, string? Description, string? Buyer, string? SourceName, string? RejectReason);
+internal sealed record ScoredRow(string Arm, string? Title, string? Description, string? Buyer, RelevanceDecision Before, RelevanceDecision After);
