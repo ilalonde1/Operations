@@ -1,0 +1,5 @@
+Named multi-unit/mixed-form targets: 1863; Saanich controls (existing view small, no named multi-unit form): 726.
+Bids/awards changed: 0; control score increases: 0.
+Control maximum: 26; target minimum: 3; targets below control maximum: 1843.
+Calgary mean: 3.01 -> 3.01; Saanich mean: 12.08 -> 12.08.
+These are corpus/ranking gates, not a new small-project filter. Both controls and the complete Island-small gains are in the row ledger.
