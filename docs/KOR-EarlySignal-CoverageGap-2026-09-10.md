@@ -232,6 +232,73 @@ soft-404s looks perfectly alive to any fetch-success check.** Enabling View Roya
 produced a permanently NEVER-PRODUCED source — noise in the sentinel that §I and §J were
 just built to make meaningful.
 
+### Okanagan, Island and the regional districts — 9 October
+
+Asked directly: *"What about the Okanagan??? And Alberta? And Vancouver Island?"*
+
+**Every uncovered Okanagan municipality has its own ArcGIS server, and none publishes
+applications.** All seven were found by host-guessing, which is itself the finding — the
+September pass cleared this region on an ArcGIS *Online* search:
+
+| Municipality | Pop | Root | Layers | Applications |
+|---|---:|---|---:|---:|
+| Kelowna | 144,576 | `maps.kelowna.ca/arcgis` | 818 | **0** |
+| Vernon | 44,519 | `maps.vernon.ca/server` | 1,155 | **0** |
+| Penticton | 36,885 | `maps.penticton.ca/server` | 116 | **0** |
+| West Kelowna | 36,078 | `gis.westkelownacity.ca/arcgis` | 411 | **0** |
+| Salmon Arm | 19,432 | `gis.salmonarm.ca/server` | 0 | — |
+| Lake Country | 15,817 | `gis.lakecountry.bc.ca/arcgis` | 124 | **0** |
+| Summerland | 12,042 | `gis.summerland.ca/server` | 151 | **0** |
+
+⭐ **Kelowna's self-hosted server was never checked before.** September settled Kelowna on
+`opendata.kelowna.ca`; `maps.kelowna.ca` is a different machine with 818 layers. The verdict
+survives the better look — but it was reached the right way this time.
+
+⚠ **A naming false friend worth knowing: Kelowna's `Kelowna_Applications_MapServices`
+service means SOFTWARE applications.** It contains Snow Removal Priority, Street Lights and
+"Staff Area - Plumbing Inspector". Anything keying on the word "applications" will chase it.
+
+**Vancouver Island: two more found, one wired.**
+
+| Municipality | Pop | Root | Outcome |
+|---|---:|---|---|
+| **Esquimalt** | 17,533 | `gis.esquimalt.ca/arcgis` | ⭐ **WIRED** — migration 336, 29 of 43 kept |
+| Sooke | 15,086 | `gis.sooke.ca/arcgis` | ⛔ not wireable, see below |
+
+Esquimalt runs the **same Tempest DevTracker as Victoria**, with `SUBJECT` and `PURPOSE`
+fields, so Victoria's mapping applies directly. Its content is real structural signal —
+*"Proposing a 4-story wood frame building with a 1-level underground parkade"*. Dated
+2017-07-19 → 2026-08-18, 43 of 43.
+
+⛔ **Sooke has an applications layer and it cannot be used.** `ArcGisProbe` rejected
+**18 of 18**: every row is `PLANNING — <address>` with an **empty description**, so the gate
+has nothing to tell a house from a tower and correctly drops them all. Wiring it would
+manufacture a `source_everything_filtered_out` alert. This is the Saanich problem in the
+Island view's own header — *"the source gives nothing to tell them apart"*.
+
+Eight Island municipalities returned nothing by either method: North Cowichan, Port Alberni,
+Oak Bay, Central Saanich, Powell River, Sidney, North Saanich, Duncan.
+
+**Regional districts — the "one wiring job instead of sixteen" idea, tested and mostly no.**
+Metro Vancouver (`gis.metrovancouver.org`, 883 layers) and Fraser Valley RD
+(`maps.fvrd.ca`, 218) both have ArcGIS roots; Central Okanagan, North Okanagan, Cowichan
+Valley and Capital RD have none at any guessed host. ⚠ The fingerprint reported three
+"Applications" on Metro Vancouver — **Liquid Waste Permits (Industrial / Groundwater) and
+Air Quality Permits/Approvals.** Those are environmental permits, not development
+applications: they carry a permit number, address and type, so the schema fingerprint cannot
+tell them apart. **A schema test is better than a name test and still not a judgment.**
+
+**Alberta: Calgary is live.** `Calgary_LandUseRedesignation`, migration 335 — first run
+864 inserted, 0 failed, **712 of 864 naming an applicant (82%)**, e.g. *"Land Use Amendment
+to accommodate MU-1 — HORIZON LAND SURVEYS"*. §K does not count it; that roster is BC.
+
+⚠ **It took two runs, and the first looked fine.** Esquimalt's first run returned
+**Success=1, 0 inserted, 43 skipped, and zero gate-reject rows** — because
+`IngestionService.cs:123` drops a candidate with no Title **or no Url** *before* the
+relevance gate, so nothing is recorded anywhere. The cause was a missing
+`arcgis.detailUrlTemplate`. Same fault class as Calgary's url-less feed. **Any new source's
+first run must be read for INSERTED, not for Success.**
+
 ### Where that leaves the four that matter
 
 Burnaby (249,125), Richmond (209,937), Langley Township (132,603) and Delta (108,455) are
