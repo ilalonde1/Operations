@@ -140,6 +140,13 @@ public sealed class GenericJsonOpportunityProvider : IOpportunityProvider
             }
 
             var buyer = ReadString(item, mapping.BuyerPath);
+            var applicant = TrimOrNull(ReadString(item, mapping.ApplicantPath));
+            var description = TrimOrNull(ReadString(item, mapping.DescriptionPath));
+            if (applicant is not null)
+            {
+                description = $"Applicant: {applicant}. {description}".TrimEnd();
+            }
+
             var estimatedValueRaw = ReadString(item, mapping.EstimatedValuePath);
             decimal? estimatedValue = null;
             if (!string.IsNullOrWhiteSpace(estimatedValueRaw)
@@ -162,7 +169,8 @@ public sealed class GenericJsonOpportunityProvider : IOpportunityProvider
                         ?? (string.IsNullOrWhiteSpace(buyer) ? "Unknown" : buyer.Trim()),
                 Location = TrimOrNull(ReadString(item, mapping.LocationPath)),
                 Url = url.Trim(),
-                Description = TrimOrNull(ReadString(item, mapping.DescriptionPath)),
+                Description = description,
+                BuyerContactName = applicant is { Length: > 200 } ? applicant[..200] : applicant,
                 PostedDateUtc = ParseDateTimeOffset(ReadString(item, mapping.PostedDatePath)),
                 SubmissionDeadlineUtc = ParseDateTimeOffset(ReadString(item, mapping.DeadlinePath)),
                 ProjectCity = mapping.CityOverride ?? TrimOrNull(ReadString(item, mapping.CityPath)),
@@ -501,6 +509,7 @@ public sealed class GenericJsonOpportunityProvider : IOpportunityProvider
         string? ItemsPath,
         string TitlePath,
         string BuyerPath,
+        string? ApplicantPath,
         string LocationPath,
         string UrlPath,
         string? UrlTemplate,
@@ -521,6 +530,7 @@ public sealed class GenericJsonOpportunityProvider : IOpportunityProvider
                 Get(sourceConfig, "json.itemsPath"),
                 Get(sourceConfig, "json.titlePath") ?? "title",
                 Get(sourceConfig, "json.buyerPath") ?? "buyer",
+                Get(sourceConfig, "json.applicantPath"),
                 Get(sourceConfig, "json.locationPath") ?? "location",
                 Get(sourceConfig, "json.urlPath") ?? "url",
                 Get(sourceConfig, "json.urlTemplate"),
