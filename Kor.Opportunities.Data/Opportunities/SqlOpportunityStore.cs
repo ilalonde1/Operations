@@ -63,8 +63,22 @@ DismissedAtUtc, DismissedBy, DismissedReason";
 
     private sealed record ScoringSource(OpportunitySourceType SourceType, string? Metadata);
 
+    // ⛔ COLUMN 55 MUST BE NULL-GUARDED, and it was not between df46c1f0 and this fix.
+    //    ScoringSources is a `FOR JSON PATH` subquery, and FOR JSON returns NULL — not
+    //    "[]" — when it matches no rows. An opportunity read back before its first
+    //    observation exists therefore yields NULL here, GetString(55) threw
+    //    SqlNullValueException, IngestionService caught it per candidate, and the row was
+    //    counted in FailedCount and DROPPED. Measured on the live database: zero
+    //    failed-candidate runs between 1 and 9 October, then 4 runs and 15 lost candidates
+    //    in the 40 minutes after the scorer deploy — BcBid_Engineering 0 inserted/12
+    //    failed, BcBid, Bonfire_FNHA, Bonfire_Kamloops.
+    //    Column 54 was already guarded for exactly the same reason; 55 was not, in the same
+    //    expression. Found by tools/BigTicketDiff's live comparison, which reported it as
+    //    "outside this brief" — true of the brief, not of production.
     private static OpportunityScoringContext? ReadScoringContext(SqlDataReader reader) => reader.FieldCount < 56 ? null : new(
-        OpportunityKinds.Combine((JsonSerializer.Deserialize<ScoringSource[]>(reader.GetString(55)) ?? [])
+        OpportunityKinds.Combine((reader.IsDBNull(55)
+                ? []
+                : JsonSerializer.Deserialize<ScoringSource[]>(reader.GetString(55)) ?? [])
             .Select(s => OpportunityKinds.FromSource(s.SourceType, s.Metadata))),
         reader.IsDBNull(54) ? null : reader.GetString(54));
 
