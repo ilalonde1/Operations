@@ -2,10 +2,13 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Linq;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Kor.Opportunities.Core.Models;
 using Kor.Opportunities.Core.PrimeConsultant;
+using Kor.Opportunities.Core.Scoring;
 using Kor.Opportunities.Data.Awards;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
@@ -26,11 +29,11 @@ public sealed partial class SqlOpportunityStore : IOpportunityStore, IOpportunit
     private const int CommandTimeoutSeconds = 30;
 
     /// <summary>
-    /// Canonical SELECT column list. Used by both read queries and OUTPUT
+    /// Canonical persisted column list. Used by both read queries and OUTPUT
     /// clauses. Order matches <see cref="MapReader"/>; do not reorder one
     /// without the other.
     /// </summary>
-    private const string AllColumns = @"
+    private const string PersistedColumns = @"
 Id, OpportunityKey, Name,
 BuyerName, BuyerType, DeltekClientId, DeltekContactId, BuyerContactName, BuyerContactEmail, BuyerContactPhone,
 ProjectAddress, ProjectCity, ProjectProvince, ProjectPostalCode, ProjectLatitude, ProjectLongitude,
@@ -45,6 +48,25 @@ PrimeKorSectorMatch, PrimeKorLocationMatch, PrimeClassifiedAtUtc,
 CreatedAtUtc, CreatedBy, UpdatedAtUtc, UpdatedBy,
 RowVersion,
 DismissedAtUtc, DismissedBy, DismissedReason";
+
+    // Set-based enrichment in the existing SELECT, including paged reads. No
+    // per-row client round trip, no new schema, no 5,000-row scoring ceiling.
+    // OUTPUT must use only PersistedColumns: SQL forbids subqueries there.
+    private const string AllColumns = PersistedColumns + @",
+(SELECT TOP (1) ob.Description FROM opportunities.OpportunityObservations ob
+ WHERE ob.OpportunityId = opportunities.Opportunities.Id ORDER BY ob.Id DESC) ScoringDescription,
+(SELECT DISTINCT s.SourceType, m.ValueJson Metadata
+ FROM opportunities.OpportunityObservations ob
+ JOIN opportunities.OpportunitySources s ON s.Id = ob.OpportunitySourceId
+ LEFT JOIN opportunities.OpportunitySourceMappings m ON m.OpportunitySourceId=s.Id AND m.[Key]='bd.kind'
+ WHERE ob.OpportunityId = opportunities.Opportunities.Id FOR JSON PATH) ScoringSources";
+
+    private sealed record ScoringSource(OpportunitySourceType SourceType, string? Metadata);
+
+    private static OpportunityScoringContext? ReadScoringContext(SqlDataReader reader) => reader.FieldCount < 56 ? null : new(
+        OpportunityKinds.Combine((JsonSerializer.Deserialize<ScoringSource[]>(reader.GetString(55)) ?? [])
+            .Select(s => OpportunityKinds.FromSource(s.SourceType, s.Metadata))),
+        reader.IsDBNull(54) ? null : reader.GetString(54));
 
     private readonly string _connectionString;
 
@@ -374,7 +396,7 @@ VALUES
             {
                 throw new InvalidOperationException("INSERT did not return a row. This should be impossible.");
             }
-            inserted = MapReader(reader);
+            inserted = MapReader(reader) with { ScoringContext = opportunity.ScoringContext };
         }
 
         var freshRvAfterInsert = await ResolveBuyerCanonicalAsync(inserted.Id, inserted.RowVersion, opportunity.OpportunityKey, opportunity.BuyerName, ct).ConfigureAwait(false);
@@ -428,7 +450,7 @@ WHERE Id = @id AND RowVersion = @rv;";
             {
                 throw new OpportunityConcurrencyException(opportunity.Id);
             }
-            updated = MapReader(reader);
+            updated = MapReader(reader) with { ScoringContext = opportunity.ScoringContext };
         }
 
         var freshRvAfterUpdate = await ResolveBuyerCanonicalAsync(updated.Id, updated.RowVersion, opportunity.OpportunityKey, opportunity.BuyerName, ct).ConfigureAwait(false);
@@ -504,7 +526,8 @@ SET Status = @status,
     UpdatedAtUtc = sysdatetimeoffset(),
     UpdatedBy = @actor
 OUTPUT {OutputInsertedColumns()}
-WHERE Id = @id AND RowVersion = @rv;";
+WHERE Id = @id AND RowVersion = @rv;
+SELECT {AllColumns} FROM opportunities.Opportunities WHERE Id = @id;";
 
         await using var con = new SqlConnection(_connectionString);
         await con.OpenAsync(ct).ConfigureAwait(false);
@@ -520,17 +543,21 @@ WHERE Id = @id AND RowVersion = @rv;";
             throw new OpportunityConcurrencyException(id);
         }
 
-        return MapReader(reader);
+        var updated = MapReader(reader);
+        await reader.NextResultAsync(ct).ConfigureAwait(false);
+        if (await reader.ReadAsync(ct).ConfigureAwait(false))
+            updated = updated with { ScoringContext = ReadScoringContext(reader) };
+        return updated;
     }
 
     /// <summary>
-    /// Builds the OUTPUT clause's column list. Matches <see cref="AllColumns"/>
+    /// Builds the OUTPUT clause's column list. Matches <see cref="PersistedColumns"/>
     /// exactly, but each column is prefixed with <c>INSERTED.</c> per T-SQL
     /// OUTPUT semantics.
     /// </summary>
     private static string OutputInsertedColumns()
     {
-        var columnNames = AllColumns
+        var columnNames = PersistedColumns
             .Replace("\n", " ")
             .Replace("\r", " ")
             .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
@@ -683,6 +710,7 @@ WHERE Id = @id AND RowVersion = @rv;";
         DismissedAtUtc = r.IsDBNull(51) ? null : r.GetDateTimeOffset(51),
         DismissedBy = r.IsDBNull(52) ? null : r.GetString(52),
         DismissedReason = r.IsDBNull(53) ? null : r.GetString(53),
+        ScoringContext = ReadScoringContext(r),
     };
 
     private static Opportunity WithPrimeClassification(Opportunity opportunity)

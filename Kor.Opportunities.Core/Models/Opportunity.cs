@@ -81,6 +81,10 @@ public sealed record Opportunity
     public decimal? RelevanceScore { get; init; }
     public RelevanceTier? RelevanceTier { get; init; }
 
+    /// <summary>Read-side / ingestion evidence for scoring; never persisted on this row.</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public Scoring.OpportunityScoringContext? ScoringContext { get; init; }
+
     // Outcome
     public WonLostOutcome? WonLostOutcome { get; init; }
     public string? OutcomeReason { get; init; }

@@ -105,6 +105,8 @@ public sealed class IngestionService : IIngestionService
         try
         {
             var mappings = await _sourceStore.GetMappingsAsync(source.Id, ct).ConfigureAwait(false);
+            mappings.TryGetValue("bd.kind", out var kindMetadata);
+            var sourceKind = OpportunityKinds.FromSource(source.SourceType, kindMetadata);
 
             // Ambient degradation channel: a provider that survives in a worse
             // mode (Socrata dropping $where, a scraper hitting its page cap)
@@ -149,7 +151,7 @@ public sealed class IngestionService : IIngestionService
 
                 try
                 {
-                    var outcome = await ProcessCandidateAsync(source, candidate, ct).ConfigureAwait(false);
+                    var outcome = await ProcessCandidateAsync(source, sourceKind, candidate, ct).ConfigureAwait(false);
                     switch (outcome)
                     {
                         case CandidateOutcome.Inserted:
@@ -235,6 +237,7 @@ public sealed class IngestionService : IIngestionService
 
     private async Task<CandidateOutcome> ProcessCandidateAsync(
         OpportunitySource source,
+        OpportunityKind sourceKind,
         OpportunityCandidate candidate,
         CancellationToken ct)
     {
@@ -282,7 +285,10 @@ public sealed class IngestionService : IIngestionService
                 // This is the class: the refresh now runs whether or not the
                 // observation was new. It is fill-only, so it still cannot clobber
                 // a human edit.
-                await RefreshExistingAsync(alreadyLinked, candidate, key, ct).ConfigureAwait(false);
+                // A duplicate sighting can be older than another observation. The
+                // read context holds the newest persisted description in that case.
+                await RefreshExistingAsync(alreadyLinked, candidate, key,
+                    alreadyLinked.ScoringContext ?? new(sourceKind, candidate.Description), ct).ConfigureAwait(false);
                 await RunPersistedAckAsync(source, candidate, ct).ConfigureAwait(false);
                 return CandidateOutcome.Duplicate;
             }
@@ -324,7 +330,8 @@ public sealed class IngestionService : IIngestionService
         long opportunityId;
         if (existing is null)
         {
-            var opportunity = BuildOpportunity(source, candidate, key);
+            var opportunity = BuildOpportunity(source, candidate, key) with
+            { ScoringContext = new(sourceKind, candidate.Description) };
             var scored = _scoringService.Score(opportunity);
             opportunity = opportunity with
             {
@@ -337,7 +344,10 @@ public sealed class IngestionService : IIngestionService
         }
         else
         {
-            opportunityId = await RefreshExistingAsync(existing, candidate, key, ct).ConfigureAwait(false);
+            var kind = existing.ScoringContext is { } previous
+                ? (previous.Kind == sourceKind ? sourceKind : OpportunityKind.Other) : sourceKind;
+            opportunityId = await RefreshExistingAsync(existing, candidate, key,
+                new(kind, candidate.Description), ct).ConfigureAwait(false);
         }
 
         await _observationStore.LinkAsync(persistedObservation.Id, opportunityId, ct).ConfigureAwait(false);
@@ -360,8 +370,10 @@ public sealed class IngestionService : IIngestionService
         Opportunity existing,
         OpportunityCandidate candidate,
         string key,
+        OpportunityScoringContext context,
         CancellationToken ct)
     {
+        existing = existing with { ScoringContext = context };
         var scored = _scoringService.Score(existing);
 
         // Backfill BuyerName when the existing row was ingested before the

@@ -18,13 +18,16 @@ public sealed class RuleBasedOpportunityScoringService : IOpportunityScoringServ
 {
     private readonly IScoringOptionsAccessor _accessor;
     private readonly IDeltekClientFactsAccessor _factsAccessor;
+    private readonly TimeProvider _clock;
 
     public RuleBasedOpportunityScoringService(
         IScoringOptionsAccessor accessor,
-        IDeltekClientFactsAccessor factsAccessor)
+        IDeltekClientFactsAccessor factsAccessor,
+        TimeProvider? clock = null)
     {
         _accessor = accessor;
         _factsAccessor = factsAccessor ?? throw new ArgumentNullException(nameof(factsAccessor));
+        _clock = clock ?? TimeProvider.System;
     }
 
     public OpportunityScore Score(Opportunity opportunity)
@@ -81,9 +84,22 @@ public sealed class RuleBasedOpportunityScoringService : IOpportunityScoringServ
         AppendWeightedMatches(text, opt.NegativeTermWeights, prefix: "Negative: ", sign: -1, factors);
         AppendWeightedMatches(text, opt.RegionTermWeights, prefix: "Region: ", sign: +1, factors);
 
+        if (opportunity.ScoringContext is { Kind: OpportunityKind.Application } context)
+        {
+            // Description is project evidence, not a buyer address / country signal.
+            // Keep legacy tender arithmetic unchanged, including its matching rules.
+            var planningText = opportunity.Name + " " + context.Description;
+            var match = opt.PlanningTermWeights
+                .Where(kv => kv.Value > 0 && PlanningMatches(planningText, kv.Key))
+                .OrderByDescending(kv => kv.Value).ThenBy(kv => kv.Key, StringComparer.OrdinalIgnoreCase)
+                .FirstOrDefault();
+            if (match.Key is not null)
+                factors.Add(new ScoreFactor("Planning form: " + match.Key, match.Value));
+        }
+
         if (opportunity.SubmissionDeadlineUtc.HasValue && !IsTerminalStatus(opportunity.Status))
         {
-            var daysLeft = (opportunity.SubmissionDeadlineUtc.Value - DateTimeOffset.UtcNow).TotalDays;
+            var daysLeft = (opportunity.SubmissionDeadlineUtc.Value - _clock.GetUtcNow()).TotalDays;
             if (daysLeft > 0 && daysLeft < opt.DeadlineWarningWindowDays && opt.DeadlineCrunchPenalty != 0m)
             {
                 factors.Add(new ScoreFactor(
@@ -178,6 +194,12 @@ public sealed class RuleBasedOpportunityScoringService : IOpportunityScoringServ
     }
 
     private static readonly ConcurrentDictionary<string, Regex> _shortTermRegex = new();
+    private static readonly ConcurrentDictionary<string, Regex> PlanningRegex = new();
+
+    private static bool PlanningMatches(string text, string term) => !string.IsNullOrWhiteSpace(term)
+        && PlanningRegex.GetOrAdd(term, t => new Regex(@"\b" + Regex.Escape(t)
+            + (Regex.IsMatch(t, @"^[a-z]{1,2}-", RegexOptions.IgnoreCase) ? @"\b" : @"s?\b"),
+            RegexOptions.IgnoreCase | RegexOptions.Compiled | RegexOptions.CultureInvariant)).IsMatch(text);
 
     // Terms <= 4 chars (acronyms like "BC", "AB", "WA") use word-boundary regex
     // so they don't match inside unrelated words ("Labrador" must not match "AB").

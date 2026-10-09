@@ -42,10 +42,14 @@ internal static class Program
             await File.WriteAllTextAsync(snapshotPath, JsonSerializer.Serialize(captured, Json));
         }
         var snapshot = JsonSerializer.Deserialize<Snapshot>(await File.ReadAllTextAsync(snapshotPath), Json)!;
-        var scorer = new RuleBasedOpportunityScoringService(new Options(snapshot.HasProfile ? snapshot.Options : ScoringOptions.KorDefaults()), new NoFacts());
-        var results = snapshot.Rows.Select(r => new Movement(r, scorer.Explain(r.Opportunity))).ToArray();
+        var scorer = new RuleBasedOpportunityScoringService(new Options(snapshot.HasProfile ? snapshot.Options : ScoringOptions.KorDefaults()), new NoFacts(), new FrozenClock(snapshot.CapturedAtUtc));
+        var results = snapshot.Rows.Select(r => new Movement(r, scorer.Explain(r.Opportunity with
+            { ScoringContext = new(r.Kind, r.Description) }))).ToArray();
         WriteReport(snapshot, results, output);
-        if (args.Contains("--verify")) return CheckContract(results, output) ? 0 : 1;
+        if ((args.Contains("--verify") || args.Contains("--apply")) && !CheckContract(results, output)) return 1;
+        if (args.Contains("--check-store") || args.Contains("--apply"))
+            await LiveRescore.Run(snapshot, results, output, args.Contains("--apply"), args.Contains("--rollback"));
+        if (args.Contains("--verify-live")) await LiveRescore.Verify(snapshot, results, output);
         return 0;
     }
 
@@ -59,7 +63,8 @@ internal static class Program
     {
         var profile = await new SqlScoringProfileStore(connection).LoadAsync(CancellationToken.None);
         var options = profile ?? ScoringOptions.KorDefaults();
-        var scorer = new RuleBasedOpportunityScoringService(new Options(options), new NoFacts());
+        var capturedAt = DateTimeOffset.UtcNow;
+        var scorer = new RuleBasedOpportunityScoringService(new Options(options), new NoFacts(), new FrozenClock(capturedAt));
         await using var con = new SqlConnection(connection);
         await con.OpenAsync();
         // One connection and four set-based reads; no per-opportunity round trips.
@@ -81,19 +86,21 @@ internal static class Program
             """)).GroupBy(r => r.OpportunityId).ToDictionary(g => g.Key, g => g.ToArray());
         var island = (await ReadJson<Island>(con, "SELECT OpportunityId, IsBigTicket FROM opportunities.vIslandApplications FOR JSON PATH;"))
             .GroupBy(r => r.OpportunityId).ToDictionary(g => g.Key, g => g.All(r => r.IsBigTicket));
-        var snapshot = new Snapshot { CapturedAtUtc = DateTimeOffset.UtcNow, Options = options, HasProfile = profile is not null };
+        var snapshot = new Snapshot { CapturedAtUtc = capturedAt, Options = options, HasProfile = profile is not null };
         foreach (var opportunity in opportunities)
         {
             var memberships = sources.GetValueOrDefault(opportunity.Id) ?? [];
+            var kind = OpportunityKinds.Combine(memberships.Select(s => OpportunityKinds.FromSource(s.SourceType, s.Metadata)));
+            var description = descriptions.GetValueOrDefault(opportunity.Id)?.Description;
             snapshot.Rows.Add(new CorpusRow
             {
                 Opportunity = opportunity,
-                Description = descriptions.GetValueOrDefault(opportunity.Id)?.Description,
+                Description = description,
                 ObservationId = descriptions.GetValueOrDefault(opportunity.Id)?.ObservationId,
                 Sources = memberships,
-                Kind = OpportunityKinds.Combine(memberships.Select(s => OpportunityKinds.FromSource(s.SourceType, s.Metadata))),
+                Kind = kind,
                 IsBigTicket = island.TryGetValue(opportunity.Id, out var big) ? big : null,
-                Baseline = scorer.Explain(opportunity),
+                Baseline = scorer.Explain(opportunity with { ScoringContext = new(kind, description) }),
             });
         }
         return snapshot;
@@ -147,12 +154,39 @@ internal static class Program
         File.WriteAllLines(Path.Combine(directory, "rows.csv"), all);
         File.WriteAllLines(Path.Combine(directory, "tier-changes.csv"), changedTiers);
         File.WriteAllText(Path.Combine(directory, "results.json"), JsonSerializer.Serialize(rows.Select(r => new { r.Row.Opportunity.Id, r.After }), Json));
+        WriteStoredMovement(rows, directory);
         WriteChart(groups, directory);
         Console.WriteLine($"Rows={rows.Length}; score up={rows.Count(r => r.After.Score > r.Row.Baseline.Score)}, down={rows.Count(r => r.After.Score < r.Row.Baseline.Score)}; changed tiers={rows.Count(r => r.After.Tier != r.Row.Baseline.Tier)}; stored-tier changes={rows.Count(r => r.After.Tier != r.Row.Opportunity.RelevanceTier)}");
         Console.WriteLine($"Reports: {Path.GetFullPath(directory)}");
     }
 
     private static string Csv(object? value) => "\"" + (Convert.ToString(value, CultureInfo.InvariantCulture) ?? "").Replace("\"", "\"\"") + "\"";
+
+    private static void WriteStoredMovement(Movement[] rows, string directory)
+    {
+        // The rule diff above recomputes both arms. The live write deliberately
+        // leaves non-applications at their STORED values, even if old deadline /
+        // profile drift would change them on a fresh legacy-rule calculation.
+        decimal? Score(Movement r) => r.Row.Kind == OpportunityKind.Application ? r.After.Score : r.Row.Opportunity.RelevanceScore;
+        RelevanceTier? Tier(Movement r) => r.Row.Kind == OpportunityKind.Application ? r.After.Tier : r.Row.Opportunity.RelevanceTier;
+        var beforeRank = rows.OrderByDescending(r => r.Row.Opportunity.RelevanceScore).ThenBy(r => r.Row.Opportunity.Id)
+            .Select((r, i) => (r.Row.Opportunity.Id, Rank: i + 1)).ToDictionary(r => r.Id, r => r.Rank);
+        var afterRank = rows.OrderByDescending(Score).ThenBy(r => r.Row.Opportunity.Id)
+            .Select((r, i) => (r.Row.Opportunity.Id, Rank: i + 1)).ToDictionary(r => r.Id, r => r.Rank);
+        const string header = "Id,Kind,StoredBeforeScore,PersistedAfterScore,StoredBeforeTier,PersistedAfterTier,StoredBeforeRank,PersistedAfterRank";
+        string Line(Movement r) => string.Join(',', new object?[] { r.Row.Opportunity.Id, r.Row.Kind,
+            r.Row.Opportunity.RelevanceScore, Score(r), r.Row.Opportunity.RelevanceTier, Tier(r),
+            beforeRank[r.Row.Opportunity.Id], afterRank[r.Row.Opportunity.Id] }.Select(Csv));
+        File.WriteAllLines(Path.Combine(directory, "stored-movement.csv"), new[] { header }.Concat(rows.Select(Line)));
+        File.WriteAllLines(Path.Combine(directory, "persisted-tier-changes.csv"), new[] { header }
+            .Concat(rows.Where(r => r.Row.Opportunity.RelevanceTier != Tier(r)).Select(Line)));
+        File.AppendAllText(Path.Combine(directory, "summary.md"),
+            $"\nPlanned live write (applications only; preserves stored bids/awards/other): {rows.Count(r => Score(r) != r.Row.Opportunity.RelevanceScore || Tier(r) != r.Row.Opportunity.RelevanceTier)} rows; "
+            + $"tier promotions {rows.Count(r => r.Row.Opportunity.RelevanceTier.HasValue && Tier(r) > r.Row.Opportunity.RelevanceTier)}, "
+            + $"demotions {rows.Count(r => r.Row.Opportunity.RelevanceTier.HasValue && Tier(r) < r.Row.Opportunity.RelevanceTier)}, "
+            + $"newly assigned tiers {rows.Count(r => !r.Row.Opportunity.RelevanceTier.HasValue && Tier(r).HasValue)}. "
+            + "See stored-movement.csv for every stored-score rank change and persisted-tier-changes.csv for every tier write. The broader tier-changes.csv ALSO exposes existing stored-versus-recomputed drift; it is not the update list.\n");
+    }
 
     // Evaluation cohorts only: positive form evidence from the gate vocabulary.
     // Never used to admit, hide, classify as small, or score a production row.
@@ -231,3 +265,4 @@ internal sealed class Options(ScoringOptions options) : IScoringOptionsAccessor
     public ScoringOptions Update(ScoringOptions value) => throw new NotSupportedException("Frozen harness options.");
 }
 internal sealed class NoFacts : IDeltekClientFactsAccessor { public DeltekClientFactsSnapshot? GetFacts(string? clientId) => null; }
+internal sealed class FrozenClock(DateTimeOffset timestamp) : TimeProvider { public override DateTimeOffset GetUtcNow() => timestamp; }

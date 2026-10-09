@@ -1,0 +1,1 @@
+ROLLED BACK: 2108 application rows updated; tier promotions=2054, demotions=0, previously unscored tiers=53. Production read=2.26s; total=3.33s.

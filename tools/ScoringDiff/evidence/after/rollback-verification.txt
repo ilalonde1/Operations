@@ -1,0 +1,1 @@
+Verified 8841 stored rows: score/tier, non-score fields, latest description/kind, and unchanged rowversions for untouched rows. Failures=0; newly arrived rows=0.

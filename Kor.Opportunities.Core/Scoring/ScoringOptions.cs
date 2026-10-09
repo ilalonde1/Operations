@@ -19,6 +19,32 @@ public sealed class ScoringOptions
 
     public Dictionary<string, decimal> NegativeTermWeights { get; init; } = new(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>Application-only form evidence. Award the strongest match once,
+    /// not a sum of synonyms. Existing serialized profiles inherit these defaults.</summary>
+    public Dictionary<string, decimal> PlanningTermWeights { get; init; } = PlanningDefaults();
+
+    private static Dictionary<string, decimal> PlanningDefaults()
+    {
+        var weights = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
+        // StructuralRelevanceGate.BuildingSignals (2026-09-03/04 and 8c3d80a1).
+        // Do not copy broad admission words (residential, dwelling, storey, setback,
+        // suites): admission evidence is not evidence of multi-unit project scope.
+        // Multi family / multi-residential are spelling aliases of multi-family.
+        foreach (var term in new[] { "multi-family", "multi family", "multifamily",
+            "multi-residential", "multi residential", "mixed-use", "mixed use",
+            "apartment", "condominium", "townhouse", "townhome", "rowhouse", "row house",
+            "fourplex", "sixplex", "houseplex", "multiplex",
+            "m-cg", "m-c1", "m-c2", "m-g", "m-1", "m-2", "m-h1", "m-h2", "m-h3",
+            "m-x1", "m-x2", "h-go", "mu-1", "mu-2" }) weights[term] = 30m;
+        // Gate-ratified commercial / industrial / special districts. Smaller
+        // contribution than an explicit multi-unit form; no bare DC or R-only codes.
+        foreach (var term in new[] { "i-g", "i-b", "i-e", "i-c", "i-r", "i-o", "i-h",
+            "c-n1", "c-n2", "c-c1", "c-c2", "c-cor1", "c-cor2", "c-cor3", "c-o", "c-r1", "c-r2", "c-r3",
+            "cc-mh", "cc-mhx", "cc-x", "cc-cor", "cc-et", "cc-eir", "cc-emu", "cc-epr", "cc-err", "cc-er", "cr20-c20/r20",
+            "s-un", "s-spr", "s-cs", "s-r", "s-ci", "s-cri", "s-urp", "s-fud", "s-tuc" }) weights[term] = 20m;
+        return weights;
+    }
+
     /// <summary>Region-name weights (positive = in-footprint, negative = out-of-scope).
     /// Combined into the same scoring sum as <see cref="PositiveTermWeights"/>.</summary>
     public Dictionary<string, decimal> RegionTermWeights { get; init; } = new(StringComparer.OrdinalIgnoreCase);

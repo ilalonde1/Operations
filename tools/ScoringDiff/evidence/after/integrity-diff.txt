@@ -1,0 +1,1 @@
+Compared 98 invariant counts. Differences: 0. Both runs: 1 pre-existing cross-source merge error, 39 warnings, 0 check failures.
