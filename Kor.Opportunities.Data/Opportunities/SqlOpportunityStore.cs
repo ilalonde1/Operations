@@ -18,7 +18,7 @@ namespace Kor.Opportunities.Data.Opportunities;
 /// no EF — matches repo convention. Connection string is injected as a
 /// plain string so this project stays free of host-specific Options classes.
 /// </summary>
-public sealed class SqlOpportunityStore : IOpportunityStore
+public sealed partial class SqlOpportunityStore : IOpportunityStore, IOpportunityHubStore
 {
     private readonly CanonicalOrgResolver? _canonicalResolver;
     private readonly ILogger<SqlOpportunityStore> _logger;

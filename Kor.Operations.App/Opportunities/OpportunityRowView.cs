@@ -19,6 +19,17 @@ public sealed class OpportunityRowView
         Model = model;
     }
 
+    public OpportunityKind Kind { get; init; }
+    public DateTimeOffset? FiledAtUtc { get; init; }
+    public string KindDisplay => Kind switch
+    {
+        OpportunityKind.Application => "Application / rezoning",
+        OpportunityKind.Bid => "Bid / RFP",
+        OpportunityKind.Award => "Award / bid history",
+        _ => "Other / unclassified",
+    };
+    public string FiledAtDisplay => FiledAtUtc?.ToString("yyyy-MM-dd") ?? "Unknown";
+
     /// <summary>The underlying immutable record. The grid never mutates this;
     /// edits happen via the entry dialog or status-change command, which call
     /// the store and return a fresh record.</summary>

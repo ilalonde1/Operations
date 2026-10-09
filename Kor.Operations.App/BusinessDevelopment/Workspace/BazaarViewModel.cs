@@ -33,6 +33,33 @@ public sealed class BazaarViewModel : ObservableObject, IAiContextProvider
     private string _statusMessage = "Ready.";
     private bool _isLoading;
     private bool _isGrabbing;
+    private readonly IOpportunityHubStore? _hubStore;
+    private OpportunityRowView[] _hubRows = Array.Empty<OpportunityRowView>();
+    internal OpportunityHubSegment? HubSegment { get; private set; }
+    private OpportunityKind? _hubKind;
+
+    internal void ConfigureHub(OpportunityHubSegment segment, OpportunityKind? kind)
+    {
+        HubSegment = segment;
+        _hubKind = kind;
+        ApplyHubRows();
+    }
+
+    private void ApplyHubRows()
+    {
+        if (HubSegment is not { } segment) return;
+        var candidates = _hubRows.Where(r => OpportunityHubSelection.Matches(r, segment, "", _hubKind)).ToArray();
+        var eligible = BazaarOpportunitySelector.SelectDefaultView(candidates.Select(r => r.Model), DateTimeOffset.UtcNow)
+            .Select(o => o.Id).ToHashSet();
+        var rows = OpportunityHubSelection.Sort(candidates.Where(r => eligible.Contains(r.Id)), segment, DateTimeOffset.UtcNow);
+        Grabbable.Clear();
+        foreach (var row in rows) Grabbable.Add(row);
+        Selected = null;
+        _contextSnapshot = Grabbable.ToArray();
+        OnPropertyChanged(nameof(HasGrabbable));
+        OnPropertyChanged(nameof(Headline));
+        StatusMessage = $"Loaded {Grabbable.Count} opportunities to grab. Existing availability rules apply; clear To grab for the full segment.";
+    }
 
     // Immutable snapshot of the loaded pool, swapped on the UI thread after each
     // load. BuildContext()/HasData run on AppAiContextBuilder's worker thread and
@@ -42,9 +69,11 @@ public sealed class BazaarViewModel : ObservableObject, IAiContextProvider
     public BazaarViewModel(
         IOpportunityStore opportunityStore,
         IPursuitGrabStore grabStore,
-        Kor.Opportunities.Data.MajorProjects.IPursuitLifecycleStore lifecycleStore)
+        Kor.Opportunities.Data.MajorProjects.IPursuitLifecycleStore lifecycleStore,
+        IOpportunityHubStore? hubStore = null)
     {
         _opportunityStore = opportunityStore ?? throw new ArgumentNullException(nameof(opportunityStore));
+        _hubStore = hubStore;
         _grabStore = grabStore ?? throw new ArgumentNullException(nameof(grabStore));
         _lifecycleStore = lifecycleStore ?? throw new ArgumentNullException(nameof(lifecycleStore));
     }
@@ -100,6 +129,13 @@ public sealed class BazaarViewModel : ObservableObject, IAiContextProvider
         StatusMessage = "Loading opportunities to grab…";
         try
         {
+            if (HubSegment.HasValue)
+            {
+                var loaded = await (_hubStore ?? throw new InvalidOperationException("Hub store is not configured.")).ListHubAsync(ct).ConfigureAwait(true);
+                _hubRows = loaded.Select(r => new OpportunityRowView(r.Opportunity) { Kind = r.Kind, FiledAtUtc = r.FiledAtUtc }).ToArray();
+                ApplyHubRows();
+                return;
+            }
             // Reuse the tested list path (excludes closed Won/Lost), then keep
             // only the grabbable pool: still New, not yet owned, not dismissed
             // ("not for us", migration 284 — client mirror of
@@ -171,6 +207,7 @@ public sealed class BazaarViewModel : ObservableObject, IAiContextProvider
 
             // Either way the opportunity has left the New/un-owned pool — drop it.
             Grabbable.Remove(row);
+            _hubRows = _hubRows.Where(r => r.Id != row.Id).ToArray();
             if (ReferenceEquals(_selected, row))
             {
                 Selected = null;
@@ -205,6 +242,7 @@ public sealed class BazaarViewModel : ObservableObject, IAiContextProvider
         if (outcome == Kor.Opportunities.Data.MajorProjects.LifecycleOutcome.Applied)
         {
             Grabbable.Remove(row);
+            _hubRows = _hubRows.Where(r => r.Id != row.Id).ToArray();
             if (ReferenceEquals(_selected, row))
             {
                 Selected = null;

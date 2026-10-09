@@ -43,6 +43,7 @@ internal static class OpportunitiesModule
             options.OpportunitiesDb,
             sp.GetRequiredService<Kor.Opportunities.Data.Awards.CanonicalOrgResolver>(),
             sp.GetService<ILogger<SqlOpportunityStore>>()));
+        services.AddSingleton<IOpportunityHubStore>(sp => (IOpportunityHubStore)sp.GetRequiredService<IOpportunityStore>());
 
         // Manual-entry duplicate guard (2026-07-07): thin finder over the store,
         // consumed by OpportunityEntryDialog.

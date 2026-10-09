@@ -1,84 +1,128 @@
 #nullable enable
 using System;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using Kor.Operations.App.Opportunities;
+using Kor.Operations.App.Options;
+using Kor.Opportunities.Core.Models;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Kor.Operations.App.BusinessDevelopment.Workspace;
 
-/// <summary>
-/// One "Opportunities" surface that unifies what used to be two nav items:
-/// "To grab" (the un-claimed, relevance-ranked pool — BazaarView) and
-/// "All tenders" (the full registry — OpportunitiesView). Same underlying
-/// opportunities.Opportunities table; "To grab" is just the un-claimed slice.
-/// Toggling swaps the hosted view; each is resolved lazily and reused.
-/// </summary>
+/// <summary>Kind first; claim state is an optional filter. Both existing views retain their actions.</summary>
 public partial class OpportunitiesHubView : UserControl
 {
     private readonly IServiceProvider _services;
     private BazaarView? _grab;
-    private App.Opportunities.OpportunitiesView? _all;
+    private readonly OpportunitiesView _all;
+    private readonly OpportunitiesViewModel _vm;
+    private OpportunityHubSegment _segment = OpportunityHubSegment.Signals;
+    private bool _updating;
+    private string Actor => !string.IsNullOrWhiteSpace(global::Kor.Operations.OperationsApp.SignedInUserUpn)
+        ? global::Kor.Operations.OperationsApp.SignedInUserUpn.Trim()
+        : _services.GetRequiredService<UserOptions>().UserUpnOverride?.Trim() is { Length: > 0 } upn ? upn : Environment.UserName;
 
     public OpportunitiesHubView(IServiceProvider services)
     {
         _services = services ?? throw new ArgumentNullException(nameof(services));
         InitializeComponent();
-        ShowGrab();
+        _all = _services.GetRequiredService<OpportunitiesView>();
+        _vm = (OpportunitiesViewModel)_all.DataContext;
+        _vm.HubChanged += RegistryChanged;
+        ShowSegment(OpportunityHubSegment.Signals);
     }
 
-    /// <summary>Open directly on a mode (deep-links: "All tenders" from the dashboard).</summary>
-    public void ShowMode(bool allTenders)
-    {
-        if (allTenders) { ShowAll(); } else { ShowGrab(); }
-    }
+    // Preserve callers of the old two-door API: the tender shortcut now opens Bids.
+    public void ShowMode(bool allTenders) => ShowSegment(allTenders ? OpportunityHubSegment.Bids : OpportunityHubSegment.Signals);
 
-    /// <summary>
-    /// Land on "All tenders" with one opportunity pre-selected — the
-    /// kor://opp/&lt;id&gt; deep link. The full registry is used rather than
-    /// "To grab" because a linked tender may already be claimed, and the
-    /// un-claimed slice would silently hide it. The id is stamped on the view
-    /// model and consumed by its next load, the same handshake
-    /// <c>NavigateToPursuit</c> uses.
-    /// </summary>
     public void ShowOpportunity(long opportunityId)
     {
-        ShowAll();
-        if (_all?.DataContext is App.Opportunities.OpportunitiesViewModel vm)
+        ShowSegment(OpportunityHubSegment.Signals);
+        _vm.PendingSelectOpportunityId = opportunityId;
+        if (_vm.SelectById(opportunityId)) _vm.PendingSelectOpportunityId = null;
+    }
+
+    private void Signals_Click(object sender, RoutedEventArgs e) => ShowSegment(OpportunityHubSegment.Signals);
+    private void Bids_Click(object sender, RoutedEventArgs e) => ShowSegment(OpportunityHubSegment.Bids);
+    private void Mine_Click(object sender, RoutedEventArgs e) => ShowSegment(OpportunityHubSegment.Mine);
+
+    private void ShowSegment(OpportunityHubSegment segment)
+    {
+        _segment = segment;
+        _updating = true;
+        ToGrabFilter.IsChecked = false;
+        SetKindOptions();
+        _updating = false;
+        ApplyFilters();
+    }
+
+    private void SetKindOptions()
+    {
+        KindFilter.Items.Clear();
+        KindFilter.Items.Add(new ComboBoxItem { Content = "All kinds" });
+        if (_segment != OpportunityHubSegment.Bids)
         {
-            vm.PendingSelectOpportunityId = opportunityId;
-
-            // The view may already be loaded and idle (the hub reuses it), in
-            // which case no further load would run to consume the stamp.
-            if (vm.Opportunities.Count > 0 && vm.SelectById(opportunityId))
-            {
-                vm.PendingSelectOpportunityId = null;
-            }
+            KindFilter.Items.Add(new ComboBoxItem { Content = "Applications / rezonings", Tag = OpportunityKind.Application });
+            KindFilter.Items.Add(new ComboBoxItem { Content = "Other / unclassified", Tag = OpportunityKind.Other });
         }
+        if (_segment != OpportunityHubSegment.Signals)
+        {
+            KindFilter.Items.Add(new ComboBoxItem { Content = "Bids / RFPs", Tag = OpportunityKind.Bid });
+            KindFilter.Items.Add(new ComboBoxItem { Content = "Awards / bid history", Tag = OpportunityKind.Award });
+        }
+        KindFilter.SelectedIndex = 0;
     }
 
-    private void ToGrab_Click(object sender, RoutedEventArgs e) => ShowGrab();
-    private void All_Click(object sender, RoutedEventArgs e) => ShowAll();
+    private void KindFilter_Changed(object sender, SelectionChangedEventArgs e) { if (!_updating && _vm is not null) ApplyFilters(); }
+    private void ToGrab_Changed(object sender, RoutedEventArgs e) { if (!_updating && _vm is not null) ApplyFilters(); }
 
-    private void ShowGrab()
+    private void ApplyFilters()
     {
-        _grab ??= _services.GetRequiredService<BazaarView>();
-        Host.Content = _grab;
-        StyleTabs(grab: true);
+        var kind = (KindFilter.SelectedItem as ComboBoxItem)?.Tag as OpportunityKind?;
+        _updating = true;
+        _vm.ConfigureHub(_segment, Actor, kind);
+        _updating = false;
+        if (ToGrabFilter.IsChecked == true && _segment != OpportunityHubSegment.Mine)
+        {
+            _grab ??= _services.GetRequiredService<BazaarView>();
+            ((BazaarViewModel)_grab.DataContext).ConfigureHub(_segment, kind);
+            Host.Content = _grab;
+        }
+        else Host.Content = _all;
+        UpdateHeader();
     }
 
-    private void ShowAll()
+    private void RegistryChanged(object? sender, EventArgs e)
     {
-        _all ??= _services.GetRequiredService<App.Opportunities.OpportunitiesView>();
-        Host.Content = _all;
-        StyleTabs(grab: false);
+        if (_updating) return;
+        if (_vm.HubSegment is { } segment && (segment != _segment
+            || (_vm.HubKind is null && (KindFilter.SelectedItem as ComboBoxItem)?.Tag is not null)))
+        {
+            _segment = segment;
+            _updating = true;
+            ToGrabFilter.IsChecked = false;
+            SetKindOptions();
+            _updating = false;
+        }
+        UpdateHeader();
     }
 
-    private void StyleTabs(bool grab)
+    private void UpdateHeader()
     {
-        ToGrabBtn.Style = (Style)FindResource(grab ? "SegBtnActive" : "SegBtn");
-        AllBtn.Style = (Style)FindResource(grab ? "SegBtn" : "SegBtnActive");
-        ModeHint.Text = grab
-            ? "Un-claimed opportunities ranked by fit — grab one to start a pursuit."
-            : "Every open tender in the registry, filterable.";
+        SignalsBtn.Style = (Style)FindResource(_segment == OpportunityHubSegment.Signals ? "SegBtnActive" : "SegBtn");
+        BidsBtn.Style = (Style)FindResource(_segment == OpportunityHubSegment.Bids ? "SegBtnActive" : "SegBtn");
+        MineBtn.Style = (Style)FindResource(_segment == OpportunityHubSegment.Mine ? "SegBtnActive" : "SegBtn");
+        ToGrabFilter.Visibility = _segment == OpportunityHubSegment.Mine ? Visibility.Collapsed : Visibility.Visible;
+        ModeHint.Text = _segment switch
+        {
+            OpportunityHubSegment.Signals => "Applications / rezonings and other leads · newest filed first; unknown dates last",
+            OpportunityHubSegment.Bids => "Bids / RFPs and awards · upcoming deadlines first; expired and undated rows follow",
+            _ => "Your claimed opportunities · most recently touched first",
+        };
+        var signals = _vm.Opportunities.Count(r => OpportunityHubSelection.Matches(r, OpportunityHubSegment.Signals, Actor));
+        var bids = _vm.Opportunities.Count(r => OpportunityHubSelection.Matches(r, OpportunityHubSegment.Bids, Actor));
+        var mine = _vm.Opportunities.Count(r => OpportunityHubSelection.Matches(r, OpportunityHubSegment.Mine, Actor));
+        CountHint.Text = $"Signals {signals:N0} · Bids {bids:N0} · Mine {mine:N0} (also in Signals / Bids) · Total {signals + bids:N0}";
     }
 }

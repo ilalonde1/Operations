@@ -20,6 +20,7 @@
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
@@ -28,16 +29,26 @@
                     BorderBrush="{StaticResource Panel.Border}"
                     Background="{StaticResource App.Background}">
                 <StackPanel Orientation="Horizontal">
-                    <Button x:Name="ToGrabBtn" Content="To grab" Click="ToGrab_Click"
-                            ToolTip="Un-claimed opportunities ranked by fit — grab one to start a pursuit."/>
-                    <Button x:Name="AllBtn" Content="All tenders" Click="All_Click"
-                            ToolTip="Every open tender in the registry, filterable."/>
+                    <Button x:Name="SignalsBtn" Content="Signals" Click="Signals_Click"
+                            ToolTip="Applications and rezonings, plus clearly marked other or unclassified leads."/>
+                    <Button x:Name="BidsBtn" Content="Bids" Click="Bids_Click"
+                            ToolTip="Requests for bids and separately identified awards and bid history."/>
+                    <Button x:Name="MineBtn" Content="Mine" Click="Mine_Click"
+                            ToolTip="Opportunities you own, of any kind, most recently touched first."/>
                 </StackPanel>
             </Border>
             <TextBlock x:Name="ModeHint" VerticalAlignment="Center" Margin="14,0,0,0"
                        Foreground="{StaticResource Text.Secondary}" FontSize="12"/>
         </StackPanel>
 
-        <ContentControl Grid.Row="1" x:Name="Host"/>
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="12,0,0,10">
+            <TextBlock Text="Show:" VerticalAlignment="Center" Margin="0,0,8,0"/>
+            <ComboBox x:Name="KindFilter" Width="220" SelectionChanged="KindFilter_Changed"/>
+            <CheckBox x:Name="ToGrabFilter" Content="To grab" Margin="16,0,0,0" VerticalAlignment="Center"
+                      Checked="ToGrab_Changed" Unchecked="ToGrab_Changed"
+                      ToolTip="Available, unclaimed opportunities using the existing Bazaar eligibility rules."/>
+            <TextBlock x:Name="CountHint" Margin="16,0,0,0" VerticalAlignment="Center" Foreground="{StaticResource Text.Secondary}"/>
+        </StackPanel>
+        <ContentControl Grid.Row="2" x:Name="Host"/>
     </Grid>
 </UserControl>

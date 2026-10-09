@@ -1,5 +1,6 @@
 #nullable enable
 using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -40,6 +41,8 @@ public partial class BazaarView : UserControl
         }
 
         _initialized = true;
+        foreach (var column in BazaarGrid.Columns.Where(c => c.Header is "Kind" or "Filed / posted"))
+            column.Visibility = _vm.HubSegment.HasValue ? Visibility.Visible : Visibility.Collapsed;
         AppServices.Get<AppAiContextBuilder>().Register(_vm);
         // Plan 2.2c: adoption instrumentation — fire-and-forget, expendable.
         AppServices.Get<Kor.Opportunities.Data.Crm.IBdUiOpenStore>().RecordOpen("Bazaar", ResolveActor());

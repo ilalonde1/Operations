@@ -22,6 +22,7 @@ using Kor.Opportunities.Data.Ingestion;
 using Kor.Opportunities.Data.Observations;
 using Kor.Opportunities.Data.Opportunities;
 using Kor.Opportunities.Data.Sources;
+using Kor.Operations.App.BusinessDevelopment.Workspace;
 
 namespace Kor.Operations.App.Opportunities;
 
@@ -56,6 +57,32 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
     private readonly IOpportunityObservationStore _observationStore;
     private readonly IOpportunityInterestedFirmStore _interestStore;
     private readonly IPursuitGrabStore _grabStore;
+    private readonly IOpportunityHubStore? _hubStore;
+    internal OpportunityHubSegment? HubSegment { get; private set; }
+    private string _hubActor = "";
+    private OpportunityKind? _hubKind;
+    internal OpportunityKind? HubKind => _hubKind;
+    public event EventHandler? HubChanged;
+
+    internal void ConfigureHub(OpportunityHubSegment segment, string actor, OpportunityKind? kind = null)
+    {
+        HubSegment = segment;
+        _hubActor = actor;
+        _hubKind = kind;
+        PrimeConsultantOnly = false;
+        RefreshHub();
+    }
+
+    private void RefreshHub()
+    {
+        if (HubSegment is { } segment && FilteredOpportunitiesView is ListCollectionView view)
+        {
+            view.CustomSort = OpportunityHubSelection.Comparer(Opportunities, segment);
+            view.Refresh();
+            if (Selected is not null && !view.Contains(Selected)) Selected = null;
+            HubChanged?.Invoke(this, EventArgs.Empty);
+        }
+    }
 
     // Frozen so the VM can hand them out cross-thread (XAML binds on UI thread but
     // RefreshHeartbeatAsync runs the assignment off the UI thread). Mirrors the
@@ -98,7 +125,8 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
         ICrmContactStore contactStore,
         IOpportunityObservationStore observationStore,
         IOpportunityInterestedFirmStore interestStore,
-        IPursuitGrabStore grabStore)
+        IPursuitGrabStore grabStore,
+        IOpportunityHubStore? hubStore = null)
     {
         _store = store;
         _heartbeatStore = heartbeatStore;
@@ -113,6 +141,7 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
         _observationStore = observationStore ?? throw new ArgumentNullException(nameof(observationStore));
         _interestStore = interestStore ?? throw new ArgumentNullException(nameof(interestStore));
         _grabStore = grabStore ?? throw new ArgumentNullException(nameof(grabStore));
+        _hubStore = hubStore;
 
         FilteredOpportunitiesView = CollectionViewSource.GetDefaultView(Opportunities);
         FilteredOpportunitiesView.Filter = OpportunityFilterPredicate;
@@ -424,15 +453,23 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
         StatusMessage = "Loading…";
         try
         {
-            var rows = await _store.ListAsync(ct, includeClosed: false, includeNonPrime: true).ConfigureAwait(true);
+            var hubRows = HubSegment.HasValue
+                ? await (_hubStore ?? throw new InvalidOperationException("Hub store is not configured.")).ListHubAsync(ct).ConfigureAwait(true)
+                : null;
+            var rows = hubRows?.Select(r => r.Opportunity).ToArray()
+                ?? await _store.ListAsync(ct, includeClosed: false, includeNonPrime: true).ConfigureAwait(true);
             ct.ThrowIfCancellationRequested();
 
             var preservedKey = Selected?.OpportunityKey;
             Opportunities.Clear();
+            var metadata = hubRows?.ToDictionary(r => r.Opportunity.Id);
             foreach (var r in rows)
             {
-                Opportunities.Add(new OpportunityRowView(r));
+                Opportunities.Add(metadata is not null && metadata.TryGetValue(r.Id, out var info)
+                    ? new OpportunityRowView(r) { Kind = info.Kind, FiledAtUtc = info.FiledAtUtc }
+                    : new OpportunityRowView(r));
             }
+            RefreshHub();
 
             // A pending deep-link (kor://opp/<id>) wins over preservation, and
             // reveals itself by clearing filters that would hide the row.
@@ -442,7 +479,7 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
 
             if (!deepLinked && !string.IsNullOrEmpty(preservedKey))
             {
-                Selected = Opportunities.FirstOrDefault(r => r.OpportunityKey == preservedKey);
+                Selected = Opportunities.FirstOrDefault(r => r.OpportunityKey == preservedKey && OpportunityFilterPredicate(r));
             }
 
             _oppContextSnapshot = Opportunities.ToArray();
@@ -995,6 +1032,14 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
             return false;
         }
 
+        if (HubSegment.HasValue)
+        {
+            HubSegment = row.Kind is OpportunityKind.Bid or OpportunityKind.Award
+                ? OpportunityHubSegment.Bids : OpportunityHubSegment.Signals;
+            _hubKind = null;
+            RefreshHub();
+        }
+
         if (!OpportunityFilterPredicate(row))
         {
             // Each setter refreshes the collection view.
@@ -1015,8 +1060,10 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
         {
             if (Opportunities[i].Id == saved.Id)
             {
-                Opportunities[i] = new OpportunityRowView(saved);
+                var previous = Opportunities[i];
+                Opportunities[i] = new OpportunityRowView(saved) { Kind = previous.Kind, FiledAtUtc = previous.FiledAtUtc };
                 Selected = Opportunities[i];
+                RefreshHub();
                 return;
             }
         }
@@ -1024,6 +1071,7 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
         // Should not happen for an UPDATE/ChangeStatus; treat as insert.
         Opportunities.Insert(0, new OpportunityRowView(saved));
         Selected = Opportunities[0];
+        RefreshHub();
     }
 
     private bool OpportunityFilterPredicate(object obj)
@@ -1032,6 +1080,8 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
         {
             return false;
         }
+
+        if (HubSegment is { } segment && !OpportunityHubSelection.Matches(row, segment, _hubActor, _hubKind)) return false;
 
         if (StatusFilter is { } status && row.Model.Status != status)
         {

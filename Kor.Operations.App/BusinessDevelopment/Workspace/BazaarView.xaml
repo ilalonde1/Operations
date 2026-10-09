@@ -57,6 +57,8 @@
                           MouseDoubleClick="BazaarGrid_MouseDoubleClick"
                           ToolTip="Double-click a row to open the buyer's intel dossier before deciding to grab.">
                     <DataGrid.Columns>
+                        <DataGridTextColumn Header="Kind" Binding="{Binding KindDisplay}" Width="155"/>
+                        <DataGridTextColumn Header="Filed / posted" Binding="{Binding FiledAtDisplay}" SortMemberPath="FiledAtUtc" Width="110"/>
                         <DataGridTemplateColumn Header="Relevance" Width="110">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>

@@ -178,6 +178,8 @@
                       SelectedItem="{Binding Selected}"
                       MouseDoubleClick="OpportunitiesGrid_MouseDoubleClick">
                 <DataGrid.Columns>
+                    <DataGridTextColumn Header="Kind" Binding="{Binding KindDisplay}" Width="155"/>
+                    <DataGridTextColumn Header="Filed / posted" Binding="{Binding FiledAtDisplay}" SortMemberPath="FiledAtUtc" Width="110"/>
                     <DataGridTemplateColumn Header="Repeat" Width="52" SortMemberPath="IsRepeatClient">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
@@ -350,7 +352,7 @@
                         </Grid>
 
                         <!-- Open the original RFP page in the browser -->
-                        <Button Content="Open RFP"
+                        <Button Content="Open source"
                                 HorizontalAlignment="Left"
                                 Padding="10,4"
                                 Margin="0,0,0,12"
