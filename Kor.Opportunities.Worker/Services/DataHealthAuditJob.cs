@@ -254,6 +254,7 @@ internal sealed partial class DataHealthAuditJob : IJob
             var staleSources = await QueryAsync(connection, Q9SourceStalenessSql, ReadSourceStalenessRow, context.CancellationToken).ConfigureAwait(false);
             var sourceCoverage = await QueryAsync(connection, SourceCoverageSql, ReadSourceCoverageRow, context.CancellationToken).ConfigureAwait(false);
             var mpiFreshness = await QueryAsync(connection, Q10MpiFreshnessSql, ReadMpiFreshnessRow, context.CancellationToken).ConfigureAwait(false);
+            var footprintCoverage = await QueryAsync(connection, FootprintCoverageSql, ReadFootprintCoverageRow, context.CancellationToken).ConfigureAwait(false);
 
             // The one loud path: a stale source is an operational incident, not a
             // report footnote — surface it at WARNING so it lands in the log review.
@@ -291,7 +292,8 @@ internal sealed partial class DataHealthAuditJob : IJob
                 identityDrift,
                 staleSources,
                 sourceCoverage,
-                mpiFreshness);
+                mpiFreshness,
+                footprintCoverage);
 
             await File.WriteAllTextAsync(timestampedPath, markdown, Encoding.UTF8, context.CancellationToken).ConfigureAwait(false);
             await File.WriteAllTextAsync(latestPath, markdown, Encoding.UTF8, context.CancellationToken).ConfigureAwait(false);
@@ -361,7 +363,8 @@ internal sealed partial class DataHealthAuditJob : IJob
         IReadOnlyList<IdentityDriftRow> identityDrift,
         IReadOnlyList<SourceStalenessRow> staleSources,
         IReadOnlyList<SourceCoverageRow> sourceCoverage,
-        IReadOnlyList<MpiFreshnessRow> mpiFreshness)
+        IReadOnlyList<MpiFreshnessRow> mpiFreshness,
+        IReadOnlyList<FootprintCoverageRow> footprintCoverage)
     {
         var sb = new StringBuilder();
         sb.Append("# Data Health Audit  ").AppendLine(timestampUtc.ToString("O", CultureInfo.InvariantCulture));
@@ -489,6 +492,7 @@ internal sealed partial class DataHealthAuditJob : IJob
         }
 
         AppendMpiFreshness(sb, mpiFreshness);
+        AppendFootprintCoverage(sb, footprintCoverage);
 
         sb.AppendLine();
         sb.AppendLine("---");

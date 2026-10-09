@@ -122,10 +122,121 @@ again:
 
 ## Recommended order
 
-1. **Kamloops** — verified, pre-filtered to active, one field-list problem away.
-2. **Port Moody** — the adapter already exists; this is a config row.
-3. **Richmond, New Westminster, Langley Township, North Vancouver** — deeper probe.
+1. ✅ **Kamloops** — verified, pre-filtered to active, one field-list problem away.
+   *Wired; 54 observations as of 2026-10-08.*
+2. ✅ **Port Moody** — the adapter already exists; this is a config row.
+   *Wired 2026-10-08, migration 334. 17 applications ingested on the first run.*
+3. ✅ **Richmond, New Westminster, Langley Township, North Vancouver** — deeper probe.
    Population 480,000 between them and all four are plausible.
-4. **Kelowna** — 144,576 people and a primary market with nothing. The ArcGIS search
+   *Probed 2026-10-08. See the second pass below — the answer is not ArcGIS.*
+4. ✅ **Kelowna** — 144,576 people and a primary market with nothing. The ArcGIS search
    returned only overlays; its applications are likely on a different platform.
-5. **Re-enable View Royal and Parksville**, both of which exist and are switched off.
+   *Settled: this is a finding, not a search failure. Recorded in migration 333 so nobody
+   re-hunts it on ArcGIS.*
+5. ⛔ **Re-enable View Royal and Parksville**, both of which exist and are switched off.
+   *View Royal CANNOT simply be enabled — see the second pass. Parksville is a manual PDF
+   source (SourceType 99) and still owed.*
+
+⭐ **The measurement is no longer only in this document.** §K of the weekly Data Health
+Audit now prints it — "N of 56 in-footprint municipalities have an early-signal feed" with
+the uncovered population per region — off the roster in migration 333, deriving "held" from
+live sources rather than a copied literal. That is the fix for why this file's own numbers
+went stale: `coverage_gap.py` hardcoded `HAVE_APPLICATIONS` as a python list, so it could
+not notice Surrey and Kamloops being wired. **A gap in a document gets rediscovered; a gap
+in the weekly report gets closed.**
+
+## Second pass — 8 October 2026
+
+Prompted by Ian: *"I'm POSITIVE we looked at this - we HAD to have? If not it was a major
+miss obviously."* He was right, and this document was the proof. It was not found before a
+whole wiring plan had been rewritten around questions it had already answered. The miss was
+never the analysis; it was that **items 2–5 above were never executed.**
+
+### What was wired
+
+| Municipality | Population | How | Result |
+|---|---:|---|---|
+| **Port Moody** | 33,535 | EngagementHQ, migration 334 | **17 applications, first run clean** |
+
+⚠ **The hostname in this document redirects.** It recorded `engageportmoody.ca`; the live
+host is **engage.portmoody.ca**. A feed that depends on a redirect fails in a way that looks
+like the publisher went quiet.
+
+⚠ **Port Moody names no applicant.** 14 of its 17 descriptions contain the *word* applicant
+— as in *"The applicant would like to rezone…"* — and never a firm. Same shape as Langford.
+It does publish file numbers (`REZ00058`, `DP000104`), which `engagementhq.fileNumberRegex`
+could capture; untested, so not configured.
+
+### Their own ArcGIS servers — found by schema, and the answer is no
+
+Host-guessing per step 3 of the hunt order found **3 confirmed ArcGIS roots of 7 tried**:
+
+| Municipality | Root | Layers |
+|---|---|---:|
+| North Vancouver (District) | `geoweb.dnv.org/arcgis/rest/services` | 261 |
+| **Burnaby** | `gis.burnaby.ca/arcgis/rest/services` | 892 |
+| Delta | `maps.delta.ca/arcgis/rest/services` | 314 |
+
+`tools/ArcGisFingerprint` across all three: **0 Applications**, 2 IssuedPermits, 10
+ZoningOverlay, 8 NotApplications. The only candidate is Delta's **Building Permits**
+(1,903 rows) — issued, so late signal, and the tool says so itself.
+
+⚠ **"0 applications" needed scoping before it could be believed.** The fingerprint judges
+by schema, but `Interesting(name)` gates *which* layers get schema-checked, on eight words
+(develop, permit, applic, rezon, planning, subdiv, project, zoning). So it inspected
+**20 of 1,467 layers**. The other 1,447 were filtered for plausible application words:
+14 candidates, all OCP/zoning/heritage overlays. The two strongest — Delta's
+`ProposedLandUse / Land Use Proposed` and `- Other` — were hand-checked: **6 fields,
+no file number, no status, no date.** Overlays, exactly as the fingerprint's own reasoning
+predicts: *an overlay has no file number, because an overlay is not a case.*
+
+Richmond, New Westminster, Langley Township and North Vancouver (City) have **no ArcGIS
+root at any guessed hostname**. That is step 3 of eight, not a conclusion.
+
+### Engagement platforms — 0 of 10, and the control is why that is trustworthy
+
+Step 5 found both Vancouver and Port Moody, so it was run across Burnaby, Richmond, New
+Westminster, Langley Township, both North Vancouvers, West Vancouver, Delta, Abbotsford and
+Chilliwack. **No EngagementHQ tenant at any guessed hostname.**
+
+⚠ **Read this only because the control passed.** The probe ran Vancouver and Port Moody as
+live positives first. On its first run Vancouver came back *"not JSON (soft 200)"* — because
+a 4,000,000-byte read cap truncated `shapeyourcity.ca/projects.json`, which is 4,767,875
+bytes. The control refused to report. **Three false absences in one day came from limits
+the probe's own author set**: three AND-ed search terms, a filter requiring the city name in
+an item title, and that read cap. A negative from a scope you chose is not a finding.
+
+**Lead: New Westminster runs an engagement platform that is not EngagementHQ.**
+`beheardnewwest.ca` → `www.beheardnewwest.ca/en-CA/`, title "Citizen engagement platform",
+and `/projects.json` returns the same 8,108-byte HTML. The `/en-CA/` locale path is not
+EngagementHQ's shape. 78,916 people; needs a browser look and possibly a new adapter.
+
+**Lead: Delta runs Tempest.** Its ArcGIS carries a `Planning / Tempest Heritage Sites`
+layer, and Tempest OurCity/Prospero is a platform we already have an adapter for
+(Victoria, Saanich, Colwood). No Prospero instance answered at five guessed hostnames —
+`www.delta.ca/ourcity/prospero/search.aspx` returns an honest 404 — so the instance name
+has to come from Delta's own planning pages.
+
+### ⛔ View Royal is not the easy win it looks like
+
+Recommendation 5 above says to re-enable it. **It cannot be re-enabled as configured.**
+`ScraperProbe --prospero` against its BaseUrl returns **0 applications, "no result rows
+rendered"**, because `www.viewroyal.ca/webapps/ourcity/prospero/search.aspx` is a **soft
+404** — HTTP 200 serving `<title>View Royal | Page Not Found</title>` with no Prospero
+markers at all. Six host variants were tried; Saanich uses `/Tempest/` and Colwood
+`/TLive/`, and View Royal's instance was not found.
+
+⚠ **A soft 404 is its own fault class, and three sources shared it on 2026-10-08:**
+Coquitlam replaying duplicates, BC MPI's silently removed CSV, and this. **A BaseUrl that
+soft-404s looks perfectly alive to any fetch-success check.** Enabling View Royal would have
+produced a permanently NEVER-PRODUCED source — noise in the sentinel that §I and §J were
+just built to make meaningful.
+
+### Where that leaves the four that matter
+
+Burnaby (249,125), Richmond (209,937), Langley Township (132,603) and Delta (108,455) are
+**600,120 people with no application feed**, and ArcGIS and EngagementHQ are both now
+excluded for them by measurement rather than by assumption. The remaining steps of the hunt
+order are 2 (read the city's map page for an app id, then its item data), 4 (VertiGIS
+Studio / Geocortex internal portals) and 7 (quarterly PDFs) — plus Delta's Tempest instance
+and New Westminster's unidentified platform. That is browser work, not a sweep.

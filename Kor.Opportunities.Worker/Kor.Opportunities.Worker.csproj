@@ -8,7 +8,7 @@
     <!-- Bump on every meaningful service-side change. The ServiceHeartbeat row
          surfaces this so the operator can confirm a redeploy actually picked up
          the new binary. Mirrors Kor.Operations.FileSync.Service convention. -->
-    <Version>1.1.1</Version>
+    <Version>1.1.2</Version>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Anthropic.SDK" Version="5.5.1" />
