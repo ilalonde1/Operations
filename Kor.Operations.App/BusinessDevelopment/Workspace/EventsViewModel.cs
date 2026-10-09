@@ -80,7 +80,17 @@ public sealed class EventsViewModel : INotifyPropertyChanged, Kor.Operations.Ser
             score++;
         }
 
-        if (ContainsAny($"{row.SectorsThemes} {row.Name}", "architecture", "structural", "engineering", "timber", "mass-timber", "seismic", "health", "education", "school", "housing", "institutional", "civic", "recreation"))
+        // ⭐ DEFENCE BELONGS HERE AND WAS MISSING. Building Defence 2026 (DND/DCC Industry
+        //    Days) -- 800+ attendees, the people who procure the federal defence
+        //    infrastructure programme, raised by Jim on a DCC consultant's advice -- scored
+        //    0 on this line, because "Defence infrastructure; federal procurement; DND
+        //    capital programme" matches none of the words above. With market "Canada"
+        //    scoring 0 as well, it totalled 3 and landed in Tier 2, BELOW every Tier 1
+        //    event including LA galas this same screen labels "LOW". Ian went looking for
+        //    it on the Events screen and could not find it.
+        //    KOR has a defence qualification programme, a DCC/DND award history and an
+        //    8-project defence pipeline. It is a sector, so it is in the vocabulary.
+        if (ContainsAny($"{row.SectorsThemes} {row.Name}", "architecture", "structural", "engineering", "timber", "mass-timber", "seismic", "health", "education", "school", "housing", "institutional", "civic", "recreation", "defence", "defense", "dnd", "dcc", "federal procurement", "infrastructure"))
         {
             score++;
         }
