@@ -19,7 +19,7 @@ using Quartz;
 namespace Kor.Opportunities.Worker.Services;
 
 [DisallowConcurrentExecution]
-internal sealed class DataHealthAuditJob : IJob
+internal sealed partial class DataHealthAuditJob : IJob
 {
     private const string Q1KindDistributionSql = """
         SELECT Kind, COUNT(*) AS N,
@@ -252,6 +252,8 @@ internal sealed class DataHealthAuditJob : IJob
             var enrichmentCoverage = await QueryAsync(connection, Q7EnrichmentCoverageSql, ReadEnrichmentCoverageRow, context.CancellationToken).ConfigureAwait(false);
             var identityDrift = await QueryAsync(connection, Q8IdentityDriftSql, ReadIdentityDriftRow, context.CancellationToken).ConfigureAwait(false);
             var staleSources = await QueryAsync(connection, Q9SourceStalenessSql, ReadSourceStalenessRow, context.CancellationToken).ConfigureAwait(false);
+            var sourceCoverage = await QueryAsync(connection, SourceCoverageSql, ReadSourceCoverageRow, context.CancellationToken).ConfigureAwait(false);
+            var mpiFreshness = await QueryAsync(connection, Q10MpiFreshnessSql, ReadMpiFreshnessRow, context.CancellationToken).ConfigureAwait(false);
 
             // The one loud path: a stale source is an operational incident, not a
             // report footnote — surface it at WARNING so it lands in the log review.
@@ -287,7 +289,9 @@ internal sealed class DataHealthAuditJob : IJob
                 fkOrphanRates,
                 enrichmentCoverage,
                 identityDrift,
-                staleSources);
+                staleSources,
+                sourceCoverage,
+                mpiFreshness);
 
             await File.WriteAllTextAsync(timestampedPath, markdown, Encoding.UTF8, context.CancellationToken).ConfigureAwait(false);
             await File.WriteAllTextAsync(latestPath, markdown, Encoding.UTF8, context.CancellationToken).ConfigureAwait(false);
@@ -355,7 +359,9 @@ internal sealed class DataHealthAuditJob : IJob
         IReadOnlyList<FkOrphanRateRow> fkOrphanRates,
         IReadOnlyList<EnrichmentCoverageRow> enrichmentCoverage,
         IReadOnlyList<IdentityDriftRow> identityDrift,
-        IReadOnlyList<SourceStalenessRow> staleSources)
+        IReadOnlyList<SourceStalenessRow> staleSources,
+        IReadOnlyList<SourceCoverageRow> sourceCoverage,
+        IReadOnlyList<MpiFreshnessRow> mpiFreshness)
     {
         var sb = new StringBuilder();
         sb.Append("# Data Health Audit  ").AppendLine(timestampUtc.ToString("O", CultureInfo.InvariantCulture));
@@ -462,9 +468,10 @@ internal sealed class DataHealthAuditJob : IJob
 
         sb.AppendLine();
         sb.AppendLine("## I. Source staleness sentinels");
+        AppendSourceCoverage(sb, sourceCoverage);
         if (staleSources.Count == 0)
         {
-            sb.AppendLine("All enabled sources produced within their window. ✔");
+            sb.AppendLine("No Q9 staleness thresholds were met among the evaluated sources; this does not prove recent production for sources below the run-count thresholds.");
         }
         else
         {
@@ -480,6 +487,8 @@ internal sealed class DataHealthAuditJob : IJob
                     .AppendLine(" |");
             }
         }
+
+        AppendMpiFreshness(sb, mpiFreshness);
 
         sb.AppendLine();
         sb.AppendLine("---");

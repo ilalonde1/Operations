@@ -8,7 +8,7 @@
     <!-- Bump on every meaningful service-side change. The ServiceHeartbeat row
          surfaces this so the operator can confirm a redeploy actually picked up
          the new binary. Mirrors Kor.Operations.FileSync.Service convention. -->
-    <Version>1.1.0</Version>
+    <Version>1.1.1</Version>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Anthropic.SDK" Version="5.5.1" />
@@ -30,6 +30,7 @@
     <PackageReference Include="System.Data.Odbc" Version="10.0.3" />
   </ItemGroup>
   <ItemGroup>
+    <InternalsVisibleTo Include="Kor.Operations.App.Tests" />
     <ProjectReference Include="..\Kor.Opportunities.Core\Kor.Opportunities.Core.csproj" />
     <ProjectReference Include="..\Kor.Opportunities.Data\Kor.Opportunities.Data.csproj" />
     <ProjectReference Include="..\Kor.Operations.Data\Kor.Operations.Data.csproj" />
