@@ -101,4 +101,57 @@ public sealed class SwitchPortsTests
         });
         Assert.NotEmpty(arp);        // every PC on a network has at least its gateway's entry
     }
+
+    // Per-port speed (probe/collector 2026-10-12): the core switch exposes no advertised port modes over SNMP, so the only
+    // proof a port CAN run a speed is that it once linked at it. The collector now records each port's current speed and the
+    // HIGHEST it has ever negotiated, so "is 0/14 2.5G-capable" is a recorded fact instead of a hand-written doc note.
+    // WHAT THESE COVER: current speed -> a metric; highest-ever -> a monotonic fact kept across sweeps via previousFacts,
+    // carried forward when the port links slower or goes down. WHAT THEY DO NOT: that the switch reports ifHighSpeed at all
+    // (live-verified on the sweep), or any speed the port can do but has never actually linked at -- that is the whole point,
+    // it is unknowable until a real link proves it, which is why the high-water mark IS the record.
+    [Fact]
+    public void Each_ports_current_and_highest_ever_speed_are_recorded()
+    {
+        var v = Walk();
+        v[$"{EdgeSwitchRules.IfHighSpeed}.1"] = "10000";   // port 1 linked at 10G
+        v[$"{EdgeSwitchRules.IfHighSpeed}.2"] = "1000";    // port 2 at 1G
+        var r = EdgeSwitchRules.Evaluate(v, new Dictionary<string, string>());
+        Assert.Equal("10000", r.Facts["port.maxspeed:1"]);
+        Assert.Equal("1000", r.Facts["port.maxspeed:2"]);
+        Assert.Equal(10000, r.Metrics.Single(m => m.Metric == "port.speed" && m.Subject.Contains("Port: 1")).Value);
+    }
+
+    [Fact]
+    public void The_highest_ever_speed_is_kept_when_a_port_later_links_slower_or_goes_down()
+    {
+        var fast = Walk(); fast[$"{EdgeSwitchRules.IfHighSpeed}.1"] = "2500";    // port 1 once linked at 2.5G
+        var once = EdgeSwitchRules.Evaluate(fast, new Dictionary<string, string>());
+        Assert.Equal("2500", once.Facts["port.maxspeed:1"]);
+
+        var slow = Walk(); slow[$"{EdgeSwitchRules.IfHighSpeed}.1"] = "1000";    // now it negotiates only 1G
+        var later = EdgeSwitchRules.Evaluate(slow, once.Facts);                   // last sweep's facts carry the high-water mark
+        Assert.Equal("2500", later.Facts["port.maxspeed:1"]);                     // capability is remembered, not overwritten
+        Assert.Equal(1000, later.Metrics.Single(m => m.Metric == "port.speed" && m.Subject.Contains("Port: 1")).Value);  // current = the live 1G
+
+        var down = Walk(); down["1.3.6.1.2.1.2.2.1.8.1"] = "2";                   // port down, no ifHighSpeed
+        down.Remove($"{EdgeSwitchRules.IfHighSpeed}.1");
+        var afterDown = EdgeSwitchRules.Evaluate(down, later.Facts);
+        Assert.Equal("2500", afterDown.Facts["port.maxspeed:1"]);                 // carried forward even when the port is down
+        Assert.DoesNotContain(afterDown.Metrics, m => m.Metric == "port.speed" && m.Subject.Contains("Port: 1"));  // no current speed when down
+    }
+
+    [Fact]
+    public void The_model_comes_from_ENTITY_MIB_when_the_switch_gives_no_sysDescr()
+    {
+        // This EdgeSwitch's SNMP returns no sysDescr (1.3.6.1.2.1.1.1.0 absent, as in Walk()); entPhysicalModelName carries it.
+        var v = Walk();
+        v[$"{EdgeSwitchRules.EntPhysModelName}.1"] = "\"ES-16-XG\"";
+        Assert.Equal("ES-16-XG", EdgeSwitchRules.Evaluate(v, new Dictionary<string, string>()).Facts["hw.model"]);
+
+        // sysDescr, when present, wins -- ENTITY-MIB is only the fallback.
+        var v2 = Walk();
+        v2[EdgeSwitchRules.SysDescr] = "\"EdgeSwitch 48 Lite, 1.9.3, Linux\"";
+        v2[$"{EdgeSwitchRules.EntPhysModelName}.1"] = "\"ES-16-XG\"";
+        Assert.Equal("EdgeSwitch 48 Lite", EdgeSwitchRules.Evaluate(v2, new Dictionary<string, string>()).Facts["hw.model"]);
+    }
 }

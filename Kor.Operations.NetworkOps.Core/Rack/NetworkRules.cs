@@ -127,7 +127,10 @@ public static class EdgeSwitchRules
     public const string QFdbPort = "1.3.6.1.2.1.17.7.1.2.2.1.2";
     /// <summary>IF-MIB ifHighSpeed: each interface's speed now, in Mb/s (the core's panel in the Network window, 2026-10-02).</summary>
     public const string IfHighSpeed = "1.3.6.1.2.1.31.1.1.1.15";
-    public static readonly string[] Tables = ["1.3.6.1.2.1.2.2.1.2", "1.3.6.1.2.1.2.2.1.8", "1.3.6.1.2.1.2.2.1.14", BasePortIfIndex, FdbPort, QFdbPort, IfHighSpeed];
+    /// <summary>ENTITY-MIB entPhysicalModelName (walked): the model string per entity; the first non-empty one is the
+    /// chassis model. Only used when sysDescr is empty -- as it is on this EdgeSwitch's SNMP agent (verified 2026-10-12).</summary>
+    public const string EntPhysModelName = "1.3.6.1.2.1.47.1.1.1.1.13";
+    public static readonly string[] Tables = ["1.3.6.1.2.1.2.2.1.2", "1.3.6.1.2.1.2.2.1.8", "1.3.6.1.2.1.2.2.1.14", BasePortIfIndex, FdbPort, QFdbPort, IfHighSpeed, EntPhysModelName];
 
     /// <summary>
     /// Each front-panel port as the switch reports it NOW: up or down, its speed, and every MAC it has learned there -- the
@@ -194,11 +197,16 @@ public static class EdgeSwitchRules
     public static RackResult Evaluate(IReadOnlyDictionary<string, string> v, IReadOnlyDictionary<string, string> previousFacts, Func<string, string?>? labelOfMac = null)
     {
         var b = new RackBuilder();
-        if (v.TryGetValue(SysDescr, out var descr))
+        if (v.TryGetValue(SysDescr, out var descr) && descr.Trim('"').Length > 0)
         {
             var parts = descr.Trim('"').Split(',', StringSplitOptions.TrimEntries);
             b.Fact("hw.model", parts.ElementAtOrDefault(0)); b.Fact("fw.version", parts.ElementAtOrDefault(1));
         }
+        // This EdgeSwitch's SNMP agent answers sysUpTime and the port tables but NOT sysDescr (verified 2026-10-12: hw.model
+        // was never stored), so fall back to ENTITY-MIB entPhysicalModelName -- the chassis's own model string -- when present.
+        else if (v.Where(kv => kv.Key.StartsWith(EntPhysModelName + ".", StringComparison.Ordinal))
+                     .Select(kv => kv.Value.Trim('"')).FirstOrDefault(s => s.Length > 0) is { Length: > 0 } entModel)
+            b.Fact("hw.model", entModel);
         if (v.TryGetValue(SysUpTime, out var ticks) && long.TryParse(ticks, NumberStyles.Integer, CultureInfo.InvariantCulture, out var t))
         {
             var hours = t / 360000.0;
@@ -220,6 +228,15 @@ public static class EdgeSwitchRules
                 var here = macs.TryGetValue(idx, out var m) ? m : [];
                 b.Metric("port.devices", here.Count, name);
                 if (here.Count > 0) b.Fact($"port.attached:{port}", AttachedText(here, labelOfMac ?? (_ => null)));
+                // The port's negotiated speed now (Mb/s) and the HIGHEST it has ever linked at -- so a port's capability
+                // ("does 0/14 run 2.5G?") is a recorded fact, not re-tested by hand. This switch exposes no advertised modes
+                // over SNMP; a real link is the only proof, so the high-water mark across sweeps IS the evidence. It is
+                // monotonic and carried forward when the port is down, so a port that once ran 2.5G keeps that fact.
+                var nowMb = v.TryGetValue($"{IfHighSpeed}.{idx}", out var sp) && int.TryParse(sp, NumberStyles.Integer, CultureInfo.InvariantCulture, out var mb) && mb > 0 ? mb : 0;
+                if (nowMb > 0) b.Metric("port.speed", nowMb, name);
+                var prevMax = previousFacts.TryGetValue($"port.maxspeed:{port}", out var pmS) && int.TryParse(pmS, NumberStyles.Integer, CultureInfo.InvariantCulture, out var pmV) ? pmV : 0;
+                var maxMb = Math.Max(nowMb, prevMax);
+                if (maxMb > 0) b.Fact($"port.maxspeed:{port}", maxMb.ToString(CultureInfo.InvariantCulture));
             }
             if (v.TryGetValue($"1.3.6.1.2.1.2.2.1.14.{idx}", out var err) && double.TryParse(err, NumberStyles.Float, CultureInfo.InvariantCulture, out var e))
                 b.Metric("port.in-errors", e, name);
