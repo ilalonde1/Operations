@@ -171,8 +171,10 @@ public sealed class GenericJsonOpportunityProvider : IOpportunityProvider
                 Url = url.Trim(),
                 Description = description,
                 BuyerContactName = applicant is { Length: > 200 } ? applicant[..200] : applicant,
-                PostedDateUtc = ParseDateTimeOffset(ReadString(item, mapping.PostedDatePath)),
-                SubmissionDeadlineUtc = ParseDateTimeOffset(ReadString(item, mapping.DeadlinePath)),
+                PostedDateUtc = ParseDateTimeOffset(
+                    ReadString(item, mapping.PostedDatePath), mapping.TimeZoneId),
+                SubmissionDeadlineUtc = ParseDateTimeOffset(
+                    ReadString(item, mapping.DeadlinePath), mapping.TimeZoneId),
                 ProjectCity = mapping.CityOverride ?? TrimOrNull(ReadString(item, mapping.CityPath)),
                 ProjectProvince = mapping.ProvinceOverride ?? TrimOrNull(ReadString(item, mapping.ProvincePath)),
                 EstimatedValueCad = estimatedValue,
@@ -440,21 +442,13 @@ public sealed class GenericJsonOpportunityProvider : IOpportunityProvider
         return false;
     }
 
-    private static DateTimeOffset? ParseDateTimeOffset(string? value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return null;
-        }
-
-        return DateTimeOffset.TryParse(
-            value,
-            CultureInfo.InvariantCulture,
-            DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
-            out var parsed)
-            ? parsed
-            : null;
-    }
+    /// <summary>
+    /// Honours an offset the value carries, else a zone it names, else treats it
+    /// as a wall clock in the feed's configured <c>json.timeZone</c>. With no
+    /// configured zone the value is taken as UTC — the previous behaviour.
+    /// </summary>
+    private static DateTimeOffset? ParseDateTimeOffset(string? value, string? timeZoneId)
+        => string.IsNullOrWhiteSpace(value) ? null : PublishedClock.Parse(value, timeZoneId);
 
     private static string? TrimOrNull(string? value)
     {
@@ -522,7 +516,8 @@ public sealed class GenericJsonOpportunityProvider : IOpportunityProvider
         string? ExternalReferencePath,
         string? BuyerOverride,
         string? CityOverride,
-        string? ProvinceOverride)
+        string? ProvinceOverride,
+        string? TimeZoneId)
     {
         public static GenericJsonMapping Build(IReadOnlyDictionary<string, string> sourceConfig)
         {
@@ -543,7 +538,17 @@ public sealed class GenericJsonOpportunityProvider : IOpportunityProvider
                 Get(sourceConfig, "json.externalReferencePath"),
                 Get(sourceConfig, "json.buyerOverride"),
                 Get(sourceConfig, "json.cityOverride"),
-                Get(sourceConfig, "json.provinceOverride"));
+                Get(sourceConfig, "json.provinceOverride"),
+                // The zone the FEED publishes its date fields in, when those
+                // fields carry no offset of their own. Absent means the feed is
+                // UTC, which is the long-standing behaviour and is correct for
+                // LA City RAMP (28 of 28 rows cross-checked against the local
+                // clock in their own title). CanadaBuys needs
+                // "America/Toronto": its naked ISO value renders as "14:00 EDT"
+                // on the live notice in October and "14:00 EST" in February, so
+                // it is a DST-aware Eastern wall clock -- not the fixed
+                // UTC-0500 the dataset documentation claims.
+                Get(sourceConfig, "json.timeZone"));
         }
 
         private static string? Get(IReadOnlyDictionary<string, string> sourceConfig, string key)

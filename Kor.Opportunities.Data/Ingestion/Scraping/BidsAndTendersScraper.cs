@@ -258,25 +258,22 @@ public sealed class BidsAndTendersScraper : PlaywrightScraperBase<OpportunityCan
         return (null, bidName);
     }
 
-    private static DateTimeOffset? ParseClosingDate(string? text)
-    {
-        if (string.IsNullOrWhiteSpace(text))
-        {
-            return null;
-        }
-
-        // Examples: "Thu May 21, 2026 3:00 PM (PDT)" or "Fri May 22, 2026 3:00 PM (PST)"
-        // DateTimeOffset.Parse handles the named TZ suffix poorly on some hosts —
-        // strip it and assume universal/local conversion downstream.
-        var clean = TimezoneSuffixRegex.Replace(text, string.Empty).Trim();
-        return DateTimeOffset.TryParse(
-            clean,
-            CultureInfo.InvariantCulture,
-            DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
-            out var parsed)
-            ? parsed
-            : null;
-    }
+    /// <summary>
+    /// Examples: "Thu May 21, 2026 3:00 PM (PDT)", "Wed Oct 21, 2026 2:00:00 PM (MDT)".
+    /// </summary>
+    /// <remarks>
+    /// The parenthesised abbreviation is the ONLY statement of which clock the
+    /// tenant publishes in, and tenants span Pacific and Mountain. This used to
+    /// strip it and parse with <c>AssumeUniversal</c>, which relabelled the wall
+    /// clock as UTC and stored every deadline early by that zone's offset —
+    /// Leduc's 2:00 p.m. MDT close landed as 14:00Z, six hours out. Keep the
+    /// abbreviation and convert through it; a cell with no recognised zone
+    /// yields null rather than a wrong instant.
+    /// </remarks>
+    internal static DateTimeOffset? ParseClosingDate(string? text)
+        => string.IsNullOrWhiteSpace(text)
+            ? null
+            : PublishedClock.TryFromNamedZone(text, out var parsed) ? parsed : null;
 
     private static async Task<bool> TryAdvanceToNextPageAsync(IPage page, CancellationToken ct)
     {

@@ -491,6 +491,62 @@ invariants.Add(("org_thin_unsafe_redirect",
                     WHERE a2.CanonicalOrgId = r.Id AND a2.RetiredAtUtc IS NULL)
       ORDER BY t.Id;"));
 
+// 2026-10-13: every ingestion parse site passed DateTimeStyles.AssumeUniversal,
+// which relabels a source's published LOCAL wall clock as UTC. 2,010 of 2,377
+// deadline-bearing opportunities were early by their source's offset — 1,757 by
+// 7 hours. Nothing failed, no run errored, and the only visible symptom was a
+// Leduc RFP closing at 2:00 p.m. MDT showing up as 8:00 a.m.
+//
+// The invariant that catches it without a human: a deadline stored as UTC must
+// NOT print the same wall clock that its own RawJson shows beside a zone
+// abbreviation. "Wed Oct 21, 2026 2:00:00 PM (MDT)" stored correctly is 20:00Z;
+// stored wrong it is 14:00Z, which still prints "2:00:00 PM" and so matches its
+// own raw text. No date parsing needed, and it goes to zero once converted.
+//
+// ⚠ WHAT THIS DOES NOT COVER: BC Bid. BcBidScraper sets RawJson = null, so its
+// 1,678 rows have no stored text to compare and this check is blind to them —
+// the largest affected population is exactly the one it cannot see. Their zone
+// is evidenced only by the portal's "closing date and time (pacific time)"
+// column header and is asserted in PublishedClockTests instead. It is also
+// blind to a source that publishes local time with NO abbreviation anywhere
+// (CanadaBuys: naked ISO, zone known only from the live notice), and to
+// PostedDateUtc, which goes through the same parsers.
+invariants.Add(("opportunity_deadline_stored_as_local_wall_clock",
+    "A stored UTC deadline whose time-of-day is the SAME wall clock its own RawJson prints beside a zone abbreviation — the published local time was relabelled as UTC, so the deadline is early by that zone's offset. Must be 0. BLIND TO BC BID (RawJson is null there) and to feeds that name no abbreviation",
+    true,
+    @"WITH obs AS (
+        SELECT ob.OpportunityId, ob.RawJson,
+               ROW_NUMBER() OVER (PARTITION BY ob.OpportunityId, ob.OpportunitySourceId
+                                  ORDER BY ob.IngestedAtUtc DESC, ob.Id DESC) AS rn
+        FROM opportunities.OpportunityObservations ob
+        WHERE ob.RawJson IS NOT NULL)
+      SELECT COUNT(*)
+      FROM opportunities.Opportunities o
+      JOIN obs ON obs.OpportunityId = o.Id AND obs.rn = 1
+      WHERE o.SubmissionDeadlineUtc IS NOT NULL
+        AND CAST(o.SubmissionDeadlineUtc AS time) <> '00:00:00'
+        AND PATINDEX('%[(. ][PMCEAN][SD]T%', obs.RawJson) > 0
+        AND (obs.RawJson LIKE '%' + FORMAT(o.SubmissionDeadlineUtc, 'h:mm:ss tt', 'en-US') + '%'
+          OR obs.RawJson LIKE '%' + FORMAT(o.SubmissionDeadlineUtc, 'h:mm tt', 'en-US') + '%');",
+    @"WITH obs AS (
+        SELECT ob.OpportunityId, ob.OpportunitySourceId, ob.RawJson,
+               ROW_NUMBER() OVER (PARTITION BY ob.OpportunityId, ob.OpportunitySourceId
+                                  ORDER BY ob.IngestedAtUtc DESC, ob.Id DESC) AS rn
+        FROM opportunities.OpportunityObservations ob
+        WHERE ob.RawJson IS NOT NULL)
+      SELECT TOP 15 s.Name AS Src, o.Id,
+             CONVERT(varchar(20), o.SubmissionDeadlineUtc, 120) AS StoredUtc,
+             LEFT(obs.RawJson, 90) AS RawText
+      FROM opportunities.Opportunities o
+      JOIN obs ON obs.OpportunityId = o.Id AND obs.rn = 1
+      JOIN opportunities.OpportunitySources s ON s.Id = obs.OpportunitySourceId
+      WHERE o.SubmissionDeadlineUtc IS NOT NULL
+        AND CAST(o.SubmissionDeadlineUtc AS time) <> '00:00:00'
+        AND PATINDEX('%[(. ][PMCEAN][SD]T%', obs.RawJson) > 0
+        AND (obs.RawJson LIKE '%' + FORMAT(o.SubmissionDeadlineUtc, 'h:mm:ss tt', 'en-US') + '%'
+          OR obs.RawJson LIKE '%' + FORMAT(o.SubmissionDeadlineUtc, 'h:mm tt', 'en-US') + '%')
+      ORDER BY s.Name, o.Id;"));
+
 var sb = new StringBuilder();
 void Emit(string line) { Console.WriteLine(line); sb.AppendLine(line); }
 

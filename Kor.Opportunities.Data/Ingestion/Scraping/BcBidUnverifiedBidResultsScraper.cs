@@ -800,22 +800,15 @@ public sealed class BcBidUnverifiedBidResultsScraper
         };
     }
 
-    private static DateTimeOffset? ParseDate(string? raw)
-    {
-        if (string.IsNullOrWhiteSpace(raw))
-        {
-            return null;
-        }
-
-        var stripped = TimezoneSuffixRegex.Replace(raw.Trim(), string.Empty);
-        return DateTimeOffset.TryParse(
-            stripped,
-            CultureInfo.InvariantCulture,
-            DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
-            out var parsed)
-            ? parsed
-            : null;
-    }
+    /// <summary>
+    /// Same Pacific portal, same two cell shapes as
+    /// <see cref="BcBidHistoricalScraper"/>: an explicit "(PDT)"/"(PST)" suffix,
+    /// or a bare wall clock under a "(pacific time)" header. Never UTC.
+    /// </summary>
+    internal static DateTimeOffset? ParseDate(string? raw)
+        => string.IsNullOrWhiteSpace(raw)
+            ? null
+            : PublishedClock.Parse(raw, BcBidScraper.PortalTimeZoneId);
 
     private static async Task<bool> TryAdvanceToNextPageAsync(IPage page, CancellationToken ct)
     {

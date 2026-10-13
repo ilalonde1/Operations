@@ -604,22 +604,17 @@ public sealed class BcBidHistoricalScraper
         return baseUri.AbsoluteUri;
     }
 
-    private static DateTimeOffset? ParseDate(string? raw)
-    {
-        if (string.IsNullOrWhiteSpace(raw))
-        {
-            return null;
-        }
-
-        var stripped = TimezoneSuffixRegex.Replace(raw.Trim(), string.Empty);
-        return DateTimeOffset.TryParse(
-            stripped,
-            CultureInfo.InvariantCulture,
-            DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
-            out var parsed)
-            ? parsed
-            : null;
-    }
+    /// <summary>
+    /// BC Bid is a Pacific portal: cells arrive either with a "(PDT)"/"(PST)"
+    /// suffix or as a bare wall clock under a "(pacific time)" column header.
+    /// Both are Pacific. Stripping the suffix and assuming UTC stored the wall
+    /// clock 7-8 hours early, so honour the abbreviation when it is there and
+    /// fall back to the portal's zone when it is not.
+    /// </summary>
+    internal static DateTimeOffset? ParseDate(string? raw)
+        => string.IsNullOrWhiteSpace(raw)
+            ? null
+            : PublishedClock.Parse(raw, BcBidScraper.PortalTimeZoneId);
 
     private static async Task<bool> TryAdvanceToNextPageAsync(IPage page, CancellationToken ct)
     {

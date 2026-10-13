@@ -421,22 +421,15 @@ public sealed class BidsAndTendersAwardsScraper : PlaywrightScraperBase<AwardCan
         return (null, bidName);
     }
 
-    private static DateTimeOffset? ParseClosingDate(string? text)
-    {
-        if (string.IsNullOrWhiteSpace(text))
-        {
-            return null;
-        }
-
-        var clean = TimezoneSuffixRegex.Replace(text, string.Empty).Trim();
-        return DateTimeOffset.TryParse(
-            clean,
-            CultureInfo.InvariantCulture,
-            DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
-            out var parsed)
-            ? parsed
-            : null;
-    }
+    /// <summary>
+    /// Closing cells carry the tenant's zone, e.g. "Thu May 21, 2026 3:00 PM (PDT)".
+    /// Convert through that abbreviation — stripping it and assuming UTC stored
+    /// every award's closing instant early by the tenant's offset.
+    /// </summary>
+    internal static DateTimeOffset? ParseClosingDate(string? text)
+        => string.IsNullOrWhiteSpace(text)
+            ? null
+            : PublishedClock.TryFromNamedZone(text, out var parsed) ? parsed : null;
 
     private static bool IsStatusText(string text)
     {

@@ -747,14 +747,22 @@ public sealed class BcBidScraper : PlaywrightScraperBase<OpportunityCandidate>, 
     private static bool IsRetryableLoginException(Exception ex) =>
         ex is TimeoutException or PlaywrightException;
 
-    private static DateTimeOffset? ParseBcBidDate(string raw)
-    {
-        if (string.IsNullOrWhiteSpace(raw)) return null;
-        return DateTimeOffset.TryParse(
-            raw, CultureInfo.InvariantCulture,
-            DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
-            out var parsed) ? parsed : null;
-    }
+    /// <summary>
+    /// BC Bid renders its date columns as "issue date and time (pacific time)" /
+    /// "closing date and time (pacific time)" — the zone is stated in the COLUMN
+    /// HEADER, not in the cell, so the cell text carries no abbreviation to read.
+    /// </summary>
+    /// <remarks>
+    /// This used to parse with <c>AssumeUniversal</c>, which relabelled a
+    /// Pacific wall clock as UTC: 1,678 BC Bid rows were stored 7 hours early in
+    /// daylight time and 8 in standard time. The scraper sets
+    /// <c>RawJson = null</c>, so none of them can be re-derived from stored text
+    /// — the portal's own column header is the evidence.
+    /// </remarks>
+    internal const string PortalTimeZoneId = "America/Vancouver";
+
+    internal static DateTimeOffset? ParseBcBidDate(string raw)
+        => string.IsNullOrWhiteSpace(raw) ? null : PublishedClock.Parse(raw, PortalTimeZoneId);
 
     private static int ResolveInt(IReadOnlyDictionary<string, string> config, string key, int defaultValue)
         => config.TryGetValue(key, out var s) && int.TryParse(s, out var v) ? v : defaultValue;

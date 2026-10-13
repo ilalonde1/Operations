@@ -96,7 +96,7 @@ public sealed class GenericCsvOpportunityProvider : IOpportunityProvider
                 continue;
             }
 
-            var candidate = MapRow(row, headers);
+            var candidate = MapRow(row, headers, ResolveFeedTimeZone(sourceConfig));
             if (candidate is null)
             {
                 dropped++;
@@ -124,7 +124,29 @@ public sealed class GenericCsvOpportunityProvider : IOpportunityProvider
         return candidates;
     }
 
-    private static OpportunityCandidate? MapRow(IReadOnlyList<string> row, IReadOnlyList<string> headers)
+    /// <summary>
+    /// The zone the FEED publishes its date columns in, when those columns carry
+    /// no offset of their own (<c>csv.timeZone</c>). Absent means UTC, the
+    /// long-standing behaviour.
+    /// </summary>
+    /// <remarks>
+    /// CanadaBuys needs "America/Toronto". Its
+    /// <c>tenderClosingDate-dateFermetureSoumissions</c> column is a naked
+    /// "2026-10-28T14:00:00", and the live notice renders that same value as
+    /// "14:00 EDT" (2026-10-28) and "14:00 EST" (2026-02-18) — a DST-aware
+    /// Eastern wall clock, NOT the fixed UTC-0500 the dataset documentation
+    /// claims. Parsed as UTC it stored 85 rows 4-5 hours early.
+    /// </remarks>
+    private static string? ResolveFeedTimeZone(IReadOnlyDictionary<string, string> sourceConfig)
+        => sourceConfig.TryGetValue("csv.timeZone", out var zone)
+            && !string.IsNullOrWhiteSpace(zone)
+            ? zone.Trim()
+            : null;
+
+    private static OpportunityCandidate? MapRow(
+        IReadOnlyList<string> row,
+        IReadOnlyList<string> headers,
+        string? feedTimeZoneId = null)
     {
         // Title + URL are required - everything else is best-effort.
         var title = CsvParser.FirstValue(row, headers,
@@ -168,12 +190,7 @@ public sealed class GenericCsvOpportunityProvider : IOpportunityProvider
             "postedDate",
             "publicationDate",
             "publicationDate-datePublication");
-        DateTimeOffset? postedDate = null;
-        if (!string.IsNullOrWhiteSpace(postedRaw)
-            && DateTimeOffset.TryParse(postedRaw, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out var parsed))
-        {
-            postedDate = parsed;
-        }
+        var postedDate = PublishedClock.Parse(postedRaw, feedTimeZoneId);
 
         var deadlineRaw = CsvParser.FirstValue(row, headers,
             "deadline",
@@ -181,12 +198,7 @@ public sealed class GenericCsvOpportunityProvider : IOpportunityProvider
             "tenderClosingDate",
             "tenderClosingDate-dateFermetureSoumissions",
             "closingDate");
-        DateTimeOffset? deadline = null;
-        if (!string.IsNullOrWhiteSpace(deadlineRaw)
-            && DateTimeOffset.TryParse(deadlineRaw, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out var parsedDeadline))
-        {
-            deadline = parsedDeadline;
-        }
+        var deadline = PublishedClock.Parse(deadlineRaw, feedTimeZoneId);
 
         var external = CsvParser.FirstValue(row, headers,
             "referenceNumber",

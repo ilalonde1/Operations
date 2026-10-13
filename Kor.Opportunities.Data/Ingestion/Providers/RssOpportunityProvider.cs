@@ -365,6 +365,18 @@ public sealed class RssOpportunityProvider : IOpportunityProvider
             }
         }
 
+        // Bonfire prose names its zone: "Project closes Nov 02, 2026 2:00 PM PST."
+        // Honour it — assuming UTC stored those closes 7-8 hours early.
+        if (PublishedClock.TryFromNamedZone(raw, out var zoned))
+        {
+            return zoned;
+        }
+
+        // No zone named. These descriptions are overwhelmingly date-only
+        // ("Posting expires: Wednesday, October 28, 2026"), where there is no
+        // published time to convert and midnight UTC is the existing
+        // convention. Left as-is deliberately: inventing a local midnight here
+        // would move 101 CivicInfo rows on no evidence.
         return DateTimeOffset.TryParse(
             raw,
             CultureInfo.InvariantCulture,
