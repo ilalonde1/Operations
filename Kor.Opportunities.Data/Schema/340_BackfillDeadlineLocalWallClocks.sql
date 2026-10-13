@@ -250,18 +250,25 @@ CROSS APPLY (
     ) AS ranked ORDER BY pref
 ) AS resolved
 WHERE o.SubmissionDeadlineUtc IS NOT NULL
-  -- ⛔ ALREADY CORRECTED: an opportunity this migration has shifted once must
-  -- never be shifted again. This is the guard that matters, and it was missing
-  -- on the first version: #cand is rebuilt from the CURRENT stored value, so a
-  -- second run read the already-correct instant as a fresh wall clock and moved
-  -- 2,072 rows a further 4-8 hours. Matching the UPDATE on the expected old
-  -- value does NOT prevent that -- it only guards against a concurrent edit
-  -- between building #cand and applying it. The audit table is the only record
-  -- of what has already been done, so it is what idempotency must key on.
+  -- ⛔ STILL HOLDS OUR CORRECTION: skip a row whose CURRENT value is one this
+  -- migration already produced. This is the guard that matters and it took two
+  -- attempts to get right.
+  --   v1 had no guard at all: #cand is rebuilt from the current stored value, so
+  --   a second run read the already-correct instant as a fresh wall clock and
+  --   shifted 2,072 rows another 4-8 hours. Matching the UPDATE on the expected
+  --   old value does NOT prevent that -- it only guards a concurrent edit
+  --   between building #cand and applying it.
+  --   v2 skipped any opportunity with ANY audit row, which is idempotent but not
+  --   self-healing: opportunity 39850 was corrected at 13:30, then re-written as
+  --   a wall clock at 13:34 by a scheduled BC Bid run still on the old binaries,
+  --   and v2 then refused to touch it forever.
+  -- Keying on the VALUE satisfies both: a row holding our output is left alone
+  -- (no double shift), and a row that has since been re-ingested as a wall clock
+  -- is corrected again.
   AND NOT EXISTS (
         SELECT 1 FROM opportunities.DeadlineClockBackfill b
         WHERE b.OpportunityId = o.Id
-          AND b.MigrationName = N'340_BackfillDeadlineLocalWallClocks')
+          AND b.NewDeadlineUtc = o.SubmissionDeadlineUtc)
   -- a date-only capture has no published time; shifting it would invent one
   AND CAST(o.SubmissionDeadlineUtc AS time) <> '00:00:00'
   -- APC's scraper was corrected 2026-10-08 and its rows since then are already

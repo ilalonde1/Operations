@@ -111,6 +111,21 @@ foreach ($script in @('install-opportunities-service.ps1', 'uninstall-opportunit
     SelfContained  = $false
 } | ConvertTo-Json | Out-File (Join-Path $out 'publish-info.json') -Encoding utf8
 
+# Hand the artifact path to deploy-opportunities.ps1.
+# ⛔ This is NOT optional bookkeeping. deploy-opportunities.ps1 reads this file to
+# decide WHAT to ship, and its own help already claimed this script wrote it --
+# but it never did. So every deploy from 2026-10-09 to 2026-10-13 re-shipped the
+# 20261009_120422 artifact and reported "Deploy verified. 0 changed by this
+# deploy", which reads like a successful no-op rather than the wrong build. A
+# deploy that ships a stale artifact and verifies green is the worst failure mode
+# in the pipeline: every assembly matches every other, so the version check
+# cannot see it. Caught on 2026-10-13 when a timezone fix deployed clean and the
+# printed ProductVersion was four days old.
+$handoffDir = Join-Path $repoRoot 'output'
+New-Item -ItemType Directory -Path $handoffDir -Force | Out-Null
+$out | Out-File (Join-Path $handoffDir '_last-worker-publish.txt') -Encoding utf8 -NoNewline
+Write-Host "Handoff: output\_last-worker-publish.txt -> $out" -ForegroundColor DarkGray
+
 # Prune older publishes, keep last $KeepLast.
 $all = Get-ChildItem -Path $PublishRoot -Directory | Sort-Object Name -Descending
 if ($all.Count -gt $KeepLast) {
