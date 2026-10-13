@@ -34,6 +34,13 @@ internal sealed class AgentLoop
     private readonly SemaphoreSlim _slots = new(MaxConcurrentJobs, MaxConcurrentJobs);
     private readonly ConcurrentDictionary<Task, byte> _running = new();
 
+    /// <summary>The version APP01 ships, on every poll answer. A header, not a body field, so an older agent that
+    /// knows nothing about it is unaffected and no response contract changes.</summary>
+    public const string ShippedVersionHeader = "X-Kor-Agent-Shipped";
+
+    /// <summary>Set once the updater has been handed the swap: the loop stops asking for work and lets it restart us.</summary>
+    private bool _updating;
+
     public AgentLoop(AgentSettings settings, AgentLog log)
     {
         _s = settings;
@@ -77,6 +84,9 @@ internal sealed class AgentLoop
                     if (lastProblem is not null) _log.Info("connected to the server again");
                     lastProblem = null;
                     backoff = 5;
+                    // The updater is about to stop this service and swap the files under it. Take no new work and
+                    // leave the loop; the finally below still waits for jobs already running to finish cleanly.
+                    if (_updating) { _log.Info("self-update: standing down, the updater will restart the service"); break; }
                     if (job is not null) Track(Task.Run(() => RunJobAsync(job, ct)));
                 }
                 catch (OperationCanceledException) when (ct.IsCancellationRequested) { break; }
@@ -117,6 +127,18 @@ internal sealed class AgentLoop
         using var content = new ByteArrayContent(body);
         content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
         using var response = await _http.PostAsync("agent/v1/poll", content, ct).ConfigureAwait(false);
+
+        // Every poll answer carries the version APP01 ships. A PC that push-install cannot reach -- anyone working
+        // off-LAN through a VPN, where the office cannot open a connection back -- updates itself from here instead.
+        if (response.Headers.TryGetValues(ShippedVersionHeader, out var shippedValues)
+            && shippedValues.FirstOrDefault() is { Length: > 0 } shipped
+            && SelfUpdate.Wanted(shipped, AgentSettings.Version)
+            && await SelfUpdate.TryAsync(_http, _s, _log, shipped, ct).ConfigureAwait(false))
+        {
+            _updating = true;   // the updater is stopping this service; take no further work
+            return null;
+        }
+
         if (response.StatusCode == HttpStatusCode.NoContent) return null;
         if (response.StatusCode != HttpStatusCode.OK) throw new HttpRequestException($"the server answered {(int)response.StatusCode} {response.ReasonPhrase}");
         return Json.Read<Job>(await response.Content.ReadAsByteArrayAsync().ConfigureAwait(false));

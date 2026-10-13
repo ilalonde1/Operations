@@ -68,6 +68,10 @@ internal static class AgentApi
     /// secret, and the code-for-key trade, which the one-time code and its rate limit guard. Everything else needs the key.</summary>
     internal static bool IsBeforeKey(PathString path) => path == "/agent/v1/enrol" || path == "/agent/v1/package";
 
+    /// <summary>The version this server ships, on every authenticated poll answer, so an agent can replace itself.
+    /// MUST equal AgentLoop.ShippedVersionHeader on the agent side -- AgentSelfUpdateTests asserts the two match.</summary>
+    public const string ShippedVersionHeader = "X-Kor-Agent-Shipped";
+
     public static void UseAgentGate(IApplicationBuilder app)
         => app.UseWhen(h => h.Request.Path.StartsWithSegments("/agent") && !IsBeforeKey(h.Request.Path), branch => branch.Use(async (HttpContext h, RequestDelegate next) =>
         {
@@ -169,6 +173,15 @@ internal static class AgentApi
             var key = KeyOf(who);
             // Null: this key was replaced or removed after it authenticated (the hub, not SQL, has the last word now).
             if (hub.Seen(who.DeviceName, body.Version, address, key) is not { } seen) return Results.Unauthorized();
+
+            // Tell an authenticated agent what we ship, on every answer, so it can replace itself. This is the only
+            // route to a PC the push install cannot reach: RemoteAgentInstall needs SMB to the machine, and the office
+            // cannot open a connection back down a VPN client's tunnel -- on 2026-10-13 that left exactly one PC
+            // behind on every rollout batch with no way to fix it from here. Set once, after the key is accepted, so
+            // it rides every return below and is never advertised to an unauthenticated caller.
+            if (AgentInstaller.PackageVersionOrNull() is { } shipped)
+                h.Response.Headers[ShippedVersionHeader] = shipped;
+
             if (seen.CameBack)
             {
                 log.LogInformation("Agent {Device} {Version} connected from {Address}{Away}", who.DeviceName, body.Version, address,
