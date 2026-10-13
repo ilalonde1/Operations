@@ -488,15 +488,23 @@ public sealed class ArcGisFeatureOpportunityProvider : IOpportunityProvider
         }
         else if (el.ValueKind == JsonValueKind.String)
         {
-            var raw = el.GetString();
-            return !string.IsNullOrWhiteSpace(raw)
-                   && DateTimeOffset.TryParse(
-                       raw,
-                       CultureInfo.InvariantCulture,
-                       DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
-                       out var parsedText)
-                ? parsedText
-                : null;
+            // A layer that returns its date as TEXT rather than epoch millis.
+            // Measured 2026-10-13: no wired layer does this today -- every
+            // ArcGIS-sourced PostedDateUtc in production is consistent with epoch
+            // millis (Saanich 2,086 of 2,086 at midnight UTC = date-only;
+            // Coquitlam and Calgary spread across hours 0-23 = true UTC; Qualicum
+            // Beach's narrow 07:00-08:00 band = local midnight converted). So this
+            // branch is latent, not active.
+            //
+            // It still goes through PublishedClock rather than
+            // DateTimeStyles.AssumeUniversal. Same result for the values Esri
+            // actually emits -- an explicit offset or Z is honoured, and an
+            // offset-less string is taken as UTC, which is correct for a feature
+            // service -- but it stops this being one more place that silently
+            // relabels a local wall clock as UTC. That flag cost 2,116 wrong
+            // deadlines across the other providers. If a layer ever turns up
+            // publishing naked LOCAL text, pass its zone here instead of null.
+            return PublishedClock.Parse(el.GetString(), fallbackZoneId: null);
         }
         else
         {
