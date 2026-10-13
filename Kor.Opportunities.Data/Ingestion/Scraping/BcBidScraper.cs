@@ -520,7 +520,7 @@ public sealed class BcBidScraper : PlaywrightScraperBase<OpportunityCandidate>, 
                 : $"{solicitationType}: {commoditiesText}");
 
         var posted = ParseBcBidDate((await cells[map.IssueDate].InnerTextAsync().ConfigureAwait(false)).Trim());
-        var deadline = ParseBcBidDate((await cells[map.ClosingDate].InnerTextAsync().ConfigureAwait(false)).Trim());
+        var deadline = ParseBcBidDeadline((await cells[map.ClosingDate].InnerTextAsync().ConfigureAwait(false)).Trim());
 
         var buyer = (await cells[map.Buyer].InnerTextAsync().ConfigureAwait(false)).Trim();
         if (string.IsNullOrWhiteSpace(buyer)) buyer = "Unknown";
@@ -763,6 +763,14 @@ public sealed class BcBidScraper : PlaywrightScraperBase<OpportunityCandidate>, 
 
     internal static DateTimeOffset? ParseBcBidDate(string raw)
         => string.IsNullOrWhiteSpace(raw) ? null : PublishedClock.Parse(raw, PortalTimeZoneId);
+
+    /// <summary>
+    /// As <see cref="ParseBcBidDate"/>, but a cell that gives only a date closes
+    /// at the END of that day, not its start. 38 BC Bid opportunities carried a
+    /// midnight deadline, which expires them 17:00 the previous day Pacific.
+    /// </summary>
+    internal static DateTimeOffset? ParseBcBidDeadline(string raw)
+        => string.IsNullOrWhiteSpace(raw) ? null : PublishedClock.ParseDeadline(raw, PortalTimeZoneId);
 
     private static int ResolveInt(IReadOnlyDictionary<string, string> config, string key, int defaultValue)
         => config.TryGetValue(key, out var s) && int.TryParse(s, out var v) ? v : defaultValue;

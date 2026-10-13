@@ -144,7 +144,7 @@ public sealed class MerxDccScraper : PlaywrightScraperBase<OpportunityCandidate>
 
             var published = ParseMerxDate(
                 await InnerTextOrNullAsync(row.Locator(".sol-publication-date .date-value")).ConfigureAwait(false));
-            var closing = ParseMerxDate(
+            var closing = ParseMerxClosingDate(
                 await InnerTextOrNullAsync(row.Locator(".sol-closing-date .date-value")).ConfigureAwait(false));
 
             var raw = JsonSerializer.Serialize(new
@@ -184,14 +184,31 @@ public sealed class MerxDccScraper : PlaywrightScraperBase<OpportunityCandidate>
         return text.Length == 0 ? null : text;
     }
 
-    /// <summary>MERX renders dates as yyyy/MM/dd in Pacific-agnostic local form;
-    /// treat as date-only UTC (closing hour lives on the detail page).</summary>
+    /// <summary>DCC is a federal buyer; the listing gives no closing hour, so a
+    /// date-only value is interpreted in Eastern time.</summary>
+    private const string BuyerTimeZoneId = "America/Toronto";
+
+    /// <summary>MERX renders dates as yyyy/MM/dd and the listing carries no time
+    /// (the closing hour lives on the detail page). Date-only, start of day.</summary>
     private static DateTimeOffset? ParseMerxDate(string? text)
     {
         if (string.IsNullOrWhiteSpace(text)) return null;
         return DateTime.TryParseExact(text.Trim(), "yyyy/MM/dd", CultureInfo.InvariantCulture,
-            DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out var d)
+            DateTimeStyles.None, out var d)
             ? new DateTimeOffset(d, TimeSpan.Zero)
+            : null;
+    }
+
+    /// <summary>
+    /// The closing date, which must land at the END of the published day: stored
+    /// at midnight it expires the solicitation before the date MERX printed, and
+    /// 97 DCC opportunities were sitting at midnight UTC.
+    /// </summary>
+    private static DateTimeOffset? ParseMerxClosingDate(string? text)
+    {
+        var parsed = ParseMerxDate(text);
+        return parsed is { } value
+            ? PublishedClock.EndOfPublishedDay(value, BuyerTimeZoneId)
             : null;
     }
 }

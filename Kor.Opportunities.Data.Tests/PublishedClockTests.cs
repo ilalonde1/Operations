@@ -138,6 +138,70 @@ public sealed class PublishedClockTests
     public void A_zone_abbreviation_outside_the_map_yields_no_timestamp_rather_than_a_wrong_one()
         => Assert.False(PublishedClock.TryFromNamedZone("Wed Oct 21, 2026 2:00 PM (XYZ)", out _));
 
+    // ------------------------------------------------- date-only closing values
+    // "Posting expires: Wednesday, October 28, 2026" names no closing time. Stored
+    // at midnight it reads as 17:00 on the 27th Pacific, and DataRetirementJob
+    // expires on SubmissionDeadlineUtc < now -- so the whole final day is lost and
+    // the opportunity vanishes before it closes. 249 rows were in that state.
+    [Theory]
+    [InlineData("October 28, 2026", "America/Vancouver", 2026, 10, 29, 6, 59, 59)]  // 23:59:59 PDT
+    [InlineData("December 10, 2026", "America/Vancouver", 2026, 12, 11, 7, 59, 59)] // 23:59:59 PST
+    [InlineData("2027/01/06", "America/Toronto", 2027, 1, 7, 4, 59, 59)]            // 23:59:59 EST
+    public void A_date_only_deadline_closes_at_the_end_of_that_local_day(
+        string published, string zone, int y, int mo, int d, int h, int mi, int s)
+        => Assert.Equal(new DateTimeOffset(y, mo, d, h, mi, s, TimeSpan.Zero),
+            PublishedClock.ParseDeadline(published, zone));
+
+    [Fact]
+    public void A_date_only_deadline_with_no_known_zone_is_left_at_midnight_utc()
+        => Assert.Equal(Utc(2026, 10, 28, 0, 0),
+            PublishedClock.ParseDeadline("October 28, 2026", fallbackZoneId: null));
+
+    [Fact]
+    public void A_posted_date_is_NOT_pushed_to_the_end_of_the_day()
+        => Assert.Equal(Utc(2026, 10, 28, 7, 0),   // 00:00 PDT, start of day
+            PublishedClock.Parse("October 28, 2026", "America/Vancouver"));
+
+    [Theory]
+    [InlineData("Posting expires: Wednesday, October 28, 2026.", 2026, 10, 29, 6, 59, 59)]
+    public void Civicinfo_prose_closes_at_the_end_of_its_day_when_the_feed_zone_is_known(
+        string description, int y, int mo, int d, int h, int mi, int s)
+        => Assert.Equal(new DateTimeOffset(y, mo, d, h, mi, s, TimeSpan.Zero),
+            RssOpportunityProvider.ParseDeadlineFromDescription(
+                description, "America/Vancouver"));
+
+    [Fact]
+    public void BcBid_a_closing_cell_with_no_time_closes_at_end_of_day_pacific()
+        => Assert.Equal(new DateTimeOffset(2026, 10, 29, 6, 59, 59, TimeSpan.Zero),
+            BcBidScraper.ParseBcBidDeadline("2026-10-28"));
+
+    // ------------------------------------- the published date must stay recoverable
+    // PublishedClock keeps the SOURCE's offset, so .Date is the date the buyer
+    // published on. IngestionService derives RfpReleaseDate from it; taking the UTC
+    // date instead moves any posting made at 5pm Pacific or later to the next day,
+    // and 107 BC Bid observations sit at hour 17-23 local.
+    [Theory]
+    [InlineData("2026-10-20 18:00", 2026, 10, 20)]  // evening: UTC date would be the 21st
+    [InlineData("2026-10-20 23:30", 2026, 10, 20)]
+    [InlineData("2026-10-20 09:00", 2026, 10, 20)]
+    public void The_published_local_date_survives_conversion(
+        string cell, int y, int mo, int d)
+    {
+        var parsed = BcBidScraper.ParseBcBidDate(cell);
+        Assert.NotNull(parsed);
+        Assert.Equal(new DateTime(y, mo, d), parsed!.Value.Date);
+    }
+
+    [Fact]
+    public void Keeping_the_offset_does_not_change_the_instant()
+    {
+        // Same moment, two representations: equality and comparison are by instant,
+        // which is what every deadline query depends on.
+        var kept = BcBidScraper.ParseBcBidDate("2026-10-20 18:00")!.Value;
+        Assert.Equal(Utc(2026, 10, 21, 1, 0), kept);
+        Assert.Equal(TimeSpan.FromHours(-7), kept.Offset);
+    }
+
     // ------------------------------------------------------------ the differential
     /// <summary>
     /// Proves the expectations above are not vacuous, by running the EXACT parse

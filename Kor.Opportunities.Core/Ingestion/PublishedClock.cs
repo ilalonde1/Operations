@@ -188,8 +188,53 @@ public static class PublishedClock
             return false;
         }
 
-        result = new DateTimeOffset(TimeZoneInfo.ConvertTimeToUtc(naive, zone));
+        // KEEP THE SOURCE'S OFFSET rather than normalising to +00:00. The instant
+        // is identical either way -- DateTimeOffset comparison and equality are by
+        // instant, and SQL Server's datetimeoffset compares the same way -- but
+        // keeping the offset leaves the PUBLISHED LOCAL DATE recoverable via
+        // .Date, and that date is a field in its own right: IngestionService
+        // derives Opportunity.RfpReleaseDate from the posted date. Normalising to
+        // UTC first loses it, and a posting issued at 5pm Pacific or later would
+        // get a release date one day late (107 BC Bid observations sit at hour
+        // 17-23 local, so this is not hypothetical).
+        var utc = TimeZoneInfo.ConvertTimeToUtc(naive, zone);
+        result = new DateTimeOffset(naive, zone.GetUtcOffset(utc));
         return true;
+    }
+
+    /// <summary>
+    /// True when a published value carries a date but no time of day, so any
+    /// time in it was supplied by the parser rather than the publisher.
+    /// </summary>
+    /// <remarks>
+    /// "Posting expires: Wednesday, October 28, 2026" has no closing time. Stored
+    /// as midnight it reads as 17:00 on the 27th in Pacific, and
+    /// <c>DataRetirementJob</c> expires on
+    /// <c>SubmissionDeadlineUtc &lt; SYSDATETIMEOFFSET()</c> -- so the whole final
+    /// day is lost and the opportunity disappears before it closes.
+    /// <see cref="EndOfPublishedDay"/> is how a date-only deadline should be
+    /// stored: the last moment of that day in the source's own zone. It errs
+    /// toward keeping an opportunity visible, which is the right direction for a
+    /// radar, and it invents no closing hour the publisher did not give.
+    /// </remarks>
+    public static bool IsDateOnly(DateTimeOffset value)
+        => value.TimeOfDay == TimeSpan.Zero;
+
+    /// <summary>
+    /// Turns a date-only deadline into the last second of that published day in
+    /// <paramref name="zoneId"/>. Returns the value unchanged when the zone
+    /// cannot be resolved or the day is not representable there.
+    /// </summary>
+    public static DateTimeOffset EndOfPublishedDay(DateTimeOffset value, string? zoneId)
+    {
+        var zone = ResolveZone(zoneId);
+        if (zone is null)
+        {
+            return value;
+        }
+
+        var endOfDay = value.Date.AddDays(1).AddSeconds(-1);
+        return TryFromLocalWallClock(endOfDay, zone, out var converted) ? converted : value;
     }
 
     /// <summary>
@@ -239,6 +284,25 @@ public static class PublishedClock
         return TryFromLocalWallClock(local, fallbackZoneId, out var converted)
             ? converted
             : (DateTimeOffset?)null;
+    }
+
+    /// <summary>
+    /// <see cref="Parse"/> for a CLOSING date: identical, except that a value
+    /// carrying no time of day becomes the last second of that published day in
+    /// <paramref name="fallbackZoneId"/> instead of its first.
+    /// </summary>
+    /// <remarks>
+    /// Use this for a deadline and <see cref="Parse"/> for a posted date. The
+    /// difference matters in one direction only: a deadline stored at the START
+    /// of its day expires before the day it names, whereas a posted date stored
+    /// at the start of its day is simply that date.
+    /// </remarks>
+    public static DateTimeOffset? ParseDeadline(string? text, string? fallbackZoneId)
+    {
+        var parsed = Parse(text, fallbackZoneId);
+        return parsed is { } value && IsDateOnly(value)
+            ? EndOfPublishedDay(value, fallbackZoneId)
+            : parsed;
     }
 
     // "2026-05-01T12:00:00-07:00" / "...Z" carry an offset; "2026-05-01T12:00:00"

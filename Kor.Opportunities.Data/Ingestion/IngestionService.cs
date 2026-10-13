@@ -388,8 +388,13 @@ public sealed class IngestionService : IIngestionService
             && !string.Equals(candidateBuyer, "Unknown", StringComparison.OrdinalIgnoreCase)
             && string.Equals(existing.BuyerName, "Unknown", StringComparison.OrdinalIgnoreCase);
 
+        // .Date, not .UtcDateTime: RfpReleaseDate is the date the buyer PUBLISHED
+        // on, in its own locale, and PublishedClock keeps the source's offset so
+        // that date is recoverable. Taking the UTC date instead moves any posting
+        // made at 5pm Pacific or later to the following day -- 107 BC Bid
+        // observations sit at hour 17-23 local.
         var candidateRfpDate = candidate.PostedDateUtc.HasValue
-            ? DateOnly.FromDateTime(candidate.PostedDateUtc.Value.UtcDateTime)
+            ? DateOnly.FromDateTime(candidate.PostedDateUtc.Value.Date)
             : (DateOnly?)null;
 
         var refreshedDiscipline = existing.Discipline == OpportunityDiscipline.Unknown
@@ -487,7 +492,7 @@ public sealed class IngestionService : IIngestionService
         else
         {
             var candidateRfpDate = candidate.PostedDateUtc.HasValue
-                ? DateOnly.FromDateTime(candidate.PostedDateUtc.Value.UtcDateTime)
+                ? DateOnly.FromDateTime(candidate.PostedDateUtc.Value.Date)
                 : (DateOnly?)null;
 
             var refreshed = existing with
@@ -705,7 +710,7 @@ public sealed class IngestionService : IIngestionService
             BuyerContactEmail = string.IsNullOrWhiteSpace(candidate.BuyerContactEmail) ? null : Truncate(candidate.BuyerContactEmail.Trim(), 255),
             BuyerContactPhone = string.IsNullOrWhiteSpace(candidate.BuyerContactPhone) ? null : Truncate(candidate.BuyerContactPhone.Trim(), 40),
             RfpReleaseDate = candidate.PostedDateUtc.HasValue
-                ? DateOnly.FromDateTime(candidate.PostedDateUtc.Value.UtcDateTime)
+                ? DateOnly.FromDateTime(candidate.PostedDateUtc.Value.Date)
                 : null,
             SubmissionDeadlineUtc = candidate.SubmissionDeadlineUtc,
             Status = OpportunityStatus.New,

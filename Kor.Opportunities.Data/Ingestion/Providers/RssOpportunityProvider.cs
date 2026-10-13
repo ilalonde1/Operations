@@ -115,6 +115,12 @@ public sealed class RssOpportunityProvider : IOpportunityProvider
         var externalReferenceElement = GetConfig(sourceConfig, "rss.externalReferenceElement") ?? "guid";
         var buyerFromTitle = GetBoolConfig(sourceConfig, "rss.buyerFromTitle", defaultValue: true);
         var buyerOverride = GetConfig(sourceConfig, "rss.buyerOverride");
+        // The zone this feed publishes deadlines in. Needed for two things: prose
+        // that names a zone, and a DATE-ONLY deadline ("Posting expires:
+        // Wednesday, October 28, 2026"), which must close at the END of that
+        // local day. CivicInfo BC had 101 rows at midnight UTC, i.e. expiring at
+        // 17:00 the day BEFORE the date they print.
+        var feedTimeZoneId = GetConfig(sourceConfig, "rss.timeZone");
         var titleFormat = GetConfig(sourceConfig, "rss.titleFormat");
 
         var items = doc.Descendants("item");
@@ -141,7 +147,7 @@ public sealed class RssOpportunityProvider : IOpportunityProvider
                 Url = url,
                 Description = TrimTo(description, 1200),
                 PostedDateUtc = ParseDate(pubDate),
-                SubmissionDeadlineUtc = ParseDeadlineFromDescription(description),
+                SubmissionDeadlineUtc = ParseDeadlineFromDescription(description, feedTimeZoneId),
                 ExternalReference = externalReference,
                 RawJson = item.ToString(SaveOptions.DisableFormatting),
             });
@@ -164,6 +170,12 @@ public sealed class RssOpportunityProvider : IOpportunityProvider
         var externalReferenceElement = GetConfig(sourceConfig, "rss.externalReferenceElement") ?? "id";
         var buyerFromTitle = GetBoolConfig(sourceConfig, "rss.buyerFromTitle", defaultValue: true);
         var buyerOverride = GetConfig(sourceConfig, "rss.buyerOverride");
+        // The zone this feed publishes deadlines in. Needed for two things: prose
+        // that names a zone, and a DATE-ONLY deadline ("Posting expires:
+        // Wednesday, October 28, 2026"), which must close at the END of that
+        // local day. CivicInfo BC had 101 rows at midnight UTC, i.e. expiring at
+        // 17:00 the day BEFORE the date they print.
+        var feedTimeZoneId = GetConfig(sourceConfig, "rss.timeZone");
         var titleFormat = GetConfig(sourceConfig, "rss.titleFormat");
 
         var entries = doc.Descendants(atom + "entry");
@@ -190,7 +202,7 @@ public sealed class RssOpportunityProvider : IOpportunityProvider
                 Url = url,
                 Description = TrimTo(summary, 1200),
                 PostedDateUtc = ParseDate(published),
-                SubmissionDeadlineUtc = ParseDeadlineFromDescription(summary),
+                SubmissionDeadlineUtc = ParseDeadlineFromDescription(summary, feedTimeZoneId),
                 ExternalReference = externalReference,
                 RawJson = entry.ToString(SaveOptions.DisableFormatting),
             });
@@ -329,7 +341,8 @@ public sealed class RssOpportunityProvider : IOpportunityProvider
             System.Text.RegularExpressions.RegexOptions.IgnoreCase
             | System.Text.RegularExpressions.RegexOptions.Compiled);
 
-    internal static DateTimeOffset? ParseDeadlineFromDescription(string? description)
+    internal static DateTimeOffset? ParseDeadlineFromDescription(
+        string? description, string? feedTimeZoneId = null)
     {
         if (string.IsNullOrWhiteSpace(description))
         {
@@ -372,18 +385,13 @@ public sealed class RssOpportunityProvider : IOpportunityProvider
             return zoned;
         }
 
-        // No zone named. These descriptions are overwhelmingly date-only
-        // ("Posting expires: Wednesday, October 28, 2026"), where there is no
-        // published time to convert and midnight UTC is the existing
-        // convention. Left as-is deliberately: inventing a local midnight here
-        // would move 101 CivicInfo rows on no evidence.
-        return DateTimeOffset.TryParse(
-            raw,
-            CultureInfo.InvariantCulture,
-            DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
-            out var parsed)
-            ? parsed
-            : null;
+        // No zone named. These descriptions are overwhelmingly DATE-ONLY
+        // ("Posting expires: Wednesday, October 28, 2026"). A date-only deadline
+        // closes at the END of that day in the feed's zone -- stored at midnight
+        // it expires before the date it prints. With no rss.timeZone configured
+        // the old midnight-UTC behaviour stands, so a feed is only moved once
+        // its zone is actually known.
+        return PublishedClock.ParseDeadline(raw, feedTimeZoneId);
     }
 
     private static string? ValueOrNull(XElement? value)

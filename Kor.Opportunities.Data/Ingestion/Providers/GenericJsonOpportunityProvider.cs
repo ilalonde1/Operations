@@ -173,7 +173,9 @@ public sealed class GenericJsonOpportunityProvider : IOpportunityProvider
                 BuyerContactName = applicant is { Length: > 200 } ? applicant[..200] : applicant,
                 PostedDateUtc = ParseDateTimeOffset(
                     ReadString(item, mapping.PostedDatePath), mapping.TimeZoneId),
-                SubmissionDeadlineUtc = ParseDateTimeOffset(
+                // A date-only closing value closes at the END of that published
+                // day; stored at midnight it expires before the printed date.
+                SubmissionDeadlineUtc = PublishedClock.ParseDeadline(
                     ReadString(item, mapping.DeadlinePath), mapping.TimeZoneId),
                 ProjectCity = mapping.CityOverride ?? TrimOrNull(ReadString(item, mapping.CityPath)),
                 ProjectProvince = mapping.ProvinceOverride ?? TrimOrNull(ReadString(item, mapping.ProvincePath)),

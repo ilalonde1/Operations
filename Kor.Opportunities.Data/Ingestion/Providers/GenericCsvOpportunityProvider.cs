@@ -198,7 +198,9 @@ public sealed class GenericCsvOpportunityProvider : IOpportunityProvider
             "tenderClosingDate",
             "tenderClosingDate-dateFermetureSoumissions",
             "closingDate");
-        var deadline = PublishedClock.Parse(deadlineRaw, feedTimeZoneId);
+        // ParseDeadline, not Parse: a date-only closing value closes at the END of
+        // that published day, or it expires before the date the buyer printed.
+        var deadline = PublishedClock.ParseDeadline(deadlineRaw, feedTimeZoneId);
 
         var external = CsvParser.FirstValue(row, headers,
             "referenceNumber",
