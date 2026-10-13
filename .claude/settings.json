@@ -68,6 +68,17 @@
         ]
       },
       {
+        "matcher": "Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$CLAUDE_PROJECT_DIR/tools/claude_prior_art_guard.py\"",
+            "timeout": 20,
+            "statusMessage": "Recording what was read"
+          }
+        ]
+      },
+      {
         "matcher": "PowerShell",
         "hooks": [
           {
