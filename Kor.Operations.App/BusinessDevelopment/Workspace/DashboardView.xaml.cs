@@ -5,6 +5,7 @@ using System.Windows;
 using System.Windows.Controls;
 using Kor.Operations.App.Opportunities;
 using Kor.Operations.Services;
+using Kor.Opportunities.Data.Opportunities;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Kor.Operations.App.BusinessDevelopment.Workspace;
@@ -176,24 +177,24 @@ public partial class DashboardView : UserControl
     // detail surface the rest of the BD module uses so dashboard double-click
     // is consistent with RFPs grid / Org Dossier elsewhere.
 
-    private void LatestRfpsGrid_MouseDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    private async void LatestRfpsGrid_MouseDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
         if (sender is not DataGrid grid || grid.SelectedItem is not DashboardViewModel.FeedRow row)
         {
             return;
         }
 
-        OpenOpportunityDialog(row.OpportunityId);
+        await OpenOpportunityDialogAsync(row.OpportunityId).ConfigureAwait(true);
     }
 
-    private void DeadlinesList_MouseDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    private async void DeadlinesList_MouseDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
         if (sender is not ListBox list || list.SelectedItem is not DashboardViewModel.DeadlineRow row)
         {
             return;
         }
 
-        OpenOpportunityDialog(row.OpportunityId);
+        await OpenOpportunityDialogAsync(row.OpportunityId).ConfigureAwait(true);
     }
 
     private void OpenStructuralSeatsGrid_MouseDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
@@ -239,7 +240,7 @@ public partial class DashboardView : UserControl
         }
     }
 
-    private void OpenOpportunityDialog(long opportunityId)
+    private async Task OpenOpportunityDialogAsync(long opportunityId)
     {
         if (DataContext is not DashboardViewModel vm)
         {
@@ -257,10 +258,46 @@ public partial class DashboardView : UserControl
             return;
         }
 
-        // Read-only view of the opportunity; user can Cancel to bail without
-        // saving. This matches the OpportunitiesView grid's double-click flow.
+        // This is the editable dialog. As in OpportunitiesView, its caller must
+        // persist Result through the scored, row-version-checked update path.
         var dlg = new OpportunityEntryDialog(opp) { Owner = OwnerWindow() };
-        dlg.ShowDialog();
+        if (dlg.ShowDialog() != true || dlg.Result is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var editor = _services!.GetRequiredService<OpportunitiesViewModel>();
+            await editor.UpdateAsync(dlg.Result, ResolveActor(), CancellationToken.None).ConfigureAwait(true);
+        }
+        catch (OpportunityConcurrencyException)
+        {
+            MessageBox.Show(OwnerWindow(),
+                "This opportunity was modified by another user since you opened it. Refresh and try again.",
+                "BD Dashboard - Concurrent Edit", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(OwnerWindow(), ex.Message, "BD Dashboard - Update Failed", MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+
+        // LoadAsync reports refresh failures in dashboard status. The write has
+        // already succeeded; do not relabel a failed refresh as a failed save.
+        await vm.LoadAsync(CancellationToken.None).ConfigureAwait(true);
+    }
+
+    private string ResolveActor()
+    {
+        if (!string.IsNullOrWhiteSpace(global::Kor.Operations.OperationsApp.SignedInUserUpn))
+        {
+            return global::Kor.Operations.OperationsApp.SignedInUserUpn.Trim();
+        }
+
+        var overrideUpn = _services!.GetRequiredService<Kor.Operations.App.Options.UserOptions>().UserUpnOverride;
+        return string.IsNullOrWhiteSpace(overrideUpn) ? Environment.UserName : overrideUpn.Trim();
     }
 
     private void OpenOrgDossier(long canonicalOrgId)

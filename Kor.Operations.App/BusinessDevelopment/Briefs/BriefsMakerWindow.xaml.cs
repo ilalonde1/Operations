@@ -30,9 +30,9 @@ public partial class BriefsMakerWindow : Window, Kor.Operations.Services.IAiCont
             1 => "BD Briefs Maker — Region brief tab; region: "
                  + (_selectedProvince is null ? "(none)" : _selectedProvince + (_selectedCity is null ? "" : $" / {_selectedCity}")) + ".",
             2 => "BD Briefs Maker — Project brief tab; selected project: "
-                 + (_selectedProject is { } proj ? $"{proj.ProjectName} (id {_selectedProjectId ?? proj.Id})" : "(none)") + ".",
+                 + (_selectedProject is { } proj ? $"{proj.ProjectName} (id {proj.Id})" : "(none)") + ".",
             3 => "BD Briefs Maker — Person brief tab; selected person: "
-                 + (_selectedPerson is { } person ? $"{person.DisplayName} (id {_selectedPersonId ?? person.IntelPersonId})" : "(none)") + ".",
+                 + (_selectedPerson is { } person ? $"{person.DisplayName} (id {person.IntelPersonId})" : "(none)") + ".",
             4 => "BD Briefs Maker — Sector brief tab; geography: "
                  + (_sectorProvince is null ? "(none)" : _sectorProvince + (_sectorCity is null ? "" : $" / {_sectorCity}"))
                  + (_sectorBuckets.Count > 0 ? $"; sectors: {string.Join(" + ", _sectorBuckets)}" : "")
@@ -61,8 +61,8 @@ public partial class BriefsMakerWindow : Window, Kor.Operations.Services.IAiCont
     private CanonicalOrgRow? _selectedOrg;
     // Latest-requested picker ids. Each picker handler awaits a load and then
     // re-checks these before writing _selected* — two rapid picks A->B where
-    // A's load lands last must not leave A's data under B's id (the Generate
-    // path names the output file by id but writes _selected* content).
+    // A's load lands last must not replace B's selection. Project/person data
+    // is cleared while loading; exports use the captured record's own id.
     private long? _selectedOrgId;
     private string? _selectedProvince;
     private string? _selectedCity;
@@ -158,6 +158,9 @@ public partial class BriefsMakerWindow : Window, Kor.Operations.Services.IAiCont
     private async void ProjectPicker_ProjectSelected(object? sender, long id)
     {
         _selectedProjectId = id;
+        _selectedProject = null;
+        ProjectPreview.Visibility = Visibility.Collapsed;
+        UpdateGenerateButtonsEnabled();
         Kor.Opportunities.Data.Briefs.ProjectBriefData? data;
         try
         {
@@ -198,6 +201,9 @@ public partial class BriefsMakerWindow : Window, Kor.Operations.Services.IAiCont
     private async void PersonPicker_PersonSelected(object? sender, long id)
     {
         _selectedPersonId = id;
+        _selectedPerson = null;
+        PersonPreview.Visibility = Visibility.Collapsed;
+        UpdateGenerateButtonsEnabled();
         Kor.Opportunities.Data.Briefs.PersonBriefData? data;
         try
         {
@@ -448,7 +454,7 @@ public partial class BriefsMakerWindow : Window, Kor.Operations.Services.IAiCont
             }
             else if (TypeTabs.SelectedIndex == 2 && _selectedProject is { } proj)
             {
-                path = Path.Combine(desktop, $"KOR-Project-Brief-{_selectedProjectId ?? proj.Id}-{ts}.{ext}");
+                path = Path.Combine(desktop, $"KOR-Project-Brief-{proj.Id}-{ts}.{ext}");
                 if (asPdf)
                 {
                     await Task.Run(() => _pdfGen.WriteProjectBrief(proj, path)).ConfigureAwait(true);
@@ -468,7 +474,7 @@ public partial class BriefsMakerWindow : Window, Kor.Operations.Services.IAiCont
                     safeName = "person";
                 }
 
-                path = Path.Combine(desktop, $"KOR-Person-Brief-{_selectedPersonId ?? person.IntelPersonId}-{safeName}-{ts}.{ext}");
+                path = Path.Combine(desktop, $"KOR-Person-Brief-{person.IntelPersonId}-{safeName}-{ts}.{ext}");
                 if (asPdf)
                 {
                     await Task.Run(() => _pdfGen.WritePersonBrief(person, path)).ConfigureAwait(true);

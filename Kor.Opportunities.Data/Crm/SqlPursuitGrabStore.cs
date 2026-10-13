@@ -111,7 +111,8 @@ UPDATE opportunities.Opportunities
        UpdatedBy         = @me
  WHERE Id = @id
    AND Status = 1                                 -- still New
-   AND OwnerStaffId IS NULL;                       -- still un-claimed
+   AND OwnerStaffId IS NULL                       -- still un-claimed
+   AND DismissedAtUtc IS NULL;                    -- still in the actionable pool
 
 IF @@ROWCOUNT = 0
 BEGIN

@@ -45,7 +45,8 @@ public sealed class AdminViewModel : INotifyPropertyChanged, Kor.Operations.Serv
         _schedules = schedules ?? throw new ArgumentNullException(nameof(schedules));
         _dashboard = dashboard ?? throw new ArgumentNullException(nameof(dashboard));
 
-        RunNowCommand = new RelayCommand(o => _ = RunNowAsync(o as ScheduledJobRow));
+        RunNowCommand = new RelayCommand(o => _ = RunNowAsync(o as ScheduledJobRow),
+            o => o is ScheduledJobRow && CanWriteSchedules);
         ToggleEnabledCommand = new RelayCommand(o => _ = ToggleEnabledAsync(o as ScheduledJobRow));
         OpenReportCommand = new RelayCommand(
             o => OpenReport(o as ScheduledJobRow),
@@ -177,6 +178,15 @@ public sealed class AdminViewModel : INotifyPropertyChanged, Kor.Operations.Serv
     // unordered writes (audit 2026-07-01 4.2).
     private bool _adminWriteBusy;
 
+    public bool CanWriteSchedules => !_adminWriteBusy;
+
+    private void SetAdminWriteBusy(bool busy)
+    {
+        _adminWriteBusy = busy;
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CanWriteSchedules)));
+        CommandManager.InvalidateRequerySuggested();
+    }
+
     private async Task RunNowAsync(ScheduledJobRow? row)
     {
         if (row is null || _adminWriteBusy)
@@ -184,7 +194,8 @@ public sealed class AdminViewModel : INotifyPropertyChanged, Kor.Operations.Serv
             return;
         }
 
-        _adminWriteBusy = true;
+        SetAdminWriteBusy(true);
+        StatusMessage = $"Queuing {row.JobName}...";
         try
         {
             await _schedules.EnqueueTriggerAsync(row.JobName, "AdminUI", CancellationToken.None).ConfigureAwait(true);
@@ -196,31 +207,44 @@ public sealed class AdminViewModel : INotifyPropertyChanged, Kor.Operations.Serv
         }
         finally
         {
-            _adminWriteBusy = false;
+            SetAdminWriteBusy(false);
         }
     }
 
     private async Task ToggleEnabledAsync(ScheduledJobRow? row)
     {
-        if (row is null || _adminWriteBusy)
+        if (row is null)
         {
             return;
         }
 
-        _adminWriteBusy = true;
+        if (_adminWriteBusy)
+        {
+            // The TwoWay checkbox has already changed the row. Restore the
+            // last acknowledged value even if a queued/programmatic click gets
+            // through after the control was disabled.
+            row.IsEnabled = row.ConfirmedIsEnabled;
+            StatusMessage = "Schedule change not saved: another admin write is in progress. Try again when it finishes.";
+            return;
+        }
+
+        var requestedEnabled = row.IsEnabled;
+        SetAdminWriteBusy(true);
+        StatusMessage = $"Saving {row.JobName}...";
         try
         {
-            await _schedules.UpdateEnabledAsync(row.JobName, row.IsEnabled, CancellationToken.None).ConfigureAwait(true);
-            StatusMessage = $"{row.JobName}: Enabled = {row.IsEnabled}. Takes effect within ~10s.";
+            await _schedules.UpdateEnabledAsync(row.JobName, requestedEnabled, CancellationToken.None).ConfigureAwait(true);
+            row.ConfirmEnabled(requestedEnabled);
+            StatusMessage = $"{row.JobName}: Enabled = {requestedEnabled}. Takes effect within ~10s.";
         }
         catch (Exception ex)
         {
-            row.IsEnabled = !row.IsEnabled;
+            row.IsEnabled = row.ConfirmedIsEnabled;
             StatusMessage = $"Failed to toggle {row.JobName}: {ex.Message}";
         }
         finally
         {
-            _adminWriteBusy = false;
+            SetAdminWriteBusy(false);
         }
     }
 
@@ -345,6 +369,7 @@ public sealed class AdminViewModel : INotifyPropertyChanged, Kor.Operations.Serv
             JobName = jobName;
             CronSchedule = cronSchedule;
             _isEnabled = isEnabled;
+            ConfirmedIsEnabled = isEnabled;
             _category = category;
             _lastReportPath = lastReportPath;
             LastRun = lastRun;
@@ -382,6 +407,14 @@ public sealed class AdminViewModel : INotifyPropertyChanged, Kor.Operations.Serv
         {
             get => _isEnabled;
             set => SetField(ref _isEnabled, value);
+        }
+
+        internal bool ConfirmedIsEnabled { get; private set; }
+
+        internal void ConfirmEnabled(bool enabled)
+        {
+            ConfirmedIsEnabled = enabled;
+            IsEnabled = enabled;
         }
 
         public DateTimeOffset? NextFireAtUtc

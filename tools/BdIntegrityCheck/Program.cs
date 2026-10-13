@@ -39,6 +39,26 @@ Directory.CreateDirectory(outDir);
 
 var invariants = new List<(string Key, string Desc, bool Error, string CountSql, string SampleSql)>();
 
+// BD fixes brief 1: data companion to the grab UPDATE-predicate source gate.
+// EXPECTED: zero dismissed opportunities with a CRM engagement. ACTUAL: CountSql
+// counts opportunities (EXISTS avoids multiplying by engagement rows), SampleSql
+// names examples. Covers the contradictory durable outcome, not race execution,
+// SQL guard deployment, or lost UI edits. Would miss a claim subsequently restored
+// or deleted. An empty database result is NOT proof that the pre-fix guard fails;
+// BdWriteBoundaryRegressionTests checks that guard without requiring live SQL.
+// Audit baseline 2026-10-13: 0 contradictions, 87 dismissed New/unowned exposures.
+invariants.Add(("dismissed_opportunity_has_engagement",
+    "EXPECTED 0 dismissed opportunities with a CRM engagement; ACTUAL count follows. A stale grab must not bypass removal. Does not prove the deployed guard or replay concurrency",
+    true,
+    @"SELECT COUNT(*) FROM opportunities.Opportunities o
+      WHERE o.DismissedAtUtc IS NOT NULL
+        AND EXISTS (SELECT 1 FROM opportunities.CrmEngagements e WHERE e.OpportunityId = o.Id);",
+    @"SELECT TOP 5 o.Id, o.Name, o.Status, o.OwnerStaffId, o.DismissedAtUtc
+      FROM opportunities.Opportunities o
+      WHERE o.DismissedAtUtc IS NOT NULL
+        AND EXISTS (SELECT 1 FROM opportunities.CrmEngagements e WHERE e.OpportunityId = o.Id)
+      ORDER BY o.Id;"));
+
 // ── Merge-ledger consistency ─────────────────────────────────────────────────
 invariants.Add(("org_merge_from_still_active",
     "CanonicalOrgMerge rows whose MergedFrom id is still a LIVE org (a live id marked merged-away = inconsistent)",
@@ -503,6 +523,15 @@ invariants.Add(("org_thin_unsafe_redirect",
 // stored wrong it is 14:00Z, which still prints "2:00:00 PM" and so matches its
 // own raw text. No date parsing needed, and it goes to zero once converted.
 //
+// ⚠ FORMAT MUST SEE THE UTC WALL CLOCK, NOT THE LOCAL ONE. FORMAT on a
+// datetimeoffset renders its LOCAL component, so once migration 341 made stored
+// deadlines offset-preserving (2026-10-13), a CORRECTLY converted row formatted to
+// the published wall clock and this check flagged it: 60 false positives, all of
+// them right — e.g. 2026-11-30T23:00:00Z at -08:00 is exactly the "3:00 PM PST"
+// its raw text prints. The comparison is normalised to UTC first. A check whose
+// name is broader than what it tests is worse than no check, and this one broke
+// itself the same afternoon it was written.
+//
 // ⚠ WHAT THIS DOES NOT COVER: BC Bid. BcBidScraper sets RawJson = null, so its
 // 1,678 rows have no stored text to compare and this check is blind to them —
 // the largest affected population is exactly the one it cannot see. Their zone
@@ -526,8 +555,8 @@ invariants.Add(("opportunity_deadline_stored_as_local_wall_clock",
       WHERE o.SubmissionDeadlineUtc IS NOT NULL
         AND CAST(o.SubmissionDeadlineUtc AS time) <> '00:00:00'
         AND PATINDEX('%[(. ][PMCEAN][SD]T%', obs.RawJson) > 0
-        AND (obs.RawJson LIKE '%' + FORMAT(o.SubmissionDeadlineUtc, 'h:mm:ss tt', 'en-US') + '%'
-          OR obs.RawJson LIKE '%' + FORMAT(o.SubmissionDeadlineUtc, 'h:mm tt', 'en-US') + '%');",
+        AND (obs.RawJson LIKE '%' + FORMAT(CAST(o.SubmissionDeadlineUtc AT TIME ZONE 'UTC' AS datetime2), 'h:mm:ss tt', 'en-US') + '%'
+          OR obs.RawJson LIKE '%' + FORMAT(CAST(o.SubmissionDeadlineUtc AT TIME ZONE 'UTC' AS datetime2), 'h:mm tt', 'en-US') + '%');",
     @"WITH obs AS (
         SELECT ob.OpportunityId, ob.OpportunitySourceId, ob.RawJson,
                ROW_NUMBER() OVER (PARTITION BY ob.OpportunityId, ob.OpportunitySourceId
@@ -543,8 +572,8 @@ invariants.Add(("opportunity_deadline_stored_as_local_wall_clock",
       WHERE o.SubmissionDeadlineUtc IS NOT NULL
         AND CAST(o.SubmissionDeadlineUtc AS time) <> '00:00:00'
         AND PATINDEX('%[(. ][PMCEAN][SD]T%', obs.RawJson) > 0
-        AND (obs.RawJson LIKE '%' + FORMAT(o.SubmissionDeadlineUtc, 'h:mm:ss tt', 'en-US') + '%'
-          OR obs.RawJson LIKE '%' + FORMAT(o.SubmissionDeadlineUtc, 'h:mm tt', 'en-US') + '%')
+        AND (obs.RawJson LIKE '%' + FORMAT(CAST(o.SubmissionDeadlineUtc AT TIME ZONE 'UTC' AS datetime2), 'h:mm:ss tt', 'en-US') + '%'
+          OR obs.RawJson LIKE '%' + FORMAT(CAST(o.SubmissionDeadlineUtc AT TIME ZONE 'UTC' AS datetime2), 'h:mm tt', 'en-US') + '%')
       ORDER BY s.Name, o.Id;"));
 
 var sb = new StringBuilder();

@@ -115,6 +115,7 @@
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <CheckBox IsChecked="{Binding IsEnabled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                              IsEnabled="{Binding DataContext.CanWriteSchedules, RelativeSource={RelativeSource AncestorType=DataGrid}}"
                                               HorizontalAlignment="Center"
                                               Command="{Binding DataContext.ToggleEnabledCommand, ElementName=AdminViewRoot}"
                                               CommandParameter="{Binding}"/>

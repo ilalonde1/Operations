@@ -121,7 +121,9 @@ ORDER BY s.JobName;";
 UPDATE opportunities.JobSchedules WITH (UPDLOCK, HOLDLOCK, ROWLOCK)
 SET Enabled = @e,
     UpdatedAtUtc = sysdatetimeoffset()
-WHERE JobName = @j;";
+WHERE JobName = @j;
+IF @@ROWCOUNT = 0
+    THROW 50001, 'Schedule no longer exists. Refresh before changing Enabled.', 1;";
 
         await using var con = new SqlConnection(_connectionString);
         await con.OpenAsync(ct).ConfigureAwait(false);
