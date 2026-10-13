@@ -266,6 +266,6 @@ public static class SectorReportGenerator
             return string.Empty;
         }
 
-        return value.Length <= max ? value : value[..max];
+        return BdReportFormatting.Abridge(value, max);
     }
 }

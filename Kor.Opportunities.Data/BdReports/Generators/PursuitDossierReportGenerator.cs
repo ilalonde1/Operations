@@ -44,9 +44,10 @@ public static class PursuitDossierReportGenerator
         b.Kpis(
             new KpiItem(pursuits.Count.ToString(CultureInfo.InvariantCulture), "Active pursuits"),
             new KpiItem(urgent.Count.ToString(CultureInfo.InvariantCulture), "Urgent", urgent.Count > 0 ? ChipTone.Urgent : ChipTone.Neutral),
-            new KpiItem(CadCompact(pipelineCad), "Pipeline (CAD)"),
+            new KpiItem(CadCompact(pipelineCad), "Known-cost subtotal (CAD)"),
             new KpiItem(PctCompact(withArchitect.Count, pursuits.Count), "Architect edge"),
             new KpiItem(gaps.Count.ToString(CultureInfo.InvariantCulture), "Graph gaps", gaps.Count > 0 ? ChipTone.Caution : ChipTone.Positive));
+        b.P(BdReportFormatting.CostCoverage(pursuits.Count(p => p.EstimatedCostCad.HasValue), pursuits.Count));
         b.B("Architect edge resolved: ", PctDisplay(withArchitect.Count, pursuits.Count));
         b.B("Incumbent structural engineer known: ", withIncumbentSe.Count.ToString(CultureInfo.InvariantCulture));
         if (korSeated.Count > 0)
@@ -294,6 +295,6 @@ public static class PursuitDossierReportGenerator
             return string.Empty;
         }
 
-        return value.Length <= max ? value : value[..max];
+        return BdReportFormatting.Abridge(value, max);
     }
 }

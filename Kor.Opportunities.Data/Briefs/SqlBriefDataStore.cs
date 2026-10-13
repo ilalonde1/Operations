@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Kor.Opportunities.Data.Intel;
+using Kor.Opportunities.Data.BdReports;
 using Microsoft.Data.SqlClient;
 
 namespace Kor.Opportunities.Data.Briefs;
@@ -500,21 +501,22 @@ WHERE Id = @id AND RetiredAtUtc IS NULL;";
         var cityTokens = TokenizeCity(city);
         var cityLabel = string.IsNullOrWhiteSpace(city) ? null : city.Trim();
 
+        var asOf = DateTimeOffset.UtcNow;
         var liveRfpCount = await ScalarIntAsync(con, $@"
 SELECT COUNT(*) FROM opportunities.Opportunities
-WHERE Status = 1 AND IsPrimeConsultantRfp = 1 AND ProjectProvince = @prov
+WHERE {BdReportPopulationSql.RegionLiveRfp}
 {BuildCityClause(cityTokens, OpportunityCityColumns, "c")};",
             cmd =>
             {
+                cmd.Parameters.Add("@asOf", SqlDbType.DateTimeOffset).Value = asOf;
                 cmd.Parameters.Add("@prov", SqlDbType.NVarChar, 20).Value = province;
                 BindCityTokens(cmd, cityTokens, "c");
             }, ct).ConfigureAwait(false);
 
         var forwardCount = await ScalarIntAsync(con, $@"
 SELECT COUNT(*) FROM opportunities.MajorProjectsInventory
-WHERE RetiredAtUtc IS NULL AND Province = @prov
-{BuildCityClause(cityTokens, MpiCityColumns, "c")}
-  AND ProjectStage IN (N'CapitalPlan', N'FacilityRenewal');",
+WHERE {BdReportPopulationSql.RegionForward}
+{BuildCityClause(cityTokens, MpiCityColumns, "c")};",
             cmd =>
             {
                 cmd.Parameters.Add("@prov", SqlDbType.NVarChar, 20).Value = province;
@@ -534,7 +536,7 @@ WHERE RetiredAtUtc IS NULL AND Province = @prov
         var topArchitects = await GetTopOrgsAsync(con, province, cityTokens, korIdVal, "Architect", "ArchitectCanonicalOrgId", includeKorJointSubquery: true, ct).ConfigureAwait(false);
         var topOwners = await GetTopOwnersAsync(con, province, cityTokens, ct).ConfigureAwait(false);
         var topCompetitors = await GetTopOrgsAsync(con, province, cityTokens, korIdVal, "Competitor", "StructuralEngineerCanonicalOrgId", includeKorJointSubquery: false, ct).ConfigureAwait(false);
-        var liveRfps = await GetRegionLiveRfpsAsync(con, province, cityTokens, ct).ConfigureAwait(false);
+        var liveRfps = await GetRegionLiveRfpsAsync(con, province, cityTokens, asOf, ct).ConfigureAwait(false);
         var forwardProjects = await GetRegionForwardProjectsAsync(con, province, cityTokens, ct).ConfigureAwait(false);
         var events = await GetRegionEventsAsync(con, province, cityTokens, ct).ConfigureAwait(false);
         var rollup = await _intelReadService.GetRegionIntelAsync(province, city, ct).ConfigureAwait(false);
@@ -943,10 +945,10 @@ ORDER BY RedirectSafe DESC, Richness DESC, r.Id;";
         long canonicalOrgId,
         CancellationToken ct)
     {
-        const string sql = @"
+        var sql = $@"
 SELECT co.Id, co.DisplayName, co.Kind,
-  (SELECT COUNT(*) FROM opportunities.IntelPersonAffiliation a
-   WHERE a.CanonicalOrgId = co.Id AND a.RetiredAtUtc IS NULL)
+  (SELECT COUNT(DISTINCT p.Id) {BdReportPopulationSql.CurrentPeopleFrom}
+   AND pa.CanonicalOrgId = co.Id)
       AS PeopleCount,
   (SELECT COUNT(*) FROM opportunities.IntelAction x
    WHERE x.CanonicalOrgId = co.Id AND x.Status = 'Open'
@@ -2208,15 +2210,16 @@ ORDER BY ProjectCount DESC, c.DisplayName;";
         return rows;
     }
 
-    private static async Task<IReadOnlyList<RegionLiveRfp>> GetRegionLiveRfpsAsync(SqlConnection con, string province, IReadOnlyList<string> cityTokens, CancellationToken ct)
+    private static async Task<IReadOnlyList<RegionLiveRfp>> GetRegionLiveRfpsAsync(SqlConnection con, string province, IReadOnlyList<string> cityTokens, DateTimeOffset asOf, CancellationToken ct)
     {
         var sql = $@"
 SELECT TOP 5 Id, Name, BuyerName, SubmissionDeadlineUtc, PrimeProjectSector, PrimeConfidence
 FROM opportunities.Opportunities
-WHERE Status = 1 AND IsPrimeConsultantRfp = 1 AND ProjectProvince = @prov
+WHERE {BdReportPopulationSql.RegionLiveRfp}
 {BuildCityClause(cityTokens, OpportunityCityColumns, "c")}
 ORDER BY PrimeConfidence DESC, SubmissionDeadlineUtc ASC;";
         await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@asOf", SqlDbType.DateTimeOffset).Value = asOf;
         cmd.Parameters.Add("@prov", SqlDbType.NVarChar, 20).Value = province;
         BindCityTokens(cmd, cityTokens, "c");
 
@@ -2241,7 +2244,7 @@ ORDER BY PrimeConfidence DESC, SubmissionDeadlineUtc ASC;";
         var sql = $@"
 SELECT TOP 5 Id, ProjectName, ProponentName, Stage, EstimatedCostCad
 FROM opportunities.MajorProjectsInventory
-WHERE RetiredAtUtc IS NULL AND Province = @prov
+WHERE {BdReportPopulationSql.RegionForward}
 {BuildCityClause(cityTokens, MpiCityColumns, "c")}
 ORDER BY EstimatedCostCad DESC;";
         await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };

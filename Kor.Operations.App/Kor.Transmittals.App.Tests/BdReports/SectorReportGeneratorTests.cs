@@ -149,7 +149,7 @@ public sealed class SectorReportGeneratorTests
         var doc = SectorReportGenerator.Build(Definition, Prose, rows, GeneratedAt);
 
         var monitorTable = doc.Blocks.OfType<TableBlock>().Single();
-        Assert.Equal(110, monitorTable.Rows[0][5].Length);
+        Assert.Equal(new string('x', 110) + "... [abridged]", monitorTable.Rows[0][5]);
     }
 
     [Fact]

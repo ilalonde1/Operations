@@ -368,7 +368,7 @@ public sealed class BdReportsViewModel : INotifyPropertyChanged, Kor.Operations.
             PreviewHtml = HtmlPreviewBuilder.Render(document);
 
             LogGenerateBestEffort("html");
-            StatusMessage = $"Executive overview: {headline.HonedCount:N0} honed of {headline.TotalActiveMpis:N0} active MPIs, ~${headline.HonedCostCad / 1_000_000_000m:F1}B pipeline.";
+            StatusMessage = $"Executive overview: {headline.HonedCount:N0} honed of {headline.TotalActiveMpis:N0} active MPIs, ~${headline.HonedCostCad / 1_000_000_000m:F1}B known-cost subtotal; {BdReportFormatting.CostCoverage(headline.CostedProjectCount, headline.CostPopulationCount)}.";
             return PreviewHtml;
         }
         catch (OperationCanceledException)

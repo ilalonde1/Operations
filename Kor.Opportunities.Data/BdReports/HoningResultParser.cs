@@ -59,7 +59,7 @@ public static class HoningResultParser
             }
 
             return new HoningResult(
-                ReadString(honingPass, root, "verdict"),
+                BdVerdicts.Normalize(ReadString(honingPass, root, "verdict")),
                 ReadString(honingPass, root, "korAngle"),
                 ReadString(honingPass, root, "status"),
                 ReadString(honingPass, root, "description"),

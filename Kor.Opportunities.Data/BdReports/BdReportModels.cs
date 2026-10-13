@@ -19,8 +19,20 @@ public static class BdVerdicts
     public const string Dead = "DEAD";
     public const string Duplicate = "DUPLICATE";
 
+    /// <summary>Canonical vocabulary for writes and legacy reads; unknown tokens are not verdicts.</summary>
+    public static string? Normalize(string? verdict) => verdict?.Trim().ToUpperInvariant() switch
+    {
+        PursueUrgent => PursueUrgent,
+        Pursue => Pursue,
+        Monitor => Monitor,
+        Discover => Discover,
+        Dead => Dead,
+        Duplicate => Duplicate,
+        _ => null,
+    };
+
     /// <summary>Sort rank for report/dashboard ordering. Unknown or missing verdicts sort last.</summary>
-    public static int Rank(string? verdict) => verdict switch
+    public static int Rank(string? verdict) => Normalize(verdict) switch
     {
         PursueUrgent => 0,
         Pursue => 1,
@@ -38,6 +50,7 @@ public static class BdVerdicts
     /// </summary>
     public static bool IsUrgent(string? verdict, string? korAngle)
     {
+        verdict = Normalize(verdict);
         if (string.Equals(verdict, PursueUrgent, StringComparison.Ordinal))
         {
             return true;
@@ -104,7 +117,9 @@ public sealed record SectorVerdictSummary(
     int FreshCount,
     int AgingCount,
     int StaleCount,
-    decimal HonedCostCad);
+    decimal HonedCostCad,
+    int? CostedProjectCount = null,
+    int? CostPopulationCount = null);
 
 /// <summary>
 /// Cross-sector headline for the executive overview. Computed over DISTINCT
@@ -114,7 +129,9 @@ public sealed record SectorVerdictSummary(
 public sealed record BdExecHeadline(
     int TotalActiveMpis,
     int HonedCount,
-    decimal HonedCostCad);
+    decimal HonedCostCad,
+    int? CostedProjectCount = null,
+    int? CostPopulationCount = null);
 
 /// <summary>
 /// One structural-engineering competitor's footprint across KOR's pipeline:
@@ -234,7 +251,10 @@ public sealed record PursuitDossierRow(
 }
 
 /// <summary>
-/// One architect ranked by pipeline leverage. Built from the STRUCTURED org
+/// One architect ranked by linked portfolio size, including historical work.
+/// ActiveProjects and PipelineCostCad retain their legacy API names: neither
+/// establishes a live pursuit window; the cost is a known-cost subtotal.
+/// Built from the STRUCTURED org
 /// graph (MajorProjectsInventory.ArchitectCanonicalOrgId + org-scoped Intel
 /// rows) — the original .architect-freq.json text-mining pull was never saved
 /// and its counts are not reconstructible from any table, so this is the
@@ -249,7 +269,8 @@ public sealed record ArchitectLeverageRow(
     int Signals,
     int People,
     int OpenActions,
-    IReadOnlyList<string> TopProjects)
+    IReadOnlyList<string> TopProjects,
+    int? CostedProjectCount = null)
 {
     public int TotalRefs => Signals + People + OpenActions;
 }

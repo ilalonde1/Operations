@@ -49,7 +49,7 @@ public sealed class PursuitDossierReportGeneratorTests
         Assert.Equal("4", kpis["Active pursuits"].Value);
         Assert.Equal("1", kpis["Urgent"].Value);
         Assert.Equal(ChipTone.Urgent, kpis["Urgent"].Tone);
-        Assert.Equal("$2.3B", kpis["Pipeline (CAD)"].Value);
+        Assert.Equal("$2.3B", kpis["Known-cost subtotal (CAD)"].Value);
         Assert.Equal("75%", kpis["Architect edge"].Value);
         Assert.Equal("1", kpis["Graph gaps"].Value);
         Assert.Equal(ChipTone.Caution, kpis["Graph gaps"].Tone);

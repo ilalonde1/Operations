@@ -35,14 +35,14 @@ public sealed class ExecSummaryReportGeneratorTests
             .GroupBy(x => x.Label).ToDictionary(g => g.Key, g => g.First().Value);
         Assert.Equal("1,942", labels["Total active MPIs (cross-sector, distinct): "]);
         Assert.Equal("1,425 (73%)", labels["Honed (deep BD intel — verified, named, action-ready): "]);
-        Assert.Equal("~$93.8B CAD", labels["Total $ live pipeline (PURSUE/MONITOR/DISCOVER cost rollup): "]);
+        Assert.Equal("~$93.8B CAD", labels["Known-cost subtotal (PURSUE/MONITOR/DISCOVER): "]);
         Assert.Equal("1", labels["URGENT items live right now: "]);
 
         var heatmap = doc.Blocks.OfType<TableBlock>().Single();
         Assert.Equal("Hospitals & Healthcare", heatmap.Rows[0][0]);
         Assert.Equal("114", heatmap.Rows[0][2]);  // honed = 155 - 41
         Assert.Equal("74%", heatmap.Rows[0][3]);
-        Assert.Equal("$26,511M", heatmap.Rows[0][4]);
+        Assert.Equal("$26,511M; cost coverage unavailable; unknown costs excluded", heatmap.Rows[0][4]);
 
         var headings = doc.Blocks.OfType<HeadingBlock>().Select(h => h.Text).ToList();
         Assert.Contains(headings, h => h.StartsWith("1. Urgent One"));

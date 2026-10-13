@@ -46,7 +46,7 @@ public static class StrategicRelationshipsReportGenerator
                 b.P($"  - {step}");
             }
 
-            b.P("Projects in pipeline (sample, from honed briefs):");
+            b.P($"Project matches (sample from honed briefs; {Math.Min(10, projects.Count)} of {projects.Count} retrieved shown):");
             if (projects.Count > 0)
             {
                 foreach (var p in projects.Take(10))
@@ -64,13 +64,14 @@ public static class StrategicRelationshipsReportGenerator
 
         b.H2($"Summary — {targets.Count} strategic targets");
         b.Table(
-            new[] { "Target", "Type", "Live pipeline matches" },
+            new[] { "Target", "Type", "Retrieved sample matches" },
             targets.Select(t => (IReadOnlyList<string>)new[]
             {
                 t.Definition.Name,
                 t.Definition.Type,
                 t.Projects.Count.ToString(System.Globalization.CultureInfo.InvariantCulture),
             }).ToList());
+        b.P("Counts are retrieved samples, not total matches. Retrieval is capped; details show at most 10 per target. Matches are keyword references in nonretired inventory, not a verified count of live pursuits.");
         b.P("Every target compounds: the relationship cost is one outreach campaign; the return is standing access to a multi-project pipeline. Track engagement actions in the BD Dashboard Priority Actions queue.");
 
         return b.Build();

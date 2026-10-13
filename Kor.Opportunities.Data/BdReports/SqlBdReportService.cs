@@ -19,7 +19,7 @@ public sealed class SqlBdReportService : IBdReportService
     // at the root. Safe in SQL because verdicts are short tokens (JSON_VALUE's
     // 4000-char limit only matters for prose fields, which are parsed in C#).
     private const string VerdictExpr =
-        "COALESCE(JSON_VALUE(e.ResultJson, '$.honingPass.verdict'), JSON_VALUE(e.ResultJson, '$.verdict'))";
+        "UPPER(LTRIM(RTRIM(COALESCE(JSON_VALUE(e.ResultJson, '$.honingPass.verdict'), JSON_VALUE(e.ResultJson, '$.verdict')))))";
 
     private readonly string _connectionString;
 
@@ -68,7 +68,7 @@ GROUP BY {VerdictExpr};";
             {
                 while (await r.ReadAsync(ct).ConfigureAwait(false))
                 {
-                    var verdict = r.IsDBNull(0) ? null : r.GetString(0);
+                    var verdict = BdVerdicts.Normalize(r.IsDBNull(0) ? null : r.GetString(0));
                     var n = r.GetInt32(1);
 
                     // Summary buckets are by raw verdict: PURSUE rows whose korAngle
@@ -101,7 +101,9 @@ SELECT SUM(CASE WHEN e.LastRefreshAtUtc >= DATEADD(day, -30, sysdatetimeoffset()
        SUM(CASE WHEN e.LastRefreshAtUtc <  DATEADD(day, -90, sysdatetimeoffset())
                  OR e.LastRefreshAtUtc IS NULL THEN 1 ELSE 0 END),
        COALESCE(SUM(CASE WHEN {VerdictExpr} IN (N'{BdVerdicts.PursueUrgent}', N'{BdVerdicts.Pursue}', N'{BdVerdicts.Monitor}', N'{BdVerdicts.Discover}')
-                          THEN m.EstimatedCostCad END), 0)
+                          THEN m.EstimatedCostCad END), 0),
+       COUNT(CASE WHEN {VerdictExpr} IN (N'PURSUE_URGENT', N'PURSUE', N'MONITOR', N'DISCOVER') THEN m.EstimatedCostCad END),
+       COUNT(CASE WHEN {VerdictExpr} IN (N'PURSUE_URGENT', N'PURSUE', N'MONITOR', N'DISCOVER') THEN 1 END)
 FROM opportunities.MajorProjectsInventory m
 JOIN opportunities.MajorProjectEnrichment e
   ON e.MajorProjectsInventoryId = m.Id AND e.ProviderName = N'ProjectBriefHoning'
@@ -109,7 +111,7 @@ WHERE m.RetiredAtUtc IS NULL
   AND {VerdictExpr} IS NOT NULL
   AND {def.MpiWhere};";
 
-            int fresh = 0, aging = 0, stale = 0;
+            int fresh = 0, aging = 0, stale = 0, costed = 0, costPopulation = 0;
             decimal honedCost = 0;
             await using (var freshnessCmd = new SqlCommand(freshnessSql, con) { CommandTimeout = CommandTimeoutSeconds })
             await using (var fr = await freshnessCmd.ExecuteReaderAsync(ct).ConfigureAwait(false))
@@ -120,13 +122,15 @@ WHERE m.RetiredAtUtc IS NULL
                     aging = fr.GetInt32(1);
                     stale = fr.GetInt32(2);
                     honedCost = fr.GetDecimal(3);
+                    costed = fr.GetInt32(4);
+                    costPopulation = fr.GetInt32(5);
                 }
             }
 
             var total = pursueUrgent + pursue + monitor + discover + dead + duplicate + noVerdict;
             summaries.Add(new SectorVerdictSummary(
                 def.Key, def.Title, pursueUrgent, pursue, monitor, discover, dead, duplicate, noVerdict, total,
-                fresh, aging, stale, honedCost));
+                fresh, aging, stale, honedCost, costed, costPopulation));
         }
 
         return summaries;
@@ -297,7 +301,9 @@ WHERE m.RetiredAtUtc IS NULL
 SELECT COUNT(*),
        COALESCE(SUM(CASE WHEN {VerdictExpr} IS NOT NULL THEN 1 ELSE 0 END), 0),
        COALESCE(SUM(CASE WHEN {VerdictExpr} IN (N'{BdVerdicts.PursueUrgent}', N'{BdVerdicts.Pursue}', N'{BdVerdicts.Monitor}', N'{BdVerdicts.Discover}')
-                          THEN m.EstimatedCostCad END), 0)
+                          THEN m.EstimatedCostCad END), 0),
+       COUNT(CASE WHEN {VerdictExpr} IN (N'PURSUE_URGENT', N'PURSUE', N'MONITOR', N'DISCOVER') THEN m.EstimatedCostCad END),
+       COUNT(CASE WHEN {VerdictExpr} IN (N'PURSUE_URGENT', N'PURSUE', N'MONITOR', N'DISCOVER') THEN 1 END)
 FROM opportunities.MajorProjectsInventory m
 LEFT JOIN opportunities.MajorProjectEnrichment e
   ON e.MajorProjectsInventoryId = m.Id AND e.ProviderName = N'ProjectBriefHoning'
@@ -308,7 +314,7 @@ WHERE m.RetiredAtUtc IS NULL;";
         await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
         await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
         await r.ReadAsync(ct).ConfigureAwait(false);
-        return new BdExecHeadline(r.GetInt32(0), r.GetInt32(1), r.GetDecimal(2));
+        return new BdExecHeadline(r.GetInt32(0), r.GetInt32(1), r.GetDecimal(2), r.GetInt32(3), r.GetInt32(4));
     }
 
     public async Task<IReadOnlyList<ArchitectLeverageRow>> GetArchitectLeverageAsync(int take, CancellationToken ct)
@@ -318,7 +324,7 @@ WHERE m.RetiredAtUtc IS NULL;";
         // '%architect%'), deduped by normalized project name (MPI wins on a
         // tie). Mirrors the dossier-footprint unification (commit 9776a15d) so
         // architects whose teaming lives only in IntelWork enter the ranking.
-        const string rankingSql = @"
+        var rankingSql = $@"
 WITH ArchMpi AS (
     SELECT m.ArchitectCanonicalOrgId AS OrgId, m.EstimatedCostCad AS Cost, 0 AS SrcRank,
            LOWER(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(LTRIM(RTRIM(m.ProjectName)),N' ',N''),N'-',N''),N'.',N''),N',',N''),N'''',N'')) AS DedupKey
@@ -346,11 +352,11 @@ SELECT TOP (@take) co.Id, co.DisplayName,
        COALESCE(SUM(d.Cost), 0) AS PipelineCostCad,
        (SELECT COUNT(*) FROM opportunities.IntelSignal s
          WHERE s.CanonicalOrgId = co.Id AND s.RetiredAtUtc IS NULL) AS Signals,
-       (SELECT COUNT(*) FROM opportunities.IntelPersonAffiliation pa
-         JOIN opportunities.IntelPerson p ON p.Id = pa.IntelPersonId AND p.RetiredAtUtc IS NULL
-         WHERE pa.CanonicalOrgId = co.Id AND pa.RetiredAtUtc IS NULL) AS People,
+       (SELECT COUNT(DISTINCT p.Id) {BdReportPopulationSql.CurrentPeopleFrom}
+         AND pa.CanonicalOrgId = co.Id) AS People,
        (SELECT COUNT(*) FROM opportunities.IntelAction a
-         WHERE a.CanonicalOrgId = co.Id AND a.RetiredAtUtc IS NULL AND a.Status = N'Open') AS OpenActions
+         WHERE a.CanonicalOrgId = co.Id AND a.RetiredAtUtc IS NULL AND a.Status = N'Open') AS OpenActions,
+       COUNT(d.Cost) AS CostedProjects
 FROM Deduped d
 JOIN opportunities.CanonicalOrg co ON co.Id = d.OrgId AND co.RetiredAtUtc IS NULL
 GROUP BY co.Id, co.DisplayName
@@ -388,7 +394,7 @@ Ranked AS (
 )
 SELECT OrgId, ProjId, ProjectName, Province, CostDisplay FROM Ranked WHERE rn <= 8;";
 
-        var ranking = new List<(long OrgId, string Name, int Projects, decimal Cost, int Signals, int People, int Actions)>();
+        var ranking = new List<(long OrgId, string Name, int Projects, decimal Cost, int Signals, int People, int Actions, int Costed)>();
         var projectsByOrg = new Dictionary<long, List<string>>();
 
         await using var con = new SqlConnection(_connectionString);
@@ -400,7 +406,7 @@ SELECT OrgId, ProjId, ProjectName, Province, CostDisplay FROM Ranked WHERE rn <=
             await using var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
             while (await r.ReadAsync(ct).ConfigureAwait(false))
             {
-                ranking.Add((r.GetInt64(0), r.GetString(1), r.GetInt32(2), r.GetDecimal(3), r.GetInt32(4), r.GetInt32(5), r.GetInt32(6)));
+                ranking.Add((r.GetInt64(0), r.GetString(1), r.GetInt32(2), r.GetDecimal(3), r.GetInt32(4), r.GetInt32(5), r.GetInt32(6), r.GetInt32(7)));
             }
         }
 
@@ -422,21 +428,19 @@ SELECT OrgId, ProjId, ProjectName, Province, CostDisplay FROM Ranked WHERE rn <=
         return ranking
             .Select(x => new ArchitectLeverageRow(
                 x.OrgId, x.Name, x.Projects, x.Cost, x.Signals, x.People, x.Actions,
-                projectsByOrg.TryGetValue(x.OrgId, out var projects) ? projects : Array.Empty<string>()))
+                projectsByOrg.TryGetValue(x.OrgId, out var projects) ? projects : Array.Empty<string>(), x.Costed))
             .ToList();
     }
 
     public async Task<IReadOnlyList<CompetitorFootprintRow>> GetCompetitorFootprintAsync(int take, CancellationToken ct)
     {
-        // The verified recipe behind the shipped competitor report (its
-        // closing note: "IntelSignal + IntelPersonAffiliation + IntelAction
-        // tables on CanonicalOrg.Kind = Competitor"). Counts confirmed against
-        // .bc-rivals.json on 2026-06-09 (Aspect 37/6/18 exact match).
+        // Competitor footprint: org-scoped signals/actions and distinct live
+        // current people. Historical affiliation-row counts are not people.
         // LinkedProjects = a competitor's SE footprint. MPI StructuralEngineer
         // FK rows UNION the org's IntelWork structural/engineer-role portfolio
         // edges, deduped by normalized project name (UNION collapses ties).
-        // Signals/People/Actions are unchanged (verified Aspect 37/6/18).
-        const string rankingSql = @"
+        // People counts distinct live people with a current, nonretired affiliation.
+        var rankingSql = $@"
 SELECT TOP (@take) x.Id, x.DisplayName, x.Signals, x.People, x.Actions,
        (SELECT COUNT(*) FROM (
             SELECT LOWER(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(LTRIM(RTRIM(m.ProjectName)),N' ',N''),N'-',N''),N'.',N''),N',',N''),N'''',N'')) AS dk
@@ -453,8 +457,8 @@ FROM (
     SELECT co.Id, co.DisplayName,
            (SELECT COUNT(*) FROM opportunities.IntelSignal s
              WHERE s.CanonicalOrgId = co.Id AND s.RetiredAtUtc IS NULL) AS Signals,
-           (SELECT COUNT(*) FROM opportunities.IntelPersonAffiliation pa
-             WHERE pa.CanonicalOrgId = co.Id AND pa.RetiredAtUtc IS NULL) AS People,
+           (SELECT COUNT(DISTINCT p.Id) {BdReportPopulationSql.CurrentPeopleFrom}
+             AND pa.CanonicalOrgId = co.Id) AS People,
            (SELECT COUNT(*) FROM opportunities.IntelAction a
              WHERE a.CanonicalOrgId = co.Id AND a.RetiredAtUtc IS NULL) AS Actions
     FROM opportunities.CanonicalOrg co
@@ -647,9 +651,8 @@ SELECT m.Id, m.ProjectName, m.Province, m.Sector, m.Stage, m.MunicipalityName, m
        arch.Id AS ArchitectOrgId, arch.DisplayName AS ArchitectName,
        (SELECT COUNT(*) FROM opportunities.IntelSignal s
          WHERE s.CanonicalOrgId = arch.Id AND s.RetiredAtUtc IS NULL) AS ArchitectSignals,
-       (SELECT COUNT(*) FROM opportunities.IntelPersonAffiliation pa
-         JOIN opportunities.IntelPerson p ON p.Id = pa.IntelPersonId AND p.RetiredAtUtc IS NULL
-         WHERE pa.CanonicalOrgId = arch.Id AND pa.RetiredAtUtc IS NULL) AS ArchitectPeople,
+       (SELECT COUNT(DISTINCT p.Id) {BdReportPopulationSql.CurrentPeopleFrom}
+         AND pa.CanonicalOrgId = arch.Id) AS ArchitectPeople,
        (SELECT COUNT(*) FROM opportunities.IntelAction a
          WHERE a.CanonicalOrgId = arch.Id AND a.RetiredAtUtc IS NULL AND a.Status = N'Open') AS ArchitectOpenActions,
        se.Id AS SeOrgId, se.DisplayName AS SeName,
@@ -864,7 +867,7 @@ ORDER BY a.UpdatedAtUtc DESC;";
                     r.GetInt64(0),
                     r.GetString(1),
                     r.GetString(2),
-                    recommendation.Length <= 300 ? recommendation : recommendation[..300],
+                    BdReportFormatting.Abridge(recommendation, 300),
                     r.IsDBNull(4) ? null : r.GetString(4),
                     r.IsDBNull(5) ? null : r.GetString(5)));
             }
@@ -959,14 +962,15 @@ HotOrg AS (
 
         var nodes = new List<object>();
         double maxAttack = 1; // millions of CAD x urgency
-        await using (var cmd = new SqlCommand(AttackSpineCte + @"
+        await using (var cmd = new SqlCommand(AttackSpineCte + $@"
 SELECT co.Id, co.DisplayName, co.Kind,
        COUNT(DISTINCT ho.MpiId) AS Pursuits,
        CAST(SUM(ISNULL(ho.EstimatedCostCad,0)*ho.Urg) AS DECIMAL(18,2)) AS Attack,
-       MAX(CASE WHEN aff.C>0 THEN 1 ELSE 0 END) AS Warm
+       MAX(CASE WHEN aff.C>0 THEN 1 ELSE 0 END) AS Warm,
+       COUNT(DISTINCT CASE WHEN ho.EstimatedCostCad IS NOT NULL THEN ho.MpiId END) AS Costed
 FROM HotOrg ho
 JOIN opportunities.CanonicalOrg co ON co.Id=ho.OrgId AND co.RetiredAtUtc IS NULL
-OUTER APPLY (SELECT COUNT(*) C FROM opportunities.IntelPersonAffiliation a WHERE a.CanonicalOrgId=co.Id AND a.RetiredAtUtc IS NULL) aff
+OUTER APPLY (SELECT COUNT(DISTINCT p.Id) C {BdReportPopulationSql.CurrentPeopleFrom} AND pa.CanonicalOrgId=co.Id) aff
 GROUP BY co.Id, co.DisplayName, co.Kind;", con) { CommandTimeout = CommandTimeoutSeconds })
         await using (var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false))
         {
@@ -982,6 +986,7 @@ GROUP BY co.Id, co.DisplayName, co.Kind;", con) { CommandTimeout = CommandTimeou
                     pursuits = r.GetInt32(3),
                     attack = Math.Round(attackM, 1),
                     warm = r.GetInt32(5) == 1,
+                    costed = r.GetInt32(6),
                 });
             }
         }
@@ -997,7 +1002,8 @@ JOIN HotOrg b ON a.MpiId=b.MpiId AND a.OrgId<b.OrgId GROUP BY a.OrgId,b.OrgId;",
         }
 
         var json = JsonSerializer.Serialize(new { nodes, links });
-        return BdVisualHtml.Graph(json, maxAttack, nodes.Count, links.Count);
+        var coverage = await GetPursuitCostCoverageAsync(con, ct).ConfigureAwait(false);
+        return BdVisualHtml.Graph(json, maxAttack, nodes.Count, links.Count, coverage.Costed, coverage.Total);
     }
 
     public async Task<string> GetPriorityTreemapHtmlAsync(CancellationToken ct)
@@ -1006,14 +1012,15 @@ JOIN HotOrg b ON a.MpiId=b.MpiId AND a.OrgId<b.OrgId GROUP BY a.OrgId,b.OrgId;",
         await con.OpenAsync(ct).ConfigureAwait(false);
 
         var rows = new List<object>();
-        await using (var cmd = new SqlCommand(AttackSpineCte + @"
+        await using (var cmd = new SqlCommand(AttackSpineCte + $@"
 SELECT TOP 160 co.DisplayName, co.Kind,
        COUNT(DISTINCT ho.MpiId) AS Pursuits,
        CAST(SUM(ISNULL(ho.EstimatedCostCad,0)*ho.Urg) AS DECIMAL(18,2)) AS Attack,
-       MAX(CASE WHEN aff.C>0 THEN 1 ELSE 0 END) AS Warm
+       MAX(CASE WHEN aff.C>0 THEN 1 ELSE 0 END) AS Warm,
+       COUNT(DISTINCT CASE WHEN ho.EstimatedCostCad IS NOT NULL THEN ho.MpiId END) AS Costed
 FROM HotOrg ho
 JOIN opportunities.CanonicalOrg co ON co.Id=ho.OrgId AND co.RetiredAtUtc IS NULL
-OUTER APPLY (SELECT COUNT(*) C FROM opportunities.IntelPersonAffiliation a WHERE a.CanonicalOrgId=co.Id AND a.RetiredAtUtc IS NULL) aff
+OUTER APPLY (SELECT COUNT(DISTINCT p.Id) C {BdReportPopulationSql.CurrentPeopleFrom} AND pa.CanonicalOrgId=co.Id) aff
 GROUP BY co.Id, co.DisplayName, co.Kind
 ORDER BY SUM(ISNULL(ho.EstimatedCostCad,0)*ho.Urg) DESC;", con) { CommandTimeout = CommandTimeoutSeconds })
         await using (var r = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false))
@@ -1027,11 +1034,25 @@ ORDER BY SUM(ISNULL(ho.EstimatedCostCad,0)*ho.Urg) DESC;", con) { CommandTimeout
                     pursuits = r.GetInt32(2),
                     attack = Math.Round((double)r.GetDecimal(3) / 1_000_000d, 1),
                     warm = r.GetInt32(4) == 1,
+                    costed = r.GetInt32(5),
                 });
             }
         }
 
-        return BdVisualHtml.Treemap(JsonSerializer.Serialize(rows), rows.Count);
+        var coverage = await GetPursuitCostCoverageAsync(con, ct).ConfigureAwait(false);
+        return BdVisualHtml.Treemap(JsonSerializer.Serialize(rows), rows.Count, coverage.Costed, coverage.Total);
+    }
+
+    private async Task<(int Costed, int Total)> GetPursuitCostCoverageAsync(SqlConnection con, CancellationToken ct)
+    {
+        // Count distinct projects, not org/project links: one pursuit can have
+        // several team organisations (or none) in the visuals.
+        await using var cmd = new SqlCommand(AttackSpineCte + @"
+SELECT COUNT(DISTINCT CASE WHEN EstimatedCostCad IS NOT NULL THEN Id END),
+       COUNT(DISTINCT Id) FROM HotMpi;", con) { CommandTimeout = CommandTimeoutSeconds };
+        await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        await reader.ReadAsync(ct).ConfigureAwait(false);
+        return (reader.GetInt32(0), reader.GetInt32(1));
     }
 
     public async Task<string> GetAttackCardsHtmlAsync(CancellationToken ct)
@@ -1043,7 +1064,7 @@ ORDER BY SUM(ISNULL(ho.EstimatedCostCad,0)*ho.Urg) DESC;", con) { CommandTimeout
         var sql = $@"
 SELECT m.Id, m.ProjectName, m.Province, {VerdictExpr} AS Verdict, m.EstimatedCostCad,
   arch.DisplayName AS Arch,
-  (SELECT COUNT(*) FROM opportunities.IntelPersonAffiliation a WHERE a.CanonicalOrgId=arch.Id AND a.RetiredAtUtc IS NULL) AS ArchPeople,
+  (SELECT COUNT(DISTINCT p.Id) {BdReportPopulationSql.CurrentPeopleFrom} AND pa.CanonicalOrgId=arch.Id) AS ArchPeople,
   se.DisplayName AS Se, CASE WHEN se.Kind=N'KorStructural' THEN 1 ELSE 0 END AS SeIsKor,
   gc.DisplayName AS Gc, COALESCE(prop.DisplayName, m.ProponentName) AS Owner
 FROM opportunities.MajorProjectsInventory m

@@ -245,8 +245,8 @@ public sealed class HtmlBriefPdfGenerator : IBriefPdfGenerator
         b.BulletSection("Top competitors in this market (structural)",
             BriefPdfGenerator.FormatTopOrgs(d.TopCompetitors, "as structural EOR here", korNote: false,
                 empty: "No competitors flagged on projects in this market in our data yet."));
-        b.BulletSection("Live prime RFPs (top 5)", BriefPdfGenerator.RegionLiveRfpsLines(d));
-        b.BulletSection("Forward pipeline (planned / funded)", BriefPdfGenerator.RegionForwardLines(d));
+        b.BulletSection("Live prime RFPs (undismissed, future deadlines; top 5)", BriefPdfGenerator.RegionLiveRfpsLines(d));
+        b.BulletSection("Forward pipeline (capital plans / facility renewal; top 5)", BriefPdfGenerator.RegionForwardLines(d));
         b.BulletSection("Upcoming events in this market", BriefPdfGenerator.RegionEventLines(d));
 
         if (d.Intel is not null)

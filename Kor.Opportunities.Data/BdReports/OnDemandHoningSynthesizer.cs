@@ -287,37 +287,43 @@ FROM h ORDER BY h.Id;";
         var json = ExtractJsonObject(text.ToString());
         if (json is null) return (0, approxTokens);
 
-        var updated = 0;
         var arr = JsonNode.Parse(json)?["results"]?.AsArray();
+        var updated = await ApplySynthesisResultsAsync(arr, due.Select(x => x.MpiId).ToArray(),
+            PersistSynthesisAsync, ct).ConfigureAwait(false);
+        return (updated, approxTokens);
+    }
+
+    // Keep model output inside the requested batch and count confirmed writes,
+    // not accepted-looking responses. The delegate also permits a no-DB gate.
+    internal static async Task<int> ApplySynthesisResultsAsync(JsonArray? arr,
+        IReadOnlyCollection<long> requestedIds,
+        Func<long, string, string?, CancellationToken, Task<bool>> persist,
+        CancellationToken ct)
+    {
+        var updated = 0;
+        var remaining = new HashSet<long>(requestedIds);
         if (arr is not null)
         {
             foreach (var item in arr)
             {
                 var id = item?["id"]?.GetValue<long>() ?? 0;
-                var verdict = item?["verdict"]?.GetValue<string>();
+                var verdict = BdVerdicts.Normalize(item?["verdict"]?.GetValue<string>());
                 var status = item?["status"]?.GetValue<string>();
-                if (id > 0 && !string.IsNullOrWhiteSpace(verdict))
+                if (id > 0 && verdict is not null && remaining.Remove(id))
                 {
-                    await PersistSynthesisAsync(id, verdict!, status, ct).ConfigureAwait(false);
-                    updated++;
+                    if (await persist(id, verdict, status, ct).ConfigureAwait(false)) updated++;
                 }
             }
         }
-        return (updated, approxTokens);
+        return updated;
     }
 
-    // Audit-v2 #8: only persist plausible verdict tokens — a model returning prose
-    // ("the project appears cancelled") must not become a row's verdict.
-    private static readonly System.Text.RegularExpressions.Regex VerdictTokenShape =
-        new("^[a-z][a-z0-9-]{1,30}$", System.Text.RegularExpressions.RegexOptions.Compiled);
-
-    private async Task PersistSynthesisAsync(long mpiId, string verdict, string? status, CancellationToken ct)
+    private async Task<bool> PersistSynthesisAsync(long mpiId, string verdict, string? status, CancellationToken ct)
     {
-        // Audit-v2 #8: reject non-token verdicts instead of writing garbage.
-        var normalizedVerdict = verdict.Trim().ToLowerInvariant();
-        if (!VerdictTokenShape.IsMatch(normalizedVerdict))
+        var normalizedVerdict = BdVerdicts.Normalize(verdict);
+        if (normalizedVerdict is null)
         {
-            return;
+            return false;
         }
 
         // Audit-v2 #8: lax JSON_MODIFY cannot create the missing intermediate
@@ -349,7 +355,7 @@ WHERE e.MajorProjectsInventoryId = @id;";
         cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = mpiId;
         cmd.Parameters.Add("@verdict", SqlDbType.NVarChar, 40).Value = normalizedVerdict;
         cmd.Parameters.Add("@status", SqlDbType.NVarChar, 400).Value = (object?)status ?? DBNull.Value;
-        await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+        return await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false) > 0;
     }
 
     private async Task TouchVerifiedAsync(long mpiId, CancellationToken ct)

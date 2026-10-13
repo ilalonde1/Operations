@@ -20,13 +20,16 @@ namespace Kor.Opportunities.Data.BdReports.Generators;
 /// </summary>
 public static class BdVisualHtml
 {
-    public static string Graph(string nodesLinksJson, double maxAttack, int nodes, int edges) => GraphHtml
+    public static string Graph(string nodesLinksJson, double maxAttack, int nodes, int edges,
+        int? costed = null, int? total = null) => GraphHtml
+        .Replace("{{COVERAGE}}", BdReportFormatting.CostCoverage(costed, total))
         .Replace("/*DATA*/", nodesLinksJson)
         .Replace("{{MAXATTACK}}", maxAttack.ToString("F2", CultureInfo.InvariantCulture))
         .Replace("{{NODES}}", nodes.ToString(CultureInfo.InvariantCulture))
         .Replace("{{EDGES}}", edges.ToString(CultureInfo.InvariantCulture));
 
-    public static string Treemap(string rowsJson, int n) => TreemapHtml
+    public static string Treemap(string rowsJson, int n, int? costed = null, int? total = null) => TreemapHtml
+        .Replace("{{COVERAGE}}", BdReportFormatting.CostCoverage(costed, total))
         .Replace("/*DATA*/", rowsJson)
         .Replace("{{N}}", n.ToString(CultureInfo.InvariantCulture));
 
@@ -59,7 +62,7 @@ public static class BdVisualHtml
   .graph-tooltip{background:#ffffff !important;color:#1f2328 !important;border:1px solid #c0392b;border-radius:6px;padding:7px 10px !important;box-shadow:0 2px 10px #0004;font:12px Calibri,Segoe UI,sans-serif !important;max-width:280px}
   #g{position:absolute;top:56px;left:0}</style></head><body>
 <div id=""hdr""><h1>KOR Structural — BD Teaming Attack-Graph</h1>
-<div class=""sub"">Orgs on LIVE pursuits ({{NODES}} orgs, {{EDGES}} teaming links). Color = heat (pursuit $ &times; urgency). Size = # pursuits. Green ring = warm (we know people there). Edge = co-on-a-pursuit.</div></div>
+<div class=""sub"">Orgs on LIVE pursuits ({{NODES}} orgs, {{EDGES}} teaming links). Color = known-cost heat (pursuit $ &times; urgency), an approximate ranking. Full pursuit pool: {{COVERAGE}}. Unknown costs contribute no heat; orgs overlap. Size = # pursuits. Green ring = warm (we know people there). Edge = co-on-a-pursuit.</div></div>
 <input id=""search"" class=""find"" placeholder=""find an org…"">
 <div id=""legend""><div><span class=""sw"" style=""background:rgb(192,57,43)""></span>hot — big urgent money</div>
 <div><span class=""sw"" style=""background:rgb(232,163,61)""></span>warm money</div><div><span class=""sw"" style=""background:rgb(159,179,200)""></span>smaller</div>
@@ -70,7 +73,7 @@ const data=/*DATA*/;const maxAttack={{MAXATTACK}}||1;
 " + HeatFn + @"
 " + EscFn + @"
 const el=document.getElementById('g');const G=ForceGraph()(el).backgroundColor('#ffffff').graphData(data).nodeId('id')
-.nodeLabel(n=>`<div style='font:12px Calibri;color:#1f2328'><b>${esc(n.name)}</b><br>${esc(n.kind)} · $${n.attack}M attack · ${n.pursuits} live pursuit(s) · ${n.warm?'WARM — we know people':'cold — no contacts yet'}</div>`)
+.nodeLabel(n=>`<div style='font:12px Calibri;color:#1f2328'><b>${esc(n.name)}</b><br>${esc(n.kind)} · $${n.attack}M known-cost weighted subtotal · ${n.costed??'unknown'}/${n.pursuits} pursuits costed · ${n.warm?'WARM — we know people':'cold — no contacts yet'}</div>`)
 .nodeColor(n=>n.kind==='KorStructural'?'#602640':heat(n.attack/maxAttack)).nodeVal(n=>Math.max(1,n.pursuits)).nodeRelSize(5)
 .linkColor(()=>'rgba(120,130,140,0.22)').linkWidth(l=>Math.min(5,l.w))
 .nodeCanvasObjectMode(()=>'after')
@@ -92,15 +95,15 @@ document.getElementById('search').addEventListener('input',e=>{const q=e.target.
   #tip{position:fixed;display:none;pointer-events:none;background:#ffffff;color:#1f2328;border:1px solid #c0392b;border-radius:6px;padding:7px 10px;box-shadow:0 2px 10px #0004;font:12px Calibri,Segoe UI,sans-serif;max-width:280px;z-index:9}</style></head><body>
 <div id=""tip""></div>
 <div id=""hdr""><h1>KOR Structural — BD Priority Treemap (where the money is)</h1>
-<div class=""sub"">Top {{N}} orgs on live pursuits. Tile size = opportunity value (pursuit $ &times; urgency). <b style=""color:#caffd5"">Green</b> = warm (we know them) · <b style=""color:#ffd5cf"">red</b> = no contacts yet. Grouped by kind.</div></div>
-<div id=""t""></div><div class=""legend"" id=""legend""><span class=""sw"" style=""background:#2da44e""></span>warm &nbsp; <span class=""sw"" style=""background:#c0392b""></span>cold — bigger = more $ at stake</div><script>
+<div class=""sub"">Top {{N}} orgs on live pursuits (retrieval capped at 160). Tile size = known-cost heat (pursuit $ &times; urgency), an approximate ranking. Full pursuit pool: {{COVERAGE}}. Unknown costs contribute no heat; zero-value tiles have a visibility minimum. Org values overlap. <b style=""color:#caffd5"">Green</b> = warm (we know them) · <b style=""color:#ffd5cf"">red</b> = no contacts yet. Grouped by kind.</div></div>
+<div id=""t""></div><div class=""legend"" id=""legend""><span class=""sw"" style=""background:#2da44e""></span>warm &nbsp; <span class=""sw"" style=""background:#c0392b""></span>cold — bigger = higher known-cost weighted subtotal</div><script>
 const data=/*DATA*/;
 " + EscFn + @"
 function draw(){const W=window.innerWidth-16,H=window.innerHeight-72;
 const root=d3.hierarchy({children:Array.from(d3.group(data,d=>d.kind),([k,v])=>({name:k,children:v}))}).sum(d=>d.attack||0.01).sort((a,b)=>b.value-a.value);
 d3.treemap().size([W,H]).paddingInner(1).paddingTop(15)(root);const t=d3.select('#t');t.selectAll('*').remove();
 t.selectAll('div.g').data(root.children).enter().append('div').attr('class','tile').style('left',d=>d.x0+'px').style('top',d=>d.y0+'px').style('width',d=>(d.x1-d.x0)+'px').style('height',d=>(d.y1-d.y0)+'px').style('background','#eaeef2').style('color','#57606a').style('border','1px solid #d0d7de').html(d=>'<b>'+esc(d.data.name)+'</b>');
-t.selectAll('div.l').data(root.leaves()).enter().append('div').attr('class','tile').style('left',d=>d.x0+'px').style('top',d=>d.y0+'px').style('width',d=>(d.x1-d.x0)+'px').style('height',d=>(d.y1-d.y0)+'px').style('background',d=>d.data.warm?'#2da44e':'#c0392b').style('color','#fff').on('mousemove',function(ev,d){const tip=document.getElementById('tip');tip.style.display='block';tip.style.left=(ev.clientX+14)+'px';tip.style.top=(ev.clientY+14)+'px';tip.innerHTML='<b>'+esc(d.data.name)+'</b><br>'+esc(d.data.kind)+' · $'+d.data.attack+'M attack · '+d.data.pursuits+' pursuit(s)<br>'+(d.data.warm?'WARM — we know people':'cold — no contacts yet');}).on('mouseleave',function(){document.getElementById('tip').style.display='none';}).html(d=>((d.x1-d.x0>56&&d.y1-d.y0>24)?('<b>'+esc(d.data.name.length>24?d.data.name.slice(0,23)+'…':d.data.name)+'</b><br>$'+d.data.attack+'M'):''));}
+t.selectAll('div.l').data(root.leaves()).enter().append('div').attr('class','tile').style('left',d=>d.x0+'px').style('top',d=>d.y0+'px').style('width',d=>(d.x1-d.x0)+'px').style('height',d=>(d.y1-d.y0)+'px').style('background',d=>d.data.warm?'#2da44e':'#c0392b').style('color','#fff').on('mousemove',function(ev,d){const tip=document.getElementById('tip');tip.style.display='block';tip.style.left=(ev.clientX+14)+'px';tip.style.top=(ev.clientY+14)+'px';tip.innerHTML='<b>'+esc(d.data.name)+'</b><br>'+esc(d.data.kind)+' · $'+d.data.attack+'M known-cost weighted subtotal · '+(d.data.costed??'unknown')+'/'+d.data.pursuits+' pursuits costed<br>'+(d.data.warm?'WARM — we know people':'cold — no contacts yet');}).on('mouseleave',function(){document.getElementById('tip').style.display='none';}).html(d=>((d.x1-d.x0>56&&d.y1-d.y0>24)?('<b>'+esc(d.data.name.length>24?d.data.name.slice(0,23)+'…':d.data.name)+'</b><br>$'+d.data.attack+'M'):''));}
 window.addEventListener('resize',draw);draw();</script></body></html>";
 
     private const string CardsHtml = @"<!DOCTYPE html><html><head><meta charset=""utf-8""><title>Opportunity Attack Cards</title><style>" + Css + @"

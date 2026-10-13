@@ -859,10 +859,10 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
                     FormatTopOrgs(d.TopCompetitors, "as structural EOR here", korNote: false,
                         empty: "No competitors flagged on projects in this market in our data yet.")));
 
-                column.Item().Element(c => Section(c, "Live prime RFPs (top 5)",
+                column.Item().Element(c => Section(c, "Live prime RFPs (undismissed, future deadlines; top 5)",
                     RegionLiveRfpsLines(d)));
 
-                column.Item().Element(c => Section(c, "Forward pipeline (planned / funded)",
+                column.Item().Element(c => Section(c, "Forward pipeline (capital plans / facility renewal; top 5)",
                     RegionForwardLines(d)));
 
                 column.Item().Element(c => Section(c, "Upcoming events in this market",

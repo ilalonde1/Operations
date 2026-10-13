@@ -605,7 +605,7 @@ public sealed class BriefGenerator : IBriefGenerator
         AppendSubtitle(body, scope);
 
         AppendHeading(body, "Market overview");
-        AppendBody(body, $"Live prime-consultant RFPs: {data.LivePrimeRfpCount}  |  Forward pipeline (planned/funded): {data.ForwardPipelineCount}  |  Active major projects tracked: {data.ActiveMpiCount}");
+        AppendBody(body, $"Live prime-consultant RFPs: {data.LivePrimeRfpCount}  |  Forward pipeline (capital plans / facility renewal): {data.ForwardPipelineCount}  |  Active major projects tracked: {data.ActiveMpiCount}");
 
         AppendHeading(body, "Top architects in this market");
         if (data.TopArchitects.Count == 0)
@@ -648,7 +648,7 @@ public sealed class BriefGenerator : IBriefGenerator
             }
         }
 
-        AppendHeading(body, "Live prime RFPs (top 5)");
+        AppendHeading(body, "Live prime RFPs (undismissed, future deadlines; top 5)");
         if (data.LiveRfps.Count == 0)
         {
             AppendBullet(body, "No live prime-consultant RFPs in this market right now.");
@@ -661,7 +661,7 @@ public sealed class BriefGenerator : IBriefGenerator
             }
         }
 
-        AppendHeading(body, "Forward pipeline (planned / funded)");
+        AppendHeading(body, "Forward pipeline (capital plans / facility renewal; top 5)");
         if (data.ForwardProjects.Count == 0)
         {
             AppendBullet(body, "No forward-pipeline projects in this market in our data yet.");

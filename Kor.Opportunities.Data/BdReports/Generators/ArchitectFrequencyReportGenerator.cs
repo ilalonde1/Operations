@@ -27,7 +27,7 @@ public static class ArchitectFrequencyReportGenerator
         var b = new BdReportDocumentBuilder("KOR Structural — Architect Frequency Report (Warm-Intro Priority List)");
 
         b.Italic(
-            "Architects ranked by linked active projects in KOR's BD pipeline (structured ArchitectCanonicalOrgId links + org-scoped intel depth). " +
+            "Architects ranked by linked portfolio projects from inventory and architect-role work, including historical and delivered projects. This does not establish live pursuits or available team seats. " +
             "The premise: in public AEC work, the prime consultant (typically architect) submits ONE team proposal with structural sub included. " +
             "One architect relationship = N projects. " +
             $"Generated {generatedAtUtc:yyyy-MM-dd HH:mm} UTC from live KorOpportunitiesDb.");
@@ -35,12 +35,12 @@ public static class ArchitectFrequencyReportGenerator
         b.H2($"Top {Math.Min(20, architects.Count)} highest-leverage architects");
         var ranked = architects.Take(20).ToList();
         b.Table(
-            new[] { "Architect", "Active projects", "$ Pipeline (M)", "Signals", "People", "Open actions", "KOR status" },
+            new[] { "Architect", "Linked portfolio projects", "Known-cost subtotal (M); coverage", "Signals", "People", "Open actions", "KOR status" },
             ranked.Select(a => (IReadOnlyList<string>)new[]
             {
                 a.DisplayName,
                 a.ActiveProjects.ToString(CultureInfo.InvariantCulture),
-                "$" + (a.PipelineCostCad / 1_000_000m).ToString("N0", CultureInfo.InvariantCulture) + "M",
+                "$" + (a.PipelineCostCad / 1_000_000m).ToString("N0", CultureInfo.InvariantCulture) + "M; " + BdReportFormatting.CostCoverage(a.CostedProjectCount, a.ActiveProjects),
                 a.Signals.ToString(CultureInfo.InvariantCulture),
                 a.People.ToString(CultureInfo.InvariantCulture),
                 a.OpenActions.ToString(CultureInfo.InvariantCulture),
@@ -51,18 +51,18 @@ public static class ArchitectFrequencyReportGenerator
             {
                 KorReportLinks.Org(a.CanonicalOrgId), null, null, null, null, null, null,
             }).ToList());
-        b.P("More linked active projects = more team slots KOR can ride on one relationship. KOR-aligned status indicates the architect appears in KOR's established relationship list (per memory).");
+        b.P("More linked portfolio projects indicates a larger recorded footprint; current opportunities and team seats require separate verification. KOR-aligned status indicates the architect appears in KOR's established relationship list (per memory).");
 
         b.H2("Top 10 architects — drill-down with projects");
         foreach (var a in architects.Take(10))
         {
             b.H3(a.DisplayName, KorReportLinks.Org(a.CanonicalOrgId));
-            b.B("Linked active projects: ", $"{a.ActiveProjects} (${(a.PipelineCostCad / 1_000_000m).ToString("N0", CultureInfo.InvariantCulture)}M pipeline)");
+            b.B("Linked portfolio projects: ", $"{a.ActiveProjects} (${(a.PipelineCostCad / 1_000_000m).ToString("N0", CultureInfo.InvariantCulture)}M known-cost subtotal; {BdReportFormatting.CostCoverage(a.CostedProjectCount, a.ActiveProjects)})");
             b.B("Intel depth: ", $"Signals: {a.Signals} | People: {a.People} | Open actions: {a.OpenActions}");
             b.B("KOR relationship: ", IsKorAligned(a.DisplayName)
                 ? "KOR-aligned (per memory client list)"
                 : "NEW target — no prior memory reference");
-            b.P("Top projects in pipeline:");
+            b.P("Linked portfolio sample (up to 8 projects):");
             if (a.TopProjects.Count > 0)
             {
                 foreach (var p in a.TopProjects)
@@ -72,7 +72,7 @@ public static class ArchitectFrequencyReportGenerator
             }
             else
             {
-                b.P("  (No costed projects linked yet — see Org Dossier for intel detail.)");
+                b.P("  (No portfolio sample returned — see Org Dossier for intel detail.)");
             }
 
             b.P(string.Empty);
@@ -84,7 +84,7 @@ public static class ArchitectFrequencyReportGenerator
         if (korAligned.Count > 0)
         {
             b.Table(
-                new[] { "Architect", "Active projects", "Approach" },
+                new[] { "Architect", "Linked portfolio projects", "Approach" },
                 korAligned.Select(a => (IReadOnlyList<string>)new[]
                 {
                     a.DisplayName,
@@ -100,11 +100,11 @@ public static class ArchitectFrequencyReportGenerator
 
         var newTargets = architects.Where(a => !IsKorAligned(a.DisplayName)).Take(15).ToList();
         b.H2("NEW high-leverage architects (cold-outreach campaign)");
-        b.P($"{newTargets.Count} non-aligned architects do NOT appear in KOR's memory client list. These represent NEW relationship-building targets — combined {newTargets.Sum(a => a.ActiveProjects)} linked active projects of compounding pursuit potential.");
+        b.P($"{newTargets.Count} non-aligned architects do NOT appear in KOR's memory client list. These represent NEW relationship-building targets — combined {newTargets.Sum(a => a.ActiveProjects)} linked portfolio projects, including historical work; live pursuit potential is unverified.");
         if (newTargets.Count > 0)
         {
             b.Table(
-                new[] { "Architect", "Active projects", "Approach" },
+                new[] { "Architect", "Linked portfolio projects", "Approach" },
                 newTargets.Select(a => (IReadOnlyList<string>)new[]
                 {
                     a.DisplayName,
@@ -122,12 +122,12 @@ public static class ArchitectFrequencyReportGenerator
         b.H3("Architect frequency is a KOR sub-strategy lever");
         b.P("In public AEC procurement, KOR wins as the structural sub on the architect's team. The architect submits one team proposal, the team is scored on collective expertise. Higher KOR P.Eng count + similar-project experience = higher team score = more wins.");
 
-        b.H3("Top-5 single relationships unlocking compounding pipeline");
+        b.H3("Top-5 relationships by recorded portfolio footprint");
         b.P("Based on linked-project ranking, the 5 highest-leverage architect relationships to BUILD (or DEEPEN if KOR-aligned) are:");
         var rank = 1;
         foreach (var a in architects.Take(5))
         {
-            b.P($"  {rank}. {a.DisplayName} — {a.ActiveProjects} linked active projects (${(a.PipelineCostCad / 1_000_000m).ToString("N0", CultureInfo.InvariantCulture)}M)");
+            b.P($"  {rank}. {a.DisplayName} — {a.ActiveProjects} linked portfolio projects (${(a.PipelineCostCad / 1_000_000m).ToString("N0", CultureInfo.InvariantCulture)}M known-cost subtotal; {BdReportFormatting.CostCoverage(a.CostedProjectCount, a.ActiveProjects)})");
             rank++;
         }
 

@@ -15,6 +15,7 @@
 using System.Text;
 using System.Text.RegularExpressions;
 using Kor.Opportunities.Data.Awards;
+using Kor.Opportunities.Data.BdReports;
 using Microsoft.Data.SqlClient;
 
 static string? ReadArg(string[] a, string name)
@@ -38,6 +39,138 @@ var outDir = ReadArg(args, "--out") ?? Path.Combine(AppContext.BaseDirectory, "i
 Directory.CreateDirectory(outDir);
 
 var invariants = new List<(string Key, string Desc, bool Error, string CountSql, string SampleSql)>();
+
+// Brief 2: compare the report's shared people population with an independent
+// EXISTS-based count of live people. CountSql counts ORGANISATIONS with a mismatch,
+// not affiliations. Covers duplicate/current/retired affiliation and person rules;
+// excludes identity correctness, report rendering and deployment. Would miss two
+// IntelPerson IDs for one real person. Source wiring is gated in the App tests.
+var peopleComparison = $@"
+SELECT co.Id, expected.N AS Expected, actual.N AS Actual
+FROM opportunities.CanonicalOrg co
+CROSS APPLY (SELECT COUNT(*) N FROM opportunities.IntelPerson person
+             WHERE person.RetiredAtUtc IS NULL AND EXISTS (
+                 SELECT 1 FROM opportunities.IntelPersonAffiliation affiliation
+                 WHERE affiliation.IntelPersonId = person.Id AND affiliation.CanonicalOrgId = co.Id
+                   AND affiliation.IsCurrent = 1 AND affiliation.RetiredAtUtc IS NULL)) expected
+CROSS APPLY (SELECT COUNT(DISTINCT p.Id) N {BdReportPopulationSql.CurrentPeopleFrom}
+             AND pa.CanonicalOrgId = co.Id) actual
+WHERE co.RetiredAtUtc IS NULL AND expected.N <> actual.N";
+invariants.Add(("bd_report_people_population",
+    "EXPECTED 0 organisations with mismatched distinct live current-person counts; ACTUAL organisation count follows (not affiliation rows)",
+    true, $"SELECT COUNT(*) FROM ({peopleComparison}) differences;",
+    $"SELECT TOP 5 * FROM ({peopleComparison}) differences ORDER BY Id;"));
+
+// Controlled SQL fixtures ensure the counting gate is not vacuously green on
+// clean data. These are CTE VALUES, never writes. Same production FROM predicate.
+// Covers repeated roles, former roles, retired person/affiliation and a second org;
+// would miss a different collation or nullable IsCurrent interpretation elsewhere.
+var peopleFixture = @"WITH People AS (
+    SELECT * FROM (VALUES (1,CAST(NULL AS datetimeoffset)),(2,NULL),
+        (3,CAST('2026-01-01' AS datetimeoffset)),(4,NULL),(5,NULL)) v(Id,RetiredAtUtc)),
+Affiliations AS (
+    SELECT * FROM (VALUES (1,1,1,CAST(NULL AS datetimeoffset)),(1,1,1,NULL),
+        (2,1,0,NULL),(3,1,1,NULL),(4,1,1,CAST('2026-01-01' AS datetimeoffset)),
+        (5,2,1,NULL)) v(IntelPersonId,CanonicalOrgId,IsCurrent,RetiredAtUtc)),
+Expected AS (SELECT * FROM (VALUES (1,1),(2,1),(3,0)) v(OrgId,People)),
+Compared AS (SELECT e.OrgId,e.People AS Expected,actual.N AS Actual FROM Expected e
+    CROSS APPLY (SELECT COUNT(DISTINCT p.Id) N " +
+    BdReportPopulationSql.CurrentPeopleFrom
+        .Replace("opportunities.IntelPersonAffiliation", "Affiliations")
+        .Replace("opportunities.IntelPerson", "People") + @"
+    AND pa.CanonicalOrgId = e.OrgId) actual)
+";
+invariants.Add(("bd_report_people_fixture",
+    "EXPECTED people per fixture org: 1,1,0; ACTUAL mismatch count must be 0; duplicate/former/retired roles must not inflate People",
+    true, peopleFixture + "SELECT COUNT(*) FROM Compared WHERE Expected <> Actual;",
+    peopleFixture + "SELECT * FROM Compared WHERE Expected <> Actual;"));
+
+// Region eligibility gate over live rows. The count and sample use one fixed
+// instant per query and compare sets of distinct opportunity IDs in both directions.
+// No geography is omitted: @prov is each outer row's province. City tokenisation,
+// concurrent data changes, rendering and unknown real-world deadlines are excluded;
+// a wrong city match would escape this gate. Null deadlines are deliberately not live.
+var regionLiveComparison = $@"
+WITH Compared AS (
+    SELECT Id,
+      CASE WHEN {BdReportPopulationSql.RegionLiveRfp.Replace("@prov", "o.ProjectProvince")} THEN 1 ELSE 0 END AS Actual,
+      CASE WHEN o.Status = 1 AND o.IsPrimeConsultantRfp = 1 AND o.ProjectProvince IS NOT NULL
+                 AND o.DismissedAtUtc IS NULL AND o.SubmissionDeadlineUtc > @asOf THEN 1 ELSE 0 END AS Expected
+    FROM opportunities.Opportunities o)
+";
+var regionClock = "DECLARE @asOf datetimeoffset = sysdatetimeoffset(); ";
+invariants.Add(("bd_region_live_rfp_population",
+    "EXPECTED 0 opportunity IDs with different report/undismissed-future-deadline eligibility; ACTUAL distinct-ID mismatch count follows",
+    true, regionClock + regionLiveComparison + "SELECT COUNT(DISTINCT Id) FROM Compared WHERE Expected <> Actual;",
+    regionClock + regionLiveComparison + "SELECT TOP 5 Id,Expected,Actual FROM Compared WHERE Expected <> Actual ORDER BY Id;"));
+
+var regionForwardComparison = $@"
+WITH Compared AS (
+    SELECT Id,
+      CASE WHEN {BdReportPopulationSql.RegionForward.Replace("@prov", "m.Province")} THEN 1 ELSE 0 END AS Actual,
+      CASE WHEN m.RetiredAtUtc IS NULL AND m.Province IS NOT NULL
+                 AND m.ProjectStage IN (N'CapitalPlan',N'FacilityRenewal') THEN 1 ELSE 0 END AS Expected
+    FROM opportunities.MajorProjectsInventory m)
+";
+// Covers forward stage/retirement parity only. Would miss a source incorrectly
+// labelling a delivered project CapitalPlan; no semantic repair is attempted.
+invariants.Add(("bd_region_forward_population",
+    "EXPECTED 0 project IDs outside the shared capital-plan/renewal population; ACTUAL distinct-ID eligibility mismatch count follows",
+    true, regionForwardComparison + "SELECT COUNT(DISTINCT Id) FROM Compared WHERE Expected <> Actual;",
+    regionForwardComparison + "SELECT TOP 5 Id,Expected,Actual FROM Compared WHERE Expected <> Actual ORDER BY Id;"));
+
+// Boundary fixtures exercise expiry at the exact instant, missing deadline,
+// dismissal, status, prime flag, geography, forward stage and retirement even
+// when production has no such rows. VALUES only; no temp tables/data mutations.
+// Would miss city-filter disagreement and concurrent edits between list/count.
+var regionFixture = $@"
+DECLARE @asOf datetimeoffset = '2026-10-13T12:00:00+00:00';
+DECLARE @prov nvarchar(20) = N'BC';
+WITH Rfps AS (
+    SELECT * FROM (VALUES
+      (1,1,1,N'BC',CAST(NULL AS datetimeoffset),DATEADD(day,1,@asOf),1),
+      (2,1,1,N'BC',@asOf,DATEADD(day,1,@asOf),0),
+      (3,1,1,N'BC',NULL,DATEADD(day,-1,@asOf),0),
+      (4,1,1,N'BC',NULL,@asOf,0),
+      (5,1,1,N'BC',NULL,NULL,0),
+      (6,2,1,N'BC',NULL,DATEADD(day,1,@asOf),0),
+      (7,1,0,N'BC',NULL,DATEADD(day,1,@asOf),0),
+      (8,1,1,N'AB',NULL,DATEADD(day,1,@asOf),0))
+    v(Id,Status,IsPrimeConsultantRfp,ProjectProvince,DismissedAtUtc,SubmissionDeadlineUtc,Expected)),
+Projects AS (
+    SELECT * FROM (VALUES
+      (1,CAST(NULL AS datetimeoffset),N'BC',N'CapitalPlan',1),
+      (2,NULL,N'BC',N'FacilityRenewal',1),
+      (3,NULL,N'BC',N'On hold',0),
+      (4,NULL,N'BC',N'Opened',0),
+      (5,@asOf,N'BC',N'CapitalPlan',0),
+      (6,NULL,N'AB',N'CapitalPlan',0)) v(Id,RetiredAtUtc,Province,ProjectStage,Expected)),
+Compared AS (
+    SELECT N'RFP' AS Population,Id,Expected,CASE WHEN {BdReportPopulationSql.RegionLiveRfp} THEN 1 ELSE 0 END AS Actual FROM Rfps
+    UNION ALL
+    SELECT N'Forward',Id,Expected,CASE WHEN {BdReportPopulationSql.RegionForward} THEN 1 ELSE 0 END FROM Projects)
+";
+invariants.Add(("bd_region_eligibility_fixture",
+    "EXPECTED only future undismissed prime RFP 1 and forward projects 1/2; ACTUAL mismatched fixture entities must be 0",
+    true, regionFixture + "SELECT COUNT(*) FROM Compared WHERE Expected <> Actual;",
+    regionFixture + "SELECT * FROM Compared WHERE Expected <> Actual;"));
+
+// Durable spelling worklist, not a repair and not proof of renderer correctness.
+// Audit observed 88 active project IDs (87 pursue, 1 monitor), left untouched.
+// BIN2 avoids the case-insensitive database collation hiding noncanonical writes.
+// Misses incorrect but correctly spelled verdicts; valid case is not factual validity.
+var verdictSpelling = @"
+SELECT DISTINCT m.Id, v.Verdict
+FROM opportunities.MajorProjectsInventory m
+JOIN opportunities.MajorProjectEnrichment e ON e.MajorProjectsInventoryId=m.Id AND e.ProviderName=N'ProjectBriefHoning'
+CROSS APPLY (VALUES (COALESCE(JSON_VALUE(e.ResultJson,'$.honingPass.verdict'),JSON_VALUE(e.ResultJson,'$.verdict')))) v(Verdict)
+WHERE m.RetiredAtUtc IS NULL AND v.Verdict IS NOT NULL
+AND v.Verdict COLLATE Latin1_General_100_BIN2 NOT IN
+    (N'PURSUE_URGENT',N'PURSUE',N'MONITOR',N'DISCOVER',N'DEAD',N'DUPLICATE')";
+invariants.Add(("bd_report_noncanonical_verdict",
+    "EXPECTED canonical vocabulary; ACTUAL distinct active project IDs needing Ian's review (prior audit: 88 lowercase). Readers normalize; data was not repaired",
+    false, $"SELECT COUNT(DISTINCT Id) FROM ({verdictSpelling}) v;",
+    $"SELECT TOP 5 * FROM ({verdictSpelling}) v ORDER BY Id;"));
 
 // BD fixes brief 1: data companion to the grab UPDATE-predicate source gate.
 // EXPECTED: zero dismissed opportunities with a CRM engagement. ACTUAL: CountSql

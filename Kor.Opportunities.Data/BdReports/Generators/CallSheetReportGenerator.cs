@@ -44,8 +44,9 @@ public static class CallSheetReportGenerator
         b.Kpis(
             new KpiItem(urgent.Count.ToString(CultureInfo.InvariantCulture), "Urgent this week", urgent.Count > 0 ? ChipTone.Urgent : ChipTone.Neutral),
             new KpiItem(pursue.Count.ToString(CultureInfo.InvariantCulture), "Open pursue", ChipTone.Positive),
-            new KpiItem(CadCompact(pipelineCad), "Pipeline (CAD)"),
+            new KpiItem(CadCompact(pipelineCad), "Known-cost subtotal (CAD)"),
             new KpiItem(sectorSummaries.Count.ToString(CultureInfo.InvariantCulture), "Sectors reporting"));
+        b.P(BdReportFormatting.CostCoverage(pool.Count(p => p.EstimatedCostCad.HasValue), pool.Count));
 
         b.H2($"THE {top.Count} most time-sensitive — call/email THIS WEEK");
         var rank = 1;
@@ -209,6 +210,6 @@ public static class CallSheetReportGenerator
             return string.Empty;
         }
 
-        return value.Length <= max ? value : value[..max];
+        return BdReportFormatting.Abridge(value, max);
     }
 }

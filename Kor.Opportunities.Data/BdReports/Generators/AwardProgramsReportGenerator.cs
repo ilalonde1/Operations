@@ -82,6 +82,6 @@ public static class AwardProgramsReportGenerator
             return null;
         }
 
-        return value.Length <= max ? value : value[..max];
+        return BdReportFormatting.Abridge(value, max);
     }
 }
