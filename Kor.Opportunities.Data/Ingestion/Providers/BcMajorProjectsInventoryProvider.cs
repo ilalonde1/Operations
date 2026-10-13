@@ -560,13 +560,17 @@ SELECT
         return !string.IsNullOrWhiteSpace(value);
     }
 
+    /// <summary>
+    /// MPI payload dates are ISO-8601 and offset-bearing, so this is
+    /// behaviour-identical to the old AssumeUniversal parse — routed through
+    /// PublishedClock so an offset-less value is handled deliberately rather
+    /// than relabelled as UTC. MinValue-on-failure is the existing contract
+    /// (callers fold with MaxDate) and is deliberately unchanged.
+    /// </summary>
     private static DateTimeOffset TryGetDate(JsonElement element, string propertyName)
-    {
-        return TryGetString(element, propertyName, out var raw)
-            && DateTimeOffset.TryParse(raw, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var parsed)
-            ? parsed
+        => TryGetString(element, propertyName, out var raw)
+            ? PublishedClock.Parse(raw, fallbackZoneId: null) ?? DateTimeOffset.MinValue
             : DateTimeOffset.MinValue;
-    }
 
     private static DateTimeOffset MaxDate(DateTimeOffset first, DateTimeOffset second) =>
         first >= second ? first : second;

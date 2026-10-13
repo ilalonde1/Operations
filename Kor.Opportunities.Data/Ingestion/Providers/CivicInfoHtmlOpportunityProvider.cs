@@ -73,6 +73,9 @@ public sealed class CivicInfoHtmlOpportunityProvider : IOpportunityProvider
         @"(?<num>\d+|a|an)\s+(?<unit>second|minute|hour|day|week|month|year)s?\s+ago",
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
+    /// <summary>CivicInfo BC lists BC municipal bids; it publishes Pacific.</summary>
+    private const string CivicInfoTimeZoneId = "America/Vancouver";
+
     private static readonly Regex DeadlinePrefixRegex = new(
         @"^\s*(Expires|Closes|Closing|Deadline|Due)\s*:?\s*",
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
@@ -357,11 +360,13 @@ public sealed class CivicInfoHtmlOpportunityProvider : IOpportunityProvider
 
             var trimmed = dateValue.Trim();
 
-            if (DateTimeOffset.TryParse(
-                trimmed,
-                CultureInfo.InvariantCulture,
-                DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
-                out var parsed))
+            // CivicInfo BC is a Pacific publisher. This provider has no ENABLED
+            // source today (the live CivicInfo feeds run through the RSS
+            // provider), so nothing is stored through here — but it can be
+            // re-enabled, and a dormant AssumeUniversal is how this class
+            // spreads. A posted/listed date stays at the start of its day.
+            var parsed = PublishedClock.Parse(trimmed, CivicInfoTimeZoneId);
+            if (parsed is not null)
             {
                 return parsed;
             }
@@ -440,11 +445,11 @@ public sealed class CivicInfoHtmlOpportunityProvider : IOpportunityProvider
                 continue;
             }
 
-            if (DateTimeOffset.TryParse(
-                stripped,
-                CultureInfo.InvariantCulture,
-                DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
-                out var parsed))
+            // A CLOSING date: date-only means the END of that Pacific day, or it
+            // expires before the date it prints. Same correction as migration 341
+            // applied to the 101 live CivicInfo rows.
+            var parsed = PublishedClock.ParseDeadline(stripped, CivicInfoTimeZoneId);
+            if (parsed is not null)
             {
                 return parsed;
             }

@@ -418,13 +418,11 @@ public sealed class RssOpportunityProvider : IOpportunityProvider
             return null;
         }
 
-        return DateTimeOffset.TryParse(
-            value,
-            CultureInfo.InvariantCulture,
-            DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
-            out var parsed)
-            ? parsed
-            : null;
+        // RSS pubDate is RFC-822 and carries its offset ("Tue, 06 Oct 2026
+        // 16:00:00 -0700"), so this is behaviour-identical to the old
+        // AssumeUniversal parse. Routed through PublishedClock so a feed that
+        // ever omits the offset is handled where that distinction lives.
+        return PublishedClock.Parse(value, fallbackZoneId: null);
     }
 
     private static string? ReadElementValue(XElement parent, string selector)

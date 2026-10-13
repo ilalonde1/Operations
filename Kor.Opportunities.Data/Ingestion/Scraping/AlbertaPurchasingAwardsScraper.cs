@@ -36,6 +36,9 @@ public sealed class AlbertaPurchasingAwardsScraper : PlaywrightScraperBase<Award
         @"\$[\d,]+(?:\.\d{2})?",
         RegexOptions.Compiled);
 
+    /// <summary>Alberta Purchasing Connection publishes in Alberta local time.</summary>
+    private const string AlbertaTimeZoneId = "America/Edmonton";
+
     private static readonly Regex DateLikeRegex = new(
         @"\b(?:\d{4}-\d{1,2}-\d{1,2}|[A-Z][a-z]{2,8}\s+\d{1,2},?\s+\d{4}|\d{1,2}/\d{1,2}/\d{4})\b",
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
@@ -339,13 +342,14 @@ public sealed class AlbertaPurchasingAwardsScraper : PlaywrightScraperBase<Award
             return null;
         }
 
+        // APC is an Alberta portal and renders its times as "(MT)". DateLikeRegex
+        // matches the date part only, so these are date-only values in Alberta
+        // local terms -- parsed with AssumeUniversal they became midnight UTC,
+        // i.e. 18:00 the previous day in Alberta, rolling the award DATE back one.
         foreach (Match match in DateLikeRegex.Matches(containerText))
         {
-            if (DateTimeOffset.TryParse(
-                match.Value,
-                CultureInfo.InvariantCulture,
-                DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
-                out var parsed))
+            var parsed = PublishedClock.Parse(match.Value, AlbertaTimeZoneId);
+            if (parsed is not null)
             {
                 return parsed;
             }

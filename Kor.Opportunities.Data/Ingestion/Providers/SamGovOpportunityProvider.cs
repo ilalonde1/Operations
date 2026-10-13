@@ -305,13 +305,13 @@ public sealed class SamGovOpportunityProvider : IOpportunityProvider
             return null;
         }
 
-        return DateTimeOffset.TryParse(
-            value.Trim(),
-            CultureInfo.InvariantCulture,
-            DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
-            out var parsed)
-            ? parsed
-            : null;
+        // SamGov's responseDeadLine carries an explicit offset
+        // ("2025-05-01T12:00:00-07:00"), so this is behaviour-identical to the
+        // old AssumeUniversal parse — 16 of 18 stored rows were already correct,
+        // and the 2 outliers are amended deadlines, not clock errors. Routed
+        // through PublishedClock so the one place that knows offset-bearing from
+        // offset-less handles it.
+        return PublishedClock.Parse(value, fallbackZoneId: null);
     }
 
     private static string? FirstNonBlank(params string?[] values)

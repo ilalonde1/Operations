@@ -273,14 +273,15 @@ public sealed class EngagementHqOpportunityProvider : IOpportunityProvider
            && (v.ValueKind == JsonValueKind.True
                || (v.ValueKind == JsonValueKind.String && string.Equals(v.GetString(), "true", StringComparison.OrdinalIgnoreCase)));
 
+    /// <summary>
+    /// EngagementHQ's REST payloads carry ISO-8601 timestamps with an explicit
+    /// offset or a Z, so this is behaviour-identical to the old
+    /// AssumeUniversal parse. It goes through PublishedClock so that a payload
+    /// that ever arrives WITHOUT an offset is handled in the one place that
+    /// knows the difference, instead of being silently relabelled as UTC.
+    /// </summary>
     private static DateTimeOffset? Date(JsonElement el, string prop)
-    {
-        var raw = Str(el, prop);
-        return !string.IsNullOrWhiteSpace(raw)
-               && DateTimeOffset.TryParse(raw, CultureInfo.InvariantCulture,
-                   DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out var parsed)
-            ? parsed : null;
-    }
+        => PublishedClock.Parse(Str(el, prop), fallbackZoneId: null);
 
     /// <summary>Strip the HTML the platform stores descriptions as, and the
     /// entities inside it. Left as plain text because the relevance gate reads

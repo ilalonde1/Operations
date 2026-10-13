@@ -258,13 +258,11 @@ public sealed class GenericCsvAwardProvider : IAwardProvider
             return null;
         }
 
-        return DateTimeOffset.TryParse(
-            value.Trim(),
-            CultureInfo.InvariantCulture,
-            DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
-            out var parsed)
-            ? parsed
-            : null;
+        // No source of this type exists today, so nothing is stored through this
+        // path. Routed through PublishedClock so that whenever one IS wired, the
+        // decision about its clock is made deliberately instead of inheriting a
+        // silent UTC assumption — which is how 2,116 deadlines went wrong.
+        return PublishedClock.Parse(value, fallbackZoneId: null);
     }
 
     private static string? TrimOrNull(string? value)

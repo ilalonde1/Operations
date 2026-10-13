@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.IO;
 using Kor.Opportunities.Core.Ingestion;
 using Kor.Opportunities.Data.Ingestion.Providers;
 using Kor.Opportunities.Data.Ingestion.Scraping;
@@ -241,6 +243,94 @@ public sealed class PublishedClockTests
             : PublishedClock.Parse(published, zone);
         Assert.Equal(Utc(y, mo, d, newHour, newMinute), corrected);
         Assert.NotEqual(oldResult, corrected);
+    }
+
+    // ------------------------------------------------------------------ the gate
+    /// <summary>
+    /// No ingestion source file may use <c>DateTimeStyles.AssumeUniversal</c>.
+    /// <see cref="PublishedClock"/> is the only place allowed to decide what an
+    /// offset-less timestamp means.
+    /// </summary>
+    /// <remarks>
+    /// This is the check that would have prevented the whole class. The flag was
+    /// copied into 15 parse sites across providers and scrapers; each looked
+    /// locally reasonable, and every one that read a local wall clock stored it
+    /// early by the source's offset — 2,116 of 2,473 deadlines. A comment saying
+    /// "don't use this" would not have held: this repo's own history is that
+    /// prose loses to momentum and only mechanical checks stick.
+    /// <para>
+    /// WHAT IT COVERS: the literal token in .cs files under the two ingestion
+    /// folders. WHAT IT DOES NOT: the same mistake written a different way —
+    /// <c>DateTime.Parse</c> on a naked string followed by
+    /// <c>.ToUniversalTime()</c>, or <c>new DateTimeOffset(local, TimeSpan.Zero)</c>,
+    /// both of which relabel a wall clock just as silently. It also says nothing
+    /// about whether a given source's configured zone is the RIGHT zone; that is
+    /// evidence, not syntax, and lives in the per-source cases above.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void No_ingestion_file_may_assume_an_offsetless_timestamp_is_utc()
+    {
+        var root = FindRepoRoot();
+        var folders = new[]
+        {
+            Path.Combine(root, "Kor.Opportunities.Data", "Ingestion"),
+            Path.Combine(root, "Kor.Opportunities.Core", "Ingestion"),
+        };
+
+        var offenders = new List<string>();
+        foreach (var folder in folders)
+        {
+            Assert.True(Directory.Exists(folder), $"expected ingestion folder at {folder}");
+            foreach (var file in Directory.EnumerateFiles(folder, "*.cs", SearchOption.AllDirectories))
+            {
+                if (file.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}")
+                    || file.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}")
+                    || Path.GetFileName(file) == "PublishedClock.cs")
+                {
+                    continue;
+                }
+
+                var lines = File.ReadAllLines(file);
+                for (var i = 0; i < lines.Length; i++)
+                {
+                    var line = lines[i];
+                    if (!line.Contains("DateTimeStyles.AssumeUniversal", StringComparison.Ordinal))
+                    {
+                        continue;
+                    }
+
+                    // A comment explaining the defect is allowed; using it is not.
+                    var trimmed = line.TrimStart();
+                    if (trimmed.StartsWith("//", StringComparison.Ordinal)
+                        || trimmed.StartsWith("///", StringComparison.Ordinal)
+                        || trimmed.StartsWith("*", StringComparison.Ordinal))
+                    {
+                        continue;
+                    }
+
+                    offenders.Add($"{Path.GetFileName(file)}:{i + 1}");
+                }
+            }
+        }
+
+        Assert.True(offenders.Count == 0,
+            "DateTimeStyles.AssumeUniversal relabels a source's local wall clock as UTC. "
+            + "Use PublishedClock.Parse / ParseDeadline with the zone the SOURCE publishes in, "
+            + "or null only for a feed proven to publish UTC. Offenders: "
+            + string.Join(", ", offenders));
+    }
+
+    private static string FindRepoRoot()
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir is not null && !Directory.Exists(Path.Combine(dir.FullName, "Kor.Opportunities.Core")))
+        {
+            dir = dir.Parent;
+        }
+
+        Assert.NotNull(dir);
+        return dir!.FullName;
     }
 
     [Fact]

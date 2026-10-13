@@ -338,14 +338,16 @@ public sealed class AlbertaPurchasingScraper : PlaywrightScraperBase<Opportunity
             return null;
         }
 
+        // Legacy table/list markup. DateLikeRegex matches a date with no time, and
+        // APC is an Alberta portal, so a bare date means END of that day in
+        // Alberta -- it is a CLOSING date. Parsed with AssumeUniversal it became
+        // midnight UTC, i.e. 18:00 the previous day locally, expiring the posting
+        // a day before it closed.
         var text = NormalizeText(await container.InnerTextAsync().ConfigureAwait(false));
         foreach (Match match in DateLikeRegex.Matches(text))
         {
-            if (DateTimeOffset.TryParse(
-                match.Value,
-                CultureInfo.InvariantCulture,
-                DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
-                out var parsed))
+            var parsed = PublishedClock.ParseDeadline(match.Value, "America/Edmonton");
+            if (parsed is not null)
             {
                 return parsed;
             }

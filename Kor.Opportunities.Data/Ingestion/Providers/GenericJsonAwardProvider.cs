@@ -505,21 +505,14 @@ public sealed class GenericJsonAwardProvider : IAwardProvider
             : null;
     }
 
+    /// <summary>
+    /// Award feeds wired here publish offset-bearing ISO-8601, so this is
+    /// behaviour-identical to the old AssumeUniversal parse — routed through
+    /// PublishedClock so an offset-less value is a deliberate decision in one
+    /// place rather than a silent UTC relabel in this one.
+    /// </summary>
     private static DateTimeOffset? ParseDateTimeOffset(string? value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return null;
-        }
-
-        return DateTimeOffset.TryParse(
-            value.Trim(),
-            CultureInfo.InvariantCulture,
-            DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
-            out var parsed)
-            ? parsed
-            : null;
-    }
+        => PublishedClock.Parse(value, fallbackZoneId: null);
 
     private static int? ReadInt(JsonNode root, string? path)
     {

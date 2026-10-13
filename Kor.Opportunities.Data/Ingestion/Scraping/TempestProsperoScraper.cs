@@ -320,13 +320,12 @@ public sealed class TempestProsperoScraper : PlaywrightScraperBase<OpportunityCa
             return null;
         }
 
-        return DateTime.TryParse(
-            m.Groups[1].Value,
-            CultureInfo.GetCultureInfo("en-CA"),
-            DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
-            out var parsed)
-            ? new DateTimeOffset(parsed, TimeSpan.Zero)
-            : null;
+        // "Application Date: October 3, 2026" — a date with no time, and an
+        // APPLICATION date rather than a closing date, so it stays at the start
+        // of its day. Tempest/Prospero hosts are BC municipalities, so that day
+        // is a Pacific one; parsed with AssumeUniversal it became midnight UTC,
+        // which is 17:00 the previous day locally and reads as the wrong date.
+        return PublishedClock.Parse(m.Groups[1].Value, "America/Vancouver");
     }
 
     /// <summary>

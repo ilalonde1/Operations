@@ -242,14 +242,16 @@ public sealed class BcBidAwardsScraper : PlaywrightScraperBase<AwardCandidate>, 
             : null;
     }
 
+    /// <summary>
+    /// Same Pacific portal as <see cref="BcBidScraper"/> — BC Bid renders its date
+    /// columns under a "(pacific time)" header, so a bare cell is a Pacific wall
+    /// clock, never UTC. Parsing it with AssumeUniversal stored award dates 7-8
+    /// hours early, which rolls the DATE back for anything awarded in the evening.
+    /// </summary>
     private static DateTimeOffset? ParseDate(string raw)
-    {
-        if (string.IsNullOrWhiteSpace(raw)) return null;
-        return DateTimeOffset.TryParse(raw, CultureInfo.InvariantCulture,
-            DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out var value)
-            ? value
-            : null;
-    }
+        => string.IsNullOrWhiteSpace(raw)
+            ? null
+            : PublishedClock.Parse(raw, BcBidScraper.PortalTimeZoneId);
 
     private static async Task<bool> TryAdvanceToNextPageAsync(IPage page, CancellationToken ct)
     {
