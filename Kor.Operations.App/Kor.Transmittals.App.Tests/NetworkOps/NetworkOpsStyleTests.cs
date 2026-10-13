@@ -1,4 +1,5 @@
 #nullable enable
+using System;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -24,13 +25,26 @@ public sealed class NetworkOpsStyleTests
 
     private static string[] Windows() => Directory.GetFiles(Dir, "*Window.xaml");
 
-    [Fact]
-    public void There_are_seven_NetworkOps_windows_and_each_merges_the_styles()
+    // The NetworkOps windows the style scan covers, by file name. Adding or removing a window is a deliberate edit: update this
+    // list and know the scan now (un)covers it. The count lives HERE, in one place, derived from the list -- not split between a
+    // hard-coded number in the assertion and a word in the method name, which is how it drifted (7 -> 8, left asserting 8 of 6).
+    private static readonly string[] ExpectedWindows =
     {
-        var windows = Windows();
-        Assert.Equal(8, windows.Length);   // a new window must join the scan. Network stopped being a window (folded to a
-                                            // UserControl tab, 2026-10-04); the To-clear machine picker is the 8th (2026-10-05).
-        foreach (var w in windows)
+        "KorRemoteViewerWindow.xaml",
+        "NetworkOpsCommandCenterWindow.xaml",
+        "NetworkOpsDeviceWindow.xaml",
+        "NetworkOpsFixWindow.xaml",
+        "NetworkOpsMachinePickerWindow.xaml",
+        "PromptLibraryWindow.xaml",
+    };
+
+    [Fact]
+    public void Every_NetworkOps_window_is_expected_and_merges_the_styles()
+    {
+        var windows = Windows().Select(w => Path.GetFileName(w)!).OrderBy(n => n, StringComparer.Ordinal).ToArray();
+        // A window added or removed shows here as exactly which file appeared or disappeared -- not an opaque "expected N, got M".
+        Assert.Equal(ExpectedWindows.OrderBy(n => n, StringComparer.Ordinal).ToArray(), windows);
+        foreach (var w in Windows())
             Assert.True(File.ReadAllText(w).Contains("component/NetworkOps/NetworkOpsStyles.xaml"), $"{Path.GetFileName(w)} does not merge NetworkOpsStyles.xaml");
     }
 
