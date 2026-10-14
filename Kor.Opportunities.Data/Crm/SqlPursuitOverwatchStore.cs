@@ -102,7 +102,7 @@ SELECT e.Id                                            AS EngagementId,
        e.OwnerStaffId                                  AS OwnerStaffId,
        e.Stage                                         AS Stage,
        COALESCE(o.Name, e.PotentialProjects, N'(unnamed)') AS ProjectName,
-       COALESCE(o.BuyerName, N'')                      AS Buyer,
+       COALESCE(o.BuyerName, co.DisplayName, N'')        AS Buyer,
        -- BD-tracking rows carry the spreadsheet Region; grabbed pursuits have
        -- none (Opportunities has no Region column — F1 deviation, documented),
        -- so fall back to the opportunity's real ProjectProvince rather than
@@ -115,6 +115,7 @@ SELECT e.Id                                            AS EngagementId,
        COALESCE(sh.StageSinceUtc, e.OpenedAtUtc)       AS StageSinceUtc
 FROM opportunities.CrmEngagements e
 LEFT JOIN opportunities.Opportunities o ON o.Id = e.OpportunityId
+LEFT JOIN opportunities.CanonicalOrg co ON co.Id = e.BuyerCanonicalOrgId
 LEFT JOIN opportunities.CrmBuyerEmailWarmth w ON w.CanonicalOrgId = e.BuyerCanonicalOrgId
 OUTER APPLY (
     SELECT MAX(a.OccurredAtUtc) AS LastActivityUtc, COUNT(*) AS ActivityCount

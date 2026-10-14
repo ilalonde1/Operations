@@ -82,9 +82,9 @@ public sealed class OverwatchRowView
 
     public string LastTouchDisplay => TouchSource == "none"
         ? "never"
-        : $"{LastTouchUtc.LocalDateTime:yyyy-MM-dd} ({TouchSource})";
+        : $"{BdDateDisplay.Day(LastTouchUtc)} ({TouchSource})";
 
-    public string OpenedDisplay => Row.OpenedAtUtc.LocalDateTime.ToString("yyyy-MM-dd");
+    public string OpenedDisplay => BdDateDisplay.Day(Row.OpenedAtUtc);
 
     public string ActivityCountDisplay => Row.ActivityCount.ToString();
 

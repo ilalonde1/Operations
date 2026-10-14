@@ -31,6 +31,9 @@ CreatedAtUtc, CreatedBy, UpdatedAtUtc, UpdatedBy, RowVersion,
 WonLostOutcome, OutcomeReason, LostToCanonicalOrgId, WonProjectWbs1,
 NextActionDueUtc, NextActionNote, ExternalSource, ExternalSourceKey";
 
+    // SELECT-only projection: write OUTPUT images retain their original ordinals.
+    private const string ListColumns = AllColumns + ", (SELECT co.DisplayName FROM opportunities.CanonicalOrg co WHERE co.Id = BuyerCanonicalOrgId) AS BuyerOrgName";
+
     private readonly string _connectionString;
 
     public SqlCrmEngagementStore(string connectionString)
@@ -46,7 +49,7 @@ NextActionDueUtc, NextActionNote, ExternalSource, ExternalSourceKey";
     public async Task<IReadOnlyList<CrmEngagement>> ListAsync(CancellationToken ct)
     {
         var sql = $@"
-SELECT {AllColumns}
+SELECT {ListColumns}
 FROM opportunities.CrmEngagements
 ORDER BY UpdatedAtUtc DESC;";
 
@@ -67,7 +70,7 @@ ORDER BY UpdatedAtUtc DESC;";
     public async Task<CrmEngagement?> GetByIdAsync(long id, CancellationToken ct)
     {
         var sql = $@"
-SELECT {AllColumns}
+SELECT {ListColumns}
 FROM opportunities.CrmEngagements
 WHERE Id = @id;";
 
@@ -82,7 +85,7 @@ WHERE Id = @id;";
     public async Task<CrmEngagement?> GetByOpportunityAsync(long opportunityId, CancellationToken ct)
     {
         var sql = $@"
-SELECT {AllColumns}
+SELECT {ListColumns}
 FROM opportunities.CrmEngagements
 WHERE OpportunityId = @oppId;";
 
@@ -217,7 +220,7 @@ VALUES (@eng, @stage, @by);";
         // implied. Race safety for InsertAsync rests (correctly) on the unique
         // BD-relationship index + its 2601/2627 catch.
         var sql = $@"
-SELECT {AllColumns}
+SELECT {ListColumns}
 FROM opportunities.CrmEngagements
 WHERE OpportunityId IS NULL
   AND BuyerCanonicalOrgId = @buyerCanonicalOrgId
@@ -429,5 +432,21 @@ WHERE Id = @id AND RowVersion = @rv;";
         NextActionNote = r.IsDBNull(27) ? null : r.GetString(27),
         ExternalSource = r.IsDBNull(28) ? null : r.GetString(28),
         ExternalSourceKey = r.IsDBNull(29) ? null : r.GetString(29),
+        BuyerOrgName = ReadBuyerOrgName(r),
     };
+
+    private static string? ReadBuyerOrgName(SqlDataReader r)
+    {
+        // INSERT/UPDATE OUTPUT does not carry this projection (and UPDATE's column
+        // 30 is deleted.Stage). Inspect names without throwing on write readers.
+        for (var i = 0; i < r.FieldCount; i++)
+        {
+            if (string.Equals(r.GetName(i), "BuyerOrgName", StringComparison.OrdinalIgnoreCase))
+            {
+                return r.IsDBNull(i) ? null : r.GetString(i);
+            }
+        }
+
+        return null;
+    }
 }

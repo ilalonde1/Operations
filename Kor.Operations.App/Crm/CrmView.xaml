@@ -27,7 +27,7 @@
                  toolbar isn't a wall of equal buttons. No features removed. -->
             <Button Content="Refresh" Width="80" Click="RefreshButton_Click"/>
             <Button Content="Edit…" Width="80" Click="EditEngagementButton_Click"
-                    ToolTip="Edit the engagement (owner, fee, notes, stage)."/>
+                    ToolTip="Edit the pursuit (owner, fee, notes, stage)."/>
             <Button Content="More  ▾" Width="90" Margin="0,0,16,0" Click="MoreActionsButton_Click"
                     ToolTip="More actions for the selected pursuit.">
                 <Button.ContextMenu>
@@ -43,9 +43,9 @@
                                   ToolTip="Record which Deltek project this win became (WBS1)."/>
                         <Separator/>
                         <MenuItem Header="Fee Proposal…" Click="BuildFeeProposalButton_Click"
-                                  ToolTip="Open the Fee Proposal Builder pre-named for this engagement."/>
+                                  ToolTip="Open the Fee Proposal Builder pre-named for this pursuit."/>
                         <MenuItem Header="Brochure…" Click="BuildBrochureButton_Click"
-                                  ToolTip="Open the Sales Brochure Builder pre-named for this engagement."/>
+                                  ToolTip="Open the Sales Brochure Builder pre-named for this pursuit."/>
                     </ContextMenu>
                 </Button.ContextMenu>
             </Button>
@@ -53,7 +53,7 @@
 
             <Button x:Name="SetStageButton" Content="Set stage" Width="100"
                     Click="SetStageButton_Click"
-                    ToolTip="Change the stage of the selected engagement.">
+                    ToolTip="Change the stage of the selected pursuit.">
                 <Button.ContextMenu>
                     <ContextMenu>
                         <MenuItem Header="Drafting"  Click="StageMenuItem_Click" Tag="Drafting"/>
@@ -355,12 +355,13 @@
                                         ToolTip="When it happened (optional — blank = now). Friday's call can be logged on Monday. Future dates are treated as now."/>
                             <Grid Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2">
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="170"/>
+                                    <ColumnDefinition Width="230"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
                                 <ComboBox Grid.Column="0" x:Name="ActivityContactBox" Margin="0,0,4,0"
                                           ItemsSource="{Binding Contacts}" DisplayMemberPath="DisplayName"
-                                          ToolTip="Who it was with (optional — this engagement's contacts)."/>
+                                          controls:Placeholder.Text="Who it was with (optional)"
+                                          ToolTip="Who it was with (optional — this pursuit's contacts)."/>
                                 <TextBox Grid.Column="1" x:Name="ActivityBodyBox"
                                          controls:Placeholder.Text="Notes (optional)"
                                          ToolTip="Notes (optional)"/>

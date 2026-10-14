@@ -55,7 +55,7 @@
              the outcome (review fix 2026-07-07). Skip stays one click. -->
         <StackPanel Grid.Row="7" Orientation="Horizontal" HorizontalAlignment="Right">
             <Button Content="Skip" Width="90" Margin="0,0,8,0" IsCancel="True"
-                    ToolTip="Close without recording an outcome — you can still edit the engagement later."/>
+                    ToolTip="Close without recording an outcome — you can still edit the pursuit later."/>
             <Button Content="Save outcome" Width="130" IsDefault="True"
                     Style="{StaticResource Button.Primary}"
                     Click="Save_Click"/>

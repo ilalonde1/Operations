@@ -280,7 +280,7 @@ WHERE d.OpportunityId = @drop
 UPDATE opportunities.Opportunities
 SET DismissedAtUtc  = SYSDATETIMEOFFSET(),
     DismissedBy     = N'BdOpportunityDedup',
-    DismissedReason = N'Same RFP as ' + @keepKey + N'; held separately because OpportunityKey carries the source prefix. Observations and child rows merged onto that record.',
+    DismissedReason = N'Duplicate of ' + @keepKey + N', the record kept. Its postings and history were merged there.',
     OwnerStaffId    = NULL,
     UpdatedAtUtc    = SYSDATETIMEOFFSET(),
     UpdatedBy       = N'BdOpportunityDedup'

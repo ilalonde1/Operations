@@ -1,4 +1,5 @@
 #nullable enable
+using Kor.Operations.App.BusinessDevelopment;
 using Kor.Opportunities.Core.Models;
 
 namespace Kor.Operations.App.Crm;
@@ -13,7 +14,7 @@ public sealed class CrmActivityRowView
     public CrmActivity Model { get; }
     public long Id => Model.Id;
     public string TypeDisplay => Model.ActivityType.ToString();
-    public string OccurredDisplay => Model.OccurredAtUtc.LocalDateTime.ToString("yyyy-MM-dd HH:mm");
+    public string OccurredDisplay => BdDateDisplay.DayAndTime(Model.OccurredAtUtc);
     public string Subject => Model.Subject;
     public string Body => Model.Body ?? "";
     public string CreatedBy => Model.CreatedBy;

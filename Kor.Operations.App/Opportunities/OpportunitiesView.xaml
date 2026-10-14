@@ -50,7 +50,7 @@
                     Width="130"
                     Style="{StaticResource Button.ActionBarPrimary}"
                     Click="PromoteToPursuitButton_Click"
-                    ToolTip="Create a Pursuit (engagement) from the selected opportunity, or open the existing one."/>
+                    ToolTip="Create a pursuit from the selected opportunity, or open the existing one."/>
 
             <Button x:Name="GenerateBriefButton"
                     Content="Brief"
@@ -388,7 +388,7 @@
                                 </Border>
                                 <Button Content="Open in Pursuits..." Margin="12,0,0,0" Padding="8,3"
                                         Click="OpenInPursuitsButton_Click"
-                                        ToolTip="Open the Pursuits window scoped to this engagement."/>
+                                        ToolTip="Open the Pursuits window scoped to this pursuit."/>
                             </StackPanel>
                         </StackPanel>
 

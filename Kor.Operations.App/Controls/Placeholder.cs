@@ -3,19 +3,20 @@ using System;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Documents;
 using System.Windows.Media;
 
 namespace Kor.Operations.Controls;
 
 /// <summary>
-/// Attached placeholder text for any <see cref="TextBox"/>: a grey hint drawn while the
+/// Attached placeholder text for a <see cref="TextBox"/> or <see cref="ComboBox"/>: a grey hint drawn while the
 /// box is empty and unfocused, so a row of boxes says what each one is for without a
 /// hover. Before 2026-10-13 the CRM's add-contact and log-activity rows were seven and
 /// six unlabelled boxes whose meaning lived only in tooltips ("Clarity is King").
 ///
 /// Usage: <c>controls:Placeholder.Text="Email"</c>. Draws in an adorner, so the theme's
-/// TextBox template is untouched.
+/// control template is untouched.
 /// </summary>
 public static class Placeholder
 {
@@ -28,22 +29,40 @@ public static class Placeholder
 
     private static void OnTextChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        if (d is not TextBox box)
+        if (d is not Control box || box is not (TextBox or ComboBox))
         {
             return;
         }
 
         box.Loaded -= Refresh;
-        box.TextChanged -= Refresh;
         box.GotKeyboardFocus -= Refresh;
         box.LostKeyboardFocus -= Refresh;
+        if (box is TextBox textBox)
+        {
+            textBox.TextChanged -= Refresh;
+        }
+        else if (box is ComboBox combo)
+        {
+            combo.SelectionChanged -= Refresh;
+            combo.RemoveHandler(TextBoxBase.TextChangedEvent, new TextChangedEventHandler(Refresh));
+        }
 
         if (e.NewValue is string text && text.Length > 0)
         {
             box.Loaded += Refresh;
-            box.TextChanged += Refresh;
             box.GotKeyboardFocus += Refresh;
             box.LostKeyboardFocus += Refresh;
+            if (box is TextBox input)
+            {
+                input.TextChanged += Refresh;
+            }
+            else if (box is ComboBox picker)
+            {
+                picker.SelectionChanged += Refresh;
+                // The editable template's TextBox bubbles this event. Register even
+                // before that template exists, so changing IsEditable later also works.
+                picker.AddHandler(TextBoxBase.TextChangedEvent, new TextChangedEventHandler(Refresh));
+            }
             if (box.IsLoaded)
             {
                 Refresh(box, EventArgs.Empty);
@@ -56,7 +75,7 @@ public static class Placeholder
     }
 
     /// <summary>
-    /// Draw or clear the placeholder on every TextBox under <paramref name="root"/> now,
+    /// Draw or clear the placeholder on every TextBox and ComboBox under <paramref name="root"/> now,
     /// without waiting for Loaded. For the render harness, which lays a view out without
     /// ever showing it, so Loaded never fires and the PNG would show seven blank boxes.
     /// Needs an AdornerLayer above the boxes: a Window has one, a bare UserControl does
@@ -64,7 +83,7 @@ public static class Placeholder
     /// </summary>
     internal static void RefreshAll(DependencyObject root)
     {
-        if (root is TextBox box && !string.IsNullOrEmpty(GetText(box)))
+        if (root is Control box && box is (TextBox or ComboBox) && !string.IsNullOrEmpty(GetText(box)))
         {
             Refresh(box, EventArgs.Empty);
         }
@@ -78,12 +97,18 @@ public static class Placeholder
 
     private static void Refresh(object? sender, EventArgs e)
     {
-        if (sender is not TextBox box)
+        if (sender is not Control box)
         {
             return;
         }
 
-        if (string.IsNullOrEmpty(box.Text) && !box.IsKeyboardFocusWithin)
+        var empty = box switch
+        {
+            TextBox textBox => string.IsNullOrEmpty(textBox.Text),
+            ComboBox combo => combo.SelectedIndex < 0 && (!combo.IsEditable || string.IsNullOrEmpty(combo.Text)),
+            _ => false,
+        };
+        if (empty && !box.IsKeyboardFocusWithin)
         {
             Show(box);
         }
@@ -93,7 +118,7 @@ public static class Placeholder
         }
     }
 
-    private static void Show(TextBox box)
+    private static void Show(Control box)
     {
         var layer = AdornerLayer.GetAdornerLayer(box);
         if (layer is null || Find(layer, box) is not null)
@@ -104,7 +129,7 @@ public static class Placeholder
         layer.Add(new PlaceholderAdorner(box, GetText(box) ?? string.Empty));
     }
 
-    private static void Remove(TextBox box)
+    private static void Remove(Control box)
     {
         var layer = AdornerLayer.GetAdornerLayer(box);
         if (layer is null)
@@ -119,7 +144,7 @@ public static class Placeholder
         }
     }
 
-    private static PlaceholderAdorner? Find(AdornerLayer layer, TextBox box)
+    private static PlaceholderAdorner? Find(AdornerLayer layer, Control box)
     {
         var adorners = layer.GetAdorners(box);
         if (adorners is null)
@@ -142,7 +167,7 @@ public static class Placeholder
     {
         private readonly string _text;
 
-        public PlaceholderAdorner(TextBox box, string text) : base(box)
+        public PlaceholderAdorner(Control box, string text) : base(box)
         {
             _text = text;
             IsHitTestVisible = false;
@@ -150,7 +175,7 @@ public static class Placeholder
 
         protected override void OnRender(DrawingContext drawingContext)
         {
-            var box = (TextBox)AdornedElement;
+            var box = (Control)AdornedElement;
             var formatted = new FormattedText(
                 _text,
                 CultureInfo.CurrentUICulture,
@@ -160,6 +185,17 @@ public static class Placeholder
                 Brushes.Gray,
                 VisualTreeHelper.GetDpi(this).PixelsPerDip);
             var x = box.BorderThickness.Left + box.Padding.Left + 4;
+            // A ComboBox draws its arrow in the rightmost ~24 px. The hint stops short of it and
+            // trims with an ellipsis rather than running underneath (the harness showed
+            // "Who it was with (optional)" under the chevron, 2026-10-14).
+            var reserve = box is ComboBox ? 24 : 0;
+            var available = box.ActualWidth - x - box.BorderThickness.Right - box.Padding.Right - reserve;
+            if (available > 0)
+            {
+                formatted.MaxTextWidth = available;
+                formatted.MaxLineCount = 1;
+                formatted.Trimming = TextTrimming.CharacterEllipsis;
+            }
             var y = Math.Max(0, (box.ActualHeight - formatted.Height) / 2);
             drawingContext.DrawText(formatted, new Point(x, y));
         }

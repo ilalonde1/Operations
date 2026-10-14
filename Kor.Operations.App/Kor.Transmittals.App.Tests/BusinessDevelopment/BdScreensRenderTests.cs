@@ -45,6 +45,9 @@ namespace Kor.Operations.App.Tests.BusinessDevelopment;
 /// service is touched and no timer starts); interaction; the real data's text lengths
 /// and row counts. A same-class fault it would NOT catch: a list showing the wrong
 /// population, because a retired duplicate renders exactly like a live row.
+/// Row ORDER is the store's: fixtures are hand-ordered as its ORDER BY would return
+/// them, so a wrong ORDER BY is a fault this harness would NOT catch.
+/// A fixture value the store could not return would render as if real.
 /// </summary>
 [Trait("Speed", "Slow")]
 public sealed class BdScreensRenderTests
@@ -191,15 +194,15 @@ public sealed class BdScreensRenderTests
             new PursuitOverwatchRow(501, 39410, "ilalonde@korstructural.com", (int)CrmEngagementStage.Drafting,
                 "Prime Consultant Services: RCH Mammography Replacement", "Fraser Health Authority", "Lower Mainland",
                 Now.AddDays(-35), Now.AddDays(-60), 3, null, Now.AddDays(-34)),
+            new PursuitOverwatchRow(504, null, "jbryson@korstructural.com", (int)CrmEngagementStage.Drafting,
+                "North Langford Secondary School", "School District 62 (Sooke)", "Vancouver Island",
+                null, Now.AddDays(-15), 0, null, Now.AddDays(-15)),
             new PursuitOverwatchRow(502, 39411, "rwong@korstructural.com", (int)CrmEngagementStage.Submitted,
                 "Request for Supplier Qualifications for Engineering Prime Consultant Services", "Government of Alberta (APC)", "Alberta",
                 Now.AddDays(-12), Now.AddDays(-40), 7, Now.AddDays(-12), Now.AddDays(-5)),
             new PursuitOverwatchRow(503, 39412, "ilalonde@korstructural.com", (int)CrmEngagementStage.Drafting,
                 "Whitecourt Project – Prime Consultant Services", "Government of Alberta (APC)", "Alberta",
                 Now.AddDays(-2), Now.AddDays(-8), 2, Now.AddDays(-1), Now.AddDays(-8)),
-            new PursuitOverwatchRow(504, null, "jbryson@korstructural.com", (int)CrmEngagementStage.Drafting,
-                "North Langford Secondary School", "School District 62 (Sooke)", "Vancouver Island",
-                null, Now.AddDays(-15), 0, null, Now.AddDays(-15)),
         });
 
         var vm = new OverwatchViewModel(store.Object);
@@ -232,7 +235,7 @@ public sealed class BdScreensRenderTests
             Status = OpportunityStatus.New, SubmissionDeadlineUtc = Now.AddDays(5).AddHours(2),
             RelevanceTier = RelevanceTier.Low, RelevanceScore = 8m, IsPrimeConsultantRfp = true, PrimeProjectSector = "school",
             DismissedAtUtc = Now.AddDays(-6), DismissedBy = "BdOpportunityDedup",
-            DismissedReason = "Same RFP as BCBID-233225; held separately because OpportunityKey carries the posting number.",
+            DismissedReason = "Duplicate of BCBID-233225, the record kept. Its postings and history were merged there.",
             CreatedAtUtc = Now.AddDays(-20),
         },
         new Opportunity
@@ -316,6 +319,7 @@ public sealed class BdScreensRenderTests
             Id = 504, OpportunityId = null, Stage = CrmEngagementStage.Drafting, OwnerStaffId = "jbryson@korstructural.com",
             Region = "Vancouver Island", OpenedAtUtc = Now.AddDays(-15), UpdatedAtUtc = Now.AddDays(-15),
             PotentialProjects = "North Langford Secondary School",
+            BuyerOrgName = "School District 62 (Sooke)",
         },
         new CrmEngagement
         {

@@ -15,6 +15,7 @@ namespace Kor.Operations.App.Tests.BusinessDevelopment;
 /// Covers XAML text and the pure chart builder. Does not render WPF, so a block that is
 /// present but unreadable (clipped, overlapped) escapes, and so does a page whose grid
 /// binds to a property the view model no longer sets.
+/// Ellipsis checks inspect XAML text only; the rendered width is only seen in the PNG.
 /// </summary>
 public sealed class BdDashboardClarityRegressionTests
 {
@@ -67,6 +68,21 @@ public sealed class BdDashboardClarityRegressionTests
         Assert.Contains("Binding Detail", xaml);
         Assert.DoesNotContain("stored offset", xaml);
         Assert.DoesNotContain("(stored offset)", Source("Kor.Operations.App/Opportunities/OpportunityDeadlineDisplay.cs"));
+    }
+
+    [Fact]
+    public void NewRfps_LongNamesTrimWithEllipsis()
+    {
+        var xaml = Source("Kor.Operations.App/BusinessDevelopment/Workspace/DashboardView.xaml");
+        foreach (var property in new[] { "Name", "Buyer" })
+        {
+            var column = Regex.Match(xaml, @"<DataGridTextColumn\b[^>]*\bBinding=""\{Binding " + property
+                + @"\}""[^>]*>(.*?)</DataGridTextColumn>", RegexOptions.Singleline);
+            Assert.True(column.Success, $"EXPECTED a styled {property} column; ACTUAL none");
+            Assert.Contains("DataGridTextColumn.ElementStyle", column.Value);
+            Assert.Contains("Property=\"TextTrimming\" Value=\"CharacterEllipsis\"", column.Value);
+            Assert.Contains($"Property=\"ToolTip\" Value=\"{{Binding {property}}}\"", column.Value);
+        }
     }
 
     [Fact]

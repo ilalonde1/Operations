@@ -77,7 +77,7 @@ public sealed class OverwatchViewModel : ObservableObject, IAiContextProvider
             if (Pursuits.Count == 0) return string.Empty;
             var cold = Pursuits.Count(p => p.DaysSinceTouch >= ColdDays);
             var watch = Pursuits.Count(p => p.DaysSinceTouch >= WatchDays && p.DaysSinceTouch < ColdDays);
-            return $"{Pursuits.Count} active pursuit{(Pursuits.Count == 1 ? "" : "s")}"
+            return $"{Pursuits.Count} owned live pursuit{(Pursuits.Count == 1 ? "" : "s")}"
                  + $"  •  {cold} going cold ({ColdDays}d+)  •  {watch} to watch";
         }
     }
@@ -105,8 +105,8 @@ public sealed class OverwatchViewModel : ObservableObject, IAiContextProvider
             OnPropertyChanged(nameof(HasPursuits));
             OnPropertyChanged(nameof(Headline));
             StatusMessage = Pursuits.Count == 0
-                ? "No owned active pursuits."
-                : $"Loaded {Pursuits.Count} owned active pursuits.";
+                ? "No owned live pursuits."
+                : $"Loaded {Pursuits.Count} owned live pursuits.";
         }
         catch (OperationCanceledException)
         {
@@ -186,7 +186,7 @@ public sealed class OverwatchViewModel : ObservableObject, IAiContextProvider
         }
 
         var sb = new StringBuilder();
-        sb.AppendLine($"Owned active pursuits (manager overwatch): {pool.Length}.");
+        sb.AppendLine($"Owned live pursuits (manager board): {pool.Length}.");
 
         var byOwner = pool.GroupBy(p => p.OwnerDisplay).OrderByDescending(g => g.Count());
         sb.AppendLine("By owner:");

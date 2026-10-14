@@ -12,10 +12,13 @@ namespace Kor.Operations.App.Crm;
 /// </summary>
 public sealed class CrmEngagementRowView
 {
-    public CrmEngagementRowView(CrmEngagement engagement, Opportunity? opportunity)
+    private readonly string? _buyerOrgName;
+
+    public CrmEngagementRowView(CrmEngagement engagement, Opportunity? opportunity, string? buyerOrgName = null)
     {
         Engagement = engagement;
         Opportunity = opportunity;
+        _buyerOrgName = buyerOrgName;
     }
 
     public CrmEngagement Engagement { get; }
@@ -33,7 +36,7 @@ public sealed class CrmEngagementRowView
     public string OpportunityKey => Opportunity?.OpportunityKey
         ?? (Engagement.OpportunityId.HasValue ? $"Opp#{Engagement.OpportunityId.Value}" : "(BD-tracking)");
     public string ProjectName => Opportunity?.Name ?? (Engagement.PotentialProjects ?? "(no project named yet)");
-    public string Buyer => Opportunity?.BuyerName ?? "";
+    public string Buyer => Opportunity?.BuyerName ?? Engagement.BuyerOrgName ?? _buyerOrgName ?? "";
 
     /// <summary>The buyer's canonical org id, when known — the key into the org
     /// intel/dossier. Null for pursuits whose buyer hasn't been resolved to a
@@ -53,9 +56,9 @@ public sealed class CrmEngagementRowView
     public string TargetMarginDisplay =>
         Engagement.TargetMargin.HasValue ? $"{Engagement.TargetMargin.Value:0.#}%" : "";
 
-    public string OpenedDisplay => Engagement.OpenedAtUtc.LocalDateTime.ToString("yyyy-MM-dd");
+    public string OpenedDisplay => BdDateDisplay.Day(Engagement.OpenedAtUtc);
 
-    public string UpdatedDisplay => Engagement.UpdatedAtUtc.ToLocalTime().ToString("MMM d, yyyy", System.Globalization.CultureInfo.InvariantCulture);
+    public string UpdatedDisplay => BdDateDisplay.Day(Engagement.UpdatedAtUtc);
 
     public Brush StageBrush => BrushFor(Engagement.Stage);
 

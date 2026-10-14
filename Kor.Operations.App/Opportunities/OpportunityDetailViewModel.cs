@@ -7,6 +7,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
+using Kor.Operations.App.BusinessDevelopment;
 using Kor.Opportunities.Core.Models;
 using Kor.Opportunities.Data.Observations;
 using Kor.Opportunities.Data.Sources;
@@ -76,7 +77,7 @@ public sealed class OpportunityDetailViewModel : INotifyPropertyChanged, Kor.Ope
 
             var who = string.IsNullOrWhiteSpace(Opportunity.DismissedBy) ? "an unrecorded actor" : Opportunity.DismissedBy!.Trim();
             var why = string.IsNullOrWhiteSpace(Opportunity.DismissedReason) ? "." : ": " + Opportunity.DismissedReason!.Trim();
-            return $"Removed from the pipeline {at.ToLocalTime().ToString("MMM d, yyyy", CultureInfo.InvariantCulture)} by {who}{why}";
+            return $"Removed from the pipeline {BdDateDisplay.Day(at)} by {who}{why}";
         }
     }
 
@@ -87,7 +88,8 @@ public sealed class OpportunityDetailViewModel : INotifyPropertyChanged, Kor.Ope
     /// <summary>Tooltip on the closing time: the value as stored, with its offset.</summary>
     public string ClosesStored => "Stored as " + OpportunityDeadlineDisplay.Stored(Opportunity.SubmissionDeadlineUtc);
 
-    public string PostedDisplay => Opportunity.RfpReleaseDate?.ToString("MMM d, yyyy", CultureInfo.InvariantCulture) ?? "not recorded";
+    public string PostedDisplay => Opportunity.RfpReleaseDate is { } date
+        ? BdDateDisplay.Day(date.ToDateTime(TimeOnly.MinValue)) : "not recorded";
 
     public string ValueDisplay => Opportunity.EstimatedValue is { } v
         ? string.Format(Canadian, "{0:N0} {1}", v, Opportunity.EstimatedValueCurrency)
@@ -102,9 +104,18 @@ public sealed class OpportunityDetailViewModel : INotifyPropertyChanged, Kor.Ope
         }
     }
 
-    public string FitDisplay => Opportunity.RelevanceTier is { } tier
-        ? (Opportunity.RelevanceScore is { } score ? $"{tier} ({score.ToString("0", CultureInfo.InvariantCulture)})" : tier.ToString())
-        : "not scored";
+    public string FitDisplay
+    {
+        get
+        {
+            if (Opportunity.RelevanceTier is not { } tier) return "not scored";
+            var words = !Enum.IsDefined(typeof(RelevanceTier), tier)
+                ? $"Tier {(int)tier}"
+                : tier == RelevanceTier.HardReject ? "Rejected by the relevance gate" : $"{tier} fit";
+            return Opportunity.RelevanceScore is { } score
+                ? $"{words} (score {score.ToString("0", CultureInfo.InvariantCulture)})" : words;
+        }
+    }
 
     public string SectorDisplay => string.IsNullOrWhiteSpace(Opportunity.PrimeProjectSector) ? "not classified" : Opportunity.PrimeProjectSector!;
 
@@ -180,7 +191,7 @@ public sealed class OpportunityDetailViewModel : INotifyPropertyChanged, Kor.Ope
         var rows = ordered.Select(o => new SourceRow(
                 sourceNames.TryGetValue(o.OpportunitySourceId, out var name) ? name : "source",
                 o.Title,
-                (o.PostedDateUtc ?? o.IngestedAtUtc).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)
+                BdDateDisplay.Day(o.PostedDateUtc ?? o.IngestedAtUtc)
                     + (o.PostedDateUtc is null ? " (ingested)" : ""),
                 o.Url))
             .ToList();

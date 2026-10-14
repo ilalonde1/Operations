@@ -67,6 +67,15 @@ RULES = [
      "this machine; a name-wide kill ends theirs too (six runs lost on 2026-09-18). Kill only your own, "
      "by command line: Get-CimInstance Win32_Process -Filter \"Name='testhost.exe'\" | "
      "Where-Object { $_.CommandLine -like '*<your test project>*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }"),
+
+    # 8. A BUILD OR TEST RUN PIPED WITHOUT pipefail. The pipe's exit code replaces the compiler's.
+    #    On 2026-10-14 `dotnet build ... 2>&1 | tail -30` exited 0 over four CS0104 errors; "build
+    #    green" was reported, the filtered tests and the render harness then ran on the previous
+    #    binaries, and five stale PNGs were read as evidence of the new code. CLAUDE.md rule 5.
+    (re.compile(r"(?is)^(?!.*pipefail).*?\bdotnet\s+(?:build|test|publish)\b[^|;\n]*\|(?!\|)"),
+     "A dotnet build/test/publish piped without pipefail: the pipe's exit code replaces the build's "
+     "(2026-10-14: four CS0104 errors reported as a green build; tests and PNGs then ran on stale "
+     "binaries). Prefix the command with `set -o pipefail &&`, or do not pipe it."),
 ]
 
 BUILD = re.compile(r"dotnet\s+(?:test|build)")

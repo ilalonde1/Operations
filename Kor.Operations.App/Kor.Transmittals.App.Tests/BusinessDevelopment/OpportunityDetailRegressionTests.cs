@@ -17,6 +17,9 @@ namespace Kor.Operations.App.Tests.BusinessDevelopment;
 /// Covers the read view's picking rules and the two double-click entry points by source.
 /// Does not drive WPF or the stores; a third entry point added later that opens the
 /// editor directly would escape, and so would a posting whose URL is wrong at the source.
+/// Fit checks exercise a pure property; the rendered width is only seen in the PNG.
+/// Dismissal checks are text gates only; row counts are proven when Claude runs the file
+/// with Apply=0 and then 1. A syntactically invalid SQL rewrite could pass these gates.
 /// </summary>
 public sealed class OpportunityDetailRegressionTests
 {
@@ -34,7 +37,7 @@ public sealed class OpportunityDetailRegressionTests
         var newer = new OpportunityObservation
         {
             Id = 2, OpportunitySourceId = Bonfire, Title = "Newer title", Url = "https://bonfire/2",
-            Description = "short", PostedDateUtc = DateTimeOffset.Parse("2026-10-05T00:00:00Z"),
+            Description = "short", PostedDateUtc = new DateTimeOffset(new DateTime(2026, 10, 5, 12, 0, 0, DateTimeKind.Local)),
         };
         var names = new Dictionary<Guid, string> { [BcBid] = "BcBid" };
 
@@ -45,7 +48,7 @@ public sealed class OpportunityDetailRegressionTests
         Assert.Equal("BcBid", actual.Sources[1].Source);
         Assert.Equal("https://bonfire/2", actual.PrimaryUrl);
         Assert.Equal(400, actual.Description.Length);         // the longest text wins, not the newest
-        Assert.Equal("2026-10-05", actual.Sources[0].Posted);
+        Assert.Equal("Oct 5, 2026", actual.Sources[0].Posted);
     }
 
     [Fact]
@@ -60,10 +63,10 @@ public sealed class OpportunityDetailRegressionTests
     [Fact]
     public void Build_PostingWithoutDescription_SaysSoInsteadOfBlank()
     {
-        var bare = new OpportunityObservation { Id = 3, OpportunitySourceId = BcBid, Title = "T", Url = "https://bcbid/3", IngestedAtUtc = DateTimeOffset.Parse("2026-10-07T12:00:00Z") };
+        var bare = new OpportunityObservation { Id = 3, OpportunitySourceId = BcBid, Title = "T", Url = "https://bcbid/3", IngestedAtUtc = new DateTimeOffset(new DateTime(2026, 10, 7, 12, 0, 0, DateTimeKind.Local)) };
         var actual = OpportunityDetailViewModel.Build(new[] { bare }, new Dictionary<Guid, string>());
         Assert.Contains("no description", actual.Description);
-        Assert.Equal("2026-10-07 (ingested)", actual.Sources[0].Posted);
+        Assert.Equal("Oct 7, 2026 (ingested)", actual.Sources[0].Posted);
         Assert.Equal("https://bcbid/3", actual.PrimaryUrl);
     }
 
@@ -77,13 +80,13 @@ public sealed class OpportunityDetailRegressionTests
         {
             Name = "Development Consulting Services - Tumbler Ridge Secondary School Replacement",
             BuyerName = "Ministry of Infrastructure", OpportunityKey = "BCBID-234361", Status = OpportunityStatus.New,
-            DismissedAtUtc = DateTimeOffset.Parse("2026-10-08T14:38:56-07:00"), DismissedBy = "BdOpportunityDedup",
-            DismissedReason = "Same RFP as BCBID-233225; held separately because OpportunityKey carries the posting number.",
+            DismissedAtUtc = new DateTimeOffset(new DateTime(2026, 10, 8, 14, 38, 56, DateTimeKind.Local)), DismissedBy = "BdOpportunityDedup",
+            DismissedReason = "Duplicate of BCBID-233225, the record kept. Its postings and history were merged there.",
         };
         var vm = new OpportunityDetailViewModel(removed, Mock.Of<IOpportunityObservationStore>(), Mock.Of<IOpportunitySourceStore>());
         Assert.True(vm.IsRemoved);
         Assert.Equal("Removed", vm.StatusDisplay);                     // the Opportunities grid's word, not "New — dismissed"
-        Assert.StartsWith("Removed from the pipeline Oct 8, 2026 by BdOpportunityDedup: Same RFP as BCBID-233225", vm.RemovedDisplay);
+        Assert.StartsWith("Removed from the pipeline Oct 8, 2026 by BdOpportunityDedup: Duplicate of BCBID-233225", vm.RemovedDisplay);
         Assert.Contains("by BdOpportunityDedup", vm.BuildContext());
 
         var live = new OpportunityDetailViewModel(new Opportunity { Name = "n", BuyerName = "b" },
@@ -95,6 +98,44 @@ public sealed class OpportunityDetailRegressionTests
         var xaml = Source("Opportunities/OpportunityDetailWindow.xaml");
         Assert.Contains("Binding IsRemoved, Converter={StaticResource BoolToVis}", xaml);
         Assert.Contains("Binding HasSources, Converter={StaticResource BoolToVis}", xaml);   // no empty grid with headers
+    }
+
+    [Theory]
+    [InlineData(RelevanceTier.High, 72, "High fit (score 72)")]
+    [InlineData(RelevanceTier.Medium, 41, "Medium fit (score 41)")]
+    [InlineData(RelevanceTier.Low, 8, "Low fit (score 8)")]
+    [InlineData(RelevanceTier.HardReject, 0, "Rejected by the relevance gate (score 0)")]
+    [InlineData((RelevanceTier)4, 9, "Tier 4 (score 9)")]
+    [InlineData(null, 8, "not scored")]
+    [InlineData(null, null, "not scored")]
+    [InlineData(RelevanceTier.High, null, "High fit")]
+    [InlineData(RelevanceTier.Medium, null, "Medium fit")]
+    [InlineData(RelevanceTier.Low, null, "Low fit")]
+    [InlineData(RelevanceTier.HardReject, null, "Rejected by the relevance gate")]
+    [InlineData((RelevanceTier)4, null, "Tier 4")]
+    public void FitDisplay_NamesTheTierAndTheScore(RelevanceTier? tier, int? score, string expected)
+    {
+        var vm = new OpportunityDetailViewModel(new Opportunity { RelevanceTier = tier, RelevanceScore = score },
+            Mock.Of<IOpportunityObservationStore>(), Mock.Of<IOpportunitySourceStore>());
+        Assert.Equal(expected, vm.FitDisplay);
+    }
+
+    [Fact]
+    public void DismissalReasons_AreNotDeveloperSentences()
+    {
+        var writer = RepoSource("tools/BdOpportunityDedup/Program.cs");
+        Assert.DoesNotContain("OpportunityKey carries", writer);
+        Assert.Contains("Duplicate of ' + @keepKey", writer);
+        var migration = RepoSource("Kor.Opportunities.Data/Schema/347_PlainDismissalReasons.sql");
+        foreach (var required in new[]
+        {
+            "$(Apply)", "DismissalReasonRewrite347", "Rollback", "BdOpportunityDedup",
+            "Same RFP as %; held separately because OpportunityKey carries the source prefix.",
+            "migration-327", "BIDSTEND-2026-RFP-IP-061", "Same RFP as APCALLBU-AB-2026-06377 (%",
+            "migration-321", "Duplicate of the same application under its DP file number; created when the OpportunityKey derivation changed%",
+        })
+            Assert.True(migration.Contains(required, StringComparison.Ordinal),
+                $"EXPECTED migration guard/predicate/undo '{required}'; ACTUAL missing");
     }
 
     [Fact]
@@ -116,10 +157,13 @@ public sealed class OpportunityDetailRegressionTests
     }
 
     private static string Source(string path)
+        => RepoSource("Kor.Operations.App/" + path);
+
+    private static string RepoSource(string path)
     {
         DirectoryInfo? dir = new(AppContext.BaseDirectory);
         while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "CLAUDE.md"))) dir = dir.Parent;
         Assert.NotNull(dir);
-        return File.ReadAllText(Path.Combine(dir!.FullName, "Kor.Operations.App", path));
+        return File.ReadAllText(Path.Combine(dir!.FullName, path));
     }
 }

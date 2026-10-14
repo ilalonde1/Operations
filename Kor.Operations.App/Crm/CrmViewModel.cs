@@ -8,6 +8,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Media;
+using Kor.Operations.App.BusinessDevelopment;
 using Kor.Operations.Core;
 using Kor.Operations.Services;
 using Kor.Opportunities.Core.Models;
@@ -337,14 +338,15 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
             if (_analytics is null || _analytics.TotalEngagements == 0) return string.Empty;
             var won = _analytics.Won;
             var lost = _analytics.Lost;
-            var rate = (won + lost) > 0 ? _analytics.WinRate.ToString("P0") : "— (no live outcomes yet)";
+            var n = _analytics.TotalEngagements;
+            var rate = (won + lost) > 0 ? _analytics.WinRate.ToString("P0") : "— (none decided yet)";
             var backfill = _analytics.BackfillWins > 0
-                ? $"  •  {_analytics.BackfillWins} historical Deltek wins ({_analytics.BackfillWonFee.ToString("C0", CultureInfo.CurrentCulture)}, backfill)"
+                ? $"  •  {_analytics.BackfillWins} earlier Deltek wins ({_analytics.BackfillWonFee.ToString("C0", CultureInfo.CurrentCulture)}) kept out of the rate"
                 : string.Empty;
             var avgWonFee = _analytics.AvgWonProposedFee > 0
                 ? $"  •  avg won fee {_analytics.AvgWonProposedFee.ToString("C0", CultureInfo.CurrentCulture)}"
                 : string.Empty;
-            return $"{_analytics.TotalEngagements} engagement(s){backfill}  •  live: {won}W / {lost}L  •  live win rate {rate}{avgWonFee}";
+            return $"{n} pursuit{(n == 1 ? "" : "s")}  •  won {won} / lost {lost} recorded here  •  win rate {rate}{avgWonFee}{backfill}";
         }
     }
 
@@ -374,7 +376,7 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
             if (_deltekContext is null) return string.Empty;
             var fee = _deltekContext.LifetimeFee.ToString("C0", CultureInfo.CurrentCulture);
             var last = _deltekContext.LatestProjectStart.HasValue
-                ? _deltekContext.LatestProjectStart.Value.ToString("yyyy-MM-dd")
+                ? BdDateDisplay.Day(_deltekContext.LatestProjectStart.Value)
                 : "—";
             return $"{_deltekContext.ClientName}: {_deltekContext.ProjectCount} project(s), lifetime fee {fee}, last opened {last}.";
         }
@@ -383,7 +385,7 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
     public async Task LoadAsync(CancellationToken ct)
     {
         IsLoading = true;
-        StatusMessage = "Loading engagements…";
+        StatusMessage = "Loading pursuits…";
         try
         {
             var engagements = await _engagementStore.ListAsync(ct).ConfigureAwait(true);
@@ -446,8 +448,8 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
             Analytics = CrmAnalyticsService.Compute(engagements, oppById);
 
             StatusMessage = engagements.Count == 0
-                ? "No CRM engagements yet — promote an opportunity from the Opportunities window to start tracking."
-                : $"Loaded {engagements.Count} engagement{(engagements.Count == 1 ? "" : "s")}.";
+                ? "No pursuits yet — promote an opportunity from the Opportunities window to start one."
+                : $"Loaded {engagements.Count} pursuit{(engagements.Count == 1 ? "" : "s")}.";
         }
         catch (OperationCanceledException)
         {
@@ -653,7 +655,7 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
                 // LIVE — surface the compute date once it's stale so a closed
                 // pursuit's numbers read as "as of", never as current (review nit).
                 var asOf = w is not null && (DateTimeOffset.Now - w.ComputedAtUtc).TotalDays > 2
-                    ? $" (as of {w.ComputedAtUtc.LocalDateTime:yyyy-MM-dd})"
+                    ? $" (as of {BdDateDisplay.Day(w.ComputedAtUtc)})"
                     : "";
                 if (w is { LastTouchUtc: not null })
                 {
@@ -685,7 +687,7 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
             var parts = new List<string>();
             foreach (var a in assignments)
             {
-                var d = a.AtUtc.LocalDateTime.ToString("yyyy-MM-dd");
+                var d = BdDateDisplay.Day(a.AtUtc);
                 parts.Add(a.Action switch
                 {
                     "Grab" => $"Grabbed by {a.ToStaffId} {d}",
@@ -777,6 +779,8 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
             ? await _engagementStore.InsertAsync(edited, actor, ct).ConfigureAwait(true)
             : await _engagementStore.UpdateAsync(edited, actor, ct).ConfigureAwait(true);
 
+        // Both write outputs omit BuyerOrgName. Keep any existing row's buyer;
+        // a brand-new BD-tracking pursuit resolves its buyer on the next Refresh.
         ReplaceEngagement(saved);
         StatusMessage = $"Saved engagement {saved.Id}.";
         return saved;
@@ -936,7 +940,7 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
             if (Engagements[i].Id == saved.Id)
             {
                 var opp = Engagements[i].Opportunity;
-                Engagements[i] = new CrmEngagementRowView(saved, opp);
+                Engagements[i] = new CrmEngagementRowView(saved, opp, Engagements[i].Buyer);
 
                 // Review fix 2026-07-07: a stage change can move the row out of
                 // the current filter (mark Lost under the live view). Keeping it

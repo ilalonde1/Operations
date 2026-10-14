@@ -33,7 +33,7 @@
                 </Grid.RowDefinitions>
 
                 <TextBlock Grid.Row="0" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,2">
-                    <Run Text="Every live pursuit, coldest first" Foreground="{StaticResource Brand.Primary.Brush}"/>
+                    <Run Text="Every owned live pursuit, coldest first" Foreground="{StaticResource Brand.Primary.Brush}"/>
                     <Run Text="  cold = no activity for 21 days or more · watch = 7 to 20 days · double-click opens it in Pursuits"
                          FontSize="11" FontWeight="Normal" Foreground="{StaticResource Text.Secondary}"/>
                 </TextBlock>
@@ -71,7 +71,7 @@
                         <DataGridTextColumn Header="Buyer"      Binding="{Binding Buyer}"               Width="210" MinWidth="140"/>
                         <DataGridTextColumn Header="Region"     Binding="{Binding RegionDisplay}"       Width="125"/>
                         <!-- Plan 3.1: fused touch, source-labelled ("2026-07-01 (email)"). -->
-                        <DataGridTextColumn Header="Last touch" Binding="{Binding LastTouchDisplay}"    Width="140"/>
+                        <DataGridTextColumn Header="Last touch" Binding="{Binding LastTouchDisplay}"    Width="155"/>
                         <DataGridTextColumn Header="Acts"       Binding="{Binding ActivityCountDisplay}" Width="50"/>
                         <DataGridTextColumn Header="Opened"     Binding="{Binding OpenedDisplay}"       Width="100"/>
                     </DataGrid.Columns>

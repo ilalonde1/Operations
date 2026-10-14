@@ -92,7 +92,7 @@
                     <Button x:Name="PursuitsButton" Content="My Pursuits" Style="{StaticResource NavButton}" Click="Pursuits_Click"
                             ToolTip="The pursuits you own — calls, contacts, stages, outcomes."/>
                     <Button x:Name="OverwatchButton" Content="All Pursuits" Style="{StaticResource NavButton}" Click="Overwatch_Click"
-                            ToolTip="Manager board — every owned active pursuit across the team, coldest first."/>
+                            ToolTip="Manager board — every owned live pursuit across the team, coldest first."/>
 
                     <TextBlock Text="KNOW" Style="{StaticResource NavGroupHeader}"/>
                     <Button x:Name="RelationshipsButton" Content="Relationships" Style="{StaticResource NavButton}" Click="Relationships_Click"/>

@@ -224,6 +224,21 @@ momentum.** Rule 7 is the one repeat offence that actually stopped, and it stopp
 `claude_bash_guard.py` blocks the command. Recognising a mistake afterwards costs nothing and
 changes nothing; the gate is what changes the next action.
 
+## 13. A piped build has the pipe's exit code, not the compiler's.
+
+`dotnet build … 2>&1 | tail -30` exits 0 when `tail` exits 0. The four errors are in the
+output; the exit code says green. Everything downstream then runs on whatever binaries were
+already there, and every check passes against the previous code.
+
+What this cost: on 2026-10-14 four CS0104 errors were reported as a green build. The filtered
+gates ran on the 12:22 binaries and passed, the render harness wrote five fresh PNGs from the
+old code, and all five were read and reported as the new screens. Ian: "I won't stand for this
+today." Rule 5 in prose did not hold against momentum, so it is a hook now:
+`tools/claude_bash_guard.py` denies a `dotnet build`, `test` or `publish` that is piped unless
+the command sets `pipefail`. Prefix with `set -o pipefail &&`, read `${PIPESTATUS[0]}`, or do
+not pipe. And after any build, prove the binary carries the change before trusting what runs on
+it: .NET string literals are UTF-16 in the assembly, so grep for the UTF-16 bytes, not ASCII.
+
 ## Environment facts worth not rediscovering
 
 - Rules live in `KorStandards` on `KOR-APP01\SQLEXPRESS`, schema `analysis`. A missing rule stops a

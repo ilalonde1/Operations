@@ -60,6 +60,9 @@ public sealed record CrmEngagement
     /// <summary>FK to CanonicalOrg(Id) — the firm/buyer this engagement is with.</summary>
     public long? BuyerCanonicalOrgId { get; init; }
 
+    /// <summary>Read-only projection of CanonicalOrg.DisplayName, populated by SELECT paths only, never written.</summary>
+    public string? BuyerOrgName { get; init; }
+
     /// <summary>
     /// BD-tracking region — one of: Vancouver/LowerMainland, VancouverIsland,
     /// Alberta, Okanagan-BcInterior, USA, EasternCanada. Mirrors the

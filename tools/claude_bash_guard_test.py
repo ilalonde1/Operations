@@ -79,6 +79,12 @@ CASES = [
     ("Stop-Process -Id 12345 -Force", "allow"),
     ("tasklist | grep -ic testhost", "allow"),
     ("git commit -q -m 'the guard denies Stop-Process by the name testhost'", "allow"),
+    # rule 8: a build or test run piped without pipefail (2026-10-14: four errors read as green)
+    ("dotnet build Kor.Operations.App/Kor.Transmittals.App.Tests/Kor.Operations.App.Tests.csproj -c Debug -nologo -v q 2>&1 | tail -30", "deny"),
+    ("dotnet test Kor.Opportunities.Data.Tests/Kor.Opportunities.Data.Tests.csproj --filter \"FullyQualifiedName~X\" 2>&1 | grep Passed", "deny"),
+    ("set -o pipefail && dotnet build Kor.Opportunities.Data/Kor.Opportunities.Data.csproj -c Debug 2>&1 | tail -30", "allow"),
+    ("dotnet build Kor.Opportunities.Data/Kor.Opportunities.Data.csproj -c Debug -nologo", "allow"),
+    ("dotnet build Kor.Opportunities.Data/Kor.Opportunities.Data.csproj || echo build failed", "allow"),
     # rule 2: destroying uncommitted work
     ("git checkout -- src/File.cs", "deny"),
     ("git stash push -- src/File.cs", "allow"),

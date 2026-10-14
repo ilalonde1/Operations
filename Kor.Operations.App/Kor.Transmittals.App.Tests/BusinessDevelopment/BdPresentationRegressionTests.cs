@@ -1,8 +1,11 @@
 #nullable enable
 using System.Globalization;
+using System.IO;
 using System.Reflection;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using DocumentFormat.OpenXml.Packaging;
+using Kor.Operations.App.BusinessDevelopment;
 using Kor.Operations.App.BusinessDevelopment.Briefs;
 using Kor.Operations.App.BusinessDevelopment.Workspace;
 using Kor.Operations.App.BusinessDevelopment.Reports;
@@ -196,6 +199,69 @@ public sealed class BdPresentationRegressionTests
         Assert.Contains("Binding Countdown", Source("BusinessDevelopment/Workspace/DashboardView.xaml"));
     }
 
+    /// <summary>
+    /// EXPECTED invariant local dates versus ACTUAL shared formatter output, including UTC,
+    /// local and unspecified DateTime inputs. Does not render; clipped date labels escape.
+    /// </summary>
+    [Fact]
+    public void BdDateDisplay_RendersOneFormat()
+    {
+        var instant = DateTimeOffset.Parse("2026-09-09T19:17:00Z", CultureInfo.InvariantCulture);
+        var local = instant.ToLocalTime();
+        var expected = local.ToString("MMM d, yyyy", CultureInfo.InvariantCulture);
+        Assert.Equal(expected, BdDateDisplay.Day(instant));
+        Assert.Equal(expected, BdDateDisplay.Day(instant.UtcDateTime));
+        Assert.Equal(expected, BdDateDisplay.Day(instant.LocalDateTime));
+        Assert.Equal(expected, BdDateDisplay.Day(DateTime.SpecifyKind(instant.LocalDateTime, DateTimeKind.Unspecified)));
+        Assert.Equal(local.ToString("MMM d, yyyy h:mm tt", CultureInfo.InvariantCulture), BdDateDisplay.DayAndTime(instant));
+    }
+
+    /// <summary>
+    /// Literals only in the six harnessed files; nothing is rendered. Culture formats
+    /// such as StringFormat={}{0:d} or ToString("d") would escape this source scan.
+    /// </summary>
+    [Fact]
+    public void NonDeadlineDates_OnHarnessedScreens_GoThroughBdDateDisplay()
+    {
+        foreach (var file in new[]
+        {
+            "Crm/CrmEngagementRowView.cs", "Crm/CrmActivityRowView.cs", "Crm/CrmViewModel.cs",
+            "BusinessDevelopment/Workspace/OverwatchRowView.cs", "Opportunities/OpportunityDetailViewModel.cs",
+            "BusinessDevelopment/Workspace/DashboardView.xaml",
+        })
+        {
+            var source = Source(file);
+            foreach (var format in new[] { "\"yyyy-MM-dd", ":yyyy-MM-dd", "\"MMM d, yyyy" })
+                Assert.False(source.Contains(format, StringComparison.Ordinal),
+                    $"EXPECTED shared date display in {file}; ACTUAL inline {format}");
+        }
+        Assert.Contains("RefreshedAtUtc, Converter={StaticResource BdDay}, StringFormat=as of {0}",
+            Source("BusinessDevelopment/Workspace/DashboardView.xaml"));
+    }
+
+    /// <summary>
+    /// Counts literal formats, not rendered dates: the other 64 occurrences in 23 files
+    /// are counted, not fixed (source inventory, 2026-10-14; brief reported 63).
+    /// Culture formats such as StringFormat={}{0:d} or ToString("d") would escape.
+    /// </summary>
+    [Fact]
+    public void InlineDateFormats_OnBdScreens_OnlyGoDown()
+    {
+        var app = Path.Combine(RepoRoot(), "Kor.Operations.App");
+        var counts = new List<(string File, int Count)>();
+        foreach (var folder in new[] { "Crm", "BusinessDevelopment/Workspace", "Opportunities" })
+        foreach (var pattern in new[] { "*.cs", "*.xaml" })
+        foreach (var file in Directory.EnumerateFiles(Path.Combine(app, folder), pattern, SearchOption.AllDirectories))
+        {
+            if (Path.GetFileName(file) is "BdDateDisplay.cs" or "OpportunityDeadlineDisplay.cs") continue;
+            var count = Regex.Matches(File.ReadAllText(file), @"yyyy-MM-dd|MMM d, yyyy").Count;
+            if (count > 0) counts.Add((Path.GetRelativePath(app, file), count));
+        }
+        var total = counts.Sum(c => c.Count);
+        Assert.True(total <= 64, $"EXPECTED <= 64 inline date formats; ACTUAL {total}:\n"
+            + string.Join("\n", counts.OrderBy(c => c.File).Select(c => $"{c.File}: {c.Count}")));
+    }
+
     // Resolved KOR, other structural firm, unresolved name. Covers shared prose,
     // DOCX/HTML/fallback PDF artifacts for KOR, and wiring to all brief paths.
     // Excludes browser printing and identity resolution: wrong upstream Kind escapes.
@@ -248,10 +314,13 @@ public sealed class BdPresentationRegressionTests
     }
 
     private static string Source(string path)
+        => File.ReadAllText(Path.Combine(RepoRoot(), "Kor.Operations.App", path));
+
+    private static string RepoRoot()
     {
         DirectoryInfo? dir = new(AppContext.BaseDirectory);
         while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "CLAUDE.md"))) dir = dir.Parent;
         Assert.NotNull(dir);
-        return File.ReadAllText(Path.Combine(dir!.FullName, "Kor.Operations.App", path));
+        return dir!.FullName;
     }
 }
