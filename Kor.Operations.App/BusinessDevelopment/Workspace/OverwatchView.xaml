@@ -32,10 +32,11 @@
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
 
-                <TextBlock Grid.Row="0" Text="Pursuit Monitor"
-                           FontSize="14" FontWeight="SemiBold"
-                           Foreground="{StaticResource Brand.Primary.Brush}"
-                           Margin="0,0,0,2"/>
+                <TextBlock Grid.Row="0" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,2">
+                    <Run Text="Every live pursuit, coldest first" Foreground="{StaticResource Brand.Primary.Brush}"/>
+                    <Run Text="  cold = no activity for 21 days or more · watch = 7 to 20 days · double-click opens it in Pursuits"
+                         FontSize="11" FontWeight="Normal" Foreground="{StaticResource Text.Secondary}"/>
+                </TextBlock>
                 <TextBlock Grid.Row="1" Text="{Binding Headline}"
                            Foreground="{StaticResource Text.Secondary}" FontSize="12"
                            Margin="0,0,0,8"
