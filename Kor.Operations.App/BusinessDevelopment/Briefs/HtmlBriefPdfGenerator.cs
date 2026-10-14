@@ -482,8 +482,9 @@ public sealed class HtmlBriefPdfGenerator : IBriefPdfGenerator
             Fact("Latest project", dk.LatestProjectName is null
                 ? "(none)"
                 : $"{dk.LatestProjectName} ({dk.LatestProjectStart:yyyy-MM})");
-            Fact("Contacts on file", dk.ContactCount.ToString(CultureInfo.InvariantCulture));
-            Fact("AR outstanding", $"{dk.ArOutstanding:C0} ({dk.Ar90Plus:C0} at 90+)");
+            Fact("Contacts on file", dk.ContactCountDisplay);
+            Fact("AR outstanding", dk.ArOutstandingDisplay);
+            Fact("AR at 90+", dk.Ar90PlusDisplay);
             _sb.Append("</dl>");
 
             if (dk.RecentProjects.Count > 0)

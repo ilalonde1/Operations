@@ -440,7 +440,8 @@
                     ToolTip="Open Forward Pipeline">
                 <StackPanel>
                     <TextBlock Text="{Binding PipelineValueDisplay}" FontSize="24" FontWeight="SemiBold" Foreground="{StaticResource Brand.Primary.Brush}"/>
-                    <TextBlock Text="Pipeline value" Foreground="{StaticResource Text.Secondary}"/>
+                    <TextBlock Text="Pipeline value (CAD)" Foreground="{StaticResource Text.Secondary}"/>
+                    <TextBlock Text="{Binding PipelineValueNote}" TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Text.Secondary}"/>
                 </StackPanel>
             </Button>
         </Grid>
@@ -810,7 +811,10 @@
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
-                    <TextBlock Text="Value by Market ($M)" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                    <StackPanel Margin="0,0,0,8">
+                        <TextBlock Text="Value by Market (CAD $M)" FontSize="16" FontWeight="SemiBold"/>
+                        <TextBlock Text="{Binding PipelineValueNote}" TextWrapping="Wrap" FontSize="11" Foreground="{StaticResource Text.Secondary}"/>
+                    </StackPanel>
                     <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
                         <ItemsControl ItemsSource="{Binding MarketValueBars}">
                             <ItemsControl.ItemsPanel>

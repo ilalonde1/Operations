@@ -25,7 +25,7 @@ public sealed class DashboardViewModel : INotifyPropertyChanged, Kor.Operations.
     public string ProviderName => "BD Dashboard";
     public bool HasData => LatestRfps.Count > 0 || ForwardPipeline.Count > 0 || CompetitorWatch.Count > 0;
     public string BuildContext()
-        => $"BD Dashboard — funnel: {OpenSeatCountDisplay} open seats, {BidWindowCountDisplay} in bid window, {RadarCountDisplay} radar; pipeline: {TotalPipelineDisplay} total / {OpenRfpsDisplay} RFPs / {UpcomingProjectsDisplay} upcoming / {ClosingSoonDisplay} closing in 7d; pipeline value {PipelineValueDisplay}.";
+        => $"BD Dashboard — funnel: {OpenSeatCountDisplay} open seats, {BidWindowCountDisplay} in bid window, {RadarCountDisplay} radar; pipeline: {TotalPipelineDisplay} total / {OpenRfpsDisplay} RFPs / {UpcomingProjectsDisplay} upcoming / {ClosingSoonDisplay} closing in 7d; pipeline value {PipelineValueDisplay}. {PipelineValueNote}";
     public string BuildLocalContext() => BuildContext();
 
     private static readonly CultureInfo CanadianCulture = CultureInfo.GetCultureInfo("en-CA");
@@ -50,6 +50,7 @@ public sealed class DashboardViewModel : INotifyPropertyChanged, Kor.Operations.
     private string _upcomingProjectsDisplay = "0";
     private string _closingSoonDisplay = "0";
     private string _pipelineValueDisplay = "$0";
+    private string _pipelineValueNote = "CAD known-value subtotal; no currency conversion.";
     private int _radarCount;
     private int _bidWindowCount;
     private int _openSeatCount;
@@ -250,6 +251,12 @@ public sealed class DashboardViewModel : INotifyPropertyChanged, Kor.Operations.
         private set => SetField(ref _pipelineValueDisplay, value);
     }
 
+    public string PipelineValueNote
+    {
+        get => _pipelineValueNote;
+        private set => SetField(ref _pipelineValueNote, value);
+    }
+
     public int RadarCount
     {
         get => _radarCount;
@@ -327,7 +334,13 @@ public sealed class DashboardViewModel : INotifyPropertyChanged, Kor.Operations.
             OpenRfpsDisplay = pipeline.Count(r => string.Equals(r.PipelineType, "Open RFP", StringComparison.OrdinalIgnoreCase)).ToString("N0", CanadianCulture);
             UpcomingProjectsDisplay = pipeline.Count(r => string.Equals(r.PipelineType, "Pipeline Project", StringComparison.OrdinalIgnoreCase)).ToString("N0", CanadianCulture);
             ClosingSoonDisplay = opps.Count(o => o.SubmissionDeadlineUtc >= now && o.SubmissionDeadlineUtc <= sevenDays).ToString("N0", CanadianCulture);
-            PipelineValueDisplay = FormatCompactCad(pipeline.Sum(r => r.EstimatedValueCad ?? 0m));
+            var hasUnconvertedValue = pipeline.Any(r => r.HasUnconvertedValue);
+            PipelineValueDisplay = hasUnconvertedValue
+                ? "Unavailable"
+                : FormatCompactCad(pipeline.Sum(r => r.EstimatedValueCad ?? 0m));
+            PipelineValueNote = hasUnconvertedValue
+                ? "CAD totals unavailable: a valued row has non-CAD or unknown currency. No conversion applied."
+                : "CAD known-value subtotal; missing amounts excluded. No currency conversion.";
             RadarCount = funnel.RadarCount;
             BidWindowCount = funnel.BidWindowCount;
             OpenSeatCount = funnel.OpenSeatCount;
@@ -369,7 +382,7 @@ public sealed class DashboardViewModel : INotifyPropertyChanged, Kor.Operations.
                 .GroupBy(r => string.IsNullOrWhiteSpace(r.Stage) ? "" : r.Stage!)
                 .Select(g => (Label: g.Key, Count: g.Count()))));
 
-            Replace(MarketValueBars, BuildValueBars(pipeline
+            Replace(MarketValueBars, hasUnconvertedValue ? Array.Empty<ChartBar>() : BuildValueBars(pipeline
                 .GroupBy(r => string.IsNullOrWhiteSpace(r.Province) ? "" : r.Province!)
                 .Select(g => (Label: g.Key, Value: (double)(g.Sum(r => r.EstimatedValueCad ?? 0m) / 1_000_000m)))));
 

@@ -53,6 +53,9 @@ public sealed record SectorCardVm(
 /// <summary>One cross-cutting analytical report entry in the left-hand list.</summary>
 public sealed record AnalyticalReportVm(string Key, string Title, string Description);
 
+/// <summary>Identity captured for one browser render attempt, including its export metadata.</summary>
+public sealed record BdReportPreview(Guid Id, string PdfFileName, bool IsVisual, string DocumentKey, int RecordCount);
+
 public sealed class BdReportsViewModel : INotifyPropertyChanged, Kor.Operations.Services.IAiContextProvider
 {
     private readonly IBdReportService _reportService;
@@ -65,6 +68,10 @@ public sealed class BdReportsViewModel : INotifyPropertyChanged, Kor.Operations.
     private BdReportDocument? _currentDocument;
     private string? _currentDocumentKey;
     private int _currentRecordCount;
+    private BdReportPreview? _pendingPreview;
+    private BdReportPreview? _renderedPreview;
+    private string _previewReadyStatus = "";
+    private int _previewReadyGeneration = -1;
 
     // Generation sequence: a build that finished after a newer one started
     // must not commit its document/status over the newer one (adversarial
@@ -145,7 +152,16 @@ public sealed class BdReportsViewModel : INotifyPropertyChanged, Kor.Operations.
     public bool IsBusy
     {
         get => _isBusy;
-        private set { if (_isBusy != value) { _isBusy = value; OnPropertyChanged(); OnPropertyChanged(nameof(IsIdle)); OnPropertyChanged(nameof(CanExportDocx)); } }
+        private set
+        {
+            if (_isBusy == value) return;
+            _isBusy = value;
+            if (value) InvalidatePreview();
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(IsIdle));
+            OnPropertyChanged(nameof(CanExportDocx));
+            OnPropertyChanged(nameof(CanExportPdf));
+        }
     }
 
     public bool IsIdle => !IsBusy;
@@ -169,7 +185,52 @@ public sealed class BdReportsViewModel : INotifyPropertyChanged, Kor.Operations.
 
     public bool CurrentIsVisualSnapshot => CurrentIsVisual && _currentDocument is null;
 
-    public bool CanExportDocx => (_currentDocument is not null || CurrentIsVisual) && !IsBusy;
+    public bool CanExportDocx => (_currentDocument is not null || (CurrentIsVisualSnapshot && CanExportPdf)) && !IsBusy;
+
+    public bool CanExportPdf => _renderedPreview is not null && !IsBusy;
+    public BdReportPreview? RenderedPreview => _renderedPreview;
+
+    public void InvalidatePreview(string? reason = null)
+    {
+        _pendingPreview = null;
+        _renderedPreview = null;
+        if (reason is not null) StatusMessage = reason;
+        OnPropertyChanged(nameof(RenderedPreview));
+        OnPropertyChanged(nameof(CanExportPdf));
+        OnPropertyChanged(nameof(CanExportDocx));
+    }
+
+    /// <summary>Generation alone never authorizes browser export. Each render gets a unique identity.</summary>
+    public BdReportPreview? BeginPreviewRender(string html)
+    {
+        if (IsBusy || !ReferenceEquals(html, PreviewHtml) || _currentDocumentKey is null) return null;
+        InvalidatePreview();
+        if (_previewReadyGeneration != _generationSeq)
+        {
+            _previewReadyStatus = StatusMessage;
+            _previewReadyGeneration = _generationSeq;
+        }
+        _pendingPreview = new BdReportPreview(Guid.NewGuid(),
+            System.IO.Path.ChangeExtension(SuggestedDocxFileName, ".pdf"), CurrentIsVisual,
+            _currentDocumentKey, _currentRecordCount);
+        StatusMessage = "Rendering preview; PDF export is unavailable until rendering succeeds.";
+        return _pendingPreview;
+    }
+
+    /// <summary>Called only after browser completion and its document marker have been checked.</summary>
+    public bool CompletePreviewRender(Guid id, string? error = null)
+    {
+        if (IsBusy || _pendingPreview?.Id != id) return false;
+        _renderedPreview = error is null ? _pendingPreview : null;
+        _pendingPreview = null; // failure is terminal; late success cannot revive this attempt
+        StatusMessage = error is null
+            ? _previewReadyStatus
+            : $"Preview render failed: {error}. PDF export unavailable. Regenerate the preview to retry.";
+        OnPropertyChanged(nameof(RenderedPreview));
+        OnPropertyChanged(nameof(CanExportPdf));
+        OnPropertyChanged(nameof(CanExportDocx));
+        return true;
+    }
 
     public async Task LoadAsync(CancellationToken ct)
     {
@@ -802,17 +863,21 @@ public sealed class BdReportsViewModel : INotifyPropertyChanged, Kor.Operations.
     /// <summary>Audit-log a DOCX export of the current document (call after a successful save).</summary>
     public void LogDocxExportBestEffort(string? notes = null) => LogGenerateBestEffort("docx", notes);
 
+    public void LogPdfExportBestEffort(BdReportPreview rendered, string? notes = null)
+        => LogReportBestEffort(rendered.DocumentKey, rendered.RecordCount, "pdf", notes);
+
     // Fire-and-forget by design: BdReportAuditLog is compliance telemetry and
     // must never block or fail report generation.
     private void LogGenerateBestEffort(string format, string? notes = null)
+        => LogReportBestEffort(_currentDocumentKey, _currentRecordCount, format, notes);
+
+    private void LogReportBestEffort(string? category, int count, string format, string? notes)
     {
-        var category = _currentDocumentKey;
         if (category is null)
         {
             return;
         }
 
-        var count = _currentRecordCount;
         _ = Task.Run(async () =>
         {
             try

@@ -228,7 +228,7 @@
                                 Padding="14,6"
                                 Margin="0,0,8,0"
                                 Click="SavePdf_Click"
-                                IsEnabled="{Binding CanExportDocx}"/>
+                                IsEnabled="{Binding CanExportPdf}"/>
                         <Button Content="Save DOCX…"
                                 Padding="14,6"
                                 Click="SaveDocx_Click"

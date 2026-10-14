@@ -1097,12 +1097,9 @@ public sealed class BriefGenerator : IBriefGenerator
             facts.Add(("Latest",
                 $"{latest} (opened {dk.LatestProjectStart.Value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)})"));
         }
-        facts.Add(("Contacts", dk.ContactCount.ToString("N0", CultureInfo.InvariantCulture)));
-        if (dk.ArOutstanding > 0)
-        {
-            facts.Add(("AR outstanding",
-                $"{dk.ArOutstanding.ToString("C0", CultureInfo.CurrentCulture)} (90+ days: {dk.Ar90Plus.ToString("C0", CultureInfo.CurrentCulture)})"));
-        }
+        facts.Add(("Contacts", dk.ContactCountDisplay));
+        facts.Add(("AR outstanding", dk.ArOutstandingDisplay));
+        facts.Add(("AR at 90+", dk.Ar90PlusDisplay));
         AppendLabelValueTable(body, facts);
 
         if (dk.RecentProjects.Count > 0)

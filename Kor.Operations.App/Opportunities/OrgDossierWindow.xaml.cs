@@ -150,9 +150,9 @@ public partial class OrgDossierWindow : Window
             LatestProjectStart: intel.LatestProjectStart,
             LatestProjectName: intel.LatestProjectName,
             RecentProjects: topProjects,
-            ContactCount: intel.Contacts.Count,
-            ArOutstanding: intel.Ar?.TotalOutstanding ?? 0m,
-            Ar90Plus: intel.Ar?.Outstanding90Plus ?? 0m,
+            ContactCount: intel.ContactsUnavailable ? null : intel.Contacts.Count,
+            ArOutstanding: intel.Ar?.TotalOutstanding,
+            Ar90Plus: intel.Ar?.Outstanding90Plus,
             UnavailableSections: intel.HasDegradedSections)
         { BilledPostedThrough = intel.SummaryPostedThrough };
     }

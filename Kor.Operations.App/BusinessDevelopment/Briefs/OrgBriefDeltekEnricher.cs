@@ -29,8 +29,8 @@ public sealed class OrgBriefDeltekEnricher(IDeltekClientContextService deltek)
                     intel.LatestProjectStart, intel.LatestProjectName,
                     intel.Projects.Take(5).Select(p => new OrgBriefDeltekProject(
                         p.Wbs1, p.Name, p.OpenDate, p.Status, p.Fee, p.FeeBilled)).ToList(),
-                    intel.Contacts.Count, intel.Ar?.TotalOutstanding ?? 0m,
-                    intel.Ar?.Outstanding90Plus ?? 0m, intel.HasDegradedSections)
+                    intel.ContactsUnavailable ? null : intel.Contacts.Count, intel.Ar?.TotalOutstanding,
+                    intel.Ar?.Outstanding90Plus, intel.HasDegradedSections)
                 { BilledPostedThrough = intel.SummaryPostedThrough }
             };
         }

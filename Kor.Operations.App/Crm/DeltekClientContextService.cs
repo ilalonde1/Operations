@@ -37,6 +37,8 @@ public sealed record DeltekClientIntelligence
 
     // Top 200 direct + via-project contacts at this client.
     public IReadOnlyList<DeltekContactSummary> Contacts { get; init; } = Array.Empty<DeltekContactSummary>();
+    // Separate from the aggregate degraded flag: an empty successful read is known zero.
+    public bool ContactsUnavailable { get; init; }
 
     // New: AR rollup - total outstanding + 90+ aging.
     public DeltekArSummary? Ar { get; init; }
@@ -201,6 +203,7 @@ internal sealed class DeltekClientContextService : IDeltekClientContextService
         var (projectCount, lifetimeFee, latestStart) = LoadProjectAggregate(cn, catalog, clientId, ct);
 
         var degraded = false;
+        var contactsUnavailable = false;
         var projects = Array.Empty<DeltekProjectSummary>() as IReadOnlyList<DeltekProjectSummary>;
         var contacts = Array.Empty<DeltekContactSummary>() as IReadOnlyList<DeltekContactSummary>;
         DeltekArSummary? ar = null;
@@ -223,6 +226,7 @@ internal sealed class DeltekClientContextService : IDeltekClientContextService
         catch (OdbcException ex)
         {
             degraded = true;
+            contactsUnavailable = true;
             Log.Warning(ex, "Deltek client intelligence section unavailable for {Section}.", "contacts");
         }
 
@@ -270,6 +274,7 @@ internal sealed class DeltekClientContextService : IDeltekClientContextService
             Company = company,
             Projects = projects,
             Contacts = contacts,
+            ContactsUnavailable = contactsUnavailable,
             Ar = ar,
             RecentActivity = recentActivity,
             HasDegradedSections = degraded,
@@ -561,7 +566,7 @@ ORDER BY
         return rows;
     }
 
-    private DeltekArSummary? LoadArSummary(
+    private DeltekArSummary LoadArSummary(
         OdbcConnection cn,
         string catalog,
         string clientId,
@@ -599,10 +604,8 @@ GROUP BY Bucket;";
         decimal totalOutstanding = 0m;
         decimal totalOutstanding90 = 0m;
         var totalInvoiceCount = 0;
-        var anyRow = false;
         while (r.Read())
         {
-            anyRow = true;
             var bucket = GetString(r, 0) ?? string.Empty;
             var outstanding = GetDecimal(r, 1) ?? 0m;
             var over90 = GetDecimal(r, 2) ?? 0m;
@@ -612,8 +615,8 @@ GROUP BY Bucket;";
             totalOutstanding90 += over90 * fx;
             totalInvoiceCount += count;
         }
-        if (!anyRow) return null;
-
+        // A successful query with no open invoices is a measured zero. Only a
+        // failed section read leaves intelligence.Ar null in the caller.
         return new DeltekArSummary(
             TotalOutstanding: totalOutstanding,
             Outstanding90Plus: totalOutstanding90,

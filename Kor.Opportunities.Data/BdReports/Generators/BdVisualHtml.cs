@@ -162,8 +162,8 @@ window.addEventListener('resize',draw);draw();</script></body></html>";
   .row{display:flex;justify-content:space-between;font-size:11px;padding:2px 0;border-top:1px solid #f0f2f5} .role{color:#57606a;width:64px} .who{flex:1;text-align:right;color:#1f2328}
   .pill{display:inline-block;padding:1px 6px;border-radius:9px;font-size:9px;margin-left:6px;color:#fff;font-weight:bold}
   #f{margin:0 12px;width:240px}</style></head><body>
-<div id=""hdr""><h1>KOR Structural — Opportunity Attack Cards</h1>
-<div class=""sub"">{{N}} live pursuits (urgent first). Per deal: recorded team links; KOR relationships are not established by research contact counts. <b style=""color:#caffd5"">green</b>=research contacts recorded · <b style=""color:#ffd5cf"">red</b>=recorded structural firm · <b style=""color:#ffe8c2"">amber</b>=seat status unknown.</div></div>
+<div id=""hdr""><h1 id=""card-title"">KOR Structural — Opportunity Attack Cards</h1>
+<div class=""sub""><span id=""card-count"">{{N}} live pursuits — full generated snapshot</span> (urgent first). PDF includes the displayed cards; Word includes the full snapshot. Per deal: recorded team links; KOR relationships are not established by research contact counts. <b style=""color:#caffd5"">green</b>=research contacts recorded · <b style=""color:#ffd5cf"">red</b>=recorded structural firm · <b style=""color:#ffe8c2"">amber</b>=seat status unknown.</div></div>
 <input id=""f"" class=""find"" placeholder=""filter pursuits…""><div id=""wrap""></div><script>
 const data=/*DATA*/;
 " + EscFn + @"
@@ -172,13 +172,17 @@ function pill(t,c){return `<span class=""pill"" style=""background:${c}"">${t}</
 function arch(c){if(!c.arch)return '<span style=""color:#8b949e"">— unknown route</span>';return esc(c.arch)+(c.archPeople>0?pill('research contacts','#2da44e'):pill('relationship unknown','#8b949e'));}
 function se(c){if(c.seIsKor)return esc(c.se||'KOR')+pill('recorded KOR','#2da44e');if(c.se)return esc(c.se)+pill('recorded SE','#c0392b');return '<span style=""color:#9a6700"">seat status unknown</span>'+pill('SEAT','#d29922');}
 function org(n){return n?esc(n):'<span style=""color:#8b949e"">—</span>';}
-function render(list){document.getElementById('wrap').innerHTML=list.map(c=>`
+function render(list,query){
+const title='KOR Structural — Opportunity Attack Cards'+(query?' — filtered view':'');
+document.getElementById('card-count').textContent=query?`${list.length} of ${data.length} live pursuits — filtered by: ${query}`:`${list.length} live pursuits — full generated snapshot`;
+document.getElementById('card-title').textContent=title;document.title=title;
+document.getElementById('wrap').innerHTML=list.map(c=>`
 <div class=""card ${c.verdict==='PURSUE_URGENT'?'urgent':''}""><div class=""pname"">${esc(c.project)}</div>
 <div class=""meta"">${esc(c.verdict)} · ${esc(c.province)} · ${cad(c.cost)}</div>
 <div class=""row""><span class=""role"">Architect</span><span class=""who"">${arch(c)}</span></div>
 <div class=""row""><span class=""role"">Structural</span><span class=""who"">${se(c)}</span></div>
 <div class=""row""><span class=""role"">GC</span><span class=""who"">${org(c.gc)}</span></div>
 <div class=""row""><span class=""role"">Owner</span><span class=""who"">${org(c.owner)}</span></div></div>`).join('');}
-render(data);document.getElementById('f').addEventListener('input',e=>{const q=e.target.value.toLowerCase();render(q?data.filter(c=>(c.project+' '+(c.arch||'')+' '+(c.owner||'')).toLowerCase().includes(q)):data);});
+render(data,'');document.getElementById('f').addEventListener('input',e=>{const q=e.target.value.trim().toLowerCase();render(q?data.filter(c=>(c.project+' '+(c.arch||'')+' '+(c.owner||'')).toLowerCase().includes(q)):data,q);});
 </script></body></html>";
 }

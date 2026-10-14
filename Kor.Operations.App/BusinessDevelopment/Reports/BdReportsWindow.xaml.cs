@@ -2,6 +2,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -20,6 +21,9 @@ public partial class BdReportsWindow : Window
     private bool _aiRegistered;
     private bool _previewReady;
     private CancellationTokenSource? _previewCts;
+    private BdReportPreview? _pendingPreview;
+    private ulong? _previewNavigationId;
+    private bool _printingPdf;
 
     // kor:// drill-down state: single-flight (an anchor is a single-click
     // target — a second click during the silent DB load must not stack a
@@ -65,6 +69,7 @@ public partial class BdReportsWindow : Window
                 // raises NavigationStarting while ctrl/middle-click raises
                 // NewWindowRequested instead.
                 Preview.CoreWebView2.NavigationStarting += Preview_NavigationStarting;
+                Preview.CoreWebView2.NavigationCompleted += Preview_NavigationCompleted;
                 Preview.CoreWebView2.NewWindowRequested += Preview_NewWindowRequested;
                 _previewReady = true;
             }
@@ -87,6 +92,8 @@ public partial class BdReportsWindow : Window
         _linkCts.Dispose();
         _previewCts?.Cancel();
         _previewCts?.Dispose();
+        _vm.InvalidatePreview();
+        _pendingPreview = null;
         if (_aiRegistered)
         {
             AppServices.Get<AppAiContextBuilder>().Unregister(_vm);
@@ -108,13 +115,58 @@ public partial class BdReportsWindow : Window
     {
         if (!KorReportLinks.TryParse(e.Uri, out var kind, out var id))
         {
-            return; // NavigateToString content loads (about:blank / data:) — leave it alone
+            if (_printingPdf)
+            {
+                e.Cancel = true; // keep the confirmed document stable while Chromium prints it
+                return;
+            }
+
+            if (_pendingPreview is not null && string.Equals(e.Uri, "about:blank", StringComparison.OrdinalIgnoreCase))
+            {
+                _previewNavigationId = e.NavigationId;
+            }
+            else
+            {
+                _pendingPreview = null;
+                _previewNavigationId = null;
+                _vm.InvalidatePreview("Preview navigated away from the report. PDF export unavailable; regenerate the preview.");
+            }
+            return;
         }
 
         e.Cancel = true;
         // Fire-and-forget by design: NavigationStarting must return promptly,
         // and OpenKorLinkAsync owns its own error reporting.
         _ = OpenKorLinkAsync(kind, id);
+    }
+
+    private async void Preview_NavigationCompleted(object? sender, CoreWebView2NavigationCompletedEventArgs e)
+    {
+        var pending = _pendingPreview;
+        if (pending is null || _previewNavigationId != e.NavigationId) return;
+        try
+        {
+            if (!e.IsSuccess)
+            {
+                _vm.CompletePreviewRender(pending.Id, e.WebErrorStatus.ToString());
+                return;
+            }
+
+            // A navigation event alone does not establish which generated report is in the DOM.
+            var result = await Preview.CoreWebView2.ExecuteScriptAsync(
+                "document.readyState === 'complete' ? document.querySelector('meta[name=\"kor-preview-id\"]')?.content : null").ConfigureAwait(true);
+            var marker = JsonSerializer.Deserialize<string>(result);
+            _vm.CompletePreviewRender(pending.Id, marker == pending.Id.ToString("N")
+                ? null : "The browser did not confirm the requested document");
+        }
+        catch (Exception ex)
+        {
+            _vm.CompletePreviewRender(pending.Id, ex.Message);
+        }
+        finally
+        {
+            if (ReferenceEquals(_pendingPreview, pending)) _pendingPreview = null;
+        }
     }
 
     private void Preview_NewWindowRequested(object? sender, CoreWebView2NewWindowRequestedEventArgs e)
@@ -264,18 +316,33 @@ public partial class BdReportsWindow : Window
     // the app (adversarial review M3).
     private void TryShowPreview(string? html)
     {
-        if (html is null || !_previewReady)
+        if (html is null || _printingPdf)
         {
             return;
         }
 
+        if (!_previewReady)
+        {
+            _vm.InvalidatePreview("Preview pane unavailable (WebView2). PDF export unavailable.");
+            return;
+        }
+
+        var pending = _vm.BeginPreviewRender(html);
+        if (pending is null) return; // a superseded generation cannot navigate the browser
+        _pendingPreview = pending;
+        _previewNavigationId = null;
         try
         {
-            Preview.NavigateToString(html);
+            var marker = $"<meta name=\"kor-preview-id\" content=\"{pending.Id:N}\">";
+            var markedHtml = html.Contains("</head>", StringComparison.OrdinalIgnoreCase)
+                ? html.Replace("</head>", marker + "</head>", StringComparison.OrdinalIgnoreCase)
+                : marker + html;
+            Preview.NavigateToString(markedHtml);
         }
         catch (Exception ex)
         {
-            _vm.StatusMessage = $"Preview render failed: {ex.Message}. Save DOCX still works.";
+            _pendingPreview = null;
+            _vm.CompletePreviewRender(pending.Id, ex.Message);
         }
     }
 
@@ -319,9 +386,10 @@ public partial class BdReportsWindow : Window
 
     private async void SavePdf_Click(object sender, RoutedEventArgs e)
     {
-        if (!_previewReady || Preview.CoreWebView2 is null)
+        var rendered = _vm.RenderedPreview;
+        if (_printingPdf || !_vm.CanExportPdf || rendered is null || !_previewReady || Preview.CoreWebView2 is null)
         {
-            MessageBox.Show(this, "Preview pane is not ready yet.", "BD Reports", MessageBoxButton.OK, MessageBoxImage.Information);
+            _vm.StatusMessage = "PDF export unavailable: the current report has not rendered successfully.";
             return;
         }
 
@@ -329,7 +397,7 @@ public partial class BdReportsWindow : Window
         {
             Title = "Save BD Report as PDF",
             Filter = "PDF Document|*.pdf",
-            FileName = Path.ChangeExtension(_vm.SuggestedDocxFileName, ".pdf"),
+            FileName = rendered.PdfFileName,
             AddExtension = true,
             OverwritePrompt = true,
         };
@@ -339,6 +407,14 @@ public partial class BdReportsWindow : Window
             return;
         }
 
+        // The modal dialog pumps UI events: recheck after it closes, before printing.
+        if (!_vm.CanExportPdf || !ReferenceEquals(rendered, _vm.RenderedPreview))
+        {
+            _vm.StatusMessage = "PDF export cancelled: the preview changed while choosing a filename.";
+            return;
+        }
+
+        _printingPdf = true;
         try
         {
             // PrintToPdf renders exactly what the WebView2 shows — the same HTML
@@ -346,7 +422,7 @@ public partial class BdReportsWindow : Window
             // full-bleed: landscape + print backgrounds keeps the dark canvas.
             var settings = Preview.CoreWebView2.Environment.CreatePrintSettings();
             settings.ShouldPrintBackgrounds = true;
-            if (_vm.CurrentIsVisual)
+            if (rendered.IsVisual)
             {
                 settings.Orientation = CoreWebView2PrintOrientation.Landscape;
             }
@@ -354,7 +430,7 @@ public partial class BdReportsWindow : Window
             var ok = await Preview.CoreWebView2.PrintToPdfAsync(dlg.FileName, settings).ConfigureAwait(true);
             if (ok)
             {
-                _vm.LogDocxExportBestEffort($"Saved PDF {Path.GetFileName(dlg.FileName)}");
+                _vm.LogPdfExportBestEffort(rendered, $"Saved PDF {Path.GetFileName(dlg.FileName)}");
                 _vm.StatusMessage = $"Saved {Path.GetFileName(dlg.FileName)}.";
             }
             else
@@ -365,6 +441,12 @@ public partial class BdReportsWindow : Window
         catch (Exception ex)
         {
             MessageBox.Show(this, $"PDF export failed:\n{ex.Message}", "BD Reports", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            _printingPdf = false;
+            // A generation may have finished during printing; show it only after the print ends.
+            if (!ReferenceEquals(rendered, _vm.RenderedPreview)) TryShowPreview(_vm.PreviewHtml);
         }
     }
 

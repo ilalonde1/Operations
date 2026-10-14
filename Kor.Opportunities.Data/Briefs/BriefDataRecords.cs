@@ -282,11 +282,23 @@ public sealed record OrgBriefDeltekSection(
     DateTime? LatestProjectStart,
     string? LatestProjectName,
     IReadOnlyList<OrgBriefDeltekProject> RecentProjects,
-    int ContactCount,
-    decimal ArOutstanding,
-    decimal Ar90Plus,
+    int? ContactCount,
+    decimal? ArOutstanding,
+    decimal? Ar90Plus,
     bool UnavailableSections)
 {
+    public string ContactCountDisplay => ContactCount is { } count
+        ? (count == 0 ? "0 (none on file)" : count.ToString("N0", System.Globalization.CultureInfo.InvariantCulture))
+        : "Unavailable — could not retrieve contacts.";
+
+    public string ArOutstandingDisplay => ArOutstanding is { } amount
+        ? amount.ToString("C0", System.Globalization.CultureInfo.CurrentCulture)
+        : "Unavailable — could not retrieve AR outstanding.";
+
+    public string Ar90PlusDisplay => Ar90Plus is { } amount
+        ? amount.ToString("C0", System.Globalization.CultureInfo.CurrentCulture)
+        : "Unavailable — could not retrieve AR at 90+.";
+
     /// <summary>First day of the latest period posted in Deltek's PRSummaryMain, the source of
     /// every FeeBilled figure. Null when that probe could not be read. Fee and AR come from
     /// other tables and are not governed by it.</summary>

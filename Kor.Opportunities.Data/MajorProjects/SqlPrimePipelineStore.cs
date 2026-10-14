@@ -27,7 +27,8 @@ public sealed class SqlPrimePipelineStore : IPrimePipelineStore
     {
         const string sql = @"
 SELECT PipelineType, SourceRef, ProjectName, BuyerOrOwner, Sector, Stage,
-       EstimatedValueCad, Province, City, ArchitectName, SourceUrl
+       EstimatedValueCad, Province, City, ArchitectName, SourceUrl,
+       EstimatedValue, EstimatedValueCurrency
 FROM opportunities.PrimePipeline
 ORDER BY CASE WHEN EstimatedValueCad IS NULL THEN 1 ELSE 0 END,
          EstimatedValueCad DESC,
@@ -52,7 +53,11 @@ ORDER BY CASE WHEN EstimatedValueCad IS NULL THEN 1 ELSE 0 END,
                 Province: r.IsDBNull(7) ? null : r.GetString(7),
                 City: r.IsDBNull(8) ? null : r.GetString(8),
                 ArchitectName: r.IsDBNull(9) ? null : r.GetString(9),
-                SourceUrl: r.IsDBNull(10) ? null : r.GetString(10)));
+                SourceUrl: r.IsDBNull(10) ? null : r.GetString(10))
+            {
+                EstimatedValue = r.IsDBNull(11) ? null : r.GetDecimal(11),
+                EstimatedValueCurrency = r.IsDBNull(12) ? null : r.GetString(12)
+            });
         }
 
         return rows;
