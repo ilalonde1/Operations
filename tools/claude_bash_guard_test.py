@@ -34,13 +34,18 @@ def sql_rate_cases():
     if os.path.exists(state):
         os.remove(state)
     try:
-        got = [verdict('python -I oq.py -q "SELECT 1"', sid) for _ in range(4)]
+        # A MENTION is not a call (2026-10-14: these two were counted and the first real query was
+        # denied as "call 4"). Neither may be counted, or the fourth real call below would be the fifth.
+        got = [verdict("cp oq.py oqwide.py /tmp/x", sid), verdict("cat oq.py | head -3", sid)]
+        got += [verdict('python -I oq.py -q "SELECT 1"', sid) for _ in range(2)]
+        got.append(verdict('python -I "C:/x/oq.py" -i a.sql', sid))             # a quoted path is still a call: the 3rd
+        got.append(verdict('cd "$S" && python -I oqwide.py -i b.sql', sid))    # the 4th: denied
         got.append(verdict("sqlcmd -S KOR-APP01 -i x.sql", sid))   # still denied: the 4th was not recorded
         got.append(verdict("dotnet build -c Release", sid))        # not a SQL call
     finally:
         if os.path.exists(state):
             os.remove(state)
-    expected = ["allow", "allow", "allow", "deny", "deny", "allow"]
+    expected = ["allow", "allow", "allow", "allow", "allow", "deny", "deny", "allow"]
     return [(f"sql call {i + 1}", e, g) for i, (e, g) in enumerate(zip(expected, got))]
 
 

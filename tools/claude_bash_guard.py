@@ -86,7 +86,12 @@ DELIBERATE_FULL = re.compile(r"\bFULL_SUITE=1\b")
 #    there were about fifteen, one at a time, and three hung for minutes -- with
 #    feedback_run_on_the_target_never_chatty_over_vpn in memory. Three calls in ten minutes is
 #    a dry-run, an apply and a check. The fourth is a batch that was not written.
-SQL_CALL = re.compile(r"(?i)\b(?:sqlcmd|oq\.py|oqwide\.py)\b")
+#    A call is the tool in COMMAND position: the start of a command, after ; & | ( or a newline,
+#    or as the script `python [-flags]` runs. On 2026-10-14 `cp oq.py oqwide.py ...` and
+#    `cat oq.py` were counted as three calls and the session's first real query was denied as
+#    the fourth -- the prior-art guard's own documented miss (a name mentioned in any command
+#    satisfies the check), in this file.
+SQL_CALL = re.compile(r'(?im)(?:^|[;&|(]|(?<![\w.])(?:python3?|py)(?:\.exe)?"?(?:\s+-\S+)*)\s*"?(?:[^\s"]*[/\\])?(?:sqlcmd|oq\.py|oqwide\.py)\b')
 SQL_WINDOW_SECONDS = 600
 SQL_MAX_CALLS = 3
 

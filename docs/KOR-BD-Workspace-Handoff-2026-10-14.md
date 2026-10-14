@@ -96,8 +96,10 @@ to 5 is SETTLED. Do not re-derive it, re-prove it, or relitigate it.**
    `FULL_SUITE=1`. The App suite hangs headless and holds the build lock. A filtered run
    is 1 to 3 minutes including the build. Use `FullyQualifiedName~<Class>` filters.
 9. **SQL: one file, run once.** Hook: the fourth `sqlcmd` / `oq.py` / `oqwide.py` call in
-   ten minutes is denied. Batch every question into one `.sql` with `PRINT` headers.
-   Migrations are `Schema/NNN_*.sql` (latest applied: 346), mandatory `-v Apply=0|1`,
+   ten minutes is denied. Batch every question into one `.sql` with `PRINT` headers. The
+   hook counts the tool in command position only (fixed 2026-10-14: a `cp` or `cat` that
+   named `oq.py` used to count as a call).
+   Migrations are `Kor.Opportunities.Data/Schema/NNN_*.sql` (latest applied: 346), mandatory `-v Apply=0|1`,
    dry-run by default, an audit/undo table and an extended property `Rollback`, idempotent
    on the VALUE. Compile new statements with `SET NOEXEC ON` before running them.
 10. **Say the duration before any step over a minute.** Hook: a command with
@@ -172,9 +174,12 @@ strings after a release.
 Sidebar labels ("My Pursuits", "All Pursuits", "Engagements") were renamed on 2026-10-09;
 deep-link aliases live in `BdWorkspaceWindow.NavigateByKey`. Untouched and large:
 `OrgDossierView.xaml` (1,138 lines, 25 columns), `BdTrackingView.xaml` (332 lines).
-`IBdUiOpenStore.RecordOpen(page, actor)` exists and CrmView calls it, so **page usage may
-be measurable**: grep for `RecordOpen(` callers and query its table before calling any page
-unused (Attribution, Overwatch, Brochures, Proposals are the suspects, unmeasured).
+`IBdUiOpenStore.RecordOpen(page, actor)` writes `opportunities.BdUiOpens`; its callers are
+Attribution, Bazaar, Overwatch and Pursuits (4 of 4 found by grep, 2026-10-14). Brochures and
+Proposals are not instrumented, so their usage cannot be measured. The review query already
+exists: `tools/kill-list-review.sql` (surface opens over 30 and 90 days, report generation,
+adoption milestones). Run 2026-10-14, opens in the last 30 / 90 days: Bazaar 6 / 10,
+Attribution 2 / 3, Pursuits 2 / 4, Overwatch 1 / 1. Do not write another query for this.
 
 ### Gates (all in `Kor.Transmittals.App.Tests/BusinessDevelopment/`)
 
