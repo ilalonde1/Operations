@@ -55,7 +55,7 @@ public static class CompetitorIntelReportGenerator
         {
             b.H3(c.DisplayName, KorReportLinks.Org(c.CanonicalOrgId));
             b.B("Footprint: ", $"{c.Total} Intel refs (Signals: {c.Signals} | People: {c.People} | Actions: {c.Actions})");
-            b.P("Projects confirmed as structural engineer:");
+            b.P("Projects with a recorded structural role (may be historical):");
             if (c.TopProjects.Count > 0)
             {
                 foreach (var p in c.TopProjects)

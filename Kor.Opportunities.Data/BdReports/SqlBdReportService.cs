@@ -18,8 +18,7 @@ public sealed class SqlBdReportService : IBdReportService
     // contract shape nests the verdict under honingPass; legacy shape (b) has it
     // at the root. Safe in SQL because verdicts are short tokens (JSON_VALUE's
     // 4000-char limit only matters for prose fields, which are parsed in C#).
-    private const string VerdictExpr =
-        "UPPER(LTRIM(RTRIM(COALESCE(JSON_VALUE(e.ResultJson, '$.honingPass.verdict'), JSON_VALUE(e.ResultJson, '$.verdict')))))";
+    private const string VerdictExpr = BdReportPopulationSql.HoningVerdict;
 
     private readonly string _connectionString;
 
@@ -279,8 +278,7 @@ SELECT m.Id, m.ProjectName, m.Province, m.Sector, m.SubSector, m.Stage, m.Propon
 FROM opportunities.MajorProjectsInventory m
 JOIN opportunities.MajorProjectEnrichment e
   ON e.MajorProjectsInventoryId = m.Id AND e.ProviderName = N'ProjectBriefHoning'
-WHERE m.RetiredAtUtc IS NULL
-  AND {VerdictExpr} IN (N'{BdVerdicts.PursueUrgent}', N'{BdVerdicts.Pursue}');";
+WHERE {BdReportPopulationSql.LivePursuit};";
 
         var rows = new List<PursuitBriefRow>();
 
@@ -447,7 +445,7 @@ SELECT OrgId, ProjId, ProjectName, Province, CostDisplay FROM Ranked WHERE rn <=
         // Competitor footprint: org-scoped signals/actions and distinct live
         // current people. Historical affiliation-row counts are not people.
         // LinkedProjects = a competitor's SE footprint. MPI StructuralEngineer
-        // FK rows UNION the org's IntelWork structural/engineer-role portfolio
+        // FK rows UNION the org's explicit IntelWork structural-role portfolio
         // edges, deduped by normalized project name (UNION collapses ties).
         // People counts distinct live people with a current, nonretired affiliation.
         var rankingSql = $@"
@@ -461,7 +459,7 @@ SELECT TOP (@take) x.Id, x.DisplayName, x.Signals, x.People, x.Actions,
                 LOWER(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(LTRIM(RTRIM(iw.ProjectName)),N' ',N''),N'-',N''),N'.',N''),N',',N''),N'''',N'')))
             FROM opportunities.IntelWork iw
             WHERE iw.CanonicalOrgId = x.Id AND iw.RetiredAtUtc IS NULL
-              AND (LOWER(ISNULL(iw.Role,N'')) LIKE N'%structural%' OR LOWER(ISNULL(iw.Role,N'')) LIKE N'%engineer%')
+              AND {BdReportPopulationSql.StructuralRole}
         ) lp WHERE lp.dk IS NOT NULL AND lp.dk <> N'') AS LinkedProjects
 FROM (
     SELECT co.Id, co.DisplayName,
@@ -480,7 +478,7 @@ ORDER BY x.Signals + x.People + x.Actions DESC, x.DisplayName;";
         // Top-6 SE projects per competitor: MPI FK rows UNION IntelWork
         // structural-role rows (negative Id marks IntelWork-only), deduped by
         // normalized name (MPI preferred), then top-6 per org.
-        const string projectsSql = @"
+        var projectsSql = $@"
 WITH SrcProjects AS (
     SELECT m.StructuralEngineerCanonicalOrgId AS OrgId, m.Id AS ProjId, m.ProjectName, m.Province,
            COALESCE(m.EstimatedCostText, CAST(m.EstimatedCostCad AS NVARCHAR(64)), N'TBD') AS CostDisplay,
@@ -497,7 +495,7 @@ WITH SrcProjects AS (
     FROM opportunities.IntelWork iw
     JOIN opportunities.CanonicalOrg ico ON ico.Id = iw.CanonicalOrgId AND ico.RetiredAtUtc IS NULL
     WHERE iw.RetiredAtUtc IS NULL
-      AND (LOWER(ISNULL(iw.Role,N'')) LIKE N'%structural%' OR LOWER(ISNULL(iw.Role,N'')) LIKE N'%engineer%')
+      AND {BdReportPopulationSql.StructuralRole}
       AND iw.ProjectName IS NOT NULL AND LTRIM(RTRIM(iw.ProjectName)) <> N''
 ),
 Ded AS (
@@ -678,8 +676,7 @@ LEFT JOIN opportunities.CanonicalOrg se
   ON se.Id = m.StructuralEngineerCanonicalOrgId AND se.RetiredAtUtc IS NULL
 LEFT JOIN opportunities.CanonicalOrg gc
   ON gc.Id = m.GeneralContractorCanonicalOrgId AND gc.RetiredAtUtc IS NULL
-WHERE m.RetiredAtUtc IS NULL
-  AND {VerdictExpr} IN (N'{BdVerdicts.PursueUrgent}', N'{BdVerdicts.Pursue}');";
+WHERE {BdReportPopulationSql.LivePursuit};";
 
         var rows = new List<PursuitDossierRow>();
 
@@ -732,9 +729,8 @@ JOIN opportunities.MajorProjectEnrichment e
 JOIN opportunities.IntelSignal s
   ON s.RetiredAtUtc IS NULL
  AND (s.Subject LIKE N'%' + m.ProjectName + N'%' OR s.Detail LIKE N'%' + m.ProjectName + N'%')
-WHERE m.RetiredAtUtc IS NULL
+WHERE {BdReportPopulationSql.LivePursuit}
   AND LEN(LTRIM(RTRIM(m.ProjectName))) >= 14
-  AND {VerdictExpr} IN (N'{BdVerdicts.PursueUrgent}', N'{BdVerdicts.Pursue}')
 ORDER BY m.Id;";
             // Separate connection: the pursuit reader above is still open on `con`.
             await using var sigCon = new SqlConnection(_connectionString);
@@ -766,7 +762,7 @@ ORDER BY m.Id;";
 
     public async Task<IReadOnlyList<AwardProgramReportRow>> GetUpcomingAwardProgramsAsync(int take, CancellationToken ct)
     {
-        const string sql = @"
+        var sql = $@"
 SELECT TOP (@take)
     ap.Id,
     ap.AwardingBody,
@@ -785,13 +781,7 @@ FROM opportunities.AwardProgram ap
 OUTER APPLY (
     SELECT TOP 1 m.Id AS MpiId, m.ProjectName
     FROM opportunities.MajorProjectsInventory m
-    WHERE m.RetiredAtUtc IS NULL
-      AND (
-          ap.Region IS NULL
-          OR ap.Region IN (N'Canada', N'International', N'NorthAmerica', N'US')
-          OR (ap.Region = N'BC' AND m.Province = N'BC')
-          OR (ap.Region = N'CA' AND m.Province = N'CA')
-      )
+    WHERE {BdReportPopulationSql.AwardProjectMatch}
       AND (
           ap.Discipline IS NULL
           OR ap.Discipline IN (N'Mixed', N'Engineering', N'Structural')
@@ -958,7 +948,7 @@ VALUES (@category, @format, @user, @recordCount, @notes);";
            CASE WHEN {VerdictExpr} = N'PURSUE_URGENT' THEN 2.0 ELSE 1.0 END AS Urg
     FROM opportunities.MajorProjectsInventory m
     JOIN opportunities.MajorProjectEnrichment e ON e.MajorProjectsInventoryId = m.Id AND e.ProviderName = N'ProjectBriefHoning'
-    WHERE m.RetiredAtUtc IS NULL AND {VerdictExpr} IN (N'PURSUE', N'PURSUE_URGENT')),
+    WHERE {BdReportPopulationSql.LivePursuit}),
 HotOrg AS (
     SELECT DISTINCT x.OrgId, h.Id AS MpiId, h.EstimatedCostCad, h.Urg
     FROM opportunities.MajorProjectsInventory m
@@ -1084,7 +1074,7 @@ LEFT JOIN opportunities.CanonicalOrg arch ON arch.Id=m.ArchitectCanonicalOrgId A
 LEFT JOIN opportunities.CanonicalOrg se ON se.Id=m.StructuralEngineerCanonicalOrgId AND se.RetiredAtUtc IS NULL
 LEFT JOIN opportunities.CanonicalOrg gc ON gc.Id=m.GeneralContractorCanonicalOrgId AND gc.RetiredAtUtc IS NULL
 LEFT JOIN opportunities.CanonicalOrg prop ON prop.Id=m.ProponentCanonicalOrgId AND prop.RetiredAtUtc IS NULL
-WHERE m.RetiredAtUtc IS NULL AND {VerdictExpr} IN (N'PURSUE', N'PURSUE_URGENT')
+WHERE {BdReportPopulationSql.LivePursuit}
 ORDER BY CASE WHEN {VerdictExpr}=N'PURSUE_URGENT' THEN 0 ELSE 1 END, m.EstimatedCostCad DESC;";
 
         await using (var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds })

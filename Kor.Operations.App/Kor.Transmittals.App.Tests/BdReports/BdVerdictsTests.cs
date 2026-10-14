@@ -21,14 +21,15 @@ public sealed class BdVerdictsTests
     [Theory]
     [InlineData("PURSUE_URGENT", null, true)]
     [InlineData("PURSUE_URGENT", "no urgency in text", true)]
-    [InlineData("PURSUE", "URGENT — teams forming now", true)]
-    [InlineData("PURSUE", "shortlist is urgent, engage now", true)] // case-insensitive, parity with PS -match
+    [InlineData("PURSUE", "URGENT — teams forming now", false)]
+    [InlineData("PURSUE", "shortlist is urgent, engage now", false)]
+    [InlineData("PURSUE", "No urgent action; wait for funding", false)]
     [InlineData("PURSUE", "open structural seat", false)]
     [InlineData("PURSUE", null, false)]
     [InlineData("MONITOR", "URGENT future phase", false)]
     [InlineData("DEAD", "URGENT", false)]
     [InlineData(null, "URGENT", false)]
-    public void IsUrgent_ParityWithPowerShellBuilders(string? verdict, string? korAngle, bool expected)
+    public void IsUrgent_RequiresStructuredVerdict(string? verdict, string? korAngle, bool expected)
     {
         Assert.Equal(expected, BdVerdicts.IsUrgent(verdict, korAngle));
     }

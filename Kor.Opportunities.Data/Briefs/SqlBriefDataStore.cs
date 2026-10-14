@@ -561,7 +561,8 @@ WHERE RetiredAtUtc IS NULL AND Province = @prov
         await con.OpenAsync(ct).ConfigureAwait(false);
 
         var (mpiWhere, mpiParams) = BuildSectorMpiFilter(request);
-        var (oppWhere, oppParams) = BuildSectorOpportunityFilter(request);
+        var asOf = DateTimeOffset.UtcNow;
+        var (oppWhere, oppParams) = BuildSectorOpportunityFilter(request, asOf);
         var (awardWhere, awardParams) = BuildSectorAwardFilter(request);
         var korId = await GetKorIdAsync(con, ct).ConfigureAwait(false) ?? -1L;
 
@@ -1551,8 +1552,7 @@ ORDER BY a.LastSeenAtUtc DESC;";
     {
         var clauses = new List<string>
         {
-            "mpi.RetiredAtUtc IS NULL",
-            "mpi.Province = @province",
+            BdReportPopulationSql.ForwardProject("mpi.", "@province"),
         };
         var ps = new List<SqlParameter>
         {
@@ -1608,17 +1608,16 @@ ORDER BY a.LastSeenAtUtc DESC;";
         return (string.Join(" AND ", clauses), ps);
     }
 
-    private static (string Where, List<SqlParameter> Params) BuildSectorOpportunityFilter(SectorBriefRequest req)
+    private static (string Where, List<SqlParameter> Params) BuildSectorOpportunityFilter(SectorBriefRequest req, DateTimeOffset asOf)
     {
         var clauses = new List<string>
         {
-            "o.Status = 1",
-            "o.IsPrimeConsultantRfp = 1",
-            "o.ProjectProvince = @oppProvince",
+            BdReportPopulationSql.LiveRfp("o.", "@oppProvince"),
         };
         var ps = new List<SqlParameter>
         {
             new("@oppProvince", SqlDbType.NVarChar, 100) { Value = req.Province },
+            new("@asOf", SqlDbType.DateTimeOffset) { Value = asOf },
         };
 
         if (!string.IsNullOrWhiteSpace(req.City))

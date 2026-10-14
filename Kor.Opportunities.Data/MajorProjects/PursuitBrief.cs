@@ -25,7 +25,22 @@ public sealed record PursuitBriefProject(
     string? Sector,
     string? Stage,
     string EstCostDisplay,
-    string? SourceUrl);
+    string? SourceUrl,
+    string? StructuralEngineerName = null,
+    long? StructuralEngineerOrgId = null,
+    string? StructuralEngineerKind = null)
+{
+    // Shared by the screen, PDF and approach context. Organisation-wide partner
+    // patterns must never manufacture a project appointment or an available seat.
+    public string StructuralAppointmentDisplay => StructuralEngineerOrgId.HasValue
+        ? $"Recorded project structural engineer: {StructuralEngineerName ?? "Unnamed organization"}. " +
+          (StructuralEngineerKind == "KorStructural"
+              ? "This is KOR's recorded appointment."
+              : "Availability for KOR is not established.")
+        : !string.IsNullOrWhiteSpace(StructuralEngineerName)
+            ? $"Source names {StructuralEngineerName}; organization link unresolved. An open seat is not established."
+            : "Project structural engineer unknown / not recorded. An open seat is not established.";
+}
 
 public sealed record PursuitBriefArchitect(
     string? ArchitectName,

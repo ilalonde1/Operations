@@ -128,7 +128,7 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
                 }
                 if (d.KorPortfolio.Count > 0)
                 {
-                    column.Item().Element(c => Section(c, "KOR's own track record in this slice",
+                    column.Item().Element(c => Section(c, "Recorded KOR structural projects in the forward slice",
                         SectorKorPortfolioBullets(d)));
                 }
                 if (d.RelevantSignals.Count > 0)
@@ -201,8 +201,11 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
         return sectorBit + "  " + geo;
     }
 
+    internal const string SectorPopulationNote = "Inventory selection is limited to undismissed capital plans and facility renewals. Live RFPs require a future recorded deadline and must not be dismissed.";
+
     internal static IEnumerable<string> SectorFilterBullets(SectorBriefData d)
     {
+        yield return SectorPopulationNote;
         var r = d.Request;
         yield return $"Geography: {(string.IsNullOrWhiteSpace(r.City) ? r.Province : r.City + ", " + r.Province)}";
         if (r.SectorBuckets.Count > 0)

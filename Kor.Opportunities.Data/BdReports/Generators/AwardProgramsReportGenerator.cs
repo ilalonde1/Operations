@@ -26,7 +26,7 @@ public static class AwardProgramsReportGenerator
         }
 
         b.Table(
-            new[] { "Deadline", "Awarding body", "Program", "Region", "Discipline", "Category", "Light KOR-project match" },
+            new[] { "Deadline", "Awarding body", "Program", "Region", "Discipline", "Category", "Recorded KOR structural project — region match" },
             awards.Select(a => (IReadOnlyList<string>)new[]
             {
                 a.SubmissionDeadline?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? "not posted",
@@ -71,7 +71,7 @@ public static class AwardProgramsReportGenerator
 
         b.H2("Methodology");
         b.P("Award programs are discovered by the AwardProgramFinderJob using the BD research executor web-search path, then upserted by NaturalKey (awarding body + program + cycle year). Rows are ordered by upcoming submission deadline; null deadlines are retained for recurring programs whose current cycle has not posted.");
-        b.Italic("Light KOR-project match is only a region/discipline hint from active MajorProjectsInventory, not an application recommendation.");
+        b.Italic("Matches require a non-retired inventory project with KOR recorded as structural engineer and compatible recorded geography. Canadian/US subdivision codes are supported; International is unrestricted, and unknown region labels do not match. Discipline is a screening hint; award eligibility, completion dates and application suitability still require review.");
         return b.Build();
     }
 

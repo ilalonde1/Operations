@@ -147,7 +147,7 @@ var regionForwardComparison = $@"
 WITH Compared AS (
     SELECT Id,
       CASE WHEN {BdReportPopulationSql.RegionForward.Replace("@prov", "m.Province")} THEN 1 ELSE 0 END AS Actual,
-      CASE WHEN m.RetiredAtUtc IS NULL AND m.Province IS NOT NULL
+      CASE WHEN m.RetiredAtUtc IS NULL AND m.DismissedAtUtc IS NULL AND m.Province IS NOT NULL
                  AND m.ProjectStage IN (N'CapitalPlan',N'FacilityRenewal') THEN 1 ELSE 0 END AS Expected
     FROM opportunities.MajorProjectsInventory m)
 ";
@@ -178,21 +178,166 @@ WITH Rfps AS (
     v(Id,Status,IsPrimeConsultantRfp,ProjectProvince,DismissedAtUtc,SubmissionDeadlineUtc,Expected)),
 Projects AS (
     SELECT * FROM (VALUES
-      (1,CAST(NULL AS datetimeoffset),N'BC',N'CapitalPlan',1),
-      (2,NULL,N'BC',N'FacilityRenewal',1),
-      (3,NULL,N'BC',N'On hold',0),
-      (4,NULL,N'BC',N'Opened',0),
-      (5,@asOf,N'BC',N'CapitalPlan',0),
-      (6,NULL,N'AB',N'CapitalPlan',0)) v(Id,RetiredAtUtc,Province,ProjectStage,Expected)),
+      (1,CAST(NULL AS datetimeoffset),CAST(NULL AS datetimeoffset),N'BC',N'CapitalPlan',1),
+      (2,NULL,NULL,N'BC',N'FacilityRenewal',1),
+      (3,NULL,NULL,N'BC',N'On hold',0),
+      (4,NULL,NULL,N'BC',N'Completed',0),
+      (5,@asOf,NULL,N'BC',N'CapitalPlan',0),
+      (6,NULL,NULL,N'AB',N'CapitalPlan',0),
+      (7,NULL,@asOf,N'BC',N'CapitalPlan',0)) v(Id,RetiredAtUtc,DismissedAtUtc,Province,ProjectStage,Expected)),
 Compared AS (
     SELECT N'RFP' AS Population,Id,Expected,CASE WHEN {BdReportPopulationSql.RegionLiveRfp} THEN 1 ELSE 0 END AS Actual FROM Rfps
     UNION ALL
-    SELECT N'Forward',Id,Expected,CASE WHEN {BdReportPopulationSql.RegionForward} THEN 1 ELSE 0 END FROM Projects)
+    SELECT N'Forward',Id,Expected,CASE WHEN {BdReportPopulationSql.RegionForward} THEN 1 ELSE 0 END FROM Projects),
+SectorCompared AS (
+    SELECT N'RFP' AS Population,o.Id,o.Expected,CASE WHEN {BdReportPopulationSql.LiveRfp("o.", "@prov")} THEN 1 ELSE 0 END AS Actual FROM Rfps o
+    UNION ALL
+    SELECT N'Forward',mpi.Id,mpi.Expected,CASE WHEN {BdReportPopulationSql.ForwardProject("mpi.", "@prov")} THEN 1 ELSE 0 END FROM Projects mpi)
 ";
 invariants.Add(("bd_region_eligibility_fixture",
     "EXPECTED only future undismissed prime RFP 1 and forward projects 1/2; ACTUAL mismatched fixture entities must be 0",
     true, regionFixture + "SELECT COUNT(*) FROM Compared WHERE Expected <> Actual;",
     regionFixture + "SELECT * FROM Compared WHERE Expected <> Actual;"));
+
+// Brief 6 gates are authored only. SQL VALUES fixtures deliberately include
+// rejected rows even when production is clean; no rows are inserted/updated.
+// Covers eligibility/role/geography predicates, not source truth, deployment,
+// WPF or export layout. Incorrect source project stages/FKs would escape.
+invariants.Add(("bd_sector_eligibility_fixture",
+    "EXPECTED only future undismissed prime RFP 1 and forward projects 1/2; ACTUAL mismatch count using qualified sector predicates must be 0",
+    true, regionFixture + "SELECT COUNT(*) FROM SectorCompared WHERE Expected <> Actual;",
+    regionFixture + "SELECT * FROM SectorCompared WHERE Expected <> Actual;"));
+
+var sectorLiveComparison = $@"
+WITH Compared AS (
+    SELECT o.Id,
+      CASE WHEN {BdReportPopulationSql.LiveRfp("o.", "o.ProjectProvince")} THEN 1 ELSE 0 END AS Actual,
+      CASE WHEN o.Status = 1 AND o.IsPrimeConsultantRfp = 1 AND o.ProjectProvince IS NOT NULL
+                 AND o.DismissedAtUtc IS NULL AND o.SubmissionDeadlineUtc > @asOf THEN 1 ELSE 0 END AS Expected
+    FROM opportunities.Opportunities o)
+";
+invariants.Add(("bd_sector_live_rfp_population",
+    "EXPECTED 0 sector RFP eligibility mismatches; ACTUAL distinct IDs. Supplied pre-fix measurement: 8 of 69 New prime RFPs dismissed, 0 expired-but-New; not remeasured for brief 6",
+    true, regionClock + sectorLiveComparison + "SELECT COUNT(DISTINCT Id) FROM Compared WHERE Expected <> Actual;",
+    regionClock + sectorLiveComparison + "SELECT TOP 5 * FROM Compared WHERE Expected <> Actual ORDER BY Id;"));
+
+var sectorForwardComparison = $@"
+WITH Compared AS (
+    SELECT mpi.Id,
+      CASE WHEN {BdReportPopulationSql.ForwardProject("mpi.", "mpi.Province")} THEN 1 ELSE 0 END AS Actual,
+      CASE WHEN mpi.RetiredAtUtc IS NULL AND mpi.DismissedAtUtc IS NULL AND mpi.Province IS NOT NULL
+                 AND mpi.ProjectStage IN (N'CapitalPlan',N'FacilityRenewal') THEN 1 ELSE 0 END AS Expected
+    FROM opportunities.MajorProjectsInventory mpi)
+";
+invariants.Add(("bd_sector_forward_population",
+    "EXPECTED 0 forward-project eligibility mismatches (retirement, dismissal, capital-plan/renewal stage); ACTUAL distinct IDs",
+    true, sectorForwardComparison + "SELECT COUNT(DISTINCT Id) FROM Compared WHERE Expected <> Actual;",
+    sectorForwardComparison + "SELECT TOP 5 * FROM Compared WHERE Expected <> Actual ORDER BY Id;"));
+
+var livePursuitComparison = $@"
+WITH Compared AS (
+    SELECT m.Id,
+      CASE WHEN {BdReportPopulationSql.LivePursuit} THEN 1 ELSE 0 END AS Actual,
+      CASE WHEN m.RetiredAtUtc IS NULL AND m.DismissedAtUtc IS NULL
+        AND UPPER(LTRIM(RTRIM(COALESCE(JSON_VALUE(e.ResultJson,'$.honingPass.verdict'),JSON_VALUE(e.ResultJson,'$.verdict')))))
+            IN (N'PURSUE',N'PURSUE_URGENT') THEN 1 ELSE 0 END AS Expected
+    FROM opportunities.MajorProjectsInventory m
+    JOIN opportunities.MajorProjectEnrichment e ON e.MajorProjectsInventoryId=m.Id AND e.ProviderName=N'ProjectBriefHoning')
+";
+invariants.Add(("bd_live_pursuit_population",
+    "EXPECTED 0 live-pursuit eligibility mismatches; ACTUAL distinct project IDs. Supplied pre-fix dismissed PURSUE/PURSUE_URGENT count: 0 of active set; clean data alone does not prove the guard",
+    true, livePursuitComparison + "SELECT COUNT(DISTINCT Id) FROM Compared WHERE Expected <> Actual;",
+    livePursuitComparison + "SELECT TOP 5 * FROM Compared WHERE Expected <> Actual ORDER BY Id;"));
+
+var livePursuitFixture = $@"
+WITH Projects AS (
+  SELECT * FROM (VALUES
+    (1,CAST(NULL AS datetimeoffset),CAST(NULL AS datetimeoffset),N'PURSUE',1),
+    (2,NULL,NULL,N' pursue_urgent ',1),
+    (3,NULL,CAST('2026-01-01' AS datetimeoffset),N'PURSUE',0),
+    (4,CAST('2026-01-01' AS datetimeoffset),NULL,N'PURSUE_URGENT',0),
+    (5,NULL,NULL,N'MONITOR',0),(6,NULL,NULL,N'DEAD',0)) v(Id,RetiredAtUtc,DismissedAtUtc,Verdict,Expected)),
+Compared AS (
+  SELECT m.Id,m.Expected,CASE WHEN {BdReportPopulationSql.LivePursuit} THEN 1 ELSE 0 END AS Actual
+  FROM Projects m CROSS APPLY (VALUES (CONCAT(N'{{""verdict"":""',m.Verdict,N'""}}'))) e(ResultJson))
+";
+invariants.Add(("bd_live_pursuit_fixture",
+    "EXPECTED only undismissed non-retired PURSUE fixture projects 1/2; ACTUAL mismatch count must be 0",
+    true, livePursuitFixture + "SELECT COUNT(*) FROM Compared WHERE Expected <> Actual;",
+    livePursuitFixture + "SELECT * FROM Compared WHERE Expected <> Actual;"));
+
+var structuralRoleFixture = $@"
+WITH Work AS (
+  SELECT * FROM (VALUES (1,N'Structural engineer',1),(2,N'Mechanical engineer',0),
+    (3,N'Civil engineer',0),(4,N'No structural role',0),(5,N'Non-structural engineer',0),
+    (6,N' Structural engineering consultant ',1),(7,N'Engineer',0),(8,NULL,0),
+    (9,N'Architect',0),(10,N'Structural engineer of record',1)) v(Id,Role,Expected)),
+Compared AS (SELECT iw.Id,iw.Role,iw.Expected,CASE WHEN {BdReportPopulationSql.StructuralRole}
+    THEN 1 ELSE 0 END AS Actual FROM Work iw)
+";
+invariants.Add(("bd_structural_role_fixture",
+    "EXPECTED explicit structural roles 1/6/10 only; ACTUAL mismatch count must be 0 (generic engineer and negated roles must not pass)",
+    true, structuralRoleFixture + "SELECT COUNT(*) FROM Compared WHERE Expected <> Actual;",
+    structuralRoleFixture + "SELECT * FROM Compared WHERE Expected <> Actual;"));
+
+// Live companion checks accepted research roles against the stated vocabulary.
+// The fixture above is the non-vacuous negative control. Neither proves a firm's
+// actual project role; a false but correctly spelled source role would escape.
+var structuralRoleComparison = $@"
+WITH Compared AS (
+ SELECT iw.Id,iw.Role,CASE WHEN {BdReportPopulationSql.StructuralRole} THEN 1 ELSE 0 END AS Actual,
+ CASE WHEN LOWER(LTRIM(RTRIM(iw.Role))) IN (N'structural',N'structural engineer',N'structural engineering',
+   N'structural consultant',N'structural engineering consultant',N'structural engineer of record',N'structural design engineer')
+   THEN 1 ELSE 0 END AS Expected
+ FROM opportunities.IntelWork iw WHERE iw.RetiredAtUtc IS NULL)
+";
+invariants.Add(("bd_competitor_structural_role_population",
+    "EXPECTED 0 research-role eligibility mismatches; ACTUAL distinct work-row IDs, not firms or projects",
+    true, structuralRoleComparison + "SELECT COUNT(*) FROM Compared WHERE Expected <> Actual;",
+    structuralRoleComparison + "SELECT TOP 5 * FROM Compared WHERE Expected <> Actual ORDER BY Id;"));
+
+var awardMatchFixture = $@"
+WITH Orgs AS (
+ SELECT * FROM (VALUES (1,N'KorStructural',CAST(NULL AS datetimeoffset)),
+   (2,N'Structural',NULL),(3,N'KorStructural',CAST('2026-01-01' AS datetimeoffset))) v(Id,Kind,RetiredAtUtc)),
+Cases AS (
+ SELECT * FROM (VALUES
+   (1,N'BC',1,CAST(NULL AS datetimeoffset),N'Canada',1),
+   (2,N'BC',1,NULL,N'US',0),(3,N'CA',1,NULL,N'US',1),(4,N'CA',1,NULL,N'Canada',0),
+   (5,N'AB',1,NULL,N'AB',1),(6,N'BC',1,NULL,N'AB',0),(7,N'ON',1,NULL,N'Canada',1),
+   (8,N'NY',2,NULL,N'International',0),(9,N'NY',3,NULL,N'US',0),
+   (10,N'NY',NULL,NULL,N'US',0),(11,N'ZZ',1,NULL,N'ZZ',0),(12,N'BC',1,NULL,NULL,0),
+   (13,N'NY',1,NULL,N'NorthAmerica',1),(14,N'BC',1,CAST('2026-01-01' AS datetimeoffset),N'Canada',0),
+   (15,N'BC',1,NULL,N'International',1),(16,N'ZZ',1,NULL,N'US',0))
+   v(Id,Province,StructuralEngineerCanonicalOrgId,RetiredAtUtc,Region,Expected)),
+Compared AS (SELECT m.Id,m.Expected,CASE WHEN {BdReportPopulationSql.AwardProjectMatch.Replace("opportunities.CanonicalOrg", "Orgs")}
+    THEN 1 ELSE 0 END AS Actual FROM Cases m CROSS APPLY (VALUES(m.Region)) ap(Region))
+";
+invariants.Add(("bd_award_project_match_fixture",
+    "EXPECTED compatible geography AND a live resolved KOR structural organisation; ACTUAL fixture mismatch count must be 0 (includes US/Canada reversal, AB, unknown region, other/retired firm)",
+    true, awardMatchFixture + "SELECT COUNT(*) FROM Compared WHERE Expected <> Actual;",
+    awardMatchFixture + "SELECT * FROM Compared WHERE Expected <> Actual;"));
+
+// Live rejection invariant for actual candidate pairs. Covers resolved KOR
+// involvement, exact subdivision matches, unknown regions and Canada/US reversal.
+// Full supported-code vocabulary is gated by the production predicate/fixtures;
+// this companion would miss a fabricated but geographically compatible project.
+var awardMatchViolations = $@"
+SELECT ap.Id AS AwardId,m.Id AS MpiId,ap.Region,m.Province
+FROM opportunities.AwardProgram ap
+JOIN opportunities.MajorProjectsInventory m ON {BdReportPopulationSql.AwardProjectMatch}
+WHERE ap.RetiredAtUtc IS NULL AND (
+  NOT EXISTS (SELECT 1 FROM opportunities.CanonicalOrg c WHERE c.Id=m.StructuralEngineerCanonicalOrgId
+              AND c.Kind=N'KorStructural' AND c.RetiredAtUtc IS NULL)
+  OR ap.Region IS NULL
+  OR (ap.Region NOT IN (N'International',N'NorthAmerica',N'Canada',N'US') AND ap.Region<>m.Province)
+  OR (ap.Region=N'Canada' AND m.Province NOT IN (N'AB',N'BC',N'MB',N'NB',N'NL',N'NS',N'NT',N'NU',N'ON',N'PE',N'QC',N'SK',N'YT'))
+  OR (ap.Region=N'US' AND m.Province IN (N'AB',N'BC',N'MB',N'NB',N'NL',N'NS',N'NT',N'NU',N'ON',N'PE',N'QC',N'SK',N'YT')))
+";
+invariants.Add(("bd_award_project_population",
+    "EXPECTED 0 candidate pairs claiming KOR involvement or geography unsupported by their rows; ACTUAL award/project pair count, not unique projects",
+    true, "SELECT COUNT(*) FROM (" + awardMatchViolations + ") violations;",
+    "SELECT TOP 5 * FROM (" + awardMatchViolations + ") violations ORDER BY AwardId,MpiId;"));
 
 // Durable spelling worklist, not a repair and not proof of renderer correctness.
 // Audit observed 88 active project IDs (87 pursue, 1 monitor), left untouched.

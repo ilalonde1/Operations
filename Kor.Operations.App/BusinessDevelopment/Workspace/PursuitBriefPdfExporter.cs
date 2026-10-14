@@ -62,7 +62,7 @@ public static class PursuitBriefPdfExporter
                 column.Spacing(10);
                 column.Item().Element(body => RenderHeaderBand(body, snapshot.Brief));
                 column.Item().Element(body => RenderProcurement(body, snapshot.Brief.OwnerProcurement));
-                column.Item().Element(body => RenderPrimeSeat(body, snapshot.Brief.Architect, snapshot.ArchitectWarmthDisplay));
+                column.Item().Element(body => RenderPrimeSeat(body, snapshot.Brief, snapshot.ArchitectWarmthDisplay));
                 column.Item().Element(body => RenderWhoToCall(body, snapshot.Brief, snapshot.OwnerContactsDisplay));
                 column.Item().Element(body => RenderCompetition(body, snapshot.Brief.CompetitorNotes, snapshot.OwnerBdRecordDisplay));
                 column.Item().Element(body => RenderTextSection(body, "KOR's edge", snapshot.KorEdgeDisplay));
@@ -146,20 +146,23 @@ public static class PursuitBriefPdfExporter
         });
     }
 
-    private static void RenderPrimeSeat(IContainer container, PursuitBriefArchitect architect, string architectWarmth)
+    private static void RenderPrimeSeat(IContainer container, PursuitBrief brief, string architectWarmth)
     {
-        RenderSection(container, "Likely prime & structural seat", body =>
+        var architect = brief.Architect;
+        RenderSection(container, "Project structural appointment", body =>
         {
+            body.Item().Text(brief.Project.StructuralAppointmentDisplay).SemiBold();
+            body.Item().PaddingTop(8).Text("Architect-wide relationship pattern (not project appointment evidence)").SemiBold();
             body.Item().Row(row =>
             {
                 row.RelativeItem().Text(Placeholder(architect.ArchitectName)).FontSize(12).SemiBold();
-                row.ConstantItem(120).AlignRight().Text(Placeholder(architect.SeatStatus)).FontColor(SeatStatusColor(architect.SeatStatus)).Bold();
+                row.ConstantItem(120).AlignRight().Text(Placeholder(architect.SeatStatus)).FontColor(Muted).Bold();
             });
             body.Item().PaddingTop(4).Text(Placeholder(architect.SeatPriority)).FontColor(Muted);
             body.Item().PaddingTop(6).Text(Placeholder(architect.DisplacementRead));
             body.Item().PaddingTop(8).Text("Architect warmth").FontSize(8).FontColor(Muted).SemiBold();
             body.Item().Text(Placeholder(architectWarmth)).Italic();
-            body.Item().PaddingTop(8).Text("Recurring structural partners").FontSize(8).FontColor(Muted).SemiBold();
+            body.Item().PaddingTop(8).Text("Architect's recurring partners — not confirmed on this project").FontSize(8).FontColor(Muted).SemiBold();
             RenderStringList(body, architect.RecurringStructuralPartners);
         });
     }
@@ -179,11 +182,11 @@ public static class PursuitBriefPdfExporter
 
     private static void RenderCompetition(IContainer container, IReadOnlyList<PursuitBriefCompetitorNote> notes, string ownerBdRecordDisplay)
     {
-        RenderSection(container, "Competition", body =>
+        RenderSection(container, "Owner history and architect partner research", body =>
         {
             body.Item().Text("Owner BD record").SemiBold();
             body.Item().Text(Placeholder(ownerBdRecordDisplay)).Italic();
-            body.Item().PaddingTop(8).Text("Competitor notes").SemiBold();
+            body.Item().PaddingTop(8).Text("Partner research — not confirmed project competitors").SemiBold();
             if (notes.Count == 0)
             {
                 body.Item().Text("No competitor notes on file.").Italic().FontColor(Muted);

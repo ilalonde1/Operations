@@ -40,7 +40,7 @@ public sealed class BdReportMeaningRegressionTests
             { ["honingPass"] = new JsonObject { ["verdict"] = raw } }.ToJsonString());
         Assert.Equal(expected, nested.Verdict);
         Assert.Equal(rank, BdVerdicts.Rank(raw));
-        Assert.Equal(expected is "PURSUE" or "PURSUE_URGENT", BdVerdicts.IsUrgent(raw, "URGENT"));
+        Assert.Equal(expected is "PURSUE_URGENT", BdVerdicts.IsUrgent(raw, "URGENT"));
     }
 
     // Covers actual sector buckets after legacy JSON hydration, not SQL grouping.

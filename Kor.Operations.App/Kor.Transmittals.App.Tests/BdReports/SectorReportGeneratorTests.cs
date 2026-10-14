@@ -66,7 +66,7 @@ public sealed class SectorReportGeneratorTests
     }
 
     [Fact]
-    public void Build_ExecSummaryCountsExcludeNotHoned_AndUrgencyReclassifies()
+    public void Build_ExecSummaryCountsExcludeNotHoned_AndRequireStructuredUrgency()
     {
         var rows = new[]
         {
@@ -82,9 +82,9 @@ public sealed class SectorReportGeneratorTests
         var kpis = Assert.Single(doc.Blocks.OfType<KpiStripBlock>()).Items
             .ToDictionary(k => k.Label, k => k);
         Assert.Equal("3", kpis["Projects honed"].Value);
-        Assert.Equal("2", kpis["Urgent"].Value);
+        Assert.Equal("1", kpis["Urgent"].Value);
         Assert.Equal(ChipTone.Urgent, kpis["Urgent"].Tone);
-        Assert.Equal("1", kpis["Pursue"].Value);
+        Assert.Equal("2", kpis["Pursue"].Value);
     }
 
     [Fact]

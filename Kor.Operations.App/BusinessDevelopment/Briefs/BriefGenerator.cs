@@ -226,7 +226,7 @@ public sealed class BriefGenerator : IBriefGenerator
 
         if (data.KorPortfolio.Count > 0)
         {
-            AppendHeading(body, "KOR's own track record in this slice");
+            AppendHeading(body, "Recorded KOR structural projects in the forward slice");
             foreach (var line in SectorKorPortfolioBullets(data))
             {
                 AppendBullet(body, line);
@@ -275,6 +275,7 @@ public sealed class BriefGenerator : IBriefGenerator
 
     private static IEnumerable<string> SectorFilterBulletsForWord(SectorBriefData d)
     {
+        yield return BriefPdfGenerator.SectorPopulationNote;
         var r = d.Request;
         yield return $"Geography: {(string.IsNullOrWhiteSpace(r.City) ? r.Province : r.City + ", " + r.Province)}";
         if (r.SectorBuckets.Count > 0)

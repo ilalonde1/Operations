@@ -29,7 +29,7 @@ public sealed class CallSheetReportGeneratorTests
         {
             Row(1, "Urgent Small", BdVerdicts.PursueUrgent, null, 10_000_000m),
             Row(2, "Urgent Big", BdVerdicts.PursueUrgent, null, 400_000_000m),
-            Row(3, "Urgent Mid", BdVerdicts.Pursue, "URGENT now", 200_000_000m),
+            Row(3, "Urgent Mid", BdVerdicts.PursueUrgent, "URGENT now", 200_000_000m),
             Row(4, "Urgent Fourth", BdVerdicts.PursueUrgent, null, 5_000_000m),
             Row(5, "Plain Pursue", BdVerdicts.Pursue, "open seat", 300_000_000m),
         }

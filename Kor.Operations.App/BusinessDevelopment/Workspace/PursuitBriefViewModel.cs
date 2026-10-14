@@ -97,6 +97,7 @@ public sealed class PursuitBriefViewModel : INotifyPropertyChanged, Kor.Operatio
             OnPropertyChanged(nameof(FitScoreDisplay));
             OnPropertyChanged(nameof(FitScoreIsPlaceholder));
             OnPropertyChanged(nameof(SeatStatusDisplay));
+            OnPropertyChanged(nameof(ArchitectPatternDisplay));
             OnPropertyChanged(nameof(HasSeatPriority));
             OnPropertyChanged(nameof(SeatPriorityDisplay));
         }
@@ -146,8 +147,11 @@ public sealed class PursuitBriefViewModel : INotifyPropertyChanged, Kor.Operatio
 
     public bool FitScoreIsPlaceholder => Brief?.FitScore.HasValue != true;
 
-    public string SeatStatusDisplay => string.IsNullOrWhiteSpace(Brief?.Architect.SeatStatus)
-        ? "SEAT UNKNOWN"
+    public string SeatStatusDisplay => Brief?.Project.StructuralAppointmentDisplay
+        ?? "Project structural engineer unknown / not recorded. An open seat is not established.";
+
+    public string ArchitectPatternDisplay => string.IsNullOrWhiteSpace(Brief?.Architect.SeatStatus)
+        ? "Architect-wide pattern unknown / not assessed."
         : Brief!.Architect.SeatStatus!;
 
     public bool HasSeatPriority => !string.IsNullOrWhiteSpace(Brief?.Architect.SeatPriority);

@@ -44,21 +44,13 @@ public static class BdVerdicts
     };
 
     /// <summary>
-    /// Urgency rule, parity with the shipped PowerShell report builders
-    /// (tools/BdReportBuilders): PURSUE_URGENT, or PURSUE whose korAngle
-    /// mentions URGENT (case-insensitive, matching PowerShell -match).
+    /// Only the structured PURSUE_URGENT verdict establishes urgency. Narrative
+    /// text (including negation) is not an urgency flag. Keep the second argument
+    /// for existing callers; it does not influence classification.
     /// </summary>
     public static bool IsUrgent(string? verdict, string? korAngle)
     {
-        verdict = Normalize(verdict);
-        if (string.Equals(verdict, PursueUrgent, StringComparison.Ordinal))
-        {
-            return true;
-        }
-
-        return string.Equals(verdict, Pursue, StringComparison.Ordinal)
-            && korAngle is not null
-            && korAngle.Contains("URGENT", StringComparison.OrdinalIgnoreCase);
+        return string.Equals(Normalize(verdict), PursueUrgent, StringComparison.Ordinal);
     }
 }
 

@@ -199,7 +199,7 @@ public sealed class HtmlBriefPdfGenerator : IBriefPdfGenerator
         if (d.TopStructuralCompetitors.Count > 0)
             b.BulletSection("Top structural competitors in this slice", BriefPdfGenerator.SectorTopOrgBullets(d.TopStructuralCompetitors));
         if (d.KorPortfolio.Count > 0)
-            b.BulletSection("KOR's own track record in this slice", BriefPdfGenerator.SectorKorPortfolioBullets(d));
+            b.BulletSection("Recorded KOR structural projects in the forward slice", BriefPdfGenerator.SectorKorPortfolioBullets(d));
         if (d.RelevantSignals.Count > 0)
             b.BulletSection("Relevant Intel signals", BriefPdfGenerator.SectorIntelSignalBullets(d));
         return b.Finish();

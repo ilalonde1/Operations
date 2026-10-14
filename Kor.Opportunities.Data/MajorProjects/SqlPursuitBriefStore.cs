@@ -64,7 +64,10 @@ public sealed class SqlPursuitBriefStore : IPursuitBriefStore
                 project.Sector,
                 project.ProjectStage ?? project.Stage,
                 FormatCurrency(project.EstimatedCostCad),
-                project.SourceUrl),
+                project.SourceUrl,
+                project.StructuralEngineerName,
+                project.StructuralEngineerOrgId,
+                project.StructuralEngineerKind),
             project.OwnerClendorClientId,
             project.ArchitectClendorClientId,
             new PursuitBriefArchitect(
@@ -100,7 +103,10 @@ SELECT mpi.Id,
        mpi.ArchitectName,
        architectOrg.Id AS ArchitectCanonicalOrgId,
        ownerOrg.ClendorClientId AS OwnerClendorClientId,
-       architectOrg.ClendorClientId AS ArchitectClendorClientId
+       architectOrg.ClendorClientId AS ArchitectClendorClientId,
+       COALESCE(structuralOrg.DisplayName, mpi.StructuralEngineerName) AS StructuralEngineerName,
+       structuralOrg.Id AS StructuralEngineerOrgId,
+       structuralOrg.Kind AS StructuralEngineerKind
 FROM opportunities.MajorProjectsInventory mpi
 LEFT JOIN opportunities.CanonicalOrg ownerOrg
     ON ownerOrg.Id = mpi.ProponentCanonicalOrgId
@@ -108,6 +114,9 @@ LEFT JOIN opportunities.CanonicalOrg ownerOrg
 LEFT JOIN opportunities.CanonicalOrg architectOrg
     ON architectOrg.Id = mpi.ArchitectCanonicalOrgId
    AND architectOrg.RetiredAtUtc IS NULL
+LEFT JOIN opportunities.CanonicalOrg structuralOrg
+    ON structuralOrg.Id = mpi.StructuralEngineerCanonicalOrgId
+   AND structuralOrg.RetiredAtUtc IS NULL
 -- BD-Audit-2026-06-09 Minor 16: a pursuit brief must not be generated for
 -- a retired (merged/built/DEAD-verdict) MPI — consistent with the by-Id
 -- read in SqlBriefDataStore.GetProjectBriefAsync.
@@ -139,7 +148,10 @@ WHERE mpi.Id = @id AND mpi.RetiredAtUtc IS NULL;";
             r.IsDBNull(11) ? null : r.GetString(11),
             r.IsDBNull(12) ? null : r.GetInt64(12),
             r.IsDBNull(13) ? null : r.GetString(13),
-            r.IsDBNull(14) ? null : r.GetString(14));
+            r.IsDBNull(14) ? null : r.GetString(14),
+            r.IsDBNull(15) ? null : r.GetString(15),
+            r.IsDBNull(16) ? null : r.GetInt64(16),
+            r.IsDBNull(17) ? null : r.GetString(17));
     }
 
     private async Task<string?> ReadEnrichmentJsonAsync(long canonicalOrgId, string providerName, CancellationToken ct)
@@ -333,7 +345,10 @@ ORDER BY Id;";
         string? ArchitectName,
         long? ArchitectCanonicalOrgId,
         string? OwnerClendorClientId,
-        string? ArchitectClendorClientId);
+        string? ArchitectClendorClientId,
+        string? StructuralEngineerName,
+        long? StructuralEngineerOrgId,
+        string? StructuralEngineerKind);
 
     private sealed record StructuralPartnerDetails(
         string? SeatStatus,

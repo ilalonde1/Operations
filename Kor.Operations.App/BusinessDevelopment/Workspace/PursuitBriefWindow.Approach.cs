@@ -23,8 +23,10 @@ namespace Kor.Operations.App.BusinessDevelopment.Workspace;
 public partial class PursuitBriefWindow
 {
     private const string ApproachInstruction =
-        "You are drafting a pursuit approach for KOR Structural (a structural engineering firm) to win " +
-        "the STRUCTURAL seat on the project below. Use ONLY the intel provided — do not invent facts, " +
+        "You are drafting an appropriate next contact for KOR Structural concerning the project's structural scope. " +
+        "Respect the recorded project appointment: if KOR is named, support its existing role; if another firm is named, " +
+        "do not assume a displacement opportunity. An architect-wide partner pattern cannot establish an open project seat. " +
+        "Use ONLY the intel provided — do not invent facts, " +
         "names, or emails not present. Write in Markdown with exactly these three sections:\n\n" +
         "## Who to call\n" +
         "Ranked list of the specific people to reach first. For each: name, role, and one line on why " +
@@ -118,15 +120,17 @@ public partial class PursuitBriefWindow
         sb.AppendLine($"- Owner/proponent: {p.Owner}");
         sb.AppendLine($"- Location: {p.City} ({p.Market}), sector {p.Sector}");
         sb.AppendLine($"- Stage: {p.Stage}; est. cost: {p.EstCostDisplay}");
+        sb.AppendLine(p.StructuralAppointmentDisplay);
+        sb.AppendLine("A named project structural engineer is a recorded appointment, not an inferred displacement opportunity.");
         sb.AppendLine();
 
         var a = b.Architect;
-        sb.AppendLine("ARCHITECT / STRUCTURAL SEAT");
+        sb.AppendLine("ARCHITECT-WIDE RELATIONSHIP PATTERN (not project appointment evidence)");
         sb.AppendLine($"- Architect: {a.ArchitectName}");
-        sb.AppendLine($"- Seat status: {a.SeatStatus}; priority: {a.SeatPriority}");
-        if (!string.IsNullOrWhiteSpace(a.DisplacementRead)) sb.AppendLine($"- Displacement read: {a.DisplacementRead}");
+        sb.AppendLine($"- General partner pattern: {a.SeatStatus}; architect-level priority: {a.SeatPriority}");
+        if (!string.IsNullOrWhiteSpace(a.DisplacementRead)) sb.AppendLine($"- Architect-level research only, not a project recommendation: {a.DisplacementRead}");
         if (a.RecurringStructuralPartners.Count > 0)
-            sb.AppendLine($"- Architect's recurring structural partners (incumbents to displace): {string.Join(", ", a.RecurringStructuralPartners)}");
+            sb.AppendLine($"- Architect's recurring structural partners (not confirmed project incumbents): {string.Join(", ", a.RecurringStructuralPartners)}");
         sb.AppendLine();
 
         var op = b.OwnerProcurement;
@@ -145,7 +149,7 @@ public partial class PursuitBriefWindow
 
         if (b.CompetitorNotes.Count > 0)
         {
-            sb.AppendLine("COMPETITOR LOAD (structural firms in play)");
+            sb.AppendLine("ARCHITECT PARTNER RESEARCH (not confirmed project team)");
             foreach (var c in b.CompetitorNotes)
                 sb.AppendLine($"- {c.Firm}: {c.CapacityRead}");
             sb.AppendLine();
