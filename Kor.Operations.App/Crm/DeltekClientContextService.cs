@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Odbc;
+using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -47,6 +48,11 @@ public sealed record DeltekClientIntelligence
     // (table inaccessible). The panel can show a soft warning instead
     // of pretending the absence is "no data".
     public bool HasDegradedSections { get; init; }
+
+    // First day of MAX(Period) in PRSummaryMain, the table every FeeBilled figure
+    // comes from. Lets a consumer say how far behind live invoicing the billed
+    // figures are, from the data. Null when the probe failed.
+    public DateTime? SummaryPostedThrough { get; init; }
 }
 
 public sealed record DeltekCompanyFacts(
@@ -240,8 +246,21 @@ internal sealed class DeltekClientContextService : IDeltekClientContextService
             Log.Warning(ex, "Deltek client intelligence section unavailable for {Section}.", "activity");
         }
 
+        // Not a "degraded section": the billed figures still load. A null here means the
+        // consumer says "posting period could not be read" instead of a lag.
+        DateTime? summaryPostedThrough = null;
+        try
+        {
+            summaryPostedThrough = LoadSummaryPostedThrough(cn, catalog, ct);
+        }
+        catch (OdbcException ex)
+        {
+            Log.Warning(ex, "Deltek PRSummaryMain MAX(Period) probe failed; billed posting period unknown.");
+        }
+
         return new DeltekClientIntelligence
         {
+            SummaryPostedThrough = summaryPostedThrough,
             ClientId = clientId,
             ClientName = clientName,
             ProjectCount = projectCount,
@@ -255,6 +274,32 @@ internal sealed class DeltekClientContextService : IDeltekClientContextService
             RecentActivity = recentActivity,
             HasDegradedSections = degraded,
         };
+    }
+
+    /// <summary>First day of MAX(Period) in PRSummaryMain (yyyyMM). Same probe the
+    /// financials module uses for its "Deltek posted through" banner. Null on an
+    /// empty or unparseable value.</summary>
+    private static DateTime? LoadSummaryPostedThrough(OdbcConnection cn, string catalog, CancellationToken ct)
+    {
+        using var cmd = cn.CreateCommand();
+        cmd.CommandTimeout = 30;
+        cmd.CommandText = $@"SELECT MAX(Period) FROM [{catalog}].dbo.PRSummaryMain;";
+        using var reg = ct.Register(() => { try { cmd.Cancel(); } catch { /* best-effort cancel; may race with disposal */ } });
+        var value = cmd.ExecuteScalar();
+        if (value is null || value == DBNull.Value)
+        {
+            return null;
+        }
+
+        var text = Convert.ToString(value, CultureInfo.InvariantCulture)?.Trim();
+        if (!int.TryParse(text, NumberStyles.None, CultureInfo.InvariantCulture, out var yyyymm))
+        {
+            return null;
+        }
+
+        var year = yyyymm / 100;
+        var month = yyyymm % 100;
+        return month is >= 1 and <= 12 && year is >= 1990 and <= 2100 ? new DateTime(year, month, 1) : null;
     }
 
     private static DeltekCompanyFacts? LoadCompanyFacts(

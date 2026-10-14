@@ -503,7 +503,7 @@ public sealed class HtmlBriefPdfGenerator : IBriefPdfGenerator
                 }
                 _sb.Append("</tbody></table></div>");
             }
-            _sb.Append("<p class=\"muted\"><em>").Append(E(OrgBriefDeltekSection.BilledSourceNotice)).Append("</em></p>");
+            _sb.Append("<p class=\"muted\"><em>").Append(E(dk.BilledSourceNotice)).Append("</em></p>");
             if (dk.UnavailableSections)
             {
                 _sb.Append("<p class=\"muted\"><em>Some Deltek sections were unavailable when this brief was generated.</em></p>");

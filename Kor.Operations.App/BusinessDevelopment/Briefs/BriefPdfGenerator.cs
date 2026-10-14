@@ -1215,7 +1215,7 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
             });
         }
 
-        column.Item().PaddingTop(6).Text(OrgBriefDeltekSection.BilledSourceNotice).FontSize(9).Italic().FontColor(Muted);
+        column.Item().PaddingTop(6).Text(dk.BilledSourceNotice).FontSize(9).Italic().FontColor(Muted);
 
         if (dk.UnavailableSections)
         {

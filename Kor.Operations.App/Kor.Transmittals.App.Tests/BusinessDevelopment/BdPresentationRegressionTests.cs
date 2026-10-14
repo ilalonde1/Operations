@@ -22,15 +22,49 @@ namespace Kor.Operations.App.Tests.BusinessDevelopment;
 /// </summary>
 public sealed class BdPresentationRegressionTests
 {
+    // The billed-source notice is MEASURED from the posting period, never asserted: the
+    // first cut hard-coded "frozen since 2026-02-17" and shipped a week after the refresh
+    // had been re-run (Ian, 2026-10-13: "We unfroze that last week"). Covers stale,
+    // current and unknown periods. Does not touch Deltek; a wrong MAX(Period) escapes.
+    [Fact]
+    public void BilledSourceNotice_IsMeasuredFromThePostingPeriod_NotAsserted()
+    {
+        OrgBriefDeltekSection Section(DateTime? postedThrough) =>
+            new OrgBriefDeltekSection("C1", "Client", 1, 100000m, null, null,
+                Array.Empty<OrgBriefDeltekProject>(), 1, 5000m, 1000m, false) { BilledPostedThrough = postedThrough };
+        var thisMonth = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+
+        var stale = Section(thisMonth.AddMonths(-8));
+        Assert.True(stale.BilledSourceIsStale);
+        Assert.True(stale.DegradedSections);
+        Assert.Contains("8 months behind", stale.BilledSourceNotice);
+        Assert.Contains(thisMonth.AddMonths(-8).ToString("MMM yyyy"), stale.BilledSourceNotice);
+
+        var current = Section(thisMonth);
+        Assert.False(current.BilledSourceIsStale);
+        Assert.False(current.DegradedSections);
+        Assert.DoesNotContain("behind", current.BilledSourceNotice);
+        Assert.Contains("posted through " + thisMonth.ToString("MMM yyyy"), current.BilledSourceNotice);
+
+        var closeLag = Section(thisMonth.AddMonths(-2));   // the financials module's normal close lag
+        Assert.False(closeLag.BilledSourceIsStale);
+
+        var unknown = Section(null);
+        Assert.False(unknown.BilledSourceIsStale);
+        Assert.Contains("could not be read", unknown.BilledSourceNotice);
+        Assert.DoesNotContain("frozen since", stale.BilledSourceNotice + current.BilledSourceNotice + unknown.BilledSourceNotice);
+    }
+
     // Covers DOCX, production HTML content, extracted fallback PDF text, and a
-    // successful-but-frozen billing section. Excludes browser PDF and live
+    // successful-but-stale billing section. Excludes browser PDF and live
     // balances; browser printing that hides the disclosure could escape this gate.
     [Fact]
     public void FeesAreNotBilled_AndOnlyBilledSourceIsFrozen()
     {
         var section = new OrgBriefDeltekSection("C1", "Client", 1, 100000m, null, null,
             new[] { new OrgBriefDeltekProject("P1", "Project", null, null, 100000m, 20000m) },
-            1, 5000m, 1000m, false);
+            1, 5000m, 1000m, false)
+            { BilledPostedThrough = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1).AddMonths(-8) };
         Assert.True(section.DegradedSections);
         Assert.False(section.UnavailableSections);
         var data = new OrgBriefData(1, "Owner", "Client", null, 0, null,
@@ -51,8 +85,9 @@ public sealed class BdPresentationRegressionTests
             {
                 Assert.Contains("Lifetime fee", actual);
                 Assert.DoesNotContain("Lifetime billed", actual);
-                Assert.Contains(OrgBriefDeltekSection.BilledSourceNotice, actual);
-                Assert.Contains("PRSummaryMain has been frozen since 2026-02-17", actual);
+                Assert.Contains(section.BilledSourceNotice, actual);
+                Assert.Contains("8 months behind", actual);
+                Assert.DoesNotContain("frozen since", actual);
                 Assert.Contains("Fee and AR use different sources", actual);
                 Assert.Contains("AR outstanding", actual);
                 Assert.DoesNotContain("Some Deltek sections were unavailable", actual);
@@ -62,7 +97,7 @@ public sealed class BdPresentationRegressionTests
             var fallback = Source("BusinessDevelopment/Briefs/BriefPdfGenerator.cs");
             Assert.Contains("DeltekFactRow(table, \"Lifetime fee\"", fallback);
             Assert.DoesNotContain("Lifetime billed", fallback);
-            Assert.Contains("Text(OrgBriefDeltekSection.BilledSourceNotice)", fallback);
+            Assert.Contains("Text(dk.BilledSourceNotice)", fallback);
             Assert.Contains("if (dk.UnavailableSections)", fallback);
         }
         finally { File.Delete(path); File.Delete(pdfPath); }

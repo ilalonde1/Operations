@@ -31,6 +31,7 @@ public sealed class OrgBriefDeltekEnricher(IDeltekClientContextService deltek)
                         p.Wbs1, p.Name, p.OpenDate, p.Status, p.Fee, p.FeeBilled)).ToList(),
                     intel.Contacts.Count, intel.Ar?.TotalOutstanding ?? 0m,
                     intel.Ar?.Outstanding90Plus ?? 0m, intel.HasDegradedSections)
+                { BilledPostedThrough = intel.SummaryPostedThrough }
             };
         }
         catch (OperationCanceledException) { throw; }

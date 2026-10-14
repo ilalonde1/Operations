@@ -1122,7 +1122,7 @@ public sealed class BriefGenerator : IBriefGenerator
             AppendTable(body, new[] { "Project", "Opened", "Status", "Fee", "Billed (historical)" }, rows);
         }
 
-        AppendItalicBody(body, OrgBriefDeltekSection.BilledSourceNotice);
+        AppendItalicBody(body, dk.BilledSourceNotice);
 
         if (dk.UnavailableSections)
         {

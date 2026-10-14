@@ -287,9 +287,27 @@ public sealed record OrgBriefDeltekSection(
     decimal Ar90Plus,
     bool UnavailableSections)
 {
-    // This known source condition applies to FeeBilled only, not PR.Fee or AR.
-    public const string BilledSourceNotice = "Billed amounts are historical: PRSummaryMain has been frozen since 2026-02-17; subsequent billing is not reflected. Fee and AR use different sources.";
-    public bool BilledSourceIsStale => true;
+    /// <summary>First day of the latest period posted in Deltek's PRSummaryMain, the source of
+    /// every FeeBilled figure. Null when that probe could not be read. Fee and AR come from
+    /// other tables and are not governed by it.</summary>
+    public DateTime? BilledPostedThrough { get; init; }
+
+    /// <summary>Months between the billed posting period and the current month; null when unknown.</summary>
+    public int? BilledMonthLag => BilledPostedThrough is { } p
+        ? (DateTime.Today.Year - p.Year) * 12 + DateTime.Today.Month - p.Month
+        : null;
+
+    /// <summary>Stale when the summary is more than two months behind (the financials
+    /// module's "normal close lag"). Measured from the data, never asserted: on 2026-10-13
+    /// a hard-coded "frozen since 2026-02-17" shipped a week after Ian had re-run the refresh.</summary>
+    public bool BilledSourceIsStale => BilledMonthLag is > 2;
+
+    public string BilledSourceNotice => BilledPostedThrough is { } p
+        ? (BilledSourceIsStale
+            ? $"Billed amounts are historical: Deltek project summary posted through {p:MMM yyyy}, {BilledMonthLag} months behind; later billing is not reflected. Fee and AR use different sources."
+            : $"Billed amounts posted through {p:MMM yyyy} (Deltek project summary). Fee and AR use different sources.")
+        : "Billed amounts: the Deltek project-summary posting period could not be read; billed figures may trail live invoicing. Fee and AR use different sources.";
+
     public bool DegradedSections => UnavailableSections || BilledSourceIsStale;
 }
 
