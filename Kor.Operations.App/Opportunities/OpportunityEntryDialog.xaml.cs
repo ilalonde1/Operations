@@ -85,6 +85,9 @@ public partial class OpportunityEntryDialog : Window, INotifyPropertyChanged
                 .OfType<ComboBoxItem>()
                 .FirstOrDefault(c => string.Equals((string?)c.Content, _existing.EstimatedValueCurrency, StringComparison.OrdinalIgnoreCase))
                 ?? CurrencyBox.Items[0];
+            StoredDeadlineText.Text = OpportunityDeadlineDisplay.Date(_existing.SubmissionDeadlineUtc);
+            // The existing date editor writes workstation-local dates. Keep that
+            // storage contract explicit and separate from the canonical display.
             DeadlineBox.SelectedDate = _existing.SubmissionDeadlineUtc?.LocalDateTime;
             OwnerBox.Text = _existing.OwnerStaffId ?? string.Empty;
             OutcomeReasonBox.Text = _existing.OutcomeReason ?? string.Empty;

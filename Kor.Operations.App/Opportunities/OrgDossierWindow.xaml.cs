@@ -153,6 +153,6 @@ public partial class OrgDossierWindow : Window
             ContactCount: intel.Contacts.Count,
             ArOutstanding: intel.Ar?.TotalOutstanding ?? 0m,
             Ar90Plus: intel.Ar?.Outstanding90Plus ?? 0m,
-            DegradedSections: intel.HasDegradedSections);
+            UnavailableSections: intel.HasDegradedSections);
     }
 }

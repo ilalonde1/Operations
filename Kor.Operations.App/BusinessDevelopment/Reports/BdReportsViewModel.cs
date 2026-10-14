@@ -163,13 +163,11 @@ public sealed class BdReportsViewModel : INotifyPropertyChanged, Kor.Operations.
         private set { if (_previewHtml != value) { _previewHtml = value; OnPropertyChanged(); OnPropertyChanged(nameof(CanExportDocx)); } }
     }
 
-    // A "visual" report (heat-graph / treemap / cards) renders straight from the
-    // service HTML — there is no BdReportDocument behind it, so it has no DOCX
-    // document model. Every block-model report sets _currentDocument non-null;
-    // the visuals null it out. So: PreviewHtml present + no document == visual.
-    // The window exports visuals by screenshotting the WebView2 instead of
-    // rendering a document.
-    public bool CurrentIsVisual => _currentDocument is null && PreviewHtml is not null;
+    // Visual PDF layout stays landscape. Cards also have a complete Word model;
+    // graph/treemap retain explicitly labelled viewport snapshots.
+    public bool CurrentIsVisual => _currentDocumentKey?.StartsWith("visual-", StringComparison.Ordinal) == true && PreviewHtml is not null;
+
+    public bool CurrentIsVisualSnapshot => CurrentIsVisual && _currentDocument is null;
 
     public bool CanExportDocx => (_currentDocument is not null || CurrentIsVisual) && !IsBusy;
 
@@ -734,8 +732,8 @@ public sealed class BdReportsViewModel : INotifyPropertyChanged, Kor.Operations.
     /// <summary>
     /// Builds one of the live BD visuals (teaming heat-graph / priority treemap /
     /// attack cards). The HTML is produced by the report service from live queries
-    /// and shown straight in the WebView2 preview; there is no block-model document,
-    /// so export goes through the window's screenshot path (see CurrentIsVisual).
+    /// and shown straight in the WebView2 preview. Cards reuse the Word block
+    /// builder; graph/treemap export a labelled viewport snapshot.
     /// </summary>
     private async Task<string?> BuildVisualPreviewAsync(
         string key, string title, Func<CancellationToken, Task<string>> htmlFactory, CancellationToken ct)
@@ -752,14 +750,16 @@ public sealed class BdReportsViewModel : INotifyPropertyChanged, Kor.Operations.
                 return null; // superseded by a newer selection
             }
 
-            _currentDocument = null;   // visual: no block-model document behind it
+            _currentDocument = key == "visual-attack-cards" ? BdVisualHtml.CardsDocument(html) : null;
             _currentDocumentKey = key;
             _currentRecordCount = 0;
             SelectedSector = null;
             PreviewHtml = html;
 
             LogGenerateBestEffort("html");
-            StatusMessage = $"{title}: live from the BD graph. Export captures the rendered visual.";
+            StatusMessage = key == "visual-attack-cards"
+                ? $"{title}: DOCX includes all generated cards in a text layout, regardless of preview filtering or scrolling."
+                : $"{title}: DOCX saves the current visual viewport snapshot.";
             return PreviewHtml;
         }
         catch (OperationCanceledException)

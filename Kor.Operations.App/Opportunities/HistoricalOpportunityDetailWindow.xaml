@@ -9,6 +9,7 @@
         FontFamily="Mulish, Segoe UI"
         Loaded="Window_Loaded">
     <Window.Resources>
+        <local:OpportunityDeadlineConverter x:Key="OpportunityDeadlineConverter"/>
         <local:NullToBoolConverter x:Key="NullToBoolConverter"/>
     </Window.Resources>
 
@@ -43,7 +44,7 @@
                     </StackPanel>
                     <StackPanel Margin="0,0,28,0">
                         <TextBlock Text="Closes" FontSize="11" Foreground="#666"/>
-                        <TextBlock Text="{Binding Detail.SubmissionDeadlineUtc, StringFormat=yyyy-MM-dd}" FontSize="14" FontWeight="SemiBold"/>
+                        <TextBlock Text="{Binding Detail.SubmissionDeadlineUtc, Converter={StaticResource OpportunityDeadlineConverter}}" FontSize="14" FontWeight="SemiBold"/>
                     </StackPanel>
                     <StackPanel Margin="0,0,28,0">
                         <TextBlock Text="Est. Value" FontSize="11" Foreground="#666"/>

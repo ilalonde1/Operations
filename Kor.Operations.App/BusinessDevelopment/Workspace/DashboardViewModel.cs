@@ -10,6 +10,7 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Kor.Opportunities.Core.Models;
+using Kor.Operations.App.Opportunities;
 using Kor.Opportunities.Data.Intel;
 using Kor.Opportunities.Data.MajorProjects;
 using Kor.Opportunities.Data.Opportunities;
@@ -179,7 +180,11 @@ public sealed class DashboardViewModel : INotifyPropertyChanged, Kor.Operations.
     // OrgDossierWindow, Forward Pipeline opens the PursuitBrief.
     public sealed record FeedRow(long OpportunityId, string Name, string Buyer, string? Province, string Status, string? Deadline);
 
-    public sealed record DeadlineRow(long OpportunityId, string Name, string? Province, string? Deadline, int DaysLeft);
+    internal static DeadlineRow CreateDeadlineRow(Opportunity o, DateTimeOffset now)
+        => new(o.Id, o.Name, o.ProjectProvince, OpportunityDeadlineDisplay.Date(o.SubmissionDeadlineUtc),
+            o.SubmissionDeadlineUtc is { } d ? OpportunityDeadlineDisplay.Countdown(d, now) : "not specified");
+
+    public sealed record DeadlineRow(long OpportunityId, string Name, string? Province, string? Deadline, string Countdown);
 
     public sealed record OpenStructuralSeatRow(long OrgId, string DisplayName, string? Market, string? Status, string? DisplacementRead);
 
@@ -347,7 +352,7 @@ public sealed class DashboardViewModel : INotifyPropertyChanged, Kor.Operations.
                     o.BuyerName,
                     o.ProjectProvince,
                     o.Status.ToString(),
-                    o.SubmissionDeadlineUtc?.LocalDateTime.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture))));
+                    OpportunityDeadlineDisplay.Date(o.SubmissionDeadlineUtc))));
 
             Replace(SectorBars, BuildBars(pipeline
                 // U4: canonicalize case so "Education" and "education" are one bar.
@@ -372,7 +377,7 @@ public sealed class DashboardViewModel : INotifyPropertyChanged, Kor.Operations.
                 .Where(o => o.SubmissionDeadlineUtc >= now && o.SubmissionDeadlineUtc <= sixMonths)
                 .GroupBy(o =>
                 {
-                    var deadline = o.SubmissionDeadlineUtc!.Value.LocalDateTime;
+                    var deadline = o.SubmissionDeadlineUtc!.Value.DateTime; // stored-offset calendar month
                     return new DateTime(deadline.Year, deadline.Month, 1);
                 })
                 .OrderBy(g => g.Key)
@@ -381,12 +386,7 @@ public sealed class DashboardViewModel : INotifyPropertyChanged, Kor.Operations.
             Replace(Deadlines, opps
                 .Where(o => o.SubmissionDeadlineUtc >= now && o.SubmissionDeadlineUtc <= thirtyDays)
                 .OrderBy(o => o.SubmissionDeadlineUtc)
-                .Select(o => new DeadlineRow(
-                    o.Id,
-                    o.Name,
-                    o.ProjectProvince,
-                    o.SubmissionDeadlineUtc?.LocalDateTime.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
-                    o.SubmissionDeadlineUtc.HasValue ? (int)Math.Floor((o.SubmissionDeadlineUtc.Value - now).TotalDays) : 0)));
+                .Select(o => CreateDeadlineRow(o, now)));
 
             Replace(OpenStructuralSeats, openStructuralSeats.Select(r => new OpenStructuralSeatRow(
                 r.OrgId,

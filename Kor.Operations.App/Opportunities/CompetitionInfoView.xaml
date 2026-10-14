@@ -7,6 +7,7 @@
              Loaded="View_Loaded"
              Unloaded="View_Unloaded">
     <UserControl.Resources>
+        <local:OpportunityDeadlineConverter x:Key="OpportunityDeadlineConverter"/>
         <local:BoolToCheckConverter x:Key="BoolToCheckConverter"/>
     </UserControl.Resources>
 
@@ -65,7 +66,7 @@
                             <DataGridTextColumn Header="Province" Binding="{Binding ProjectProvince}" Width="60"/>
                             <DataGridTextColumn Header="Status" Binding="{Binding HistoricalStatus}" Width="90"/>
                             <DataGridTextColumn Header="RFP Date" Binding="{Binding RfpReleaseDate, StringFormat=yyyy-MM-dd}" Width="100"/>
-                            <DataGridTextColumn Header="Closes" Binding="{Binding SubmissionDeadlineUtc, StringFormat=yyyy-MM-dd}" Width="100"/>
+                            <DataGridTextColumn Header="Closes" Binding="{Binding SubmissionDeadlineUtc, Converter={StaticResource OpportunityDeadlineConverter}}" Width="290"/>
                             <DataGridTextColumn Header="Est. Value" Binding="{Binding EstimatedValue, StringFormat=C0}" Width="100"/>
                             <DataGridTextColumn Header="Amends" Binding="{Binding AmendmentCount}" Width="65"/>
                             <DataGridTextColumn Header="Awarded To" Binding="{Binding AwardedToOrganization}" Width="200"/>

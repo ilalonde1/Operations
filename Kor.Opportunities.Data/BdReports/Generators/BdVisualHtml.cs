@@ -1,5 +1,8 @@
 #nullable enable
 using System.Globalization;
+using System;
+using System.Collections.Generic;
+using System.Text.Json;
 
 namespace Kor.Opportunities.Data.BdReports.Generators;
 
@@ -33,9 +36,54 @@ public static class BdVisualHtml
         .Replace("/*DATA*/", rowsJson)
         .Replace("{{N}}", n.ToString(CultureInfo.InvariantCulture));
 
-    public static string Cards(string cardsJson, int n) => CardsHtml
-        .Replace("/*DATA*/", cardsJson)
-        .Replace("{{N}}", n.ToString(CultureInfo.InvariantCulture));
+    private const string CardsDataStart = "<script type=\"application/json\" id=\"attack-cards-data\">";
+
+    public static string Cards(string cardsJson, int n)
+    {
+        using var data = JsonDocument.Parse(cardsJson);
+        if (data.RootElement.GetArrayLength() != n)
+            throw new ArgumentException("Card count must match the report snapshot.", nameof(n));
+        // Default JSON escaping protects the script boundary, including names containing </script>.
+        var safeJson = JsonSerializer.Serialize(data.RootElement);
+        return CardsHtml.Replace("{{N}}", n.ToString(CultureInfo.InvariantCulture))
+            .Replace("/*DATA*/", "JSON.parse(document.getElementById('attack-cards-data').textContent)")
+            .Replace("</head>", CardsDataStart + safeJson + "</script></head>");
+    }
+
+    /// <summary>Full Word content from the exact preview snapshot; browser filters/scroll do not limit it.</summary>
+    public static BdReportDocument CardsDocument(string html)
+    {
+        var start = html.IndexOf(CardsDataStart, StringComparison.Ordinal);
+        if (start < 0) throw new InvalidOperationException("Attack Cards snapshot is missing; regenerate the report.");
+        start += CardsDataStart.Length;
+        var end = html.IndexOf("</script>", start, StringComparison.Ordinal);
+        if (end < 0) throw new InvalidOperationException("Attack Cards snapshot is incomplete.");
+        using var data = JsonDocument.Parse(html.Substring(start, end - start));
+        var blocks = new List<BdReportBlock>
+        {
+            new HeadingBlock(1, "Opportunity Attack Cards"),
+            new ParagraphBlock($"{data.RootElement.GetArrayLength()} live pursuits — full generated snapshot, including cards hidden by preview filtering. Word uses a text layout."),
+            new ItalicNoteBlock("Recorded team links; research contacts do not establish KOR relationships.")
+        };
+        foreach (var card in data.RootElement.EnumerateArray())
+        {
+            string Text(string key) => card.TryGetProperty(key, out var value) && value.ValueKind != JsonValueKind.Null
+                ? value.ToString() : "unknown";
+            var arch = Text("arch");
+            var contacts = card.TryGetProperty("archPeople", out var people) && people.ValueKind == JsonValueKind.Number && people.TryGetInt32(out var count) && count > 0;
+            var isKor = card.TryGetProperty("seIsKor", out var kor) && kor.ValueKind == JsonValueKind.True;
+            var se = Text("se");
+            var cost = card.TryGetProperty("cost", out var amount) && amount.ValueKind == JsonValueKind.Number && amount.TryGetDecimal(out var dollars)
+                ? dollars.ToString("C0", CultureInfo.GetCultureInfo("en-CA")) : "not stated";
+            blocks.Add(new HeadingBlock(2, Text("project")));
+            blocks.Add(new ParagraphBlock($"{Text("verdict")} · {Text("province")} · Cost: {cost}"));
+            blocks.Add(new LabelValueBlock("Architect: ", arch + (contacts ? " — research contacts recorded; KOR relationship unknown" : " — KOR relationship unknown")));
+            blocks.Add(new LabelValueBlock("Structural: ", se + (isKor ? " — recorded KOR" : se == "unknown" ? " — seat status unknown" : " — recorded SE")));
+            blocks.Add(new LabelValueBlock("GC: ", Text("gc")));
+            blocks.Add(new LabelValueBlock("Owner: ", Text("owner")));
+        }
+        return new BdReportDocument("Opportunity Attack Cards", blocks);
+    }
 
     // KOR maroon #602640; light surface; dark ink. Shared chrome for all three.
     private const string Css = @"body{margin:0;font-family:Calibri,Segoe UI,sans-serif;background:#ffffff;color:#1f2328}

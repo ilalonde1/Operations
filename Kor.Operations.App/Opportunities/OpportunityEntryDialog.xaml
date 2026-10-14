@@ -85,7 +85,11 @@
             </Grid>
 
             <TextBlock Grid.Row="7" Grid.Column="0" Text="Submission deadline" Margin="0,6,8,6"/>
-            <DatePicker Grid.Row="7" Grid.Column="1" x:Name="DeadlineBox" Margin="0,4,0,4"/>
+            <StackPanel Grid.Row="7" Grid.Column="1" Margin="0,4,0,4">
+                <TextBlock x:Name="StoredDeadlineText" TextWrapping="Wrap"/>
+                <TextBlock Text="Edit date (workstation local time)" FontSize="11"/>
+                <DatePicker x:Name="DeadlineBox"/>
+            </StackPanel>
 
             <TextBlock Grid.Row="8" Grid.Column="0" Text="Owner (staff id)" Margin="0,6,8,6"/>
             <TextBox  Grid.Row="8" Grid.Column="1" x:Name="OwnerBox" Margin="0,4,0,4"/>

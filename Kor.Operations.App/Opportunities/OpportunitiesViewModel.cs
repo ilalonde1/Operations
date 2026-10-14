@@ -1243,7 +1243,7 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
             sb.AppendLine("Hot list (Pursuing / Submitted):");
             foreach (var r in hot)
             {
-                var deadline = r.Model.SubmissionDeadlineUtc?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? "—";
+                var deadline = OpportunityDeadlineDisplay.Date(r.Model.SubmissionDeadlineUtc);
                 sb.AppendLine($"  [{r.Model.Status}] {r.OpportunityKey} — {r.Name} ({r.BuyerName}); deadline {deadline}; owner {r.OwnerStaffId}");
             }
         }
@@ -1262,7 +1262,7 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
             sb.AppendLine("Deadlines within 30 days (open pursuits):");
             foreach (var r in imminent)
             {
-                sb.AppendLine($"  {r.Model.SubmissionDeadlineUtc!.Value:yyyy-MM-dd} — {r.OpportunityKey} {r.Name} ({r.Model.Status})");
+                sb.AppendLine($"  {OpportunityDeadlineDisplay.Date(r.Model.SubmissionDeadlineUtc)} — {r.OpportunityKey} {r.Name} ({r.Model.Status})");
             }
         }
 
@@ -1308,7 +1308,7 @@ public sealed class OpportunitiesViewModel : ObservableObject, IAiContextProvide
 
         if (m.SubmissionDeadlineUtc.HasValue)
         {
-            sb.AppendLine($"Deadline: {m.SubmissionDeadlineUtc.Value:yyyy-MM-dd HH:mm zzz}");
+            sb.AppendLine($"Deadline: {OpportunityDeadlineDisplay.Date(m.SubmissionDeadlineUtc)}");
         }
 
         if (!string.IsNullOrWhiteSpace(m.OwnerStaffId))

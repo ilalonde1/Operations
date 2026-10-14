@@ -1,4 +1,5 @@
 #nullable enable
+using Kor.Operations.App.Opportunities;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -292,8 +293,7 @@ public sealed class BriefGenerator : IBriefGenerator
     {
         foreach (var r in d.LiveRfps)
         {
-            var deadline = r.SubmissionDeadlineUtc?.ToString("yyyy-MM-dd",
-                CultureInfo.InvariantCulture) ?? "no deadline";
+            var deadline = OpportunityDeadlineDisplay.Date(r.SubmissionDeadlineUtc);
             var sector = string.IsNullOrWhiteSpace(r.PrimeProjectSector) ? "" : $"  {r.PrimeProjectSector}";
             yield return $"{r.Name} ({r.BuyerName})  submit by {deadline}{sector}";
         }
@@ -1047,7 +1047,7 @@ public sealed class BriefGenerator : IBriefGenerator
             AppendBullet(body, $"{roleLabel}: {Nz(sourceName)} — Not on file.");
             if (structuralCallout && !string.IsNullOrWhiteSpace(sourceName))
             {
-                AppendItalicBody(body, $"KOR's competitor on this pursuit. Consider angle: {sourceName} vs KOR.");
+                AppendItalicBody(body, BriefPdfGenerator.StructuralSeatCallout(sourceName, summary));
             }
 
             return;
@@ -1062,7 +1062,7 @@ public sealed class BriefGenerator : IBriefGenerator
 
         if (structuralCallout)
         {
-            AppendItalicBody(body, $"KOR's competitor on this pursuit. Consider angle: {summary.DisplayName} vs KOR.");
+            AppendItalicBody(body, BriefPdfGenerator.StructuralSeatCallout(sourceName, summary));
         }
     }
 
@@ -1087,7 +1087,7 @@ public sealed class BriefGenerator : IBriefGenerator
         };
         if (dk.ProjectCount > 0)
         {
-            facts.Add(("Lifetime billed",
+            facts.Add(("Lifetime fee",
                 $"{dk.LifetimeFee.ToString("C0", CultureInfo.CurrentCulture)} across {dk.ProjectCount:N0} project(s)"));
         }
         if (dk.LatestProjectStart.HasValue)
@@ -1119,10 +1119,12 @@ public sealed class BriefGenerator : IBriefGenerator
                     p.FeeBilled > 0 ? p.FeeBilled.ToString("C0", CultureInfo.CurrentCulture) : "",
                 });
             }
-            AppendTable(body, new[] { "Project", "Opened", "Status", "Fee", "Billed" }, rows);
+            AppendTable(body, new[] { "Project", "Opened", "Status", "Fee", "Billed (historical)" }, rows);
         }
 
-        if (dk.DegradedSections)
+        AppendItalicBody(body, OrgBriefDeltekSection.BilledSourceNotice);
+
+        if (dk.UnavailableSections)
         {
             body.AppendChild(BuildPara("Some Deltek sections were unavailable for this client.",
                 BodyPt, bold: false, italic: true, align: null, bullet: false));
@@ -1238,13 +1240,8 @@ public sealed class BriefGenerator : IBriefGenerator
     private static string RegionOrgDisplayName(RegionTopOrg org)
         => string.IsNullOrWhiteSpace(org.ClendorClientId) ? org.DisplayName : "* " + org.DisplayName;
 
-    private static string FormatDeadline(DateTimeOffset? deadline)
-    {
-        if (!deadline.HasValue) return "not specified";
-        var d = deadline.Value;
-        var days = (int)Math.Round((d - DateTimeOffset.Now).TotalDays);
-        return $"{d:yyyy-MM-dd} ({days} day(s))";
-    }
+    internal static string FormatDeadline(DateTimeOffset? deadline, DateTimeOffset? now = null)
+        => OpportunityDeadlineDisplay.Format(deadline, now ?? DateTimeOffset.UtcNow);
 
     private static string FormatValue(decimal? value)
     {

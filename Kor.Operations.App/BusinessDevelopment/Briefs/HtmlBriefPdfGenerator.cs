@@ -489,7 +489,7 @@ public sealed class HtmlBriefPdfGenerator : IBriefPdfGenerator
             if (dk.RecentProjects.Count > 0)
             {
                 _sb.Append("<div class=\"table-wrap\"><table><thead><tr>")
-                   .Append("<th>Project</th><th>#</th><th>Opened</th><th>Status</th><th>Fee</th><th>Billed</th>")
+                   .Append("<th>Project</th><th>#</th><th>Opened</th><th>Status</th><th>Fee</th><th>Billed (historical)</th>")
                    .Append("</tr></thead><tbody>");
                 foreach (var p in dk.RecentProjects)
                 {
@@ -503,7 +503,8 @@ public sealed class HtmlBriefPdfGenerator : IBriefPdfGenerator
                 }
                 _sb.Append("</tbody></table></div>");
             }
-            if (dk.DegradedSections)
+            _sb.Append("<p class=\"muted\"><em>").Append(E(OrgBriefDeltekSection.BilledSourceNotice)).Append("</em></p>");
+            if (dk.UnavailableSections)
             {
                 _sb.Append("<p class=\"muted\"><em>Some Deltek sections were unavailable when this brief was generated.</em></p>");
             }

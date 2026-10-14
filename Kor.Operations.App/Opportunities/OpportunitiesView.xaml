@@ -243,7 +243,7 @@
                     </DataGridTemplateColumn>
                     <DataGridTextColumn Header="Discipline"    Binding="{Binding Discipline}"            Width="90"/>
                     <DataGridTextColumn Header="Value"         Binding="{Binding EstimatedValueDisplay}" Width="110"/>
-                    <DataGridTextColumn Header="Deadline"      Binding="{Binding DeadlineDisplay}"       Width="100"/>
+                    <DataGridTextColumn Header="Deadline"      Binding="{Binding DeadlineDisplay}"       Width="290"/>
                     <DataGridTextColumn Header="Owner"         Binding="{Binding OwnerStaffId}"          Width="70"/>
                     <DataGridTextColumn Header="Updated"       Binding="{Binding UpdatedAtDisplay}"      Width="100"/>
                 </DataGrid.Columns>

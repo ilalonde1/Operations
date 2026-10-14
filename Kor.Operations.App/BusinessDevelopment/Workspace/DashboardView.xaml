@@ -479,7 +479,7 @@
                             <DataGridTextColumn Header="Buyer" Binding="{Binding Buyer}" Width="160"/>
                             <DataGridTextColumn Header="Province" Binding="{Binding Province}" Width="80"/>
                             <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="100"/>
-                            <DataGridTextColumn Header="Deadline" Binding="{Binding Deadline}" Width="100"/>
+                            <DataGridTextColumn Header="Deadline" Binding="{Binding Deadline}" Width="290"/>
                         </DataGrid.Columns>
                     </DataGrid>
                 </Grid>
@@ -919,8 +919,7 @@
                                     </StackPanel>
                                     <Border Grid.Column="1" Background="{StaticResource Brand.Accent.Brush}" CornerRadius="999" Padding="8,3" VerticalAlignment="Center">
                                         <TextBlock Foreground="White" FontSize="11" FontWeight="SemiBold">
-                                            <Run Text="{Binding DaysLeft, Mode=OneWay}"/>
-                                            <Run Text="d"/>
+                                            <Run Text="{Binding Countdown, Mode=OneWay}"/>
                                         </TextBlock>
                                     </Border>
                                 </Grid>

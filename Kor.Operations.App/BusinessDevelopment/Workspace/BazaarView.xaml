@@ -77,7 +77,7 @@
                         <DataGridTextColumn Header="Buyer"    Binding="{Binding BuyerName}"              Width="190" MinWidth="150"/>
                         <DataGridTextColumn Header="Location" Binding="{Binding LocationDisplay}"        Width="120"/>
                         <DataGridTextColumn Header="Est. value" Binding="{Binding EstimatedValueDisplay}" Width="110"/>
-                        <DataGridTextColumn Header="Deadline" Binding="{Binding DeadlineDisplay}"        Width="100"/>
+                        <DataGridTextColumn Header="Deadline" Binding="{Binding DeadlineDisplay}"        Width="290"/>
                     </DataGrid.Columns>
                 </DataGrid>
 

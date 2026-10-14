@@ -103,7 +103,7 @@ public sealed class OpportunityRowView
 
     public string DeadlineDisplay =>
         Model.SubmissionDeadlineUtc.HasValue
-            ? Model.SubmissionDeadlineUtc.Value.LocalDateTime.ToString("yyyy-MM-dd")
+            ? OpportunityDeadlineDisplay.Date(Model.SubmissionDeadlineUtc)
             : "";
 
     public string OwnerStaffId => Model.OwnerStaffId ?? "";

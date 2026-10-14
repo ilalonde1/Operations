@@ -285,7 +285,13 @@ public sealed record OrgBriefDeltekSection(
     int ContactCount,
     decimal ArOutstanding,
     decimal Ar90Plus,
-    bool DegradedSections);
+    bool UnavailableSections)
+{
+    // This known source condition applies to FeeBilled only, not PR.Fee or AR.
+    public const string BilledSourceNotice = "Billed amounts are historical: PRSummaryMain has been frozen since 2026-02-17; subsequent billing is not reflected. Fee and AR use different sources.";
+    public bool BilledSourceIsStale => true;
+    public bool DegradedSections => UnavailableSections || BilledSourceIsStale;
+}
 
 public sealed record OrgBriefData(
     long Id,

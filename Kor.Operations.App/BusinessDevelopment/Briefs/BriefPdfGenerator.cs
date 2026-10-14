@@ -1,4 +1,5 @@
 #nullable enable
+using Kor.Operations.App.Opportunities;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -220,8 +221,7 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
     {
         foreach (var r in d.LiveRfps)
         {
-            var deadline = r.SubmissionDeadlineUtc?.ToString("yyyy-MM-dd",
-                CultureInfo.InvariantCulture) ?? "no deadline";
+            var deadline = OpportunityDeadlineDisplay.Date(r.SubmissionDeadlineUtc);
             var sector = string.IsNullOrWhiteSpace(r.PrimeProjectSector) ? "" : $"  {r.PrimeProjectSector}";
             yield return $"{r.Name} ({r.BuyerName})  submit by {deadline}{sector}";
         }
@@ -672,6 +672,15 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
         }
     }
 
+    internal static string StructuralSeatCallout(string? sourceName, LinkedOrgSummary? summary)
+    {
+        if (summary is null)
+            return $"Recorded structural firm: {Nz(sourceName)}; identity unresolved. KOR's seat and competitive position are unconfirmed.";
+        if (string.Equals(summary.Kind, "KorStructural", StringComparison.OrdinalIgnoreCase))
+            return "KOR's own recorded structural seat on this pursuit.";
+        return $"KOR's competitor on this pursuit. Consider angle: {summary.DisplayName} vs KOR.";
+    }
+
     private static IEnumerable<string> ProjectLinkedOrgBullets(
         string roleLabel,
         string? sourceName,
@@ -683,7 +692,7 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
             yield return $"{roleLabel}: {Nz(sourceName)} — Not on file.";
             if (structuralCallout && !string.IsNullOrWhiteSpace(sourceName))
             {
-                yield return $"KOR's competitor on this pursuit. Consider angle: {sourceName} vs KOR.";
+                yield return StructuralSeatCallout(sourceName, summary);
             }
             yield break;
         }
@@ -694,7 +703,7 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
         yield return $"{roleLabel}: {summary.DisplayName} — {summary.IntelPersonCount} people, {summary.OpenActionCount} open actions, {summary.RecentSignalCount} recent signals; last refreshed {refreshed}.";
         if (structuralCallout)
         {
-            yield return $"KOR's competitor on this pursuit. Consider angle: {summary.DisplayName} vs KOR.";
+            yield return StructuralSeatCallout(sourceName, summary);
         }
     }
 
@@ -1157,7 +1166,7 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
             DeltekFactRow(table, "Client", $"{dk.DeltekClientId}  {Nz(dk.ClientName)}");
             if (dk.ProjectCount > 0)
             {
-                DeltekFactRow(table, "Lifetime billed",
+                DeltekFactRow(table, "Lifetime fee",
                     $"{dk.LifetimeFee.ToString("C0", CultureInfo.CurrentCulture)} across {dk.ProjectCount:N0} project(s)");
             }
             if (dk.LatestProjectStart.HasValue)
@@ -1193,7 +1202,7 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
                 DeltekProjectHeader(table, "Opened");
                 DeltekProjectHeader(table, "Status");
                 DeltekProjectHeader(table, "Fee");
-                DeltekProjectHeader(table, "Billed");
+                DeltekProjectHeader(table, "Billed (historical)");
 
                 foreach (var p in dk.RecentProjects)
                 {
@@ -1206,7 +1215,9 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
             });
         }
 
-        if (dk.DegradedSections)
+        column.Item().PaddingTop(6).Text(OrgBriefDeltekSection.BilledSourceNotice).FontSize(9).Italic().FontColor(Muted);
+
+        if (dk.UnavailableSections)
         {
             column.Item().PaddingTop(6)
                 .Text("Some Deltek sections were unavailable for this client.")
@@ -1476,13 +1487,8 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
     private static string RegionOrgDisplayName(RegionTopOrg org)
         => string.IsNullOrWhiteSpace(org.ClendorClientId) ? org.DisplayName : "* " + org.DisplayName;
 
-    internal static string FormatDeadline(DateTimeOffset? deadline)
-    {
-        if (!deadline.HasValue) return "not specified";
-        var d = deadline.Value;
-        var days = (int)Math.Round((d - DateTimeOffset.Now).TotalDays);
-        return $"{d:yyyy-MM-dd} ({days} day(s))";
-    }
+    internal static string FormatDeadline(DateTimeOffset? deadline, DateTimeOffset? now = null)
+        => OpportunityDeadlineDisplay.Format(deadline, now ?? DateTimeOffset.UtcNow);
 
     internal static string FormatValue(decimal? value)
     {

@@ -297,12 +297,12 @@ public partial class BdReportsWindow : Window
 
         try
         {
-            // Visual reports (heat-graph / treemap / cards) have no block-model
-            // document — export a screenshot of the rendered WebView2 instead.
-            var bytes = _vm.CurrentIsVisual
+            // Cards have a complete snapshot-backed Word document. Graph/treemap
+            // explicitly export the current visual viewport.
+            var bytes = _vm.CurrentIsVisualSnapshot
                 ? DocxBuilder.RenderImage(
                     await CapturePreviewPngAsync().ConfigureAwait(true),
-                    _vm.SelectedAnalytical?.Title ?? "BD Visual",
+                    (_vm.SelectedAnalytical?.Title ?? "BD Visual") + " — current viewport snapshot",
                     Math.Max(1, (int)Preview.ActualWidth),
                     Math.Max(1, (int)Preview.ActualHeight))
                 : _vm.RenderCurrentDocx();
