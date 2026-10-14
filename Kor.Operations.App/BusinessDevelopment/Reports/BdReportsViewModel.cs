@@ -593,7 +593,7 @@ public sealed class BdReportsViewModel : INotifyPropertyChanged, Kor.Operations.
             PreviewHtml = HtmlPreviewBuilder.Render(document);
 
             LogGenerateBestEffort("html");
-            StatusMessage = $"Prime consultants: {projects.Count} records retrieved, {projects.Count(p => p.ResearchComplete)} usable firm/relationship assessments, {projects.Count(p => p.HasPrime)} firms identified; {projects.Count(p => p.KnownToKor is null)} relationships unknown.";
+            StatusMessage = $"Prime consultants: {projects.Count} records retrieved, {projects.Count(p => p.ResearchComplete)} usable firm/relationship assessments, {projects.Count(p => p.HasPrime)} firms identified, {projects.Count(p => p.PrimeNotIdentifiedByResearch)} negative findings; {projects.Count(p => p.KnownToKor is null)} relationships unknown.";
             return PreviewHtml;
         }
         catch (OperationCanceledException)

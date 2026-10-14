@@ -84,6 +84,32 @@ WHERE Id = @id;";
         await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
     }
 
+    public async Task<int> CloseAbandonedAsync(string hostInstance, string reason, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(hostInstance))
+        {
+            throw new ArgumentException("Host instance is required.", nameof(hostInstance));
+        }
+
+        // HostInstance is written two ways: "HOST" (IngestionService) and "HOST/pid"
+        // (AwardIngestionService, trigger poller). Prefix-match on the host, exactly, so
+        // KOR-APP01 cannot claim KOR-APP010's rows.
+        const string sql = @"
+UPDATE opportunities.IngestionRuns
+SET EndedAtUtc   = sysdatetimeoffset(),
+    Success      = 0,
+    ErrorSummary = @reason
+WHERE EndedAtUtc IS NULL
+  AND (HostInstance = @host OR LEFT(HostInstance, LEN(@host) + 1) = @host + N'/');";
+
+        await using var con = new SqlConnection(_connectionString);
+        await con.OpenAsync(ct).ConfigureAwait(false);
+        await using var cmd = new SqlCommand(sql, con) { CommandTimeout = CommandTimeoutSeconds };
+        cmd.Parameters.Add("@host", SqlDbType.NVarChar, 200).Value = hostInstance;
+        cmd.Parameters.Add("@reason", SqlDbType.NVarChar, 2000).Value = reason;
+        return await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+    }
+
     public async Task<IReadOnlyList<IngestionRun>> ListRecentAsync(int max, CancellationToken ct)
     {
         if (max <= 0)

@@ -189,9 +189,23 @@ public sealed record PrimeConsultantRow(
     string? KorAngle,
     double? Confidence)
 {
+    /// <summary>The research's own note on what it found (the payload's top-level
+    /// description): "none - procurement is PAUSED", "duplicate of 6859", and so on.</summary>
+    public string? ResearchNote { get; init; }
+
     public bool HasPrime => !string.IsNullOrWhiteSpace(PrimeFirm);
-    public bool HasUsableResearch => HasPrime;
-    public bool ResearchComplete => HasUsableResearch && KnownToKor.HasValue;
+
+    /// <summary>The payload carried an assessment at all: a named firm, or an explicit
+    /// relationship flag. A recorded NEGATIVE finding (no firm, knownToKor false, a note
+    /// saying why) is usable research; an empty or malformed payload is not.</summary>
+    public bool HasUsableResearch => HasPrime || KnownToKor.HasValue;
+
+    /// <summary>Research recorded a negative finding: no firm, with an explicit flag.
+    /// A result, not a gap -- and still not proof that no prime exists.</summary>
+    public bool PrimeNotIdentifiedByResearch => HasUsableResearch && !HasPrime;
+
+    /// <summary>A named firm AND an explicit relationship assessment.</summary>
+    public bool ResearchComplete => HasPrime && KnownToKor.HasValue;
 }
 
 /// <summary>One active industry award program KOR could consider entering.</summary>

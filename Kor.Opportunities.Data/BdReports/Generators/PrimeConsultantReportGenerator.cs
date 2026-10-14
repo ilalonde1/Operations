@@ -25,6 +25,11 @@ public static class PrimeConsultantReportGenerator
         var withoutPrime = projects.Where(p => !p.HasPrime).ToList();
         var korAligned = projects.Where(p => p.HasPrime && p.KnownToKor == true).ToList();
         var complete = projects.Count(p => p.ResearchComplete);
+        // A payload that names no firm but carries an explicit flag and a note saying why
+        // (paused, unfunded, duplicate) is a NEGATIVE FINDING, not a partial payload. On
+        // 2026-10-13 that was 99 of 148 rows, and this report called them "unusable".
+        var negative = projects.Count(p => p.PrimeNotIdentifiedByResearch);
+        var partial = projects.Count - complete - negative;
 
         var b = new BdReportDocumentBuilder("KOR Structural — Prime Consultant Identification Report");
 
@@ -32,13 +37,14 @@ public static class PrimeConsultantReportGenerator
 
         b.Italic(
             "Prime consultant intelligence for KOR's BD pipeline. In public AEC work, the Prime Consultant (typically the architect) submits ONE team proposal to the owner — including KOR as structural sub. " +
-            $"Retrieved {projects.Count} research records; usable firm and relationship assessments in {complete}. Retrieval alone does not establish completed research. " +
+            $"Retrieved {projects.Count} research records: {complete} name a firm with a relationship assessment, {negative} record a negative finding (no prime identified, with the reason where known), {partial} are partial or unusable. Retrieval alone does not establish completed research. " +
             $"Generated {generatedAtUtc:yyyy-MM-dd HH:mm} UTC from live KorOpportunitiesDb.");
 
         b.H2("Executive Summary");
         b.B("Research records retrieved: ", projects.Count.ToString(CultureInfo.InvariantCulture));
         b.B("Usable firm and relationship assessments: ", complete.ToString(CultureInfo.InvariantCulture));
-        b.B("Partial or unusable research: ", (projects.Count - complete).ToString(CultureInfo.InvariantCulture));
+        b.B("Negative findings (research found no prime; reason recorded where known): ", negative.ToString(CultureInfo.InvariantCulture));
+        b.B("Partial or unusable research: ", partial.ToString(CultureInfo.InvariantCulture));
         b.B("Prime consultant identified: ", PctDisplay(withPrime.Count, projects.Count));
         b.B("Prime not identified in available payload: ", PctDisplay(withoutPrime.Count, projects.Count));
         b.B("Relationship assessment unknown: ", projects.Count(p => p.KnownToKor is null).ToString(CultureInfo.InvariantCulture));
@@ -135,17 +141,19 @@ public static class PrimeConsultantReportGenerator
 
         if (withoutPrime.Count > 0)
         {
-            b.H2("Unknown primes — recommended next moves");
-            b.P("These payloads do not supply a usable firm name. Research may be missing, malformed or incomplete; this does not establish that no prime has been selected. Review the research before deciding the next action.");
+            b.H2("No prime identified — what the research recorded");
+            b.P("For these projects the research names no prime firm. Where the payload says why (procurement paused, unfunded, a duplicate, not yet disclosed) that note is shown; a payload with no assessment at all is marked unusable. Neither case establishes that no prime has been selected.");
             b.Table(
-                new[] { "Id", "Project", "Cost", "Province", "Recommended Action" },
+                new[] { "Id", "Project", "Cost", "Province", "Research note" },
                 withoutPrime.Take(20).Select(p => (IReadOnlyList<string>)new[]
                 {
                     p.MpiId.ToString(CultureInfo.InvariantCulture),
                     Safe(p.ProjectName, 50),
                     p.CostDisplay,
                     p.Province,
-                    "FOIP request / owner direct outreach",
+                    p.HasUsableResearch
+                        ? Safe(p.ResearchNote ?? "Negative finding; no reason recorded", 160)
+                        : "Unusable payload: no assessment recorded; re-research",
                 }).ToList());
         }
 

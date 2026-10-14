@@ -236,16 +236,73 @@ public sealed class CaSocrataMajorProjectsInventoryProvider : IOpportunityProvid
         return rows;
     }
 
+    /// <summary>
+    /// Expands the literal token <c>{year}</c> in a source URL to the given calendar year.
+    /// The City of San Diego publishes one approvals CSV per year, and the source carried
+    /// the year as a literal that nothing rewrote: on 1 January it would have kept
+    /// fetching the old year's frozen file and reporting success. Case-insensitive; a URL
+    /// without the token is returned unchanged.
+    /// </summary>
+    public static string ResolveBaseUrl(string baseUrl, int year)
+        => baseUrl.Replace("{year}", year.ToString(CultureInfo.InvariantCulture), StringComparison.OrdinalIgnoreCase);
+
+    private static bool HasYearToken(string baseUrl)
+        => baseUrl.Contains("{year}", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Fetches the CSV for the current year. Early in January the new year's file may not
+    /// be published yet (2027 answered 403 on 2026-10-13), so a 403/404 on a year-stamped
+    /// URL falls back to the previous year's file with a warning rather than failing the
+    /// run. The source-freshness audit still flags the source if that goes on for weeks.
+    /// </summary>
+    private async Task<HttpResponseMessage> GetCsvResponseAsync(
+        OpportunitySource source,
+        IReadOnlyDictionary<string, string> sourceConfig,
+        CancellationToken ct)
+    {
+        var year = DateTime.UtcNow.Year;
+        var url = ResolveBaseUrl(source.BaseUrl, year);
+        var response = await SendAsync(url).ConfigureAwait(false);
+        if (!response.IsSuccessStatusCode
+            && HasYearToken(source.BaseUrl)
+            && response.StatusCode is System.Net.HttpStatusCode.Forbidden or System.Net.HttpStatusCode.NotFound)
+        {
+            var status = (int)response.StatusCode;
+            response.Dispose();
+            var previous = ResolveBaseUrl(source.BaseUrl, year - 1);
+            _logger.LogWarning(
+                "CA CSV source {Source}: {Url} answered {Status}; this year's file is not published yet, falling back to {Previous}.",
+                source.Name, url, status, previous);
+            response = await SendAsync(previous).ConfigureAwait(false);
+        }
+
+        try
+        {
+            response.EnsureSuccessStatusCode();
+        }
+        catch
+        {
+            response.Dispose();
+            throw;
+        }
+
+        return response;
+
+        async Task<HttpResponseMessage> SendAsync(string requestUrl)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, requestUrl);
+            AddCommonHeaders(request, sourceConfig);
+            request.Headers.TryAddWithoutValidation("Accept", "text/csv,*/*;q=0.8");
+            return await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
+        }
+    }
+
     private async IAsyncEnumerable<JsonElement> FetchCsvRowsAsync(
         OpportunitySource source,
         IReadOnlyDictionary<string, string> sourceConfig,
         [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct)
     {
-        using var request = new HttpRequestMessage(HttpMethod.Get, source.BaseUrl);
-        AddCommonHeaders(request, sourceConfig);
-        request.Headers.TryAddWithoutValidation("Accept", "text/csv,*/*;q=0.8");
-        using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
-        response.EnsureSuccessStatusCode();
+        using var response = await GetCsvResponseAsync(source, sourceConfig, ct).ConfigureAwait(false);
 
         await using var stream = await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
         await using var capped = new MemoryStream();
@@ -476,7 +533,9 @@ public sealed class CaSocrataMajorProjectsInventoryProvider : IOpportunityProvid
             return null;
         }
 
-        var sourceUrl = FirstNonBlank(Read(row, sourceConfig, "sourceUrlColumn", "url", "link", "record_url"), source.BaseUrl);
+        var sourceUrl = FirstNonBlank(
+            Read(row, sourceConfig, "sourceUrlColumn", "url", "link", "record_url"),
+            ResolveBaseUrl(source.BaseUrl, DateTime.UtcNow.Year));
         var valuation = ParseMoney(valuationText);
         var units = ParseInt(unitsText, 0);
         var minUnits = ParseInt(Get(sourceConfig, "minUnits"), 20);

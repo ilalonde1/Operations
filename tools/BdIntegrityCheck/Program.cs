@@ -40,13 +40,15 @@ Directory.CreateDirectory(outDir);
 
 var invariants = new List<(string Key, string Desc, bool Error, string CountSql, string SampleSql)>();
 
-// Brief 3 data companion, not a claim of observed corruption or a repair.
-// EXPECTED usable firm + explicit true/false relationship assessment; ACTUAL
-// counts distinct active project IDs with partial/unusable prime payloads.
-// Covers JSON shape/type/missing-field exposure. Does not prove research accuracy,
-// UI rendering or a KOR relationship; an invented but plausible firm would escape.
-// No database execution was performed for this brief. The prior audit found 148
-// non-null rows, zero missing firmName/knownToKor; types were not proved by that count.
+// Brief 3 data companion, corrected 2026-10-13. The first cut counted a payload with a
+// null firmName as "partial"; 99 of the 148 live rows are payloads that parsed fine and
+// record an explicit NEGATIVE finding (firmName null, knownToKor false, a description
+// saying why: paused, unfunded, duplicate). That is complete research with a negative
+// result, not a partial payload, and the report now says so. EXPECTED: valid JSON, a
+// primeConsultant object, knownToKor true/false, and firmName a string or null. ACTUAL
+// counts distinct active project IDs whose payload fails one of those. Covers JSON
+// shape/type exposure. Does not prove research accuracy or a KOR relationship; an
+// invented but plausible firm, or a wrong negative, would escape.
 var partialPrimeResearch = @"
 SELECT DISTINCT m.Id
 FROM opportunities.MajorProjectsInventory m
@@ -54,15 +56,28 @@ JOIN opportunities.MajorProjectEnrichment e
   ON e.MajorProjectsInventoryId=m.Id AND e.ProviderName=N'PrimeConsultantResearch'
 CROSS APPLY (VALUES (CASE WHEN ISJSON(e.ResultJson)=1 THEN e.ResultJson ELSE N'{}' END)) j(SafeJson)
 WHERE m.RetiredAtUtc IS NULL AND e.ResultJson IS NOT NULL
-AND (NULLIF(LTRIM(RTRIM(JSON_VALUE(j.SafeJson,'$.primeConsultant.firmName'))),N'') IS NULL
+AND (ISJSON(e.ResultJson)<>1
+     OR JSON_QUERY(j.SafeJson,'$.primeConsultant') IS NULL
      OR LOWER(LTRIM(RTRIM(COALESCE(JSON_VALUE(j.SafeJson,'$.primeConsultant.knownToKor'),N'')))) NOT IN (N'true',N'false')
-     OR NOT EXISTS (SELECT 1 FROM OPENJSON(COALESCE(JSON_QUERY(j.SafeJson,'$.primeConsultant'),N'{}'))
-                    WHERE [key]=N'firmName' AND [type]=1));";
+     OR EXISTS (SELECT 1 FROM OPENJSON(COALESCE(JSON_QUERY(j.SafeJson,'$.primeConsultant'),N'{}'))
+                WHERE [key]=N'firmName' AND [type] NOT IN (0,1)));";
 invariants.Add(("bd_prime_partial_research",
-    "EXPECTED usable firm and explicit relationship assessment for complete research; ACTUAL distinct project IDs with incomplete payloads (WARN worklist, not false-absence count)",
+    "EXPECTED a parsed payload with a primeConsultant object, an explicit true/false relationship flag and a string-or-null firm name; ACTUAL distinct project IDs whose payload is unusable (WARN worklist; a recorded negative finding is NOT counted)",
     false,
     "SELECT COUNT(*) FROM (" + partialPrimeResearch.TrimEnd(';') + ") partial;",
     "SELECT TOP 5 Id FROM (" + partialPrimeResearch.TrimEnd(';') + ") partial ORDER BY Id;"));
+
+// A run with no EndedAtUtc after 24 hours was abandoned by a Worker restart (deploy,
+// crash, reboot): nothing else closes it, and Admin shows it as "running" forever. Two
+// sat open from 2026-10-01 and 2026-10-06. The Worker now closes its own host's open
+// rows at startup (AbandonedRunSweeperHostedService); this is the gate on the data,
+// whichever binary is deployed. Does not judge a run under 24 hours, so a hung run
+// inside that window escapes.
+invariants.Add(("ingestion_run_open_over_24h",
+    "EXPECTED 0 ingestion runs still open after 24 hours; ACTUAL count (abandoned by a worker restart and never closed)",
+    true,
+    "SELECT COUNT(*) FROM opportunities.IngestionRuns WHERE EndedAtUtc IS NULL AND StartedAtUtc < DATEADD(hour,-24,SYSDATETIMEOFFSET());",
+    "SELECT TOP 5 Id, ProviderName, HostInstance, CONVERT(varchar(19), StartedAtUtc, 120) AS StartedAtUtc FROM opportunities.IngestionRuns WHERE EndedAtUtc IS NULL AND StartedAtUtc < DATEADD(hour,-24,SYSDATETIMEOFFSET()) ORDER BY StartedAtUtc;"));
 
 // Brief 2: compare the report's shared people population with an independent
 // EXISTS-based count of live people. CountSql counts ORGANISATIONS with a mismatch,
@@ -515,7 +530,8 @@ invariants.Add(("opportunity_merged_across_sibling_sources",
                ob.OpportunitySourceId, ob.Url
         FROM opportunities.OpportunityObservations ob
         JOIN opportunities.OpportunitySources s ON s.Id = ob.OpportunitySourceId
-        WHERE s.Name LIKE '%[_]%')
+        WHERE s.Name LIKE '%[_]%'
+          AND ob.OpportunityId IS NOT NULL)   -- a detached (stranded) observation belongs to no row
       SELECT COUNT(*) FROM (
         SELECT OpportunityId FROM fam
         GROUP BY OpportunityId, Family
@@ -526,7 +542,8 @@ invariants.Add(("opportunity_merged_across_sibling_sources",
                ob.OpportunitySourceId, ob.Url
         FROM opportunities.OpportunityObservations ob
         JOIN opportunities.OpportunitySources s ON s.Id = ob.OpportunitySourceId
-        WHERE s.Name LIKE '%[_]%'),
+        WHERE s.Name LIKE '%[_]%'
+          AND ob.OpportunityId IS NOT NULL),
       bad AS (
         SELECT OpportunityId FROM fam
         GROUP BY OpportunityId, Family

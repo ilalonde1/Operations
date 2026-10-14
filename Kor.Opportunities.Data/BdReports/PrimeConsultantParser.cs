@@ -3,7 +3,9 @@ using System.Text.Json;
 
 namespace Kor.Opportunities.Data.BdReports;
 
-/// <summary>Fields hydrated from a PrimeConsultantResearch ResultJson payload.</summary>
+/// <summary>Fields hydrated from a PrimeConsultantResearch ResultJson payload.
+/// <paramref name="ResearchNote"/> is the payload's top-level description: the
+/// research's own account of what it found ("none - procurement is PAUSED").</summary>
 public sealed record PrimeConsultantResult(
     string? FirmName,
     string? PrincipalInCharge,
@@ -11,11 +13,21 @@ public sealed record PrimeConsultantResult(
     bool? KnownToKor,
     string? KorRelationshipNotes,
     string? KorAngle,
-    double? Confidence)
+    double? Confidence,
+    string? ResearchNote = null)
 {
     public static readonly PrimeConsultantResult Empty = new(null, null, null, null, null, null, null);
-    public bool IsUsable => !string.IsNullOrWhiteSpace(FirmName);
-    public bool IsComplete => IsUsable && KnownToKor.HasValue;
+
+    /// <summary>A firm was named.</summary>
+    public bool HasFirm => !string.IsNullOrWhiteSpace(FirmName);
+
+    /// <summary>The payload carried an assessment at all: a named firm, or an explicit
+    /// relationship flag. A recorded NEGATIVE finding (no firm, knownToKor false, a note
+    /// saying why) is usable research; an empty or malformed payload is not.</summary>
+    public bool IsUsable => HasFirm || KnownToKor.HasValue;
+
+    /// <summary>A named firm AND an explicit relationship assessment.</summary>
+    public bool IsComplete => HasFirm && KnownToKor.HasValue;
 }
 
 /// <summary>
@@ -64,7 +76,8 @@ public static class PrimeConsultantParser
                 BoolOf(prime, "knownToKor"),
                 StringOf(prime, "korRelationshipNotes"),
                 StringOf(root, "korAngle"),
-                DoubleOf(prime, "confidence"));
+                DoubleOf(prime, "confidence"),
+                StringOf(root, "description"));
         }
     }
 

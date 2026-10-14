@@ -229,6 +229,35 @@ public sealed class BdMissingEvidenceRegressionTests
         Assert.Equal(expected, actual.Status);
     }
 
+    // Covers the distinction brief 3 itself got wrong: a payload that parsed and records an
+    // explicit NEGATIVE finding (no firm, knownToKor false, a note saying why) is a result,
+    // not a partial payload. 99 of 148 live rows were exactly that and the report called
+    // them "partial or unusable". Does not validate the note's truth; a wrong negative
+    // ("none - paused" for a project that is live) would escape.
+    [Fact]
+    public void PrimeResearch_RecordedNegativeFindingIsAResultNotAGap()
+    {
+        var negative = PrimeConsultantParser.Parse(
+            """{"overallConfidence":0.7,"description":"none - procurement is PAUSED","primeConsultant":{"firmName":null,"knownToKor":false}}""");
+        Assert.True(negative.IsUsable);
+        Assert.False(negative.HasFirm);
+        Assert.False(negative.IsComplete);
+        Assert.Equal("none - procurement is PAUSED", negative.ResearchNote);
+
+        var doc = PrimeConsultantReportGenerator.Build(new[]
+        {
+            new PrimeConsultantRow(1, "Paused project", "BC", null, "TBD", 0, null, null, null, false, null, null, null)
+                { ResearchNote = "none - procurement is PAUSED" },
+            new PrimeConsultantRow(2, "Empty payload", "BC", null, "TBD", 0, null, null, null, null, null, null, null),
+        }, DateTimeOffset.UtcNow);
+        var labels = doc.Blocks.OfType<LabelValueBlock>().ToDictionary(x => x.Label, x => x.Value);
+        Assert.Equal("1", labels["Negative findings (research found no prime; reason recorded where known): "]);
+        Assert.Equal("1", labels["Partial or unusable research: "]);
+        var html = HtmlPreviewBuilder.Render(doc);
+        Assert.Contains("none - procurement is PAUSED", html);
+        Assert.Contains("Unusable payload", html);
+    }
+
     private static PursuitBrief Brief(string? client) => new(
         new PursuitBriefProject(1, "Project", "Owner", "BC", null, null, null, "TBD", null),
         client, client, new PursuitBriefArchitect("Architect", 2, null, null, null, Array.Empty<string>()),

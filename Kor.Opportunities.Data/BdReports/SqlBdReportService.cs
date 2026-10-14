@@ -632,7 +632,8 @@ WHERE m.RetiredAtUtc IS NULL
                 research.KnownToKor,
                 research.KorRelationshipNotes,
                 research.KorAngle,
-                research.Confidence));
+                research.Confidence)
+            { ResearchNote = research.ResearchNote });
         }
 
         return rows

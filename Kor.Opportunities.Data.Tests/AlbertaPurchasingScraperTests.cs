@@ -142,5 +142,6 @@ public sealed class AlbertaPurchasingScraperTests : IAsyncLifetime
             return Task.CompletedTask;
         }
         public Task<IReadOnlyList<IngestionRun>> ListRecentAsync(int max, CancellationToken ct) => throw new NotSupportedException();
+        public Task<int> CloseAbandonedAsync(string hostInstance, string reason, CancellationToken ct) => throw new NotSupportedException();
     }
 }

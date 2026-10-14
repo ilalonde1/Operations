@@ -1405,6 +1405,7 @@ builder.Services.AddQuartz(q =>
             });
 
             builder.Services.AddHostedService<HeartbeatBackgroundService>();
+            builder.Services.AddHostedService<AbandonedRunSweeperHostedService>();
             builder.Services.AddHostedService<SourceBootstrapHostedService>();
             builder.Services.AddHostedService<IndustryEventSourceBootstrapHostedService>();
             builder.Services.AddHostedService<IngestionTriggerPollerBackgroundService>();
