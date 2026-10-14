@@ -28,4 +28,9 @@
     <None Include="PdfToSafe\Fixtures\*.expected.txt" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- UseWPF drops System.IO from the SDK implicit usings; put it back so a new file cannot miss it. -->
+    <Using Include="System.IO" />
+  </ItemGroup>
+
 </Project>

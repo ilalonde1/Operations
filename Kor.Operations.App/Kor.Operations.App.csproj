@@ -29,6 +29,8 @@
   <ItemGroup>
     <Using Remove="System.Drawing" />
     <Using Remove="System.Windows.Forms" />
+    <!-- UseWPF drops System.IO from the SDK implicit usings; put it back so a new file cannot miss it. -->
+    <Using Include="System.IO" />
     <None Remove="Assets\Fonts\Muli-Bold.ttf" />
     <None Remove="Assets\Fonts\Muli-ExtraLight.ttf" />
     <None Remove="Assets\Fonts\Muli-Light.ttf" />

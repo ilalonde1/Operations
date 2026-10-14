@@ -100,4 +100,8 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
+  <ItemGroup>
+    <!-- UseWPF drops System.IO from the SDK implicit usings; three Codex test files in a row failed on it. -->
+    <Using Include="System.IO" />
+  </ItemGroup>
 </Project>
