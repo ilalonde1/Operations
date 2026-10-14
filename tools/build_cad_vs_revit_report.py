@@ -728,9 +728,10 @@ def build(args):
         ys.column_dimensions[get_column_letter(c)].width = 14
 
     by = wb.create_sheet("By year (raw)")
+    has_active = any(c.get("CostActive", 0.0) for c in cost_y.values())   # the DB year table does not carry it
     byh = ["Scope", "Year", "Drafting type", "Billed (CAD)", "Eng hrs", "Draft hrs", "Partner hrs",
            "Labour cost (report basis: posted, partners $250)", "Margin (report basis)", "Margin % (report basis)",
-           "Labour cost, posted payroll as-is", "Labour cost, all staff at today's rates", "Labour cost, active staff at today's rates (app)"]
+           "Labour cost, posted payroll as-is", "Labour cost, all staff at today's rates"] + (["Labour cost, active staff at today's rates (app)"] if has_active else [])
     for c, h in enumerate(byh, 1):
         cell = by.cell(row=1, column=c, value=h)
         cell.font = hdr_font
@@ -744,7 +745,7 @@ def build(args):
         cost = year_cost(*k)
         by.append([k[0], k[1], TYPE_LABEL.get(k[2], k[2]), round(b), round(c.get("EngHrs", 0.0)), round(c.get("DraftHrs", 0.0)),
                    round(h.get("PartnerHrs", 0.0)), round(cost), round(b - cost), round((b - cost) / b, 3) if b else None,
-                   round(h.get("PostedCost", 0.0)), round(c.get("CostAll", 0.0)), round(c.get("CostActive", 0.0))])
+                   round(h.get("PostedCost", 0.0)), round(c.get("CostAll", 0.0))] + ([round(c.get("CostActive", 0.0))] if has_active else []))
         by.cell(row=i, column=10).number_format = "0%"
     for c in range(1, 14):
         by.column_dimensions[get_column_letter(c)].width = 16
