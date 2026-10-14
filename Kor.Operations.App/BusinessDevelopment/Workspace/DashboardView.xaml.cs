@@ -5,7 +5,9 @@ using System.Windows;
 using System.Windows.Controls;
 using Kor.Operations.App.Opportunities;
 using Kor.Operations.Services;
+using Kor.Opportunities.Data.Observations;
 using Kor.Opportunities.Data.Opportunities;
+using Kor.Opportunities.Data.Sources;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Kor.Operations.App.BusinessDevelopment.Workspace;
@@ -255,6 +257,19 @@ public partial class DashboardView : UserControl
                 "BD Dashboard — Open Opportunity",
                 MessageBoxButton.OK,
                 MessageBoxImage.Information);
+            return;
+        }
+
+        // Read first: the RFP, its source postings and the link. Editing the record
+        // is a deliberate second step from that view. Until 2026-10-13 this
+        // double-click landed in the eleven-field editor with no posting, no link
+        // and no description, and a Save button whose purpose nobody could name.
+        var detail = new OpportunityDetailWindow(new OpportunityDetailViewModel(opp,
+            _services!.GetRequiredService<IOpportunityObservationStore>(),
+            _services!.GetRequiredService<IOpportunitySourceStore>())) { Owner = OwnerWindow() };
+        detail.ShowDialog();
+        if (!detail.EditRequested)
+        {
             return;
         }
 

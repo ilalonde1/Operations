@@ -9,7 +9,9 @@ using Kor.Operations.App.Crm;
 using Kor.Operations.App.Options;
 using Kor.Operations.Services;
 using Kor.Opportunities.Core.Models;
+using Kor.Opportunities.Data.Observations;
 using Kor.Opportunities.Data.Opportunities;
+using Kor.Opportunities.Data.Sources;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Kor.Operations.App.Opportunities;
@@ -228,7 +230,28 @@ public partial class OpportunitiesView : UserControl
 
     private async void OpportunitiesGrid_MouseDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
-        await EditSelectedAsync().ConfigureAwait(true);
+        await ViewSelectedAsync().ConfigureAwait(true);
+    }
+
+    // Double-click reads; the Edit button edits. The read view hands back
+    // EditRequested when the user asks for the editor from there, so the one
+    // gated save path below stays the only way a change is persisted.
+    private async Task ViewSelectedAsync()
+    {
+        var selected = _vm.Selected;
+        if (selected is null)
+        {
+            return;
+        }
+
+        var detail = new OpportunityDetailWindow(new OpportunityDetailViewModel(selected.Model,
+            _services.GetRequiredService<IOpportunityObservationStore>(),
+            _services.GetRequiredService<IOpportunitySourceStore>())) { Owner = OwnerWindow() };
+        detail.ShowDialog();
+        if (detail.EditRequested)
+        {
+            await EditSelectedAsync().ConfigureAwait(true);
+        }
     }
 
     private async Task EditSelectedAsync()
