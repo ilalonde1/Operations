@@ -216,7 +216,16 @@ does not exclude dismissed rows; every caller must.**
 
 ### This week's commits, newest first
 
-`415b8d5e` render harness and what it showed · `33e49616` retired duplicates leave the
+`15be2079` brief 8, what the render showed: Placeholder on ComboBox, "pursuit" everywhere,
+`BdDateDisplay` at 12 sites with a ratchet on the other 64, buyer from `CanonicalOrg.DisplayName`
+for the 100 of 101 live pursuits with no RFP, ellipsis + "Low fit (score 8)", migration 347
+applied (442 dismissal reasons in plain words, undo table `DismissalReasonRewrite347`). Also
+CLAUDE.md rule 13 and its hook: a piped `dotnet build` without `pipefail` is denied, because
+four errors were read as a green build that afternoon. Data fact learned: 76 rows carry
+`RelevanceTier = 4`, which the enum has never had; all written by `live-pursuits-sweep` in June
+2026 on rows it set to Lost; the RFP window prints them as "Tier 4". Nobody has decided what to
+do with them. · `9906bcd6` bash guard counts a SQL tool in command position only; handoff
+corrections · `415b8d5e` render harness and what it showed · `33e49616` retired duplicates leave the
 lists, local-time deadlines, removed banner · `e2d1b8da` CRM clarity · `42f643e6` dashboard
 four blocks · `9becb3f4` RFP read view · `e3a340ec` brief 7 (exports and money) ·
 `6cad8575` brief 6 (populations) · `0cd7b070` brief 5 (writes that skip the check) ·
