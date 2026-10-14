@@ -355,3 +355,8 @@ BEGIN
            (SELECT COUNT(*) FROM dbo.DraftingTypeByYearSnapshot WHERE AsOfDate = @AsOfDate)                                AS YearRows;
 END;
 GO
+
+/* Take today's snapshot now. Three Deltek pulls through DELTEK_VP: three to five minutes.
+   The objects above print nothing; this is the only result set the script returns. */
+EXEC dbo.usp_SnapshotProjectDraftingProfitability;
+GO

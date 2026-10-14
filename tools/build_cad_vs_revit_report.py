@@ -8,8 +8,11 @@ WHY THIS EXISTS
     the hand-out, with no number typed by hand: every figure on the page is computed from
     the rows.
 
-INPUTS (CSV, produced by the ODBC pull of 2026-10-14; same query shape as
-ProjectAnalyticsService + HistoricalAnalyticsViewModel, reproduced to the dollar on six projects)
+INPUTS (CSV, produced by the ODBC pull of 2026-10-14 and banked in
+docs/KOR-Financials-CAD-vs-Revit-2026-10-14-data/; same query shape as
+ProjectAnalyticsService + HistoricalAnalyticsViewModel, reproduced to the dollar on six projects.
+The same measurement lives in KorTransmittals via db/KorTransmittals/008, proc
+usp_SnapshotProjectDraftingProfitability; a future edition should export from that view.)
     --jobs       one row per top-level regular project with production hours:
                  WBS1, Name, Status, Org, OpenDate, Sector, DraftType, Category, ConstructionType,
                  Fee, FeeBilled (CAD; Org=USA converted at 1.36), EngHrs, DraftHrs, DraftCost,
