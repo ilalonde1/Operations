@@ -55,6 +55,27 @@ public static class Placeholder
         }
     }
 
+    /// <summary>
+    /// Draw or clear the placeholder on every TextBox under <paramref name="root"/> now,
+    /// without waiting for Loaded. For the render harness, which lays a view out without
+    /// ever showing it, so Loaded never fires and the PNG would show seven blank boxes.
+    /// Needs an AdornerLayer above the boxes: a Window has one, a bare UserControl does
+    /// not, so the harness wraps the view in an AdornerDecorator.
+    /// </summary>
+    internal static void RefreshAll(DependencyObject root)
+    {
+        if (root is TextBox box && !string.IsNullOrEmpty(GetText(box)))
+        {
+            Refresh(box, EventArgs.Empty);
+        }
+
+        var count = VisualTreeHelper.GetChildrenCount(root);
+        for (var i = 0; i < count; i++)
+        {
+            RefreshAll(VisualTreeHelper.GetChild(root, i));
+        }
+    }
+
     private static void Refresh(object? sender, EventArgs e)
     {
         if (sender is not TextBox box)

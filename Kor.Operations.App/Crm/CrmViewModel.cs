@@ -354,8 +354,10 @@ public sealed class CrmViewModel : ObservableObject, IAiContextProvider
         get
         {
             if (_analytics is null) return string.Empty;
+            // "Unknown" is the bucket for a pursuit with no linked RFP; a win rate for
+            // "Unknown" tells nobody anything (render harness, 2026-10-14: "Unknown 1/1 (100%)").
             var rows = _analytics.ByBuyerType
-                .Where(b => b.Won + b.Lost > 0)
+                .Where(b => b.Won + b.Lost > 0 && b.Bucket != "Unknown")
                 .OrderByDescending(b => b.WinRate)
                 .ThenByDescending(b => b.Won + b.Lost)
                 .Take(3)

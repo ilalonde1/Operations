@@ -1,4 +1,5 @@
 #nullable enable
+using Kor.Operations.App.BusinessDevelopment;
 using System.Windows.Media;
 using Kor.Opportunities.Core.Models;
 
@@ -24,7 +25,7 @@ public sealed class CrmEngagementRowView
     public long Id => Engagement.Id;
     public long? OpportunityId => Engagement.OpportunityId;
     public string StageDisplay => Engagement.Stage.ToString();
-    public string OwnerDisplay => Engagement.OwnerStaffId ?? "—";
+    public string OwnerDisplay => string.IsNullOrWhiteSpace(Engagement.OwnerStaffId) ? "—" : StaffDisplay.Short(Engagement.OwnerStaffId);
 
     /// <summary>True for engagements rooted in a formal Opportunity (RFP); false for BD-tracking touchpoints.</summary>
     public bool HasOpportunity => Engagement.OpportunityId.HasValue;
@@ -54,7 +55,7 @@ public sealed class CrmEngagementRowView
 
     public string OpenedDisplay => Engagement.OpenedAtUtc.LocalDateTime.ToString("yyyy-MM-dd");
 
-    public string UpdatedDisplay => Engagement.UpdatedAtUtc.LocalDateTime.ToString("yyyy-MM-dd HH:mm");
+    public string UpdatedDisplay => Engagement.UpdatedAtUtc.ToLocalTime().ToString("MMM d, yyyy", System.Globalization.CultureInfo.InvariantCulture);
 
     public Brush StageBrush => BrushFor(Engagement.Stage);
 

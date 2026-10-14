@@ -56,7 +56,8 @@ public sealed class OverwatchRowView
 
     public long EngagementId => Row.EngagementId;
     public long? OpportunityId => Row.OpportunityId;
-    public string OwnerDisplay => Row.OwnerStaffId;
+    /// <summary>The person, not the address: "ilalonde", because a 110px column showed "ilalonde@korstructu" (render harness, 2026-10-14).</summary>
+    public string OwnerDisplay => StaffDisplay.Short(Row.OwnerStaffId);
     public string StageDisplay => ((CrmEngagementStage)Row.Stage).ToString();
     public string ProjectName => Row.ProjectName;
     public string Buyer => Row.Buyer;

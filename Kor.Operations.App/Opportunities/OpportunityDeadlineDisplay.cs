@@ -52,6 +52,7 @@ internal static class OpportunityDeadlineDisplay
         if (remaining.TotalMinutes < 1) return "less than 1 min remaining";
         if (remaining.TotalHours < 1) return $"{(int)remaining.TotalMinutes} min remaining";
         if (remaining.TotalDays < 1) return $"{remaining.Hours} hr {remaining.Minutes} min remaining";
-        return $"{remaining.Days} day{(remaining.Days == 1 ? "" : "s")} {remaining.Hours} hr remaining";
+        if (remaining.TotalDays < 2) return $"1 day {remaining.Hours} hr remaining";
+        return $"{remaining.Days} days remaining";   // "26 days 0 hr" said nothing the days did not
     }
 }

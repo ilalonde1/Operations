@@ -87,7 +87,7 @@ public sealed class OpportunityDetailViewModel : INotifyPropertyChanged, Kor.Ope
     /// <summary>Tooltip on the closing time: the value as stored, with its offset.</summary>
     public string ClosesStored => "Stored as " + OpportunityDeadlineDisplay.Stored(Opportunity.SubmissionDeadlineUtc);
 
-    public string PostedDisplay => Opportunity.RfpReleaseDate?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? "not recorded";
+    public string PostedDisplay => Opportunity.RfpReleaseDate?.ToString("MMM d, yyyy", CultureInfo.InvariantCulture) ?? "not recorded";
 
     public string ValueDisplay => Opportunity.EstimatedValue is { } v
         ? string.Format(Canadian, "{0:N0} {1}", v, Opportunity.EstimatedValueCurrency)

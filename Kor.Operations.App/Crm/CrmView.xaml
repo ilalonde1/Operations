@@ -260,23 +260,36 @@
                                    Foreground="{StaticResource Text.Secondary}" TextWrapping="Wrap"
                                    Visibility="{Binding HasPlanTakers, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}"
                                    ToolTip="Firms that downloaded/expressed interest on this RFP (portal names as-published)."/>
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                            <TextBox x:Name="ContactNameBox" Width="170" Margin="0,0,4,0"
+                        <!-- Two lines that fit the pane. The 2026-10-14 render harness showed the old
+                             single row (820 px of fixed widths) with Add and Remove off the right edge. -->
+                        <Grid Margin="0,0,0,8">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="1.3*"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBox Grid.Row="0" Grid.Column="0" x:Name="ContactNameBox" Margin="0,0,4,4"
                                      controls:Placeholder.Text="Name (required)"
                                      ToolTip="Display name (required)"/>
-                            <TextBox x:Name="ContactRoleBox" Width="130" Margin="0,0,4,0"
+                            <TextBox Grid.Row="0" Grid.Column="1" Grid.ColumnSpan="2" x:Name="ContactRoleBox" Margin="0,0,0,4"
                                      controls:Placeholder.Text="Role / title"
                                      ToolTip="Role / title"/>
-                            <TextBox x:Name="ContactEmailBox" Width="200" Margin="0,0,4,0"
+                            <TextBox Grid.Row="1" Grid.Column="0" x:Name="ContactEmailBox" Margin="0,0,4,0"
                                      controls:Placeholder.Text="Email"
                                      ToolTip="Email"/>
-                            <TextBox x:Name="ContactPhoneBox" Width="100" Margin="0,0,4,0"
+                            <TextBox Grid.Row="1" Grid.Column="1" x:Name="ContactPhoneBox" Margin="0,0,4,0"
                                      controls:Placeholder.Text="Phone"
                                      ToolTip="Phone"/>
-                            <CheckBox x:Name="ContactPrimaryCheck" Content="primary" Margin="0,4,8,0"/>
-                            <Button Content="Add" Width="60" Click="AddContactButton_Click"/>
-                            <Button Content="Remove" Width="70" Margin="4,0,0,0" Click="RemoveContactButton_Click"/>
-                        </StackPanel>
+                            <StackPanel Grid.Row="1" Grid.Column="2" Orientation="Horizontal">
+                                <CheckBox x:Name="ContactPrimaryCheck" Content="primary" Margin="0,4,8,0"/>
+                                <Button Content="Add" Width="60" Click="AddContactButton_Click"/>
+                                <Button Content="Remove" Width="70" Margin="4,0,0,0" Click="RemoveContactButton_Click"/>
+                            </StackPanel>
+                        </Grid>
                         </StackPanel>
 
                         <DataGrid Grid.Row="3"
@@ -315,25 +328,44 @@
 
                         <!-- Plan 1.2: one-decision logging — type + subject + Enter.
                              Everything else (date, contact, notes) is optional. -->
-                        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,8">
-                            <ComboBox x:Name="ActivityTypeBox" Width="110" Margin="0,0,4,0"
+                        <!-- Two lines that fit any pane width. The 2026-10-14 render harness showed the
+                             old single row (880 px of fixed widths) clipped at the pane's right edge. -->
+                        <Grid Grid.Row="1" Margin="0,0,0,8">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="120"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <!-- Line 1, the one decision: type, what happened, Log (or Enter). -->
+                            <ComboBox Grid.Row="0" Grid.Column="0" x:Name="ActivityTypeBox" Margin="0,0,4,4"
                                       ItemsSource="{Binding ActivityTypeOptions}"
                                       DisplayMemberPath="Label" SelectedValuePath="Value"
                                       SelectedIndex="0"/>
-                            <TextBox x:Name="ActivitySubjectBox" Width="220" Margin="0,0,4,0"
+                            <TextBox Grid.Row="0" Grid.Column="1" x:Name="ActivitySubjectBox" Margin="0,0,4,4"
                                      KeyDown="ActivitySubjectBox_KeyDown"
                                      controls:Placeholder.Text="What happened (required) — Enter logs it"
                                      ToolTip="Subject (required). Press Enter to log."/>
-                            <DatePicker x:Name="ActivityDateBox" Width="110" Margin="0,0,4,0"
+                            <Button Grid.Row="0" Grid.Column="2" Content="Log" Width="60" Margin="0,0,0,4" Click="LogActivityButton_Click"/>
+                            <!-- Line 2, all optional: when, with whom, notes. -->
+                            <DatePicker Grid.Row="1" Grid.Column="0" x:Name="ActivityDateBox" Margin="0,0,4,0"
                                         ToolTip="When it happened (optional — blank = now). Friday's call can be logged on Monday. Future dates are treated as now."/>
-                            <ComboBox x:Name="ActivityContactBox" Width="140" Margin="0,0,4,0"
-                                      ItemsSource="{Binding Contacts}" DisplayMemberPath="DisplayName"
-                                      ToolTip="Who it was with (optional — this engagement's contacts)."/>
-                            <TextBox x:Name="ActivityBodyBox" Width="220" Margin="0,0,4,0"
-                                     controls:Placeholder.Text="Notes (optional)"
-                                     ToolTip="Notes (optional)"/>
-                            <Button Content="Log" Width="60" Click="LogActivityButton_Click"/>
-                        </StackPanel>
+                            <Grid Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="170"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <ComboBox Grid.Column="0" x:Name="ActivityContactBox" Margin="0,0,4,0"
+                                          ItemsSource="{Binding Contacts}" DisplayMemberPath="DisplayName"
+                                          ToolTip="Who it was with (optional — this engagement's contacts)."/>
+                                <TextBox Grid.Column="1" x:Name="ActivityBodyBox"
+                                         controls:Placeholder.Text="Notes (optional)"
+                                         ToolTip="Notes (optional)"/>
+                            </Grid>
+                        </Grid>
 
                         <DataGrid Grid.Row="2"
                                   x:Name="ActivitiesGrid"
