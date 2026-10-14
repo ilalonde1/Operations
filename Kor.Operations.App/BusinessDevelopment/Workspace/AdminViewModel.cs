@@ -127,7 +127,7 @@ public sealed class AdminViewModel : INotifyPropertyChanged, Kor.Operations.Serv
         => new(
             run.ProviderName,
             run.StartedAtUtc.LocalDateTime.ToString("yyyy-MM-dd HH:mm"),
-            run.Success ? "ok" : "failed",
+            run.EndedAtUtc is null ? "running" : run.Success ? "ok" : "failed",
             run.InsertedCount,
             run.DuplicateCount,
             run.SkippedCount,

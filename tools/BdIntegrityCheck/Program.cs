@@ -40,6 +40,30 @@ Directory.CreateDirectory(outDir);
 
 var invariants = new List<(string Key, string Desc, bool Error, string CountSql, string SampleSql)>();
 
+// Brief 3 data companion, not a claim of observed corruption or a repair.
+// EXPECTED usable firm + explicit true/false relationship assessment; ACTUAL
+// counts distinct active project IDs with partial/unusable prime payloads.
+// Covers JSON shape/type/missing-field exposure. Does not prove research accuracy,
+// UI rendering or a KOR relationship; an invented but plausible firm would escape.
+// No database execution was performed for this brief. The prior audit found 148
+// non-null rows, zero missing firmName/knownToKor; types were not proved by that count.
+var partialPrimeResearch = @"
+SELECT DISTINCT m.Id
+FROM opportunities.MajorProjectsInventory m
+JOIN opportunities.MajorProjectEnrichment e
+  ON e.MajorProjectsInventoryId=m.Id AND e.ProviderName=N'PrimeConsultantResearch'
+CROSS APPLY (VALUES (CASE WHEN ISJSON(e.ResultJson)=1 THEN e.ResultJson ELSE N'{}' END)) j(SafeJson)
+WHERE m.RetiredAtUtc IS NULL AND e.ResultJson IS NOT NULL
+AND (NULLIF(LTRIM(RTRIM(JSON_VALUE(j.SafeJson,'$.primeConsultant.firmName'))),N'') IS NULL
+     OR LOWER(LTRIM(RTRIM(COALESCE(JSON_VALUE(j.SafeJson,'$.primeConsultant.knownToKor'),N'')))) NOT IN (N'true',N'false')
+     OR NOT EXISTS (SELECT 1 FROM OPENJSON(COALESCE(JSON_QUERY(j.SafeJson,'$.primeConsultant'),N'{}'))
+                    WHERE [key]=N'firmName' AND [type]=1));";
+invariants.Add(("bd_prime_partial_research",
+    "EXPECTED usable firm and explicit relationship assessment for complete research; ACTUAL distinct project IDs with incomplete payloads (WARN worklist, not false-absence count)",
+    false,
+    "SELECT COUNT(*) FROM (" + partialPrimeResearch.TrimEnd(';') + ") partial;",
+    "SELECT TOP 5 Id FROM (" + partialPrimeResearch.TrimEnd(';') + ") partial ORDER BY Id;"));
+
 // Brief 2: compare the report's shared people population with an independent
 // EXISTS-based count of live people. CountSql counts ORGANISATIONS with a mismatch,
 // not affiliations. Covers duplicate/current/retired affiliation and person rules;

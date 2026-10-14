@@ -29,10 +29,10 @@ public sealed class PrimeConsultantReportGeneratorTests
 
         var labels = doc.Blocks.OfType<LabelValueBlock>()
             .GroupBy(x => x.Label).ToDictionary(g => g.Key, g => g.First().Value);
-        Assert.Equal("4", labels["Projects researched: "]);
+        Assert.Equal("4", labels["Research records retrieved: "]);
         Assert.Equal("3 (75%)", labels["Prime consultant identified: "]);
-        Assert.Equal("1 (25%)", labels["Prime unknown after research: "]);
-        Assert.Equal("1", labels["KOR-aligned primes (warm-intro available): "]);
+        Assert.Equal("1 (25%)", labels["Prime not identified in available payload: "]);
+        Assert.Equal("1", labels["Primes reported known to KOR: "]);
 
         var tables = doc.Blocks.OfType<TableBlock>().ToList();
         Assert.Equal(4, tables.Count); // aligned, top-30, heatmap, unknown
@@ -87,6 +87,7 @@ public sealed class PrimeConsultantReportGeneratorTests
         var result = PrimeConsultantParser.Parse(json);
 
         Assert.Null(result.FirmName);
-        Assert.False(result.KnownToKor);
+        Assert.Null(result.KnownToKor);
+        Assert.False(result.IsUsable);
     }
 }

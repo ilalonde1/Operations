@@ -68,7 +68,7 @@ public sealed class HtmlBriefPdfGenerator : IBriefPdfGenerator
             ? BriefPdfGenerator.Nz(d.ProjectProvince)
             : $"{d.ProjectCity}, {BriefPdfGenerator.Nz(d.ProjectProvince)}";
         b.Hero("Pursuit Brief", BriefPdfGenerator.Nz(d.Name),
-            "Warmest live target — recommended next move", new[]
+            "Recorded opportunity — evidence and research gaps", new[]
             {
                 ("Owner", BriefPdfGenerator.Nz(d.BuyerName)),
                 ("Location", location),
@@ -78,7 +78,7 @@ public sealed class HtmlBriefPdfGenerator : IBriefPdfGenerator
                 ("Estimated value", BriefPdfGenerator.FormatValue(d.EstimatedValue)),
             });
 
-        b.BulletSection("Why this is our warmest target right now", BriefPdfGenerator.OppWarmthBullets(d));
+        b.BulletSection("Opportunity assessment and limits", BriefPdfGenerator.OppWarmthBullets(d));
         b.BulletSection("KOR's angle (relationship intelligence)", BriefPdfGenerator.OppAngleBullets(d));
         b.BulletSection("Get in front of them this week", BriefPdfGenerator.OppEventBullets(d));
         b.BulletSection("Recommended next steps", BriefPdfGenerator.OppNextStepBullets(d));

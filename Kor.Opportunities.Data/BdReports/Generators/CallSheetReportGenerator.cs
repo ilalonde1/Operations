@@ -36,6 +36,8 @@ public static class CallSheetReportGenerator
 
         var b = new BdReportDocumentBuilder("KOR — This Week's BD Call Sheet");
 
+        b.P(BdReportFormatting.EvidenceNote(pool));
+
         b.Italic(
             "Cross-cutting action sheet pulled across all BD sectors. PURSUE_URGENT + PURSUE items ranked by urgency then project value. " +
             $"This is what to act on THIS WEEK. Generated {generatedAtUtc:yyyy-MM-dd HH:mm} UTC from live KorOpportunitiesDb honing verdicts.");

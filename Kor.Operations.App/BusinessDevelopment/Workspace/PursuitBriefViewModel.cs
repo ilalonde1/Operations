@@ -36,6 +36,26 @@ public sealed class PursuitBriefViewModel : INotifyPropertyChanged, Kor.Operatio
     private string? _ownerBdRecordDisplay;
     private string? _architectWarmthDisplay;
     private string _statusMessage = "Ready.";
+    private enum ReadState { NotRetrieved, Unlinked, Available, Partial, Unavailable }
+    private ReadState _ownerRead, _ownerBdRead, _architectRead;
+
+    private static string EvidenceDisplay(string? text, ReadState state, string empty) => state switch
+    {
+        ReadState.Available => string.IsNullOrWhiteSpace(text) ? empty : text,
+        ReadState.Partial => (string.IsNullOrWhiteSpace(text) ? "Unknown." : text) + " Partial retrieval; some relationship data is unavailable.",
+        ReadState.Unlinked => "Unknown — organization not linked to a Deltek client; relationship data not retrieved.",
+        ReadState.Unavailable => "Unavailable — could not retrieve relationship data.",
+        _ => "Relationship data not retrieved.",
+    };
+
+    private void SetReadState(ref ReadState field, ReadState state)
+    {
+        field = state;
+        OnPropertyChanged(nameof(KorEdgeDisplay));
+        OnPropertyChanged(nameof(OwnerContactsDisplay));
+        OnPropertyChanged(nameof(OwnerBdRecordDisplay));
+        OnPropertyChanged(nameof(ArchitectWarmthDisplay));
+    }
 
     public PursuitBriefViewModel(
         IPursuitBriefStore store,
@@ -98,27 +118,23 @@ public sealed class PursuitBriefViewModel : INotifyPropertyChanged, Kor.Operatio
 
     public bool NoProcurementProfile => !HasProcurementProfile;
 
-    public string KorEdgeDisplay => string.IsNullOrWhiteSpace(_korEdgeDisplay)
-        ? "No prior KOR work on record with this owner."
-        : _korEdgeDisplay!;
+    public string KorEdgeDisplay => EvidenceDisplay(_korEdgeDisplay, _ownerRead,
+        "No prior KOR work found in the retrieved Deltek records for this owner.");
 
     public bool KorEdgeIsPlaceholder => string.IsNullOrWhiteSpace(_korEdgeDisplay);
 
-    public string OwnerContactsDisplay => string.IsNullOrWhiteSpace(_ownerContactsDisplay)
-        ? "No KOR contacts on record at this owner."
-        : _ownerContactsDisplay!;
+    public string OwnerContactsDisplay => EvidenceDisplay(_ownerContactsDisplay, _ownerRead,
+        "No KOR contacts found in the retrieved Deltek records for this owner.");
 
     public bool OwnerContactsIsPlaceholder => string.IsNullOrWhiteSpace(_ownerContactsDisplay);
 
-    public string OwnerBdRecordDisplay => string.IsNullOrWhiteSpace(_ownerBdRecordDisplay)
-        ? "No KOR pursuit history with this owner."
-        : _ownerBdRecordDisplay!;
+    public string OwnerBdRecordDisplay => EvidenceDisplay(_ownerBdRecordDisplay, _ownerBdRead,
+        "No KOR pursuit history found in the retrieved records for this owner.");
 
     public bool OwnerBdRecordIsPlaceholder => string.IsNullOrWhiteSpace(_ownerBdRecordDisplay);
 
-    public string ArchitectWarmthDisplay => string.IsNullOrWhiteSpace(_architectWarmthDisplay)
-        ? "No KOR contacts on record at this firm."
-        : _architectWarmthDisplay!;
+    public string ArchitectWarmthDisplay => EvidenceDisplay(_architectWarmthDisplay, _architectRead,
+        "No KOR contacts found in the retrieved Deltek records for this firm.");
 
     public bool ArchitectWarmthIsPlaceholder => string.IsNullOrWhiteSpace(_architectWarmthDisplay);
 
@@ -149,13 +165,16 @@ public sealed class PursuitBriefViewModel : INotifyPropertyChanged, Kor.Operatio
             LoadedMpiId = mpiId;
             StatusMessage = "Loading pursuit brief...";
             ClearDynamicDisplays();
+            Brief = null;
             Brief = await _store.GetBriefForProjectAsync(mpiId, ct).ConfigureAwait(true);
             await LoadOwnerDeltekAsync(Brief, ct).ConfigureAwait(true);
             await LoadOwnerBdRecordAsync(Brief, ct).ConfigureAwait(true);
             await LoadArchitectWarmthAsync(Brief, ct).ConfigureAwait(true);
             StatusMessage = Brief is null
                 ? $"Major Projects Inventory row {mpiId} was not found."
-                : $"Loaded pursuit brief for {Brief.Project.ProjectName}.";
+                : $"Loaded pursuit brief for {Brief.Project.ProjectName}." +
+                  (_ownerRead != ReadState.Available || _ownerBdRead != ReadState.Available || _architectRead != ReadState.Available
+                      ? " Some relationship context is unavailable or incomplete; see section notes." : "");
         }
         catch (OperationCanceledException)
         {
@@ -169,6 +188,9 @@ public sealed class PursuitBriefViewModel : INotifyPropertyChanged, Kor.Operatio
 
     private void ClearDynamicDisplays()
     {
+        SetReadState(ref _ownerRead, ReadState.NotRetrieved);
+        SetReadState(ref _ownerBdRead, ReadState.NotRetrieved);
+        SetReadState(ref _architectRead, ReadState.NotRetrieved);
         KorEdgeRaw = null;
         OwnerContactsRaw = null;
         OwnerBdRecordRaw = null;
@@ -228,12 +250,15 @@ public sealed class PursuitBriefViewModel : INotifyPropertyChanged, Kor.Operatio
         var ownerClendorClientId = brief?.OwnerClendorClientId?.Trim();
         if (string.IsNullOrWhiteSpace(ownerClendorClientId))
         {
+            SetReadState(ref _ownerRead, ReadState.Unlinked);
             return;
         }
 
         try
         {
             var intelligence = await _deltek.LoadAsync(ownerClendorClientId, ct).ConfigureAwait(true);
+            SetReadState(ref _ownerRead, intelligence is null ? ReadState.Unavailable :
+                intelligence.HasDegradedSections ? ReadState.Partial : ReadState.Available);
             KorEdgeRaw = BuildKorEdgeDisplay(intelligence);
             OwnerContactsRaw = BuildOwnerContactsDisplay(intelligence);
         }
@@ -243,6 +268,7 @@ public sealed class PursuitBriefViewModel : INotifyPropertyChanged, Kor.Operatio
         }
         catch
         {
+            SetReadState(ref _ownerRead, ReadState.Unavailable);
             KorEdgeRaw = null;
             OwnerContactsRaw = null;
         }
@@ -253,12 +279,14 @@ public sealed class PursuitBriefViewModel : INotifyPropertyChanged, Kor.Operatio
         var ownerClendorClientId = brief?.OwnerClendorClientId?.Trim();
         if (string.IsNullOrWhiteSpace(ownerClendorClientId))
         {
+            SetReadState(ref _ownerBdRead, ReadState.Unlinked);
             return;
         }
 
         try
         {
             var bd = await _korBd.LoadByClendorIdAsync(ownerClendorClientId, ct).ConfigureAwait(true);
+            SetReadState(ref _ownerBdRead, bd is null ? ReadState.Unavailable : ReadState.Available);
             OwnerBdRecordRaw = BuildOwnerBdRecordDisplay(bd);
         }
         catch (OperationCanceledException)
@@ -267,6 +295,7 @@ public sealed class PursuitBriefViewModel : INotifyPropertyChanged, Kor.Operatio
         }
         catch
         {
+            SetReadState(ref _ownerBdRead, ReadState.Unavailable);
             OwnerBdRecordRaw = null;
         }
     }
@@ -276,12 +305,15 @@ public sealed class PursuitBriefViewModel : INotifyPropertyChanged, Kor.Operatio
         var architectClendorClientId = brief?.ArchitectClendorClientId?.Trim();
         if (string.IsNullOrWhiteSpace(architectClendorClientId))
         {
+            SetReadState(ref _architectRead, ReadState.Unlinked);
             return;
         }
 
         try
         {
             var intelligence = await _deltek.LoadAsync(architectClendorClientId, ct).ConfigureAwait(true);
+            SetReadState(ref _architectRead, intelligence is null ? ReadState.Unavailable :
+                intelligence.HasDegradedSections ? ReadState.Partial : ReadState.Available);
             ArchitectWarmthRaw = BuildArchitectWarmthDisplay(intelligence, brief?.Architect.ArchitectName);
         }
         catch (OperationCanceledException)
@@ -290,6 +322,7 @@ public sealed class PursuitBriefViewModel : INotifyPropertyChanged, Kor.Operatio
         }
         catch
         {
+            SetReadState(ref _architectRead, ReadState.Unavailable);
             ArchitectWarmthRaw = null;
         }
     }

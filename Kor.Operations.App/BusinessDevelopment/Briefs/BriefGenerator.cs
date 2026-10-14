@@ -43,16 +43,15 @@ public sealed class BriefGenerator : IBriefGenerator
         var body = main.Document.Body!;
 
         AppendTitle(body, "Pursuit Brief");
-        AppendSubtitle(body, "Warmest live target — recommended next move");
+        AppendSubtitle(body, "Recorded opportunity — evidence and research gaps");
         AppendHeading(body, data.Name);
         AppendBody(body, $"Owner: {Nz(data.BuyerName)}  |  Location: {Nz(data.ProjectCity)}, {Nz(data.ProjectProvince)}  |  Sector: {Nz(data.PrimeProjectSector)}");
         AppendBody(body, "Submission deadline: " + FormatDeadline(data.SubmissionDeadlineUtc));
         AppendBody(body, "Estimated value: " + FormatValue(data.EstimatedValue));
 
-        AppendHeading(body, "Why this is our warmest target right now");
-        AppendBullet(body, $"Prime-consultant building RFP (the architect's team is being assembled now, before the structural seat is set) — classifier confidence {data.PrimeConfidence.ToString("F2", CultureInfo.InvariantCulture)}.");
-        AppendBullet(body, "Sector AND geography both match KOR's wheelhouse — exactly the type of work we win in this market.");
-        AppendBullet(body, "Live in active procurement — actionable window for an architect intro.");
+        AppendHeading(body, "Opportunity assessment and limits");
+        foreach (var line in BriefPdfGenerator.OppWarmthBullets(data))
+            AppendBullet(body, line);
 
         AppendHeading(body, "KOR's angle (relationship intelligence)");
         if (data.OwnerKorProjectsCount > 0)

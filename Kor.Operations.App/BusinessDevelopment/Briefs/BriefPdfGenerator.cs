@@ -297,7 +297,7 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
             {
                 column.Spacing(12);
                 column.Item().Element(c => OppHeaderBand(c, d));
-                column.Item().Element(c => Section(c, "Why this is our warmest target right now",
+                column.Item().Element(c => Section(c, "Opportunity assessment and limits",
                     OppWarmthBullets(d)));
                 column.Item().Element(c => Section(c, "KOR's angle (relationship intelligence)",
                     OppAngleBullets(d)));
@@ -330,7 +330,7 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
             column.Item().Text("PURSUIT BRIEF")
                 .FontSize(8).LetterSpacing(0.2f).FontColor(BrandEyebrow);
             column.Item().Text(Nz(d.Name)).FontSize(15).Bold().FontColor(Colors.White);
-            column.Item().Text("Warmest live target — recommended next move")
+            column.Item().Text("Recorded opportunity — evidence and research gaps")
                 .FontSize(9).Italic().FontColor(BrandSubtle);
 
             column.Item().PaddingTop(3).Table(table =>
@@ -358,9 +358,11 @@ public sealed class BriefPdfGenerator : IBriefPdfGenerator
 
     internal static IEnumerable<string> OppWarmthBullets(OpportunityBriefData d)
     {
-        yield return $"Prime-consultant building RFP — the architect's team is being assembled now, before the structural seat is set. Classifier confidence {d.PrimeConfidence.ToString("F2", CultureInfo.InvariantCulture)}.";
-        yield return "Sector AND geography both match KOR's wheelhouse — exactly the type of work we win in this market.";
-        yield return "Live in active procurement — actionable window for an architect intro.";
+        yield return d.PrimeConfidence > 0
+            ? $"Recorded prime-classifier confidence: {d.PrimeConfidence.ToString("F2", CultureInfo.InvariantCulture)}. Current prime-RFP status is not supplied by this brief."
+            : "Prime-RFP assessment unavailable in this brief.";
+        yield return $"Recorded sector: {d.PrimeProjectSector ?? "unknown"}; geography: {d.ProjectProvince ?? "unknown"}. KOR fit has not been established by these labels alone.";
+        yield return "Current procurement status and structural seat availability are unknown from these inputs; verify both before outreach. A recorded deadline alone does not establish an active pursuit.";
     }
 
     internal static IEnumerable<string> OppAngleBullets(OpportunityBriefData d)

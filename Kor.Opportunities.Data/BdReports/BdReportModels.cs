@@ -84,7 +84,10 @@ public sealed record PursuitBriefRow(
     string? Description,
     double? OverallConfidence,
     DateTimeOffset? LastRefreshAtUtc,
-    bool IsUrgent);
+    bool IsUrgent)
+{
+    public string RefreshNote { get; init; } = "Cached research; no external verification performed for this report.";
+}
 
 /// <summary>
 /// One market-level IntelSignal row scoped to a sector report's province
@@ -181,12 +184,14 @@ public sealed record PrimeConsultantRow(
     string? PrimeFirm,
     string? PrincipalInCharge,
     string? ContactEmail,
-    bool KnownToKor,
+    bool? KnownToKor,
     string? KorRelationshipNotes,
     string? KorAngle,
     double? Confidence)
 {
     public bool HasPrime => !string.IsNullOrWhiteSpace(PrimeFirm);
+    public bool HasUsableResearch => HasPrime;
+    public bool ResearchComplete => HasUsableResearch && KnownToKor.HasValue;
 }
 
 /// <summary>One active industry award program KOR could consider entering.</summary>

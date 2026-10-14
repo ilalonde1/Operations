@@ -34,9 +34,9 @@ public sealed class ExecSummaryReportGeneratorTests
         var labels = doc.Blocks.OfType<LabelValueBlock>()
             .GroupBy(x => x.Label).ToDictionary(g => g.Key, g => g.First().Value);
         Assert.Equal("1,942", labels["Total active MPIs (cross-sector, distinct): "]);
-        Assert.Equal("1,425 (73%)", labels["Honed (deep BD intel — verified, named, action-ready): "]);
+        Assert.Equal("1,425 (73%)", labels["Honed (recorded verdict present): "]);
         Assert.Equal("~$93.8B CAD", labels["Known-cost subtotal (PURSUE/MONITOR/DISCOVER): "]);
-        Assert.Equal("1", labels["URGENT items live right now: "]);
+        Assert.Equal("1", labels["Recorded URGENT flags: "]);
 
         var heatmap = doc.Blocks.OfType<TableBlock>().Single();
         Assert.Equal("Hospitals & Healthcare", heatmap.Rows[0][0]);

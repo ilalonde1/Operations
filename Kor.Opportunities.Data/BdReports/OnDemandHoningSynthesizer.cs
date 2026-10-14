@@ -22,8 +22,8 @@ namespace Kor.Opportunities.Data.BdReports;
 /// The token budget is controlled by construction, in priority order:
 ///   1. FRESH  - honed within its verdict-class TTL -> served from cache, 0 tokens.
 ///   2. QUIET  - stale by the clock, but NO new signal has landed since the last
-///               hone -> the verdict is still true; we bump its "verified current"
-///               timestamp and serve it, 0 tokens.
+///               hone -> the verdict is unverified; we preserve its research
+///               timestamp and serve the cached result, 0 tokens.
 ///   3. DUE    - stale AND new signal exists (or never honed) -> the ONLY case
 ///               that spends tokens. All DUE rows in one view are batched into a
 ///               single cheap Haiku call that re-derives verdict + status from
@@ -119,12 +119,8 @@ public sealed class OnDemandHoningSynthesizer
         var quiet = classified.Where(c => c.Class == Freshness.Quiet).ToList();
         var due = classified.Where(c => c.Class == Freshness.Due).ToList();
 
-        // QUIET: nothing changed since the last hone -> the verdict is still
-        // true. Just mark it verified-current so it stops re-triggering. 0 tokens.
-        foreach (var q in quiet)
-        {
-            await TouchVerifiedAsync(q.MpiId, ct).ConfigureAwait(false);
-        }
+        // QUIET means only that the two watched streams have no new records.
+        // Preserve the research timestamp and cached verdict; neither is verified.
 
         // Spend the budget where it changes decisions: an URGENT or PURSUE
         // verdict going stale matters more than a DISCOVER one, and anything
@@ -356,21 +352,6 @@ WHERE e.MajorProjectsInventoryId = @id;";
         cmd.Parameters.Add("@verdict", SqlDbType.NVarChar, 40).Value = normalizedVerdict;
         cmd.Parameters.Add("@status", SqlDbType.NVarChar, 400).Value = (object?)status ?? DBNull.Value;
         return await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false) > 0;
-    }
-
-    private async Task TouchVerifiedAsync(long mpiId, CancellationToken ct)
-    {
-        const string sql = @"
-UPDATE e SET e.LastRefreshAtUtc = sysdatetimeoffset()
-FROM opportunities.MajorProjectEnrichment e
-JOIN (SELECT MajorProjectsInventoryId, MAX(Id) MaxId FROM opportunities.MajorProjectEnrichment
-      WHERE ProviderName = N'ProjectBriefHoning' GROUP BY MajorProjectsInventoryId) l ON l.MaxId = e.Id
-WHERE e.MajorProjectsInventoryId = @id;";
-        await using var con = new SqlConnection(_connectionString);
-        await con.OpenAsync(ct).ConfigureAwait(false);
-        await using var cmd = new SqlCommand(sql, con);
-        cmd.Parameters.Add("@id", SqlDbType.BigInt).Value = mpiId;
-        await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
     }
 
     private static string? TryExtractStatus(string? honingJson)

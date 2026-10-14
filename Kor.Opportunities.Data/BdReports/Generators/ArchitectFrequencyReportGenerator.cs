@@ -26,6 +26,8 @@ public static class ArchitectFrequencyReportGenerator
 
         var b = new BdReportDocumentBuilder("KOR Structural — Architect Frequency Report (Warm-Intro Priority List)");
 
+        b.P(BdReportFormatting.SourceProvenance);
+
         b.Italic(
             "Architects ranked by linked portfolio projects from inventory and architect-role work, including historical and delivered projects. This does not establish live pursuits or available team seats. " +
             "The premise: in public AEC work, the prime consultant (typically architect) submits ONE team proposal with structural sub included. " +

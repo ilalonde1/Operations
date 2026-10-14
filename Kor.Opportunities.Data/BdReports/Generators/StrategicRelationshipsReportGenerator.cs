@@ -21,6 +21,8 @@ public static class StrategicRelationshipsReportGenerator
 
         var b = new BdReportDocumentBuilder("KOR Structural — Strategic Relationships Deep-Dive");
 
+        b.P(BdReportFormatting.SourceProvenance);
+
         b.Italic(
             $"{targets.Count} named compounding relationships — one relationship = N projects across multi-year, multi-sector pipelines. " +
             "Each target has named contacts (where known), KOR's positioning angle, and a 12-month engagement plan. " +

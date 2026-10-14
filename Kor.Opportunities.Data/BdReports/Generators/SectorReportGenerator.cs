@@ -53,8 +53,9 @@ public static class SectorReportGenerator
 
         var b = new BdReportDocumentBuilder(definition.ReportTitle);
 
-        b.Italic($"{prose.IntroNote} Generated {generatedAtUtc:yyyy-MM-dd HH:mm} UTC from live KorOpportunitiesDb honing verdicts.");
+        b.Italic($"Background guidance (not reconciled to current rows): {prose.IntroNote} Generated {generatedAtUtc:yyyy-MM-dd HH:mm} UTC from live KorOpportunitiesDb honing verdicts.");
 
+        b.P(BdReportFormatting.EvidenceNote(rows));
         b.H2("Executive Summary");
         b.Kpis(
             new KpiItem(honed.Count.ToString(CultureInfo.InvariantCulture), "Projects honed"),
@@ -67,7 +68,7 @@ public static class SectorReportGenerator
 
         foreach (var paragraph in prose.SummaryNarrative)
         {
-            b.P(paragraph);
+            b.P("Background guidance (not verified against this report): " + paragraph);
         }
 
         b.H2("URGENT — IMMEDIATE action required");
@@ -193,7 +194,7 @@ public static class SectorReportGenerator
                 b.H3(section.Title);
                 foreach (var paragraph in section.Paragraphs)
                 {
-                    b.P(paragraph);
+                    b.P("Background guidance (not verified against this report): " + paragraph);
                 }
             }
         }
@@ -201,6 +202,7 @@ public static class SectorReportGenerator
         if (prose.RecommendedActions.Count > 0)
         {
             b.H2("Recommended next actions");
+            b.Italic("Background recommendations; applicability and urgency are not verified against the current rows.");
             var n = 1;
             foreach (var action in prose.RecommendedActions)
             {

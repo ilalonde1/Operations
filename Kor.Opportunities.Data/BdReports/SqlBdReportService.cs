@@ -156,6 +156,7 @@ WHERE m.RetiredAtUtc IS NULL
   AND {def.MpiWhere};";
 
         var rows = await ReadPursuitRowsAsync(sql, ct).ConfigureAwait(false);
+        var refreshNote = "Cached research; on-demand refresh not performed. No external verification was performed.";
 
         // View-time freshness: refresh only the stale-and-changed verdicts (the
         // synthesizer's own cost gate means fresh/quiet rows cost nothing), then
@@ -167,19 +168,24 @@ WHERE m.RetiredAtUtc IS NULL
                 var result = await _synthesizer
                     .EnsureFreshAsync(rows.Select(x => x.MpiId).ToList(), ct)
                     .ConfigureAwait(false);
-                if (result.Synthesized > 0 || result.Quiet > 0)
+                if (result.Synthesized > 0)
                 {
                     rows = await ReadPursuitRowsAsync(sql, ct).ConfigureAwait(false);
                 }
+                refreshNote = $"On-demand review: {result.Synthesized} synthesized from stored inputs; " +
+                    $"{result.Quiet} quiet in the two watched streams (cached, not rechecked); " +
+                    $"{result.Due - result.Synthesized} due but not refreshed, including {result.Deferred} deferred. " +
+                    "No external verification was performed.";
             }
+            catch (OperationCanceledException) { throw; }
             catch
             {
-                // Best-effort: on any synthesis failure, serve cached verdicts
-                // rather than break the report.
+                refreshNote = "Cached research; refresh unavailable. Could not complete the on-demand review; facts were not rechecked.";
             }
         }
 
         return rows
+            .Select(x => x with { RefreshNote = refreshNote })
             .OrderBy(x => BdVerdicts.Rank(x.Verdict))
             .ThenByDescending(x => x.EstimatedCostCad ?? decimal.MinValue)
             .ThenBy(x => x.ProjectName, StringComparer.OrdinalIgnoreCase)

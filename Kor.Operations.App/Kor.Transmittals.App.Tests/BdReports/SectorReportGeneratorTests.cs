@@ -135,7 +135,7 @@ public sealed class SectorReportGeneratorTests
         var doc = SectorReportGenerator.Build(Definition, Prose, Array.Empty<PursuitBriefRow>(), GeneratedAt);
 
         var intro = (ItalicNoteBlock)doc.Blocks[1];
-        Assert.StartsWith("Intro framing.", intro.Text);
+        Assert.StartsWith("Background guidance (not reconciled to current rows): Intro framing.", intro.Text);
         Assert.Contains("2026-06-09 20:00 UTC", intro.Text);
         Assert.Contains("live KorOpportunitiesDb", intro.Text);
     }

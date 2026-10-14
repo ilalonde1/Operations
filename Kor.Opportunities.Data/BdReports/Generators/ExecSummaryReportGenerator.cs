@@ -31,23 +31,21 @@ public static class ExecSummaryReportGenerator
 
         var b = new BdReportDocumentBuilder("KOR Structural — BD Pipeline Executive Overview");
 
-        b.Italic(
-            "Cross-sector synthesis of all BD research categories. Each project verified against named procurement model + incumbent structural engineer " +
-            "(Yurkovich-class error catch baked into every honing pass). All claims sourced from the database — no narrative inflation. " +
-            $"Generated {generatedAtUtc:yyyy-MM-dd HH:mm} UTC from live KorOpportunitiesDb.");
+        b.Italic($"Recorded BD verdicts and report counts, generated {generatedAtUtc:yyyy-MM-dd HH:mm} UTC. Completeness and current accuracy are not verified by this report.");
+        b.P(BdReportFormatting.EvidenceNote(callSheetPool));
 
         b.H2("The Headline");
         var honedPct = headline.TotalActiveMpis == 0
             ? 0
             : (int)Math.Round(100.0 * headline.HonedCount / headline.TotalActiveMpis);
         b.B("Total active MPIs (cross-sector, distinct): ", headline.TotalActiveMpis.ToString("N0", CultureInfo.InvariantCulture));
-        b.B("Honed (deep BD intel — verified, named, action-ready): ", $"{headline.HonedCount:N0} ({honedPct}%)");
+        b.B("Honed (recorded verdict present): ", $"{headline.HonedCount:N0} ({honedPct}%)");
         b.B("Known-cost subtotal (PURSUE/MONITOR/DISCOVER): ", "~$" + (headline.HonedCostCad / 1_000_000_000m).ToString("F1", CultureInfo.InvariantCulture) + "B CAD");
         b.P(BdReportFormatting.CostCoverage(headline.CostedProjectCount, headline.CostPopulationCount));
-        b.B("URGENT items live right now: ", callSheetPool.Count(x => x.IsUrgent).ToString(CultureInfo.InvariantCulture));
-        b.B("Open PURSUE pool: ", callSheetPool.Count(x => !x.IsUrgent).ToString(CultureInfo.InvariantCulture));
+        b.B("Recorded URGENT flags: ", callSheetPool.Count(x => x.IsUrgent).ToString(CultureInfo.InvariantCulture));
+        b.B("Recorded non-urgent PURSUE pool: ", callSheetPool.Count(x => !x.IsUrgent).ToString(CultureInfo.InvariantCulture));
         b.P(string.Empty);
-        b.P("KOR's BD intelligence is no longer a list of projects — it is a named, verified, action-ready pursuit engine. Every PURSUE has procurement model identified, incumbent (if any) named, decision-makers surfaced, warm-intro path mapped, and 12-month engagement timeline. The \"Yurkovich Pavilion\" error class — chasing already-locked projects — is structurally eliminated.");
+        b.P("A recorded pursuit verdict does not establish named decision-makers, an available introduction or an open structural seat. Review the project evidence before acting.");
 
         b.H2("IMMEDIATE — Action this week");
         var urgent = callSheetPool.Where(x => x.IsUrgent).Take(ImmediateActionCap).ToList();
@@ -82,12 +80,13 @@ public static class ExecSummaryReportGenerator
             }).ToList());
         b.P("Known-cost subtotals count live verdicts only (PURSUE/MONITOR/DISCOVER — DEAD and DUPLICATE excluded). They are partial estimates, not full pipeline valuations. Sector filters deliberately overlap (a BC Housing project is also Residential), so the heatmap rows do not sum to the distinct headline totals.");
 
+        b.Italic("Historical guidance from the 2026-06-09 analyst sweep; amounts, contacts and recommendations below are not verified by this report.");
         foreach (var section in ProseSections)
         {
             b.H2(section.H2);
             foreach (var paragraph in section.Lead)
             {
-                b.P(paragraph);
+                b.P("Historical guidance: " + paragraph);
             }
 
             foreach (var sub in section.Subsections)
@@ -95,7 +94,7 @@ public static class ExecSummaryReportGenerator
                 b.H3(sub.Title);
                 foreach (var paragraph in sub.Paragraphs)
                 {
-                    b.P(paragraph);
+                    b.P("Historical guidance: " + paragraph);
                 }
             }
         }
@@ -104,8 +103,7 @@ public static class ExecSummaryReportGenerator
         b.P("Every sector report (with every PURSUE, every MONITOR, every named contact and verdict reasoning) generates on demand from the BD Reports tile, alongside the weekly call sheet. Per-project intel: Org Dossier, Project Brief, Region Brief in the BD workspace.");
 
         b.H2("Methodology footnote");
-        b.P("Every brief in this overview was generated via: (1) Sonnet first-pass enrichment from web search + government sources; (2) Yurkovich-rigor honing pass with 20-30 tool calls per project, mandatory procurement model identification + named incumbent + 12-month engagement timeline + named warm-intro path; (3) MajorProjectEnrichment + Intel* decompose into normalized relational rows; (4) WPF Org Dossier + Project Brief + Region Brief integration; (5) on-demand OpenXml report generation pulling live from DB.");
-        b.P("No claim in this overview is asserted without underlying DB rows. Every URGENT can be drilled down to the named contact + named action + procurement model evidence.");
+        b.P("Report counts are read from stored records. Enrichment, procurement facts, contacts and source freshness are not independently verified during document generation. Historical guidance is supplied separately from the live query results.");
 
         return b.Build();
     }

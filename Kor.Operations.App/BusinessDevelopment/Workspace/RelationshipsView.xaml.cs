@@ -166,43 +166,8 @@ public partial class RelationshipsView : UserControl
                 return;
             }
 
-            if (data is { DeltekClientId: { Length: > 0 } cid })
-            {
-                try
-                {
-                    var deltekSvc = AppServices.Get<Kor.Operations.App.Crm.IDeltekClientContextService>();
-                    var intel = await deltekSvc.LoadAsync(cid, CancellationToken.None).ConfigureAwait(true);
-                    if (intel is not null)
-                    {
-                        data = data with { Deltek = BuildDeltekSection(intel) };
-                    }
-                    else
-                    {
-                        // Linked but Deltek's Clendor table returned no row — show a
-                        // brief-side note instead of a workflow-blocking popup. Tech
-                        // detail goes to Serilog (under Generate Brief category).
-                        Serilog.Log.Information(
-                            "Generate Brief: Deltek lookup returned null for ClientId {DeltekClientId} on canonical org {CanonicalOrgId} ({DisplayName}).",
-                            cid, data.Id, data.DisplayName);
-                        data = data with { DeltekNote = "No Deltek engagement history on file for this organization." };
-                    }
-                }
-                catch (Exception deltekEx)
-                {
-                    Serilog.Log.Warning(
-                        deltekEx,
-                        "Generate Brief: Deltek lookup failed for ClientId {DeltekClientId} on canonical org {CanonicalOrgId} ({DisplayName}).",
-                        cid, data.Id, data.DisplayName);
-                    data = data with { DeltekNote = "Deltek engagement history temporarily unavailable." };
-                }
-            }
-            else
-            {
-                Serilog.Log.Information(
-                    "Generate Brief: canonical org {CanonicalOrgId} ({DisplayName}) has no ClendorClientId — Deltek section skipped.",
-                    data.Id, data.DisplayName);
-                data = data with { DeltekNote = "No Deltek connection on file for this organization." };
-            }
+            data = await _services.GetRequiredService<Kor.Operations.App.BusinessDevelopment.Briefs.OrgBriefDeltekEnricher>()
+                .EnrichAsync(data, CancellationToken.None).ConfigureAwait(true);
 
             if (asPdf)
             {
@@ -225,35 +190,6 @@ public partial class RelationshipsView : UserControl
         {
             GenerateOrgBriefButton.IsEnabled = true;
         }
-    }
-
-    private static Kor.Opportunities.Data.Briefs.OrgBriefDeltekSection BuildDeltekSection(
-        Kor.Operations.App.Crm.DeltekClientIntelligence intel)
-    {
-        var topProjects = new List<Kor.Opportunities.Data.Briefs.OrgBriefDeltekProject>();
-        foreach (var p in intel.Projects)
-        {
-            if (topProjects.Count >= 5)
-            {
-                break;
-            }
-
-            topProjects.Add(new Kor.Opportunities.Data.Briefs.OrgBriefDeltekProject(
-                p.Wbs1, p.Name, p.OpenDate, p.Status, p.Fee, p.FeeBilled));
-        }
-
-        return new Kor.Opportunities.Data.Briefs.OrgBriefDeltekSection(
-            DeltekClientId: intel.ClientId,
-            ClientName: intel.ClientName,
-            ProjectCount: intel.ProjectCount,
-            LifetimeFee: intel.LifetimeFee,
-            LatestProjectStart: intel.LatestProjectStart,
-            LatestProjectName: intel.LatestProjectName,
-            RecentProjects: topProjects,
-            ContactCount: intel.Contacts.Count,
-            ArOutstanding: intel.Ar?.TotalOutstanding ?? 0m,
-            Ar90Plus: intel.Ar?.Outstanding90Plus ?? 0m,
-            DegradedSections: intel.HasDegradedSections);
     }
 
     private async Task SearchAsync()

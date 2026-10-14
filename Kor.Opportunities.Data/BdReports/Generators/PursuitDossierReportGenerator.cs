@@ -35,6 +35,8 @@ public static class PursuitDossierReportGenerator
 
         var b = new BdReportDocumentBuilder("KOR Structural — Pursuit Dossiers (Live Relationship Graph)");
 
+        b.P(BdReportFormatting.SourceProvenance);
+
         b.Italic(
             "One dossier per active pursuit, read live from the org graph: who designs it, who holds the structural seat, who builds it, and how warm KOR's path in is. " +
             "On public AEC work KOR wins as the architect's structural sub — the architect edge IS the route to the pursuit. " +
@@ -60,7 +62,7 @@ public static class PursuitDossierReportGenerator
         if (urgent.Count > 0)
         {
             b.H2("URGENT pursuits — team state");
-            b.P("Act-now pool with everything the graph knows about each team. A named architect with intel depth = a warm path that already exists; an empty Architect cell = route-in unknown.");
+            b.P("Act-now pool with everything the graph knows about each team. A named architect with intel depth has research records; a KOR relationship remains unverified; an empty Architect cell = route-in unknown.");
             b.Table(
                 new[] { "Id", "Pursuit", "Cost", "Architect", "Structural Engineer", "GC" },
                 urgent.Select(p => (IReadOnlyList<string>)new[]

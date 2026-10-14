@@ -57,6 +57,7 @@ public partial class BriefsMakerWindow : Window, Kor.Operations.Services.IAiCont
     private readonly IBriefDataStore _briefStore;
     private readonly IBriefGenerator _wordGen;
     private readonly IBriefPdfGenerator _pdfGen;
+    private readonly OrgBriefDeltekEnricher _orgDeltek;
 
     private CanonicalOrgRow? _selectedOrg;
     // Latest-requested picker ids. Each picker handler awaits a load and then
@@ -79,12 +80,14 @@ public partial class BriefsMakerWindow : Window, Kor.Operations.Services.IAiCont
         ICanonicalOrgStore canonicalOrgStore,
         IBriefDataStore briefStore,
         IBriefGenerator wordGen,
-        IBriefPdfGenerator pdfGen)
+        IBriefPdfGenerator pdfGen,
+        OrgBriefDeltekEnricher orgDeltek)
     {
         _canonicalOrgStore = canonicalOrgStore ?? throw new ArgumentNullException(nameof(canonicalOrgStore));
         _briefStore = briefStore ?? throw new ArgumentNullException(nameof(briefStore));
         _wordGen = wordGen ?? throw new ArgumentNullException(nameof(wordGen));
         _pdfGen = pdfGen ?? throw new ArgumentNullException(nameof(pdfGen));
+        _orgDeltek = orgDeltek ?? throw new ArgumentNullException(nameof(orgDeltek));
 
         InitializeComponent();
         OrgPicker.Store = canonicalOrgStore;
@@ -426,6 +429,8 @@ public partial class BriefsMakerWindow : Window, Kor.Operations.Services.IAiCont
                         MessageBoxImage.Warning);
                     return;
                 }
+
+                data = await _orgDeltek.EnrichAsync(data, CancellationToken.None).ConfigureAwait(true);
 
                 if (asPdf)
                 {

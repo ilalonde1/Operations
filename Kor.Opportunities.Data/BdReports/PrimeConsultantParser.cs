@@ -8,12 +8,14 @@ public sealed record PrimeConsultantResult(
     string? FirmName,
     string? PrincipalInCharge,
     string? ContactEmail,
-    bool KnownToKor,
+    bool? KnownToKor,
     string? KorRelationshipNotes,
     string? KorAngle,
     double? Confidence)
 {
-    public static readonly PrimeConsultantResult Empty = new(null, null, null, false, null, null, null);
+    public static readonly PrimeConsultantResult Empty = new(null, null, null, null, null, null, null);
+    public bool IsUsable => !string.IsNullOrWhiteSpace(FirmName);
+    public bool IsComplete => IsUsable && KnownToKor.HasValue;
 }
 
 /// <summary>
@@ -77,8 +79,13 @@ public static class PrimeConsultantParser
         return string.IsNullOrWhiteSpace(s) ? null : s;
     }
 
-    private static bool BoolOf(JsonElement? obj, string name)
-        => obj is { } o && o.TryGetProperty(name, out var p) && p.ValueKind == JsonValueKind.True;
+    private static bool? BoolOf(JsonElement? obj, string name)
+    {
+        if (obj is not { } o || !o.TryGetProperty(name, out var p)) return null;
+        if (p.ValueKind == JsonValueKind.True) return true;
+        if (p.ValueKind == JsonValueKind.False) return false;
+        return p.ValueKind == JsonValueKind.String && bool.TryParse(p.GetString(), out var value) ? value : null;
+    }
 
     private static double? DoubleOf(JsonElement? obj, string name)
     {
